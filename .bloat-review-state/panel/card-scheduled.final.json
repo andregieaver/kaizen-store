@@ -1,0 +1,115 @@
+{
+ "area": "scheduled",
+ "title": "Scheduled and background work",
+ "grade_today": "D",
+ "grade_reasons": "D, at the top of the band; the steward's reasons hold against the code and the verified findings: nearly every one of the scheduler's 13,250 calls a day finds nothing (the posts alone cost about 150 s of database time a day at the measured 11.3 ms each), all 83 dispatcher jobs share one cadence with 78 started at once on five connections, and the scheduler's log is 564 MB of a 731 MB database. The one test holds a time limit and a ledger row, never a cost, and at least 11 dispatcher jobs swallow their own errors, so the ledger says ok for them whatever happens. It is not an E: nothing here hurts a person or costs money today, and the base is sound (claimed queues, mostly set-based jobs, a ledger that emails on a failing job).",
+ "verdict_on_bar": "Kept: per-store idle work at 0, a cadence and a reason per job, four jobs at a time inside 150 s, and the counters of repeated work. Loosened, because the sums did not hold: calls from 1,200 to 1,350. The steward's 1,154 leaves out the watcher and the PDF route that the plan itself adds; by the plan's own steps a quiet day is 1,274, so step 3.2's '1,200 or fewer' fails the day step 3.7 lands. Reaching 1,200 would mean an hourly watcher or no safety sweep for PDFs. Idle statements from 40,000 to 45,000: the bar's own parts add up to about 40,500 with the dispatcher at its 125, and a sweep call must run every runner without asking the gate. Otherwise the sweep of the three feature routes guards nothing, since after step 3.2 the route and the tick read the same function. Tightened: the run log from 60 MB to 25 MB once the tick runs (a week is then about 12,300 rows, 7 MB); a stopped scheduler told within 30 minutes, not an hour (an hourly watcher is 75 minutes at worst); 'no silent failure' now covers the dispatcher's jobs and not only the daily route's 19 console catches; picture re-stamps from under 100 to changes plus 20, the steward's own rule; a job starts only if its budget fits before the run's limit; a five-minute job names who waits. Added: how long due work waits, because the gate trades a poll for a predicate and nothing said the work still starts on time; the tick's own statement in the per-store budget; and a count of runs that did work, without which 'calls that take no work' cannot be read. Not measurable as written: the per-store test (its seed does not switch the features on), idle calls (no counter), and step 3.4's rg -c, which prints 6 today and not 19. Calls and statements are merged into one measure to stay at eight. The floor holds: 288 dispatcher runs always measure the status page, and 2 statements per five-minute job is the tolerance, named below. What a cron function loads at a cold start (about 11 MiB of JavaScript) is the server area's measure; it matters more here once most scheduler calls are cold sweeps. AMENDED BY THE PANEL'S CRITIC, so that one thing has one number in every area: 4: pg_cron's run log: under 20 MB.",
+ "measures": [
+  {
+   "name": "What a quiet day costs: function calls and statements that find nothing",
+   "today": "13,250 calls a day (12,960 from nine every-minute routes, 288 dispatcher runs, 2 daily runs) and about 170,000 statements (about 68 a minute from the routes and at least 248 per dispatcher run; the auditor's count, not re-counted). The posts cost about 150 s of database time a day: 352,514 calls and 3,974 s in pg_stat_statements, 11.3 ms each.",
+   "target_a": "At most 1,350 calls: 288 dispatcher runs, 2 daily runs, a 15-minute sweep of each of ten gated routes (960) and the watcher every 15 minutes (96). One every-minute schedule in pg_cron, the tick, whose statement averages under 20 ms. Statements: an idle dispatcher run at most 125 (2 per five-minute job plus 9), a woken call that finds nothing at most 3, a sweep call no more than its route's count in the baseline; under 45,000 a day in all. After opening, calls that do no work stay under 1,100 a day.",
+   "how_measured": "Production: calls of 'SELECT net.http_post' in pg_stat_statements rise by at most 1,350 a day, kept by the daily reading of step 0.2; select count(*) from cron.job where schedule = '* * * * *' is 1; sum(runs - worked) over the route.* rows of commerce.cron_jobs (the worked count is shortfall 3). Tests: src/server/query-budget.int.test.ts (steps 1.10 and 3.3) holds the idle dispatcher run, each route's idle call and, with shortfall 1, commerce.cron_due(); src/lib/surface-budget.scan.test.ts (step 1.18) holds the number of jobs and routes."
+  },
+  {
+   "name": "Jobs whose idle run does work per store, site or product",
+   "today": "At least 13 of the 83 dispatcher jobs (knowledge, picture vectors, alt texts, product vectors, invoices, the listings' check, the books, Tripletex, Fiken, auto-archive, autopilot budgets, recurring, eBay), 3 minute routes and the daily visits prune. Source: the planner's scan of the 83 job functions, each loop read.",
+   "target_a": "0. An idle run sends the same statements and reads the same rows with 1 store and with 20, when each of the 20 has every per-store feature on (chat, pictures, an AI key of its own, open books, Tripletex, Fiken, eBay, auto-archive, an AI budget, a repeating invoice, two automations, an ad connection, a desk with email) and nothing is due. The same holds for the tick's statement. A poll of an outside service names its cap and an order that rotates.",
+   "how_measured": "query-budget.int.test.ts (step 1.10) on the seed and again with 19 more stores: statements, and rows read (seq_tup_read plus idx_tup_fetch). As written the step does not switch the features on and does not count the tick: shortfalls 1 and 5. src/server/cron-routes.scan.test.ts fails a per-store job without a cap and an order (step 3.3)."
+  },
+  {
+   "name": "Jobs that run more often than their work changes",
+   "today": "About 30 of the 83 dispatcher jobs run every 300 s though their work is hourly or daily: 23,904 job runs a day. Two prunes run every minute inside the integrations route, and the theme shots' wanted list is rebuilt every minute.",
+   "target_a": "0. Every job names its cadence (300, 3,600 or 86,400 s) and a one-line reason in one registry. A five-minute job names who waits: a shopper, an owner, held stock or money. At most 58 jobs at five minutes and under 17,500 job runs a day with today's list. No prune runs more often than hourly.",
+   "how_measured": "cron-routes.scan.test.ts fails a registry job without a cadence and a reason (step 3.3). Production: select every_seconds, count(*) from commerce.cron_jobs group by 1, and runs of dispatcher.searches rising by 1 a day (288 now)."
+  },
+  {
+   "name": "pg_cron's own run log",
+   "today": "564 MB, 77% of the 731 MB database. No retention anywhere. About 13,250 new rows a day of about 0.6 KB each (DS-8).",
+   "target_a": "The oldest row is at most 8 days old. The cron schema is under 80 MB while nine routes are still scheduled (a week is about 93,000 rows, 56 MB) and under 20 MB once the tick runs (about 12,300 rows a week, 7 MB).",
+   "how_measured": "Production: select min(end_time) from cron.job_run_details, and the size by schema in the daily reading (step 0.2). Held by the daily check of step 1.22, which fails when the oldest row is over 8 days old, and by flag four of step 1.13, which must fall from 80 MB to 25 MB when step 3.1 lands."
+  },
+  {
+   "name": "Scheduled functions that are seen: a ledger row, real work recorded, no failure swallowed",
+   "today": "83 dispatcher jobs and 12 routes have a row. The 40 daily functions share 2 rows and 19 of them catch to the console. At least 11 of the 83 dispatcher jobs catch an error in their entry function and neither log nor rethrow it (17 catches, by a scan of the 83 functions; runReturnJobs, runAffiliateJobs and runBonusJobs read), so the ledger says ok. Seven routes that work after answering record 0 to 1 ms. pg_cron's 2 SQL deletes have no row. No row says when a job last worked. Nothing outside pg_cron watches it.",
+   "target_a": "Every scheduled function, pg_cron's own SQL jobs included, has a row with its cadence, last run, last work, failures and how many runs did work. 0 catches in a job's entry function that neither rethrow nor report a failed part. A route that works after answering records that work and its failure. A stopped scheduler emails the admins within 30 minutes; a failing daily job within three days; a late daily job or a late watcher fails the status page's jobs check.",
+   "how_measured": "cron-routes.scan.test.ts: every function a cron route calls is a registry entry (step 3.4), and no entry function holds a silent catch (shortfall 2). rg -o 'console\\.error' src/app/api/cron | wc -l prints 0 (19 today). Production: the count of daily.% rows in commerce.cron_jobs equals the registry's daily entries, and the watcher's own row is under 20 minutes old. An int test stops the tick and sees the email (step 1.22)."
+  },
+  {
+   "name": "Room in a run: jobs at once, time budgets, run length",
+   "today": "78 jobs start at once on a pool of 5 connections with a 5 s wait; their recorded times sum to 12.1 s in a 1.3 s run. At most 16 of the 83 job modules mention a time budget. The run's limit (300 s) equals its period. The daily run starts 13 functions at once, then 8 in turn, then 19 at once, with no budget, and a function that fails waits a day.",
+   "target_a": "At most 4 jobs at a time, in the dispatcher and in the daily run. Every job has a budget, and a job starts only if its budget ends 15 s before the run's limit. The budgets of the fullest tick add up to at most 960 s (4 lanes of 240 s). A run stays under 150 s, and one over that is flagged slow. A daily job that failed or was not reached is tried again the same day. No run fails with 'timeout exceeded when trying to connect'. A job's cache refresh follows that job.",
+   "how_measured": "A unit test of runJobs() (step 3.3): never more than 4 running, a job whose budget does not fit is not started, and a job that never returns leaves the others' rows written. The scan test adds up the budgets. Production: last_duration_ms of route.cart-reminders and route.subscription-reminders, and select count(*) from commerce.cron_jobs where last_error like '%timeout exceeded when trying to connect%' is 0."
+  },
+  {
+   "name": "Work repeated on things that did not change (production counters, a day)",
+   "today": "Empty knowledge re-cuts about 1,170. Picture vectors re-stamped about 172. issue_waiting_invoices called about 127 with no invoice issued. Every theme snapshot read 1,440 times. cookie_scans read by scan, about 21 M rows, and 40 to 50 scheduled scans where about 2 are due. Stripe payout reads 288 to 576. Up to 2,880 AI calls on listings whose answer could not be read (not measured).",
+   "target_a": "Each counter is at most the day's real changes plus 20: knowledge deletes no more than the pages published, picture re-stamps under 20 on a day with no upload or publish, invoice calls under 10, theme snapshot reads under 100, cookie_scans under 1 M rows read and scheduled scans at most a seventh of the sites plus 5, Stripe payout reads at most 48, and no listing asked twice in a day for the same words.",
+   "how_measured": "pg_stat_statements and pg_stat_user_tables a day apart, from the daily reading (step 0.2), and commerce.ai_usage where feature = 'content_moderation'. The int tests of steps 0.27 to 0.30 hold four counts. Flags two and three of step 1.13 keep watching: a table read whole, and a write that changes nothing. Three counters have no done-when today (shortfall 6): scheduled scans (0.23), snapshot reads (3.1) and payout reads (3.3)."
+  },
+  {
+   "name": "How long due work waits before it starts",
+   "today": "Not measured. The minute poll bounds it at about a minute. After the tick it is a minute while a predicate is right and up to 15 minutes when one is wrong, and nothing would say so.",
+   "target_a": "The oldest due row of a queue a person watches (AI page builds, looks at a page, the Dream Factory) is under 3 minutes old; of any other gated queue under 20 minutes. Over that, the admins get an email.",
+   "how_measured": "A function beside commerce.cron_due() returns each gated queue's oldest due row's age, from the rows' own created_at. The watcher of step 1.22 reads it every 15 minutes, and the daily reading keeps the day's worst per queue. No step makes it yet: shortfall 4."
+  }
+ ],
+ "bar_in_a_sentence": "On a quiet day the scheduler makes at most 1,350 calls and 45,000 statements, none of them per store, and every job runs at the pace of its work, four at a time, inside a time budget. Every scheduled function has a ledger row that shows its work and its failures, due work starts within minutes, and a test or a daily production figure holds each of these.",
+ "steps_to_a": [
+  "0.2",
+  "0.23",
+  "0.25",
+  "0.27",
+  "0.28",
+  "0.29",
+  "0.30",
+  "0.31",
+  "0.45",
+  "1.9",
+  "1.10",
+  "1.13",
+  "1.18",
+  "1.22",
+  "1.26",
+  "3.1",
+  "3.2",
+  "3.3",
+  "3.4",
+  "3.5",
+  "3.6",
+  "3.7",
+  "3.20",
+  "4.5"
+ ],
+ "can_the_steps_reach_a": "Yes. No answer of yours must be a yes: step 3.5 needs a period for guest carts, webhook events and old page versions, step 3.7 either choice on invoice PDFs, and the new step 3.20 a waiting time (3 minutes is assumed). Two steps were added so that no job hides its failure (1.26) and due work is seen to start in time (3.20), and the cap of four jobs at a time moved before opening (0.45). The quiet-day figures can only be read after steps 3.1 to 3.3 have run for a day in production; step 4.5 reads them.",
+ "shortfalls": [],
+ "ladder": {
+  "after_phase_0": "C",
+  "after_phase_1": "C",
+  "after_phase_2": "C",
+  "after_all": "A"
+ },
+ "tolerated": [
+  "The dispatcher is called every five minutes whether or not a job is due: 288 calls a day. It always measures the status page, so no run is empty.",
+  "About 2 idle statements per five-minute job, 36,000 a day. One per job would mean folding some 30 jobs' checks into SQL, to save about 20 s of database time a day.",
+  "The 15-minute sweep: 96 calls a day per gated route that mostly find nothing. It is the net under a wrong predicate.",
+  "A gated route is cold on its first call after a quiet spell: about a second more for an owner who asks for a look at a page.",
+  "Polls of outside services that offer no push, each with a cap: eBay ten stores a run, Instagram hourly per account, carriers 60 parcels a run, Stripe payouts hourly.",
+  "CR-13: raw status checks kept 91 days, about 131,000 rows and 20 MB, the platform's own and pruned.",
+  "A failing daily job emails the admins on its third failed day, not its first. It shows as failing on the platform home from the first.",
+  "The run log keeps a week of rows: about 7 MB once the tick runs."
+ ],
+ "owner_choices": [
+  "Invoice PDFs (step 3.7): made ahead by the scheduled job, so 'Try again' is true (recommended; a tenth gated route, 96 more calls a day), or made on the first download, with the route and its 102 MB function removed? The calls bar is 1,350 with it and 1,250 without.",
+  "How long are guest carts, processed webhook events and old page versions kept (step 3.5)? The daily run deletes by those periods and the privacy text states them.",
+  "How long may work that a person watches wait before the admins are told: an AI page build, a look at a page, the Dream Factory? This card assumes 3 minutes."
+ ],
+ "closed_shortfalls": [
+  "1. Steps 3.1 and 3.2 move 'is anything due' into SQL that runs every minute, and nothing holds it. TIGHTENED: step 3.1 carries it; the text or done-when of steps 3.2, 3.7 changed with it.",
+  "2. At least 11 of the 83 dispatcher jobs catch an error in their entry function and neither log nor rethrow it: 17 catches. ADDED: new step 1.26, 'Let no job swallow its own failure'.",
+  "3. The bar asks that calls which do no work stay under a number, and that each row shows its last work. TIGHTENED: step 3.3 carries it; the text or done-when of steps 1.13, 3.2 changed with it.",
+  "4. The gate trades a poll for a predicate. If a predicate misses a kind of due work, that work starts up to 15 minutes late, at the sweep, and the calls figure looks better for it. ADDED: new step 3.20, 'Show how long due work waits, and say so when it is too long'.",
+  "5. Per-store idle work is read by running an idle tick with 1 store and with 20. TIGHTENED: step 1.10 carries it; the text or done-when of steps 3.2, 3.6 changed with it.",
+  "6. Seven done-whens stop short of the bar. 0.23: no count of scheduled cookie scans. TIGHTENED: step 3.4 carries it; the text or done-when of steps 0.23, 0.25, 1.13, 1.22, 3.1, 3.2, 3.3 changed with it."
+ ]
+}

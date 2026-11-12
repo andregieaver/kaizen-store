@@ -1,0 +1,103 @@
+{
+ "area": "rules",
+ "title": "The written rules and the agents' context",
+ "grade_today": "D",
+ "grade_reasons": "D, moved from C by the panel's critic so that the thirteen grades compare. Every session and every subagent loads four times what it needs (44 KB against 11 KB), a search cannot show 52% of the rules or 98% of the decisions, no size is held, and the one test in the area makes the file grow (35% in 12 days). That is the D sentence: every run carries far more than its job needs and nothing holds it. The card kept a C because rules load on demand and a test holds that. The three D areas have sound parts too (the server's tagged caches, the scheduler's ledger), and by ratio this area carries more than the owner's browser, which is a D at 1.8 times. What the card wrote for its C: C, in its lower half. The base is designed and sound: the rules in full sit under 295 unique headings that are read on demand, a test keeps them out of the always-loaded file, 5 of 3,145 cited code names are stale, and no doc reaches a deploy or a CI run. But every session and subagent loads 44 KB where about 10 KB will do, the search tool cannot show 52% of the rules or 98% of the decisions (I repeated the test: a 520-character line comes back as '[Omitted long matching line]'), 5 of 24 merges renumbered a decision, and no size is held while one test adds a line per rule (35% growth in 12 days). It is not a D because the load-on-demand mechanism exists and a test holds it, which the D areas lack; it is not a B because no budget exists and the largest cause is untouched.",
+ "verdict_on_bar": "Kept: the 10,500-byte ceiling for CLAUDE.md. I summed the floor from the file itself: about 7.6 KB of today's 12.6 KB core must stay (workflow, stack, commands, the never-sentences, Homer and Lisa, the platform rule), plus 1.3 KB of map, 0.8 KB of look-ups and 0.2 KB of pointers, about 9.9 KB. The bar is 6% above that, and a strict reviewer would not ask for less: a tighter ceiling would push out a sentence that guards an action. Also kept: no line over 500 characters, the 4,000-byte cap on a new rule or decision, the ignore files, 0 stale names, 0 renumbering merges, 20 KB for a standing read, 25 KB per code change. Tightened in five places. (1) The load counts what loads, not one file: CLAUDE.md, whatever it imports with @, and any rule file without a paths list. One import line can load 160 KB while CLAUDE.md's own size stands still. The same test holds the ten never-sentences in, so a hard ceiling cannot squeeze one out. (2) Each rule file's list of headings is at most 10,000 bytes (8,301 today, website.md with 84 rules). Once the index leaves CLAUDE.md, that list is the index, and nothing held it. (3) The name check covers paths, functions, components, constants and SQL names. 'A name followed by a bracket' would miss two of today's five (CustomFieldsView, TemplatesPreview). (4) Merges also count hand-resolved conflicts in the decisions index (6 of 24 today), and after the split a renumbering is counted as a renamed file, not by words in a merge subject. (5) No instruction tells a session to read a whole tracker. This plan has 134 steps, so its table could reach 40 KB at 300 characters a row, twice the 20 KB bar. Loosened in two places, both stated. docs/site-design.md is 35.9 KB and is the input for a new page of Kaizena Flow's own site: it is a named exception to the 20 KB rule. The file-list tool does not read ignore files (I tested it), so the bar on history is for content searches. Not measurable as written: the sample of 20 sessions. A cloud session's transcript lives in its own container, and this machine holds exactly one. A step must give the figure a source. The steward's checks on tools I could repeat all held: the search tool honours a per-folder ignore file and still finds a named folder.",
+ "measures": [
+  {
+   "name": "Loaded at the start of every session and every subagent",
+   "today": "44,040 bytes: CLAUDE.md 43,361 bytes in 448 lines, plus AGENTS.md 679 bytes, which it imports. About 11,000 tokens (estimate), loaded again after each compaction. 30,806 bytes (71%) are a 295-line feature index; the median change needs 2 to 4 of its lines. Nothing else loads at the start: no other import, no .claude/rules folder. Checked with wc and awk at HEAD.",
+   "target_a": "At most 11,200 bytes: CLAUDE.md at most 10,500 bytes and 160 lines, AGENTS.md as Next.js writes it, and nothing else. No other @import. No file in .claude/rules without a paths list. The ceiling is hard: it steps down and is never raised with a reason. The ten sentences that guard an action taken without opening a file stay in CLAUDE.md, held by the same test.",
+   "how_measured": "wc -c -l CLAUDE.md AGENTS.md today. After step 1.1: src/lib/docs-budget.scan.test.ts and node scripts/docs-ratchet.mjs --check, which .github/workflows/docs-budget.yml runs on a docs-only push. The count must follow every @import in CLAUDE.md and every .claude/rules file without paths; the plan's step does not say so yet (shortfall 4)."
+  },
+  {
+   "name": "Text a search cannot show (lines over 500 characters)",
+   "today": "docs/rules: 156 lines hold 291,981 of 564,581 bytes (52%). docs/decisions.md: 548 lines hold 97.8% of 1.33 MB. CLAUDE.md: 1 line (590 characters). The other living docs: 321 prose lines and 410 table rows in 61 files, about 603 KB (the steward's count; my own file walk gives 328 and 423). The search tool prints '[Omitted long matching line]' for each; repeated here on a test file.",
+   "target_a": "0 in CLAUDE.md, .claude/rules, docs/rules and docs/decisions. 0 prose lines in every other living doc. Table rows over 500 characters: at most 410, only falling, none in a new file.",
+   "how_measured": "awk 'length($0)>500' on the files today. After step 1.1: scripts/lib/docs-count.mjs, held per folder in src/lib/docs-budget.baseline.json by the scan test."
+  },
+  {
+   "name": "Growth, and what checks it",
+   "today": "No budget exists. CLAUDE.md grew from 32 KB on 30 October to 43.4 KB (35% in 12 days, about 0.95 KB a day). src/lib/rules-index.test.ts fails unless each new rule adds a line to CLAUDE.md. 24 rules are over 4,000 bytes (largest 11,212) and 46 decisions are (largest 17,985). The largest list of a rule file's headings is 8,301 bytes. 27 fixes of this review ask for a new sentence in CLAUDE.md. A docs-only push runs no check.",
+   "target_a": "Every number on this card is in one baseline file and checked on every push, docs-only ones too. A new rule and a new decision are at most 4,000 bytes; the 24 and 46 older ones only fall. Each rule file's list of headings is at most 10,000 bytes; a file that passes it is split. No test and no habit asks for a line in CLAUDE.md per rule, per budget or per tracker, and no two tests ask opposite things of that file.",
+   "how_measured": "src/lib/docs-budget.scan.test.ts with src/lib/docs-budget.baseline.json, and .github/workflows/docs-budget.yml for pushes of Markdown alone (step 1.1). The test is proved by planted cases: a 600-character line, a 5,000-byte rule, an unnamed baseline file, an uncovered dated report, a heading list over 10,000 bytes."
+  },
+  {
+   "name": "History and generated files in a default search",
+   "today": "docs: 22 of 225 files, 1.06 MB, are dated reports, draft notes, review evidence and a generated report. supabase: 791 of 796 files, 7.3 MB, are archived migrations and Drizzle's snapshot. A search for a table name returns 79 to 413 extra lines from them. No ignore file exists (checked).",
+   "target_a": "A default content search skips the 22 docs files and the 791 supabase files: rg --files supabase lists 5 files and rg --files docs lists 203 at today's file count. A table-name search returns no line from supabase/archive or supabase/migrations/meta. Naming the file or folder still finds it. A test fails when a dated report or an evidence folder under docs/audits is not covered.",
+   "how_measured": "rg --files docs | wc -l and rg --files supabase | wc -l; the ignore-file check in src/lib/docs-budget.scan.test.ts (steps 0.40 and 1.1). I tested the mechanism with the harness's own search tool: it honours an ignore file in the folder and still finds a named folder. Its file-list tool does not."
+  },
+  {
+   "name": "Rules that are no longer true",
+   "today": "5 of 3,145 code names cited in docs/rules no longer exist (0.16%). One copied list has drifted: 14 store features in code, 11 in the rule, 12 in the doc. CLAUDE.md sends architectural work to docs/plan.md (72,617 bytes, written before multi-tenancy) and tells sessions to add to a Migration versions list frozen since 4 October. No test checks any of it.",
+   "target_a": "0 cited paths, functions, components, constants or SQL names missing from the code, in CLAUDE.md, docs/rules and .claude/rules, held by a scan test. No copied list of ids where the code has the list. No standing instruction points at a frozen or superseded file.",
+   "how_measured": "The name check in src/lib/docs-budget.scan.test.ts, proved by a planted rule that cites a component that does not exist; rg for the two instructions (steps 0.41 and 2.41)."
+  },
+  {
+   "name": "Merges that renumber a decision or resolve the decisions table by hand",
+   "today": "5 of 24 merges in 35 hours renumbered a decision (116 commits, 10 sessions). 8 of 34 new decisions changed number, five of them twice. Two merges rewrote 64 and 77 files. docs/decisions.md was resolved by hand in 6 of 24 merges. Not re-run by me: the panel may not use git; the steward confirmed the five.",
+   "target_a": "Over 100 consecutive commits on main: 0 merges that renumber a decision, and at most 1 that resolves the decisions index by hand. No decision id twice, held by a test. One number claimed for real from a cloud session reaches main with no CI run and no deploy.",
+   "how_measured": "git log --merges --format=%s over 100 commits, searched for 'renumber', 'taken on main' and 'decision is D'. After step 2.40 also git log --diff-filter=R -- docs/decisions (a renumbering is a renamed file) and the merges whose combined diff touches docs/decisions.md. The duplicate-id check of step 1.1. Read at step 4.5."
+  },
+  {
+   "name": "What a session is told to read before it starts",
+   "today": "Architectural work: docs/plan.md, 72,617 bytes. A code review fix: 'read that table', 21,541 bytes with 15 rows over 500 characters, growing about 0.9 KB a step. A PSI item: 60,043 bytes to find 12 open items. One decision: two calls and 1,940 bytes at the median, 17,985 at most. A new page of Kaizena Flow's site: docs/site-design.md, 35,867 bytes. This plan will be a third tracker, with 134 steps.",
+   "target_a": "No standing instruction for work in general sends a session to more than 20 KB (docs/platform.md is 16.2 KB). No instruction says to read a whole tracker: a step's row is found by one search and is at most 300 characters. A tracker's open items sit in one section. A decision is one file found by one search, with an index row under 200 characters. One named exception: docs/site-design.md, for a new page of Kaizena Flow's own site.",
+   "how_measured": "wc -c on the files CLAUDE.md names. A tracker-row check in src/lib/docs-budget.scan.test.ts for every tracker CLAUDE.md names, which no step carries yet (shortfall 3). src/lib/decisions.scan.test.ts for the index rows (step 2.40)."
+  },
+  {
+   "name": "What a session really loads (measured, not estimated)",
+   "today": "Not measured. Every figure above is a file size or an estimate at 4 characters a token. This machine holds one session's transcript (7.4 MB, this review). It is not known whether a session reads one rule (median 1,428 bytes) or its whole file (49 to 163 KB). 15 non-test source files are over 100 KB and 11 are over 2,000 lines (I count 16 and 14 with stylesheets); nothing holds either.",
+   "target_a": "In 20 working sessions run after steps 2.1 and 2.40: at most 25 KB of rules and docs enters a session per code change at the median (11 KB at the start, one list of headings, two rules). No single read of a rule file or of the decisions index is over 20 KB. No search of docs/rules or docs/decisions returns an omitted long line. The counts of source files over 100 KB and over 2,000 lines are in the code ratchet and only fall.",
+   "how_measured": "scripts/session-load.mjs (step 1.24), run by each working session on its own transcript before its last push, leaving one small file per session in docs/audits/bloat-review-2026-11/session-load/. Read at step 4.5 and at each quarterly squash. The two file counts in src/server/ratchet.baseline.json."
+  }
+ ],
+ "bar_in_a_sentence": "A session starts with at most 11 KB of standing rules, finds any rule, decision or tracker row with one search that shows its text, and is never told to read more than 20 KB before it starts. A check on every push, docs-only ones too, holds each size, and a sample of real sessions shows a code change takes in at most 25 KB of rules and docs.",
+ "steps_to_a": [
+  "0.1",
+  "0.40",
+  "0.41",
+  "0.43",
+  "1.1",
+  "1.24",
+  "2.1",
+  "2.40",
+  "2.41",
+  "4.5"
+ ],
+ "can_the_steps_reach_a": "Yes, with two answers. Step 2.1 waits for both halves of your yes: the 295-line feature index out of CLAUDE.md, and the database, e2e, typed-row and AI-eval how-to loaded only when their folders are opened. With the first yes alone the area stops at a B, near 15 KB a session. CLAUDE.md's core is held from the first day by the new step 0.43, and the measured figure (25 KB of rules and docs per code change) is read from the first 20 sessions after steps 2.1 and 2.40, in step 4.5.",
+ "shortfalls": [],
+ "ladder": {
+  "after_phase_0": "C",
+  "after_phase_1": "C",
+  "after_phase_2": "B",
+  "after_all": "A"
+ },
+ "tolerated": [
+  "At most 410 table rows over 500 characters in finished specs (about 324 KB, under 5% of the docs). A table row cannot be wrapped. A search shows the line number and one read gets the row. The number only falls.",
+  "24 rules and 46 decisions over 4,000 bytes (largest 11.2 KB and 18 KB). Each is shortened when it is next edited; a sweep would risk losing a reason.",
+  "About 0.6 KB of room in CLAUDE.md: about 9.9 KB is needed and 10.5 KB is allowed.",
+  "docs/site-design.md, 35.9 KB, read whole for a new page of Kaizena Flow's own site. It is that task's input.",
+  "The file-list tool does not read ignore files (tested here). A list of files by pattern still shows archived migrations; content searches skip them.",
+  "A feature's facts stay written at several levels in different words (rule, decision, doc, file header). Each has its reader, and no test can hold a paraphrase equal.",
+  "The generated parity report (289 KB) stays in the repo, out of default searches, unless the owner chooses the short form.",
+  "15 source files over 100 KB and 11 over 2,000 lines. They are read by window, the counts are held and only fall, and their splits belong to the code area.",
+  "The parity-wave skill's description, about 370 characters, in every session's list of skills."
+ ],
+ "owner_choices": [
+  "CLAUDE.md is your instruction file. May its 295-line feature index go, leaving a map of the seven rule files and a three-line look-up (44 KB to under 15 KB per session)? Without this yes the area stays a C. The step waits only for the answer: given on the first day, the area is a B at the end of phase 1, not phase 2.",
+  "May the database, e2e, typed-row and AI-eval how-to then load only when those folders are opened (to under 10.5 KB)? This can be declined on its own; without it the area ends at a B.",
+  "The ceiling on CLAUDE.md would be hard: a new always-loaded sentence must fit in about 0.6 KB of room or replace another. Is that how you want your own file held?",
+  "After a migration, should 'advisors checked, nothing new' still be written down, and where? The check itself stays either way; today 205 of 564 decision rows carry the note.",
+  "Should this plan get lines of its own in CLAUDE.md, as the code review has? Proposed: no. One shared line names the three trackers and says to find a step's row by search.",
+  "Do you read the parity report's detail tables on GitHub? If not, docs/shopify-parity.md can keep its five summary blocks (under 30 KB, 289 KB today) and pnpm parity prints the rest."
+ ],
+ "closed_shortfalls": [
+  "1. Phase 0 runs with no hold on CLAUDE.md, and then two tests pull opposite ways. ADDED: new step 0.43, 'Hold CLAUDE.md's core from the first day, and open a home for this plan's own sentences'.",
+  "2. The measured figure has no source and is read at the wrong moment. TIGHTENED: step 1.24 carries it; the text or done-when of steps 2.1, 2.40, 4.5 changed with it.",
+  "3. Nothing holds a tracker's rows, and this plan's own tracker would break the bar. TIGHTENED: step 0.41 carries it; the text or done-when of steps 0.1, 1.1 changed with it.",
+  "4. Five small holes in the budget of step 1.1 and in step 2.1. TIGHTENED: step 1.1 carries it; the text or done-when of steps 0.41, 2.1 changed with it."
+ ]
+}

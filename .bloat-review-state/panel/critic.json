@@ -1,0 +1,806 @@
+{
+  "grade_changes": [
+    {
+      "area": "rules",
+      "from": "C",
+      "to": "D",
+      "why": "Every session and every subagent loads four times what it needs (44 KB against 11 KB), a search cannot show 52% of the rules or 98% of the decisions, no size is held, and the one test in the area makes the file grow (35% in 12 days). That is the D sentence: every run carries far more than its job needs and nothing holds it. The card kept a C because rules load on demand and a test holds that. The three D areas have sound parts too (the server's tagged caches, the scheduler's ledger), and by ratio this area carries more than the owner's browser, which is a D at 1.8 times."
+    },
+    {
+      "area": "build",
+      "from": "C",
+      "to": "D",
+      "why": "Every push runs 5 type checks for 1, a gate 3.5 times its floor and a pre-push rule 2.3 times its floor; about 27 runner-minutes of every push are repeats; 0 of 12 numbers are held; and it is the one area where the waste has already failed something (a deploy killed for memory on 11 November, with 10% of the machine left). The owner's browser is a D on the same shape: about 43% of each screen's script is not needed and 9 of 449 routes are held. The card's reason for a C, that most runner time is needed work, is true of the owner's browser as well, where 447 KB of each screen is the framework."
+    }
+  ],
+  "grade_ranking": [
+    {
+      "rank": 1,
+      "area": "server",
+      "grade": "D",
+      "waste": "Each function loads 10 to 12 MB where 1 to 5 MB will do (2.5 to 10 times), and a product view asks 18 statements for 1 answer that changes. One check exists."
+    },
+    {
+      "rank": 2,
+      "area": "scheduled",
+      "grade": "D",
+      "waste": "13,250 calls a day against 1,350 (10 times), 170,000 idle statements against 45,000, and a run log that is 77% of the database. No check of cost."
+    },
+    {
+      "rank": 3,
+      "area": "rules",
+      "grade": "D (was C)",
+      "waste": "44 KB per session against 11 KB (4 times), half the rules hidden from search, no budget, growing about 1 KB a day."
+    },
+    {
+      "rank": 4,
+      "area": "owner-browser",
+      "grade": "D",
+      "waste": "1.15 MB of script per screen against 0.65 MB (1.8 times; 3.5 times for the admin's own code), words handed 2 to 3 times over, 23 to 46 requests at rest. 9 of 449 routes held."
+    },
+    {
+      "rank": 5,
+      "area": "build",
+      "grade": "D (was C)",
+      "waste": "5 type checks for 1, a gate of 311 s against 90 s, a pre-push rule of 11 to 12 minutes against 5, the build at 90% of its machine. 0 of 12 numbers held."
+    },
+    {
+      "rank": 6,
+      "area": "text",
+      "grade": "C",
+      "waste": "135 of 136 admin word files behind every shopper's function and 67 areas where 18 will do. By its own measures this is a D. The C stands only because the same faults are already counted in the server's and the owner's browser's D, the rule the code card states for itself."
+    },
+    {
+      "rank": 7,
+      "area": "ai",
+      "grade": "C",
+      "waste": "One agent sends 161,661 characters a round against 34,000 to 56,000 (3 to 5 times) and nothing counts tokens. The other agents are lean, so it is not 'every call'."
+    },
+    {
+      "rank": 8,
+      "area": "database",
+      "grade": "C",
+      "waste": "The asking side is near a D (15 million rows a day read by scan, 29 documents fetched for 1, 75% of transactions change nothing); the shape is near a B and held by tests. About 30 s of database time a day."
+    },
+    {
+      "rank": 9,
+      "area": "page-model",
+      "grade": "C",
+      "waste": "The layout twice in every store document (27 to 39% of the payload) and 261 of 261 pages stale after one publish. Reads are cached and tagged; one script budget."
+    },
+    {
+      "rank": 10,
+      "area": "shopper-browser",
+      "grade": "C",
+      "waste": "The store's own script is 1.4 times its floor (233 KB against 168 KB over the framework) and a phone home makes 47 router requests against 6. 2 of 58 routes held."
+    },
+    {
+      "rank": 11,
+      "area": "surface",
+      "grade": "C",
+      "waste": "Six places where a store pays per view for a feature it has off, three jobs with two engines, 1 of 14 counts held. Each cost is small."
+    },
+    {
+      "rank": 12,
+      "area": "styles",
+      "grade": "C",
+      "waste": "One sheet at 1.36 times its floor (5.6 KB compressed too much). Nothing held, so not a B."
+    },
+    {
+      "rank": 13,
+      "area": "code",
+      "grade": "C",
+      "waste": "0.35% dead and 0.87% copied, the tidiest area. A C and not a B only because none of its own numbers is held and the site is still built twice."
+    }
+  ],
+  "bar_changes": [
+    {
+      "area": "ai",
+      "measure": "1 and 2: the first round, and tokens per call",
+      "from": "48,000 and 70,000 characters and a median call of 19,000 tokens also count as an A if the owner keeps the 17 plan, reminder and skill tools on every round",
+      "to": "The A is 34,000 characters with no page, 56,000 for any first round and a median call of 15,000 tokens. With the 17 tools kept on every round the measure is a B, with their 15,400 characters named.",
+      "why": "The card itself calls 15,400 characters a round 'not a small tolerance', the surface card says only loading on demand is an A, and every one of the 17 stays one call away. Two cards cannot grade one choice two ways."
+    },
+    {
+      "area": "surface",
+      "measure": "6: what an AI manager round carries",
+      "from": "50,000 characters with no page and 70,000 on any admin page; at most 40 store tools when no area is asked; the cached share read with feature = 'ai_manager'",
+      "to": "The AI card's numbers: 34,000 with no page and no question, 56,000 for any first round with the question drawn; 12 store tools when no area is asked; the cached share read over ai_manager and analytics_question",
+      "why": "One area cannot pass what another fails. The surface took the AI area's earlier figure, 40 tools holds nothing when a lean round sends 12, and the old query misses the rounds after a report."
+    },
+    {
+      "area": "surface",
+      "measure": "2: places where a store pays per view",
+      "from": "a product at most 3 statements, a search at most 11",
+      "to": "a product at most 2 (3 with producer schemes, 4 with price breaks), a search at most 10",
+      "why": "These are the server card's numbers for the same pages. Stock is one statement."
+    },
+    {
+      "area": "surface",
+      "measure": "tolerance on scheduled work",
+      "from": "a store that uses chat and pictures may add at most 2 statements a tick",
+      "to": "0: the same statements for 1 store and for 20 with every feature on",
+      "why": "The scheduled and the database cards both say 0, and step 0.28's own check proves 0."
+    },
+    {
+      "area": "shopper-browser",
+      "measure": "2: the store document",
+      "from": "/om-oss at most 85,000 bytes",
+      "to": "at most 80,000 (82,000 until step 2.3)",
+      "why": "The page model's sum is 79,819. 85,000 would pass with 5 KB of something sent twice."
+    },
+    {
+      "area": "shopper-browser",
+      "measure": "7: time, the field figure",
+      "from": "with 20 page loads or more, the 75th percentile is inside the good lines",
+      "to": "with 100 loads or more of a kind of page in 28 days; until then the nightly lab figure stands in",
+      "why": "The owner's browser reads the same kind of table at 100 loads. A 75th percentile of 20 is noise."
+    },
+    {
+      "area": "shopper-browser",
+      "measure": "6: pictures on real pages",
+      "from": "no picture from a file with more than twice the pixels its box needs",
+      "to": "no picture from a file more than 1.5 times as wide as its box needs (2.25 times the pixels), at 390 px 2x and 3x and at 360 px 3x",
+      "why": "One number with the code card, stated in width. See the code card's entry."
+    },
+    {
+      "area": "code",
+      "measure": "6: pictures",
+      "from": "no more than twice the pixels its box needs (2.2 times in the proposed test)",
+      "to": "no more than 1.5 times as wide as its box needs (2.25 times the pixels), at 390 px 2x and 3x and at 360 px 3x",
+      "why": "The card tolerates exactly this for three stored sizes (a tile on a 360 px 3x phone), so its measure and its test would fail its own tolerance."
+    },
+    {
+      "area": "code",
+      "measure": "7: what the lightest routes load",
+      "from": "each beacon under 125 source files after step 2.22",
+      "to": "each of the five beacons under 130",
+      "why": "It is the server's measure and must have one number. The fifth beacon has not been measured after its fix."
+    },
+    {
+      "area": "code",
+      "measure": "2: copied lines in tests",
+      "from": "tests' exact copies held at no more than 1.77%",
+      "to": "printed in the copy report, not held",
+      "why": "A ratchet on repeated set-up taxes every new test and guards no cost the owner named. Code's own copies and near-copies stay held."
+    },
+    {
+      "area": "code",
+      "measure": "4: admin class constants and hand-made tables",
+      "from": "under 100 class constants and at most 60 hand-made tables when the plan ends",
+      "to": "The kit's parts exist, no new file may declare a class constant or a hand-made table, and the per-file counts only fall as areas are touched (296 constants and 154 tables today, under 0.15% of the code). The 23 local guard wrappers still go to 0.",
+      "why": "A repeated class string is not loaded, fetched or run without need, and it is no engine built twice. Rewriting the markup of some 180 admin files to reach a round number is the largest change to the admin's look in the plan and buys no cost the owner named. The card accepts 'when touched' for the 209 action files on the same reasoning."
+    },
+    {
+      "area": "server",
+      "measure": "1: admin words a shopper's function loads",
+      "from": "no registry and at most 16 catalogue files, about 0.15 MB, on a store page",
+      "to": "the proxy and every beacon reach 0 catalogue files; the storefront layout at most 8 files and 0.21 MB of source",
+      "why": "The text card walked the graph: only 4 of the 16 serve a checkout's mail, and 8 arrive through AI tools that the server's own steps cut. Step 2.25's '16 files each' goes with it."
+    },
+    {
+      "area": "server",
+      "measure": "1: pages that keep a function per view",
+      "from": "product page, listing and search at 4.6 MB and 1,700 modules",
+      "to": "4.8 MB and 1,800 modules, and none of checkout.ts, stripe.ts, ledger.ts, staff-alerts.ts or billing.ts",
+      "why": "The named cuts reach 1,730 to 1,775, and the card's step ended 'until the bar holds', which is no done-when. The substance of the bar is the list of what a page that only shows products may not load. 1,800 leaves about 2% of room where the home's own bar leaves 8%."
+    },
+    {
+      "area": "owner-browser",
+      "measure": "5: words a screen is handed",
+      "from": "at least 90% of the words handed are read, by a record taken at load; shared words at most 16 KB in English and 17 KB in Norwegian",
+      "to": "handed against named, counted from source in both languages: at most 1.1 times the groups a screen's parts name on the five budgeted screens and at most 1.25 times at every site that hands over 50 KB; the browser's record stays as a cross-check that may only rise; shared words at most 15.5 KB and 16 KB",
+      "why": "A share read at load can only be met by fetching a panel's words when it opens, which loses a press (the fault D540 fixed). The text card's count needs no browser, so it holds all 188 sites, and its sum for shared words is 14.8 and 15.3 KB."
+    },
+    {
+      "area": "page-model",
+      "measure": "8: interface text in the editor's document",
+      "from": "at least 90% of the words handed are read by a part on screen",
+      "to": "at most 1.1 times the groups the editor's parts name at first paint, by the same scan; 130,000 bytes inline stays",
+      "why": "One definition with the owner's browser and the text cards."
+    },
+    {
+      "area": "text",
+      "measure": "3: the builder's document",
+      "from": "under 480,000 bytes with at most 205,000 of words",
+      "to": "at most 445,000 with at most 130,000 of words, after step 2.30",
+      "why": "The card stopped at step 2.27's figure. The owner's browser and the page model hold the same document at step 2.30's."
+    },
+    {
+      "area": "owner-browser",
+      "measure": "4: sign-in English (shortfall 4)",
+      "from": "at most 20 routes",
+      "to": "only the routes that draw a part that reads it: 2 today, each named",
+      "why": "The text card counted them. One number."
+    },
+    {
+      "area": "database",
+      "measure": "2: whole documents",
+      "from": "listPublishedPages on at most 14 lines after step 0.24 and at most 8 after step 2.17",
+      "to": "14 after step 0.24 and at most 3 after step 2.17",
+      "why": "The page model's reviewer read the four callers that would be left: none draws every body."
+    },
+    {
+      "area": "scheduled",
+      "measure": "4: pg_cron's run log",
+      "from": "under 25 MB once the tick runs",
+      "to": "under 20 MB",
+      "why": "The database card says 20 for the same schema, and a week of rows is about 7 MB."
+    },
+    {
+      "area": "database",
+      "measure": "5: the slow list",
+      "from": "the scheduler's post, at most 1,200 a day",
+      "to": "at most 1,350 a day",
+      "why": "The scheduled card's sum, with the watcher and the PDF route the plan adds."
+    },
+    {
+      "area": "styles",
+      "measure": "2: motion.css in every store's stylesheet",
+      "from": "it stays while at least half of published store pages use it, judged by the first reading after a quarter of real stores",
+      "to": "judged now, by step 1.23's reading of the six launch themes and the team's 60 stores: under half, and it loads only where a page uses it before the plan ends, with the first measure at 116,500 raw and 17,400 Brotli",
+      "why": "It is a sixth of the render-blocking sheet and no launch theme uses it, so every store pays for it at opening. The shopper's and text cards take out parts of this size, and an A cannot rest on a reading taken after the plan is over."
+    },
+    {
+      "area": "owner-browser",
+      "measure": "6: the notice poll",
+      "from": "6 requests an hour from an untouched tab, or 60 as the stated tolerance if the owner says no",
+      "to": "6 an hour; with a no the measure is short",
+      "why": "60 calls an hour from each open tab that nobody touches grows with owners. A shopper's page is held to 0 calls for nothing; a tolerance ten times the bar is not small."
+    },
+    {
+      "area": "build",
+      "measure": "4: the jobs a migration release waits for",
+      "from": "a median of 8 minutes or less for every job",
+      "to": "no repeated work inside a job, each job's median held within 25%, no single run over 10 minutes, and step 3.18 may not make the slowest job longer",
+      "why": "A shard that runs each file once is not waste. 8 minutes was a round number, and reaching it means rebuilding how integration tests run: speed, not bloat. See the build card's second shortfall."
+    },
+    {
+      "area": "build",
+      "measure": "6: a session's first push",
+      "from": "5 min 30 s for a session's first push",
+      "to": "5 min 30 s if the native compiler passes its trial; otherwise the cold type check's own time is the stated tolerance (about 3 minutes, so about 7 min 30 s), and nothing else in the rule runs cold",
+      "why": "A cold check of the whole program repeats nothing. The A should not hang on another project's compiler; the waste (a cold lint of unchanged files) is still cut."
+    }
+  ],
+  "shortfall_decisions": [
+    {
+      "area": "code",
+      "shortfall": "Eight done-whens are weaker than the bar or than their own text.",
+      "decision": "tighten",
+      "detail": "Six steps. 0.36: the scan reports 0 unused exports and none of the 69 names that no test names, and the three dead files are gone (rg -n -w 'InlineHeadingEditor|WorkComingSoon|store-modules' src docs --glob '!docs/audits/**' prints nothing); an export that is the server side of a feature with no screen yet (the time-entry edit, the live drills) is not deleted but listed with that reason. 0.32: curl -sI /flags/no.svg shows max-age=86400, a store page with flags off asks for nothing under /flags/, uploadBytes() takes a lifetime, and a new theme photograph and a copied video answer max-age=31536000. 3.15: also fail() is declared in one server file, the day and country helpers sum to at most 8, 'insert into commerce.chat_usage' is in at most 2 places, and a trial 'const isUuid =' in a new file fails lint or the scan. 4.2: at most 5 pairs, none over 45 shared lines. 1.8: src/lib/dependencies.scan.test.ts lists every direct package with its reason and where it loads, and a package with no line fails. 1.17: unusedExports starts empty. Not taken: a count of 60 hand-made tables in step 4.1 (that bar moved, see bar_changes). Step 3.14 is this card's fifth shortfall."
+    },
+    {
+      "area": "code",
+      "shortfall": "Three numbers of the bar are held by nothing. Step 1.17 holds",
+      "decision": "tighten",
+      "detail": "1.17: src/lib/copies.baseline.json also holds near-copied lines (22,429 today; the test fails 250 lines above the baseline and prints the ten largest new families) and helpers that are identical in three or more files (84 names, 412 declarations; no rise). pnpm test fails on a 300-line module copied with its names changed and on a helper pasted into a third file, and passes when one new 20-line form resembles another. The tests' own copies are printed, not held (see bar_changes)."
+    },
+    {
+      "area": "code",
+      "shortfall": "Nothing holds what steps 0.32 and 0.33 fix. '9 of 9 upload",
+      "decision": "tighten",
+      "detail": "No new step: each fix keeps its own proof. 0.32: src/lib/file-lifetimes.scan.test.ts fails for a trial uploadToSignedUrl call with no cacheControl and for an uploadBytes() call with no lifetime, and e2e/fonts.spec.ts fails when s-maxage is taken out of the font route. 0.33: the picture test runs at 390 px 2x and 3x and at 360 px 3x and finds no picture from a file more than 1.5 times as wide as its box needs."
+    },
+    {
+      "area": "code",
+      "shortfall": "Step 0.33 gives the 800 px copy to product tiles and the",
+      "decision": "add",
+      "detail": "Phase 0, M, straight after step 0.33: 'Give pictures in page content the 800 px copy'. A picture's sizes are fixed when a page stores it, so it goes in before real pages exist. Done when a full-width picture block at 390 px and 2x and a two-column picture at 390 px and 3x both draw the 800 px file (the 1,600 px file today), and a script prints 0 page pictures whose library row has a middle copy and whose block has none, on a fresh seed and on production. The owner's choice of three or four stored sizes is answered before step 0.33 starts."
+    },
+    {
+      "area": "code",
+      "shortfall": "Step 3.14's done-when (16 twin pairs) cannot be met by the work",
+      "decision": "tighten",
+      "detail": "3.14: its text gains src/server/work-sql.ts (the open-invoice condition, the paid sum, the time-entry joins, the grouping helper), read by work-attention.ts, work-overview.ts and work-owner.ts, which stays. Done-when: the twin counter lists none of the three pairs, src/lib/copies.baseline.json holds at most 16 pairs, and the Work integration tests pass unchanged."
+    },
+    {
+      "area": "code",
+      "shortfall": "Steps 4.1, 4.2 and 4.3 are done 'when an area is next",
+      "decision": "tighten",
+      "detail": "4.1, 4.2 and 4.3 lose 'when next touched' for what the bar counts. Before step 4.5, as work of its own, largest file first: 4.2 ends at 5 twin pairs or fewer, 4.3 ends with testOnlyExports empty, and 4.1 moves the 23 files that have a guard wrapper of their own. 4.1's class constants and tables, and 4.3's mocks and tree walkers, stay 'when touched' under a per-file ratchet (that bar moved, see bar_changes)."
+    },
+    {
+      "area": "shopper-browser",
+      "shortfall": "Time. Lighthouse 90 on a themed page is not shown to be",
+      "decision": "add",
+      "detail": "Phase 2, M, once step 1.14 has a week of figures: 'Cut what the largest paint waits for on a themed page'. Block the fonts, the scripts and the stylesheet in turn on the launch-theme store's home, product page and listing in production, write the table into docs/performance.md, and cut what it names. Done when the nightly job shows a median of 90 or more and blocking time of 200 ms or less on those three pages and on Kaizena Flow's front page for seven nights in a row, with font bytes before the largest paint held in the nightly file. Step 1.14's own done-when becomes 'has run for a week with its figures in docs/performance.md', and its nightly run gains the product page and the listing."
+    },
+    {
+      "area": "shopper-browser",
+      "shortfall": "Holds. Nothing holds the scripts a page fetches after its own (33",
+      "decision": "tighten",
+      "detail": "1.3: e2e/performance.spec.ts holds, for the home, a product page, a listing, a content page and the cart on a phone, from a cold cache until the network has been quiet for three seconds: bytes on the wire within 4%, the script files beyond the HTML's own tags and their raw bytes exactly, and 0 requests to another host. A branch that adds a 15 KB lazy chunk to a product grid fails. 2.6: e2e/prefetch.spec.ts also holds the home at 1280 px at 8 router requests or fewer, and 0 for a sub-link before its top link is hovered. 4.5 reads each of the five pages at 350,000 bytes on the wire or less, with at most 2 late script files of 30,000 bytes together."
+    },
+    {
+      "area": "shopper-browser",
+      "shortfall": "Done-whens weaker than the bar. Step 0.16 passes the product page at",
+      "decision": "tighten",
+      "detail": "0.16: a plain product page at most 670,000 bytes (690,000 only while a picker is kept by the press test of this card's fourth shortfall, named with its bytes). 2.9: cart and checkout at most 670,000; account, wishlist, order and cookies at most 650,000. 2.12: /products at most 120,000. 2.10: at most 140,000 after the answer. The page model's card asks the same two lines; they are one change. 2.2: 0 router requests for the cart before the press at 1280 px."
+    },
+    {
+      "area": "shopper-browser",
+      "shortfall": "The press rule. Step 0.16 loads the listing's filter dialog and the",
+      "decision": "tighten",
+      "detail": "0.16, text and done-when. The filter's button stays in first scripts and its panel loads on the first press or when a pointer nears. A product picker goes behind a lazy stand-in only if the bookings, gift card, quote, gallery and custom-fields-ranges specs pass five times each on Chromium and WebKit; one that loses a press stays. Done-when adds: the home's first scripts hold no 'filter-dialog-title', the filter opens on a first press five runs in five on both engines, and docs/performance.md lists each part that stays in first scripts with its bytes and has the rule's text corrected. As written, step 0.16 breaks a written rule, so it is not safe for phase 0 without this."
+    },
+    {
+      "area": "shopper-browser",
+      "shortfall": "Real pages are recorded, not judged. Steps 1.6 and 1.7 hold the",
+      "decision": "tighten",
+      "detail": "1.6 and 1.7 are finished after phase 2, not at a first figure. The themed home, product page, listing and built page and the two-line cart meet the bare store's bars for router requests, calls of the page's own, duplicate rows and late scripts; the checkout at its payment step has first scripts of at most 670,000; no picture on the themed home comes from a file more than 1.5 times as wide as its box on a 3x phone; and the nightly run reads at most 2 font files and 80 KB before the largest paint from the production demo store. 1.6 also holds the document, payload and main lengths of all four themed pages and the bytes of each linked stylesheet (the page model's and the styles' cards ask the same). Step 4.5's table lists each of these figures beside its bar."
+    },
+    {
+      "area": "owner-browser",
+      "shortfall": "zod stays on about 144 routes, on a list that 'may only",
+      "decision": "add",
+      "detail": "Phase 2, M to L, after step 1.4: 'Keep schemas apart from the helpers beside them, so zod loads only where a screen runs one'. Start with the product editor, then custom-fields.ts and product-input.ts. Done when 'ZodError' is in the first-load chunks of at most 60 routes (432 today, about 144 after step 0.9), the product editor is at or under 1,100,000 bytes, and admin-bundle.scan.test.ts names each client module that may reach zod with the schema it runs and fails for a new one."
+    },
+    {
+      "area": "owner-browser",
+      "shortfall": "Step 2.30 cannot reach its own number with the parts it names.",
+      "decision": "tighten",
+      "detail": "2.30: before work starts the step holds the cut simulation's table, summing to at least 310,000 bytes (the settings panel loaded when a part is first selected, the custom-fields form, the terms manager, the brand icon list). If it sums to less, the builder's own split (code review step 3.1) joins the step. Done-when adds: the builder's document at or under 445,000 bytes and its script by idle at or under 2,500,000 (3,454,740 today)."
+    },
+    {
+      "area": "owner-browser",
+      "shortfall": "Requests at rest are held on two screens and time on none.",
+      "decision": "tighten",
+      "detail": "0.13: e2e/signed-in/prefetch.spec.ts keeps one table for eight screens (home, orders, products, pages, settings, a product's editor, the builder, the platform home): the home and the products list at 0 router prefetches at rest, the other six at today's count and only falling, and every fetch after load named. 2.6: 0 at rest on all eight, once the admin's in-page links go through the policy link. 1.14: the slowed run also loads the home, orders, a product's editor and the builder signed in at desktop width; the home and orders paint within 2.5 s and the script run by idle is held within 5%. 1.15: the 28-day production table is written into docs/performance.md after phase 0 and after phase 2, and a kind of screen with 100 loads or more that misses LCP 2.5 s or INP 200 ms gets a step."
+    },
+    {
+      "area": "owner-browser",
+      "shortfall": "Three numbers reach their bar with no room, and one count in",
+      "decision": "tighten",
+      "detail": "0.9: sign-in's English moves to a module that only the two-step panel and the recovery codes import; after a build at most 2 routes hold it (456 today) and the median admin route is at or under 645,000 bytes. 0.10: the product editor's English sites and the move of the rich text types out of page-content.ts are done here, so at the end of phase 0 at most 26 routes are over 1,300,000 bytes and the product editor is under that line; step 0.11's count then holds. The text card's sixth shortfall is this change."
+    },
+    {
+      "area": "server",
+      "shortfall": "The pages that run a function on every view are not in",
+      "decision": "add",
+      "detail": "Phase 2, L, after steps 2.9 and 2.22: 'Take the order writer off pages that only show products'. Load checkout.ts, the alert and email senders and the Stripe SDK inside the action that uses them, split express-checkout.ts into its facts and the press, and let step 2.9's per-route sections serve the server side. One file's edges per commit, and a test order after each deploy. Done when the graph test shows the product page, a category and the search reaching none of checkout.ts, stripe.ts, ledger.ts, staff-alerts.ts or billing.ts; a next analyze export shows those three at or under 1,800 modules and 4.8 MB and the cart, the checkout and the account at or under 1,800 and 5.0 MB (2,516 to 2,546 modules and 12.3 MB today); each is an entry of the graph test and of scripts/route-budget.mjs; and the checkout, express checkout and quote specs pass. The module line is 1,800, not 1,700: see bar_changes."
+    },
+    {
+      "area": "server",
+      "shortfall": "The bar names five beacons and the plan checks one. /api/recommendations/events imports",
+      "decision": "tighten",
+      "detail": "0.4: /api/recommendations/events imports visitorKey from chat-turns.ts, and the done-when names all five beacons, each under 160 source files. 2.22: each of the five at or under 130 files, 500 modules and 1.0 MB. 1.8: the five are entries of the graph test."
+    },
+    {
+      "area": "server",
+      "shortfall": "Three parts of measure 1 cannot be measured as written. The cold-load",
+      "decision": "tighten",
+      "detail": "0.1 also moves the four cold-load scripts into the repo. 1.8: scripts/route-budget.mjs loads /api/health, /api/visit, the proxy, the start hook, the store home, the product page and the admin's orders page in fresh processes, five runs each, and prints each median's distance from /api/health; each holds its first figure until phase 2's cuts are in, then the bar's lines (100 ms for a beacon and the proxy, 300 ms for a store page, 450 ms for an admin page). It holds chunk bytes for the largest route of each kind and for src/instrumentation.ts. The ban on importing the schema is the database's test in step 0.4, not a second one here."
+    },
+    {
+      "area": "server",
+      "shortfall": "The manifest. The cuts of phase 0 take about 14% of its",
+      "decision": "tighten",
+      "detail": "2.24 loses its condition: production cannot time a step that runs inside Next. 1.8: scripts/route-budget.mjs times Next's own loader on the built manifest in a fresh process and prints entries per route. 2.24, M to L: tag names get a leaf module that writers import, and the cached readers listed by more than 500 routes move to reader files that no writer imports. Done when the manifest is under 5 MB and 40,000 entries (10.4 MB and 81,027 today), an admin route lists a median of 60 references or fewer (115) and /api/visit lists 0 (74), and the load is held under 45 ms on CI's machine."
+    },
+    {
+      "area": "server",
+      "shortfall": "Ten checks are weaker than the bar. Step 2.13 passes a product",
+      "decision": "tighten",
+      "detail": "2.13: 2 statements or fewer beyond the proxy's for a plain store, 3 with producer schemes, 4 with price breaks, and the budget set at those numbers. 2.20: 1.0 MB of chunks. 0.19 with 1.9: the products list enters the baseline at 5 statements or fewer. 2.32: 0 statements after the response on the second shell render of a store with an active test account. 0.17: a unit test shows a progress tick calling its job's status action, not router.refresh(). 0.18: 0 double draws and 0 mixed ones, with the exact count of calls in the baseline, not 'about 50'. 1.11: the scan fails when a file under the store's admin refreshes a tag that names no store, and scripts/server-budget.mjs counts statements from pg_stat_statements, not commits. 1.16: lines for the proxy (150 ms over the health check), a store page (400 ms) and an admin page (600 ms). 1.8: the build fails above 1,600 routing rules. Each is proved by a trial that fails it."
+    },
+    {
+      "area": "server",
+      "shortfall": "Nothing in production sees why a cached page is drawn again. CI",
+      "decision": "add",
+      "detail": "Phase 1, S, after step 1.9: 'Count tag refreshes and store page draws in production'. refreshTag() logs one line per refresh (the tag's family, the store, and whether an action, a job or a webhook called it), and the store layout logs one line per draw with its statements. Done when Platform, Usage and limits lists a week of refreshes and draws by family, an int test sees the flag after 11 job refreshes of one store's tag in a day, and a quiet day in production shows 0 job refreshes for stores where nothing changed. After step 2.15 a refresh is the only thing that redraws a page, so this is the hold on that step."
+    },
+    {
+      "area": "server",
+      "shortfall": "The cart and the checkout, the path where money is taken, have",
+      "decision": "tighten",
+      "detail": "1.9: the counter keeps each statement's text, values and rows returned (the database's and the page model's cards need the same). 1.11: scripts/server-budget.mjs counts a cart with three lines and the checkout at its first step on the day it is made and writes both into docs/performance.md; a guest's filled cart in a shop-only store is 12 or fewer. This script is the one home of a store page's statement count. 2.19: the budget becomes the count after its cuts, in at most two waves, and fails when one request sends the same statement with the same values twice; a trial second call of cartSummary() fails it."
+    },
+    {
+      "area": "scheduled",
+      "shortfall": "Steps 3.1 and 3.2 move 'is anything due' into SQL that runs",
+      "decision": "tighten",
+      "detail": "3.1 and 3.2, done-whens. An int test puts one claimable row in each gated queue and sees commerce.cron_due() name its route, and none on the empty seed (six routes after 3.1, all of them after 3.2 and 3.7). query-budget.int.test.ts counts the tick's statement, and it reads the same rows for 1 and for 20 seeded stores. A sweep call runs every runner's own claim without asking the due function: a scratch runner left out of cron_due() still runs in a sweep. cron-routes.scan.test.ts fails a second every-minute schedule in supabase/migrations and a cron route that is in neither cron_due() nor NOT_SCHEDULED. In production the tick's statement averages under 20 ms."
+    },
+    {
+      "area": "scheduled",
+      "shortfall": "At least 11 of the 83 dispatcher jobs catch an error in",
+      "decision": "add",
+      "detail": "Phase 1, M, after step 1.22: 'No job swallows its own failure'. Not with step 3.3: a ledger that says ok while the reminder for a refund past its legal deadline fails should not wait for phase 3. runJobs() hands each job a report(error) that logs and marks the run failed once its other parts have run, and the after() work of the seven routes is wrapped in tracked(). Done when the scan finds 0 silent catches in the jobs' entry functions (at least 11 jobs today), a unit test shows a job whose first part throws still running its second part and its row counted as failed, and an int test shows a runner that throws inside after() leaving route.page-jobs.work failed. Step 3.3's registry keeps report()."
+    },
+    {
+      "area": "scheduled",
+      "shortfall": "The bar asks that calls which do no work stay under a",
+      "decision": "tighten",
+      "detail": "3.3: commerce.cron_jobs gains worked (runs that took at least one item) and last_worked_at. Done-when adds: an int test shows an idle run raising runs and not worked, and Platform, Usage and limits lists idle runs a day per job. 1.13: the daily reading keeps each row's runs and worked, and a flag is raised for idle route calls over 1,100 a day once step 3.2 is in."
+    },
+    {
+      "area": "scheduled",
+      "shortfall": "The gate trades a poll for a predicate. If a predicate misses",
+      "decision": "add",
+      "detail": "Phase 3, S, after step 3.1, on the watcher of step 1.22: 'Show how long due work waits, and say so when it is too long'. The age of each gated queue's oldest unfinished row is read by a condition wider than the predicate, or it cannot see a predicate that is wrong. Done when an int test leaves a waiting row in commerce.page_ai_jobs for 4 minutes and sees the watcher's email (3 minutes for a queue a person watches, 20 for the others), and Usage and limits shows each queue's worst wait of the day."
+    },
+    {
+      "area": "scheduled",
+      "shortfall": "Per-store idle work is read by running an idle tick with 1",
+      "decision": "tighten",
+      "detail": "1.10: each of the 20 seeded stores has every per-store feature on (chat, pictures, an AI key of its own, open books, stub Tripletex, Fiken and eBay connections, auto-archive, an AI budget, a repeating invoice, two automations, an ad connection, a desk with email), with nothing due and the clock off the hour. The test lists the features its seed switches on, records statements and rows read per job with 1 and with 20 stores, keeps today's difference in src/server/ratchet.baseline.json as a number that only falls (0 after steps 3.2 and 3.6), and fails when a scratch change adds one statement per book to runLedgerPosting(). The database's second shortfall is merged into this."
+    },
+    {
+      "area": "scheduled",
+      "shortfall": "Seven done-whens stop short of the bar. 0.23: no count of scheduled",
+      "decision": "tighten",
+      "detail": "0.23 adds: scheduled cookie scans a day at most a seventh of the sites plus 5. 0.25: the cron schema under 80 MB a week later, not 60 (eight days of rows are 58 to 64 MB). 1.13: flag four falls from 80 MB to 20 MB when step 3.1 lands. 1.22: the watcher runs every 15 minutes, so a stopped scheduler is told within 30; its own row and a late daily row fail the status page's jobs check; the ledger holds a row for each pg_cron SQL job. 3.1 adds: calls of the theme snapshot statement rise by 100 or fewer a day. 3.2: 1,350 calls or fewer, not 1,200, which the plan's own PDF route and watcher would break. 3.3 adds: payouts.list once per mode in an hour, a job starts only if its budget fits, and the budgets of the fullest tick add up to 960 s or less. 3.4: every function the daily route calls is a registry entry (not '38 or more'), console.error is counted with rg -o (rg -c prints 6 today, not 19), and a daily job that failed or was not reached is tried again the same day, at most three times."
+    },
+    {
+      "area": "database",
+      "shortfall": "The test that compares 1 store with 20 covers the frame and",
+      "decision": "tighten",
+      "detail": "1.12, not 1.10: the shop-only journey (the same walk the surface's second shortfall tightens, so one test) runs for store 1 with 1 and with 20 seeded stores of 30 pages and 200 products, with sequential scans switched off, and holds equal rows read on a product page, a listing, a search, the cart, placeOrder and the admin's orders and products lists. The cold frame stays in 1.10. 1.9: the counter keeps each statement's values and rows returned. The test fails on three scratch changes: the store filter taken out of listProducts(), a second identical slug lookup in the frame, and a transaction opened by an idle job."
+    },
+    {
+      "area": "database",
+      "shortfall": "No step states how many rows an idle tick may read per",
+      "decision": "merge",
+      "detail": "Into the scheduled card's fifth shortfall (the seeded 1-against-20 test of step 1.10, which now records rows per job) and its first (the tick's budget in step 3.1). One part is carried over into step 3.6: the product-words sweep gets a change mark (products.text_changed_at), and 3.6's done-when adds that an idle tick reads at most 10 more rows per added store, none from pages, products, product_variants, orders or media, and that a day later product_variants is read whole 10 times a day or fewer."
+    },
+    {
+      "area": "database",
+      "shortfall": "Until step 3.3 in phase 3 the dispatcher starts 78 jobs at",
+      "decision": "add",
+      "detail": "Phase 0, S: 'Cap the dispatcher at four jobs at a time', taken out of step 3.3. A promise pool of 4 in runJobs() in place of Promise.all, and a job that has run for a set time (say 60 s) gives up its lane: without that, a cap of four lets four hung jobs stop the run. Done when a unit test shows never more than 4 running, a job that throws and a job that never returns both leaving the others' rows written, and after a day in production no row of commerce.cron_jobs has a last_error that names a connection timeout."
+    },
+    {
+      "area": "database",
+      "shortfall": "Seven done-whens are weaker than the bar. Step 0.23 passes at 1",
+      "decision": "tighten",
+      "detail": "0.23: seq_scan of commerce.cookie_scans grows by fewer than 1,000 a day, and fewer than 10 once step 3.1 is in. 0.24: at most 14 lines, none picking a page by id or by address (the last cut, to 3, is the page model's in step 2.17). 0.21: the AI cost statement of limits.ts averages under 5 ms in the reading. 3.1: an idle cookie-scan run sends at most 3 statements, theme-shots and pack-pictures 1 each, none opens a transaction, and the two routes ask before they take their lock. 3.6: fewer than 100 rows of orders and of invoices, not 'the bound it states'. 0.25: under 80 MB, and under 20 MB after step 3.1. 0.4: src/db/schema-import.scan.test.ts fails on a scratch import of './schema' from src/db/client.ts. That is the one ban on the schema: the server's and the build's cards ask for the same test."
+    },
+    {
+      "area": "database",
+      "shortfall": "Nothing flags a slow statement. Flag one of step 1.13 names a",
+      "decision": "tighten",
+      "detail": "1.13: a sixth flag for a statement among the 40 costliest that runs more than 10 times a day and averages over 5 ms, unless a written list names it with a reason and a ceiling (at most 3 entries when the plan ends). Flag two starts at 500 rows, with its own list of at most 5 tables. Flag four moves from 80 MB to 20 MB when step 3.1 lands. Every flag has a seeded case: the int test sees the flag for an 8 ms statement run 20 times and for a 600-row table scanned 20 times, and Usage and limits shows both lists with their reasons."
+    },
+    {
+      "area": "database",
+      "shortfall": "Step 3.5 gives the seven known tables a delete rule, but nothing",
+      "decision": "tighten",
+      "detail": "3.5: a register puts every commerce table in one of four classes (kept with its parent, deleted after a stated period, kept for the law, reference data), counted from the migrations (486 tables). A scan test fails for a table in no class, for a 'deleted after' table with no period in src/lib/retention.ts and no delete step, and on a scratch table with a created_at column and no class."
+    },
+    {
+      "area": "database",
+      "shortfall": "A placed order has a count (step 1.12) and no ceiling, and",
+      "decision": "add",
+      "detail": "Phase 2, M, after step 1.12: 'Give a placed order a ceiling, and stage placeOrder where the first figures are over it'. The write budget asserts four ceilings: the same statements with 10 and with 2,000 earlier orders in the store, at most 3 more for each added line, triggers under a fifth of the order's database time, and a counted visit at most 3 statements and 2 rows. The surface's fifth shortfall is merged in: the optional features' triggers together take under 2 ms of a shop-only store's paid order, or the slowest get a first-line test of the store's switch. Where a figure is over, do code review step 3.7 for that part. Done when the budget passes and fails on a scratch per-line statement in insertOrderLine()."
+    },
+    {
+      "area": "ai",
+      "shortfall": "The largest rounds are in no baseline. Step 2.36 sends the page's",
+      "decision": "tighten",
+      "detail": "1.19: ai-round.scan.test.ts draws each of the planners' 20 owner questions with no page and on the largest page of each working area. 2.36: the router returns the group of the best-matching page from its first version, never a whole area, so the groups are made here and once. 2.37: every area whose tools outside the core are over 12,000 characters has groups, orders included. Done-when: no first round over 56,000 characters for any of the 20 questions on any page drawn, src/lib/tool-router.test.ts finds the needed group for at least 11 of the 18 questions that need one, and a lean eval case that needs a tool in another group of the page's own area passes in the committed recording."
+    },
+    {
+      "area": "ai",
+      "shortfall": "Three figures of the bar cannot be read. commerce.ai_usage has a row",
+      "decision": "tighten",
+      "detail": "1.19 takes the counting half of step 2.38: turn_id and round on commerce.ai_usage, the cached_input_tokens column, its reader and its price. Every query of this area reads feature in ('ai_manager', 'analytics_question'), kind = 'text', not estimated. Done-when adds: an int test runs a three-round turn that uses a report tool and reads it back as one turn of three rounds; Platform, AI shows median and 90th percentile input per call, median per turn, calls per turn, the cached share in all and after the first round, output per call and the share of turns with a load_tools round; and each figure's 'before' is on file before step 2.36 lands. 2.38 keeps the half that uses the cache, proved by the same query (0.5 in all, 0.8 after a turn's first round). 1.13: a flag for an AI figure over its bar for a week."
+    },
+    {
+      "area": "ai",
+      "shortfall": "Output has no bar. Step 1.19 shows output tokens and tries low",
+      "decision": "tighten",
+      "detail": "1.19: ai-round.baseline.json also holds each agent's output limit and reasoning effort, and fails when the manager's limit is raised by 100 tokens. The eval run keeps low effort for a tool loop only if every case passes, and docs/decisions.md states the effort chosen and the run behind it. After the first week of real figures, an output ceiling per feature (that week's 90th percentile plus 20%) joins the daily flag."
+    },
+    {
+      "area": "ai",
+      "shortfall": "Step 2.39 moves 8 small jobs to a quick model, but only",
+      "decision": "tighten",
+      "detail": "2.39: each of the 5 small jobs without fixed cases gets at least 5. A job moves to the quick model only when its cases pass on it; otherwise the tier list names it as kept on main, with the failing case. Done-when: a recorded run shows each of the 8 jobs on its cases, the production query shows the quick model on every job that moved (all 8 named, not 3), and a week of commerce.ai_usage has 0 rows whose model has no row in commerce.ai_model_prices."
+    },
+    {
+      "area": "ai",
+      "shortfall": "The bar says no public path may reach a model without a",
+      "decision": "tighten",
+      "detail": "0.21: the search_ai budget is taken inside the cache-miss path of query-understanding.ts and query-vector.ts, so the search page and the chat's search tool share it. A scan test lists every route and action outside the admin that can reach a model (nine today), each with the ceiling that holds it, and fails on a scratch public route that calls completeText() with none."
+    },
+    {
+      "area": "ai",
+      "shortfall": "Seven done-whens are weaker than the bar. 0.27 and 0.28 disagree: 0.27",
+      "decision": "tighten",
+      "detail": "0.27: 'which sites have work' is one statement over all sites, so it agrees with 0.28's proof. 0.28: an idle run of the five jobs sends at most 8 statements with 1 site and with 20, reads commerce.ai_providers 0 times and calls no model; a picture with five failed tries is not picked; the product hash statement gains about 24 calls a day in production (about 130 today); the test uses a small counter of its own until step 1.9. 1.19: 12 lean cases, not 8, and the panel shows input per call. 2.36: 12 store tools when no area is asked, not 40; 0 embedding requests for a turn of a person with 3 memories; a website's prompt at least 2,500 characters shorter and an autopilot step's prompt without the admin map; TURN_TOKENS_MAX at most 250,000; the owner's answer on the 17 tools in docs/decisions.md. 2.38: an eval case that asks for a reminder 'tomorrow at 9' sends the right time, and limits-enforce.int.test.ts counts a month with cached tokens as costing less. 2.37 and 2.39: see this card's first and fourth shortfalls."
+    },
+    {
+      "area": "surface",
+      "shortfall": "Step 0.22's done-when is weaker than the bar. It proves the cart",
+      "decision": "tighten",
+      "detail": "0.22: as today, and: a unit test of cartSummary() with features ['shop'] asserts bonusProgram, codeInPlay and friendState are not called; checkout-section.test.ts asserts readCartBonus is not called with Bonus off and cartSummary runs at most once per checkout render; checkout rules come from a cached read that their writers refresh (rg -c 'use cache' src/server/checkout-rules.ts prints 1 or more); the money tests pass."
+    },
+    {
+      "area": "surface",
+      "shortfall": "Step 1.12 fails 'when a statement names a table of a switched-off",
+      "decision": "tighten",
+      "detail": "1.12: the walk adds a search and the owner's Home. For each page it keeps the exact list of tables scanned (pg_stat_user_tables before and after) in src/server/ratchet.baseline.json; the list may only shrink, and no table of a switched-off feature may be scanned, save the gift cards on the cart. pnpm test:int fails on a read of commerce.bonus_settings in cartSummary() and on a read of commerce.checkout_rules outside its cached read. A page's statement count has one home and is not kept twice: scripts/server-budget.mjs (step 1.11) for store pages and admin-statements.baseline.json (step 1.9) for the Home. After phase 2 they read: a product 2 or fewer, a search 10 or fewer, the cart 12 or fewer, a cold frame 5 or fewer, the Home's first content after 14 or fewer."
+    },
+    {
+      "area": "surface",
+      "shortfall": "Step 1.18's done-when proves two of its claims: a new trigger on",
+      "decision": "tighten",
+      "detail": "1.18: tables are counted from the migrations as src/db/commerce.test.ts applies them (486, not the 481 of schema.ts), the idle-cost line gains 'per cold start', and the baseline lists the engines kept twice on purpose with their reasons. The test fails on each trial: a job added without --raise; --raise with a decision row that has no 'Idle cost:' line; a page deleted without lowering the baseline; a scratch migration that creates a table schema.ts does not declare; and a scratch trigger that writes a ninth row for a new store."
+    },
+    {
+      "area": "surface",
+      "shortfall": "The surface's ladder leaves out seven steps its measures need: 0.27, 0.28",
+      "decision": "tighten",
+      "detail": "No step's work changes. 'surface' is added to the areas of steps 0.27, 0.28, 0.29, 1.9, 1.10, 1.19 and 2.37, so the ladder lists them, and step 4.5 reads the surface's measures 3 and 6 against the done-whens of steps 3.3 and 2.37. The same repair for two other ladders: scheduled gains 1.9 and 1.18; the shopper's browser gains 0.1, 1.11 and 2.3 and loses 2.27 and 2.34."
+    },
+    {
+      "area": "surface",
+      "shortfall": "The tolerance for a paid order's optional triggers is a claim: about",
+      "decision": "merge",
+      "detail": "Into the database card's seventh shortfall: the new phase 2 step that gives a placed order its ceilings. The 2 ms line for the optional features' triggers is one of them."
+    },
+    {
+      "area": "rules",
+      "shortfall": "Phase 0 runs with no hold on CLAUDE.md, and then two tests",
+      "decision": "add",
+      "detail": "Phase 0, S, with steps 0.1 to 0.3 and before 0.6, 0.9 and 0.38: 'Hold CLAUDE.md's core from the first day, and open the home for the plan's own sentences'. Create the budgets-and-checks rule file in docs/rules now, and the docs budget test in its smallest form: the bytes of CLAUDE.md outside its Storefront and Admin index (12,555 today) never rise, and inside the index the only growth is one line of at most 200 characters per new rule heading. Done when the test fails on a sentence planted in Conventions and passes when a new rule adds its index line, and at the end of phase 0 the sentences of TC-1, TC-2, TC-12, BN-1 and BN-4 are found in docs/rules and not in CLAUDE.md."
+    },
+    {
+      "area": "rules",
+      "shortfall": "The measured figure has no source and is read at the wrong",
+      "decision": "tighten",
+      "detail": "1.24: scripts/session-load.mjs reads the running session's own transcript; each working session of this plan runs it once before its last push and adds one small file to docs/audits/bloat-review-2026-11/session-load/, which the ignore file covers. The first 20 files are the 'before'. 4.5: the 'after' is the first 20 sessions after steps 2.1 and 2.40, and its table carries the row: a median of 25 KB or less of rules and docs per code change, no single read of a rule file or the decisions index over 20 KB, and no omitted long line in a search of docs/rules or docs/decisions. If whole rule files are being read, the plan gets the step that splits them."
+    },
+    {
+      "area": "rules",
+      "shortfall": "Nothing holds a tracker's rows, and this plan's own tracker would break",
+      "decision": "tighten",
+      "detail": "0.1: this plan is committed as a Progress table with one row a step and one section per step under a heading that starts with its id. 0.41: 'Read that table' leaves CLAUDE.md for one shared line that says to find a step's row by its id; the done-when adds the four checks its text promises (the 12 open PSI items before the first Done heading, rows D366 to D573 back in the Settled table with 564 rows in all, FEATURE_IDS named in docs/store-features.md, and one decision number claimed for real from a cloud session with no CI run and no deploy). 1.1: the docs budget holds each row of every tracker CLAUDE.md names at 300 characters or fewer and fails on a 400-character row planted in each of the three."
+    },
+    {
+      "area": "rules",
+      "shortfall": "Five small holes in the budget of step 1.1 and in step",
+      "decision": "tighten",
+      "detail": "1.1: the budget counts CLAUDE.md with every file it imports and every .claude/rules file without a paths list, and fails on a new import; it lists the ten never-sentences and fails when one leaves; it checks cited paths, functions, components, constants and SQL names in CLAUDE.md, docs/rules and .claude/rules; it holds each rule file's list of headings at 10,000 bytes and 0 lines over 500 characters in CLAUDE.md. Each has its planted case. 2.1: the proof of path loading is also run in a subagent, or the text stays in docs/rules. 0.41: the three edits of DC-9 are made now (a wave spec capped at 30,000 characters; each agent reads sections 1 to 5 and its own part)."
+    },
+    {
+      "area": "page-model",
+      "shortfall": "Whole documents are still read where a field would do. After steps",
+      "decision": "tighten",
+      "detail": "2.17, whose subject this is, not a new step. Its text adds the last readers: Kaizena Flow's two static-params functions, the admin's search picker and the ten lines in src/server/seo.ts read the page index of step 0.24, and the feed reads the card facts for its newest 50 with the limit in SQL. Done-when adds: listPublishedPages on at most 3 lines (37 today); src/server/ratchet.baseline.json names every statement that selects draft or published for more than one row, each with its reason; and an int test on a store of 30 pages and 60 articles counts at most 3 page documents for a cold home, a built page and a product page, none for the blog's listing and at most 50 rows for the feed."
+    },
+    {
+      "area": "page-model",
+      "shortfall": "Two targets rest on a scratch script. '0 built entries keep the",
+      "decision": "tighten",
+      "detail": "0.1 moves the script that reads the build's .meta files into the repo. 1.11: it runs in CI's e2e job beside scripts/render-modes.mjs and holds three numbers for the demo store: entries whose resume data keeps a list of page documents, entries that carry the store-wide pages tag and one page's own tag, and the bytes of resume data per entry within 5%. 0.24's done-when names it: 45 today, 0 after, and a trial page that reads the whole list fails. After step 2.14 it prints that the tag of /om-oss's page is on 3 of 261 entries."
+    },
+    {
+      "area": "page-model",
+      "shortfall": "Step 2.14 proves a call, not the effect. Its unit test stubs",
+      "decision": "tighten",
+      "detail": "2.14: the count 'under 55 places' goes; by the fix's own steps it cannot fall. In its place: an e2e in the signed-in suite publishes a change to the body of /om-oss, then the home page and a product page answer x-nextjs-cache: HIT and /om-oss shows the new words, then a title change reaches the home page's menu; the nine places that publish a body refresh the store-wide tag only for scope 'site', each held by a unit test; and a unit test fails when the page index or a card's facts gains a field that listFacts() lacks. 2.15: use-cache.scan.test.ts lists the grid of pages and the feed among the one-hour reads."
+    },
+    {
+      "area": "page-model",
+      "shortfall": "A byte budget cannot see a part of 5 to 20 KB.",
+      "decision": "add",
+      "detail": "Phase 1, S, with steps 1.3 and 1.4: 'Hold what a store page's first scripts may hold, by name'. The text card's third shortfall is merged in: both extend src/lib/storefront-bundle.scan.test.ts. For a built page, the product page, a listing and the cart, the client modules the server code imports without a lazy stand-in are a list in a baseline, and a new name fails. The scan also forbids src/lib/admin-messages (the sign-up wizard is the one exception) and the module that holds the cookie purposes, follows import(), and holds the four browser-language files at 34,000 bytes together. Done when pnpm test fails, naming the module, on a trial import of cart-contents.tsx into product-parts.tsx, of carousel.tsx into content-grid.tsx and of admin-messages/common.en into buyer.tsx; and after step 0.16 the built page's list holds none of the carousel, the modal library or the theme preview stage. The search of every route's first-load chunks for a sentence of each text is step 1.2's marker list, not a second script."
+    },
+    {
+      "area": "page-model",
+      "shortfall": "The old page shape is still being written, and the fix waits",
+      "decision": "add",
+      "detail": "Phase 0, S: 'Make the themes, the content packs and the seed write today's page shape', the first part of step 3.17 taken out. Once stores open, each one made from a theme or a pack adds old-shaped documents to the one-off rewrite. Done when rg 'mobile: ?[0-9], ?tablet' over src/lib/content-pack-pages.ts and src/lib/signature prints nothing (6 lines today) and a unit test parses every page of the six signature themes, every content pack and the seed and finds none that differs from its own parse."
+    },
+    {
+      "area": "page-model",
+      "shortfall": "Ten done-whens are weaker than the bar or than their own sums.",
+      "decision": "tighten",
+      "detail": "0.16: an import walk of product-parts.tsx, and no first script of /s/demo/no holds the carousel, the modal library or the theme preview stage. 0.23: the plan test shows store_id in the Index Cond of the page list, the page by address, the page names and the modal statement, for a store and for a null owner. 1.6: document, payload and main lengths and the identical-rows count for all four themed pages. 2.2: /om-oss at most 82,000 bytes, lowered to 80,000 by step 2.3, and the html-element and duplicate-row assertions on every budgeted document. 2.3: the six-row page holds 1 part sheet, or the sentence goes and the 2 KB tolerance stays. 2.10: at most 140,000. 2.12: /products at most 120,000. 2.14: one read of a layout's document for two products, in src/server/product-layouts.int.test.ts. 2.21: the graph test also forbids src/components/page-article.tsx the files src/server/pages.ts, design-presets.ts, page-ai.ts and src/lib/signature. 3.17: the sentence about a small read schema goes."
+    },
+    {
+      "area": "styles",
+      "shortfall": "The colour measure has a value after step 0.34 but no hold.",
+      "decision": "tighten",
+      "detail": "0.34: two rules in src/lib/stylesheet-sources.scan.test.ts, in the same change. One: no file outside the two admin folders names an admin colour class, save the admin parts a public page imports. Two: every colour those parts name has a value under html:not([data-admin]), in light and in dark. Each fails when tried (border-line added to a shop file; a colour removed from the block). The e2e check reads a filled submit button on /report, /status and a hosted invoice, in light and in dark."
+    },
+    {
+      "area": "styles",
+      "shortfall": "The tolerance for classes no store page can draw is a sentence",
+      "decision": "tighten",
+      "detail": "1.23: stylesheet-audiences.mjs decides a class's audience by which root layouts can reach the file that names it, and exits non-zero when a class only admin files name is in the site's sheet (from step 2.11 on) or when platform-only and editor-only classes pass 2.0 KB Brotli or 17 KB raw. A trial build over either line turns CI's run red. docs/performance.md holds the definition and the first figure, and the run summary lists the site sheet's file name."
+    },
+    {
+      "area": "styles",
+      "shortfall": "The owners' style text is read as a median with a 10",
+      "decision": "tighten",
+      "detail": "1.23: Platform, Usage and limits shows each store's layout-level style text and marks a store above 20 KB; docs/performance.md gains the third trigger line (any store above 20 KB: its sheets move to one external hashed stylesheet) and the owner's answer on whether the 50,000-character limit is per sheet or on the sum. A test store with 25 KB of own CSS shows the mark."
+    },
+    {
+      "area": "styles",
+      "shortfall": "motion.css is 3.4 KB Brotli, a sixth of the site's sheet, and",
+      "decision": "add",
+      "detail": "Phase 2, M, after step 2.11: 'Load motion.css where a page uses it'. The reading that decides is step 1.23's, taken now on the six launch themes and the team's 60 stores, not one taken a quarter after opening. If under half of published store pages need the sheet, build it: a hashed motion stylesheet that MotionSupport links when the page, header or footer needs it, and a test that ties every [data-fx-*] selector to a code path that sets the flag. Done when a store page without builder motion links no motion stylesheet, the site's sheet is at most 116,500 bytes raw and 17,400 Brotli with its budget lowered, and e2e/motion.spec.ts and e2e/animation.spec.ts pass. If half or more need it, the step is not built and the sheet stays as the stated tolerance, with that figure written beside it."
+    },
+    {
+      "area": "styles",
+      "shortfall": "Six done-whens say less than the bar. 1.3 names stylesheet budgets but",
+      "decision": "tighten",
+      "detail": "0.12: no stylesheet is fetched after load that the HTML did not link, on every page of the prefetch table. 0.35: Tailwind reads 3,984 files (5,931 today), with message files and src/db out too. 1.3: the stylesheet budgets hold raw and Brotli; the store home's style text is at most 6,000 bytes and the breakpoint sheet's href is there at most 4 times. 1.6: the themed home holds the bytes of each linked stylesheet, the two font sheets included. 2.3: Orbit's home holds at most 35 KB raw of style text. 2.11: it follows step 1.21, and the sources test fails both ways: for a line no public page reaches, and for an admin part a public page imports that has no line."
+    },
+    {
+      "area": "text",
+      "shortfall": "Step 2.25 names the modules that import a catalogue only as a",
+      "decision": "add",
+      "detail": "Phase 2, M, after steps 2.25 and 2.26: 'A catalogue file is imported by its area module only, and imports no code'. Each of the 218 modules that import a file of src/lib/admin-messages directly takes its words as an argument or reads the area's module, and an English constant that server code reads moves to a small label module. The 36 value imports inside 14 catalogue files go in the same step (this card's fifth shortfall). Done when admin-text-reach.scan.test.ts lists no importer but the area modules, the common words' context file and tests; the proxy and every beacon reach 0 catalogue files and the storefront layout at most 8 files and 0.21 MB; a median admin page reaches at most 18 areas and 0.9 MB and none over 28 areas and 1.66 MB; /admin/[store]/orders is at or under 6.5 MB of server code; and the walk from every catalogue file reaches no zod, no component and no file of src/server. Step 2.25's own done-when is set at what its codemod reaches (a median of 30 areas and 1.31 MB), and its '16 catalogue files' goes."
+    },
+    {
+      "area": "text",
+      "shortfall": "Step 0.7 holds one ceiling of 37 files for three entries, by",
+      "decision": "tighten",
+      "detail": "0.7: admin-text-reach.scan.test.ts holds one ceiling per entry (the proxy, the four visit beacons, /api/recommendations/events, the storefront layout), each at what the walk finds that day and only falling, and fails on a planted import of an area module in src/app/api/visit/route.ts. 1.8: src/lib/admin-messages is on the proxy's and the beacons' forbidden list, words-in-entries.mjs runs on CI's build (no entry outside the admin lists a chunk with a sentence of builder.nb.ts), and the bytes of src/lib/messages behind the storefront layout are held at 590,000. 2.20: the proxy reaches no catalogue file."
+    },
+    {
+      "area": "text",
+      "shortfall": "No step extends the visitor's import scan. Step 0.16's done-when searches two",
+      "decision": "merge",
+      "detail": "Into the page model's fourth shortfall: the new phase 1 step that extends src/lib/storefront-bundle.scan.test.ts. It carries this shortfall's bans (admin-messages, the cookie purposes) and the 34,000-byte ceiling on the four browser-language files. The search of all 560 routes for 'Kommer ihåg om du valde ljusa' and 'is switched off under Settings' joins step 1.2's markers."
+    },
+    {
+      "area": "text",
+      "shortfall": "The bar says every screen; step 1.5 holds five. Step 2.27 works",
+      "decision": "add",
+      "detail": "Phase 1, M, with step 1.5: 'Count handed against named words at every hand-down site, without a browser'. A scan test with a baseline: for each adminTexts() and AdminAreas site, the bytes handed in English and in Norwegian and the bytes of the groups its client parts name. Done when the baseline lists every site (188 today) in both languages and the test fails on a planted 'schedules' area in the pages list's hand-down. Step 2.27 works this list down, and 'read' in its done-when means named (see bar_changes)."
+    },
+    {
+      "area": "text",
+      "shortfall": "Step 1.4 starts the rule 'catalogue files hold text only' with today's",
+      "decision": "tighten",
+      "detail": "1.4: src/lib/admin-messages/imports.scan.test.ts walks from each catalogue file, not its direct imports only, starts with today's list and lets it only shrink, and fails on a planted import of tripletex-settings in a catalogue file. The 36 imports are removed in the new step of this card's first shortfall, whose done-when carries the result."
+    },
+    {
+      "area": "text",
+      "shortfall": "Sign-in English (8.4 KB, 2.8 KB gzip) is in the first scripts",
+      "decision": "merge",
+      "detail": "Into the owner's browser card's fourth shortfall: step 0.9 moves sign-in's English to the two parts that read it, in phase 0 and not with step 2.26. One number for both cards: at most 2 routes hold it."
+    },
+    {
+      "area": "text",
+      "shortfall": "Three done-whens of phase 0 are weaker than the bar. Step 0.8's",
+      "decision": "tighten",
+      "detail": "0.8: the unit test of startUi() runs a simulated day on a fake clock: 2 statements at start, under 150 in the day, and no call of overlayMessages() before t() reads a language. 1.16: the instance.start line carries the bytes of translated rows read, with a line in the morning briefing above 1 MB. 0.9: the store home's document holds no sentence of setup.en.ts. 0.36 with 1.4: message-keys.scan.test.ts starts with no exception but the tables read by matching."
+    },
+    {
+      "area": "build",
+      "shortfall": "Step 1.20 holds seconds with ceilings 25% above a median. Three gains",
+      "decision": "tighten",
+      "detail": "Each gain's cause is held in the step that makes it. 0.38: src/lib/ci-once.scan.test.ts holds --cache in the lint script and a cache step in both lint jobs. 0.39: it also reads the two Vitest configs and holds no setup file at the root, src/test/admin-english.ts only in the components project, isolate off in the unit project, every src/**/*.test.ts in exactly one project, and drizzle-orm pre-bundled in both configs. 1.20: scripts/timed.mjs fails when setup passes 10% of the unit run or the files run differ from the files on disk; labels lint and the type check warm or cold, with a ceiling for each; prints install seconds per job and the push's runner-minutes, with a ceiling on the sum; and a weekly workflow goes red when a ceiling is more than 25% above the median of the last ten runs (10% for the build's memory). Five planted cases turn a test or a run red and name the cause."
+    },
+    {
+      "area": "build",
+      "shortfall": "The bar asks 8 minutes or less for the slowest job a",
+      "decision": "move_bar",
+      "detail": "New target for the jobs a migration release waits for: no repeated work inside a job (the database client's import at 0.10 s a file or less, no type check inside a build), each job's median held within 25% by step 1.20, no single run over 10 minutes, and step 3.18 may not make the slowest job longer: if one browser job behind one build would be slower than today's slowest, it keeps two test jobs and hands them the one build as an artifact. An A is still an A because a shard that runs each file once wastes nothing. 8 minutes was a round number about 50 seconds under what the cuts reach, and running a shard's files side by side on databases of their own is a speed project, to take up when the recorder shows the wait matters."
+    },
+    {
+      "area": "build",
+      "shortfall": "Step 1.21's only line is 75% of the machine. On 16 GB",
+      "decision": "tighten",
+      "detail": "1.20: both source-map switches are measured under an 8 GB cap before anything is paid for, with their rows in docs/build-memory.md; if the peak is 6.0 GB or less the purchase can wait. 1.21: the ceiling is the median of the last ten production builds plus 10%, never above 75% of the machine, raised only with a decision row; the build cache, the extra workers and the type check each come back only if a capped build stays at 75% or less; and the production build's seconds and peak reach every run's summary through scripts/await-deploy.mjs. Done-when adds: a trial build 12% above the median turns its run red though it is under 75%."
+    },
+    {
+      "area": "build",
+      "shortfall": "Steps 1.20 and 2.43 hold the pre-push rule at 5 minutes 'for",
+      "decision": "tighten",
+      "detail": "2.43: pnpm check lints the files changed against origin/main when no lint cache exists, and the whole tree when eslint.config.mjs or pnpm-lock.yaml changed. 2.42: its done-when adds the type check from a fresh checkout with no build info, and says which route reached 60 s. Done when, in a fresh clone with no caches, pnpm check after a one-line change in src/lib takes 5 min 30 s or less if the native compiler passed its trial; otherwise the recorder shows that only the cold type check is over its line (see bar_changes). A second run takes 5 minutes or less."
+    },
+    {
+      "area": "build",
+      "shortfall": "Five done-whens say less than the bar, and one small step sits",
+      "decision": "tighten",
+      "detail": "0.38: the gate's lint step takes under 30 s on a CI run that restored its cache, no browser job's build log has a 'Running TypeScript' line, and the skip of a deploy for a push that changes only tests moves here from step 3.18 (at the end of phase 0 a push that changes one *.test.ts file shows pending green with the deploy step skipped). 0.39: Vitest's 'Test Files' and 'Tests' totals equal the run before. 1.20: a CI step run outside the recorder fails a check, and pnpm check prints the same seconds in a session. 2.42: the gate's three steps at 90 s, the native compiler tried before tsconfig.app.json is made, and no second check in Vercel's build. 3.18: one lint per push beside one type check, and the slowest job a release waits for is no slower after than before."
+    }
+  ],
+  "step_changes": [
+    {
+      "id": "0.1",
+      "change": "It also moves into the repo every script a bar or a done-when names: the four cold-load scripts, flight.mjs and route.mjs, the reader of the build's .meta files, the copy, twin and helper counters, words-in-entries.mjs, handed.mjs, the manifest timer, the admin's cut simulation and the AI round's draw. It commits this plan as a tracker: one row a step and one section per step under its id. Done-when adds: no bar and no done-when names a path under the scratchpad or work/.",
+      "why": "Seven cards rest a measure on a script that lives only in the review's scratch folder, and the step's rg for 'scratchpad' would not find 'work/cp/near.mjs'."
+    },
+    {
+      "id": "0.19",
+      "change": "State the default, so phase 0 still asks the owner nothing: 'select all' selects the rows on the screen and says so ('100 of 500 selected'). Whether a bulk action may reach every matching row is the owner's later choice.",
+      "why": "Paging a list to 100 changes what 'select all' covers. The owner's browser card lists it as a question, and the step has none."
+    },
+    {
+      "id": "0.23",
+      "change": "Land owned() first, with a unit test for a store id and for the null owner; then the 122 uses file by file, each with its integration tests; and place a test order after the deploy.",
+      "why": "Not small and safe as written: it rewrites the filter that keeps stores apart, and its done-when counts wordings and one query plan. It does not show that each rewritten statement returns the same rows."
+    },
+    {
+      "id": "0.36",
+      "change": "Delete only what is superseded or orphaned. The server side of a feature that only lacks a screen (the time-entry edit, the live drills) stays, on a list with that reason, until the owner answers. Each of the 23 unused server functions is read for this before it goes.",
+      "why": "The owner ruled that 'unused' is never a reason to retire a feature. 'Used by nothing' cannot tell dead code from a feature that is built and not yet wired."
+    },
+    {
+      "id": "3.8",
+      "change": "Say what replaced commerce.idempotency_keys (the api_idempotency_keys tables of D441), so it goes as a duplicate, and put it under the same question as the leftover schema, not 'either way'.",
+      "why": "'Used by no code' is the reason the owner ruled out. Neither object moves a grade."
+    },
+    {
+      "id": "4.4",
+      "change": "Split. The parts that grow with a store move to phase 2: the VAT and alt-text functions called once per product row go to step 2.19, which already brings in the same two reads, and the six lists with no limit go to steps 2.17 and 2.19. The platform Home, the Payments page, the orders list, the theme cards and the sandbox purge stay, with an end before step 4.5.",
+      "why": "A listing of 2,000 products scans commerce.countries 2,000 times. That grows with the catalogue once stores open, and it sat in a sweep done 'when next touched'. The server's A also waits for this step."
+    },
+    {
+      "id": "4.1, 4.2, 4.3",
+      "change": "'When next touched' ends before step 4.5 for the twins, the exports only a test keeps alive and the 23 guard wrappers. It stays for class constants, tables, mocks and tree walkers, under a per-file ratchet.",
+      "why": "A plan whose last steps end 'when an area is next touched' has no end, and step 4.5 could never read an A in code."
+    },
+    {
+      "id": "3.3 and 3.17",
+      "change": "Each loses its first part to phase 0: the cap of four jobs at a time, and the themes, packs and seed writing today's page shape.",
+      "why": "Both are small, and both get dearer or riskier on opening day: 78 jobs on 5 connections, and old-shaped pages in every new store."
+    },
+    {
+      "id": "2.36 and 2.37",
+      "change": "The page groups move from 2.37 into 2.36, so the router returns a group from its first version. 2.37 keeps the schema slimming. If they land together, one eval recording covers both.",
+      "why": "Two steps that are one design: as written, 2.36 builds a router to whole areas that 2.37 replaces a step later, and each needs a recording made by a person in production."
+    },
+    {
+      "id": "2.38",
+      "change": "Split: counting cached tokens (the column, the reader, the price, the panel) moves to step 1.19; using the cache stays.",
+      "why": "A budget needs its 'before'. As written the column arrives a phase after the panel that is said to show it."
+    },
+    {
+      "id": "2.25",
+      "change": "Split: the codemod keeps a done-when its own work can reach (a median of 30 areas); the 218 direct importers are the new step after it.",
+      "why": "Its done-when (a median of 15 areas, 16 files on a store page) cannot be met by the work it describes."
+    },
+    {
+      "id": "1.14",
+      "change": "Its done-when is what phase 1 can earn: the nightly job has run for a week and its figures are in docs/performance.md. The seven green nights belong to the new phase 2 step.",
+      "why": "A phase 1 step that only phase 2 can finish. The one themed page measured so far scored 83 to 88."
+    },
+    {
+      "id": "2.24",
+      "change": "No condition, and effort M to L.",
+      "why": "Its test, a production figure for a step that runs inside Next, cannot be taken; and on the review's machine the load is 80 to 91 ms, so the condition would be met anyway."
+    },
+    {
+      "id": "1.11 and 1.12",
+      "change": "One home for each number: a store page's statement count lives in scripts/server-budget.mjs and the admin's in admin-statements.baseline.json. The journey test holds what only it can see: the tables scanned, the rows for 1 and for 20 stores, and what an order writes.",
+      "why": "Three cards asked three tests to hold the cart's count. Two baselines for one number drift apart."
+    },
+    {
+      "id": "1.13",
+      "change": "Eight flags, not five, each with a seeded case in the int test: slow statements, idle route calls and an AI figure over its bar for a week join, and flag two starts at 500 rows.",
+      "why": "Its done-when proves one flag of five, and three cards add one each."
+    },
+    {
+      "id": "1.2",
+      "change": "The marker list is in the done-when, with a count of routes per marker: Supabase's client, zod, the rich text editor, the builder's English, sign-in's English, a storefront language, the cookie purposes, and the common English on /s/ routes.",
+      "why": "Four cards count routes by a marker sentence, and the step's done-when names none."
+    },
+    {
+      "id": "2.11",
+      "change": "It goes after step 1.21.",
+      "why": "The build has 0.8 GB of room and was killed once. A second Tailwind entry adds about 150 MB, and the finding's own way back (keep one sheet) would leave three styles measures short for good."
+    },
+    {
+      "id": "0.12 and 0.14",
+      "change": "Could be one step: both are S, both in the shopper's browser, both proved by the same new spec, e2e/prefetch.spec.ts.",
+      "why": "Two that are one. Keep them apart only if two sessions do them."
+    },
+    {
+      "id": "4.5",
+      "change": "Its table also carries the figures that need time, each with the day it can first be read: 20 sessions after steps 2.1 and 2.40, 100 commits on main, seven nightly runs, a week of AI use, 28 days of admin loads. The plan is done when those are read, not when the last cut lands.",
+      "why": "Five bars rest on a figure that only time gives. A table filled on the day of the last cut would show them as blanks or as passes."
+    }
+  ],
+  "all_areas_reach_a": false,
+  "what_stands_in_the_way": "No step is missing after these decisions. What stands in the way is the owner's answers and two figures nobody has yet shown. Six answers must be a yes, or the named area stops at a B. (1) Rules: may the 295-line feature index leave CLAUDE.md, and may the database, e2e, typed-row and AI-eval how-to load only when their folders are opened (step 2.1, both halves)? (2) Server: may a store's own domain be looked up when the request arrives, in place of routing rules compiled into each deployment (step 2.35)? (3) Shopper's browser: on a full listing, may only the first screen of tiles be fetched ahead, and on a computer may the main menu's links wait for the pointer (step 2.8)? (4) Code: is the switch of 7 November final, so the old kaizenaflow.com and its twin tables can go (step 3.9)? (5) AI and surface: may the AI manager's 17 plan, reminder and skill tools load when the talk turns to them (step 2.36)? (6) Owner's browser: may the notice badge in a tab nobody touches be up to ten minutes late (step 2.34)? Two more need an answer of a set kind. Build: the 16 GB build machine or a build made in CI (step 1.21), but only if the two free source-map switches do not bring the peak to 6.0 GB, which is measured first. Database and surface: step 1.18 must at least hold the hot tables' indexes and triggers and the fourteen counts, and step 3.5 needs a period for guest carts, webhook events and page versions; any period will do. For steps 2.41, 2.43, 3.7, 3.10, 3.11, 3.12 and 3.19 either answer reaches the bar, if it is written down. Not yet shown: no themed store page has been measured at 90 on a slow phone (kaizenaflow.com scored 83 to 88), so the shopper's A rests on the new phase 2 step finding its cuts; and the builder's 1.8 MB rests on a table of cuts that step 2.30 must draw up before it starts. Last, five figures need time after the final cut: 20 sessions, 100 commits, seven nightly runs, a week of AI use and 28 days of admin loads. Step 4.5 can only call an area an A when its figure has been read.",
+  "summary": "The grades were not quite comparable: the written rules (four times the rules in every session, half of them hidden from search, no budget) and the build (five type checks a push, nothing held, one deploy already killed for memory) carry the same kind of waste as the owner's browser and become a D, so five D and eight C stand. The thirteen cards gave different numbers for the same thing in about twenty places; each now has one, mostly the stricter (the AI round, a product view, the page list, admin words on a store page, the motion styles), and a bar was loosened where it asked for more than an A needs (the admin kit's counts, a hold on tests' copies, the 8-minute job, a first push's cold type check, 1,700 modules for a product page, words counted as read at load). Of the 73 shortfalls, 53 tighten a step the plan already has, 15 become new steps (four of them before opening: a hold on CLAUDE.md, four scheduler jobs at a time, the 800 px copy for pictures in pages, and themes that write today's page shape), 4 are merged into another area's and 1 is answered by moving the bar; none is dropped. In the plan itself, step 0.36 must not delete the server side of a feature that only lacks a screen, step 0.19 hides a question about 'select all', a listing's per-product database calls move from the last phase to phase 2, and every script a check rests on must leave the scratch folder for the repo. No step is missing for an A in every area, but six of your answers must be a yes (the feature index out of CLAUDE.md, a store's domain looked up on request, a bound on what a listing fetches ahead, one kaizenaflow.com, the AI manager's 17 extra tools on demand, the notice badge up to ten minutes late), the build may need a larger machine, and nobody has yet shown a themed store page at 90 on a slow phone."
+}
