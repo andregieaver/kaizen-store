@@ -77,3 +77,8 @@ challenged by a skeptic, planned by a planner. Its last lines hold the arguments
    `tools/plan-readme.md`, `plan/decisions.md`), commit, push docs to `main`; `node tools/build-page.mjs` writes the page
    (`page/bloat-review.html`; needs `tools/page-v4.html` and `tools/findings-totals.json`), publish to the same artifact; tell the
    owner: grades today, steps added to reach an A, the decisions made for them, who can carry out which steps.
+8. **Second check of who can carry out each step** (the owner asked, 12 November). `tools/bloat-rating.workflow.js`:
+   `{"stage":"rate","chunks":[[ids]...]}` has eight reviewers rate the briefs blind (copies without the rating in `exec-blind/`)
+   into `rating/<id>.json`; launch only the ids that lack a file. Then `node tools/rating-compare.mjs` writes
+   `work/rating-diff.json`, and `{"stage":"settle"}` writes `work/rating-final.json`. Apply its decisions to `exec/<id>.json`
+   (executor, executor_why, cheap_commits, any brief edits), rebuild the docs and the page, push docs to `main`.
