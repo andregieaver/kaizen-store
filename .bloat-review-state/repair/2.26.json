@@ -1,0 +1,17 @@
+{
+ "id": "2.26",
+ "fixed": [
+  "Commit 2: dropped the responsive-edit.tsx and responsive-edit.test.ts changes, which step 0.9's brief already makes (line 20 type-only, sizeNote words required, builderEn in the test); CATALOGUE_SITES loses three entries, not four; ALREADY loses only modal-fields.tsx (0.9 removes responsive-edit.tsx).",
+  "Added a check and a stop_if that step 0.9 is done before commit 2.",
+  "admin-bundle.scan.test.ts in commit 1: action edit, made_by 1.4, with what 1.4 leaves in it."
+ ],
+ "rejected": [
+  {
+   "problem": "Commit 1 edits admin-bundle.scan.test.ts, which step 1.4 creates; the step cannot start until then.",
+   "why": "depends_on names 1.4 and the first stop_if stops when the file is missing; now also marked made_by 1.4."
+  }
+ ],
+ "cheaper": "not applied: naming, for each of commit 5's nine modules, the server page that translates and the props its client parts take is the design work the commit needs; commits 1 to 4 are already the cheap model's.",
+ "executor_before": "strong",
+ "executor_after": "strong"
+}

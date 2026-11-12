@@ -1,0 +1,13 @@
+{
+ "id": "2.18",
+ "fixed": [
+  "page.tsx: edited at step 2.2's path src/app/s/[store]/[market]/(shop)/page.tsx with made_by 2.2 (depends_on already names 2.2); layout.tsx stays and its line numbers move about two lines.",
+  "query-budget.int.test.ts: the braced path is the plain path with made_by 1.10, and the how says what 1.10 leaves.",
+  "The journey test's 'named exceptions list' is a change of its own: KNOWN_READS in src/server/shop-journey.int.test.ts (made_by 1.12), entries naming step 2.18 deleted when no longer reported, then its UPDATE_BASELINE run.",
+  "ratchet.baseline.json: written only by the two UPDATE_BASELINE runs; numbers only fall."
+ ],
+ "rejected": [],
+ "cheaper": "not applied: which folds are needed can only be known by measuring after steps 2.16, 0.24 and 1.10 land; a test that mocks next/cache to assert siteFacts()'s tags would help but is a design addition beyond repairing the brief.",
+ "executor_before": "strong",
+ "executor_after": "strong"
+}

@@ -15,7 +15,7 @@
  "depends_on": [
   {
    "id": "1.8",
-   "why": "src/server/route-load.graph.test.ts, scripts/route-budget.mjs and the next analyze export hold the beacons' and the store home's counts"
+   "why": "it makes scripts/lib/route-load.mjs (ENTRIES and FORBIDDEN), scripts/route-load.mjs, src/server/route-load.baseline.json and src/server/route-load.graph.test.ts, which this step extends with a 'stores' entry and forbidden modules, plus scripts/route-budget.mjs"
   },
   {
    "id": "0.4",
@@ -84,15 +84,21 @@
      "how": "It has no setupFiles today: add 'setupFiles: [\"src/test/stripe-modes.ts\"],' inside test: {...}, after globalSetup."
     },
     {
-     "file": "src/server/{route-load.graph.test.ts}",
+     "file": "scripts/lib/route-load.mjs",
      "action": "edit",
-     "how": "The file is src/server/route-load.graph.test.ts, made by an earlier step of the plan (it does not exist before that step; if it is missing, that step is not done: stop). For the five beacon entries (beacon-visit, beacon-touch, beacon-speed, beacon-own-speed, beacon-recommendation-events) and for an entry 'stores' (src/server/stores.ts; add it to ENTRIES in scripts/lib/route-load.mjs if missing) add to the forbidden list: src/server/stripe.ts and the package 'stripe'. Lower the baseline with node scripts/route-load.mjs --write."
+     "made_by": "1.8",
+     "how": "Step 1.8 made this file: it exports ENTRIES (short name to repo-relative file: beacon-visit src/app/api/visit/route.ts, beacon-touch src/app/api/visit/touch/route.ts, beacon-speed src/app/api/visit/speed/route.ts, beacon-own-speed src/app/api/visit/speed/own/route.ts, beacon-recommendation-events src/app/api/recommendations/events/route.ts, and thirteen more) and FORBIDDEN (per entry, repo-relative modules and package names it may not reach; the five beacons' lists already hold the package 'stripe'). src/server/route-load.graph.test.ts reads both and the baseline src/server/route-load.baseline.json ({ largestCycle, entries, exceptions, heavyHandlers }); a forbidden module an entry still reaches must be in the baseline's exceptions for it. Edit: (1) add `stores: \"src/server/stores.ts\"` to ENTRIES; (2) add `stores: [\"src/server/stripe.ts\", \"stripe\"]` to FORBIDDEN; (3) add \"src/server/stripe.ts\" to each of the five beacons' FORBIDDEN lists. Then run `pnpm exec vitest run src/server/route-load.graph.test.ts` (it must name no stripe chain from stores or a beacon) and `node scripts/route-load.mjs --write`. If --write refuses only because the entry 'stores' has no stored figure, look at `git diff src/server/route-load.baseline.json` after `node scripts/route-load.mjs --first`: it may only add the 'stores' entry and lower figures or drop exceptions; if it raises anything else, undo it and stop."
+    },
+    {
+     "file": "src/server/stripe-modes.int.test.ts",
+     "action": "create",
+     "how": "A new integration test that proves the setup file hands a test file's own mock of './stripe' on to getStore(). Top: `vi.mock(\"next/cache\", () => ({ cacheLife: () => {}, cacheTag: () => {}, updateTag: () => {} }));` and `const modes = vi.hoisted(() => ({ value: [] as string[] }));` `vi.mock(\"./stripe\", () => ({ platformModes: () => modes.value }));`. Make a store with makeCapacityStore() of ./capacity-test-support (name 'stripe-modes', run Date.now().toString(36)), then `update commerce.stores set payments_on = true, payments_test = true where id = …`. Case 1: modes.value = [\"test\"]; `(await getStore(slug))?.paymentsOn` is true. Case 2: modes.value = []; paymentsOn is false. (getStore is from ./stores; under vitest 'use cache' runs as a plain function, so each call reads again.) If either case fails, the setup file is not handing the mock on: fix src/test/stripe-modes.ts or the configs, never this test."
     }
    ],
    "checks": [
-    "pnpm exec vitest run src/lib/stripe-account.test.ts src/server/route-load.graph.test.ts: pass",
-    "pnpm lint && pnpm typecheck && pnpm test: each exits 0 with NO test file changed (git diff --stat shows no *.test.* file except stripe-account.test.ts and the graph test)",
-    "pnpm test:int: exits 0 with no test file changed; src/server/checkout.int.test.ts, which sets STRIPE_SECRET_KEY_TEST itself, passes. If tests that expect checkout to open now see paymentsOn false, the setup file is not loaded: fix the config, not the tests.",
+    "pnpm exec vitest run src/lib/stripe-account.test.ts src/server/route-load.graph.test.ts: pass, and the graph test lists no stripe module among the exceptions of 'stores' or a beacon",
+    "pnpm lint && pnpm typecheck && pnpm test: each exits 0 with NO test file changed (git diff --stat shows no *.test.* file except stripe-account.test.ts and the new stripe-modes.int.test.ts)",
+    "pnpm test:int: exits 0 with no existing test file changed and the new src/server/stripe-modes.int.test.ts passing; src/server/checkout.int.test.ts, which sets STRIPE_SECRET_KEY_TEST itself, passes. If tests that expect checkout to open now see paymentsOn false, the setup file is not loaded: fix the config, not the tests.",
     "rg -n 'stripe' src/server/stores.ts: prints only the stripe-modes import and words in comments or SQL (stripe_accounts)"
    ]
   },
@@ -159,9 +165,10 @@
      "how": "Lines 2 to 17: import themeElementSchema and the part-style types from './part-styles', mapChildBlocks from './block-walk', and the block types (PageBlock, PageColumn, PageRow, PartBase) with 'import type' from './page-content'. After this the file has no value import from './page-content'."
     },
     {
-     "file": "src/server/{route-load.graph.test.ts}",
+     "file": "scripts/lib/route-load.mjs",
      "action": "edit",
-     "how": "The file is src/server/route-load.graph.test.ts, made by an earlier step of the plan (it does not exist before that step; if it is missing, that step is not done: stop). For the entries 'stores' and the five beacons add to the forbidden list: src/lib/page-content.ts (and, once code review step 3.2 makes it a folder, every file of that folder except part-styles). Run the test: for each remaining path from src/server/stores.ts to src/lib/page-content.ts the test prints the chain. stores.ts imports about 25 src/lib modules (lines 7 to 30); the likely carriers are '@/lib/navigation' (parseNavigation), '@/lib/seo', '@/lib/structured-data', '@/lib/theme' and '@/lib/store-localized'. Cut each printed chain by the same three moves as above, in this order: a type-only import becomes 'import type'; a constant or small pure helper moves to a leaf file and is re-exported from where it was; a schema that the store's row needs moves to part-styles.ts if it is a part style. Add src/lib/part-styles.ts's opposite to src/lib/storefront-bundle.scan.test.ts only if that test lists page-content.ts by file name (its FORBIDDEN list): the block schemas' file stays forbidden in visitors' scripts. Write the baseline with node scripts/route-load.mjs --write."
+     "made_by": "1.8",
+     "how": "In FORBIDDEN (step 1.8's file; commit 1 added the entry 'stores'), for 'stores' and the five beacons add: src/lib/page-content.ts (and, once code review step 3.2 makes it a folder, every file of that folder except part-styles). Run `pnpm exec vitest run src/server/route-load.graph.test.ts`: for each remaining path from src/server/stores.ts to src/lib/page-content.ts the test prints the chain. stores.ts imports about 25 src/lib modules (lines 7 to 30); the likely carriers are '@/lib/navigation' (parseNavigation), '@/lib/seo', '@/lib/structured-data', '@/lib/theme' and '@/lib/store-localized'. Cut each printed chain by the same three moves as above, in this order: a type-only import becomes 'import type'; a constant or small pure helper moves to a leaf file and is re-exported from where it was; a schema that the store's row needs moves to part-styles.ts if it is a part style. Add src/lib/part-styles.ts's opposite to src/lib/storefront-bundle.scan.test.ts only if that test lists page-content.ts by file name (its FORBIDDEN list): the block schemas' file stays forbidden in visitors' scripts. Write the baseline with node scripts/route-load.mjs --write."
     },
     {
      "file": "docs/audits/code-review-2026-11.md",
@@ -182,6 +189,11 @@
      "file": "docs/audits/bloat-review-2026-11.md",
      "action": "edit",
      "how": "Progress table: row 2.22 to Done with the date, the commits and the figures (the largest beacon's modules and MB, the store home's modules and MB); one change-log line."
+    },
+    {
+     "file": "docs/audits/bloat-review-2026-11/scripts/server-graph.mjs",
+     "action": "edit",
+     "how": "Its ROUTES list names only /api/visit of the five beacons. Add \"/api/visit/touch\", \"/api/visit/speed\", \"/api/visit/speed/own\" and \"/api/recommendations/events\" after \"/api/visit\" in that array. Change nothing else."
     }
    ],
    "checks": [
@@ -189,7 +201,7 @@
     "pnpm lint && pnpm typecheck && pnpm test: each exits 0 (an undefined schema at import means a cycle between page-content.ts and part-styles.ts: part-styles must not import page-content)",
     "pnpm test:int: exits 0",
     "pnpm build && node scripts/route-budget.mjs: passes; the beacons' and the store home's chunk bytes are printed",
-    "The next analyze export, with the script step 0.1 put in the repo: pnpm exec next analyze --output (see the header of docs/audits/bloat-review-2026-11/scripts/server-graph.mjs for the exact command), then node docs/audits/bloat-review-2026-11/scripts/server-graph.mjs <outDir>: /api/visit and the other four beacons list no stripe module and are each at or under 500 modules and 1.0 MB; /s/[store]/[market] is at or under 1,500 modules and 4.0 MB and lists no src/lib/admin-messages, no AI tool file (src/server/*-tools.ts), no theme-store code and no sharp. If next analyze needs more memory than the machine has, run it with NODE_OPTIONS=--max-old-space-size=6144; do not use a paid build machine.",
+    "The next analyze export: `pnpm exec next analyze --output` (after pnpm build; with NODE_OPTIONS=--max-old-space-size=6144 if it runs out of memory; never a paid build machine), then `node docs/audits/bloat-review-2026-11/scripts/server-graph.mjs /tmp/server-graph`. It prints one line per route: '<route> first <KB> later <KB> | server <KB> KB in <n> modules, …'. Expect /api/visit, /api/visit/touch, /api/visit/speed, /api/visit/speed/own and /api/recommendations/events each at or under 500 modules and 1,024 KB of server, and /s/[store]/[market] at or under 1,500 modules and 4,096 KB. Then `rg -l 'stripe' /tmp/server-graph/analyze/api_visit*.json /tmp/server-graph/analyze/api_recommendations_events.json` prints nothing, and `rg -c 'src/lib/admin-messages|src/server/[a-z-]+-tools\\.ts|theme-store|/sharp/' /tmp/server-graph/analyze/s_store_market.json` prints nothing.",
     "pnpm exec playwright test e2e/store-pages.spec.ts e2e/cart.spec.ts: pass (cart.spec.ts walks the cart to the checkout, where paymentsOn decides)"
    ]
   }
@@ -206,6 +218,10 @@
   {
    "file": "scripts/route-budget.json",
    "proves": "CI's e2e job fails when a beacon's or the store home's chunk bytes pass their budget (1.0 MB and 4.0 MB)."
+  },
+  {
+   "file": "src/server/stripe-modes.int.test.ts",
+   "proves": "It fails when a test file's own mock of './stripe' no longer reaches getStore()'s paymentsOn through the shared setup file (true with test keys mocked on, false with none)."
   }
  ],
  "migration": {
@@ -214,7 +230,7 @@
  },
  "done_when": [
   {
-   "check": "The next analyze export read by node docs/audits/bloat-review-2026-11/scripts/server-graph.mjs <outDir>",
+   "check": "pnpm exec next analyze --output, then node docs/audits/bloat-review-2026-11/scripts/server-graph.mjs /tmp/server-graph (with the four beacon routes commit 3 adds to its ROUTES)",
    "expect": "Each of /api/visit, /api/visit/touch, /api/visit/speed, /api/visit/speed/own and /api/recommendations/events: no stripe module, at or under 500 modules and 1.0 MB. /s/[store]/[market]: at or under 1,500 modules and 4.0 MB, with no admin text, AI tool, theme-store code or sharp."
   },
   {
@@ -223,7 +239,7 @@
   },
   {
    "check": "pnpm test && pnpm test:int, then git diff --stat main -- 'src/**/*.test.*'",
-   "expect": "Both exit 0, and the only test files changed are stripe-account.test.ts and route-load.graph.test.ts."
+   "expect": "Both exit 0, and the only test files changed are stripe-account.test.ts and the new stripe-modes.int.test.ts (route-load.graph.test.ts reads scripts/lib/route-load.mjs and is not edited)."
   }
  ],
  "after_deploy": [
@@ -235,7 +251,7 @@
   "docs/platform-parity.md: nothing to tick; the platform reads stores and its settings through the same getStore() path."
  ],
  "do_not": [
-  "Do not edit the 113 test files that mock './stripe': the shared setup file keeps them working.",
+  "Do not edit the 113 test files that mock './stripe': the shared setup file keeps them working (the one new test, stripe-modes.int.test.ts, proves it).",
   "Do not change platformStripe(), platformPublishableKey() or any call to Stripe.",
   "Do not move payment keys into store settings or anywhere else: the platform's own keys stay environment variables (D15's stated exception).",
   "Do not change the importers of '@/lib/page-content' other than the four named (theme.ts, theme-elements.ts, visit-record.ts, stores.ts through page-role-names): the re-exports serve the other 251.",
@@ -248,9 +264,15 @@
   "themeElementSchema's closure includes a block schema, so part-styles.ts cannot be a leaf.",
   "After the three kinds of cut, a chain from stores.ts to a block schema remains that goes through a function getStore() really calls with a block schema (report the chain).",
   "pnpm test shows an undefined schema at import time.",
-  "The analyze export shows a beacon above 500 modules or the store home above 1,500 after all commits: report the ten largest packages and src folders the script lists; other steps own them (0.4, 0.5, 0.6, 0.7, 2.21, 2.47)."
+  "The analyze export shows a beacon above 500 modules or the store home above 1,500 after all commits: report the ten largest packages and src folders the script lists; other steps own them (0.4, 0.5, 0.6, 0.7, 2.21, 2.47).",
+  "scripts/lib/route-load.mjs has no ENTRIES or FORBIDDEN export (step 1.8 not done): stop."
  ],
  "executor": "strong",
- "executor_why": "Commit 1 (the Stripe modes) is fully specified and the cheap model can do it with a review of the test setup, but finding the closure of the theme's schemas inside a 4,319-line module and cutting the remaining chains from stores.ts needs judgement about the page model.",
- "checked_in_code": "I opened src/server/stores.ts (line 182 imports platformModes from './stripe' for paymentsOn at line 300; line 14 takes isPageRole from page-roles.ts, whose first line imports newPageContent; line 25 the theme parser), src/server/stripe.ts (the SDK imported at line 3; platformModes() at 58 calls platformStripe(), which builds a client), src/lib/stripe-account.ts (platformKey is pure), src/lib/theme.ts line 9, src/lib/theme-elements.ts lines 2 to 17 and src/lib/visit-record.ts line 8. rg counts 16 non-test and 113 test files naming platformModes, as SG-9 says. Corrected: SG-9 says to add the setup file to both vitest configs' setupFiles, but vitest.integration.config.mts has no setupFiles key today, so the brief adds the key. DP-12 wants this done inside code review step 3.2, which is still Open; the brief makes the leaf files beside page-content.ts with re-exports so it does not wait for that step, and records the constraint there."
+ "executor_why": "Commit 1 (the Stripe modes, the setup file now proven by an int case, and a 'stores' entry in step 1.8's walker) is fully specified for the cheap model with a review of the test setup, but finding the closure of the theme's schemas inside a 4,319-line module and cutting the remaining chains from stores.ts in commit 3 needs judgement about the page model.",
+ "checked_in_code": "I opened src/server/stores.ts (line 182 imports platformModes from './stripe' for paymentsOn at line 300; line 14 takes isPageRole from page-roles.ts, whose first line imports newPageContent; line 25 the theme parser), src/server/stripe.ts (the SDK imported at line 3; platformModes() at 58 calls platformStripe(), which builds a client), src/lib/stripe-account.ts (platformKey is pure), src/lib/theme.ts line 9, src/lib/theme-elements.ts lines 2 to 17 and src/lib/visit-record.ts line 8. rg counts 16 non-test and 113 test files naming platformModes, as SG-9 says. Corrected: SG-9 says to add the setup file to both vitest configs' setupFiles, but vitest.integration.config.mts has no setupFiles key today, so the brief adds the key. DP-12 wants this done inside code review step 3.2, which is still Open; the brief makes the leaf files beside page-content.ts with re-exports so it does not wait for that step, and records the constraint there. Second check (12 November): the forbidden lists live in step 1.8's scripts/lib/route-load.mjs (ENTRIES, FORBIDDEN; the beacons already forbid the stripe package), so commits 1 and 3 edit that file (made_by 1.8) and say how --write treats the new 'stores' entry; an int case proves the setup file hands a test file's mock of './stripe' on to getStore(); server-graph.mjs covers only /api/visit of the five beacons, so commit 3 adds the other four to its ROUTES and the check names its output lines and files.",
+ "cheap_commits": [
+  1,
+  2
+ ],
+ "rating_checked": "strong"
 }

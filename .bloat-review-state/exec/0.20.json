@@ -1,240 +1,246 @@
 {
-  "id": "0.20",
-  "goal": "A store's slug by its id comes from one cached, tagged helper (not 27 hand-written statements), a theme's neighbours read the cached card list, and the list of store domains is parsed once per instance.",
-  "why": "`select slug from commerce.stores where id = $1` is production's most-called statement (560,090 calls in 78 days) and is written by hand on 27 lines; after, at most 3 lines hold it. marketPath() parses the whole hosts list 2 or 3 times per link (2,000 or more parses for 1,000 links); after, once.",
-  "read_first": [
-    "docs/rules/storefront.md",
-    "src/server/menus.ts",
-    "src/server/stores.ts",
-    "src/server/platform.ts",
-    "src/server/theme-store.ts",
-    "src/lib/paths.ts",
-    "src/lib/store-hosts.test.ts",
-    "node_modules/next/dist/docs/01-app/03-api-reference/04-functions/cacheTag.md"
-  ],
-  "depends_on": [],
-  "commits": [
+ "id": "0.20",
+ "goal": "A store's slug by its id comes from one cached, tagged helper (not 27 hand-written statements), a theme's neighbours read the cached card list, and the list of store domains is parsed once per instance.",
+ "why": "`select slug from commerce.stores where id = $1` is production's most-called statement (560,090 calls in 78 days) and is written by hand on 27 lines; after, at most 3 lines hold it. marketPath() parses the whole hosts list 2 or 3 times per link (2,000 or more parses for 1,000 links); after, once.",
+ "read_first": [
+  "docs/rules/storefront.md",
+  "src/server/menus.ts",
+  "src/server/stores.ts",
+  "src/server/platform.ts",
+  "src/server/theme-store.ts",
+  "src/lib/paths.ts",
+  "src/lib/store-hosts.test.ts",
+  "node_modules/next/dist/docs/01-app/03-api-reference/04-functions/cacheTag.md"
+ ],
+ "depends_on": [],
+ "commits": [
+  {
+   "title": "A theme's neighbours read the cached list of cards",
+   "changes": [
     {
-      "title": "A theme's neighbours read the cached list of cards",
-      "changes": [
-        {
-          "file": "src/server/theme-store.ts",
-          "action": "edit",
-          "how": "In themePreviewNeighbours() (about line 99) change `previewNeighbours(await loadCards(), slug)` to `previewNeighbours(await themeStoreCards(), slug)`. themeStoreCards() is the cached function a few lines above with the same two tags. Nothing else."
-        }
-      ],
-      "checks": [
-        "rg -n 'loadCards\\(\\)' src/server/theme-store.ts : three lines: two calls (in themeStoreCards and themeStoreCardsNow) and the function's own declaration",
-        "pnpm lint && pnpm typecheck && pnpm test : exits 0",
-        "pnpm build && pnpm exec playwright test e2e/theme-store.spec.ts e2e/themes.spec.ts : pass (previous and next in the full-screen preview)"
-      ]
-    },
-    {
-      "title": "The list of store domains is parsed once, not for every link",
-      "changes": [
-        {
-          "file": "src/lib/paths.ts",
-          "action": "edit",
-          "how": "In storeHosts() (lines 35 to 42) keep the last parse. Add two module variables above it: `let parsedFrom: string | null = null; let parsedHosts: StoreHosts = {};`. The body becomes: `const raw = process.env.NEXT_PUBLIC_STORE_HOSTS || \"{}\"; if (raw === parsedFrom) return parsedHosts;` then the existing try/catch parse into a local `next` ({} on a failure or a non-object), then deep-freeze it (Object.freeze the map, each store's entry, its `hosts` array and its `languages` and `countries` objects when present), then `parsedFrom = raw; parsedHosts = next; return next;`. The memory is keyed on the text, never on first use: tests stub the variable between cases and must see the new value. Update the doc comment: parsed once per instance and frozen, because it is now shared."
-        },
-        {
-          "file": "src/lib/store-hosts.test.ts",
-          "action": "edit",
-          "how": "Add a case 'the hosts list is parsed once': build a 1,000-store list (`Object.fromEntries(Array.from({ length: 1000 }, (_, i) => [`s${i}`, { primary: `shop${i}.example.no`, hosts: [`shop${i}.example.no`] }]))`), stub NEXT_PUBLIC_STORE_DOMAIN to 'kaizenstore.site' and NEXT_PUBLIC_STORE_HOSTS to its JSON with vi.stubEnv, then `const spy = vi.spyOn(JSON, 'parse');` call `marketPath('s1', 'no', '/cart')` 1,000 times, expect `spy.mock.calls.length` to be at most 1, restore the spy. Then stub NEXT_PUBLIC_STORE_HOSTS to another text (one store with another primary) and expect storeOrigin() of that store to give the new primary (a changed text is seen by the next call). End with vi.unstubAllEnvs() as the file's other cases do."
-        }
-      ],
-      "checks": [
-        "pnpm exec vitest run src/lib/store-hosts.test.ts src/lib/country-domains.test.ts src/lib/language-domains.test.ts src/lib/ab-routing.test.ts src/proxy.test.ts : all pass, the old cases unchanged",
-        "pnpm lint && pnpm typecheck && pnpm test : exits 0",
-        "pnpm exec vitest run --config vitest.integration.config.mts src/server/domains.int.test.ts : passes"
-      ]
-    },
-    {
-      "title": "One cached helper gives a store's address by its id",
-      "changes": [
-        {
-          "file": "src/server/stores.ts",
-          "action": "edit",
-          "how": "Add `export const storeIdTag = (storeId: string) => `store-id:${storeId}`;` and move storeSlugOf() here from src/server/menus.ts (lines 281 to 287) with one addition: after `cacheLife(\"days\")` call `cacheTag(storeIdTag(storeId))`. It keeps 'use cache', readDb() and its return type (string or null). Import cacheLife/cacheTag from 'next/cache' and readDb from '@/db/client' if stores.ts does not have them. Change the doc comment: a store's address changes only when a sandbox is kept, and that refreshes this tag. Then make refreshStoreById() (line 190) use it: `const slug = await storeSlugOf(storeId); if (slug) refreshTag(storeTag(slug));`."
-        },
-        {
-          "file": "src/server/menus.ts",
-          "action": "edit",
-          "how": "Delete storeSlugOf() and add `export { storeSlugOf } from \"./stores\";` in its place, so its 13 importers and the mock in src/server/place-lang.test.ts (which mocks '@/server/menus') keep working. Remove imports menus.ts no longer uses."
-        },
-        {
-          "file": "src/server/platform.ts",
-          "action": "edit",
-          "how": "In adoptRequestSandbox() (about line 396), beside the two `staleTag(storeTag(…))` lines add `staleTag(storeIdTag(storeId));` (import storeIdTag from './stores'). This is the one moment a store's slug changes; before this change storeSlugOf() kept the old slug for days."
-        },
-        {
-          "file": "src/server/content-grid.ts",
-          "action": "edit",
-          "how": "Line 133 and 152: replace the hand-written statement `select slug from commerce.stores where id = …` by `const slug = await storeSlugOf(<the same id expression>);` (import storeSlugOf from '@/server/stores', or './stores' as the file's other imports are written). Then adapt only the lines that read the old result: where the code read `row.slug`, `row?.slug`, `String(row.slug)`, `store.slug` or `slug?.slug` use `slug`; where it tested `if (!row)` use `if (!slug)`. Remove imports the file no longer uses (pnpm lint names them). Nothing else in the function changes. customWhere() (line 133) keeps its cacheTag(storeTag(slug)) line."
-        },
-        {
-          "file": "src/server/content-site.ts",
-          "action": "edit",
-          "how": "Line 46: replace the hand-written statement `select slug from commerce.stores where id = …` by `const slug = await storeSlugOf(<the same id expression>);` (import storeSlugOf from '@/server/stores', or './stores' as the file's other imports are written). Then adapt only the lines that read the old result: where the code read `row.slug`, `row?.slug`, `String(row.slug)`, `store.slug` or `slug?.slug` use `slug`; where it tested `if (!row)` use `if (!slug)`. Remove imports the file no longer uses (pnpm lint names them). Nothing else in the function changes."
-        },
-        {
-          "file": "src/server/pages.ts",
-          "action": "edit",
-          "how": "Line 209: replace the hand-written statement `select slug from commerce.stores where id = …` by `const slug = await storeSlugOf(<the same id expression>);` (import storeSlugOf from '@/server/stores', or './stores' as the file's other imports are written). Then adapt only the lines that read the old result: where the code read `row.slug`, `row?.slug`, `String(row.slug)`, `store.slug` or `slug?.slug` use `slug`; where it tested `if (!row)` use `if (!slug)`. Remove imports the file no longer uses (pnpm lint names them). Nothing else in the function changes."
-        },
-        {
-          "file": "src/server/product-data.ts",
-          "action": "edit",
-          "how": "Line 28: replace the hand-written statement `select slug from commerce.stores where id = …` by `const slug = await storeSlugOf(<the same id expression>);` (import storeSlugOf from '@/server/stores', or './stores' as the file's other imports are written). Then adapt only the lines that read the old result: where the code read `row.slug`, `row?.slug`, `String(row.slug)`, `store.slug` or `slug?.slug` use `slug`; where it tested `if (!row)` use `if (!slug)`. Remove imports the file no longer uses (pnpm lint names them). Nothing else in the function changes."
-        },
-        {
-          "file": "src/server/field-tiles.ts",
-          "action": "edit",
-          "how": "Line 176: replace the hand-written statement `select slug from commerce.stores where id = …` by `const slug = await storeSlugOf(<the same id expression>);` (import storeSlugOf from '@/server/stores', or './stores' as the file's other imports are written). Then adapt only the lines that read the old result: where the code read `row.slug`, `row?.slug`, `String(row.slug)`, `store.slug` or `slug?.slug` use `slug`; where it tested `if (!row)` use `if (!slug)`. Remove imports the file no longer uses (pnpm lint names them). Nothing else in the function changes."
-        },
-        {
-          "file": "src/server/field-search.ts",
-          "action": "edit",
-          "how": "Line 34: replace the hand-written statement `select slug from commerce.stores where id = …` by `const slug = await storeSlugOf(<the same id expression>);` (import storeSlugOf from '@/server/stores', or './stores' as the file's other imports are written). Then adapt only the lines that read the old result: where the code read `row.slug`, `row?.slug`, `String(row.slug)`, `store.slug` or `slug?.slug` use `slug`; where it tested `if (!row)` use `if (!slug)`. Remove imports the file no longer uses (pnpm lint names them). Nothing else in the function changes."
-        },
-        {
-          "file": "src/server/taxonomy.ts",
-          "action": "edit",
-          "how": "Line 137 and 170: replace the hand-written statement `select slug from commerce.stores where id = …` by `const slug = await storeSlugOf(<the same id expression>);` (import storeSlugOf from '@/server/stores', or './stores' as the file's other imports are written). Then adapt only the lines that read the old result: where the code read `row.slug`, `row?.slug`, `String(row.slug)`, `store.slug` or `slug?.slug` use `slug`; where it tested `if (!row)` use `if (!slug)`. Remove imports the file no longer uses (pnpm lint names them). Nothing else in the function changes."
-        },
-        {
-          "file": "src/server/custom-fields.ts",
-          "action": "edit",
-          "how": "Line 545, 769, 817, 857 and 907: replace the hand-written statement `select slug from commerce.stores where id = …` by `const slug = await storeSlugOf(<the same id expression>);` (import storeSlugOf from '@/server/stores', or './stores' as the file's other imports are written). Then adapt only the lines that read the old result: where the code read `row.slug`, `row?.slug`, `String(row.slug)`, `store.slug` or `slug?.slug` use `slug`; where it tested `if (!row)` use `if (!slug)`. Remove imports the file no longer uses (pnpm lint names them). Nothing else in the function changes. These five read through the transaction's executor `run`; the helper needs none. If any of these functions creates the store row itself in the same transaction, leave that one site as it is and report it."
-        },
-        {
-          "file": "src/server/dream-factory.ts",
-          "action": "edit",
-          "how": "Line 495: replace the hand-written statement `select slug from commerce.stores where id = …` by `const slug = await storeSlugOf(<the same id expression>);` (import storeSlugOf from '@/server/stores', or './stores' as the file's other imports are written). Then adapt only the lines that read the old result: where the code read `row.slug`, `row?.slug`, `String(row.slug)`, `store.slug` or `slug?.slug` use `slug`; where it tested `if (!row)` use `if (!slug)`. Remove imports the file no longer uses (pnpm lint names them). Nothing else in the function changes."
-        },
-        {
-          "file": "src/server/email-filing.ts",
-          "action": "edit",
-          "how": "Line 49: replace the hand-written statement `select slug from commerce.stores where id = …` by `const slug = await storeSlugOf(<the same id expression>);` (import storeSlugOf from '@/server/stores', or './stores' as the file's other imports are written). Then adapt only the lines that read the old result: where the code read `row.slug`, `row?.slug`, `String(row.slug)`, `store.slug` or `slug?.slug` use `slug`; where it tested `if (!row)` use `if (!slug)`. Remove imports the file no longer uses (pnpm lint names them). Nothing else in the function changes."
-        },
-        {
-          "file": "src/server/site-tools.ts",
-          "action": "edit",
-          "how": "Line 489: replace the hand-written statement `select slug from commerce.stores where id = …` by `const slug = await storeSlugOf(<the same id expression>);` (import storeSlugOf from '@/server/stores', or './stores' as the file's other imports are written). Then adapt only the lines that read the old result: where the code read `row.slug`, `row?.slug`, `String(row.slug)`, `store.slug` or `slug?.slug` use `slug`; where it tested `if (!row)` use `if (!slug)`. Remove imports the file no longer uses (pnpm lint names them). Nothing else in the function changes."
-        },
-        {
-          "file": "src/server/live-drills.ts",
-          "action": "edit",
-          "how": "Line 205: replace the hand-written statement `select slug from commerce.stores where id = …` by `const slug = await storeSlugOf(<the same id expression>);` (import storeSlugOf from '@/server/stores', or './stores' as the file's other imports are written). Then adapt only the lines that read the old result: where the code read `row.slug`, `row?.slug`, `String(row.slug)`, `store.slug` or `slug?.slug` use `slug`; where it tested `if (!row)` use `if (!slug)`. Remove imports the file no longer uses (pnpm lint names them). Nothing else in the function changes."
-        },
-        {
-          "file": "src/server/product-questions.ts",
-          "action": "edit",
-          "how": "Line 72: replace the hand-written statement `select slug from commerce.stores where id = …` by `const slug = await storeSlugOf(<the same id expression>);` (import storeSlugOf from '@/server/stores', or './stores' as the file's other imports are written). Then adapt only the lines that read the old result: where the code read `row.slug`, `row?.slug`, `String(row.slug)`, `store.slug` or `slug?.slug` use `slug`; where it tested `if (!row)` use `if (!slug)`. Remove imports the file no longer uses (pnpm lint names them). Nothing else in the function changes."
-        },
-        {
-          "file": "src/server/kaizen-life-handoffs.ts",
-          "action": "edit",
-          "how": "Line 116: replace the hand-written statement `select slug from commerce.stores where id = …` by `const slug = await storeSlugOf(<the same id expression>);` (import storeSlugOf from '@/server/stores', or './stores' as the file's other imports are written). Then adapt only the lines that read the old result: where the code read `row.slug`, `row?.slug`, `String(row.slug)`, `store.slug` or `slug?.slug` use `slug`; where it tested `if (!row)` use `if (!slug)`. Remove imports the file no longer uses (pnpm lint names them). Nothing else in the function changes."
-        },
-        {
-          "file": "src/server/page-looks.ts",
-          "action": "edit",
-          "how": "Line 376: replace the hand-written statement `select slug from commerce.stores where id = …` by `const slug = await storeSlugOf(<the same id expression>);` (import storeSlugOf from '@/server/stores', or './stores' as the file's other imports are written). Then adapt only the lines that read the old result: where the code read `row.slug`, `row?.slug`, `String(row.slug)`, `store.slug` or `slug?.slug` use `slug`; where it tested `if (!row)` use `if (!slug)`. Remove imports the file no longer uses (pnpm lint names them). Nothing else in the function changes."
-        },
-        {
-          "file": "src/server/pipedrive.ts",
-          "action": "edit",
-          "how": "Line 645: replace the hand-written statement `select slug from commerce.stores where id = …` by `const slug = await storeSlugOf(<the same id expression>);` (import storeSlugOf from '@/server/stores', or './stores' as the file's other imports are written). Then adapt only the lines that read the old result: where the code read `row.slug`, `row?.slug`, `String(row.slug)`, `store.slug` or `slug?.slug` use `slug`; where it tested `if (!row)` use `if (!slug)`. Remove imports the file no longer uses (pnpm lint names them). Nothing else in the function changes."
-        },
-        {
-          "file": "src/server/store-copy.ts",
-          "action": "edit",
-          "how": "Line 633 reads the slug of the store the copy has just made (`copy.newId`). Read the 20 lines around it: if the new store's row is committed before this read, replace it as the other sites; if the read is inside the transaction that inserts the store, leave it and add the comment `// Inside the copy's own transaction: the cached helper cannot see this row yet.` Then the count of lines in the done-when is 4, not 3: say so in the hand-back."
-        },
-        {
-          "file": "src/server/store-slug.scan.test.ts",
-          "action": "create",
-          "how": "In the style of src/server/store-writers.scan.test.ts: walk every .ts and .tsx file under src (tests left out) and collect the files whose text matches /select slug from commerce\\.stores where id/. Expect the list to equal exactly ['src/server/stores.ts', 'src/server/support-forms.ts', 'src/server/support-inbound.ts'] (plus 'src/server/store-copy.ts' only if that site was left, with the reason in a comment). The failure message says: 'read a store's address by its id through storeSlugOf() (src/server/stores.ts); the two support reads also ask commerce.store_is_active(id) and stay live'."
-        },
-        {
-          "file": "src/server/sandbox.int.test.ts",
-          "action": "edit",
-          "how": "In the case that keeps a sandbox (it calls the approval that runs adoptRequestSandbox(); find it with rg -n 'adopt' src/server/sandbox.int.test.ts), add: read `await storeSlugOf(storeId)` before the adoption (the sandbox's slug) and after it, and expect the second answer to be the new slug. If the int tests run 'use cache' functions without Next's cache (so the answer is always fresh), the assertion still holds: keep it."
-        },
-        {
-          "file": "docs/decisions.md",
-          "action": "edit",
-          "how": "Append one row with the next free D-number (pull main first; `rg -o '^\\| D[0-9]+' docs/decisions.md | tr -dc '0-9\\n' | sort -n | tail -1`, plus 1). It records: storeSlugOf() in src/server/stores.ts is the one read of a store's address by id, cached for days under storeIdTag(id) and marked stale when a sandbox is kept (the one time a slug changes); 24 hand-written copies replaced, the two support reads kept live because they also ask store_is_active(); the scan test that holds it; the theme neighbours on the cached cards; the hosts list parsed once per instance and frozen. Rejected: an in-memory Map in front of the cache and a database rule that fixes a slug (more to carry than the tag needs). Platform: the helper and the hosts list are shared code, so the platform admin's links and Kaizena Flow's own store read through them. No migration."
-        }
-      ],
-      "checks": [
-        "pnpm exec vitest run src/server/store-slug.scan.test.ts src/server/place-lang.test.ts src/server/store-writers.scan.test.ts src/server/ratchet.scan.test.ts : pass (if the ratchet says unchecked reads fell, run node scripts/ratchet.mjs and commit the lowered baseline)",
-        "rg -c 'select slug from commerce[.]stores where id' src --glob '!*.test.ts' | awk -F: '{s+=$2} END {print s}' : prints 3",
-        "pnpm lint && pnpm typecheck && pnpm test : exits 0",
-        "pnpm test:int : exits 0 (content-grid, custom-fields, menus, sandbox, product-export, product-tools, screen-tools, supplier-steps, green-claims, product-taxonomy, content-packs and checkout-kinds int tests among them, all unchanged but sandbox)",
-        "pnpm build && pnpm test:e2e : exits 0"
-      ]
+     "file": "src/server/theme-store.ts",
+     "action": "edit",
+     "how": "In themePreviewNeighbours() (about line 99) change `previewNeighbours(await loadCards(), slug)` to `previewNeighbours(await themeStoreCards(), slug)`. themeStoreCards() is the cached function a few lines above with the same two tags. Nothing else."
     }
-  ],
-  "tests": [
-    {
-      "file": "src/server/store-slug.scan.test.ts",
-      "proves": "Fails when a file other than stores.ts and the two support files writes the slug-by-id statement by hand."
-    },
-    {
-      "file": "src/lib/store-hosts.test.ts",
-      "proves": "Fails when 1,000 calls of marketPath() parse the hosts list more than once, or when a changed list is not seen."
-    },
-    {
-      "file": "src/server/sandbox.int.test.ts",
-      "proves": "Fails when storeSlugOf() answers the old address after a sandbox is kept."
-    }
-  ],
-  "migration": {
-    "needed": false,
-    "notes": ""
+   ],
+   "checks": [
+    "rg -n 'loadCards\\(\\)' src/server/theme-store.ts : three lines: two calls (in themeStoreCards and themeStoreCardsNow) and the function's own declaration",
+    "pnpm lint && pnpm typecheck && pnpm test : exits 0",
+    "pnpm build && pnpm exec playwright test e2e/theme-store.spec.ts e2e/themes.spec.ts : pass (previous and next in the full-screen preview)"
+   ]
   },
-  "done_when": [
+  {
+   "title": "The list of store domains is parsed once, not for every link",
+   "changes": [
     {
-      "check": "rg -c 'select slug from commerce[.]stores where id' src --glob '!*.test.ts' | awk -F: '{s+=$2} END {print s}'",
-      "expect": "3 or fewer (27 before)"
+     "file": "src/lib/paths.ts",
+     "action": "edit",
+     "how": "In storeHosts() (lines 35 to 42) keep the last parse. Add two module variables above it: `let parsedFrom: string | null = null; let parsedHosts: StoreHosts = {};`. The body becomes: `const raw = process.env.NEXT_PUBLIC_STORE_HOSTS || \"{}\"; if (raw === parsedFrom) return parsedHosts;` then the existing try/catch parse into a local `next` ({} on a failure or a non-object), then deep-freeze it (Object.freeze the map, each store's entry, its `hosts` array and its `languages` and `countries` objects when present), then `parsedFrom = raw; parsedHosts = next; return next;`. The memory is keyed on the text, never on first use: tests stub the variable between cases and must see the new value. Update the doc comment: parsed once per instance and frozen, because it is now shared."
     },
     {
-      "check": "rg -n 'loadCards\\(\\)' src/server/theme-store.ts",
-      "expect": "two call sites and the declaration (three call sites before)"
-    },
-    {
-      "check": "pnpm exec vitest run src/lib/store-hosts.test.ts -t 'parsed once'",
-      "expect": "passes: JSON.parse called once for 1,000 calls of marketPath() with a 1,000-store list"
+     "file": "src/lib/store-hosts.test.ts",
+     "action": "edit",
+     "how": "Add a case 'the hosts list is parsed once': build a 1,000-store list (`Object.fromEntries(Array.from({ length: 1000 }, (_, i) => [`s${i}`, { primary: `shop${i}.example.no`, hosts: [`shop${i}.example.no`] }]))`), stub NEXT_PUBLIC_STORE_DOMAIN to 'kaizenstore.site' and NEXT_PUBLIC_STORE_HOSTS to its JSON with vi.stubEnv, then `const spy = vi.spyOn(JSON, 'parse');` call `marketPath('s1', 'no', '/cart')` 1,000 times, expect `spy.mock.calls.length` to be at most 1, restore the spy. Then stub NEXT_PUBLIC_STORE_HOSTS to another text (one store with another primary) and expect storeOrigin() of that store to give the new primary (a changed text is seen by the next call). End with vi.unstubAllEnvs() as the file's other cases do."
     }
-  ],
-  "after_deploy": [
-    "A week after the deploy, in step 0.2's daily reading (or pg_stat_statements read by the owner): the statement `select slug from commerce.stores where id = $1` grows by fewer than 500 calls a day (about 7,180 a day before). Write the figure in docs/capacity.md."
-  ],
-  "docs": [
-    "docs/decisions.md: the D-row described above.",
-    "docs/rules/storefront.md, under the rule 'Stores and their markets come from the database': add 'A store's address by its id is `storeSlugOf()` (`src/server/stores.ts`, cached under `storeIdTag(id)`); never write the lookup by hand (`store-slug.scan.test.ts`).'",
-    "docs/capacity.md: the figure a week after the deploy.",
-    "docs/audits/bloat-review-2026-11.md, Progress table: set the row of step 0.20 to Done with the date and the commits in Notes (find it: rg -n '^\\| 0\\.20 ' docs/audits/bloat-review-2026-11.md), and add a line under the step's own heading in docs/audits/bloat-review-2026-11/plan/phase-0.md saying what was done differently from the plan, if anything."
-  ],
-  "do_not": [
-    "Do not touch src/server/support-forms.ts line 80 or src/server/support-inbound.ts line 347: they also ask commerce.store_is_active(id), which must stay a live read.",
-    "Do not remove the re-export of storeSlugOf from src/server/menus.ts.",
-    "Do not drop 'use cache' or cacheLife from storeSlugOf(): prerendered callers must stay cacheable.",
-    "Do not add a module-level Map of slugs, a getStoreById() or a migration: not part of this step.",
-    "Do not change storeOfHost() in src/lib/ab-routing.ts or src/proxy.ts.",
-    "Do not key the hosts memory on first use (a boolean): key it on the text.",
-    "Do not replace time zone or other reads of commerce.stores that select more than the slug."
-  ],
-  "stop_if": [
-    "A site's statement selects more than `slug` or has more conditions than `id = …` (main has moved): leave it and report the line.",
-    "An int test that passed before fails after its file's site is replaced: put that site back and report it.",
-    "pnpm build reports a cache error for storeSlugOf() called inside another cached function or a transaction.",
-    "A test mutates what storeHosts() returns and fails on the freeze: report the test; do not remove the freeze.",
-    "The count in the done-when is above 4."
-  ],
-  "executor": "cheap",
-  "executor_why": "Each site is the same one-statement replacement, the theme change is one line and the hosts memo ten; the scan test, the int tests and the type check catch a wrong edit.",
-  "checked_in_code": "I ran the rg: 27 lines hold the statement today, in the files the findings list (line numbers match), and storeSlugOf() in menus.ts is cached for days with no tag and has 13 importers. theme-store.ts calls loadCards() three times, as found. paths.ts parses NEXT_PUBLIC_STORE_HOSTS on every storeHosts() call. Corrections: the step says the helper is 'refreshed when a sandbox is kept', so the brief gives it a tag by id and marks it stale in adoptRequestSandbox(), and leaves out CP-2's in-memory Map, getStoreById() and slug-fixing migration; SD-10 wanted refreshStoreById() to keep its own read, but the done-when's 3 lines only works if it uses the helper, which is safe once the tag exists. store-copy.ts line 633 reads a store the copy has just made, so the brief asks the executor to check its transaction first."
+   ],
+   "checks": [
+    "pnpm exec vitest run src/lib/store-hosts.test.ts src/lib/country-domains.test.ts src/lib/language-domains.test.ts src/lib/ab-routing.test.ts src/proxy.test.ts : all pass, the old cases unchanged",
+    "pnpm lint && pnpm typecheck && pnpm test : exits 0",
+    "pnpm exec vitest run --config vitest.integration.config.mts src/server/domains.int.test.ts : passes"
+   ]
+  },
+  {
+   "title": "One cached helper gives a store's address by its id",
+   "changes": [
+    {
+     "file": "src/server/stores.ts",
+     "action": "edit",
+     "how": "Add `export const storeIdTag = (storeId: string) => `store-id:${storeId}`;` and move storeSlugOf() here from src/server/menus.ts (lines 281 to 287) with one addition: after `cacheLife(\"days\")` call `cacheTag(storeIdTag(storeId))`. It keeps 'use cache', readDb() and its return type (string or null). Import cacheLife/cacheTag from 'next/cache' and readDb from '@/db/client' if stores.ts does not have them. Change the doc comment: a store's address changes only when a sandbox is kept, and that refreshes this tag. Then make refreshStoreById() (line 190) use it: `const slug = await storeSlugOf(storeId); if (slug) refreshTag(storeTag(slug));`. After the move stores.ts holds the statement once (inside storeSlugOf()); the old read at line 191 is gone."
+    },
+    {
+     "file": "src/server/menus.ts",
+     "action": "edit",
+     "how": "Delete storeSlugOf() and add `export { storeSlugOf } from \"./stores\";` in its place, so its 13 importers and the mock in src/server/place-lang.test.ts (which mocks '@/server/menus') keep working. Remove imports menus.ts no longer uses."
+    },
+    {
+     "file": "src/server/platform.ts",
+     "action": "edit",
+     "how": "In adoptRequestSandbox() (about line 396), beside the two `staleTag(storeTag(…))` lines add `staleTag(storeIdTag(storeId));` (import storeIdTag from './stores'). This is the one moment a store's slug changes; before this change storeSlugOf() kept the old slug for days."
+    },
+    {
+     "file": "src/server/content-grid.ts",
+     "action": "edit",
+     "how": "Line 133 and 152: replace the hand-written statement `select slug from commerce.stores where id = …` by `const slug = await storeSlugOf(<the same id expression>);` (import storeSlugOf from '@/server/stores', or './stores' as the file's other imports are written). Then adapt only the lines that read the old result: where the code read `row.slug`, `row?.slug`, `String(row.slug)`, `store.slug` or `slug?.slug` use `slug`; where it tested `if (!row)` use `if (!slug)`. Remove imports the file no longer uses (pnpm lint names them). Nothing else in the function changes. customWhere() (line 133) keeps its cacheTag(storeTag(slug)) line. Exactly, at line 133: replace the three lines `const [row] = …${owner}…; if (!row) return null; const slug = String(row.slug);` by `const slug = await storeSlugOf(owner); if (!slug) return null;` (delete the old `const slug = String(row.slug);`, or it is declared twice). At line 152: `const slug = await storeSlugOf(storeId); const store = slug ? await getOpenStore(slug) : null;`."
+    },
+    {
+     "file": "src/server/content-site.ts",
+     "action": "edit",
+     "how": "Line 46: replace the hand-written statement `select slug from commerce.stores where id = …` by `const slug = await storeSlugOf(<the same id expression>);` (import storeSlugOf from '@/server/stores', or './stores' as the file's other imports are written). Then adapt only the lines that read the old result: where the code read `row.slug`, `row?.slug`, `String(row.slug)`, `store.slug` or `slug?.slug` use `slug`; where it tested `if (!row)` use `if (!slug)`. Remove imports the file no longer uses (pnpm lint names them). Nothing else in the function changes. Exactly: `const slug = await storeSlugOf(owner); if (!slug) return null; cacheTag(storeTag(slug)); const store = await getOpenStore(slug);` in place of the four lines that start at 46."
+    },
+    {
+     "file": "src/server/pages.ts",
+     "action": "edit",
+     "how": "Line 209: replace the hand-written statement `select slug from commerce.stores where id = …` by `const slug = await storeSlugOf(<the same id expression>);` (import storeSlugOf from '@/server/stores', or './stores' as the file's other imports are written). Then adapt only the lines that read the old result: where the code read `row.slug`, `row?.slug`, `String(row.slug)`, `store.slug` or `slug?.slug` use `slug`; where it tested `if (!row)` use `if (!slug)`. Remove imports the file no longer uses (pnpm lint names them). Nothing else in the function changes. Exactly: `const slug = await storeSlugOf(storeId); const store = slug ? await getStore(slug) : null;` in place of lines 209-210."
+    },
+    {
+     "file": "src/server/product-data.ts",
+     "action": "edit",
+     "how": "Line 28: replace the hand-written statement `select slug from commerce.stores where id = …` by `const slug = await storeSlugOf(<the same id expression>);` (import storeSlugOf from '@/server/stores', or './stores' as the file's other imports are written). Then adapt only the lines that read the old result: where the code read `row.slug`, `row?.slug`, `String(row.slug)`, `store.slug` or `slug?.slug` use `slug`; where it tested `if (!row)` use `if (!slug)`. Remove imports the file no longer uses (pnpm lint names them). Nothing else in the function changes. Exactly: `const slug = await storeSlugOf(storeId); return slug ? getStore(slug) : null;` in place of lines 28-29."
+    },
+    {
+     "file": "src/server/field-tiles.ts",
+     "action": "edit",
+     "how": "Line 176: replace the hand-written statement `select slug from commerce.stores where id = …` by `const slug = await storeSlugOf(<the same id expression>);` (import storeSlugOf from '@/server/stores', or './stores' as the file's other imports are written). Then adapt only the lines that read the old result: where the code read `row.slug`, `row?.slug`, `String(row.slug)`, `store.slug` or `slug?.slug` use `slug`; where it tested `if (!row)` use `if (!slug)`. Remove imports the file no longer uses (pnpm lint names them). Nothing else in the function changes. Exactly: this site is inside a Promise.all (lines 175-177); replace the three lines `run .execute<Row>(sql`select slug …`) .then(([row]) => (row ? getStore(String(row.slug)) : null)),` by `storeSlugOf(storeId).then((slug) => (slug ? getStore(slug) : null)),`. `run` stays: the other two entries of the Promise.all use it."
+    },
+    {
+     "file": "src/server/field-search.ts",
+     "action": "edit",
+     "how": "Line 34: replace the hand-written statement `select slug from commerce.stores where id = …` by `const slug = await storeSlugOf(<the same id expression>);` (import storeSlugOf from '@/server/stores', or './stores' as the file's other imports are written). Then adapt only the lines that read the old result: where the code read `row.slug`, `row?.slug`, `String(row.slug)`, `store.slug` or `slug?.slug` use `slug`; where it tested `if (!row)` use `if (!slug)`. Remove imports the file no longer uses (pnpm lint names them). Nothing else in the function changes. Exactly: `const slug = await storeSlugOf(storeId); const store = slug ? await getStore(slug) : null;` in place of lines 34-35."
+    },
+    {
+     "file": "src/server/taxonomy.ts",
+     "action": "edit",
+     "how": "Line 137 and 170: replace the hand-written statement `select slug from commerce.stores where id = …` by `const slug = await storeSlugOf(<the same id expression>);` (import storeSlugOf from '@/server/stores', or './stores' as the file's other imports are written). Then adapt only the lines that read the old result: where the code read `row.slug`, `row?.slug`, `String(row.slug)`, `store.slug` or `slug?.slug` use `slug`; where it tested `if (!row)` use `if (!slug)`. Remove imports the file no longer uses (pnpm lint names them). Nothing else in the function changes. Exactly, at both 137 and 170: `const slug = await storeSlugOf(scope.storeId); const store = slug ? await getStore(slug) : null;` in place of the two lines `const [row] = …; const store = row ? await getStore(String(row.slug)) : null;`."
+    },
+    {
+     "file": "src/server/custom-fields.ts",
+     "action": "edit",
+     "how": "Line 545, 769, 817, 857 and 907: replace the hand-written statement `select slug from commerce.stores where id = …` by `const slug = await storeSlugOf(<the same id expression>);` (import storeSlugOf from '@/server/stores', or './stores' as the file's other imports are written). Then adapt only the lines that read the old result: where the code read `row.slug`, `row?.slug`, `String(row.slug)`, `store.slug` or `slug?.slug` use `slug`; where it tested `if (!row)` use `if (!slug)`. Remove imports the file no longer uses (pnpm lint names them). Nothing else in the function changes. All five read a committed store through db() or readDb() (545 is offeredCurrencies(), whose run defaults to db() and is passed db() at 742; 769 is mainLocale(), called with run = db() at 756; 817, 857 and 907 set run = readDb()): replace all five. Exactly: at 545 and 769 `const slug = await storeSlugOf(storeId); const store = slug ? await getStore(slug) : null;` in place of `const [row] = …; const store = row ? await getStore(String(row.slug)) : null;`; at 817, 857 and 907 the same in place of `const [slug] = …; const store = slug ? await getStore(String(slug.slug)) : null;`. At 817 the line above is `const run = readDb();`: keep it if later lines of that function still use run (pnpm lint says when it is unused)."
+    },
+    {
+     "file": "src/server/dream-factory.ts",
+     "action": "edit",
+     "how": "Line 495: replace the hand-written statement `select slug from commerce.stores where id = …` by `const slug = await storeSlugOf(<the same id expression>);` (import storeSlugOf from '@/server/stores', or './stores' as the file's other imports are written). Then adapt only the lines that read the old result: where the code read `row.slug`, `row?.slug`, `String(row.slug)`, `store.slug` or `slug?.slug` use `slug`; where it tested `if (!row)` use `if (!slug)`. Remove imports the file no longer uses (pnpm lint names them). Nothing else in the function changes. Exactly: `const slug = await storeSlugOf(run.storeId); const member = slug && run.accountId ? await passMembership(slug, run.accountId) : null;` in place of lines 495-496."
+    },
+    {
+     "file": "src/server/email-filing.ts",
+     "action": "edit",
+     "how": "Line 49: replace the hand-written statement `select slug from commerce.stores where id = …` by `const slug = await storeSlugOf(<the same id expression>);` (import storeSlugOf from '@/server/stores', or './stores' as the file's other imports are written). Then adapt only the lines that read the old result: where the code read `row.slug`, `row?.slug`, `String(row.slug)`, `store.slug` or `slug?.slug` use `slug`; where it tested `if (!row)` use `if (!slug)`. Remove imports the file no longer uses (pnpm lint names them). Nothing else in the function changes. Exactly: `const slug = await storeSlugOf(storeId); const store = slug ? await getStore(slug) : null;` in place of lines 49-50."
+    },
+    {
+     "file": "src/server/site-tools.ts",
+     "action": "edit",
+     "how": "Line 489: replace the hand-written statement `select slug from commerce.stores where id = …` by `const slug = await storeSlugOf(<the same id expression>);` (import storeSlugOf from '@/server/stores', or './stores' as the file's other imports are written). Then adapt only the lines that read the old result: where the code read `row.slug`, `row?.slug`, `String(row.slug)`, `store.slug` or `slug?.slug` use `slug`; where it tested `if (!row)` use `if (!slug)`. Remove imports the file no longer uses (pnpm lint names them). Nothing else in the function changes. Exactly: `const slug = await storeSlugOf(job.storeId); const member = slug ? await passMembership(slug, account.id) : null;` in place of lines 489-490."
+    },
+    {
+     "file": "src/server/live-drills.ts",
+     "action": "edit",
+     "how": "Line 205: replace the hand-written statement `select slug from commerce.stores where id = …` by `const slug = await storeSlugOf(<the same id expression>);` (import storeSlugOf from '@/server/stores', or './stores' as the file's other imports are written). Then adapt only the lines that read the old result: where the code read `row.slug`, `row?.slug`, `String(row.slug)`, `store.slug` or `slug?.slug` use `slug`; where it tested `if (!row)` use `if (!slug)`. Remove imports the file no longer uses (pnpm lint names them). Nothing else in the function changes. Exactly: `const slug = await storeSlugOf(storeId); const member = slug ? await passMembership(slug, requestedBy) : null;` in place of lines 205-206."
+    },
+    {
+     "file": "src/server/product-questions.ts",
+     "action": "edit",
+     "how": "Line 72: replace the hand-written statement `select slug from commerce.stores where id = …` by `const slug = await storeSlugOf(<the same id expression>);` (import storeSlugOf from '@/server/stores', or './stores' as the file's other imports are written). Then adapt only the lines that read the old result: where the code read `row.slug`, `row?.slug`, `String(row.slug)`, `store.slug` or `slug?.slug` use `slug`; where it tested `if (!row)` use `if (!slug)`. Remove imports the file no longer uses (pnpm lint names them). Nothing else in the function changes. Exactly: `const slug = await storeSlugOf(request.store); const shop = slug ? await resolveSellingShop(slug, request.market) : null;` in place of lines 72-73."
+    },
+    {
+     "file": "src/server/kaizen-life-handoffs.ts",
+     "action": "edit",
+     "how": "Line 116: replace the hand-written statement `select slug from commerce.stores where id = …` by `const slug = await storeSlugOf(<the same id expression>);` (import storeSlugOf from '@/server/stores', or './stores' as the file's other imports are written). Then adapt only the lines that read the old result: where the code read `row.slug`, `row?.slug`, `String(row.slug)`, `store.slug` or `slug?.slug` use `slug`; where it tested `if (!row)` use `if (!slug)`. Remove imports the file no longer uses (pnpm lint names them). Nothing else in the function changes. Exactly: `const slug = await storeSlugOf(storeId); const store = slug ? await getStore(slug) : null;` in place of lines 116-117 (the old name was `found`)."
+    },
+    {
+     "file": "src/server/page-looks.ts",
+     "action": "edit",
+     "how": "Line 376: replace the hand-written statement `select slug from commerce.stores where id = …` by `const slug = await storeSlugOf(<the same id expression>);` (import storeSlugOf from '@/server/stores', or './stores' as the file's other imports are written). Then adapt only the lines that read the old result: where the code read `row.slug`, `row?.slug`, `String(row.slug)`, `store.slug` or `slug?.slug` use `slug`; where it tested `if (!row)` use `if (!slug)`. Remove imports the file no longer uses (pnpm lint names them). Nothing else in the function changes. Exactly: `const slug = await storeSlugOf(look.store_id);` in place of line 376; line 377 stays."
+    },
+    {
+     "file": "src/server/pipedrive.ts",
+     "action": "edit",
+     "how": "Line 645: replace the hand-written statement `select slug from commerce.stores where id = …` by `const slug = await storeSlugOf(<the same id expression>);` (import storeSlugOf from '@/server/stores', or './stores' as the file's other imports are written). Then adapt only the lines that read the old result: where the code read `row.slug`, `row?.slug`, `String(row.slug)`, `store.slug` or `slug?.slug` use `slug`; where it tested `if (!row)` use `if (!slug)`. Remove imports the file no longer uses (pnpm lint names them). Nothing else in the function changes. Exactly: in storeFacts() replace `const row = await typedRow(z.object({ slug: col.text }), sql`…`);` (lines 644-647) and `const store = row ? await getStore(row.slug) : null;` by `const slug = await storeSlugOf(storeId); const store = slug ? await getStore(slug) : null;`."
+    },
+    {
+     "file": "src/server/store-copy.ts",
+     "action": "edit",
+     "how": "Line 633 runs in the copy's finishing phase through db(), after the copy is committed: replace it like the others. Exactly: `const slug = await storeSlugOf(copy.newId); await (deps.invalidate ?? invalidateCaches)(copy.newId, slug ?? \"\");` in place of lines 633-634. The count in the done-when stays 3."
+    },
+    {
+     "file": "src/server/store-slug.scan.test.ts",
+     "action": "create",
+     "how": "In the style of src/server/store-writers.scan.test.ts: walk every .ts and .tsx file under src (tests left out) and collect the files whose text matches /select slug from commerce\\.stores where id/. Expect the list to equal exactly ['src/server/stores.ts', 'src/server/support-forms.ts', 'src/server/support-inbound.ts']. The failure message says: 'read a store's address by its id through storeSlugOf() (src/server/stores.ts); the two support reads also ask commerce.store_is_active(id) and stay live'."
+    },
+    {
+     "file": "src/server/sandbox.int.test.ts",
+     "action": "edit",
+     "how": "In the case that keeps a sandbox (it calls the approval that runs adoptRequestSandbox(); find it with rg -n 'adopt' src/server/sandbox.int.test.ts), add: read `await storeSlugOf(storeId)` before the adoption (the sandbox's slug) and after it, and expect the second answer to be the new slug. If the int tests run 'use cache' functions without Next's cache (so the answer is always fresh), the assertion still holds: keep it."
+    },
+    {
+     "file": "docs/decisions.md",
+     "action": "edit",
+     "how": "Append one row with the next free D-number (pull main first; `rg -o '^\\| D[0-9]+' docs/decisions.md | tr -dc '0-9\\n' | sort -n | tail -1`, plus 1). It records: storeSlugOf() in src/server/stores.ts is the one read of a store's address by id, cached for days under storeIdTag(id) and marked stale when a sandbox is kept (the one time a slug changes); 24 hand-written copies replaced, the two support reads kept live because they also ask store_is_active(); the scan test that holds it; the theme neighbours on the cached cards; the hosts list parsed once per instance and frozen. Rejected: an in-memory Map in front of the cache and a database rule that fixes a slug (more to carry than the tag needs). Platform: the helper and the hosts list are shared code, so the platform admin's links and Kaizena Flow's own store read through them. No migration."
+    }
+   ],
+   "checks": [
+    "pnpm exec vitest run src/server/store-slug.scan.test.ts src/server/place-lang.test.ts src/server/store-writers.scan.test.ts src/server/ratchet.scan.test.ts : pass (if the ratchet says unchecked reads fell, run node scripts/ratchet.mjs and commit the lowered baseline)",
+    "rg -c 'select slug from commerce[.]stores where id' src --glob '!*.test.ts' | awk -F: '{s+=$2} END {print s}' : prints 3",
+    "pnpm lint && pnpm typecheck && pnpm test : exits 0",
+    "pnpm test:int : exits 0 (content-grid, custom-fields, menus, sandbox, product-export, product-tools, screen-tools, supplier-steps, green-claims, product-taxonomy, content-packs and checkout-kinds int tests among them, all unchanged but sandbox)",
+    "pnpm build && pnpm test:e2e : exits 0"
+   ]
+  }
+ ],
+ "tests": [
+  {
+   "file": "src/server/store-slug.scan.test.ts",
+   "proves": "Fails when a file other than stores.ts and the two support files writes the slug-by-id statement by hand."
+  },
+  {
+   "file": "src/lib/store-hosts.test.ts",
+   "proves": "Fails when 1,000 calls of marketPath() parse the hosts list more than once, or when a changed list is not seen."
+  },
+  {
+   "file": "src/server/sandbox.int.test.ts",
+   "proves": "Fails when storeSlugOf() answers the old address after a sandbox is kept."
+  }
+ ],
+ "migration": {
+  "needed": false,
+  "notes": ""
+ },
+ "done_when": [
+  {
+   "check": "rg -c 'select slug from commerce[.]stores where id' src --glob '!*.test.ts' | awk -F: '{s+=$2} END {print s}'",
+   "expect": "3 or fewer (27 before)"
+  },
+  {
+   "check": "rg -n 'loadCards\\(\\)' src/server/theme-store.ts",
+   "expect": "two call sites and the declaration (three call sites before)"
+  },
+  {
+   "check": "pnpm exec vitest run src/lib/store-hosts.test.ts -t 'parsed once'",
+   "expect": "passes: JSON.parse called once for 1,000 calls of marketPath() with a 1,000-store list"
+  }
+ ],
+ "after_deploy": [
+  "A week after the deploy, in step 0.2's daily reading (or pg_stat_statements read by the owner): the statement `select slug from commerce.stores where id = $1` grows by fewer than 500 calls a day (about 7,180 a day before). Write the figure in docs/capacity.md."
+ ],
+ "docs": [
+  "docs/decisions.md: the D-row described above.",
+  "docs/rules/storefront.md, under the rule 'Stores and their markets come from the database': add 'A store's address by its id is `storeSlugOf()` (`src/server/stores.ts`, cached under `storeIdTag(id)`); never write the lookup by hand (`store-slug.scan.test.ts`).'",
+  "docs/capacity.md: the figure a week after the deploy.",
+  "docs/audits/bloat-review-2026-11.md, Progress table: set the row of step 0.20 to Done with the date and the commits in Notes (find it: rg -n '^\\| 0\\.20 ' docs/audits/bloat-review-2026-11.md), and add a line under the step's own heading in docs/audits/bloat-review-2026-11/plan/phase-0.md saying what was done differently from the plan, if anything."
+ ],
+ "do_not": [
+  "Do not touch src/server/support-forms.ts line 80 or src/server/support-inbound.ts line 347: they also ask commerce.store_is_active(id), which must stay a live read.",
+  "Do not remove the re-export of storeSlugOf from src/server/menus.ts.",
+  "Do not drop 'use cache' or cacheLife from storeSlugOf(): prerendered callers must stay cacheable.",
+  "Do not add a module-level Map of slugs, a getStoreById() or a migration: not part of this step.",
+  "Do not change storeOfHost() in src/lib/ab-routing.ts or src/proxy.ts.",
+  "Do not key the hosts memory on first use (a boolean): key it on the text.",
+  "Do not replace time zone or other reads of commerce.stores that select more than the slug."
+ ],
+ "stop_if": [
+  "A site's statement selects more than `slug` or has more conditions than `id = …` (main has moved): leave it and report the line.",
+  "An int test that passed before fails after its file's site is replaced: put that site back and report it.",
+  "pnpm build reports a cache error for storeSlugOf() called inside another cached function or a transaction.",
+  "A test mutates what storeHosts() returns and fails on the freeze: report the test; do not remove the freeze.",
+  "The count in the done-when is above 3.",
+  "pnpm typecheck reports a name declared twice or an unused `row`/`store` after a site's exact replacement: main has moved at that site; report the file and line rather than improvise."
+ ],
+ "executor": "cheap-then-review",
+ "executor_why": "Commits 1 and 2 are tiny and fully checked; commit 3 now gives every site's exact replacement, but it moves 24 reads in 17 files onto a helper cached for days and the int tests run without Next's cache, so a missing staleTag(storeIdTag) in adoptRequestSandbox() or a wrong slug at one site would pass every check.",
+ "checked_in_code": "I ran the rg: 27 lines hold the statement today, in the files the findings list (line numbers match), and storeSlugOf() in menus.ts is cached for days with no tag and has 13 importers. theme-store.ts calls loadCards() three times, as found. paths.ts parses NEXT_PUBLIC_STORE_HOSTS on every storeHosts() call. Corrections: the step says the helper is 'refreshed when a sandbox is kept', so the brief gives it a tag by id and marks it stale in adoptRequestSandbox(), and leaves out CP-2's in-memory Map, getStoreById() and slug-fixing migration; SD-10 wanted refreshStoreById() to keep its own read, but the done-when's 3 lines only works if it uses the helper, which is safe once the tag exists. store-copy.ts line 633 reads a store the copy has just made, so the brief asks the executor to check its transaction first. Second check (12 November): each of the 24 sites now has its exact replacement (content-grid.ts:133 drops its own `const slug` line, field-tiles.ts:176 is a Promise.all entry, pipedrive.ts and kaizen-life-handoffs.ts use other names); custom-fields.ts's five sites and store-copy.ts:633 all read a committed store through db() or readDb(), so all are replaced and the count stays 3 (the stop_if says above 3); a null cached for a missing id is the helper's behaviour today and no caller reads a store before its row is committed.",
+ "cheap_commits": [
+  1,
+  2
+ ],
+ "rating_checked": "cheap"
 }

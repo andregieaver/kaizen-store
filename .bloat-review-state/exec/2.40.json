@@ -1,182 +1,201 @@
 {
-  "id": "2.40",
-  "goal": "Each decision is a file docs/decisions/D{n}.md with no line over 500 characters, docs/decisions.md is a generated index with one short row per decision, the Migration versions list is a file of its own, and a scan test holds all of it.",
-  "why": "docs/decisions.md is one file of 1,330,879 bytes in which 548 lines are over 500 characters (97.8% of the file, which the search tool cannot show) and a row runs to 17,985; after the step there are 564 files, 0 lines over 500 characters, index rows under 200 characters and no decisions file over 200 KB.",
-  "read_first": [
-    "docs/decisions.md:1-12",
-    "docs/audits/code-review-2026-11.md",
-    "scripts/parity.mjs",
-    "src/lib/parity.ts",
-    "src/lib/docs-content.test.ts",
-    "src/lib/docs-content.ts",
-    "README.md",
-    "docs/parity/WAVES.md"
-  ],
-  "depends_on": [
-    {
-      "id": "0.41",
-      "why": "it moves rows D366 to D573 back into the Settled table and adds scripts/claim-decision.mjs, which this step changes to claim a number as a new file"
-    },
-    {
-      "id": "1.1",
-      "why": "its src/lib/docs-budget.scan.test.ts and baseline hold lines over 500 characters per folder and fail an id that appears twice; this step lowers that baseline and must not fight it"
-    }
-  ],
-  "commits": [
-    {
-      "title": "scripts/decisions.mjs: split the decisions into a file each and write the index, with a proof that no word changed",
-      "changes": [
-        {
-          "file": "scripts/decisions.mjs",
-          "action": "create",
-          "how": "A node script with no dependencies, shaped like scripts/parity.mjs, with four commands. Shared parsing: read docs/decisions.md; a decision row is a line matching /^\\| (D\\d+) \\|/. Split a row into cells at ' | ' boundaries that are outside code spans (text between backticks) and are not an escaped pipe ('\\|'); drop the leading and trailing '|'. Cell 1 is the id. Rows have 2 to 6 cells today (169 with 2, 379 with 4, 16 others where a pipe sits inside code); the code-span rule makes the odd ones 2 or 4: if a row still does not give 2 or 4 cells, exit 1 naming the id. In a 4-cell row the cells are id, decision, date, consequence; in a 2-cell row id and text. 'split': for each row write docs/decisions/D{n}.md: line 1 '# D{n}: {title}', where title is the row's bold lead (the first **...** of the second cell, without the asterisks) cut at its first '(' , '.' or ':' and trimmed; a blank line; then the second cell's full text as a paragraph; for a 4-cell row a blank line, 'Date: {third cell}', a blank line, and the fourth cell as a paragraph. Wrap each paragraph so no line is over 500 characters: break after a sentence end ('. ' followed by a capital letter or a backtick) at or before column 500, else at the last space before column 500; never break inside a code span; if a single code span is longer than 500 characters exit 1 naming the id. The proof, run inside 'split' for every file: take the file's text without line 1 and without the one 'Date: ' label the script itself wrote (only that one, at the start of its own line; a 'Date: ' inside a decision's text stays), remove every whitespace character and every '|'; take the row's line without its id cell, remove every whitespace character and every '|'; the two strings must be equal, else exit 1 naming the id and the first differing position. 'write': replace everything between the markers '<!-- decisions:index -->' and '<!-- /decisions:index -->' in docs/decisions.md with the index: the header '| # | Decision | Date | Text |' and its rule line, then one row per file in docs/decisions sorted by number: '| D{n} | **{title}** | {date or empty} | [text](decisions/D{n}.md) |', the title cut with an ellipsis so the whole row is at most 190 characters. 'check': exit 1 unless the index in docs/decisions.md equals what 'write' would produce, every file is named D{n}.md with line 1 starting '# D{n}:', no id appears twice, no line in docs/decisions.md or docs/decisions/*.md is over 500 characters, no index row is over 200 characters, and no file under docs/decisions or docs/decisions.md is over 200,000 bytes. 'new \"Title sentence.\"': take the next free number (highest file number plus 1), write docs/decisions/D{n}.md with line 1, an empty line and 'Date: {today}', run 'write', and print the id. Print one summary line per command (rows read, files written, longest line)."
-        },
-        {
-          "file": "scripts/decisions.test.mjs",
-          "action": "create",
-          "how": "Only if the repo runs script tests this way (check how scripts/claim-decision.mjs of step 0.41 is unit-tested and put this test beside that one, in the same style and folder; if that test lives under src/lib, create src/lib/decisions-script.test.ts instead and name it in the commit). Cases on a fixture string, not on the real file: a 4-cell row, a 2-cell row, a row with a pipe inside a code span, a row with an escaped pipe, a row of 18,000 characters; each splits, passes the proof, has no line over 500; a row whose text is altered by one character after the split fails the proof."
-        }
-      ],
-      "checks": [
-        "node scripts/decisions.mjs check: exits 1 with 'no index markers' (nothing is split yet): the command runs",
-        "pnpm test on the new test file: passes",
-        "pnpm lint && pnpm typecheck && pnpm test: exits 0"
-      ]
-    },
-    {
-      "title": "One file per decision, with a generated index; the Migration versions list in its own file",
-      "changes": [
-        {
-          "file": "docs/decisions.md",
-          "action": "edit",
-          "how": "Do not edit this file by hand except for the two steps named here; the lines run to 18 KB. (1) Before anything, note the count: rg -c '^\\| D\\d+ \\|' docs/decisions.md (564 on 12 November 2026; more if decisions were added since: use the real count wherever this brief says 564, and say it in the commit message). (2) With a small node one-liner, move the section '### Migration versions' (from its heading up to, but not including, the line '## Open'; lines 420 to 905 today, minus any decision rows step 0.41 has not yet moved out of it) into the new file docs/decisions/migration-versions.md, unchanged, under the heading '# Migration versions', and leave in its place one line: 'Migration versions: [decisions/migration-versions.md](decisions/migration-versions.md).' (3) Run 'node scripts/decisions.mjs split'. (4) With the same one-liner approach, replace the Settled table (the header row '| # | Decision | Date | Consequence |', its rule line and every '| D… |' row) by the two marker lines '<!-- decisions:index -->' and '<!-- /decisions:index -->', then run 'node scripts/decisions.mjs write'. Keep the file's title, its opening paragraph, '## Settled', '### Selling from Norway to Sweden and Denmark', '## Open' and their prose exactly as they are. Add one sentence under '## Settled': 'Each decision's text is its own file in docs/decisions/; this table is written by node scripts/decisions.mjs write. A new decision: node scripts/decisions.mjs new \"Title.\"'."
-        },
-        {
-          "file": "docs/decisions/migration-versions.md",
-          "action": "create",
-          "how": "The moved section, byte for byte below its new '# Migration versions' heading. If a line in it is over 500 characters, wrap it at sentence ends with the script's wrapper (export the wrap function, or run a one-liner that imports it); change no word."
-        },
-        {
-          "file": "docs/decisions/D*.md",
-          "action": "create",
-          "how": "Written by 'node scripts/decisions.mjs split', never by hand: one file per row. Commit them all in this commit."
-        },
-        {
-          "file": "src/lib/decisions.scan.test.ts",
-          "action": "create",
-          "how": "A vitest scan test in the style of src/lib/brand.scan.test.ts: (1) runs the same checks as 'node scripts/decisions.mjs check' by importing its check function (export it from the script; if a .mjs import is awkward in vitest, spawn 'node scripts/decisions.mjs check' with execFileSync and assert exit code 0, printing its output on failure); (2) asserts no file in docs/decisions and not docs/decisions.md is over 200,000 bytes; (3) asserts the number of docs/decisions/D*.md files equals the number of index rows. Failure message: 'run node scripts/decisions.mjs write; a decision's text goes in docs/decisions/D{n}.md, lines under 500 characters'."
-        },
-        {
-          "file": "scripts/claim-decision.mjs",
-          "action": "create",
-          "how": "Marked create only because step 0.41 has not made it yet: EDIT it, never overwrite. Step 0.41 made this script claim a number by adding a one-row stub to the table. Make it claim by file instead: it calls the 'new' command's function of scripts/decisions.mjs (creates docs/decisions/D{n}.md and rewrites the index) and keeps its own rule (claim on main first; a second claim of a taken number is refused). Update its unit test to the file form. If the script does not exist (step 0.41 not done), skip this change and say so in the hand-back."
-        },
-        {
-          "file": "src/lib/docs-content.ts",
-          "action": "edit",
-          "how": "Line 449: the message 'sources: ${id} has no row in docs/decisions.md.' stays true (the index keeps the rows); change nothing unless the comment at line 29 or 207 says the text is in docs/decisions.md: there write 'has a row in docs/decisions.md (its text is docs/decisions/D{n}.md)'."
-        },
-        {
-          "file": "README.md",
-          "action": "edit",
-          "how": "Line 17: 'Look up a decision by its number: open docs/decisions/D16.md (the index is docs/decisions.md). Code comments cite them.' Line 69: where it says a migration 'has its version recorded in docs/decisions.md', write docs/decisions/migration-versions.md."
-        },
-        {
-          "file": "CLAUDE.md",
-          "action": "edit",
-          "how": "Two word changes only, no new sentence (the docs budget holds this file's bytes and must not rise: check wc -c before and after). (1) In the Database section: 'record the file's version in `docs/decisions.md` (Migration versions)' becomes 'record the file's version in `docs/decisions/migration-versions.md`'. (2) If a line tells how to look a decision up (step 0.41 or 2.1 may have added one: rg -n 'decisions' CLAUDE.md), make it 'open docs/decisions/D178.md'. Leave every other mention."
-        },
-        {
-          "file": "docs/parity/WAVES.md",
-          "action": "edit",
-          "how": "Line 75 (it tells a wave to add its decision row to docs/decisions.md): say 'node scripts/decisions.mjs new \"…\" and write the text in docs/decisions/D{n}.md'."
-        },
-        {
-          "file": "docs/audits/code-review-2026-11.md",
-          "action": "edit",
-          "how": "Progress row 1.10 (line 67, 'Make the written rules cheap to read', findings FH4 and FH5): if step 2.1 (CLAUDE.md under 10.5 KB) is already done, set it to Done with the date and commit; otherwise write 'decisions split <date> <commit>; CLAUDE.md is bloat-review step 2.1' in its note. Correct FH4's row (about line 254): the limit that matters is the search tool's 500 characters per line; one file per decision, not per hundred. Add a change-log line."
-        },
-        {
-          "file": "src/lib/docs-budget.baseline.json",
-          "action": "create",
-          "how": "Marked create only because step 1.1 has not made it yet: EDIT it, never overwrite. Lower the figures the split changed (lines over 500 characters in docs, table rows over 500 characters, decisions over 4,000 bytes if it counts rows) with node scripts/docs-ratchet.mjs, the script step 1.1 names; if that test counts 'rules and decisions over 4,000 bytes' by row, point it at the files in docs/decisions."
-        }
-      ],
-      "checks": [
-        "ls docs/decisions/D*.md | wc -l: prints the count noted before the split (564)",
-        "rg -c '^\\| D\\d+ \\|' docs/decisions.md: prints the same count",
-        "awk 'length($0)>500' docs/decisions.md docs/decisions/*.md | wc -l: prints 0",
-        "awk '/^\\| D[0-9]+ \\|/ && length($0)>200' docs/decisions.md | wc -l: prints 0",
-        "node scripts/decisions.mjs check: exits 0",
-        "pnpm test src/lib/decisions.scan.test.ts src/lib/docs-content.test.ts src/lib/parity.test.ts src/lib/docs-budget.scan.test.ts src/lib/brand.scan.test.ts: pass",
-        "node scripts/parity.mjs (the command pnpm parity runs; read package.json for its arguments): exits 0, every decision a parity row cites is still known",
-        "git diff --stat: only docs/decisions.md, docs/decisions/**, the script, the tests and the named docs changed; wc -c CLAUDE.md is not higher than before",
-        "pnpm lint && pnpm typecheck && pnpm test: exits 0"
-      ]
-    }
-  ],
-  "tests": [
-    {
-      "file": "src/lib/decisions.scan.test.ts",
-      "proves": "fails when a decisions file is over 200 KB, a line is over 500 characters, an index row is over 200 characters or missing, an id appears twice, or the index was not regenerated"
-    },
-    {
-      "file": "src/lib/docs-content.test.ts",
-      "proves": "existing: a docs portal article's sources must still have a row '| D123 |' in docs/decisions.md"
-    },
-    {
-      "file": "src/lib/parity.test.ts",
-      "proves": "existing: decisionIds() still reads every id from the index rows"
-    }
-  ],
-  "migration": {
-    "needed": false,
-    "notes": ""
+ "id": "2.40",
+ "goal": "Each decision is a file docs/decisions/D{n}.md with no line over 500 characters, docs/decisions.md is a generated index with one short row per decision, the Migration versions list is a file of its own, and a scan test holds all of it.",
+ "why": "docs/decisions.md is one file of 1,330,879 bytes in which 548 lines are over 500 characters (97.8% of the file, which the search tool cannot show) and a row runs to 17,985; after the step there are 564 files, 0 lines over 500 characters, index rows under 200 characters and no decisions file over 200 KB.",
+ "read_first": [
+  "docs/decisions.md:1-12",
+  "docs/audits/code-review-2026-11.md",
+  "scripts/parity.mjs",
+  "src/lib/parity.ts",
+  "src/lib/docs-content.test.ts",
+  "src/lib/docs-content.ts",
+  "README.md",
+  "docs/parity/WAVES.md"
+ ],
+ "depends_on": [
+  {
+   "id": "0.41",
+   "why": "it moves rows D366 to D573 back into the Settled table and adds scripts/claim-decision.mjs, which this step changes to claim a number as a new file"
   },
-  "done_when": [
+  {
+   "id": "1.1",
+   "why": "its src/lib/docs-budget.scan.test.ts and baseline hold lines over 500 characters per folder and fail an id that appears twice; this step lowers that baseline and must not fight it"
+  }
+ ],
+ "commits": [
+  {
+   "title": "scripts/decisions.mjs: split the decisions into a file each and write the index, with a proof that no word changed",
+   "changes": [
     {
-      "check": "ls docs/decisions/D*.md | wc -l",
-      "expect": "564 (or the row count noted before the split, if decisions were added since 12 November 2026)"
+     "file": "scripts/decisions.mjs",
+     "action": "create",
+     "how": "A node script with no dependencies, shaped like scripts/parity.mjs, with four commands. Shared parsing: read docs/decisions.md; a decision row is a line matching /^\\| (D\\d+) \\|/. Split a row into cells at ' | ' boundaries that are outside code spans (text between backticks) and are not an escaped pipe ('\\|'); drop the leading and trailing '|'. Cell 1 is the id. Rows have 2 to 6 cells today (169 with 2, 379 with 4, 16 others where a pipe sits inside code); the code-span rule makes the odd ones 2 or 4: if a row still does not give 2 or 4 cells, exit 1 naming the id. In a 4-cell row the cells are id, decision, date, consequence; in a 2-cell row id and text. Every date cell of a 4-cell row today is YYYY-MM-DD (387 of 387): if a 4-cell row's third cell, trimmed, does not match /^\\d{4}-\\d{2}-\\d{2}$/, exit 1 naming the id (a row split at the wrong pipe would otherwise pass the proof, which ignores pipes). 'split': for each row write docs/decisions/D{n}.md: line 1 '# D{n}: {title}', where title is the row's bold lead (the first **...** of the second cell, without the asterisks) cut at its first '(' , '.' or ':' and trimmed; a blank line; then the second cell's full text as a paragraph; for a 4-cell row a blank line, 'Date: {third cell}', a blank line, and the fourth cell as a paragraph. Wrap each paragraph so no line is over 500 characters: break after a sentence end ('. ' followed by a capital letter or a backtick) at or before column 500, else at the last space before column 500; never break inside a code span; if a single code span is longer than 500 characters exit 1 naming the id. The proof, run inside 'split' for every file: take the file's text without line 1 and without the one 'Date: ' label the script itself wrote (only that one, at the start of its own line; a 'Date: ' inside a decision's text stays), remove every whitespace character and every '|'; take the row's line without its id cell, remove every whitespace character and every '|'; the two strings must be equal, else exit 1 naming the id and the first differing position. 'write': replace everything between the markers '<!-- decisions:index -->' and '<!-- /decisions:index -->' in docs/decisions.md with the index: the header '| # | Decision | Date | Text |' and its rule line, then one row per file in docs/decisions sorted by number: '| D{n} | **{title}** | {date or empty} | [text](decisions/D{n}.md) |', the title cut with an ellipsis so the whole row is at most 190 characters. 'check': exit 1 unless the index in docs/decisions.md equals what 'write' would produce, every file is named D{n}.md with line 1 starting '# D{n}:', no id appears twice, no line in docs/decisions.md or docs/decisions/*.md is over 500 characters, no index row is over 200 characters, and no file under docs/decisions or docs/decisions.md is over 200,000 bytes. 'new \"Title sentence.\"': take the next free number (highest file number plus 1), write docs/decisions/D{n}.md with line 1, an empty line and 'Date: {today}', run 'write', and print the id. Print one summary line per command (rows read, files written, longest line). Export the functions (split, write, check, newDecision(title, date) and indexRow(n, title, date), the one builder of an index row) and run a command only when the file is the one node was started with (`import.meta.url === pathToFileURL(process.argv[1]).href`), so tests and scripts/lib/claim-decision.mjs can import it."
     },
     {
-      "check": "awk 'length($0)>500' docs/decisions.md docs/decisions/D*.md | wc -l",
-      "expect": "0 (548 before)"
-    },
-    {
-      "check": "awk '/^\\| D[0-9]+ \\|/ && length($0)>200' docs/decisions.md | wc -l",
-      "expect": "0"
-    },
-    {
-      "check": "pnpm test src/lib/decisions.scan.test.ts",
-      "expect": "passes"
-    },
-    {
-      "check": "wc -c docs/decisions.md docs/decisions/migration-versions.md",
-      "expect": "each under 200,000 bytes"
+     "file": "src/lib/decisions-script.test.ts",
+     "action": "create",
+     "how": "Step 0.41 tests its script from src/lib (src/lib/claim-decision.test.ts imports '../../scripts/lib/claim-decision.mjs'), so this test is a Vitest file in the same style, importing from '../../scripts/decisions.mjs'. Cases on a fixture string, not on the real file: a 4-cell row, a 2-cell row, a row with a pipe inside a code span, a row with an escaped pipe, a row of 18,000 characters; each splits, passes the proof, has no line over 500; a row whose text is altered by one character after the split fails the proof; a 4-cell row whose date cell is not YYYY-MM-DD (a pipe misplaced) exits with its id."
     }
-  ],
-  "after_deploy": [],
-  "docs": [
-    "A new decision, made with node scripts/decisions.mjs new: 'One file per decision (docs/decisions/D{n}.md), docs/decisions.md is a generated index, lines stay under 500 characters; why (the search tool, two sessions claiming a number), and how to add one'. It is the first decision written the new way.",
-    "README.md lines 17 and 69, CLAUDE.md's Database sentence, docs/parity/WAVES.md line 75 and docs/audits/code-review-2026-11.md row 1.10 and FH4, as the commit says.",
-    "docs/audits/bloat-review-2026-11.md: row 2.40 to Done (rg -n '^\\| *2\\.40 ' docs/audits/bloat-review-2026-11.md), with the file count and the longest line after. Tell the hand-back that every later brief's 'a row in docs/decisions.md' now means 'node scripts/decisions.mjs new'."
-  ],
-  "do_not": [
-    "Do not shorten, reword, merge or reorder the text of any decision: the proof must pass with every word in place.",
-    "Do not edit docs/decisions.md by hand or with sed on its long lines; use the script and node one-liners.",
-    "Do not change the row shape '| D123 |' at the start of an index line: three readers match it (src/lib/docs-content.test.ts line 43, src/lib/parity.ts decisionIds, scripts/parity.mjs line 44).",
-    "Do not delete the Migration versions list or the instruction to add to it: step 2.41 retires it; here it only moves.",
-    "Do not renumber any decision or touch the 19,000 citations of D-numbers in source.",
-    "Do not add a sentence to CLAUDE.md."
-  ],
-  "stop_if": [
-    "node scripts/decisions.mjs split exits 1 (a row that does not parse, a code span over 500 characters, or a failed proof): report the id; do not hand-fix the row's text.",
-    "Rows D366 to D573 still sit under '### Migration versions' (step 0.41 not done): the script must still find them by the row pattern, but check the moved Migration versions file holds no '| D' row; if it does, stop.",
-    "The file count and the index row count differ, or differ from the count noted before the split.",
-    "docs-content.test.ts or parity.test.ts needs a change to pass.",
-    "wc -c CLAUDE.md rose."
-  ],
-  "executor": "cheap-then-review",
-  "executor_why": "The split is done by a script that proves no word changed and the checks are exact counts, but it rewrites the project's whole decision record into 564 files, so a stronger model should read the script and a sample of files before the push.",
-  "checked_in_code": "I opened docs/decisions.md: 1,330,879 bytes, 931 lines, 564 rows matching '| Dnnn |', 548 lines over 500 characters, the Settled table from line 10, '### Migration versions' at line 420 and rows D366 to D573 from line 708 under it with no header, as DC-2 says; rows have 2 cells (169), 4 cells (379) or 3, 5 and 6 (16, pipes inside code). The three readers of the row pattern are where the finding puts them (docs-content.test.ts line 43, parity.ts about line 313, scripts/parity.mjs line 44). The step asks for index rows under 200 characters, tighter than the finding's sketch, so the brief cuts the title to fit and keeps the full lead in the file's body; the finding's proof would fail on a heading that repeats the lead, so the proof here leaves line 1 out. AS-8's second fix (a ratchet in scripts/lib/ratchet-count.mjs) is replaced by the plan's own decisions.scan.test.ts and the docs budget of step 1.1."
+   ],
+   "checks": [
+    "node scripts/decisions.mjs check: exits 1 with 'no index markers' (nothing is split yet): the command runs",
+    "pnpm test src/lib/decisions-script.test.ts: passes",
+    "pnpm lint && pnpm typecheck && pnpm test: exits 0"
+   ]
+  },
+  {
+   "title": "One file per decision, with a generated index; the Migration versions list in its own file",
+   "changes": [
+    {
+     "file": "docs/decisions.md",
+     "action": "edit",
+     "how": "Do not edit this file by hand except for the two steps named here; the lines run to 18 KB. (1) Before anything, note the count: rg -c '^\\| D\\d+ \\|' docs/decisions.md (564 on 12 November 2026; more if decisions were added since: use the real count wherever this brief says 564, and say it in the commit message). (2) With a small node one-liner, move the section '### Migration versions' (from its heading up to, but not including, the line '## Open'; lines 420 to 905 today, minus any decision rows step 0.41 has not yet moved out of it) into the new file docs/decisions/migration-versions.md, unchanged, under the heading '# Migration versions', and leave in its place one line: 'Migration versions: [decisions/migration-versions.md](decisions/migration-versions.md).' (3) Run 'node scripts/decisions.mjs split'. (4) With the same one-liner approach, replace the Settled table (the header row '| # | Decision | Date | Consequence |', its rule line and every '| D… |' row) by the two marker lines '<!-- decisions:index -->' and '<!-- /decisions:index -->', then run 'node scripts/decisions.mjs write'. Keep the file's title, its opening paragraph, '## Settled', '### Selling from Norway to Sweden and Denmark', '## Open' and their prose exactly as they are. Add one sentence under '## Settled': 'Each decision's text is its own file in docs/decisions/; this table is written by node scripts/decisions.mjs write. A new decision: node scripts/decisions.mjs new \"Title.\"'."
+    },
+    {
+     "file": "docs/decisions/migration-versions.md",
+     "action": "create",
+     "how": "The moved section, byte for byte below its new '# Migration versions' heading. If a line in it is over 500 characters, wrap it at sentence ends with the script's wrapper (export the wrap function, or run a one-liner that imports it); change no word."
+    },
+    {
+     "file": "docs/decisions/D*.md",
+     "action": "create",
+     "how": "Written by 'node scripts/decisions.mjs split', never by hand: one file per row. Commit them all in this commit."
+    },
+    {
+     "file": "src/lib/decisions.scan.test.ts",
+     "action": "edit",
+     "how": "Step 0.41 made this file with three cases on docs/decisions.md: (1) every '| D… |' row is in one unbroken run directly after '| # | Decision | Date | Consequence |' and '|---|---|---|---|'; (2) no id twice; (3) a row with '(claimed YYYY-MM-DD, text follows)' is less than 14 days old. After the split, case (1) would fail (the index header is '| # | Decision | Date | Text |'), so rewrite it: the rows are one unbroken run directly after the line '<!-- decisions:index -->', the header '| # | Decision | Date | Text |' and its rule line, and directly before '<!-- /decisions:index -->'. Keep case (2) and add to it that no two files under docs/decisions share a number. Case (3) reads the files: a docs/decisions/D{n}.md whose text holds '(claimed YYYY-MM-DD, text follows)' (stubs claimed before the split), or that has nothing but its line 1 and its 'Date: ' line (claimed after the split, dated by that line), must be less than 14 days old. Then add: (4) the same checks as 'node scripts/decisions.mjs check', by importing its check function; (5) no file in docs/decisions and not docs/decisions.md is over 200,000 bytes; (6) the number of docs/decisions/D*.md files equals the number of index rows. Failure message of (4) to (6): 'run node scripts/decisions.mjs write; a decision's text goes in docs/decisions/D{n}.md, lines under 500 characters'.",
+     "made_by": "0.41"
+    },
+    {
+     "file": "scripts/claim-decision.mjs",
+     "action": "edit",
+     "how": "Step 0.41 made this command and its pure part scripts/lib/claim-decision.mjs (nextDecision(text), stubRow(), withStub(text, id, title, date), claimWith(io, title, date, tries) where io.read() returns docs/decisions.md on origin/main and io.push(newText, message) commits that one path on top of origin/main with git hash-object, a temporary GIT_INDEX_FILE, read-tree, update-index --cacheinfo, write-tree, commit-tree and git push origin <commit>:refs/heads/main), tested in src/lib/claim-decision.test.ts. EDIT both, never overwrite; if they do not exist (step 0.41 not done), skip this change and say so in the hand-back. Make a claim write two paths: in scripts/lib/claim-decision.mjs import indexRow from '../decisions.mjs'; withStub(text, id, title, date) inserts indexRow(id, title, date) as a new line directly before '<!-- /decisions:index -->' (refusing a taken id as today); add fileStub(id, title, date) = '# D' + id + ': ' + title + '\\n\\nDate: ' + date + '\\n' (what 'new' writes); claimWith calls io.push({ 'docs/decisions.md': withStub(…), ['docs/decisions/D' + id + '.md']: fileStub(…) }, message). In scripts/claim-decision.mjs push(files, message) hashes each file and runs update-index --cacheinfo once per path, all else unchanged (no force, the working tree untouched). In src/lib/claim-decision.test.ts change cases (b) and (d) to the new forms: the stub row sits before the closing marker and equals indexRow(); push receives both paths; nextDecision still reads '| D{n} |' rows.",
+     "made_by": "0.41"
+    },
+    {
+     "file": "src/lib/docs-content.ts",
+     "action": "edit",
+     "how": "Line 449: the message 'sources: ${id} has no row in docs/decisions.md.' stays true (the index keeps the rows); change nothing unless the comment at line 29 or 207 says the text is in docs/decisions.md: there write 'has a row in docs/decisions.md (its text is docs/decisions/D{n}.md)'."
+    },
+    {
+     "file": "README.md",
+     "action": "edit",
+     "how": "Line 17: 'Look up a decision by its number: open docs/decisions/D16.md (the index is docs/decisions.md). Code comments cite them.' Line 69: where it says a migration 'has its version recorded in docs/decisions.md', write docs/decisions/migration-versions.md."
+    },
+    {
+     "file": "CLAUDE.md",
+     "action": "edit",
+     "how": "Two word changes only, no new sentence (the docs budget holds this file's bytes and must not rise: check wc -c before and after). (1) In the Database section the sentence is wrapped across lines 77 and 78: line 77 ends '… and record the file's version in `docs/decisions.md` (Migration' and line 78 begins '  versions). A migration must keep …'. Replace the two-line text '`docs/decisions.md` (Migration\\n  versions).' by '`docs/decisions/migration-versions.md`.' (one Edit whose old text spans the line break; keep the rest of both lines and the two-space indent of line 78). (2) If a line tells how to look a decision up (step 0.41 or 2.1 may have added one: rg -n 'decisions' CLAUDE.md), make it 'open docs/decisions/D178.md'. Leave every other mention."
+    },
+    {
+     "file": "docs/parity/WAVES.md",
+     "action": "edit",
+     "how": "Line 75 (it tells a wave to add its decision row to docs/decisions.md): say 'node scripts/decisions.mjs new \"…\" and write the text in docs/decisions/D{n}.md'."
+    },
+    {
+     "file": "docs/audits/code-review-2026-11.md",
+     "action": "edit",
+     "how": "Progress row 1.10 (line 67, 'Make the written rules cheap to read', findings FH4 and FH5): if step 2.1 (CLAUDE.md under 10.5 KB) is already done, set it to Done with the date and commit; otherwise write 'decisions split <date> <commit>; CLAUDE.md is bloat-review step 2.1' in its note. Correct FH4's row (about line 254): the limit that matters is the search tool's 500 characters per line; one file per decision, not per hundred. Add a change-log line."
+    },
+    {
+     "file": "src/lib/docs-budget.baseline.json",
+     "action": "edit",
+     "how": "Step 1.1 made this file (keys claude, loaded, imports, longLines { claude, rules, decisions, living, tableRows }, bigRules, bigDecisions, …) and scripts/docs-ratchet.mjs, which writes it and refuses to raise a figure. Never type it by hand. 1.1's counter already reads docs/decisions/D*.md for bigDecisions and longLines.decisions once the files exist, but a file would count more bytes than its row (its line 1 '# D{n}: {title}' repeats the title, about title + 3 bytes more), so the ratchet would refuse the 46 big decisions: in scripts/lib/docs-count.mjs (next change) count a decision file's bytes without its first line. Then run node scripts/docs-ratchet.mjs (no flag): longLines.decisions falls to 0, bigDecisions does not rise; the diff may only lower figures.",
+     "made_by": "1.1"
+    },
+    {
+     "file": "scripts/lib/docs-count.mjs",
+     "action": "edit",
+     "made_by": "1.1",
+     "how": "Step 1.1 wrote docsCounts() here. In field (6) bigDecisions, when docs/decisions/D*.md exist, measure each file as Buffer.byteLength of its text without its first line and the newline after it (the heading the split adds, which repeats the title the row already held), so a decision is never counted larger than its row was. Change nothing else; say so in a comment naming bloat review step 2.40."
+    }
+   ],
+   "checks": [
+    "ls docs/decisions/D*.md | wc -l: prints the count noted before the split (564)",
+    "rg -c '^\\| D\\d+ \\|' docs/decisions.md: prints the same count",
+    "awk 'length($0)>500' docs/decisions.md docs/decisions/*.md | wc -l: prints 0",
+    "awk '/^\\| D[0-9]+ \\|/ && length($0)>200' docs/decisions.md | wc -l: prints 0",
+    "node scripts/decisions.mjs check: exits 0",
+    "pnpm test src/lib/decisions.scan.test.ts src/lib/docs-content.test.ts src/lib/parity.test.ts src/lib/docs-budget.scan.test.ts src/lib/brand.scan.test.ts: pass",
+    "node scripts/parity.mjs (the command pnpm parity runs; read package.json for its arguments): exits 0, every decision a parity row cites is still known",
+    "git diff --stat: only docs/decisions.md, docs/decisions/**, the script, the tests and the named docs changed; wc -c CLAUDE.md is not higher than before",
+    "pnpm lint && pnpm typecheck && pnpm test: exits 0"
+   ]
+  }
+ ],
+ "tests": [
+  {
+   "file": "src/lib/decisions.scan.test.ts",
+   "proves": "fails when the index rows are not one run between the markers, an id appears twice, a claimed stub is 14 days old, a decisions file is over 200 KB, a line is over 500 characters, an index row is over 200 characters or missing, or the index was not regenerated"
+  },
+  {
+   "file": "src/lib/docs-content.test.ts",
+   "proves": "existing: a docs portal article's sources must still have a row '| D123 |' in docs/decisions.md"
+  },
+  {
+   "file": "src/lib/parity.test.ts",
+   "proves": "existing: decisionIds() still reads every id from the index rows"
+  },
+  {
+   "file": "src/lib/decisions-script.test.ts",
+   "proves": "fails when the split loses or changes a word, leaves a line over 500 characters, or accepts a 4-cell row whose date cell is not a date (a misplaced pipe)"
+  }
+ ],
+ "migration": {
+  "needed": false,
+  "notes": ""
+ },
+ "done_when": [
+  {
+   "check": "ls docs/decisions/D*.md | wc -l",
+   "expect": "564 (or the row count noted before the split, if decisions were added since 12 November 2026)"
+  },
+  {
+   "check": "awk 'length($0)>500' docs/decisions.md docs/decisions/D*.md | wc -l",
+   "expect": "0 (548 before)"
+  },
+  {
+   "check": "awk '/^\\| D[0-9]+ \\|/ && length($0)>200' docs/decisions.md | wc -l",
+   "expect": "0"
+  },
+  {
+   "check": "pnpm test src/lib/decisions.scan.test.ts",
+   "expect": "passes"
+  },
+  {
+   "check": "wc -c docs/decisions.md docs/decisions/migration-versions.md",
+   "expect": "each under 200,000 bytes"
+  }
+ ],
+ "after_deploy": [],
+ "docs": [
+  "A new decision, made with node scripts/decisions.mjs new: 'One file per decision (docs/decisions/D{n}.md), docs/decisions.md is a generated index, lines stay under 500 characters; why (the search tool, two sessions claiming a number), and how to add one'. It is the first decision written the new way.",
+  "README.md lines 17 and 69, CLAUDE.md's Database sentence, docs/parity/WAVES.md line 75 and docs/audits/code-review-2026-11.md row 1.10 and FH4, as the commit says.",
+  "docs/audits/bloat-review-2026-11.md: row 2.40 to Done (rg -n '^\\| *2\\.40 ' docs/audits/bloat-review-2026-11.md), with the file count and the longest line after. Tell the hand-back that every later brief's 'a row in docs/decisions.md' now means 'node scripts/decisions.mjs new'."
+ ],
+ "do_not": [
+  "Do not shorten, reword, merge or reorder the text of any decision: the proof must pass with every word in place.",
+  "Do not edit docs/decisions.md by hand or with sed on its long lines; use the script and node one-liners.",
+  "Do not change the row shape '| D123 |' at the start of an index line: three readers match it (src/lib/docs-content.test.ts line 43, src/lib/parity.ts decisionIds, scripts/parity.mjs line 44).",
+  "Do not delete the Migration versions list or the instruction to add to it: step 2.41 retires it; here it only moves.",
+  "Do not renumber any decision or touch the 19,000 citations of D-numbers in source.",
+  "Do not add a sentence to CLAUDE.md."
+ ],
+ "stop_if": [
+  "node scripts/decisions.mjs split exits 1 (a row that does not parse, a code span over 500 characters, or a failed proof): report the id; do not hand-fix the row's text.",
+  "Rows D366 to D573 still sit under '### Migration versions' (step 0.41 not done): the script must still find them by the row pattern, but check the moved Migration versions file holds no '| D' row; if it does, stop.",
+  "The file count and the index row count differ, or differ from the count noted before the split.",
+  "docs-content.test.ts or parity.test.ts needs a change to pass.",
+  "wc -c CLAUDE.md rose.",
+  "src/lib/decisions.scan.test.ts, src/lib/docs-budget.baseline.json or scripts/lib/docs-count.mjs does not exist (steps 0.41 and 1.1 not done): stop before commit 2."
+ ],
+ "executor": "cheap",
+ "executor_why": "Docs and docs scripts only: the split script's proof refuses any lost or changed word and now also a misplaced pipe (date cell check), the earlier steps' files are edits with their contents named, and the file and row counts, line limits, parity and docs-content tests catch a broken split; a wrong commit reverts in one step and nothing at run time changes.",
+ "checked_in_code": "I opened docs/decisions.md: 1,330,879 bytes, 931 lines, 564 rows matching '| Dnnn |', 548 lines over 500 characters, the Settled table from line 10, '### Migration versions' at line 420 and rows D366 to D573 from line 708 under it with no header, as DC-2 says; rows have 2 cells (169), 4 cells (379) or 3, 5 and 6 (16, pipes inside code). The three readers of the row pattern are where the finding puts them (docs-content.test.ts line 43, parity.ts about line 313, scripts/parity.mjs line 44). The step asks for index rows under 200 characters, tighter than the finding's sketch, so the brief cuts the title to fit and keeps the full lead in the file's body; the finding's proof would fail on a heading that repeats the lead, so the proof here leaves line 1 out. AS-8's second fix (a ratchet in scripts/lib/ratchet-count.mjs) is replaced by the plan's own decisions.scan.test.ts and the docs budget of step 1.1. Second check (12 November): src/lib/decisions.scan.test.ts is step 0.41's file (an edit: its case (1) is rewritten for the index markers and header, which would otherwise fail), claim-decision.mjs and its lib and test change to claim a file and an index row (indexRow exported from decisions.mjs), docs-count.mjs measures a decision file without its heading so the ratchet does not refuse the big decisions, the script test lives in src/lib beside 0.41's, the split refuses a 4-cell row whose date cell is not YYYY-MM-DD (all 387 are), and the CLAUDE.md sentence is replaced across its wrapped lines 77 and 78.",
+ "rating_checked": "cheap-then-review",
+ "cheap_commits": [
+  1,
+  2
+ ]
 }

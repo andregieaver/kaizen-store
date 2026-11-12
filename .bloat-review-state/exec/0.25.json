@@ -1,113 +1,115 @@
 {
-  "id": "0.25",
-  "goal": "pg_cron's run log holds at most about eight days of rows: its backlog is emptied once and a daily pg_cron job deletes rows older than seven days.",
-  "why": "cron.job_run_details is 564 MB of the 731 MB database and nothing prunes it (about 13,250 rows a day). After the one-off emptying and a week of the daily prune the cron schema is under 80 MB (eight days of rows are 58 to 64 MB).",
-  "read_first": [
-    "docs/ci-migrations.md",
-    "supabase/migrations/20261111172842_baseline_4_roles_and_supabase.sql",
-    "scripts/db-migrate.mjs",
-    "src/db/migration-safety.scan.test.ts",
-    "scripts/lib/restore-check.mjs",
-    "docs/capacity.md",
-    "docs/runbooks/restore.md"
-  ],
-  "depends_on": [],
-  "commits": [
+ "id": "0.25",
+ "goal": "pg_cron's run log holds at most about eight days of rows: its backlog is emptied once and a daily pg_cron job deletes rows older than seven days.",
+ "why": "cron.job_run_details is 564 MB of the 731 MB database and nothing prunes it (about 13,250 rows a day). After the one-off emptying and a week of the daily prune the cron schema is under 80 MB (eight days of rows are 58 to 64 MB).",
+ "read_first": [
+  "docs/ci-migrations.md",
+  "supabase/migrations/20261111172842_baseline_4_roles_and_supabase.sql",
+  "scripts/db-migrate.mjs",
+  "src/db/migration-safety.scan.test.ts",
+  "scripts/lib/restore-check.mjs",
+  "docs/capacity.md",
+  "docs/runbooks/restore.md"
+ ],
+ "depends_on": [],
+ "commits": [
+  {
+   "title": "The scheduler's own run log is emptied once and kept to seven days",
+   "changes": [
     {
-      "title": "The scheduler's own run log is emptied once and kept to seven days",
-      "changes": [
-        {
-          "file": "supabase/migrations/*_cron_run_log_retention.sql",
-          "action": "create",
-          "how": "Make the file with `pnpm exec drizzle-kit generate --custom --name cron_run_log_retention` (it writes an empty file with a new timestamp into supabase/migrations and adds it to the journal), then `node scripts/prune-snapshots.mjs`. Do not hand-pick the timestamp. Put exactly this SQL in the file, nothing else:\n\n-- pg_cron's own run log (cron.job_run_details) grows by one row a run and nothing pruned it: 564 MB of a 731 MB database on 11 November 2026.\n-- Emptied once here, then kept to seven days by a daily job. Nothing reads the log: the app's own ledger of jobs is commerce.cron_jobs.\n-- A database without pg_cron (the tests' PGlite, CI's Postgres) has no cron schema and skips all of it.\nDO $do$\nBEGIN\n  IF EXISTS (SELECT 1 FROM pg_namespace WHERE nspname = 'cron')\n     AND EXISTS (SELECT 1 FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace WHERE n.nspname = 'cron' AND c.relname = 'job_run_details') THEN\n    IF has_table_privilege(current_user, 'cron.job_run_details', 'TRUNCATE') THEN\n      TRUNCATE cron.job_run_details;\n    ELSIF has_table_privilege(current_user, 'cron.job_run_details', 'DELETE') THEN\n      DELETE FROM cron.job_run_details WHERE coalesce(end_time, start_time) < now() - interval '7 days';\n    ELSE\n      RAISE NOTICE 'cron.job_run_details: no right to truncate or delete; the backlog stays';\n    END IF;\n    -- cron.schedule with a name replaces the job of that name, so this can run again.\n    PERFORM cron.schedule('kaizen-cron-log-retention', '41 3 * * *', $job$ DELETE FROM cron.job_run_details WHERE coalesce(end_time, start_time) < now() - interval '7 days' $job$);\n  END IF;\nEND\n$do$;\n\nNo `-- kaizen:no-transaction` line: no hot table is touched and the block must run as one unit. CI's runner gives a file 10 minutes per statement and a 30 s lock wait (scripts/db-migrate.mjs), which the one-off delete fits where TRUNCATE is not allowed."
-        },
-        {
-          "file": "src/db/cron-log-retention.test.ts",
-          "action": "create",
-          "how": "A small text test: read every .sql file name in supabase/migrations (fs.readdirSync), find the one whose name ends '_cron_run_log_retention.sql', read it and expect: it contains `nspname = 'cron'` (the guard), `'kaizen-cron-log-retention'`, `interval '7 days'`, and does NOT contain 'net.http_post' (the job calls nothing out, so scripts/lib/restore-check.mjs does not count it) nor 'kaizen:no-transaction'. A doc comment says why the guard matters: the tests' PGlite and CI's Postgres have no pg_cron."
-        },
-        {
-          "file": "docs/ci-migrations.md",
-          "action": "edit",
-          "how": "In the part on the scheduler's block of the baseline (about lines 30 to 46; rg -n 'scheduler' docs/ci-migrations.md) add one sentence: 'The run log's prune (`kaizen-cron-log-retention`, daily at 03:41, seven days) is scheduled by the migration `…_cron_run_log_retention.sql`; at the next squash fold it into the new baseline's scheduler block by hand.'"
-        },
-        {
-          "file": "docs/capacity.md",
-          "action": "edit",
-          "how": "Where the tables with a retention rule are listed (about line 112, 'a retention rule if it grows'; rg -n 'retention' docs/capacity.md) add a line: 'pg_cron's own run log (`cron.job_run_details`): seven days, by the pg_cron job `kaizen-cron-log-retention` (not the daily route: the app's role has no business in the cron schema). It holds no personal data, so `src/lib/retention.ts` has no rule for it.'"
-        },
-        {
-          "file": "docs/decisions.md",
-          "action": "edit",
-          "how": "Append one row with the next free D-number (pull main first; `rg -o '^\\| D[0-9]+' docs/decisions.md | tr -dc '0-9\\n' | sort -n | tail -1`, plus 1). It records: the log's size when found (564 MB of 731 MB), the one-off emptying (TRUNCATE where the role may, else a delete of rows older than seven days) and the daily prune at 03:41; that nothing reads the log (commerce.cron_jobs is the app's ledger); that the baseline was not edited (D572) and the job is folded in at the next squash. Rejected: an hourly batch delete (not needed: the runner allows 10 minutes and a day adds about 13,250 rows); pruning from the app's daily route. Platform: one scheduler, so the prune covers the platform's jobs too. After CI has applied the file, add its version under Migration versions with the advisors' result."
-        }
-      ],
-      "checks": [
-        "pnpm exec vitest run src/db/cron-log-retention.test.ts src/db/migration-safety.scan.test.ts src/db/snapshots.scan.test.ts src/db/commerce.test.ts : pass (the file is a no-op on PGlite)",
-        "pnpm db:check : exits 0",
-        "node scripts/db-setup.mjs --seed on an empty DATABASE_URL : exits 0 (a Postgres without pg_cron skips the block)",
-        "pnpm exec vitest run src/lib/restore-check.test.ts : passes",
-        "pnpm lint && pnpm typecheck && pnpm test : exits 0"
-      ]
-    }
-  ],
-  "tests": [
+     "file": "supabase/migrations/*_cron_run_log_retention.sql",
+     "action": "create",
+     "how": "Make the file with `pnpm exec drizzle-kit generate --custom --name cron_run_log_retention` (it writes an empty file with a new timestamp into supabase/migrations and adds it to the journal), then `node scripts/prune-snapshots.mjs`. Do not hand-pick the timestamp. Put exactly this SQL in the file, nothing else:\n\n-- pg_cron's own run log (cron.job_run_details) grows by one row a run and nothing pruned it: 564 MB of a 731 MB database on 11 November 2026.\n-- Emptied once here, then kept to seven days by a daily job. Nothing reads the log: the app's own ledger of jobs is commerce.cron_jobs.\n-- A database without pg_cron (the tests' PGlite, CI's Postgres) has no cron schema and skips all of it.\nDO $do$\nBEGIN\n  IF EXISTS (SELECT 1 FROM pg_namespace WHERE nspname = 'cron')\n     AND EXISTS (SELECT 1 FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace WHERE n.nspname = 'cron' AND c.relname = 'job_run_details') THEN\n    IF has_table_privilege(current_user, 'cron.job_run_details', 'TRUNCATE') THEN\n      TRUNCATE cron.job_run_details;\n    ELSIF has_table_privilege(current_user, 'cron.job_run_details', 'DELETE') THEN\n      DELETE FROM cron.job_run_details WHERE coalesce(end_time, start_time) < now() - interval '7 days';\n    ELSE\n      RAISE NOTICE 'cron.job_run_details: no right to truncate or delete; the backlog stays';\n    END IF;\n    -- cron.schedule with a name replaces the job of that name, so this can run again.\n    PERFORM cron.schedule('kaizen-cron-log-retention', '41 3 * * *', $job$ DELETE FROM cron.job_run_details WHERE coalesce(end_time, start_time) < now() - interval '7 days' $job$);\n  END IF;\nEND\n$do$;\n\nNo `-- kaizen:no-transaction` line: no hot table is touched and the block must run as one unit. CI's runner gives a file 10 minutes per statement and a 30 s lock wait (scripts/db-migrate.mjs), which the one-off delete fits where TRUNCATE is not allowed."
+    },
     {
-      "file": "src/db/cron-log-retention.test.ts",
-      "proves": "Fails when the migration loses its guard for databases without pg_cron, its job name or its seven days, or starts calling out."
+     "file": "src/db/cron-log-retention.test.ts",
+     "action": "create",
+     "how": "A text test that holds the migration to the brief's SQL exactly (no database the checks use has pg_cron, so this is the only check before the release job). Content, exactly (the SQL inside EXPECTED is the same text as the migration above, character for character):\n\nimport { readdirSync, readFileSync } from \"node:fs\";\nimport { join } from \"node:path\";\nimport { describe, expect, it } from \"vitest\";\n\n/** pg_cron's run log prune (bloat review step 0.25). The tests' PGlite and CI's Postgres have no pg_cron, so the guarded block never runs before production's release job: this test holds the file to the reviewed text instead. */\nconst DIR = \"supabase/migrations\";\nconst EXPECTED = `-- pg_cron's own run log (cron.job_run_details) grows by one row a run and nothing pruned it: 564 MB of a 731 MB database on 11 November 2026.\n-- Emptied once here, then kept to seven days by a daily job. Nothing reads the log: the app's own ledger of jobs is commerce.cron_jobs.\n-- A database without pg_cron (the tests' PGlite, CI's Postgres) has no cron schema and skips all of it.\nDO $do$\nBEGIN\n  IF EXISTS (SELECT 1 FROM pg_namespace WHERE nspname = 'cron')\n     AND EXISTS (SELECT 1 FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace WHERE n.nspname = 'cron' AND c.relname = 'job_run_details') THEN\n    IF has_table_privilege(current_user, 'cron.job_run_details', 'TRUNCATE') THEN\n      TRUNCATE cron.job_run_details;\n    ELSIF has_table_privilege(current_user, 'cron.job_run_details', 'DELETE') THEN\n      DELETE FROM cron.job_run_details WHERE coalesce(end_time, start_time) < now() - interval '7 days';\n    ELSE\n      RAISE NOTICE 'cron.job_run_details: no right to truncate or delete; the backlog stays';\n    END IF;\n    -- cron.schedule with a name replaces the job of that name, so this can run again.\n    PERFORM cron.schedule('kaizen-cron-log-retention', '41 3 * * *', $job$ DELETE FROM cron.job_run_details WHERE coalesce(end_time, start_time) < now() - interval '7 days' $job$);\n  END IF;\nEND\n$do$;`;\nconst flat = (text: string) => text.replace(/\\s+/g, \" \").trim();\n\ndescribe(\"pg_cron's run log retention\", () => {\n  it(\"is the reviewed SQL, whitespace aside, and calls nothing out\", () => {\n    const files = readdirSync(DIR).filter((name) => name.endsWith(\"_cron_run_log_retention.sql\"));\n    expect(files).toHaveLength(1);\n    const text = readFileSync(join(DIR, files[0]), \"utf8\");\n    expect(flat(text)).toBe(flat(EXPECTED));\n    expect(text).not.toContain(\"net.http_post\");\n    expect(text).not.toContain(\"kaizen:no-transaction\");\n  });\n});\n\nIf drizzle-kit wrote a first comment line ('-- Custom SQL migration file, put your code below! --'), remove it from the migration: the file holds the SQL above and nothing else, so the test passes."
+    },
+    {
+     "file": "docs/ci-migrations.md",
+     "action": "edit",
+     "how": "In the part on the scheduler's block of the baseline (about lines 30 to 46; rg -n 'scheduler' docs/ci-migrations.md) add one sentence: 'The run log's prune (`kaizen-cron-log-retention`, daily at 03:41, seven days) is scheduled by the migration `…_cron_run_log_retention.sql`; at the next squash fold it into the new baseline's scheduler block by hand.'"
+    },
+    {
+     "file": "docs/capacity.md",
+     "action": "edit",
+     "how": "Where the tables with a retention rule are listed (about line 112, 'a retention rule if it grows'; rg -n 'retention' docs/capacity.md) add a line: 'pg_cron's own run log (`cron.job_run_details`): seven days, by the pg_cron job `kaizen-cron-log-retention` (not the daily route: the app's role has no business in the cron schema). It holds no personal data, so `src/lib/retention.ts` has no rule for it.'"
+    },
+    {
+     "file": "docs/decisions.md",
+     "action": "edit",
+     "how": "Append one row with the next free D-number (pull main first; `rg -o '^\\| D[0-9]+' docs/decisions.md | tr -dc '0-9\\n' | sort -n | tail -1`, plus 1). It records: the log's size when found (564 MB of 731 MB), the one-off emptying (TRUNCATE where the role may, else a delete of rows older than seven days) and the daily prune at 03:41; that nothing reads the log (commerce.cron_jobs is the app's ledger); that the baseline was not edited (D572) and the job is folded in at the next squash. Rejected: an hourly batch delete (not needed: the runner allows 10 minutes and a day adds about 13,250 rows); pruning from the app's daily route. Platform: one scheduler, so the prune covers the platform's jobs too. After CI has applied the file, add its version under Migration versions with the advisors' result."
     }
-  ],
-  "migration": {
-    "needed": true,
-    "notes": "Custom (`pnpm exec drizzle-kit generate --custom --name cron_run_log_retention`, then `node scripts/prune-snapshots.mjs`). It touches only cron.job_run_details, which is pg_cron's own table and not one of the hot tables, so no concurrent index and no `-- kaizen:no-transaction` marker. It changes no commerce table, column or function, so the code that is running keeps working before, during and after. It is guarded: a database with no cron schema runs nothing. Push the file; CI's release job applies it after every check passes (a direct Postgres connection, 10 minutes a statement) and then deploys. Never apply it by hand first: CI would run it again. After the deploy check the Supabase advisors and record the version in docs/decisions.md."
+   ],
+   "checks": [
+    "pnpm exec vitest run src/db/cron-log-retention.test.ts src/db/migration-safety.scan.test.ts src/db/snapshots.scan.test.ts src/db/commerce.test.ts : pass (the file is a no-op on PGlite)",
+    "pnpm db:check : exits 0",
+    "node scripts/db-setup.mjs --seed on an empty DATABASE_URL : exits 0 (a Postgres without pg_cron skips the block)",
+    "pnpm exec vitest run src/lib/restore-check.test.ts : passes",
+    "pnpm lint && pnpm typecheck && pnpm test : exits 0"
+   ]
+  }
+ ],
+ "tests": [
+  {
+   "file": "src/db/cron-log-retention.test.ts",
+   "proves": "Fails when the migration differs from the reviewed SQL in anything but whitespace (its guard, schedule, WHERE clause, TRUNCATE branch, job name), or calls out, or is marked no-transaction."
+  }
+ ],
+ "migration": {
+  "needed": true,
+  "notes": "Custom (`pnpm exec drizzle-kit generate --custom --name cron_run_log_retention`, then `node scripts/prune-snapshots.mjs`). It touches only cron.job_run_details, which is pg_cron's own table and not one of the hot tables, so no concurrent index and no `-- kaizen:no-transaction` marker. It changes no commerce table, column or function, so the code that is running keeps working before, during and after. It is guarded: a database with no cron schema runs nothing. Push the file; CI's release job applies it after every check passes (a direct Postgres connection, 10 minutes a statement) and then deploys. Never apply it by hand first: CI would run it again. After the deploy check the Supabase advisors and record the version in docs/decisions.md."
+ },
+ "done_when": [
+  {
+   "check": "In production, a day after the deploy (the owner, or a session allowed to read production): select min(coalesce(end_time, start_time)) from cron.job_run_details",
+   "expect": "never older than 8 days"
   },
-  "done_when": [
-    {
-      "check": "In production, a day after the deploy (the owner, or a session allowed to read production): select min(coalesce(end_time, start_time)) from cron.job_run_details",
-      "expect": "never older than 8 days"
-    },
-    {
-      "check": "In production: select jobname, schedule from cron.job where jobname = 'kaizen-cron-log-retention'",
-      "expect": "one row, schedule '41 3 * * *'"
-    },
-    {
-      "check": "The size by schema in step 0.2's daily reading (or select pg_size_pretty(sum(pg_total_relation_size(c.oid))) from pg_class c join pg_namespace n on n.oid = c.relnamespace where n.nspname = 'cron'), a week after the deploy",
-      "expect": "under 80 MB (564 MB before); under 20 MB once step 3.1 is in"
-    },
-    {
-      "check": "pnpm exec vitest run src/db/cron-log-retention.test.ts src/db/commerce.test.ts",
-      "expect": "pass"
-    }
-  ],
-  "after_deploy": [
-    "CI's release job is green and its log shows the file applied once.",
-    "The three production reads of the done-when: the oldest row at most 8 days old, the job listed, the cron schema under 80 MB a week on.",
-    "select status, return_message from cron.job_run_details where jobid = (select jobid from cron.job where jobname = 'kaizen-cron-log-retention') order by start_time desc limit 3: 'succeeded'. If it says permission denied, the role may not delete from the log: report it to the owner; the size will keep growing until a role that owns the table prunes it.",
-    "If only the delete ran (no TRUNCATE right) the file keeps its 564 MB on disk though its rows are gone: the space is reused and stops growing. Tell the owner; a VACUUM FULL by a role that owns the table gives it back and is the owner's choice.",
-    "Supabase advisors for project ybsozesfuxuitoacntfo: no new warning."
-  ],
-  "docs": [
-    "docs/decisions.md: the D-row and the migration's version under Migration versions.",
-    "docs/ci-migrations.md: the sentence on the job and the next squash.",
-    "docs/capacity.md: the retention line.",
-    "docs/audits/bloat-review-2026-11.md, Progress table: set the row of step 0.25 to Done with the date and the commits in Notes (find it: rg -n '^\\| 0\\.25 ' docs/audits/bloat-review-2026-11.md), and add a line under the step's own heading in docs/audits/bloat-review-2026-11/plan/phase-0.md saying what was done differently from the plan, if anything."
-  ],
-  "do_not": [
-    "Do not edit supabase/migrations/20261111172842_baseline_4_roles_and_supabase.sql or any other baseline (D572).",
-    "Do not apply the migration to production by hand, and do not run the SQL through the Supabase tool.",
-    "Do not unschedule, rename or change any other cron job.",
-    "Do not prune from the app (src/app/api/cron/...): the job is pg_cron's own.",
-    "Do not remove the guard on the cron schema: the tests and CI have no pg_cron.",
-    "Do not add `-- kaizen:no-transaction`.",
-    "Do not run VACUUM FULL from the migration."
-  ],
-  "stop_if": [
-    "src/db/commerce.test.ts or scripts/db-setup.mjs --seed fails with the new file: the guard does not hold where pg_cron is missing; report the error.",
-    "drizzle-kit generate --custom writes anything but one empty .sql file and a journal entry, or pnpm db:check fails after it.",
-    "CI's release job fails on the file: do not retry by hand; report the job's error line.",
-    "After the deploy the oldest row is older than 8 days two days running."
-  ],
-  "executor": "cheap",
-  "executor_why": "One migration file whose SQL is given whole, one text test and three doc lines; the PGlite suite and CI's own run catch a wrong file.",
-  "checked_in_code": "I opened the baseline's scheduler block (supabase/migrations/20261111172842_baseline_4_roles_and_supabase.sql lines 64 to 113): it schedules 14 jobs, two of them retention deletes for commerce tables, none for cron.job_run_details, and rg finds job_run_details nowhere in src, scripts or the migrations. scripts/db-migrate.mjs gives each file a 30 s lock wait and a 10 minute statement limit, so the one-off delete fits inside the migration and CR-5's hourly batches of 20,000 are not needed; I wrote DS-8's design (a guarded DO block, TRUNCATE where allowed) with the step's daily job. Corrections: both findings ask for a read of production's privileges first, which the executor must not do, so the SQL tests the privilege itself and falls back; rows whose end_time is null are pruned by their start_time, which neither finding covered."
+  {
+   "check": "In production: select jobname, schedule from cron.job where jobname = 'kaizen-cron-log-retention'",
+   "expect": "one row, schedule '41 3 * * *'"
+  },
+  {
+   "check": "The size by schema in step 0.2's daily reading (or select pg_size_pretty(sum(pg_total_relation_size(c.oid))) from pg_class c join pg_namespace n on n.oid = c.relnamespace where n.nspname = 'cron'), a week after the deploy",
+   "expect": "under 80 MB (564 MB before); under 20 MB once step 3.1 is in"
+  },
+  {
+   "check": "pnpm exec vitest run src/db/cron-log-retention.test.ts src/db/commerce.test.ts",
+   "expect": "pass"
+  }
+ ],
+ "after_deploy": [
+  "CI's release job is green and its log shows the file applied once.",
+  "The three production reads of the done-when: the oldest row at most 8 days old, the job listed, the cron schema under 80 MB a week on.",
+  "select status, return_message from cron.job_run_details where jobid = (select jobid from cron.job where jobname = 'kaizen-cron-log-retention') order by start_time desc limit 3: 'succeeded'. If it says permission denied, the role may not delete from the log: report it to the owner; the size will keep growing until a role that owns the table prunes it.",
+  "If only the delete ran (no TRUNCATE right) the file keeps its 564 MB on disk though its rows are gone: the space is reused and stops growing. Tell the owner; a VACUUM FULL by a role that owns the table gives it back and is the owner's choice.",
+  "Supabase advisors for project ybsozesfuxuitoacntfo: no new warning."
+ ],
+ "docs": [
+  "docs/decisions.md: the D-row and the migration's version under Migration versions.",
+  "docs/ci-migrations.md: the sentence on the job and the next squash.",
+  "docs/capacity.md: the retention line.",
+  "docs/audits/bloat-review-2026-11.md, Progress table: set the row of step 0.25 to Done with the date and the commits in Notes (find it: rg -n '^\\| 0\\.25 ' docs/audits/bloat-review-2026-11.md), and add a line under the step's own heading in docs/audits/bloat-review-2026-11/plan/phase-0.md saying what was done differently from the plan, if anything."
+ ],
+ "do_not": [
+  "Do not edit supabase/migrations/20261111172842_baseline_4_roles_and_supabase.sql or any other baseline (D572).",
+  "Do not apply the migration to production by hand, and do not run the SQL through the Supabase tool.",
+  "Do not unschedule, rename or change any other cron job.",
+  "Do not prune from the app (src/app/api/cron/...): the job is pg_cron's own.",
+  "Do not remove the guard on the cron schema: the tests and CI have no pg_cron.",
+  "Do not add `-- kaizen:no-transaction`.",
+  "Do not run VACUUM FULL from the migration."
+ ],
+ "stop_if": [
+  "src/db/commerce.test.ts or scripts/db-setup.mjs --seed fails with the new file: the guard does not hold where pg_cron is missing; report the error.",
+  "drizzle-kit generate --custom writes anything but one empty .sql file and a journal entry, or pnpm db:check fails after it.",
+  "CI's release job fails on the file: do not retry by hand; report the job's error line.",
+  "After the deploy the oldest row is older than 8 days two days running."
+ ],
+ "executor": "cheap-then-review",
+ "executor_why": "The SQL is given whole and the text test now holds the file to it exactly, but it is a migration that deletes production rows and first runs in the release job, so a one-minute read of the diff against the brief comes before the push.",
+ "checked_in_code": "I opened the baseline's scheduler block (supabase/migrations/20261111172842_baseline_4_roles_and_supabase.sql lines 64 to 113): it schedules 14 jobs, two of them retention deletes for commerce tables, none for cron.job_run_details, and rg finds job_run_details nowhere in src, scripts or the migrations. scripts/db-migrate.mjs gives each file a 30 s lock wait and a 10 minute statement limit, so the one-off delete fits inside the migration and CR-5's hourly batches of 20,000 are not needed; I wrote DS-8's design (a guarded DO block, TRUNCATE where allowed) with the step's daily job. Corrections: both findings ask for a read of production's privileges first, which the executor must not do, so the SQL tests the privilege itself and falls back; rows whose end_time is null are pruned by their start_time, which neither finding covered. Second check (12 November): the text test now compares the whole migration with the brief's SQL (whitespace collapsed) instead of a few substrings, so a changed schedule, WHERE clause or TRUNCATE branch fails before the release job.",
+ "cheap_commits": [],
+ "rating_checked": "cheap"
 }

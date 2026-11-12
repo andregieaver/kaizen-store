@@ -1,0 +1,11 @@
+{
+ "id": "0.41",
+ "fixed": [
+  "src/lib/docs-budget.scan.test.ts is now action edit with made_by 0.43, and 'how' says what 0.43 leaves (baseline import, outsideIndex/indexLines, six cases).",
+  "Added a stop_if for the CLAUDE.md exact-text edits when an earlier step changed those bytes (ordering fragility made explicit)."
+ ],
+ "rejected": [],
+ "cheaper": "partly applied: the word-list diff check for commit 4 (psi-followups exact, code-review limited to the replaced bullet); not applied: a bare-repository integration test for claim-decision.mjs's git io, which is a new test harness rather than a small exact change; commits 3, 4 and 6 stay reviewed.",
+ "executor_before": "cheap-then-review",
+ "executor_after": "cheap-then-review"
+}

@@ -1,0 +1,12 @@
+{
+ "id": "1.28",
+ "fixed": [
+  "Site ids are '<file>#<areas joined with +>' or '#<CONSTANT>', with '#2', '#3' only for a repeated area list in one file, instead of positional '#<n>'.",
+  "The writer applies min(old, new) only to a site whose areas are unchanged; a changed constant is written as new.",
+  "The in-memory planted case and the hand trial name views.tsx#website+schedules; the hand trial adds \"capacity\" (the list already holds \"schedules\") and expects the new id to fail test (1)."
+ ],
+ "rejected": [],
+ "cheaper": "applied: the judge's edit_brief (ids by areas, min only for unchanged areas)",
+ "executor_before": "cheap-then-review",
+ "executor_after": "cheap"
+}

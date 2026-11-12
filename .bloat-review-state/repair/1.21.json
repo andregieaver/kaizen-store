@@ -1,0 +1,14 @@
+{
+ "id": "1.21",
+ "fixed": [
+  "Commit 1: scripts/next-build.mjs now keeps step 1.20's spawn, sampler (startPeakSampler) and 'Build: ... peak memory ...' line, adding only the history fetch and build-stats.json; the conditional 'if 1.20 already made it sample' and the duplicate 1000 ms sampler are gone; build-stats.mjs drops usedKb and its test case.",
+  "Commit 1 check: expects 1.20's 'Build:' line, not a second line format.",
+  "Commit 2: the second source-map switch is added only when 1.20's row (c) is at least 0.3 GB below row (b), under the key row (c) names, and neither switch is added twice when 1.20 already kept it.",
+  "Commit 3 waits for production to report a peak at or under 75%: a stop_if now ends the session after commit 2 until then.",
+  "A stop_if hands commits 4 and 5 (stage 2) to a strong model whenever they are needed."
+ ],
+ "rejected": [],
+ "cheaper": "not applied as written: the judge's edit_brief moves commits 4-5 into a new step, which this brief cannot create; instead cheap_commits is [2, 3] and a stop_if hands stage 2 to a strong model",
+ "executor_before": "cheap-then-review",
+ "executor_after": "cheap-then-review"
+}

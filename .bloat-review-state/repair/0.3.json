@@ -1,0 +1,12 @@
+{
+ "id": "0.3",
+ "fixed": [
+  "Commit 2: shop.int.test.ts is new (none exists); its imports, the exact next/cache mock from src/server/vat-return.int.test.ts:11 and the cleanup are written out instead of 'copy the mocks of whichever file rg finds'.",
+  "Commit 2: shop.ts has no log import; the brief now says to add `import { log } from \"./log\"` (named export).",
+  "Commit 3: e2e case 4 now asserts the prerendered folder .next/server/app/s/kaizenaflow holds the market, with no fallback choice; the market slug query is given as SQL; a stop_if covers a different output layout."
+ ],
+ "rejected": [],
+ "cheaper": "applied: named the int test whose next/cache mock to copy and chose one assertion (build output) for e2e case 4",
+ "executor_before": "cheap-then-review",
+ "executor_after": "cheap-then-review"
+}

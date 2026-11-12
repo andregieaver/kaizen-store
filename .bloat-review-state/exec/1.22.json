@@ -30,7 +30,7 @@
     {
      "file": "src/lib/cron-health.test.ts",
      "action": "edit",
-     "how": "If the file does not exist, create it. Tests: stoppedJobs() returns nothing when route.cart-reminders finished 5 minutes ago, returns it with age 16 when it finished 16 minutes ago, and returns it when the row is missing; jobsCheck() is ok for fresh rows, 'late' for a route.watchdog row that last finished 50 minutes ago with everySeconds 900, 'late' for a daily row (everySeconds 86,400) that finished 31 hours ago, still ok for a late one-minute route such as route.page-looks (as today), and 'failing' when any row has 3 failures."
+     "how": "The file exists: add the cases below at its end and change none of its existing cases. Tests: stoppedJobs() returns nothing when route.cart-reminders finished 5 minutes ago, returns it with age 16 when it finished 16 minutes ago, and returns it when the row is missing; jobsCheck() is ok for fresh rows, 'late' for a route.watchdog row that last finished 50 minutes ago with everySeconds 900, 'late' for a daily row (everySeconds 86,400) that finished 31 hours ago, still ok for a late one-minute route such as route.page-looks (as today), and 'failing' when any row has 3 failures."
     },
     {
      "file": "src/server/status.ts",
@@ -82,7 +82,7 @@
     {
      "file": "src/app/api/cron/subscription-reminders/route.ts",
      "action": "edit",
-     "how": "In the comment above run() (lines 53 to 55 today) remove the words 'and Vercel Cron too where CRON_SECRET is set; each reminder goes once whoever calls' and write 'Supabase's scheduler calls it (D33), once a day; Vercel's cron calls only the watcher (/api/cron/watchdog).' No code changes in this commit."
+     "how": "In the comment above run() (lines 53 to 55 today) remove the words 'and Vercel Cron too where CRON_SECRET is set;' (end of line 54) and 'each reminder goes once whoever calls.' (start of line 55), so line 54 reads ' * scheduler calls it (D33), once a day; Vercel's cron calls only the watcher (/api/cron/watchdog).' and line 55 starts ' * Also lets the AI manager's unused' No code changes in this commit."
     },
     {
      "file": "src/app/api/cron/subscription-reminders/route.test.ts",
@@ -197,6 +197,11 @@
   "Step 0.25's prune job is not in the migrations (rg -n 'job_run_details' supabase/migrations): commit 3's pgcron.run-log row would fail every day; land commits 1 and 2 and hand back commit 3."
  ],
  "executor": "cheap-then-review",
- "executor_why": "Small and fully specified, but it changes how production's scheduler is called and adds an email to the platform's admins, so a stronger model reads vercel.json, the route and the watcher before the push.",
- "checked_in_code": "I opened vercel.json (one cron: /api/cron/subscription-reminders at '0 7 * * *'), the baseline migration's scheduler block (pg_cron schedules kaizen-subscription-reminders at '0 7 * * *' too, and two SQL jobs: kaizen-consent-retention and kaizen-cookie-scan-retention), the daily route (its comment says Vercel Cron calls it too; it already keeps 'daily.database-door' as its own ledger row with tracked()), src/server/cron-auth.ts (CRON_SECRET or the Vault token), src/lib/cron-health.ts and src/server/status.ts (the jobs check fails only on a failing job or a late dispatcher job today). Finding CR-12 only removes Vercel's cron and calls a watchdog 'a new feature, not this step'; the plan's step makes it this step, so the brief points the cron at a new watcher instead of deleting the block. A 15-minute Vercel cron needs the Pro plan that docs/plan.md says the project is on; that is an existing plan, not a new cost, and the brief stops if the deploy says otherwise."
+ "executor_why": "The code is written out and matches the repository, but commit 1 adds an email to every platform admin while the scheduler is down and changes what turns the status page red, which unit and int tests cannot prove will not spam or mislead in production, so its diff wants a read; commits 2 and 3 are a one-entry vercel.json change held by a test and a guarded check behind a stop_if.",
+ "checked_in_code": "I opened vercel.json (one cron: /api/cron/subscription-reminders at '0 7 * * *'), the baseline migration's scheduler block (pg_cron schedules kaizen-subscription-reminders at '0 7 * * *' too, and two SQL jobs: kaizen-consent-retention and kaizen-cookie-scan-retention), the daily route (its comment says Vercel Cron calls it too; it already keeps 'daily.database-door' as its own ledger row with tracked()), src/server/cron-auth.ts (CRON_SECRET or the Vault token), src/lib/cron-health.ts and src/server/status.ts (the jobs check fails only on a failing job or a late dispatcher job today). Finding CR-12 only removes Vercel's cron and calls a watchdog 'a new feature, not this step'; the plan's step makes it this step, so the brief points the cron at a new watcher instead of deleting the block. A 15-minute Vercel cron needs the Pro plan that docs/plan.md says the project is on; that is an existing plan, not a new cost, and the brief stops if the deploy says otherwise. Second check (12 November): the comment edit names the exact words on lines 54 and 55 (they span a line break); src/lib/cron-health.test.ts exists, so its cases are added, not a new file; the pg_cron daily schedule the step relies on is in baseline_4 line 102 ('kaizen-subscription-reminders', '0 7 * * *').",
+ "cheap_commits": [
+  2,
+  3
+ ],
+ "rating_checked": "cheap-then-review"
 }

@@ -120,7 +120,12 @@
     {
      "file": "src/lib/supabase/signed-upload.ts",
      "action": "create",
-     "how": "Content: a doc comment 'An upload to a signed Storage address. The Supabase client (about 260 KB) is loaded here, on the press, not with the screen (bloat review step 0.9).' and `export async function uploadToSignedUrl(bucket: string, path: string, token: string, file: Parameters<ReturnType<ReturnType<typeof import(\"./client\").createClient>[\"storage\"][\"from\"]>[\"uploadToSignedUrl\"]>[2], options?: Parameters<ReturnType<ReturnType<typeof import(\"./client\").createClient>[\"storage\"][\"from\"]>[\"uploadToSignedUrl\"]>[3]) { const { createClient } = await import(\"./client\"); return createClient().storage.from(bucket).uploadToSignedUrl(path, token, file, options); }`. If that parameter typing does not compile, type `file` as `File | Blob | ArrayBuffer` and `options` as `{ contentType?: string; upsert?: boolean; cacheControl?: string }`. It returns exactly what the SDK returns, so each caller's handling of `error` and `data` stays."
+     "how": "Content, exactly (the SDK's own parameter types, read through a type-only `typeof import()`, which adds no code):\n\n/** An upload to a signed Storage address. The Supabase client (about 260 KB) is loaded here, on the press, not with the screen (bloat review step 0.9). */\ntype Bucket = ReturnType<ReturnType<typeof import(\"./client\").createClient>[\"storage\"][\"from\"]>;\ntype UploadArgs = Parameters<Bucket[\"uploadToSignedUrl\"]>;\n\nexport async function uploadToSignedUrl(bucket: string, path: UploadArgs[0], token: UploadArgs[1], file: UploadArgs[2], options?: UploadArgs[3]) {\n  const { createClient } = await import(\"./client\");\n  return createClient().storage.from(bucket).uploadToSignedUrl(path, token, file, options);\n}\n\nIt returns exactly what the SDK returns, so each caller's handling of `error` and `data` stays. If the two type aliases do not compile, use instead `file: File | Blob` and `options?: { contentType?: string; upsert?: boolean; cacheControl?: string }` (every caller today passes a File and { contentType }). Never `any`, `unknown` or a cast: if neither form compiles, stop."
+    },
+    {
+     "file": "src/lib/supabase/signed-upload.test.ts",
+     "action": "create",
+     "how": "Content, exactly:\n\nimport { describe, expect, it, vi } from \"vitest\";\n\nconst calls = vi.hoisted(() => [] as unknown[][]);\nvi.mock(\"./client\", () => ({\n  createClient: () => ({\n    storage: { from: (bucket: string) => ({ uploadToSignedUrl: (...args: unknown[]) => { calls.push([bucket, ...args]); return Promise.resolve({ data: { path: \"p\" }, error: null }); } }) },\n  }),\n}));\n\nimport { uploadToSignedUrl } from \"./signed-upload\";\n\ndescribe(\"uploadToSignedUrl\", () => {\n  it(\"passes bucket, path, token, file and options through in order and returns the SDK's answer\", async () => {\n    const file = new Blob([\"x\"]);\n    const answer = await uploadToSignedUrl(\"media\", \"a/b.png\", \"tok\", file, { contentType: \"image/png\" });\n    expect(calls).toEqual([[\"media\", \"a/b.png\", \"tok\", file, { contentType: \"image/png\" }]]);\n    expect(answer).toEqual({ data: { path: \"p\" }, error: null });\n  });\n});\n\nIf the fallback `File | Blob` type was used, a Blob is still accepted."
     },
     {
      "file": "src/components/admin/{product-editor.tsx,video-upload.tsx,media-compress.ts,product-media-tools.tsx,field-file-upload.ts,customer-import-flow.tsx,data/import-flow.tsx,inventory/stock-import-flow.tsx,redirects/redirect-import-flow.tsx}",
@@ -144,6 +149,7 @@
     }
    ],
    "checks": [
+    "pnpm exec vitest run src/lib/supabase/signed-upload.test.ts: passes",
     "pnpm exec vitest run src/lib/env.test.ts src/components/admin/redirects/redirect-views.test.ts src/components/admin/data/data-views.test.ts src/components/admin/inventory/inventory-views.test.ts: pass (the three views tests mock @/lib/supabase/client; a mock answers a dynamic import too)",
     "rg -n '^import .*supabase/client\"' src/components src/app: prints nothing",
     "pnpm typecheck: exits 0",
@@ -243,6 +249,10 @@
   {
    "file": "e2e/signed-in/admin-text-fallbacks.spec.ts",
    "proves": "Existing: fails when a screen needs an area nothing handed down, which is what would happen if a part did read 'setup' from the layout."
+  },
+  {
+   "file": "src/lib/supabase/signed-upload.test.ts",
+   "proves": "Fails when uploadToSignedUrl drops, reorders or changes an argument on its way to the SDK, or changes what it returns."
   }
  ],
  "migration": {
@@ -295,7 +305,8 @@
   "Do not raise a budget in admin-scripts.spec.ts.",
   "Do not add signIn or setup to the layout's adminTexts list, and do not delete src/lib/admin-messages/setup.*.ts or the setup area: the wizard and Settings read it on the server.",
   "Do not change src/lib/env.ts's server schema or serverEnv().",
-  "Do not touch page-builder.tsx's import of typingIn (the re-export keeps it working)."
+  "Do not touch page-builder.tsx's import of typingIn (the re-export keeps it working).",
+  "Do not loosen uploadToSignedUrl's parameter types (any, unknown, a cast) to make the type check pass."
  ],
  "stop_if": [
   "builderEn is used in responsive-edit.tsx somewhere other than sizeNote()'s default: report the lines.",
@@ -303,9 +314,17 @@
   "After the build a marker count is above its line (GoTrueClient above 0, ZodError above 160, sign-in above 2): report the routes and, for one of them, which chunk holds the marker and which source file imports it. Do not chase it by adding dynamic imports elsewhere.",
   "/admin/[store] is above 700,000 bytes or the median above 645,000 after all four commits.",
   "A signed-in spec lands on /admin/sign-in, or admin-text-fallbacks.spec.ts reports the setup or signIn area.",
-  "The type check asks for signIn in admin-text-later.ts because some file calls useAdminText(\"signIn\")."
+  "The type check asks for signIn in admin-text-later.ts because some file calls useAdminText(\"signIn\").",
+  "signed-upload.ts compiles only with `any`, `unknown` or a cast in its parameters: stop and report the type error; do not loosen the types."
  ],
  "executor": "cheap-then-review",
- "executor_why": "Every edit is a move or an import change and the build's marker counts prove the result, but it changes when the admin's session client loads and how nine uploads reach Storage, which no e2e covers, so a stronger model should read the diff and someone must do the upload checks by hand.",
- "checked_in_code": "I opened session.tsx (static createClient import at line 8), env.ts (zod publicEnv at lines 3-27), supabase/client.ts, responsive-edit.tsx (builderEn value import at line 20, used as sizeNote()'s default; typingIn at 306), shortcut-sheet.tsx line 19, push-settings.tsx (AdminServiceWorker at 155, imported by the gated layout at line 11), push.ts (zod schema at lines 26-34), the gated layout (it hands every screen the areas common, setup and shell) and admin-text-context.tsx and admin-text.tsx (both import sign-in's English). I ran a marker counter on the build of 11 November: 432 routes hold GoTrueClient, 432 ZodError, 423 'Set for {size}', 456 the sign-in sentence, the median admin route is 1,152,953 bytes: the plan's numbers. The counter is not in the repo and step 1.2's budget script comes later, so the brief's first commit adds it. Confirmed by rg: no client part calls useAdminText(\"setup\") or useAdminText(\"signIn\"); useSignInText() has two users (the two-step panel and the recovery codes), drawn on two routes. Finding BN-1's nine upload files are needed for '0 routes', so they are in, though the step's text names only the session listener."
+ "executor_why": "Commits 1, 2, 4 and 5 are exact moves checked by scan tests, the type check and the marker counts; commit 3's SessionKeeper idle start and unsubscribe have no test (the signed-in e2e runs too briefly against the Auth stand-in to notice), so its diff wants a read.",
+ "checked_in_code": "I opened session.tsx (static createClient import at line 8), env.ts (zod publicEnv at lines 3-27), supabase/client.ts, responsive-edit.tsx (builderEn value import at line 20, used as sizeNote()'s default; typingIn at 306), shortcut-sheet.tsx line 19, push-settings.tsx (AdminServiceWorker at 155, imported by the gated layout at line 11), push.ts (zod schema at lines 26-34), the gated layout (it hands every screen the areas common, setup and shell) and admin-text-context.tsx and admin-text.tsx (both import sign-in's English). I ran a marker counter on the build of 11 November: 432 routes hold GoTrueClient, 432 ZodError, 423 'Set for {size}', 456 the sign-in sentence, the median admin route is 1,152,953 bytes: the plan's numbers. The counter is not in the repo and step 1.2's budget script comes later, so the brief's first commit adds it. Confirmed by rg: no client part calls useAdminText(\"setup\") or useAdminText(\"signIn\"); useSignInText() has two users (the two-step panel and the recovery codes), drawn on two routes. Finding BN-1's nine upload files are needed for '0 routes', so they are in, though the step's text names only the session listener. Second check (12 November): signed-upload.ts now has its exact content with the SDK's types read through two type aliases (storage-js 2.118 does not export FileBody), a fallback that matches every caller (a File and { contentType }), a ban on any/unknown/casts, and a unit test that the five arguments reach the SDK in order.",
+ "cheap_commits": [
+  1,
+  2,
+  4,
+  5
+ ],
+ "rating_checked": "cheap-then-review"
 }

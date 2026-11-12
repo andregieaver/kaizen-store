@@ -1,0 +1,12 @@
+{
+ "id": "0.34",
+ "fixed": [
+  "globals.css block and both dark blocks wrapped in :where() so owners' and outside themes' :root variables (--brand in custom-css.test.ts's example, which siteCss leaves unscoped) still win; comment, docs and do_not say so.",
+  "Scan test: selectors updated to the :where() form, a rule 3 that fails if the block loses :where(), and reached must contain work/print-button.tsx.",
+  "e2e/invoices.spec.ts change removed (no e2e test opens /account/invoice/{token}; the choice of 'nearest test' is gone); tests, done_when and checks follow; a do_not says why."
+ ],
+ "rejected": [],
+ "cheaper": "applied: :where(...) selectors plus a scan rule that fails when the block outranks :root (a unit case on the cascade itself is not possible in Vitest, so the rule checks the selector text); kept cheap-then-review because the change is visible on every public page and judged from screenshots",
+ "executor_before": "cheap-then-review",
+ "executor_after": "cheap-then-review"
+}

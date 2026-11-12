@@ -1,157 +1,162 @@
 {
-  "id": "3.20",
-  "goal": "A SQL function beside commerce.cron_due() returns, for each gated queue, how long its oldest unfinished row has waited; the outside watcher reads it every 15 minutes, emails the platform admins when a queue a person watches is over 3 minutes or another over 20, and keeps each queue's worst wait of the day, which Platform, Usage and limits shows.",
-  "why": "After step 3.1 a route is called only when a predicate finds work, so a wrong predicate makes work start up to 15 minutes late (at the sweep) and nothing says so: the wait is not measured today. After: the wait of every gated queue is measured every 15 minutes, with limits of 3 and 20 minutes and an email over them.",
-  "read_first": [
-    "docs/ci-migrations.md",
-    "docs/capacity.md",
-    "src/server/cron-runs.ts",
-    "src/lib/cron-health.ts",
-    "src/server/status.ts",
-    "src/app/admin/(gated)/platform/capacity/page.tsx",
-    "src/lib/personal-data.ts",
-    "src/db/privacy.test.ts"
-  ],
-  "depends_on": [
-    {
-      "id": "3.1",
-      "why": "it creates commerce.cron_due() and the list of gated queues; this step's function sits beside it and covers the same queues"
-    },
-    {
-      "id": "1.22",
-      "why": "it creates the outside watcher route that Vercel's cron calls every 15 minutes and its way of emailing the admins; this step adds one reading to that route"
-    }
-  ],
-  "commits": [
-    {
-      "title": "commerce.cron_waits(): each gated queue's oldest unfinished row, by a condition wider than the tick's",
-      "changes": [
-        {
-          "file": "src/lib/queue-waits.ts",
-          "action": "create",
-          "how": "A pure module. Export `WATCHED_MINUTES = 3` and `OTHER_MINUTES = 20` (the two limits; another figure is a one-line change here). Export `WATCHED_QUEUES: readonly string[] = [\"page-jobs\", \"page-looks\", \"dream-factory\"]` (work a person watches: AI page builds, looks at a page, the Dream Factory). Export `limitSeconds(queue: string): number` (WATCHED_MINUTES * 60 for a watched queue, else OTHER_MINUTES * 60), `overLimit(queue: string, seconds: number | null): boolean` (false for null) and `type QueueWait = { queue: string; seconds: number | null; waiting: number }`."
-        },
-        {
-          "file": "supabase/migrations/*_cron_waits.sql",
-          "action": "create",
-          "how": "A custom migration (`pnpm exec drizzle-kit generate --custom --name cron_waits`, then `node scripts/prune-snapshots.mjs`) with one statement: `CREATE OR REPLACE FUNCTION commerce.cron_waits() RETURNS TABLE (queue text, seconds integer, waiting integer) LANGUAGE sql STABLE SET search_path TO ''` whose body is one `select ... union all select ...` with one branch per queue that commerce.cron_due() gates. First open the newest definition of commerce.cron_due() (`rg -l 'FUNCTION commerce.cron_due' supabase/migrations | sort | tail -1`) and list its queues and the table each reads. Each branch returns the queue's name exactly as cron_due() names its route, `extract(epoch from now() - min(<last change>))::int` as seconds (null when no row) and `count(*)::int` as waiting, over the rows of the queue's table that are NOT FINISHED. The rule for 'not finished' is the point of this step: use only the row's status (every status that is not an end state) and never the conditions cron_due() uses to decide a row is claimable (no `claimed_until`, no `tries <`, no `next_attempt_at <=`, no `last_attempt_at <`), so a row the tick's predicate wrongly skips is still seen here. `<last change>` is the table's updated_at where it has one, else created_at, so a long job that is advancing does not count as waiting. The six queues of step 3.1 are: 'page-jobs': commerce.page_ai_jobs where status = 'waiting', by updated_at; 'page-looks': commerce.page_looks where status in ('queued', 'running'), by created_at; 'dream-factory': commerce.dream_runs where status = 'running', by updated_at; 'theme-shots': commerce.theme_shots where status in ('waiting', 'running'), by created_at; 'cookie-scan': commerce.cookie_scans where status in ('queued', 'running'), by coalesce(started_at, created_at); 'pack-pictures': the table and waiting status cron_due() reads for it (read src/server/content-packs.ts runPackPictures() for the status names). Add a branch for every other queue cron_due() has by now (step 3.2's queues; step 3.7's 'document-pdfs': invoices and credit notes with pdf_path is null and anonymised_at is null and fewer than 5 attempts in commerce.document_pdf_state, by issued_at, without the five-minute back-off). Grant nothing: the function is called by the server's own role, as cron_due() is."
-        },
-        {
-          "file": "src/server/queue-waits.int.test.ts",
-          "action": "create",
-          "how": "Cases against the seeded test database: (1) with no unfinished rows every queue returns seconds null and waiting 0, and the set of queue names equals the set commerce.cron_due() can name (read both; if cron_due() exposes its list differently, compare with the list the cron_due int test of step 3.1 uses); (2) insert a commerce.page_ai_jobs row with status 'waiting' and created_at and updated_at four minutes ago: 'page-jobs' returns seconds between 235 and 300 and waiting 1; (3) the wider condition: set that row's claimed_until to an hour from now and tries to 3 (so the tick's predicate would skip it): cron_waits() still returns it; (4) a row with status 'done' is not counted."
-        }
-      ],
-      "checks": [
-        "pnpm exec vitest run src/db/migration-safety.scan.test.ts: passes",
-        "pnpm db:check: exits 0",
-        "pnpm test:int src/server/queue-waits.int.test.ts: passes",
-        "pnpm lint && pnpm typecheck && pnpm test: exits 0"
-      ]
-    },
-    {
-      "title": "The watcher reads the waits, emails the admins over 3 or 20 minutes, and keeps the day's worst per queue",
-      "changes": [
-        {
-          "file": "src/db/schema.ts",
-          "action": "edit",
-          "how": "Add a small platform table `queueWaits` = commerce.queue_waits: `day date not null`, `queue text not null`, `worst_seconds integer not null` (check >= 0), `worst_at timestamptz not null default now()`, `alerted_at timestamptz`, primary key (day, queue), and a check that queue matches ^[a-z0-9-]{1,40}$. No store_id: it is the platform's own. Run `pnpm db:generate`. Register the table wherever a new commerce table must be registered: run `pnpm exec vitest run src/db/privacy.test.ts` and the table-classes test of step 3.5 if it exists, and add the entries they ask for (in src/lib/personal-data.ts an entry with no personal data, as commerce.status_checks has; in src/lib/table-classes.ts class 'deleted' with the kind of the prune below, or the class its neighbours cron_jobs and status_checks have)."
-        },
-        {
-          "file": "src/server/queue-waits.ts",
-          "action": "create",
-          "how": "Server-only. `readQueueWaits(): Promise<QueueWait[]>` reads `select queue, seconds, waiting from commerce.cron_waits()` through typedRows() with col (queue col.text, seconds col.int.nullable(), waiting col.int). `recordQueueWaits(now = new Date()): Promise<{ over: string[]; alerts: number }>`: reads the waits; for each queue with seconds not null, upserts commerce.queue_waits for today's UTC date: `insert ... (day, queue, worst_seconds, worst_at) values (...) on conflict (day, queue) do update set worst_seconds = excluded.worst_seconds, worst_at = excluded.worst_at where commerce.queue_waits.worst_seconds < excluded.worst_seconds`; for each queue where overLimit(queue, seconds) is true, emails every platform admin once per queue per clock hour: build the email with renderEmail() as alertAdmins() in src/server/status.ts does (subject `Scheduled work is waiting: <queue> for <minutes> minutes`, a paragraph saying the queue, how many rows wait, the limit, and that the tick's predicate for this queue may be missing a kind of due work or its route is failing, and a button to `${siteUrl()}/admin/platform/capacity`), sent with sendEmail({ storeId: null, kind: \"platform.queue_wait_alert\", to, email, fromName: \"Kaizena Flow\", idempotencyKey: `queue-wait:${queue}:${now.toISOString().slice(0, 13)}:${adminId}` }) to the accounts `where platform_admin and disabled_at is null and email <> ''`. Add the kind \"platform.queue_wait_alert\": \"staff\" beside \"platform.status_alert\" in src/lib/personal-data.ts (line 643) and wherever else that kind is listed (rg -n 'platform.status_alert' src). Never throws: a failure is logged with log(\"error\", \"queue_waits.failed\", {}, error) and returns { over: [], alerts: 0 }. Also export `pruneQueueWaits()`: `delete from commerce.queue_waits where day < current_date - 90`, and `worstWaits(days = 2)`: the rows of the last two days for the screen."
-        },
-        {
-          "file": "src/app/api/cron/watch/route.ts",
-          "action": "create",
-          "how": "This file is made by step 1.22 and does not exist before it. If it is not there, stop: the dependency is not done. If it is there, do not overwrite it; edit it: the path here is a guess: open vercel.json, find the one cron path step 1.22 left there, and edit that route's file. After its own check of the scheduler's ledger rows, call `await recordQueueWaits()` inside tracked(\"watch.queue-waits\", 900, ...) so the reading has its own ledger row, and add its result to the route's JSON answer. Keep the route's maxDuration and its trackedRoute() wrapper."
-        },
-        {
-          "file": "src/app/api/cron/subscription-reminders/route.ts",
-          "action": "edit",
-          "how": "Add `await pruneQueueWaits();` on its own line after `await prunePlatformAdSignals();` (import it from \"@/server/queue-waits\")."
-        },
-        {
-          "file": "src/server/queue-waits.int.test.ts",
-          "action": "edit",
-          "how": "Add: (5) with the four-minute-old waiting page_ai_jobs row of case 2, recordQueueWaits() returns over = ['page-jobs'] and one commerce.email_messages row of kind 'platform.queue_wait_alert' exists per platform admin; a second call in the same hour adds no email; (6) a 4-minute-old commerce.theme_shots row with status 'waiting' sends nothing (its limit is 20 minutes) and a 21-minute-old one does; (7) commerce.queue_waits holds today's row for 'page-jobs' with worst_seconds of about 240, and a later call with a smaller wait does not lower it."
-        }
-      ],
-      "checks": [
-        "pnpm db:check: exits 0",
-        "pnpm exec vitest run src/db/privacy.test.ts src/server/cron-routes.scan.test.ts src/server/ratchet.scan.test.ts src/lib/brand.scan.test.ts: pass",
-        "pnpm test:int src/server/queue-waits.int.test.ts: passes",
-        "pnpm test:int: exits 0",
-        "pnpm lint && pnpm typecheck && pnpm test: exits 0"
-      ]
-    },
-    {
-      "title": "Usage and limits shows each queue's worst wait of the day",
-      "changes": [
-        {
-          "file": "src/app/admin/(gated)/platform/capacity/page.tsx",
-          "action": "edit",
-          "how": "Read worstWaits() beside the page's other reads and add a small table under the scheduled jobs' table: one row per queue with its name, today's worst wait and yesterday's (in minutes and seconds, '-' when none), and its limit (3 min or 20 min from limitSeconds()); a row over its limit gets the same warning mark the jobs table gives a late job (reuse that component or class; rg -n 'cronHealth' in the file shows where). Words go in the admin catalogue this page reads (find it from the page's useAdminText/adminText call), in English and Norwegian. Homer's view: the table is quiet when nothing is over; no setting is added. Send a screenshot to the owner."
-        }
-      ],
-      "checks": [
-        "pnpm exec vitest run on the capacity page's test (rg -l 'capacity' src --glob '*.test.ts*'): passes with a case that a queue over its limit is marked",
-        "pnpm build && E2E_SIGNED_IN=1 pnpm test:e2e for the platform admin's spec that opens Usage and limits, if one exists (rg -l 'capacity' e2e/signed-in)",
-        "pnpm lint && pnpm typecheck && pnpm test: exits 0"
-      ]
-    }
-  ],
-  "tests": [
-    {
-      "file": "src/server/queue-waits.int.test.ts",
-      "proves": "fails when a waiting row the tick's predicate would skip is not seen, when a watched queue over 3 minutes (or another over 20) sends no email, when the email repeats within the hour, or when a gated queue has no branch in commerce.cron_waits()"
-    }
-  ],
-  "migration": {
-    "needed": true,
-    "notes": "Two files through CI. A custom one: the function commerce.cron_waits() (read-only SQL, no table change). A generated one: the small platform table commerce.queue_waits (primary key (day, queue)). Neither touches a hot table; both are additive, so running code is unaffected. The function's scans: each branch reads a queue table by status; where step 3.1 added a partial index for the tick's exists(), the wider condition may not use it, and the function runs once every 15 minutes, so a scan of these small queue tables is accepted; say the measured time in the decision row. Record both versions in docs/decisions.md and check the advisors (a new table without a policy shows as INFO, as every private table)."
+ "id": "3.20",
+ "goal": "A SQL function beside commerce.cron_due() returns, for each gated queue, how long its oldest unfinished row has waited; the outside watcher reads it every 15 minutes, emails the platform admins when a queue a person watches is over 3 minutes or another over 20, and keeps each queue's worst wait of the day, which Platform, Usage and limits shows.",
+ "why": "After step 3.1 a route is called only when a predicate finds work, so a wrong predicate makes work start up to 15 minutes late (at the sweep) and nothing says so: the wait is not measured today. After: the wait of every gated queue is measured every 15 minutes, with limits of 3 and 20 minutes and an email over them.",
+ "read_first": [
+  "docs/ci-migrations.md",
+  "docs/capacity.md",
+  "src/server/cron-runs.ts",
+  "src/lib/cron-health.ts",
+  "src/server/status.ts",
+  "src/app/admin/(gated)/platform/capacity/page.tsx",
+  "src/lib/personal-data.ts",
+  "src/db/privacy.test.ts"
+ ],
+ "depends_on": [
+  {
+   "id": "3.1",
+   "why": "it creates commerce.cron_due() and the list of gated queues; this step's function sits beside it and covers the same queues"
   },
-  "done_when": [
+  {
+   "id": "1.22",
+   "why": "it creates the outside watcher (src/app/api/cron/watchdog/route.ts and runWatchdog() in src/server/watchdog.ts) that Vercel's cron calls every 15 minutes, and its way of emailing the admins; this step adds one reading to runWatchdog()"
+  }
+ ],
+ "commits": [
+  {
+   "title": "commerce.cron_waits(): each gated queue's oldest unfinished row, by a condition wider than the tick's",
+   "changes": [
     {
-      "check": "pnpm test:int src/server/queue-waits.int.test.ts",
-      "expect": "passes: a waiting row left in commerce.page_ai_jobs for 4 minutes produces the watcher's email"
+     "file": "src/lib/queue-waits.ts",
+     "action": "create",
+     "how": "A pure module. Export `WATCHED_MINUTES = 3` and `OTHER_MINUTES = 20` (the two limits; another figure is a one-line change here). Export `WATCHED_QUEUES: readonly string[] = [\"page-jobs\", \"page-looks\", \"dream-factory\"]` (work a person watches: AI page builds, looks at a page, the Dream Factory). Export `limitSeconds(queue: string): number` (WATCHED_MINUTES * 60 for a watched queue, else OTHER_MINUTES * 60), `overLimit(queue: string, seconds: number | null): boolean` (false for null) and `type QueueWait = { queue: string; seconds: number | null; waiting: number }`."
     },
     {
-      "check": "Platform, Usage and limits (/admin/platform/capacity)",
-      "expect": "a table with each gated queue's worst wait today and yesterday, and its limit"
+     "file": "supabase/migrations/*_cron_waits.sql",
+     "action": "create",
+     "how": "A custom migration (`pnpm exec drizzle-kit generate --custom --name cron_waits`, then `node scripts/prune-snapshots.mjs`) with one statement: `CREATE OR REPLACE FUNCTION commerce.cron_waits() RETURNS TABLE (queue text, seconds integer, waiting integer) LANGUAGE sql STABLE SET search_path TO ''` whose body is one `select ... union all select ...` with one branch per queue that commerce.cron_due() gates. First open the newest definition of commerce.cron_due() (`rg -l 'FUNCTION commerce.cron_due' supabase/migrations | sort | tail -1`) and list its queues and the table each reads. Each branch returns the queue's name exactly as cron_due() names its route, `extract(epoch from now() - min(<last change>))::int` as seconds (null when no row) and `count(*)::int` as waiting, over the rows of the queue's table that are NOT FINISHED. The rule for 'not finished' is the point of this step: use only the row's status (every status that is not an end state) and never the conditions cron_due() uses to decide a row is claimable (no `claimed_until`, no `tries <`, no `next_attempt_at <=`, no `last_attempt_at <`), so a row the tick's predicate wrongly skips is still seen here. `<last change>` is the table's updated_at where it has one, else created_at, so a long job that is advancing does not count as waiting. The six queues of step 3.1 are: 'page-jobs': commerce.page_ai_jobs where status = 'waiting', by updated_at; 'page-looks': commerce.page_looks where status in ('queued', 'running'), by created_at; 'dream-factory': commerce.dream_runs where status = 'running', by updated_at; 'theme-shots': commerce.theme_shots where status in ('waiting', 'running'), by created_at; 'cookie-scan': commerce.cookie_scans where status in ('queued', 'running'), by coalesce(started_at, created_at); 'pack-pictures': commerce.store_starters where pictures_wanted_at is not null (the table has no status column: runPackPictures() in src/server/content-packs.ts clears pictures_wanted_at when the pictures are done or given up, line 792 and 807), by greatest(updated_at, pictures_wanted_at), never reading picture_claimed_until or picture_failures. If cron_due() also names 'document-pdfs' (step 3.7 has landed), add its branch: invoices and credit notes with pdf_path is null and anonymised_at is null and fewer than 5 attempts in commerce.document_pdf_state, by issued_at, without the five-minute back-off. The three routes cron_due() names always or by feature, 'autopilot', 'broadcasts' and 'integrations' (step 3.2 gates them by its own due functions), get no branch: they have no single table of rows that wait, so they are not queues here. Grant nothing: the function is called by the server's own role, as cron_due() is."
     },
     {
-      "check": "rg -n 'WATCHED_MINUTES = 3|OTHER_MINUTES = 20' src/lib/queue-waits.ts",
-      "expect": "both lines"
+     "file": "src/server/queue-waits.int.test.ts",
+     "action": "create",
+     "how": "Cases against the seeded test database: (1) with no unfinished rows every queue returns seconds null and waiting 0, and the set of queue names equals `select route from commerce.cron_due(timestamptz '2026-01-05 09:00:00+00')` minus 'autopilot', 'broadcasts' and 'integrations' (at minute 0 of an hour cron_due() names every queue route, its sweep flag being true, whether or not a row waits); (2) insert a commerce.page_ai_jobs row with status 'waiting' and created_at and updated_at four minutes ago: 'page-jobs' returns seconds between 235 and 300 and waiting 1; (3) the wider condition: set that row's claimed_until to an hour from now and tries to 3 (so the tick's predicate would skip it): cron_waits() still returns it; (4) a row with status 'done' is not counted."
     }
-  ],
-  "after_deploy": [
-    "Production, an hour after the deploy: `select * from commerce.queue_waits where day = current_date` has rows only for queues that had work, and commerce.cron_jobs has a row watch.queue-waits with a success in the last 15 minutes.",
-    "Ask for a look at a page in a test store and watch Usage and limits the next day: page-looks' worst wait is under 180 seconds. A worst wait near 900 seconds for any queue means its predicate in commerce.cron_due() misses work: report it.",
-    "The function's own time: its mean in pg_stat_statements (the daily reading of step 0.2) is under 50 ms."
-  ],
-  "docs": [
-    "docs/decisions.md: add one row with the next free D-number (read the last row of the decisions table to find it; never reuse a number) and today's date. It records: how long due work may wait before the admins are told: 3 minutes for work a person watches (AI page builds, looks at a page, the Dream Factory) and 20 minutes for the other gated queues, both constants in src/lib/queue-waits.ts; commerce.cron_waits() and its rule (status only, never the tick's claim conditions); the table commerce.queue_waits kept 90 days; one email per queue per hour; the two migration versions.",
-    "docs/capacity.md: a short section 'How long due work waits' with the function, the limits, the table and where the screen shows it.",
-    "CLAUDE.md, Conventions, the bullet about cron routes and `commerce.cron_jobs`: add 'a queue gated in `commerce.cron_due()` gets a branch in `commerce.cron_waits()` with a wider condition (`queue-waits.int.test.ts` holds the two lists equal)'. The same sentence in the rule file that holds that bullet in full, if docs/rules has one (rg -n 'cron_due' docs/rules).",
-    "docs/audits/bloat-review-2026-11.md, Progress table: set the row of step 3.20 to Done with the date and the commit hash (if the table has no row for 3.20, add one in the table of its phase with the step's title), and add one line to that file's change log if it has one."
-  ],
-  "do_not": [
-    "Do not copy cron_due()'s predicate into cron_waits(): the wait must be read by a wider condition, or it cannot see a predicate that is wrong.",
-    "Do not count a row by created_at where the table has updated_at: a long build that is advancing must not alert.",
-    "Do not email on every reading: one email per queue per clock hour, through the idempotency key.",
-    "Do not call the queues' routes from the watcher or change commerce.cron_due() in this step.",
-    "Do not add a paid monitoring service or Vercel's Observability Plus: the watcher is Vercel's one free cron and the email goes through the platform's own sender.",
-    "Do not put a person's data in the email or the table: queue names, counts and seconds only."
-  ],
-  "stop_if": [
-    "commerce.cron_due() is not in any migration (step 3.1 not done), or vercel.json's cron still points at the daily route and no watcher route exists (step 1.22 not done).",
-    "A queue's table has no status column that tells finished from unfinished: list the queue and ask.",
-    "The int test shows 'dream-factory' or 'page-jobs' over 3 minutes during a normal, advancing run (updated_at does not move while the work advances): report which column moves instead.",
-    "commerce.cron_waits() takes more than 200 ms on the seeded test database."
-  ],
-  "executor": "cheap-then-review",
-  "executor_why": "The function's shape, the limits, the table and the email are specified, but choosing each later queue's 'not finished' condition is the one place a wrong line hides the very fault this step is for, so a stronger model should read the SQL before it is pushed.",
-  "checked_in_code": "I read the queue tables in the baseline: commerce.page_ai_jobs (status waiting/done/gone/failed, claimed_until, tries, updated_at), page_looks (queued/running/done/failed), dream_runs (running/asking/ready/...), theme_shots (waiting/running/done/failed/superseded) and cookie_scans (queued/running/done/failed), and alertAdmins() in src/server/status.ts for how the platform emails its admins. commerce.cron_due(), the tick and the watcher route do not exist on main yet (steps 3.1 and 1.22), so the brief stops without them and gives the watcher's file as a path to confirm in vercel.json. One correction to the step's words: 'the age of its oldest unfinished row' counted from created_at would alert on every long AI page build (a build row stays 'waiting' while its pictures are made), so the brief counts from the row's last change where the table has updated_at. The step says 'the daily reading keeps each queue's worst wait'; the brief keeps it in a small table of its own, written by the watcher, because the daily reading runs once a day and could not hold a worst-of-day."
+   ],
+   "checks": [
+    "pnpm exec vitest run src/db/migration-safety.scan.test.ts: passes",
+    "pnpm db:check: exits 0",
+    "pnpm test:int src/server/queue-waits.int.test.ts: passes",
+    "pnpm lint && pnpm typecheck && pnpm test: exits 0"
+   ]
+  },
+  {
+   "title": "The watcher reads the waits, emails the admins over 3 or 20 minutes, and keeps the day's worst per queue",
+   "changes": [
+    {
+     "file": "src/db/schema.ts",
+     "action": "edit",
+     "how": "Add a small platform table `queueWaits` = commerce.queue_waits: `day date not null`, `queue text not null`, `worst_seconds integer not null` (check >= 0), `worst_at timestamptz not null default now()`, `alerted_at timestamptz`, primary key (day, queue), and a check that queue matches ^[a-z0-9-]{1,40}$. No store_id: it is the platform's own. Run `pnpm db:generate`. Register the table wherever a new commerce table must be registered: run `pnpm exec vitest run src/db/privacy.test.ts` and the table-classes test of step 3.5 if it exists, and add the entries they ask for (in src/lib/personal-data.ts an entry with no personal data, as commerce.status_checks has; in src/lib/table-classes.ts class 'deleted' with the kind of the prune below, or the class its neighbours cron_jobs and status_checks have)."
+    },
+    {
+     "file": "src/server/queue-waits.ts",
+     "action": "create",
+     "how": "Server-only. `readQueueWaits(): Promise<QueueWait[]>` reads `select queue, seconds, waiting from commerce.cron_waits()` through typedRows() with col (queue col.text, seconds col.int.nullable(), waiting col.int). `recordQueueWaits(now = new Date()): Promise<{ over: string[]; alerts: number }>`: reads the waits; for each queue with seconds not null, upserts commerce.queue_waits for today's UTC date: `insert ... (day, queue, worst_seconds, worst_at) values (...) on conflict (day, queue) do update set worst_seconds = excluded.worst_seconds, worst_at = excluded.worst_at where commerce.queue_waits.worst_seconds < excluded.worst_seconds`; for each queue where overLimit(queue, seconds) is true, emails every platform admin once per queue per clock hour: build the email with renderEmail() as alertAdmins() in src/server/status.ts does (subject `Scheduled work is waiting: <queue> for <minutes> minutes`, a paragraph saying the queue, how many rows wait, the limit, and that the tick's predicate for this queue may be missing a kind of due work or its route is failing, and a button to `${siteUrl()}/admin/platform/capacity`), sent with sendEmail({ storeId: null, kind: \"platform.queue_wait_alert\", to, email, fromName: \"Kaizena Flow\", idempotencyKey: `queue-wait:${queue}:${now.toISOString().slice(0, 13)}:${adminId}` }) to the accounts `where platform_admin and disabled_at is null and email <> ''`. Add the kind \"platform.queue_wait_alert\": \"staff\" beside \"platform.status_alert\" in src/lib/personal-data.ts (line 643) and wherever else that kind is listed (rg -n 'platform.status_alert' src). Never throws: a failure is logged with log(\"error\", \"queue_waits.failed\", {}, error) and returns { over: [], alerts: 0 }. Also export `pruneQueueWaits()`: `delete from commerce.queue_waits where day < current_date - 90`, and `worstWaits(days = 2)`: the rows of the last two days for the screen."
+    },
+    {
+     "file": "src/server/watchdog.ts",
+     "action": "edit",
+     "made_by": "1.22",
+     "how": "Step 1.22 made the watcher: src/app/api/cron/watchdog/route.ts (Vercel's one cron, every 15 minutes; it imports only next/server, '@/server/cron-auth', '@/server/cron-runs' and '@/server/watchdog', and answers Response.json(await runWatchdog())) and this file, whose runWatchdog(now = new Date()) reads cronJobRows() and stoppedJobs(rows, now), returns { stopped: [], sent: 0 } early when nothing stopped, and otherwise emails the platform admins. Edit only this file, not the route: at the top of runWatchdog(), before the early return, add `const queues = await tracked(\"watch.queue-waits\", 900, () => recordQueueWaits(now));` (tracked from './cron-runs', recordQueueWaits from './queue-waits'), and add `queues` to both objects the function returns; its type becomes Promise<{ stopped: string[]; sent: number; queues: { over: string[]; alerts: number } | null }>. If src/server/watchdog.int.test.ts compares runWatchdog()'s answer with toEqual, change those comparisons to toMatchObject (the only change to that test)."
+    },
+    {
+     "file": "src/app/api/cron/subscription-reminders/route.ts",
+     "action": "edit",
+     "how": "Import pruneQueueWaits from \"@/server/queue-waits\". If the route has `const DAILY_JOBS = {` (step 3.4 has landed), add the entry `queueWaits: { every: 86400, why: \"The watcher's worst waits per queue go after 90 days (bloat review step 3.20).\", work: \"set\", budgetMs: 5000, run: () => pruneQueueWaits() }` at the end of DAILY_JOBS and `queueWaitsPruned: r.queueWaits ?? 0` to the answer. Otherwise add `await pruneQueueWaits();` on its own line after `await prunePlatformAdSignals();`."
+    },
+    {
+     "file": "src/server/queue-waits.int.test.ts",
+     "action": "edit",
+     "how": "Add: (5) with the four-minute-old waiting page_ai_jobs row of case 2, recordQueueWaits() returns over = ['page-jobs'] and one commerce.email_messages row of kind 'platform.queue_wait_alert' exists per platform admin; a second call in the same hour adds no email; (6) a 4-minute-old commerce.theme_shots row with status 'waiting' sends nothing (its limit is 20 minutes) and a 21-minute-old one does; (7) commerce.queue_waits holds today's row for 'page-jobs' with worst_seconds of about 240, and a later call with a smaller wait does not lower it."
+    }
+   ],
+   "checks": [
+    "pnpm db:check: exits 0",
+    "pnpm exec vitest run src/db/privacy.test.ts src/server/cron-routes.scan.test.ts src/server/ratchet.scan.test.ts src/lib/brand.scan.test.ts: pass",
+    "pnpm test:int src/server/queue-waits.int.test.ts src/server/watchdog.int.test.ts: pass",
+    "pnpm test:int: exits 0",
+    "pnpm lint && pnpm typecheck && pnpm test: exits 0"
+   ]
+  },
+  {
+   "title": "Usage and limits shows each queue's worst wait of the day",
+   "changes": [
+    {
+     "file": "src/app/admin/(gated)/platform/capacity/page.tsx",
+     "action": "edit",
+     "how": "Read worstWaits() beside the page's other reads and add a small table under the scheduled jobs' table: one row per queue with its name, today's worst wait and yesterday's (in minutes and seconds, '-' when none), and its limit (3 min or 20 min from limitSeconds()); a row over its limit gets the same warning mark the jobs table gives a late job (reuse that component or class; rg -n 'cronHealth' in the file shows where). Words go in the admin catalogue this page reads (find it from the page's useAdminText/adminText call), in English and Norwegian. Homer's view: the table is quiet when nothing is over; no setting is added. Send a screenshot to the owner."
+    }
+   ],
+   "checks": [
+    "pnpm exec vitest run on the capacity page's test (rg -l 'capacity' src --glob '*.test.ts*'): passes with a case that a queue over its limit is marked",
+    "pnpm build && E2E_SIGNED_IN=1 pnpm test:e2e for the platform admin's spec that opens Usage and limits, if one exists (rg -l 'capacity' e2e/signed-in)",
+    "pnpm lint && pnpm typecheck && pnpm test: exits 0"
+   ]
+  }
+ ],
+ "tests": [
+  {
+   "file": "src/server/queue-waits.int.test.ts",
+   "proves": "fails when a waiting row the tick's predicate would skip is not seen, when a watched queue over 3 minutes (or another over 20) sends no email, when the email repeats within the hour, or when a gated queue has no branch in commerce.cron_waits()"
+  }
+ ],
+ "migration": {
+  "needed": true,
+  "notes": "Two files through CI. A custom one: the function commerce.cron_waits() (read-only SQL, no table change). A generated one: the small platform table commerce.queue_waits (primary key (day, queue)). Neither touches a hot table; both are additive, so running code is unaffected. The function's scans: each branch reads a queue table by status; where step 3.1 added a partial index for the tick's exists(), the wider condition may not use it, and the function runs once every 15 minutes, so a scan of these small queue tables is accepted; say the measured time in the decision row. Record both versions in docs/decisions.md and check the advisors (a new table without a policy shows as INFO, as every private table)."
+ },
+ "done_when": [
+  {
+   "check": "pnpm test:int src/server/queue-waits.int.test.ts",
+   "expect": "passes: a waiting row left in commerce.page_ai_jobs for 4 minutes produces the watcher's email"
+  },
+  {
+   "check": "Platform, Usage and limits (/admin/platform/capacity)",
+   "expect": "a table with each gated queue's worst wait today and yesterday, and its limit"
+  },
+  {
+   "check": "rg -n 'WATCHED_MINUTES = 3|OTHER_MINUTES = 20' src/lib/queue-waits.ts",
+   "expect": "both lines"
+  }
+ ],
+ "after_deploy": [
+  "Production, an hour after the deploy: `select * from commerce.queue_waits where day = current_date` has rows only for queues that had work, and commerce.cron_jobs has a row watch.queue-waits with a success in the last 15 minutes.",
+  "Ask for a look at a page in a test store and watch Usage and limits the next day: page-looks' worst wait is under 180 seconds. A worst wait near 900 seconds for any queue means its predicate in commerce.cron_due() misses work: report it.",
+  "The function's own time: its mean in pg_stat_statements (the daily reading of step 0.2) is under 50 ms."
+ ],
+ "docs": [
+  "docs/decisions.md: add one row with the next free D-number (read the last row of the decisions table to find it; never reuse a number) and today's date. It records: how long due work may wait before the admins are told: 3 minutes for work a person watches (AI page builds, looks at a page, the Dream Factory) and 20 minutes for the other gated queues, both constants in src/lib/queue-waits.ts; commerce.cron_waits() and its rule (status only, never the tick's claim conditions); the table commerce.queue_waits kept 90 days; one email per queue per hour; the two migration versions.",
+  "docs/capacity.md: a short section 'How long due work waits' with the function, the limits, the table and where the screen shows it.",
+  "CLAUDE.md, Conventions, the bullet about cron routes and `commerce.cron_jobs`: add 'a queue gated in `commerce.cron_due()` gets a branch in `commerce.cron_waits()` with a wider condition (`queue-waits.int.test.ts` holds the two lists equal)'. The same sentence in the rule file that holds that bullet in full, if docs/rules has one (rg -n 'cron_due' docs/rules).",
+  "docs/audits/bloat-review-2026-11.md, Progress table: set the row of step 3.20 to Done with the date and the commit hash (if the table has no row for 3.20, add one in the table of its phase with the step's title), and add one line to that file's change log if it has one."
+ ],
+ "do_not": [
+  "Do not copy cron_due()'s predicate into cron_waits(): the wait must be read by a wider condition, or it cannot see a predicate that is wrong.",
+  "Do not count a row by created_at where the table has updated_at: a long build that is advancing must not alert.",
+  "Do not email on every reading: one email per queue per clock hour, through the idempotency key.",
+  "Do not call the queues' routes from the watcher or change commerce.cron_due() in this step.",
+  "Do not add a paid monitoring service or Vercel's Observability Plus: the watcher is Vercel's one free cron and the email goes through the platform's own sender.",
+  "Do not put a person's data in the email or the table: queue names, counts and seconds only."
+ ],
+ "stop_if": [
+  "commerce.cron_due() is not in any migration (step 3.1 not done), or src/server/watchdog.ts with runWatchdog() does not exist (step 1.22 not done).",
+  "A queue's table has no status column that tells finished from unfinished: list the queue and ask.",
+  "The int test shows 'dream-factory' or 'page-jobs' over 3 minutes during a normal, advancing run (updated_at does not move while the work advances): report which column moves instead.",
+  "commerce.cron_waits() takes more than 200 ms on the seeded test database."
+ ],
+ "executor": "cheap-then-review",
+ "executor_why": "The function's branches (each table, its unfinished rows and its time column, pack-pictures and the excluded feature routes included), the limits, the table, the email and the watcher's one edit are specified, but a wrong 'not finished' line hides the very fault this step is for and the step adds a migration and an alert email, so a stronger model reads the SQL before the push.",
+ "checked_in_code": "I read the queue tables in the baseline: commerce.page_ai_jobs (status waiting/done/gone/failed, claimed_until, tries, updated_at), page_looks (queued/running/done/failed), dream_runs (running/asking/ready/...), theme_shots (waiting/running/done/failed/superseded) and cookie_scans (queued/running/done/failed), and alertAdmins() in src/server/status.ts for how the platform emails its admins. commerce.cron_due(), the tick and the watcher route do not exist on main yet (steps 3.1 and 1.22), so the brief stops without them and gives the watcher's file as a path to confirm in vercel.json. One correction to the step's words: 'the age of its oldest unfinished row' counted from created_at would alert on every long AI page build (a build row stays 'waiting' while its pictures are made), so the brief counts from the row's last change where the table has updated_at. The step says 'the daily reading keeps each queue's worst wait'; the brief keeps it in a small table of its own, written by the watcher, because the daily reading runs once a day and could not hold a worst-of-day. Second check (12 November): the watcher is step 1.22's src/server/watchdog.ts (runWatchdog), edited there because the route may import only four modules; pack-pictures reads commerce.store_starters where pictures_wanted_at is not null (no status column); the feature routes autopilot, broadcasts and integrations get no branch; the int test compares queue names with cron_due() at minute 0 minus those three; the daily prune goes into DAILY_JOBS when step 3.4 has landed.",
+ "cheap_commits": [
+  3
+ ],
+ "rating_checked": "cheap-then-review"
 }

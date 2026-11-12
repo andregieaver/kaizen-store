@@ -1,0 +1,20 @@
+{
+ "id": "2.25",
+ "fixed": [
+  "The whole brief assumed step 0.7 made src/lib/admin-area.ts with AreaWords and areaText() and modules `<area>Words = { area, words }`; 0.7's brief makes `<AREA>_WORDS: Record<AdminLang, <X>Messages>` read as `<AREA>_WORDS[lang]` and no admin-area.ts. The generator, codemod, by-hand cases and docs now use 0.7's exact shape (quoted).",
+  "src/lib/admin-area.ts is now created by this step with one helper, areaTexts(lang, { area: MODULE }), given verbatim; the stop_if that stopped when 0.7 had not made it (it never would) is replaced.",
+  "Commit 1's change to admin-catalogues.scan.test.ts is dropped: 0.7 already added the case that no 'use client' module imports @/lib/admin-words; a check confirms it.",
+  "src/test/admin-words-all.ts and admin-lang.test.ts are written for the record-of-modules shape, with a count of 67.",
+  "EDITOR_AREA_WORDS and PLATFORM_SITE_AREA_WORDS are listed with their eleven and ten modules.",
+  "The reach test and scripts/route-budget.json use plain paths with made_by 0.7 and 1.8."
+ ],
+ "rejected": [
+  {
+   "problem": "Commit 1 says to copy the shape 'token for token' from step 0.7's modules, which are not in the repo yet.",
+   "why": "Real, and fixed differently: the shape is now quoted from 0.7's brief in commit 1, so nothing is guessed."
+  }
+ ],
+ "cheaper": "not applied: writing every English-default site's callers out was not done (the type checker lists them and the commit is reviewed); the judge gave no edit",
+ "executor_before": "strong",
+ "executor_after": "cheap-then-review"
+}

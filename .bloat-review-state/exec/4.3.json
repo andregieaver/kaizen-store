@@ -1,187 +1,198 @@
 {
-  "id": "4.3",
-  "goal": "No export of a production file is kept alive only by a test without a written reason, no test file mocks server-only, the integration tests take next/cache from one setup file, and the scan tests read the source tree through one helper.",
-  "why": "443 exports (2,959 lines) in production files are used by tests only, 579 test files mock server-only though the configuration can stub it, 465 integration tests stub next/cache in five spellings, and 84 test files call readdirSync with 67 private walkers. After: testOnlyExports is empty with 100 to 130 reasoned names in keptForTests, 0 files mock server-only, under 60 integration tests stub next/cache themselves, and 20 or fewer test files call readdirSync.",
-  "read_first": [
-    "vitest.config.mts",
-    "vitest.integration.config.mts",
-    "test/server-only.ts",
-    "test/integration-setup.ts",
-    "src/lib/brand.scan.test.ts",
-    "src/lib/permissions.scan.test.ts",
-    "scripts/lib/ratchet-count.mjs",
-    "docs/audits/bloat-review-2026-11/README.md"
-  ],
-  "depends_on": [
-    {
-      "id": "1.17",
-      "why": "scripts/unused.mjs, src/server/unused.baseline.json (testOnlyExports, keptForTests) and src/server/unused.scan.test.ts are made there; this step empties the first list"
-    },
-    {
-      "id": "3.15",
-      "why": "it deletes the word constants only tests read, which are about a quarter of the list"
-    }
-  ],
-  "commits": [
-    {
-      "title": "Tests take server-only from the configuration, not from a mock in each file",
-      "changes": [
-        {
-          "file": "vitest.config.mts",
-          "action": "edit",
-          "how": "In resolve.alias add `\"server-only\": fileURLToPath(new URL(\"./test/server-only.ts\", import.meta.url))`, the same line vitest.integration.config.mts line 10 has. Nothing else."
-        },
-        {
-          "file": "src/**/*.test.ts",
-          "action": "edit",
-          "how": "Delete, in every test file, the exact line `vi.mock(\"server-only\", () => ({}));` (579 files; all 579 have this one spelling). Do it with one command, not by hand: rg -l 'vi[.]mock[(].server-only' src --glob '*.test.ts' --glob '*.test.tsx' | xargs sed -i '/^vi\\.mock(\"server-only\", () => ({}));$/d'. Then, in each file where `vi` is no longer used at all, the linter says so: remove `vi` from that file's vitest import (pnpm lint names each file). Do not delete any other line. If a file has a blank line doubled where the mock was, leave it; the formatter is not part of this step."
-        }
-      ],
-      "checks": [
-        "rg -c 'vi[.]mock[(].server-only' src --glob '*.test.ts' --glob '*.test.tsx' : prints nothing",
-        "pnpm lint && pnpm typecheck && pnpm test : exits 0",
-        "pnpm test:int : exits 0"
-      ]
-    },
-    {
-      "title": "Integration tests take next/cache from one setup file",
-      "changes": [
-        {
-          "file": "test/integration-mocks.ts",
-          "action": "create",
-          "how": "`import { vi } from \"vitest\";` and one mock: `vi.mock(\"next/cache\", () => ({ cacheLife: () => {}, cacheTag: () => {}, updateTag: () => {}, revalidateTag: () => {}, revalidatePath: () => {}, refresh: () => {} }));` (these six are every name production code imports from next/cache: rg -o 'import [{]([^}]*)[}] from \"next/cache\"' src --glob '!*.test.ts'; add a name that rg shows and this list lacks). A header comment says: a test file's own vi.mock(\"next/cache\") still wins for that file, so a test that records tags keeps its own. Do not mock next/headers or next/server here in this commit."
-        },
-        {
-          "file": "vitest.integration.config.mts",
-          "action": "edit",
-          "how": "Add `setupFiles: [\"./test/integration-mocks.ts\"],` to `test`. Before deleting anything, prove the override on one file: run a test that has its own multi-line next/cache mock with a spy (rg -l 'vi[.]mock[(]\"next/cache\", [(][)] => [(][{]$' src --glob '*.int.test.ts' lists 40) and see it still pass."
-        },
-        {
-          "file": "src/**/*.int.test.ts",
-          "action": "edit",
-          "how": "Delete the one-line next/cache mocks whose body is only no-ops, one spelling per run of the command, each followed by pnpm test:int: (1) 318 files: `vi.mock(\"next/cache\", () => ({ cacheLife: () => {}, cacheTag: () => {}, updateTag: () => {}, revalidateTag: () => {}, refresh: () => {} }));` (2) 39 files without refresh, (3) 25 without revalidateTag, (4) 24 with only cacheLife, cacheTag and updateTag, (5) 15 with refresh before revalidateTag, (6) 2 with `() => undefined`. Get the exact lines with: rg -o --no-filename 'vi[.]mock[(]\"next/cache\", .*' src --glob '*.int.test.ts' | sort | uniq -c | sort -rn. Delete a line only when every value in it is `() => {}` or `() => undefined`. Keep the 40 multi-line mocks and any one-line mock that records something (one pushes tags into an array). Then remove unused `vi` imports as pnpm lint names them."
-        }
-      ],
-      "checks": [
-        "rg -l 'vi[.]mock[(].next/cache' src --glob '*.int.test.ts' | wc -l : prints a number under 60 (465 before)",
-        "pnpm test:int : exits 0 after each spelling, with no assertion edited",
-        "pnpm lint && pnpm typecheck && pnpm test : exits 0"
-      ]
-    },
-    {
-      "title": "One walker for the tests that read the source tree",
-      "changes": [
-        {
-          "file": "src/test/source-files.ts",
-          "action": "create",
-          "how": "Test support, never imported by production code. `import { readdirSync, readFileSync, statSync } from \"node:fs\"; import { join, relative } from \"node:path\";`. Export `ROOT` (the repository root: join(__dirname, \"../..\")), `sourceFiles(dir: string, options?: { tests?: boolean; extensions?: readonly string[]; skip?: (rel: string) => boolean }): string[]`: repository-relative posix paths of every file under `dir`, recursive, sorted, never entering node_modules, .next or .git; by default only .ts and .tsx and no *.test.ts, *.test.tsx or *.spec.ts (tests: true includes them). Export `sourceText(rel: string): string`. Both keep a module-level Map memo (the list per dir-and-options key, the text per file), so one worker walks and reads a file once. Export `actionFiles()`: the files whose first statement is 'use server'. This file holds the only readdirSync the scans need."
-        },
-        {
-          "file": "src/test/source-files.test.ts",
-          "action": "create",
-          "how": "Tests: sourceFiles(\"src/lib\") contains src/lib/money.ts and no *.test.ts; with tests: true it contains src/lib/money.test.ts; it lists more than 500 files for \"src\"; a second call returns the same array object (the memo); sourceText returns a string that contains `export` for src/lib/money.ts."
-        },
-        {
-          "file": "src/**/*.scan.test.ts",
-          "action": "edit",
-          "how": "List the files: rg -l readdirSync src --glob '*.test.ts' (84 on 12 November 2026; step 3.15's and 1.17's new scans may add some). In each, find the private walker (a recursive function that calls readdirSync and statSync and filters by extension) and replace it by sourceFiles() with the SAME folder and the SAME filter: pass what the walker left out as `skip`, and keep any extra filter the test applied after the walk. Replace readFileSync(join(ROOT, file)) by sourceText(file) where the path is one sourceFiles() returned. Delete the walker and the unused imports. Do them in this order and commit every ten files: first the 46 named *.scan.test.ts, then the others. For each file, before and after: add a temporary console.log of the number of files the test walks and see the same number; remove the log. Leave a test alone (and count it in the 20 allowed) when it reads a folder that is not source code: supabase/migrations, content/docs, public, e2e fixtures, a temporary directory it made itself. Also in this commit, two lines the finding names: in src/lib/brand.scan.test.ts, in oldNames() right after the file's text is read (about line 33), add `if (!OLD.some((re) => re.test(src))) return [];` before ts.createSourceFile (use the variable name the text has there); the same in oldWords() of src/lib/theme-words.scan.test.ts (about line 49)."
-        }
-      ],
-      "checks": [
-        "rg -l readdirSync src --glob '*.test.ts' | wc -l : prints 20 or less",
-        "rg -c 'OLD.some[(][(]re[)] => re.test[(]' src/lib/brand.scan.test.ts src/lib/theme-words.scan.test.ts : prints 2 for each file (the old use and the new pre-test)",
-        "pnpm test : exits 0; every scan test still fails on its planted case where the file has one ('the detector would notice' tests)",
-        "pnpm lint && pnpm typecheck && pnpm test : exits 0"
-      ]
-    },
-    {
-      "title": "Exports only a test keeps alive: delete, or keep with a reason, folder by folder",
-      "changes": [
-        {
-          "file": "src/lib/**/*.ts",
-          "action": "edit",
-          "how": "The list is `testOnlyExports` in src/server/unused.baseline.json (entries 'file#name'; print it grouped by folder: node -e \"const b=require('./src/server/unused.baseline.json');for(const e of b.testOnlyExports)console.log(e)\" | sort). Work one folder per commit: src/lib first (about 260 names), then src/server, then src/components. For each name N in file F: (a) run rg -w -l N src e2e --glob '*.test.*' --glob '*.spec.*' to get the tests that name it, and read F's comment above N. (b) KEEP, by moving the entry to keptForTests with a one-sentence reason (node scripts/unused.mjs --write, then replace its TODO), when one of these is true: the comment says a test holds a rule with it; it is a reset or clean-up helper (closeDb, a forget or reset function); it is an oracle a test compares the real result against (buildInvoiceSnapshot, buildEditInvoiceSnapshot, creditNoteSnapshot, editCreditNote, nextState, validateExport, the two registerProblems); it is a constant a guard test reads (STORE_MATCHER, SECRET_TABLES, NOT_EXPORTED). (c) MOVE to a `*-test-support.ts` file beside F when it is a pure helper only tests call and it uses nothing private of F. (d) If the comment names a screen or a caller that does not call it (openRequestCount 'the Requests tab's badge', trialPausedAt 'for the banner', twoStepMembers, retryDocumentPdf, shopperCanAccessOrder 'for the order page and My account'): do not delete; write the name, the file and the comment's claim into a list for the owner in your report (a missing wire is not waste), and give it the keptForTests reason 'named by a screen that does not call it: owner to decide, listed <date>'. (e) Otherwise DELETE the export (the whole function or constant, or only the `export` keyword when the file itself uses it) and the test cases that only exercise it; when a test file is then empty, delete the file. If a deleted test case was the only check of a database rule reached through the function (a trigger, a constraint), keep the case and reach the rule through the function the app uses. After each folder: pnpm lint (it names what became unused in turn; delete those too), node scripts/ratchet.mjs, node scripts/unused.mjs --write."
-        },
-        {
-          "file": "src/server/**/*.ts",
-          "action": "edit",
-          "how": "The same for src/server and then src/components. Two named switches of test set-up to the function the app uses, then delete the old one: setCartCode to addCartCode in src/server/checkout-kinds.int.test.ts, vat-engine.int.test.ts and vat-money-review.int.test.ts; listOrders to listOrdersPage in src/server/fulfilment.int.test.ts, inventory-admin.int.test.ts and store-copy.int.test.ts (these six files are the only tests whose set-up lines may change; their assertions may not). SCOPES_BEFORE_D440 in src/lib/admin-api.ts line 68 and the case in src/lib/admin-api-routes.test.ts lines 196 to 211 go together. chosenDelivery: after deleting it, correct the sentence in the header of src/server/delivery-readers.scan.test.ts line 8, which says cartSummary() and placeOrder() call it (they call resolveDelivery()). After each deletion that a rule names: rg -w N docs/rules CLAUDE.md and correct the sentence."
-        }
-      ],
-      "checks": [
-        "After each folder: pnpm lint && pnpm typecheck && pnpm test && pnpm test:int : exits 0",
-        "node scripts/unused.mjs : testOnlyExports shrank by the folder's names and no reason is TODO",
-        "pnpm exec vitest run src/server/unused.scan.test.ts src/server/ratchet.scan.test.ts src/lib/copies.scan.test.ts : exits 0",
-        "At the end: node -e \"const b=require('./src/server/unused.baseline.json');console.log(b.testOnlyExports.length, Object.keys(b.keptForTests).length)\" : prints 0 and a number from 100 to 130"
-      ]
-    }
-  ],
-  "tests": [
-    {
-      "file": "src/server/unused.scan.test.ts",
-      "proves": "Exists since step 1.17: fails when a new export is used by tests only and is neither in a test-support file nor in keptForTests with a reason. After this step testOnlyExports is empty, so every such export fails at once."
-    },
-    {
-      "file": "src/test/test-setup.scan.test.ts",
-      "proves": "New (it uses sourceFiles): fails when a test file mocks server-only, when an integration test adds a one-line no-op mock of next/cache, and when a test file outside an allow-list of 20 calls readdirSync; the allow-list may only shrink."
-    },
-    {
-      "file": "src/test/source-files.test.ts",
-      "proves": "Fails when the shared walker starts to include tests by default, enters node_modules or loses its memo."
-    }
-  ],
-  "migration": {
-    "needed": false,
-    "notes": ""
+ "id": "4.3",
+ "goal": "No export of a production file is kept alive only by a test without a written reason, no test file mocks server-only, the integration tests take next/cache from one setup file, and the scan tests read the source tree through one helper.",
+ "why": "443 exports (2,959 lines) in production files are used by tests only, 579 test files mock server-only though the configuration can stub it, 465 integration tests stub next/cache in five spellings, and 84 test files call readdirSync with 67 private walkers. After: testOnlyExports is empty with 100 to 130 reasoned names in keptForTests, 0 files mock server-only, under 60 integration tests stub next/cache themselves, and 20 or fewer test files call readdirSync.",
+ "read_first": [
+  "vitest.config.mts",
+  "vitest.integration.config.mts",
+  "test/server-only.ts",
+  "test/integration-setup.ts",
+  "src/lib/brand.scan.test.ts",
+  "src/lib/permissions.scan.test.ts",
+  "scripts/lib/ratchet-count.mjs",
+  "docs/audits/bloat-review-2026-11/README.md"
+ ],
+ "depends_on": [
+  {
+   "id": "1.17",
+   "why": "scripts/unused.mjs, src/server/unused.baseline.json (testOnlyExports, keptForTests) and src/server/unused.scan.test.ts are made there; this step empties the first list"
   },
-  "done_when": [
+  {
+   "id": "3.15",
+   "why": "it deletes the word constants only tests read, which are about a quarter of the list"
+  }
+ ],
+ "commits": [
+  {
+   "title": "Tests take server-only from the configuration, not from a mock in each file",
+   "changes": [
     {
-      "check": "node -e \"const b=require('./src/server/unused.baseline.json');console.log(b.testOnlyExports.length, Object.keys(b.keptForTests).length, Object.values(b.keptForTests).every(r=>r&&r!=='TODO'))\"",
-      "expect": "0, a number from 100 to 130, true. If the kept number falls outside 100 to 130, report the count and the three commonest reasons instead of bending the rules of the brief"
+     "file": "vitest.config.mts",
+     "action": "edit",
+     "how": "In resolve.alias add `\"server-only\": fileURLToPath(new URL(\"./test/server-only.ts\", import.meta.url))`, the same line vitest.integration.config.mts line 10 has. Nothing else."
     },
     {
-      "check": "rg -l 'vi[.]mock[(].server-only' src --glob '*.test.ts' --glob '*.test.tsx' | wc -l",
-      "expect": "0 (579 on 12 November 2026)"
-    },
-    {
-      "check": "rg -l 'vi[.]mock[(].next/cache' src --glob '*.int.test.ts' | wc -l",
-      "expect": "under 60 (465)"
-    },
-    {
-      "check": "rg -l readdirSync src --glob '*.test.ts' | wc -l",
-      "expect": "20 or less (84)"
-    },
-    {
-      "check": "pnpm lint && pnpm typecheck && pnpm test && pnpm test:int",
-      "expect": "exits 0"
+     "file": "src/**/*.test.ts",
+     "action": "edit",
+     "how": "Delete, in every test file, the exact line `vi.mock(\"server-only\", () => ({}));` (579 files; all 579 have this one spelling). Do it with one command, not by hand: rg -l 'vi[.]mock[(].server-only' src --glob '*.test.ts' --glob '*.test.tsx' | xargs sed -i '/^vi\\.mock(\"server-only\", () => ({}));$/d'. Then, in each file where `vi` is no longer used at all, the linter says so: remove `vi` from that file's vitest import (pnpm lint names each file). Do not delete any other line. If a file has a blank line doubled where the mock was, leave it; the formatter is not part of this step."
     }
-  ],
-  "after_deploy": [],
-  "docs": [
-    "docs/decisions.md: one new D-number row: tests get server-only from both vitest configurations and next/cache from test/integration-mocks.ts; src/test/source-files.ts is the one walker; testOnlyExports is empty and keptForTests names what tests need on purpose; the list of exports whose comment names a screen that does not call them, handed to the owner.",
-    "CLAUDE.md, Commands: change, do not add: in the existing sentence about integration tests say they get server-only and next/cache from the configuration. One clause.",
-    "docs/rules: correct any rule sentence that names a deleted function (rg -w each deleted name over docs/rules and CLAUDE.md).",
-    "docs/audits/code-review-2026-11.md, Progress table, step 4.1 (bans to lint, one shared file walker): note the walker exists and which scans use it, with a change-log line.",
-    "docs/audits/bloat-review-2026-11.md, Progress table: set step 4.3 to Done with the date and the commit; the exports part must be done before step 4.5."
-  ],
-  "do_not": [
-    "Do not delete an export that any non-test file imports: the list comes from scripts/unused.mjs, and pnpm typecheck must pass after every folder.",
-    "Do not delete an oracle, a reset helper or a guard list because only tests read it: those go to keptForTests.",
-    "Do not delete a function whose comment names a screen that should call it; list it for the owner.",
-    "Do not change a test's assertion. Deleted with its export: yes. Rewritten to pass: no (the six named set-up switches aside).",
-    "Do not mock next/headers or next/server in the shared setup in this step, and do not delete a multi-line or recording mock.",
-    "Do not move a scan's ban into the shared walker's defaults: each scan keeps its own filter.",
-    "Do not add a bypass to the app for a test; these are test-side stubs only.",
-    "Do not sweep makeStore and paidOrder helpers: they stay 'when touched'."
-  ],
-  "stop_if": [
-    "A test fails after its server-only or next/cache line was deleted: restore that file's line, name the file and go on with the others; stop if more than ten files need it.",
-    "A scan walks a different number of files after moving to sourceFiles().",
-    "scripts/unused.mjs or src/server/unused.baseline.json does not exist (step 1.17 is not done).",
-    "Deleting an export breaks a non-test file's build (the scan missed an import form): stop and report the import.",
-    "More than 30 exports fall under rule (d) (a comment that names a caller that does not call it): report the list before deleting further."
-  ],
-  "executor": "strong",
-  "executor_why": "The first three commits are mechanical and a cheap model can do them with the commands given, but deciding for about 330 exports whether each is an oracle, a seam, a missing wire or dead code is judgement per item.",
-  "checked_in_code": "I counted today: 579 test files hold `vi.mock(\"server-only\", () => ({}));` in one single spelling (448 integration, 131 unit), 465 integration tests mock next/cache (318, 39, 25, 24, 15 and 2 one-line no-op spellings, 40 multi-line, one that records tags), and 84 test files call readdirSync (the step says 86). vitest.integration.config.mts aliases server-only and has no setupFiles; vitest.config.mts has neither alias. Corrections: production code also imports revalidatePath from next/cache (2 places), so the shared stub has six names, not five; the finding's lists T2.txt and T3.txt live in the review's scratchpad, not in the repo, so the brief takes the list from src/server/unused.baseline.json; scripts/unused.mjs and that baseline do not exist yet (step 1.17). The store-makers and the next/headers and next/server mocks are left out: the step's done-when does not ask for them."
+   ],
+   "checks": [
+    "rg -c 'vi[.]mock[(].server-only' src --glob '*.test.ts' --glob '*.test.tsx' : prints nothing",
+    "pnpm lint && pnpm typecheck && pnpm test : exits 0",
+    "pnpm test:int : exits 0"
+   ]
+  },
+  {
+   "title": "Integration tests take next/cache from one setup file",
+   "changes": [
+    {
+     "file": "test/integration-mocks.ts",
+     "action": "create",
+     "how": "`import { vi } from \"vitest\";` and one mock: `vi.mock(\"next/cache\", () => ({ cacheLife: () => {}, cacheTag: () => {}, updateTag: () => {}, revalidateTag: () => {}, revalidatePath: () => {}, refresh: () => {} }));` (these six are every name production code imports from next/cache: rg -o 'import [{]([^}]*)[}] from \"next/cache\"' src --glob '!*.test.ts'; add a name that rg shows and this list lacks). A header comment says: a test file's own vi.mock(\"next/cache\") still wins for that file, so a test that records tags keeps its own. Do not mock next/headers or next/server here in this commit."
+    },
+    {
+     "file": "vitest.integration.config.mts",
+     "action": "edit",
+     "how": "Add `setupFiles: [\"./test/integration-mocks.ts\"],` to `test`. Before deleting anything, prove the override on one file: run a test that has its own multi-line next/cache mock with a spy (rg -l 'vi[.]mock[(]\"next/cache\", [(][)] => [(][{]$' src --glob '*.int.test.ts' lists 40) and see it still pass."
+    },
+    {
+     "file": "src/**/*.int.test.ts",
+     "action": "edit",
+     "how": "Delete the one-line next/cache mocks whose body is only no-ops, one spelling per run of the command, each followed by pnpm test:int: (1) 318 files: `vi.mock(\"next/cache\", () => ({ cacheLife: () => {}, cacheTag: () => {}, updateTag: () => {}, revalidateTag: () => {}, refresh: () => {} }));` (2) 39 files without refresh, (3) 25 without revalidateTag, (4) 24 with only cacheLife, cacheTag and updateTag, (5) 15 with refresh before revalidateTag, (6) 2 with `() => undefined`. Get the exact lines with: rg -o --no-filename 'vi[.]mock[(]\"next/cache\", .*' src --glob '*.int.test.ts' | sort | uniq -c | sort -rn. Delete a line only when every value in it is `() => {}` or `() => undefined`. Keep the 40 multi-line mocks and any one-line mock that records something (one pushes tags into an array). Then remove unused `vi` imports as pnpm lint names them."
+    }
+   ],
+   "checks": [
+    "rg -l 'vi[.]mock[(].next/cache' src --glob '*.int.test.ts' | wc -l : prints a number under 60 (465 before)",
+    "pnpm test:int : exits 0 after each spelling, with no assertion edited",
+    "pnpm lint && pnpm typecheck && pnpm test : exits 0"
+   ]
+  },
+  {
+   "title": "One walker for the tests that read the source tree",
+   "changes": [
+    {
+     "file": "src/test/source-files.ts",
+     "action": "create",
+     "how": "Test support, never imported by production code. `import { readdirSync, readFileSync, statSync } from \"node:fs\"; import { join, relative } from \"node:path\";`. Export `ROOT` (the repository root: join(__dirname, \"../..\")), `sourceFiles(dir: string, options?: { tests?: boolean; extensions?: readonly string[]; skip?: (rel: string) => boolean }): string[]`: repository-relative posix paths of every file under `dir`, recursive, sorted, never entering node_modules, .next or .git; by default only .ts and .tsx and no *.test.ts, *.test.tsx or *.spec.ts (tests: true includes them). Export `sourceText(rel: string): string`. Both keep a module-level Map memo (the list per dir-and-options key, the text per file), so one worker walks and reads a file once. Export `actionFiles()`: the files whose first statement is 'use server'. This file holds the only readdirSync the scans need."
+    },
+    {
+     "file": "src/test/source-files.test.ts",
+     "action": "create",
+     "how": "Tests: sourceFiles(\"src/lib\") contains src/lib/money.ts and no *.test.ts; with tests: true it contains src/lib/money.test.ts; it lists more than 500 files for \"src\"; a second call returns the same array object (the memo); sourceText returns a string that contains `export` for src/lib/money.ts."
+    },
+    {
+     "file": "src/**/*.scan.test.ts",
+     "action": "edit",
+     "how": "List the files: rg -l readdirSync src --glob '*.test.ts' (84 on 12 November 2026; step 3.15's and 1.17's new scans may add some). In each, find the private walker (a recursive function that calls readdirSync and statSync and filters by extension) and replace it by sourceFiles() with the SAME folder and the SAME filter: pass what the walker left out as `skip`, and keep any extra filter the test applied after the walk. Replace readFileSync(join(ROOT, file)) by sourceText(file) where the path is one sourceFiles() returned. Delete the walker and the unused imports. Do them in this order and commit every ten files: first the 46 named *.scan.test.ts, then the others. For each file, before the conversion print once the number of files the test walks (a temporary console.log, then removed) and write it down as N; after the conversion the test must walk the same number. Then keep a permanent guard in the converted test, right after its sourceFiles() call: `expect(files.length, 'this scan walks <folder>: if files were removed on purpose, lower the floor').toBeGreaterThanOrEqual(<floor of 0.9 * N>)` (use the variable the test holds the list in), so a later edit that makes the scan walk far fewer files fails instead of passing quietly. Leave a test alone (and count it in the 20 allowed) when it reads a folder that is not source code: supabase/migrations, content/docs, public, e2e fixtures, a temporary directory it made itself. Also in this commit, two lines the finding names: in src/lib/brand.scan.test.ts, in oldNames() right after the file's text is read (about line 33), add `if (!OLD.some((re) => re.test(src))) return [];` before ts.createSourceFile (use the variable name the text has there); the same in oldWords() of src/lib/theme-words.scan.test.ts (about line 49)."
+    },
+    {
+     "file": "src/test/test-setup.scan.test.ts",
+     "action": "create",
+     "how": "A Vitest scan using sourceFiles() and sourceText() from ./source-files. Three cases. (1) 'no test file mocks server-only': over sourceFiles('src', { tests: true }) keep the names ending in .test.ts or .test.tsx; expect the list of those whose text matches /vi\\.mock\\(\\s*[\"']server-only[\"']/ to equal []. (2) 'an integration test does not stub next/cache with no-ops of its own': over the files ending in .int.test.ts, expect [] for those holding a one-line mock /^vi\\.mock\\(\"next\\/cache\", \\(\\) => \\(\\{[^\\n]*\\}\\)\\);$/m whose every value is `() => {}` or `() => undefined` (test/integration-mocks.ts gives those); a multi-line mock or one that records stays allowed. (3) 'readdirSync only where a test reads something that is not source code': the test files (tests: true, outside src/test/source-files.ts) whose text contains `readdirSync` must all be in an exported constant `READS_FOLDERS: Record<string, string>` (file -> one-line reason, such as 'reads supabase/migrations'), written from what `rg -l readdirSync src --glob '*.test.ts'` prints after this commit's conversions (20 or fewer); a test names any file in READS_FOLDERS that no longer calls readdirSync, so the list may only shrink. Add one would-notice case per rule on strings: a made-up file text with `vi.mock(\"server-only\", () => ({}));` is caught by rule 1's pattern; `vi.mock(\"next/cache\", () => ({ cacheTag: () => {} }));` by rule 2's."
+    }
+   ],
+   "checks": [
+    "rg -l readdirSync src --glob '*.test.ts' | wc -l : prints 20 or less",
+    "rg -c 'OLD.some[(][(]re[)] => re.test[(]' src/lib/brand.scan.test.ts src/lib/theme-words.scan.test.ts : prints 2 for each file (the old use and the new pre-test)",
+    "pnpm test : exits 0; every scan test still fails on its planted case where the file has one ('the detector would notice' tests)",
+    "pnpm lint && pnpm typecheck && pnpm test : exits 0",
+    "pnpm exec vitest run src/test/test-setup.scan.test.ts src/test/source-files.test.ts : exits 0"
+   ]
+  },
+  {
+   "title": "Exports only a test keeps alive: delete, or keep with a reason, folder by folder",
+   "changes": [
+    {
+     "file": "src/lib/**/*.ts",
+     "action": "edit",
+     "how": "The list is `testOnlyExports` in src/server/unused.baseline.json (entries 'file#name'; print it grouped by folder: node -e \"const b=require('./src/server/unused.baseline.json');for(const e of b.testOnlyExports)console.log(e)\" | sort). Work one folder per commit: src/lib first (about 260 names), then src/server, then src/components. For each name N in file F: (a) run rg -w -l N src e2e --glob '*.test.*' --glob '*.spec.*' to get the tests that name it, and read F's comment above N. (b) KEEP, by moving the entry to keptForTests with a one-sentence reason (node scripts/unused.mjs --write, then replace its TODO), when one of these is true: the comment says a test holds a rule with it; it is a reset or clean-up helper (closeDb, a forget or reset function); it is an oracle a test compares the real result against (buildInvoiceSnapshot, buildEditInvoiceSnapshot, creditNoteSnapshot, editCreditNote, nextState, validateExport, the two registerProblems); it is a constant a guard test reads (STORE_MATCHER, SECRET_TABLES, NOT_EXPORTED). (c) MOVE to a `*-test-support.ts` file beside F when it is a pure helper only tests call and it uses nothing private of F. (d) If the comment names a screen or a caller that does not call it (openRequestCount 'the Requests tab's badge', trialPausedAt 'for the banner', twoStepMembers, retryDocumentPdf, shopperCanAccessOrder 'for the order page and My account'): do not delete; write the name, the file and the comment's claim into a list for the owner in your report (a missing wire is not waste), and give it the keptForTests reason 'named by a screen that does not call it: owner to decide, listed <date>'. (e) Otherwise DELETE the export (the whole function or constant, or only the `export` keyword when the file itself uses it) and the test cases that only exercise it; when a test file is then empty, delete the file. If a deleted test case was the only check of a database rule reached through the function (a trigger, a constraint), keep the case and reach the rule through the function the app uses. After each folder: pnpm lint (it names what became unused in turn; delete those too), node scripts/ratchet.mjs, node scripts/unused.mjs --write."
+    },
+    {
+     "file": "src/server/**/*.ts",
+     "action": "edit",
+     "how": "The same for src/server and then src/components. Two named switches of test set-up to the function the app uses, then delete the old one: setCartCode to addCartCode in src/server/checkout-kinds.int.test.ts, vat-engine.int.test.ts and vat-money-review.int.test.ts; listOrders to listOrdersPage in src/server/fulfilment.int.test.ts, inventory-admin.int.test.ts and store-copy.int.test.ts (these six files are the only tests whose set-up lines may change; their assertions may not). SCOPES_BEFORE_D440 in src/lib/admin-api.ts line 68 and the case in src/lib/admin-api-routes.test.ts lines 196 to 211 go together. chosenDelivery: after deleting it, correct the sentence in the header of src/server/delivery-readers.scan.test.ts line 8, which says cartSummary() and placeOrder() call it (they call resolveDelivery()). After each deletion that a rule names: rg -w N docs/rules CLAUDE.md and correct the sentence."
+    }
+   ],
+   "checks": [
+    "After each folder: pnpm lint && pnpm typecheck && pnpm test && pnpm test:int : exits 0",
+    "node scripts/unused.mjs : testOnlyExports shrank by the folder's names and no reason is TODO",
+    "pnpm exec vitest run src/server/unused.scan.test.ts src/server/ratchet.scan.test.ts src/lib/copies.scan.test.ts : exits 0",
+    "At the end: node -e \"const b=require('./src/server/unused.baseline.json');console.log(b.testOnlyExports.length, Object.keys(b.keptForTests).length)\" : prints 0 and a number from 100 to 130"
+   ]
+  }
+ ],
+ "tests": [
+  {
+   "file": "src/server/unused.scan.test.ts",
+   "proves": "Exists since step 1.17: fails when a new export is used by tests only and is neither in a test-support file nor in keptForTests with a reason. After this step testOnlyExports is empty, so every such export fails at once."
+  },
+  {
+   "file": "src/test/test-setup.scan.test.ts",
+   "proves": "New (it uses sourceFiles): fails when a test file mocks server-only, when an integration test adds a one-line no-op mock of next/cache, and when a test file outside an allow-list of 20 calls readdirSync; the allow-list may only shrink."
+  },
+  {
+   "file": "src/test/source-files.test.ts",
+   "proves": "Fails when the shared walker starts to include tests by default, enters node_modules or loses its memo."
+  }
+ ],
+ "migration": {
+  "needed": false,
+  "notes": ""
+ },
+ "done_when": [
+  {
+   "check": "node -e \"const b=require('./src/server/unused.baseline.json');console.log(b.testOnlyExports.length, Object.keys(b.keptForTests).length, Object.values(b.keptForTests).every(r=>r&&r!=='TODO'))\"",
+   "expect": "0, a number from 100 to 130, true. If the kept number falls outside 100 to 130, report the count and the three commonest reasons instead of bending the rules of the brief"
+  },
+  {
+   "check": "rg -l 'vi[.]mock[(].server-only' src --glob '*.test.ts' --glob '*.test.tsx' | wc -l",
+   "expect": "0 (579 on 12 November 2026)"
+  },
+  {
+   "check": "rg -l 'vi[.]mock[(].next/cache' src --glob '*.int.test.ts' | wc -l",
+   "expect": "under 60 (465)"
+  },
+  {
+   "check": "rg -l readdirSync src --glob '*.test.ts' | wc -l",
+   "expect": "20 or less (84)"
+  },
+  {
+   "check": "pnpm lint && pnpm typecheck && pnpm test && pnpm test:int",
+   "expect": "exits 0"
+  }
+ ],
+ "after_deploy": [],
+ "docs": [
+  "docs/decisions.md: one new D-number row: tests get server-only from both vitest configurations and next/cache from test/integration-mocks.ts; src/test/source-files.ts is the one walker; testOnlyExports is empty and keptForTests names what tests need on purpose; the list of exports whose comment names a screen that does not call them, handed to the owner.",
+  "CLAUDE.md, Commands: change, do not add: in the existing sentence about integration tests say they get server-only and next/cache from the configuration. One clause.",
+  "docs/rules: correct any rule sentence that names a deleted function (rg -w each deleted name over docs/rules and CLAUDE.md).",
+  "docs/audits/code-review-2026-11.md, Progress table, step 4.1 (bans to lint, one shared file walker): note the walker exists and which scans use it, with a change-log line.",
+  "docs/audits/bloat-review-2026-11.md, Progress table: set step 4.3 to Done with the date and the commit; the exports part must be done before step 4.5."
+ ],
+ "do_not": [
+  "Do not delete an export that any non-test file imports: the list comes from scripts/unused.mjs, and pnpm typecheck must pass after every folder.",
+  "Do not delete an oracle, a reset helper or a guard list because only tests read it: those go to keptForTests.",
+  "Do not delete a function whose comment names a screen that should call it; list it for the owner.",
+  "Do not change a test's assertion. Deleted with its export: yes. Rewritten to pass: no (the six named set-up switches aside).",
+  "Do not mock next/headers or next/server in the shared setup in this step, and do not delete a multi-line or recording mock.",
+  "Do not move a scan's ban into the shared walker's defaults: each scan keeps its own filter.",
+  "Do not add a bypass to the app for a test; these are test-side stubs only.",
+  "Do not sweep makeStore and paidOrder helpers: they stay 'when touched'."
+ ],
+ "stop_if": [
+  "A test fails after its server-only or next/cache line was deleted: restore that file's line, name the file and go on with the others; stop if more than ten files need it.",
+  "A scan walks a different number of files after moving to sourceFiles().",
+  "scripts/unused.mjs or src/server/unused.baseline.json does not exist (step 1.17 is not done).",
+  "Deleting an export breaks a non-test file's build (the scan missed an import form): stop and report the import.",
+  "More than 30 exports fall under rule (d) (a comment that names a caller that does not call it): report the list before deleting further."
+ ],
+ "executor": "strong",
+ "executor_why": "Commits 1 and 2 are single exact commands over test files with the full suites as proof; commit 3 rewrites about 84 scans to one walker (now with a permanent file-count floor in each), and commit 4 decides for about 440 exports whether each is an oracle, a seam, a missing wire or dead code, which is judgement per name that only a strong model should make.",
+ "checked_in_code": "I counted today: 579 test files hold `vi.mock(\"server-only\", () => ({}));` in one single spelling (448 integration, 131 unit), 465 integration tests mock next/cache (318, 39, 25, 24, 15 and 2 one-line no-op spellings, 40 multi-line, one that records tags), and 84 test files call readdirSync (the step says 86). vitest.integration.config.mts aliases server-only and has no setupFiles; vitest.config.mts has neither alias. Corrections: production code also imports revalidatePath from next/cache (2 places), so the shared stub has six names, not five; the finding's lists T2.txt and T3.txt live in the review's scratchpad, not in the repo, so the brief takes the list from src/server/unused.baseline.json; scripts/unused.mjs and that baseline do not exist yet (step 1.17). The store-makers and the next/headers and next/server mocks are left out: the step's done-when does not ask for them. Second check (12 November): commit 3 now keeps a permanent floor (90% of the count before) on the files each converted scan walks instead of a temporary log, and creates src/test/test-setup.scan.test.ts, which the tests section named but no commit made.",
+ "cheap_commits": [
+  1,
+  2
+ ],
+ "rating_checked": "strong"
 }

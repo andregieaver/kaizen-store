@@ -1,0 +1,18 @@
+{
+ "id": "0.5",
+ "fixed": [
+  "The owner-assistant import in both action files is named by its lines (store 8-17, platform 7-17, one name per line) instead of a one-line block that a literal search would not find.",
+  "The cold-load check now uses cold-load-route.cjs with an absolute path and its sharpLoaded field, and the require.cache one-liner for the proxy (step 0.1's cold-load-proxy.cjs prints only a module count).",
+  "Added a stop_if for step 0.1's import-reach.mjs and cold-load-route.cjs being absent.",
+  "The platform rewrite now names all four one-liner actions that pass await principal() inside the call, not only getConversation."
+ ],
+ "rejected": [
+  {
+   "problem": "The analyze done-when (2,050 modules) cannot be met by this step alone.",
+   "why": "The brief already says so and tells the executor to leave row 0.5 'In progress, waits for 0.6 commit 1'."
+  }
+ ],
+ "cheaper": "applied: assistant-actions.scan.test.ts now checks each file exports exactly its eight actions and that the first await of each engine action is requireOwner(/principal() with await assistant() after it, with a planted case.",
+ "executor_before": "cheap-then-review",
+ "executor_after": "cheap"
+}

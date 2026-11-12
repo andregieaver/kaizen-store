@@ -1,0 +1,12 @@
+{
+ "id": "2.47",
+ "fixed": [
+  "Commit 4's 'create' entries replaced by edits with made_by 1.8: the six entries go in ENTRIES and FORBIDDEN of scripts/lib/route-load.mjs (where step 1.8 keeps them; store-product already exists), and the test file needs no change (found on this check).",
+  "route-budget: the script already measures every route by kind (store, pay), so the change is to lower scripts/route-budget.json with --write; the script is not edited.",
+  "Exact page paths given (p/[handle], category/[slug], search, cart, checkout, account) instead of the rg pattern that found neither product nor category."
+ ],
+ "rejected": [],
+ "cheaper": "not applied: the remaining edges cannot be written until steps 1.8, 2.9 and 2.22 have landed; the step stays strong.",
+ "executor_before": "strong",
+ "executor_after": "strong"
+}

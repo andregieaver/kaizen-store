@@ -1,0 +1,19 @@
+{
+ "id": "0.13",
+ "fixed": [
+  "The unit test is now src/components/policy-link.test.ts written with createElement (vitest.config.mts includes only src/**/*.test.ts), in the change, the check and tests[].",
+  "focus-frame.tsx line 36 is decided: it stays next/link's Link with prefetch={false} as step 0.12 left it, because rule 2 of cross-root-links.scan.test.ts looks for that literal on a <Link tag.",
+  "The hover case requires at least 1 and at most 2 prefetches, so a detector that matches nothing cannot pass.",
+  "The signed-in spec copies step 0.12's prefetch header test instead of moving it into a new shared file (which would have edited 0.12's spec without a listed change).",
+  "The ui/ files import AdminLink from ./link (the brief said ./ui/link then corrected itself); a stop_if covers step 0.12 being absent."
+ ],
+ "rejected": [
+  {
+   "problem": "The six non-zero ceilings and each row's fetches list are recorded from the first run, not checked, and may be flaky.",
+   "why": "Recording today's counts as ceilings that may only fall is the step's design; the hard figures (0 on home, 0 product editors, 1 to 2 on hover) are checked. Not a wrong or failing instruction."
+  }
+ ],
+ "cheaper": "applied: the judge's edit_brief (test name, at least 1 on hover, focus-frame decided).",
+ "executor_before": "cheap-then-review",
+ "executor_after": "cheap"
+}

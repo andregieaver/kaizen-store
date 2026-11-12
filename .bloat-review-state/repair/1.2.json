@@ -1,0 +1,15 @@
+{
+ "id": "1.2",
+ "fixed": [
+  "The CI step moves from after 'pnpm build' to after 'pnpm test:e2e' (before the failure upload), with if: ${{ !cancelled() }}, so a budget failure cannot skip the e2e run."
+ ],
+ "rejected": [
+  {
+   "problem": "The baseline is written from a local build while CI checks a CI build.",
+   "why": "stop_if 4 already stops and reports when the first CI run differs by more than 15,000 bytes with no code change; widening ROOM or reading CI's artifact is a choice left to the owner's reviewer then."
+  }
+ ],
+ "cheaper": "not applied: none offered; the step was already cheap.",
+ "executor_before": "cheap",
+ "executor_after": "cheap"
+}

@@ -1,0 +1,11 @@
+{
+ "id": "0.38",
+ "fixed": [
+  "Commit 2: the cache step's version is decided by a command (gh api .../actions/cache/releases/latest, major), @v4 only as the stated fallback, instead of a literal @v4 contradicting 'match the file's age' (other actions are @v7).",
+  "Commit 3: added an rg check that no non-test module imports src/test (verified: only vitest.config.mts uses its files) and a stop_if if one appears."
+ ],
+ "rejected": [],
+ "cheaper": "not applied: moving commit 3 into its own step changes the plan's step structure; cheap_commits [1,2] gives the cheap model the first two alone instead.",
+ "executor_before": "cheap-then-review",
+ "executor_after": "cheap-then-review"
+}

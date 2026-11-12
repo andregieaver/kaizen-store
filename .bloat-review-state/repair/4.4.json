@@ -1,0 +1,16 @@
+{
+ "id": "4.4",
+ "fixed": [
+  "src/lib/migration-safety.scan.test.ts corrected to src/db/migration-safety.scan.test.ts (commits 4 and 6).",
+  "Commit 1: the page edit starts from step 1.9's platformHomeReads(); a new change splits it in admin-screens.ts (made_by 1.9) into platformHomeReads() and platformFiguresReads(), and the statement test calls both.",
+  "The Suspense fallback is the folder's own loading.tsx (AdminPageLoading), not 4.1's PageSkeleton, which this step does not depend on.",
+  "admin-statements.baseline.json: action edit, made_by 1.9, rewritten only by 1.9's command.",
+  "Payments page: getPaymentSettings() also reads payment_providers, so it takes the accounts' promise (stripeAccountsFrom); testReady/testSetup are read only in the test card, which moves whole into TestAccountSetup with an exact fallback; MollieMethods streams the MollieCard with a methods={null} fallback.",
+  "fillThemeCards()'s caller is publishDesign(): no daily theme job exists (theme-shots is per-minute photographs).",
+  "Speed report: no grouping by day (speedRows() groups by screen and kind)."
+ ],
+ "rejected": [],
+ "cheaper": "applied in part: the judge's edit_brief except the split into separate steps (that changes the plan's step boundaries); the Payments blocks, the getPaymentSettings question, the fillThemeCards caller, platformHomeReads and the scan path are all settled. Not lowered: the plan-analytics fold in commit 1 still needs care to keep movements()'s figures identical.",
+ "executor_before": "cheap-then-review",
+ "executor_after": "strong"
+}

@@ -1,0 +1,19 @@
+{
+ "id": "2.11",
+ "fixed": [
+  "Commit 1 now also edits src/lib/stylesheet-sources.scan.test.ts (made by 0.34): its ROLES are read from the @theme block, which this commit moves to src/app/_styles/base.css, so the test would have found no roles and failed (found on this check).",
+  "Commit 2 changes step 0.35's cases (2) and (4) (positive sources exactly ['../'], @source only in globals.css), which would fail on the new single-file lines and the admin entry; 'keep its cases' was wrong (found on this check).",
+  "The three brace paths are plain paths: the scan test (made_by 0.34), stylesheet-audiences.mjs (made_by 1.23) and e2e/performance.spec.ts (exists today).",
+  "reach()'s stop option is confirmed in step 1.8's brief; the brief now compares paths relative to the repo, since reach() may return absolute ones.",
+  "stop_ifs say not to start while globals.css still has the supabase SQL line or step 0.35's scan describe is absent."
+ ],
+ "rejected": [
+  {
+   "problem": "The look-through screenshots are the main guard for unstyled pages and depend on the model's judgement.",
+   "why": "True, and the reason the step stays reviewed; the canary, the scan test both ways, the budgets and the e2e suite are the automated checks. An automated seeded-content class check is not built here (see cheaper)."
+  }
+ ],
+ "cheaper": "not applied: a check that every class in seeded page and theme content is in the site's sheet needs a class extractor over JSON and SQL content that I could not specify exactly; commit 2 stays reviewed.",
+ "executor_before": "cheap-then-review",
+ "executor_after": "cheap-then-review"
+}

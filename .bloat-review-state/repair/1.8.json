@@ -1,0 +1,19 @@
+{
+ "id": "1.8",
+ "fixed": [
+  "Commit 4 Part E: each cold-load script's command line, argument (built file paths) and JSON output field named (total_ms / ms), from the sources step 0.1 copies.",
+  "cold-load-start-hook.cjs hard-codes DATABASE_URL to a local bloat_review database (found on this check): an ok:false result is now 'not measured', no budget.",
+  "Part F: the builder.nb.ts sentence ('En ikonliste: hver linje trenger ord.', line 357) and the 'outside the admin: a of b' line it fails on are given.",
+  "Part B: manifest load time measured inline with a given node -e, since 0.1's manifest-time.cjs fixes no output format.",
+  "stop_if added for scripts that do not print what commit 4 describes."
+ ],
+ "rejected": [
+  {
+   "problem": "The R.c(\"...\") chunk form of built entries is assumed and only checked at run time.",
+   "why": "It cannot be checked without a build; the brief already reads /api/health's entry first and has a stop_if for another form, and the review's words-in-entries.mjs reads the same R.c form."
+  }
+ ],
+ "cheaper": "applied in part: the exact command line and printed format of each step 0.1 script are now in commit 4; the rating stays cheap-then-review because the budgets come from a real build and sit in a CI job.",
+ "executor_before": "cheap-then-review",
+ "executor_after": "cheap-then-review"
+}

@@ -1,0 +1,14 @@
+{
+ "id": "1.26",
+ "fixed": [
+  "Commit 2's scan reads DISPATCHER_JOBS from src/server/dispatcher-jobs.ts (step 1.10, now in depends_on) and the five tracked calls from the route, resolving each through its own file's imports ('@/server/…' or './…').",
+  "The floor of 83 jobs becomes 74 (step 0.31, now in depends_on, removes nine prunes) in the scan, stop_if and done_when.",
+  "The report is passed through in src/server/dispatcher-jobs.ts (made_by 1.10), whose satisfies clause becomes Record<string, (report: JobReport) => Promise<unknown>>; the route is edited only for a named tracked call.",
+  "Commit 3's cron-health edit is written out: `if (row.job.endsWith(\".work\")) return \"ok\";` after the failing test, with three test rows; the stop_if for it is removed.",
+  "stop_if 2 now says what to do: leave the catch, do not push commit 2, report; an exception is the owner's decision."
+ ],
+ "rejected": [],
+ "cheaper": "not applied: listing every catch with a verdict needs reading each of about 19 catches and judging normal state against error, which is the judgement the review keeps; the stop_if now routes such a catch to the owner.",
+ "executor_before": "cheap-then-review",
+ "executor_after": "cheap-then-review"
+}

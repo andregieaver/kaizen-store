@@ -52,7 +52,7 @@
     {
      "file": "src/server/bought-sql.ts",
      "action": "create",
-     "how": "Content: `import { sql } from \"drizzle-orm\";` and the doc comment and constant moved verbatim from src/server/customer-admin.ts (the comment that begins 'An order that was paid, even if it was cancelled and refunded later' and `export const bought = sql`…`;`, near lines 21 to 26). No other import. No `server-only` is needed, but add it as the first line if every other file in src/server that holds SQL has it (the neighbours do)."
+     "how": "Content: `import { sql } from \"drizzle-orm\";` and the doc comment and constant moved verbatim from src/server/customer-admin.ts (the comment that begins 'An order that was paid, even if it was cancelled and refunded later' and `export const bought = sql`…`;`, near lines 21 to 26). First line `import \"server-only\";` (customer-admin.ts, the file it comes from, has it), then the drizzle import, then the moved comment and constant. No other import."
     },
     {
      "file": "src/server/customer-admin.ts",
@@ -77,12 +77,12 @@
     {
      "file": "src/server/store-obligations.ts",
      "action": "create",
-     "how": "Content: `import \"server-only\";`, `import { sql } from \"drizzle-orm\";`, `import { db } from \"@/db/client\";`, `import type { Obligations } from \"@/lib/store-closure\";`, then the three type lines store-closure.ts has for its executor (`type Row = Record<string, unknown>;`, `type Tx = Parameters<Parameters<ReturnType<typeof db>[\"transaction\"]>[0]>[0];`, `type Executor = Pick<ReturnType<typeof db>, \"execute\"> | Tx;`) and the function storeObligations() moved verbatim with its doc comment from src/server/store-closure.ts (it starts near line 83, `export async function storeObligations(storeId: string, executor: Executor = db()): Promise<Obligations>`, and ends with the closing brace of its return object). This is a move, not a lazy import: featureFacts() in store-features.ts calls it inside a transaction with the transaction as executor."
+     "how": "Content: `import \"server-only\";`, `import { sql } from \"drizzle-orm\";`, `import { db } from \"@/db/client\";`, `import type { Obligations } from \"@/lib/store-closure\";`, then the three type lines store-closure.ts has for its executor (`type Row = Record<string, unknown>;`, `type Tx = Parameters<Parameters<ReturnType<typeof db>[\"transaction\"]>[0]>[0];`, `type Executor = Pick<ReturnType<typeof db>, \"execute\"> | Tx;`) and the function storeObligations() moved verbatim with its doc comment from src/server/store-closure.ts (its doc comment starts at line 83 with 'What a store still has open, counted now.', the function itself at line 87, `export async function storeObligations(storeId: string, executor: Executor = db()): Promise<Obligations>`, and it ends at line 117 with the closing brace after its return object; it calls nothing else from store-closure.ts). This is a move, not a lazy import: featureFacts() in store-features.ts calls it inside a transaction with the transaction as executor."
     },
     {
      "file": "src/server/store-closure.ts",
      "action": "edit",
-     "how": "Remove the moved function. Add `import { storeObligations } from \"./store-obligations\";` for its own two calls (near lines 156 and 178) and `export { storeObligations } from \"./store-obligations\";` so the two admin pages that import it from @/server/store-closure keep working. Keep Row, Tx and Executor here too if other functions of the file use them (storeState() does)."
+     "how": "Remove the moved function. Add `import { storeObligations } from \"./store-obligations\";` for its own two calls (near lines 156 and 178) and `export { storeObligations } from \"./store-obligations\";` so the two admin pages that import it from @/server/store-closure keep working. Keep the type lines Row, Tx and Executor (lines 40 to 42) in store-closure.ts as they are: storeState() at line 63 takes an Executor and later functions use Row, so the new file declares its own copies (store-features.ts already has its own copies too, lines 44 to 46; do not touch those)."
     },
     {
      "file": "src/server/store-features.ts",
@@ -126,17 +126,17 @@
     {
      "file": "src/server/encryption-key.ts",
      "action": "create",
-     "how": "Content: `import \"server-only\";`, the import(s) the function needs (today `parseKey` from \"@/lib/secret-box\" and whatever reads the environment: copy exactly what encryptionKey() uses in settings.ts), and the function `export function encryptionKey(): Buffer | null` moved verbatim with its comment from src/server/settings.ts (lines 22 to 25)."
+     "how": "Content: `import \"server-only\";`, `import { parseKey } from \"@/lib/secret-box\";` (the function reads process.env.SETTINGS_ENCRYPTION_KEY directly; it needs nothing else), and the function `export function encryptionKey(): Buffer | null` moved verbatim with its comment from src/server/settings.ts (lines 22 to 25)."
     },
     {
      "file": "src/server/settings.ts",
      "action": "edit",
-     "how": "Remove the function and add `import { encryptionKey } from \"./encryption-key\";` for its own two uses (near lines 287 and 298). Do not re-export it. Remove an import that only the moved function used."
+     "how": "Remove the function and add `import { encryptionKey } from \"./encryption-key\";` for its own two uses (near lines 287 and 298). Do not re-export it. Line 8 `import { decryptSecret, parseKey } from \"@/lib/secret-box\";` becomes `import { decryptSecret } from \"@/lib/secret-box\";` (parseKey has no other use in settings.ts)."
     },
     {
      "file": "src/**: the 18 files that import only encryptionKey from the settings module",
      "action": "edit",
-     "how": "List: rg -l 'import \\{ encryptionKey \\} from \"(\\./|@/server/)settings\"' src (18 files today). Change the path to \"./encryption-key\" (or \"@/server/encryption-key\" where the file used the @ form): rg -l 'import \\{ encryptionKey \\} from \"\\./settings\"' src | xargs sed -i 's#import { encryptionKey } from \"./settings\";#import { encryptionKey } from \"./encryption-key\";#' and the same with @/server/settings and @/server/encryption-key."
+     "how": "List: rg -l 'import \\{ encryptionKey \\} from \"(\\./|@/server/)settings\"' src (18 files today). Change the path to \"./encryption-key\" (all 18 use the relative form \"./settings\" today; no file imports it from \"@/server/settings\"): rg -l 'import \\{ encryptionKey \\} from \"\\./settings\"' src | xargs sed -i 's#import { encryptionKey } from \"./settings\";#import { encryptionKey } from \"./encryption-key\";#' and the same with @/server/settings and @/server/encryption-key."
     },
     {
      "file": "src/server/cycle-cuts.scan.test.ts",
@@ -173,7 +173,7 @@
     }
    ],
    "checks": [
-    "node docs/audits/bloat-review-2026-11/scripts/import-reach.mjs --cycle \"src/app/s/[store]/[market]/page.tsx\": the page at about 645 files (760 or fewer) and, with --why src/server/theme-store.ts, 'not reached'",
+    "node docs/audits/bloat-review-2026-11/scripts/import-reach.mjs --cycle \"src/app/s/[store]/[market]/page.tsx\": the page at about 645 files (760 or fewer) and, with --why src/server/theme-store.ts, no import chain printed (step 0.1's walker prints one shortest chain when the target is reached; no chain, or a line saying it is not reached, means not reached)",
     "pnpm exec vitest run $(ls src/components/page-article-*.test.ts* src/components/row-lines-render.test.ts* src/components/background-layers.test.ts* src/components/page-modal.test.ts* src/components/page-block-image.test.ts* 2>/dev/null | tr '\\n' ' ') $(ls src/server/seo*.test.ts 2>/dev/null | tr '\\n' ' '): pass unchanged",
     "pnpm exec vitest run src/lib/pay-routes.graph.test.ts src/server/ratchet.scan.test.ts: pass (if the ratchet says a per-file count fell, run node scripts/ratchet.mjs and commit the lowered src/server/ratchet.baseline.json)",
     "pnpm lint && pnpm typecheck && pnpm test: each exits 0",
@@ -197,7 +197,7 @@
     }
    ],
    "checks": [
-    "node docs/audits/bloat-review-2026-11/scripts/import-reach.mjs --why src/server/stripe.ts \"src/app/s/[store]/[market]/page.tsx\": 'not reached'",
+    "node docs/audits/bloat-review-2026-11/scripts/import-reach.mjs --why src/server/stripe.ts \"src/app/s/[store]/[market]/page.tsx\": no import chain printed (not reached)",
     "pnpm exec vitest run src/lib/pay-routes.graph.test.ts: passes",
     "pnpm lint && pnpm typecheck && pnpm test: each exits 0",
     "pnpm test:int: exits 0 with no test's expectation changed (only its setup)",
@@ -210,7 +210,7 @@
     {
      "file": "src/server/manager-tools.ts",
      "action": "edit",
-     "how": "Line 50 imports OwnerToolError from \"./owner-tools\": import it from \"./owner-tool-error\" (where it is defined). The twin edit in src/server/follow-ups.ts was made by step 0.5; if that step is not in yet, make it here."
+     "how": "Line 50 imports OwnerToolError from \"./owner-tools\": import it from \"./owner-tool-error\" (where it is defined). Do not edit src/server/follow-ups.ts here: its line 14 is step 0.5's edit (that step's brief changes it), and a second edit of it from this step would collide."
     },
     {
      "file": "src/server/shopper-emails.ts",
@@ -284,7 +284,7 @@
  "docs": [
   "docs/decisions.md: a new D-number row 'The import cycle of src/server is cut (bloat review step 0.6)': the six lazy imports and the four moved helpers by name, the cycle's size before and after, the lesson of D440 (a lazy import changes load order; the deploy's page checks and the production clicks are the guard), and that encryptionKey() lives in src/server/encryption-key.ts.",
   "docs/performance.md and docs/audits/code-review-2026-11.md: as the last commit says.",
-  "docs/audits/code-review-2026-11.md step 4.2 (environment reads through env.ts): add src/server/encryption-key.ts to its list of files that read the environment, if the moved function reads process.env.",
+  "docs/audits/code-review-2026-11.md step 4.2 (environment reads through env.ts): add src/server/encryption-key.ts to its list of files that read the environment (the moved function reads process.env.SETTINGS_ENCRYPTION_KEY).",
   "docs/audits/bloat-review-2026-11.md, Progress table: row 0.6 to Done with the date, the commits and the two walker figures; and tell step 0.5's row that its analyze figure can now be read."
  ],
  "do_not": [
@@ -303,9 +303,17 @@
   "Any test fails after a commit and the cause is not a missed import path.",
   "A page check of the deploy job fails, or a production click of after_deploy fails: revert that one commit (git revert, push) and report.",
   "pnpm build prerenders fewer pages than before (compare the route list's ○ and ◐ marks for /s/[store]/[market] and /themes).",
-  "After the five specified commits the page is above 760 files or the analyze figure above 1,800 modules: report the walker's --why for the largest remaining hub instead of cutting more on your own."
+  "After the five specified commits the page is above 760 files or the analyze figure above 1,800 modules: report the walker's --why for the largest remaining hub instead of cutting more on your own.",
+  "docs/audits/bloat-review-2026-11/scripts/import-reach.mjs is not in the repo (step 0.1 creates it): stop before commit 1; every commit's figure is read from it, and it is not to be written here.",
+  "Commit 7 is reached by the cheap model: stop. Commits 6 and 7 are for the stronger model only (see executor); the cheap model may make commits 2, 4 and 8 alone and commits 1, 3 and 5 with a stronger model reading each diff before its push."
  ],
  "executor": "strong",
- "executor_why": "The first five commits are fully specified and a cheap model can make each with a stronger one reading the diff, but the Stripe commit meets 153 test mocks, the tail of the cycle needs each call site judged (sync or async, transaction or not), and four cuts are on order and payment paths where a load-order fault shows only in production.",
- "checked_in_code": "I opened every file of the first five commits: customers.ts line 17 and deleteCustomer() (one use, async), the bought constant in customer-admin.ts and its three outside importers, storeObligations() in store-closure.ts with its Executor types and the import at store-features.ts:35, providerOf at orders.ts:22 and its one use near line 503, encryptionKey() at settings.ts:23 with 18 sole importers plus pipedrive.ts, and the theme store imports at page-article.tsx:35 and seo.ts:48 (three async callers). I simulated each cut on today's import graph: the cycle goes 229, 88, 29 (after both moves), 19, and the store page 1,435, 979, 772, then about 645 once the key reader, the theme store section and seo.ts's import are done. Two corrections: the findings disagree on storeObligations (SG-1 moves it, SF-1 makes it lazy), and the plan's move is right because it runs in a transaction; and moving encryptionKey does not take Stripe off a store page, because src/server/stores.ts:182 imports platformModes from src/server/stripe.ts, which imports the SDK at its top. That needs finding SF-9's step 3 (a key-only platformModes), which the plan lists under step 0.5 but describes nowhere, so it is a commit here, for a strong model."
+ "executor_why": "Commits 2, 4 and 8 are verbatim moves held by the type check and a docs table, and 1, 3 and 5 are exact lazy imports that a reviewer must read because a load-order fault shows only in production; but commit 6 meets 153 test mocks of ./stripe, each to be judged, and commit 7 is a dozen further cuts that each need a sync-or-async judgement, so the step as a whole stays with the stronger model.",
+ "checked_in_code": "I opened every file of the first five commits: customers.ts line 17 and deleteCustomer() (one use, async), the bought constant in customer-admin.ts and its three outside importers, storeObligations() in store-closure.ts with its Executor types and the import at store-features.ts:35, providerOf at orders.ts:22 and its one use near line 503, encryptionKey() at settings.ts:23 with 18 sole importers plus pipedrive.ts, and the theme store imports at page-article.tsx:35 and seo.ts:48 (three async callers). I simulated each cut on today's import graph: the cycle goes 229, 88, 29 (after both moves), 19, and the store page 1,435, 979, 772, then about 645 once the key reader, the theme store section and seo.ts's import are done. Two corrections: the findings disagree on storeObligations (SG-1 moves it, SF-1 makes it lazy), and the plan's move is right because it runs in a transaction; and moving encryptionKey does not take Stripe off a store page, because src/server/stores.ts:182 imports platformModes from src/server/stripe.ts, which imports the SDK at its top. That needs finding SF-9's step 3 (a key-only platformModes), which the plan lists under step 0.5 but describes nowhere, so it is a commit here, for a strong model. Second check (12 November): storeObligations() is located exactly (comment at line 83, function 87 to 117) and Row/Tx/Executor are kept in store-closure.ts because storeState() uses them; bought-sql.ts gets server-only without a choice; encryption-key.ts imports only parseKey and settings.ts drops parseKey from its secret-box import; the --why checks say what 'not reached' looks like; commit 7 no longer touches follow-ups.ts (step 0.5's edit); a stop_if covers a missing import walker.",
+ "rating_checked": "strong",
+ "cheap_commits": [
+  2,
+  4,
+  8
+ ]
 }

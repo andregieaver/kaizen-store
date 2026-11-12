@@ -1,0 +1,14 @@
+{
+ "id": "2.20",
+ "fixed": [
+  "forgetWhere() made unconditional with its body (memory and loading); redirect-live.ts imports it and forgetRedirects() becomes one forgetWhere call with the same prefix.",
+  "experiments.ts: both remembered() calls rewritten line by line to (key, load, ms), plus forgetRunning's body.",
+  "cache-tags.test.ts now also asserts the seven constants' values (STORES_TAG ... PLATFORM_NAVIGATION_TAG).",
+  "proxy.ts: the 'parallelise only if independent' choice settled: storeRequestAnswer() takes hostStore derived from siteStore(), so the order stays.",
+  "route-load.graph.test.ts and route-budget.json entries now plain paths with made_by 1.8."
+ ],
+ "rejected": [],
+ "cheaper": "applied: forgetWhere's exact body and import line are given; the rating stays cheap-then-review because commit 2 changes the proxy's memory behaviour behind D339's bound.",
+ "executor_before": "cheap-then-review",
+ "executor_after": "cheap-then-review"
+}

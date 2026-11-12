@@ -1,0 +1,12 @@
+{
+ "id": "0.30",
+ "fixed": [
+  "Commit 1 names line 181 and the default limit (STORES_PER_RUN 50); stop_if now spells the one allowance out.",
+  "Statement spy for case (c) given literally (pg import, texts and values from pg.Client.prototype.query calls); counted() only counts, which the brief had glossed over (found on this check).",
+  "Replaced 'if invoiceJobs() makes network calls, stub as another file does' with the fact: line 300 of the same file runs invoiceJobs() without stubs (found on this check)."
+ ],
+ "rejected": [],
+ "cheaper": "not applied: none proposed.",
+ "executor_before": "cheap-then-review",
+ "executor_after": "cheap-then-review"
+}

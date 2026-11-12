@@ -1,0 +1,13 @@
+{
+ "id": "1.20",
+ "fixed": [
+  "--unit's setup-over-10% and file-on-disk-did-not-run now print only in this step (they contradicted 'do not invent ceilings' and could turn the static job red on the first push).",
+  "lint has no --warm-if (no .eslintcache exists), key 'lint' instead of lint:cold/lint:warm, in ci.yml, package.json, ci-budgets.json keys and checks.",
+  "timed.mjs exits with a failing command's code (or 1 on signal/spawn error) before any other check; ci-recorder.scan.test.ts gets planted exit-code cases (process.exit(3), plain and --unit).",
+  "next-build.mjs handles the child's 'error' event; commit 1 gets a trial with an unknown flag that must exit 1 and still print the Build line."
+ ],
+ "rejected": [],
+ "cheaper": "applied: the planted exit-code cases and print-only setup share and file comparison; the rating stays cheap-then-review because the ci.yml rewrap of every job ('if:' conditions, needs) is not held by any test",
+ "executor_before": "cheap-then-review",
+ "executor_after": "cheap-then-review"
+}

@@ -1,0 +1,14 @@
+{
+ "id": "1.4",
+ "fixed": [
+  "CATALOGUES: 136 non-test files, not 147 (147 included 11 tests); a 'finds the catalogue files' case added.",
+  "admin-text-reach.scan.test.ts: action edit, made_by 0.7, with what 0.7 leaves (cases A-E, reach with planted) and the refactor of case A into offenders(planted?) stated as required, since 0.7's case A reads direct imports.",
+  "docs/rules/budgets.md: action edit, made_by 1.1 (in depends_on), with its sections from 0.43 and 1.1 and 1.1's rule for finding it under another name; a stop_if before commit 3 if it is missing.",
+  "MATCHED_TABLES: starts from knownText()'s callers and the problems groups TX-11 names.",
+  "Decision number: fallback to the rg count when scripts/claim-decision.mjs (step 0.41, not in depends_on) is absent."
+ ],
+ "rejected": [],
+ "cheaper": "not applied: writing MATCHED_TABLES into the brief needs the parent of each of about 190 keys with the file and line that indexes it; the review kept no such list (TX-9 gives only the count), so it cannot be copied in exactly; the known starting point (knownText()'s callers) was added instead",
+ "executor_before": "cheap-then-review",
+ "executor_after": "cheap-then-review"
+}

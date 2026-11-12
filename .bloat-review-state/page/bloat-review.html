@@ -262,9 +262,9 @@ details.qs li strong { color: var(--ink); font-weight: 600; }
 
   <section>
     <div class="head"><div class="eyebrow">The plan</div><h2>151 steps in five phases, one goal: an A in every area</h2>
-      <p class="muted">Every finding is closed by exactly one step, tolerated with a stated reason (13), or left to you as a product choice (7). Each step names the check that says it is done, and has a brief of its own for whoever carries it out: 21 a smaller model can do alone, 81 it can do with a stronger model reading the diff, 49 need the stronger model. Nothing has been started. The steps shown are the ones that close the most findings in each phase.</p></div>
+      <p class="muted">Every finding is closed by exactly one step, tolerated with a stated reason (13), or left to you as a product choice (7). Each step names the check that says it is done, and has a brief of its own for whoever carries it out: 29 a smaller model can do alone, 72 it can do with a stronger model reading the diff, 50 need the stronger model. Nothing has been started. The steps shown are the ones that close the most findings in each phase.</p></div>
     <ol class="phases">
-      <li><div class="ph"><span class="eyebrow">Phase 0 · 46 steps · 26 small, 20 medium, 0 large · 10 cheap, 28 with review, 8 strong</span><h3>Before the doors open</h3><p>Almost nothing on a screen changes, apart from two faults a shopper would have met on day one (empty search thumbnails, and a button with no fill on the status and report pages) and admin lists that show 100 rows at a time. Cold pages answer sooner, an admin screen loads about half the script, a store page stops asking the server for a wishlist and stock nobody has, and the database falls from 731 MB to about 230 MB.</p></div>
+      <li><div class="ph"><span class="eyebrow">Phase 0 · 46 steps · 26 small, 20 medium, 0 large · 11 cheap, 29 with review, 6 strong</span><h3>Before the doors open</h3><p>Almost nothing on a screen changes, apart from two faults a shopper would have met on day one (empty search thumbnails, and a button with no fill on the status and report pages) and admin lists that show 100 rows at a time. Cold pages answer sooner, an admin screen loads about half the script, a store page stops asking the server for a wishlist and stock nobody has, and the database falls from 731 MB to about 230 MB.</p></div>
         <ul>
           <li><span class="sid">0.4</span><span>Cut the two import hubs: the unused schema and the chat module's helpers</span></li>
           <li><span class="sid">0.5</span><span>Load sharp, the font parser and the AI manager's engine when they are used</span></li>
@@ -274,7 +274,7 @@ details.qs li strong { color: var(--ink); font-weight: 600; }
           <li><span class="sid">0.16</span><span>Send shoppers' first scripts only what the page draws</span></li>
           <li class="more">and 40 more</li>
         </ul></li>
-      <li><div class="ph"><span class="eyebrow">Phase 1 · 28 steps · 7 small, 21 medium, 0 large · 5 cheap, 18 with review, 5 strong</span><h3>Budgets, so it stays removed</h3><p>A change that makes a page, a function, a scheduled run, an AI call, a build or the standing rules heavier fails a check that names the number and says what to do. Platform, Usage and limits shows cold starts, the day's costliest statements and the admin's speed, and a stopped scheduler sends an email.</p></div>
+      <li><div class="ph"><span class="eyebrow">Phase 1 · 28 steps · 7 small, 21 medium, 0 large · 10 cheap, 13 with review, 5 strong</span><h3>Budgets, so it stays removed</h3><p>A change that makes a page, a function, a scheduled run, an AI call, a build or the standing rules heavier fails a check that names the number and says what to do. Platform, Usage and limits shows cold starts, the day's costliest statements and the admin's speed, and a stopped scheduler sends an email.</p></div>
         <ul>
           <li><span class="sid">1.3</span><span>Hold documents, stylesheets and requests on real store pages</span></li>
           <li><span class="sid">1.6</span><span>Put a launch-theme store into the measured set</span></li>
@@ -284,7 +284,7 @@ details.qs li strong { color: var(--ink); font-weight: 600; }
           <li><span class="sid">1.19</span><span>Hold every agent's round, show real tokens per call, and let the eval see whether the model finds a tool</span></li>
           <li class="more">and 22 more</li>
         </ul></li>
-      <li><div class="ph"><span class="eyebrow">Phase 2 · 50 steps · 7 small, 35 medium, 8 large · 4 cheap, 23 with review, 23 strong</span><h3>Load on demand</h3><p>A store page arrives as a static file with nothing in it twice. A product view asks the database for stock and nothing else. A publish redraws one page, not the whole store. Admin screens hand the browser only the words they show, and the builder paints before its editors load. The AI manager answers on a third of the tokens. With the owner's yes, an agent session starts with a quarter of today's standing rules.</p></div>
+      <li><div class="ph"><span class="eyebrow">Phase 2 · 50 steps · 7 small, 35 medium, 8 large · 6 cheap, 19 with review, 25 strong</span><h3>Load on demand</h3><p>A store page arrives as a static file with nothing in it twice. A product view asks the database for stock and nothing else. A publish redraws one page, not the whole store. Admin screens hand the browser only the words they show, and the builder paints before its editors load. The AI manager answers on a third of the tokens. With the owner's yes, an agent session starts with a quarter of today's standing rules.</p></div>
         <ul>
           <li><span class="sid">2.2</span><span>Send the store's layout once</span></li>
           <li><span class="sid">2.6</span><span>Route every link through one wrapper with a stated policy</span></li>
@@ -294,7 +294,7 @@ details.qs li strong { color: var(--ink); font-weight: 600; }
           <li><span class="sid">2.36</span><span>Send the AI manager a lean default round</span></li>
           <li class="more">and 44 more</li>
         </ul></li>
-      <li><div class="ph"><span class="eyebrow">Phase 3 · 20 steps · 6 small, 11 medium, 3 large · 0 cheap, 11 with review, 9 strong</span><h3>One of each</h3><p>On a quiet day the scheduler makes at most 1,350 function calls, not 13,250, and the platform home shows every scheduled function with a row of its own. With the owner's yes there is one place to edit Kaizena Flow's site, one engine for what happens when an order is paid, and one deploy for a burst of pushes. There is one import flow.</p></div>
+      <li><div class="ph"><span class="eyebrow">Phase 3 · 20 steps · 6 small, 11 medium, 3 large · 0 cheap, 10 with review, 10 strong</span><h3>One of each</h3><p>On a quiet day the scheduler makes at most 1,350 function calls, not 13,250, and the platform home shows every scheduled function with a row of its own. With the owner's yes there is one place to edit Kaizena Flow's site, one engine for what happens when an order is paid, and one deploy for a burst of pushes. There is one import flow.</p></div>
         <ul>
           <li><span class="sid">3.1</span><span>Run one tick a minute, and call a route only when work waits</span></li>
           <li><span class="sid">3.3</span><span>Run the dispatcher from a registry: a cadence and a time budget per job</span></li>

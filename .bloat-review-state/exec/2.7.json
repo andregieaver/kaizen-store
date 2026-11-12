@@ -20,6 +20,10 @@
   {
    "id": "1.3",
    "why": "it makes e2e/prefetch.spec.ts and its request-counting helper, where this step's test goes"
+  },
+  {
+   "id": "0.12",
+   "why": "it creates e2e/prefetch.spec.ts, which this step edits (step 1.3 then adds its table)"
   }
  ],
  "commits": [
@@ -34,7 +38,7 @@
     {
      "file": "src/components/block-link.test.ts",
      "action": "create",
-     "how": "Vitest. Part 1, `isAppAddress`: true for `/s/demo/no/p/x`, `/om-oss`, `/s/demo/no/category/a?sort=price`, `/no/blog/x#top`; false for `/s/demo/no/cart`, `/cart`, `/no/checkout`, `/s/demo/no/order/1`, `https://example.com`, `//example.com/x`, `#contact`, `mailto:a@b.no`, `tel:123`, `/downloads/a.pdf`, `/api/x`, `/admin`, `/admin/demo`, `/auth/callback`, `/oauth/authorize`, `/r/abc`, and the empty string. Part 2: `vi.mock(\"./policy-link\", ...)` so PolicyLink renders `<a data-policy={policy} href={href} {...rest} />`; with `renderToStaticMarkup`, `<BlockLink href=\"/om-oss\" className=\"x\" data-block-id=\"b1\">t</BlockLink>` holds `data-policy=\"intent\"`, `class=\"x\"` and `data-block-id=\"b1\"`; with `plain`, with `target=\"_blank\"`, and with `href=\"/s/demo/no/cart\"` it holds no `data-policy`."
+     "how": "Vitest. Part 1, `isAppAddress`: true for `/s/demo/no/p/x`, `/om-oss`, `/s/demo/no/category/a?sort=price`, `/no/blog/x#top`; false for `/s/demo/no/cart`, `/cart`, `/no/checkout`, `/s/demo/no/order/1`, `https://example.com`, `//example.com/x`, `#contact`, `mailto:a@b.no`, `tel:123`, `/downloads/a.pdf`, `/api/x`, `/admin`, `/admin/demo`, `/auth/callback`, `/oauth/authorize`, `/r/abc`, and the empty string. Part 2: `vi.mock(\"./policy-link\", ...)` so PolicyLink renders `<a data-policy={policy} href={href} {...rest} />`; with `renderToStaticMarkup`, `<BlockLink href=\"/om-oss\" className=\"x\" data-block-id=\"b1\">t</BlockLink>` holds `data-policy=\"intent\"`, `class=\"x\"` and `data-block-id=\"b1\"`; with `plain`, with `target=\"_blank\"`, and with `href=\"/s/demo/no/cart\"` it holds no `data-policy`. Part 3, `both branches keep every attribute`: with the same mock, `const attrs = { className: \"c\", style: { color: \"red\" }, \"aria-label\": \"l\", \"aria-hidden\": true, tabIndex: -1, rel: \"next\", \"data-block-id\": \"b1\", \"data-hover\": \"lift\", \"data-button-frame\": \"\", \"data-kz-text\": \"button\" };` render `<BlockLink href=\"/om-oss\" {...attrs}>t</BlockLink>` and `<BlockLink href=\"/om-oss\" plain {...attrs}>t</BlockLink>`; expect the first's markup with ` data-policy=\"intent\"` removed to equal the second's markup exactly, so an attribute dropped in either branch fails without e2e."
     },
     {
      "file": "src/components/content-grid.tsx",
@@ -62,9 +66,10 @@
      "how": "Add a test in the `entering a pay route` describe: `a built page's link never client-navigates to a pay path`: read src/components/block-link.tsx and expect its text to contain `isPayPath(`; and import `isAppAddress` from `@/components/block-link` and expect false for `/s/demo/no/cart`, `/s/demo/no/checkout` and `/s/demo/no/order/1`. Leave the existing checkout scan (already widened to wrapper names by step 2.6) as it is."
     },
     {
-     "file": "e2e/{prefetch.spec.ts}",
+     "file": "e2e/prefetch.spec.ts",
      "action": "edit",
-     "how": "The file is e2e/prefetch.spec.ts (made by step 1.3). Add the test `a press on a built page's tile stays in the app`: phone viewport 390x800 with touch; open /s/demo/no, wait for network idle; start collecting requests; tap the first product tile's title link inside the page's content grid (`page.locator(\"main article a[href*='/p/']\").first()`); wait for the URL to match `/\\/p\\//` and then 3.5 s. Assert 0 requests with `resourceType() === \"document\"` and at most 8 requests in all (1 and 42 before). Add a second short test `a built page's link to the cart is a full page load`: make a page with one button whose href is `/s/demo/no/cart` using `storePageRows()` from e2e/db.ts, press it, and expect exactly 1 document request."
+     "how": "Step 0.12 creates this file (helpers watch(page), returning { prefetches, stylesheets }, and readToFooter(page); a BUDGETS object; four cases) and step 1.3 adds its ROUTER_REQUESTS table of five pages and one test per row. If the file is missing, stop. Keep all of that and add the two tests below; collect requests with page.on('request') in the new tests (a document request is one whose resourceType() is 'document'). Add the test `a press on a built page's tile stays in the app`: phone viewport 390x800 with touch; open /s/demo/no, wait for network idle; start collecting requests; tap the first product tile's title link inside the page's content grid (`page.locator(\"main article a[href*='/p/']\").first()`); wait for the URL to match `/\\/p\\//` and then 3.5 s. Assert 0 requests with `resourceType() === \"document\"` and at most 8 requests in all (1 and 42 before). Add a second short test `a built page's link to the cart is a full page load`: make a page with one button whose href is `/s/demo/no/cart` using `storePageRows()` from e2e/db.ts, press it, and expect exactly 1 document request.",
+     "made_by": "0.12"
     },
     {
      "file": "docs/pci.md",
@@ -87,7 +92,7 @@
   },
   {
    "file": "src/components/block-link.test.ts",
-   "proves": "Fails when a pay path, a file, a handler path, an outside address, a hash or a new-tab link would be navigated inside the app, or when an app address is not."
+   "proves": "Fails when a pay path, a file, a handler path, an outside address, a hash or a new-tab link would be navigated inside the app, or when an app address is not. Also fails when either branch drops or changes an attribute (data-block-id, data-hover, data-button-frame, data-kz-text, style, aria-*, rel, tabIndex)."
   },
   {
    "file": "src/lib/pay-routes.graph.test.ts",
@@ -138,6 +143,8 @@
   "An anchor named above is not where the brief says and you cannot find it by its attributes."
  ],
  "executor": "cheap-then-review",
- "executor_why": "Nine anchors change to one new, fully specified component and unit tests hold its rule, but the rule guards the pay routes and every built page's navigation changes, so a stronger model should read the diff before it is pushed.",
- "checked_in_code": "I opened content-grid.tsx (anchors at 147, 226, 300 and 310, the swatch anchor at 202), icon-list-view.tsx:48, ColumnLinkCover in page-parts.tsx:448, page-block.tsx (180, 246, 302, 366 and the `preview` prop), rich-text.tsx, product-card.tsx, isPayPath in src/lib/pay-routes.ts (pure, no imports that carry zod) and docs/pci.md: all as PF-4 says. Corrections: PF-4 cites content-grid.tsx line 304; the second picture anchor is at 300; and the builder's canvas already cancels every anchor click (page-builder.tsx:2453), so `plain={preview}` is there to stop fetches on hover, not navigation. The brief leaves the combined listing's swatches to step 2.8 and names the policy 'intent' as step 2.6 does."
+ "executor_why": "BlockLink and its rule are fully specified and the unit tests now hold the pay-path boundary and every attribute in both branches, but the change sits on the PCI rule that entering a pay route is a full page load and changes soft navigation on every built page (consent, motion, A/B goals, the builder canvas's plain), so a stronger model reads the diff.",
+ "checked_in_code": "I opened content-grid.tsx (anchors at 147, 226, 300 and 310, the swatch anchor at 202), icon-list-view.tsx:48, ColumnLinkCover in page-parts.tsx:448, page-block.tsx (180, 246, 302, 366 and the `preview` prop), rich-text.tsx, product-card.tsx, isPayPath in src/lib/pay-routes.ts (pure, no imports that carry zod) and docs/pci.md: all as PF-4 says. Corrections: PF-4 cites content-grid.tsx line 304; the second picture anchor is at 300; and the builder's canvas already cancels every anchor click (page-builder.tsx:2453), so `plain={preview}` is there to stop fetches on hover, not navigation. The brief leaves the combined listing's swatches to step 2.8 and names the policy 'intent' as step 2.6 does. Second check (12 November): the e2e file is e2e/prefetch.spec.ts, made by step 0.12 (added to depends_on) and extended by 1.3, now an edit with what they leave; block-link.test.ts gained a case that compares both branches' markup with every listed attribute.",
+ "cheap_commits": [],
+ "rating_checked": "cheap-then-review"
 }

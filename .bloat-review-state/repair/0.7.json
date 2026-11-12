@@ -1,0 +1,23 @@
+{
+ "id": "0.7",
+ "fixed": [
+  "Commit 2's 23 per-file changes pointed at 'the table in the first change of this commit'; the table is in commit 1.",
+  "The 12-file sed: verified all 15 calls take plain `lang`, so it covers them; a miss now means stop and report instead of an unnamed hand edit.",
+  "The walker's 'does NOT stop at use server' now names the line to drop (the directive skip) and why (server entries load action files).",
+  "Case E, the commit 3 scratch check, the test's 'proves' and done_when planted '@/lib/admin-words/staff-emails', which the beacon may already reach at 37 (then the planted count equals the ceiling and the case fails); they now plant '@/lib/admin-text', which loads at least 130 catalogue files.",
+  "Added a stop_if for words-in-entries.mjs being absent (step 0.1): the count is skipped and noted, never rewritten."
+ ],
+ "rejected": [
+  {
+   "problem": "The sed only matches a plain identifier; calls with an expression are left to an unlisted hand fix.",
+   "why": "All 15 calls in the 12 files are adminText(lang, \"staffEmails\"); the expression calls (assistant-route, price-lists, sandbox-ai, page-duplicate…) are in the 23 files with their own per-file change. Only the wording was tightened."
+  },
+  {
+   "problem": "The walker does not stop at 'use server' files, unlike its source; easy to miss.",
+   "why": "Deliberate and already written in the brief: a server entry loads action files. The reason was added so it is not 'fixed' back."
+  }
+ ],
+ "cheaper": "not applied: pasting the walker and adding one int-test case per sender is a large addition; the risk that keeps review (a constant language index in an email sender) is one a reader sees at once in the diff.",
+ "executor_before": "cheap-then-review",
+ "executor_after": "cheap-then-review"
+}

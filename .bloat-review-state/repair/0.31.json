@@ -1,0 +1,8 @@
+{
+ "id": "0.31",
+ "fixed": [],
+ "rejected": [],
+ "cheaper": "not applied: the reviewer proposed none; the brief is already exact.",
+ "executor_before": "cheap",
+ "executor_after": "cheap"
+}

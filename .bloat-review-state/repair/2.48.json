@@ -1,0 +1,13 @@
+{
+ "id": "2.48",
+ "fixed": [
+  "Commit 1's file is src/server/order-writes.int.test.ts, an edit made_by 1.12, with what 1.12 leaves in it; checks, done_when and tests name it.",
+  "track_functions: set with alter database on the side connection plus closeDb(), reset in afterAll (set local in the test session cannot reach placeOrder's pooled connection; superuser is CI's postgres user); a permission error skips cases 3 and 5 with the reason.",
+  "Case 1's seeding: copies of the first order numbered 'C-…' by jsonb_populate_record over generate_series (the file had no seeding helper; order-numbers.test.ts skips test files).",
+  "Decision number: sort -n before tail -1 (the judge's edit_brief)."
+ ],
+ "rejected": [],
+ "cheaper": "not applied: ending the step after commit 1 and writing commits 2 and 3 as separate briefs would change the step's scope and other briefs; commit 1 is cheap on its own (cheap_commits [1])",
+ "executor_before": "cheap-then-review",
+ "executor_after": "strong"
+}

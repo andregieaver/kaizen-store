@@ -20,6 +20,10 @@
   {
    "id": "1.1",
    "why": "it wrote the budgets rule this step adds a line to"
+  },
+  {
+   "id": "0.31",
+   "why": "it removes nine prunes from the dispatcher's object (78 keys become 69) and adds src/server/cron-prunes.scan.test.ts, which reads that object from the route; this step moves the object, so it repoints that test"
   }
  ],
  "commits": [
@@ -29,7 +33,7 @@
     {
      "file": "src/server/dispatcher-jobs.ts",
      "action": "create",
-     "how": "Server-only. Move the object literal that src/app/api/cron/cart-reminders/route.ts passes as the third argument of runJobs(\"dispatcher\", EVERY, { ... }) into 'export const DISPATCHER_JOBS = { ... } satisfies Record<string, () => Promise<unknown>>', key for key and comment for comment, in the same order, with every import those jobs need moved with it. Move nothing else: EVERY, run(), dispatch(), the code after runJobs() that reads its result, maxDuration and the GET and POST exports stay in the route."
+     "how": "Server-only. Move the object literal that src/app/api/cron/cart-reminders/route.ts passes as the third argument of runJobs(\"dispatcher\", EVERY, { ... }) into 'export const DISPATCHER_JOBS = { ... } satisfies Record<string, () => Promise<unknown>>', key for key and comment for comment, in the same order, with every import those jobs need moved with it. Move nothing else: EVERY, run(), dispatch(), the code after runJobs() that reads its result, maxDuration and the GET and POST exports stay in the route. Format it as the repository's prettier does (pnpm lint): the keys at two spaces, so the count in this commit's checks reads them."
     },
     {
      "file": "src/app/api/cron/cart-reminders/route.ts",
@@ -40,11 +44,17 @@
      "file": "src/server/cron-routes.scan.test.ts",
      "action": "edit",
      "how": "Line 40 to 41 today reads the dispatcher's source from join(DIR, \"cart-reminders\", \"route.ts\") and expects /uiTranslations: \\(\\) => runNightlyUiTranslations\\(\\)/. Read src/server/dispatcher-jobs.ts instead (join(process.cwd(), \"src/server/dispatcher-jobs.ts\")) and keep the same expectation. Change nothing else in the file."
+    },
+    {
+     "file": "src/server/cron-prunes.scan.test.ts",
+     "action": "edit",
+     "made_by": "0.31",
+     "how": "Step 0.31 left this scan's case 1 reading src/app/api/cron/cart-reminders/route.ts, taking the text between `await runJobs(\"dispatcher\", EVERY, {` and the first following line that is exactly `  });`, counting lines that match /^    [A-Za-z0-9]+: / (expect 69) and checking that block holds none of the nine prune names. Point case 1 at the moved object: read src/server/dispatcher-jobs.ts, take the text between `export const DISPATCHER_JOBS = {` and the first following line that starts with `}`, count the lines that match /^  [A-Za-z0-9]+: / (the keys are two spaces in now), and keep `expect(…).toBe(69)` and the nine-name check on that block. Case 2's check that the route contains tracked(\"hourly.api-idempotency\", 3600 and tracked(\"hourly.oauth-tokens\", 3600 still reads the route (those calls stay there). Change nothing else."
     }
    ],
    "checks": [
-    "pnpm vitest run src/server/cron-routes.scan.test.ts: passes",
-    "git diff --stat: three files; the number of keys in DISPATCHER_JOBS equals the number that was in the route (count both with rg -c '^    \\w+: \\(' before and after)",
+    "pnpm vitest run src/server/cron-routes.scan.test.ts src/server/cron-prunes.scan.test.ts: passes",
+    "git diff --stat: four files; the job count is unchanged: before the edit `awk '/runJobs\\(\"dispatcher\"/{s=1} s && /^  \\}\\);/{print; exit} s' src/app/api/cron/cart-reminders/route.ts | rg -c '^    \\w+: (\\(|async \\()'` prints the number of jobs (69 once step 0.31 has landed; 78 on 12 November, counting assistantApprovals' `async () =>`), and after it `rg -c '^  \\w+: (\\(|async \\()' src/server/dispatcher-jobs.ts` prints the same number (keys sit two spaces in at the top level of the new file, so a nested line, four or more spaces in, is not counted)",
     "pnpm lint && pnpm typecheck && pnpm test: exits 0",
     "pnpm build && pnpm exec playwright test e2e/cart-reminders.spec.ts: passes (the dispatcher route changed)"
    ]
@@ -65,19 +75,24 @@
     {
      "file": "src/server/query-budget.int.test.ts",
      "action": "create",
-     "how": "Top of file: vi.mock(\"next/server\", () => ({ connection: async () => {}, after: () => {} })) and the next/headers mock of src/server/webhook-topics.int.test.ts line 17; set process.env.CRON_SECRET = 'query-budget' before importing a route. Each test gets a 120 second timeout. Part A, the idle tick: for each key of DISPATCHER_JOBS, run the job once outside the measure (it warms caches and lets a first run do its catch-up), then measure(() => job()); record { statements, rowsRead } under 'dispatcher.<kebab of key>' (kebab from src/server/cron-runs.ts). A job that throws is a failure of the test with the job's name. Part B, the minute routes: import the POST export of each of src/app/api/cron/{autopilot,broadcasts,cookie-scan,dream-factory,integrations,pack-pictures,page-jobs,page-looks,theme-shots}/route.ts and call it with new Request('http://localhost/api/cron/<name>', { method: 'POST', headers: { authorization: 'Bearer query-budget' }, body: '{}' }); assert the answer's status is 200, then measure a second call; record under 'route.<name>'. Part C, the daily routes: the same for subscription-reminders and usage, recorded under 'route.subscription-reminders' and 'route.usage'. Part D, a cold frame: measure the reads a first request for a store page makes before any page content: getStore('demo'), resolveShop('demo', 'no') from src/server/shop.ts, and the readers that src/app/s/[store]/[market]/layout.tsx awaits (open that file and call the same functions with the demo store, in the same order); and Kaizena Flow's frame: getPlatformChrome() from src/server/platform-navigation.ts, siteCookies() from src/server/site-cookies.ts and the readers that src/app/(platform)/layout.tsx awaits. Record as 'frame.store' and 'frame.platform'. Under vitest a 'use cache' function runs as a plain function, so each call is a cold read. Comparison: every figure is compared to queryBudget.one[<name>] in the baseline. Higher fails with the job's name, both numbers and the statements that are new (diff the records' texts against none: print the ten most repeated texts). Lower fails with 'run UPDATE_BASELINE=1 pnpm vitest run --config vitest.integration.config.mts src/server/query-budget.int.test.ts'. With UPDATE_BASELINE=1 the test writes the measured figures and passes; it refuses to raise a figure unless FIRST=1 is also set. Last, a case that lists what the seed has switched on (see the next commit) so the file says what it counts."
+     "how": "Top of file: vi.mock(\"next/server\", () => ({ connection: async () => {}, after: () => {} })) and the next/headers mock of src/server/webhook-topics.int.test.ts line 17; set process.env.CRON_SECRET = 'query-budget' before importing a route. Each test gets a 120 second timeout. Part A, the idle tick: for each key of DISPATCHER_JOBS, run the job once outside the measure (it warms caches and lets a first run do its catch-up), then measure(() => job()); record { statements, rowsRead } under 'dispatcher.<kebab of key>' (kebab from src/server/cron-runs.ts). A job that throws is a failure of the test with the job's name. Part B, the minute routes: import the POST export of each of src/app/api/cron/{autopilot,broadcasts,cookie-scan,dream-factory,integrations,pack-pictures,page-jobs,page-looks,theme-shots}/route.ts and call it with new Request('http://localhost/api/cron/<name>', { method: 'POST', headers: { authorization: 'Bearer query-budget' }, body: '{}' }); assert the answer's status is 200, then measure a second call; record under 'route.<name>'. Part C, the daily routes: the same for subscription-reminders and usage, recorded under 'route.subscription-reminders' and 'route.usage'. Part D, a cold frame: measure the reads a first request for a store page makes before any page content: getStore('demo'), resolveShop('demo', 'no') from src/server/shop.ts, and the readers that src/app/s/[store]/[market]/layout.tsx awaits (open that file and call the same functions with the demo store, in the same order); and Kaizena Flow's frame: getPlatformChrome() from src/server/platform-navigation.ts, siteCookies() from src/server/site-cookies.ts and the readers that src/app/(platform)/layout.tsx awaits. Record as 'frame.store' and 'frame.platform'. Under vitest a 'use cache' function runs as a plain function, so each call is a cold read. Comparison: every figure is compared to queryBudget.one[<name>] in the baseline. Higher fails with the job's name, both numbers and the statements that are new (diff the records' texts against none: print the ten most repeated texts). Lower fails with 'run UPDATE_BASELINE=1 pnpm vitest run --config vitest.integration.config.mts src/server/query-budget.int.test.ts'. With UPDATE_BASELINE=1 the test writes the measured figures and passes; it refuses to raise a figure unless FIRST=1 is also set. Last, a case that lists what the seed has switched on (see the next commit) so the file says what it counts. The figures are only comparable on a freshly seeded database (jobs that scan every store read more rows, and some send more statements, when other test files have left stores and orders behind), so CI runs this file alone on the fresh database (the ci.yml change below) and the sharded run leaves it out. Put this in the file's doc comment: 'Run on a freshly seeded database (node scripts/db-setup.mjs --seed): CI runs it before the other integration files.'"
     },
     {
      "file": "src/server/ratchet.baseline.json",
      "action": "edit",
      "how": "Never by hand: run FIRST=1 UPDATE_BASELINE=1 pnpm vitest run --config vitest.integration.config.mts src/server/query-budget.int.test.ts on a freshly seeded database (node scripts/db-setup.mjs --seed on an empty DATABASE_URL). It adds the key queryBudget: { one: { '<job>': { statements, rowsRead } } }."
+    },
+    {
+     "file": ".github/workflows/ci.yml",
+     "action": "edit",
+     "how": "In the integration job (the one with `matrix: shard: [1, 2, 3]`), directly after the step 'Create the database with the demo catalogue' and before 'Integration tests against the database', add a step at the steps' indentation: '      - name: Query budget on the fresh database (src/server/query-budget.int.test.ts)', '        if: matrix.shard == 1', '        run: pnpm exec vitest run --config vitest.integration.config.mts src/server/query-budget.int.test.ts'. Then change the next step's run line from `pnpm test:int --shard=${{ matrix.shard }}/3` to `pnpm test:int --shard=${{ matrix.shard }}/3 --exclude src/server/query-budget.int.test.ts`, so the file runs once, before any other file has written to the database. Change nothing else in the job."
     }
    ],
    "checks": [
-    "FIRST=1 UPDATE_BASELINE=1 pnpm vitest run --config vitest.integration.config.mts src/server/query-budget.int.test.ts, then pnpm vitest run --config vitest.integration.config.mts src/server/query-budget.int.test.ts three times on the same database: passes each time with the same figures",
+    "FIRST=1 UPDATE_BASELINE=1 pnpm vitest run --config vitest.integration.config.mts src/server/query-budget.int.test.ts, then pnpm vitest run --config vitest.integration.config.mts src/server/query-budget.int.test.ts three times on the same database: passes each time with the same figures (the file removes what it seeds in afterAll, so the database is as fresh on each run)",
     "pnpm vitest run src/server/ratchet.scan.test.ts: passes (the new key does not disturb it); node scripts/ratchet.mjs, then git diff src/server/ratchet.baseline.json: queryBudget is still there",
     "pnpm lint && pnpm typecheck && pnpm test: exits 0",
-    "pnpm test:int: exits 0"
+    "On a freshly seeded database: pnpm exec vitest run --config vitest.integration.config.mts src/server/query-budget.int.test.ts passes, then pnpm test:int --exclude src/server/query-budget.int.test.ts exits 0"
    ]
   },
   {
@@ -104,7 +119,7 @@
     "Trial, never committed: in src/server/ledger.ts add one 'await db().execute(sql`select 1`)' inside the loop over books of runLedgerPosting(); the test fails naming dispatcher.ledger under twenty; remove it",
     "Trial, never committed: add a per-store select to one prune the daily route calls (for example pruneNotFound in src/server/not-found.ts: loop over the stores and select 1); the test fails naming route.subscription-reminders growth; remove it",
     "pnpm lint && pnpm typecheck && pnpm test: exits 0",
-    "pnpm test:int: exits 0, and the integration job's time grows by under 3 minutes (print the file's duration)"
+    "On a freshly seeded database: the budget file passes first, then pnpm test:int --exclude src/server/query-budget.int.test.ts exits 0; the budget file's own duration is under 3 minutes (print it)"
    ]
   }
  ],
@@ -124,8 +139,8 @@
  },
  "done_when": [
   {
-   "check": "pnpm test:int",
-   "expect": "runs src/server/query-budget.int.test.ts green"
+   "check": "CI's integration job, shard 1, the step 'Query budget on the fresh database'",
+   "expect": "runs src/server/query-budget.int.test.ts green before the sharded run, and the sharded run leaves the file out"
   },
   {
    "check": "node -e \"const b=require('./src/server/ratchet.baseline.json').queryBudget;console.log(Object.keys(b), Object.keys(b.one).length)\"",
@@ -166,9 +181,15 @@
   "The same job gives different statement counts on three runs in a row.",
   "rowsRead does not settle within 15 seconds or differs by more than 0 between runs: report the job; rows read may then be held for the 20-store run only.",
   "A feature of the list cannot be switched on from a server function without a real provider answer (eBay, an ad platform): leave it out, say which in SEEDED_FEATURES' comment and in your report.",
-  "The whole file takes over 5 minutes in pnpm test:int."
+  "The whole file takes over 5 minutes in pnpm test:int.",
+  "The budget file passes on a freshly seeded database but fails in CI's 'Query budget on the fresh database' step with the same commit: report the names and both figures; do not raise a figure or add a margin.",
+  "src/server/cron-prunes.scan.test.ts does not exist (step 0.31 not landed): stop; the job count and that scan must move together."
  ],
  "executor": "strong",
- "executor_why": "Commits 1 and 2 are mechanical, but the 20-store seed of commit 3 must switch on fourteen features through their own savers, and choosing those calls and judging which idle counts are stable needs a model that can read each feature.",
- "checked_in_code": "I opened src/app/api/cron/cart-reminders/route.ts (the job object is passed inline to runJobs() at dispatch(), about 60 keys), src/server/cron-routes.scan.test.ts (lines 40 to 41 read that route's source for uiTranslations) and scripts/ratchet.mjs (it rewrites the whole baseline from ratchetCounts(), so it would drop a queryBudget key: the brief makes it carry other keys over). Finding DQ-11 asked for a counter in test/count-statements.ts that patches pg's Client.prototype; step 1.9 now provides countStatements() in the client, so the brief uses that. Integration tests already call route handlers with next/server mocked (src/server/theme-submissions.int.test.ts line 13), which is how the minute and daily routes are counted. src/server/pages.ts still filters with 'store_id is not distinct from' in ownedBy() and listPublishedPages() today, so the third trial depends on step 0.23."
+ "executor_why": "Commit 1 is a mechanical move held by an exact key count and the scan test, but commit 3's 20-store seed must switch on fourteen features through their own savers, and choosing those calls, and judging which counts are stable enough to hold, needs a model that reads each feature.",
+ "checked_in_code": "I opened src/app/api/cron/cart-reminders/route.ts (the job object is passed inline to runJobs() at dispatch(), about 60 keys), src/server/cron-routes.scan.test.ts (lines 40 to 41 read that route's source for uiTranslations) and scripts/ratchet.mjs (it rewrites the whole baseline from ratchetCounts(), so it would drop a queryBudget key: the brief makes it carry other keys over). Finding DQ-11 asked for a counter in test/count-statements.ts that patches pg's Client.prototype; step 1.9 now provides countStatements() in the client, so the brief uses that. Integration tests already call route handlers with next/server mocked (src/server/theme-submissions.int.test.ts line 13), which is how the minute and daily routes are counted. src/server/pages.ts still filters with 'store_id is not distinct from' in ownedBy() and listPublishedPages() today, so the third trial depends on step 0.23. Second check (12 November): the key-count check now uses the exact figure (78 keys, lines 128 to 261 of the route) and an indentation the new file really has (69 once step 0.31 has removed nine prunes, now in depends_on; commit 1 also repoints 0.31's cron-prunes.scan.test.ts at the moved object); CI runs the budget file alone on the fresh database in shard 1 before the sharded run, which excludes it, since figures taken after other files have added stores and orders would not match a baseline written on a fresh seed.",
+ "cheap_commits": [
+  1
+ ],
+ "rating_checked": "strong"
 }

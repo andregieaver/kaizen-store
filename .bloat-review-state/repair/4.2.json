@@ -1,0 +1,17 @@
+{
+ "id": "4.2",
+ "fixed": [
+  "src/server/after-or-now.test.ts is now created in commit 1 with its mock and cases (the tests section named it but no commit made it).",
+  "src/server/accounting-sync.int.test.ts is now created in commit 2 with its set-up and three cases; the queue builders are exported as fikenQueue and tripletexQueue for it.",
+  "stop_if for a missing scripts/copies.mjs or copies.baseline.json (step 1.17)."
+ ],
+ "rejected": [
+  {
+   "problem": "Commit 1 wraps five blocks in checkout.ts and one in stripe-webhooks.ts, so it touches payment paths.",
+   "why": "True and already reflected: it is why no commit is cheap alone; the brief's classification of each block (run now or leave) matches the code (16 blocks recounted)."
+  }
+ ],
+ "cheaper": "not applied: moving commits 1 and 2 into a brief of their own changes the plan's steps; within this brief they still need review (checkout and the accounting queue), so cheap_commits stays empty",
+ "executor_before": "strong",
+ "executor_after": "strong"
+}

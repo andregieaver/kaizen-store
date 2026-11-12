@@ -1,0 +1,15 @@
+{
+ "id": "3.13",
+ "fixed": [
+  "The stop_if that let the twin-pair target go unchecked without step 1.17 now checks it with docs/audits/bloat-review-2026-11/scripts/twin-count.mjs (step 0.1) and stops if that is missing too; done_when names the fallback."
+ ],
+ "rejected": [
+  {
+   "problem": "The rg check after commit 1 expects 5 files writing insert into commerce.data_jobs, which only holds if no other file writes it.",
+   "why": "Verified: exactly five files insert into commerce.data_jobs today (inventory-jobs, customer-import, order-history-import, product-import, redirect-import; case-insensitive search agrees), so after commit 1 it is 5 with data-import.ts in and customer-import.ts out."
+  }
+ ],
+ "cheaper": "not applied: writing each engine's definition object and ImportFlow's props needs the comparison the step itself is; the step stays strong.",
+ "executor_before": "strong",
+ "executor_after": "strong"
+}

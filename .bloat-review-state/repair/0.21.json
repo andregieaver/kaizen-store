@@ -1,0 +1,20 @@
+{
+ "id": "0.21",
+ "fixed": [
+  "aiAbilities() names every field: hear = transcriptionModel, speak = canSpeak(), live = textModel && live (as assistantAbilities() reads them) and a new speech flag (speechModel && speechVoice) for studioAbilities(), which reads speak differently.",
+  "The memo is a module-level map in ai.ts with forgetAiAbilities() clearing it on every save; calling back from forgetLimitMemos() would have been an import cycle (ai.ts imports limits.ts), and remembered() has no clear-all.",
+  "Commit 2's per-caller judgement replaced by the checked list of callers and their exact new lines (support-inbox uses textModel only, for partner and translate).",
+  "The month's cost reads measured days before today only: the usage cron also measures today (partially), which the brief missed and would have dropped today's later calls; a test case for it was added.",
+  "The re-measure goes in setPrice() and only for a model's first price (counted from BEGINNING); later prices count from now(); the 'if no such writer exists' hedge is gone and the int case is placed in ai-cost.int.test.ts.",
+  "visitor is queryVector's fifth parameter after feature; VectorFor and Understand are written out, the two callers (search-section.tsx, chat-agent.ts) are named with a queryVector wrapper, and recommend.ts is left as it is."
+ ],
+ "rejected": [
+  {
+   "problem": "Commit 5's title and commit 4's first change carry a stray executor marker.",
+   "why": "An artefact of the blanked copy: the real text says 'This commit needs a strong model', which matches cheap_commits [1]."
+  }
+ ],
+ "cheaper": "not applied: listing the nine public entries and their ceilings needs the server import walk and a judgement per path that I could not complete reliably read-only; commit 5 stays with the strong model.",
+ "executor_before": "strong",
+ "executor_after": "strong"
+}

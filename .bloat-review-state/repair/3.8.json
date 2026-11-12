@@ -1,0 +1,11 @@
+{
+ "id": "3.8",
+ "fixed": [
+  "schema.ts: the enum declaration is quoted as its four lines (289-292), not as one line.",
+  "legacy-schema-drop test: three cases added, one each for the column-type, view and function branches of the guard (only the foreign-key branch was tested)."
+ ],
+ "rejected": [],
+ "cheaper": "applied: the three guard-branch cases are added; the rating stays cheap-then-review because the step drops production data and waits for the owner's yes on a restored dump.",
+ "executor_before": "cheap-then-review",
+ "executor_after": "cheap-then-review"
+}

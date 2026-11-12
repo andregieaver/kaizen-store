@@ -1,0 +1,13 @@
+{
+ "id": "0.2",
+ "fixed": [],
+ "rejected": [
+  {
+   "problem": "Case (f) and the 41-80 statement rows can only be checked in production; the statements insert ships untested in CI.",
+   "why": "True but already handled: CI's pgvector/pgvector:pg17 service has no pg_stat_statements (no migration or setup creates it), the brief wraps the insert in a savepoint that logs and counts 0, and after_deploy and stop_if name 0 statement rows as not done. It is why commit 1 stays under review, not an error in the brief."
+  }
+ ],
+ "cheaper": "not applied: the reviewer gave none",
+ "executor_before": "cheap-then-review",
+ "executor_after": "cheap-then-review"
+}

@@ -20,6 +20,10 @@
   {
    "id": "1.8",
    "why": "its graph test forbids heavy imports on the beacons and the proxy, so this step's helper must stay a leaf module (it is checked by that test)"
+  },
+  {
+   "id": "1.11",
+   "why": "it creates scripts/render-modes.mjs and its baseline, which commit 2's check runs to prove no store route changed its render mode or holes"
   }
  ],
  "commits": [
@@ -103,19 +107,14 @@
      "how": "After 'const account = await requirePlatformReader();' add noteFirstRequest('platform_admin', after)."
     },
     {
-     "file": "src/app/s/[store]/[market]/layout.tsx",
+     "file": "src/components/country-hint-section.tsx",
      "action": "edit",
-     "how": "A store page's frame is prerendered, so the call must sit only in a part that runs for each request. Find the async server component in this file (or the one it draws inside <Suspense>) that awaits cookies() or reads the visitor's cart (around line 201 today); as its first statement after that await, add noteFirstRequest('store', after). If no part of the layout awaits cookies(), headers() or connection(), make no change to this file and say so in the report: do not add such a call to make room for it."
+     "how": "The store layout (src/app/s/[store]/[market]/layout.tsx) itself awaits no cookies(), headers() or connection(): its frame is prerendered, and its only part that runs per request is CountryHintSection, drawn inside <Suspense> and <OffPayRoutes> at line 229 for a store with more than one market. Make no change to layout.tsx. In this file, directly after the first line of CountryHintSection(), `const request = await headers();` (line 18), add `noteFirstRequest(\"store\", after);` with `import { after } from \"next/server\";` and `import { noteFirstRequest } from \"@/server/instance-start\";` among the imports. So the 'store' kind is recorded only on instances whose first store page belongs to a store with several markets; that is accepted (after_deploy says what to do if none appears)."
     },
     {
-     "file": "src/app/s/[store]/[market]/checkout/page.tsx",
+     "file": "src/app/s/[store]/[market]/checkout/checkout-section.tsx",
      "action": "edit",
-     "how": "In the page's per-request part (after its first await of cookies(), the cart or connection()), add noteFirstRequest('pay', after)."
-    },
-    {
-     "file": "src/app/(platform)/layout.tsx",
-     "action": "edit",
-     "how": "Only if the layout has a part that runs per request (it awaits cookies(), headers() or connection()): add noteFirstRequest('site', after) there. If it has none, make no change."
+     "how": "The checkout page (checkout/page.tsx) awaits only params, resolveShop() and sellingPageOr404(): make no change there. Its per-request part is loadCheckoutView() in this file (line 65), which reads the cart cookie. Directly after its line `const cartId = await readCartId({ storeId: store.id, market });` (line 68) add `noteFirstRequest(\"pay\", after);` with `import { after } from \"next/server\";` and `import { noteFirstRequest } from \"@/server/instance-start\";`. Step 0.22 edits line 73 of this file (the bonus read); if it is in, leave its lines as they are and add only this line."
     },
     {
      "file": "src/lib/instance-start.test.ts",
@@ -246,7 +245,7 @@
  "after_deploy": [
   "The day after: select kind, count(*), percentile_cont(0.5) within group (order by first_ms) from commerce.instance_starts group by kind, read on the Cold starts card (do not query production by hand): expect health well under the others, and note the first figures in docs/performance.md under 'What a server route loads'.",
   "Check the Supabase security and performance advisors for the new table, and record the migration's version in docs/decisions.md (Migration versions).",
-  "If no row of kind 'store' appears in a week, the store layout had no per-request part to carry the call: report it, so the kind is measured from the cart or product stock part instead."
+  "If no row of kind 'store' appears in a week, no instance's first store page belonged to a store with more than one market (the call sits in CountryHintSection, the layout's one per-request part): report it, so the kind is measured from the cart or product stock part instead. No row of kind 'site' is recorded by this step: Kaizena Flow's (platform) layout has no per-request part."
  ],
  "docs": [
   "docs/rules/admin/platform.md, under 'Usage and limits': two sentences: each instance stores its cold start once in commerce.instance_starts (kind, times, memory, bytes of translated text; nothing of the request), kept 30 days; the screen shows cold starts a day with p50 and p95 by kind.",
@@ -268,9 +267,15 @@
   "After commit 2, node scripts/render-modes.mjs fails or a store route's holes changed.",
   "register() does not run in the process that serves the proxy or a route (registerMs stays null everywhere in the local check): report it; the figure 'to the end of register()' then needs another anchor.",
   "The instance.start line appears more than once per process in the local check.",
-  "The store layout's per-request part cannot be identified with certainty."
+  "src/components/country-hint-section.tsx no longer starts CountryHintSection() with `await headers()`, or loadCheckoutView() no longer reads readCartId(): the per-request parts moved; report it instead of choosing another place.",
+  "scripts/render-modes.mjs or scripts/render-modes.baseline.json is not in the repo (step 1.11 makes them): stop before pushing commit 2."
  ],
  "executor": "cheap-then-review",
- "executor_why": "A new table, an edit to the proxy and to the store layout's per-request part: each small, but a wrong placement changes render modes or cold-load weight, so a stronger model reads the diff.",
- "checked_in_code": "I opened src/instrumentation.ts (register() awaits startUi() from a dynamic import), src/server/ui-text.ts (startUi(), refresh() and loadLanguage(); no byte count today), src/server/log.ts (log(level, event, fields)), src/proxy.ts (proxy(request, event) with a NextFetchEvent) and the capacity page. The step says the page 'shows' cold starts a day with p50 and p95: log lines cannot be read back by the app without a paid log service, so the brief stores one small row per cold start in a new table and prunes it after 30 days. A store page's frame is prerendered under cacheComponents, so the call for the 'store' kind must sit in the layout's per-request part and never in the cached shell; step 1.11's render-modes check is the proof it did not move a route."
+ "executor_why": "Each call site is now named (CountryHintSection for 'store', loadCheckoutView() for 'pay', none for 'site'), but commit 2 edits the proxy that every request passes and the per-request parts of store and checkout pages, where a misplaced call could move a page off its prerender or slow every request without a unit test failing, so a stronger model reads that diff; commits 1 (a generated new table) and 3 (an admin card and a prune) are held by their checks.",
+ "checked_in_code": "I opened src/instrumentation.ts (register() awaits startUi() from a dynamic import), src/server/ui-text.ts (startUi(), refresh() and loadLanguage(); no byte count today), src/server/log.ts (log(level, event, fields)), src/proxy.ts (proxy(request, event) with a NextFetchEvent) and the capacity page. The step says the page 'shows' cold starts a day with p50 and p95: log lines cannot be read back by the app without a paid log service, so the brief stores one small row per cold start in a new table and prunes it after 30 days. A store page's frame is prerendered under cacheComponents, so the call for the 'store' kind must sit in the layout's per-request part and never in the cached shell; step 1.11's render-modes check is the proof it did not move a route. Second check (12 November): the store layout awaits nothing per request, so the 'store' call moves to CountryHintSection (its one per-request part, line 18, multi-market stores only) and the 'pay' call to loadCheckoutView() in checkout-section.tsx (line 68), not the checkout page, which awaits only params; the (platform) layout has no per-request part, so its conditional edit is gone; step 1.11, which makes scripts/render-modes.mjs, is now a dependency.",
+ "rating_checked": "cheap-then-review",
+ "cheap_commits": [
+  1,
+  3
+ ]
 }

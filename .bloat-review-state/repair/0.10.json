@@ -1,0 +1,13 @@
+{
+ "id": "0.10",
+ "fixed": [
+  "terms-views.tsx: the move is lines 228-265 only (FrontPageForm to roleOffered stay), with the exact import list and the imports views.tsx drops.",
+  "platform page-load.ts: named load, editedElsewhere, themeStoreView and type Params with their six imports; preview-views.tsx's import list given.",
+  "Store preview-views.tsx: copy PageParams and Query (no shared types file), removing the choice.",
+  "admin-scripts.spec.ts: decided to add \"/pages/{page}/preview\" and \"/content\" and leave the order page out, because e2e-shop has no order of its own; how to measure (E2E_MEASURE=1) named; tests[].proves updated."
+ ],
+ "rejected": [],
+ "cheaper": "applied in part: the three helpers for page-load.ts are named; the hand check of an early Save was not turned into a Playwright case (it needs a seeded order custom-field group with a rich text field, a new fixture beyond a small brief change), so commit 3 stays under review",
+ "executor_before": "cheap-then-review",
+ "executor_after": "cheap-then-review"
+}

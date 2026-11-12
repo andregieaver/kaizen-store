@@ -85,5 +85,9 @@
  ],
  "executor": "cheap",
  "executor_why": "One small test, one JSON number and one short rule file, all specified; the planted cases show at once whether the test holds.",
- "checked_in_code": "I measured CLAUDE.md as it is now: 43,361 bytes and 448 lines; the text before '\\n## Storefront\\n' plus the text from '\\n## Conventions\\n' is exactly 12,555 bytes, as the step says. The index between them has 295 lines that start with '- ' (the longest is 193 characters, none over 200) and two introduction sentences, which is what cases 3 and 4 hold. src/lib/rules-index.test.ts already pairs each index line with one heading in docs/rules/storefront.md or docs/rules/admin/*.md and reads nothing else, so a new file docs/rules/budgets.md does not touch it. Neither docs/rules/budgets.md nor any docs-budget file exists yet; step 1.1's brief expects exactly these names (the rule file, the test, and the baseline with a key it keeps)."
+ "checked_in_code": "I measured CLAUDE.md as it is now: 43,361 bytes and 448 lines; the text before '\\n## Storefront\\n' plus the text from '\\n## Conventions\\n' is exactly 12,555 bytes, as the step says. The index between them has 295 lines that start with '- ' (the longest is 193 characters, none over 200) and two introduction sentences, which is what cases 3 and 4 hold. src/lib/rules-index.test.ts already pairs each index line with one heading in docs/rules/storefront.md or docs/rules/admin/*.md and reads nothing else, so a new file docs/rules/budgets.md does not touch it. Neither docs/rules/budgets.md nor any docs-budget file exists yet; step 1.1's brief expects exactly these names (the rule file, the test, and the baseline with a key it keeps). Second check (12 November): re-measured, nothing to correct: `wc -c CLAUDE.md` is 43,361 bytes (43,292 characters, the reviewer's figure, differs only by multi-byte characters), 12,555 outside the index, two prose lines inside it, and JSON imports work in tests (resolveJsonModule, as ratchet.scan.test.ts does).",
+ "cheap_commits": [
+  1
+ ],
+ "rating_checked": "cheap"
 }

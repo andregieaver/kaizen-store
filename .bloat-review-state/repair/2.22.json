@@ -1,0 +1,12 @@
+{
+ "id": "2.22",
+ "fixed": [
+  "Commits 1 and 3 edit scripts/lib/route-load.mjs (made_by 1.8), with ENTRIES and FORBIDDEN described as step 1.8 leaves them, instead of the graph test; commit 1 adds the 'stores' entry and says how --write handles a new entry.",
+  "Commit 1 gains src/server/stripe-modes.int.test.ts: a test file's own mock of './stripe' must reach getStore()'s paymentsOn (true and false) through the setup file.",
+  "Commit 3 adds the four other beacon routes to server-graph.mjs's ROUTES (it named only /api/visit) and the check gives the exact commands, output line and the rg over its analyze/*.json files."
+ ],
+ "rejected": [],
+ "cheaper": "applied in part: the int case asserting paymentsOn with and without test keys, so commits 1 and 2 are cheap_commits. Listing each chain commit 3 must cut needs a run of the graph test after step 1.8 lands, which this check cannot do.",
+ "executor_before": "strong",
+ "executor_after": "strong"
+}

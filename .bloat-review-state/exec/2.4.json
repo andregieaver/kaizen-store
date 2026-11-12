@@ -28,6 +28,10 @@
   {
    "id": "1.3",
    "why": "it makes the request and byte budgets in e2e/performance.spec.ts and e2e/prefetch.spec.ts that the Add to cart check sits beside"
+  },
+  {
+   "id": "0.4",
+   "why": "it creates src/lib/route-fail.ts, from which the new /api/shop/mine route takes fail() instead of loading the chat's module"
   }
  ],
  "commits": [
@@ -37,32 +41,37 @@
     {
      "file": "src/app/api/shop/mine/route.ts",
      "action": "create",
-     "how": "Model it line for line on src/app/api/shop/tiles/route.ts: `export async function GET(request: Request)`, first `await connection()`, then `if (!sameSite(request)) return fail(403, ...)`, read `store` and `market` from the query string, 400 when either is missing. Resolve with `resolveShop(store, market)` from `@/server/shop` (not resolveSellingShop: a website with several countries still gets its hint); 404 when null or when `await lockedOut(shop.store)`. Answer `Response.json({ cart, saved, hint }, { headers: { \"Cache-Control\": \"private, no-store\" } })` where: `cart` is `await getCartCount({ storeId: shop.store.id, market: shop.market })` and `saved` is `await savedProductIds(shop.store.id)` (from `@/server/wishlists`), both only when `featureOn(shop.store, \"shop\")`, else 0 and []. `hint` is null when `shop.store.markets.length <= 1`; otherwise build it exactly as src/components/country-hint-section.tsx lines 18-32 do today: null when `isBot(request.headers.get(\"user-agent\"))`; `hintCountry(request.headers.get(\"x-vercel-ip-country\"), market.code, store.markets.map((m) => m.code))`; find the target market; the region name through `Intl.DisplayNames([market.locale, \"en\"], { type: \"region\" })`; and return `{ fromBase: marketPath(store.slug, market.slug), toBase: marketLink(store.slug, market.slug, target.slug), lang: market.lang, words: { offer: words.offer(name), go: words.go(name), close: words.close, label: words.label } }`. Do not delete the marker cookie here or anywhere (step 0.15: a stale marker only costs this one small request). Add `import \"server-only\"` only if the tiles route has it. /api addresses are outside the proxy's matcher (src/proxy.ts), so no proxy change."
+     "how": "Model it on src/app/api/shop/tiles/route.ts, with one difference in the imports: take `fail` from \"@/lib/route-fail\" (made by step 0.4, which also moves the tiles route there) and `sameSite` from \"@/lib/same-site\" (it exists today), never from \"@/server/chat-route\" (step 1.8 forbids that module to light routes). `export async function GET(request: Request)`, first `await connection()`, then `if (!sameSite(request)) return fail(403, \"Your own things are for the site's own pages.\")`, read `store` and `market` from the query string, 400 when either is missing. Resolve with `resolveShop(store, market)` from `@/server/shop` (not resolveSellingShop: a website with several countries still gets its hint); 404 when null or when `await lockedOut(shop.store)`. Answer `Response.json({ cart, saved, hint }, { headers: { \"Cache-Control\": \"private, no-store\" } })` where: `cart` is `await getCartCount({ storeId: shop.store.id, market: shop.market })` and `saved` is `await savedProductIds(shop.store.id)` (from `@/server/wishlists`), both only when `featureOn(shop.store, \"shop\")`, else 0 and []. `hint` is null when `shop.store.markets.length <= 1`; otherwise build it exactly as src/components/country-hint-section.tsx lines 18-32 do today: null when `isBot(request.headers.get(\"user-agent\"))`; `hintCountry(request.headers.get(\"x-vercel-ip-country\"), market.code, store.markets.map((m) => m.code))`; find the target market; the region name through `Intl.DisplayNames([market.locale, \"en\"], { type: \"region\" })`; and return `{ fromBase: marketPath(store.slug, market.slug), toBase: marketLink(store.slug, market.slug, target.slug), lang: market.lang, words: { offer: words.offer(name), go: words.go(name), close: words.close, label: words.label } }`. Do not delete the marker cookie here or anywhere (step 0.15: a stale marker only costs this one small request). Do not add `import \"server-only\"`: the tiles route has none (a route file is server code already). /api addresses are outside the proxy's matcher (src/proxy.ts), so no proxy change."
     },
     {
      "file": "src/server/cart.ts",
      "action": "edit",
-     "how": "In `setCartCookie()` (about line 717), after the cart cookie is set, add `await markMine(shop.storeId);`. `markMine(storeId)` and `mineCookieName(storeId)` are exported from src/server/wishlists.ts by step 0.15 (the marker cookie `kaizen_mine_{storeId}`: value 1, not httpOnly, sameSite lax, path /). If importing src/server/wishlists.ts into cart.ts makes an import cycle (the type check or the build says so), move the two exports unchanged to a new file src/server/mine-marker.ts and import them from there in wishlists.ts, cart.ts and customers.ts. The cart id itself stays httpOnly (D14)."
+     "how": "In `setCartCookie()` (about line 717), after the cart cookie is set, add `await markMine(shop.storeId);`. Import `markMine` from \"./mine-marker\" (next change), not from ./wishlists: src/server/wishlists.ts imports ./cart (changeLine, line 11), so importing it here would make a new import cycle, which step 1.8's graph test fails on. The cart id itself stays httpOnly (D14)."
     },
     {
-     "file": "src/server/customers.ts",
+     "file": "src/server/mine-marker.ts",
+     "action": "create",
+     "how": "Step 0.15 adds to src/server/wishlists.ts `export const mineCookieName = (storeId: string) => `kaizen_mine_${storeId}`;` and `export async function markMine(storeId: string): Promise<void>` (sets that cookie on `await cookies()`: value '1', httpOnly false, secure `process.env.NODE_ENV === \"production\"`, sameSite 'lax', path '/', maxAge COOKIE_DAYS * 24 * 60 * 60, COOKIE_DAYS being 365 in wishlists.ts line 28). Move both here verbatim: content `import \"server-only\";`, `import { cookies } from \"next/headers\";`, `const COOKIE_DAYS = 365; // as the wishlist's cookie (src/server/wishlists.ts)`, then the two exports. No other import."
+    },
+    {
+     "file": "src/server/wishlists.ts",
      "action": "edit",
-     "how": "Where the customer's session cookie is set (about line 416, `(await cookies()).set(cookieName(storeId), token, {`), call `await markMine(storeId)` right after, unless step 0.15 already does (`rg -n markMine src/server/customers.ts`), so a signed-in shopper's page asks for their own answer."
+     "how": "Delete the two exports step 0.15 added (mineCookieName and markMine) and add `import { markMine } from \"./mine-marker\";` for currentOwner()'s own call, and `export { markMine, mineCookieName } from \"./mine-marker\";` so that src/server/customers.ts's dynamic import of markMine from './wishlists' (step 0.15's edit in startSession()) keeps working unchanged. Keep COOKIE_DAYS here: the wishlist's own cookie uses it. src/server/customers.ts needs no change in this step: step 0.15 already calls markMine at sign-in."
     },
     {
      "file": "src/lib/cookie-consent.ts",
      "action": "edit",
-     "how": "In `KNOWN_COOKIES`, find the entry of the marker `kaizen_mine_…` that step 0.15 added (category `necessary`, `on: \"store\"`). Rewrite its four purposes (en, nb, sv, da) to say: remembers that this browser has a cart, saved products or a sign-in in this store, so pages ask for them only then; it holds no identifier. If its `feature` limits it to the wishlist, widen it to `shop`. Keep the pattern and the days."
+     "how": "In `KNOWN_COOKIES`, find the entry of the marker `kaizen_mine_…` that step 0.15 added (category `necessary`, `on: \"store\"`). Its `feature` is already 'shop' (step 0.15): keep it, the pattern and the days. Replace only its four purposes, exactly: en 'Tells the page that you have a cart, saved products or an account here, so it asks for them only then. It holds no identifier.', nb 'Forteller siden at du har en handlekurv, lagrede produkter eller en konto her, slik at den bare spør etter dem da. Den inneholder ingen identifikator.', sv 'Talar om för sidan att du har en varukorg, sparade produkter eller ett konto här, så att den bara frågar efter dem då. Den innehåller ingen identifierare.', da 'Fortæller siden, at du har en kurv, gemte produkter eller en konto her, så den kun spørger efter dem da. Den indeholder ingen identifikator.'"
     },
     {
      "file": "src/components/shopper-own.tsx",
      "action": "create",
-     "how": "A `\"use client\"` module grown from the store at the top of src/components/wishlist-heart.tsx (lines 12-41). Module-level state `{ cart: number | null, saved: Set<string> | null, hint: Hint | null }` with one `listeners` set and `subscribe`. Export: `loadOwn({ store, market, storeId, hinted }: { store: string; market: string; storeId: string; hinted: boolean })`, which runs once per document (a module flag keyed by store and market), and fetches `/api/shop/mine?store=...&market=...` with `{ cache: \"no-store\" }` only when `document.cookie` holds `kaizen_mine_` + storeId (the name `mineCookieName()` gives on the server) or `hinted` is true; otherwise it sets `cart: 0, saved: new Set(), hint: null` without a request. Export `setCart(n: number)`, `setSaved(ids: string[])`, and the hooks `useCart(): number | null`, `useSaved(): Set<string> | null`, `useHint(): Hint | null`, each on `useSyncExternalStore(subscribe, getter, () => null)`. Import nothing from `@/server`, no zod, no `@/lib/i18n` (src/lib/storefront-bundle.scan.test.ts holds this)."
+     "how": "A `\"use client\"` module grown from the store at the top of src/components/wishlist-heart.tsx (lines 12-41). Module-level state `{ cart: number | null, saved: Set<string> | null, hint: Hint | null }` with one `listeners` set and `subscribe`. Export: `loadOwn({ store, market, storeId, hinted }: { store: string; market: string; storeId: string; hinted: boolean })`, which makes at most one request per document for a store and market: it fetches `/api/shop/mine?store=...&market=...` with `{ cache: \"no-store\" }` when `document.cookie` holds `kaizen_mine_` + storeId + '=1' (the name `mineCookieName()` gives on the server) or `hinted` is true, and no fetch for that store and market has started yet (a module Set of started keys); when neither holds and nothing is known yet, it sets `cart: 0, saved: new Set(), hint: null` without a request. The started test must not block a later call with `hinted: true` after an earlier call that did not fetch (the cart link may run before the country hint): only a started fetch blocks. Export `setCart(n: number)`, `setSaved(ids: string[])`, and the hooks `useCart(): number | null`, `useSaved(): Set<string> | null`, `useHint(): Hint | null`, each on `useSyncExternalStore(subscribe, getter, () => null)`. Import nothing from `@/server`, no zod, no `@/lib/i18n` (src/lib/storefront-bundle.scan.test.ts holds this)."
     },
     {
      "file": "src/components/wishlist-heart.tsx",
      "action": "edit",
-     "how": "Remove the module's own `saved`, `loading`, `listeners`, `setSaved`, `load`, `subscribe` and `useSaved` (lines 12-41) and import `useSaved`, `setSaved` and `loadOwn` from `./shopper-own`. Each heart and the wishlist count call `loadOwn(...)` in an effect with the props they already have (store slug, market slug) plus the store's id; if a heart does not have the store's id as a prop, add `storeId` to its props and pass it from each caller (`rg -n \"<WishlistHeart|<WishlistCount\" src`). The toggle action keeps returning the list and calling `setSaved`. The fetch of `${base}/wishlist/saved` goes; keep the route file src/app/s/[store]/[market]/(shop)/wishlist/saved/route.ts for this deploy (open pages still call it)."
+     "how": "Remove the module's own `saved`, `loading`, `listeners`, `setSaved`, `load`, `subscribe` and `useSaved` (lines 12-41 today; step 0.15 added a marker test inside load(), which goes with it: loadOwn() makes the same test) and import `useSaved`, `setSaved` and `loadOwn` from `./shopper-own`. Each heart and the wishlist count call `loadOwn(...)` in an effect with the props they already have (store slug, market slug) plus the store's id; if a heart does not have the store's id as a prop, add `storeId` to its props and pass it from each caller (`rg -n \"<WishlistHeart|<WishlistCount\" src`). The toggle action keeps returning the list and calling `setSaved`. The fetch of `${base}/wishlist/saved` goes; keep the route file src/app/s/[store]/[market]/(shop)/wishlist/saved/route.ts for this deploy (open pages still call it)."
     },
     {
      "file": "e2e/wishlist.spec.ts",
@@ -83,27 +92,27 @@
     {
      "file": "src/components/cart-link.tsx",
      "action": "edit",
-     "how": "Split in two. Keep `CartLinkShell` here as a plain component (no hooks) with the markup step 2.2 left (the bar variant; the header's Link under 768 px and plain anchor from 768 px) and delete the async `CartLink` with its `getCartCount` import. Create the client part in a new file (next change)."
+     "how": "Keep `CartLinkShell` here as a plain component (no hooks, no server import) with the markup step 2.2 left (the bar variant; the header's Link under 768 px and plain anchor from 768 px), so the client part can import it. Replace its line `const m = t(market.lang);` by `const m = browserText(market.lang);` (import { browserText } from \"@/lib/browser-text\"), and remove the imports of `t` (@/lib/i18n) and `getCartCount` (@/server/cart). Delete the async `CartLink`. The names stay exactly as today (`m.cartCount(count)` when count > 0, else `m.cart`), read from the browser files the next change fills."
     },
     {
      "file": "src/components/cart-link-live.tsx",
      "action": "create",
-     "how": "`\"use client\"`. Export `CartLink({ storeId, storeSlug, market, variant, words })` that calls `loadOwn({ store: storeSlug, market: market.slug, storeId, hinted })` in an effect, reads `const count = useCart() ?? 0`, and draws the same markup as `CartLinkShell` with that count. The accessible name must be exactly today's: `words.cartCount(count)` (`Handlekurv (2)`) when count > 0, else `words.cart`: about twenty e2e assertions read it. Per D212 a visitor's client component reads its words from the browser files: add `cart` and `cartCount` to src/lib/messages/nb-browser.ts, sv-browser.ts, da-browser.ts and en-browser.ts (copy the strings from nb.ts lines 656-657 and the same keys in sv.ts, da.ts, en.ts) and read them the way the other client components in src/components read `browserText()` (open src/components/add-to-cart.tsx's caller for the pattern; if function-valued words cannot cross from server to client, the browser files are the only source)."
+     "how": "`\"use client\"`. Export `CartLink({ storeId, storeSlug, market, variant = \"header\", hinted = false }: { storeId: string; storeSlug: string; market: Market; variant?: \"header\" | \"bar\"; hinted?: boolean })`: it calls `loadOwn({ store: storeSlug, market: market.slug, storeId, hinted })` in an effect, reads `const count = useCart() ?? 0`, and returns `<CartLinkShell storeSlug={storeSlug} market={market} variant={variant} count={count} />` (import CartLinkShell from \"./cart-link\"). No words prop: a function cannot cross from a server component to a client one. The accessible name stays exactly today's (`Handlekurv (2)` / `Handlekurv`): about twenty e2e assertions read it. Per D212 add two top-level keys to the browser files, beside their first key: src/lib/messages/en-browser.ts `cart: \"Cart\", cartCount: (n: number) => `Cart (${n})`,` (BrowserMessages is `typeof enBrowser`, so this types the others); nb-browser.ts `cart: \"Handlekurv\", cartCount: (n: number) => `Handlekurv (${n})`,`; sv-browser.ts `cart: \"Varukorg\", cartCount: (n: number) => `Varukorg (${n})`,`; da-browser.ts `cart: \"Kurv\", cartCount: (n: number) => `Kurv (${n})`,` (the strings of nb.ts lines 656-657, sv.ts 653-654, da.ts 653-654 and en.ts 678-679). The browser files already hold function-valued words (gift.counter), so this crosses as D212 describes."
     },
     {
      "file": "src/components/store-layout.tsx",
      "action": "edit",
-     "how": "At about lines 286-288 and 582-584 replace `<Suspense fallback={<CartLinkShell .../>}><CartLink .../></Suspense>` with the client `<CartLink .../>` from `./cart-link-live` and no Suspense (same props; add `variant=\"bar\"` on the second as today)."
+     "how": "At about lines 286-288 and 582-584 replace `<Suspense fallback={<CartLinkShell .../>}><CartLink .../></Suspense>` with the client `<CartLink .../>` from `./cart-link-live` and no Suspense (same props plus `hinted={store.markets.length > 1}`; add `variant=\"bar\"` on the second as today). Change the import at line 25 to `import { CartLink } from \"./cart-link-live\";` (CartLinkShell is no longer used here)."
     },
     {
      "file": "src/components/site-parts.tsx",
      "action": "edit",
-     "how": "At about lines 178-180 do the same replacement for the builder-made header's cart link."
+     "how": "At about lines 178-180 do the same replacement for the builder-made header's cart link (with `hinted={store.markets.length > 1}`), and change the import at line 29 to `import { CartLink } from \"./cart-link-live\";`."
     },
     {
      "file": "src/app/s/[store]/[market]/layout.tsx",
      "action": "edit",
-     "how": "Replace the block `{store.markets.length > 1 && (<Suspense fallback={null}><OffPayRoutes><CountryHintSection store={store} market={market} /></OffPayRoutes></Suspense>)}` with `{store.markets.length > 1 && (<OffPayRoutes><CountryHintSlot store={store.slug} market={market.slug} storeId={store.id} /></OffPayRoutes>)}`. Keep a Suspense around it only if OffPayRoutes needs one (it reads the path: check how MarketExtras is wrapped two blocks above and do the same). Remove the CountryHintSection import."
+     "how": "Replace the block `{store.markets.length > 1 && (<Suspense fallback={null}><OffPayRoutes><CountryHintSection store={store} market={market} /></OffPayRoutes></Suspense>)}` with `{store.markets.length > 1 && (<Suspense fallback={null}><OffPayRoutes><CountryHintSlot store={store.slug} market={market.slug} storeId={store.id} /></OffPayRoutes></Suspense>)}`. Keep the Suspense: OffPayRoutes is a client component that calls usePathname(), and MarketExtras's OffPayRoutes two blocks above (line 220) is wrapped the same way. Remove the CountryHintSection import."
     },
     {
      "file": "src/components/country-hint-slot.tsx",
@@ -121,9 +130,10 @@
      "how": "`\"use client\"`. `CartCountSeed({ count }: { count: number })` calls `setCart(count)` from `./shopper-own` in an effect that depends on `count`, and renders null. Draw it from the pages that already render per request and show or change the cart, so the badge is right without a call: src/app/s/[store]/[market]/(shop)/cart/cart-contents.tsx (it holds the lines: pass the units as getCartCount counts them, quantity for goods and 1 for a booking line), the wishlist section (src/app/s/[store]/[market]/(shop)/wishlist/wishlist-section.tsx) and the account's catalogue page. Their actions keep `refresh()`, which redraws the seed."
     },
     {
-     "file": "src/app/s/[store]/[market]/cart/actions.ts",
+     "file": "src/app/s/[store]/[market]/(shop)/cart/actions.ts",
      "action": "edit",
-     "how": "Path as of today; after step 2.2 the file is under `src/app/s/[store]/[market]/(shop)/` with the same name: edit it there. In this commit only add the count to the answer; `refresh()` stays. Add `count?: number` to the `AddToCartState` type. In `addToCart`, before the final return, `const count = await getCartCount(input.shop);` and add `count` to both returned objects."
+     "how": "Step 2.2 moves this file here from src/app/s/[store]/[market]/cart/actions.ts unchanged (git mv). In this commit only add the count to the answer; `refresh()` stays. Add `count?: number` to the `AddToCartState` type. In `addToCart`, before the final return, `const count = await getCartCount(input.shop);` and add `count` to both returned objects.",
+     "made_by": "2.2"
     },
     {
      "file": "src/components/cart-drawer.tsx",
@@ -131,9 +141,10 @@
      "how": "In `useOpenCartAfterAdd(enabled, cartHref, outcome)` widen the third parameter's type to `{ outcome: string; count?: number }` and, inside the effect right after `seen.current = outcome;` and before the `enabled` test, add `if (typeof outcome.count === \"number\") setCart(outcome.count);` (import `setCart` from `./shopper-own`). All five add forms call this hook (add-to-cart.tsx, product-bar.tsx, gift-card-buy.tsx, appointment-picker.tsx, range-picker.tsx), so none of them changes."
     },
     {
-     "file": "scripts/{render-modes.baseline.json}",
+     "file": "scripts/render-modes.baseline.json",
      "action": "edit",
-     "how": "The file is scripts/render-modes.baseline.json, made by step 1.11. After `pnpm build`, run `node scripts/render-modes.mjs` in the mode that rewrites its baseline (read the script's header) and check the diff: /s/demo/no, /s/demo/no/om-oss, the blog routes, the cookies and deliveries pages and Kaizena Flow's front page from the house store move from `resuming` to `static`; no route moves the other way. Listings, search, product pages, cart, checkout and account stay as they were."
+     "how": "The file is scripts/render-modes.baseline.json, made by step 1.11. After `pnpm build`, run `node scripts/render-modes.mjs --write` (step 1.11's script: without --write it exits 1 when a figure got better; --write lowers the baseline and refuses to make a figure worse unless --first, which must not be used here) and check the diff: /s/demo/no, /s/demo/no/om-oss, the blog routes, the cookies and deliveries pages and Kaizena Flow's front page from the house store move from `resuming` to `static`; no route moves the other way. Listings, search, product pages, cart, checkout and account stay as they were.",
+     "made_by": "1.11"
     }
    ],
    "checks": [
@@ -149,9 +160,10 @@
    "title": "Add to cart answers the count and no longer redraws the page",
    "changes": [
     {
-     "file": "src/app/s/[store]/[market]/cart/actions.ts",
+     "file": "src/app/s/[store]/[market]/(shop)/cart/actions.ts",
      "action": "edit",
-     "how": "Path as of today; after step 2.2 the file is under `src/app/s/[store]/[market]/(shop)/` with the same name: edit it there. This is the part that needs judgement. First list what an adding page draws from the cart: `rg -n 'cartView\\(|getCart\\(|getCartCount\\(|readCartId\\(' src/components src/app/s --glob '!*.test.*'`. Known today: the basket notes of D558 (src/components/shop-notes.tsx: FreeShippingNote and the saving note, drawn on category and tag pages and as product parts), the cart's own upsells (src/components/cart-upsell.tsx, drawn inside the cart and the drawer), recommendations by cart (src/server/recommend.ts line 308, fetched by the browser) and the wishlist's move to cart (`addToCart` called at about line 435 of this file, whose caller refreshes). Rule to build: `addToCart` calls `refresh()` only when the form carries a hidden field `redraw=1`; without it the action returns `{ outcome, quantity, count }` and nothing else, so Next keeps the client's router cache. The add forms get a `redraw?: boolean` prop that draws `<input type=\"hidden\" name=\"redraw\" value=\"1\" />`; pass it true from src/components/cart-upsell.tsx (the cart must redraw its lines) and from a product page or listing whose content holds a basket note (the server knows: the part list it draws). Every other add (a plain product page, a tile, a recommending grid) sends no `redraw`. Keep `refresh()` untouched in `updateCartLine` and every other action of the file."
+     "how": "Step 2.2 moves this file here from src/app/s/[store]/[market]/cart/actions.ts unchanged (git mv). This is the part that needs judgement. First list what an adding page draws from the cart: `rg -n 'cartView\\(|getCart\\(|getCartCount\\(|readCartId\\(' src/components src/app/s --glob '!*.test.*'`. Known today: the basket notes of D558 (src/components/shop-notes.tsx: FreeShippingNote and the saving note, drawn on category and tag pages and as product parts), the cart's own upsells (src/components/cart-upsell.tsx, drawn inside the cart and the drawer), recommendations by cart (src/server/recommend.ts line 308, fetched by the browser) and the wishlist's move to cart (`addToCart` called at about line 435 of this file, whose caller refreshes). Rule to build: `addToCart` calls `refresh()` only when the form carries a hidden field `redraw=1`; without it the action returns `{ outcome, quantity, count }` and nothing else, so Next keeps the client's router cache. The add forms get a `redraw?: boolean` prop that draws `<input type=\"hidden\" name=\"redraw\" value=\"1\" />`; pass it true from src/components/cart-upsell.tsx (the cart must redraw its lines) and from a product page or listing whose content holds a basket note (the server knows: the part list it draws). Every other add (a plain product page, a tile, a recommending grid) sends no `redraw`. Keep `refresh()` untouched in `updateCartLine` and every other action of the file.",
+     "made_by": "2.2"
     },
     {
      "file": "e2e/cart.spec.ts",
@@ -174,9 +186,10 @@
    "title": "Remove the old saved-products route",
    "changes": [
     {
-     "file": "src/app/s/[store]/[market]/wishlist/saved/route.ts",
+     "file": "src/app/s/[store]/[market]/(shop)/wishlist/saved/route.ts",
      "action": "delete",
-     "how": "Path as of today; after step 2.2 the file is under `src/app/s/[store]/[market]/(shop)/` with the same name: edit it there. Only one deploy after commit 1 is live. Delete the route file and its mentions: the path in src/lib/visit-record.test.ts (about line 125) and the line in docs/store-features.md (about line 290; `rg -n 'wishlist/saved' src docs e2e` lists them all)."
+     "how": "Step 2.2 moves this file here from src/app/s/[store]/[market]/wishlist/saved/route.ts unchanged (git mv). Only one deploy after commit 1 is live. Delete the route file and its mentions: the path in src/lib/visit-record.test.ts (about line 125) and the line in docs/store-features.md (about line 290; `rg -n 'wishlist/saved' src docs e2e` lists them all).",
+     "made_by": "2.2"
     }
    ],
    "checks": [
@@ -251,9 +264,14 @@
   "A function-valued word (cartCount) cannot reach the client component through the browser files as D212 describes.",
   "You find a page that draws something from the cart that the rg in commit 3 did not list, and cannot tell whether its add form should send redraw.",
   "e2e/country-content.spec.ts fails: the browser's call does not carry the test's x-vercel-ip-country header.",
-  "The test of step 1.27 fails because `cart` and `cartCount` take the four browser-language files past 34,000 bytes: report the total; do not raise the ceiling in this step and do not trim other words."
+  "The test of step 1.27 fails because `cart` and `cartCount` take the four browser-language files past 34,000 bytes: report the total; do not raise the ceiling in this step and do not trim other words.",
+  "src/lib/route-fail.ts (step 0.4) or the (shop) folder (step 2.2: `ls \"src/app/s/[store]/[market]/(shop)/cart/actions.ts\"`) is not there: that step is not in; stop."
  ],
  "executor": "strong",
- "executor_why": "It changes the caching mode of every store page, moves three per-visitor reads to the browser, touches cookies and the cart action, and the choice of which add forms still redraw (basket notes, the cart's upsells) is a design decision the brief can frame but not remove.",
- "checked_in_code": "I opened cart-link.tsx, country-hint-section.tsx, wishlist-heart.tsx, the /wishlist/saved route, the tiles route, addToCart and updateCartLine in cart/actions.ts, useOpenCartAfterAdd and its five callers, setCartCookie, the wishlist's and the customer's cookie writes and KNOWN_COOKIES: all match CA-1 and CA-17. Two corrections: CA-17's step 2 was left as a search, and the search finds real readers the finding did not name: the basket notes of D558 (shop-notes.tsx reads cartView per request on category, tag and product pages) and the cart's own upsells (cart-upsell.tsx adds from inside the cart), so a plain removal of refresh() would leave them stale; the brief keeps a redraw for forms that say so. And step 0.15's brief already makes a marker cookie (kaizen_mine_{storeId}, set by markMine() in src/server/wishlists.ts, never deleted), so this brief sets that one for carts and sign-ins too and does not add CA-1's own_{storeId} or its expiry. File paths assume step 2.2's (shop) group."
+ "executor_why": "Commits 1 and 2 are now written out to the import and the key, but they move every store page from per-request to static and three per-visitor reads to the browser, and commit 3 still needs the judgement of which add forms must redraw (basket notes in store parts and product parts, the cart's upsells), which the brief frames but cannot remove; only commit 4, deleting the old route a deploy later, is the cheap model's alone.",
+ "checked_in_code": "I opened cart-link.tsx, country-hint-section.tsx, wishlist-heart.tsx, the /wishlist/saved route, the tiles route, addToCart and updateCartLine in cart/actions.ts, useOpenCartAfterAdd and its five callers, setCartCookie, the wishlist's and the customer's cookie writes and KNOWN_COOKIES: all match CA-1 and CA-17. Two corrections: CA-17's step 2 was left as a search, and the search finds real readers the finding did not name: the basket notes of D558 (shop-notes.tsx reads cartView per request on category, tag and product pages) and the cart's own upsells (cart-upsell.tsx adds from inside the cart), so a plain removal of refresh() would leave them stale; the brief keeps a redraw for forms that say so. And step 0.15's brief already makes a marker cookie (kaizen_mine_{storeId}, set by markMine() in src/server/wishlists.ts, never deleted), so this brief sets that one for carts and sign-ins too and does not add CA-1's own_{storeId} or its expiry. File paths assume step 2.2's (shop) group. Second check (12 November): the mine route no longer copies the tiles route's chat-route import (fail from step 0.4's src/lib/route-fail.ts, sameSite from src/lib/same-site.ts; 0.4 added to depends_on); the marker moves to a new src/server/mine-marker.ts because wishlists.ts imports ./cart (a certain cycle, not an 'if'); customers.ts needs nothing (step 0.15 already calls markMine at sign-in); the cookie entry's feature is already 'shop' and its four purposes are written out; loadOwn() no longer lets a cart link's non-fetching call block the country hint's; the client cart link takes no words prop (a function cannot cross to the client) and CartLinkShell reads browserText(), with the eight browser strings given; the Suspense around OffPayRoutes is kept (usePathname); actions.ts, the saved route and the render-modes baseline carry made_by and step 1.11's --write.",
+ "rating_checked": "strong",
+ "cheap_commits": [
+  4
+ ]
 }

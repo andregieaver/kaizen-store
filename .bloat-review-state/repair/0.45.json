@@ -1,0 +1,10 @@
+{
+ "id": "0.45",
+ "fixed": [
+  "The docs sentence now has one place, the end of the 'Scheduled jobs' bullet of docs/capacity.md (lines 200 to 203), instead of platform.md, then step 0.43's docs/rules/budgets.md, then capacity.md; the change entry and the docs list say the same."
+ ],
+ "rejected": [],
+ "cheaper": "not applied: the step was already cheap.",
+ "executor_before": "cheap",
+ "executor_after": "cheap"
+}

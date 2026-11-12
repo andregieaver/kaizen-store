@@ -1,0 +1,14 @@
+{
+ "id": "2.32",
+ "fixed": [
+  "ledger_books: closed_on (with ledger_books_open_key), not closed_at; the stop_if that guessed is removed.",
+  "Commit 1 changes storeHomeReads() in src/server/admin-screens.ts (1.9) and page.tsx's call of it; fallback for a 1.9 mirror copy stated.",
+  "Commit 2 changes storeShellReads() of admin-screens.ts to one Promise.all instead of creating src/server/store-shell.ts; the layout keeps 1.9's call.",
+  "LifeLink: decided as a Suspense child at the Life row's position among AccountMenu's children, with its exact JSX; the 'if' is gone.",
+  "admin-statements.int.test.ts and baseline: action edit, made_by 1.9, with 1.9's keys (storeShell, storeHome) and UPDATE_BASELINE=1; controlCenter()'s bound moved to control-center.int.test.ts in tests and done_when (the baseline has no controlCenter key)."
+ ],
+ "rejected": [],
+ "cheaper": "applied: the judge's edit_brief (closed_on, LifeLink decided, admin-screens.ts functions); writing commit 4's folded statement and commit 5's membershipsOf() select verbatim was not done (long SQL drawn from six reads, best written against the code by the executor and read by the reviewer)",
+ "executor_before": "cheap-then-review",
+ "executor_after": "cheap-then-review"
+}

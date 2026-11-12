@@ -1,0 +1,19 @@
+{
+ "id": "2.3",
+ "fixed": [
+  "The scan test's ALLOWED entry for page-builder.tsx is removed (it imports none of the five row modules); ALLOWED starts empty and the test asserts at least six matched files.",
+  "drawing.tsx, editor-views.tsx, install-preview-view.tsx and the three preview pages each get one named edit: PreviewBreakpoints right after the ScopedCss line inside the data-site-css div, with its owner; the 'if it only draws InstallPreviewView / is wrapped by ThemePreviewRoot, add nothing' hedges are settled (none is).",
+  "The three-row e2e page uses storePageWith() with three heading blocks and fetches the address it returns; the brief told the model to fetch /s/demo/no/<slug>, but storePageRows makes a new store and returns /s/{slug}/side.",
+  "Commit 2's keep-or-drop rule is now its listed checks instead of 'a page shows unstyled rows for a moment', which nothing measures.",
+  "src/lib/stylesheet-sources.scan.test.ts was marked create, but step 0.34 makes it and 0.35 adds to it: now an edit with made_by 0.34 that adds a describe, and depends_on names 0.34."
+ ],
+ "rejected": [
+  {
+   "problem": "The e2e budget edits ('lower to the figure this build measures plus the margin') turn expectations into recorded values.",
+   "why": "That is the plan's ratchet design for budgets (a number only falls); the hard figures (2 and 2, 80,000 bytes, at most 35,000) are fixed in the brief."
+  }
+ ],
+ "cheaper": "applied in part: commit 2's vague drop rule became the concrete checks. Not applied: moving commit 2 to its own step would change what the step closes; the breadth of commit 1 keeps the review.",
+ "executor_before": "cheap-then-review",
+ "executor_after": "cheap-then-review"
+}

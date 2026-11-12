@@ -1,143 +1,153 @@
 {
-  "id": "3.19",
-  "goal": "A CI run on the no-migration path skips its deploy when a newer push that will itself deploy is already on main, so a burst of pushes shares one production deploy; a run that applied a migration always deploys; the repository variable SHARE_DEPLOYS set to 'false' turns the skip off.",
-  "why": "Each deploy empties every store's cached pages and starts every function cold, and 11 November had up to 52 deploys. Today two pushes one minute apart make two production deploys; after this step they make one, and /api/health reports the second commit.",
-  "read_first": [
-    ".github/workflows/ci.yml",
-    "docs/ci-migrations.md",
-    "scripts/await-deploy.mjs",
-    "CLAUDE.md",
-    "docs/rules/storefront.md:110",
-    "node_modules/next/dist/docs/01-app/01-getting-started/08-caching.md",
-    "docs/performance.md"
-  ],
-  "depends_on": [
-    {
-      "id": "0.38",
-      "why": "it adds to the pending job the skip of a deploy for a push that changes only tests; this step's rule for 'a newer push that will itself deploy' must use the same test of what is deployable, and src/lib/ci-once.scan.test.ts (made there) reads ci.yml"
-    },
-    {
-      "id": "1.21",
-      "why": "if its stage 2 moved the build into CI (vercel deploy --prebuilt), the deploy step this brief guards has other commands and already has an order guard; read what 1.21 left before editing"
-    }
-  ],
-  "commits": [
-    {
-      "title": "A burst of pushes shares one deploy: a run steps aside for a newer push that deploys",
-      "changes": [
-        {
-          "file": "scripts/lib/deploy-share.mjs",
-          "action": "create",
-          "how": "A pure module (no imports). Export `deployable(files)`: given an array of repo-relative paths changed between two commits, return true when at least one of them would make a push deploy. A path does NOT count when it ends `.md` or starts `docs/`, unless it starts `content/` (the docs portal's articles deploy: this mirrors the `paths` filter at the top of .github/workflows/ci.yml). If step 0.38's tests-only skip is in the pending job, open it, read its rule for 'only tests changed' (its script or inline shell), and make deployable() also return false for a list in which every path matches that same rule; import 0.38's function if it is a module, do not write a second copy of the pattern. Export `superseded({ sha, head, changed, share })`: returns false when share is the string 'false'; false when head equals sha; otherwise deployable(changed)."
-        },
-        {
-          "file": "scripts/deploy-share.mjs",
-          "action": "create",
-          "how": "A Node script (ES module, node:child_process execFileSync, node:fs appendFileSync). It reads GITHUB_SHA and SHARE_DEPLOYS from the environment. Steps: `git fetch --depth=1 origin main`; head = `git rev-parse FETCH_HEAD`; if head differs from GITHUB_SHA, changed = lines of `git diff --name-only <GITHUB_SHA> <head>` (a two-dot diff of two commits both present in the clone; it needs no history). Call superseded(). Append `superseded=true` or `superseded=false` to the file named by GITHUB_OUTPUT (print it too when GITHUB_OUTPUT is unset). When true print: 'Main is at <head>, and what it adds will deploy: that push's run deploys main with this commit in it. This run asks for no deploy.' When false because nothing deployable was added, print: 'Main is at <head>, but nothing it adds deploys: this run deploys.' If any git command fails, write superseded=false (the safe side is to deploy) and print why."
-        },
-        {
-          "file": ".github/workflows/ci.yml",
-          "action": "edit",
-          "how": "Only in the job `pending`. Directly after the step with id `head` ('Is a migration pending at the head of main by now?') add: `- name: Is a newer push on main that will deploy it? (a burst of pushes shares one deploy)`, `id: newer`, the same `if:` as the head step (`steps.status.outputs.pending == 'false' && vars.DEPLOY_VIA_CI == 'true'`), `env: SHARE_DEPLOYS: ${{ vars.SHARE_DEPLOYS }}`, `run: node scripts/deploy-share.mjs` (wrapped in the recorder of step 1.20 if the job's other steps are). Then add `&& steps.newer.outputs.superseded != 'true'` to the `if:` of the two steps after it: the deploy step ('No migration to apply and the quick gate passed, so ask Vercel to deploy the head of main now', or the vercel build/deploy steps step 1.21 put in its place) and 'Wait until production runs this commit'. If step 0.38 added its own condition to those two `if:` lines, keep it and add this one with `&&`. In the comment block above the job ('no pending migration: ...') add two lines: a run whose commit has been followed on main by a push that will deploy asks for no deploy (the newer run deploys main, with this commit in it; SHARE_DEPLOYS = 'false' turns this off), and a run that applied a migration always deploys. Change nothing in the jobs `release`, `redeploy`, `baseline`, `static` or the browser jobs, and nothing in `concurrency`."
-        },
-        {
-          "file": "src/lib/deploy-share.scan.test.ts",
-          "action": "create",
-          "how": "Imports deployable and superseded from ../../scripts/lib/deploy-share.mjs (src/lib/await-deploy.test.ts shows the import of a script's module). Cases: deployable(['README.md', 'docs/plan.md']) false; deployable(['content/docs/x.md']) true; deployable(['src/lib/money.ts']) true; if 0.38's tests-only rule exists, deployable(['src/lib/money.test.ts']) false; superseded with head equal to sha false; with share 'false' false even for a deployable change; with a deployable change true; with only docs changed false. One more case reads .github/workflows/ci.yml as text and expects: the pending job contains `node scripts/deploy-share.mjs`; the string `steps.newer.outputs.superseded != 'true'` appears exactly twice; and the text of the `release:` job (from the line `  release:` to the line `  redeploy:`) does not contain 'superseded'."
-        }
-      ],
-      "checks": [
-        "pnpm exec vitest run src/lib/deploy-share.scan.test.ts src/lib/ci-once.scan.test.ts: pass (ci-once.scan.test.ts exists after step 0.38; if it lists the pending job's steps, add the new step to its list)",
-        "GITHUB_SHA=$(git rev-parse HEAD) node scripts/deploy-share.mjs: prints superseded=false when HEAD is origin/main's head",
-        "GITHUB_SHA=$(git rev-parse HEAD~1) node scripts/deploy-share.mjs: prints superseded=true or false according to whether the last commit on origin/main changed a deployable file, with the matching sentence",
-        "GITHUB_SHA=$(git rev-parse HEAD~1) SHARE_DEPLOYS=false node scripts/deploy-share.mjs: prints superseded=false",
-        "pnpm lint && pnpm typecheck && pnpm test: exits 0"
-      ]
-    },
-    {
-      "title": "D5 and the Workflow line say that a burst of pushes shares one deploy",
-      "changes": [
-        {
-          "file": "CLAUDE.md",
-          "action": "edit",
-          "how": "In '## Workflow', second bullet ('Production is deployed by CI ...'), after 'applies it, then deploys.' add: 'A push without a migration that is followed on `main` by another before its gate ends asks for no deploy: the later push's run deploys `main` with both (a burst shares one deploy; the repository variable `SHARE_DEPLOYS` = `false` turns this off). So a push is live a few minutes later than \"at once\" when another follows it, and not at all until the later push's gate passes.'"
-        },
-        {
-          "file": "docs/decisions.md",
-          "action": "edit",
-          "how": "In the row of D5 (line 16, '**Changes go straight to `main`**, which deploys to production.'), add at the end of its first cell: ' Since <date> (the new D-number) a push overtaken on main before its gate ends is deployed by the later push's run.' Add the new decision row described under docs."
-        },
-        {
-          "file": "docs/ci-migrations.md",
-          "action": "edit",
-          "how": "Where the file describes the path of a push with no migration, add a short paragraph: the step 'Is a newer push on main that will deploy it?', what counts as a push that deploys (scripts/lib/deploy-share.mjs), that the skipped run ends green without waiting, that a release run never skips, and how to turn it off (SHARE_DEPLOYS = false in the repository's variables)."
-        },
-        {
-          "file": "docs/rules/storefront.md",
-          "action": "edit",
-          "how": "In the section 'Catalogue reads in `src/server/catalog.ts` are cached' (line 110), add one sentence at the end of its rule: 'A `use cache` result lives in one instance's memory and in one deployment, and a built page lives until the next deployment; only the template store's pages are built ahead, so the first view of any other store's page after a deploy is a full render: new code must not lean on a cached read being warm.' Add the same sentence under '## The rules' in docs/performance.md."
-        }
-      ],
-      "checks": [
-        "pnpm exec vitest run src/lib/rules-index.test.ts src/lib/brand.scan.test.ts: pass (rules-index may be named rules-index.scan.test.ts after step 2.43)",
-        "pnpm lint: exits 0"
-      ]
-    }
-  ],
-  "tests": [
-    {
-      "file": "src/lib/deploy-share.scan.test.ts",
-      "proves": "fails when a run would step aside for a newer push that deploys nothing (docs only, or tests only), when SHARE_DEPLOYS = 'false' is ignored, or when the release job gains the skip"
-    }
-  ],
-  "migration": {
-    "needed": false,
-    "notes": ""
+ "id": "3.19",
+ "goal": "A CI run on the no-migration path skips its deploy when a newer push that will itself deploy is already on main, so a burst of pushes shares one production deploy; a run that applied a migration always deploys; the repository variable SHARE_DEPLOYS set to 'false' turns the skip off.",
+ "why": "Each deploy empties every store's cached pages and starts every function cold, and 11 November had up to 52 deploys. Today two pushes one minute apart make two production deploys; after this step they make one, and /api/health reports the second commit.",
+ "read_first": [
+  ".github/workflows/ci.yml",
+  "docs/ci-migrations.md",
+  "scripts/await-deploy.mjs",
+  "CLAUDE.md",
+  "docs/rules/storefront.md:110",
+  "node_modules/next/dist/docs/01-app/01-getting-started/08-caching.md",
+  "docs/performance.md"
+ ],
+ "depends_on": [
+  {
+   "id": "0.38",
+   "why": "it adds to the pending job the skip of a deploy for a push that changes only tests; this step's rule for 'a newer push that will itself deploy' must use the same test of what is deployable, and src/lib/ci-once.scan.test.ts (made there) reads ci.yml"
   },
-  "done_when": [
+  {
+   "id": "1.21",
+   "why": "if its stage 2 moved the build into CI (vercel deploy --prebuilt), the deploy step this brief guards has other commands and already has an order guard; read what 1.21 left before editing"
+  },
+  {
+   "id": "0.43",
+   "why": "it creates docs/rules/budgets.md, where a sentence about how CI runs goes (CLAUDE.md's bytes outside its index only fall: src/lib/docs-budget.scan.test.ts)"
+  }
+ ],
+ "commits": [
+  {
+   "title": "A burst of pushes shares one deploy: a run steps aside for a newer push that deploys",
+   "changes": [
     {
-      "check": "push two small code commits to main one minute apart (for example two comment changes in different src files), then read the two runs' `pending` jobs",
-      "expect": "the first run's step 'Is a newer push on main that will deploy it?' prints the 'asks for no deploy' sentence and its deploy and wait steps are skipped; the second run deploys; one production deploy in all (two before)"
+     "file": "scripts/lib/deploy-share.mjs",
+     "action": "create",
+     "how": "A pure module whose only import is `import { testsOnly } from \"../deploy-needed.mjs\";` (step 0.38's script: it exports TEST_ONLY and testsOnly(files), true when the list is not empty and every path is a test; its main() runs only when it is the entry point, so importing it runs nothing). Export `wordsOnly(files)`: true when the list is not empty and every path ends `.md` or starts `docs/`, except a path that starts `content/` (the docs portal's articles deploy: this mirrors the `paths` filter at the top of .github/workflows/ci.yml). Export `deployable(files)`: `files.length > 0 && !wordsOnly(files) && !testsOnly(files)` (the same answer 0.38's deploy-needed step gives such a push, so a push this run steps aside for really deploys). Do not write a second copy of TEST_ONLY. Export `superseded({ sha, head, changed, share })`: returns false when share is the string 'false'; false when head equals sha; otherwise deployable(changed)."
     },
     {
-      "check": "curl -s https://kaizenaflow.com/api/health after the second run ends",
-      "expect": "commit equals the second commit's sha"
+     "file": "scripts/deploy-share.mjs",
+     "action": "create",
+     "how": "A Node script (ES module, node:child_process execFileSync, node:fs appendFileSync). It reads GITHUB_SHA and SHARE_DEPLOYS from the environment. Steps: `git fetch --depth=1 origin main`; head = `git rev-parse FETCH_HEAD`; if head differs from GITHUB_SHA, changed = lines of `git diff --name-only <GITHUB_SHA> <head>` (a two-dot diff of two commits both present in the clone; it needs no history). Call superseded(). Append `superseded=true` or `superseded=false` to the file named by GITHUB_OUTPUT (print it too when GITHUB_OUTPUT is unset). When true print: 'Main is at <head>, and what it adds will deploy: that push's run deploys main with this commit in it. This run asks for no deploy.' When false because nothing deployable was added, print: 'Main is at <head>, but nothing it adds deploys: this run deploys.' If any git command fails, write superseded=false (the safe side is to deploy) and print why."
     },
     {
-      "check": "set the repository variable SHARE_DEPLOYS to 'false' (the owner does this in GitHub's settings), repeat the two pushes, then delete the variable again",
-      "expect": "two production deploys"
+     "file": ".github/workflows/ci.yml",
+     "action": "edit",
+     "how": "Only in the job `pending`. Directly after the step with id `head` ('Is a migration pending at the head of main by now?') add: `- name: Is a newer push on main that will deploy it? (a burst of pushes shares one deploy)`, `id: newer`, the same `if:` as the head step (`steps.status.outputs.pending == 'false' && vars.DEPLOY_VIA_CI == 'true'`), `env: SHARE_DEPLOYS: ${{ vars.SHARE_DEPLOYS }}`, `run: node scripts/deploy-share.mjs` (wrapped in the recorder of step 1.20 if the job's other steps are). Then add `&& steps.newer.outputs.superseded != 'true'` to the `if:` of the two steps after it: the deploy step ('No migration to apply and the quick gate passed, so ask Vercel to deploy the head of main now', or the vercel build/deploy steps step 1.21 put in its place) and 'Wait until production runs this commit'. Step 0.38 already appended ` && steps.changed.outputs.deploy != 'false'` to both of those `if:` lines and put its step 'Does this push change what is deployed?' (id changed) right after the head step: put this new step after 0.38's step, keep 0.38's condition and add this one with `&&`. In the comment block above the job ('no pending migration: ...') add two lines: a run whose commit has been followed on main by a push that will deploy asks for no deploy (the newer run deploys main, with this commit in it; SHARE_DEPLOYS = 'false' turns this off), and a run that applied a migration always deploys. Change nothing in the jobs `release`, `redeploy`, `baseline`, `static` or the browser jobs, and nothing in `concurrency`."
     },
     {
-      "check": "rg -n 'SHARE_DEPLOYS' CLAUDE.md docs/decisions.md docs/ci-migrations.md",
-      "expect": "each file names it"
+     "file": "src/lib/deploy-share.scan.test.ts",
+     "action": "create",
+     "how": "Imports deployable and superseded from ../../scripts/lib/deploy-share.mjs (src/lib/await-deploy.test.ts shows the import of a script's module). Cases: deployable(['README.md', 'docs/plan.md']) false; deployable(['content/docs/x.md']) true; deployable(['src/lib/money.ts']) true; deployable(['src/lib/money.test.ts']) false (0.38's testsOnly); deployable(['README.md', 'src/lib/money.test.ts']) true (neither words only nor tests only, as 0.38's step decides); superseded with head equal to sha false; with share 'false' false even for a deployable change; with a deployable change true; with only docs changed false. One more case reads .github/workflows/ci.yml as text and expects: the pending job contains `node scripts/deploy-share.mjs`; the string `steps.newer.outputs.superseded != 'true'` appears exactly twice; and the text of the `release:` job (from the line `  release:` to the line `  redeploy:`) does not contain 'superseded'."
     }
-  ],
-  "after_deploy": [
-    "Over the next day with at least one burst of pushes: the number of production deployments in Vercel is lower than the number of pushes that changed code, and /api/health always reports main's head within the usual wait after the last run of a burst.",
-    "If a later push's gate fails, production stays on the commit before the burst until the fix is pushed: check that the failing run is red and visible, and tell the owner the first time it happens."
-  ],
-  "docs": [
-    "docs/decisions.md: add one row with the next free D-number (read the last row of the decisions table to find it; never reuse a number) and today's date. It records: a CI run on the no-migration path skips its deploy when a newer push that will itself deploy is on main (the owner's yes to changing D5's 'at once' by a few minutes): the rule for 'will deploy' (not words only, not tests only), that a run which applied a migration always deploys, that the skipped run ends green, the variable SHARE_DEPLOYS = 'false' as the way back, and the trial's result (two pushes, one deploy). It names D5, D526 and D530.",
-    "The row of D5 in docs/decisions.md and CLAUDE.md's Workflow bullet, as in the second commit.",
-    "docs/audits/code-review-2026-11.md: add a line to the change log under step 1.8 (FH10, 'deploy what was checked'): this is part of its intent; do not set 1.8 to Done.",
-    "docs/rules/storefront.md and docs/performance.md: the sentence on what 'cached' means.",
-    "docs/audits/bloat-review-2026-11.md, Progress table: set the row of step 3.19 to Done with the date and the commit hash (if the table has no row for 3.19, add one in the table of its phase with the step's title), and add one line to that file's change log if it has one."
-  ],
-  "do_not": [
-    "Do not add the skip to the `release` job: a run that applied a migration always deploys.",
-    "Do not skip when the newer commits are words only (*.md, docs/**) or tests only: no run would then deploy this commit.",
-    "Do not make a skipped run wait on /api/health, and do not make it fail: it ends green with the sentence.",
-    "Do not change `concurrency`, cancel runs on main, or add a job: the gate stays one job, one runner to wait for.",
-    "Do not move reads to 'use cache: remote' or unstable_cache in this step (the finding says why: remote entries do not survive a deploy either).",
-    "Do not use a paid Vercel or GitHub feature (no Rolling Releases, no larger runner, no paid monitoring)."
-  ],
-  "stop_if": [
-    "Step 0.38's tests-only rule cannot be imported or read as one rule (it is spread over inline shell): stop and ask whether to move it into scripts/lib first.",
-    "Step 1.21 moved the build to CI and the pending job already skips when production runs a commit that includes this one: report how the two guards meet before adding a second.",
-    "In the trial, the first run skipped and the second run did not deploy, or /api/health does not report the second commit within 20 minutes: set SHARE_DEPLOYS to 'false' (ask the owner), run the manual redeploy job, and report.",
-    "ci-once.scan.test.ts needs a change other than listing the new step."
-  ],
-  "executor": "cheap-then-review",
-  "executor_why": "The script and the two `if:` conditions are fully specified, but a mistake here leaves a commit undeployed with a green run, so a stronger model should read the ci.yml diff before it is pushed.",
-  "checked_in_code": "I opened .github/workflows/ci.yml: the pending job's `head` step already fetches main's head before the deploy hook (line 310 on), every run on main has its own concurrency group, and the hook builds the head of main, as CA-2 says; scripts/await-deploy.mjs accepts a later deployment that includes the commit. I corrected the finding's rule: comparing FETCH_HEAD with GITHUB_SHA alone would strand a commit when the newer push is words only (the workflow's `paths` filter starts no run for it) or tests only (step 0.38 skips its deploy), so the brief skips only when what main adds will itself deploy; by that rule the last deploying push of a burst always deploys. SHARE_DEPLOYS and the tests-only skip are not in the file yet."
+   ],
+   "checks": [
+    "pnpm exec vitest run src/lib/deploy-share.scan.test.ts src/lib/ci-once.scan.test.ts: pass (ci-once.scan.test.ts exists after step 0.38; if it lists the pending job's steps, add the new step to its list)",
+    "GITHUB_SHA=$(git rev-parse HEAD) node scripts/deploy-share.mjs: prints superseded=false when HEAD is origin/main's head",
+    "GITHUB_SHA=$(git rev-parse HEAD~1) node scripts/deploy-share.mjs: prints superseded=true or false according to whether the last commit on origin/main changed a deployable file, with the matching sentence",
+    "GITHUB_SHA=$(git rev-parse HEAD~1) SHARE_DEPLOYS=false node scripts/deploy-share.mjs: prints superseded=false",
+    "pnpm lint && pnpm typecheck && pnpm test: exits 0"
+   ]
+  },
+  {
+   "title": "D5 and the Workflow line say that a burst of pushes shares one deploy",
+   "changes": [
+    {
+     "file": "docs/rules/budgets.md",
+     "action": "edit",
+     "made_by": "0.43",
+     "how": "Not CLAUDE.md: CLAUDE.md's bytes outside its index only fall (step 0.43's src/lib/docs-budget.scan.test.ts, and step 1.1's budget), and step 0.43's file says a sentence about how CI runs goes here. Step 0.43 created this file (title '# Rules: Budgets and checks', an intro, '## CLAUDE.md', '## Sentences from the plan'; later steps add sections). Add at the end a section '## Deploys' with these lines, each at most 130 characters: 'A push without a migration that is followed on main by another before its gate ends asks for no deploy:' / 'the later push's run deploys main with both (scripts/deploy-share.mjs; bloat review step 3.19).' / 'So such a push is live only when the later push's gate passes. The repository variable SHARE_DEPLOYS = false turns this off.' / 'A run that applied a migration always deploys.'"
+    },
+    {
+     "file": "docs/decisions.md",
+     "action": "edit",
+     "how": "In the row of D5 (line 16, '**Changes go straight to `main`**, which deploys to production.'), add at the end of its first cell: ' Since <date> (the new D-number) a push overtaken on main before its gate ends is deployed by the later push's run.' Add the new decision row described under docs; it names docs/rules/budgets.md '## Deploys' as where the rule is written."
+    },
+    {
+     "file": "docs/ci-migrations.md",
+     "action": "edit",
+     "how": "Where the file describes the path of a push with no migration, add a short paragraph: the step 'Is a newer push on main that will deploy it?', what counts as a push that deploys (scripts/lib/deploy-share.mjs), that the skipped run ends green without waiting, that a release run never skips, and how to turn it off (SHARE_DEPLOYS = false in the repository's variables)."
+    },
+    {
+     "file": "docs/rules/storefront.md",
+     "action": "edit",
+     "how": "In the section 'Catalogue reads in `src/server/catalog.ts` are cached' (line 110), add one sentence at the end of its rule: 'A `use cache` result lives in one instance's memory and in one deployment, and a built page lives until the next deployment; only the template store's pages are built ahead, so the first view of any other store's page after a deploy is a full render: new code must not lean on a cached read being warm.' Add the same sentence under '## The rules' in docs/performance.md."
+    }
+   ],
+   "checks": [
+    "pnpm exec vitest run src/lib/docs-budget.scan.test.ts: passes (CLAUDE.md unchanged; the new lines are under 130 characters)",
+    "pnpm exec vitest run src/lib/rules-index.test.ts src/lib/brand.scan.test.ts: pass (rules-index may be named rules-index.scan.test.ts after step 2.43)",
+    "pnpm lint: exits 0"
+   ]
+  }
+ ],
+ "tests": [
+  {
+   "file": "src/lib/deploy-share.scan.test.ts",
+   "proves": "fails when a run would step aside for a newer push that deploys nothing (docs only, or tests only), when SHARE_DEPLOYS = 'false' is ignored, or when the release job gains the skip"
+  }
+ ],
+ "migration": {
+  "needed": false,
+  "notes": ""
+ },
+ "done_when": [
+  {
+   "check": "push two small code commits to main one minute apart (for example two comment changes in different src files), then read the two runs' `pending` jobs",
+   "expect": "the first run's step 'Is a newer push on main that will deploy it?' prints the 'asks for no deploy' sentence and its deploy and wait steps are skipped; the second run deploys; one production deploy in all (two before)"
+  },
+  {
+   "check": "curl -s https://kaizenaflow.com/api/health after the second run ends",
+   "expect": "commit equals the second commit's sha"
+  },
+  {
+   "check": "set the repository variable SHARE_DEPLOYS to 'false' (the owner does this in GitHub's settings), repeat the two pushes, then delete the variable again",
+   "expect": "two production deploys"
+  },
+  {
+   "check": "rg -n 'SHARE_DEPLOYS' CLAUDE.md docs/decisions.md docs/ci-migrations.md",
+   "expect": "each file names it"
+  }
+ ],
+ "after_deploy": [
+  "Over the next day with at least one burst of pushes: the number of production deployments in Vercel is lower than the number of pushes that changed code, and /api/health always reports main's head within the usual wait after the last run of a burst.",
+  "If a later push's gate fails, production stays on the commit before the burst until the fix is pushed: check that the failing run is red and visible, and tell the owner the first time it happens."
+ ],
+ "docs": [
+  "docs/decisions.md: add one row with the next free D-number (read the last row of the decisions table to find it; never reuse a number) and today's date. It records: a CI run on the no-migration path skips its deploy when a newer push that will itself deploy is on main (the owner's yes to changing D5's 'at once' by a few minutes): the rule for 'will deploy' (not words only, not tests only), that a run which applied a migration always deploys, that the skipped run ends green, the variable SHARE_DEPLOYS = 'false' as the way back, and the trial's result (two pushes, one deploy). It names D5, D526 and D530.",
+  "The row of D5 in docs/decisions.md and CLAUDE.md's Workflow bullet, as in the second commit.",
+  "docs/audits/code-review-2026-11.md: add a line to the change log under step 1.8 (FH10, 'deploy what was checked'): this is part of its intent; do not set 1.8 to Done.",
+  "docs/rules/storefront.md and docs/performance.md: the sentence on what 'cached' means.",
+  "docs/audits/bloat-review-2026-11.md, Progress table: set the row of step 3.19 to Done with the date and the commit hash (if the table has no row for 3.19, add one in the table of its phase with the step's title), and add one line to that file's change log if it has one."
+ ],
+ "do_not": [
+  "Do not add the skip to the `release` job: a run that applied a migration always deploys.",
+  "Do not skip when the newer commits are words only (*.md, docs/**) or tests only: no run would then deploy this commit.",
+  "Do not make a skipped run wait on /api/health, and do not make it fail: it ends green with the sentence.",
+  "Do not change `concurrency`, cancel runs on main, or add a job: the gate stays one job, one runner to wait for.",
+  "Do not move reads to 'use cache: remote' or unstable_cache in this step (the finding says why: remote entries do not survive a deploy either).",
+  "Do not use a paid Vercel or GitHub feature (no Rolling Releases, no larger runner, no paid monitoring)."
+ ],
+ "stop_if": [
+  "scripts/deploy-needed.mjs does not exist or does not export testsOnly (step 0.38 not done), or docs/rules/budgets.md does not exist (step 0.43 not done): stop.",
+  "Step 1.21 moved the build to CI and the pending job already skips when production runs a commit that includes this one: report how the two guards meet before adding a second.",
+  "In the trial, the first run skipped and the second run did not deploy, or /api/health does not report the second commit within 20 minutes: set SHARE_DEPLOYS to 'false' (ask the owner), run the manual redeploy job, and report.",
+  "ci-once.scan.test.ts needs a change other than listing the new step."
+ ],
+ "executor": "cheap-then-review",
+ "executor_why": "The pure module now imports 0.38's testsOnly instead of reading a rule, the ci.yml placement beside 0.38's step is named and the rule goes to docs/rules/budgets.md, but the step gates every production deploy: a misplaced if: or a wrong deployable() leaves a commit undeployed while its run ends green, which the scan test cannot fully rule out, so a stronger model reads the ci.yml diff.",
+ "checked_in_code": "I opened .github/workflows/ci.yml: the pending job's `head` step already fetches main's head before the deploy hook (line 310 on), every run on main has its own concurrency group, and the hook builds the head of main, as CA-2 says; scripts/await-deploy.mjs accepts a later deployment that includes the commit. I corrected the finding's rule: comparing FETCH_HEAD with GITHUB_SHA alone would strand a commit when the newer push is words only (the workflow's `paths` filter starts no run for it) or tests only (step 0.38 skips its deploy), so the brief skips only when what main adds will itself deploy; by that rule the last deploying push of a burst always deploys. SHARE_DEPLOYS and the tests-only skip are not in the file yet. Second check (12 November): step 0.38 exports testsOnly() from scripts/deploy-needed.mjs and adds its own step (id changed) and condition to the two deploy steps, so deployable() imports testsOnly and the new step goes after 0.38's with both conditions; the CLAUDE.md sentence would break step 0.43's rule that CLAUDE.md outside its index never grows, so it goes to docs/rules/budgets.md '## Deploys'.",
+ "rating_checked": "cheap-then-review",
+ "cheap_commits": [
+  2
+ ]
 }

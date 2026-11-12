@@ -1,146 +1,148 @@
 {
-  "id": "3.12",
-  "goal": "An owner's own look is saved in one place: 'Save as new theme' in the theme editor adds a row to commerce.store_theme_installs (the theme library), the editor has no saved-themes list, and one release later commerce.store_themes is gone.",
-  "why": "Today an own look can be kept in two places (commerce.store_themes beside the theme library): `rg -n 'store_themes' src --glob '!*.test.*' | wc -l` prints 17. After the second migration it prints 0, and one list holds an owner's looks.",
-  "read_first": [
-    "docs/rules/admin/website.md:180",
-    "docs/themes-unified.md",
-    "src/server/themes.ts",
-    "src/server/theme-installs.ts",
-    "src/components/admin/theme-editor.tsx",
-    "src/app/admin/(gated)/[store]/settings/design/actions.ts",
-    "src/app/admin/(gated)/platform/themes/[presetId]/workspace-actions.ts",
-    "docs/ci-migrations.md"
-  ],
-  "depends_on": [],
-  "commits": [
+ "id": "3.12",
+ "goal": "An owner's own look is saved in one place: 'Save as new theme' in the theme editor adds a row to commerce.store_theme_installs (the theme library), the editor has no saved-themes list, and one release later commerce.store_themes is gone.",
+ "why": "Today an own look can be kept in two places (commerce.store_themes beside the theme library): `rg -n 'store_themes' src --glob '!*.test.*' | wc -l` prints 17. After the second migration it prints 0, and one list holds an owner's looks.",
+ "read_first": [
+  "docs/rules/admin/website.md:180",
+  "docs/themes-unified.md",
+  "src/server/themes.ts",
+  "src/server/theme-installs.ts",
+  "src/components/admin/theme-editor.tsx",
+  "src/app/admin/(gated)/[store]/settings/design/actions.ts",
+  "src/app/admin/(gated)/platform/themes/[presetId]/workspace-actions.ts",
+  "docs/ci-migrations.md"
+ ],
+ "depends_on": [],
+ "commits": [
+  {
+   "title": "'Save as new theme' saves the look in the theme library; the editor's saved list is gone",
+   "changes": [
     {
-      "title": "'Save as new theme' saves the look in the theme library; the editor's saved list is gone",
-      "changes": [
-        {
-          "file": "src/app/admin/(gated)/[store]/settings/design/actions.ts",
-          "action": "edit",
-          "how": "Remove saveSavedThemeAction and deleteSavedThemeAction (lines 88 to 98) and the imports of saveSavedTheme and deleteSavedTheme. Add `export async function saveOwnLookAction(storeSlug: string, payload: string)`: `const member = await requirePermission(storeSlug, \"website:write\");` then parse the payload with the file's own read() into `{ name, theme }`, call `addOwnLook(member.store.id, member.account.id, String(name ?? \"\"), theme)` from \"@/server/theme-installs\" and return its result mapped to the editor's shape: on ok `{ ok: true as const, title: result.title }`, on refusal `{ ok: false as const, problems: [the refusal's message] }` (read InstallResult in src/server/theme-installs.ts for the refusal's field name). No updateTag: nothing a visitor sees changes. If the file's other actions go through storeAction() (CLAUDE.md, 'Server actions run through storeAction()'), write this one the same way as its neighbours."
-        },
-        {
-          "file": "src/app/admin/(gated)/platform/themes/[presetId]/workspace-actions.ts",
-          "action": "edit",
-          "how": "Remove saveWorkspaceSavedThemeAction and removeWorkspaceSavedThemeAction (lines 224 to 234) and their imports. Add `saveWorkspaceOwnLookAction(presetId: string, payload: string)`: `const found = await workspace(presetId); if (!found) return { ok: false as const, problems: [(await platformActionWords()).notYours] };` then addOwnLook(found.workspace.store.id, found.admin.id, name, theme) mapped as in the store's action. This is the platform's half of the same change (the theme workspace is a store too)."
-        },
-        {
-          "file": "src/components/admin/theme-editor.tsx",
-          "action": "edit",
-          "how": "(1) In ThemeActions (line 41 to 43) replace `saveSaved?` and `removeSaved?` with `saveOwnLook?: (payload: string) => Promise<{ ok: true; title: string } | Failure>;` and keep the comment that it is absent where no library is kept. (2) Remove the prop `saved` (lines 412 and 420), the state `const [saved, setSaved] = useState(initialSaved)` (line 445), `loaded` (line 469), remove() (lines 530 to 541), the `{saved.map(...)}` block in the themes list (lines 586 to 596), and the button near line 614 that calls saveAs(loaded.id, loaded.name) (updating a saved theme). Remove the import of SavedTheme. (3) saveAs becomes `const saveAs = (name: string) => startTransition(async () => { if (!actions.saveOwnLook) return; const result = await actions.saveOwnLook(JSON.stringify({ name, theme: { ...theme, savedId: null, settings } })); if (!result.ok) { setMessage({ tone: \"error\", text: result.problems }); return; } setNaming(null); setMessage({ tone: \"ok\", text: [fillWords(w.savedToLibrary, { name: result.title })] }); });` and the naming form's submit (line 652) calls saveAs(naming). The 'Save as new theme…' button is shown only when actions.saveOwnLook is given. (4) Wherever `theme.savedId` or `live.savedId` is compared (themeCard's editing and inUse, line 544 and 545, and the lines that set savedId), keep the comparisons working with savedId always null: a template card is 'editing' when theme.base equals its base. Do not remove the field savedId from the StoreTheme type. (5) Under the naming form add one line of help text, w.ownLookHelp."
-        },
-        {
-          "file": "src/lib/admin-messages/design.en.ts",
-          "action": "edit",
-          "how": "In the editor's words add `savedToLibrary: \"Saved in your theme library as “{name}”. Switch to it there when you want visitors to see it.\"` and `ownLookHelp: \"A look saved here keeps your header, footer and CSS as they are now, and counts as one of the 20 themes a store can have installed.\"`. Remove the words that only the saved list used once no code reads them: savedAs, deleteConfirm, deleted, yourTheme (check each with rg before removing; keep saveAsNew). Make the same additions and removals in src/lib/admin-messages/design.nb.ts in Norwegian (English is the type, so the type check fails until both match)."
-        },
-        {
-          "file": "src/app/admin/(gated)/[store]/settings/design/page.tsx",
-          "action": "edit",
-          "how": "Remove the import and the call of listSavedThemes(store.id) (lines 20 and 55; take its entry out of the Promise.all and out of the destructured names), the `saved=` prop of ThemeEditor, and replace `saveSaved: saveSavedThemeAction.bind(null, store.slug), removeSaved: deleteSavedThemeAction.bind(null, store.slug)` (lines 133 and 134) with `saveOwnLook: saveOwnLookAction.bind(null, store.slug)`. Do exactly the same in src/app/admin/(gated)/[store]/settings/design/themes/[install]/page.tsx (lines 11, 18, 55, 149, 150) and in src/app/admin/(gated)/platform/themes/[presetId]/theme/page.tsx (lines 4 and 28, with saveWorkspaceOwnLookAction.bind(null, presetId))."
-        },
-        {
-          "file": "src/server/themes.ts",
-          "action": "edit",
-          "how": "Remove listSavedThemes(), saveSavedTheme(), deleteSavedTheme(), savedThemeInput and the type SavedTheme. In checkStoreTheme() replace the block that looks the savedId up in commerce.store_themes (the `if (theme.savedId) { ... }` near line 70) with `theme.savedId = null;` (a look is no longer tied to a saved theme). Correct the file's header comment (line 25). In src/server/theme-installs.ts near line 150 replace the lookup of theme.savedId in commerce.store_themes with `theme.savedId = null;`. In src/lib/theme.ts (lines 304 to 339) keep reading `savedId` from stored JSON and return it as null always. In src/server/design-presets.ts latestDesignUse() (line 1355): remove the `left join commerce.store_themes t on t.id = u.saved_theme_id` and select `null::text as saved_theme`; keep the field savedTheme in the result type as null so src/components/admin/design-profile-panel.tsx compiles; remove the panel's branch that shows w.beforeSaved only if the type check allows without other edits, else leave it."
-        },
-        {
-          "file": "src/server/themes.int.test.ts",
-          "action": "edit",
-          "how": "Remove the cases for saving, updating and deleting a saved theme. Add: (a) 'Save as new theme adds a row to commerce.store_theme_installs': call addOwnLook(storeId, accountId, 'My look', theme) as the new action does and expect one more row in commerce.store_theme_installs for the store with title 'My look', live false, and a look whose css, headerId and footerId equal the live look's, and no new row in commerce.store_themes; (b) a store with INSTALLS_MAX (20) installs is refused with INSTALLS_FULL; (c) checkStoreTheme() returns savedId null for an input that carries a savedId."
-        }
-      ],
-      "checks": [
-        "rg -n 'listSavedThemes|saveSavedTheme|deleteSavedTheme|SavedTheme\\b|saveSaved|removeSaved' src: prints nothing",
-        "rg -n 'store_themes' src --glob '!*.test.*': prints only src/db/schema.ts, src/lib/store-copy-rules.ts, src/lib/personal-data.ts, src/server/store-export.ts and src/server/store-copy-media.ts (the table still exists)",
-        "pnpm exec vitest run src/components/admin/theme-editor-warnings.test.ts src/lib/admin-messages/design.test.ts: pass",
-        "pnpm test:int src/server/themes.int.test.ts src/server/theme-installs.int.test.ts src/server/design-presets.int.test.ts: pass",
-        "pnpm build && pnpm test:e2e: exits 0 (the design specs: rg -l 'settings/design' e2e)",
-        "Screenshots of the theme editor before and after (the themes list and the 'Save as new theme' form, computer and phone) sent to the owner: the editor works a little differently, and the owner should see it",
-        "pnpm lint && pnpm typecheck && pnpm test: exits 0"
-      ]
+     "file": "src/app/admin/(gated)/[store]/settings/design/actions.ts",
+     "action": "edit",
+     "how": "Remove saveSavedThemeAction and deleteSavedThemeAction (lines 88 to 98) and the imports of saveSavedTheme and deleteSavedTheme. Add `export async function saveOwnLookAction(storeSlug: string, payload: string)`: `const member = await requirePermission(storeSlug, \"website:write\");` then parse the payload with the file's own read() into `{ name, theme }`, call `addOwnLook(member.store.id, member.account.id, String(name ?? \"\"), theme)` from \"@/server/theme-installs\" and return its result mapped to the editor's shape: on ok `{ ok: true as const, title: result.title }`, on refusal `{ ok: false as const, problems: result.problems }` (InstallResult's failure is `{ ok: false; problems: string[] }`, src/server/theme-installs.ts line 50). No updateTag: nothing a visitor sees changes. Write it like its neighbours saveThemeAction and saveSavedThemeAction, which call requirePermission() directly (the file does not use storeAction())."
     },
     {
-      "title": "commerce.store_themes is dropped; its rows become looks in the theme library (one release after the first commit is live)",
-      "changes": [
-        {
-          "file": "supabase/migrations/*_saved_themes_to_library.sql",
-          "action": "create",
-          "how": "Only after the first commit is live (/api/health reports it or a later commit). A custom migration made BEFORE the schema change (`pnpm exec drizzle-kit generate --custom --name saved_themes_to_library`, then `node scripts/prune-snapshots.mjs`), so it runs first. One statement: `insert into commerce.store_theme_installs (store_id, preset_id, version_id, title, look, live, installed_by) select t.store_id, null, null, left(t.name, 80), l.look || jsonb_build_object('theme', jsonb_build_object('base', t.base, 'savedId', null, 'settings', t.settings)), false, t.created_by from commerce.store_themes t join commerce.store_theme_installs l on l.store_id = t.store_id and l.live where not exists (select 1 from commerce.store_theme_installs i where i.store_id = t.store_id and i.preset_id is null and i.title = left(t.name, 80));` Then two updates that clear the old pointer: `update commerce.stores set theme = jsonb_set(theme, '{savedId}', 'null'::jsonb) where theme ->> 'savedId' is not null;` and the same for the key look -> 'theme' -> 'savedId' in commerce.store_theme_installs. A saved theme of a store with no live install is not converted: count them in production first (`select count(*) from commerce.store_themes t where not exists (select 1 from commerce.store_theme_installs l where l.store_id = t.store_id and l.live)`) and tell the owner the number before the push."
-        },
-        {
-          "file": "src/db/schema.ts",
-          "action": "edit",
-          "how": "Remove the table storeThemes (line 9819 on) and, in designPresetUses, the column `savedThemeId` (line 1304) and its index design_preset_uses_saved_theme_idx (line 1319). Remove the table's lines from src/lib/store-copy-rules.ts (line 115), src/lib/personal-data.ts (line 499, and its line in src/lib/personal-data.nb.ts), src/server/store-export.ts (line 49), src/server/store-copy-media.ts (line 82) and, if step 3.5 is done, src/lib/table-classes.ts. Run `pnpm db:generate`: the generated file must hold only DROP INDEX, ALTER TABLE ... DROP COLUMN saved_theme_id, and DROP TABLE commerce.store_themes. If SQL functions in the migrations name store_themes (rg -n 'store_themes' supabase/migrations/*_baseline_1_schema.sql | rg -i 'insert|select|from'), for example the store-copy functions clone_store() or duplicate_store(), replace them in a custom migration without that step, placed before the generated drop."
-        }
-      ],
-      "checks": [
-        "rg -n 'store_themes' src --glob '!*.test.*' | wc -l: prints 0",
-        "pnpm db:check: exits 0",
-        "pnpm exec vitest run src/db/commerce.test.ts src/db/design-presets.test.ts src/db/privacy.test.ts src/db/migration-safety.scan.test.ts: pass after the cases about store_themes' own rules are removed from the first two",
-        "pnpm test:int: exits 0",
-        "BEFORE THE PUSH: the owner sees `select count(*) from commerce.store_themes` from production and the count of unconvertible rows; if either is above 0, a pg_dump of commerce.store_themes is taken and kept with the backups first.",
-        "pnpm lint && pnpm typecheck && pnpm test: exits 0"
-      ]
-    }
-  ],
-  "tests": [
-    {
-      "file": "src/server/themes.int.test.ts",
-      "proves": "fails when 'Save as new theme' does not add a row to commerce.store_theme_installs, writes to commerce.store_themes, or passes the library's limit of 20"
+     "file": "src/app/admin/(gated)/platform/themes/[presetId]/workspace-actions.ts",
+     "action": "edit",
+     "how": "Remove saveWorkspaceSavedThemeAction and removeWorkspaceSavedThemeAction (lines 224 to 234) and their imports. Add `saveWorkspaceOwnLookAction(presetId: string, payload: string)`: `const found = await workspace(presetId); if (!found) return { ok: false as const, problems: [(await platformActionWords()).notYours] };` then addOwnLook(found.workspace.store.id, found.admin.id, name, theme) mapped as in the store's action. This is the platform's half of the same change (the theme workspace is a store too)."
     },
     {
-      "file": "src/server/theme-installs.int.test.ts",
-      "proves": "(existing) fails when an own look loses the live look's header, footer or CSS, or a look change is allowed while lookChangeRefusal() refuses"
+     "file": "src/components/admin/theme-editor.tsx",
+     "action": "edit",
+     "how": "(1) In ThemeActions (line 41 to 43) replace `saveSaved?` and `removeSaved?` with `saveOwnLook?: (payload: string) => Promise<{ ok: true; title: string } | Failure>;` and keep the comment that it is absent where no library is kept. (2) Remove the prop `saved` (lines 412 and 420), the state `const [saved, setSaved] = useState(initialSaved)` (line 445), `loaded` (line 469), remove() (lines 530 to 541), the `{saved.map(...)}` block in the themes list (lines 586 to 596), and the button near line 614 that calls saveAs(loaded.id, loaded.name) (updating a saved theme). Remove the import of SavedTheme. (3) saveAs becomes `const saveAs = (name: string) => startTransition(async () => { if (!actions.saveOwnLook) return; const result = await actions.saveOwnLook(JSON.stringify({ name, theme: { ...theme, savedId: null, settings } })); if (!result.ok) { setMessage({ tone: \"error\", text: result.problems }); return; } setNaming(null); setMessage({ tone: \"ok\", text: [fillWords(w.savedToLibrary, { name: result.title })] }); });` and the naming form's submit (line 652) calls saveAs(naming). The 'Save as new theme…' button is shown only when actions.saveOwnLook is given. (4) Wherever `theme.savedId` or `live.savedId` is compared (themeCard's editing and inUse, line 544 and 545, and the lines that set savedId), keep the comparisons working with savedId always null: a template card is 'editing' when theme.base equals its base. Do not remove the field savedId from the StoreTheme type. (5) Under the naming form add one line of help text, w.ownLookHelp."
+    },
+    {
+     "file": "src/lib/admin-messages/design.en.ts",
+     "action": "edit",
+     "how": "In the editor's words add `savedToLibrary: \"Saved in your theme library as “{name}”. Switch to it there when you want visitors to see it.\"` and `ownLookHelp: \"A look saved here keeps your header, footer and CSS as they are now, and counts as one of the 20 themes a store can have installed.\"`. Remove the words that only the saved list used once no code reads them: savedAs, deleteConfirm, deleted, yourTheme (check each with rg before removing; keep saveAsNew). Make the same additions and removals in src/lib/admin-messages/design.nb.ts in Norwegian (English is the type, so the type check fails until both match)."
+    },
+    {
+     "file": "src/app/admin/(gated)/[store]/settings/design/page.tsx",
+     "action": "edit",
+     "how": "Remove the import and the call of listSavedThemes(store.id) (lines 20 and 55; take its entry out of the Promise.all and out of the destructured names), the `saved=` prop of ThemeEditor, and replace `saveSaved: saveSavedThemeAction.bind(null, store.slug), removeSaved: deleteSavedThemeAction.bind(null, store.slug)` (lines 133 and 134) with `saveOwnLook: saveOwnLookAction.bind(null, store.slug)`. Do exactly the same in src/app/admin/(gated)/[store]/settings/design/themes/[install]/page.tsx (lines 11, 18, 55, 149, 150) and in src/app/admin/(gated)/platform/themes/[presetId]/theme/page.tsx (lines 4 and 28, with saveWorkspaceOwnLookAction.bind(null, presetId))."
+    },
+    {
+     "file": "src/server/themes.ts",
+     "action": "edit",
+     "how": "Remove listSavedThemes(), saveSavedTheme(), deleteSavedTheme(), savedThemeInput and the type SavedTheme. In checkStoreTheme() replace the block that looks the savedId up in commerce.store_themes (the `if (theme.savedId) { ... }` near line 70) with `theme.savedId = null;` (a look is no longer tied to a saved theme). Correct the file's header comment (line 25). In src/server/theme-installs.ts near line 150 replace the lookup of theme.savedId in commerce.store_themes with `theme.savedId = null;`. In src/lib/theme.ts (lines 304 to 339) keep reading `savedId` from stored JSON and return it as null always. In src/server/design-presets.ts latestDesignUse() (line 1355): remove the `left join commerce.store_themes t on t.id = u.saved_theme_id` and select `null::text as saved_theme`; keep the field savedTheme in the result type as null so src/components/admin/design-profile-panel.tsx compiles; remove the panel's branch that shows w.beforeSaved only if the type check allows without other edits, else leave it."
+    },
+    {
+     "file": "src/server/themes.int.test.ts",
+     "action": "edit",
+     "how": "Remove the cases for saving, updating and deleting a saved theme. Add: (a) 'Save as new theme adds a row to commerce.store_theme_installs': call addOwnLook(storeId, accountId, 'My look', theme) as the new action does and expect one more row in commerce.store_theme_installs for the store with title 'My look', live false, and a look whose css, headerId and footerId equal the live look's, and no new row in commerce.store_themes; (b) a store with INSTALLS_MAX (20) installs is refused with INSTALLS_FULL; (c) checkStoreTheme() returns savedId null for an input that carries a savedId."
     }
-  ],
-  "migration": {
-    "needed": true,
-    "notes": "Only in the second commit, one release after the first, applied by CI. A custom file first converts each commerce.store_themes row into a commerce.store_theme_installs row and clears savedId pointers; then the generated file drops design_preset_uses.saved_theme_id (with its index) and commerce.store_themes. No hot table is touched (stores is updated by a small one-off statement; it is not on the hot list). Running code keeps working because the first commit, already live, reads and writes none of these. The drop removes production rows for good: the owner sees the counts, and a dump is taken if any row exists. Record the versions in docs/decisions.md; check the advisors."
+   ],
+   "checks": [
+    "rg -n 'listSavedThemes|saveSavedTheme|deleteSavedTheme|SavedTheme\\b|saveSaved|removeSaved' src: prints nothing",
+    "rg -n 'store_themes' src --glob '!*.test.*': prints only src/db/schema.ts, src/lib/store-copy-rules.ts, src/lib/personal-data.ts, src/server/store-export.ts and src/server/store-copy-media.ts (the table still exists)",
+    "pnpm exec vitest run src/components/admin/theme-editor-warnings.test.ts src/lib/admin-messages/design.test.ts: pass",
+    "pnpm test:int src/server/themes.int.test.ts src/server/theme-installs.int.test.ts src/server/design-presets.int.test.ts: pass",
+    "pnpm build && pnpm test:e2e: exits 0 (the design specs: rg -l 'settings/design' e2e)",
+    "Screenshots of the theme editor before and after (the themes list and the 'Save as new theme' form, computer and phone) sent to the owner: the editor works a little differently, and the owner should see it",
+    "pnpm lint && pnpm typecheck && pnpm test: exits 0"
+   ]
   },
-  "done_when": [
+  {
+   "title": "commerce.store_themes is dropped; its rows become looks in the theme library (one release after the first commit is live)",
+   "changes": [
     {
-      "check": "rg -n 'store_themes' src --glob '!*.test.*' | wc -l",
-      "expect": "0 after the second migration (17 today)"
+     "file": "supabase/migrations/*_saved_themes_to_library.sql",
+     "action": "create",
+     "how": "Only after the first commit is live (/api/health reports it or a later commit). A custom migration made BEFORE the schema change (`pnpm exec drizzle-kit generate --custom --name saved_themes_to_library`, then `node scripts/prune-snapshots.mjs`), so it runs first. One insert that keeps the theme library's limit of 20 installs per store (INSTALLS_MAX in src/server/theme-installs.ts, which addOwnLook() enforces): `with todo as (select t.*, row_number() over (partition by t.store_id order by t.created_at, t.id) as n from commerce.store_themes t where not exists (select 1 from commerce.store_theme_installs i where i.store_id = t.store_id and i.preset_id is null and i.title = left(t.name, 80))), room as (select store_id, 20 - count(*) as free from commerce.store_theme_installs group by store_id) insert into commerce.store_theme_installs (store_id, preset_id, version_id, title, look, live, installed_by) select t.store_id, null, null, left(t.name, 80), l.look || jsonb_build_object('theme', jsonb_build_object('base', t.base, 'savedId', null, 'settings', t.settings)), false, t.created_by from todo t join commerce.store_theme_installs l on l.store_id = t.store_id and l.live join room r on r.store_id = t.store_id where t.n <= r.free;` (a store with a live install always has a room row). Then two updates that clear the old pointer: `update commerce.stores set theme = jsonb_set(theme, '{savedId}', 'null'::jsonb) where theme ->> 'savedId' is not null;` and the same for the key look -> 'theme' -> 'savedId' in commerce.store_theme_installs. Two kinds of saved theme are not converted: one of a store with no live install, and one beyond the store's room under 20. Count both in production first: `select count(*) from commerce.store_themes t where not exists (select 1 from commerce.store_theme_installs l where l.store_id = t.store_id and l.live)` and `select coalesce(sum(greatest(0, s.saved - (20 - coalesce(i.n, 0)))), 0) from (select store_id, count(*) as saved from commerce.store_themes group by store_id) s left join (select store_id, count(*) as n from commerce.store_theme_installs group by store_id) i on i.store_id = s.store_id`, and tell the owner both numbers before the push."
     },
     {
-      "check": "pnpm test:int src/server/themes.int.test.ts",
-      "expect": "passes with the case where 'Save as new theme' adds a row to commerce.store_theme_installs"
-    },
-    {
-      "check": "the theme editor at /admin/<store>/settings/design",
-      "expect": "no list of saved themes; 'Save as new theme…' saves into the theme library and says so, with the note about header, footer, CSS and the limit"
+     "file": "src/db/schema.ts",
+     "action": "edit",
+     "how": "Remove the table storeThemes (line 9819 on) and, in designPresetUses, the column `savedThemeId` (line 1304) and its index design_preset_uses_saved_theme_idx (line 1319). Remove the table's lines from src/lib/store-copy-rules.ts (line 115), src/lib/personal-data.ts (line 499, and its line in src/lib/personal-data.nb.ts), src/server/store-export.ts (line 49), src/server/store-copy-media.ts (line 82) and, if step 3.5 is done, src/lib/table-classes.ts. Run `pnpm db:generate`: the generated file must hold only DROP INDEX, ALTER TABLE ... DROP COLUMN saved_theme_id, and DROP TABLE commerce.store_themes. If SQL functions in the migrations name store_themes (rg -n 'store_themes' supabase/migrations/*_baseline_1_schema.sql | rg -i 'insert|select|from'), for example the store-copy functions clone_store() or duplicate_store(), replace them in a custom migration without that step, placed before the generated drop."
     }
-  ],
-  "after_deploy": [
-    "In a test store: open Settings, Design, change a colour, 'Save as new theme…', name it: the theme library lists it, not live; visitors see no change.",
-    "In the platform's theme workspace (/admin/platform/themes/<preset>/theme): the same works.",
-    "After the second push: the release job applied both files; advisors show no new warning."
-  ],
-  "docs": [
-    "docs/decisions.md: add one row with the next free D-number (read the last row of the decisions table to find it; never reuse a number) and today's date. It records: an owner's own look is saved only in the theme library (the owner's choice): 'Save as new theme' calls addOwnLook(); the saved list left the editor; an own look carries the header, footer and CSS and counts against INSTALLS_MAX (20); the platform's theme workspace changed in the same change; commerce.store_themes and design_preset_uses.saved_theme_id dropped one release later, with the migration versions and how many rows were converted.",
-    "docs/rules/admin/website.md: the entries 'Design themes (D60 ...)' (line 490) and 'Themes and the theme library (D241 ...)' (line 180): remove what they say about saved themes and commerce.store_themes, say where an own look is kept. CLAUDE.md's index line 'Design themes (D60, ...)' keeps its words (it names files only). docs/themes-unified.md: the same correction where it lists saved themes.",
-    "docs/audits/bloat-review-2026-11.md, Progress table: set the row of step 3.12 to Done with the date and the commit hash (if the table has no row for 3.12, add one in the table of its phase with the step's title), and add one line to that file's change log if it has one."
-  ],
-  "do_not": [
-    "Do not drop commerce.store_themes or the column saved_theme_id in the first commit, and do not remove the table from the registers there.",
-    "Do not remove the field savedId from the StoreTheme type or from stored JSON handling in src/lib/theme.ts: old rows still carry the key; read it and write null.",
-    "Do not call addOwnLook() without its checks: lookChangeRefusal() and the INSTALLS_MAX limit must still refuse.",
-    "Do not make the new look live when it is saved.",
-    "Do not leave the platform's workspace on the old actions: both change in the same commit.",
-    "Do not delete the three template cards (minimal, warm, bold) from the editor's themes list."
-  ],
-  "stop_if": [
-    "addOwnLook() refuses a platform admin in the theme workspace (lookChangeRefusal says 'The store is not open' for a workspace store): report; do not weaken the check.",
-    "commerce.store_theme_installs has a unique rule on (store_id, title) or another constraint the conversion's insert would break (read the table in src/db/schema.ts and its checks in the baseline).",
-    "A SQL function names store_themes in a way that cannot be replaced by removing one step.",
-    "theme-editor-warnings.test.ts or an e2e design spec needs a change other than removing the saved-list cases.",
-    "Production has saved themes for stores with no live install."
-  ],
-  "executor": "cheap-then-review",
-  "executor_why": "Every edit is named, but the editor is a large client component whose behaviour changes for owners and the second commit drops a table, so a stronger model should read both diffs and the screenshots before each push.",
-  "checked_in_code": "I opened src/server/themes.ts (listSavedThemes at line 46, saveSavedTheme at 211, deleteSavedTheme at 251, the savedId lookup in checkStoreTheme near line 70), addOwnLook() in src/server/theme-installs.ts (line 343), the editor's props and its saveAs, remove and saved list (lines 41 to 43, 412 to 445, 513 to 596), both action files and the three pages that pass the saved list; all match FT-12. Additions the finding missed: src/server/theme-installs.ts line 152 also reads commerce.store_themes, src/server/store-copy-media.ts line 82 and src/server/store-export.ts line 49 list the table, and the platform workspace's page is theme/page.tsx line 28. The count in the done_when is 17 today, as the step says."
+   ],
+   "checks": [
+    "rg -n 'store_themes' src --glob '!*.test.*' | wc -l: prints 0",
+    "pnpm db:check: exits 0",
+    "pnpm exec vitest run src/db/commerce.test.ts src/db/design-presets.test.ts src/db/privacy.test.ts src/db/migration-safety.scan.test.ts: pass after the cases about store_themes' own rules are removed from the first two",
+    "pnpm test:int: exits 0",
+    "BEFORE THE PUSH: the owner sees `select count(*) from commerce.store_themes` from production and the count of unconvertible rows; if either is above 0, a pg_dump of commerce.store_themes is taken and kept with the backups first.",
+    "pnpm lint && pnpm typecheck && pnpm test: exits 0"
+   ]
+  }
+ ],
+ "tests": [
+  {
+   "file": "src/server/themes.int.test.ts",
+   "proves": "fails when 'Save as new theme' does not add a row to commerce.store_theme_installs, writes to commerce.store_themes, or passes the library's limit of 20"
+  },
+  {
+   "file": "src/server/theme-installs.int.test.ts",
+   "proves": "(existing) fails when an own look loses the live look's header, footer or CSS, or a look change is allowed while lookChangeRefusal() refuses"
+  }
+ ],
+ "migration": {
+  "needed": true,
+  "notes": "Only in the second commit, one release after the first, applied by CI. A custom file first converts each commerce.store_themes row into a commerce.store_theme_installs row and clears savedId pointers; then the generated file drops design_preset_uses.saved_theme_id (with its index) and commerce.store_themes. No hot table is touched (stores is updated by a small one-off statement; it is not on the hot list). Running code keeps working because the first commit, already live, reads and writes none of these. The drop removes production rows for good: the owner sees the counts, and a dump is taken if any row exists. Record the versions in docs/decisions.md; check the advisors."
+ },
+ "done_when": [
+  {
+   "check": "rg -n 'store_themes' src --glob '!*.test.*' | wc -l",
+   "expect": "0 after the second migration (17 today)"
+  },
+  {
+   "check": "pnpm test:int src/server/themes.int.test.ts",
+   "expect": "passes with the case where 'Save as new theme' adds a row to commerce.store_theme_installs"
+  },
+  {
+   "check": "the theme editor at /admin/<store>/settings/design",
+   "expect": "no list of saved themes; 'Save as new theme…' saves into the theme library and says so, with the note about header, footer, CSS and the limit"
+  }
+ ],
+ "after_deploy": [
+  "In a test store: open Settings, Design, change a colour, 'Save as new theme…', name it: the theme library lists it, not live; visitors see no change.",
+  "In the platform's theme workspace (/admin/platform/themes/<preset>/theme): the same works.",
+  "After the second push: the release job applied both files; advisors show no new warning."
+ ],
+ "docs": [
+  "docs/decisions.md: add one row with the next free D-number (read the last row of the decisions table to find it; never reuse a number) and today's date. It records: an owner's own look is saved only in the theme library (the owner's choice): 'Save as new theme' calls addOwnLook(); the saved list left the editor; an own look carries the header, footer and CSS and counts against INSTALLS_MAX (20); the platform's theme workspace changed in the same change; commerce.store_themes and design_preset_uses.saved_theme_id dropped one release later, with the migration versions and how many rows were converted.",
+  "docs/rules/admin/website.md: the entries 'Design themes (D60 ...)' (line 490) and 'Themes and the theme library (D241 ...)' (line 180): remove what they say about saved themes and commerce.store_themes, say where an own look is kept. CLAUDE.md's index line 'Design themes (D60, ...)' keeps its words (it names files only). docs/themes-unified.md: the same correction where it lists saved themes.",
+  "docs/audits/bloat-review-2026-11.md, Progress table: set the row of step 3.12 to Done with the date and the commit hash (if the table has no row for 3.12, add one in the table of its phase with the step's title), and add one line to that file's change log if it has one."
+ ],
+ "do_not": [
+  "Do not drop commerce.store_themes or the column saved_theme_id in the first commit, and do not remove the table from the registers there.",
+  "Do not remove the field savedId from the StoreTheme type or from stored JSON handling in src/lib/theme.ts: old rows still carry the key; read it and write null.",
+  "Do not call addOwnLook() without its checks: lookChangeRefusal() and the INSTALLS_MAX limit must still refuse.",
+  "Do not make the new look live when it is saved.",
+  "Do not leave the platform's workspace on the old actions: both change in the same commit.",
+  "Do not delete the three template cards (minimal, warm, bold) from the editor's themes list."
+ ],
+ "stop_if": [
+  "addOwnLook() refuses a platform admin in the theme workspace (lookChangeRefusal says 'The store is not open' for a workspace store): report; do not weaken the check.",
+  "commerce.store_theme_installs has a unique rule on (store_id, title) or another constraint the conversion's insert would break (read the table in src/db/schema.ts and its checks in the baseline).",
+  "A SQL function names store_themes in a way that cannot be replaced by removing one step.",
+  "theme-editor-warnings.test.ts or an e2e design spec needs a change other than removing the saved-list cases.",
+  "Production has saved themes for stores with no live install, or more saved themes than a store's room under its 20 installs (the two counts of commit 2): the owner decides what happens to those rows before the push."
+ ],
+ "executor": "cheap-then-review",
+ "executor_why": "Every edit is named, the refusal field and the action's form are settled and the conversion keeps the library's limit of 20, but the theme editor's behaviour changes for owners and the second commit converts production rows and drops a table, so a stronger model reads both diffs and the screenshots before each push.",
+ "checked_in_code": "I opened src/server/themes.ts (listSavedThemes at line 46, saveSavedTheme at 211, deleteSavedTheme at 251, the savedId lookup in checkStoreTheme near line 70), addOwnLook() in src/server/theme-installs.ts (line 343), the editor's props and its saveAs, remove and saved list (lines 41 to 43, 412 to 445, 513 to 596), both action files and the three pages that pass the saved list; all match FT-12. Additions the finding missed: src/server/theme-installs.ts line 152 also reads commerce.store_themes, src/server/store-copy-media.ts line 82 and src/server/store-export.ts line 49 list the table, and the platform workspace's page is theme/page.tsx line 28. The count in the done_when is 17 today, as the step says. Second check (12 November): the new action returns result.problems (InstallResult's failure is { ok: false; problems: string[] }) and calls requirePermission() like its neighbours (the file has no storeAction()); the conversion insert ranks each store's saved themes and converts only as many as fit under INSTALLS_MAX (20), and a second production count of rows beyond that room goes to the owner with the first.",
+ "cheap_commits": [],
+ "rating_checked": "cheap-then-review"
 }

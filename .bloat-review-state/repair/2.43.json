@@ -1,0 +1,12 @@
+{
+ "id": "2.43",
+ "fixed": [
+  "Commit 3's either/or is decided from step 1.20's brief: 'check' is a one-line chain in package.json, so scripts/check.mjs is created and package.json points at it; the related tests run through timed.mjs without --unit, whose files-on-disk comparison would fail a related run (found on this check).",
+  "Commit 4's gate step is wrapped as 'gate-related' (1.20 wraps the gate as gate-lint, gate-typecheck, gate-smoke); scripts/ci-budgets.json is an edit with made_by 1.20 adding only 'gate-related' { seconds: 100, release: true }, because 1.20's shape has no gate-total key; the 190 s total is now read from the runs.",
+  "The done_when trial push of a failing test to main (which deploys to production if the gate is wrong) is replaced by a local trial of scripts/test-changed.mjs on a scratch commit; the gate is read on the next ordinary push."
+ ],
+ "rejected": [],
+ "cheaper": "applied: step 1.20's check script and ci-budgets.json shape are quoted and the gate step's command is exact, so commit 3 is cheap; commits 4 and 5 (the deploy gate and the CLAUDE.md rule) keep the review.",
+ "executor_before": "cheap-then-review",
+ "executor_after": "cheap-then-review"
+}

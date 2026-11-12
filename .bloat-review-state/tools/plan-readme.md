@@ -80,7 +80,8 @@ The **Who** column, and the first line of each brief:
 
 Some *review* and *strong* steps have commits a smaller model may still do alone: the Who column says "commit 1, 2 cheap"
 and the brief marks each such commit. Hand the step over to the stronger model at the first commit that is not marked.
-Every rating was made by the brief's writer and checked by a second reviewer who did not see it (12 November).
+Every rating was made by the brief's writer and checked by a second reviewer who did not see it (12 November). Each brief was then checked against the code and against the briefs of the steps before it, and its errors fixed; the
+last line of *Checked against the code* says what was corrected.
 
 ## Measuring
 

@@ -1,0 +1,15 @@
+{
+ "id": "1.12",
+ "fixed": [
+  "table-stats-test-support.ts: says what 1.10 leaves in query-budget-test-support.ts and names the two exports to add (side, settled), and gives countStatements()'s return and StatementRecord from 1.9's brief.",
+  "shop-journey.int.test.ts: seedStores' options from 1.10 and how to find store 1 since 1.10 gives no return value; removeSeed in afterAll; sameStatementTwice's input named.",
+  "Part 5: runs before Part 4's 19 stores exist (no outside connection, nothing due) and only the jobs 1.10's Part A already runs idle; a throw fails the test.",
+  "Case 3 of commit 1: decided as a real trigger, function and table in commerce, dropped in finally, because a trigger or temp table in the test's own transaction is invisible to the app's pool.",
+  "shop-journey-pages.ts renamed to shop-journey-test-support.ts (decided, following 1.10's naming).",
+  "stop_if when step 1.9's or 1.10's files are missing or shaped otherwise."
+ ],
+ "rejected": [],
+ "cheaper": "not applied: writing every stop's calls per page file and a FEATURE_TABLES map of some 300 tables into the brief is the judgement work itself, too large to verify here; commit 1 is now cheap on its own (cheap_commits [1])",
+ "executor_before": "strong",
+ "executor_after": "strong"
+}

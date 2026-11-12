@@ -1,0 +1,15 @@
+{
+ "id": "2.13",
+ "fixed": [
+  "Nothing said refreshBuyFacts() goes after the commit; each writer now has its placement by line, after `await db().transaction(…)` where the write is in one (payment-methods, mollie disconnect, price-lists, products).",
+  "draft-orders.ts and quote-requests.ts only insert the order_settings defaults row as a lock; a refresh there would let any shopper's quote request empty the store's cached product pages. The scan now strips that exact statement and the expected writers are 11 (the brief said '12 files' and listed 13).",
+  "saveStatus (run by ensureTestAccount on every admin visit of a test store) now refreshes only when card_payments or the Klarna status changed; ensureStorePaymentMethods and mollie's accessToken get no call (no buy fact column).",
+  "price_list_breaks and product_schemes both have store_id (schema lines 17641, 3858): the 'open schema and confirm, else join' choice and its stop_if are gone.",
+  "scripts/{server-budget.json} is now scripts/server-budget.json made_by 1.11, and the two pages with breaks and schemes are spelled out in budget-seed.mjs and server-budget.mjs (made_by 1.11).",
+  "The 'named exceptions list' is KNOWN_READS in 1.12's src/server/shop-journey.int.test.ts, not in ratchet.baseline.json; the brief now edits that test and runs it with UPDATE_BASELINE=1 (named, not 'read the top of the test')."
+ ],
+ "rejected": [],
+ "cheaper": "applied: the after-commit rule with the line for each writer, and 1.11's and 1.12's files named as they will be; the rating stays review because payment and Klarna facts move into the prerendered page's cache.",
+ "executor_before": "cheap-then-review",
+ "executor_after": "cheap-then-review"
+}

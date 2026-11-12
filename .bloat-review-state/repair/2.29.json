@@ -1,0 +1,20 @@
+{
+ "id": "2.29",
+ "fixed": [
+  "Commit 3 created src/components/admin/lazy/editors.tsx, which step 0.10 creates (with RichTextEditor and EntityFieldsCard; the brief thought 0.10 used lazy/fields.tsx): now an edit made_by 0.10 that keeps 0.10's stand-ins and adds three.",
+  "Commit 3's fields-form.tsx and term-page-fields.tsx edits duplicated 0.10's (already pointed at ./lazy/editors): removed.",
+  "Commit 3's eager-lazy-views.ts added a second vi.mock for the same module 0.10 mocks: it now extends 0.10's mock object.",
+  "Commit 4's admin-bundle.scan.test.ts is now an edit made_by 1.4 with what 1.4 leaves and the rule written out with 1.4's rel() names (with .ts) and reach() following static imports only.",
+  "Commit 4's 'fix each other site the same way' became a stop_if (make_it_cheaper).",
+  "Commit 1's 'check drafts/new for DraftEditor' and commit 4's 'add the draft route if a helper exists' are decided from the code (NewDraftForm; no helper)."
+ ],
+ "rejected": [
+  {
+   "problem": "Depends on step 1.4's admin-bundle.scan.test.ts and 1.2's bundle-budget.mjs, whose shapes the brief does not state.",
+   "why": "Fixed for 1.4 (its file is now described); 1.2's scripts/bundle-budget.mjs is only run, with the route and marker figures the brief already gives, and a stop_if covers its absence."
+  }
+ ],
+ "cheaper": "applied: an admin client module beyond the fixed list is a stop, not an open fix, and 0.10's and 1.4's files are named as they will be, so the whole step is cheap.",
+ "executor_before": "cheap-then-review",
+ "executor_after": "cheap"
+}

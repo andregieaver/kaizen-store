@@ -15,7 +15,7 @@
  "depends_on": [
   {
    "id": "1.6",
-   "why": "it puts a launch-theme demo store into the measured set; the nightly job measures that store's pages in production"
+   "why": "it seeds the launch-theme store e2e-orbit in CI and puts it in the measured set; the nightly job measures a production store on a launch theme whose addresses the owner gives"
   },
   {
    "id": "1.3",
@@ -75,7 +75,7 @@
     {
      "file": ".github/workflows/live-perf.yml",
      "action": "create",
-     "how": "Copy .github/workflows/live-a11y.yml and change: name 'Live performance'; schedule cron '41 3 * * *' (night in Europe, outside the busy hours); the same container image, permissions (contents: read) and install steps. Steps after 'pnpm install --frozen-lockfile': (1) uses: actions/cache/restore@v4 with path perf-history.json, key 'perf-history-${{ github.run_id }}' and restore-keys 'perf-history-' (it restores the newest earlier history). (2) run: node scripts/perf.mjs --form=mobile --only=performance --runs=3 --json=perf-tonight.jsonl \"$HOME_URL\" \"$PRODUCT_URL\" \"$LISTING_URL\" https://kaizenaflow.com/ with continue-on-error: true, and env: PLAYWRIGHT_CHROMIUM_PATH set to the Chromium of the image (run 'node -e \"console.log(require(\\'playwright-core\\').chromium.executablePath())\"' in a step before and write it to $GITHUB_ENV), and the three addresses as workflow-level env values: the home, one product page and the All products listing of the launch-theme demo store that step 1.6 chose, in production (https://<its slug>.kaizenstore.site/<market>...; read the slug and the product's handle from step 1.6's section in docs/audits/bloat-review-2026-11.md or its spec). (3) run: node scripts/perf-nightly.mjs perf-tonight.jsonl --min=90 >> \"$GITHUB_STEP_SUMMARY\". (4) if: always(), uses: actions/cache/save@v4 with path perf-history.json and key 'perf-history-${{ github.run_id }}'. (5) if: always(), uses: actions/upload-artifact@v4 with name perf-history and path perf-history.json. Add workflow_dispatch so it can be run by hand. No secret is used: it reads public pages only."
+     "how": "Copy .github/workflows/live-a11y.yml and change: name 'Live performance'; schedule cron '41 3 * * *' (night in Europe, outside the busy hours); the same container image, permissions (contents: read) and install steps. Steps after 'pnpm install --frozen-lockfile': (1) uses: actions/cache/restore@v4 with path perf-history.json, key 'perf-history-${{ github.run_id }}' and restore-keys 'perf-history-' (it restores the newest earlier history). (2) run: node scripts/perf.mjs --form=mobile --only=performance --runs=3 --json=perf-tonight.jsonl \"$HOME_URL\" \"$PRODUCT_URL\" \"$LISTING_URL\" https://kaizenaflow.com/ with continue-on-error: true, and env: PLAYWRIGHT_CHROMIUM_PATH set to the Chromium of the image (run 'node -e \"console.log(require(\\'playwright-core\\').chromium.executablePath())\"' in a step before and write it to $GITHUB_ENV), and the three addresses as workflow-level env values: HOME_URL, PRODUCT_URL and LISTING_URL: the home, one product page and the All products listing of a store on a launch theme in production, exactly as the owner gives them (three full https addresses). Step 1.6 seeds e2e-orbit only in CI's database and chooses no production store, and no production store on a launch theme is named anywhere in the repository, so do not guess or derive them; if the owner has not given them, do not write this file (see stop_if). (3) run: node scripts/perf-nightly.mjs perf-tonight.jsonl --min=90 >> \"$GITHUB_STEP_SUMMARY\". (4) if: always(), uses: actions/cache/save@v4 with path perf-history.json and key 'perf-history-${{ github.run_id }}'. (5) if: always(), uses: actions/upload-artifact@v4 with name perf-history and path perf-history.json. Add workflow_dispatch so it can be run by hand. No secret is used: it reads public pages only."
     },
     {
      "file": "docs/performance.md",
@@ -149,11 +149,16 @@
  ],
  "stop_if": [
   "The run-bytes figure of a page moves by more than 2% between three repeats on the same build: report the three figures; do not widen the 5%.",
-  "Step 1.6's launch-theme demo store is not in production or its slug cannot be found: the nightly job has no store pages to measure; land commit 1 and hand back commit 2.",
+  "Before commit 2: the owner has not given the three production addresses (home, one product, All products) of a store on a launch theme: land commit 1, ask the owner for them, and hand back commit 2; do not use demo.kaizenstore.site or any address you work out yourself.",
   "page.coverage is not available in the project the spec runs in (WebKit): keep the block Chromium-only and say so.",
   "The first manual run of the nightly workflow cannot start Chromium for Lighthouse in the container."
  ],
- "executor": "cheap-then-review",
- "executor_why": "The specs and the workflow are fully specified, but run-bytes stability and a new scheduled workflow against production are worth a stronger model's read before the push.",
- "checked_in_code": "I opened scripts/perf.mjs (one target, forms from --form, --min fails on any of four category scores, Lighthouse 12.8.2 through npx), .github/workflows/live-a11y.yml (the nightly pattern in Playwright's image), e2e/performance.spec.ts (byte budgets from script tags) and the review's measure-routes.mjs (JS coverage, network idle plus 3 s, the PHONE and DESK sizes, and the admin pages by name). Corrections: perf.mjs --min=90 as the step writes it would fail on accessibility or SEO scores too, so the brief adds --only=performance, --runs and --json; the step's 'keeps the figures in a file' cannot be a committed file, because a push to main deploys, so the history is kept in the Actions cache and an artifact; the field figure needs a production setting (stores.visit_counting) that only the owner switches."
+ "executor": "cheap",
+ "executor_why": "No production code changes: a coverage helper, budgets read from a first run, an admin spec, script options, a pure function with unit tests and a nightly workflow that reads public pages with no secret, each described closely, with commit 2 waiting only for three addresses the owner gives.",
+ "checked_in_code": "I opened scripts/perf.mjs (one target, forms from --form, --min fails on any of four category scores, Lighthouse 12.8.2 through npx), .github/workflows/live-a11y.yml (the nightly pattern in Playwright's image), e2e/performance.spec.ts (byte budgets from script tags) and the review's measure-routes.mjs (JS coverage, network idle plus 3 s, the PHONE and DESK sizes, and the admin pages by name). Corrections: perf.mjs --min=90 as the step writes it would fail on accessibility or SEO scores too, so the brief adds --only=performance, --runs and --json; the step's 'keeps the figures in a file' cannot be a committed file, because a push to main deploys, so the history is kept in the Actions cache and an artifact; the field figure needs a production setting (stores.visit_counting) that only the owner switches. Second check (12 November): step 1.6 seeds e2e-orbit only in CI and chooses no production store, and no production store on a launch theme is named in the repository, so the nightly workflow's three addresses are now the owner's to give and a stop_if holds commit 2 until they are.",
+ "cheap_commits": [
+  1,
+  2
+ ],
+ "rating_checked": "cheap-then-review"
 }

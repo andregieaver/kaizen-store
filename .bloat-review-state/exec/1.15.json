@@ -55,7 +55,7 @@
     {
      "file": "src/server/platform-briefing.ts",
      "action": "edit",
-     "how": "In platformSnapshot(), add ownSpeedReport('admin', now) from './own-speed' to the Promise.all and return adminSpeed: report.rows on the snapshot. In alertText(), before the final return, add: if (alert.id === 'admin_slow') return fillWords(w.admin_slow, { kind: adminText(lang, 'capacity').speed.kinds.admin[v.kind as SpeedKind], screen: adminText(lang, 'analytics').speed.screens[v.screen as SpeedScreen], metric: adminText(lang, 'analytics').speed.metrics[v.metric as SpeedMetric].short, value: speedValueText(v.metric as SpeedMetric, Number(v.value), locale) }) with speedValueText from '@/lib/speed'. sendPlatformBriefing() needs no change: it prints every alert."
+     "how": "In platformSnapshot(), add ownSpeedReport('admin', now) from './own-speed' to the Promise.all and return adminSpeed: report.rows on the snapshot. In alertText(), before the final return, add: if (alert.id === 'admin_slow') return fillWords(w.admin_slow, { kind: adminText(lang, 'capacity').speed.kinds.admin[v.kind as SpeedKind], screen: adminText(lang, 'analytics').speed.screens[v.screen as SpeedScreen], metric: adminText(lang, 'analytics').speed.metrics[v.metric as SpeedMetric].short, value: speedValueText(v.metric as SpeedMetric, Number(v.value), locale) }) with speedValueText from '@/lib/speed' (`locale` is already defined at the top of alertText() as ADMIN_LANG_FACTS[lang].locale). sendPlatformBriefing() needs no change: it prints every alert."
     },
     {
      "file": "src/lib/admin-messages/platform.en.ts",
@@ -138,5 +138,10 @@
  ],
  "executor": "cheap",
  "executor_why": "Two small, fully specified changes in pure functions with unit tests that catch a wrong edit; no migration and no money, auth or cache code.",
- "checked_in_code": "I opened src/lib/speed.ts (ownSpeedKind() maps a product's, a page's and an article's editor to 'product'), src/db/schema.ts (commerce.own_speed_samples has the check own_speed_samples_kind with five values), capacity.en.ts and capacity.nb.ts (the admin's label for 'category' is 'Other pages', so the admin never records it) and the briefing's alert list. The step's 'the beacon tells the page builder from the product editor' would need a new kind and a migration if done literally; the brief instead records the builder as the unused kind 'category' with a label of its own, which the table and the type already allow. platformSnapshot() is the one place the briefing's figures are read, so the admin's 28-day rows are added there."
+ "checked_in_code": "I opened src/lib/speed.ts (ownSpeedKind() maps a product's, a page's and an article's editor to 'product'), src/db/schema.ts (commerce.own_speed_samples has the check own_speed_samples_kind with five values), capacity.en.ts and capacity.nb.ts (the admin's label for 'category' is 'Other pages', so the admin never records it) and the briefing's alert list. The step's 'the beacon tells the page builder from the product editor' would need a new kind and a migration if done literally; the brief instead records the builder as the unused kind 'category' with a label of its own, which the table and the type already allow. platformSnapshot() is the one place the briefing's figures are read, so the admin's 28-day rows are added there. Second check (12 November): the reviewer found no problem; I confirmed speed.ts line 182, SpeedRow/speedRow/rateMetric/speedValueText, that alertText() already has `locale`, and that only en and nb message files exist; the brief now says where `locale` comes from.",
+ "rating_checked": "cheap",
+ "cheap_commits": [
+  1,
+  2
+ ]
 }

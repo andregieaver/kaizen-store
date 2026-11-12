@@ -1,0 +1,16 @@
+{
+ "id": "0.40",
+ "fixed": [
+  "scripts/wrap-docs.mjs: the --check mode's three lines are written out exactly; commit 1's check expects 'docs/rules: 156 prose lines over 500', commit 2's check and done_when 2 expect the two zero lines.",
+  "scripts/lib/wrap-docs.mjs: states that today's four long lines indented four spaces are list continuations and no long line starts with '<'; a stop_if covers a new one."
+ ],
+ "rejected": [
+  {
+   "problem": "Indented code blocks and HTML blocks are not treated as code.",
+   "why": "Checked: the only long prose lines indented four or more spaces are list continuations (psi-followups.md 137 and 142, wave-1a-tax.md 216, wave-1b-invoices.md 179) and none starts with '<'; the brief now says so and stops on a new one."
+  }
+ ],
+ "cheaper": "not applied: none offered; the step was already cheap.",
+ "executor_before": "cheap",
+ "executor_after": "cheap"
+}

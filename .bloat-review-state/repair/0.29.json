@@ -1,0 +1,12 @@
+{
+ "id": "0.29",
+ "fixed": [
+  "CANDIDATE uses col.textOrNull and col.bool (they exist in typed-rows.ts) instead of a made-up col.text.nullable() and a 'look up the names' instruction; the stop_if about missing helpers is dropped.",
+  "The knowledge test change is now the plain path src/server/knowledge.int.test.ts with made_by 0.28, says what step 0.28 leaves in it, and a stop_if covers it being absent.",
+  "The hourly rule (getUTCMinutes() < 5) now says, in a comment to write, that an hour with no dispatcher call in minutes 0 to 4 skips the net and why that is accepted (same rule as step 0.28)."
+ ],
+ "rejected": [],
+ "cheaper": "not applied: the reviewer offered none; the migration and the DSA check's queue logic keep the review.",
+ "executor_before": "cheap-then-review",
+ "executor_after": "cheap-then-review"
+}

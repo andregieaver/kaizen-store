@@ -1,0 +1,18 @@
+{
+ "id": "2.41",
+ "fixed": [
+  "The tests section promised a docs-budget case no commit made: commit 1 now edits src/lib/docs-budget.scan.test.ts (made_by 0.43, added to depends_on) with the case written out, and the last check no longer says the push is Markdown only.",
+  "CLAUDE.md and README.md: the sentences are quoted as step 2.40 leaves them ('docs/decisions/migration-versions.md'), not as they read today, so 'replace exactly that sentence' still matches.",
+  "docs/parity/WAVES.md: the edit now works around 2.40's rewrite of item 3 instead of quoting today's text.",
+  "The frozen list file is named docs/decisions/migration-versions.md with made_by 2.40 instead of a glob."
+ ],
+ "rejected": [
+  {
+   "problem": "The check 'rg -c psi-followups.md CLAUDE.md prints 2 or more' depends on step 0.41's tracker line.",
+   "why": "Not real: CLAUDE.md already names psi-followups.md once today (line 444, the PSI audit line), and step 1.1's docs budget requires every tracker to stay named, so with this step's new sentence the count is at least 2 whatever 0.41 did."
+  }
+ ],
+ "cheaper": "not applied: the reviewer gave none; the step is already cheap",
+ "executor_before": "cheap",
+ "executor_after": "cheap"
+}

@@ -1,0 +1,14 @@
+{
+ "id": "0.33",
+ "fixed": [
+  "Store copy: copyToLibrary() in media-library.ts (lines 254-281) is the only copier of library rows (store-copy-media.ts calls it); exact lines added there and the store-copy-media.ts change removed.",
+  "Commit 2's rg check now also requires mediumPath in LibraryFile, libraryFilesByUrl, copyToLibrary, deleteMedia and deleteMediaMany, and an int case covers copyToLibrary copying three files.",
+  "product-import.ts: exact lines for pictureToLibrary(), and the commit-3 check names it, since its call does not match storePicture\\(.",
+  "media.ts, sandbox.ts and ai-picture-marks.ts given their exact edits.",
+  "e2e fixtures: public/demo/e2e/ named (public/demo is already served), with a create entry and the sharp one-liner; stop_if for a cached listing."
+ ],
+ "rejected": [],
+ "cheaper": "partly applied: exact lines for every commit-2/3 file except media-compress.ts and the four server makers (content-packs, ai-pictures, api-uploads, replicate-assets); with those still described, the step stays strong.",
+ "executor_before": "strong",
+ "executor_after": "strong"
+}

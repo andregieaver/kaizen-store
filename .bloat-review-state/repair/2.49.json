@@ -1,0 +1,16 @@
+{
+ "id": "2.49",
+ "fixed": [
+  "Commit 3: the generated module now exists in CI by construction: the script runs from package.json's postinstall (every CI job and Vercel run pnpm install first), predev and scripts/next-build.mjs; the pretest/pretypecheck/prelint scripts, which `pnpm exec` and the gate's test:smoke would skip, are dropped, and a check proves a clean install writes both files.",
+  "Commit 3: the 'minify with lightningcss if it is a dependency' choice is decided (it is not a direct dependency and pnpm does not hoist it: write unminified), and the 'wrap in @layer components as today' instruction is corrected: motion.css already has its own @layer components block, so the file is copied as is after the layer-order line."
+ ],
+ "rejected": [
+  {
+   "problem": "checked_in_code ends with an unfilled placeholder ('the reason for [rating]').",
+   "why": "An artefact of the blanked copy: the brief says 'the reason for 'strong''."
+  }
+ ],
+ "cheaper": "not applied: the table of 33 attributes and their writers' conditions is the step's hard part and cannot be written exactly without the strong model's reading; the step stays strong with commit 1 cheap",
+ "executor_before": "strong",
+ "executor_after": "strong"
+}

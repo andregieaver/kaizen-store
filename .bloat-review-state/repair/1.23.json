@@ -1,0 +1,17 @@
+{
+ "id": "1.23",
+ "fixed": [
+  "postcss is pinned to 8.5.28, the version pnpm-lock.yaml resolves for @tailwindcss/postcss@4.3.3 (the lockfile holds 8.5.23, 8.5.28 and 8.5.32), instead of '8.5.x'.",
+  "reach() is described from step 1.8's brief (a Map whose keys are the files reached; sourceFiles(dir) for the entries), not assumed.",
+  "The budgets row is an edit of docs/rules/budgets.md with made_by 1.1, written in 1.1's four columns, replacing the odd path docs/rules/{budgets.md}."
+ ],
+ "rejected": [
+  {
+   "problem": "The SQL counts header/footer CSS without a publish filter while site-layouts.ts uses published_at is not null, so drafts once published may count.",
+   "why": "Unpublishing sets both published and published_at to null (src/server/pages.ts line 549), so published->>'css' is null for an unpublished layout or page; the sums cannot count a draft."
+  }
+ ],
+ "cheaper": "applied in part: the script exports audienceTable() and the unit test runs it on a planted sheet with known byte counts (classification, media wrapping, unknown class). Not applied: a planted source tree for the walker, which would need the script to take a root folder; commit 1 stays reviewed.",
+ "executor_before": "cheap-then-review",
+ "executor_after": "cheap-then-review"
+}

@@ -1,0 +1,11 @@
+{
+ "id": "0.9",
+ "fixed": [
+  "signed-upload.ts given exact content with two type aliases over the SDK's uploadToSignedUrl parameters; fallback types match all nine callers; any/unknown/casts forbidden with a stop_if.",
+  "Added src/lib/supabase/signed-upload.test.ts (exact content) checking argument order and the returned answer."
+ ],
+ "rejected": [],
+ "cheaper": "not applied in full: the upload test is added, but a SessionKeeper test needs a React renderer the unit tests do not have (no jsdom, tests are .ts) or a refactor of the effect into a testable function, which is a design choice; commit 3 stays reviewed.",
+ "executor_before": "cheap-then-review",
+ "executor_after": "cheap-then-review"
+}

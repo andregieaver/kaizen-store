@@ -1,0 +1,16 @@
+{
+ "id": "4.3",
+ "fixed": [
+  "Commit 3: the walked-file count was checked only with a temporary console.log; each converted scan now keeps a permanent `toBeGreaterThanOrEqual(floor(0.9 * N))` guard on its file list.",
+  "Commit 3: src/test/test-setup.scan.test.ts was promised in tests (server-only mocks, no-op next/cache mocks, readdirSync allow-list) but no commit created it; commit 3 now creates it with its three rules and would-notice cases."
+ ],
+ "rejected": [
+  {
+   "problem": "Commit 4's list comes from step 1.17's src/server/unused.baseline.json, which does not exist yet; its size and the 100 to 130 kept are estimates.",
+   "why": "Already handled: depends_on names 1.17, a stop_if stops when the baseline is missing, and done_when says to report the count and the commonest reasons when the kept number falls outside 100 to 130."
+  }
+ ],
+ "cheaper": "applied in part: commit 3's file-count check is now permanent; commit 4's classified list cannot be written until step 1.17's baseline exists, so the step stays strong with commits 1 and 2 cheap",
+ "executor_before": "strong",
+ "executor_after": "strong"
+}

@@ -1,129 +1,140 @@
 {
-  "id": "3.16",
-  "goal": "The account's order page and the order confirmation draw an order's totals with one OrderTotals part, checkout draws its delivery rows from the same file, and the two product-card reads in catalog.ts share one column list, one price join and one row mapper.",
-  "why": "The totals list is the same 70 lines of JSX in two order pages (988 lines together) and its delivery rows a third time in checkout; the product-card SELECT is typed twice in catalog.ts (67 identical lines). After: the two order page files total under 900 lines and src/server/catalog.ts is under 700 (750 today).",
-  "read_first": [
-    "docs/rules/storefront.md",
-    "docs/pci.md",
-    "src/app/s/[store]/[market]/account/orders/[orderId]/page.tsx",
-    "src/app/s/[store]/[market]/order/[orderId]/order-section.tsx",
-    "src/app/s/[store]/[market]/checkout/checkout-section.tsx",
-    "src/components/order-vat.tsx",
-    "src/server/catalog.ts",
-    "src/lib/pay-routes.graph.test.ts"
-  ],
-  "depends_on": [],
-  "commits": [
+ "id": "3.16",
+ "goal": "The account's order page and the order confirmation draw an order's totals with one OrderTotals part, checkout draws its delivery rows from the same file, and the two product-card reads in catalog.ts share one column list, one price join and one row mapper.",
+ "why": "The totals list is the same 70 lines of JSX in two order pages (988 lines together) and its delivery rows a third time in checkout; the product-card SELECT is typed twice in catalog.ts (67 identical lines). After: the two order page files total under 900 lines and src/server/catalog.ts is under 700 (750 today).",
+ "read_first": [
+  "docs/rules/storefront.md",
+  "docs/pci.md",
+  "src/app/s/[store]/[market]/(shop)/account/orders/[orderId]/page.tsx (at this path once step 2.2 has moved the storefront routes)",
+  "src/app/s/[store]/[market]/(shop)/order/[orderId]/order-section.tsx (at this path once step 2.2 has moved the storefront routes)",
+  "src/app/s/[store]/[market]/(shop)/checkout/checkout-section.tsx (at this path once step 2.2 has moved the storefront routes)",
+  "src/components/order-vat.tsx",
+  "src/server/catalog.ts",
+  "src/lib/pay-routes.graph.test.ts"
+ ],
+ "depends_on": [
+  {
+   "id": "2.2",
+   "why": "it moves the storefront routes, the order, account order and checkout files among them, into src/app/s/[store]/[market]/(shop)/; this step edits them there"
+  }
+ ],
+ "commits": [
+  {
+   "title": "An order's totals are drawn by one part on the two order pages",
+   "changes": [
     {
-      "title": "An order's totals are drawn by one part on the two order pages",
-      "changes": [
-        {
-          "file": "src/components/order-totals.tsx",
-          "action": "create",
-          "how": "A server component file (no \"use client\"), beside order-vat.tsx and order-customs.tsx. It imports only what the two pages already import for these rows: OrderVatNotes, OrderVatRelief, OrderVatRows from \"./order-vat\"; OrderCustomsNote, OrderCustomsRows from \"./order-customs\"; StaffDiscountRow from \"./staff-discount-row\"; discountNote from @/lib/customer-tiers; pickupPointLine from @/lib/delivery-options; deliveryRowLabel from @/lib/delivery-words; formatWindow from @/lib/porterbuddy; vatText from @/lib/vat-text. Export two parts. (1) `OrderDeliveryRows({ order, m, timeZone, amount })`: the three delivery rows exactly as order-section.tsx lines 361 to 372 draw them (the row with deliveryRowLabel(order.deliveryKept ?? order.delivery, m) and `amount`, then the pickup point line, then the window line, each only when order.ships); `amount` is a ReactNode the caller passes (the order pages pass `order.shippingMinor === 0 ? m.freeShipping : money(order.shippingMinor)`). (2) `OrderTotals({ order, m, lang, timeZone, money, className, balanceAtVenue, refundedLabel })`: returns a fragment of `<dl className={className ?? \"flex flex-col gap-1\"}>`, then <OrderVatNotes> and <OrderCustomsNote> after the dl, exactly as totalsList() in order-section.tsx lines 356 to 432 does, in this row order: OrderDeliveryRows, the discount row with discountNote(order), StaffDiscountRow, the referral row (m.affiliate.discountRow), the bonus row (m.bonus.usedRow), OrderVatRelief, the total row (font-semibold, m.total), OrderVatRows (label m.vatAmount), OrderCustomsRows (paidLabel m.toPay), the balance row (m.booking.atVenue) only when `balanceAtVenue` is true and order.balanceMinor > 0, the company rows (m.totalExclVat with order.totalMinor - order.taxMinor, then the company's name and number), and last, only when `refundedLabel` is given and order.refundedMinor > 0, the refunded row (`−{money(order.refundedMinor)}`, class `flex justify-between text-sm`). Type the `order` prop as the intersection of the `order` prop types of the parts it calls plus the fields it reads itself (ships, shippingMinor, delivery, deliveryKept, locale, discountMinor, referralDiscountMinor, bonus, totalMinor, taxMinor, balanceMinor, company, refundedMinor?): write it as an exported type `TotalsOrder` built with Pick<> from the shopper order type that getShopperOrder() of src/server/orders.ts returns; `m` is the messages type the pages pass (ReturnType of t() from @/lib/i18n). Every amount goes through the `money` function the page passes; no arithmetic is added."
-        },
-        {
-          "file": "src/app/s/[store]/[market]/order/[orderId]/order-section.tsx",
-          "action": "edit",
-          "how": "Replace the body of totalsList() (line 356) by `return <OrderTotals order={order} m={m} lang={market.lang} timeZone={store.timeZone} money={money} balanceAtVenue={!order.paymentTerms} />;` and remove the imports that are then unused in this file. Its two call sites (lines 117 and 204) stay."
-        },
-        {
-          "file": "src/app/s/[store]/[market]/account/orders/[orderId]/page.tsx",
-          "action": "edit",
-          "how": "Replace the <dl className=\"mt-3 flex flex-col gap-1 border-t border-border pt-3\"> block and the two notes after it (lines 180 to 252: from the <dl> to <OrderCustomsNote />) by `<OrderTotals order={order} m={m} lang={market.lang} timeZone={store.timeZone} money={money} className=\"mt-3 flex flex-col gap-1 border-t border-border pt-3\" balanceAtVenue refundedLabel={a.refunded} />`. The GiftNote above and the `earned` paragraph below stay in the page. Remove the imports left unused. If this page's `order` (from getOrderAdmin of src/server/order-admin.ts) is not assignable to TotalsOrder, widen TotalsOrder to the fields both orders have; do not cast."
-        },
-        {
-          "file": "src/app/s/[store]/[market]/checkout/checkout-section.tsx",
-          "action": "edit",
-          "how": "In totalsList() (line 284) replace only the three delivery rows (the `order.ships &&` blocks, lines 330 to 341) by `<OrderDeliveryRows order={order} m={m} timeZone={view.timeZone} amount={order.shippingMinor === 0 ? m.freeShipping : net(order.shippingMinor, order.shippingVatRate)} />`. Everything else in checkout's totals stays as written: it shows net amounts to a business, the amount to pay and gift cards, which the order pages do not."
-        }
-      ],
-      "checks": [
-        "pnpm exec vitest run 'src/app/s/[store]/[market]/order/[orderId]/order-section.test.ts' 'src/app/s/[store]/[market]/checkout/checkout-section.test.ts' src/lib/pay-routes.graph.test.ts src/lib/storefront-bundle.scan.test.ts : exits 0 with no test edited",
-        "wc -l 'src/app/s/[store]/[market]/account/orders/[orderId]/page.tsx' 'src/app/s/[store]/[market]/order/[orderId]/order-section.tsx' : the total is under 900",
-        "pnpm lint && pnpm typecheck && pnpm test : exits 0",
-        "pnpm build && pnpm test:e2e e2e/cart.spec.ts e2e/payment-terms.spec.ts e2e/vat-reverse-charge.spec.ts e2e/pickup.spec.ts e2e/preorder.spec.ts e2e/csp.spec.ts : exits 0 with no spec edited",
-        "E2E_SIGNED_IN=1 pnpm test:e2e e2e/signed-in/customs.spec.ts e2e/signed-in/checkout-branding.spec.ts (in a build made for the Auth stand-in, as CLAUDE.md says) : exits 0"
-      ]
+     "file": "src/components/order-totals.tsx",
+     "action": "create",
+     "how": "A server component file (no \"use client\"), beside order-vat.tsx and order-customs.tsx. It imports only what the two pages already import for these rows: OrderVatNotes, OrderVatRelief, OrderVatRows from \"./order-vat\"; OrderCustomsNote, OrderCustomsRows from \"./order-customs\"; StaffDiscountRow from \"./staff-discount-row\"; discountNote from @/lib/customer-tiers; pickupPointLine from @/lib/delivery-options; deliveryRowLabel from @/lib/delivery-words; formatWindow from @/lib/porterbuddy; vatText from @/lib/vat-text. Export two parts. (1) `OrderDeliveryRows({ order, m, timeZone, amount })`: the three delivery rows exactly as order-section.tsx lines 361 to 372 draw them (the row with deliveryRowLabel(order.deliveryKept ?? order.delivery, m) and `amount`, then the pickup point line, then the window line, each only when order.ships); `amount` is a ReactNode the caller passes (the order pages pass `order.shippingMinor === 0 ? m.freeShipping : money(order.shippingMinor)`). (2) `OrderTotals({ order, m, lang, timeZone, money, className, balanceAtVenue, refundedLabel })`: returns a fragment of `<dl className={className ?? \"flex flex-col gap-1\"}>`, then <OrderVatNotes> and <OrderCustomsNote> after the dl, exactly as totalsList() in order-section.tsx lines 356 to 432 does, in this row order: OrderDeliveryRows, the discount row with discountNote(order), StaffDiscountRow, the referral row (m.affiliate.discountRow), the bonus row (m.bonus.usedRow), OrderVatRelief, the total row (font-semibold, m.total), OrderVatRows (label m.vatAmount), OrderCustomsRows (paidLabel m.toPay), the balance row (m.booking.atVenue) only when `balanceAtVenue` is true and order.balanceMinor > 0, the company rows (m.totalExclVat with order.totalMinor - order.taxMinor, then the company's name and number), and last, only when `refundedLabel` is given and order.refundedMinor > 0, the refunded row (`−{money(order.refundedMinor)}`, class `flex justify-between text-sm`). Type the `order` prop as the intersection of the `order` prop types of the parts it calls plus the fields it reads itself (ships, shippingMinor, delivery, deliveryKept, locale, discountMinor, referralDiscountMinor, bonus, totalMinor, taxMinor, balanceMinor, company, refundedMinor?): write it as an exported type `TotalsOrder` built with Pick<> from the shopper order type that getShopperOrder() of src/server/orders.ts returns; `m` is the messages type the pages pass (ReturnType of t() from @/lib/i18n). Every amount goes through the `money` function the page passes; no arithmetic is added."
     },
     {
-      "title": "One product-card query in the catalogue",
-      "changes": [
-        {
-          "file": "src/server/catalog.ts",
-          "action": "edit",
-          "how": "listProducts() (line 284) and listGridProducts() (line 638) type the same SELECT. Add three module-level helpers above listProducts, and use them in both. (1) `const cardColumns = (locale: string, marketCode: string) => sql`...`` holding the columns both selects share, copied character for character from listProducts lines 294 to 313: from `p.id,` to `commerce.vat_rate(${marketCode}, p.vat_category) as vat_rate` (id, handle, group_id, title, the four image columns, the five price columns with preorder_until, subscriber_discount, audience, price_words, price_on_request, store_audience, vat_rate). listGridProducts adds its two own columns after it: `${cardColumns(locale, marketCode)}, coalesce(nullif(tl.description, ''), tf.description, '') as description, coalesce(nullif(tl.excerpt, ''), tf.excerpt, '') as excerpt`. (2) `const cardJoins = (marketCode: string) => sql`...`` holding the media lateral join (`left join lateral (select url, thumbnail_url, alt from commerce.product_media ...) m on true`) and the price lateral join (`join lateral (select min(cp.amount_minor) ... ) pr on pr.min_amount is not null`), copied from lines 320 to 335. The two translation joins stay in each function: the grid's tf also selects description and excerpt. (3) `function cardOf(row, market, groups)` returning the object listProducts builds at lines 345 to 365 (group, id, handle, title, image, price, priceVaries, audience, preorderUntil, priceOnRequest); listProducts returns rows.map((row) => cardOf(row, market, groups)) and listGridProducts returns rows.map((row) => ({ ...cardOf(row, market, groups), description: str(row.description), excerpt: str(row.excerpt) })). Keep in both functions, untouched: the \"use cache\" line, cacheLife, cacheTag, typedRows(SUMMARY_ROW, ..., readDb()), the where clause, the order by and the limit. The SQL each function sends must be the same as today apart from white space and the order of the two extra columns."
-        }
-      ],
-      "checks": [
-        "wc -l src/server/catalog.ts : under 700",
-        "pnpm exec vitest run src/server/money-reads.scan.test.ts src/server/price-readers.scan.test.ts src/server/selling-readers.scan.test.ts src/server/ratchet.scan.test.ts : exits 0",
-        "pnpm lint && pnpm typecheck && pnpm test : exits 0",
-        "pnpm test:int src/server/collections.int.test.ts src/server/product-groups.int.test.ts src/server/product-media.int.test.ts src/server/unit-price.int.test.ts src/server/variants-scale.int.test.ts src/server/store-features-selling.int.test.ts : exits 0 with no test edited (if a file of this list does not exist, run rg -l 'listGridProducts|listProducts' src --glob '*.int.test.ts' and run those)",
-        "pnpm build && pnpm test:e2e e2e/store-pages.spec.ts e2e/unit-price.spec.ts : exits 0"
-      ]
+     "file": "src/app/s/[store]/[market]/(shop)/order/[orderId]/order-section.tsx",
+     "action": "edit",
+     "how": "Step 2.2 moves this file here from the same path without `(shop)/` (git mv, content unchanged). Replace the body of totalsList() (line 356) by `return <OrderTotals order={order} m={m} lang={market.lang} timeZone={store.timeZone} money={money} balanceAtVenue={!order.paymentTerms} />;` and remove the imports that are then unused in this file. Its two call sites (lines 117 and 204) stay.",
+     "made_by": "2.2"
+    },
+    {
+     "file": "src/app/s/[store]/[market]/(shop)/account/orders/[orderId]/page.tsx",
+     "action": "edit",
+     "how": "Step 2.2 moves this file here from the same path without `(shop)/` (git mv, content unchanged). Replace the <dl className=\"mt-3 flex flex-col gap-1 border-t border-border pt-3\"> block and the two notes after it (lines 180 to 252: from the <dl> to <OrderCustomsNote />) by `<OrderTotals order={order} m={m} lang={market.lang} timeZone={store.timeZone} money={money} className=\"mt-3 flex flex-col gap-1 border-t border-border pt-3\" balanceAtVenue refundedLabel={a.refunded} />`. The GiftNote above and the `earned` paragraph below stay in the page. Remove the imports left unused. If this page's `order` (from getOrderAdmin of src/server/order-admin.ts) is not assignable to TotalsOrder, widen TotalsOrder to the fields both orders have; do not cast.",
+     "made_by": "2.2"
+    },
+    {
+     "file": "src/app/s/[store]/[market]/(shop)/checkout/checkout-section.tsx",
+     "action": "edit",
+     "how": "Step 2.2 moves this file here from the same path without `(shop)/` (git mv, content unchanged). In totalsList() (line 284) replace only the three delivery rows (the `order.ships &&` blocks, lines 330 to 341) by `<OrderDeliveryRows order={order} m={m} timeZone={view.timeZone} amount={order.shippingMinor === 0 ? m.freeShipping : net(order.shippingMinor, order.shippingVatRate)} />`. Everything else in checkout's totals stays as written: it shows net amounts to a business, the amount to pay and gift cards, which the order pages do not.",
+     "made_by": "2.2"
     }
-  ],
-  "tests": [
-    {
-      "file": "src/app/s/[store]/[market]/order/[orderId]/order-section.test.ts",
-      "proves": "Unchanged: it reads the totals' words for bonus credits, the welcome discount and reverse charge; a row lost or reordered in OrderTotals fails it."
-    },
-    {
-      "file": "src/components/order-totals.test.ts",
-      "proves": "New, small: renders OrderTotals to static markup for one order with shipping, a discount, a staff discount, a referral discount, bonus used, a company and a refund, and asserts the order of the row labels and that the refunded and at-venue rows appear only with refundedLabel and balanceAtVenue. Write it in the first commit, with the same render helper order-section.test.ts uses."
-    },
-    {
-      "file": "src/lib/copies.scan.test.ts",
-      "proves": "Fails if the totals JSX or the card SELECT is pasted again (exact copies across and inside files may not rise); run node scripts/copies.mjs --write after this step if step 1.17 is done."
-    }
-  ],
-  "migration": {
-    "needed": false,
-    "notes": ""
+   ],
+   "checks": [
+    "pnpm exec vitest run 'src/app/s/[store]/[market]/(shop)/order/[orderId]/order-section.test.ts' 'src/app/s/[store]/[market]/(shop)/checkout/checkout-section.test.ts' src/lib/pay-routes.graph.test.ts src/lib/storefront-bundle.scan.test.ts : exits 0 with no test edited",
+    "wc -l 'src/app/s/[store]/[market]/(shop)/account/orders/[orderId]/page.tsx' 'src/app/s/[store]/[market]/(shop)/order/[orderId]/order-section.tsx' : the total is under 900",
+    "pnpm lint && pnpm typecheck && pnpm test : exits 0",
+    "pnpm build && pnpm test:e2e e2e/cart.spec.ts e2e/payment-terms.spec.ts e2e/vat-reverse-charge.spec.ts e2e/pickup.spec.ts e2e/preorder.spec.ts e2e/csp.spec.ts : exits 0 with no spec edited",
+    "E2E_SIGNED_IN=1 pnpm test:e2e e2e/signed-in/customs.spec.ts e2e/signed-in/checkout-branding.spec.ts (in a build made for the Auth stand-in, as CLAUDE.md says) : exits 0"
+   ]
   },
-  "done_when": [
+  {
+   "title": "One product-card query in the catalogue",
+   "changes": [
     {
-      "check": "wc -l 'src/app/s/[store]/[market]/account/orders/[orderId]/page.tsx' 'src/app/s/[store]/[market]/order/[orderId]/order-section.tsx' | tail -1",
-      "expect": "under 900 (988 on 12 November 2026)"
-    },
-    {
-      "check": "rg -c '<OrderTotals' 'src/app/s/[store]/[market]/account/orders/[orderId]/page.tsx' 'src/app/s/[store]/[market]/order/[orderId]/order-section.tsx'; rg -c '<OrderDeliveryRows' 'src/app/s/[store]/[market]/checkout/checkout-section.tsx'",
-      "expect": "1 for each of the three files"
-    },
-    {
-      "check": "rg -c 'commerce.vat_rate[(]' src/server/catalog.ts and wc -l src/server/catalog.ts",
-      "expect": "the card's vat_rate column is written once fewer than before, and the file is under 700 lines"
-    },
-    {
-      "check": "pnpm build && pnpm test:e2e e2e/cart.spec.ts e2e/payment-terms.spec.ts e2e/vat-reverse-charge.spec.ts e2e/pickup.spec.ts; git diff --stat e2e",
-      "expect": "exits 0 and no spec file changed"
+     "file": "src/server/catalog.ts",
+     "action": "edit",
+     "how": "listProducts() (line 284) and listGridProducts() (line 638) type the same SELECT. Add three module-level helpers above listProducts, and use them in both. (1) `const cardColumns = (locale: string, marketCode: string) => sql`...`` holding the columns both selects share, copied character for character from listProducts lines 294 to 313: from `p.id,` to `commerce.vat_rate(${marketCode}, p.vat_category) as vat_rate` (id, handle, group_id, title, the four image columns, the five price columns with preorder_until, subscriber_discount, audience, price_words, price_on_request, store_audience, vat_rate). listGridProducts adds its two own columns after it: `${cardColumns(locale, marketCode)}, coalesce(nullif(tl.description, ''), tf.description, '') as description, coalesce(nullif(tl.excerpt, ''), tf.excerpt, '') as excerpt`. (2) `const cardJoins = (marketCode: string) => sql`...`` holding the media lateral join (`left join lateral (select url, thumbnail_url, alt from commerce.product_media ...) m on true`) and the price lateral join (`join lateral (select min(cp.amount_minor) ... ) pr on pr.min_amount is not null`), copied from lines 320 to 335. The two translation joins stay in each function: the grid's tf also selects description and excerpt. (3) `function cardOf(row, market, groups)` returning the object listProducts builds at lines 345 to 365 (group, id, handle, title, image, price, priceVaries, audience, preorderUntil, priceOnRequest); listProducts returns rows.map((row) => cardOf(row, market, groups)) and listGridProducts returns rows.map((row) => ({ ...cardOf(row, market, groups), description: str(row.description), excerpt: str(row.excerpt) })). Keep in both functions, untouched: the \"use cache\" line, cacheLife, cacheTag, typedRows(SUMMARY_ROW, ..., readDb()), the where clause, the order by and the limit. The SQL each function sends must be the same as today apart from white space and the order of the two extra columns."
     }
-  ],
-  "after_deploy": [
-    "In the demo store place one order with a discount code and shipping, and open three screens: checkout before paying, the confirmation page, and My account → the order. Each total, each row label and their order are the same as on a screenshot taken before the change; send the before and after pairs to the owner."
-  ],
-  "docs": [
-    "docs/decisions.md: one new D-number row: OrderTotals (src/components/order-totals.tsx) draws the totals of the confirmation and the account's order page, checkout shares its delivery rows only and keeps its own sums (net for a business, to pay, gift cards), the pay page is left as it is, and catalog.ts has one card column list and mapper. Say it is store-only: Kaizena Flow sells plans through Stripe and draws no order totals.",
-    "docs/audits/code-review-2026-11.md: in the Progress table, step 3.11's row: note that the card query part is done (the file splits of that step stay open), with a change-log line.",
-    "docs/audits/bloat-review-2026-11.md, Progress table: set step 3.16 to Done with the date and the commit."
-  ],
-  "do_not": [
-    "Do not change a sum, a sign, a label or the order of rows. This step moves JSX; it computes nothing new.",
-    "Do not fold checkout's totalsList() into OrderTotals: it shows net amounts, the amount to pay and gift cards.",
-    "Do not touch src/app/s/[store]/[market]/account/pay/[token]/pay-view.tsx: it is a pay route with its own allowed imports, and its rows use other classes.",
-    "Do not import anything into order-totals.tsx that the three pages do not already import (the consent banner, the chat widget, owner code): src/lib/pay-routes.graph.test.ts fails on it.",
-    "Do not remove \"use cache\", cacheLife or cacheTag from the two catalogue functions, and do not move the reads off typedRows() or readDb().",
-    "Do not replace `coalesce(tl.title, tf.title)` by a version with the handle here.",
-    "Do not edit a test or a spec to make it pass."
-  ],
-  "stop_if": [
-    "The account page's order type and the shopper's order type cannot both satisfy TotalsOrder without a cast.",
-    "order-section.test.ts, checkout-section.test.ts or any checkout or order e2e spec fails.",
-    "A row exists on one order page that the brief did not name (the pages changed since 12 November 2026): report the difference instead of choosing.",
-    "The two order page files do not get under 900 lines with this change alone: report the total; do not cut anything else from them."
-  ],
-  "executor": "cheap-then-review",
-  "executor_why": "It is a move of JSX and SQL text that the section tests and e2e specs hold, but these are the sums a shopper pays by, so a stronger model reads the diff and the before and after screenshots before the push.",
-  "checked_in_code": "I opened the two order pages (327 and 661 lines), checkout-section.tsx, pay-view.tsx, order-vat.tsx, staff-discount-row.tsx and catalog.ts (750 lines). The two order pages' totals match row for row except three things the brief turns into props: the account page has a refunded row and border classes, and the confirmation hides the at-venue row when the order has payment terms. Correction: the step says one OrderTotals serves checkout too, but checkout's totalsList() computes net amounts for a business, a to-pay row and gift cards; only its three delivery rows are the same, so checkout takes OrderDeliveryRows from the same file and keeps its own sums. The finding's pay-view.tsx fold is left out (a pay route, other classes). In catalog.ts the two functions differ in the tf join (the grid also reads description and excerpt), so the shared fragment is the column list, the media and price joins and the mapper, not the whole SELECT."
+   ],
+   "checks": [
+    "wc -l src/server/catalog.ts : under 700",
+    "pnpm exec vitest run src/server/money-reads.scan.test.ts src/server/price-readers.scan.test.ts src/server/selling-readers.scan.test.ts src/server/ratchet.scan.test.ts : exits 0",
+    "pnpm lint && pnpm typecheck && pnpm test : exits 0",
+    "pnpm test:int src/server/collections.int.test.ts src/server/product-groups.int.test.ts src/server/product-media.int.test.ts src/server/unit-price.int.test.ts src/server/variants-scale.int.test.ts src/server/store-features-selling.int.test.ts : exits 0 with no test edited (if a file of this list does not exist, run rg -l 'listGridProducts|listProducts' src --glob '*.int.test.ts' and run those)",
+    "pnpm build && pnpm test:e2e e2e/store-pages.spec.ts e2e/unit-price.spec.ts : exits 0"
+   ]
+  }
+ ],
+ "tests": [
+  {
+   "file": "src/app/s/[store]/[market]/(shop)/order/[orderId]/order-section.test.ts",
+   "proves": "Unchanged: it reads the totals' words for bonus credits, the welcome discount and reverse charge; a row lost or reordered in OrderTotals fails it."
+  },
+  {
+   "file": "src/components/order-totals.test.ts",
+   "proves": "New, small: renders OrderTotals to static markup for one order with shipping, a discount, a staff discount, a referral discount, bonus used, a company and a refund, and asserts the order of the row labels and that the refunded and at-venue rows appear only with refundedLabel and balanceAtVenue. Write it in the first commit, with the same render helper order-section.test.ts uses."
+  },
+  {
+   "file": "src/lib/copies.scan.test.ts",
+   "proves": "Fails if the totals JSX or the card SELECT is pasted again (exact copies across and inside files may not rise); run node scripts/copies.mjs --write after this step if step 1.17 is done."
+  }
+ ],
+ "migration": {
+  "needed": false,
+  "notes": ""
+ },
+ "done_when": [
+  {
+   "check": "wc -l 'src/app/s/[store]/[market]/(shop)/account/orders/[orderId]/page.tsx' 'src/app/s/[store]/[market]/(shop)/order/[orderId]/order-section.tsx' | tail -1",
+   "expect": "under 900 (988 on 12 November 2026)"
+  },
+  {
+   "check": "rg -c '<OrderTotals' 'src/app/s/[store]/[market]/(shop)/account/orders/[orderId]/page.tsx' 'src/app/s/[store]/[market]/(shop)/order/[orderId]/order-section.tsx'; rg -c '<OrderDeliveryRows' 'src/app/s/[store]/[market]/(shop)/checkout/checkout-section.tsx'",
+   "expect": "1 for each of the three files"
+  },
+  {
+   "check": "rg -c 'commerce.vat_rate[(]' src/server/catalog.ts and wc -l src/server/catalog.ts",
+   "expect": "the card's vat_rate column is written once fewer than before, and the file is under 700 lines"
+  },
+  {
+   "check": "pnpm build && pnpm test:e2e e2e/cart.spec.ts e2e/payment-terms.spec.ts e2e/vat-reverse-charge.spec.ts e2e/pickup.spec.ts; git diff --stat e2e",
+   "expect": "exits 0 and no spec file changed"
+  }
+ ],
+ "after_deploy": [
+  "In the demo store place one order with a discount code and shipping, and open three screens: checkout before paying, the confirmation page, and My account → the order. Each total, each row label and their order are the same as on a screenshot taken before the change; send the before and after pairs to the owner."
+ ],
+ "docs": [
+  "docs/decisions.md: one new D-number row: OrderTotals (src/components/order-totals.tsx) draws the totals of the confirmation and the account's order page, checkout shares its delivery rows only and keeps its own sums (net for a business, to pay, gift cards), the pay page is left as it is, and catalog.ts has one card column list and mapper. Say it is store-only: Kaizena Flow sells plans through Stripe and draws no order totals.",
+  "docs/audits/code-review-2026-11.md: in the Progress table, step 3.11's row: note that the card query part is done (the file splits of that step stay open), with a change-log line.",
+  "docs/audits/bloat-review-2026-11.md, Progress table: set step 3.16 to Done with the date and the commit."
+ ],
+ "do_not": [
+  "Do not change a sum, a sign, a label or the order of rows. This step moves JSX; it computes nothing new.",
+  "Do not fold checkout's totalsList() into OrderTotals: it shows net amounts, the amount to pay and gift cards.",
+  "Do not touch src/app/s/[store]/[market]/(shop)/account/pay/[token]/pay-view.tsx: it is a pay route with its own allowed imports, and its rows use other classes.",
+  "Do not import anything into order-totals.tsx that the three pages do not already import (the consent banner, the chat widget, owner code): src/lib/pay-routes.graph.test.ts fails on it.",
+  "Do not remove \"use cache\", cacheLife or cacheTag from the two catalogue functions, and do not move the reads off typedRows() or readDb().",
+  "Do not replace `coalesce(tl.title, tf.title)` by a version with the handle here.",
+  "Do not edit a test or a spec to make it pass."
+ ],
+ "stop_if": [
+  "The account page's order type and the shopper's order type cannot both satisfy TotalsOrder without a cast.",
+  "order-section.test.ts, checkout-section.test.ts or any checkout or order e2e spec fails.",
+  "A row exists on one order page that the brief did not name (the pages changed since 12 November 2026): report the difference instead of choosing.",
+  "The two order page files do not get under 900 lines with this change alone: report the total; do not cut anything else from them.",
+  "src/app/s/[store]/[market]/(shop)/order/[orderId]/order-section.tsx does not exist: step 2.2 has not moved the storefront routes; stop."
+ ],
+ "executor": "cheap-then-review",
+ "executor_why": "Every row, prop and line is named, but these are a shopper's order totals, checkout's delivery rows and the cached price read of every listing, and a dropped conditional row or a slip in the price join can pass the unit tests and specs, which do not draw every combination, so a stronger model reads each commit before the push.",
+ "checked_in_code": "I opened the two order pages (327 and 661 lines), checkout-section.tsx, pay-view.tsx, order-vat.tsx, staff-discount-row.tsx and catalog.ts (750 lines). The two order pages' totals match row for row except three things the brief turns into props: the account page has a refunded row and border classes, and the confirmation hides the at-venue row when the order has payment terms. Correction: the step says one OrderTotals serves checkout too, but checkout's totalsList() computes net amounts for a business, a to-pay row and gift cards; only its three delivery rows are the same, so checkout takes OrderDeliveryRows from the same file and keeps its own sums. The finding's pay-view.tsx fold is left out (a pay route, other classes). In catalog.ts the two functions differ in the tf join (the grid also reads description and excerpt), so the shared fragment is the column list, the media and price joins and the mapper, not the whole SELECT. Second check (12 November): every storefront path (order-section, the account order page, checkout-section, the pay view) now names step 2.2's (shop)/ folder, with made_by 2.2, depends_on 2.2 and a stop_if when the folder is missing, so the edits, checks and done-when commands find the files.",
+ "cheap_commits": [],
+ "rating_checked": "cheap-then-review"
 }

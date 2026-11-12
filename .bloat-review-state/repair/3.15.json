@@ -1,0 +1,11 @@
+{
+ "id": "3.15",
+ "fixed": [
+  "Commit 1: the claim that the pattern keeps z.uuid()'s answers is corrected: it also accepts same-shaped strings without RFC version/variant digits; the brief says why that is harmless (::uuid cast) and to stop if a test expects a refusal.",
+  "Commit 2: staff-alerts.ts's countryName change was described twice with different wording; it is now one entry with the exact replacement of each of its three calls."
+ ],
+ "rejected": [],
+ "cheaper": "not applied: splitting commits 3 to 5 into separate steps with file:line lists is outside this brief (it would add steps to the plan)",
+ "executor_before": "cheap-then-review",
+ "executor_after": "cheap-then-review"
+}

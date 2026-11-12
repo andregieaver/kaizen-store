@@ -1,0 +1,12 @@
+{
+ "id": "2.31",
+ "fixed": [
+  "auth-client.ts imports publicEnv from '@/lib/public-env', not '@/lib/env' (which carries zod); the test asserts it.",
+  "Commit 2 rewritten against step 0.9: the nine files already use uploadToSignedUrl() (dynamic import), so the new rule starts with SUPABASE_STATIC = [] and no file is converted; admin-bundle.scan.test.ts is now an edit with made_by 1.4 (added to depends_on).",
+  "AuthClient options listed exactly as supabase-js 2.118.0's _initSupabaseAuthClient passes them for createBrowserClient (adds hasCustomAuthorizationHeader: false; lock/fetch/debug etc. left unset), with a version check on supabase-js too."
+ ],
+ "rejected": [],
+ "cheaper": "partly applied: public-env import and commit 2 rewritten (commit 2 is now cheap); not applied: a fake-timer refresh test that reads the refreshed cookie with createServerClient, which needs a mocked auth server and is a test design of its own; commit 1 stays reviewed as sign-in code.",
+ "executor_before": "cheap-then-review",
+ "executor_after": "cheap-then-review"
+}

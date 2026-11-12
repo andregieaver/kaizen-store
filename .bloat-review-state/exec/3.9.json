@@ -50,11 +50,16 @@
         {
           "file": "docs/platform-parity-plan.md",
           "action": "edit",
-          "how": "This commit is the parity plan's 'still to do at the switch'. First, outside the repo, run `node scripts/site-compare.mjs https://kaizenaflow.com > before.json` and keep before.json outside the repository (it is the 'copy taken before'; every later commit of this step is compared with it). Then find how the site copy treats media: read src/server/house-site.ts and the SQL function it calls. If the store's library already holds a row for every file the store's pages use (the copy made rows for the same files), no data moves and this commit only records that in the plan's step 5 paragraph ('Still to do at the switch: the media library's rows move to the store') with the query that proves it: every storage URL in the store's pages, layouts and menus has a commerce.media row with the store's id. If rows are missing, write a custom migration that inserts a commerce.media row for the house store (commerce.house_store()) for each null-store media row whose url the store's content uses and that the store lacks (insert ... select ... where not exists; the same file, no copy of bytes; no delete, no update of the null rows). Say which of the two happened in the decision row."
+          "how": "This commit is the parity plan's 'still to do at the switch'. First run `node scripts/site-compare.mjs https://kaizenaflow.com > docs/audits/bloat-review-2026-11/site-before.json` and commit that file with this commit (it is the 'copy taken before': the live site's public addresses with their status, redirect, canonical and hreflang, nothing private; later commits of this step, possibly in fresh sessions, compare with it, so it must be in the repository, and a push of docs/** alone deploys nothing). Then find how the site copy treats media: read src/server/house-site.ts and the SQL function it calls. If the store's library already holds a row for every file the store's pages use (the copy made rows for the same files), no data moves and this commit only records that in the plan's step 5 paragraph ('Still to do at the switch: the media library's rows move to the store') with the query that proves it: every storage URL in the store's pages, layouts and menus has a commerce.media row with the store's id. If rows are missing, write a custom migration that inserts a commerce.media row for the house store (commerce.house_store()) for each null-store media row whose url the store's content uses and that the store lacks (insert ... select ... where not exists; the same file, no copy of bytes; no delete, no update of the null rows). Say which of the two happened in the decision row."
+        },
+        {
+          "file": "docs/audits/bloat-review-2026-11/site-before.json",
+          "action": "create",
+          "how": "Written by the command above, not by hand; committed unchanged. Delete it in the step's last commit (commit 8), once the dropping push has been compared with it."
         }
       ],
       "checks": [
-        "node scripts/site-compare.mjs https://kaizenaflow.com --against before.json: exits 0 (nothing changed yet)",
+        "node scripts/site-compare.mjs https://kaizenaflow.com --against docs/audits/bloat-review-2026-11/site-before.json: exits 0 (nothing changed yet)",
         "pnpm test:int src/server/house-site.int.test.ts (or the int tests `rg -l 'house-site' src --glob '*.int.test.ts'` lists): pass",
         "pnpm lint && pnpm typecheck && pnpm test: exits 0"
       ]
@@ -71,7 +76,7 @@
       "checks": [
         "Before and after pictures with the agent's eyes (D310, src/server/page-looks.ts) of /sign-up, /themes, /themes/<one slug>, /status and /docs, phone and computer, light and dark, English and Norwegian: send them to the owner; no header or footer differs from the store's front page",
         "pnpm build && pnpm test:e2e: exits 0 (the specs e2e/platform-languages.spec.ts, e2e/blog.spec.ts, e2e/blog-feed.spec.ts, e2e/site-layouts.spec.ts and e2e/store-pages.spec.ts among them)",
-        "pnpm exec vitest run src/lib/platform-chrome.scan.test.ts src/lib/house-routing.scan.test.ts: pass (the files are named *.scan.test.ts only if step 2.43 is done; otherwise without .scan)",
+        "pnpm exec vitest run platform-chrome house-routing: passes (Vitest's file filter is a substring, so it runs src/lib/platform-chrome.scan.test.ts and src/lib/house-routing.test.ts or, after step 2.43 renamed it, house-routing.scan.test.ts)",
         "pnpm lint && pnpm typecheck && pnpm test: exits 0"
       ]
     },
@@ -219,7 +224,7 @@
         "find 'src/app/(platform)' 'src/app/(platform-nb)' -name page.tsx | rg -v '/(get-domain|report|sign-up|status|support|themes|unsubscribe|docs)/': prints nothing",
         "pnpm exec vitest run src/lib/house-routing.scan.test.ts src/proxy.test.ts: pass after their expectations for the deleted folders and the fallback are rewritten (these two tests are the ones this commit may change)",
         "pnpm build && pnpm test:e2e: exits 0 (the specs e2e/platform-languages.spec.ts, e2e/blog.spec.ts, e2e/blog-feed.spec.ts, e2e/site-layouts.spec.ts and e2e/store-pages.spec.ts among them)",
-        "After the deploy: node scripts/site-compare.mjs https://kaizenaflow.com --against before.json: exits 0",
+        "After the deploy: node scripts/site-compare.mjs https://kaizenaflow.com --against docs/audits/bloat-review-2026-11/site-before.json: exits 0",
         "pnpm lint && pnpm typecheck && pnpm test: exits 0"
       ]
     },
@@ -262,7 +267,7 @@
         "node scripts/null-site-readers.mjs --write, then the baseline holds only src/db/schema.ts",
         "pnpm test:int: exits 0",
         "pnpm build && pnpm test:e2e: exits 0 (the specs e2e/platform-languages.spec.ts, e2e/blog.spec.ts, e2e/blog-feed.spec.ts, e2e/site-layouts.spec.ts and e2e/store-pages.spec.ts among them)",
-        "After the deploy: node scripts/site-compare.mjs https://kaizenaflow.com --against before.json: exits 0",
+        "After the deploy: node scripts/site-compare.mjs https://kaizenaflow.com --against docs/audits/bloat-review-2026-11/site-before.json: exits 0",
         "pnpm lint && pnpm typecheck && pnpm test: exits 0"
       ]
     },
@@ -273,6 +278,11 @@
           "file": "src/db/schema.ts",
           "action": "edit",
           "how": "Only after the previous commit has been live in production for at least one deploy with /api/health reporting it. Remove the tables platformThemeInstalls, platformThemeInstallUpdates and platformPageRoles and the column siteFromStore of platformSettings; run `pnpm db:generate` (DROP TABLE x3, DROP COLUMN x1). Add a custom migration after it (`pnpm exec drizzle-kit generate --custom --name null_site_rows_gone`, then `node scripts/prune-snapshots.mjs`) that deletes the site's null-store rows: pages and articles with store_id is null that the store holds a copy of, their versions and redirects, menus, site layouts, text styles, CSS versions, content types and entries, categories and tags of the site, and media rows with store_id is null that no remaining null-store row uses. Write each DELETE with the exact where clause proved on the scratch restore first. Templates, the support desk, the docs guide and every platform_* console table keep their null rows."
+        },
+        {
+          "file": "docs/audits/bloat-review-2026-11/site-before.json",
+          "action": "delete",
+          "how": "After this push's own site-compare check against it exits 0, delete the copy commit 2 committed: the switch is done."
         }
       ],
       "checks": [
@@ -305,15 +315,15 @@
   },
   "done_when": [
     {
-      "check": "rg -l 'platform_theme_installs' src --glob '!*.test.*' | wc -l",
-      "expect": "0"
+      "check": "rg -l 'platform_theme_installs' src --glob '!*.test.*' --glob '!src/db/schema.ts' | wc -l",
+      "expect": "0 after commit 7 (src/db/schema.ts still names the table until the dropping push of commit 8; after commit 8 the same rg without the schema glob prints 0 too)"
     },
     {
       "check": "find 'src/app/(platform)' 'src/app/(platform-nb)' -name page.tsx",
       "expect": "lists no front page and nothing under [slug], blog, category, tag or cookies (20 files today)"
     },
     {
-      "check": "node scripts/site-compare.mjs https://kaizenaflow.com --against before.json",
+      "check": "node scripts/site-compare.mjs https://kaizenaflow.com --against docs/audits/bloat-review-2026-11/site-before.json",
       "expect": "exits 0: no address of the old sitemap answers with another status, redirect, canonical or hreflang"
     },
     {
@@ -326,7 +336,7 @@
     }
   ],
   "after_deploy": [
-    "After each of commits 3 to 7: node scripts/site-compare.mjs https://kaizenaflow.com --against before.json exits 0, and /sign-up, /themes, /status and /docs show the store's header and footer.",
+    "After each of commits 3 to 7: node scripts/site-compare.mjs https://kaizenaflow.com --against docs/audits/bloat-review-2026-11/site-before.json exits 0, and /sign-up, /themes, /status and /docs show the store's header and footer.",
     "After the last push: the release job applied the migrations, the advisors show no new warning, and the daily reading (step 0.2) lists no table platform_theme_installs, platform_theme_install_updates or platform_page_roles."
   ],
   "docs": [
@@ -346,7 +356,7 @@
     "Do not commit before.json or the dump to the repository."
   ],
   "stop_if": [
-    "site-compare --against before.json fails after any deploy: stop, report the addresses, and do not go on to the next commit.",
+    "site-compare --against docs/audits/bloat-review-2026-11/site-before.json fails after any deploy: stop, report the addresses, and do not go on to the next commit.",
     "A kept route (sign-up, themes, status, docs) looks different from the pictures taken before, other than the header and footer becoming the store's.",
     "A file in the baseline cannot be classed, or an importer of platform-navigation.ts needs a field the store's settings do not hold.",
     "The media check finds files the store's pages use that have no commerce.media row for the store and cannot be inserted without copying bytes.",
@@ -354,6 +364,10 @@
     "The owner has not said yes to the dump and the counts."
   ],
   "executor": "strong",
-  "executor_why": "This is an L redesign: which component draws the kept routes' header and footer, how 43 importers of platform-navigation.ts are re-pointed and which null-store rows are the site's are design judgements the brief cannot remove; only the first commit (the inventory and its test) is fully specified for a cheap model.",
-  "checked_in_code": "I opened src/lib/house-routing.ts, src/proxy.ts (the switch read and its fallback), src/lib/platform-nav.ts (WEBSITE_ITEMS), src/components/platform-routes/, scripts/site-compare.mjs and docs/platform-parity-plan.md, and counted with rg: the 20 page files are exactly the ones listed in the brief, 7 non-test files name platform_theme_installs, 4 name platform_page_roles, 8 read the switch, platform-navigation.ts has 43 importers and platform-roles.ts 14. The findings match; two corrections: src/components/platform-layout.tsx cannot go (platform-root.tsx, site-parts.tsx and menu-section.tsx use it), and docs/platform-parity.md already says the Website section has nothing left, while the parity plan still lists the media rows as to do, so the brief checks the media rows first instead of assuming a move. The step's done_when counts rg hits of platform_theme_installs outside tests, which includes src/db/schema.ts, so it reaches 0 only after the last, dropping push."
+  "executor_why": "Commit 1 is an inventory script with a ratchet test, but commit 3 is design work (the store's header in place of KaizenSiteHeader on the kept routes), commit 4 moves 43 importers onto a reader whose shape it designs, commit 2 decides from production evidence whether media rows need a migration, and commit 8 deletes production data behind a dump the owner must approve.",
+  "checked_in_code": "I opened src/lib/house-routing.ts, src/proxy.ts (the switch read and its fallback), src/lib/platform-nav.ts (WEBSITE_ITEMS), src/components/platform-routes/, scripts/site-compare.mjs and docs/platform-parity-plan.md, and counted with rg: the 20 page files are exactly the ones listed in the brief, 7 non-test files name platform_theme_installs, 4 name platform_page_roles, 8 read the switch, platform-navigation.ts has 43 importers and platform-roles.ts 14. The findings match; two corrections: src/components/platform-layout.tsx cannot go (platform-root.tsx, site-parts.tsx and menu-section.tsx use it), and docs/platform-parity.md already says the Website section has nothing left, while the parity plan still lists the media rows as to do, so the brief checks the media rows first instead of assuming a move. The step's done_when counts rg hits of platform_theme_installs outside tests, which includes src/db/schema.ts, so it reaches 0 only after the last, dropping push. Second check (12 November): the 'copy taken before' is now committed as docs/audits/bloat-review-2026-11/site-before.json (a fresh session for a later commit would not have a file kept outside the repo), the platform_theme_installs done_when excludes src/db/schema.ts until commit 8, and the chrome and routing tests are run by a substring filter that matches either name around step 2.43's rename.",
+  "rating_checked": "strong",
+  "cheap_commits": [
+    1
+  ]
 }

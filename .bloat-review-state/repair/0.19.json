@@ -1,0 +1,13 @@
+{
+ "id": "0.19",
+ "fixed": [
+  "Commit 3: the whole new customers statement and countCustomers() are written out verbatim, with shared local fragments for the base CTEs, search and tag.",
+  "Commit 3: added an email tie-break to both order bys; without it the new 150-customer case (one insert, one created_at) could repeat rows across offset pages.",
+  "Commit 4: the conditional 'if billingQuery ends in an order by' is resolved (it does, line 446); the order gets `, s.id` and the limit is appended; countStoreBilling's condition is literal.",
+  "Commit 1: the Promise.all entries for the count and the list are written as promises with the new destructuring, replacing the mixed `await` wording."
+ ],
+ "rejected": [],
+ "cheaper": "applied: commit 3's whole SQL statement is now in the brief to paste; the step stays cheap-then-review because the statement carries personal data and money sums",
+ "executor_before": "cheap-then-review",
+ "executor_after": "cheap-then-review"
+}

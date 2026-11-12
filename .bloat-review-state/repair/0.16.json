@@ -1,0 +1,17 @@
+{
+ "id": "0.16",
+ "fixed": [
+  "depends_on now names 0.1; done_when 2 runs docs/audits/bloat-review-2026-11/scripts/route.mjs '/s/[store]/[market]/p/[handle]' and reads its 'raw' figure; a stop_if covers the script's absence.",
+  "Scan test: the conditional known-cookies exception for cookie-policy is removed (the file has no 'use client'); 'two exceptions' becomes one.",
+  "Commit 1 starts with src/lib/known-cookies.test.ts, a toMatchFileSnapshot of every field of KNOWN_COOKIES taken before the split and re-run unchanged after it; the tests list says cookie-consent.test.ts compares names only."
+ ],
+ "rejected": [
+  {
+   "problem": "Commit 4 reads 'This commit needs [an executor]'.",
+   "why": "An artefact of the blanked copy; the brief says 'a strong model'."
+  }
+ ],
+ "cheaper": "applied in part: the field-by-field snapshot of KNOWN_COOKIES, so commits 1 to 3 are cheap_commits. The filter split's state machine was not written as code: that design is why commit 4 stays with the stronger model.",
+ "executor_before": "strong",
+ "executor_after": "strong"
+}

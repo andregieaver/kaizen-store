@@ -1,0 +1,18 @@
+{
+ "id": "0.20",
+ "fixed": [
+  "custom-fields.ts: the 'if a function creates the store in the same transaction' branch is replaced by 'all five read a committed store through db() or readDb(): replace all five', with the line of each caller.",
+  "store-copy.ts:633: the read-and-decide text is replaced by the decision (finishing phase, db(), committed) and the exact two-line replacement; the scan test list is exactly three files and the stop_if says above 3, not 4.",
+  "Every one of the 16 template changes now ends with the site's exact before and after (names row, store, slug, found differ by file; content-grid.ts:133 would have declared slug twice; field-tiles.ts:176 is a Promise.all entry).",
+  "Added a stop_if for a double declaration or unused name after an exact replacement."
+ ],
+ "rejected": [
+  {
+   "problem": "storeSlugOf() caches a null result for days and the brief never says a null must not be cached.",
+   "why": "The helper in menus.ts already caches null for its 13 callers, a store id that is missing now never appears later (ids are random uuids), and every replaced site reads a store whose row is committed (checked caller by caller), so no caller can cache a null for a store that will exist."
+  }
+ ],
+ "cheaper": "not applied: the judge's edit_brief is applied, but the days-long cache that the int tests cannot see keeps commit 3 under review; making storeSlugOf() skip null would change the helper's behaviour for its 13 current callers, beyond this step.",
+ "executor_before": "cheap",
+ "executor_after": "cheap-then-review"
+}

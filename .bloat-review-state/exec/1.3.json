@@ -24,6 +24,10 @@
   {
    "id": "1.1",
    "why": "it wrote docs/rules/budgets.md, where these budgets are listed"
+  },
+  {
+   "id": "0.43",
+   "why": "it creates docs/rules/budgets.md, which commit 7 edits"
   }
  ],
  "commits": [
@@ -33,12 +37,12 @@
     {
      "file": "e2e/performance.spec.ts",
      "action": "edit",
-     "how": "(1) Replace the helper firstScripts(page) (it reads script[src] from the DOM after load, which counts the nomodule polyfill and late chunks) by the admin spec's way (e2e/signed-in/admin-scripts.spec.ts, firstScripts): async function firstScripts(page, address): fetch the HTML with page.request.get(address); take every <script ...> tag that has a src and does NOT have the nomodule attribute (match tags with /<script\\b[^>]*>/g, skip those matching /\\snomodule\\b/, read src with /\\ssrc=\"([^\"]+)\"/ and replace '&amp;' by '&'); make each address absolute against the base URL; remove repeats; fetch each and return [{ url, text }]. (2) Add const MEASURE = process.env.E2E_MEASURE === '1'. (3) Fold FIRST_SCRIPTS_MAX into FIRST_SCRIPTS_BUDGETS: the table gains '/s/demo/no' and these store routes: '/s/demo/no/om-oss', '/s/demo/no/category/belysning', '/s/demo/no/search?q=lampe', '/s/demo/no/cart', '/s/demo/no/checkout', '/s/demo/no/account'; with '/s/demo/no/p/demo-keramikkopp' that is 8 store routes. Keep the seven non-store entries that are there. (4) The loop test: total = sum of text.length; when MEASURE, console.log(`[first-scripts] ${path} ${total}`) and skip the expectation; else expect(total).toBeLessThan(max). (5) Keep the first test's content checks (no zod, no 'kz-lightbox', no 'CheckoutSdkContext' in the front page's first scripts) on the new helper's list. (6) Set every number in the table: Build as CI's e2e job does: an empty Postgres in DATABASE_URL, node scripts/db-setup.mjs --seed, then pnpm build (in a sandbox set PLAYWRIGHT_CHROMIUM_PATH instead of running playwright install). Run E2E_MEASURE=1 pnpm exec playwright test e2e/performance.spec.ts -g 'first scripts' and set each store route's budget to its printed figure times 1.03, rounded up to the next 1,000; each non-store route's to its figure times 1.04. On the review's build the figures were 680,264 for the home and 777,785 for the product page; after step 0.16 they must be at most 615,000 and 670,000. Rewrite the two comments above the tables: what is counted (the server's HTML, no nomodule tag, each file once), the day's figures, 3% of room, and that a change which lowers a figure by more than 3% lowers its budget in the same change."
+     "how": "(1) Replace the helper firstScripts(page) (it reads script[src] from the DOM after load, which counts the nomodule polyfill and late chunks) by the admin spec's way (e2e/signed-in/admin-scripts.spec.ts, firstScripts): async function firstScripts(page, address): fetch the HTML with page.request.get(address); take every <script ...> tag that has a src and does NOT have the nomodule attribute (match tags with /<script\\b[^>]*>/g, skip those matching /\\snomodule\\b/, read src with /\\ssrc=\"([^\"]+)\"/ and replace '&amp;' by '&'); make each address absolute against the base URL; remove repeats; fetch each and return [{ url, text }]. (2) Add const MEASURE = process.env.E2E_MEASURE === '1'. (3) Fold FIRST_SCRIPTS_MAX into FIRST_SCRIPTS_BUDGETS: the table gains '/s/demo/no' and these store routes: '/s/demo/no/om-oss', '/s/demo/no/category/belysning', '/s/demo/no/search?q=lampe', '/s/demo/no/cart', '/s/demo/no/checkout', '/s/demo/no/account'; with '/s/demo/no/p/demo-keramikkopp' that is 8 store routes. Keep the six non-store entries that are there ('/', '/sign-up', '/status', '/admin/sign-in', '/admin/forgot-password' and the docs page '/docs/owners/getting-started/create-your-store'): the table then has 14 entries, 8 store routes and 6 others. (4) The loop test: total = sum of text.length; when MEASURE, console.log(`[first-scripts] ${path} ${total}`) and skip the expectation; else expect(total).toBeLessThan(max). (5) Keep the first test's content checks (no zod, no 'kz-lightbox', no 'CheckoutSdkContext' in the front page's first scripts) on the new helper's list. (6) Set every number in the table: Build as CI's e2e job does: an empty Postgres in DATABASE_URL, node scripts/db-setup.mjs --seed, then pnpm build (in a sandbox set PLAYWRIGHT_CHROMIUM_PATH instead of running playwright install). Run E2E_MEASURE=1 pnpm exec playwright test e2e/performance.spec.ts -g 'first scripts' and set each store route's budget to its printed figure times 1.03, rounded up to the next 1,000; each non-store route's to its figure times 1.04. On the review's build the figures were 680,264 for the home and 777,785 for the product page; after step 0.16 they must be at most 615,000 and 670,000. Rewrite the two comments above the tables: what is counted (the server's HTML, no nomodule tag, each file once), the day's figures, 3% of room, and that a change which lowers a figure by more than 3% lowers its budget in the same change."
     }
    ],
    "checks": [
     "pnpm build && pnpm exec playwright test e2e/performance.spec.ts: exits 0",
-    "E2E_MEASURE=1 pnpm exec playwright test e2e/performance.spec.ts -g 'first scripts': prints 15 lines '[first-scripts] <path> <bytes>', and each budget in the table is between 1.00 and 1.04 times its figure",
+    "E2E_MEASURE=1 pnpm exec playwright test e2e/performance.spec.ts -g 'first scripts': prints 14 lines (8 store routes, 6 others) '[first-scripts] <path> <bytes>', and each budget in the table is between 1.00 and 1.04 times its figure",
     "rg -n 'FIRST_SCRIPTS_MAX' e2e: prints nothing",
     "pnpm lint && pnpm typecheck && pnpm test: exits 0"
    ]
@@ -82,7 +86,7 @@
     }
    ],
    "checks": [
-    "pnpm build && E2E_MEASURE=1 pnpm exec playwright test e2e/performance.spec.ts -g 'wire', run three times: the five '[wire]' lines show the same lateScripts and lateScriptBytes each time, and wire within 2% between runs",
+    "pnpm build && E2E_MEASURE=1 pnpm exec playwright test e2e/performance.spec.ts -g 'wire', run three times: the five '[wire]' lines show the same lateScripts and lateScriptBytes each time, and wire within 2% between runs; paste the three runs' five '[wire]' lines into the commit message's body, so the reviewer sees the exact counts did not move",
     "pnpm exec playwright test e2e/performance.spec.ts --repeat-each 3: exits 0",
     "Plant, then undo: in src/components/content-grid.tsx (or the file that draws a product grid's tiles; find it with rg -ln 'TileShop' src/components) add a next/dynamic import of a new 15 KB client file that the grid draws, pnpm build, run the wire tests: the product page's or the listing's lateScripts or lateScriptBytes fails; git checkout the files",
     "pnpm lint && pnpm typecheck && pnpm test: exits 0"
@@ -93,8 +97,9 @@
    "changes": [
     {
      "file": "e2e/prefetch.spec.ts",
-     "action": "create",
-     "how": "Marked create only because the file is not in the repo today: step 0.12 makes it. It must exist when you start; EDIT it and never overwrite it; if it is missing, stop. Read how it counts router requests (requests with the 'next-router-prefetch' or 'rsc' header, or a '_rsc' query) and keep its helper and its existing assertions (0 prefetches for another view, 0 on the front door, no request to /admin after loading '/', no late stylesheet). Add one exported-nowhere table at the top, ROUTER_REQUESTS: Record<string, number>, with five pages: '/s/demo/no' (the store home), '/s/demo/no/p/demo-keramikkopp' (a product page), '/s/demo/no/products' (a listing), '/s/demo/no/cart' and '/s/demo' (the front door). One test per row on the phone viewport (390 by 844, isMobile, hasTouch): load the page, scroll to the footer in steps of one screen with a 300 ms wait each (as the file's phone-home test does; reuse its function), then wait until no router request has started for 3,000 ms (fail after 30 s: 'never went quiet'), and count the router requests. When process.env.E2E_MEASURE === '1' print `[router] ${path} ${count}`; else expect(count).toBeLessThanOrEqual(budget). Set each budget to the measured count plus 2 (counts wobble by one or two with what is in view). Where the file already holds a number for one of these pages (the phone home's 'at most 23', the front door's 0), move that number into the table so each page has one budget, and keep the stricter of the two."
+     "action": "edit",
+     "how": "Step 0.12 creates this file (if it is missing, stop). It leaves: a helper watch(page) that returns { prefetches, stylesheets } (prefetches are the requests whose headers carry the router's prefetch headers it names in a comment), a helper readToFooter(page) (scrolls 400 px every 300 ms to the bottom, then waits 3 s), a BUDGETS object at the top holding 23 and 0, a PAGES table, and four cases ('no other view is fetched ahead', 'the front door asks for nothing ahead', 'the site does not fetch the admin or a store ahead', 'no stylesheet arrives that the HTML did not link'). Keep the two helpers and all four cases' assertions. A router request in this step is an entry of watch(page).prefetches. Add one exported-nowhere table at the top, ROUTER_REQUESTS: Record<string, number>, with five pages: '/s/demo/no' (the store home), '/s/demo/no/p/demo-keramikkopp' (a product page), '/s/demo/no/products' (a listing), '/s/demo/no/cart' and '/s/demo' (the front door). One test per row on the phone viewport (390 by 844, isMobile, hasTouch): load the page, call readToFooter(page), then wait until no router request has started for 3,000 ms (fail after 30 s: 'never went quiet'), and count the router requests. When process.env.E2E_MEASURE === '1' print `[router] ${path} ${count}`; else expect(count).toBeLessThanOrEqual(budget). Set each budget to the measured count plus 2 (counts wobble by one or two with what is in view). Where BUDGETS already holds a number for one of these pages (23 for '/s/demo/no', 0 for '/s/demo'), move it into ROUTER_REQUESTS so each page has one budget, keep the stricter of the two, and let the two cases that used BUDGETS read ROUTER_REQUESTS instead.",
+     "made_by": "0.12"
     }
    ],
    "checks": [
@@ -114,7 +119,7 @@
     {
      "file": "scripts/ratchet.mjs",
      "action": "edit",
-     "how": "In the 'raised' block add two loops like the one for byIdWrites: for pageDocumentReads ('<file>: <old> → <new> reads of a whole page document') and pagesTagRefreshes ('<file>: <old> → <new> refreshes of a store's whole pages tag'), reading the old value with before.pageDocumentReads?.[file] ?? 0 (the keys are new: a baseline without them must not crash, and on the first run after this change every file is 'new': so run the script once with --first is NOT allowed either; instead treat a missing key in the old baseline as 'no baseline yet for this count' and skip the raise check for that count on that run). Add the two totals to the final printed line."
+     "how": "In the 'raised' block (scripts/ratchet.mjs lines 26 to 30) add two loops in the shape of the byIdWrites loop on line 28: one over now.pageDocumentReads ('<file>: <old> → <new> reads of a whole page document') and one over now.pagesTagRefreshes ('<file>: <old> → <new> refreshes of a store's whole pages tag'). Guard each loop with `if (before.pageDocumentReads)` and `if (before.pagesTagRefreshes)` respectively: on the first run after this change the old baseline has no such key, the loop is skipped, and the script writes the new counts as they stand. Do not run the script with --first. Add the two totals to the final printed line (the template on about line 40)."
     },
     {
      "file": "src/server/ratchet.scan.test.ts",
@@ -144,8 +149,9 @@
     },
     {
      "file": "docs/rules/budgets.md",
-     "action": "create",
-     "how": "Marked create only because the file is not in the repo today: steps 0.43 and 1.1 make it; EDIT it and never overwrite it. Add a section '## The visitor's pages' that names the two spec files, the E2E_MEASURE=1 switch that prints every figure, and the two new ratchet counts (pageDocumentReads, pagesTagRefreshes in src/server/ratchet.baseline.json, lowered by node scripts/ratchet.mjs). Lines of at most 130 characters."
+     "action": "edit",
+     "how": "Step 0.43 creates this file (title '# Rules: Budgets and checks', a paragraph, '## CLAUDE.md' and '## Sentences from the plan') and step 1.1 adds '## Every budget' with its table of baseline files under the title. If it is missing, stop. Keep every line they wrote; add below the last line of the file. Add a section '## The visitor's pages' that names the two spec files, the E2E_MEASURE=1 switch that prints every figure, and the two new ratchet counts (pageDocumentReads, pagesTagRefreshes in src/server/ratchet.baseline.json, lowered by node scripts/ratchet.mjs). Lines of at most 130 characters.",
+     "made_by": "0.43"
     },
     {
      "file": "docs/audits/psi-followups.md",
@@ -180,7 +186,7 @@
  "done_when": [
   {
    "check": "E2E_MEASURE=1 pnpm exec playwright test e2e/performance.spec.ts after pnpm build",
-   "expect": "prints 15 [first-scripts] lines (8 of them store routes), 5 [document] lines, 3 [stylesheet] lines and 5 [wire] lines; in the file each store first-scripts budget is within 3% of its figure, each document budget within 5%, each stylesheet budget within 4% (raw and Brotli), each wire budget within 4%"
+   "expect": "prints 14 [first-scripts] lines (8 of them store routes, 6 others), 5 [document] lines, 3 [stylesheet] lines and 5 [wire] lines; in the file each store first-scripts budget is within 3% of its figure, each document budget within 5%, each stylesheet budget within 4% (raw and Brotli), each wire budget within 4%"
   },
   {
    "check": "pnpm exec playwright test e2e/performance.spec.ts e2e/prefetch.spec.ts in CI's e2e job",
@@ -224,6 +230,15 @@
   "node scripts/ratchet.mjs refuses to write because a count rose."
  ],
  "executor": "cheap-then-review",
- "executor_why": "The tests are specified, but budgets on a real browser can wobble and a careless number hides a regression or fails pushes, so a stronger model should read the measured figures and the quiet-wait code before the push.",
- "checked_in_code": "I read e2e/performance.spec.ts as it is: firstScripts() reads script[src] from the DOM (so it counts the nomodule polyfill and late chunks), FIRST_SCRIPTS_MAX is 972,000, the table has seven routes of which one is a store route, and SPEED_BUDGETS holds two pages at 450,000. e2e/signed-in/admin-scripts.spec.ts already measures from the server's HTML with an E2E_MEASURE switch, which the brief copies. e2e/prefetch.spec.ts is not in the repo: step 0.12 creates it, so this brief edits it and stops if it is missing (the plan's wording 'keeps one table' fits that). I wrote and ran the two ratchet patterns on today's code: 56 statements select a whole page document in 31 files and 40 places refresh a store's pages tag in 27 files. Corrections to the findings: their fixed numbers (701,000, 145,500, 189,000 and so on) are from the review's build, so every budget here is set from E2E_MEASURE on the day; SC-6's 'no address more than 20 times' is replaced by the quiet rule, which shows the same loop; PL-13's steps for the admin and for a save's answer belong to step 1.5, and moving measure-routes.mjs is not part of this step."
+ "executor_why": "Every budget comes from a fixed rule and the edits are named, but commit 4's quiet-network wait and exact late-script counts are new measuring code proved only by a plant-and-undo by hand, so a stronger model reads its diff and the three pasted runs.",
+ "checked_in_code": "I read e2e/performance.spec.ts as it is: firstScripts() reads script[src] from the DOM (so it counts the nomodule polyfill and late chunks), FIRST_SCRIPTS_MAX is 972,000, the table has seven routes of which one is a store route, and SPEED_BUDGETS holds two pages at 450,000. e2e/signed-in/admin-scripts.spec.ts already measures from the server's HTML with an E2E_MEASURE switch, which the brief copies. e2e/prefetch.spec.ts is not in the repo: step 0.12 creates it, so this brief edits it and stops if it is missing (the plan's wording 'keeps one table' fits that). I wrote and ran the two ratchet patterns on today's code: 56 statements select a whole page document in 31 files and 40 places refresh a store's pages tag in 27 files. Corrections to the findings: their fixed numbers (701,000, 145,500, 189,000 and so on) are from the review's build, so every budget here is set from E2E_MEASURE on the day; SC-6's 'no address more than 20 times' is replaced by the quiet rule, which shows the same loop; PL-13's steps for the admin and for a save's answer belong to step 1.5, and moving measure-routes.mjs is not part of this step. Second check (12 November): the first-scripts table keeps six non-store entries, not seven, so 14 lines print (8 store, 6 others); e2e/prefetch.spec.ts and docs/rules/budgets.md are edits of what steps 0.12 and 0.43 leave (named, made_by set; 0.43 added to depends_on); the ratchet.mjs instruction is rewritten without the garbled --first sentence; commit 4 pastes its three measuring runs for the reviewer.",
+ "cheap_commits": [
+  1,
+  2,
+  3,
+  5,
+  6,
+  7
+ ],
+ "rating_checked": "cheap-then-review"
 }

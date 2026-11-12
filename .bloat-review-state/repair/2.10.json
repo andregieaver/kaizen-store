@@ -1,0 +1,17 @@
+{
+ "id": "2.10",
+ "fixed": [
+  "The baseline change's file is the plain path src/lib/storefront-bundle.baseline.json with made_by 1.27 (depends_on names it), and its how says what 1.27 leaves in it and which ten laterChains pairs this commit removes.",
+  "en-quotes.ts: the 'only if no cycle, otherwise keep both' choice is settled (en-browser.ts has no imports; nb/sv/da-browser import only a type), and the same pointer is made in nb/sv/da-quotes.ts line 5.",
+  "blog-listing.tsx: edit whichever of today's path and the (shop)/ path exists."
+ ],
+ "rejected": [
+  {
+   "problem": "The other storefront paths are not adjusted for step 2.2's (shop)/ move.",
+   "why": "blog-listing.tsx is the only file of this step under src/app/s/[store]/[market]; the rest are in src/components, src/lib and e2e, which 2.2 does not move."
+  }
+ ],
+ "cheaper": "not applied: writing commit 2's splits file by file means doing the import-graph analysis the commit itself asks for (which helpers each new module takes, re-measured after each move); that is the judgement, too large to settle soundly here.",
+ "executor_before": "strong",
+ "executor_after": "strong"
+}

@@ -1,0 +1,12 @@
+{
+ "id": "2.50",
+ "fixed": [
+  "Commit 2's pattern file is src/lib/work-overview.ts (exact edits at lines 5, 131 and 133), not experiment-results.ts, which step 2.26's fourth commit converts with nine other named files.",
+  "The counts are marked as projections; today's figure (65 outside the admin folders) is given and the command's output on the day rules.",
+  "imports.scan.test.ts (made_by 1.4, its list is ALREADY) and admin-text-reach.scan.test.ts (made_by 0.7, which depends_on now names) are edits of earlier steps' files, not creates."
+ ],
+ "rejected": [],
+ "cheaper": "not applied: the judge's edit_brief (the real importer list, the area reader's exact call and a verdict for each of the 36 imports) can only be written after steps 2.25 and 2.26 land; the pattern-file part of it is applied.",
+ "executor_before": "cheap-then-review",
+ "executor_after": "strong"
+}

@@ -1,122 +1,127 @@
 {
-  "id": "0.14",
-  "goal": "A store page opened at an /s/{store} address stops asking the server for router prefetches a few seconds after load, and next.config.ts states both router settings (optimisticRouting: false, partialPrefetching: false) with their reasons.",
-  "why": "Today the search page at /s/demo/no/search?q=lampe makes 624 router prefetch requests in 4 s and never stops (about 165 a second reach the server); with route guessing off it makes about 55 and goes quiet. The build also prints a partialPrefetching warning on every build and start; after this step it prints none.",
-  "read_first": [
-    "next.config.ts",
-    "node_modules/next/dist/docs/01-app/03-api-reference/05-config/01-next-config-js/partialPrefetching.md",
-    "node_modules/next/dist/client/components/segment-cache/optimistic-routes.js",
-    "src/lib/chromium-trace.test.ts",
-    "e2e/store-pages.spec.ts",
-    "playwright.config.ts",
-    "docs/performance.md",
-    "src/app/s/[store]/[market]/@drawer/[...rest]/page.tsx"
-  ],
-  "depends_on": [],
-  "commits": [
+ "id": "0.14",
+ "goal": "A store page opened at an /s/{store} address stops asking the server for router prefetches a few seconds after load, and next.config.ts states both router settings (optimisticRouting: false, partialPrefetching: false) with their reasons.",
+ "why": "Today the search page at /s/demo/no/search?q=lampe makes 624 router prefetch requests in 4 s and never stops (about 165 a second reach the server); with route guessing off it makes about 55 and goes quiet. The build also prints a partialPrefetching warning on every build and start; after this step it prints none.",
+ "read_first": [
+  "next.config.ts",
+  "node_modules/next/dist/docs/01-app/03-api-reference/05-config/01-next-config-js/partialPrefetching.md",
+  "node_modules/next/dist/client/components/segment-cache/optimistic-routes.js",
+  "src/lib/chromium-trace.test.ts",
+  "e2e/store-pages.spec.ts",
+  "playwright.config.ts",
+  "docs/performance.md",
+  "src/app/s/[store]/[market]/@drawer/[...rest]/page.tsx"
+ ],
+ "depends_on": [],
+ "commits": [
+  {
+   "title": "Route guessing off and partial prefetching written down: a store page at an /s/ address goes quiet",
+   "changes": [
     {
-      "title": "Route guessing off and partial prefetching written down: a store page at an /s/ address goes quiet",
-      "changes": [
-        {
-          "file": "next.config.ts",
-          "action": "edit",
-          "how": "Two edits, nothing else. (1) Directly under the line `cacheComponents: true,` in the `nextConfig` object add the line `partialPrefetching: false,` with a comment above it: a recorded choice, not an oversight; unset, Next treats it as false and warns on every build and start; the next major release turns it on for everyone; step 2.8 of docs/audits/bloat-review-2026-11 decides adoption by trial. (2) Inside the existing `experimental: { ... }` block, after the `serverActions: { bodySizeLimit: \"4mb\" },` line, add the line `optimisticRouting: false,` with a comment above it that says: Next guesses a link's route tree from a route of the same shape; the guess never fills the `rest` param of the `@drawer/[...rest]` slot (the TODO \"This should never happen. Bail out with null\" in next/dist/client/components/segment-cache/optimistic-routes.js), so the slot's segment is asked for without end at /s/{store} addresses (about 165 requests a second); remove this line when that TODO is fixed upstream and e2e/prefetch.spec.ts 'a store page goes quiet' passes without it. Do not touch `globalNotFound`, `serverActions`, the ON_VERCEL spread or anything outside these two insertions."
-        },
-        {
-          "file": "src/lib/next-config-prefetch.test.ts",
-          "action": "create",
-          "how": "A Vitest file in the style of src/lib/chromium-trace.test.ts: read next.config.ts as text with fs.readFileSync(path.join(__dirname, '..', '..', 'next.config.ts'), 'utf8'). Three cases: (a) the text matches /^\\s*optimisticRouting: false,$/m; (b) the text matches /^\\s*partialPrefetching: false,$/m; (c) the text contains the string `e2e/prefetch.spec.ts` (the comment that says when the flag may go). A doc comment at the top says: delete case (a) together with the flag when Next fixes the TODO; keep the e2e test."
-        },
-        {
-          "file": "e2e/prefetch.spec.ts",
-          "action": "create",
-          "how": "If step 0.12 already created this file, add to it and reuse its request recorder; otherwise create it. It needs: a helper `routerPrefetches(page)` that registers page.on('request') BEFORE page.goto and pushes {url, segment: headers['next-router-segment-prefetch'] ?? ''} for every request whose headers have `rsc` set and `next-router-prefetch` set (use `request.headers()`, lower-case names, as e2e/store-pages.spec.ts lines 63 to 70 do). Then one test.describe 'a store page goes quiet' with one test per address in this exact list: '/s/demo/no/search?q=lampe', '/s/demo/no/category/hjem', '/s/demo/no/cart', '/themes' (the platform's list: the theme store). Each test: page.goto(address, { waitUntil: 'load' }); await page.waitForTimeout(3000); const first = recorded.length; expect(first).toBeLessThan(60); await page.waitForTimeout(2000); expect(recorded.length - first).toBe(0). Use the project's default viewport (1280x720): do not set one. Do not use waitForLoadState('networkidle'). The file runs in the chromium project only (do not add it to WEBKIT_SPECS in playwright.config.ts). If '/s/demo/no/category/hjem' answers 404 in the seeded database, pick the first category the seed makes (rg -n \"category\" scripts/db-setup.mjs scripts/seed*.mjs) and say which in the hand-back."
-        },
-        {
-          "file": "docs/performance.md",
-          "action": "edit",
-          "how": "Add a short section headed 'The router's two settings' at the end of the file (wrap lines at the width the file already uses): optimisticRouting is false because of the @drawer/[...rest] slot and the TODO in optimistic-routes.js; the numbers (624 router requests in 4 s on the search page before, about 55 after, measured at 1440x900); production could not loop while stores are on their own hosts, since behind a rewrite no shape is learned; what to do at each Next upgrade (read optimistic-routes.js for the TODO; when it is gone remove the flag and case (a) of src/lib/next-config-prefetch.test.ts, keep e2e/prefetch.spec.ts). partialPrefetching is false as a recorded choice; step 2.8 decides."
-        },
-        {
-          "file": "CLAUDE.md",
-          "action": "edit",
-          "how": "In the `## Stack` section, in the first bullet (the one that starts '- Next.js 16.4 (App Router, `cacheComponents` on)'), add one sentence at the end of that bullet: 'Two router settings are written in `next.config.ts` (D<the new number>): `optimisticRouting: false` (the `@drawer/[...rest]` slot made an endless prefetch; `e2e/prefetch.spec.ts` says when it may go) and `partialPrefetching: false` (a recorded choice).' Keep the bullet's existing text unchanged."
-        },
-        {
-          "file": "docs/decisions.md",
-          "action": "edit",
-          "how": "Append one table row at the end of the decisions table with the next free number (find it: `rg -o '^\\| D[0-9]+' docs/decisions.md | tr -dc '0-9\\n' | sort -n | tail -1`, then add 1; pull main first so the number is not taken). The row records: route guessing off (cause, the 624 to about 55 figure, when it may go, the test that holds it), partialPrefetching false as a recorded choice until step 2.8; rejected: a second hunk in patches/next.patch with a two-line bail-out (47 requests against 55, not worth carrying through upgrades), removing @drawer/[...rest] (D64 needs it); the platform: the theme store's list is in the same spec. No migration."
-        }
-      ],
-      "checks": [
-        "pnpm exec vitest run src/lib/next-config-prefetch.test.ts src/lib/chromium-trace.test.ts src/lib/next-config-headers.test.ts : all pass",
-        "pnpm lint && pnpm typecheck && pnpm test : exits 0",
-        "node scripts/db-setup.mjs --seed (on an empty DATABASE_URL) && pnpm build 2>&1 | tee /tmp/build-0.14.log : exits 0",
-        "grep -c partialPrefetching /tmp/build-0.14.log : prints 0",
-        "pnpm exec playwright test e2e/prefetch.spec.ts --project=chromium : all tests pass",
-        "pnpm exec playwright test e2e/store-pages.spec.ts e2e/cart.spec.ts e2e/navigation.spec.ts --project=chromium : all pass (the Next patch D423 and the cart drawer still work)",
-        "pnpm test:e2e : exits 0"
-      ]
-    }
-  ],
-  "tests": [
-    {
-      "file": "e2e/prefetch.spec.ts",
-      "proves": "Fails when any of the four pages makes 60 or more router prefetch requests in the 3 s after load, or any at all in the next 2 s: the loop is back (a Next upgrade renamed or dropped the flag, or the flag was removed too early)."
+     "file": "next.config.ts",
+     "action": "edit",
+     "how": "Two edits, nothing else. (1) Directly under the line `cacheComponents: true,` in the `nextConfig` object add the line `partialPrefetching: false,` with a comment above it: a recorded choice, not an oversight; unset, Next treats it as false and warns on every build and start; the next major release turns it on for everyone; step 2.8 of docs/audits/bloat-review-2026-11 decides adoption by trial. (2) Inside the existing `experimental: { ... }` block, after the `serverActions: { bodySizeLimit: \"4mb\" },` line, add the line `optimisticRouting: false,` with a comment above it that says: Next guesses a link's route tree from a route of the same shape; the guess never fills the `rest` param of the `@drawer/[...rest]` slot (the TODO \"This should never happen. Bail out with null\" in next/dist/client/components/segment-cache/optimistic-routes.js), so the slot's segment is asked for without end at /s/{store} addresses (about 165 requests a second); remove this line when that TODO is fixed upstream and e2e/prefetch.spec.ts 'a store page goes quiet' passes without it. Do not touch `globalNotFound`, `serverActions`, the ON_VERCEL spread or anything outside these two insertions."
     },
     {
-      "file": "src/lib/next-config-prefetch.test.ts",
-      "proves": "Fails when next.config.ts loses `optimisticRouting: false`, `partialPrefetching: false` or the comment naming e2e/prefetch.spec.ts."
+     "file": "src/lib/next-config-prefetch.test.ts",
+     "action": "create",
+     "how": "A Vitest file in the style of src/lib/chromium-trace.test.ts: read next.config.ts as text with fs.readFileSync(path.join(__dirname, '..', '..', 'next.config.ts'), 'utf8'). Three cases: (a) the text matches /^\\s*optimisticRouting: false,$/m; (b) the text matches /^\\s*partialPrefetching: false,$/m; (c) the text contains the string `e2e/prefetch.spec.ts` (the comment that says when the flag may go). A doc comment at the top says: delete case (a) together with the flag when Next fixes the TODO; keep the e2e test."
+    },
+    {
+     "file": "e2e/prefetch.spec.ts",
+     "action": "create",
+     "how": "If step 0.12 already created this file, add to it and reuse its request recorder; otherwise create it. It needs: a helper `routerPrefetches(page)` that registers page.on('request') BEFORE page.goto and pushes {url, segment: headers['next-router-segment-prefetch'] ?? ''} for every request whose headers have `rsc` set and `next-router-prefetch` set (use `request.headers()`, lower-case names, as e2e/store-pages.spec.ts lines 63 to 70 do). Then one test.describe 'a store page goes quiet' with one test per address in this exact list: '/s/demo/no/search?q=lampe', '/s/demo/no/category/hjem', '/s/demo/no/cart', '/themes' (the platform's list: the theme store). Each test: page.goto(address, { waitUntil: 'load' }); await page.waitForTimeout(3000); const first = recorded.length; expect(first).toBeLessThan(60); await page.waitForTimeout(2000); expect(recorded.length - first).toBe(0). Use the project's default viewport (1280x720): do not set one. Do not use waitForLoadState('networkidle'). The file runs in the chromium project only (do not add it to WEBKIT_SPECS in playwright.config.ts). '/s/demo/no/category/hjem' exists in the seeded database: supabase/seed.sql line 247 makes the demo store's product category 'Hjem' with slug 'hjem' (scripts/db-setup.mjs --seed runs that file), and e2e/recommendations.spec.ts opens the same path. Do not replace it by another address; if it answers 404, stop (see stop_if)."
+    },
+    {
+     "file": "docs/performance.md",
+     "action": "edit",
+     "how": "Add a short section headed 'The router's two settings' at the end of the file (wrap lines at the width the file already uses): optimisticRouting is false because of the @drawer/[...rest] slot and the TODO in optimistic-routes.js; the numbers (624 router requests in 4 s on the search page before, about 55 after, measured at 1440x900); production could not loop while stores are on their own hosts, since behind a rewrite no shape is learned; what to do at each Next upgrade (read optimistic-routes.js for the TODO; when it is gone remove the flag and case (a) of src/lib/next-config-prefetch.test.ts, keep e2e/prefetch.spec.ts). partialPrefetching is false as a recorded choice; step 2.8 decides."
+    },
+    {
+     "file": "CLAUDE.md",
+     "action": "edit",
+     "how": "In the `## Stack` section, in the first bullet (the one that starts '- Next.js 16.4 (App Router, `cacheComponents` on)'), add one sentence at the end of that bullet: 'Two router settings are written in `next.config.ts` (D<the new number>): `optimisticRouting: false` (the `@drawer/[...rest]` slot made an endless prefetch; `e2e/prefetch.spec.ts` says when it may go) and `partialPrefetching: false` (a recorded choice).' Keep the bullet's existing text unchanged."
+    },
+    {
+     "file": "docs/decisions.md",
+     "action": "edit",
+     "how": "Append one table row at the end of the decisions table with the next free number (find it: `rg -o '^\\| D[0-9]+' docs/decisions.md | tr -dc '0-9\\n' | sort -n | tail -1`, then add 1; pull main first so the number is not taken). The row records: route guessing off (cause, the 624 to about 55 figure, when it may go, the test that holds it), partialPrefetching false as a recorded choice until step 2.8; rejected: a second hunk in patches/next.patch with a two-line bail-out (47 requests against 55, not worth carrying through upgrades), removing @drawer/[...rest] (D64 needs it); the platform: the theme store's list is in the same spec. No migration."
     }
-  ],
-  "migration": {
-    "needed": false,
-    "notes": ""
+   ],
+   "checks": [
+    "pnpm exec vitest run src/lib/next-config-prefetch.test.ts src/lib/chromium-trace.test.ts src/lib/next-config-headers.test.ts : all pass",
+    "pnpm lint && pnpm typecheck && pnpm test : exits 0",
+    "node scripts/db-setup.mjs --seed (on an empty DATABASE_URL) && pnpm build 2>&1 | tee /tmp/build-0.14.log : exits 0",
+    "grep -c partialPrefetching /tmp/build-0.14.log : prints 0",
+    "pnpm exec playwright test e2e/prefetch.spec.ts --project=chromium : all tests pass",
+    "pnpm exec playwright test e2e/store-pages.spec.ts e2e/cart.spec.ts e2e/navigation.spec.ts --project=chromium : all pass (the Next patch D423 and the cart drawer still work)",
+    "pnpm test:e2e : exits 0"
+   ]
+  }
+ ],
+ "tests": [
+  {
+   "file": "e2e/prefetch.spec.ts",
+   "proves": "Fails when any of the four pages makes 60 or more router prefetch requests in the 3 s after load, or any at all in the next 2 s: the loop is back (a Next upgrade renamed or dropped the flag, or the flag was removed too early)."
   },
-  "done_when": [
-    {
-      "check": "pnpm exec playwright test e2e/prefetch.spec.ts --project=chromium -g 'a store page goes quiet' (after pnpm build on a seeded database, no store domain set)",
-      "expect": "4 passed: on each page fewer than 60 router prefetch requests in the 3 s after load and 0 in the next 2 s"
-    },
-    {
-      "check": "pnpm build 2>&1 | grep -c partialPrefetching",
-      "expect": "0"
-    },
-    {
-      "check": "rg -n 'optimisticRouting: false|partialPrefetching: false' next.config.ts",
-      "expect": "exactly two lines, one each"
-    },
-    {
-      "check": "CI's e2e job on the pushed commit",
-      "expect": "green, with e2e/prefetch.spec.ts in its run"
-    }
-  ],
-  "after_deploy": [
-    "Nothing to read in production: stores there are on their own hosts and never looped. Confirm only that /api/health reports the commit (the deploy job does this itself)."
-  ],
-  "docs": [
-    "docs/decisions.md: the new D-row described in the commit (route guessing off, partial prefetching a recorded false).",
-    "CLAUDE.md, Stack: the sentence naming both settings.",
-    "docs/performance.md: the section 'The router's two settings'.",
-    "docs/audits/bloat-review-2026-11.md, Progress table: set the row of step 0.14 to Done with the date and the commits in Notes (find it: rg -n '^\\| 0\\.14 ' docs/audits/bloat-review-2026-11.md), and add a line under the step's own heading in docs/audits/bloat-review-2026-11/plan/phase-0.md saying what was done differently from the plan, if anything."
-  ],
-  "do_not": [
-    "Do not delete or rename src/app/s/[store]/[market]/@drawer/[...rest]/page.tsx or @drawer/default.tsx: the phone's cart drawer needs them (D64, docs/rules/storefront.md).",
-    "Do not add prefetch={false} to the product card's Link (src/components/product-card.tsx) as a workaround: the flag is the fix.",
-    "Do not set partialPrefetching: true and do not add `export const prefetch = 'partial'` anywhere: adoption is step 2.8.",
-    "Do not edit patches/next.patch.",
-    "Do not raise the 60 or loosen the 'none in the next 2 s' to make the spec pass.",
-    "Do not remove the try/catch around the network-idle wait in e2e/a11y.ts.",
-    "Do not add the new spec to WEBKIT_SPECS."
-  ],
-  "stop_if": [
-    "pnpm build or pnpm typecheck rejects `optimisticRouting` or `partialPrefetching` as an unknown config key: report the Next version (node -p \"require('next/package.json').version\") and stop.",
-    "With both lines in place a page of the spec still makes 60 or more requests, or keeps asking after 3 s: report the page, the count and the most repeated address and segment header; do not change the budget.",
-    "The build still prints a partialPrefetching warning.",
-    "e2e/store-pages.spec.ts, e2e/cart.spec.ts or e2e/navigation.spec.ts fails after the change and passed before it.",
-    "e2e/prefetch.spec.ts already exists with a helper that counts differently (step 0.12): reuse it and report, do not write a second helper."
-  ],
-  "executor": "cheap",
-  "executor_why": "Two config lines, one text test and one spec with fixed numbers; a wrong edit fails the build or the spec.",
-  "checked_in_code": "I opened next.config.ts: `cacheComponents: true` is at the top of nextConfig and the experimental block holds globalNotFound and serverActions, with neither setting present; node_modules/next/dist/server/config-shared.js:212 has `optimisticRouting: true` as the default and config-schema.js:246 accepts a boolean, so the flag is valid. e2e/prefetch.spec.ts does not exist yet (step 0.12 names the same file), so the brief says create-or-extend. Finding CA-6 used /category/belysning and proposed test.fail() in e2e/performance.spec.ts; the plan settled on PF-1's cause and spec, and the seeded category other specs use is /category/hjem, so I used that. I added /themes as the fourth page because the step's platform line asks for the theme store's list in the same spec."
+  {
+   "file": "src/lib/next-config-prefetch.test.ts",
+   "proves": "Fails when next.config.ts loses `optimisticRouting: false`, `partialPrefetching: false` or the comment naming e2e/prefetch.spec.ts."
+  }
+ ],
+ "migration": {
+  "needed": false,
+  "notes": ""
+ },
+ "done_when": [
+  {
+   "check": "pnpm exec playwright test e2e/prefetch.spec.ts --project=chromium -g 'a store page goes quiet' (after pnpm build on a seeded database, no store domain set)",
+   "expect": "4 passed: on each page fewer than 60 router prefetch requests in the 3 s after load and 0 in the next 2 s"
+  },
+  {
+   "check": "pnpm build 2>&1 | grep -c partialPrefetching",
+   "expect": "0"
+  },
+  {
+   "check": "rg -n 'optimisticRouting: false|partialPrefetching: false' next.config.ts",
+   "expect": "exactly two lines, one each"
+  },
+  {
+   "check": "CI's e2e job on the pushed commit",
+   "expect": "green, with e2e/prefetch.spec.ts in its run"
+  }
+ ],
+ "after_deploy": [
+  "Nothing to read in production: stores there are on their own hosts and never looped. Confirm only that /api/health reports the commit (the deploy job does this itself)."
+ ],
+ "docs": [
+  "docs/decisions.md: the new D-row described in the commit (route guessing off, partial prefetching a recorded false).",
+  "CLAUDE.md, Stack: the sentence naming both settings.",
+  "docs/performance.md: the section 'The router's two settings'.",
+  "docs/audits/bloat-review-2026-11.md, Progress table: set the row of step 0.14 to Done with the date and the commits in Notes (find it: rg -n '^\\| 0\\.14 ' docs/audits/bloat-review-2026-11.md), and add a line under the step's own heading in docs/audits/bloat-review-2026-11/plan/phase-0.md saying what was done differently from the plan, if anything."
+ ],
+ "do_not": [
+  "Do not delete or rename src/app/s/[store]/[market]/@drawer/[...rest]/page.tsx or @drawer/default.tsx: the phone's cart drawer needs them (D64, docs/rules/storefront.md).",
+  "Do not add prefetch={false} to the product card's Link (src/components/product-card.tsx) as a workaround: the flag is the fix.",
+  "Do not set partialPrefetching: true and do not add `export const prefetch = 'partial'` anywhere: adoption is step 2.8.",
+  "Do not edit patches/next.patch.",
+  "Do not raise the 60 or loosen the 'none in the next 2 s' to make the spec pass.",
+  "Do not remove the try/catch around the network-idle wait in e2e/a11y.ts.",
+  "Do not add the new spec to WEBKIT_SPECS."
+ ],
+ "stop_if": [
+  "pnpm build or pnpm typecheck rejects `optimisticRouting` or `partialPrefetching` as an unknown config key: report the Next version (node -p \"require('next/package.json').version\") and stop.",
+  "With both lines in place a page of the spec still makes 60 or more requests, or keeps asking after 3 s: report the page, the count and the most repeated address and segment header; do not change the budget.",
+  "The build still prints a partialPrefetching warning.",
+  "e2e/store-pages.spec.ts, e2e/cart.spec.ts or e2e/navigation.spec.ts fails after the change and passed before it.",
+  "e2e/prefetch.spec.ts already exists with a helper that counts differently (step 0.12): reuse it and report, do not write a second helper.",
+  "'/s/demo/no/category/hjem' answers 404 after node scripts/db-setup.mjs --seed: the seed changed; report it and stop rather than choosing another category."
+ ],
+ "executor": "cheap",
+ "executor_why": "Two config lines with their exact place, one text test and one spec whose addresses and thresholds are fixed; a wrong or useless flag fails the type check, the build-warning grep or the spec, and nothing touches money, sign-in or data.",
+ "checked_in_code": "I opened next.config.ts: `cacheComponents: true` is at the top of nextConfig and the experimental block holds globalNotFound and serverActions, with neither setting present; node_modules/next/dist/server/config-shared.js:212 has `optimisticRouting: true` as the default and config-schema.js:246 accepts a boolean, so the flag is valid. e2e/prefetch.spec.ts does not exist yet (step 0.12 names the same file), so the brief says create-or-extend. Finding CA-6 used /category/belysning and proposed test.fail() in e2e/performance.spec.ts; the plan settled on PF-1's cause and spec, and the seeded category other specs use is /category/hjem, so I used that. I added /themes as the fourth page because the step's platform line asks for the theme store's list in the same spec. Second check (12 November): the open fallback for the category address is gone: supabase/seed.sql line 247 makes the demo category 'hjem', so the spec uses it and a 404 is a stop_if, not a choice.",
+ "rating_checked": "cheap",
+ "cheap_commits": [
+  1
+ ]
 }

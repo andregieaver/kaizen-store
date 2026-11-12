@@ -1,143 +1,148 @@
 {
-  "id": "2.48",
-  "goal": "The write budget of step 1.12 asserts five ceilings for one placed order (same statements with 10 and 2,000 earlier orders; at most 3 more per added line; triggers under a fifth of the order's database time; a counted visit at most 3 statements and 2 rows; optional features' triggers under 2 ms on a shop-only store), and placeOrder is staged only where a measured figure is over one.",
-  "why": "Step 1.12 counts what one placed order writes but sets no ceiling and nobody has judged the count; code review step 3.7 (Stage placeOrder) is open. After this step each figure has a line in docs/performance.md and a failing test behind it.",
-  "read_first": [
-    "docs/rules/admin/commerce.md",
-    "docs/audits/code-review-2026-11.md",
-    "docs/performance.md",
-    "src/server/order-insert.ts",
-    "src/server/checkout.ts",
-    "src/server/ratchet.baseline.json",
-    "docs/ci-migrations.md"
-  ],
-  "depends_on": [
-    {
-      "id": "1.12",
-      "why": "it creates the int test that walks a shop-only store and counts what one placed order writes; this step adds ceilings to that test and reads its first figures"
-    },
-    {
-      "id": "1.9",
-      "why": "it puts the statement counter in src/db/client.ts that the ceilings are counted with"
-    }
-  ],
-  "commits": [
-    {
-      "title": "A placed order has five ceilings, written in docs/performance.md and asserted by the write budget",
-      "changes": [
-        {
-          "file": "src/server/shop-journey.int.test.ts",
-          "action": "create",
-          "how": "The real file is the int test step 1.12 made; its name may differ. Find it: rg -l 'placeOrder' src/server -g '*.int.test.ts' | xargs rg -l \"features|\\['shop'\\]\" , and check the Progress table's row for step 1.12, which names it. Use THAT file; do not create this one if another exists (if none exists, stop). Do not overwrite it. First read the figures it already records for placeOrder (statements, rows written, tables touched) and print them. Then add one describe block 'a placed order's ceilings' with five cases, all on the counter of step 1.9 (src/db/client.ts): (1) Seed store A with 10 earlier orders and store B with 2,000 (insert them with the test file's own seeding helper, in batches); place one identical one-line order in each through the same function the journey uses; expect the two statement counts to be equal. (2) Place a one-line, a two-line and a five-line order; expect statements(n lines) - statements(1 line) <= 3 * (n - 1). (3) Trigger time: around one placed order run `set local track_functions = 'all'` in the session if the test database allows it and read pg_stat_user_functions (calls, total_time) before and after for functions in schema commerce, after `select pg_stat_force_next_flush()`; expect the summed total_time of trigger functions to be under 20% of the order's whole database time (the sum of the counter's statement durations). If the test database cannot track functions (PGlite cannot; the int tests run on real Postgres, which can), do not fake it: skip this case with it.skip and a comment, and report. (4) One counted visit (the function the /api/visit route calls; find it: rg -n 'export async function' src/server/analytics-visits.ts | head): at most 3 statements and at most 2 rows written. (5) A store with features ['shop'] only: the triggers of optional features (bonus, gift cards, affiliates, creators, standing orders, bookings, suppliers: those whose function body reads a table of a switched-off feature) take together under 2 ms of one paid order, by the same pg_stat_user_functions difference. Each expectation's failure message names the figure and says: lower the cost or do code review step 3.7 for that part; never raise the ceiling."
-        },
-        {
-          "file": "docs/performance.md",
-          "action": "edit",
-          "how": "Add a section 'What one placed order costs (step 2.48)': a table with the five ceilings, each with the first measured figure (from the run of the new cases), the ceiling, and the test case that holds it. Where case 3 was skipped, say so and why."
-        }
-      ],
-      "checks": [
-        "pnpm test:int <the file of step 1.12> : exits 0, or fails ONLY in the new cases with a figure over its ceiling (then go to the next commit; do not loosen the case)",
-        "Scratch change, not committed: in insertOrderLine() (src/server/order-insert.ts line 299) add one extra `await tx.execute(sql`select 1`)` and run the same file: case 2 fails; remove the line",
-        "pnpm lint && pnpm typecheck && pnpm test: exits 0"
-      ]
-    },
-    {
-      "title": "Order lines are written in one statement (only if the per-line ceiling failed)",
-      "changes": [
-        {
-          "file": "src/server/order-insert.ts",
-          "action": "edit",
-          "how": "Make this commit only if case 2 of the last commit failed. Add `insertOrderLines(tx, storeId, orderId, lines: OrderLineInsert[]): Promise<string[]>` beside insertOrderLine (line 299): one `insert into commerce.order_lines (...) values (...), (...) returning id` built with drizzle's sql.join over the same column list and the same per-line values insertOrderLine writes today, returning the ids in input order (use `returning id` and rely on the order of a single multi-row insert, or return a client-made key column if the function already has one). insertOrderLine stays, calls insertOrderLines with one line, and keeps its signature (src/server/exchanges.ts line 1288, src/server/order-edits.ts line 764 and src/server/draft-orders.ts line 1129 call it and are not touched)."
-        },
-        {
-          "file": "src/server/checkout.ts",
-          "action": "edit",
-          "how": "Around line 1025 the checkout calls insertOrderLine once per cart line inside a loop. Read the whole loop first. If each iteration only inserts the line and collects its id, replace the loop's inserts by one insertOrderLines call before the loop and use the returned ids in the same order. If an iteration also does other work between lines that depends on the previous line being in the database (a stock hold, a booking, a gift card row), keep that work per line but still insert all lines first. If you cannot tell whether later work depends on the order, stop."
-        }
-      ],
-      "checks": [
-        "pnpm test:int <the file of step 1.12> src/server/checkout.int.test.ts src/server/checkout-kinds.int.test.ts src/server/checkout-stripe.int.test.ts : exits 0 with case 2 green",
-        "pnpm lint && pnpm typecheck && pnpm test: exits 0",
-        "pnpm build && pnpm test:e2e e2e/cart.spec.ts : exits 0"
-      ]
-    },
-    {
-      "title": "A trigger that probes a switched-off feature first tests the store's switch (only if the 2 ms line failed)",
-      "changes": [
-        {
-          "file": "supabase/migrations/*_order_trigger_gates.sql",
-          "action": "create",
-          "how": "Make this commit only if case 5 failed. Create it with `pnpm exec drizzle-kit generate --custom --name order_trigger_gates`, then `node scripts/prune-snapshots.mjs`. For each of the slowest optional-feature trigger functions the test named (take the names and times from pg_stat_user_functions in the test's output; read each function's current body in supabase/migrations/20261111172841_baseline_3_rules.sql), write `create or replace function commerce.<name>() ...` with the SAME body and one new first statement: return early (return new / return null as the function already does at its end) when the store does not have the feature on, read from the same place the application reads it (commerce.stores.features, a text array; confirm the column with rg -n 'features' src/db/schema.ts near the stores table and how src/lib/store-features.ts names each feature). A `create or replace function` on a trigger function takes no lock on commerce.orders and builds no index, so the hot-table rules (concurrently, not valid) do not apply; add no index and alter no table in this file. Old code keeps working: the function does the same as before for a store that has the feature."
-        },
-        {
-          "file": "src/db/commerce.test.ts",
-          "action": "edit",
-          "how": "Add one case per changed function: with the feature off for the store, an order insert leaves the feature's table without a row; with it on, the row is written exactly as before (copy the existing case that proves the trigger's effect and run it for both)."
-        }
-      ],
-      "checks": [
-        "pnpm exec vitest run src/db/commerce.test.ts src/db/migration-safety.scan.test.ts : exits 0",
-        "pnpm db:check : exits 0",
-        "node scripts/db-setup.mjs --seed on an empty DATABASE_URL, then pnpm test:int <the file of step 1.12> : case 5 green",
-        "pnpm lint && pnpm typecheck && pnpm test: exits 0"
-      ]
-    }
-  ],
-  "tests": [
-    {
-      "file": "the int test of step 1.12 (the block 'a placed order's ceilings')",
-      "proves": "A per-line statement added to insertOrderLine(), a statement count that grows with the store's earlier orders, triggers taking a fifth or more of the order's time, a counted visit over 3 statements or 2 rows, and optional-feature triggers over 2 ms on a shop-only store."
-    },
-    {
-      "file": "src/db/commerce.test.ts",
-      "proves": "A gated trigger that stops writing for a store with the feature on, or still writes with it off."
-    }
-  ],
-  "migration": {
-    "needed": true,
-    "notes": "Only if the 2 ms line fails. A custom migration (drizzle-kit generate --custom, then node scripts/prune-snapshots.mjs) that replaces trigger functions with the same body plus a first-line test of the store's feature switch. It touches functions only: no table is altered, no index built, so the hot-table rules do not apply although the triggers fire on commerce.orders. Running code keeps working because a store with the feature on gets the same behaviour. CI applies it after the checks pass; never apply it by hand; afterwards check the Supabase advisors and record the version in docs/decisions.md under Migration versions."
+ "id": "2.48",
+ "goal": "The write budget of step 1.12 asserts five ceilings for one placed order (same statements with 10 and 2,000 earlier orders; at most 3 more per added line; triggers under a fifth of the order's database time; a counted visit at most 3 statements and 2 rows; optional features' triggers under 2 ms on a shop-only store), and placeOrder is staged only where a measured figure is over one.",
+ "why": "Step 1.12 counts what one placed order writes but sets no ceiling and nobody has judged the count; code review step 3.7 (Stage placeOrder) is open. After this step each figure has a line in docs/performance.md and a failing test behind it.",
+ "read_first": [
+  "docs/rules/admin/commerce.md",
+  "docs/audits/code-review-2026-11.md",
+  "docs/performance.md",
+  "src/server/order-insert.ts",
+  "src/server/checkout.ts",
+  "src/server/ratchet.baseline.json",
+  "docs/ci-migrations.md"
+ ],
+ "depends_on": [
+  {
+   "id": "1.12",
+   "why": "it creates the int test that walks a shop-only store and counts what one placed order writes; this step adds ceilings to that test and reads its first figures"
   },
-  "done_when": [
+  {
+   "id": "1.9",
+   "why": "it puts the statement counter in src/db/client.ts that the ceilings are counted with"
+  }
+ ],
+ "commits": [
+  {
+   "title": "A placed order has five ceilings, written in docs/performance.md and asserted by the write budget",
+   "changes": [
     {
-      "check": "pnpm test:int <the file of step 1.12>",
-      "expect": "Passes, with the five ceilings asserted (case 3 may be skipped only with the reason written in docs/performance.md)."
+     "file": "src/server/order-writes.int.test.ts",
+     "action": "edit",
+     "how": "Step 1.12 made this file (its brief names it; the journey of pages is the other file, shop-journey.int.test.ts, and is not touched here). It mocks next/headers and next/server, makes one store with features ['shop'], three simple products in stock, a guest cart of three lines and a flat shipping rate, measures placeOrder(shop, cartId, consent) and recordVisit({ headers, body }) of src/server/analytics-visits.ts inside measureTables() of src/server/table-stats-test-support.ts (which returns { statements, records, tables } and reads statistics on its `side` connection with settled()), and holds orderWrites.order and orderWrites.visit in src/server/ratchet.baseline.json. If the file does not exist, stop. Do not overwrite it or change its cases. First print the figures it records for placeOrder (statements, rows inserted, rows updated, tables). Then add one describe block 'a placed order's ceilings' with five cases, each counting with measureTables() and its records (src/db/statement-count.ts records carry ms): (1) Make store A and store B as the file makes its store, place one one-line order in each with the file's own helpers, then give A 9 and B 1,999 earlier orders by copying that first order in SQL on the side connection, as src/server/listing.int.test.ts's manyProducts() copies a product: insert into commerce.orders (<its non-generated columns>) select from jsonb_populate_record(null::commerce.orders, to_jsonb(o) || jsonb_build_object('id', gen_random_uuid(), 'number', 'C-' || n)) over generate_series(1, <count>) n, where o is that first order (numbers 'C-…' sit outside the gap-free series, as copied orders do, D384; test files may insert into commerce.orders, src/lib/order-numbers.test.ts skips them). Place one more identical one-line order in each inside measureTables(); expect the two statement counts to be equal. (2) Place a one-line, a two-line and a five-line order; expect statements(n lines) - statements(1 line) <= 3 * (n - 1). (3) Trigger time: track_functions is a superuser setting and the app's pool is another connection, so a `set local` in the test reaches nothing: in beforeAll of this block run on the side connection 'alter database ' || current_database() || ' set track_functions = ''all''' and call closeDb() from src/db/client.ts so the pool reconnects with it; in afterAll 'alter database … reset track_functions' and closeDb() again (CI's database user is the superuser postgres; if the alter fails with a permission error, mark cases 3 and 5 it.skip with that reason and report). Read select funcname, calls, total_time from pg_stat_user_functions where schemaname = 'commerce' on the side connection before and after one placed order, the after read through settled(); expect the summed total_time of the trigger functions that moved to be under 20% of the order's database time (the sum of its records' ms). (4) One counted visit, recordVisit() as the file calls it: at most 3 statements and at most 2 rows written (inserted plus updated, from measureTables' tables). (5) On the shop-only store: the triggers of optional features (bonus, gift cards, affiliates, creators, standing orders, bookings, suppliers: those whose function body reads a table of a switched-off feature) take together under 2 ms of one paid order, by the same pg_stat_user_functions difference; list which functions you counted in a constant with a one-line reason each. Each expectation's failure message names the figure and says: lower the cost or do code review step 3.7 for that part; never raise the ceiling.",
+     "made_by": "1.12"
     },
     {
-      "check": "The scratch `select 1` added to insertOrderLine() in src/server/order-insert.ts, then the same command",
-      "expect": "Fails in the per-line case; passes again when the line is removed."
-    },
-    {
-      "check": "rg -n 'What one placed order costs' docs/performance.md",
-      "expect": "The section holds the five ceilings with their first figures."
+     "file": "docs/performance.md",
+     "action": "edit",
+     "how": "Add a section 'What one placed order costs (step 2.48)': a table with the five ceilings, each with the first measured figure (from the run of the new cases), the ceiling, and the test case that holds it. Where case 3 was skipped, say so and why."
     }
-  ],
-  "after_deploy": [
-    "Place one test order on the demo store in test mode (add a product to the cart, press Check out, pay with Stripe's test card 4242 4242 4242 4242): the order appears under Orders in the admin as paid, with its confirmation email logged. If the store shows an express button (Apple Pay or Google Pay needs a real wallet), at least confirm the button is drawn on the product page and the cart.",
-    "If the migration went out: Supabase advisors (security and performance) show no new warning for the replaced functions, and a test order in a store with the bonus program on still earns its credits."
-  ],
-  "docs": [
-    "docs/performance.md: the section with the five ceilings and figures.",
-    "docs/decisions.md: one new row with the next free D-number (find the last with: rg -o '^\\| D[0-9]+' docs/decisions.md | tail -1, and add one). It records the five ceilings, the first figures, which of the two staging commits were needed, and the migration's version if one was made (also under Migration versions).",
-    "docs/audits/code-review-2026-11.md, Progress table row 3.7 (Stage placeOrder): if a staging commit was made, set it to In progress or Done with the date and commit and add a change-log line saying which part; if none was needed, add a change-log line that the write budget now holds the figures and why no staging was done.",
-    "docs/audits/bloat-review-2026-11.md, Progress table: set the row of step 2.48 to Done with the date and the commit hash, in the same commit as the last change; tick the step's section in docs/audits/bloat-review-2026-11/plan/phase-2.md if that file has one."
-  ],
-  "do_not": [
-    "Do not raise or remove a ceiling to make the test pass, and do not skip a case other than case 3 on a database that cannot time functions.",
-    "Do not stage placeOrder where no figure is over its ceiling: no multi-row insert and no migration 'while we are here'.",
-    "Do not drop, disable or rename a trigger; do not change what a trigger writes for a store that has the feature on.",
-    "Do not alter commerce.orders or commerce.order_lines (hot tables) and do not add an index in this step.",
-    "Do not change insertOrderLine's signature: three other writers call it.",
-    "Do not apply the migration to production by hand."
-  ],
-  "stop_if": [
-    "The int test of step 1.12 cannot be found, or the Progress table does not show 1.12 and 1.9 as Done.",
-    "Case 1 fails (statements differ between 10 and 2,000 earlier orders): that is a read that grows with history; report the differing statements, do not fix it blind.",
-    "The checkout's line loop does work between lines whose order you cannot prove safe to change.",
-    "A trigger function to gate reads the feature switch from somewhere other than commerce.stores.features, or the function is security definer with a search_path you would have to change.",
-    "Any checkout int test or e2e/cart.spec.ts fails after a staging commit."
-  ],
-  "executor": "cheap-then-review",
-  "executor_why": "The ceilings are fully specified test cases, but the two conditional commits change how an order's lines and triggers are written, so a stronger model must read those diffs before the push.",
-  "checked_in_code": "I opened src/server/order-insert.ts: insertOrderLine() exists at line 299 with four callers (checkout.ts:1025, exchanges.ts:1288, order-edits.ts:764, draft-orders.ts:1129), so the scratch change in the done-when is possible as written. docs/audits/code-review-2026-11.md line 109 shows step 3.7 'Stage placeOrder' as Open. The write budget itself does not exist yet (step 1.12 makes it and the plan does not fix its file name), so the brief tells the executor how to find it and stops if it is missing. The plan says 'four ceilings' and then adds a fifth line; I wrote all five as cases, and made case 3 skippable only where the database cannot time functions."
+   ],
+   "checks": [
+    "pnpm test:int src/server/order-writes.int.test.ts : exits 0, or fails ONLY in the new cases with a figure over its ceiling (then go to the next commit; do not loosen the case)",
+    "Scratch change, not committed: in insertOrderLine() (src/server/order-insert.ts line 299) add one extra `await tx.execute(sql`select 1`)` and run the same file: case 2 fails; remove the line",
+    "pnpm lint && pnpm typecheck && pnpm test: exits 0"
+   ]
+  },
+  {
+   "title": "Order lines are written in one statement (only if the per-line ceiling failed)",
+   "changes": [
+    {
+     "file": "src/server/order-insert.ts",
+     "action": "edit",
+     "how": "Make this commit only if case 2 of the last commit failed. Add `insertOrderLines(tx, storeId, orderId, lines: OrderLineInsert[]): Promise<string[]>` beside insertOrderLine (line 299): one `insert into commerce.order_lines (...) values (...), (...) returning id` built with drizzle's sql.join over the same column list and the same per-line values insertOrderLine writes today, returning the ids in input order (use `returning id` and rely on the order of a single multi-row insert, or return a client-made key column if the function already has one). insertOrderLine stays, calls insertOrderLines with one line, and keeps its signature (src/server/exchanges.ts line 1288, src/server/order-edits.ts line 764 and src/server/draft-orders.ts line 1129 call it and are not touched)."
+    },
+    {
+     "file": "src/server/checkout.ts",
+     "action": "edit",
+     "how": "Around line 1025 the checkout calls insertOrderLine once per cart line inside a loop. Read the whole loop first. If each iteration only inserts the line and collects its id, replace the loop's inserts by one insertOrderLines call before the loop and use the returned ids in the same order. If an iteration also does other work between lines that depends on the previous line being in the database (a stock hold, a booking, a gift card row), keep that work per line but still insert all lines first. If you cannot tell whether later work depends on the order, stop."
+    }
+   ],
+   "checks": [
+    "pnpm test:int src/server/order-writes.int.test.ts src/server/checkout.int.test.ts src/server/checkout-kinds.int.test.ts src/server/checkout-stripe.int.test.ts : exits 0 with case 2 green",
+    "pnpm lint && pnpm typecheck && pnpm test: exits 0",
+    "pnpm build && pnpm test:e2e e2e/cart.spec.ts : exits 0"
+   ]
+  },
+  {
+   "title": "A trigger that probes a switched-off feature first tests the store's switch (only if the 2 ms line failed)",
+   "changes": [
+    {
+     "file": "supabase/migrations/*_order_trigger_gates.sql",
+     "action": "create",
+     "how": "Make this commit only if case 5 failed. Create it with `pnpm exec drizzle-kit generate --custom --name order_trigger_gates`, then `node scripts/prune-snapshots.mjs`. For each of the slowest optional-feature trigger functions the test named (take the names and times from pg_stat_user_functions in the test's output; read each function's current body in supabase/migrations/20261111172841_baseline_3_rules.sql), write `create or replace function commerce.<name>() ...` with the SAME body and one new first statement: return early (return new / return null as the function already does at its end) when the store does not have the feature on, read from the same place the application reads it (commerce.stores.features, a text array; confirm the column with rg -n 'features' src/db/schema.ts near the stores table and how src/lib/store-features.ts names each feature). A `create or replace function` on a trigger function takes no lock on commerce.orders and builds no index, so the hot-table rules (concurrently, not valid) do not apply; add no index and alter no table in this file. Old code keeps working: the function does the same as before for a store that has the feature."
+    },
+    {
+     "file": "src/db/commerce.test.ts",
+     "action": "edit",
+     "how": "Add one case per changed function: with the feature off for the store, an order insert leaves the feature's table without a row; with it on, the row is written exactly as before (copy the existing case that proves the trigger's effect and run it for both)."
+    }
+   ],
+   "checks": [
+    "pnpm exec vitest run src/db/commerce.test.ts src/db/migration-safety.scan.test.ts : exits 0",
+    "pnpm db:check : exits 0",
+    "node scripts/db-setup.mjs --seed on an empty DATABASE_URL, then pnpm test:int src/server/order-writes.int.test.ts : case 5 green",
+    "pnpm lint && pnpm typecheck && pnpm test: exits 0"
+   ]
+  }
+ ],
+ "tests": [
+  {
+   "file": "src/server/order-writes.int.test.ts",
+   "proves": "A per-line statement added to insertOrderLine(), a statement count that grows with the store's earlier orders, triggers taking a fifth or more of the order's time, a counted visit over 3 statements or 2 rows, and optional-feature triggers over 2 ms on a shop-only store."
+  },
+  {
+   "file": "src/db/commerce.test.ts",
+   "proves": "A gated trigger that stops writing for a store with the feature on, or still writes with it off."
+  }
+ ],
+ "migration": {
+  "needed": true,
+  "notes": "Only if the 2 ms line fails. A custom migration (drizzle-kit generate --custom, then node scripts/prune-snapshots.mjs) that replaces trigger functions with the same body plus a first-line test of the store's feature switch. It touches functions only: no table is altered, no index built, so the hot-table rules do not apply although the triggers fire on commerce.orders. Running code keeps working because a store with the feature on gets the same behaviour. CI applies it after the checks pass; never apply it by hand; afterwards check the Supabase advisors and record the version in docs/decisions.md under Migration versions."
+ },
+ "done_when": [
+  {
+   "check": "pnpm test:int src/server/order-writes.int.test.ts",
+   "expect": "Passes, with the five ceilings asserted (case 3 may be skipped only with the reason written in docs/performance.md)."
+  },
+  {
+   "check": "The scratch `select 1` added to insertOrderLine() in src/server/order-insert.ts, then the same command",
+   "expect": "Fails in the per-line case; passes again when the line is removed."
+  },
+  {
+   "check": "rg -n 'What one placed order costs' docs/performance.md",
+   "expect": "The section holds the five ceilings with their first figures."
+  }
+ ],
+ "after_deploy": [
+  "Place one test order on the demo store in test mode (add a product to the cart, press Check out, pay with Stripe's test card 4242 4242 4242 4242): the order appears under Orders in the admin as paid, with its confirmation email logged. If the store shows an express button (Apple Pay or Google Pay needs a real wallet), at least confirm the button is drawn on the product page and the cart.",
+  "If the migration went out: Supabase advisors (security and performance) show no new warning for the replaced functions, and a test order in a store with the bonus program on still earns its credits."
+ ],
+ "docs": [
+  "docs/performance.md: the section with the five ceilings and figures.",
+  "docs/decisions.md: one new row with the next free D-number (find the last with: rg -o '^\\| D[0-9]+' docs/decisions.md | tr -dc '0-9\\n' | sort -n | tail -1, and add one; after step 2.40 use node scripts/decisions.mjs new). It records the five ceilings, the first figures, which of the two staging commits were needed, and the migration's version if one was made (also under Migration versions).",
+  "docs/audits/code-review-2026-11.md, Progress table row 3.7 (Stage placeOrder): if a staging commit was made, set it to In progress or Done with the date and commit and add a change-log line saying which part; if none was needed, add a change-log line that the write budget now holds the figures and why no staging was done.",
+  "docs/audits/bloat-review-2026-11.md, Progress table: set the row of step 2.48 to Done with the date and the commit hash, in the same commit as the last change; tick the step's section in docs/audits/bloat-review-2026-11/plan/phase-2.md if that file has one."
+ ],
+ "do_not": [
+  "Do not raise or remove a ceiling to make the test pass, and do not skip a case other than case 3 on a database that cannot time functions.",
+  "Do not stage placeOrder where no figure is over its ceiling: no multi-row insert and no migration 'while we are here'.",
+  "Do not drop, disable or rename a trigger; do not change what a trigger writes for a store that has the feature on.",
+  "Do not alter commerce.orders or commerce.order_lines (hot tables) and do not add an index in this step.",
+  "Do not change insertOrderLine's signature: three other writers call it.",
+  "Do not apply the migration to production by hand."
+ ],
+ "stop_if": [
+  "src/server/order-writes.int.test.ts or src/server/table-stats-test-support.ts (step 1.12) does not exist, or the Progress table does not show 1.12 and 1.9 as Done.",
+  "Case 1 fails (statements differ between 10 and 2,000 earlier orders): that is a read that grows with history; report the differing statements, do not fix it blind.",
+  "The checkout's line loop does work between lines whose order you cannot prove safe to change.",
+  "A trigger function to gate reads the feature switch from somewhere other than commerce.stores.features, or the function is security definer with a search_path you would have to change.",
+  "Any checkout int test or e2e/cart.spec.ts fails after a staging commit."
+ ],
+ "executor": "strong",
+ "executor_why": "Commit 1 is now test cases alone in step 1.12's named file, with the seeding, the function timing and its superuser setting specified, so the cheap model may do it; commits 2 and 3 are made or skipped on its figures and then change checkout's line writes and the order triggers in a migration, where which loop work depends on line order and which trigger functions count as optional are readings the brief leaves to the executor.",
+ "checked_in_code": "I opened src/server/order-insert.ts: insertOrderLine() exists at line 299 with four callers (checkout.ts:1025, exchanges.ts:1288, order-edits.ts:764, draft-orders.ts:1129), so the scratch change in the done-when is possible as written. docs/audits/code-review-2026-11.md line 109 shows step 3.7 'Stage placeOrder' as Open. The write budget itself does not exist yet (step 1.12 makes it and the plan does not fix its file name), so the brief tells the executor how to find it and stops if it is missing. The plan says 'four ceilings' and then adds a fifth line; I wrote all five as cases, and made case 3 skippable only where the database cannot time functions. Second check (12 November): the file is src/server/order-writes.int.test.ts (step 1.12's name for the order and visit measure, an edit), not shop-journey.int.test.ts; track_functions is set database-wide on the side connection with closeDb() (a set local in the test cannot reach the app's pool, and it needs the superuser CI has) instead of pg_stat_force_next_flush(); the 2,000 earlier orders are copies numbered 'C-…' outside the series; the decision number uses sort -n.",
+ "rating_checked": "cheap-then-review",
+ "cheap_commits": [
+  1
+ ]
 }

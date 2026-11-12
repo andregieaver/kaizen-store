@@ -1,0 +1,20 @@
+{
+ "id": "1.1",
+ "fixed": [
+  "Commit 1 quoted the ratchet sentence as one string; in CLAUDE.md it spans lines 418-419. The edit now names both lines and the line break.",
+  "The brief's CLAUDE.md edits would grow the bytes outside the index by about 112 (new bullet 214, wrap +8, saving only 110), which step 0.43's case 1 refuses; the wording is now shorter and exact (about 9 bytes down, computed on today's file), and commit 1 lowers claudeOutsideIndex as 0.43's case 2 requires.",
+  "docs/rules/budgets.md, src/lib/docs-budget.scan.test.ts and src/lib/docs-budget.baseline.json are now 'edit' with made_by 0.43 and what 0.43/0.41/0.40 leave in each, instead of 'its name may differ' and 'create if missing'.",
+  "Commit 1's planted case for unnamedBaselines is written out.",
+  "Commit 3 widens 0.41's staleRuleNames() in scripts/lib/rule-names.mjs (0.41 made it and said 1.1 widens it) instead of the conditional 'if 0.41 already put a name check'; the classifier was run today: only `public/kaizen/docs/` is reported after 0.41, so NAME_EXCEPTIONS holds that one entry and any other report is a stop.",
+  "Commit 3's planted case now writes CLAUDE.md and docs/rules/admin as 0.41's function needs, and gives the exact expected list."
+ ],
+ "rejected": [
+  {
+   "problem": "Depends on artefacts of 0.40, 0.41 and 0.43 whose content the brief does not state.",
+   "why": "Real for 0.43 and 0.41 and fixed (their files' contents are now stated); 0.40's part is only the figures the first baseline should show, which the brief already gives with a stop_if."
+  }
+ ],
+ "cheaper": "applied: staleNames was run on today's tree and commit 3 names the one exception and stops on anything else, and 0.43's files are named as they will exist, so commit 3 no longer has a judgement and the step is cheap.",
+ "executor_before": "cheap-then-review",
+ "executor_after": "cheap"
+}

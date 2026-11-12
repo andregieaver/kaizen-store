@@ -1,0 +1,12 @@
+{
+ "id": "0.32",
+ "fixed": [
+  "Commit 2: field-file-upload.ts gets cacheControl \"31536000\" outright (startFieldFileUpload signs for the public FIELD_FILES_BUCKET at a random path).",
+  "Commit 1: the image scan matches /<Image\\s/ so <ImageFields> and similar components are not counted as next/image tags.",
+  "Commit 2: file-lifetimes.scan.test.ts gains case 5, a table of the exact lifetime per file (year, \"0\", \"short\")."
+ ],
+ "rejected": [],
+ "cheaper": "applied: the per-file lifetime table and the stated bucket. Rating kept at cheap-then-review: cache headers on public and font files and next.config.ts are the kind of change whose harm (a stale or wrongly kept file) the checks only partly see.",
+ "executor_before": "cheap-then-review",
+ "executor_after": "cheap-then-review"
+}

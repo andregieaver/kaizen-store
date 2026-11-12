@@ -1,0 +1,22 @@
+{
+ "id": "2.30",
+ "fixed": [
+  "Commit 1: the tracker exists, so the change is 'edit'; the table goes in a new '### 2.30' section (the file had only the Progress row, while done_when greps a heading); the analyzer exports cut-simulation.mjs reads are named with the commands that make them, and the check reads its 'removed' line.",
+  "Commit 3: 'this commit and the next' corrected (there is no commit 4).",
+  "Commit 2 now adds the admin-bundle.scan.test.ts rule the tests list named (made_by 1.4, added to depends_on), with a 'would notice' case.",
+  "A stop_if for an analyzer export without module records."
+ ],
+ "rejected": [
+  {
+   "problem": "Commit 3 and stop_if 5 carry '[an executor]' placeholders.",
+   "why": "An artefact of the blanked copy; the brief names a stronger model and the cheap executor."
+  },
+  {
+   "problem": "cut-simulation.mjs is not in the repo yet.",
+   "why": "Step 0.1 (in depends_on) copies it from scripts/sources/bn/sim.mjs.txt."
+  }
+ ],
+ "cheaper": "not applied: whether each dialog keeps a draft while closed needs reading twelve dialogs; the rule for both cases is already written (unmount when it keeps no state, else a wasOpened state), and commit 2 stays reviewed with the step.",
+ "executor_before": "strong",
+ "executor_after": "strong"
+}

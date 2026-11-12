@@ -1,277 +1,282 @@
 {
-  "id": "0.33",
-  "goal": "Every new picture is kept as three files (480, 800 and at most 1,600 px wide), and product tiles and the product gallery offer all three, so a 3x phone takes the 800 px file for a tile; a picture without a middle copy behaves exactly as today.",
-  "why": "Today nothing is kept between 480 and 1,600 px, so a 390 px phone at 3x and a Retina laptop download the 1,600 px file for every product tile: 71 KB on average where an 800 px copy is 18 KB. After: the first product tile's currentSrc at 390 px and 3x is the 800 px file, and no tile or gallery picture comes from a file more than 1.5 times as wide as its box needs.",
-  "read_first": [
-    "docs/media-compression.md",
-    "docs/rules/storefront.md:116",
-    "src/lib/picture-sizes.ts",
-    "src/components/sized-picture.tsx",
-    "src/server/media.ts",
-    "src/server/media-library.ts",
-    "src/server/catalog.ts:285",
-    "e2e/performance.spec.ts"
-  ],
-  "depends_on": [
+ "id": "0.33",
+ "goal": "Every new picture is kept as three files (480, 800 and at most 1,600 px wide), and product tiles and the product gallery offer all three, so a 3x phone takes the 800 px file for a tile; a picture without a middle copy behaves exactly as today.",
+ "why": "Today nothing is kept between 480 and 1,600 px, so a 390 px phone at 3x and a Retina laptop download the 1,600 px file for every product tile: 71 KB on average where an 800 px copy is 18 KB. After: the first product tile's currentSrc at 390 px and 3x is the 800 px file, and no tile or gallery picture comes from a file more than 1.5 times as wide as its box needs.",
+ "read_first": [
+  "docs/media-compression.md",
+  "docs/rules/storefront.md:116",
+  "src/lib/picture-sizes.ts",
+  "src/components/sized-picture.tsx",
+  "src/server/media.ts",
+  "src/server/media-library.ts",
+  "src/server/catalog.ts:285",
+  "e2e/performance.spec.ts"
+ ],
+ "depends_on": [
+  {
+   "id": "0.32",
+   "why": "it turns Next's image service off and adds src/lib/file-lifetimes.scan.test.ts; the new 800 px file is stored with the same one-year lifetime and must pass that scan"
+  }
+ ],
+ "commits": [
+  {
+   "title": "A picture can have a middle copy: two columns on media, and the sources written with three files",
+   "changes": [
     {
-      "id": "0.32",
-      "why": "it turns Next's image service off and adds src/lib/file-lifetimes.scan.test.ts; the new 800 px file is stored with the same one-year lifetime and must pass that scan"
+     "file": "src/db/schema.ts",
+     "action": "edit",
+     "how": "In the media table (rg -n 'export const media = commerce.table' src/db/schema.ts), find the columns thumbnailUrl and thumbnailPath. Directly after thumbnailUrl add: doc comment 'Its 800 px copy (bloat review step 0.33), made where the 480 px one is, for a picture wider than 800 px; null for one stored before, which is offered as its two files.' `mediumUrl: text(\"medium_url\"),`. Directly after thumbnailPath add `mediumPath: text(\"medium_path\"),` with the comment 'The 800 px copy's path in the bucket, removed with the item.'. Both nullable, no default, no index."
+    },
+    {
+     "file": "supabase/migrations/*_media_medium_copy.sql",
+     "action": "create",
+     "how": "Run `pnpm db:generate` (name media_medium_copy if asked). The file must hold exactly two statements: ALTER TABLE \"commerce\".\"media\" ADD COLUMN \"medium_url\" text; and the same for \"medium_path\". Leave it as generated; run `pnpm db:check`. media is not one of the hot tables."
+    },
+    {
+     "file": "src/lib/picture-sizes.ts",
+     "action": "edit",
+     "how": "(1) Add `/** The width of a picture's middle copy (bloat review step 0.33): what a product tile needs on a 3x phone and a Retina laptop. */ export const MEDIUM_COPY_WIDTH = 800;`. (2) pictureSources(): its argument gains `medium?: string | null`. Keep the first three lines as they are. After `if (!small) return { src: picture.url };` add: `const medium = picture.medium && picture.medium !== picture.url && picture.medium !== small && width > MEDIUM_COPY_WIDTH ? picture.medium : null;` and return `{ src: picture.url, srcSet: medium ? `${small} ${SMALL_COPY_WIDTH}w, ${medium} ${MEDIUM_COPY_WIDTH}w, ${picture.url} ${width}w` : `${small} ${SMALL_COPY_WIDTH}w, ${picture.url} ${width}w` }`. A picture with no medium, or no wider than 800 px, gives exactly the string it gives today. (3) Update the file's top doc comment: 'kept as two files ... and since step 0.33 a third of 800 px for a picture wider than that'."
+    },
+    {
+     "file": "src/lib/picture-sizes.test.ts",
+     "action": "edit",
+     "how": "Keep every existing case unchanged. Add a case 'offers the middle copy between the two when the picture has one and is wider than it': pictureSources({ url: 'big.webp', small: 's.webp', medium: 'm.webp', width: 1600 }) gives srcSet 's.webp 480w, m.webp 800w, big.webp 1600w' and src 'big.webp'; with width 700 it gives 's.webp 480w, big.webp 700w' (no middle); with medium null or equal to the url it gives today's two-file string; with no small it gives { src } only, whatever medium is."
+    },
+    {
+     "file": "src/components/sized-picture.tsx",
+     "action": "edit",
+     "how": "Add an optional prop `medium?: string | null` beside `small` (same doc style: 'its 800 px copy, when the library has one') and pass it on: `pictureSources({ url, small, medium, width: sourceWidth })`. Change the eslint comment's words 'as its two files by width' to 'as its files by width'. Nothing else changes: with no medium the component draws what it draws today."
     }
-  ],
-  "commits": [
-    {
-      "title": "A picture can have a middle copy: two columns on media, and the sources written with three files",
-      "changes": [
-        {
-          "file": "src/db/schema.ts",
-          "action": "edit",
-          "how": "In the media table (rg -n 'export const media = commerce.table' src/db/schema.ts), find the columns thumbnailUrl and thumbnailPath. Directly after thumbnailUrl add: doc comment 'Its 800 px copy (bloat review step 0.33), made where the 480 px one is, for a picture wider than 800 px; null for one stored before, which is offered as its two files.' `mediumUrl: text(\"medium_url\"),`. Directly after thumbnailPath add `mediumPath: text(\"medium_path\"),` with the comment 'The 800 px copy's path in the bucket, removed with the item.'. Both nullable, no default, no index."
-        },
-        {
-          "file": "supabase/migrations/*_media_medium_copy.sql",
-          "action": "create",
-          "how": "Run `pnpm db:generate` (name media_medium_copy if asked). The file must hold exactly two statements: ALTER TABLE \"commerce\".\"media\" ADD COLUMN \"medium_url\" text; and the same for \"medium_path\". Leave it as generated; run `pnpm db:check`. media is not one of the hot tables."
-        },
-        {
-          "file": "src/lib/picture-sizes.ts",
-          "action": "edit",
-          "how": "(1) Add `/** The width of a picture's middle copy (bloat review step 0.33): what a product tile needs on a 3x phone and a Retina laptop. */ export const MEDIUM_COPY_WIDTH = 800;`. (2) pictureSources(): its argument gains `medium?: string | null`. Keep the first three lines as they are. After `if (!small) return { src: picture.url };` add: `const medium = picture.medium && picture.medium !== picture.url && picture.medium !== small && width > MEDIUM_COPY_WIDTH ? picture.medium : null;` and return `{ src: picture.url, srcSet: medium ? `${small} ${SMALL_COPY_WIDTH}w, ${medium} ${MEDIUM_COPY_WIDTH}w, ${picture.url} ${width}w` : `${small} ${SMALL_COPY_WIDTH}w, ${picture.url} ${width}w` }`. A picture with no medium, or no wider than 800 px, gives exactly the string it gives today. (3) Update the file's top doc comment: 'kept as two files ... and since step 0.33 a third of 800 px for a picture wider than that'."
-        },
-        {
-          "file": "src/lib/picture-sizes.test.ts",
-          "action": "edit",
-          "how": "Keep every existing case unchanged. Add a case 'offers the middle copy between the two when the picture has one and is wider than it': pictureSources({ url: 'big.webp', small: 's.webp', medium: 'm.webp', width: 1600 }) gives srcSet 's.webp 480w, m.webp 800w, big.webp 1600w' and src 'big.webp'; with width 700 it gives 's.webp 480w, big.webp 700w' (no middle); with medium null or equal to the url it gives today's two-file string; with no small it gives { src } only, whatever medium is."
-        },
-        {
-          "file": "src/components/sized-picture.tsx",
-          "action": "edit",
-          "how": "Add an optional prop `medium?: string | null` beside `small` (same doc style: 'its 800 px copy, when the library has one') and pass it on: `pictureSources({ url, small, medium, width: sourceWidth })`. Change the eslint comment's words 'as its two files by width' to 'as its files by width'. Nothing else changes: with no medium the component draws what it draws today."
-        }
-      ],
-      "checks": [
-        "pnpm db:check : exits 0",
-        "pnpm exec vitest run src/lib/picture-sizes.test.ts src/db/commerce.test.ts src/db/snapshots.scan.test.ts : pass",
-        "pnpm lint && pnpm typecheck && pnpm test : exits 0",
-        "pnpm exec vitest run --config vitest.integration.config.mts src/server/media-library.int.test.ts src/server/store-copy.int.test.ts : pass (the new columns are nullable)"
-      ]
-    },
-    {
-      "title": "The library stores, copies, compresses, marks and deletes the 800 px copy with the picture",
-      "changes": [
-        {
-          "file": "src/server/media.ts",
-          "action": "edit",
-          "how": "uploadProductImage(storeId, image, thumbnail): add an optional fourth parameter `medium?: File | null`. Validate it with the same type and size checks when given (add it to the loop over [image, thumbnail]). When given, upload it in the same Promise.all to the path `${storeId}/${name}-800.${extension(medium)}` with the same options (contentType, cacheControl \"31536000\", upsert false); a failed upload of any of the three is the same failure as today. Return `mediumUrl` (its public address or null) beside thumbnailUrl, and `stored.mediumPath` (or null) beside stored.thumbnailPath: add `mediumPath: string | null` to the StoredImage type. Callers that pass no fourth argument get null for both and behave as today."
-        },
-        {
-          "file": "src/server/media-library.ts",
-          "action": "edit",
-          "how": "(1) storePicture(owner, image, thumbnail, details): add `medium?: File | null` to `details` (so no caller's argument order changes), pass it to uploadProductImage as the fourth argument, and write `medium_url` and `medium_path` in the insert into commerce.media from uploaded.mediumUrl and uploaded.stored.mediumPath (null when there is none). (2) uploadToLibrary(): read `const medium = data.get(\"medium\");`, treat anything that is not a File as none, add `(medium instanceof File ? medium.size : 0)` to the bytes given to storageRefusal(), and pass `medium: medium instanceof File ? medium : null` in details. (3) Run `rg -n 'thumbnail_path|thumbnailPath' src/server/media-library.ts` and treat every place: the read of an item's files for delete (deleteMedia and deleteMediaMany: add medium_path to the paths handed to removeStoredFiles()), the item type that carries thumbnailPath, any copy of a library row to another owner (add medium_url and medium_path to its column list), and the sum of an item's stored bytes if it reads the files. (4) Do not change mediaUses(): the middle copy's address is never saved in a page or a product."
-        },
-        {
-          "file": "src/server/media-compress.ts",
-          "action": "edit",
-          "how": "This is the server side of the library's Compress, which stores a re-compressed picture beside the original and moves the row to it (read lines 60 to 200 first). Where it reads the form's `image` and `thumbnail` files, also read `medium`; pass it to uploadProductImage() as the fourth argument (about line 94); where it updates commerce.media with the new url, thumbnail_url, path and thumbnail_path (about lines 161 to 180), also set medium_url and medium_path (null when the compressed picture is 800 px wide or narrower); where it collects the old files to remove, add the old medium_path. rewriteAddresses() is not changed: no page holds a middle copy's address."
-        },
-        {
-          "file": "src/server/ai-picture-marks.ts",
-          "action": "edit",
-          "how": "This job writes an AI picture's files again with their XMP marking (it names thumbnail_path). Add medium_path to its read, and mark and overwrite that file too when it is not null, exactly as it does the thumbnail. A row with no medium_path is handled as today."
-        },
-        {
-          "file": "src/server/sandbox.ts",
-          "action": "edit",
-          "how": "It names thumbnail_path when it removes a purged sandbox's files (rg -n 'thumbnail_path' src/server/sandbox.ts): add medium_path to the same read and to the list of files removed."
-        },
-        {
-          "file": "src/lib/store-copy-media.ts",
-          "action": "edit",
-          "how": "Read the file and src/server/store-copy-media.ts (rg -n 'thumbnail' src/lib/store-copy-media.ts src/server/store-copy-media.ts src/server/store-copy.ts). Wherever a duplicated store's library row gets its url, thumbnail_url, path and thumbnail_path copied or rewritten to the new store's folder, do the same for medium_url and medium_path, and copy the third file where the two files are copied. If the copy is made by a SQL function in a migration (clone_store or duplicate_store name the columns), stop and report: a function change needs its own custom migration, written by the stronger model."
-        },
-        {
-          "file": "src/server/media-library.int.test.ts",
-          "action": "edit",
-          "how": "Add a case: storing a picture with a middle copy keeps its address and path, and deleting the picture removes three files. Use the file's existing way of faking Storage (read how its delete cases count the paths sent to Storage) and call storePicture() with details.medium set to a small File; expect the row's medium_url to end in '-800.webp' and the delete to send three paths for that item. A picture stored without one has null in both columns and deletes two."
-        }
-      ],
-      "checks": [
-        "rg -n 'thumbnail_path|thumbnailPath' src --glob '!*.test.*' : every file listed (schema.ts, media.ts, media-library.ts, media-compress.ts, sandbox.ts, ai-picture-marks.ts) also names medium_path or mediumPath",
-        "pnpm exec vitest run src/lib/file-lifetimes.scan.test.ts : pass",
-        "pnpm exec vitest run --config vitest.integration.config.mts src/server/media-library.int.test.ts src/server/media-compress.int.test.ts src/server/store-copy.int.test.ts src/server/picture-editor.int.test.ts : pass",
-        "pnpm lint && pnpm typecheck && pnpm test : exits 0",
-        "pnpm test:int : exits 0"
-      ]
-    },
-    {
-      "title": "The owner's browser and the server's own picture makers make the 800 px copy",
-      "changes": [
-        {
-          "file": "src/components/admin/image-upload.tsx",
-          "action": "edit",
-          "how": "In uploadPicture(): make the three files together: `const [image, thumbnail] = ...` stays, then `const medium = image.width > 800 ? await compressPicture(file, 800) : null;` (import nothing new: compressPicture is already used; use MEDIUM_COPY_WIDTH from '@/lib/picture-sizes' for the 800 if this client file may import it without pulling a server module, otherwise the number with a comment naming the constant). When medium is not null: `data.set(\"medium\", new File([medium.blob], `picture-800.${extensionOf(medium.type)}`, { type: medium.type }));`. Update the doc comments that say '1600 px, with a 480 px thumbnail' to name the 800 px copy."
-        },
-        {
-          "file": "src/components/admin/media-compress.ts",
-          "action": "edit",
-          "how": "Where the library's Compress makes `[image, thumbnail]` with compressPicture(original, 1600, ...) and compressPicture(original, 480) (about line 44), also make `compressPicture(original, 800)` when the compressed picture is wider than 800 px, and send it in the same FormData as `medium`."
-        },
-        {
-          "file": "src/server/ai-pictures.ts",
-          "action": "edit",
-          "how": "shrinkPicture() makes the picture (WIDTH) and its thumbnail (THUMBNAIL_WIDTH) with sharp, each marked (about lines 45 to 55). Add a third: `marked(source.clone().resize({ width: 800, withoutEnlargement: true }).webp({ quality: 80 })).toBuffer()` when the source is wider than 800 px, return it as `medium` (null otherwise), and at the storePicture() call (about line 91) pass `medium: new File([medium], 'picture-800.webp', { type: 'image/webp' })` in details when it is not null."
-        },
-        {
-          "file": "src/server/content-packs.ts",
-          "action": "edit",
-          "how": "storeArtPicture() (about lines 108 to 130) makes a 480 px thumbnail with sharp and calls storePicture(). Make an 800 px WebP (quality 80, withoutEnlargement) the same way when the art is wider than 800 px and pass it as details.medium."
-        },
-        {
-          "file": "src/server/product-import.ts",
-          "action": "edit",
-          "how": "Where an imported picture is resized (about lines 455 to 460: IMPORT_PICTURE_WIDTH and IMPORT_THUMBNAIL_WIDTH), make a third buffer at 800 px (WebP, quality 80, withoutEnlargement) when the picture is wider than 800 px, and hand it to the same writer the other two go to (follow `thumb` to its storePicture() or uploadProductImage() call and add medium there)."
-        },
-        {
-          "file": "src/server/api-uploads.ts",
-          "action": "edit",
-          "how": "At its storePicture() call (about line 114): read how `thumbnail` is made a few lines above (sharp) and make the 800 px copy the same way when the picture is wider than 800 px; pass it as details.medium."
-        },
-        {
-          "file": "src/server/replicate-assets.ts",
-          "action": "edit",
-          "how": "At its storePicture(owner, image, thumbnail, { fileName: name, alt }) call (about line 57): make the 800 px copy where `thumbnail` is made and pass it as details.medium."
-        }
-      ],
-      "checks": [
-        "rg -n 'storePicture\\(' src --glob '!*.test.*' : each caller (media-library.ts uploadToLibrary, content-packs.ts, ai-pictures.ts, api-uploads.ts, replicate-assets.ts) passes medium or has a comment saying why not (brand-marks.ts takes storePicture as a dependency and passes logos, which are narrower than 800 px: leave it)",
-        "pnpm exec vitest run --config vitest.integration.config.mts src/server/ai-pictures.int.test.ts src/server/content-packs.int.test.ts src/server/product-import.int.test.ts src/server/api-uploads.int.test.ts : pass (skip a name that does not exist)",
-        "pnpm lint && pnpm typecheck && pnpm test : exits 0",
-        "pnpm build && pnpm exec playwright test e2e/product-media.spec.ts e2e/media-library.spec.ts : pass (skip a spec that does not exist); upload one photograph wider than 1,600 px in the local admin and read its row: medium_url ends in -800 and the file opens"
-      ]
-    },
-    {
-      "title": "Product tiles and the product gallery offer the 800 px copy",
-      "changes": [
-        {
-          "file": "src/server/catalog.ts",
-          "action": "edit",
-          "how": "Two reads look the picture's width up in the library by its address: `(select md.width from commerce.media md where md.url = m.url) as image_width` (about lines 302 and 679). Beside each add `(select md.medium_url from commerce.media md where md.url = m.url) as image_medium`. Add `image_medium` to the row's zod object (SUMMARY_ROW and the gallery's row; a nullable text, as image_large is described). In summaryImage() set `image.medium = str(row.image_medium)` when row.image_large and row.image_medium are both present. Add `medium?: string` to the image type of ProductSummary and to the product's gallery picture type, next to `large` and `width`. The catalogue reads are cached ('use cache'): no cache key changes, the new field rides in the same row."
-        },
-        {
-          "file": "src/components/product-card.tsx",
-          "action": "edit",
-          "how": "Where the card draws its picture with SizedPicture (about line 57) and passes the small copy and the width, also pass `medium={image.medium}`. Leave `sizes` (line 16) as it is."
-        },
-        {
-          "file": "src/components/product-gallery.tsx",
-          "action": "edit",
-          "how": "Pass the picture's medium to each SizedPicture the gallery draws for the main picture (about line 166), and correct the comment there that says 'a phone fetches the small one' to: 'a phone at 1x or 2x fetches the 800 px copy when the picture has one; the 1,600 px file on a 3x phone, whose screen needs over 1,100 pixels'. If the gallery's picture type comes from another file (rg -n 'ProductPicture|GalleryPicture' src/lib src/server), add `medium?: string` there."
-        },
-        {
-          "file": "src/components/content-grid.tsx",
-          "action": "edit",
-          "how": "Where a product tile in a content grid passes a summary's picture to SizedPicture (about line 343), pass `medium` as the card does. Pictures inside page content (a picture block, a custom grid item) keep two files in this step: step 0.44 gives them the middle copy."
-        },
-        {
-          "file": "src/server/listing.ts",
-          "action": "edit",
-          "how": "About line 59 a listing row is turned into a summary: if it builds the image itself (not through summaryImage()), carry image_medium the same way; if its SQL does not go through the read changed in catalog.ts, add the same sub-select."
-        },
-        {
-          "file": "e2e/performance.spec.ts",
-          "action": "edit",
-          "how": "Add a test after the one at about line 85 ('a first row's background picture ...'), using that test's way of making a store and a media row: 'a product tile takes the 800 px copy on a 3x phone, and no tile or gallery picture is fetched more than 1.5 times too wide (bloat review 0.33)'. Setup with testDb(): a store with the demo catalogue; make three real WebP files of 480, 800 and 1,600 px width (generate them once with sharp into e2e/fixtures/ as tile-480.webp, tile-800.webp, tile-1600.webp, a flat colour is enough, and serve them from a path the test server serves: if e2e has no static folder, put them in public/demo/e2e/ and say so); point one demo product's first product_media row at the 1,600 file (url) and the 480 file (thumbnail_url), and insert its commerce.media row with url, thumbnail_url, medium_url (the 800 file), width 1600, as the existing test inserts a media row. For each of three browser contexts (viewport 390x844 deviceScaleFactor 2; 390x844 at 3; 360x800 at 3): open the store's listing, take the first product tile's img, wait until `img.currentSrc` is set, and expect: at 390 px and 3x currentSrc ends with tile-800.webp; at 390 px and 2x with tile-480.webp; and in every context, for the tile and for the product page's main gallery picture, `fileWidth <= 1.5 * Math.ceil(img.getBoundingClientRect().width * devicePixelRatio)` or the file is the smallest that is at least as wide as the box needs, where fileWidth is 480, 800 or 1600 read from the file name. Keep the existing assertion at about line 111 (`${small} 480w, ${big} 1600w` for a picture with two files)."
-        },
-        {
-          "file": "docs/media-compression.md",
-          "action": "edit",
-          "how": "Where the doc says a picture is kept as two files (about line 9), say three: the picture at most 1,600 px wide, an 800 px copy for a picture wider than that, and a 480 px copy; why (a 3x phone and a Retina laptop need 540 to 800 pixels for a tile); that a picture stored before has two and is offered as two; that a third file adds about a quarter to a picture's stored bytes, which Usage and limits counts; and that a fourth size of 1,200 px is the owner's later choice."
-        },
-        {
-          "file": "docs/wave-7-storefront.md",
-          "action": "edit",
-          "how": "In unit B (D336, the section on pictures at the visitor's device size; rg -n '480' docs/wave-7-storefront.md) add one sentence: since bloat review step 0.33 a picture has a middle copy of 800 px, offered in the same srcset by pictureSources()."
-        },
-        {
-          "file": "docs/decisions.md",
-          "action": "edit",
-          "how": "Append one row with the next free D-number (pull main first; `rg -o '^\\| D[0-9]+' docs/decisions.md | tr -dc '0-9\\n' | sort -n | tail -1`, plus 1). It records: three stored sizes (480, 800, 1,600 px) and the measurement behind it (Chromium at 390 px and 3x took the 1,600 px file for a tile: 71 KB against 18 KB); commerce.media.medium_url and medium_path; where the copy is made (the owner's browser, and each server maker by name); that pictures already stored are not backfilled and behave as before; that pictures in page content follow in step 0.44; that a fourth size is the owner's later choice. Platform: Kaizena Flow's own library rows and the theme photographs' pipeline go through the same storePicture(). Add the migration version under Migration versions once CI has applied it."
-        },
-        {
-          "file": "docs/audits/bloat-review-2026-11.md",
-          "action": "edit",
-          "how": "Progress table: set the row of step 0.33 to Done with the date and the four commits (rg -n '^\\| 0\\.33 ' docs/audits/bloat-review-2026-11.md)."
-        }
-      ],
-      "checks": [
-        "pnpm exec vitest run src/lib/picture-sizes.test.ts : pass",
-        "pnpm lint && pnpm typecheck && pnpm test : exits 0",
-        "pnpm exec vitest run --config vitest.integration.config.mts src/server/catalog.int.test.ts src/server/listing.int.test.ts src/server/variants-scale.int.test.ts : pass (skip a name that does not exist; variants-scale counts statements per read and must not rise)",
-        "pnpm build && pnpm exec playwright test e2e/performance.spec.ts e2e/search.spec.ts : pass, the new test among them"
-      ]
-    }
-  ],
-  "tests": [
-    {
-      "file": "src/lib/picture-sizes.test.ts",
-      "proves": "Fails when a picture with a middle copy is not offered as three files by width, or when one without it gets another srcset than today's."
-    },
-    {
-      "file": "e2e/performance.spec.ts",
-      "proves": "Fails when the first product tile at 390 px and 3x is fetched from another file than the 800 px one, or when a tile or gallery picture is fetched from a file more than 1.5 times as wide as its box needs at 390 px 2x, 390 px 3x or 360 px 3x."
-    },
-    {
-      "file": "src/server/media-library.int.test.ts",
-      "proves": "Fails when the middle copy is not stored with the picture or is left in Storage when the picture is deleted."
-    }
-  ],
-  "migration": {
-    "needed": true,
-    "notes": "One generated file in the first commit: two nullable text columns on commerce.media (medium_url, medium_path). media is not a hot table; no index, no default, no backfill. Add-only: the code that is running names its columns in every insert and read, so it keeps working. CI's release job applies it after every check passes, then deploys. Never apply it by hand; check the advisors and record the version in docs/decisions.md. If the store-copy SQL functions name media's columns, their change is a separate custom migration (see stop_if)."
+   ],
+   "checks": [
+    "pnpm db:check : exits 0",
+    "pnpm exec vitest run src/lib/picture-sizes.test.ts src/db/commerce.test.ts src/db/snapshots.scan.test.ts : pass",
+    "pnpm lint && pnpm typecheck && pnpm test : exits 0",
+    "pnpm exec vitest run --config vitest.integration.config.mts src/server/media-library.int.test.ts src/server/store-copy.int.test.ts : pass (the new columns are nullable)"
+   ]
   },
-  "done_when": [
+  {
+   "title": "The library stores, copies, compresses, marks and deletes the 800 px copy with the picture",
+   "changes": [
     {
-      "check": "pnpm build && pnpm exec playwright test e2e/performance.spec.ts",
-      "expect": "passes: at 390 px and 3x the first product tile's currentSrc is the 800 px file (the 1,600 px file before), and no tile or gallery picture comes from a file more than 1.5 times as wide as its box needs at 390 px 2x, 390 px 3x and 360 px 3x"
+     "file": "src/server/media.ts",
+     "action": "edit",
+     "how": "uploadProductImage(storeId, image, thumbnail): add an optional fourth parameter `medium?: File | null`. Validate it with the same type and size checks when given (add it to the loop over [image, thumbnail]). When given, upload it in the same Promise.all to the path `${storeId}/${name}-800.${extension(medium)}` with the same options (contentType, cacheControl \"31536000\", upsert false); a failed upload of any of the three is the same failure as today. Return `mediumUrl` (its public address or null) beside thumbnailUrl, and `stored.mediumPath` (or null) beside stored.thumbnailPath: add `mediumPath: string | null` to the StoredImage type. Callers that pass no fourth argument get null for both and behave as today. Exactly: StoredImage (line 47) becomes `{ bucket: string; path: string; thumbnailPath: string; mediumPath: string | null }`; the validation loop (line 60) becomes `for (const file of medium ? [image, thumbnail, medium] : [image, thumbnail])`; paths gains `medium: medium ? `${storeId}/${name}-800.${extension(medium)}` : null`; `const [big, small] = await Promise.all([...])` becomes `const [big, small, middle] = await Promise.all([...])` with a third entry `medium && paths.medium ? storage.upload(paths.medium, medium, options(medium)) : Promise.resolve({ error: null })` and the error test becomes `if (big.error || small.error || middle.error)` (log the first error); the result gains `mediumUrl: paths.medium ? storage.getPublicUrl(paths.medium).data.publicUrl : null` and `stored.mediumPath: paths.medium`."
     },
     {
-      "check": "rg -n 'MEDIUM_COPY_WIDTH' src/lib/picture-sizes.ts",
-      "expect": "the constant, 800, and its use in pictureSources()"
+     "file": "src/server/media-library.ts",
+     "action": "edit",
+     "how": "(1) storePicture(owner, image, thumbnail, details): add `medium?: File | null` to `details` (so no caller's argument order changes), pass it to uploadProductImage as the fourth argument, and write `medium_url` and `medium_path` in the insert into commerce.media from uploaded.mediumUrl and uploaded.stored.mediumPath (null when there is none). (2) uploadToLibrary(): read `const medium = data.get(\"medium\");`, treat anything that is not a File as none, add `(medium instanceof File ? medium.size : 0)` to the bytes given to storageRefusal(), and pass `medium: medium instanceof File ? medium : null` in details. (3) The other places that name thumbnail_path in this file (rg -n 'thumbnail_path|thumbnailPath' src/server/media-library.ts), each by name: (a) the LibraryFile type (about line 203): add `mediumPath: string | null;` after thumbnailPath. (b) libraryFilesByUrl() (about line 222): add medium_path to the select and `mediumPath: row.medium_path === null || row.medium_path === undefined ? null : String(row.medium_path),` to the object it builds. (c) copyToLibrary() (about lines 254 to 281): this is how a duplicated store's library is copied (src/server/store-copy-media.ts calls it from copyGroup()). After the `if (file.thumbnailPath) { … }` block add the same block for the middle copy: `let medium: { url: string; path: string } | null = null; if (file.mediumPath) { const mediumPath = `${folder}/${name}-800${extension(file.mediumPath)}`; const mediumUrl = await copyFile(file.bucket, file.mediumPath, mediumPath); if (mediumUrl) medium = { url: mediumUrl, path: mediumPath }; }` and add medium_url and medium_path to the insert's column list and values (`${medium?.url ?? null}`, `${medium?.path ?? null}`). Its return type does not change. (d) deleteMedia() (about line 716) and deleteMediaMany() (about line 743): add medium_path to each select and to each paths list: `[String(row.path), ...(row.thumbnail_path ? [String(row.thumbnail_path)] : []), ...(row.medium_path ? [String(row.medium_path)] : [])]`. (4) Do not change mediaUses(): the middle copy's address is never saved in a page or a product."
     },
     {
-      "check": "pnpm db:check",
-      "expect": "exits 0"
+     "file": "src/server/media-compress.ts",
+     "action": "edit",
+     "how": "This is the server side of the library's Compress, which stores a re-compressed picture beside the original and moves the row to it (read lines 60 to 200 first). Where it reads the form's `image` and `thumbnail` files, also read `medium`; pass it to uploadProductImage() as the fourth argument (about line 94); where it updates commerce.media with the new url, thumbnail_url, path and thumbnail_path (about lines 161 to 180), also set medium_url and medium_path (null when the compressed picture is 800 px wide or narrower); where it collects the old files to remove, add the old medium_path. rewriteAddresses() is not changed: no page holds a middle copy's address."
+    },
+    {
+     "file": "src/server/ai-picture-marks.ts",
+     "action": "edit",
+     "how": "Lines 46 to 58: add `medium_path: col.textOrNull` to the zod object and medium_path to the select, and change `const files = [row.path, ...(row.thumbnail_path ? [row.thumbnail_path] : [])];` to `const files = [row.path, ...(row.thumbnail_path ? [row.thumbnail_path] : []), ...(row.medium_path ? [row.medium_path] : [])];`. The loop that marks and overwrites each of `files` then handles the third file as it does the thumbnail; a row with no medium_path is handled as today."
+    },
+    {
+     "file": "src/server/sandbox.ts",
+     "action": "edit",
+     "how": "sandboxFiles() (about lines 331 to 343): add `medium_path: col.textOrNull` to the zod object, medium_path to the select, and change `const paths = [row.path, row.thumbnail_path].filter(own);` to `const paths = [row.path, row.thumbnail_path, row.medium_path].filter(own);`."
+    },
+    {
+     "file": "src/server/media-library.int.test.ts",
+     "action": "edit",
+     "how": "Add a case: storing a picture with a middle copy keeps its address and path, and deleting the picture removes three files. Use the file's existing way of faking Storage (read how its delete cases count the paths sent to Storage) and call storePicture() with details.medium set to a small File; expect the row's medium_url to end in '-800.webp' and the delete to send three paths for that item. A picture stored without one has null in both columns and deletes two. Add a second case for a duplicated store: call `copyToLibrary({ storeId: <a second store's id>, accountId }, file, copyFile)` with a LibraryFile whose mediumPath is set (read it with libraryFilesByUrl() from the row the first case stored) and a fake copyFile `(bucket, from, to) => Promise.resolve(`https://example.test/${to}`)` that records its calls; expect three calls, the last one's target ending in '-800.webp', and the new row's medium_path ending in '-800.webp'."
     }
-  ],
-  "after_deploy": [
-    "CI applied the migration; the advisors show no new warning.",
-    "Upload one photograph wider than 1,600 px to a test store's product in production: its commerce.media row has medium_url, the address answers 200 with cache-control max-age=31536000, and on a phone (or Chromium's device mode at 390 px, 3x) the listing's tile loads the -800 file. Send the owner a screenshot of the listing on a phone before and after.",
-    "Platform, Usage and limits for that store: storage rose by the three files' bytes."
-  ],
-  "docs": [
-    "docs/media-compression.md: three files and why.",
-    "docs/wave-7-storefront.md unit B: the sentence on the middle copy.",
-    "docs/decisions.md: the D-row and the migration version.",
-    "docs/audits/bloat-review-2026-11.md Progress row 0.33."
-  ],
-  "do_not": [
-    "Do not backfill: no job makes middle copies for pictures already stored, and no row is updated by the migration.",
-    "Do not resize on the server at request time or use /_next/image: the copy is a stored file.",
-    "Do not save a middle copy's address in a page, a product or product_media: it is read from commerce.media by the picture's own address, as the width is.",
-    "Do not change mediaUses() or rewriteAddresses().",
-    "Do not change the `sizes` strings of the tile or the gallery, or SMALL_COPY_WIDTH and LARGEST_PICTURE_WIDTH.",
-    "Do not add a 1,200 px size: three sizes are the decision; a fourth is the owner's later choice.",
-    "Do not give pictures inside page content (picture blocks, backgrounds, custom grid items) the middle copy here: that is step 0.44.",
-    "Do not change an existing srcset expectation in picture-sizes.test.ts or e2e/performance.spec.ts."
-  ],
-  "stop_if": [
-    "pnpm db:generate writes anything other than the two ADD COLUMN statements.",
-    "A SQL function (clone_store, duplicate_store or another in the baseline) lists media's columns for a copy: report the function; its change is a custom migration for the stronger model.",
-    "A place that names thumbnail_path cannot be given medium_path by the same pattern (a different storage layout, a fixed two-file assumption in a type used by many files): report the file and stop before the third commit.",
-    "The new e2e test shows another file than the 800 px one at 390 px and 3x: report currentSrc, the srcset and sizes attributes; do not change `sizes` to make it pass.",
-    "variants-scale.int.test.ts counts more statements for a card or a listing than before.",
-    "An upload in the local admin takes visibly longer or fails with three files."
-  ],
-  "executor": "strong",
-  "executor_why": "The first commit is mechanical, but the rest follows a picture through upload, storage accounting, copy, compress, AI marking, delete and three readers in about twenty files, and each place needs a judgement on whether and how the third file belongs there.",
-  "checked_in_code": "I opened src/lib/picture-sizes.ts (pictureSources writes 'small 480w, large Nw'), src/components/sized-picture.tsx, uploadProductImage() in src/server/media.ts:53, storePicture() and uploadToLibrary() in src/server/media-library.ts:96-150, uploadPicture() in src/components/admin/image-upload.tsx:28 and the catalogue read at src/server/catalog.ts:298-302; all as the finding says. I listed the places with rg: six files name thumbnail_path (schema.ts, media.ts, media-library.ts, media-compress.ts, sandbox.ts, ai-picture-marks.ts; the finding missed the last two), five server makers call storePicture() (content-packs.ts:120, ai-pictures.ts:91, api-uploads.ts:114, replicate-assets.ts:57, and uploadToLibrary), and the catalogue looks the library up by address in two reads (lines 302 and 679). I put the new file into storePicture()'s details object rather than a new positional argument, so no caller's order changes, and ordered the commits so that readers and writers can ship apart: a picture without the copy is drawn as today at every stage. The step is too wide to specify line by line; the first commit is fully specified and the others name every file."
+   ],
+   "checks": [
+    "rg -n 'thumbnail_path|thumbnailPath' src --glob '!*.test.*' : every file listed (schema.ts, media.ts, media-library.ts, media-compress.ts, sandbox.ts, ai-picture-marks.ts) also names medium_path or mediumPath; and rg -n 'mediumPath' src/server/media-library.ts shows it in LibraryFile, libraryFilesByUrl(), copyToLibrary(), deleteMedia() and deleteMediaMany() (store-copy-media.ts copies library rows only through copyToLibrary(), so it needs no change)",
+    "pnpm exec vitest run src/lib/file-lifetimes.scan.test.ts : pass",
+    "pnpm exec vitest run --config vitest.integration.config.mts src/server/media-library.int.test.ts src/server/media-compress.int.test.ts src/server/store-copy.int.test.ts src/server/picture-editor.int.test.ts : pass",
+    "pnpm lint && pnpm typecheck && pnpm test : exits 0",
+    "pnpm test:int : exits 0"
+   ]
+  },
+  {
+   "title": "The owner's browser and the server's own picture makers make the 800 px copy",
+   "changes": [
+    {
+     "file": "src/components/admin/image-upload.tsx",
+     "action": "edit",
+     "how": "In uploadPicture(): make the three files together: `const [image, thumbnail] = ...` stays, then `const medium = image.width > 800 ? await compressPicture(file, 800) : null;` (import nothing new: compressPicture is already used; use MEDIUM_COPY_WIDTH from '@/lib/picture-sizes' for the 800 if this client file may import it without pulling a server module, otherwise the number with a comment naming the constant). When medium is not null: `data.set(\"medium\", new File([medium.blob], `picture-800.${extensionOf(medium.type)}`, { type: medium.type }));`. Update the doc comments that say '1600 px, with a 480 px thumbnail' to name the 800 px copy."
+    },
+    {
+     "file": "src/components/admin/media-compress.ts",
+     "action": "edit",
+     "how": "Where the library's Compress makes `[image, thumbnail]` with compressPicture(original, 1600, ...) and compressPicture(original, 480) (about line 44), also make `compressPicture(original, 800)` when the compressed picture is wider than 800 px, and send it in the same FormData as `medium`."
+    },
+    {
+     "file": "src/server/ai-pictures.ts",
+     "action": "edit",
+     "how": "shrinkPicture() makes the picture (WIDTH) and its thumbnail (THUMBNAIL_WIDTH) with sharp, each marked (about lines 45 to 55). Add a third: `marked(source.clone().resize({ width: 800, withoutEnlargement: true }).webp({ quality: 80 })).toBuffer()` when the source is wider than 800 px, return it as `medium` (null otherwise), and at the storePicture() call (about line 91) pass `medium: new File([medium], 'picture-800.webp', { type: 'image/webp' })` in details when it is not null."
+    },
+    {
+     "file": "src/server/content-packs.ts",
+     "action": "edit",
+     "how": "storeArtPicture() (about lines 108 to 130) makes a 480 px thumbnail with sharp and calls storePicture(). Make an 800 px WebP (quality 80, withoutEnlargement) the same way when the art is wider than 800 px and pass it as details.medium."
+    },
+    {
+     "file": "src/server/product-import.ts",
+     "action": "edit",
+     "how": "pictureToLibrary() (about lines 445 to 471) calls `(deps.storePicture ?? storeLibraryPicture)(…)` (not a plain storePicture( call, so the rg check below does not list it: change it by these lines). Declare `let medium: Buffer | null = null;` beside `let thumb: Buffer;`. Inside the try, after `size = { width: meta.width ?? 0, height: meta.height ?? 0 };` add `if (size.width > 800) medium = await source.clone().resize({ width: 800, withoutEnlargement: true }).webp({ quality: 80 }).toBuffer();`. In the call, the details `{ fileName: name }` become `{ fileName: name, ...(medium && { medium: new File([new Uint8Array(medium)], name, { type: \"image/webp\" }) }) }`. Nothing else changes."
+    },
+    {
+     "file": "src/server/api-uploads.ts",
+     "action": "edit",
+     "how": "At its storePicture() call (about line 114): read how `thumbnail` is made a few lines above (sharp) and make the 800 px copy the same way when the picture is wider than 800 px; pass it as details.medium."
+    },
+    {
+     "file": "src/server/replicate-assets.ts",
+     "action": "edit",
+     "how": "At its storePicture(owner, image, thumbnail, { fileName: name, alt }) call (about line 57): make the 800 px copy where `thumbnail` is made and pass it as details.medium."
+    }
+   ],
+   "checks": [
+    "rg -n 'storePicture\\(' src --glob '!*.test.*' : each caller (media-library.ts uploadToLibrary, content-packs.ts, ai-pictures.ts, api-uploads.ts, replicate-assets.ts) passes medium; and rg -n 'medium' src/server/product-import.ts shows pictureToLibrary() passing it (its call is `(deps.storePicture ?? storeLibraryPicture)(`, which the first pattern misses) or has a comment saying why not (brand-marks.ts takes storePicture as a dependency and passes logos, which are narrower than 800 px: leave it)",
+    "pnpm exec vitest run --config vitest.integration.config.mts src/server/ai-pictures.int.test.ts src/server/content-packs.int.test.ts src/server/product-import.int.test.ts src/server/api-uploads.int.test.ts : pass (skip a name that does not exist)",
+    "pnpm lint && pnpm typecheck && pnpm test : exits 0",
+    "pnpm build && pnpm exec playwright test e2e/product-media.spec.ts e2e/media-library.spec.ts : pass (skip a spec that does not exist); upload one photograph wider than 1,600 px in the local admin and read its row: medium_url ends in -800 and the file opens"
+   ]
+  },
+  {
+   "title": "Product tiles and the product gallery offer the 800 px copy",
+   "changes": [
+    {
+     "file": "src/server/catalog.ts",
+     "action": "edit",
+     "how": "Two reads look the picture's width up in the library by its address: `(select md.width from commerce.media md where md.url = m.url) as image_width` (about lines 302 and 679). Beside each add `(select md.medium_url from commerce.media md where md.url = m.url) as image_medium`. Add `image_medium` to the row's zod object (SUMMARY_ROW and the gallery's row; a nullable text, as image_large is described). In summaryImage() set `image.medium = str(row.image_medium)` when row.image_large and row.image_medium are both present. Add `medium?: string` to the image type of ProductSummary and to the product's gallery picture type, next to `large` and `width`. The catalogue reads are cached ('use cache'): no cache key changes, the new field rides in the same row."
+    },
+    {
+     "file": "src/components/product-card.tsx",
+     "action": "edit",
+     "how": "Where the card draws its picture with SizedPicture (about line 57) and passes the small copy and the width, also pass `medium={image.medium}`. Leave `sizes` (line 16) as it is."
+    },
+    {
+     "file": "src/components/product-gallery.tsx",
+     "action": "edit",
+     "how": "Pass the picture's medium to each SizedPicture the gallery draws for the main picture (about line 166), and correct the comment there that says 'a phone fetches the small one' to: 'a phone at 1x or 2x fetches the 800 px copy when the picture has one; the 1,600 px file on a 3x phone, whose screen needs over 1,100 pixels'. If the gallery's picture type comes from another file (rg -n 'ProductPicture|GalleryPicture' src/lib src/server), add `medium?: string` there."
+    },
+    {
+     "file": "src/components/content-grid.tsx",
+     "action": "edit",
+     "how": "Where a product tile in a content grid passes a summary's picture to SizedPicture (about line 343), pass `medium` as the card does. Pictures inside page content (a picture block, a custom grid item) keep two files in this step: step 0.44 gives them the middle copy."
+    },
+    {
+     "file": "src/server/listing.ts",
+     "action": "edit",
+     "how": "About line 59 a listing row is turned into a summary: if it builds the image itself (not through summaryImage()), carry image_medium the same way; if its SQL does not go through the read changed in catalog.ts, add the same sub-select."
+    },
+    {
+     "file": "e2e/performance.spec.ts",
+     "action": "edit",
+     "how": "Add a test after the one at about line 85 ('a first row's background picture ...'), using that test's way of making a store and a media row: 'a product tile takes the 800 px copy on a 3x phone, and no tile or gallery picture is fetched more than 1.5 times too wide (bloat review 0.33)'. Setup with testDb(): a store with the demo catalogue; make three real WebP files of 480, 800 and 1,600 px width (generate them once with sharp, a flat colour is enough, and commit them as public/demo/e2e/tile-480.webp, tile-800.webp and tile-1600.webp: public/demo is what the test server already serves, as the test above uses `${base}/demo/cabin.svg`; address them as `${base}/demo/e2e/tile-800.webp?run=${run}` so each run's media row has its own url); point one demo product's first product_media row at the 1,600 file (url) and the 480 file (thumbnail_url), and insert its commerce.media row with url, thumbnail_url, medium_url (the 800 file), width 1600, as the existing test inserts a media row. For each of three browser contexts (viewport 390x844 deviceScaleFactor 2; 390x844 at 3; 360x800 at 3): open the store's listing, take the first product tile's img, wait until `img.currentSrc` is set, and expect: at 390 px and 3x currentSrc ends with tile-800.webp; at 390 px and 2x with tile-480.webp; and in every context, for the tile and for the product page's main gallery picture, `fileWidth <= 1.5 * Math.ceil(img.getBoundingClientRect().width * devicePixelRatio)` or the file is the smallest that is at least as wide as the box needs, where fileWidth is 480, 800 or 1600 read from the file name. Keep the existing assertion at about line 111 (`${small} 480w, ${big} 1600w` for a picture with two files)."
+    },
+    {
+     "file": "docs/media-compression.md",
+     "action": "edit",
+     "how": "Where the doc says a picture is kept as two files (about line 9), say three: the picture at most 1,600 px wide, an 800 px copy for a picture wider than that, and a 480 px copy; why (a 3x phone and a Retina laptop need 540 to 800 pixels for a tile); that a picture stored before has two and is offered as two; that a third file adds about a quarter to a picture's stored bytes, which Usage and limits counts; and that a fourth size of 1,200 px is the owner's later choice."
+    },
+    {
+     "file": "docs/wave-7-storefront.md",
+     "action": "edit",
+     "how": "In unit B (D336, the section on pictures at the visitor's device size; rg -n '480' docs/wave-7-storefront.md) add one sentence: since bloat review step 0.33 a picture has a middle copy of 800 px, offered in the same srcset by pictureSources()."
+    },
+    {
+     "file": "docs/decisions.md",
+     "action": "edit",
+     "how": "Append one row with the next free D-number (pull main first; `rg -o '^\\| D[0-9]+' docs/decisions.md | tr -dc '0-9\\n' | sort -n | tail -1`, plus 1). It records: three stored sizes (480, 800, 1,600 px) and the measurement behind it (Chromium at 390 px and 3x took the 1,600 px file for a tile: 71 KB against 18 KB); commerce.media.medium_url and medium_path; where the copy is made (the owner's browser, and each server maker by name); that pictures already stored are not backfilled and behave as before; that pictures in page content follow in step 0.44; that a fourth size is the owner's later choice. Platform: Kaizena Flow's own library rows and the theme photographs' pipeline go through the same storePicture(). Add the migration version under Migration versions once CI has applied it."
+    },
+    {
+     "file": "docs/audits/bloat-review-2026-11.md",
+     "action": "edit",
+     "how": "Progress table: set the row of step 0.33 to Done with the date and the four commits (rg -n '^\\| 0\\.33 ' docs/audits/bloat-review-2026-11.md)."
+    },
+    {
+     "file": "public/demo/e2e/tile-480.webp",
+     "action": "create",
+     "how": "With tile-800.webp and tile-1600.webp beside it: three flat-colour WebP files of exactly 480, 800 and 1,600 px width (height half the width), made once with sharp (`node -e \"const s=require('sharp');for(const w of [480,800,1600])s({create:{width:w,height:w/2,channels:3,background:'#c8b8a0'}}).webp({quality:80}).toFile('public/demo/e2e/tile-'+w+'.webp')\"`). The e2e test of this commit reads them."
+    }
+   ],
+   "checks": [
+    "pnpm exec vitest run src/lib/picture-sizes.test.ts : pass",
+    "pnpm lint && pnpm typecheck && pnpm test : exits 0",
+    "pnpm exec vitest run --config vitest.integration.config.mts src/server/catalog.int.test.ts src/server/listing.int.test.ts src/server/variants-scale.int.test.ts : pass (skip a name that does not exist; variants-scale counts statements per read and must not rise)",
+    "pnpm build && pnpm exec playwright test e2e/performance.spec.ts e2e/search.spec.ts : pass, the new test among them"
+   ]
+  }
+ ],
+ "tests": [
+  {
+   "file": "src/lib/picture-sizes.test.ts",
+   "proves": "Fails when a picture with a middle copy is not offered as three files by width, or when one without it gets another srcset than today's."
+  },
+  {
+   "file": "e2e/performance.spec.ts",
+   "proves": "Fails when the first product tile at 390 px and 3x is fetched from another file than the 800 px one, or when a tile or gallery picture is fetched from a file more than 1.5 times as wide as its box needs at 390 px 2x, 390 px 3x or 360 px 3x."
+  },
+  {
+   "file": "src/server/media-library.int.test.ts",
+   "proves": "Fails when the middle copy is not stored with the picture or is left in Storage when the picture is deleted."
+  }
+ ],
+ "migration": {
+  "needed": true,
+  "notes": "One generated file in the first commit: two nullable text columns on commerce.media (medium_url, medium_path). media is not a hot table; no index, no default, no backfill. Add-only: the code that is running names its columns in every insert and read, so it keeps working. CI's release job applies it after every check passes, then deploys. Never apply it by hand; check the advisors and record the version in docs/decisions.md. If the store-copy SQL functions name media's columns, their change is a separate custom migration (see stop_if)."
+ },
+ "done_when": [
+  {
+   "check": "pnpm build && pnpm exec playwright test e2e/performance.spec.ts",
+   "expect": "passes: at 390 px and 3x the first product tile's currentSrc is the 800 px file (the 1,600 px file before), and no tile or gallery picture comes from a file more than 1.5 times as wide as its box needs at 390 px 2x, 390 px 3x and 360 px 3x"
+  },
+  {
+   "check": "rg -n 'MEDIUM_COPY_WIDTH' src/lib/picture-sizes.ts",
+   "expect": "the constant, 800, and its use in pictureSources()"
+  },
+  {
+   "check": "pnpm db:check",
+   "expect": "exits 0"
+  }
+ ],
+ "after_deploy": [
+  "CI applied the migration; the advisors show no new warning.",
+  "Upload one photograph wider than 1,600 px to a test store's product in production: its commerce.media row has medium_url, the address answers 200 with cache-control max-age=31536000, and on a phone (or Chromium's device mode at 390 px, 3x) the listing's tile loads the -800 file. Send the owner a screenshot of the listing on a phone before and after.",
+  "Platform, Usage and limits for that store: storage rose by the three files' bytes."
+ ],
+ "docs": [
+  "docs/media-compression.md: three files and why.",
+  "docs/wave-7-storefront.md unit B: the sentence on the middle copy.",
+  "docs/decisions.md: the D-row and the migration version.",
+  "docs/audits/bloat-review-2026-11.md Progress row 0.33."
+ ],
+ "do_not": [
+  "Do not backfill: no job makes middle copies for pictures already stored, and no row is updated by the migration.",
+  "Do not resize on the server at request time or use /_next/image: the copy is a stored file.",
+  "Do not save a middle copy's address in a page, a product or product_media: it is read from commerce.media by the picture's own address, as the width is.",
+  "Do not change mediaUses() or rewriteAddresses().",
+  "Do not change the `sizes` strings of the tile or the gallery, or SMALL_COPY_WIDTH and LARGEST_PICTURE_WIDTH.",
+  "Do not add a 1,200 px size: three sizes are the decision; a fourth is the owner's later choice.",
+  "Do not give pictures inside page content (picture blocks, backgrounds, custom grid items) the middle copy here: that is step 0.44.",
+  "Do not change an existing srcset expectation in picture-sizes.test.ts or e2e/performance.spec.ts."
+ ],
+ "stop_if": [
+  "pnpm db:generate writes anything other than the two ADD COLUMN statements.",
+  "A SQL function (clone_store, duplicate_store or another in the baseline) lists media's columns for a copy: report the function; its change is a custom migration for the stronger model.",
+  "A place that names thumbnail_path cannot be given medium_path by the same pattern (a different storage layout, a fixed two-file assumption in a type used by many files): report the file and stop before the third commit.",
+  "The new e2e test shows another file than the 800 px one at 390 px and 3x: report currentSrc, the srcset and sizes attributes; do not change `sizes` to make it pass.",
+  "variants-scale.int.test.ts counts more statements for a card or a listing than before.",
+  "An upload in the local admin takes visibly longer or fails with three files.",
+  "The listing in the new e2e test still shows the demo product's old picture after its product_media row was changed (the catalogue reads are cached with 'use cache'): report it; do not add a cache bypass to the app for the test."
+ ],
+ "executor": "strong",
+ "executor_why": "Commits 2 and 3 now name the lines for media.ts, media-library.ts (copyToLibrary included), sandbox.ts, ai-picture-marks.ts and product-import.ts, but media-compress.ts's old-and-new file handling, the four other server makers and the cached listing in the e2e test still leave judgements in code not shown line by line; commit 1 is mechanical.",
+ "checked_in_code": "I opened src/lib/picture-sizes.ts (pictureSources writes 'small 480w, large Nw'), src/components/sized-picture.tsx, uploadProductImage() in src/server/media.ts:53, storePicture() and uploadToLibrary() in src/server/media-library.ts:96-150, uploadPicture() in src/components/admin/image-upload.tsx:28 and the catalogue read at src/server/catalog.ts:298-302; all as the finding says. I listed the places with rg: six files name thumbnail_path (schema.ts, media.ts, media-library.ts, media-compress.ts, sandbox.ts, ai-picture-marks.ts; the finding missed the last two), five server makers call storePicture() (content-packs.ts:120, ai-pictures.ts:91, api-uploads.ts:114, replicate-assets.ts:57, and uploadToLibrary), and the catalogue looks the library up by address in two reads (lines 302 and 679). I put the new file into storePicture()'s details object rather than a new positional argument, so no caller's order changes, and ordered the commits so that readers and writers can ship apart: a picture without the copy is drawn as today at every stage. The step is too wide to specify line by line; the first commit is fully specified and the others name every file. Second check (12 November): a duplicated store's library is copied by copyToLibrary() in media-library.ts (store-copy-media.ts calls it), so the store-copy change moved there with exact lines and an int case, and the store-copy-media.ts change was dropped; media.ts, sandbox.ts, ai-picture-marks.ts and product-import.ts (whose call is (deps.storePicture ?? storeLibraryPicture)(, which the rg check missed) got their exact lines; the e2e files live in public/demo/e2e/.",
+ "cheap_commits": [
+  1
+ ],
+ "rating_checked": "strong"
 }

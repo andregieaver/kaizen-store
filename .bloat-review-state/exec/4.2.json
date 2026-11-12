@@ -1,205 +1,220 @@
 {
-  "id": "4.2",
-  "goal": "Tripletex and Fiken run on one accounting sync core, work after the answer goes through two named helpers, the ten small twin pairs and the three provider blocks of the AI form are folded, and the twin baseline holds at most 5 pairs, each with its reason.",
-  "why": "fiken-sync.ts and tripletex-sync.ts share 143 to 205 lines in the same order (sweep, claim, release, block, fail, attach), ten small pairs share about 840 lines, and a try-after block is typed 16 times in 12 files. After: 'for update skip locked' is in neither sync file, the twin counter lists at most 5 pairs with none over 45 shared lines, and the try-after block is in two helper files only.",
-  "read_first": [
-    "docs/rules/admin/integrations.md",
-    "docs/tripletex.md",
-    "docs/fiken.md",
-    "docs/own-books-and-sales.md",
-    "src/server/tripletex-sync.ts",
-    "src/server/fiken-sync.ts",
-    "src/server/after-answer.ts",
-    "node_modules/next/dist/docs/01-app/03-api-reference/04-functions/after.md"
-  ],
-  "depends_on": [
-    {
-      "id": "1.17",
-      "why": "scripts/copies.mjs and src/lib/copies.baseline.json count the twin pairs this step lowers to 5"
-    },
-    {
-      "id": "3.16",
-      "why": "it folds the two shopper order pages, one of the ten pairs; this step does not touch them again"
-    },
-    {
-      "id": "3.10",
-      "why": "the platform's twin engines (the plan reminders, the platform's speed recorder) are folded by scope there; this step only checks they left the twin list"
-    },
-    {
-      "id": "4.1",
-      "why": "the settings forms fold onto the kit's field and form-problem parts, and the Fiken and Tripletex action files are already on storeAction()"
-    }
-  ],
-  "commits": [
-    {
-      "title": "Work after the answer goes through afterOrNow() and afterOrLeave()",
-      "changes": [
-        {
-          "file": "src/server/after-or-now.ts",
-          "action": "create",
-          "how": "`import \"server-only\";` and `import { after } from \"next/server\";`. Two exports, each with a comment that says when to use it. `export async function afterOrNow(work: () => Promise<unknown>): Promise<void> { try { after(work); } catch { await work(); } }`: in a request the work runs after the answer; outside one (a job, a test) after() throws and the work runs now. `export function afterOrLeave(work: () => Promise<unknown>): void { try { after(work); } catch { /* Not in a request: a scheduled job takes the work up. */ } }`. Read node_modules/next/dist/docs/01-app/03-api-reference/04-functions/after.md first and keep to what it says about where after() may be called."
-        },
-        {
-          "file": "src/server/{checkout,booking-changes,company-approvals}.ts",
-          "action": "edit",
-          "how": "List the blocks: rg -U -n 'try [{]\\s*\\n\\s*after[(]' -A6 src --glob '!*.test.ts' (16 blocks in 12 files). Read each block's catch. Where the catch RUNS the work (`await work()` or `await fn()`): replace the whole try/catch by `await afterOrNow(work)`. That is checkout.ts (5 blocks), booking-changes.ts line 55 and company-approvals.ts about line 147. Where the surrounding function is not async, do not make it async: stop and report that block."
-        },
-        {
-          "file": "src/server/{design-tools,setup-tools,site-tools,store-drafts,stripe-webhooks,data-job-store,store-copy,search-cache}.ts",
-          "action": "edit",
-          "how": "Where the catch holds only a comment (the work is left to a scheduled job): replace the try/catch by `afterOrLeave(work)`. That is design-tools.ts about line 47, setup-tools.ts 110, site-tools.ts 126, store-drafts.ts 139, stripe-webhooks.ts 121, data-job-store.ts 419, store-copy.ts 357 and search-cache.ts 54. Where the block sits inside a dynamic `import(\"next/server\").then(...)` (store-drafts.ts does this so the module loads outside Next), keep the dynamic import and call afterOrLeave inside it only if after-or-now.ts can be imported there without loading next/server at module load; if not, leave that block and list it. Keep src/server/after-answer.ts as it is."
-        }
-      ],
-      "checks": [
-        "rg -U -l 'try [{]\\s*\\n\\s*after[(]' src --glob '!*.test.ts' : prints src/server/after-or-now.ts and src/server/after-answer.ts, plus any block you listed as left",
-        "pnpm lint && pnpm typecheck && pnpm test : exits 0",
-        "pnpm test:int : exits 0 with no test edited (checkout, bookings and company approvals run their work now in tests; a wrong helper shows as work done twice or not at all)"
-      ]
-    },
-    {
-      "title": "One queue for the two accounting connectors: sweep, claim and release",
-      "changes": [
-        {
-          "file": "src/server/accounting-sync.ts",
-          "action": "create",
-          "how": "`import \"server-only\";`. The first part of the shared core: the queue. Export a type `SyncQueue = { table: SQL; scopeColumns: SQL; scopeValues: SQL; scope: SQL; alias: (a: string) => SQL; externalKey: SQL; extraReturning?: SQL }` where, for Fiken, table is sql`commerce.fiken_sync`, scopeColumns sql`company_slug`, scopeValues sql`${slug}`, scope sql`company_slug = ${slug}`, alias(a) the join condition `a.company_slug = due.company_slug`, externalKey sql`document_number`; for Tripletex table sql`commerce.tripletex_sync`, scopeColumns sql`mode, company_id`, scopeValues sql`${mode}, ${company}`, scope sql`mode = ${mode} and company_id = ${company}`, alias(a) both columns, externalKey the file's EXTERNAL fragment, extraReturning sql`, q.posting`. Export three functions whose SQL is the text both files have today with those fragments in place: `sweepDocuments(queue, storeId, sources: { work: boolean; shop: boolean }, from: string)` (the four insert-select statements of fiken-sync.ts lines 71 to 106), `claimDue(queue, storeId, now, batch, claimMinutes)` (the `with due as (... for update skip locked) update ... returning` of lines 108 to 130, returning rows of kind, local_id, attempts, external_key and the extra column, sorted invoices before credit notes), and `releaseRow(queue, storeId, kind, localId, nextAt)` (lines 136 to 142). Reads go through typedRows() with `col`, as the two files do. Nothing else moves in this commit."
-        },
-        {
-          "file": "src/server/fiken-sync.ts",
-          "action": "edit",
-          "how": "Add `const queueOf = (slug: string): SyncQueue => ({ ... })` with Fiken's fragments. Make sweep(), claim() and release() one-line calls into sweepDocuments(), claimDue() and releaseRow(); keep their names, parameters and return types so the rest of the file does not change. Delete the SQL they held."
-        },
-        {
-          "file": "src/server/tripletex-sync.ts",
-          "action": "edit",
-          "how": "The same with `queueOf(connection)` built from connection.mode and connection.company.id; claim() maps the extra `posting` column into its Claimed rows as today."
-        }
-      ],
-      "checks": [
-        "rg -c 'for update skip locked' src/server/fiken-sync.ts src/server/tripletex-sync.ts : prints nothing",
-        "pnpm exec vitest run src/server/ratchet.scan.test.ts src/lib/fiken.test.ts src/lib/permissions.scan.test.ts : exits 0 (run node scripts/ratchet.mjs if a count fell)",
-        "pnpm lint && pnpm typecheck && pnpm test : exits 0",
-        "pnpm test:int src/server/fiken.int.test.ts src/server/tripletex-sync.int.test.ts src/server/tripletex-invoices.int.test.ts src/server/tripletex-panel.int.test.ts src/server/ledger-compare.int.test.ts src/server/vat-return.int.test.ts : exits 0 with no test edited"
-      ]
-    },
-    {
-      "title": "The rest of the sync runner moves behind an adapter, then the two settings pages",
-      "changes": [
-        {
-          "file": "src/server/accounting-sync.ts",
-          "action": "edit",
-          "how": "One function per commit, each followed by the integration tests of the last commit, in this order: blockRow, failRow, onFailure (the retry ladder), attachable and attachPdfs, noteConnection, then the loop of syncStore and syncDue, then retry, checkDocument and postAgain. Each takes the queue and an `AccountingAdapter` with only the members the moved function needs; grow the interface as functions move: `{ system: \"fiken\" | \"tripletex\"; ensureParty(ctx, ref); send(ctx, row, loaded); attach(ctx, row, file); failureOf(error); grantRefused(storeId, key) }`. Before moving a function, diff the two bodies (diff <(sed -n 'A,Bp' src/server/fiken-sync.ts) <(sed -n 'C,Dp' src/server/tripletex-sync.ts)). Lines that differ only in the table, the scope or a type name go behind the queue or the adapter. A difference in WHAT is written or WHEN it is retried (a column one table has and the other lacks, a different backoff minute, a different alert) is not folded away: keep it as a named adapter member with a comment saying which system needs it, or leave that function in both files and write the pair's reason in the baseline. sendOne(), the customer and contact code, entryNumberOf, idsOf, countryId, the voucher helpers and adoptTripletexCustomers stay in their own files: they are the systems' own. fiken-sync.ts and tripletex-sync.ts keep every exported name (syncDueFiken, retryFiken, checkFikenDocument, postFikenAgain, syncDueTripletex, retryTripletex, checkTripletexDocument, postTripletexAgain, adoptTripletexCustomers)."
-        },
-        {
-          "file": "src/components/admin/accounting-connection.tsx",
-          "action": "create",
-          "how": "One server component for the two settings pages (they share 73 to 220 lines): the connection card, the sources (work, shop), the start day, the queue's counts and the failed rows with Retry, taking the system's words, its fields and its bound actions as props. src/app/admin/(gated)/[store]/integrations/fiken/page.tsx and .../tripletex/page.tsx keep their guards, their reads and whatever only one of them has (Tripletex's customer adoption panel) and render this part. The two actions.ts files stay two files with their own guard call in each (src/lib/permissions.scan.test.ts reads it); share only pure helpers."
-        }
-      ],
-      "checks": [
-        "After each moved function: pnpm test:int src/server/fiken.int.test.ts src/server/tripletex-sync.int.test.ts src/server/tripletex-invoices.int.test.ts src/server/tripletex-panel.int.test.ts : exits 0 with no test edited",
-        "node scripts/copies.mjs : the pairs fiken-sync.ts|tripletex-sync.ts, the two integrations pages and the two actions files are gone or under 45 shared lines",
-        "pnpm lint && pnpm typecheck && pnpm test : exits 0",
-        "pnpm build && E2E_SIGNED_IN=1 pnpm exec playwright test e2e/signed-in/tripletex.spec.ts : exits 0"
-      ]
-    },
-    {
-      "title": "The small pairs, largest file first, one pair per commit",
-      "changes": [
-        {
-          "file": "src/components/admin/use-settings-form.ts",
-          "action": "create",
-          "how": "A client hook (\"use client\") holding what affiliate-settings-form.tsx lines 46 to 110 and bonus-settings-form.tsx lines 39 to 103 both do: the form's state, the dirty flag, the submit inside a transition, the saved line and the problems. Signature: `useSettingsForm<S, I>({ initial: S, toInput: (state: S) => I, save: (input: I) => Promise<{ ok: true } | { ok: false; problems: string[] }> })` returning `{ state, set, dirty, pending, saved, problems, submit }`. It must keep what was typed after a refused save, as the two forms do now. With it create `MarketAmounts` (the per-market amount inputs at affiliate-settings-form.tsx lines 235 and 308 and bonus-settings-form.tsx lines 220 and 356) in src/components/admin/market-amounts.tsx, and use the kit's form-problems and submit-row parts of step 4.1 for the foot (affiliate-settings-form.tsx lines 356 to 404)."
-        },
-        {
-          "file": "src/components/admin/{campaign-editor,discount-editor,affiliate-settings-form,bonus-settings-form,chat-agent-form,docs-guide-form,page-versions-dialog,look-versions-dialog,field-group-editor,reminder-editor}.tsx",
-          "action": "edit",
-          "how": "Order (largest first): (1) campaign-editor.tsx (700 lines) and discount-editor.tsx (503): move the 17-line block they share with field-group-editor.tsx line 246 and reminder-editor.tsx line 126, and the other shared runs node scripts/copies.mjs prints for the pair, into one part beside them; do not merge the two editors. (2) bonus-settings-form.tsx (515) and affiliate-settings-form.tsx (453): rebuild both on useSettingsForm, MarketAmounts and the kit's foot; the platform's affiliate programme uses the same affiliate form, so check /admin/platform's screen too. Target: the two files total under 700 lines (968 today). (3) chat-agent-form.tsx (183) and docs-guide-form.tsx (151) on the hook. (4) page-versions-dialog.tsx (173) and look-versions-dialog.tsx (158): one VersionsDialog that takes the rows, the labels and the restore action; the two files become thin callers or go, with their importers updated (rg -l 'page-versions-dialog|look-versions-dialog' src). (5) src/server/cart-reminders.ts (678) and plan-reminders.ts (451), and src/server/analytics-speed.ts (152) and own-speed.ts (125): these are a store engine and the platform's twin. If step 3.10 folded them, only confirm they left the twin list. If not, fold each by a subject parameter (a store or the platform), keeping the exported names. (6) src/server/draft-pay.ts and order-edit-pay.ts: do NOT fold; they move money and share 57 lines. Give the pair its reason in the baseline. THE BASELINE (src/lib/copies.baseline.json, made by step 1.17): Never by hand except the reasons: run node scripts/copies.mjs --write after each fold. At the end at most 5 twin pairs remain, none over 45 shared lines; for each write a reason of one sentence that says why it stays on purpose (for draft-pay.ts|order-edit-pay.ts: 'two pay steps that move money; 57 shared lines do not pay for the risk of one path'). A pair over 45 lines may not be kept by writing a reason: fold it or stop."
-        },
-        {
-          "file": "src/components/admin/ai-provider-form.tsx",
-          "action": "edit",
-          "how": "The three fieldsets for speech, pictures (line 205) and live (line 294) each draw a provider select (\"the provider above\" or one of AI_PROVIDERS with its own key) beside a ModelField and that provider's own key field. Add one file-local component `ProviderFields({ id, legend, text, fromLabel, selectName, value, onChange, info, children })` that draws the fieldset, the legend, the paragraph and the provider select exactly as lines 205 to 224 do, with `children` for the model field and what is particular to the block (the picture quality select at line 284). Use it three times. Field names (imageProvider, imageModel, liveProvider, liveModel and the speech ones), ids and default values must not change: the two actions (store and platform) read them by name. Both /admin/{store}/settings/ai and /admin/platform/ai use this form."
-        }
-      ],
-      "checks": [
-        "After each pair: its own tests with no edit: src/components/admin/affiliate-ui.test.ts, bonus-ui.test.ts, discount-editor.test.ts; pnpm test:int src/server/cart-reminders.int.test.ts src/server/plan-reminders.int.test.ts (find the rest with rg -l '<file name>' src e2e --glob '*.test.*' --glob '*.spec.*')",
-        "wc -l src/components/admin/affiliate-settings-form.tsx src/components/admin/bonus-settings-form.tsx : total under 700",
-        "node scripts/copies.mjs --write && pnpm exec vitest run src/lib/copies.scan.test.ts src/lib/admin-strings.scan.test.ts : exits 0",
-        "pnpm lint && pnpm typecheck && pnpm test : exits 0",
-        "pnpm build && E2E_SIGNED_IN=1 pnpm exec playwright test --project=signed-in : exits 0; send the owner a screenshot of each rebuilt form (bonus, affiliates for a store and for the platform, a campaign, a discount, the chat agent, the docs guide, both versions dialogs, both AI provider screens)"
-      ]
-    }
-  ],
-  "tests": [
-    {
-      "file": "src/lib/copies.scan.test.ts",
-      "proves": "Fails when a twin pair appears that is not in the baseline, or a baseline pair has no reason: the folded pairs cannot come back unseen."
-    },
-    {
-      "file": "src/server/accounting-sync.int.test.ts",
-      "proves": "New: against one queue descriptor for each system, two claimDue() calls started together never return the same row, releaseRow() gives a first-try row back as pending and a retried one as failed, and sweepDocuments() inserts invoices and credit notes once (run twice, same count)."
-    },
-    {
-      "file": "src/server/after-or-now.test.ts",
-      "proves": "New: outside a request afterOrNow() runs the work before it resolves and afterOrLeave() does not run it."
-    }
-  ],
-  "migration": {
-    "needed": false,
-    "notes": ""
+ "id": "4.2",
+ "goal": "Tripletex and Fiken run on one accounting sync core, work after the answer goes through two named helpers, the ten small twin pairs and the three provider blocks of the AI form are folded, and the twin baseline holds at most 5 pairs, each with its reason.",
+ "why": "fiken-sync.ts and tripletex-sync.ts share 143 to 205 lines in the same order (sweep, claim, release, block, fail, attach), ten small pairs share about 840 lines, and a try-after block is typed 16 times in 12 files. After: 'for update skip locked' is in neither sync file, the twin counter lists at most 5 pairs with none over 45 shared lines, and the try-after block is in two helper files only.",
+ "read_first": [
+  "docs/rules/admin/integrations.md",
+  "docs/tripletex.md",
+  "docs/fiken.md",
+  "docs/own-books-and-sales.md",
+  "src/server/tripletex-sync.ts",
+  "src/server/fiken-sync.ts",
+  "src/server/after-answer.ts",
+  "node_modules/next/dist/docs/01-app/03-api-reference/04-functions/after.md"
+ ],
+ "depends_on": [
+  {
+   "id": "1.17",
+   "why": "scripts/copies.mjs and src/lib/copies.baseline.json count the twin pairs this step lowers to 5"
   },
-  "done_when": [
+  {
+   "id": "3.16",
+   "why": "it folds the two shopper order pages, one of the ten pairs; this step does not touch them again"
+  },
+  {
+   "id": "3.10",
+   "why": "the platform's twin engines (the plan reminders, the platform's speed recorder) are folded by scope there; this step only checks they left the twin list"
+  },
+  {
+   "id": "4.1",
+   "why": "the settings forms fold onto the kit's field and form-problem parts, and the Fiken and Tripletex action files are already on storeAction()"
+  }
+ ],
+ "commits": [
+  {
+   "title": "Work after the answer goes through afterOrNow() and afterOrLeave()",
+   "changes": [
     {
-      "check": "rg -c 'for update skip locked' src/server/fiken-sync.ts src/server/tripletex-sync.ts",
-      "expect": "prints nothing"
+     "file": "src/server/after-or-now.ts",
+     "action": "create",
+     "how": "`import \"server-only\";` and `import { after } from \"next/server\";`. Two exports, each with a comment that says when to use it. `export async function afterOrNow(work: () => Promise<unknown>): Promise<void> { try { after(work); } catch { await work(); } }`: in a request the work runs after the answer; outside one (a job, a test) after() throws and the work runs now. `export function afterOrLeave(work: () => Promise<unknown>): void { try { after(work); } catch { /* Not in a request: a scheduled job takes the work up. */ } }`. Read node_modules/next/dist/docs/01-app/03-api-reference/04-functions/after.md first and keep to what it says about where after() may be called."
     },
     {
-      "check": "node -e \"const t=require('./src/lib/copies.baseline.json').twins;console.log(Object.keys(t).length, Object.values(t).every(x=>x.reason&&x.reason.length>=20))\"",
-      "expect": "5 or less, and true"
+     "file": "src/server/after-or-now.test.ts",
+     "action": "create",
+     "how": "A Vitest unit test. At the top: `vi.mock(\"server-only\", () => ({}));`, `const after = vi.hoisted(() => vi.fn());` and `vi.mock(\"next/server\", () => ({ after }));`, then import afterOrNow and afterOrLeave from './after-or-now'. Cases: (1) outside a request (after.mockImplementation(() => { throw new Error('outside a request'); })): `await afterOrNow(work)` has called work once before it resolves; `afterOrLeave(work)` returns without calling work. (2) in a request (after.mockImplementation(() => undefined)): afterOrNow(work) and afterOrLeave(work) each hand work to after (after called with it) and neither calls work itself. work is a vi.fn(async () => undefined) per case."
     },
     {
-      "check": "node scripts/copies.mjs (the twin list with shared lines per pair)",
-      "expect": "no pair over 45 shared lines"
+     "file": "src/server/{checkout,booking-changes,company-approvals}.ts",
+     "action": "edit",
+     "how": "List the blocks: rg -U -n 'try [{]\\s*\\n\\s*after[(]' -A6 src --glob '!*.test.ts' (16 blocks in 12 files). Read each block's catch. Where the catch RUNS the work (`await work()` or `await fn()`): replace the whole try/catch by `await afterOrNow(work)`. That is checkout.ts (5 blocks), booking-changes.ts line 55 and company-approvals.ts about line 147. Where the surrounding function is not async, do not make it async: stop and report that block."
     },
     {
-      "check": "rg -U -l 'try [{]\\s*\\n\\s*after[(]' src --glob '!*.test.ts'",
-      "expect": "src/server/after-or-now.ts and src/server/after-answer.ts only"
-    },
-    {
-      "check": "pnpm test:int src/server/fiken.int.test.ts src/server/tripletex-sync.int.test.ts src/server/tripletex-invoices.int.test.ts; git diff --stat on those files",
-      "expect": "exits 0 and the three files are unchanged"
+     "file": "src/server/{design-tools,setup-tools,site-tools,store-drafts,stripe-webhooks,data-job-store,store-copy,search-cache}.ts",
+     "action": "edit",
+     "how": "Where the catch holds only a comment (the work is left to a scheduled job): replace the try/catch by `afterOrLeave(work)`. That is design-tools.ts about line 47, setup-tools.ts 110, site-tools.ts 126, store-drafts.ts 139, stripe-webhooks.ts 121, data-job-store.ts 419, store-copy.ts 357 and search-cache.ts 54. Where the block sits inside a dynamic `import(\"next/server\").then(...)` (store-drafts.ts does this so the module loads outside Next), keep the dynamic import and call afterOrLeave inside it only if after-or-now.ts can be imported there without loading next/server at module load; if not, leave that block and list it. Keep src/server/after-answer.ts as it is."
     }
-  ],
-  "after_deploy": [
-    "select job, last_status, last_run_at from commerce.cron_jobs where job like '%tripletex%' or job like '%fiken%' (read only, a day after): each ran and none is failing; Platform → Usage and limits shows no late job.",
-    "For a store with Tripletex connected (the team's own): issue one test invoice and see it booked once in /admin/{store}/integrations/tripletex, with its PDF attached; no row stuck in 'sending' after ten minutes."
-  ],
-  "docs": [
-    "docs/decisions.md: one new D-number row: src/server/accounting-sync.ts is the queue and runner of both accounting connectors behind AccountingAdapter (no third connector is planned: decision 6 of docs/own-books-and-sales.md stands); afterOrNow() and afterOrLeave() and when each is used; which twin pairs stay and why.",
-    "docs/tripletex.md, docs/fiken.md and docs/rules/admin/integrations.md (Tripletex, Fiken): name accounting-sync.ts where they name the sync files.",
-    "docs/rules/admin/marketing.md and website.md: update file names where a rule names a folded file (the bonus program D130, the affiliate program D131, Discounts in depth D299, Campaigns D114, Undo, redo and versions D305).",
-    "docs/audits/code-review-2026-11.md, Progress table: set step 3.12 to Done with the date and commit, and correct finding FV10's wording: the HTTP clients are not the copy (the runner, page and actions are), and the after() blocks have two endings.",
-    "docs/platform-parity.md: no new row; note under the AI and affiliate rows that the platform uses the same folded forms.",
-    "docs/audits/bloat-review-2026-11.md, Progress table: set step 4.2 to Done with the date and the commit; this must be before step 4.5 starts."
-  ],
-  "do_not": [
-    "Do not fold fiken-client.ts with tripletex-client.ts, nor the two mapping files: they are not copies.",
-    "Do not fold draft-pay.ts, exchange-pay.ts and order-edit-pay.ts.",
-    "Do not design the adapter for a third accounting system: none is planned.",
-    "Do not change a retry time, an alert, a state name or a column written by the sync: a double posting in an owner's accounts is the risk here.",
-    "Do not use afterOrNow() where the catch held only a comment: the work would run twice, now and again from the scheduled job.",
-    "Do not rename a form field's name attribute, and do not edit a test to make a fold pass.",
-    "Do not keep a twin by writing a reason when it shares more than 45 lines."
-  ],
-  "stop_if": [
-    "An accounting integration test fails after a function moved: revert that one commit and report the function.",
-    "The two bodies of a sync function differ in what they write or when they retry and no small adapter member expresses it.",
-    "After all folds more than 5 twin pairs remain or one is over 45 lines: report the list; do not raise the baseline.",
-    "A form loses a typed value after a refused save in affiliate-ui.test.ts, bonus-ui.test.ts or the signed-in suite.",
-    "docs/fiken.md still says Fiken has not been tried against a real company and the owner has not agreed to change its engine: ask before the third commit."
-  ],
-  "executor": "strong",
-  "executor_why": "Folding two engines that book invoices into an owner's accounts, and choosing which of two endings each after() block has, needs judgement on differences the brief cannot list line by line; the first two commits are mechanical and fully specified.",
-  "checked_in_code": "I opened fiken-sync.ts (615 lines) and tripletex-sync.ts (755): both declare sweep, claim, release, booked, blockRow, failRow, onFailure, sendOne, attachable, attachPdfs, noteConnection, syncStore and the four exports in the same order, and sweep, claim and release differ only in the table name and the scope columns (company_slug against mode and company_id) and one extra returned column, so the queue is specified exactly. I counted the try-after blocks: 16 in 12 files, with the two endings the finding describes (booking-changes.ts runs the work, store-drafts.ts leaves it and sits inside a dynamic import, which the brief treats apart). ai-provider-form.tsx (670 lines) has the three provider fieldsets at lines 171, 205 and 294 and is used by the store's and the platform's AI screens. Correction to the step: finding FM-9 advises not folding the engines at all while Fiken is untested against a real company; the plan decided to fold, so the brief adds a stop for the owner's word and keeps every difference in behaviour as a named adapter member. src/lib/copies.baseline.json and scripts/copies.mjs do not exist yet (step 1.17)."
+   ],
+   "checks": [
+    "pnpm exec vitest run src/server/after-or-now.test.ts : passes",
+    "rg -U -l 'try [{]\\s*\\n\\s*after[(]' src --glob '!*.test.ts' : prints src/server/after-or-now.ts and src/server/after-answer.ts, plus any block you listed as left",
+    "pnpm lint && pnpm typecheck && pnpm test : exits 0",
+    "pnpm test:int : exits 0 with no test edited (checkout, bookings and company approvals run their work now in tests; a wrong helper shows as work done twice or not at all)"
+   ]
+  },
+  {
+   "title": "One queue for the two accounting connectors: sweep, claim and release",
+   "changes": [
+    {
+     "file": "src/server/accounting-sync.ts",
+     "action": "create",
+     "how": "`import \"server-only\";`. The first part of the shared core: the queue. Export a type `SyncQueue = { table: SQL; scopeColumns: SQL; scopeValues: SQL; scope: SQL; alias: (a: string) => SQL; externalKey: SQL; extraReturning?: SQL }` where, for Fiken, table is sql`commerce.fiken_sync`, scopeColumns sql`company_slug`, scopeValues sql`${slug}`, scope sql`company_slug = ${slug}`, alias(a) the join condition `a.company_slug = due.company_slug`, externalKey sql`document_number`; for Tripletex table sql`commerce.tripletex_sync`, scopeColumns sql`mode, company_id`, scopeValues sql`${mode}, ${company}`, scope sql`mode = ${mode} and company_id = ${company}`, alias(a) both columns, externalKey the file's EXTERNAL fragment, extraReturning sql`, q.posting`. Export three functions whose SQL is the text both files have today with those fragments in place: `sweepDocuments(queue, storeId, sources: { work: boolean; shop: boolean }, from: string)` (the four insert-select statements of fiken-sync.ts lines 71 to 106), `claimDue(queue, storeId, now, batch, claimMinutes)` (the `with due as (... for update skip locked) update ... returning` of lines 108 to 130, returning rows of kind, local_id, attempts, external_key and the extra column, sorted invoices before credit notes), and `releaseRow(queue, storeId, kind, localId, nextAt)` (lines 136 to 142). Reads go through typedRows() with `col`, as the two files do. Nothing else moves in this commit."
+    },
+    {
+     "file": "src/server/fiken-sync.ts",
+     "action": "edit",
+     "how": "Add `export const fikenQueue = (slug: string): SyncQueue => ({ ... })` with Fiken's fragments (exported for the queue's integration test). Make sweep(), claim() and release() one-line calls into sweepDocuments(), claimDue() and releaseRow(); keep their names, parameters and return types so the rest of the file does not change. Delete the SQL they held."
+    },
+    {
+     "file": "src/server/tripletex-sync.ts",
+     "action": "edit",
+     "how": "The same with `export const tripletexQueue = (connection) => ({ ... })` built from connection.mode and connection.company.id (exported for the test); claim() maps the extra `posting` column into its Claimed rows as today."
+    },
+    {
+     "file": "src/server/accounting-sync.int.test.ts",
+     "action": "create",
+     "how": "An integration test of the shared queue. Make one store connected to Fiken and one to Tripletex exactly as src/server/fiken.int.test.ts and src/server/tripletex-sync.int.test.ts make theirs (copy their set-up, including fakeFiken() of src/server/fiken-test-support.ts and fakeTripletex() of src/server/tripletex-test-support.ts, and the issued invoices and credit notes they seed). For each system, with fikenQueue(slug) and tripletexQueue(connection): (1) sweepDocuments(queue, storeId, { work: true, shop: true }, from) run twice leaves the same number of queue rows (on conflict do nothing); (2) two claimDue(queue, storeId, now, batch, claimMinutes) calls started together with Promise.all never return the same (kind, local_id); (3) releaseRow() gives a row claimed once back as 'pending' and a row claimed twice (attempts 2) back as 'failed', with claimed_until null. No fetch reaches a real service."
+    }
+   ],
+   "checks": [
+    "rg -c 'for update skip locked' src/server/fiken-sync.ts src/server/tripletex-sync.ts : prints nothing",
+    "pnpm exec vitest run src/server/ratchet.scan.test.ts src/lib/fiken.test.ts src/lib/permissions.scan.test.ts : exits 0 (run node scripts/ratchet.mjs if a count fell)",
+    "pnpm lint && pnpm typecheck && pnpm test : exits 0",
+    "pnpm test:int src/server/accounting-sync.int.test.ts : exits 0",
+    "pnpm test:int src/server/fiken.int.test.ts src/server/tripletex-sync.int.test.ts src/server/tripletex-invoices.int.test.ts src/server/tripletex-panel.int.test.ts src/server/ledger-compare.int.test.ts src/server/vat-return.int.test.ts : exits 0 with no test edited"
+   ]
+  },
+  {
+   "title": "The rest of the sync runner moves behind an adapter, then the two settings pages",
+   "changes": [
+    {
+     "file": "src/server/accounting-sync.ts",
+     "action": "edit",
+     "how": "One function per commit, each followed by the integration tests of the last commit, in this order: blockRow, failRow, onFailure (the retry ladder), attachable and attachPdfs, noteConnection, then the loop of syncStore and syncDue, then retry, checkDocument and postAgain. Each takes the queue and an `AccountingAdapter` with only the members the moved function needs; grow the interface as functions move: `{ system: \"fiken\" | \"tripletex\"; ensureParty(ctx, ref); send(ctx, row, loaded); attach(ctx, row, file); failureOf(error); grantRefused(storeId, key) }`. Before moving a function, diff the two bodies (diff <(sed -n 'A,Bp' src/server/fiken-sync.ts) <(sed -n 'C,Dp' src/server/tripletex-sync.ts)). Lines that differ only in the table, the scope or a type name go behind the queue or the adapter. A difference in WHAT is written or WHEN it is retried (a column one table has and the other lacks, a different backoff minute, a different alert) is not folded away: keep it as a named adapter member with a comment saying which system needs it, or leave that function in both files and write the pair's reason in the baseline. sendOne(), the customer and contact code, entryNumberOf, idsOf, countryId, the voucher helpers and adoptTripletexCustomers stay in their own files: they are the systems' own. fiken-sync.ts and tripletex-sync.ts keep every exported name (syncDueFiken, retryFiken, checkFikenDocument, postFikenAgain, syncDueTripletex, retryTripletex, checkTripletexDocument, postTripletexAgain, adoptTripletexCustomers)."
+    },
+    {
+     "file": "src/components/admin/accounting-connection.tsx",
+     "action": "create",
+     "how": "One server component for the two settings pages (they share 73 to 220 lines): the connection card, the sources (work, shop), the start day, the queue's counts and the failed rows with Retry, taking the system's words, its fields and its bound actions as props. src/app/admin/(gated)/[store]/integrations/fiken/page.tsx and .../tripletex/page.tsx keep their guards, their reads and whatever only one of them has (Tripletex's customer adoption panel) and render this part. The two actions.ts files stay two files with their own guard call in each (src/lib/permissions.scan.test.ts reads it); share only pure helpers."
+    }
+   ],
+   "checks": [
+    "After each moved function: pnpm test:int src/server/fiken.int.test.ts src/server/tripletex-sync.int.test.ts src/server/tripletex-invoices.int.test.ts src/server/tripletex-panel.int.test.ts : exits 0 with no test edited",
+    "node scripts/copies.mjs : the pairs fiken-sync.ts|tripletex-sync.ts, the two integrations pages and the two actions files are gone or under 45 shared lines",
+    "pnpm lint && pnpm typecheck && pnpm test : exits 0",
+    "pnpm build && E2E_SIGNED_IN=1 pnpm exec playwright test e2e/signed-in/tripletex.spec.ts : exits 0"
+   ]
+  },
+  {
+   "title": "The small pairs, largest file first, one pair per commit",
+   "changes": [
+    {
+     "file": "src/components/admin/use-settings-form.ts",
+     "action": "create",
+     "how": "A client hook (\"use client\") holding what affiliate-settings-form.tsx lines 46 to 110 and bonus-settings-form.tsx lines 39 to 103 both do: the form's state, the dirty flag, the submit inside a transition, the saved line and the problems. Signature: `useSettingsForm<S, I>({ initial: S, toInput: (state: S) => I, save: (input: I) => Promise<{ ok: true } | { ok: false; problems: string[] }> })` returning `{ state, set, dirty, pending, saved, problems, submit }`. It must keep what was typed after a refused save, as the two forms do now. With it create `MarketAmounts` (the per-market amount inputs at affiliate-settings-form.tsx lines 235 and 308 and bonus-settings-form.tsx lines 220 and 356) in src/components/admin/market-amounts.tsx, and use the kit's form-problems and submit-row parts of step 4.1 for the foot (affiliate-settings-form.tsx lines 356 to 404)."
+    },
+    {
+     "file": "src/components/admin/{campaign-editor,discount-editor,affiliate-settings-form,bonus-settings-form,chat-agent-form,docs-guide-form,page-versions-dialog,look-versions-dialog,field-group-editor,reminder-editor}.tsx",
+     "action": "edit",
+     "how": "Order (largest first): (1) campaign-editor.tsx (700 lines) and discount-editor.tsx (503): move the 17-line block they share with field-group-editor.tsx line 246 and reminder-editor.tsx line 126, and the other shared runs node scripts/copies.mjs prints for the pair, into one part beside them; do not merge the two editors. (2) bonus-settings-form.tsx (515) and affiliate-settings-form.tsx (453): rebuild both on useSettingsForm, MarketAmounts and the kit's foot; the platform's affiliate programme uses the same affiliate form, so check /admin/platform's screen too. Target: the two files total under 700 lines (968 today). (3) chat-agent-form.tsx (183) and docs-guide-form.tsx (151) on the hook. (4) page-versions-dialog.tsx (173) and look-versions-dialog.tsx (158): one VersionsDialog that takes the rows, the labels and the restore action; the two files become thin callers or go, with their importers updated (rg -l 'page-versions-dialog|look-versions-dialog' src). (5) src/server/cart-reminders.ts (678) and plan-reminders.ts (451), and src/server/analytics-speed.ts (152) and own-speed.ts (125): these are a store engine and the platform's twin. If step 3.10 folded them, only confirm they left the twin list. If not, fold each by a subject parameter (a store or the platform), keeping the exported names. (6) src/server/draft-pay.ts and order-edit-pay.ts: do NOT fold; they move money and share 57 lines. Give the pair its reason in the baseline. THE BASELINE (src/lib/copies.baseline.json, made by step 1.17): Never by hand except the reasons: run node scripts/copies.mjs --write after each fold. At the end at most 5 twin pairs remain, none over 45 shared lines; for each write a reason of one sentence that says why it stays on purpose (for draft-pay.ts|order-edit-pay.ts: 'two pay steps that move money; 57 shared lines do not pay for the risk of one path'). A pair over 45 lines may not be kept by writing a reason: fold it or stop."
+    },
+    {
+     "file": "src/components/admin/ai-provider-form.tsx",
+     "action": "edit",
+     "how": "The three fieldsets for speech, pictures (line 205) and live (line 294) each draw a provider select (\"the provider above\" or one of AI_PROVIDERS with its own key) beside a ModelField and that provider's own key field. Add one file-local component `ProviderFields({ id, legend, text, fromLabel, selectName, value, onChange, info, children })` that draws the fieldset, the legend, the paragraph and the provider select exactly as lines 205 to 224 do, with `children` for the model field and what is particular to the block (the picture quality select at line 284). Use it three times. Field names (imageProvider, imageModel, liveProvider, liveModel and the speech ones), ids and default values must not change: the two actions (store and platform) read them by name. Both /admin/{store}/settings/ai and /admin/platform/ai use this form."
+    }
+   ],
+   "checks": [
+    "After each pair: its own tests with no edit: src/components/admin/affiliate-ui.test.ts, bonus-ui.test.ts, discount-editor.test.ts; pnpm test:int src/server/cart-reminders.int.test.ts src/server/plan-reminders.int.test.ts (find the rest with rg -l '<file name>' src e2e --glob '*.test.*' --glob '*.spec.*')",
+    "wc -l src/components/admin/affiliate-settings-form.tsx src/components/admin/bonus-settings-form.tsx : total under 700",
+    "node scripts/copies.mjs --write && pnpm exec vitest run src/lib/copies.scan.test.ts src/lib/admin-strings.scan.test.ts : exits 0",
+    "pnpm lint && pnpm typecheck && pnpm test : exits 0",
+    "pnpm build && E2E_SIGNED_IN=1 pnpm exec playwright test --project=signed-in : exits 0; send the owner a screenshot of each rebuilt form (bonus, affiliates for a store and for the platform, a campaign, a discount, the chat agent, the docs guide, both versions dialogs, both AI provider screens)"
+   ]
+  }
+ ],
+ "tests": [
+  {
+   "file": "src/lib/copies.scan.test.ts",
+   "proves": "Fails when a twin pair appears that is not in the baseline, or a baseline pair has no reason: the folded pairs cannot come back unseen."
+  },
+  {
+   "file": "src/server/accounting-sync.int.test.ts",
+   "proves": "New: against one queue descriptor for each system, two claimDue() calls started together never return the same row, releaseRow() gives a first-try row back as pending and a retried one as failed, and sweepDocuments() inserts invoices and credit notes once (run twice, same count)."
+  },
+  {
+   "file": "src/server/after-or-now.test.ts",
+   "proves": "New: outside a request afterOrNow() runs the work before it resolves and afterOrLeave() does not run it."
+  }
+ ],
+ "migration": {
+  "needed": false,
+  "notes": ""
+ },
+ "done_when": [
+  {
+   "check": "rg -c 'for update skip locked' src/server/fiken-sync.ts src/server/tripletex-sync.ts",
+   "expect": "prints nothing"
+  },
+  {
+   "check": "node -e \"const t=require('./src/lib/copies.baseline.json').twins;console.log(Object.keys(t).length, Object.values(t).every(x=>x.reason&&x.reason.length>=20))\"",
+   "expect": "5 or less, and true"
+  },
+  {
+   "check": "node scripts/copies.mjs (the twin list with shared lines per pair)",
+   "expect": "no pair over 45 shared lines"
+  },
+  {
+   "check": "rg -U -l 'try [{]\\s*\\n\\s*after[(]' src --glob '!*.test.ts'",
+   "expect": "src/server/after-or-now.ts and src/server/after-answer.ts only"
+  },
+  {
+   "check": "pnpm test:int src/server/fiken.int.test.ts src/server/tripletex-sync.int.test.ts src/server/tripletex-invoices.int.test.ts; git diff --stat on those files",
+   "expect": "exits 0 and the three files are unchanged"
+  }
+ ],
+ "after_deploy": [
+  "select job, last_status, last_run_at from commerce.cron_jobs where job like '%tripletex%' or job like '%fiken%' (read only, a day after): each ran and none is failing; Platform → Usage and limits shows no late job.",
+  "For a store with Tripletex connected (the team's own): issue one test invoice and see it booked once in /admin/{store}/integrations/tripletex, with its PDF attached; no row stuck in 'sending' after ten minutes."
+ ],
+ "docs": [
+  "docs/decisions.md: one new D-number row: src/server/accounting-sync.ts is the queue and runner of both accounting connectors behind AccountingAdapter (no third connector is planned: decision 6 of docs/own-books-and-sales.md stands); afterOrNow() and afterOrLeave() and when each is used; which twin pairs stay and why.",
+  "docs/tripletex.md, docs/fiken.md and docs/rules/admin/integrations.md (Tripletex, Fiken): name accounting-sync.ts where they name the sync files.",
+  "docs/rules/admin/marketing.md and website.md: update file names where a rule names a folded file (the bonus program D130, the affiliate program D131, Discounts in depth D299, Campaigns D114, Undo, redo and versions D305).",
+  "docs/audits/code-review-2026-11.md, Progress table: set step 3.12 to Done with the date and commit, and correct finding FV10's wording: the HTTP clients are not the copy (the runner, page and actions are), and the after() blocks have two endings.",
+  "docs/platform-parity.md: no new row; note under the AI and affiliate rows that the platform uses the same folded forms.",
+  "docs/audits/bloat-review-2026-11.md, Progress table: set step 4.2 to Done with the date and the commit; this must be before step 4.5 starts."
+ ],
+ "do_not": [
+  "Do not fold fiken-client.ts with tripletex-client.ts, nor the two mapping files: they are not copies.",
+  "Do not fold draft-pay.ts, exchange-pay.ts and order-edit-pay.ts.",
+  "Do not design the adapter for a third accounting system: none is planned.",
+  "Do not change a retry time, an alert, a state name or a column written by the sync: a double posting in an owner's accounts is the risk here.",
+  "Do not use afterOrNow() where the catch held only a comment: the work would run twice, now and again from the scheduled job.",
+  "Do not rename a form field's name attribute, and do not edit a test to make a fold pass.",
+  "Do not keep a twin by writing a reason when it shares more than 45 lines."
+ ],
+ "stop_if": [
+  "An accounting integration test fails after a function moved: revert that one commit and report the function.",
+  "The two bodies of a sync function differ in what they write or when they retry and no small adapter member expresses it.",
+  "After all folds more than 5 twin pairs remain or one is over 45 lines: report the list; do not raise the baseline.",
+  "A form loses a typed value after a refused save in affiliate-ui.test.ts, bonus-ui.test.ts or the signed-in suite.",
+  "docs/fiken.md still says Fiken has not been tried against a real company and the owner has not agreed to change its engine: ask before the third commit.",
+  "scripts/copies.mjs or src/lib/copies.baseline.json does not exist (step 1.17 is not done): do commits 1 and 2 only."
+ ],
+ "executor": "strong",
+ "executor_why": "Commits 1 and 2 are fully specified with their tests now written into them, but they touch checkout's after-the-answer work and the accounting queue that posts to an owner's books, so even they need a reader; commits 3 and 4 design an adapter from diffs of two sync engines (Fiken untried against a real company) and fold ten pairs with open choices, which is the stronger model's work.",
+ "checked_in_code": "I opened fiken-sync.ts (615 lines) and tripletex-sync.ts (755): both declare sweep, claim, release, booked, blockRow, failRow, onFailure, sendOne, attachable, attachPdfs, noteConnection, syncStore and the four exports in the same order, and sweep, claim and release differ only in the table name and the scope columns (company_slug against mode and company_id) and one extra returned column, so the queue is specified exactly. I counted the try-after blocks: 16 in 12 files, with the two endings the finding describes (booking-changes.ts runs the work, store-drafts.ts leaves it and sits inside a dynamic import, which the brief treats apart). ai-provider-form.tsx (670 lines) has the three provider fieldsets at lines 171, 205 and 294 and is used by the store's and the platform's AI screens. Correction to the step: finding FM-9 advises not folding the engines at all while Fiken is untested against a real company; the plan decided to fold, so the brief adds a stop for the owner's word and keeps every difference in behaviour as a named adapter member. src/lib/copies.baseline.json and scripts/copies.mjs do not exist yet (step 1.17). Second check (12 November): the two new test files the tests section promised are now created by commits 1 and 2 (after-or-now.test.ts with a hoisted next/server mock; accounting-sync.int.test.ts on the two connectors' own set-up, with fikenQueue and tripletexQueue exported for it), the 16 try-after blocks were recounted (5 in checkout.ts, 1 in each of 11 other files including after-answer.ts), and a stop_if covers a missing scripts/copies.mjs (step 1.17).",
+ "rating_checked": "strong",
+ "cheap_commits": []
 }

@@ -20,22 +20,22 @@
     {
      "file": "docs/audits/bloat-review-2026-11/scripts/import-reach.mjs",
      "action": "create",
-     "how": "One script, no dependency but node. Build it from three scratch scripts: /tmp/claude-0/-home-user-kaizen-store/875cb21b-0ebd-5663-b7c0-2d04a7548e24/scratchpad/work/fmp/graph.mjs (the static value-import graph of src: a regex over every .ts and .tsx file that is not *.test.* , *.spec.* or *.d.ts; 'import type' lines, type-only named imports and import() calls are left out; '@/x' resolves to src/x), /tmp/claude-0/-home-user-kaizen-store/875cb21b-0ebd-5663-b7c0-2d04a7548e24/scratchpad/work/fmp/reach.mjs (breadth-first reach from an entry) and /tmp/claude-0/-home-user-kaizen-store/875cb21b-0ebd-5663-b7c0-2d04a7548e24/scratchpad/work/pl-tc/regex-scc.mjs (Tarjan's strongly connected components). Usage to implement: 'node docs/audits/bloat-review-2026-11/scripts/import-reach.mjs [--cycle] [--why <target>] <entry>...' where an entry is a path under src (for example src/app/api/visit/route.ts). The repository root is process.cwd(); remove every hard-coded /home/user/kaizen-store. For each entry print one line: '<entry>: <n> files' followed by 'admin-text=<bool> chat-route=<bool> ai=<bool> schema=<bool>' (whether src/lib/admin-text.ts, src/server/chat-route.ts, src/server/ai.ts and src/db/schema.ts are reached). With --cycle print 'largest cycle in src/server: <n> files' (the largest strongly connected component whose files are all under src/server). With --why <target> print one shortest import chain from the entry to the target. Keep the graph builder's rules exactly as fmp/graph.mjs has them, or the numbers below will not come back."
+     "how": "One script, no dependency but node. Build it from three scratch scripts: docs/audits/bloat-review-2026-11/scripts/sources/fmp/graph.mjs.txt (the static value-import graph of src: a regex over every .ts and .tsx file that is not *.test.* , *.spec.* or *.d.ts; 'import type' lines, type-only named imports and import() calls are left out; '@/x' resolves to src/x), docs/audits/bloat-review-2026-11/scripts/sources/fmp/reach.mjs.txt (breadth-first reach from an entry) and docs/audits/bloat-review-2026-11/scripts/sources/pl-tc/regex-scc.mjs.txt (Tarjan's strongly connected components). Usage to implement: 'node docs/audits/bloat-review-2026-11/scripts/import-reach.mjs [--cycle] [--why <target>] <entry>...' where an entry is a path under src (for example src/app/api/visit/route.ts). The repository root is process.cwd(); remove every hard-coded /home/user/kaizen-store. For each entry print one line: '<entry>: <n> files' followed by 'admin-text=<bool> chat-route=<bool> ai=<bool> schema=<bool>' (whether src/lib/admin-text.ts, src/server/chat-route.ts, src/server/ai.ts and src/db/schema.ts are reached). With --cycle print 'largest cycle in src/server: <n> files' (the largest strongly connected component whose files are all under src/server). With --why <target> print one shortest import chain from the entry to the target. Keep the graph builder's rules exactly as fmp/graph.mjs has them, or the numbers below will not come back."
     },
     {
      "file": "docs/audits/bloat-review-2026-11/scripts/copy-count.mjs",
      "action": "create",
-     "how": "Copy /tmp/claude-0/-home-user-kaizen-store/875cb21b-0ebd-5663-b7c0-2d04a7548e24/scratchpad/work/cp/near.mjs. Replace the hard-coded repository path by process.cwd(). Keep its usage: 'node docs/audits/bloat-review-2026-11/scripts/copy-count.mjs <level 0|1|2> <outfile.json> <dir>...'. Make it print, at level 0, the three totals on one line each: exact copied lines, lines copied across files, lines copied inside one file."
+     "how": "Copy docs/audits/bloat-review-2026-11/scripts/sources/cp/near.mjs..txt Replace the hard-coded repository path by process.cwd(). Keep its usage: 'node docs/audits/bloat-review-2026-11/scripts/copy-count.mjs <level 0|1|2> <outfile.json> <dir>...'. Make it print, at level 0, the three totals on one line each: exact copied lines, lines copied across files, lines copied inside one file."
     },
     {
      "file": "docs/audits/bloat-review-2026-11/scripts/twin-count.mjs",
      "action": "create",
-     "how": "Copy /tmp/claude-0/-home-user-kaizen-store/875cb21b-0ebd-5663-b7c0-2d04a7548e24/scratchpad/work/fm/twinscan2.mjs unchanged except: the root 'src' stays relative to process.cwd(), and the last line printed is '<n> twin pairs' (pairs of non-test files that share 20 or more long lines and 30% of the smaller file)."
+     "how": "Copy docs/audits/bloat-review-2026-11/scripts/sources/fm/twinscan2.mjs.txt unchanged except: the root 'src' stays relative to process.cwd(), and the last line printed is '<n> twin pairs' (pairs of non-test files that share 20 or more long lines and 30% of the smaller file)."
     },
     {
      "file": "docs/audits/bloat-review-2026-11/scripts/helper-count.mjs",
      "action": "create",
-     "how": "Copy /tmp/claude-0/-home-user-kaizen-store/875cb21b-0ebd-5663-b7c0-2d04a7548e24/scratchpad/work/cp/helpers.mjs. Replace const REPO = \"/home/user/kaizen-store\" by const REPO = process.cwd(). The last line printed is the count of helpers declared with identical text in more than one file."
+     "how": "Copy docs/audits/bloat-review-2026-11/scripts/sources/cp/helpers.mjs..txt Replace const REPO = \"/home/user/kaizen-store\" by const REPO = process.cwd(). The last line printed is the count of helpers declared with identical text in more than one file."
     },
     {
      "file": "docs/audits/bloat-review-2026-11/README.md",
@@ -48,7 +48,7 @@
     "node docs/audits/bloat-review-2026-11/scripts/copy-count.mjs 0 /tmp/copies.json src: prints 4,098 lines across files and 705 inside a file, within 2%",
     "node docs/audits/bloat-review-2026-11/scripts/twin-count.mjs: last line '41 twin pairs' (40 to 42)",
     "node docs/audits/bloat-review-2026-11/scripts/helper-count.mjs: prints 84 (within 3)",
-    "rg -n '/home/user|/tmp/claude' docs/audits/bloat-review-2026-11/scripts: prints nothing",
+    "rg -n '/home/user|/tmp/claude|<scratch>' docs/audits/bloat-review-2026-11/scripts --glob '!**/sources/**': prints nothing (the raw copies under scripts/sources/ keep their old paths on purpose and are left out)",
     "pnpm lint: exits 0 (the scripts are .mjs under docs; if eslint reads them and fails, fix the script, do not add an ignore)"
    ]
   },
@@ -58,57 +58,57 @@
     {
      "file": "docs/audits/bloat-review-2026-11/scripts/trace-sizes.mjs",
      "action": "create",
-     "how": "Copy /tmp/claude-0/-home-user-kaizen-store/875cb21b-0ebd-5663-b7c0-2d04a7548e24/scratchpad/work/fnplan/nft.mjs (it sums, for every .nft.json under .next/server, the bytes of the files traced beside that function, by kind: taxonomy, sharp, chromium, other). Replace the hard-coded root by path.join(process.cwd(), '.next/server'). Print the ten largest functions and the total."
+     "how": "Copy docs/audits/bloat-review-2026-11/scripts/sources/fnplan/nft.mjs.txt (it sums, for every .nft.json under .next/server, the bytes of the files traced beside that function, by kind: taxonomy, sharp, chromium, other). Replace the hard-coded root by path.join(process.cwd(), '.next/server'). Print the ten largest functions and the total."
     },
     {
      "file": "docs/audits/bloat-review-2026-11/scripts/trace-packages.mjs",
      "action": "create",
-     "how": "Copy /tmp/claude-0/-home-user-kaizen-store/875cb21b-0ebd-5663-b7c0-2d04a7548e24/scratchpad/work/as-plan/nft.mjs (the second trace summer: megabytes per package across all traces). Replace const root by process.cwd(). Keep its optional argument."
+     "how": "Copy docs/audits/bloat-review-2026-11/scripts/sources/as-plan/nft.mjs.txt (the second trace summer: megabytes per package across all traces). Replace const root by process.cwd(). Keep its optional argument."
     },
     {
      "file": "docs/audits/bloat-review-2026-11/scripts/cold-load-route.cjs",
      "action": "create",
-     "how": "Copy /tmp/claude-0/-home-user-kaizen-store/875cb21b-0ebd-5663-b7c0-2d04a7548e24/scratchpad/work/sk-deps/cold3.cjs unchanged: 'node docs/audits/bloat-review-2026-11/scripts/cold-load-route.cjs .next/server/app/api/visit/route.js' loads one built route in a fresh process and prints milliseconds and megabytes."
+     "how": "Copy docs/audits/bloat-review-2026-11/scripts/sources/sk-deps/cold3.cjs.txt unchanged: 'node docs/audits/bloat-review-2026-11/scripts/cold-load-route.cjs .next/server/app/api/visit/route.js' loads one built route in a fresh process and prints milliseconds and megabytes."
     },
     {
      "file": "docs/audits/bloat-review-2026-11/scripts/cold-load-proxy.cjs",
      "action": "create",
-     "how": "Copy /tmp/claude-0/-home-user-kaizen-store/875cb21b-0ebd-5663-b7c0-2d04a7548e24/scratchpad/work/sd/load-proxy.cjs unchanged (it requires .next/server/middleware.js relative to the working directory)."
+     "how": "Copy docs/audits/bloat-review-2026-11/scripts/sources/sd/load-proxy.cjs.txt unchanged (it requires .next/server/middleware.js relative to the working directory)."
     },
     {
      "file": "docs/audits/bloat-review-2026-11/scripts/cold-load-page.cjs",
      "action": "create",
-     "how": "Copy /tmp/claude-0/-home-user-kaizen-store/875cb21b-0ebd-5663-b7c0-2d04a7548e24/scratchpad/work/sd/load-page.cjs; replace any absolute repository path by process.cwd()."
+     "how": "Copy docs/audits/bloat-review-2026-11/scripts/sources/sd/load-page.cjs.txt; replace any absolute repository path by process.cwd()."
     },
     {
      "file": "docs/audits/bloat-review-2026-11/scripts/cold-load-start-hook.cjs",
      "action": "create",
-     "how": "Copy /tmp/claude-0/-home-user-kaizen-store/875cb21b-0ebd-5663-b7c0-2d04a7548e24/scratchpad/work/sd/load-instr.cjs; replace any absolute repository path by process.cwd()."
+     "how": "Copy docs/audits/bloat-review-2026-11/scripts/sources/sd/load-instr.cjs.txt; replace any absolute repository path by process.cwd()."
     },
     {
      "file": "docs/audits/bloat-review-2026-11/scripts/flight.mjs",
      "action": "create",
-     "how": "Copy /tmp/claude-0/-home-user-kaizen-store/875cb21b-0ebd-5663-b7c0-2d04a7548e24/scratchpad/work/skeptic-sc/flight.mjs unchanged: 'node docs/audits/bloat-review-2026-11/scripts/flight.mjs <saved.html>' prints the bytes of the React flight payload inside a saved document and what is in it twice."
+     "how": "Copy docs/audits/bloat-review-2026-11/scripts/sources/skeptic-sc/flight.mjs.txt unchanged: 'node docs/audits/bloat-review-2026-11/scripts/flight.mjs <saved.html>' prints the bytes of the React flight payload inside a saved document and what is in it twice."
     },
     {
      "file": "docs/audits/bloat-review-2026-11/scripts/route.mjs",
      "action": "create",
-     "how": "Copy /tmp/claude-0/-home-user-kaizen-store/875cb21b-0ebd-5663-b7c0-2d04a7548e24/scratchpad/work/skeptic-sc/route.mjs; replace const root='/home/user/kaizen-store/.next/' by path.join(process.cwd(), '.next/') (import node:path). 'node docs/audits/bloat-review-2026-11/scripts/route.mjs /s/[store]/[market]' prints a route's first-load client chunks and bytes from its client-reference manifest."
+     "how": "Copy docs/audits/bloat-review-2026-11/scripts/sources/skeptic-sc/route.mjs.txt; replace const root='/home/user/kaizen-store/.next/' by path.join(process.cwd(), '.next/') (import node:path). 'node docs/audits/bloat-review-2026-11/scripts/route.mjs /s/[store]/[market]' prints a route's first-load client chunks and bytes from its client-reference manifest."
     },
     {
      "file": "docs/audits/bloat-review-2026-11/scripts/meta-reader.mjs",
      "action": "create",
-     "how": "Copy /tmp/claude-0/-home-user-kaizen-store/875cb21b-0ebd-5663-b7c0-2d04a7548e24/scratchpad/work/pmplan/rdcall.mjs (the reader of the build's .meta files: it counts prerendered entries whose resume data keeps a page list). Replace absolute paths by process.cwd()."
+     "how": "Copy docs/audits/bloat-review-2026-11/scripts/sources/pmplan/rdcall.mjs.txt (the reader of the build's .meta files: it counts prerendered entries whose resume data keeps a page list). Replace absolute paths by process.cwd()."
     },
     {
      "file": "docs/audits/bloat-review-2026-11/scripts/words-in-entries.mjs",
      "action": "create",
-     "how": "Copy /tmp/claude-0/-home-user-kaizen-store/875cb21b-0ebd-5663-b7c0-2d04a7548e24/scratchpad/work/fmp/words-in-entries.mjs unchanged, but make the first argument optional: when it is not a directory, use process.cwd() as the repository and treat the argument as the sentence."
+     "how": "Copy docs/audits/bloat-review-2026-11/scripts/sources/fmp/words-in-entries.mjs.txt unchanged, but make the first argument optional: when it is not a directory, use process.cwd() as the repository and treat the argument as the sentence."
     },
     {
      "file": "docs/audits/bloat-review-2026-11/scripts/handed.mjs",
      "action": "create",
-     "how": "Copy /tmp/claude-0/-home-user-kaizen-store/875cb21b-0ebd-5663-b7c0-2d04a7548e24/scratchpad/work/tx-plan/handed.mjs. It reads two files that sit beside it in the scratch folder: admin.min.mjs (an esbuild bundle of src/lib/admin-text.ts) and graph.json (the import graph). Make it self-contained: build the graph in-process with the same function import-reach.mjs uses (export that function from import-reach.mjs and import it here), and build the catalogue with the esbuild package that is already in node_modules (esbuild.build with entryPoints src/lib/admin-text.ts, bundle true, format esm, write false, alias '@' to src; then import the result from a data: URL or a temp file under os.tmpdir()). Print per screen the words handed and the words the screen's parts name."
+     "how": "Copy docs/audits/bloat-review-2026-11/scripts/sources/tx-plan/handed.mjs..txt It reads two files that sit beside it in the scratch folder: admin.min.mjs (an esbuild bundle of src/lib/admin-text.ts) and graph.json (the import graph). Make it self-contained: build the graph in-process with the same function import-reach.mjs uses (export that function from import-reach.mjs and import it here), and build the catalogue with the esbuild package that is already in node_modules (esbuild.build with entryPoints src/lib/admin-text.ts, bundle true, format esm, write false, alias '@' to src; then import the result from a data: URL or a temp file under os.tmpdir()). Also replace readFileSync(\"/home/user/kaizen-store/\" + f, ...) by readFileSync(path.join(process.cwd(), f), ...). Keep its three screens and its output lines ('== <screen>: handed <n> bytes of English JSON | named by its client parts: <n> ...') unchanged. Print per screen the words handed and the words the screen's parts name."
     },
     {
      "file": "docs/audits/bloat-review-2026-11/scripts/manifest-time.cjs",
@@ -118,32 +118,32 @@
     {
      "file": "docs/audits/bloat-review-2026-11/scripts/cut-simulation.mjs",
      "action": "create",
-     "how": "Copy /tmp/claude-0/-home-user-kaizen-store/875cb21b-0ebd-5663-b7c0-2d04a7548e24/scratchpad/work/bn/sim.mjs (usage in its first line: 'node sim.mjs <page> [--cut from=>to ...] [--drop rootSubstring ...] [--show N]'). It reads the analyzer's export; make the directory an argument or .next/diagnostics/analyze under process.cwd(), with no absolute path."
+     "how": "Copy docs/audits/bloat-review-2026-11/scripts/sources/bn/sim.mjs.txt (usage in its first line: 'node sim.mjs <page> [--cut from=>to ...] [--drop rootSubstring ...] [--show N]'). It reads the analyzer's export; make the directory an argument or .next/diagnostics/analyze under process.cwd(), with no absolute path."
     },
     {
      "file": "docs/audits/bloat-review-2026-11/scripts/ai-round.ts",
      "action": "create",
-     "how": "Copy /tmp/claude-0/-home-user-kaizen-store/875cb21b-0ebd-5663-b7c0-2d04a7548e24/scratchpad/work/plan-ai/measure.ts unchanged (it imports from '@/lib/...'). Beside it create docs/audits/bloat-review-2026-11/scripts/ai-round.mjs from /tmp/claude-0/-home-user-kaizen-store/875cb21b-0ebd-5663-b7c0-2d04a7548e24/scratchpad/work/plan-ai/build.mjs: it bundles ai-round.ts with esbuild (alias '@' to src, 'server-only' to an empty module written to os.tmpdir()) into os.tmpdir() and runs it. No path under the scratch folder may remain."
+     "how": "Copy docs/audits/bloat-review-2026-11/scripts/sources/plan-ai/measure.ts.txt unchanged (it imports from '@/lib/...' and one '@/server/prompt-versions'). Beside it create docs/audits/bloat-review-2026-11/scripts/ai-round.mjs, written new (about 20 lines; do NOT start from sources/plan-ai/build.mjs.txt: that file writes the review's findings JSON and bundles nothing). ai-round.mjs: import esbuild from 'esbuild', node:os, node:path, node:fs and node:url; write an empty module 'export {}' to path.join(os.tmpdir(), 'ai-round-server-only.mjs'); call esbuild.build({ entryPoints: [path.join(process.cwd(), 'docs/audits/bloat-review-2026-11/scripts/ai-round.ts')], bundle: true, platform: 'node', format: 'esm', outfile: path.join(os.tmpdir(), 'ai-round.bundle.mjs'), alias: { '@': path.join(process.cwd(), 'src'), 'server-only': <that empty module's path> }, packages: 'external', logLevel: 'warning' }); then await import(url.pathToFileURL(<outfile>).href). No path under the scratch folder or /home/user may remain."
     },
     {
      "file": "docs/audits/bloat-review-2026-11/lists/unused-exports-tier-0.txt",
      "action": "create",
-     "how": "Copy /tmp/claude-0/-home-user-kaizen-store/875cb21b-0ebd-5663-b7c0-2d04a7548e24/scratchpad/work/ddplan/T0.txt byte for byte (330 lines)."
+     "how": "Copy docs/audits/bloat-review-2026-11/scripts/sources/ddplan/T0.txt.txt byte for byte (330 lines)."
     },
     {
      "file": "docs/audits/bloat-review-2026-11/lists/unused-exports-tier-2.txt",
      "action": "create",
-     "how": "Copy /tmp/claude-0/-home-user-kaizen-store/875cb21b-0ebd-5663-b7c0-2d04a7548e24/scratchpad/work/ddplan/T2.txt byte for byte (323 lines)."
+     "how": "Copy docs/audits/bloat-review-2026-11/scripts/sources/ddplan/T2.txt.txt byte for byte (323 lines)."
     },
     {
      "file": "docs/audits/bloat-review-2026-11/lists/unused-words.txt",
      "action": "create",
-     "how": "Copy /tmp/claude-0/-home-user-kaizen-store/875cb21b-0ebd-5663-b7c0-2d04a7548e24/scratchpad/work/ddplan/words.txt byte for byte (120 lines)."
+     "how": "Copy docs/audits/bloat-review-2026-11/scripts/sources/ddplan/words.txt.txt byte for byte (120 lines)."
     },
     {
      "file": "docs/audits/bloat-review-2026-11/lists/dead-text-keys.txt",
      "action": "create",
-     "how": "Copy /tmp/claude-0/-home-user-kaizen-store/875cb21b-0ebd-5663-b7c0-2d04a7548e24/scratchpad/work/tx/dead-keys-confirmed.txt byte for byte (44 lines)."
+     "how": "Copy docs/audits/bloat-review-2026-11/scripts/sources/tx/dead-keys-confirmed.txt.txt byte for byte (44 lines)."
     },
     {
      "file": "docs/audits/bloat-review-2026-11/README.md",
@@ -152,9 +152,11 @@
     }
    ],
    "checks": [
-    "rg -n '/home/user|/tmp/claude|scratchpad' docs/audits/bloat-review-2026-11/scripts docs/audits/bloat-review-2026-11/lists: prints nothing",
+    "rg -n '/home/user|/tmp/claude|scratchpad|<scratch>' docs/audits/bloat-review-2026-11/scripts docs/audits/bloat-review-2026-11/lists --glob '!**/sources/**': prints nothing",
     "for f in docs/audits/bloat-review-2026-11/scripts/*.mjs docs/audits/bloat-review-2026-11/scripts/*.cjs; do node --check \"$f\" || echo BAD $f; done: prints no BAD line",
     "wc -l docs/audits/bloat-review-2026-11/lists/*.txt: 330, 323, 120 and 44 lines",
+    "node docs/audits/bloat-review-2026-11/scripts/ai-round.mjs: exits 0 and prints a line starting 'shop only page=-: store tools 12' whose 'round tools with all manager 39 = <n>' has n within 5% of 33,810 (the review's lean Home round for a shop-only store); a figure further off, or a crash in the bundle: stop and report, do not change measure.ts",
+    "node docs/audits/bloat-review-2026-11/scripts/handed.mjs: exits 0 and prints three '== product editor', '== order' and '== customer' lines, each with a 'handed <n> bytes' figure",
     "Only if a build is already on disk (.next exists; do not build for this commit): node docs/audits/bloat-review-2026-11/scripts/trace-sizes.mjs and node docs/audits/bloat-review-2026-11/scripts/cold-load-route.cjs .next/server/app/api/health/route.js each print a table and exit 0",
     "pnpm lint: exits 0"
    ]
@@ -165,29 +167,29 @@
     {
      "file": "docs/audits/bloat-review-2026-11.md",
      "action": "edit",
-     "how": "Two things. (1) The Progress table must have exactly one row per step of the plan (149 steps: 46 in phase 0, 28 in phase 1, 50 in phase 2, 20 in phase 3, 5 in phase 4). Count with: grep -c '^| [0-4]\\.[0-9]* ' docs/audits/bloat-review-2026-11.md. If it prints 149, change nothing in the table. Correct the sentence in section 5 that says '134 steps' to the number counted. (2) Replace every name of a scratch script by its repo path, using the table in this brief's docs field."
+     "how": "Two things. (1) The Progress table must have exactly one row per step of the plan (151 steps: 46 in phase 0, 28 in phase 1, 50 in phase 2, 20 in phase 3, 7 in phase 4). Count with: grep -c '^| [0-4]\\.[0-9]* ' docs/audits/bloat-review-2026-11.md. It printed 151 on 12 November: if it prints 151, change nothing in the table. Section 5 already says '151 steps' (line 459): leave it. (2) Replace every name of a scratch script by its repo path, using the table in this brief's docs field."
     },
     {
      "file": "docs/audits/bloat-review-2026-11/plan/phase-0.md",
      "action": "edit",
-     "how": "Same replacement of scratch paths. Every step has one '## <id> <title>' heading: check with grep -c '^## [0-4]\\.' docs/audits/bloat-review-2026-11/plan/phase-*.md (the five files must sum to 149). In phase-0.md, section 0.1, delete the word 'scratchpad' by writing 'the review's working folder' instead."
+     "how": "Same replacement of scratch paths. Every step has one '## <id> <title>' heading: check with grep -c '^## [0-4]\\.' docs/audits/bloat-review-2026-11/plan/phase-*.md (the five files must sum to 151: 46, 28, 50, 20 and 7). In phase-0.md, section 0.1, delete the word 'scratchpad' by writing 'the review's working folder' instead."
     },
     {
      "file": "docs/audits/bloat-review-2026-11/grade-a/*.md",
      "action": "edit",
-     "how": "Replace each scratch path by the repo path: work/cp/near.mjs to docs/audits/bloat-review-2026-11/scripts/copy-count.mjs; work/fm/twinscan2.mjs to docs/audits/bloat-review-2026-11/scripts/twin-count.mjs; work/cp/helpers.mjs to docs/audits/bloat-review-2026-11/scripts/helper-count.mjs; work/plan-ai/measure.cjs to docs/audits/bloat-review-2026-11/scripts/ai-round.mjs; work/pmplan/rdcall.mjs to docs/audits/bloat-review-2026-11/scripts/meta-reader.mjs. The three page-model scripts work/pm/bench.mjs, work/pmsk/crm.mjs and work/pmsk/admin.mjs are not named by a done-when: copy each to docs/audits/bloat-review-2026-11/scripts/page-model-<name>.mjs with absolute paths replaced by process.cwd(), and point the text at the copy. List what is left with: rg -n 'scratchpad|\\bwork/[a-z-]+/[a-z0-9-]+\\.(mjs|cjs|ts|txt|json)' docs/audits/bloat-review-2026-11/grade-a."
+     "how": "Replace each scratch path by the repo path: work/cp/near.mjs to docs/audits/bloat-review-2026-11/scripts/copy-count.mjs; work/fm/twinscan2.mjs to docs/audits/bloat-review-2026-11/scripts/twin-count.mjs; work/cp/helpers.mjs to docs/audits/bloat-review-2026-11/scripts/helper-count.mjs; work/plan-ai/measure.cjs to docs/audits/bloat-review-2026-11/scripts/ai-round.mjs; work/pmplan/rdcall.mjs to docs/audits/bloat-review-2026-11/scripts/meta-reader.mjs. The three page-model scripts work/pm/bench.mjs, work/pmsk/crm.mjs and work/pmsk/admin.mjs (named in grade-a/page-model.md) were not kept in scripts/sources/: do not copy or rewrite them; reword each mention to 'the review's working files (not kept)', keeping the number beside it. List what is left with: rg -n 'scratchpad|\\bwork/[a-z-]+/[a-z0-9-]+\\.(mjs|cjs|ts|txt|json)' docs/audits/bloat-review-2026-11/grade-a."
     },
     {
      "file": "docs/audits/bloat-review-2026-11/findings/**/*.md",
      "action": "edit",
-     "how": "List the lines with: rg -n 'scratchpad|\\bwork/[a-z0-9-]+/[A-Za-z0-9._-]+' docs/audits/bloat-review-2026-11/findings. For a script this brief copied, write the repo path. For any other scratch file a finding names as evidence (for example work/ddplan/replay.mjs, work/fnplan/sim.cjs, work/plan-sc/scan.mjs, m/build-summary.txt), do not copy it: reword the sentence to 'the review's working files (not kept)'. Do not change a number, a file:line or a fix step."
+     "how": "List the lines with: rg -n 'scratchpad|\\bwork/[a-z0-9-]+/[A-Za-z0-9._-]+' docs/audits/bloat-review-2026-11/findings. The page-model scripts work/pmsk/*.mjs and work/pm/bench.mjs named in findings/page-builder-model/ were not kept either: same rewording. For a script this brief copied, write the repo path. For any other scratch file a finding names as evidence (for example work/ddplan/replay.mjs, work/fnplan/sim.cjs, work/plan-sc/scan.mjs, m/build-summary.txt), do not copy it: reword the sentence to 'the review's working files (not kept)'. Do not change a number, a file:line or a fix step."
     }
    ],
    "checks": [
-    "rg -n 'scratchpad' docs/audits/bloat-review-2026-11.md docs/audits/bloat-review-2026-11: prints nothing",
-    "rg -n '\\bwork/[a-z0-9-]+/[A-Za-z0-9._-]+\\.(mjs|cjs|ts|txt|json|sh)' docs/audits/bloat-review-2026-11.md docs/audits/bloat-review-2026-11: prints nothing (paths such as src/components/admin/work/... and /account/work/... are code, not scratch: they do not match this pattern and stay)",
-    "grep -c '^| [0-4]\\.[0-9]* ' docs/audits/bloat-review-2026-11.md: 149",
-    "cat docs/audits/bloat-review-2026-11/plan/phase-*.md | grep -c '^## [0-4]\\.': 149",
+    "rg -n 'scratchpad' docs/audits/bloat-review-2026-11.md docs/audits/bloat-review-2026-11 --glob '!**/scripts/sources/**' --glob '!**/plan/steps/**': prints nothing (scripts/sources/ holds the raw copies with their old paths on purpose; plan/steps/ holds the step briefs, which quote the old names; both are left out)",
+    "rg -n '\\bwork/[a-z0-9-]+/[A-Za-z0-9._-]+\\.(mjs|cjs|ts|txt|json|sh)' docs/audits/bloat-review-2026-11.md docs/audits/bloat-review-2026-11 --glob '!**/scripts/sources/**' --glob '!**/plan/steps/**': prints nothing (scripts/sources/ holds the raw copies with their old paths on purpose; plan/steps/ holds the step briefs, which quote the old names; both are left out) (paths such as src/components/admin/work/... and /account/work/... are code, not scratch: they do not match this pattern and stay)",
+    "grep -c '^| [0-4]\\.[0-9]* ' docs/audits/bloat-review-2026-11.md: 151",
+    "cat docs/audits/bloat-review-2026-11/plan/phase-*.md | grep -c '^## [0-4]\\.': 151 (46, 28, 50, 20, 7)",
     "git diff --stat: only files under docs/ (a docs-only push runs no CI, so nothing else may ride with it)"
    ]
   }
@@ -211,16 +213,16 @@
    "expect": "'src/app/api/visit/route.ts: 1308 files' (1,308 or 1,309) and 'largest cycle in src/server: 229 files'"
   },
   {
-   "check": "rg -n 'scratchpad' docs/audits/bloat-review-2026-11.md docs/audits/bloat-review-2026-11",
+   "check": "rg -n 'scratchpad' docs/audits/bloat-review-2026-11.md docs/audits/bloat-review-2026-11 --glob '!**/scripts/sources/**' --glob '!**/plan/steps/**'",
    "expect": "prints nothing"
   },
   {
-   "check": "rg -n '/home/user|/tmp/claude' docs/audits/bloat-review-2026-11/scripts docs/audits/bloat-review-2026-11/lists",
+   "check": "rg -n '/home/user|/tmp/claude' docs/audits/bloat-review-2026-11/scripts docs/audits/bloat-review-2026-11/lists --glob '!**/sources/**'",
    "expect": "prints nothing"
   },
   {
    "check": "grep -c '^| [0-4]\\.[0-9]* ' docs/audits/bloat-review-2026-11.md and cat docs/audits/bloat-review-2026-11/plan/phase-*.md | grep -c '^## [0-4]\\.'",
-   "expect": "149 and 149"
+   "expect": "151 and 151"
   }
  ],
  "after_deploy": [],
@@ -237,15 +239,21 @@
   "Do not copy measure.cjs (37,037 lines, a build product), graph.json files, .jsonl captures or the m/ measurements into the repo.",
   "Do not delete or rewrite the seven scripts already in the folder.",
   "Do not change a finding's numbers, file:line references or fix steps while replacing paths.",
-  "Do not merge the session branch's .bloat-review-state folder into main."
+  "Do not merge the session branch's .bloat-review-state folder into main.",
+  "Do not edit or delete anything under docs/audits/bloat-review-2026-11/scripts/sources/ or plan/steps/: the first are the raw copies, the second the step briefs."
  ],
  "stop_if": [
   "A source this brief names is not in docs/audits/bloat-review-2026-11/scripts/sources/ (each scratch script and list the plan names was kept there on 12 November, with .txt added to its name; inside them <scratch> stands for the review's working folder, which is gone). Do not rewrite a counter from its description: stop and report which file is missing.",
-  "A copied script prints a number more than 2% from the one named here (1,308; 229; 4,098; 41; 84): report the script, the number and the commit you ran on.",
+  "A copied script prints a number more than 2% from the one named here (1,308; 229; 4,098; 41; 84; and 5% for ai-round's 33,810): report the script, the number and the commit you ran on.",
   "A scratch script needs an input you cannot rebuild in the repo (a capture, a bundle, a graph file) and this brief did not say how to make it.",
-  "The Progress table or the phase files do not have 149 rows and sections: report the two counts; do not write rows by hand from memory."
+  "The Progress table or the phase files do not have 151 rows and sections (46, 28, 50, 20, 7): report the two counts; do not write rows by hand from memory."
  ],
- "executor": "strong",
- "executor_why": "The sources are in a working folder with several near-identical copies of each script; choosing the copy that gives the plan's number, cutting its hidden inputs and joining three scripts into one walker needs judgement and the working folder itself.",
- "checked_in_code": "I listed docs/audits/bloat-review-2026-11/scripts (7 scripts: copied-code, measure-routes, routes-table, scripts-by-page, server-graph, storm, unused-code) and found each scratch source by name. I ran work/fmp/graph.mjs and reach.mjs on today's tree: 4,136 modules, /api/visit and /api/recommendations/events reach 1,308, the proxy 1,311, src/server/ui-text.ts 383 (that is the '383 behind src/instrumentation.ts': the hook's one import is dynamic, so the walker must be given ui-text.ts or follow import()), and the store page 1,435 today against the plan's 1,419. Corrections: there is no single 'import walker' in the scratch folder (graph, reach and cycle are three scripts, so the brief makes one); stylesheet-audiences.mjs, which the plan names, exists nowhere yet (a later step writes it); handed.mjs and the AI round's draw depend on sibling build products; and the tracker already has 149 Progress rows and 149 step sections, while section 5 of the main file still says 134."
+ "executor": "cheap-then-review",
+ "executor_why": "Commits 1 and 3 are copies of kept sources and text edits checked by printed numbers and counts; commit 2 rewrites handed.mjs and writes ai-round.mjs anew, and later steps measure against them with only a loose output check, so its diff wants a read.",
+ "checked_in_code": "I listed docs/audits/bloat-review-2026-11/scripts (7 scripts: copied-code, measure-routes, routes-table, scripts-by-page, server-graph, storm, unused-code) and found each scratch source by name. I ran work/fmp/graph.mjs and reach.mjs on today's tree: 4,136 modules, /api/visit and /api/recommendations/events reach 1,308, the proxy 1,311, src/server/ui-text.ts 383 (that is the '383 behind src/instrumentation.ts': the hook's one import is dynamic, so the walker must be given ui-text.ts or follow import()), and the store page 1,435 today against the plan's 1,419. Corrections: there is no single 'import walker' in the scratch folder (graph, reach and cycle are three scripts, so the brief makes one); stylesheet-audiences.mjs, which the plan names, exists nowhere yet (a later step writes it); handed.mjs and the AI round's draw depend on sibling build products; and the tracker already has 149 Progress rows and 149 step sections, while section 5 of the main file still says 134. Second check (12 November): every source now points at docs/audits/bloat-review-2026-11/scripts/sources/<dir>/<name>.txt; counts are 151 (46, 28, 50, 20, 7) and section 5 already says 151; ai-round.mjs is written new because sources/plan-ai/build.mjs.txt is the findings writer, not a bundler; the page-model scripts were not kept, so their mentions are reworded; the rg checks leave out scripts/sources/ and plan/steps/, which keep old paths on purpose.",
+ "cheap_commits": [
+  1,
+  3
+ ],
+ "rating_checked": "strong"
 }

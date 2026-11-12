@@ -1,0 +1,16 @@
+{
+ "id": "2.39",
+ "fixed": [
+  "Commit 1 widens ai_eval_runs_suite to ('agents','small_jobs') in the same generated migration, with a commerce.test.ts case; commit 3's runs would otherwise be refused.",
+  "Commit 2: platformManagerCostToday() (the platform admin's daily AI cost ceiling, which filters feature in ('ai_manager','analytics_question')) now includes 'assistant_memory', so the re-tag does not let the memory pass escape the ceiling (found on this check), with an rg check."
+ ],
+ "rejected": [
+  {
+   "problem": "Commit 3 is addressed to '[an executor]' and stop_if says to stop if the executor reaches commit 3.",
+   "why": "An artefact of the blanked copy: the brief says 'A stronger model does this commit' and the stop_if names the cheap executor, which agree."
+  }
+ ],
+ "cheaper": "partly applied: the suite migration moved into commit 1; not applied: writing the 25 small-job cases into the brief, which is commit 3's judgement itself; the step stays strong with commits 1 and 2 cheap.",
+ "executor_before": "strong",
+ "executor_after": "strong"
+}

@@ -1,238 +1,241 @@
 {
-  "id": "0.24",
-  "goal": "A reader that wants one published page reads that page (publishedPageById), a reader that wants addresses or titles reads a small index (publishedPageIndex), and listPublishedPages() is left to the readers that draw every document.",
-  "why": "listPublishedPages() selects every published page of a store with its whole content: 29 documents a call, 79,778 calls and 781 s of statement time in 78 days, through 37 lines of callers of which 13 keep one page. After: at most 14 lines call it, none to pick one page, and 0 of the demo store's 261 prerendered entries keep the page list in their resume data (45 today).",
-  "read_first": [
-    "docs/rules/admin/website.md",
-    "src/server/pages.ts",
-    "src/server/checkout-terms.ts",
-    "src/lib/page-translation.ts",
-    "src/server/legal-links.ts",
-    "src/server/platform-navigation.ts",
-    "src/server/seo.ts",
-    "node_modules/next/dist/docs/01-app/03-api-reference/01-directives/use-cache.md"
-  ],
-  "depends_on": [
-    {
-      "id": "0.23",
-      "why": "the two new reads filter the owner with owned() from src/server/owned.ts, which that step creates"
-    },
-    {
-      "id": "0.1",
-      "why": "the done-when's count of prerendered entries is made by the reader of the build's .meta files that step puts under docs/audits/bloat-review-2026-11/scripts/"
-    }
-  ],
-  "commits": [
-    {
-      "title": "One page by its id, and an index of a store's published pages",
-      "changes": [
-        {
-          "file": "src/server/pages.ts",
-          "action": "edit",
-          "how": "Add two cached reads beside listPublishedPages() (line 664). (1) `export async function publishedPageById(owner: PageOwner, id: string, type: PageType = \"page\"): Promise<PublishedPage | null>`: 'use cache'; cacheLife(\"hours\"); cacheTag(pagesTag(owner)); if `id` is not a uuid return null; one row `select id, slug, published, published_at, first_published_at from commerce.pages where id = ${id}::uuid and ${owned(owner)} and type = ${type} and published_at is not null`; `const content = row ? parsePageContent(row.published) : null; if (!content) return null; return (await withPageAlts([published(row, content)]))[0];` (the same mapping and alt texts as the list, so a drawn page still gets its pictures' alt texts and small copies). (2) `export type PublishedPageEntry = { id: string; slug: string; title: string; titles: Record<string, string>; publishedAt: string; firstPublishedAt: string; blogId: string | null; aiAssistants: boolean; searchEngines: boolean }` and `export async function publishedPageIndex(owner: PageOwner = null, type: PageType = \"page\"): Promise<PublishedPageEntry[]>`: the same directive, life and tag; the same where and order by as listPublishedPages() but no document: `select id, slug, coalesce(published ->> 'title', '') as title, coalesce((select jsonb_object_agg(t.key, t.value ->> 'title') from jsonb_each(case when jsonb_typeof(published -> 'translations') = 'object' then published -> 'translations' else '{}'::jsonb end) t where coalesce(t.value ->> 'title', '') <> ''), '{}'::jsonb) as titles, published_at, first_published_at, published ->> 'blogId' as blog_id, coalesce((published ->> 'aiAssistants')::boolean, false) as ai_assistants, coalesce((published ->> 'searchEngines')::boolean, false) as search_engines from commerce.pages where ${owned(owner)} and type = ${type} and published_at is not null order by <as the list>`. Describe both rows with `col` and read them through typedRow()/typedRows() (src/server/typed-rows.ts; CLAUDE.md's rule for new reads); use readDb() as the list does. Change listPublishedPages()'s doc comment to: 'Every published page with its whole document: only for readers that draw or read every document (the sitemaps, llms.txt, the blog feed, the platform's page and blog routes, the admin's search page). One page: publishedPageById(). Addresses and titles: publishedPageIndex().' Then move the file's own two by-id callers: productsPageOf() (line 799) returns `store.productsPageId ? publishedPageById(store.id, store.productsPageId) : null`, and pageForRole() (line 862) returns `publishedPageById(store.id, id)`."
-        },
-        {
-          "file": "src/lib/page-translation.ts",
-          "action": "edit",
-          "how": "Add a pure `export function indexTitle(entry: { title: string; titles: Record<string, string> }, locale: string | null | undefined): string` that returns `(locale && entry.titles[locale]) || entry.title`: the title localizePage(content, locale).title gives (localizePage() lays the translation's texts over the page's own, key by key, so a locale without a translated title falls back to the page's title)."
-        },
-        {
-          "file": "src/lib/page-translation.test.ts",
-          "action": "edit",
-          "how": "If the file does not exist, create it. Add cases that hold the two together: for a page content fixture with title 'About' and translations { 'nb-NO': { title: 'Om oss' }, 'sv-SE': {} }, `indexTitle({ title: content.title, titles: { 'nb-NO': 'Om oss' } }, locale)` equals `localizePage(content, locale).title` for 'nb-NO', 'sv-SE', 'da-DK', null and undefined. Build the fixture the way the file's (or src/lib/product-layout.test.ts's) other page fixtures are built."
-        },
-        {
-          "file": "src/server/pages.int.test.ts",
-          "action": "edit",
-          "how": "Add a case for a seeded store with three published pages (one with a translated title, one whose published JSON has no translations key) and one draft: publishedPageIndex(storeId) returns the same ids and slugs in the same order as listPublishedPages(storeId), each entry's title equals that page's content.title, titles holds the translated title, aiAssistants and searchEngines equal the content's flags, and no entry has a `content` key; publishedPageById(storeId, id) deep-equals the entry of the list with that id (content with its alt texts); publishedPageById(storeId, draftId) is null; publishedPageById(otherStoreId, id) is null; and the same three checks for the null owner with one of Kaizena Flow's own pages."
-        }
-      ],
-      "checks": [
-        "pnpm exec vitest run src/lib/page-translation.test.ts src/server/ratchet.scan.test.ts : pass",
-        "pnpm exec vitest run --config vitest.integration.config.mts src/server/pages.int.test.ts src/server/alt-texts.int.test.ts : pass",
-        "pnpm lint && pnpm typecheck && pnpm test : exits 0"
-      ]
-    },
-    {
-      "title": "Readers of one page read that page",
-      "changes": [
-        {
-          "file": "src/app/s/[store]/[market]/page.tsx",
-          "action": "edit",
-          "how": "Line 29: replace `(await listPublishedPages(shop.store.id)).find((p) => p.id === shop.store.frontPageId) ?? null` by `await publishedPageById(shop.store.id, shop.store.frontPageId)` (keep the surrounding `shop.store.frontPageId ? … : null`). Import publishedPageById from '@/server/pages' and drop the listPublishedPages import if the file no longer uses it."
-        },
-        {
-          "file": "src/server/platform-roles.ts",
-          "action": "edit",
-          "how": "Line 37: `return publishedPageById(null, chosen);`. Import publishedPageById from '@/server/pages' and drop the listPublishedPages import if the file no longer uses it."
-        },
-        {
-          "file": "src/app/s/[store]/[market]/blog/blog-listing.tsx",
-          "action": "edit",
-          "how": "Line 89: `return blog.listingPageId ? publishedPageById(store.id, blog.listingPageId) : null;` (keep the function's existing early returns). Import publishedPageById from '@/server/pages' and drop the listPublishedPages import if the file no longer uses it."
-        },
-        {
-          "file": "src/app/s/[store]/[market]/account/exchange/[token]/page.tsx",
-          "action": "edit",
-          "how": "Line 60: `const published = id ? await publishedPageById(store.id, id) : undefined;` in place of the list and find. Import publishedPageById from '@/server/pages' and drop the listPublishedPages import if the file no longer uses it."
-        },
-        {
-          "file": "src/app/s/[store]/[market]/account/pay/[token]/page.tsx",
-          "action": "edit",
-          "how": "Line 55: the same replacement for its `id`. Import publishedPageById from '@/server/pages' and drop the listPublishedPages import if the file no longer uses it."
-        },
-        {
-          "file": "src/app/admin/try/[sandbox]/[kind]/[pageId]/preview/page.tsx",
-          "action": "edit",
-          "how": "Line 28: `const live = query.published === \"1\" && page.published ? ((await publishedPageById(sandbox.store.id, page.id, kind)) ?? undefined) : undefined;`. Import publishedPageById from '@/server/pages' and drop the listPublishedPages import if the file no longer uses it."
-        },
-        {
-          "file": "src/app/admin/account/themes/[presetId]/preview/page.tsx",
-          "action": "edit",
-          "how": "Line 91 to 95: in the Promise.all read `base.frontPageId ? publishedPageById(base.id, base.frontPageId) : Promise.resolve(null)` and set `const front = <that value>;` in place of the `pages.find(...)` line. Import publishedPageById from '@/server/pages' and drop the listPublishedPages import if the file no longer uses it."
-        },
-        {
-          "file": "src/server/checkout-terms.ts",
-          "action": "edit",
-          "how": "termsPagesFor() (line 46): replace the list by one read per terms role that has a page chosen: `const found = await Promise.all(TERMS_ROLES.map(async (role) => { const id = store.legalPages[role]; return [role, id ? await publishedPageById(store.id, id) : null] as const; }));` and build `byRole` from the pairs whose page is not null. The rest of the function (the titles through localizePage, the hrefs, `display`) is unchanged: recordTermsForOrder() keeps the whole text of these pages, so they are read whole."
-        }
-      ],
-      "checks": [
-        "rg -n 'listPublishedPages\\(' src --glob '!*.test.*' | rg 'find\\(' : prints nothing",
-        "pnpm exec vitest run src/lib/checkout-terms.test.ts 'src/app/s/[store]/[market]/checkout/checkout-section.test.ts' 'src/app/s/[store]/[market]/order/[orderId]/order-section.test.ts' : pass",
-        "pnpm exec vitest run --config vitest.integration.config.mts src/server/pages.int.test.ts src/server/checkout-terms.int.test.ts src/server/house-pages.int.test.ts src/server/experiments.int.test.ts src/server/country-content.int.test.ts : pass (skip a file name that does not exist: ls src/server/*.int.test.ts)",
-        "pnpm lint && pnpm typecheck && pnpm test : exits 0",
-        "pnpm build && pnpm exec playwright test e2e/store-pages.spec.ts e2e/page-roles.spec.ts e2e/products-page.spec.ts e2e/legal-pages.spec.ts e2e/blog.spec.ts e2e/ab-front-pages.spec.ts : pass"
-      ]
-    },
-    {
-      "title": "Readers of addresses and titles read the index",
-      "changes": [
-        {
-          "file": "src/server/legal-links.ts",
-          "action": "edit",
-          "how": "Line 24: `const published = await publishedPageIndex(store.id);` and in the loop `const title = indexTitle(page, market.locale).trim();` (import indexTitle from '@/lib/page-translation'; drop localizePage and listPublishedPages imports if unused). The find by id and the href stay."
-        },
-        {
-          "file": "src/components/site-chat.tsx",
-          "action": "edit",
-          "how": "privacyHref() (line 110): `const published = (await publishedPageIndex(store.id)).find((page) => page.id === id);` (only the slug is used)."
-        },
-        {
-          "file": "src/app/s/[store]/[market]/account/change/[token]/page.tsx",
-          "action": "edit",
-          "how": "Line 60: `const published = await publishedPageIndex(store.id);` (the function maps roles to slugs only)."
-        },
-        {
-          "file": "src/app/s/[store]/[market]/[slug]/page.tsx",
-          "action": "edit",
-          "how": "generateStaticParams (line 20): `const pages = shop ? await publishedPageIndex(shop.store.id) : [];`. The same in src/app/s/[store]/[market]/[slug]/[...sub]/page.tsx line 22. Only `slug` is read in both; if either reads more of a page, stop."
-        },
-        {
-          "file": "src/app/s/[store]/[market]/blog/article-page.tsx",
-          "action": "edit",
-          "how": "Lines 40 and 53: read `publishedPageIndex(shop.store.id, \"article\")` in place of the list, and pass each entry to inBlog() as `{ blogId: article.blogId ?? undefined }` (inBlog() and blogOfArticle() in src/lib/blogs.ts read only `blogId`). The `load()` function further down, which draws one article, is not part of this change."
-        },
-        {
-          "file": "src/server/platform-navigation.ts",
-          "action": "edit",
-          "how": "getPlatformChrome() (lines 135 to 151): read `publishedPageIndex()` and `publishedPageIndex(null, \"article\")` in place of the two lists; delete the local `titles()` helper; `const byId = (list: PublishedPageEntry[]) => new Map(list.map((p) => [p.id, { id: p.id, slug: p.slug, title: p.title, titles: p.titles }]));`. The returned shape is unchanged."
-        },
-        {
-          "file": "src/server/page-ai.ts",
-          "action": "edit",
-          "how": "siteFacts() (lines 96 and 97): read `publishedPageIndex(owner.storeId, \"article\")` and `publishedPageIndex(owner.storeId, \"page\")`; change the four uses of `page.content.title` / `article.content.title` in this function to `page.title` / `article.title`. Nothing else of a page is read there (labels and addresses); if it is, stop. This changes no prompt text: the labels are the same strings."
-        },
-        {
-          "file": "src/server/seo.ts",
-          "action": "edit",
-          "how": "Only the robots.txt reader (the function around lines 460 to 476): read `publishedPageIndex(site?.id ?? null)` and `publishedPageIndex(site?.id ?? null, \"article\")` and change `!page.content.aiAssistants` and `!a.content.aiAssistants` to `!page.aiAssistants` and `!a.aiAssistants`. Leave the four other readers in this file (the two sitemaps at about lines 600 and 687 and the two llms.txt at about 796 and 872) on listPublishedPages(): they read every document's pictures (pageImageUrls) and excerpt (pageExcerpt)."
-        },
-        {
-          "file": "src/server/pages-list.scan.test.ts",
-          "action": "create",
-          "how": "A scan in the style of src/server/store-writers.scan.test.ts: collect every non-test file under src with a line matching /listPublishedPages\\(/ and expect the set of files to equal exactly: src/server/pages.ts, src/server/seo.ts, src/server/blogs.ts, src/components/platform-routes/page.tsx, src/components/platform-routes/blog.tsx, 'src/app/admin/(gated)/[store]/search/page.tsx'. Expect the total number of matching lines to be at most 14. Expect no matching line to contain '.find(' . The message: 'one page: publishedPageById(); addresses and titles: publishedPageIndex(); the whole list only where every document is drawn or read'."
-        },
-        {
-          "file": "docs/decisions.md",
-          "action": "edit",
-          "how": "Append one row with the next free D-number (pull main first; `rg -o '^\\| D[0-9]+' docs/decisions.md | tr -dc '0-9\\n' | sort -n | tail -1`, plus 1). It records: publishedPageById() and publishedPageIndex() (same tag as the list, so freshness is unchanged), who moved (the find-by-id callers, the legal links, the chat's privacy link, static params, the platform's frame, the AI's site facts, robots.txt), who stays on the list and why (the sitemaps and llms.txt read every document's pictures and excerpts; the blog feed; the platform's page and blog routes; the admin's search page), and the scan test. A per-page cache tag is the later step this makes possible. Platform: Kaizena Flow's own pages are read through the same two functions with a null owner, and src/server/platform-navigation.ts is one of the callers moved. No migration (step 2.16 puts title and flags in columns)."
-        }
-      ],
-      "checks": [
-        "pnpm exec vitest run src/server/pages-list.scan.test.ts src/lib/agent-eval.test.ts src/lib/prompt-safety.scan.test.ts : pass",
-        "rg -c 'listPublishedPages\\(' src --glob '!*.test.*' | awk -F: '{s+=$2} END {print s}' : prints 14 or fewer",
-        "pnpm lint && pnpm typecheck && pnpm test : exits 0",
-        "pnpm test:int : exits 0 (pages, legal-starters, country-content, experiments, redirect-resolve, page-duplicate, alt-texts, site-layouts among them, unchanged)",
-        "node scripts/db-setup.mjs --seed && pnpm build && pnpm test:e2e : exits 0 (legal-pages, menus, blog, blog-feed, page-roles, products-page, store-pages, platform-languages and smoke specs among them: footers' legal links, robots.txt and the sitemap)",
-        "The .meta reader from step 0.1 (find it: rg -ln 'resume|\\.meta' docs/audits/bloat-review-2026-11/scripts; the review called it rdcall.mjs) run on .next/server/app/s/demo : reports 0 entries that keep the page list (45 of 261 before)"
-      ]
-    }
-  ],
-  "tests": [
-    {
-      "file": "src/server/pages.int.test.ts",
-      "proves": "Fails when the index differs from the list in ids, slugs, order, titles or flags, carries a document, or when publishedPageById() returns a draft, another store's page or a page without its alt texts."
-    },
-    {
-      "file": "src/lib/page-translation.test.ts",
-      "proves": "Fails when indexTitle() and localizePage().title disagree for a translated or an untranslated page."
-    },
-    {
-      "file": "src/server/pages-list.scan.test.ts",
-      "proves": "Fails when a new file calls listPublishedPages(), when a caller picks one page from it, or when the calls pass 14 lines."
-    }
-  ],
-  "migration": {
-    "needed": false,
-    "notes": ""
+ "id": "0.24",
+ "goal": "A reader that wants one published page reads that page (publishedPageById), a reader that wants addresses or titles reads a small index (publishedPageIndex), and listPublishedPages() is left to the readers that draw every document.",
+ "why": "listPublishedPages() selects every published page of a store with its whole content: 29 documents a call, 79,778 calls and 781 s of statement time in 78 days, through 37 lines of callers of which 13 keep one page. After: at most 14 lines call it, none to pick one page, and 0 of the demo store's 261 prerendered entries keep the page list in their resume data (45 today).",
+ "read_first": [
+  "docs/rules/admin/website.md",
+  "src/server/pages.ts",
+  "src/server/checkout-terms.ts",
+  "src/lib/page-translation.ts",
+  "src/server/legal-links.ts",
+  "src/server/platform-navigation.ts",
+  "src/server/seo.ts",
+  "node_modules/next/dist/docs/01-app/03-api-reference/01-directives/use-cache.md"
+ ],
+ "depends_on": [
+  {
+   "id": "0.23",
+   "why": "the two new reads filter the owner with the file's ownedBy(), which step 0.23 rewrites to use owned() from src/server/owned.ts (an index can serve it; is not distinct from cannot)"
   },
-  "done_when": [
+  {
+   "id": "0.1",
+   "why": "done_when 3 and 4 run docs/audits/bloat-review-2026-11/scripts/meta-reader.mjs, step 0.1's copy of the review's reader of the build's .meta files"
+  }
+ ],
+ "commits": [
+  {
+   "title": "One page by its id, and an index of a store's published pages",
+   "changes": [
     {
-      "check": "rg -c 'listPublishedPages\\(' src --glob '!*.test.*' | awk -F: '{s+=$2} END {print s}'",
-      "expect": "14 or fewer (37 before)"
+     "file": "src/server/pages.ts",
+     "action": "edit",
+     "how": "Add two cached reads beside listPublishedPages() (line 664). (1) `export async function publishedPageById(owner: PageOwner, id: string, type: PageType = \"page\"): Promise<PublishedPage | null>`: 'use cache'; cacheLife(\"hours\"); cacheTag(pagesTag(owner)); if `id` is not a uuid return null; one row `select id, slug, published, published_at, first_published_at from commerce.pages where id = ${id}::uuid and ${ownedBy(owner, type)} and published_at is not null` (ownedBy() is the file's own helper at line 71 that listPublishedPages() uses; after step 0.23 it reads `${owned(owner)} and type = ${type}`, so do not import owned() here); `const content = row ? parsePageContent(row.published) : null; if (!content) return null; return (await withPageAlts([published(row, content)]))[0];` (the same mapping and alt texts as the list, so a drawn page still gets its pictures' alt texts and small copies). (2) `export type PublishedPageEntry = { id: string; slug: string; title: string; titles: Record<string, string>; publishedAt: string; firstPublishedAt: string; blogId: string | null; aiAssistants: boolean; searchEngines: boolean }` and `export async function publishedPageIndex(owner: PageOwner = null, type: PageType = \"page\"): Promise<PublishedPageEntry[]>`: the same directive, life and tag; the same where and order by as listPublishedPages() but no document: `select id, slug, coalesce(published ->> 'title', '') as title, coalesce((select jsonb_object_agg(t.key, t.value ->> 'title') from jsonb_each(case when jsonb_typeof(published -> 'translations') = 'object' then published -> 'translations' else '{}'::jsonb end) t where coalesce(t.value ->> 'title', '') <> ''), '{}'::jsonb) as titles, published_at, first_published_at, published ->> 'blogId' as blog_id, coalesce((published ->> 'aiAssistants')::boolean, false) as ai_assistants, coalesce((published ->> 'searchEngines')::boolean, false) as search_engines from commerce.pages where ${ownedBy(owner, type)} and published_at is not null order by ${type === \"article\" ? sql`coalesce(first_published_at, published_at) desc, slug` : sql`created_at`}` (the list's own order by, copied). Describe both rows with `col` and read them through typedRow()/typedRows() (src/server/typed-rows.ts; CLAUDE.md's rule for new reads); use readDb() as the list does. Give publishedPageIndex() this doc comment: 'Addresses, titles and flags of an owner's published pages, read from the stored JSON without parsing the document (that is the saving). The list drops a published document its schema rejects; the index still names it, and its readers already meet a page that is not drawn (a link that answers 404, a static param that prerenders a 404). On every page saved through savePage() the two agree.' Change listPublishedPages()'s doc comment to: 'Every published page with its whole document: only for readers that draw or read every document (the sitemaps, llms.txt, the blog feed, the platform's page and blog routes, the admin's search page). One page: publishedPageById(). Addresses and titles: publishedPageIndex().' Then move the file's own two by-id callers: productsPageOf() (line 799) returns `store.productsPageId ? publishedPageById(store.id, store.productsPageId) : null`, and pageForRole() (line 862) returns `publishedPageById(store.id, id)`."
     },
     {
-      "check": "rg -n 'listPublishedPages\\(' src --glob '!*.test.*' | rg 'find\\('",
-      "expect": "nothing: no caller picks a page by id or by address"
+     "file": "src/lib/page-translation.ts",
+     "action": "edit",
+     "how": "Add a pure `export function indexTitle(entry: { title: string; titles: Record<string, string> }, locale: string | null | undefined): string` that returns `(locale && entry.titles[locale]) || entry.title`: the title localizePage(content, locale).title gives (localizePage() lays the translation's texts over the page's own, key by key, so a locale without a translated title falls back to the page's title)."
     },
     {
-      "check": "After a build on the seeded database: the .meta reader of step 0.1 on .next/server/app/s/demo",
-      "expect": "0 prerendered entries whose resume data keeps the page list (45 of 261 before)"
+     "file": "src/lib/page-translation.test.ts",
+     "action": "edit",
+     "how": "If the file does not exist, create it. Add cases that hold the two together: for a page content fixture with title 'About' and translations { 'nb-NO': { title: 'Om oss' }, 'sv-SE': {} }, `indexTitle({ title: content.title, titles: { 'nb-NO': 'Om oss' } }, locale)` equals `localizePage(content, locale).title` for 'nb-NO', 'sv-SE', 'da-DK', null and undefined. Build the fixture the way the file's (or src/lib/product-layout.test.ts's) other page fixtures are built."
     },
     {
-      "check": "Trial: add a scratch page under src/app/s/[store]/[market]/ that calls listPublishedPages(store.id), build, run the reader, then delete the scratch page",
-      "expect": "the reader reports that entry (it fails on a page that reads the whole list); nothing of the trial is committed"
+     "file": "src/server/pages.int.test.ts",
+     "action": "edit",
+     "how": "Add a case for a seeded store with three published pages (one with a translated title, one whose published JSON has no translations key) and one draft: publishedPageIndex(storeId) returns the same ids and slugs in the same order as listPublishedPages(storeId), each entry's title equals that page's content.title, titles holds the translated title, aiAssistants and searchEngines equal the content's flags, and no entry has a `content` key; publishedPageById(storeId, id) deep-equals the entry of the list with that id (content with its alt texts); publishedPageById(storeId, draftId) is null; publishedPageById(otherStoreId, id) is null; and the same three checks for the null owner with one of Kaizena Flow's own pages."
     }
-  ],
-  "after_deploy": [
-    "A week after the deploy, in step 0.2's daily reading: the statement `select id, slug, published, published_at, first_published_at from commerce.pages … order by created_at` has fewer than a quarter of the calls of the new index statement.",
-    "Open a production store's footer (legal links in the market's language), its robots.txt and sitemap.xml, and Kaizena Flow's own header menu in English and Norwegian: titles and addresses as before."
-  ],
-  "docs": [
-    "docs/decisions.md: the D-row described above.",
-    "docs/rules/admin/website.md, under 'Pages': add 'A published page is read by `publishedPageById()`, addresses and titles by `publishedPageIndex()`; `listPublishedPages()` is only for readers of every document (`pages-list.scan.test.ts`).'",
-    "docs/audits/bloat-review-2026-11.md, Progress table: set the row of step 0.24 to Done with the date and the commits in Notes (find it: rg -n '^\\| 0\\.24 ' docs/audits/bloat-review-2026-11.md), and add a line under the step's own heading in docs/audits/bloat-review-2026-11/plan/phase-0.md saying what was done differently from the plan, if anything."
-  ],
-  "do_not": [
-    "Do not delete listPublishedPages() or change what it returns.",
-    "Do not move the sitemaps or llms.txt to the index: they read every document.",
-    "Do not give the new reads a different cache tag or life: pagesTag(owner) and hours, as the list.",
-    "Do not write the owner's filter by hand or with `is not distinct from`: owned() only.",
-    "Do not skip withPageAlts() in publishedPageById(): a drawn page needs its pictures' alt texts.",
-    "Do not change any prompt or tool description in page-ai.ts (the labels must be the same strings).",
-    "Do not add columns to commerce.pages: that is step 2.16.",
-    "Do not commit the trial page of the done-when."
-  ],
-  "stop_if": [
-    "src/server/owned.ts does not exist: step 0.23 is not done; stop.",
-    "A moved caller reads a field of the page that the index does not have (the type check names it): leave that caller on the list, and report it; if the count then passes 14, stop.",
-    "The new int case shows the index's flags or titles differing from the parsed content for any seeded page.",
-    "A footer's legal link, a menu title or robots.txt differs in an e2e spec.",
-    "The .meta reader still reports entries with the page list: report which routes and the cached function that put it there (a layout part may still call the list).",
-    "A/B front pages (e2e/ab-front-pages.spec.ts) stop showing their versions."
-  ],
-  "executor": "cheap-then-review",
-  "executor_why": "Each caller's edit is named, and the type check, the int comparison and the scan test catch a wrong one, but it changes cached reads behind every store page and about 20 files, so a stronger model should read the diff.",
-  "checked_in_code": "I ran the rg: 37 lines name listPublishedPages( today, as PM-2 says, and I opened every caller. Corrections to the step and findings: the sitemaps and llms.txt in seo.ts read every page's pictures and excerpt (pageImageUrls, pageExcerpt), so they cannot use an index and stay on the list; only robots.txt moves. To still reach 14 lines, the AI's siteFacts() in page-ai.ts (titles and addresses only) and the two static-params readers in blog/article-page.tsx (slug and blogId only) move to the index, which therefore carries blogId. PageContent's aiAssistants and searchEngines are required booleans in the schema, so the index reads them from the JSON and an int case compares them with the parsed list. The admin theme preview and account/change callers are slightly different from the findings' description (one reads a front page inside a Promise.all, the other maps roles to slugs) and are written out as they are."
+   ],
+   "checks": [
+    "pnpm exec vitest run src/lib/page-translation.test.ts src/server/ratchet.scan.test.ts : pass",
+    "pnpm exec vitest run --config vitest.integration.config.mts src/server/pages.int.test.ts src/server/alt-texts.int.test.ts : pass",
+    "pnpm lint && pnpm typecheck && pnpm test : exits 0"
+   ]
+  },
+  {
+   "title": "Readers of one page read that page",
+   "changes": [
+    {
+     "file": "src/app/s/[store]/[market]/page.tsx",
+     "action": "edit",
+     "how": "Line 29: replace `(await listPublishedPages(shop.store.id)).find((p) => p.id === shop.store.frontPageId) ?? null` by `await publishedPageById(shop.store.id, shop.store.frontPageId)` (keep the surrounding `shop.store.frontPageId ? … : null`). Import publishedPageById from '@/server/pages' and drop the listPublishedPages import if the file no longer uses it."
+    },
+    {
+     "file": "src/server/platform-roles.ts",
+     "action": "edit",
+     "how": "Line 37: `return publishedPageById(null, chosen);`. Import publishedPageById from '@/server/pages' and drop the listPublishedPages import if the file no longer uses it."
+    },
+    {
+     "file": "src/app/s/[store]/[market]/blog/blog-listing.tsx",
+     "action": "edit",
+     "how": "Line 89: `return blog.listingPageId ? publishedPageById(store.id, blog.listingPageId) : null;` (keep the function's existing early returns). Import publishedPageById from '@/server/pages' and drop the listPublishedPages import if the file no longer uses it."
+    },
+    {
+     "file": "src/app/s/[store]/[market]/account/exchange/[token]/page.tsx",
+     "action": "edit",
+     "how": "Line 60: `const published = id ? await publishedPageById(store.id, id) : undefined;` in place of the list and find. Import publishedPageById from '@/server/pages' and drop the listPublishedPages import if the file no longer uses it."
+    },
+    {
+     "file": "src/app/s/[store]/[market]/account/pay/[token]/page.tsx",
+     "action": "edit",
+     "how": "Line 55: the same replacement for its `id`. Import publishedPageById from '@/server/pages' and drop the listPublishedPages import if the file no longer uses it."
+    },
+    {
+     "file": "src/app/admin/try/[sandbox]/[kind]/[pageId]/preview/page.tsx",
+     "action": "edit",
+     "how": "Line 28: `const live = query.published === \"1\" && page.published ? ((await publishedPageById(sandbox.store.id, page.id, kind)) ?? undefined) : undefined;`. Import publishedPageById from '@/server/pages' and drop the listPublishedPages import if the file no longer uses it."
+    },
+    {
+     "file": "src/app/admin/account/themes/[presetId]/preview/page.tsx",
+     "action": "edit",
+     "how": "Line 91 to 95: in the Promise.all read `base.frontPageId ? publishedPageById(base.id, base.frontPageId) : Promise.resolve(null)` and set `const front = <that value>;` in place of the `pages.find(...)` line. Import publishedPageById from '@/server/pages' and drop the listPublishedPages import if the file no longer uses it."
+    },
+    {
+     "file": "src/server/checkout-terms.ts",
+     "action": "edit",
+     "how": "termsPagesFor() (line 46): replace the list by one read per terms role that has a page chosen: `const found = await Promise.all(TERMS_ROLES.map(async (role) => { const id = store.legalPages[role]; return [role, id ? await publishedPageById(store.id, id) : null] as const; }));` and build `byRole` from the pairs whose page is not null. The rest of the function (the titles through localizePage, the hrefs, `display`) is unchanged: recordTermsForOrder() keeps the whole text of these pages, so they are read whole."
+    }
+   ],
+   "checks": [
+    "rg -n 'listPublishedPages\\(' src --glob '!*.test.*' | rg 'find\\(' : prints nothing",
+    "pnpm exec vitest run src/lib/checkout-terms.test.ts 'src/app/s/[store]/[market]/checkout/checkout-section.test.ts' 'src/app/s/[store]/[market]/order/[orderId]/order-section.test.ts' : pass",
+    "pnpm exec vitest run --config vitest.integration.config.mts src/server/pages.int.test.ts src/server/checkout-terms.int.test.ts src/server/house-pages.int.test.ts src/server/experiments.int.test.ts src/server/country-content.int.test.ts : pass (skip a file name that does not exist: ls src/server/*.int.test.ts)",
+    "pnpm lint && pnpm typecheck && pnpm test : exits 0",
+    "pnpm build && pnpm exec playwright test e2e/store-pages.spec.ts e2e/page-roles.spec.ts e2e/products-page.spec.ts e2e/legal-pages.spec.ts e2e/blog.spec.ts e2e/ab-front-pages.spec.ts : pass"
+   ]
+  },
+  {
+   "title": "Readers of addresses and titles read the index",
+   "changes": [
+    {
+     "file": "src/server/legal-links.ts",
+     "action": "edit",
+     "how": "Line 24: `const published = await publishedPageIndex(store.id);` and in the loop `const title = indexTitle(page, market.locale).trim();` (import indexTitle from '@/lib/page-translation'; drop localizePage and listPublishedPages imports if unused). The find by id and the href stay."
+    },
+    {
+     "file": "src/components/site-chat.tsx",
+     "action": "edit",
+     "how": "privacyHref() (line 110): `const published = (await publishedPageIndex(store.id)).find((page) => page.id === id);` (only the slug is used)."
+    },
+    {
+     "file": "src/app/s/[store]/[market]/account/change/[token]/page.tsx",
+     "action": "edit",
+     "how": "Line 60: `const published = await publishedPageIndex(store.id);` (the function maps roles to slugs only)."
+    },
+    {
+     "file": "src/app/s/[store]/[market]/[slug]/page.tsx",
+     "action": "edit",
+     "how": "generateStaticParams (line 20): `const pages = shop ? await publishedPageIndex(shop.store.id) : [];`. The same in src/app/s/[store]/[market]/[slug]/[...sub]/page.tsx line 22. Only `slug` is read in both; if either reads more of a page, stop."
+    },
+    {
+     "file": "src/app/s/[store]/[market]/blog/article-page.tsx",
+     "action": "edit",
+     "how": "Lines 40 and 53: read `publishedPageIndex(shop.store.id, \"article\")` in place of the list, and pass each entry to inBlog() as `{ blogId: article.blogId ?? undefined }` (inBlog() and blogOfArticle() in src/lib/blogs.ts read only `blogId`). The `load()` function further down, which draws one article, is not part of this change."
+    },
+    {
+     "file": "src/server/platform-navigation.ts",
+     "action": "edit",
+     "how": "getPlatformChrome() (lines 135 to 151): read `publishedPageIndex()` and `publishedPageIndex(null, \"article\")` in place of the two lists; delete the local `titles()` helper; `const byId = (list: PublishedPageEntry[]) => new Map(list.map((p) => [p.id, { id: p.id, slug: p.slug, title: p.title, titles: p.titles }]));`. The returned shape is unchanged."
+    },
+    {
+     "file": "src/server/page-ai.ts",
+     "action": "edit",
+     "how": "siteFacts() (lines 96 and 97): read `publishedPageIndex(owner.storeId, \"article\")` and `publishedPageIndex(owner.storeId, \"page\")`; change the four uses of `page.content.title` / `article.content.title` in this function to `page.title` / `article.title`. Nothing else of a page is read there (labels and addresses); if it is, stop. This changes no prompt text: the labels are the same strings."
+    },
+    {
+     "file": "src/server/seo.ts",
+     "action": "edit",
+     "how": "Only the robots.txt reader (the function around lines 460 to 476): read `publishedPageIndex(site?.id ?? null)` and `publishedPageIndex(site?.id ?? null, \"article\")` and change `!page.content.aiAssistants` and `!a.content.aiAssistants` to `!page.aiAssistants` and `!a.aiAssistants`. Leave the four other readers in this file (the two sitemaps at about lines 600 and 687 and the two llms.txt at about 796 and 872) on listPublishedPages(): they read every document's pictures (pageImageUrls) and excerpt (pageExcerpt)."
+    },
+    {
+     "file": "src/server/pages-list.scan.test.ts",
+     "action": "create",
+     "how": "A scan in the style of src/server/store-writers.scan.test.ts: collect every non-test file under src with a line matching /listPublishedPages\\(/ and expect the set of files to equal exactly: src/server/pages.ts, src/server/seo.ts, src/server/blogs.ts, src/components/platform-routes/page.tsx, src/components/platform-routes/blog.tsx, 'src/app/admin/(gated)/[store]/search/page.tsx'. Expect the total number of matching lines to be at most 14. Expect no matching line to contain '.find(' . The message: 'one page: publishedPageById(); addresses and titles: publishedPageIndex(); the whole list only where every document is drawn or read'."
+    },
+    {
+     "file": "docs/decisions.md",
+     "action": "edit",
+     "how": "Append one row with the next free D-number (pull main first; `rg -o '^\\| D[0-9]+' docs/decisions.md | tr -dc '0-9\\n' | sort -n | tail -1`, plus 1). It records: publishedPageById() and publishedPageIndex() (same tag as the list, so freshness is unchanged), who moved (the find-by-id callers, the legal links, the chat's privacy link, static params, the platform's frame, the AI's site facts, robots.txt), who stays on the list and why (the sitemaps and llms.txt read every document's pictures and excerpts; the blog feed; the platform's page and blog routes; the admin's search page), and the scan test. A per-page cache tag is the later step this makes possible. Platform: Kaizena Flow's own pages are read through the same two functions with a null owner, and src/server/platform-navigation.ts is one of the callers moved. No migration (step 2.16 puts title and flags in columns)."
+    }
+   ],
+   "checks": [
+    "pnpm exec vitest run src/server/pages-list.scan.test.ts src/lib/agent-eval.test.ts src/lib/prompt-safety.scan.test.ts : pass",
+    "rg -c 'listPublishedPages\\(' src --glob '!*.test.*' | awk -F: '{s+=$2} END {print s}' : prints 14 or fewer",
+    "pnpm lint && pnpm typecheck && pnpm test : exits 0",
+    "pnpm test:int : exits 0 (pages, legal-starters, country-content, experiments, redirect-resolve, page-duplicate, alt-texts, site-layouts among them, unchanged)",
+    "node scripts/db-setup.mjs --seed && pnpm build && pnpm test:e2e : exits 0 (legal-pages, menus, blog, blog-feed, page-roles, products-page, store-pages, platform-languages and smoke specs among them: footers' legal links, robots.txt and the sitemap)",
+    "node docs/audits/bloat-review-2026-11/scripts/meta-reader.mjs .next/server/app/s/demo (step 0.1's copy of rdcall.mjs; its first output line is an object { total, noState, withList, listBytes, allBytes, share }) : withList is 0 (45 of 261 before; total about 261)"
+   ]
+  }
+ ],
+ "tests": [
+  {
+   "file": "src/server/pages.int.test.ts",
+   "proves": "Fails when the index differs from the list in ids, slugs, order, titles or flags, carries a document, or when publishedPageById() returns a draft, another store's page or a page without its alt texts."
+  },
+  {
+   "file": "src/lib/page-translation.test.ts",
+   "proves": "Fails when indexTitle() and localizePage().title disagree for a translated or an untranslated page."
+  },
+  {
+   "file": "src/server/pages-list.scan.test.ts",
+   "proves": "Fails when a new file calls listPublishedPages(), when a caller picks one page from it, or when the calls pass 14 lines."
+  }
+ ],
+ "migration": {
+  "needed": false,
+  "notes": ""
+ },
+ "done_when": [
+  {
+   "check": "rg -c 'listPublishedPages\\(' src --glob '!*.test.*' | awk -F: '{s+=$2} END {print s}'",
+   "expect": "14 or fewer (37 before)"
+  },
+  {
+   "check": "rg -n 'listPublishedPages\\(' src --glob '!*.test.*' | rg 'find\\('",
+   "expect": "nothing: no caller picks a page by id or by address"
+  },
+  {
+   "check": "After a build on the seeded database: node docs/audits/bloat-review-2026-11/scripts/meta-reader.mjs .next/server/app/s/demo",
+   "expect": "the first line's withList is 0 (45 with total 261 before)"
+  },
+  {
+   "check": "Trial: add a scratch page under src/app/s/[store]/[market]/ that calls listPublishedPages(store.id), build, run node docs/audits/bloat-review-2026-11/scripts/meta-reader.mjs .next/server/app/s/demo, then delete the scratch page",
+   "expect": "withList is 1 or more (the reader notices a page that keeps the whole list); nothing of the trial is committed"
+  }
+ ],
+ "after_deploy": [
+  "A week after the deploy, in step 0.2's daily reading: the statement `select id, slug, published, published_at, first_published_at from commerce.pages … order by created_at` has fewer than a quarter of the calls of the new index statement.",
+  "Open a production store's footer (legal links in the market's language), its robots.txt and sitemap.xml, and Kaizena Flow's own header menu in English and Norwegian: titles and addresses as before."
+ ],
+ "docs": [
+  "docs/decisions.md: the D-row described above.",
+  "docs/rules/admin/website.md, under 'Pages': add 'A published page is read by `publishedPageById()`, addresses and titles by `publishedPageIndex()`; `listPublishedPages()` is only for readers of every document (`pages-list.scan.test.ts`).'",
+  "docs/audits/bloat-review-2026-11.md, Progress table: set the row of step 0.24 to Done with the date and the commits in Notes (find it: rg -n '^\\| 0\\.24 ' docs/audits/bloat-review-2026-11.md), and add a line under the step's own heading in docs/audits/bloat-review-2026-11/plan/phase-0.md saying what was done differently from the plan, if anything."
+ ],
+ "do_not": [
+  "Do not delete listPublishedPages() or change what it returns.",
+  "Do not move the sitemaps or llms.txt to the index: they read every document.",
+  "Do not give the new reads a different cache tag or life: pagesTag(owner) and hours, as the list.",
+  "Do not write the owner's filter by hand or with `is not distinct from`: use the file's ownedBy(owner, type), as listPublishedPages() does.",
+  "Do not skip withPageAlts() in publishedPageById(): a drawn page needs its pictures' alt texts.",
+  "Do not change any prompt or tool description in page-ai.ts (the labels must be the same strings).",
+  "Do not add columns to commerce.pages: that is step 2.16.",
+  "Do not commit the trial page of the done-when."
+ ],
+ "stop_if": [
+  "src/server/owned.ts does not exist, or line 71 of src/server/pages.ts (ownedBy) still says `is not distinct from`: step 0.23 is not done; stop.",
+  "A moved caller reads a field of the page that the index does not have (the type check names it): leave that caller on the list, and report it; if the count then passes 14, stop.",
+  "The new int case shows the index's flags or titles differing from the parsed content for any seeded page.",
+  "A footer's legal link, a menu title or robots.txt differs in an e2e spec.",
+  "The .meta reader still reports entries with the page list: report which routes and the cached function that put it there (a layout part may still call the list).",
+  "A/B front pages (e2e/ab-front-pages.spec.ts) stop showing their versions.",
+  "docs/audits/bloat-review-2026-11/scripts/meta-reader.mjs is missing (step 0.1 not landed): push the commits, report done_when 3 and 4 as not measured and leave row 0.24 In progress."
+ ],
+ "executor": "cheap-then-review",
+ "executor_why": "Each caller's edit is named with its line and the SQL is written out, and the type check, the int comparison and the scan test catch a wrong one, but it changes cached reads behind every store page across about 20 files (checkout terms among them), so a stronger model should read the diff.",
+ "checked_in_code": "I ran the rg: 37 lines name listPublishedPages( today, as PM-2 says, and I opened every caller. Corrections to the step and findings: the sitemaps and llms.txt in seo.ts read every page's pictures and excerpt (pageImageUrls, pageExcerpt), so they cannot use an index and stay on the list; only robots.txt moves. To still reach 14 lines, the AI's siteFacts() in page-ai.ts (titles and addresses only) and the two static-params readers in blog/article-page.tsx (slug and blogId only) move to the index, which therefore carries blogId. PageContent's aiAssistants and searchEngines are required booleans in the schema, so the index reads them from the JSON and an int case compares them with the parsed list. The admin theme preview and account/change callers are slightly different from the findings' description (one reads a front page inside a Promise.all, the other maps roles to slugs) and are written out as they are. Second check (12 November): both new reads now filter with the file's own ownedBy(owner, type) (step 0.23 makes it use owned()) and copy the list's order by literally; the index's known difference from the list (it does not parse the document, so a row the schema rejects is still named) is written into its doc comment as a decision, since parsing would read every document again; the .meta reader is named as step 0.1's meta-reader.mjs with its argument and the withList figure it prints.",
+ "cheap_commits": [],
+ "rating_checked": "cheap-then-review"
 }

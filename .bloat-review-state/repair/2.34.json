@@ -1,0 +1,15 @@
+{
+ "id": "2.34",
+ "fixed": [
+  "assistant-notices-count.int.test.ts: braced path replaced by the plain path with made_by 0.17; the 'if step 1.9's counter replaced the wrapper' branch (1.9 is not a dependency) becomes 'use the counter the file has'."
+ ],
+ "rejected": [
+  {
+   "problem": "Depends on step 0.17's int test and the feed's count branch, which do not exist yet.",
+   "why": "depends_on names 0.17 and the first stop_if stops when either is missing."
+  }
+ ],
+ "cheaper": "not applied: the reviewer gave none and the step is already cheap.",
+ "executor_before": "cheap",
+ "executor_after": "cheap"
+}

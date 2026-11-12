@@ -1,0 +1,12 @@
+{
+ "id": "2.15",
+ "fixed": [
+  "'src/server/{use-cache.scan.test.ts}' corrected to src/server/use-cache.scan.test.ts, action edit, made_by 1.11, with the constants 1.11 leaves.",
+  "Commit 1's and done_when's '15m in the route table' check replaced by a prerender-manifest count of /s/ routes with initialRevalidateSeconds 900 (must print 0).",
+  "Reads that other steps create (publishedPageById/publishedPageIndex from 0.24, buyFacts from 2.13): a rule to leave a missing one out and name it in the decision."
+ ],
+ "rejected": [],
+ "cheaper": "not applied: committing the full FAMILIES table is the judgement work of commit 2 itself; the step stays strong with commit 1 cheap.",
+ "executor_before": "strong",
+ "executor_after": "strong"
+}

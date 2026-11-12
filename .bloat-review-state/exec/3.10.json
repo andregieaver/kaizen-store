@@ -1,198 +1,205 @@
 {
-  "id": "3.10",
-  "goal": "The stores' and the platform's workflows, own endpoints and integration deliveries run on one piece of code each, called with a scope (which tables, which owner filter); the platform keeps its own tables, addresses and every feature; and CLAUDE.md's parity rule says a platform version uses the store's module with a scope, not a copy.",
-  "why": "Today 26 to 55% of the platform's lines in these modules are the stores' own (209 shared lines in runs of three or more across five pairs; the claim statement `for update skip locked` is written once in each of workflows.ts and platform-workflows.ts), so a fix to retry or signing is made twice. After: the claim is in src/server/workflow-engine.ts only and the five pairs share under 60 lines.",
-  "read_first": [
-    "docs/rules/admin/integrations.md",
-    "src/server/workflows.ts",
-    "src/server/platform-workflows.ts",
-    "src/server/webhook-endpoints.ts",
-    "src/server/platform-endpoints.ts",
-    "src/server/integrations.ts",
-    "src/server/platform-integrations.ts",
-    "src/lib/sql-raw.scan.test.ts"
-  ],
-  "depends_on": [
+ "id": "3.10",
+ "goal": "The stores' and the platform's workflows, own endpoints and integration deliveries run on one piece of code each, called with a scope (which tables, which owner filter); the platform keeps its own tables, addresses and every feature; and CLAUDE.md's parity rule says a platform version uses the store's module with a scope, not a copy.",
+ "why": "Today 26 to 55% of the platform's lines in these modules are the stores' own (209 shared lines in runs of three or more across five pairs; the claim statement `for update skip locked` is written once in each of workflows.ts and platform-workflows.ts), so a fix to retry or signing is made twice. After: the claim is in src/server/workflow-engine.ts only and the five pairs share under 60 lines.",
+ "read_first": [
+  "docs/rules/admin/integrations.md",
+  "src/server/workflows.ts",
+  "src/server/platform-workflows.ts",
+  "src/server/webhook-endpoints.ts",
+  "src/server/platform-endpoints.ts",
+  "src/server/integrations.ts",
+  "src/server/platform-integrations.ts",
+  "src/lib/sql-raw.scan.test.ts"
+ ],
+ "depends_on": [
+  {
+   "id": "1.17",
+   "why": "it creates the twin counter (scripts/lib/copy-count.mjs) and src/lib/copies.baseline.json, which measure this step's 'under 60 lines' and hold it afterwards"
+  }
+ ],
+ "commits": [
+  {
+   "title": "Workflow runs are claimed and run by one engine, with a scope for the stores and one for the platform",
+   "changes": [
     {
-      "id": "1.17",
-      "why": "it creates the twin counter (scripts/lib/copy-count.mjs) and src/lib/copies.baseline.json, which measure this step's 'under 60 lines' and hold it afterwards"
+     "file": "src/server/workflow-engine.ts",
+     "action": "create",
+     "how": "A new server-only module (`import \"server-only\"`). It holds the part of runWorkflows() (src/server/workflows.ts, from `const claimed = await typedRows(` to the final `return`) and of runPlatformWorkflows() (src/server/platform-workflows.ts, the same span) that is the same in both. Export a type `WorkflowScope<Run>` with these members, and nothing read from a string: `runs: SQL` and `flows: SQL` (the two table names as drizzle sql fragments written in code, for example sql`commerce.workflow_runs` and sql`commerce.workflows`; never sql.raw), `returning: SQL` (the columns the claim's update returns, each prefixed `r.`), `select: SQL` (everything after `select c.*, w.name, w.conditions, w.actions` up to the end of the statement: the extra columns and the joins), `row: z.ZodType<Run>` (the zod object for one claimed row; it must include id, workflow_id, event, subject_id, name, conditions, actions), `payloadOf: (run: Run) => Promise<Record<string, unknown> | null>` (the event's facts for every event, 'schedule' included: {} for a schedule, null when the subject is gone or the owner is not open; the engine never decides this itself), `allowedActions: (event: string) => readonly string[]`, `act: (run: Run, action: WorkflowAction, index: number, data: Record<string, unknown>) => Promise<ActionOutcome>`, `logPrefix: string` ('workflows' or 'platform_workflows') and `logFields: (run: Run) => Record<string, unknown>`. Export `async function runQueued<Run>(scope: WorkflowScope<Run>, limit: number): Promise<{ runs: number; matched: number }>`. Its body, in this order, is the stores' code with the scope's parts put in: (1) the claim statement exactly as today: `with due as (select r.id from ${scope.runs} r where r.status = 'pending' and (r.claimed_until is null or r.claimed_until < now()) order by r.created_at limit ${limit} for update skip locked), claimed as (update ${scope.runs} r set claimed_until = now() + interval '5 minutes' from due where r.id = due.id returning ${scope.returning}) select c.*, w.name, w.conditions, w.actions ${scope.select}` read through typedRows(scope.row, ...); (2) the loop: for each run, data = await scope.payloadOf(run); matched = data !== null && workflowMatches(conditions, data); for each action, 'invalid' when not in scope.allowedActions(run.event), else scope.act(...) with the catch that logs `${scope.logPrefix}.action_failed` and returns { kind, ok: false, problem: 'failed' }; (3) the outcome update on ${scope.runs} with the same status, matched, outcome JSON, finished_at and claimed_until = null, `where id = ${run.id}::uuid`; the per-run catch logs `${scope.logPrefix}.run_failed`; (4) `delete from ${scope.runs} where created_at < now() - interval '90 days'`; (5) the return. Import workflowMatches, WorkflowAction, WorkflowCondition and ActionOutcome from where workflows.ts imports them."
+    },
+    {
+     "file": "src/server/workflows.ts",
+     "action": "edit",
+     "how": "runWorkflows(limit = 50, now = new Date()) keeps its name, arguments and result. Its body becomes: `await queueScheduledRuns(now); return runQueued(STORE_SCOPE, limit);`. Define STORE_SCOPE in this file: runs sql`commerce.workflow_runs`, flows sql`commerce.workflows`, returning `r.id, r.store_id, r.workflow_id, r.event, r.subject_id`, select `, coalesce(w.updated_by, w.created_by) as account, s.slug, s.name as store_name, commerce.store_is_active(s.id) as open from claimed c join commerce.workflows w on w.id = c.workflow_id join commerce.stores s on s.id = c.store_id`, row = the zod object the function has today, payloadOf = (run) => !run.open ? null : run.event === 'schedule' ? {} : subjectData({ id: run.store_id, slug: run.slug, name: run.store_name }, run.event, run.subject_id) (a store that is not open runs nothing, a scheduled run included: today's code sets data to null after reading it when the store is not open; keep that result), allowedActions = (event) => actionsFor(event === 'schedule' ? 'schedule' : (event as WorkflowTrigger)), act = the file's own act() called with the same object as today, logPrefix 'workflows', logFields = { storeId, workflowId }. Note one order difference to keep identical: today subjectData() is called even for a closed store and then discarded; calling it only when open changes no result. Leave queueScheduledRuns(), workflowRuns(), the editor functions and every export as they are."
+    },
+    {
+     "file": "src/server/platform-workflows.ts",
+     "action": "edit",
+     "how": "runPlatformWorkflows(limit = 25, now = new Date()) becomes `await queuePlatformScheduledRuns(now); return runQueued(PLATFORM_SCOPE, limit);`. PLATFORM_SCOPE: runs sql`commerce.platform_workflow_runs`, flows sql`commerce.platform_workflows`, returning `r.id, r.workflow_id, r.event, r.subject_id, r.created_at`, select ` from claimed c join commerce.platform_workflows w on w.id = c.workflow_id`, row = today's zod object, payloadOf = (run) => run.event === 'schedule' ? {} : platformPayload({ id: run.id, event: run.event, subjectId: run.subject_id, createdAt: run.created_at }), allowedActions = (event) => PLATFORM_WORKFLOWS.actionsFor(event), act = the file's own act({ id, event, subjectId, name }, action, index), logPrefix 'platform_workflows', logFields = { workflowId }. Everything else in the file stays, including the strict tested-version check of D516 in switchPlatformWorkflow()."
     }
-  ],
-  "commits": [
-    {
-      "title": "Workflow runs are claimed and run by one engine, with a scope for the stores and one for the platform",
-      "changes": [
-        {
-          "file": "src/server/workflow-engine.ts",
-          "action": "create",
-          "how": "A new server-only module (`import \"server-only\"`). It holds the part of runWorkflows() (src/server/workflows.ts, from `const claimed = await typedRows(` to the final `return`) and of runPlatformWorkflows() (src/server/platform-workflows.ts, the same span) that is the same in both. Export a type `WorkflowScope<Run>` with these members, and nothing read from a string: `runs: SQL` and `flows: SQL` (the two table names as drizzle sql fragments written in code, for example sql`commerce.workflow_runs` and sql`commerce.workflows`; never sql.raw), `returning: SQL` (the columns the claim's update returns, each prefixed `r.`), `select: SQL` (everything after `select c.*, w.name, w.conditions, w.actions` up to the end of the statement: the extra columns and the joins), `row: z.ZodType<Run>` (the zod object for one claimed row; it must include id, workflow_id, event, subject_id, name, conditions, actions), `payloadOf: (run: Run) => Promise<Record<string, unknown> | null>` (the event's facts for every event, 'schedule' included: {} for a schedule, null when the subject is gone or the owner is not open; the engine never decides this itself), `allowedActions: (event: string) => readonly string[]`, `act: (run: Run, action: WorkflowAction, index: number, data: Record<string, unknown>) => Promise<ActionOutcome>`, `logPrefix: string` ('workflows' or 'platform_workflows') and `logFields: (run: Run) => Record<string, unknown>`. Export `async function runQueued<Run>(scope: WorkflowScope<Run>, limit: number): Promise<{ runs: number; matched: number }>`. Its body, in this order, is the stores' code with the scope's parts put in: (1) the claim statement exactly as today: `with due as (select r.id from ${scope.runs} r where r.status = 'pending' and (r.claimed_until is null or r.claimed_until < now()) order by r.created_at limit ${limit} for update skip locked), claimed as (update ${scope.runs} r set claimed_until = now() + interval '5 minutes' from due where r.id = due.id returning ${scope.returning}) select c.*, w.name, w.conditions, w.actions ${scope.select}` read through typedRows(scope.row, ...); (2) the loop: for each run, data = await scope.payloadOf(run); matched = data !== null && workflowMatches(conditions, data); for each action, 'invalid' when not in scope.allowedActions(run.event), else scope.act(...) with the catch that logs `${scope.logPrefix}.action_failed` and returns { kind, ok: false, problem: 'failed' }; (3) the outcome update on ${scope.runs} with the same status, matched, outcome JSON, finished_at and claimed_until = null, `where id = ${run.id}::uuid`; the per-run catch logs `${scope.logPrefix}.run_failed`; (4) `delete from ${scope.runs} where created_at < now() - interval '90 days'`; (5) the return. Import workflowMatches, WorkflowAction, WorkflowCondition and ActionOutcome from where workflows.ts imports them."
-        },
-        {
-          "file": "src/server/workflows.ts",
-          "action": "edit",
-          "how": "runWorkflows(limit = 50, now = new Date()) keeps its name, arguments and result. Its body becomes: `await queueScheduledRuns(now); return runQueued(STORE_SCOPE, limit);`. Define STORE_SCOPE in this file: runs sql`commerce.workflow_runs`, flows sql`commerce.workflows`, returning `r.id, r.store_id, r.workflow_id, r.event, r.subject_id`, select `, coalesce(w.updated_by, w.created_by) as account, s.slug, s.name as store_name, commerce.store_is_active(s.id) as open from claimed c join commerce.workflows w on w.id = c.workflow_id join commerce.stores s on s.id = c.store_id`, row = the zod object the function has today, payloadOf = (run) => !run.open ? null : run.event === 'schedule' ? {} : subjectData({ id: run.store_id, slug: run.slug, name: run.store_name }, run.event, run.subject_id) (a store that is not open runs nothing, a scheduled run included: today's code sets data to null after reading it when the store is not open; keep that result), allowedActions = (event) => actionsFor(event === 'schedule' ? 'schedule' : (event as WorkflowTrigger)), act = the file's own act() called with the same object as today, logPrefix 'workflows', logFields = { storeId, workflowId }. Note one order difference to keep identical: today subjectData() is called even for a closed store and then discarded; calling it only when open changes no result. Leave queueScheduledRuns(), workflowRuns(), the editor functions and every export as they are."
-        },
-        {
-          "file": "src/server/platform-workflows.ts",
-          "action": "edit",
-          "how": "runPlatformWorkflows(limit = 25, now = new Date()) becomes `await queuePlatformScheduledRuns(now); return runQueued(PLATFORM_SCOPE, limit);`. PLATFORM_SCOPE: runs sql`commerce.platform_workflow_runs`, flows sql`commerce.platform_workflows`, returning `r.id, r.workflow_id, r.event, r.subject_id, r.created_at`, select ` from claimed c join commerce.platform_workflows w on w.id = c.workflow_id`, row = today's zod object, payloadOf = (run) => run.event === 'schedule' ? {} : platformPayload({ id: run.id, event: run.event, subjectId: run.subject_id, createdAt: run.created_at }), allowedActions = (event) => PLATFORM_WORKFLOWS.actionsFor(event), act = the file's own act({ id, event, subjectId, name }, action, index), logPrefix 'platform_workflows', logFields = { workflowId }. Everything else in the file stays, including the strict tested-version check of D516 in switchPlatformWorkflow()."
-        }
-      ],
-      "checks": [
-        "rg -c 'for update skip locked' src/server/workflows.ts src/server/platform-workflows.ts: prints nothing; rg -c 'for update skip locked' src/server/workflow-engine.ts: prints 1",
-        "rg -n 'sql\\.raw' src/server/workflow-engine.ts: prints nothing",
-        "pnpm test:int src/server/workflows.int.test.ts src/server/platform-workflows.int.test.ts src/server/webhook-endpoints.int.test.ts src/server/platform-endpoints.int.test.ts src/server/integrations.int.test.ts src/server/platform-integrations.int.test.ts: all pass, and `git diff --stat` shows none of the six files changed",
-        "pnpm exec vitest run src/lib/sql-raw.scan.test.ts src/server/ratchet.scan.test.ts src/server/cron-routes.scan.test.ts src/lib/platform-workflows.test.ts src/lib/platform-integrations.test.ts src/db/platform-integrations.test.ts: pass (if ratchet.scan.test.ts says a count fell, run `node scripts/ratchet.mjs` and commit the lowered src/server/ratchet.baseline.json; if it says a count rose, fix the code, never the baseline)",
-        "pnpm lint && pnpm typecheck && pnpm test: exits 0"
-      ]
-    },
-    {
-      "title": "Own endpoints are kept by one store of endpoints, with a scope",
-      "changes": [
-        {
-          "file": "src/server/endpoint-store.ts",
-          "action": "create",
-          "how": "Server-only. Holds once what src/server/webhook-endpoints.ts and src/server/platform-endpoints.ts both write: check() (name, topics, address), newSecret(), topicArray(), and the bodies of add, update, switch, renew secret, remove, resend delivery and list deliveries. Export `type EndpointScope = { table: SQL; deliveries: SQL; owned: SQL; lock: SQL; insertColumns: SQL; insertValues: SQL; topicsAllowed: (topic: string) => boolean; audit: (action: 'added' | 'changed' | 'switched' | 'secret_renewed' | 'removed' | 'resent', meta: Record<string, unknown>, id: string) => Promise<void> }`. `owned` is the owner clause: for a store sql`store_id = ${storeId}::uuid and app_grant_id is null`, for the platform sql`true`. `lock` is the advisory lock's key expression as each file writes it today. Every statement that picks a row by id is written `where ${scope.owned} and id = ${id}::uuid` in that order (the form src/server/ratchet.scan.test.ts accepts as naming the store). The limit ENDPOINTS_MAX, FAILING_DAYS and the exported types stay in webhook-endpoints.ts and are imported here as types or constants."
-        },
-        {
-          "file": "src/server/webhook-endpoints.ts",
-          "action": "edit",
-          "how": "addEndpoint, updateEndpoint, switchEndpoint, renewSecret, removeEndpoint, resendDelivery and listEndpointDeliveries keep their exported names, arguments and results and become short calls of the store's functions with a scope built from the membership: table sql`commerce.webhook_endpoints`, deliveries sql`commerce.integration_deliveries`, the owned clause above, audit names exactly as today (read them off the file: each audit() call's action string and target type 'webhook_endpoint'). listEndpoints() and openEndpoint() stay as they are."
-        },
-        {
-          "file": "src/server/platform-endpoints.ts",
-          "action": "edit",
-          "how": "The same seven functions (addPlatformEndpoint ... listPlatformEndpointDeliveries) become calls with the platform's scope: table sql`commerce.platform_webhook_endpoints`, deliveries sql`commerce.platform_integration_deliveries`, owned sql`true`, lock `hashtext('platform_webhook_endpoints')`, audit names 'platform.endpoint_added', 'platform.endpoint_changed' and the others as the file has them, target type 'platform_webhook_endpoint', store null. listPlatformEndpoints() and keepPlatformEndpointHealth() stay."
-        }
-      ],
-      "checks": [
-        "pnpm test:int src/server/workflows.int.test.ts src/server/platform-workflows.int.test.ts src/server/webhook-endpoints.int.test.ts src/server/platform-endpoints.int.test.ts src/server/integrations.int.test.ts src/server/platform-integrations.int.test.ts: all pass, and `git diff --stat` shows none of the six files changed",
-        "pnpm exec vitest run src/lib/sql-raw.scan.test.ts src/server/ratchet.scan.test.ts src/server/cron-routes.scan.test.ts src/lib/platform-workflows.test.ts src/lib/platform-integrations.test.ts src/db/platform-integrations.test.ts: pass (if ratchet.scan.test.ts says a count fell, run `node scripts/ratchet.mjs` and commit the lowered src/server/ratchet.baseline.json; if it says a count rose, fix the code, never the baseline)",
-        "node scripts/ratchet.mjs --check (or pnpm exec vitest run src/server/ratchet.scan.test.ts): the count of writes by id that do not name the store did not rise in any file",
-        "pnpm lint && pnpm typecheck && pnpm test: exits 0"
-      ]
-    },
-    {
-      "title": "Integration deliveries are claimed, sent and retried by one loop, with a scope",
-      "changes": [
-        {
-          "file": "src/server/delivery-engine.ts",
-          "action": "create",
-          "how": "Server-only. Holds once the body shared by deliverDue() (src/server/integrations.ts) and deliverPlatformDue() (src/server/platform-integrations.ts): `export async function deliverQueued<D>(scope: { table: SQL; read: (ids: string[]) => Promise<D[]>; attempt: (delivery: D) => Promise<Outcome>; retryable: (delivery: D) => boolean; keepDays: number }, limit: number)`. Body: the claim `update ${scope.table} set next_attempt_at = now() + interval '5 minutes' where id in (select id from ${scope.table} where status = 'pending' and next_attempt_at <= now() order by next_attempt_at limit ${limit} for update skip locked) returning id`; then scope.read(ids) (empty list: no query); the counting loop (delivered when outcome.ok; retrying when !outcome.final and scope.retryable(delivery); else failed); the delete of rows older than scope.keepDays; return counts. Each side keeps its own attempt(), its payload builder, its signing call and its claimed-row reader; the shared signer and sender they both already import stay where they are."
-        },
-        {
-          "file": "src/server/integrations.ts",
-          "action": "edit",
-          "how": "deliverDue(limit = 50) becomes a call of deliverQueued() with table sql`commerce.integration_deliveries`, read = the existing select with claimedColumns and its three joins mapped through toClaimed(), attempt, retryable = (d) => RETRY_SECONDS[d.attempts] !== undefined && Boolean(d.encryptedUrl) && d.enabled, keepDays KEEP_DAYS. Nothing else in the file changes."
-        },
-        {
-          "file": "src/server/platform-integrations.ts",
-          "action": "edit",
-          "how": "deliverPlatformDue(limit = 25) becomes a call with table sql`commerce.platform_integration_deliveries`, read = the existing typedRows(claimedRow, ...) select, attempt, retryable = (d) => RETRY_SECONDS[d.attempts] !== undefined && Boolean(d.webhook_url_encrypted) && d.enabled, keepDays PLATFORM_DELIVERY_KEEP_DAYS."
-        }
-      ],
-      "checks": [
-        "rg -c 'for update skip locked' src/server/integrations.ts src/server/platform-integrations.ts: prints nothing",
-        "pnpm test:int src/server/workflows.int.test.ts src/server/platform-workflows.int.test.ts src/server/webhook-endpoints.int.test.ts src/server/platform-endpoints.int.test.ts src/server/integrations.int.test.ts src/server/platform-integrations.int.test.ts: all pass, and `git diff --stat` shows none of the six files changed",
-        "pnpm exec vitest run src/lib/sql-raw.scan.test.ts src/server/ratchet.scan.test.ts src/server/cron-routes.scan.test.ts src/lib/platform-workflows.test.ts src/lib/platform-integrations.test.ts src/db/platform-integrations.test.ts: pass (if ratchet.scan.test.ts says a count fell, run `node scripts/ratchet.mjs` and commit the lowered src/server/ratchet.baseline.json; if it says a count rose, fix the code, never the baseline)",
-        "pnpm lint && pnpm typecheck && pnpm test: exits 0"
-      ]
-    },
-    {
-      "title": "The pairs are counted, the rule gets its sentence, and the remaining repeats are lifted until five pairs share under 60 lines",
-      "changes": [
-        {
-          "file": "src/lib/copies.baseline.json",
-          "action": "create",
-          "how": "This file is made by step 1.17 and does not exist before it. If it is not there, stop: the dependency is not done. If it is there, do not overwrite it; edit it: run the twin counter of step 1.17 on the five pairs (webhook-endpoints.ts with platform-endpoints.ts, workflows.ts with platform-workflows.ts, integrations.ts with platform-integrations.ts, api-tokens.ts with platform-api-tokens.ts, ad-conversions.ts with platform-ad-conversions.ts; all under src/server). If the five together still share 60 lines or more in runs of three or more, lift the largest remaining runs the counter prints from the editor side of the two workflow files (list, get, save, switch, delete, test) into workflow-engine.ts behind the same scope, keeping the platform's strict tested-version check as a scope flag `strictTested: true`. Leave api-tokens and ad-conversions alone (14 and 25 shared lines). Then lower the twin numbers in the baseline with the script step 1.17 gives for it."
-        },
-        {
-          "file": "CLAUDE.md",
-          "action": "edit",
-          "how": "In '## Conventions', the bullet that starts 'Whatever is built for stores and their owners is built for the platform too': add this sentence after '... or as its next step named in the decision.': 'Where the platform's version does the same job on its own rows, it uses the store's module with a scope (the tables and the owner filter passed in, as `src/server/workflow-engine.ts` does), not a copy; a decision that adds a copied `platform-*.ts` module says why a scope would not do.' Change no other word of the bullet."
-        },
-        {
-          "file": "docs/platform-parity-plan.md",
-          "action": "edit",
-          "how": "In section 3, directly after the paragraph that starts '**Where Kaizena Flow needs something a store lacks, build it for stores.**', add the same sentence and name src/server/workflow-engine.ts, src/server/endpoint-store.ts and src/server/delivery-engine.ts as the examples."
-        },
-        {
-          "file": "docs/rules/admin/integrations.md",
-          "action": "edit",
-          "how": "In the three entries 'Workflows (wave 9 unit C, D356...)', 'Events to an owner's own endpoints (wave 9 unit A, D354...)' and 'Kaizena Flow's own integrations (D465...)', add one sentence each: the claim and run loop (or the endpoints' writes, or the delivery loop) is shared with the platform's through a scope in the named engine file; a change to retry, claiming or signing is made there once."
-        }
-      ],
-      "checks": [
-        "rg -c 'with a scope' CLAUDE.md docs/platform-parity-plan.md: prints 1 for each file",
-        "the twin counter of step 1.17 on the five pairs: under 60 lines in runs of three or more",
-        "pnpm test:int src/server/workflows.int.test.ts src/server/platform-workflows.int.test.ts src/server/webhook-endpoints.int.test.ts src/server/platform-endpoints.int.test.ts src/server/integrations.int.test.ts src/server/platform-integrations.int.test.ts: all pass, and `git diff --stat` shows none of the six files changed",
-        "pnpm exec vitest run src/lib/sql-raw.scan.test.ts src/server/ratchet.scan.test.ts src/server/cron-routes.scan.test.ts src/lib/platform-workflows.test.ts src/lib/platform-integrations.test.ts src/db/platform-integrations.test.ts: pass (if ratchet.scan.test.ts says a count fell, run `node scripts/ratchet.mjs` and commit the lowered src/server/ratchet.baseline.json; if it says a count rose, fix the code, never the baseline)",
-        "pnpm lint && pnpm typecheck && pnpm test: exits 0",
-        "pnpm test:int: exits 0"
-      ]
-    }
-  ],
-  "tests": [
-    {
-      "file": "src/lib/copies.scan.test.ts",
-      "proves": "(step 1.17's test, with the lowered baseline) fails when the five store and platform pairs again share more copied lines than the baseline"
-    },
-    {
-      "file": "src/server/workflows.int.test.ts",
-      "proves": "(existing, unchanged) fails when a store that is not open runs a workflow, a run is taken twice or an action's outcome is recorded differently"
-    },
-    {
-      "file": "src/server/platform-workflows.int.test.ts",
-      "proves": "(existing, unchanged) fails when the platform's runs, their once-a-day key or the strict tested-version check behave differently"
-    }
-  ],
-  "migration": {
-    "needed": false,
-    "notes": ""
+   ],
+   "checks": [
+    "rg -c 'for update skip locked' src/server/workflows.ts src/server/platform-workflows.ts: prints nothing; rg -c 'for update skip locked' src/server/workflow-engine.ts: prints 1",
+    "rg -n 'sql\\.raw' src/server/workflow-engine.ts: prints nothing",
+    "pnpm test:int src/server/workflows.int.test.ts src/server/platform-workflows.int.test.ts src/server/webhook-endpoints.int.test.ts src/server/platform-endpoints.int.test.ts src/server/integrations.int.test.ts src/server/platform-integrations.int.test.ts: all pass, and `git diff --stat` shows none of the six files changed",
+    "pnpm exec vitest run src/lib/sql-raw.scan.test.ts src/server/ratchet.scan.test.ts src/server/cron-routes.scan.test.ts src/lib/platform-workflows.test.ts src/lib/platform-integrations.test.ts src/db/platform-integrations.test.ts: pass (if ratchet.scan.test.ts says a count fell, run `node scripts/ratchet.mjs` and commit the lowered src/server/ratchet.baseline.json; if it says a count rose, fix the code, never the baseline)",
+    "pnpm lint && pnpm typecheck && pnpm test: exits 0"
+   ]
   },
-  "done_when": [
+  {
+   "title": "Own endpoints are kept by one store of endpoints, with a scope",
+   "changes": [
     {
-      "check": "rg -c 'for update skip locked' src/server/workflows.ts src/server/platform-workflows.ts",
-      "expect": "prints nothing (the claim lives in src/server/workflow-engine.ts only)"
+     "file": "src/server/endpoint-store.ts",
+     "action": "create",
+     "how": "Server-only. Holds once what src/server/webhook-endpoints.ts and src/server/platform-endpoints.ts both write: check() (name, topics, address), newSecret(), topicArray(), and the bodies of add, update, switch, renew secret and remove. Resend and list deliveries are NOT moved: their statements differ beyond an owner clause (the store's resendDelivery() joins its endpoints on store and app grant and reads erased_at, line 210 on; the platform's reads provider = 'webhook' and payload is null, line 201 on; the two lists select different columns), so they stay in each file as today. Export exactly: `type EndpointScope = { table: SQL; owned: SQL; lock: SQL; ownerColumns: SQL; ownerValues: SQL; topicsAllowed: (topic: string) => boolean; audit: (action: 'added' | 'changed' | 'on' | 'off' | 'secret_renewed' | 'removed', meta: Record<string, unknown>, id: string) => Promise<void> }`. `owned` is the owner clause of a single-table statement on the endpoints table: for a store sql`store_id = ${store.id}::uuid and app_grant_id is null`, for the platform sql`true`. `lock` is the argument list of pg_advisory_xact_lock as each file writes it today: store sql`hashtext('webhook_endpoints'), hashtext(${store.id})` (line 67), platform sql`hashtext('platform_webhook_endpoints')` (line 119). `ownerColumns`/`ownerValues` are what the store's insert has before `name` (line 71): store sql`store_id, ` and sql`${store.id}::uuid, `, platform sql`` and sql``. The count before an insert is `select count(*)::int as n from ${scope.table} where ${scope.owned}`; every statement that picks a row by id is written `where ${scope.owned} and id = ${id}::uuid`. Note that src/server/ratchet.scan.test.ts cannot see these statements (its pattern needs a literal table name), so the owner clause is held by the check of this commit and by the six integration tests, not by the ratchet. The limit ENDPOINTS_MAX, FAILING_DAYS and the exported types stay in webhook-endpoints.ts and are imported here as types or constants."
     },
     {
-      "check": "the twin counter of step 1.17 on the five platform and store pairs",
-      "expect": "under 60 shared lines in runs of three or more (209 today)"
+     "file": "src/server/webhook-endpoints.ts",
+     "action": "edit",
+     "how": "addEndpoint, updateEndpoint, switchEndpoint, renewSecret and removeEndpoint keep their exported names, arguments and results and become short calls of the store's functions with a scope built from the membership: table sql`commerce.webhook_endpoints`, the owned, lock, ownerColumns and ownerValues given above, and audit = (action, meta, id) => audit(account.id, store.id, `integration.endpoint_${action}`, meta, { target: { type: 'webhook_endpoint', id } }) (today's names: integration.endpoint_added, _changed, _on, _off, _secret_renewed, _removed). resendDelivery(), listEndpointDeliveries(), listEndpoints() and openEndpoint() stay as they are."
     },
     {
-      "check": "rg -n 'with a scope' CLAUDE.md",
-      "expect": "one line, in the parity rule"
-    },
-    {
-      "check": "git log --stat for this step's commits",
-      "expect": "none of the six integration test files named in the checks was edited"
+     "file": "src/server/platform-endpoints.ts",
+     "action": "edit",
+     "how": "addPlatformEndpoint, updatePlatformEndpoint, switchPlatformEndpoint, renewPlatformSecret and removePlatformEndpoint become calls with the platform's scope: table sql`commerce.platform_webhook_endpoints`, owned sql`true`, lock sql`hashtext('platform_webhook_endpoints')`, ownerColumns and ownerValues empty, audit = (action, meta, id) => audit(admin.id, null, `platform.endpoint_${action}`, meta, { target: { type: 'platform_webhook_endpoint', id } }) (today's names: platform.endpoint_added, _changed, _on, _off, _secret_renewed, _removed). resendPlatformDelivery(), listPlatformEndpointDeliveries(), listPlatformEndpoints() and keepPlatformEndpointHealth() stay as they are."
     }
-  ],
-  "after_deploy": [
-    "Production, ten minutes after the deploy: commerce.cron_jobs' row for route.integrations has a fresh success and no failure, and Platform, Workflows shows a test run of one platform workflow as done.",
-    "The log has no 'workflows.run_failed' or 'platform_workflows.run_failed' line since the deploy."
-  ],
-  "docs": [
-    "docs/decisions.md: add one row with the next free D-number (read the last row of the decisions table to find it; never reuse a number) and today's date. It records: the owner's choice on FT-10 (twins on shared code, not Kaizena Flow's events through its store's engines): the platform keeps its four engines' tables and addresses (D465, D515, D516 stand), and the claim, run, endpoint writes and delivery loop are one piece of code each with a scope; the sentence added to CLAUDE.md's parity rule; the twin count before and after.",
-    "CLAUDE.md Conventions, docs/platform-parity-plan.md section 3 and docs/rules/admin/integrations.md as in the last commit. docs/platform-parity.md: no row changes (no feature changed).",
-    "docs/audits/bloat-review-2026-11.md, Progress table: set the row of step 3.10 to Done with the date and the commit hash (if the table has no row for 3.10, add one in the table of its phase with the step's title), and add one line to that file's change log if it has one."
-  ],
-  "do_not": [
-    "Do not merge, rename or drop any table: commerce.platform_workflows, platform_workflow_runs, platform_webhook_endpoints and platform_integration_deliveries stay, with their screens' addresses.",
-    "Do not change an exported function's name, arguments or result in the six files: src/app/api/cron/integrations/route.ts and every screen must compile unchanged.",
-    "Do not edit the six integration test files to make them pass; they are the proof that behaviour is the same.",
-    "Do not use sql.raw or build a table name from a string; pass sql fragments written in code.",
-    "Do not drop `store_id = ... and app_grant_id is null` from any store-side statement, and do not relax the platform's strict tested-version check (D516).",
-    "Do not touch src/server/api-tokens.ts, platform-api-tokens.ts, ad-conversions.ts or platform-ad-conversions.ts: they are not copies worth a scope.",
-    "Do not raise a number in src/server/ratchet.baseline.json or src/lib/copies.baseline.json."
-  ],
-  "stop_if": [
-    "One of the six integration test files fails and cannot be made to pass without editing it.",
-    "src/server/ratchet.scan.test.ts reports more writes by id without the store in a file.",
-    "The twin counter of step 1.17 does not exist (step 1.17 not done): do the first three commits, which need only the rg checks, and stop before the last.",
-    "After the first three commits and the editor lift the five pairs still share 60 lines or more: report the counter's ten largest runs instead of forcing them."
-  ],
-  "executor": "strong",
-  "executor_why": "The first commit (the workflow runner) is fully specified and a cheap model can do it, but shaping the endpoint and delivery scopes so six unchanged integration test files still pass, and choosing which editor repeats to lift to get under 60 lines, need design judgement.",
-  "checked_in_code": "I read runWorkflows() (src/server/workflows.ts:390-459) and runPlatformWorkflows() (src/server/platform-workflows.ts:315-378) side by side: same claim, loop, outcome update and 90-day delete, differing in table names, the join to stores, the open check and the payload reader, as CP-4 says. I read addPlatformEndpoint() and the function lists of both endpoint files, and deliverDue() against deliverPlatformDue() (integrations.ts:1031 and platform-integrations.ts:449): both claim with `for update skip locked` too, so the brief moves those as well. The step's text puts 'the claim, the retry and the signing' into workflow-engine.ts; signing and retry belong to deliveries and endpoints, so the brief gives them their own files (endpoint-store.ts, delivery-engine.ts) and keeps workflow-engine.ts for workflows, which still meets the done_when. scripts/lib/copy-count.mjs and src/lib/copies.baseline.json do not exist yet (step 1.17)."
+   ],
+   "checks": [
+    "rg -n 'where ' src/server/endpoint-store.ts: every line printed that is part of a statement on ${scope.table} contains '${scope.owned}' (count, update, switch, renew, delete: five statements)",
+    "pnpm test:int src/server/workflows.int.test.ts src/server/platform-workflows.int.test.ts src/server/webhook-endpoints.int.test.ts src/server/platform-endpoints.int.test.ts src/server/integrations.int.test.ts src/server/platform-integrations.int.test.ts: all pass, and `git diff --stat` shows none of the six files changed",
+    "pnpm exec vitest run src/lib/sql-raw.scan.test.ts src/server/ratchet.scan.test.ts src/server/cron-routes.scan.test.ts src/lib/platform-workflows.test.ts src/lib/platform-integrations.test.ts src/db/platform-integrations.test.ts: pass (if ratchet.scan.test.ts says a count fell, run `node scripts/ratchet.mjs` and commit the lowered src/server/ratchet.baseline.json; if it says a count rose, fix the code, never the baseline)",
+    "node scripts/ratchet.mjs --check (or pnpm exec vitest run src/server/ratchet.scan.test.ts): the count of writes by id that do not name the store did not rise in any file",
+    "pnpm lint && pnpm typecheck && pnpm test: exits 0"
+   ]
+  },
+  {
+   "title": "Integration deliveries are claimed, sent and retried by one loop, with a scope",
+   "changes": [
+    {
+     "file": "src/server/delivery-engine.ts",
+     "action": "create",
+     "how": "Server-only. Holds once the body shared by deliverDue() (src/server/integrations.ts) and deliverPlatformDue() (src/server/platform-integrations.ts): `export async function deliverQueued<D>(scope: { table: SQL; read: (ids: string[]) => Promise<D[]>; attempt: (delivery: D) => Promise<Outcome>; retryable: (delivery: D) => boolean; keepDays: number }, limit: number)`. Body: the claim `update ${scope.table} set next_attempt_at = now() + interval '5 minutes' where id in (select id from ${scope.table} where status = 'pending' and next_attempt_at <= now() order by next_attempt_at limit ${limit} for update skip locked) returning id`; then scope.read(ids) (empty list: no query); the counting loop (delivered when outcome.ok; retrying when !outcome.final and scope.retryable(delivery); else failed); the delete of rows older than scope.keepDays; return counts. Each side keeps its own attempt(), its payload builder, its signing call and its claimed-row reader; the shared signer and sender they both already import stay where they are."
+    },
+    {
+     "file": "src/server/integrations.ts",
+     "action": "edit",
+     "how": "deliverDue(limit = 50) becomes a call of deliverQueued() with table sql`commerce.integration_deliveries`, read = the existing select with claimedColumns and its three joins mapped through toClaimed(), attempt, retryable = (d) => RETRY_SECONDS[d.attempts] !== undefined && Boolean(d.encryptedUrl) && d.enabled, keepDays KEEP_DAYS. Nothing else in the file changes."
+    },
+    {
+     "file": "src/server/platform-integrations.ts",
+     "action": "edit",
+     "how": "deliverPlatformDue(limit = 25) becomes a call with table sql`commerce.platform_integration_deliveries`, read = the existing typedRows(claimedRow, ...) select, attempt, retryable = (d) => RETRY_SECONDS[d.attempts] !== undefined && Boolean(d.webhook_url_encrypted) && d.enabled, keepDays PLATFORM_DELIVERY_KEEP_DAYS."
+    }
+   ],
+   "checks": [
+    "rg -c 'for update skip locked' src/server/integrations.ts src/server/platform-integrations.ts: prints nothing",
+    "pnpm test:int src/server/workflows.int.test.ts src/server/platform-workflows.int.test.ts src/server/webhook-endpoints.int.test.ts src/server/platform-endpoints.int.test.ts src/server/integrations.int.test.ts src/server/platform-integrations.int.test.ts: all pass, and `git diff --stat` shows none of the six files changed",
+    "pnpm exec vitest run src/lib/sql-raw.scan.test.ts src/server/ratchet.scan.test.ts src/server/cron-routes.scan.test.ts src/lib/platform-workflows.test.ts src/lib/platform-integrations.test.ts src/db/platform-integrations.test.ts: pass (if ratchet.scan.test.ts says a count fell, run `node scripts/ratchet.mjs` and commit the lowered src/server/ratchet.baseline.json; if it says a count rose, fix the code, never the baseline)",
+    "pnpm lint && pnpm typecheck && pnpm test: exits 0"
+   ]
+  },
+  {
+   "title": "The pairs are counted, the rule gets its sentence, and the remaining repeats are lifted until five pairs share under 60 lines",
+   "changes": [
+    {
+     "file": "src/lib/copies.baseline.json",
+     "action": "edit",
+     "how": "Step 1.17 creates this file and the twin counter (stop_if covers their absence); do not overwrite it, edit it: run the twin counter of step 1.17 on the five pairs (webhook-endpoints.ts with platform-endpoints.ts, workflows.ts with platform-workflows.ts, integrations.ts with platform-integrations.ts, api-tokens.ts with platform-api-tokens.ts, ad-conversions.ts with platform-ad-conversions.ts; all under src/server). If the five together still share 60 lines or more in runs of three or more, lift the largest remaining runs the counter prints from the editor side of the two workflow files (list, get, save, switch, delete, test) into workflow-engine.ts behind the same scope, keeping the platform's strict tested-version check as a scope flag `strictTested: true`. Leave api-tokens and ad-conversions alone (14 and 25 shared lines). Then lower the twin numbers in the baseline with the script step 1.17 gives for it.",
+     "made_by": "1.17"
+    },
+    {
+     "file": "CLAUDE.md",
+     "action": "edit",
+     "how": "In '## Conventions', the bullet that starts 'Whatever is built for stores and their owners is built for the platform too': add this sentence after '... or as its next step named in the decision.': 'Where the platform's version does the same job on its own rows, it uses the store's module with a scope (the tables and the owner filter passed in, as `src/server/workflow-engine.ts` does), not a copy; a decision that adds a copied `platform-*.ts` module says why a scope would not do.' Change no other word of the bullet."
+    },
+    {
+     "file": "docs/platform-parity-plan.md",
+     "action": "edit",
+     "how": "In section 3, directly after the paragraph that starts '**Where Kaizena Flow needs something a store lacks, build it for stores.**', add the same sentence and name src/server/workflow-engine.ts, src/server/endpoint-store.ts and src/server/delivery-engine.ts as the examples."
+    },
+    {
+     "file": "docs/rules/admin/integrations.md",
+     "action": "edit",
+     "how": "In the three entries 'Workflows (wave 9 unit C, D356...)', 'Events to an owner's own endpoints (wave 9 unit A, D354...)' and 'Kaizena Flow's own integrations (D465...)', add one sentence each: the claim and run loop (or the endpoints' writes, or the delivery loop) is shared with the platform's through a scope in the named engine file; a change to retry, claiming or signing is made there once."
+    }
+   ],
+   "checks": [
+    "rg -c 'with a scope' CLAUDE.md docs/platform-parity-plan.md: prints 1 for each file",
+    "the twin counter of step 1.17 on the five pairs: under 60 lines in runs of three or more",
+    "pnpm test:int src/server/workflows.int.test.ts src/server/platform-workflows.int.test.ts src/server/webhook-endpoints.int.test.ts src/server/platform-endpoints.int.test.ts src/server/integrations.int.test.ts src/server/platform-integrations.int.test.ts: all pass, and `git diff --stat` shows none of the six files changed",
+    "pnpm exec vitest run src/lib/sql-raw.scan.test.ts src/server/ratchet.scan.test.ts src/server/cron-routes.scan.test.ts src/lib/platform-workflows.test.ts src/lib/platform-integrations.test.ts src/db/platform-integrations.test.ts: pass (if ratchet.scan.test.ts says a count fell, run `node scripts/ratchet.mjs` and commit the lowered src/server/ratchet.baseline.json; if it says a count rose, fix the code, never the baseline)",
+    "pnpm lint && pnpm typecheck && pnpm test: exits 0",
+    "pnpm test:int: exits 0"
+   ]
+  }
+ ],
+ "tests": [
+  {
+   "file": "src/lib/copies.scan.test.ts",
+   "proves": "(step 1.17's test, with the lowered baseline) fails when the five store and platform pairs again share more copied lines than the baseline"
+  },
+  {
+   "file": "src/server/workflows.int.test.ts",
+   "proves": "(existing, unchanged) fails when a store that is not open runs a workflow, a run is taken twice or an action's outcome is recorded differently"
+  },
+  {
+   "file": "src/server/platform-workflows.int.test.ts",
+   "proves": "(existing, unchanged) fails when the platform's runs, their once-a-day key or the strict tested-version check behave differently"
+  }
+ ],
+ "migration": {
+  "needed": false,
+  "notes": ""
+ },
+ "done_when": [
+  {
+   "check": "rg -c 'for update skip locked' src/server/workflows.ts src/server/platform-workflows.ts",
+   "expect": "prints nothing (the claim lives in src/server/workflow-engine.ts only)"
+  },
+  {
+   "check": "the twin counter of step 1.17 on the five platform and store pairs",
+   "expect": "under 60 shared lines in runs of three or more (209 today)"
+  },
+  {
+   "check": "rg -n 'with a scope' CLAUDE.md",
+   "expect": "one line, in the parity rule"
+  },
+  {
+   "check": "git log --stat for this step's commits",
+   "expect": "none of the six integration test files named in the checks was edited"
+  }
+ ],
+ "after_deploy": [
+  "Production, ten minutes after the deploy: commerce.cron_jobs' row for route.integrations has a fresh success and no failure, and Platform, Workflows shows a test run of one platform workflow as done.",
+  "The log has no 'workflows.run_failed' or 'platform_workflows.run_failed' line since the deploy."
+ ],
+ "docs": [
+  "docs/decisions.md: add one row with the next free D-number (read the last row of the decisions table to find it; never reuse a number) and today's date. It records: the owner's choice on FT-10 (twins on shared code, not Kaizena Flow's events through its store's engines): the platform keeps its four engines' tables and addresses (D465, D515, D516 stand), and the claim, run, endpoint writes and delivery loop are one piece of code each with a scope; the sentence added to CLAUDE.md's parity rule; the twin count before and after.",
+  "CLAUDE.md Conventions, docs/platform-parity-plan.md section 3 and docs/rules/admin/integrations.md as in the last commit. docs/platform-parity.md: no row changes (no feature changed).",
+  "docs/audits/bloat-review-2026-11.md, Progress table: set the row of step 3.10 to Done with the date and the commit hash (if the table has no row for 3.10, add one in the table of its phase with the step's title), and add one line to that file's change log if it has one."
+ ],
+ "do_not": [
+  "Do not merge, rename or drop any table: commerce.platform_workflows, platform_workflow_runs, platform_webhook_endpoints and platform_integration_deliveries stay, with their screens' addresses.",
+  "Do not change an exported function's name, arguments or result in the six files: src/app/api/cron/integrations/route.ts and every screen must compile unchanged.",
+  "Do not edit the six integration test files to make them pass; they are the proof that behaviour is the same.",
+  "Do not use sql.raw or build a table name from a string; pass sql fragments written in code.",
+  "Do not drop `store_id = ... and app_grant_id is null` from any store-side statement, and do not relax the platform's strict tested-version check (D516).",
+  "Do not touch src/server/api-tokens.ts, platform-api-tokens.ts, ad-conversions.ts or platform-ad-conversions.ts: they are not copies worth a scope.",
+  "Do not raise a number in src/server/ratchet.baseline.json or src/lib/copies.baseline.json."
+ ],
+ "stop_if": [
+  "One of the six integration test files fails and cannot be made to pass without editing it.",
+  "src/server/ratchet.scan.test.ts reports more writes by id without the store in a file.",
+  "The twin counter of step 1.17 does not exist (step 1.17 not done): do the first three commits, which need only the rg checks, and stop before the last.",
+  "After the first three commits and the editor lift the five pairs still share 60 lines or more: report the counter's ten largest runs instead of forcing them."
+ ],
+ "executor": "strong",
+ "executor_why": "Commits 1 and 3 are specified moves held by six int tests that may not change, so the cheap model may make them; commit 2's scope is now spelt out to the clause, but it carries a store's owner filter into statements the ratchet cannot see, and commit 4 lifts 'the largest remaining runs' the counter prints until five pairs share under 60 lines, a measure-then-cut choice for the stronger model.",
+ "checked_in_code": "I read runWorkflows() (src/server/workflows.ts:390-459) and runPlatformWorkflows() (src/server/platform-workflows.ts:315-378) side by side: same claim, loop, outcome update and 90-day delete, differing in table names, the join to stores, the open check and the payload reader, as CP-4 says. I read addPlatformEndpoint() and the function lists of both endpoint files, and deliverDue() against deliverPlatformDue() (integrations.ts:1031 and platform-integrations.ts:449): both claim with `for update skip locked` too, so the brief moves those as well. The step's text puts 'the claim, the retry and the signing' into workflow-engine.ts; signing and retry belong to deliveries and endpoints, so the brief gives them their own files (endpoint-store.ts, delivery-engine.ts) and keeps workflow-engine.ts for workflows, which still meets the done_when. scripts/lib/copy-count.mjs and src/lib/copies.baseline.json do not exist yet (step 1.17). Second check (12 November): resend and list deliveries differ between store and platform beyond an owner clause (joins, erased_at against payload, columns), so commit 2 now moves only add, update, switch, renew and remove; EndpointScope is given member by member (the lock's argument lists, the insert's owner columns, audit names built as integration.endpoint_<action> and platform.endpoint_<action>, which are today's); the claim that the ratchet holds the owner clause was wrong (its pattern needs a literal table), so a check on the new file holds it; the baseline is an edit made by 1.17.",
+ "rating_checked": "strong",
+ "cheap_commits": [
+  1,
+  3
+ ]
 }

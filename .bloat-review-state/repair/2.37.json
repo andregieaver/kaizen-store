@@ -1,0 +1,17 @@
+{
+ "id": "2.37",
+ "fixed": [
+  "holder-assistant.ts was left to 'read the caller'; its TOOLS go to chatWithTools (line 199), so it uses modelDefinition.",
+  "do_not 6 forbade any tool change between commit 1 and the recording, which commit 2 is; it now allows this step's commits 1 and 2 before one recording.",
+  "src/server/ai-round.scan.test.ts was 'create, EDIT it': now edit made_by 1.19 with what 1.19 leaves; its baseline already keeps largeTools, so the duplicate LONG_TOOLS constant is dropped and the commit 2 check and done_when read largeTools."
+ ],
+ "rejected": [
+  {
+   "problem": "Commit 2's how and stop_if 5 carry a redacted placeholder.",
+   "why": "An artefact of the reviewer's blanked copy: the brief reads 'A stronger model does this commit' and 'You are the cheap executor and reach the second commit'."
+  }
+ ],
+ "cheaper": "not applied: none proposed; commit 2 is a design split that stays with a stronger model, commit 1 is cheap on its own.",
+ "executor_before": "strong",
+ "executor_after": "strong"
+}

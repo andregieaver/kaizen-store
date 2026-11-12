@@ -1,0 +1,23 @@
+{
+ "id": "1.10",
+ "fixed": [
+  "Commit 1: the job count check gives the figure (78: 77 arrow keys plus assistantApprovals' async key, lines 128 to 261) and counts keys at two spaces in dispatcher-jobs.ts, so nested lines are not counted.",
+  "Commit 2: ci.yml gets a 'Query budget on the fresh database' step on shard 1 before the sharded run, which now passes --exclude for the file; the test's doc comment says it needs a fresh seed.",
+  "Commits 2 and 3 local checks and done_when 1 run the budget file first on a fresh database, then pnpm test:int with the exclude.",
+  "A stop_if for a file green locally but red in CI's fresh-database step.",
+  "Commit 1: step 0.31 (now in depends_on) leaves 69 jobs, not 78, and a scan (cron-prunes.scan.test.ts) that reads the object from the route; the count check says so and commit 1 repoints that scan at src/server/dispatcher-jobs.ts (made_by 0.31)."
+ ],
+ "rejected": [
+  {
+   "problem": "src/db/statement-count.ts does not exist yet.",
+   "why": "Step 1.9 makes it; depends_on names 1.9 and stop_if 1 covers it."
+  },
+  {
+   "problem": "pg_stat_user_tables counts every backend's reads, so rowsRead may never be exactly repeatable.",
+   "why": "The reads are filtered to schema commerce (the reader's catalogue reads are not counted), files do not run in parallel and next/server's after() is mocked; stop_if 4 already stops and reports a wobble rather than adding a margin."
+  }
+ ],
+ "cheaper": "not applied: naming the fourteen features' server functions and the layouts' readers needs reading each feature's admin action, which is the judgement that keeps commit 3 with the stronger model.",
+ "executor_before": "strong",
+ "executor_after": "strong"
+}

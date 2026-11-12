@@ -70,9 +70,10 @@
      "how": "Six lines: what the folder holds (one file per working session, written by `node scripts/session-load.mjs`), that the first 20 files are the 'before' and the first 20 after steps 2.1 and 2.40 the 'after' (read in step 4.5), that a file holds paths, bytes and counts only and never a prompt, a message or a person's data, how to run the summary, and that the folder is kept out of default searches by the ignore file."
     },
     {
-     "file": "{.ignore,docs/.ignore,docs/audits/.ignore}",
+     "file": "docs/audits/.rgignore",
      "action": "edit",
-     "how": "Step 0.40 made three ignore files (`ls -a . docs docs/audits supabase | rg ignore` finds them). In the one that covers docs (the file that already lists the dated reports under docs/audits), add the line `docs/audits/bloat-review-2026-11/session-load/` (write it relative to that ignore file's own folder, as its other lines are). Check: `rg --files docs/audits/bloat-review-2026-11/session-load` prints nothing, and `rg --files --no-ignore docs/audits/bloat-review-2026-11/session-load` prints the README. If step 1.1's docs budget test lists the ignore files' lines, add this line to its expectation."
+     "made_by": "0.40",
+     "how": "Step 0.40 creates this file with exactly three lines: the comment '# Left out of default searches (bloat review step 0.40): name the file or folder to search it.', then `psi-2026-*.md` and `evidence/` (its other two ignore files are docs/.rgignore and supabase/.rgignore; leave both alone). Append one line at the end: `bloat-review-2026-11/session-load/` (relative to docs/audits, the file's own folder, as its other lines are; ripgrep anchors a pattern with an inner slash to that folder). Change nothing else. Check: `rg --files docs/audits/bloat-review-2026-11/session-load` prints nothing, and `rg --files --no-ignore docs/audits/bloat-review-2026-11/session-load` prints the README. Step 1.1's docs budget reads these files only to check that evidence folders are covered; it lists no line of them, so nothing there changes."
     },
     {
      "file": "docs/audits/bloat-review-2026-11/README.md",
@@ -140,10 +141,15 @@
  "stop_if": [
   "node scripts/ratchet.mjs counts other figures than 15 and 11 and main has not gained or lost a large file since 12 November 2026 (`git log --since=2026-11-12 --stat` shows none): the scope differs from the review's; report the two numbers.",
   "No transcript is found under ~/.claude/projects for this working directory, or its lines do not have the shapes the brief names (`attachment.type === \"instructions\"`, `toolUseResult.file.filePath`): report three sample line shapes (keys only, no content).",
-  "The ignore files of step 0.40 are not there.",
+  "docs/audits/.rgignore (made by step 0.40) is not there, or does not hold the line `evidence/`: step 0.40 is not in; stop before commit 2.",
   "node scripts/ratchet.mjs wants to change a number other than the two new ones."
  ],
  "executor": "cheap",
- "executor_why": "The ratchet edit copies an existing pattern and the script's input shapes, output keys and test cases are all spelled out; the unit test and the privacy grep catch a wrong edit.",
- "checked_in_code": "I opened scripts/lib/ratchet-count.mjs, scripts/ratchet.mjs, the ratchet's baseline and test, and counted with the ratchet's own file list: 4,111 source files, 15 over 100 KB and 11 over 2,000 lines, as the step says. I read this machine's one transcript to fix the shapes the script needs: always-loaded files are `attachment` lines of type `instructions` with `files[].path` and `content`; a Read result is `toolUseResult.file.filePath` and `content`; subagents' transcripts sit in a `subagents` folder beside it. Two things the step leaves open are settled in the brief: sessions also read docs through the shell (sed, cat), so the script counts those too, and 'before' or 'after' is decided by the repo's state (CLAUDE.md under 15,000 bytes and docs/decisions present), not by a flag. The executor can only add the first of the 20 files; the brief says the step stays in progress until the twentieth."
+ "executor_why": "The ratchet edit copies an existing pattern with a baseline written by the script, and the session-load script's input shapes, output keys, privacy rule, test cases and the one ignore file to extend are all given; nothing deployed changes and a mistake shows as a wrong count in a docs folder.",
+ "checked_in_code": "I opened scripts/lib/ratchet-count.mjs, scripts/ratchet.mjs, the ratchet's baseline and test, and counted with the ratchet's own file list: 4,111 source files, 15 over 100 KB and 11 over 2,000 lines, as the step says. I read this machine's one transcript to fix the shapes the script needs: always-loaded files are `attachment` lines of type `instructions` with `files[].path` and `content`; a Read result is `toolUseResult.file.filePath` and `content`; subagents' transcripts sit in a `subagents` folder beside it. Two things the step leaves open are settled in the brief: sessions also read docs through the shell (sed, cat), so the script counts those too, and 'before' or 'after' is decided by the repo's state (CLAUDE.md under 15,000 bytes and docs/decisions present), not by a flag. The executor can only add the first of the 20 files; the brief says the step stays in progress until the twentieth. Second check (12 November): the ignore-file edit named a brace set of .ignore files that step 0.40 does not make; it now edits docs/audits/.rgignore (made_by 0.40, whose three lines are given) with the one line `bloat-review-2026-11/session-load/`, and the conditional about step 1.1's docs budget is settled (it lists no ignore line).",
+ "rating_checked": "cheap",
+ "cheap_commits": [
+  1,
+  2
+ ]
 }

@@ -44,7 +44,7 @@
    "checks": [
     "pnpm typecheck: exits 0 (it runs next typegen first, which makes cacheLife('tagged') a known name)",
     "pnpm exec vitest run src/lib/campaign-notices.test.ts src/server/use-cache.scan.test.ts: pass (update the scan's stored list only if it records the default profile's seconds)",
-    "pnpm build: the route table printed at the end shows no route under /s/ with Revalidate 15m (6 before). Then node scripts/render-modes.mjs --write to store the new periods.",
+    "pnpm build, then node -e \"const m=require('./.next/prerender-manifest.json').routes;console.log(Object.entries(m).filter(([r,v])=>r.startsWith('/s/')&&v.initialRevalidateSeconds===900).length)\": prints 0 (6 before: 900 seconds is the 15 minutes of Next's own default profile, which this commit replaces; read the manifest, not the build's printed table). Then node scripts/render-modes.mjs --write to store the new periods.",
     "pnpm lint && pnpm typecheck && pnpm test: each exits 0"
    ]
   },
@@ -103,7 +103,7 @@
     {
      "file": "src/server/pages.ts",
      "action": "edit",
-     "how": "findPublishedPage(), publishedPageNames(), and step 0.24's publishedPageById() and publishedPageIndex(): 'hours' to 'tagged'. listPublishedPages() stays 'hours': it returns whole documents of every page and only pages:{store} refreshes it, which a body-only publish no longer does (step 2.14); add that sentence as a comment above its cacheLife line."
+     "how": "findPublishedPage(), publishedPageNames(), and step 0.24's publishedPageById() and publishedPageIndex(): 'hours' to 'tagged'. listPublishedPages() stays 'hours': it returns whole documents of every page and only pages:{store} refreshes it, which a body-only publish no longer does (step 2.14); add that sentence as a comment above its cacheLife line. publishedPageById() and publishedPageIndex() come from step 0.24: if either does not exist, leave it out here, in CACHED_READS and in CLOCK_READS, and name it in the decision row."
     },
     {
      "file": "src/server/site-layouts.ts",
@@ -191,9 +191,10 @@
      "how": "productLayoutById() (step 2.14): 'hours' to 'tagged'. productLayoutIdFor() stays 'hours' with the catalogue."
     },
     {
-     "file": "src/server/{use-cache.scan.test.ts}",
+     "file": "src/server/use-cache.scan.test.ts",
      "action": "edit",
-     "how": "The file is src/server/use-cache.scan.test.ts, made by an earlier step of the plan (it does not exist before that step; if it is missing, that step is not done: stop). Update its stored list of lives (the way step 1.11's header says). Then add one test: the set of functions on cacheLife('hours') or the default profile equals exactly this named list, each with its reason in a const CLOCK_READS: listProducts, getProduct, listGridProducts (src/server/catalog.ts: prices with the 30-day reference and VAT labels); listingFacets, relatedProducts (src/server/listing.ts: prices); gridProducts (content-grid.ts: prices); recommendingGrid (recommend-grid.ts) and standInFor (recommend.ts): products with prices; listIndexedProducts and getShippingFacts (seo.ts: the catalogue's dates and rates); productLayoutIdFor (product-layouts.ts: follows the catalogue); pictureAlt ('src/app/s/[store]/[market]/term-listing.tsx': with the catalogue); reviewFacts (review-facts.ts: a review's date and the newest first); instagramPosts (instagram.ts: another service's feed); getPublicPlans (public-plans.ts: timed plan prices, D524); campaignNoticesAt and ownerSells (the default profile); listPublishedPages and gridPages (the grid of pages); blogFeed (the feed); buyFacts (src/server/buy-facts.ts, step 2.13: the hour is the net under its writers). A function on 'hours' that is not in CLOCK_READS fails the test, and so does a CLOCK_READS name that no longer exists."
+     "how": "Step 1.11 creates this file: it keeps every cached read's life and tags in the constant CACHED_READS ({ 'file#function': { life, tags } }, compared exactly), the lists NO_LIFE and NO_TAG (reads allowed without a cacheLife or cacheTag call), the list PLATFORM_TAG_FROM_STORE, and a 'would notice' part. If it is missing, stop. Update CACHED_READS: each moved read's life changes from 'hours' to 'tagged' (and the commits 1 and 3 changes, if not done there). Then add one test: the set of functions on cacheLife('hours') or the default profile equals exactly this named list, each with its reason in a const CLOCK_READS: listProducts, getProduct, listGridProducts (src/server/catalog.ts: prices with the 30-day reference and VAT labels); listingFacets, relatedProducts (src/server/listing.ts: prices); gridProducts (content-grid.ts: prices); recommendingGrid (recommend-grid.ts) and standInFor (recommend.ts): products with prices; listIndexedProducts and getShippingFacts (seo.ts: the catalogue's dates and rates); productLayoutIdFor (product-layouts.ts: follows the catalogue); pictureAlt ('src/app/s/[store]/[market]/term-listing.tsx': with the catalogue); reviewFacts (review-facts.ts: a review's date and the newest first); instagramPosts (instagram.ts: another service's feed); getPublicPlans (public-plans.ts: timed plan prices, D524); campaignNoticesAt and ownerSells (the default profile); listPublishedPages and gridPages (the grid of pages); blogFeed (the feed); buyFacts (src/server/buy-facts.ts, step 2.13: the hour is the net under its writers). A function on 'hours' that is not in CLOCK_READS fails the test, and so does a CLOCK_READS name that no longer exists. A function in CLOCK_READS that another step was to create (buyFacts from step 2.13) and that does not exist is left out of CLOCK_READS, and the decision row names it.",
+     "made_by": "1.11"
     }
    ],
    "checks": [
@@ -248,8 +249,8 @@
  },
  "done_when": [
   {
-   "check": "pnpm build, and read the route table it prints",
-   "expect": "No route under /s/ at 15m (6 before)."
+   "check": "pnpm build, then node -e \"const m=require('./.next/prerender-manifest.json').routes;console.log(Object.entries(m).filter(([r,v])=>r.startsWith('/s/')&&v.initialRevalidateSeconds===900).length)\"",
+   "expect": "0 (6 before): no route under /s/ revalidates every 900 seconds."
   },
   {
    "check": "node -e \"const m=require('./.next/prerender-manifest.json').routes;for(const r of ['/s/demo/no/om-oss'])console.log(r,m[r]&&m[r].initialRevalidateSeconds)\"",
@@ -289,6 +290,10 @@
   "A read in this brief's list is not at the named place or has changed its tags since."
  ],
  "executor": "strong",
- "executor_why": "For each family the executor must judge whether writers listed as 'refreshed by callers' really are, and a wrong call leaves a store's page old for a week; the first commit (the profiles) is mechanical and can go to the cheap model.",
- "checked_in_code": "I counted the code as it is: 71 cacheLife('hours') calls in 39 files, and campaignNoticesAt() and ownerSells() with no life (both findings agree; CA-10 said 70). next.config.ts has cacheComponents and no cacheLife key, and package.json's typecheck runs next typegen first, so the named profile type-checks. I listed all 71 reads by function and sorted them in the brief into moved and named clock reads. Corrected: the findings move listPublishedPages() to the week, but after step 2.14 a body-only publish no longer refreshes the store-wide tag it carries, so it stays on the hour with the grid of pages and the feed, which is what the plan's done-when allows."
+ "executor_why": "Commit 1 is mechanical, but commit 2 must find which tables each tag family's reads touch and judge, for every writer the scan names, whether its callers' refresh really covers it; commits 3 and 4 then make reads live a week on the strength of that judgement, which no test can check.",
+ "checked_in_code": "I counted the code as it is: 71 cacheLife('hours') calls in 39 files, and campaignNoticesAt() and ownerSells() with no life (both findings agree; CA-10 said 70). next.config.ts has cacheComponents and no cacheLife key, and package.json's typecheck runs next typegen first, so the named profile type-checks. I listed all 71 reads by function and sorted them in the brief into moved and named clock reads. Corrected: the findings move listPublishedPages() to the week, but after step 2.14 a body-only publish no longer refreshes the store-wide tag it carries, so it stays on the hour with the grid of pages and the feed, which is what the plan's done-when allows. Second check (12 November): the braced path is src/server/use-cache.scan.test.ts, an edit of what step 1.11 leaves (CACHED_READS, NO_LIFE, NO_TAG, PLATFORM_TAG_FROM_STORE); the 15-minute check reads prerender-manifest.json (900 seconds) instead of the build's printed table; reads from steps 0.24 and 2.13 that do not exist are left out and named in the decision.",
+ "cheap_commits": [
+  1
+ ],
+ "rating_checked": "strong"
 }

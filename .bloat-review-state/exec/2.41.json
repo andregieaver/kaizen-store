@@ -23,6 +23,10 @@
   {
    "id": "1.1",
    "why": "its docs budget (src/lib/docs-budget.scan.test.ts, node scripts/docs-ratchet.mjs --check) is the check this change must pass"
+  },
+  {
+   "id": "0.43",
+   "why": "it created src/lib/docs-budget.scan.test.ts, to which this step adds one case"
   }
  ],
  "commits": [
@@ -32,12 +36,12 @@
     {
      "file": "CLAUDE.md",
      "action": "edit",
-     "how": "Find the sentence with: rg -n \"record the file's version\" CLAUDE.md (it is in the Database section, in the bullet that starts 'New migrations reach production through CI'; it is wrapped over two or three lines). Today it reads: 'After the deploy, check the security and performance advisors (Supabase project `ybsozesfuxuitoacntfo`) and record the file's version in `docs/decisions.md` (Migration versions).' Replace exactly that sentence with: 'After the deploy, check the security and performance advisors (Supabase project `ybsozesfuxuitoacntfo`): a new finding becomes a line in `docs/audits/psi-followups.md` with the migration's file name; a clean check needs no note.' Change no other word of the bullet: the sentences before it ('**Never apply a migration to production by hand first**: CI would apply the file again.') and after it ('A migration must keep the code that is still running working ...') stay exactly as they are. Wrap the new text at the width the bullet already uses (no line over 130 characters). If step 2.1 moved this sentence to a file under .claude/rules or docs/rules, the rg finds nothing in CLAUDE.md: then stop (see stop_if); the step's done-when needs the sentence in CLAUDE.md."
+     "how": "Find the sentence with: rg -n \"record the file's version\" CLAUDE.md (it is in the Database section, in the bullet that starts 'New migrations reach production through CI'; it is wrapped over two or three lines). Step 2.40 (a dependency) has already changed its end, so it now reads: 'After the deploy, check the security and performance advisors (Supabase project `ybsozesfuxuitoacntfo`) and record the file's version in `docs/decisions/migration-versions.md`.' (before 2.40 it ended '`docs/decisions.md` (Migration versions).'; replace whichever of the two is there). Replace exactly that sentence with: 'After the deploy, check the security and performance advisors (Supabase project `ybsozesfuxuitoacntfo`): a new finding becomes a line in `docs/audits/psi-followups.md` with the migration's file name; a clean check needs no note.' Change no other word of the bullet: the sentences before it ('**Never apply a migration to production by hand first**: CI would apply the file again.') and after it ('A migration must keep the code that is still running working ...') stay exactly as they are. Wrap the new text at the width the bullet already uses (no line over 130 characters). If step 2.1 moved this sentence to a file under .claude/rules or docs/rules, the rg finds nothing in CLAUDE.md: then stop (see stop_if); the step's done-when needs the sentence in CLAUDE.md."
     },
     {
      "file": "README.md",
      "action": "edit",
-     "how": "Find with: rg -n 'version recorded in' README.md (line 69 today). The sentence reads: 'So a migration is written to keep the code still running working (add a column, never rename or drop it in the same change), is never applied to production by hand, and has its version recorded in `docs/decisions.md` afterwards.' Replace it with: 'So a migration is written to keep the code still running working (add a column, never rename or drop it in the same change) and is never applied to production by hand. What was applied, and when, is in the ledger `supabase_migrations.kaizen_files` (`scripts/db-migrate.mjs`).' Leave the next sentence ('Pushes of `*.md` and `docs/**` alone run nothing.') as it is."
+     "how": "Find with: rg -n 'version recorded in' README.md (line 69 today). After step 2.40 the sentence reads: 'So a migration is written to keep the code still running working (add a column, never rename or drop it in the same change), is never applied to production by hand, and has its version recorded in `docs/decisions/migration-versions.md` afterwards.' (2.40 changed only the file name; replace whichever form is there.) Replace it with: 'So a migration is written to keep the code still running working (add a column, never rename or drop it in the same change) and is never applied to production by hand. What was applied, and when, is in the ledger `supabase_migrations.kaizen_files` (`scripts/db-migrate.mjs`).' Leave the next sentence ('Pushes of `*.md` and `docs/**` alone run nothing.') as it is."
     },
     {
      "file": "docs/capacity.md",
@@ -52,12 +56,19 @@
     {
      "file": "docs/parity/WAVES.md",
      "action": "edit",
-     "how": "Find with: rg -n 'migration versions' docs/parity/WAVES.md (line 75 today, item '3. **Record.**'). Change 'Add the decision row (D154 onward) and the migration versions to `docs/decisions.md`;' to 'Add the decision row (D154 onward) to `docs/decisions.md` (no migration versions: the ledger records them; a new advisor finding goes to `docs/audits/psi-followups.md`);'. Leave the rest of the item. If step 0.41 or 2.1 already removed the words 'add the CLAUDE.md bullet' from this item, leave that as they left it."
+     "how": "Find with: rg -n -i 'migration versions' docs/parity/WAVES.md (item '3. **Record.**', line 75 today). Step 2.40 rewrites how this item adds a decision (node scripts/decisions.mjs new … and the text in docs/decisions/D{n}.md); keep its wording of that. Today the item says 'Add the decision row (D154 onward) and the migration versions to `docs/decisions.md`;': remove only the words that tell the wave to add migration versions (' and the migration versions' and whatever 2.40 left of them), and put directly after the item's instruction for the decision: ' (no migration versions: the ledger records them; a new advisor finding goes to `docs/audits/psi-followups.md`)'. If the rg finds nothing because 2.40 already dropped the words, add only that parenthesis after the decision instruction. Leave the rest of the item; if step 0.41 or 2.1 removed the words 'add the CLAUDE.md bullet', leave that as they left it."
     },
     {
-     "file": "docs/decisions/*migration-versions*.md",
+     "file": "docs/decisions/migration-versions.md",
      "action": "edit",
-     "how": "This is the file step 2.40 made for the frozen list. Find it with: rg -l -i 'migration versions' docs/decisions | head (the review expected docs/decisions/migration-versions.md). Directly under its first heading add one line: 'Frozen on 4 October 2026: nothing is added here. The ledger `supabase_migrations.kaizen_files` (written by `scripts/db-migrate.mjs`) is the record of what was applied and when.' Change nothing else in the file: no row is deleted or rewrapped."
+     "how": "Step 2.40 creates this file: the frozen section moved byte for byte from docs/decisions.md under the heading '# Migration versions' (272 rows). Directly under that heading add one line: 'Frozen on 4 October 2026: nothing is added here. The ledger `supabase_migrations.kaizen_files` (written by `scripts/db-migrate.mjs`) is the record of what was applied and when.' Change nothing else in the file: no row is deleted or rewrapped.",
+     "made_by": "2.40"
+    },
+    {
+     "file": "src/lib/docs-budget.scan.test.ts",
+     "action": "edit",
+     "made_by": "0.43",
+     "how": "Step 0.43 created this file and steps 1.1 and 2.1 extended it (docsCounts(), docsProblems(), the never-sentences, 'CLAUDE.md stays a core'). Keep every case. Add one case, 'no standing instruction points at the frozen list': read CLAUDE.md, README.md, docs/capacity.md and docs/ci-migrations.md with readFileSync from process.cwd(), and for each expect the text not to match /record (the file's|the migration|its) versions?/i nor /version recorded in/i, with the message 'The Migration versions list is frozen (bloat review step 2.41): the ledger supabase_migrations.kaizen_files is the record; a new advisor finding is a line in docs/audits/psi-followups.md.' Add a would-notice line in the same case: the first regex matches the old sentence \"and record the file's version in `docs/decisions.md`\"."
     }
    ],
    "checks": [
@@ -66,14 +77,14 @@
     "rg -c 'Never apply a migration to production by hand' CLAUDE.md: prints 1",
     "pnpm test src/lib/docs-budget.scan.test.ts src/lib/rules-index.test.ts: exits 0",
     "node scripts/docs-ratchet.mjs --check: exits 0",
-    "pnpm lint && pnpm typecheck && pnpm test: exits 0 (the push is Markdown only, so CI's main workflow runs nothing; these are the session's own checks)"
+    "pnpm lint && pnpm typecheck && pnpm test: exits 0 (the push carries a test file, so CI's quick gate runs and deploys as for code)"
    ]
   }
  ],
  "tests": [
   {
    "file": "src/lib/docs-budget.scan.test.ts",
-   "proves": "Extend its list of never-sentences check only if needed: it already fails when 'Never apply a migration to production by hand' leaves CLAUDE.md. Add one case 'no standing instruction points at the frozen list': the text of CLAUDE.md, README.md, docs/capacity.md and docs/ci-migrations.md matches none of /record (the file's|the migration|its) versions?/i and /version recorded in/i. It fails when the old instruction is written back."
+   "proves": "Fails when CLAUDE.md, README.md, docs/capacity.md or docs/ci-migrations.md tells a session again to record a migration's version (the new case), and, as before, when 'Never apply a migration to production by hand' leaves CLAUDE.md."
   }
  ],
  "migration": {
@@ -120,6 +131,10 @@
   "The rg of the first check still prints a line after the edits: quote the line in the report instead of rewording text the brief did not name."
  ],
  "executor": "cheap",
- "executor_why": "Five sentences in five Markdown files are replaced word for word, and an rg count and the docs budget prove it.",
- "checked_in_code": "I opened CLAUDE.md lines 73 to 81, README.md line 69, docs/capacity.md lines 104 to 105, docs/ci-migrations.md lines 154 to 155 and docs/parity/WAVES.md line 75: the step's rg matches three of them today (CLAUDE.md, README.md, docs/capacity.md), as the plan says. The finding cites docs/ci-migrations.md 153 to 154; the bullet is at 154 to 155 and says 'record the result', which the rg never matched, so I rewrite it anyway. scripts/db-migrate.mjs line 31 names the ledger supabase_migrations.kaizen_files. docs/audits/psi-followups.md has no 'Open' section today (the finding assumed one), so the new sentence names the file only, as the owner's decision does. docs/decisions.md still holds the list under '### Migration versions' at line 420; step 2.40 moves it."
+ "executor_why": "Five sentences in five Markdown files and one line under a heading are replaced with text given verbatim (now in the forms step 2.40 leaves them), plus one small test case written out, and an rg count, the new case and the docs budget prove it; nothing touches code paths or production.",
+ "checked_in_code": "I opened CLAUDE.md lines 73 to 81, README.md line 69, docs/capacity.md lines 104 to 105, docs/ci-migrations.md lines 154 to 155 and docs/parity/WAVES.md line 75: the step's rg matches three of them today (CLAUDE.md, README.md, docs/capacity.md), as the plan says. The finding cites docs/ci-migrations.md 153 to 154; the bullet is at 154 to 155 and says 'record the result', which the rg never matched, so I rewrite it anyway. scripts/db-migrate.mjs line 31 names the ledger supabase_migrations.kaizen_files. docs/audits/psi-followups.md has no 'Open' section today (the finding assumed one), so the new sentence names the file only, as the owner's decision does. docs/decisions.md still holds the list under '### Migration versions' at line 420; step 2.40 moves it. Second check (12 November): the sentences of CLAUDE.md and README.md are quoted as step 2.40 leaves them (it renames the file to docs/decisions/migration-versions.md), WAVES.md's item is edited around 2.40's rewrite, the frozen list is the plain path made_by 2.40, and the test case the tests section promised is now a change of commit 1 (made_by 0.43).",
+ "cheap_commits": [
+  1
+ ],
+ "rating_checked": "cheap"
 }

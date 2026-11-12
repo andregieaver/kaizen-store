@@ -1,0 +1,10 @@
+{
+ "id": "0.46",
+ "fixed": [
+  "kit.ts: the columns line is line 85; productGrid() starts at 77 (both now named)."
+ ],
+ "rejected": [],
+ "cheaper": "not applied: none proposed; already cheap.",
+ "executor_before": "cheap",
+ "executor_after": "cheap"
+}

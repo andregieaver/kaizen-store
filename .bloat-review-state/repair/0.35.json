@@ -1,0 +1,11 @@
+{
+ "id": "0.35",
+ "fixed": [
+  "The scan test change now names the plain path src/lib/stylesheet-sources.scan.test.ts with made_by 0.34 and says what 0.34 leaves in it, instead of a starred path.",
+  "Added a stop_if for when step 0.34's file is not in main yet."
+ ],
+ "rejected": [],
+ "cheaper": "not applied: the reviewer gave none; the step is already cheap",
+ "executor_before": "cheap",
+ "executor_after": "cheap"
+}

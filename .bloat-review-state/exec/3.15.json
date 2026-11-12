@@ -1,344 +1,349 @@
 {
-  "id": "3.15",
-  "goal": "fail(), isUuid, isUniqueViolation, the calendar-day helpers, countryName, the product-title join, the usage counter and the order event each have one home that a scan test keeps, and no English word list is kept both as a constant and in a catalogue.",
-  "why": "Today fail() is declared in 43 server files, isUuid and isUniqueViolation 32 times, the day and country helpers 31 times with different bodies, the order event insert is typed 34 times and the usage upsert 32 times, and 37 test assertions hold word lists equal. After: 1, 2, at most 8, 1 (plus one test fixture), at most 2, and 0 catalogue assertions.",
-  "read_first": [
-    "docs/rules/storefront.md",
-    "docs/platform-admin-i18n.md",
-    "src/server/owner-tool-error.ts",
-    "src/server/order-actor.ts",
-    "src/server/request-budget.ts",
-    "src/lib/analytics-period.ts",
-    "src/lib/admin-messages/inventory.en.ts",
-    "src/lib/storefront-bundle.scan.test.ts"
-  ],
-  "depends_on": [
-    {
-      "id": "1.17",
-      "why": "its copies and unused baselines (scripts/copies.mjs, scripts/unused.mjs) are lowered here and its unused scan names the word constants only tests read"
-    },
-    {
-      "id": "3.13",
-      "why": "it removes four of the nine isUniqueViolation copies (the import files) with the import core; do it first so they are not edited twice"
-    }
-  ],
-  "commits": [
-    {
-      "title": "fail(), isUuid and isUniqueViolation each have one home, and a scan keeps it",
-      "changes": [
-        {
-          "file": "src/server/owner-tool-error.ts",
-          "action": "edit",
-          "how": "Under the class add: `/** Refuses a tool call in words: throws the refusal the model is told. */ export const fail = (message: string): never => { throw new OwnerToolError(message); };`. Nothing else."
-        },
-        {
-          "file": "src/server/*.ts",
-          "action": "edit",
-          "how": "List the files with: rg -l 'const fail = [(]message: string[)]: never' src/server (43 files). In each, look at the line after the declaration. If it is `throw new OwnerToolError(message);`: delete the three-line local const and add `fail` to the file's existing import from \"./owner-tool-error\" (or \"@/server/owner-tool-error\"); if OwnerToolError is then unused in the file, drop it from the import. If it throws another class (src/server/shopping-agents.ts throws AgentToolError): rename that local to `refuse` in its own file (declaration and every call in the file) so the name fail means one thing; do not import the shared one there."
-        },
-        {
-          "file": "src/lib/ids.ts",
-          "action": "create",
-          "how": "No imports. `const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;` and `/** Whether a value is a UUID in text form. A pattern, not zod, so the storefront's bundles stay small. */ export const isUuid = (value: unknown): value is string => typeof value === \"string\" && UUID.test(value);`."
-        },
-        {
-          "file": "src/lib/experiments.ts",
-          "action": "edit",
-          "how": "Line 127: replace the declaration by `export { isUuid } from \"./ids\";` and add `import { isUuid } from \"./ids\";` if the file calls it. Remove the file's UUID constant if nothing else reads it. Do the same in src/lib/admin-api.ts line 116 (its own `changes` entry below)."
-        },
-        {
-          "file": "src/lib/admin-api.ts",
-          "action": "edit",
-          "how": "Line 116: replace the declaration by `export { isUuid } from \"./ids\";` plus a local import if the file calls it. Importers of `isUuid` from @/lib/admin-api (src/server/admin-api.ts, src/server/admin-api-kit.ts, src/app/admin/(gated)/platform/docs/feedback/actions.ts) keep working unchanged."
-        },
-        {
-          "file": "src/server/{preview-links,exchanges,theme-installs,design-presets,return-labels,platform-endpoints,platform-theme-installs,work-time,store-starters,work-invoices,work-owner,work-emails,domain-purchases,work,site-staging,demo-stores,theme-prices,live-drills,work-recurring,platform-workflows}.ts",
-          "action": "edit",
-          "how": "In each of these 21 files delete the local `const isUuid = ...` line and add `import { isUuid } from \"@/lib/ids\";`: src/server/preview-links.ts, exchanges.ts, theme-installs.ts, design-presets.ts, return-labels.ts, platform-endpoints.ts, platform-theme-installs.ts, work-time.ts, store-starters.ts, work-invoices.ts, work-owner.ts, work-emails.ts, domain-purchases.ts, work.ts, site-staging.ts, demo-stores.ts, theme-prices.ts, live-drills.ts, work-recurring.ts, platform-workflows.ts (all under src/server) and src/app/admin/(gated)/[store]/settings/shipping/actions.ts. Seven of them (work-time.ts, work-invoices.ts, work-owner.ts, work-emails.ts, work.ts, work-recurring.ts, live-drills.ts and the shipping actions file) used z.uuid(): the pattern accepts every string zod's accepted. If `z` is then unused in a file, remove its import."
-        },
-        {
-          "file": "src/server/pg-errors.ts",
-          "action": "create",
-          "how": "`import \"server-only\";` then `/** A unique index refused the insert. Drizzle wraps the driver's error, so the code may be on a cause. */ export function isUniqueViolation(error: unknown): boolean { for (let e = error, depth = 0; e && depth < 5; e = (e as { cause?: unknown }).cause, depth++) if ((e as { code?: unknown }).code === \"23505\") return true; return false; }` (the body of src/server/store-roles.ts line 59, which covers the two-level body of privacy-erasure.ts line 366)."
-        },
-        {
-          "file": "src/server/{privacy-erasure,store-roles,pages,kaizen-life-accounts,inventory-jobs,customer-import,redirect-import,order-history-import,product-import}.ts",
-          "action": "edit",
-          "how": "List with: rg -n '^(export )?(const|function) isUniqueViolation' src. In privacy-erasure.ts replace the declaration by `export { isUniqueViolation } from \"./pg-errors\";` and import it for its own use. In every other file listed delete the local declaration and add `import { isUniqueViolation } from \"./pg-errors\";`. After step 3.13 the list is shorter: edit what rg prints."
-        },
-        {
-          "file": "src/lib/local-helpers.scan.test.ts",
-          "action": "create",
-          "how": "A vitest file. It walks src (not node_modules; skips *.test.ts, *.test.tsx; use src/test/source-files.ts if step 4.3 has made it, else a small readdirSync walker) and fails, naming the file and the home, when a file other than the home declares one of these at top level (pattern `^(export )?(const|function|async function) NAME\\b`): fail with the text `(message: string): never` outside src/server/owner-tool-error.ts; isUuid outside src/lib/ids.ts; isUniqueViolation outside src/server/pg-errors.ts. Keep the rules in an exported array `HOMES: { name: string; home: string; allow?: string[] }[]` so later commits add rows. Add one test that proves the pattern on strings: `const isUuid = (v: string) => true` in a made-up path is caught, `export { isUuid } from \"./ids\"` is not."
-        }
-      ],
-      "checks": [
-        "rg -c '^(export )?(const|function) (isUuid|isUniqueViolation)' src --glob '!*.test.ts' | awk -F: '{s+=$2} END {print s}' : prints 2",
-        "rg -l 'const fail = [(]message: string[)]: never' src/server : prints src/server/owner-tool-error.ts only",
-        "pnpm exec vitest run src/lib/local-helpers.scan.test.ts src/lib/storefront-bundle.scan.test.ts src/lib/agent-eval.test.ts src/server/ratchet.scan.test.ts : exits 0",
-        "pnpm lint && pnpm typecheck && pnpm test : exits 0",
-        "pnpm test:int src/server/redirect-tools.int.test.ts src/server/work-owner.int.test.ts src/server/work-settings.int.test.ts : exits 0 with no test edited"
-      ]
-    },
-    {
-      "title": "Calendar days and country names have one module each",
-      "changes": [
-        {
-          "file": "src/lib/day.ts",
-          "action": "create",
-          "how": "No imports. Three exports for days written 'YYYY-MM-DD'. `isDay(value: unknown): value is string`: a string matching /^\\d{4}-\\d{2}-\\d{2}$/ whose `new Date(`${value}T00:00:00Z`)` is valid and whose toISOString().slice(0, 10) equals the value (the body of src/lib/invoice-admin.ts line 34). `addDays(day: string, days: number): string`: `const [y, m, d] = day.split(\"-\").map(Number); return new Date(Date.UTC(y, m - 1, d + days)).toISOString().slice(0, 10);` (the body of src/lib/booking-slots.ts line 73; it never throws). `daysBetween(from: string, to: string): number`: `Math.round((Date.parse(`${to}T00:00:00Z`) - Date.parse(`${from}T00:00:00Z`)) / 86_400_000)` (the body of src/lib/first-touch.ts line 50)."
-        },
-        {
-          "file": "src/lib/day.test.ts",
-          "action": "create",
-          "how": "Before deleting any copy: tests of the three functions with a month end (2026-01-31 + 1), a leap day (2028-02-28 + 1 and + 2), a year end, a negative step, a step of 0, 400 days, daysBetween both ways and across a daylight-saving weekend (2026-03-28 to 2026-03-30 is 2), isDay on 2026-02-30 (false), '2026-2-3' (false), a number (false). Also one table test that imports, while they still exist, addDays from retention, order-list, booking-slots, staff-alerts, payment-terms, gift-card-line and analytics-period and asserts each gives day.ts's answer for the same twelve inputs; delete that table test in the same commit after the copies are re-exports (it then proves nothing)."
-        },
-        {
-          "file": "src/lib/{retention,order-list,booking-slots,staff-alerts,payment-terms,gift-card-line}.ts",
-          "action": "edit",
-          "how": "In each of the six, replace the exported `addDays` function by `export { addDays } from \"./day\";` and, where the file calls addDays itself, add `import { addDays } from \"./day\";`. Importers do not change. Remove a helper (`pad`) only if nothing else in the file uses it."
-        },
-        {
-          "file": "src/lib/{platform-briefing,recurring-costs,tripletex-invoices,first-touch,books-clients,business-change,work-import}.ts",
-          "action": "edit",
-          "how": "Delete the local (not exported) helper and import it from \"./day\": addDays in platform-briefing.ts line 97, recurring-costs.ts line 71 and tripletex-invoices.ts line 360; daysBetween in first-touch.ts line 50, books-clients.ts line 79, business-change.ts line 48 and work-import.ts line 500."
-        },
-        {
-          "file": "src/lib/{ledger,producer-registrations,invoice-admin}.ts",
-          "action": "edit",
-          "how": "isDay: in ledger.ts line 99 and producer-registrations.ts line 55 replace the exported function by `export { isDay } from \"./day\";` (plus a local import where the file calls it); in invoice-admin.ts line 34 delete the local const and import it. Do the same for the local isDay of src/server/invoices.ts line 29 and src/server/invoice-export.ts line 23 (import from \"@/lib/day\"): theirs tested the pattern only, so 2026-02-30 is now refused as a day instead of being sent to the database, which is the wanted result; if a test of those two files expects 2026-02-30 to pass, stop."
-        },
-        {
-          "file": "src/server/invoices.ts",
-          "action": "edit",
-          "how": "Delete the local `const isDay` (line 29) and add `import { isDay } from \"@/lib/day\";`. The same edit in src/server/invoice-export.ts line 23."
-        },
-        {
-          "file": "src/lib/analytics-period.ts",
-          "action": "edit",
-          "how": "Leave addDays and daysBetween here: they throw RangeError for a text that is not a day and analytics-period.test.ts holds that. Replace only isDay (line 93) by `export { isDay } from \"./day\";` if analytics-period.test.ts passes with it; if not, leave it and add the file to the scan's allow list for isDay."
-        },
-        {
-          "file": "src/lib/work-dates.ts",
-          "action": "edit",
-          "how": "Leave daysBetween (it throws for a non-day and takes the Day type). Leave isDay unless `parseDay(text) !== null` and day.ts's isDay agree on every case of work-dates.test.ts; if they do, make it `export { isDay } from \"./day\";`."
-        },
-        {
-          "file": "src/lib/platform-experiments.ts",
-          "action": "edit",
-          "how": "Line 33: rename the exported `daysBetween` (it takes two Dates and floors, never below 0) to `wholeDaysSince` and rename its uses: rg -n 'daysBetween' src/lib/platform-experiments.ts src/lib/platform-experiments.test.ts src/server src/components src/app | rg -i experiment."
-        },
-        {
-          "file": "src/lib/country-name.ts",
-          "action": "create",
-          "how": "No imports. `const names = new Map<string, Intl.DisplayNames>();` and `export function countryName<M>(code: string | null | undefined, locale: string, missing: M): string | M`: returns `missing` for an empty code; else, inside try, takes `const upper = code.toUpperCase()`, gets the Intl.DisplayNames for the locale from the map (creating it with `{ type: \"region\" }`), `const name = display.of(upper)`, and returns name when it is a string different from upper, else `missing`; catch returns `missing`."
-        },
-        {
-          "file": "src/lib/{vat-text,fiken,drop-shipping,invoice-admin}.ts",
-          "action": "edit",
-          "how": "Delete each file's exported countryName and point its callers at the home, keeping each caller's answer for a missing code. Find callers per module with: rg -n 'countryName' src --glob '!*.test.ts' and read which module each imports from. vat-text.ts (code, locale) answered the code: callers write `countryName(code, locale, code)`. fiken.ts answered null: `countryName(code, \"en\", null)`. drop-shipping.ts (REGIONS.of(code) ?? code, English): `countryName(code, \"en\", code)`; delete REGIONS if unused. invoice-admin.ts (a dash for no code, the code for an unknown one): `code ? countryName(code, language, code) : \"–\"`. Tests that imported countryName from one of these modules import it from @/lib/country-name with the third argument: that import line is the one edit to a test this commit allows."
-        },
-        {
-          "file": "src/server/setup-tools.ts",
-          "action": "edit",
-          "how": "Delete the exported countryName (line 78); its callers write `countryName(code, \"en\", code)` from @/lib/country-name. In src/server/staff-alerts.ts delete the local countryName (line 268); its calls become `countryName(code, ADMIN_LANG_FACTS[lang].tag, code) ` with `null` kept for an empty code: `code ? countryName(code, tag, code) : null`."
-        },
-        {
-          "file": "src/server/staff-alerts.ts",
-          "action": "edit",
-          "how": "As described in the setup-tools entry: delete the local countryName at line 268 and call the home with the admin language's tag, answering null for no code and the code for an unknown one."
-        },
-        {
-          "file": "src/lib/porterbuddy.ts",
-          "action": "edit",
-          "how": "Line 23 reads the carrier's own table: rename it to `carrierCountryName` (and its uses: rg -n 'countryName' src/lib/porterbuddy.ts src/server/carriers/porterbuddy.ts src/server/porterbuddy-shipping.ts src/lib/porterbuddy.test.ts). The table stays."
-        },
-        {
-          "file": "src/lib/local-helpers.scan.test.ts",
-          "action": "edit",
-          "how": "Add rows to HOMES: addDays home src/lib/day.ts allow [src/lib/analytics-period.ts]; daysBetween home src/lib/day.ts allow [src/lib/analytics-period.ts, src/lib/work-dates.ts]; isDay home src/lib/day.ts allow whatever of analytics-period.ts and work-dates.ts still declares it; countryName home src/lib/country-name.ts. For these four the walk covers src/lib and src/server only."
-        }
-      ],
-      "checks": [
-        "pnpm exec vitest run src/lib/day.test.ts src/lib/analytics-period.test.ts src/lib/work-dates.test.ts src/lib/fiken.test.ts src/lib/local-helpers.scan.test.ts src/lib/storefront-bundle.scan.test.ts : exits 0",
-        "rg -c '^(export )?(function|const) (addDays|daysBetween|isDay|countryName)\\b' src/lib src/server --glob '!*.test.ts' | awk -F: '{s+=$2} END {print s}' : prints 8 or less (31 before)",
-        "pnpm lint && pnpm typecheck && pnpm test : exits 0"
-      ]
-    },
-    {
-      "title": "The order event and the usage counter are written in one place each",
-      "changes": [
-        {
-          "file": "src/server/order-actor.ts",
-          "action": "edit",
-          "how": "writeOrderEvent() stays as it is. Widen its last parameter's use only if a caller needs it: it already takes any actor string ('staff', 'system', 'shopper', 'mollie')."
-        },
-        {
-          "file": "src/server/{booking-changes,bookings,checkout,company-approvals,delivery-options,dispute-evidence,invoice-notices,local-delivery,no-show,order-admin,order-delivery,order-insert,payment-capture,payment-disputes,payment-session,pickup,standing-orders,stripe-refunds,subscriptions}.ts",
-          "action": "edit",
-          "how": "List the places with: rg -n 'insert into commerce[.]order_events' -A3 src/server src/app --glob '!*.test.ts' (32 places in 21 files besides order-actor.ts; also src/server/payment-providers/mollie.ts and src/server/return-facts.ts). Each is `await X.execute(sql`insert into commerce.order_events (store_id, order_id, type, data, actor) values (${S}::uuid, ${O}::uuid, TYPE, ${JSON.stringify(DATA)}::jsonb, ACTOR)`)`. Replace it by `await writeOrderEvent(X, S, O, TYPE, DATA, ACTOR);` with `import { writeOrderEvent } from \"./order-actor\";`: X is the same executor (tx or db()), TYPE the same literal or variable as a JS string, DATA the object that was inside JSON.stringify, ACTOR the same string or expression. Where the file has a private helper that only wraps this insert (payment-disputes.ts line 54, booking-changes.ts line 64), make the helper's body the one call. If an insert has any other column (created_at), a `returning`, an `on conflict`, a select in place of values, or sits inside a larger statement (a CTE), do not convert it: leave it and name it in your report. src/server/checkout.ts and src/server/order-insert.ts are the paid order's path: convert them last, in a commit of their own, and run pnpm test:int on checkout before pushing."
-        },
-        {
-          "file": "src/server/payment-providers/mollie.ts",
-          "action": "edit",
-          "how": "Its two inserts (lines 106 and 212) become writeOrderEvent() calls as above (import from \"../order-actor\")."
-        },
-        {
-          "file": "src/server/return-facts.ts",
-          "action": "edit",
-          "how": "Line 190: replace the body of writeEvent by `await writeOrderEvent(tx, storeId, orderId, type, data, actor);` and keep the exported name and signature (its importers stay)."
-        },
-        {
-          "file": "src/server/request-budget.ts",
-          "action": "edit",
-          "how": "Add two exports above budgetRoom(). (1) `usageUpsert(source: SQL): SQL` returning sql`insert into commerce.chat_usage (store_id, bucket, \"window\", count) ${source} on conflict (store_id, bucket, \"window\") do update set count = commerce.chat_usage.count + 1 returning count`: `source` is the rows to write, a `values (...)` or a `select ...`. (2) `async function bumpUsage(executor: Pick<Db, \"execute\">, storeId: string | null, bucket: string, window: SQL): Promise<number>` which runs `usageUpsert(sql`values (${storeId}::uuid, ${bucket}, ${window}, 1)`)` and returns Number(row?.count ?? 0). Also export `HOUR_WINDOW = sql`date_trunc('hour', now())`` and `MINUTE_WINDOW`. Rewrite the four inserts inside this file's two CTE statements (budgetRoom line 143, takeMcpBudget/takeBudget about line 175) with `${usageUpsert(...)}` so the insert text is written once in the file: `with mine as (${usageUpsert(sql`values (${storeId}::uuid, ${buckets.visitor}, ${window}, 1)`)}), everyone as (${usageUpsert(sql`select ${storeId}::uuid, ${buckets.store}, ${window}, 1 from mine where mine.count <= ${budget.visitor}`)}) select ...`. The statements sent must be the same text as today apart from white space."
-        },
-        {
-          "file": "src/server/{analytics-speed,analytics-visits,blog-comments,chat-turns,docs-search,domain-search,draft-orders,draft-pay,ecb-rates,exchange-pay,exchanges,experiments,gift-card-cart,notifications,order-edit-pay,order-edits,own-speed,payment-terms,privacy-shopper,recommend-events,return-labels,reviews,self-signup,sign-in-limit,status,vat-checks,wordpress}.ts",
-          "action": "edit",
-          "how": "List with: rg -n 'insert into commerce[.]chat_usage' -B2 -A5 src --glob '!*.test.ts' (28 places in 27 files besides request-budget.ts). Each is the same upsert with its own store id, bucket and window, with or without `returning count`. Replace the statement by `await bumpUsage(EXECUTOR, STORE, BUCKET, WINDOW)` (import from \"./request-budget\"): EXECUTOR is what ran it (db() or the tx or the typedRow executor), STORE the same value (null stays null), WINDOW the same SQL (a file's local HOUR constant can be replaced by HOUR_WINDOW). Where the code read `row.count`, use the returned number; where it ignored the result, ignore it. Keep every surrounding try/catch, limit test and log line exactly. If a statement differs in more than those three values (another conflict rule, `count + n`, a CTE), leave it and name it in your report."
-        },
-        {
-          "file": "src/lib/local-helpers.scan.test.ts",
-          "action": "edit",
-          "how": "Add a second test over src (tests and src/db/*fixture*.ts aside): the text `insert into commerce.order_events` appears only in src/server/order-actor.ts, and `insert into commerce.chat_usage` only in src/server/request-budget.ts, plus an explicit list of the places you left unconverted, each with a reason of one line."
-        }
-      ],
-      "checks": [
-        "rg -c 'insert into commerce[.]order_events' src --glob '!*.test.ts' : prints src/server/order-actor.ts:1 and src/db/invoice-fixture.ts:1 and nothing else",
-        "rg -c 'insert into commerce[.]chat_usage' src --glob '!*.test.ts' | awk -F: '{s+=$2} END {print s}' : prints 2 or less",
-        "pnpm exec vitest run src/server/money-reads.scan.test.ts src/server/selling-readers.scan.test.ts src/server/price-readers.scan.test.ts src/server/restricted-orders.scan.test.ts src/server/ratchet.scan.test.ts src/lib/local-helpers.scan.test.ts : exits 0 (run node scripts/ratchet.mjs if a count fell)",
-        "pnpm lint && pnpm typecheck && pnpm test : exits 0",
-        "pnpm test:int : exits 0 with no test edited (the order, exchange, fulfilment, draft-order, request-budget and budget-fail-closed tests are the proof)"
-      ]
-    },
-    {
-      "title": "The product title with its fallback is one fragment",
-      "changes": [
-        {
-          "file": "src/server/product-title.ts",
-          "action": "create",
-          "how": "`import \"server-only\";`, imports sql and SQL from drizzle-orm. Exports: `titleJoin(product: SQL, locale: SQL | string): SQL` = sql`left join commerce.product_translations tl on tl.product_id = ${product} and tl.locale = ${locale} left join lateral (select title from commerce.product_translations where product_id = ${product} order by locale limit 1) tf on true` (product is the id column as raw SQL, for example sql`p.id`; a locale given as a string is bound as a parameter, a locale given as SQL such as sql`s.locale` is inlined); `TITLE: SQL` = sql`coalesce(tl.title, tf.title, p.handle)`; `TITLE_OR_NULL: SQL` = sql`coalesce(tl.title, tf.title)`. The aliases tl and tf are fixed."
-        },
-        {
-          "file": "src/server/*.ts",
-          "action": "edit",
-          "how": "List the places with: rg -n 'product_translations tl' -A4 src/server --glob '!*.test.ts' (about 50 lines in 33 files). Convert a place only when it has BOTH joins in exactly this shape (the tl join on the locale and the lateral tf join that takes any language's title) and nothing more in either: replace the two joins by `${titleJoin(sql`p.id`, LOCALE)}` and the select's `coalesce(tl.title, tf.title, p.handle)` by `${TITLE}`. A place whose select says `coalesce(tl.title, tf.title)` with no handle (9 places: rg -n 'coalesce[(]tl[.]title, tf[.]title[)]' src/server gives catalog.ts 4, wordpress.ts 2, cart.ts 1, custom-fields.ts 1, wordpress-shop.ts 1) gets `${TITLE_OR_NULL}`: the result does not change in this step. A place that joins tl only, selects other columns from tl or tf (description, slug), or has another fallback order is left as it is. src/server/catalog.ts and src/server/cart.ts and src/server/checkout.ts are read on a shopper's path: convert them in a commit of their own."
-        }
-      ],
-      "checks": [
-        "pnpm exec vitest run src/server/money-reads.scan.test.ts src/server/selling-readers.scan.test.ts src/server/price-readers.scan.test.ts src/server/ratchet.scan.test.ts : exits 0",
-        "pnpm lint && pnpm typecheck && pnpm test : exits 0",
-        "pnpm test:int : exits 0 with no test edited",
-        "pnpm build && pnpm test:e2e e2e/store-pages.spec.ts : exits 0 (product titles on the storefront)"
-      ]
-    },
-    {
-      "title": "English word lists have one source: the catalogue reads the list beside its code",
-      "changes": [
-        {
-          "file": "src/lib/admin-messages/*.en.ts",
-          "action": "edit",
-          "how": "Work through the 32 assertions that hold a catalogue section equal to a constant. List them: rg -n \"toEqual[(]\\w+_(WORDS|LABELS|TEXT|NAMES|COPY|NOTE)[)]|toBe[(]\\w+_(WORDS|LABELS|TEXT|NAMES|COPY|NOTE)[)]\" src --glob '*.test.*'. Skip the five whose left side is not a catalogue (src/server/analytics-returns-data.int.test.ts:266, analytics-refunds-data.int.test.ts:197, analytics-search-data.int.test.ts:153 and :309, src/lib/shopify-copy.test.ts:173): they stay. For each of the others take the constant's name C and the catalogue path P it is compared with (for example financeEn.payouts.status and PAYOUT_STATUS_WORDS). Run rg -w C src --glob '!*.test.*'. Case 1, only the file that declares C matches: delete C from that file, and delete the assertion line (and the test case if it is then empty, and the import). The catalogue's literal is the one copy. Case 2, other production files read C: in the catalogue file replace the literal at P by C, imported with a relative import as src/lib/admin-messages/inventory.en.ts lines 2 to 5 do, and delete the assertion. Do Case 2 only when C's module has no `import \"server-only\"` and imports no module from src/server or src/db; if it does (src/server/privacy-admin.ts), move C into a new words-only file next to the catalogue users, src/lib/<module>-words.ts with no imports, export it from there, re-export it from the old module, and let the catalogue import the words file. Case 3, the assertion is `toBe` on the whole catalogue (src/lib/backdrops.test.ts:131: backdropsEn is BACKDROP_WORDS itself): already one copy; delete only the assertion."
-        },
-        {
-          "file": "src/lib/admin-messages/{privacy,returns,builder,design,legal,drafts,product,tax-reports,marketing,order,experiments,common,settings}.en.ts",
-          "action": "edit",
-          "how": "Then the pairs the copy detector lists where a catalogue repeats a code module's list (17 pairs in the review; run node scripts/copies.mjs and read the pairs that name a .en.ts file): privacy.en.ts with src/lib/erasure-plan.ts (TABLE_LABELS, lines 93 to 135, is `tables:` at privacy.en.ts 175 to 183) and with src/server/privacy-admin.ts; returns.en.ts with src/lib/exchange.ts; builder.en.ts with src/lib/page-content.ts and src/lib/theme-elements.ts; design.en.ts with src/lib/theme-changes.ts and src/lib/theme-update.ts; legal.en.ts with src/lib/legal-roles.ts; drafts.en.ts with src/lib/order-edit.ts and src/lib/draft-order.ts; product.en.ts with src/lib/unit-price-editor.ts; tax-reports.en.ts with src/lib/tax-classes.ts; marketing.en.ts with src/lib/segments.ts; order.en.ts with src/lib/order-ops-events.ts; experiments.en.ts with src/lib/ab-site.ts; common.en.ts with src/lib/data-admin.ts; settings.en.ts with src/components/admin/seo-fields.tsx. For each pair open both files at the shared lines. If the lib side is an exported constant with the same keys and texts: Case 2 above. If the texts are inside a function or differ in a word: leave the pair and write its reason into src/lib/copies.baseline.json with node scripts/copies.mjs --write --reason. For builder.en.ts with page-content.ts (a large module): always use the words-only file, never import page-content.ts into the catalogue. Leave the fallback at src/components/admin/privacy/request-detail.tsx line 234 as it is."
-        },
-        {
-          "file": "src/lib/privacy-text.ts",
-          "action": "edit",
-          "how": "STAFF_TEXT (line 720): for each member run rg -n 'STAFF_TEXT[.]member' src; delete the members nothing reads. The same for redirectSentences in src/lib/redirects.ts line 283. Leave KIND_TITLES (src/lib/data-admin.ts line 179) and LIFECYCLE_WORDS (src/lib/lifecycle.ts line 27) whole: they are typed as full Records."
-        }
-      ],
-      "checks": [
-        "rg -n \"toEqual[(]\\w+_(WORDS|LABELS|TEXT|NAMES|COPY|NOTE)[)]|toBe[(]\\w+_(WORDS|LABELS|TEXT|NAMES|COPY|NOTE)[)]\" src --glob '*.test.*' | wc -l : prints 5 (the four analytics notes and EMPTY_COPY, none of them a catalogue)",
-        "pnpm exec vitest run src/components/admin/admin-catalogues.scan.test.ts src/lib/admin-strings.scan.test.ts src/lib/brand.scan.test.ts src/lib/storefront-bundle.scan.test.ts src/lib/admin-messages : exits 0 (the Norwegian catalogue still has every English key)",
-        "node scripts/unused.mjs --write : exits 0 and removes the deleted constants from testOnlyExports; node scripts/copies.mjs --write : lowers the numbers",
-        "pnpm lint && pnpm typecheck && pnpm test : exits 0",
-        "pnpm build : exits 0; then run the admin script budget the repo has at that time (pnpm test:e2e e2e/signed-in/admin-text-fallbacks.spec.ts with E2E_SIGNED_IN=1, and the route budget script of step 1.1 if it exists) : no admin route's first scripts grew by more than 2,000 bytes"
-      ]
-    }
-  ],
-  "tests": [
-    {
-      "file": "src/lib/local-helpers.scan.test.ts",
-      "proves": "Fails when a file other than the home declares fail(message): never, isUuid, isUniqueViolation, addDays, daysBetween, isDay or countryName, and when the order event insert or the usage upsert is typed outside order-actor.ts or request-budget.ts."
-    },
-    {
-      "file": "src/lib/day.test.ts",
-      "proves": "Fails when the one addDays, daysBetween or isDay gives another answer at a month end, a leap day, a negative step or an impossible date."
-    },
-    {
-      "file": "src/lib/copies.scan.test.ts",
-      "proves": "Fails when a catalogue and a code module hold the same list again (exact copies across files may not rise)."
-    }
-  ],
-  "migration": {
-    "needed": false,
-    "notes": ""
+ "id": "3.15",
+ "goal": "fail(), isUuid, isUniqueViolation, the calendar-day helpers, countryName, the product-title join, the usage counter and the order event each have one home that a scan test keeps, and no English word list is kept both as a constant and in a catalogue.",
+ "why": "Today fail() is declared in 43 server files, isUuid and isUniqueViolation 32 times, the day and country helpers 31 times with different bodies, the order event insert is typed 34 times and the usage upsert 32 times, and 37 test assertions hold word lists equal. After: 1, 2, at most 8, 1 (plus one test fixture), at most 2, and 0 catalogue assertions.",
+ "read_first": [
+  "docs/rules/storefront.md",
+  "docs/platform-admin-i18n.md",
+  "src/server/owner-tool-error.ts",
+  "src/server/order-actor.ts",
+  "src/server/request-budget.ts",
+  "src/lib/analytics-period.ts",
+  "src/lib/admin-messages/inventory.en.ts",
+  "src/lib/storefront-bundle.scan.test.ts"
+ ],
+ "depends_on": [
+  {
+   "id": "1.17",
+   "why": "its copies and unused baselines (scripts/copies.mjs, scripts/unused.mjs) are lowered here and its unused scan names the word constants only tests read"
   },
-  "done_when": [
+  {
+   "id": "3.13",
+   "why": "it removes four of the nine isUniqueViolation copies (the import files) with the import core; do it first so they are not edited twice"
+  }
+ ],
+ "commits": [
+  {
+   "title": "fail(), isUuid and isUniqueViolation each have one home, and a scan keeps it",
+   "changes": [
     {
-      "check": "rg -c '^(export )?(const|function) (isUuid|isUniqueViolation)' src --glob '!*.test.ts' | awk -F: '{s+=$2} END {print s}'",
-      "expect": "2"
+     "file": "src/server/owner-tool-error.ts",
+     "action": "edit",
+     "how": "Under the class add: `/** Refuses a tool call in words: throws the refusal the model is told. */ export const fail = (message: string): never => { throw new OwnerToolError(message); };`. Nothing else."
     },
     {
-      "check": "rg -l 'const fail = [(]message: string[)]: never' src/server | wc -l",
-      "expect": "1"
+     "file": "src/server/*.ts",
+     "action": "edit",
+     "how": "List the files with: rg -l 'const fail = [(]message: string[)]: never' src/server (43 files). In each, look at the line after the declaration. If it is `throw new OwnerToolError(message);`: delete the three-line local const and add `fail` to the file's existing import from \"./owner-tool-error\" (or \"@/server/owner-tool-error\"); if OwnerToolError is then unused in the file, drop it from the import. If it throws another class (src/server/shopping-agents.ts throws AgentToolError): rename that local to `refuse` in its own file (declaration and every call in the file) so the name fail means one thing; do not import the shared one there."
     },
     {
-      "check": "rg -c 'insert into commerce[.]order_events' src/server src/app src/lib --glob '!*.test.ts' | awk -F: '{s+=$2} END {print s}'",
-      "expect": "1 (src/db/invoice-fixture.ts, a test fixture that sets created_at, keeps its own and is outside these folders)"
+     "file": "src/lib/ids.ts",
+     "action": "create",
+     "how": "No imports. `const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;` and `/** Whether a value is a UUID in text form. A pattern, not zod, so the storefront's bundles stay small. */ export const isUuid = (value: unknown): value is string => typeof value === \"string\" && UUID.test(value);`."
     },
     {
-      "check": "rg -c 'insert into commerce[.]chat_usage' src --glob '!*.test.ts' | awk -F: '{s+=$2} END {print s}'",
-      "expect": "2 or less"
+     "file": "src/lib/experiments.ts",
+     "action": "edit",
+     "how": "Line 127: replace the declaration by `export { isUuid } from \"./ids\";` and add `import { isUuid } from \"./ids\";` if the file calls it. Remove the file's UUID constant if nothing else reads it. Do the same in src/lib/admin-api.ts line 116 (its own `changes` entry below)."
     },
     {
-      "check": "rg -c '^(export )?(function|const) (addDays|daysBetween|isDay|countryName)\\b' src/lib src/server --glob '!*.test.ts' | awk -F: '{s+=$2} END {print s}'",
-      "expect": "8 or less"
+     "file": "src/lib/admin-api.ts",
+     "action": "edit",
+     "how": "Line 116: replace the declaration by `export { isUuid } from \"./ids\";` plus a local import if the file calls it. Importers of `isUuid` from @/lib/admin-api (src/server/admin-api.ts, src/server/admin-api-kit.ts, src/app/admin/(gated)/platform/docs/feedback/actions.ts) keep working unchanged."
     },
     {
-      "check": "rg -n \"(toEqual|toBe)[(]\\w+_(WORDS|LABELS|TEXT|NAMES|COPY|NOTE)[)]\" src --glob '*.test.*' | rg 'En[.]|En[)]'",
-      "expect": "prints nothing: no test holds a catalogue section equal to a words constant"
+     "file": "src/server/{preview-links,exchanges,theme-installs,design-presets,return-labels,platform-endpoints,platform-theme-installs,work-time,store-starters,work-invoices,work-owner,work-emails,domain-purchases,work,site-staging,demo-stores,theme-prices,live-drills,work-recurring,platform-workflows}.ts",
+     "action": "edit",
+     "how": "In each of these 21 files delete the local `const isUuid = ...` line and add `import { isUuid } from \"@/lib/ids\";`: src/server/preview-links.ts, exchanges.ts, theme-installs.ts, design-presets.ts, return-labels.ts, platform-endpoints.ts, platform-theme-installs.ts, work-time.ts, store-starters.ts, work-invoices.ts, work-owner.ts, work-emails.ts, domain-purchases.ts, work.ts, site-staging.ts, demo-stores.ts, theme-prices.ts, live-drills.ts, work-recurring.ts, platform-workflows.ts (all under src/server) and src/app/admin/(gated)/[store]/settings/shipping/actions.ts. Seven of them (work-time.ts, work-invoices.ts, work-owner.ts, work-emails.ts, work.ts, work-recurring.ts, live-drills.ts and the shipping actions file) used z.uuid() (zod 4.6.7): the pattern accepts every string z.uuid() accepted, and also hex strings of the same shape without the RFC version and variant digits (for example 00000000-0000-0000-0000-000000000001), which z.uuid() refused. That widening is harmless: every value goes into a `::uuid` cast, which Postgres accepts for any such string, and a row with that id simply is not found. If a test of these files expects such a string to be refused, stop (stop_if: a test must be edited). If `z` is then unused in a file, remove its import."
     },
     {
-      "check": "Add `const isUuid = (v: string) => v.length === 36;` to a new file src/server/trial-helper.ts and run pnpm exec vitest run src/lib/local-helpers.scan.test.ts; then delete the file",
-      "expect": "the test fails naming src/server/trial-helper.ts and src/lib/ids.ts"
+     "file": "src/server/pg-errors.ts",
+     "action": "create",
+     "how": "`import \"server-only\";` then `/** A unique index refused the insert. Drizzle wraps the driver's error, so the code may be on a cause. */ export function isUniqueViolation(error: unknown): boolean { for (let e = error, depth = 0; e && depth < 5; e = (e as { cause?: unknown }).cause, depth++) if ((e as { code?: unknown }).code === \"23505\") return true; return false; }` (the body of src/server/store-roles.ts line 59, which covers the two-level body of privacy-erasure.ts line 366)."
+    },
+    {
+     "file": "src/server/{privacy-erasure,store-roles,pages,kaizen-life-accounts,inventory-jobs,customer-import,redirect-import,order-history-import,product-import}.ts",
+     "action": "edit",
+     "how": "List with: rg -n '^(export )?(const|function) isUniqueViolation' src. In privacy-erasure.ts replace the declaration by `export { isUniqueViolation } from \"./pg-errors\";` and import it for its own use. In every other file listed delete the local declaration and add `import { isUniqueViolation } from \"./pg-errors\";`. After step 3.13 the list is shorter: edit what rg prints."
+    },
+    {
+     "file": "src/lib/local-helpers.scan.test.ts",
+     "action": "create",
+     "how": "A vitest file. It walks src (not node_modules; skips *.test.ts, *.test.tsx; use src/test/source-files.ts if step 4.3 has made it, else a small readdirSync walker) and fails, naming the file and the home, when a file other than the home declares one of these at top level (pattern `^(export )?(const|function|async function) NAME\\b`): fail with the text `(message: string): never` outside src/server/owner-tool-error.ts; isUuid outside src/lib/ids.ts; isUniqueViolation outside src/server/pg-errors.ts. Keep the rules in an exported array `HOMES: { name: string; home: string; allow?: string[] }[]` so later commits add rows. Add one test that proves the pattern on strings: `const isUuid = (v: string) => true` in a made-up path is caught, `export { isUuid } from \"./ids\"` is not."
     }
-  ],
-  "after_deploy": [
-    "Place a test order in the demo store and open it in the admin: its history shows the events (placed, payment started, paid) with who did them, as before.",
-    "select count(*) from commerce.chat_usage where \"window\" > now() - interval '1 hour' (Supabase SQL editor, read only): a number above 0 after a few page views, so the counter still counts."
-  ],
-  "docs": [
-    "docs/decisions.md: one new D-number row: the homes (src/server/owner-tool-error.ts fail, src/lib/ids.ts, src/server/pg-errors.ts, src/lib/day.ts, src/lib/country-name.ts, src/server/product-title.ts, writeOrderEvent, bumpUsage), that src/lib/local-helpers.scan.test.ts holds them, that the nine title reads without the handle fallback keep their result (TITLE_OR_NULL) and are listed for a later decision, and that a catalogue imports a word list from beside its code.",
-    "CLAUDE.md, Conventions: one sentence naming the homes and the scan test (the finding FM-12 asks for it).",
-    "docs/platform-admin-i18n.md: one sentence: an English list that code also reads lives beside the code (or in a words-only file) and the .en.ts catalogue imports it; no test holds two copies equal.",
-    "docs/wave-3-orders.md and docs/capacity.md: where they name the order event's writer or the usage counter, name writeOrderEvent() and bumpUsage().",
-    "docs/audits/bloat-review-2026-11.md, Progress table: set step 3.15 to Done with the date and the commit; list in the row the places left unconverted."
-  ],
-  "do_not": [
-    "Do not change what a converted statement writes: same columns, same values, same executor (a write inside a transaction stays inside it).",
-    "Do not switch the nine title reads without the handle fallback to TITLE in this step: a storefront card would start to show a handle.",
-    "Do not fold addDays or daysBetween of src/lib/analytics-period.ts or daysBetween of src/lib/work-dates.ts: they throw for a non-day and their tests hold that.",
-    "Do not touch the seven dayOf helpers, the local `money` helpers or the local `iso` helpers: they share a name, not a job (iso goes with the typedRows() burn-down).",
-    "Do not delete a word constant that a production file, an AI tool's description or a prompt reads: rg -w it first. A changed prompt would need a new prompt version and eval run, which this step must not cause.",
-    "Do not import a server-only module or src/lib/page-content.ts into a catalogue file.",
-    "Do not convert the fixture src/db/invoice-fixture.ts.",
-    "Do not sweep other repeated helpers (adminLink, mainLocale, obj, list): the repeated-helper ratchet of step 1.17 holds them and they fold when their file is opened."
-  ],
-  "stop_if": [
-    "A test must be edited to pass, other than an import line of countryName or a deleted equality assertion named above.",
-    "The day table test shows two addDays bodies giving different answers for a valid day.",
-    "src/server/prompt-versions tests or src/lib/agent-eval.test.ts fail (a prompt's text changed).",
-    "An order_events or chat_usage statement differs from the plain form in a way the brief did not name and more than five places are left unconverted.",
-    "pnpm test:int fails in checkout, order or budget tests after a conversion.",
-    "An admin route's first scripts grow by more than 2,000 bytes after a catalogue imports a lib module."
-  ],
-  "executor": "cheap-then-review",
-  "executor_why": "Each edit is a fixed replacement that the type check, the scans and the integration tests catch, but about 150 files change, among them checkout's event write and the request budget, so a stronger model should read each commit's diff before it is pushed.",
-  "checked_in_code": "I ran the step's counts on today's code: 43 fail declarations (one, shopping-agents.ts, throws AgentToolError, so it is renamed, not folded), 32 isUuid and isUniqueViolation declarations, 31 day and country declarations, 34 order event inserts in 23 files and 32 usage upserts in 28 files, 37 assertions. Corrections: the done-when of 1 for the order event cannot be met over all of src because src/db/invoice-fixture.ts (a test fixture that sets created_at) holds one, so the check reads src/server, src/app and src/lib; request-budget.ts itself types the usage upsert four times inside two CTEs, so the brief adds a usageUpsert(source) fragment to reach 2; five of the 37 assertions compare a server result or a state with a constant, not a catalogue, and stay. The day helpers' bodies agree for valid days but analytics-period.ts and work-dates.ts throw for a non-day, so those stay and the count lands at 7 or 8. I kept the nine title reads without a handle fallback on TITLE_OR_NULL because four are the storefront's cached catalogue reads."
+   ],
+   "checks": [
+    "rg -c '^(export )?(const|function) (isUuid|isUniqueViolation)' src --glob '!*.test.ts' | awk -F: '{s+=$2} END {print s}' : prints 2",
+    "rg -l 'const fail = [(]message: string[)]: never' src/server : prints src/server/owner-tool-error.ts only",
+    "pnpm exec vitest run src/lib/local-helpers.scan.test.ts src/lib/storefront-bundle.scan.test.ts src/lib/agent-eval.test.ts src/server/ratchet.scan.test.ts : exits 0",
+    "pnpm lint && pnpm typecheck && pnpm test : exits 0",
+    "pnpm test:int src/server/redirect-tools.int.test.ts src/server/work-owner.int.test.ts src/server/work-settings.int.test.ts : exits 0 with no test edited"
+   ]
+  },
+  {
+   "title": "Calendar days and country names have one module each",
+   "changes": [
+    {
+     "file": "src/lib/day.ts",
+     "action": "create",
+     "how": "No imports. Three exports for days written 'YYYY-MM-DD'. `isDay(value: unknown): value is string`: a string matching /^\\d{4}-\\d{2}-\\d{2}$/ whose `new Date(`${value}T00:00:00Z`)` is valid and whose toISOString().slice(0, 10) equals the value (the body of src/lib/invoice-admin.ts line 34). `addDays(day: string, days: number): string`: `const [y, m, d] = day.split(\"-\").map(Number); return new Date(Date.UTC(y, m - 1, d + days)).toISOString().slice(0, 10);` (the body of src/lib/booking-slots.ts line 73; it never throws). `daysBetween(from: string, to: string): number`: `Math.round((Date.parse(`${to}T00:00:00Z`) - Date.parse(`${from}T00:00:00Z`)) / 86_400_000)` (the body of src/lib/first-touch.ts line 50)."
+    },
+    {
+     "file": "src/lib/day.test.ts",
+     "action": "create",
+     "how": "Before deleting any copy: tests of the three functions with a month end (2026-01-31 + 1), a leap day (2028-02-28 + 1 and + 2), a year end, a negative step, a step of 0, 400 days, daysBetween both ways and across a daylight-saving weekend (2026-03-28 to 2026-03-30 is 2), isDay on 2026-02-30 (false), '2026-2-3' (false), a number (false). Also one table test that imports, while they still exist, addDays from retention, order-list, booking-slots, staff-alerts, payment-terms, gift-card-line and analytics-period and asserts each gives day.ts's answer for the same twelve inputs; delete that table test in the same commit after the copies are re-exports (it then proves nothing)."
+    },
+    {
+     "file": "src/lib/{retention,order-list,booking-slots,staff-alerts,payment-terms,gift-card-line}.ts",
+     "action": "edit",
+     "how": "In each of the six, replace the exported `addDays` function by `export { addDays } from \"./day\";` and, where the file calls addDays itself, add `import { addDays } from \"./day\";`. Importers do not change. Remove a helper (`pad`) only if nothing else in the file uses it."
+    },
+    {
+     "file": "src/lib/{platform-briefing,recurring-costs,tripletex-invoices,first-touch,books-clients,business-change,work-import}.ts",
+     "action": "edit",
+     "how": "Delete the local (not exported) helper and import it from \"./day\": addDays in platform-briefing.ts line 97, recurring-costs.ts line 71 and tripletex-invoices.ts line 360; daysBetween in first-touch.ts line 50, books-clients.ts line 79, business-change.ts line 48 and work-import.ts line 500."
+    },
+    {
+     "file": "src/lib/{ledger,producer-registrations,invoice-admin}.ts",
+     "action": "edit",
+     "how": "isDay: in ledger.ts line 99 and producer-registrations.ts line 55 replace the exported function by `export { isDay } from \"./day\";` (plus a local import where the file calls it); in invoice-admin.ts line 34 delete the local const and import it. Do the same for the local isDay of src/server/invoices.ts line 29 and src/server/invoice-export.ts line 23 (import from \"@/lib/day\"): theirs tested the pattern only, so 2026-02-30 is now refused as a day instead of being sent to the database, which is the wanted result; if a test of those two files expects 2026-02-30 to pass, stop."
+    },
+    {
+     "file": "src/server/invoices.ts",
+     "action": "edit",
+     "how": "Delete the local `const isDay` (line 29) and add `import { isDay } from \"@/lib/day\";`. The same edit in src/server/invoice-export.ts line 23."
+    },
+    {
+     "file": "src/lib/analytics-period.ts",
+     "action": "edit",
+     "how": "Leave addDays and daysBetween here: they throw RangeError for a text that is not a day and analytics-period.test.ts holds that. Replace only isDay (line 93) by `export { isDay } from \"./day\";` if analytics-period.test.ts passes with it; if not, leave it and add the file to the scan's allow list for isDay."
+    },
+    {
+     "file": "src/lib/work-dates.ts",
+     "action": "edit",
+     "how": "Leave daysBetween (it throws for a non-day and takes the Day type). Leave isDay unless `parseDay(text) !== null` and day.ts's isDay agree on every case of work-dates.test.ts; if they do, make it `export { isDay } from \"./day\";`."
+    },
+    {
+     "file": "src/lib/platform-experiments.ts",
+     "action": "edit",
+     "how": "Line 33: rename the exported `daysBetween` (it takes two Dates and floors, never below 0) to `wholeDaysSince` and rename its uses: rg -n 'daysBetween' src/lib/platform-experiments.ts src/lib/platform-experiments.test.ts src/server src/components src/app | rg -i experiment."
+    },
+    {
+     "file": "src/lib/country-name.ts",
+     "action": "create",
+     "how": "No imports. `const names = new Map<string, Intl.DisplayNames>();` and `export function countryName<M>(code: string | null | undefined, locale: string, missing: M): string | M`: returns `missing` for an empty code; else, inside try, takes `const upper = code.toUpperCase()`, gets the Intl.DisplayNames for the locale from the map (creating it with `{ type: \"region\" }`), `const name = display.of(upper)`, and returns name when it is a string different from upper, else `missing`; catch returns `missing`."
+    },
+    {
+     "file": "src/lib/{vat-text,fiken,drop-shipping,invoice-admin}.ts",
+     "action": "edit",
+     "how": "Delete each file's exported countryName and point its callers at the home, keeping each caller's answer for a missing code. Find callers per module with: rg -n 'countryName' src --glob '!*.test.ts' and read which module each imports from. vat-text.ts (code, locale) answered the code: callers write `countryName(code, locale, code)`. fiken.ts answered null: `countryName(code, \"en\", null)`. drop-shipping.ts (REGIONS.of(code) ?? code, English): `countryName(code, \"en\", code)`; delete REGIONS if unused. invoice-admin.ts (a dash for no code, the code for an unknown one): `code ? countryName(code, language, code) : \"–\"`. Tests that imported countryName from one of these modules import it from @/lib/country-name with the third argument: that import line is the one edit to a test this commit allows."
+    },
+    {
+     "file": "src/server/setup-tools.ts",
+     "action": "edit",
+     "how": "Delete the exported countryName (line 78); its callers write `countryName(code, \"en\", code)` from @/lib/country-name. (src/server/staff-alerts.ts is the next entry.)"
+    },
+    {
+     "file": "src/server/staff-alerts.ts",
+     "action": "edit",
+     "how": "Delete the local `const countryName = (code, lang = \"en\") => …` (line 268; it answered null for no code and the code for an unknown one) and import countryName from \"@/lib/country-name\". Its three calls become: line 334 `countryName(f.countryCode, lang)` (inside a ternary that already tested f.countryCode) -> `countryName(f.countryCode, ADMIN_LANG_FACTS[lang].tag, f.countryCode)`; line 377 -> put `const shipCountry = order.shippingAddress?.country ?? (order.ships ? order.marketCode : null);` above the object and write `country: shipCountry ? countryName(shipCountry, \"en\", shipCountry) : null`; line 1305 -> `country: store.details.country ? countryName(store.details.country, \"en\", store.details.country) : null`. (The old default language was \"en\", whose tag is \"en\".)"
+    },
+    {
+     "file": "src/lib/porterbuddy.ts",
+     "action": "edit",
+     "how": "Line 23 reads the carrier's own table: rename it to `carrierCountryName` (and its uses: rg -n 'countryName' src/lib/porterbuddy.ts src/server/carriers/porterbuddy.ts src/server/porterbuddy-shipping.ts src/lib/porterbuddy.test.ts). The table stays."
+    },
+    {
+     "file": "src/lib/local-helpers.scan.test.ts",
+     "action": "edit",
+     "how": "Add rows to HOMES: addDays home src/lib/day.ts allow [src/lib/analytics-period.ts]; daysBetween home src/lib/day.ts allow [src/lib/analytics-period.ts, src/lib/work-dates.ts]; isDay home src/lib/day.ts allow whatever of analytics-period.ts and work-dates.ts still declares it; countryName home src/lib/country-name.ts. For these four the walk covers src/lib and src/server only."
+    }
+   ],
+   "checks": [
+    "pnpm exec vitest run src/lib/day.test.ts src/lib/analytics-period.test.ts src/lib/work-dates.test.ts src/lib/fiken.test.ts src/lib/local-helpers.scan.test.ts src/lib/storefront-bundle.scan.test.ts : exits 0",
+    "rg -c '^(export )?(function|const) (addDays|daysBetween|isDay|countryName)\\b' src/lib src/server --glob '!*.test.ts' | awk -F: '{s+=$2} END {print s}' : prints 8 or less (31 before)",
+    "pnpm lint && pnpm typecheck && pnpm test : exits 0"
+   ]
+  },
+  {
+   "title": "The order event and the usage counter are written in one place each",
+   "changes": [
+    {
+     "file": "src/server/order-actor.ts",
+     "action": "edit",
+     "how": "writeOrderEvent() stays as it is. Widen its last parameter's use only if a caller needs it: it already takes any actor string ('staff', 'system', 'shopper', 'mollie')."
+    },
+    {
+     "file": "src/server/{booking-changes,bookings,checkout,company-approvals,delivery-options,dispute-evidence,invoice-notices,local-delivery,no-show,order-admin,order-delivery,order-insert,payment-capture,payment-disputes,payment-session,pickup,standing-orders,stripe-refunds,subscriptions}.ts",
+     "action": "edit",
+     "how": "List the places with: rg -n 'insert into commerce[.]order_events' -A3 src/server src/app --glob '!*.test.ts' (32 places in 21 files besides order-actor.ts; also src/server/payment-providers/mollie.ts and src/server/return-facts.ts). Each is `await X.execute(sql`insert into commerce.order_events (store_id, order_id, type, data, actor) values (${S}::uuid, ${O}::uuid, TYPE, ${JSON.stringify(DATA)}::jsonb, ACTOR)`)`. Replace it by `await writeOrderEvent(X, S, O, TYPE, DATA, ACTOR);` with `import { writeOrderEvent } from \"./order-actor\";`: X is the same executor (tx or db()), TYPE the same literal or variable as a JS string, DATA the object that was inside JSON.stringify, ACTOR the same string or expression. Where the file has a private helper that only wraps this insert (payment-disputes.ts line 54, booking-changes.ts line 64), make the helper's body the one call. If an insert has any other column (created_at), a `returning`, an `on conflict`, a select in place of values, or sits inside a larger statement (a CTE), do not convert it: leave it and name it in your report. src/server/checkout.ts and src/server/order-insert.ts are the paid order's path: convert them last, in a commit of their own, and run pnpm test:int on checkout before pushing."
+    },
+    {
+     "file": "src/server/payment-providers/mollie.ts",
+     "action": "edit",
+     "how": "Its two inserts (lines 106 and 212) become writeOrderEvent() calls as above (import from \"../order-actor\")."
+    },
+    {
+     "file": "src/server/return-facts.ts",
+     "action": "edit",
+     "how": "Line 190: replace the body of writeEvent by `await writeOrderEvent(tx, storeId, orderId, type, data, actor);` and keep the exported name and signature (its importers stay)."
+    },
+    {
+     "file": "src/server/request-budget.ts",
+     "action": "edit",
+     "how": "Add two exports above budgetRoom(). (1) `usageUpsert(source: SQL): SQL` returning sql`insert into commerce.chat_usage (store_id, bucket, \"window\", count) ${source} on conflict (store_id, bucket, \"window\") do update set count = commerce.chat_usage.count + 1 returning count`: `source` is the rows to write, a `values (...)` or a `select ...`. (2) `async function bumpUsage(executor: Pick<Db, \"execute\">, storeId: string | null, bucket: string, window: SQL): Promise<number>` which runs `usageUpsert(sql`values (${storeId}::uuid, ${bucket}, ${window}, 1)`)` and returns Number(row?.count ?? 0). Also export `HOUR_WINDOW = sql`date_trunc('hour', now())`` and `MINUTE_WINDOW`. Rewrite the four inserts inside this file's two CTE statements (budgetRoom line 143, takeMcpBudget/takeBudget about line 175) with `${usageUpsert(...)}` so the insert text is written once in the file: `with mine as (${usageUpsert(sql`values (${storeId}::uuid, ${buckets.visitor}, ${window}, 1)`)}), everyone as (${usageUpsert(sql`select ${storeId}::uuid, ${buckets.store}, ${window}, 1 from mine where mine.count <= ${budget.visitor}`)}) select ...`. The statements sent must be the same text as today apart from white space."
+    },
+    {
+     "file": "src/server/{analytics-speed,analytics-visits,blog-comments,chat-turns,docs-search,domain-search,draft-orders,draft-pay,ecb-rates,exchange-pay,exchanges,experiments,gift-card-cart,notifications,order-edit-pay,order-edits,own-speed,payment-terms,privacy-shopper,recommend-events,return-labels,reviews,self-signup,sign-in-limit,status,vat-checks,wordpress}.ts",
+     "action": "edit",
+     "how": "List with: rg -n 'insert into commerce[.]chat_usage' -B2 -A5 src --glob '!*.test.ts' (28 places in 27 files besides request-budget.ts). Each is the same upsert with its own store id, bucket and window, with or without `returning count`. Replace the statement by `await bumpUsage(EXECUTOR, STORE, BUCKET, WINDOW)` (import from \"./request-budget\"): EXECUTOR is what ran it (db() or the tx or the typedRow executor), STORE the same value (null stays null), WINDOW the same SQL (a file's local HOUR constant can be replaced by HOUR_WINDOW). Where the code read `row.count`, use the returned number; where it ignored the result, ignore it. Keep every surrounding try/catch, limit test and log line exactly. If a statement differs in more than those three values (another conflict rule, `count + n`, a CTE), leave it and name it in your report."
+    },
+    {
+     "file": "src/lib/local-helpers.scan.test.ts",
+     "action": "edit",
+     "how": "Add a second test over src (tests and src/db/*fixture*.ts aside): the text `insert into commerce.order_events` appears only in src/server/order-actor.ts, and `insert into commerce.chat_usage` only in src/server/request-budget.ts, plus an explicit list of the places you left unconverted, each with a reason of one line."
+    }
+   ],
+   "checks": [
+    "rg -c 'insert into commerce[.]order_events' src --glob '!*.test.ts' : prints src/server/order-actor.ts:1 and src/db/invoice-fixture.ts:1 and nothing else",
+    "rg -c 'insert into commerce[.]chat_usage' src --glob '!*.test.ts' | awk -F: '{s+=$2} END {print s}' : prints 2 or less",
+    "pnpm exec vitest run src/server/money-reads.scan.test.ts src/server/selling-readers.scan.test.ts src/server/price-readers.scan.test.ts src/server/restricted-orders.scan.test.ts src/server/ratchet.scan.test.ts src/lib/local-helpers.scan.test.ts : exits 0 (run node scripts/ratchet.mjs if a count fell)",
+    "pnpm lint && pnpm typecheck && pnpm test : exits 0",
+    "pnpm test:int : exits 0 with no test edited (the order, exchange, fulfilment, draft-order, request-budget and budget-fail-closed tests are the proof)"
+   ]
+  },
+  {
+   "title": "The product title with its fallback is one fragment",
+   "changes": [
+    {
+     "file": "src/server/product-title.ts",
+     "action": "create",
+     "how": "`import \"server-only\";`, imports sql and SQL from drizzle-orm. Exports: `titleJoin(product: SQL, locale: SQL | string): SQL` = sql`left join commerce.product_translations tl on tl.product_id = ${product} and tl.locale = ${locale} left join lateral (select title from commerce.product_translations where product_id = ${product} order by locale limit 1) tf on true` (product is the id column as raw SQL, for example sql`p.id`; a locale given as a string is bound as a parameter, a locale given as SQL such as sql`s.locale` is inlined); `TITLE: SQL` = sql`coalesce(tl.title, tf.title, p.handle)`; `TITLE_OR_NULL: SQL` = sql`coalesce(tl.title, tf.title)`. The aliases tl and tf are fixed."
+    },
+    {
+     "file": "src/server/*.ts",
+     "action": "edit",
+     "how": "List the places with: rg -n 'product_translations tl' -A4 src/server --glob '!*.test.ts' (about 50 lines in 33 files). Convert a place only when it has BOTH joins in exactly this shape (the tl join on the locale and the lateral tf join that takes any language's title) and nothing more in either: replace the two joins by `${titleJoin(sql`p.id`, LOCALE)}` and the select's `coalesce(tl.title, tf.title, p.handle)` by `${TITLE}`. A place whose select says `coalesce(tl.title, tf.title)` with no handle (9 places: rg -n 'coalesce[(]tl[.]title, tf[.]title[)]' src/server gives catalog.ts 4, wordpress.ts 2, cart.ts 1, custom-fields.ts 1, wordpress-shop.ts 1) gets `${TITLE_OR_NULL}`: the result does not change in this step. A place that joins tl only, selects other columns from tl or tf (description, slug), or has another fallback order is left as it is. src/server/catalog.ts and src/server/cart.ts and src/server/checkout.ts are read on a shopper's path: convert them in a commit of their own."
+    }
+   ],
+   "checks": [
+    "pnpm exec vitest run src/server/money-reads.scan.test.ts src/server/selling-readers.scan.test.ts src/server/price-readers.scan.test.ts src/server/ratchet.scan.test.ts : exits 0",
+    "pnpm lint && pnpm typecheck && pnpm test : exits 0",
+    "pnpm test:int : exits 0 with no test edited",
+    "pnpm build && pnpm test:e2e e2e/store-pages.spec.ts : exits 0 (product titles on the storefront)"
+   ]
+  },
+  {
+   "title": "English word lists have one source: the catalogue reads the list beside its code",
+   "changes": [
+    {
+     "file": "src/lib/admin-messages/*.en.ts",
+     "action": "edit",
+     "how": "Work through the 32 assertions that hold a catalogue section equal to a constant. List them: rg -n \"toEqual[(]\\w+_(WORDS|LABELS|TEXT|NAMES|COPY|NOTE)[)]|toBe[(]\\w+_(WORDS|LABELS|TEXT|NAMES|COPY|NOTE)[)]\" src --glob '*.test.*'. Skip the five whose left side is not a catalogue (src/server/analytics-returns-data.int.test.ts:266, analytics-refunds-data.int.test.ts:197, analytics-search-data.int.test.ts:153 and :309, src/lib/shopify-copy.test.ts:173): they stay. For each of the others take the constant's name C and the catalogue path P it is compared with (for example financeEn.payouts.status and PAYOUT_STATUS_WORDS). Run rg -w C src --glob '!*.test.*'. Case 1, only the file that declares C matches: delete C from that file, and delete the assertion line (and the test case if it is then empty, and the import). The catalogue's literal is the one copy. Case 2, other production files read C: in the catalogue file replace the literal at P by C, imported with a relative import as src/lib/admin-messages/inventory.en.ts lines 2 to 5 do, and delete the assertion. Do Case 2 only when C's module has no `import \"server-only\"` and imports no module from src/server or src/db; if it does (src/server/privacy-admin.ts), move C into a new words-only file next to the catalogue users, src/lib/<module>-words.ts with no imports, export it from there, re-export it from the old module, and let the catalogue import the words file. Case 3, the assertion is `toBe` on the whole catalogue (src/lib/backdrops.test.ts:131: backdropsEn is BACKDROP_WORDS itself): already one copy; delete only the assertion."
+    },
+    {
+     "file": "src/lib/admin-messages/{privacy,returns,builder,design,legal,drafts,product,tax-reports,marketing,order,experiments,common,settings}.en.ts",
+     "action": "edit",
+     "how": "Then the pairs the copy detector lists where a catalogue repeats a code module's list (17 pairs in the review; run node scripts/copies.mjs and read the pairs that name a .en.ts file): privacy.en.ts with src/lib/erasure-plan.ts (TABLE_LABELS, lines 93 to 135, is `tables:` at privacy.en.ts 175 to 183) and with src/server/privacy-admin.ts; returns.en.ts with src/lib/exchange.ts; builder.en.ts with src/lib/page-content.ts and src/lib/theme-elements.ts; design.en.ts with src/lib/theme-changes.ts and src/lib/theme-update.ts; legal.en.ts with src/lib/legal-roles.ts; drafts.en.ts with src/lib/order-edit.ts and src/lib/draft-order.ts; product.en.ts with src/lib/unit-price-editor.ts; tax-reports.en.ts with src/lib/tax-classes.ts; marketing.en.ts with src/lib/segments.ts; order.en.ts with src/lib/order-ops-events.ts; experiments.en.ts with src/lib/ab-site.ts; common.en.ts with src/lib/data-admin.ts; settings.en.ts with src/components/admin/seo-fields.tsx. For each pair open both files at the shared lines. If the lib side is an exported constant with the same keys and texts: Case 2 above. If the texts are inside a function or differ in a word: leave the pair and write its reason into src/lib/copies.baseline.json with node scripts/copies.mjs --write --reason. For builder.en.ts with page-content.ts (a large module): always use the words-only file, never import page-content.ts into the catalogue. Leave the fallback at src/components/admin/privacy/request-detail.tsx line 234 as it is."
+    },
+    {
+     "file": "src/lib/privacy-text.ts",
+     "action": "edit",
+     "how": "STAFF_TEXT (line 720): for each member run rg -n 'STAFF_TEXT[.]member' src; delete the members nothing reads. The same for redirectSentences in src/lib/redirects.ts line 283. Leave KIND_TITLES (src/lib/data-admin.ts line 179) and LIFECYCLE_WORDS (src/lib/lifecycle.ts line 27) whole: they are typed as full Records."
+    }
+   ],
+   "checks": [
+    "rg -n \"toEqual[(]\\w+_(WORDS|LABELS|TEXT|NAMES|COPY|NOTE)[)]|toBe[(]\\w+_(WORDS|LABELS|TEXT|NAMES|COPY|NOTE)[)]\" src --glob '*.test.*' | wc -l : prints 5 (the four analytics notes and EMPTY_COPY, none of them a catalogue)",
+    "pnpm exec vitest run src/components/admin/admin-catalogues.scan.test.ts src/lib/admin-strings.scan.test.ts src/lib/brand.scan.test.ts src/lib/storefront-bundle.scan.test.ts src/lib/admin-messages : exits 0 (the Norwegian catalogue still has every English key)",
+    "node scripts/unused.mjs --write : exits 0 and removes the deleted constants from testOnlyExports; node scripts/copies.mjs --write : lowers the numbers",
+    "pnpm lint && pnpm typecheck && pnpm test : exits 0",
+    "pnpm build : exits 0; then run the admin script budget the repo has at that time (pnpm test:e2e e2e/signed-in/admin-text-fallbacks.spec.ts with E2E_SIGNED_IN=1, and the route budget script of step 1.1 if it exists) : no admin route's first scripts grew by more than 2,000 bytes"
+   ]
+  }
+ ],
+ "tests": [
+  {
+   "file": "src/lib/local-helpers.scan.test.ts",
+   "proves": "Fails when a file other than the home declares fail(message): never, isUuid, isUniqueViolation, addDays, daysBetween, isDay or countryName, and when the order event insert or the usage upsert is typed outside order-actor.ts or request-budget.ts."
+  },
+  {
+   "file": "src/lib/day.test.ts",
+   "proves": "Fails when the one addDays, daysBetween or isDay gives another answer at a month end, a leap day, a negative step or an impossible date."
+  },
+  {
+   "file": "src/lib/copies.scan.test.ts",
+   "proves": "Fails when a catalogue and a code module hold the same list again (exact copies across files may not rise)."
+  }
+ ],
+ "migration": {
+  "needed": false,
+  "notes": ""
+ },
+ "done_when": [
+  {
+   "check": "rg -c '^(export )?(const|function) (isUuid|isUniqueViolation)' src --glob '!*.test.ts' | awk -F: '{s+=$2} END {print s}'",
+   "expect": "2"
+  },
+  {
+   "check": "rg -l 'const fail = [(]message: string[)]: never' src/server | wc -l",
+   "expect": "1"
+  },
+  {
+   "check": "rg -c 'insert into commerce[.]order_events' src/server src/app src/lib --glob '!*.test.ts' | awk -F: '{s+=$2} END {print s}'",
+   "expect": "1 (src/db/invoice-fixture.ts, a test fixture that sets created_at, keeps its own and is outside these folders)"
+  },
+  {
+   "check": "rg -c 'insert into commerce[.]chat_usage' src --glob '!*.test.ts' | awk -F: '{s+=$2} END {print s}'",
+   "expect": "2 or less"
+  },
+  {
+   "check": "rg -c '^(export )?(function|const) (addDays|daysBetween|isDay|countryName)\\b' src/lib src/server --glob '!*.test.ts' | awk -F: '{s+=$2} END {print s}'",
+   "expect": "8 or less"
+  },
+  {
+   "check": "rg -n \"(toEqual|toBe)[(]\\w+_(WORDS|LABELS|TEXT|NAMES|COPY|NOTE)[)]\" src --glob '*.test.*' | rg 'En[.]|En[)]'",
+   "expect": "prints nothing: no test holds a catalogue section equal to a words constant"
+  },
+  {
+   "check": "Add `const isUuid = (v: string) => v.length === 36;` to a new file src/server/trial-helper.ts and run pnpm exec vitest run src/lib/local-helpers.scan.test.ts; then delete the file",
+   "expect": "the test fails naming src/server/trial-helper.ts and src/lib/ids.ts"
+  }
+ ],
+ "after_deploy": [
+  "Place a test order in the demo store and open it in the admin: its history shows the events (placed, payment started, paid) with who did them, as before.",
+  "select count(*) from commerce.chat_usage where \"window\" > now() - interval '1 hour' (Supabase SQL editor, read only): a number above 0 after a few page views, so the counter still counts."
+ ],
+ "docs": [
+  "docs/decisions.md: one new D-number row: the homes (src/server/owner-tool-error.ts fail, src/lib/ids.ts, src/server/pg-errors.ts, src/lib/day.ts, src/lib/country-name.ts, src/server/product-title.ts, writeOrderEvent, bumpUsage), that src/lib/local-helpers.scan.test.ts holds them, that the nine title reads without the handle fallback keep their result (TITLE_OR_NULL) and are listed for a later decision, and that a catalogue imports a word list from beside its code.",
+  "CLAUDE.md, Conventions: one sentence naming the homes and the scan test (the finding FM-12 asks for it).",
+  "docs/platform-admin-i18n.md: one sentence: an English list that code also reads lives beside the code (or in a words-only file) and the .en.ts catalogue imports it; no test holds two copies equal.",
+  "docs/wave-3-orders.md and docs/capacity.md: where they name the order event's writer or the usage counter, name writeOrderEvent() and bumpUsage().",
+  "docs/audits/bloat-review-2026-11.md, Progress table: set step 3.15 to Done with the date and the commit; list in the row the places left unconverted."
+ ],
+ "do_not": [
+  "Do not change what a converted statement writes: same columns, same values, same executor (a write inside a transaction stays inside it).",
+  "Do not switch the nine title reads without the handle fallback to TITLE in this step: a storefront card would start to show a handle.",
+  "Do not fold addDays or daysBetween of src/lib/analytics-period.ts or daysBetween of src/lib/work-dates.ts: they throw for a non-day and their tests hold that.",
+  "Do not touch the seven dayOf helpers, the local `money` helpers or the local `iso` helpers: they share a name, not a job (iso goes with the typedRows() burn-down).",
+  "Do not delete a word constant that a production file, an AI tool's description or a prompt reads: rg -w it first. A changed prompt would need a new prompt version and eval run, which this step must not cause.",
+  "Do not import a server-only module or src/lib/page-content.ts into a catalogue file.",
+  "Do not convert the fixture src/db/invoice-fixture.ts.",
+  "Do not sweep other repeated helpers (adminLink, mainLocale, obj, list): the repeated-helper ratchet of step 1.17 holds them and they fold when their file is opened."
+ ],
+ "stop_if": [
+  "A test must be edited to pass, other than an import line of countryName or a deleted equality assertion named above.",
+  "The day table test shows two addDays bodies giving different answers for a valid day.",
+  "src/server/prompt-versions tests or src/lib/agent-eval.test.ts fail (a prompt's text changed).",
+  "An order_events or chat_usage statement differs from the plain form in a way the brief did not name and more than five places are left unconverted.",
+  "pnpm test:int fails in checkout, order or budget tests after a conversion.",
+  "An admin route's first scripts grow by more than 2,000 bytes after a catalogue imports a lib module."
+ ],
+ "executor": "cheap-then-review",
+ "executor_why": "Each fold is a fixed replacement with a home and a scan test, but about 150 files change, among them the paid order's event write (checkout.ts, order-insert.ts, Mollie), the fail-closed request budget, the storefront's cached title reads and catalogue word constants, and commits 3 to 5 leave a convert-or-leave judgement at each site that the type check does not see, so a stronger model should read each commit's diff; commits 1 and 2 are mechanical and held by the scan, the day table test and the type check.",
+ "checked_in_code": "I ran the step's counts on today's code: 43 fail declarations (one, shopping-agents.ts, throws AgentToolError, so it is renamed, not folded), 32 isUuid and isUniqueViolation declarations, 31 day and country declarations, 34 order event inserts in 23 files and 32 usage upserts in 28 files, 37 assertions. Corrections: the done-when of 1 for the order event cannot be met over all of src because src/db/invoice-fixture.ts (a test fixture that sets created_at) holds one, so the check reads src/server, src/app and src/lib; request-budget.ts itself types the usage upsert four times inside two CTEs, so the brief adds a usageUpsert(source) fragment to reach 2; five of the 37 assertions compare a server result or a state with a constant, not a catalogue, and stay. The day helpers' bodies agree for valid days but analytics-period.ts and work-dates.ts throw for a non-day, so those stay and the count lands at 7 or 8. I kept the nine title reads without a handle fallback on TITLE_OR_NULL because four are the storefront's cached catalogue reads. Second check (12 November): commit 1 now says the isUuid pattern is wider than z.uuid() (no version/variant digits) and why that is harmless; commit 2's staff-alerts countryName change is written once, call by call (lines 334, 377, 1305), instead of twice with different wording.",
+ "cheap_commits": [
+  1,
+  2
+ ],
+ "rating_checked": "cheap-then-review"
 }

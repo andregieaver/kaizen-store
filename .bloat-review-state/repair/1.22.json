@@ -1,0 +1,16 @@
+{
+ "id": "1.22",
+ "fixed": [
+  "subscription-reminders route comment: the words to remove span lines 54 and 55; both pieces and the resulting line are written out.",
+  "cron-health.test.ts exists: 'if it does not exist, create it' replaced by 'add the cases at its end'."
+ ],
+ "rejected": [
+  {
+   "problem": "Commit 3 depends on step 0.25's prune job; without it pgcron.run-log fails daily.",
+   "why": "depends_on names 0.25 and the last stop_if lands commits 1 and 2 and hands back commit 3 when the prune job is not in the migrations."
+  }
+ ],
+ "cheaper": "not applied: the reviewer gave none; the email and status changes of commit 1 cannot be proven harmless by the checks.",
+ "executor_before": "cheap-then-review",
+ "executor_after": "cheap-then-review"
+}

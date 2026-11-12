@@ -1,0 +1,13 @@
+{
+ "id": "2.33",
+ "fixed": [
+  "Commit 1: the migration body is written out as valid SQL (quoted notice text, `end $$;`, first-line comment) instead of a one-line paraphrase with 'single quotes as SQL needs them'.",
+  "Commit 2: the after()/inline choice is decided: afterAnswer() drops work outside a request, so a stated module-private afterOrNow() helper runs the writes after the answer or at once.",
+  "Commit 2: the test reads the session twice with a.getAccount() (as lines 132-133 do); the conditional readSessionNow export is gone.",
+  "Commit 2: the optional FF4 cart and checkout change is dropped; code-review row 3.8 stays Open with 'FV8 done …; FF4 open'."
+ ],
+ "rejected": [],
+ "cheaper": "not applied: the reviewer gave none; the step stays cheap-then-review because it is the sign-in gate",
+ "executor_before": "cheap-then-review",
+ "executor_after": "cheap-then-review"
+}

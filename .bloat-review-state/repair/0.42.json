@@ -1,0 +1,12 @@
+{
+ "id": "0.42",
+ "fixed": [
+  "einvoice_sends moved from the order side to a shared table (its check names both sides' document types) and src/server/einvoice-sending.ts named as a shared set used by both; the why's table counts corrected.",
+  "The tolerated line's '4 and 7 tables' now '3 and 7 tables, einvoice_sends shared', and step (3) says the 7 are the invoicing part of Work's 13 work_ tables (the other six named).",
+  "Step (6): copy-count.mjs (made by 0.1 from cp/near.mjs) takes folders only (readdirSync on a file throws), so the 'if it cannot take files' choice is replaced by running it on src/server src/lib and filtering pairs with an exact node one-liner; the same for FT-17; the 300-line threshold restated in shared windows."
+ ],
+ "rejected": [],
+ "cheaper": "not applied: splitting each pair into a counts-only commit and a verdict commit would turn two commits into four and change the checks (which ask for the verdict line), a restructure rather than a small exact edit; the verdict is the step's purpose and stays with the stronger model",
+ "executor_before": "strong",
+ "executor_after": "strong"
+}

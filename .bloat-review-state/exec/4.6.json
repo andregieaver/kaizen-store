@@ -1,149 +1,154 @@
 {
-  "id": "4.6",
-  "goal": "In Work, a logged time entry has an Edit beside Delete that changes its day, time, task, billable flag and note through the built and tested updateTimeEntry(); and the two invoice actions no screen uses (saveInvoiceLinesAction, saveInvoiceHeaderAction) are deleted.",
-  "why": "Today 3 of 1,372 server actions have no screen: a wrong entry's hours cannot be corrected (it must be deleted and logged again) although updateTimeEntry() exists with tests. After: 0 of the three is unused, and `rg -n 'saveInvoiceLinesAction|saveInvoiceHeaderAction' src` prints nothing.",
-  "read_first": [
-    "docs/rules/admin/commerce.md:334",
-    "docs/work.md",
-    "src/lib/work-ui.ts:300",
-    "src/components/admin/work/time-entry-list.tsx",
-    "src/components/admin/work/log-time-form.tsx",
-    "src/server/work-time.ts:335",
-    "src/app/admin/(gated)/(owner)/account/work/s/[store]/actions.ts",
-    "src/app/admin/(gated)/(owner)/account/work/s/[store]/invoice-actions.ts"
-  ],
-  "depends_on": [],
-  "commits": [
+ "id": "4.6",
+ "goal": "In Work, a logged time entry has an Edit beside Delete that changes its day, time, task, billable flag and note through the built and tested updateTimeEntry(); and the two invoice actions no screen uses (saveInvoiceLinesAction, saveInvoiceHeaderAction) are deleted.",
+ "why": "Today 3 of 1,372 server actions have no screen: a wrong entry's hours cannot be corrected (it must be deleted and logged again) although updateTimeEntry() exists with tests. After: 0 of the three is unused, and `rg -n 'saveInvoiceLinesAction|saveInvoiceHeaderAction' src` prints nothing.",
+ "read_first": [
+  "docs/rules/admin/commerce.md:334",
+  "docs/work.md",
+  "src/lib/work-ui.ts:300",
+  "src/components/admin/work/time-entry-list.tsx",
+  "src/components/admin/work/log-time-form.tsx",
+  "src/server/work-time.ts:335",
+  "src/app/admin/(gated)/(owner)/account/work/s/[store]/actions.ts",
+  "src/app/admin/(gated)/(owner)/account/work/s/[store]/invoice-actions.ts"
+ ],
+ "depends_on": [],
+ "commits": [
+  {
+   "title": "A logged time entry can be corrected in Work: Edit beside Delete",
+   "changes": [
     {
-      "title": "A logged time entry can be corrected in Work: Edit beside Delete",
-      "changes": [
-        {
-          "file": "src/lib/work-ui.ts",
-          "action": "edit",
-          "how": "entryAccess() (line 352) returns two more fields; its return type becomes `{ note: boolean; edit: boolean; editDay: boolean; delete: boolean; why: string | null }`. `edit` is true exactly where `delete` is true (every field may change). `editDay` is true exactly where `note` is true (so also on a draft invoice, where the server lets only the day and the note change: updateTimeEntry() in src/server/work-time.ts answers ON_DRAFT for anything else). The four returns become: not mine `{ note: false, edit: false, editDay: false, delete: false, why: \"Logged by someone else\" }`; locked `{ note: false, edit: false, editDay: false, delete: false, why: \"On an issued invoice\" }`; draft `{ note: true, edit: false, editDay: true, delete: false, why: \"On a draft invoice\" }`; else `{ note: true, edit: true, editDay: true, delete: true, why: null }`. Update the doc comment: 'on a draft invoice only the day and the note change'."
-        },
-        {
-          "file": "src/lib/work-ui.test.ts",
-          "action": "edit",
-          "how": "The three exact expectations near lines 342, 347 and 352 use toEqual on the whole object: add the two new fields to each (own entry: edit true, editDay true; draft: edit false, editDay true; paid and locked: both false). Add one case 'offers Edit where Delete is offered, and only the day on a draft invoice' that checks the four states (own, someone else's for a non-owner, draft, locked) for edit and editDay."
-        },
-        {
-          "file": "src/components/admin/work/time-entry-list.tsx",
-          "action": "edit",
-          "how": "(1) Import updateTimeEntryAction beside deleteTimeEntryAction and setEntryNoteAction; import timePayload, NO_PROBLEMS and type FormProblems from \"@/lib/work-ui\", formatClockMinutes from \"@/lib/work-time\", type AssignmentChoice from \"@/server/work-choices\", and Field, control, primaryButton, secondaryButton from \"./work-parts\". (2) TimeEntryList and EntryRow take two new optional props: `choices?: AssignmentChoice[]` (for the task list) and `today?: string` (the latest day allowed). (3) In EntryRow add state `const [editing, setEditing] = useState(false)` and `const [fields, setFields] = useState<FormProblems>(NO_PROBLEMS)`. In the row's button group, before the Delete button, add when `access.edit || access.editDay`: `<button type=\"button\" onClick={() => setEditing(true)} disabled={pending} className={smallControl}>{tw.edit}<span className=\"sr-only\"> {formatDuration(entry.minutes)} on {formatDay(entry.workDate, locale)}</span></button>`. The reason text `access.why` keeps showing where Delete is not offered. (4) When editing, draw a form under the row (inside the same <li>), `noValidate`, `aria-busy={pending}`, with the fields of the log-time form in the same order and with the same Field component: Task (a select named taskId, shown only when access.edit and the entry's assignment is found in `choices` and has tasks; options '' = tw.noTask plus the tasks, defaultValue entry.taskId ?? ''), Day (input type date named workDate, required, max={today}, defaultValue entry.workDate), Time (input named duration, required, defaultValue formatClockMinutes(entry.minutes), shown only when access.edit), Note (input named note, maxLength 500, defaultValue entry.note ?? ''), Billable (checkbox named billable, defaultChecked entry.billable, shown only when access.edit), then Save (primaryButton, type submit, tw.saving while pending, else tw.save) and Cancel (secondaryButton, sets editing false and clears fields). (5) On submit: read the form with FormData; build the values for timePayload(): assignmentId = entry.assignmentId (Edit never moves an entry to another assignment), taskId = the select's value when it is shown, else entry.taskId ?? '', workDate from the form, duration = the field's value when shown, else formatClockMinutes(entry.minutes), note from the form, billable = the checkbox when shown, else entry.billable. If timePayload() is not ok, setFields(its problems) and stop. Otherwise `start(async () => { try { const result = await updateTimeEntryAction(storeSlug, entry.id, payload.input); if (!result.ok) setProblems(result.problems); else { setProblems([]); setFields(NO_PROBLEMS); setEditing(false); } } catch { setProblems([tw.theTimeCouldNotSave]); } })`. Field errors show through Field's `error` prop from fields.fields, as log-time-form.tsx does. (6) Nothing else in the row changes: the inline note field, Delete and the badges stay. The default view stays one row with Edit and Delete; the form appears only after Edit."
-        },
-        {
-          "file": "src/components/admin/work/time-panel.tsx",
-          "action": "edit",
-          "how": "Pass `choices={[choice]}` and `today={today}` to <TimeEntryList> (line 103); both values are already props of TimePanel."
-        },
-        {
-          "file": "src/app/admin/(gated)/(owner)/account/work/s/[store]/time/page.tsx",
-          "action": "edit",
-          "how": "Pass `choices={choices}` and `today={today}` to <TimeEntryList> (line 108); `choices` is already read on line 46 and `today` is already passed to QuickTimer on line 79."
-        },
-        {
-          "file": "src/lib/admin-messages/work.en.ts",
-          "action": "edit",
-          "how": "In `timeEntryList` (line 1055) add: `edit: \"Edit\"`, `save: \"Save\"`, `saving: \"Saving …\"`, `cancel: \"Cancel\"`, `day: \"Day\"`, `time: \"Time\"`, `note: \"Note\"`, `billable: \"Billable\"`, `taskOptional: \"Task (optional)\"`, `noTask: \"No task\"`, `timeHint: \"1h30, 1:30, 1.5h or 90m. A plain number is minutes.\"`, `theTimeCouldNotSave: \"The time could not be saved. Check your connection and try again.\"`. Add the same keys in Norwegian to `timeEntryList` in src/lib/admin-messages/work.nb.ts, taking each word from the Norwegian `logTimeForm` block of that file where the same word exists there (day, time, note, billable, taskOptional, noTask, the hint, cancel, saving) so the two forms read alike."
-        },
-        {
-          "file": "src/components/admin/work/work-pages.test.ts",
-          "action": "edit",
-          "how": "Import TimeEntryList from \"./time-entry-list\" and add a describe 'the time entry list' with a base entry of type TimeEntryItem (fill every field of the type in src/server/work-time.ts line 65: accountId 'me', invoiceStatus null, locked false, minutes 90, workDate TODAY, billable true, note null, and plain strings for the names and ids). Render with the file's html() helper and createElement(TimeEntryList, { storeSlug: 'kaffe', entries: [entry], viewer, locale: 'en' }). Cases: (1) for viewer { accountId: 'boss', owner: true } the html contains a button with the text Edit and one with Delete; (2) for an entry with invoiceStatus 'paid' and locked true the html contains neither '>Edit' nor '>Delete' and contains 'On an issued invoice'; (3) for an entry with invoiceStatus 'draft' the html contains Edit and not Delete; (4) for viewer { accountId: 'you', owner: false } on someone else's entry there is no Edit. If the admin words need a provider to render (other cases in this file show whether createElement is wrapped), wrap the same way."
-        }
-      ],
-      "checks": [
-        "pnpm exec vitest run src/lib/work-ui.test.ts src/components/admin/work/work-pages.test.ts: pass",
-        "pnpm exec vitest run src/lib/admin-messages (the catalogue's own tests): pass; pnpm typecheck fails if work.nb.ts lacks a key",
-        "pnpm test:int src/server/work-time.int.test.ts src/server/work-glue.int.test.ts: pass unchanged (they hold updateTimeEntry's rules)",
-        "pnpm build && E2E_SIGNED_IN=1 pnpm test:e2e on the Work spec that opens the time list, if one exists (rg -l 'account/work' e2e/signed-in): passes",
-        "A screenshot of a row with Edit open (computer and phone) sent to the owner",
-        "pnpm lint && pnpm typecheck && pnpm test: exits 0"
-      ]
+     "file": "src/lib/work-ui.ts",
+     "action": "edit",
+     "how": "entryAccess() (line 352) returns two more fields; its return type becomes `{ note: boolean; edit: boolean; editDay: boolean; delete: boolean; why: string | null }`. `edit` is true exactly where `delete` is true (every field may change). `editDay` is true exactly where `note` is true (so also on a draft invoice, where the server lets only the day and the note change: updateTimeEntry() in src/server/work-time.ts answers ON_DRAFT for anything else). The four returns become: not mine `{ note: false, edit: false, editDay: false, delete: false, why: \"Logged by someone else\" }`; locked `{ note: false, edit: false, editDay: false, delete: false, why: \"On an issued invoice\" }`; draft `{ note: true, edit: false, editDay: true, delete: false, why: \"On a draft invoice\" }`; else `{ note: true, edit: true, editDay: true, delete: true, why: null }`. Update the doc comment: 'on a draft invoice only the day and the note change'."
     },
     {
-      "title": "Two Work invoice actions no screen uses are deleted",
-      "changes": [
-        {
-          "file": "src/app/admin/(gated)/(owner)/account/work/s/[store]/invoice-actions.ts",
-          "action": "edit",
-          "how": "Delete the two exported functions saveInvoiceLinesAction (with its doc comment 'Saves only the lines of a draft, in the browser's order.') and saveInvoiceHeaderAction (with its doc comment 'Saves only a draft's header: ...'), lines 99 to 126. Remove `saveDraftHeader` and `saveLines` from the import list near lines 25 and 26 and `invoiceDraftInput` from the type import on line 7, each only if nothing else in the file uses it (the type check says)."
-        },
-        {
-          "file": "src/server/work-invoices.ts",
-          "action": "edit",
-          "how": "Delete the exported function saveDraftHeader() (line 1202 to its closing brace, about 44 lines) with its doc comment: its only caller was the deleted action. Keep saveLines() (line 1167): 14 test files use it as set-up and src/server/work-reports-test-support.ts calls it. Remove imports that only saveDraftHeader used (the type check and lint say which; invoiceDraftInput is still used at line 861)."
-        },
-        {
-          "file": "src/server/work-invoices.int.test.ts",
-          "action": "edit",
-          "how": "In the case 'run the whole flow for a member, audit what has weight, and refuse what is not allowed' (near line 1487): replace the call `ok(await actions.saveInvoiceLinesAction(f.slug, draft, [newLine({ description: \"Advice\", quantityHundredths: 200, unitPriceMinor: 100000 })] as never))` with `ok(await invoices.saveLines(f.actor, draft, [newLine({ description: \"Advice\", quantityHundredths: 200, unitPriceMinor: 100000 })] as never))` (the same file calls invoices.saveLines(f.actor, ...) at line 338). Delete the line `ok(await actions.saveInvoiceHeaderAction(f.slug, draft, { reference: \"PO-1\", notes: \"Thanks\" }));`. If a later assertion in the same case expects the reference 'PO-1' or the note 'Thanks', set them through `actions.saveDraftInvoiceAction` with the draft's whole content instead, or drop that assertion only if it tested the header action itself; say which in the commit message."
-        }
-      ],
-      "checks": [
-        "rg -n 'saveInvoiceLinesAction|saveInvoiceHeaderAction|saveDraftHeader' src: prints nothing",
-        "pnpm test:int src/server/work-invoices.int.test.ts: passes",
-        "pnpm exec vitest run src/server/ratchet.scan.test.ts: passes (run `node scripts/ratchet.mjs` if it says a count fell); and src/server/unused.scan.test.ts if step 1.17 is done: updateTimeEntryAction is no longer listed as unused, so lower its list with `node scripts/unused.mjs` as that test says",
-        "pnpm lint && pnpm typecheck && pnpm test: exits 0"
-      ]
+     "file": "src/lib/work-ui.test.ts",
+     "action": "edit",
+     "how": "The three exact expectations near lines 342, 347 and 352 use toEqual on the whole object: add the two new fields to each (own entry: edit true, editDay true; draft: edit false, editDay true; paid and locked: both false). Add one case 'offers Edit where Delete is offered, and only the day on a draft invoice' that checks the four states (own, someone else's for a non-owner, draft, locked) for edit and editDay."
+    },
+    {
+     "file": "src/components/admin/work/time-entry-list.tsx",
+     "action": "edit",
+     "how": "(1) Import updateTimeEntryAction beside deleteTimeEntryAction and setEntryNoteAction; import timePayload, NO_PROBLEMS and type FormProblems from \"@/lib/work-ui\", formatClockMinutes from \"@/lib/work-time\", type AssignmentChoice from \"@/server/work-choices\", and Field, control, primaryButton, secondaryButton from \"./work-parts\". (2) TimeEntryList and EntryRow take two new optional props: `choices?: AssignmentChoice[]` (for the task list) and `today?: string` (the latest day allowed). (3) In EntryRow add state `const [editing, setEditing] = useState(false)` and `const [fields, setFields] = useState<FormProblems>(NO_PROBLEMS)`. In the row's button group, before the Delete button, add when `access.edit || access.editDay`: `<button type=\"button\" onClick={() => setEditing(true)} disabled={pending} className={smallControl}>{tw.edit}<span className=\"sr-only\"> {formatDuration(entry.minutes)} on {formatDay(entry.workDate, locale)}</span></button>`. The reason text `access.why` keeps showing where Delete is not offered. (4) When editing, draw a form under the row (inside the same <li>), `noValidate`, `aria-busy={pending}`, with the fields of the log-time form in the same order and with the same Field component: Task (a select named taskId, shown only when access.edit and the entry's assignment is found in `choices` and has tasks; options '' = tw.noTask plus the tasks, defaultValue entry.taskId ?? ''), Day (input type date named workDate, required, max={today}, defaultValue entry.workDate), Time (input named duration, required, defaultValue formatClockMinutes(entry.minutes), shown only when access.edit), Note (input named note, maxLength 500, defaultValue entry.note ?? ''), Billable (checkbox named billable, defaultChecked entry.billable, shown only when access.edit), then Save (primaryButton, type submit, tw.saving while pending, else tw.save) and Cancel (secondaryButton, sets editing false and clears fields). (5) On submit: read the form with FormData; build the values for timePayload(): assignmentId = entry.assignmentId (Edit never moves an entry to another assignment), taskId = the select's value when it is shown, else entry.taskId ?? '', workDate from the form, duration = the field's value when shown, else formatClockMinutes(entry.minutes), note from the form, billable = the checkbox when shown, else entry.billable. If timePayload() is not ok, setFields(its problems) and stop. Otherwise `start(async () => { try { const result = await updateTimeEntryAction(storeSlug, entry.id, payload.input); if (!result.ok) setProblems(result.problems); else { setProblems([]); setFields(NO_PROBLEMS); setEditing(false); } } catch { setProblems([tw.theTimeCouldNotSave]); } })`. Field errors show through Field's `error` prop from fields.fields, as log-time-form.tsx does. (6) Nothing else in the row changes: the inline note field, Delete and the badges stay. The default view stays one row with Edit and Delete; the form appears only after Edit."
+    },
+    {
+     "file": "src/components/admin/work/time-panel.tsx",
+     "action": "edit",
+     "how": "Pass `choices={[choice]}` and `today={today}` to <TimeEntryList> (line 103); both values are already props of TimePanel."
+    },
+    {
+     "file": "src/app/admin/(gated)/(owner)/account/work/s/[store]/time/page.tsx",
+     "action": "edit",
+     "how": "Pass `choices={choices}` and `today={today}` to <TimeEntryList> (line 108); `choices` is already read on line 46 and `today` is already passed to QuickTimer on line 79."
+    },
+    {
+     "file": "src/lib/admin-messages/work.en.ts",
+     "action": "edit",
+     "how": "In `timeEntryList` (line 1055) add: `edit: \"Edit\"`, `save: \"Save\"`, `saving: \"Saving …\"`, `cancel: \"Cancel\"`, `day: \"Day\"`, `time: \"Time\"`, `note: \"Note\"`, `billable: \"Billable\"`, `taskOptional: \"Task (optional)\"`, `noTask: \"No task\"`, `timeHint: \"1h30, 1:30, 1.5h or 90m. A plain number is minutes.\"`, `theTimeCouldNotSave: \"The time could not be saved. Check your connection and try again.\"`. Add the same keys in Norwegian to `timeEntryList` in src/lib/admin-messages/work.nb.ts, taking each word from the Norwegian `logTimeForm` block of that file where the same word exists there (day, time, note, billable, taskOptional, noTask, the hint, cancel, saving) so the two forms read alike."
+    },
+    {
+     "file": "src/components/admin/work/work-pages.test.ts",
+     "action": "edit",
+     "how": "Import TimeEntryList from \"./time-entry-list\" and add a describe 'the time entry list' with a base entry of type TimeEntryItem (fill every field of the type in src/server/work-time.ts line 65: accountId 'me', invoiceStatus null, locked false, minutes 90, workDate TODAY, billable true, note null, and plain strings for the names and ids). Render with the file's html() helper and createElement(TimeEntryList, { storeSlug: 'kaffe', entries: [entry], viewer, locale: 'en' }). Cases: (1) for viewer { accountId: 'boss', owner: true } the html contains a button with the text Edit and one with Delete; (2) for an entry with invoiceStatus 'paid' and locked true the html contains neither '>Edit' nor '>Delete' and contains 'On an issued invoice'; (3) for an entry with invoiceStatus 'draft' the html contains Edit and not Delete; (4) for viewer { accountId: 'you', owner: false } on someone else's entry there is no Edit. If the admin words need a provider to render (other cases in this file show whether createElement is wrapped), wrap the same way."
     }
-  ],
-  "tests": [
-    {
-      "file": "src/components/admin/work/work-pages.test.ts",
-      "proves": "fails when Edit is not shown to an owner, or is shown on an entry that is on an issued invoice"
-    },
-    {
-      "file": "src/lib/work-ui.test.ts",
-      "proves": "fails when the edit flag differs from delete, or a draft invoice's entry may change more than its day and note"
-    },
-    {
-      "file": "src/server/work-time.int.test.ts",
-      "proves": "(existing, unchanged) fails when updateTimeEntry lets hours change on a draft or issued invoice, or lets an admin change someone else's entry"
-    }
-  ],
-  "migration": {
-    "needed": false,
-    "notes": ""
+   ],
+   "checks": [
+    "pnpm exec vitest run src/lib/work-ui.test.ts src/components/admin/work/work-pages.test.ts: pass",
+    "pnpm exec vitest run src/lib/admin-messages (the catalogue's own tests): pass; pnpm typecheck fails if work.nb.ts lacks a key",
+    "pnpm test:int src/server/work-time.int.test.ts src/server/work-glue.int.test.ts: pass unchanged (they hold updateTimeEntry's rules)",
+    "pnpm build && E2E_SIGNED_IN=1 pnpm test:e2e on the Work spec that opens the time list, if one exists (rg -l 'account/work' e2e/signed-in): passes",
+    "A screenshot of a row with Edit open (computer and phone) sent to the owner",
+    "pnpm lint && pnpm typecheck && pnpm test: exits 0"
+   ]
   },
-  "done_when": [
+  {
+   "title": "Two Work invoice actions no screen uses are deleted",
+   "changes": [
     {
-      "check": "pnpm exec vitest run src/components/admin/work/work-pages.test.ts src/lib/work-ui.test.ts",
-      "expect": "pass, with the cases 'Edit for an owner, not on an invoiced entry' and the flag's case"
+     "file": "src/app/admin/(gated)/(owner)/account/work/s/[store]/invoice-actions.ts",
+     "action": "edit",
+     "how": "Delete the two exported functions saveInvoiceLinesAction (with its doc comment 'Saves only the lines of a draft, in the browser's order.') and saveInvoiceHeaderAction (with its doc comment 'Saves only a draft's header: ...'), lines 99 to 126. Remove `saveDraftHeader` and `saveLines` from the import list near lines 25 and 26 and `invoiceDraftInput` from the type import on line 7, each only if nothing else in the file uses it (the type check says)."
     },
     {
-      "check": "rg -n 'saveInvoiceLinesAction|saveInvoiceHeaderAction' src",
-      "expect": "prints nothing"
+     "file": "src/server/work-invoices.ts",
+     "action": "edit",
+     "how": "Delete the exported function saveDraftHeader() (line 1202 to its closing brace, about 44 lines) with its doc comment: its only caller was the deleted action. Keep saveLines() (line 1167): 14 test files use it as set-up and src/server/work-reports-test-support.ts calls it. Remove imports that only saveDraftHeader used (the type check and lint say which; invoiceDraftInput is still used at line 861)."
     },
     {
-      "check": "rg -n 'updateTimeEntryAction' src --glob '!*.test.*'",
-      "expect": "two files: the actions file and src/components/admin/work/time-entry-list.tsx"
+     "file": "src/server/work-invoices.int.test.ts",
+     "action": "edit",
+     "how": "In the case 'run the whole flow for a member, audit what has weight, and refuse what is not allowed' (line 1487): the call spans five lines, 1497 to 1502 today:\n    ok(\n      await actions.saveInvoiceLinesAction(f.slug, draft, [\n        newLine({ description: \"Advice\", quantityHundredths: 200, unitPriceMinor: 100000 }),\n      ] as never),\n    );\nReplace `actions.saveInvoiceLinesAction(f.slug, draft, [` by `invoices.saveLines(f.actor, draft, [` and leave the other four lines as they are (the same file calls invoices.saveLines(f.actor, ...) at line 338). Delete the line `ok(await actions.saveInvoiceHeaderAction(f.slug, draft, { reference: \"PO-1\", notes: \"Thanks\" }));` (line 1512) and put nothing in its place: no later line of the case reads 'PO-1' or 'Thanks', the audit assertions that follow look only for work.invoice.issued and work.invoice.credited, and readinessOf() in src/server/work-invoices.ts (line 671), behind the readiness assertion two lines down, reads neither the reference nor the notes."
     }
-  ],
-  "after_deploy": [
-    "In Kaizena Flow's own store's Work (or a test store with Work on): log 1h, press Edit, change it to 1:30 and save: the row shows 1h 30m and the assignment's totals follow. On an entry that is on a draft invoice, Edit offers only the day and the note."
-  ],
-  "docs": [
-    "docs/decisions.md: add one row with the next free D-number (read the last row of the decisions table to find it; never reuse a number) and today's date. It records: the owner's choice on finding DD-5: a logged time entry is editable in Work (Edit on the row, through updateTimeEntry(); on a draft invoice only the day and the note; never on an issued invoice; Edit does not move an entry to another assignment), and saveInvoiceLinesAction, saveInvoiceHeaderAction and saveDraftHeader() were deleted because the invoice editor saves a whole draft. It says the platform console has no twin: it logs no time.",
-    "docs/rules/admin/commerce.md, the entry 'Work (D122, D123 ...)' (line 336), and docs/work.md where time entries are described: add one line: a logged entry can be corrected with Edit by its owner or the person who logged it; on a draft invoice only its day and note; time on an issued invoice does not change.",
-    "docs/audits/bloat-review-2026-11.md, Progress table: set the row of step 4.6 to Done with the date and the commit hash (if the table has no row for 4.6, add one in the table of its phase with the step's title), and add one line to that file's change log if it has one."
-  ],
-  "do_not": [
-    "Do not change updateTimeEntry(), timeEntryInput or the database's rules for time on an invoice: the server already decides; the screen only offers what it allows.",
-    "Do not delete saveLines(): tests and src/server/work-reports-test-support.ts use it.",
-    "Do not delete updateTimeEntryAction: it now has a screen.",
-    "Do not let Edit change the assignment, and do not show the time or billable fields for an entry on a draft invoice.",
-    "Do not replace the inline note field or the Delete button; Edit is added beside them.",
-    "Do not hard-code English in the component: every new word goes through the work catalogue in both languages."
-  ],
-  "stop_if": [
-    "work-time.int.test.ts or work-glue.int.test.ts must change to pass.",
-    "The work catalogue's Norwegian file has no logTimeForm block to take the words from, or its type does not accept the new keys.",
-    "The invoice integration test's later assertions depend on the header saved by saveInvoiceHeaderAction in a way saveDraftInvoiceAction cannot give.",
-    "rg finds another caller of saveDraftHeader or of the two deleted actions outside tests."
-  ],
-  "executor": "cheap",
-  "executor_why": "Both commits are mechanical and fully specified, the server side is built and tested, and a wrong edit is caught by the component test, the catalogue's type check and the unchanged integration tests.",
-  "checked_in_code": "I opened entryAccess() in src/lib/work-ui.ts (line 352), the whole of src/components/admin/work/time-entry-list.tsx, log-time-form.tsx, updateTimeEntry() in src/server/work-time.ts (line 347), updateTimeEntryAction (actions.ts line 254) and the two invoice actions (invoice-actions.ts lines 100 and 115); all are as DD-5 says, and rg finds no caller of the three actions outside one integration test. Three things the step left open are settled in the brief: 'an edit flag, true where delete is true' and 'on a draft only the date and note' cannot both be one flag, so entryAccess() gets edit and editDay; the list has no assignment choices today, so its two callers pass the ones they already hold and Edit never moves an entry to another assignment; and saveDraftHeader() goes with its action (nothing else calls it), while the integration test's line that used saveInvoiceLinesAction switches to invoices.saveLines(f.actor, ...), which the same file already uses. work-pages.test.ts has no case for the time list yet."
+   ],
+   "checks": [
+    "rg -n 'saveInvoiceLinesAction|saveInvoiceHeaderAction|saveDraftHeader' src: prints nothing",
+    "pnpm test:int src/server/work-invoices.int.test.ts: passes",
+    "pnpm exec vitest run src/server/ratchet.scan.test.ts: passes (run `node scripts/ratchet.mjs` if it says a count fell); and src/server/unused.scan.test.ts if step 1.17 is done: updateTimeEntryAction is no longer listed as unused, so lower its list with `node scripts/unused.mjs` as that test says",
+    "pnpm lint && pnpm typecheck && pnpm test: exits 0"
+   ]
+  }
+ ],
+ "tests": [
+  {
+   "file": "src/components/admin/work/work-pages.test.ts",
+   "proves": "fails when Edit is not shown to an owner, or is shown on an entry that is on an issued invoice"
+  },
+  {
+   "file": "src/lib/work-ui.test.ts",
+   "proves": "fails when the edit flag differs from delete, or a draft invoice's entry may change more than its day and note"
+  },
+  {
+   "file": "src/server/work-time.int.test.ts",
+   "proves": "(existing, unchanged) fails when updateTimeEntry lets hours change on a draft or issued invoice, or lets an admin change someone else's entry"
+  }
+ ],
+ "migration": {
+  "needed": false,
+  "notes": ""
+ },
+ "done_when": [
+  {
+   "check": "pnpm exec vitest run src/components/admin/work/work-pages.test.ts src/lib/work-ui.test.ts",
+   "expect": "pass, with the cases 'Edit for an owner, not on an invoiced entry' and the flag's case"
+  },
+  {
+   "check": "rg -n 'saveInvoiceLinesAction|saveInvoiceHeaderAction' src",
+   "expect": "prints nothing"
+  },
+  {
+   "check": "rg -n 'updateTimeEntryAction' src --glob '!*.test.*'",
+   "expect": "two files: the actions file and src/components/admin/work/time-entry-list.tsx"
+  }
+ ],
+ "after_deploy": [
+  "In Kaizena Flow's own store's Work (or a test store with Work on): log 1h, press Edit, change it to 1:30 and save: the row shows 1h 30m and the assignment's totals follow. On an entry that is on a draft invoice, Edit offers only the day and the note."
+ ],
+ "docs": [
+  "docs/decisions.md: add one row with the next free D-number (read the last row of the decisions table to find it; never reuse a number) and today's date. It records: the owner's choice on finding DD-5: a logged time entry is editable in Work (Edit on the row, through updateTimeEntry(); on a draft invoice only the day and the note; never on an issued invoice; Edit does not move an entry to another assignment), and saveInvoiceLinesAction, saveInvoiceHeaderAction and saveDraftHeader() were deleted because the invoice editor saves a whole draft. It says the platform console has no twin: it logs no time.",
+  "docs/rules/admin/commerce.md, the entry 'Work (D122, D123 ...)' (line 336), and docs/work.md where time entries are described: add one line: a logged entry can be corrected with Edit by its owner or the person who logged it; on a draft invoice only its day and note; time on an issued invoice does not change.",
+  "docs/audits/bloat-review-2026-11.md, Progress table: set the row of step 4.6 to Done with the date and the commit hash (if the table has no row for 4.6, add one in the table of its phase with the step's title), and add one line to that file's change log if it has one."
+ ],
+ "do_not": [
+  "Do not change updateTimeEntry(), timeEntryInput or the database's rules for time on an invoice: the server already decides; the screen only offers what it allows.",
+  "Do not delete saveLines(): tests and src/server/work-reports-test-support.ts use it.",
+  "Do not delete updateTimeEntryAction: it now has a screen.",
+  "Do not let Edit change the assignment, and do not show the time or billable fields for an entry on a draft invoice.",
+  "Do not replace the inline note field or the Delete button; Edit is added beside them.",
+  "Do not hard-code English in the component: every new word goes through the work catalogue in both languages."
+ ],
+ "stop_if": [
+  "work-time.int.test.ts or work-glue.int.test.ts must change to pass.",
+  "The work catalogue's Norwegian file has no logTimeForm block to take the words from, or its type does not accept the new keys.",
+  "The invoice integration test's case fails after the header line is deleted (the readiness assertion or a later one): the header mattered after all; report the failing assertion instead of putting the header back by another way.",
+  "rg finds another caller of saveDraftHeader or of the two deleted actions outside tests."
+ ],
+ "executor": "cheap",
+ "executor_why": "An admin form whose fields, order, payload and words are given, on top of updateTimeEntry(), which already enforces every rule on the server and is tested unchanged, and a deletion of three uncalled functions held by the type check and one int test whose edit is now given line by line; a mistake cannot change an invoiced entry and is easy to see and revert.",
+ "checked_in_code": "I opened entryAccess() in src/lib/work-ui.ts (line 352), the whole of src/components/admin/work/time-entry-list.tsx, log-time-form.tsx, updateTimeEntry() in src/server/work-time.ts (line 347), updateTimeEntryAction (actions.ts line 254) and the two invoice actions (invoice-actions.ts lines 100 and 115); all are as DD-5 says, and rg finds no caller of the three actions outside one integration test. Three things the step left open are settled in the brief: 'an edit flag, true where delete is true' and 'on a draft only the date and note' cannot both be one flag, so entryAccess() gets edit and editDay; the list has no assignment choices today, so its two callers pass the ones they already hold and Edit never moves an entry to another assignment; and saveDraftHeader() goes with its action (nothing else calls it), while the integration test's line that used saveInvoiceLinesAction switches to invoices.saveLines(f.actor, ...), which the same file already uses. work-pages.test.ts has no case for the time list yet. Second check (12 November): the int test's saveInvoiceLinesAction call is quoted as the five lines it is (1497 to 1502), and the open choice for the header line is settled: delete it, since no later assertion reads PO-1 or Thanks and readinessOf() reads neither field.",
+ "rating_checked": "cheap",
+ "cheap_commits": [
+  1,
+  2
+ ]
 }

@@ -1,0 +1,12 @@
+{
+ "id": "4.7",
+ "fixed": [
+  "docs/consolidation.md's quoted phrase already spans lines 51-52 today (not only after step 0.40): the brief names the break and the check uses rg -U.",
+  "docs/consolidation.md line 125 ('The drill runs again whenever a platform admin asks for it.') is a fifth text of the same kind in a file the step already edits; it is now replaced too and the check looks for it.",
+  "docs/rules/admin/platform.md line 233: if step 0.40 wrapped it, the brief says how to find the words across a break and to rewrap with scripts/wrap-docs.mjs."
+ ],
+ "rejected": [],
+ "cheaper": "not applied: none proposed; the step is cheap.",
+ "executor_before": "cheap",
+ "executor_after": "cheap"
+}

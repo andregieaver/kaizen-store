@@ -1,0 +1,12 @@
+{
+ "id": "0.36",
+ "fixed": [
+  "Commit 2: the per-key 'read the hits and tell this key from same-named keys' step is replaced by one rg per catalogue that must print nothing; on 12 November each of the 34 names occurs once per language file and nowhere else (verified with rg -c).",
+  "Commit 2: dropped 'if a type lists the keys, delete it there too' (no such type; rg cartApplied src/lib hits only the four message files and the test).",
+  "Commit 2's checks expect no hit at all for the 17 admin names in src/lib/admin-messages and for the 17 storefront names in src."
+ ],
+ "rejected": [],
+ "cheaper": "not applied: writing a delete-or-keep verdict for each of the 24 server functions means reading each one's doc, decision and replacement; that is commit 5's judgement itself, too large to settle soundly in this repair, so the commit stays with the stronger model.",
+ "executor_before": "strong",
+ "executor_after": "strong"
+}

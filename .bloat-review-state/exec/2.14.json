@@ -23,7 +23,11 @@
   },
   {
    "id": "0.28",
-   "why": "it makes the alt-text job cost one statement when nothing changed and adds the lookup of the pages that hold a picture; the job's refresh here builds on it"
+   "why": "it makes the alt-text job cost one statement when nothing changed and gives dueForAltText() a fifth argument; the job's refresh here builds on it (0.28 adds no index of the pages that hold a picture, so this step adds no per-page refresh)"
+  },
+  {
+   "id": "1.9",
+   "why": "commit 1's int case counts statements with countStatements() from src/db/statement-count.ts, which that step makes (each record has text and values)"
   }
  ],
  "commits": [
@@ -53,7 +57,7 @@
     {
      "file": "src/server/product-layouts.int.test.ts",
      "action": "edit",
-     "how": "Add a case: a store with one standard layout (stores.product_layout_id set, the layout published) and two products. Count statements with countStatements() from src/db/statement-count.ts (step 1.9) around productLayoutFor() for product A and then product B, with next/cache mocked so that 'use cache' functions memoise by their arguments for the length of the test (if the file's existing mock of next/cache does not memoise, instead spy: vi.spyOn on the module's productLayoutById is not possible for an inner call, so assert on the statements: exactly two statements select 'published' from commerce.pages when productLayoutById is called twice with the same id, and the test asserts both products resolved to the same layout id through productLayoutIdFor's statement, which selects no 'published'). The assertion that must hold: the statement that returns the document names the layout's id and no product id. Keep the file's cases for a product's own layout, a category's and a tag's."
+     "how": "Add a case: a store with one standard layout (stores.product_layout_id set, the layout published) and two products A and B without their own layout. Under vitest a 'use cache' function runs as a plain function (the file mocks next/cache with no-op cacheLife and cacheTag), so the test proves the shape of the statements, not the memo. Wrap each call in countStatements() from '@/db/statement-count' (step 1.9; each record has `text` and `values`): `const a = await countStatements(() => layouts.productLayoutFor(storeId, productA))` and the same for B. Assert: a.result?.id and b.result?.id both equal the layout's id; in each run exactly one record's text matches /select id, published\\s+from commerce\\.pages/ (productLayoutById's statement), and its values contain the layout's id and the store's id and contain neither product's id; and in each run no other record selects `published` from commerce.pages (the id lookup returns only p.id; withPageAlts() may add its own media statement, which is not counted here). Keep the file's cases for a product's own layout, a category's and a tag's."
     }
    ],
    "checks": [
@@ -102,12 +106,12 @@
    ]
   },
   {
-   "title": "The nine places that publish a body refresh the page, and the site only when the site changed",
+   "title": "The eight places that publish a body refresh the page, and the site only when the site changed",
    "changes": [
     {
      "file": "src/server/page-refresh.ts",
      "action": "create",
-     "how": "Server-only. export function tagsAfterPublish(owner: PageOwner, id: string, scope: 'page' | 'site' | undefined): string[] returns scope === 'page' ? [pageTag(id)] : [pageTag(id), pagesTag(owner)]. One function so that all nine places decide the same way. Header comment: the rule and the list of the nine callers."
+     "how": "Server-only. export function tagsAfterPublish(owner: PageOwner, id: string, scope: 'page' | 'site' | undefined): string[] returns scope === 'page' ? [pageTag(id)] : [pageTag(id), pagesTag(owner)]. One function so that all eight places decide the same way. Header comment: the rule and the list of the eight places (the store's and the platform's page actions, page-text-edit, page-css-edit, the three in site-tools.ts of which one changes, the schedule runner). Every other publisher through savePage() (store-drafts.ts, dream-factory.ts, admin-api-content.ts, experiment-tools.ts, site-staging.ts, content-packs.ts, legal-writer.ts and the rest) keeps refreshing the store-wide tag, which stays correct; src/server/owner-tools.ts has no savePage() call (its page tool at about line 1040 is the unpublish tool, store-wide)."
     },
     {
      "file": "src/server/page-refresh.test.ts",
@@ -140,14 +144,9 @@
      "how": "Places 5, 6 and 7. At about line 425 (publish_page: 'const saved = await savePage(... publish: true ...)' then ctx.invalidate(pagesTag(ownerOf(ctx)))): replace the invalidate by: for (const tag of tagsAfterPublish(ownerOf(ctx), id, saved.scope)) ctx.invalidate(tag). At about line 987 (a header or footer published, then chooseSiteLayout): leave store-wide; add nothing. At about line 678 (a page chosen for a place, no body published): leave. So one edit in this file; the other two are checked and left, and the unit test below holds all three."
     },
     {
-     "file": "src/server/owner-tools.ts",
-     "action": "edit",
-     "how": "Place 8: find the tool that saves and publishes a page (rg -n 'savePage\\(' src/server/owner-tools.ts). Where it publishes and then calls ctx.invalidate(pagesTag(ctx.store.id)), replace by the tagsAfterPublish loop with the saved result's id and scope. The unpublish tool at about line 1040 stays store-wide. If owner-tools.ts has no savePage call that publishes, the eighth place is the tool file rg -ln 'savePage\\(.*publish: true' src/server finds besides site-tools.ts; apply the same there and name it in the commit message."
-    },
-    {
      "file": "src/server/page-schedules.ts",
      "action": "edit",
-     "how": "Place 9, the schedule runner. ScheduleRun (line 189) gains 'pages: { store: string; id: string; scope: \"page\" | \"site\" }[]'. publishOne() calls savePage (or the publish it uses: read it); make its outcome carry the page's id and the result's scope, and push { store, id, scope } in runSchedules(); keep run.stores as today for reverts and for scope 'site'. A revert (revertOne) stays store-wide."
+     "how": "Place 8, the schedule runner. ScheduleRun (line 189) gains 'pages: { store: string; id: string; scope: \"page\" | \"site\" }[]'. publishOne() calls savePage (or the publish it uses: read it); make its outcome carry the page's id and the result's scope, and push { store, id, scope } in runSchedules(); keep run.stores as today for reverts and for scope 'site'. A revert (revertOne) stays store-wide."
     },
     {
      "file": "src/app/api/cron/cart-reminders/route.ts",
@@ -157,7 +156,7 @@
     {
      "file": "src/server/page-publish-tags.test.ts",
      "action": "create",
-     "how": "One unit test per place (nine), with next/cache mocked (vi.mock('next/cache', () => ({ updateTag: vi.fn(), revalidateTag: vi.fn(), cacheTag: vi.fn(), cacheLife: vi.fn() }))) and savePage / the edit functions mocked to return { ok: true, id: 'p1', scope: 'page' } and then scope 'site'. For each caller assert: with 'page' the refresh functions were called with 'page:p1' and never with 'pages:<store>' (or 'platform-pages'); with 'site' with both. For callers too wide to mock (the cron route), test the small function it calls instead: export from the route's module nothing new; put the loop in a function publishedTags(run) in src/server/page-refresh.ts and test that. Model the mocks on an existing action test: 'src/app/admin/(gated)/[store]/pages/motion-action.test.ts'."
+     "how": "One unit test per place (eight: places 6 and 7 in site-tools.ts are asserted to stay store-wide), with next/cache mocked (vi.mock('next/cache', () => ({ updateTag: vi.fn(), revalidateTag: vi.fn(), cacheTag: vi.fn(), cacheLife: vi.fn() }))) and savePage / the edit functions mocked to return { ok: true, id: 'p1', scope: 'page' } and then scope 'site'. For each caller assert: with 'page' the refresh functions were called with 'page:p1' and never with 'pages:<store>' (or 'platform-pages'); with 'site' with both. For callers too wide to mock (the cron route), test the small function it calls instead: export from the route's module nothing new; put the loop in a function publishedTags(run) in src/server/page-refresh.ts and test that. Model the mocks on an existing action test: 'src/app/admin/(gated)/[store]/pages/motion-action.test.ts'."
     }
    ],
    "checks": [
@@ -182,27 +181,21 @@
    ]
   },
   {
-   "title": "The alt-text job refreshes a store's tags once a pass, then only the pages that hold the picture",
+   "title": "The alt-text job refreshes a store's tags once a pass of its queue",
    "changes": [
     {
      "file": "src/server/alt-texts.ts",
      "action": "edit",
-     "how": "refreshAltTexts() (about line 224) returns today the owners whose texts changed in this run, and the dispatcher refreshes pages:{store} and catalog:{store} for each, every run that wrote anything (4 pictures a run, so a store with 40 new pictures is refreshed 10 times). Change its return type to { owners: MediaOwner[]; pages: { storeId: string | null; id: string }[]; written: number } where: 'owners' holds an owner only when this run wrote texts for it AND nothing is left due for it afterwards (call dueForAltText(owner, since, false, site) again after writeAltTexts and include the owner when the list is empty): the queue is empty, so one store-wide refresh settles everything; 'pages' holds, for an owner whose queue is not yet empty, the ids of the published pages that hold one of the pictures written in this run, from the lookup step 0.28 added (the index of pictures in pages; find it with rg -n 'media_uses|picture_uses|pagesHolding' src/server). If step 0.28 added no such lookup, return an empty pages list for those owners (their pages then show the texts when the queue empties) and say so in the commit message."
+     "how": "refreshAltTexts() (about line 224) returns today { owners, written }: the owners whose texts changed in this run, and the dispatcher refreshes pages:{store} and catalog:{store} for each, every run that wrote anything (4 pictures a run, so a store with 40 new pictures is refreshed 10 times). Keep the return type. Change who is in 'owners': an owner is included only when this run wrote texts for it AND nothing is left due for it afterwards: after writeAltTexts() for that owner, call dueForAltText() again with exactly the arguments refreshAltTexts() used for this owner's first call in the same run (step 0.28 adds a fifth argument `job`; pass what the first call passes) and include the owner when the list is empty. The queue is then empty, so one store-wide refresh settles everything; until then a page shows its pictures' new texts when the queue empties (within the minutes the queue takes). Decided, not looked up: step 0.28 adds no index of the pages that hold a picture, and mediaUses() in media-library.ts scans every page's text per picture, too costly for a five-minute job; so no per-page refresh is added. Say this in the doc comment."
     },
     {
-     "file": "src/app/api/cron/cart-reminders/route.ts",
+     "file": "src/server/alt-texts.int.test.ts",
      "action": "edit",
-     "how": "Lines 276 to 279: keep the loop over r.altTexts?.owners (store-wide pages and catalogue tags) and add: for (const p of r.altTexts?.pages ?? []) revalidateTag(pageTag(p.id), 'max'). Import pageTag from '@/server/pages'."
-    },
-    {
-     "file": "src/server/alt-texts.test.ts",
-     "action": "create",
-     "how": "If a unit test file for alt-texts.ts exists (ls src/server/alt-texts*.test.ts), extend it; else create this one with the database and the AI mocked as the nearest existing test of refreshAltTexts does (rg -l 'refreshAltTexts' src -g '*.test.ts'). Case: one store with 40 pictures due and perSite 4: run refreshAltTexts() 10 times; count the runs whose 'owners' includes the store: expect exactly 1 (the tenth); before this change it is 10."
+     "how": "Read the file's fixture first (its store, its stubbed fetch for the model, and how the existing cases call refreshAltTexts()). Add a case at the end: 'refreshes a store once its queue is empty, not on every run (bloat review step 2.14)': give the fixture's store 12 pictures due (image, not SVG, no alt text, alt_tried_at null), then call refreshAltTexts(4, 5) three times and record, per run, whether the returned owners include that store: expect [false, false, true]. A fourth run that writes nothing does not include it."
     }
    ],
    "checks": [
-    "pnpm exec vitest run src/server/alt-texts.test.ts (or the extended file): passes with at most one store-wide refresh in 10 runs",
-    "pnpm exec vitest run --config vitest.integration.config.mts src/server/alt-texts.int.test.ts: passes",
+    "pnpm exec vitest run --config vitest.integration.config.mts src/server/alt-texts.int.test.ts: passes, with the store-wide refresh only on the third of three runs",
     "pnpm lint && pnpm typecheck && pnpm test: each exits 0"
    ]
   },
@@ -217,7 +210,7 @@
     {
      "file": "docs/decisions.md",
      "action": "edit",
-     "how": "Append one row with the next free D-number (pull main first; rg -o '^\\| D[0-9]+' docs/decisions.md | tr -dc '0-9\\n' | sort -n | tail -1, plus 1): the two tags, savePage()'s scope and its rule, the nine callers, the product layout cached per store, the alt-text job's refresh, and that the media library's own refresh (media/actions.ts) stays store-wide."
+     "how": "Append one row with the next free D-number (pull main first; rg -o '^\\| D[0-9]+' docs/decisions.md | tr -dc '0-9\\n' | sort -n | tail -1, plus 1): the two tags, savePage()'s scope and its rule, the eight places (and that other publishers through savePage() stay store-wide), the product layout cached per store, the alt-text job's refresh, and that the media library's own refresh (media/actions.ts) stays store-wide."
     },
     {
      "file": "docs/audits/bloat-review-2026-11.md",
@@ -237,15 +230,15 @@
   },
   {
    "file": "src/server/page-publish-tags.test.ts",
-   "proves": "It fails when one of the nine places that publish a body refreshes the store-wide tag for scope 'page', or forgets it for scope 'site'."
+   "proves": "It fails when one of the eight places that publish a body refreshes the store-wide tag for scope 'page', or forgets it for scope 'site'."
   },
   {
    "file": "src/lib/page-list-facts.test.ts",
    "proves": "It fails when the page index or a grid card's facts gains a field that listFacts() lacks, and when the modal rule in code and the samples disagree."
   },
   {
-   "file": "src/server/alt-texts.test.ts",
-   "proves": "It fails when the alt-text job refreshes a store's tags more than once across 10 runs of one queue."
+   "file": "src/server/alt-texts.int.test.ts",
+   "proves": "It fails when the alt-text job refreshes a store's tags before its queue is empty (more than once across three runs of a 12-picture queue)."
   },
   {
    "file": "src/server/product-layouts.int.test.ts",
@@ -262,8 +255,8 @@
    "expect": "Passes: after a body publish the home and a product answer x-nextjs-cache: HIT, the page shows the new words, and a title change reaches the home's menu."
   },
   {
-   "check": "pnpm exec vitest run src/server/page-publish-tags.test.ts src/lib/page-list-facts.test.ts src/server/alt-texts.test.ts",
-   "expect": "All pass: nine places, the coverage table, and at most one store-wide refresh in 10 runs (10 before)."
+   "check": "pnpm exec vitest run src/server/page-publish-tags.test.ts src/lib/page-list-facts.test.ts && pnpm exec vitest run --config vitest.integration.config.mts src/server/alt-texts.int.test.ts",
+   "expect": "All pass: eight places, the coverage table, and one store-wide refresh across three runs of a 12-picture queue (one per run before)."
   },
   {
    "check": "pnpm exec vitest run --config vitest.integration.config.mts src/server/product-layouts.int.test.ts",
@@ -286,7 +279,7 @@
  ],
  "do_not": [
   "Do not remove pagesTag(owner) from any reader: every read keeps the store-wide tag and gains the page's.",
-  "Do not change the other refreshes of pagesTag (about 50 places: unpublish, delete, restore, roles, blogs, menus, translations, themes, demo content, store copy, the media library): they stay store-wide. Only the nine named places change.",
+  "Do not change the other refreshes of pagesTag (about 50 places: unpublish, delete, restore, roles, blogs, menus, translations, themes, demo content, store copy, the media library): they stay store-wide. Only the eight named places change; other publishers through savePage() (store-drafts.ts, dream-factory.ts, admin-api-content.ts and the rest) stay store-wide.",
   "Do not make a first publish, an unpublish, a delete, a revert or a header's or footer's publish scope 'page'.",
   "Do not key productLayoutById() by the product.",
   "Do not lengthen any cacheLife here: that is step 2.15, after this one.",
@@ -298,9 +291,13 @@
   "Some page, feed or file other than the page's own shows body text of a page beyond its excerpt (for example a full-text llms file in src/server/seo.ts, or search knowledge): report it; that reader must carry the page's tag or the fact must join listFacts().",
   "An existing e2e or int test must be changed to pass.",
   "publishOne() in src/server/page-schedules.ts does not go through savePage() and no scope can be had without rewriting it.",
-  "The owner-tools.ts tool described as place 8 is not found."
+  "src/db/statement-count.ts does not export countStatements (step 1.9 not done): stop before commit 1's int case."
  ],
  "executor": "strong",
- "executor_why": "Which facts of a page other pages show (listFacts) is a judgement over the whole site that tests cannot fully hold, and a miss leaves a page stale for a week once step 2.15 lands; the first commit is mechanical and can go to the cheap model.",
- "checked_in_code": "I opened pages.ts (pagesTag at 67 to 69, savePage 237 to 430 with 'before.livePublished' already read, findPublishedPage 684), product-layouts.ts (one cached read keyed by store and product returning the whole document), site-layouts.ts, experiments.ts siteVersionContent, the two save actions, page-text-edit.ts, page-css-edit.ts, site-tools.ts, owner-tools.ts, page-schedules.ts and the dispatcher route. rg finds 61 refresh lines of the pages tag today, not 55. Corrected: the finding puts the publish refresh at pages/actions.ts:107 through pagesChanged() (now defined at line 60) and names owner-tools.ts:1040 as a publish, but that line is the unpublish tool, which stays store-wide; the publishing tools are in site-tools.ts. The finding left the alt-text job for later; the plan's done-when holds it here, so the brief does it on step 0.28's lookup and falls back to once-per-queue when that lookup is missing."
+ "executor_why": "Which facts of a page other pages show (listFacts) is a judgement over the whole site that tests cannot fully hold, and a miss leaves a page stale for a week once step 2.15 lands; commit 1 (the page tag and the per-store layout read, with an exact statement test) is mechanical and can go to the cheap model.",
+ "checked_in_code": "I opened pages.ts (pagesTag at 67 to 69, savePage 237 to 430 with 'before.livePublished' already read, findPublishedPage 684), product-layouts.ts (one cached read keyed by store and product returning the whole document), site-layouts.ts, experiments.ts siteVersionContent, the two save actions, page-text-edit.ts, page-css-edit.ts, site-tools.ts, owner-tools.ts, page-schedules.ts and the dispatcher route. rg finds 61 refresh lines of the pages tag today, not 55. Corrected: the finding puts the publish refresh at pages/actions.ts:107 through pagesChanged() (now defined at line 60) and names owner-tools.ts:1040 as a publish, but that line is the unpublish tool, which stays store-wide; the publishing tools are in site-tools.ts. The finding left the alt-text job for later; the plan's done-when holds it here, so the brief does it on step 0.28's lookup and falls back to once-per-queue when that lookup is missing. Second check (12 November): owner-tools.ts has no savePage() call, so place 8 is dropped and the step changes eight places (other publishers stay store-wide, which is correct); commit 1's int case is one assertion on countStatements() records (the document statement names the layout, never a product); step 0.28 adds no index of the pages that hold a picture, so commit 6 refreshes a store once its queue is empty and adds no per-page refresh, tested in alt-texts.int.test.ts.",
+ "cheap_commits": [
+  1
+ ],
+ "rating_checked": "strong"
 }

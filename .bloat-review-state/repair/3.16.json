@@ -1,0 +1,11 @@
+{
+ "id": "3.16",
+ "fixed": [
+  "All storefront paths (order-section.tsx and its test, account/orders/[orderId]/page.tsx, checkout-section.tsx and its test, account/pay's pay-view) now sit under (shop)/ in changes, checks, done_when and read_first; the edited files carry made_by 2.2.",
+  "depends_on names 2.2 and a stop_if stops when (shop)/ does not exist."
+ ],
+ "rejected": [],
+ "cheaper": "not applied: the reviewer gave none; order totals, checkout and the price read need a reader whatever the brief says.",
+ "executor_before": "cheap-then-review",
+ "executor_after": "cheap-then-review"
+}

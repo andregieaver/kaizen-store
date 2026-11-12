@@ -1,0 +1,18 @@
+{
+ "id": "0.4",
+ "fixed": [
+  "Commit 1's check is rg -n 'schema' src/db/client.ts (rg -c printed a count, 3).",
+  "chat-route.ts: line 70 calls visitorKey, so line 8 is split into the chat-agent import and `import { visitorKey } from \"./chat-turns\"`; the conditional is gone.",
+  "Dropped the change that removed visitorKey from chat-agent.ts:185 and replaced the do_not: src/server/chat.int.test.ts:167 calls chat.visitorKey on import('./chat-agent'), which the brief's rg check would have missed (found on this check).",
+  "Added a stop_if for an /api/visit count above 710 modules after commit 3."
+ ],
+ "rejected": [
+  {
+   "problem": "The done-when runs import-reach.mjs, which step 0.1 has not yet put in the repo.",
+   "why": "depends_on names 0.1, whose commit copies import-reach.mjs into docs/audits/bloat-review-2026-11/scripts/."
+  }
+ ],
+ "cheaper": "applied: the judge's edit_brief (rg -n, visitorKey stated outright).",
+ "executor_before": "cheap-then-review",
+ "executor_after": "cheap"
+}

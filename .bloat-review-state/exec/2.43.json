@@ -94,12 +94,12 @@
         {
           "file": "package.json",
           "action": "edit",
-          "how": "Step 1.20 added a \"check\" script that runs lint, the type check and `pnpm test` through scripts/timed.mjs. Open that script (or the file it calls). Replace its `pnpm test` (the whole unit run) with `pnpm test:changed`. Keep the recorder's labels and its printing as step 1.20 wrote them; label the new part 'related tests'. If \"check\" does not exist in package.json, stop: step 1.20 is not done."
+          "how": "Step 1.20 added \"check\" as a one-line chain: \"node scripts/timed.mjs lint -- pnpm lint && node scripts/timed.mjs typecheck --warm-if=tsconfig.tsbuildinfo -- pnpm typecheck && node scripts/timed.mjs unit --unit -- pnpm test --reporter=default --reporter=json --outputFile=.vitest-report.json\". Replace its value with \"node scripts/check.mjs\". If \"check\" does not exist in package.json, stop: step 1.20 is not done."
         },
         {
           "file": "scripts/check.mjs",
           "action": "create",
-          "how": "Only if step 1.20's \"check\" is a one-line shell chain in package.json and has no file of its own: create this file and point \"check\" at it (`node scripts/check.mjs`); if step 1.20 already made a file for it, edit that file instead and do not create this one. What the lint part must do: (a) find the lint cache file: read the `--cache-location` value in package.json's \"lint\" script, default `.eslintcache`; (b) run `git diff --name-only origin/main...HEAD` plus the staged and unstaged names; (c) if the cache file exists, or eslint.config.mjs or pnpm-lock.yaml is among the changed names, or origin/main cannot be read, run `pnpm lint` (the whole tree, which fills the cache); (d) otherwise run `pnpm exec eslint --max-warnings 0 <the changed files that still exist and end .ts, .tsx, .mjs, .js or .jsx>` and skip lint with a printed line when that list is empty. Then the type check (`pnpm typecheck`), then `pnpm test:changed`, each started through scripts/timed.mjs exactly as step 1.20 starts them, stopping at the first failure. CI is not changed by this file: the gate and the static job keep `pnpm lint` on the whole tree."
+          "how": "Decided: step 1.20's \"check\" is a one-line chain with no file of its own, so create this file. What the lint part must do: (a) find the lint cache file: read the `--cache-location` value in package.json's \"lint\" script, default `.eslintcache`; (b) run `git diff --name-only origin/main...HEAD` plus the staged and unstaged names; (c) if the cache file exists, or eslint.config.mjs or pnpm-lock.yaml is among the changed names, or origin/main cannot be read, run `node scripts/timed.mjs lint -- pnpm lint` (the whole tree, which fills the cache); (d) otherwise run `node scripts/timed.mjs lint -- pnpm exec eslint --max-warnings 0 <the changed files that still exist and end .ts, .tsx, .mjs, .js or .jsx>` and skip lint with a printed line when that list is empty. Then `node scripts/timed.mjs typecheck --warm-if=tsconfig.tsbuildinfo -- pnpm typecheck` (as step 1.20 runs it), then `node scripts/timed.mjs related-tests -- pnpm test:changed`. Do NOT pass --unit to the related tests: timed.mjs's --unit mode compares the files Vitest ran with every test file on disk and would fail a related run. Run each with spawnSync (stdio inherit, shell false) and stop at the first non-zero exit, exiting with its code. CI is not changed by this file: the gate and the static job keep `pnpm lint` on the whole tree."
         }
       ],
       "checks": [
@@ -114,12 +114,13 @@
         {
           "file": ".github/workflows/ci.yml",
           "action": "edit",
-          "how": "Only in the job `pending`. (1) Its `actions/checkout` step gets `with: fetch-depth: 50`, so the commit before the push is in the clone. (2) Directly after the step named 'Quick gate: money, cart, checkout and VAT tests' and before the step with id `head`, add a step named 'Quick gate: the tests this push can reach' with the same `if:` as the three gate steps (`steps.status.outputs.pending == 'false' && vars.DEPLOY_VIA_CI == 'true'`) that runs `node scripts/test-changed.mjs ${{ github.event.before }}`. If step 1.20 wrapped the other gate steps in `node scripts/timed.mjs ...`, wrap this one the same way with its own label (the check of step 1.20 fails a CI step that runs outside the recorder). When github.event.before is not in the clone the script runs the whole suite by itself, which is the safe side. (3) In the comment block above the job (the lines that describe 'no pending migration') and in the comment above 'Quick gate: lint', add that the gate also runs the tests the push's commits can reach and every scan test, and that the whole unit suite still runs in `static` beside the deploy. Change nothing in `static`, `release`, `redeploy` or `baseline`: `static` keeps `pnpm test` (the whole suite), and the money tests step stays."
+          "how": "Only in the job `pending`. (1) Its `actions/checkout` step gets `with: fetch-depth: 50`, so the commit before the push is in the clone. (2) Directly after the step named 'Quick gate: money, cart, checkout and VAT tests' and before the step with id `head`, add a step named 'Quick gate: the tests this push can reach' with the same `if:` as the three gate steps (`steps.status.outputs.pending == 'false' && vars.DEPLOY_VIA_CI == 'true'`) that runs `node scripts/test-changed.mjs ${{ github.event.before }}`. Step 1.20 wrapped the other gate steps as gate-lint, gate-typecheck and gate-smoke, so this one runs `node scripts/timed.mjs gate-related -- node scripts/test-changed.mjs ${{ github.event.before }}` (no --unit). When github.event.before is not in the clone the script runs the whole suite by itself, which is the safe side. (3) In the comment block above the job (the lines that describe 'no pending migration') and in the comment above 'Quick gate: lint', add that the gate also runs the tests the push's commits can reach and every scan test, and that the whole unit suite still runs in `static` beside the deploy. Change nothing in `static`, `release`, `redeploy` or `baseline`: `static` keeps `pnpm test` (the whole suite), and the money tests step stays."
         },
         {
           "file": "scripts/ci-budgets.json",
-          "action": "create",
-          "how": "This file is made by step 1.20 and does not exist before it. If it is not there, stop: the dependency is not done. If it is there, do not overwrite it; edit it: Add a ceiling for the new gate step under the name the recorder gives it, 100 seconds as its first median, and raise the gate's total line to 190 seconds (90 s for lint, the type check and the money tests after step 2.42, plus at most 100 s). Follow the shape step 1.20 gave the file; if the gate's three steps are not yet at 90 s (step 2.42 not done), write the measured median plus 100 s and say so in the decision row."
+          "action": "edit",
+          "how": "Step 1.20 made this file with the shape { ceilings: { '<key>': { seconds: number, release?: true } }, memory, runnerMinutes, installSeconds }; do not overwrite it. Add to ceilings the key 'gate-related': { \"seconds\": 100, \"release\": true } (the gate's other three keys carry release: true too). The file has no key for the gate's total, so add none: the 190 s total is read from the runs (done_when), not written here. If ceilings is still empty (step 1.20's follow-up has not filled it), add only this one key.",
+          "made_by": "1.20"
         }
       ],
       "checks": [
@@ -195,12 +196,12 @@
       "expect": "2 minutes or less"
     },
     {
-      "check": "scripts/ci-budgets.json, the gate's line after ten runs",
-      "expect": "a median of 3 min 10 s (190 s) or less"
+      "check": "the next ten runs' timings (step 1.20's weekly check, or node scripts/ci-budgets-check.mjs): the medians of gate-lint, gate-typecheck, gate-smoke and gate-related",
+      "expect": "added up, 190 s (3 min 10 s) or less; gate-related 100 s or less"
     },
     {
-      "check": "a trial push to main with one failing assertion in a unit test that the changed file reaches (for example change a return value in a src/lib file whose test then fails), then read the run's `pending` job",
-      "expect": "the step 'Quick gate: the tests this push can reach' is red, the deploy step did not run, and /api/health still reports the commit before. Push the revert at once."
+      "check": "locally, not pushed: in a scratch commit change a return value in a src/lib file so that a unit test it reaches fails, then run node scripts/test-changed.mjs HEAD~1",
+      "expect": "exits non-zero and names the failing test; then drop the scratch commit (git reset --hard HEAD~1). Never push a failing commit to main to try the gate: main deploys to production. The gate's own step is read on the next ordinary push's pending job (the step 'Quick gate: the tests this push can reach' ran and was green)."
     },
     {
       "check": "rg -n 'pnpm check' CLAUDE.md README.md docs/capacity.md",
@@ -229,9 +230,16 @@
     "After the renames `pnpm test` shows a different number of tests than before plus the one new case.",
     "pnpm test:changed after a one-line change in a small src/lib file runs 250 files or more: report the two totals and the file changed.",
     "A test fails in the related run but passes in the whole run, or the other way round.",
-    "The gate's related step takes more than 100 s in its first three runs."
+    "The gate's related step takes more than 100 s in its first three runs.",
+    "scripts/ci-budgets.json does not exist or package.json's check is not step 1.20's one-line chain: step 1.20 is not done as its brief says; stop and report what is there."
   ],
   "executor": "cheap-then-review",
-  "executor_why": "The renames and scripts are mechanical, but the commit that edits ci.yml changes what holds back a production deploy, so a stronger model should read that diff before it is pushed.",
-  "checked_in_code": "I opened package.json, vitest.config.mts, .github/workflows/ci.yml (the pending job's three gate steps at lines 297 to 305), CLAUDE.md, README.md:57 and docs/capacity.md:97; all are as the finding says, and Vitest is 5.0.5, whose --changed <ref> unions the commits since the reference with staged and unstaged files. Today there is no `pnpm check`, no scripts/timed.mjs, no projects in the Vitest config and no ci-once.scan.test.ts: they come from steps 1.20, 0.39 and 0.38, so the brief stops when they are missing. I corrected the finding in three places: 44 unit tests list a directory today (it said about 40) and the list is in the brief; a `scans` project is not needed because Vitest's filename filter runs them; and the import graph cannot see a changed migration or config, so the script runs the whole suite for those paths and when the reference is missing from a shallow CI clone (the pending job's checkout has depth 1 today)."
+  "executor_why": "The renames, scripts and the check file are now fully specified against step 1.20's shapes (timed.mjs labels, no --unit for the related run, the ceilings key), but commit 4 changes what holds back a production deploy and commit 5 the pre-push rule every later session follows, so a stronger model or the owner should read those diffs before they are pushed.",
+  "checked_in_code": "I opened package.json, vitest.config.mts, .github/workflows/ci.yml (the pending job's three gate steps at lines 297 to 305), CLAUDE.md, README.md:57 and docs/capacity.md:97; all are as the finding says, and Vitest is 5.0.5, whose --changed <ref> unions the commits since the reference with staged and unstaged files. Today there is no `pnpm check`, no scripts/timed.mjs, no projects in the Vitest config and no ci-once.scan.test.ts: they come from steps 1.20, 0.39 and 0.38, so the brief stops when they are missing. I corrected the finding in three places: 44 unit tests list a directory today (it said about 40) and the list is in the brief; a `scans` project is not needed because Vitest's filename filter runs them; and the import graph cannot see a changed migration or config, so the script runs the whole suite for those paths and when the reference is missing from a shallow CI clone (the pending job's checkout has depth 1 today). Second check (12 November): commit 3 is decided from step 1.20's brief ('check' is a one-line chain, so scripts/check.mjs is created and package.json points at it; the related run is not given --unit, whose disk comparison would fail it); commit 4 wraps the gate step as gate-related and edits scripts/ci-budgets.json (made by 1.20) with only that key, since its shape has no gate-total key; the production trial push is replaced by a local trial.",
+  "rating_checked": "cheap-then-review",
+  "cheap_commits": [
+    1,
+    2,
+    3
+  ]
 }

@@ -1,0 +1,10 @@
+{
+ "id": "1.15",
+ "fixed": [
+  "Said where alertText()'s `locale` comes from (already defined at its top), so the speedValueText call is not left to guesswork."
+ ],
+ "rejected": [],
+ "cheaper": "not applied: the step was already cheap and the reviewer found no problem.",
+ "executor_before": "cheap",
+ "executor_after": "cheap"
+}

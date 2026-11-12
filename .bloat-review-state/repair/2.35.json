@@ -1,0 +1,17 @@
+{
+ "id": "2.35",
+ "fixed": [
+  "host-store.ts names step 2.20's helpers from src/server/short-memory.ts (remembered, forgetRemembered, forgetWhere) and typed-rows (allowed in the proxy's leaves, as 2.20's site-switch-read.ts uses them), with the typedRow shape, instead of 'find it with rg' and 'else read by hand'.",
+  "Commit 4's 'add primaryHost in its own leaf reader' now names the file (step 2.20's src/server/store-facts.ts, StoreFacts and storeFactsOf(), read by storeRequestAnswer()) and the column's subquery, with a change entry made_by 2.20.",
+  "The 61-second e2e case states that the hosts job runs one app server process (one memory), with a stop_if if it does not; a stop_if covers step 2.20's files being absent."
+ ],
+ "rejected": [
+  {
+   "problem": "Step 1.8's route-budget.json key and the proxy graph test's leaf rules are assumed.",
+   "why": "depends_on names 1.8 and 2.20; the route-budget key is added by this step ('withoutStoreDomains'), and commit 1's proxy.test.ts change says where to add the leaf if 2.20 moved the list."
+  }
+ ],
+ "cheaper": "not applied: spelling the proxy edit as code with e2e cases for server actions, prefetches and CSP on own domains needs design reading of src/proxy.ts's job order that I could not settle read-only.",
+ "executor_before": "strong",
+ "executor_after": "strong"
+}

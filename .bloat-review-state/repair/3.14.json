@@ -1,0 +1,15 @@
+{
+ "id": "3.14",
+ "fixed": [
+  "Commit 5: the open 'move a section until under 800 lines' is replaced by two named parts (UnbilledByClient, OverdueInvoices) with their props, the reason the other sections stay, and a report-not-cut rule; checks and stop_if follow."
+ ],
+ "rejected": [
+  {
+   "problem": "The done_when twin count (16 or less) depends on step 3.13's result.",
+   "why": "3.13 is in depends_on and the done_when already says to list the remaining pairs and not write a reason to make the number fit."
+  }
+ ],
+ "cheaper": "applied: commit 5 names its sections by heading id, so commits 3 to 6 are cheap on their own; commits 1 and 2 still need a reader",
+ "executor_before": "cheap-then-review",
+ "executor_after": "cheap-then-review"
+}

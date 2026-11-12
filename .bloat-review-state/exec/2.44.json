@@ -1,117 +1,141 @@
 {
-  "id": "2.44",
-  "goal": "A decision row holds the results of two timed trials (component tests without a fresh worker per file; where a database test file's 3 s goes), the Vitest config keeps whichever setting the trials proved, and the unit run's ceiling in scripts/ci-budgets.json is the new median plus 25%.",
-  "why": "After step 0.39 the unit run is expected at 3 min 25 s to 4 min 15 s (5 min 34 s today), and three quarters of it is 281 component and database test files at 0.74 s and 3.0 s a file. The target is 3 min 30 s or less for the whole unit run.",
-  "read_first": [
-    "vitest.config.mts",
-    "vitest.integration.config.mts",
-    "src/test/test-db-template.ts",
-    "src/db/testing.ts",
-    "src/test/admin-english.ts",
-    "src/test/eager-lazy-views.ts",
-    "docs/audits/bloat-review-2026-11.md",
-    ".github/workflows/ci.yml"
-  ],
-  "depends_on": [
-    {
-      "id": "0.39",
-      "why": "it splits vitest.config.mts into three projects (plain unit, components, database); the trials switch one option in the components and the database project it makes"
-    },
-    {
-      "id": "1.20",
-      "why": "it creates scripts/ci-budgets.json and the recorder that holds the unit run's ceiling this step lowers"
-    }
-  ],
-  "commits": [
-    {
-      "title": "Component tests share a worker: isolate off in the components project, proved by three runs",
-      "changes": [
-        {
-          "file": "vitest.config.mts",
-          "action": "edit",
-          "how": "Before editing, check that step 0.39 is done: the file must define three projects (test.projects, each with a name; one holds the component tests and lists src/test/admin-english.ts and src/test/eager-lazy-views.ts in its setupFiles, one holds the tests that open the test database, one holds the plain unit files with isolate: false). If the file still has one include list and no projects, stop. First take the BEFORE figures with the commands in this commit's checks (the sample and the full project), and write them down. Then, in the components project only, add `isolate: false` (Vitest then reuses one worker's module registry for all files of that project, so the admin's English in src/test/admin-english.ts is loaded once per worker and not once per file). Change nothing else in that project: same include, same setupFiles, same pool. Then run the three AFTER runs in the checks. Keep the line only if all three runs pass with every file green AND the sample's time is at most 61% of its BEFORE time (the review measured 16.3 s falling to 10 s or less for 22 files; the review's own 22 files were not kept, so the ratio is the rule). If a file fails only with isolate off, do NOT edit that test to make it pass and do not add a reset to it: remove the `isolate: false` line again, and write the failing file names into the decision row. A third way is allowed only if at most 5 files fail: move exactly those files into a fourth project named components-isolated with the same setupFiles and isolate left on, by listing them in its include and in the components project's exclude; then rerun the three runs."
-        }
-      ],
-      "checks": [
-        "BEFORE and AFTER, the sample: SAMPLE=$(rg --files src/components -g '*.test.ts' -g '*.test.tsx' | sort | head -22 | tr '\\n' ' '); time pnpm exec vitest run $SAMPLE : run it twice and take the second (warm) time; AFTER must be at most 0.61 x BEFORE",
-        "pnpm exec vitest run --project <the components project's name as written in vitest.config.mts> : every file passes; run it twice",
-        "pnpm exec vitest run --project <same name> --sequence.shuffle.files : every file passes (a third run, shuffled; note the seed Vitest prints)",
-        "pnpm test : the 'Test Files' and 'Tests' totals on Vitest's last lines equal the totals of a run made before this commit (no file lost from every project)",
-        "pnpm lint && pnpm typecheck && pnpm test: exits 0"
-      ]
-    },
-    {
-      "title": "A database test file's time, split into its four parts, and the db project's worker setting that follows",
-      "changes": [
-        {
-          "file": "vitest.config.mts",
-          "action": "edit",
-          "how": "This commit first measures and only then may change one line. Measure one database test file (use src/db/commerce.test.ts and one small file that opens the test database, found with: rg -l 'db/testing' src -g '*.test.ts' -g '!*.int.test.ts' | head -3). Split its time into four parts without committing any timing code: (1) worker start = the 'prepare' and 'environment' figures on Vitest's Duration line for a run of that one file; (2) PGlite start, (3) template load, (4) tests: add temporary console.time/console.timeEnd pairs inside src/db/testing.ts around the call that creates the PGlite instance and around the call that loads the template made by src/test/test-db-template.ts, run the file, write the four numbers down, and remove the timing lines again (git diff src/db/testing.ts must be empty before the commit). Decision rule: if PGlite start (part 2) is over 0.5 s a file, add `isolate: false` to the database project in vitest.config.mts and run that project three times, one of them with --sequence.shuffle.files; keep the line only if every file passes all three times and the project's wall time falls. If part 2 is 0.5 s or less, change nothing in the config: the commit then holds only the docs rows of this step (the decision row and docs/build-memory.md are not touched; see docs)."
-        },
-        {
-          "file": "scripts/ci-budgets.json",
-          "action": "create",
-          "how": "This file is made by step 1.20 and does not exist before it. If it is not there, stop: the dependency is not done. If it is there, do not overwrite it: change only the unit run's ceiling. Run pnpm test five times on the machine CI uses if you can read CI's run times (the recorder of step 1.20 prints them in the run summary), otherwise locally, take the median wall time, and set the unit run's ceiling to that median times 1.25, rounded up to a whole second. Keep every other key of the file as it is."
-        }
-      ],
-      "checks": [
-        "git diff --stat src/db/testing.ts : prints nothing (the timing lines are gone)",
-        "pnpm exec vitest run --project <the database project's name> : every file passes (three times, one with --sequence.shuffle.files, only if isolate was switched off there)",
-        "pnpm test : Vitest's Duration line is 3 min 30 s or less on CI's machine, and the 'Test Files' and 'Tests' totals equal the run before the step",
-        "pnpm lint && pnpm typecheck && pnpm test: exits 0"
-      ]
-    }
-  ],
-  "tests": [
-    {
-      "file": "src/lib/ci-once.scan.test.ts (made by step 0.39; extend it, do not create a second scan)",
-      "proves": "It already reads the Vitest configs. Add one assertion per kept trial: the components project has isolate: false (or the named components-isolated project lists exactly the files the decision row names), and the database project's isolate setting equals the decision row's result. It fails when someone flips the setting back without a new trial."
-    }
-  ],
-  "migration": {
-    "needed": false,
-    "notes": ""
+ "id": "2.44",
+ "goal": "A decision row holds the results of two timed trials (component tests without a fresh worker per file; where a database test file's 3 s goes), the Vitest config keeps whichever setting the trials proved, and the unit run's ceiling in scripts/ci-budgets.json is the new median plus 25%.",
+ "why": "After step 0.39 the unit run is expected at 3 min 25 s to 4 min 15 s (5 min 34 s today), and three quarters of it is 281 component and database test files at 0.74 s and 3.0 s a file. The target is 3 min 30 s or less for the whole unit run.",
+ "read_first": [
+  "vitest.config.mts",
+  "vitest.integration.config.mts",
+  "src/test/test-db-template.ts",
+  "src/db/testing.ts",
+  "src/test/admin-english.ts",
+  "src/test/eager-lazy-views.ts",
+  "docs/audits/bloat-review-2026-11.md",
+  ".github/workflows/ci.yml"
+ ],
+ "depends_on": [
+  {
+   "id": "0.38",
+   "why": "it creates src/lib/ci-once.scan.test.ts, whose Vitest case (added by step 0.39) this step changes"
   },
-  "done_when": [
+  {
+   "id": "0.39",
+   "why": "it splits vitest.config.mts into three projects (plain unit, components, database); the trials switch one option in the components and the database project it makes"
+  },
+  {
+   "id": "1.20",
+   "why": "it creates scripts/ci-budgets.json and the recorder that holds the unit run's ceiling this step lowers"
+  }
+ ],
+ "commits": [
+  {
+   "title": "Component tests share a worker: isolate off in the components project, proved by three runs",
+   "changes": [
     {
-      "check": "rg -n 'isolate' vitest.config.mts",
-      "expect": "The components project's line matches the decision row (isolate: false if the trial passed; absent if it failed), and the database project's likewise."
+     "file": "vitest.config.mts",
+     "action": "edit",
+     "how": "Before editing, check that step 0.39 is done: the file must define three projects (test.projects) named exactly 'components' (include src/components/**/*.test.ts, setupFiles src/test/eager-lazy-views.ts and src/test/admin-english.ts), 'db' (include src/db/**/*.test.ts, globalSetup src/test/test-db-template.ts) and 'unit' (isolate: false), as step 0.39 writes them. If the file still has one include list and no projects, stop. First take the BEFORE figures with the commands in this commit's checks (the sample and the full project), and write them down. Then, in the components project only, add `isolate: false` (Vitest then reuses one worker's module registry for all files of that project, so the admin's English in src/test/admin-english.ts is loaded once per worker and not once per file). Change nothing else in that project: same include, same setupFiles, same pool. Then run the three AFTER runs in the checks. Keep the line only if all three runs pass with every file green AND the sample's time is at most 61% of its BEFORE time (the review measured 16.3 s falling to 10 s or less for 22 files; the review's own 22 files were not kept, so the ratio is the rule). If a file fails only with isolate off, do NOT edit that test to make it pass and do not add a reset to it: remove the `isolate: false` line again, and write the failing file names into the decision row. A third way is allowed only if at most 5 files fail: move exactly those files into a fourth project named components-isolated with the same setupFiles and isolate left on, by listing them in its include and in the components project's exclude; then rerun the three runs."
     },
     {
-      "check": "pnpm test (CI's unit job, read from the run summary of step 1.20's recorder)",
-      "expect": "Duration 3 min 30 s or less (5 min 34 s before step 0.39)."
-    },
-    {
-      "check": "node -e \"console.log(JSON.stringify(require('./scripts/ci-budgets.json'),null,1))\"",
-      "expect": "The unit run's ceiling equals the new median plus 25%."
-    },
-    {
-      "check": "rg -n 'isolate' docs/decisions.md | tail -3",
-      "expect": "One new decision row holds: trial one's BEFORE and AFTER sample times, the three runs and the shuffle seed, kept or not and any failing files by name; trial two's four parts in seconds and what was done."
+     "file": "src/lib/ci-once.scan.test.ts",
+     "action": "edit",
+     "made_by": "0.38",
+     "how": "In case (5) 'plain files share a worker' (step 0.39's), the assertion that the project 'components' does not set isolate to false becomes: when this commit keeps the line, `expect(project('components').isolate).toBe(false)`; when it reverted the line, leave step 0.39's assertion as it is; when it made 'components-isolated', expect 'components' isolate false and 'components-isolated' to include exactly the files named in the decision row (and the 'components' project to exclude them). Leave the 'db' half for commit 2. Use the helper the describe already has for finding a project by name, or `config.test.projects.find((p) => p.test.name === name).test`."
     }
-  ],
-  "after_deploy": [],
-  "docs": [
-    "docs/decisions.md: one new row with the next free D-number (find the last with: rg -o '^\\| D[0-9]+' docs/decisions.md | tail -1, and add one). It records both trials with their numbers: sample time before and after, the three runs (one shuffled, with its seed), files that failed with isolate off by name, the four parts of a database file's time, and the setting kept in each project.",
-    "docs/build-memory.md is not touched. If docs/rules holds the budgets rule of step 1.1 (the list of baseline files), nothing changes there: no new baseline file is made.",
-    "docs/audits/bloat-review-2026-11.md, Progress table: set the row of step 2.44 to Done with the date and the commit hash, in the same commit as the last change; tick the step's section in docs/audits/bloat-review-2026-11/plan/phase-2.md if that file has one."
-  ],
-  "do_not": [
-    "Do not edit, skip or weaken a test so that it passes without a fresh worker: a file that needs isolation is a result, to be named in the decision row.",
-    "Do not turn isolate off in vitest.integration.config.mts: the integration tests share a real database and are not part of this step.",
-    "Do not remove src/test/admin-english.ts or src/test/eager-lazy-views.ts from the components project's setupFiles.",
-    "Do not change pool, poolOptions, maxWorkers or testTimeout: the trial is one option.",
-    "Do not commit console.time lines in src/db/testing.ts.",
-    "Do not raise the ceiling in scripts/ci-budgets.json; it may only go down in this step."
-  ],
-  "stop_if": [
-    "vitest.config.mts has no projects (step 0.39 is not done) or scripts/ci-budgets.json does not exist (step 1.20 is not done).",
-    "The totals of 'Test Files' or 'Tests' differ from the run before the step: a file fell out of every project.",
-    "More than 5 component files fail with isolate off: revert the line, name them in the decision row, and hand back; the step is then done with the result 'kept isolation'.",
-    "A file passes in order and fails only when shuffled: that is an order dependency; do not fix it here, record the seed and the file and revert.",
-    "After both trials the unit run is still over 3 min 30 s: write the measured figure in the decision row and report; do not look for a third cut on your own."
-  ],
-  "executor": "cheap",
-  "executor_why": "Two timed trials with a written pass rule and one config line each; a wrong setting shows as a failing test run.",
-  "checked_in_code": "I opened vitest.config.mts, src/test/test-db-template.ts and package.json. Today the config is one project with both setup files for all 1,215 unit test files (214 under src/components, 64 that open the test database), so the three projects and scripts/ci-budgets.json this step edits do not exist yet: they come from steps 0.39 and 1.20, which is why the brief stops if they are missing. The review's 22-file sample was never listed by name (findings/tests-ci.json only gives its size and time), so I replaced the absolute 16.3 s to 10 s rule by the same ratio (61%) on a fixed, reproducible list. src/lib/ci-once.scan.test.ts is also made by step 0.39."
+   ],
+   "checks": [
+    "BEFORE and AFTER, the sample: SAMPLE=$(rg --files src/components -g '*.test.ts' -g '*.test.tsx' | sort | head -22 | tr '\\n' ' '); time pnpm exec vitest run $SAMPLE : run it twice and take the second (warm) time; AFTER must be at most 0.61 x BEFORE",
+    "pnpm exec vitest run --project components : every file passes; run it twice",
+    "pnpm exec vitest run --project components --sequence.shuffle.files : every file passes (a third run, shuffled; note the seed Vitest prints)",
+    "pnpm test : the 'Test Files' and 'Tests' totals on Vitest's last lines equal the totals of a run made before this commit (no file lost from every project)",
+    "pnpm lint && pnpm typecheck && pnpm test: exits 0",
+    "pnpm exec vitest run src/lib/ci-once.scan.test.ts : pass"
+   ]
+  },
+  {
+   "title": "A database test file's time, split into its four parts, and the db project's worker setting that follows",
+   "changes": [
+    {
+     "file": "vitest.config.mts",
+     "action": "edit",
+     "how": "This commit first measures and only then may change one line. Measure one database test file (use src/db/commerce.test.ts and one small file that opens the test database, found with: rg -l 'from \"\\./testing\"|from \"@/db/testing\"' src -g '*.test.ts' -g '!*.int.test.ts' | head -3; 64 files match today, src/db/gift-cards.test.ts first). Split its time into four parts without committing any timing code: (1) worker start = the 'prepare' and 'environment' figures on Vitest's Duration line for a run of that one file; (2) PGlite start, (3) template load, (4) tests: add temporary console.time/console.timeEnd pairs inside createTestDatabase() in src/db/testing.ts (lines 61 to 67): split line 64 in two, `const data = await readFile(file);` timed as the template load (part 3), then `const db = new PGlite({ extensions, loadDataDir: new Blob([data]) }); await db.waitReady;` timed together as PGlite start (part 2), run the file, write the four numbers down, and remove the timing lines again (git diff src/db/testing.ts must be empty before the commit). Decision rule: if PGlite start (part 2) is over 0.5 s a file, add `isolate: false` to the project named 'db' in vitest.config.mts and run that project three times, one of them with --sequence.shuffle.files; keep the line only if every file passes all three times and the project's wall time falls. If part 2 is 0.5 s or less, change nothing in the config: the commit then holds only the docs rows of this step (the decision row and docs/build-memory.md are not touched; see docs)."
+    },
+    {
+     "file": "scripts/ci-budgets.json",
+     "action": "edit",
+     "how": "Step 1.20 creates this file with the shape { ceilings: { '<key>': { seconds, release? } }, memory, runnerMinutes, installSeconds }; the unit run's ceiling is ceilings.unit.seconds. Change only that number, and only from CI's figures: after this step's commits have run on main in five completed CI runs, read the 'unit' key's seconds of those five runs from their timings-* artifacts, as scripts/ci-budgets-check.mjs reads them (step 1.20's script; it needs GH_TOKEN, for example `GH_TOKEN=$(gh auth token)`), take their median and set ceilings.unit.seconds to the median times 1.25, rounded up to a whole second, only if that is lower than the present figure. Never use local run times: CI's machine is another. If you cannot read CI's artifacts, leave the file unchanged and say so in the hand-back (step 1.20's weekly check reports a ceiling more than 25% above its median). Keep every other key as it is.",
+     "made_by": "1.20"
+    },
+    {
+     "file": "src/lib/ci-once.scan.test.ts",
+     "action": "edit",
+     "made_by": "0.38",
+     "how": "Only if this commit kept `isolate: false` on the 'db' project: in case (5), the assertion that 'db' does not set isolate to false becomes `expect(project('db').isolate).toBe(false)`. If the commit changed nothing in the config, leave case (5) as it is."
+    }
+   ],
+   "checks": [
+    "git diff --stat src/db/testing.ts : prints nothing (the timing lines are gone)",
+    "pnpm exec vitest run --project db : every file passes (three times, one with --sequence.shuffle.files, only if isolate was switched off there)",
+    "pnpm test : Vitest's Duration line is 3 min 30 s or less on CI's machine, and the 'Test Files' and 'Tests' totals equal the run before the step",
+    "pnpm lint && pnpm typecheck && pnpm test: exits 0",
+    "pnpm exec vitest run src/lib/ci-once.scan.test.ts : pass"
+   ]
+  }
+ ],
+ "tests": [
+  {
+   "file": "src/lib/ci-once.scan.test.ts (made by step 0.38; step 0.39 adds the describe 'the unit tests load only what they use (bloat review 0.39)' that imports vitest.config.mts, with its case (5) 'plain files share a worker'; extend it, do not create a second scan)",
+   "proves": "Case (5) as step 0.39 writes it also asserts that the projects 'components' and 'db' do not set isolate to false; this step rewrites that half to the trials' result: 'components' has isolate === false when trial one kept it (or a project 'components-isolated' lists exactly the files the decision row names), and 'db' has isolate === false exactly when trial two kept it. It fails when someone flips a setting back without a new trial."
+  }
+ ],
+ "migration": {
+  "needed": false,
+  "notes": ""
+ },
+ "done_when": [
+  {
+   "check": "rg -n 'isolate' vitest.config.mts",
+   "expect": "The components project's line matches the decision row (isolate: false if the trial passed; absent if it failed), and the database project's likewise."
+  },
+  {
+   "check": "pnpm test (CI's unit job, read from the run summary of step 1.20's recorder)",
+   "expect": "Duration 3 min 30 s or less (5 min 34 s before step 0.39)."
+  },
+  {
+   "check": "node -e \"console.log(JSON.stringify(require('./scripts/ci-budgets.json'),null,1))\"",
+   "expect": "The unit run's ceiling (ceilings.unit.seconds) equals the median of five CI runs after the step times 1.25, rounded up; or is unchanged, with the hand-back saying CI's figures could not be read."
+  },
+  {
+   "check": "rg -n 'isolate' docs/decisions.md | tail -3",
+   "expect": "One new decision row holds: trial one's BEFORE and AFTER sample times, the three runs and the shuffle seed, kept or not and any failing files by name; trial two's four parts in seconds and what was done."
+  }
+ ],
+ "after_deploy": [],
+ "docs": [
+  "docs/decisions.md: one new row with the next free D-number (find the last with: rg -o '^\\| D[0-9]+' docs/decisions.md | tail -1, and add one). It records both trials with their numbers: sample time before and after, the three runs (one shuffled, with its seed), files that failed with isolate off by name, the four parts of a database file's time, and the setting kept in each project.",
+  "docs/build-memory.md is not touched. If docs/rules holds the budgets rule of step 1.1 (the list of baseline files), nothing changes there: no new baseline file is made.",
+  "docs/audits/bloat-review-2026-11.md, Progress table: set the row of step 2.44 to Done with the date and the commit hash, in the same commit as the last change; tick the step's section in docs/audits/bloat-review-2026-11/plan/phase-2.md if that file has one."
+ ],
+ "do_not": [
+  "Do not edit, skip or weaken a test so that it passes without a fresh worker: a file that needs isolation is a result, to be named in the decision row.",
+  "Do not turn isolate off in vitest.integration.config.mts: the integration tests share a real database and are not part of this step.",
+  "Do not remove src/test/admin-english.ts or src/test/eager-lazy-views.ts from the components project's setupFiles.",
+  "Do not change pool, poolOptions, maxWorkers or testTimeout: the trial is one option.",
+  "Do not commit console.time lines in src/db/testing.ts.",
+  "Do not raise the ceiling in scripts/ci-budgets.json; it may only go down in this step."
+ ],
+ "stop_if": [
+  "vitest.config.mts has no projects (step 0.39 is not done) or scripts/ci-budgets.json does not exist (step 1.20 is not done).",
+  "The totals of 'Test Files' or 'Tests' differ from the run before the step: a file fell out of every project.",
+  "More than 5 component files fail with isolate off: revert the line, name them in the decision row, and hand back; the step is then done with the result 'kept isolation'.",
+  "A file passes in order and fails only when shuffled: that is an order dependency; do not fix it here, record the seed and the file and revert.",
+  "After both trials the unit run is still over 3 min 30 s: write the measured figure in the decision row and report; do not look for a third cut on your own."
+ ],
+ "executor": "cheap",
+ "executor_why": "Two timed trials with written keep-or-revert rules, one config line each, the scan test's expectation for each outcome and a CI-only rule for the one budget number; a wrong result costs CI time or a flaky test that the shuffled run is there to catch, never production.",
+ "checked_in_code": "I opened vitest.config.mts, src/test/test-db-template.ts and package.json. Today the config is one project with both setup files for all 1,215 unit test files (214 under src/components, 64 that open the test database), so the three projects and scripts/ci-budgets.json this step edits do not exist yet: they come from steps 0.39 and 1.20, which is why the brief stops if they are missing. The review's 22-file sample was never listed by name (findings/tests-ci.json only gives its size and time), so I replaced the absolute 16.3 s to 10 s rule by the same ratio (61%) on a fixed, reproducible list. src/lib/ci-once.scan.test.ts is also made by step 0.39. Second check (12 November): src/lib/ci-once.scan.test.ts is step 0.38's (0.38 added to depends_on), and step 0.39's case (5) asserts 'components' and 'db' do NOT set isolate false, so each commit now edits that case to its trial's result; the project names (components, db) are given; scripts/ci-budgets.json is an edit (made_by 1.20) of ceilings.unit.seconds from CI's figures only; the database-file search used a pattern that matches nothing (the db tests import ./testing) and the timing split names createTestDatabase()'s line 64.",
+ "rating_checked": "cheap",
+ "cheap_commits": [
+  1,
+  2
+ ]
 }

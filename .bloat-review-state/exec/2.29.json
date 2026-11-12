@@ -1,242 +1,243 @@
 {
-  "id": "2.29",
-  "goal": "The page builder paints before the rich text editor (Tiptap) loads, loads one storefront language only when a preview needs it, and the draft-order editor loads none; the admin's import walk forbids lib/i18n and lib/messages in admin client code.",
-  "why": "/admin/[store]/pages/[pageId] loads 3,303,372 bytes of script before first paint and 40 admin routes carry all four storefront languages (318,693 bytes); after the step the builder is at or under 2,300,000 bytes with no ProseMirror chunk in its first load and no admin route's first load holds a storefront language.",
-  "read_first": [
-    "docs/rules/admin/website.md",
-    "docs/rules/storefront.md",
-    "node_modules/next/dist/docs/01-app/02-guides/lazy-loading.md",
-    "src/components/lazy/lazy-view.tsx",
-    "src/test/eager-lazy-views.ts",
-    "src/components/admin/admin-text-later.ts",
-    "src/lib/storefront-bundle.scan.test.ts",
-    "src/components/content-grid.tsx"
-  ],
-  "depends_on": [
-    {
-      "id": "0.10",
-      "why": "it makes src/components/admin/lazy/fields.tsx with the first stand-ins (EntityFieldsCard, and RichTextEditor for fields-form.tsx and term-page-fields.tsx); this step adds to that folder and must not make a second stand-in for the same component"
-    },
-    {
-      "id": "1.4",
-      "why": "it creates src/components/admin/admin-bundle.scan.test.ts, where this step adds the lib/i18n rule"
-    },
-    {
-      "id": "1.2",
-      "why": "scripts/bundle-budget.mjs and its baseline hold the route's bytes and the ProseMirror and storefront-language markers"
-    },
-    {
-      "id": "2.26",
-      "why": "its second commit takes the English of builder, blocks and fields (about 150 KB) out of the builder's scripts; without it this step stops near 2,450,000 bytes"
-    }
-  ],
-  "commits": [
-    {
-      "title": "The draft-order editor gets its unit words from the server: no storefront language in its scripts",
-      "changes": [
-        {
-          "file": "src/components/admin/drafts/draft-summary.tsx",
-          "action": "edit",
-          "how": "Delete line 3 (import { t } from '@/lib/i18n') and line 35 (const bases = t(lang).unitPrice.bases). Add a required prop to DraftSummaryPanel: 'bases: Record<string, string>' (use the exact type of Messages['unitPrice']['bases'] with 'import type { Messages } from \"@/lib/i18n\"'; a type import is free). Line 79 keeps reading bases[per.base]. Remove useAdminLang() from the file if nothing else uses 'lang'."
-        },
-        {
-          "file": "src/components/admin/drafts/draft-editor.tsx",
-          "action": "edit",
-          "how": "Add 'bases' with the same type to DraftEditorProps and pass it to <DraftSummaryPanel ... bases={bases} /> (about line 775)."
-        },
-        {
-          "file": "src/components/admin/drafts/draft-sent-panel.tsx",
-          "action": "edit",
-          "how": "Add 'bases' to its props and pass it to <DraftSummaryPanel> (about line 227)."
-        },
-        {
-          "file": "src/app/admin/(gated)/[store]/orders/drafts/[draftId]/page.tsx",
-          "action": "edit",
-          "how": "This server page draws <DraftScreen editor={...} sent={...}> (about line 90). Import { t } from '@/lib/i18n' here (a server file may) and add bases: t(lang).unitPrice.bases to both the editor and the sent objects, where lang is the admin language the page already holds (the same value useAdminLang() gave: the account's adminLocale through adminLangOf). Check src/app/admin/(gated)/[store]/orders/drafts/new/ for a page that draws DraftEditor: if it does, pass bases the same way. src/components/admin/drafts/draft-screen.tsx needs no change: it spreads the two objects."
-        }
-      ],
-      "checks": [
-        "rg -n 'lib/i18n' src/components/admin/drafts: prints only 'import type' lines",
-        "pnpm lint && pnpm typecheck && pnpm test: exits 0",
-        "the signed-in build (as CI's signed-in job in .github/workflows/ci.yml: NEXT_PUBLIC_SUPABASE_URL=http://127.0.0.1:3912, NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=e2e-publishable-key, E2E_SIGNED_IN=1, node scripts/db-setup.mjs --seed, pnpm build), then E2E_SIGNED_IN=1 pnpm exec playwright test --project=signed-in e2e/signed-in/quotes.spec.ts: passes",
-        "node scripts/bundle-budget.mjs: /admin/[store]/orders/drafts/[draftId] at or under 1,300,000 bytes (1,607,368 before); lower its baseline"
-      ]
-    },
-    {
-      "title": "The builder loads one storefront language when a preview needs it",
-      "changes": [
-        {
-          "file": "src/components/admin/site-words.ts",
-          "action": "create",
-          "how": "A 'use client' module. Export siteWordsLater(lang: string): Promise<Messages> with one import() per hand-written language: nb -> import('@/lib/messages/nb').then((m) => m.nb), sv -> '@/lib/messages/sv' (m.sv), da -> '@/lib/messages/da' (m.da), anything else -> '@/lib/messages/en' (m.en). Keep each promise in a Map by language so a language is fetched once, as admin-text-later.ts keeps its areas, and forget a failed fetch so the next call tries again. Export the hook useSiteWords(lang: string): Messages | null: state starts as the already-arrived module or null, and an effect awaits siteWordsLater(lang) and sets it. Export settleSiteWords(lang, words) for unit tests, as settledEnglish() is in admin-text-later.ts. Use 'import type { Messages } from \"@/lib/i18n\"' only. Comment: a language translated by AI has no module and previews in English, as the browser did before."
-        },
-        {
-          "file": "src/components/content-grid-tiles.tsx",
-          "action": "create",
-          "how": "Move the whole body of ContentGridView out of src/components/content-grid.tsx into this file as ContentGridTiles, with every helper it uses, taking one more required prop 'm: Messages' in place of the line 'const m = t(data.lang)' (line 63). This file must not import '@/lib/i18n' except as 'import type'. Keep every other prop and all markup byte for byte."
-        },
-        {
-          "file": "src/components/content-grid.tsx",
-          "action": "edit",
-          "how": "ContentGridView stays exported here with the same props and becomes: read m = t(data.lang) and return <ContentGridTiles {...props} m={m} />. If the empty-items early return (lines 56 to 62) ran before 't' was read, keep that order of results: the same output for the same props. Keep every other export of the file. The storefront's callers (content-grid-section.tsx, blog-listing.tsx, platform-routes/terms.tsx, recommended-grid.tsx) do not change."
-        },
-        {
-          "file": "src/components/admin/page-builder-fields.tsx",
-          "action": "edit",
-          "how": "Delete line 13 (import { t } from '@/lib/i18n') and change line 12 to import { ContentGridTiles } from '@/components/content-grid-tiles'. In the grid preview (about lines 1528 to 1552): call 'const m = useSiteWords(lang)' at the top of the component with the other hooks (hooks may not sit after the early returns: pass the language the component knows before the result arrives, and if only data.lang is known, call useSiteWords(shown && !('problem' in shown.data) ? shown.data.lang : 'en')). Where line 1537 read 'const m = t(data.lang)', write: if (!m) return note(gw.finding). Line 1549 becomes <ContentGridTiles block={block} data={data} m={m} />. m.listing.count(...) and m.listing.open keep working: m is the same object type."
-        },
-        {
-          "file": "src/components/admin/modal-preview.tsx",
-          "action": "edit",
-          "how": "Delete line 18 (the lib/i18n import). Line 34 becomes: const site = useSiteWords(lang ?? 'en'); placed with the other hooks, before 'if (!modal) return null'. Draw <PageModal ...> (lines 53 to 62) only when 'open && site' is true, with labels={{ close: site.modal.close, dialog: site.modal.dialog }}. The bar with the badge and the Preview button is always drawn. If PageModal was mounted while closed for a reason (read its preview prop in src/components/page-modal.tsx), keep it mounted when site is there and only skip it while site is null."
-        },
-        {
-          "file": "src/components/admin/block-fields.tsx",
-          "action": "edit",
-          "how": "Delete line 21 (the lib/i18n import). Line 2684, usualForm: replace by a hook 'function useUsualForm(): Messages[\"form\"] | null { const lang = useAdminLang(); return useSiteWords(lang === \"nb\" ? \"nb\" : \"en\")?.form ?? null; }'. Lines 2688 and 2814 ('const en = usualForm(useAdminLang())') become 'const en = useUsualForm()'. Every read 'en.something' below them is a placeholder: write 'en?.something ?? \"\"' so the placeholder is empty until the words arrive. Do not change any other text in the two components."
-        },
-        {
-          "file": "src/test/eager-lazy-views.ts",
-          "action": "edit",
-          "how": "Unit tests draw with renderToStaticMarkup(), which cannot wait. At the top level add: import the four language modules and call settleSiteWords('en', en), ('nb', nb), ('sv', sv), ('da', da) from '@/components/admin/site-words', inside a try/catch like pick() uses, so useSiteWords() returns the words at once in tests."
-        }
-      ],
-      "checks": [
-        "rg -n 'from \"@/lib/i18n\"' src/components/admin/block-fields.tsx src/components/admin/modal-preview.tsx src/components/admin/page-builder-fields.tsx src/components/content-grid-tiles.tsx: prints nothing but 'import type' lines",
-        "pnpm test src/lib/storefront-bundle.scan.test.ts: passes (content-grid-tiles.tsx is reached by shoppers' scripts and must not bring lib/i18n)",
-        "pnpm test $(rg -l 'content-grid|ContentGridView|modal-preview|block-fields' src -g '*.test.ts' -g '*.test.tsx' | tr '\\n' ' '): pass with no expected string changed",
-        "pnpm lint && pnpm typecheck && pnpm test: exits 0",
-        "pnpm build && pnpm test:e2e e2e/store-pages.spec.ts e2e/performance.spec.ts: pass (the storefront's grid is unchanged)",
-        "E2E_SIGNED_IN=1 pnpm exec playwright test --project=signed-in (in the signed-in build) e2e/signed-in/shop-components.spec.ts e2e/signed-in/products-grid.spec.ts e2e/signed-in/builder-palette.spec.ts e2e/signed-in/builder-columns.spec.ts: pass",
-        "node scripts/bundle-budget.mjs: the count of admin routes whose first-load chunks hold 'Det gäller alla beställningar vännen gör.' is 0 (40 before); lower the baseline"
-      ]
-    },
-    {
-      "title": "The rich text editor loads after the builder's first paint",
-      "changes": [
-        {
-          "file": "src/components/admin/lazy/editors.tsx",
-          "action": "create",
-          "how": "A 'use client' module after the pattern of src/components/lazy/blocks.tsx and of the dynamic() calls at src/components/admin/page-builder-fields.tsx lines 269 and 270. The import() must be written inside dynamic() in this file. Export four stand-ins with the real components' names and props: RichTextEditor = dynamic(() => import('../rich-text-editor').then((m) => m.RichTextEditor), { ssr: false, loading: () => <div className='min-h-40 rounded-md border border-line' aria-busy /> }); MarkupInput = dynamic(() => import('../markup-input').then((m) => m.MarkupInput), { ssr: false, loading: () => <div className='min-h-10 rounded-md border border-line' aria-busy /> }); InlineMarkupEditor = dynamic(() => import('@/components/inline-edit/markup-editor').then((m) => m.InlineMarkupEditor), { ssr: false, loading: () => null }); InlineRichEditor = dynamic(() => import('@/components/inline-edit/rich-text-inline').then((m) => m.InlineRichEditor), { ssr: false, loading: () => null }). If step 0.10 already exports a RichTextEditor stand-in from src/components/admin/lazy/fields.tsx, do not make a second: re-export that one here. Also export warmEditors(): void, which calls the four import() once (kept in a module variable) so the chunks are fetched ahead of a press. Match the loading boxes' height to the real fields (read the wrapper classes in rich-text-editor.tsx about line 128 and markup-input.tsx line 17) so the form does not jump."
-        },
-        {
-          "file": "src/components/admin/page-builder.tsx",
-          "action": "edit",
-          "how": "Lines 14, 15 and 96: import InlineMarkupEditor, InlineRichEditor and RichTextEditor from './lazy/editors' instead of their own modules. In the PageBuilder component add one effect that warms the chunks when the browser is idle after mount: 'useEffect(() => { const run = () => warmEditors(); if (\"requestIdleCallback\" in window) { const id = window.requestIdleCallback(run, { timeout: 2000 }); return () => window.cancelIdleCallback(id); } const id = window.setTimeout(run, 1000); return () => window.clearTimeout(id); }, [])' (the same shape as whenIdle() in src/components/lazy/lazy-view.tsx). The inline editors already take the press point from state (point={actions.inline?.point ?? null}, about lines 3281 to 3296): do not clear that state while the chunk loads; check that 'editingInline' stays true until the editor calls onDone. No other line of the builder changes."
-        },
-        {
-          "file": "src/components/admin/block-fields.tsx",
-          "action": "edit",
-          "how": "Lines 3 and 33: import MarkupInput and RichTextEditor from './lazy/editors'."
-        },
-        {
-          "file": "src/components/admin/page-builder-fields.tsx",
-          "action": "edit",
-          "how": "Line 8: import MarkupInput from '@/components/admin/lazy/editors'."
-        },
-        {
-          "file": "src/components/admin/fields-form.tsx",
-          "action": "edit",
-          "how": "Line 41: import RichTextEditor from './lazy/editors' (skip if step 0.10 already pointed it at ./lazy/fields)."
-        },
-        {
-          "file": "src/components/admin/term-page-fields.tsx",
-          "action": "edit",
-          "how": "Line 10: import RichTextEditor from '@/components/admin/lazy/editors' (skip if step 0.10 already pointed it at the lazy file)."
-        },
-        {
-          "file": "src/test/eager-lazy-views.ts",
-          "action": "edit",
-          "how": "Add vi.mock('@/components/admin/lazy/editors', async () => ({ RichTextEditor: await pick(() => import('@/components/admin/rich-text-editor'), 'RichTextEditor'), MarkupInput: await pick(() => import('@/components/admin/markup-input'), 'MarkupInput'), InlineMarkupEditor: await pick(() => import('@/components/inline-edit/markup-editor'), 'InlineMarkupEditor'), InlineRichEditor: await pick(() => import('@/components/inline-edit/rich-text-inline'), 'InlineRichEditor'), warmEditors: () => {} })), as the file does for '@/components/lazy/blocks'."
-        }
-      ],
-      "checks": [
-        "rg -n 'from \"(\\./|@/components/admin/)(rich-text-editor|markup-input)\"|from \"@/components/inline-edit/(markup-editor|rich-text-inline)\"' src/components/admin -g '!*.test.*' -g '!lazy/**': prints only src/components/admin/markup-input.tsx (it builds on markup-editor) and files that import a type",
-        "pnpm lint && pnpm typecheck && pnpm test: exits 0",
-        "the signed-in build (as CI's signed-in job in .github/workflows/ci.yml: NEXT_PUBLIC_SUPABASE_URL=http://127.0.0.1:3912, NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=e2e-publishable-key, E2E_SIGNED_IN=1, node scripts/db-setup.mjs --seed, pnpm build), then E2E_SIGNED_IN=1 pnpm exec playwright test --project=signed-in e2e/signed-in/builder-animation.spec.ts e2e/signed-in/builder-backdrops.spec.ts e2e/signed-in/builder-columns.spec.ts e2e/signed-in/builder-lines.spec.ts e2e/signed-in/builder-palette.spec.ts e2e/signed-in/builder-saved-edit.spec.ts e2e/signed-in/dual-page.spec.ts e2e/signed-in/dual-heading.spec.ts e2e/signed-in/text-styles.spec.ts e2e/signed-in/page-builder-fit.spec.ts e2e/signed-in/page-history.spec.ts e2e/signed-in/css-editor.spec.ts e2e/signed-in/content-types.spec.ts: all pass",
-        "pnpm test:e2e e2e/inline-edit-live.spec.ts e2e/inline-edit-hosts.spec.ts e2e/text-colour.spec.ts: pass (the live site's inline editors share the modules)",
-        "node scripts/bundle-budget.mjs: /admin/[store]/pages/[pageId] at or under 2,300,000 bytes and the 'ProseMirror' marker is in the first load of no builder route; lower the baseline"
-      ]
-    },
-    {
-      "title": "The admin's import walk forbids storefront languages, and the builder's budget is lowered",
-      "changes": [
-        {
-          "file": "src/components/admin/admin-bundle.scan.test.ts",
-          "action": "create",
-          "how": "Marked create only because the file is not in the repo today: step 1.4 makes it. EDIT it, never overwrite. Add 'src/lib/i18n.ts' and 'src/lib/messages/{nb,sv,da,en}.ts' to the modules no admin client module may reach by a value import, with no exception list. An import() does not count as reaching (the walk follows static imports), so src/components/admin/site-words.ts passes; if the walk follows import() too, name site-words.ts as the one allowed importer. If the walk finds other admin client modules that reach lib/i18n after commits 1 and 2, they are sites the review did not list: fix each the same way (words from the server as a prop for plain strings; useSiteWords() where a function such as listing.count is needed) and say so in the commit."
-        },
-        {
-          "file": "e2e/signed-in/admin-scripts.spec.ts",
-          "action": "edit",
-          "how": "BUDGETS (line 36 on): lower '/pages/{page}' (3,480,000 at line 44) to the measured first-scripts figure plus 4%. Add the draft-order editor if the table can address it ('/orders/drafts/{draft}' needs a draft's id: add only if the spec already has a helper that finds one; else leave it to scripts/bundle-budget.mjs)."
-        }
-      ],
-      "checks": [
-        "pnpm test src/components/admin/admin-bundle.scan.test.ts: passes; plant 'import { t } from \"@/lib/i18n\";' in src/components/admin/admin-rail.tsx: it fails and names the file; remove the line",
-        "pnpm lint && pnpm typecheck && pnpm test: exits 0",
-        "the signed-in build (as CI's signed-in job in .github/workflows/ci.yml: NEXT_PUBLIC_SUPABASE_URL=http://127.0.0.1:3912, NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=e2e-publishable-key, E2E_SIGNED_IN=1, node scripts/db-setup.mjs --seed, pnpm build), then E2E_SIGNED_IN=1 pnpm exec playwright test --project=signed-in e2e/signed-in/admin-scripts.spec.ts: passes on the lowered budget"
-      ]
-    }
-  ],
-  "tests": [
-    {
-      "file": "src/components/admin/admin-bundle.scan.test.ts",
-      "proves": "fails when an admin client module imports lib/i18n or a whole storefront language as a value"
-    },
-    {
-      "file": "src/lib/storefront-bundle.scan.test.ts",
-      "proves": "fails if content-grid-tiles.tsx brings lib/i18n into a visitor's scripts (existing test; the new file falls under it)"
-    },
-    {
-      "file": "e2e/signed-in/admin-scripts.spec.ts",
-      "proves": "fails when the builder's first scripts rise above the lowered budget"
-    }
-  ],
-  "migration": {
-    "needed": false,
-    "notes": ""
+ "id": "2.29",
+ "goal": "The page builder paints before the rich text editor (Tiptap) loads, loads one storefront language only when a preview needs it, and the draft-order editor loads none; the admin's import walk forbids lib/i18n and lib/messages in admin client code.",
+ "why": "/admin/[store]/pages/[pageId] loads 3,303,372 bytes of script before first paint and 40 admin routes carry all four storefront languages (318,693 bytes); after the step the builder is at or under 2,300,000 bytes with no ProseMirror chunk in its first load and no admin route's first load holds a storefront language.",
+ "read_first": [
+  "docs/rules/admin/website.md",
+  "docs/rules/storefront.md",
+  "node_modules/next/dist/docs/01-app/02-guides/lazy-loading.md",
+  "src/components/lazy/lazy-view.tsx",
+  "src/test/eager-lazy-views.ts",
+  "src/components/admin/admin-text-later.ts",
+  "src/lib/storefront-bundle.scan.test.ts",
+  "src/components/content-grid.tsx"
+ ],
+ "depends_on": [
+  {
+   "id": "0.10",
+   "why": "it creates src/components/admin/lazy/editors.tsx with the stand-ins RichTextEditor (lazyView over dynamic(), drawn on the server) and EntityFieldsCard, points fields-form.tsx and term-page-fields.tsx at it, and mocks it in src/test/eager-lazy-views.ts; this step adds to that file and that mock and must not make a second stand-in"
   },
-  "done_when": [
+  {
+   "id": "1.4",
+   "why": "it creates src/components/admin/admin-bundle.scan.test.ts, where this step adds the lib/i18n rule"
+  },
+  {
+   "id": "1.2",
+   "why": "scripts/bundle-budget.mjs and its baseline hold the route's bytes and the ProseMirror and storefront-language markers"
+  },
+  {
+   "id": "2.26",
+   "why": "its second commit takes the English of builder, blocks and fields (about 150 KB) out of the builder's scripts; without it this step stops near 2,450,000 bytes"
+  }
+ ],
+ "commits": [
+  {
+   "title": "The draft-order editor gets its unit words from the server: no storefront language in its scripts",
+   "changes": [
     {
-      "check": "pnpm build && node scripts/bundle-budget.mjs (reads .next/diagnostics/route-bundle-stats.json)",
-      "expect": "/admin/[store]/pages/[pageId] at or under 2,300,000 bytes (3,303,372 before) with no 'ProseMirror' chunk in its first load; 0 admin routes whose first-load chunks hold 'Det gäller alla beställningar vännen gör.' (40 before)"
+     "file": "src/components/admin/drafts/draft-summary.tsx",
+     "action": "edit",
+     "how": "Delete line 3 (import { t } from '@/lib/i18n') and line 35 (const bases = t(lang).unitPrice.bases). Add a required prop to DraftSummaryPanel: 'bases: Record<string, string>' (use the exact type of Messages['unitPrice']['bases'] with 'import type { Messages } from \"@/lib/i18n\"'; a type import is free). Line 79 keeps reading bases[per.base]. Remove useAdminLang() from the file if nothing else uses 'lang'."
     },
     {
-      "check": "pnpm test src/components/admin/admin-bundle.scan.test.ts",
-      "expect": "passes with lib/i18n and lib/messages on the forbidden list and no exception but site-words.ts"
+     "file": "src/components/admin/drafts/draft-editor.tsx",
+     "action": "edit",
+     "how": "Add 'bases' with the same type to DraftEditorProps and pass it to <DraftSummaryPanel ... bases={bases} /> (about line 775)."
     },
     {
-      "check": "In a Norwegian store's builder: add a product grid with filters, press Preview on a modal row, add an email form",
-      "expect": "the grid preview shows 'finding' for a moment and then Norwegian words; the modal opens with its close label; the form's placeholders fill in"
+     "file": "src/components/admin/drafts/draft-sent-panel.tsx",
+     "action": "edit",
+     "how": "Add 'bases' to its props and pass it to <DraftSummaryPanel> (about line 227)."
+    },
+    {
+     "file": "src/app/admin/(gated)/[store]/orders/drafts/[draftId]/page.tsx",
+     "action": "edit",
+     "how": "This server page draws <DraftScreen editor={...} sent={...}> (about line 90). Import { t } from '@/lib/i18n' here (a server file may) and add bases: t(lang).unitPrice.bases to both the editor and the sent objects, where lang is the admin language the page already holds (the same value useAdminLang() gave: the account's adminLocale through adminLangOf). (src/app/admin/(gated)/[store]/orders/drafts/new/page.tsx draws NewDraftForm, not DraftEditor, so it needs no change.) src/components/admin/drafts/draft-screen.tsx needs no change: it spreads the two objects."
     }
-  ],
-  "after_deploy": [
-    "Open a page in the builder on production, press a heading on the canvas within a second of the page showing: the inline editor opens at the pressed place."
-  ],
-  "docs": [
-    "docs/decisions.md (or docs/decisions/D{n}.md after step 2.40): one decision with the next free D number: the rich text editor loads after first paint behind src/components/admin/lazy/editors.tsx and is warmed when idle; the admin's browser loads one storefront language on demand (site-words.ts); the figures before and after.",
-    "docs/rules/storefront.md, under 'Interface text lives in src/lib/i18n.ts' (D212): add that the admin's browser never imports lib/i18n; a preview loads one language through useSiteWords().",
-    "docs/rules/admin/website.md, under 'Editing words where they are' (D191, D192, D193): the inline editors arrive after first paint and keep the press point.",
-    "docs/audits/code-review-2026-11.md: in the Progress table, add a note on row 3.4 that the Tiptap part is done (date, commit), and a line in its change log; correct finding FB8's fix, which lists only dialogs and panels.",
-    "docs/audits/bloat-review-2026-11.md, the plan's tracker (find the row with rg -n '^\\| *2\\.29 ' docs/audits/bloat-review-2026-11.md; the step's section is under the heading that starts with 2.29): row 2.29 to Done with date and commits."
-  ],
-  "do_not": [
-    "Do not change the props or the output of ContentGridView for the storefront.",
-    "Do not pass the whole Messages object from a server component to a client one: it holds functions and cannot cross.",
-    "Do not remove Tiptap or change rich-text-editor.tsx, markup-input.tsx, markup-editor.tsx or rich-text-inline.tsx themselves; only who imports them.",
-    "Do not lazy-load the editors on the live site's inline editing (src/components/page-edit-link.tsx and its imports): it already loads them on demand.",
-    "Do not add lib/i18n back through a helper in src/lib that a client part imports; the walk follows lib modules.",
-    "Do not load a dialog or a block's fields on demand here: that is step 2.30."
-  ],
-  "stop_if": [
-    "src/components/admin/admin-bundle.scan.test.ts or scripts/bundle-budget.mjs does not exist.",
-    "A builder spec fails because a press opened nothing or a field appeared late and moved the form: report the spec and the press.",
-    "After commit 3 the route is above 2,300,000 bytes: report the ten largest first-load chunks from route-bundle-stats.json and whether step 2.26's second commit is in.",
-    "A unit test needs its expected markup changed to pass.",
-    "The storefront's performance or bundle test changes its figure."
-  ],
-  "executor": "cheap-then-review",
-  "executor_why": "Every edit is named and the builder specs catch a broken press, but it touches the shared storefront grid and many builder files, so a stronger model should read the diff before it is pushed.",
-  "checked_in_code": "I opened the import lines the findings name: page-builder.tsx 14, 15 and 96, block-fields.tsx 3, 21, 33, 2684, 2688 and 2814, page-builder-fields.tsx 8, 12, 13 and 1537 to 1549, fields-form.tsx 41, term-page-fields.tsx 10, modal-preview.tsx 18 and 34, content-grid.tsx 63 and draft-summary.tsx 3 and 35: all as described (Tiptap is imported at nine lines, not eight: page-builder-fields.tsx line 8 is one of them). The findings say draft-editor.tsx and draft-sent-panel.tsx get the words 'from their server pages'; in the code both are drawn through draft-screen.tsx by orders/drafts/[draftId]/page.tsx, which is where the brief reads them. The hook in the grid preview cannot be called at line 1537 as the finding writes it, because early returns stand before it; the brief moves the call to the top. The done-when of the plan (2,300,000) is lower than AC-5's (2,450,000) and needs step 2.26's builder commit, so it is a dependency."
+   ],
+   "checks": [
+    "rg -n 'lib/i18n' src/components/admin/drafts: prints only 'import type' lines",
+    "pnpm lint && pnpm typecheck && pnpm test: exits 0",
+    "the signed-in build (as CI's signed-in job in .github/workflows/ci.yml: NEXT_PUBLIC_SUPABASE_URL=http://127.0.0.1:3912, NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=e2e-publishable-key, E2E_SIGNED_IN=1, node scripts/db-setup.mjs --seed, pnpm build), then E2E_SIGNED_IN=1 pnpm exec playwright test --project=signed-in e2e/signed-in/quotes.spec.ts: passes",
+    "node scripts/bundle-budget.mjs: /admin/[store]/orders/drafts/[draftId] at or under 1,300,000 bytes (1,607,368 before); lower its baseline"
+   ]
+  },
+  {
+   "title": "The builder loads one storefront language when a preview needs it",
+   "changes": [
+    {
+     "file": "src/components/admin/site-words.ts",
+     "action": "create",
+     "how": "A 'use client' module. Export siteWordsLater(lang: string): Promise<Messages> with one import() per hand-written language: nb -> import('@/lib/messages/nb').then((m) => m.nb), sv -> '@/lib/messages/sv' (m.sv), da -> '@/lib/messages/da' (m.da), anything else -> '@/lib/messages/en' (m.en). Keep each promise in a Map by language so a language is fetched once, as admin-text-later.ts keeps its areas, and forget a failed fetch so the next call tries again. Export the hook useSiteWords(lang: string): Messages | null: state starts as the already-arrived module or null, and an effect awaits siteWordsLater(lang) and sets it. Export settleSiteWords(lang, words) for unit tests, as settledEnglish() is in admin-text-later.ts. Use 'import type { Messages } from \"@/lib/i18n\"' only. Comment: a language translated by AI has no module and previews in English, as the browser did before."
+    },
+    {
+     "file": "src/components/content-grid-tiles.tsx",
+     "action": "create",
+     "how": "Move the whole body of ContentGridView out of src/components/content-grid.tsx into this file as ContentGridTiles, with every helper it uses, taking one more required prop 'm: Messages' in place of the line 'const m = t(data.lang)' (line 63). This file must not import '@/lib/i18n' except as 'import type'. Keep every other prop and all markup byte for byte."
+    },
+    {
+     "file": "src/components/content-grid.tsx",
+     "action": "edit",
+     "how": "ContentGridView stays exported here with the same props and becomes: read m = t(data.lang) and return <ContentGridTiles {...props} m={m} />. If the empty-items early return (lines 56 to 62) ran before 't' was read, keep that order of results: the same output for the same props. Keep every other export of the file. The storefront's callers (content-grid-section.tsx, blog-listing.tsx, platform-routes/terms.tsx, recommended-grid.tsx) do not change."
+    },
+    {
+     "file": "src/components/admin/page-builder-fields.tsx",
+     "action": "edit",
+     "how": "Delete line 13 (import { t } from '@/lib/i18n') and change line 12 to import { ContentGridTiles } from '@/components/content-grid-tiles'. In the grid preview (about lines 1528 to 1552): call 'const m = useSiteWords(lang)' at the top of the component with the other hooks (hooks may not sit after the early returns: pass the language the component knows before the result arrives, and if only data.lang is known, call useSiteWords(shown && !('problem' in shown.data) ? shown.data.lang : 'en')). Where line 1537 read 'const m = t(data.lang)', write: if (!m) return note(gw.finding). Line 1549 becomes <ContentGridTiles block={block} data={data} m={m} />. m.listing.count(...) and m.listing.open keep working: m is the same object type."
+    },
+    {
+     "file": "src/components/admin/modal-preview.tsx",
+     "action": "edit",
+     "how": "Delete line 18 (the lib/i18n import). Line 34 becomes: const site = useSiteWords(lang ?? 'en'); placed with the other hooks, before 'if (!modal) return null'. Draw <PageModal ...> (lines 53 to 62) only when 'open && site' is true, with labels={{ close: site.modal.close, dialog: site.modal.dialog }}. The bar with the badge and the Preview button is always drawn. If PageModal was mounted while closed for a reason (read its preview prop in src/components/page-modal.tsx), keep it mounted when site is there and only skip it while site is null."
+    },
+    {
+     "file": "src/components/admin/block-fields.tsx",
+     "action": "edit",
+     "how": "Delete line 21 (the lib/i18n import). Line 2684, usualForm: replace by a hook 'function useUsualForm(): Messages[\"form\"] | null { const lang = useAdminLang(); return useSiteWords(lang === \"nb\" ? \"nb\" : \"en\")?.form ?? null; }'. Lines 2688 and 2814 ('const en = usualForm(useAdminLang())') become 'const en = useUsualForm()'. Every read 'en.something' below them is a placeholder: write 'en?.something ?? \"\"' so the placeholder is empty until the words arrive. Do not change any other text in the two components."
+    },
+    {
+     "file": "src/test/eager-lazy-views.ts",
+     "action": "edit",
+     "how": "Unit tests draw with renderToStaticMarkup(), which cannot wait. At the top level add: import the four language modules and call settleSiteWords('en', en), ('nb', nb), ('sv', sv), ('da', da) from '@/components/admin/site-words', inside a try/catch like pick() uses, so useSiteWords() returns the words at once in tests."
+    }
+   ],
+   "checks": [
+    "rg -n 'from \"@/lib/i18n\"' src/components/admin/block-fields.tsx src/components/admin/modal-preview.tsx src/components/admin/page-builder-fields.tsx src/components/content-grid-tiles.tsx: prints nothing but 'import type' lines",
+    "pnpm test src/lib/storefront-bundle.scan.test.ts: passes (content-grid-tiles.tsx is reached by shoppers' scripts and must not bring lib/i18n)",
+    "pnpm test $(rg -l 'content-grid|ContentGridView|modal-preview|block-fields' src -g '*.test.ts' -g '*.test.tsx' | tr '\\n' ' '): pass with no expected string changed",
+    "pnpm lint && pnpm typecheck && pnpm test: exits 0",
+    "pnpm build && pnpm test:e2e e2e/store-pages.spec.ts e2e/performance.spec.ts: pass (the storefront's grid is unchanged)",
+    "E2E_SIGNED_IN=1 pnpm exec playwright test --project=signed-in (in the signed-in build) e2e/signed-in/shop-components.spec.ts e2e/signed-in/products-grid.spec.ts e2e/signed-in/builder-palette.spec.ts e2e/signed-in/builder-columns.spec.ts: pass",
+    "node scripts/bundle-budget.mjs: the count of admin routes whose first-load chunks hold 'Det gäller alla beställningar vännen gör.' is 0 (40 before); lower the baseline"
+   ]
+  },
+  {
+   "title": "The rich text editor loads after the builder's first paint",
+   "changes": [
+    {
+     "file": "src/components/admin/lazy/editors.tsx",
+     "action": "edit",
+     "how": "Step 0.10 created this 'use client' file: `import dynamic from \"next/dynamic\";`, `import { lazyView } from \"@/components/lazy/lazy-view\";` and two stand-ins, RichTextEditor (`lazyView(dynamic(() => import(\"../rich-text-editor\").then((m) => m.RichTextEditor)), () => <div … aria-hidden />)`, without ssr: false, so the server still draws the field) and EntityFieldsCard. Keep both exactly as they are: do not make a second RichTextEditor and do not add ssr: false to it. Add three stand-ins, each with its import() written inside dynamic() in this file: MarkupInput = dynamic(() => import('../markup-input').then((m) => m.MarkupInput), { ssr: false, loading: () => <div className='min-h-10 rounded-md border border-line' aria-busy /> }); InlineMarkupEditor = dynamic(() => import('@/components/inline-edit/markup-editor').then((m) => m.InlineMarkupEditor), { ssr: false, loading: () => null }); InlineRichEditor = dynamic(() => import('@/components/inline-edit/rich-text-inline').then((m) => m.InlineRichEditor), { ssr: false, loading: () => null }). Match MarkupInput's loading box to the real field's wrapper classes (markup-input.tsx line 17) so the form does not jump. Also export warmEditors(): void, which calls the four import()s (rich-text-editor, markup-input, markup-editor, rich-text-inline) once (kept in a module variable) so the chunks are fetched ahead of a press.",
+     "made_by": "0.10"
+    },
+    {
+     "file": "src/components/admin/page-builder.tsx",
+     "action": "edit",
+     "how": "Lines 14, 15 and 96: import InlineMarkupEditor, InlineRichEditor and RichTextEditor from './lazy/editors' instead of their own modules. In the PageBuilder component add one effect that warms the chunks when the browser is idle after mount: 'useEffect(() => { const run = () => warmEditors(); if (\"requestIdleCallback\" in window) { const id = window.requestIdleCallback(run, { timeout: 2000 }); return () => window.cancelIdleCallback(id); } const id = window.setTimeout(run, 1000); return () => window.clearTimeout(id); }, [])' (the same shape as whenIdle() in src/components/lazy/lazy-view.tsx). The inline editors already take the press point from state (point={actions.inline?.point ?? null}, about lines 3281 to 3296): do not clear that state while the chunk loads; check that 'editingInline' stays true until the editor calls onDone. No other line of the builder changes."
+    },
+    {
+     "file": "src/components/admin/block-fields.tsx",
+     "action": "edit",
+     "how": "Lines 3 and 33: import MarkupInput and RichTextEditor from './lazy/editors'."
+    },
+    {
+     "file": "src/components/admin/page-builder-fields.tsx",
+     "action": "edit",
+     "how": "Line 8: import MarkupInput from '@/components/admin/lazy/editors'."
+    },
+    {
+     "file": "src/test/eager-lazy-views.ts",
+     "action": "edit",
+     "how": "Step 0.10 added `vi.mock(\"@/components/admin/lazy/editors\", async () => ({ RichTextEditor: …, EntityFieldsCard: … }))`. Extend that same object (do not add a second vi.mock for the module) with: MarkupInput: await pick(() => import('@/components/admin/markup-input'), 'MarkupInput'), InlineMarkupEditor: await pick(() => import('@/components/inline-edit/markup-editor'), 'InlineMarkupEditor'), InlineRichEditor: await pick(() => import('@/components/inline-edit/rich-text-inline'), 'InlineRichEditor'), warmEditors: () => {}."
+    }
+   ],
+   "checks": [
+    "rg -n 'from \"(\\./|@/components/admin/)(rich-text-editor|markup-input)\"|from \"@/components/inline-edit/(markup-editor|rich-text-inline)\"' src/components/admin -g '!*.test.*' -g '!lazy/**': prints only src/components/admin/markup-input.tsx (it builds on markup-editor) and files that import a type",
+    "pnpm lint && pnpm typecheck && pnpm test: exits 0",
+    "the signed-in build (as CI's signed-in job in .github/workflows/ci.yml: NEXT_PUBLIC_SUPABASE_URL=http://127.0.0.1:3912, NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=e2e-publishable-key, E2E_SIGNED_IN=1, node scripts/db-setup.mjs --seed, pnpm build), then E2E_SIGNED_IN=1 pnpm exec playwright test --project=signed-in e2e/signed-in/builder-animation.spec.ts e2e/signed-in/builder-backdrops.spec.ts e2e/signed-in/builder-columns.spec.ts e2e/signed-in/builder-lines.spec.ts e2e/signed-in/builder-palette.spec.ts e2e/signed-in/builder-saved-edit.spec.ts e2e/signed-in/dual-page.spec.ts e2e/signed-in/dual-heading.spec.ts e2e/signed-in/text-styles.spec.ts e2e/signed-in/page-builder-fit.spec.ts e2e/signed-in/page-history.spec.ts e2e/signed-in/css-editor.spec.ts e2e/signed-in/content-types.spec.ts: all pass",
+    "pnpm test:e2e e2e/inline-edit-live.spec.ts e2e/inline-edit-hosts.spec.ts e2e/text-colour.spec.ts: pass (the live site's inline editors share the modules)",
+    "node scripts/bundle-budget.mjs: /admin/[store]/pages/[pageId] at or under 2,300,000 bytes and the 'ProseMirror' marker is in the first load of no builder route; lower the baseline"
+   ]
+  },
+  {
+   "title": "The admin's import walk forbids storefront languages, and the builder's budget is lowered",
+   "changes": [
+    {
+     "file": "src/components/admin/admin-bundle.scan.test.ts",
+     "action": "edit",
+     "how": "Step 1.4 created this scan: it imports from '@/test/import-walk' (reach() follows static value imports only, and rel() names a file relative to src WITH its extension, e.g. 'lib/i18n.ts'), builds CLIENTS (every 'use client' file under src/app/admin and src/components/admin) and has the rules 'the frame', 'zod' and 'would notice'. Keep them. Add a rule 'no storefront language in admin scripts': SITE_LANGUAGES = ['lib/i18n.ts', 'lib/messages/en.ts', 'lib/messages/nb.ts', 'lib/messages/sv.ts', 'lib/messages/da.ts']; for every module of CLIENTS, the rel() names of reach(module) hold none of them, with no exception list; the failure prints the chain (chain(seen, target)) and says 'Give the words from the server as a prop, or read them with useSiteWords() (src/components/admin/site-words.ts).' src/components/admin/site-words.ts passes because its imports are import() calls, which reach() does not follow. If this rule finds any admin client module besides the ones commits 1 and 2 fixed, stop and report it (stop_if); do not fix it in this step.",
+     "made_by": "1.4"
+    },
+    {
+     "file": "e2e/signed-in/admin-scripts.spec.ts",
+     "action": "edit",
+     "how": "BUDGETS (line 36 on): lower '/pages/{page}' (3,480,000 at line 44) to the measured first-scripts figure plus 4%. Do not add the draft-order editor: the spec has no helper that finds a draft's id, so scripts/bundle-budget.mjs holds that route."
+    }
+   ],
+   "checks": [
+    "pnpm test src/components/admin/admin-bundle.scan.test.ts: passes; plant 'import { t } from \"@/lib/i18n\";' in src/components/admin/admin-rail.tsx: it fails and names the file; remove the line",
+    "pnpm lint && pnpm typecheck && pnpm test: exits 0",
+    "the signed-in build (as CI's signed-in job in .github/workflows/ci.yml: NEXT_PUBLIC_SUPABASE_URL=http://127.0.0.1:3912, NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=e2e-publishable-key, E2E_SIGNED_IN=1, node scripts/db-setup.mjs --seed, pnpm build), then E2E_SIGNED_IN=1 pnpm exec playwright test --project=signed-in e2e/signed-in/admin-scripts.spec.ts: passes on the lowered budget"
+   ]
+  }
+ ],
+ "tests": [
+  {
+   "file": "src/components/admin/admin-bundle.scan.test.ts",
+   "proves": "fails when an admin client module imports lib/i18n or a whole storefront language as a value"
+  },
+  {
+   "file": "src/lib/storefront-bundle.scan.test.ts",
+   "proves": "fails if content-grid-tiles.tsx brings lib/i18n into a visitor's scripts (existing test; the new file falls under it)"
+  },
+  {
+   "file": "e2e/signed-in/admin-scripts.spec.ts",
+   "proves": "fails when the builder's first scripts rise above the lowered budget"
+  }
+ ],
+ "migration": {
+  "needed": false,
+  "notes": ""
+ },
+ "done_when": [
+  {
+   "check": "pnpm build && node scripts/bundle-budget.mjs (reads .next/diagnostics/route-bundle-stats.json)",
+   "expect": "/admin/[store]/pages/[pageId] at or under 2,300,000 bytes (3,303,372 before) with no 'ProseMirror' chunk in its first load; 0 admin routes whose first-load chunks hold 'Det gäller alla beställningar vännen gör.' (40 before)"
+  },
+  {
+   "check": "pnpm test src/components/admin/admin-bundle.scan.test.ts",
+   "expect": "passes with lib/i18n and lib/messages on the forbidden list and no exception but site-words.ts"
+  },
+  {
+   "check": "In a Norwegian store's builder: add a product grid with filters, press Preview on a modal row, add an email form",
+   "expect": "the grid preview shows 'finding' for a moment and then Norwegian words; the modal opens with its close label; the form's placeholders fill in"
+  }
+ ],
+ "after_deploy": [
+  "Open a page in the builder on production, press a heading on the canvas within a second of the page showing: the inline editor opens at the pressed place."
+ ],
+ "docs": [
+  "docs/decisions.md (or docs/decisions/D{n}.md after step 2.40): one decision with the next free D number: the rich text editor loads after first paint behind src/components/admin/lazy/editors.tsx and is warmed when idle; the admin's browser loads one storefront language on demand (site-words.ts); the figures before and after.",
+  "docs/rules/storefront.md, under 'Interface text lives in src/lib/i18n.ts' (D212): add that the admin's browser never imports lib/i18n; a preview loads one language through useSiteWords().",
+  "docs/rules/admin/website.md, under 'Editing words where they are' (D191, D192, D193): the inline editors arrive after first paint and keep the press point.",
+  "docs/audits/code-review-2026-11.md: in the Progress table, add a note on row 3.4 that the Tiptap part is done (date, commit), and a line in its change log; correct finding FB8's fix, which lists only dialogs and panels.",
+  "docs/audits/bloat-review-2026-11.md, the plan's tracker (find the row with rg -n '^\\| *2\\.29 ' docs/audits/bloat-review-2026-11.md; the step's section is under the heading that starts with 2.29): row 2.29 to Done with date and commits."
+ ],
+ "do_not": [
+  "Do not change the props or the output of ContentGridView for the storefront.",
+  "Do not pass the whole Messages object from a server component to a client one: it holds functions and cannot cross.",
+  "Do not remove Tiptap or change rich-text-editor.tsx, markup-input.tsx, markup-editor.tsx or rich-text-inline.tsx themselves; only who imports them.",
+  "Do not lazy-load the editors on the live site's inline editing (src/components/page-edit-link.tsx and its imports): it already loads them on demand.",
+  "Do not add lib/i18n back through a helper in src/lib that a client part imports; the walk follows lib modules.",
+  "Do not load a dialog or a block's fields on demand here: that is step 2.30."
+ ],
+ "stop_if": [
+  "src/components/admin/admin-bundle.scan.test.ts or scripts/bundle-budget.mjs does not exist.",
+  "A builder spec fails because a press opened nothing or a field appeared late and moved the form: report the spec and the press.",
+  "After commit 3 the route is above 2,300,000 bytes: report the ten largest first-load chunks from route-bundle-stats.json and whether step 2.26's second commit is in.",
+  "A unit test needs its expected markup changed to pass.",
+  "The storefront's performance or bundle test changes its figure.",
+  "The new rule of admin-bundle.scan.test.ts finds an admin client module that reaches lib/i18n or lib/messages other than draft-summary.tsx, page-builder-fields.tsx, modal-preview.tsx, block-fields.tsx and content-grid.tsx's old path: report each with its chain; do not fix it here.",
+  "After commit 3 the 'ProseMirror' marker is still in a builder route's first load and the chain is step 0.10's RichTextEditor stand-in (drawn on the server): report it; do not add ssr: false to that stand-in (step 0.10 chose to keep the field server-drawn)."
+ ],
+ "executor": "cheap",
+ "executor_why": "Every edit is now named against the code and the files steps 0.10 and 1.4 leave (no second stand-in or mock, the fields-form and term-page-fields edits already done, the scan rule written out), any unlisted admin module is a stop instead of an open fix, and it is admin-only code held by the type check, the storefront bundle scan, the builder specs and the bundle budget, easy to see and revert.",
+ "checked_in_code": "I opened the import lines the findings name: page-builder.tsx 14, 15 and 96, block-fields.tsx 3, 21, 33, 2684, 2688 and 2814, page-builder-fields.tsx 8, 12, 13 and 1537 to 1549, fields-form.tsx 41, term-page-fields.tsx 10, modal-preview.tsx 18 and 34, content-grid.tsx 63 and draft-summary.tsx 3 and 35: all as described (Tiptap is imported at nine lines, not eight: page-builder-fields.tsx line 8 is one of them). The findings say draft-editor.tsx and draft-sent-panel.tsx get the words 'from their server pages'; in the code both are drawn through draft-screen.tsx by orders/drafts/[draftId]/page.tsx, which is where the brief reads them. The hook in the grid preview cannot be called at line 1537 as the finding writes it, because early returns stand before it; the brief moves the call to the top. The done-when of the plan (2,300,000) is lower than AC-5's (2,450,000) and needs step 2.26's builder commit, so it is a dependency. Second check (12 November): step 0.10 creates src/components/admin/lazy/editors.tsx (not lazy/fields.tsx) with RichTextEditor and EntityFieldsCard, already points fields-form.tsx and term-page-fields.tsx at it and mocks it, so commit 3 now edits that file and that mock and drops the two duplicate edits; drafts/new draws NewDraftForm, not DraftEditor; admin-bundle.scan.test.ts is step 1.4's file and the new rule is written out with 1.4's rel() names; any other admin module reaching lib/i18n is now a stop; the draft route is not added to admin-scripts.spec.ts (no helper finds a draft).",
+ "rating_checked": "cheap-then-review",
+ "cheap_commits": [
+  1,
+  2,
+  3,
+  4
+ ]
 }

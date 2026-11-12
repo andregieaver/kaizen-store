@@ -1,0 +1,13 @@
+{
+ "id": "0.27",
+ "fixed": [
+  "Commit 1's new case no longer asserts that no statement selects the document; that assertion moved to commit 2's extension of the case, where the pages read is split (syncPageKnowledge reads p.published in one read until then).",
+  "Commit 1 (7): an unparseable published page now upserts its source only while stale; as written it would have been upserted on every five-minute run.",
+  "Commit 2's idle test: the chat_agents insert is literal (unique key chat_agents_store_key on store_id, other columns default) and the 'scope the assertion' fallback is replaced by a fixed sites-0 assertion plus a stop_if.",
+  "Commit 1 check list: names the six test files that exist (src/lib/store-copy-rules.test.ts for the copy rules) instead of skip-if-missing and an rg that also matched 23 unrelated tests."
+ ],
+ "rejected": [],
+ "cheaper": "applied: moved the document-read assertion to commit 2; the step stays cheap-then-review because of the production migration and the re-cut rule",
+ "executor_before": "cheap-then-review",
+ "executor_after": "cheap-then-review"
+}

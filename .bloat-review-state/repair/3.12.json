@@ -1,0 +1,12 @@
+{
+ "id": "3.12",
+ "fixed": [
+  "Commit 2's conversion insert respects INSTALLS_MAX: saved themes are ranked per store and only as many as fit under 20 installs are converted; a second production count (rows beyond the room) goes to the owner, and the stop_if names it.",
+  "Commit 1's store action passes result.problems through (InstallResult's failure is { ok: false; problems: string[] }).",
+  "Commit 1's store action follows its neighbours with requirePermission() directly; the storeAction() conditional is removed."
+ ],
+ "rejected": [],
+ "cheaper": "applied in part: the migration respects INSTALLS_MAX and the counts per store are taken first. A commerce.test.ts case running the conversion is not added: commerce.test.ts applies every migration, so store_themes is already dropped when a case could seed it, and re-running one file's statement there needs a harness the step does not have.",
+ "executor_before": "cheap-then-review",
+ "executor_after": "cheap-then-review"
+}

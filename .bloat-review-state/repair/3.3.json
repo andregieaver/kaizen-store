@@ -1,0 +1,20 @@
+{
+ "id": "3.3",
+ "fixed": [
+  "3.3 rewrote the object passed to runJobs in route.ts, but step 1.10 (a dependency) moved it to src/server/dispatcher-jobs.ts as DISPATCHER_JOBS and 1.26 made each entry take report: commits 2 and 3 now edit that file (made_by 1.10) and the route only swaps runJobs for runRegistry.",
+  "Conflict with 0.31: nine keys given cadences here (searches, cache, forms, docsCounts, recommendations, replications, chat, apiIdempotency, oauthTokens) are gone from the dispatcher; the cadence list drops them (18 hourly, none daily, 57 at 300, 75 entries), 0.31's hourly.* tracked calls stay, and 0.31 is a dependency.",
+  "0.31's cron-prunes.scan.test.ts, 1.26's cron-entry-catches.scan.test.ts, 1.18's surface-count.ts (with a recorded raise for platformPayouts) and 1.10's query-budget.int.test.ts parse or call DISPATCHER_JOBS; each now has an edit that follows the new entry shape.",
+  "'Idle runs a day if step 1.13 stores a reading' is decided: 1.13 stores kind 'job' readings; production-reading.ts (made_by 0.2) now stores worked, and the page reads the two latest days with a named statement.",
+  "cron-runs.test.ts 'reuse 0.45's unit test of runJobs' — 0.45 made none; the file is new and its mocks are named.",
+  "query-budget.int.test.ts was 'create … if missing, stop': now edit made_by 1.10."
+ ],
+ "rejected": [
+  {
+   "problem": "Commit 1's budget, why and work for each job are not listed; only a rule to derive them.",
+   "why": "Real but not fixable in the brief: each needs reading the job's code and promises after phases 0 to 2 have changed them; it is why the step stays with a stronger model."
+  }
+ ],
+ "cheaper": "not applied: none proposed; the registry's per-job reading and runRegistry() stay with a stronger model.",
+ "executor_before": "strong",
+ "executor_after": "strong"
+}

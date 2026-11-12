@@ -25,7 +25,7 @@
     {
      "file": "src/app/admin/(gated)/[store]/pages/preview-views.tsx",
      "action": "create",
-     "how": "Move StorePreviewPageView here from src/app/admin/(gated)/[store]/pages/editor-views.tsx (it starts near line 276 with the doc comment 'The last saved draft of a store's page or article' and runs to the end of the function, near line 329), with only the imports it uses: Link, notFound, z, requireFeature, PAGE_TYPE_COPY, adminLangOf, adminText, the type PageType, requirePageTypeAccess, testOfVersionPage, getPageForEdit, stagedCopy, storePagesBase from ./context, PageDrawing from ./drawing, and the local types PageParams and Query (copy their definitions, or export them from a small types file both import). It must NOT import ./editor-views, @/components/admin/page-editor or @/components/admin/dual-page-editor. It calls requirePageTypeAccess() itself, as now."
+     "how": "Move StorePreviewPageView here from src/app/admin/(gated)/[store]/pages/editor-views.tsx (it starts near line 276 with the doc comment 'The last saved draft of a store's page or article' and runs to the end of the function, near line 329), with only the imports it uses: Link, notFound, z, requireFeature, PAGE_TYPE_COPY, adminLangOf, adminText, the type PageType, requirePageTypeAccess, testOfVersionPage, getPageForEdit, stagedCopy, storePagesBase from ./context, PageDrawing from ./drawing, and the local types PageParams and Query: copy their two definitions from editor-views.tsx lines 38-39 into the new file (editor-views.tsx keeps its own; no shared types file). It must NOT import ./editor-views, @/components/admin/page-editor or @/components/admin/dual-page-editor. It calls requirePageTypeAccess() itself, as now."
     },
     {
      "file": "src/app/admin/(gated)/[store]/pages/editor-views.tsx",
@@ -40,12 +40,12 @@
     {
      "file": "src/app/admin/(gated)/platform/pages/preview-views.tsx",
      "action": "create",
-     "how": "The platform's twin: move PreviewPageView here from src/app/admin/(gated)/platform/pages/editor-views.tsx (line 231 on) with only what it uses. It shares helpers with the editors in that file (the review names load, editedElsewhere and themeStoreView): move each helper that both need into a new src/app/admin/(gated)/platform/pages/page-load.ts that both files import; a helper only the preview uses moves with it. The new file must not import ./editor-views, page-editor or dual-page-editor."
+     "how": "The platform's twin: move PreviewPageView here from src/app/admin/(gated)/platform/pages/editor-views.tsx (line 231 to the end of the file, line 284). It shares three helpers with the editors in that file: `load` (line 134), `editedElsewhere` (line 143) and `themeStoreView` (line 152), all three used by EditPageView and by the preview. Move those three, verbatim, with `type Params = Promise<{ pageId: string }>` (line 45), into a new file src/app/admin/(gated)/platform/pages/page-load.ts, each exported (`export const load`, `export async function editedElsewhere`, `export async function themeStoreView`, `export type Params`), with only these imports: `import { z } from \"zod\";`, `import type { PageType } from \"@/lib/page-content\";`, `import { getPageForEdit } from \"@/server/pages\";`, `import { themeStoreRoleOf } from \"@/server/platform-roles\";`, `import { themeStoreCards } from \"@/server/theme-store\";`, `import { themeStorePageHref } from \"@/lib/theme-admin-paths\";`. No other helper moves to page-load.ts. preview-views.tsx then imports: Link (next/link), notFound and redirect (next/navigation), connection (next/server), PAGE_TYPE_COPY, ArticleView, PageArticle, ScopedCss, KaizenSiteFooter and KaizenSiteHeader, `type PageType` from @/lib/page-content, requirePlatformReader, getPlatformChrome, themeStoreRoleOf, themeStorePage (from @/server/theme-store), themePartsWith, themeStorePageHref, platformSiteWords, typeWords from ./type-words, and `{ load, editedElsewhere, themeStoreView, type Params }` from ./page-load (copy each import line from editor-views.tsx); define `type Query = Promise<Record<string, string | string[] | undefined>>;` in the file. The new file must not import ./editor-views, page-editor or dual-page-editor."
     },
     {
      "file": "src/app/admin/(gated)/platform/pages/editor-views.tsx",
      "action": "edit",
-     "how": "Remove PreviewPageView; import the shared helpers from ./page-load. Do not re-export the preview."
+     "how": "Remove PreviewPageView and the three helpers load, editedElsewhere, themeStoreView and the type Params; add `import { load, editedElsewhere, themeStoreView, type Params } from \"./page-load\";`. Remove each import only the preview used (the type check and lint name them: ArticleView, PageArticle, ScopedCss, KaizenSiteFooter, KaizenSiteHeader, getPlatformChrome, themeStorePage, themePartsWith and any other that lint reports unused). Do not re-export the preview."
     },
     {
      "file": "src/app/admin/(gated)/platform/{pages,articles,headers,footers}/[pageId]/preview/page.tsx, src/app/admin/(gated)/platform/themes/pages/[pageId]/preview/page.tsx",
@@ -88,12 +88,12 @@
     {
      "file": "src/app/admin/(gated)/[store]/pages/terms-views.tsx",
      "action": "create",
-     "how": "Move StorePageTermsView here from src/app/admin/(gated)/[store]/pages/views.tsx (line 229 to its end) with the TermsManager import (views.tsx line 9) and the other imports it uses. It calls requirePageTypeAccess() itself, as now. It must not import ./views if that would bring the lists' imports back in a circle; share small helpers through a file both import."
+     "how": "Move StorePageTermsView here from src/app/admin/(gated)/[store]/pages/views.tsx: its doc comment at line 228 and the function from line 229 to its closing brace near line 265, the line before the doc comment of `function FrontPageForm` (line 267). Only that function: FrontPageForm, ProductsPageForm, PageRoleForm, ProductLayoutsTable and roleOffered (lines 267-485) stay in views.tsx. Its imports, copied from views.tsx: Link (next/link), requireFeature (@/components/admin/feature-off), AdminTextScope (@/components/admin/admin-text), TermsManager (@/components/admin/terms), adminLangOf (@/lib/admin-lang), adminText and adminTexts (@/lib/admin-text), termContentOf and `type PageType` (@/lib/page-content), requirePageTypeAccess (@/server/permissions), listTerms (@/server/taxonomy), PageHeader (@/components/admin/ui), createStorePageTermAction, deleteStorePageTermAction and updateStorePageTermAction (./actions), termFieldsSetup (../fields/data), storePagesBase (./context); and define `type StoreParams = Promise<{ store: string }>;` in the file. It calls requirePageTypeAccess() itself, as now, and does not import ./views."
     },
     {
      "file": "src/app/admin/(gated)/[store]/pages/views.tsx",
      "action": "edit",
-     "how": "Remove StorePageTermsView and the TermsManager import (line 9). Do not re-export."
+     "how": "Remove StorePageTermsView (lines 228-265) and the imports only it used: the TermsManager import (line 9), termContentOf from the @/lib/page-content import (line 15; keep LAYOUT_TYPES and PageType), createStorePageTermAction, deleteStorePageTermAction and updateStorePageTermAction from the ./actions import (lines 35, 36, 41), and the termFieldsSetup import (line 43). Keep listTerms, requireFeature, AdminTextScope, adminTexts and PageHeader: the list view uses them. Do not re-export."
     },
     {
      "file": "src/app/admin/(gated)/[store]/pages/categories/page.tsx",
@@ -108,7 +108,7 @@
     {
      "file": "src/app/admin/(gated)/platform/pages/terms-views.tsx",
      "action": "create",
-     "how": "The platform's twin: move PageTermsView here from src/app/admin/(gated)/platform/pages/views.tsx (line 152 on) with its TermsManager import (line 8)."
+     "how": "The platform's twin: move PageTermsView here from src/app/admin/(gated)/platform/pages/views.tsx (line 152 to the end of the file, line 178; it is the last function) with its TermsManager import (line 8) and the other imports it uses, copied from views.tsx."
     },
     {
      "file": "src/app/admin/(gated)/platform/pages/views.tsx",
@@ -261,7 +261,7 @@
     {
      "file": "e2e/signed-in/admin-scripts.spec.ts",
      "action": "edit",
-     "how": "After the build, measure and lower the \"/pages\" and \"/products/new\" budgets to the measured bytes plus 4% (never raise one), and add three entries to BUDGETS with their measured bytes plus 4%: an order page, a draft page's preview and the content list. Use the placeholders the spec already has for a page id ({page}); for the order and the preview follow how the spec resolves {page} and add {order} the same way from the seeded store's first order, or leave the order entry out and say so if the seed has no order."
+     "how": "After the build, measure with E2E_MEASURE=1 (the spec then prints `[admin-scripts] <path> <bytes>` instead of asserting) and lower the \"/pages\" and \"/products/new\" budgets to the measured bytes plus 4% (never raise one). Add two entries to BUDGETS with their measured bytes plus 4%: \"/pages/{page}/preview\" (the existing `{page}` replacement already resolves it to the store's first page) and \"/content\". Do not add an order page: the shared store e2e-shop has no order of its own (the specs that open an order insert it into their own store), so its budget would depend on spec order; the order page is held by markers.mjs in this commit's checks instead. Update the comment above BUDGETS with the date and the measured figures."
     }
    ],
    "checks": [
@@ -297,7 +297,7 @@
   },
   {
    "file": "e2e/signed-in/admin-scripts.spec.ts",
-   "proves": "Fails when the pages list, a new product, an order page, a draft preview or the content list grows past its budget (the new measurement plus 4%)."
+   "proves": "Fails when the pages list, a new product, a draft preview or the content list grows past its budget (the new measurement plus 4%)."
   },
   {
    "file": "src/lib/storefront-bundle.scan.test.ts",
@@ -362,6 +362,12 @@
   "The hand check loses typed text."
  ],
  "executor": "cheap-then-review",
- "executor_why": "The work is file moves, import path changes and one lazy stand-in, proved by the build's figures, but it spans about 45 files, moves permission-guarded views and changes when a form's editor wakes up, so a stronger model should read the diff and the signed-in run.",
- "checked_in_code": "I opened the store's and the platform's editor-views.tsx and views.tsx (StorePreviewPageView at line 277, PreviewPageView at 231, StorePageTermsView at 229, PageTermsView at 152), the twelve preview and four category route files, the sandbox's editor.tsx (sandboxAndKind at 31, isPageId at 40), content-views.tsx (five views; the two editor imports at lines 6 and 8; twelve route files), permission-guards.ts lines 45 and 48, staff-fields-section.tsx, fields-form.tsx, term-page-fields.tsx, custom-fields.ts line 5 and the rich text block of page-content.ts (lines 115-312 use only HEX6, isOpacity and RICH_TEXT_MAX: no zod). The step's 'product editor's English import sites' were not named anywhere, so I walked the product editor's client imports: two catalogues arrive through one helper each, redirects.en through addressChangeWords (src/lib/redirect-admin.ts) and fields.en through moveItem (src/lib/field-group-editor.ts), and the 197 KB page model through custom-fields.ts. With those three moved and the editor lazy, the closure falls from 157 to 106 source files (1.84 MB to 1.03 MB of source), which is what the 1,300,000 line needs. The marker counter printed 73 routes with ProseMirror on the 11 November build."
+ "executor_why": "Every move is now named with its lines, helpers and imports, and the type check, permissions.scan and the marker counter catch most slips, but it touches some forty files and makes the custom-field rich text editor lazy inside forms that save order, customer and product data, where an early Save losing text is only checked by hand, so a stronger model reads commit 3's diff; commits 1, 2 and 4 the cheap model may do alone.",
+ "checked_in_code": "I opened the store's and the platform's editor-views.tsx and views.tsx (StorePreviewPageView at line 277, PreviewPageView at 231, StorePageTermsView at 229, PageTermsView at 152), the twelve preview and four category route files, the sandbox's editor.tsx (sandboxAndKind at 31, isPageId at 40), content-views.tsx (five views; the two editor imports at lines 6 and 8; twelve route files), permission-guards.ts lines 45 and 48, staff-fields-section.tsx, fields-form.tsx, term-page-fields.tsx, custom-fields.ts line 5 and the rich text block of page-content.ts (lines 115-312 use only HEX6, isOpacity and RICH_TEXT_MAX: no zod). The step's 'product editor's English import sites' were not named anywhere, so I walked the product editor's client imports: two catalogues arrive through one helper each, redirects.en through addressChangeWords (src/lib/redirect-admin.ts) and fields.en through moveItem (src/lib/field-group-editor.ts), and the 197 KB page model through custom-fields.ts. With those three moved and the editor lazy, the closure falls from 157 to 106 source files (1.84 MB to 1.03 MB of source), which is what the 1,300,000 line needs. The marker counter printed 73 routes with ProseMirror on the 11 November build. Second check (12 November): StorePageTermsView's move now ends at its own closing brace (line 265), not the end of views.tsx, with its exact imports and what views.tsx drops; the platform preview's shared helpers are named (load, editedElsewhere, themeStoreView and Params into page-load.ts with their imports); the store preview copies its two types; the admin-scripts budget leaves the order page out (e2e-shop has no order of its own) and adds the preview and /content.",
+ "rating_checked": "cheap-then-review",
+ "cheap_commits": [
+  1,
+  2,
+  4
+ ]
 }

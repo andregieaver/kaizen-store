@@ -1,0 +1,13 @@
+{
+ "id": "3.20",
+ "fixed": [
+  "Commit 2 edits src/server/watchdog.ts (made_by 1.22), step 1.22's runWatchdog(), instead of a guessed 'create' of src/app/api/cron/watch/route.ts; the route (watchdog/route.ts) may import only four modules, so it is left alone; 1.22's int test may move to toMatchObject.",
+  "Commit 1: the pack-pictures branch is written out (commerce.store_starters, pictures_wanted_at is not null, by greatest(updated_at, pictures_wanted_at)); 'document-pdfs' is added only when cron_due() names it; autopilot, broadcasts and integrations are excluded with the reason.",
+  "Int case 1 compares with cron_due() at minute 0 of an hour minus the three feature routes, instead of 'or the list step 3.1's test uses'.",
+  "The daily prune is a DAILY_JOBS entry when step 3.4 has landed, else the line after prunePlatformAdSignals()."
+ ],
+ "rejected": [],
+ "cheaper": "applied in part: every branch is now named from the code and the other steps' briefs (3.1's six queues, pack-pictures, 3.7's document-pdfs, 3.2's routes excluded), so commit 1 needs no reading of other steps' code; the SQL still gets a review, since a wrong condition hides the fault the step exists for.",
+ "executor_before": "cheap-then-review",
+ "executor_after": "cheap-then-review"
+}

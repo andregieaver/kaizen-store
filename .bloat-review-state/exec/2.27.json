@@ -59,24 +59,19 @@
           "how": "Same: its four useAdminText('builder') reads (near lines 174, 294, 461 and 578) become useAdminText('builderText')."
         },
         {
-          "file": "src/components/admin/header-stage-fields.tsx",
-          "action": "edit",
-          "how": "It reads builder.richText: if every read of its useAdminText('builder') result is richText, textStyles or responsive, switch it to 'builderText'; if it reads other groups too, leave the file as it is."
-        },
-        {
           "file": "src/components/admin/responsive-edit.tsx",
           "action": "edit",
-          "how": "For each of its useAdminText('builder') reads: if the variable is used only as .responsive (or .sizes is not read), switch that read to useAdminText('builderText'). A read that also uses builder.sizes or another group stays on 'builder'. sizeNote() takes Pick<BuilderMessages, 'sizes' | 'responsive'>: do not change its type."
+          "how": "Checked on 12 November: the five reads `const words = useAdminText(\"builder\");` (lines 58, 129, 192, 240 and 370) use words.sizes as well as words.responsive, so they stay on 'builder'. The two reads `const w = useAdminText(\"builder\").responsive;` (lines 429 and 450) become `const w = useAdminText(\"builderText\").responsive;`. sizeNote() takes Pick<BuilderMessages, 'sizes' | 'responsive'>: do not change its type. (src/components/admin/header-stage-fields.tsx is not changed: its read at line 19 takes .editor and the one at line 51 reads .editor, .background and .richText, groups outside the cut.)"
         },
         {
           "file": "src/components/admin/picture-maker.tsx",
           "action": "edit",
-          "how": "Its useAdminText('website') reads (three) become useAdminText('websitePick') if they read only .pictureMaker and .picker; the type check says so."
+          "how": "Its three reads `const w = useAdminText(\"website\").pictureMaker;` (lines 44, 110 and 163) become `const w = useAdminText(\"websitePick\").pictureMaker;`. Nothing else in the file changes."
         },
         {
           "file": "src/components/admin/media-picker.tsx",
           "action": "edit",
-          "how": "Same as picture-maker.tsx (two reads)."
+          "how": "Its two reads `const w = useAdminText(\"website\").picker;` (lines 44 and 63) become `const w = useAdminText(\"websitePick\").picker;`. Nothing else in the file changes."
         },
         {
           "file": "src/components/admin/product-editor.tsx",
@@ -271,8 +266,9 @@
       "changes": [
         {
           "file": "src/components/admin/admin-words-handed.baseline.json",
-          "action": "create",
-          "how": "Marked create only because step 1.28 has not made it yet: EDIT it, never overwrite (its real name is whatever step 1.28 wrote beside src/components/admin/admin-words-handed.scan.test.ts). Sort its sites by bytes handed. For each site that hands over 50 KB and more than 1.25 times the bytes its parts name (24 sites at the review; the largest mixed areas are notifications, blocks, settings, website and products), one commit per site or per group of sites that share a list: (1) read which groups the site's client parts name (the scan prints them); (2) if the parts name under 80% of an area, add a cut for exactly those groups, named <area><Screen> in camelCase, to admin-text.ts and admin-text-later.ts, move the readers, hand the cut; (3) if no part names an area at all, drop it from the list; (4) lower the baseline. Also bring the five budgeted screens (store home, orders, product editor, builder, platform home) to at most 1.1 times. Parts that take a whole area by design: only the builder's two (builder and blocks); the scan's list of whole-area takers must hold nothing else."
+          "action": "edit",
+          "how": "Step 1.28 made this file beside src/components/admin/admin-words-handed.scan.test.ts; its shape is { sites: { <file>#<areas>: { areas, handed: { en, nb }, named: { en, nb }, whole, unnamed } } }, and it is rewritten only by `WRITE_ADMIN_WORDS_BASELINE=1 pnpm exec vitest run src/components/admin/admin-words-handed.scan.test.ts` (which keeps min(old, new) for a site whose areas did not change): never edit its numbers by hand. Sort its sites by handed.en. For each site that hands over 50 KB and more than 1.25 times its named bytes (24 sites at the review; the largest mixed areas are notifications, blocks, settings, website and products), one commit per site or per group of sites that share a list: (1) find which groups the site's client parts name: the baseline holds only byte totals, so list them with rg -n 'useAdminText\\(\"<area>\"\\)' over the site's client files (the files under its page or layout that start with \"use client\") and read each read's groups by the scan's rules (E); (2) if the parts name under 80% of an area, add a cut for exactly those groups with cut() in admin-text.ts (named <area><Screen> in camelCase, also in admin-text-later.ts), move the readers, hand the cut; (3) if no part names an area at all, drop it from the list; (4) rewrite the baseline with the command above. Also bring the five budgeted screens (store home, orders, product editor, builder, platform home) to at most 1.1 times. Parts that take a whole area by design: only the builder's two (builder and blocks); the baseline's `whole` lists must hold nothing else.",
+          "made_by": "1.28"
         }
       ],
       "checks": [
@@ -346,9 +342,16 @@
     "The chat can be drawn before start() has answered and you cannot keep the waiting state without changing what the panel shows.",
     "admin-text-fallbacks.spec.ts reports a fallback that adding the cut to that page's list does not end.",
     "A figure in done_when is not reached after commit 4: report the measured figures and the largest areas left.",
-    "You are the cheap executor and reach commit 4."
+    "You are the cheap executor and reach commit 4.",
+    "src/components/admin/admin-words-handed.baseline.json or its scan test does not exist when commit 5 starts: step 1.28 is not in; stop."
   ],
   "executor": "strong",
-  "executor_why": "Commits 1 to 3 are specified and the type check and the fallbacks spec catch a wrong edit, but choosing the cuts for the editor and for the 24 large sites, and keeping the chat from drawing before its words, needs judgement.",
-  "checked_in_code": "I opened src/lib/admin-text.ts (adminTexts at line 308, CATALOGUES at 232), the three layouts, the product, order and customer pages, both EDITOR_AREAS lists and PLATFORM_SITE_AREAS in src/server/platform-site-words.ts, the launcher and the start actions: lines and lists are as the findings say, and the gate still hands 'setup' today (step 0.9 removes it, so this brief does not). The three findings (AC-4, TX-2, PL-1) and PM-10 name the same cuts differently and partly overlap; the brief fixes one set of names (builderText, websitePick, assistantBar, homeDrafts, websiteList, then the editor's six). AD-5's fix of splitting assistant.en.ts into two catalogue files is replaced by the cut, which moves no string. The platform's editor has no EDITOR_AREAS of its own as the findings assumed: it hands PLATFORM_SITE_AREAS, which the brief changes instead. The words baseline and the document budgets do not exist yet (steps 1.28 and 1.5)."
+  "executor_why": "Commits 1 to 3 are named file by line (each read to switch is listed) and the type check and admin-text-fallbacks.spec.ts catch a wrong cut, but commits 4 and 5 need per-screen judgement about which groups each page's parts name and which cuts are worth making, so they stay with the stronger model.",
+  "checked_in_code": "I opened src/lib/admin-text.ts (adminTexts at line 308, CATALOGUES at 232), the three layouts, the product, order and customer pages, both EDITOR_AREAS lists and PLATFORM_SITE_AREAS in src/server/platform-site-words.ts, the launcher and the start actions: lines and lists are as the findings say, and the gate still hands 'setup' today (step 0.9 removes it, so this brief does not). The three findings (AC-4, TX-2, PL-1) and PM-10 name the same cuts differently and partly overlap; the brief fixes one set of names (builderText, websitePick, assistantBar, homeDrafts, websiteList, then the editor's six). AD-5's fix of splitting assistant.en.ts into two catalogue files is replaced by the cut, which moves no string. The platform's editor has no EDITOR_AREAS of its own as the findings assumed: it hands PLATFORM_SITE_AREAS, which the brief changes instead. The words baseline and the document budgets do not exist yet (steps 1.28 and 1.5). Second check (12 November): commit 1's conditional edits are now named reads (responsive-edit.tsx lines 429 and 450 only, picture-maker.tsx's three and media-picker.tsx's two reads), header-stage-fields.tsx is dropped because both its reads take groups outside the cut, and commit 5 edits the baseline step 1.28 makes, rewritten only by its WRITE_ADMIN_WORDS_BASELINE command, with the groups found by rg because the baseline holds byte totals only.",
+  "rating_checked": "strong",
+  "cheap_commits": [
+    1,
+    2,
+    3
+  ]
 }

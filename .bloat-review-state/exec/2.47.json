@@ -1,179 +1,183 @@
 {
-  "id": "2.47",
-  "goal": "A product page, a category page and the search load none of the order writer (src/server/checkout.ts), the Stripe SDK, the ledger, staff alerts or billing; they are loaded inside the server action that places an order, and the graph test and scripts/route-budget.mjs hold six storefront pages.",
-  "why": "After every other cut the product page still reaches about 1,930 modules and a listing, the search, the cart and the checkout about 1,995 (2,516 to 2,546 modules and 12.3 MB today), because the cart's actions file imports startCheckout and startExpress at its top. The target is 1,800 modules and 4.8 MB for the three product-showing pages, and 1,800 and 5.0 MB for cart, checkout and account.",
-  "read_first": [
-    "docs/rules/storefront.md",
-    "docs/rules/admin/commerce.md",
-    "node_modules/next/dist/docs/01-app/01-getting-started/07-mutating-data.md",
-    "node_modules/next/dist/docs/01-app/01-getting-started/05-server-and-client-components.md",
-    "src/app/s/[store]/[market]/cart/actions.ts",
-    "src/server/express-checkout.ts",
-    "src/server/checkout-terms.ts",
-    "docs/audits/bloat-review-2026-11/scripts/server-graph.mjs"
-  ],
-  "depends_on": [
-    {
-      "id": "1.8",
-      "why": "it creates src/server/route-load.graph.test.ts with its baseline and scripts/route-budget.mjs, which this step adds six entries to"
-    },
-    {
-      "id": "2.9",
-      "why": "it gives each working route (listing, search, cart, checkout, account) its own sections module, which this step's last commit uses for the server side too"
-    },
-    {
-      "id": "2.22",
-      "why": "it takes the Stripe SDK out of getStore() (src/server/stores.ts imports ./stripe today); until then every store page reaches stripe.ts whatever this step does"
-    }
-  ],
-  "commits": [
-    {
-      "title": "The cart's actions load the order writer inside the two actions that place an order",
-      "changes": [
-        {
-          "file": "src/app/s/[store]/[market]/cart/actions.ts",
-          "action": "edit",
-          "how": "Line 34 today: `import { startCheckout, type CheckoutConsent, type CheckoutProblem } from \"@/server/checkout\";`. Replace it with `import type { CheckoutConsent, CheckoutProblem } from \"@/server/checkout\";` (types are erased, so nothing is loaded). In `checkoutAction` (line 174), directly before the call `const result = await startCheckout(` (line 226), add `const { startCheckout } = await import(\"@/server/checkout\");`. Line 36 today: `import { expressOn, startExpress } from \"@/server/express-checkout\";`. Keep `expressOn` on that import for now and remove `startExpress` from it; in `expressCheckoutAction` (line 418), directly before `const started = await startExpress(` (line 441), add `const { startExpress } = await import(\"@/server/express-checkout\");` (the next commit moves it to a file of its own). Change nothing else: same arguments, same order of the checks before the call, same return values. src/server/cron-runs.ts line 50 (`await import(\"./cron-alerts\")`) is the repo's own example of this pattern."
-        }
-      ],
-      "checks": [
-        "rg -n '^import .*\\{[^}]*\\bstartCheckout\\b' 'src/app/s/[store]/[market]/cart/actions.ts' : prints nothing (only the type import and the import() remain)",
-        "pnpm exec vitest run 'src/app/s/[store]/[market]/cart' src/server/route-load.graph.test.ts : exits 0",
-        "pnpm lint && pnpm typecheck && pnpm test: exits 0",
-        "pnpm test:int src/server/checkout.int.test.ts src/server/checkout-stripe.int.test.ts src/server/checkout-kinds.int.test.ts src/server/express-checkout.int.test.ts src/server/quote-requests.int.test.ts : exits 0",
-        "pnpm build && pnpm test:e2e e2e/cart.spec.ts e2e/quotes.spec.ts : exits 0"
-      ]
-    },
-    {
-      "title": "Express checkout: the press (startExpress) moves to express-start.ts; express-checkout.ts keeps the facts and no longer imports the order writer",
-      "changes": [
-        {
-          "file": "src/server/express-start.ts",
-          "action": "create",
-          "how": "Starts with `import \"server-only\";`. Move from src/server/express-checkout.ts, unchanged: the type `ExpressStart` (line 108 today) and the function `startExpress` (line 118 to about line 150) with its doc comment. It imports what the function uses: `getOpenCheckout, startCheckout, type CheckoutProblem` from \"./checkout\", and from \"./express-checkout\" or their own modules whatever else the body names (the type checker lists them: getCart, getCustomer, deliveryReady, expressOn and others)."
-        },
-        {
-          "file": "src/server/express-checkout.ts",
-          "action": "edit",
-          "how": "Delete `startExpress` and `ExpressStart` (moved). Change line 31 from `import { getOpenCheckout, startCheckout, type CheckoutProblem } from \"./checkout\";` to `import type { CheckoutProblem } from \"./checkout\";` if a remaining export still names that type, else delete the line. Remove imports that only startExpress used (lint's unused-import rule names them). The file keeps expressOn, expressAreaFor, klarnaMessaging, walletHosts, walletDomains, checkWalletDomains. After the edit `rg -n 'from \"./checkout\"' src/server/express-checkout.ts` shows at most the type import. This is what takes checkout.ts off the product page: src/components/product-parts.tsx line 64 and cart/cart-contents.tsx line 18 import expressAreaFor and klarnaMessaging from this file."
-        },
-        {
-          "file": "src/app/s/[store]/[market]/cart/actions.ts",
-          "action": "edit",
-          "how": "In expressCheckoutAction change the dynamic import of the last commit to `const { startExpress } = await import(\"@/server/express-start\");`."
-        },
-        {
-          "file": "src/server/express-checkout.int.test.ts",
-          "action": "edit",
-          "how": "Change only the import path of `startExpress` (and `ExpressStart` if named) to \"./express-start\". No assertion changes. Do the same in every other importer: rg -n 'startExpress|ExpressStart' src --glob '!src/server/express-start.ts' lists them."
-        }
-      ],
-      "checks": [
-        "rg -n 'from \"./checkout\"' src/server/express-checkout.ts : prints nothing, or one line that starts with 'import type'",
-        "pnpm test:int src/server/express-checkout.int.test.ts src/server/checkout.int.test.ts : exits 0",
-        "pnpm lint && pnpm typecheck && pnpm test: exits 0",
-        "pnpm build && pnpm test:e2e e2e/cart.spec.ts : exits 0"
-      ]
-    },
-    {
-      "title": "The terms record reads the open checkout without loading the order writer at import",
-      "changes": [
-        {
-          "file": "src/server/checkout-terms.ts",
-          "action": "edit",
-          "how": "Line 26 today: `import { getOpenCheckout } from \"./checkout\";`. It is used once, in `recordTermsAcceptance` (line 180). Remove the top import and add, as the first line inside recordTermsAcceptance after `cartId` is read, `const { getOpenCheckout } = await import(\"./checkout\");`. The cart's actions import recordTermsForOrder from this file, and express-checkout.ts imports termsDisplayFor from it, so this edge is the second way the order writer reaches a product page. Nothing else in the file changes."
-        }
-      ],
-      "checks": [
-        "rg -n '^import .* from \"./checkout\"' src/server/checkout-terms.ts : prints nothing",
-        "pnpm test:int src/server/checkout-terms.int.test.ts : exits 0",
-        "pnpm lint && pnpm typecheck && pnpm test: exits 0"
-      ]
-    },
-    {
-      "title": "The graph test holds the product page, a category, the search, the cart, the checkout and the account",
-      "changes": [
-        {
-          "file": "src/server/route-load.graph.test.ts",
-          "action": "create",
-          "how": "This file is made by step 1.8 and does not exist before it; if it is missing, stop. If it is there, do not overwrite it. Add six entries in the form the file already uses for the beacons: the page files of the product page, a category page, the search page, the cart, the checkout and the account under src/app/s/[store]/[market]/ (take the exact paths from: rg --files 'src/app/s/[store]/[market]' -g 'page.tsx' | rg 'products/\\[|categories|search|cart/|checkout/|account/page'). For the first three add a forbidden list: src/server/checkout.ts, src/server/stripe.ts, src/server/ledger.ts, src/server/staff-alerts.ts, src/server/billing.ts. The walk follows static imports only, so the import() calls of the first three commits are not followed; say that in a comment beside the entries. Run the test. For each forbidden file still reached, the failure names the import chain: cut exactly that edge the same way (a dynamic import inside the function that needs it, or moving one function to a file of its own), one file's edges per commit, each commit with the checks of the first commit, and a test order after each deploy. Then record the files-reached figure of each of the six entries in src/server/route-load.baseline.json."
-        },
-        {
-          "file": "scripts/route-budget.mjs",
-          "action": "create",
-          "how": "Made by step 1.8; if missing, stop; if there, do not overwrite. Add the same six routes to the list it holds chunk bytes for, with the figures a build prints after the cuts, in the form its existing entries use."
-        }
-      ],
-      "checks": [
-        "pnpm exec vitest run src/server/route-load.graph.test.ts : exits 0, and prints or holds six new entries",
-        "Planted case, not committed: add `import \"@/server/checkout\";` to src/components/product-parts.tsx and run the same test: it fails naming the product page; remove the line",
-        "pnpm lint && pnpm typecheck && pnpm test: exits 0",
-        "pnpm build && node scripts/route-budget.mjs : exits 0",
-        "pnpm test:int src/server/checkout.int.test.ts src/server/checkout-stripe.int.test.ts src/server/express-checkout.int.test.ts src/server/quote-requests.int.test.ts && pnpm test:e2e e2e/cart.spec.ts e2e/quotes.spec.ts : exits 0"
-      ]
-    }
-  ],
-  "tests": [
-    {
-      "file": "src/server/route-load.graph.test.ts",
-      "proves": "A static import that brings checkout.ts, stripe.ts, ledger.ts, staff-alerts.ts or billing.ts back onto the product page, a category or the search, and a rise in the source files any of the six pages reaches."
-    },
-    {
-      "file": "scripts/route-budget.mjs (run on every CI build)",
-      "proves": "A rise in the chunk bytes of the six routes."
-    },
-    {
-      "file": "src/server/checkout.int.test.ts, checkout-stripe.int.test.ts, express-checkout.int.test.ts, quote-requests.int.test.ts, e2e/cart.spec.ts, e2e/quotes.spec.ts (unchanged)",
-      "proves": "That an order is still placed, paid, and a quote still requested after each edge is cut."
-    }
-  ],
-  "migration": {
-    "needed": false,
-    "notes": ""
+ "id": "2.47",
+ "goal": "A product page, a category page and the search load none of the order writer (src/server/checkout.ts), the Stripe SDK, the ledger, staff alerts or billing; they are loaded inside the server action that places an order, and the graph test and scripts/route-budget.mjs hold six storefront pages.",
+ "why": "After every other cut the product page still reaches about 1,930 modules and a listing, the search, the cart and the checkout about 1,995 (2,516 to 2,546 modules and 12.3 MB today), because the cart's actions file imports startCheckout and startExpress at its top. The target is 1,800 modules and 4.8 MB for the three product-showing pages, and 1,800 and 5.0 MB for cart, checkout and account.",
+ "read_first": [
+  "docs/rules/storefront.md",
+  "docs/rules/admin/commerce.md",
+  "node_modules/next/dist/docs/01-app/01-getting-started/07-mutating-data.md",
+  "node_modules/next/dist/docs/01-app/01-getting-started/05-server-and-client-components.md",
+  "src/app/s/[store]/[market]/cart/actions.ts",
+  "src/server/express-checkout.ts",
+  "src/server/checkout-terms.ts",
+  "docs/audits/bloat-review-2026-11/scripts/server-graph.mjs"
+ ],
+ "depends_on": [
+  {
+   "id": "1.8",
+   "why": "it creates src/server/route-load.graph.test.ts with its baseline and scripts/route-budget.mjs, which this step adds six entries to"
   },
-  "done_when": [
+  {
+   "id": "2.9",
+   "why": "it gives each working route (listing, search, cart, checkout, account) its own sections module, which this step's last commit uses for the server side too"
+  },
+  {
+   "id": "2.22",
+   "why": "it takes the Stripe SDK out of getStore() (src/server/stores.ts imports ./stripe today); until then every store page reaches stripe.ts whatever this step does"
+  }
+ ],
+ "commits": [
+  {
+   "title": "The cart's actions load the order writer inside the two actions that place an order",
+   "changes": [
     {
-      "check": "pnpm exec vitest run src/server/route-load.graph.test.ts",
-      "expect": "Green, with the product page, a category and the search reaching none of src/server/checkout.ts, stripe.ts, ledger.ts, staff-alerts.ts, billing.ts, and all six pages as entries."
-    },
-    {
-      "check": "The analyze export the plan uses (step 1.8's script prints modules and megabytes per route on CI's build; if run by hand: the next analyze command as node_modules/next/dist/docs describes it for this version, then the per-route figures)",
-      "expect": "Product page, category and search at or under 1,800 modules and 4.8 MB; cart, checkout and account at or under 1,800 modules and 5.0 MB."
-    },
-    {
-      "check": "node scripts/route-budget.mjs after pnpm build",
-      "expect": "Exits 0 with the six routes in its list."
-    },
-    {
-      "check": "pnpm test:int src/server/checkout.int.test.ts src/server/express-checkout.int.test.ts src/server/quote-requests.int.test.ts; pnpm test:e2e e2e/cart.spec.ts e2e/quotes.spec.ts",
-      "expect": "All pass with no assertion changed."
+     "file": "src/app/s/[store]/[market]/cart/actions.ts",
+     "action": "edit",
+     "how": "Line 34 today: `import { startCheckout, type CheckoutConsent, type CheckoutProblem } from \"@/server/checkout\";`. Replace it with `import type { CheckoutConsent, CheckoutProblem } from \"@/server/checkout\";` (types are erased, so nothing is loaded). In `checkoutAction` (line 174), directly before the call `const result = await startCheckout(` (line 226), add `const { startCheckout } = await import(\"@/server/checkout\");`. Line 36 today: `import { expressOn, startExpress } from \"@/server/express-checkout\";`. Keep `expressOn` on that import for now and remove `startExpress` from it; in `expressCheckoutAction` (line 418), directly before `const started = await startExpress(` (line 441), add `const { startExpress } = await import(\"@/server/express-checkout\");` (the next commit moves it to a file of its own). Change nothing else: same arguments, same order of the checks before the call, same return values. src/server/cron-runs.ts line 50 (`await import(\"./cron-alerts\")`) is the repo's own example of this pattern."
     }
-  ],
-  "after_deploy": [
-    "Place one test order on the demo store in test mode (add a product to the cart, press Check out, pay with Stripe's test card 4242 4242 4242 4242): the order appears under Orders in the admin as paid, with its confirmation email logged. If the store shows an express button (Apple Pay or Google Pay needs a real wallet), at least confirm the button is drawn on the product page and the cart. Do this after EVERY commit of this step that reaches production, before starting the next commit.",
-    "On Kaizena Flow's own store (D484, the same routes) open one plan's product page and the cart: both draw, and Check out opens the payment page."
-  ],
-  "docs": [
-    "docs/decisions.md: one new row with the next free D-number (find the last with: rg -o '^\\| D[0-9]+' docs/decisions.md | tail -1, and add one). It records: the order writer is loaded by import() inside checkoutAction, expressCheckoutAction and recordTermsAcceptance; startExpress lives in src/server/express-start.ts; the six storefront entries of the graph test with their figures before and after.",
-    "docs/rules/storefront.md, the rule that starts 'The cart (`src/server/cart.ts`)' or the Express checkout rule in docs/rules/admin/commerce.md ('Express checkout and wallets'): change the file name for startExpress to src/server/express-start.ts and add one sentence: a file a product page imports never imports src/server/checkout.ts statically; route-load.graph.test.ts holds it.",
-    "docs/audits/bloat-review-2026-11.md, Progress table: set the row of step 2.47 to Done with the date and the commit hash, in the same commit as the last change; tick the step's section in docs/audits/bloat-review-2026-11/plan/phase-2.md if that file has one."
-  ],
-  "do_not": [
-    "Do not change what startCheckout, startExpress or placeOrder do, their arguments or the order of checks before them. This step moves imports, not behaviour.",
-    "Do not wrap the import() in a try/catch that swallows the error: a failed load must fail the action as a thrown error does today.",
-    "Do not make checkout.ts smaller by moving its writers elsewhere in this step; staging placeOrder is code review step 3.7 and step 2.48.",
-    "Do not cut more than one file's edges in one commit, and do not start the next commit before the test order of the previous deploy passed.",
-    "Do not remove the express button's server facts (expressOn, expressAreaFor, klarnaMessaging) from the product page: they are what draws it.",
-    "Do not add 'use server' to express-start.ts or checkout.ts: only the actions files are server actions."
-  ],
-  "stop_if": [
-    "src/server/route-load.graph.test.ts or scripts/route-budget.mjs does not exist (step 1.8 not done), or steps 2.9 and 2.22 are not marked Done in the Progress table.",
-    "The graph test names an import chain to checkout.ts that goes through src/server/cart.ts, src/server/catalog.ts, src/server/shop.ts or src/server/stores.ts: those are read on every page; report the chain, do not make their imports dynamic.",
-    "After the three named cuts and the chains the graph test names, the analyze figures are still over 1,800 modules or 4.8 MB: report the largest remaining groups; choosing the next cut needs judgement.",
-    "Any checkout, express or quote test fails, or needs an assertion changed.",
-    "The test order after a deploy does not reach 'paid': revert that commit (git revert, push) and report."
-  ],
-  "executor": "strong",
-  "executor_why": "The first three commits are fully specified and mechanical, but they sit on the order and payment path, and the remaining cuts are found by reading the graph test's chains and choosing where an edge may safely become lazy.",
-  "checked_in_code": "I opened src/app/s/[store]/[market]/cart/actions.ts (455 lines), src/server/express-checkout.ts (214) and src/server/checkout-terms.ts. The step is right that actions.ts imports startCheckout (line 34) and startExpress (line 36) at its top, and each is called in exactly one action (lines 226 and 441). I found two more static edges the step does not name: src/components/product-parts.tsx imports expressAreaFor and klarnaMessaging from express-checkout.ts, which imports checkout.ts at its top though only startExpress uses it (lines 131 and 133), and checkout-terms.ts imports getOpenCheckout from checkout.ts for one function; the brief cuts both. src/server/stores.ts still imports ./stripe (step 2.22's job). route-load.graph.test.ts and scripts/route-budget.mjs do not exist yet; there is no e2e spec named checkout or express, so the brief names the int tests and e2e/cart.spec.ts and e2e/quotes.spec.ts."
+   ],
+   "checks": [
+    "rg -n '^import .*\\{[^}]*\\bstartCheckout\\b' 'src/app/s/[store]/[market]/cart/actions.ts' : prints nothing (only the type import and the import() remain)",
+    "pnpm exec vitest run 'src/app/s/[store]/[market]/cart' src/server/route-load.graph.test.ts : exits 0",
+    "pnpm lint && pnpm typecheck && pnpm test: exits 0",
+    "pnpm test:int src/server/checkout.int.test.ts src/server/checkout-stripe.int.test.ts src/server/checkout-kinds.int.test.ts src/server/express-checkout.int.test.ts src/server/quote-requests.int.test.ts : exits 0",
+    "pnpm build && pnpm test:e2e e2e/cart.spec.ts e2e/quotes.spec.ts : exits 0"
+   ]
+  },
+  {
+   "title": "Express checkout: the press (startExpress) moves to express-start.ts; express-checkout.ts keeps the facts and no longer imports the order writer",
+   "changes": [
+    {
+     "file": "src/server/express-start.ts",
+     "action": "create",
+     "how": "Starts with `import \"server-only\";`. Move from src/server/express-checkout.ts, unchanged: the type `ExpressStart` (line 108 today) and the function `startExpress` (line 118 to about line 150) with its doc comment. It imports what the function uses: `getOpenCheckout, startCheckout, type CheckoutProblem` from \"./checkout\", and from \"./express-checkout\" or their own modules whatever else the body names (the type checker lists them: getCart, getCustomer, deliveryReady, expressOn and others)."
+    },
+    {
+     "file": "src/server/express-checkout.ts",
+     "action": "edit",
+     "how": "Delete `startExpress` and `ExpressStart` (moved). Change line 31 from `import { getOpenCheckout, startCheckout, type CheckoutProblem } from \"./checkout\";` to `import type { CheckoutProblem } from \"./checkout\";` if a remaining export still names that type, else delete the line. Remove imports that only startExpress used (lint's unused-import rule names them). The file keeps expressOn, expressAreaFor, klarnaMessaging, walletHosts, walletDomains, checkWalletDomains. After the edit `rg -n 'from \"./checkout\"' src/server/express-checkout.ts` shows at most the type import. This is what takes checkout.ts off the product page: src/components/product-parts.tsx line 64 and cart/cart-contents.tsx line 18 import expressAreaFor and klarnaMessaging from this file."
+    },
+    {
+     "file": "src/app/s/[store]/[market]/cart/actions.ts",
+     "action": "edit",
+     "how": "In expressCheckoutAction change the dynamic import of the last commit to `const { startExpress } = await import(\"@/server/express-start\");`."
+    },
+    {
+     "file": "src/server/express-checkout.int.test.ts",
+     "action": "edit",
+     "how": "Change only the import path of `startExpress` (and `ExpressStart` if named) to \"./express-start\". No assertion changes. Do the same in every other importer: rg -n 'startExpress|ExpressStart' src --glob '!src/server/express-start.ts' lists them."
+    }
+   ],
+   "checks": [
+    "rg -n 'from \"./checkout\"' src/server/express-checkout.ts : prints nothing, or one line that starts with 'import type'",
+    "pnpm test:int src/server/express-checkout.int.test.ts src/server/checkout.int.test.ts : exits 0",
+    "pnpm lint && pnpm typecheck && pnpm test: exits 0",
+    "pnpm build && pnpm test:e2e e2e/cart.spec.ts : exits 0"
+   ]
+  },
+  {
+   "title": "The terms record reads the open checkout without loading the order writer at import",
+   "changes": [
+    {
+     "file": "src/server/checkout-terms.ts",
+     "action": "edit",
+     "how": "Line 26 today: `import { getOpenCheckout } from \"./checkout\";`. It is used once, in `recordTermsAcceptance` (line 180). Remove the top import and add, as the first line inside recordTermsAcceptance after `cartId` is read, `const { getOpenCheckout } = await import(\"./checkout\");`. The cart's actions import recordTermsForOrder from this file, and express-checkout.ts imports termsDisplayFor from it, so this edge is the second way the order writer reaches a product page. Nothing else in the file changes."
+    }
+   ],
+   "checks": [
+    "rg -n '^import .* from \"./checkout\"' src/server/checkout-terms.ts : prints nothing",
+    "pnpm test:int src/server/checkout-terms.int.test.ts : exits 0",
+    "pnpm lint && pnpm typecheck && pnpm test: exits 0"
+   ]
+  },
+  {
+   "title": "The graph test holds the product page, a category, the search, the cart, the checkout and the account",
+   "changes": [
+    {
+     "file": "scripts/lib/route-load.mjs",
+     "action": "edit",
+     "made_by": "1.8",
+     "how": "Step 1.8 creates this file: it exports ENTRIES (a short name to a repo-relative file; among them store-layout, store-home and store-product), FORBIDDEN (for each entry the modules and packages it may not reach by static value imports) and routeLoadCounts(root), which src/server/route-load.graph.test.ts calls for every entry; the test itself needs no change. If the file is missing, stop. Add to ENTRIES, in the same form: store-product 'src/app/s/[store]/[market]/p/[handle]/page.tsx' (already an entry since step 1.8), and new: store-category 'src/app/s/[store]/[market]/category/[slug]/page.tsx', store-search 'src/app/s/[store]/[market]/search/page.tsx', store-cart 'src/app/s/[store]/[market]/cart/page.tsx', store-checkout 'src/app/s/[store]/[market]/checkout/page.tsx', store-account 'src/app/s/[store]/[market]/account/page.tsx' (the paths of 12 November; if step 2.2 moved them under a '(shop)' folder, take the same files there). In FORBIDDEN give store-category and store-search the list store-product has, and add to the lists of store-product, store-category and store-search: src/server/checkout.ts, src/server/stripe.ts, src/server/ledger.ts, src/server/staff-alerts.ts, src/server/billing.ts. Give store-cart, store-checkout and store-account the list store-home has (they may reach checkout.ts: they place and show orders). The walk follows static imports only, so the import() calls of the first three commits are not followed; say that in a comment beside the entries. Run pnpm exec vitest run src/server/route-load.graph.test.ts. For each forbidden file still reached, the failure names the import chain: cut exactly that edge the same way (a dynamic import inside the function that needs it, or moving one function to a file of its own), one file's edges per commit, each commit with the checks of the first commit, and a test order after each deploy. Then run node scripts/route-load.mjs --write to record the files-reached figure of each new entry in src/server/route-load.baseline.json (never by hand)."
+    },
+    {
+     "file": "scripts/route-budget.json",
+     "action": "edit",
+     "made_by": "1.8",
+     "how": "Step 1.8 writes this file with node scripts/route-budget.mjs --write --first: chunkBytes holds, per kind of route (store: /s/[store]/[market] and below except cart, checkout and account; pay: cart, checkout and account), the largest route, its bytes and its max. scripts/route-budget.mjs already measures every route of .next/app-path-routes-manifest.json by kind, so the six pages are measured without a change to the script: do not edit scripts/route-budget.mjs. After the cuts, pnpm build && node scripts/route-budget.mjs --write: it lowers a kind's max when its largest route fell and refuses to raise one. If the file is missing, stop."
+    }
+   ],
+   "checks": [
+    "pnpm exec vitest run src/server/route-load.graph.test.ts : exits 0, and node -e \"console.log(Object.keys(require('./src/server/route-load.baseline.json').entries).filter(k=>/^store-(product|category|search|cart|checkout|account)$/.test(k)).length)\" prints 6",
+    "Planted case, not committed: add `import \"@/server/checkout\";` to src/components/product-parts.tsx and run the same test: it fails naming the product page; remove the line",
+    "pnpm lint && pnpm typecheck && pnpm test: exits 0",
+    "pnpm build && node scripts/route-budget.mjs : exits 0",
+    "pnpm test:int src/server/checkout.int.test.ts src/server/checkout-stripe.int.test.ts src/server/express-checkout.int.test.ts src/server/quote-requests.int.test.ts && pnpm test:e2e e2e/cart.spec.ts e2e/quotes.spec.ts : exits 0"
+   ]
+  }
+ ],
+ "tests": [
+  {
+   "file": "src/server/route-load.graph.test.ts",
+   "proves": "A static import that brings checkout.ts, stripe.ts, ledger.ts, staff-alerts.ts or billing.ts back onto the product page, a category or the search, and a rise in the source files any of the six pages reaches."
+  },
+  {
+   "file": "scripts/route-budget.json (read by scripts/route-budget.mjs on every CI build)",
+   "proves": "A rise in the chunk bytes of the largest store or pay route, which kinds the six pages belong to."
+  },
+  {
+   "file": "src/server/checkout.int.test.ts, checkout-stripe.int.test.ts, express-checkout.int.test.ts, quote-requests.int.test.ts, e2e/cart.spec.ts, e2e/quotes.spec.ts (unchanged)",
+   "proves": "That an order is still placed, paid, and a quote still requested after each edge is cut."
+  }
+ ],
+ "migration": {
+  "needed": false,
+  "notes": ""
+ },
+ "done_when": [
+  {
+   "check": "pnpm exec vitest run src/server/route-load.graph.test.ts",
+   "expect": "Green, with the product page, a category and the search reaching none of src/server/checkout.ts, stripe.ts, ledger.ts, staff-alerts.ts, billing.ts, and all six pages as entries."
+  },
+  {
+   "check": "The analyze export the plan uses (step 1.8's script prints modules and megabytes per route on CI's build; if run by hand: the next analyze command as node_modules/next/dist/docs describes it for this version, then the per-route figures)",
+   "expect": "Product page, category and search at or under 1,800 modules and 4.8 MB; cart, checkout and account at or under 1,800 modules and 5.0 MB."
+  },
+  {
+   "check": "node scripts/route-budget.mjs after pnpm build",
+   "expect": "Exits 0; the store and pay kinds, which hold the six routes, are at or under their max."
+  },
+  {
+   "check": "pnpm test:int src/server/checkout.int.test.ts src/server/express-checkout.int.test.ts src/server/quote-requests.int.test.ts; pnpm test:e2e e2e/cart.spec.ts e2e/quotes.spec.ts",
+   "expect": "All pass with no assertion changed."
+  }
+ ],
+ "after_deploy": [
+  "Place one test order on the demo store in test mode (add a product to the cart, press Check out, pay with Stripe's test card 4242 4242 4242 4242): the order appears under Orders in the admin as paid, with its confirmation email logged. If the store shows an express button (Apple Pay or Google Pay needs a real wallet), at least confirm the button is drawn on the product page and the cart. Do this after EVERY commit of this step that reaches production, before starting the next commit.",
+  "On Kaizena Flow's own store (D484, the same routes) open one plan's product page and the cart: both draw, and Check out opens the payment page."
+ ],
+ "docs": [
+  "docs/decisions.md: one new row with the next free D-number (find the last with: rg -o '^\\| D[0-9]+' docs/decisions.md | tail -1, and add one). It records: the order writer is loaded by import() inside checkoutAction, expressCheckoutAction and recordTermsAcceptance; startExpress lives in src/server/express-start.ts; the six storefront entries of the graph test with their figures before and after.",
+  "docs/rules/storefront.md, the rule that starts 'The cart (`src/server/cart.ts`)' or the Express checkout rule in docs/rules/admin/commerce.md ('Express checkout and wallets'): change the file name for startExpress to src/server/express-start.ts and add one sentence: a file a product page imports never imports src/server/checkout.ts statically; route-load.graph.test.ts holds it.",
+  "docs/audits/bloat-review-2026-11.md, Progress table: set the row of step 2.47 to Done with the date and the commit hash, in the same commit as the last change; tick the step's section in docs/audits/bloat-review-2026-11/plan/phase-2.md if that file has one."
+ ],
+ "do_not": [
+  "Do not change what startCheckout, startExpress or placeOrder do, their arguments or the order of checks before them. This step moves imports, not behaviour.",
+  "Do not wrap the import() in a try/catch that swallows the error: a failed load must fail the action as a thrown error does today.",
+  "Do not make checkout.ts smaller by moving its writers elsewhere in this step; staging placeOrder is code review step 3.7 and step 2.48.",
+  "Do not cut more than one file's edges in one commit, and do not start the next commit before the test order of the previous deploy passed.",
+  "Do not remove the express button's server facts (expressOn, expressAreaFor, klarnaMessaging) from the product page: they are what draws it.",
+  "Do not add 'use server' to express-start.ts or checkout.ts: only the actions files are server actions."
+ ],
+ "stop_if": [
+  "src/server/route-load.graph.test.ts or scripts/route-budget.mjs does not exist (step 1.8 not done), or steps 2.9 and 2.22 are not marked Done in the Progress table.",
+  "The graph test names an import chain to checkout.ts that goes through src/server/cart.ts, src/server/catalog.ts, src/server/shop.ts or src/server/stores.ts: those are read on every page; report the chain, do not make their imports dynamic.",
+  "After the three named cuts and the chains the graph test names, the analyze figures are still over 1,800 modules or 4.8 MB: report the largest remaining groups; choosing the next cut needs judgement.",
+  "Any checkout, express or quote test fails, or needs an assertion changed.",
+  "The test order after a deploy does not reach 'paid': revert that commit (git revert, push) and report."
+ ],
+ "executor": "strong",
+ "executor_why": "Commits 1 to 3 are exact import moves in the checkout path, but commit 4 must cut whatever edges to checkout.ts, stripe.ts, ledger.ts, staff-alerts.ts and billing.ts remain after steps 1.8, 2.9 and 2.22, which are unknown until then, choosing for each a dynamic import or a moved function in code that places orders.",
+ "checked_in_code": "I opened src/app/s/[store]/[market]/cart/actions.ts (455 lines), src/server/express-checkout.ts (214) and src/server/checkout-terms.ts. The step is right that actions.ts imports startCheckout (line 34) and startExpress (line 36) at its top, and each is called in exactly one action (lines 226 and 441). I found two more static edges the step does not name: src/components/product-parts.tsx imports expressAreaFor and klarnaMessaging from express-checkout.ts, which imports checkout.ts at its top though only startExpress uses it (lines 131 and 133), and checkout-terms.ts imports getOpenCheckout from checkout.ts for one function; the brief cuts both. src/server/stores.ts still imports ./stripe (step 2.22's job). route-load.graph.test.ts and scripts/route-budget.mjs do not exist yet; there is no e2e spec named checkout or express, so the brief names the int tests and e2e/cart.spec.ts and e2e/quotes.spec.ts. Second check (12 November): the six entries belong in ENTRIES and FORBIDDEN of scripts/lib/route-load.mjs (step 1.8's file; store-product is already there), not in the test file; route-budget.mjs already measures every route by kind, so only scripts/route-budget.json is lowered; the page paths are p/[handle], category/[slug], search, cart, checkout and account under src/app/s/[store]/[market] (the given rg pattern found neither of the first two).",
+ "cheap_commits": [],
+ "rating_checked": "strong"
 }

@@ -1,0 +1,10 @@
+{
+ "id": "0.14",
+ "fixed": [
+  "Replaced the 'pick the first category the seed makes' fallback by the fact (supabase/seed.sql:247 seeds category 'hjem' for the demo store) and a stop_if if it answers 404."
+ ],
+ "rejected": [],
+ "cheaper": "not applied: none proposed; the step is already cheap.",
+ "executor_before": "cheap",
+ "executor_after": "cheap"
+}

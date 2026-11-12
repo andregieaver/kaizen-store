@@ -1,0 +1,18 @@
+{
+ "id": "3.10",
+ "fixed": [
+  "Commit 2: resendDelivery/listEndpointDeliveries no longer moved (their statements differ beyond the owner clause: joins, erased_at vs payload, columns); the five shared writes only.",
+  "EndpointScope written member by member: owned, lock argument lists (store two-arg, platform one-arg), ownerColumns/ownerValues for the insert, audit built as integration.endpoint_<action> / platform.endpoint_<action> with on/off (the brief's 'switched' did not match today's names).",
+  "The brief claimed the ratchet holds the owner clause; its WRITE pattern needs a literal table, so it cannot: a check that every endpoint-store statement carries ${scope.owned} is added.",
+  "copies.baseline.json: action edit, made_by 1.17."
+ ],
+ "rejected": [
+  {
+   "problem": "scripts/lib/copy-count.mjs and src/lib/copies.baseline.json come from step 1.17 and do not exist yet.",
+   "why": "depends_on names 1.17 and a stop_if stops before commit 4 when it is missing."
+  }
+ ],
+ "cheaper": "applied in part: EndpointScope's statements are given; which editor runs commit 4 lifts still depends on the counter's output, so the rating stays strong.",
+ "executor_before": "strong",
+ "executor_after": "strong"
+}
