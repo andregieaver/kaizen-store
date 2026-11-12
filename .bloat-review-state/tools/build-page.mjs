@@ -11,8 +11,10 @@ const routesData = "const ROUTES = [" + between("const ROUTES = [", 'bars("c-ser
 const json = (p) => JSON.parse(readFileSync(p, "utf8"));
 const esc = (s) => String(s ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/\s+/g, " ").trim();
 const code = (s) => esc(s).replace(/`([^`]+)`/g, "<code>$1</code>");
-const planPath = existsSync(`${S}/panel/plan.final.json`) ? `${S}/panel/plan.final.json` : `${S}/panel/plan.json`;
-const final = planPath.endsWith(".final.json");
+const planPath = [`${S}/panel/plan.exec.json`, `${S}/panel/plan.final.json`, `${S}/panel/plan.json`].find((p) => existsSync(p));
+const final = !planPath.endsWith("plan.json");
+const decided = planPath.endsWith(".exec.json");
+const briefOf = (id) => (existsSync(`${S}/exec/${id}.json`) ? json(`${S}/exec/${id}.json`) : null);
 const plan = json(planPath);
 const { counts } = json(`${S}/work/findings-totals.json`);
 const SCORE = [["shopper-browser", "What a shopper's browser gets"], ["owner-browser", "What an owner's browser gets"], ["server", "What the server loads and asks"], ["scheduled", "Scheduled work"], ["database", "The database"], ["page-model", "The page builder's model and a built page"], ["styles", "Styles"], ["text", "Interface text"], ["ai", "AI calls"], ["surface", "The product's surface"], ["code", "The code itself"], ["build", "Tests, CI and the build"], ["rules", "The written rules"]];
@@ -22,7 +24,9 @@ const chip = (g) => `<span class="chip grade ${CLS[g] ?? ""}"><i></i>${esc(g)}</
 const cards = SCORE.map(([k, title]) => ({ k, title, c: card(k) }));
 const allA = cards.every((x) => x.c.ladder.after_all === "A");
 const steps = plan.phases.flatMap((p) => p.steps);
-const asked = steps.filter((s) => s.owner_question);
+const asked = steps.filter((s) => s.owner_question || s.asked);
+const briefs = steps.map((s) => briefOf(s.id)).filter(Boolean);
+const who = (w) => briefs.filter((b) => b.executor === w).length;
 const today = (g) => cards.filter((x) => x.c.grade_today === g).length;
 const num = (n) => Number(n).toLocaleString("en-GB");
 
@@ -31,15 +35,16 @@ const ladderRows = cards.map(({ title, c }) => `<tr><td>${esc(title)}</td><td>${
 const phases = plan.phases.map((ph) => {
   const e = { S: 0, M: 0, L: 0 }; for (const s of ph.steps) e[s.effort]++;
   const own = ph.steps.filter((s) => s.owner_question).length;
+  const wb = ph.steps.map((s) => briefOf(s.id)).filter(Boolean); const w = (k) => wb.filter((b) => b.executor === k).length;
   const top = [...ph.steps].sort((a, b) => b.closes.length - a.closes.length).slice(0, 6).sort((a, b) => a.id.localeCompare(b.id, "en", { numeric: true }));
-  return `<li><div class="ph"><span class="eyebrow">Phase ${ph.n} · ${ph.steps.length} steps · ${e.S} small, ${e.M} medium, ${e.L} large${own ? ` · ${own} wait for you` : ""}</span><h3>${esc(ph.title)}</h3><p>${code(ph.notice)}</p></div>
+  return `<li><div class="ph"><span class="eyebrow">Phase ${ph.n} · ${ph.steps.length} steps · ${e.S} small, ${e.M} medium, ${e.L} large${own ? ` · ${own} wait for you` : ""}${wb.length ? ` · ${w("cheap")} cheap, ${w("cheap-then-review")} with review, ${w("strong")} strong` : ""}</span><h3>${esc(ph.title)}</h3><p>${code(ph.notice)}</p></div>
         <ul>
           ${top.map((s) => `<li><span class="sid">${esc(s.id)}</span><span>${code(s.title)}</span></li>`).join("\n          ")}
           ${ph.steps.length > top.length ? `<li class="more">and ${ph.steps.length - top.length} more</li>` : ""}
         </ul></li>`;
 }).join("\n      ");
-const questions = asked.map((s) => `<li><strong>Step ${esc(s.id)}.</strong> ${code(s.owner_question)}</li>`).join("\n        ");
-const choices = (plan.owner_choices ?? []).map((c) => `<li>${code(c.question)}</li>`).join("\n        ");
+const questions = asked.map((s) => `<li><strong>Step ${esc(s.id)}.</strong> ${code(s.owner_question ?? s.asked)}${s.decision ? `<br><strong>Decided:</strong> ${code(s.decision)}` : ""}</li>`).join("\n        ");
+const choices = (plan.owner_choices ?? []).map((c) => `<li>${code(c.question)}${c.decision ? `<br><strong>Decided:</strong> ${code(c.decision)}` : ""}</li>`).join("\n        ");
 
 const body = `<title>Kaizena Flow Bloat Review</title>
 <meta name="claude:viewport-fit-sides" content="cover">
@@ -71,7 +76,7 @@ details.qs li strong { color: var(--ink); font-weight: 600; }
     <div class="eyebrow">Review · 11 and 12 November 2026 · commit 0bd814c</div>
     <h1>Is Kaizena Flow bloated?</h1>
     <p class="lede">Not in what it is. In how it loads, asks and checks. The platform is carefully built and not open yet: 0.35% of the code is dead, 1% is a copy, and a feature a store does not use costs it close to nothing. The waste has five causes, and almost all of it is cheap to remove before the doors open. The plan's goal is an A in every area.</p>
-    <p class="note" id="status-note">25 areas of the system were each read by one reviewer, challenged by a second and planned by a third: <strong>${num(counts.FINDINGS)} findings stand and ${counts.REFUTED} claims were refuted</strong>, several of them this review's own first figures. A panel then set each area's bar for an A in numbers and wove one plan of <strong>${steps.length} steps</strong>. The full review is in the repository at <code>docs/audits/bloat-review-2026-11.md</code>.</p>
+    <p class="note" id="status-note">25 areas of the system were each read by one reviewer, challenged by a second and planned by a third: <strong>${num(counts.FINDINGS)} findings stand and ${counts.REFUTED} claims were refuted</strong>, several of them this review's own first figures. A panel then set each area's bar for an A in numbers, wove one plan and closed every gap its challengers found: <strong>${steps.length} steps</strong>, ready to be carried out and not started. The full review is in the repository at <code>docs/audits/bloat-review-2026-11.md</code>.</p>
   </header>
 
   <section>
@@ -182,16 +187,16 @@ details.qs li strong { color: var(--ink); font-weight: 600; }
 
   <section>
     <div class="head"><div class="eyebrow">The plan</div><h2>${steps.length} steps in five phases, one goal: an A in every area</h2>
-      <p class="muted">Every finding is closed by exactly one step, tolerated with a stated reason (${plan.tolerated.length}), or left to you as a product choice (${(plan.owner_choices ?? []).length}). Each step names the check that says it is done. Phase 0 asks you nothing. The steps shown are the ones that close the most findings in each phase.</p></div>
+      <p class="muted">Every finding is closed by exactly one step, tolerated with a stated reason (${plan.tolerated.length}), or left to you as a product choice (${(plan.owner_choices ?? []).length}). Each step names the check that says it is done${briefs.length ? `, and has a brief of its own for whoever carries it out: ${who("cheap")} a smaller model can do alone, ${who("cheap-then-review")} it can do with a stronger model reading the diff, ${who("strong")} need the stronger model` : ""}. Nothing has been started. The steps shown are the ones that close the most findings in each phase.</p></div>
     <ol class="phases">
       ${phases}
     </ol>
   </section>
 
   <section>
-    <div class="head"><div class="eyebrow">Waiting for you</div><h2>${asked.length} steps wait for your answer; ${(plan.owner_choices ?? []).length} more are product choices</h2>
-      <p class="muted">None of them holds up phase 0.</p></div>
-    <details class="qs" open><summary>Questions that stop a step (${asked.length})</summary><ol>
+    <div class="head"><div class="eyebrow">${decided ? "Decided" : "Waiting for you"}</div><h2>${decided ? `${asked.length} questions answered the recommended way, and no paid machine` : `${asked.length} steps wait for your answer; ${(plan.owner_choices ?? []).length} more are product choices`}</h2>
+      <p class="muted">${decided ? "You asked for the recommended answer to each, with one limit: no larger Vercel build machine. Each answer is written into its step. Tell me if any of these should be different; each says in the repository how to undo it." : "None of them holds up phase 0."}</p></div>
+    <details class="qs" open><summary>${decided ? "The questions that stopped a step, and what was decided" : "Questions that stop a step"} (${asked.length})</summary><ol>
         ${questions}
     </ol></details>
     <details class="qs"><summary>Product choices the reviewers met (${(plan.owner_choices ?? []).length}): not waste, and no step depends on them</summary><ol>

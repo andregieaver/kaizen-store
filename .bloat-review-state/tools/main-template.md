@@ -41,7 +41,8 @@ change: there is no real data to move and nobody to disturb.
 **Where things are.** Beside this file, the folder `bloat-review-2026-11/`: `findings/` has a folder per area and a small file per
 finding (where, evidence, cost today, the fix in steps, the tests and rules that hold today's behaviour, done-when, risk);
 `grade-a/` has each area's bar in full; `evidence/` the measurements; `scripts/` what made them. A step of the plan names
-the findings it closes: open those files, not the folder.
+the findings it closes: open those files, not the folder. `plan/` has each phase in full, the brief of every step
+(`plan/steps/`), how to carry a step out (`plan/README.md`) and the owner's decisions (`plan/decisions.md`).
 
 **Words.** Six kinds of bloat: *dead* (nothing uses it), *duplicate* (built more than once), *eager* (loaded, fetched or run before
 it is needed, or for someone who will never need it), *oversize* (bigger than its job), *ahead of use* (paying a running cost before
@@ -62,7 +63,12 @@ commit as the fix.
 - When verified fixes raise an area's grade, change it in the scorecard with the old grade and the date beside it, and show the
   owner the new table. Raise a grade only for fixes seen working in production, measured as the bar says.
 - If a finding proves wrong, say so in Notes and correct it in its area's file; do not delete it.
-- Steps marked *owner* wait for the owner's answer to a question in section 6.
+- **No step waits for the owner.** The owner answered every question on 12 November (section 6 and
+  `bloat-review-2026-11/plan/decisions.md`): the recommended way each time, and never a paid machine or service.
+- **Carrying a step out:** read `bloat-review-2026-11/plan/README.md` once, then the step's own brief,
+  `bloat-review-2026-11/plan/steps/<step>.md`: the files, the changes, the checks, and when to stop. **Who** says who can do it:
+  *cheap* (a smaller model alone), *review* (a smaller model, and a stronger one reads the diff before the push) or *strong*.
+  **After** names the steps that must be done first.
 
 {{PROGRESS}}
 
@@ -71,6 +77,8 @@ Change log:
 - 11 Nov 2026: first draft, on unverified findings from 14 of 25 areas. Nothing started.
 - 12 Nov 2026: rewritten on the verified findings of all 25 areas, with the plan woven and each area's bar for an A set by the
   panel. Nothing started.
+- 12 Nov 2026: the panel's challengers and critic closed every gap to an A ({{STEPS}} steps); the owner's answers written into
+  the steps; a brief per step written for a smaller model to carry out. Nothing started.
 
 ## 1. The headline
 
@@ -108,7 +116,7 @@ visit.
 
 One thing the reviewers met that is not bloat but matters before opening: every store's own domain is compiled into each
 deployment as 4 to 8 routing rules, against the host's limit of 2,048 a deployment. That is a wall near 270 stores with a domain
-(SF-13, and a question for the owner in section 6).
+(SF-13; decided in section 6).
 
 ### The goal: grade A in every area
 
@@ -218,10 +226,9 @@ them 1.4 server actions, 1.8 the build's room, 1.10 the written rules, 3.9 and 3
 file, 3.15 lean tables, 3.18 and 3.20 the AI manager's rounds): do it once, there or here, and tick both.
 
 {{PLAN}}
-## 6. The owner's questions, and what was not measured
+## 6. The owner's decisions, and what was not measured
 
-**Questions.** Each stops the step it names until answered. The ones without a step are product choices the reviewers met: none
-is waste, and no step of the plan depends on them.
+{{CHOICES_INTRO}}
 
 {{CHOICES}}
 

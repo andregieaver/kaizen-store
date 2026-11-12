@@ -62,8 +62,11 @@ const KIND = { dead: "dead", duplicate: "duplicate", eager: "eager", oversize: "
 const json = (p) => JSON.parse(readFileSync(p, "utf8"));
 
 // ---- The plan: where each finding is closed.
-const planPath = existsSync(`${S}/panel/plan.final.json`) ? `${S}/panel/plan.final.json` : `${S}/panel/plan.json`;
-const amended = planPath.endsWith(".final.json");
+const planPath = [`${S}/panel/plan.exec.json`, `${S}/panel/plan.final.json`, `${S}/panel/plan.json`].find((p) => existsSync(p));
+const amended = !planPath.endsWith("plan.json");
+const decided = planPath.endsWith(".exec.json");
+const brief = (id) => (existsSync(`${S}/exec/${id}.json`) ? json(`${S}/exec/${id}.json`) : null);
+const WHO = { cheap: "cheap", "cheap-then-review": "review", strong: "strong" };
 const plan = existsSync(planPath) ? json(planPath) : null;
 const STEP_OF = {};
 if (plan) {
@@ -162,23 +165,47 @@ const ladderNote = !Object.keys(cards).length ? "" : stopsShort
 let progress = "", planText = "", choices = "", tolerated = "";
 if (plan) {
   rmSync(`${OUT}/plan`, { recursive: true, force: true });
-  mkdirSync(`${OUT}/plan`, { recursive: true });
+  mkdirSync(`${OUT}/plan/steps`, { recursive: true });
+  var writeBrief = (ph, st, b, ids) => {
+    const tick = (s) => clean(s);
+    const list = (xs, f = tick) => (xs.length ? xs.map((x) => `- ${f(x)}`).join("\n") : "- None.");
+    const fo = (id) => { for (const a of AREAS) if (id.startsWith(a.prefix + "-")) return `../../findings/${a.file}/${id}.md`; return null; };
+    let md = `# Step ${st.id}: ${clean(st.title).replace(/\.$/, "")}\n\nPhase ${ph.n} (${clean(ph.title)}) of \`docs/audits/bloat-review-2026-11.md\`. Effort ${st.effort}. Read [how to carry out a step](../README.md) first.\n\n`;
+    md += `**Who:** ${b.executor === "cheap" ? "a smaller model alone" : b.executor === "strong" ? "a stronger model" : "a smaller model; a stronger one reads the diff before the push"}. ${clean(b.executor_why)}\n\n**Goal:** ${clean(b.goal)}\n\n**Why:** ${clean(b.why)}\n\n`;
+    if (st.decision) md += `**Decided by the owner (12 November, the recommended way):** ${clean(st.decision)}\n\n`;
+    md += `**Closes:** ${ids.map((id) => (fo(id) ? `[${id}](${fo(id)})` : id)).join(", ")}. Each finding's file has the evidence.\n\n`;
+    md += `## Before you start\n\n**Done first:** ${b.depends_on.length ? b.depends_on.map((d) => `step ${d.id} (${clean(d.why)})`).join("; ") + ". Check the Progress table says Done for each." : "nothing."}\n\n**Read:**\n\n${list(b.read_first, (x) => `\`${x}\``)}\n\n`;
+    md += `## The work\n\n`;
+    b.commits.forEach((c, i) => {
+      md += `### Commit ${i + 1} of ${b.commits.length}: ${clean(c.title)}\n\n${c.changes.map((ch) => `- **${ch.action}** \`${ch.file}\`: ${clean(ch.how)}`).join("\n")}\n\nBefore the push:\n\n${c.checks.map((x) => `- ${typeof x === "string" ? clean(x) : `\`${clean(x.command ?? x.check ?? "")}\`: ${clean(x.expect ?? "")}`}`).join("\n")}\n\n`;
+    });
+    md += `## Tests that hold it\n\n${list(b.tests, (t) => `\`${t.file}\`: ${clean(t.proves)}`)}\n\n`;
+    md += `## Migration\n\n${b.migration.needed ? clean(b.migration.notes) : "None."}\n\n`;
+    md += `## Done when\n\n${b.done_when.map((d) => `- ${clean(d.check)} **Expect:** ${clean(d.expect)}`).join("\n")}\n\n`;
+    md += `## After the deploy\n\n${list(b.after_deploy)}\n\n## Write down\n\n${list(b.docs)}\n\n## Do not\n\n${list(b.do_not)}\n\n## Stop and report if\n\n${list(b.stop_if)}\n\n`;
+    md += `## Checked against the code (12 November)\n\n${clean(b.checked_in_code)}\n`;
+    writeFileSync(`${OUT}/plan/steps/${st.id}.md`, md);
+  };
   const fileOf = (id) => { for (const a of AREAS) if (id.startsWith(a.prefix + "-")) return `../findings/${a.file}/${id}.md`; return null; };
   for (const ph of plan.phases) {
-    progress += `**Phase ${ph.n}: ${clean(ph.title)}**\n\n| Step | What | Closes | Effort | Status | Notes |\n|---|---|---|---|---|---|\n`;
+    progress += `**Phase ${ph.n}: ${clean(ph.title)}**\n\n| Step | What | Closes | Effort | Who | After | Status | Notes |\n|---|---|---|---|---|---|---|---|\n`;
     planText += `### Phase ${ph.n}: ${clean(ph.title)}\n\n**Goal:** ${clean(ph.goal)} **A person will notice:** ${clean(ph.notice)} ${ph.steps.length} steps (${["S", "M", "L"].map((e) => `${ph.steps.filter((s) => s.effort === e).length} ${e}`).join(", ")}), in full in \`bloat-review-2026-11/plan/phase-${ph.n}.md\`.\n\n`;
     let file = `# Phase ${ph.n}: ${clean(ph.title)}\n\nPart of \`docs/audits/bloat-review-2026-11.md\`: its Progress table says where each step stands. **Goal:** ${clean(ph.goal)} **A person will notice:** ${clean(ph.notice)}\n\nEach step names the findings it closes; a finding's own file has the evidence, the fix in detail, and the tests and rules that change with it.\n`;
     for (const st of ph.steps) {
       const ids = st.closes.map(rename);
-      progress += `| ${st.id} | ${cell(st.title)}${st.owner_question ? " *(owner)*" : ""} | ${ids.join(", ")} | ${st.effort} | Open | |\n`;
-      file += `\n## ${st.id} ${clean(st.title).replace(/\.$/, "")}\n\n${clean(st.what)}\n\n- **Closes:** ${ids.map((id) => (fileOf(id) ? `[${id}](${fileOf(id)})` : id)).join(", ")}\n- **Effort:** ${st.effort}. **Areas it moves:** ${st.areas.map((k) => SCORE.find((x) => x.key === k)?.title ?? k).join("; ")}.\n- **Done when:** ${clean(st.done_when)}\n- **Platform:** ${clean(st.platform)}\n${st.owner_question ? `- **The owner's question first:** ${clean(st.owner_question)}\n` : ""}`;
+      const b = brief(st.id);
+      progress += `| ${st.id} | ${cell(st.title)}${st.owner_question ? " *(owner)*" : ""} | ${ids.join(", ")} | ${st.effort} | ${b ? WHO[b.executor] : ""} | ${b ? b.depends_on.map((d) => d.id).join(", ") : ""} | Open | |\n`;
+      if (b) writeBrief(ph, st, b, ids);
+      file += `\n## ${st.id} ${clean(st.title).replace(/\.$/, "")}\n\n${clean(st.what)}\n\n- **Closes:** ${ids.map((id) => (fileOf(id) ? `[${id}](${fileOf(id)})` : id)).join(", ")}\n- **Effort:** ${st.effort}. **Areas it moves:** ${st.areas.map((k) => SCORE.find((x) => x.key === k)?.title ?? k).join("; ")}.\n- **Done when:** ${clean(st.done_when)}\n- **Platform:** ${clean(st.platform)}\n${st.owner_question ? `- **The owner's question first:** ${clean(st.owner_question)}\n` : ""}${st.decision ? `- **Decided (the owner, 12 November: the recommended way):** ${clean(st.decision)} *Asked:* ${clean(st.asked)}\n` : ""}${b ? `- **To carry it out:** [steps/${st.id}.md](steps/${st.id}.md) (${WHO[b.executor]})\n` : ""}`;
     }
     progress += "\n";
     writeFileSync(`${OUT}/plan/phase-${ph.n}.md`, file);
   }
-  const asked = plan.phases.flatMap((p) => p.steps).filter((s) => s.owner_question);
+  const asked = plan.phases.flatMap((p) => p.steps).filter((s) => s.owner_question || s.asked);
   let n = 0;
-  choices = [...asked.map((s) => `${++n}. **Step ${s.id}, ${clean(s.title).replace(/\.$/, "")}.** ${clean(s.owner_question)}`), ...(plan.owner_choices ?? []).map((c) => `${++n}. ${clean(c.question)} (${c.finding_ids.map(rename).join(", ")})`)].join("\n");
+  choices = [...asked.map((s) => `${++n}. **Step ${s.id}, ${clean(s.title).replace(/\.$/, "")}.** ${clean(s.owner_question ?? s.asked)}${s.decision ? ` **Decided:** ${clean(s.decision)}` : ""}`), ...(plan.owner_choices ?? []).map((c) => `${++n}. ${clean(c.question)} (${c.finding_ids.map(rename).join(", ")})${c.decision ? ` **Decided:** ${clean(c.decision)}` : ""}`)].join("\n");
+  if (existsSync(`${S}/panel/decisions.md`)) writeFileSync(`${OUT}/plan/decisions.md`, readFileSync(`${S}/panel/decisions.md`, "utf8"));
+  if (existsSync(`${S}/work/plan-readme.md`)) writeFileSync(`${OUT}/plan/README.md`, readFileSync(`${S}/work/plan-readme.md`, "utf8").replace("{{ORDER}}", existsSync(`${S}/work/order.md`) ? readFileSync(`${S}/work/order.md`, "utf8") : ""));
   tolerated = (plan.tolerated ?? []).map((t) => `- **${rename(t.finding_id)}.** ${clean(t.why)}`).join("\n");
 }
 const steps = plan ? plan.phases.flatMap((p) => p.steps) : [];
@@ -199,6 +226,7 @@ for (const f of ["routes.md", "prod-db-stats.md", "prod-pages.md", "prefetch-sto
 
 // ---- How far the panel has come, said truthfully.
 const haveCards = SCORE.every((a) => existsSync(`${S}/panel/card-${a.key}.json`));
+console.log("plan:", planPath.split("/").pop(), "| briefs:", steps.filter((s) => brief(s.id)).length, "of", steps.length);
 const reviewed = existsSync(`${S}/panel/weave-review.md`);
 const criticDone = existsSync(`${S}/panel/critic.json`);
 const panelState = haveCards && criticDone
@@ -213,7 +241,10 @@ what stands behind it. Open the file of the step or the finding you are working 
 
 | Here | What |
 |---|---|
+| \`plan/README.md\` | how to carry out a step, and the order |
 | \`plan/phase-N.md\` | each phase's steps in full: what to change, the findings it closes, the check that says it is done, what it means for the platform |
+| \`plan/steps/<step>.md\` | one step's brief: who can do it, what must be done first, each commit's files and changes, the checks, when to stop |
+| \`plan/decisions.md\` | the owner's decisions of 12 November in one table |
 | \`findings/README.md\` | every finding by area, with its priority and the step that closes it |
 | \`findings/<area>/README.md\` | one area in short: its findings, what was refuted, its measures, what is well made |
 | \`findings/<area>/<ID>.md\` | one finding: where, the evidence, the cost today, the fix in steps, the tests and rules that change with it, done-when, risk |
@@ -259,7 +290,8 @@ node docs/audits/bloat-review-2026-11/scripts/copied-code.mjs out       # exact 
 
 // ---- The main document.
 const template = readFileSync(`${S}/work/main-template.md`, "utf8");
-let main = template.replace("{{PANEL_STATE}}", panelState).replace("{{PROGRESS}}", progress.trimEnd()).replace("{{SCORECARD}}", scorecard.trimEnd()).replace("{{LADDER}}", ladder.trimEnd()).replace("{{LADDER_NOTE}}", ladderNote).replace("{{FINDINGS_TABLES}}", areaIndex).replace("{{PLAN}}", planText).replace("{{CHOICES}}", choices).replace("{{TOLERATED}}", tolerated);
+const choicesIntro = decided ? "**Decisions.** The owner answered on 12 November: the recommended way for every question, and never a paid machine or service (so step 1.21 builds in CI if the free switches are not enough; Vercel's larger build machine is ruled out). Each answer is written into its step; `bloat-review-2026-11/plan/decisions.md` has them in one table, with how to undo each. The ones without a step are product choices the reviewers met: none is waste." : "**Questions.** Each stops the step it names until answered. The ones without a step are product choices the reviewers met: none is waste, and no step of the plan depends on them.";
+let main = template.replace("{{CHOICES_INTRO}}", choicesIntro).replace("{{PANEL_STATE}}", panelState).replace("{{PROGRESS}}", progress.trimEnd()).replace("{{SCORECARD}}", scorecard.trimEnd()).replace("{{LADDER}}", ladder.trimEnd()).replace("{{LADDER_NOTE}}", ladderNote).replace("{{FINDINGS_TABLES}}", areaIndex).replace("{{PLAN}}", planText).replace("{{CHOICES}}", choices).replace("{{TOLERATED}}", tolerated);
 for (const [k, v] of Object.entries(counts)) main = main.replaceAll(`{{${k}}}`, String(v).replace(/\B(?=(\d{3})+(?!\d))/g, ","));
 const left = main.match(/\{\{[A-Z0-9_]+\}\}/g);
 if (left) console.log("UNFILLED:", [...new Set(left)].join(", "));

@@ -65,7 +65,15 @@ challenged by a skeptic, planned by a planner. Its last lines hold the arguments
      journal only when the same run is resumed, so check the file first. `panel/plan.reviewed.json` is the plan before amending.
    `tools/build-docs.mjs` and `tools/build-page.mjs` read the final files when they exist and the reviewed ones when not;
    `node tools/check-panel.mjs plan panel/plan.final.json` and `... card panel/card-<area>.final.json` check them.
-6. **Finish:** `node tools/build-docs.mjs` (in the repository), commit, push docs to `main`; `node tools/build-page.mjs` writes
-   the page (`page/bloat-review.html`; it needs `tools/page-v4.html` for the styles and chart code and
-   `tools/findings-totals.json`, which build-docs writes) and publish it to the same artifact; tell the owner what changed:
-   refuted findings, each area's grade today, steps added to reach an A, and the questions that wait for an answer.
+6. **Ready for execution** (the owner, 12 November: the recommended answer to every question, never a paid machine, do not
+   execute; a cheaper model will). Script `tools/bloat-exec.workflow.js` (pass as `scriptPath`):
+   - `{"stage":"decide"}` writes `panel/plan.exec.json` (answers written into the steps: `asked`, `decision`) and
+     `panel/decisions.md`; `node tools/check-exec.mjs plan` checks it.
+   - `{"stage":"brief","chunks":[[step ids],...]}` writes `exec/<step>.json`, one brief per step (13 steps an agent);
+     `node tools/check-exec.mjs briefs` lists the steps that still lack a valid brief: launch only those. The 22 steps that had a
+     question are briefed after `decide`.
+   - `node tools/order.mjs` writes the order (`work/order.md`) and names loops or a step that depends on a later phase.
+7. **Finish:** `node tools/build-docs.mjs` (in the repository; it writes `plan/steps/`, `plan/README.md` from
+   `tools/plan-readme.md`, `plan/decisions.md`), commit, push docs to `main`; `node tools/build-page.mjs` writes the page
+   (`page/bloat-review.html`; needs `tools/page-v4.html` and `tools/findings-totals.json`), publish to the same artifact; tell the
+   owner: grades today, steps added to reach an A, the decisions made for them, who can carry out which steps.

@@ -26,7 +26,7 @@
   }
  },
  "counts": {
-  "STEPS": 134,
+  "STEPS": 149,
   "PHASES": 5,
   "FINDINGS": 353,
   "CONFIRMED": 128,
@@ -47,6 +47,6 @@
   "MEDIUM": 116,
   "LARGE": 10,
   "OWNER": 26,
-  "TOLERATED_COUNT": 15
+  "TOLERATED_COUNT": 13
  }
 }
