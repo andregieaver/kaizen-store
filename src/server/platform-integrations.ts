@@ -22,7 +22,7 @@ import { audit, type Account } from "./auth";
 import { postSigned, postToService, RETRY_SECONDS, type DeliveryStatus, type Outcome } from "./integrations";
 import { log } from "./log";
 import { keepPlatformEndpointHealth } from "./platform-endpoints";
-import { encryptionKey } from "./settings";
+import { encryptionKey } from "./encryption-key";
 import { col, typedRow, typedRows } from "./typed-rows";
 
 /**

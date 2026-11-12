@@ -22,7 +22,7 @@ import { audit, type Account } from "./auth";
 import { sendEmail } from "./email";
 import { secretHash } from "./oauth-clients";
 import { hostProblem } from "./replicate-fetch";
-import { encryptionKey } from "./settings";
+import { encryptionKey } from "./encryption-key";
 import { col, typedRow, typedRows } from "./typed-rows";
 
 /**

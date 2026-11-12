@@ -33,7 +33,7 @@ import { audit, type Membership } from "./auth";
 import { log } from "./log";
 import { NO_ACCESS, memberCan } from "./permissions";
 import { segmentPeople, getSegment } from "./segments";
-import { encryptionKey } from "./settings";
+import { encryptionKey } from "./encryption-key";
 import { col, typedRow, typedRows } from "./typed-rows";
 
 /**

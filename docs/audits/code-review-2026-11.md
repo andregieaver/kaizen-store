@@ -112,7 +112,7 @@ This report is a working document: the plan below is the list of work, and this 
 | 3.10 | Cache tags per product | FF3 | M | Open | |
 | 3.11 | One card query; smaller storefront files | FF10 | M | Open | |
 | 3.12 | One accounting adapter, one `afterOrNow` | FV10 | M | Open | |
-| 3.13 | Domain folders | FV4, FH6 | L | Open | |
+| 3.13 | Domain folders | FV4, FH6 | L | Open || the import cycle of src/server is measured and cut from 229 to 15 files (bloat review step 0.6, 12 November 2026, e4d0bfb to 4a8f058) |
 | 3.14 | Split `schema.ts` | FD5 | M | In progress | 12 Nov, bloat review step 0.4 commit 1: client.ts no longer imports the schema; splitting the file by area stays open, it saves reading only |
 | 3.15 | Keep the big tables lean | FD7, FD8 | M | Open | |
 | 3.16 | One error shape for the API | FD10 | M | Open | |
@@ -126,8 +126,8 @@ This report is a working document: the plan below is the list of work, and this 
 
 | Step | What | Closes | Effort | Status | Notes |
 |---|---|---|---|---|---|
-| 4.1 | Lint rules for the boundaries | FH7, FH8 | M | Open | |
-| 4.2 | All environment reads through `env.ts` | FD12 | S | Open | |
+| 4.1 | Lint rules for the boundaries | FH7, FH8 | M | Open || the import cycle of src/server is measured and cut from 229 to 15 files (bloat review step 0.6, 12 November 2026, e4d0bfb to 4a8f058) |
+| 4.2 | All environment reads through `env.ts` | FD12 | S | Open || `src/server/encryption-key.ts` now holds `encryptionKey()`, a reader of `SETTINGS_ENCRYPTION_KEY` (bloat review step 0.6) |
 | 4.3 | Generate the navigation doc | FN11 | S | Open | |
 | 4.4 | The small ones | severity 1 findings | S to M | Open | |
 | 4.5 | Check that each guard exists | - | S | Open | |
@@ -164,6 +164,7 @@ This report is a working document: the plan below is the list of work, and this 
 - 11 November 2026: step 1.7 done (D572): the migrations squashed to a baseline, the old files archived.
 - 12 November 2026: FD5 and step 3.14 half done by bloat review step 0.4; FH12 and step 4.4 corrected: the run-time driver is pg, not postgres.
 - 12 November 2026: bloat review step 0.5: `src/server/lazy-packages.scan.test.ts` holds that no server module imports sharp, opentype.js, playwright-core, @sparticuz/chromium, mammoth or unpdf as a value; it is the first of step 4.1's boundary rules for packages.
+- 12 November 2026: bloat review step 0.6: the import cycle of src/server cut from 229 to 15 files (notes on steps 3.13 and 4.1); the line on circular imports corrected; `encryption-key.ts` noted on step 4.2; CI loads every built route in a fresh process (`scripts/cold-load-routes.mjs`).
 
 ## 1. The headline
 
@@ -530,7 +531,7 @@ language, and little else. The point of this phase is that nothing above comes b
   search. About 14 of 119 route files were opened.
 - AI: the bodies of the 42 tool handler files; the eval and prompt-version internals; the shopper chat's interface; voice. The chat
   agent and the autopilot runner were searched, not read.
-- Repository: the git history is a shallow clone, so commit and revert rates were not measured; circular imports were spot-checked only.
+- Repository: the git history is a shallow clone, so commit and revert rates were not measured; circular imports were spot-checked only (since 12 November 2026 they are measured: `docs/audits/bloat-review-2026-11/scripts/import-reach.mjs --cycle`, 229 files then, 15 after bloat review step 0.6).
 
 **For a person to decide.**
 

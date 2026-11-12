@@ -72,6 +72,7 @@ vi.mock("./stripe", async (importActual) => ({
   platformStripe: (mode: string) => (mode === "test" ? fake.client : null),
   platformModes: () => ["test"],
 }));
+vi.mock("./stripe-keys", () => ({ platformModes: () => ["test"], platformPublishableKey: () => "pk_test_x", platformSecretKey: () => "sk_test_x" }));
 
 const referrals = await import("./referrals");
 const billing = await import("./referral-billing");

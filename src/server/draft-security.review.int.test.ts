@@ -71,6 +71,7 @@ vi.mock("./stripe", () => ({
   platformModes: () => ["test"],
   WEBHOOK_EVENTS: [],
 }));
+vi.mock("./stripe-keys", () => ({ platformModes: () => ["test"], platformPublishableKey: () => "pk_test_drafts", platformSecretKey: () => "sk_test_x" }));
 
 const { createDraft, expireDrafts, getDraft, recordDraftPaidOutside, saveDraft, sendDraft } = await import("./draft-orders");
 const { payPageFor, startDraftPayment } = await import("./draft-pay");

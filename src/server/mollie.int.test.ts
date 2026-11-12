@@ -15,6 +15,7 @@ vi.mock("server-only", () => ({}));
 vi.mock("next/cache", () => ({ cacheLife: () => {}, cacheTag: () => {}, updateTag: () => {}, revalidateTag: () => {}, refresh: () => {} }));
 // Stripe is never asked here: a Mollie store's checkout goes to Mollie.
 vi.mock("./stripe", () => ({ platformStripe: () => null, platformModes: () => ["test", "live"], WEBHOOK_EVENTS: [], stripeFor: () => null }));
+vi.mock("./stripe-keys", () => ({ platformModes: () => ["test", "live"], platformPublishableKey: () => "pk_test_x", platformSecretKey: () => "sk_test_x" }));
 
 type Call = { method: string; path: string; body: Record<string, unknown> | null; headers: Record<string, string> };
 

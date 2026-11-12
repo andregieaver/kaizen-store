@@ -9,7 +9,7 @@ import { SEARCH_API_IDS, type SearchApiId } from "@/lib/web-search";
 
 import { audit, type Account } from "./auth";
 import { OwnerToolError } from "./owner-tool-error";
-import { encryptionKey } from "./settings";
+import { encryptionKey } from "./encryption-key";
 import { col, typedRow } from "./typed-rows";
 
 /**

@@ -3,7 +3,11 @@ import "server-only";
 import Stripe from "stripe";
 
 import { PAYOUT_EVENTS } from "@/lib/payouts";
-import { PAYMENT_MODES, platformKey, type PaymentModeName } from "@/lib/stripe-account";
+import type { PaymentModeName } from "@/lib/stripe-account";
+
+import { platformSecretKey } from "./stripe-keys";
+
+export { platformModes, platformPublishableKey } from "./stripe-keys";
 
 /**
  * The Stripe API version every call and every webhook endpoint Kaizena Flow makes is pinned to (PSI DATA-03): the one this SDK's types
@@ -31,11 +35,7 @@ const clients = new Map<string, Stripe>();
  * Calls for a store pass `{ stripeAccount }` so they run on its account.
  */
 export function platformStripe(mode: PaymentModeName): Stripe | null {
-  const key = platformKey(
-    "secret",
-    mode,
-    mode === "test" ? process.env.STRIPE_SECRET_KEY_TEST : process.env.STRIPE_SECRET_KEY_LIVE,
-  );
+  const key = platformSecretKey(mode);
   if (!key) return null;
   let client = clients.get(key);
   if (!client) {
@@ -43,20 +43,6 @@ export function platformStripe(mode: PaymentModeName): Stripe | null {
     clients.set(key, client);
   }
   return client;
-}
-
-/** The platform's publishable key for a mode, for Stripe's embedded components. */
-export function platformPublishableKey(mode: PaymentModeName): string | null {
-  return platformKey(
-    "publishable",
-    mode,
-    mode === "test" ? process.env.STRIPE_PUBLISHABLE_KEY_TEST : process.env.STRIPE_PUBLISHABLE_KEY_LIVE,
-  );
-}
-
-/** The modes Kaizen can take payments in: both of the mode's keys are configured. */
-export function platformModes(): PaymentModeName[] {
-  return PAYMENT_MODES.filter((mode) => platformStripe(mode) && platformPublishableKey(mode));
 }
 
 /** Payment events from stores' accounts that Kaizen listens to. */

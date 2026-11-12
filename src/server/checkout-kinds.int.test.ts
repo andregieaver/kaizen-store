@@ -109,6 +109,7 @@ vi.mock("./stripe", () => ({
   platformPublishableKey: () => "pk_test_kinds",
   platformModes: () => ["test"],
 }));
+vi.mock("./stripe-keys", () => ({ platformModes: () => ["test"], platformPublishableKey: () => "pk_test_kinds", platformSecretKey: () => "sk_test_x" }));
 
 const { changeLine, getCart, getCartGift, setCartGift } = await import("./cart");
 const { cartSummary } = await import("./cart-summary");

@@ -25,7 +25,7 @@ import { notifyEndpointOff } from "./endpoint-emails";
 import { log } from "./log";
 import { getOrder, type Address } from "./orders";
 import { safeFetch } from "./replicate-fetch";
-import { encryptionKey } from "./settings";
+import { encryptionKey } from "./encryption-key";
 import { col, typedRow } from "./typed-rows";
 import { FAILING_DAYS, openEndpoint } from "./webhook-endpoints";
 

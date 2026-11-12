@@ -102,6 +102,7 @@ const fake = vi.hoisted(() => {
 
 vi.mock("./connect", async (importOriginal) => ({ ...(await importOriginal<typeof import("./connect")>()), getCheckoutUi: async () => "hosted" }));
 vi.mock("./stripe", () => ({ platformStripe: () => fake.client, platformPublishableKey: () => "pk_live_terms", platformModes: () => ["test", "live"] }));
+vi.mock("./stripe-keys", () => ({ platformModes: () => ["test", "live"], platformPublishableKey: () => "pk_live_terms", platformSecretKey: () => "sk_test_x" }));
 
 const { changeLine } = await import("./cart");
 const { startCheckout } = await import("./checkout");

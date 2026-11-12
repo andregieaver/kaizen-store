@@ -46,6 +46,7 @@ vi.mock("./stripe", () => ({
   platformModes: () => ["test"],
   WEBHOOK_EVENTS: [],
 }));
+vi.mock("./stripe-keys", () => ({ platformModes: () => ["test"], platformPublishableKey: () => "pk_test_x", platformSecretKey: () => "sk_test_x" }));
 
 const { cancelUnpaidOrder, placeOrder, startCheckout } = await import("./checkout");
 const { checkCodeForOrder, codeItemCounts, deleteDiscount, exportCodeItems, generateCodes, getDiscount, saveDiscount } = await import("./discounts");

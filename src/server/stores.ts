@@ -179,7 +179,7 @@ export const storeTag = (slug: string) => `store:${slug}`;
 export const TEMPLATE_TAG = "template-store";
 
 import { refreshTag } from "./refresh";
-import { platformModes } from "./stripe";
+import { platformModes } from "./stripe-keys";
 
 type Row = Record<string, unknown>;
 

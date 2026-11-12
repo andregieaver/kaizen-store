@@ -9,6 +9,7 @@ vi.mock("next/headers", () => ({ cookies: async () => ({ get: () => undefined, s
 // Google Fonts is outside the database: the theme here is made from scratch, so only fonts would be fetched.
 vi.mock("./fonts", async (original) => ({ ...(await original<typeof import("./fonts")>()), installFonts: async () => ({ ok: true }) }));
 vi.mock("./stripe", () => ({ platformStripe: () => ({}), platformPublishableKey: () => "pk_test_x", platformModes: () => ["test"], WEBHOOK_EVENTS: [] }));
+vi.mock("./stripe-keys", () => ({ platformModes: () => ["test"], platformPublishableKey: () => "pk_test_x", platformSecretKey: () => "sk_test_x" }));
 
 /**
  * A store drafted from a description, a drafted header or footer and Change with AI (D351), with the site's AI played by code as in

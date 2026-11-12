@@ -40,7 +40,6 @@ import { keepVersion } from "./page-versions";
 import { listTextStyles } from "./text-styles";
 import { scopedTermIds } from "./taxonomy";
 import { getStore, refreshStoreById } from "./stores";
-import { keepOwnRuleIds } from "./visibility";
 import { ownMarkets } from "@/lib/page-markets";
 import { linksToRemoved } from "@/lib/demo-content";
 import { withoutItems } from "@/lib/menu-structure";
@@ -315,6 +314,7 @@ export async function savePage(
     ...(refs.authorId ? { authorId: refs.authorId } : {}),
   };
   // Who sees a part (D179 phase 4): only the store's own groups, companies, products and categories stay in its conditions.
+  const { keepOwnRuleIds } = await import("./visibility");
   content = { ...content, rows: await keepOwnRuleIds(owner, content.rows) };
   // The page checker (wave 1, 1e): what a shopper, a screen reader or the checkout's policy would meet. The checkout page may not hold
   // what the policy would break (refused on any save); publishing with another blocking issue asks first, on the server, so skipping

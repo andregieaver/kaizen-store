@@ -13,7 +13,7 @@ import { frameTokenValid, signFrame } from "@/lib/replicate-token";
 import type { StyleModel } from "@/lib/replicate-styles";
 
 import { removeStoredFiles, uploadBytes } from "./media";
-import { encryptionKey } from "./settings";
+import { encryptionKey } from "./encryption-key";
 
 type Row = Record<string, unknown>;
 

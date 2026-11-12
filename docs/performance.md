@@ -230,6 +230,27 @@ The import walker (`scripts/import-reach.mjs`) counts the source files each of t
 `/api/visit/touch`, 107 for `/api/visit/speed` and `/api/visit/speed/own`, 100 for `/api/recommendations/events` (1,308 before),
 none of them reaching the chat, the AI, the admin's words or the schema.
 
+Step 0.6 of the bloat review cut the import cycle of `src/server` (12 November 2026): six imports moved to where they are
+called, two helpers (`bought`, `storeObligations()`) and the settings key (`encryptionKey()`) got files of their own, and which
+payment modes Kaizena Flow has is read by `src/server/stripe-keys.ts`, which never loads the Stripe SDK. Measured with the import
+walker and with `next analyze --output` and `server-graph.mjs` on a production build of `4a8f058`:
+
+| Measure | Before | After |
+|---|---|---|
+| Largest import cycle in `src/server` (files) | 229 | 15 |
+| Source files behind `src/app/s/[store]/[market]/page.tsx` | 1,419 | 616 |
+| Server modules loaded with `/s/[store]/[market]` | 2,419 (11,944 KB) | 1,594 (7,619 KB); no module of the stripe package, no `theme-store.ts` |
+| Server modules loaded with `/admin/[store]/orders` | 2,349 | 1,333 (6,701 KB) |
+
+The 15 left are the AI manager's own (`owner-assistant.ts`, its tools, the Dream Factory, sign-up and retention). A count of
+modules loaded is of the chunk files a route requires: the orders page requires a 608 KB chunk that Turbopack built with the AI
+manager's tools beside modules the page uses, so `owner-tools.ts` is parsed there, though a cold load evaluates 1,258 modules and
+not that one. Each built route and page is also loaded in a fresh process in CI (`scripts/cold-load-routes.mjs`), because a lazy
+import changes the order modules load in: step 0.6's second commit made Mollie's webhook meet the provider list before the Mollie
+provider was made, a 500 that neither the tests nor the deploy's page checks could see.
+
+- A function used once from a heavy module is imported where it is called (`await import()`), and a small helper that many files
+  need lives in a file of its own; the import walker's cycle figure may only fall.
 - A heavy package is loaded where it is used, never at the top of a server module: `loadSharp()` (`src/server/sharp-load.ts`),
   `launchBrowser()` (`src/server/browser.ts`), `await import("opentype.js")`; `src/server/lazy-packages.scan.test.ts` fails on a
   static import of sharp, opentype.js, playwright-core, @sparticuz/chromium, mammoth or unpdf.

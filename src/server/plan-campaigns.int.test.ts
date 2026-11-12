@@ -32,6 +32,7 @@ vi.mock("./stripe", () => ({
   platformModes: () => ["test"],
   WEBHOOK_EVENTS: [],
 }));
+vi.mock("./stripe-keys", () => ({ platformModes: () => ["test"], platformPublishableKey: () => "pk_test_x", platformSecretKey: () => "sk_test_x" }));
 
 const { campaignPromotion, createPlatformDiscount, deletePlatformDiscount, findPlatformDiscount, listPlanCampaigns, setPlatformDiscountActive, updatePlatformDiscount } =
   await import("./platform-discounts");

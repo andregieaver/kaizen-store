@@ -13,7 +13,7 @@ import { checkEndpointUrl } from "@/lib/webhook-signature";
 import { audit, type Account } from "./auth";
 import { log } from "./log";
 import { hostProblem } from "./replicate-fetch";
-import { encryptionKey } from "./settings";
+import { encryptionKey } from "./encryption-key";
 import { col, typedRow, typedRows } from "./typed-rows";
 import { ENDPOINTS_MAX, FAILING_DAYS, type EndpointProblem, type SaveOutcome } from "./webhook-endpoints";
 

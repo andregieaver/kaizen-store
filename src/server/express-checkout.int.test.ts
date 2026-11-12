@@ -76,6 +76,7 @@ vi.mock("./stripe", () => ({
   platformPublishableKey: () => "pk_test_express",
   platformModes: () => ["test"],
 }));
+vi.mock("./stripe-keys", () => ({ platformModes: () => ["test"], platformPublishableKey: () => "pk_test_express", platformSecretKey: () => "sk_test_x" }));
 
 const { changeLine, readCartId } = await import("./cart");
 const { chooseDelivery } = await import("./delivery-options");

@@ -16,6 +16,7 @@ const fake = vi.hoisted(() => ({
   },
 }));
 vi.mock("./stripe", () => ({ platformStripe: () => fake.client, platformPublishableKey: () => "pk_test_x", platformModes: () => ["test"], WEBHOOK_EVENTS: [] }));
+vi.mock("./stripe-keys", () => ({ platformModes: () => ["test"], platformPublishableKey: () => "pk_test_x", platformSecretKey: () => "sk_test_x" }));
 
 const { markSent, getOrderAdmin, undoShipment, undoRefusalText, UNDO_REFUSALS, cancelOrder } = await import("./order-admin");
 const { markDelivered } = await import("./order-delivery");

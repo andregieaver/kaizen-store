@@ -17,6 +17,7 @@ const fake = vi.hoisted(() => ({
   },
 }));
 vi.mock("./stripe", () => ({ platformStripe: () => fake.client, platformPublishableKey: () => "pk_test_x", platformModes: () => ["test"], WEBHOOK_EVENTS: [] }));
+vi.mock("./stripe-keys", () => ({ platformModes: () => ["test"], platformPublishableKey: () => "pk_test_x", platformSecretKey: () => "sk_test_x" }));
 
 const ownerTools = await import("./owner-tools");
 const sm = await import("./shipping-methods");

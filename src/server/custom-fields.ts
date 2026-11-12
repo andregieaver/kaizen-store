@@ -54,7 +54,6 @@ import { isOwnFieldFile } from "./media";
 import { entryLookups, entryTargets } from "./entry-targets";
 import { pgUuidArray } from "./pg-arrays";
 import type { SaveResult } from "./settings";
-import { refreshFieldSearch, refreshStoreFieldSearch } from "./field-search";
 import { marketIn } from "./shop";
 import { getStore, storeTag } from "./stores";
 import { OFFERED } from "./product-conditions";
@@ -181,6 +180,7 @@ export async function saveFieldGroup(
     id = String(row.id);
   }
   // Keyword search reads fields flagged for it: the store's search texts follow a change to such a group.
+  const { refreshStoreFieldSearch } = await import("./field-search");
   if (searchedBefore || usesSearch(g)) await refreshStoreFieldSearch(store.id);
   await audit(account.id, store.id, g.id ? "field_group.updated" : "field_group.created", { name: g.name });
   return { ok: true, id };
@@ -195,6 +195,7 @@ export async function deleteFieldGroup({ account, store }: Membership, id: strin
     store.id,
     current.fields.map((f) => f.id),
   );
+  const { refreshStoreFieldSearch } = await import("./field-search");
   if (usesSearch(current)) await refreshStoreFieldSearch(store.id);
   await audit(account.id, store.id, "field_group.deleted", { name: current.name });
   return { ok: true };
@@ -211,6 +212,7 @@ export async function setFieldGroupActive(
     where store_id = ${store.id}::uuid and id = ${id}::uuid returning name, fields
   `);
   if (rows.length === 0) return { ok: false, problems: ["The group no longer exists."] };
+  const { refreshStoreFieldSearch } = await import("./field-search");
   if (usesSearch({ fields: rows[0].fields as FieldDef[] })) await refreshStoreFieldSearch(store.id);
   await audit(account.id, store.id, active ? "field_group.switched_on" : "field_group.switched_off", {
     name: String(rows[0].name),
@@ -460,6 +462,7 @@ export async function saveFieldData(
 ): Promise<string[]> {
   const problems = await writeFieldData(run, storeId, entity, entityId, raw, options);
   // Keyword search reads a product's public fields (D118): its search texts are made again in the same transaction.
+  const { refreshFieldSearch } = await import("./field-search");
   if (problems.length === 0 && entity === "product") await refreshFieldSearch(run, storeId, entityId, options);
   return problems;
 }

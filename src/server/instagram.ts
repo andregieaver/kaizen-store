@@ -14,7 +14,7 @@ import { siteUrl } from "@/lib/site";
 import { audit } from "./auth";
 import { log } from "./log";
 import { refreshTag } from "./refresh";
-import { encryptionKey } from "./settings";
+import { encryptionKey } from "./encryption-key";
 import { col, typedRows } from "./typed-rows";
 
 /**

@@ -20,6 +20,7 @@ const fake = vi.hoisted(() => ({
   },
 }));
 vi.mock("./stripe", () => ({ platformStripe: () => fake.client, platformPublishableKey: () => "pk_test_x", platformModes: () => ["test"], WEBHOOK_EVENTS: [] }));
+vi.mock("./stripe-keys", () => ({ platformModes: () => ["test"], platformPublishableKey: () => "pk_test_x", platformSecretKey: () => "sk_test_x" }));
 
 // The permission layer is the one thing replaced: what an action does with a member is read from the real database.
 const access = vi.hoisted(() => ({ member: null as unknown, allow: true, asked: [] as string[] }));

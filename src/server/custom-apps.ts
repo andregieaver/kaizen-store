@@ -24,7 +24,7 @@ import { decryptSecret, encryptSecret, secretHint } from "@/lib/secret-box";
 import { audit, type Membership } from "./auth";
 import { log } from "./log";
 import { safeFetch } from "./replicate-fetch";
-import { encryptionKey } from "./settings";
+import { encryptionKey } from "./encryption-key";
 import { col, typedRows } from "./typed-rows";
 
 type Row = Record<string, unknown>;

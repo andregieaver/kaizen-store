@@ -32,6 +32,7 @@ const fake = vi.hoisted(() => {
   return { client };
 });
 vi.mock("./stripe", () => ({ platformStripe: () => fake.client, platformPublishableKey: () => "pk_test_tools", platformModes: () => ["test"], WEBHOOK_EVENTS: [] }));
+vi.mock("./stripe-keys", () => ({ platformModes: () => ["test"], platformPublishableKey: () => "pk_test_tools", platformSecretKey: () => "sk_test_x" }));
 
 const ownerTools = await import("./owner-tools");
 const { getDraft, listDrafts, previewDraft, saveDraft } = await import("./draft-orders");
