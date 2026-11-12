@@ -8,10 +8,14 @@
  *   PRODUCTION_URL      the site's address (default https://kaizenaflow.com)
  *   EXPECTED_COMMIT     the commit to wait for (default GITHUB_SHA)
  *   DEPLOY_WAIT_SECONDS how long to wait (default 1200)
+ *   SMOKE_PAGES         the pages to request once production runs it, separated by commas, each a path or a full https:// address
+ *                       (default `/,/s/demo/no`: Kaizena Flow's home and the template store's Norwegian front page)
  *
  * Once production runs it, the routes that answer outsiders are each called once without a token (`SMOKE_CHECKS`): each must refuse
  * with 401. A route whose module cannot load answers 500 to everyone on Vercel, where every function starts fresh, while a local server
  * that served other pages first loads it in another order and works (D440: the Admin API's import cycle); this is where that shows.
+ * Then `SMOKE_PAGES` are requested, one after the other and each twice, and each must answer 200: the job, not a visitor, pays the
+ * first draw of these pages, and the log shows each one's status, bytes and cache headers.
  *
  * It reads nothing secret and prints only commits, paths and statuses.
  */
@@ -78,6 +82,50 @@ async function smokeResults(url) {
   );
 }
 
+/** The pages to request after a deploy, from the SMOKE_PAGES variable: paths or full https:// addresses, trimmed, empty ones dropped. */
+export function smokePages(value) {
+  const pages = (value ?? "")
+    .split(",")
+    .map((page) => page.trim())
+    .filter((page) => page.length > 0);
+  return pages.length > 0 ? pages : ["/", "/s/demo/no"];
+}
+
+/** The page requests whose status was not 200, as `GET address: status (expected 200)` lines; empty when all answered 200. */
+export function pageProblems(results) {
+  return results.filter((r) => r.status !== 200).map((r) => `GET ${r.address}: ${r.status ?? "no answer"} (expected 200)`);
+}
+
+/** One log line for a page request: status, bytes and the two cache headers. */
+export function pageLine(result) {
+  return `GET ${result.address}: ${result.status}, ${result.bytes} bytes, x-vercel-cache ${result.cache.vercel ?? "none"}, x-nextjs-cache ${result.cache.next ?? "none"}`;
+}
+
+/** Requests each page in turn (not at once, so the first request starts the proxy and the page function alone). No cookie, no token. */
+async function pageResults(url, pages) {
+  const results = [];
+  for (const address of pages) {
+    try {
+      const response = await fetch(address.startsWith("/") ? `${url}${address}` : address, {
+        method: "GET",
+        redirect: "follow",
+        headers: { "User-Agent": "kaizena-flow-deploy-check" },
+        signal: AbortSignal.timeout(30_000),
+      });
+      const body = await response.arrayBuffer();
+      results.push({
+        address,
+        status: response.status,
+        bytes: body.byteLength,
+        cache: { vercel: response.headers.get("x-vercel-cache"), next: response.headers.get("x-nextjs-cache") },
+      });
+    } catch {
+      results.push({ address, status: null, bytes: 0, cache: { vercel: null, next: null } });
+    }
+  }
+  return results;
+}
+
 async function reportedCommit(url) {
   try {
     const response = await fetch(`${url}/api/health`, { headers: { "Cache-Control": "no-store" }, signal: AbortSignal.timeout(15_000) });
@@ -114,6 +162,20 @@ async function main() {
         process.exit(1);
       }
       console.log(`Each route for outsiders refuses a call without a token (${SMOKE_CHECKS.length}).`);
+      const pages = smokePages(process.env.SMOKE_PAGES);
+      let results = await pageResults(url, pages);
+      if (pageProblems(results).length > 0) {
+        await new Promise((resolve) => setTimeout(resolve, 60_000));
+        results = await pageResults(url, pages);
+      }
+      for (const result of results) console.log(pageLine(result));
+      const pageIssues = pageProblems(results);
+      if (pageIssues.length > 0) {
+        console.error(`Production runs the commit, but a page does not answer 200:\n${pageIssues.join("\n")}`);
+        process.exit(1);
+      }
+      console.log("Second request:");
+      for (const result of await pageResults(url, pages)) console.log(pageLine(result));
       return;
     }
     await new Promise((resolve) => setTimeout(resolve, 15_000));

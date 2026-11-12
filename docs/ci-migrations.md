@@ -82,7 +82,7 @@ A push to `main` takes one of two paths, chosen by reading production's ledger (
 
 Either way the job then waits for production to run the commit (D389, `scripts/await-deploy.mjs`): it reads `/api/health` until the
 `commit` there is this one, or a later one that includes it, and fails, saying what production reports, after twenty minutes. Set the
-repository variable `PRODUCTION_URL` when the site's address is not `https://kaizenaflow.com`.
+repository variable `PRODUCTION_URL` when the site's address is not `https://kaizenaflow.com`. It then requests the pages of `SMOKE_PAGES` (a repository variable; by default Kaizena Flow's home and the template store's Norwegian front page), one after the other and each twice: the job, not a visitor, pays the first cold draw, the log shows each page's status, bytes and cache headers, and a page that does not answer 200 fails the job (bloat review step 0.3).
 
 Both need the repository variable `AUTO_MIGRATE` to be `true` (the `pending` job is off without it, and
 every push then deploys only after the three checks, in `release`). A run on `main` is never cancelled by a newer push (it may be
