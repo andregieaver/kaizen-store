@@ -1,0 +1,13 @@
+{
+ "id": "3.8",
+ "rating": "cheap-then-review",
+ "why": "The code edits are exact (schema.ts 289 and 7180 and the five register lines, which rg confirms are the only mentions), and the generated migration has a stop_if limiting it to two statements. But both migrations delete production data for good. The custom DROP SCHEMA ... CASCADE relies on a hand-written guard over pg_constraint, pg_attribute, pg_views and pg_proc, and only its foreign-key branch is tested. A mistake in the view, column or function branch would let CASCADE drop objects outside commerce_legacy.",
+ "harm_if_wrong": "CASCADE drops a view, column or function in another schema that depended on commerce_legacy, with only the dump as a way back.",
+ "cheap_commits": [
+  1
+ ],
+ "make_it_cheaper": "Add test cases for a dependent column type, a view and a function outside the schema, so every guard branch is checked.",
+ "brief_problems": [
+  "The enum at schema.ts:289 spans several lines; the brief quotes it as one line ('the whole declaration' still makes the edit clear)."
+ ]
+}

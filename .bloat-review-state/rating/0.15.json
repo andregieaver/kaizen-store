@@ -1,0 +1,13 @@
+{
+ "id": "0.15",
+ "rating": "cheap-then-review",
+ "why": "The how is exact against the code (line 37 is in an async function, the cookie list and its two tests are where the brief says, the `asked` ref exists). But commit 2 adds a new 'use cache' read with its own tag and a refreshTag on save, and commit 3 sets a new cookie from the sign-in path (startSession) and declares it in the consent register: caching, sign-in and cookie consent are all touched. The e2e tests insert the settings row before the first visit, so a missing refreshTag (a saved switch not showing for hours) and a missing markMine in startSession (hearts empty on a new device after sign-in) both pass every check.",
+ "harm_if_wrong": "An owner who turns tile stock on sees nothing change for up to hours, or a signed-in customer's saved products vanish on a new device, with every test green.",
+ "cheap_commits": [
+  1
+ ],
+ "make_it_cheaper": "Add an int test that calls saveProductSettings() and then expects productSettingsCached() to return the new value after the refresh, and an e2e case that signs in on a fresh context and sees the saved heart, so both silent failures are caught.",
+ "brief_problems": [
+  "Test B of shop-components inserts the settings row before the first goto, so it never exercises the refresh-on-save path the commit adds."
+ ]
+}

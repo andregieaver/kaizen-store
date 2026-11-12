@@ -1,0 +1,18 @@
+{
+ "id": "0.4",
+ "rating": "cheap",
+ "why": "Every edit is named exactly and matches the code: client.ts lines 11, 31 and 78, chat-route.ts's fail and its sameSite re-export, and the 39 and 16 importers, which give exactly the counts rg prints today. No code uses db().query and nothing but client.ts imports the schema, so if the schema removal or a missed sameSite or fail import is wrong, typecheck, test:int and the new scan tests fail. The sameSite edits only change where the same function is imported from on the admin export routes, so a miss there would not compile.",
+ "harm_if_wrong": "Little gets through the checks: at worst a beacon still loads the chat module (a cold-start cost), because no route's answer changes.",
+ "cheap_commits": [
+  1,
+  2,
+  3
+ ],
+ "make_it_cheaper": "",
+ "brief_problems": [
+  "Commit 1's check `rg -c 'schema' src/db/client.ts: prints nothing or only comment lines` mixes a count flag with reading lines; it should be `rg -n`.",
+  "The chat-route.ts change is worded as conditional ('only if this file uses visitorKey'), but line 70 calls visitorKey, so the import must move to ./chat-turns. Saying so plainly would remove the branch.",
+  "The done-when runs import-reach.mjs, which step 0.1 has not yet put in docs/audits/bloat-review-2026-11/scripts/.",
+  "Commit 3 needs an 8-minute `next analyze` run and server-graph.mjs's output format; the 710-module figure has no stop_if if it is missed."
+ ]
+}

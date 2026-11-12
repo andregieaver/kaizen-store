@@ -39,7 +39,7 @@ let md = `${briefs.size} briefs: ${count("cheap")} cheap, ${count("cheap-then-re
 for (const ph of plan.phases) {
   const ids = order.filter((id) => byId.get(id).phase === ph.n);
   md += `### Phase ${ph.n}: ${ph.title}\n\n| # | Step | What | Effort | Who | After |\n|---|---|---|---|---|---|\n`;
-  ids.forEach((id, i) => { const s = byId.get(id), b = briefs.get(id); md += `| ${i + 1} | [${id}](steps/${id}.md) | ${s.title.replace(/\|/g, "\\|")} | ${s.effort} | ${b ? WHO[b.executor] : ""} | ${deps(id).join(", ")} |\n`; });
+  ids.forEach((id, i) => { const s = byId.get(id), b = briefs.get(id); md += `| ${i + 1} | [${id}](steps/${id}.md) | ${s.title.replace(/\|/g, "\\|")} | ${s.effort} | ${b ? WHO[b.executor] + (b.executor !== "cheap" && (b.cheap_commits ?? []).length ? ` (commit ${b.cheap_commits.join(", ")} cheap)` : "") : ""} | ${deps(id).join(", ")} |\n`; });
   md += "\n";
 }
 md += `### Files more than one step changes\n\nWhen you edit one of these, a step before yours may already have changed it: read the file as it is, not as your brief quotes it.\n\n| File | Steps, in order |\n|---|---|\n${shared.slice(0, 60).map(([f, l]) => `| \`${f}\` | ${l.join(", ")} |`).join("\n")}\n`;

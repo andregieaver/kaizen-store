@@ -1,0 +1,14 @@
+{
+  "id": "2.12",
+  "rating": "cheap-then-review",
+  "why": "The three commits are specified closely, and an int test proves the prerendered list equals listingPage(). But the step changes what a listing shows a shopper (skipping the read, a CSS rule that hides one grid) on prerendered pages, and it sanctions loosening two e2e locators to :visible. A wrong sibling order or condition could show two grids, or a stale list to a viewer whose prices differ, and still pass those loosened locators.",
+  "harm_if_wrong": "A listing shows two grids, or shows the prerendered list where the per-request one should apply (a B2B store, a sort), on live store pages.",
+  "cheap_commits": [
+    1
+  ],
+  "make_it_cheaper": "",
+  "brief_problems": [
+    "The escaped form of data-item-id inside the payload is left to the executor to copy from a saved document",
+    "Depends on steps 2.10 and 2.2 for file paths and the m prop; both are described but not yet in the repo"
+  ]
+}

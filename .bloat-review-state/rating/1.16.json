@@ -1,0 +1,17 @@
+{
+  "id": "1.16",
+  "rating": "cheap-then-review",
+  "why": "The table, the pure module, the helper and the admin card are specified exactly. Commit 2, though, edits the proxy (every request), the admin layouts, the cron wrapper and the store pages, and for the store, pay and site kinds it asks the executor to find the per-request part itself. The store layout has no cookies(), headers() or connection() read (line 201 is footer markup), and neither does the checkout page, so a misplaced after() could change render modes or do nothing.",
+  "harm_if_wrong": "A call placed in a prerendered part moves store pages to per-request rendering or breaks their prerender, and a fault in the proxy hook touches every request.",
+  "cheap_commits": [
+    1,
+    3
+  ],
+  "make_it_cheaper": "Name the exact component and file that carries the 'store', 'pay' and 'site' calls (or drop those three kinds from this step), so commit 2 needs no search in the cached tree.",
+  "brief_problems": [
+    "src/app/s/[store]/[market]/layout.tsx awaits no cookies(), headers() or connection(); 'around line 201' is footer and Suspense markup, so the per-request part is in another file",
+    "src/app/s/[store]/[market]/checkout/page.tsx awaits only params, resolveShop and sellingPageOr404, with no cookies() or connection() read as the brief assumes",
+    "The check runs scripts/render-modes.mjs from step 1.11, which is not in depends_on and not in the repo",
+    "The 'job' kind in trackedRoute() and the proxy hook both fire on cron-heavy instances; acceptable, but a cron route that hits a cold instance will record as 'job' before any page"
+  ]
+}

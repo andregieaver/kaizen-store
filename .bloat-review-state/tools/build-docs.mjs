@@ -179,13 +179,14 @@ if (plan) {
     const list = (xs, f = tick) => (xs.length ? xs.map((x) => `- ${f(x)}`).join("\n") : "- None.");
     const fo = (id) => { for (const a of AREAS) if (id.startsWith(a.prefix + "-")) return `../../findings/${a.file}/${id}.md`; return null; };
     let md = `# Step ${st.id}: ${clean(st.title).replace(/\.$/, "")}\n\nPhase ${ph.n} (${clean(ph.title)}) of \`docs/audits/bloat-review-2026-11.md\`. Effort ${st.effort}. Read [how to carry out a step](../README.md) first.\n\n`;
-    md += `**Who:** ${b.executor === "cheap" ? "a smaller model alone" : b.executor === "strong" ? "a stronger model" : "a smaller model; a stronger one reads the diff before the push"}. ${clean(b.executor_why)}\n\n**Goal:** ${clean(b.goal)}\n\n**Why:** ${clean(b.why)}\n\n`;
+    const cc = (b.cheap_commits ?? []).filter((n) => n >= 1 && n <= b.commits.length);
+    md += `**Who:** ${b.executor === "cheap" ? "a smaller model alone" : b.executor === "strong" ? "a stronger model" : "a smaller model; a stronger one reads the diff before the push"}. ${clean(b.executor_why)}${b.executor !== "cheap" && cc.length ? ` A smaller model may still do commit${cc.length > 1 ? "s" : ""} ${cc.join(", ")} alone.` : ""}${b.rating_checked ? ` *(Rating checked twice, 12 November${b.rating_checked !== b.executor ? `; first written as ${WHO[b.rating_checked]}` : ""}.)*` : ""}\n\n**Goal:** ${clean(b.goal)}\n\n**Why:** ${clean(b.why)}\n\n`;
     if (st.decision) md += `**Decided by the owner (12 November, the recommended way):** ${clean(st.decision)}\n\n`;
     md += `**Closes:** ${ids.map((id) => (fo(id) ? `[${id}](${fo(id)})` : id)).join(", ")}. Each finding's file has the evidence.\n\n`;
     md += `## Before you start\n\n**Done first:** ${b.depends_on.length ? b.depends_on.map((d) => `step ${d.id} (${clean(d.why)})`).join("; ") + ". Check the Progress table says Done for each." : "nothing."}\n\n**Read:**\n\n${list(b.read_first, (x) => `\`${x}\``)}\n\n`;
     md += `## The work\n\n`;
     b.commits.forEach((c, i) => {
-      md += `### Commit ${i + 1} of ${b.commits.length}: ${clean(c.title)}\n\n${c.changes.map((ch) => `- **${ch.action}** \`${ch.file}\`: ${clean(ch.how)}`).join("\n")}\n\nBefore the push:\n\n${c.checks.map((x) => `- ${typeof x === "string" ? clean(x) : `\`${clean(x.command ?? x.check ?? "")}\`: ${clean(x.expect ?? "")}`}`).join("\n")}\n\n`;
+      md += `### Commit ${i + 1} of ${b.commits.length}: ${clean(c.title)}${b.executor !== "cheap" && (b.cheap_commits ?? []).includes(i + 1) ? " *(a smaller model may do this one alone)*" : ""}\n\n${c.changes.map((ch) => `- **${ch.action}** \`${ch.file}\`: ${clean(ch.how)}`).join("\n")}\n\nBefore the push:\n\n${c.checks.map((x) => `- ${typeof x === "string" ? clean(x) : `\`${clean(x.command ?? x.check ?? "")}\`: ${clean(x.expect ?? "")}`}`).join("\n")}\n\n`;
     });
     md += `## Tests that hold it\n\n${list(b.tests, (t) => `\`${t.file}\`: ${clean(t.proves)}`)}\n\n`;
     md += `## Migration\n\n${b.migration.needed ? clean(b.migration.notes) : "None."}\n\n`;

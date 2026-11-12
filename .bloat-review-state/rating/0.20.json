@@ -1,0 +1,15 @@
+{
+ "id": "0.20",
+ "rating": "cheap-then-review",
+ "why": "Commits 1 and 2 are tiny and fully specified. Commit 3 replaces 23 hand-written reads in 17 files with a 'use cache' helper cached for days. The int tests run without Next's cache, so they cannot catch the real risk: storeSlugOf() run for a store id whose row is not yet visible (in the transaction that creates it, e.g. custom-fields' `run` executor called from a store copy, or a template applied inside that transaction) caches null for days. The brief leaves it to the cheap model to trace callers and decide which sites are such cases.",
+ "harm_if_wrong": "A newly made or copied store gets a cached null slug for days, so its money fields, menus or links break in production while every test passes.",
+ "cheap_commits": [
+  1,
+  2
+ ],
+ "make_it_cheaper": "List which of custom-fields.ts' five sites (and store-copy.ts:633, field-tiles.ts:176) can run inside a transaction that inserts the store, with the decision already made for each, and make storeSlugOf() skip caching a null (or tag it so a store insert refreshes it).",
+ "brief_problems": [
+  "storeSlugOf() caches a null result for days. The brief warns about only one same-transaction case (custom-fields); it never says that a null must not be cached.",
+  "The per-file 'how' text is one template repeated for 16 files, while the result variables differ (row, store, slug, found, typedRow vs typedRows), so the cheap model must adapt each site by hand."
+ ]
+}

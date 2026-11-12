@@ -1,0 +1,15 @@
+{
+ "id": "2.37",
+ "rating": "strong",
+ "why": "Commit 1 (modelDefinition stripping string bounds, the cut result as valid JSON) is mechanical and tested both ways. Commit 2 is a design choice the brief openly leaves: how to split update_product's input into three tools (which fields go where, how each lays over the stored product) and register the two new tools in about 12 places, including products:write permissions, GATED_WHEN_LIVE (the 'ask for a yes' gate on live products) and the eval's forbiddenTools. Commit 3 is a person's eval run.",
+ "harm_if_wrong": "A new product tool missing from GATED_WHEN_LIVE or the permission map lets the AI manager change a live product or let a Read-only member change one without the owner's yes.",
+ "cheap_commits": [
+  1
+ ],
+ "make_it_cheaper": "",
+ "brief_problems": [
+  "Commit 2's how and stop_if 5 carry a redacted placeholder ('[an executor] does this commit', 'You are [an executor] and reach the second commit'): a small model cannot tell whether it is meant to stop.",
+  "do_not 6 forbids another tool change between commit 1 and the recording, yet commit 2 is exactly such a change before commit 3's recording; say both land before one recording.",
+  "holder-assistant.ts is left to the executor's reading of whether its list goes to a model or an outside client."
+ ]
+}

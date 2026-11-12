@@ -1,0 +1,14 @@
+{
+  "id": "2.4",
+  "rating": "strong",
+  "why": "Commit 3 says itself that it needs judgement: deciding which add forms must still redraw (basket notes, cart upsells, wishlist moves, and any reader the search turns up) cannot be fixed file by file in the brief. Commit 2 moves every store page from per-request to static, with client-drawn cart counts and country hints and words passed through browser files. It also builds on files from steps 0.15, 1.11 and 2.2 that do not exist yet.",
+  "harm_if_wrong": "A page keeps showing a stale basket note or total after Add to cart, or a per-visitor value ends up in a static, shared page.",
+  "cheap_commits": [
+    4
+  ],
+  "make_it_cheaper": "List by file and prop every add form that must send redraw=1 (cart-upsell.tsx and the exact product-part and listing components that draw FreeShippingNote or the saving note), so commit 3 needs no search and no judgement.",
+  "brief_problems": [
+    "markMine/mineCookieName (step 0.15), scripts/render-modes.* (step 1.11) and the (shop) paths and two-element cart link (step 2.2) are not in the repo; the brief names their contents only in outline",
+    "The mine route is told to copy the tiles route, which imports fail and sameSite from @/server/chat-route, a module step 1.8 forbids to beacons and shop-tiles"
+  ]
+}

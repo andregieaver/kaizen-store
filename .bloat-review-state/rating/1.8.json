@@ -1,0 +1,15 @@
+{
+  "id": "1.8",
+  "rating": "cheap-then-review",
+  "why": "Commits 1 and 2 are specified and check themselves: pay-routes.graph.test.ts must pass unchanged, trial imports must fail, and a missing package must fail. Commits 3 and 4 build CI budgets on step 0.1's scripts (cold-load-*.cjs, manifest-time.cjs, words-in-entries.mjs), whose arguments and output the brief only says to 'read', and add timing budgets to the e2e job. A wrong parser or a noisy budget would pass its own trial and leave a guard that is weak, or flaky in a job that migration pushes wait for.",
+  "harm_if_wrong": "CI gains a size guard that does not guard, or a flaky cold-load budget that blocks pushes that carry a migration; production code is untouched.",
+  "cheap_commits": [
+    1,
+    2
+  ],
+  "make_it_cheaper": "Give the exact command line and printed format of each step 0.1 script that commits 3 and 4 call (or make commit 4's cold-load part print-only with no budget).",
+  "brief_problems": [
+    "Commits 3 and 4 depend on files that step 0.1 creates (cold-load-route.cjs, cold-load-proxy.cjs, cold-load-page.cjs, cold-load-start-hook.cjs, manifest-time.cjs, words-in-entries.mjs, trace-sizes.mjs, trace-packages.mjs) without saying what they take or print; none of them is in docs/audits/bloat-review-2026-11/scripts/ today",
+    "The R.c(\"...\") chunk form of built entries is assumed and only checked at run time"
+  ]
+}

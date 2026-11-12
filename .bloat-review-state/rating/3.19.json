@@ -1,0 +1,14 @@
+{
+ "id": "3.19",
+ "rating": "cheap-then-review",
+ "why": "The pure module, the script and its messages are specified, and the scan test pins the two if: conditions and keeps the release job clean. But it gates every production deploy: a misplaced if:, or a deployable() that reads 0.38's tests-only rule wrongly, can skip a deploy that no later run makes, while the skipped run ends green and waits on nothing, so the miss is silent. It also reads 0.38's and 1.21's changes to the same job, whose shape it cannot state.",
+ "harm_if_wrong": "Production stays on an older commit with green CI, so a fix believed live is not deployed until someone notices /api/health.",
+ "cheap_commits": [
+  2
+ ],
+ "make_it_cheaper": "Have the superseded run wait (with a long timeout) until /api/health reports a commit that includes its own, so a skipped deploy that never happens turns red instead of passing silently.",
+ "brief_problems": [
+  "Commit 2 adds a long sentence to CLAUDE.md's Workflow bullet, but step 1.1 makes CLAUDE.md's bytes a ceiling that never rises; the docs budget test will fail unless other text is cut.",
+  "do_not 3 (a skipped run must not wait on /api/health) removes the only check that would catch a stranded commit."
+ ]
+}

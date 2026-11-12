@@ -1,0 +1,16 @@
+{
+  "id": "2.44",
+  "rating": "cheap",
+  "why": "Two timed trials, each with an explicit keep-or-revert rule (61% ratio, 0.5 s PGlite threshold, at most 5 failing files), with a ban on touching tests. The change is one config option and one budget number. A wrong result costs CI time or a flaky test, never production.",
+  "harm_if_wrong": "Component tests share state across files and become order-dependent or flaky in CI, which the shuffled run is meant to catch and a revert undoes.",
+  "cheap_commits": [
+    1,
+    2
+  ],
+  "make_it_cheaper": "",
+  "brief_problems": [
+    "The tests entry says src/lib/ci-once.scan.test.ts is made by step 0.39, but brief 0.38 creates it",
+    "Commit 2 marks scripts/ci-budgets.json as 'create' while saying it must already exist from step 1.20",
+    "The ceiling's median may come from CI or local runs ('if you can read CI's run times'), a small choice that changes the number"
+  ]
+}

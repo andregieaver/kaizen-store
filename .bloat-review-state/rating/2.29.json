@@ -1,0 +1,15 @@
+{
+ "id": "2.29",
+ "rating": "cheap-then-review",
+ "why": "Commits 1 to 3 name every line (the draft page already holds lang, the grid preview's early returns are where the brief says, the dynamic() stand-ins and the test mock are given) and a long signed-in builder suite plus the storefront bundle scan catch most slips. Commit 4 adds a rule to a file step 1.4 makes and then says to fix 'each the same way' whatever other admin client modules the walk finds, which is unbounded; and the inline editor's press-point state is left to 'check that editingInline stays true'.",
+ "harm_if_wrong": "Admin-only: the builder's inline editor opens in the wrong place or placeholders stay empty, or the storefront grid's markup drifts in the moved ContentGridTiles; visible and easy to revert, no money or data.",
+ "cheap_commits": [
+  1,
+  2,
+  3
+ ],
+ "make_it_cheaper": "Have commit 4 stop and report any admin client module the walk finds beyond the review's list instead of fixing it, which makes the whole step cheap.",
+ "brief_problems": [
+  "Depends on step 1.4's admin-bundle.scan.test.ts and 1.2's bundle-budget.mjs, whose shapes the brief does not state."
+ ]
+}

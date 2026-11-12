@@ -1,0 +1,12 @@
+{
+ "id": "0.31",
+ "rating": "cheap",
+ "why": "Every deletion, new function, tracked() name and RETIRED_JOBS entry is spelled out, the dispatcher really has 78 entries and the daily route's lines match, and the new scan test pins 69 entries, the nine names' absence, the seven daily and two hourly tracked() calls and the four runners free of deletes. Retention periods do not change, only when the delete runs, and a prune that stops running shows on the platform's cron health.",
+ "harm_if_wrong": "A prune that silently stops running lets one log table grow until cron health or the daily answer shows it; no row a person needs is deleted.",
+ "cheap_commits": [
+  1,
+  2
+ ],
+ "make_it_cheaper": "",
+ "brief_problems": []
+}

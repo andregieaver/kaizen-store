@@ -1,0 +1,19 @@
+{
+  "id": "0.6",
+  "rating": "strong",
+  "why": "Commits 1 to 5 are specified to the line, but commit 6 says itself that it needs judgement: taking platformModes off ./stripe stops 153 test files' mocks of ./stripe from reaching getStore(), and each test that then behaves differently has to be read and fixed in its setup. Commit 7 is a sequence of about a dozen more cuts across six files, each checked against the walker's figure, with a stop when a call sits in a synchronous function. The lazy imports in commits 1, 3 and 5 change module load order (D440) on the erasure path, the order path and every store page.",
+  "harm_if_wrong": "A lazy import that changes load order can pass the tests and still give 'Cannot access before initialization' or a 500 on store pages, checkout or account deletion in production; a wrong test setup in commit 6 can hide a payment-mode switch.",
+  "cheap_commits": [
+    2,
+    4,
+    8
+  ],
+  "make_it_cheaper": "Move commit 6 (the Stripe-free platformModes) and commit 7 (the rest of the cycle) into a separate step for the stronger model; commits 1 to 5 plus the docs are then cheap-then-review.",
+  "brief_problems": [
+    "storeObligations() starts at store-closure.ts line 87, not near 83; Row/Tx/Executor are at lines 40-42 and store-features.ts already declares its own copies",
+    "docs/audits/bloat-review-2026-11/scripts/import-reach.mjs, which every commit's check runs, is not in the repo yet (step 0.1)",
+    "Commit 2 leaves a small choice open (add server-only to bought-sql.ts 'if the neighbours do')",
+    "Commit 7 is one entry that asks for many commits (one per edge) and makes the manager-tools edit conditional on whether step 0.5 landed",
+    "The done-when's module and megabyte figures assume step 0.4 has landed"
+  ]
+}

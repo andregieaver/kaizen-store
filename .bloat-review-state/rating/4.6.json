@@ -1,0 +1,14 @@
+{
+  "id": "4.6",
+  "rating": "cheap",
+  "why": "An admin form whose fields, order, payload and words are all given, on top of updateTimeEntry(), which already enforces every rule on the server and is tested unchanged. The deletion is of three functions no screen calls, and the type check catches a leftover. The screen offers only what the server allows, so a UI mistake cannot change an invoiced entry.",
+  "harm_if_wrong": "The Edit form sends a wrong value (for example the billable flag) for an entry the person could already change, which shows on the row and is easy to fix.",
+  "cheap_commits": [
+    1,
+    2
+  ],
+  "make_it_cheaper": "",
+  "brief_problems": [
+    "In work-invoices.int.test.ts the saveInvoiceLinesAction call spans several lines (from 1498), not the one-line form the brief quotes; it also leaves a small choice open (re-set PO-1 through saveDraftInvoiceAction or drop the assertion)"
+  ]
+}

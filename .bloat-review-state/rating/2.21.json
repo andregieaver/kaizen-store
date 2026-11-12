@@ -1,0 +1,14 @@
+{
+ "id": "2.21",
+ "rating": "strong",
+ "why": "Commits 1 and 2 are a named move and a mechanical import rewrite (115 lines, counts per name given) that the type check and build hold. Commit 3 is open: cut 'each printed path at its cheapest edge' from page-article.tsx to pages.ts, design-presets.ts, page-ai.ts and src/lib/signature, which paths the brief cannot know until step 1.8's walker prints them, including turning store-features.ts's words into parameters with a new admin-side module; stop_if 2 itself calls that 'a design question'.",
+ "harm_if_wrong": "A cut that moves a helper or reroutes an import changes what a page renders or reintroduces a cycle that shows only at runtime as an undefined import on a store page.",
+ "cheap_commits": [
+  1,
+  2
+ ],
+ "make_it_cheaper": "Run the walker after step 1.8 and list each path from page-article.tsx with the exact edge to cut, so commit 3 becomes a list of edits (cheap-then-review).",
+ "brief_problems": [
+  "Depends on files from four earlier steps (2.20's cache-tags, 0.24's and 2.17's reads, 1.8's route-load test and ENTRIES) whose exact content the brief cannot state."
+ ]
+}

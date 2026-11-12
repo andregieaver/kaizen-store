@@ -1,0 +1,14 @@
+{
+ "id": "1.17",
+ "rating": "cheap-then-review",
+ "why": "Commit 1 is fully specified and its numbers were recounted against today's code. Commits 2 and 3 port scripts that step 0.1 has not put in the repo yet (their content is unknown to the brief), and both end in hand-written reasons (twin pairs 'you cannot explain', public files and API routes 'reached from outside the repo'), which the cheap model will tend to fill with plausible text to clear the TODO check.",
+ "harm_if_wrong": "No production effect; an invented reason hides a dead route or file from the list, or a port that changes a rule sets a baseline that does not measure what the review measured.",
+ "cheap_commits": [
+  1
+ ],
+ "make_it_cheaper": "Give the twin, public-file and API-route reasons as a list in the brief (run the review's scripts now) and have the model only paste them, leaving 'unexplained, ask the owner' as the only free text.",
+ "brief_problems": [
+  "Commit 2's test (1) contains a half-thought ('compare with the pairs of a second call restricted to the baseline? no: simply print ...') that a small model may follow literally.",
+  "copy-count.mjs, twin-count.mjs and helper-count.mjs do not exist yet (step 0.1)."
+ ]
+}

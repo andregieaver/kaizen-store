@@ -1,0 +1,17 @@
+{
+ "id": "2.26",
+ "rating": "strong",
+ "why": "Commit 5 is handed to a stronger executor by the brief itself. Moving English-sentence matching from redirect-words, experiment-words and drafts-words to the server, splitting return-admin, bonus-admin, affiliate-admin and tax-profile into *-english.ts files, and reworking analytics-words all need design per module. Commits 1 to 4 are mechanical against today's code (responsive-edit line 20 and 100, templates-helpers' '= EN' defaults, order-list-words' identity test), and typecheck plus the fallbacks spec catch most mistakes.",
+ "harm_if_wrong": "An admin screen shows English to a Norwegian account, or a key where words should be, because a part reads an area its page does not hand.",
+ "cheap_commits": [
+  1,
+  2,
+  3,
+  4
+ ],
+ "make_it_cheaper": "For commit 5, name for each of the nine modules the server page or action that will do the translation and the exact props the client parts receive.",
+ "brief_problems": [
+  "responsive-edit.tsx still imports builderEn by value (line 20) because step 0.9 has not run; commit 2 assumes 0.9 has already changed it.",
+  "Commit 1 edits admin-bundle.scan.test.ts, which step 1.4 creates; the step cannot start until then."
+ ]
+}

@@ -1,0 +1,13 @@
+{
+  "id": "0.46",
+  "rating": "cheap",
+  "why": "Six literal replacements whose new values are the parse's own output, a replace-all in the seed with a count of 4, and a test that compares every page with its parse, with a 'would notice' case. No money, auth or migration is involved, and a wrong column count shows in e2e and screenshots.",
+  "harm_if_wrong": "A product grid shows a different number of columns at some width on a theme or the seeded demo store, which is easy to see and revert.",
+  "cheap_commits": [
+    1
+  ],
+  "make_it_cheaper": "",
+  "brief_problems": [
+    "The columns line in src/lib/signature/kit.ts is at line 85, not 77 (77 is presumably where productGrid() starts)"
+  ]
+}

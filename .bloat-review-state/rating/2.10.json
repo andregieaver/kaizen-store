@@ -1,0 +1,14 @@
+{
+ "id": "2.10",
+ "rating": "strong",
+ "why": "Commit 2 itself says 'this commit needs judgement': splitting the page model's helpers, part-css's gridListStyle and the zod schemas of typography, colour and theme-elements into new modules, re-measuring after each move, and deciding when to stop. Commit 1 is mechanical and checked by typecheck and the catalogue tests: move the sixteen keys and a gridTile group into the four browser files and pass m down to ContentGridView's 12 callers.",
+ "harm_if_wrong": "A module split changes a schema's behaviour or breaks the builder, or grid tiles show the wrong language's words.",
+ "cheap_commits": [
+  1
+ ],
+ "make_it_cheaper": "Write out commit 2's module splits file by file (which functions and types move into grid-view.ts, grid-list-style.ts and each *-schema.ts, and the import chains that remain), so it becomes cheap-then-review.",
+ "brief_problems": [
+  "Commit 1 edits src/lib/storefront-bundle.baseline.json, which step 1.27 has not created yet.",
+  "The blog-listing path is given as before step 2.2 (it notes the (shop)/ move), but the other storefront paths are not adjusted."
+ ]
+}

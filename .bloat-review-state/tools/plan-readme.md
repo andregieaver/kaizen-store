@@ -78,6 +78,10 @@ The **Who** column, and the first line of each brief:
 - **strong**: needs judgement the brief could not remove. The brief says what. A stronger model does it, or breaks it into
   smaller briefs first.
 
+Some *review* and *strong* steps have commits a smaller model may still do alone: the Who column says "commit 1, 2 cheap"
+and the brief marks each such commit. Hand the step over to the stronger model at the first commit that is not marked.
+Every rating was made by the brief's writer and checked by a second reviewer who did not see it (12 November).
+
 ## Measuring
 
 The numbers in *Done when* come from the scripts in `../scripts/` (the folder's `README.md` shows how to run them on a

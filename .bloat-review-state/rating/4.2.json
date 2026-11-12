@@ -1,0 +1,13 @@
+{
+ "id": "4.2",
+ "rating": "strong",
+ "why": "Commit 3 asks the executor to design an AccountingAdapter by growing it one moved function at a time, deciding from diffs of fiken-sync.ts and tripletex-sync.ts which differences are only table or scope and which are behaviour (retry minutes, alerts, columns) to keep as named members; a wrong call posts a document twice or never in an owner's accounts, and the brief's own stop needs the owner's word because Fiken is untried against a real company. Commit 4 then folds ten pairs with open design choices ('one part beside them', a shared VersionsDialog, fold-or-stop until at most 5 pairs remain under 45 lines).",
+ "harm_if_wrong": "Invoices or credit notes booked twice or left unbooked in a store's Tripletex or Fiken accounts, or a settings form that loses typed values or renames a field the store and platform actions read.",
+ "cheap_commits": [],
+ "make_it_cheaper": "Split commits 1 and 2 (the two after() helpers with their 15 named blocks, and the queue SQL whose fragments are given exactly) into their own brief, which would be cheap-then-review, and add the two new test files to commits 1 and 2; leave the adapter and the pair folds to the stronger model.",
+ "brief_problems": [
+  "The tests section names two new files, src/server/accounting-sync.int.test.ts and src/server/after-or-now.test.ts, that no commit creates.",
+  "Commit 1 wraps five blocks in checkout.ts and one in stripe-webhooks.ts, so it touches payment paths; only the int tests check that work is not run twice or skipped.",
+  "scripts/copies.mjs and src/lib/copies.baseline.json come from step 1.17 and do not exist yet."
+ ]
+}

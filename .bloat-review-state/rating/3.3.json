@@ -1,0 +1,14 @@
+{
+ "id": "3.3",
+ "rating": "strong",
+ "why": "The registry and runRegistry() are specified, but filling it is judgement over about 84 jobs: a 'why' line per job, a budget 'unless its own code has a longer deadline constant' (read each run*), a perStore cap and order 'read from its code', and stop_if 3 asks the model to read six documents for written promises of a shorter delay before slowing each job. It also builds on four earlier steps (0.45 pool, 1.26 report, 1.10 budget test, 0.28 guard) and touches trials (billing) and Kaizena Flow's Stripe payouts read.",
+ "harm_if_wrong": "A job slowed to hourly that has a promised shorter delay (a staff alert, a subscription box, a trial end) acts up to an hour late in production, or a wrong budget keeps a job from ever starting.",
+ "cheap_commits": [],
+ "make_it_cheaper": "",
+ "brief_problems": [
+  "It conflicts with step 0.31: 0.31 removes searches, cache, forms, docsCounts, recommendations, replications, chat, apiIdempotency and oauthTokens from the dispatcher (69 entries, daily.* and hourly.* tracked calls), while 3.3 lists those same keys with cadences (chat hourly where 0.31 makes it daily) and counts 78 entries.",
+  "0.31's src/server/cron-prunes.scan.test.ts parses the runJobs(\"dispatcher\", EVERY, { block and expects 69 entries; replacing it with JOBS/runRegistry breaks that test, which this brief never mentions.",
+  "Commit 1's 'Idle runs a day' depends on whether step 1.13 stores a daily reading, left to the executor.",
+  "Commit 1's budget, why and work for each job are not listed; only a rule to derive them."
+ ]
+}

@@ -1,0 +1,14 @@
+{
+ "id": "1.14",
+ "rating": "cheap",
+ "why": "No production code changes. The step adds a coverage helper, byte budgets read from a first run, an admin spec, perf.mjs options, a nightly workflow and a pure failingPages() with unit tests, all described closely enough to build without design choices. If something is wrong, the result is a flaky or empty budget or a red nightly job; the workflow cannot push and uses no secret.",
+ "harm_if_wrong": "A flaky run-bytes budget turns CI red (blocking migration deploys until reverted), or a mis-counted coverage figure guards nothing.",
+ "cheap_commits": [
+  1,
+  2
+ ],
+ "make_it_cheaper": "",
+ "brief_problems": [
+  "The nightly workflow's three store addresses are to come from 'the launch-theme demo store that step 1.6 chose, in production', but step 1.6 only seeds e2e-orbit in CI's database and chooses no production store. The stop_if then hands back commit 2; naming the production URLs would avoid that."
+ ]
+}

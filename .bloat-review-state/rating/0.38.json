@@ -1,0 +1,15 @@
+{
+  "id": "0.38",
+  "rating": "cheap-then-review",
+  "why": "Commits 1 and 2 are exact CI and config edits held by a scan test. Commit 3 adds a new condition to the production deploy gate (deploy-needed.mjs and two appended if: clauses). Its unit test covers only the pure function, not the YAML wiring or the git fetch and diff inside the pending job, so a wrong condition could hold back a code deploy, or skip the wait, without any check failing before the push.",
+  "harm_if_wrong": "A code push is silently not deployed (or deployed without the wait check), so production drifts from main until someone notices that /api/health reports an old commit.",
+  "cheap_commits": [
+    1,
+    2
+  ],
+  "make_it_cheaper": "Move commit 3 (deploying only when more than tests changed) into its own step that a reviewer reads; commits 1 and 2 are then a cheap step.",
+  "brief_problems": [
+    "The YAML snippet pins actions/cache@v4 while every other action in ci.yml is @v7; the prose says to match the file's age, so the literal snippet contradicts it",
+    "The TEST_ONLY pattern /^src\\/test\\// is safe only if no deployed code imports src/test; the brief does not ask for that check"
+  ]
+}

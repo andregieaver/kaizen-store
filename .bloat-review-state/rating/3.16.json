@@ -1,0 +1,11 @@
+{
+ "id": "3.16",
+ "rating": "cheap-then-review",
+ "why": "It moves the totals JSX of the order confirmation and the account order page into one OrderTotals component, reuses the delivery rows in checkout, and folds catalog.ts's product-card SELECT and price join into shared fragments. No arithmetic changes, and the brief names every row, prop and line. But these are order totals, checkout and the cached price read. A reordered or dropped conditional row (balance at venue, refund, company net) or a slip in the price lateral join can pass the unit tests and e2e specs, which do not render every combination.",
+ "harm_if_wrong": "A shopper's order page or checkout shows a total row wrongly or not at all, or listings show wrong prices after the SQL fold.",
+ "cheap_commits": [],
+ "make_it_cheaper": "",
+ "brief_problems": [
+  "Every storefront path (order/[orderId]/order-section.tsx, account/orders/[orderId]/page.tsx, checkout/checkout-section.tsx) is given as before step 2.2. After 2.2 they sit under src/app/s/[store]/[market]/(shop)/, so the quoted check commands would find nothing."
+ ]
+}

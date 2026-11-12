@@ -1,0 +1,14 @@
+{
+ "id": "2.42",
+ "rating": "cheap-then-review",
+ "why": "Commit 1 is a trial step with continue-on-error and an aliased TypeScript 7. Commit 2 picks route A, B or C by a written rule from a week of CI medians and a seeded-error check. The rule takes the judgement out, but the result changes what the deploy gate type-checks: route A swaps the compiler, route B drops tests from the gate. If the switch is wrong, the gate passes while checking less, and type errors reach production.",
+ "harm_if_wrong": "The deploy gate's type check misses errors (a native compiler that differs from tsc, or an exclude list that drops app code), so a type error deploys.",
+ "cheap_commits": [
+  1
+ ],
+ "make_it_cheaper": "",
+ "brief_problems": [
+  "src/lib/ci-once.scan.test.ts, scripts/ci-budgets.json and scripts/timed.mjs come from steps 0.38 and 1.20 and do not exist yet; the brief calls them 'create' while forbidding overwriting.",
+  "Route C's 'keep it only if a fresh checkout is also 60 s or less' needs a deliberate cache-miss run, and the brief does not say how to force one."
+ ]
+}
