@@ -14,7 +14,7 @@ import { getAccount } from "./auth";
 import { getBuyer } from "./b2b";
 import { getCart } from "./cart";
 import type { GridPlace } from "./content-grid";
-import { bought } from "./customer-admin";
+import { bought } from "./bought-sql";
 import { customerTierIds } from "./customer-tiers";
 import { getCustomer } from "./customers";
 import { storeSlugOf } from "./menus";

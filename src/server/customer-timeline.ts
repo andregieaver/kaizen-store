@@ -20,7 +20,7 @@ import { featureOn } from "@/lib/store-features";
 import { workBase } from "@/lib/work-paths";
 
 import type { Membership } from "./auth";
-import { bought } from "./customer-admin";
+import { bought } from "./bought-sql";
 import { memberCan } from "./permissions";
 import { buyerKeysOf } from "./reviews";
 import { textList, uuidList } from "./sql-arrays";
