@@ -1,0 +1,33 @@
+import { readFileSync, statSync } from "node:fs";
+const ROOT = "/home/user/kaizen-store/";
+const { graph } = JSON.parse(readFileSync(new URL("./graph.json", import.meta.url), "utf8"));
+const reg = readFileSync(ROOT + "src/lib/admin-text.ts", "utf8");
+// area -> file stem, from the registry's own imports
+const stem = {};
+for (const m of reg.matchAll(/import \{ (\w+)En[^}]*\} from "\.\/admin-messages\/([\w-]+)\.en";/g)) stem[m[1]] = m[2];
+const isCat = (f) => /^src\/lib\/admin-messages\/[\w-]+\.(en|nb)\.ts$/.test(f);
+const REG = "src/lib/admin-text.ts";
+const admin = (f) => f.startsWith("src/app/admin") || f.startsWith("src/components/admin");
+const areasOf = JSON.parse(readFileSync(new URL("./areas-of.json", import.meta.url), "utf8"));
+const extra = {};
+for (const [f, areas] of Object.entries(areasOf)) extra[f] = areas.flatMap((a) => { if (!stem[a]) throw new Error("no stem " + a); return [`src/lib/admin-messages/${stem[a]}.en.ts`, `src/lib/admin-messages/${stem[a]}.nb.ts`]; });
+function reach(entries, drop = () => false, extraEdges = {}) {
+  const seen = new Set(entries); const q = [...entries];
+  while (q.length) { const f = q.pop(); for (const t of [...(graph[f] ?? []), ...(extraEdges[f] ?? [])]) { if (drop(f, t) || seen.has(t)) continue; seen.add(t); q.push(t); } }
+  return seen;
+}
+const allCats = Object.keys(graph).filter(isCat);
+const bytes = (fs) => fs.reduce((n, f) => n + statSync(ROOT + f).size, 0);
+console.log("catalogue files", allCats.length, "bytes", bytes(allCats));
+const entries = { proxy: ["src/proxy.ts"], storeHome: ["src/app/s/[store]/[market]/layout.tsx", "src/app/s/[store]/[market]/page.tsx"], visit: ["src/app/api/visit/route.ts"], health: ["src/app/api/health/route.ts"], instr: ["src/instrumentation.ts", "src/server/ui-text.ts"] };
+for (const [name, es] of Object.entries(entries)) {
+  const now = reach(es);
+  const cut = reach(es, (f, t) => t === REG && !admin(f), extra);
+  const catsNow = [...now].filter(isCat), catsCut = [...cut].filter(isCat);
+  const direct = [...cut].filter((f) => !isCat(f) && f !== REG && (graph[f] ?? []).some(isCat) && !areasOf[f]);
+  const directCats = new Set(direct.flatMap((f) => graph[f].filter(isCat)));
+  const viaNamed = new Set(Object.keys(areasOf).filter((f) => cut.has(f)).flatMap((f) => extra[f]));
+  // if step 1b also done: only the named areas of reachable step-1 files (plus what catalogue files themselves import)
+  console.log(name, "| modules", now.size, "| catalogue files now", catsNow.length, "(registry", now.has(REG) + ")", "| after step 1:", catsCut.length, "files,", bytes(catsCut), "bytes =", (100 * bytes(catsCut) / bytes(allCats)).toFixed(0) + "%", "| lib/server modules importing a catalogue directly:", direct.length, "(", directCats.size, "files ) | named by the changed files:", viaNamed.size, "files,", bytes([...viaNamed]), "bytes =", (100 * bytes([...viaNamed]) / bytes(allCats)).toFixed(0) + "%");
+  if (name === "proxy") { console.log("  step-1 files reachable from proxy:", Object.keys(areasOf).filter((f) => cut.has(f)).length, "of", Object.keys(areasOf).length); console.log("  named:", [...viaNamed].map((c) => c.replace("src/lib/admin-messages/", "").replace(".ts", "")).sort().join(" ")); console.log("  direct:", [...directCats].map((c) => c.replace("src/lib/admin-messages/", "").replace(".ts", "")).sort().join(" ")); }
+}

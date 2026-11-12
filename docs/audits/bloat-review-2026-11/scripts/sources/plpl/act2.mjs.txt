@@ -1,0 +1,33 @@
+// Add to cart, a quantity change and a wishlist heart: what each server action sends back, and what the page asks for afterwards.
+import { createRequire } from "node:module";
+import zlib from "node:zlib";
+const require = createRequire("/home/user/kaizen-store/");
+const { chromium } = require("playwright-core");
+const base = "http://localhost:3000";
+const browser = await chromium.launch({ executablePath: "/opt/pw-browsers/chromium", args: ["--no-sandbox"] });
+const context = await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true, deviceScaleFactor: 2 });
+const page = await context.newPage();
+let mark = "load"; const seen = [];
+page.on("response", async (res) => {
+  const req = res.request(); const h = req.headers();
+  const entry = { mark, method: req.method(), url: res.url().replace(base, ""), status: res.status(), action: Boolean(h["next-action"]), prefetch: Boolean(h["next-router-prefetch"]), rsc: Boolean(h["rsc"]) };
+  seen.push(entry);
+  try { const buf = await res.body(); entry.decoded = buf.length; entry.gz = zlib.gzipSync(buf).length; entry.br = zlib.brotliCompressSync(buf).length; const s = buf.toString(); entry.nf = (s.match(/"notFound":\[\[/g) || []).length; entry.bars = (s.match(/"aria-label":"Snarveier"/g) || []).length; entry.footers = (s.match(/\["\$","footer"/g) || []).length; } catch (e) { entry.err = String(e).slice(0, 60); }
+});
+const settle = (ms) => page.waitForTimeout(ms);
+const report = (m) => { const list = seen.filter((r) => r.mark === m); console.log(`\n--- ${m}: ${list.length} responses`); const acts = list.filter((r) => r.action); for (const r of acts) console.log(`  ACTION ${r.method} ${r.status} decoded ${r.decoded} gz ${r.gz} br ${r.br} notFound-copies ${r.nf} bottom-bars ${r.bars} footers ${r.footers} ${r.url} ${r.err || ""}`); const pre = list.filter((r) => r.prefetch); const sum = (k) => pre.reduce((a, r) => a + (r[k] || 0), 0); console.log(`  prefetches after it: ${pre.length} requests, decoded ${sum("decoded")}, gz ${sum("gz")}`); const other = list.filter((r) => !r.action && !r.prefetch); for (const r of other) console.log(`  other ${r.method} ${r.status} decoded ${r.decoded} ${r.rsc ? "rsc " : ""}${r.url.slice(0, 80)}`); };
+await page.goto(base + "/s/demo/no/p/demo-handlenett", { waitUntil: "load" });
+await settle(3500);
+mark = "heart";
+await page.getByRole("button", { name: /ønskeliste|Lagre/i }).first().click().catch((e) => console.log("no heart:", String(e).slice(0, 80)));
+await settle(2500); report("heart");
+mark = "add";
+await page.getByRole("button", { name: "Legg i handlekurven" }).first().click();
+await settle(5000); report("add");
+mark = "goto-cart";
+await page.goto(base + "/s/demo/no/cart", { waitUntil: "load" });
+await settle(3500);
+mark = "plus";
+const plus = page.getByRole("button", { name: "Øk antall" }).first();
+if (await plus.count()) { await plus.click(); await settle(6000); report("plus"); } else console.log("no plus button on the cart page");
+await browser.close();

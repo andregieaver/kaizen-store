@@ -1,0 +1,9 @@
+import { open } from "./pg.mjs";
+const db = await open();
+const one = async (label, q) => console.log(label + ":", JSON.stringify((await db.query(q)).rows));
+await one("tables, columns, jsonb columns", `select (select count(*)::int from pg_class where relnamespace='commerce'::regnamespace and relkind='r') tables, count(*)::int cols, count(*) filter (where atttypid='jsonb'::regtype)::int jsonb from pg_attribute a join pg_class c on c.oid=a.attrelid where c.relnamespace='commerce'::regnamespace and c.relkind='r' and a.attnum>0 and not a.attisdropped`);
+await one("nullable store_id tables / platform_ tables", `select (select count(*)::int from pg_attribute a join pg_class c on c.oid=a.attrelid where c.relnamespace='commerce'::regnamespace and c.relkind='r' and a.attname='store_id' and not a.attnotnull and not a.attisdropped) nullable_store, (select count(*)::int from pg_class where relnamespace='commerce'::regnamespace and relkind='r' and relname like 'platform\\_%') platform_tables`);
+await one("triggers / trigger functions", `select (select count(*)::int from pg_trigger g join pg_class c on c.oid=g.tgrelid where c.relnamespace='commerce'::regnamespace and not g.tgisinternal) triggers, (select count(*)::int from pg_proc where pronamespace='commerce'::regnamespace and prorettype='trigger'::regtype) trigger_functions`);
+await one("wide", `select c.relname, count(*)::int cols, count(*) filter (where atttypid='jsonb'::regtype)::int jsonb from pg_attribute a join pg_class c on c.oid=a.attrelid where c.relnamespace='commerce'::regnamespace and c.relname in ('stores','platform_settings','pages','design_presets','orders') and a.attnum>0 and not a.attisdropped group by 1 order by 2 desc`);
+await one("integration_deliveries indexes", `select string_agg(pg_get_indexdef(indexrelid), ' ; ') from pg_index where indrelid='commerce.integration_deliveries'::regclass`);
+await db.close();

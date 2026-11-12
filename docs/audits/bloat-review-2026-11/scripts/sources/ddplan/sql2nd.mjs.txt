@@ -1,0 +1,20 @@
+// SQL functions and tables named only inside TypeScript exports that nothing (or only a test) uses.
+import { readFileSync } from "node:fs";
+import { execFileSync } from "node:child_process";
+const S = process.argv[2], REPO = "/home/user/kaizen-store";
+const rows = JSON.parse(readFileSync(S + "/work/skdd/rows.json", "utf8")).filter((r) => !r.inFixture && r.kind !== "type" && r.lines >= 3);
+const text = new Map();
+const body = (r) => { if (!text.has(r.file)) text.set(r.file, readFileSync(REPO + "/" + r.file, "utf8").split("\n")); return text.get(r.file).slice(r.line - 1, r.line - 1 + r.lines).join("\n"); };
+const deadCalls = new Map(); // fn -> [rows]
+for (const r of rows) for (const m of body(r).matchAll(/commerce\.([a-z_0-9]+)\(/g)) { if (!deadCalls.has(m[1])) deadCalls.set(m[1], []); deadCalls.get(m[1]).push(r); }
+console.log("SQL function names called inside suspect exports:", deadCalls.size);
+const out = [];
+for (const [fn, rs] of deadCalls) {
+  let hits = "";
+  try { hits = execFileSync("rg", ["-n", "--no-heading", `commerce\\.${fn}\\(`, "src", "supabase/migrations", "supabase/seed.sql", "-g", "!*.test.*", "-g", "!src/db/schema.ts"], { cwd: REPO, encoding: "utf8", maxBuffer: 1 << 26 }); } catch { hits = ""; }
+  const lines = hits.split("\n").filter(Boolean);
+  const outside = lines.filter((l) => { const [f, n] = l.split(":"); if (f.startsWith("supabase/")) return !/CREATE (OR REPLACE )?FUNCTION|^[^:]+:\d+:-- Name:/.test(l); return !rs.some((r) => r.file === f && Number(n) >= r.line && Number(n) < r.line + r.lines); });
+  if (outside.length === 0) out.push(`${fn}  <- only in ${rs.map((r) => r.file + ":" + r.line + " " + r.name + " (" + r.which + ")").join("; ")}`);
+}
+console.log("of which no other caller (TS non-test, or SQL beyond the definition):", out.length);
+console.log(out.join("\n"));

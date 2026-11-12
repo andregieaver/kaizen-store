@@ -17,9 +17,9 @@ Families and twins (`README.md` beside this file), part of `docs/audits/bloat-re
 3. Delete the re-export and its comment at src/server/chat-route.ts:37-38.
 4. src/app/admin/(gated)/[store]/customers/[customerId]/export/route.test.ts:9 mocks '@/server/chat-route' only to supply sameSite: delete that vi.mock line (the route no longer imports the module).
 5. Add the server-side import walk of FM-13 step 1 with these entries: src/app/api/visit/route.ts, visit/touch/route.ts, visit/speed/route.ts, visit/speed/own/route.ts and src/app/api/health/route.ts may not reach server/chat-route.ts, server/chat-agent.ts, server/auth.ts or lib/admin-text.ts, and may reach at most 200 modules.
-6. After the next build, read the entry's chunk list again (node a scratch script /home/user/kaizen-store api/visit/route.js) and put the two numbers in docs/performance.md under a new heading 'What a server route loads'.
+6. After the next build, read the entry's chunk list again (node docs/audits/bloat-review-2026-11/scripts/sources/fmp/entry.mjs.txt /home/user/kaizen-store api/visit/route.js) and put the two numbers in docs/performance.md under a new heading 'What a server route loads'.
 
-**Done when:** node a scratch script (or the new scan test) reports at most 200 modules for each of the four routes under src/app/api/visit (1,308 today); rg -c sameSite src/server/chat-route.ts prints nothing; after a build the entry .next/server/app/api/visit/route.js lists under 3 MB of chunks (11.40 MB today).
+**Done when:** node docs/audits/bloat-review-2026-11/scripts/sources/fmp/reach.mjs.txt (or the new scan test) reports at most 200 modules for each of the four routes under src/app/api/visit (1,308 today); rg -c sameSite src/server/chat-route.ts prints nothing; after a build the entry .next/server/app/api/visit/route.js lists under 3 MB of chunks (11.40 MB today).
 
 **Tests and rules that hold today's behaviour, and change with it:**
 

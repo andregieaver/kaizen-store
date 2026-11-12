@@ -20,7 +20,7 @@ Families and twins (`README.md` beside this file), part of `docs/audits/bloat-re
 5. Screens: lift the bodies of the five platform/integrations files that repeat the store's into shared parts under src/components/admin/integrations that take their owner as a prop; both addresses stay.
 6. Run node scripts/ratchet.mjs if a number fell; add a line to docs/decisions.md.
 
-**Done when:** node a scratch script on the five pairs reports under 60 lines in runs of three or more (209 today), and the six integration test files named pass without an edit.
+**Done when:** node docs/audits/bloat-review-2026-11/scripts/sources/fmv/sim2.mjs.txt on the five pairs reports under 60 lines in runs of three or more (209 today), and the six integration test files named pass without an edit.
 
 **Tests and rules that hold today's behaviour, and change with it:**
 

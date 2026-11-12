@@ -1,0 +1,20 @@
+// Bundles one route's userland into one CJS file, as today (A), with the chat-route edge cut (B), and with B + no schema in the client + no Stripe SDK in the store reader (C).
+import { createRequire } from "node:module"; import fs from "node:fs";
+const require = createRequire("/home/user/kaizen-store/node_modules/.pnpm/esbuild@0.28.2/node_modules/esbuild/package.json");
+const esbuild = require("esbuild");
+const here = "<scratch>/work/pl-deps/rb/";
+const [entry, variant, name] = process.argv.slice(2);
+const plugin = { name: "cuts", setup(b) {
+  b.onResolve({ filter: /^server-only$/ }, () => ({ path: here + "stub-empty.ts" }));
+  if (variant !== "A") b.onResolve({ filter: /^(@\/server\/chat-route|\.\/chat-route)$/ }, (a) => (/\/src\/app\//.test(a.importer) ? { path: here + "stub-chat-route.ts" } : null));
+  if (variant === "C") {
+    b.onResolve({ filter: /^\.\/schema$/ }, (a) => (a.importer.endsWith("src/db/client.ts") ? { path: here + "stub-empty.ts" } : null));
+    b.onResolve({ filter: /^\.\/stripe$/ }, (a) => (a.importer.endsWith("src/server/stores.ts") ? { path: here + "stub-stripe-modes.ts" } : null));
+  }
+} };
+const r = await esbuild.build({ entryPoints: ["/home/user/kaizen-store/" + entry], bundle: true, platform: "node", format: "cjs", minify: true, outfile: here + name + ".cjs", logLevel: "error", jsx: "automatic",
+  alias: { "@": "/home/user/kaizen-store/src" }, absWorkingDir: "/home/user/kaizen-store", metafile: true, plugins: [plugin], loader: { ".css": "empty", ".svg": "text", ".md": "text", ".woff2": "empty" },
+  external: ["next", "next/*", "react", "react/*", "react-dom", "react-dom/*", "sharp", "pg", "pg-native", "playwright-core", "@sparticuz/chromium", "subset-font", "fontverter", "mammoth", "unpdf", "@google/model-viewer", "mediabunny", "web-vitals", "@jsquash/*", "three"] });
+const ins = Object.keys(r.metafile.inputs); const src = ins.filter((i) => i.startsWith("src/")).length;
+const pk = {}; for (const i of ins) { const m = i.match(/node_modules\/(?:\.pnpm\/[^/]+\/node_modules\/)?((?:@[^/]+\/)?[^/]+)/); if (m) pk[m[1]] = (pk[m[1]] || 0) + r.metafile.inputs[i].bytes; }
+console.log(name, "inputs=" + ins.length, "src_files=" + src, "bundle_bytes=" + fs.statSync(here + name + ".cjs").size, "pkgs=" + Object.entries(pk).sort((a, b) => b[1] - a[1]).slice(0, 12).map(([k, v]) => k + ":" + Math.round(v / 1024)).join(","));

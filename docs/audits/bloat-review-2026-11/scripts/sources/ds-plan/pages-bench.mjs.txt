@@ -1,0 +1,51 @@
+// How much of the published-pages read is the document: whole document, JSON operator, plain column. In-memory PGlite (Postgres 18, wasm).
+import { readFileSync, readdirSync } from "node:fs";
+import { open } from "./pg.mjs";
+const db = await open();
+const dir = "<scratch>/work";
+const docs = readdirSync(dir).filter((f) => /^page-.*\.json$/.test(f)).map((f) => readFileSync(`${dir}/${f}`, "utf8"));
+console.log("sample documents", docs.length, "mean bytes", Math.round(docs.reduce((a, d) => a + d.length, 0) / docs.length));
+// A copy of the table's shape, with the two columns the fix adds; 48 stores x 29 published pages = 1,392 pages (production has 1,389).
+await db.exec(`
+create table commerce.pages_bench (like commerce.pages including defaults);
+alter table commerce.pages_bench add column title text, add column titles jsonb, add column flags text[];
+create unique index pages_bench_key on commerce.pages_bench (store_id, type, slug);
+`);
+const stores = Array.from({ length: 48 }, (_, i) => `00000000-0000-0000-0000-${String(i + 1).padStart(12, "0")}`);
+for (const s of stores) {
+  for (let p = 0; p < 29; p++) {
+    const doc = docs[p % docs.length];
+    await db.query(`insert into commerce.pages_bench (store_id, slug, draft, published, published_at, type, title, titles, flags)
+      values ($1, $2, $3::jsonb, $3::jsonb, now(), 'page', ($3::jsonb) ->> 'title', '{}'::jsonb, '{}')`, [s, `page-${p}`, doc]);
+  }
+}
+await db.exec("analyze commerce.pages_bench");
+const size = await db.query(`select pg_total_relation_size('commerce.pages_bench')::int as b, count(*)::int n from commerce.pages_bench`);
+console.log("rows", size.rows[0].n, "table bytes", size.rows[0].b, "per row", Math.round(size.rows[0].b / size.rows[0].n));
+const one = stores[20];
+const cases = {
+  "whole document (today, with =)": `select id, slug, published, published_at, first_published_at from commerce.pages_bench where store_id = $1 and type = 'page' and published_at is not null order by created_at`,
+  "whole document (today, is not distinct from)": `select id, slug, published, published_at, first_published_at from commerce.pages_bench where store_id is not distinct from $1 and type = 'page' and published_at is not null order by created_at`,
+  "title by JSON operator": `select id, slug, published ->> 'title' as title, published_at, first_published_at from commerce.pages_bench where store_id = $1 and type = 'page' and published_at is not null order by created_at`,
+  "title from a plain column": `select id, slug, title, published_at, first_published_at from commerce.pages_bench where store_id = $1 and type = 'page' and published_at is not null order by created_at`,
+  "remembered modal by jsonb_path_exists": `select exists (select 1 from commerce.pages_bench where store_id = $1 and published is not null and jsonb_path_exists(published, '$.rows[*].modal ? ((@.frequency == "session" || @.frequency == "days" || !exists(@.frequency)) && (@.triggers.exitIntent == true || exists(@.triggers.timer)))')) as found`,
+  "remembered modal from a flags column": `select exists (select 1 from commerce.pages_bench where store_id = $1 and published_at is not null and flags @> array['remembered_modal']) as found`,
+};
+for (const [name, q] of Object.entries(cases)) {
+  for (let i = 0; i < 20; i++) await db.query(q, [one]);
+  const N = 300; const t = performance.now(); let bytes = 0;
+  for (let i = 0; i < N; i++) { const r = await db.query(q, [one]); if (i === 0) bytes = JSON.stringify(r.rows).length; }
+  console.log(`${name}: ${((performance.now() - t) / N).toFixed(3)} ms a call, ${bytes} bytes of rows`);
+}
+// Server-side only (no rows to the client): count(*) forms that force the same work.
+const srv = {
+  "server only: detoast + parse title": `select count(published ->> 'title') from commerce.pages_bench where store_id = $1 and type = 'page'`,
+  "server only: plain column": `select count(title) from commerce.pages_bench where store_id = $1 and type = 'page'`,
+};
+for (const [name, q] of Object.entries(srv)) {
+  for (let i = 0; i < 20; i++) await db.query(q, [one]);
+  const N = 500; const t = performance.now();
+  for (let i = 0; i < N; i++) await db.query(q, [one]);
+  console.log(`${name}: ${((performance.now() - t) / N).toFixed(3)} ms a call`);
+}
+await db.close();

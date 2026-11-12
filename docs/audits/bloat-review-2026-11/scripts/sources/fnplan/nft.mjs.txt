@@ -1,0 +1,19 @@
+import fs from 'node:fs'; import path from 'node:path';
+const root='/home/user/kaizen-store/.next/server';
+const nfts=[]; (function walk(d){ for(const e of fs.readdirSync(d,{withFileTypes:true})){ const p=path.join(d,e.name); if(e.isDirectory()) walk(p); else if(e.name.endsWith('.nft.json')) nfts.push(p);} })(root);
+const sizeCache=new Map();
+const sz=p=>{ if(sizeCache.has(p)) return sizeCache.get(p); let s=0; try{ const st=fs.statSync(p); s=st.isFile()?st.size:0; }catch{} sizeCache.set(p,s); return s; };
+const cat=p=>{ if(p.includes('/src/data/product-taxonomy/')) return 'taxonomy'; if(/node_modules\/\.pnpm\/(@img\+|sharp@)/.test(p)) return 'sharp'; if(p.includes('@sparticuz')||p.includes('playwright-core')) return 'chromium'; if(p.includes('/.next/server/chunks/')) return 'chunks'; if(/node_modules\/\.pnpm\/next@/.test(p)) return 'next'; if(p.endsWith('.map')) return 'maps'; if(p.includes('/content/docs/')) return 'docs'; if(p.includes('harfbuzz')) return 'harfbuzz'; if(p.includes('/.next/')) return 'dotnext-other'; return 'other-nm'; };
+const out=[];
+for(const n of nfts){ const j=JSON.parse(fs.readFileSync(n,'utf8')); const dir=path.dirname(n); const by={}; let total=0; let count=0; const seen=new Set();
+  for(const f of j.files){ const abs=path.resolve(dir,f); if(seen.has(abs)) continue; seen.add(abs); const s=sz(abs); total+=s; count++; const c=cat(abs); by[c]=(by[c]||0)+s; }
+  out.push({e:path.relative(root,n).replace('.nft.json',''), total, count, by}); }
+fs.writeFileSync('nft.json', JSON.stringify(out));
+const ent=out.filter(o=>/(page|route)\.js$/.test(o.e));
+const tot=ent.map(o=>o.total).sort((a,b)=>a-b); const cnt=ent.map(o=>o.count).sort((a,b)=>a-b);
+const mb=x=>(x/1048576).toFixed(1);
+console.log('entries', ent.length, 'median MB', mb(tot[tot.length>>1]), 'median files', cnt[cnt.length>>1], 'min', mb(tot[0]), 'max', mb(tot[tot.length-1]));
+console.log('over45MB', ent.filter(o=>o.total>45*1048576).length, 'under20MB', ent.filter(o=>o.total<20*1048576).length, 'sum GB', (tot.reduce((a,b)=>a+b,0)/1073741824).toFixed(1));
+for(const c of ['taxonomy','sharp','chromium','chunks','next','maps','docs','harfbuzz','dotnext-other','other-nm']){ const has=ent.filter(o=>o.by[c]); const v=has.map(o=>o.by[c]).sort((a,b)=>a-b); console.log(c.padEnd(14),'in',has.length,'entries; median MB', v.length?mb(v[v.length>>1]):'-', 'max', v.length?mb(v[v.length-1]):'-'); }
+for(const special of ['middleware.js','instrumentation.js']){ const o=out.find(o=>o.e===special); console.log(special, o.count,'files', mb(o.total),'MB', JSON.stringify(Object.fromEntries(Object.entries(o.by).map(([k,v])=>[k,mb(v)])))); }
+for(const name of ['app/api/health/route.js','app/api/visit/route.js','app/api/cron/page-jobs/route.js','app/api/cron/cookie-scan/route.js','app/robots.txt/route.js','app/api/fonts/css/[slug]/route.js']){ const o=out.find(o=>o.e===name); if(o) console.log(name, o.count,'files', mb(o.total),'MB', JSON.stringify(Object.fromEntries(Object.entries(o.by).map(([k,v])=>[k,mb(v)])))); else console.log('missing',name); }

@@ -20,7 +20,7 @@ What the server does for an admin navigation (`README.md` beside this file), par
 5. src/lib/store-nav.ts:432-462 and src/components/admin/store-admin-nav.tsx: send each menu address once. Drop also from the tabs and let the client work it out from the area with the same index (its prefixes), or send the sections once and build tabs and sidebars from them in the client.
 6. Hold it: add the store shell's handed JSON size to AD-12's checks (JSON.stringify of adminTexts() for the gate and of storeNav() for a store with every feature on, against a number that only falls).
 
-**Done when:** a scratch script, run again with the layouts' new arguments, prints under 30 KB of JSON for the store shell in English (51 to 54 KB today), and e2e/signed-in/admin-text-fallbacks.spec.ts and ai-manager-panel.spec.ts pass.
+**Done when:** docs/audits/bloat-review-2026-11/scripts/sources/skeptic-ad/words.mjs.txt, run again with the layouts' new arguments, prints under 30 KB of JSON for the store shell in English (51 to 54 KB today), and e2e/signed-in/admin-text-fallbacks.spec.ts and ai-manager-panel.spec.ts pass.
 
 **Tests and rules that hold today's behaviour, and change with it:**
 

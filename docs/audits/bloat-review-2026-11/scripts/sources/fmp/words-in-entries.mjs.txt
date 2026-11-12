@@ -1,0 +1,16 @@
+// node words-in-entries.mjs <repo> "<a sentence from a catalogue file>": which built server chunks hold the sentence, and how many page.js and route.js entries list one, by group.
+import { readFileSync, readdirSync, statSync } from 'node:fs';
+import { join } from 'node:path';
+const [, , repo, marker] = process.argv;
+const walk = (d) => readdirSync(d).flatMap((n) => { const p = join(d, n); return statSync(p).isDirectory() ? walk(p) : [p]; });
+const chunksDir = join(repo, '.next/server/chunks');
+const all = walk(chunksDir).filter((f) => f.endsWith('.js'));
+let total = 0; const hold = new Set(); let bytes = 0;
+for (const f of all) { const s = statSync(f).size; total += s; if (s > 20000 && readFileSync(f, 'utf8').includes(marker)) { hold.add('server/chunks/' + f.slice(chunksDir.length + 1)); bytes += s; } }
+console.log(`chunks holding the sentence: ${hold.size}, ${(bytes / 1e6).toFixed(1)} MB of ${(total / 1e6).toFixed(1)} MB in ${all.length} server chunk files`);
+const app = join(repo, '.next/server/app');
+const entries = walk(app).filter((f) => /\/(page|route)\.js$/.test(f));
+const g = {}; let hit = 0;
+for (const e of entries) { const rel = e.slice(app.length + 1); const k = rel.startsWith('admin/') ? 'admin' : rel.startsWith('s/') ? 'storefront' : rel.startsWith('api/cron/') ? 'cron' : rel.startsWith('api/') ? 'api' : 'other'; const has = [...readFileSync(e, 'utf8').matchAll(/R\.c\("([^"]+)"\)/g)].some((m) => hold.has(m[1])); (g[k] ??= [0, 0])[1]++; if (has) { g[k][0]++; hit++; } }
+console.log(`entries listing one: ${hit} of ${entries.length}; ` + Object.entries(g).map(([k, [a, b]]) => `${k} ${a} of ${b}`).join(', '));
+const non = Object.entries(g).filter(([k]) => k !== 'admin').reduce((s, [, [a, b]]) => [s[0] + a, s[1] + b], [0, 0]); console.log(`outside the admin: ${non[0]} of ${non[1]}`);

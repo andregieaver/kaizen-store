@@ -1,0 +1,14 @@
+import { readFileSync, writeFileSync } from "node:fs";
+const S = process.argv[2];
+const rows = JSON.parse(readFileSync(S + "/work/skdd/rows.json", "utf8"));
+const UP = /_(WORDS|LABELS?|TEXTS?|NOTES?|COPY|NAMES|TITLES?|HINTS?|MESSAGES?|PROBLEMS?)$/;
+const LOW = /(Words|Text|Label|Sentence|Note)$/;
+const pick = rows.filter((r) => !r.inFixture && (UP.test(r.name) || (LOW.test(r.name) && r.kind !== "type")));
+const tf = (r) => new Set([...r.test, ...r.fixture].map((x) => x.replace(/:\d+$/, "")));
+const none = pick.filter((r) => tf(r).size === 0), some = pick.filter((r) => tf(r).size > 0);
+const sum = (a) => a.reduce((n, r) => n + r.lines, 0);
+console.log("upper", pick.filter((r) => UP.test(r.name)).length, sum(pick.filter((r) => UP.test(r.name))), "all", pick.length, sum(pick), "| read by nothing", none.length, sum(none), "| by a test", some.length, sum(some));
+const tests = {}; for (const r of some) for (const t of tf(r)) (tests[t] ??= []).push(r.name);
+console.log("test files holding them:", Object.keys(tests).length);
+console.log(Object.entries(tests).sort((a, b) => b[1].length - a[1].length).slice(0, 25).map(([t, n]) => `${n.length} ${t}`).join("\n"));
+writeFileSync(S + "/work/ddplan/words.txt", pick.sort((a, b) => a.file.localeCompare(b.file)).map((r) => `${r.file}:${r.line} ${r.name} (${r.lines}) tests: ${[...tf(r)].join(",") || "none"}`).join("\n"));

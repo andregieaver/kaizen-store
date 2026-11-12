@@ -1,0 +1,38 @@
+// What the NULL entries of indexes on nullable foreign-key columns cost per guest cart, on the real schema (PGlite, Postgres 18 wasm).
+import { open } from "./pg.mjs";
+const db = await open();
+const { rows: [{ id: store }] } = await db.query("insert into commerce.stores (slug, name) values ('ds-bench', 'ds-bench') returning id");
+await db.query(`insert into commerce.markets (store_id, code, currency, default_locale, locales, active) select $1, code, currency, default_locale, locales, true from commerce.countries where code = 'DE'`, [store]);
+const N = 20000;
+const insert = `insert into commerce.carts (store_id, market_code, currency, locale, expires_at) select $1, 'DE', 'EUR', 'de-DE', now() + interval '1 day' from generate_series(1, ${N})`;
+const sizes = async () => (await db.query(`select ic.relname as i, pg_relation_size(i.indexrelid)::int as bytes, i.indpred is not null as partial from pg_index i join pg_class ic on ic.oid = i.indexrelid where i.indrelid = 'commerce.carts'::regclass order by 1`)).rows;
+const nulls = await db.query(`select a.attname, a.attnotnull from pg_attribute a where a.attrelid='commerce.carts'::regclass and a.attname in ('customer_id','visit_id','vat_check_id','shipping_method_id','pickup_option_id','local_area_id','api_hash','handoff_hash')`);
+console.log("nullable:", nulls.rows.map((r) => `${r.attname}:${!r.attnotnull}`).join(" "));
+const time = async (label) => {
+  await db.exec("delete from commerce.carts"); await db.exec("vacuum commerce.carts");
+  const runs = [];
+  for (let k = 0; k < 4; k++) { const t = performance.now(); await db.query(insert, [store]); runs.push(performance.now() - t); }
+  const s = await sizes(); const total = s.reduce((a, x) => a + x.bytes, 0);
+  const heap = (await db.query(`select pg_relation_size('commerce.carts')::int b`)).rows[0].b;
+  console.log(`${label}: ${runs.map((r) => (r / N * 1000).toFixed(1)).join(" / ")} µs per cart (4 runs of ${N}); indexes ${s.length}, index bytes after ${4 * N} carts: ${total} (${Math.round(total / (4 * N))} B a cart), heap ${Math.round(heap / (4 * N))} B a cart`);
+  return s;
+};
+const before = await time("today (11 indexes)");
+console.log(before.map((x) => `${x.i}=${Math.round(x.bytes / (4 * N))}B`).join(" "));
+const defs = (await db.query(`select ic.relname as i, pg_get_indexdef(i.indexrelid) as def from pg_index i join pg_class ic on ic.oid = i.indexrelid where i.indrelid = 'commerce.carts'::regclass`)).rows;
+const partial = { carts_customer_idx: "customer_id", carts_visit_idx: "visit_id", carts_vat_check_idx: "vat_check_id", carts_shipping_method_idx: "shipping_method_id", carts_pickup_option_idx: "pickup_option_id", carts_local_area_idx: "local_area_id" };
+await db.exec("delete from commerce.carts");
+for (const [name, col] of Object.entries(partial)) {
+  const def = defs.find((d) => d.i === name).def;
+  await db.exec(`drop index commerce.${name}; ${def} where ${col} is not null;`);
+}
+const after = await time("six nullable foreign-key indexes made partial (where … is not null)");
+console.log(after.map((x) => `${x.i}=${Math.round(x.bytes / (4 * N))}B${x.partial ? "*" : ""}`).join(" "));
+// The foreign key still finds its index: the check a parent's delete runs.
+await db.exec("set enable_seqscan = off");
+const p = await db.query(`explain select 1 from commerce.carts x where x.shipping_method_id = '00000000-0000-0000-0000-000000000001'::uuid`);
+console.log("a parent's delete check with the partial index:", p.rows.map((r) => r["QUERY PLAN"]).join(" | "));
+await db.exec("prepare q(uuid) as select 1 from commerce.carts x where x.shipping_method_id = $1; set plan_cache_mode = force_generic_plan;");
+const g = await db.query(`explain execute q('00000000-0000-0000-0000-000000000001')`);
+console.log("generic plan (a parameter, as the foreign-key check sends it):", g.rows.map((r) => r["QUERY PLAN"]).join(" | "));
+await db.close();

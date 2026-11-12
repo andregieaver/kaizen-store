@@ -1,0 +1,27 @@
+import { gzipSync } from "node:zlib";
+const { adminTexts } = await import("@/lib/admin-text");
+const { storeTabs, storeAreas } = await import("@/lib/store-nav");
+const sf = await import("@/lib/store-features");
+const size = (v) => { const s = JSON.stringify(v); return [Buffer.byteLength(s), gzipSync(s).length]; };
+const show = (label, v) => { const [raw, gz] = size(v); console.log(label.padEnd(44), String(raw).padStart(7), "bytes", String(gz).padStart(6), "gzip"); return raw; };
+for (const lang of ["en", "nb"]) {
+  console.log("==", lang);
+  const gate = adminTexts(lang, ["common", "setup", "shell"]);
+  show("gate provider common+setup+shell", gate);
+  for (const a of ["common", "setup", "shell"]) show("  " + a, adminTexts(lang, [a]));
+  show("assistant (launcher scope)", adminTexts(lang, ["assistant"]));
+  show("home (store Home scope)", adminTexts(lang, ["home"]));
+  show("products (products list scope)", adminTexts(lang, ["products"]));
+  show("orders", adminTexts(lang, ["orders"]));
+}
+const ids = sf.FEATURE_IDS ?? Object.keys(sf.FEATURES_BY_ID ?? {});
+for (const [label, features] of [["every feature", [...ids]], ["shop only", ["shop"]]]) {
+  const store = { features, house: false };
+  const tabs = storeTabs("/admin/acme-store", store, () => true, { support: 0 });
+  const areas = storeAreas("/admin/acme-store", store, () => true);
+  console.log("== menu,", label);
+  const t = show("tabs", tabs); const a = show("areas", areas); show("tabs+areas", { tabs, areas });
+  const also = tabs.reduce((n, x) => n + JSON.stringify(x.also).length, 0);
+  const prefixes = areas.reduce((n, x) => n + JSON.stringify(x.prefixes).length, 0);
+  console.log("  of which tabs.also", also, "areas.prefixes", prefixes, "(addresses repeated; the third copy is each item's href)");
+}

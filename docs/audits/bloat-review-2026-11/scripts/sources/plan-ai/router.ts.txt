@@ -1,0 +1,44 @@
+import { OWNER_TOOLS, toolDefinition } from "@/lib/owner-tools";
+import { MANAGER_TOOLS } from "@/lib/manager-tools";
+import { toolArea, CORE_TOOLS } from "@/lib/tool-budget";
+import { toolKey } from "@/lib/owner-tool-permissions";
+import { toolOffered } from "@/lib/owner-tool-features";
+import { findPages } from "@/lib/admin-map";
+import { areaOfPath } from "@/lib/permissions";
+import { FEATURE_IDS } from "@/lib/store-features";
+const size = (d: unknown) => JSON.stringify(d).length;
+const sum = (a: number[]) => a.reduce((x, y) => x + y, 0);
+const store: any = { features: [...FEATURE_IDS], workOn: true };
+const offered = (OWNER_TOOLS as readonly any[]).filter((t) => toolOffered(store, t.name)).map((t) => ({ t, area: toolArea(t.name, toolKey(t.name)), chars: size(toolDefinition(t)) }));
+const mgr = sum((MANAGER_TOOLS as readonly any[]).map((t) => size(toolDefinition(t))));
+const chars = (areas: string[]) => mgr + sum(offered.filter((o) => (CORE_TOOLS as readonly string[]).includes(o.t.name) || areas.includes(o.area)).map((o) => o.chars));
+const flags: any = { features: [...FEATURE_IDS], work: true, owner: true };
+const Q: [string, string][] = [
+  ["How many orders did we get last week?", "core"], ["Refund order 1042, the customer returned it", "orders"], ["Create a 10% discount code for returning customers", "marketing"],
+  ["Send a newsletter about the autumn sale", "marketing"], ["Change the hero text on the front page", "website"], ["Publish the about page", "website"],
+  ["Set up free shipping over 500 kr", "settings"], ["Add a new product: blue mug, 199 kr", "products"], ["Raise all prices in the Mugs category by 5%", "products"],
+  ["Invite Kari as staff with access to orders", "staff"], ["What plan am I on and what does it cost?", "billing"], ["Why did sales drop yesterday?", "core"],
+  ["Which customers have not ordered for 90 days?", "customers"], ["Answer the support conversation that is waiting", "support"], ["Lag en rabattkode på 10 % for nye kunder", "marketing"],
+  ["Endre fraktprisen til 79 kr", "settings"], ["Legg til et nytt produkt", "products"], ["Skriv et nyhetsbrev om høstsalget", "marketing"], ["Turn on gift cards", "settings"], ["Connect my domain example.com", "settings"],
+];
+const variants: Record<string, (q: string) => string[]> = {
+  "no router": () => [],
+  "best page's area": (q) => [...new Set(findPages("store", q, flags, 1).map((p) => areaOfPath(`/${p.path}`)).filter(Boolean) as string[])],
+  "best two pages' areas": (q) => [...new Set(findPages("store", q, flags, 2).map((p) => areaOfPath(`/${p.path}`)).filter(Boolean) as string[])],
+  "best three pages, at most two areas": (q) => [...new Set(findPages("store", q, flags, 3).map((p) => areaOfPath(`/${p.path}`)).filter(Boolean) as string[])].slice(0, 2),
+};
+for (const [label, pick] of Object.entries(variants)) {
+  let hit = 0, need = 0, total = 0, total4 = 0;
+  for (const [q, want] of Q) {
+    const areas = pick(q);
+    const ok = want === "core" || areas.includes(want);
+    if (want !== "core") { need++; if (ok) hit++; }
+    const first = chars(areas);
+    // a 3-call turn when the area is there; a 4-call turn (one load_tools round, then with the wanted area) when it is not
+    total += ok ? 3 * first : first + 3 * chars([...areas, want]);
+    total4 += first;
+  }
+  console.log(`${label}: area present for ${hit} of ${need}; mean tool characters in the first round ${Math.round(total4 / Q.length)}; mean tool characters over the turn (3 calls, or 4 with a load_tools round) ${Math.round(total / Q.length)}`);
+}
+const today = 143803; // all on, measured
+console.log("today: tool characters in every round", today, "; over a 3-call turn", 3 * today);

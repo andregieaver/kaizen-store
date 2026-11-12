@@ -1,0 +1,28 @@
+// A press on a next/link (client navigation) against a press on a plain <a> (document load): what each asks for.
+import { createRequire } from "node:module";
+import zlib from "node:zlib";
+const require = createRequire("/home/user/kaizen-store/");
+const { chromium } = require("playwright-core");
+const base = "http://localhost:3000";
+const browser = await chromium.launch({ executablePath: "/opt/pw-browsers/chromium", args: ["--no-sandbox"] });
+async function run(label, start, press) {
+  const context = await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true, deviceScaleFactor: 2 });
+  const page = await context.newPage();
+  let mark = "load"; const seen = [];
+  page.on("response", async (res) => { const req = res.request(); const h = req.headers(); const e = { mark, type: req.resourceType(), url: res.url().replace(base, ""), prefetch: Boolean(h["next-router-prefetch"]), rsc: Boolean(h["rsc"]), cached: res.fromServiceWorker() }; seen.push(e); try { const b = await res.body(); e.decoded = b.length; e.gz = zlib.gzipSync(b).length; } catch {} });
+  await page.goto(base + start, { waitUntil: "load" });
+  await page.waitForTimeout(3500);
+  mark = "press";
+  await press(page);
+  await page.waitForTimeout(4500);
+  const list = seen.filter((r) => r.mark === "press");
+  const by = {}; for (const r of list) { const k = r.type === "document" ? "document" : r.prefetch ? "prefetch" : r.rsc ? "navigation rsc" : r.type; by[k] ??= { n: 0, decoded: 0, gz: 0 }; by[k].n++; by[k].decoded += r.decoded || 0; by[k].gz += r.gz || 0; }
+  console.log(`\n${label}: now at ${page.url().replace(base, "")}; ${list.length} responses after the press`);
+  for (const [k, v] of Object.entries(by)) console.log(`   ${k.padEnd(15)} ${String(v.n).padStart(3)} requests, decoded ${v.decoded}, gzip of bodies ${v.gz}`);
+  await context.close();
+}
+// The header's menu on a phone is in a dialog; the bottom bar's links are next/link. Press "Konto" (account) as a Link.
+await run("next/link (bottom bar, Home to Account)", "/s/demo/no", (p) => p.locator('nav[aria-label="Snarveier"] a[href="/s/demo/no/account"]').first().click());
+await run("plain <a> (a product tile on the home page)", "/s/demo/no", (p) => p.locator('li[data-item-id] a[href^="/s/demo/no/p/"]').first().click({ force: true }));
+await run("next/link (blog list to an article)", "/s/demo/no/blog", (p) => p.locator('main a[href^="/s/demo/no/blog/"]').first().click());
+await browser.close();

@@ -1,0 +1,35 @@
+// Counts history calls, DOM changes and link (re)mounts on a page for a few seconds: node loop.mjs <url> [seconds]
+import { createRequire } from "node:module";
+const require = createRequire("/home/user/kaizen-store/");
+const { chromium } = require("playwright-core");
+const url = process.argv[2], seconds = Number(process.argv[3] ?? 4);
+const browser = await chromium.launch({ executablePath: "/opt/pw-browsers/chromium", args: ["--no-sandbox"] });
+const context = await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true, deviceScaleFactor: 2 });
+const page = await context.newPage();
+await page.addInitScript(() => {
+  window.__h = { push: 0, replace: 0, urls: [], muts: 0, added: 0, removed: 0, addedLinks: {}, io: 0 };
+  for (const name of ["pushState", "replaceState"]) {
+    const orig = history[name];
+    history[name] = function (...args) { window.__h[name === "pushState" ? "push" : "replace"]++; if (window.__h.urls.length < 6) window.__h.urls.push(String(args[2])); return orig.apply(this, args); };
+  }
+  const IO = window.IntersectionObserver;
+  window.IntersectionObserver = class extends IO { observe(el) { window.__h.io++; return super.observe(el); } };
+  document.addEventListener("DOMContentLoaded", () => {
+    new MutationObserver((list) => {
+      for (const m of list) { window.__h.muts++; window.__h.added += m.addedNodes.length; window.__h.removed += m.removedNodes.length;
+        for (const n of m.addedNodes) if (n.nodeType === 1) for (const a of [n, ...n.querySelectorAll?.("a") ?? []]) if (a.tagName === "A") { const k = a.getAttribute("href"); window.__h.addedLinks[k] = (window.__h.addedLinks[k] ?? 0) + 1; } }
+    }).observe(document.documentElement, { childList: true, subtree: true });
+  });
+});
+let reqs = 0; page.on("request", () => reqs++);
+await page.goto(url, { waitUntil: "load" });
+await page.waitForTimeout(1500);
+const a = await page.evaluate(() => JSON.parse(JSON.stringify(window.__h)));
+const r1 = reqs;
+await page.waitForTimeout(seconds * 1000);
+const b = await page.evaluate(() => JSON.parse(JSON.stringify(window.__h)));
+console.log("after 1.5 s:", JSON.stringify({ ...a, addedLinks: Object.keys(a.addedLinks).length }), "requests", r1);
+console.log(`after ${seconds} s more:`, JSON.stringify({ push: b.push - a.push, replace: b.replace - a.replace, muts: b.muts - a.muts, added: b.added - a.added, removed: b.removed - a.removed, io: b.io - a.io }), "requests", reqs - r1);
+const top = Object.entries(b.addedLinks).sort((x, y) => y[1] - x[1]).slice(0, 6);
+console.log("links added most:", JSON.stringify(top), "urls:", JSON.stringify(b.urls));
+await browser.close();

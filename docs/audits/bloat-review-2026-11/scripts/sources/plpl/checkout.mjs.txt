@@ -1,0 +1,29 @@
+// The cart and the checkout with one product in the cart: the documents as served, and what each asks for.
+import { createRequire } from "node:module";
+import zlib from "node:zlib"; import fs from "node:fs";
+const require = createRequire("/home/user/kaizen-store/");
+const { chromium } = require("playwright-core");
+const base = "http://localhost:3000";
+const browser = await chromium.launch({ executablePath: "/opt/pw-browsers/chromium", args: ["--no-sandbox"] });
+const context = await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true, deviceScaleFactor: 2 });
+const page = await context.newPage();
+let mark = "x"; const seen = [];
+page.on("response", async (res) => { const req = res.request(); const h = req.headers(); const e = { mark, type: req.resourceType(), method: req.method(), url: res.url().replace(base, ""), prefetch: Boolean(h["next-router-prefetch"]), action: Boolean(h["next-action"]), status: res.status() }; seen.push(e); try { const b = await res.body(); e.decoded = b.length; e.gz = zlib.gzipSync(b).length; } catch {} });
+await page.goto(base + "/s/demo/no/p/demo-handlenett", { waitUntil: "load" });
+await page.waitForTimeout(2500);
+await page.getByRole("button", { name: "Legg i handlekurven" }).first().click();
+await page.waitForTimeout(3500);
+for (const [name, path] of [["cart-full", "/s/demo/no/cart"], ["checkout-full", "/s/demo/no/checkout"], ["home-with-cart", "/s/demo/no"]]) {
+  mark = name;
+  const raw = await context.request.get(base + path);
+  const html = await raw.text();
+  fs.writeFileSync(`./${name}.html`, html);
+  await page.goto(base + path, { waitUntil: "load" });
+  await page.waitForTimeout(4000);
+  const list = seen.filter((r) => r.mark === name);
+  const by = {}; for (const r of list) { const k = r.type === "document" ? "document" : r.prefetch ? "prefetch" : r.action ? "action" : r.type; by[k] ??= { n: 0, decoded: 0, gz: 0 }; by[k].n++; by[k].decoded += r.decoded || 0; by[k].gz += r.gz || 0; }
+  console.log(`\n${name} ${path} -> ${page.url().replace(base, "")}: document as served ${Buffer.byteLength(html)} raw, ${zlib.gzipSync(html).length} gzip; ${list.length} responses`);
+  for (const [k, v] of Object.entries(by)) console.log(`   ${k.padEnd(11)} ${String(v.n).padStart(3)} decoded ${v.decoded} gz ${v.gz}`);
+  for (const r of list.filter((r) => (r.type === "fetch" || r.type === "xhr") && !r.prefetch)) console.log(`   fetch ${r.method} ${r.status} ${r.decoded} ${r.url.slice(0, 100)}`);
+}
+await browser.close();

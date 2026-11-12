@@ -1,0 +1,31 @@
+import { readFileSync } from "node:fs";
+import { open } from "./pg.mjs";
+const db = await open();
+const one = async (label, q, p = []) => { const r = await db.query(q, p); console.log(label + ":", JSON.stringify(r.rows).slice(0, 1500)); return r.rows; };
+await one("row level security", `select count(*)::int tables, count(*) filter (where relrowsecurity)::int rls_on, count(*) filter (where relforcerowsecurity)::int forced, (select count(*)::int from pg_policies where schemaname='commerce') as policies from pg_class c where relnamespace='commerce'::regnamespace and relkind='r'`);
+// indexes that exist in the database but are not named in schema.ts
+const schema = readFileSync("/home/user/kaizen-store/src/db/schema.ts", "utf8");
+const idx = (await db.query(`select c.relname as t, ic.relname as i, i.indisprimary as pk, i.indisunique as uq, pg_get_indexdef(i.indexrelid) as def from pg_index i join pg_class c on c.oid=i.indrelid join pg_class ic on ic.oid=i.indexrelid where c.relnamespace='commerce'::regnamespace`)).rows;
+const sqlOnly = idx.filter((x) => !x.pk && !schema.includes(`"${x.i}"`));
+console.log("indexes in the database", idx.length, "; not named in schema.ts (and not a primary key):", sqlOnly.length);
+const tablesInSchema = new Set([...schema.matchAll(/\.table\(\s*"([a-z_0-9]+)"/g)].map((m) => m[1]));
+const sqlOnlyOnDeclared = sqlOnly.filter((x) => tablesInSchema.has(x.t));
+console.log("  of those, on tables that schema.ts declares:", sqlOnlyOnDeclared.length, "; tables declared in schema.ts:", tablesInSchema.size);
+console.log("  examples:", sqlOnlyOnDeclared.slice(0, 12).map((x) => x.i).join(", "));
+// plain btree indexes whose distinguishing column is a nullable foreign-key column
+const nfk = await one("plain, non-partial indexes whose last column is a nullable foreign key column (count; on carts; on orders)", `
+with fkc as (select distinct k.conrelid, unnest(k.conkey) as att from pg_constraint k where k.contype='f' and k.connamespace='commerce'::regnamespace),
+ix as (select i.indrelid, i.indexrelid, (i.indkey::int2[])[i.indnkeyatts-1] as last_att from pg_index i where not i.indisunique and i.indpred is null and i.indnkeyatts between 1 and 2)
+select count(*)::int as n,
+  count(*) filter (where c.relname='carts')::int as carts,
+  count(*) filter (where c.relname='orders')::int as orders,
+  string_agg(ic.relname, ', ') filter (where c.relname in ('carts','orders')) as names
+from ix join fkc on fkc.conrelid=ix.indrelid and fkc.att=ix.last_att
+join pg_attribute a on a.attrelid=ix.indrelid and a.attnum=ix.last_att and not a.attnotnull and a.attname <> 'store_id'
+join pg_class c on c.oid=ix.indrelid join pg_class ic on ic.oid=ix.indexrelid`);
+await one("orders indexes", `select string_agg(ic.relname || case when i.indpred is not null then '*' else '' end, ', ' order by ic.relname) as names from pg_index i join pg_class ic on ic.oid=i.indexrelid where i.indrelid='commerce.orders'::regclass`);
+await one("stores foreign keys in, by delete action", `select confdeltype, count(*)::int from pg_constraint where confrelid='commerce.stores'::regclass and contype='f' group by 1`);
+await one("functions", `select count(*)::int n, count(*) filter (where prolang=(select oid from pg_language where lanname='sql'))::int sql_lang, count(*) filter (where proconfig is not null)::int with_set from pg_proc where pronamespace='commerce'::regnamespace`);
+await one("status_checks cols", `select string_agg(attname, ', ' order by attnum) c from pg_attribute where attrelid='commerce.status_checks'::regclass and attnum>0 and not attisdropped`);
+await one("idempotency tables", `select relname from pg_class where relnamespace='commerce'::regnamespace and relkind='r' and relname like '%idempotency%'`);
+await db.close();

@@ -1,0 +1,26 @@
+import "../hooks.mjs";
+import { gzipSync, brotliCompressSync } from "node:zlib";
+const L = "/home/user/kaizen-store/src/lib/";
+const pc = await import(L + "part-css.ts");
+const bp = await import(L + "breakpoints.ts");
+const te = await import(L + "theme-elements.ts");
+const th = await import(L + "theme.ts");
+for (const name of ["meridian", "orbit", "atelier", "arcade", "botanica", "kinetic"]) {
+  const sig = await import(L + "signature/" + name + ".ts");
+  const U = name.toUpperCase();
+  const theme = sig[U], pack = sig[U + "_PACK"];
+  const fn = sig[name + "HomePage"];
+  if (!theme || !fn) { console.log(name, "exports", Object.keys(sig).slice(0, 12)); continue; }
+  const settings = th.parseStoreTheme({ base: theme.snapshot.theme.base, settings: theme.snapshot.theme.settings }).settings;
+  const content = fn(pack, () => null);
+  const rows = te.themedRows(content.rows, settings.elements, settings.sectionStyles);
+  const per = rows.map(r => pc.partCss([r], "site", bp.DEFAULT_BREAKPOINTS, "media") ?? "");
+  const one = pc.partCss(rows, "site", bp.DEFAULT_BREAKPOINTS, "media");
+  const perTotal = per.join("");
+  const bpSheet = pc.breakpointClassCss(bp.DEFAULT_BREAKPOINTS, "media");
+  const themeCss = th.themeCss(settings, th.STORE_THEME_SELECTOR);
+  const own = theme.snapshot.css ?? "";
+  const imp = (one.match(/!important/g) || []).length;
+  console.log(name.padEnd(9), "rows", rows.length, "| per-row sheets", perTotal.length, "| one sheet", one.length, "gz", gzipSync(one).length, "| !important x", imp, "=", imp * 10, "B | @media blocks", (one.match(/@media/g) || []).length, "| bp sheet", bpSheet.length, "| themeCss", themeCss.length, "| theme's own css", own.length);
+  if (name === "meridian") (await import("node:fs")).writeFileSync("meridian-one.css", one);
+}

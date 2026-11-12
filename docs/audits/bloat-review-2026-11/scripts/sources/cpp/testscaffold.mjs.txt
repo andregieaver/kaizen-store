@@ -1,0 +1,26 @@
+// Measures repeated scaffolding in src/**/*.int.test.ts (read-only).
+import { readFileSync, readdirSync, statSync } from "node:fs";
+import { join } from "node:path";
+const walk = (d, acc = []) => { for (const n of readdirSync(d)) { const p = join(d, n); if (statSync(p).isDirectory()) walk(p, acc); else if (n.endsWith(".int.test.ts")) acc.push(p); } return acc; };
+const files = walk("/home/user/kaizen-store/src");
+let total = 0, so = 0, ncOne = 0, ncBlockLines = 0, ncFiles = 0, nhFiles = 0, nhLines = 0, jar = 0, setupFiles = 0, setupLines = 0, stripeMock = 0, refreshMock = 0;
+const nhBodies = new Map();
+for (const f of files) {
+  const lines = readFileSync(f, "utf8").split("\n"); total += lines.length;
+  let seenSetup = false;
+  for (let i = 0; i < lines.length; i++) {
+    const l = lines[i];
+    if (/^vi\.mock\("server-only"/.test(l)) so++;
+    if (/^vi\.mock\("\.\/refresh"/.test(l)) refreshMock++;
+    if (/^vi\.mock\("\.\/stripe"/.test(l)) stripeMock++;
+    if (/^const jar = vi\.hoisted/.test(l)) jar++;
+    if (/^vi\.mock\("next\/cache"/.test(l)) { ncFiles++; if (/\)\);\s*$/.test(l)) ncOne++; else { let j = i; while (j < lines.length && !/^\}\)\);/.test(lines[j])) j++; ncBlockLines += j - i + 1; } }
+    if (/^vi\.mock\("next\/headers"/.test(l)) { nhFiles++; let j = i; if (!/\)\);\s*$/.test(l)) { while (j < lines.length && !/^\}\)\);/.test(lines[j])) j++; } nhLines += j - i + 1; const body = lines.slice(i, j + 1).join("\n").replace(/\s+/g, " "); nhBodies.set(body, (nhBodies.get(body) ?? 0) + 1); }
+    if (/insert into commerce\.access_requests/.test(l) && !seenSetup) { seenSetup = true; setupFiles++; }
+    if (/access_requests|approve_access_request|from commerce\.accounts where email|from commerce\.stores where slug = \$\{/.test(l)) setupLines++;
+  }
+}
+console.log(`int tests ${files.length}, lines ${total}`);
+console.log(`server-only mock lines ${so}; next/cache: ${ncFiles} files, ${ncOne} one-liners, ${ncBlockLines} lines in blocks; next/headers: ${nhFiles} files, ${nhLines} lines, ${nhBodies.size} distinct bodies, most common ${Math.max(...nhBodies.values())}; cookie jars ${jar}; ./refresh mocks ${refreshMock}; ./stripe mocks ${stripeMock}`);
+console.log(`own store through the access request: ${setupFiles} files, ${setupLines} lines that name access_requests/approve/owner/store lookups`);
+console.log([...nhBodies.entries()].sort((a, b) => b[1] - a[1]).slice(0, 4).map(([b, n]) => n + " x " + b.slice(0, 200)).join("\n"));

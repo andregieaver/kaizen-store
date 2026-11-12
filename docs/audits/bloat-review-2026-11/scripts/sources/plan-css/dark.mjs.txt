@@ -1,0 +1,28 @@
+import { readFileSync } from "node:fs";
+import { gzipSync, brotliCompressSync } from "node:zlib";
+import { createRequire } from "node:module";
+const require = createRequire("/home/user/kaizen-store/node_modules/.pnpm/postcss@8.5.32/node_modules/postcss/");
+const postcss = require("postcss");
+for (const f of ["/home/user/kaizen-store/.next/static/chunks/3-w0shgm-eqtf.css", process.cwd() + "/out-site.css"]) {
+  const css = readFileSync(f, "utf8");
+  const root = postcss.parse(css);
+  const util = root.nodes.find(n => n.type === "atrule" && n.name === "layer" && n.params === "utilities");
+  let darkAttr = 0, darkMedia = 0, nAttr = 0, nMedia = 0, total = Buffer.byteLength(util.toString());
+  const names = new Set();
+  util.walkRules(r => {
+    if (!/\.dark\\:|\.[a-z-]*\\:dark\\:|:dark\\:/.test(r.selector) && !/dark\\:/.test(r.selector)) return;
+    names.add(r.selector.split(":where")[0].split(":is")[0]);
+    let inMedia = false; for (let p = r.parent; p; p = p.parent) if (p.type === "atrule" && p.name === "media" && /prefers-color-scheme/.test(p.params)) inMedia = true;
+    const b = Buffer.byteLength(r.toString());
+    if (inMedia) { darkMedia += b; nMedia++; } else { darkAttr += b; nAttr++; }
+  });
+  // media wrappers bytes for prefers-color-scheme in utilities
+  let wrappers = 0; util.walkAtRules("media", a => { if (/prefers-color-scheme/.test(a.params)) wrappers += Buffer.byteLength(a.toString()); });
+  console.log(f.split("/").pop(), "utilities", total, "| dark rules by attribute", nAttr, darkAttr, "B | dark rules in @media", nMedia, darkMedia, "B | @media(prefers-color-scheme) blocks total", wrappers, "B");
+  // remove the media copies and recompress to see what the device-preference half costs on the wire
+  const clone = postcss.parse(css);
+  const u2 = clone.nodes.find(n => n.type === "atrule" && n.name === "layer" && n.params === "utilities");
+  u2.walkAtRules("media", a => { if (/prefers-color-scheme/.test(a.params)) { let has = false; a.walkRules(r => { if (/dark\\:/.test(r.selector)) has = true; }); if (has) a.remove(); } });
+  const out = clone.toString();
+  console.log("   whole sheet", Buffer.byteLength(css), gzipSync(css, { level: 9 }).length, brotliCompressSync(css).length, "| without the @media copies of dark utilities", Buffer.byteLength(out), gzipSync(out, { level: 9 }).length, brotliCompressSync(out).length);
+}

@@ -1,0 +1,27 @@
+import { open } from "./pg.mjs";
+const db = await open();
+const hot = ["orders", "order_lines", "order_events", "payments", "visits", "carts", "cart_lines", "customers", "products", "product_variants", "prices", "inventory_levels", "inventory_movements", "stores", "pages", "ai_usage", "audit_log", "email_messages", "webhook_events"];
+const r = await db.query(`
+select c.relname as t,
+  (select count(*) from pg_attribute a where a.attrelid = c.oid and a.attnum > 0 and not a.attisdropped)::int as cols,
+  (select count(*) from pg_index i where i.indrelid = c.oid)::int as idx,
+  (select count(*) from pg_index i where i.indrelid = c.oid and i.indpred is not null)::int as partial,
+  (select count(*) from pg_index i join pg_class ic on ic.oid = i.indexrelid join pg_am am on am.oid = ic.relam where i.indrelid = c.oid and am.amname = 'gin')::int as gin,
+  (select count(*) from pg_constraint k where k.conrelid = c.oid and k.contype = 'f')::int as fk_out,
+  (select count(*) from pg_constraint k where k.confrelid = c.oid and k.contype = 'f')::int as fk_in,
+  (select count(*) from pg_trigger g where g.tgrelid = c.oid and not g.tgisinternal)::int as triggers,
+  (select count(*) from pg_constraint k where k.conrelid = c.oid and k.contype = 'c')::int as checks
+from pg_class c join pg_namespace n on n.oid = c.relnamespace where n.nspname = 'commerce' and c.relname = any($1) order by idx desc`, [hot]);
+console.table(r.rows);
+// Indexes whose only job is a foreign key to accounts (single column, plain), per table, hot tables only and overall
+const a = await db.query(`
+with acc as (select oid from pg_class where relname = 'accounts' and relnamespace = 'commerce'::regnamespace),
+fk as (select k.conrelid, k.conkey[1] as att, k.confdeltype from pg_constraint k, acc where k.contype = 'f' and k.confrelid = acc.oid and cardinality(k.conkey) = 1),
+ix as (select i.indrelid, i.indexrelid, (i.indkey::int2[])[0] as att from pg_index i where i.indnatts = 1 and not i.indisunique and i.indpred is null)
+select c.relname as t, ic.relname as index, a.attname as col, fk.confdeltype as on_delete
+from fk join ix on ix.indrelid = fk.conrelid and ix.att = fk.att join pg_class c on c.oid = fk.conrelid join pg_class ic on ic.oid = ix.indexrelid join pg_attribute a on a.attrelid = c.oid and a.attnum = fk.att
+order by 1, 2`);
+console.log("plain single-column indexes that back a foreign key to accounts:", a.rows.length);
+const by = {}; for (const x of a.rows) by[x.on_delete] = (by[x.on_delete] ?? 0) + 1; console.log("by on delete action (a = no action, r = restrict, c = cascade, n = set null):", by);
+console.log("on the hot tables:", a.rows.filter((x) => hot.includes(x.t)).map((x) => `${x.t}.${x.col} (${x.index})`).join("; "));
+await db.close();

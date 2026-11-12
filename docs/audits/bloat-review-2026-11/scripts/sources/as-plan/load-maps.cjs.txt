@@ -1,0 +1,12 @@
+// Loads the built proxy bundle and reports time, RSS and heap; run with and without --enable-source-maps.
+process.env.NODE_ENV = "production"; process.env.NEXT_RUNTIME = "nodejs";
+const rss0 = process.memoryUsage().rss; const heap0 = process.memoryUsage().heapUsed; const t0 = process.hrtime.bigint();
+const m = require("/home/user/kaizen-store/.next/server/middleware.js");
+(async () => {
+  try { await m; } catch {}
+  await new Promise((r) => setTimeout(r, 800));
+  if (global.gc) global.gc();
+  const u = process.memoryUsage();
+  console.log(JSON.stringify({ flags: process.execArgv.join(" "), ms: Math.round(Number(process.hrtime.bigint() - t0) / 1e6) - 800, rssMB: +((u.rss - rss0) / 1e6).toFixed(1), heapUsedMB: +((u.heapUsed - heap0) / 1e6).toFixed(1), externalMB: +(u.external / 1e6).toFixed(1) }));
+  process.exit(0);
+})();

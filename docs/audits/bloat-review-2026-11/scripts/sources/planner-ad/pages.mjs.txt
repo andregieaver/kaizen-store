@@ -1,0 +1,14 @@
+// What listPages() does per page row in code: parse draft, parse published, compare by JSON (src/server/pages.ts:141-155).
+import { readFileSync } from "node:fs";
+const { parsePageContent, samePageContent } = await import("@/lib/page-content");
+const W = "<scratch>/work";
+const names = ["arcadeHome", "atelierHome", "botanicaHome", "kineticHome", "meridianHome", "orbitAbout", "orbitHome", "packAbout", "packHome", "packProducts"];
+const pages = names.map((n) => JSON.parse(readFileSync(`${W}/page-${n}.json`, "utf8")));
+const bytes = pages.reduce((s, p) => s + JSON.stringify(p).length, 0);
+let ok = 0; for (const p of pages) if (parsePageContent(p)) ok++;
+console.log("sample pages", pages.length, "parse ok", ok, "JSON bytes", bytes, "avg", Math.round(bytes / pages.length));
+const one = () => { for (const p of pages) { const d = parsePageContent(p); const pub = parsePageContent(p); if (d && pub) samePageContent(d, pub); } };
+for (let i = 0; i < 20; i++) one();
+const N = 100; const t0 = performance.now(); for (let i = 0; i < N; i++) one();
+const per = (performance.now() - t0) / N / pages.length;
+console.log("per page row (2 parses + compare):", per.toFixed(3), "ms;", "30 pages:", (per * 30).toFixed(1), "ms; 200 pages:", (per * 200).toFixed(0), "ms");

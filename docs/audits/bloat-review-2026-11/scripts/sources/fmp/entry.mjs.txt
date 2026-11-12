@@ -1,0 +1,13 @@
+// node entry.mjs <repo> <rel entry under .next/server/app>... : chunk count and bytes per built entry, and whether a catalogue chunk is loaded
+import { readFileSync, existsSync, statSync } from 'node:fs';
+import { join } from 'node:path';
+const repo = process.argv[2];
+for (const rel of process.argv.slice(3)) {
+  const e = join(repo, '.next/server/app', rel);
+  if (!existsSync(e)) { console.log(rel, 'MISSING'); continue; }
+  const chunks = [...readFileSync(e, 'utf8').matchAll(/R\.c\("([^"]+)"\)/g)].map((m) => m[1]);
+  let total = 0; let cat = 0; let big = [];
+  for (const c of chunks) { const p = join(repo, '.next', c); if (!existsSync(p)) continue; const s = statSync(p).size; total += s; if (s > 500000) big.push(`${(s / 1e6).toFixed(2)} ${c.replace('server/chunks/', '')}`); if (s > 2_000_000 && readFileSync(p, 'utf8').includes('admin-messages/books.nb')) cat += s; }
+  console.log(`${rel}: ${chunks.length} chunks, ${(total / 1e6).toFixed(2)} MB, catalogue chunk bytes ${(cat / 1e6).toFixed(2)} MB`);
+  if (process.env.BIG) console.log('  ' + big.join('\n  '));
+}

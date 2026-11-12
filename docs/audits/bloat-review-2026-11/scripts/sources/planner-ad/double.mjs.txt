@@ -1,0 +1,69 @@
+// For each client router.refresh() site in the admin: is the action awaited just before it one whose server code already calls refresh()?
+import { readFileSync } from "node:fs";
+import { execSync } from "node:child_process";
+import { dirname, resolve } from "node:path";
+const ROOT = "/home/user/kaizen-store";
+const sh = (c) => { try { return execSync(c, { cwd: ROOT, encoding: "utf8", maxBuffer: 1e8 }); } catch (e) { return e.stdout ?? ""; } };
+const clientFiles = sh(`rg -l "router\\.refresh\\(\\)" src/components/admin src/app/admin --glob '*.tsx'`).trim().split("\n").filter(Boolean);
+const read = (f) => { try { return readFileSync(resolve(ROOT, f), "utf8"); } catch { return null; } };
+const resolveImport = (from, spec) => {
+  let base = spec.startsWith("@/") ? resolve(ROOT, "src", spec.slice(2)) : resolve(ROOT, dirname(from), spec);
+  for (const c of [base + ".ts", base + ".tsx", base + "/index.ts"]) if (read(c) !== null) return c;
+  return null;
+};
+// body of an exported action
+const actionBody = (file, name) => {
+  const src = read(file); if (!src) return null;
+  const at = src.search(new RegExp(`export (async )?function ${name}\\b`));
+  if (at < 0) return null;
+  const next = src.slice(at + 10).search(/\nexport /);
+  return src.slice(at, next < 0 ? undefined : at + 10 + next);
+};
+const bare = /(?<![.\w])refresh\(\)/;
+let sites = 0, doubled = 0, unknown = 0, single = 0, mixed = 0; const out = [];
+for (const cf of clientFiles) {
+  const src = read(cf); const lines = src.split("\n");
+  const base = cf.replace(/^src\//, "@/").replace(/\.tsx$/, "");
+  const name = cf.split("/").pop().replace(/\.tsx$/, "");
+  // importers: files that import this component (alias or relative by basename)
+  const importers = sh(`rg -l "from \\"(${base.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}|\\./${name}|\\.\\./[^\\"]*/${name})\\"" src/app/admin src/components/admin --glob '*.tsx' --glob '*.ts'`).trim().split("\n").filter(Boolean);
+  const pool = [cf, ...importers];
+  // one more level: importers of importers that are components
+  for (const imp of importers.filter((f) => f.startsWith("src/components/"))) {
+    const b2 = imp.replace(/^src\//, "@/").replace(/\.tsx?$/, "");
+    pool.push(...sh(`rg -l "from \\"${b2}\\"" src/app/admin --glob '*.tsx'`).trim().split("\n").filter(Boolean));
+  }
+  // action name -> file, from imports in pool
+  const actions = new Map();
+  for (const f of pool) {
+    const s = read(f); if (!s) continue;
+    for (const m of s.matchAll(/import\s*\{([^}]+)\}\s*from\s*"([^"]+)"/g)) {
+      const target = resolveImport(f, m[2]); if (!target) continue;
+      const tsrc = read(target); if (!tsrc || !/^"use server"/m.test(tsrc)) continue;
+      for (const n of m[1].split(",").map((x) => x.trim().split(/\s+as\s+/)[0]).filter(Boolean)) actions.set(n, target);
+    }
+  }
+  const poolSrc = pool.map(read).filter(Boolean).join("\n");
+  lines.forEach((line, i) => {
+    if (!/router\.refresh\(\)/.test(line)) return;
+    sites++;
+    const before = lines.slice(Math.max(0, i - 12), i + 1).join("\n");
+    const calls = [...before.matchAll(/await\s+\(?\s*([\w.]+)\(/g)].map((m) => m[1]);
+    let verdict = "unknown", why = calls.join(",") || "no awaited call";
+    for (const call of calls.reverse()) {
+      const prop = call.split(".").pop();
+      const cands = new Set();
+      if (actions.has(prop)) cands.add(prop);
+      for (const m of poolSrc.matchAll(new RegExp(`\\b${prop}\\s*[:=]\\s*\\{?\\s*(?:[^,}\\n]*?=>\\s*)?(\\w+)\\b`, "g"))) if (actions.has(m[1])) cands.add(m[1]);
+      if (cands.size === 0) continue;
+      const bodies = [...cands].map((a) => [a, actionBody(actions.get(a), a)]).filter(([, b]) => b);
+      if (bodies.length === 0) continue;
+      const yes = bodies.filter(([, b]) => bare.test(b)).map(([a]) => a); const all = yes.length === bodies.length;
+      verdict = yes.length === 0 ? "single" : all ? "double" : "mixed"; why = `${call} -> ${[...cands].join("|")}`; break;
+    }
+    if (verdict === "double") doubled++; else if (verdict === "single") single++; else if (verdict === "mixed") mixed++; else unknown++;
+    out.push(`${verdict.padEnd(8)} ${cf}:${i + 1}  ${why}`);
+  });
+}
+console.log(out.sort().join("\n"));
+console.log(`\nclient files ${clientFiles.length}, router.refresh() sites ${sites}: double (every candidate action calls refresh) ${doubled}, mixed ${mixed}, single ${single}, unknown ${unknown}`);

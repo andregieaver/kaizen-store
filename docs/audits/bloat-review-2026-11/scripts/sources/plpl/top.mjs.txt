@@ -1,0 +1,8 @@
+import { payload, rows } from "../skpl/fl.mjs";
+const f = process.argv[2]; const n = +(process.argv[3] || 14);
+const { out } = payload(`../../m/html/${f}.html`);
+const r = rows(out);
+const total = r.reduce((a, x) => a + x.size, 0);
+const tags = {}; for (const x of r) { tags[x.tag] = (tags[x.tag] || 0) + x.size; }
+console.log(f, "rows", r.length, "bytes", total, JSON.stringify(tags));
+for (const x of [...r].sort((a, b) => b.size - a.size).slice(0, n)) console.log(String(x.size).padStart(7), x.id.padEnd(4), x.tag, x.data.slice(0, 230).replace(/\n/g, " "));

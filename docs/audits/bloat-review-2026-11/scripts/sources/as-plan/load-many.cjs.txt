@@ -1,0 +1,18 @@
+// What a build's page worker holds: loads N built page modules in one process (as "Collecting page data" does), with or without --enable-source-maps.
+const fs = require("node:fs"), path = require("node:path");
+globalThis.AsyncLocalStorage = require("node:async_hooks").AsyncLocalStorage; process.on("unhandledRejection", () => {});
+process.env.NODE_ENV = "production"; process.env.NEXT_RUNTIME = "nodejs"; process.env.NEXT_PHASE = "phase-production-build";
+const app = "/home/user/kaizen-store/.next/server/app"; const pages = [];
+(function walk(d){ for (const e of fs.readdirSync(d,{withFileTypes:true})) { const p = path.join(d,e.name); if (e.isDirectory()) walk(p); else if (e.name === "page.js" || e.name === "route.js") pages.push(p); } })(app);
+pages.sort(); const n = Number(process.argv[2] || 40); const step = Math.floor(pages.length / n); const pick = pages.filter((_, i) => i % step === 0).slice(0, n);
+const rss0 = process.memoryUsage().rss, heap0 = process.memoryUsage().heapUsed, t0 = Date.now();
+(async () => {
+  let ok = 0, failed = 0;
+  for (const p of pick) { try { const m = require(p); const u = m.routeModule && m.routeModule.userland; if (u && typeof u.then === "function") await u; ok++; } catch { failed++; } }
+  await new Promise((r) => setTimeout(r, 300)); if (global.gc) global.gc();
+  const chunks = Object.keys(require.cache).filter((k) => k.includes("/.next/server/chunks/"));
+  const bytes = chunks.reduce((s, k) => s + fs.statSync(k).size, 0);
+  const u = process.memoryUsage();
+  console.log(JSON.stringify({ flags: process.execArgv.join(" "), entries: pick.length, ok, failed, chunksLoaded: chunks.length, chunkMB: +(bytes / 1e6).toFixed(1), seconds: +((Date.now() - t0 - 300) / 1000).toFixed(1), rssMB: Math.round((u.rss - rss0) / 1e6), heapUsedMB: Math.round((u.heapUsed - heap0) / 1e6) }));
+  process.exit(0);
+})();

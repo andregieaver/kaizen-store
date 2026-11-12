@@ -1,0 +1,5 @@
+const s=require("fs").readFileSync(process.argv[2],"utf8");
+const tags=process.argv.slice(3);
+console.log("len",s.length);
+const idx=[...s.matchAll(/[,\[](\d{4,7}),(?=\(?[a-zA-Z_$,() ]*\)?=>|function|\[)/g)].map(m=>[m.index,m[1]]);
+for(let i=0;i<idx.length;i++){ const a=idx[i][0], b=i+1<idx.length?idx[i+1][0]:s.length; const body=s.slice(a,b); if(b-a<1500) continue; const t=tags.filter(t=>body.includes(t)); console.log(idx[i][1], b-a, t.join(" | "), JSON.stringify(body.slice(0,110))); }

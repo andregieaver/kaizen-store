@@ -1,0 +1,8 @@
+// Times what an instance does before its first request: instrumentation's register() (imports the interface-text module, then one read of ui_translations on the local review database).
+const path = require("path");
+globalThis.AsyncLocalStorage = require("node:async_hooks").AsyncLocalStorage;
+process.env.NODE_ENV = "production"; process.env.NEXT_RUNTIME = "nodejs";
+process.env.DATABASE_URL = "postgres://postgres:postgres@localhost:5432/bloat_review";
+const t0 = process.hrtime.bigint(); const m0 = process.memoryUsage().rss;
+const mod = require(path.resolve(".next/server/instrumentation.js"));
+Promise.resolve(mod.register()).then(() => { const ms = Number(process.hrtime.bigint() - t0) / 1e6; console.log(JSON.stringify({ ok: true, ms: Math.round(ms), rssMB: Math.round((process.memoryUsage().rss - m0) / 1048576) })); process.exit(0); }, (e) => { console.log(JSON.stringify({ ok: false, err: String(e && e.message).slice(0, 300) })); process.exit(0); });

@@ -1,0 +1,20 @@
+// usage: node sim.mjs a b  -> share of B's code lines that also occur in A (normalised), and LCS-based via diff
+import { readFileSync } from 'node:fs';
+import { execFileSync } from 'node:child_process';
+const norm = (f) => readFileSync(f, 'utf8').split('\n').map((l) => l.trim()).filter((l) => l && !l.startsWith('//') && !l.startsWith('*') && !l.startsWith('/*'));
+const sig = (l) => l.length >= 12; // ignore braces and tiny lines
+export function sim(a, b) {
+  const A = norm(a), B = norm(b);
+  const setA = new Map();
+  for (const l of A) if (sig(l)) setA.set(l, (setA.get(l) ?? 0) + 1);
+  let shared = 0, total = 0;
+  for (const l of B) { if (!sig(l)) continue; total++; const n = setA.get(l) ?? 0; if (n > 0) { shared++; setA.set(l, n - 1); } }
+  return { aLines: A.length, bLines: B.length, bSig: total, shared, share: total ? Math.round((shared / total) * 100) : 0 };
+}
+if (process.argv[1].endsWith("sim.mjs") && process.argv[2]) {
+  const pairs = process.argv.slice(2);
+  for (let i = 0; i < pairs.length; i += 2) {
+    const r = sim(pairs[i], pairs[i + 1]);
+    console.log(`${pairs[i]} (${r.aLines}) vs ${pairs[i + 1]} (${r.bLines}): ${r.shared}/${r.bSig} significant lines of B also in A = ${r.share}%`);
+  }
+}

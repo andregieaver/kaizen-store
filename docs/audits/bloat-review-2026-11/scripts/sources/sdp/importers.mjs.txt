@@ -1,0 +1,11 @@
+// Which files reached from an entry import a given target directly (value imports only). Usage: node importers.mjs <entry> <target-suffix>
+import fs from "node:fs"; import path from "node:path";
+const root = process.cwd();
+const exts = [".ts", ".tsx", ".js", ".mjs", ".json", "/index.ts", "/index.tsx"];
+function resolve(from, spec) { let base; if (spec.startsWith("@/")) base = path.join(root, "src", spec.slice(2)); else if (spec.startsWith(".")) base = path.resolve(path.dirname(from), spec); else return null; if (fs.existsSync(base) && fs.statSync(base).isFile()) return base; for (const e of exts) if (fs.existsSync(base + e)) return base + e; return null; }
+const importRe = /^\s*(import|export)\s+(type\s+)?([^;]*?)\s+from\s+["']([^"']+)["']|^\s*import\s+["']([^"']+)["']/gm;
+function imports(file) { if (file.endsWith(".json")) return []; const text = fs.readFileSync(file, "utf8"); const local = []; let m; importRe.lastIndex = 0; while ((m = importRe.exec(text))) { if (m[2]) continue; const spec = m[4] ?? m[5]; const clause = m[3] ?? ""; const braces = clause.match(/^\{([\s\S]*)\}$/); if (braces && braces[1].split(",").map((s) => s.trim()).filter(Boolean).every((s) => s.startsWith("type "))) continue; const r = resolve(file, spec); if (r) local.push(r); } return local; }
+const entry = path.resolve(process.argv[2]); const target = process.argv[3]; const CUT = new Set((process.env.CUT || "").split(",").filter(Boolean));
+const seen = new Set([entry]); const queue = [entry]; const direct = [];
+while (queue.length) { const f = queue.shift(); for (const l of imports(f)) { if (CUT.has(path.relative(root, f) + ">" + path.relative(root, l))) continue; if (l.endsWith(target)) { direct.push(path.relative(root, f)); continue; } if (!seen.has(l)) { seen.add(l); queue.push(l); } } }
+console.log("reached without the target:", seen.size, "| direct importers of", target, ":", direct.length); console.log(direct.join("\n"));

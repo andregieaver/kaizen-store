@@ -1,0 +1,11 @@
+import { performance } from "node:perf_hooks";
+const m = await import("./overlay.min.mjs");
+const cat = m.fullCatalog();
+const en = m.t("en"), em = m.emailText("en");
+// fresh strings per language, as rows from the database would be
+const rowsFor = (i) => cat.map((e) => ({ key: e.key, text: (e.source + " ").slice(0, -1) + (i % 2 ? "" : "") }));
+function maps(rows) { const ui = new Map(), email = new Map(); for (const r of rows) (r.key.startsWith("email:") ? email : ui).set(r.key, r.text); return [ui, email]; }
+const N = 20;
+const measure = (label, make) => { global.gc(); const h0 = process.memoryUsage().heapUsed; const keep = []; const t0 = performance.now(); for (let i = 0; i < N; i++) keep.push(make(i)); const ms = (performance.now() - t0) / N; global.gc(); const h1 = process.memoryUsage().heapUsed; console.log(label, "| KB per language", ((h1 - h0) / N / 1024).toFixed(0), "| ms per language", ms.toFixed(2)); return keep; };
+measure("rows kept as two maps only (JSON round trip to make new strings)", (i) => maps(JSON.parse(JSON.stringify(rowsFor(i)))));
+measure("maps + both overlays + browser object (today)", (i) => { const [ui, email] = maps(JSON.parse(JSON.stringify(rowsFor(i)))); return [m.overlayMessages("ui", en, ui, "de"), m.overlayMessages("email", em, email, "de"), Object.fromEntries(ui)]; });

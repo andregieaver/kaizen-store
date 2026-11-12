@@ -1,0 +1,21 @@
+import fs from "node:fs"; import zlib from "node:zlib";
+const dir = "../../m/html/";
+const B = (s) => Buffer.byteLength(s);
+function cut(html, startRe) {
+  const m = startRe.exec(html); if (!m) return null;
+  const tag = m[1]; let depth = 0; const re = new RegExp(`<(/?)${tag}\\b[^>]*>`, "g"); re.lastIndex = m.index; let x;
+  while ((x = re.exec(html))) { if (x[1]) { depth--; if (depth === 0) return [m.index, x.index + x[0].length]; } else if (!x[0].endsWith("/>")) depth++; }
+  return null;
+}
+for (const f of fs.readdirSync(dir).filter((f) => f.startsWith("admin-")).sort()) {
+  const html = fs.readFileSync(dir + f, "utf8");
+  const body = html.replace(/<script[\s\S]*?<\/script>/g, "");
+  const d = cut(html, /<(dialog) id="store-menu"/); const r = cut(html, /<(div) data-admin-rail="true"/);
+  if (!d) { console.log(f, "no store-menu dialog"); continue; }
+  const dialog = html.slice(d[0], d[1]); const rail = r ? html.slice(r[0], r[1]) : "";
+  const without = html.slice(0, d[0]) + html.slice(d[1]);
+  const gz = zlib.gzipSync(html).length, gz2 = zlib.gzipSync(without).length;
+  const br = zlib.brotliCompressSync(html).length, br2 = zlib.brotliCompressSync(without).length;
+  const links = (s) => (s.match(/<a\b/g) || []).length, svgs = (s) => (s.match(/<svg\b/g) || []).length;
+  console.log(f.replace(".html", "").padEnd(24), "markup", B(body), "dialog", B(dialog), `(a ${links(dialog)} svg ${svgs(dialog)})`, "rail", B(rail), `(a ${links(rail)} svg ${svgs(rail)})`, "| dialog gz", gz - gz2, "br", br - br2, "of doc gz", gz);
+}

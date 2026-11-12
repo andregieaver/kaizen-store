@@ -1,0 +1,82 @@
+// Skeptic re-measurement of AD-1: storeTabs()+storeAreas() exactly as [store]/layout.tsx:82,91-92 calls them.
+const { storeTabs, storeAreas, STORE_SECTIONS, storeSections } = await import("@/lib/store-nav");
+const perms = await import("@/lib/permissions");
+const map = await import("@/lib/admin-map");
+const sf = await import("@/lib/store-features");
+const closure = await import("@/lib/store-closure");
+
+console.log("ADMIN_PAGES", map.ADMIN_PAGES.length, "store pages", map.ADMIN_PAGES.filter((p) => p.area === "store").length);
+const items = STORE_SECTIONS.flatMap((s) => s.groups.flatMap((g) => g.items));
+console.log("STORE_SECTIONS", STORE_SECTIONS.length, "menu items", items.length);
+
+const holder = { role: "owner", kind: "staff", permissions: null };
+let n = 0;
+// layout.tsx:82: canOpenPath(holder, path) && (open || keyAllowedWhenNotOpen(permissionOfPath(path, "read")))
+const mk = (open) => (path) => {
+  n++;
+  return perms.canOpenPath(holder, path) && (open || closure.keyAllowedWhenNotOpen(perms.permissionOfPath(path, "read")));
+};
+const ids = sf.FEATURE_IDS ?? Object.keys(sf.FEATURES_BY_ID ?? {});
+const run = (label, features, open = true, N = 40) => {
+  const store = { features, house: false };
+  const canOpen = mk(open);
+  for (let i = 0; i < 8; i++) { storeTabs("/admin/acme", store, canOpen, { support: 0 }); storeAreas("/admin/acme", store, canOpen); }
+  n = 0;
+  const t0 = performance.now();
+  let areas;
+  for (let i = 0; i < N; i++) { storeTabs("/admin/acme", store, canOpen, { support: 0 }); areas = storeAreas("/admin/acme", store, canOpen); }
+  const ms = (performance.now() - t0) / N;
+  const shown = areas.reduce((a, x) => a + x.groups.reduce((m, g) => m + g.items.length, 0), 0);
+  console.log(label.padEnd(30), "features", String(features.length).padStart(3), "| items shown", String(shown).padStart(4), "| lookups/render", n / N, "|", ms.toFixed(1), "ms");
+};
+for (let rep = 0; rep < 3; rep++) {
+  run("every feature on", [...ids]);
+  run("shop only", ["shop"]);
+  run("no features", []);
+}
+run("every feature, store not open", [...ids], false);
+
+// one matchPath call
+{
+  const N = 2000;
+  for (let i = 0; i < 200; i++) map.matchPath("/admin/_store/settings/shipping");
+  const t0 = performance.now();
+  for (let i = 0; i < N; i++) map.matchPath("/admin/_store/settings/shipping");
+  console.log("matchPath(/settings/shipping)", ((performance.now() - t0) / N).toFixed(3), "ms");
+  const t1 = performance.now();
+  for (let i = 0; i < N; i++) map.matchPath("/admin/_store/orders");
+  console.log("matchPath(/orders)", ((performance.now() - t1) / N).toFixed(3), "ms");
+}
+// what part of it is the sort
+{
+  const N = 2000;
+  const t0 = performance.now();
+  for (let i = 0; i < N; i++) map.ADMIN_PAGES.filter((p) => p.area === "store").sort((a, b) => map.pageParams(a).length - map.pageParams(b).length);
+  console.log("filter+sort alone", ((performance.now() - t0) / N).toFixed(3), "ms");
+}
+// memoised
+{
+  const memo = new Map();
+  const canOpen = (path) => {
+    let key = memo.get(path);
+    if (key === undefined) { key = perms.permissionOfPath(path, "read"); memo.set(path, key); }
+    return key === null || perms.can(holder, key);
+  };
+  const store = { features: [...ids], house: false };
+  storeTabs("/admin/acme", store, canOpen, { support: 0 }); storeAreas("/admin/acme", store, canOpen);
+  const N = 200;
+  const t0 = performance.now();
+  for (let i = 0; i < N; i++) { storeTabs("/admin/acme", store, canOpen, { support: 0 }); storeAreas("/admin/acme", store, canOpen); }
+  console.log("memoised build", ((performance.now() - t0) / N).toFixed(3), "ms");
+}
+// hubs: storeSections with canOpen as settings/page.tsx would
+{
+  const store = { features: [...ids], house: false };
+  const canOpen = mk(true);
+  const N = 30;
+  for (let i = 0; i < 5; i++) storeSections(store, canOpen);
+  n = 0;
+  const t0 = performance.now();
+  for (let i = 0; i < N; i++) storeSections(store, canOpen);
+  console.log("storeSections once", ((performance.now() - t0) / N).toFixed(1), "ms, lookups", n / N);
+}

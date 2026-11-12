@@ -1,0 +1,22 @@
+// Size of the whole "ui" catalogue (what UiTexts gets as a prop for an AI-translated language) against the part the browser's texts need.
+// English stands in for a translated language. Transpiles the few TS files it needs in memory; writes nothing.
+const fs=require('fs'), path=require('path'), Module=require('module'), zlib=require('zlib');
+const ROOT='/home/user/kaizen-store'; const ts=require(path.join(ROOT,'node_modules/typescript'));
+const SRC=path.join(ROOT,'src');
+const origResolve=Module._resolveFilename;
+Module._resolveFilename=function(request,parent,...rest){ let r=request; if (r.startsWith('@/')) r=path.join(SRC,r.slice(2)); else if (r.startsWith('.') && parent && parent.filename && parent.filename.startsWith(SRC)) r=path.join(path.dirname(parent.filename),r);
+  if (path.isAbsolute(r)) for (const c of [r, r+'.ts', r+'.tsx', path.join(r,'index.ts')]) if (fs.existsSync(c) && fs.statSync(c).isFile()) return c;
+  return origResolve.call(this,request,parent,...rest); };
+for (const ext of ['.ts','.tsx']) require.extensions[ext]=(module,filename)=>{ const out=ts.transpileModule(fs.readFileSync(filename,'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022,jsx:ts.JsxEmit.ReactJSX,esModuleInterop:true},fileName:filename}); module._compile(out.outputText,filename); };
+const { en } = require(path.join(SRC,'lib/messages/en.ts'));
+const { enBrowser } = require(path.join(SRC,'lib/messages/en-browser.ts'));
+const { enReturns } = require(path.join(SRC,'lib/messages/en-returns.ts'));
+const { catalogOf } = require(path.join(SRC,'lib/ui-catalog.ts'));
+const all = catalogOf('ui', en); const browser = catalogOf('ui', enBrowser); const returns = catalogOf('ui', { returns: enReturns });
+const obj=(entries)=>Object.fromEntries(entries.map(e=>[e.key,e.source]));
+const size=(entries)=>{ const j=JSON.stringify(obj(entries)); const inHtml=JSON.stringify(j); return { keys: entries.length, json: Buffer.byteLength(j), asWrittenInHtml: Buffer.byteLength(inHtml), gzip: zlib.gzipSync(inHtml).length }; };
+console.log('whole ui catalogue      ', size(all));
+console.log('browser texts only      ', size(browser));
+console.log('withdrawal texts only   ', size(returns));
+const need=new Set([...browser,...returns].map(e=>e.key)); const needed=all.filter(e=>need.has(e.key));
+console.log('browser + withdrawal keys found in the whole catalogue', needed.length, size(needed));

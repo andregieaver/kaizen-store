@@ -1,0 +1,14 @@
+// Counts zod constructor calls (z.name( ) in the files an entry reaches by static value imports. CUT and SKIP as g2.mjs.
+import fs from "node:fs"; import path from "node:path";
+const repo = "/home/user/kaizen-store"; const cache = new Map();
+function imports(file) { if (cache.has(file)) return cache.get(file); let s = ""; try { s = fs.readFileSync(file, "utf8"); } catch { cache.set(file, []); return []; }
+  const out = []; const res = [/^import\s+(type\s+)?([\w\s{},*$]*?)\s*from\s*["']([^"']+)["']/gm, /^export\s+(type\s+)?(\*(?:\s+as\s+\w+)?|\{[^}]*\})\s*from\s*["']([^"']+)["']/gm];
+  for (const re of res) { let m; while ((m = re.exec(s))) { if (m[1]) continue; const named = m[2].trim().match(/^\{([^}]*)\}$/); if (named) { const parts = named[1].split(",").map((x) => x.trim()).filter(Boolean); if (parts.length && parts.every((p) => p.startsWith("type "))) continue; } out.push(m[3]); } }
+  { const re = /^import\s*["']([^"']+)["']/gm; let m; while ((m = re.exec(s))) out.push(m[1]); } cache.set(file, out); return out; }
+function resolve(from, spec) { let base; if (spec.startsWith("@/")) base = path.join(repo, "src", spec.slice(2)); else if (spec.startsWith(".")) base = path.resolve(path.dirname(from), spec); else return null;
+  for (const c of [base, base + ".ts", base + ".tsx", base + ".mjs", base + ".js", path.join(base, "index.ts"), path.join(base, "index.tsx")]) { try { if (fs.statSync(c).isFile()) return c; } catch {} } return null; }
+const cuts = (process.env.CUT || "").split(",").filter(Boolean).map((e) => e.split(">")); const skips = (process.env.SKIP || "").split(",").filter(Boolean);
+for (const e of process.argv.slice(2)) { const entry = path.join(repo, e); const seen = new Set([entry]); const q = [entry];
+  while (q.length) { const f = q.shift(); for (const spec of imports(f)) { const r = resolve(f, spec); if (!r || seen.has(r)) continue; if (skips.some((x) => r.endsWith(x))) continue; if (cuts.some(([a, b]) => f.endsWith(a) && r.endsWith(b))) continue; seen.add(r); q.push(r); } }
+  let calls = 0, zfiles = 0, bytes = 0; for (const f of seen) { const s = fs.readFileSync(f, "utf8"); bytes += s.length; const n = (s.match(/\bz\.[a-zA-Z]+\(/g) || []).length; if (n) { calls += n; zfiles++; } }
+  console.log(`${e}: files=${seen.size} source_mb=${(bytes / 1048576).toFixed(1)} zod_files=${zfiles} zod_calls=${calls}`); }

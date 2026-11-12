@@ -1,0 +1,26 @@
+// Times what src/db/vat.test.ts:811-851 does before its five cases: every archived migration into a new in-memory PGlite.
+import { createRequire } from "node:module";
+import { readdirSync, readFileSync } from "node:fs";
+import path from "node:path";
+import { pathToFileURL } from "node:url";
+const REPO = "/home/user/kaizen-store";
+const require = createRequire(REPO + "/");
+const { PGlite } = await import(pathToFileURL(require.resolve("@electric-sql/pglite")).href);
+const { pg_trgm } = await import(pathToFileURL(require.resolve("@electric-sql/pglite/contrib/pg_trgm")).href);
+const { vector } = await import(pathToFileURL(require.resolve("@electric-sql/pglite-pgvector")).href);
+const { statementsOf, baselineThroughOf } = await import(pathToFileURL(REPO + "/scripts/lib/migrations.mjs").href);
+const dir = path.join(REPO, "supabase/archive/20261111172838");
+const files = readdirSync(dir).filter((f) => f.endsWith(".sql")).sort();
+const t0 = performance.now();
+const db = new PGlite({ extensions: { pg_trgm, vector } });
+let n = 0, bytes = 0;
+for (const f of files) {
+  const text = readFileSync(path.join(dir, f), "utf8");
+  if (baselineThroughOf(text) !== null) continue;
+  bytes += text.length;
+  for (const s of statementsOf(text)) await db.exec(s);
+  n++;
+}
+const t1 = performance.now();
+await db.close();
+console.log(`files ${n}, ${(bytes / 1e6).toFixed(1)} MB of SQL, ${((t1 - t0) / 1000).toFixed(1)} s, rss ${(process.memoryUsage().rss / 1e6).toFixed(0)} MB`);

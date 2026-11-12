@@ -1,0 +1,27 @@
+// Small helpers re-declared with identical text in several files (non-test src). Read-only.
+import { readFileSync, readdirSync, statSync } from "node:fs";
+import { join, relative } from "node:path";
+const REPO = "/home/user/kaizen-store";
+const walk = (d, acc = []) => { for (const n of readdirSync(d)) { const p = join(d, n); if (statSync(p).isDirectory()) walk(p, acc); else if (/\.(ts|tsx)$/.test(n) && !/\.(test|spec)\./.test(n)) acc.push(p); } return acc; };
+const files = walk(join(REPO, "src")).filter((f) => !/\/lib\/(admin-messages|messages)\//.test(f));
+const one = new Map(), names = new Map();
+for (const f of files) {
+  const src = readFileSync(f, "utf8"); const seen = new Set(), seenN = new Set();
+  // top-level one-line or short arrow/function declarations (not exported or exported), up to 4 lines
+  const re = /^(?:export )?(?:const|function|async function) ([A-Za-z_$][\w$]*)\b[^\n]*(?:\n(?!\n)(?:  |\}|\))[^\n]*){0,5}/gm; let m;
+  while ((m = re.exec(src))) {
+    const text = m[0].replace(/^export /, "").replace(/\s+/g, " ").trim();
+    const name = m[1];
+    if (!/=>|function/.test(text) || text.length < 60 || text.length > 600) continue;
+    if (!seen.has(text)) { seen.add(text); const e = one.get(text) ?? { n: 0, files: [], name, lines: m[0].split("\n").length }; e.n++; if (e.files.length < 3) e.files.push(relative(REPO, f)); one.set(text, e); }
+    if (!seenN.has(name)) { seenN.add(name); names.set(name, (names.get(name) ?? 0) + 1); }
+  }
+}
+const dup = [...one.entries()].filter(([, v]) => v.n >= 3).sort((a, b) => b[1].n - a[1].n);
+const extra = dup.reduce((a, [, v]) => a + (v.n - 1) * v.lines, 0);
+console.log(`identical small helpers declared in >=3 files: ${dup.length} helpers, ${dup.reduce((a, [, v]) => a + v.n, 0)} declarations, ${extra} lines beyond one copy each`);
+const dup2 = [...one.entries()].filter(([, v]) => v.n === 2); console.log(`declared in exactly 2 files: ${dup2.length} helpers (${dup2.reduce((a, [, v]) => a + v.lines, 0)} lines beyond one copy)`);
+for (const [t, v] of dup.slice(0, 40)) console.log(`${v.n}x ${v.lines}l  ${t.slice(0, 190)}`);
+console.log("\nSame helper NAME defined at top level in many files (bodies may differ):");
+for (const [n, c] of [...names.entries()].filter(([, c]) => c >= 12).sort((a, b) => b[1] - a[1]).slice(0, 50)) process.stdout.write(`${n}:${c}  `);
+console.log();

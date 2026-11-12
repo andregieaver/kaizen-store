@@ -1,0 +1,35 @@
+// Watches one page for a repeated prefetch and prints the answer's headers and body: node storm2.mjs <url> [seconds] [phone|desk]
+import { createRequire } from "node:module";
+const require = createRequire("/home/user/kaizen-store/");
+const { chromium } = require("playwright-core");
+const url = process.argv[2], seconds = Number(process.argv[3] ?? 4), form = process.argv[4] ?? "phone";
+const browser = await chromium.launch({ executablePath: "/opt/pw-browsers/chromium", args: ["--no-sandbox"] });
+const context = await browser.newContext(form === "phone" ? { viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true, deviceScaleFactor: 2 } : { viewport: { width: 1440, height: 900 } });
+const page = await context.newPage();
+const seen = new Map();
+const bodies = new Map();
+page.on("response", async (r) => {
+  const req = r.request();
+  const h = req.headers();
+  if (!h["next-router-prefetch"] && !h["rsc"]) return;
+  const key = `${new URL(r.url()).pathname} | seg=${h["next-router-segment-prefetch"] ?? "-"}`;
+  const e = seen.get(key) ?? { n: 0, status: r.status(), resHeaders: r.headers(), reqHeaders: h };
+  e.n++;
+  seen.set(key, e);
+  if (e.n === 3) { try { bodies.set(key, (await r.text()).slice(0, 1500)); } catch (err) { bodies.set(key, "ERR " + err.message); } }
+});
+await page.goto(url, { waitUntil: "load" });
+await page.waitForTimeout(seconds * 1000);
+const rows = [...seen.entries()].sort((a, b) => b[1].n - a[1].n);
+console.log("distinct rsc/prefetch keys:", rows.length, "total:", rows.reduce((s, [, e]) => s + e.n, 0));
+for (const [k, e] of rows.slice(0, 12)) console.log(String(e.n).padStart(6), e.status, k);
+const [k, e] = rows[0];
+if (e.n > 20) {
+  console.log("\nREQ headers:", JSON.stringify(Object.fromEntries(Object.entries(e.reqHeaders).filter(([x]) => /next|rsc|cache|purpose/i.test(x))), null, 1));
+  console.log("RES headers:", JSON.stringify(e.resHeaders, null, 1));
+  console.log("BODY:", JSON.stringify(bodies.get(k)));
+}
+// also print one non-looping segment prefetch answer for contrast
+const calm = rows.find(([kk, ee]) => ee.n <= 2 && /seg=\//.test(kk));
+if (calm) { console.log("\nCALM:", calm[0], calm[1].n); console.log("RES headers:", JSON.stringify(calm[1].resHeaders, null, 1)); }
+await browser.close();

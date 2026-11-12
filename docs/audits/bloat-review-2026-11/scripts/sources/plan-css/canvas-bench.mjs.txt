@@ -1,0 +1,17 @@
+import "../hooks.mjs";
+const L = "/home/user/kaizen-store/src/lib/";
+const pc = await import(L + "part-css.ts");
+const bp = await import(L + "breakpoints.ts");
+const te = await import(L + "theme-elements.ts");
+const th = await import(L + "theme.ts");
+const sig = await import(L + "signature/meridian.ts");
+const theme = sig.MERIDIAN, pack = sig.MERIDIAN_PACK;
+const settings = th.parseStoreTheme({ base: theme.snapshot.theme.base, settings: theme.snapshot.theme.settings }).settings;
+const content = sig.meridianHomePage(pack, () => null);
+const time = (name, n, fn) => { for (let i = 0; i < 50; i++) fn(); const t = process.hrtime.bigint(); let out; for (let i = 0; i < n; i++) out = fn(); const us = Number(process.hrtime.bigint() - t) / 1e3 / n; console.log(name.padEnd(70), us.toFixed(0), "us", typeof out === "string" ? out.length + " chars" : ""); };
+const rows = te.themedRows(content.rows, settings.elements, settings.sectionStyles);
+console.log("rows", rows.length);
+time("partCss(all rows, canvas) as CanvasPartStyles does per edit", 300, () => pc.partCss(rows, "canvas", bp.DEFAULT_BREAKPOINTS));
+time("partCss(all rows, site) one sheet", 300, () => pc.partCss(rows, "site", bp.DEFAULT_BREAKPOINTS, "media"));
+time("breakpointClassCss(container)", 2000, () => pc.breakpointClassCss(bp.DEFAULT_BREAKPOINTS, "container"));
+time("themedRows(10 rows)", 300, () => te.themedRows(content.rows, settings.elements, settings.sectionStyles));
