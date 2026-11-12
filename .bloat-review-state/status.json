@@ -1,5 +1,5 @@
 {
- "at": "2026-11-12T00:36:39.118Z",
+ "at": "2026-11-12T00:39:41.871Z",
  "status": [
   {
    "key": "storefront-client",
@@ -47,7 +47,7 @@
    "key": "db-schema",
    "audit": true,
    "verify": true,
-   "plan": false
+   "plan": true
   },
   {
    "key": "deps",
@@ -65,7 +65,7 @@
    "key": "ai-context",
    "audit": true,
    "verify": true,
-   "plan": false
+   "plan": true
   },
   {
    "key": "features",
@@ -155,9 +155,7 @@
  "relaunch": {
   "keys": [
    "caching",
-   "db-schema",
    "assets",
-   "ai-context",
    "families",
    "docs-context",
    "page-model",

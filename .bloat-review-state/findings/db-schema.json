@@ -1,0 +1,798 @@
+{
+ "key": "db-schema",
+ "title": "The database's shape",
+ "headline": "The database's shape is sound for a platform about to open: dead objects are rare (1 table, 5 columns, 34 leftover tables), triggers are gated by column and nearly every log has a retention rule; that 245 of 486 tables have held no row says only that the doors are still closed, and nothing is retired for it. What is worth fixing before opening is where cost does not follow use or grows with stores: pg_cron's run log is 564 MB of the 731 MB database and nothing prunes it, every cold start evaluates a 1 MB schema file that no query uses (115 to 135 ms and 9 to 12 MB measured), 122 store filters are written so the store index cannot serve them, and page lists read whole documents (4.2 ms a call against 0.8 ms from a plain column, measured in a local Postgres 18). All 14 verified findings now have ordered steps, the tests and rules that hold them and one check; one was added: indexes are declared in two places and nothing compares them, which is how two of the three duplicates on orders and order_lines arrived. Do first DS-8 (the scheduler's log), DS-1 (the schema import), DS-7 (the store filter) and DS-15 with DS-9 (the duplicate-index test and the 13 drops); DS-6 (the platform kept twice) and DS-13's retention periods wait for the owner.",
+ "metrics": [
+  {
+   "name": "Tables, columns, JSON columns",
+   "value": "486 tables, 5,806 columns, 292 jsonb columns",
+   "how": "Catalog query on the tests' kept database (every migration applied, loaded into an in-memory PGlite, Postgres 18.6): /tmp/claude-0/-home-user-kaizen-store/875cb21b-0ebd-5663-b7c0-2d04a7548e24/scratchpad/work/ds-plan/counts.mjs. Same numbers as the verified report."
+  },
+  {
+   "name": "Indexes, triggers, functions",
+   "value": "1,988 indexes (production reports 1,989); 391 triggers; 617 functions, 331 of them trigger functions; all 617 carry a SET clause and 124 are SQL-language",
+   "how": "pg_index, pg_trigger and pg_proc on the same database (/tmp/claude-0/-home-user-kaizen-store/875cb21b-0ebd-5663-b7c0-2d04a7548e24/scratchpad/work/ds-plan/idx-check.mjs, counts.mjs, misc.mjs)."
+  },
+  {
+   "name": "The hot tables' write cost in objects",
+   "value": "89 indexes and 60 triggers on the eight hot tables: orders 34 and 27, products 13 and 14, carts 11 and 1, order_lines 9 and 5, customers 8 and 6, product_variants 6 and 7, cart_lines 5 and 0, visits 3 and 0",
+   "how": "pg_index and pg_trigger for the HOT_TABLES of src/db/migration-safety.scan.test.ts:20 (/tmp/claude-0/-home-user-kaizen-store/875cb21b-0ebd-5663-b7c0-2d04a7548e24/scratchpad/work/ds-plan/dupsql.mjs, hot.mjs)."
+  },
+  {
+   "name": "orders",
+   "value": "92 columns, 8 jsonb, 34 indexes (18 partial, 3 GIN), 27 triggers, 34 checks, 10 foreign keys out, 41 in. stores has 309 foreign keys pointing at it.",
+   "how": "/tmp/claude-0/-home-user-kaizen-store/875cb21b-0ebd-5663-b7c0-2d04a7548e24/scratchpad/work/ds-plan/hot.mjs on the real schema."
+  },
+  {
+   "name": "Redundant indexes",
+   "value": "13 clear: 10 plain indexes that are a leading prefix of a unique key, orders_retention_idx and orders_invoice_candidates_idx (same key as orders_store_placed_idx, conditions nearly always true), and order_lines_order_idx (same key as the covering order_lines_analytics_idx). After dropping them in PGlite: 1,975 indexes, and the retention, visits, payout, token and recovery-code reads still get an index.",
+   "how": "/tmp/claude-0/-home-user-kaizen-store/875cb21b-0ebd-5663-b7c0-2d04a7548e24/scratchpad/work/ds-plan/redundant.mjs over the parsed index list, a catalog query (/tmp/claude-0/-home-user-kaizen-store/875cb21b-0ebd-5663-b7c0-2d04a7548e24/scratchpad/work/ds-plan/dupsql.mjs: 12 pairs, 11 distinct plain indexes) and EXPLAIN before and after the 13 drops with enable_seqscan off (/tmp/claude-0/-home-user-kaizen-store/875cb21b-0ebd-5663-b7c0-2d04a7548e24/scratchpad/work/ds-plan/idx-check.mjs)."
+  },
+  {
+   "name": "Indexes not declared in schema.ts",
+   "value": "46 of the 1,059 non-unique indexes are named nowhere in src/db/schema.ts; 12 of them sit on hot tables, among them orders_invoice_candidates_idx and order_lines_analytics_idx, each a twin of an index schema.ts does declare",
+   "how": "Index names from pg_index searched in the text of schema.ts (/tmp/claude-0/-home-user-kaizen-store/875cb21b-0ebd-5663-b7c0-2d04a7548e24/scratchpad/work/ds-plan/dupsql.mjs)."
+  },
+  {
+   "name": "What an index on a nullable foreign-key column costs",
+   "value": "414 plain indexes end in a nullable foreign-key column (6 on carts, 8 on orders). Measured: a guest cart insert takes 30 to 34 µs with carts' 11 indexes and 23 to 26 µs when the six are made partial, so about 1 µs each; each stores about 7 bytes a row (btree deduplication of NULLs). Not worth changing.",
+   "how": "/tmp/claude-0/-home-user-kaizen-store/875cb21b-0ebd-5663-b7c0-2d04a7548e24/scratchpad/work/ds-plan/carts-bench.mjs: 4 runs of 20,000 inserts on the real carts table in PGlite (wasm, so slower than production in absolute terms)."
+  },
+  {
+   "name": "Page reads: whole document, JSON operator, plain column",
+   "value": "4.2 ms, 1.5 ms and 0.8 ms a call for one store's 29 published pages (252,719 bytes of rows against 4,265); the remembered-modal check 1.4 ms by jsonb_path_exists against 0.6 ms from a flag column",
+   "how": "/tmp/claude-0/-home-user-kaizen-store/875cb21b-0ebd-5663-b7c0-2d04a7548e24/scratchpad/work/ds-plan/pages-bench.mjs: 1,392 pages built from ten real page documents (mean 8.3 KB) in a copy of the pages table, 300 calls each, PGlite. Relative numbers; PGlite has a floor of about 0.5 ms a call."
+  },
+  {
+   "name": "The sandbox purge on the real schema",
+   "value": "400 store tables, so 400 dynamic deletes a pass and at least two passes; one pass that finds nothing took 64 to 293 ms and left 2,129 relation locks held by the transaction",
+   "how": "/tmp/claude-0/-home-user-kaizen-store/875cb21b-0ebd-5663-b7c0-2d04a7548e24/scratchpad/work/ds-plan/purge-real.mjs: the function's own loop run for a store id that owns nothing, three times, with pg_locks read before commit."
+  },
+  {
+   "name": "Schema module at server start",
+   "value": "schema.ts is 1,059,413 bytes and 19,614 lines; 85 to 100 ms to evaluate and 30 to 37 ms for drizzle to index it, 9 to 12 MB of heap (the verified report's timing); its table definitions sit in 6 server chunk files of the finished build",
+   "how": "wc on the file; my rg for the schema-only name orders_store_placed_idx over .next/server (12 files: 6 .js and their 6 maps); the timing is the verified report's 11 runs, not repeated here."
+  },
+  {
+   "name": "Queries that use the schema object",
+   "value": "0. One runtime importer (src/db/client.ts:11); the only other importers are src/server/store-export.scan.test.ts:4 and drizzle.config.ts:7",
+   "how": "rg for imports of db/schema and for select, insert, update, delete, query, findMany on db() or tx over src."
+  },
+  {
+   "name": "Null-safe store comparison",
+   "value": "122 uses of `store_id is not distinct from` in 40 files (tests left out); 63 tables allow a null store_id; 19 platform_* tables",
+   "how": "rg -i -c over src; catalog query (/tmp/claude-0/-home-user-kaizen-store/875cb21b-0ebd-5663-b7c0-2d04a7548e24/scratchpad/work/ds-plan/counts.mjs). The verified report's EXPLAIN (sequential scan against an index scan) was not repeated."
+  },
+  {
+   "name": "Row level security",
+   "value": "On for all 486 tables, 0 policies, forced on none: the app's role owns the tables, so no query pays for a policy",
+   "how": "pg_class and pg_policies (/tmp/claude-0/-home-user-kaizen-store/875cb21b-0ebd-5663-b7c0-2d04a7548e24/scratchpad/work/ds-plan/misc.mjs)."
+  },
+  {
+   "name": "Scheduled objects",
+   "value": "9 pg_cron jobs every minute, 1 every five minutes, 4 daily (two of them retention deletes); the dispatcher runs 78 jobs through runJobs() and 5 more after it",
+   "how": "/home/user/kaizen-store/supabase/migrations/20261111172842_baseline_4_roles_and_supabase.sql:93-113 read; rg count of job lines and of tracked(\"dispatcher.…\") in src/app/api/cron/cart-reminders/route.ts."
+  },
+  {
+   "name": "Database size",
+   "value": "731 MB: pg_cron's run log 564 MB (77%), commerce 124 MB, pg_catalog 27 MB, net 8.5 MB; a leftover commerce_legacy schema holds 34 tables and 96 rows",
+   "how": "/tmp/claude-0/-home-user-kaizen-store/875cb21b-0ebd-5663-b7c0-2d04a7548e24/scratchpad/m/prod-db-stats.md (Size and shape). Not measured by me: production may not be queried in this review."
+  },
+  {
+   "name": "Database time of the app's top statements",
+   "value": "About 2,360 s in 78 days (30 s a day) outside pg_cron's own 3,974 s of net.http_post; the three page statements are 968 s of it (781 + 66 + 121)",
+   "how": "Sums of the Total column in /tmp/claude-0/-home-user-kaizen-store/875cb21b-0ebd-5663-b7c0-2d04a7548e24/scratchpad/m/prod-db-stats.md."
+  }
+ ],
+ "clean": [
+  "Dead columns are rare: six names appear nowhere outside schema.ts (I searched each: contact_checked_at, first_seen_at, secret_key_hint, webhook_secret_hint, legal_basis, source_updated_at), and legal_basis holds reference data.",
+  "No SQL function is dead: supabase/seed.sql:232-241 calls the add_demo_* functions (I opened it), and only one function in the baseline builds statements from the catalog (purge_sandbox).",
+  "Triggers are gated by column. I read the ones that fire on any product update (assert_product_publishable, products_first_active, integration_product_events) and on order lines: indexed lookups by store, no loops. carts has 1 trigger, cart_lines and visits none.",
+  "Row level security is on for all 486 tables with no policy and not forced, as the advisors ask for a private schema; the app's role owns the tables, so no statement evaluates a policy.",
+  "Indexes on nullable foreign-key columns are nearly free: about 1 µs and 7 bytes a row each, measured on carts in PGlite. Leave the 414 of them, and the written rule that every foreign key has its index.",
+  "The 39 unique (store_id, id) keys nothing points at yet are rule P1's anchor (docs/platform.md:12: child tables reference their parent by store and id). Leave them.",
+  "Binary data in the database is bounded: two bytea columns, font_files.data (163 rows, 5.7 MB) and carrier_labels.pdf, which the daily retention run deletes after 30 days (src/server/retention.ts:450).",
+  "Search by meaning reads only the asking store's vectors: product_embeddings has (store_id, space) and the query filters on both (src/server/search.ts:213-218). There is no vector index; that is fine until one store has tens of thousands of products.",
+  "Every insert into commerce.pages names its columns (9 statements in src, 4 in SQL functions), so derived columns can be added to pages without touching a writer.",
+  "Only three statements write commerce.ui_translations, all in src/server/ui-text.ts (lines 211, 305, 315), so a version stamp for the poll has two writers to change.",
+  "Retention exists for nearly every log (status_checks 91 days, ai_usage 400 days, integration deliveries 30 days, cookie scans 90 days by a pg_cron job, carrier labels 30 days); the gaps are in DS-8 and DS-13.",
+  "No client component imports schema.ts or a type from it.",
+  "The migration folder is lean: four baseline files of 3.99 MB; the 789 old files are in supabase/archive by rule D572.",
+  "queue_integration_event and the dispatcher's 'is anything due' first reads already follow use: a store with no integration or no due work costs an indexed probe."
+ ],
+ "refuted": [
+  {
+   "id": "DS-16",
+   "title": "The dispatcher does 12.5 s of database work every five minutes for unused features",
+   "why": "runJobs() starts all its jobs at once (src/server/cron-runs.ts:117) on a pool of 5 connections (src/db/client.ts:68) and times each around the whole job, so the per-job times overlap; the whole tick took about 1.3 s. Most jobs begin with one cheap due-read."
+  },
+  {
+   "id": "DS-17",
+   "title": "Seven SQL functions are called by nothing",
+   "why": "supabase/seed.sql:232-241 calls the add_demo_* functions and the Demo products rule requires them; bonus_verify and referral_verify are documented checks that tests call."
+  },
+  {
+   "id": "DS-18",
+   "title": "The 245 tables that never held a row and the 1,006 indexes never scanned are bloat to retire",
+   "why": "The platform is not open yet, so every feature is unused; 966 of those indexes sit on tables waiting for their first row. No running cost was shown for them."
+  },
+  {
+   "id": "DS-19",
+   "title": "Indexes on nullable foreign-key columns should become partial (414 of them, 6 on carts, 8 on orders)",
+   "why": "My own candidate, refuted by measurement: about 1 µs and 7 bytes a row each on carts in PGlite, because btree deduplicates the NULL entries."
+  },
+  {
+   "id": "DS-20",
+   "title": "The 39 unique (store_id, id) keys that no foreign key points at are redundant",
+   "why": "They are rule P1's anchor (docs/platform.md:12); adding one later on a hot table is harder than having it from the start."
+  }
+ ],
+ "findings": [
+  {
+   "id": "DS-8",
+   "title": "pg_cron's run log is 564 MB of the 731 MB database and nothing prunes it",
+   "kind": "oversize",
+   "where": [
+    "/home/user/kaizen-store/supabase/migrations/20261111172842_baseline_4_roles_and_supabase.sql:64-113",
+    "/home/user/kaizen-store/docs/ci-migrations.md:30-46",
+    "/home/user/kaizen-store/scripts/lib/restore-check.mjs:22-30",
+    "/tmp/claude-0/-home-user-kaizen-store/875cb21b-0ebd-5663-b7c0-2d04a7548e24/scratchpad/m/prod-db-stats.md"
+   ],
+   "evidence": "The statistics give 731 MB for the database: the cron schema 564 MB, commerce 124 MB. pg_cron writes one row to cron.job_run_details per run with the whole command text. The baseline schedules 9 jobs a minute, 1 every five minutes and 4 daily (baseline_4:93-113, which I read): 13,252 rows a day. Two of the daily jobs are retention deletes (consents, cookie_scans); none prunes the run log. rg for job_run_details over src, scripts and supabase finds nothing.",
+   "cost": "Measured: 564 MB, 77% of the database. Estimate: about 8 MB more a day at today's schedule (13,252 rows of about 0.6 KB), about 3 GB a year, whatever the number of stores. Larger backups, slower restores and branches.",
+   "who_pays": "The database",
+   "fix_steps": [
+    "1. Before writing the file, read two facts on production (one read-only statement through the Supabase tool): select has_table_privilege('postgres', 'cron.job_run_details', 'TRUNCATE') as may_truncate, count(*) as rows, pg_size_pretty(pg_total_relation_size('cron.job_run_details')) as size from cron.job_run_details.",
+    "2. Make a custom migration: pnpm exec drizzle-kit generate --custom --name cron_run_log_retention, then node scripts/prune-snapshots.mjs. Its body is one DO block that does nothing where the cron schema is missing (the tests' PGlite and CI's Postgres have none): IF EXISTS (SELECT 1 FROM pg_namespace WHERE nspname = 'cron') THEN … END IF.",
+    "3. Inside the block, empty the log once: IF has_table_privilege(current_user, 'cron.job_run_details', 'TRUNCATE') THEN TRUNCATE cron.job_run_details; ELSE DELETE FROM cron.job_run_details WHERE end_time < now() - interval '7 days'; END IF. TRUNCATE gives the space back at once; a DELETE only lets it be reused. The app never reads this log (its own ledger is commerce.cron_jobs).",
+    "4. In the same block schedule the standing prune, as the two retention jobs at baseline_4:105-113 are scheduled: PERFORM cron.schedule('kaizen-cron-log-retention', '41 3 * * *', $job$ DELETE FROM cron.job_run_details WHERE end_time < now() - interval '7 days' $job$). cron.schedule with a name replaces the job of that name, so the file can run again.",
+    "5. Do not edit baseline_4 (D572: a baseline is never edited). At the next quarterly squash, scripts/squash-migrations.mjs lists files with a scheduler step: fold this job into the new baseline_4 by hand (docs/ci-migrations.md:46).",
+    "6. Push the file; CI's release job applies it. Then check the advisors and record the file's version in docs/decisions.md under Migration versions.",
+    "7. If step 3 could only delete and the 564 MB matter (backups, branches), ask for one VACUUM FULL cron.job_run_details from a role that owns the table; otherwise leave it: the file stops growing."
+   ],
+   "tests_and_rules": [
+    "src/db/commerce.test.ts and every src/db/*.test.ts apply all migrations to PGlite through src/db/testing.ts: the file must be a no-op there (the guard of step 2).",
+    "scripts/db-setup.mjs --seed on CI's Postgres service, which has no pg_cron: the same guard.",
+    "src/lib/restore-check.test.ts and scripts/lib/restore-check.mjs:22-30: the restore check fails only for jobs that call out; the new job does not, so the test stays green. docs/runbooks/restore.md:36 unschedules every job on a copy, this one included.",
+    "src/db/migration-safety.scan.test.ts: no hot table is touched.",
+    "Rules: CLAUDE.md Database (never apply a migration by hand first; record the version; never edit a baseline) and docs/ci-migrations.md:30-46."
+   ],
+   "depends_on": [],
+   "done_when": "On production a week after the deploy, the size-by-schema query in /tmp/claude-0/-home-user-kaizen-store/875cb21b-0ebd-5663-b7c0-2d04a7548e24/scratchpad/m/prod-db-stats.md shows the cron schema under 80 MB (564 MB today) where TRUNCATE ran, or select count(*) from cron.job_run_details is under 100,000 where only the delete could run.",
+   "saving": "Estimate: about 500 MB once (where TRUNCATE is allowed) and growth of about 8 MB a day stopped at about 60 MB (7 days of rows).",
+   "effort": "S",
+   "risk": "Low. Nothing reads the run log. What could break: the role may lack TRUNCATE on the table, which the privilege test of step 3 handles; a TRUNCATE waits for pg_cron's own writes for a moment, inside the migration's 30 s lock limit. A failure shows as a red release job and nothing is applied.",
+   "confidence": "high",
+   "priority": "P0",
+   "already_tracked": "no",
+   "owner_decision": false,
+   "verdict": "corrected",
+   "notes": "The verified report said to add the job 'in baseline_4's block and a new migration'; the baseline must not be edited, so only the new migration. Whether the postgres role may TRUNCATE or VACUUM FULL the table could not be checked here (production is not to be queried in this review). Fewer per-minute jobs (DQ-1) shrink the steady state further."
+  },
+  {
+   "id": "DS-1",
+   "title": "Every server start loads the whole schema file, which no query uses",
+   "kind": "eager",
+   "where": [
+    "/home/user/kaizen-store/src/db/client.ts:11",
+    "/home/user/kaizen-store/src/db/client.ts:31",
+    "/home/user/kaizen-store/src/db/client.ts:78",
+    "/home/user/kaizen-store/src/instrumentation.ts:8",
+    "/home/user/kaizen-store/src/server/ui-text.ts:5",
+    "/home/user/kaizen-store/src/db/schema.ts:1",
+    "/home/user/kaizen-store/drizzle.config.ts:7",
+    "/home/user/kaizen-store/src/server/store-export.scan.test.ts:4",
+    "/home/user/kaizen-store/docs/audits/code-review-2026-11.md:116",
+    "/home/user/kaizen-store/docs/audits/code-review-2026-11.md:268",
+    "/home/user/kaizen-store/docs/audits/code-review-2026-11.md:484"
+   ],
+   "evidence": "client.ts imports the whole schema (line 11) and hands it to drizzle() (line 78). No file uses the query builder: my rg for select, insert, update, delete, query or findMany on db() or tx finds only tests' own tx.query on PGlite. The only other importers of schema.ts are one scan test and drizzle.config.ts. The instance-start hook loads client.ts through ui-text.ts (instrumentation.ts:8). In the finished build 6 server chunk files hold the schema-only name orders_store_placed_idx. The verified timing, 11 runs: 85 to 100 ms to evaluate the module, 30 to 37 ms for drizzle to index it, 9 to 12 MB of heap.",
+   "cost": "About 115 to 135 ms of CPU and 9 to 12 MB of memory at every cold instance start (measured on this machine, not on Vercel); the schema's 652 KB of minified code in 6 server chunk files. Per cold instance, so it grows with traffic spread and deploys, not with stores.",
+   "who_pays": "The first shopper or owner on every cold instance; the build",
+   "fix_steps": [
+    "1. src/db/client.ts: delete line 11 (import * as schema from \"./schema\"). Line 31 becomes type Database = NodePgDatabase; (drizzle's default, an empty schema). Line 78 becomes drizzle({ client: pool }). Db, withRows(), readDb() and replicaDb() keep their shapes.",
+    "2. Add src/db/schema-import.scan.test.ts: walk src (tests left out) and fail when a file imports @/db/schema or ./schema, so the module cannot return to the running code. schema.ts stays where it is as the source for drizzle-kit (drizzle.config.ts:7) and for src/server/store-export.scan.test.ts.",
+    "3. Run pnpm typecheck, pnpm test and pnpm test:int: every server module compiles against Db, so a type that leaned on the schema generic would fail here (none was found).",
+    "4. pnpm build, then count the chunk files that still hold the schema: rg -l --no-ignore -F orders_store_placed_idx .next/server -g '*.js' | wc -l.",
+    "5. In docs/audits/code-review-2026-11.md set step 3.14 to Done with the date and commit (its done-when is exactly this: client.ts no longer imports the schema and pnpm db:check writes no migration), correct FD5's line counts and add a change-log line. Say there that splitting the file by area was left: it saves reading only."
+   ],
+   "tests_and_rules": [
+    "src/db/client.test.ts imports ./client: must pass unchanged.",
+    "src/server/store-export.scan.test.ts:4 imports @/db/schema and must keep working: it is a test, and step 2's scan leaves tests out.",
+    "pnpm db:check and src/db/snapshots.scan.test.ts: untouched, schema.ts is not edited.",
+    "Tests that read schema.ts as text or skip it by path (src/app/admin/admin-schemes.test.ts:149, src/lib/sql-raw.scan.test.ts:16, src/lib/payment-readers.scan.test.ts:71, src/server/store-starters.scan.test.ts:22, src/server/price-audit-scan.test.ts:23, scripts/lib/ratchet-count.mjs:27): untouched by step 1; they are what a later split by area would have to move.",
+    "Rule: code review FD5 and step 3.14 (Open). CLAUDE.md Database ('Server code reaches it through db()') stays true."
+   ],
+   "depends_on": [],
+   "done_when": "After pnpm build, rg -l --no-ignore -F orders_store_placed_idx .next/server -g '*.js' | wc -l prints 0 (6 today).",
+   "saving": "Measured here: about 115 to 135 ms and 9 to 12 MB per cold start, and the schema's code out of 6 server chunk files.",
+   "effort": "S",
+   "risk": "Low. Nothing reads db().query or a table object. What could break: a type that used NodePgDatabase<typeof schema>; pnpm typecheck shows it at once.",
+   "confidence": "high",
+   "priority": "P0",
+   "already_tracked": "Code review FD5, step 3.14 'Split schema.ts': Open (docs/audits/code-review-2026-11.md:116, :268, :484). The measurements and the fact that the instance-start hook loads it are new.",
+   "owner_decision": false,
+   "verdict": "confirmed",
+   "notes": "Splitting schema.ts into src/db/schema/*.ts is P3: it saves no running cost once step 1 is in, and eight tests and one script name the file by path."
+  },
+  {
+   "id": "DS-7",
+   "title": "`store_id is not distinct from` keeps Postgres from using the store indexes",
+   "kind": "oversize",
+   "where": [
+    "/home/user/kaizen-store/src/server/pages.ts:71",
+    "/home/user/kaizen-store/src/server/pages.ts:694",
+    "/home/user/kaizen-store/src/server/pages.ts:728",
+    "/home/user/kaizen-store/src/server/page-modals.ts:23",
+    "/home/user/kaizen-store/src/server/site-cookies.ts:46",
+    "/home/user/kaizen-store/src/server/cookie-scans.ts:97",
+    "/home/user/kaizen-store/src/server/taxonomy.ts:60",
+    "/home/user/kaizen-store/src/server/page-versions.ts:53",
+    "/home/user/kaizen-store/src/server/media-library.ts:77",
+    "/home/user/kaizen-store/supabase/migrations/20261111172842_baseline_4_roles_and_supabase.sql:106-112",
+    "/home/user/kaizen-store/docs/rules/storefront.md:179"
+   ],
+   "evidence": "122 uses in 40 files (my rg, tests left out). Postgres does not answer IS NOT DISTINCT FROM from a btree index; the verified check ran EXPLAIN ANALYZE in a local Postgres 18.6 on 50,000 rows of the pages shape: a sequential scan (3.5 ms) against an index scan for `=` (0.46 ms) and for `is null`. Production agrees: pages had 199,789 sequential scans reading 203 M rows although (store_id, type, slug) exists; cookie_scans 1,101,927 scans and 962 M rows; terms 183,724. The every-minute cookie-scan claim runs two such subqueries for each site (49,338 calls, 192 s). Other files already write the indexable form through a private owned() helper (media-library.ts:77). The written rule at docs/rules/storefront.md:179 asks for today's wording.",
+   "cost": "About 1.2 billion rows read by scan in 78 days. Small in time today. It grows with stores times rows per table, and the cookie-scan claim grows with stores squared: every site's subquery scans every site's scans, every minute.",
+   "who_pays": "The database",
+   "fix_steps": [
+    "1. New src/server/owned.ts: export const owned = (storeId: string | null, column = sql`store_id`) => (storeId ? sql`${column} = ${storeId}::uuid` : sql`${column} is null`). The branch must be in code: `store_id = null` matches nothing. Replace the private copies (media-library.ts:77 and the others rg 'const owned' src/server finds) with the import.",
+    "2. Move the hot reads first: pages.ts:71 (ownedBy), :694, :697, :728, :733; page-modals.ts:23; taxonomy.ts:59-60; site-cookies.ts:46 and :55; cookie-scans.ts:97-98; page-versions.ts:53 and :71. In the cookie-scan claim, handle the platform's row apart so each subquery is a plain equality.",
+    "3. Then the other files, most uses first (rg -i -c 'store_id is not distinct from' src). Where both sides are columns of a join, write the store branch and the platform branch as a union all, or keep the wording with a comment saying why.",
+    "4. Leave unique keys, on-conflict targets and the pg_cron retention job at baseline_4:106-112 as they are (the job runs once a day; change it when the scheduler block is next folded).",
+    "5. Hold it: in scripts/lib/ratchet-count.mjs count per file the lines with `store_id is not distinct from` followed by a parameter; write the counts into src/server/ratchet.baseline.json through node scripts/ratchet.mjs; add a case to src/server/ratchet.scan.test.ts that no file's count rises.",
+    "6. Reword docs/rules/storefront.md:179 ('every query asks store_id is not distinct from') to 'every query filters with owned(storeId)'. The rule's reason, one query for a store and for Kaizena Flow, is kept."
+   ],
+   "tests_and_rules": [
+    "The int tests that run a store and the platform's null through these reads: src/server/pages.int.test.ts, redirect-resolve.int.test.ts, country-content.int.test.ts, consents.int.test.ts, cookie-scans.int.test.ts, page-versions.int.test.ts.",
+    "src/server/ratchet.scan.test.ts and scripts/lib/ratchet-count.mjs:39, which recognises owned( by name for the by-id-writes count: an imported helper must still count.",
+    "src/lib/sql-raw.scan.test.ts: the helper uses sql templates, not sql.raw.",
+    "Rule: docs/rules/storefront.md:179, changed in step 6."
+   ],
+   "depends_on": [],
+   "done_when": "The ratchet's new count of `store_id is not distinct from` sums to no more than the commented column-to-column joins left (122 today by rg -i -c over src), and on production seq_scan of commerce.cookie_scans in pg_stat_user_tables grows by fewer than 1,000 a day (about 14,000 a day today: 1,101,927 in 78 days).",
+   "saving": "Estimate: the sequential scans on pages, cookie_scans, terms and menus become index reads; a few seconds of database time a day now, and at scale the difference between an index probe and a full scan on each cache fill and each minute.",
+   "effort": "M",
+   "risk": "Low. Only where clauses change. What could break: a call that passed null and now needs the `is null` branch; the int tests that run the platform's rows catch it.",
+   "confidence": "high",
+   "priority": "P0",
+   "already_tracked": "no",
+   "owner_decision": false,
+   "verdict": "confirmed",
+   "notes": "The same work as DQ-8 in the queries dimension, with the same helper and ratchet: do it once, and first, so the new reads of DS-4 and DS-5 are written with the helper from the start. The ten hot reads alone are S."
+  },
+  {
+   "id": "DS-15",
+   "title": "Indexes are declared in two places and nothing compares them, which is how duplicates reached orders and order_lines",
+   "kind": "process",
+   "where": [
+    "/home/user/kaizen-store/supabase/migrations/20261111172841_baseline_3_rules.sql:10328",
+    "/home/user/kaizen-store/supabase/migrations/20261111172841_baseline_3_rules.sql:10062",
+    "/home/user/kaizen-store/supabase/migrations/20261111172841_baseline_3_rules.sql:10076",
+    "/home/user/kaizen-store/src/db/schema.ts:4899",
+    "/home/user/kaizen-store/src/db/schema.ts:5092",
+    "/home/user/kaizen-store/docs/ci-migrations.md:60-62",
+    "/home/user/kaizen-store/src/db/migration-safety.scan.test.ts:20",
+    "/home/user/kaizen-store/package.json"
+   ],
+   "evidence": "An index is made either in src/db/schema.ts (drizzle writes the migration) or by hand in a custom migration, as the rule for hot tables requires for a concurrent build (docs/ci-migrations.md:60-62). pnpm db:check compares schema.ts with drizzle's own snapshot, so a hand-written index is invisible to it. On the migrated test database 46 of the 1,059 non-unique indexes are named nowhere in schema.ts, 12 of them on hot tables. Two of those 12 are twins of a declared index: orders_invoice_candidates_idx (baseline_3:10328) has the key of orders_store_placed_idx (schema.ts:4899), and order_lines_analytics_idx (baseline_3:10062) has the key of order_lines_order_idx (schema.ts:5092, baseline_3:10076). No test looks for an index led by another: a catalog query I ran on the test database finds 11 such plain indexes today.",
+   "cost": "No direct cost. Each duplicate that slips in is one more index entry on every write of its table, and the hot tables are where hand-written indexes are made.",
+   "who_pays": "The database per write, later; CI",
+   "fix_steps": [
+    "1. Add src/db/index-duplicates.test.ts, using createTestDatabase() from src/db/testing.ts like the other src/db tests. It runs one catalog query: for btree indexes of schema commerce, list each plain (not unique) index A whose key columns, taken with pg_get_indexdef(indexrelid, k, true) for k in 1..indnkeyatts, equal the leading columns of another index B on the same table, where B is longer, or unique, or A's name sorts after B's. The working query is in the scratch file named in notes.",
+    "2. First case: A and B both without a WHERE clause. Expect no rows. Today it returns 11 distinct indexes (12 pairs); DS-9 removes them, so land this test with DS-9 or start with those 11 names in an allowed list that DS-9 empties.",
+    "3. Second case: A partial, B not partial, same leading columns. Expect only an allowed list, each with its reason in the test: ai_usage_autopilot_idx, order_events_restock_idx, price_lists_exclusive_idx, payments_captured_idx, orders_list_placed_idx and orders_list_archived_idx (selective conditions or different order). orders_retention_idx and orders_invoice_candidates_idx are on it only until DS-9 drops them.",
+    "4. Add one sentence to docs/ci-migrations.md after line 62: an index written by hand is checked against the table's other indexes by src/db/index-duplicates.test.ts; when it replaces a declared one, the declared line leaves schema.ts in the same change."
+   ],
+   "tests_and_rules": [
+    "src/db/migration-safety.scan.test.ts and docs/ci-migrations.md:48-66 (the rule that sends hot-table indexes to hand-written files): unchanged, the new test is its counterpart.",
+    "src/test/test-db-template.ts builds the PGlite template the new test loads; no change.",
+    "pnpm db:check keeps comparing schema.ts with its snapshot; this test covers what it cannot see."
+   ],
+   "depends_on": [
+    "DS-9 (the 13 drops empty the first case)"
+   ],
+   "done_when": "pnpm test runs src/db/index-duplicates.test.ts; its first case returns 0 rows (11 today) and it fails when a scratch migration adds create index on commerce.orders (store_id, placed_at).",
+   "saving": "No direct saving; it stops the next duplicate on a hot table at the commit that adds it.",
+   "effort": "S",
+   "risk": "Low. A test only. What could break: a deliberate covering twin; the allowed list with a reason is the way through.",
+   "confidence": "high",
+   "priority": "P1",
+   "already_tracked": "Partly: code review FD7 proposes a standing unused-index check after traffic (step 3.15, Open). A duplicate check at commit time is new.",
+   "owner_decision": false,
+   "verdict": "added",
+   "notes": "Added by the completeness check. The query, run on the real schema in PGlite, is in /tmp/claude-0/-home-user-kaizen-store/875cb21b-0ebd-5663-b7c0-2d04a7548e24/scratchpad/work/ds-plan/dupsql.mjs; the count of undeclared indexes is from the same script."
+  },
+  {
+   "id": "DS-9",
+   "title": "Thirteen indexes duplicate another; orders carries 34, five of them starting (store_id, placed_at)",
+   "kind": "oversize",
+   "where": [
+    "/home/user/kaizen-store/supabase/migrations/20261111172841_baseline_3_rules.sql:10328",
+    "/home/user/kaizen-store/supabase/migrations/20261111172841_baseline_3_rules.sql:10384",
+    "/home/user/kaizen-store/supabase/migrations/20261111172841_baseline_3_rules.sql:10419",
+    "/home/user/kaizen-store/supabase/migrations/20261111172841_baseline_3_rules.sql:10062",
+    "/home/user/kaizen-store/supabase/migrations/20261111172841_baseline_3_rules.sql:10076",
+    "/home/user/kaizen-store/supabase/migrations/20261111172841_baseline_3_rules.sql:14206",
+    "/home/user/kaizen-store/supabase/migrations/20261111172841_baseline_3_rules.sql:5660",
+    "/home/user/kaizen-store/src/db/schema.ts:4899",
+    "/home/user/kaizen-store/src/db/schema.ts:4901",
+    "/home/user/kaizen-store/src/db/schema.ts:5092",
+    "/home/user/kaizen-store/src/db/schema.ts:13544",
+    "/home/user/kaizen-store/src/db/schema.ts:13723",
+    "/home/user/kaizen-store/src/db/schema.ts:8319",
+    "/home/user/kaizen-store/src/db/schema.ts:8353",
+    "/home/user/kaizen-store/src/db/schema.ts:13598",
+    "/home/user/kaizen-store/src/db/schema.ts:14998",
+    "/home/user/kaizen-store/src/db/schema.ts:5809",
+    "/home/user/kaizen-store/src/db/schema.ts:19270",
+    "/home/user/kaizen-store/src/db/schema.ts:6571",
+    "/home/user/kaizen-store/src/db/schema.ts:8644"
+   ],
+   "evidence": "From the index list and the catalog of the migrated test database: ten plain indexes are a leading prefix of a unique key on the same table (account_recovery_codes_account_idx, api_tokens_store_idx, api_uploads_store_idx, legal_snapshots_store_idx, order_edits_order_idx, payout_lines_payout_idx, recurring_costs_store_idx, return_exchanges_return_idx, visits_store_day_idx, webhook_endpoints_store_idx). orders_retention_idx and orders_invoice_candidates_idx have the key of orders_store_placed_idx with conditions nearly every order meets. order_lines_order_idx has the key of the covering order_lines_analytics_idx. I dropped the 13 in PGlite (1,988 to 1,975 indexes) and ran EXPLAIN with sequential scans off: the retention read takes orders_store_placed_idx with anonymised_at as a filter, a store's day of visits takes visits_day_visitor_key as an index-only scan, payout lines take payout_lines_reference_key, tokens api_tokens_store_id_key, recovery codes account_recovery_codes_hash_key. orders has 34 indexes; a plain new order writes 22 entries, and `status` is in three partial indexes' conditions, so a status change writes them again.",
+   "cost": "One extra index entry per row for each duplicate: 2 per order write, 1 per order line, 1 per counted visit. Small per write; visits is where it adds up after opening.",
+   "who_pays": "The database, per write",
+   "fix_steps": [
+    "1. Hot tables first (orders, order_lines, visits are on the list of src/db/migration-safety.scan.test.ts:20). Custom migration: pnpm exec drizzle-kit generate --custom --name drop_duplicate_hot_indexes. First line `-- kaizen:no-transaction`; four statements split by `--> statement-breakpoint`: DROP INDEX CONCURRENTLY IF EXISTS commerce.orders_retention_idx; the same for commerce.orders_invoice_candidates_idx, commerce.order_lines_order_idx and commerce.visits_store_day_idx.",
+    "2. src/db/schema.ts: delete the three declared lines of those (:4901 orders_retention_idx, :5092 order_lines_order_idx, :13544 visits_store_day_idx; orders_invoice_candidates_idx is not declared). At :5092 leave a comment: (store_id, order_id) is served by order_lines_analytics_idx, written in SQL because of its INCLUDE.",
+    "3. Delete the nine other declared lines: :13723, :8319, :8353, :13598, :14998, :5809, :19270, :6571, :8644. Run pnpm db:generate: it writes twelve DROP INDEX statements. Keep the nine in that file (none of their tables is hot) and remove the three hot ones from it, since step 1's file drops them concurrently. Run node scripts/prune-snapshots.mjs and pnpm db:check.",
+    "4. Check the plans on the local database after scripts/db-setup.mjs --seed, with set enable_seqscan = off: the retention step's orders read (src/server/retention.ts) shows orders_store_placed_idx, and a count of commerce.visits for one store and day shows visits_day_visitor_key.",
+    "5. Keep: the three selective partial indexes (ai_usage_autopilot_idx, order_events_restock_idx, price_lists_exclusive_idx), the (store_id, id) keys (rule P1) and the indexes on nullable foreign-key columns (measured: about 1 µs a row each).",
+    "6. docs/audits/code-review-2026-11.md: correct FD7 (34 indexes before, 32 after; the redundant ones dropped, with date and commit) and leave step 3.15 Open for the unused-index review after some weeks of traffic. Record both files' versions in docs/decisions.md and check the advisors."
+   ],
+   "tests_and_rules": [
+    "src/db/migration-safety.scan.test.ts and src/db/migrate-no-transaction.int.test.ts hold the marker and the concurrent statements; docs/ci-migrations.md:48-66 is the rule.",
+    "src/db/commerce.test.ts:6310 expects the unique key visits_day_visitor_key, which stays.",
+    "pnpm db:check and src/db/snapshots.scan.test.ts for the schema.ts edits.",
+    "Int tests whose reads used these indexes must pass unchanged: src/server/retention.int.test.ts, src/server/invoice-issue.int.test.ts, the analytics visits tests, src/server/payouts.int.test.ts.",
+    "src/db/index-duplicates.test.ts (DS-15): its first case goes from 11 rows to 0.",
+    "Rule: a migration never drops what running code needs. Dropping an index breaks no statement; the old code only loses a faster path it did not need."
+   ],
+   "depends_on": [],
+   "done_when": "On the migrated test database select count(*) from pg_indexes where schemaname = 'commerce' gives 1,975 (1,988 today), and select count(*) from pg_indexes where schemaname = 'commerce' and tablename = 'orders' gives 32 (34 today).",
+   "saving": "Measured by count: 13 indexes; 2 fewer entries per order write, 1 per order line and 1 per counted visit.",
+   "effort": "S",
+   "risk": "Low. None of the 13 backs a constraint that another index does not enforce, and every foreign key they served has another index on the same leading columns. What could break: a slower read where a dropped partial index was smaller; it would show as a slow statement in pg_stat_statements, and the index can be built again concurrently.",
+   "confidence": "high",
+   "priority": "P1",
+   "already_tracked": "Code review FD7, step 3.15 'Keep the big tables lean': Open. It counted 24 indexes and named orders_retention_idx; the count is now 34 and the list of 13 is new.",
+   "owner_decision": false,
+   "verdict": "corrected",
+   "notes": "The saving is small; it is P1 because it is half an hour now, while the tables are tiny, and the same change later needs care on busy tables. Land it with DS-15's test."
+  },
+  {
+   "id": "DS-4",
+   "title": "A page's title, its titles by language and its flags live only inside its content JSON, so lists read and parse whole pages",
+   "kind": "oversize",
+   "where": [
+    "/home/user/kaizen-store/supabase/migrations/20261111172839_baseline_1_schema.sql:28427-28440",
+    "/home/user/kaizen-store/src/server/pages.ts:664-683",
+    "/home/user/kaizen-store/src/server/pages.ts:715-737",
+    "/home/user/kaizen-store/src/server/page-modals.ts:16-28",
+    "/home/user/kaizen-store/src/server/pages.ts:362",
+    "/home/user/kaizen-store/src/server/design-presets.ts:567",
+    "/home/user/kaizen-store/src/server/home-takes.ts:190",
+    "/home/user/kaizen-store/src/server/submission-content.ts:177",
+    "/home/user/kaizen-store/supabase/migrations/20261111172839_baseline_1_schema.sql:4049",
+    "/home/user/kaizen-store/supabase/migrations/20261111172839_baseline_1_schema.sql:7818"
+   ],
+   "evidence": "pages has 12 columns and no title: everything is in draft and published (baseline_1:28427-28440). listPublishedPages selects `published` for every page of a store and parses each (pages.ts:668-679); production: 79,778 calls, 781 s, 29 whole pages a call, the costliest app statement. publishedPageNames digs titles out with JSON operators (57,930 calls, 66 s) and usesRememberedModals runs jsonb_path_exists over every published page (68,878 calls, 121 s). All three are cached, so the counts are cache fills by builds, instances and revalidations. I timed the three shapes in PGlite on 1,392 pages made from ten real page documents: the whole documents 4.2 ms a call (252,719 bytes), the title by JSON operator 1.5 ms, a plain column 0.8 ms; the modal check 1.4 ms by path against 0.6 ms from a flag. I also added the three columns below to the real pages table in PGlite as stored generated columns: the statement runs, and an insert that names its columns gets them filled. Every insert into pages names its columns (9 in src, 4 in SQL functions).",
+   "cost": "About 968 s of database time per 78 days in three statements (41% of the app's listed statements), plus parsing about 29 documents per call in Node. After opening it grows with stores times deploys and with cache fills per instance.",
+   "who_pays": "The database; the server per uncached render and at build time",
+   "fix_steps": [
+    "1. First the callers: DQ-2 in the queries dimension moves the 12 readers of one page to a publishedPageById() and the slug and title readers to a publishedPageIndex(). That removes most of the cost with no migration. The steps here are the structural part.",
+    "2. Custom migration for a helper (pnpm exec drizzle-kit generate --custom --name page_titles_fn, then node scripts/prune-snapshots.mjs): create function commerce.page_titles(p jsonb) returns jsonb, language sql, immutable, set search_path to '': select coalesce(jsonb_object_agg(t.key, t.value ->> 'title') filter (where coalesce(t.value ->> 'title', '') <> ''), '{}'::jsonb) from jsonb_each(case when jsonb_typeof(p -> 'translations') = 'object' then p -> 'translations' else '{}'::jsonb end) t.",
+    "3. src/db/schema.ts, table pages: add three stored generated columns with generatedAlwaysAs(): published_title text as (published ->> 'title'); published_titles jsonb as (commerce.page_titles(published)); remembered_modal boolean as (coalesce(jsonb_path_exists(published, '<the path at page-modals.ts:24>'), false)). pnpm db:generate writes one ALTER TABLE; pages is not a hot table, and the rewrite covers 1,389 rows today. No backfill and no writer changes: the database fills them.",
+    "4. src/server/pages.ts publishedPageNames() (:724): the title becomes coalesce(nullif(p.published_titles ->> ${locale ?? ''}, ''), p.published_title). src/server/page-modals.ts: select exists (select 1 from commerce.pages where <owned(storeId)> and published_at is not null and remembered_modal).",
+    "5. DQ-2's publishedPageIndex() selects published_title and published_titles instead of JSON operators.",
+    "6. Say in the Pages rule (docs/rules/admin/website.md, Pages) that the three columns are derived by the database and never written, and that the modal rule now lives in the column's expression: changing it is a migration that drops and adds the column.",
+    "7. Record the versions in docs/decisions.md; check the advisors."
+   ],
+   "tests_and_rules": [
+    "src/server/pages.int.test.ts holds publishedPageNames and usesRememberedModals: add a page with a Norwegian title and a timed modal and expect the same answers as before; add a case that an update of the draft alone leaves the three columns as they were.",
+    "src/db/commerce.test.ts: a new case that a published page gets published_title and published_titles, and that unpublishing empties them.",
+    "Every path that inserts pages must still pass: src/server/page-duplicate.int.test.ts, src/server/store-copy.int.test.ts, src/db/house-site.test.ts (the site copied into the house store), src/db/design-presets.test.ts, src/db/store-starters.test.ts, the site staging tests, src/db/sandboxes.test.ts. A generated column refuses a written value, so a copy that selected every column would fail here.",
+    "src/server/store-export.scan.test.ts and src/db/privacy.test.ts (the registers' detectors read new columns).",
+    "pnpm db:check, src/db/snapshots.scan.test.ts, src/db/migration-safety.scan.test.ts."
+   ],
+   "depends_on": [
+    "DQ-2 (the queries dimension's fix for the same reads; do the callers first)",
+    "DS-7 (the owned() helper for the changed where clauses)"
+   ],
+   "done_when": "rg -n \"published (->>|#>>)|jsonb_path_exists\\(published\" src/server/pages.ts src/server/page-modals.ts prints no line inside publishedPageNames or usesRememberedModals, and on production a week after the deploy the two statements (57,930 and 68,878 calls so far) no longer grow in pg_stat_statements.",
+   "saving": "Estimate. DQ-2 and DS-7 take most of the 781 s. The columns take what is left: about half of each title read and of each modal check (1.5 to 0.8 ms and 1.4 to 0.6 ms a call in PGlite), which is most of 187 s per 78 days today.",
+   "effort": "M",
+   "risk": "Low to medium. What could break: a writer that copies a pages row without naming columns (none found); the copy, duplicate, staging and house-site tests would fail with 'cannot insert a non-DEFAULT value'. The modal rule moves from TypeScript text into a column expression; a test compares both on the modal fixtures before the old path is deleted.",
+   "confidence": "high",
+   "priority": "P1",
+   "already_tracked": "no (code review step 3.9 covers the catalogue, not pages)",
+   "owner_decision": false,
+   "verdict": "confirmed",
+   "notes": "The verified report proposed columns written at publish by every publishing path; stored generated columns need no writer, which removes that risk. Before opening is the cheap moment: the table rewrite is 1,389 rows now."
+  },
+  {
+   "id": "DS-5",
+   "title": "The knowledge job re-cuts pages that have no text every five minutes, and reads every page's content to compare a date",
+   "kind": "eager",
+   "where": [
+    "/home/user/kaizen-store/src/server/knowledge.ts:167-177",
+    "/home/user/kaizen-store/src/server/knowledge.ts:179-193",
+    "/home/user/kaizen-store/src/server/knowledge.ts:196-203",
+    "/home/user/kaizen-store/src/server/knowledge.ts:233-256",
+    "/home/user/kaizen-store/src/server/knowledge.ts:296-312",
+    "/home/user/kaizen-store/supabase/migrations/20261111172839_baseline_1_schema.sql:23688"
+   ],
+   "evidence": "refreshKnowledge loops over every site with its chat agent on (knowledge.ts:297). For each, syncPageKnowledge selects `published` for every published page and article (:170-176), then compares the page's date with the version kept on its passages. A page whose text yields no passages has no kept version, so it is cut again on every run: replacePassages opens a transaction and deletes by page (:249). Production: 91,200 such deletes for 782 rows ever deleted; the content read ran 24,134 times. The chat agent is off by default (chat_agents.enabled defaults to false), so the cost follows sites that switch it on, but not change.",
+   "cost": "About 1,170 pointless transactions and about 310 whole-content reads a day today, for one or two sites. After opening, every five minutes all published content of each site with the chat on is read, changed or not.",
+   "who_pays": "The database and the server on every cron tick",
+   "fix_steps": [
+    "1. Add a small table for what was cut, in src/db/schema.ts then pnpm db:generate: commerce.knowledge_sources (store_id uuid null references stores on delete cascade, page_id uuid null unique references pages on delete cascade, entry_id uuid null unique references content_entries on delete cascade, version text not null, path text null, cut_at timestamptz not null default now(), check that exactly one of page_id and entry_id is set), row level security on as every commerce table.",
+    "2. src/server/knowledge.ts replacePassages() (:233-256): in the same transaction upsert the source's row with its version and path, also when there are no passages. That alone ends the empty re-cuts.",
+    "3. syncPageKnowledge() (:167-177): first a slim read with no document: select p.id, p.type, p.slug, p.published_at, p.published ->> 'blogId' as blog_id, k.version, k.path from commerce.pages p left join commerce.knowledge_sources k on k.page_id = p.id where <owned(storeId)> and p.type in ('page', 'article') and p.published_at is not null. Work out version and path as lines 180-185 do (an article's path needs its blog). Fetch `published` only for the ids whose version or path differ: select id, published from commerce.pages where id = any(…). The same for entries at :196-203 with their type_version.",
+    "4. The delete of passages no longer published (:223-229) also deletes their knowledge_sources rows (or relies on the cascades).",
+    "5. refreshKnowledge() (:296-312): call aiFor() and embedKnowledge() for a site only when something was cut or a passage lacks a vector (select exists (select 1 from commerce.knowledge_chunks where <owned> and space is null)).",
+    "6. One-off fill in a custom migration after it (drizzle-kit generate --custom --name knowledge_sources_fill, then node scripts/prune-snapshots.mjs): insert a row for each page and entry that has passages today, with min(version) and min(path) from knowledge_chunks, so the first tick after the deploy cuts nothing again.",
+    "7. Add the table to the registers a store table needs (src/lib/store-export-scope.ts, src/lib/store-copy-rules.ts, src/lib/personal-data.ts with subject none: it holds dates and addresses, no words)."
+   ],
+   "tests_and_rules": [
+    "src/server/chat.int.test.ts is the test of syncPageKnowledge and refreshKnowledge: add cases that a published page with only pictures is cut once and not again on the next run, that a page published again is cut again, that a changed slug moves the passages' path, and that an unpublished page loses its passages and its source row.",
+    "src/db/commerce.test.ts for the new table's check and cascades; pnpm db:check; src/db/snapshots.scan.test.ts.",
+    "src/server/store-export.scan.test.ts, src/db/privacy.test.ts and the store-copy rules test: a new store table must be decided in each register.",
+    "Rule: docs/rules/storefront.md (the chat agent's knowledge: the five-minute job cuts pages published anew): keep the cadence, name the new table."
+   ],
+   "depends_on": [
+    "DS-7 (owned() in the new reads)"
+   ],
+   "done_when": "On production a day after the deploy the calls of `delete from commerce.knowledge_chunks where page_id = $1` in pg_stat_statements grow by fewer than 20 a day (about 1,170 a day today).",
+   "saving": "Estimate: the 91,200 delete transactions and nearly all 24,134 content reads per 78 days; at scale one slim read per site per tick instead of all its documents.",
+   "effort": "M",
+   "risk": "Low. What could break: a page whose blog address changed without a new publish keeps an old path until its next publish; the path compare in step 3 covers it because the path is worked out on every tick from the slim read. chat.int.test.ts shows a missed re-cut.",
+   "confidence": "high",
+   "priority": "P1",
+   "already_tracked": "no",
+   "owner_decision": false,
+   "verdict": "confirmed",
+   "notes": "The same work as DQ-6 in the queries dimension, which rates it P0 and names the same table; do it once. Rated P1 here because the chat agent is off by default, so the cost starts only where an owner turns it on. Steps 1 and 2 alone end the 91,200 transactions. This adds one table: a column on pages would also do, but content_entries has a trigger on every update (content_entries_rules), so a stamp there is not free."
+  },
+  {
+   "id": "DS-10",
+   "title": "Where each picture is used is found by text-searching every page's JSON, again every day for every picture",
+   "kind": "eager",
+   "where": [
+    "/home/user/kaizen-store/src/server/media-library.ts:25-32",
+    "/home/user/kaizen-store/src/server/media-library.ts:317-322",
+    "/home/user/kaizen-store/src/server/media-library.ts:795-814",
+    "/home/user/kaizen-store/src/server/media-library.ts:825-830",
+    "/home/user/kaizen-store/src/server/media-library.ts:857-873"
+   ],
+   "evidence": "mediaUses() casts each page's draft and published JSON to text and searches it for each picture's address and its small copy's (media-library.ts:321-322), and does the same for entries, menus, saved parts, the theme and navigation. embedMedia() treats a picture as stale when its vector is older than one day, 'so what uses an item is kept current' (:795-799, :810), and calls mediaUses for up to a run's worth of pictures; unchanged texts only have their date moved on (:825-830). The five-minute job loops over every site with media (:857-873). Production: the uses statement ran 3,053 times at 47 to 925 ms, about 380 s; media_embeddings took 13,414 updates on 468 rows. A written rule explains the search: uses are 'never stored, so it is always true' (:27-28).",
+   "cost": "About 380 s of database time per 78 days today, the second costliest app statement. It grows with pictures times pages per site, for every site with media, every day, whether or not anything changed.",
+   "who_pays": "The database and the server per cron tick; the owner's media library when it shows uses, which follows use",
+   "fix_steps": [
+    "1. Keep the rule: uses are looked up, never stored. In embedMedia() replace the one-day clause at :810 with a change test. Before the stale read, read one stamp for the site: the greatest of max(updated_at) over the site's rows in the tables mediaUses() reads (the branches from :321 on: pages, products and their media, content entries, menus, saved parts, the store's or platform's settings, theme looks). Pass it in: `or e.updated_at < ${changedAt}::timestamptz` in place of `or e.updated_at < now() - interval '1 day'`.",
+    "2. For a branch whose table has no updated_at column, keep the daily clause for that case only and say which in a comment. Check each table in src/db/schema.ts before writing the stamp query.",
+    "3. refreshMediaEmbeddings() (:857-873): ask the cheap question first and call aiFor() only for a site with stale rows: select exists (… e.media_id is null or e.updated_at < m.updated_at or e.updated_at < changedAt). A changed model (e.space <> space) is caught once a day: run the full check when now.getUTCHours() === 3 and now.getUTCMinutes() < 5, as autopilot-effects.ts:44 gates its hourly part.",
+    "4. Change the comment at :795-799 from 'or once a day' to 'or when something that can show a picture was saved since'."
+   ],
+   "tests_and_rules": [
+    "src/server/media-library.int.test.ts (uses per picture; search by meaning): add a case that a second run with nothing saved updates no media_embeddings row, and that saving a page that shows a picture makes the next run refresh that picture's 'used in' words.",
+    "src/server/media-compress.int.test.ts, src/server/product-media.int.test.ts, src/server/content-grid-custom.int.test.ts, src/server/theme-store.int.test.ts call mediaUses: unchanged.",
+    "Rules: media-library.ts:25-32 and docs/rules/admin/website.md (the media library: 'used' is worked out on request by mediaUses()) stay as written; docs/media-compression.md:59 (a new place that keeps a picture goes into mediaUses()) now also means: add its table to the stamp of step 1."
+   ],
+   "depends_on": [],
+   "done_when": "On production n_tup_upd of commerce.media_embeddings in pg_stat_user_tables grows by fewer than 50 a day while no content changes (about 172 a day today: 13,414 in 78 days).",
+   "saving": "Estimate: most of the 3,053 scans and of the 13,414 date-only updates per 78 days; at scale one small read per idle site per tick instead of a full search a day.",
+   "effort": "S",
+   "risk": "Low. What could break: a place that shows pictures and is missing from the stamp, so its 'used in' words go stale; the new test case for each branch shows it. The words follow the next save of the site instead of the next day.",
+   "confidence": "medium",
+   "priority": "P1",
+   "already_tracked": "no",
+   "owner_decision": false,
+   "verdict": "corrected",
+   "notes": "DQ-3 in the queries dimension describes the same read; its steps 3 to 5 keep uses in a new table, which goes against the written rule at media-library.ts:27. This plan stops at the change test. Storing uses is worth weighing only if the library's own 'used in' view becomes slow for a large site."
+  },
+  {
+   "id": "DS-3",
+   "title": "Two scheduled jobs do work that does not follow use: a prune every minute and an invoice retry every five minutes for 120 days",
+   "kind": "eager",
+   "where": [
+    "/home/user/kaizen-store/src/server/integrations.ts:47",
+    "/home/user/kaizen-store/src/server/integrations.ts:1031-1064",
+    "/home/user/kaizen-store/src/server/platform-integrations.ts:483-485",
+    "/home/user/kaizen-store/src/app/api/cron/integrations/route.ts:36",
+    "/home/user/kaizen-store/src/server/invoice-issue.ts:27-29",
+    "/home/user/kaizen-store/src/server/invoice-issue.ts:71-101",
+    "/home/user/kaizen-store/src/server/invoice-issue.ts:121-126",
+    "/home/user/kaizen-store/supabase/migrations/20261111172839_baseline_1_schema.sql:10533-10556",
+    "/home/user/kaizen-store/supabase/migrations/20261111172839_baseline_1_schema.sql:20855-20873",
+    "/home/user/kaizen-store/supabase/migrations/20261111172841_baseline_3_rules.sql:9072-9096",
+    "/home/user/kaizen-store/src/app/api/cron/subscription-reminders/route.ts:79"
+   ],
+   "evidence": "(a) deliverDue() ends every call with its 30-day prune (integrations.ts:1062) and deliverPlatformDue() with its own (platform-integrations.ts:483-485); the route runs both every minute: 66,533 runs of the claim and of the delete. The table's four indexes lead on next_attempt_at, endpoint_id and store_id (I read them from the catalog); none leads on created_at, so once deliveries exist the prune scans the table every minute. (b) storesWithDocumentWork() picks stores with a paid order of the last 120 days and no invoice (invoice-issue.ts:74-80) but does not ask whether an invoice can be issued. issue_waiting_invoices() only issues orders whose readiness is 'ready' (baseline_1:10541, :20863), and the first test of invoice_readiness() is the store's own details (legal name, postal address, organisation number, country) and a tax profile. So a store with paid orders and incomplete details is called every tick for 120 days: 9,909 calls (132 s) plus 9,909 of issue_missing_credit_notes (35 s), which issue_waiting_invoices already ends with (baseline_1:10553). The list is capped at 50 with no order by (:98).",
+   "cost": "Measured: 167 s of database time in 78 days for the invoice retry with no invoice produced; 133,066 statements for the per-minute claim and prune. Estimate after opening: about 4.8 s of database time a day for each store that takes paid orders before its seller details are complete.",
+   "who_pays": "The database and the server on every cron tick",
+   "fix_steps": [
+    "1. src/server/integrations.ts: move the delete at :1062 out of deliverDue() into an exported pruneDeliveries(). Keep the constant KEEP_DAYS at :47 in this file: src/lib/retention.test.ts:82 reads it from here. src/server/platform-integrations.ts:483-485: the same, as prunePlatformDeliveries().",
+    "2. src/app/api/cron/subscription-reminders/route.ts (the daily run): call both in the list at line 79, beside the other daily prunes, and return their counts.",
+    "3. src/server/invoice-issue.ts storesWithDocumentWork(), orders branch (:74-80): join commerce.stores s on s.id = o.store_id and add the store-level tests of invoice_readiness(): commerce.nz(s.legal_name) is not null and commerce.nz(s.postal_address) is not null and commerce.nz(s.organisation_number) is not null and commerce.nz(s.country::text) is not null and exists (select 1 from commerce.store_tax_profile p where p.store_id = o.store_id). A comment names the function so the two stay together. A store that completes its details is picked up on the next tick, so the promise that the invoice is issued as soon as the cause is gone holds.",
+    "4. Same function: give each branch its date (o.placed_at, rf.created_at and so on) and end with group by store_id order by min(at) limit ${limit}, so the 50 are the stores with the oldest work.",
+    "5. invoiceJobs() (:123-126): drop the second call. issue_waiting_invoices() already ends with issue_missing_credit_notes(); call issueMissingCreditNotes(storeId) only when issueWaitingInvoices() failed, which means making it say so instead of answering 0.",
+    "6. Leave queue_integration_event, the order triggers and the other jobs' first reads as they are."
+   ],
+   "tests_and_rules": [
+    "src/server/integrations.int.test.ts, platform-integrations.int.test.ts, webhook-endpoints.int.test.ts, platform-endpoints.int.test.ts and apps.int.test.ts call deliverDue or deliverPlatformDue: a case that expected old deliveries to go after a delivery run must call the new prune.",
+    "src/lib/retention.test.ts:82 (the 30-day rule equals integrations.ts' KEEP_DAYS) and src/lib/retention.ts:192 (enforcedBy names integrations' KEEP_DAYS): keep true.",
+    "src/app/api/cron/subscription-reminders/route.test.ts and src/server/cron-routes.scan.test.ts for the daily route.",
+    "src/server/invoice-issue.int.test.ts:178-186: add before the store's details are saved that storesWithDocumentWork() does not contain the store; line 181 (it does after) must still pass. Lines 189-199 (a missing tax profile) get the same pair.",
+    "src/server/invoice-refunds.int.test.ts:199 and :362, invoice-documents.int.test.ts:134-142, invoice-returns.int.test.ts: credit notes that waited are still issued by one call.",
+    "Rule: docs/wave-1b-invoices.md 2.1, 2.7 and 5.2 (named at invoice-issue.ts:16): an invoice that waited is issued by the same function as soon as the cause is gone. Unchanged."
+   ],
+   "depends_on": [],
+   "done_when": "On production a week after the deploy, calls of `select commerce.issue_waiting_invoices($1, $2)` in pg_stat_statements grow by fewer than 20 a day while no store has an issuable invoice waiting (about 127 a day today), and the delete on commerce.integration_deliveries grows by 1 a day (about 853 a day today).",
+   "saving": "Measured today: 167 s per 78 days and 133,066 statements. Estimate at scale: about 4.8 s of database time a day per store that sells before its details are complete.",
+   "effort": "S",
+   "risk": "Low. What could break: the finder's store tests drifting from invoice_readiness(), so a ready store is not picked; the two new assertions in invoice-issue.int.test.ts hold them together, and the owner's Check again button (invoices/actions.ts:39) has no such filter.",
+   "confidence": "high",
+   "priority": "P1",
+   "already_tracked": "no",
+   "owner_decision": false,
+   "verdict": "corrected",
+   "notes": "DQ-15 in the queries dimension plans the document jobs more widely (indexes for the short windows, an hourly net); this is the smallest change for the two measured cases and fits beside it. The job list's overstated times need no fix of their own: DQ-5 runs the dispatcher's jobs four at a time, after which a job's recorded time is close to its own."
+  },
+  {
+   "id": "DS-13",
+   "title": "Retention gaps: carts and processed webhook events are never deleted, the status prune scans on every tick, and the docs index is rewritten whole",
+   "kind": "oversize",
+   "where": [
+    "/home/user/kaizen-store/src/server/status.ts:255",
+    "/home/user/kaizen-store/src/server/status.ts:266-269",
+    "/home/user/kaizen-store/supabase/migrations/20261111172841_baseline_3_rules.sql:12841",
+    "/home/user/kaizen-store/src/server/retention.ts:255-272",
+    "/home/user/kaizen-store/src/server/retention.ts:315-327",
+    "/home/user/kaizen-store/supabase/migrations/20261111172841_baseline_3_rules.sql:21897",
+    "/home/user/kaizen-store/supabase/migrations/20261111172841_baseline_3_rules.sql:18817",
+    "/home/user/kaizen-store/src/server/page-versions.ts:38-44",
+    "/home/user/kaizen-store/src/lib/page-versions.ts:6",
+    "/home/user/kaizen-store/src/server/docs-search.ts:93-126",
+    "/home/user/kaizen-store/docs/audits/code-review-2026-11.md:270",
+    "/home/user/kaizen-store/docs/audits/code-review-2026-11.md:546"
+   ],
+   "evidence": "(1) status_checks gets 6 rows every five minutes and the same job prunes by checked_at on every tick (status.ts:266); its only index is (component, checked_at) (baseline_3:12841): 1,072 sequential scans so far, and the table heads to about 157,000 rows at its 91 days. (2) page_versions keeps 50 versions a page with no age limit (page-versions.ts:38-44): 642 rows are 5.4 MB, so a page at its cap holds about 420 KB. (3) Retention blanks carts but never deletes them: 'the row stays (an order may point at it)' (retention.ts:255); I found no delete from commerce.carts in src or the baseline. Carts are made by the storefront, the storefront API, handoffs and subscription boxes; six child tables go with a cart by cascade and only orders_cart_fk does not (baseline_3:21897). Processed webhook events are emptied, not deleted (retention.ts:315-327). Code review FD8 lists both. (4) writeDocsIndex() upserts every row with updated_at = now() and deletes rows 'not written now' by that date (docs-search.ts:104-120): 49,347 updates on 1,845 rows, about 27 full rewrites of the largest table in commerce (33 MB).",
+   "cost": "Small today. After opening, carts is the gap that grows with shoppers: one row with 11 index entries, plus its lines, for every basket ever started; in PGlite a bare cart is about 141 bytes of heap and 163 of indexes. page_versions grows to about 420 KB per well-edited page. status_checks costs one full scan per tick.",
+   "who_pays": "The database",
+   "fix_steps": [
+    "1. src/server/status.ts: move the two deletes at :266-269 into an exported pruneStatus() and call it from the daily route (src/app/api/cron/subscription-reminders/route.ts, the list at line 79). The five-minute job then only inserts. No new index.",
+    "2. src/server/docs-search.ts writeDocsIndex(): give the upsert a condition, `where (commerce.docs_index.text_hash, commerce.docs_index.doc, commerce.docs_index.item, commerce.docs_index.path, commerce.docs_index.url, commerce.docs_index.position, commerce.docs_index.checked, …every column the set list writes) is distinct from (excluded.text_hash, excluded.doc, …)`, so an unchanged row is not rewritten. Replace the delete at :120 with delete from commerce.docs_index where key <> all(<the keys just written, as a text array>).",
+    "3. Carts (owner's period, code review Question 6): a second step beside retention.ts:255-272 that deletes, in batches by id, carts whose period has passed (the same coalesce(case when status = 'open' then expires_at end, updated_at) < cutoff) and that no order points at: and not exists (select 1 from commerce.orders o where o.store_id = c.store_id and o.cart_id = c.id). Lines, gift cards, quotes, reservations and reminders go by cascade. State the period in src/lib/retention.ts with a seed() row and in the privacy text.",
+    "4. Processed webhook events and the other tables of FD8 (email_messages, experiment_events, referral_visits, work_events): a delete step each in runRetention() with its period, as step 3.15 of the code review describes; for webhook_events delete by id range or add an index on processed_at.",
+    "5. page_versions (owner's choice): if an age rule is wanted, keep all 50 for 90 days and then the newest 10 a page. Add VERSIONS_FULL_DAYS and VERSIONS_KEPT_OLD to src/lib/page-versions.ts, a daily prunePageVersions() in src/server/page-versions.ts called from the daily route, and say it in the Versions panel's words.",
+    "6. docs/audits/code-review-2026-11.md: set step 3.15's retention half to Done with date and commit when steps 3 and 4 land, and add a change-log line."
+   ],
+   "tests_and_rules": [
+    "src/server/status.int.test.ts (checks older than 91 days go): call pruneStatus(). src/app/api/cron/subscription-reminders/route.test.ts and src/server/cron-routes.scan.test.ts for the daily route.",
+    "src/server/docs-search.int.test.ts: add a case that writing the index again with one article changed leaves updated_at of every other row as it was, and that a removed article's rows go.",
+    "src/lib/retention.test.ts ties each rule to its constant; src/server/retention.int.test.ts runs the steps; src/db/privacy.test.ts and src/lib/personal-data.ts hold what erasure and export say about carts and events.",
+    "src/server/page-versions.int.test.ts, src/server/look-versions.int.test.ts and src/server/site-tools.int.test.ts hold the 50 versions.",
+    "Rules: docs/wave-1g-gdpr.md (the retention schedule), the privacy text (src/lib/privacy-text.ts) which must state the same periods, and code review FD8, step 3.15 and Question 6."
+   ],
+   "depends_on": [
+    "The owner's periods for carts, processed webhook events and page history (code review Question 6)"
+   ],
+   "done_when": "On production seq_scan of commerce.status_checks in pg_stat_user_tables grows by fewer than 10 a day (about 288 a day today), and each table named in FD8 has a delete step with its period in src/lib/retention.ts.",
+   "saving": "Estimate: 287 scans a day of a table heading to 157,000 rows; about 1,800 fewer row rewrites per docs deploy; a ceiling on carts and on page history that today have none.",
+   "effort": "M",
+   "risk": "Low for steps 1 and 2. Medium for the deletes: a cart an order points at must stay, which the not-exists and the foreign key both hold; a wrong period deletes baskets shoppers still expect, so the period is the owner's. The page-versions rule changes what an owner can take back.",
+   "confidence": "medium",
+   "priority": "P1",
+   "already_tracked": "FD8, step 3.15 and Question 6 of the code review: Open, for the tables retention blanks and never deletes. The status_checks, page_versions and docs_index points are new.",
+   "owner_decision": true,
+   "verdict": "confirmed",
+   "notes": "Steps 1 and 2 need no decision and are S. The verified report listed carts in one line; it is the gap that grows with shoppers, so it is spelled out here."
+  },
+  {
+   "id": "DS-12",
+   "title": "Nothing counts what a new table, trigger, index or scheduled job adds to the running cost",
+   "kind": "process",
+   "where": [
+    "/home/user/kaizen-store/docs/ci-migrations.md:154",
+    "/home/user/kaizen-store/docs/audits/code-review-2026-11.md:117",
+    "/home/user/kaizen-store/src/server/ratchet.scan.test.ts:1-40",
+    "/home/user/kaizen-store/src/server/ratchet.baseline.json",
+    "/home/user/kaizen-store/src/db/migration-safety.scan.test.ts:20",
+    "/home/user/kaizen-store/src/app/api/cron/cart-reminders/route.ts:128",
+    "/home/user/kaizen-store/supabase/migrations/20261111172842_baseline_4_roles_and_supabase.sql:93-104"
+   ],
+   "evidence": "Advisors are read by hand after a migration (docs/ci-migrations.md:154). The ratchet that exists counts unchecked reads, casts and writes by id (ratchet.baseline.json has four keys, none about the database's shape). No test counts triggers or indexes on the hot tables, per-minute pg_cron jobs or dispatcher jobs. Today's numbers, from the catalog of the migrated test database and the source: 89 indexes and 60 triggers on the eight hot tables, 9 per-minute pg_cron jobs, 83 dispatcher jobs. The verified report measured the schema's growth from git: 467 tables on 10 November, 481 a day later.",
+   "cost": "No direct cost. Without a count, the things that cost per write or per tick (a trigger on orders, an index on visits, a new per-minute route, a job that reads every site on a timer) arrive unseen with each feature.",
+   "who_pays": "The database per write and per tick; CI; every agent that reads the schema",
+   "fix_steps": [
+    "1. Add src/db/schema-budget.test.ts, using createTestDatabase() from src/db/testing.ts. It counts, for each table of HOT_TABLES (exported by src/db/migration-safety.scan.test.ts:20), its indexes (pg_index) and its triggers (pg_trigger where not tgisinternal).",
+    "2. In the same test count from source text: the cron.schedule lines with '* * * * *' in supabase/migrations (9 today, baseline_4:93-103), and the jobs of the dispatcher (the keys of runJobs() at src/app/api/cron/cart-reminders/route.ts:128 plus the tracked(\"dispatcher.…\") calls after it: 78 and 5).",
+    "3. Keep the numbers in src/db/schema-budget.json: indexes per hot table (orders 34, products 13, carts 11, order_lines 9, customers 8, product_variants 6, cart_lines 5, visits 3), triggers per hot table (orders 27, products 14, product_variants 7, customers 6, order_lines 5, carts 1), perMinuteJobs 9, dispatcherJobs 83, and a `why` list. The test fails when a number is above the file, and asks for the file to be lowered when it is below, as ratchet.scan.test.ts does.",
+    "4. Raising a number is an edit of the file with one line in `why` (what was added and what it costs per write or per tick), so the choice shows in the diff.",
+    "5. Write the rule for jobs in CLAUDE.md (Conventions, the cron bullet) and docs/ci-migrations.md after line 154: a job finds its work by a due date or a change mark, never by reading every site's rows on a timer; a new trigger or index on a hot table, a new per-minute route or a new dispatcher job raises src/db/schema-budget.json with its reason.",
+    "6. At each quarterly squash (CLAUDE.md: squash again each quarter), run the never-scanned-index query of the statistics file on tables that then hold rows: this is FD7's standing check, step 3.15."
+   ],
+   "tests_and_rules": [
+    "src/server/ratchet.scan.test.ts and scripts/ratchet.mjs are the model; src/server/cron-routes.scan.test.ts already holds each route to trackedRoute() and reads the dispatcher's source (its line 41 expects one job's text).",
+    "src/db/migration-safety.scan.test.ts exports HOT_TABLES; src/test/test-db-template.ts builds the database the new test reads.",
+    "Rules to change: CLAUDE.md Conventions (cron) and docs/ci-migrations.md:154. Code review step 3.15 (Open) gets a line."
+   ],
+   "depends_on": [
+    "DS-9 (drop the duplicates first, so the budget starts at orders 32, order_lines 8, visits 2)"
+   ],
+   "done_when": "pnpm test runs src/db/schema-budget.test.ts, and it fails when a scratch migration adds a trigger on commerce.orders without a change to src/db/schema-budget.json.",
+   "saving": "No direct saving; it makes the next per-write or per-tick cost a visible choice.",
+   "effort": "S",
+   "risk": "Low. What could break: the file is raised by habit; the `why` line in the diff is the guard, and the owner decides whether a reviewer must look at it.",
+   "confidence": "high",
+   "priority": "P1",
+   "already_tracked": "Partly: FD7 proposes a standing unused-index check (step 3.15, Open); docs/ci-migrations.md:154 notes advisors are checked by hand.",
+   "owner_decision": true,
+   "verdict": "corrected",
+   "notes": "A budget is a way of working, so it is the owner's to adopt. It is aimed at what costs per write and per tick, not at tables that hold no row yet. DS-15's duplicate-index test is its companion and needs no decision."
+  },
+  {
+   "id": "DS-6",
+   "title": "Kaizena Flow's own site and tools are kept more than one way: null-store rows, platform_* twin tables, and a copy in its own store",
+   "kind": "duplicate",
+   "where": [
+    "/home/user/kaizen-store/docs/platform-parity-plan.md:32-35",
+    "/home/user/kaizen-store/docs/platform-parity-plan.md:112-118",
+    "/home/user/kaizen-store/docs/platform-parity-plan.md:153-166",
+    "/home/user/kaizen-store/docs/decisions.md:824",
+    "/home/user/kaizen-store/src/app/api/cron/integrations/route.ts:28-36",
+    "/home/user/kaizen-store/src/app/api/cron/cart-reminders/route.ts:266-269",
+    "/home/user/kaizen-store/src/server/pages.ts:71"
+   ],
+   "evidence": "63 tables allow a null store_id for Kaizena Flow's own rows and 19 platform_* tables exist (catalog of the migrated test database); the parity plan counted 9 twins on 6 November and says why the gap opens: each store feature is built once for stores and again for the platform (docs/platform-parity-plan.md:32-35). The twins double jobs: the every-minute route runs runWorkflows and runPlatformWorkflows, deliverDue and deliverPlatformDue (integrations/route.ts:28-36); the dispatcher runs theme-updates and platform-theme-updates (cart-reminders/route.ts:266-269). The site exists twice: as null-store rows, which serve kaizenaflow.com today, and as a copy in the house store. The switch to serve from the house store is built and left off (D484, docs/decisions.md:824; plan lines 153-166), and step 7 'One copy' is not done. The owner's own rule asks for every store feature on the platform too.",
+   "cost": "A true duplicate: two engines for one job (workflows, deliveries, theme installs), twin jobs every minute and every five minutes, and the null-safe comparisons of DS-7 in 40 files. The running cost is small; the main cost is that each such feature is built and tested twice.",
+   "who_pays": "Every future feature, built twice; the database and server per tick, slightly",
+   "fix_steps": [
+    "1. The owner decides whether to make the switch before opening, when the site has the least to lose and nobody to disturb, or to keep both copies for now.",
+    "2. If yes, follow docs/platform-parity-plan.md step 5 as written (lines 153-166): copy the site again, look at the copy in the store, run node scripts/site-compare.mjs https://kaizenaflow.com > before.json, turn on platform_settings.site_from_store from Platform, Website (SiteSwitchCard), and run the compare again with --against before.json. The media library's rows move to the store at the switch.",
+    "3. Decide step 6 (one desk for support and chat), then, weeks after the switch, do step 7 'One copy': remove the site's null-store paths (platform-theme-installs.ts, platform-roles.ts, the (platform) page and blog routes, platform-layout.tsx) and retire the site's twin tables in a later migration (add, never drop in the same change as the code that stops using them).",
+    "4. Until then, and after: a new platform_* twin is added only where no store form can carry it (the console track, plan section 6), and its decision in docs/decisions.md says so in one sentence.",
+    "5. Tick the rows in docs/platform-parity.md and the steps in docs/platform-parity-plan.md as they land."
+   ],
+   "tests_and_rules": [
+    "src/db/house-switch.test.ts and src/proxy.test.ts hold the switch; src/db/house-site.test.ts and src/db/house-store.test.ts hold the copy; scripts/site-compare.mjs and e2e-live/ hold every address of the sitemap before and after.",
+    "Rules: CLAUDE.md Conventions (whatever is built for stores is built for the platform too), docs/platform-parity-plan.md steps 5 to 7, docs/platform-parity.md.",
+    "Step 7 changes the null branch of DS-7's owned() helper only where a null served the site alone; the platform's console tables keep it."
+   ],
+   "depends_on": [
+    "The owner's decision on the switch (docs/platform-parity-plan.md step 5)"
+   ],
+   "done_when": "docs/platform-parity-plan.md step 7 is marked done and ls src/server/platform-theme-installs.ts src/server/platform-roles.ts finds neither file.",
+   "saving": "Estimate: the site's null-store paths, a handful of twin tables and their jobs after step 7, and one build instead of two for each later site feature.",
+   "effort": "L",
+   "risk": "Medium. The plan keeps the null rows until weeks after the switch, compares every address before and after, and the switch has its undo (one setting).",
+   "confidence": "medium",
+   "priority": "P1",
+   "already_tracked": "docs/platform-parity-plan.md: step 5 built and off (D484), step 6 and step 7 'One copy' not done. The twins of the console track (D516, D518, D523) are the plan's own, not drift.",
+   "owner_decision": true,
+   "verdict": "corrected",
+   "notes": "Not waste: a choice the owner already framed. Before opening is the cheapest time to make it, because the site has no real visitors to lose and the store has no real data to migrate."
+  },
+  {
+   "id": "DS-2",
+   "title": "Each server start waits for a read of the interface-text table, and every warm instance asks again each minute",
+   "kind": "eager",
+   "where": [
+    "/home/user/kaizen-store/src/instrumentation.ts:6-9",
+    "/home/user/kaizen-store/src/server/ui-text.ts:19-31",
+    "/home/user/kaizen-store/src/server/ui-text.ts:57-71",
+    "/home/user/kaizen-store/src/server/ui-text.ts:106-115",
+    "/home/user/kaizen-store/src/server/ui-text.ts:207-218",
+    "/home/user/kaizen-store/src/server/ui-text.ts:314-319",
+    "/home/user/kaizen-store/docs/decisions.md:122"
+   ],
+   "evidence": "register() awaits startUi() (instrumentation.ts:6-9), which runs `select lang, count(*), max(updated_at) from commerce.ui_translations group by lang` before the instance takes requests, then loads each changed language with its own query, one after the other (ui-text.ts:64-71). A timer repeats the group-by every 60 s in each warm instance (:31, :110-112). Production: 278,393 calls in 78 days, the second most-called statement; it is not in the top-time list, so its total is under 17.5 s while the table is empty. The design is deliberate (D111): t() is synchronous and pages never wait on the database for text. Only three statements write the table, all in ui-text.ts (lines 211, 305, 315).",
+   "cost": "Today: one small query before the first request of each instance and about 3,570 polls a day. After opening the poll counts every row of every machine-translated language (about 100 KB of English text per language by the size of src/lib/messages/en*.ts) in every warm instance every minute, and a cold start reads the languages one by one. Estimate: 20 languages and 20 warm instances give about 29,000 polls a day over 34,000 rows each.",
+   "who_pays": "The first request on every cold instance; the database",
+   "fix_steps": [
+    "1. src/db/schema.ts, table platform_settings: add ui_text_version bigint not null default 0; pnpm db:generate (one row; a constant default is instant).",
+    "2. src/server/ui-text.ts: saveRows() (:207-218) and clearUiTexts() (:314-319) end with update commerce.platform_settings set ui_text_version = ui_text_version + 1. markUiReviewed() changes no text and needs no bump.",
+    "3. refresh() (:57-86): first read only the stamp (select ui_text_version from commerce.platform_settings limit 1) and keep it in State; when it has not moved and the texts are loaded, set checkedAt and return. When it moved, run today's group-by, then load all changed languages with one read (select lang, key, text from commerce.ui_translations where lang = any(…)) instead of one query per language.",
+    "4. FRESH_MS (:31) from 60_000 to 600_000; reloadUi() already refreshes the instance that saved. Correct the comments at :22-27 and :122 (a minute becomes ten).",
+    "5. Keep the awaited read in src/instrumentation.ts: it is what lets the synchronous t() find the text from the first page (D111)."
+   ],
+   "tests_and_rules": [
+    "src/server/languages.int.test.ts and src/server/ui-nightly.int.test.ts cover loading and the nightly run: add a case that a second refresh with nothing written sends one statement that does not name ui_translations, and that after saveRows() the next refresh loads the language.",
+    "A small scan test (or a case in languages.int.test.ts) that every statement writing commerce.ui_translations is in src/server/ui-text.ts, so a new writer cannot forget the stamp.",
+    "Rules: D111 (docs/decisions.md:122) and the module comment at ui-text.ts:19-27 ('looks for changes each minute; the sync t() never waits on the database'): keep them true and name the stamp and the ten minutes.",
+    "pnpm db:check and src/db/snapshots.scan.test.ts for the new column."
+   ],
+   "depends_on": [],
+   "done_when": "On production a day after the deploy, calls of the group-by on commerce.ui_translations in pg_stat_statements grow by fewer than 50 a day with no text edited (about 3,570 a day today).",
+   "saving": "Estimate: the group-by runs only after an edit; the poll becomes a one-row read ten times rarer (about 357 a day at today's instance count). A few milliseconds at most per cold start today; more once languages are translated, because they load in one read.",
+   "effort": "S",
+   "risk": "Low. An edit to a machine-translated text reaches other instances within ten minutes instead of one; cached pages already lag by hours. What could break: a writer that skips the stamp; the scan test holds it.",
+   "confidence": "medium",
+   "priority": "P2",
+   "already_tracked": "no",
+   "owner_decision": false,
+   "verdict": "corrected",
+   "notes": "The same work as DQ-12 in the queries dimension; do it once. Do it when ui-text.ts is next opened and before many languages are machine-translated (the nightly run of D436 fills the table)."
+  },
+  {
+   "id": "DS-14",
+   "title": "A very short list of dead database objects: one table, five columns and a leftover schema",
+   "kind": "dead",
+   "where": [
+    "/home/user/kaizen-store/src/db/schema.ts:289",
+    "/home/user/kaizen-store/src/db/schema.ts:7180-7187",
+    "/home/user/kaizen-store/src/lib/personal-data.ts:238",
+    "/home/user/kaizen-store/src/lib/personal-data.nb.ts:226",
+    "/home/user/kaizen-store/src/lib/personal-purposes.ts:281",
+    "/home/user/kaizen-store/src/lib/store-export-scope.ts:66",
+    "/home/user/kaizen-store/src/lib/store-copy-rules.ts:353",
+    "/home/user/kaizen-store/docs/wave-1g-gdpr.md:94",
+    "/home/user/kaizen-store/docs/decisions.md:424",
+    "/home/user/kaizen-store/supabase/seed.sql:232-241"
+   ],
+   "evidence": "idempotency_keys: no code names it outside schema.ts and five registers (my rg, with the two api_*_idempotency_keys tables left out), and the personal-data register says 'An unused table… nothing is written to it' (personal-data.ts:238). Its enum idempotency_status is used by this table only (schema.ts:289, :7187). Five column names appear in no file of src but schema.ts: domain_registrations.contact_checked_at, not_found_hits.first_seen_at, payment_credentials.secret_key_hint, tripletex_sync.source_updated_at, and payment_credentials.webhook_secret_hint, which one test writes (checkout.int.test.ts:194) and nothing reads. product_safety_rules.legal_basis holds reference data: keep. Production still has the old single-store schema, renamed commerce_legacy (34 tables, 96 rows), which docs/decisions.md:424 says can be removed once the platform schema has proved itself.",
+   "cost": "No running cost. About 100 lines across schema.ts, the baseline and five registers for the table; 34 leftover tables in production's backups.",
+   "who_pays": "An agent's session and anyone reading the schema",
+   "fix_steps": [
+    "1. src/db/schema.ts: delete the table idempotencyKeys (:7180 on) and the enum idempotencyStatus (:289). pnpm db:generate writes DROP TABLE and DROP TYPE; no running code uses either, so one push is safe.",
+    "2. Delete its register rows in the same change: src/lib/personal-data.ts:238, src/lib/personal-data.nb.ts:226, src/lib/personal-purposes.ts:281, src/lib/store-export-scope.ts:66, src/lib/store-copy-rules.ts:353, and the two mentions in docs/wave-1g-gdpr.md (:94, :451).",
+    "3. Leave the five unused columns until their tables are next changed, then drop each in that migration. Keep product_safety_rules.legal_basis and all the SQL functions.",
+    "4. commerce_legacy, once the owner agrees: take a last pg_dump of the schema (96 rows) and keep it with the backups; then a custom migration with a guard, DROP SCHEMA IF EXISTS commerce_legacy CASCADE (the tests' database has none). Correct docs/decisions.md:424.",
+    "5. Record the versions in docs/decisions.md; check the advisors."
+   ],
+   "tests_and_rules": [
+    "src/server/store-export.scan.test.ts (no table on the left-out list that is gone), src/db/privacy.test.ts (the register's detectors), the store-copy rules test (every store table decided): each fails until the register rows of step 2 are removed.",
+    "pnpm db:check, src/db/snapshots.scan.test.ts, src/db/commerce.test.ts.",
+    "Rule: docs/rules/admin/commerce.md (Demo products) requires the add_demo_* functions that supabase/seed.sql:232-241 calls: untouched."
+   ],
+   "depends_on": [],
+   "done_when": "rg -n 'idempotency_keys' src | rg -v 'api_(app_)?idempotency_keys' prints nothing, and production's size-by-schema query lists no commerce_legacy schema.",
+   "saving": "Measured: 1 table, 1 enum, later 5 columns, and 34 leftover tables in production.",
+   "effort": "S",
+   "risk": "Low. Nothing running reads these. What could break: a register test left pointing at the dropped table; the three scan tests name it.",
+   "confidence": "high",
+   "priority": "P2",
+   "already_tracked": "commerce_legacy: noted in docs/decisions.md:424 as removable later; no step. The rest: no.",
+   "owner_decision": false,
+   "verdict": "corrected",
+   "notes": "This is dead code, not a feature waiting for opening: nothing can write to the table. Dropping commerce_legacy is the one step that needs the owner's word."
+  },
+  {
+   "id": "DS-11",
+   "title": "Ending one sandbox runs at least 800 deletes and holds about 2,100 locks, one pass per store table per round",
+   "kind": "oversize",
+   "where": [
+    "/home/user/kaizen-store/supabase/migrations/20261111172839_baseline_1_schema.sql:15374-15424",
+    "/home/user/kaizen-store/src/server/sandbox.ts:351-367",
+    "/home/user/kaizen-store/src/server/sandbox.ts:369-380",
+    "/home/user/kaizen-store/docs/builder-sandbox.md:214"
+   ],
+   "evidence": "purge_sandbox() loops over every commerce table with a store_id column but two and runs a dynamic DELETE in its own exception block, and repeats the whole pass until a pass deletes nothing (baseline_1:15393-15417): at least two passes. On the real schema that is 400 tables. I ran the function's own loop in PGlite for a store id that owns nothing: one pass is 400 statements, took 64 to 293 ms (the first run, with cold caches, the longest), and left 2,129 relation locks held by the transaction, because planning each delete locks the table and all its indexes. It is the only function in the baseline that builds statements from the catalog. purgeSandboxes() takes up to 25 sandboxes a run, one after the other (sandbox.ts:369-380).",
+   "cost": "Estimate: 0.1 to 0.5 s of database time per ended sandbox. Measured: about 2,100 lock entries held until commit, which is a third of a default Postgres lock table (64 a connection, 100 connections). Both rise with every table and index added, not with what the sandbox held. The cost follows use, one visitor's try of the builder.",
+   "who_pays": "The database, per expired sandbox",
+   "fix_steps": [
+    "1. Small step, now: a custom migration that replaces commerce.purge_sandbox() with the same body and one new first statement, PERFORM pg_advisory_xact_lock(hashtext('commerce.purge_sandbox')), so two purges never hold their locks at the same time (two dispatcher runs can overlap).",
+    "2. Read production's limits once (show max_locks_per_transaction; show max_connections) and write them in docs/builder-sandbox.md beside the measured 2,129 locks a purge holds.",
+    "3. Only if those limits leave less than about four times a purge's locks, or sandboxes are purged by the hundred a day: split the work. A new function commerce.purge_sandbox_part(p_sandbox uuid, p_after text, p_tables integer default 50) deletes from the next 50 store tables and returns the last name; purgeSandbox() in src/server/sandbox.ts:365 calls it in a loop, each call its own transaction, in rounds until a full round deletes nothing; a last function then writes the tombstone and the sandbox's state as lines 15418-15422 do. No transaction then holds more than about 300 locks.",
+    "4. Whatever is done, keep the guarantee: the purge refuses any store that is not a closed sandbox whose row is expired, and ends only when a full pass deletes nothing."
+   ],
+   "tests_and_rules": [
+    "src/db/sandboxes.test.ts:313-327 and :406 (the purge refuses any other store; it returns the rows deleted) and src/server/sandbox.int.test.ts (files first, then rows): must pass unchanged after step 1.",
+    "src/server/sandbox.int.test.ts runs on a real Postgres: add a case that two purges started together both finish, one after the other.",
+    "Rule: docs/builder-sandbox.md:214-222 (what purge_sandbox() refuses and that it deletes every row of the store)."
+   ],
+   "depends_on": [],
+   "done_when": "src/server/sandbox.int.test.ts has a case where two purges started together both finish, and docs/builder-sandbox.md states production's max_locks_per_transaction and max_connections beside the 2,129 locks one purge holds.",
+   "saving": "No time saved by step 1; it removes the case of two purges holding about 4,300 lock entries together. Step 3, if ever needed: from about 2,100 locks in one transaction to about 300.",
+   "effort": "S",
+   "risk": "Low for step 1. Medium for step 3: the function is the guarantee that nothing of a sandbox is left, so the split must end with a pass that finds nothing.",
+   "confidence": "medium",
+   "priority": "P3",
+   "already_tracked": "no",
+   "owner_decision": false,
+   "verdict": "corrected",
+   "notes": "Not worth more than step 1 now: the cost follows use, is a fraction of a second, and one purge fits a default lock table. The verified report's fix (ask first which tables hold a row) would not lower the lock count: the asking locks the same tables and indexes. DS-12's count will show this cost growing with the schema."
+  }
+ ]
+}

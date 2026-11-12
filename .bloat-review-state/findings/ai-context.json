@@ -1,0 +1,739 @@
+{
+ "key": "ai-context",
+ "title": "What every AI call carries",
+ "headline": "The shopper chat is lean (about 5,000 characters of prompt and tools a call). The AI manager is the heavy part: about 161,700 characters a call (roughly 40,400 tokens, an estimate at 4 characters a token), 91% of it 124 tool definitions that do not depend on the question, on up to 11 calls a turn; drawn with the app's own functions, a lean default is 48,600 characters on Home and 77,000 on an orders page, and it is already step 3.18 of the code review, still Open. The eval that should guard that change does not test whether the model finds a tool (9 manager cases, none uses load_tools), so the plan adds that check first. Around the AI, yes-or-no reads and the five-minute jobs fetch the AI connection and walk every site before knowing there is work (237,563 connection reads against 19,104 AI calls): small today, rising with every store, and the alt-text job is the clearest case. The owner's browser downloads 496 KB for the chat, of which about 370 KB is the model's catalogue; that is the one quick, safe win.",
+ "metrics": [
+  {
+   "name": "Tool definitions in the AI manager's tables",
+   "value": "319: 254 store tools (285,863 characters as JSON), 26 of the manager's own (20,328), 39 platform tools (35,109). 98 store tools are gated; 121 sit behind a store feature.",
+   "how": "Re-ran the skeptic's bundle in this session (node /tmp/claude-0/-home-user-kaizen-store/875cb21b-0ebd-5663-b7c0-2d04a7548e24/scratchpad/work/sk-ai/tools.cjs): it imports OWNER_TOOLS, MANAGER_TOOLS, PLATFORM_TOOLS and runs the app's toolDefinition() on each; JSON.stringify length. Same numbers."
+  },
+  {
+   "name": "What one AI manager round sends today",
+   "value": "124 tool definitions: 146,889 characters for a store with the shop only, 143,803 with every feature on, 126,200 for a website with no shop, 152,328 on a website page. System prompt 14,772 (shop only), 16,604 (every feature, on Orders), 12,263 (website), 6,646 (platform). A shop's round is about 161,700 characters, roughly 40,400 tokens (estimate, 4 characters a token; JSON tokenises worse, so a floor). Tools are 91%.",
+   "how": "Tools: the same bundle run again here (chooseTools(), toolArea(), toolOffered(), loadToolsDefinition()). Prompt sizes are the skeptic's draw of managerPrompt() (/home/user/kaizen-store/src/server/owner-assistant.ts:390-499), not redrawn by me."
+  },
+  {
+   "name": "A lean default, by the page the person is on (shop-only store)",
+   "value": "Tools sent when a round carries the manager's 26, the 12 core tools, load_tools and the page's area only: Home 39 tools, 33,810 characters; support 44, 36,878; analytics 57, 48,291; customers 54, 48,452; orders 64, 62,242; marketing 71, 65,146; website 80, 81,807; products 65, 86,581; settings 91, 88,609. With the 14,772-character prompt a round is 48,600 (Home, minus 70%), 77,000 (orders, minus 52%), 79,900 (marketing, minus 51%), 96,600 (website, minus 40%), 101,400 (products, minus 37%), 103,400 (settings, minus 36%), against 161,700. Without the 17 automation tools each is 15,384 less.",
+   "how": "My bundle /tmp/claude-0/-home-user-kaizen-store/875cb21b-0ebd-5663-b7c0-2d04a7548e24/scratchpad/work/plan-ai/measure.ts (esbuild, then node): a copy of chooseTools' picking without the fill, on the app's own OWNER_TOOLS, toolOffered(), toolArea() and toolDefinition()."
+  },
+  {
+   "name": "A router from the message to one area (hand-made sample)",
+   "value": "20 owner questions I wrote (16 English, 4 Norwegian; 18 need a tool outside the core 12). Taking the area of the best-matching admin page (findPages(), the admin map's own English and Norwegian words) puts the needed area in the first round for 11 of 18. Tool characters over a turn (3 calls, or 4 when the model must call load_tools first), every feature on, on Home: 431,409 today; 235,761 with no router (minus 45%, but one more model round for all 18); 253,048 with the best page's area (minus 41%, the extra round for 7 of 18); 316,534 with two pages' areas (minus 27%).",
+   "how": "/tmp/claude-0/-home-user-kaizen-store/875cb21b-0ebd-5663-b7c0-2d04a7548e24/scratchpad/work/plan-ai/router.ts: findPages(\"store\", question, flags, n) then areaOfPath(); sizes from toolDefinition(). A sample, not an eval: it says which design to try, not how a model behaves."
+  },
+  {
+   "name": "Calls per AI manager turn",
+   "value": "Up to 11 (MAX_STEPS 10 plus the answer); every call but a forced last one sends the tool list. A 3-call turn is about 121,000 input tokens (estimate), about 3 cents at the seeded gpt-5-mini price (0.25 dollars a million input tokens) before any provider cache discount. Ceiling 400,000 tokens and 240 s a turn, 300 turns a day a store.",
+   "how": "/home/user/kaizen-store/src/server/owner-assistant.ts:131, 135, 780-829; /home/user/kaizen-store/src/lib/turn-budget.ts; /home/user/kaizen-store/supabase/migrations/20261111172840_baseline_2_data.sql:106; arithmetic on the measured characters."
+  },
+  {
+   "name": "What one shopper chat call sends",
+   "value": "System prompt 2,536 characters (3,933 with support and hand-off), 6 tools in 2,613 characters (3 tools, 1,148, for a website; 13 support tools add 5,661). History at most 20 messages. At most 5 calls a turn; tool results cut at 6,000 characters; knowledge search returns at most 5 passages of at most 1,200 characters.",
+   "how": "The skeptic's draw of systemPrompt(), storeTools(), SUPPORT_TOOLS; I opened /home/user/kaizen-store/src/server/knowledge.ts:340-385 (limit 5) and /home/user/kaizen-store/src/server/chat-agent.ts:193."
+  },
+  {
+   "name": "The other agents, per call",
+   "value": "Docs guide: prompt 4,776 characters, 7 tools in 4,060. Product writer: 1,272 of instructions plus the product's facts. Legal writer: 2,217 of instructions and 3,790 of framing plus the law passages it is given. Dream Factory: brief prompt 1,391; a step's message 348 to 740; a step is a manager turn held to its own tools (goals 2 tools, 2,115 characters; research 4, 3,000; brand 7, 7,198; setup 9, 9,314; catalogue 11, 30,564, of which create_product and update_product are 23,213). An autopilot event's turn: 4 to 36 tools (2,683 to 23,595). A Dream Factory or autopilot turn also carries the full manager prompt (about 15,000 characters), admin map included.",
+   "how": "/tmp/claude-0/-home-user-kaizen-store/875cb21b-0ebd-5663-b7c0-2d04a7548e24/scratchpad/work/plan-ai/measure.ts drawing guideSystemPrompt(), guideTools(), writingMessages(), fixedLegalMessages(), briefPrompt(), stepMessage(), STEP_TOOLS, EVENT_TOOLS with the app's own code; /home/user/kaizen-store/src/server/dream-factory.ts:724-748; /home/user/kaizen-store/src/server/owner-assistant.ts:714, 732, 764."
+  },
+  {
+   "name": "Prompt caching",
+   "value": "0 cache markers or provider cache options in src; cached tokens are never read from a provider's answer and no price exists for them. Inside one turn the request prefix (tools, system prompt, history) is byte-identical from round to round unless load_tools runs. Across turns the prompt's second line changes every minute, and it must keep the minute somewhere: follow_up takes a time as YYYY-MM-DD HH:MM.",
+   "how": "rg -i for cache_control, prompt_cache, cached_tokens, cache_read, ephemeral, prompt_tokens_details over src: 0 lines (run here). /home/user/kaizen-store/src/lib/ai-usage.ts:92-101; /home/user/kaizen-store/src/server/owner-assistant.ts:409-415, 742-768; /home/user/kaizen-store/src/lib/manager-tools.ts:92-99."
+  },
+  {
+   "name": "Models per task",
+   "value": "One text model for every text job: 33 completeText call sites in 25 files, plus both tool loops; a separate model only for pictures and vision. Tone rating and summaries are on by default for a desk with support on (tone_on and summaries_on default true).",
+   "how": "rg -c 'completeText\\(' over src without tests (run here: 33 in 25 files); /home/user/kaizen-store/supabase/migrations/20261111172839_baseline_1_schema.sql:32357-32358."
+  },
+  {
+   "name": "AI connection reads against AI calls in production",
+   "value": "237,563 reads of commerce.ai_providers against 19,104 rows in ai_usage. The month's AI cost was summed 8,514 times (6,782 at 37 ms, 1,732 at 57 ms): about 352 s in 78 days. These are scheduled work, builds and the team's own testing, not shoppers. aiFor() is called on 89 lines in 64 files outside ai.ts and tests; five of them only ask yes or no in one expression, and the open support conversation asks on every poll.",
+   "how": "/tmp/claude-0/-home-user-kaizen-store/875cb21b-0ebd-5663-b7c0-2d04a7548e24/scratchpad/work/../m/prod-db-stats.md (the statements table); rg -n 'aiFor\\(' src without tests (run here)."
+  },
+  {
+   "name": "The 48,492 reads of commerce.chat_agents",
+   "value": "Every one is the platform's own row (the statement is 'where store_id is null'): Kaizena Flow's own site drawing its chat widget and cookie list. getChatAgent() is a 'use cache' function with a life of hours, so it runs on a cache miss, a build or a new server instance; the count sits beside the platform site's other per-render reads (45,544 for its SEO, 46,265 for its page roles). No store's chat agent is read per request outside that cache. It is a caching and deploy-churn number, not an AI cost.",
+   "how": "/tmp/claude-0/-home-user-kaizen-store/875cb21b-0ebd-5663-b7c0-2d04a7548e24/scratchpad/work/../m/prod-db-stats.md (statements called the most); /home/user/kaizen-store/src/server/chat-agent.ts:89-95, 135-139; /home/user/kaizen-store/src/server/site-cookies.ts:98; /home/user/kaizen-store/src/server/chat-route.ts:54."
+  },
+  {
+   "name": "The AI manager's chat script in the browser",
+   "value": "496,206 bytes raw, 144,326 gzip, fetched when the panel is first opened. By the bundle analyzer's module sizes for the admin route, the tool tables and their helpers are 234,206 bytes (owner-tools.ts 158,819, manager-tools.ts 30,614, twelve smaller *-tools and autopilot files), admin-map.ts 150,622 and the Norwegian page list 52,925: 437,753 bytes. The browser uses TOOL_WORDS (13,226 characters), and from the two page lists an id, area, path and title per page (36,929 characters as JSON) and the Norwegian titles (16,535).",
+   "how": "ls -l and gzip -c | wc -c on /home/user/kaizen-store/.next/static/chunks/00rxgygh1f--7.js (run here); /tmp/claude-0/-home-user-kaizen-store/875cb21b-0ebd-5663-b7c0-2d04a7548e24/scratchpad/work/../m/analyze/admin_store.json (the 'later' modules); /tmp/claude-0/-home-user-kaizen-store/875cb21b-0ebd-5663-b7c0-2d04a7548e24/scratchpad/work/plan-ai/measure.ts for the slim sizes."
+  },
+  {
+   "name": "The agents' eval as a check on tool choice",
+   "value": "9 AI manager cases. 7 test that planted text is not obeyed (no gated tool called); 2 require a tool (run_report, a core tool, and refund_order). The harness loads the area of every tool a case names before the first step, so no case makes the model find a tool through load_tools, and toolsVersion() does not change when the default tool set does.",
+   "how": "rg -c 'agent: \"manager\"' /home/user/kaizen-store/src/lib/agent-eval.ts (9); rg load_tools there (0 lines); /home/user/kaizen-store/src/server/agent-eval.ts:78-81, 146-153."
+  },
+  {
+   "name": "Idle work of the AI index jobs",
+   "value": "Knowledge: 91,200 'delete from knowledge_chunks where page_id' calls removed 782 rows in all; the page read behind them returns about 40 whole pages a call, 24,134 calls. Products: one statement hashes every active product's text on every run (10,201 calls, 14.5 ms with about 300 products). Pictures: 49,842 stale-picture selects at 0.4 ms and 13,414 date-only updates on 468 rows. Alt texts: the site list names every site that has an AI-written alt text, on every run.",
+   "how": "/tmp/claude-0/-home-user-kaizen-store/875cb21b-0ebd-5663-b7c0-2d04a7548e24/scratchpad/work/../m/prod-db-stats.md; /home/user/kaizen-store/src/server/knowledge.ts:167-194, 248-256; /home/user/kaizen-store/src/server/embeddings.ts:31-52; /home/user/kaizen-store/src/server/media-library.ts:798-830, 860-873; /home/user/kaizen-store/src/server/alt-texts.ts:224-241."
+  },
+  {
+   "name": "Job durations in the dispatcher",
+   "value": "Not usable as cost. The jobs run side by side on a pool of 5 connections; their last durations add up to 12.5 s while the whole run took 1.34 s. Per-job figures are mostly queueing.",
+   "how": "The skeptic's reading of /home/user/kaizen-store/src/server/cron-runs.ts:117 and /home/user/kaizen-store/src/db/client.ts:68 against prod-db-stats.md; kept here so nobody plans from those figures."
+  }
+ ],
+ "clean": [
+  "The shopper chat (src/server/chat-agent.ts, src/lib/chat.ts): 6 hand-written tools (2,613 characters), a 2,536-character prompt, history capped at 20 messages, results cut at 6,000, product tools dropped for a website, support tools chosen by desk mode. Knowledge search hands back at most 5 passages of at most 1,200 characters (src/server/knowledge.ts:345, src/lib/knowledge.ts:16).",
+  "Tools of store features that are off are already dropped (src/server/offered-tools.ts, src/lib/owner-tool-features.ts: 121 tools behind a feature), and tools a role may not use are never offered.",
+  "The admin map in the prompt is one line a group (2,171 to 5,824 characters) and follows features and role. The 58,402 characters of playbooks load only through use_skill.",
+  "History: only the last 20 messages as text (src/server/owner-assistant.ts:663-669, 766); earlier turns' tool results are never resent. Memories: at most 8 short lines a turn. The memory pass after a turn sends at most 4,000 characters of the exchange and asks for 400 tokens (src/server/assistant-memory.ts:332-358).",
+  "The turn budget (src/lib/turn-budget.ts): 240 s, 400,000 tokens, the month's allowance checked between rounds, a daily cost ceiling for platform admins.",
+  "An autopilot step, an autopilot event and a Dream Factory step are each held to their own few tools, not the 124 (src/server/owner-assistant.ts:714, 732; src/server/dream-factory.ts:724-748; src/lib/dream-factory.ts:347-362). A plan's tenth step carries about 9,700 characters of earlier steps as history beside a 1,700-character message (my draw of taskMessage() with ten synthetic steps): bounded by the 20-message window and small beside the prompt.",
+  "The Dream Factory makes each product in a conversation of its own, so product turns do not drag the run's history along (src/server/dream-factory.ts:675-677).",
+  "The launcher on every admin page fetches the chat script and the AI's abilities only when the panel is first opened (src/components/admin/ai-manager-launcher.tsx, D444; docs/performance.md:153-160).",
+  "Search understanding, the recommendation rerank and a search's vector are kept in the search cache and call a model only on a miss (src/server/query-understanding.ts:81-85, src/server/recommend.ts:575-590, src/server/query-vector.ts:18-25). Product vectors are refreshed when a product is saved, imported or bulk-edited.",
+  "The docs index gives a row a new vector only when its words changed (text_hash) and is rewritten only when a deployment's rows differ from the stored fingerprint (src/server/docs-search.ts:94-127, 174-186): the 49,347 updates on 1,845 rows are about 27 rewrites, which is deploy churn. An idle run is one small read, the AI connection and one select.",
+  "The docs guide (4,776-character prompt, 7 tools), the product writer (1,272 characters of instructions) and the legal writer (about 6,000 characters plus the passages) are small per call and run only when someone asks. The page studio writes each section with the same system prompt, which suits a provider's prefix cache (src/lib/page-ai.ts:657-700).",
+  "AI page looks are taken only when a tool or a person asks for one (src/server/page-looks.ts:101-124); the listing check reads at most 10 listings a dispatcher run (src/server/content-moderation.ts:37-39); the briefing's AI note is written only for a briefing that is sent, and a quiet period sends none (src/server/briefing.ts:67-79).",
+  "The autopilot's, follow-ups' and Kaizen Life hand-offs' five-minute jobs each ask one or two global 'is anything due' questions, not one per store. The every-minute autopilot route is a fixed cost that belongs to the scheduling dimension.",
+  "The owner MCP (/api/mcp) and custom apps' tools cost a store that does not use them one small read per AI manager turn and nothing per request. That no store has connected one yet says nothing about whether they are wanted.",
+  "Tool descriptions are not the heavy part: median 441 characters, 90th percentile 760, longest 1,183; cutting every one to 600 would save 10,313 characters over all 254 tools (my measure, plan-ai/desc.ts). The weight is the number sent and a few large schemas."
+ ],
+ "refuted": [],
+ "findings": [
+  {
+   "id": "AI-1",
+   "title": "Every AI manager call sends 124 tool definitions, whatever the question or screen",
+   "kind": "eager",
+   "where": [
+    "/home/user/kaizen-store/src/lib/tool-budget.ts:15",
+    "/home/user/kaizen-store/src/lib/tool-budget.ts:70-96",
+    "/home/user/kaizen-store/src/server/owner-assistant.ts:716-750",
+    "/home/user/kaizen-store/src/server/owner-assistant.ts:793",
+    "/home/user/kaizen-store/src/server/ai.ts:693-702",
+    "/home/user/kaizen-store/src/server/agent-eval.ts:146-153",
+    "/home/user/kaizen-store/docs/audits/code-review-2026-11.md:120",
+    "/home/user/kaizen-store/docs/audits/code-review-2026-11.md:549"
+   ],
+   "evidence": "chooseTools() fills the budget to the provider's cap: core tools, tools used before, the page's area, then every other area in a fixed order (tool-budget.ts:84-88). Run on a shop-only store it offers 234 store tools and sends 97 plus the manager's 26 and load_tools: 146,889 characters. The system prompt is 14,772. A round is about 161,700 characters, 91% tools. streamWithTools() gets the list on every round but a forced last one (owner-assistant.ts:793). I ran the skeptic's bundle again here and the numbers hold. My own draw of a lean choice (core, used, asked for, the page's area, no fill) gives 33,810 characters of tools on Home, 62,242 on an orders page, 65,146 on marketing, 81,807 on website, 86,581 on products and 88,609 on a settings page: the page's area can itself be large (settings 55 tools, website 41, marketing 32 to 40, products 28 to 30 with two tools of 11,000 characters each).",
+   "cost": "About 40,400 input tokens a call (estimate at 4 characters a token; JSON tokenises worse, so a floor), up to 11 calls a turn; about 121,000 tokens for a turn with two tool rounds, about 3 cents at the seeded gpt-5-mini price before any provider cache discount, more on a larger model. It also uses up a store's monthly AI allowance at the full price. This cost follows use, so it is small today; it is the AI cost that grows fastest once many owners use the manager (an illustration, not a forecast: 1,000 stores x 10 turns a day x 3 calls is about 1.2 billion input tokens a day).",
+   "who_pays": "The server per AI manager call: Kaizena Flow's provider bill for stores on its key, the store's monthly AI allowance (or its own key), and the owner waiting for the answer.",
+   "fix_steps": [
+    "First: AI-14 (cases in the eval that make the model find a tool) and AI-10 steps 1 and 2 (the measure of a default round and its baseline). Without them this change has no check and no number.",
+    "src/lib/tool-budget.ts, chooseTools(): add `fill?: boolean` and `routed?: readonly ToolArea[]` to its context. With fill false (the new default): drop the early return at line 77 and the loop over every area at line 88. Pick in this order, cut at the budget as now: CORE_TOOLS, the areas in `wanted`, the names in `used`, `pageArea`, the areas in `routed`. Return `names` in pick order (line 95 returns table order today). Keep TOOLS_PER_TURN = 124: D333's reason, providers refuse more than 128, still holds. The held-back count per area (lines 89-94) is unchanged.",
+    "New pure file src/lib/tool-router.ts: `routedAreas(message, flags)` returns the area of the one best-matching store page: `findPages(\"store\", message, flags, 1)` (src/lib/admin-map.ts:1429-1458, which already matches English and Norwegian words, the two admin languages) then `areaOfPath(\"/\" + page.path)` (src/lib/permissions.ts:102); an empty list for an account page or no match. One page, not two or three: on my 20-question sample two pages' areas cost 25% more tool characters a turn for two more hits.",
+    "src/server/owner-assistant.ts, runTurn() lines 716-750: `const routed = store ? routedAreas(text, ctx.flags) : []`; call chooseTools with `{ used, wanted, pageArea, routed, fill: !store }` (a platform admin's 39 tools still all go: they fit). Keep one list `sent` for the turn: a name once sent keeps its place, new names are appended, so load_tools only adds at the end. Change `wanted.unshift` at line 746 to `push`. Build a round's tools as: the manager's own (fixed order), the store tools in `sent` order, the owner's app tools, then load_tools last (its description changes when areas load). This order is what AI-3 needs.",
+    "src/lib/tool-budget.ts, loadToolsDefinition(): after each held-back area add three to six words on what it holds, from a new `AREA_HINTS` record (settings: shipping, tax, payments, domains, features, languages; marketing: discounts, emails, segments, campaigns; website: pages, menus, themes, look; and so on), so the model can choose an area for 'free shipping over 500 kr'.",
+    "src/server/owner-assistant.ts, managerPrompt() line 439: keep 'If a tool refuses or fails, say what it said.' and replace the rest with: when you lack a tool for what is asked, load its area with load_tools first; only if no area has one, say so and open or name the admin page that can.",
+    "src/server/agent-eval.ts: managerTools() (lines 146-153) keeps loading the areas of the tools a case names, without the fill, and does not preload for cases marked `lean` (AI-14). toolsVersion() (lines 78-81) also hashes CORE_TOOLS, the load_tools definition drawn for a fixed held-back set, and a new constant TOOL_CHOICE_VERSION from tool-budget.ts, so an old recording cannot stand for a new default set.",
+    "src/lib/owner-tools.ts, toolDefinition() (lines 2076-2082): keep the result per tool in a WeakMap (FA9); return the kept object.",
+    "Push this without a migration (a push with a migration waits for the eval replay, which fails until the new recording exists; docs/ci-migrations.md). After the deploy a platform admin runs the eval on Platform, AI, downloads the recording and commits it.",
+    "In the same change: docs/rules/admin/ai.md lines 18-20 (what a round sends, and that a tool most questions need goes in CORE_TOOLS); a new decision in docs/decisions.md that amends D333 (cap kept, default lowered, router); docs/audits/code-review-2026-11.md step 3.18 set to Done with date and commit, a line in its change log, and owner question 8 marked answered."
+   ],
+   "tests_and_rules": [
+    "src/lib/tool-budget.test.ts: 'sends everything when it fits' (lines 29-32) must pass `fill: true` or be rewritten; 'keeps every offered store tool...' (20-27) still holds (sent plus held equals offered); add: with no page a shop sends only the 12 core tools; names come in pick order; a second choice after a load keeps earlier names in place.",
+    "New src/lib/tool-router.test.ts: the 20 questions of my sample with the area each must or must not give, and that an account page gives none.",
+    "src/server/agent-eval-replay.int.test.ts and src/data/agent-eval-recording.json: a new recording; src/server/agent-eval.int.test.ts:119 (never more than 128 tools) still holds.",
+    "src/server/owner-assistant.int.test.ts and src/server/ai-manager.int.test.ts: turns with a fake connection that look at the tools offered; add one where the model calls load_tools and gets the area's tools appended on the next round.",
+    "src/lib/report-tools.test.ts:29 (run_report stays a core tool): unchanged.",
+    "The manager's prompt version changes (managerPromptVersion(), src/server/owner-assistant.ts:530-532): CLAUDE.md's rule on prompts (eval run and recording) applies.",
+    "docs/rules/admin/ai.md:18-20; docs/decisions.md:344 (D333); docs/audits/code-review-2026-11.md:120, 249, 488, 549 (step 3.18, FA1, FA9, question 8)."
+   ],
+   "depends_on": [
+    "AI-14",
+    "AI-10 (steps 1 and 2)",
+    "AI-3 (same change: the order of tools and prompt)",
+    "AI-6 (same owner decision)",
+    "The owner's answer to question 8 of the code review (what the manager offers unprompted)",
+    "A new run of the agents' eval on Platform, AI in production after the deploy, and its recording committed as src/data/agent-eval-recording.json (a person with platform access does this; CI only replays it)"
+   ],
+   "done_when": "src/server/ai-round.scan.test.ts (AI-10) draws the default round of a shop-only store at under 52,000 characters with no page and under 80,000 on an orders page (161,661 today; 48,582 and 77,014 by my draw before the few added lines), and agent-eval-replay.int.test.ts passes on a recording that holds AI-14's cases.",
+   "saving": "Estimate from measured sizes, shop-only store. A round falls from about 161,700 characters to 48,600 on Home (minus 70%), 77,000 on orders (minus 52%), 79,900 on marketing (minus 51%), 96,600 on website (minus 40%), 101,400 on products (minus 37%), 103,400 on settings (minus 36%). When the model must first call load_tools, a turn costs one more round: the skeptic's arithmetic for a 3-call turn that becomes 4 calls is minus 36%; on my 20-question sample the tool characters over a turn fall 41% with the one-page router (the extra round for 7 of 18 questions) and 45% without it (the extra round for all 18).",
+   "effort": "M",
+   "risk": "The model may miss a tool it would have seen, or say it cannot do something instead of loading the area: noticed by AI-14's cases, by the count of load_tools calls and of 'no tool' answers in the round log of AI-10, and by thumbs-down on answers. One more round trip for questions outside the core and the page (a second or two for the owner). A tool list that changes with the page breaks a provider's prefix cache from the first changed tool, which is why the fixed tools go first. On a settings, products or website page the saving is a third, not two thirds, until those areas are split or their big tools slimmed (AI-8).",
+   "confidence": "high",
+   "priority": "P1",
+   "already_tracked": "Yes: code review step 3.18 'Cheaper, faster AI rounds' (FA1, FA9), status Open; owner question 8 there asks about a default of about 40 tools. The lean set here is 39 tools on Home.",
+   "owner_decision": true,
+   "verdict": "confirmed",
+   "notes": "Before opening is the cheap time: no owner has habits with today's set, and no real conversation depends on a tool being in view. The owner's choice is what the manager offers without being asked, not whether a feature exists: every tool stays one load_tools call away. Do AI-1, AI-3, AI-6, AI-8 steps 1 to 4 and AI-11 as one change, so one eval run and one recording cover them all."
+  },
+  {
+   "id": "AI-2",
+   "title": "The AI connection is fetched, key and month's cost included, by screens and polls that only draw a button",
+   "kind": "eager",
+   "where": [
+    "/home/user/kaizen-store/src/server/ai.ts:206-222",
+    "/home/user/kaizen-store/src/server/ai.ts:235-239",
+    "/home/user/kaizen-store/src/server/limits.ts:122-144",
+    "/home/user/kaizen-store/src/server/support-inbox.ts:90-98",
+    "/home/user/kaizen-store/src/lib/support-realtime.ts:36-38",
+    "/home/user/kaizen-store/src/app/admin/(gated)/[store]/pages/context.ts:165-168",
+    "/home/user/kaizen-store/src/server/page-change-ai.ts:25-27",
+    "/home/user/kaizen-store/src/server/picture-maker.ts:74-76",
+    "/home/user/kaizen-store/src/server/picture-editor.ts:44-46",
+    "/home/user/kaizen-store/src/server/products.ts:196",
+    "/home/user/kaizen-store/src/server/owner-assistant.ts:183-191",
+    "/home/user/kaizen-store/src/server/page-ai.ts:168-178",
+    "/home/user/kaizen-store/docs/capacity.md:612",
+    "/home/user/kaizen-store/docs/capacity.md:640"
+   ],
+   "evidence": "aiFor() has no cache: each call runs 'select * from commerce.ai_providers', decrypts up to three API keys and, for a store on Kaizena Flow's key whose plan sets an AI limit, reads the limits and sums the month's ai_usage (a 60-second memo per server instance, limits.ts:122-144). My rg finds it on 89 lines in 64 files outside ai.ts and tests. Many want only a yes or no: the staff's open conversation calls it on every poll for the Translate button (support-inbox.ts:98; every 2 seconds without a realtime connection, every 15 with one or while hidden); opening a page in the builder calls it three times in a row through canMakePictures(), canEditPictures() and canChangePages() (pages/context.ts:165-168); the product editor once (products.ts:196); the AI manager's panel and the page studio once each for their abilities. Production: 237,563 provider reads and 8,514 cost sums against 19,104 recorded AI calls. Those counts are scheduled work, builds and the team's own testing, not shoppers.",
+   "cost": "Today small: each provider read is a sub-millisecond query on a tiny table plus a round trip; the dear part is the cost sum (37 to 57 ms, about 352 s in 78 days). What grows: the sum runs only for stores whose plan sets an AI limit, which today's template and demo stores mostly are not and paying stores will be; and every open support conversation, builder page and product editor adds reads in step with the owners at work.",
+   "who_pays": "The database and the server per request: owners' editors and staff with a conversation open. (The five-minute jobs' share is AI-5 and AI-13; the cost sum itself is DQ-4.)",
+   "fix_steps": [
+    "src/server/ai.ts: add `aiAbilities(storeId)` returning only booleans and the source: `{ text, sees, pictures, pictureEdit, hear, speak, live, embeds, source }`. It calls aiFor() inside, so a store at its allowance still answers 'no AI' as docs/capacity.md:640 says, and keeps the answer per server instance for 60 seconds in a Map, in the manner of storeLimits() (src/server/limits.ts:41-48). No key stays in memory beyond the call. Add `forgetAiAbilities(storeId?)` and call it in saveAiSettings() and removeAiSettings() (ai.ts:251, 357), and from forgetLimitMemos() for tests.",
+    "Use it where a screen only draws a button: src/server/support-inbox.ts:98 (the poll's `translate`), src/server/page-change-ai.ts:26, src/server/picture-maker.ts:75, src/server/picture-editor.ts:45, src/server/products.ts:196, assistantAbilities() in src/server/owner-assistant.ts:183-191 and studioAbilities() in src/server/page-ai.ts:168-178. Open each caller first: one that shows a model's name or whose key pays keeps aiFor().",
+    "Leave aiFor() wherever the code is about to call a model (turns, writers, searches, jobs with work found). Do not cache the connection itself.",
+    "The month's cost sum behind aiRoomLeft(): do DQ-4 (daily rows plus today's live part); nothing separate here.",
+    "The five-minute jobs that call aiFor() per site before looking for work: AI-5 (knowledge, pictures, products) and AI-13 (alt texts).",
+    "docs/capacity.md after line 612 and docs/rules/admin/ai.md (the AI usage rule that says 'get connections with aiFor(storeId, { feature, accountId })'): one line each that a screen which only shows or hides an AI button asks aiAbilities()."
+   ],
+   "tests_and_rules": [
+    "src/server/ai.int.test.ts: add aiAbilities() cases (no provider, platform's, store's own, a store at its limit answers all false), and one that switches a provider off in SQL: the memo still answers yes, and forgetAiAbilities() makes it read again.",
+    "src/server/limits-enforce.int.test.ts: the case where a store reaches its AI limit must call forgetAiAbilities() or forgetLimitMemos() before it expects the buttons gone.",
+    "src/server/live-voice.int.test.ts (assistantAbilities) and src/server/page-ai.int.test.ts (studioAbilities) set up providers and read abilities: they must clear the memo between cases. No int test calls conversationFeed() by name today (rg finds only src/server/support-platform.scan.test.ts): add one for its translate flag.",
+    "docs/capacity.md:612, 640; docs/rules/admin/ai.md (AI usage, D106)."
+   ],
+   "depends_on": [
+    "DQ-4 (the cost sum)"
+   ],
+   "done_when": "rg -n 'aiFor\\(' src/server/support-inbox.ts src/server/page-change-ai.ts src/server/picture-editor.ts src/server/products.ts prints nothing (4 lines today), and the memo case in src/server/ai.int.test.ts passes. With AI-5 and AI-13 also done, the ai_providers statements in production's pg_stat_statements should grow by under 1,500 calls a day (about 3,000 a day today: 237,563 in 78 days).",
+   "saving": "Estimate, the split is not measurable from the statistics: an open support conversation goes from 4 to 30 provider reads a minute to at most one a minute per server instance; a builder page from 3 to at most 1; with AI-5 and AI-13 most provider reads go. In today's absolute terms a few seconds of database time a day; the point is that the cost stops rising with every owner at work.",
+   "effort": "S",
+   "risk": "A button can be up to a minute stale after an owner changes AI settings or a store crosses its allowance on another server instance; the action behind it still calls aiFor() and refuses in plain words, so check each such action has those words. The 60 seconds must not be longer than the limit memo's, or a store over its allowance keeps buttons longer than today.",
+   "confidence": "high",
+   "priority": "P1",
+   "already_tracked": "No. docs/capacity.md:612 notes that aiFor() 'is called often' and adds the 60-second memo for the sum; no step covers the callers. The sum itself is DQ-4 of this review.",
+   "owner_decision": false,
+   "verdict": "corrected",
+   "notes": "The skeptic's corrections stand: the poll is 2 seconds only without realtime; the chat widget's call sits inside a 'use cache' function; the absolute cost is small. I narrowed the fix to one helper and seven callers (effort S, was M) and moved the jobs to AI-5 and AI-13 and the sum to DQ-4, so each is done once. The brief's 48,492 chat_agents reads are the platform's own site on cache misses (see metrics), not this finding."
+  },
+  {
+   "id": "AI-3",
+   "title": "Nothing asks for prompt caching or measures it, and the store is charged the full price either way",
+   "kind": "eager",
+   "where": [
+    "/home/user/kaizen-store/src/server/owner-assistant.ts:409-415",
+    "/home/user/kaizen-store/src/server/owner-assistant.ts:743-750",
+    "/home/user/kaizen-store/src/server/owner-assistant.ts:751-768",
+    "/home/user/kaizen-store/src/server/ai.ts:676-702",
+    "/home/user/kaizen-store/src/lib/ai-usage.ts:92-101",
+    "/home/user/kaizen-store/src/server/ai-usage.ts:66-85",
+    "/home/user/kaizen-store/src/server/ai-price-sql.ts:16-36",
+    "/home/user/kaizen-store/docs/audits/code-review-2026-11.md:249"
+   ],
+   "evidence": "The request body carries no cache marker (0 lines in src for cache_control and five related names; rg run here). readTokens() reads only prompt_tokens and completion_tokens (ai-usage.ts:92-101), commerce.ai_usage has no column for cached tokens and commerce.ai_model_prices no price for them, so even when a provider discounts a repeated prefix the store's allowance is charged in full and nobody can see whether caching works. Inside one turn the prefix is already stable: the system prompt is built once (owner-assistant.ts:751-768) and the tool list changes only when load_tools runs, which re-sorts it in table order so new tools land in the middle (line 740 filters the table; line 746 puts new areas first). Across turns the prompt's second line carries the time to the minute (line 409, 415), 182 characters in, ahead of about 14,500 characters that do not change. The minute cannot simply go: follow_up takes its time as 'YYYY-MM-DD HH:MM in the time zone of your instructions' (src/lib/manager-tools.ts:96).",
+   "cost": "Unknown, and that is the finding. On providers that cache by prefix on their own, rounds 2 and later of a turn may already be discounted on Kaizena Flow's bill; the code cannot tell, and the store's allowance is counted at the full price regardless, so a store reaches its monthly AI limit sooner than its real cost. Across turns of one conversation, and after any load_tools call, the changed minute or tool order defeats a prefix cache from that point on.",
+   "who_pays": "The store's AI allowance on every round; Kaizena Flow's provider bill wherever a cache needs a marker or the prefix moves.",
+   "fix_steps": [
+    "Measure first, as a push of its own with the migration. src/db/schema.ts: `cachedInputTokens` on commerce.ai_usage (integer, not null, default 0, with the amounts check) and `cachedInputPerMillion` on commerce.ai_model_prices (numeric(14,6), null means the input price); `pnpm db:generate`. Both are add-only and neither table is on the hot list. Record the version in docs/decisions.md after the deploy and check the advisors.",
+    "src/lib/ai-usage.ts: readTokens() also returns `cachedInputTokens`, read defensively from the names the providers' API references give for cached prompt tokens (check each provider's reference when building; an absent or odd value is 0, and never more than the input tokens). Add the field to UsageAmounts, NO_USAGE, UsageRow and the sums. src/server/ai.ts tokensOrEstimate() passes it on; src/server/ai-usage.ts recordUsage() (lines 66-85) writes it.",
+    "Price it in the one place SQL reads a price and its twin in code: src/server/ai-price-sql.ts costMicrosSql becomes (input minus cached) x input price plus cached x coalesce(cached price, input price); src/lib/ai-cost.ts callCost() the same. The prices form at /admin/platform/ai/prices gets the optional field. A store's allowance (aiCostSql in src/server/usage-sql.ts, and DQ-4's daily rows) then counts cached tokens at their price.",
+    "Show it: on Platform, AI usage (UsageReport) add the cached share of input tokens per feature; the round log of AI-10 carries cached tokens per round.",
+    "Then the order, in the same change as AI-1 (one eval run). Tools: the fixed ones first, appended ones after, load_tools last (AI-1's fourth step). Prompt, managerPrompt() in src/server/owner-assistant.ts:390-499: move the sentence with the date and time out of the second line to the very end of the prompt, after 'What you know about them', as 'It is now ... in the store's time zone (...)'; keep the minute there. Everything before it then changes only with the store, the person's role, the page, waiting approvals and memories.",
+    "Only if the measured cached share stays at zero on rounds after the first for a model family the platform uses: add what that provider documents for marking a cacheable prefix, in streamWithToolsOnce() (src/server/ai.ts:679-702) behind a flag in the provider's facts in src/lib/ai-provider.ts (the code review names this for Anthropic models through the gateway). Do not send a marker to a provider that does not document one.",
+    "docs/rules/admin/ai.md (AI usage and Cost, D106, D145): say that cached input tokens are stored and priced; code review step 3.18's notes."
+   ],
+   "tests_and_rules": [
+    "src/lib/ai-cost.test.ts and src/server/ai-cost.int.test.ts hold callCost() and costMicrosSql together: both change in one commit, with a case for cached tokens with and without a cached price.",
+    "src/lib/ai-usage.test.ts (readTokens): cases for each provider's shape, absent fields, cached above input.",
+    "src/db/commerce.test.ts: the new columns' checks. pnpm db:check. src/server/migration-safety.scan.test.ts is not touched (not a hot table).",
+    "src/server/limits-enforce.int.test.ts: a month's usage with cached tokens counts less toward ai_cost_month_micros.",
+    "The prompt's version changes: eval run and recording, with AI-1. src/server/prompt-versions.ts needs no change (the manager's fixed prompt is drawn in owner-assistant.ts:505-507).",
+    "docs/rules/admin/ai.md (never a price in code; costWords() beside any usage shown); docs/audits/code-review-2026-11.md:249, 488 (FA1's 'done when' needs the provider's cached tokens)."
+   ],
+   "depends_on": [
+    "AI-1 (the order of tools; same eval run)",
+    "AI-10 (the round log)",
+    "A new run of the agents' eval on Platform, AI in production after the deploy, and its recording committed as src/data/agent-eval-recording.json (a person with platform access does this; CI only replays it)"
+   ],
+   "done_when": "In production, a week after the order change: select sum(cached_input_tokens)::float / nullif(sum(input_tokens), 0) from commerce.ai_usage where feature = 'ai_manager' and kind = 'text' and not estimated and created_at > the deploy gives more than 0.3 (the column does not exist today), or, if it gives 0, the step that adds a marker has been taken for that model family and the figure checked again.",
+   "saving": "Not measured. After AI-1 the stable start of a round is about 33,000 characters of fixed tools and nearly all of the 14,800-character prompt; from the second round of a turn the whole request up to the newest tool result can be served from a cache where the provider offers one. The store-side saving (allowance counted at the cached price) is certain wherever the provider reports cached tokens and a cached price is set.",
+   "effort": "M",
+   "risk": "Cached-token fields differ by provider: a wrong reading would undercount a store's cost, so read only documented names and keep cached at or below input. Pricing cached tokens changes the cost shown on the usage pages; the SQL and callCost() must change together or their test fails. Moving the time to the end is a new prompt version: if the model reads the time less reliably there, follow-ups get wrong times, so add an eval case that asks for a reminder 'tomorrow at 9' and checks the `at` it sends. The migration must go in a push before the prompt change, or the deploy waits on a replay that cannot pass yet.",
+   "confidence": "medium",
+   "priority": "P1",
+   "already_tracked": "Yes: code review step 3.18 (FA1), Open; its 'done when' needs the provider's cached tokens. Reading, storing and pricing cached tokens is not written there.",
+   "owner_decision": false,
+   "verdict": "corrected",
+   "notes": "The skeptic's correction stands: prompts are cacheable inside a turn today; what is certain is that the app neither asks nor measures. I could not check any provider's cache behaviour from here, so the plan measures before it changes anything, and the marker step is conditional. The measuring part (first four steps) is useful on its own and can ship before AI-1."
+  },
+  {
+   "id": "AI-4",
+   "title": "The owner's browser downloads the model's whole tool catalogue and admin map",
+   "kind": "oversize",
+   "where": [
+    "/home/user/kaizen-store/src/components/admin/ai-manager.tsx:9",
+    "/home/user/kaizen-store/src/components/admin/ai-manager.tsx:11",
+    "/home/user/kaizen-store/src/components/admin/ai-manager.tsx:13",
+    "/home/user/kaizen-store/src/components/admin/ai-manager.tsx:328",
+    "/home/user/kaizen-store/src/components/admin/ai-manager.tsx:392-394",
+    "/home/user/kaizen-store/src/lib/manager-tools.ts:3",
+    "/home/user/kaizen-store/src/lib/manager-tools.ts:318",
+    "/home/user/kaizen-store/src/lib/admin-map.ts:1461-1490",
+    "/home/user/kaizen-store/src/lib/admin-messages/pages.nb.ts:2",
+    "/home/user/kaizen-store/e2e/signed-in/ai-manager-panel.spec.ts:12",
+    "/home/user/kaizen-store/docs/performance.md:153-160"
+   ],
+   "evidence": "The chat (a client component) imports TOOL_WORDS from src/lib/manager-tools.ts, whose first import is ./owner-tools, matchPath from src/lib/admin-map.ts and PAGES_NB from the Norwegian page list. In the finished build .next/static/chunks/00rxgygh1f--7.js is 496,206 bytes (144,326 gzip; both measured here). The skeptic found every one of the 319 tool descriptions and 392 of 416 page descriptions in it by substring. The bundle analyzer's module list for the admin route says the same from the other side: among the client code loaded later, owner-tools.ts is 158,819 bytes, admin-map.ts 150,622, pages.nb.ts 52,925, manager-tools.ts 30,614, and twelve more tool and autopilot files 44,773: 437,753 bytes, against ai-manager.tsx itself at 18,071. The browser uses the 13,226 characters of TOOL_WORDS (ai-manager.tsx:328) and one matchPath() call that reads a page's id, area and title, with the Norwegian title (ai-manager.tsx:392-394). The only other importer of matchPath in components is a server file (src/components/docs/docs-routes.tsx).",
+   "cost": "About 370 KB of 496 KB that nothing in the browser reads, downloaded and parsed when the panel is first opened (and on the assistant's own page). Paid once per owner per session; it grows with every tool and admin page added.",
+   "who_pays": "An owner's browser, on the first opening of the AI manager in a session.",
+   "fix_steps": [
+    "New file src/lib/tool-words.ts with no imports: move the TOOL_WORDS record there as it is (it starts at src/lib/manager-tools.ts:318). In manager-tools.ts leave `export { TOOL_WORDS } from \"./tool-words\";` so the 23 test files that import it from ./manager-tools keep working.",
+    "src/components/admin/ai-manager.tsx:11: import TOOL_WORDS from \"@/lib/tool-words\".",
+    "New file src/lib/admin-page-names.ts with no imports: `ADMIN_PAGE_NAMES`, one `{ id, area, path, title }` per admin page (416 entries, 36,929 characters as JSON by my measure), and `matchPageName(pathname)`: the matching code of matchPath() (src/lib/admin-map.ts:1461-1490) moved here. matchPath() in admin-map.ts calls it and looks the full page up in ADMIN_PAGES_BY_ID, so there is one matcher. The list is written from ADMIN_PAGES by a new scripts/admin-page-names.mjs.",
+    "New file src/lib/admin-messages/page-titles.nb.ts: the Norwegian titles only (16,535 characters against 54,585), written by the same script from PAGES_NB.",
+    "src/components/admin/ai-manager.tsx lines 9, 13 and 392-394: use matchPageName() and the titles file. Nothing else in the chat reads the map.",
+    "src/lib/admin-map.test.ts: a case that fails when ADMIN_PAGE_NAMES or the Norwegian titles differ from what ADMIN_PAGES and PAGES_NB give, with the script's name in the message.",
+    "e2e/signed-in/ai-manager-panel.spec.ts: after the press that opens the panel, add up the bytes of the scripts requested since the press and hold them under a budget set from the first measure with about 10% of room (expected about 125,000 bytes raw: today's 496,206 minus 437,753, plus 66,690 for the three slim lists).",
+    "docs/performance.md after line 160: the chunk's new size and that its budget lives in the panel's spec."
+   ],
+   "tests_and_rules": [
+    "23 unit test files import TOOL_WORDS from ./manager-tools (for example src/lib/field-tools.test.ts:18, src/lib/tool-budget.test.ts:3): kept working by the re-export.",
+    "src/lib/admin-map.test.ts (every page is in the map; add the generated lists' check).",
+    "e2e/signed-in/ai-manager-panel.spec.ts (the screen asks for the chat's scripts only on opening): gains the budget. e2e/signed-in/admin-scripts.spec.ts is not affected (first scripts only).",
+    "src/lib/brand.scan.test.ts reads every string: the new files hold only strings that exist today.",
+    "docs/performance.md:153-160; docs/rules/admin/ai.md (a new tool has 'a line in TOOL_WORDS': say the file's new name)."
+   ],
+   "depends_on": [],
+   "done_when": "In e2e/signed-in/ai-manager-panel.spec.ts the scripts fetched on first opening the AI manager are under 140,000 bytes raw (496,206 today).",
+   "saving": "About 370 KB raw of 496 KB (estimate from the analyzer's module sizes: 437,753 bytes of tool tables, admin map and Norwegian page list leave, 66,690 come back as slim lists), roughly 100 KB of the 144 KB gzip (estimate). The skeptic's floor, counted as text found in the chunk, is 259 KB.",
+   "effort": "S",
+   "risk": "Low: labels and page names are data. A generated list can go stale; the unit test catches it. If another client component later imports manager-tools or admin-map the weight comes back; the panel's budget catches that.",
+   "confidence": "high",
+   "priority": "P0",
+   "already_tracked": "Partly: docs/performance.md:153-160 records the chunk (0.48 MB) and made it load on first opening (D444, done). What is inside it is not tracked.",
+   "owner_decision": false,
+   "verdict": "confirmed",
+   "notes": "On the server the same tables are part of every admin page's code: the store admin's layout imports the AI manager's actions (src/app/admin/(gated)/[store]/layout.tsx:32-40), and the analyzer lists owner-tools.ts, admin-map.ts, server/owner-tools.ts and assistant-skills.ts among the modules loaded with the /admin/[store] route (about 730 KB of its 12.6 MB). What that costs a cold start belongs to the admin-server dimension; it is noted here so the two fixes are planned together."
+  },
+  {
+   "id": "AI-5",
+   "title": "The knowledge, product and picture index jobs rescan per store to find nothing",
+   "kind": "eager",
+   "where": [
+    "/home/user/kaizen-store/src/server/knowledge.ts:167-194",
+    "/home/user/kaizen-store/src/server/knowledge.ts:248-256",
+    "/home/user/kaizen-store/src/server/knowledge.ts:297-309",
+    "/home/user/kaizen-store/src/server/embeddings.ts:31-52",
+    "/home/user/kaizen-store/src/server/embeddings.ts:109-122",
+    "/home/user/kaizen-store/src/server/media-library.ts:798-830",
+    "/home/user/kaizen-store/src/server/media-library.ts:860-873",
+    "/home/user/kaizen-store/src/server/product-tools.ts:221",
+    "/home/user/kaizen-store/src/server/content-packs.ts:417",
+    "/home/user/kaizen-store/src/app/api/cron/cart-reminders/route.ts:143-154"
+   ],
+   "evidence": "Knowledge: every five minutes, for each site with a chat agent, the job selects every published page and article with its whole published JSON to compare one timestamp (about 40 pages a call, 24,134 calls). A published page that yields no passages has no chunk row, so it is cut and 'replaced' again on every run: 91,200 delete calls removed 782 rows in all. Products: every run one statement computes an md5 over the title, terms and description of every active product translation of every store on the platform's AI (embeddings.ts:31-52; 10,201 calls, 14.5 ms with about 300 products). Products are embedded when saved in the editor, the translator, a bulk edit, an import and a store copy, but not when the AI manager or a content pack saves one (product-tools.ts:221 and content-packs.ts:417 call saveProduct() with no refresh after it), so the scan is also how those reach search by meaning. Pictures: every run, for each site with media, the job fetches the AI connection, deletes vectors of undescribed pictures and selects stale ones (media-library.ts:860-873, 798-812; 49,842 calls at 0.4 ms); once a day per picture it looks up where each is used (145 ms mean) and usually only moves the date on (13,414 updates on 468 rows).",
+   "cost": "Database time in 78 days from the statements the skeptic matched: page reads for knowledge 42 s, picture uses 266 s, the product md5 scan 148 s, the stale-picture select 19 s: roughly 480 s, about 6 s a day. Small today, with one or two sites in each loop. What grows: knowledge and pictures loop per store, one after another, every five minutes; the product scan reads every product's text on the platform every five minutes as one statement under the 15 s limit (at 14.5 ms for about 300 products, a million product translations would be tens of seconds: an estimate by simple proportion).",
+   "who_pays": "The database and the dispatcher's function, every five minutes; more with every store that opens.",
+   "fix_steps": [
+    "Knowledge: do DQ-6 of this review as written (record a page that cut to nothing; choose changed pages in SQL before fetching documents; skip aiFor() when nothing was cut and no chunk lacks a vector). Its second step alone ends the 91,200-style empty transactions.",
+    "Pictures: do DQ-3's first step (a change stamp in place of the daily clause in embedMedia(), src/server/media-library.ts:810). Then in refreshMediaEmbeddings() (lines 860-873) replace the list of every site with media by one query that lists only sites with a described picture that has no vector, or whose vector is older than the picture or than the stamp; call aiFor() only for those. A changed embedding model is picked up when the site's stamp next moves, or by a daily pass.",
+    "Products, the writers: after saveProduct() in src/server/product-tools.ts:221 and src/server/content-packs.ts:417 and 428 call `refreshStoreEmbeddings(store.id).catch(() => undefined)`, as src/server/bulk-edit.ts:456 does, so no product saver depends on the scan.",
+    "Products, the scan: run refreshEmbeddings() (src/server/embeddings.ts:109-122) hourly, not every five minutes: with DQ-5's job cadences, or until then a guard in src/app/api/cron/cart-reminders/route.ts:143 that runs it only when the minute of the hour is below 5. It stays the safety net for a renamed category or tag and a product whose status changed.",
+    "When the catalogue is large enough that the hourly scan nears a second (watch it in commerce.cron_jobs), slice it: scan the stores in turn, a fixed number a run, ordered by when each was last scanned. Not needed before opening; write the threshold in docs/capacity.md.",
+    "docs/rules/storefront.md (Search, D72, D74: 'the five-minute cron keeps every store current') and the comment at src/server/embeddings.ts:19-20: say that saving embeds at once and the scan is hourly."
+   ],
+   "tests_and_rules": [
+    "src/server/embeddings.int.test.ts: add that a product made through the AI manager's create_product has a vector without the cron's run.",
+    "src/server/media-library.int.test.ts: refreshMediaEmbeddings() on a second run with nothing changed reports 0 sites with work and writes no row.",
+    "src/server/chat.int.test.ts (DQ-6's case: a second tick with nothing published makes no transaction).",
+    "src/server/cron-routes.scan.test.ts holds the dispatcher's jobs to runJobs(): a cadence guard must stay inside it.",
+    "docs/rules/storefront.md:407-411 (knowledge) and its Search rule; docs/media-compression.md:59 and docs/rules/admin/website.md:676 (the daily re-check of picture uses, a written design: DQ-3 keeps its purpose with the stamp)."
+   ],
+   "depends_on": [
+    "DQ-6",
+    "DQ-3 (step 1)",
+    "DQ-5 (job cadences; a minute guard until then)"
+   ],
+   "done_when": "In production a day after the deploy the calls of the statement starting 'with docs as (select t.store_id, t.product_id' grow by about 24 a day (about 130 a day today: 10,201 in 78 days), and DQ-6's and DQ-3's own checks pass.",
+   "saving": "Estimate: the product scan runs 12 times less often; on an idle run the knowledge job falls to one small query per site and the picture job to one query in all. In today's terms a few seconds of database time a day; the gain is that these jobs stop growing with every store, page and product.",
+   "effort": "M",
+   "risk": "Knowledge is refreshed only by its job, so the five-minute cadence stays: only what is read changes. A product changed outside the save paths (a renamed category, a status change) waits up to an hour for search by meaning: noticed as a search that misses a just-published product; the editor's own save is not affected. A missed change stamp leaves a stale picture vector until the daily pass.",
+   "confidence": "high",
+   "priority": "P1",
+   "already_tracked": "No step in the code review. In this review the knowledge part is DQ-6 and the picture part DQ-3 of the queries dimension: do them once, there.",
+   "owner_decision": false,
+   "verdict": "corrected",
+   "notes": "The skeptic withdrew the draft's job timings (sums of overlapping waits) and I keep them out. Two things I changed: alt texts are no longer called 'already narrowed' here (the site list is not narrow once a site has an AI-written alt text; see AI-13), and the product scan cannot simply go hourly until the two savers that skip the refresh call it. Before opening is the cheap time to add DQ-6's table and change cadences: no real content is waiting on them."
+  },
+  {
+   "id": "AI-6",
+   "title": "The autopilot's, follow-ups' and saved-skills' tools ride on every AI manager round",
+   "kind": "eager",
+   "where": [
+    "/home/user/kaizen-store/src/lib/manager-tools.ts:19-160",
+    "/home/user/kaizen-store/src/lib/tool-budget.ts:66-68",
+    "/home/user/kaizen-store/src/lib/tool-budget.ts:115-124",
+    "/home/user/kaizen-store/src/server/owner-assistant.ts:438",
+    "/home/user/kaizen-store/src/server/owner-assistant.ts:471",
+    "/home/user/kaizen-store/src/server/owner-assistant.ts:726-730"
+   ],
+   "evidence": "The manager's own 26 tools are always sent and never cut (tool-budget.ts:66-68; owner-assistant.ts:726-730). 12 are the autopilot's (make_autopilot_plan 3,508 characters, revise_autopilot_plan 3,055, set_goal 1,868 and nine more: 12,417), 3 are follow-ups (1,708) and 2 are for saving skills (1,259): 15,384 characters a round, for every store and every question; the other 9 are 4,944 (my bundle, the same split as the skeptic's). The prompt also tells the model to use follow_up and save_skill (owner-assistant.ts:438, 471).",
+   "cost": "About 3,800 tokens on every AI manager round (estimate at 4 characters a token): about 10% of today's round, and 46% of the 33,800 characters of tools a lean round on Home would send after AI-1.",
+   "who_pays": "The server per AI manager call and the store's AI allowance.",
+   "fix_steps": [
+    "Put it to the owner with question 8 of the code review, as one choice: (a) the manager always holds these tools, so it can offer a plan or a reminder unprompted, at 3,800 tokens a round; or (b) they load when the talk turns to them. The steps below are (b).",
+    "src/lib/manager-tools.ts: export `AUTOMATION_TOOLS`, a set naming the 17 (save_skill, delete_skill, follow_up, list_follow_ups, cancel_follow_up, set_goal, list_goals, drop_goal and the nine *_autopilot_* tools).",
+    "src/lib/tool-budget.ts: `ToolArea` becomes the permission areas plus \"automation\", with `TOOL_AREAS = [...AREAS, \"automation\"]` used by the held-back loop (lines 89-94), loadToolsDefinition() and readLoadTools() (line 120 filters by AREAS today). AREAS itself, which permissions read, is not touched.",
+    "src/server/owner-assistant.ts, runTurn(): in a person's own turn pass the 17 through chooseTools() as offered tools of area \"automation\" instead of in the always-sent list (lines 726-730, 735). They are picked when one was used earlier in the conversation (`used`), when load_tools asks for automation, when the store has something of theirs alive, or when the message's words match. 'Alive' is one read beside those at lines 663-683: exists a row in commerce.assistant_goals, commerce.assistant_plans or commerce.assistant_follow_ups for this store and person that is not ended (open each table's status values when building). The words go in src/lib/tool-router.ts (AI-1): remind, reminder, follow up, every day, every week, every month, goal, plan, autopilot, skill, and the Norwegian påminn, minn meg, hver dag, hver uke, mål, plan, ferdighet.",
+    "Outside assistants' turns (OUTSIDE_MANAGER_TOOLS), autopilot steps and scheduled follow-ups keep exactly what they get today.",
+    "managerPrompt() lines 438 and 471: keep both hints and add that these tools are in the area automation, loaded with load_tools when missing. Without that the prompt names a tool the model cannot see.",
+    "Eval cases (with AI-14): 'Remind me on Friday at 9 to check order 1042' must call follow_up; 'Set a goal: 20% more repeat orders by March' must call set_goal; a question about orders must call neither.",
+    "docs/rules/admin/ai.md: under the follow-ups, autopilot and saved-skills rules, one line each that their tools are the automation group."
+   ],
+   "tests_and_rules": [
+    "src/lib/tool-budget.test.ts: ALWAYS (line 11) changes from the manager's 26 plus 2 to 9 plus 2; add that automation is held back by default and loaded by load_tools.",
+    "src/server/follow-ups.int.test.ts, src/server/autopilot-*.int.test.ts and src/server/owner-assistant.int.test.ts: turns that expect follow_up or set_goal to be offered need the words, a live goal or a load first.",
+    "src/lib/agent-eval.test.ts (every tool a case names exists) and the replay: new recording.",
+    "docs/rules/admin/ai.md (the AI manager's follow-ups, PSI AGT-04; the autopilot, D309; saved skills, D350)."
+   ],
+   "depends_on": [
+    "AI-1 (same change and eval run)",
+    "AI-14",
+    "The owner's choice between (a) and (b)",
+    "A new run of the agents' eval on Platform, AI in production after the deploy, and its recording committed as src/data/agent-eval-recording.json (a person with platform access does this; CI only replays it)"
+   ],
+   "done_when": "If (b): the default round in src/server/ai-round.scan.test.ts (AI-10) holds 9 of the manager's own tools and under 35,000 characters in all for a shop on Home (48,600 with all 26), and the two new eval cases pass in the committed recording. If (a): the choice is written in docs/decisions.md and nothing changes.",
+   "saving": "15,384 characters a round (measured) on rounds where the group is not loaded; none if the owner keeps them always present.",
+   "effort": "S",
+   "risk": "A model that does not see the tools will offer plans and reminders less often: that is the product question. A reminder asked for in words outside the list costs one load_tools round. Noticed by the eval cases and by the share of turns that end with a follow-up or goal in the round log.",
+   "confidence": "high",
+   "priority": "P1",
+   "already_tracked": "No. FA1 keeps 'the manager's own' in the default set; owner question 8 of the code review covers the default set in general.",
+   "owner_decision": true,
+   "verdict": "corrected",
+   "notes": "The skeptic removed the draft's argument from empty tables, rightly: before opening nobody has used anything. What remains is that these definitions are sent before anyone asks for them. It is a product choice, not waste; if the owner picks (a), close this with the decision."
+  },
+  {
+   "id": "AI-7",
+   "title": "One text model does every job, small ones included",
+   "kind": "oversize",
+   "where": [
+    "/home/user/kaizen-store/src/server/ai.ts:46-48",
+    "/home/user/kaizen-store/src/server/ai.ts:229-232",
+    "/home/user/kaizen-store/src/server/ai.ts:529-536",
+    "/home/user/kaizen-store/src/server/owner-assistant.ts:843-848",
+    "/home/user/kaizen-store/src/server/assistant-memory.ts:341-358",
+    "/home/user/kaizen-store/src/server/support-tone.ts:44-50",
+    "/home/user/kaizen-store/src/server/query-understanding.ts:81-85",
+    "/home/user/kaizen-store/src/server/recommend.ts:581-590",
+    "/home/user/kaizen-store/src/server/content-moderation.ts:43-46"
+   ],
+   "evidence": "A connection has one textModel. The same model runs the AI manager's tool loop, the shopper chat, a memory pass after every manager turn (on by default), search understanding for a shopper's new search, the recommendation rerank, tone rating of each customer message (on by default with support on; 60 tokens of answer), support summaries and the check of 10 listings a dispatcher run. 33 completeText call sites in 25 files take whatever model the platform or the store chose (my rg). seeing() at ai.ts:229-232 already shows the pattern for a second model: a copy of the connection with another model as its text model.",
+   "cost": "Each small job is billed and timed at the price and speed of the model chosen for multi-step work. Not measurable from here without usage by feature and model. The one price seeded is gpt-5-mini at 0.25 dollars a million input tokens, already a small model, so the gap is small until the platform or a store picks a larger one for the manager.",
+   "who_pays": "The server per AI call and the store's AI allowance; a shopper waits for search understanding on a new query.",
+   "fix_steps": [
+    "src/db/schema.ts, the ai_providers table: `quickModel` (text, null, the same length check as the other model names); `pnpm db:generate`; push the migration on its own first.",
+    "src/lib/ai-provider.ts: a `quickModel` default in each provider's facts, chosen from that provider's current list when built, and the field in aiProviderInput. src/server/ai.ts: carry it through AiSettings, toSettings(), saveAiSettings() and its audit entry.",
+    "src/server/ai.ts beside seeing(): `quick(connection)` returns the connection with `textModel` set to its quickModel, else the provider's default, else its own text model.",
+    "Use it: learnFromTurn() (src/server/owner-assistant.ts:845 passes quick(connection)), src/server/support-tone.ts:44, src/server/support-summary.ts, src/server/recommend.ts:581-590, src/server/query-understanding.ts:81-85, the listing check in src/server/content-moderation.ts (the reading of a notice stays on the main model), src/server/category-suggest.ts and src/server/theme-highlight-words.ts.",
+    "Give the memory pass its own feature name in AI_FEATURES (src/lib/ai-usage.ts:24-63), so usage shows it apart from the manager's rounds.",
+    "Settings, AI and Platform, AI: one optional field under Advanced, 'Model for small jobs'; empty means the default, so Homer never chooses. The platform's form gets it in the same change (the parity rule).",
+    "A price row for each quick model on Platform, AI, Prices before it is used, or its calls show 'No price' and do not count toward a store's allowance.",
+    "Run the search-understanding eval and the agents' eval (its listing case then runs on the quick model) and commit the recording. Set code review step 3.20 to Done."
+   ],
+   "tests_and_rules": [
+    "src/server/ai.int.test.ts (settings saved and read), src/lib/ai-provider.test.ts (the defaults name real models of each provider's list).",
+    "src/server/query-understanding.int.test.ts, src/server/recommend.int.test.ts, src/server/support-partner.int.test.ts and src/server/content-moderation.int.test.ts pass their own connections: unchanged unless they assert the model's name.",
+    "src/lib/store-copy-rules.ts:237 never copies ai_providers (the keys are secrets): nothing to add there. pnpm db:check and src/db/commerce.test.ts for the new column.",
+    "docs/rules/admin/ai.md (AI providers, D73: 'Nothing else names a provider or model'); docs/audits/code-review-2026-11.md:122, 277, 490 (step 3.20, FA8)."
+   ],
+   "depends_on": [
+    "A price row for each quick model (Platform, AI, Prices)",
+    "A new run of the agents' eval on Platform, AI in production after the deploy, and its recording committed as src/data/agent-eval-recording.json (a person with platform access does this; CI only replays it)"
+   ],
+   "done_when": "select model, count(*) from commerce.ai_usage where feature in ('support_tone', 'support_summary', 'recommendations', the memory pass's new feature) and created_at > the deploy group by 1 shows the quick model on those rows, and code review step 3.20's own check holds (learnFromTurn and the summaries run on the quick model, with a default per provider).",
+   "saving": "Not measured: it is the price gap between the two models times the small jobs' tokens, and with gpt-5-mini as the main model the gap is small. The jobs named are the frequent ones (per message, per new search, per turn).",
+   "effort": "M",
+   "risk": "A weaker model may read tone or a search's filters worse: the search-understanding eval and the agents' eval exist to check, and tone leaves a message 'not measured' rather than wrong when the answer cannot be read.",
+   "confidence": "medium",
+   "priority": "P2",
+   "already_tracked": "Yes: code review step 3.20 'A quick model for small jobs' (FA8), Open.",
+   "owner_decision": false,
+   "verdict": "confirmed",
+   "notes": "P2 because the seeded main model is already a small one. It becomes P1 the day the platform's manager runs on a larger model: do it before that switch, not after."
+  },
+  {
+   "id": "AI-8",
+   "title": "Tool schemas say more than the model needs",
+   "kind": "oversize",
+   "where": [
+    "/home/user/kaizen-store/src/lib/owner-tools.ts:2076-2082",
+    "/home/user/kaizen-store/src/lib/owner-tools.ts:375-384",
+    "/home/user/kaizen-store/src/server/owner-assistant.ts:137",
+    "/home/user/kaizen-store/src/server/owner-assistant.ts:827",
+    "/home/user/kaizen-store/src/lib/mcp-catalogue.ts:9-15",
+    "/home/user/kaizen-store/docs/consolidation.md:80-83"
+   ],
+   "evidence": "update_product is 11,908 characters and create_product 11,305; both are in today's default set and in any round on a products page. Of 154,036 schema characters over all store tools, 25,804 are length, range and pattern bounds that zod checks again on the server (readToolInput(), owner-tools.ts:2085-2088). In today's default set the string bounds are 7,563 characters (the skeptic's measure); in the lean sets of AI-1 I measure 4,006 (Home), 5,562 (orders) and 7,654 (products). Each gated tool gets a 161-character sentence added (owner-tools.ts:2080); 35 gated tools are in today's default set (5,635 characters), 10 in a lean orders or products round (1,610), none on Home. consolidation.md records that the eval passed only once the sentence was on the tool. Tool results are cut blind at 12,000 characters (owner-assistant.ts:827: a slice of the JSON text, so a cut result is broken JSON with no word that it was cut), and every result stays in the messages for all later rounds of the turn. toolDefinition() also feeds the owner MCP's catalogue, whose rule is that the tools' inputs stay as they are (mcp-catalogue.ts:9-15).",
+   "cost": "After AI-1: 4,000 to 7,700 characters of string bounds and up to 1,610 of gate sentences a round, and the two product tools at 23,213 on a products page or in a Dream Factory catalogue turn (30,564 characters of tools, three quarters of it these two). Up to 12,000 characters per earlier tool result on every later round of the turn.",
+   "who_pays": "The server per AI manager call.",
+   "fix_steps": [
+    "src/lib/owner-tools.ts: add `modelDefinition(t)`: toolDefinition(t) with the keys maxLength, minLength, pattern and format removed from its schema at every depth, kept per tool in a WeakMap. Number ranges, enums, required and array limits stay. toolDefinition() itself stays as it is for /api/mcp and its catalogue (src/lib/mcp-catalogue.ts).",
+    "Use modelDefinition() where the model is sent tools: src/server/owner-assistant.ts:727, 732, 740 and src/server/agent-eval.ts:79, 152 (toolsVersion() must hash what the model is sent).",
+    "src/server/owner-assistant.ts:827: when JSON.stringify(result) is longer than RESULT_MAX, send `{ cut: true, note: \"Longer than fits here: ask for fewer rows or a narrower question.\", start: <the first 11,800 characters> }` so the model gets valid JSON and knows. Do not rewrite older results in place: that would break the stable prefix AI-3 relies on.",
+    "Try a shorter gate sentence in the same eval run (for example 'Calling it only asks the owner; call it when they ask, never ask in words first.') and keep it only if the case manager-asked-refund still passes; otherwise leave today's.",
+    "Only together with AI-1, as a later change of its own: split update_product so the main tool keeps title, texts, status, categories, tags and prices, and variants, pictures and translations get tools of their own in the products area (src/lib/product-tools.ts, src/server/product-tools.ts, TOOL_WORDS, the permission and feature maps, the add-product playbook, and the Dream Factory's CATALOGUE_TOOLS). Tools split off help only where they are not sent by default."
+   ],
+   "tests_and_rules": [
+    "src/lib/owner-tools.test.ts and the per-area *-tools.test.ts files that read toolDefinition(): unchanged; add a test that modelDefinition() of every tool has no string bound and still lists every property and required key.",
+    "src/lib/mcp-catalogue.test.ts: the MCP catalogue's inputSchema is unchanged (assert a tool still carries maxLength there).",
+    "The tools' version changes: eval run and recording (share AI-1's). src/server/owner-assistant.int.test.ts: a result over 12,000 characters reaches the model as valid JSON with `cut`.",
+    "docs/consolidation.md:80-83 (why the gate sentence is on the tool): weigh it, keep the sentence unless the eval holds without it.",
+    "For the split: src/lib/product-tools.test.ts, src/server/product-tools.int.test.ts, src/lib/dream-factory.ts:347-362, src/lib/assistant-skills.ts (add-product), docs/rules/admin/ai.md (the AI manager's catalogue tools, D308)."
+   ],
+   "depends_on": [
+    "AI-1 (do steps 1 to 4 in the same change and eval run; the split only after it)",
+    "A new run of the agents' eval on Platform, AI in production after the deploy, and its recording committed as src/data/agent-eval-recording.json (a person with platform access does this; CI only replays it)"
+   ],
+   "done_when": "src/server/ai-round.scan.test.ts (AI-10) finds no \"maxLength\", \"minLength\" or \"pattern\" key in the tools of the default round (5,562 characters of them in a lean orders round today), and the int test of a cut result passes.",
+   "saving": "Measured removable after AI-1: 4,006 to 7,654 characters a round of string bounds, and up to 1,610 of gate sentences only if a shorter wording passes the eval. The product split saves up to about 10,000 more on a products page and in each Dream Factory product turn, only where the split-off tools are not sent.",
+   "effort": "M",
+   "risk": "Without a stated length a model may send over-long text more often and get a validation refusal, which costs a round: watch the count of 'The arguments could not be read' answers in the round log before and after. Splitting tools adds to the count against the cap of 124 and changes a playbook and the Dream Factory's tool list.",
+   "confidence": "medium",
+   "priority": "P2",
+   "already_tracked": "No. FA6 (step 3.21) is about where a tool's facts live, not their size.",
+   "owner_decision": false,
+   "verdict": "corrected",
+   "notes": "The first four steps are small and ride on AI-1's eval run at no extra cost; alone they would not be worth a recording. The split is the larger gain and the larger change: decide it after AI-1's numbers are in."
+  },
+  {
+   "id": "AI-9",
+   "title": "A turn does needless work before the first model call",
+   "kind": "eager",
+   "where": [
+    "/home/user/kaizen-store/src/server/owner-assistant.ts:646",
+    "/home/user/kaizen-store/src/server/owner-assistant.ts:226-238",
+    "/home/user/kaizen-store/src/server/owner-assistant.ts:663-683",
+    "/home/user/kaizen-store/src/server/assistant-memory.ts:85-94",
+    "/home/user/kaizen-store/src/server/assistant-memory.ts:185-207"
+   ],
+   "evidence": "To check that a conversation is the person's, runTurn() calls getConversation() (line 646), which selects every message and every approval of it with select * (lines 233-236; a message may hold 20,000 characters), then reads the last 20 again (663-669). memoriesFor() asks the provider for an embedding of the message on every turn, with a 5-second timeout (assistant-memory.ts:85-94, 201), even for a person with no memories or with fewer than the 8 that fit in the prompt. The embedding runs beside the other reads, so it delays the first model call only by what it takes beyond them.",
+   "cost": "One embeddings call and one usage row a turn (a tiny price, but a network round trip the first word can wait for), and the whole conversation read once more on every turn of it. Time not measured. Small beside the model call itself.",
+   "who_pays": "The owner waiting for the answer, and the database; per turn, so it follows use.",
+   "fix_steps": [
+    "src/server/owner-assistant.ts:646: replace the getConversation() call with a one-row check, `select 1 from commerce.assistant_conversations where id = ... and <inScope(p)> and account_id = ...`, the same test as lines 229-230, in a small `ownsConversation(p, id)` beside getConversation(); keep the id's format check.",
+    "src/server/assistant-memory.ts, memoriesFor() (lines 185-207): first count the person's memories in scope. With PER_TURN (8) or fewer, select them all by importance and date, skip the keyword query and vectorFor(), and still count them as used as the function does for the ones it returns. With more, run it as today."
+   ],
+   "tests_and_rules": [
+    "src/server/owner-assistant.int.test.ts and src/server/ai-manager.int.test.ts: a turn in another person's conversation still starts a new one; a turn of a person with 3 memories gets all 3 and makes no embeddings call (count calls on the fake connection).",
+    "src/server/oauth.int.test.ts (a client's own conversation, D439): still refused outside it.",
+    "docs/rules/admin/ai.md (Memory: 'memoriesFor() each turn'): unchanged in meaning."
+   ],
+   "depends_on": [],
+   "done_when": "A case in src/server/owner-assistant.int.test.ts counts 0 embeddings requests for a turn of a person with 3 memories (1 today), and the turn's first statement on assistant_messages is the 20-row read.",
+   "saving": "One embeddings call a turn for a person with 8 or fewer memories, and a read that grows with the conversation becomes constant. Latency gain not measured; expect little.",
+   "effort": "S",
+   "risk": "Low. Ranking is unchanged for a person with more than 8 memories. If the 'used' count is not moved for the memories sent, the daily fading (fadeMemories()) would drop ones still in use: keep that update.",
+   "confidence": "high",
+   "priority": "P2",
+   "already_tracked": "No.",
+   "owner_decision": false,
+   "verdict": "corrected",
+   "notes": "Real but minor, as the skeptic said. Worth doing only because AI-1 opens the same lines of runTurn(); fold it into that change. On its own it would be P3."
+  },
+  {
+   "id": "AI-10",
+   "title": "Nothing limits how large an AI call may grow",
+   "kind": "process",
+   "where": [
+    "/home/user/kaizen-store/src/lib/tool-budget.ts:11-15",
+    "/home/user/kaizen-store/src/lib/tool-budget.test.ts:20-27",
+    "/home/user/kaizen-store/docs/decisions.md:344",
+    "/home/user/kaizen-store/src/lib/ai-usage.ts:92-101",
+    "/home/user/kaizen-store/src/server/owner-assistant.ts:789",
+    "/home/user/kaizen-store/src/server/ratchet.scan.test.ts:1-30",
+    "/home/user/kaizen-store/e2e/signed-in/ai-manager-panel.spec.ts:12"
+   ],
+   "evidence": "The only budget is a count, set just under the provider's cap: 120 tools on 26 October, raised to 124 on 1 November when two areas no longer fit (decisions.md D333; tool-budget.ts:11-15). The test checks the count only (tool-budget.test.ts:20-27). No test or scan fails when a tool's description or schema grows, when the system prompt grows, or when a tool joins the always-sent set; the ratchet used elsewhere (ratchet.scan.test.ts with a baseline file) is not applied here. A turn logs only when it is cut (owner-assistant.ts:789); per-round input size, tool count and cached tokens are not logged or shown on Platform, AI. D333's own words on 26 October were 'about 190 store tools and the manager's 24'; on 11 November the tables hold 254 and 26. The browser chunk that carries the same tables (AI-4) has no budget either.",
+   "cost": "Each new tool adds about 1,100 characters (the mean; the median is 849) to rounds that carry it, with no signal; the default round is already at about 161,700 characters. 15 store tools are over 2,500 characters and 4 over 4,000.",
+   "who_pays": "Every later AI manager call; the team finds out from the bill or the provider's refusal.",
+   "fix_steps": [
+    "New src/server/ai-round.scan.test.ts (it mocks server-only as src/server/agent-eval-replay.int.test.ts:5-7 does, and needs no database): it draws what runTurn() would send for the fixed principal of src/server/owner-assistant.ts:519-522, the prompt by fixedManagerPrompt() and the tools by the same chooseTools(), loadToolsDefinition() and definition function runTurn() uses, for three cases: a shop on Home, on an orders page, and a website with no shop. It reports characters of prompt, of always-sent tools, of all tools, and the largest tools.",
+    "New src/server/ai-round.baseline.json and scripts/ai-round.mjs, in the manner of src/server/ratchet.baseline.json and scripts/ratchet.mjs: the three rounds' characters, a ceiling per tool of 2,500 characters, and the names and sizes of the tools over it today. The test fails when a round or a listed tool grows, when a new tool is over the ceiling, and when a figure falls until the script lowers the baseline. Record today's numbers before AI-1, so AI-1's change shows as the baseline falling.",
+    "src/server/owner-assistant.ts, in the loop after streamWithTools() (lines 793-799): `log(\"info\", \"ai_manager.round\", { step, tools, toolChars, promptChars, messageChars, inputTokens, outputTokens, cachedTokens, loaded })`: numbers only, no text (D400). `onTokens` already brings the tokens; pass the split through.",
+    "Platform, AI (src/app/admin/(gated)/platform/ai/page.tsx): beside the eval, the median and 90th percentile of input tokens a call for feature ai_manager over 30 days, from commerce.ai_usage through typedRows(), with the cached share once AI-3 stores it.",
+    "The chat chunk's budget: AI-4's seventh step.",
+    "docs/rules/admin/ai.md, under the AI manager's rule: a change that raises the default round raises the baseline in the same commit with its reason in the message; a new tool over 2,500 characters is split or says why. CLAUDE.md's Conventions: add this scan to the sentence that lists the agents' checks."
+   ],
+   "tests_and_rules": [
+    "src/lib/tool-budget.test.ts stays (the count under 128).",
+    "src/server/ratchet.scan.test.ts and scripts/ratchet.mjs are the pattern to copy, not to change.",
+    "src/server/log.ts rules (D400): ids and counts only.",
+    "docs/rules/admin/ai.md; CLAUDE.md (Conventions, the AI paragraph); docs/audits/psi-followups.md (PSI AGT-02 'watch TOOLS_PER_TURN': tick it when this lands)."
+   ],
+   "depends_on": [],
+   "done_when": "src/server/ai-round.scan.test.ts is in the repository with its baseline, and adding 2,000 characters to list_orders' description makes it fail (tried once locally, then reverted).",
+   "saving": "No direct saving. It stops the regrowth after AI-1, AI-6 and AI-8, and it gives those findings the number their checks read.",
+   "effort": "S",
+   "risk": "None to behaviour. A baseline that is too tight blocks a useful tool: raising it is a visible, reviewed line, which is the point.",
+   "confidence": "high",
+   "priority": "P1",
+   "already_tracked": "No. PSI AGT-02 only says to 'watch' TOOLS_PER_TURN.",
+   "owner_decision": false,
+   "verdict": "confirmed",
+   "notes": "Do its first two steps before AI-1: it is the measuring tool, and before opening is when a baseline is cheapest to set. It is listed P1, not P0, only because it saves nothing by itself."
+  },
+  {
+   "id": "AI-11",
+   "title": "The prompt lists every playbook and the admin map, whatever the store or the kind of turn",
+   "kind": "eager",
+   "where": [
+    "/home/user/kaizen-store/src/lib/assistant-skills.ts:609-618",
+    "/home/user/kaizen-store/src/server/owner-assistant.ts:458-464",
+    "/home/user/kaizen-store/src/server/owner-assistant.ts:478-479",
+    "/home/user/kaizen-store/src/server/owner-assistant.ts:714",
+    "/home/user/kaizen-store/src/server/owner-assistant.ts:764",
+    "/home/user/kaizen-store/src/lib/admin-map.ts:1501-1513",
+    "/home/user/kaizen-store/src/lib/autopilot-plans.ts:33"
+   ],
+   "evidence": "skillsFor() filters by area only (assistant-skills.ts:609-611). The store prompt carries one line for each of 38 store playbooks: 5,379 characters, 36% of the 14,772-character prompt, the same for a website with no shop as for a full store. About 22 of the 38 are about selling goods. Several others are how an owner turns a feature on (set-up-bookings, set-up-subscription-boxes, store-features): those must be listed exactly when the feature is off. Planner's addition: an autopilot step, an autopilot event and a Dream Factory step get the same whole prompt (owner-assistant.ts:754-764 adds the autopilot's lines after it), with the 'Guiding them through the admin' lines and the admin map (2,171 to 5,824 characters), although those turns are offered only their step's tools plus use_skill and recall (line 714; autopilot-plans.ts:33), so open_admin_page and find_admin_page are not there and nobody is there to guide.",
+   "cost": "For a website with no shop, roughly 3,000 characters a round name jobs it cannot do. For an autopilot or Dream Factory turn, 2,700 to 6,400 characters a round describe pages it cannot open; such a turn's tools are often smaller than that (2,115 characters for the goals step). For a store with the shop on, in a person's own turn, nearly all of the prompt applies.",
+   "who_pays": "The server per AI manager call; for the Dream Factory, Kaizena Flow's bill on every new store it builds.",
+   "fix_steps": [
+    "src/lib/assistant-skills.ts: add `needs?: \"shop\"` to AssistantSkill and set it on the playbooks that only make sense with goods to sell (orders, shipping, refunds, VAT, stock, discounts: open each of the 38 `when` lines). skillsFor(area, flags?) leaves those out when flags are given and the shop feature is off. Every set-up playbook stays unmarked. use_skill still loads any playbook by id.",
+    "src/server/owner-assistant.ts:464: pass siteFlags(p) to skillsText().",
+    "Same file, managerPrompt(): add an option `alone?: boolean`, set by runTurn() when `input.autopilot` is set (line 754-764). With it, leave out the three 'Guiding them through the admin' lines (459-461) and the admin map (478-479). Scheduled follow-ups keep the map: they are offered open_admin_page today.",
+    "Do this in the change that redraws the prompt for AI-1 and AI-3, so one eval run covers it. The fixed prompt the version is hashed from (shop on, a person's own turn) changes only by AI-1's and AI-3's lines."
+   ],
+   "tests_and_rules": [
+    "The tests that name playbooks: src/lib/fulfilment-tools.test.ts, src/lib/tax-tools.test.ts, src/lib/bonus-tools.test.ts and the others found by rg 'assistant-skills' src --glob '*.test.ts' (ten files): they read ASSISTANT_SKILLS, not the filtered list, so they hold.",
+    "src/server/autopilot-*.int.test.ts and src/server/dream-factory.int.test.ts pass their own turn function or connection: add one assertion that a step's system prompt has no 'The admin (section: page [id])' line.",
+    "docs/rules/admin/ai.md (a playbook goes in ASSISTANT_SKILLS; the autopilot's steps, D309)."
+   ],
+   "depends_on": [
+    "AI-1 and AI-3 (same prompt change and eval run)"
+   ],
+   "done_when": "A unit test draws managerPrompt() for a store with no features at least 2,500 characters shorter than today's 12,263, and for an autopilot step without the admin map; the shop-on draw differs from today's only by AI-1's and AI-3's lines.",
+   "saving": "Estimate: up to about 3,000 characters a round for a website with no shop; 2,700 to 6,400 a round in autopilot and Dream Factory turns; close to nothing for a shop owner's own turn, which is the common case.",
+   "effort": "S",
+   "risk": "Filtering by 'feature on' in general would hide the very playbooks that help an owner switch a feature on: only the shop mark is used. An autopilot step that names an admin page in its closing sentence would have no map to name it from: its lines already ask only for what it did.",
+   "confidence": "medium",
+   "priority": "P2",
+   "already_tracked": "No.",
+   "owner_decision": false,
+   "verdict": "corrected",
+   "notes": "Low value alone; it costs almost nothing when the prompt is being redrawn anyway. The skeptic cut the draft's saving to websites only; I added the unattended turns, measured from the map's sizes."
+  },
+  {
+   "id": "AI-12",
+   "title": "Every open admin tab asks for AI manager notices once a minute",
+   "kind": "eager",
+   "where": [
+    "/home/user/kaizen-store/src/components/admin/ai-notices.tsx:29-54",
+    "/home/user/kaizen-store/src/lib/assistant-notices.ts:13",
+    "/home/user/kaizen-store/src/components/admin/ai-manager-launcher.tsx:101-102",
+    "/home/user/kaizen-store/src/app/admin/(gated)/(owner)/account/notices/feed/route.ts:17-35"
+   ],
+   "evidence": "The launcher is in the store admin's and the platform admin's layout, for owners. useNoticeCount() fetches the feed when it mounts, every 60 seconds while the tab is visible, and when the tab is shown again (ai-notices.tsx:29-54; NOTICE_POLL_MS is 60,000). Each request reads the session, looks the store up by slug (route.ts:21), runs the list query with limit 1 and counts the unread ones (route.ts:32-33). The comment at ai-notices.tsx:26-28 says polling was chosen on purpose: nothing new to set up, and a missed answer is caught by the next.",
+   "cost": "One function call with a session check and three small queries per open, visible tab per minute: 60 an hour for each owner with the admin in front of them. Nothing for an owner who is not there. It grows in step with the number of owners working at the same time.",
+   "who_pays": "The server and the database, for each owner with the admin open.",
+   "fix_steps": [
+    "Do AD-9 of the admin-data dimension, which plans the same code: its step 2 (with count=1 the route answers from unreadNotices() alone), step 3 (the layout passes the store's id, so the lookup by slug goes) and step 5 (ask less often after an answer of zero: 60 s, 120 s, 300 s, back to 60 s on a press or when the tab is shown again).",
+    "Nothing more here unless the poll still shows among the most-called statements after that. Then: have the feed's count answer also say whether anything that makes a notice is pending for the person (a page build, a running plan, a follow-up due within the hour, a waiting approval), and keep the one-minute timer only while it is."
+   ],
+   "tests_and_rules": [
+    "src/server/assistant-notices.int.test.ts (the feed's count), and AD-9's own checks.",
+    "The comment at src/components/admin/ai-notices.tsx:26-28 states why polling was chosen: the fix keeps polling and only spaces it."
+   ],
+   "depends_on": [
+    "AD-9"
+   ],
+   "done_when": "AD-9's check holds (the count=1 feed makes 2 statements, 4 today), and a Playwright case with a fake clock sees at most 20 feed requests in an hour from a visible tab with no notices (60 today).",
+   "saving": "With AD-9's back-off, about two thirds of the per-minute calls for an owner with nothing new, and each remaining call is half the statements; the count still updates when the tab is shown and after every AI manager turn.",
+   "effort": "S",
+   "risk": "A notice raised from another device or by a scheduled job shows up to five minutes late on an idle tab, or at once on focus. If that is too slow for approvals that wait, keep 60 seconds while an approval is pending.",
+   "confidence": "medium",
+   "priority": "P2",
+   "already_tracked": "No step in the code review. In this review it is part of AD-9 (admin-data), where its first two steps are P0.",
+   "owner_decision": false,
+   "verdict": "corrected",
+   "notes": "Kept here only so the AI dimension's list is whole; plan and do it once, as AD-9. The polling was a stated choice in the code, so the timer stays."
+  },
+  {
+   "id": "AI-13",
+   "title": "The alt-text job walks every site that has an AI-written alt text, every five minutes, and retries a failed picture every day with no end",
+   "kind": "eager",
+   "where": [
+    "/home/user/kaizen-store/src/server/alt-texts.ts:224-241",
+    "/home/user/kaizen-store/src/server/alt-texts.ts:201-214",
+    "/home/user/kaizen-store/src/server/alt-texts.ts:104-107",
+    "/home/user/kaizen-store/src/server/alt-texts.ts:119-136",
+    "/home/user/kaizen-store/src/server/alt-texts.ts:146",
+    "/home/user/kaizen-store/src/app/api/cron/cart-reminders/route.ts:153"
+   ],
+   "evidence": "refreshAltTexts() lists the sites to look at with '(m.alt_source is null or m.alt_source = 'ai') and (m.alt_tried_at is null or m.alt_tried_at < now() - interval '1 day')' (alt-texts.ts:225-232). A picture the AI described completely has alt_source 'ai' and alt_tried_at null (line 146 sets it to null on a complete answer), so it matches: once the job has done its work for a site, that site is on the list on every run for good. For each listed site, one after another, the loop fetches the AI connection (aiFor(), line 238), reads the site's languages (altSite()) and runs the exact due check (dueForAltText(), lines 201-214), and goes on until it has found five sites with work (line 236). When everything is up to date it walks them all, every five minutes. The verified report called this list 'already narrowed'; it is narrow only before the first alt text is written. Second, a picture whose alt text fails is marked tried (lines 104-107, 129, 136) and is due again after a day, each time fetching the picture and, for a provider error or an answer that could not be used, sending it to the vision model again (lines 119-136). There is no count of tries anywhere (rg finds only alt_tried_at). A text rejected because it made a claim the site does not allow can be rejected the same way every day.",
+   "cost": "Per run and per site with pictures: one AI connection read (with the limit and cost checks for a store on a plan with an AI limit), the due check on media, and the store read when it is not cached, in sequence, plus the list query itself. commerce.media shows 43,240 sequential scans in 78 days, about two a dispatcher run, which fits this list and the picture job each scanning it once a run; I cannot split them. Small today with a handful of sites. It grows with every store that has pictures: at 1,000 such stores, 2,000 or more round trips in sequence every five minutes to find nothing. The retries: one vision call a day on the store's allowance (or Kaizena Flow's bill for its own site) for every picture that cannot be described, for as long as the picture exists; capped only by the job's 4 pictures a site and 5 sites a run.",
+   "who_pays": "The database and the dispatcher's function every five minutes; the store's AI allowance for the daily retries.",
+   "fix_steps": [
+    "src/server/alt-texts.ts, refreshAltTexts() (lines 224-232): list a site on the five-minute run only for a picture with no alt text that is due: `m.alt_source is null and (m.alt_tried_at is null or m.alt_tried_at < now() - interval '1 day')`. Drop `or m.alt_source = 'ai'` from this query.",
+    "The other reason a site is listed today, an AI-written text that lacks a language the site has added since (dueForAltText(), line 210), moves to a pass of its own, `refreshAltTextLanguages()`, with today's list query, run once a day: on DQ-5's job cadences, or until then a guard in src/app/api/cron/cart-reminders/route.ts:153 on the hour and minute. A language added to a store then gets its alt texts within a day; the owner's own *Write alt texts* run is unchanged and immediate.",
+    "Move the list query into an exported `sitesDueForAltText()` so a test can call it, and in the loop (lines 235-240) run dueForAltText() before aiFor(), so a site with nothing due costs no connection read.",
+    "Retries: src/db/schema.ts, the media table: `altTries` (smallint, not null, default 0); `pnpm db:generate` (media is not on the hot list; add-only). In writeAltText() the `tried()` update (line 104) adds one; the successful update (line 146) sets it to 0. dueForAltText() and the list query take a picture only while `alt_tries < 5`, unless the run is the owner's own with `rewrite` or a single picture asked for in the library (writeAltText() called directly), which try regardless and reset the count on success.",
+    "Media library: a picture that reached five tries shows 'Could not be described' with the last reason only if that is cheap to add; otherwise it simply shows as having no alt text, as today.",
+    "docs/rules/admin/website.md:683 (Alt texts, D89: 'a picture that could not be described waits a day') and the comment at src/server/alt-texts.ts:217-223: say five tries, then only on request, and that a new language is picked up daily."
+   ],
+   "tests_and_rules": [
+    "src/server/alt-texts.int.test.ts: add (1) a site whose pictures all have AI texts is not listed by sitesDueForAltText(); (2) a picture that failed five times is not tried a sixth time by the job, and is tried when the owner asks; (3) a language added is filled by the daily pass.",
+    "Any test that lists media's columns for copy or export (run pnpm test and pnpm test:int; I did not find one by name): add the column where it asks.",
+    "src/db/commerce.test.ts and pnpm db:check for the new column; record the migration's version in docs/decisions.md and check the advisors after the deploy.",
+    "docs/rules/admin/website.md:683; docs/decisions.md:100 (D89: alt texts are written 'without anyone asking': kept)."
+   ],
+   "depends_on": [
+    "DQ-5 (a daily cadence for the language pass; a time guard until then)"
+   ],
+   "done_when": "In src/server/alt-texts.int.test.ts, sitesDueForAltText() returns no row for a site whose pictures all have complete AI texts (today's query returns that site on every run), and a picture with five failed tries is not picked by the job.",
+   "saving": "Estimate: on an idle run the job falls from three or more round trips per site with pictures to one query in all; the daily language pass keeps the per-site walk at once a day (288 times fewer). The retries stop after five days instead of never; how many pictures fail is not known before real catalogues arrive.",
+   "effort": "S",
+   "risk": "A language added to a store waits up to a day for the alt texts of pictures the AI described earlier (minutes today): noticed in the media library's count of missing texts; the owner's own run fills them at once. A picture that fails five times for a passing reason (the provider was down for five days) stays without an alt text until someone asks: the count resets on any success and on the owner's run.",
+   "confidence": "high",
+   "priority": "P1",
+   "already_tracked": "No.",
+   "owner_decision": false,
+   "verdict": "added",
+   "notes": "Found while planning AI-5: I opened the list query against the due check and the two do not ask the same question. Alt texts written without anyone asking is a written decision (D89) and stays; only how the job looks for work, and how long it insists, change. Before opening no real library is waiting on it."
+  },
+  {
+   "id": "AI-14",
+   "title": "The agents' eval cannot tell whether the model finds a tool, so the default tool set cannot be lowered safely",
+   "kind": "process",
+   "where": [
+    "/home/user/kaizen-store/src/server/agent-eval.ts:78-81",
+    "/home/user/kaizen-store/src/server/agent-eval.ts:141-153",
+    "/home/user/kaizen-store/src/server/agent-eval.ts:188-192",
+    "/home/user/kaizen-store/src/lib/agent-eval.ts:25-57",
+    "/home/user/kaizen-store/src/lib/agent-eval.ts:149-340",
+    "/home/user/kaizen-store/docs/audits/code-review-2026-11.md:549"
+   ],
+   "evidence": "Owner question 8 of the code review says a new eval run 'has to show it still finds the right tool'. The eval has 9 AI manager cases (rg counts them). Seven test that text planted in a tool's answer is not obeyed: they pass when no gated tool is called. Two require a tool: run_report, which is a core tool, and refund_order. For every case the harness loads the areas of all the tools the case scripts, forbids or requires before the first step (managerTools(), agent-eval.ts:146-153: 'so the tools a case tests are offered'). load_tools is handled if the model calls it (lines 188-192) but no case needs it, and rg finds the word nowhere in src/lib/agent-eval.ts. toolsVersion() hashes each tool's name, description and parameters (lines 78-81), not which tools a round sends, so a recording stays 'valid' when the default set changes. So today nothing would fail if a lean default left the model unable to find a tool, and nothing measures how well it finds one among 124 either.",
+   "cost": "No running cost. It is why the default sits at the provider's cap: the one change that would cut the AI manager's input by a third to two thirds (AI-1) has no check to pass. Every round of every turn pays for that until the check exists.",
+   "who_pays": "Every AI manager call, through AI-1 staying open; the team, who would otherwise learn of a missed tool from owners.",
+   "fix_steps": [
+    "src/lib/agent-eval.ts: add `lean?: boolean` to AgentEvalCase and `loadsTools?: boolean` to its `expect` (the case passes only if load_tools was called before the required tool). Add six to eight manager cases marked lean, each a plain owner request whose tool is outside the core 12, with a scripted answer for that tool and `requiredTools`: a discount code (create_discount), a newsletter (a broadcast tool), free shipping over an amount (set_flat_shipping or save_shipping_method), a change to a page's text (get_page then edit_page), inviting staff (invite_staff), the plan and its price (billing_overview), a product's stock (set_stock), and one in Norwegian ('Lag en rabattkode på 10 %'). Add two that must not load anything: 'How many orders last week?' (run_report or list_orders) and a greeting. Check each tool name exists (src/lib/agent-eval.test.ts does).",
+    "src/server/agent-eval.ts, managerTools() (lines 146-153): for a lean case, do not preload: start from what a real turn on Home would send (core tools, the manager's own, load_tools, and the router's area once AI-1 is in), and add areas only as the model's load_tools calls ask (the loop at lines 188-192 already records them in `wanted`).",
+    "Same file, scoreAgentCase's caller: count a lean case as failed when the model answers that it cannot do the task without having called load_tools. Report, beside passed and total, how many lean cases needed a load_tools round: that number is the router's score.",
+    "toolsVersion() (lines 78-81): include what decides a round's tools (CORE_TOOLS, the load_tools definition for a fixed held-back set, TOOL_CHOICE_VERSION), so a recording made with one default set is refused for another.",
+    "Run the eval once on today's code with the new cases and keep the result as the 'before' (with 124 tools sent the lean cases should pass without load_tools; record how many do). Then AI-1 has something to be compared with.",
+    "Platform, AI: show the lean cases' result as its own line ('Finds its tools: 8 of 8, 3 with a load'). CLAUDE.md's Conventions paragraph on the eval: add that a change to which tools a round sends needs a new run, as a prompt change does."
+   ],
+   "tests_and_rules": [
+    "src/lib/agent-eval.test.ts (every tool a case names exists; scoring): add the lean and loadsTools rules.",
+    "src/server/agent-eval.int.test.ts (the harness against a fake model; line 119 holds the 128 limit): add a fake model that answers a lean case with load_tools and then the tool.",
+    "src/server/agent-eval-replay.int.test.ts and src/data/agent-eval-recording.json: new cases mean a new recording (the replay fails with 'the case ... was not recorded' until then).",
+    "CLAUDE.md (Conventions, the AI paragraph: 'add a case with any new way outside text reaches a prompt'); docs/rules/admin/ai.md; docs/audits/code-review-2026-11.md:549 (question 8)."
+   ],
+   "depends_on": [
+    "A new run of the agents' eval on Platform, AI in production after the deploy, and its recording committed as src/data/agent-eval-recording.json (a person with platform access does this; CI only replays it)"
+   ],
+   "done_when": "The committed src/data/agent-eval-recording.json holds at least six lean cases, agent-eval-replay.int.test.ts passes on it, and Platform, AI shows the count of lean cases passed and how many used load_tools.",
+   "saving": "None by itself. It unlocks AI-1 (a round down by 36% to 70%), AI-6 (15,384 characters a round) and AI-8, and keeps them from being undone unnoticed.",
+   "effort": "S",
+   "risk": "A handful of scripted cases is a smoke test, not proof: a model can pass them and still miss a real request. Keep the round log of AI-10 (load_tools calls, 'no tool' answers) as the check in production. Each eval run costs real model calls, a few cents with today's 9 cases and a lean tool set.",
+   "confidence": "high",
+   "priority": "P1",
+   "already_tracked": "No. Owner question 8 of the code review assumes the eval can show this; step 3.18's 'done when' asks for 'a new eval run' without saying what it must contain.",
+   "owner_decision": false,
+   "verdict": "added",
+   "notes": "Do this first of the AI manager changes. It is small, it touches no owner-facing behaviour, and it turns the owner's question 8 from a judgement into a number."
+  }
+ ]
+}
