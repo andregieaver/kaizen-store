@@ -279,7 +279,7 @@ Scheduled work is a fixed floor today, not a load: Supabase calls the app 13,250
 | [CR-10](scheduled-work/CR-10.md) ✓ | The docs search index is rewritten row by row on every docs change | oversize | P2 | S | 3.5 |
 | [CR-11](scheduled-work/CR-11.md) ✓ | An unscheduled PDF route is deployed with Chromium, and a 'finished' backfill is still fed by every copied AI picture | dead | P2 | S | 3.7 |
 | [CR-12](scheduled-work/CR-12.md) ✓ | The daily job is scheduled twice, at the same minute | duplicate | P2 | S | 1.22 |
-| [CR-16](scheduled-work/CR-16.md) | Six more five-minute jobs re-check every store that has the feature on, and the ledger's order never rotates | eager | P2 | M | 3.6 |
+| [CR-16](scheduled-work/CR-16.md) | Six more five-minute jobs re-check every store that has the feature on, and the ledger's order never rotates | eager | P2 | M | 3.23 |
 | [CR-17](scheduled-work/CR-17.md) | The daily job runs about 40 functions in one request under one ledger row, so a prune that fails is not seen | no check | P2 | M | 3.4 |
 | [CR-13](scheduled-work/CR-13.md) ✓ | Status checks are kept raw for 91 days though the page shows one bar a day | oversize | P3 | S | tolerated |
 
@@ -299,7 +299,7 @@ All 14 verified findings stand, none argues from a feature being unused, and eac
 | [DQ-3](queries/DQ-3.md) ✓ | "Where is this picture used" scans every page's text for each picture, and the job re-checks every picture daily | eager | P1 | M | 0.28 |
 | [DQ-5](queries/DQ-5.md) ✓ | The five-minute dispatcher starts 78 jobs at once on 5 connections, and several redo work on every tick that grows with the number of stores | eager | P1 | M | 3.3 |
 | [DQ-7](queries/DQ-7.md) ✓ | A page's frame asks about 20 questions each time its cache is cold, some of them one per feature for every store, and the cache is cold far more often than the code assumes | eager | P1 | M | 2.18 |
-| [DQ-15](queries/DQ-15.md) | Five document jobs find their due work by re-checking every store's recent orders, invoices and refunds on each tick | eager | P1 | M | 3.6 |
+| [DQ-15](queries/DQ-15.md) | Five document jobs find their due work by re-checking every store's recent orders, invoices and refunds on each tick | eager | P1 | M | 3.21 |
 | [DQ-10](queries/DQ-10.md) ✓ | Some reads fetch whole JSON documents where a field, a card or a count is needed | oversize | P2 | M | 4.4 |
 | [DQ-12](queries/DQ-12.md) ✓ | Every server instance reads the interface translations before it serves and polls them each minute | eager | P2 | S | 0.8 |
 | [DQ-13](queries/DQ-13.md) ✓ | 341 loops hold a database call in their body; the ones that matter are jobs that loop over sites | eager | P2 | M | tolerated |

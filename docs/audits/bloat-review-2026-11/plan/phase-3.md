@@ -55,15 +55,15 @@ Seven tables grow by time with no delete: guest carts, processed webhook events,
 - **Decided (the owner, 12 November: the recommended way):** The periods the repo already states are used. A guest cart is deleted 90 days after it ended (an open cart: after its expiry), unless an order points at it, and a processed webhook event 90 days after it was processed: src/lib/retention.ts:180 and :184 and docs/wave-1g-gdpr.md:287 and :291 state those periods, and today the rows are only emptied at that age. A page keeps all 50 versions for 90 days and then its newest 10, the finding's rule, because an unbounded history would in time need a larger database. *Asked:* How long are guest carts, processed webhook events and old page versions kept (the code review's question 6)? The privacy text states the same periods.
 - **To carry it out:** [steps/3.5.md](steps/3.5.md) (strong)
 
-## 3.6 Let per-store jobs find due work by a mark, and look hourly
+## 3.6 Indexes that fit the document jobs' windows
 
-Five document jobs find due work by re-checking every store's orders of 120 days, invoices and refunds on each tick: add the partial indexes that fit their windows, concurrently on the hot tables, and a mark for what is done. Six more five-minute jobs (the books, Tripletex, Fiken, auto-archive, autopilot budgets, recurring costs) re-check every store that has the feature on, and the ledger's order never rotates: they look hourly, skip a store with nothing new, and every book gets its turn. Each is labelled per-store in the registry of step 3.3, with its cap and order. The product-words sweep gets a change mark, products.text_changed_at, so an idle tick reads no product to learn that nothing changed.
+Five document jobs find due work by re-checking every store's orders of 120 days, invoices and refunds on each tick. Add the partial indexes that fit their windows (plain indexes on invoices, credit_notes, work_invoices, work_credit_notes, order_events and order_edits; none is a hot table), so the jobs' existing exists() checks are index probes. Steps 3.21 to 3.24 finish what this step began.
 
-- **Closes:** [DQ-15](../findings/queries/DQ-15.md), [CR-16](../findings/scheduled-work/CR-16.md)
-- **Effort:** M. **Areas it moves:** The database; Scheduled work.
-- **Done when:** A new int test seeds 2,000 paid, invoiced orders in one store, runs one invoice tick, one email check and one e-invoice check, and the rows read from commerce.orders and commerce.invoices are fewer than 100 each; an idle tick reads at most 10 more rows per added store, none from pages, products, product_variants, orders or media, and a day later product_variants is read whole 10 times a day or fewer; the new ledger case reaches the third book within three runs; and the ledger rows dispatcher.auto-archive, dispatcher.autopilot-budgets and dispatcher.recurring have every_seconds 3600.
+- **Closes:** no finding on its own (steps 3.21, 3.22, 3.23, 3.24 split out of it)
+- **Effort:** S. **Areas it moves:** The database.
+- **Done when:** The migration's indexes exist, src/db/commerce.test.ts holds each of them, and the migration-safety scan passes unchanged.
 - **Platform:** Kaizena Flow's own books are a book like any other and get their turn by the same order.
-- **To carry it out:** [steps/3.6.md](steps/3.6.md) (strong)
+- **To carry it out:** [steps/3.6.md](steps/3.6.md) (review)
 
 ## 3.7 Call the PDF route when a document waits
 
@@ -212,3 +212,43 @@ The gate of step 3.1 trades a poll for a predicate. If a predicate misses a kind
 - **Platform:** The platform's own queues (the Dream Factory, theme shots) are gated queues like the stores' and are watched by the same function.
 - **Decided (the owner, 12 November: the recommended way):** 3 minutes for work a person watches (an AI page build, a look at a page, the Dream Factory) and 20 minutes for the other queues, as the step and the scheduled card assume. Both are constants in one file, so another figure is a one-line change. *Asked:* How long may work that a person watches wait before the admins are told (an AI page build, a look at a page, the Dream Factory)? The step assumes 3 minutes, and 20 for the other queues; any stated figure reaches the bar.
 - **To carry it out:** [steps/3.20.md](steps/3.20.md) (review)
+
+## 3.21 The invoice job reads what is marked as waiting, and keeps today's full check as an hourly net
+
+The invoice job of the five-minute dispatcher reads only the orders marked as waiting for a document, using step 3.6's indexes, and today's full check of every store's 120 days runs once an hour as the net that catches anything a mark missed.
+
+- **Closes:** [DQ-15](../findings/queries/DQ-15.md) (split out of step 3.6)
+- **Effort:** S. **Areas it moves:** The database; Scheduled work.
+- **Done when:** A new int test seeds 2,000 paid, invoiced orders in one store, runs one invoice tick, one email check and one e-invoice check, and the rows read from commerce.orders and commerce.invoices are fewer than 100 each.
+- **Platform:** Kaizena Flow's own books are a book like any other and get their turn by the same order.
+- **To carry it out:** [steps/3.21.md](steps/3.21.md) (review)
+
+## 3.22 Every book gets its turn, and an idle book is looked at hourly
+
+The ledger's posting job looks at each store's book in a rotating order (ledger_books.checked_at), skips a book with nothing new and looks at an idle one hourly, so every book gets its turn; Kaizena Flow's own books are a book like any other.
+
+- **Closes:** no finding on its own (split out of step 3.6)
+- **Effort:** S. **Areas it moves:** Scheduled work.
+- **Done when:** The new ledger case reaches the third book within three runs, and an idle tick reads at most 10 more rows per added store.
+- **Platform:** Kaizena Flow's own books are a book like any other and get their turn by the same order.
+- **To carry it out:** [steps/3.22.md](steps/3.22.md) (review)
+
+## 3.23 Tripletex and Fiken skip a store with nothing new, and the registry labels the six per-store jobs
+
+The Tripletex and Fiken syncs skip a store with nothing new since they last looked (looked_at), and the six per-store five-minute jobs (the books, Tripletex, Fiken, auto-archive, autopilot budgets, recurring costs) are labelled per-store in the registry of step 3.3, with their cap and order; auto-archive, autopilot budgets and recurring costs look hourly.
+
+- **Closes:** [CR-16](../findings/scheduled-work/CR-16.md) (split out of step 3.6)
+- **Effort:** S. **Areas it moves:** Scheduled work.
+- **Done when:** The ledger rows dispatcher.auto-archive, dispatcher.autopilot-budgets and dispatcher.recurring have every_seconds 3600; an idle tick reads at most 10 more rows per added store.
+- **Platform:** Kaizena Flow's own books are a book like any other and get their turn by the same order.
+- **To carry it out:** [steps/3.23.md](steps/3.23.md) (review)
+
+## 3.24 The product-words sweep reads no product when no text changed
+
+The product-words sweep (embeddings) asks first whether any product text changed since its last good run, by step 0.28's product_translations.text_changed_at, with an index on product_translations (not a hot table); an idle tick reads no product. Changes to product_terms are caught by the daily net.
+
+- **Closes:** no finding on its own (split out of step 3.6)
+- **Effort:** S. **Areas it moves:** The database; Scheduled work.
+- **Done when:** An idle tick reads no row from pages, products, product_variants, orders or media, and a day later product_variants is read whole 10 times a day or fewer.
+- **Platform:** Kaizena Flow's own books are a book like any other and get their turn by the same order.
+- **To carry it out:** [steps/3.24.md](steps/3.24.md) (review)

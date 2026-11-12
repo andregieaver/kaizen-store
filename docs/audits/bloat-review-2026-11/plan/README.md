@@ -97,7 +97,7 @@ Phases run in order: 0, then 1, then 2, then 3, then 4. Inside a phase the steps
 otherwise, so they may be done in any order that respects it; the order below is the suggested one (small and safe first,
 and a step before the steps that build on it).
 
-151 briefs: 29 cheap, 72 review, 50 strong.
+156 briefs: 29 cheap, 77 review, 50 strong.
 
 ### Phase 0: Before the doors open
 
@@ -174,7 +174,7 @@ and a step before the steps that build on it).
 | 18 | [1.18](steps/1.18.md) | Hold the surface: fourteen counts, the hot tables' indexes and triggers, and a new store's rows | S | cheap | 1.1, 0.26, 0.31, 0.42, 1.10 |
 | 19 | [1.19](steps/1.19.md) | Hold every agent's round, show real tokens per call, and let the eval see whether the model finds a tool | M | strong | 0.1, 1.1, 0.21 |
 | 20 | [1.20](steps/1.20.md) | Record every check's seconds and the build's peak memory, with ceilings | M | review | 0.38, 1.8, 1.11, 1.1 |
-| 21 | [1.21](steps/1.21.md) | Give the production build room, and fail a run before it runs out | M | review (commit 2, 3 cheap) | 1.20, 0.38 |
+| 21 | [1.21](steps/1.21.md) | Give the production build room with the free switches, and fail a run before it runs out | S | review (commit 2, 3 cheap) | 1.20 |
 | 22 | [1.22](steps/1.22.md) | Watch the scheduler from outside, and run the daily job once | S | review (commit 2, 3 cheap) | 0.25 |
 | 23 | [1.23](steps/1.23.md) | Count what is in the stylesheet, and read the style text owners write | S | review (commit 2, 3 cheap) | 1.8, 0.1, 1.1 |
 | 24 | [1.24](steps/1.24.md) | Measure what a session really loads, and hold source file size | M | cheap | 0.1, 0.40 |
@@ -182,6 +182,7 @@ and a step before the steps that build on it).
 | 26 | [1.26](steps/1.26.md) | Let no job swallow its own failure | M | review (commit 1 cheap) | 1.22, 1.10, 0.31 |
 | 27 | [1.27](steps/1.27.md) | Hold by name what a store page's first scripts may hold | S | cheap | 0.16 |
 | 28 | [1.28](steps/1.28.md) | Count handed against named words at every hand-down site, without a browser | M | cheap |  |
+| 29 | [1.29](steps/1.29.md) | Only if the free switches are not enough: build in CI and deploy the prebuilt output | M | strong | 1.21, 0.38, 1.20 |
 
 ### Phase 2: Load on demand
 
@@ -221,7 +222,7 @@ and a step before the steps that build on it).
 | 32 | [2.32](steps/2.32.md) | Lighten the admin's shell and the store Home | M | review (commit 1 cheap) | 1.9, 0.17 |
 | 33 | [2.33](steps/2.33.md) | Make no Supabase Auth call per request for an account without a second factor | S | review |  |
 | 34 | [2.34](steps/2.34.md) | Let an untouched tab ask for notices less often | S | cheap | 0.17 |
-| 35 | [2.35](steps/2.35.md) | Answer a store's own domain without a deployment | L | strong (commit 1 cheap) | 2.20, 1.8, 1.21 |
+| 35 | [2.35](steps/2.35.md) | Answer a store's own domain without a deployment | L | strong (commit 1 cheap) | 2.20, 1.8, 1.29 |
 | 36 | [2.36](steps/2.36.md) | Send the AI manager a lean default round | M | strong (commit 4 cheap) | 1.19, 0.5, 0.11 |
 | 37 | [2.37](steps/2.37.md) | Slim the tool schemas, so no first round is over 56,000 characters | M | strong (commit 1 cheap) | 1.19, 2.36 |
 | 38 | [2.38](steps/2.38.md) | Use cached input | M | strong (commit 3 cheap) | 1.19, 2.36, 2.37 |
@@ -247,7 +248,7 @@ and a step before the steps that build on it).
 | 3 | [3.3](steps/3.3.md) | Run the dispatcher from a registry: a cadence and a time budget per job | L | strong | 0.45, 1.26, 1.10, 0.28, 0.31, 0.2, 1.13, 1.18 |
 | 4 | [3.4](steps/3.4.md) | Give every daily function a ledger row of its own | M | review | 3.3, 3.1, 1.22, 1.26, 0.31 |
 | 5 | [3.5](steps/3.5.md) | Give every table that grows by time a delete rule | M | strong (commit 1, 2 cheap) | 0.2, 3.4 |
-| 6 | [3.6](steps/3.6.md) | Let per-store jobs find due work by a mark, and look hourly | M | strong | 3.3, 1.10, 0.28 |
+| 6 | [3.6](steps/3.6.md) | Indexes that fit the document jobs' windows | S | review |  |
 | 7 | [3.7](steps/3.7.md) | Call the PDF route when a document waits | S | review (commit 1, 3 cheap) | 3.1 |
 | 8 | [3.8](steps/3.8.md) | Drop the duplicate idempotency table and the leftover schema, after a verified dump | S | review (commit 1 cheap) | 0.2 |
 | 9 | [3.9](steps/3.9.md) | Keep one kaizenaflow.com | L | strong (commit 1 cheap) |  |
@@ -260,8 +261,12 @@ and a step before the steps that build on it).
 | 16 | [3.16](steps/3.16.md) | Draw an order's totals from one part | S | review | 2.2 |
 | 17 | [3.17](steps/3.17.md) | Keep one stored page shape | M | strong | 0.46 |
 | 18 | [3.18](steps/3.18.md) | Build twice per push, and lint and type-check once | M | strong | 0.38, 1.20 |
-| 19 | [3.19](steps/3.19.md) | Let a burst of pushes share one deploy | S | review (commit 2 cheap) | 0.38, 1.21, 0.43 |
+| 19 | [3.19](steps/3.19.md) | Let a burst of pushes share one deploy | S | review (commit 2 cheap) | 0.38, 1.29, 0.43 |
 | 20 | [3.20](steps/3.20.md) | Show how long due work waits, and say so when it is too long | S | review (commit 3 cheap) | 3.1, 1.22 |
+| 21 | [3.21](steps/3.21.md) | The invoice job reads what is marked as waiting, and keeps today's full check as an hourly net | S | review | 3.6, 3.3, 1.10, 0.31, 1.18 |
+| 22 | [3.22](steps/3.22.md) | Every book gets its turn, and an idle book is looked at hourly | S | review | 1.10 |
+| 23 | [3.23](steps/3.23.md) | Tripletex and Fiken skip a store with nothing new, and the registry labels the six per-store jobs | S | review | 3.3, 3.22, 1.10 |
+| 24 | [3.24](steps/3.24.md) | The product-words sweep reads no product when no text changed | S | review | 0.28, 3.3, 1.10 |
 
 ### Phase 4: Tidy
 
@@ -271,7 +276,7 @@ and a step before the steps that build on it).
 | 2 | [4.2](steps/4.2.md) | Fold the remaining twins | M | strong | 1.17, 3.16, 3.10, 4.1 |
 | 3 | [4.3](steps/4.3.md) | Tidy the tests' side: exports only a test keeps alive, shared mocks and one tree walker | M | strong (commit 1, 2 cheap) | 1.17, 3.15 |
 | 4 | [4.4](steps/4.4.md) | Make the last reads fetch what they show | M | strong (commit 2, 5 cheap) | 1.9, 2.32 |
-| 5 | [4.5](steps/4.5.md) | Measure everything again, and read each area against its bar | M | strong (commit 1 cheap) | 4.1, 4.2, 4.3, 4.4, 1.20, 1.8, 1.21 |
+| 5 | [4.5](steps/4.5.md) | Measure everything again, and read each area against its bar | M | strong (commit 1 cheap) | 4.1, 4.2, 4.3, 4.4, 1.20, 1.8, 1.21, 1.29 |
 | 6 | [4.6](steps/4.6.md) | Let a logged time entry be corrected in Work, and delete two invoice actions no screen uses | S | cheap |  |
 | 7 | [4.7](steps/4.7.md) | Say that live drills are a console tool | S | cheap |  |
 
@@ -283,27 +288,27 @@ When you edit one of these, a step before yours may already have changed it: rea
 |---|---|
 | `docs/decisions.md` | 0.14, 0.15, 0.16, 0.17, 0.18, 0.19, 0.20, 0.21, 0.22, 0.23, 0.24, 0.25, 0.26, 0.27, 0.28, 0.29, 0.30, 0.31, 0.32, 0.33, 0.34, 0.35, 0.36, 0.37, 0.38, 0.39, 0.41, 2.12, 2.14, 2.15, 2.16, 2.17, 2.18, 2.19, 2.20, 2.21, 2.22, 2.23, 2.24, 2.40, 2.43, 3.8, 3.19, 4.7 |
 | `docs/performance.md` | 0.3, 0.4, 0.5, 0.6, 0.8, 0.9, 0.10, 0.11, 0.12, 0.14, 0.16, 0.32, 1.2, 1.3, 1.4, 1.5, 1.6, 1.8, 1.9, 1.11, 1.12, 1.14, 1.15, 1.23, 1.27, 1.28, 2.5, 2.6, 2.8, 2.9, 2.11, 2.15, 2.20, 2.21, 2.22, 2.23, 2.24, 2.45, 2.48, 2.49 |
+| `src/db/schema.ts` | 0.2, 0.8, 0.23, 0.26, 0.27, 0.28, 0.29, 0.30, 0.33, 0.37, 1.13, 1.16, 1.19, 1.25, 2.16, 2.23, 2.39, 3.2, 3.3, 3.4, 3.7, 3.8, 3.9, 3.11, 3.12, 3.20, 3.22, 3.23, 3.24, 4.4 |
 | `docs/audits/bloat-review-2026-11.md` | 0.1, 0.27, 0.28, 0.29, 0.30, 0.31, 0.32, 0.33, 0.34, 0.35, 0.36, 0.37, 0.38, 0.39, 0.42, 2.12, 2.14, 2.15, 2.16, 2.17, 2.18, 2.19, 2.20, 2.21, 2.22, 2.23, 2.24, 2.30, 4.5 |
-| `src/db/schema.ts` | 0.2, 0.8, 0.23, 0.26, 0.27, 0.28, 0.29, 0.30, 0.33, 0.37, 1.13, 1.16, 1.19, 1.25, 2.16, 2.23, 2.39, 3.2, 3.3, 3.4, 3.6, 3.7, 3.8, 3.9, 3.11, 3.12, 3.20, 4.4 |
 | `docs/rules/storefront.md` | 0.3, 0.8, 0.10, 0.15, 0.21, 0.23, 0.27, 0.28, 0.44, 2.1, 2.2, 2.4, 2.5, 2.6, 2.8, 2.12, 2.14, 2.18, 2.19, 2.23, 3.19 |
-| `.github/workflows/ci.yml` | 0.3, 0.38, 1.1, 1.2, 1.4, 1.6, 1.8, 1.10, 1.11, 1.20, 1.21, 1.23, 2.35, 2.42, 2.43, 3.17, 3.18, 3.19 |
+| `.github/workflows/ci.yml` | 0.3, 0.38, 1.1, 1.2, 1.4, 1.6, 1.8, 1.10, 1.11, 1.20, 1.23, 1.29, 2.35, 2.42, 2.43, 3.17, 3.18, 3.19 |
 | `docs/audits/code-review-2026-11.md` | 0.4, 0.6, 0.9, 0.13, 0.19, 0.26, 0.38, 0.39, 0.41, 2.17, 2.19, 2.20, 2.21, 2.22, 2.24, 2.33, 2.39, 2.40 |
+| `src/server/ratchet.baseline.json` | 0.36, 1.3, 1.10, 1.12, 1.17, 1.24, 2.6, 2.8, 2.13, 2.17, 2.18, 3.21, 3.22, 3.23, 3.24, 4.1 |
 | `src/db/commerce.test.ts` | 0.23, 0.27, 0.28, 0.36, 0.37, 0.39, 1.16, 1.18, 1.25, 2.16, 2.23, 2.39, 2.48, 3.1, 3.6 |
 | `CLAUDE.md` | 0.3, 0.9, 0.14, 0.23, 0.38, 0.39, 0.41, 1.1, 2.1, 2.11, 2.40, 2.41, 2.43, 3.10 |
 | `e2e/performance.spec.ts` | 0.16, 0.33, 0.44, 1.3, 1.6, 1.7, 1.14, 2.2, 2.3, 2.9, 2.11, 2.45, 2.49 |
+| `docs/ci-migrations.md` | 0.3, 0.25, 0.26, 0.38, 0.39, 1.8, 1.18, 1.21, 1.29, 2.41, 2.43, 3.19 |
 | `docs/rules/admin/website.md` | 0.7, 0.10, 0.15, 0.28, 0.36, 0.41, 2.3, 2.9, 2.11, 2.16, 2.17, 2.20 |
-| `src/server/ratchet.baseline.json` | 0.36, 1.3, 1.10, 1.12, 1.17, 1.24, 2.6, 2.8, 2.13, 2.17, 2.18, 4.1 |
-| `docs/ci-migrations.md` | 0.3, 0.25, 0.26, 0.38, 0.39, 1.8, 1.18, 1.21, 2.41, 2.43, 3.19 |
-| `next.config.ts` | 0.14, 0.32, 0.37, 0.38, 1.20, 1.21, 2.5, 2.15, 2.23, 2.35, 4.5 |
+| `next.config.ts` | 0.14, 0.32, 0.37, 0.38, 1.20, 1.21, 1.29, 2.5, 2.15, 2.23, 2.35, 4.5 |
 | `docs/rules/budgets.md` | 0.43, 0.40, 1.1, 1.2, 1.3, 1.4, 1.5, 1.6, 1.7, 1.23, 3.19 |
 | `docs/rules/admin/platform.md` | 0.9, 0.13, 0.18, 0.37, 0.41, 1.23, 1.26, 2.25, 4.7 |
 | `src/server/pages.ts` | 0.20, 0.23, 0.24, 2.14, 2.15, 2.16, 2.17, 2.21 |
-| `src/app/api/cron/cart-reminders/route.ts` | 0.28, 0.31, 1.10, 1.26, 2.14, 3.3, 3.6, 3.7 |
 | `src/server/cron-runs.ts` | 0.31, 0.45, 1.16, 1.25, 1.26, 3.3, 3.4, 3.7 |
+| `docs/build-memory.md` | 0.35, 0.38, 1.20, 1.21, 1.29, 2.11, 2.42, 4.5 |
 | `src/app/api/cron/subscription-reminders/route.ts` | 0.2, 0.31, 1.16, 1.22, 3.4, 3.5, 3.20 |
 | `src/app/admin/(gated)/[store]/layout.tsx` | 0.11, 0.12, 0.17, 1.9, 1.16, 2.27, 2.32 |
 | `e2e/prefetch.spec.ts` | 0.12, 0.14, 1.3, 2.6, 2.7, 2.8, 2.45 |
-| `docs/build-memory.md` | 0.35, 0.38, 1.20, 1.21, 2.11, 2.42, 4.5 |
+| `src/app/api/cron/cart-reminders/route.ts` | 0.28, 0.31, 1.10, 1.26, 2.14, 3.3, 3.7 |
 | `package.json` | 0.36, 0.38, 1.20, 1.23, 2.31, 2.42, 2.43 |
 | `src/server/stores.ts` | 0.6, 0.16, 0.20, 2.15, 2.22, 2.35 |
 | `e2e/signed-in/admin-scripts.spec.ts` | 0.9, 0.10, 0.13, 1.5, 2.28, 2.29 |
@@ -312,6 +317,7 @@ When you edit one of these, a step before yours may already have changed it: rea
 | `scripts/ratchet.mjs` | 1.3, 1.10, 1.17, 1.24, 2.6, 4.1 |
 | `src/components/admin/admin-bundle.scan.test.ts` | 1.4, 2.26, 2.29, 2.30, 2.31, 2.46 |
 | `scripts/route-budget.json` | 1.8, 2.20, 2.24, 2.25, 2.47, 4.5 |
+| `src/server/dispatcher-jobs.ts` | 1.10, 1.26, 2.23, 3.3, 3.21, 3.23 |
 | `src/server/cron-routes.scan.test.ts` | 1.10, 3.1, 3.2, 3.3, 3.4, 3.7 |
 | `src/app/admin/(gated)/platform/capacity/page.tsx` | 1.13, 1.16, 1.23, 1.25, 3.3, 3.20 |
 | `src/server/owner-assistant.ts` | 1.19, 2.19, 2.36, 2.37, 2.38, 2.39 |
@@ -320,6 +326,7 @@ When you edit one of these, a step before yours may already have changed it: rea
 | `src/server/ai.ts` | 0.21, 0.23, 1.19, 2.38, 2.39 |
 | `src/server/media-library.ts` | 0.23, 0.28, 0.33, 1.26, 3.7 |
 | `docs/capacity.md` | 0.25, 0.45, 1.25, 2.41, 2.43 |
+| `src/server/cron-prunes.scan.test.ts` | 0.31, 1.10, 3.3, 3.4, 3.21 |
 | `src/server/catalog.ts` | 0.33, 2.13, 2.19, 2.23, 3.16 |
 | `src/app/globals.css` | 0.34, 0.35, 2.11, 2.12, 2.49 |
 | `src/lib/ci-once.scan.test.ts` | 0.38, 0.39, 2.42, 2.44, 3.18 |
@@ -327,8 +334,10 @@ When you edit one of these, a step before yours may already have changed it: rea
 | `README.md` | 0.41, 2.1, 2.40, 2.41, 2.43 |
 | `src/server/ratchet.scan.test.ts` | 1.3, 1.17, 1.24, 2.6, 4.1 |
 | `src/server/route-load.graph.test.ts` | 1.8, 2.20, 2.21, 2.23, 2.24 |
+| `src/server/query-budget.int.test.ts` | 1.10, 2.18, 3.1, 3.3, 3.24 |
 | `src/lib/admin-messages/capacity.en.ts` | 1.13, 1.15, 1.16, 1.23, 1.25 |
 | `src/lib/admin-messages/capacity.nb.ts` | 1.13, 1.15, 1.16, 1.23, 1.25 |
+| `scripts/await-deploy.mjs` | 0.3, 1.20, 1.21, 1.29 |
 | `src/server/content-packs.ts` | 0.5, 0.28, 0.33, 3.1 |
 | `src/app/admin/(gated)/[store]/assistant/actions.ts` | 0.5, 0.11, 2.24, 2.27 |
 | `src/app/admin/(gated)/platform/assistant/actions.ts` | 0.5, 0.11, 2.24, 2.27 |
@@ -337,8 +346,4 @@ When you edit one of these, a step before yours may already have changed it: rea
 | `src/server/staff-alerts.ts` | 0.7, 1.26, 3.11, 3.15 |
 | `src/lib/admin-text-reach.scan.test.ts` | 0.7, 1.4, 2.25, 2.50 |
 | `docs/audits/psi-followups.md` | 0.9, 0.41, 1.3, 3.7 |
-| `src/lib/page-content.ts` | 0.10, 0.44, 2.22, 3.17 |
-| `src/components/admin/product-editor.tsx` | 0.10, 0.32, 2.27, 2.46 |
-| `src/test/eager-lazy-views.ts` | 0.10, 0.16, 2.29, 2.30 |
-| `src/app/admin/(gated)/platform/layout.tsx` | 0.11, 1.9, 1.16, 2.27 |
 
