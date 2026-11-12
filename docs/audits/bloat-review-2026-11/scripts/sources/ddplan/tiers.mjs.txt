@@ -1,0 +1,23 @@
+import { readFileSync, writeFileSync } from "node:fs";
+const S = process.argv[2];
+const rows = JSON.parse(readFileSync(S + "/work/skdd/rows.json", "utf8"));
+const tfiles = (r) => new Set([...r.test, ...r.fixture].map((x) => x.replace(/:\d+$/, "")));
+const t0 = [], t2 = [], t3 = [], fix = [];
+for (const r of rows) {
+  if (r.file === "src/instrumentation.ts" && r.name === "register") continue;
+  if (r.which === "dead") { t0.push(r); continue; }
+  if (r.inFixture) { fix.push(r); continue; }
+  const n = tfiles(r).size;
+  if (n === 0) t0.push(r); else if (n === 1) t2.push(r); else t3.push(r);
+}
+const sum = (a) => a.reduce((n, r) => n + r.lines, 0);
+const folder = (f) => f.split("/").slice(0, 2).join("/");
+const by = (a) => { const t = {}; for (const r of a) { const k = folder(r.file); (t[k] ??= [0, 0]); t[k][0]++; t[k][1] += r.lines; } return t; };
+for (const [n, a] of [["T0", t0], ["T2", t2], ["T3", t3], ["fixture", fix]]) {
+  console.log(n, a.length, "exports", sum(a), "lines", new Set(a.map((r) => r.file)).size, "files", JSON.stringify(by(a)));
+  writeFileSync(S + "/work/ddplan/" + n + ".txt", a.sort((x, y) => y.lines - x.lines).map((r) => `${r.file}:${r.line} ${r.name} (${r.kind}, ${r.lines} lines; tests ${[...tfiles(r)].join(",") || "none"}; other prod mentions ${r.prod.length})`).join("\n"));
+}
+const top = (a, k) => a.sort((x, y) => y.lines - x.lines).slice(0, k).map((r) => `${r.file}:${r.line} ${r.name} ${r.kind} ${r.lines}`).join("\n");
+console.log("--T0 top (non-type)\n" + top(t0.filter((r) => r.kind !== "type"), 45));
+console.log("--T2 top\n" + top(t2, 45));
+console.log("--T3 top\n" + top(t3, 40));

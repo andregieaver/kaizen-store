@@ -21,7 +21,7 @@ Part of `docs/audits/bloat-review-2026-11.md`, on commit 0bd814c. Read by one re
 | [TC-9](TC-9.md) ✓ | CI keeps nothing between runs except pnpm's store | no check | P2 | S | 2.42 |
 | [TC-10](TC-10.md) ✓ | 86 test files read the source tree with 67 private walkers; two parse every file | duplicate | P2 | S | 4.3 |
 | [TC-11](TC-11.md) ✓ | The same mocks and store-makers are written out in hundreds of test files | duplicate | P2 | M | 4.3 |
-| [TC-14](TC-14.md) | A push that changes only tests builds and deploys production again | eager | P2 | S | 3.18 |
+| [TC-14](TC-14.md) | A push that changes only tests builds and deploys production again | eager | P2 | S | 0.38 |
 
 ## Measured
 

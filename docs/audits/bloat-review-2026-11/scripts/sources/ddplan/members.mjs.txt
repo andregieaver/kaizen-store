@@ -1,0 +1,88 @@
+// Members of exported object literals that no code reads (the blind spot dead-notes.txt names last).
+// Conservative: an object is judged only when EVERY use of it, in its own file and in files that import it by name, is a static
+// `X.member` access. An object passed whole, spread, indexed by a variable or re-exported is skipped.
+import { createRequire } from "node:module";
+import { readFileSync, readdirSync, statSync, writeFileSync } from "node:fs";
+import { join, relative, dirname, resolve } from "node:path";
+const REPO = "/home/user/kaizen-store";
+const ts = createRequire(REPO + "/")("typescript");
+const walk = (dir, acc = []) => { for (const n of readdirSync(dir)) { if (n === "node_modules" || n === ".next") continue; const p = join(dir, n); const st = statSync(p); if (st.isDirectory()) walk(p, acc); else if (/\.(ts|tsx|mjs)$/.test(n) && !n.endsWith(".d.ts")) acc.push(p); } return acc; };
+const files = [...walk(join(REPO, "src")), ...walk(join(REPO, "scripts")), ...walk(join(REPO, "e2e")), join(REPO, "next.config.ts")];
+const fileSet = new Set(files);
+const isTest = (p) => /\.(test|spec)\.(ts|tsx|mts)$/.test(p) || p.includes("/e2e/") || p.includes("/src/test/") || /(fixtures?|test-support|testing|test-helper)\.tsx?$/.test(p);
+const options = ts.parseJsonConfigFileContent(ts.readConfigFile(join(REPO, "tsconfig.json"), ts.sys.readFile).config, ts.sys, REPO).options;
+const cache = ts.createModuleResolutionCache(REPO, (x) => x, options);
+const resolveImport = (spec, from) => { if (!spec.startsWith(".") && !spec.startsWith("@/")) return null; const r = ts.resolveModuleName(spec, from, options, ts.sys, cache).resolvedModule; if (r && fileSet.has(r.resolvedFileName)) return r.resolvedFileName; for (const ext of ["", ".ts", ".tsx", ".mjs"]) { const p = resolve(dirname(from), spec + ext); if (fileSet.has(p)) return p; } return null; };
+const unwrap = (e) => { while (e && (ts.isAsExpression(e) || ts.isSatisfiesExpression(e) || ts.isParenthesizedExpression(e) || ts.isTypeAssertionExpression?.(e))) e = e.expression; return e; };
+const sources = new Map();
+for (const f of files) sources.set(f, ts.createSourceFile(f, readFileSync(f, "utf8"), ts.ScriptTarget.Latest, true, f.endsWith("x") ? ts.ScriptKind.TSX : undefined));
+// 1. candidates
+const objs = new Map(); // key file#name -> { file, name, members: Map(name -> {line, lines, fn}), decl }
+for (const [f, sf] of sources) {
+  if (!f.startsWith(join(REPO, "src") + "/") || isTest(f)) continue;
+  for (const st of sf.statements) {
+    if (!ts.isVariableStatement(st) || !(ts.getModifiers(st) ?? []).some((m) => m.kind === ts.SyntaxKind.ExportKeyword)) continue;
+    for (const d of st.declarationList.declarations) {
+      const init = unwrap(d.initializer);
+      if (!ts.isIdentifier(d.name) || !init || !ts.isObjectLiteralExpression(init)) continue;
+      const members = new Map(); let ok = true;
+      for (const p of init.properties) {
+        if (ts.isSpreadAssignment(p)) { ok = false; break; }
+        const n = p.name && (ts.isIdentifier(p.name) || ts.isStringLiteral(p.name)) ? p.name.text : null;
+        if (!n) { ok = false; break; }
+        const v = ts.isPropertyAssignment(p) ? unwrap(p.initializer) : p;
+        const fn = ts.isMethodDeclaration(p) || (v && (ts.isArrowFunction(v) || ts.isFunctionExpression(v)));
+        const line = sf.getLineAndCharacterOfPosition(p.getStart()).line + 1;
+        members.set(n, { line, lines: sf.getLineAndCharacterOfPosition(p.getEnd()).line + 1 - line + 1, fn: Boolean(fn) });
+      }
+      if (ok && members.size >= 3) objs.set(f + "#" + d.name.text, { file: f, name: d.name.text, members, decl: d, used: new Set(), escapes: false, uses: 0 });
+    }
+  }
+}
+// 2. uses
+const note = (o, id) => {
+  const p = id.parent;
+  if (ts.isPropertyAccessExpression(p) && p.expression === id) { o.used.add(p.name.text); o.uses++; return; }
+  if (ts.isElementAccessExpression(p) && p.expression === id && ts.isStringLiteralLike(p.argumentExpression)) { o.used.add(p.argumentExpression.text); o.uses++; return; }
+  if (ts.isTypeQueryNode(p)) { const pp = p.parent; if (ts.isIndexedAccessTypeNode(pp) || ts.isTypeOperatorNode(pp)) { /* keyof typeof X: names only */ o.typeOnly = true; return; } o.escapes = true; return; }
+  if (ts.isImportSpecifier(p) || ts.isExportSpecifier(p)) { if (ts.isExportSpecifier(p)) o.escapes = true; return; }
+  o.escapes = true;
+};
+for (const [f, sf] of sources) {
+  const local = new Map(); // local identifier -> obj
+  for (const [key, o] of objs) if (o.file === f) local.set(o.name, o);
+  for (const st of sf.statements) {
+    if (ts.isImportDeclaration(st) && ts.isStringLiteral(st.moduleSpecifier)) {
+      const to = resolveImport(st.moduleSpecifier.text, f); if (!to) continue;
+      const b = st.importClause?.namedBindings;
+      if (b && ts.isNamespaceImport(b)) { for (const o of objs.values()) if (o.file === to) o.escapes = true; }
+      else if (b && ts.isNamedImports(b)) for (const el of b.elements) { const o = objs.get(to + "#" + (el.propertyName ?? el.name).text); if (o) local.set(el.name.text, o); }
+    } else if (ts.isExportDeclaration(st) && st.moduleSpecifier && ts.isStringLiteral(st.moduleSpecifier)) {
+      const to = resolveImport(st.moduleSpecifier.text, f); if (to) for (const o of objs.values()) if (o.file === to) o.escapes = true;
+    }
+  }
+  if (local.size === 0) continue;
+  const visit = (node) => {
+    if (ts.isIdentifier(node) && local.has(node.text)) {
+      const o = local.get(node.text);
+      const isDecl = node.parent === o.decl && o.decl.name === node;
+      const isPropName = (ts.isPropertyAccessExpression(node.parent) && node.parent.name === node) || (ts.isPropertyAssignment(node.parent) && node.parent.name === node) || (ts.isPropertySignature(node.parent) && node.parent.name === node) || (ts.isMethodDeclaration(node.parent) && node.parent.name === node) || (ts.isBindingElement(node.parent) && node.parent.propertyName === node) || (ts.isJsxAttribute(node.parent) && node.parent.name === node);
+      const shadow = ts.isParameter(node.parent) || (ts.isVariableDeclaration(node.parent) && node.parent !== o.decl) || ts.isBindingElement(node.parent);
+      if (shadow) o.escapes = true; // a same-named local: do not judge
+      else if (!isDecl && !isPropName) note(o, node);
+    }
+    ts.forEachChild(node, visit);
+  };
+  visit(sf);
+}
+// dynamic import of the file -> escapes
+for (const [f, sf] of sources) { const visit = (n) => { if (ts.isCallExpression(n) && n.expression.kind === ts.SyntaxKind.ImportKeyword && n.arguments[0] && ts.isStringLiteralLike(n.arguments[0])) { const to = resolveImport(n.arguments[0].text, f); if (to) for (const o of objs.values()) if (o.file === to) o.escapes = true; } ts.forEachChild(n, visit); }; visit(sf); }
+const judged = [...objs.values()].filter((o) => !o.escapes && o.uses > 0);
+const dead = [];
+for (const o of judged) for (const [m, info] of o.members) if (!o.used.has(m)) dead.push({ file: relative(REPO, o.file), object: o.name, member: m, ...info, of: o.members.size });
+const sum = (a) => a.reduce((n, r) => n + r.lines, 0);
+console.log("exported object literals with 3+ named members:", objs.size, "| judged (every use is a static X.member):", judged.length, "members", judged.reduce((n, o) => n + o.members.size, 0));
+console.log("members never read:", dead.length, "lines", sum(dead), "| functions among them:", dead.filter((d) => d.fn).length, "lines", sum(dead.filter((d) => d.fn)));
+const byObj = {}; for (const d of dead) { const k = d.file + " " + d.object; (byObj[k] ??= { n: 0, lines: 0, of: d.of, names: [] }); byObj[k].n++; byObj[k].lines += d.lines; byObj[k].names.push(d.member); }
+for (const [k, v] of Object.entries(byObj).sort((a, b) => b[1].lines - a[1].lines).slice(0, 40)) console.log(`${v.lines}\t${v.n}/${v.of}\t${k}\t${v.names.slice(0, 6).join(",")}`);
+writeFileSync(process.argv[2], JSON.stringify(dead, null, 1));

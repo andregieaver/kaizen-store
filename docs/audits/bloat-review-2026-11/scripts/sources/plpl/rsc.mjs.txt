@@ -1,0 +1,8 @@
+import fs from "node:fs";
+const d = JSON.parse(fs.readFileSync("../../m/routes.json"));
+for (const name of process.argv.slice(2)) {
+  const p = d.find((x) => x.name === name);
+  const t = {};
+  for (const r of p.responses.filter((r) => r.kind === "rsc")) { const u = r.url.replace(/[?&]_rsc=[^&]*/, ""); t[u] ??= { n: 0, tr: 0, de: 0 }; t[u].n++; t[u].tr += r.transfer; t[u].de += r.decoded; }
+  console.log("==", name, Object.entries(t).map(([u, v]) => `${u} ${v.n}/${v.tr}/${v.de}`).join(" | "));
+}

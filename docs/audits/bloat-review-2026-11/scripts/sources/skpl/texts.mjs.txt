@@ -1,0 +1,28 @@
+// own measure: every "texts" prop anywhere in a J row (not only on elements), sized as it sits in the payload
+import fs from "node:fs"; import zlib from "node:zlib";
+import { payload, rows } from "./fl.mjs";
+const dir = "../../m/html/";
+let T = 0, P = 0;
+for (const f of fs.readdirSync(dir).filter(f => f.startsWith("admin-")).sort()) {
+  const { html, out } = payload(dir + f);
+  const r = rows(out);
+  const found = []; // {where, obj}
+  const visit = (o, path) => {
+    if (!o || typeof o !== "object") return;
+    if (Array.isArray(o)) { o.forEach((v, i) => visit(v, path)); return; }
+    for (const k in o) {
+      if (k === "texts" && o[k] && typeof o[k] === "object" && !Array.isArray(o[k])) { found.push(o[k]); continue; }
+      visit(o[k], path + "." + k);
+    }
+  };
+  let unparsed = 0;
+  for (const x of r) if (x.tag === "J") { let j; try { j = JSON.parse(x.data); } catch { unparsed += x.size; continue; } visit(j, x.id); }
+  let total = 0; const parts = {}; let all = "";
+  for (const t of found) { const s = JSON.stringify(t); total += Buffer.byteLength(s); all += s; for (const k in t) parts[k] = (parts[k] || 0) + Buffer.byteLength(JSON.stringify(t[k]) ?? ""); }
+  const dec = Buffer.byteLength(out);
+  T += total; P += dec;
+  // T rows: big text rows could be referenced strings - count how many text rows and bytes
+  const trows = r.filter(x => x.tag === "T").reduce((a, x) => a + x.size, 0);
+  console.log(f.replace(".html", "").padEnd(24), "payload", (dec / 1024).toFixed(1), "texts", (total / 1024).toFixed(1), (100 * total / dec).toFixed(0) + "%", "texts gz", (zlib.gzipSync(all).length / 1024).toFixed(1), "doc gz", (zlib.gzipSync(html).length / 1024).toFixed(1), "n", found.length, "Trows", (trows/1024).toFixed(1), "unparsed", unparsed, "|", Object.entries(parts).sort((a,b)=>b[1]-a[1]).map(([k, v]) => k + " " + (v / 1024).toFixed(1)).join(", "));
+}
+console.log("TOTAL texts", (T/1024).toFixed(0), "of", (P/1024).toFixed(0), (100*T/P).toFixed(0)+"%");

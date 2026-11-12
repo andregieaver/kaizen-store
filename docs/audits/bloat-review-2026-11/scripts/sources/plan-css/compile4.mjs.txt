@@ -1,0 +1,17 @@
+import { createRequire } from "node:module";
+import { readFileSync, writeFileSync } from "node:fs";
+import { gzipSync, brotliCompressSync } from "node:zlib";
+import path from "node:path";
+const req = createRequire("/home/user/kaizen-store/node_modules/.pnpm/@tailwindcss+postcss@4.3.3/node_modules/@tailwindcss/postcss/");
+const { compile, optimize } = req("@tailwindcss/node");
+const { Scanner } = req("@tailwindcss/oxide");
+for (const entry of ["sim2/app/globals.css", "sim2/app/admin/admin-entry.css"]) {
+  const file = path.resolve(entry);
+  const compiler = await compile(readFileSync(file, "utf8"), { base: path.dirname(file), from: file, onDependency: () => {} });
+  const scanner = new Scanner({ sources: compiler.sources.map(s => ({ base: s.base, pattern: s.pattern, negated: s.negated })) });
+  const cands = scanner.scan();
+  const min = optimize(compiler.build(cands), { minify: true }).code;
+  const adminFiles = scanner.files.filter(f => f.includes("/components/admin/") || f.includes("/app/admin/")).length;
+  console.log(entry.padEnd(34), "files", scanner.files.length, "(admin", adminFiles + ")", "| min", Buffer.byteLength(min), "gz9", gzipSync(min, { level: 9 }).length, "br", brotliCompressSync(min).length, "| has builder rules:", /data-builder-item/.test(min), "| has .button-primary:", /\.button-primary/.test(min), "| has kf dark variant:", /data-color-mode/.test(min), "| text-display token:", /\.text-display/.test(min));
+  writeFileSync("out-" + entry.replace(/[\/.]/g, "_") + ".css", min);
+}

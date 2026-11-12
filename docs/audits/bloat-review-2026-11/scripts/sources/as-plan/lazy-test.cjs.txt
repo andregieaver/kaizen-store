@@ -1,0 +1,30 @@
+// Does a browser fetch a hidden <img>? With and without loading="lazy"; in display:none and in a closed <details>.
+const http = require("node:http");
+const { chromium } = require("/home/user/kaizen-store/node_modules/playwright-core");
+const svg = '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="15"><rect width="20" height="15" fill="red"/></svg>';
+const html = `<!doctype html><style>[data-hide]{display:none}</style>
+<img data-hide src="/f/eager-none.svg" width="20" height="15" decoding="async">
+<img data-hide src="/f/lazy-none.svg" width="20" height="15" decoding="async" loading="lazy">
+<span data-hide><img src="/f/eager-parent-none.svg" width="20" height="15"></span>
+<span data-hide><img src="/f/lazy-parent-none.svg" width="20" height="15" loading="lazy"></span>
+<details><summary>menu</summary><img src="/f/eager-details.svg" width="20" height="15"><img src="/f/lazy-details.svg" width="20" height="15" loading="lazy"></details>
+<img src="/f/lazy-shown.svg" width="20" height="15" loading="lazy">`;
+const seen = [];
+const server = http.createServer((req, res) => {
+  if (req.url.startsWith("/f/")) { seen.push(req.url); res.writeHead(200, { "content-type": "image/svg+xml" }); res.end(svg); }
+  else { res.writeHead(200, { "content-type": "text/html" }); res.end(html); }
+});
+server.listen(0, "127.0.0.1", async () => {
+  const port = server.address().port;
+  const browser = await chromium.launch({ headless: true, executablePath: process.argv[2] });
+  const page = await browser.newPage({ viewport: { width: 390, height: 800 } });
+  await page.goto(`http://127.0.0.1:${port}/`, { waitUntil: "load" });
+  await page.waitForTimeout(1500);
+  console.log("after load:", seen.sort().join(" "));
+  const before = seen.length;
+  await page.click("summary");
+  await page.waitForTimeout(800);
+  console.log("after opening details, new:", seen.slice(before).join(" ") || "(none)");
+  console.log("UA:", await page.evaluate(() => navigator.userAgent));
+  await browser.close(); server.close();
+});

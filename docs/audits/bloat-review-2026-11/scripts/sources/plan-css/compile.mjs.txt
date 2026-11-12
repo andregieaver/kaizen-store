@@ -1,0 +1,26 @@
+import { createRequire } from "node:module";
+import { readFileSync } from "node:fs";
+import path from "node:path";
+const req = createRequire("/home/user/kaizen-store/node_modules/.pnpm/@tailwindcss+postcss@4.3.3/node_modules/@tailwindcss/postcss/");
+const { compile } = req("@tailwindcss/node");
+const { Scanner } = req("@tailwindcss/oxide");
+const W = process.cwd();
+for (const entry of process.argv.slice(2)) {
+  const file = path.join(W, entry);
+  const css = readFileSync(file, "utf8");
+  const deps = [];
+  const compiler = await compile(css, { base: path.dirname(file), from: file, onDependency: (d) => deps.push(d) });
+  console.log("==", entry, "root:", JSON.stringify(compiler.root), "sources:", compiler.sources.length);
+  for (const s of compiler.sources) console.log("   ", s.negated ? "NOT" : "   ", s.base.replace("/home/user/kaizen-store", "~"), s.pattern);
+  const sources = compiler.sources.map(s => ({ base: s.base, pattern: s.pattern, negated: s.negated }));
+  const t0 = Date.now();
+  const scanner = new Scanner({ sources });
+  const cands = scanner.scan();
+  const adminFiles = scanner.files.filter(f => f.includes("/components/admin/") || f.includes("/app/admin/"));
+  const tests = scanner.files.filter(f => /\.test\.tsx?$/.test(f));
+  console.log("   files", scanner.files.length, "admin files", adminFiles.length, "test files", tests.length, "candidates", cands.length, "ms", Date.now() - t0);
+  const t1 = Date.now();
+  const out = compiler.build(cands);
+  console.log("   built css bytes (unminified)", Buffer.byteLength(out), "ms", Date.now() - t1, "deps", deps.length);
+  (await import("node:fs")).writeFileSync(path.join(W, entry.replace(/[\/.]/g, "_") + ".out.css"), out);
+}

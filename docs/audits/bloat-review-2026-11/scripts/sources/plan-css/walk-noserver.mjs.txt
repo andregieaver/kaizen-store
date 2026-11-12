@@ -1,0 +1,26 @@
+import { readFileSync, readdirSync, statSync, existsSync, writeFileSync } from "node:fs";
+import path from "node:path";
+const ROOT = "/home/user/kaizen-store";
+function* files(dir) { for (const f of readdirSync(dir)) { const p = path.join(dir, f); const st = statSync(p); if (st.isDirectory()) yield* files(p); else if (/\.(ts|tsx)$/.test(f) && !/\.test\.tsx?$/.test(f)) yield p; } }
+const isAdmin = p => p.startsWith(ROOT + "/src/app/admin/") || p.startsWith(ROOT + "/src/components/admin/");
+const roots = [...files(ROOT + "/src/app"), ...files(ROOT + "/src/components")].filter(p => !isAdmin(p));
+function resolve(from, spec) {
+  let base;
+  if (spec.startsWith("@/")) base = ROOT + "/src/" + spec.slice(2); else if (spec.startsWith(".")) base = path.resolve(path.dirname(from), spec); else return null;
+  for (const c of [base + ".ts", base + ".tsx", base + "/index.ts", base + "/index.tsx", base]) if (existsSync(c) && statSync(c).isFile()) return c;
+  return null;
+}
+const typeOnly = process.argv[2] === "skiptypes";
+const seen = new Map(); const q = roots.map(r => [r, null]);
+while (q.length) {
+  const [f, via] = q.pop(); if (seen.has(f)) continue; seen.set(f, via);
+  if (!/\.(ts|tsx)$/.test(f)) continue;
+  const t = readFileSync(f, "utf8");
+  const re = /(?:import|export)\s+(type\s+)?(?:[^"';]*?\sfrom\s+)?["']([^"']+)["']|import\(\s*["']([^"']+)["']\s*\)/g;
+  let m; while ((m = re.exec(t))) { if (typeOnly && m[1]) continue; const s = m[2] || m[3]; const r = resolve(f, s); if (r && !seen.has(r) && !r.startsWith(ROOT + "/src/server/")) q.push([r, f]); }
+}
+const adminReached = [...seen.keys()].filter(isAdmin);
+console.log("roots", roots.length, "reached", seen.size, "admin reached", adminReached.length);
+const chain = f => { const c = []; let x = f; while (x) { c.push(x.slice(ROOT.length + 5)); x = seen.get(x); } return c.slice(0, 4).join(" <- "); };
+for (const a of adminReached.sort()) console.log(" ", chain(a));
+writeFileSync("adminReached" + (typeOnly ? "-nt" : "") + ".json", JSON.stringify(adminReached));

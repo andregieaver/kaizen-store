@@ -1,0 +1,15 @@
+import { readFileSync, readdirSync } from "node:fs";
+const dir = "<scratch>/m/html/";
+for (const f of readdirSync(dir).sort()) {
+  const html = readFileSync(dir + f, "utf8");
+  const total = Buffer.byteLength(html);
+  let styleEl = 0, nStyle = 0; for (const m of html.matchAll(/<style\b[^>]*>([\s\S]*?)<\/style>/g)) { styleEl += Buffer.byteLength(m[0]); nStyle++; }
+  let attr = 0, nAttr = 0; for (const m of html.matchAll(/\sstyle="([^"]*)"/g)) { attr += Buffer.byteLength(m[0]); nAttr++; }
+  let rsc = ""; for (const m of html.matchAll(/self\.__next_f\.push\(\[1,("(?:[^"\\]|\\.)*")\]\)/g)) { try { rsc += JSON.parse(m[1]); } catch {} }
+  // style objects in RSC: "style":{...}
+  let rscStyle = 0, nRscStyle = 0; for (const m of rsc.matchAll(/"style":\{[^{}]*\}/g)) { rscStyle += Buffer.byteLength(m[0]); nRscStyle++; }
+  // T rows (text rows) that look like css
+  let rscCss = 0, nCss = 0;
+  for (const m of rsc.matchAll(/(?:^|\n)[0-9a-f]+:T([0-9a-f]+),/g)) { const len = parseInt(m[1], 16); const start = m.index + m[0].length; const body = Buffer.from(rsc).subarray(Buffer.byteLength(rsc.slice(0, start)), Buffer.byteLength(rsc.slice(0, start)) + len).toString(); if (/[{};]\s*[a-z-]+\s*:/.test(body) && /\{[^}]*\}/.test(body) && !/^</.test(body.trim())) { rscCss += len; nCss++; } }
+  console.log(f.padEnd(30), "doc", String(total).padStart(7), "| <style>", String(nStyle).padStart(3), String(styleEl).padStart(6), "| style=", String(nAttr).padStart(4), String(attr).padStart(6), "| rsc", String(Buffer.byteLength(rsc)).padStart(7), "rsc style objs", String(nRscStyle).padStart(4), String(rscStyle).padStart(6), "rsc css T rows", String(nCss).padStart(3), String(rscCss).padStart(6), "| share", ((styleEl + attr + rscStyle + rscCss) / total * 100).toFixed(1) + "%");
+}

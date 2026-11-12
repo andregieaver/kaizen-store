@@ -1,0 +1,8 @@
+import fs from "node:fs"; import zlib from "node:zlib";
+import { payload, rows } from "./fl.mjs";
+const dir = "../../m/html/";
+for (const f of fs.readdirSync(dir).sort()) {
+  const { html, out, scriptBytes } = payload(dir + f);
+  const raw = Buffer.byteLength(html);
+  console.log(f.replace(".html",""), "raw", raw, "gz", zlib.gzipSync(html).length, "br", zlib.brotliCompressSync(html).length, "pushScripts", scriptBytes, (100*scriptBytes/raw).toFixed(0)+"%", "decoded", Buffer.byteLength(out), "rows", rows(out).length);
+}

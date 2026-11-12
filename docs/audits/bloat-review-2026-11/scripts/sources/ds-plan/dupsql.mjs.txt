@@ -1,0 +1,31 @@
+import { readFileSync } from "node:fs";
+import { open } from "./pg.mjs";
+const db = await open();
+const schema = readFileSync("/home/user/kaizen-store/src/db/schema.ts", "utf8");
+const idx = (await db.query(`select c.relname as t, ic.relname as i, i.indisunique as uq, i.indpred is not null as partial from pg_index i join pg_class c on c.oid=i.indrelid join pg_class ic on ic.oid=i.indexrelid where c.relnamespace='commerce'::regnamespace and not i.indisprimary`)).rows;
+const plainSqlOnly = idx.filter((x) => !x.uq && !schema.includes(`"${x.i}"`));
+console.log("non-unique indexes not named in schema.ts:", plainSqlOnly.length, "of", idx.filter((x) => !x.uq).length, "non-unique indexes");
+const hot = ["orders", "order_lines", "visits", "products", "product_variants", "customers", "carts", "cart_lines"];
+console.log("  on the hot tables:", plainSqlOnly.filter((x) => hot.includes(x.t)).map((x) => x.i).join(", "));
+// The check a test could run on the migrated test database: a plain btree index whose key columns lead another btree index of the same table.
+const q = `
+with ix as (
+  select i.indrelid, i.indexrelid, ic.relname as name, i.indisunique as uq, i.indpred is not null as partial,
+         (select array_agg(pg_get_indexdef(i.indexrelid, k, true) order by k) from generate_series(1, i.indnkeyatts) k) as cols
+  from pg_index i join pg_class ic on ic.oid = i.indexrelid join pg_am am on am.oid = ic.relam
+  where ic.relnamespace = 'commerce'::regnamespace and am.amname = 'btree'
+)
+select a.indrelid::regclass::text as tbl, a.name as redundant, b.name as covered_by
+from ix a join ix b on b.indrelid = a.indrelid and b.indexrelid <> a.indexrelid
+where not a.uq and not a.partial and not b.partial
+  and b.cols[1:cardinality(a.cols)] = a.cols
+  and (cardinality(b.cols) > cardinality(a.cols) or b.uq or a.name > b.name)
+order by 1, 2`;
+const r = await db.query(q);
+console.log("plain, non-partial btree indexes led by another non-partial index:", r.rows.length);
+for (const x of r.rows) console.log("  ", x.tbl, x.redundant, "<=", x.covered_by);
+const trig = await db.query(`select c.relname t, count(*)::int n from pg_trigger g join pg_class c on c.oid=g.tgrelid where not g.tgisinternal and c.relnamespace='commerce'::regnamespace and c.relname = any($1) group by 1 order by 1`, [hot]);
+const ind = await db.query(`select c.relname t, count(*)::int n from pg_index i join pg_class c on c.oid=i.indrelid where c.relnamespace='commerce'::regnamespace and c.relname = any($1) group by 1 order by 1`, [hot]);
+console.log("triggers on the hot tables:", JSON.stringify(trig.rows), "sum", trig.rows.reduce((a, x) => a + x.n, 0));
+console.log("indexes on the hot tables:", JSON.stringify(ind.rows), "sum", ind.rows.reduce((a, x) => a + x.n, 0));
+await db.close();

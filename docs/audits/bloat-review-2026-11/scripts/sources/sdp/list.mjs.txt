@@ -1,0 +1,15 @@
+// Same walk as work/sd/graph-cut.mjs, but prints the reached files (server ones, and the largest lib ones).
+import fs from "node:fs"; import path from "node:path";
+const root = process.cwd();
+const exts = [".ts", ".tsx", ".js", ".mjs", ".json", "/index.ts", "/index.tsx"];
+function resolve(from, spec) { let base; if (spec.startsWith("@/")) base = path.join(root, "src", spec.slice(2)); else if (spec.startsWith(".")) base = path.resolve(path.dirname(from), spec); else return null; if (fs.existsSync(base) && fs.statSync(base).isFile()) return base; for (const e of exts) if (fs.existsSync(base + e)) return base + e; return null; }
+const importRe = /^\s*(import|export)\s+(type\s+)?([^;]*?)\s+from\s+["']([^"']+)["']|^\s*import\s+["']([^"']+)["']/gm;
+function imports(file) { if (file.endsWith(".json")) return []; const text = fs.readFileSync(file, "utf8"); const local = []; let m; importRe.lastIndex = 0; while ((m = importRe.exec(text))) { if (m[2]) continue; const spec = m[4] ?? m[5]; const clause = m[3] ?? ""; const braces = clause.match(/^\{([\s\S]*)\}$/); if (braces && braces[1].split(",").map((s) => s.trim()).filter(Boolean).every((s) => s.startsWith("type "))) continue; const r = resolve(file, spec); if (r) local.push(r); } return local; }
+const entry = path.resolve(process.argv[2]); const CUT = new Set((process.env.CUT || "").split(",").filter(Boolean));
+const seen = new Map([[entry, null]]); const queue = [entry];
+while (queue.length) { const f = queue.shift(); for (const l of imports(f)) if (!CUT.has(path.relative(root, f) + ">" + path.relative(root, l)) && !CUT.has("*>" + path.relative(root, l)) && !seen.has(l)) { seen.set(l, f); queue.push(l); } }
+const rel = [...seen.keys()].map((f) => [path.relative(root, f), fs.statSync(f).size]);
+console.log("modules", rel.length, "bytes", rel.reduce((a, b) => a + b[1], 0));
+console.log("server:", rel.filter((r) => r[0].startsWith("src/server")).map((r) => r[0].replace("src/server/", "")).join(" "));
+console.log("largest:", rel.sort((a, b) => b[1] - a[1]).slice(0, 14).map((r) => r[0] + " " + r[1]).join("\n  "));
+const why = process.env.WHY; if (why) for (const target of why.split(",")) { let t = [...seen.keys()].find((k) => k.endsWith(target)); const chain = []; while (t) { chain.push(path.relative(root, t)); t = seen.get(t); } console.log("why", target, ": " + chain.reverse().join(" -> ")); }

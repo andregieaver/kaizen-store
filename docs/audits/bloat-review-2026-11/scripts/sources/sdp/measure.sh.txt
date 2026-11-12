@@ -1,0 +1,9 @@
+#!/usr/bin/env bash
+# Usage: measure.sh <path> [cookie] -- one GET to the running local server; prints which commerce tables were read and how many statements committed (read-only on the local review database).
+S=<scratch>/work/sdp; SN=<scratch>/work/sd; P="$1"; C="${2:-}"
+"$SN/snap.sh" > "$S/before.txt"
+if [ -n "$C" ]; then code=$(curl -s -o "$S/last.out" -w '%{http_code} ttfb=%{time_starttransfer}s total=%{time_total}s bytes=%{size_download}' -H "Cookie: $C" "http://localhost:3000$P"); else code=$(curl -s -o "$S/last.out" -w '%{http_code} ttfb=%{time_starttransfer}s total=%{time_total}s bytes=%{size_download}' "http://localhost:3000$P"); fi
+sleep 6
+"$SN/snap.sh" > "$S/after.txt"
+echo "== ${P:0:90}  -> $code"
+join -t'|' -a2 -e0 -o 0,1.2,2.2 <(sort -t'|' -k1,1 "$S/before.txt") <(sort -t'|' -k1,1 "$S/after.txt") | awk -F'|' '{d=$3-$2; if (d>0) printf "   %-34s +%d\n", $1, ($1=="XACT"? d-1 : d)}'

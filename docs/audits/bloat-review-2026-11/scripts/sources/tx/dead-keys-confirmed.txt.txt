@@ -1,0 +1,44 @@
+# Catalogue keys with no reader: the key's name appears in no non-test file outside the catalogues, and its parent is not a table
+# read by a computed key, by Object.entries or by matching English sentences. Checked with rg on 11-12 Nov 2026.
+admin domains.checkout.priceChanged
+admin platformTools.aiActions.noTemplate
+admin analytics.settings.targets.startCustom
+admin inventory.documents.linesCol
+admin inventory.suppliers.sentWithin
+admin reviews.import.submitCheck
+admin order.messages.refundReason
+admin order.messages.cancelReason
+admin blog.editor.blogHeading
+admin oauth.store.cutDone
+admin customers.saved.schema.wholePercent
+admin customers.saved.schema.oneAccount
+admin marketing.segments.firstBy
+admin assistant.autopilot.plans.pausedNow
+admin product.media.tooManyVideos
+admin product.media.tooManyModels
+admin content.entry.publishFirstSave
+admin marketing.problems.saveWords        (a matching table; no such English sentence is left in the code)
+admin marketing.problems.headingLong      (same)
+admin marketing.problems.paragraphEmpty   (same)
+admin marketing.problems.paragraphLong    (same)
+admin marketing.problems.buttonEmpty      (same)
+admin marketing.problems.buttonLong       (same)
+admin payments.problems.finishLive        (same)
+admin payments.problems.finishTest        (same)
+storefront returns.chooseLines
+storefront returns.returnRequest.pickLines
+storefront workInvoice.creditPageTitle
+storefront deliveryChoice.deliveryLine
+storefront affiliate.cartApplied          (a test reads it; no code does)
+storefront affiliate.signInToRefer
+storefront creator.ordersLabel
+storefront companyAccount.decidedAlready
+storefront tracking.followAt
+storefront nothingHere
+storefront allArticles
+storefront subscriptionOrders
+storefront account.resetFor
+storefront account.passwordShort
+storefront stay.tooSoon
+storefront stay.tooFar
+storefront giftCardLine.notDiscounted

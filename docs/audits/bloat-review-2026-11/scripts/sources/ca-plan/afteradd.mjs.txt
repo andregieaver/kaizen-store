@@ -1,0 +1,29 @@
+// What the browser asks for after one Add to cart on a product page: node afteradd.mjs <url>
+import { createRequire } from "node:module";
+const require = createRequire("/home/user/kaizen-store/");
+const { chromium } = require("playwright-core");
+const url = process.argv[2];
+const browser = await chromium.launch({ executablePath: "/opt/pw-browsers/chromium", args: ["--no-sandbox"] });
+const context = await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true, deviceScaleFactor: 2 });
+const page = await context.newPage();
+let phase = "load"; const seen = { load: [], add: [] };
+page.on("response", async (r) => {
+  const req = r.request(); const h = req.headers(); const u = new URL(r.url());
+  let size = 0; try { size = (await r.body()).length; } catch {}
+  seen[phase].push({ path: u.pathname, method: req.method(), action: Boolean(h["next-action"]), prefetch: Boolean(h["next-router-prefetch"]), rsc: Boolean(h["rsc"]), seg: h["next-router-segment-prefetch"] ?? null, size, cc: r.headers()["cache-control"] ?? "" });
+});
+await page.goto(url, { waitUntil: "load" });
+await page.waitForTimeout(3500);
+const button = page.getByRole("button", { name: /legg i handlekurv/i }).first();
+console.log("button visible:", await button.isVisible().catch(() => false));
+phase = "add";
+await button.click();
+await page.waitForTimeout(4000);
+const sum = (list) => ({ n: list.length, bytes: list.reduce((s, x) => s + x.size, 0) });
+const g = (list) => ({ all: sum(list), action: sum(list.filter((x) => x.action)), prefetch: sum(list.filter((x) => x.prefetch)), otherRsc: sum(list.filter((x) => x.rsc && !x.prefetch && !x.action)), rest: sum(list.filter((x) => !x.rsc && !x.action)) });
+console.log("before the press:", JSON.stringify(g(seen.load)));
+console.log("after one Add to cart:", JSON.stringify(g(seen.add)));
+const by = {}; for (const x of seen.add) { const k = `${x.method} ${x.path}${x.action ? " [action]" : x.prefetch ? " [prefetch]" : x.rsc ? " [rsc]" : ""}`; by[k] = by[k] ?? { n: 0, bytes: 0 }; by[k].n++; by[k].bytes += x.size; }
+for (const [k, v] of Object.entries(by).sort((a, b) => b[1].bytes - a[1].bytes).slice(0, 16)) console.log(String(v.n).padStart(4), String(v.bytes).padStart(8), k);
+console.log("cart link now:", await page.getByRole("link", { name: /Handlekurv/ }).first().getAttribute("aria-label").catch(() => null), await page.getByRole("link", { name: /Handlekurv \(\d+\)/ }).count());
+await browser.close();

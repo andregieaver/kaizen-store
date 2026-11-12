@@ -20,7 +20,7 @@ The built client bundles, by page (`README.md` beside this file), part of `docs/
 5. Build. Check done_when. Lower the seven budgets of e2e/signed-in/admin-scripts.spec.ts in the change that lands BN-3 and BN-4 too (BN-11 sets how they are counted).
 6. docs/rules/admin/platform.md lines 50 to 51 (SessionKeeper refreshes tokens in the browser): add that its client is loaded after the page is idle and that uploads load it on the press. docs/performance.md, The admin as people use it: the new figures. CLAUDE.md, Conventions ('Environment variables are validated in src/lib/env.ts'): name src/lib/public-env.ts beside it.
 
-**Done when:** After pnpm build, no route's first-load chunks in .next/diagnostics/route-bundle-stats.json contain the string 'GoTrueClient' (432 routes today, counted by BN-11's script or a scratch script), and e2e/signed-in passes.
+**Done when:** After pnpm build, no route's first-load chunks in .next/diagnostics/route-bundle-stats.json contain the string 'GoTrueClient' (432 routes today, counted by BN-11's script or docs/audits/bloat-review-2026-11/scripts/sources/bnp/markers.mjs.txt), and e2e/signed-in passes.
 
 **Tests and rules that hold today's behaviour, and change with it:**
 

@@ -19,7 +19,7 @@ Part of `docs/audits/bloat-review-2026-11.md`, on commit 0bd814c. Read by one re
 | [DC-8](DC-8.md) ✓ | A feature's facts are written at four to six levels, in different words; lists copied from code drift | duplicate | P2 | S | 0.41 |
 | [DC-10](DC-10.md) ✓ | The Migration versions list has been frozen since 4 October, and the instruction to record versions there now fills decision rows with release notes *(your choice)* | dead | P2 | S | 2.41 |
 | [DC-13](DC-13.md) | A table's definition is in the repo four times, and a search for its name returns more lines from old migrations and Drizzle's snapshot than from code | oversize | P2 | S | 0.40 |
-| [DC-9](DC-9.md) ✓ | The saved parity-wave workflow asks for specs with no size limit and tells every agent to read them whole; it is dormant | no check | P3 | S | tolerated |
+| [DC-9](DC-9.md) ✓ | The saved parity-wave workflow asks for specs with no size limit and tells every agent to read them whole; it is dormant | no check | P3 | S | 0.41 |
 | [DC-11](DC-11.md) ✓ | The parity report commits 270 KB of generated tables beside the rows they are made from *(your choice)* | duplicate | P3 | S | your choice |
 
 ## Measured

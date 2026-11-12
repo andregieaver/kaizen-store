@@ -1,0 +1,13 @@
+// Times loading a built page function's server code in a fresh process (no request is made, nothing is written).
+const path = require("path");
+globalThis.AsyncLocalStorage = require("node:async_hooks").AsyncLocalStorage;
+process.env.NODE_ENV = "production"; process.env.NEXT_RUNTIME = "nodejs";
+try { require("next/dist/server/node-environment"); } catch {}
+try { require("next/dist/server/require-hook"); } catch {}
+const target = process.argv[2];
+const t0 = process.hrtime.bigint(); const m0 = process.memoryUsage().rss;
+let ok = true, err = "";
+try { const m = require(path.resolve(target)); if (m && typeof m.then === "function") {} } catch (e) { ok = false; err = String(e && e.message).slice(0, 240); }
+const ms = Number(process.hrtime.bigint() - t0) / 1e6;
+console.log(JSON.stringify({ target, ok, ms: Math.round(ms), rssMB: Math.round((process.memoryUsage().rss - m0) / 1048576), err }));
+process.exit(0);

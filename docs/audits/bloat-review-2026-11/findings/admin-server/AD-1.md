@@ -20,7 +20,7 @@ What the server does for an admin navigation (`README.md` beside this file), par
 5. No change is needed in settings/page.tsx:21, website/page.tsx:21 or owner-assistant.ts:362: they get the saving from the first two steps.
 6. Add the count test named under tests, so the cost cannot come back unseen.
 
-**Done when:** node --import a scratch script a scratch script prints 110 lookups per build (220 today) and under 2 ms per build (125 ms today), and the new count test in src/lib/store-nav.test.ts passes.
+**Done when:** node --import docs/audits/bloat-review-2026-11/scripts/sources/hooks.mjs.txt docs/audits/bloat-review-2026-11/scripts/sources/planner-ad/nav.mjs.txt prints 110 lookups per build (220 today) and under 2 ms per build (125 ms today), and the new count test in src/lib/store-nav.test.ts passes.
 
 **Tests and rules that hold today's behaviour, and change with it:**
 

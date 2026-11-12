@@ -1,0 +1,29 @@
+// The cheap graph a scan test could build: a regex over each non-test source file, type-only imports left out. No esbuild, no parser.
+import fs from "node:fs"; import path from "node:path";
+const ROOT = "/home/user/kaizen-store"; const t0 = performance.now();
+const files = [];
+(function walk(d) { for (const e of fs.readdirSync(d, { withFileTypes: true })) { const p = path.join(d, e.name); if (e.isDirectory()) walk(p); else if (/\.tsx?$/.test(e.name) && !/\.test\.tsx?$/.test(e.name) && !e.name.endsWith(".d.ts")) files.push(p); } })(ROOT + "/src");
+const set = new Set(files);
+const resolve = (from, spec) => { let base; if (spec.startsWith("@/")) base = ROOT + "/src/" + spec.slice(2); else if (spec.startsWith(".")) base = path.resolve(path.dirname(from), spec); else return null; for (const x of ["", ".ts", ".tsx", "/index.ts", "/index.tsx"]) if (set.has(base + x)) return base + x; return null; };
+const RE = /^(import|export)\s+(type\s+)?([^;]*?)\s*from\s*["']([^"']+)["']|^import\s*["']([^"']+)["']/gm;
+const g = new Map();
+for (const f of files) {
+  const src = fs.readFileSync(f, "utf8"); const out = new Set(); let m;
+  while ((m = RE.exec(src))) {
+    if (m[5]) { const r = resolve(f, m[5]); if (r) out.add(r); continue; }
+    if (m[2]) continue; // import type / export type
+    const clause = m[3].trim();
+    const braces = /^\{([\s\S]*)\}$/.exec(clause);
+    if (braces && braces[1].split(",").map((s) => s.trim()).filter(Boolean).every((s) => s.startsWith("type "))) continue; // every name is a type
+    const r = resolve(f, m[4]); if (r) out.add(r);
+  }
+  g.set(f, [...out]);
+}
+let idx = 0; const index = new Map(), low = new Map(), on = new Set(), st = []; const comps = [];
+for (const s of files) { if (index.has(s)) continue; const work = [[s, 0]]; index.set(s, idx); low.set(s, idx); idx++; st.push(s); on.add(s);
+  while (work.length) { const top = work[work.length - 1]; const [v, i] = top; const es = g.get(v);
+    if (i < es.length) { top[1]++; const w = es[i]; if (!index.has(w)) { index.set(w, idx); low.set(w, idx); idx++; st.push(w); on.add(w); work.push([w, 0]); } else if (on.has(w)) low.set(v, Math.min(low.get(v), index.get(w))); }
+    else { work.pop(); if (work.length) { const p = work[work.length - 1][0]; low.set(p, Math.min(low.get(p), low.get(v))); } if (low.get(v) === index.get(v)) { const c = []; let w; do { w = st.pop(); on.delete(w); c.push(w); } while (w !== v); comps.push(c); } } } }
+comps.sort((a, b) => b.length - a.length);
+const reach = (s) => { const seen = new Set([s]); const q = [s]; while (q.length) for (const w of g.get(q.pop())) if (!seen.has(w)) { seen.add(w); q.push(w); } return seen.size; };
+console.log({ files: files.length, largest: comps.slice(0, 5).map((c) => c.length), catalog: reach(ROOT + "/src/server/catalog.ts"), cart: reach(ROOT + "/src/server/cart.ts"), ms: Math.round(performance.now() - t0) });

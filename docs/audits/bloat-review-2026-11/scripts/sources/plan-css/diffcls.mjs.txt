@@ -1,0 +1,22 @@
+import { readFileSync } from "node:fs";
+import { createRequire } from "node:module";
+const require = createRequire("/home/user/kaizen-store/node_modules/.pnpm/postcss@8.5.32/node_modules/postcss/");
+const postcss = require("postcss");
+function classes(file) {
+  const root = postcss.parse(readFileSync(file, "utf8"));
+  const util = root.nodes.find(n => n.type === "atrule" && n.name === "layer" && n.params === "utilities");
+  const m = new Map();
+  util.walkRules(r => { const x = /\.((?:\\.|[^\s.:#>+~\[\],()])+)/.exec(r.selector); if (!x) return; const c = x[1].replace(/\\([0-9a-fA-F]{1,6}) ?/g, (_, h) => String.fromCodePoint(parseInt(h, 16))).replace(/\\(.)/g, "$1"); m.set(c, (m.get(c) || 0) + Buffer.byteLength(r.toString())); });
+  return m;
+}
+const today = classes("out-today.css"), lean = classes("out-lean.css"), site = classes("out-site.css"), siteNo = classes("out-siteNoShared.css");
+const built = classes("/home/user/kaizen-store/.next/static/chunks/3-w0shgm-eqtf.css");
+const lost = (a, b) => [...a.keys()].filter(k => !b.has(k));
+const sum = (a, ks) => ks.reduce((s, k) => s + a.get(k), 0);
+console.log("classes: built", built.size, "today(compiled here)", today.size, "lean", lean.size, "site", site.size, "siteNoShared", siteNo.size);
+console.log("built vs today-compiled differ:", lost(built, today).length, lost(today, built).length);
+const l1 = lost(today, lean); console.log("today -> lean lost", l1.length, sum(today, l1), "B:", l1.join(" "));
+const l2 = lost(lean, site); console.log("lean -> site lost", l2.length, sum(lean, l2), "B");
+const l3 = lost(site, siteNo); console.log("site -> siteNoShared lost", l3.length, sum(site, l3), "B:", l3.slice(0, 80).join(" "));
+import { writeFileSync } from "node:fs";
+writeFileSync("admin-only-classes.json", JSON.stringify(l2));

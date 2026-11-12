@@ -1,0 +1,27 @@
+// Builds the static runtime import graph of src (type-only and dynamic imports left out, comments stripped). node graph.mjs <repo> <out.json>
+import { readdirSync, statSync, readFileSync, existsSync, writeFileSync } from 'node:fs';
+import { join, dirname, resolve, relative } from 'node:path';
+const repo = process.argv[2]; const root = join(repo, 'src');
+const walk = (d) => readdirSync(d).flatMap((n) => { const p = join(d, n); return statSync(p).isDirectory() ? walk(p) : [p]; });
+const files = walk(root).filter((f) => /\.tsx?$/.test(f) && !/\.(test|spec)\.tsx?$/.test(f) && !/\.d\.ts$/.test(f));
+const exts = ['.ts', '.tsx', '/index.ts', '/index.tsx'];
+const res = (from, spec) => { let b; if (spec.startsWith('@/')) b = join(root, spec.slice(2)); else if (spec.startsWith('.')) b = resolve(dirname(from), spec); else return null; if (existsSync(b) && statSync(b).isFile()) return b; for (const e of exts) if (existsSync(b + e)) return b + e; return null; };
+const strip = (s) => s.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|\n)\s*\/\/[^\n]*/g, '$1');
+const stmt = /(?:^|\n)\s*(import|export)\s+(type\s+)?([^;'"]*?)\s*from\s*["']([^"']+)["']|(?:^|\n)\s*import\s*["']([^"']+)["']/g;
+const g = {};
+for (const f of files) {
+  const src = strip(readFileSync(f, 'utf8'));
+  const out = []; let m;
+  while ((m = stmt.exec(src))) {
+    if (m[2]) continue;
+    const names = (m[3] ?? '').trim();
+    let rt = null;
+    if (/^\{[^}]*\}$/.test(names)) { const parts = names.slice(1, -1).split(',').map((s) => s.trim()).filter(Boolean); if (parts.length && parts.every((p) => p.startsWith('type '))) continue; rt = parts.filter((p) => !p.startsWith('type ')).map((p) => p.split(/\s+as\s+/)[0]); }
+    const spec = m[4] ?? m[5]; const t = res(f, spec);
+    if (t && t !== f) out.push({ to: relative(root, t), names: rt, kind: m[1] ?? 'import' });
+    else if (!t && !spec.startsWith('.') && !spec.startsWith('@/')) out.push({ pkg: spec });
+  }
+  g[relative(root, f)] = { bytes: statSync(f).size, out };
+}
+writeFileSync(process.argv[3], JSON.stringify(g));
+console.log('modules', files.length);

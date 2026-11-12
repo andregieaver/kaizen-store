@@ -1,0 +1,96 @@
+import fs from "node:fs";
+import path from "node:path";
+const root = "/home/user/kaizen-store";
+const src = path.join(root, "src");
+const files = [];
+(function walk(d) {
+  for (const e of fs.readdirSync(d, { withFileTypes: true })) {
+    const p = path.join(d, e.name);
+    if (e.isDirectory()) { if (e.name !== "data") walk(p); }
+    else if (/\.(ts|tsx|mjs|js)$/.test(e.name) && !/\.(test|spec)\.|\.d\.ts$/.test(e.name)) files.push(p);
+  }
+})(src);
+const set = new Set(files);
+const resolve = (from, spec) => {
+  let base;
+  if (spec.startsWith("@/")) base = path.join(src, spec.slice(2));
+  else if (spec.startsWith(".")) base = path.resolve(path.dirname(from), spec);
+  else return null;
+  for (const c of [base, base + ".ts", base + ".tsx", base + ".mjs", base + ".js", path.join(base, "index.ts"), path.join(base, "index.tsx")]) if (set.has(c)) return c;
+  return null;
+};
+const stat = new Map(), dyn = new Map(), ext = new Map();
+const reImport = /(?:^|\n)\s*(import|export)\s+(type\s+)?([^;'"]*?\sfrom\s+)?["']([^"']+)["']/g;
+const reDyn = /import\(\s*["']([^"']+)["']\s*\)/g;
+for (const f of files) {
+  const t = fs.readFileSync(f, "utf8");
+  const s = new Set(), d = new Set(), x = new Set();
+  let m;
+  reImport.lastIndex = 0;
+  while ((m = reImport.exec(t))) {
+    if (m[2]) continue; // import type / export type
+    const clause = m[3] || "";
+    // `import { type A, type B } from` with only type names is erased too
+    const braces = clause.match(/\{([^}]*)\}/);
+    if (m[1] === "import" && braces && !/^\s*\w+\s*,/.test(clause) && braces[1].split(",").map((s) => s.trim()).filter(Boolean).every((n) => n.startsWith("type "))) continue;
+    const r = resolve(f, m[4]);
+    if (r) s.add(r); else if (!m[4].startsWith(".") && !m[4].startsWith("@/")) x.add(m[4]);
+  }
+  reDyn.lastIndex = 0;
+  while ((m = reDyn.exec(t))) { const r = resolve(f, m[1]); if (r) d.add(r); else if (!m[1].startsWith(".") && !m[1].startsWith("@/")) x.add("dyn:" + m[1]); }
+  stat.set(f, s); dyn.set(f, d); ext.set(f, x);
+}
+const reach = (starts, withDyn = false) => {
+  const seen = new Set(starts); const q = [...starts]; const parent = new Map();
+  while (q.length) { const f = q.shift(); const next = [...(stat.get(f) || []), ...(withDyn ? dyn.get(f) || [] : [])]; for (const n of next) if (!seen.has(n)) { seen.add(n); parent.set(n, f); q.push(n); } }
+  return { seen, parent };
+};
+const rel = (p) => path.relative(root, p);
+const chain = (parent, to) => { const out = [to]; let c = to; while (parent.has(c)) { c = parent.get(c); out.push(c); } return out.reverse().map(rel); };
+const sharpFiles = files.filter((f) => ext.get(f).has("sharp"));
+const taxFile = path.join(src, "server/product-taxonomy.ts");
+console.log("non-test source files:", files.length, "| static sharp importers:", sharpFiles.length);
+// proxy
+const proxy = path.join(src, "proxy.ts");
+const pr = reach([proxy]);
+console.log("proxy reaches", pr.seen.size, "files; client ('use client') among them:", [...pr.seen].filter((f) => /^\s*["']use client["']/.test(fs.readFileSync(f, "utf8"))).length);
+const ps = sharpFiles.filter((f) => pr.seen.has(f));
+console.log("proxy reaches sharp importers:", ps.map(rel));
+if (ps[0]) console.log(" shortest chain:", chain(pr.parent, ps[0]).join(" -> "));
+console.log("proxy reaches product-taxonomy:", pr.seen.has(taxFile), pr.seen.has(taxFile) ? chain(pr.parent, taxFile).join(" -> ") : "");
+// simulate cuts
+const cut = (pairs) => { const saved = []; for (const [a, b] of pairs) { const A = path.join(root, a), B = path.join(root, b); if (stat.get(A)?.delete(B)) saved.push([A, B]); } return () => { for (const [A, B] of saved) stat.get(A).add(B); }; };
+let undo = cut([["src/server/house-switch.ts", "src/server/seo.ts"], ["src/server/redirect-resolve.ts", "src/server/catalog.ts"]]);
+const pr2 = reach([proxy]);
+console.log("after cutting house-switch->seo and redirect-resolve->catalog: proxy reaches", pr2.seen.size, "sharp:", sharpFiles.filter((f) => pr2.seen.has(f)).map(rel).slice(0, 3), "taxonomy:", pr2.seen.has(taxFile));
+const s2 = sharpFiles.filter((f) => pr2.seen.has(f)); if (s2[0]) console.log(" chain:", chain(pr2.parent, s2[0]).join(" -> "));
+if (pr2.seen.has(taxFile)) console.log(" chain:", chain(pr2.parent, taxFile).join(" -> "));
+undo();
+// entries
+const app = path.join(src, "app");
+const entries = files.filter((f) => f.startsWith(app) && /\/(page\.tsx|route\.tsx?)$/.test(f));
+const layoutsOf = (f) => { const out = []; let d = path.dirname(f); while (d.startsWith(app)) { for (const n of ["layout.tsx", "template.tsx", "loading.tsx", "error.tsx", "not-found.tsx"]) { const p = path.join(d, n); if (set.has(p)) out.push(p); } d = path.dirname(d); } return out; };
+let both = 0, sh = 0, tx = 0, neither = []; const sizes = [];
+for (const e of entries) {
+  const isPage = e.endsWith("page.tsx");
+  const r = reach([e, ...(isPage ? layoutsOf(e) : [])]);
+  const hs = sharpFiles.some((f) => r.seen.has(f)), ht = r.seen.has(taxFile);
+  if (hs) sh++; if (ht) tx++; if (hs && ht) both++; if (!hs && !ht) neither.push(rel(e));
+  sizes.push(r.seen.size);
+}
+sizes.sort((a, b) => a - b);
+console.log("entries:", entries.length, "pages", entries.filter((e) => e.endsWith("page.tsx")).length, "| reach sharp:", sh, "| reach taxonomy:", tx, "| both:", both, "| neither:", neither.length, "| median files reached:", sizes[sizes.length >> 1]);
+console.log("neither (first 20):", neither.slice(0, 20));
+// health route & font files route
+for (const p of ["src/app/api/health/route.ts", "src/app/api/fonts/files/[file]/route.ts", "src/app/s/[store]/[market]/page.tsx"]) { const P = path.join(root, p); if (!set.has(P)) { console.log("missing", p); continue; } const r = reach([P, ...(p.endsWith("page.tsx") ? layoutsOf(P) : [])]); console.log(p, "reaches", r.seen.size, "sharp:", sharpFiles.some((f) => r.seen.has(f)), "taxonomy:", r.seen.has(taxFile)); }
+// with dynamic imports followed as well
+{
+  let sh = 0, tx = 0, both = 0, none = 0;
+  for (const e of entries) { const isPage = e.endsWith("page.tsx"); const r = reach([e, ...(isPage ? layoutsOf(e) : [])], true); const hs = sharpFiles.some((f) => r.seen.has(f)), ht = r.seen.has(taxFile); if (hs) sh++; if (ht) tx++; if (hs && ht) both++; if (!hs && !ht) none++; }
+  console.log("WITH dynamic imports: reach sharp", sh, "taxonomy", tx, "both", both, "neither", none);
+  const r = reach([proxy], true); console.log("proxy with dynamic imports reaches", r.seen.size);
+  // who imports product-taxonomy directly
+  const direct = files.filter((f) => stat.get(f).has(taxFile) || dyn.get(f).has(taxFile)).map(rel); console.log("direct importers of server/product-taxonomy.ts:", direct.length, direct);
+  // route entries (not pages) also with layouts, as the auditor may have counted
+  let b2 = 0; for (const e of entries) { const r = reach([e, ...layoutsOf(e)]); if (sharpFiles.some((f) => r.seen.has(f)) && r.seen.has(taxFile)) b2++; } console.log("both, when route handlers also get their folders' layouts:", b2);
+}

@@ -1,0 +1,17 @@
+const shared = { testTimeout: 20000, hookTimeout: 60000 };
+const skip = ["src/**/*.int.test.ts", "node_modules/**"];
+export default {
+  root: "/home/user/kaizen-store",
+  cacheDir: "<scratch>/work/pl-tc/vite-cache",
+  resolve: { alias: { "@": "/home/user/kaizen-store/src" } },
+  test: {
+    cache: false,
+    fsModuleCachePath: "<scratch>/work/pl-tc/vitest-cache",
+    maxWorkers: 1,
+    projects: [
+      { extends: true, test: { name: "components", include: ["src/components/**/*.test.ts"], exclude: skip, setupFiles: ["src/test/eager-lazy-views.ts", "src/test/admin-english.ts"], ...shared } },
+      { extends: true, test: { name: "db", include: ["src/db/**/*.test.ts"], exclude: skip, ...shared } },
+      { extends: true, test: { name: "unit", include: ["src/**/*.test.ts"], exclude: [...skip, "src/components/**", "src/db/**"], setupFiles: ["src/test/eager-lazy-views.ts"], isolate: false, ...shared } },
+    ],
+  },
+};

@@ -1,0 +1,17 @@
+import { readFileSync } from "node:fs";
+import { gzipSync, brotliCompressSync } from "node:zlib";
+import { createRequire } from "node:module";
+const require = createRequire("/home/user/kaizen-store/node_modules/.pnpm/postcss@8.5.32/node_modules/postcss/");
+const postcss = require("postcss");
+for (const f of ["/home/user/kaizen-store/.next/static/chunks/3-w0shgm-eqtf.css", "out-siteFinal.css"]) {
+  const css = readFileSync(f, "utf8");
+  const root = postcss.parse(css);
+  const g = new Map();
+  for (const node of root.nodes) {
+    const s = node.toString();
+    const k = node.type === "atrule" ? (node.name === "layer" ? "@layer " + node.params.slice(0, 30) : "@" + node.name) : "unlayered rules";
+    const e = g.get(k) || { b: 0, t: "" }; e.b += Buffer.byteLength(s); e.t += s; g.set(k, e);
+  }
+  console.log(f.split("/").pop(), Buffer.byteLength(css));
+  for (const [k, e] of [...g].sort((a, b) => b[1].b - a[1].b)) console.log("  ", String(e.b).padStart(7), "gz", String(gzipSync(e.t, { level: 9 }).length).padStart(6), "br", String(brotliCompressSync(e.t).length).padStart(6), k);
+}

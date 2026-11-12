@@ -1,0 +1,15 @@
+// Top-level function names declared in several non-test files of src/server and src/lib (read-only).
+import { readFileSync, readdirSync, statSync } from "node:fs";
+import { join } from "node:path";
+const walk = (d, acc = []) => { for (const n of readdirSync(d)) { const p = join(d, n); if (statSync(p).isDirectory()) walk(p, acc); else if (/\.tsx?$/.test(n) && !/\.(test|spec)\./.test(n) && !/fixture|test-support|test-helper/.test(n)) acc.push(p); } return acc; };
+const root = "/home/user/kaizen-store/src/";
+const files = [...walk(root + "server"), ...walk(root + "lib")].filter((f) => !/\/lib\/(admin-messages|messages)\//.test(f));
+const names = new Map();
+for (const f of files) {
+  const text = readFileSync(f, "utf8");
+  const re = /^(?:export )?(?:async )?function (\w+)\s*[(<]|^(?:export )?const (\w+) = (?:async )?\(/gm; let m; const seen = new Set();
+  while ((m = re.exec(text))) { const n = m[1] ?? m[2]; if (seen.has(n)) continue; seen.add(n); let e = names.get(n); if (!e) names.set(n, (e = [])); e.push(f.replace(root, "")); }
+}
+const multi = [...names.entries()].filter(([n, fs]) => fs.length >= 3).sort((a, b) => b[1].length - a[1].length);
+console.log(`files ${files.length}, distinct top-level function names ${names.size}, names in 3+ files ${multi.length}, in 10+ files ${multi.filter(([, f]) => f.length >= 10).length}`);
+console.log(multi.slice(0, 60).map(([n, f]) => `${n} ${f.length}`).join(", "));

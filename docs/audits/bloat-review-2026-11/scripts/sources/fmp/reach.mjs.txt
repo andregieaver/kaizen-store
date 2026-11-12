@@ -1,0 +1,7 @@
+// node reach.mjs graph.json [--redir] entry... ; prints reach size, bytes, whether admin-text/chat-route/auth reached
+import { readFileSync } from 'node:fs';
+const g = JSON.parse(readFileSync(process.argv[2], 'utf8'));
+let args = process.argv.slice(3); const redir = args.includes('--redir'); args = args.filter((a) => a !== '--redir');
+const edges = (f) => (g[f]?.out ?? []).filter((e) => e.to).map((e) => (redir && e.to === 'server/chat-route.ts' && e.names && e.names.every((n) => n === 'sameSite')) ? 'lib/same-site.ts' : e.to);
+const reach = (from) => { const seen = new Set([from]); const q = [from]; while (q.length) { const x = q.pop(); for (const y of edges(x)) if (!seen.has(y)) { seen.add(y); q.push(y); } } return seen; };
+for (const a of args) { const s = reach(a); let b = 0; for (const x of s) b += g[x]?.bytes ?? 0; console.log(`${a}: ${s.size} modules, ${(b / 1e6).toFixed(2)} MB source; admin-text=${s.has('lib/admin-text.ts')} chat-route=${s.has('server/chat-route.ts')} auth=${s.has('server/auth.ts')} i18n=${s.has('lib/i18n.ts')}`); }

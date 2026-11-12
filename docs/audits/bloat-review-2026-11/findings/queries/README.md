@@ -22,8 +22,8 @@ Part of `docs/audits/bloat-review-2026-11.md`, on commit 0bd814c. Read by one re
 | [DQ-10](DQ-10.md) ✓ | Some reads fetch whole JSON documents where a field, a card or a count is needed | oversize | P2 | M | 4.4 |
 | [DQ-12](DQ-12.md) ✓ | Every server instance reads the interface translations before it serves and polls them each minute | eager | P2 | S | 0.8 |
 | [DQ-13](DQ-13.md) ✓ | 341 loops hold a database call in their body; the ones that matter are jobs that loop over sites | eager | P2 | M | tolerated |
-| [DQ-14](DQ-14.md) ✓ | 387 list reads have no limit by a heuristic count; a handful read a whole store's documents or samples | oversize | P2 | M | 4.4 |
-| [DQ-16](DQ-16.md) | The catalogue's listing reads call a VAT function and an alt-text function once per product row, and Postgres cannot fold them into the query | oversize | P2 | S | 4.4 |
+| [DQ-14](DQ-14.md) ✓ | 387 list reads have no limit by a heuristic count; a handful read a whole store's documents or samples | oversize | P2 | M | 2.19 |
+| [DQ-16](DQ-16.md) | The catalogue's listing reads call a VAT function and an alt-text function once per product row, and Postgres cannot fold them into the query | oversize | P2 | S | 2.19 |
 
 ## Measured
 

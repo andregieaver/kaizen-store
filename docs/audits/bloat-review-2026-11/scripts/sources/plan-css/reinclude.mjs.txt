@@ -1,0 +1,22 @@
+import { createRequire } from "node:module";
+const require = createRequire("/home/user/kaizen-store/node_modules/.pnpm/@tailwindcss+oxide@4.3.3/node_modules/@tailwindcss/oxide/");
+const { Scanner } = require("@tailwindcss/oxide");
+const R = "/home/user/kaizen-store";
+const base = [{ base: R + "/src", pattern: "**/*", negated: false }, { base: R + "/src/data", pattern: "**/*", negated: true }];
+const noAdmin = [{ base: R + "/src/app/admin", pattern: "**/*", negated: true }, { base: R + "/src/components/admin", pattern: "**/*", negated: true }];
+const re = [{ base: R + "/src/components/admin", pattern: "action-form.tsx", negated: false }];
+function run(name, sources) {
+  const t0 = process.hrtime.bigint();
+  const s = new Scanner({ sources });
+  const c = s.scan();
+  const ms = Number(process.hrtime.bigint() - t0) / 1e6;
+  const adminFiles = s.files.filter(f => f.includes("/components/admin/") || f.includes("/app/admin/"));
+  console.log(name, "files", s.files.length, "candidates", c.length, "ms", Math.round(ms), "admin files scanned", adminFiles.length, adminFiles.slice(0, 3));
+  return new Set(c);
+}
+const a = run("noAdmin", [...base, ...noAdmin]);
+const b = run("noAdmin+reinclude-after", [...base, ...noAdmin, ...re]);
+const c = run("reinclude-before-not", [...base, ...re, ...noAdmin]);
+// negated by folder path forms
+const d = run("neg-folder-form", [...base, { base: R + "/src", pattern: "components/admin", negated: true }, { base: R + "/src", pattern: "app/admin", negated: true }, ...re]);
+console.log("extra in b vs a", [...b].filter(x => !a.has(x)).length, "c vs a", [...c].filter(x => !a.has(x)).length);

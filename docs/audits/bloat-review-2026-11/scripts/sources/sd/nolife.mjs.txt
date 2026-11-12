@@ -1,0 +1,20 @@
+// Lists "use cache" functions with no cacheLife() call in their body.
+import fs from "node:fs"; import path from "node:path";
+const walk = (d, out = []) => { for (const e of fs.readdirSync(d, { withFileTypes: true })) { const p = path.join(d, e.name); if (e.isDirectory()) walk(p, out); else if (/\.(ts|tsx)$/.test(e.name) && !/\.test\./.test(e.name)) out.push(p); } return out; };
+let total = 0; const missing = []; const lives = {};
+for (const f of walk("src")) {
+  const lines = fs.readFileSync(f, "utf8").split("\n");
+  lines.forEach((line, i) => {
+    if (!/^\s*"use cache";/.test(line)) return;
+    total++;
+    // The function's body: from here to the first line that closes at the indentation of the function's header.
+    let head = i - 1; while (head > 0 && !/function |=>\s*\{$/.test(lines[head])) head--;
+    const indent = lines[head].match(/^\s*/)[0].length;
+    let end = i; while (end < lines.length - 1 && !(lines[end].startsWith(" ".repeat(indent) + "}") && lines[end].match(/^\s*/)[0].length === indent)) end++;
+    const body = lines.slice(i, end + 1).join("\n");
+    const m = body.match(/cacheLife\(([^)]*)\)/g);
+    if (!m) missing.push(`${f}:${i + 1} ${lines[head].trim().slice(0, 110)}`);
+    else for (const x of m) lives[x.slice(0, 40)] = (lives[x.slice(0, 40)] || 0) + 1;
+  });
+}
+console.log("use cache functions:", total, "without cacheLife:", missing.length); console.log(missing.join("\n"));

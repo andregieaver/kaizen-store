@@ -1,0 +1,24 @@
+import fs from "node:fs"; import zlib from "node:zlib";
+import { payload, rows } from "./fl.mjs";
+const dir = "../../m/html/";
+const REF = /"\$(?:L|@|Q|W|K|B|F|h)?([0-9a-f]+)(?::[^"]*)?"/g;
+for (const f of fs.readdirSync(dir).sort()) {
+  const { html, out } = payload(dir + f);
+  const r = rows(out); const byId = new Map(r.map(x => [x.id, x]));
+  const holder = r.find(x => x.data.includes('"notFound":[') && /"notFound":\[\[/.test(x.data));
+  const allNF = r.filter(x => x.data.includes('"notFound":'));
+  if (!holder) { console.log(f, "no notFound with element; rows mentioning notFound:", allNF.length, allNF.map(x=>x.id+":"+ (x.data.match(/"notFound":.{0,80}/)||[""])[0]).join(" || ").slice(0,300)); continue; }
+  const m = holder.data.match(/"notFound":(.{0,200})/);
+  const m2 = holder.data.match(/"notFound":\[\[.*?\],"\$L([0-9a-f]+)"\],"children":\["[^"]*","\$L([0-9a-f]+)"\]/);
+  if (!m2) { console.log(f, "holder", holder.id, "pattern differs:", m[1].slice(0,200)); continue; }
+  const [_, nfId, chId] = m2;
+  const refs = id => { const x = byId.get(id); const s = new Set(); if (x && x.tag === "J") for (const mm of x.data.matchAll(REF)) if (byId.has(mm[1]) && mm[1] !== id) s.add(mm[1]); return [...s]; };
+  const reach = (start, block) => { const seen = new Set(); const st = [start]; while (st.length) { const id = st.pop(); if (seen.has(id) || id === block) continue; seen.add(id); for (const c of refs(id)) st.push(c); } return seen; };
+  const fromNf = reach(nfId, null), rest = reach("0", nfId);
+  const only = [...fromNf].filter(id => !rest.has(id));
+  const shared = [...fromNf].filter(id => rest.has(id));
+  const bytes = only.reduce((a, id) => a + byId.get(id).size, 0);
+  const sharedBytes = shared.reduce((a, id) => a + byId.get(id).size, 0);
+  const tags = {}; for (const id of only) { const x = byId.get(id); tags[x.tag] = (tags[x.tag]||0) + x.size; }
+  console.log(f.replace(".html",""), "holder", holder.id, "nf", nfId, "ch", chId, "only-nf rows", only.length, "bytes", bytes, (100*bytes/Buffer.byteLength(out)).toFixed(0)+"%", "shared rows", shared.length, sharedBytes, JSON.stringify(tags));
+}

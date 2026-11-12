@@ -5,7 +5,10 @@ what stands behind it. Open the file of the step or the finding you are working 
 
 | Here | What |
 |---|---|
+| `plan/README.md` | how to carry out a step, and the order |
 | `plan/phase-N.md` | each phase's steps in full: what to change, the findings it closes, the check that says it is done, what it means for the platform |
+| `plan/steps/<step>.md` | one step's brief: who can do it, what must be done first, each commit's files and changes, the checks, when to stop |
+| `plan/decisions.md` | the owner's decisions of 12 November in one table |
 | `findings/README.md` | every finding by area, with its priority and the step that closes it |
 | `findings/<area>/README.md` | one area in short: its findings, what was refuted, its measures, what is well made |
 | `findings/<area>/<ID>.md` | one finding: where, the evidence, the cost today, the fix in steps, the tests and rules that change with it, done-when, risk |

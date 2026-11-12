@@ -17,7 +17,7 @@ Families and twins (`README.md` beside this file), part of `docs/audits/bloat-re
 2. If one sync engine is opened for real work (a change to the retry ladder, the queue or the alerts), do it once: lift sweep, claim, release, block, fail and attach from src/server/tripletex-sync.ts into src/server/accounting-sync.ts behind a small connector interface (book a document, attach a file, read a problem), as carriers have ShippingCarrierAdapter, and make fiken-sync.ts and tripletex-sync.ts its two connectors.
 3. Do not build the interface for a third system: the written decision is that none comes.
 
-**Done when:** Not planned. If step 2 is done: node a scratch script src/server/tripletex-sync.ts src/server/fiken-sync.ts reports under 40 lines in runs of three or more (143 today) and the named integration tests pass without an edit.
+**Done when:** Not planned. If step 2 is done: node docs/audits/bloat-review-2026-11/scripts/sources/fmv/sim2.mjs.txt src/server/tripletex-sync.ts src/server/fiken-sync.ts reports under 40 lines in runs of three or more (143 today) and the named integration tests pass without an edit.
 
 **Tests and rules that hold today's behaviour, and change with it:**
 

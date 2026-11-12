@@ -1,0 +1,17 @@
+import zlib from "node:zlib";
+import { payload, rows } from "../skpl/fl.mjs";
+const f = process.argv[2] || "admin-product-editor";
+const { out } = payload(`../../m/html/${f}.html`);
+const r = rows(out);
+const found = [];
+const visit = (o) => { if (!o || typeof o !== "object") return; if (Array.isArray(o)) { o.forEach(visit); return; } for (const k in o) { if (k === "texts" && o[k] && typeof o[k] === "object" && !Array.isArray(o[k])) { found.push(o[k]); continue; } visit(o[k]); } };
+for (const x of r) if (x.tag === "J") { try { visit(JSON.parse(x.data)); } catch {} }
+const size = (v) => Buffer.byteLength(JSON.stringify(v) ?? "");
+const want = { website: ["pictureMaker", "picker"], products: ["terms", "termRules", "termPage", "termSeo", "termFields"], fields: ["form", "pickers"], design: ["fonts", "changes"], blog: ["editor"], schedules: ["dialog", "nouns", "share"] };
+for (const t of found) for (const area of Object.keys(t)) {
+  const a = t[area]; const total = size(a);
+  const keys = Object.entries(a).map(([k, v]) => [k, size(v)]).sort((x, y) => y[1] - x[1]);
+  const w = want[area];
+  const read = w ? w.reduce((s, k) => s + (a[k] ? size(a[k]) + k.length + 3 : 0), 0) : null;
+  console.log(area.padEnd(10), "total", total, "gz", zlib.gzipSync(JSON.stringify(a)).length, w ? `read(${w.join(",")}) ${read}` : "", "| top:", keys.slice(0, 8).map(([k, v]) => `${k} ${v}`).join(", "));
+}

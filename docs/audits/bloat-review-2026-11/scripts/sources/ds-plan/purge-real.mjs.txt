@@ -1,0 +1,34 @@
+import { open } from "./pg.mjs";
+const t0 = performance.now();
+const db = await open();
+console.log("loaded in", (performance.now() - t0).toFixed(0), "ms");
+const v = await db.query("select version()"); console.log(v.rows[0].version.slice(0, 40));
+const n = await db.query(`select count(*)::int n from pg_class c join pg_namespace ns on ns.oid=c.relnamespace and ns.nspname='commerce' where c.relkind='r'`);
+console.log("commerce tables", n.rows[0].n);
+const st = await db.query(`SELECT count(*)::int n FROM pg_catalog.pg_class c JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace AND n.nspname = 'commerce' JOIN pg_catalog.pg_attribute a ON a.attrelid = c.oid AND a.attname = 'store_id' AND NOT a.attisdropped WHERE c.relkind IN ('r', 'p') AND NOT c.relispartition AND c.relname NOT IN ('sandboxes', 'ai_usage')`);
+console.log("store tables the purge loops over", st.rows[0].n);
+// One pass of the purge's loop on the real schema for a store id that owns nothing (the second, checking pass of every purge).
+await db.exec(`
+create function pg_temp.one_pass(p uuid) returns integer language plpgsql as $f$
+declare v_table text; v_count int; v_total int := 0;
+begin
+  for v_table in SELECT c.relname::text FROM pg_catalog.pg_class c JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace AND n.nspname = 'commerce' JOIN pg_catalog.pg_attribute a ON a.attrelid = c.oid AND a.attname = 'store_id' AND NOT a.attisdropped WHERE c.relkind IN ('r', 'p') AND NOT c.relispartition AND c.relname NOT IN ('sandboxes', 'ai_usage') ORDER BY c.relname loop
+    begin
+      execute format('DELETE FROM commerce.%I WHERE store_id = $1', v_table) using p;
+      get diagnostics v_count = row_count; v_total := v_total + v_count;
+    exception when foreign_key_violation then null; end;
+  end loop;
+  return v_total;
+end $f$;`);
+for (let i = 0; i < 3; i++) {
+  await db.exec("begin");
+  const t = performance.now();
+  await db.query(`select pg_temp.one_pass(gen_random_uuid())`);
+  const ms = performance.now() - t;
+  const locks = await db.query(`select count(*)::int as n, count(*) filter (where locktype='relation')::int rel from pg_locks where pid = pg_backend_pid()`);
+  await db.exec("commit");
+  console.log(`pass ${i + 1}: ${ms.toFixed(0)} ms, locks held at the end of the transaction: ${locks.rows[0].n} (relation ${locks.rows[0].rel})`);
+}
+const ml = await db.query("show max_locks_per_transaction"); const mc = await db.query("show max_connections");
+console.log("this PGlite: max_locks_per_transaction", ml.rows[0].max_locks_per_transaction, "max_connections", mc.rows[0].max_connections);
+await db.close();

@@ -1,0 +1,27 @@
+// Which of the two stored files does a browser fetch for a grid tile and for a full-width picture? srcset "small 480w, large 1600w" as pictureSources() writes it.
+const http = require("node:http");
+const { chromium } = require("/home/user/kaizen-store/node_modules/playwright-core");
+const svg = '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="15"><rect width="20" height="15" fill="red"/></svg>';
+const CARD = "(min-width: 768px) 25vw, 50vw"; // gridSizes({ xl: 4, md: 4, sm: 2 }) with the default breakpoints, as product-card.tsx
+const html = `<!doctype html><meta name="viewport" content="width=device-width, initial-scale=1">
+<img srcset="/f/card-480.svg 480w, /f/card-1600.svg 1600w" sizes="${CARD}" src="/f/card-src.svg" width="800" height="800" style="width:50vw;height:auto">
+<img srcset="/f/hero-480.svg 480w, /f/hero-1600.svg 1600w" sizes="100vw" src="/f/hero-src.svg" width="800" height="800" style="width:100vw;height:auto">`;
+let seen = [];
+const server = http.createServer((req, res) => {
+  if (req.url.startsWith("/f/")) { seen.push(req.url.slice(3)); res.writeHead(200, { "content-type": "image/svg+xml" }); res.end(svg); }
+  else { res.writeHead(200, { "content-type": "text/html" }); res.end(html); }
+});
+server.listen(0, "127.0.0.1", async () => {
+  const port = server.address().port;
+  const browser = await chromium.launch({ headless: true, executablePath: process.argv[2] });
+  for (const [w, dpr] of [[390, 2], [390, 3], [412, 2.625], [360, 3], [1440, 1], [1440, 2]]) {
+    seen = [];
+    const ctx = await browser.newContext({ viewport: { width: w, height: 800 }, deviceScaleFactor: dpr, isMobile: w < 500 });
+    const page = await ctx.newPage();
+    await page.goto(`http://127.0.0.1:${port}/`, { waitUntil: "load" });
+    await page.waitForTimeout(400);
+    console.log(`viewport ${w} dpr ${dpr}: ${seen.sort().join(" ")}`);
+    await ctx.close();
+  }
+  await browser.close(); server.close();
+});

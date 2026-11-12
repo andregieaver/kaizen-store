@@ -1,0 +1,21 @@
+import { readFileSync } from "node:fs";
+const root = "/home/user/kaizen-store/";
+const route = readFileSync(root + "src/app/api/cron/cart-reminders/route.ts", "utf8");
+const imports = new Map();
+for (const m of route.matchAll(/import \{([^}]+)\} from "@\/server\/([^"]+)";/g)) for (const name of m[1].split(",").map((s) => s.trim()).filter(Boolean)) imports.set(name, m[2]);
+const jobs = [...route.matchAll(/^\s+(\w+): (?:async )?\(\) => \(?(?:await )?(\w+)\(/gm)].map((m) => [m[1], m[2]]);
+for (const m of route.matchAll(/tracked\("dispatcher\.([\w-]+)", EVERY, \(\) => (\w+)\(/g)) jobs.push([m[1], m[2]]);
+for (const [job, fn] of jobs) {
+  const file = imports.get(fn);
+  if (!file) { console.log(job, fn, "?"); continue; }
+  const src = readFileSync(root + "src/server/" + file + ".ts", "utf8");
+  const start = src.search(new RegExp(`export (async )?function ${fn}\\b`));
+  if (start < 0) { console.log(job, fn, file, "not found"); continue; }
+  // body: until next "\n}\n"
+  const end = src.indexOf("\n}\n", start);
+  const body = src.slice(start, end);
+  const line = src.slice(0, start).split("\n").length;
+  const loops = [...body.matchAll(/for \((?:const|let) [^)]*\)/g)].map((m) => m[0].replace(/\s+/g, " "));
+  const stmts = (body.match(/execute|typedRows?\(|transaction\(/g) ?? []).length;
+  console.log(`${job}\t${file}.ts:${line}\tlines=${body.split("\n").length}\tsql=${stmts}\tloops=${loops.join(" | ")}`);
+}

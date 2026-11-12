@@ -1,0 +1,14 @@
+// Counts routes whose first-load chunks hold a marker string. node markers.mjs
+import { readFileSync } from "node:fs";
+const ROOT = "/home/user/kaizen-store/";
+const stats = JSON.parse(readFileSync(ROOT + ".next/diagnostics/route-bundle-stats.json", "utf8"));
+const MARKERS = { supabaseAuth: "GoTrueClient", realtime: "RealtimeClient", zod: "ZodError", tiptap: "ProseMirror", fourLanguages: "nettbutikk med levering i", builderEn: "builderEn", blocksEn: "blocksEn", adminTextAll: "Lagre", toolWords: "list_support_conversations", cookieTable: "color_mode_", dndKit: "DndContext", pageEditor: "PageEditor" };
+const cache = new Map();
+const has = (p, s) => { let t = cache.get(p); if (t === undefined) { t = readFileSync(ROOT + p, "utf8"); cache.set(p, t); } return t.includes(s); };
+const out = {};
+for (const [name, s] of Object.entries(MARKERS)) {
+  const files = new Set();
+  const routes = stats.filter((r) => r.firstLoadChunkPaths.some((p) => { const h = has(p, s); if (h) files.add(p.split("/").pop()); return h; }));
+  out[name] = { routes: routes.length, admin: routes.filter((r) => r.route.startsWith("/admin")).length, other: routes.filter((r) => !r.route.startsWith("/admin")).length, files: files.size };
+}
+console.table(out);

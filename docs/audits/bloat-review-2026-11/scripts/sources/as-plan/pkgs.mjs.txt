@@ -1,0 +1,26 @@
+// Per package: in how many traces, and its bytes in a trace. Plus the non-node_modules parts.
+import fs from "node:fs"; import path from "node:path";
+const root = "/home/user/kaizen-store", nextDir = path.join(root, ".next");
+const nfts = []; (function walk(d){ for (const e of fs.readdirSync(d,{withFileTypes:true})) { const p = path.join(d,e.name); if (e.isDirectory()) walk(p); else if (e.name.endsWith(".nft.json")) nfts.push(p); } })(path.join(nextDir,"server"));
+const sizeOf = new Map(); const size = (p) => { let s = sizeOf.get(p); if (s === undefined) { try { const st = fs.statSync(p); s = st.isFile() ? st.size : 0; } catch { s = 0; } sizeOf.set(p, s); } return s; };
+const group = (f) => {
+  const m = f.match(/node_modules\/\.pnpm\/([^/]+)\/node_modules\/((?:@[^/]+\/)?[^/]+)/);
+  if (m) { if (m[2] === "next") { const c = f.match(/next\/dist\/compiled\/((?:@[^/]+\/)?[^/]+)/); return c ? "next/compiled/" + c[1] : "next/(rest)"; } return m[2]; }
+  if (f.includes("/.next/server/chunks/")) return f.endsWith(".map") ? ".next chunks maps" : ".next chunks";
+  if (f.includes("/.next/")) return ".next other";
+  if (f.includes("/src/data/product-taxonomy/")) return "src/data/product-taxonomy";
+  if (f.includes("/content/")) return "content";
+  if (f.includes("/public/")) return "public";
+  return "other:" + path.relative(root, f).split("/").slice(0, 2).join("/");
+};
+const agg = new Map(); // group -> {traces, maxBytes, sumBytes}
+const want = process.argv[2];
+for (const nft of nfts) {
+  const j = JSON.parse(fs.readFileSync(nft, "utf8")); const dir = path.dirname(nft);
+  const per = new Map();
+  for (const f of new Set(j.files.map((x) => path.resolve(dir, x)))) { const g = group(f); per.set(g, (per.get(g) || 0) + size(f)); }
+  for (const [g, b] of per) { const a = agg.get(g) || { traces: 0, max: 0, sum: 0 }; a.traces++; a.max = Math.max(a.max, b); a.sum += b; agg.set(g, a); }
+  if (want && nft.endsWith(want)) { console.log("== " + path.relative(nextDir, nft)); for (const [g, b] of [...per].sort((a, b) => b[1] - a[1]).slice(0, 25)) console.log("  ", (b / 1e6).toFixed(2).padStart(7), g); }
+}
+console.log("== packages by (bytes in a trace x traces), top 40; traces of", nfts.length);
+for (const [g, a] of [...agg].sort((x, y) => y[1].sum - x[1].sum).slice(0, 40)) console.log((a.sum / 1e6).toFixed(0).padStart(7), "MB total |", String(a.traces).padStart(4), "traces | max", (a.max / 1e6).toFixed(2).padStart(6), "MB |", g);

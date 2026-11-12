@@ -1,0 +1,32 @@
+import { open } from "./pg.mjs";
+const db = await open();
+const plan = async (label, q) => { try { const r = await db.query("explain " + q); console.log("== " + label + "\n   " + r.rows.map((x) => x["QUERY PLAN"]).join("\n   ")); } catch (e) { console.log("FAIL", label, String(e.message).slice(0, 300)); } };
+await db.exec("set enable_seqscan = off");
+const s = `'00000000-0000-0000-0000-000000000001'::uuid`;
+const q = {
+  "invoice candidates (invoice-issue.ts:74-77 shape, one store)": `select o.store_id from commerce.orders o where o.copied_from is null and o.host_id is null and o.store_id = ${s} and o.placed_at > now() - interval '120 days'`,
+  "retention (orders not anonymised, oldest first)": `select id from commerce.orders where store_id = ${s} and anonymised_at is null and placed_at < now() - interval '5 years' order by placed_at limit 200`,
+  "order lines of an order": `select id from commerce.order_lines where store_id = ${s} and order_id = ${s}`,
+  "visits of a store day": `select count(*) from commerce.visits where store_id = ${s} and day = current_date`,
+  "order_edits of an order": `select id from commerce.order_edits where store_id = ${s} and order_id = ${s}`,
+  "payout lines of a payout": `select 1 from commerce.payout_lines where store_id = ${s} and payout_id = ${s}`,
+  "api tokens of a store": `select 1 from commerce.api_tokens where store_id = ${s}`,
+  "recovery codes of an account": `select 1 from commerce.account_recovery_codes where account_id = ${s}`,
+};
+console.log("---- before");
+for (const [k, v] of Object.entries(q)) await plan(k, v);
+const drops = ["account_recovery_codes_account_idx", "api_tokens_store_idx", "api_uploads_store_idx", "legal_snapshots_store_idx", "order_edits_order_idx", "payout_lines_payout_idx", "recurring_costs_store_idx", "return_exchanges_return_idx", "visits_store_day_idx", "webhook_endpoints_store_idx", "orders_retention_idx", "orders_invoice_candidates_idx", "order_lines_order_idx"];
+const before = await db.query(`select count(*)::int n from pg_indexes where schemaname = 'commerce'`);
+for (const d of drops) await db.exec(`drop index commerce.${d}`);
+const after = await db.query(`select count(*)::int n from pg_indexes where schemaname = 'commerce'`);
+console.log("indexes in commerce before", before.rows[0].n, "after", after.rows[0].n);
+console.log("---- after");
+for (const [k, v] of Object.entries(q)) await plan(k, v);
+// foreign keys that would lose their only index? list FKs whose leading columns no index covers after the drops
+const fk = await db.query(`
+with fks as (select c.conrelid, c.conname, c.conkey from pg_constraint c join pg_namespace n on n.oid = c.connamespace where c.contype = 'f' and n.nspname = 'commerce')
+select conrelid::regclass::text as tbl, conname from fks f
+where conrelid::regclass::text in ('commerce.account_recovery_codes','commerce.api_tokens','commerce.api_uploads','commerce.legal_snapshots','commerce.order_edits','commerce.payout_lines','commerce.recurring_costs','commerce.return_exchanges','commerce.visits','commerce.webhook_endpoints','commerce.orders','commerce.order_lines')
+and not exists (select 1 from pg_index i where i.indrelid = f.conrelid and (i.indkey::int2[])[0:cardinality(f.conkey)-1] @> f.conkey and i.indpred is null)`);
+console.log("foreign keys on those tables with no plain index leading on their columns after the drops:", fk.rows.length, JSON.stringify(fk.rows).slice(0, 1200));
+await db.close();

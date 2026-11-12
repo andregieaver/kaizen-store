@@ -1,0 +1,29 @@
+import { createRequire } from "node:module";
+import { readFileSync } from "node:fs";
+import path from "node:path";
+const req = createRequire("/home/user/kaizen-store/node_modules/.pnpm/@tailwindcss+postcss@4.3.3/node_modules/@tailwindcss/postcss/");
+const { compile, optimize } = req("@tailwindcss/node");
+const { Scanner } = req("@tailwindcss/oxide");
+const R = "/home/user/kaizen-store";
+const real = readFileSync(R + "/src/app/globals.css", "utf8");
+const HEAD = `@source "../";\n@source not "../data";\n@source "../../supabase/migrations/*.sql";`;
+const NOT_NOISE = `@source not "../**/*.test.ts";\n@source not "../**/*.test.tsx";\n@source not "../test";\n@source not "../lib/messages";\n@source not "../lib/admin-messages";\n@source not "../db";`;
+const SHARED = ["action-form.tsx","admin-text-context.tsx","admin-text.tsx","colour-field.tsx","colour-library.tsx","css-code-editor.tsx","design-cards.tsx","modal.tsx","rich-text-editor.tsx","text-styles.tsx","work/print-button.tsx"].map(f => `@source "../components/admin/${f}";`).join("\n");
+const V = {
+  today: [real],
+  lean: [real.replace(HEAD, `@source "../";\n@source not "../data";\n${NOT_NOISE}`)],
+  both: [real.replace(HEAD, `@source "../";\n@source not "../data";\n@source not "./admin";\n@source not "../components/admin";\n${NOT_NOISE}\n${SHARED}`), real.replace(HEAD, `@source "../";\n@source not "../data";\n${NOT_NOISE}`)],
+};
+const keep = [];
+let peak = 0; const t = setInterval(() => { peak = Math.max(peak, process.memoryUsage().rss); }, 5);
+for (const css of V[process.argv[2]]) {
+  const file = R + "/src/app/globals.css";
+  const compiler = await compile(css, { base: path.dirname(file), from: file, onDependency: () => {} });
+  const scanner = new Scanner({ sources: compiler.sources.map(s => ({ base: s.base, pattern: s.pattern, negated: s.negated })) });
+  const cands = scanner.scan();
+  const min = optimize(compiler.build(cands), { minify: true }).code;
+  keep.push(compiler, scanner, cands, min);
+  peak = Math.max(peak, process.memoryUsage().rss);
+}
+clearInterval(t);
+console.log(process.argv[2].padEnd(6), "peak rss MB", Math.round(peak / 1e6), "end rss MB", Math.round(process.memoryUsage().rss / 1e6));

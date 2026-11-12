@@ -19,7 +19,7 @@ Families and twins (`README.md` beside this file), part of `docs/audits/bloat-re
 5. Pages keep their addresses. Add shared parts ImportUploadPage and ImportJobPage under src/components/admin/data and make each kind's page.tsx a short call with its kind.
 6. isUniqueViolation: import the one in src/server/privacy-erasure.ts:366, or its new home (FM-12).
 
-**Done when:** node a scratch script for the four engines against customer-import.ts reports under 80 lines in runs of three or more (321 today); rg --files src/components/admin | rg 'import-flow' lists one file (four today); the seven integration tests pass without an edit.
+**Done when:** node docs/audits/bloat-review-2026-11/scripts/sources/fmv/sim2.mjs.txt for the four engines against customer-import.ts reports under 80 lines in runs of three or more (321 today); rg --files src/components/admin | rg 'import-flow' lists one file (four today); the seven integration tests pass without an edit.
 
 **Tests and rules that hold today's behaviour, and change with it:**
 

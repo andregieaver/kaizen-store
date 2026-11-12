@@ -1,0 +1,18 @@
+// Planner's own check of AD-1: lookups and time per shell build, small run.
+const { storeTabs, storeAreas, STORE_SECTIONS, storeSections } = await import("@/lib/store-nav");
+const perms = await import("@/lib/permissions");
+const map = await import("@/lib/admin-map");
+const sf = await import("@/lib/store-features");
+const holder = { role: "owner", kind: "staff", permissions: null };
+let n = 0;
+const canOpen = (path) => { n++; return perms.canOpenPath(holder, path); };
+const ids = sf.FEATURE_IDS ?? Object.keys(sf.FEATURES_BY_ID ?? {});
+const store = { features: [...ids], house: false };
+for (let i = 0; i < 3; i++) { storeTabs("/admin/acme", store, canOpen, {}); storeAreas("/admin/acme", store, canOpen); }
+n = 0; const N = 8; const t0 = performance.now();
+for (let i = 0; i < N; i++) { storeTabs("/admin/acme", store, canOpen, {}); storeAreas("/admin/acme", store, canOpen); }
+console.log("pages", map.ADMIN_PAGES.length, "store pages", map.ADMIN_PAGES.filter((p) => p.area === "store").length, "menu items", STORE_SECTIONS.flatMap((s) => s.groups.flatMap((g) => g.items)).length);
+console.log("lookups per build", n / N, "ms per build", ((performance.now() - t0) / N).toFixed(1));
+// distinct paths asked
+const seen = new Set(); const c2 = (p) => { seen.add(p); return true; }; storeTabs("/admin/acme", store, c2, {}); storeAreas("/admin/acme", store, c2);
+console.log("distinct paths asked", seen.size);

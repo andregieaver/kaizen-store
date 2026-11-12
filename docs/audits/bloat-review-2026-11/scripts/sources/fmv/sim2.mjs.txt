@@ -1,0 +1,14 @@
+// stricter: imports out, lines of 30+ chars only; also LCS-free "block" measure: shared lines that sit in a run of >=3 consecutive shared lines in B
+import { readFileSync } from 'node:fs';
+const norm = (f) => { const out = []; let inImport = false; for (let l of readFileSync(f, 'utf8').split('\n')) { l = l.trim(); if (!l || l.startsWith('//') || l.startsWith('*') || l.startsWith('/*')) continue; if (/^import\b/.test(l)) { inImport = !/from\s+["'][^"']+["'];?$|^import\s+["']/.test(l); continue; } if (inImport) { if (/from\s+["'][^"']+["'];?$/.test(l)) inImport = false; continue; } out.push(l); } return out; };
+const pairs = process.argv.slice(2); let tot = { loose: 0, strict: 0, run: 0, b: 0 };
+for (let i = 0; i < pairs.length; i += 2) {
+  const A = norm(pairs[i]), B = norm(pairs[i + 1]);
+  const count = (min) => { const m = new Map(); for (const l of A) if (l.length >= min) m.set(l, (m.get(l) ?? 0) + 1); let s = 0, t = 0; const flags = []; for (const l of B) { if (l.length < min) { flags.push(null); continue; } t++; const n = m.get(l) ?? 0; if (n > 0) { s++; m.set(l, n - 1); flags.push(true); } else flags.push(false); } return { s, t, flags }; };
+  const loose = count(12), strict = count(30);
+  // runs of >=3 consecutive shared significant lines (12+), ignoring short lines between
+  const f = loose.flags.filter((x) => x !== null); let run = 0, inRuns = 0; for (let k = 0; k <= f.length; k++) { if (f[k]) run++; else { if (run >= 3) inRuns += run; run = 0; } }
+  tot.loose += loose.s; tot.strict += strict.s; tot.run += inRuns; tot.b += loose.t;
+  console.log(`${pairs[i + 1].replace(/^src\//, '')}: 12+ ${loose.s}/${loose.t} (${Math.round(100 * loose.s / loose.t)}%), 30+ ${strict.s}/${strict.t} (${Math.round(100 * strict.s / Math.max(1, strict.t))}%), in runs of 3+ ${inRuns}`);
+}
+console.log('totals', tot);

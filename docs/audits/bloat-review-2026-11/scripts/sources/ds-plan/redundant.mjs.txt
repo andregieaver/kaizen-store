@@ -1,0 +1,21 @@
+import { readFileSync } from "node:fs";
+const idx = JSON.parse(readFileSync(process.argv[2], "utf8"));
+const byTable = new Map();
+for (const i of idx) { if (!byTable.has(i.table)) byTable.set(i.table, []); byTable.get(i.table).push(i); }
+const out = [];
+for (const [table, list] of byTable) {
+  for (const a of list) {
+    if (a.method !== "btree" || a.unique) continue; // candidate to drop: a plain btree
+    for (const b of list) {
+      if (a === b || b.method !== "btree") continue;
+      const lead = a.cols.length <= b.cols.length && a.cols.every((c, k) => c === b.cols[k]);
+      if (!lead) continue;
+      if (a.cols.length === b.cols.length && !b.unique && a.name > b.name && !a.where && !b.where && !a.include && !b.include) continue; // twin: report once
+      out.push({ table, drop: a.name, dropCols: a.cols.join(","), dropWhere: a.where, dropInc: a.include, cover: b.name, coverCols: b.cols.join(","), coverWhere: b.where, coverInc: b.include, coverUnique: b.unique });
+    }
+  }
+}
+for (const o of out) console.log(JSON.stringify(o));
+console.error(out.length, "pairs;", new Set(out.map((o) => o.drop)).size, "distinct candidates; total indexes", idx.length);
+const count = (t) => (byTable.get(t) ?? []).length;
+for (const t of ["orders", "order_lines", "carts", "cart_lines", "products", "product_variants", "prices", "visits", "customers", "payments", "stores", "pages"]) console.error(t, count(t));

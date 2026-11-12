@@ -1,0 +1,38 @@
+import fs from "node:fs"; import path from "node:path";
+const root = "/home/user/kaizen-store/src";
+const start = process.argv[2]; const areas = process.argv.slice(3);
+const resolve = (from, spec) => {
+  let base;
+  if (spec.startsWith("@/")) base = path.join(root, spec.slice(2));
+  else if (spec.startsWith(".")) base = path.resolve(path.dirname(from), spec);
+  else return null;
+  for (const ext of ["", ".ts", ".tsx", "/index.ts", "/index.tsx"]) { const p = base + ext; if (fs.existsSync(p) && fs.statSync(p).isFile()) return p; }
+  return null;
+};
+const seen = new Map(); const st = [[path.join(root, start), null]];
+while (st.length) {
+  const [f, from] = st.pop(); if (seen.has(f)) continue; seen.set(f, from);
+  const src = fs.readFileSync(f, "utf8");
+  for (const m of src.matchAll(/(?:import|export)\s+(type\s+)?[^;'"]*?from\s*["']([^"']+)["']|import\(\s*["']([^"']+)["']\s*\)|^import\s+["']([^"']+)["']/gm)) {
+    if (m[1]) continue; // type-only import
+    const spec = m[2] || m[3] || m[4]; const r = resolve(f, spec); if (r) st.push([r, f]);
+  }
+}
+console.log("files reached", seen.size);
+for (const area of areas) {
+  console.log("== area", area);
+  for (const [f] of seen) {
+    const src = fs.readFileSync(f, "utf8");
+    const re = new RegExp(`(?:const|let)\\s+(\\{[^}]*\\}|\\w+)\\s*=\\s*use(?:Admin|Handed)Text\\("${area}"\\)(\\.[\\w.]+)?`, "g");
+    for (const m of src.matchAll(re)) {
+      let keys = new Set();
+      if (m[1].startsWith("{")) keys.add("destructure " + m[1].replace(/\s+/g, " "));
+      else if (m[2]) keys.add(m[2]);
+      else { const v = m[1]; for (const k of src.matchAll(new RegExp(`\\b${v}\\.(\\w+)`, "g"))) keys.add("." + k[1]); if (new RegExp(`[(,=]\\s*${v}\\s*[),}]|words=\\{${v}\\}|\\{\\.\\.\\.${v}\\}`).test(src)) keys.add("(passed whole?)"); }
+      console.log(" ", f.replace(root + "/", ""), "->", [...keys].join(" "));
+    }
+    const re2 = new RegExp(`use(?:Admin|Handed)Text\\("${area}"\\)`, "g");
+    const n = [...src.matchAll(re2)].length, n1 = [...src.matchAll(re)].length;
+    if (n > n1) console.log("  (other uses)", f.replace(root + "/", ""), n - n1, [...src.matchAll(new RegExp(`.{0,60}use(?:Admin|Handed)Text\\("${area}"\\).{0,40}`, "g"))].map(x => x[0].trim()).join(" || "));
+  }
+}

@@ -100,7 +100,7 @@ Styles are one of the leaner areas, and no finding here rests on a feature being
 | [CS-4](styles/CS-4.md) ✓ | The fixed breakpoint sheet is drawn again with every row | duplicate | P1 | S | 2.3 |
 | [CS-6](styles/CS-6.md) ✓ | Tailwind reads tests, SQL and message files: 37% of its candidates, 10 junk classes | dead | P2 | S | 0.35 |
 | [CS-5](styles/CS-5.md) ✓ | Layout-level style sheets are carried three times in each store document | duplicate | P3 | S | 2.2 |
-| [CS-2](styles/CS-2.md) ✓ | A store with no builder motion still downloads motion.css | eager | P3 | M | tolerated |
+| [CS-2](styles/CS-2.md) ✓ | A store with no builder motion still downloads motion.css | eager | P3 | M | 2.49 |
 
 ## What an owner's browser loads in the admin (AC)
 
@@ -303,8 +303,8 @@ All 14 verified findings stand, none argues from a feature being unused, and eac
 | [DQ-10](queries/DQ-10.md) ✓ | Some reads fetch whole JSON documents where a field, a card or a count is needed | oversize | P2 | M | 4.4 |
 | [DQ-12](queries/DQ-12.md) ✓ | Every server instance reads the interface translations before it serves and polls them each minute | eager | P2 | S | 0.8 |
 | [DQ-13](queries/DQ-13.md) ✓ | 341 loops hold a database call in their body; the ones that matter are jobs that loop over sites | eager | P2 | M | tolerated |
-| [DQ-14](queries/DQ-14.md) ✓ | 387 list reads have no limit by a heuristic count; a handful read a whole store's documents or samples | oversize | P2 | M | 4.4 |
-| [DQ-16](queries/DQ-16.md) | The catalogue's listing reads call a VAT function and an alt-text function once per product row, and Postgres cannot fold them into the query | oversize | P2 | S | 4.4 |
+| [DQ-14](queries/DQ-14.md) ✓ | 387 list reads have no limit by a heuristic count; a handful read a whole store's documents or samples | oversize | P2 | M | 2.19 |
+| [DQ-16](queries/DQ-16.md) | The catalogue's listing reads call a VAT function and an alt-text function once per product row, and Postgres cannot fold them into the query | oversize | P2 | S | 2.19 |
 
 ## The database's shape (DS)
 
@@ -508,7 +508,7 @@ The tests are not the bloat: 325,579 lines of tests against 768,202 of source, n
 | [TC-9](tests-ci-build/TC-9.md) ✓ | CI keeps nothing between runs except pnpm's store | no check | P2 | S | 2.42 |
 | [TC-10](tests-ci-build/TC-10.md) ✓ | 86 test files read the source tree with 67 private walkers; two parse every file | duplicate | P2 | S | 4.3 |
 | [TC-11](tests-ci-build/TC-11.md) ✓ | The same mocks and store-makers are written out in hundreds of test files | duplicate | P2 | M | 4.3 |
-| [TC-14](tests-ci-build/TC-14.md) | A push that changes only tests builds and deploys production again | eager | P2 | S | 3.18 |
+| [TC-14](tests-ci-build/TC-14.md) | A push that changes only tests builds and deploys production again | eager | P2 | S | 0.38 |
 
 ## The written rules and the agents' context (DC)
 
@@ -527,6 +527,6 @@ These costs are paid per agent session and grow with every feature built, not wi
 | [DC-8](written-rules/DC-8.md) ✓ | A feature's facts are written at four to six levels, in different words; lists copied from code drift | duplicate | P2 | S | 0.41 |
 | [DC-10](written-rules/DC-10.md) ✓ | The Migration versions list has been frozen since 4 October, and the instruction to record versions there now fills decision rows with release notes *(your choice)* | dead | P2 | S | 2.41 |
 | [DC-13](written-rules/DC-13.md) | A table's definition is in the repo four times, and a search for its name returns more lines from old migrations and Drizzle's snapshot than from code | oversize | P2 | S | 0.40 |
-| [DC-9](written-rules/DC-9.md) ✓ | The saved parity-wave workflow asks for specs with no size limit and tells every agent to read them whole; it is dormant | no check | P3 | S | tolerated |
+| [DC-9](written-rules/DC-9.md) ✓ | The saved parity-wave workflow asks for specs with no size limit and tells every agent to read them whole; it is dormant | no check | P3 | S | 0.41 |
 | [DC-11](written-rules/DC-11.md) ✓ | The parity report commits 270 KB of generated tables beside the rows they are made from *(your choice)* | duplicate | P3 | S | your choice |
 

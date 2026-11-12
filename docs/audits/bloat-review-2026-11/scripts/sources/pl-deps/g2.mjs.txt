@@ -1,0 +1,41 @@
+// Source-level static import walk (value imports only; `import type` and type-only named lists skipped; import() not followed).
+// usage: node sgraph.mjs <entry rel to repo> <target specifier or file suffix> ...
+import fs from "node:fs"; import path from "node:path";
+const repo = "/home/user/kaizen-store";
+const cache = new Map();
+function imports(file) {
+  if (cache.has(file)) return cache.get(file);
+  let s = ""; try { s = fs.readFileSync(file, "utf8"); } catch { cache.set(file, []); return []; }
+  const out = [];
+  // static import/export ... from
+  const res = [
+    /^import\s+(type\s+)?([\w\s{},*$]*?)\s*from\s*["']([^"']+)["']/gm,
+    /^export\s+(type\s+)?(\*(?:\s+as\s+\w+)?|\{[^}]*\})\s*from\s*["']([^"']+)["']/gm,
+  ];
+  for (const re of res) { let m; while ((m = re.exec(s))) {
+    if (m[1]) continue;
+    const named = m[2].trim().match(/^\{([^}]*)\}$/);
+    if (named) { const parts = named[1].split(",").map((x) => x.trim()).filter(Boolean); if (parts.length && parts.every((p) => p.startsWith("type "))) continue; }
+    out.push(m[3]);
+  } }
+  { const re = /^import\s*["']([^"']+)["']/gm; let m; while ((m = re.exec(s))) out.push(m[1]); }
+  cache.set(file, out); return out;
+}
+function resolve(from, spec) {
+  let base;
+  if (spec.startsWith("@/")) base = path.join(repo, "src", spec.slice(2));
+  else if (spec.startsWith(".")) base = path.resolve(path.dirname(from), spec);
+  else return null;
+  for (const c of [base, base + ".ts", base + ".tsx", base + ".mjs", base + ".js", path.join(base, "index.ts"), path.join(base, "index.tsx")]) { try { if (fs.statSync(c).isFile()) return c; } catch {} }
+  return null;
+}
+const entry = path.join(repo, process.argv[2]); const targets = process.argv.slice(3);
+const prev = new Map([[entry, null]]); const q = [entry]; const ext = new Map(); // pkg -> first importer
+while (q.length) { const f = q.shift(); for (const spec of imports(f)) { const r = resolve(f, spec); if (!r) { if (!spec.startsWith(".") && !spec.startsWith("@/")) { if (!ext.has(spec)) ext.set(spec, f); } continue; } if (!prev.has(r) && !(process.env.SKIP && process.env.SKIP.split(",").some((x) => r.endsWith(x))) && !(process.env.CUT && process.env.CUT.split(",").some((e) => { const [a, b] = e.split(">"); return f.endsWith(a) && r.endsWith(b); }))) { prev.set(r, f); q.push(r); } } }
+console.log(`${process.argv[2]}: ${prev.size} source files reached by static value imports`);
+const chain = (f) => { const c = []; for (let x = f; x; x = prev.get(x)) c.unshift(path.relative(repo, x)); return c; };
+for (const t of targets) {
+  if (ext.has(t)) console.log(`  ${t}: reached, ${chain(ext.get(t)).length} files: ${chain(ext.get(t)).join(" > ")}`);
+  else { const hit = [...prev.keys()].find((f) => f.endsWith(t)); console.log(hit ? `  ${t}: reached: ${chain(hit).join(" > ")}` : `  ${t}: NOT reached`); }
+}
+if (process.env.EXT) console.log([...ext.keys()].filter((k) => !k.startsWith("node:")).sort().join(", "));
