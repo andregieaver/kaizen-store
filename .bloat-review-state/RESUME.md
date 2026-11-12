@@ -86,3 +86,12 @@ challenged by a skeptic, planned by a planner. Its last lines hold the arguments
    `{"stage":"repair","chunks": <work/rating-chunks.json>}`: each agent verifies the flagged problems in its briefs, fixes the
    real ones in `exec/<id>.json`, sets the final rating, and logs to `repair/<id>.json`. `exec.before-repair/` is the copy before.
    Launch only the ids without a `repair/<id>.json`. Then rebuild docs and page and push.
+
+## 10. Execution (started 12 November, owner: "Start executing phase 0", "Keep going through phase 0")
+- The repo's docs are now the source: NEVER run build-docs.mjs again (it would reset the Progress table). Edit the repo files directly.
+- Each step: a Sonnet agent with run/executor-prompt.md (commits locally, no push); review the diff; set the Progress row Done
+  with date, commit and figures plus a change-log line; push HEAD:main; for code, wait for /api/health to report the commit
+  and CI green, then do After the deploy.
+- Local DB: Postgres 16 at /home/user/pgdata (start: /usr/lib/postgresql/16/bin/pg_ctl -D /home/user/pgdata -l /home/user/pgdata/log -o '-p 5432 -k /tmp' start);
+  DATABASE_URL=postgres://postgres:postgres@127.0.0.1:5432/postgres. pnpm install --frozen-lockfile first in a new container.
+- Done: 0.1 (b29825d).
