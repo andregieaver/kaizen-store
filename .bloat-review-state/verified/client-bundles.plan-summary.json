@@ -1,0 +1,153 @@
+{
+ "key": "client-bundles",
+ "file": "/tmp/claude-0/-home-user-kaizen-store/875cb21b-0ebd-5663-b7c0-2d04a7548e24/scratchpad/findings/client-bundles.json",
+ "validator": "OK: 16 findings, 0 refuted, 11 metrics",
+ "headline": "Shoppers' pages are lean and the admin is where the weight is: a store page's first scripts are 680 to 778 thousand bytes (447 thousand of it React and Next), while the 432 signed-in admin routes have a median of 1,155,530 bytes and each carries Supabase's client (253 KB) and zod (114 KB) before use. Seven small import changes (BN-1, 2, 3, 4, 5, 7, 14) take the admin's median to about 604 KB in a simulation on the built chunks, 13 preview screens from 3.2 MB to 0.75 to 1.4 MB, one Work screen from 4.27 MB to about 1.4 MB, and stop Kaizena Flow's front page fetching 437 KB of admin scripts it cannot use. This pass added three misses: the previews that load the whole builder, the AI manager's chat script (496 KB, about 95% of it three tables read for two labels), and a store's recommending grid, which pulls 650 KB (204 KB gzip) of zod, the page model and all four languages into a shopper's page, found in no other dimension. Nothing rests on a feature being unused; the cuts move imports and remove no feature, and one build-time check over all 560 routes (BN-11) keeps them.",
+ "findings": [
+  {
+   "id": "BN-1",
+   "title": "Every signed-in admin screen loads the whole Supabase client in its first scripts, for a session listener and for uploads nobody has pressed yet",
+   "priority": "P0",
+   "effort": "S",
+   "saving": "253 KB raw (61 KB gzip) off the first scripts of all 432 signed-in routes; it still loads after the page is idle.",
+   "verdict": "corrected",
+   "owner_decision": false
+  },
+  {
+   "id": "BN-2",
+   "title": "Kaizena Flow's front page prefetches the admin and downloads its signed-in frame, which a press on Sign in cannot use",
+   "priority": "P0",
+   "effort": "S",
+   "saving": "437 KB raw / 135 KB transferred of admin scripts and a 21 KB stylesheet per first visit to Kaizena Flow's site.",
+   "verdict": "confirmed",
+   "owner_decision": false
+  },
+  {
+   "id": "BN-3",
+   "title": "The keyboard shortcut sheet brings the page builder's English and field code to every admin screen",
+   "priority": "P0",
+   "effort": "S",
+   "saving": "129 KB raw off 335 admin routes' first scripts, 96 to 111 KB off 48 more (simulated).",
+   "verdict": "corrected",
+   "owner_decision": false
+  },
+  {
+   "id": "BN-4",
+   "title": "zod is in every signed-in admin screen's first scripts through three small imports",
+   "priority": "P0",
+   "effort": "S",
+   "saving": "With BN-1 and BN-3: 495 KB off list screens (admin home 1,137 to 642 KB); zod leaves 275 routes.",
+   "verdict": "corrected",
+   "owner_decision": false
+  },
+  {
+   "id": "BN-5",
+   "title": "The rich text editor is in the first scripts of 34 screens that are not the builder: lists, orders, customers, deals and the product editor",
+   "priority": "P0",
+   "effort": "M",
+   "saving": "439 KB raw off 34 routes; 654 KB off nine page lists (1,922 to 1,269 KB), simulated.",
+   "verdict": "corrected",
+   "owner_decision": false
+  },
+  {
+   "id": "BN-6",
+   "title": "The page builder and the draft order editor ship all four storefront languages whole",
+   "priority": "P1",
+   "effort": "M",
+   "saving": "343 KB raw off each builder load, 368 KB off the draft order editor; one language (about 70 KB) returns on demand.",
+   "verdict": "confirmed",
+   "owner_decision": false
+  },
+  {
+   "id": "BN-7",
+   "title": "One Work screen loads 4.27 MB: the admin's whole text in both languages",
+   "priority": "P0",
+   "effort": "S",
+   "saving": "About 2.9 MB raw on one Work route: 4.27 MB to about 1.4 MB (estimate).",
+   "verdict": "confirmed",
+   "owner_decision": false
+  },
+  {
+   "id": "BN-8",
+   "title": "Whole English catalogues are imported as default values, and the check sees only the direct ones",
+   "priority": "P2",
+   "effort": "M",
+   "saving": "Estimate: 14 to 97 KB raw per admin screen (builder 76, product editor 42, AI manager's page 97).",
+   "verdict": "confirmed",
+   "owner_decision": false
+  },
+  {
+   "id": "BN-9",
+   "title": "Twelve storefront routes, the product page among them, carry the cart's, checkout's, order's and account's forms",
+   "priority": "P1",
+   "effort": "M",
+   "saving": "22 KB raw on every product page; 73 to 94 KB on category, tag and search pages (simulated).",
+   "verdict": "confirmed",
+   "owner_decision": false
+  },
+  {
+   "id": "BN-10",
+   "title": "Three tables a shopper's page never reads at first paint are in its first scripts",
+   "priority": "P1",
+   "effort": "S",
+   "saving": "40 KB raw (about 12 KB gzip) off the first scripts of every store and site page.",
+   "verdict": "corrected",
+   "owner_decision": false
+  },
+  {
+   "id": "BN-11",
+   "title": "The script budgets watch 15 of 560 routes, and the visitor's one counts a legacy file twice",
+   "priority": "P0",
+   "effort": "S",
+   "saving": "No bytes itself; holds all 560 routes to a ceiling so the other cuts stay.",
+   "verdict": "corrected",
+   "owner_decision": false
+  },
+  {
+   "id": "BN-12",
+   "title": "One stylesheet for shoppers and owners: a quarter of what a shopper downloads styles only the admin",
+   "priority": "P2",
+   "effort": "M",
+   "saving": "Stylesheet 183 to 136 KB raw, 32.0 to 25.3 KB gzip on every public page.",
+   "verdict": "corrected",
+   "owner_decision": false
+  },
+  {
+   "id": "BN-13",
+   "title": "40% of the built client JavaScript is second copies of modules; a browser meets about 14% of it while moving around",
+   "priority": "P3",
+   "effort": "M",
+   "saving": "Not measured; about 14% of what an owner downloads moving around the admin is repeats.",
+   "verdict": "corrected",
+   "owner_decision": false
+  },
+  {
+   "id": "BN-14",
+   "title": "Thirteen preview screens load the whole page builder to draw a page",
+   "priority": "P0",
+   "effort": "S",
+   "saving": "1.82 MB raw off each of 12 previews, 2.32 MB off the sandbox's (3.2 MB to 0.75 to 1.36 MB), simulated.",
+   "verdict": "added",
+   "owner_decision": false
+  },
+  {
+   "id": "BN-15",
+   "title": "The AI manager's chat is a 496 KB script, about 95% of it three tables read for two labels",
+   "priority": "P1",
+   "effort": "S",
+   "saving": "Estimate: 400 to 470 KB raw off each first opening of the AI manager and off its two pages.",
+   "verdict": "added",
+   "owner_decision": false
+  },
+  {
+   "id": "BN-16",
+   "title": "A store page with a recommending grid downloads 650 KB more script once recommendations answer: zod, the page model and all four languages",
+   "priority": "P1",
+   "effort": "M",
+   "saving": "319 KB raw (103 KB gzip) now, 192 KB more later, of the 650 KB a recommending grid loads in a shopper's page.",
+   "verdict": "added",
+   "owner_decision": false
+  }
+ ],
+ "refuted": []
+}
