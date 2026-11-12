@@ -1,7 +1,6 @@
 import "server-only";
 
 import { sql } from "drizzle-orm";
-import sharp from "sharp";
 import { z } from "zod";
 
 import { db } from "@/db/client";
@@ -42,6 +41,7 @@ import { getPageForEdit } from "./pages";
 import { encryptionKey } from "./settings";
 import { currentStore, type Store } from "./stores";
 import { col, typedRow, typedRows } from "./typed-rows";
+import { loadSharp } from "./sharp-load";
 
 /**
  * Looks at pages (D310, `docs/ai-autopilot.md` 9): the only writer of `commerce.page_looks`. A look is asked for (`requestLook()`), run at
@@ -283,6 +283,7 @@ async function targetsOf(look: Claimed, store: Store, origin: string): Promise<T
 
 /** A picture made small enough for the model: at most 1024 pixels wide and 4000 tall, as a JPEG. */
 async function forModel(picture: Buffer): Promise<Buffer> {
+  const sharp = await loadSharp();
   const resized = await sharp(picture).resize({ width: 1024, withoutEnlargement: true }).jpeg({ quality: 70 }).toBuffer({ resolveWithObject: true });
   if (resized.info.height <= 4000) return resized.data;
   return sharp(resized.data).extract({ left: 0, top: 0, width: resized.info.width, height: 4000 }).jpeg({ quality: 70 }).toBuffer();

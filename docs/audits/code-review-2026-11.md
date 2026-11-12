@@ -163,6 +163,7 @@ This report is a working document: the plan below is the list of work, and this 
 - 11 November 2026: step 1.6 done (D569): the no-transaction marker for concurrent indexes, and the scan test for the hot tables.
 - 11 November 2026: step 1.7 done (D572): the migrations squashed to a baseline, the old files archived.
 - 12 November 2026: FD5 and step 3.14 half done by bloat review step 0.4; FH12 and step 4.4 corrected: the run-time driver is pg, not postgres.
+- 12 November 2026: bloat review step 0.5: `src/server/lazy-packages.scan.test.ts` holds that no server module imports sharp, opentype.js, playwright-core, @sparticuz/chromium, mammoth or unpdf as a value; it is the first of step 4.1's boundary rules for packages.
 
 ## 1. The headline
 

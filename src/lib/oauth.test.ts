@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { MCP_TOOLS, mcpCatalogue, toolScope } from "./mcp-catalogue";
+import { mcpTools, mcpCatalogue, toolScope } from "./mcp-catalogue";
 import {
   authorizationServerMetadata,
   bearerChallenge,
@@ -240,13 +240,13 @@ describe("scopes (B3)", () => {
 
 describe("the owner MCP's tools and their scopes", () => {
   it("give every tool a scope: stores:read to list, the owner's key to ask the assistant, else the tool's permission", () => {
-    for (const tool of MCP_TOOLS) expect(toolScope(tool.name), tool.name).not.toBeNull();
+    for (const tool of mcpTools()) expect(toolScope(tool.name), tool.name).not.toBeNull();
     expect(toolScope("list_stores")).toBe("stores:read");
     expect(toolScope("ask_store_assistant")).toBe("owner");
     expect(toolScope("work_summary")).toBe("settings:read");
     expect(toolScope("list_orders")).toBe("orders:read");
     expect(toolScope("no_such_tool")).toBeNull();
-    expect(OWNER_TOOLS.length + 3).toBe(MCP_TOOLS.length);
+    expect(OWNER_TOOLS.length + 3).toBe(mcpTools().length);
     expect(mcpCatalogue().tools.find((t) => t.name === "list_stores")?.scope).toBe("stores:read");
   });
 });

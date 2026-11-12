@@ -4,7 +4,7 @@ import { sql, type SQL } from "drizzle-orm";
 import { z } from "zod";
 
 import { db } from "@/db/client";
-import { isReadOnly, MCP_TOOLS, toolScope, type McpToolInfo } from "@/lib/mcp-catalogue";
+import { isReadOnly, mcpTools, toolScope, type McpToolInfo } from "@/lib/mcp-catalogue";
 import { missingScopes, protectedResourceMetadata, scopeKeys, STORES_READ, type AccessLevel, type OAuthScope } from "@/lib/oauth";
 import { toolFeature, toolOffered } from "@/lib/owner-tool-features";
 import { toolKey, toolRefusal } from "@/lib/owner-tool-permissions";
@@ -133,7 +133,7 @@ export async function oauthCaller(token: string): Promise<McpCaller | null> {
 // The tools ------------------------------------------------------------------------------
 
 /** The tools and their catalogue (titles and annotations, D438) are pure: `src/lib/mcp-catalogue.ts`. */
-export { MCP_TOOLS, type McpToolInfo };
+export { mcpTools, type McpToolInfo };
 
 /**
  * The person's membership of the store a call names, if the caller reaches it: Kaizen Life's owner as an owner; a grant's person as their
@@ -158,11 +158,11 @@ async function memberFor(caller: McpCaller, slug: unknown): Promise<Membership |
 export async function mcpToolsFor(caller: McpCaller): Promise<McpToolInfo[]> {
   if (caller.via.kind === "kaizen-life") {
     const stores = (await Promise.all(caller.stores.map((s) => getStore(s.slug)))).filter((s): s is Store => s !== null);
-    return MCP_TOOLS.filter((tool) => toolFeature(tool.name) === undefined || stores.some((store) => toolOffered(store, tool.name)));
+    return mcpTools().filter((tool) => toolFeature(tool.name) === undefined || stores.some((store) => toolOffered(store, tool.name)));
   }
   const scopes = caller.via.scopes;
   const members = (await Promise.all(caller.stores.map((s) => memberFor(caller, s.slug)))).filter((m): m is Membership => m !== null);
-  return MCP_TOOLS.filter((tool) => {
+  return mcpTools().filter((tool) => {
     const scope = toolScope(tool.name);
     if (!scope || missingScopes(scopes, [scope]).length > 0) return false;
     if (scope === STORES_READ) return true;

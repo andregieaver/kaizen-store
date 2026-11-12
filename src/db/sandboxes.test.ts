@@ -283,6 +283,10 @@ describe("purging a sandbox (D457 S3)", () => {
       "insert into commerce.pages (store_id, type, slug, draft) values ($1, 'page', 'mitt', '{\"title\":\"Mitt\"}'::jsonb)",
       [store],
     );
+    // A header and a footer chosen for the site: the purge deletes both in one statement (D577).
+    const { id: header } = await one<{ id: string }>("insert into commerce.pages (store_id, type, slug, draft) values ($1, 'header', 'topp', '{}'::jsonb) returning id", [store]);
+    const { id: footer } = await one<{ id: string }>("insert into commerce.pages (store_id, type, slug, draft) values ($1, 'footer', 'bunn', '{}'::jsonb) returning id", [store]);
+    await db.query("update commerce.stores set header_id = $2, footer_id = $3 where id = $1", [store, header, footer]);
     await db.query("update commerce.stores set custom_css = '.mine { color: red }' where id = $1", [store]);
     await db.query(
       "insert into commerce.media (store_id, kind, url, bucket, path, file_name, content_type, size_bytes) values ($1, 'image', $2, 'product-images', $3, 'mine.jpg', 'image/jpeg', 10)",

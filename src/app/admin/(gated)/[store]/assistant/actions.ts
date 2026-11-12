@@ -5,19 +5,13 @@ import { after } from "next/server";
 
 import { type Membership } from "@/server/auth";
 import { requireOwnerRole } from "@/server/permissions";
-import {
-  assistantAbilities,
-  decideApproval,
-  deleteConversation,
-  getConversation,
-  listConversations,
-  rateAnswer,
-  type Approval,
-  type Conversation,
-} from "@/server/owner-assistant";
+import type { Approval, Conversation } from "@/server/owner-assistant";
 import { deleteSkill, saveSkill } from "@/server/assistant-saved-skills";
 import { hearOwner } from "@/server/page-ai";
 import { readRecording, unreadable } from "@/server/page-studio-input";
+
+/** The AI manager's server side, loaded when an owner first uses the panel, not with every admin page (bloat review step 0.5). */
+const assistant = () => import("@/server/owner-assistant");
 
 /** The store's AI manager's actions (D94, D103): for the store's owners only. */
 async function requireOwner(storeSlug: string): Promise<Membership> {
@@ -27,28 +21,33 @@ async function requireOwner(storeSlug: string): Promise<Membership> {
 /** What the panel needs when it first opens. */
 export async function startAssistantAction(storeSlug: string) {
   const member = await requireOwner(storeSlug);
+  const { assistantAbilities, listConversations } = await assistant();
   const [abilities, conversations] = await Promise.all([assistantAbilities(member.store.id), listConversations(member)]);
   return { abilities, conversations };
 }
 
 export async function loadConversationAction(storeSlug: string, conversationId: string): Promise<Conversation | null> {
   const member = await requireOwner(storeSlug);
+  const { getConversation } = await assistant();
   return getConversation(member, String(conversationId));
 }
 
 export async function decideApprovalAction(storeSlug: string, approvalId: string, approve: boolean): Promise<Approval | null> {
   const member = await requireOwner(storeSlug);
+  const { decideApproval } = await assistant();
   return decideApproval(member, String(approvalId), approve === true, (tag) => updateTag(tag));
 }
 
 export async function deleteConversationAction(storeSlug: string, conversationId: string): Promise<boolean> {
   const member = await requireOwner(storeSlug);
+  const { deleteConversation } = await assistant();
   return deleteConversation(member, String(conversationId));
 }
 
 export async function rateAnswerAction(storeSlug: string, messageId: string, value: 1 | -1 | null): Promise<boolean> {
   const member = await requireOwner(storeSlug);
   const thumb = value === 1 || value === -1 ? value : null;
+  const { rateAnswer } = await assistant();
   return rateAnswer(member, String(messageId), thumb, null, (task) => after(task));
 }
 

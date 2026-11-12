@@ -1,6 +1,7 @@
 import "server-only";
 
-import sharp, { type Sharp } from "sharp";
+import type { Sharp } from "sharp";
+import { loadSharp } from "./sharp-load";
 
 import type { Shot } from "@/lib/theme-shoot";
 import { CARD_SIZE, SHARE_SIZE, topCrop, type ShotKind, type ShotPictureKind } from "@/lib/theme-shots";
@@ -26,6 +27,7 @@ const jpeg: Encode = (image, quality) => image.flatten({ background: "#ffffff" }
  * of many pictures can otherwise pass the bucket's limit.
  */
 async function fitted(source: Buffer, encode: Encode, qualities: readonly number[], max = FILE_BYTES_MAX): Promise<{ bytes: Buffer; width: number; height: number }> {
+  const sharp = await loadSharp();
   const meta = await sharp(source).metadata();
   let width = meta.width ?? 1;
   for (let round = 0; round < 6; round++) {
@@ -40,6 +42,7 @@ async function fitted(source: Buffer, encode: Encode, qualities: readonly number
 
 /** A rectangle of `source` scaled to exactly `size` (the crop already has its shape, so nothing is stretched). */
 async function cut(source: Buffer, size: { width: number; height: number }, ratio: number): Promise<Buffer> {
+  const sharp = await loadSharp();
   const meta = await sharp(source).metadata();
   const rect = topCrop(meta.width ?? size.width, meta.height ?? size.height, ratio);
   return sharp(source).extract(rect).resize({ width: size.width, height: size.height, fit: "cover", position: "top" }).png().toBuffer();
@@ -50,6 +53,7 @@ async function cut(source: Buffer, size: { width: number; height: number }, rati
  * busy: white, one screen long). A theme's first screen always holds words or a picture, so such a photograph is never kept.
  */
 export async function pictureIsBlank(source: Buffer): Promise<boolean> {
+  const sharp = await loadSharp();
   const { channels } = await sharp(source).stats();
   return channels.slice(0, 3).every((channel) => channel.stdev < 1);
 }

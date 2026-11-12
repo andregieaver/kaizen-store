@@ -1,7 +1,7 @@
 import "server-only";
 
 // opentype.js 2 is an ES module of named exports, with no default export.
-import { parse, type Font } from "opentype.js";
+import type { Font } from "opentype.js";
 
 import { log } from "./log";
 import { findFont } from "./fonts";
@@ -57,6 +57,7 @@ export async function fontOutlines(family: string, weight: number, fetcher: Fetc
     if (!response.ok) throw new Error(`Google Fonts answered ${response.status} for the file`);
     const data = await response.arrayBuffer();
     if (data.byteLength === 0 || data.byteLength > MAX_FONT_BYTES) throw new Error("The font file was empty or too large.");
+    const { parse } = await import("opentype.js");
     const parsed = parse(data);
     kept.set(key, parsed);
     return { ok: true, font: parsed, family: font.family, weight: chosen };

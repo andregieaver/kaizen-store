@@ -4,7 +4,6 @@ import { readFile } from "node:fs/promises";
 import path from "node:path";
 
 import { sql } from "drizzle-orm";
-import sharp from "sharp";
 
 import { db } from "@/db/client";
 import { packAboutPage, packHomePage, packProductsPage, type PackPicture } from "@/lib/content-pack-pages";
@@ -45,6 +44,7 @@ import { dressSignaturePacks, linkLaunchContents } from "./signature-themes";
 import { createStarter, setStarterFeatures } from "./store-starters";
 import { getStore, storeTag, type Store } from "./stores";
 import { termsTag } from "./taxonomy";
+import { loadSharp } from "./sharp-load";
 
 /**
  * Kaizena Flow's content packs (`docs/theme-showcase-phase-1.md` step 2): `CONTENT_PACKS` written into store templates of their own (D175),
@@ -106,6 +106,7 @@ export type PackDeps = {
  * where the server has no copy of them (a serverless function), with its small copy made here.
  */
 async function storeArtPicture(owner: { storeId: string; accountId: string }, art: PackPicture): Promise<StoredPicture> {
+  const sharp = await loadSharp();
   if (!/^\/demo\/themes\/[a-z0-9-]+\/[a-z0-9-]+\.webp$/.test(art.url)) throw new Error(`${art.url} is not a theme's art file.`);
   let bytes: Buffer;
   try {

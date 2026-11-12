@@ -1,6 +1,5 @@
 import "server-only";
 
-import sharp from "sharp";
 import { sql } from "drizzle-orm";
 import { z } from "zod";
 
@@ -13,6 +12,7 @@ import { checkedAlt, shrinkPicture } from "./ai-pictures";
 import { downloadStoredFile } from "./media";
 import { storePicture } from "./media-library";
 import type { PictureOwner } from "./picture-maker";
+import { loadSharp } from "./sharp-load";
 
 type Row = Record<string, unknown>;
 
@@ -50,6 +50,7 @@ export async function editLibraryPicture(
   raw: unknown,
   deps: { connection?: AiConnection | null; read?: typeof downloadStoredFile; edit?: typeof editImage; store?: typeof storePicture } = {},
 ): Promise<EditedPicture> {
+  const sharp = await loadSharp();
   const parsed = input.safeParse(raw);
   if (!parsed.success) return { ok: false, problem: "Choose a picture and an edit." };
   const { mediaId, url, action, brief } = parsed.data;

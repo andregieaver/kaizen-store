@@ -229,3 +229,7 @@ Two cuts made light routes light: `src/db/client.ts` no longer loads the Drizzle
 The import walker (`scripts/import-reach.mjs`) counts the source files each of the five beacons reaches: 103 for `/api/visit` and
 `/api/visit/touch`, 107 for `/api/visit/speed` and `/api/visit/speed/own`, 100 for `/api/recommendations/events` (1,308 before),
 none of them reaching the chat, the AI, the admin's words or the schema.
+
+- A heavy package is loaded where it is used, never at the top of a server module: `loadSharp()` (`src/server/sharp-load.ts`),
+  `launchBrowser()` (`src/server/browser.ts`), `await import("opentype.js")`; `src/server/lazy-packages.scan.test.ts` fails on a
+  static import of sharp, opentype.js, playwright-core, @sparticuz/chromium, mammoth or unpdf.

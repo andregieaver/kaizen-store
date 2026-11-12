@@ -210,7 +210,7 @@ describe("who may use it", () => {
     await expect(ownerTools.runOwnerTool(ctxFor(bookings), "unit_price_gaps", {})).rejects.toBeInstanceOf(ownerTools.OwnerToolError);
     const products: PermissionHolder = { role: "admin", permissions: ROLE_TEMPLATES.products.permissions };
     await expect(ownerTools.runOwnerTool(ctxFor(products), "unit_price_gaps", {})).resolves.toBeTruthy();
-    const served = mcp.MCP_TOOLS.find((tool) => tool.name === "unit_price_gaps")!;
+    const served = mcp.mcpTools().find((tool) => tool.name === "unit_price_gaps")!;
     expect(served).toBeTruthy();
     expect((served.inputSchema.required as string[]).includes("store")).toBe(true);
   });

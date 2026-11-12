@@ -1,7 +1,5 @@
 import "server-only";
 
-import sharp from "sharp";
-
 import {
   DEFAULT_MARK_FONT,
   ICON_SIZE,
@@ -26,6 +24,7 @@ import { OwnerToolError } from "./owner-tool-error";
 import { getPlatformTheme } from "./platform-navigation";
 import type { Store } from "./stores";
 import { liveLook } from "./theme-installs";
+import { loadSharp } from "./sharp-load";
 
 /**
  * The brand's logo and icon (D330 F2a, `docs/ai-autopilot.md` 14.3): the brand's name drawn in its own font's outlines, in the live theme's
@@ -57,6 +56,7 @@ const boxOf = (b: { x1: number; y1: number; x2: number; y2: number }): Box => ({
 
 /** An SVG of paths rendered to PNG at a height, sharp enough at that size. */
 async function png(svg: string, height: number, viewHeight: number): Promise<Buffer> {
+  const sharp = await loadSharp();
   const density = Math.min(2400, Math.max(72, Math.ceil((72 * height * 1.5) / viewHeight)));
   return sharp(Buffer.from(svg), { density }).resize({ height }).png().toBuffer();
 }

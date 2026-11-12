@@ -1,11 +1,12 @@
 import "server-only";
 
-import sharp, { type Sharp } from "sharp";
+import type { Sharp } from "sharp";
 
 import { findClaims } from "@/lib/claims";
 
 import { AiError, generateImage, type AiConnection, type ImageShape } from "./ai";
 import { storePicture } from "./media-library";
+import { loadSharp } from "./sharp-load";
 
 /**
  * Pictures made by the site's AI (D92), kept as the site's own: the
@@ -43,6 +44,7 @@ export function aiSourceXmp(source: AiSource): string {
 
 /** A model's picture as the pair the site keeps; `ai` marks both files as made or changed by AI. */
 export async function shrinkPicture(bytes: Uint8Array, ai?: AiSource): Promise<{ image: Buffer; thumbnail: Buffer; width: number; height: number }> {
+  const sharp = await loadSharp();
   const source = sharp(bytes, { failOn: "error" }).rotate();
   const marked = (picture: Sharp) => (ai ? picture.withXmp(aiSourceXmp(ai)) : picture);
   const [image, thumbnail] = await Promise.all([
@@ -106,6 +108,7 @@ export function checkedAlt(alt: string): string {
 
 /** A small copy of a test picture as a `data:` address, shown in the admin and not kept. */
 export async function testPicture(connection: AiConnection): Promise<{ ok: true; dataUrl: string; ms: number } | { ok: false; message: string }> {
+  const sharp = await loadSharp();
   if (!connection.image) return { ok: false, message: "No picture model is set." };
   const started = Date.now();
   try {

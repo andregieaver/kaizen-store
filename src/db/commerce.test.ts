@@ -2198,6 +2198,20 @@ describe("pages", () => {
       footer_id: footer,
     });
     expect((await one<{ header_id: string | null }>("select header_id from commerce.platform_settings where id")).header_id).toBeNull();
+
+    // Deleting a header and a footer in one statement lets go of both, as a sandbox's purge and the house site's sync do: the
+    // first column set to null does not check the other against a page the same statement removed.
+    const { id: top } = await page("header", "top-2");
+    await db.query("update commerce.stores set header_id = $1 where id = $2", [top, template]);
+    await db.query("delete from commerce.pages where id in ($1, $2)", [top, footer]);
+    expect(await one("select header_id, footer_id from commerce.stores where id = $1", [template])).toEqual({ header_id: null, footer_id: null });
+    const { id: kaizenTop } = await page("header", "kaizen-top-2", null);
+    const { id: kaizenBottom } = await page("footer", "kaizen-bottom", null);
+    await db.query("update commerce.platform_settings set header_id = $1, footer_id = $2 where id", [kaizenTop, kaizenBottom]);
+    await db.query("delete from commerce.pages where id in ($1, $2)", [kaizenTop, kaizenBottom]);
+    expect(await one("select header_id, footer_id from commerce.platform_settings where id")).toEqual({ header_id: null, footer_id: null });
+    // A changed column is still checked.
+    await expect(db.query("update commerce.stores set footer_id = $1 where id = $2", [about, template])).rejects.toThrow(/must be one of its footers/);
   });
 
   it("gives articles addresses of their own, beside pages, with their own reserved routes and redirects (D57)", async () => {

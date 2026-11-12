@@ -3,7 +3,6 @@ import "server-only";
 import { randomUUID } from "node:crypto";
 
 import { sql } from "drizzle-orm";
-import sharp from "sharp";
 
 import { db } from "@/db/client";
 import { DELIMITER_WORDS, parseCsv, type ParsedCsv } from "@/lib/csv";
@@ -67,6 +66,7 @@ import { refreshTag } from "./refresh";
 import { safeFetch } from "./replicate-fetch";
 import { createTerm, listTerms } from "./taxonomy";
 import type { Store } from "./stores";
+import { loadSharp } from "./sharp-load";
 
 type Row = Record<string, unknown>;
 
@@ -447,6 +447,7 @@ export async function pictureToLibrary(
   url: string,
   deps: Pick<DataDeps, "fetchPicture" | "storePicture"> = {},
 ): Promise<{ ok: true; url: string; thumbnailUrl: string; width: number; height: number } | { ok: false; reason: string }> {
+  const sharp = await loadSharp();
   const got = await (deps.fetchPicture ?? defaultFetchPicture)(url);
   if (!got.ok) return { ok: false, reason: got.problem };
   let image: Buffer;

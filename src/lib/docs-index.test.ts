@@ -10,7 +10,7 @@ import { compileDocs, DOC_AREAS, resolveDocLink, type DocSource } from "./docs-c
 import { blocksText, clip, docsIndexFingerprint, docsIndexRows, embedText, pageParts, REFERENCE_PAGES, ROW_TEXT_MAX } from "./docs-index";
 import { parseMarkdown } from "./docs-markdown";
 import { docsReferenceItems } from "./docs-reference";
-import { MCP_TOOLS } from "./mcp-catalogue";
+import { mcpTools } from "./mcp-catalogue";
 import { UCP_TOOLS } from "./ucp-catalogue";
 import { WEBHOOK_TOPICS } from "./webhook-topics";
 
@@ -107,7 +107,7 @@ describe("the docs' search index as rows (D443)", () => {
     const count = (item: string) => rows.filter((r) => r.item === item).length;
     expect(count("operation")).toBe(ADMIN_API.length);
     expect(count("topic")).toBe(WEBHOOK_TOPICS.length);
-    expect(count("tool")).toBe(MCP_TOOLS.length);
+    expect(count("tool")).toBe(mcpTools().length);
     expect(count("agent-tool")).toBe(UCP_TOOLS.length);
     expect(count("error")).toBe(Object.keys(API_ERRORS).length);
     expect(count("scope")).toBe(API_SCOPES.length);

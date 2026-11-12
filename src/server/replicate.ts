@@ -3,7 +3,6 @@ import "server-only";
 import { randomUUID } from "node:crypto";
 
 import { sql } from "drizzle-orm";
-import sharp from "sharp";
 
 import { db } from "@/db/client";
 import { cssProblem } from "@/lib/custom-css";
@@ -62,6 +61,7 @@ import {
   type ReplicaWork,
 } from "./replicate-store";
 import { savePage } from "./pages";
+import { loadSharp } from "./sharp-load";
 
 type Row = Record<string, unknown>;
 
@@ -230,6 +230,7 @@ async function startBrowser() {
 }
 
 async function stepOpen(tick: Tick): Promise<void> {
+  const sharp = await loadSharp();
   const { row, say, owner } = tick;
   const host = new URL(row.url).hostname;
   await say("info", `Opening ${host} in a browser, at computers' and at a phone's width.`);
@@ -789,6 +790,7 @@ async function copyLookFailed(tick: Tick, work: ReplicaWork, error: unknown): Pr
  * Returns whether the page was rebuilt; once tried, whatever came of it, it is not tried again.
  */
 async function startBackdrops(tick: Tick, work: ReplicaWork, parts: NonNullable<ReplicaWork["parts"]>, copyDesktop: PageCapture, copyMobile: PageCapture | null, sides: Sides, k: number, passes: ReplicaPass[], pass: ReplicaPass, below: number): Promise<boolean> {
+  const sharp = await loadSharp();
   const { row, say } = tick;
   const round = (work.backdropRounds ?? 0) + 1;
   const done = async (patch: Partial<ReplicaWork> = {}) => {
