@@ -1,5 +1,5 @@
 {
- "at": "2026-11-12T00:51:52.282Z",
+ "at": "2026-11-12T00:54:55.464Z",
  "status": [
   {
    "key": "storefront-client",
@@ -59,7 +59,7 @@
    "key": "assets",
    "audit": true,
    "verify": true,
-   "plan": false
+   "plan": true
   },
   {
    "key": "ai-context",
@@ -83,7 +83,7 @@
    "key": "docs-context",
    "audit": true,
    "verify": true,
-   "plan": false
+   "plan": true
   },
   {
    "key": "page-model",
@@ -95,7 +95,7 @@
    "key": "css",
    "audit": true,
    "verify": true,
-   "plan": false
+   "plan": true
   },
   {
    "key": "i18n",
@@ -154,10 +154,7 @@
  ],
  "relaunch": {
   "keys": [
-   "assets",
-   "docs-context",
    "page-model",
-   "css",
    "i18n",
    "tests-ci",
    "functions",

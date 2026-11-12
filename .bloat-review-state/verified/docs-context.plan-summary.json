@@ -1,0 +1,126 @@
+{
+ "key": "docs-context",
+ "file": "/tmp/claude-0/-home-user-kaizen-store/875cb21b-0ebd-5663-b7c0-2d04a7548e24/scratchpad/findings/docs-context.json",
+ "validator": "OK: 13 findings, 0 refuted, 16 metrics",
+ "headline": "These costs are paid per agent session and grow with every feature built, not with shoppers, so the owner's clarification changes none of them. Every session and every subagent loads 44 KB (about 11,000 tokens, estimate); 71% of it is a 295-line index of which a typical change needs 2 to 4 lines, and taking it out saves about 29.5 KB (about 7,400 tokens) each time. What a search can show matters more than what is loaded: the harness's search tool prints nothing for a line over 500 characters, and such lines hold 98% of decisions.md and 52% of the rules, while source code has almost none (0.3%). Nothing caps any of it (CLAUDE.md regrew 35% in 12 days), and one cost the report missed is real work: sessions running at once take the same decision number, so 5 of 24 merges in 35 hours renumbered one, twice across 64 and 77 files.",
+ "findings": [
+  {
+   "id": "DC-1",
+   "title": "Every session loads a 295-line feature index; a typical change needs 2 to 4 of its lines",
+   "priority": "P0",
+   "effort": "M",
+   "saving": "About 29.5 KB (about 7,400 tokens, estimate) per session, subagent and compaction; about 5 KB more when the how-to moves.",
+   "verdict": "corrected",
+   "owner_decision": true
+  },
+  {
+   "id": "DC-2",
+   "title": "decisions.md cannot be searched with the harness's search tool, a row runs to 18 KB, and the newest 197 rows sit under the wrong heading",
+   "priority": "P1",
+   "effort": "M",
+   "saving": "A search shows a decision's text, not a line number, for all 564; decisions.md falls from 1.33 MB to about 75 KB (estimate).",
+   "verdict": "corrected",
+   "owner_decision": false
+  },
+  {
+   "id": "DC-3",
+   "title": "Nothing caps the written rules, and one test makes the always-loaded file grow with every feature",
+   "priority": "P0",
+   "effort": "S",
+   "saving": "Stops the regrowth (CLAUDE.md +35% in 12 days) and holds the savings of DC-1, DC-2 and DC-4. No token figure claimed.",
+   "verdict": "corrected",
+   "owner_decision": false
+  },
+  {
+   "id": "DC-4",
+   "title": "Half of the rules' text is in lines the search tool cannot show",
+   "priority": "P0",
+   "effort": "S",
+   "saving": "292 KB of rule text (52%) becomes visible to a content search; a hit returns one sentence, not up to 7.4 KB.",
+   "verdict": "corrected",
+   "owner_decision": false
+  },
+  {
+   "id": "DC-5",
+   "title": "CLAUDE.md sends agents to a 73 KB plan written before the platform was multi-tenant",
+   "priority": "P1",
+   "effort": "S",
+   "saving": "About 14,000 tokens (estimate) per session that follows the instruction to read the plan.",
+   "verdict": "confirmed",
+   "owner_decision": false
+  },
+  {
+   "id": "DC-6",
+   "title": "The trackers a fix must consult keep their finished work in the way: the code review's table grows 0.9 KB a step, and 12 open PSI items hide among 93 ticked",
+   "priority": "P2",
+   "effort": "S",
+   "saving": "About 4,000 tokens per fix session now, 15,000 by the plan's end (estimates); open PSI items in 3 KB instead of 60 KB.",
+   "verdict": "confirmed",
+   "owner_decision": false
+  },
+  {
+   "id": "DC-7",
+   "title": "Dated reports, draft notes, review evidence and generated tables turn up in every docs search",
+   "priority": "P2",
+   "effort": "S",
+   "saving": "22 files and 1.06 MB (10% of docs) leave default searches. No token saving claimed.",
+   "verdict": "corrected",
+   "owner_decision": false
+  },
+  {
+   "id": "DC-8",
+   "title": "A feature's facts are written at four to six levels, in different words; lists copied from code drift",
+   "priority": "P2",
+   "effort": "S",
+   "saving": "No total claimed; one drifted list and 5 stale names fixed, and about half the prose of a small feature not written again.",
+   "verdict": "corrected",
+   "owner_decision": false
+  },
+  {
+   "id": "DC-9",
+   "title": "The saved parity-wave workflow asks for specs with no size limit and tells every agent to read them whole; it is dormant",
+   "priority": "P3",
+   "effort": "S",
+   "saving": "None today (the workflow is dormant); about 270,000 tokens per run if it is run again (estimate).",
+   "verdict": "corrected",
+   "owner_decision": false
+  },
+  {
+   "id": "DC-10",
+   "title": "The Migration versions list has been frozen since 4 October, and the instruction to record versions there now fills decision rows with release notes",
+   "priority": "P2",
+   "effort": "S",
+   "saving": "About 20 KB out of decisions.md, no release notes in new decisions, no docs-only commit after a migration.",
+   "verdict": "corrected",
+   "owner_decision": true
+  },
+  {
+   "id": "DC-11",
+   "title": "The parity report commits 270 KB of generated tables beside the rows they are made from",
+   "priority": "P3",
+   "effort": "S",
+   "saving": "One 289 KB file out of default searches now; about 266 KB out of docs if the owner drops the committed tables.",
+   "verdict": "confirmed",
+   "owner_decision": true
+  },
+  {
+   "id": "DC-12",
+   "title": "Sessions working at once take the same decision number: 5 of 24 merges in 35 hours renumbered one, twice across 64 and 77 files",
+   "priority": "P1",
+   "effort": "S",
+   "saving": "No merges that renumber a decision: 5 in 35 hours today, two of them touching 64 and 77 files.",
+   "verdict": "added",
+   "owner_decision": false
+  },
+  {
+   "id": "DC-13",
+   "title": "A table's definition is in the repo four times, and a search for its name returns more lines from old migrations and Drizzle's snapshot than from code",
+   "priority": "P2",
+   "effort": "S",
+   "saving": "791 files and 7.3 MB leave default searches; 79 to 413 fewer lines per table-name search in four names tried.",
+   "verdict": "added",
+   "owner_decision": false
+  }
+ ],
+ "refuted": []
+}

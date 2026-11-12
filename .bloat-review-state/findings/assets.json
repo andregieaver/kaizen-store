@@ -1,0 +1,664 @@
+{
+ "key": "assets",
+ "title": "Files that ship or are stored but need not be",
+ "headline": "The files the repo stores are lean (102 MB tracked, all 150 files in public/ referenced, pictures and fonts stored once); the waste is in what every server function carries and in what a browser is sent, and none of it rests on a feature being unused. sharp's native library (19.8 MB) is in 742 of 832 route traces and the taxonomy (13.3 MB) in 831, 33 MB of the median trace's 52.6 MB, and sharp loads at each cold start of the proxy (35 to 57 ms, 22.5 MB) though no shopper's page draws with it. Four small fixes go first (P0): search thumbnails of uploaded photographs answer 400 today (measured on the built app), font files are not kept by the CDN, the build's page worker runs with source maps on at 4.7 MB of heap per MB of code it loads (+498 MB for 107 MB, measured) on a build that already ran out of its 8 GB once, and nothing reports what a function carries. The completeness check added two: on 3x phones and Retina laptops every product tile downloads the 1600 px file because nothing is kept between 480 and 1600 px (measured in Chromium), and videos, 3D models and theme photographs are stored with a one-hour or five-minute cache where pictures get a year.",
+ "metrics": [
+  {
+   "name": "Tracked files",
+   "value": "102.0 MB in 7,609 files: src 70.9 MB, supabase 11.3 MB, docs 10.5 MB, public 5.6 MB, e2e 1.6 MB, content 0.9 MB, scripts 0.5 MB",
+   "how": "git ls-files piped to stat, summed by top-level folder (re-run in this pass at commit c7aea07)"
+  },
+  {
+   "name": "Git history (informational only)",
+   "value": "48.85 MiB in packs; the clone is shallow (116 commits), so this says nothing about the full history",
+   "how": "git count-objects -vH; git rev-parse --is-shallow-repository; git rev-list --count HEAD"
+  },
+  {
+   "name": "public/",
+   "value": "150 files, 5.60 MB: theme art and demo pictures 4.78 MB, WordPress zips 0.63 MB, flags 0.18 MB (six of them 165 KB raw, 39.8 KB brotli), favicon 26 KB. 0 unreferenced (second check)",
+   "how": "du -sb per folder and find, re-run; the reference check is the second check's"
+  },
+  {
+   "name": "Route traces that carry sharp's native library",
+   "value": "742 of 832, 19.81 MB each (libvips 18.71 MB, sharp 0.63 MB, the addon 0.42 MB)",
+   "how": "node /tmp/claude-0/-home-user-kaizen-store/875cb21b-0ebd-5663-b7c0-2d04a7548e24/scratchpad/work/as-plan/nft.mjs and /tmp/claude-0/-home-user-kaizen-store/875cb21b-0ebd-5663-b7c0-2d04a7548e24/scratchpad/work/as-plan/pkgs.mjs over .next/server/**/*.nft.json of the finished build (build-summary.txt exit=0); 1.7 s"
+  },
+  {
+   "name": "Route traces that carry the taxonomy",
+   "value": "831 of 832, 13.28 MB each (4.08 MB gzip, second check); only instrumentation.js is without",
+   "how": "same script"
+  },
+  {
+   "name": "Median route trace",
+   "value": "52.6 MB; 19.5 MB without sharp and the taxonomy. Proxy 47.9 MB, storefront home 51.9 MB, storefront checkout 52.4 MB, /api/health 16.2 MB, largest 139.8 MB (a customer's PDF route)",
+   "how": "same script"
+  },
+  {
+   "name": "What else is in a common trace",
+   "value": "Besides the build's own chunks (17.1 MB in the storefront home's trace), sharp and the taxonomy, no package weighs more than 0.9 MB. Four traces carry all 150 files of public/ (5.6 MB): three platform theme screens and /api/cron/pack-pictures",
+   "how": "/tmp/claude-0/-home-user-kaizen-store/875cb21b-0ebd-5663-b7c0-2d04a7548e24/scratchpad/work/as-plan/pkgs.mjs: traced files grouped by package, per trace and summed over traces"
+  },
+  {
+   "name": "Import reach",
+   "value": "src/proxy.ts reaches 1,309 of 4,126 non-test source files by static imports; 740 of 828 page and route entries reach both a sharp importer and product-taxonomy.ts, 88 reach neither",
+   "how": "node /tmp/claude-0/-home-user-kaizen-store/875cb21b-0ebd-5663-b7c0-2d04a7548e24/scratchpad/work/as-plan/graph.mjs (the second check's regex import graph, re-run)"
+  },
+  {
+   "name": "Proxy bundle, cold",
+   "value": "0.92 to 1.00 s and +197 MB RSS to load .next/server/middleware.js and await its exports in bare node (three runs at load 1.1 to 1.5); heap 78 MB",
+   "how": "node --expose-gc /tmp/claude-0/-home-user-kaizen-store/875cb21b-0ebd-5663-b7c0-2d04a7548e24/scratchpad/work/as-plan/load-maps.cjs. An estimate for Vercel"
+  },
+  {
+   "name": "sharp alone",
+   "value": "50 to 57 ms and 22.1 to 22.7 MB RSS in three runs at load 2.8 (the second check measured 35 to 41 ms at low load)",
+   "how": "node -e require('sharp'), timed with process.hrtime"
+  },
+  {
+   "name": "Source maps in a build worker",
+   "value": "One process loading 142 built entries (1,452 chunks, 106.6 MB of chunk JS): heap 290 MB and RSS 372 MB without --enable-source-maps, heap 788 MB and RSS 921 MB with it; 2.9 s against 5.1 s. 43 entries (70.5 MB): heap 214 against 543 MB. About 4.7 MB of heap per MB of chunk",
+   "how": "node --expose-gc [--enable-source-maps] /tmp/claude-0/-home-user-kaizen-store/875cb21b-0ebd-5663-b7c0-2d04a7548e24/scratchpad/work/as-plan/load-many.cjs 200 and 60; Next starts its build worker with that flag when enablePrerenderSourceMaps is on (next/dist/build/index.js:408, next/dist/lib/worker.js:71)"
+  },
+  {
+   "name": "Server build output",
+   "value": "205 MB of chunk JS and 704 MB of source maps under .next/server; 0 maps in any of the 832 traces",
+   "how": "find .next/server -name '*.map' and '*.js' summed; maps counted in the traces by the trace script"
+  },
+  {
+   "name": "Next's image endpoint on the built app",
+   "value": "/_next/image with a Supabase Storage picture address: 400 '\"url\" parameter is not allowed'. With /demo/themes/orbit/stars.webp and w=64: 200, an image",
+   "how": "curl against the local production server on port 3000"
+  },
+  {
+   "name": "Hidden images",
+   "value": "Chromium 153 fetches an <img> hidden with display:none (on itself or a parent) or inside a closed <details>; with loading=lazy it does not, and fetches it when the <details> opens",
+   "how": "node /tmp/claude-0/-home-user-kaizen-store/875cb21b-0ebd-5663-b7c0-2d04a7548e24/scratchpad/work/as-plan/lazy-test.cjs: a local page and a request log, headless Chromium"
+  },
+  {
+   "name": "Which stored picture a browser takes",
+   "value": "srcset 'small 480w, large 1600w' with a tile's sizes (50vw, 25vw from 768 px): 390 px at 2x takes the 480 file; 390 px at 3x, 360 px at 3x, 412 px at 2.625x and 1440 px at 2x take the 1600 file. A full-width picture takes the 1600 file on every phone tested",
+   "how": "node /tmp/claude-0/-home-user-kaizen-store/875cb21b-0ebd-5663-b7c0-2d04a7548e24/scratchpad/work/as-plan/srcset-test.cjs: headless Chromium 153 with deviceScaleFactor set, request log. Safari and Firefox not run"
+  },
+  {
+   "name": "Bytes of the picture sizes (theme art, illustrations)",
+   "value": "The 24 files in public/demo at least 1500 px wide: mean 71 KB as stored, 8 KB as a 480 px copy, 18 KB at 800 px, 22 KB at 960 px",
+   "how": "sharp in memory: resize and WebP at quality 78 (480) and 80; nothing written"
+  },
+  {
+   "name": "Public files' cache lifetime",
+   "value": "Cache-Control: public, max-age=0 for /flags/no.svg and /demo/themes/botanica/paper.webp",
+   "how": "curl -I against the local production server; Next's public-folder guide says the same"
+  },
+  {
+   "name": "Fonts in production",
+   "value": "163 font files, 5.7 MB, as bytea in Postgres; the stylesheet query ran 42,211 times in 78 days (cold instances, deploys and the team's testing, not shoppers)",
+   "how": "/tmp/claude-0/-home-user-kaizen-store/875cb21b-0ebd-5663-b7c0-2d04a7548e24/scratchpad/m/prod-db-stats.md lines 31 and 107"
+  },
+  {
+   "name": "Instruction and decision files",
+   "value": "docs/decisions.md 1,330,879 bytes in 931 lines, longest line 17,985 characters; CLAUDE.md 43,361 bytes in 448 lines",
+   "how": "wc -c, wc -l, awk (re-run)"
+  },
+  {
+   "name": "supabase/",
+   "value": "archive 4.6 MB, migrations 6.7 MB (four baseline files and one 2.7 MB snapshot kept out of Vercel by .vercelignore), seed.sql 29 KB",
+   "how": "du -sb (re-run)"
+  }
+ ],
+ "clean": [
+  "public/: all 150 files are referenced (second check, by name). Nothing dead.",
+  "Pictures: each upload is two files made in the browser, stored once under a random name with a one-year cache (/home/user/kaizen-store/src/server/media.ts:80). Nothing is resized on the server per request; sharp's 43 calls are all inside functions for jobs, imports and admin or AI tools (every call site read in this pass: all are in async functions).",
+  "Chromium (70.1 MB) is traced only into the routes that launch it and is loaded by dynamic import (/home/user/kaizen-store/src/server/browser.ts:11-15); a test holds the list.",
+  "The taxonomy's loader is lazy: each file is read once per instance, only when a product has a standard category or a listing has attribute facets (/home/user/kaizen-store/src/server/product-taxonomy.ts:40-52). A store that does not use standard categories pays nothing at run time.",
+  "Fonts: files are named by content hash with a one-year immutable browser cache; the stylesheet is kept a year at the CDN. 5.7 MB in Postgres is small. The one gap is AS-9.",
+  "Share pictures (og.png) are fallbacks and are kept a day at the CDN with a week of stale-while-revalidate (/home/user/kaizen-store/src/lib/share-card.tsx:30). Review pictures are kept five minutes on purpose: a picture can be withdrawn (/home/user/kaizen-store/src/app/api/reviews/picture/[id]/route.ts:26).",
+  "supabase/: snapshots pruned to one (D532) and 789 migrations squashed to four files (D572) this week. The archive (4.6 MB) costs nothing at run time.",
+  "scripts/: 27 top-level scripts, 0.5 MB with their helpers; each is named by package.json, CI, a test or a doc (counted by name in this pass; one load script only by its folder). wordpress-plugin/, shopify/, e2e-live/ and test/ are small and in use.",
+  "WordPress zips: 12 files, 0.63 MB, static; a written rule keeps every version downloadable (docs/wordpress-plugin.md:125).",
+  "Theme art: 88 WebP files are seeds; a store's copy is made inside Storage, not uploaded again. No function carries them except the four routes that read public/ by a computed path.",
+  "content/: 168 Markdown files, 0.9 MB, traced into 22 routes only.",
+  "Traces by package: nothing heavy beyond the build's own chunks, sharp and the taxonomy rides in the common trace (largest other package 0.9 MB).",
+  ".vercelignore keeps only the Drizzle snapshot out of the build. Docs (10.5 MB), e2e and the migration archive are uploaded and not needed: about 17 MB of text per build, not worth a change.",
+  "Heavy browser files (the AVIF encoder 3.5 MB, the 3D decoders, the video encoder) are separate static files loaded on the press that needs them.",
+  "Under the owner's clarification: nothing in this dimension argues from a feature being unused. Every cost below is paid whether or not a store uses the feature behind it, or grows with shoppers."
+ ],
+ "refuted": [],
+ "findings": [
+  {
+   "id": "AS-1",
+   "title": "The image library (sharp, 19.8 MB) is in 742 of 832 route traces and the proxy's, and loads when the proxy or a route as plain as robots.txt starts",
+   "kind": "eager",
+   "where": [
+    "/home/user/kaizen-store/src/server/ai-picture-marks.ts:4",
+    "/home/user/kaizen-store/src/server/ai-pictures.ts:3",
+    "/home/user/kaizen-store/src/server/ai-vision.ts:3",
+    "/home/user/kaizen-store/src/server/brand-marks.ts:3",
+    "/home/user/kaizen-store/src/server/content-packs.ts:7",
+    "/home/user/kaizen-store/src/server/page-looks.ts:4",
+    "/home/user/kaizen-store/src/server/picture-editor.ts:3",
+    "/home/user/kaizen-store/src/server/product-import.ts:6",
+    "/home/user/kaizen-store/src/server/replicate-images.ts:3",
+    "/home/user/kaizen-store/src/server/replicate.ts:6",
+    "/home/user/kaizen-store/src/server/theme-highlights.ts:3",
+    "/home/user/kaizen-store/src/server/theme-shot-files.ts:3",
+    "/home/user/kaizen-store/src/proxy.ts:11",
+    "/home/user/kaizen-store/src/server/house-switch.ts:15",
+    "/home/user/kaizen-store/src/server/browser.ts:11",
+    "/home/user/kaizen-store/eslint.config.mjs:5",
+    "/home/user/kaizen-store/.next/server/middleware.js.nft.json",
+    "/home/user/kaizen-store/.next/server/app/robots.txt/route.js.nft.json"
+   ],
+   "evidence": "Twelve server modules import sharp at the top of the file; rg finds 43 calls in them, and I read each: every one is inside an async function, none at module top level. The proxy reaches seven of the twelve by static imports (graph re-run: proxy.ts:11 -> house-switch.ts -> pages.ts -> visibility.ts -> customers.ts -> privacy-erasure.ts -> data-jobs.ts -> api-uploads.ts -> ai-pictures.ts is the shortest chain). In the finished build 742 of 832 traces list libvips (19.81 MB each; trace script re-run), the proxy's trace is 47.9 MB. The second check loaded the built proxy bundle and the robots.txt route in bare node and found libvips-cpp.so and sharp's addon mapped into the process once their async modules settled. My runs: the proxy bundle takes 0.92 to 1.00 s and +197 MB RSS; sharp alone 50 to 57 ms and 22.1 to 22.7 MB at load 2.8 (35 to 41 ms at low load in the second check). No storefront page draws with sharp.",
+   "cost": "At start: 35 to 57 ms and 22.5 MB RSS to load it, about 4% of the proxy's 0.9 s start and 11% of its 196 MB. On disk: 19.8 MB in 742 of 832 traces (38% of the storefront home's 51.9 MB, 41% of the proxy's 47.9 MB); Vercel packs routes into fewer functions than there are traces, so the copies are fewer than 742.",
+   "who_pays": "Every visitor whose request meets a cold instance (the proxy runs before every storefront and site page, prerendered ones too), and the server in memory per instance. A store that never makes or edits a picture pays the same. Cold instances come with every deploy and every extra instance at a peak, so this stays after opening.",
+   "fix_steps": [
+    "1. New file src/server/sharp.ts: import \"server-only\"; import type sharp from \"sharp\"; export type { Sharp, OverlayOptions } from \"sharp\"; export function loadSharp() that keeps one promise of (await import(\"sharp\")).default and returns it, as src/server/browser.ts does for Chromium.",
+    "2. In the twelve modules, replace the value import with import { loadSharp } from \"./sharp\" (plus type Sharp in ai-pictures.ts and theme-shot-files.ts, type OverlayOptions in theme-highlights.ts) and add const sharp = await loadSharp(); as the first line of each function that calls it: ai-picture-marks.ts markFile; ai-pictures.ts shrinkPicture and testPicture; ai-vision.ts challengePicture; brand-marks.ts png; content-packs.ts storeArtPicture; page-looks.ts forModel; picture-editor.ts editLibraryPicture; product-import.ts pictureToLibrary; replicate-images.ts rasterOf, previewJpeg, stretch, pairImage, slices, pictureKind and asPng; replicate.ts stepOpen and the crop helper inside startBackdrops; theme-highlights.ts backdrop, shadow, screen, encode, devices, collage and closeup; theme-shot-files.ts fitted, cut and pictureIsBlank. All are async already, so no signature changes.",
+    "3. eslint.config.mjs: a block for src/**/*.{ts,tsx} (ignoring src/server/sharp.ts and test files) with @typescript-eslint/no-restricted-imports naming sharp, allowTypeImports true, and a message that points to loadSharp(). This is the first rule of code review step 4.1.",
+    "4. Check on the build: load .next/server/middleware.js and .next/server/app/robots.txt/route.js in bare node, await their exports and read /proc/self/maps (the review's script work/assets/load-proxy3.cjs; make it scripts/trace-sizes.mjs --cold from AS-3). libvips must not be mapped.",
+    "5. Later, with the import cycle work (server-graph SG-1 and SG-2, tests-ci TC-2): once src/proxy.ts and the storefront entries no longer reach the twelve modules, sharp leaves their traces (19.8 MB each). AS-3's count of traces with sharp (742) is the number to drive down."
+   ],
+   "tests_and_rules": [
+    "The twelve modules' tests must pass unchanged; they import sharp themselves to make fixtures, which stays allowed in tests: src/server/theme-highlights.test.ts, theme-shot-files.test.ts, ai-pictures.test.ts, ai-picture-marks.int.test.ts, brand-marks.int.test.ts, picture-editor.int.test.ts, product-import.int.test.ts, replicate.int.test.ts, replicate-revert.int.test.ts, theme-shots.int.test.ts, ai.int.test.ts, woocommerce-mover.int.test.ts.",
+    "e2e/page-look.spec.ts, e2e/theme-shots.spec.ts and e2e/replicate*.spec.ts exercise the picture work end to end.",
+    "No written rule names sharp. Add one line to docs/performance.md: a heavy native package is loaded where it is used (loadSharp(), launchBrowser()).",
+    "docs/audits/code-review-2026-11.md: note the first lint rule under step 4.1."
+   ],
+   "depends_on": [
+    "AS-3 (for the count that step 5 drives down)",
+    "server-graph SG-1/SG-2 or tests-ci TC-2 (the import cycle) for step 5 only"
+   ],
+   "done_when": "After a build, loading .next/server/middleware.js in bare node and awaiting its exports maps no libvips (today /proc/self/maps lists libvips-cpp.so), and pnpm lint fails on a new value import of sharp in src outside src/server/sharp.ts.",
+   "saving": "Steps 1 to 4: 35 to 57 ms and 22.5 MB RSS less at each cold start of the proxy and of any function whose first route reaches an importer (measured in bare node here for the proxy and robots.txt; an estimate for Vercel). Step 5: 19.8 MB less in each trace that no longer reaches sharp.",
+   "effort": "S",
+   "risk": "Low. The first picture job on an instance pays the load instead. A missed call site cannot slip through: without the import, sharp is not in scope and the type check fails (CI's static job and the quick gate both run it).",
+   "confidence": "high",
+   "priority": "P1",
+   "already_tracked": "no. Nearest: code review step 4.1 (lint rules, Open) and step 3.13 (domain folders, Open). None names sharp.",
+   "owner_decision": false,
+   "verdict": "corrected",
+   "notes": "The same finding as deps DP-2 (which adds opentype.js, loaded the same way), server-graph SG-7 and functions FN-9: do it once. Small in time (about 4% of the proxy's start) but safe, and the lint rule is the first of the boundary rules. I did not propose excluding sharp from storefront traces with outputFileTracingExcludes: a route that then called it would fail only in production."
+  },
+  {
+   "id": "AS-2",
+   "title": "The product taxonomy (13.3 MB of JSON) is traced into every route, the proxy and the health check included",
+   "kind": "oversize",
+   "where": [
+    "/home/user/kaizen-store/next.config.ts:69",
+    "/home/user/kaizen-store/src/server/product-taxonomy.ts:25",
+    "/home/user/kaizen-store/src/server/catalog.ts:548",
+    "/home/user/kaizen-store/src/server/listing.ts:575",
+    "/home/user/kaizen-store/src/server/redirect-resolve.ts:19",
+    "/home/user/kaizen-store/src/lib/chromium-trace.test.ts:8",
+    "/home/user/kaizen-store/node_modules/next/dist/docs/01-app/03-api-reference/05-config/01-next-config-js/output.md:93"
+   ],
+   "evidence": "next.config.ts:69 traces src/data/product-taxonomy/* into the key \"/**\"; its comment gives the reason (the editor, imports, listings, feeds and the AI manager's tools all read it). Re-run: 831 of 832 traces list it, 13.28 MB each; /api/health's trace is 16.2 MB, of which 13.3 MB is the taxonomy. The loader is lazy (product-taxonomy.ts:40-52). By static imports 740 of 828 entries reach the loader (graph re-run), the proxy among them through redirect-resolve.ts:19 -> catalog.ts, so narrowing the key today frees 88 entries, and they are the smallest traces.",
+   "cost": "13.3 MB (4.1 MB zipped) in every trace. Its effect on cold-start time was not measured: Vercel packs routes into shared functions and zips them. When read: 21 ms and 11.3 MB of heap for the structure, 8 to 10 ms and 4.7 to 6.5 MB per language, once per instance (second check).",
+   "who_pays": "The server: the size of every function. No store pays at run time for a taxonomy it does not use.",
+   "fix_steps": [
+    "1. Now: nothing. Keep the lazy loader and the files, and let AS-3's report show the count (831).",
+    "2. When the import cycle is cut (server-graph SG-1) and the entries that cannot reach src/server/product-taxonomy.ts are many more than today's 88: first add a scan test built like src/lib/chromium-trace.test.ts on the shared import walker of AS-3: every page.tsx and route.ts whose static or dynamic imports reach product-taxonomy.ts must match a key in next.config.ts that lists src/data/product-taxonomy/*.",
+    "3. Then replace \"/**\" at next.config.ts:69 with globs for the route families that still reach the loader (the admin's store routes, the storefront's product and listing pages, feeds, the Admin API, the crons that run imports and feeds), and keep the comment's reason.",
+    "4. Read the new count from scripts/trace-sizes.mjs and lower its budget."
+   ],
+   "tests_and_rules": [
+    "The comment at next.config.ts:67-68 is the written reason; the scan test keeps it true route by route.",
+    "src/lib/chromium-trace.test.ts is the pattern.",
+    "Tests of the loader (src/server/product-taxonomy*.test.ts, src/lib/product-taxonomy.test.ts) are not touched."
+   ],
+   "depends_on": [
+    "AS-3",
+    "server-graph SG-1 (the import cycle)"
+   ],
+   "done_when": "scripts/trace-sizes.mjs reports the taxonomy in fewer than 831 traces, and the scan test passes: every entry that can reach product-taxonomy.ts is covered by a key.",
+   "saving": "13.3 MB per trace that can never read it: about 90 today, more once the cycle is cut. Nothing at run time: it is already lazy.",
+   "effort": "M",
+   "risk": "A route left out of the globs fails in production with a missing file the first time it reads the taxonomy, so the scan test must exist before the key narrows.",
+   "confidence": "medium",
+   "priority": "P3",
+   "already_tracked": "no",
+   "owner_decision": false,
+   "verdict": "corrected",
+   "notes": "P3 because its cost on anything a person feels is unmeasured, the saving today is in the 90 smallest traces, and it depends on the boundary work. Not worth doing: compressing the files on disk (9.2 MB less per trace, but a gunzip per read and no change to the zipped upload), or moving them into Postgres (the read is already once per instance). The run-time side (a shopper's product page with a standard category parses three files, about 40 ms and 22.6 MB once per instance) is functions FN-8; if that is planned, save the category's path and Google id with the product when the owner saves it, so a shopper's function never opens the files. Same as server-graph SG-13."
+  },
+  {
+   "id": "AS-3",
+   "title": "Nothing checks what a server function carries or what the proxy imports",
+   "kind": "process",
+   "where": [
+    "/home/user/kaizen-store/src/lib/storefront-bundle.scan.test.ts:5",
+    "/home/user/kaizen-store/src/lib/chromium-trace.test.ts:8",
+    "/home/user/kaizen-store/src/server/ratchet.scan.test.ts:1",
+    "/home/user/kaizen-store/scripts/ratchet.mjs:1",
+    "/home/user/kaizen-store/next.config.ts:51",
+    "/home/user/kaizen-store/src/proxy.ts:11",
+    "/home/user/kaizen-store/src/server/content-packs.ts:112",
+    "/home/user/kaizen-store/.github/workflows/ci.yml:152",
+    "/tmp/claude-0/-home-user-kaizen-store/875cb21b-0ebd-5663-b7c0-2d04a7548e24/scratchpad/work/as-plan/nft.mjs",
+    "/tmp/claude-0/-home-user-kaizen-store/875cb21b-0ebd-5663-b7c0-2d04a7548e24/scratchpad/work/as-plan/pkgs.mjs",
+    "/tmp/claude-0/-home-user-kaizen-store/875cb21b-0ebd-5663-b7c0-2d04a7548e24/scratchpad/work/as-plan/graph.mjs"
+   ],
+   "evidence": "The browser's scripts have an import walk and byte budgets. The server side has only the Chromium list: no test, script or CI step reads a .nft.json, and nothing limits what src/proxy.ts may import (second check; I re-ran its graph: the proxy reaches 1,309 of 4,126 source files, and still 1,309 with the two cache-tag imports cut). The review's own scripts sum all 832 traces by route and by package in 1.7 s. That report is how I found, in this pass, that four routes carry every file of public/ (5.6 MB) because content-packs.ts:112 reads a file under public by a computed path: harmless, and invisible without the report.",
+   "cost": "No direct cost. It is why 33 MB of the median trace's 52.6 MB is two assets most routes never use, why the proxy loads 13 MB of code before every page, and why nothing stops the next one.",
+   "who_pays": "Every visitor (cold starts of the proxy and of pages) and the build, later.",
+   "fix_steps": [
+    "1. New script scripts/trace-sizes.mjs (plain node, no dependency), from /tmp/claude-0/-home-user-kaizen-store/875cb21b-0ebd-5663-b7c0-2d04a7548e24/scratchpad/work/as-plan/nft.mjs and pkgs.mjs: walk .next/server for *.nft.json, resolve each listed file, sum by route and by package. Print the median trace, the proxy's (middleware.js.nft.json), the storefront home's, the storefront checkout's and /api/health's, the number of traces that carry sharp, the taxonomy, Chromium, react-dom, public/ and any .map, and the 15 heaviest packages by bytes times traces.",
+    "2. scripts/trace-budgets.json with today's numbers plus 4% (the room the admin's script budgets use): median 52.6 MB, proxy 47.9 MB, storefront home 51.9 MB, storefront checkout 52.4 MB, /api/health 16.2 MB; and counts that may only fall: sharp 742, taxonomy 831, Chromium's package 12, react-dom 4, public/ 4, maps 0. With --check the script exits 1 when a size is over its budget or a count is over its number.",
+    "3. .github/workflows/ci.yml, job e2e, after 'pnpm build' (line 152): node scripts/trace-sizes.mjs --check >> \"$GITHUB_STEP_SUMMARY\".",
+    "4. The proxy's reach as a ratchet: move the import walk of src/lib/storefront-bundle.scan.test.ts into scripts/lib/import-walk.mjs (one walker for both; tests-ci TC-10 asks for that), and in scripts/lib/ratchet-count.mjs add proxyReach (files src/proxy.ts reaches by static value imports, 1,309 today) and proxyBanned (which modules of a ban list it reaches today: the sharp importers, src/server/product-taxonomy.ts, product-import.ts, theme-store.ts, theme-shots.ts). src/server/ratchet.scan.test.ts fails when the number rises or a banned module not in the baseline appears; node scripts/ratchet.mjs lowers the baseline.",
+    "5. docs/performance.md: a section 'What a server function carries' with the numbers and the two checks; docs/ci-migrations.md: the new CI step; the code review's Progress table: a note under step 4.1."
+   ],
+   "tests_and_rules": [
+    "src/server/ratchet.scan.test.ts and src/server/ratchet.baseline.json: two new keys; scripts/ratchet.mjs refuses to raise a number, as for the others.",
+    "src/lib/storefront-bundle.scan.test.ts: its walk moves to a shared file; what it tests does not change.",
+    "src/lib/chromium-trace.test.ts stays as it is.",
+    "A unit test for the script's summing on a small fixture folder (scripts/lib/*.test or src/lib/trace-sizes.test.ts).",
+    "CLAUDE.md, Conventions (the ratchet paragraph): name the two new counts."
+   ],
+   "depends_on": [],
+   "done_when": "CI's e2e job summary shows the trace table for a push, and adding import \"@/server/product-import\" to src/proxy.ts locally makes pnpm test fail in ratchet.scan.test.ts.",
+   "saving": "None by itself. It holds every later gain and gives AS-1, AS-2 and the server-graph work a number that can only fall.",
+   "effort": "S",
+   "risk": "Low. The ratchets start at today's numbers, so nothing fails on day one. Trace sizes move a little with dependency updates, hence the 4% room.",
+   "confidence": "high",
+   "priority": "P0",
+   "already_tracked": "Partly: code review step 4.1 'Lint rules for the boundaries' (FH7, FH8), Open; step 3.13 'Domain folders', Open. Neither measures a function or the proxy.",
+   "owner_decision": false,
+   "verdict": "confirmed",
+   "notes": "The same gap as deps DP-6, server-graph SG-14, functions FN-7 and storefront-data SD-13 of this review: build it once. Before opening is the cheap time for the boundary work it guards, because every new feature adds to the tangle."
+  },
+  {
+   "id": "AS-4",
+   "title": "Search suggestions ask Next's image service for uploaded pictures and get a 400, so real stores will show empty thumbnails; the service itself is open and unused",
+   "kind": "dead",
+   "where": [
+    "/home/user/kaizen-store/src/components/search-box.tsx:144",
+    "/home/user/kaizen-store/src/lib/picture-sizes.ts:6",
+    "/home/user/kaizen-store/src/server/media.ts:93",
+    "/home/user/kaizen-store/src/server/search.ts:376",
+    "/home/user/kaizen-store/src/server/catalog.ts:298",
+    "/home/user/kaizen-store/next.config.ts:41",
+    "/home/user/kaizen-store/.next/images-manifest.json",
+    "/home/user/kaizen-store/node_modules/next/dist/server/next-server.js:193",
+    "/home/user/kaizen-store/node_modules/next/dist/shared/lib/get-img-props.js:242",
+    "/home/user/kaizen-store/node_modules/next/dist/docs/01-app/03-api-reference/02-components/image.md:392"
+   ],
+   "evidence": "Ten next/image tags; nine carry unoptimized, as picture-sizes.ts:6 says they must; the one in the search box does not (re-counted with rg). Stored pictures have absolute Supabase Storage addresses (media.ts:93); next.config.ts has no images key, and the build's manifest shows remotePatterns [] and unoptimized false. Measured on the built app in this pass: /_next/image?url=<a Supabase Storage picture address>&w=48&q=75 answers 400 with '\"url\" parameter is not allowed'. The same endpoint with /demo/themes/orbit/stars.webp and w=64 answers 200 with an image: the resizing service is live although no picture is meant to use it. Next leaves .svg sources alone (get-img-props.js:245) and the demo products' pictures are SVG files, so neither the e2e search test nor the team's demo stores show the fault. With images.unoptimized set, Next treats every Image as unoptimized (get-img-props.js:242) and answers /_next/image with 404 (next-server.js:193).",
+   "cost": "One failed request per suggested product with an uploaded picture, up to six each time the list is drawn (search.ts:376), and an empty thumbnail. On Vercel an open /_next/image is also a billed transformation per distinct file, width and quality; only the 150 files of public/ can be asked for, so that exposure is small.",
+   "who_pays": "A shopper's browser and Vercel's image endpoint, in every store whose products have uploaded photographs: every real store, from its first day.",
+   "fix_steps": [
+    "1. next.config.ts: add images: { unoptimized: true } to nextConfig, beside poweredByHeader. Every Image is then served as stored, the search box included, and /_next/image answers 404.",
+    "2. src/components/search-box.tsx:144: add unoptimized to the tag, as the other nine have, so the tag is right whatever the config says.",
+    "3. A ten-line unit test beside src/lib/chromium-trace.test.ts that reads next.config.ts and expects the text images: { unoptimized: true }, with the reason in its comment (pictures are never resized on the server, D336).",
+    "4. e2e/search.spec.ts, in 'a shopper searches from the header': give the demo mug a picture row whose address ends in .webp (insert into commerce.product_media as e2e/performance.spec.ts:100 inserts a media row), type 'kera', and expect the option's img src not to start with /_next/image.",
+    "5. docs/performance.md, under the rules: 'Pictures are never resized on the server: images.unoptimized is on, so /_next/image does not exist.'"
+   ],
+   "tests_and_rules": [
+    "src/lib/picture-sizes.ts:6 states the rule already ('the pictures stay unoptimized').",
+    "e2e/search.spec.ts:27 (suggestions) passes today only because the demo pictures are SVG.",
+    "src/lib/store-address.test.ts:228 lists /_next/image among the paths the proxy leaves alone: unchanged.",
+    "e2e/performance.spec.ts (picture budgets): unchanged."
+   ],
+   "depends_on": [],
+   "done_when": "On the built app, curl -s -o /dev/null -w '%{http_code}' 'http://localhost:3000/_next/image?url=%2Fdemo%2Fthemes%2Forbit%2Fstars.webp&w=64&q=75' prints 404 (200 today), and the new assertion in e2e/search.spec.ts passes.",
+   "saving": "Working thumbnails in every store with uploaded photographs, up to six failed requests less per suggestion list, and one public resizing endpoint closed.",
+   "effort": "S",
+   "risk": "None found: all ten tags are meant to be unoptimized and no code calls /_next/image (rg over src and e2e). A later feature that wants Next's resizing must change this line knowingly.",
+   "confidence": "high",
+   "priority": "P0",
+   "already_tracked": "no",
+   "owner_decision": false,
+   "verdict": "confirmed",
+   "notes": "A bug more than bloat: do it before opening. I changed the fix from 'a scan test that every tag carries the prop' to the one config line, which makes the mistake impossible and closes the unused endpoint as well."
+  },
+  {
+   "id": "AS-5",
+   "title": "Flags are downloaded even while the switcher hides them, public files have no cache lifetime, and six flags and two textures are far bigger than their job",
+   "kind": "eager",
+   "where": [
+    "/home/user/kaizen-store/src/components/language-links.tsx:72",
+    "/home/user/kaizen-store/src/lib/part-css.ts:706",
+    "/home/user/kaizen-store/src/lib/language-switch.test.ts:14",
+    "/home/user/kaizen-store/src/lib/language-switch.test.ts:83",
+    "/home/user/kaizen-store/src/lib/language-flags.ts:29",
+    "/home/user/kaizen-store/next.config.ts:106",
+    "/home/user/kaizen-store/node_modules/next/dist/docs/01-app/03-api-reference/03-file-conventions/public-folder.md",
+    "/home/user/kaizen-store/node_modules/next/dist/compiled/send/index.js",
+    "/home/user/kaizen-store/public/flags/es.svg",
+    "/home/user/kaizen-store/public/flags/hr.svg",
+    "/home/user/kaizen-store/src/lib/signature/botanica.ts:549",
+    "/home/user/kaizen-store/src/lib/signature/botanica.ts:565",
+    "/home/user/kaizen-store/src/lib/signature/atelier.ts:615",
+    "/home/user/kaizen-store/scripts/theme-art.mjs:1",
+    "/tmp/claude-0/-home-user-kaizen-store/875cb21b-0ebd-5663-b7c0-2d04a7548e24/scratchpad/work/as-plan/lazy-test.cjs"
+   ],
+   "evidence": "1. The switcher draws an <img> per language's flag in its list and its menu (language-links.tsx:72) with no loading attribute; flags are off by default (language-switch.test.ts:14) and hidden with display:none (part-css.ts:706). Measured in headless Chromium 153: an image hidden with display:none, on itself or a parent, or inside a closed <details>, is fetched at page load; with loading=lazy it is not, and it is fetched when the <details> opens. 2. The built app answers /flags/no.svg and /demo/themes/botanica/paper.webp with 'Cache-Control: public, max-age=0' (curl -I), as Next's guide says; next.config.ts adds no cache rule. 3. Six flags are 165 of the folder's 176 KB (es 88.9 KB, hr 40.4 KB; 39.8 KB together as brotli); they are drawn at 20 by 15 pixels. As 60 by 45 pixel WebP files they are 0.3 to 0.8 KB each, 3.0 KB together (made in memory with sharp). 4. Four signature themes' stylesheets load six files from public/: Botanica's 512 px paper tile is 114 KB and its 900 px sprig, drawn at 260 CSS pixels, 65 KB; Atelier's paper 67 KB. Re-encoded in memory: Botanica's paper 34 KB at 256 px, its sprig 26 KB at 520 px, Atelier's paper 18 KB at 256 px; a lower quality at the same size saves little (114 to 98 KB) because paper grain does not compress.",
+   "cost": "Per full page load (first view, reload, new tab; not an in-site navigation): one request per language's flag, shown or not, and one conditional request per public file already held. Up to 13 KB per heavy flag on a first view, and 179 KB of decoration on a first view of a Botanica store.",
+   "who_pays": "A shopper's browser, in every store with more than one language and every store on a signature theme. It grows with shoppers.",
+   "fix_steps": [
+    "1. src/components/language-links.tsx:72: add loading=\"lazy\" to the flag <img>. A hidden flag is then never fetched; one in a closed menu is fetched when the menu opens.",
+    "2. next.config.ts headers(): add { source: \"/:folder(flags|demo|kaizen)/:path*\", headers: [{ key: \"Cache-Control\", value: \"public, max-age=86400\" }] }. Next's own server sets its default only when no Cache-Control is set yet (next/dist/compiled/send/index.js checks getHeader first), and Vercel applies configured headers to static files. Keep the rule as a small exported constant in src/lib/csp.ts beside baseRouteHeaders() so a unit test can hold it.",
+    "3. Flags: make public/flags/{es,hr,mt,li,pt,cy}.webp at 60 by 45 pixels from the SVGs (a one-off with sharp), delete those six SVGs, and let flagOf() in src/lib/language-flags.ts answer .webp for those six countries. Show the owner the switcher before and after at 1x and 3x.",
+    "4. Theme backgrounds: in scripts/theme-art/botanica.js draw sprig at 520 px, and try paper at 256 px there and in scripts/theme-art/atelier.js; run node scripts/theme-art.mjs botanica paper sprig (and atelier paper); show the owner each home page before and after and keep only what looks the same."
+   ],
+   "tests_and_rules": [
+    "src/lib/language-switch.test.ts:83-86 (a file for every flag it names): read both extensions.",
+    "src/lib/language-switch.test.ts:72-77 (flagOf's answers): none of the six heavy flags is asserted today.",
+    "e2e/language-switcher.spec.ts:93 (a shown flag is visible): a lazy image keeps its box, so it passes.",
+    "src/lib/csp.test.ts if the header rule lives in csp.ts; one e2e request for /flags/no.svg expecting max-age=86400.",
+    "public/flags/LICENSE.txt stays (MIT; derived files are allowed).",
+    "docs/signature-themes.md: art is drawn from recipes in scripts/theme-art, so the recipe changes, not the file by hand."
+   ],
+   "depends_on": [],
+   "done_when": "On a store page with the Languages part and flags off, the browser's request log has no request under /flags/ (one per language today); curl -sI /flags/no.svg shows max-age=86400; du -cb public/flags/* is under 20 KB (176 KB today).",
+   "saving": "Step 1: one request per language per full page load in a store that does not show flags (most are 0.2 KB; Spanish and Croatian 13 KB each). Step 2: estimate of two to six conditional requests less per repeat load within a day. Step 3: 13 KB per Spanish or Croatian flag on a first view. Step 4: estimate of 119 KB on Botanica's first view and 49 KB on Atelier's, if the smaller tiles pass the owner's eye.",
+   "effort": "S",
+   "risk": "Step 2: a file changed under the same name stays up to a day in browsers; theme art takes a new name when it changes. Step 3: nothing visible at 20 by 15 pixels. Step 4 changes how a theme looks: a half-size paper tile has coarser grain, so it needs the owner's eye.",
+   "confidence": "medium",
+   "priority": "P2",
+   "already_tracked": "no",
+   "owner_decision": false,
+   "verdict": "corrected",
+   "notes": "Steps 1 and 2 are one line each; do them with the next change to the switcher or to next.config.ts. I changed step 3 from simplified drawings to small raster copies: same look, no flag loses its arms."
+  },
+  {
+   "id": "AS-6",
+   "title": "The PDF routes carry all of react-dom (8.1 MB) to use two server builds of it",
+   "kind": "oversize",
+   "where": [
+    "/home/user/kaizen-store/next.config.ts:23",
+    "/home/user/kaizen-store/src/server/document-html.tsx:18",
+    "/home/user/kaizen-store/src/server/document-readers.test.ts:1",
+    "/home/user/kaizen-store/node_modules/.pnpm/react-dom@19.3.1_react@19.3.1/node_modules/react-dom/server.node.js"
+   ],
+   "evidence": "DOCUMENT_PDF_FILES traces react-dom/** whole (next.config.ts:23). Re-run: four traces carry it, 8.07 MB each; the trace of /api/cron/document-pdfs is 106.8 MB. document-html.tsx loads react-dom/server through Node at run time (lines 18-22). In production server.node.js requires react-dom-server-legacy.node.production.js (0.26 MB) and react-dom-server.node.production.js (0.30 MB); both require react and react-dom, whose index.js requires cjs/react-dom.production.js (7 KB). The rest of the folder is development, profiling, browser, edge and bun builds.",
+   "cost": "About 7.5 MB on each of four traces of 106.8 to 139.8 MB. No effect on anything a person feels was measured.",
+   "who_pays": "The server (the size of the PDF functions).",
+   "fix_steps": [
+    "1. next.config.ts:23: replace the react-dom/** glob with two: .../react-dom/{package.json,index.js,server.js,server.node.js} and .../react-dom/cjs/{react-dom.production,react-dom-server.node.production,react-dom-server-legacy.node.production}.js.",
+    "2. src/lib/chromium-trace.test.ts (or src/server/document-readers.test.ts): expect next.config.ts to name those files, with why.",
+    "3. Before production: download one invoice PDF from a preview deployment of the commit, through the hosted page's route and the admin's, because a missing file shows only on Vercel."
+   ],
+   "tests_and_rules": [
+    "next.config.ts:19-20 (the comment on why react-dom is traced).",
+    "e2e/invoices.spec.ts:117 downloads F-1.pdf on the built app; it runs from node_modules whole, so it cannot catch a missing traced file.",
+    "src/server/document-readers.test.ts holds who may use invoice-pdf.ts."
+   ],
+   "depends_on": [
+    "AS-3 (to read the number)"
+   ],
+   "done_when": "scripts/trace-sizes.mjs shows react-dom at about 0.6 MB in its four traces (8.07 MB today), and an invoice PDF downloads from a preview deployment.",
+   "saving": "About 7.5 MB per PDF trace (estimate from file sizes), 5 to 7% of those traces.",
+   "effort": "S",
+   "risk": "A missed file breaks invoice PDFs in production only, and no local test can see it.",
+   "confidence": "medium",
+   "priority": "P3",
+   "already_tracked": "no",
+   "owner_decision": false,
+   "verdict": "confirmed",
+   "notes": "P3: the gain is a few percent of the four largest traces and nothing a person feels; the risk is invoices failing in production. Do it only if a function nears Vercel's size limit."
+  },
+  {
+   "id": "AS-7",
+   "title": "Tailwind reads 22.5 MB that adds nothing to the CSS today: the test files and the migrations' SQL",
+   "kind": "dead",
+   "where": [
+    "/home/user/kaizen-store/src/app/globals.css:7",
+    "/home/user/kaizen-store/src/app/globals.css:9",
+    "/home/user/kaizen-store/docs/build-memory.md:34",
+    "/home/user/kaizen-store/docs/decisions.md:719"
+   ],
+   "evidence": "globals.css points Tailwind at all of src except data (lines 7-8) and at supabase/migrations/*.sql (line 9); D378 chose both. The second check compared the built CSS's 1,833 class names with the code, the tests and the SQL: none exists only in the SQL, ten only in tests. The css dimension's second check (CS-6) ran Tailwind's scanner with and without these sources: 0.1 to 0.35 s of 0.42 to 0.74 s, and 436 bytes of CSS.",
+   "cost": "22.5 MB of the 61.2 MB Tailwind reads on each build and dev start, 0.1 to 0.35 s (measured by CS-6), and ten stray selectors.",
+   "who_pays": "The build and developers. Small.",
+   "fix_steps": [
+    "1. Do it inside css CS-6, not apart. src/app/globals.css after line 8: @source not \"../**/*.test.ts\"; and @source not \"../**/*.test.tsx\";.",
+    "2. Remove line 9 (the migrations' SQL) only together with a written line in docs/build-memory.md: content seeded by a migration uses classes the code already names. D378 put the SQL in on purpose.",
+    "3. Compare the built stylesheet's class names before and after; only the ten names that tests alone use may go."
+   ],
+   "tests_and_rules": [
+    "docs/build-memory.md:34 and D378 (docs/decisions.md:719).",
+    "CLAUDE.md, Commands: keep Tailwind's @source lines pointed at code, never at data or snapshots.",
+    "No test pins the @source lines (CS-6)."
+   ],
+   "depends_on": [
+    "css CS-6 (the same change)"
+   ],
+   "done_when": "The built stylesheet has the same class names as today minus the ten that only tests name (order-1038, col-1, row-1 and the like), by the comparison script.",
+   "saving": "About a third less text for Tailwind to scan; 0.1 to 0.35 s per build and 436 bytes of CSS (CS-6's measurement).",
+   "effort": "S",
+   "risk": "A class used only inside a future migration's SQL would be lost if line 9 goes; today there is none.",
+   "confidence": "medium",
+   "priority": "P3",
+   "already_tracked": "Partly: code review step 1.8 (FH10), Open; the rule is D378 in docs/build-memory.md. The same finding as css CS-6.",
+   "owner_decision": false,
+   "verdict": "corrected",
+   "notes": "P3 on its own: a fraction of a second per build. Its worth is that a word in a test can no longer change the production stylesheet; CS-6 carries it."
+  },
+  {
+   "id": "AS-8",
+   "title": "The decisions log is one 1.33 MB file and keeps growing; CLAUDE.md is 43 KB in every agent session",
+   "kind": "oversize",
+   "where": [
+    "/home/user/kaizen-store/docs/decisions.md:1",
+    "/home/user/kaizen-store/CLAUDE.md:1",
+    "/home/user/kaizen-store/docs/audits/code-review-2026-11.md:67",
+    "/home/user/kaizen-store/docs/audits/code-review-2026-11.md:254",
+    "/home/user/kaizen-store/src/server/ratchet.scan.test.ts:1"
+   ],
+   "evidence": "Re-measured: docs/decisions.md is 1,330,879 bytes in 931 lines, the longest line 17,985 characters; CLAUDE.md is 43,361 bytes in 448 lines and is loaded into every agent session (this one too). The code review measured 1.24 MB and 39.5 KB on 9 November. The history here is shallow, so growth before 10 November rests on the review's own line 254.",
+   "cost": "Estimate at four characters a token: about 11,000 tokens per session for CLAUDE.md; the decisions log (about 330,000) cannot be opened whole by any session.",
+   "who_pays": "An agent's session.",
+   "fix_steps": [
+    "1. Do code review step 1.10 as this review's docs-context findings DC-1 to DC-3 plan it: one file per hundred decisions with a generated index, migration versions in their own file, CLAUDE.md's feature index moved to the area files. This dimension adds no second plan.",
+    "2. Add the guard here: in scripts/lib/ratchet-count.mjs count the bytes of CLAUDE.md (43,361 today) and the longest line under docs/decisions* (17,985 today); src/server/ratchet.scan.test.ts lets both only fall; node scripts/ratchet.mjs lowers them."
+   ],
+   "tests_and_rules": [
+    "The test that makes each new feature add a line to CLAUDE.md (docs-context DC-3 names it) changes with step 1, or the ratchet and that test fight.",
+    "CLAUDE.md is the owner's instruction file: its trim is the owner's call (code review open question 5).",
+    "docs/audits/code-review-2026-11.md: set step 1.10 to Done with the date and commit."
+   ],
+   "depends_on": [
+    "docs-context DC-1, DC-2 and DC-3",
+    "code review step 1.10"
+   ],
+   "done_when": "wc -c CLAUDE.md prints under 15,000 and no decisions file is over 200 KB, both held by ratchet.scan.test.ts.",
+   "saving": "About 10,000 tokens per agent session (the code review's estimate).",
+   "effort": "M",
+   "risk": "Low. A rule moved out of CLAUDE.md must still be found when it applies; docs-context plans how.",
+   "confidence": "high",
+   "priority": "P2",
+   "already_tracked": "Yes: FH4 and FH5, code review step 1.10 'Make the written rules cheap to read', Open. Not new.",
+   "owner_decision": false,
+   "verdict": "confirmed",
+   "notes": "A pointer, not a second plan: docs-context owns the fix and the owner's decision on CLAUDE.md. Kept here only so the assets list is complete."
+  },
+  {
+   "id": "AS-9",
+   "title": "The font file route does not tell the CDN to keep the file, unlike the stylesheet route beside it",
+   "kind": "eager",
+   "where": [
+    "/home/user/kaizen-store/src/app/api/fonts/files/[file]/route.ts:16",
+    "/home/user/kaizen-store/src/app/api/fonts/css/[slug]/route.ts:40",
+    "/home/user/kaizen-store/src/server/fonts.ts:185",
+    "/home/user/kaizen-store/e2e/fonts.spec.ts:85",
+    "/home/user/kaizen-store/docs/performance.md:61",
+    "https://vercel.com/docs/caching/cdn-cache (Using Vercel Functions), read 12 November 2026"
+   ],
+   "evidence": "The file route answers with 'public, max-age=31536000, immutable' and no s-maxage (route.ts:16); the stylesheet route sends s-maxage=31536000 as well (css route.ts:40). fontFile() has no cache of its own: each call reads the bytea row (fonts.ts:185-189). The second check could not say whether Vercel keeps a function's answer on max-age alone. Vercel's CDN guide answers it: 'To cache the response of Functions on Vercel's CDN, you must include Cache-Control headers with any of the following directives: s-maxage=N ...'. So as written, each browser that does not hold the file reaches the function and Postgres. Not observed in production (no production access in this review).",
+   "cost": "One function call and one read of about 35 KB of bytea (5.7 MB in 163 files) per font file for every visitor whose browser does not hold it yet: one to a few files per store per new visitor. Not counted in production's statistics, which show no shoppers yet.",
+   "who_pays": "The server per request and the database, growing with new visitors once the platform opens. A returning browser keeps the file for a year either way.",
+   "fix_steps": [
+    "1. src/app/api/fonts/files/[file]/route.ts:16: 'public, max-age=31536000, s-maxage=31536000, immutable'.",
+    "2. e2e/fonts.spec.ts:85: also expect the file's cache-control to contain s-maxage=31536000 (the local server sends the header whole; Vercel takes s-maxage out before the browser sees it).",
+    "3. docs/performance.md:61: 'Font stylesheets and font files are kept for a year, at the CDN too.'",
+    "4. After the deploy: ask production for one font file twice with curl -sI and read x-vercel-cache: MISS, then HIT."
+   ],
+   "tests_and_rules": [
+    "e2e/fonts.spec.ts:83-85 (content type and immutable) stays true.",
+    "src/server/fonts.int.test.ts:73-74 (fontFile) is not touched.",
+    "The route's own comment (route.ts:6-7): a variable family's file may later be cut to its weights and draws the same, so a kept whole file is not wrong."
+   ],
+   "depends_on": [],
+   "done_when": "The second curl -sI of one /api/fonts/files/{name}.woff2 on a production host answers x-vercel-cache: HIT.",
+   "saving": "After the first request per region and deploy, font file requests stop at the CDN: no function call and no database read. The count depends on visitors and is not measurable before opening.",
+   "effort": "S",
+   "risk": "None: the file is named by a hash of its content. Vercel empties its cache of function answers at each deploy, so the first request after a deploy still reaches the function.",
+   "confidence": "medium",
+   "priority": "P0",
+   "already_tracked": "no",
+   "owner_decision": false,
+   "verdict": "confirmed",
+   "notes": "Confidence raised from low to medium on Vercel's own documentation. One line; cheaper to make than to investigate further."
+  },
+  {
+   "id": "AS-10",
+   "title": "The build's page worker runs with source maps on: about 4.7 MB of heap per MB of server code it loads, and 704 MB of maps written that no function carries",
+   "kind": "oversize",
+   "where": [
+    "/home/user/kaizen-store/next.config.ts:39",
+    "/home/user/kaizen-store/next.config.ts:79",
+    "/home/user/kaizen-store/node_modules/next/dist/build/index.js:408",
+    "/home/user/kaizen-store/node_modules/next/dist/lib/worker.js:71",
+    "/home/user/kaizen-store/node_modules/next/dist/docs/01-app/02-guides/memory-usage.md:122",
+    "/home/user/kaizen-store/node_modules/next/dist/server/config-shared.d.ts:873",
+    "/home/user/kaizen-store/node_modules/next/dist/server/config-shared.d.ts:1711",
+    "/home/user/kaizen-store/docs/build-memory.md:24",
+    "/home/user/kaizen-store/docs/build-memory.md:40",
+    "/home/user/kaizen-store/docs/build-memory.md:44",
+    "/home/user/kaizen-store/.next/required-server-files.json",
+    "/tmp/claude-0/-home-user-kaizen-store/875cb21b-0ebd-5663-b7c0-2d04a7548e24/scratchpad/work/as-plan/load-many.cjs"
+   ],
+   "evidence": "The second check counted 704 MB of .map files beside 205 MB of server chunks and none in any trace; I re-counted both. New in this pass, the mechanism: Next makes its one static worker (it collects page data and renders the static pages) with enableSourceMaps: config.enablePrerenderSourceMaps (build/index.js:396-408), and that starts the worker with --enable-source-maps (lib/worker.js:71). The build's settings show enablePrerenderSourceMaps true and no source map setting in next.config.ts. Node then reads the map of every chunk the worker loads. I loaded built entries in one bare node process with and without the flag: 142 entries (1,452 chunks, 106.6 MB of chunk JS): heap 290 MB without, 788 MB with; RSS 372 against 921 MB; 2.9 s against 5.1 s. 43 entries (70.5 MB): heap 214 against 543 MB. The proxy's bundle alone (13.2 MB): heap 78 against 133 MB, three runs each. That is about 4.7 MB of heap per MB of chunk each time. docs/build-memory.md says a worker holds 1.3 to 1.9 GB, the margin under Vercel's 8 GB is about 0.8 GB, and on 11 November a build was killed for memory while collecting page data with one worker. Next's memory guide names switching source maps off as a lever; build-memory.md's list of what was tried does not mention them.",
+   "cost": "On Vercel's build: several hundred MB of the page worker's memory (estimate: up to about 960 MB if it loads all 205 MB of chunks, by the measured ratio; not measured in a build), about 2 s more per 100 MB of chunks loaded, and 704 MB written to disk per build.",
+   "who_pays": "The build on Vercel's 8 GB machine. A build that runs out of memory fails the deploy for every store, and every push to main is a deploy.",
+   "fix_steps": [
+    "1. next.config.ts, in nextConfig: add ...(ON_VERCEL ? { enablePrerenderSourceMaps: false } : {}). It is a top-level key, not under experimental. CI's builds and local builds keep their maps.",
+    "2. Measure it as docs/build-memory.md did: the build with VERCEL=1 under an 8 GB cgroup cap, sampled per process, before and after. Add both peaks as rows of the table in docs/build-memory.md and name the setting under 'What changed'.",
+    "3. A second run by the same method: add turbopackSourceMaps: false to the ON_VERCEL part of experimental (next.config.ts:82). Expect no .map under .next/server (find .next/server -name '*.map' | wc -l prints 0; 704 MB less written). Keep it only if the compile's peak (5.8 GB today) or the build's time falls; record the result either way.",
+    "4. docs/audits/code-review-2026-11.md: note the result under step 1.8 in the Progress table and its change log."
+   ],
+   "tests_and_rules": [
+    "next.config.ts:34-39: 'Each setting that reads this was measured under an 8 GB cap (docs/build-memory.md)': the new settings must be measured the same way before they stay.",
+    "docs/build-memory.md: the lists under 'What changed' and 'Watch'.",
+    "No test, script or CI step reads a source map (rg over src, e2e, scripts and .github). scripts/await-deploy.mjs and scripts/next-build.mjs are not affected.",
+    "CLAUDE.md, Commands: the sentence on Vercel's build (one worker, no Turbopack cache) gains 'no source maps' if the setting stays."
+   ],
+   "depends_on": [],
+   "done_when": "docs/build-memory.md's table has a row for each of the two settings with the build's peak under the 8 GB cap, and the kept setting's peak is below today's 7.2 GB.",
+   "saving": "Not yet measured in a build. Measured mechanism: 4.7 MB of heap per MB of server code a worker loads (+498 MB for 107 MB of chunks). If step 3 stays: 704 MB less written per build.",
+   "effort": "S",
+   "risk": "An error thrown while prerendering on Vercel would show positions in built chunks, not source lines; the same commit's CI build still shows source lines. Production stack traces do not change: no function carries a map today. Both settings are Vercel-only and one line to undo.",
+   "confidence": "medium",
+   "priority": "P0",
+   "already_tracked": "Partly: code review step 1.8 'Give the build room' (FH10), Open. It does not name source maps.",
+   "owner_decision": false,
+   "verdict": "corrected",
+   "notes": "The second check filed this as an unmeasured experiment with low confidence. I measured the mechanism and raised it: the build is at its limit, the change is one line and safe, and a failed deploy is the dearest failure here. The build-wide numbers still need the capped run. If Vercel's Enhanced machine (16 GB) is chosen instead, this still shortens the build."
+  },
+  {
+   "id": "AS-11",
+   "title": "Nothing is kept between 480 and 1600 pixels, so 3x phones and Retina laptops download the 1600 px file for every product tile",
+   "kind": "oversize",
+   "where": [
+    "/home/user/kaizen-store/src/lib/picture-sizes.ts:11",
+    "/home/user/kaizen-store/src/lib/picture-sizes.ts:25",
+    "/home/user/kaizen-store/src/components/product-card.tsx:16",
+    "/home/user/kaizen-store/src/components/product-card.tsx:57",
+    "/home/user/kaizen-store/src/components/sized-picture.tsx:59",
+    "/home/user/kaizen-store/src/components/product-gallery.tsx:12",
+    "/home/user/kaizen-store/src/components/product-gallery.tsx:166",
+    "/home/user/kaizen-store/src/components/content-grid.tsx:343",
+    "/home/user/kaizen-store/src/server/catalog.ts:298",
+    "/home/user/kaizen-store/src/server/listing.ts:59",
+    "/home/user/kaizen-store/src/components/admin/image-upload.tsx:28",
+    "/home/user/kaizen-store/src/server/media.ts:73",
+    "/home/user/kaizen-store/src/server/media-library.ts:120",
+    "/home/user/kaizen-store/e2e/performance.spec.ts:122",
+    "/home/user/kaizen-store/docs/media-compression.md:9",
+    "/tmp/claude-0/-home-user-kaizen-store/875cb21b-0ebd-5663-b7c0-2d04a7548e24/scratchpad/work/as-plan/srcset-test.cjs"
+   ],
+   "evidence": "Added by the completeness check. Every picture is kept as two files, 480 px and at most 1600 px (picture-sizes.ts:11-13), offered to the browser as 'small 480w, large Nw' (line 25). A product tile says it fills half the screen on a phone and a quarter from 768 px (product-card.tsx:16). I served that srcset and sizes to headless Chromium 153 and logged which file it asked for: 390 px wide at 2x takes the 480 file; 390 px at 3x, 360 px at 3x and 412 px at 2.625x take the 1600 file (the tile needs 540 to 585 device pixels, more than 480); 1440 px at 2x, four columns, takes the 1600 file. A full-width picture (the product page's main picture, 100vw under 768 px, product-gallery.tsx:12) takes the 1600 file on every phone tested, though the comment at product-gallery.tsx:166 says 'a phone fetches the small one'. Safari and Firefox were not run. Bytes, from the 24 theme art files at least 1500 px wide: 71 KB on average as stored, 8 KB as a 480 px copy, 18 KB at 800 px (sharp in memory). The speed budget cannot see this: e2e/performance.spec.ts runs at 1x on drawings ('the largest picture about 1 KB', line 122).",
+   "cost": "Per product tile on a 3x phone or a 2x laptop: the whole large file where a file of about 800 px would do, about 53 KB more for the art measured (71 against 18 KB); photographs are heavier. A listing shows up to 48 tiles (listing.ts:59), loaded as they scroll into view. The product page's main picture costs the same on a 2x phone.",
+   "who_pays": "A shopper's browser and data plan, in every store with product pictures, on most current phones. It grows with shoppers, not with what an owner switches on.",
+   "fix_steps": [
+    "1. src/db/schema.ts, table media: add mediumUrl (medium_url) and mediumPath (medium_path), text, nullable; pnpm db:generate. Add only; media is not one of the hot tables.",
+    "2. src/lib/picture-sizes.ts: MEDIUM_COPY_WIDTH = 800; pictureSources() takes an optional medium and writes 'small 480w, medium 800w, large Nw' when there is one and the picture is wider than 800 px.",
+    "3. In the owner's browser: src/components/admin/image-upload.tsx:28 and src/components/admin/media-compress.ts:44 also call compressPicture(file, 800) for a picture wider than 800 px and send it as 'medium'.",
+    "4. Storage: uploadProductImage() in src/server/media.ts takes the optional third file and stores it as {name}-800.{ext} with the same one-year cache; storePicture() in src/server/media-library.ts (line 120) writes medium_url and medium_path and counts the file in storageRefusal(); the library's copy (media-library.ts:266), its delete (716-750) and Compress (src/server/media-compress.ts:161-180) carry the third path.",
+    "5. Pictures the server makes: where a 480 px copy is made with sharp, make the 800 px one beside it: shrinkPicture() in src/server/ai-pictures.ts, storeArtPicture() in src/server/content-packs.ts, pictureToLibrary() in src/server/product-import.ts, and the callers of storePicture() in src/server/api-uploads.ts and src/server/replicate-assets.ts.",
+    "6. Readers: src/server/catalog.ts: beside image_width (line 302) read md.medium_url from the same lookup of commerce.media, for cards and for a product's gallery pictures; ProductCard, ProductGallery and content-grid's tile pass medium to SizedPicture (src/components/sized-picture.tsx). Pictures inside page content keep two files in this step.",
+    "7. e2e/performance.spec.ts: a test at viewport 390 with deviceScaleFactor 3 on a product whose picture has three files: expect the first tile's img.currentSrc to be the 800 px file. Correct the comment at product-gallery.tsx:166.",
+    "8. docs/media-compression.md and D336's text in docs/wave-7-storefront.md: three files and why; a decision row; show the owner a listing on a phone before and after."
+   ],
+   "tests_and_rules": [
+    "src/lib/picture-sizes.test.ts:30, 32, 64 and 84 hold the srcset strings.",
+    "e2e/performance.spec.ts:111 expects 'small 480w, big 1600w' for a picture with two files: still true for such a picture.",
+    "src/server/store-copy.int.test.ts:203 and the library's integration tests insert media rows; the new columns are nullable.",
+    "docs/media-compression.md:9 (two files) and :51 (kept for a year under its address): the new file follows the second and changes the first.",
+    "Usage and limits (D314) counts stored bytes: a third file adds about a quarter to a picture's bytes (18 KB on 79 KB for the art measured).",
+    "pnpm db:check; the migration reaches production through CI.",
+    "Platform parity: Kaizena Flow's own library rows (store_id null) go through the same storePicture(), so the platform gets it in the same change."
+   ],
+   "depends_on": [],
+   "done_when": "The new e2e test passes: at 390 px and 3x the first product tile's currentSrc is the 800 px file (today the 1600 px file, by work/as-plan/srcset-test.cjs).",
+   "saving": "Estimate from the theme art: about 53 KB less per product tile (71 to 18 KB) on 3x phones and 2x laptops, and the same on the product page's main picture on 2x phones. Real photographs were not measured and should save more.",
+   "effort": "M",
+   "risk": "An upload takes a little longer in the owner's browser (a third quality search), and a picture's stored bytes grow by about a quarter. A picture without a middle copy keeps two files and behaves as today, so nothing breaks for what is already stored.",
+   "confidence": "medium",
+   "priority": "P1",
+   "already_tracked": "no. D336 (wave 7 unit B) chose two files; docs/performance.md has no rule on screen density.",
+   "owner_decision": false,
+   "verdict": "added",
+   "notes": "Before opening is the cheap time: no real library needs a backfill, and every real picture has three files from its first day. A one-line alternative, if the owner prefers it: offer the small copy as 600w for tiles, so 3x phones take the 480 px file slightly stretched, as tiles looked before D336; it needs the owner's eye on a real phone. The browser's choice was measured in Chromium only."
+  },
+  {
+   "id": "AS-12",
+   "title": "Videos, 3D models and theme photographs are stored with a one-hour or five-minute cache, though their addresses never change; pictures get a year",
+   "kind": "eager",
+   "where": [
+    "/home/user/kaizen-store/src/components/admin/video-upload.tsx:129",
+    "/home/user/kaizen-store/src/components/admin/media-compress.ts:62",
+    "/home/user/kaizen-store/src/components/admin/product-media-tools.tsx:220",
+    "/home/user/kaizen-store/src/components/admin/field-file-upload.ts:27",
+    "/home/user/kaizen-store/src/server/media.ts:80",
+    "/home/user/kaizen-store/src/server/media.ts:192",
+    "/home/user/kaizen-store/src/server/media.ts:217",
+    "/home/user/kaizen-store/src/server/media.ts:258",
+    "/home/user/kaizen-store/src/server/media.ts:309",
+    "/home/user/kaizen-store/src/server/theme-shots.ts:252",
+    "/home/user/kaizen-store/src/server/theme-shots.ts:269",
+    "/home/user/kaizen-store/src/server/replicate-assets.ts:83",
+    "/home/user/kaizen-store/node_modules/.pnpm/@supabase+storage-js@2.118.0/node_modules/@supabase/storage-js/dist/index.mjs:598",
+    "/home/user/kaizen-store/docs/media-compression.md:51",
+    "https://supabase.com/docs/guides/storage/cdn/smart-cdn, read 12 November 2026"
+   ],
+   "evidence": "Added by the completeness check. Pictures are uploaded by the server with cacheControl \"31536000\" (media.ts:80). Videos, 3D models and custom-field files go from the owner's browser straight to Storage with uploadToSignedUrl(path, token, file, { contentType }): no cacheControl, so supabase-js sends its default \"3600\" (storage-js index.mjs:598-599 and 1620). Each goes to a new random path (media.ts:192, 217, 309), so the file never changes under its address. uploadBytes() stores with \"300\" (media.ts:258): theme photographs (theme-shots.ts:252; a unit's files are written, then it is marked done, and a failed try removes them, 264-298) and the videos the page replicator copies to a random path (replicate-assets.ts:82-83). Supabase's guide says the browser's lifetime is this option ('You can still control how long assets are stored in the browser using the cacheControl option', default one hour), while its Smart CDN (Pro plan and above) keeps the file at the edge whatever it says. docs/media-compression.md:51 states the intent for pictures only: kept for a year under their address.",
+   "cost": "Not measured. After an hour (a background video, a product video, a 3D model) or five minutes (a theme photograph, a copied video) a returning visitor's browser must ask Storage again before it may reuse the file: one round trip per file. On a plan without Smart CDN the edge also fetches the file from the origin again (videos up to 50 MB, models up to 20 MB). Which plan production is on was not checked.",
+   "who_pays": "A shopper's browser in stores that use videos or 3D models; owners and visitors browsing the theme store; Supabase egress where Smart CDN is not on.",
+   "fix_steps": [
+    "1. Add cacheControl: \"31536000\" to the options of uploadToSignedUrl at src/components/admin/video-upload.tsx:129, src/components/admin/media-compress.ts:62, src/components/admin/product-media-tools.tsx:220 and src/components/admin/field-file-upload.ts:27. Each path is new and random.",
+    "2. src/server/media.ts uploadBytes() (line 247): a fifth argument keep: \"year\" | \"short\", default \"short\" (300, as today). Pass \"year\" from src/server/replicate-assets.ts:83 and from src/server/theme-shots.ts:252. Leave the replicator's work pictures (src/server/replicate-store.ts:322, one path per job that is written again) at 300.",
+    "3. A scan test: every uploadToSignedUrl( under src/components names cacheControl (9 calls today, none does; the CSV import flows and the product's private files say \"0\").",
+    "4. docs/media-compression.md:51: 'Pictures, videos and 3D models are kept for a year under their address.'",
+    "5. Files already stored keep the lifetime they were uploaded with. Before opening these are only the team's demo files: leave them, or upload them again."
+   ],
+   "tests_and_rules": [
+    "e2e/product-media.spec.ts (video and 3D model uploads) must pass unchanged.",
+    "src/server/theme-shots.int.test.ts injects upload through ShotDeps: its signature changes with step 2.",
+    "docs/media-compression.md:51.",
+    "Private buckets (digital files, data jobs, invoices, review pictures) keep \"0\" or their own short lifetimes on purpose and are not touched."
+   ],
+   "depends_on": [],
+   "done_when": "rg -n 'uploadToSignedUrl\\(' src/components shows cacheControl on all 9 calls (0 today), and a video uploaded on a test store answers cache-control: max-age=31536000 from Storage (curl -sI on its public address).",
+   "saving": "Not measured: one round trip to Storage less per video, model or theme photograph each time a visitor returns after its lifetime; origin fetches at the edge where Smart CDN is not on.",
+   "effort": "S",
+   "risk": "A file kept for a year cannot be replaced under the same address: none of these paths is written twice (random names; a finished theme unit's files are never written again). A deleted file stays in browsers that hold it until their copy ends, as with pictures today.",
+   "confidence": "medium",
+   "priority": "P2",
+   "already_tracked": "no",
+   "owner_decision": false,
+   "verdict": "added",
+   "notes": "Small per visitor, but the lifetime is fixed when a file is uploaded, so it is cheapest before real owners upload videos: do steps 1 and 2 before opening even though the saving is modest."
+  }
+ ]
+}

@@ -1,0 +1,553 @@
+{
+ "key": "css",
+ "title": "Styles",
+ "headline": "Styles are one of the leaner areas, and no finding here rests on a feature being unused. Every page of every surface loads one stylesheet of 183 KB (25.8 KB Brotli); compiling the proposed split with the project's own Tailwind gives shoppers a sheet of 130 KB (19.8 KB Brotli: 28% less raw, 22% less on the wire), leaves the admin's as it is, costs no more scan memory than today (204-212 MB against 221-223 MB), and stops admin-only and test-only edits from renaming the shoppers' file. The rest is copies: a launch theme's home page carries an estimated 45 to 71 KB of style text, of which 10.6 to 17.6 KB is one fixed breakpoint sheet repeated per row and 6.6 to 9.5 KB a second copy of the layout's sheets. The completeness check added one thing the report missed and the split depends on: the admin's form, print and editing parts are drawn on public pages with colour roles that have no value there, so the main button on Kaizena Flow's status and illegal-content report pages has no fill (seen in the built HTML). Before opening is the cheap time for the split: no shopper's cache is disturbed and a missed class is found by the team.",
+ "metrics": [
+  {
+   "name": "Global stylesheet (every page of every surface)",
+   "value": "183,124 B raw / 31,864 B gzip -9 / 25,832 B Brotli; 34,014 B as the local server sent it",
+   "how": "/home/user/kaizen-store/.next/static/chunks/3-w0shgm-eqtf.css: wc -c, gzip -9 -c | wc -c, node zlib Brotli; transfer size from /tmp/claude-0/-home-user-kaizen-store/875cb21b-0ebd-5663-b7c0-2d04a7548e24/scratchpad/m/routes.json (responses of store-home)"
+  },
+  {
+   "name": "Admin-only stylesheet (two colour schemes and admin.css)",
+   "value": "21,083 B raw / 4,199 B gzip / 3,496 B Brotli; the scheme not in use costs 0.44 KB Brotli",
+   "how": "/home/user/kaizen-store/.next/static/chunks/3jc9lkep25kye.css; rules naming indigo removed and compressed again (node one-liner)"
+  },
+  {
+   "name": "What the global sheet is made of",
+   "value": "utilities layer 117,832 B (64%); hand-written unlayered 26,622 B plus 3,884 B of @media, @supports, @keyframes; components layer (motion.css) 18,742 B / 4,309 gzip / 3,815 Brotli; @property and properties 7,156 B; theme 4,910 B; base 3,977 B",
+   "how": "postcss parse of the built file, bytes per top-level node (/tmp/claude-0/-home-user-kaizen-store/875cb21b-0ebd-5663-b7c0-2d04a7548e24/scratchpad/work/plan-css/layers.mjs)"
+  },
+  {
+   "name": "The proposed site stylesheet, compiled",
+   "value": "129,745 B raw / 23,800 B gzip / 19,762 B Brotli, 1,042 classes. Today's globals.css through the same pipeline: 181,586 / 31,403 / 25,360, 1,750 classes (the build: 183,124 B, 1,749 classes). Difference: 51,841 B raw (28.5%), 7,603 gzip, 5,598 Brotli",
+   "how": "@tailwindcss/node compile + @tailwindcss/oxide Scanner + lightningcss optimize (all 4.3.3, the project's own), run outside the repo on globals.css with the proposed @source lines and the builder-only rules taken out (/tmp/claude-0/-home-user-kaizen-store/875cb21b-0ebd-5663-b7c0-2d04a7548e24/scratchpad/work/plan-css/compile3.mjs); the same result from the planned file layout with a shared partial (/tmp/claude-0/-home-user-kaizen-store/875cb21b-0ebd-5663-b7c0-2d04a7548e24/scratchpad/work/plan-css/compile4.mjs, byte-identical output)"
+  },
+  {
+   "name": "The proposed admin stylesheet, compiled",
+   "value": "181,142 B raw / 31,312 B gzip / 25,333 B Brotli: today's sheet less 10 classes that only tests name (436 B)",
+   "how": "/tmp/claude-0/-home-user-kaizen-store/875cb21b-0ebd-5663-b7c0-2d04a7548e24/scratchpad/work/plan-css/compile4.mjs; class sets compared in /tmp/claude-0/-home-user-kaizen-store/875cb21b-0ebd-5663-b7c0-2d04a7548e24/scratchpad/work/plan-css/diffcls.mjs (lost: order-1038 order-1042 col-1 row-1 row-2 m-1 sepia block-1 md:mr-0 lg:ml-auto)"
+  },
+  {
+   "name": "Classes the site would keep from admin files it draws",
+   "value": "45 classes, 2,984 B raw, from 11 files under src/components/admin that pages outside the admin import",
+   "how": "site entry compiled with and without the 11 explicit @source lines (/tmp/claude-0/-home-user-kaizen-store/875cb21b-0ebd-5663-b7c0-2d04a7548e24/scratchpad/work/plan-css/compile2.mjs, diffcls.mjs); the 11 files from the import walk of /tmp/claude-0/-home-user-kaizen-store/875cb21b-0ebd-5663-b7c0-2d04a7548e24/scratchpad/work/plan-css/walk.mjs (23 reached; 10 only through src/server, 2 hold no class)"
+  },
+  {
+   "name": "Tailwind's scan, today and after",
+   "value": "today 5,931 files, 71,891 candidates, 0.58 s. Site entry 2,451 files, 38,251 candidates, 0.26 s; admin entry 3,984 files, 45,347 candidates, 0.35 s",
+   "how": "oxide Scanner with each entry's sources (/tmp/claude-0/-home-user-kaizen-store/875cb21b-0ebd-5663-b7c0-2d04a7548e24/scratchpad/work/plan-css/compile2.mjs, compile3.mjs); this machine was under load"
+  },
+  {
+   "name": "Memory of the Tailwind step",
+   "value": "today's one entry 221-223 MB resident; the same entry without tests, messages, src/db and the SQL 160-169 MB; both proposed entries in one process 204-212 MB",
+   "how": "fresh node process per case, compile + scan + build + minify with every object kept alive, peak RSS sampled every 5 ms, two runs each (/tmp/claude-0/-home-user-kaizen-store/875cb21b-0ebd-5663-b7c0-2d04a7548e24/scratchpad/work/plan-css/rss.mjs). Whether Next runs two entries in one worker or two was not measured"
+  },
+  {
+   "name": "Re-including after an @source not",
+   "value": "a single file named after a folder's `not` line is read (1 of 1); a folder named after it is not (0 of 1,544 files)",
+   "how": "oxide Scanner with ordered sources (/tmp/claude-0/-home-user-kaizen-store/875cb21b-0ebd-5663-b7c0-2d04a7548e24/scratchpad/work/plan-css/reinclude.mjs, reinclude2.mjs); also seen through Tailwind's own compile of a nested entry (/tmp/claude-0/-home-user-kaizen-store/875cb21b-0ebd-5663-b7c0-2d04a7548e24/scratchpad/work/plan-css/compile.mjs)"
+  },
+  {
+   "name": "Admin colour roles named by files a page outside the admin can draw",
+   "value": "13 roles. 125 uses in the 11 shared admin files (line 41, card 17, brand 14, sunken 13, ink 8, danger-text 8, brand-ink 8, inverse 4, inverse-ink 4, ink-2 3, warning-text 2, edge 2, canvas 1); 20 uses on 14 lines of 7 non-admin files. The global sheet defines none of the roles",
+   "how": "rg --pcre2 over the files with the role names of globals.css:67-104; rg for the variables' definitions in both built CSS files (only the admin's file defines them, under html[data-admin] or [data-scheme-preview])"
+  },
+  {
+   "name": "Public pages whose main button has no fill",
+   "value": "status.html and report.html of the build: <button type=\"submit\" class=\"min-h-10 rounded-pill bg-brand px-4 text-sm font-medium text-brand-ink ...\">, no data-admin on <html>, one stylesheet linked (the global one)",
+   "how": "rg in /home/user/kaizen-store/.next/server/app/status.html and report.html; sign-up.html passes its own classes and is right"
+  },
+  {
+   "name": "Copies of the fixed sheets per document",
+   "value": "breakpoint sheet (1,760 B, href kz-bp-j5um1l1cw): 4 in store-home (one row), 3 on store pages without rows, 2 on Kaizena Flow's front page; theme sheet: 3 in store documents, 2 in the site's",
+   "how": "rg -o of the hrefs in /tmp/claude-0/-home-user-kaizen-store/875cb21b-0ebd-5663-b7c0-2d04a7548e24/scratchpad/m/html/*.html"
+  },
+  {
+   "name": "Style text of the six launch themes' home pages",
+   "value": "theme variables 1.4-1.5 KB; the theme's own CSS 3.4-6.3 KB; row sheets 6.3-12.4 KB for 6-10 rows (as one sheet 4.2-6.7 KB); breakpoint sheet 1,760 B per row. Estimated per document: 45-71 KB of style text (HTML plus payload), of which per-row breakpoint copies 10.6-17.6 KB, the second layout copy 6.6-9.5 KB, repeats between row sheets 1.2-5.7 KB twice",
+   "how": "real partCss, themedRows, themeCss and breakpointClassCss on src/lib/signature/*.ts (/tmp/claude-0/-home-user-kaizen-store/875cb21b-0ebd-5663-b7c0-2d04a7548e24/scratchpad/work/plan-css/sheet.mjs); the per-document sum is an estimate from those parts (HTML once; payload: layout sheets twice, row sheets once, breakpoint sheet per row); header and footer rows not counted"
+  },
+  {
+   "name": "Inline style in the sampled documents",
+   "value": "store documents: <style> elements 3.7-4.6 KB, style attributes 23-696 B; admin documents: no <style> but the builder's (4.4 KB), style attributes 69-1,931 B, under 1.5% of the document",
+   "how": "/tmp/claude-0/-home-user-kaizen-store/875cb21b-0ebd-5663-b7c0-2d04a7548e24/scratchpad/work/plan-css/share.mjs over the 32 samples in /tmp/claude-0/-home-user-kaizen-store/875cb21b-0ebd-5663-b7c0-2d04a7548e24/scratchpad/m/html (the verified report's fuller count, with short CSS strings in the payload, is 10.9-15.0 KB or 8.8-12.5% of a store document)"
+  },
+  {
+   "name": "Style work per edit on the builder's canvas",
+   "value": "partCss for all 10 rows of Meridian's home page 2.7 ms, themedRows 2.8 ms",
+   "how": "/tmp/claude-0/-home-user-kaizen-store/875cb21b-0ebd-5663-b7c0-2d04a7548e24/scratchpad/work/plan-css/canvas-bench.mjs (300 runs after warm-up, this machine under load); CanvasPartStyles is memoised on rows (src/components/admin/page-builder.tsx:2565-2573)"
+  },
+  {
+   "name": "The dark variant written twice",
+   "value": "23 dark utilities each once by attribute and once by media query: 3.4 KB raw, 0.17 KB Brotli",
+   "how": "/tmp/claude-0/-home-user-kaizen-store/875cb21b-0ebd-5663-b7c0-2d04a7548e24/scratchpad/work/plan-css/dark.mjs: the media copies removed from the built file and compressed again"
+  },
+  {
+   "name": "Admin assets fetched by Kaizena Flow's own pages after load",
+   "value": "12.2 KB on site-home, site-blog-post and site-themes: admin CSS 6,015 B and two /admin?_rsc answers of 2,099 and 4,044 B. None on site-docs or any store page",
+   "how": "responses in /tmp/claude-0/-home-user-kaizen-store/875cb21b-0ebd-5663-b7c0-2d04a7548e24/scratchpad/m/routes.json (local build, gzip), read with a node one-liner"
+  },
+  {
+   "name": "Commits that changed the stylesheet",
+   "value": "13 of 115 (11%) added a utility class the parent tree did not name; 6 of the 13 only in admin folders or tests",
+   "how": "the verified report's measure (git log -G'className=' on the clone, each added token grepped in the parent tree); not re-run by the planner. That a changed sheet gets a new file name is assumed from hashed chunk names, not tested across two builds"
+  }
+ ],
+ "clean": [
+  "Hand-written CSS has almost no dead weight: 93 of 96 class names, 112 of 113 attributes and all 39 keyframes in globals.css, motion.css, admin.css and the two schemes are used by non-test code (the verified report's sample). The exceptions are four alternatives in the admin's own admin.css, under 0.3 KB.",
+  "Every block of feature CSS (motion, brands, gallery, lightbox, menu hover, table, modal, header stages) has code that emits its attributes or classes. None is a candidate to retire; that the demo store draws none of them says nothing about use.",
+  "Tailwind's scan is cheap since D378: 0.6 s and about 220 MB for 5,931 files. Scanning all of src is not a build cost worth chasing on its own.",
+  "The page builder does not style with inline attributes: a store page carries 23-696 bytes of style=\"\". Settings become hashed classes in a part sheet (src/lib/part-css.ts), which keeps owners' CSS able to win (D100). The sheet itself is compact: Meridian's 10 rows are 6.7 KB as one sheet, 1.3 KB gzip, with two @media blocks in all.",
+  "Style generation is not paid per request: store pages are prerendered shells revalidated every 15-60 minutes, and the reads behind them are cached ('use cache' in src/server/text-styles.ts:50 and src/server/fonts.ts:159). The builder's canvas recomputes the page's part CSS on each edit in about 5.5 ms for the largest launch theme's home page: under a frame.",
+  "Fonts are done well: one stylesheet per family from a cached route, kept for a year, cut to the EU's scripts and the builder's weights (src/app/api/fonts/css/[slug]/route.ts, docs/performance.md:61-62).",
+  "The admin's own CSS is already a separate file that only admin pages load (21 KB, 3.5 KB Brotli). Loading both colour schemes costs 0.44 KB Brotli: not worth a second file.",
+  "The motion script is loaded only where a page needs it (src/components/motion-support.tsx:10-20).",
+  "The dark variant's double writing (by attribute and by the device) is 0.17 KB Brotli, and it is what lets a page be dark without scripts (D99). Leave it.",
+  "Theme variables are small and bounded (1.4-1.8 KB per store) and owners' CSS is checked and capped at 50,000 characters a sheet (src/lib/custom-css.ts:19).",
+  "Class names kept in stored pages are the themes' own (meridian-hero and the like in src/lib/signature/*.ts), styled by the theme's CSS, not Tailwind utilities; the four migration files hold no class attribute. So no stored content depends on Tailwind's scan, and the split of CS-1 cannot orphan it.",
+  "Inline layout-level CSS is the right default at today's sizes: it is paid once per full page load, and an external file would add a render-blocking request to every first visit."
+ ],
+ "refuted": [
+  {
+   "id": "CS-2 (part)",
+   "title": "Serving the optional component CSS (menu hover, brands, gallery, header stages, table, modal) as separate files, the draft's further 3.3 KB gzip",
+   "why": "All six launch themes set a hover on their header menu, so menu hover is used on every page of a launch-theme store. The rest is about 2.6 KB gzip over five components and would need a file and a gate each."
+  },
+  {
+   "id": "CS-5 (part)",
+   "title": "Moving a store's layout-level CSS to an external per-store stylesheet",
+   "why": "On a first visit it trades about 2 KB of inline Brotli for one more render-blocking request, and inside a session the layout is not resent. Kept as a watch item for when real stores' layout CSS commonly passes about 10 KB."
+  },
+  {
+   "id": "CS-3 (part)",
+   "title": "The draft's figure that 26% of commits change every shopper's stylesheet",
+   "why": "30 of 115 commits touched a className line, but only 13 (11%) added a class the tree did not already name."
+  }
+ ],
+ "findings": [
+  {
+   "id": "CS-7",
+   "title": "Shop pages use admin-only colour roles that have no value outside the admin",
+   "kind": "process",
+   "where": [
+    "/home/user/kaizen-store/src/components/product-card.tsx:109",
+    "/home/user/kaizen-store/src/components/product-card.tsx:110",
+    "/home/user/kaizen-store/src/components/content-grid.tsx:206",
+    "/home/user/kaizen-store/src/components/product-parts.tsx:1347",
+    "/home/user/kaizen-store/src/components/product-parts.tsx:1348",
+    "/home/user/kaizen-store/src/components/checkout-form.tsx:460",
+    "/home/user/kaizen-store/src/app/supply/[token]/page.tsx:17",
+    "/home/user/kaizen-store/src/app/supply/[token]/page.tsx:60",
+    "/home/user/kaizen-store/src/app/passport/[id]/page.tsx:31",
+    "/home/user/kaizen-store/src/app/passport/[id]/page.tsx:137",
+    "/home/user/kaizen-store/src/components/inline-edit/markup-editor.tsx:170",
+    "/home/user/kaizen-store/src/app/globals.css:62",
+    "/home/user/kaizen-store/src/app/admin/schemes/meadow.css:15"
+   ],
+   "evidence": "globals.css:62-66 says the roles (bg-card, border-line and the rest) are set only inside the admin. In the built files the global sheet has .border-line{border-color:var(--line)} and .bg-card{background-color:var(--card)} and no definition of --line or --card; the admin's file defines them only under html[data-admin] or [data-scheme-preview]. Counted again by the planner with the role names of globals.css:67-104: 20 uses on 14 lines of seven files outside the admin folders. border-line on the colour and option swatches of combined listings (product-card.tsx:109-110, content-grid.tsx:206, product-parts.tsx:1347-1348); border-line bg-card on one checkout field (checkout-form.tsx:460); the supplier's page (supply/[token]/page.tsx: its field look on line 17, four borders, and text-danger-text on the problem line 60); the product passport (two borders); and the on-site editor's own toolbar (markup-editor.tsx:170: hover:bg-sunken aria-pressed:bg-inverse aria-pressed:text-inverse-ink). The supplier and passport layouts set neither data-admin nor a theme. With the variable unset the declaration is invalid at computed-value time: a border takes the text colour, a background is see-through, an error line is not red. Not looked at in a browser.",
+   "cost": "No bytes. A wrong border on swatches in every store, one checkout field, the supplier's page and the passport; an error line that does not look like one; a pressed tool that looks unpressed. It also shows what one shared sheet hides: the build cannot tell a shop file that it used an admin class.",
+   "who_pays": "Shoppers and suppliers, in what they see; the team, when CS-1 is done and these classes must be decided.",
+   "fix_steps": [
+    "1. Replace the role names with the site's own in the seven files: border-line -> border-border in src/components/product-card.tsx:109-110, src/components/content-grid.tsx:206 (twice), src/components/product-parts.tsx:1347-1348, src/app/passport/[id]/page.tsx:31 and 137, and src/app/supply/[token]/page.tsx:68, 76, 122 and 129.",
+    "2. src/components/checkout-form.tsx:460 and the field constant at src/app/supply/[token]/page.tsx:17: 'border-line bg-card' -> 'border-border bg-background'.",
+    "3. src/app/supply/[token]/page.tsx:60: text-danger-text -> 'text-red-700 dark:text-red-400', the pair the storefront's own alerts use (rg 'role=\"alert\" className' src/components shows it).",
+    "4. src/components/inline-edit/markup-editor.tsx:170: 'hover:bg-sunken aria-pressed:bg-inverse aria-pressed:text-inverse-ink' -> 'hover:bg-surface aria-pressed:bg-foreground aria-pressed:text-background'.",
+    "5. New test file src/lib/stylesheet-sources.scan.test.ts (CS-1, CS-6 and CS-9 add to it). First rule: read the role names from the '--color-<role>: var(--<role>)' lines of the @theme block in the site's CSS, then fail for any non-test .ts or .tsx under src/app (outside src/app/admin) or src/components (outside src/components/admin) that names a class ending in one of them behind bg-, text-, border-, ring-, outline-, divide-, fill-, stroke-, accent-, decoration-, from-, via- or to-, with or without variants. Add a would-notice case: the same check on src/components/admin/modal.tsx finds roles.",
+    "6. Look at the swatches on a product card and a product page with a combined listing, the checkout field, the supplier's page and a passport, in light and in dark."
+   ],
+   "tests_and_rules": [
+    "New: src/lib/stylesheet-sources.scan.test.ts, rule 'the site's files speak the site's colour names'.",
+    "src/app/admin/admin-type.scan.test.ts:85-91 holds the mirror rule for admin files (no site names, no fixed palette colours); unchanged, and its regexes are the model for the new one.",
+    "e2e/a11y.spec.ts and e2e/shop-components.spec.ts cover the pages touched; they must pass unchanged.",
+    "Rule: the comment at src/app/globals.css:62-66 and docs/admin-style.md section 4 (the roles are the admin's). Kept, and now checked."
+   ],
+   "depends_on": [],
+   "done_when": "rg -c --pcre2 with the role pattern over src/components and src/app, without the admin folders, tests and CSS, counts 0 uses (20 today), and the new rule in stylesheet-sources.scan.test.ts passes.",
+   "saving": "No bytes. Removes a visual fault on shop pages and one of the two blockers of CS-1.",
+   "effort": "S",
+   "risk": "Low. A renamed class changes a colour by design: the border goes from the text colour to the theme's border colour. It is noticed by looking at the six places of step 6; the scan test stops it coming back.",
+   "confidence": "medium",
+   "priority": "P0",
+   "already_tracked": "no",
+   "owner_decision": false,
+   "verdict": "confirmed",
+   "notes": "Not bloat by itself: a visual defect and a missing check that CS-1 needs settled. P0 because it is half an hour of work, it is visible to shoppers, and CS-1 waits for it. The planner's recount adds one line to the skeptic's list (the editor's toolbar was named but not counted). CS-9 is the other half: admin components drawn outside the admin."
+  },
+  {
+   "id": "CS-9",
+   "title": "The admin's form, print and editing parts are drawn on public pages without the colours they read: the main button on Kaizena Flow's status and report pages has no fill",
+   "kind": "process",
+   "where": [
+    "/home/user/kaizen-store/src/components/admin/action-form.tsx:43",
+    "/home/user/kaizen-store/src/components/admin/action-form.tsx:104",
+    "/home/user/kaizen-store/src/components/admin/action-form.tsx:137",
+    "/home/user/kaizen-store/src/components/admin/action-form.tsx:154",
+    "/home/user/kaizen-store/src/components/platform-routes/status.tsx:58",
+    "/home/user/kaizen-store/src/components/platform-routes/status.tsx:191",
+    "/home/user/kaizen-store/src/components/platform-routes/report.tsx:90",
+    "/home/user/kaizen-store/src/components/platform-routes/sign-up-confirm.tsx:66",
+    "/home/user/kaizen-store/src/components/platform-routes/get-domain.tsx:43",
+    "/home/user/kaizen-store/src/components/work/hosted-invoice.tsx:61",
+    "/home/user/kaizen-store/src/components/admin/work/print-button.tsx:65",
+    "/home/user/kaizen-store/src/components/inline-edit/rich-text-inline.tsx:102",
+    "/home/user/kaizen-store/src/components/admin/rich-text-editor.tsx:126",
+    "/home/user/kaizen-store/src/components/admin/rich-text-editor.tsx:275",
+    "/home/user/kaizen-store/src/components/inline-edit/site-editor.tsx:189",
+    "/home/user/kaizen-store/src/app/admin/admin.css:20",
+    "/home/user/kaizen-store/.next/server/app/status.html",
+    "/home/user/kaizen-store/.next/server/app/report.html"
+   ],
+   "evidence": "Eleven files under src/components/admin are drawn by pages outside the admin (import walk from the 644 non-admin files of src/app and src/components, not through src/server): action-form.tsx, admin-text-context.tsx, admin-text.tsx, colour-field.tsx, colour-library.tsx, css-code-editor.tsx, design-cards.tsx, modal.tsx, rich-text-editor.tsx, text-styles.tsx and work/print-button.tsx. They name 13 admin colour roles 125 times (line 41, card 17, brand 14, sunken 13, ink 8, danger-text 8, brand-ink 8, inverse 4, inverse-ink 4, ink-2 3, warning-text 2, edge 2, canvas 1). A role has a value only under html[data-admin] or [data-scheme-preview]; the global sheet has .bg-brand{background-color:var(--brand)} and no --brand. Seen in the build's own output: .next/server/app/status.html and report.html each hold <button type=\"submit\" class=\"min-h-10 rounded-pill bg-brand px-4 text-sm font-medium text-brand-ink disabled:opacity-40\">, their <html> carries data-store-theme and no data-admin, and the one stylesheet they link is the global one. So the main button of the status page's sign-up and of the illegal-content notice form (D411) has a see-through background and the page's text colour. That is SubmitButton's default look (action-form.tsx:152-155), used without a className at status.tsx:58 and 191, report.tsx:90, sign-up-confirm.tsx:66 and get-domain.tsx:43. The component has a className prop for this very case (action-form.tsx:137: 'where the admin's colours are not set', D456) and sign-up passes one; sign-up.html is right. ActionForm's own error list is text-danger-text (line 104) and its success box border-line bg-card (line 43), on the same pages. A store's hosted invoice draws the admin's Print button (hosted-invoice.tsx:61; print-button.tsx:65: bg-brand text-brand-ink). The staff's editing on the live site draws the admin's rich text toolbar (rich-text-inline.tsx:102) and text styles (site-editor.tsx:189): the toolbar's pressed state is bg-inverse text-inverse-ink (rich-text-editor.tsx:126), so a pressed Bold looks like an unpressed one. Inside the admin the mirror mapping already exists: admin.css:20-32 gives the site's names (--background, --border, --accent) the roles' values 'for what draws a store's look'. Not looked at in a browser: the computed style follows from the built CSS and HTML.",
+   "cost": "No bytes. A main button that does not look like a button on two public pages of Kaizena Flow (one of them a legal notice form), on the confirm and get-domain pages, and on every hosted invoice; errors that are not red; a toolbar whose state cannot be read. It grows with each admin part reused outside the admin, and nothing checks it.",
+   "who_pays": "Visitors of kaizenaflow.com, a store's invoice customers and staff editing on the live site, in what they see; the team at CS-1.",
+   "fix_steps": [
+    "1. In the site's CSS (src/app/globals.css today, right after the dark blocks that end at line 170; src/app/_styles/base.css once CS-1 has moved the body) add one block under the selector html:not([data-admin]) that gives each role a page outside the admin can meet the site's own colour: --card and --canvas: var(--background); --sunken: var(--surface); --line and --edge: var(--border); --ink: var(--foreground); --ink-2: var(--muted); --inverse: var(--foreground); --inverse-ink: var(--background); --brand: var(--accent); --brand-ink: var(--accent-foreground); --danger-text: #b91c1c; --warning-text: #b45309. Give the two signal colours their dark values (#f87171, #fbbf24) the way the file writes --background's: once under @media (prefers-color-scheme: dark) for html:not([data-admin]):not([data-color-mode=\"light\"]) and once for html:not([data-admin])[data-color-mode=\"dark\"]. The selector cannot match in the admin, so admin.css:20-32 (--background: var(--card)) can never form a loop with it.",
+    "2. Rewrite the comment at src/app/globals.css:62-66: outside the admin the roles follow the site's own colours, for the admin's parts a page there draws; shop code still writes the site's names (CS-7's rule).",
+    "3. src/components/work/hosted-invoice.tsx:3 and 61: draw DocumentPrintButton from src/components/documents/document-print-button.tsx (same props: label, documentTitle) in place of the admin's PrintButton. The store's own print button then follows the store's theme, and one admin file leaves the shared list (10 left).",
+    "4. Optional, for the owner's design (docs/site-design.md): at status.tsx:58 and 191, report.tsx:90, sign-up-confirm.tsx:66 and get-domain.tsx:43 pass className='button-primary min-h-11 px-5 font-medium disabled:opacity-40', as src/components/account-sign-in.tsx:60 does, so the button follows the theme's button shape too. Step 1 alone already gives a filled pill in the accent colour.",
+    "5. src/lib/stylesheet-sources.scan.test.ts (from CS-7), second rule: walk value imports (static and import(), type-only skipped, not into src/server) from the non-admin files of src/app and src/components; for every file under src/components/admin or src/app/admin the walk reaches, each role class it names must have a line in the html:not([data-admin]) block. Would-notice case: the walk from src/components/inline-edit/site-editor.tsx reaches src/components/admin/text-styles.tsx.",
+    "6. e2e/content-reports.spec.ts, in the test that opens /report (line 34): expect the 'Send the notice' button not to have the computed background-color rgba(0, 0, 0, 0). The same line for the print button in the hosted invoice's spec (rg -l 'hosted|invoice' e2e).",
+    "7. Look at /status, /report, the sign-up confirm page, /get-domain, a hosted invoice and the on-site editor with Bold pressed, in light and in dark; send the owner the before and after screenshots.",
+    "8. docs/admin-style.md section 4: say that outside the admin the roles follow the site's colours through this one block, and that a new admin part reused outside the admin needs its roles there (the scan test says which)."
+   ],
+   "tests_and_rules": [
+    "New rule in src/lib/stylesheet-sources.scan.test.ts (step 5).",
+    "e2e/content-reports.spec.ts (the report form), e2e/sign-up.spec.ts and e2e/platform-languages.spec.ts (ActionForm on Kaizena Flow's pages), e2e/inline-edit-live.spec.ts and e2e/inline-edit-hosts.spec.ts (the on-site editor), e2e/invoices.spec.ts and e2e/work.spec.ts (documents).",
+    "src/lib/theme.test.ts:62-78 reads every selector of globals.css that sets --background and starts with :root; the new block sets no --background and starts with html, so the test is not touched. Check it still passes.",
+    "src/app/admin/admin-schemes.test.ts:140-150 (the admin's values outrank the site's): the new selector never matches inside the admin.",
+    "Rule changed: globals.css:62-66 and docs/admin-style.md section 4 say nothing sets the roles outside the admin. The reason no longer holds: 11 admin files are drawn there (sign-up D456, status D360, the notice form D411, the on-site editor D192, Work's hosted invoice). The fix keeps the rule's point (one vocabulary per surface) by mapping, as admin.css already does the other way."
+   ],
+   "depends_on": [],
+   "done_when": "On the built app the submit button of /report and of /status has a computed background-color other than rgba(0, 0, 0, 0) (transparent today), held by the new line in e2e/content-reports.spec.ts, and the second rule of stylesheet-sources.scan.test.ts passes.",
+   "saving": "No bytes (the block adds about 0.4 KB raw to the site's sheet). Removes a visible fault on public pages and the second blocker of CS-1.",
+   "effort": "S",
+   "risk": "Low. A role mapped to the wrong site colour would show as an odd colour on those few parts; step 7 is the check. Parts drawn inside the admin are untouched because the selector excludes it. If the block were written on :root instead, a page of the admin whose scheme attribute matched no scheme would loop (--card: var(--background) and --background: var(--card)); keep the html:not([data-admin]) selector.",
+   "confidence": "high",
+   "priority": "P0",
+   "already_tracked": "no",
+   "owner_decision": false,
+   "verdict": "added",
+   "notes": "Added by the planner's completeness check: the brief asked for admin-only CSS on public pages 'and the reverse', and the report covered only shop files that name a role (CS-7). The choice of one mapping block over renaming is deliberate: the on-site editor embeds the admin's toolbar, text styles, colour field and modal with about 65 role uses that cannot be renamed, and src/components/admin/action-form.tsx is imported by 356 files, so moving it is the larger change. Do it with CS-7 in one push."
+  },
+  {
+   "id": "CS-8",
+   "title": "Kaizena Flow's own pages fetch the admin's stylesheet and two admin answers after load",
+   "kind": "eager",
+   "where": [
+    "/home/user/kaizen-store/src/components/site-parts.tsx:261",
+    "/home/user/kaizen-store/src/components/platform-routes/home.tsx:55",
+    "/home/user/kaizen-store/src/components/platform-layout.tsx:133",
+    "/home/user/kaizen-store/src/components/platform-layout.tsx:176",
+    "/home/user/kaizen-store/src/components/platform-layout.tsx:273",
+    "/home/user/kaizen-store/src/components/platform-routes/sign-up.tsx:164",
+    "/home/user/kaizen-store/node_modules/next/dist/docs/01-app/03-api-reference/03-file-conventions/layout.md:145",
+    "/home/user/kaizen-store/node_modules/next/dist/docs/01-app/03-api-reference/02-components/link.md:300",
+    "/tmp/claude-0/-home-user-kaizen-store/875cb21b-0ebd-5663-b7c0-2d04a7548e24/scratchpad/m/routes.json"
+   ],
+   "evidence": "Read again from m/routes.json: site-home, site-blog-post and site-themes each fetch, after load, the admin's stylesheet 3jc9lkep25kye.css (6,015 B transferred) and two /admin?_rsc answers (2,099 and 4,044 B). site-docs, which has no link to /admin, fetches none; store-home and store-page fetch none. Five <Link href=\"/admin\"> sit in the site's header part, its standard header, phone menu and bottom bar and on the front page, and sign-up links to /admin/sign-in (the six lines in 'where'; rg over the non-admin components finds no other). Next's docs: going between root layouts is a full page load (layout.md:145), so the prefetched answer for /admin cannot be used for a client navigation; prefetch={false} means never, on view or on hover (link.md:300-304).",
+   "cost": "About 12.2 KB transferred after load per view of a site page (local build, gzip), 6 KB of it CSS, and two requests. It does not delay first paint. The page-payload review (PL-4) measured the same links pulling six admin scripts, 135 KB more. It grows with marketing traffic at opening: every visitor of kaizenaflow.com triggers it and most never sign in. After CS-1 the stylesheet a prefetch pulls would be the admin's whole sheet, about 25 KB Brotli more.",
+   "who_pays": "A visitor's browser on kaizenaflow.com; the CDN or a function, which answers two prefetches per page view.",
+   "fix_steps": [
+    "1. Add prefetch={false} to the six links: src/components/site-parts.tsx:261, src/components/platform-routes/home.tsx:55, src/components/platform-layout.tsx:133, 176 and 273, src/components/platform-routes/sign-up.tsx:164.",
+    "2. src/lib/stylesheet-sources.scan.test.ts (or a small test beside it), rule 'a link across root layouts is not prefetched': every <Link whose href is a string starting with /admin, in a non-test file outside src/app/admin and src/components/admin, carries prefetch={false} in the same tag.",
+    "3. e2e/performance.spec.ts: a test that opens / in a phone context, waits 2 s after load and expects no request whose path starts with /admin and no stylesheet from /_next/static beyond the ones the HTML links.",
+    "4. docs/performance.md, under the rules: a link that crosses a root layout (the site to the admin) is not prefetched: the answer cannot be used and it pulls the other surface's CSS and scripts.",
+    "5. Tell the plans of PL-4, BN-2 and the prefetch dimension that this is the same six-line change, so it is done once."
+   ],
+   "tests_and_rules": [
+    "New scan rule and new e2e test (steps 2 and 3).",
+    "e2e/sign-up.spec.ts and e2e/platform-languages.spec.ts press these links; a press still loads /admin as a full page load. They must pass unchanged.",
+    "e2e/performance.spec.ts:40-50: the first-scripts budgets of / and /sign-up do not move (the fetches are after load)."
+   ],
+   "depends_on": [],
+   "done_when": "After loading / on the built app and waiting 2 s, 0 requests go to /admin and no admin stylesheet is fetched (today: 2 requests and 1 stylesheet, 12.2 KB), held by the new test in e2e/performance.spec.ts.",
+   "saving": "Measured: 6.0 KB of CSS and 6.1 KB of payload per view of a site page, and two requests. With PL-4's scripts the same change saves about 135 KB more.",
+   "effort": "S",
+   "risk": "Low. A visitor who presses Sign in loads the admin's CSS then instead of earlier: one request. Noticed only as a slightly later first paint of the sign-in page.",
+   "confidence": "high",
+   "priority": "P0",
+   "already_tracked": "no",
+   "owner_decision": false,
+   "verdict": "confirmed",
+   "notes": "A prefetch matter more than a style matter, kept here because it must land before CS-1: with two Tailwind entries a prefetch of /admin would otherwise pull the admin's whole sheet into every site visit. Same fix as PL-4 (page-payload) and BN-2 (client-bundles); merge them."
+  },
+  {
+   "id": "CS-3",
+   "title": "Nothing holds the stylesheet's size, its sources or the style text in a document",
+   "kind": "process",
+   "where": [
+    "/home/user/kaizen-store/e2e/performance.spec.ts:11",
+    "/home/user/kaizen-store/e2e/performance.spec.ts:40",
+    "/home/user/kaizen-store/e2e/performance.spec.ts:126",
+    "/home/user/kaizen-store/src/app/globals.css:6",
+    "/home/user/kaizen-store/docs/performance.md:61",
+    "/home/user/kaizen-store/docs/build-memory.md:34"
+   ],
+   "evidence": "e2e/performance.spec.ts has budgets for first scripts (lines 11 and 40-50) and for page weight (line 126). Page weight includes the stylesheet, but the budget is 450,000 bytes for pages measured at 311 and 331 KB, so the sheet could double unnoticed. No budget names CSS; none of the scan tests looks at classes or at globals.css's @source lines (rg for globals.css in tests finds five readers, none of the source lines). One sheet takes its classes from every file in src, tests included: the verified report found 13 of 115 commits (11%) adding a utility class that did not exist before, 6 of them only in admin folders or tests (not re-run by the planner). No number is kept for the style text a page builder page puts in a document either; the planner's estimate for a launch theme's home page is 45 to 71 KB.",
+   "cost": "Each deploy that adds or drops a class renames the one sheet (assumed from hashed chunk names), and every returning shopper fetches 25.8 KB Brotli again: about one commit in nine in the sample, half of them for admin-only or test-only edits. Before opening there are no returning shoppers; after, every store's visitors pay on each such deploy. Size itself can only rise: there is no number to fail against.",
+   "who_pays": "A shopper's browser after deploys; the team, which cannot see the sheet growing.",
+   "fix_steps": [
+    "1. e2e/performance.spec.ts: add STYLESHEET_BUDGETS, raw bytes of the build's stylesheets a page's HTML links (link[rel=stylesheet] whose href starts with /_next/static/, each fetched with page.request and its body measured; the fonts' route is not counted): '/s/demo/no' 189,000 and '/' 189,000 (183,124 today), '/admin/sign-in' 211,000 (204,207 today). Print the figures when E2E_MEASURE=1, as e2e/signed-in/admin-scripts.spec.ts does.",
+    "2. In the same file add an inline-style budget for '/s/demo/no': the text of all <style> elements in the HTML the server sends, at most 6,000 bytes (4,552 today), and the number of times the breakpoint sheet's href (kz-bp-) appears in that HTML, at most 4 (4 today; CS-4 and SC-8 lower it to 2).",
+    "3. src/lib/stylesheet-sources.scan.test.ts, rule 'Tailwind reads code only': every @source line of src/app/globals.css (and of src/app/admin/admin-entry.css once CS-1 adds it) points inside src; the lines that leave out tests, src/test, src/lib/messages, src/lib/admin-messages, src/db and src/data are present (they arrive with CS-6).",
+    "4. docs/performance.md: a short 'Styles' part with today's figures (183 KB raw, 25.8 KB Brotli; the admin's 21 KB), the rule that a budget only falls (a change that lowers a figure by more than 3% lowers its budget in the same change), and where the sources are held.",
+    "5. Each of CS-1, CS-4 and CS-6 lowers the numbers it moves in its own change: after CS-1 the site's two budgets become 135,000.",
+    "6. When the page-model plan's realistic built page exists (PM-14: a store on a launch theme in the e2e seed), give it the same two CSS budgets; the demo store's theme is too plain to show row sheets."
+   ],
+   "tests_and_rules": [
+    "e2e/performance.spec.ts itself (CI's e2e job builds and runs it).",
+    "docs/performance.md 'Checking' (lines 68-75) lists what the spec holds: add the stylesheet and inline-style budgets there.",
+    "The storefront-client plan's SC-6 tightens the script budgets in the same file; land the two together so the file is edited once.",
+    "CLAUDE.md, Commands: 'keep Tailwind's @source lines in globals.css pointed at code, never at data or snapshots'. Step 3 turns that sentence into a test."
+   ],
+   "depends_on": [],
+   "done_when": "e2e/performance.spec.ts holds a stylesheet budget for 3 routes, each within 4% of its E2E_MEASURE=1 figure, and an inline-style budget for the store's front page, and the spec passes in CI.",
+   "saving": "No bytes by itself. It keeps what CS-1, CS-4 and CS-6 save, and makes the sheet's growth a failing number instead of a surprise.",
+   "effort": "S",
+   "risk": "Low. A budget set too tight fails pushes for ordinary growth; 3 to 4% of room and the rule of step 4 are the answer. The measure is raw bytes of files, so it does not wobble between runs.",
+   "confidence": "high",
+   "priority": "P0",
+   "already_tracked": "Partly: PSI PERF-11 (per-route budgets, ticked done in docs/audits/psi-followups.md:135) covers first scripts only; nothing covers styles.",
+   "owner_decision": false,
+   "verdict": "corrected",
+   "notes": "Do steps 1 and 2 first of everything in this dimension, at today's figures, so each later fix shows as a number that falls. The refetch after a deploy is 25.8 KB Brotli, not 32 KB, and 11% of commits, not 26% (the skeptic's corrections). Same family as SC-6, PL-13, BN-11 and PF-10."
+  },
+  {
+   "id": "CS-1",
+   "title": "Shoppers download the admin's classes: one stylesheet serves every surface",
+   "kind": "eager",
+   "where": [
+    "/home/user/kaizen-store/src/app/globals.css:6",
+    "/home/user/kaizen-store/src/app/globals.css:62",
+    "/home/user/kaizen-store/src/app/globals.css:362",
+    "/home/user/kaizen-store/src/app/globals.css:630",
+    "/home/user/kaizen-store/src/app/admin/layout.tsx:13",
+    "/home/user/kaizen-store/src/app/s/[store]/[market]/layout.tsx:43",
+    "/home/user/kaizen-store/src/components/inline-edit/site-editor.tsx:10",
+    "/home/user/kaizen-store/src/components/inline-edit/rich-text-inline.tsx:8",
+    "/home/user/kaizen-store/src/components/platform-routes/status.tsx:4",
+    "/home/user/kaizen-store/src/lib/storefront-bundle.scan.test.ts:1",
+    "/home/user/kaizen-store/docs/build-memory.md:18",
+    "/home/user/kaizen-store/.next/static/chunks/3-w0shgm-eqtf.css",
+    "/tmp/claude-0/-home-user-kaizen-store/875cb21b-0ebd-5663-b7c0-2d04a7548e24/scratchpad/work/plan-css/compile3.mjs",
+    "/tmp/claude-0/-home-user-kaizen-store/875cb21b-0ebd-5663-b7c0-2d04a7548e24/scratchpad/work/plan-css/compile4.mjs"
+   ],
+   "evidence": "The build makes two CSS files: 3-w0shgm-eqtf.css (183,124 B raw, 31,864 gzip, 25,832 Brotli), linked by all 32 sampled pages, and 3jc9lkep25kye.css (21,083 B), linked only by the 16 admin pages. Sixteen files import globals.css (15 root layouts and error pages outside the admin, and src/app/admin/layout.tsx:13), and Tailwind reads all of src for it (globals.css:6-9). The verified report found 728 of 1,749 utility classes (46.7 KB) named only in the two admin folders and none of them on any of the 16 shop and site samples. The planner compiled the proposed entries with the project's own Tailwind 4.3.3 (compile, oxide scan, lightningcss), outside the repo. The same pipeline on today's globals.css gives 1,750 classes and 181,586 B against the build's 1,749 and 183,124, so it is a fair stand-in. The site's entry (src without the two admin folders, tests, message files, src/db and the SQL, plus the 11 admin files that pages outside the admin draw, with the builder-only rules of globals.css:362-434 and 630-656 moved out) compiles to 1,042 classes and 129,745 B raw / 23,800 gzip / 19,762 Brotli; laid out as the planned files with a shared partial, the output is byte-identical. The admin's entry (all of src without tests, messages and src/db) compiles to 181,142 B. The 11 shared files add 45 classes, 3.0 KB. Tailwind's scanner reads a single file named after a folder's `not` line (1 of 1) but not a folder named after it (0 of 1,544 files), so the admin needs an entry of its own and cannot import the site's. Scans: site 2,451 files in 0.26 s and admin 3,984 files in 0.35 s, against one scan of 5,931 files in 0.58 s today. Memory of the Tailwind step, fresh process per case: today 221-223 MB, both proposed entries in one process 204-212 MB.",
+   "cost": "183 KB raw / 25.8 KB Brotli, render-blocking, on the first visit to every store (stores are served on their own hosts, so the cache is per store), to kaizenaflow.com and to the docs. 51.8 KB raw / 7.6 KB gzip / 5.6 KB Brotli of it (28% raw, 22% Brotli) is classes only an admin screen names, the builder's canvas rules and theme variables only those classes use. It grows with every new admin screen, and the admin is where most new screens land. Any commit that adds a class in an admin screen or a test renames the shoppers' file.",
+   "who_pays": "A shopper's browser (and visitors of kaizenaflow.com and the docs) on the first visit to each host, and again after each deploy that changes the class set.",
+   "fix_steps": [
+    "1. First land CS-7 and CS-9 (roles outside the admin), CS-8 (no prefetch of /admin from the site: with two entries a prefetch would pull the admin's whole sheet) and CS-3 steps 1 and 2 (the budgets, at today's figures).",
+    "2. Measure before: build with Vercel's settings (VERCEL=1: no type check, no Turbopack cache, one worker) under an 8 GB memory cap, sampled per second, as docs/build-memory.md:9-10 describes. Write the peak down.",
+    "3. New file src/app/_styles/base.css: move lines 12 to 1449 of src/app/globals.css there unchanged (the two @custom-variant blocks, :root, @theme inline, every hand-written rule), except lines 362-434 and 630-656 (the builder's canvas and resize handles: every [data-builder-*] and [data-resize-handle] rule), which go to a new file src/app/admin/builder.css. A folder that starts with _ is private to Next and is skipped by src/lib/house-routing.test.ts:29.",
+    "4. src/app/globals.css becomes the site's entry and holds only: @import \"tailwindcss\" source(none); @source \"../\"; @source not \"../data\"; @source not \"./admin\"; @source not \"../components/admin\"; the six lines of CS-6 (@source not \"../**/*.test.ts\", \"../**/*.test.tsx\", \"../test\", \"../lib/messages\", \"../lib/admin-messages\", \"../db\"); then, after every `not` line (the order matters: a file named after a folder's `not` is read), one @source line for each admin file a page outside the admin draws: ../components/admin/action-form.tsx, admin-text-context.tsx, admin-text.tsx, colour-field.tsx, colour-library.tsx, css-code-editor.tsx, design-cards.tsx, modal.tsx, rich-text-editor.tsx and text-styles.tsx (work/print-button.tsx too unless CS-9 step 3 is done); then @import \"./motion.css\"; @import \"./_styles/base.css\". Drop the line for supabase/migrations/*.sql. Rewrite the comment at the top.",
+    "5. New file src/app/admin/admin-entry.css: @import \"tailwindcss\" source(none); @source \"../../\"; @source not \"../../data\"; the same six lines for tests, src/test, the two message folders and src/db with ../../; @import \"../motion.css\"; @import \"../_styles/base.css\"; @import \"./builder.css\". It reads the storefront's components too, because the builder's canvas and the previews draw them inside the admin.",
+    "6. src/app/admin/layout.tsx:13: import \"./admin-entry.css\" in place of \"../globals.css\", still before the two schemes and admin.css. No other file changes its import: the 15 files outside the admin keep importing globals.css.",
+    "7. src/lib/stylesheet-sources.scan.test.ts, rule 'the site's sheet reads every admin part the site draws': walk value imports (static and import(), type-only skipped, not into src/server) from every non-test file of src/app outside src/app/admin and of src/components outside src/components/admin; every reached file under the two admin folders that holds a className must be named by an @source line of globals.css, and every such line must name a reached file. Also: src/app/admin/layout.tsx imports ./admin-entry.css and not ../globals.css; no file outside src/app/admin imports the admin's entry, a scheme or admin.css. Model: src/lib/storefront-bundle.scan.test.ts.",
+    "8. Tests that read globals.css: src/lib/theme.test.ts:73 and src/lib/checkout-appearance.test.ts:88 read src/app/_styles/base.css instead; src/lib/motion-css.test.ts:19 keeps its check on globals.css and gains the same check on src/app/admin/admin-entry.css; src/app/admin/admin-schemes.test.ts:60-64 also expects the entry's import before the schemes'.",
+    "9. Classes that could reach a site as data: list the classes of the admin's built sheet that the site's lacks (about 700) and search src/lib/signature, the seeded pages in supabase/migrations/*.sql and, with one read-only query, the distinct className values in production's page content. The planner found the themes' own names only (meridian-hero and the like) and no class attribute in the SQL.",
+    "10. Build. Read the size of the stylesheet /s/demo/no links and of the admin's. Build again under the 8 GB cap as in step 2 and compare the peaks. If the peak rose by more than about 150 MB, stop: keep CS-6's lines only and return to the split when the build has room (docs/build-memory.md names the 16 GB build machine).",
+    "11. Run the whole e2e suite and e2e/signed-in. Then look, in light and dark, at the places a missing class would show: a store's front, product, cart and checkout pages, Kaizena Flow's front page, sign-up, status and report, a docs page, the on-site editor with a text selected, a hosted invoice, the 404 page, the admin's home, the builder's canvas and a theme preview. Send the owner screenshots.",
+    "12. Docs: docs/build-memory.md:34-35 (two entries, what each reads, the measured peak); docs/performance.md (the sheets' sizes; an admin part drawn outside the admin must be named in globals.css, the scan test says which); docs/admin-style.md (the admin's entry); CLAUDE.md's Commands sentence about the @source lines names both files; docs/rules/admin/website.md beside D196: a class typed in Advanced is for the owner's own CSS, and a Tailwind name is not promised on the site. A decision line in docs/decisions.md. Lower the two site budgets of CS-3 to 135,000."
+   ],
+   "tests_and_rules": [
+    "New: src/lib/stylesheet-sources.scan.test.ts (step 7), beside the rules CS-3, CS-7 and CS-9 put there.",
+    "src/lib/theme.test.ts:62-78, src/lib/checkout-appearance.test.ts:83-88, src/lib/motion-css.test.ts:13-20, src/app/admin/admin-schemes.test.ts:60-64 (step 8). src/lib/house-routing.test.ts:38 lists the files of src/app that are no route: _styles is skipped by its underscore, so no line changes.",
+    "src/app/admin/admin-css.test.ts (every rule of admin.css sits under html[data-admin]): unchanged.",
+    "The whole e2e suite is the check for a lost style; most of all e2e/signed-in (the admin and the builder), e2e/inline-edit-live.spec.ts and e2e/inline-edit-hosts.spec.ts, e2e/sign-up.spec.ts, e2e/content-reports.spec.ts, e2e/platform-languages.spec.ts, e2e/invoices.spec.ts, e2e/responsive-parity.spec.ts and e2e/a11y.spec.ts.",
+    "e2e/performance.spec.ts: the stylesheet budgets of CS-3 fall; the page-weight budgets (line 126) may fall by about 8 KB.",
+    "Rule docs/build-memory.md:18-40 and CLAUDE.md: Tailwind's @source lines point at code, never at data or snapshots. Kept in both entries, and D378's SQL line is dropped with a reason (CS-6).",
+    "Rule D196 (docs/decisions.md:207): classes from the Advanced tab are drawn on the canvas as on the site. Still true for the owner's own classes; a Tailwind name was never promised and step 12 says so.",
+    "Rule docs/admin-style.md: admin.css reads only the colour roles. Not changed."
+   ],
+   "depends_on": [
+    "CS-7",
+    "CS-9",
+    "CS-8",
+    "CS-3 (steps 1 and 2: budgets at today's figures)",
+    "A build under the 8 GB cap measured before and after (docs/build-memory.md)"
+   ],
+   "done_when": "The stylesheet that /s/demo/no links is at most 135,000 bytes raw (183,124 today; 129,745 when the proposed entry is compiled outside the build), with stylesheet-sources.scan.test.ts and the e2e suite passing and the build's peak under the 8 GB cap written into docs/build-memory.md.",
+   "saving": "Measured by compiling the proposed entry: 51.8 KB raw, 7.6 KB gzip, 5.6 KB Brotli off every first visit to a store, the site and the docs (28% raw, 22% Brotli). The skeptic's cautious figure, from removing admin-only rules by hand, is about 44 KB raw / 6 KB gzip / 4.4 KB Brotli; the compile is larger because theme variables, the builder's rules and the tests' classes fall too. Also: admin-only and test-only edits stop renaming the shoppers' file (6 of the 13 class-adding commits in the sample).",
+   "effort": "M",
+   "risk": "Medium. (1) A class missing from the site's sheet is a silent visual fault: the scan test covers imports, steps 9 and 11 cover data and the eye. (2) The build's memory is at its edge (docs/build-memory.md: crossed once on 11 November). The Tailwind step itself needs no more than today (204-212 MB for both entries against 221-223 MB), but Next may run two entries in two workers; step 10 measures and has a way back. (3) A class an owner types in Advanced could work on the canvas and not on the site; it is said in the docs. (4) An owner who visits the site and then the admin downloads two full sheets once. (5) Without CS-8 a prefetch of /admin from the site would pull the admin's whole sheet.",
+   "confidence": "high",
+   "priority": "P1",
+   "already_tracked": "no",
+   "owner_decision": false,
+   "verdict": "confirmed",
+   "notes": "The same finding as SC-5 (storefront-client plan, P2 there because its saving was an estimate and the memory unmeasured) and BN-12; this is the detailed plan, merge them. Before opening is the cheap time: no shopper's cache is disturbed and a missed class is found by the team. Not proposed: taking the storefront's feature CSS and motion.css out of plain admin screens (about 49 KB raw there); owners load the admin with a warm cache and the canvas needs all of it. Moving action-form out of components/admin instead of naming it would touch 356 importing files."
+  },
+  {
+   "id": "CS-4",
+   "title": "The fixed breakpoint sheet is drawn again with every row",
+   "kind": "duplicate",
+   "where": [
+    "/home/user/kaizen-store/src/components/part-styles.tsx:41",
+    "/home/user/kaizen-store/src/components/part-styles.tsx:57",
+    "/home/user/kaizen-store/src/components/page-article.tsx:223",
+    "/home/user/kaizen-store/src/components/site-parts.tsx:345",
+    "/home/user/kaizen-store/src/components/store-theme.tsx:31",
+    "/home/user/kaizen-store/src/components/platform-root.tsx:72",
+    "/home/user/kaizen-store/src/components/docs/docs-root.tsx:37",
+    "/home/user/kaizen-store/src/components/theme-preview-root.tsx:30",
+    "/home/user/kaizen-store/src/app/s/[store]/[market]/blog/blog-listing.tsx:163",
+    "/home/user/kaizen-store/src/components/platform-routes/terms.tsx:99",
+    "/home/user/kaizen-store/src/server/breakpoints.ts:12",
+    "/home/user/kaizen-store/node_modules/next/dist/compiled/react-server-dom-turbopack/cjs/react-server-dom-turbopack-server.node.production.js:1878"
+   ],
+   "evidence": "RowView draws <PartStyles rows={[row]}> for each row of a page, header and footer (page-article.tsx:223, reached from site-parts.tsx:345 too), and PartStyles draws BreakpointSheet beside the row's own sheet (part-styles.tsx:41-49 and 57-66). The sheet is 1,760 B and the same text for every store on the default screen sizes. The layout already draws it once through StoreThemeStyles (store-theme.tsx:31); a store's rows use the same sizes as its layout (src/server/breakpoints.ts:12-17 reads the store's theme, as the layout does). React merges equal hrefs in the HTML, but its payload writer gives every string of 1,024 characters or more a row of its own each time (read at the cited line). Counted by the planner: the href kz-bp-j5um1l1cw is 4 times in store-home.html (one row), 3 times on store pages without rows, 2 times on Kaizena Flow's front page. With the real functions on the six launch themes: home pages have 6-10 rows, so 10.6-17.6 KB of per-row copies in the payload, more than the rows' own CSS as one sheet (4.2-6.7 KB). Row sheets also repeat each other: 6.3-12.4 KB one by one against 4.2-6.7 KB together.",
+   "cost": "1,760 B of text per row in every document and in every payload answer for a page: navigations and each of the 11 to 50 prefetches a storefront load makes. On the wire it is small (about 0.1-0.3 KB Brotli per document); the cost is text the server serialises, the cache stores and the phone parses for nothing, on every page of every store.",
+   "who_pays": "A shopper's browser, per page view and per prefetched page; the server, which writes the string per row at each render.",
+   "fix_steps": [
+    "1. src/components/part-styles.tsx: take <BreakpointSheet> out of StoreSheet (line 45) and out of PartStyles' branch for Kaizena Flow's pages (line 62); PartStyles then draws only the rows' or blocks' own sheet. Export a small async server component PreviewBreakpoints({ owner }) that draws <BreakpointSheet breakpoints={await breakpointsFor(owner)} />.",
+    "2. src/components/store-theme.tsx: StoreThemeStyles takes an optional rowSizes (Breakpoints). After the theme's own BreakpointSheet (line 31) it draws a second one for rowSizes only when breakpointClassCss(rowSizes, 'media') differs from the theme's. Pass rowSizes={DEFAULT_BREAKPOINTS} at src/components/platform-root.tsx:72, src/components/docs/docs-root.tsx:37 and src/components/theme-preview-root.tsx:30: rows on Kaizena Flow's pages are drawn at the default sizes (owner null), and this keeps today's output if the theme's sizes ever differ. Store layouts pass nothing.",
+    "3. The admin has no layout that draws the sheet, so each place there that draws site rows draws <PreviewBreakpoints owner={the store's id or null} /> once, inside its preview: src/app/admin/(gated)/[store]/pages/drawing.tsx (its two views), src/app/admin/(gated)/(print)/account/templates/kaizen/[templateId]/preview/page.tsx, src/app/admin/(gated)/(print)/platform/site-design/[install]/preview/page.tsx, src/app/admin/(gated)/platform/pages/editor-views.tsx, src/app/admin/account/themes/[presetId]/preview/page.tsx and src/components/admin/install-preview-view.tsx. The builder's canvas has its own (CanvasPartStyles) and is not touched.",
+    "4. A scan test (in src/lib/stylesheet-sources.scan.test.ts or beside part-css's tests): every non-test file under src/app/admin or src/components/admin that imports page-article, article-view, product-parts, site-parts or store-page-article names PreviewBreakpoints; and every root layout outside the admin that can draw rows draws StoreThemeStyles (the three store layouts, PlatformRoot, DocsRoot, ThemePreviewRoot).",
+    "5. e2e/performance.spec.ts: make a page of three rows with storePageRows() (e2e/db.ts:26), fetch its HTML and expect the breakpoint sheet's href (kz-bp-) at most 3 times (6 today: once in the head, twice with the layout, once per row). Lower CS-3's count for /s/demo/no from 4 to 3.",
+    "6. Second step, apart and optional: one part sheet per page. In PageArticle (src/components/page-article.tsx:106-132) and SiteRows (src/components/site-parts.tsx:335-349) draw one async sheet for all rows (theme layers read once, then partCss(themedRows(rows), 'site', sizes, 'media')), and tell RowView not to draw its own. Check with e2e/responsive-parity.spec.ts and a look at a streamed page that styles do not arrive late.",
+    "7. docs/responsive-editing.md:150-152 and 285-287 say PartStyles draws the breakpoint sheet beside every row: correct them to 'the layout draws it once; an admin preview draws its own'."
+   ],
+   "tests_and_rules": [
+    "e2e/responsive-parity.spec.ts (the breakpoint classes at each size on the site), e2e/site-layouts.spec.ts (headers and footers), e2e/product-layouts.spec.ts, e2e/blog.spec.ts and e2e/terms.spec.ts (the two listings that draw PartStyles with blocks), e2e/signed-in/theme-sections.spec.ts and e2e/themes.spec.ts (admin previews).",
+    "New: the scan rule of step 4 and the count of step 5.",
+    "Rule docs/responsive-editing.md:150-152 and 285-287, and its summary at docs/rules/admin/website.md:274 (D179): the sheet is drawn 'beside the part stylesheet, in the store's head and Kaizen's layout'. The fix keeps the head's copy, which is the one that works; the reason for the per-row copy (a row drawn where no layout draws the sheet) now applies only in the admin, where step 3 answers it."
+   ],
+   "depends_on": [],
+   "done_when": "A three-row test page's HTML holds the breakpoint sheet's href at most 3 times (6 today), held in e2e/performance.spec.ts; 2 once SC-8 has removed the second layout copy.",
+   "saving": "Step 1 to 5: 10.6-17.6 KB raw per launch-theme home document and per payload answer for it (rows times 1,760 B), about 0.1-0.3 KB Brotli. Step 6: a further 1.2-5.7 KB raw, in the HTML and again in the payload (computed with the real functions on the six launch themes).",
+   "effort": "S",
+   "risk": "Low for steps 1 to 5. What could break: an admin preview that draws site rows and is missing from step 3 would lose the kzb- classes (a listing's columns from Medium up, the standard header's menu button); the scan rule of step 4 finds such a file, and the signed-in preview specs show it. On Kaizena Flow's pages step 2 keeps the default-size sheet whenever it differs from the theme's. Step 6 changes when styles arrive for streamed rows and needs a visual check, which is why it is apart.",
+   "confidence": "high",
+   "priority": "P1",
+   "already_tracked": "no",
+   "owner_decision": false,
+   "verdict": "confirmed",
+   "notes": "A true duplicate: small on the wire, cheap and safe to remove, and it multiplies with rows, pages and prefetches. Same finding as PM-7 (page-model); merge them. An equal, simpler-looking way (a per-request memo that lets only the first BreakpointSheet draw) was weighed and left: prerendered shells, resumed renders and per-segment prefetch answers are separate renders, and a sheet dropped in one of them would be hard to see."
+  },
+  {
+   "id": "CS-6",
+   "title": "Tailwind reads tests, SQL and message files: 37% of its candidates, 10 junk classes",
+   "kind": "dead",
+   "where": [
+    "/home/user/kaizen-store/src/app/globals.css:1",
+    "/home/user/kaizen-store/src/app/globals.css:7",
+    "/home/user/kaizen-store/src/app/globals.css:9",
+    "/home/user/kaizen-store/docs/build-memory.md:34",
+    "/home/user/kaizen-store/docs/decisions.md:719"
+   ],
+   "evidence": "globals.css:6-9 points Tailwind at all of src except src/data, and at supabase/migrations/*.sql. The planner compiled the sheet with and without the noise, with the project's own Tailwind: leaving out **/*.test.ts, **/*.test.tsx, src/test, src/lib/messages, src/lib/admin-messages, src/db and the SQL takes the scan from 5,931 files and 71,891 candidates to 3,984 files and 45,347, and the sheet from 1,750 classes to 1,740. The 10 lost are words in tests: order-1038, order-1042, col-1, row-1, row-2, m-1, sepia, block-1, md:mr-0, lg:ml-auto (436 B). The four migration files (4.0 MB) hold no class attribute (the verified report's regex; the planner's rg for className finds none). The SQL line dates from D378 (docs/decisions.md:719), a caution when the scan was first scoped; CLAUDE.md's own rule says the @source lines point at code, never at data. No test pins the lines.",
+   "cost": "436 B of CSS, about 0.2 s of scan and about 55 MB of the Tailwind step's memory (221-223 MB against 160-169 MB, fresh process each). The real cost is coupling: a word in a test can add a class and rename the production stylesheet (part of the 6 admin-or-test-only commits of CS-3).",
+   "who_pays": "The build, slightly; a shopper's browser when a test-only change renames the sheet.",
+   "fix_steps": [
+    "1. Do it inside CS-1 (its steps 4 and 5 carry these lines). If CS-1 waits, do it alone: in src/app/globals.css delete line 9 (@source \"../../supabase/migrations/*.sql\") and add after line 8: @source not \"../**/*.test.ts\"; @source not \"../**/*.test.tsx\"; @source not \"../test\"; @source not \"../lib/messages\"; @source not \"../lib/admin-messages\"; @source not \"../db\".",
+    "2. Rewrite the comment at src/app/globals.css:1-5: Tailwind reads the code under src; not tests, interface texts, the schema, data or SQL.",
+    "3. src/lib/stylesheet-sources.scan.test.ts, rule 'Tailwind reads code only' (CS-3 step 3): the lines above are present and no @source leaves src.",
+    "4. docs/build-memory.md:34-35: change 'points Tailwind at src (without src/data) and the migrations' SQL' to the new list, with the reason: measured on 12 November 2026, the SQL and the message files add no class and the tests add 10 that nothing draws; a stored page is edited in production without a build, so it can never rely on the scan. Add the same sentence as a note to D378 in docs/decisions.md.",
+    "5. Build and compare the class lists: only the 10 classes above may be gone."
+   ],
+   "tests_and_rules": [
+    "New scan rule (step 3).",
+    "Rule D378 (docs/decisions.md:719) and docs/build-memory.md:34-35 put the SQL in the scan on purpose, in case seeded content carried a class. Why that reason no longer holds: the four baseline files hold no class attribute, the classes kept in seeded pages are the themes' own names styled by the themes' CSS, and content made in production never passes through a build. Step 4 writes this down.",
+    "CLAUDE.md, Commands: 'keep Tailwind's @source lines pointed at code, never at data or snapshots'. The change follows it.",
+    "The e2e suite: no visible change is expected; it passes unchanged."
+   ],
+   "depends_on": [],
+   "done_when": "The built stylesheet holds none of the ten test-only classes (rg -c 'order-1038|order-1042|\\.sepia\\{' on .next/static/chunks/*.css gives 0; 3 today) and every other class it has today (1,739 of 1,749, compared with the planner's diffcls.mjs).",
+   "saving": "436 B of CSS, about 0.2 s and about 55 MB in the build's Tailwind step (measured); tests and texts can no longer rename the production stylesheet.",
+   "effort": "S",
+   "risk": "Low. A class that only a message file or a migration names would be lost; today there is none (step 5 checks). Noticed as a missing style in e2e or by eye.",
+   "confidence": "high",
+   "priority": "P2",
+   "already_tracked": "Partly: D378 and docs/build-memory.md scoped the scan (done); this remainder is not tracked.",
+   "owner_decision": false,
+   "verdict": "confirmed",
+   "notes": "Too small to stand alone, but it pays for CS-1: with these lines the two entries together read 6,435 files against 5,931 today and need no more memory than today's one. Same finding as AS-7 (assets); merge them. P2 only because its own bytes are trivial; it rides with CS-1."
+  },
+  {
+   "id": "CS-5",
+   "title": "Layout-level style sheets are carried three times in each store document",
+   "kind": "duplicate",
+   "where": [
+    "/home/user/kaizen-store/src/app/s/[store]/[market]/layout.tsx:104",
+    "/home/user/kaizen-store/src/app/s/[store]/[market]/layout.tsx:164",
+    "/home/user/kaizen-store/src/components/store-theme.tsx:25",
+    "/home/user/kaizen-store/src/components/custom-css.tsx:15",
+    "/home/user/kaizen-store/src/lib/custom-css.ts:19",
+    "/home/user/kaizen-store/node_modules/next/dist/server/app-render/create-component-tree.js:551",
+    "/home/user/kaizen-store/node_modules/next/dist/server/app-render/create-component-tree.js:659"
+   ],
+   "evidence": "Theme variables, breakpoint classes, text styles, the store's own CSS and the header's and footer's CSS are <style href precedence> elements drawn by the layout (layout.tsx:164-170): inline in every document, once in the HTML and once in the payload. In store documents each is there a third time: the theme sheet's href is 3 times in store-home.html and 2 times in Kaizena Flow's front page. The cause, which the verified report left open, is in Next's source: a root layout with a children slot and one more slot is wrapped in a boundary whose not-found fallback is the layout drawn again (create-component-tree.js:551 and 659-668; its comment says it 'renders the RootLayout twice'). The market layout has the cart drawer's slot (layout.tsx:104). With the real functions: a launch theme's layout-level sheets are 6.6-9.5 KB (theme variables 1.4-1.5 KB, breakpoint sheet 1.8 KB, the theme's own CSS 3.4-6.3 KB), so 20-28 KB per document in three copies.",
+   "cost": "For a store on a launch theme, 6.6-9.5 KB raw per document for the copy nobody needs (estimate from measured parts); about 0.1-0.3 KB Brotli. Paid on full page loads only: client navigations inside a store do not resend the layout. The ceiling is five sheets of 50,000 characters, each three times.",
+   "who_pays": "A shopper's browser on every full page load; the CDN and function, which store and send larger documents.",
+   "fix_steps": [
+    "1. Nothing of its own for the third copy: it goes when the storefront-client plan's SC-8 moves the cart drawer's slot off the root layout (the same finding as PL-2 and PM-1). Do not build a second fix here.",
+    "2. Keep the layout-level CSS inline. Write the reason into docs/performance.md (the 'Styles' part of CS-3): an external per-store sheet trades about 2 KB of inline Brotli for one more render-blocking request on a first visit and helps only repeat full loads.",
+    "3. Watch it with CS-3's inline-style budget, and add one line to docs/performance.md: look again at an external, hashed, immutable sheet (the href's hash already exists) when real stores' layout-level CSS commonly passes about 10 KB.",
+    "4. After SC-8, lower the count in CS-3 step 2 and note the theme sheet's count (2) in docs/performance.md."
+   ],
+   "tests_and_rules": [
+    "e2e/performance.spec.ts: CS-3's inline-style budget is the check.",
+    "e2e/custom-css.spec.ts and src/lib/theme.test.ts hold what the sheets say; nothing changes for them.",
+    "Rule D100 (docs/decisions.md:111): the owner's CSS comes after the theme and wins. Kept: nothing moves."
+   ],
+   "depends_on": [
+    "SC-8 (storefront-client plan: the cart drawer's slot leaves the root layout)",
+    "CS-3"
+   ],
+   "done_when": "After SC-8, the theme sheet's href (theme-<store id>-) appears 2 times in /s/demo/no's HTML (3 today).",
+   "saving": "From SC-8, not from this finding: 6.6-9.5 KB raw per document for a launch-theme store (estimate), about 0.1-0.3 KB Brotli. The draft's 20-28 KB raw and 1.5-2.5 KB Brotli assumed an external sheet and a warm cache; on a first visit that saving is zero or negative.",
+   "effort": "S",
+   "risk": "None of its own. The risk of moving the slot is SC-8's.",
+   "confidence": "medium",
+   "priority": "P3",
+   "already_tracked": "no",
+   "owner_decision": false,
+   "verdict": "corrected",
+   "notes": "P3 because it needs no work of its own now: the duplicate is removed by SC-8 and the growth is watched by CS-3. The planner settled the open cause by reading Next's source, which SC-8's plan had already cited. What grows after opening: owners' own CSS and themes; the budget and the 10 KB line say when to look again."
+  },
+  {
+   "id": "CS-2",
+   "title": "A store with no builder motion still downloads motion.css",
+   "kind": "eager",
+   "where": [
+    "/home/user/kaizen-store/src/app/globals.css:10",
+    "/home/user/kaizen-store/src/app/motion.css:1",
+    "/home/user/kaizen-store/src/components/motion-support.tsx:10",
+    "/home/user/kaizen-store/src/components/page-article.tsx:110",
+    "/home/user/kaizen-store/src/components/page-parts.tsx:245",
+    "/home/user/kaizen-store/src/lib/motion-attrs.ts:279",
+    "/home/user/kaizen-store/src/lib/background-layers.ts:172",
+    "/home/user/kaizen-store/src/lib/motion-css.test.ts:18"
+   ],
+   "evidence": "In the built sheet the components layer (motion.css) is 18,742 B raw / 4,309 B gzip / 3,815 B Brotli (the planner's own parse). After CS-1 it would be 14% of the site's sheet raw and 19% of its Brotli. The motion script is already loaded only where needed (motion-support.tsx:10-20, motionNeeds()); the CSS is not. Nothing in it is dead. The six launch themes do their motion in their own theme CSS: rg for motion, backgroundMotion, backgroundLayers and gradient in src/lib/signature finds only each theme's reduced-motion query. So a store on a launch theme does not need this file until its owner adds a builder effect. The file is plain CSS (no Tailwind directive, no nesting), so it could be served as it is. Its rules are not only motion: a gradient background's frame and layers (page-parts.tsx:245-256), background layers (background-layers.ts:172-212) and split text need it for structure.",
+   "cost": "3.8 KB Brotli (4.3 KB gzip), render-blocking, on the first visit to every store and on every admin screen. A store that uses no builder motion pays the same as one that uses all of it.",
+   "who_pays": "A shopper's browser.",
+   "fix_steps": [
+    "1. Do not build this now. After opening, measure with a read-only script over published pages, headers and footers: the share whose rows need the sheet (motionNeeds(rows).any, or any gradient background, or any background layers). Write the share into docs/performance.md.",
+    "2. Only if clearly more than half of real page views would not need it: a prebuild step writes motion.css, minified and beginning with '@layer theme, base, components, utilities;' (so the layer order holds whichever sheet arrives first), to public/ under a name with its content hash, and a generated module exports the address.",
+    "3. MotionSupport (src/components/motion-support.tsx) draws <link rel=\"stylesheet\" precedence> to it when the page, header or footer needs it; widen MotionNeeds with a flag for gradient backgrounds and background layers (src/lib/motion-attrs.ts:279-309). The site's entry drops @import \"./motion.css\"; the admin's entry keeps it for the canvas.",
+    "4. Tests: src/lib/motion-css.test.ts:18-20 expects the import in globals.css and must expect the link instead; one new test ties the gate to every attribute motion.css styles (each [data-fx-*] selector of the file has a code path that sets the flag)."
+   ],
+   "tests_and_rules": [
+    "src/lib/motion-css.test.ts (the catalogue and the sheet are two halves of one thing; line 18 holds the import), src/lib/background-layers.test.ts:51, e2e/motion.spec.ts, e2e/animation.spec.ts.",
+    "Rule in src/app/motion.css:7-16: content is always reachable (no scripts, reduced motion, the 4 s failsafe). A sheet that fails to load must leave content visible: the hidden start state lives in that sheet, so it does.",
+    "Next's CSS guide (node_modules/next/dist/docs/01-app/01-getting-started/11-css.md:294): imported CSS follows the importing segment and is not removed on navigation, so this needs a hand-made link, not an import."
+   ],
+   "depends_on": [
+    "CS-1",
+    "A measured share of real pages that need motion.css, after opening"
+   ],
+   "done_when": "The share of published pages that need motion.css is written in docs/performance.md with the decision; if built, a store page without builder motion links no motion stylesheet and the site's sheet is 18.7 KB raw smaller.",
+   "saving": "If built and if most pages have no builder motion: 3.8 KB Brotli / 4.3 KB gzip / 18.7 KB raw per first visit. Nothing on pages with motion, which make one more render-blocking request instead.",
+   "effort": "M",
+   "risk": "A page that has data-fx attributes but no sheet shows broken backgrounds (layers fall into the flow); the gate test of step 4 is what stands between. If most real stores add an entrance somewhere, most pages load an extra file and the change is a net loss. How owners will use motion is unknown before opening.",
+   "confidence": "low",
+   "priority": "P3",
+   "already_tracked": "no",
+   "owner_decision": false,
+   "verdict": "corrected",
+   "notes": "P3: true, but not worth doing now. It needs a build step and a hand-made stylesheet link for 3.8 KB, and its sign depends on use nobody can know before opening. This is not an argument from disuse: the idle cost is real and small, and the plan is to measure before paying for the fix. The draft's 'up to 7.2 KB gzip' is withdrawn (see refuted)."
+  }
+ ]
+}
