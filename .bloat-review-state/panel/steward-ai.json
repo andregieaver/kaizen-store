@@ -1,0 +1,216 @@
+{
+  "area": "ai",
+  "title": "AI calls",
+  "grade_today": "C",
+  "grade_reasons": "C, in its lower half. The base is sound: the shopper chat sends about 5,100 characters a call, the writers and the docs guide are small, search answers are kept, a turn has a ceiling of time and tokens, and tools of switched-off features are dropped. But the AI manager, the dearest call, sends 161,661 characters on every round whatever the question (3.3 times what a lean round needs), up to 11 times a turn; nothing asks for or counts cached tokens; one model does every job; the only budget is a tool count set at the provider's cap; and the eval cannot tell whether the model finds a tool. Around the calls, the AI connection is read 12 times for each call made and four upkeep jobs walk every store every five minutes. It is not a D because the waste sits in one agent and follows use; it is not a B because the largest cause is untouched and nothing holds it.",
+  "measures": [
+    {
+      "name": "What a default AI manager round sends: prompt and tool definitions, in characters",
+      "today": "161,661 characters on every round, whatever the page or the question (shop-only store): 124 tool definitions at 146,889 and the prompt at 14,772. About 40,400 tokens at 4 characters a token, a floor. Source: the app's own chooseTools() and toolDefinition() in the planners' bundle, which I ran again (work/plan-ai/measure.cjs); the prompt sizes are the skeptic's draw.",
+      "target_a": "At most 50,000 characters with no page open and at most 70,000 on any admin page, for a shop-only store and for a store with every feature on. No tool over 2,500 characters outside a named list that may only shrink.",
+      "how_measured": "src/server/ai-round.scan.test.ts with src/server/ai-round.baseline.json, which the budget item creates. It must draw the round for no page and for each of the nine working areas, not only Home and orders as planned (gap 2).",
+      "why_this_is_a": "The floor is 33,200: the prompt (14,800), the 12 core tools with load_tools (13,500) and the manager's 9 own tools (4,900). The tolerance is 15,400 for the 17 plan, reminder and skill tools if the owner keeps them always present, and 20,000 for the tools of the page in view. The planned items reach about 47,000 with no page, but 71,000 to 97,000 on orders, marketing, products, website and settings pages. That is a B. Gap 2 closes it."
+    },
+    {
+      "name": "Real input tokens per AI manager call and per turn, and whether the model still finds its tools",
+      "today": "Not shown anywhere. Estimate: about 40,400 tokens a call and 121,000 for a turn with two tool rounds; up to 11 calls a turn; the ceiling is 400,000 tokens a turn. The eval has 9 manager cases and none makes the model find a tool (rg: 0 lines for load_tools in src/lib/agent-eval.ts).",
+      "target_a": "Median call at most 15,000 input tokens, 90th percentile at most 25,000, median turn at most 40,000. At most 35% of turns need a load_tools round. At least 8 lean eval cases, all passing in the committed recording.",
+      "how_measured": "commerce.ai_usage where feature = 'ai_manager', shown on Platform, AI as median and 90th percentile (the budget item adds it); the ai_manager.round log line for load_tools rounds; src/data/agent-eval-recording.json replayed by agent-eval-replay.int.test.ts.",
+      "why_this_is_a": "The scan counts characters of JSON; the bill counts tokens, with history and tool results. JSON costs more tokens than prose, so a drawn 50,000 to 70,000 characters is about 13,000 to 20,000 tokens. A B is a smaller round on paper. An A is the provider's own count staying low, with proof that a smaller tool list did not cost the owner a wrong answer. The 35% allows one extra round for a question outside the page and the core; the planners' sample needed it for 7 of 18."
+    },
+    {
+      "name": "Share of AI manager input served from the provider's cache",
+      "today": "Unknown. No request asks for caching (0 lines in src for six cache names), cached tokens are not read, stored or priced (src/lib/ai-usage.ts:92-101), and the prompt's second line changes every minute. A store's allowance is charged the full price either way.",
+      "target_a": "At least 50% of the input tokens of feature ai_manager over a week, and at least 80% on rounds after the first, for each model family in use that offers a cache. Cached tokens count toward a store's allowance at their own price.",
+      "how_measured": "Production: select sum(cached_input_tokens)::float / nullif(sum(input_tokens), 0) from commerce.ai_usage where feature = 'ai_manager' and kind = 'text' and not estimated. The column is added by the caching item; the per-round share comes from the ai_manager.round log.",
+      "why_this_is_a": "The floor: the first round of a cold conversation, and whatever follows the first changed byte, cannot come from a cache. In a turn of three calls the second and third repeat the first one's whole start, about 63% of the turn's input. The planners' pass mark of 30% can be reached by accident. 50% overall and 80% after the first round shows the request is ordered right. A provider with no cache is outside the measure."
+    },
+    {
+      "name": "Small jobs on a quick model",
+      "today": "0 of 8. One text model does every job: 33 completeText call sites in 25 files and both tool loops (rg, run by me). Tone rating and summaries run for each customer message by default, search understanding for each new search, a memory pass after every manager turn.",
+      "target_a": "All 8 named small jobs run on the quick model: memory pass, tone, support summary, recommendation order, search understanding, listing check, category suggestion, highlight words. Each provider has a default, and every completeText call site says main or quick.",
+      "how_measured": "Production: select model, count(*) from commerce.ai_usage where feature in ('support_tone', 'support_summary', 'recommendations', 'search', the memory pass's new feature) group by 1. In CI: a scan over completeText call sites, added by the quick-model item.",
+      "why_this_is_a": "The floor is the cheapest model that passes each job's own eval. With gpt-5-mini as the main model the money gap is small, which is why this can come last. But a 60-token tone rating should never ride on the model chosen for ten-step tool work, and the day the platform's manager moves to a larger model every small job would move with it."
+    },
+    {
+      "name": "Reads of the AI connection per recorded AI call",
+      "today": "12.4: 237,563 reads of commerce.ai_providers against 19,104 rows in ai_usage in 78 days, and 8,514 sums of the month's AI cost at 37 to 57 ms (m/prod-db-stats.md). aiFor() is on 89 lines in 64 files (rg, run by me). A staff conversation reads it on every poll, a builder page three times, a shopper's search on every search.",
+      "target_a": "At most 2 reads per recorded AI call over a week, and under 300 reads on a day with no AI call. The month's cost comes from daily rows in under 5 ms. No screen, poll or idle job reads a key to learn whether to draw a button.",
+      "how_measured": "Production's pg_stat_statements: calls of the four shapes of 'select * from commerce.ai_providers where enabled' against count(*) of commerce.ai_usage for the same week (the queries behind m/prod-db-stats.md). In CI: the memo case in src/server/ai.int.test.ts.",
+      "why_this_is_a": "The floor is one read where a model is about to be called, because the call needs the key; a turn of many rounds reads once. The tolerance is one read a minute per server instance for what the AI can do, and reads on cache misses after a deploy. The planners' check, under 1,500 reads a day, is a number for today's traffic. A ratio still holds when owners and shoppers arrive."
+    },
+    {
+      "name": "Idle work of the four AI upkeep jobs: knowledge, product vectors, picture vectors, alt texts",
+      "today": "Each walks stores every five minutes to find nothing. In 78 days: 91,200 deletes removed 782 rows; 24,134 reads of about 40 whole pages each; 10,201 hashes of every product's text; 49,842 stale-picture selects (m/prod-db-stats.md). The alt-text job lists every site that has an AI-written alt text on every run and retries a failed picture daily with no end (src/server/alt-texts.ts:225-240, which I read).",
+      "target_a": "An idle run of the four jobs sends the same number of statements for 1 site as for 20, at most 6 in all, reads no AI connection and calls no model. A failed picture is tried at most 5 times. The product scan runs hourly.",
+      "how_measured": "Int tests the items add: alt-texts.int.test.ts (a finished site is not listed), media-library.int.test.ts (a second run: 0 sites, no row written), chat.int.test.ts (a second tick: no transaction), and the scheduled area's idle count in src/server/query-budget.int.test.ts. Production: calls of the knowledge delete and of the product hash statement in pg_stat_statements.",
+      "why_this_is_a": "The floor is one 'is anything due' question per job per run. The tolerance is two more statements. A B is one small query per site. An A does not grow with the number of stores, because these jobs run 288 times a day for every store there is."
+    },
+    {
+      "name": "The AI manager's chat script in the owner's browser",
+      "today": "496,206 bytes raw, 144,326 gzip, on first opening of the panel and on the two assistant pages (ls on .next/static/chunks/00rxgygh1f--7.js). About 437,750 bytes are the model's tool tables, the admin map and the Norwegian page list; the browser reads 13,200 characters of labels and one page name. No budget.",
+      "target_a": "At most 140,000 bytes raw fetched on first opening, held in the panel's spec.",
+      "how_measured": "e2e/signed-in/ai-manager-panel.spec.ts adds up the scripts requested after the press. The slim-script item adds the sum and the budget; today the spec only checks that something is fetched.",
+      "why_this_is_a": "The floor is the chat's own code, about 58,000 bytes, and the tool labels it shows. The tolerance is a slim list of 416 page names in two languages, about 53,500 characters, kept so the suggested question needs no call to the server. Sending the one name from the server would reach about 75,000. That is not asked for: the script loads once a session and only when the panel is opened."
+    },
+    {
+      "name": "What holds an AI call: a size budget for every agent, an eval that can fail, and a ceiling on calls a visitor can cause",
+      "today": "The only budget is a count of tools, 124, set under the provider's cap of 128. 0 of 7 versioned prompts (chat, manager, legal, moderation, dream, guide, rework) has a size test. Output tokens per call are shown nowhere. Of the public paths that can call a model, the shopper chat, the docs guide, the docs search and recommendations have a ceiling; the storefront search page has none.",
+      "target_a": "All 7 fixed prompts and their tool sets in one baseline that may only fall without a reviewed raise. Input, cached and output tokens per call by feature on Platform, AI. 0 public paths that can call a model without a ceiling per visitor and per store.",
+      "how_measured": "src/server/ai-round.scan.test.ts and its baseline; the usage panel on Platform, AI; BUDGETS in src/server/request-budget.ts with an int test of the search page (gap 1).",
+      "why_this_is_a": "An A is not a small call today but a call that cannot grow unseen. The floor is one baseline line per agent and one ceiling per public path. The planned items hold the manager's round only. The shopper chat is lean at 5,149 characters, and it is the call that multiplies with visitors, so it must be held too. Gaps 1 and 3 close this."
+    }
+  ],
+  "work_items": [
+    {
+      "title": "Slim the AI manager's chat script: tool labels and page names only",
+      "finding_ids": ["AI-4"],
+      "also_ids": ["AC-8", "BN-15"],
+      "phase": "now",
+      "effort": "S",
+      "done_when": "In e2e/signed-in/ai-manager-panel.spec.ts the scripts fetched on first opening the AI manager are under 140,000 bytes raw (496,206 today), and /admin/[store]/assistant is at or under 1,720,000 bytes in route-bundle-stats.json (2,056,681 today).",
+      "moves": "Chat script: 496,206 bytes to about 125,000, with a budget. One fix for three findings. The same tables are also loaded on the server with every admin page; that is the server area's SG-15 and DP-11, planned there.",
+      "serves": "owner-browser",
+      "owner_decision": false
+    },
+    {
+      "title": "A size baseline for the AI manager's round, a log line per round, and real tokens per call on Platform, AI",
+      "finding_ids": ["AI-10"],
+      "also_ids": [],
+      "phase": "now",
+      "effort": "S",
+      "done_when": "src/server/ai-round.scan.test.ts is in the repository with its baseline, and adding 2,000 characters to list_orders' description makes it fail (tried once locally, then reverted).",
+      "moves": "Default round: held at today's 161,661 so it cannot grow, and each later item shows as the baseline falling. Real tokens: from not shown to a median and 90th percentile on Platform, AI. Budget coverage: 1 of 7 prompts. Do it before the lean round; it is the measuring tool.",
+      "serves": "ai",
+      "owner_decision": false
+    },
+    {
+      "title": "Eval cases that make the model find a tool, and a first run kept as the 'before'",
+      "finding_ids": ["AI-14"],
+      "also_ids": [],
+      "phase": "now",
+      "effort": "S",
+      "done_when": "The committed src/data/agent-eval-recording.json holds at least 8 lean cases (six or more that need a tool outside the core 12, two that must load nothing), agent-eval-replay.int.test.ts passes on it, and Platform, AI shows how many lean cases passed and how many used load_tools.",
+      "moves": "Lean eval cases: 0 to at least 8. It turns the owner's question 8 of the code review from a judgement into a number, and a recording made with one default tool set is refused for another. A person with platform access must run the eval in production and commit the recording.",
+      "serves": "ai",
+      "owner_decision": false
+    },
+    {
+      "title": "Screens and polls ask what the AI can do, not for its key",
+      "finding_ids": ["AI-2"],
+      "also_ids": ["DQ-4", "SD-12"],
+      "phase": "now",
+      "effort": "S",
+      "done_when": "rg -n 'aiFor\\(' over src/server/support-inbox.ts, page-change-ai.ts, picture-editor.ts and products.ts prints only the two lines that go on to call a model (picture-editor.ts:58 and page-change-ai.ts:97; six lines today), and the memo case in src/server/ai.int.test.ts passes.",
+      "moves": "Connection reads per AI call: an open support conversation falls from 4 to 30 reads a minute to at most 1 a minute per server instance, a builder page from 3 to 1. With the two upkeep items the ratio should fall from 12.4 to under 5 (estimate). The planners' check said the rg prints nothing; I ran it, and two of the six lines are real callers that keep aiFor(). The month's cost sum is DQ-4, in the database area.",
+      "serves": "ai",
+      "owner_decision": false
+    },
+    {
+      "title": "The alt-text job lists a site only while a picture is due, and gives up after five tries",
+      "finding_ids": ["AI-13"],
+      "also_ids": ["CR-4", "DQ-5"],
+      "phase": "now",
+      "effort": "S",
+      "done_when": "In src/server/alt-texts.int.test.ts, sitesDueForAltText() returns no row for a site whose pictures all have complete AI texts (today's query lists that site on every run), and a picture with five failed tries is not picked by the job.",
+      "moves": "Idle upkeep: the alt-text job falls from three or more round trips per site with pictures, every five minutes, to one query in all. The pass for a newly added language runs once a day. A failed picture is sent to the vision model 5 times, not once a day for good. It adds one small column to media (alt_tries).",
+      "serves": "scheduled",
+      "owner_decision": false
+    },
+    {
+      "title": "Knowledge, product and picture index jobs: one question to find work, embed on save, scan hourly",
+      "finding_ids": ["AI-5"],
+      "also_ids": ["DQ-6", "DS-5", "DQ-3", "DS-10", "CR-4", "DQ-5"],
+      "phase": "now",
+      "effort": "M",
+      "done_when": "In production a day after the deploy the calls of the statement starting 'with docs as (select t.store_id, t.product_id' grow by about 24 a day (about 130 a day today), and the knowledge and picture checks of the database and scheduled areas pass (zero transactions on a second idle tick; a second picture run reports 0 sites).",
+      "moves": "Idle upkeep: 91,200 empty deletes to none, the product hash 12 times less often, the picture job one query in all. Plan and do the knowledge and picture parts once, in the database and scheduled areas' items. What is only here: the AI manager's and the content packs' product saves call refreshStoreEmbeddings() (src/server/product-tools.ts:221, content-packs.ts:417), and only then does the scan go hourly.",
+      "serves": "scheduled",
+      "owner_decision": false
+    },
+    {
+      "title": "Notice badge: one count, no lookup by slug, and ask less often after an answer of zero",
+      "finding_ids": ["AI-12"],
+      "also_ids": ["AD-9", "AC-13", "PL-11"],
+      "phase": "now",
+      "effort": "S",
+      "done_when": "The count=1 feed makes 2 statements after the account read (4 today), and a Playwright case with a fake clock sees at most 20 feed requests in an hour from a visible tab with no notices (60 today).",
+      "moves": "No AI measure moves; it serves the server area's requests per open tab. One change for four findings. If an approval is waiting, keep the 60 seconds.",
+      "serves": "server",
+      "owner_decision": false
+    },
+    {
+      "title": "The lean default round: core tools, the page's area and one routed area, the rest one load_tools call away (code review step 3.18)",
+      "finding_ids": ["AI-1", "AI-9", "AI-11"],
+      "also_ids": ["FT-4"],
+      "phase": "next",
+      "effort": "M",
+      "done_when": "src/server/ai-round.scan.test.ts draws the default round of a shop-only store under 52,000 characters with no page and under 80,000 on an orders page (161,661 today), agent-eval-replay.int.test.ts passes on a recording that holds the lean cases, and a case in owner-assistant.int.test.ts counts 0 embedding requests for a turn of a person with 3 memories.",
+      "moves": "Default round: 161,661 to about 48,600 with no page (minus 70%), 77,000 on orders, 79,900 on marketing, 96,600 to 103,400 on website, products and settings. A website with no shop loses about 3,000 characters of playbooks it cannot use; unattended turns lose the admin map. The owner decides what the manager offers unprompted (question 8 of the code review); every tool stays one load_tools call away. Set the turn's ceiling of 400,000 tokens again in the same change: it was sized for eleven full rounds (src/lib/turn-budget.ts:19-23). One eval run and one recording cover this item, the caching item and the schema item.",
+      "serves": "ai",
+      "owner_decision": true
+    },
+    {
+      "title": "Cached input: count it, price it, show it; then the fixed part first and the time last",
+      "finding_ids": ["AI-3"],
+      "also_ids": [],
+      "phase": "next",
+      "effort": "M",
+      "done_when": "In production, a week after the order change: select sum(cached_input_tokens)::float / nullif(sum(input_tokens), 0) from commerce.ai_usage where feature = 'ai_manager' and kind = 'text' and not estimated and created_at > the deploy gives more than 0.5 (the planners' pass mark was 0.3; the column does not exist today). If a model family gives less, the marker step has been taken for it and the figure read again.",
+      "moves": "Cached share: from unknown to measured, then to at least 50%. A store's allowance is charged cached tokens at their own price. The first four steps (the two columns, the reader, the price, the figure on Platform, AI) are a push of their own with the migration and can go ahead of the lean round. Add an eval case that asks for a reminder 'tomorrow at 9' and checks the time sent, because the time moves to the end of the prompt.",
+      "serves": "ai",
+      "owner_decision": false
+    },
+    {
+      "title": "Slimmer schemas for the model, a cut result that is still valid JSON, then split update_product",
+      "finding_ids": ["AI-8"],
+      "also_ids": [],
+      "phase": "next",
+      "effort": "M",
+      "done_when": "src/server/ai-round.scan.test.ts finds no maxLength, minLength or pattern key in the tools of the default round (5,562 characters of them in a lean orders round today), and the int test of a cut result passes.",
+      "moves": "Default round: 4,000 to 7,700 characters less, and about 10,000 less on a products page once update_product is split. A Dream Factory catalogue step falls from 30,564 characters of tools to about 20,000. The first four steps ride on the lean round's eval run; the split is a change of its own after it.",
+      "serves": "ai",
+      "owner_decision": false
+    },
+    {
+      "title": "A quick model for small jobs (code review step 3.20)",
+      "finding_ids": ["AI-7"],
+      "also_ids": [],
+      "phase": "later",
+      "effort": "M",
+      "done_when": "select model, count(*) from commerce.ai_usage where feature in ('support_tone', 'support_summary', 'recommendations', the memory pass's new feature) and created_at > the deploy group by 1 shows the quick model on those rows, and a scan test fails a completeText call site that does not say main or quick.",
+      "moves": "Small jobs on a quick model: 0 of 8 to 8 of 8. The memory pass gets a feature name of its own, so usage shows it apart from the manager's rounds. Do it before the platform's manager moves to a larger model, not after. Each quick model needs a price row first, or its calls count nothing toward a store's allowance.",
+      "serves": "ai",
+      "owner_decision": false
+    }
+  ],
+  "tolerated": [],
+  "owner_choices": [
+    {
+      "finding_ids": ["AI-6"],
+      "question": "Should the AI manager always carry its 17 plan, reminder and saved-skill tools, so it can offer them unprompted, at about 3,800 tokens on every round? Or should they load when the talk turns to them or the store has a plan, goal or reminder alive? Answer it with question 8 of the code review; if they load on demand, the work rides on the lean round's change and a round with no page falls to about 33,000 characters."
+    }
+  ],
+  "gaps": [
+    {
+      "title": "A new search on a store's search page costs up to two model calls with no ceiling, and every search reads the AI connection",
+      "evidence": "src/server/search.ts:333 calls aiFor() on every search before it knows whether the answer is kept. On a miss, src/server/query-vector.ts:20 and src/server/query-understanding.ts:82 each read it again and call an embedding model and the text model (up to 2,000 tokens out). The comment at src/app/s/[store]/[market]/search/actions.ts:15 says 'the search page itself is never limited'; BUDGETS in src/server/request-budget.ts holds type-ahead (keyword only) but no search, while the docs' search refuses when its count fails because 'each search may ask the platform's AI'. Recommendations have a monthly cap (src/server/recommend.ts:561-564). So a crawler that follows ?q= links spends two model calls per new word. The only ceiling is the plan's monthly AI allowance, and when that is spent the store's chat and AI manager stop too (src/server/ai.ts:217). No finding covers it; it starts the day shoppers and crawlers arrive.",
+      "proposed_work_item": "Now, S. (1) search.ts takes the text model's name and the vector space from the 60-second memo of the abilities item, with no key, so a search answered from the cache reads no connection. (2) A search_ai entry in BUDGETS, per visitor a minute and per store an hour, taken only on a cache miss; past it the search runs by keyword and the page is never refused. (3) A monthly token cap for search, as recommendations have. Done when: an int test sends 200 different searches from one visitor in a minute and counts at most the budget's model calls, and a repeated search makes 0 reads of commerce.ai_providers."
+    },
+    {
+      "title": "After every planned item a round on a settings, website or products page is still 75,000 to 97,000 characters, and the planned baseline would not see it",
+      "evidence": "I ran the planners' bundle of the app's own functions again (work/plan-ai/measure.cjs). A lean round on a settings page sends 91 tools, 88,609 characters, 103,381 with the prompt; products 101,353; website 96,579; marketing 79,918, and 91,821 with every feature on. Tools are grouped by the 12 permission areas (src/lib/permission-keys.ts:13), toolArea() sends every tool without a matching prefix to settings (src/lib/tool-budget.ts:53-57), and takeArea() takes a whole area (line 83): settings is 52 tools, website 41. With the schema item and the automation tools loaded on demand, settings is still about 81,500 and website about 75,000. The budget item's scan draws only Home, an orders page and a website with no shop, so the largest rounds are in no baseline.",
+      "proposed_work_item": "Next, M, after the lean round's numbers are in. Give the four largest areas (settings, website, marketing, products) page groups taken from the admin map's sections, such as shipping, tax, payments and domains. The page's group is sent; the rest of its area is one load_tools call away, and load_tools names the groups. The scan draws no page and the largest page of each of the nine working areas, for a shop-only store and one with every feature on. Done when: ai-round.scan.test.ts shows no default round over 70,000 characters, and the lean eval cases still pass in a new recording."
+    },
+    {
+      "title": "The planned budget sees only the AI manager's input: six other prompts and every call's output tokens are unheld",
+      "evidence": "src/server/prompt-versions.ts:27 names seven agents and draws each prompt with fixed inputs, but only to hash it. rg finds no test that compares a prompt's or a tool set's size; the one size test is a count (src/lib/tool-budget.test.ts:22). The budget item's scan draws three AI manager rounds. On the output side, the two tool loops send no reasoning_effort (src/server/ai.ts:618-637 and 679-702) while single calls in 11 files ask for 'low'; a manager round may spend 1,200 output tokens and a shopper chat round 600, and for a reasoning model that 'counts their reasoning too' (ai.ts:561). The seeded price is 2.00 dollars a million output tokens against 0.25 for input (baseline_2_data.sql:106), so 600 output tokens cost as much as 4,800 input tokens, more than the whole input of a shopper chat call. No measure in this review counts output tokens, and after the lean round and caching they are likely the larger half of a turn's cost.",
+      "proposed_work_item": "Now, S, on top of the budget item. (1) ai-round.baseline.json also holds the seven fixed prompts and the tool sets of the shopper chat (with and without support), the docs guide, the Dream Factory's steps and the autopilot's events, at the sizes this review measured. (2) Platform, AI shows input, cached and output tokens per call by feature, median and 90th percentile. (3) In one eval run, try reasoning_effort 'low' on the two tool loops and keep it for an agent only if its cases pass; TUNING in ai.ts already drops a setting a model refuses. Done when: the baseline holds a line for all seven agents and fails when the shopper chat's prompt grows by 500 characters, the panel shows output tokens per call, and the choice of effort is written in docs/decisions.md."
+    }
+  ],
+  "ladder": {
+    "after_now": "C",
+    "after_next": "B",
+    "after_later": "B"
+  }
+}
