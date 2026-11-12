@@ -4,20 +4,13 @@ import { updateTag } from "next/cache";
 import { after } from "next/server";
 
 import { requirePlatformAdmin } from "@/server/auth";
-import {
-  assistantAbilities,
-  decideApproval,
-  deleteConversation,
-  getConversation,
-  listConversations,
-  rateAnswer,
-  type Approval,
-  type Conversation,
-  type Principal,
-} from "@/server/owner-assistant";
+import type { Approval, Conversation, Principal } from "@/server/owner-assistant";
 import { deleteSkill, saveSkill } from "@/server/assistant-saved-skills";
 import { hearOwner } from "@/server/page-ai";
 import { readRecording, unreadable } from "@/server/page-studio-input";
+
+/** The AI manager's server side, loaded when an admin first uses the panel, not with every admin page (bloat review step 0.5). */
+const assistant = () => import("@/server/owner-assistant");
 
 /** Kaizen's AI manager's actions (D103): for platform admins only. */
 async function principal(): Promise<Principal> {
@@ -27,25 +20,34 @@ async function principal(): Promise<Principal> {
 /** What the panel needs when it first opens. */
 export async function startPlatformAssistantAction() {
   const p = await principal();
+  const { assistantAbilities, listConversations } = await assistant();
   const [abilities, conversations] = await Promise.all([assistantAbilities(null), listConversations(p)]);
   return { abilities, conversations };
 }
 
 export async function loadPlatformConversationAction(conversationId: string): Promise<Conversation | null> {
-  return getConversation(await principal(), String(conversationId));
+  const p = await principal();
+  const { getConversation } = await assistant();
+  return getConversation(p, String(conversationId));
 }
 
 export async function decidePlatformApprovalAction(approvalId: string, approve: boolean): Promise<Approval | null> {
-  return decideApproval(await principal(), String(approvalId), approve === true, (tag) => updateTag(tag));
+  const p = await principal();
+  const { decideApproval } = await assistant();
+  return decideApproval(p, String(approvalId), approve === true, (tag) => updateTag(tag));
 }
 
 export async function deletePlatformConversationAction(conversationId: string): Promise<boolean> {
-  return deleteConversation(await principal(), String(conversationId));
+  const p = await principal();
+  const { deleteConversation } = await assistant();
+  return deleteConversation(p, String(conversationId));
 }
 
 export async function ratePlatformAnswerAction(messageId: string, value: 1 | -1 | null): Promise<boolean> {
   const thumb = value === 1 || value === -1 ? value : null;
-  return rateAnswer(await principal(), String(messageId), thumb, null, (task) => after(task));
+  const p = await principal();
+  const { rateAnswer } = await assistant();
+  return rateAnswer(p, String(messageId), thumb, null, (task) => after(task));
 }
 
 export async function platformHearAction(form: FormData) {

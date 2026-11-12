@@ -11,7 +11,7 @@ import type { ManagerToolInput } from "@/lib/manager-tools";
 
 import { holderOf, passMembership } from "./auth";
 import type { ManagerContext } from "./manager-tools";
-import { OwnerToolError } from "./owner-tools";
+import { OwnerToolError } from "./owner-tool-error";
 import { col, typedRows } from "./typed-rows";
 
 /**
