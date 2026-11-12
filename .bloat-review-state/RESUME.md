@@ -45,14 +45,18 @@ challenged by a skeptic, planned by a planner. Its last lines hold the arguments
    `plan-data.mjs` (or write a new step), and take refuted findings out. Server functions' ids are renamed FN to SF (the code
    review's FN is navigation). Then update in `main-template.md`: the limits paragraph (all areas read, challenged and planned),
    the scorecard and the A bars (the five areas that had no grade), section 3 and section 6.
-5. **The grade panel** (not started): one workflow, per scorecard area a reviewer who sets the bar for an A in numbers (today's
-   value, the target, how it is measured, the grade after each phase, and what an A needs that no step covers) and a challenger
-   (is that truly an A, can the steps reach it, what is missing), then one critic across areas for consistency. Areas and the
-   files that feed them: the code itself (unused-code, copied-code, deps, assets, families); a shopper's browser (storefront-client,
-   client-bundles, page-payload, prefetch, css); an owner's browser (admin-client, client-bundles, page-payload, page-model); the
-   server (storefront-data, admin-data, server-graph, functions, caching); scheduled work (cron); the database (db-queries,
-   db-schema); AI calls (ai-context); the product's surface (features, families); the written rules (docs-context); the page
-   builder's model (page-model); styles (css); interface text (i18n); tests, CI and the build (tests-ci). Where a step falls
-   short of an A, the plan gets a step; the goal does not move.
+5. **The grade panel** (started 12 November, 01:25 UTC). Its workflow script is `tools/bloat-grade-panel.workflow.js`; it takes
+   `args.stage` and, for two stages, `args.areas` (code, shopper-browser, owner-browser, server, scheduled, database, ai, surface,
+   rules, page-model, styles, text, build). Its files are in `panel/`; `tools/check-panel.mjs` checks each. In order:
+   - `{"stage":"steward","areas":[...]}`: one steward per area writes `panel/steward-<area>.json` (measures and the bar for an A,
+     today's grade, work items that place every finding of the area once, tolerated findings, the owner's choices, gaps). Launch
+     three areas per workflow. First run `node tools/digest.mjs <scratchpad>` so `digest/` covers all 25 audited areas.
+   - `{"stage":"weave"}` when all 13 steward files exist: one weaver writes `panel/plan.json` (steps by phase, every finding
+     closed once, ladders per area).
+   - `{"stage":"challenge","areas":[...]}`: one challenger per area writes `panel/card-<area>.json` (the final bar, today's
+     grade, whether the plan's steps reach an A, shortfalls).
+   - `{"stage":"critic"}`: one critic writes `panel/critic.json` (grades comparable across areas, steps to add).
+   Then fold the plan, the cards and the critic into `plan-data.mjs` and `main-template.md` (the plan's steps, the scorecard with
+   each area's bar and ladder, the owner's choices as questions) and rebuild the docs.
 6. **Finish:** rebuild the docs, commit, push docs to `main`; update the page (publish `page/bloat-review.html` to the same
    artifact); tell the owner what changed: refuted findings, new areas' grades, steps added to reach an A.
