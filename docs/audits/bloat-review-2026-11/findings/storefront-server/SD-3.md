@@ -27,3 +27,5 @@ What the server does for a storefront request (`README.md` beside this file), pa
 **Comes after:** SD-1
 
 **Notes:** Before opening there is nobody to warm for, so only step 1 is worth doing now. SD-8 does not replace this: a deploy empties the caches whatever their life. The deploy cadence after opening is the owner's choice.
+
+**Progress (12 November 2026):** step 1 of the fix is done by bloat review step 0.3 (D575): the deploy job requests Kaizena Flow's home and the template store's front page twice after each deploy and fails on anything but 200, and Kaizena Flow's own store is prerendered with the build. Steps 2 and 3 (warming after opening, the owner's question on deploy cadence) are not part of that step.

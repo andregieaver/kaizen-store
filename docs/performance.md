@@ -199,3 +199,16 @@ and fails on any. Its first runs found the platform's docs guide (`website`) and
 
 Besides every screen without an id in its address, the test follows each screen's links to one screen of each kind behind them (an
 order, a product, a type made from a preset), at most 150 for each person.
+
+## Kaizena Flow's front page, served from its store (measured 12 November 2026)
+
+The bloat review measured this page in the platform's own form (`/`, the `(platform)` route), which production stopped serving when the
+switch of D484 went on; these are the figures of the store's form, read with `curl --compressed` twice from outside, after the deploy job
+had requested the page itself (D575). Production ran `b357302`.
+
+| Address | Status | Document, compressed (br) | Document, uncompressed | First byte, 1st request | First byte, 2nd request | x-vercel-cache (1st, 2nd) | x-nextjs-cache (1st, 2nd) | Script tags |
+|---|---|---|---|---|---|---|---|---|
+| https://kaizenaflow.com/ | 200 | 38,158 bytes | 346,565 bytes | 1.86 s | 0.42 s | HIT, HIT | none, none | 18 |
+
+`cache-control` was `public, max-age=0, must-revalidate` on both. The deploy job's own first request after the deploy read
+`x-vercel-cache PRERENDER` and its second `HIT` (CI run 1229).
