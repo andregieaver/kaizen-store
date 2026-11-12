@@ -1,7 +1,7 @@
 {
  "key": "ai-context",
  "title": "What every AI call carries",
- "headline": "The shopper chat is lean (about 5,000 characters of prompt and tools a call). The AI manager is the heavy part: about 161,700 characters a call (roughly 40,400 tokens, an estimate at 4 characters a token), 91% of it 124 tool definitions that do not depend on the question, on up to 11 calls a turn; drawn with the app's own functions, a lean default is 48,600 characters on Home and 77,000 on an orders page, and it is already step 3.18 of the code review, still Open. The eval that should guard that change does not test whether the model finds a tool (9 manager cases, none uses load_tools), so the plan adds that check first. Around the AI, yes-or-no reads and the five-minute jobs fetch the AI connection and walk every site before knowing there is work (237,563 connection reads against 19,104 AI calls): small today, rising with every store, and the alt-text job is the clearest case. The owner's browser downloads 496 KB for the chat, of which about 370 KB is the model's catalogue; that is the one quick, safe win.",
+ "headline": "The shopper chat is lean (about 5,000 characters of prompt and tools a call); the AI manager is the heavy part: about 161,700 characters a call (roughly 40,400 tokens, an estimate at 4 characters a token), 91% of it 124 tool definitions that do not depend on the question, on up to 11 calls a turn. A lean default drawn with the app's own functions is 48,600 characters on Home and 77,000 on an orders page; it is already step 3.18 of the code review, still Open, and the eval meant to guard it does not test whether the model finds a tool (9 manager cases, none uses load_tools), so that check comes first. Around the AI, screens, polls and five-minute jobs fetch the AI connection and walk every site before knowing there is work (237,563 connection reads against 19,104 AI calls): small today, rising with every store, clearest in the alt-text job. The one quick, safe win is in the browser: the chat's script is 496 KB, of which about 370 KB is the model's tool catalogue and admin map.",
  "metrics": [
   {
    "name": "Tool definitions in the AI manager's tables",
@@ -51,17 +51,17 @@
   {
    "name": "AI connection reads against AI calls in production",
    "value": "237,563 reads of commerce.ai_providers against 19,104 rows in ai_usage. The month's AI cost was summed 8,514 times (6,782 at 37 ms, 1,732 at 57 ms): about 352 s in 78 days. These are scheduled work, builds and the team's own testing, not shoppers. aiFor() is called on 89 lines in 64 files outside ai.ts and tests; five of them only ask yes or no in one expression, and the open support conversation asks on every poll.",
-   "how": "/tmp/claude-0/-home-user-kaizen-store/875cb21b-0ebd-5663-b7c0-2d04a7548e24/scratchpad/work/../m/prod-db-stats.md (the statements table); rg -n 'aiFor\\(' src without tests (run here)."
+   "how": "/tmp/claude-0/-home-user-kaizen-store/875cb21b-0ebd-5663-b7c0-2d04a7548e24/scratchpad/m/prod-db-stats.md (the statements table); rg -n 'aiFor\\(' src without tests (run here)."
   },
   {
    "name": "The 48,492 reads of commerce.chat_agents",
    "value": "Every one is the platform's own row (the statement is 'where store_id is null'): Kaizena Flow's own site drawing its chat widget and cookie list. getChatAgent() is a 'use cache' function with a life of hours, so it runs on a cache miss, a build or a new server instance; the count sits beside the platform site's other per-render reads (45,544 for its SEO, 46,265 for its page roles). No store's chat agent is read per request outside that cache. It is a caching and deploy-churn number, not an AI cost.",
-   "how": "/tmp/claude-0/-home-user-kaizen-store/875cb21b-0ebd-5663-b7c0-2d04a7548e24/scratchpad/work/../m/prod-db-stats.md (statements called the most); /home/user/kaizen-store/src/server/chat-agent.ts:89-95, 135-139; /home/user/kaizen-store/src/server/site-cookies.ts:98; /home/user/kaizen-store/src/server/chat-route.ts:54."
+   "how": "/tmp/claude-0/-home-user-kaizen-store/875cb21b-0ebd-5663-b7c0-2d04a7548e24/scratchpad/m/prod-db-stats.md (statements called the most); /home/user/kaizen-store/src/server/chat-agent.ts:89-95, 135-139; /home/user/kaizen-store/src/server/site-cookies.ts:98; /home/user/kaizen-store/src/server/chat-route.ts:54."
   },
   {
    "name": "The AI manager's chat script in the browser",
    "value": "496,206 bytes raw, 144,326 gzip, fetched when the panel is first opened. By the bundle analyzer's module sizes for the admin route, the tool tables and their helpers are 234,206 bytes (owner-tools.ts 158,819, manager-tools.ts 30,614, twelve smaller *-tools and autopilot files), admin-map.ts 150,622 and the Norwegian page list 52,925: 437,753 bytes. The browser uses TOOL_WORDS (13,226 characters), and from the two page lists an id, area, path and title per page (36,929 characters as JSON) and the Norwegian titles (16,535).",
-   "how": "ls -l and gzip -c | wc -c on /home/user/kaizen-store/.next/static/chunks/00rxgygh1f--7.js (run here); /tmp/claude-0/-home-user-kaizen-store/875cb21b-0ebd-5663-b7c0-2d04a7548e24/scratchpad/work/../m/analyze/admin_store.json (the 'later' modules); /tmp/claude-0/-home-user-kaizen-store/875cb21b-0ebd-5663-b7c0-2d04a7548e24/scratchpad/work/plan-ai/measure.ts for the slim sizes."
+   "how": "ls -l and gzip -c | wc -c on /home/user/kaizen-store/.next/static/chunks/00rxgygh1f--7.js (run here); /tmp/claude-0/-home-user-kaizen-store/875cb21b-0ebd-5663-b7c0-2d04a7548e24/scratchpad/m/analyze/admin_store.json (the 'later' modules); /tmp/claude-0/-home-user-kaizen-store/875cb21b-0ebd-5663-b7c0-2d04a7548e24/scratchpad/work/plan-ai/measure.ts for the slim sizes."
   },
   {
    "name": "The agents' eval as a check on tool choice",
@@ -71,7 +71,7 @@
   {
    "name": "Idle work of the AI index jobs",
    "value": "Knowledge: 91,200 'delete from knowledge_chunks where page_id' calls removed 782 rows in all; the page read behind them returns about 40 whole pages a call, 24,134 calls. Products: one statement hashes every active product's text on every run (10,201 calls, 14.5 ms with about 300 products). Pictures: 49,842 stale-picture selects at 0.4 ms and 13,414 date-only updates on 468 rows. Alt texts: the site list names every site that has an AI-written alt text, on every run.",
-   "how": "/tmp/claude-0/-home-user-kaizen-store/875cb21b-0ebd-5663-b7c0-2d04a7548e24/scratchpad/work/../m/prod-db-stats.md; /home/user/kaizen-store/src/server/knowledge.ts:167-194, 248-256; /home/user/kaizen-store/src/server/embeddings.ts:31-52; /home/user/kaizen-store/src/server/media-library.ts:798-830, 860-873; /home/user/kaizen-store/src/server/alt-texts.ts:224-241."
+   "how": "/tmp/claude-0/-home-user-kaizen-store/875cb21b-0ebd-5663-b7c0-2d04a7548e24/scratchpad/m/prod-db-stats.md; /home/user/kaizen-store/src/server/knowledge.ts:167-194, 248-256; /home/user/kaizen-store/src/server/embeddings.ts:31-52; /home/user/kaizen-store/src/server/media-library.ts:798-830, 860-873; /home/user/kaizen-store/src/server/alt-texts.ts:224-241."
   },
   {
    "name": "Job durations in the dispatcher",
@@ -465,7 +465,7 @@
     "/home/user/kaizen-store/docs/consolidation.md:80-83"
    ],
    "evidence": "update_product is 11,908 characters and create_product 11,305; both are in today's default set and in any round on a products page. Of 154,036 schema characters over all store tools, 25,804 are length, range and pattern bounds that zod checks again on the server (readToolInput(), owner-tools.ts:2085-2088). In today's default set the string bounds are 7,563 characters (the skeptic's measure); in the lean sets of AI-1 I measure 4,006 (Home), 5,562 (orders) and 7,654 (products). Each gated tool gets a 161-character sentence added (owner-tools.ts:2080); 35 gated tools are in today's default set (5,635 characters), 10 in a lean orders or products round (1,610), none on Home. consolidation.md records that the eval passed only once the sentence was on the tool. Tool results are cut blind at 12,000 characters (owner-assistant.ts:827: a slice of the JSON text, so a cut result is broken JSON with no word that it was cut), and every result stays in the messages for all later rounds of the turn. toolDefinition() also feeds the owner MCP's catalogue, whose rule is that the tools' inputs stay as they are (mcp-catalogue.ts:9-15).",
-   "cost": "After AI-1: 4,000 to 7,700 characters of string bounds and up to 1,610 of gate sentences a round, and the two product tools at 23,213 on a products page or in a Dream Factory catalogue turn (30,564 characters of tools, three quarters of it these two). Up to 12,000 characters per earlier tool result on every later round of the turn.",
+   "cost": "After AI-1: 4,000 to 7,700 characters of string bounds and up to 1,610 of gate sentences a round, and the two product tools at 23,213 on a products page or in a Dream Factory catalogue turn (30,564 characters of tools, three quarters of it these two; src/lib/dream-factory.ts:332-344). Up to 12,000 characters per earlier tool result on every later round of the turn.",
    "who_pays": "The server per AI manager call.",
    "fix_steps": [
     "src/lib/owner-tools.ts: add `modelDefinition(t)`: toolDefinition(t) with the keys maxLength, minLength, pattern and format removed from its schema at every depth, kept per tool in a WeakMap. Number ranges, enums, required and array limits stay. toolDefinition() itself stays as it is for /api/mcp and its catalogue (src/lib/mcp-catalogue.ts).",

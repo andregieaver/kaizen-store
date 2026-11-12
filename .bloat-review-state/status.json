@@ -1,5 +1,5 @@
 {
- "at": "2026-11-12T00:39:41.871Z",
+ "at": "2026-11-12T00:42:44.221Z",
  "status": [
   {
    "key": "storefront-client",
@@ -118,7 +118,7 @@
   {
    "key": "server-graph",
    "audit": true,
-   "verify": false,
+   "verify": true,
    "plan": false
   },
   {
@@ -214,6 +214,7 @@
    "page-model",
    "css",
    "tests-ci",
+   "server-graph",
    "page-payload",
    "unused-code",
    "copied-code"

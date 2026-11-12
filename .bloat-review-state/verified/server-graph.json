@@ -1,0 +1,491 @@
+{
+ "headline": "The core finding holds and I reproduced it from the build's own module graph: 229 files of src/server form one import cycle, and through it 181 of 268 route handlers, 559 of 562 pages and the proxy each load about 10 MB of server code (the AI manager's roughly 250 tools, the admin's whole interface text in two languages, the Stripe SDK, sharp). Re-measured in a fresh process: /api/visit takes 0.9 to 1.3 s and 97 MB of heap before it can answer, /api/health 0.16 to 0.24 s and 26 MB. About 0.3 s of the fat route is running module bodies and the rest is parsing and compiling, which a bytecode cache on the host would shorten (not checked), so treat the seconds as scale, the ratio as solid. Nothing here argues from a feature being unused: this is what every cold instance pays whether or not the store uses the feature, and it grows with stores, traffic and the deploy on every push. The fixes are smaller than the auditor said for shoppers and incomplete for owners. One import path takes the visit beacon from 10.4 to 1.9 MB. Seven small edits (three cycle cuts, three importers of admin-text, one line in the database client) take a storefront page from 11.3 to about 4.5 MB. A tag leaf plus small readers take the proxy, which runs before every store page, from 9.2 to about 1 MB. The auditor's cuts do nothing for the admin: 384 of 449 admin pages load the AI manager through the shell's layout and need one more lazy import (new SG-15). Three claims were corrected: lazy imports cut cold-start time but not a function's package (sharp's 19 MB and the taxonomy stay traced); splitting readers from writers (SG-8) saves about 30 KB on a storefront page in simulation, not megabytes; and the three extra storefront languages cost about 10 ms, not 30. Before opening is the cheapest time for all of it.",
+ "metrics": [
+  {
+   "name": "Modules and bytes /api/visit loads that /api/health does not",
+   "value": "1,586 modules, 9,298 KB (auditor: 1,582 and 9,286): src/lib/admin-messages 2,903 KB (133 modules), src/server 2,427 KB (482), src/lib 2,274 KB (570), src/lib/messages 413 KB (26), opentype.js 226 KB, stripe 212 KB (189), signature 127 KB, legal-starters 95 KB, @supabase/auth-js 92 KB, ledger JSON 80 KB, fonts JSON 68 KB. Whole route: 117 eager chunks, 11,130 KB on disk; health 16 chunks, 1,129 KB",
+   "how": "Re-dumped the saved next analyze snapshot with Next's own reader (byte-identical to the auditor's dump, md5 checked), then my own script: sizes of the source parts in the chunks each built entry names with R.c() (scratchpad/work/sk-sg/sizes.js). KB = 1,024 bytes"
+  },
+  {
+   "name": "The import cycle",
+   "value": "229 modules, all in src/server, 712 edges; one edge enters it on /api/visit (route.ts -> chat-route.ts); the cycle plus what it reaches is 1,934 modules and 10.3 MB on a route handler, 1,953 and 10.7 MB on the storefront home page. The same cycle is compiled three times, once per layer (route handlers, pages, proxy)",
+   "how": "My own iterative Tarjan on the sync edges of the analyzer's graph (sk-sg/g.js, r1.js, cut3.js)"
+  },
+  {
+   "name": "Fewest edges that break the cycle",
+   "value": "Reproduced on the whole graph: customers.ts -> privacy-erasure.ts (229 -> 88), customer-admin.ts -> dispute-evidence.ts (-> 57), store-features.ts -> store-closure.ts (-> 29), orders.ts -> payment-providers/index.ts (-> 19). Breaking the cycle is not the same as shrinking a route: on the storefront home page only three cuts change what loads (customers -> privacy-erasure, visibility -> customer-admin, store-features -> store-closure)",
+   "how": "Removed the four edges one by one and re-ran Tarjan over all 21,104 modules (sk-sg/cut3.js); per-route effect by reachability with each cut alone and together (sk-sg/adm.js, full.js)"
+  },
+  {
+   "name": "Routes that load the cycle",
+   "value": "181 of 268 handlers (median 2,015 modules; 24 under 500), 559 of 562 pages (449 admin, 59 storefront, 54 other; /admin/sign-in 2,264, /admin/offline 2,253), the proxy 1,969. After the first cut alone: handlers reaching the AI tools 181 -> 29, storefront pages 59 -> 2, admin pages 449 -> 384 (unchanged in practice)",
+   "how": "Sync reachability from every route entry in the whole-app graph (sk-sg/all.js, pages.js)"
+  },
+  {
+   "name": "Cold load, re-measured",
+   "value": "/api/visit 0.89 to 1.3 s over two rounds (load chunks 225 to 340 ms, run bodies 600 to 860 ms, settle 60 to 115 ms), heap 97 MB, RSS 222 MB. /api/health 0.16 to 0.24 s, heap 26 MB, RSS 106 MB. Storefront home 1.06 to 1.13 s (181 chunks, 12.1 MB). Admin orders 0.91 s. Calibration routes: /s/[store]/og.png (685 modules, 1.75 MB) 0.24 s; /auth/callback (951 modules, 5.1 MB) 0.38 s",
+   "how": "Fresh node process per run with the auditor's loader (work/cold.js, coldpage.js), 2 to 6 runs each; machine load 1.0 to 1.9 while a build ran. An estimate of scale for Vercel"
+  },
+  {
+   "name": "How much of the cold load is compiling",
+   "value": "With eager compilation /api/visit spends about 0.5 s compiling and 0.31 s running module bodies; /api/health about 0.08 s and 0.10 s. With a warmed V8 compile cache the load step fell from 0.24 s to 0.07 to 0.09 s. So a host bytecode cache would cut the fat route to roughly 0.6 s here, the lean one to roughly 0.14 s",
+   "how": "node --no-lazy and NODE_COMPILE_CACHE on the same loader, 2 to 3 runs; whether Vercel's bytecode cache is on for this project was not checked (no Vercel access in this review)"
+  },
+  {
+   "name": "Proxy (src/proxy.ts) cold load",
+   "value": "0.87 to 1.04 s, heap 87 to 96 MB, RSS 230 MB; 18 chunks, 9,729 KB; 343 traced files, 48.0 MB (45.8 MiB; auditor wrote 46.9)",
+   "how": "Fresh process requiring .next/server/middleware.js, 3 runs (work/coldmw.js); sizes by stat of the R.c() list and the nft.json (sk-sg/entry.js)"
+  },
+  {
+   "name": "Instrumentation at every instance start",
+   "value": "0.27 to 0.30 s (load 57 to 59 ms, run 211 to 226 ms) and 43 MB of heap for 856 modules in a 2,395 KB chunk, in a layer of its own; its query ran 278,393 times in 78 days. Split into reader and tool it would reach 208 modules whether or not a translated language exists",
+   "how": "work/coldinst.js, 3 runs; reach of ui-text.ts in the instrumentation layer with and without the tool's imports (sk-sg/inst.js); count from prod-db-stats.md line 87"
+  },
+  {
+   "name": "Where evaluation time goes on /api/visit",
+   "value": "1,332 factories, 771 ms: src/lib 337 ms (586 factories), src/server 215 ms, src/db/schema.ts 68 ms, admin-text.ts 51 ms plus catalogues 13 ms, mcp-catalogue.ts 42 ms, lib/owner-tools.ts 18 ms, all four storefront languages 12.8 ms (one merged factory), opentype 11 ms, stripe 6 ms. /api/health: 144 factories, 101 ms, of which schema.ts 56 ms",
+   "how": "The auditor's timing wrapper (work/prof.js) re-run once per route; attribution approximate because modules are merged"
+  },
+  {
+   "name": "sharp",
+   "value": "import takes 44 to 54 ms and 26 to 29 MB of RSS; 12 server modules import it at the top; 181 handlers and 559 pages reach it; its files are 18.9 MiB in each such function",
+   "how": "import('sharp') in a fresh process, 3 runs; rg; graph reach; nft.json sizes"
+  },
+  {
+   "name": "Traced files",
+   "value": "/api/visit: 449 files, 47.5 MiB (49.8 MB): chunks 14.0 MiB (117 eager, 28 lazy), sharp 18.9 MiB, taxonomy 12.7 MiB, no source map. /api/health: 216 files, 15.6 MiB, of which taxonomy 12.7 MiB. Code behind import() is still traced: unpdf's chunks are in /api/visit's nft.json",
+   "how": "Sum of file sizes named in each route.js.nft.json (sk-sg/entry.js); the lazy chunk list compared with the R.c() list"
+  },
+  {
+   "name": "Server chunks written more than once",
+   "value": "5,174 chunk files, 195.5 MiB of JS, 72.0 MiB unique; 512 files (123.6 MiB) repeat another's bytes; 18 copies of a 4.0 MiB chunk, 10 of a 2.7 MiB one, 5 of a 3.9 MiB SSR one; their maps 431 MiB of 672 MiB. Measured run-time cost of a copy: in one process, after /api/visit, /api/cron/page-jobs spent 116 to 142 ms and 15 MB of heap re-loading 7.4 MB it already had under other file names",
+   "how": "md5 of every chunk without its sourceMappingURL line (sk-sg/dup.js); two routes loaded in one process in both orders (sk-sg/two.js)"
+  },
+  {
+   "name": "Build",
+   "value": "263 s: compile 36.5 s, type check 3.0 min, 1,426 static pages 28.9 s; peak machine memory 7.6 GB (baseline 0.8 GB); .next/server 1.4 GB by du (chunks 868 MiB, app 331 MiB apparent size; 830 client-reference manifests 62 MiB; 830 nft files 68 MiB)",
+   "how": "m/build.log lines 19 to 29, m/build-summary.txt, du and find on .next"
+  },
+  {
+   "name": "Server-reference manifest",
+   "value": "1,454 server references, each listed for 55.7 routes on average, the widest for 804; 11.2 MB as .js, 10.4 MB as .json",
+   "how": "Parsed .next/server/server-reference-manifest.json"
+  },
+  {
+   "name": "Tag-only and constant-only imports between server files",
+   "value": "213 of 3,777 named imports (154 without refresh.ts). Only 96 are cache tags of stores, catalog, pages, taxonomy, seo, custom-fields, site-cookies, affiliates and after-sale; the rest are ALL_CAPS SQL constants and names that merely end in Tag (addTag, removeTag). The 96 alone take the proxy from 1,969 to 959 modules",
+   "how": "My own regex pass over 796 non-test files (sk-sg/tags.js) and a reach simulation with those edges removed (sk-sg/mwsize.js)"
+  },
+  {
+   "name": "Files with both a cached read and an audited write",
+   "value": "30 of 49; 193 server modules import auth.ts on the storefront home page. Removing auth.ts from that page entirely, after the other cuts, saves 19 modules and 32 KB",
+   "how": "rg and comm; direct importers within the page's reach (sk-sg/imp.js); upper-bound simulation (sk-sg/adm.js)"
+  },
+  {
+   "name": "Simulated results of the cuts",
+   "value": "/api/visit: 2,015 modules 10.4 MB -> 708 and 1.9 MB (one import path) -> 663 and 1.17 MB (schema) -> 465 and 0.96 MB (Stripe). Storefront home: 2,498 and 11.3 MB -> 1,843 and 7.7 MB (three cycle cuts) -> 1,688 and 5.0 MB (three admin-text importers) -> 1,661 and 4.35 MB (schema). Proxy: 1,969 and 9.2 MB -> 959 and 5.1 MB (tag leaf) -> 491 and 1.5 MB (readers split) -> 447 and 0.8 MB (schema). Admin orders: 2,447 and 11.1 MB -> 2,428 and 11.0 MB with every SG-1 cut; -> 2,030 and 8.8 MB only when the shell's assistant actions load the AI manager lazily",
+   "how": "Whole edges removed from the build's graph, sizes from each route's eager chunks (sk-sg/sim.js, full.js, adm.js, mwsize.js). Estimates: a real change may keep small parts of a removed module"
+  },
+  {
+   "name": "Who imports the admin text registry",
+   "value": "723 non-test files import src/lib/admin-text.ts (auditor: 754); 605 of them call adminText() or adminTexts(), 1,234 calls. Within the storefront home page's graph 14 modules import it today and 3 after the cycle cuts (two-step.ts, customer-tiers.ts, plan-reminders.ts)",
+   "how": "rg over src; direct importers within the page's reach before and after the cuts (sk-sg/imp.js)"
+  }
+ ],
+ "clean": [
+  "A lean route is possible today: /api/health loads 16 chunks and 1.1 MB, and 24 handlers reach under 500 modules (/admin/sw.js 93, /api/ucp/catalogue.json 103, /api/gravatar/[hash] 139). The fat graph is a tangle of imports, not a property of the stack.",
+  "Turbopack runs a module's body only when it is first imported: a chunk's factories are registered on load (installCompressedModuleFactories in .next/server/chunks/[turbopack]_runtime.js) and the route's own code is loaded on the first request (userland:()=>e.r(...) in the built entry). /api/visit's chunks hold 1,879 source modules; 1,332 factories run.",
+  "Modules are instantiated once per process, so a second fat route in a warm instance costs almost nothing when it names the same chunk files (/api/shop/tiles after /api/visit: 1 ms). The exception is SG-11's copies.",
+  "Heavy third-party parsers are already behind import(): unpdf, mammoth, playwright-core, @sparticuz/chromium (58 await import() in 30 server files, recounted). They cost package size, not cold-start time.",
+  "sameSite() already lives in a leaf with no imports (src/lib/same-site.ts), and OwnerToolError already has its own leaf (src/server/owner-tool-error.ts, used by 20 files): two of the proposed moves are only import-path changes.",
+  "The taxonomy (12.7 MiB of JSON) is read from disk on first use and kept per instance (src/server/product-taxonomy.ts:27-43); catalog.ts reads it only for a product with a standard category (catalog.ts:546-548).",
+  "Chromium, the PDF files, the docs' Markdown and HarfBuzz are traced only into the routes that use them (next.config.ts:51-78); only the taxonomy uses '/**'.",
+  "The database pool is made on first use (src/db/client.ts:94-97); importing the client opens nothing.",
+  "On Vercel a function does not preload every route: next-server.js:468 skips preloadEntriesOnStart in minimal mode.",
+  "Source maps are not traced into any function checked (0 .map entries in the nft.json of /api/visit, /api/health, /api/shop/tiles, /api/cron/page-jobs and the proxy).",
+  "The browser's copy of the admin catalogue is already split per area (D540, docs/performance.md:167-185); what is whole is the server's registry (SG-4).",
+  "The edge runtime carries nothing heavy (.next/server/edge is 116 KB).",
+  "No finding in this dimension asks to retire, hide or merge a feature. Each one is a running cost that a store pays without using the feature, so the owner's clarification changes wording (SG-5), not substance.",
+  "I found no test that pins the present import paths except one mock of @/server/chat-route in a route test and 98 integration tests that mock ./stripe with platformModes (see SG-9)."
+ ],
+ "findings": [
+  {
+   "id": "SG-1",
+   "title": "One import cycle of 229 server files makes almost every route load everything",
+   "kind": "eager",
+   "where": [
+    "src/server/customers.ts:17",
+    "src/server/customers.ts:500",
+    "src/server/privacy-erasure.ts:25",
+    "src/server/retention.ts:19-36",
+    "src/server/order-rules.ts:30",
+    "src/server/follow-ups.ts:14",
+    "src/server/owner-tool-error.ts:2",
+    "src/server/visibility.ts:17",
+    "src/server/customer-admin.ts:25",
+    "src/server/store-features.ts:35",
+    "src/server/store-features.ts:52",
+    "src/server/orders.ts:22",
+    "src/server/pages.ts:43",
+    "src/server/seo.ts:48"
+   ],
+   "evidence": "Re-derived with my own Tarjan on the build's module graph: 229 files of src/server form one cycle (712 edges), compiled once per layer (route handlers, pages, proxy). It reaches 1,934 modules and 10.3 MB. 181 of 268 handlers and 559 of 562 pages reach it. The spine is pages.ts -> visibility.ts -> customers.ts -> privacy-erasure.ts -> retention.ts -> order-rules.ts -> follow-ups.ts -> owner-tools.ts. The upward edges are small: customers.ts imports the GDPR erasure job for one call in deleteCustomer (line 500); visibility.ts takes one SQL fragment, bought, from customer-admin.ts (line 25 there); store-features.ts calls storeObligations once (line 52). Four edges shrink the cycle 229 -> 88 -> 57 -> 29 -> 19 (reproduced).",
+   "cost": "0.9 to 1.3 s and 97 MB of heap (222 MB RSS) per cold instance of a fat route, against 0.16 to 0.24 s and 26 MB for /api/health (re-measured, fresh process). About 0.3 s of it is running module bodies; the rest is compiling, which a host bytecode cache would shorten. 10 to 12 MB of server chunks per route.",
+   "who_pays": "The server per cold instance: the first shopper or owner after each deploy (every push to main deploys), each scale-up and each idle period. It grows with traffic and with the number of instances once stores open. Also the build's page-data workers.",
+   "fix": "Three edits do the work for storefront pages and shopper APIs: (1) customers.ts: await import('./privacy-erasure') inside deleteCustomer; (2) move the bought SQL fragment out of customer-admin.ts into a leaf that visibility.ts imports; (3) store-features.ts: import storeObligations lazily. Then, so the cycle does not re-form and for other routes: follow-ups.ts and manager-tools.ts import OwnerToolError from the leaf that already exists (owner-tool-error.ts); orders.ts reaches providerOf through a leaf or lazily; seo.ts loads themeStoreCards lazily (takes sharp and 90 modules off /api/shop/tiles); privacy-erasure.ts takes retentionRules from a leaf. A tag leaf helps the proxy, not these pages (see SG-2), and only when the importers change their path: a re-export from the old file cuts nothing. Admin pages need SG-15. Done when a new next analyze export shows /s/[store]/[market] at or under about 1,800 modules and 8.2 MB after the three edits (today 2,419 and 11,944 KB), about 1,650 modules and 4.7 MB with SG-4's three importers and SG-6, and no storefront route lists src/server/owner-tools.ts.",
+   "saving": "Simulated on the build's graph (estimate, whole edges removed). Storefront home: 2,498 modules and 11.3 MB -> 1,843 and 7.7 MB with the three edits; the other five proposed cuts changed nothing on that page. Handlers over 1,500 modules: 181 -> 54 after the first cut alone, -> 31 after the four cycle-breaking edges. Handlers that reach the AI tools: 181 -> 29. Cold load of a storefront page: from about 1.1 s to an estimated 0.6 to 0.7 s with these three edits alone, 0.45 to 0.55 s with SG-4 and SG-6 (calibrated on measured routes of similar size).",
+   "effort": "S",
+   "risk": "A lazily imported module fails at first call, not at start; keep the calls awaited, the existing integration tests cover them. Lazy imports cut cold-start work but not the function's package: what sits behind import() is still traced (sharp, the taxonomy and the lazy chunks stay in the nft.json).",
+   "confidence": "high",
+   "already_tracked": "Partly. Code review step 3.13 Domain folders (FV4, FH6) and step 4.1 Lint rules (FH7, FH8), both Open, say nothing stops one feature importing another's internals; its line 532 says circular imports were only spot-checked. The cycle, its run-time cost and the cut list are new.",
+   "owner_decision": false,
+   "verdict": "corrected",
+   "verify_note": "Opened every cited line. Re-ran the cycle search, the four-edge cut and the reach of all 268 handlers and 562 pages with my own scripts: all reproduced. Re-measured cold load. Corrections: the function is deleteCustomer, not deleteOwnAccount; the OwnerToolError leaf already exists, so that step is two import paths; on the storefront home page only three of the eight cuts change anything; the tag leaf with re-exports cuts nothing unless importers change path; the admin target was wrong (all SG-1 cuts leave /admin/[store]/orders at 2,428 modules and 11.0 MB, because the store layout imports the AI manager: see SG-15); effort for the part that pays is S, not M."
+  },
+  {
+   "id": "SG-2",
+   "title": "The proxy that runs before every store page loads the whole graph",
+   "kind": "eager",
+   "where": [
+    "src/proxy.ts:10-16",
+    "src/proxy.ts:53-60",
+    "src/server/house-switch.ts:8-17",
+    "src/server/holding.ts:9-10",
+    "src/server/not-found.ts:21-27",
+    "src/server/redirect-resolve.ts:19-23",
+    ".next/server/middleware.js",
+    ".next/server/functions-config-manifest.json"
+   ],
+   "evidence": "The proxy runs on Node.js (functions-config-manifest: /_middleware runtime nodejs; Next's proxy.md:255) and its second matcher lets through every page address, RSC prefetches included. Its built entry names 18 chunks, 9,729 KB. It reaches 1,969 modules: owner-tools.ts through house-switch.ts -> pages.ts -> visibility.ts -> customers.ts ..., the admin catalogues through holding.ts -> auth.ts -> two-step.ts -> admin-text.ts, sharp through house-switch.ts -> seo.ts -> theme-store.ts, and the Stripe SDK through stores.ts (chains re-derived). Four of house-switch.ts's imports are tags only (pagesTag, STORES_TAG, storeTag) or the audit writer.",
+   "cost": "0.87 to 1.04 s and 87 to 96 MB of heap per cold proxy instance (re-measured, 3 runs). A cold visitor can pay this and then the page function's own cold start.",
+   "who_pays": "Every shopper's page request that lands on a cold proxy instance, prerendered pages included, since the proxy runs first. It grows with stores and traffic more than anything else in this area.",
+   "fix": "First the tag leaf: put the cache-tag builders (storeTag, catalogTag, pagesTag, STORES_TAG and the like) in src/server/tags.ts and change the importers' paths. Then give the proxy its own readers: siteStore() (house-switch.ts), holdingFor() (holding.ts), recordNotFound() (not-found.ts), privateGate()/storeRequestAnswer() (redirect-resolve.ts) and runningExperiments()/storeIdOfSlug() (experiments.ts) in files that import only the database client, redirect-live.ts, log.ts and pure src/lib modules; the admin's writers import the readers. Add the proxy to SG-14's scan test. Done when the chunks named by R.c() in .next/server/middleware.js sum to under 2 MB (today 9.7 MB) and its graph has no src/server/auth.ts, pages.ts, seo.ts or stripe.ts.",
+   "saving": "Simulated: 1,969 modules and 9.2 MB -> 959 and 5.1 MB with the tag leaf alone -> 491 and 1.5 MB with the readers split -> 447 and 0.8 MB with SG-6. The auditor's 640 modules and 1.6 MB was on the safe side. Cold load from about 0.9 s to an estimated 0.2 to 0.25 s (a measured route of 685 modules and 1.75 MB takes 0.24 s).",
+   "effort": "M",
+   "risk": "The proxy decides redirects and private-store gating; the split must move code without changing it. e2e/store-pages.spec.ts and the redirect tests cover the decisions.",
+   "confidence": "high",
+   "already_tracked": "no",
+   "owner_decision": false,
+   "verdict": "confirmed",
+   "verify_note": "Opened src/proxy.ts whole, the six server modules' imports and the manifest. Re-measured the cold load (0.87 to 1.04 s). Re-derived the four chains. Simulated the split myself with sizes from the proxy's own analyzer data: the saving is at least what was claimed. Added: the tag leaf alone halves it; traced files are 48.0 MB, not 46.9."
+  },
+  {
+   "id": "SG-3",
+   "title": "The visit beacon and 52 other routes import the chat agent to get a ten-line function",
+   "kind": "eager",
+   "where": [
+    "src/app/api/visit/route.ts:3",
+    "src/app/api/shop/tiles/route.ts:4",
+    "src/server/chat-route.ts:8",
+    "src/server/chat-route.ts:34-38",
+    "src/lib/same-site.ts:6",
+    "src/server/replicate-route.ts:8",
+    "src/server/assistant-route.ts:12"
+   ],
+   "evidence": "sameSite() lives in src/lib/same-site.ts with no imports. chat-route.ts re-exports it (line 38) and also imports chat-agent.ts, private-mode.ts and shop.ts. 55 route files import sameSite from @/server/chat-route (18 also take fail, a two-line Response helper); only the two chat routes use anything else from it. On /api/visit this is the only edge into the cycle. The import is not shaken out: loading the built route ran 1,332 module factories, src/server/owner-tools.ts among them.",
+   "cost": "8.5 MB and about 1,300 modules on the beacon, and about 0.65 to 0.75 s of its 0.9 to 1.0 s cold load (estimate: a measured route of the size it would have, 685 modules and 1.75 MB, takes 0.24 s).",
+   "who_pays": "The server on each cold instance of /api/visit, /api/visit/speed, /api/visit/speed/own, /api/visit/touch and the others. The beacon is called once per page view of every store that counts visits, so it will be the most-called route once shoppers arrive.",
+   "fix": "Import sameSite from @/lib/same-site in the 53 routes that need nothing else, and in replicate-route.ts and assistant-route.ts; move fail() to a leaf (for example src/lib/json-fail.ts); then delete the re-export at chat-route.ts:38 so it cannot come back. One test mocks @/server/chat-route for sameSite (customers/[customerId]/export/route.test.ts:9) and changes with it. Done when a new next analyze export shows /api/visit at or under about 710 modules and 1.9 MB (today 1,890 and 10,475 KB), and under about 500 modules and 1.0 MB once SG-6 and SG-9 land.",
+   "saving": "/api/visit: 2,015 -> 708 modules, 10.4 -> 1.9 MB (simulated, one edge; reproduced exactly). With SG-6: 663 modules, 1.17 MB. With SG-9: 465 modules, 0.96 MB. Ten handlers leave the over-1,500 group on this change alone: the four visit beacons, five admin export routes and /api/docs/feedback. /api/shop/tiles does not: it also needs SG-1.",
+   "effort": "S",
+   "risk": "Very low: the function is the same one.",
+   "confidence": "high",
+   "already_tracked": "no",
+   "owner_decision": false,
+   "verdict": "confirmed",
+   "verify_note": "Opened the three files; counted 55 importers, 18 with fail, 2 that need the chat. Reproduced the one-edge simulation (708 modules, 1,898 KB) and listed the ten handlers that leave. Checked the built route really evaluates chat-route (profile). Small corrections: 53 routes switch wholly, not 55; the time saved is about 0.7 s by calibration, not 0.8 s; after the change the route still loads 85 KB of analytics admin text through a src/lib import."
+  },
+  {
+   "id": "SG-4",
+   "title": "The admin's whole interface text, both languages, loads wherever one word is needed",
+   "kind": "oversize",
+   "where": [
+    "src/lib/admin-text.ts:2-135",
+    "src/lib/admin-text.ts:232-303",
+    "src/lib/two-step.ts:13",
+    "src/lib/two-step.ts:59",
+    "src/server/customer-tiers.ts:21",
+    "src/server/plan-reminders.ts:270"
+   ],
+   "evidence": "admin-text.ts statically imports 134 catalogues (67 areas in English and Norwegian) into one table; adminText(lang, area) reads one. In the server chunks that is 2,903 KB in 133 modules. 242 of 268 handlers, 560 of 562 pages, the proxy and instrumentation reach it. 723 non-test files import the module; 605 call it, 1,234 calls. On the storefront home page 14 modules import it today; after SG-1's three cuts only 3 do: two-step.ts (the signIn area), customer-tiers.ts (customers) and plan-reminders.ts (staffEmails). Turbopack writes the catalogue chunk 10 times (10 copies of 2.7 MiB).",
+   "cost": "2.2 to 2.9 MB of server code per route and about 64 ms of evaluation per cold start (admin-text.ts 51 ms plus catalogues 13 ms in the profile; attribution approximate); about 27 MB of repeated chunks in the build.",
+   "who_pays": "The server per cold instance on every storefront, API and admin route; the build.",
+   "fix": "In two steps. (a) Small, for shoppers: after SG-1, the three modules above import their own area's two files directly, as about 40 src/lib modules already do, and SG-14's scan test keeps admin-text.ts out of the storefront, the proxy and the beacons. (b) Wide, for the admin only: give each area its own index (ordersText(lang)) and change the 605 calling files with a codemod; keep AdminAreaMessages as type-only imports. Step (b) keeps D312's rule (an area is its two files and one entry): the entry becomes the area's index. Done when a new export shows no src/lib/admin-text.ts in /api/visit, /s/[store]/[market] or the proxy (step a), and /admin/[store]/orders lists only the areas it draws (step b).",
+   "saving": "Step (a), simulated: storefront home 7.7 -> 5.0 MB (about 2.7 MB less; the three areas it keeps are about 0.15 MB); about 2.9 MB off API routes that still reach it. Step (b): at most 2.2 MB off an admin page (simulated with every catalogue removed; real pages keep their areas) and roughly 50 ms of its cold start.",
+   "effort": "S",
+   "risk": "Step (a) is three files. Step (b) is wide but mechanical (605 files); admin-strings.scan.test.ts and admin-catalogues.scan.test.ts hold the catalogue's shape and need the new entry form. Step (b) is worth doing only if the admin's cold start matters enough: effort M for about 2 MB on owners' pages.",
+   "confidence": "high",
+   "already_tracked": "The browser's half is done (D540, docs/performance.md:167-185). The server registry is not tracked.",
+   "owner_decision": false,
+   "verdict": "corrected",
+   "verify_note": "Opened admin-text.ts, two-step.ts and the two other importers. Re-measured 2,903 KB in 133 modules, 242 handlers, 560 pages. Corrections: 723 importing files, not 754; the storefront does not get it only through two-step.ts (14 importers today, 3 after SG-1); the shopper-side saving needs three files, not the 700-file codemod, so I split the fix and set effort S for the part that pays; the admin-side saving is at most 2.2 MB."
+  },
+  {
+   "id": "SG-5",
+   "title": "Every instance start loads 856 modules and queries the database before the first request",
+   "kind": "eager",
+   "where": [
+    "src/instrumentation.ts:6-10",
+    "src/server/ui-text.ts:5-15",
+    "src/server/ui-text.ts:47-55",
+    "src/server/ui-text.ts:106-115",
+    ".next/server/instrumentation.js",
+    ".next/server/chunks/_1pmw-ihec6glt._.js"
+   ],
+   "evidence": "register() imports ui-text.ts and awaits startUi(); Next's instrumentation.md:18 says register must complete before the server takes requests. ui-text.ts is both the reader of AI-translated interface text and the platform admin's tool that makes it, so it imports ai.ts, auth.ts, email-text.ts and i18n.ts: 856 modules in a 2,395 KB chunk, in a layer of its own, so schema.ts and the admin catalogues are evaluated a second time in the same process. It then runs a group-by on commerce.ui_translations and arms a one-minute timer that repeats it (278,393 calls in 78 days).",
+   "cost": "0.27 to 0.30 s and 43 MB of heap before the first request of every function instance, lean routes included (re-measured, 3 runs), plus one query per start and one per instance-minute.",
+   "who_pays": "The server at every cold start of every function; the database once a minute per warm instance, so the query count grows with instances after opening. The load cost is the same whether or not a language has been translated, so it does not follow use.",
+   "fix": "Split the reader from the tool: a small ui-load.ts (database client, ui-registry, overlayMessages, the state and the timer) that register() imports; the admin's translate, edit and review functions stay in ui-text.ts with ai.ts and auth.ts. Inside the reader, import i18n.ts and email-text.ts only when the group-by returns a language to load. Done when the chunk instrumentation loads is under 300 KB and it lists no src/server/ai.ts, auth.ts or src/lib/admin-messages module.",
+   "saving": "Simulated: 856 -> 208 modules with the split alone, whether or not translated languages exist; -> 168 with SG-6; -> 130 while there is no language to load. An estimated 0.2 to 0.25 s and 25 to 35 MB of heap per instance start.",
+   "effort": "S",
+   "risk": "t() is synchronous and relies on the registry being filled before the first page; the split keeps that order. The comment at ui-text.ts:20-27 states the rule (never read during prerender); the reader must keep it.",
+   "confidence": "high",
+   "already_tracked": "no",
+   "owner_decision": false,
+   "verdict": "corrected",
+   "verify_note": "Opened both files, the built entry and Next's instrumentation doc; re-measured (57 to 59 ms load, 211 to 226 ms run, 43 MB). Reach of 856 modules reproduced. Applied the owner's clarification: the auditor's saving leaned on the table being empty ('while no translated language exists'). The table being empty proves nothing about the feature. What stands is that the tool half (ai.ts, auth.ts, the admin catalogues, schema) loads at every start for a job that only reads; the split saves about 650 modules either way. Title and saving rewritten so."
+  },
+  {
+   "id": "SG-6",
+   "title": "schema.ts (19,614 lines) is evaluated in every function and used by none at run time",
+   "kind": "dead",
+   "where": [
+    "src/db/client.ts:11",
+    "src/db/client.ts:31",
+    "src/db/client.ts:78",
+    "drizzle.config.ts:7"
+   ],
+   "evidence": "client.ts imports * as schema and passes it to drizzle(). Nothing reads through it: no query-builder call and no db().query in non-test src (rg), 1,960 execute( calls in src/server write SQL. client.ts is the only non-test importer; drizzle-kit reads the file from drizzle.config.ts, not from the client. In the chunks it is 598 KB and builds 481 table objects on import; it also pulls src/lib modules only it needs (/api/health: 321 -> 272 modules without it). It is in the proxy and instrumentation layers too, so one process evaluates it more than once.",
+   "cost": "56 ms of /api/health's 101 ms of evaluation and 68 ms on /api/visit (re-measured profile); 598 KB parsed per layer per instance.",
+   "who_pays": "The server per cold instance of every function that touches the database (256 of 268 handlers, 560 of 562 pages, the proxy, instrumentation); the build's workers.",
+   "fix": "Drop the schema argument from drizzle() and make the import type-only (Db only exposes execute and transaction). This is the first half of the code review's own fix for FD5; do it now and leave the split into files for step 3.14. Done when a new next analyze export shows /api/health under about 280 modules and 0.45 MB (today 308 and 1,155 KB) and no route lists src/db/schema.ts.",
+   "saving": "About 0.7 MB and 55 to 70 ms per layer per cold start on every database route (simulated: /api/health 1,125 -> 395 KB; /api/visit after SG-3 1,898 -> 1,173 KB).",
+   "effort": "S",
+   "risk": "Low: pnpm db:check and drizzle-kit read schema.ts from drizzle.config.ts. Tests that import the schema keep doing so.",
+   "confidence": "high",
+   "already_tracked": "Yes: code review FD5, step 3.14 'Split schema.ts', Open. Its fix text already says to drop the schema argument first. New here: the measured cost per cold start.",
+   "owner_decision": false,
+   "verdict": "confirmed",
+   "verify_note": "Opened client.ts and drizzle.config.ts; searched for any query-builder or relational-query use and for other importers: none outside tests. Re-ran the profile (56 ms on health, 68 ms on visit) and the simulation (health 1,125 -> 395 KB). Only correction: FD5 already says to drop the argument ahead of the split, so that part is not new."
+  },
+  {
+   "id": "SG-7",
+   "title": "The sharp image library is loaded at cold start by routes that never touch a picture",
+   "kind": "eager",
+   "where": [
+    "src/server/theme-highlights.ts:3",
+    "src/server/product-import.ts:6",
+    "src/server/brand-marks.ts:3",
+    "src/server/private-mode.ts:17",
+    "src/server/seo.ts:48",
+    "src/server/seo.ts:67"
+   ],
+   "evidence": "12 server modules write import sharp from \"sharp\" at the top; none loads it lazily. All are admin, AI or cron picture work. The proxy reaches it through house-switch.ts -> seo.ts -> theme-store.ts -> theme-shots.ts -> theme-highlights.ts; admin pages through the store layout -> store-starters.ts -> theme-shots.ts. 181 handlers and 559 pages reach it, and its files (libvips 17.8 MiB, the addon and wrapper 1.0 MiB) are in each of those functions' traces. /api/health's trace has none.",
+   "cost": "44 to 54 ms and 26 to 29 MB of RSS per cold instance (re-measured: import('sharp') in a fresh process, 3 runs, warm disk); 18.9 MiB in the function package.",
+   "who_pays": "The server per cold instance of nearly every route; function package size at deploy.",
+   "fix": "In the 12 modules, load it where used: const sharp = (await import('sharp')).default inside the function; the type imports stay. Move STORES_TAG to the tag leaf so private-mode.ts, store-features.ts, house-switch.ts and setup-tools.ts stop importing seo.ts. Done when no storefront or shopper API route lists [externals]/sharp among its sync modules in a new export.",
+   "saving": "About 50 ms and about 28 MB of RSS per cold instance of every route that reaches it today. The package does not shrink from this: a module behind import() is still traced (unpdf's lazy chunks are in /api/visit's nft.json), so the 18.9 MiB leaves only the routes that lose every path to a picture module, such as the ten of SG-3.",
+   "effort": "S",
+   "risk": "Low. The functions are already async.",
+   "confidence": "high",
+   "already_tracked": "no",
+   "owner_decision": false,
+   "verdict": "corrected",
+   "verify_note": "Counted the 12 static importers and zero dynamic ones; re-measured the import (44 to 54 ms, 26 to 29 MB; the auditor had 55 to 78 ms). Re-derived the chains. Corrected the package claim and the done-when: the auditor expected the nft.json of /s/[store]/[market] to lose the @img files after SG-1, but SG-1's cuts are lazy imports and lazily imported code is still traced, so that test would fail. The time and memory saving stand."
+  },
+  {
+   "id": "SG-8",
+   "title": "Reader and writer share a file, so a new import between features re-joins reads to writes",
+   "kind": "process",
+   "where": [
+    "src/server/text-styles.ts:11",
+    "src/server/fonts.ts:15",
+    "src/server/menus.ts:25",
+    "src/server/taxonomy.ts:23",
+    "src/server/site-layouts.ts:9",
+    "src/server/custom-fields.ts:52-61",
+    "src/server/house-switch.ts:8-17"
+   ],
+   "evidence": "A feature is one file under src/server holding its cached storefront read, its admin save and its audit entry. 30 of the 49 server files with a 'use cache' read also import audit from auth.ts (recounted), and 193 server modules import auth.ts within the storefront home page's graph. This is why the cycle of SG-1 formed and why the proxy of SG-2 is fat. But as a saving of its own it is small: with SG-1, SG-4 and SG-6 done, removing auth.ts from the storefront home page altogether takes off 19 modules and 32 KB.",
+   "cost": "Little that is not already counted in SG-1 and SG-2. What is left on a storefront page after the other cuts is about 4.3 MB: src/lib 1.3 MB (342 modules), src/server 0.66 MB (134), Next's own runtime 0.53 MB (544), storefront messages 0.42 MB, Stripe 0.21 MB.",
+   "who_pays": "Engineers and agents, who cannot add an import between two feature files without widening every route; later, the server per cold instance if the cycle re-forms.",
+   "fix": "A written rule, enforced by SG-14's scan test, and a split only where it pays: a feature's cached reads and tag names live in x-read.ts (database client, typed-rows, pure src/lib); x.ts keeps the writes and imports the reader. Do it for the files the proxy imports (SG-2) now. Do the rest inside step 3.13 (Domain folders) so files move once, not as a project of its own. Done when the proxy's graph has no src/server/auth.ts and docs/rules names the reader/writer rule.",
+   "saving": "Not megabytes. The auditor's 'toward 2 to 3 MB and under 1,000 modules' could not be reproduced: Next's runtime alone is 544 modules on a page, and the server and lib code left is under 2 MB in total. The value is that SG-1's and SG-2's gains stay.",
+   "effort": "L",
+   "risk": "Many files move if done everywhere; one feature per change with the importers updated. Before opening there is no live traffic to disturb.",
+   "confidence": "medium",
+   "already_tracked": "Related: code review step 3.13 Domain folders (FV4, FH6), Open. The reader/writer rule is new.",
+   "owner_decision": false,
+   "verdict": "corrected",
+   "verify_note": "Recounted 49 and 30 (multi-line imports included) and the 193 importers. Then tested the claimed saving: with the other cuts in, cutting every edge into auth.ts leaves the storefront home at 1,643 modules and 4.32 MB against 1,662 and 4.35 MB. The megabyte estimate was a guess the graph does not support. Kept as a rule (kind changed from eager to process), with the proxy's readers moved to SG-2 where the saving is measured."
+  },
+  {
+   "id": "SG-9",
+   "title": "getStore() imports the Stripe SDK to learn which payment modes have keys",
+   "kind": "eager",
+   "where": [
+    "src/server/stores.ts:182",
+    "src/server/stores.ts:300",
+    "src/server/stripe.ts:3",
+    "src/server/stripe.ts:33-46",
+    "src/server/stripe.ts:58-60",
+    "src/lib/stripe-account.ts:17"
+   ],
+   "evidence": "stores.ts imports platformModes from stripe.ts to decide paymentsOn; stripe.ts imports the Stripe package at the top. The SDK is 189 modules and 212 KB in the server chunks. 244 of 268 handlers reach it. platformModes() is not a pure read of the environment today: it calls platformStripe(mode), which builds a Stripe client when a key is set (stripe.ts:33-46); its answer depends only on whether the two keys have the right shape (platformKey in src/lib/stripe-account.ts).",
+   "cost": "212 KB and about 190 modules per cold start of every route that reads a store (6 ms measured for Stripe's own factory; the rest is parsing).",
+   "who_pays": "The server per cold instance.",
+   "fix": "Add platformModes to src/lib/stripe-account.ts written on the keys alone (both platformKey('secret', ...) and platformKey('publishable', ...) non-null for the mode); stores.ts imports that; stripe.ts keeps its export by calling it. 98 integration test files mock ./stripe with platformModes: () => ['test']; give the tests' environment test-shaped keys in one shared setup, or mock the new function there, or stores read paymentsOn as false for test-mode stores. Done when /api/visit lists no ~/stripe module in a new export.",
+   "saving": "/api/visit 663 -> 465 modules, 1,173 -> 956 KB (simulated, after SG-3 and SG-6). Handlers that reach the SDK: 244 -> 201 today, -> 155 once the cycle is cut. Storefront pages are unchanged: they reach Stripe through checkout code.",
+   "effort": "S",
+   "risk": "Low in the code, but not 'two pure functions move': the function must be rewritten not to build a client, and 98 test files depend on the mock of ./stripe.",
+   "confidence": "high",
+   "already_tracked": "no",
+   "owner_decision": false,
+   "verdict": "corrected",
+   "verify_note": "Opened stores.ts, stripe.ts and stripe-account.ts. Reproduced the simulation (465 modules, 956 KB) and counted handlers. Corrections: platformModes() builds Stripe clients today, so the title's 'only reads the environment' was loose and the fix is a small rewrite; 98 test files mock it through ./stripe (rg), which the auditor's 'very low risk' missed; the storefront home page gains nothing from this cut."
+  },
+  {
+   "id": "SG-10",
+   "title": "The AI manager's tool catalogue is converted to JSON Schema at import, on routes with no AI",
+   "kind": "eager",
+   "where": [
+    "src/lib/owner-tools.ts:253",
+    "src/lib/owner-tools.ts:2076-2082",
+    "src/lib/mcp-catalogue.ts:121",
+    "src/lib/mcp-catalogue.ts:158",
+    "src/server/store-mcp.ts:7",
+    "src/lib/docs-reference.ts:81"
+   ],
+   "evidence": "OWNER_TOOLS builds about 250 zod schemas when the module loads; MCP_TOOLS is a module-level array ending in ...OWNER_TOOLS.map(withStore), and withStore calls toolDefinition, which runs z.toJSONSchema() per tool. /api/visit reaches both through the cycle. Per-factory timing on /api/visit: 42 ms for mcp-catalogue.ts and 18 ms for lib/owner-tools.ts.",
+   "cost": "About 60 ms of the roughly 770 ms of evaluation at each cold start of any route in the cycle (attribution approximate), and 176 KB plus 71 KB for the two owner-tools files.",
+   "who_pays": "The server per cold instance, storefront and beacon included, until SG-1 lands; after that AI routes and, through the shell, admin pages until SG-15 lands. Cost should follow use: a request that offers no tools should not build their schemas.",
+   "fix": "Make MCP_TOOLS a memoised function (mcpTools()) used by its three readers (store-mcp.ts, docs-reference.ts, mcpCatalogue()), so tool definitions are built on first use. Done when the per-factory profile of a route that lists no tools shows no mcp-catalogue entry above 1 ms.",
+   "saving": "About 42 ms per cold start of a route that loads the catalogue without using it (estimate from the profile). The 18 ms of building the zod schemas stays unless the tool list itself is made lazy; SG-1 and SG-15 remove both from routes with no AI.",
+   "effort": "S",
+   "risk": "Low. toolsVersion() and the eval recording hash the same definitions; build them the same way, only later.",
+   "confidence": "medium",
+   "already_tracked": "Related only: code review FA6, step 3.21 (a tool's facts in one place), Open.",
+   "owner_decision": false,
+   "verdict": "corrected",
+   "verify_note": "Opened both files and MCP_TOOLS' three readers; re-ran the profile (42 ms and 18 ms). Corrected the saving: memoising MCP_TOOLS removes the JSON Schema conversion (42 ms), not the 57 ms claimed, because the zod schemas are still built when owner-tools.ts loads. Noted that admin pages keep paying after SG-1."
+  },
+  {
+   "id": "SG-11",
+   "title": "The build writes the same server chunks many times: 124 MiB of 196 MiB is repeats",
+   "kind": "duplicate",
+   "where": [
+    ".next/server/chunks/_030vf3oprhjaf._.js",
+    ".next/server/chunks/src_lib_05q7dyrt2q-qx._.js",
+    ".next/server/chunks/ssr/_0_w2fqt8kybui._.js",
+    "next.config.ts:79-82",
+    "docs/build-memory.md:20-26",
+    "docs/build-memory.md:43-45"
+   ],
+   "evidence": "Hashing every server chunk without its last line: 512 of 5,174 files repeat another's bytes; one 4.0 MiB blob exists 18 times, the 2.7 MiB admin catalogue chunk 10 times, a 3.9 MiB SSR chunk 5 times. Each copy has its own source map: 431 of 672 MiB. Routes name different copies: /api/visit and /api/cron/page-jobs share 105 chunk files by name but 113 by content. Loading both in one process, the second spent 116 to 142 ms and 15 MB of heap on 7.4 MB it already had (measured both orders). docs/build-memory.md says each page-data worker holds 1.3 to 1.9 GB and the Vercel build was killed for memory once on 11 November.",
+   "cost": "About 550 MiB of the 1.4 GB under .next/server; build time and memory writing it; and at run time roughly 0.1 to 0.25 s and 15 to 19 MB of heap each time a warm instance first serves a route whose chunk list names other copies.",
+   "who_pays": "The build and CI; the server when one instance serves routes from different copy sets. How Vercel groups routes into functions was not checked, so the run-time share on Vercel is unknown.",
+   "fix": "The copies shrink with the blob: SG-1, SG-4 and SG-6 take most of the 4 MiB and 2.7 MiB chunks apart. After that, measure again; then test experimental.serverSourceMaps: false for the Vercel build only (Next's memory-usage.md:126) and compare peak memory, keeping maps in CI. Done when the duplicate-chunk script reports under 40 MiB of repeated bytes and build-summary's peak is at least 0.5 GB lower.",
+   "saving": "Estimate, not measured: 80 to 100 MiB of chunk JS and 300 MiB of maps off the build output once the blob is cut. The build-memory gain is unknown until tried.",
+   "effort": "S",
+   "risk": "Without server source maps, production stack traces name minified positions; hence only on Vercel and only if memory needs it. I found no Turbopack option that shares server chunks by content.",
+   "confidence": "medium",
+   "already_tracked": "Partly: code review FH10, step 1.8 'Give the build room', Open; docs/build-memory.md Watch. The duplicate chunks are new.",
+   "owner_decision": false,
+   "verdict": "confirmed",
+   "verify_note": "Re-hashed all 5,174 chunks with my own script: 512 repeats, 123.6 MiB, unique 72.0 MiB, maps 431 MiB, the same three largest groups. Added a measurement the auditor only asserted: a second route with other copies costs 116 to 142 ms and 15 MB in the same process. The cited next.config.ts lines were 83-93; the Vercel build settings are at 79-82."
+  },
+  {
+   "id": "SG-12",
+   "title": "Four storefront languages are imported for every server route; a request needs one",
+   "kind": "eager",
+   "where": [
+    "src/lib/i18n.ts:1-12",
+    "src/lib/i18n.ts:17",
+    "src/lib/messages/en.ts",
+    "docs/decisions.md:223"
+   ],
+   "evidence": "i18n.ts statically imports da, en, nb and sv (about 95 KB of source each, plus their returns, quotes, reviews and exchange parts): 413 KB in 26 modules on /api/visit. Turbopack merges all four into one factory (one module id holds the Swedish, Danish, Norwegian and English strings), and that factory took 12.8 ms in the profile. The file's own comment and D212 state the rule: the server and the admin read all four here; only the browser gets one.",
+   "cost": "About 290 KB parsed and roughly 10 ms of evaluation more than a one-language request needs, per cold instance.",
+   "who_pays": "The server per cold instance.",
+   "fix": "Leave it until the larger cuts are in and measure again. If it then matters, keep English static and load the others through the registry the AI-translated languages use (ui-registry.ts), filled once in the market layout and the email senders before the synchronous t() is called. That changes D212's server half, whose reason (a synchronous t() that never waits) the registry keeps. Done when /s/[store]/[market] lists only src/lib/messages/en*.ts as sync modules.",
+   "saving": "About 290 KB and about 10 ms per cold start (measured share of one merged factory); it grows by about 100 KB per language added.",
+   "effort": "M",
+   "risk": "t() is called synchronously in many places; a language not yet loaded would fall back to English in front of a shopper. Needs a test per entry point (pages, emails, cron senders). The saving is small against that risk.",
+   "confidence": "medium",
+   "already_tracked": "no",
+   "owner_decision": false,
+   "verdict": "corrected",
+   "verify_note": "Opened i18n.ts and D212. Re-measured 413 KB in 26 modules. The auditor's 30 ms rested on en.ts 'alone' taking 12 ms; I located all four languages' strings inside the same factory (id 52251 in the 4 MiB chunk), so 12.8 ms is the cost of all four and the saving is about 10 ms. Added that a written rule (D212) says the server reads all four. Lowest priority of the set."
+  },
+  {
+   "id": "SG-13",
+   "title": "The 13 MB taxonomy is traced into every function, including those that cannot read it",
+   "kind": "oversize",
+   "where": [
+    "next.config.ts:67-69",
+    "src/server/product-taxonomy.ts:25-27",
+    "src/server/catalog.ts:546-548"
+   ],
+   "evidence": "outputFileTracingIncludes '/**' copies src/data/product-taxonomy/* (structure.json 3.2 MB and four name files of about 2.5 MB) beside every function: 12.7 MiB of /api/health's 15.6 MiB of traced files. Only code that imports src/server/product-taxonomy.ts can read it; 181 of 268 handlers and 559 of 562 pages reach that file (the same counts with async edges included), so 87 handlers and 3 pages carry it for nothing. The comment in next.config.ts gives the reason ('every route carries it'), which is true only because of the cycle.",
+   "cost": "12.7 MiB of package for about 90 functions today. Package size, not run time: the files are read on first use.",
+   "who_pays": "Deploy size and upload; cold-start download where the platform fetches the package.",
+   "fix": "After SG-1 to SG-3, replace '/**' with the globs of the routes whose graph reaches product-taxonomy.ts through sync or async imports (a route that reaches it only through a lazy import still reads the file at run time), taken from a next analyze export; add a test that every such route matches a glob, like the one that holds invoice-pdf.ts. Done when /api/visit's and /api/health's nft.json name no product-taxonomy file.",
+   "saving": "12.7 MiB each for about 90 functions now. Fewer than the auditor's 'about 140 after SG-1': SG-1's cuts are lazy imports, which keep the route's need for the file, so the count of routes that drop it grows only where an edge is truly removed (SG-3's ten, the proxy's readers).",
+   "effort": "S",
+   "risk": "A missed route fails when it first reads the file; the test above is the guard. Low value: it changes no request's speed.",
+   "confidence": "high",
+   "already_tracked": "no",
+   "owner_decision": false,
+   "verdict": "corrected",
+   "verify_note": "Opened next.config.ts, the reader and its eight importers; re-summed the nft.json files (12.7 MiB of taxonomy in health's 15.6 MiB). Counts of 181 and 559 reproduced with sync and with sync-plus-async reach. Corrected the rule for the globs (async reach counts) and the number of functions that would drop the files after SG-1."
+  },
+  {
+   "id": "SG-14",
+   "title": "Nothing measures or limits the server graph, so it only grows",
+   "kind": "process",
+   "where": [
+    "src/lib/storefront-bundle.scan.test.ts:1-30",
+    "docs/performance.md:36-39",
+    "eslint.config.mjs:1-20",
+    "docs/audits/code-review-2026-11.md:129",
+    "docs/audits/code-review-2026-11.md:532"
+   ],
+   "evidence": "There are 46 scan tests and budgets for a visitor's and the admin's first scripts, but none for what a route loads on the server: no cycle rule in eslint.config.mjs, no test on a route's imports, no size check on .next/server (searched the workflows and scripts). The code review says circular imports were only spot-checked. The one-line re-export that put the chat agent into the visit beacon (SG-3) and the 96 cache-tag imports that tie features together passed every check.",
+   "cost": "Every finding above arrived unnoticed. With about 3,800 imports between server files and agents adding more each day, a cut made today is undone by the next convenient import.",
+   "who_pays": "Everyone later: shoppers in cold starts, the build in memory, engineers and agents in a graph nobody can reason about.",
+   "fix": "Three cheap guards. (1) A scan test with the walker of storefront-bundle.scan.test.ts: starting from src/proxy.ts, the four visit routes, src/app/api/shop/tiles/route.ts, the storefront layout and the admin store layout, follow static imports (not import()) and fail if they reach owner-tools, owner-assistant, privacy-erasure, retention, admin-text, src/db/schema, the stripe package or sharp; today's offenders as a list that may only shrink. (2) A CI step after the build that sums the chunks named by R.c() in the built entries of the proxy, /api/visit, /s/[store]/[market] and /admin/[store]/orders and compares with a budget file. (3) An import-cycle rule in step 4.1's lint work, with the 229 files as the starting allow-list. Record the budgets in docs/performance.md.",
+   "saving": "Keeps the gains of SG-1 to SG-9 and SG-15: about 8.5 MB and 0.7 s on the beacon, about 7 MB on a storefront page, about 8 MB on the proxy.",
+   "effort": "S",
+   "risk": "A static-import walker does not see what Turbopack shakes out; it errs on the strict side, which is the point. The byte budget is the ground truth.",
+   "confidence": "high",
+   "already_tracked": "Partly: code review step 4.1 'Lint rules for the boundaries' (FH7, FH8), Open, covers src/lib imports, not server reach or budgets.",
+   "owner_decision": false,
+   "verdict": "confirmed",
+   "verify_note": "Opened eslint.config.mjs, the bundle scan test and the code review lines; searched workflows and scripts for any check on .next/server or import cycles: none. Corrections are small: 46 scan tests, not 42; the walker's start list should include the admin store layout (SG-15) and all four visit routes; the saving line now uses my re-simulated numbers."
+  },
+  {
+   "id": "SG-15",
+   "title": "The admin shell loads the AI manager's whole engine on every admin page",
+   "kind": "eager",
+   "where": [
+    "src/app/admin/(gated)/[store]/layout.tsx:31-39",
+    "src/app/admin/(gated)/[store]/layout.tsx:113-128",
+    "src/app/admin/(gated)/[store]/assistant/actions.ts:9-17",
+    "src/app/admin/(gated)/platform/layout.tsx:27",
+    "src/server/owner-assistant.ts:43"
+   ],
+   "evidence": "The store layout binds seven assistant actions and hands them to AiManagerLauncher on every page of a store's admin (the platform layout does the same). The actions file imports owner-assistant.ts at the top, which imports owner-tools.ts and through it the rest of the cycle. So after every cut of SG-1, 384 of 449 admin pages still reach the AI tools, and /admin/[store]/orders stays at 2,428 modules and 11.0 MB (from 2,447 and 11.1 MB). The chain after the cuts: layout.tsx -> assistant/actions.ts -> owner-assistant.ts -> owner-tools.ts.",
+   "cost": "About 2.2 MB and 400 modules on every admin page of a store, loaded whether or not the owner opens the assistant; the admin orders page takes about 0.9 s to load cold (measured).",
+   "who_pays": "An owner's admin: the server per cold instance of any admin page. It grows with the number of owners working at once after opening.",
+   "fix": "Keep the launcher on every page (D103). In both assistant/actions.ts files, load the engine inside each action: const { listConversations, ... } = await import('@/server/owner-assistant'); or move the conversation reads (assistantAbilities, listConversations, getConversation, deleteConversation, rateAnswer) to a small reader the actions import, and load runTurn and decideApproval lazily. Done when a new next analyze export shows /admin/[store]/orders without src/server/owner-tools.ts among its sync modules, at or under about 2,050 modules and 9 MB (today 2,349 and 12,068 KB).",
+   "saving": "Simulated: /admin/[store]/orders 2,428 -> 2,030 modules, 11.0 -> 8.8 MB; with SG-6 8.2 MB; admin pages that reach the AI tools 384 -> 65; median admin page 2,438 -> 2,015 modules. An estimated 0.15 to 0.2 s of an admin page's cold load.",
+   "effort": "S",
+   "risk": "Low: the actions are already async. The first use of the assistant in an instance pays the load then, which is where the cost belongs.",
+   "confidence": "high",
+   "already_tracked": "no",
+   "owner_decision": false,
+   "verdict": "confirmed",
+   "verify_note": "New, found while testing SG-1's admin target. The auditor's done-when for /admin/[store]/orders (about 1,900 modules and 7.7 MB) cannot be reached by the listed cuts: I simulated all of them and the page barely moved. Traced the remaining path to owner-tools, opened both layouts and the actions file, and simulated the lazy import on all 562 pages. This is not an argument from the assistant being unused; the launcher stays on every page, only the engine waits for the first use."
+  }
+ ]
+}
