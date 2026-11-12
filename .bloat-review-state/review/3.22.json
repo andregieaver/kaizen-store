@@ -1,0 +1,145 @@
+{
+ "id": "3.22",
+ "verdict": "keep with fixes",
+ "why": "The behind column is needed: with checked_at set after every turn and a list narrowed to documents issued after it, a book cut by DOCS_A_ROUND (100) or the 40 s deadline, a newly opened book's history, and the days added by opening the books earlier would all wait an hour per round. But the brief's exists() rule cannot be followed (no table has an index on (store_id, issued_at/created_at), so it drops every exists() and contradicts its own test), insert times miss documents that become due by a change of state, the ledger_waiting exists() is keyed by store and outlives its rows, and checked_at = now() at the turn's end loses what was issued during the turn. Keep the column, list on the two shop tables through their issued_on indexes plus the hourly look, mark caught-up books with the list's time, count the comparison's limit, and test deterministically through a round limit.",
+ "problems": [
+  {
+   "what": "The index rule, taken literally, removes every exists(): no table dueDocuments() reads has an index on (store_id, <time column>); invoices and credit_notes index (store_id, issued_on), a date, payments/refunds/payout_lines/work_* none led by store_id and a time. The cheap model either drops all of them (and the test 'listed after an invoice is issued' then fails) or writes them unindexed.",
+   "evidence": "src/db/schema.ts:6855 invoices_issued_idx (store_id, issued_on), :6946 credit_notes_issued_idx; payments :5504-5510, refunds :5606-5638, payout_lines :5803-5819, work_invoice_payments :11935; brief commits[0].changes[1].how 'if a table has no index on (store_id, <that time column>), leave that exists() out'",
+   "severity": "blocker"
+  },
+  {
+   "what": "The exists() cannot match dueDocuments(): it selects by state and by day (status = 'captured', r.status = 'succeeded', po.status = 'paid', w.status <> 'draft', po.lines_complete via postPayout), so a document that becomes due by an update (payment captured after it was created, refund succeeding, payout paid, payout lines read later, a draft Work invoice issued) has an old created_at and is missed anyway. Only invoices and credit notes are born due; payments and refunds come with them.",
+   "evidence": "src/server/ledger.ts:555-611 (dueDocuments), :973 (payout waits for lines), :543-546 (card payment captured as the invoice is issued)",
+   "severity": "should fix"
+  },
+  {
+   "what": "The ledger_waiting exists() joins on store_id (a closed earlier book's waiting rows list the new one), and waiting rows are deleted only when the job posts them, so a row whose document stopped being due (posted by hand, an imported invoice deleted or merged, D501) keeps tried_at old and lists the book on every tick forever. The hourly look already retries a waiting document within an hour of its day being up.",
+   "evidence": "src/server/ledger.ts:606-607 and :1023-1031 (the only delete); schema.ts:18966 index (store_id, book_id)",
+   "severity": "should fix"
+  },
+  {
+   "what": "checked_at = now() after the turn is later than the turn's dueDocuments() read: a document issued during the turn (up to 40 s, plus a transaction that began before and committed after, issued_at being its start time) is older than checked_at and waits for the hourly look. Mark a caught-up book with the list statement's now(); mark a behind one with now() so it still sorts behind the books caught up in the same run, keeping the order string 'checked_at nulls first, id' that step 3.23 quotes.",
+   "evidence": "brief commits[0].changes[1].how 'set checked_at = now()' in the finally; src/db/schema.ts:6806 issued_at defaultNow()",
+   "severity": "should fix"
+  },
+  {
+   "what": "The behind rule ignores the comparison's own limit of 25 entries: a newly connected Tripletex store or a large posted backlog would be compared 25 entries an hour instead of every five minutes as today.",
+   "evidence": "src/server/ledger-compare.ts:66 'limit ${options.limit ?? 25}'; src/server/ledger.ts:1057",
+   "severity": "should fix"
+  },
+  {
+   "what": "Opening the books earlier (D498) widens the book's days without any new document and without a cut turn, so its history waits for the hourly look; neither the old nor the new design sets the book listed.",
+   "evidence": "src/server/ledger.ts:191 (update opened_on), doc comment :170-172 'The documents of the days added post as the job finds them'",
+   "severity": "should fix"
+  },
+  {
+   "what": "The three-book test with a small budgetMs is timing-dependent and runs in a shared database where earlier tests' books (checked_at null) sort first, so the third book may not be reached and the case is flaky; 'not listed' is not observable without exposing the list. Use a round limit and an exported ledgerBooksDue().",
+   "evidence": "brief commits[0].changes[2].how; src/server/ledger-posting.int.test.ts:75 openBook, :391/:439/:474/:534 runLedgerPosting() over every book; vitest.integration.config.mts:16 fileParallelism false",
+   "severity": "should fix"
+  },
+  {
+   "what": "A turn that threw is counted as cut, so a book whose posting throws on one document (a RowShapeError: it throws rather than waiting, and dueDocuments() returns it first again) stays behind forever, run and logged every tick; it is stuck either way, so let the hourly look retry it.",
+   "evidence": "brief commits[0].changes[1].how 'a turn that threw counts as cut'; src/server/ledger.ts:1059-1061",
+   "severity": "minor"
+  },
+  {
+   "what": "The index ledger_books_checked_idx is useless on a table with one row per book read whole, and the advisors would report it unused.",
+   "evidence": "brief commits[0].changes[0].how, after_deploy[1]",
+   "severity": "minor"
+  },
+  {
+   "what": "The query-budget proof is empty: the seed opens no books, so dispatcher.ledger reads no ledger_books row with 1 or 20 stores, and the 190-row growth is met before the step.",
+   "evidence": "supabase/migrations/20261111172840_baseline_2_data.sql:1507 (no ledger_books data); no ledger_books in scripts/",
+   "severity": "minor"
+  }
+ ],
+ "edits": [
+  {
+   "field": "commits[0].changes[0].how",
+   "replace": "(whole field)",
+   "with": "`ledgerBooks` (the table \"ledger_books\", line 18801 today) gains `checkedAt: timestamp(\"checked_at\", { withTimezone: true })` (nullable; doc comment: 'When the ledger job last looked at the book: what was issued after it lists the book again.') and `behind: boolean(\"behind\").notNull().default(false)` (doc comment: 'The last turn stopped before the book was caught up, so the job keeps it listed.'). No index: the table holds one row per store's book and the job reads it whole. Run `pnpm db:generate`; the generated migration must hold exactly the two `ADD COLUMN` statements. Tripletex's and Fiken's looked_at columns are step 3.23's, not this step's."
+  },
+  {
+   "field": "commits[0].changes[1].how",
+   "replace": "(whole field)",
+   "with": "runLedgerPosting() (line 1038) and openLedgerBookEarlier() (line 174). (1) Next to DOCS_A_ROUND (line 487) add `/** How many entries a book compares with Tripletex in one go (compareWithTripletex()'s own default). */ const COMPARE_A_ROUND = 25;`. (2) Move the list statement out of runLedgerPosting() into an exported `ledgerBooksDue()` directly above it, with the doc comment 'The books the ledger job looks at, in their turn: open or closed in the last 60 days, and never looked at, behind, last looked at over an hour ago, or with a shop invoice or credit note issued since; the least recently looked at first.' It returns `typedRows(z.object({ id: col.uuid, store_id: col.uuid, currency: col.currency, opened_on: col.text, closed_on: col.textOrNull, listed_at: col.text }), sql`...`)` for exactly this statement: select b.id, b.store_id, b.currency, b.opened_on::text, b.closed_on::text, now()::text as listed_at from commerce.ledger_books b where (b.closed_on is null or b.closed_on >= current_date - 60) and (b.checked_at is null or b.behind or b.checked_at < now() - interval '1 hour' or exists (select 1 from commerce.invoices i where i.store_id = b.store_id and i.issued_on >= (b.checked_at - interval '1 day')::date and i.issued_at > b.checked_at) or exists (select 1 from commerce.credit_notes c where c.store_id = b.store_id and c.issued_on >= (b.checked_at - interval '1 day')::date and c.issued_at > b.checked_at)) order by b.checked_at nulls first, b.id (the issued_on bound lets each exists() use invoices_issued_idx and credit_notes_issued_idx, both on (store_id, issued_on); issued_at decides). Add no other exists(): a card payment is captured as its invoice is issued (D159) and a refund is given with its credit note, so dueDocuments() takes them in the same turn; Work's documents, payments that change state later, payouts, dispute lines and a waiting document whose day is up have no index on (store_id, a time) or change state without a new row, and are taken at the hourly look (no ledger_waiting exists(): its rows are deleted only when the job posts them, line 1023, so a stale one would list its book on every tick). (3) In runLedgerPosting(), add `limit?: number` to its options (`options: { budgetMs?: number; limit?: number } = {}`, for the tests), `const limit = options.limit ?? DOCS_A_ROUND;`, read `const books = await ledgerBooksDue();`, and make the loop exactly: for (const book of books) { if (Date.now() > deadline) break; let behind = false; try { const r = await postDueDocuments(book.store_id, book, { limit, deadline }); posted += r.posted; waiting += r.waiting; /* Step 4: what is posted here, compared with what Tripletex holds for it. */ const c = book.closed_on === null ? (await compareWithTripletex(book.store_id, book, { deadline, limit: COMPARE_A_ROUND })).compared : 0; compared += c; /* Stopped short (the round's limit, the comparison's, or the deadline): the book stays listed until it is caught up. */ behind = r.posted + r.waiting >= limit || c >= COMPARE_A_ROUND || Date.now() > deadline; done += 1; } catch (error) { log(\"error\", \"ledger.posting_failed\", { storeId: book.store_id, bookId: book.id }, error); } /* A caught-up book is marked with the list's time, so anything issued after the list lists it again; a behind one with its turn's end, so the books caught up in this run come before it next time. A turn that threw is not behind: it is tried again at the hourly look. */ await db().execute(sql`update commerce.ledger_books set checked_at = case when ${behind}::boolean then now() else ${book.listed_at}::timestamptz end, behind = ${behind}::boolean where id = ${book.id}::uuid and store_id = ${book.store_id}::uuid`); } (write the /* */ comments as // line comments in the code). Books the loop did not reach keep their checked_at and come first next run. Do not touch updated_at: the owner's edits move it. Leave the bank matching after the loop as it is. (4) openLedgerBookEarlier(): its statement `update commerce.ledger_books set opened_on = ${openedOn}::date, updated_at = now()` (line 191) becomes `update commerce.ledger_books set opened_on = ${openedOn}::date, behind = true, updated_at = now()`, so the days it adds are posted from the next tick, not the hourly look."
+  },
+  {
+   "field": "commits[0].changes[2].how",
+   "replace": "(whole field)",
+   "with": "Add `describe(\"the ledger job's turns\")` at the end with three cases. Each makes its own stores (fx.makeStore) and books (openBook) and filters `ledger.ledgerBooksDue()` to its own book ids, because earlier tests leave books in the same database. Read a book's state with `select checked_at, behind from commerce.ledger_books where id = ...`, and count what a book handled as the rows of ledger_entries with a source_kind plus the rows of ledger_waiting for that book_id. (a) 'a book cut short stays listed behind the others, and all three are caught up within three runs': book A gets three fx.paidOrder orders, books B and C one each. Run `ledger.runLedgerPosting({ limit: 3 })`. Assert: A handled 3 and has behind = true; B and C handled 2 each and have behind = false; A's checked_at is later than B's and C's; ledgerBooksDue() includes A and excludes B and C. Place one more fx.paidOrder in B's and in C's store: ledgerBooksDue() now lists B and C, both before A. Run `ledger.runLedgerPosting({ limit: 3 })` twice more; then A, B and C all have behind = false, ledgerBooksDue() includes none of them, and `ledger.postDueDocuments()` on each returns { posted: 0, waiting: 0 }. (b) 'an idle book is not listed until something is issued or an hour has passed': book D with one order; `ledger.runLedgerPosting()`; ledgerBooksDue() excludes D. Place another order in D's store: ledgerBooksDue() includes D. `ledger.runLedgerPosting()` again: excluded. `update commerce.ledger_books set checked_at = now() - interval '61 minutes' where id = D`: included. (c) 'a book opened earlier is posted from the next tick': book E with one order; `ledger.runLedgerPosting()`; ledgerBooksDue() excludes E. Call `ledger.openLedgerBookEarlier(member, day)` with `const member = { account: { id: shop.ownerId }, store: { id: shop.storeId, timeZone: \"Europe/Oslo\" } } as unknown as Membership;` (as line 306 builds one) and day the date 40 days before today as YYYY-MM-DD; expect ok true, E's behind = true and ledgerBooksDue() including E."
+  },
+  {
+   "field": "commits[0].changes[3].how",
+   "replace": "(whole field)",
+   "with": "Step 1.10 keeps the idle tick's figures under the key queryBudget here. After the code above, on a freshly seeded database (node scripts/db-setup.mjs --seed), run `UPDATE_BASELINE=1 pnpm vitest run --config vitest.integration.config.mts src/server/query-budget.int.test.ts` (it only lowers). The seed opens no books, so dispatcher.ledger's figures should not move (the list is still one statement and reads no ledger_books row); if the file's diff is empty, leave it out of the commit. If any figure other than dispatcher.ledger's changes, or the test refuses because a figure would rise, stop. Never type a figure by hand."
+  },
+  {
+   "field": "commits[0].checks[3]",
+   "replace": "src/server/ledger-compare.int.test.ts : exits 0",
+   "with": "src/server/ledger-compare.int.test.ts src/server/ledger-opening.int.test.ts src/server/bank-payments.int.test.ts : exits 0"
+  },
+  {
+   "field": "tests[0].proves",
+   "replace": "(whole field)",
+   "with": "A book cut short not kept listed, or not put behind the books caught up in the same run; an idle book listed with nothing new; a new invoice or an hour passing not listing it; a book opened earlier waiting for the hourly look."
+  },
+  {
+   "field": "tests[1].proves",
+   "replace": "(whole field)",
+   "with": "dispatcher.ledger's idle figures rising. The seed opens no books, so this holds the list statement's count only; the idle-cost proof is ledger-posting.int.test.ts case (b)."
+  },
+  {
+   "field": "done_when[0].expect",
+   "replace": "(whole field)",
+   "with": "Case (a): a book cut short by the round's limit is listed after the books caught up in the same run, and all three books are caught up within three runs; case (b): an idle book is listed only after a new invoice or an hour."
+  },
+  {
+   "field": "done_when[1].expect",
+   "replace": "(whole field)",
+   "with": "dispatcher.ledger's figures are unchanged or lower, and its rowsRead growth between 1 and 20 seeded stores is at most 190 (10 per added store); the seed opens no books, so this is met as it stands. The whole idle tick meets the same figure once steps 3.21 to 3.24 are all in."
+  },
+  {
+   "field": "migration.notes",
+   "replace": "ledger_books.checked_at (nullable) with the index ledger_books_checked_idx, and ledger_books.behind (boolean not null default false)",
+   "with": "ledger_books.checked_at (nullable) and ledger_books.behind (boolean not null default false), two ADD COLUMN statements and no index"
+  },
+  {
+   "field": "after_deploy[1]",
+   "replace": "(whole field)",
+   "with": "Supabase advisors: no new warning. Record the migration's version in docs/decisions.md under Migration versions."
+  },
+  {
+   "field": "docs[0]",
+   "replace": "a book listed only when it is new, behind, has a new document or was last looked at over an hour ago",
+   "with": "a book listed only when it is new, behind, has a shop invoice or credit note issued since it was last looked at, or was last looked at over an hour ago (everything else, Work's documents, payouts, dispute lines and a waiting document whose day is up, at that hourly look); a caught-up book marked with the list's time and a behind one with its turn's end; a turn stopped by the round's 100 documents, the comparison's 25 entries or the deadline leaves the book behind, one that threw does not; opening the books earlier sets behind"
+  },
+  {
+   "field": "docs[1]",
+   "replace": "(whole field)",
+   "with": "docs/own-books-and-sales.md (B2): an idle book is looked at hourly; a new shop invoice or credit note is taken on the next five-minute tick, with its payment or refund; Work's documents, payouts and disputes within the hour; a book that is behind, or opened earlier, keeps its turn."
+  },
+  {
+   "field": "stop_if",
+   "replace": "(whole field)",
+   "with": [
+    "src/server/query-budget.int.test.ts (step 1.10) does not exist.",
+    "An existing ledger test fails for a reason other than the new turn order (checked_at instead of updated_at).",
+    "runLedgerPosting() no longer has the shape the step quotes (list, then per book postDueDocuments(), compareWithTripletex() for an open book, a catch logging ledger.posting_failed, then matchAllBankStatements()), or compareWithTripletex() no longer takes a limit option."
+   ]
+  },
+  {
+   "field": "executor_why",
+   "replace": "(whole field)",
+   "with": "The statements and the loop are given in full, but it changes when accounting books are posted and adds a migration CI applies: a reviewer checks that the update after the turn uses listed_at for a caught-up book and now() for a behind one, that behind counts the comparison's limit, and that no exists() beyond the two shop tables crept in."
+  },
+  {
+   "field": "checked_in_code",
+   "replace": "they are named now under the same index rule.",
+   "with": "they are named now under the same index rule. Review (12 November): that index rule, taken literally, dropped every exists() (no table has an index on (store_id, issued_at or created_at); invoices and credit notes have (store_id, issued_on), schema.ts 6855 and 6946), and insert times miss documents that become due by a change of state (a payment captured later, a refund that succeeds, a payout paid); so only the two shop tables keep an exists(), bounded by issued_on, and the rest wait for the hourly look. The ledger_waiting exists() is dropped (keyed by store, not book, and its rows outlive their documents). checked_at for a caught-up book is the list's now(), not the turn's end, so nothing issued during a turn is missed; the comparison's 25-entry limit counts as cut; openLedgerBookEarlier() sets behind; a turn that threw is not behind; ledger_books_checked_idx is dropped (a one-row-per-book table). ledger_books.store_id is not null (schema.ts 135): Kaizena Flow's books are its own store's (D467), in the same list with no special case."
+  }
+ ],
+ "rating": "cheap-then-review",
+ "rating_why": "After the edits the statement, the loop and the tests are given verbatim, but it changes when a store's accounting is posted and ships a migration CI applies, so a reviewer should check the update after the turn and that no extra exists() crept in."
+}

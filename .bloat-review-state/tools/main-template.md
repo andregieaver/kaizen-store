@@ -83,7 +83,9 @@ Change log:
   brief checked against the code and the briefs before it: 539 errors fixed in the briefs, 79 reported ones found not to be
   errors. Nothing started.
 - 12 Nov 2026: at the owner's request, step 3.6 split into five steps (3.6, 3.21 to 3.24) and step 1.21's second stage, the
-  build in CI, made its own step (1.29). Ratings now {{WHO_COUNTS}}. Nothing started.
+  build in CI, made its own step (1.29). The three design changes the split brought (3.22's `behind` column, 3.23's skip
+  rule, 3.24's sweep check) reviewed by a stronger model against the code: all kept, with 37 exact fixes. Ratings now
+  {{WHO_COUNTS}}. Nothing started.
 
 ## 1. The headline
 
