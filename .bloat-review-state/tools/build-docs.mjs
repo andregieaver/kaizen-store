@@ -124,7 +124,8 @@ if (existsSync(`${S}/panel`)) {
     if (existsSync(cardPath)) {
       const c = json(cardPath); cards[a.key] = c;
       const bar = c.bar_in_a_sentence ? clean(c.bar_in_a_sentence) : c.measures.map((m) => `${clean(m.name)}: ${clean(m.target_a)}`).join(". ");
-      scorecard += `| ${a.title} | ${c.grade_today} | ${cell(clean(c.grade_reasons).split(/(?<=[.!?])\s+/).slice(0, 2).join(" "))} | ${cell(bar)} | ${c.steps_to_a.join(", ")} |\n`;
+      const why = (() => { const parts = clean(c.grade_reasons).split(/(?<=[.!?])\s+/); let out = parts[0] ?? ""; if (out.length < 200 && parts[1]) out += " " + parts[1]; return out.length > 420 ? out.slice(0, 420).replace(/\s+\S*$/, "") + "…" : out; })();
+      scorecard += `| ${a.title} | ${c.grade_today} | ${cell(why)} | ${cell(bar)} | ${c.steps_to_a.length} steps: \`grade-a/${a.key}.md\` |\n`;
       ladder += `| ${a.title} | ${c.grade_today} | ${c.ladder.after_phase_0} | ${c.ladder.after_phase_1} | ${c.ladder.after_phase_2} | ${c.ladder.after_all} |\n`;
     } else if (existsSync(stewardPath)) {
       const c = json(stewardPath);
@@ -134,13 +135,28 @@ if (existsSync(`${S}/panel`)) {
     }
   }
 }
-// Each area's bar in full: measures, today's value, the target and how it is measured.
-let bars = "";
+// Each area's bar in full, a file per area: measures, today's value, the target and how it is measured.
+rmSync(`${OUT}/grade-a-bars.md`, { force: true });
+rmSync(`${OUT}/grade-a`, { recursive: true, force: true });
+mkdirSync(`${OUT}/grade-a`, { recursive: true });
+let barIndex = `# What grade A means, area by area\n\nPart of \`docs/audits/bloat-review-2026-11.md\` (its section 1 has the scale and the scorecard). Each area's bar was set by a steward, challenged by a second reviewer (is this truly an A; can the plan's steps reach it) and compared across areas by a critic. A grade is raised only for fixes seen working in production, measured as the area's file says.\n\n| Area | Today | Grade A, in a sentence | In full |\n|---|---|---|---|\n`;
+let stopsShort = 0;
 for (const a of SCORE) {
   const c = cards[a.key]; if (!c) continue;
-  bars += `### ${a.title}\n\n**Today: ${c.grade_today}.** ${clean(c.grade_reasons)}\n\n| Measure | Today | Grade A | Measured by |\n|---|---|---|---|\n${c.measures.map((m) => `| ${cell(m.name)} | ${cell(m.today)} | ${cell(m.target_a)} | ${cell(m.how_measured)} |`).join("\n")}\n\n**Steps to an A:** ${c.steps_to_a.join(", ")}. **Can they reach it?** ${clean(c.can_the_steps_reach_a)}\n\n${c.tolerated?.length ? `**An A lives with:** ${c.tolerated.map(clean).join("; ")}\n\n` : ""}`;
+  if (c.ladder.after_all !== "A") stopsShort++;
+  const open = (c.shortfalls ?? []).length;
+  let md = `# Grade A for: ${a.title}\n\nPart of \`docs/audits/bloat-review-2026-11.md\`. **Today: ${c.grade_today}.** ${clean(c.grade_reasons)}\n\n**The bar, in a sentence.** ${clean(c.bar_in_a_sentence ?? "")}\n\n## The measures\n\n| Measure | Today | Grade A | Measured by |\n|---|---|---|---|\n${c.measures.map((m) => `| ${cell(m.name)} | ${cell(m.today)} | ${cell(m.target_a)} | ${cell(m.how_measured)} |`).join("\n")}\n\n## The ladder\n\nAfter phase 0: ${c.ladder.after_phase_0}. After phase 1: ${c.ladder.after_phase_1}. After phase 2: ${c.ladder.after_phase_2}. After all phases: ${c.ladder.after_all}.\n\n**Steps that take it there:** ${c.steps_to_a.join(", ")}.\n\n**Can the steps reach an A?** ${clean(c.can_the_steps_reach_a)}\n\n**The challenger on the bar.** ${clean(c.verdict_on_bar)}\n`;
+  if (open) md += `\n## What the plan still lacks for an A here\n\n${c.shortfalls.map((x) => `- **${clean(x.what)}** Proposed: ${clean(x.proposed_step_title)}. ${clean(x.proposed_step_what)} Done when: ${clean(x.proposed_done_when)}`).join("\n")}\n`;
+  if ((c.closed_shortfalls ?? []).length) md += `\n## What the challenger found missing, and how it was settled\n\n${c.closed_shortfalls.map((x) => `- ${clean(typeof x === "string" ? x : JSON.stringify(x))}`).join("\n")}\n`;
+  if (c.tolerated?.length) md += `\n## An A lives with\n\n${c.tolerated.map((x) => `- ${clean(x)}`).join("\n")}\n`;
+  if (c.owner_choices?.length) md += `\n## The owner's choices here\n\n${c.owner_choices.map((x) => `- ${clean(x)}`).join("\n")}\n`;
+  writeFileSync(`${OUT}/grade-a/${a.key}.md`, md);
+  barIndex += `| ${a.title} | ${c.grade_today} | ${cell(c.bar_in_a_sentence ?? "")} | \`${a.key}.md\` |\n`;
 }
-writeFileSync(`${OUT}/grade-a-bars.md`, `# What grade A means, area by area\n\nPart of \`docs/audits/bloat-review-2026-11.md\` (its section 1 has the short form). Each area's bar was set by a steward, challenged by a second reviewer (is this truly an A; can the plan's steps reach it) and compared across areas by a critic. A grade is raised only for fixes seen working in production, measured as the table says.\n\n${bars || "The panel's cards are not written yet.\n"}`);
+writeFileSync(`${OUT}/grade-a/README.md`, barIndex);
+const ladderNote = !Object.keys(cards).length ? "" : stopsShort
+  ? `**As the plan stands, ${stopsShort} of 13 areas stop at a B.** Each area's challenger named the steps and the tighter checks that are missing (in \`bloat-review-2026-11/grade-a/<area>.md\`); they are being added to the plan, because the goal does not move.`
+  : "Every area ends at an A. Where a challenger found the plan short of the bar, the missing step or the tighter check was added (each area's file in `bloat-review-2026-11/grade-a/` says which).";
 
 // ---- The plan's text and the Progress table.
 let progress = "", planText = "", choices = "", tolerated = "";
@@ -201,7 +217,7 @@ what stands behind it. Open the file of the step or the finding you are working 
 | \`findings/README.md\` | every finding by area, with its priority and the step that closes it |
 | \`findings/<area>/README.md\` | one area in short: its findings, what was refuted, its measures, what is well made |
 | \`findings/<area>/<ID>.md\` | one finding: where, the evidence, the cost today, the fix in steps, the tests and rules that change with it, done-when, risk |
-| \`grade-a-bars.md\` | what grade A means for each area: the measures, today's values, the targets and how each is measured |
+| \`grade-a/<area>.md\` | what grade A means for one area: the measures, today's values, the targets, how each is measured, and the steps that reach it |
 | \`evidence/\` | the measurements (below) |
 | \`scripts/\` | what made them |
 
@@ -243,7 +259,7 @@ node docs/audits/bloat-review-2026-11/scripts/copied-code.mjs out       # exact 
 
 // ---- The main document.
 const template = readFileSync(`${S}/work/main-template.md`, "utf8");
-let main = template.replace("{{PANEL_STATE}}", panelState).replace("{{PROGRESS}}", progress.trimEnd()).replace("{{SCORECARD}}", scorecard.trimEnd()).replace("{{LADDER}}", ladder.trimEnd()).replace("{{FINDINGS_TABLES}}", areaIndex).replace("{{PLAN}}", planText).replace("{{CHOICES}}", choices).replace("{{TOLERATED}}", tolerated);
+let main = template.replace("{{PANEL_STATE}}", panelState).replace("{{PROGRESS}}", progress.trimEnd()).replace("{{SCORECARD}}", scorecard.trimEnd()).replace("{{LADDER}}", ladder.trimEnd()).replace("{{LADDER_NOTE}}", ladderNote).replace("{{FINDINGS_TABLES}}", areaIndex).replace("{{PLAN}}", planText).replace("{{CHOICES}}", choices).replace("{{TOLERATED}}", tolerated);
 for (const [k, v] of Object.entries(counts)) main = main.replaceAll(`{{${k}}}`, String(v).replace(/\B(?=(\d{3})+(?!\d))/g, ","));
 const left = main.match(/\{\{[A-Z0-9_]+\}\}/g);
 if (left) console.log("UNFILLED:", [...new Set(left)].join(", "));

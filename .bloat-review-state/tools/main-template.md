@@ -40,7 +40,7 @@ change: there is no real data to move and nobody to disturb.
 
 **Where things are.** Beside this file, the folder `bloat-review-2026-11/`: `findings/` has a folder per area and a small file per
 finding (where, evidence, cost today, the fix in steps, the tests and rules that hold today's behaviour, done-when, risk);
-`grade-a-bars.md` has each area's bar in full; `evidence/` the measurements; `scripts/` what made them. A step of the plan names
+`grade-a/` has each area's bar in full; `evidence/` the measurements; `scripts/` what made them. A step of the plan names
 the findings it closes: open those files, not the folder.
 
 **Words.** Six kinds of bloat: *dead* (nothing uses it), *duplicate* (built more than once), *eager* (loaded, fetched or run before
@@ -55,7 +55,7 @@ This is a working document, kept as `code-review-2026-11.md` is: the table says 
 commit as the fix.
 
 - **The goal is grade A in every area** (the owner, 11 November). The plan is done when every area is an A, not when its steps are
-  ticked. Section 1 gives each area's bar; `bloat-review-2026-11/grade-a-bars.md` gives it in full with how each number is measured.
+  ticked. Section 1 gives each area's bar; `bloat-review-2026-11/grade-a/<area>.md` gives it in full with how each number is measured.
 - **Status** is one of: Open, In progress, Done, Dropped (with the reason in Notes).
 - When a step is done, set Done with the date and the commit, in a line. Check its "done when" first, with the script, query or
   test it names.
@@ -132,7 +132,10 @@ How each area climbs, by the phases of the plan. An area cannot be an A before t
 
 {{LADDER}}
 
-Each area's measures, today's values, the targets and how each is measured are in `bloat-review-2026-11/grade-a-bars.md`.
+{{LADDER_NOTE}}
+
+Each area's measures, today's values, the targets, how each is measured and the steps that reach it are in
+`bloat-review-2026-11/grade-a/<area>.md`.
 
 ## 2. What is good and should stay
 
