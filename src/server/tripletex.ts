@@ -14,7 +14,7 @@ import { checkSettings, planSetup, type Chart, type ChartAccount, type ChartVatT
 import { neededKeys, storeOrgNumber } from "./accounting-documents";
 import { audit } from "./auth";
 import { log } from "./log";
-import { encryptionKey } from "./settings";
+import { encryptionKey } from "./encryption-key";
 import { listAll, openSession, whoAmI, type TripletexCredential, type TripletexDeps, type TripletexSession } from "./tripletex-client";
 import { col, typedRow, typedRows } from "./typed-rows";
 

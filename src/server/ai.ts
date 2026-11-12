@@ -23,7 +23,7 @@ import { decryptSecret, encryptSecret } from "@/lib/secret-box";
 import { limitFor, usageNow } from "./limits";
 import { recordUsage, type UsageContext } from "./ai-usage";
 import { audit } from "./auth";
-import { encryptionKey } from "./settings";
+import { encryptionKey } from "./encryption-key";
 
 type Row = Record<string, unknown>;
 

@@ -45,7 +45,8 @@ import {
   pipedriveWhoAmI,
   type PipedriveDeps,
 } from "./pipedrive-client";
-import { encryptionKey, listStaff } from "./settings";
+import { encryptionKey } from "./encryption-key";
+import { listStaff } from "./settings";
 import { getStore } from "./stores";
 import { textList, uuidList } from "./sql-arrays";
 import { col, typedRow, typedRows } from "./typed-rows";

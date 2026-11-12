@@ -4,7 +4,7 @@ import { randomBytes } from "node:crypto";
 
 import { siteUrl } from "@/lib/site";
 
-import { encryptionKey } from "./settings";
+import { encryptionKey } from "./encryption-key";
 
 /**
  * "Add to Slack" (D101): Kaizen's own Slack app, with only the

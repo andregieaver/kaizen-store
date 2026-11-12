@@ -18,7 +18,7 @@ import { audit, type Membership } from "./auth";
 import { fikenApi, fikenApp, listAll, revokeGrant, tokenCall, type FikenApi, type FikenDeps, type FikenTokens } from "./fiken-client";
 import { log } from "./log";
 import { checkPermission, memberCan } from "./permissions";
-import { encryptionKey } from "./settings";
+import { encryptionKey } from "./encryption-key";
 import { col, typedRow, typedRows } from "./typed-rows";
 
 /**

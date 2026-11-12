@@ -5,24 +5,20 @@ import { sql } from "drizzle-orm";
 import { db } from "@/db/client";
 import { limitRefusal } from "@/lib/usage-format";
 import { diffOf } from "@/lib/audit";
-import { decryptSecret, parseKey } from "@/lib/secret-box";
+import { decryptSecret } from "@/lib/secret-box";
 import { accountStage, type PaymentModeName } from "@/lib/stripe-account";
 
 import { audit, type Membership, type Role } from "./auth";
 import { auditChange } from "./audit";
 import { getStripeAccounts, type StripeAccount } from "./connect";
 import { memberCan, NO_ACCESS } from "./permissions";
+import { encryptionKey } from "./encryption-key";
 import { checkLimit } from "./limits";
 import { platformModes } from "./stripe";
 import type { Store } from "./stores";
 import { checkoutProviderOf } from "./mollie";
 
 type Row = Record<string, unknown>;
-
-/** The key that encrypts payment secrets, or null if the server lacks one. */
-export function encryptionKey(): Buffer | null {
-  return parseKey(process.env.SETTINGS_ENCRYPTION_KEY);
-}
 
 export type PaymentSettings = {
   stripe: { enabled: boolean; activeMode: PaymentModeName; orderInvoices: boolean };

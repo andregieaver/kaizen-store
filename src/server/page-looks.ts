@@ -38,7 +38,7 @@ import { cronBearer } from "./cron-auth";
 import { log } from "./log";
 import { OwnerToolError } from "./owner-tool-error";
 import { getPageForEdit } from "./pages";
-import { encryptionKey } from "./settings";
+import { encryptionKey } from "./encryption-key";
 import { currentStore, type Store } from "./stores";
 import { col, typedRow, typedRows } from "./typed-rows";
 import { loadSharp } from "./sharp-load";

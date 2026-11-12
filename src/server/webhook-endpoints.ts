@@ -12,7 +12,7 @@ import { checkEndpointUrl } from "@/lib/webhook-signature";
 
 import { audit, type Membership } from "./auth";
 import { hostProblem } from "./replicate-fetch";
-import { encryptionKey } from "./settings";
+import { encryptionKey } from "./encryption-key";
 import { col, typedRow, typedRows } from "./typed-rows";
 
 /**

@@ -20,7 +20,7 @@ import { siteUrl } from "@/lib/site";
 import type { PaymentModeName } from "@/lib/stripe-account";
 
 import { audit } from "./auth";
-import { encryptionKey } from "./settings";
+import { encryptionKey } from "./encryption-key";
 
 type Row = Record<string, unknown>;
 
