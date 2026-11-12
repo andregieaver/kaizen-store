@@ -1,4 +1,4 @@
-# Where the reviewers stand (2026-11-12 01:24 UTC)
+# Where the reviewers stand (2026-11-12 01:25 UTC)
 
 | Area | Read (audit) | Challenged (verify) | Planned |
 |---|---|---|---|
@@ -21,17 +21,17 @@
 | i18n | done | done | done |
 | tests-ci | done | done | done |
 | functions | done | done | to do |
-| server-graph | done | done | to do |
+| server-graph | done | done | done |
 | client-bundles | done | done | to do |
 | page-payload | done | done | done |
 | prefetch | done | done | to do |
 | unused-code | done | done | done |
 | copied-code | done | done | done |
 
-Done: 21 of 25 areas through all three stages; 25 challenged; 25 read.
+Done: 22 of 25 areas through all three stages; 25 challenged; 25 read.
 
 To relaunch what is left, pass these args to the workflow (split the keys over several launches of three or four):
 
 ```json
-{"keys":["functions","server-graph","client-bundles","prefetch"],"audited":["storefront-client","storefront-data","admin-client","admin-data","caching","cron","db-queries","db-schema","deps","assets","ai-context","features","families","docs-context","page-model","css","i18n","tests-ci","functions","server-graph","client-bundles","page-payload","prefetch","unused-code","copied-code"],"verified":["storefront-client","storefront-data","admin-client","admin-data","caching","cron","db-queries","db-schema","deps","assets","ai-context","features","families","docs-context","page-model","css","i18n","tests-ci","functions","server-graph","client-bundles","page-payload","prefetch","unused-code","copied-code"]}
+{"keys":["functions","client-bundles","prefetch"],"audited":["storefront-client","storefront-data","admin-client","admin-data","caching","cron","db-queries","db-schema","deps","assets","ai-context","features","families","docs-context","page-model","css","i18n","tests-ci","functions","server-graph","client-bundles","page-payload","prefetch","unused-code","copied-code"],"verified":["storefront-client","storefront-data","admin-client","admin-data","caching","cron","db-queries","db-schema","deps","assets","ai-context","features","families","docs-context","page-model","css","i18n","tests-ci","functions","server-graph","client-bundles","page-payload","prefetch","unused-code","copied-code"]}
 ```
