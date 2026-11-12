@@ -33,7 +33,7 @@ small to need it yet", and unique/primary-key indexes enforce rules whether or n
 | media_embeddings | 468 | 4.7 MB | 13,414 updates on 468 rows |
 | knowledge_chunks | 250 | 3.7 MB | 1,060 inserts, 810 deletes, 91,200 `delete ... where page_id` calls |
 | media | 699 | 3.3 MB | |
-| status_checks | 20,547 | 3.2 MB | grows every 5 minutes, never pruned (0 deletes) |
+| status_checks | 20,547 | 3.2 MB | grows every 5 minutes; pruned at 91 days (the table is younger than that, hence no deletes yet) |
 | product_embeddings | 305 | 2.7 MB | 24,807 seq scans |
 | postal_points | 28,754 | 2.5 MB | |
 
@@ -144,7 +144,7 @@ support-idle 82, support-summaries 82, edit-expiry 80, approval-expiry 80, low-s
 shop-moves 74, replications 73, store-copies 71, instagram 71, affiliates 68, fiken 66, pipedrive 66, platform-briefing 66,
 activities 63, forms 58, chat 56, cache 53, ai-picture-marks 52, commissions 50, searches 47, bookings 45, calendars 44,
 ebay 8, autopilot-effects 7, theme-purchases 7, domain-registrations 6, domain-purchases 5, theme-updates 5, secret-rotation 5,
-platform-theme-updates 4. Sum: about 12.5 s of database-bound work every five minutes, mostly for features with empty tables.
+platform-theme-updates 4. These times overlap: the jobs run side by side, and a whole round takes about 1.3 s (the reviewers' correction of this file's first sum of 12.5 s).
 
 ## The 245 tables that have never held a row
 
@@ -188,8 +188,8 @@ support_replies, tax_rate_overrides, tax_report_exports, template_activations, t
 turnover_thresholds, ui_translations, unsent_closures, variant_cost_history, webhook_endpoints, withdrawal_attempts,
 withdrawal_request_lines, withdrawal_requests, work_timers, workflow_runs, workflows
 
-(An empty table is not proof the feature is unwanted: several were built in the last weeks. It is proof that no store has
-used it yet, and that any work done for it on every request or every five minutes is, today, done for nobody.)
+(The platform is not open yet: the stores are the team's own. An empty table says only that nobody has tried the feature,
+and is no finding.)
 
 ## The queries
 

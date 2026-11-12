@@ -121,11 +121,12 @@ if (existsSync(`${S}/panel`)) {
     if (existsSync(cardPath)) {
       const c = json(cardPath); cards[a.key] = c;
       const bar = c.bar_in_a_sentence ? clean(c.bar_in_a_sentence) : c.measures.map((m) => `${clean(m.name)}: ${clean(m.target_a)}`).join(". ");
-      scorecard += `| ${a.title} | ${c.grade_today} | ${cell(c.grade_reasons)} | ${cell(bar)} | ${c.steps_to_a.join(", ")} |\n`;
+      scorecard += `| ${a.title} | ${c.grade_today} | ${cell(clean(c.grade_reasons).split(/(?<=[.!?])\s+/).slice(0, 2).join(" "))} | ${cell(bar)} | ${c.steps_to_a.join(", ")} |\n`;
       ladder += `| ${a.title} | ${c.grade_today} | ${c.ladder.after_phase_0} | ${c.ladder.after_phase_1} | ${c.ladder.after_phase_2} | ${c.ladder.after_all} |\n`;
     } else if (existsSync(stewardPath)) {
       const c = json(stewardPath);
-      scorecard += `| ${a.title} | ${c.grade_today} | ${cell(c.grade_reasons)} | ${cell(c.measures.map((m) => `${clean(m.name)}: ${clean(m.target_a)}`).join(". "))} | ${plan?.ladders?.[a.key] ? [...(plan.ladders[a.key].to_b ?? []), ...(plan.ladders[a.key].to_a ?? [])].join(", ") : ""} |\n`;
+      const short = (t, n) => { t = clean(t); return t.length > n ? t.slice(0, n).replace(/\s+\S*$/, "") + "…" : t; };
+      scorecard += `| ${a.title} | ${c.grade_today} | ${cell(clean(c.grade_reasons).split(/(?<=[.!?])\s+/).slice(0, 2).join(" "))} | ${cell(c.measures.slice(0, 5).map((m) => `${short(m.name, 60)}: ${short(m.target_a, 90)}`).join(". "))} | ${plan?.ladders?.[a.key] ? [...(plan.ladders[a.key].to_b ?? []), ...(plan.ladders[a.key].to_a ?? [])].join(", ") : ""} |\n`;
       ladder += `| ${a.title} | ${c.grade_today} | ${c.ladder.after_now} | | ${c.ladder.after_next} | ${c.ladder.after_later} |\n`;
     }
   }
@@ -177,9 +178,69 @@ for (const f of ["routes.md", "prod-db-stats.md", "prod-pages.md", "prefetch-sto
   writeFileSync(`${OUT}/evidence/${NAMES[f] ?? f}`, text);
 }
 
+// ---- How far the panel has come, said truthfully.
+const haveCards = SCORE.every((a) => existsSync(`${S}/panel/card-${a.key}.json`));
+const reviewed = existsSync(`${S}/panel/weave-review.md`);
+const criticDone = existsSync(`${S}/panel/critic.json`);
+const panelState = haveCards && criticDone
+  ? "A reviewer went over the plan as someone who must carry it out; a challenger per area tested whether the bar is truly an A and whether the plan's steps reach it; one critic compared the grades across areas."
+  : `**Not finished as this is written:** ${[reviewed ? null : "the plan's reviewer (steps may still be split, joined or moved between phases)", haveCards ? null : "a challenger per area (is the bar truly an A; can the plan's steps reach it)", criticDone ? null : "the critic who compares grades across areas"].filter(Boolean).join("; ")}. Until then the grades and bars below are the stewards' own.`;
+
+// ---- The folder's index.
+writeFileSync(`${OUT}/README.md`, `# Bloat review, November 2026: the plan in full, the findings, the bars, the evidence
+
+The review is \`docs/audits/bloat-review-2026-11.md\`: read it first. Its Progress table lists every step. This folder holds
+what stands behind it. Open the file of the step or the finding you are working on, not the folder.
+
+| Here | What |
+|---|---|
+| \`plan/phase-N.md\` | each phase's steps in full: what to change, the findings it closes, the check that says it is done, what it means for the platform |
+| \`findings/README.md\` | every finding by area, with its priority and the step that closes it |
+| \`findings/<area>/README.md\` | one area in short: its findings, what was refuted, its measures, what is well made |
+| \`findings/<area>/<ID>.md\` | one finding: where, the evidence, the cost today, the fix in steps, the tests and rules that change with it, done-when, risk |
+| \`grade-a-bars.md\` | what grade A means for each area: the measures, today's values, the targets and how each is measured |
+| \`evidence/\` | the measurements (below) |
+| \`scripts/\` | what made them |
+
+## evidence/
+
+| File | What it is |
+|---|---|
+| \`routes.md\` | 32 pages of the production build in a browser: bytes by kind, what each document is made of, requests after load, script bytes that ran |
+| \`scripts-by-page.md\` | for 14 of those pages, the scripts really loaded, matched to source modules |
+| \`server-and-client-by-route.md\` | for 19 routes, the modules the server loads and the client code reachable, from Next's analyzer |
+| \`spike.md\` | two import edits measured in a copy (the plan's import-hub step) |
+| \`production-database.md\` | production's statistics on 11 November, read before the reviewers checked them: sizes, tables with no row yet, the costliest and most-called statements, the schedule; and the queries, to run them again. Two of its first readings were corrected by the reviewers: a round of jobs takes about 1.3 s, not the sum of its jobs' times, and status checks are pruned at 91 days |
+| \`production-pages.md\` | three production documents, to check the local shares |
+| \`prefetch-storm.md\` | the prefetch loop on \`/s/\` listing and search pages, as first seen (its cause is in \`findings/prefetching/PF-1.md\`) |
+| \`unused-code.md\`, \`copied-code.md\` | the two scans' first lists of suspects (checked in \`findings/unused-code/\` and \`findings/copied-code/\`) |
+
+## scripts/
+
+Run from the repository root. They were written for this review on one machine; a step of the plan makes them commands.
+
+\`\`\`bash
+pnpm build                                    # as CI's signed-in job builds it
+pnpm start --port 3000 &                      # with e2e/fixtures/auth-stub.mjs beside it, for the admin pages
+E2E_SIGNED_IN=1 pnpm exec playwright test --project=signed-in-setup   # saves e2e/.auth/owner.json and admin.json
+node docs/audits/bloat-review-2026-11/scripts/measure-routes.mjs out '{"product":"<a product id of e2e-shop>","pageId":"<a page id of e2e-shop>"}'
+node docs/audits/bloat-review-2026-11/scripts/routes-table.mjs out      # routes.json to routes.md
+node docs/audits/bloat-review-2026-11/scripts/storm.mjs "http://localhost:3000/s/demo/no/search?q=lampe" 8 phone
+
+pnpm exec next analyze --output               # about 8 minutes; writes .next/diagnostics/analyze
+node docs/audits/bloat-review-2026-11/scripts/server-graph.mjs out      # modules and KB per route, server and client
+node docs/audits/bloat-review-2026-11/scripts/scripts-by-page.mjs out   # needs out/routes.json and the analyzer's data
+
+node docs/audits/bloat-review-2026-11/scripts/unused-code.mjs out       # files and exports nothing uses (suspects)
+node docs/audits/bloat-review-2026-11/scripts/copied-code.mjs out       # exact copies
+\`\`\`
+
+\`PLAYWRIGHT_CHROMIUM_PATH\` names the browser where one is preinstalled; \`BASE_URL\` another address than \`http://localhost:3000\`.
+`);
+
 // ---- The main document.
 const template = readFileSync(`${S}/work/main-template.md`, "utf8");
-let main = template.replace("{{PROGRESS}}", progress.trimEnd()).replace("{{SCORECARD}}", scorecard.trimEnd()).replace("{{LADDER}}", ladder.trimEnd()).replace("{{FINDINGS_TABLES}}", areaIndex).replace("{{PLAN}}", planText).replace("{{CHOICES}}", choices).replace("{{TOLERATED}}", tolerated);
+let main = template.replace("{{PANEL_STATE}}", panelState).replace("{{PROGRESS}}", progress.trimEnd()).replace("{{SCORECARD}}", scorecard.trimEnd()).replace("{{LADDER}}", ladder.trimEnd()).replace("{{FINDINGS_TABLES}}", areaIndex).replace("{{PLAN}}", planText).replace("{{CHOICES}}", choices).replace("{{TOLERATED}}", tolerated);
 for (const [k, v] of Object.entries(counts)) main = main.replaceAll(`{{${k}}}`, String(v).replace(/\B(?=(\d{3})+(?!\d))/g, ","));
 const left = main.match(/\{\{[A-Z0-9_]+\}\}/g);
 if (left) console.log("UNFILLED:", [...new Set(left)].join(", "));

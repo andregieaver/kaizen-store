@@ -13,9 +13,8 @@ then set the plan's goal: **grade A in every area**.
 2. *Read, challenged, planned.* 25 areas of the system each had three reviewers: an auditor who read the code with the numbers in
    hand; a skeptic who re-opened every citation, re-measured every number and tried to refute each finding; and a planner who turned
    what survived into fix steps with a check, and looked for what was missed.
-3. *Graded.* For each of 13 areas of the scorecard a steward set the bar for an A in numbers and grouped its findings into work;
-   one weaver merged all areas' work into one plan and a reviewer went over it; a challenger per area tested whether the bar is
-   truly an A and whether the plan's steps reach it; one critic compared the grades across areas.
+3. *Graded.* For each of 13 areas of the scorecard a steward set the bar for an A in numbers and grouped its findings into work,
+   and one weaver merged all areas' work into one plan. {{PANEL_STATE}}
 
 **What came out.** {{FINDINGS}} findings stand: {{CONFIRMED}} confirmed as first written, {{CORRECTED}} corrected by the skeptic (real, but
 the numbers, the place or the scope were wrong) and {{ADDED}} added by the planners. {{REFUTED}} claims of the first reading were
