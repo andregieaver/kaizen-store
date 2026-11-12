@@ -1,0 +1,202 @@
+{
+  "id": "4.5",
+  "goal": "docs/audits/bloat-review-2026-11/measured-again.md holds one table per area (13 areas) with every measure of that area's bar, its figure after the cuts, its bar, the check that holds it and the day it was read, with no measure short of its bar and no figure left blank.",
+  "why": "The goal is grade A in each of 13 areas, read from measurements, not from ticked steps; today the build writes 123.6 MiB of repeated server chunks out of 195.5 MiB and peaks at 7.6 GB of 8, and several figures (sessions' reading, merges over 100 commits, a quiet day's calls, AI tokens, 28 days of admin loads) can only be read some time after the cuts. After: every row has a figure at or inside its bar and a date, repeated chunk bytes are under 40 MiB, and docs/build-memory.md holds the build's peak after the cuts.",
+  "read_first": [
+    "docs/audits/bloat-review-2026-11.md",
+    "docs/audits/bloat-review-2026-11/README.md",
+    "docs/audits/bloat-review-2026-11/grade-a/README.md",
+    "docs/audits/bloat-review-2026-11/scripts/measure-routes.mjs",
+    "docs/audits/bloat-review-2026-11/scripts/server-graph.mjs",
+    "docs/build-memory.md",
+    "next.config.ts",
+    "node_modules/next/dist/docs/01-app/02-guides/memory-usage.md"
+  ],
+  "depends_on": [
+    {
+      "id": "4.1",
+      "why": "its 23 action files must be moved before the code area is read against its bar"
+    },
+    {
+      "id": "4.2",
+      "why": "the twin pairs must be at 5 or fewer before the code area's table is written"
+    },
+    {
+      "id": "4.3",
+      "why": "testOnlyExports must be empty before the code area's table is written"
+    },
+    {
+      "id": "4.4",
+      "why": "the three screens' statement figures are rows of the server and database tables"
+    },
+    {
+      "id": "1.20",
+      "why": "scripts/timed.mjs, scripts/ci-budgets.json and scripts/next-build.mjs's peak line give the build area's figures"
+    },
+    {
+      "id": "1.8",
+      "why": "scripts/route-budget.mjs, which this step extends with the repeated-chunk count, is made there"
+    },
+    {
+      "id": "1.21",
+      "why": "it decides whether the two source-map switches are already on for Vercel's build; this step only measures again"
+    }
+  ],
+  "commits": [
+    {
+      "title": "The route budget counts server chunks the build wrote more than once",
+      "changes": [
+        {
+          "file": "scripts/lib/repeated-chunks.mjs",
+          "action": "create",
+          "how": "Plain Node, no dependency. `export function repeatedChunks(dir)`: walk every *.js file under `dir` (pass `.next/server/chunks`, recursive, so the ssr folder is in), read each, drop its last line when that line starts with `//# sourceMappingURL=` (each copy names its own map), hash the rest with md5 (node:crypto), and group by hash. Return `{ files, bytes, repeatedFiles, repeatedBytes, largest }` where repeatedFiles and repeatedBytes count every file beyond the first of a group (bytes without the map line) and `largest` is the ten groups with the most repeated bytes, each `{ bytes, copies, example }`. Then in scripts/route-budget.mjs (made by step 1.8; if it does not exist, stop) import it, print one line `Repeated server chunks: <x.x> MiB in <n> files (of <y.y> MiB)` and the three largest groups, write the figure into the script's report or baseline as its other figures are written, and fail when repeatedBytes is above a ceiling `repeatedChunkMiB` kept beside the script's other ceilings. Set the ceiling to 40 only when the measured figure is under 40; until then record the measured figure as the ceiling (it may only fall) and report it."
+        },
+        {
+          "file": "src/lib/repeated-chunks.test.ts",
+          "action": "create",
+          "how": "A unit test on a temporary folder (fs.mkdtempSync): three files, two with the same body and different `//# sourceMappingURL=` last lines, give repeatedFiles 1 and repeatedBytes equal to the body's length; a file with a different body is not counted; a file without a map line is compared whole."
+        }
+      ],
+      "checks": [
+        "pnpm exec vitest run src/lib/repeated-chunks.test.ts : exits 0",
+        "pnpm build && node scripts/route-budget.mjs : prints the line `Repeated server chunks: ... MiB` (123.6 MiB of 195.5 MiB on 11 November 2026, before any cut)",
+        "pnpm lint && pnpm typecheck && pnpm test : exits 0"
+      ]
+    },
+    {
+      "title": "Everything measured again: one table per area",
+      "changes": [
+        {
+          "file": "docs/audits/bloat-review-2026-11/measured-again.md",
+          "action": "create",
+          "how": "Build the tables from the bars, not from memory. For each of the 13 files docs/audits/bloat-review-2026-11/grade-a/<area>.md (shopper-browser, owner-browser, server, scheduled, database, page-model, styles, text, ai, surface, code, build, rules) copy its table 'The measures' row by row into a section of this file with these columns: Measure | Bar (the 'Grade A' cell, unchanged) | Figure now | Read on (date) | How it was read (the command, test or production query of the 'Measured by' cell) | Held by (the test or baseline file that fails when it slips) | Verdict (inside the bar, or SHORT). Keep every row, in the file's order; never reword or loosen a bar. Fill 'Figure now' only from a run you made or a production reading the owner made, on that date. Run, on a production build made as CI's signed-in job makes it (the Auth stand-in's two NEXT_PUBLIC variables, a database seeded with node scripts/db-setup.mjs --seed, pnpm build, pnpm start, PLAYWRIGHT_CHROMIUM_PATH set): (1) node docs/audits/bloat-review-2026-11/scripts/measure-routes.mjs <outDir> and node docs/audits/bloat-review-2026-11/scripts/routes-table.mjs <outDir> (what real pages send: the five store pages' bytes on the wire and their late scripts, the themed pages of step 1.6, the cart and checkout of step 1.7, the admin screens); (2) pnpm exec next analyze --output, then node docs/audits/bloat-review-2026-11/scripts/server-graph.mjs <outDir> (what each route loads on the server); (3) node scripts/route-budget.mjs, node scripts/server-budget.mjs and node scripts/render-modes.mjs (steps 1.8 and 1.11); (4) pnpm test and pnpm test:int, reading each baseline file the budgets rule of step 1.1 lists (rg -l baseline docs/rules gives the rule; it names every *.baseline.json with its test and script): ratchet, unused, copies, admin-statements, query-budget, ai-round, docs-budget, ci-budgets; (5) pnpm build && pnpm test:e2e e2e/performance.spec.ts for the held page figures; (6) the build under a memory cap (next commit). Put the raw outputs under docs/audits/bloat-review-2026-11/evidence/after/ (routes.md, server-and-client-by-route.md, the budgets' printed reports) and link each row's figure to its file. For a figure that only production has (pg_stat_statements calls, commerce.cron_jobs, commerce.ai_usage, the speed beacon, Vercel's function counts on the free plan's usage page), write the query from docs/audits/bloat-review-2026-11/evidence/production-database.md into the row and ask the owner to run it in the Supabase SQL editor; fill the row with the answer and the date. A row that cannot be read yet stays in the table with 'Figure now' = 'not yet' and 'Read on' = the first day it can be read (see the last commit)."
+        },
+        {
+          "file": "docs/audits/bloat-review-2026-11.md",
+          "action": "edit",
+          "how": "In the scorecard of section 1 add a column 'After the cuts' with each area's grade as read from measured-again.md: A only when every row of the area is inside its bar and dated; otherwise the grade its file's ladder gives and the names of the rows that are short. Link to measured-again.md. In the Progress table set step 4.5 to In progress, not Done, until the last dated row is read."
+        }
+      ],
+      "checks": [
+        "node -e \"const t=require('fs').readFileSync('docs/audits/bloat-review-2026-11/measured-again.md','utf8');console.log((t.match(/^## /gm)||[]).length, /\\|\\s*\\|/.test(t))\" : prints 13 and false (13 area sections, no empty cell)",
+        "For each area: the number of table rows in its section equals the number of rows of 'The measures' in docs/audits/bloat-review-2026-11/grade-a/<area>.md",
+        "pnpm exec vitest run src/lib/docs-budget.scan.test.ts : exits 0 (no line over 500 characters outside a table the budget allows; the evidence folder is covered by an ignore file)",
+        "pnpm lint && pnpm typecheck && pnpm test : exits 0"
+      ]
+    },
+    {
+      "title": "The build's peak after the cuts, and the two source-map switches if memory needs them",
+      "changes": [
+        {
+          "file": "docs/build-memory.md",
+          "action": "edit",
+          "how": "Measure the production build under an 8 GB cap the way the table 'What was measured' was made (a cgroup memory cap of 8 GB, 4 cores, sampled every second; scripts/next-build.mjs prints seconds and peak after step 1.20). Use the free tools the machine has (systemd-run --scope -p MemoryMax=8G, or a container started with --memory=8g); never a paid build machine. Add rows to the table, each with the date and the commit: (a) the build as deployed now: peak and seconds; (b) only if step 1.21 has not already measured them, the same with `serverSourceMaps: false` in the ON_VERCEL spread of next.config.ts (lines 79 to 82), and (c) with `enablePrerenderSourceMaps: false` as well. Read node_modules/next/dist/docs/01-app/02-guides/memory-usage.md first and use the option names it gives for this Next version (they may differ from these). Then rewrite the Watch section: the margin now, the ceiling of step 1.21 (75% of the machine: 6.0 GB), and delete the two sentences that name Vercel's Enhanced build machine as an answer: the owner ruled out any paid machine; the free ways are the switches and a prebuilt deploy from CI."
+        },
+        {
+          "file": "next.config.ts",
+          "action": "edit",
+          "how": "Change nothing unless ALL three hold: the capped peak of row (a) is above 6.0 GB, a switch lowers the capped peak by 0.3 GB or more, and step 1.21 has not already turned it on. Then add that one switch inside the existing `...(ON_VERCEL ? { ... } : {})` spread only, so CI's and local builds keep their maps, with a comment naming D378 and the measured gain. Without server source maps a production stack trace names minified positions: say so in the decision row. If the peak is at or under 6.0 GB, leave next.config.ts untouched and write 'not needed' in the rows."
+        }
+      ],
+      "checks": [
+        "rg -n 'Enhanced build machine|16 GB' docs/build-memory.md : prints nothing, or only a sentence that says it is ruled out",
+        "node scripts/route-budget.mjs after pnpm build : `Repeated server chunks` under 40 MiB. If it is 40 MiB or more, that row is SHORT: see stop_if",
+        "pnpm build (if next.config.ts changed) && pnpm test:e2e e2e/smoke.spec.ts : exits 0",
+        "pnpm lint && pnpm typecheck && pnpm test : exits 0"
+      ]
+    },
+    {
+      "title": "The figures that need time, each with the day it can first be read",
+      "changes": [
+        {
+          "file": "docs/audits/bloat-review-2026-11/measured-again.md",
+          "action": "edit",
+          "how": "Add a last section 'Read later' listing every row whose figure needs time, with the day it can first be read and the exact reading: (1) rules: the first 20 working sessions after steps 2.1 and 2.40: the median bytes of rules and docs taken in per code change (bar: 25 KB or less), the largest single read of a rule file or of the decisions index (bar: none over 20 KB), and any search of docs/rules or docs/decisions that returned an omitted long line (bar: none), read with the script grade-a/rules.md names in that row; (2) rules: 100 consecutive commits on main after step 2.40: `git log --merges --format=%s -100` searched for 'renumber', 'taken on main' and 'decision is D' (bar: 0 merges that renumber, at most 1 that resolves the index by hand); (3) build: seven nightly runs of the recorder (step 1.20); (4) ai: a week of AI use: the median input tokens per AI manager call and sum(cached_input_tokens) / sum(input_tokens) from commerce.ai_usage for feature ai_manager (bars in grade-a/ai.md); (5) owner-browser: 28 days of admin loads from the admin's own speed beacon (the bar in grade-a/owner-browser.md); (6) scheduled: one quiet day: calls and statements (bar: at most 1,350 calls and 45,000 statements) and `select count(*) from commerce.cron_jobs where job like 'dispatcher.%' and every_seconds = 300` (bar: 58 or fewer); (7) surface: measure 3 read against step 3.3's done-when and measure 6 against step 2.37's. When a day comes, read the figure, fill its row in the area's table with the date, and remove it from this section. The step is Done only when this section is empty and no row is SHORT."
+        },
+        {
+          "file": "docs/audits/bloat-review-2026-11/plan/phase-4.md",
+          "action": "edit",
+          "how": "For every row marked SHORT, add a step to the plan (here and in the Progress table of docs/audits/bloat-review-2026-11.md) with the next free number in phase 4: its title, what to change, which measure it closes, and a done-when that is the row's bar as a check. The bar does not move. Two are named by the plan already: if whole rule files are being read by sessions (a single read over 20 KB), the step that splits the rule files; if repeated chunk bytes are 40 MiB or more, a step that names the largest repeated groups from the route budget's output and the import that pulls each into many entries. Hand the new steps to the owner; do not start them inside this step."
+        }
+      ],
+      "checks": [
+        "rg -c 'not yet' docs/audits/bloat-review-2026-11/measured-again.md : the count equals the number of entries in 'Read later'",
+        "rg -n 'SHORT' docs/audits/bloat-review-2026-11/measured-again.md : every hit has a step number beside it that exists in docs/audits/bloat-review-2026-11/plan/phase-4.md",
+        "pnpm lint && pnpm typecheck && pnpm test : exits 0"
+      ]
+    }
+  ],
+  "tests": [
+    {
+      "file": "src/lib/repeated-chunks.test.ts",
+      "proves": "Fails when the repeated-chunk count stops ignoring the source-map line or counts the first copy as a repeat."
+    },
+    {
+      "file": "src/lib/bloat-review-table.scan.test.ts",
+      "proves": "New, small: reads docs/audits/bloat-review-2026-11/measured-again.md and each docs/audits/bloat-review-2026-11/grade-a/<area>.md and fails when an area's section is missing, has fewer rows than the bar's table, has an empty cell, or a row marked SHORT names no step. It keeps the table whole while the dated rows are filled in."
+    }
+  ],
+  "migration": {
+    "needed": false,
+    "notes": ""
+  },
+  "done_when": [
+    {
+      "check": "pnpm exec vitest run src/lib/bloat-review-table.scan.test.ts, then rg -c 'SHORT|not yet' docs/audits/bloat-review-2026-11/measured-again.md",
+      "expect": "the test passes and rg prints nothing: 13 sections, every row filled, dated and inside its bar"
+    },
+    {
+      "check": "The rows of the shopper's browser in docs/audits/bloat-review-2026-11/measured-again.md (from node docs/audits/bloat-review-2026-11/scripts/measure-routes.mjs)",
+      "expect": "each of five store pages at 350,000 bytes on the wire or less, with at most 2 late script files of 30,000 bytes together; each themed and money-path figure of steps 1.6 and 1.7 beside its bar"
+    },
+    {
+      "check": "The rules rows: the 20 sessions after steps 2.1 and 2.40",
+      "expect": "a median of 25 KB or less of rules and docs per code change, no single read of a rule file or the decisions index over 20 KB, no omitted long line in a search of docs/rules or docs/decisions"
+    },
+    {
+      "check": "pnpm build && node scripts/route-budget.mjs",
+      "expect": "`Repeated server chunks` under 40 MiB (123.6 MiB on 11 November 2026)"
+    },
+    {
+      "check": "rg -n 'peak' docs/build-memory.md",
+      "expect": "a dated row with the build's capped peak after the cuts, and no paid machine named as an answer"
+    },
+    {
+      "check": "The surface rows 3 and 6 in docs/audits/bloat-review-2026-11/measured-again.md",
+      "expect": "read against the done-whens of steps 3.3 (58 or fewer five-minute jobs, an idle tick of at most 125 statements, the same for 1 and 20 stores) and 2.37 (no first round over 56,000 characters, none over 34,000 with no page and no question)"
+    }
+  ],
+  "after_deploy": [
+    "On each date in 'Read later', the owner (or a session the owner starts) reads that figure in production and fills its row: the quiet day's calls and statements, the five-minute job count, a week of AI tokens and cached share, 28 days of the admin's speed beacon, the merges over 100 commits, seven nightly recorder runs, the 20 sessions' reading.",
+    "After the first production build that follows this step: the peak line scripts/next-build.mjs prints at the end of Vercel's build log, written into docs/build-memory.md if it differs from the capped local figure by more than 0.3 GB."
+  ],
+  "docs": [
+    "docs/audits/bloat-review-2026-11/measured-again.md: the tables (this step's product), and docs/audits/bloat-review-2026-11/evidence/after/ for the raw outputs.",
+    "docs/audits/bloat-review-2026-11.md: the scorecard's 'After the cuts' column and the Progress row of step 4.5: In progress until the last dated row is read, then Done with the date.",
+    "docs/audits/bloat-review-2026-11/plan/phase-4.md and the Progress table: any step added for a measure that is short.",
+    "docs/build-memory.md: the new rows and the rewritten Watch section.",
+    "docs/decisions.md: one new D-number row: the date of the second measurement, the grade per area, the rows still to be read with their days, whether a source-map switch was kept and why, and any step added. A second row when the last dated figure is read.",
+    "docs/audits/code-review-2026-11.md, step 1.8 (Give the build room): the measured result, with a change-log line.",
+    "docs/platform-parity.md: nothing to tick; the platform's screens, jobs and pages are rows of the same tables."
+  ],
+  "do_not": [
+    "Do not move, reword or round a bar to make a row pass. A measure short of its bar gets a step.",
+    "Do not fill a figure from an older run, from the review's evidence of 11 November or from an estimate: every figure carries the day it was read.",
+    "Do not mark the step Done while a row says 'not yet' or SHORT.",
+    "Do not use a paid service to measure: no paid build machine, no Observability Plus, no paid monitoring. Vercel's free logs and usage page, Supabase's SQL editor, the app's own beacons and CI's recorder are the sources.",
+    "Do not query production yourself with a connection string; the owner runs the read-only queries the table names.",
+    "Do not turn server source maps off anywhere but inside the ON_VERCEL spread, and not at all if the peak is at or under 6.0 GB.",
+    "Do not start the new steps inside this one.",
+    "Do not delete the review's first evidence files: the tables compare with them."
+  ],
+  "stop_if": [
+    "A script or baseline the brief names does not exist (scripts/route-budget.mjs, scripts/server-budget.mjs, scripts/timed.mjs, a *.baseline.json of the budgets rule): the step that makes it is not done; report which.",
+    "Any of steps 4.1 to 4.4 is not Done in the Progress table.",
+    "A measure is short of its bar: write the row as SHORT, add its step as the last commit says, hand back to the owner. Do not try to fix it here.",
+    "Two runs of the same measurement differ by more than 5%: report both; do not pick the better one.",
+    "The memory guide of this Next version does not have the two source-map options: report its text instead of guessing an option name."
+  ],
+  "executor": "strong",
+  "executor_why": "Reading 13 areas against their bars, judging whether a figure was measured the way the bar says and writing a new step for each shortfall is judgement; the first commit (the repeated-chunk count) is mechanical and a cheap model can do it.",
+  "checked_in_code": "I opened docs/audits/bloat-review-2026-11/README.md, grade-a/README.md and three of the 13 area files (surface, rules, scheduled), the five measurement scripts and their usage lines, docs/build-memory.md and next.config.ts (the ON_VERCEL spread at lines 79 to 82 holds turbopackFileSystemCacheForBuild and cpus only). The bars the step quotes are in those files. Corrections: finding SF-11 is filed in the functions area under another id and is the same finding as SG-11 (repeated server chunks), so one commit closes both; scripts/route-budget.mjs, scripts/server-budget.mjs and scripts/timed.mjs do not exist yet (steps 1.8, 1.11 and 1.20), so the repeated-chunk count is a new library file that the route budget calls; docs/build-memory.md still names Vercel's paid 16 GB machine as 'the lasting answer' in its Watch section, which the owner has ruled out, so the brief rewrites that section. The step asks for a table 'in docs/audits/bloat-review-2026-11'; the brief names the file measured-again.md and a small scan test that keeps it whole while the dated rows are filled."
+}

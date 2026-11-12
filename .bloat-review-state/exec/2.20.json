@@ -1,0 +1,297 @@
+{
+ "id": "2.20",
+ "goal": "src/proxy.ts imports six small reader modules that reach only the database client, the log, one short-memory helper, one file of tag names and pure src/lib code; the old feature files keep their writers and re-export the readers; and the graph test forbids the proxy the server's heavy modules.",
+ "why": "Today the proxy, which runs before every page and prefetch, reaches 1,309 source files and loads 9,729 KB of chunks to do six small reads (a cold load of 838 to 948 ms). After: 120 source files or fewer and 1.0 MB of chunks or fewer, reaching none of auth.ts, pages.ts, catalog.ts, stores.ts, seo.ts, stripe.ts, sharp, admin-text.ts or an admin catalogue.",
+ "read_first": [
+  "node_modules/next/dist/docs/01-app/03-api-reference/03-file-conventions/proxy.md",
+  "docs/wave-2-redirects.md",
+  "docs/performance.md",
+  "src/proxy.ts",
+  "src/server/redirect-resolve.ts",
+  "src/server/redirect-live.ts",
+  "src/server/redirect-writers.test.ts",
+  "src/proxy.test.ts"
+ ],
+ "depends_on": [
+  {
+   "id": "1.8",
+   "why": "src/server/route-load.graph.test.ts with src/server/route-load.baseline.json and scripts/route-budget.mjs hold the proxy's file count, forbidden modules and chunk bytes; this step lowers and extends them"
+  },
+  {
+   "id": "0.4",
+   "why": "it takes the Drizzle schema out of src/db/client.ts, which every leaf here imports; without it no leaf can be under 120 files"
+  },
+  {
+   "id": "0.6",
+   "why": "it cuts the import cycle of src/server and moves helpers between the same files; make these moves on its result"
+  },
+  {
+   "id": "0.7",
+   "why": "it takes the admin's words off code outside the admin (src/lib/admin-text.ts), one of the modules the proxy must not reach"
+  }
+ ],
+ "commits": [
+  {
+   "title": "Cache tag names live in one leaf file",
+   "changes": [
+    {
+     "file": "src/lib/cache-tags.ts",
+     "action": "create",
+     "how": "A pure module with NO import. Move into it, with their JSDoc, the tag names and builders listed here, each written exactly as it is today: STORES_TAG = 'stores' (src/server/seo.ts line 67); storeTag (src/server/stores.ts 178); CATALOG_TAG and catalogTag (src/server/catalog.ts 35 to 36); PAGES_TAG and pagesTag (src/server/pages.ts 67 to 69; pagesTag takes 'string | null', so write the parameter type as string | null here and keep the PageOwner type in pages.ts), and pageTag if step 2.14 added it; SITE_STORE_TAG (src/server/site-store.ts 10); cookiesTag (src/server/site-cookies.ts 28); affiliateTag (src/server/affiliates.ts 28); afterSaleTag (src/server/after-sale.ts 98); fieldsTag (src/server/custom-fields.ts 73); DESIGNS_TAG (src/server/design-presets.ts 81); STARTERS_TAG (src/server/store-starters.ts 49); chatTag (src/server/chat-agent.ts 69); recommendTag (src/server/recommend-settings.ts 21); experimentsTag (src/server/experiments.ts 35); campaignsTag (src/server/campaign-notices.ts 23); textStylesTag (src/server/text-styles.ts 22); PLATFORM_NAVIGATION_TAG (src/server/platform-navigation.ts 36). termsTag stays in src/server/taxonomy.ts (it takes a type of that file); redirectsTag and contentTag are already in src/lib. Header comment: tag names only, no imports ever; a reader or a writer that needs only a tag imports it from here (bloat review step 2.20)."
+    },
+    {
+     "file": "src/server/{seo,stores,catalog,pages,site-store,site-cookies,affiliates,after-sale,custom-fields,design-presets,store-starters,chat-agent,recommend-settings,experiments,campaign-notices,text-styles,platform-navigation}.ts",
+     "action": "edit",
+     "how": "In each of the seventeen files replace the definition(s) moved above by an import from '@/lib/cache-tags' plus a re-export of the same names (export { storeTag } from '@/lib/cache-tags'; and an import for the file's own use), so every existing importer keeps working unchanged. Do not change any other line. The text 'storeTag(' still appears in files that write commerce.stores, which is what src/server/store-writers.scan.test.ts looks for."
+    },
+    {
+     "file": "src/lib/cache-tags.test.ts",
+     "action": "create",
+     "how": "Unit test: the file has no import statement (read it as text: no line starts with 'import'); and each builder returns today's string: storeTag('x') 'store:x', catalogTag('s') 'catalog:s', pagesTag(null) 'platform-pages', pagesTag('s') 'pages:s', cookiesTag(null) 'cookies:kaizen', chatTag(null) 'chat:kaizen', textStylesTag(null) 'text-styles:kaizen', experimentsTag('s') 'experiments:s', affiliateTag('s') 'affiliate:s', afterSaleTag('s') 'after-sale:s', fieldsTag('s') 'fields:s', recommendTag('s') 'recommend:s', campaignsTag('s') 'campaigns:s'."
+    }
+   ],
+   "checks": [
+    "pnpm exec vitest run src/lib/cache-tags.test.ts src/server/store-writers.scan.test.ts src/server/use-cache.scan.test.ts: pass",
+    "pnpm lint && pnpm typecheck && pnpm test: each exits 0"
+   ]
+  },
+  {
+   "title": "One short-memory helper, which shares a read in flight",
+   "changes": [
+    {
+     "file": "src/server/short-memory.ts",
+     "action": "create",
+     "how": "Server-only, no other import. Move from src/server/redirect-live.ts (lines 186 to 204) the Map 'memory', MEMORY_MS, MEMORY_MAX, remembered() and forgetRemembered(), and add in-flight sharing: a second Map<string, Promise<unknown>> 'loading'. remembered(key, load, ms = MEMORY_MS): if a fresh value is in memory return it; else if loading has the key return that promise; else start const run = load().then((value) => { if (memory.size >= MEMORY_MAX) memory.clear(); memory.set(key, { at: Date.now(), value }); return value; }).finally(() => loading.delete(key)); loading.set(key, run); return run. A rejected load is not remembered and leaves loading (the finally). forgetRemembered(key) deletes from memory AND from loading, so a read that started before a change is not handed to a caller after it. Export also forgetWhere(match: (key: string) => boolean) only if redirect-live.ts clears by prefix today (read its forget function below line 204 and keep its behaviour)."
+    },
+    {
+     "file": "src/server/short-memory.test.ts",
+     "action": "create",
+     "how": "Unit tests: 20 concurrent remembered('k', load) calls run load once and all get its value; a second call within ms does not run it; after ms it runs again (vi.useFakeTimers); a load that rejects rejects all waiting callers, is not remembered, and the next call runs load again; forgetRemembered('k') during a load makes the next call start a new load."
+    },
+    {
+     "file": "src/server/redirect-live.ts",
+     "action": "edit",
+     "how": "Delete the moved lines and add: import { forgetRemembered, remembered, MEMORY_MS } from './short-memory'; export { forgetRemembered, remembered, MEMORY_MS } from './short-memory'; The file's own uses and every importer keep working. The memory Map must now exist in short-memory.ts only (rg -n 'new Map<string, \\{ at: number' src/server/redirect-live.ts prints nothing)."
+    },
+    {
+     "file": "src/server/experiments.ts",
+     "action": "edit",
+     "how": "Delete the private copy at lines 62 to 71 (MEMO_MS stays as a const, the Map 'memo' and the local remembered() go) and import remembered and forgetRemembered from './short-memory'. Its two callers change argument order to the shared helper's (key, load, ms): remembered('running:' + storeId, async () => {...}, MEMO_MS) and remembered('store:' + slug, async () => {...}, 60_000). forgetRunning(storeId) becomes forgetRemembered('running:' + storeId). (These three functions move to a leaf in the next commit; do the helper change first so the move is a pure move.)"
+    },
+    {
+     "file": "src/server/holding.ts",
+     "action": "edit",
+     "how": "holdingFor() (lines 17 to 36) keeps its own Map with a 30-second life and a 5,000 cap; replace it by remembered('holding:' + apex, async () => {...the read and holdingAnswer(...)...}, MEMO_MS) from './short-memory', and replace the 'memo.delete(name)' at about line 50 in setHolding() by forgetRemembered('holding:' + name). The shared helper's cap is 2,000 entries for all keys together; that is enough (it clears and refills)."
+    }
+   ],
+   "checks": [
+    "pnpm exec vitest run src/server/short-memory.test.ts src/lib/redirect-live.test.ts src/lib/holding.test.ts src/proxy.test.ts: pass",
+    "rg -n 'async function remembered' src/server: prints one line, in src/server/short-memory.ts (three before)",
+    "pnpm exec vitest run --config vitest.integration.config.mts src/server/redirect-resolve.int.test.ts src/server/experiments.int.test.ts src/server/private-mode.int.test.ts src/server/store-address.int.test.ts: pass",
+    "pnpm lint && pnpm typecheck && pnpm test: each exits 0"
+   ]
+  },
+  {
+   "title": "The proxy's readers move to leaf files; the old files re-export them",
+   "changes": [
+    {
+     "file": "src/server/store-facts.ts",
+     "action": "create",
+     "how": "Server-only. Move from src/server/redirect-resolve.ts (lines 189 to 257), unchanged: the type StoreFacts (export it), FACTS_MS, storeFactsOf (export it), factsKey, forgetStoreFacts, privateGate, mainMarketOf, with their comments. Imports it needs: sql from 'drizzle-orm'; db from '@/db/client'; localized from '@/lib/store-localized'; privateDecision from '@/lib/private-mode'; storePathOf and the StoreAddress type from the src/lib file redirect-resolve.ts takes them from (its line 15); remembered and forgetRemembered from './short-memory'. It must import nothing else from src/server."
+    },
+    {
+     "file": "src/server/not-found-record.ts",
+     "action": "create",
+     "how": "Server-only. Move from src/server/not-found.ts (lines 50 to 80), unchanged: lastWritten, THROTTLE_MAX, building(), recordNotFound(), resetNotFoundThrottle(), and the two constants it uses (NOT_FOUND_THROTTLE_MS, NOT_FOUND_DAY_CAP: import them from where not-found.ts imports them, '@/lib/data-limits' or '@/lib/not-found'). Imports: sql, db from '@/db/client', normalisePath from '@/lib/redirect-path', recordablePath from '@/lib/not-found', log from './log'. Nothing else."
+    },
+    {
+     "file": "src/server/not-found.ts",
+     "action": "edit",
+     "how": "Delete the moved lines; add 'export { recordNotFound, resetNotFoundThrottle } from \"./not-found-record\";'. The report's readers and writers stay here."
+    },
+    {
+     "file": "src/server/holding-read.ts",
+     "action": "create",
+     "how": "Server-only. Move holdingFor() and MEMO_MS from src/server/holding.ts (as the previous commit left them), and add export function forgetHolding(apex: string): void { forgetRemembered('holding:' + apex); }. Imports: sql, db, apexOf from '@/lib/domain-health', holdingAnswer and the HoldingAnswer type from '@/lib/holding', the helper from './short-memory'. In src/server/holding.ts delete the moved lines, add 'export { holdingFor } from \"./holding-read\";' and make setHolding() call forgetHolding(name)."
+    },
+    {
+     "file": "src/server/site-switch-read.ts",
+     "action": "create",
+     "how": "Server-only. Move from src/server/house-switch.ts (lines 27 to 43): SITE_KEY (export it) and siteStore(), with the comment at lines 20 to 25. Imports: sql, z from 'zod', col and typedRow from './typed-rows', remembered from './short-memory', FACTS_MS from './store-facts'. In src/server/house-switch.ts delete the moved lines, add 'export { siteStore } from \"./site-switch-read\";', import SITE_KEY from the leaf for its forgetRemembered(SITE_KEY) call, and change its imports of FACTS_MS and forgetStoreFacts to './store-facts' and of the four tags (pagesTag, STORES_TAG, SITE_STORE_TAG, storeTag) to '@/lib/cache-tags'."
+    },
+    {
+     "file": "src/server/experiments-running.ts",
+     "action": "create",
+     "how": "Server-only. Move from src/server/experiments.ts (lines 39 to 118 as the previous commit left them): variantSlug only if nothing else in experiments.ts needs it there (else leave it and import it), the types RunningVariant and RunningExperiment, MEMO_MS, forgetRunning(), runningExperiments() and storeIdOfSlug(), with their comments. Imports: sql, db, the pure helpers runningExperiments() calls (targetKindOf, isTestedPlace, parseAudience and the types Goal and Audience from '@/lib/experiments' and '@/lib/ab-site': copy the import lines those names come from in experiments.ts), the helper from './short-memory'. It must NOT import './media-alts', '@/lib/page-content' or './experiments'. In src/server/experiments.ts delete the moved lines and add 'export { forgetRunning, runningExperiments, storeIdOfSlug, type RunningExperiment, type RunningVariant } from \"./experiments-running\";' plus an import of what the rest of the file uses."
+    },
+    {
+     "file": "src/server/redirect-live.ts",
+     "action": "edit",
+     "how": "Move countHit() and its Map hitWritten from src/server/redirects.ts (lines 502 to 519) into this file, unchanged (it needs sql, db and log: add 'import { log } from \"./log\";'). In src/server/redirects.ts delete them and add 'export { countHit } from \"./redirect-live\";'."
+    },
+    {
+     "file": "src/server/redirect-resolve.ts",
+     "action": "edit",
+     "how": "Delete the lines moved to store-facts.ts. Change four imports: line 19 'import { catalogTag } from \"./catalog\";' becomes 'import { catalogTag } from \"@/lib/cache-tags\";'; line 21 recordNotFound from './not-found-record'; line 23 countHit from './redirect-live' (merge into the existing import from that file at line 22); add 'import { storeFactsOf, type StoreFacts, FACTS_MS, forgetStoreFacts, privateGate, mainMarketOf } from \"./store-facts\";' and re-export the names other files import from here: 'export { FACTS_MS, forgetStoreFacts, privateGate, mainMarketOf } from \"./store-facts\";'. storeRequestAnswer(), legacyAnswer() and the cached lookup stay and are unchanged. After this the file's imports from src/server are only: ./log, ./not-found-record, ./redirect-live, ./store-facts and the type-only './stores'."
+    },
+    {
+     "file": "src/app/s/[store]/[market]/legacy-redirect.ts",
+     "action": "edit",
+     "how": "If it imports recordNotFound from '@/server/not-found', change the path to '@/server/not-found-record' (this takes the admin's permission map off storefront pages). Nothing else."
+    }
+   ],
+   "checks": [
+    "pnpm typecheck: exits 0",
+    "For each memo, exactly one definition: rg -n 'const (memory|lastWritten|hitWritten) = new Map' src/server prints three lines, in short-memory.ts, not-found-record.ts and redirect-live.ts",
+    "pnpm exec vitest run --config vitest.integration.config.mts src/server/redirect-resolve.int.test.ts src/server/not-found.int.test.ts src/server/redirects.int.test.ts src/server/private-mode.int.test.ts src/server/store-address.int.test.ts src/server/experiments.int.test.ts: pass unchanged",
+    "pnpm exec vitest run src/server/redirect-location.security.test.ts src/lib/store-address.test.ts src/lib/ab-routing.test.ts src/server/ratchet.scan.test.ts: pass (if the ratchet says a per-file count moved, run node scripts/ratchet.mjs and commit the baseline in this commit)",
+    "pnpm lint && pnpm test: exit 0 except src/proxy.test.ts and src/server/redirect-writers.test.ts, which the next commit updates; if you prefer a green tree per commit, squash this commit with the next"
+   ]
+  },
+  {
+   "title": "The proxy imports the leaves, and the graph test forbids it the rest",
+   "changes": [
+    {
+     "file": "src/proxy.ts",
+     "action": "edit",
+     "how": "Lines 10 to 16: import holdingFor from '@/server/holding-read'; siteStore from '@/server/site-switch-read'; recordNotFound from '@/server/not-found-record'; privateGate from '@/server/store-facts'; storeRequestAnswer from '@/server/redirect-resolve'; runningExperiments and storeIdOfSlug from '@/server/experiments-running'; unlockSecret from '@/server/private-secret' (unchanged). On Kaizena Flow's own host, where the function awaits siteStore() (about line 71) and later the store's answer, start both together where both are needed: const [site, ...] = await Promise.all([...]) only if the second read does not depend on the first's answer; if it does, leave the order. Change no decision, no matcher and no header comment text except module paths."
+    },
+    {
+     "file": "src/proxy.test.ts",
+     "action": "edit",
+     "how": "Lines 6 to 11: the mocks name the new paths: vi.mock('@/server/redirect-resolve', ...) keeps storeRequestAnswer only; add vi.mock('@/server/store-facts', () => ({ privateGate: async () => null })); '@/server/not-found' becomes '@/server/not-found-record'; '@/server/holding' becomes '@/server/holding-read'; '@/server/experiments' becomes '@/server/experiments-running'; '@/server/house-switch' becomes '@/server/site-switch-read'. No expectation changes."
+    },
+    {
+     "file": "src/server/redirect-writers.test.ts",
+     "action": "edit",
+     "how": "Four places. (1) Line 38: writers of commerce.redirects are ['src/server/redirects.ts', 'src/server/redirect-live.ts'] (the second for the hit count only; say so in a comment). (2) Lines 44 to 47: the one caller of commerce.record_not_found() is ['src/server/not-found-record.ts']; lines 39 to 40 keep 'src/server/not-found.ts' for the report's tables. (3) The scan's file pattern at line 51 (/(?:redirect[a-z-]*|not-found|legacy-path|term-seo)\\.ts$/) gains 'not-found-record' and 'store-facts', and the expected list at lines 55 to 69 gains 'src/server/not-found-record.ts' and 'src/server/store-facts.ts'. (4) The proxy's allowed imports at lines 127 to 131 become: ['@/lib/ab-routing', '@/lib/ab-site', '@/lib/experiments', '@/lib/holding', '@/lib/house-routing', '@/lib/paths', '@/lib/site', '@/lib/unlock-pass', '@/server/experiments-running', '@/server/holding-read', '@/server/not-found-record', '@/server/private-secret', '@/server/redirect-resolve', '@/server/site-switch-read', '@/server/store-facts', 'next/server'].sort()."
+    },
+    {
+     "file": "src/server/{route-load.graph.test.ts}",
+     "action": "edit",
+     "how": "The file is src/server/route-load.graph.test.ts, made by an earlier step of the plan (it does not exist before that step; if it is missing, that step is not done: stop). Step 1.8's test holds forbidden modules per entry. For the entry 'proxy' set the forbidden list to: src/server/auth.ts, src/server/pages.ts, src/server/catalog.ts, src/server/stores.ts, src/server/seo.ts, src/server/stripe.ts, src/server/permissions.ts, src/server/customers.ts, src/lib/admin-text.ts, src/lib/page-content.ts, src/db/schema.ts, every file under src/lib/admin-messages/, the package 'sharp' and the package 'stripe' (use the test's own way of naming a package and a folder; step 1.8 already forbids src/lib/admin-messages for the proxy). Add one assertion: the proxy's count is at most 120. Then lower the baseline with node scripts/route-load.mjs --write (never by hand) and commit src/server/route-load.baseline.json."
+    },
+    {
+     "file": "scripts/{route-budget.json}",
+     "action": "edit",
+     "how": "The file is scripts/route-budget.json, made by an earlier step of the plan (it does not exist before that step; if it is missing, that step is not done: stop). After pnpm build run node scripts/route-budget.mjs --write: the proxy's chunk bytes must come out at 1,048,576 or less. Set the proxy's max to 1048576 by the script's own switch, not by hand."
+    }
+   ],
+   "checks": [
+    "pnpm exec vitest run src/proxy.test.ts src/server/redirect-writers.test.ts src/server/route-load.graph.test.ts: pass; the graph test prints the proxy at 120 files or fewer",
+    "Trial: add 'import { audit } from \"./auth\";' to src/server/store-facts.ts and run the graph test: it fails naming the proxy and src/server/auth.ts. Remove the trial.",
+    "pnpm lint && pnpm typecheck && pnpm test: each exits 0",
+    "pnpm test:int: exits 0",
+    "pnpm build && node scripts/route-budget.mjs: passes; the proxy line reads 1.0 MB of chunks or less (9,729 KB before) and its cold-load median is printed",
+    "pnpm exec playwright test e2e/store-pages.spec.ts e2e/redirects.spec.ts e2e/private-mode.spec.ts e2e/theme-host.spec.ts e2e/store-hosts.spec.ts: pass (and CI's hosts job after the push)"
+   ]
+  },
+  {
+   "title": "Docs: the proxy imports leaf readers only",
+   "changes": [
+    {
+     "file": "docs/performance.md",
+     "action": "edit",
+     "how": "In the section 'What a server route loads' (step 1.8) add: the rule (a feature's cached reads and tag names live in a reader file that imports the database client, typed-rows, the log and pure src/lib; the feature file keeps the writes and imports the reader; a reader never imports auth.ts; tag names live in src/lib/cache-tags.ts), the proxy's six reader files by name, and the proxy's files, chunk bytes and cold-load median before and after from scripts/route-budget.mjs."
+    },
+    {
+     "file": "docs/wave-2-redirects.md",
+     "action": "edit",
+     "how": "About lines 451 and 531: recordNotFound() is in src/server/not-found-record.ts and is the one caller of commerce.record_not_found(); countHit() is in src/server/redirect-live.ts."
+    },
+    {
+     "file": "docs/rules/admin/website.md",
+     "action": "edit",
+     "how": "About line 156 (redirects and the 404 report): the same two module names. In docs/rules/storefront.md about lines 232 to 235 (private mode reads the same few-second facts): the facts are in src/server/store-facts.ts."
+    },
+    {
+     "file": "docs/audits/code-review-2026-11.md",
+     "action": "edit",
+     "how": "In the Progress table's note on step 3.13 (Domain folders, Open) add the reader and writer rule: when a feature gets its folder, its reads and writes become two files (bloat review step 2.20). Add a change-log line."
+    },
+    {
+     "file": "docs/decisions.md",
+     "action": "edit",
+     "how": "Append one row with the next free D-number (pull main first; rg -o '^\\| D[0-9]+' docs/decisions.md | tr -dc '0-9\\n' | sort -n | tail -1, plus 1): the six leaf readers and the tag leaf, the shared short memory that shares a read in flight, that the 10-second bound of D339 and the 30-second bound of held domains are unchanged, that answering from older facts with a background refresh was considered and not done because it would stretch D339's bound, and the proxy's numbers before and after."
+    },
+    {
+     "file": "docs/audits/bloat-review-2026-11.md",
+     "action": "edit",
+     "how": "Progress table: row 2.20 to Done with the date, the commits and the proxy's files and chunk bytes; one change-log line."
+    }
+   ],
+   "checks": [
+    "pnpm lint: exits 0"
+   ]
+  }
+ ],
+ "tests": [
+  {
+   "file": "src/server/route-load.graph.test.ts",
+   "proves": "It fails when the proxy reaches more than 120 source files or any forbidden module (auth, pages, catalog, stores, seo, stripe, sharp, admin-text, an admin catalogue, the page model, the schema)."
+  },
+  {
+   "file": "src/server/short-memory.test.ts",
+   "proves": "It fails when concurrent callers for one key run the loader more than once, when a failed load is remembered, or when a forgotten key hands out an older read."
+  },
+  {
+   "file": "src/server/redirect-writers.test.ts",
+   "proves": "It fails when the proxy imports a module off its list, or when another file writes redirects or calls commerce.record_not_found()."
+  },
+  {
+   "file": "scripts/route-budget.json",
+   "proves": "CI's e2e job fails when the proxy's chunks pass 1.0 MB."
+  }
+ ],
+ "migration": {
+  "needed": false,
+  "notes": ""
+ },
+ "done_when": [
+  {
+   "check": "pnpm exec vitest run src/server/route-load.graph.test.ts",
+   "expect": "Passes with src/proxy.ts at 120 source files or fewer by static value imports (1,309 before), reaching none of auth.ts, pages.ts, catalog.ts, stores.ts, seo.ts, stripe.ts, sharp, src/lib/admin-text.ts or a file of src/lib/admin-messages."
+  },
+  {
+   "check": "pnpm build && node scripts/route-budget.mjs",
+   "expect": "The proxy at 1.0 MB of chunks or less (9,729 KB before)."
+  },
+  {
+   "check": "rg -n 'async function remembered' src/server | wc -l",
+   "expect": "1 (3 before)."
+  },
+  {
+   "check": "pnpm exec playwright test e2e/redirects.spec.ts e2e/private-mode.spec.ts e2e/store-hosts.spec.ts",
+   "expect": "All pass unchanged."
+  }
+ ],
+ "after_deploy": [
+  "Platform, Usage and limits (step 1.16): the proxy's cold-start p50 within 150 ms of the health check's.",
+  "On a test store in production: switch private mode on and open the store in a private window within 15 seconds: the landing page shows; switch it off: the store shows. Add a manual redirect and open its source: it redirects. Change the store's countries: an old address moves.",
+  "Vercel's function list (free plan view): the middleware function's size is far smaller than before."
+ ],
+ "docs": [
+  "docs/performance.md, docs/wave-2-redirects.md, docs/rules/admin/website.md, docs/rules/storefront.md, docs/audits/code-review-2026-11.md, docs/decisions.md and the Progress row, as the last commit says.",
+  "CLAUDE.md, Conventions: one line if the size budget of step 2.1 allows, else in docs/performance.md only: src/proxy.ts imports leaf readers only, and tag names live in src/lib/cache-tags.ts (route-load.graph.test.ts)."
+ ],
+ "do_not": [
+  "Do not rewrite any moved function: move its text. No SQL, no condition and no memory life changes (10 s for a store's facts and the site switch, 20 s for running tests, 60 s for a slug's id, 30 s for a held domain, 5 s default).",
+  "Do not create src/lib/catalog-tag.ts or src/server/tags.ts (older names in the review's findings): the one tag leaf is src/lib/cache-tags.ts.",
+  "Do not leave a memo Map in two files: after the move each lives in exactly one, and the old file imports the leaf, never the other way.",
+  "Do not make a leaf import its old feature file (holding-read must not import holding.ts, and so on): that would bring the writers back.",
+  "Do not answer the proxy from older facts and refresh in the background: D339 promises a private store is hidden on every instance within about 10 seconds.",
+  "Do not change the proxy's matcher or move the proxy to another runtime.",
+  "Do not change the importers of tags across the whole server in this step; only the files named. The rest is step 2.24.",
+  "Do not delete the re-exports from the old files: about 20 other files import these names from them."
+ ],
+ "stop_if": [
+  "The graph test still shows the proxy above 120 files after commit 4: print the path to the largest remaining module with the test's own 'why' output (or node scripts/route-load.mjs) and report it; do not add lazy imports to hide it.",
+  "A moved function needs an import from src/server other than db, log, typed-rows, short-memory, store-facts or redirect-live.",
+  "An int or e2e test of redirects, private mode, store addresses, held domains or A/B routing fails or must be changed (other than the two unit tests named).",
+  "A step this brief depends on (0.4, 0.6, 0.7, 1.8) is not done: the count cannot reach 120 and the graph test does not exist.",
+  "pnpm build shows the proxy's chunks above 1.0 MB with the file count under 120: report the largest chunks; a package is being bundled that the source count does not show."
+ ],
+ "executor": "cheap-then-review",
+ "executor_why": "Every change is a named move with a re-export and the checks catch a wrong import, but the proxy decides every store's addresses, redirects and private mode, so a stronger model should read the diff for a memo left in two places before the push.",
+ "checked_in_code": "I opened src/proxy.ts (imports at lines 10 to 16 as the findings say), redirect-live.ts (remembered() at 192 awaits load() before storing, so it does not share a read in flight), experiments.ts (a private copy of the helper at 62 to 71, readers at 76 to 118), holding.ts (its own 30-second Map), house-switch.ts (siteStore at 30 to 43 beside writers that import audit, pagesTag, STORES_TAG, SITE_STORE_TAG and storeTag), not-found.ts (recordNotFound at 61 to 77), redirects.ts (countHit at 508), redirect-resolve.ts (the three heavy edges at lines 19, 21 and 23), src/proxy.test.ts and the four places of redirect-writers.test.ts. All match. Corrected: the plan's text says the proxy should answer from memory and refresh in the background; finding SD-6 rejects that because it stretches D339's 10-second privacy bound, and the brief follows the finding (a shared in-flight read only). The findings name three homes for the tag leaf (src/lib/catalog-tag.ts, src/lib/cache-tags.ts, src/server/tags.ts); the brief makes one, src/lib/cache-tags.ts, which steps 2.21 and 2.24 use."
+}

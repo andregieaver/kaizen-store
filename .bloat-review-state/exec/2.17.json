@@ -1,0 +1,289 @@
+{
+ "id": "2.17",
+ "goal": "The admin's page lists, pickers and AI tools, a grid of pages or articles, the sitemaps, llms.txt, Kaizena Flow's static params, the admin's search picker and the blog feed read list fields and card facts in SQL and open a page's document only where it is drawn; the page lists have a limit of 100.",
+ "why": "Today listPages() reads and parses two whole documents a page (about 16.6 KB and 0.64 ms a row: 128 ms for 200 articles) at 16 call sites, a 24-card grid reads 24 documents, and listPublishedPages() is named on 37 lines. After: 'select id, slug, draft, published' is only in getPageForEdit(), a 24-article grid with excerpts reads no document, and listPublishedPages is named on at most 3 lines.",
+ "read_first": [
+  "docs/rules/admin/website.md",
+  "docs/rules/storefront.md",
+  "src/server/pages.ts",
+  "src/server/content-grid.ts",
+  "src/server/blogs.ts",
+  "src/server/seo.ts",
+  "src/app/admin/(gated)/[store]/pages/views.tsx",
+  "src/server/typed-rows.ts"
+ ],
+ "depends_on": [
+  {
+   "id": "2.16",
+   "why": "listPages(), the index and the grid read published_title and published_titles, the columns that step adds"
+  },
+  {
+   "id": "0.24",
+   "why": "publishedPageIndex() and publishedPageById() are the reads the last list readers move to; src/server/pages-list.scan.test.ts holds the callers of listPublishedPages()"
+  },
+  {
+   "id": "1.9",
+   "why": "the int tests count statements and rows with countStatements() from src/db/statement-count.ts"
+  },
+  {
+   "id": "0.19",
+   "why": "the admin lists page at 100 with ?page and a count the way that step did for Products and Customers; reuse its words and markup"
+  }
+ ],
+ "commits": [
+  {
+   "title": "The Pages list reads its columns, not two documents a page",
+   "changes": [
+    {
+     "file": "src/server/pages.ts",
+     "action": "edit",
+     "how": "Rewrite listPages() (lines 134 to 156) and keep its return type PageSummary[] and its order. New signature: listPages(owner, type = 'page', options: { limit?: number; offset?: number } = {}). Statement 1, through typedRows() with a zod row described with col (CLAUDE.md's rule for new reads): select id, slug, coalesce(nullif(draft ->> 'title', ''), slug) as title, draft -> 'thumbnail' ->> 'url' as thumbnail, coalesce((coalesce(published, draft) ->> 'searchEngines')::boolean, true) as search_engines, coalesce((coalesce(published, draft) ->> 'aiAssistants')::boolean, true) as ai_assistants, published is not null as live, (published is not null and draft = published) as same, published_at, updated_at from commerce.pages where <the same owner and type filter as today> order by updated_at desc, id limit ${limit ?? 100000} offset ${offset ?? 0}. The state: not live is 'draft'; same is 'published'; for the rows that are live and not same, run statement 2 only when there is at least one such row: select id, slug, draft, published from commerce.pages where id = any(<those ids>::uuid[]) and <the owner filter>, and decide each with the existing stateOf(readDraft(row.draft, slug), parsePageContent(row.published)) (two copies can differ as stored and be equal after the schema's defaults). Statement 2 must not be written on one line as 'select id, slug, draft, published': write its columns in the order 'id, slug, published, draft' so the done-when's rg finds that text only in getPageForEdit(). Add export async function countPages(owner, type): Promise<number> (select count(*)::int). Add export async function pageTitles(owner: PageOwner, type: PageType = 'page'): Promise<{ id: string; slug: string; title: string }[]>: select id, slug, coalesce(nullif(draft ->> 'title', ''), slug) as title ... order by updated_at desc, id limit 1000, through typedRows()."
+    },
+    {
+     "file": "src/server/pages.int.test.ts",
+     "action": "edit",
+     "how": "Add a case BEFORE changing listPages() and keep it after: for a seeded store with one draft page, one published page, one published page whose draft was changed afterwards, one page whose stored draft and published differ only by a default the schema fills (store the published JSON without 'searchEngines', the draft with searchEngines true), one page built from a signature theme's page content (import one from src/lib/signature), and one whose draft is not valid page content ({\"oops\":1}), listPages() returns for each: the title, slug, state ('draft', 'published', 'changed', 'published', 'published', 'draft'), both flags and the thumbnail. Write the expected values by hand from the fixtures. A draft that does not parse now shows its stored title if it has one, else its slug (before: always the slug); the fixture has no title, so the slug. Add: pageTitles() returns the same ids, slugs and titles as listPages(); listPages(owner, type, { limit: 2 }) returns 2 and countPages() the total; and, with countStatements(), listPages() of a store whose pages are all 'draft' or unchanged sends 1 statement that returns no draft and no published column."
+    },
+    {
+     "file": "src/app/admin/(gated)/[store]/pages/actions.ts",
+     "action": "edit",
+     "how": "Line 408: 'return (await listPages(member.store.id, kind)).map((page) => ({ id: page.id, title: page.title }));' becomes 'return (await pageTitles(member.store.id, kind)).map((page) => ({ id: page.id, title: page.title }));'. Import pageTitles."
+    },
+    {
+     "file": "src/app/admin/try/[sandbox]/actions.ts",
+     "action": "edit",
+     "how": "Line 219: the same replacement with sandbox.store.id."
+    },
+    {
+     "file": "src/app/admin/(gated)/platform/pages/actions.ts",
+     "action": "edit",
+     "how": "Line 332: (await pageTitles(null, kind)).filter((page) => !theirs.has(page.id)).map(...) as today."
+    },
+    {
+     "file": "src/server/shopify-copy.ts",
+     "action": "edit",
+     "how": "Line 555: new Set((await pageTitles(member.store.id, type)).map((p) => p.slug))."
+    },
+    {
+     "file": "src/app/admin/(gated)/[store]/articles/blogs/page.tsx",
+     "action": "edit",
+     "how": "Line 32: read what the page uses of 'pages' (open the file: if it uses only id and title, replace listPages(store.id) by pageTitles(store.id); if it uses state or more, leave it)."
+    },
+    {
+     "file": "src/server/admin-api-content.ts",
+     "action": "edit",
+     "how": "Line 222: give listPages() a fourth option 'since?: string' (in pages.ts: and (${since ?? null}::timestamptz is null or updated_at > ${since ?? null}::timestamptz) in statement 1) and call listPages(storeId, pageType(route.name), { since: since ? new Date(since).toISOString() : undefined }) with no filter in code. The API's returned fields stay the same (src/lib/docs-api-reference.test.ts and src/server/admin-api*.int.test.ts hold them)."
+    }
+   ],
+   "checks": [
+    "pnpm exec vitest run --config vitest.integration.config.mts src/server/pages.int.test.ts: passes (run it once before the change with only the new 'same summaries' case added, to see it pass on today's code too, except the unparsable draft's title)",
+    "rg -n 'select id, slug, draft, published' src/server/pages.ts: prints one line, inside getPageForEdit()",
+    "pnpm exec vitest run src/server/ratchet.scan.test.ts: passes; if it says unchecked reads fell, run node scripts/ratchet.mjs and commit src/server/ratchet.baseline.json",
+    "pnpm lint && pnpm typecheck && pnpm test: each exits 0",
+    "pnpm test:int: exits 0",
+    "On the signed-in build: E2E_SIGNED_IN=1 pnpm exec playwright test e2e/signed-in/blogs.spec.ts e2e/signed-in/page-history.spec.ts e2e/signed-in/schedule.spec.ts e2e/signed-in/schedules-and-sharing.spec.ts e2e/signed-in/theme-store-pages.spec.ts e2e/signed-in/builder-lines.spec.ts: pass unchanged"
+   ]
+  },
+  {
+   "title": "The Pages and Articles lists show 100 a page and start their reads together",
+   "changes": [
+    {
+     "file": "src/app/admin/(gated)/[store]/pages/views.tsx",
+     "action": "edit",
+     "how": "StorePagesListView (line 60 on). (1) Read const page = Math.max(1, Number((await searchParams).page) || 1) and call listPages(store.id, type, { limit: 100, offset: (page - 1) * 100 }) and countPages(store.id, type) as 'total'. (2) Put the view's independent reads in ONE Promise.all with the list: the list, the count, storePageContext(store, type) (line 68), commentCounts(store.id) only when type === 'article' (line 76), scheduleChips(...) only when isScheduledType(type) (line 79), and each of the later awaits of this function that depends only on store and type (lines 124, 138 to 139, 145, 162, 179 to 180: runningPageJobs, layoutUses, listTerms, siteLayoutChoice, the home offers), each kept under the same type condition it has today (Promise.resolve of the empty value otherwise). siteLayoutChoice() is awaited twice for headers and footers (lines 145 and 162): read it once and use the value twice. (3) Under the table, when total > pages.length, draw '{shown} of {total}' and previous/next links that keep the other query values, copying the markup and words step 0.19 added to the Products list ('src/app/admin/(gated)/[store]/products/page.tsx'); add the words to the website area's catalogues (src/lib/admin-messages/website.en.ts and website.nb.ts, under storePages): shownOf '{shown} of {total}' / '{shown} av {total}', next 'Next 100' / 'Neste 100', previous 'Previous 100' / 'Forrige 100'. Nothing else a person sees changes."
+    },
+    {
+     "file": "src/app/admin/(gated)/platform/pages/views.tsx",
+     "action": "edit",
+     "how": "The same for the platform's list (line 57: listPages(null, type)): limit 100 with ?page, countPages(null, type), the same pager, and its awaits in one Promise.all. House rule: the platform gets what stores get."
+    },
+    {
+     "file": "e2e/signed-in/blogs.spec.ts",
+     "action": "edit",
+     "how": "Add one test in the file's style: insert 105 draft articles for E2E_STORE with the spec's database helper (delete them in a finally), open /admin/{store}/articles, expect the text '100 of 10' followed by a digit, press 'Next 100' and expect at least 5 rows. Change no existing test."
+    }
+   ],
+   "checks": [
+    "pnpm exec vitest run src/server/admin-statements.int.test.ts --config vitest.integration.config.mts: passes (the five screens' counts do not rise)",
+    "pnpm lint && pnpm typecheck && pnpm test: each exits 0",
+    "On the signed-in build: E2E_SIGNED_IN=1 pnpm exec playwright test e2e/signed-in/blogs.spec.ts e2e/signed-in/a11y.spec.ts e2e/signed-in/schedule.spec.ts: pass"
+   ]
+  },
+  {
+   "title": "A grid of pages or articles draws its cards from SQL and opens a document only for a card with no excerpt",
+   "changes": [
+    {
+     "file": "src/server/content-grid.ts",
+     "action": "edit",
+     "how": "gridPages() (lines 197 to 300). Change the statement's select list from 'p.id, p.slug, p.published, coalesce(p.first_published_at, p.published_at) as first_published_at' to the card's facts, with L = the locale the grid is drawn in (shop ? shop.market.locale : pageLocaleOf(lang)) and tr = p.published -> 'translations' -> L: p.id, p.slug, coalesce(nullif(p.published_titles ->> L, ''), p.published_title) as title, coalesce(nullif(tr ->> 'excerpt', ''), nullif(p.published ->> 'excerpt', '')) as excerpt, coalesce(nullif(tr -> 'seo' ->> 'description', ''), nullif(p.published -> 'seo' ->> 'description', '')) as description, p.published -> 'thumbnail' ->> 'url' as image_url, coalesce(nullif(tr -> 'thumbnail' ->> 'alt', ''), p.published -> 'thumbnail' ->> 'alt') as image_alt, p.published ->> 'blogId' as blog_id, coalesce(p.first_published_at, p.published_at) as first_published_at. Before writing these, open localizePage() in src/lib/page-translation.ts and check, field by field, which of title, excerpt, seo.description and thumbnail.alt a translation may hold and where; write each expression to give exactly what localizePage(stored, L) gives for that field, and leave out the translation branch for a field a translation cannot hold. Read the rows through typedRows() with col. Build each item from the row: title; excerpt = excerpt || description; image from image_url and image_alt; date as today; href(slug, { blogId }) (href() and blogOfArticle() read only blogId: change href's second parameter type to Pick<PageContent, 'blogId'>). For the rows where excerpt and description are both empty, and only for them, run a second statement: select id, published from commerce.pages where id = any(<those ids>::uuid[]) and <the owner filter>, parse each with parsePageContent(), localize it and set excerpt = pageExcerpt(content, EXCERPT_MAX) as today. A row whose title is null (a stored document with no title) is skipped, as an unparsable one is today. Everything else in the function (the filters, the order, the limit of 48, the tile fields) stays."
+    },
+    {
+     "file": "src/server/content-grid.int.test.ts",
+     "action": "edit",
+     "how": "If no such file exists, find the int test that calls gridData for pages (rg -l 'gridData|gridPages' src -g '*.int.test.ts') and extend it; else create src/server/content-grid-pages.int.test.ts with a store fixture copied from src/server/pages.int.test.ts. Cases: (1) before/after equality: for 5 articles (one translated to nb-NO with its own title and excerpt, one with only an seo description, one with neither, one with a thumbnail and alt, one in another blog), the grid's items (id, href, title, excerpt, image, date) for locales nb-NO and en-GB equal a list written by hand from the fixtures. Write this case first and run it on today's code. (2) 24 articles that all have excerpts: with countStatements(), drawing the grid sends no statement whose text returns the column 'published' whole (regex on each record's text: /\\bp?\\.?published\\b\\s*(,|\\n?\\s*from)/i does not match) . (3) 24 articles of which 2 have neither excerpt nor description: exactly one statement returns documents and it returns 2 rows."
+    }
+   ],
+   "checks": [
+    "pnpm exec vitest run --config vitest.integration.config.mts <the grid int test>: passes, case 1 on the code before and after",
+    "pnpm exec vitest run src/components/content-grid-cards.test.ts src/lib/grid-source.test.ts: pass unchanged",
+    "pnpm lint && pnpm typecheck && pnpm test: each exits 0",
+    "pnpm build && pnpm exec playwright test e2e/blog.spec.ts e2e/store-pages.spec.ts e2e/pages.spec.ts: pass unchanged"
+   ]
+  },
+  {
+   "title": "The last readers of whole page lists read the index, and the feed reads 50 cards",
+   "changes": [
+    {
+     "file": "src/server/pages.ts",
+     "action": "edit",
+     "how": "Step 0.24's publishedPageIndex() entry (PublishedPageEntry) must carry what the readers below need. Add to its select and type, if missing: published_at and first_published_at (ISO strings), search_engines and ai_assistants (booleans, default true), description (published -> 'seo' ->> 'description'), excerpt (published ->> 'excerpt'), blog_id, markets (published -> 'markets'). Keep PAGE_INDEX_FIELDS (step 2.14) in step, and add any new field another page shows to listFacts() in src/lib/page-list-facts.ts in the same commit (its test fails otherwise). Add export async function articleCards(storeId: string, locale: string, limit: number): Promise<ArticleCard[]>: 'use cache'; cacheLife('hours'); cacheTag(pagesTag(storeId)); one statement with the card facts of the grid commit (id, slug, title, excerpt, description, blog_id, markets, author and authorId from published, first_published_at, published_at) for type 'article', published_at not null, order by coalesce(first_published_at, published_at) desc, slug limit ${limit}; for rows with neither excerpt nor description a second statement reads those documents for pageExcerpt(c, 300), as the grid does."
+    },
+    {
+     "file": "src/server/blogs.ts",
+     "action": "edit",
+     "how": "blogFeed() (lines 140 to 175): replace 'blogArticles(store.id, blog)' by articleCards(store.id, market.locale, FEED_ENTRIES_MAX * 4) filtered to this blog with inBlog(blogs, blog, { blogId }) and to this market with the same rule as pageInMarket() on the card's markets, then .slice(0, FEED_ENTRIES_MAX). If FEED_ENTRIES_MAX is not 50, keep its value and say so in the commit message; the SQL limit is what bounds the read. Build each entry from the card (title, summary = excerpt || description || the fetched excerpt, published, updated, author through bylineOf(authorOf(authors, card), card, store.name)). blogArticles() (line 113) stays for the callers that draw documents; check its callers (rg -n 'blogArticles\\(' src): if the blog's listing page uses it only for cards, move that caller to articleCards() too, so the listing reads no document (the done-when counts none)."
+    },
+    {
+     "file": "src/server/seo.ts",
+     "action": "edit",
+     "how": "The four readers left on listPublishedPages() by step 0.24 (the platform's sitemap at about line 600, a store's sitemap at 687, the platform's llms.txt at 796, a store's at 872; each calls listPublishedPages twice: pages and articles; with the robots reader's two lines at 465 that step 0.24 moved, these are the 'ten lines'): read publishedPageIndex(owner) and publishedPageIndex(owner, 'article') instead. Replace page.content.searchEngines by page.searchEngines, page.content.aiAssistants by page.aiAssistants, page.content.title by page.title, page.content.seo.description || pageExcerpt(page.content, 200) by page.description || page.excerpt || '' , page.publishedAt by the index's date field, and a translated title by indexTitle(page, locale) (step 0.24). If a reader uses any other field of page.content (open each: the sitemaps use dates and flags; llms.txt uses title and note), add that field to the index rather than read the document; if llms.txt prints a page's body text, stop."
+    },
+    {
+     "file": "src/components/platform-routes/page.tsx",
+     "action": "edit",
+     "how": "pageStaticParams() (line 24): (await publishedPageIndex()).filter((page) => pageSlugProblem(page.slug) === null). Only slug is read below."
+    },
+    {
+     "file": "src/components/platform-routes/blog.tsx",
+     "action": "edit",
+     "how": "articleStaticParams() (line 45): const articles = await publishedPageIndex(null, 'article'). Only slug is read."
+    },
+    {
+     "file": "src/app/admin/(gated)/[store]/search/page.tsx",
+     "action": "edit",
+     "how": "Line 49: publishedPageIndex(store.id) in place of listPublishedPages(store.id); below, wherever the picker reads page.content.title use page.title (rg -n 'pages' in the file to find the uses; it offers pages by id and title)."
+    },
+    {
+     "file": "src/server/{pages-list.scan.test.ts}",
+     "action": "edit",
+     "how": "The file is src/server/pages-list.scan.test.ts, made by an earlier step of the plan (it does not exist before that step; if it is missing, that step is not done: stop). Step 0.24's scan lists the files allowed to call listPublishedPages(). Shrink the allowed set to the files that still call it after this commit (expected: src/server/pages.ts and at most one more) and assert the total number of lines naming 'listPublishedPages' in src without tests is at most 3."
+    }
+   ],
+   "checks": [
+    "rg -n 'listPublishedPages' src -g '!*.test.*' | wc -l: prints 3 or less",
+    "pnpm exec vitest run --config vitest.integration.config.mts src/server/pages.int.test.ts src/server/blogs.int.test.ts src/server/seo.int.test.ts: pass (find the feed's and the sitemap's tests with rg -l 'blogFeed|sitemap' src -g '*.test.ts'); they hold the feed's entries and the sitemap's lines unchanged",
+    "pnpm exec vitest run src/server/pages-list.scan.test.ts src/lib/page-list-facts.test.ts src/server/use-cache.scan.test.ts: pass",
+    "pnpm lint && pnpm typecheck && pnpm test: each exits 0",
+    "pnpm build && pnpm exec playwright test e2e/blog.spec.ts e2e/sitemap.spec.ts e2e/store-pages.spec.ts: pass (find the sitemap and llms specs with rg -l 'sitemap|llms' e2e)"
+   ]
+  },
+  {
+   "title": "Hold it: whole documents read per page, and the statements that may select them",
+   "changes": [
+    {
+     "file": "src/server/page-documents.int.test.ts",
+     "action": "create",
+     "how": "An int test on a store seeded with 30 published pages and 60 published articles, all with excerpts (make the store as src/server/capacity-test-support.ts makeCapacityStore() does; insert the pages with one insert ... select from generate_series). A helper documentsRead(records) sums 'rows' over the counted statements whose select list returns the column draft or published whole (not a JSON operator on it, not published_at, published_title, published_titles); unit-test the helper's regex in the same file on six example statements. With next/cache mocked so cached reads run (as src/server/query-budget.int.test.ts of step 1.10 does), call the loaders each page calls, copied from the page files as step 1.9's src/server/admin-screens.ts does for admin screens: a cold home (the store layout's reads and the front page's), a built page (findPublishedPage for one slug plus the layout's reads) and a product page (the layout's reads plus productLayoutFor): each reads at most 3 page documents; the blog's listing (the reads of 'src/app/s/[store]/[market]/blog/blog-listing.tsx' for the main blog) reads 0; blogFeed() returns at most 50 rows from its card statement and reads 0 documents."
+    },
+    {
+     "file": "src/server/ratchet.baseline.json",
+     "action": "edit",
+     "how": "Add a section 'pageDocuments': the exact list of statements in src (file and function) that select draft or published for more than one row, each with a one-sentence reason. Build it with: rg -n -U 'select[^;`]*\\b(draft|published)\\b[^_]' src/server src/app -g '!*.test.*', then open each hit and keep those that can return more than one row with a whole document (expected after this step: listPages()'s second statement for changed rows, gridPages()'s and articleCards()'s second statements for cards with no excerpt, listPublishedPages(), the knowledge job, accessibility.ts, green-claims.ts, store-translate.ts, store copy and export). In src/server/ratchet.scan.test.ts add one test that recomputes the hits with the same regex over the same folders and fails when a file:function pair is not in the list (the list may only shrink; a new one needs a line with its reason in the same commit)."
+    },
+    {
+     "file": "docs/rules/admin/website.md",
+     "action": "edit",
+     "how": "In the Pages section add: lists, pickers, grids, sitemaps and the feed read a page's list fields from columns and the index (listPages(), pageTitles(), publishedPageIndex(), articleCards()); a document is opened to draw the page, to edit it, and for a card with no excerpt; a new statement that selects draft or published for many rows is added to ratchet.baseline.json's pageDocuments with its reason."
+    },
+    {
+     "file": "docs/decisions.md",
+     "action": "edit",
+     "how": "Append one row with the next free D-number (pull main first; rg -o '^\\| D[0-9]+' docs/decisions.md | tr -dc '0-9\\n' | sort -n | tail -1, plus 1): the list fields in SQL with the state rule (stored equality first, the parsed compare only for rows that differ), pageTitles() and its five callers, pages of 100 on both Pages lists, the grid's and the feed's card facts with the fallback read, who left listPublishedPages(), and the pageDocuments list."
+    },
+    {
+     "file": "docs/audits/code-review-2026-11.md",
+     "action": "edit",
+     "how": "In the Progress table's note on step 1.13 (One way to search and page a list, Open) add: 'the Pages and Articles lists (store and platform) are paged at 100 by bloat review step 2.17, <date>, <commit>'. Add a change-log line."
+    },
+    {
+     "file": "docs/audits/bloat-review-2026-11.md",
+     "action": "edit",
+     "how": "Progress table: row 2.17 to Done with the date, the commits and the count of lines naming listPublishedPages (37 before); one change-log line."
+    }
+   ],
+   "checks": [
+    "pnpm exec vitest run --config vitest.integration.config.mts src/server/page-documents.int.test.ts: passes",
+    "pnpm exec vitest run src/server/ratchet.scan.test.ts: passes",
+    "pnpm lint && pnpm typecheck && pnpm test: each exits 0",
+    "pnpm test:int: exits 0"
+   ]
+  }
+ ],
+ "tests": [
+  {
+   "file": "src/server/pages.int.test.ts",
+   "proves": "It fails when the list's title, state, flags or thumbnail differ from the parsed documents', and when the list reads a document for an unchanged page."
+  },
+  {
+   "file": "src/server/page-documents.int.test.ts",
+   "proves": "It fails when a cold home, a built page or a product page reads more than 3 page documents, when the blog's listing reads one, or when the feed reads more than 50 rows."
+  },
+  {
+   "file": "src/server/ratchet.scan.test.ts",
+   "proves": "It fails when a new statement selects draft or published for more than one row without a named reason."
+  },
+  {
+   "file": "src/server/pages-list.scan.test.ts",
+   "proves": "It fails when listPublishedPages is named on more than 3 lines."
+  }
+ ],
+ "migration": {
+  "needed": false,
+  "notes": ""
+ },
+ "done_when": [
+  {
+   "check": "rg -n 'select id, slug, draft, published' src/server/pages.ts",
+   "expect": "One line, inside getPageForEdit()."
+  },
+  {
+   "check": "rg -n 'listPublishedPages' src -g '!*.test.*' | wc -l",
+   "expect": "3 or less (37 before)."
+  },
+  {
+   "check": "pnpm exec vitest run --config vitest.integration.config.mts src/server/page-documents.int.test.ts <the grid int test>",
+   "expect": "Pass: a 24-article grid with excerpts reads no published document; at most 3 documents for a cold home, a built page and a product page; none for the blog's listing; at most 50 rows for the feed."
+  },
+  {
+   "check": "node -e \"console.log(Object.keys(require('./src/server/ratchet.baseline.json').pageDocuments).length)\" and pnpm exec vitest run src/server/ratchet.scan.test.ts",
+   "expect": "A number above 0 and the test passes: every statement that selects draft or published for many rows is named with its reason."
+  }
+ ],
+ "after_deploy": [
+  "Open /admin/{store}/pages and /admin/{store}/articles on a test store in production: titles, states (Draft, Published, Changed) and thumbnails as before; the admin.render log line (step 1.9) shows no rise.",
+  "A week later in pg_stat_statements (step 0.2's reading): the statement 'select id, slug, draft, published ... order by updated_at desc' no longer grows, and the mean rows of the grid's statement no longer carry documents (its mean time falls)."
+ ],
+ "docs": [
+  "docs/rules/admin/website.md, docs/decisions.md, docs/audits/code-review-2026-11.md and the Progress row, as the last commit says.",
+  "docs/platform-parity.md: nothing to tick; /admin/platform/pages and Kaizena Flow's blog grid use the same functions and change in the same commits."
+ ],
+ "do_not": [
+  "Do not decide 'changed' by stored equality alone: keep the parsed compare for rows that differ as stored.",
+  "Do not change getPageForEdit(), savePage() or any writer.",
+  "Do not drop listPublishedPages(): the readers that draw every document keep it.",
+  "Do not change what the Admin API's pages and articles lists return.",
+  "Do not change a prompt or a tool's description of the AI manager: its list_pages tool gets the same fields from listPages().",
+  "Do not invent a second pager: copy step 0.19's markup and words.",
+  "Do not add a limit to pageTitles() below 1000 or page the pickers: they need every page of a kind."
+ ],
+ "stop_if": [
+  "The 'same summaries' case fails on today's code before any change (then the fixtures are wrong: fix them first), or fails after the change for anything but the unparsable draft's title.",
+  "localizePage() lays a translation over a field in a way the SQL expressions cannot give exactly (for example a rich-text excerpt): report the field; keep that field on the document read.",
+  "llms.txt or a sitemap prints text from a page's body.",
+  "An existing e2e or int test must be changed to pass.",
+  "Step 2.16's columns are not in the database (pnpm db:check fails or the column is missing)."
+ ],
+ "executor": "strong",
+ "executor_why": "The grid's and the feed's card facts must equal what localizePage() gives for every translated field, which needs reading the page model and judging each field; commits 1 and 2 (the admin list and its pager) are fully specified and can go to the cheap model.",
+ "checked_in_code": "I opened pages.ts listPages() (134 to 156: both documents, parsed twice, no limit), its 16 callers by rg, views.tsx (awaits one after another at 66 to 79), content-grid.ts gridPages() (selects p.published and parses each row for a card), blogs.ts blogFeed() and blogArticles(), and seo.ts. All match the findings. rg finds 37 lines naming listPublishedPages( today; after step 0.24 the remaining callers are seo.ts (8 lines in four readers), blogs.ts, the two static-params files and the admin's search page, which this brief moves. Corrected: AD-14 and PM-5 read titles with draft ->> 'title' (kept, the list shows the draft's title), while the plan's text says the columns of step 2.16, which hold the published title: the brief uses the columns only where a published title is wanted (the grid, the index)."
+}

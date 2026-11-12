@@ -1,0 +1,161 @@
+{
+  "id": "0.34",
+  "goal": "No shop or site file names an admin colour class, every admin colour that an admin part drawn on a public page reads has a value outside the admin in light and in dark, and the main button on Kaizena Flow's status and report pages is filled.",
+  "why": "Thirteen admin colour roles have a value only under html[data-admin], yet 20 uses in seven shop and site files and 125 in eleven admin parts drawn on public pages read them: the submit button on /status and /report has a see-through background today. After: 0 uses in shop and site files (20 today), every role those parts name has a value under html:not([data-admin]), and the buttons have a computed background-color other than rgba(0, 0, 0, 0).",
+  "read_first": [
+    "docs/admin-style.md:240",
+    "docs/site-design.md",
+    "src/app/globals.css",
+    "src/app/admin/admin.css",
+    "src/app/admin/admin-type.scan.test.ts",
+    "src/components/admin/action-form.tsx",
+    "src/lib/theme.test.ts",
+    "e2e/content-reports.spec.ts"
+  ],
+  "depends_on": [],
+  "commits": [
+    {
+      "title": "Shop and site files speak the site's colour names, and the admin's colour roles follow the site's colours outside the admin",
+      "changes": [
+        {
+          "file": "src/components/product-card.tsx",
+          "action": "edit",
+          "how": "Lines 109 and 110 (the colour and option swatches of a combined listing): replace the class `border-line` with `border-border` (one on each line). Nothing else."
+        },
+        {
+          "file": "src/components/content-grid.tsx",
+          "action": "edit",
+          "how": "Line 206: replace both `border-line` with `border-border`."
+        },
+        {
+          "file": "src/components/product-parts.tsx",
+          "action": "edit",
+          "how": "Lines 1347 and 1348: replace `border-line` with `border-border` (one on each line)."
+        },
+        {
+          "file": "src/components/checkout-form.tsx",
+          "action": "edit",
+          "how": "Line 460: replace `border-line bg-card` with `border-border bg-background`."
+        },
+        {
+          "file": "src/app/supply/[token]/page.tsx",
+          "action": "edit",
+          "how": "Line 17 (the field's class constant): `border-line bg-card` becomes `border-border bg-background`. Lines 68, 76, 122 and 129: `border-line` becomes `border-border`. Line 60 (the problem line): `text-danger-text` becomes `text-red-700 dark:text-red-400`, the pair the storefront's own alerts use (rg -n 'text-red-700 dark:text-red-400' src/components shows it)."
+        },
+        {
+          "file": "src/app/passport/[id]/page.tsx",
+          "action": "edit",
+          "how": "Lines 31 and 137: `border-line` becomes `border-border`."
+        },
+        {
+          "file": "src/components/inline-edit/markup-editor.tsx",
+          "action": "edit",
+          "how": "Line 170 (the on-site editor's own toolbar button): `hover:bg-sunken aria-pressed:bg-inverse aria-pressed:text-inverse-ink` becomes `hover:bg-surface aria-pressed:bg-foreground aria-pressed:text-background`."
+        },
+        {
+          "file": "src/app/globals.css",
+          "action": "edit",
+          "how": "(1) Directly after the block `:root[data-color-mode=\"dark\"] { ... }` (it ends at about line 169, before the comment 'A logo for each set of colours') add, unlayered like the blocks above it:\n\n/*\n * The admin's colour roles outside the admin (bloat review step 0.34, docs/admin-style.md section 4). A few admin parts are drawn on\n * public pages (ActionForm and its buttons on /status, /report, sign-up and get-domain; the print button on a hosted invoice; the\n * on-site editor's toolbar, text styles, colour field and modal). There the roles follow the site's own colours, as admin.css gives the\n * site's names the roles' values inside the admin. The selector never matches inside the admin, so the two can never form a loop.\n * Shop and site code still writes the site's names: src/lib/stylesheet-sources.scan.test.ts holds both rules.\n */\nhtml:not([data-admin]) {\n  --canvas: var(--background);\n  --card: var(--background);\n  --sunken: var(--surface);\n  --line: var(--border);\n  --edge: var(--border);\n  --ink: var(--foreground);\n  --ink-2: var(--muted);\n  --inverse: var(--foreground);\n  --inverse-ink: var(--background);\n  --brand: var(--accent);\n  --brand-ink: var(--accent-foreground);\n  --danger-text: #b91c1c;\n  --warning-text: #b45309;\n}\n@media (prefers-color-scheme: dark) {\n  html:not([data-admin]):not([data-color-mode=\"light\"]) {\n    --danger-text: #f87171;\n    --warning-text: #fbbf24;\n  }\n}\nhtml:not([data-admin])[data-color-mode=\"dark\"] {\n  --danger-text: #f87171;\n  --warning-text: #fbbf24;\n}\n\n(2) Rewrite the comment inside the @theme block above `--color-canvas: var(--canvas);` (it says 'Outside the admin nothing sets them, so they are for admin pages only.') to: 'The admin's colour roles (docs/admin-style.md section 4), set inside the admin by its scheme (`src/app/admin/schemes/*.css`). Outside the admin the thirteen that shared admin parts read follow the site's own colours (the html:not([data-admin]) block below); shop and site code writes the site's names, never these.' Do not change any `--color-*` line."
+        },
+        {
+          "file": "src/lib/stylesheet-sources.scan.test.ts",
+          "action": "create",
+          "how": "A unit scan test (node:fs, node:path, vitest). Read the helper style of src/app/admin/admin-type.scan.test.ts first. Pieces: (a) `const css = readFileSync('src/app/globals.css')`; `ROLES`: every name from the lines `--color-<name>: var(--<name>);` that sit between the comment 'The admin's colour roles' and the comment 'The admin's type scale and shapes' in the @theme block (regex over that slice: /--color-([a-z0-9-]+): var\\(--\\1\\);/g). Expect ROLES to include 'line', 'card', 'brand', 'danger-text'. (b) `roleClasses(text: string): string[]` (exported): every match of new RegExp('(?<![\\\\w-])(?:[a-z0-9\\\\[\\\\]=\"-]+:)*(?:bg|text|border|ring|outline|divide|fill|stroke|accent|decoration|from|via|to)-(' + ROLES sorted longest first joined with '|' + ')(?![\\\\w-])', 'g'), returning the role names. (c) `sourceFiles(dir)`: every .ts and .tsx file under dir, recursive, without *.test.ts, *.test.tsx and *.d.ts. (d) `isAdmin(file)`: the path starts with src/app/admin/ or src/components/admin/. (e) `imports(file)`: the module paths of its value imports: every `from \"X\"` of an `import` or `export` statement that does not start with `import type` or `export type`, and every `import(\"X\")`; resolve X that starts with '@/' to src/, and X that starts with '.' against the file's folder; try X.ts, X.tsx, X/index.ts, X/index.tsx; drop what does not resolve to a file under src, and drop anything under src/server. (f) `reached`: a breadth-first walk over imports() starting from every file of sourceFiles('src/app') and sourceFiles('src/components') that is not isAdmin; the set of isAdmin files the walk reaches (it follows imports out of admin files too). (g) `mapped`: the role names set in the block `html:not([data-admin]) {` of globals.css (regex /--([a-z0-9-]+):/g over the text from that selector to its closing brace), and `darkMapped`: the names set in both dark blocks (`html:not([data-admin]):not([data-color-mode=\"light\"])` and `html:not([data-admin])[data-color-mode=\"dark\"]`). Rule 1, 'the site's files speak the site's colour names': for every non-admin file of (c) that is not in `reached` (none is: reached holds admin files only), roleClasses(text) is empty; the failure message lists file and class. Rule 2, 'an admin part drawn outside the admin reads only colours that have a value there, in light and in dark': for every file in `reached`, every role of roleClasses(text) is in `mapped`; and every role in `mapped` whose value in the light block is a literal colour (starts with #) is also in `darkMapped` (the others follow site colours that have their own dark values). Would-notice cases: roleClasses('<i className=\"border-line hover:bg-sunken\" />') equals ['line', 'sunken']; roleClasses('border-border bg-background text-inline') equals []; `reached` contains 'src/components/admin/action-form.tsx' and 'src/components/admin/text-styles.tsx'; and rule 2's check run with `mapped` minus 'brand' reports action-form.tsx. Top comment: what the two rules hold and that steps 0.35 and 2.11 add theirs here."
+        },
+        {
+          "file": "e2e/content-reports.spec.ts",
+          "action": "edit",
+          "how": "Add a test at the end: 'the main button on the report and status pages is filled, in light and in dark (bloat review 0.34)'. For each scheme of ['light', 'dark'] (use `browser.newContext({ colorScheme: scheme })` as e2e/themes.spec.ts line 16 does): open /report, take `page.getByRole(\"button\", { name: \"Send the notice\" })`, and expect `await button.evaluate((el) => getComputedStyle(el).backgroundColor)` not to be 'rgba(0, 0, 0, 0)'; open /status, take the first `button[type=\"submit\"]` on the page and expect the same. Close each context."
+        },
+        {
+          "file": "e2e/invoices.spec.ts",
+          "action": "edit",
+          "how": "The page /s/{store}/{market}/account/invoice/{token} draws src/components/work/hosted-invoice.tsx with the admin's PrintButton. Find the test in this file (or in e2e/work.spec.ts: rg -n 'account/invoice' e2e) that opens that page; directly after it is open add: take the print button (the button whose name is the page's print label; read the label the test's language uses in the component's messages) and expect its computed background-color not to be 'rgba(0, 0, 0, 0)', once as the test runs and once after `await page.emulateMedia({ colorScheme: \"dark\" })`. If no e2e test opens that page, add the assertion to the nearest test that has a Work invoice link, and say in the commit message which test carries it."
+        },
+        {
+          "file": "docs/admin-style.md",
+          "action": "edit",
+          "how": "In section 4 ('Colour roles and the `meadow` scheme', about line 240) add a short paragraph: 'Outside the admin. A few admin parts are drawn on public pages (ActionForm, the print button, the on-site editor's toolbar and fields). There the roles they read follow the site's own colours through one block in `src/app/globals.css` (`html:not([data-admin])`): card and canvas the background, sunken the surface, line and edge the border, ink the foreground, ink-2 the muted text, inverse the foreground with inverse-ink the background, brand the accent with brand-ink its foreground, and two fixed signal colours with dark values. A new admin part reused outside the admin needs every role it names in that block; `src/lib/stylesheet-sources.scan.test.ts` says which is missing. Shop and site code never writes a role.'"
+        },
+        {
+          "file": "docs/decisions.md",
+          "action": "edit",
+          "how": "Append one row with the next free D-number (pull main first; `rg -o '^\\| D[0-9]+' docs/decisions.md | tr -dc '0-9\\n' | sort -n | tail -1`, plus 1). It records: the fault (the submit button on /status and /report had no fill; 20 role classes in seven shop and site files had no value), the two fixes (the seven files renamed to the site's names; the thirteen roles mapped to the site's colours under html:not([data-admin]), mirroring admin.css), why a mapping and not a rename for the admin parts (action-form.tsx is imported by hundreds of files and the on-site editor embeds the admin's toolbar), the two scan rules and the e2e check. Platform: the status and report pages are Kaizena Flow's own, where the fault showed."
+        },
+        {
+          "file": "docs/audits/bloat-review-2026-11.md",
+          "action": "edit",
+          "how": "Progress table: set the row of step 0.34 to Done with the date and commit (rg -n '^\\| 0\\.34 ' docs/audits/bloat-review-2026-11.md)."
+        }
+      ],
+      "checks": [
+        "pnpm exec vitest run src/lib/stylesheet-sources.scan.test.ts src/lib/theme.test.ts src/app/admin/admin-type.scan.test.ts src/app/admin/admin-schemes.test.ts : pass",
+        "Try each rule once and undo: add `border-line` to a className in src/components/product-card.tsx : rule 1 fails naming the file; remove the `--brand:` line from the new block : rule 2 fails naming action-form.tsx. Undo both.",
+        "pnpm lint && pnpm typecheck && pnpm test : exits 0",
+        "pnpm build && pnpm exec playwright test e2e/content-reports.spec.ts e2e/invoices.spec.ts e2e/a11y.spec.ts e2e/shop-components.spec.ts e2e/sign-up.spec.ts e2e/inline-edit-live.spec.ts : pass (skip a spec that does not exist)",
+        "With `pnpm start`: take screenshots of /status, /report, a product page with a combined listing's swatches, the supplier page and a product passport, each in light and dark, and send them to the owner (CLAUDE.md asks for screenshots of changed screens)"
+      ]
+    }
+  ],
+  "tests": [
+    {
+      "file": "src/lib/stylesheet-sources.scan.test.ts",
+      "proves": "Fails when a file outside the two admin folders names an admin colour class, and when an admin part that a public page imports names a role with no value under html:not([data-admin]) (or a fixed colour with no dark value)."
+    },
+    {
+      "file": "e2e/content-reports.spec.ts",
+      "proves": "Fails when the submit button on /report or /status has the computed background-color rgba(0, 0, 0, 0), in light or in dark."
+    },
+    {
+      "file": "e2e/invoices.spec.ts",
+      "proves": "Fails when the print button on a hosted invoice has no fill, in light or in dark."
+    }
+  ],
+  "migration": {
+    "needed": false,
+    "notes": ""
+  },
+  "done_when": [
+    {
+      "check": "rg -c --pcre2 '(?<![\\w-])(?:[a-z-]+:)*(?:bg|text|border|ring|outline|divide|fill|stroke|accent|decoration|from|via|to)-(?:canvas|card|sunken|rail|rail-icon|ink|ink-2|faint|line|edge|inverse|inverse-ink|brand|brand-ink|brand-text|brand-soft|focus|(?:positive|warning|danger|neutral|insight)-(?:solid|text|soft|line)|brand-hover)(?![\\w-])' src/components src/app --glob '!src/components/admin/**' --glob '!src/app/admin/**' --glob '!*.test.*' --glob '!*.css'",
+      "expect": "prints nothing (no file has a match; 20 matches in seven files before)"
+    },
+    {
+      "check": "pnpm exec vitest run src/lib/stylesheet-sources.scan.test.ts",
+      "expect": "passes with both rules, and each rule failed when tried"
+    },
+    {
+      "check": "pnpm build && pnpm exec playwright test e2e/content-reports.spec.ts e2e/invoices.spec.ts",
+      "expect": "passes: a filled button on /report, /status and a hosted invoice, in light and in dark"
+    }
+  ],
+  "after_deploy": [
+    "Open https://kaizenaflow.com/status and /report: the main button is a filled pill in the site's accent colour, in light and in dark (the browser's or the site's own switch). Send the owner the two screenshots.",
+    "Open a store's product with a combined listing: the colour swatches have the theme's border colour, not the text colour."
+  ],
+  "docs": [
+    "docs/admin-style.md section 4: the paragraph on roles outside the admin.",
+    "docs/decisions.md: one D-row.",
+    "The comment in src/app/globals.css above the roles.",
+    "docs/audits/bloat-review-2026-11.md Progress row 0.34."
+  ],
+  "do_not": [
+    "Do not write the new block on :root or without :not([data-admin]): inside the admin admin.css sets --background: var(--card), and --card: var(--background) there would loop.",
+    "Do not rename role classes inside src/components/admin or src/app/admin: admin files keep the roles (admin-type.scan.test.ts holds that side).",
+    "Do not move or copy action-form.tsx, the rich text editor or any admin part out of the admin folder.",
+    "Do not add a role to the block that the scan does not ask for, and do not give a role a colour of your own choosing: the thirteen mappings are given here.",
+    "Do not change any `--color-*` line of the @theme block, the dark blocks for --background, or src/app/admin/schemes/*.css.",
+    "Do not change the look of the buttons beyond this (the optional button-primary class of the finding is the owner's design choice and is not part of the step).",
+    "Do not swap the hosted invoice's print button for another component in this step."
+  ],
+  "stop_if": [
+    "The rg of done_when finds uses in other files or lines than the twenty named (main has moved): rename only border-line to border-border and report any other role found instead of guessing its site name.",
+    "Rule 2 names a role outside the thirteen mapped (canvas, card, sunken, line, edge, ink, ink-2, inverse, inverse-ink, brand, brand-ink, danger-text, warning-text): report the file and the role; choosing its colour is a design decision.",
+    "src/lib/theme.test.ts or src/app/admin/admin-schemes.test.ts fails after the new block.",
+    "The button on /status or /report is still see-through on the built app.",
+    "A screenshot shows a colour that reads badly (text on the filled button without contrast, a border that vanished): report with the screenshot."
+  ],
+  "executor": "cheap-then-review",
+  "executor_why": "The renames and the CSS block are given whole and the scans and e2e checks catch a miss, but it is a visible colour change on public pages and the import walk in the scan test is easy to get subtly wrong, so a stronger model should read the diff and the screenshots.",
+  "checked_in_code": "I ran the role pattern over src/components and src/app outside the admin folders: 20 matches in seven files, on exactly the lines CS-7 names (supply page 17, 60, 68, 76, 122, 129; passport 31, 137; content-grid 206 twice; product-card 109, 110; product-parts 1347, 1348; checkout-form 460; markup-editor 170). src/app/globals.css has the roles' @theme lines at 67 to 104 with the comment that nothing sets them outside the admin, and the dark blocks end at line 169; admin.css maps the site's names to the roles under html[data-admin]:root, as the finding says. SubmitButton's default class in action-form.tsx is 'bg-brand ... text-brand-ink'. src/lib/stylesheet-sources.scan.test.ts does not exist yet: this step creates it and steps 0.35 and 2.11 add to it. I left out CS-9's step 3 (another print button) and step 4 (the theme's button shape): the mapping alone meets the step, and both change design."
+}

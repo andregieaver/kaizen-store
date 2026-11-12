@@ -1,0 +1,245 @@
+{
+ "id": "2.18",
+ "goal": "A cold store page's frame starts its independent reads together and asks one site-facts statement for every optional feature (src/server/site-facts.ts), the four questions about running A/B tests are one cached read, a search reads its rules once, and Kaizena Flow's own frame goes through the same loaders with a null owner.",
+ "why": "Today a cold frame sends about 20 statements, some one after another; siteCookies() alone awaits 8 or 9 in a row, one per feature whether the store uses it or not, and the first request of a store's home after a restart sends 30 to 35. After: at most 5 statements for a cold frame with no feature on, at most 4 for siteCookies(), and 20 or fewer for the first home request.",
+ "read_first": [
+  "docs/rules/storefront.md",
+  "docs/ab-testing.md",
+  "src/server/site-cookies.ts",
+  "src/app/s/[store]/[market]/layout.tsx",
+  "src/server/experiments.ts",
+  "src/components/consent/site-consent.tsx",
+  "src/components/store-layout.tsx",
+  "src/lib/pay-routes.graph.test.ts"
+ ],
+ "depends_on": [
+  {
+   "id": "2.16",
+   "why": "the site-facts statement reads the column remembered_modal in place of the scan over page documents"
+  },
+  {
+   "id": "0.24",
+   "why": "menus' titles and the legal links read publishedPageIndex(); this step counts the frame after that"
+  },
+  {
+   "id": "1.10",
+   "why": "src/server/query-budget.int.test.ts counts the cold frame (keys frame.store and the platform's) in src/server/ratchet.baseline.json; this step lowers them"
+  },
+  {
+   "id": "1.11",
+   "why": "scripts/server-budget.mjs counts the first request of a store's home after a restart"
+  },
+  {
+   "id": "1.12",
+   "why": "the frame's known reads are on the journey test's named exceptions list, which this step empties"
+  },
+  {
+   "id": "2.2",
+   "why": "it changes the store's layout file (the layout sent once); edit the layout as that step left it, and if the files moved under (shop)/ use the new paths"
+  }
+ ],
+ "commits": [
+  {
+   "title": "siteCookies() asks its questions together, and a search reads its rules once",
+   "changes": [
+    {
+     "file": "src/server/site-cookies.ts",
+     "action": "edit",
+     "how": "In siteCookies() (lines 76 to 121) replace the chain of awaits (storeFeatures, getChatAgent, usesRememberedModals, referralPublicSettings, affiliateSite, getRecommendSettings, storeHasExperiments, getPlatformLangs, siteFindings) by one Promise.all that starts each of them with the same condition it has today (storeId === null ? ... : ...; use Promise.resolve(null) or Promise.resolve(false) for the branch that does not apply). Then compute chat, modals, referral, site, affiliate, recommendations, experiments, languages and touch from the answers with the same expressions, and keep the rest of the function (declaredCookies(...), the findings loop) unchanged. No answer changes; 8 or 9 waits in a row become one."
+    },
+    {
+     "file": "src/server/search-rules.ts",
+     "action": "edit",
+     "how": "rulesOf() (line 47): wrap the read in perRequest('search-rules:' + storeId, () => ...today's body...) from './request-memo', so the two callers in one search request (src/components/search-section.tsx line 79 and src/server/search.ts line 342) share one statement. Outside a render perRequest shares nothing. The comment above it ('one small read per search') becomes true."
+    }
+   ],
+   "checks": [
+    "pnpm exec vitest run --config vitest.integration.config.mts src/server/consents.int.test.ts src/server/cookie-scans.int.test.ts src/server/store-features-customers.int.test.ts: pass unchanged",
+    "pnpm exec vitest run src/lib/cookie-consent.test.ts src/lib/cookie-consent-affiliate.test.ts src/lib/cookie-consent-modals.test.ts: pass unchanged",
+    "pnpm lint && pnpm typecheck && pnpm test: each exits 0"
+   ]
+  },
+  {
+   "title": "Running A/B tests are one cached read",
+   "changes": [
+    {
+     "file": "src/server/experiments.ts",
+     "action": "edit",
+     "how": "Add one cached function runningTests(storeId): 'use cache'; cacheLife as the four have today; cacheTag(experimentsTag(storeId)). One statement returning every running test of the store: e.id, e.target_page_id, p.type as target_type (left join commerce.pages p on p.id = e.target_page_id and p.store_id = e.store_id, so a test whose page is gone still counts as running), e.primary_goal, e.goal_params, and variants as jsonb_agg(jsonb_build_object('key', v.key, 'pageId', v.page_id) order by v.key) over commerce.experiment_variants; where e.store_id = the store and e.status = 'running' order by e.id. Read it through typedRows() with col. Then make the four functions plain async functions (remove their 'use cache', cacheLife and cacheTag lines) that filter runningTests(storeId) and return exactly the shapes they return today: experimentOfPage(storeId, pageId) (lines 130 to 153: the test whose target_page_id is pageId; its variants as { key, has_page: pageId !== null }; the same goal fields), storeHasExperiments (155 to 161: length > 0), siteTests (178 to 205: the same mapping and the same 'kind' filter, built from the row's target_type and versions = the variants with a pageId), runningExperimentIds (234 to 240: the ids in order). siteVersionContent() is untouched. Keep each function's JSDoc and add 'a filter over runningTests()'."
+    },
+    {
+     "file": "src/server/experiments.int.test.ts",
+     "action": "edit",
+     "how": "Add one case: with a running test of a page and a running test of a header, the four functions return what they returned before (write the expected values from the fixture), and with countStatements() the four calls together send exactly 1 statement when next/cache is mocked to memoise for the test (or, if the file's mock does not memoise, each call sends exactly the one runningTests statement and no other)."
+    }
+   ],
+   "checks": [
+    "pnpm exec vitest run --config vitest.integration.config.mts src/server/experiments.int.test.ts: passes",
+    "pnpm exec vitest run src/lib/experiments.test.ts src/lib/ab-routing.test.ts src/server/use-cache.scan.test.ts: pass (update the scan's list: four reads gone, one added)",
+    "rg -c '\"use cache\"' src/server/experiments.ts: prints 2 (5 before)",
+    "pnpm lint && pnpm typecheck && pnpm test: each exits 0",
+    "pnpm build && pnpm exec playwright test e2e/ab-front-pages.spec.ts: passes (and the other A/B specs: rg -l 'experiment|A/B' e2e)"
+   ]
+  },
+  {
+   "title": "Site facts: one statement for what the frame asks about a site's optional features",
+   "changes": [
+    {
+     "file": "src/server/site-facts.ts",
+     "action": "create",
+     "how": "Server-only. export type SiteFacts = { features: string[] | null; visitCounting: boolean; chat: boolean; modals: boolean; referral: { enabled: boolean; cookieDays: number } | null; affiliate: { capture: boolean; captureDays: number } | null; recommendations: boolean; experiments: boolean; platformLangs: number; scanItems: ScannedItem[]; notes: CookieNote[] }. export async function siteFacts(storeId: string | null): Promise<SiteFacts>: 'use cache'; cacheLife('hours'); cacheTag with the union of the tags of the readers it replaces, each copied from its reader: cookiesTag(storeId) (storeFeatures, siteFindings), chatTag(storeId) (getChatAgent), pagesTag(storeId) (usesRememberedModals), and for a store affiliateTag(storeId), recommendTag(storeId), experimentsTag(storeId); for the platform REFERRALS_TAG and LANGUAGES_TAG. One statement built from scalar subqueries, each copied from its reader's own SQL with the same filter: (select features from commerce.stores where id = S) and visit_counting (null for the platform); exists (select 1 from commerce.chat_agents where <owned(storeId)> and enabled) (open toAgent() in src/server/chat-agent.ts to confirm the column that 'enabled' reads); exists (select 1 from commerce.pages where <owner filter> and remembered_modal); for a store the affiliate columns exactly as affiliateSite() selects them (affiliate_program_on, creator_program_on, the two cookie_days) so that capture and captureDays are computed in code by the same lines as affiliateSite() (move those lines into a small exported pure function in src/server/affiliates.ts and call it from both); (select enabled from commerce.recommendation_settings where store_id = S); exists (select 1 from commerce.experiments where store_id = S and status = 'running'); for the platform the referral settings as referralPublicSettings() reads them and the count of enabled platform languages as getPlatformLangs() counts them; (select items from commerce.cookie_scans where <owner filter> and status = 'done' order by finished_at desc limit 1); and the cookie notes as (select coalesce(jsonb_agg(jsonb_build_object('kind', kind, 'name', name, 'domain', domain, 'category', category, 'provider', provider, 'purpose', purpose) order by name), '[]'::jsonb) from commerce.cookie_notes where <owner filter>). Parse scan items with parseScannedItems() and notes with cookieNoteInput as readNotes() does. Read through typedRow() with col. Header comment: which readers it folds, that it keeps exactly their tags, and that the per-feature readers stay for their own screens."
+    },
+    {
+     "file": "src/server/site-cookies.ts",
+     "action": "edit",
+     "how": "siteCookies() reads const f = await siteFacts(storeId) in place of the Promise.all of the first commit and computes: features = f.features; chat = f.chat; modals = f.modals; referral = f.referral; site/affiliate from f.affiliate; recommendations = f.recommendations; experiments = f.experiments; languages = storeId === null ? f.platformLangs > 1 : Boolean(features && featureOn(features, 'languages')); touch as today from f.visitCounting; items and notes from f.scanItems and f.notes. Delete storeFeatures() and siteFindings() only if rg shows no other caller (rg -n 'storeFeatures\\(|siteFindings\\(' src); keep readNotes() and listCookieNotes (the admin uses it). The signature and the result of siteCookies() do not change, so its four callers (site-consent.tsx, cookies-section.tsx, platform-routes/cookies.tsx, cookie-scans.ts) are untouched."
+    },
+    {
+     "file": "src/server/site-facts.int.test.ts",
+     "action": "create",
+     "how": "Int test, fixture copied from src/server/consents.int.test.ts. (1) For a store with no feature on, and then after each switch (chat agent enabled, a remembered modal published, the affiliate programme on, recommendations on, a running A/B test, visit counting on, a finished scan with one item, one cookie note), siteFacts(storeId) equals what the old readers say: f.chat === ((await getChatAgent(storeId))?.enabled ?? false), f.modals === await usesRememberedModals(storeId), f.affiliate equals { capture, captureDays } of affiliateSite(storeId), f.recommendations === (await getRecommendSettings(storeId)).enabled, f.experiments === await storeHasExperiments(storeId), notes equal listCookieNotes(storeId). (2) The same for the platform (null): referral equals referralPublicSettings(), platformLangs equals (await getPlatformLangs()).length. (3) With countStatements(): siteCookies(storeId, tracking) for the plain store sends at most 4 statements, and siteFacts() itself exactly 1."
+    }
+   ],
+   "checks": [
+    "pnpm exec vitest run --config vitest.integration.config.mts src/server/site-facts.int.test.ts src/server/consents.int.test.ts src/server/cookie-scans.int.test.ts src/server/store-features-customers.int.test.ts: pass, the three old files unchanged",
+    "pnpm exec vitest run src/server/use-cache.scan.test.ts src/server/tag-writers.scan.test.ts: pass (site-facts carries six tags; if step 2.15's scan is in, add the read to the families whose tables it reads)",
+    "pnpm lint && pnpm typecheck && pnpm test: each exits 0",
+    "pnpm build && pnpm exec playwright test e2e/cookies.spec.ts e2e/cookie-scan.spec.ts: pass unchanged"
+   ]
+  },
+  {
+   "title": "The store's layout starts its reads in one wave",
+   "changes": [
+    {
+     "file": "src/app/s/[store]/[market]/layout.tsx",
+     "action": "edit",
+     "how": "(1) Add textStylesCssFor(store.id) to the Promise.all at lines 123 to 128 (name the result textStyles) and use it at line 166: <CustomCss css={textStyles} .../>. No 'await' may remain inside the JSX of this file (rg -n 'await' in the returned JSX prints nothing). (2) Remove legalLinksFor(store, market, afterSale) from that Promise.all and the 'legal={legalLinks}' prop at about line 196; pass 'afterSale={afterSale}' to StoreFooter instead. (3) If afterSaleOpenCached() is awaited before the Promise.all only for a website (line 119), leave it: it is one cached read that the other reads' arguments need."
+    },
+    {
+     "file": "src/components/store-layout.tsx",
+     "action": "edit",
+     "how": "StoreFooter (about line 467): make it an async function; replace its prop 'legal' by 'afterSale: boolean' and read const legal = await legalLinksFor(store, market, afterSale) as its first line (import legalLinksFor from '@/server/legal-links'). A store with a built footer never draws StoreFooter, so it no longer reads the legal links. Find other callers that pass 'legal' (rg -n '<StoreFooter' src) and change them the same way; a test that draws StoreFooter synchronously must await it or mock legalLinksFor."
+    },
+    {
+     "file": "src/app/s/[store]/[market]/page.tsx",
+     "action": "edit",
+     "how": "In the page function (about line 62 to 68) the front page (load()), the products and the campaign notices are read one after another. Start listProducts(store.id, market) and campaignNotices(store.id, market) (only when selling, as today) in the same Promise.all as nothing else they depend on: they need only store and market, which load() returns, so keep load() first and make sure the two are in one Promise.all (they are today at line 68) and that placePageForVisitor() inside load() is not awaited after them. If step 0.24 and 2.19 already changed these lines, leave them: the rule is one Promise.all for reads that need only store and market."
+    },
+    {
+     "file": "src/server/{query-budget.int.test.ts}",
+     "action": "edit",
+     "how": "The file is src/server/query-budget.int.test.ts, made by an earlier step of the plan (it does not exist before that step; if it is missing, that step is not done: stop). The cold-frame part (Part D) calls the readers the layout awaits, in the layout's order: update the list to match the layout after this commit (text styles in the wave; legal links read inside the footer; siteCookies through siteFacts). Add a named measure 'siteCookies.store' around siteCookies(demo.id, demo.tracking). Then lower the baseline: UPDATE_BASELINE=1 pnpm exec vitest run --config vitest.integration.config.mts src/server/query-budget.int.test.ts (never type the numbers). After the run open src/server/ratchet.baseline.json: queryBudget.one['frame.store'].statements must be 5 or lower and 'siteCookies.store' 4 or lower. If frame.store is above 5, print the statements (the counter's records) and fold in this order, one at a time, re-measuring after each: (a) header and footer in one statement: a function siteLayoutsFor(storeId) in src/server/site-layouts.ts that selects both rows (header_id and footer_id) and returns { header, footer }, cached with the tags of siteLayoutFor() for both pages, with siteLayoutFor(storeId, type) kept as a filter over it; (b) the store's menus and their page titles in one statement if they are two; (c) fonts and text styles in one statement if both are a store's rows. Stop after the fold that reaches 5. Do the same count for the platform's frame key and record it; it has no bar here beyond 'falls'."
+    },
+    {
+     "file": "src/server/ratchet.baseline.json",
+     "action": "edit",
+     "how": "Written by the UPDATE_BASELINE run above. Also empty the journey test's named exceptions list of the frame's reads (step 1.12: run its int test with its update switch; the list may only shrink)."
+    }
+   ],
+   "checks": [
+    "pnpm exec vitest run --config vitest.integration.config.mts src/server/query-budget.int.test.ts: passes with frame.store at 5 or fewer and siteCookies.store at 4 or fewer",
+    "pnpm exec vitest run src/lib/pay-routes.graph.test.ts: passes (the layout's imports did not change kind)",
+    "pnpm lint && pnpm typecheck && pnpm test: each exits 0",
+    "pnpm test:int: exits 0",
+    "pnpm build && node scripts/render-modes.mjs: passes unchanged (the footer's read is cached, so the home stays as it was; if /s/demo/no changes mode, stop)",
+    "pnpm exec playwright test e2e/site-layouts.spec.ts e2e/store-pages.spec.ts e2e/legal-pages.spec.ts e2e/cookies.spec.ts: pass",
+    "node scripts/server-budget.mjs --write, then node scripts/server-budget.mjs: passes; the line for the first request of a store's home after a restart reads 20 or fewer (30 to 35 before). If the script has no such line, add the measure to it: restart the server, request /s/demo/no once, count."
+   ]
+  },
+  {
+   "title": "Docs: the frame's reads",
+   "changes": [
+    {
+     "file": "docs/rules/storefront.md",
+     "action": "edit",
+     "how": "At the cookie consent rule (the line that names siteCookies(), about line 627) add: siteCookies() reads one site-facts statement (src/server/site-facts.ts) that carries the tags of the readers it folds (cookies, chat, pages, affiliate, recommendations, experiments); a new optional feature the banner must know about adds a field there and its tag, not a new read. Add near the layout's rule: the store layout awaits one Promise.all before <html> and nothing inside its JSX."
+    },
+    {
+     "file": "docs/ab-testing.md",
+     "action": "edit",
+     "how": "Where it names experimentOfPage(), storeHasExperiments(), siteTests() and runningExperimentIds() as cached readers, say they are filters over one cached read, runningTests()."
+    },
+    {
+     "file": "docs/decisions.md",
+     "action": "edit",
+     "how": "Append one row with the next free D-number (pull main first; rg -o '^\\| D[0-9]+' docs/decisions.md | tr -dc '0-9\\n' | sort -n | tail -1, plus 1): site facts and the tags it keeps, the one read of running tests, the layout's one wave with the legal links read by the standard footer, a search's rules shared per request, which folds (a to c) were needed, and the counts before and after for the store's and the platform's frame."
+    },
+    {
+     "file": "docs/audits/bloat-review-2026-11.md",
+     "action": "edit",
+     "how": "Progress table: row 2.18 to Done with the date, the commits and the three counts (frame, siteCookies, first home request); one change-log line."
+    }
+   ],
+   "checks": [
+    "pnpm lint: exits 0"
+   ]
+  }
+ ],
+ "tests": [
+  {
+   "file": "src/server/query-budget.int.test.ts",
+   "proves": "It fails when a store's cold frame sends more than 5 statements with no feature on, or siteCookies() more than 4, or the platform's frame more than its recorded count."
+  },
+  {
+   "file": "src/server/site-facts.int.test.ts",
+   "proves": "It fails when a site fact disagrees with the per-feature reader it replaced, for a store and for the platform."
+  },
+  {
+   "file": "src/server/experiments.int.test.ts",
+   "proves": "It fails when one of the four questions about running tests answers differently or sends a statement of its own."
+  },
+  {
+   "file": "scripts/server-budget.json",
+   "proves": "CI's e2e job fails when the first request of a store's home after a restart sends more than 20 statements."
+  }
+ ],
+ "migration": {
+  "needed": false,
+  "notes": ""
+ },
+ "done_when": [
+  {
+   "check": "pnpm exec vitest run --config vitest.integration.config.mts src/server/query-budget.int.test.ts, then node -e \"const b=require('./src/server/ratchet.baseline.json').queryBudget.one;console.log(b['frame.store'],b['siteCookies.store'])\"",
+   "expect": "Passes; frame.store statements 5 or fewer (about 20 before), siteCookies.store 4 or fewer (8 or 9 before)."
+  },
+  {
+   "check": "pnpm build && node scripts/server-budget.mjs",
+   "expect": "The first request of a store's home after a restart: 20 statements or fewer (30 to 35 before)."
+  },
+  {
+   "check": "The shop-only journey int test of step 1.12 (pnpm test:int)",
+   "expect": "Passes with no frame read left on its named exceptions list."
+  },
+  {
+   "check": "rg -c '\"use cache\"' src/server/experiments.ts",
+   "expect": "2."
+  }
+ ],
+ "after_deploy": [
+  "Platform, Usage and limits (step 1.25): statements per store page draw fall; the cold-start figures of step 1.16 for a store page do not rise.",
+  "On a test store in production switch the chat agent on, then off: the consent banner's categories follow on the next view (one check per switch: chat, recommendations, an A/B test, the affiliate programme).",
+  "A week later in pg_stat_statements: the statement with jsonb_path_exists over commerce.pages is gone from the 40 costliest."
+ ],
+ "docs": [
+  "docs/rules/storefront.md, docs/ab-testing.md, docs/decisions.md and the Progress row, as the last commit says.",
+  "docs/platform-parity.md: nothing to tick; the platform's frame reads siteFacts(null) in the same commit."
+ ],
+ "do_not": [
+  "Do not drop a tag from siteFacts(): it carries every tag of the readers it folds, or a banner would not follow a feature switch.",
+  "Do not delete getChatAgent(), usesRememberedModals(), affiliateSite(), getRecommendSettings() or referralPublicSettings(): their own screens and parts still call them.",
+  "Do not add store-level flag columns or hide a feature to save a read.",
+  "Do not add a remote cache handler for these reads.",
+  "Do not move the consent, chat or affiliate parts out of MarketExtras or out of their Suspense boundaries (src/lib/pay-routes.graph.test.ts).",
+  "Do not answer the proxy from older facts here (D339's 10-second bound); the proxy is step 2.20."
+ ],
+ "stop_if": [
+  "consents.int.test.ts, cookie-scans.int.test.ts or store-features-customers.int.test.ts must be changed to pass.",
+  "frame.store is still above 5 after folds (a), (b) and (c): report the list of statements; do not fold further.",
+  "scripts/render-modes.mjs reports a changed mode or more holes for a store page after the footer became async.",
+  "A reader folded into siteFacts() has a caller that needs a field siteFacts() does not carry and was deleted by mistake.",
+  "The layout file is not as described (step 2.2 rewrote the reads): apply the rule (one Promise.all, no await in JSX, legal links in the standard footer) and say what differed."
+ ],
+ "executor": "strong",
+ "executor_why": "Reaching 5 statements means choosing which reads to fold after measuring, and the site-facts statement must reproduce six readers' SQL and tags exactly; the first two commits (the Promise.all, the shared rules read, the one read of running tests) are mechanical and can go to the cheap model.",
+ "checked_in_code": "I opened site-cookies.ts (siteCookies() awaits storeFeatures, getChatAgent, usesRememberedModals, referralPublicSettings or affiliateSite, getRecommendSettings, storeHasExperiments, getPlatformLangs, then siteFindings in a row: as DQ-7 says), the market layout (the Promise.all at 123 to 128 without text styles, 'await textStylesCssFor' inside the JSX at 166, legal links read for every footer), experiments.ts (four cached questions at 130, 155, 178 and 234 plus siteVersionContent) and search-rules.ts. SD-9's 'search_rules read twice' is rulesOf() called from search-section.tsx line 79 and search.ts line 342, not lines 51 and 88 of search-rules.ts as the finding says; the brief shares it per request. SD-5's step 3 (passing the store's features down to siteCookies) is dropped in favour of DQ-7's one site-facts read, which the plan names; the two cannot both be done."
+}
