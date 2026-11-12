@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { IDEMPOTENT_NAMES, isReadOnly, MCP_TOOLS, mcpCatalogue, OPEN_WORLD, OWNER_KEY_READS, toolAnnotations, toolPermission, toolTitle } from "./mcp-catalogue";
+import { IDEMPOTENT_NAMES, isReadOnly, mcpTools, mcpCatalogue, OPEN_WORLD, OWNER_KEY_READS, toolAnnotations, toolPermission, toolTitle } from "./mcp-catalogue";
 import { OWNER_TOOLS, OWNER_TOOLS_BY_NAME, toolDefinition } from "./owner-tools";
 import { TOOL_FEATURES } from "./owner-tool-features";
 import { AGENT_TOOLS } from "./shopping-agents";
@@ -12,8 +12,8 @@ import { ucpCatalogue, UCP_TOOLS } from "./ucp-catalogue";
  */
 describe("the owner MCP's annotations", () => {
   it("gives every tool a title and every hint", () => {
-    expect(MCP_TOOLS).toHaveLength(OWNER_TOOLS.length + 3);
-    for (const tool of MCP_TOOLS) {
+    expect(mcpTools()).toHaveLength(OWNER_TOOLS.length + 3);
+    for (const tool of mcpTools()) {
       expect(tool.title, tool.name).toMatch(/^[A-Z][A-Za-z' ]+[A-Za-z]$/);
       expect(tool.title, tool.name).not.toContain("_");
       expect(Object.keys(tool.annotations).sort(), tool.name).toEqual(["destructiveHint", "idempotentHint", "openWorldHint", "readOnlyHint"]);
@@ -52,7 +52,7 @@ describe("the owner MCP's catalogue", () => {
   const catalogue = mcpCatalogue();
 
   it("publishes every tool as tools/list does, with its gate, permission and feature", () => {
-    expect(catalogue.tools.map((t) => t.name)).toEqual(MCP_TOOLS.map((t) => t.name));
+    expect(catalogue.tools.map((t) => t.name)).toEqual(mcpTools().map((t) => t.name));
     for (const own of OWNER_TOOLS) {
       const listed = catalogue.tools.find((t) => t.name === own.name)!;
       const { parameters } = toolDefinition(own);

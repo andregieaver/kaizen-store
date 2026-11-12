@@ -482,13 +482,13 @@ describe("custom fields in the AI manager (D118)", () => {
       kept_for_approval: true,
       what: expect.stringContaining("Set the custom fields of the product"),
     });
-    expect(mcp.MCP_TOOLS.find((t) => t.name === "set_fields")).toMatchObject({
+    expect(mcp.mcpTools().find((t) => t.name === "set_fields")).toMatchObject({
       description: expect.stringContaining("kept for the owner to approve"),
     });
-    expect(mcp.MCP_TOOLS.find((t) => t.name === "get_fields")?.inputSchema).toMatchObject({
+    expect(mcp.mcpTools().find((t) => t.name === "get_fields")?.inputSchema).toMatchObject({
       // The item is left out for the store itself (D120).
       required: ["store", "entity"],
     });
-    expect(mcp.MCP_TOOLS.find((t) => t.name === "list_field_groups")).toBeTruthy();
+    expect(mcp.mcpTools().find((t) => t.name === "list_field_groups")).toBeTruthy();
   });
 });

@@ -117,8 +117,10 @@ function withStore(tool: OwnerTool): McpToolInfo {
   return { name: tool.name, title: toolTitle(tool.name), description: `${tool.description}${gate}`, inputSchema: { ...parameters, properties, required }, annotations: toolAnnotations(tool) };
 }
 
-/** Every tool of the owner MCP (`/api/mcp`): the three of its own, then every owner tool with the store it is for. */
-export const MCP_TOOLS: McpToolInfo[] = [
+let tools: McpToolInfo[] | undefined;
+
+/** Every tool of the owner MCP (`/api/mcp`): the three of its own, then every owner tool with the store it is for. Built on first use, not at import (bloat review step 0.5). */
+export const mcpTools = (): McpToolInfo[] => (tools ??= [
   {
     name: "list_stores",
     title: "List stores",
@@ -156,7 +158,7 @@ export const MCP_TOOLS: McpToolInfo[] = [
     annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
   },
   ...OWNER_TOOLS.map(withStore),
-];
+]);
 
 /** The owner MCP's catalogue (`/api/mcp/catalogue.json`): no store's data, only what each tool is, needs and does. */
 export function mcpCatalogue() {
@@ -165,7 +167,7 @@ export function mcpCatalogue() {
     server: { endpoint: "/api/mcp", transport: "streamable-http", protocol_version: "2025-06-18" },
     description:
       "The tools of a store owner's MCP server. Every tool but list_stores and work_summary takes the store it is for. A tool with a gate changes nothing from here: the change is kept for the owner to approve in Kaizena Flow's admin. A tool stands behind a store feature when it names one, and needs the permission it names in that store. With an OAuth token from Kaizena Flow (D439), a call also needs that permission as a scope of the token's grant (list_stores needs stores:read), and the person's own role decides at every call.",
-    tools: MCP_TOOLS.map((t) => {
+    tools: mcpTools().map((t) => {
       const own = byName.get(t.name);
       const feature = own && Object.hasOwn(TOOL_FEATURES, own.name) ? TOOL_FEATURES[own.name as keyof typeof TOOL_FEATURES] : undefined;
       return {

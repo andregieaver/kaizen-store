@@ -322,8 +322,8 @@ describe("refusals before anything is kept for a yes", () => {
   });
 
   it("is refused for Kaizen Life's assistant too, over the store's MCP server", async () => {
-    expect(mcp.MCP_TOOLS.find((t) => t.name === "list_returns")).toBeTruthy();
-    expect(mcp.MCP_TOOLS.find((t) => t.name === "approve_return")?.inputSchema).toMatchObject({ properties: { store: expect.anything(), return: expect.anything() } });
+    expect(mcp.mcpTools().find((t) => t.name === "list_returns")).toBeTruthy();
+    expect(mcp.mcpTools().find((t) => t.name === "approve_return")?.inputSchema).toMatchObject({ properties: { store: expect.anything(), return: expect.anything() } });
     const caller = { account: member.account, stores: [{ slug: member.store.slug, name: member.store.name }], via: { kind: "kaizen-life" } } as unknown as Parameters<typeof mcp.callMcpTool>[0];
     const refused = await mcp.callMcpTool(caller, "decline_return", { store: member.store.slug, return: w1.number, reason: "No." }, () => {});
     expect(refused.isError).toBe(true);

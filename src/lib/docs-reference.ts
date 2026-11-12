@@ -9,7 +9,7 @@ import { ADMIN_API, errorsOf } from "./admin-api-routes";
 import { API_ERROR_WORDS, SCOPE_TEXT } from "./admin-openapi";
 import type { DocArea } from "./docs-content";
 import type { DocsReferenceItem } from "./docs-index";
-import { MCP_TOOLS } from "./mcp-catalogue";
+import { mcpTools } from "./mcp-catalogue";
 import { UCP_TOOLS } from "./ucp-catalogue";
 import { WEBHOOK_TOPICS, type WebhookSubjectName } from "./webhook-topics";
 
@@ -78,7 +78,7 @@ export function docsReferenceItems(): DocsReferenceItem[] {
     text: `${t.description} Sent to ${t.receivers.join(" and ")}.`,
     areas: unique<DocArea>(["webhooks", SUBJECT_AREAS[t.subject]]),
   }));
-  const tools = MCP_TOOLS.map((t) => ({ item: "tool" as const, id: t.name, title: t.title, code: t.name, text: t.description, areas: ["mcp"] as DocArea[] }));
+  const tools = mcpTools().map((t) => ({ item: "tool" as const, id: t.name, title: t.title, code: t.name, text: t.description, areas: ["mcp"] as DocArea[] }));
   const agentTools = UCP_TOOLS.map((t) => ({
     item: "agent-tool" as const,
     id: t.name,

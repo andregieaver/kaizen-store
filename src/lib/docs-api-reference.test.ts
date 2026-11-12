@@ -18,7 +18,7 @@ import { compileDocs, resolveDocLink, type DocSource } from "./docs-content";
 import { parseMarkdown, type DocHref } from "./docs-markdown";
 import { docsReferenceItems } from "./docs-reference";
 import { docRefPageMarkdown } from "./docs-text";
-import { MCP_TOOLS } from "./mcp-catalogue";
+import { mcpTools } from "./mcp-catalogue";
 import { jsonSchemaOf } from "./openapi";
 import { looksLikeApiCartKey, isHandle, STOREFRONT_ROUTES } from "./storefront-api";
 import { UCP_TOOLS } from "./ucp-catalogue";
@@ -100,7 +100,7 @@ describe("the generated reference (D442, E4)", () => {
       expect(page("reference/webhooks").markdown).toContain(`[\`${topic.id}\`](/docs/${path})`);
     }
     const mcp = reference.pages.filter((p) => p.parent === "reference/mcp");
-    for (const tool of MCP_TOOLS) expect(mcp.some((p) => p.headings.some((h) => h.id === tool.name.replace(/_/g, "-"))), tool.name).toBe(true);
+    for (const tool of mcpTools()) expect(mcp.some((p) => p.headings.some((h) => h.id === tool.name.replace(/_/g, "-"))), tool.name).toBe(true);
     for (const tool of UCP_TOOLS) expect(headingIds("reference/mcp/shopping-agents")).toContain(tool.name.replace(/_/g, "-"));
     for (const scope of API_SCOPES) expect(headingIds("reference/scopes")).toContain(anchorOf(scope));
     for (const code of Object.keys(API_ERRORS)) expect(headingIds("reference/errors")).toContain(code.replace(/_/g, "-"));

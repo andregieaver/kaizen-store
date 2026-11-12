@@ -69,7 +69,7 @@ describe("the store's MCP tools for Kaizen Life, over the account link (D96, D51
   });
 
   it("lists every tool with the store it is for, and answers from the owner's stores only", async () => {
-    expect(mcp.MCP_TOOLS.find((t) => t.name === "sales_summary")?.inputSchema).toMatchObject({ required: ["store"] });
+    expect(mcp.mcpTools().find((t) => t.name === "sales_summary")?.inputSchema).toMatchObject({ required: ["store"] });
     // tools/list answers each tool's title and MCP annotations too (D438).
     const listed = await mcp.mcpToolsFor(caller!);
     expect(listed.find((t) => t.name === "sales_summary")).toMatchObject({ title: "Sales summary", annotations: { readOnlyHint: true, destructiveHint: false } });
