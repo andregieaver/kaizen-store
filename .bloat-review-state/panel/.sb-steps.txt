@@ -1,0 +1,203 @@
+
+=== 0.8 [M] Make a language translated by AI cost what it uses: at start, per document and per minute
+areas: server,text,shopper-browser,database
+closes: SG-5,SF-3,SD-7,TX-3,TX-12,TX-6,SC-13,PL-9,DQ-12,DS-2,CA-12
+from: ["W-server-9","W-text-3","W-shopper-browser-9","W-database-19","W-server-46"]
+WHAT: The start hook (src/instrumentation.ts) loads 856 modules, among them the translating tools, ai.ts and auth.ts, then reads every AI-translated language whole before the first request, and each instance polls the table every minute. Split the interface-text reader from the translating tools. Read at start with two statements, whatever the number of languages, and build a language on first read. Poll a one-row version stamp every ten minutes, only where such a language is served. uiTextsFor() sends the browser its 114 texts, not all 1,673: 93 KB to under 9 KB in every document of such a store. The search-cache prune that the same finding names leaves the five-minute list in step 0.31.
+DONE: In src/server/languages.int.test.ts uiTextsFor(lang) holds exactly the 114 browser keys in under 9,000 bytes for a fully translated language (92,809 today), a unit test shows startUi() issuing 2 statements, and the import walker of step 0.1 counts 60 source files or fewer behind src/instrumentation.ts (383 today) with no src/server/ai.ts.
+PLATFORM: Kaizena Flow's own site in more than one language (D312) reads through the same reader, so it gains the same start and the same document.
+
+=== 0.12 [S] Stop prefetching what a press cannot use on stores and on Kaizena Flow's site
+areas: shopper-browser,owner-browser,server,styles
+closes: PF-2,PL-3,SC-1,PF-11,PL-4,BN-2,CA-4,CS-8
+from: ["W-shopper-browser-3","W-owner-browser-8","W-server-20","W-styles-3"]
+WHAT: Set prefetch off on the language, currency and country links (src/components/view-menu.tsx: a press never opens the page they fetch), on links that leave their root layout, on the footer's legal links and on the six links from Kaizena Flow's pages to /admin and to stores. Today a phone home page read to the footer makes 47 router requests, 24 of them for other views, and Kaizena Flow's front page fetches two /admin answers, six admin scripts and the admin's stylesheet.
+DONE: e2e/prefetch.spec.ts (new) passes with 0 router prefetch requests for another view on the phone home read to the footer (24 today) and at most 23 in all (47), 0 on the /s/demo front door (12 today), and 0 requests to /admin after loading / (2 and one stylesheet today).
+PLATFORM: Kaizena Flow's own front page is the page that stops fetching /admin.
+
+=== 0.13 [M] Fetch the admin's rail and list rows when a link is pointed at
+areas: owner-browser,shopper-browser,server
+closes: CA-5,PF-5,PF-6,AC-12
+from: ["W-server-21","W-shopper-browser-17","W-owner-browser-13"]
+WHAT: An admin screen makes 23 to 46 router requests at rest, and about 25 again after every save, to fetch nearly the same loading skeleton twelve times. Add AdminLink (src/components/admin/ui/link.tsx) on a small PolicyLink with the policy 'intent', and use it in the rail, the store menu, the account menus and the rows of every list: a link is fetched when the pointer or focus reaches it. View store is never fetched, since the press leaves the admin. A touch or keyboard press then shows the pending bar for one round trip before the skeleton. Step 2.6 later widens PolicyLink to the storefront.
+DONE: e2e/signed-in/prefetch.spec.ts (new) counts 0 router prefetch requests in the 3 s after the admin home loads (28 today), at most 2 after hovering one rail link, and 0 for product editors after the Products list loads (8 on a four-row list today).
+PLATFORM: The platform admin's rail and lists are the same components.
+
+=== 0.14 [S] End the prefetch loop on /s/ addresses, and write both router settings down
+areas: shopper-browser,server
+closes: PF-1,SC-9,CA-6,CA-7
+from: ["W-shopper-browser-2","W-server-22","W-server-23"]
+WHAT: On the local build and in CI, listing and search pages at /s/{store} addresses ask for one link's @drawer/[...rest] segment about 165 times a second without end. Set optimisticRouting: false in next.config.ts, with the reason and when it may go, and hold it with a spec that counts requests after load. Write partialPrefetching: false beside it as a recorded choice: unset, Next warns on every build and start, and the next major release will choose for the app. Step 2.8 decides whether to adopt it.
+DONE: e2e/prefetch.spec.ts 'a store page goes quiet' passes in CI's e2e job on its three pages (fewer than 60 router prefetch requests in the 3 s after load and none in the next 2 s; the search page makes 624 in 4 s today), and pnpm build prints no partialPrefetching warning.
+PLATFORM: The platform has no listing at an /s/ address of its own; load the theme store's list in the same spec.
+
+=== 0.15 [M] Make no server call after load for a visitor with nothing to fetch
+areas: shopper-browser,server,surface
+closes: SC-10,PL-7,SD-15,SC-12,PL-8,SD-14,PL-14
+from: ["W-shopper-browser-4","W-server-17","W-shopper-browser-5","W-server-16","W-shopper-browser-6"]
+WHAT: Every store page asks /wishlist/saved, a function call and a proxy run for a 15-byte answer: ask only when a marker cookie says the visitor has saved something, and list the cookie in KNOWN_COOKIES. Every page with a product grid loads the tile island and asks /api/shop/tiles for stock with three statements, though both tile switches are off by default: draw no island and make no call while they are off. The search results page posts for suggestions nobody typed for: ask after a key or a focus.
+DONE: docs/audits/bloat-review-2026-11/scripts/measure-routes.mjs lists 0 requests of the page's own after load on all 12 store pages for a new visitor with the tile switches off (one or two on each today: /wishlist/saved on all 12, /api/shop/tiles on two, a POST on the search page), each held by an assertion in e2e/wishlist.spec.ts, e2e/shop-components.spec.ts and e2e/search.spec.ts.
+PLATFORM: Store-only by the house rule's exception: Kaizena Flow sells plans, not goods, so its site has no wishlist, tile stock or product search to call for.
+
+=== 0.16 [M] Send shoppers' first scripts only what the page draws
+areas: shopper-browser,owner-browser,text,page-model
+closes: SC-3,PL-10,BN-10,TX-5,TX-8,SC-11,SC-4,PM-11
+from: ["W-shopper-browser-7","W-owner-browser-10","W-text-2","W-shopper-browser-23","W-shopper-browser-8","W-page-model-5"]
+WHAT: Every store route's first scripts carry the admin's common words, the features table, the purposes of 38 cookies in four languages, an unused library, and small parts a plain page never draws (the theme preview stage, the platform's language switch). Split the cookie patterns from their texts (src/lib/cookie-patterns.ts), keep the admin's words and the features table on the server, and load the filter dialog only where a listing draws it. On the product page move cartView() to a server file, so the cart's forms leave its scripts, and load a picker only for the product's own kind.
+DONE: The script tags of the server's HTML, nomodule left out, total at most 615,000 bytes raw for /s/demo/no (680,264 today) and at most 690,000 for /s/demo/no/p/demo-keramikkopp (777,785), the product page's own entry chunks total at most 297,000 bytes (315,368), and none of them holds 'Sell to businesses', 'Waiting for payment' or 'Kommer ihåg om du valde ljusa'.
+PLATFORM: Kaizena Flow's site pages share these first scripts and lose the same 48 to 65 KB.
+
+=== 0.32 [S] Serve pictures as stored, and give every file with a fixed address a long lifetime
+areas: code,shopper-browser
+closes: AS-4,AS-9,AS-12,AS-5
+from: ["W-code-8","W-code-9"]
+WHAT: Search suggestions ask Next's image service for uploaded pictures and get a 400, so real stores would show empty thumbnails: set images: { unoptimized: true } in next.config.ts, which also closes the open /_next/image endpoint. Give every file with a fixed address a long lifetime: cacheControl on all 9 uploadToSignedUrl calls, the font file route kept at the CDN, public files a day. Fetch no hidden flag, and slim the six flags to under 20 KB. A lifetime is fixed when a file is stored, so this is cheapest before any library exists.
+DONE: On the built app /_next/image answers 404 (200 today), the new assertion in e2e/search.spec.ts shows a suggested product's uploaded thumbnail, rg -n 'uploadToSignedUrl' src/components shows cacheControl on all 9 calls (0 today), a second request for a font file in production answers x-vercel-cache: HIT, and du -cb public/flags/* is under 20 KB (176 KB today).
+PLATFORM: Kaizena Flow's own media library and the theme photographs are stored through the same uploads and get the same lifetimes.
+
+=== 0.33 [M] Keep an 800 px copy of every picture
+areas: code,shopper-browser
+closes: AS-11
+from: ["W-code-29"]
+WHAT: Each picture is kept at 480 and 1,600 px, so a 3x phone and a Retina laptop take the 1,600 px file for a product tile: 71 KB where 18 KB would do. Add medium_url and medium_path to commerce.media, make the 800 px copy in the owner's browser and wherever the server makes a 480 px one, and write it into the picture's sources. A picture without a middle copy behaves as today. A size is fixed when a file is stored, so this is cheapest before real libraries exist.
+DONE: The new test in e2e/performance.spec.ts shows the first product tile's currentSrc is the 800 px file at 390 px and 3x (the 1,600 px file today).
+PLATFORM: The theme photographs and Kaizena Flow's own pictures get the middle copy through the same pipeline.
+
+=== 1.2 [S] Hold every route's first scripts
+areas: owner-browser,shopper-browser
+closes: AC-10,BN-11
+from: ["W-owner-browser-1"]
+WHAT: Budgets watch 15 of 560 routes: 9 of the admin's 449, and none of its worst four. scripts/bundle-budget.mjs reads .next/diagnostics/route-bundle-stats.json after each build against a baseline of all 560 routes, with 15,000 bytes of room each, and CI runs it. When a route's figure falls, the baseline is lowered in the same change. It holds first scripts by route: the owner's browser measures 1, 3 and 8, and the shopper's measure 8.
+DONE: node scripts/bundle-budget.mjs exits 0 in CI with a baseline of all 560 routes, and fails on a branch that adds a 20 KB import to one admin route.
+PLATFORM: The baseline lists every route, so /admin/platform's screens and Kaizena Flow's public pages are held like a store's.
+
+=== 1.3 [M] Hold documents, stylesheets and requests on real store pages
+areas: shopper-browser,page-model,styles
+closes: SC-6,PL-13,PM-14,CS-3
+from: ["W-shopper-browser-1","W-page-model-1","W-styles-1"]
+WHAT: The visitor's budget counts a legacy file no modern browser loads, on 2 store routes with 14 to 16% of room, and no document, stylesheet or request count is held. e2e/performance.spec.ts, edited once, counts the server's script tags without nomodule on 8 store routes within 3%. It holds document and payload bytes on 5 routes within 5%, one of them a six-row, 31-block page made from Orbit's home. It holds stylesheet bytes on 3 routes within 4%, the admin's two sheets among them, inline style text, and the fetches a page makes after load. e2e/prefetch.spec.ts keeps one table of router-request budgets for the store home, a product page, a listing, the cart and the front door, each at its measured count plus 2, and checks that each page goes quiet. The ratchet gains two counts that only fall: statements that select a whole page document, and places that refresh a store's whole pages tag. It holds the shopper's browser measures 1 to 4 and 8, the page model's measures 3 and 5, and the styles' measures 1, 3 and 6.
+DONE: e2e/performance.spec.ts holds first-scripts budgets for 8 storefront routes within 3%, document budgets on 5 routes and stylesheet budgets on 3; e2e/prefetch.spec.ts holds a request budget for five pages; and src/server/ratchet.baseline.json holds the two new counts.
+PLATFORM: Kaizena Flow's front page is one of the pages with a document budget and a request budget.
+
+=== 1.6 [M] Put a launch-theme store into the measured set
+areas: shopper-browser,page-model,styles
+closes: GAP-shopper-browser-1,GAP-page-model-3,GAP-styles-1
+from: []
+WHAT: All 12 measured store pages are the bare template: no font file, one-row pages and pictures of about 1 KB. Every store started from a theme has a builder-made header and footer, two font families and photographs. Seed one store in CI through the real preset path: Orbit with its content pack, header, footer and product layout, photographs through the upload pipeline, and its two font families as fixture rows, since CI cannot reach Google Fonts. Hold its home, a product page, a listing and a built page: document, payload, style text and the copies of each sheet, font files, picture bytes on a 3x phone and router requests. Add the pages to measure-routes.mjs. No finding covers this; three stewards asked for it. It holds the shopper's browser measure 6, the page model's measures 5 and 6 and the styles' measures 3 and 7.
+DONE: e2e/performance.spec.ts prints and holds, each within 5% of its first figure, the themed home's font files (at most 2 files and 80 KB, both preloaded), stylesheets (at most 3), style text, document and router requests, and Orbit's home as stored at or under 11,100 bytes; the four themed pages are in measure-routes.mjs.
+PLATFORM: Kaizena Flow's own site runs on a theme in its own store, so the themed store's budgets are the nearest held figure for it; its home has a document budget from the house store seeded in step 0.3.
+
+=== 1.7 [M] Put a cart with products and the checkout's payment step into the measured set
+areas: shopper-browser
+closes: GAP-shopper-browser-2
+from: []
+WHAT: The cart was measured empty, and the checkout's load ended on the cart because the demo store takes no payments. Add a fixture store with payments on, made with SQL as e2e/draft-pay.spec.ts does, and a payment stand-in in the style of e2e/fixtures/auth-stub.mjs: the only fake, told it is one, with no bypass in the app. Hold a cart with two lines and the checkout at its payment step: first scripts, the document, router requests after load, and third-party requests and bytes. It holds the shopper's browser measure 6 on the money path.
+DONE: e2e/performance.spec.ts holds, each within 5% of its first figure, first scripts, the document and third-party bytes for the two-line cart and the checkout at its payment step, with 0 router requests while the payment form shows and the payment provider's script the only third-party request; both pages are in measure-routes.mjs.
+PLATFORM: Store-only by the house rule's exception: Kaizena Flow sells plans through Stripe and draws no cart or checkout of its own.
+
+=== 1.14 [M] Hold time on a slow phone with a nightly production figure
+areas: shopper-browser
+closes: GAP-shopper-browser-3
+from: []
+WHAT: No figure of time is measured or held, and no finding covers it. measure-routes.mjs gains a run with the CPU slowed four times that records blocking time and the script bytes run by idle for the home, a product page, a listing and the cart; the run bytes, which are steady, get a budget in e2e/performance.spec.ts within 5%. A nightly workflow beside live-a11y.yml runs scripts/perf.mjs --form=mobile --min=90 against a launch-theme demo store in production and Kaizena Flow's front page, keeps largest paint, blocking time and layout shift in a file, and fails on two nights in a row under the line. Kaizena Flow's own demo stores switch visit counting on, so one field figure exists against the 'good' lines of src/lib/speed.ts. It holds the shopper's browser measure 7.
+DONE: The nightly job has run green for a week (performance 90 or more and blocking time at most 200 ms, the median of three runs) with its table in docs/performance.md, and e2e/performance.spec.ts holds the script bytes run by idle on four pages.
+PLATFORM: Kaizena Flow's front page is one of the two pages measured each night.
+
+=== 2.2 [M] Send the store's layout once
+areas: shopper-browser,page-model,styles
+closes: SC-8,PL-2,PM-1,CS-5,SC-7,PF-7
+from: ["W-shopper-browser-11","W-page-model-6","W-styles-6","W-shopper-browser-13"]
+WHAT: The cart drawer's slot (@drawer) sits on the storefront's root layout, so every storefront document renders and ships the whole layout twice, with the store's 404 page inside: 35 rows and about 26 KB a document, and the theme's sheet three times. Move the slot off the root layout and read the cart count once per render. On a screen 768 px or wider the cart link then opens the cart page directly: no drawer rendered and thrown away, and no prefetch of it. This restructures the storefront's routes: the cart specs and the phone's drawer are the things to watch.
+DONE: The served /s/demo/no document opens one html element in its inline payload (two today), holds under 2,000 bytes of duplicate rows (26,534 today) and is under 112,000 bytes raw (138,523); /s/demo/no/om-oss is at most 85,000 bytes (110,415); and at 1280 px a press on the cart link makes one document request and no router request for /cart, all held in e2e/performance.spec.ts and e2e/cart.spec.ts.
+PLATFORM: Kaizena Flow's own store pages carry the same layout and lose the same second copy; / and /admin already send one.
+
+=== 2.4 [M] Serve store pages with nothing per visitor as static files, and let Add to cart answer a number
+areas: server,shopper-browser
+closes: CA-1,CA-17
+from: ["W-server-32"]
+WHAT: Every prerendered store page is 'resuming': a render function runs on each view to place two cart badges and a country hint. Add one small per-visitor answer, src/app/api/shop/mine/route.ts: the cart count, the saved ids and the hint. It is asked only when the marker cookie of step 0.15 says there is something. Home, built, blog and info pages can then be static. addToCart returns the new count and drops its refresh(), so one press no longer redraws the page and re-fetches every prefetched link.
+DONE: After pnpm build, .next/prerender-manifest.json gives compute 'static' for /s/demo/no, /s/demo/no/om-oss and the blog routes (all 'resuming' today), held in scripts/render-modes.baseline.json, and e2e/cart.spec.ts shows one Add to cart as 1 request whose answer is under 5,000 bytes and carries the count, with no redraw of the route (16 requests and 193 KB today).
+PLATFORM: Kaizena Flow's front page, served from its own store, becomes a static file with the rest; its baseline entry from step 0.3 moves to static.
+
+=== 2.6 [M] Route every link through one wrapper with a stated policy
+areas: shopper-browser
+closes: PF-3,PF-8,PF-12,PF-10
+from: ["W-shopper-browser-14","W-shopper-browser-18"]
+WHAT: 947 links have no stated policy, and 400 files import next/link directly. PolicyLink (policy sight, intent or never; step 0.13 made its first form) makes header tools, the bottom bar, footers, menus and closed sub-menus fetch on intent. State the policy per group in docs/performance.md. A ratchet count, directLinks, only lets direct next/link imports fall, and a new file that imports it fails. The ratchet waits for this step because a new file needs the wrapper to import. The first Add to cart then asks again for at most 10 links, not 32.
+DONE: e2e/prefetch.spec.ts passes with at most 6 router prefetch requests on the phone home, a product page, a content page and the cart, at the top and read to the footer (47 on the home today), at most 10 after the first add to cart (32), and pnpm test fails for a new file that imports next/link directly.
+PLATFORM: The platform admin and Kaizena Flow's site use the same wrappers.
+
+=== 2.7 [M] Keep a press on a built page's tile inside the app
+areas: shopper-browser
+closes: PF-4
+from: ["W-shopper-browser-16"]
+WHAT: A press on a built page's product tile, button or picture is a plain anchor: a whole document and 42 requests, where a link inside the app costs 5. Built pages' links use a BlockLink that stays in the app for an address of the app and keeps the plain anchor for pay paths, files and outside links.
+DONE: e2e/prefetch.spec.ts 'a press on a built page's tile stays in the app' passes with 0 documents and at most 8 requests after the tap (1 and 42 today), and the pay-routes graph test still forbids app navigation into a pay path.
+PLATFORM: Kaizena Flow's own pages are built pages: their buttons and tiles stay in the app the same way.
+
+=== 2.8 [M] Bound what a real listing fetches ahead, and decide partial prefetching by trial
+areas: shopper-browser,owner-browser
+closes: PF-13,PL-5,PF-9
+from: ["W-shopper-browser-15","W-shopper-browser-19"]
+WHAT: A real listing prefetches every product tile and up to six swatch links under each: about 96 requests for 48 products, and the test stores are too small to show it. Seed a 48-product category and bound it at 20 router requests read to the end, with swatches on intent. Run the partial-prefetching trial on the product page, the seeded listing, the store home and the admin's orders page, and write its table into docs/performance.md and the decision into docs/decisions.md: either all links to one route share one shell, or the first screen of tiles is fetched on sight and the rest on touch. The next major Next release forces the choice.
+DONE: e2e/prefetch.spec.ts holds the seeded 48-product category read to the end on a phone at no more than 20 router requests, and docs/performance.md holds the trial's before-and-after table with the decision recorded in docs/decisions.md.
+PLATFORM: The trial's fourth page is an admin page, so the choice is made for /admin/platform's lists too.
+OWNER: On a full listing, may only the first screen of product tiles be fetched ahead on sight, and the rest when touched (or all through one shared product shell)? A yes lets the shopper's browser reach an A.
+
+=== 2.9 [M] Let each working route load its own parts
+areas: shopper-browser,owner-browser
+closes: SC-2,BN-9
+from: ["W-shopper-browser-12","W-owner-browser-14"]
+WHAT: Listing, search, cart, checkout, account, order, wishlist and cookies pages share one bundle of every working part, 98 KB larger than a built page's. Move the shell of StorePartSection to a server file with no section imports (src/components/store-part-frame.tsx), and give each route a small module that imports its own sections.
+DONE: The script tags of the server's HTML total at most 650,000 bytes raw for a category, a tag and the search page and at most 700,000 for the cart, the checkout and the account (778,166 each today), the listing routes have at most 37 client modules by the review's server-graph.mjs (54 today), and the budgets of steps 1.2 and 1.3 are lowered to these figures.
+PLATFORM: Kaizena Flow's site draws no cart or listing; its blog and theme-store pages already load their own parts, and the baseline of step 1.2 holds them.
+
+=== 2.10 [M] Let a recommending grid bring its own words
+areas: shopper-browser,owner-browser,page-model
+closes: BN-16
+from: ["W-owner-browser-15"]
+WHAT: A store page with a recommending grid downloads 650 KB more once recommendations answer: zod, the page model and all four storefront languages. The grid takes its words as a prop, from the browser files of src/lib/messages, and the scan that keeps the page model out of a store page's first scripts covers its later ones too.
+DONE: e2e/recommendations.spec.ts counts at most 335,000 bytes of script after /api/recommendations answers (649,561 today), with no whole language, no zod and no page model in it.
+PLATFORM: Store-only by the house rule's exception: recommendations are for goods, and Kaizena Flow sells plans.
+
+=== 2.11 [M] Give the storefront a stylesheet of its own
+areas: styles,shopper-browser,owner-browser
+closes: SC-5,CS-1,BN-12
+from: ["W-shopper-browser-20","W-styles-5","W-owner-browser-17"]
+WHAT: One 183 KB sheet serves stores, the site, the docs and the admin: 28% of it styles only the admin, and 3,480 of the 5,931 files Tailwind reads can rename it though no public page draws them. Make two Tailwind entries: the site's reads the site's code and the 11 admin parts a public page imports, each named on a line of its own. The audiences script of step 1.23 then shows at most 15 KB raw of classes no store page can draw. Measure the build's peak before and after.
+DONE: The stylesheet that /s/demo/no links is at most 135,000 bytes raw and 20,600 Brotli (183,124 and 25,832 today) and the admin's two sheets at most 208,000 raw (204,207), with the budgets of step 1.3 lowered to them; src/lib/stylesheet-sources.scan.test.ts fails for a source outside the site's list; and the build's peak before and after is in docs/build-memory.md (no more than about 150 MB higher).
+PLATFORM: Kaizena Flow's public site and docs get the site's sheet; the admin, /admin/platform included, keeps its own two.
+OWNER: After the split, a Tailwind class typed in a part's Advanced tab can show on the builder's canvas and not on the live site. Is it enough to say in the docs that only classes styled by the owner's own CSS are promised, or should the site's sheet keep a short fixed list of utility names owners may type?
+
+=== 2.12 [M] Draw a listing's grid once and read its list once
+areas: shopper-browser,page-model
+closes: PL-6,PM-8
+from: ["W-shopper-browser-21","W-page-model-9"]
+WHAT: A product grid with Filter and sort is sent twice when nothing is chosen: the built grid is the Suspense fallback and the streamed copy replaces it, so each product is 18 times in the markup and 18 in the payload, and a category asks the database again for the list it already drew. In src/components/content-grid-section.tsx keep the built grid in the shell and stream only the controls and the Show more link; memoise the grid's loader per request.
+DONE: The served /s/demo/no/products document holds each product's data-item-id once in its markup and once in its payload (18 and 18 for 9 products today) and is under 150,000 bytes raw (170,329 today), held in e2e/listing.spec.ts.
+PLATFORM: Kaizena Flow's site has no filterable product grid; its grids of articles and themes draw through the same section and are sent once.
+
+=== 2.27 [L] Hand each admin page only the words its parts read
+areas: owner-browser,text,page-model,shopper-browser
+closes: AC-4,PL-1,TX-2,PM-10,GAP-text-1
+from: ["W-owner-browser-11","W-shopper-browser-22","W-text-7","W-page-model-11"]
+WHAT: Admin documents hand whole areas of words to the browser: the product editor is handed 238 KB and reads about 79 KB, and every screen carries 34 KB of shell words and reads 12. Hand down typed cuts of the big areas, and the assistant's button apart from its chat. Then work down the words baseline of step 1.5: every site that hands over 50 KB, until it hands at most 1.25 times what its parts read. The stewards' findings stop at the measured pages; the work-down over all 24 large sites is the added part an A needs.
+DONE: In the words baseline no screen is under 80% read and the five budgeted screens are at 90% or more, with shared words at or under 16 KB in English and 17 KB in Norwegian (34.0 and 45.3 today); the store home's document is at most 140,000 characters (165,942), the product editor's under 290,000 bytes (426,497) and the builder's under 480,000 (585,943) with a texts object of at most 205,000 (276,922); and e2e/signed-in/admin-text-fallbacks.spec.ts reports no fallback.
+PLATFORM: The platform admin's screens are in the words baseline, and its shell hands down the same cut words in both languages.
+
+=== 2.34 [S] Let an untouched tab ask for notices less often
+areas: owner-browser,ai,shopper-browser,server
+closes: AC-13,PL-11,AI-12
+from: ["W-owner-browser-7","W-shopper-browser-10","W-ai-7"]
+WHAT: Every open admin tab asks for AI manager notices once a minute: 60 requests an hour, whatever the answer. After step 0.17 each costs two statements. Ask on mount, when the tab is shown and when the path changes; keep the one-minute timer only for ten minutes after the count was last above zero or the assistant was used, and while an approval waits. A notice from scheduled work then reaches an untouched tab up to ten minutes late, and at once on the next click.
+DONE: A case with a clock in e2e/signed-in/ai-manager-panel.spec.ts sees at most 2 requests to /admin/account/notices/feed in ten minutes from an untouched tab (10 today) and at most 6 in an hour (60).
+PLATFORM: The platform admin's badge is the same component.
+OWNER: May the notice badge in a tab nobody touches be up to ten minutes late (60 requests an hour become 6)? It shows at once on the next click, and stays at one minute while an approval waits.
+
+=== 4.5 [M] Measure everything again, and read each area against its bar
+areas: code,shopper-browser,owner-browser,server,scheduled,database,ai,surface,rules,page-model,styles,text,build
+closes: SG-11,SF-11
+from: ["W-server-51"]
+WHAT: The goal is an A in every area, not ticked steps. When the cuts are in, run the whole measured set again (measure-routes.mjs, server-graph.mjs, the route, server and query budgets, the daily reading) and the build under a memory cap. Write one table per area: each measure, its figure, its bar and the check that holds it. Report repeated server chunks (123.6 MiB of 195.5 MiB is the same three chunks written many times today), and try server source maps off, on Vercel only, if memory needs it. Read the figures that need time: decision numbers changed in merges over 100 commits, the scheduler's calls on a quiet day, the AI manager's tokens per call. A measure short of its bar gets a step; the bar does not move.
+DONE: docs/audits/bloat-review-2026-11 holds the table with no measure short of its bar, scripts/route-budget.mjs reports under 40 MiB of repeated server chunk bytes (123.6 MiB today), and docs/build-memory.md holds the build's peak after the cuts.
+PLATFORM: The platform's screens, jobs and pages are rows of the same tables.
