@@ -94,4 +94,4 @@ challenged by a skeptic, planned by a planner. Its last lines hold the arguments
   and CI green, then do After the deploy.
 - Local DB: Postgres 16 at /home/user/pgdata (start: /usr/lib/postgresql/16/bin/pg_ctl -D /home/user/pgdata -l /home/user/pgdata/log -o '-p 5432 -k /tmp' start);
   DATABASE_URL=postgres://postgres:postgres@127.0.0.1:5432/postgres. pnpm install --frozen-lockfile first in a new container.
-- Done: 0.1 (b29825d), 0.3 (fd04bd1, D575). 0.2 live 325b547, D574 complete; from 13 Nov read cron_jobs daily.production-reading and readings (41-80 statements, 487 tables); Done after two days of readings. Next: 0.4 executor running.
+- Done: 0.1 (b29825d), 0.3 (fd04bd1, D575), 0.4 (afff453+09cec03, D576). 0.2 live 325b547, D574 complete; from 13 Nov read cron_jobs daily.production-reading and readings (41-80 statements, 487 tables); Done after two days of readings. Next: 0.5. Open bug: sandbox.purge_failed every 5 min since 16:25 12 Nov (footer trigger in purge_sandbox), asked owner when to fix.
