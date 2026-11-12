@@ -1,0 +1,371 @@
+{
+ "headline": "On the wire the documents are not heavy: a storefront page is 14 to 21 KB gzipped and only the admin's two editors are large (106 and 133 KB gzipped). Raw, they are far bigger than their job needs: every storefront payload carries a second, never-shown copy of the header, menus and footer for the 404 case (26 KB, 26 to 39% of the payload), listings send their product grid twice, and in the admin 36 to 85% of each payload is message catalogues handed down as props and sent again on every visit and every navigation. The larger waste is in what a page asks for after it has loaded: 11 to 50 router prefetches per storefront view (2 to 14 times the document's own bytes), 141 to 164 KB of sign-in scripts for every visitor of Kaizena Flow's own pages, and two uncached server calls per view for things the visitor or the store does not use. Component props are otherwise lean and features that are off mostly draw nothing; most fixes are a day or less, and the one structural move (the cart drawer's slot out of the root layout) is cheapest now, before stores open.",
+ "metrics": [
+  {
+   "name": "Storefront document, raw / gzip",
+   "value": "104 to 170 KB raw, 13.7 to 21.3 KB gzip (12 pages); 66 to 71% of the raw bytes are the inline RSC payload",
+   "how": "m/routes.md and zlib on m/html/store-*.html (work/plx/dups.mjs)"
+  },
+  {
+   "name": "What a storefront payload is made of (decoded)",
+   "value": "25.7 KB not-found copy of the layout + 27.0 KB layout as drawn + 2.6 to 38.8 KB the page itself + about 10 KB metadata, router tree and module references",
+   "how": "work/plx/split.mjs: Flight rows of each store document grouped by the row that references them"
+  },
+  {
+   "name": "Layout chrome's share of a storefront payload",
+   "value": "52.7 KB of 65 to 99.5 KB: 53% (listing) to 81% (empty cart, account)",
+   "how": "same split; not-found copy plus layout as drawn"
+  },
+  {
+   "name": "Admin payload that is message catalogues",
+   "value": "36 to 85% per page; 1,225 of 1,944 KB (63%) over the 16 admin documents; product editor 233 KB of 289, page builder 304 KB of 357",
+   "how": "work/plx/texts.mjs: every `texts` prop in the payload, JSON size, against the decoded payload"
+  },
+  {
+   "name": "Catalogues' share of the editors' compressed document",
+   "value": "product editor 73.9 of 105.6 KB gzip (70%); page builder 95.5 of 132.5 KB gzip (72%)",
+   "how": "texts.mjs: the texts objects gzipped on their own against the gzipped document"
+  },
+  {
+   "name": "Prefetches by an idle visitor",
+   "value": "storefront 11 to 50 requests, 32 to 189 KB on the wire; admin 23 to 46 requests, 77 to 156 KB; the empty cart's prefetches are 13.8 times its document (180 KB against 13 KB gzip)",
+   "how": "work/plx/pf.mjs over m/routes.json (kind rsc, after load); category and search left out because of the local prefetch loop"
+  },
+  {
+   "name": "Other-language and other-currency front pages prefetched",
+   "value": "empty cart and checkout: 18 requests, 102 KB on the wire, 498 KB raw for 6 front pages; a plain page 12 requests, 69 KB",
+   "how": "pf.mjs: rsc responses whose address is /s/{store}/{xx-yyy}"
+  },
+  {
+   "name": "Scripts fetched after load on Kaizena Flow's pages",
+   "value": "front page 11 files, 164 KB on the wire; blog post and themes 8 files, 141 KB; none of it ran; plus the admin's stylesheet (6 KB wire, 21 KB raw)",
+   "how": "m/routes.json afterLoad responses; chunk contents read in .next/static/chunks (Supabase auth 179 KB raw, zod 117 KB, realtime 57 KB, sign-in words)"
+  },
+  {
+   "name": "Server calls on every storefront view for a visitor who does nothing",
+   "value": "GET {market}/wishlist/saved on 12 of 12 pages (1.7 KB on the wire for a 15-byte answer, private no-store); GET /api/shop/tiles on the home and listing (2.9 KB, no-store) while the store's settings are both off",
+   "how": "routes.md after-load table; curl of the local route returned settings {tileStock:false,tileQuantity:false} with every product's facts"
+  },
+  {
+   "name": "Listing grid sent twice",
+   "value": "/products with 9 products: 2 identical grids of 7,559 bytes in the markup and 15.3 KB of fallback grid in the payload; 24.7 KB raw (14% of the document), about 2.7 KB per product",
+   "how": "node one-liner cutting the fallback grid from m/html/store-products.html; grep of data-item-id shows each id twice"
+  },
+  {
+   "name": "Client component props (data, not markup)",
+   "value": "storefront 17 to 23 KB per document for 21 to 25 kinds of component (with the not-found copy); admin, catalogues aside: ProductEditor 14.9 KB, PageEditor 5.4 KB, PagesTable 0.7 KB",
+   "how": "work/plx/clients.mjs: props of every client reference in the payload, nested elements not counted"
+  },
+  {
+   "name": "Markup not shown on a phone",
+   "value": "storefront 10.7 to 19.2 KB raw of 24 to 48 KB markup (closed menu dialog 5.6 KB, filter dialog 8.5 KB on listings, desktop menu); inline SVG 3 to 5 KB",
+   "how": "work/plx/hidden.mjs (hidden attribute, closed dialog, class hidden) and markup.mjs on m/html"
+  },
+  {
+   "name": "Page weight against its only budget",
+   "value": "front page 397 KB, product page 413 KB transferred today; the budget is 450 KB and was set when they measured 311 and 331 KB on 27 October",
+   "how": "m/routes.md All transferred; e2e/performance.spec.ts:118-129 (a similar but not identical method: 2 s after load there, 3 s idle here)"
+  }
+ ],
+ "clean": [
+  "Storefront client components are handed ids, labels and small lists, not rows: no store settings object, product row or page JSON rides in props (clients.mjs: the largest are ViewMenu items 4.5 KB over 12 draws and TileShop 5.4 KB over 18; ProductGallery 0.55 KB, VariantPurchase 1.2 KB).",
+  "Admin data props are small too once the words are set aside: PagesTable 0.7 KB, PageEditor context 4.3 KB, ProductEditor 14.9 KB (7.9 KB of it a country list).",
+  "A store in a hand-written language sends no message catalogue in its document: UiTexts carries null (8 bytes) for Norwegian.",
+  "Chat, referral capture, the business popup, consent and the visit, touch and speed beacons are drawn only when the store has them on, from the cached store (src/app/s/[store]/[market]/extras.tsx, src/components/store-visits.tsx:13); the demo's idle pages sent 0 beacons and no chat or consent request.",
+  "The dynamic holes of a storefront page are small and well placed: the cart badge twice (0.8 KB) and, on a product, the variant chooser and purchase form (5.6 KB) stream in; the rest is the prerendered shell.",
+  "Hidden markup is modest and deliberate (one closed menu dialog, one filter dialog, the desktop menu); style attributes are under 0.3 KB and inline style blocks under 4.6 KB per storefront document; JSON-LD is 0 to 3 KB.",
+  "Admin markup is ordinary for its screens: 91 of the page builder's 120 inline SVGs are distinct icons, class attributes are 20 to 35 KB except the builder's canvas.",
+  "Scripts and the one stylesheet are served immutable for a year; one CSS file per area.",
+  "The admin's 'View store' link pulls the storefront's scripts on the local build only: in production storeHref() gives another origin (src/lib/paths.ts:207), which the router does not prefetch. Not counted as a finding.",
+  "Pictures could not be judged from this build: the demo's pictures are SVG drawings of 0.3 to 0.75 KB. The code offers two files per picture (480 and up to 1600 px, src/lib/picture-sizes.ts:12-14); whether phones with dense screens fetch the large one for a tile needs a store with real photographs.",
+  "The empty checkout answers with a whole document and then loads the cart as a second one (m/routes.json: finalUrl /cart, two documents of 107 KB). It is a rare path and not counted."
+ ],
+ "findings": [
+  {
+   "id": "PL-1",
+   "title": "The admin's message catalogues travel as props in every document and every navigation",
+   "kind": "oversize",
+   "where": [
+    "src/app/admin/(gated)/[store]/products/[productId]/page.tsx:45",
+    "src/app/admin/(gated)/[store]/pages/editor-views.tsx:30",
+    "src/app/admin/(gated)/[store]/pages/editor-views.tsx:142",
+    "src/app/admin/(gated)/layout.tsx:45",
+    "src/app/admin/(gated)/[store]/layout.tsx:114",
+    "src/components/admin/admin-text.tsx:33",
+    "src/lib/admin-text.ts:308",
+    "src/components/admin/admin-text-later.ts:5",
+    "docs/performance.md:162",
+    "node_modules/next/dist/docs/01-app/03-api-reference/05-config/01-next-config-js/staleTimes.md:26"
+   ],
+   "evidence": "Decoded each admin document's payload and summed every `texts` prop (work/plx/texts.mjs). Product editor: 233 KB of a 289 KB payload (81%): product 29.7, products 26.2, fields 24.4, builder 73.1, website 46.1, plus the frame's common 6.4, setup 6.7, shell 6.8 and assistant 13.4. Page builder: 304 KB of 357 KB (85%), eleven areas. Home 56 of 104 KB, orders 33 of 92 KB, settings/features 84 of 135 KB. Whole areas are handed for a few keys: the parts reachable from product-editor.tsx read builder.textStyles and builder.richText and website.pictureMaker and website.picker (import-graph trace); counting two more keys nearby parts read, that is at most 4.0 KB of builder's 74.9 KB and 10.4 KB of website's 47.3 KB. The page-level scope sits in the page, and a dynamic page's segment is not kept by the client router (staleTimes dynamic default 0), so opening another product sends the 204.5 KB row again. The first-scripts budgets (docs/performance.md:186-196) do not see these bytes: the words left the scripts on 10 November (D540) and landed in the document.",
+   "cost": "20 to 304 KB raw per admin document (6 to 96 KB gzipped on their own); 70% of the product editor's and 72% of the page builder's compressed document. 204 KB again for each product opened, 278 KB for each page opened in the builder. Never cached by the browser.",
+   "who_pays": "An owner's browser on every admin page view and navigation (download, JSON parse, memory); the server per request (it serialises the catalogue into the payload each time).",
+   "fix": "Two steps. (a) Now: hand down the sub-slices a page's parts read, not whole areas (the product editor: builder.textStyles and richText, website.pictureMaker, picker and media); let adminTexts() take paths, and let the signed-in fallback spec fail on a missing key. (b) Then: make each area's words in each language a small client provider module of its own that the server page draws (chosen by language through next/dynamic, so only the account's language is referenced). The words then arrive as a content-hashed script beside the page's own scripts, named in the document, and the browser keeps them across navigations and visits. This keeps D540's rule: no catalogue in every screen's first scripts, and no part waits on a fetch that starts at hydration. Give admin-catalogues.scan.test.ts an exception for these generated modules, and add the document's payload to the signed-in budgets.",
+   "saving": "(a) measured: about 108 KB raw off the product editor's document and each product opened (builder and website from 122 KB to at most 14 KB). (b) estimate: the first visit costs the same bytes; every later view and navigation saves 20 to 304 KB raw (6 to 96 KB gzip) of payload and its serialising on the server.",
+   "effort": "M",
+   "risk": "Medium. (a) a part that reads a key not handed down throws; the fallback spec must cover it. (b) the early-Save failure of 31 October (docs/performance.md:168-171) came from words fetched after hydration began; here the chunk is named in the document, but the same signed-in tests must prove it.",
+   "confidence": "high",
+   "already_tracked": "Partly: PERF-01 in docs/audits/psi-followups.md:482 is open (the admin's p75 LCP) and D540 chose hand-down; neither measures the document, and neither plans sub-slices or cached chunks.",
+   "owner_decision": false
+  },
+  {
+   "id": "PL-2",
+   "title": "Every storefront page carries, and renders, the whole layout twice: once for a 404 it is not showing",
+   "kind": "duplicate",
+   "where": [
+    "src/app/s/[store]/[market]/layout.tsx:104",
+    "src/app/s/[store]/[market]/layout.tsx:214",
+    "src/app/s/[store]/[market]/@drawer/default.tsx:1",
+    "src/app/s/[store]/[market]/not-found.tsx:16",
+    "node_modules/next/dist/server/app-render/create-component-tree.js:551",
+    "node_modules/next/dist/server/app-render/create-component-tree.js:657"
+   ],
+   "evidence": "In every store document the market layout's row has two children: `notFound: $Lb` and `children: $Lc`, each a full <html> tree with the theme CSS, header, menus, footer and bottom bar (work/plx/tree.mjs). The copy only the not-found branch uses is 26,151 bytes decoded on all 12 pages: 39% of the empty cart's payload, 31% of the home's, 26% of the listing's (work/plx/nf.mjs). Next does this on purpose when a root layout has the children slot and at least one more slot (line 551: isRootLayoutWithChildrenSlotAndAtLeastOneMoreSlot), and its own comment says it 'renders the RootLayout twice'. The extra slot is @drawer, the phone's slide-out cart. The admin and Kaizena Flow's own routes have no such copy. The same copy also holds the store's own 404 page when one is designed (not-found.tsx:19).",
+   "cost": "At least 22.5 KB raw of every storefront document (13 to 21%), 0.7 to 0.85 KB gzipped, 0.2 KB with Brotli: almost nothing on the wire, but parsed and held by every phone. The layout's components run twice in every prerender and render. Production's chrome is larger: its empty cart has a 123 KB payload against 74 KB here (m/prod-pages.md), so the copy there is about 55 KB (estimate from the same split).",
+   "who_pays": "A shopper's browser (parse and memory on every page); the server and the build (the root layout rendered twice per prerender or render).",
+   "fix": "Give the root layout only its children: move the store's pages and the @drawer slot one level down into a route group with a small layout that returns children and the drawer (the drawer is a modal dialog in the top layer, src/components/cart-drawer.tsx:60, so where it sits in the tree does not change what is seen). Addresses do not change. The root layout's 404 then renders only not-found.tsx inside the one layout. Do it before opening: it moves about 25 route folders.",
+   "saving": "Measured: 26.2 KB decoded and at least 22.5 KB raw per storefront document, and one of two layout renders. Estimate for production: about 55 KB raw per document. It may also remove the route shape behind the local prefetch loop (m/prefetch-storm.md names the @drawer catch-all); not verified.",
+   "effort": "M",
+   "risk": "Medium: intercepted routes are particular about where they sit; the cart drawer, the 404 page and the pay routes' CSP need their e2e runs.",
+   "confidence": "high",
+   "already_tracked": "no",
+   "owner_decision": false
+  },
+  {
+   "id": "PL-3",
+   "title": "The language and currency links prefetch six whole front pages that the click does not even open",
+   "kind": "eager",
+   "where": [
+    "src/components/view-menu.tsx:56",
+    "src/components/view-menu.tsx:63",
+    "src/components/store-layout.tsx:214",
+    "src/components/store-layout.tsx:217"
+   ],
+   "evidence": "ViewMenu draws each choice as a next/link to that language's or currency's front page, with default prefetch, and its onClick always prevents the link and pushes the page the shopper is on instead (lines 62-72). So the prefetched front page is used only when the shopper is on the front page. Measured on the empty cart: /s/demo/no-sv, no-da, no-sek, no-dkk, no-eur and no-en, three requests each of about 55, 29 and 0.6 KB raw: 18 requests, 102 KB on the wire, 498 KB raw, against a 13 KB document. The same on the checkout; 12 requests and 69 KB on a plain page; 6 requests and 34 KB on the account and wishlist (pf.mjs over m/routes.json). LanguageLinks, the other switcher, uses a plain <a> and prefetches nothing.",
+   "cost": "Up to 18 requests and 102 KB on the wire per page view where the footer's list is in view, for a store with several languages or currencies; each request also passes through proxy.ts. It grows with the number of languages and currencies a store offers.",
+   "who_pays": "A shopper's browser and data plan; the server per request (the proxy and the CDN or function behind it).",
+   "fix": "Set prefetch={false} on ViewMenu's link (or draw an <a>, as LanguageLinks does). The click handler already does the navigating.",
+   "saving": "Measured: 18 requests and 102 KB on the wire (498 KB raw) per view of a short page; 57% of the empty cart's prefetch bytes.",
+   "effort": "S",
+   "risk": "Low: a language or currency switch waits for its page as any first navigation does.",
+   "confidence": "high",
+   "already_tracked": "no",
+   "owner_decision": false
+  },
+  {
+   "id": "PL-4",
+   "title": "Kaizena Flow's own pages download the admin's sign-in scripts for every visitor",
+   "kind": "eager",
+   "where": [
+    "src/components/platform-layout.tsx:133",
+    "src/components/platform-layout.tsx:176",
+    "src/components/platform-layout.tsx:273",
+    "src/components/platform-routes/home.tsx:55",
+    "src/components/site-parts.tsx:261",
+    "node_modules/next/dist/docs/01-app/03-api-reference/03-file-conventions/layout.md:145"
+   ],
+   "evidence": "The site's header and front page link to /admin with next/link. The router prefetches it, and with it the admin's scripts and stylesheet. After load the blog post page, whose only prefetch targets are /, /admin and /cookies, fetched 8 scripts, 141 KB on the wire, plus the admin's CSS (6 KB wire, 21 KB raw); the front page 11 scripts, 164 KB. Read in .next/static/chunks: Supabase's auth client with WebAuthn (179 KB raw), zod (117 KB), Supabase realtime (57 KB), the sign-in words. Coverage: 0% ran. /admin has its own root layout, and Next's docs say a navigation across root layouts is a full page load, so the prefetched payload is thrown away on the click; only the cached scripts help.",
+   "cost": "141 to 164 KB on the wire per first visit to a Kaizena Flow page: 34% of everything the front page transfers (488 KB). With the prefetch payloads, 198 KB of the front page's bytes come after load for a visitor who presses nothing.",
+   "who_pays": "Every visitor of kaizenaflow.com (browser and data); the CDN.",
+   "fix": "Draw links that cross a root layout as <a>, or with prefetch={false}: /admin from the site and from a store's header. Add a scan test that fails on a next/link from one root layout's components to another's address without prefetch={false}.",
+   "saving": "Measured: 141 to 164 KB of scripts and 6 KB of CSS per visitor of the site's pages; 9 to 12 requests.",
+   "effort": "S",
+   "risk": "Low: an owner who presses Sign in loads its scripts then, as on any first visit to /admin.",
+   "confidence": "high",
+   "already_tracked": "no",
+   "owner_decision": false
+  },
+  {
+   "id": "PL-5",
+   "title": "Prefetching runs per link because partialPrefetching is unset: 11 to 50 requests after every page load",
+   "kind": "eager",
+   "where": [
+    "next.config.ts:42",
+    "node_modules/next/dist/docs/01-app/03-api-reference/05-config/01-next-config-js/partialPrefetching.md:44",
+    "node_modules/next/dist/docs/01-app/02-guides/adopting-partial-prefetching.md:72",
+    "src/proxy.ts:53"
+   ],
+   "evidence": "The build and the server both warn: 'cacheComponents is enabled without a corresponding partialPrefetching option' (m/build.log:6, m/start.log:9). Next's docs: unset behaves like false, 'a page with N links to N routes produced ~N route prefetches'; with true there is 'one reusable App Shell per route', shared by every link to it. No link in src asks for a full prefetch (rg found no prefetch={true} and no router.prefetch), and 3 files of 535 next/link uses in components set prefetch={false}. Measured for a visitor who does nothing: storefront 11 to 50 prefetch requests (32 to 189 KB on the wire), two or three per link in view; the admin 23 to 46 (77 to 156 KB), of which 11 to 40 came back without a shared-cache header on the local server. The prefetches then pull the target routes' scripts: 18 to 85 KB more on storefront pages. proxy.ts's second matcher covers every store address, so each storefront prefetch runs it.",
+   "cost": "2 to 14 times the document's own compressed bytes after every storefront view; a product grid adds two or three requests per product scrolled into view (about 8 KB on the wire each, from the one product link measured). Requests, not shoppers, are what the proxy and the platform's request count see.",
+   "who_pays": "A shopper's browser and data; the server per request (proxy.ts on every storefront prefetch); an owner's browser in the admin.",
+   "fix": "Set partialPrefetching: true and follow Next's adoption guide (no legacy full prefetches exist, so there is nothing to migrate first); measure the same pages again with work/measure-routes.mjs. Keep prefetch={false} on links few people press (footer legal links, the sidebar's deeper admin links) and add a budget on after-load requests (PL-13).",
+   "saving": "Estimate, to be measured: one shell per route instead of two or three requests per link; on a listing or a menu of categories that is one request where there are now dozens. The admin's sidebar gains little from the flag alone (each link is its own route).",
+   "effort": "M",
+   "risk": "Medium: what a navigation shows at once changes (shell first, URL-specific content after); the docs say Next's next major turns it on for everyone, so the work is due either way.",
+   "confidence": "medium",
+   "already_tracked": "no",
+   "owner_decision": false
+  },
+  {
+   "id": "PL-6",
+   "title": "A listing sends its product grid twice: as the stand-in and again as the answer",
+   "kind": "duplicate",
+   "where": [
+    "src/components/content-grid-section.tsx:42",
+    "src/components/content-grid-section.tsx:97",
+    "src/app/s/[store]/[market]/term-listing.tsx:185"
+   ],
+   "evidence": "A filterable product grid is a Suspense whose fallback is the whole grid as built, and whose content is the same grid drawn again per request with the controls; with no filter chosen the items are literally the same (`: data.items`, line 97). Category and tag pages do the same with ProductGrid. In /products' document every data-item-id occurs twice; the two <ul> grids are 7,559 bytes each; the payload holds the fallback grid (15.3 KB) and the answer's. Cutting the stand-in copy from the saved document: 170.3 to 145.7 KB raw, minus 14%, with 9 products.",
+   "cost": "About 2.7 KB raw per product on every unfiltered listing view (24.7 KB for 9 products; about 130 KB for a full page of 48, estimate). Small on the wire (2.2 KB gzip, 0.2 KB Brotli, the copies compress), but the browser builds the first grid, starts its pictures, then swaps in an identical one.",
+   "who_pays": "A shopper's browser on every category, tag and products page; the server per request (the second render and its payload).",
+   "fix": "Keep the grid as built outside the boundary and stream only what depends on the request: the controls, and a filtered grid only when the address carries a filter, a sort or a page. A CSS rule hides the as-built grid when a filtered one is present. Without scripts and for crawlers the as-built grid stays, as the rule in docs/rules asks.",
+   "saving": "Measured: 24.7 KB raw (14%) of the demo's listing; about 2.7 KB raw per product shown. One grid render per view instead of two.",
+   "effort": "M",
+   "risk": "Medium: the filtered view must not flash the unfiltered grid; Show more and the no-script path need their tests.",
+   "confidence": "high",
+   "already_tracked": "no",
+   "owner_decision": false
+  },
+  {
+   "id": "PL-7",
+   "title": "Every page of every store asks the server for a wishlist almost no visitor has",
+   "kind": "eager",
+   "where": [
+    "src/components/wishlist-heart.tsx:21",
+    "src/components/wishlist-heart.tsx:113",
+    "src/app/s/[store]/[market]/wishlist/saved/route.ts:9",
+    "src/server/wishlists.ts:37"
+   ],
+   "evidence": "WishlistCount in the header and every heart call load(), which fetches {market}/wishlist/saved once per document. It fired on all 12 storefront pages measured, the empty cart and checkout included: 1,743 bytes on the wire for a 15-byte answer, `private, no-store`. The route resolves the shop and the customer and returns [] when the browser has no wishlist cookie (wishlists.ts:39-41). The cookie is httpOnly, so the page cannot know there is nothing to ask for.",
+   "cost": "One uncached function call (and a pass through proxy.ts) per document load per visitor, for every store. It grows one for one with page views.",
+   "who_pays": "The server per request; a shopper's browser (one more request).",
+   "fix": "Ask only when there may be something: set a readable marker (a small cookie or localStorage key per store) when a product is first saved and when a customer with lists signs in, and have load() answer an empty set without a request when the marker is absent.",
+   "saving": "One function call per storefront document load for every visitor who has never saved a product: nearly all of them.",
+   "effort": "S",
+   "risk": "Low: a shopper whose marker was cleared sees empty hearts until they save again; the marker can be set again by the wishlist page.",
+   "confidence": "high",
+   "already_tracked": "no",
+   "owner_decision": false
+  },
+  {
+   "id": "PL-8",
+   "title": "Stock and Add to cart on tiles: off by default, yet every listing view pays a server call and three queries",
+   "kind": "eager",
+   "where": [
+    "src/lib/shop-tiles.ts:20",
+    "src/lib/shop-tiles.ts:35",
+    "src/components/content-grid-section.tsx:37",
+    "src/components/tile-shop.tsx:21",
+    "src/app/api/shop/tiles/route.ts:14",
+    "src/server/shop-tiles.ts:27"
+   ],
+   "evidence": "DEFAULT_PRODUCT_SETTINGS is both off, but a grid's ask defaults to 'store' for both (tileAsk), so every product tile draws a TileShop island that asks /api/shop/tiles 'to learn the settings with the facts'. The route reads the settings, then the products and variants, then the stock, whatever the settings say (shop-tiles.ts:27-52). Asked on the local build: the demo answers {\"settings\":{\"tileStock\":false,\"tileQuantity\":false}} together with every product's stock and buy facts, which the island then drops (tile-shop.tsx:62-65). Measured on the home and the listing: one GET, 2.9 KB on the wire, no-store. The island's props are 5.4 KB on the listing (18 draws).",
+   "cost": "Per view of any page with a product grid: one uncached function call, three queries (settings, products with variants, stock), 2.9 KB on the wire, and the island's props and scripts, for a store that never switched the feature on.",
+   "who_pays": "The server and the database per request; a shopper's browser.",
+   "fix": "Read the store's two switches where the grid is drawn (they are settings, not stock; cache them with the catalogue and refresh the tag when Settings, Products is saved) and pass them to tileAsk(), so a grid that would show nothing draws no island and asks nothing. In the route, return early when neither is on. Stock itself stays uncached and client-side, as the rule says.",
+   "saving": "One function call and three queries per listing or front-page view for every store that leaves the default; 0.3 KB of props per tile.",
+   "effort": "S",
+   "risk": "Low: a store that turns the switch on sees it after the tag refresh, like any catalogue change.",
+   "confidence": "high",
+   "already_tracked": "no",
+   "owner_decision": false
+  },
+  {
+   "id": "PL-9",
+   "title": "A store in an AI-translated language will carry the whole interface catalogue in every document",
+   "kind": "oversize",
+   "where": [
+    "src/server/ui-text.ts:53",
+    "src/server/ui-text.ts:127",
+    "src/app/s/[store]/[market]/layout.tsx:131",
+    "src/app/s/[store]/[market]/layout.tsx:160",
+    "src/components/ui-texts.tsx:21",
+    "src/lib/ui-catalog-all.ts:6"
+   ],
+   "evidence": "Only nb, sv, da and en are hand-written. For any other language uiTextsFor() returns every stored storefront text (state().texts holds all keys that are not emails) and the layout hands it to the UiTexts client component as a prop. The browser overlays only the browser's own subset (browserText) and keeps the rest for the withdrawal texts. The English source has 1,849 strings and 57 KB of text in en.ts, en-browser.ts and en-returns.ts; the browser's and the withdrawal's parts are 298 strings and 10 KB. Not measured: the demo is Norwegian (the prop is null) and production has no translated language yet. With PL-2 unfixed the prop is in the payload twice.",
+   "cost": "Estimate: about 100 KB raw per copy (57 KB of text plus keys), so about 200 KB raw per document today, on every page of every store in German, French, Finnish or any other EU language without hand-written text. It costs nothing until such a store exists; then it is the largest thing in its documents.",
+   "who_pays": "A shopper's browser on every page of such a store; the server per render.",
+   "fix": "Hand the browser only the keys it reads (the browser subset and the withdrawal function's), filtered once when the language is loaded; or serve them as one cached, versioned file per language instead of a prop.",
+   "saving": "Estimate: about 85% of the prop, some 85 KB raw per copy.",
+   "effort": "S",
+   "risk": "Low: a client component that reads a key outside the subset shows English; the existing check that no language's whole text reaches the browser (docs/performance.md:75) can be extended to this prop.",
+   "confidence": "medium",
+   "already_tracked": "no",
+   "owner_decision": false
+  },
+  {
+   "id": "PL-10",
+   "title": "Shoppers load admin label catalogues and the consent tools on every page, used or not",
+   "kind": "eager",
+   "where": [
+    "src/components/buyer.tsx:6",
+    "src/lib/b2b.ts:13",
+    "src/lib/store-features.ts:14",
+    "src/lib/store-features.ts:240",
+    "src/app/s/[store]/[market]/extras.tsx:3"
+   ],
+   "evidence": "The market layout's script list (the same seven chunks in every store document's payload) includes 01fvsecug_p8v.js: 28 KB raw, 12 KB on the wire. Read in .next/static/chunks: it holds the admin's `common` English catalogue ('Waiting for payment', 'Putting the file together', 'Title in search results') and the store-features labels ('Several currencies', 'Stays and rentals'). The chain: buyer.tsx imports b2b.ts for cookie helpers, b2b.ts imports featureOn from store-features.ts, and store-features.ts imports commonEn for default words. It also loads on Kaizena Flow's front page. Beside it: 1i4b_d7saujxh.js, 46 KB raw and 17.7 KB on the wire with cookie-consent.ts (24 KB, the tracking tools' catalogue), of which 3 KB ran on a store with no tools; and 38a-9vh9kbgd8.js, 32 KB raw, 7% ran, with the listing's filter dialog on the cart and every other page (m/routes.md, m/loaded.md).",
+   "cost": "About 106 KB raw, 42 KB on the wire, in three chunks on every first storefront visit, of which under 10% runs on a page without filters, tools or a business popup.",
+   "who_pays": "A shopper's browser on the first visit (download and parse).",
+   "fix": "Split featureOn() and its types from the labels in store-features.ts so b2b.ts no longer reaches commonEn (the words stay with the admin's parts). Load ConsentManager and its tool catalogue only when the store has tools or code, and the filter dialog only on listings, through the existing lazy/ wrappers. Add the three to the front page's first-scripts check ('without zod or the lightbox').",
+   "saving": "Measured for the first: 28 KB raw, 12 KB on the wire per first visit. Estimate for all three: about 35 KB on the wire.",
+   "effort": "S",
+   "risk": "Low.",
+   "confidence": "high",
+   "already_tracked": "Partly: the first-scripts budgets of e2e/performance.spec.ts hold the total; they do not name these modules.",
+   "owner_decision": false
+  },
+  {
+   "id": "PL-11",
+   "title": "Every open admin tab asks for AI manager notices each minute",
+   "kind": "eager",
+   "where": [
+    "src/components/admin/ai-notices.tsx:29",
+    "src/lib/assistant-notices.ts:13",
+    "src/app/admin/(gated)/(owner)/account/notices/feed/route.ts:27",
+    "src/app/admin/(gated)/[store]/layout.tsx:113"
+   ],
+   "evidence": "useNoticeCount() fetches /admin/account/notices/feed?place=…&count=1 when the admin opens, every 60 seconds while the tab is shown (NOTICE_POLL_MS = 60_000) and when it is shown again. Measured on every store admin page: one GET after load, no-store, 1.7 KB on the wire for a 12-byte answer. The route checks the session, looks the store up by slug and reads the notices each time.",
+   "cost": "One function call and at least two queries per minute per visible admin tab, and one per page load, whether or not the owner uses follow-ups or the autopilot, the things that write notices.",
+   "who_pays": "The server and the database, per open admin tab.",
+   "fix": "Ask on load and when the tab is shown again; poll each minute only while something that writes notices is on for the account (a follow-up waiting, the autopilot running), and every five minutes otherwise. Answer the count from one query keyed by account and store id, without the lookup by slug.",
+   "saving": "Estimate: most of 60 calls per hour per open tab for owners who have no follow-up or autopilot running.",
+   "effort": "S",
+   "risk": "Low: a notice may show up to five minutes later for an owner with nothing running.",
+   "confidence": "medium",
+   "already_tracked": "no",
+   "owner_decision": false
+  },
+  {
+   "id": "PL-12",
+   "title": "The default icon is a 26 KB .ico, larger than a storefront document on the wire",
+   "kind": "oversize",
+   "where": [
+    "src/lib/site-icons.ts:6",
+    "src/lib/site-icons.ts:13",
+    "public/kaizen/favicon.ico"
+   ],
+   "evidence": "siteIcons() links /kaizen/favicon.ico for every store without an icon of its own, the admin and Kaizena Flow's pages. The file is 25,931 bytes (four icons, 16 and 32 px among them) and went over the wire as 11,080 bytes with `public, max-age=0` on every page measured; a storefront document is 13.7 to 21.3 KB gzipped.",
+   "cost": "11 KB on the wire per visitor per site, and a revalidation on later visits (max-age=0).",
+   "who_pays": "A shopper's and an owner's browser.",
+   "fix": "Link a 32 px PNG (about 1 KB) and a 180 px touch icon instead, keep the .ico only at /favicon.ico for browsers that ask for it unprompted, and serve it with a long max-age under a versioned name.",
+   "saving": "About 10 KB on the wire per first visit to any store without its own icon (estimate from typical PNG size).",
+   "effort": "S",
+   "risk": "Low.",
+   "confidence": "medium",
+   "already_tracked": "no",
+   "owner_decision": false
+  },
+  {
+   "id": "PL-13",
+   "title": "No budget watches the document, its payload or what a page asks for after load",
+   "kind": "process",
+   "where": [
+    "e2e/performance.spec.ts:40",
+    "e2e/performance.spec.ts:126",
+    "docs/performance.md:112",
+    "docs/performance.md:186"
+   ],
+   "evidence": "The checks hold first scripts per route (raw bytes) and the total transferred weight of two storefront pages (450 KB each, set when they measured 311 and 331 KB on 27 October; they measure 397 and 413 KB today by a similar method). Nothing holds a document's raw size or RSC payload, the number or bytes of requests after load, or any admin document. That is how PL-1 passed: the catalogues left the budgeted scripts on 10 November and reappeared as up to 304 KB of unbudgeted payload. The empty cart transfers 577 KB and the checkout 599 KB, above the budget the home is held to, and are not checked. The build's own warning about prefetching (PL-5) is printed on every build and fails nothing.",
+   "cost": "Regressions in payload and request count are free: the front page's weight grew about 28% in two weeks inside its budget, and the others have none.",
+   "who_pays": "Everyone the other findings name; CI stays blind to it.",
+   "fix": "Add to the existing specs, per measured route: the document's raw bytes and its payload share, the count and bytes of requests after load for a visitor who presses nothing, and the same for four admin screens signed in (home, orders, product editor, page builder), each about 5% above today's figure after PL-1 to PL-8 land. Add the cart and a listing to SPEED_BUDGETS. Keep work/measure-routes.mjs and the plx scripts as scripts/ so the table in m/routes.md can be drawn again. Fail the build on a new Next warning.",
+   "saving": "None by itself; it keeps the savings above from eroding and makes the next shift of bytes from one place to another visible.",
+   "effort": "S",
+   "risk": "Low: budgets need a rule for raising them on purpose, as the first-scripts ones have.",
+   "confidence": "high",
+   "already_tracked": "Partly: FIRST_SCRIPTS_BUDGETS and SPEED_BUDGETS exist (PSI PERF-11, D336); the gaps named here are not in any plan.",
+   "owner_decision": false
+  }
+ ]
+}

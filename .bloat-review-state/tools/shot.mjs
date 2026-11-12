@@ -1,0 +1,20 @@
+// Screenshots a local HTML fragment as the artifact viewer would wrap it: node shot.mjs <file.html> <out.png> [width] [dark]
+import { createRequire } from "node:module";
+import { readFileSync, writeFileSync } from "node:fs";
+const require = createRequire("/home/user/kaizen-store/");
+const { chromium } = require("playwright-core");
+const [file, out, width = "1200", theme = "light", scale = "2"] = process.argv.slice(2);
+const html = `<!doctype html><html${theme === "dark" ? ' data-theme="dark"' : ""}><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light}body{margin:0;font:14px system-ui}img{max-width:100%}[hidden]{display:none!important}</style></head><body>${readFileSync(file, "utf8")}</body></html>`;
+const tmp = file.replace(/\.html$/, ".wrapped.html");
+writeFileSync(tmp, html);
+const browser = await chromium.launch({ executablePath: "/opt/pw-browsers/chromium", args: ["--no-sandbox"] });
+const page = await browser.newPage({ viewport: { width: Number(width), height: 900 }, deviceScaleFactor: Number(scale) });
+const errors = [];
+page.on("console", (m) => { if (m.type() === "error") errors.push(m.text()); });
+page.on("pageerror", (e) => errors.push(String(e)));
+await page.goto("file://" + tmp, { waitUntil: "networkidle" }).catch(() => {});
+await page.waitForTimeout(600);
+const overflow = await page.evaluate(() => document.documentElement.scrollWidth - innerWidth);
+await page.screenshot({ path: out, fullPage: true });
+console.log("errors:", errors.slice(0, 5), "horizontal overflow px:", overflow);
+await browser.close();

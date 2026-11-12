@@ -1,0 +1,807 @@
+{
+  "key": "admin-data",
+  "title": "What the server does for an admin navigation",
+  "headline": "All 12 findings of the audit stand (8 confirmed, 4 corrected) and this pass added three; none argues for removing, hiding or merging a feature, and none rests on a table being empty. The admin's lists, streaming and cache tags are well made: the waste is in the shell and the home screens, and it is paid per owner tab and per save, so it grows with stores and owners, not with data. Three numbers tell it: building the store menu costs 125 ms of blocking CPU on every shell render (220 permission lookups; 0.1 ms once memoised), the shell is rendered again after every save and at least 39 save sites render the whole route twice because the browser asks again, and a store Home view runs 29 to 46 statements before its first content. Before opening is the cheap time: do the menu memo (AD-1), the double redraws (AD-13), the hidden-tab polls (AD-9), the products list's unused reads (AD-7) and a statement counter so this cannot grow unseen again (AD-12) first.",
+  "metrics": [
+    {
+      "name": "CPU to build the store menu on one shell render",
+      "value": "125 ms with every feature on in my own run (the skeptic's three runs: 121 to 125 ms; 101 to 112 ms with the shop only; 60 ms for a website; 243 ms for a store that is not open). 0.1 ms once the permission lookup is memoised.",
+      "how": "Node 22 micro-benchmark of storeTabs()+storeAreas() with a counting canOpen, 8 runs after 3 warm-up runs: node --import /tmp/claude-0/-home-user-kaizen-store/875cb21b-0ebd-5663-b7c0-2d04a7548e24/scratchpad/work/hooks.mjs /tmp/claude-0/-home-user-kaizen-store/875cb21b-0ebd-5663-b7c0-2d04a7548e24/scratchpad/work/planner-ad/nav.mjs. The skeptic's fuller run is /tmp/claude-0/-home-user-kaizen-store/875cb21b-0ebd-5663-b7c0-2d04a7548e24/scratchpad/work/skeptic-ad/nav.mjs. Not timed on Vercel."
+    },
+    {
+      "name": "Permission lookups per store shell render",
+      "value": "220 calls for 110 distinct menu paths (each path asked twice: once for the tabs, once for the sidebars). ADMIN_PAGES holds 416 pages, 264 of them store pages, and matchPath() filters and sorts them on every call (0.46 to 0.53 ms a call).",
+      "how": "Counter around canOpen and a Set of the paths asked, in the same benchmark; src/lib/admin-map.ts:1472 read."
+    },
+    {
+      "name": "When the shell is rendered",
+      "value": "On a hard load, after every server action that calls refresh(), updateTag() or revalidatePath(), and on every router.refresh(). Not on a soft navigation inside one store.",
+      "how": "Next 16 source read: refresh() sets pathWasRevalidated (node_modules/next/dist/server/web/spec-extension/revalidate.js:67-77), and the action's answer then renders the route (node_modules/next/dist/server/app-render/action-handler.js:926-935, skipPageRendering false). The skeptic read the walk-tree and refresh-reducer sources for the other two cases."
+    },
+    {
+      "name": "Saves that draw the whole route twice (added by this pass)",
+      "value": "At least 39 of the 90 client router.refresh() calls in the admin's own folders follow a server action that has already called refresh(). 6 more are mixed, 11 are needed (the action does not refresh), 34 are not an action or were not resolved by the script.",
+      "how": "Static pass over src/components/admin and src/app/admin: node /tmp/claude-0/-home-user-kaizen-store/875cb21b-0ebd-5663-b7c0-2d04a7548e24/scratchpad/work/planner-ad/double.mjs (36 sites where every candidate action calls refresh()), plus 3 the script could not resolve, found by reading both sides (discount-editor.tsx:127 with discounts/actions.ts:31; campaign-editor.tsx:170 with campaigns/actions.ts:30; locations-view.tsx:92, whose 6 actions all refresh). Nine sites were read by hand on both sides."
+    },
+    {
+      "name": "Places that redraw the whole route",
+      "value": "599 server refresh() calls in 176 files under src/app/admin; 90 client router.refresh() calls in 50 files of src/components/admin and src/app/admin (my count; the skeptic's wider count is 106 in 57); 4 revalidatePath calls in 2 files.",
+      "how": "The skeptic's rg counts for the server side; my rg for router.refresh() over *.tsx in the two admin folders."
+    },
+    {
+      "name": "Statements before the store Home shows its first content",
+      "value": "29 or 30 at least for an owner of a shop (29 when the instance holds the limits memo), up to about 46 with Work on, Norwegian books and a plan with a hard limit; plus 2 for the guard. One of them (AI usage, control-center.ts:161) is thrown away on every store Home view.",
+      "how": "Counted by the skeptic from [store]/page.tsx:55-60, control-center.ts:61-303, setup.ts:56-79 and demo-content.ts:121; I read the same lines and agree with 1 + 20 (21 names in the Promise.all, Work's helper returning at once when off) + per-store reads + 6 + 1."
+    },
+    {
+      "name": "Statements on a hard load of the store shell itself",
+      "value": "6 before the frame paints (account, member, stores, support count, trial pause, Kaizen Life link), 5 of them one after another, plus one HTTP call to Supabase Auth for a session without two-step; 2 more statements after the response (Stripe set-up checks).",
+      "how": "[store]/layout.tsx:60-88, admin-shell-parts.tsx:52, auth.ts:137-153 and 329, connect.ts:265 and 540, read in this pass."
+    },
+    {
+      "name": "Unchanged shell data re-sent on each redraw (store owner)",
+      "value": "51 to 54 KB of JSON in English, 63 to 66 KB in Norwegian: common+setup+shell 20.4 KB (7.0 KB gzip), assistant 13.7 or 24.9 KB, menu 16.9 to 19.5 KB (2.5 to 2.9 KB gzip). The setup area (6.9 KB) has no client reader at all.",
+      "how": "The skeptic's /tmp/claude-0/-home-user-kaizen-store/875cb21b-0ebd-5663-b7c0-2d04a7548e24/scratchpad/work/skeptic-ad/words.mjs (JSON.stringify and gzipSync of what the layouts pass); my rg for useAdminText(\"setup\") and useHandedText(\"setup\") found 0 readers."
+    },
+    {
+      "name": "Products list statements for a member who may edit",
+      "value": "16 or more, of which 12 or more are read and not used on that page; 3 of the unused run one after another after the batch.",
+      "how": "products/page.tsx:90-106 and products.ts:126-200 read in this pass: 10 statements in one Promise.all, then aiFor, profileChoices and marketPriceRules awaited in sequence inside the returned object; the page uses editor.terms and three fields of editor.markets."
+    },
+    {
+      "name": "What the pages and articles lists do per row (added by this pass)",
+      "value": "Two whole JSON documents read per page (draft and published), each parsed with the full page schema, then compared by JSON.stringify: 0.64 ms of blocking CPU per row on real theme pages averaging 8.3 KB. 19 ms for 30 pages, 128 ms and about 3.3 MB from the database for 200 articles. No limit.",
+      "how": "src/server/pages.ts:135-156 read; timed with node --import /tmp/claude-0/-home-user-kaizen-store/875cb21b-0ebd-5663-b7c0-2d04a7548e24/scratchpad/work/hooks.mjs /tmp/claude-0/-home-user-kaizen-store/875cb21b-0ebd-5663-b7c0-2d04a7548e24/scratchpad/work/planner-ad/pages.mjs on ten page documents kept from the themes (/tmp/claude-0/-home-user-kaizen-store/875cb21b-0ebd-5663-b7c0-2d04a7548e24/scratchpad/work/page-*.json), 100 runs after 20 warm-up runs. Production's pages table is 1,389 rows in 9.1 MB (/tmp/claude-0/-home-user-kaizen-store/875cb21b-0ebd-5663-b7c0-2d04a7548e24/scratchpad/m/prod-db-stats.md line 29)."
+    },
+    {
+      "name": "Platform home statements, all awaited before the page paints",
+      "value": "18 on the page plus 6 or 7 in the layout; pending requests are counted 4 times with 2 definitions.",
+      "how": "platform/page.tsx:38-44 (no Suspense), platform-overview.ts:22-47 and platform.ts:206-210 read in this pass; the rest is the skeptic's count."
+    },
+    {
+      "name": "Notice poll per visible owner tab",
+      "value": "60 requests an hour while the tab is shown, 4 statements each (one of them a list read with limit 1 that is thrown away), plus one Supabase Auth call each for a session without two-step.",
+      "how": "ai-notices.tsx:29-53, notices/feed/route.ts:17-35 and assistant-notices.ts:146-173 read in this pass; the measured pages each made one such request after load (m/routes.md, after-load table)."
+    },
+    {
+      "name": "Progress polls that redraw the whole route",
+      "value": "8 RefreshWhile sites and one copy (PackPicturesWatch): every 5 s (cookie scan), 6 s (Dream Factory, 4 places: REFRESH_SECONDS = 6 in three files), 10 s (page jobs, legal pages), 15 s (pack pictures), 20 s (domains). None stops when the tab is hidden; LiveRefresh does.",
+      "how": "rg RefreshWhile over src; refresh-while.tsx, live-refresh.tsx and pack-pictures.tsx:126-133 read."
+    },
+    {
+      "name": "Loading and streaming coverage",
+      "value": "84 loading.tsx files under the signed-in admin; the store Home streams 6 secondary sections; the platform Home, the Payments settings page and the pages list stream none.",
+      "how": "The skeptic's find for loading.tsx; Suspense boundaries read in [store]/page.tsx:116-169; rg Suspense gave 0 in platform/page.tsx, settings/payments/page.tsx and pages/views.tsx."
+    }
+  ],
+  "clean": [
+    "Orders list: keyset paging at 50 rows, a count capped at 10,000, named columns, the list behind Suspense, and a server-drawn view so its words are not sent whole (order-list.ts:176-224, orders/page.tsx:58-60).",
+    "The store itself is read through 'use cache' with a per-store tag and an hours life (stores.ts:217-222); the admin does not re-read it per request. Both writers of currency rates refresh that tag (localization.ts:191 and 217), so rates in the cached store are safe to use.",
+    "Guard reads are shared inside one render with React cache(): readSession, getAccount, loadMembership (auth.ts:120, 214, 354). A page and its Suspense children asking requirePermission twice cost one read.",
+    "The member's row is read on every request on purpose (auth.ts:319-327: a security decision is never stale). Nothing here proposes caching it.",
+    "A soft navigation between pages of one store does not render the shell again. The shell's cost is paid on hard loads, saves and refreshes only.",
+    "The store Home streams its six secondary cards behind Suspense (drafts, today, move watch, failed alerts, analytics alerts, briefing offer). The Analytics overview gives each section its own Suspense (analytics/page.tsx:60-92).",
+    "The AI manager's panel loads its chat and starts its conversation only when opened (ai-manager-launcher.tsx:107-127); the account menu's rows mount only while the menu is open.",
+    "Basic and Advanced (D454) is a client switch over the menu and the hub cards only (useAdminView is read in 3 files: admin-view.tsx, section-hub-cards.tsx, store-admin-nav.tsx). No page computes a data card that Basic hides.",
+    "No save revalidates a whole layout by path: revalidatePath is called 4 times in 2 files, each for one page. The one global tag refresh (CATALOG_TAG) is in vat-admin.ts only, for a platform-wide VAT change.",
+    "Each admin hard load asks 24 to 46 link prefetches for the menu, but each answer measured 380 to 600 bytes of the prerendered shell (m/routes.json), so no page data rides on them. Admin routes are partial prerenders (m/build.log) and the proxy's matcher leaves out everything under /admin/ (src/proxy.ts:55-58).",
+    "Nothing in the admin's guard writes per request in the steady state: the two-step mirror is written only on a mismatch and the break-glass note at most once in 12 hours (auth.ts:158-175). Only the store layout schedules work after a render (after() at layout.tsx:70 and 73; the one other is the hosting page).",
+    "Only one generateMetadata runs in the admin (the root layout's favicon, from cached platform settings); pages use static metadata.",
+    "Plan limits are memoised per instance for a minute (limits.ts:24-47). Cron health on the platform home is one statement.",
+    "No feature in this dimension is unused code paying a running cost for nobody: every read found serves a screen. The findings are about how often and how much, never about whether a feature should exist."
+  ],
+  "refuted": [],
+  "findings": [
+    {
+      "id": "AD-1",
+      "title": "The store menu is rebuilt with 220 slow permission lookups on every shell render",
+      "kind": "eager",
+      "where": [
+        "src/lib/admin-map.ts:1461-1479",
+        "src/lib/admin-map.ts:1375-1377",
+        "src/lib/permissions.ts:116-124",
+        "src/lib/permissions.ts:139-142",
+        "src/lib/store-nav.ts:388-401",
+        "src/lib/store-nav.ts:432-462",
+        "src/app/admin/(gated)/[store]/layout.tsx:82",
+        "src/app/admin/(gated)/[store]/layout.tsx:91-92",
+        "src/app/admin/(gated)/[store]/settings/page.tsx:21",
+        "src/app/admin/(gated)/[store]/website/page.tsx:21",
+        "src/server/owner-assistant.ts:362"
+      ],
+      "evidence": "matchPath() filters the 416-page table and sorts the 264 store pages on every call, and the sort runs a regex twice per comparison (pageParams). The layout calls storeTabs() and storeAreas(); each runs storeSections(), which asks canOpenPath() -> permissionOfPath() -> matchPath() for all 110 menu items. My own run in Node 22: 220 lookups for 110 distinct paths and 125 ms per build with every feature on. The skeptic measured 121 to 125 ms (every feature), 101 to 112 ms (shop only), 60 ms (a website), 243 ms (a store that is not open: two lookups per item, layout.tsx:82), 0.46 to 0.53 ms per matchPath() call of which the filter and sort are 0.46 ms, and 0.1 ms for the whole build once the lookup is memoised by path. The answer depends only on the code and the member's keys. The shell is rendered on a hard load, after every save that calls refresh() (599 sites) and on every router.refresh(), not on a soft navigation.",
+      "cost": "100 to 125 ms of blocking CPU per store shell render for a shop, 60 ms for a website, 243 ms for a suspended or closed store (measured on this machine). 64 ms more on the Settings and Website hub pages (one storeSections() pass, the skeptic's measure). About 130 ms per pass when the AI manager filters the 264 store pages (estimate: 264 times 0.5 ms). It is synchronous, so the instance serves nothing else meanwhile. Today only the team pays it; it multiplies with every owner's saves once stores open (estimate: 1,000 saves cost about 2 minutes of CPU).",
+      "who_pays": "The server per shell render (function CPU), and the owner, who waits for it on every hard load, every save and every progress poll tick.",
+      "fix_steps": [
+        "src/lib/admin-map.ts: at module load, build the pages of each area once, sorted by number of [param]s (the same stable sort matchPath() runs per call at line 1472), each with its path already split into segments. Make matchPath() loop over that list. What it returns does not change.",
+        "src/lib/permissions.ts: keep permissionOfPath() answers in a module Map keyed by the access and the cleaned path. The 110 menu paths and the page patterns are a fixed set, but real addresses (an order's id) are not, so cap the Map (2,000 entries, cleared when full). The key is the path and the access only, never anything of the member.",
+        "src/lib/store-nav.ts: add storeNav(base, flags, canOpen, counts) that calls storeSections() once and returns { tabs, areas }; keep storeTabs() and storeAreas() as thin wrappers so their tests and other callers stand. src/app/admin/(gated)/[store]/layout.tsx:91-92: call storeNav() once.",
+        "src/app/admin/(gated)/[store]/layout.tsx:82: read the key once per path (key = permissionOfPath(path, 'read'); open when key is null or the holder has it, and, for a store that is not open, when keyAllowedWhenNotOpen(key)), so a closed store costs one lookup per item, not two.",
+        "No change is needed in settings/page.tsx:21, website/page.tsx:21 or owner-assistant.ts:362: they get the saving from the first two steps.",
+        "Add the count test named under tests, so the cost cannot come back unseen."
+      ],
+      "tests_and_rules": [
+        "src/lib/admin-map.test.ts (what matchPath() answers), src/lib/store-nav.test.ts (tabs and areas), src/lib/admin-layouts.test.ts.",
+        "src/lib/permissions.test.ts, src/lib/permissions.matrix.test.ts and src/lib/permissions.scan.test.ts: every page's key against the baseline; none may move.",
+        "src/lib/docs-content.test.ts and src/lib/docs-api-reference.test.ts reach matchPath() through src/lib/docs-guide-tools.ts:273.",
+        "e2e/signed-in/permissions.spec.ts and e2e/signed-in/admin-view.spec.ts: the menu a role sees.",
+        "New, in src/lib/store-nav.test.ts: storeNav() with every feature on calls canOpen at most once per menu item (110 today). A count, not a time, so it does not flake.",
+        "Rule kept: docs/rules/admin/platform.md:15 (a new page goes in a section's items and in ADMIN_PAGES; a test fails otherwise). No written rule asks for the per-call sort."
+      ],
+      "depends_on": [],
+      "done_when": "node --import /tmp/claude-0/-home-user-kaizen-store/875cb21b-0ebd-5663-b7c0-2d04a7548e24/scratchpad/work/hooks.mjs /tmp/claude-0/-home-user-kaizen-store/875cb21b-0ebd-5663-b7c0-2d04a7548e24/scratchpad/work/planner-ad/nav.mjs prints 110 lookups per build (220 today) and under 2 ms per build (125 ms today), and the new count test in src/lib/store-nav.test.ts passes.",
+      "saving": "Measured here: 100 to 125 ms down to about 0.1 ms per shell render, 64 ms per hub page, and about 130 ms per AI manager pass (the last an estimate). Vercel's CPU differs; the same order there is an estimate.",
+      "effort": "S",
+      "risk": "Low. Pure functions over a static table. What could break: a memo keyed on anything of the member would show one role's menu to another (key on path and access only; permissions.matrix.test.ts and e2e permissions.spec.ts would show it). A Map without a cap would grow with real addresses. matchPath() must keep trying pages with fewer params first, or a fixed address could lose to a [param] one: admin-map.test.ts holds that.",
+      "confidence": "high",
+      "priority": "P0",
+      "already_tracked": "no (docs searched for matchPath, permissionOfPath, storeTabs, storeAreas: no step or rule names this cost)",
+      "owner_decision": false,
+      "verdict": "confirmed",
+      "notes": "Do this first: it is the largest measured cost in the dimension, a few dozen lines, and every other shell finding (AD-4, AD-5, AD-9, AD-13) is multiplied by it. Unit is per shell render, not per navigation."
+    },
+    {
+      "id": "AD-2",
+      "title": "The store Home runs 29 or more statements before it shows anything, one of them for nothing",
+      "kind": "eager",
+      "where": [
+        "src/app/admin/(gated)/[store]/page.tsx:55-60",
+        "src/app/admin/(gated)/[store]/page.tsx:199-222",
+        "src/server/control-center.ts:52-53",
+        "src/server/control-center.ts:61-75",
+        "src/server/control-center.ts:100-259",
+        "src/server/control-center.ts:161",
+        "src/server/control-center.ts:290-303",
+        "src/server/setup.ts:55-79",
+        "src/server/usage.ts:56-66",
+        "src/server/usage.ts:161-166",
+        "src/server/limits.ts:24-47",
+        "src/server/turnover-watch.ts:41-48",
+        "src/app/admin/(gated)/(owner)/page.tsx:76",
+        "src/db/client.ts:63-68"
+      ],
+      "evidence": "controlCenter() runs 1 statement, then 20 in one Promise.all (more with Work on), then per-store reads for the threshold watch (1 to 4) and plan limits (0 to 11; the limits themselves are memoised for a minute per instance, the usage against them is not). The setup checklist adds 6 (setup.ts:56-79, with 2 in getPaymentSettings) and demo content 1. The AI usage read (line 161) is used only by the owner's control center; the store Home reads only center.stores and center.latest, so that statement is thrown away on every Home view. Each feature added one count to this screen (drafts, order changes twice, payment terms, reviews, privacy, returns, books, hand-over), and every store runs all of them on every Home view. The file's own comment (lines 52-53) says 'never per store', yet lines 290-303 read per store. The pool holds 5 connections per instance (client.ts:66), so the batch goes through in about four rounds and takes the whole pool meanwhile. The checklist card is the last card of the page and is drawn only while a step is left (page.tsx:199), yet its 6 reads hold the first paint on every view. store_billing is read 3 or 4 times on one hard load (layout, checklist, control center, limits).",
+      "cost": "29 to 46 statements held before the page's first content; on the owner's control center the per-store part grows by 1 to 15 statements per store. Not timed. Today's rows are the team's test data, so each statement is fast; the count per view is what multiplies with owners.",
+      "who_pays": "The database and the server per Home view; the owner waits for all of it before Home's header and figures appear.",
+      "fix_steps": [
+        "src/server/control-center.ts:161: do not read AI usage when onlyStore is set (pass an empty list to totalOf). One statement less per store Home view, no visible change.",
+        "src/app/admin/(gated)/[store]/page.tsx: move the setup checklist (getSetupProgress, lines 56 and 75-100, the card at 199-222) and the demo content card (line 59, 198) into two async components behind Suspense with fallback null, as the six cards above them already are. They are the last two cards, so nothing above shifts. 7 statements leave the blocking set.",
+        "src/server/usage.ts:161-166: keep limitsReachedCount() per store for 60 seconds beside the limits memo (limits.ts:24-47) and clear it in forgetLimits(). 0 to 11 statements per view become at most once a minute per instance.",
+        "src/server/control-center.ts: add 'has an open Norwegian book' to the first statement (a left join on commerce.ledger_books) and call turnoverWatch() only for those stores; skip the reviews statement (line 228) when no store in the set has the reviews feature on (featureOn() on the row's features, as line 311 does for shop).",
+        "src/server/control-center.ts: fold the count-only attention reads that share a key set into one statement that returns one row per store, as the books read at lines 246-258 already does with sub-selects: drafts, partly sent, order changes, hand-over, payment terms and owed edit refunds for the stores in orderIds; reviews for productIds; support for supportIds. Keep each figure's permission rule (lines 80-97): a sub-select is asked only for a store whose id is in its key's set. Describe the row with col and read it through typedRows() (the rule for new reads).",
+        "src/server/control-center.ts:290-303: read the threshold watch set-based for all stores (one statement over ledger_books with the two turnover sums), so the owner's control center stops growing per store; correct the comment at lines 49-53 to what the file then does.",
+        "Only if the owner wants the figures sooner still: split controlCenter() into the figures (store row, sales, to send, stock, owed, latest orders) and the attention reads, sharing the first statement through React cache(), and draw 'Needs your attention' in its own Suspense with a one-row fallback. This changes what paints first, so show the owner a screenshot before keeping it."
+      ],
+      "tests_and_rules": [
+        "src/server/control-center.int.test.ts and src/lib/control-center.test.ts (figures and attentionFor).",
+        "Integration tests that read controlCenter(): work-attention, returns-admin, security-review (a figure only where the member holds the key), store-copy, order-edit-review-fixes, analytics-edits, order-ops-tools, tax-report-tools, shipping-tools, invoice-tools (.int.test.ts in src/server).",
+        "src/server/turnover-watch.int.test.ts; src/server/setup-tools.int.test.ts, store-features-onboarding.int.test.ts and demo-content.int.test.ts (getSetupProgress and demoContent keep their shape).",
+        "src/lib/payment-readers.scan.test.ts line 16 allows control-center.ts one read of payment_providers: keep it at one.",
+        "src/server/ratchet.scan.test.ts: unchecked reads may not rise; the folded statement goes through typedRows().",
+        "Written words to correct with the change: docs/admin-navigation.md:98-99 ('reads all the stores in a handful of queries'), docs/capacity.md:668-669 and docs/rules/admin/platform.md:16 name controlCenter(); the comment at control-center.ts:49-53.",
+        "Platform parity (CLAUDE.md conventions): the platform Home is AD-6; the owner's control center gets the same change because it is the same function."
+      ],
+      "depends_on": [
+        "AD-12 step 1 (the statement counter, to measure before and after)"
+      ],
+      "done_when": "The statement budget test of AD-12 holds controlCenter() for one store to 14 statements or fewer for an owner of a shop (22 or more today), the checklist and the demo card are behind Suspense in [store]/page.tsx, and no usageRows() call runs when onlyStore is set.",
+      "saving": "Estimate: first content after about 14 statements instead of 29 or more, with nothing a person sees changed (1 for AI usage and 7 for the two streamed cards for certain; 7 from folding eight counts into one; 1 to 12 from the watch and the limits memo). About 7 if the attention list is streamed too (the last step). The owner's control center stops growing per store.",
+      "effort": "M",
+      "risk": "Medium-low. The folded statement must keep each figure's permission rule: a figure shown to a role that may not see it would be a privacy fault, and security-review.int.test.ts and control-center.int.test.ts are the checks. A limits count kept for a minute can lag a plan change by a minute on another instance, as the limits themselves already do. Steps 1 to 4 change nothing a person sees; the last step does.",
+      "confidence": "high",
+      "priority": "P1",
+      "already_tracked": "no",
+      "owner_decision": false,
+      "verdict": "corrected",
+      "notes": "The skeptic removed the argument from empty tables; what stands is that every store pays every feature's count on every Home view. Steps 1 to 3 are small and could ship with the P0 work. Before opening is the cheap time to fold the counts, while no owner's attention list depends on their exact timing."
+    },
+    {
+      "id": "AD-3",
+      "title": "Every admin request from a session without two-step calls Supabase Auth",
+      "kind": "eager",
+      "where": [
+        "src/server/auth.ts:132",
+        "src/server/auth.ts:144-153",
+        "src/server/auth.ts:158-175",
+        "src/server/two-step.ts:190",
+        "src/server/two-step.ts:264",
+        "src/server/two-step.ts:341",
+        "src/server/two-step.ts:362",
+        "src/lib/two-step.ts:8",
+        "node_modules/.pnpm/@supabase+auth-js@2.118.0/node_modules/@supabase/auth-js/dist/main/GoTrueClient.js:5537-5544",
+        "e2e/fixtures/auth-stub.mjs:3"
+      ],
+      "evidence": "readSession() verifies the token, reads the account row, then for an aal1 session calls supabase.auth.getUser() over HTTP to list factors, on every request (React's cache spans one render only). Every page render, server action, notice poll and admin route handler goes through it. A save pays it twice: once in the action's guard and once in the redraw that follows, which is a new render with a new cache. The writes that follow run only on a mismatch or while the break-glass switch is on. One more thing found in this pass and not checked against production: getClaims() itself verifies locally only when the project signs tokens with an asymmetric key; for an HS256 token it falls back to getUser() (GoTrueClient.js:5537-5544), which is one more HTTP call per request for every session, with or without two-step. The test stand-in signs with HS256 and says so (auth-stub.mjs:3). Which kind production's project uses is not in the repo.",
+      "cost": "One extra HTTP round trip per admin request for every account without a second factor, two per save, one per 60-second notice poll. Not timed here; the code review rates it severity 2. If production still signs with the shared secret, every admin request of every session makes one more. It grows with every owner who signs in without two-step once stores open.",
+      "who_pays": "The server per request and the owner on every navigation and save.",
+      "fix_steps": [
+        "First look, by a person with access: in the Supabase dashboard of project ybsozesfuxuitoacntfo, Authentication, JWT signing keys. If tokens are still signed with the legacy shared secret (HS256), move to an asymmetric signing key (Supabase's own migration; no code change: getClaims() then verifies with the cached key set, fetched once per instance per 10 minutes). Record which it was in docs/decisions.md.",
+        "src/server/auth.ts:144-153: take the fast path the review names. two_step_since is already read in the same statement (line 138) and is written when a factor is verified (two-step.ts:190) and cleared on every removal and reset (two-step.ts:264, 341, 362). For an aal1 session whose row has two_step_since null and no re-enrolment pending, skip getUser(): the account has no verified factor. Keep getUser() when the mirror is set (the person must be held at the challenge) and whenever the row says re-enrol.",
+        "Close the gap the fast path opens: a factor added outside the app's own flow would not be in the mirror. At sign-in (the sign-in action and the two-step pages, which already call the Auth server) reconcile the mirror once from getUser(), so each session starts from the Auth server's answer.",
+        "src/server/auth.ts:158-175: move the mirror's write and the break-glass note into after(), as the review says, so they never hold a page.",
+        "Change the written rule with the code: src/lib/two-step.ts:8 and the comment at src/server/two-step.ts:32 say the mirror 'decides nothing'. Say instead that it decides only when to skip the Auth call for an account that has never verified a factor, and that it is reconciled at sign-in.",
+        "In the same change set step 3.8 of docs/audits/code-review-2026-11.md to Done with the date and commit, and add its change-log line."
+      ],
+      "tests_and_rules": [
+        "src/server/admin-trust.int.test.ts and src/server/two-step.int.test.ts with src/server/trust-fixtures.ts (it records each getClaims and getUser call: assert no getUser for an aal1 account whose mirror is null, and one when it is set).",
+        "e2e/signed-in/auth.setup.ts and the two-step specs in e2e/signed-in (a platform admin is still held at the second step; a member with a verified factor and an aal1 session is still sent to the challenge).",
+        "Rule changed: src/lib/two-step.ts:8 and src/server/two-step.ts:32; docs/wave-1-trust.md 2.8 describes the gate.",
+        "Code review step 3.8 (finding FV8): its own done-when is 'a second admin request within five minutes makes no call to Auth'."
+      ],
+      "depends_on": [],
+      "done_when": "With trust-fixtures, an aal1 account with no factor makes 0 getUser calls across two readSession() runs (1 each today), an aal1 account with a factor is still held, and step 3.8 in the code review's Progress table reads Done.",
+      "saving": "One HTTP call per admin request for sessions without two-step, two per save (estimate: tens of milliseconds each; not measured). If production signs with HS256, one more per request for every session.",
+      "effort": "S",
+      "risk": "Security-sensitive. What could break: an account with a verified factor let in on an old aal1 session because its mirror is null. The mirror is written in the same flow that verifies or removes a factor, and the sign-in reconcile covers a factor added elsewhere; the integration tests above must cover enrol, remove, reset by an owner and re-enrol. The platform's team is unaffected: with no factor they are held at enrolment already.",
+      "confidence": "high",
+      "priority": "P1",
+      "already_tracked": "code review step 3.8 (finding FV8): Open. The signing-key check is not written there.",
+      "owner_decision": false,
+      "verdict": "confirmed",
+      "notes": "Listed so the plan does not count it twice; do it as the review's step. The column fast path is preferred over a five-minute in-memory answer because the column is the same for every instance, while a memory kept per serverless instance is rarely hit and cannot be cleared on the others. The signing-key question is a five-minute look that may be worth more than the rest of this finding."
+    },
+    {
+      "id": "AD-4",
+      "title": "The store shell reads one thing after another, and checks Stripe set-up on every render",
+      "kind": "eager",
+      "where": [
+        "src/app/admin/(gated)/[store]/layout.tsx:60-88",
+        "src/app/admin/(gated)/[store]/layout.tsx:68-73",
+        "src/app/admin/(gated)/[store]/layout.tsx:151",
+        "src/app/admin/(gated)/layout.tsx:22-26",
+        "src/components/admin/admin-shell-parts.tsx:52",
+        "src/server/connect.ts:257-279",
+        "src/server/connect.ts:539-546",
+        "src/server/store-trial.ts:63-70",
+        "docs/rules/admin/commerce.md:62-65",
+        "docs/decisions.md:31",
+        "docs/decisions.md:34"
+      ],
+      "evidence": "The layout awaits the member, then the account's stores (used at top level for one footer link, line 151), then the support count, then the starter (starter stores only), then the trial pause, each after the last; the account menu then awaits the Kaizen Life link with no Suspense. A top-level await in a layout holds the whole segment, children included, and the only boundary above is the gate's, so the person sees the waiting screen until all are done. On every render the layout also schedules ensureTestAccount() and ensureStorePaymentMethods() with after(): one statement each, and a Stripe API call per render while a Kaizen-made test account is not yet active (connect.ts:270-275). The second looks for payment methods added to the platform, which changes only at a deploy; checkout runs the same check.",
+      "cost": "5 database round trips in a row before the frame can paint on a hard load, and 2 statements (sometimes a Stripe call) after every shell render, which includes every save and every poll tick. New stores start in test mode (D20), so every new store's first minutes in the admin are the Stripe-call case.",
+      "who_pays": "The owner on each hard load and save; the server and database per shell render; Stripe's API quota in the not-yet-ready case.",
+      "fix_steps": [
+        "src/app/admin/(gated)/[store]/layout.tsx:74-88: after the member is known, run the reads that depend only on it in one Promise.all: storesOf(account), waitingCount (when the member may read support), starterOfStore (starter stores), pausedAfter (open stores) and requestIp(). Four waits become one.",
+        "Move the reads out of a function a test can call: a small storeShellData(member) in src/server that returns { stores, waiting, starter, trialPaused }, so AD-12's budget test can count the shell's statements.",
+        "src/components/admin/admin-shell-parts.tsx:52: read the Kaizen Life link in a small async component inside its own Suspense (fallback null) among the menu's rows, so the account menu no longer waits for it.",
+        "src/server/connect.ts: keep, per instance, the stores whose test account this instance has seen active, and the stores for which this instance found nothing left to ask Stripe for (two module Sets; a store is added only on those two answers, so what Stripe refused is still tried again). ensureTestAccount() and ensureStorePaymentMethods() return at once for a store in the set. A new deploy starts new instances with empty sets, so a method added to the platform is still asked for at the first admin visit after the deploy, as D23 says. Checkout keeps its own calls unchanged.",
+        "src/app/admin/(gated)/[store]/layout.tsx:68-73: schedule the two after() calls only when the store is not yet in those sets (export a cheap needsPaymentCheck(storeId)), so no closure and no statement is spent on a store already settled."
+      ],
+      "tests_and_rules": [
+        "src/server/billing.int.test.ts (ensureTestAccount and ensureStorePaymentMethods): add that a second call for an active account sends no statement, and that a fresh module state asks again.",
+        "src/server/store-trial.int.test.ts (pausedAfter), src/server/kaizen-life-accounts.int.test.ts (kaizenLifeAppUrl), src/server/store-features-website.int.test.ts (storesOf), src/server/support.int.test.ts (waitingCount).",
+        "e2e/signed-in/admin-phone.spec.ts and a11y.spec.ts draw the shell; the menu's footer link and the Support badge must still show.",
+        "Rules kept to the letter: docs/rules/admin/commerce.md:62-65 (the test account is made 'in the background from the store admin layout, on the Payments page, or at checkout') and D20, D23 in docs/decisions.md:31 and 34 (methods asked 'when the store's admin is opened or a checkout starts'). The memo only stops asking again in the same instance."
+      ],
+      "depends_on": [
+        "AD-12 step 1 (the statement counter, for the check only)"
+      ],
+      "done_when": "The layout has one await after the member besides the Promise.all (read the file), and AD-12's counter shows the store shell at 2 statements for the guard plus one wave, and 0 statements after the response for a store whose test account is active, on the second render in one instance (2 after the response today).",
+      "saving": "Estimate: 3 fewer sequential waits before the frame paints on a hard load, and 2 fewer statements per shell render for every active selling store after its first render in an instance.",
+      "effort": "S",
+      "risk": "Low. What could break: a test account that goes from active back to restricted would not be re-read by the admin in that instance (checkout still checks before every payment, and the account webhook keeps the status current). A badge or banner read in parallel instead of in order changes nothing a person sees. Noticed by billing.int.test.ts and the signed-in specs.",
+      "confidence": "high",
+      "priority": "P1",
+      "already_tracked": "no",
+      "owner_decision": false,
+      "verdict": "confirmed",
+      "notes": "The planner chose a per-instance memo over the skeptic's move to the Payments page and a job: it removes the same statements without changing D23's letter or adding a job. If the owner later wants the check out of the admin altogether, that is a decision row, not a performance fix."
+    },
+    {
+      "id": "AD-5",
+      "title": "Every save and poll re-sends 51 to 66 KB of unchanged shell words and menu",
+      "kind": "oversize",
+      "where": [
+        "src/app/admin/(gated)/layout.tsx:45",
+        "src/app/admin/(gated)/[store]/layout.tsx:114",
+        "src/app/admin/(gated)/platform/layout.tsx:83",
+        "src/app/admin/(gated)/[store]/page.tsx:117",
+        "src/app/admin/(gated)/[store]/products/page.tsx:114",
+        "src/components/admin/admin-text.tsx:33-49",
+        "src/components/admin/ai-manager-launcher.tsx:74",
+        "src/components/admin/ai-manager-launcher.tsx:107-127",
+        "src/lib/admin-text.ts:302-309",
+        "src/lib/store-nav.ts:432-462",
+        "e2e/signed-in/admin-text-fallbacks.spec.ts:7-14"
+      ],
+      "evidence": "Layouts hand whole catalogue areas to client components as props. Measured as JSON by the skeptic: common+setup+shell 20.4 KB (7.0 KB gzip); the assistant area 13.7 KB in English and 24.9 KB in Norwegian, sent for every owner though the panel is closed until pressed; the menu's tabs and areas 16.9 to 19.5 KB, each page address present three times. No client component reads the setup area (my rg: 0 matches for useAdminText(\"setup\") and for useHandedText(\"setup\")), so its 6.9 KB is dead in every payload. The Home hands the whole home area (23.7 KB) to serve one streamed card, and the products list the whole products area (26.8 KB). In the measured Home document every long string of setup, assistant and home is present, and the handed words and menu are about 75 KB of the 106 KB of page data. A redraw after refresh() serialises all layouts again. The pattern is general: adminTexts() is called at 208 sites in 189 files of src/app and src/components.",
+      "cost": "51 to 54 KB (English) or 63 to 66 KB (Norwegian) of JSON per shell redraw for a store owner, about 14.5 to 18 KB gzipped; 24 to 27 KB more per view on Home and Products. Server time to serialise and browser time to parse and reconcile it, on every save and poll tick.",
+      "who_pays": "The owner's browser and the server per shell render.",
+      "fix_steps": [
+        "src/app/admin/(gated)/layout.tsx:45: hand down [\"common\", \"shell\"] only. Nothing on the client reads setup.",
+        "Split the assistant area in the catalogue (src/lib/admin-messages/assistant.en.ts and assistant.nb.ts, the types in src/lib/admin-text.ts): a small area for what shows while the panel is closed (the button, the badge and the notices list: what ai-manager-launcher.tsx and ai-notices.tsx read) and the rest (chat, voice, approval, skills, memory). [store]/layout.tsx:114 and platform/layout.tsx:83 hand down the small one.",
+        "Send the rest with the opening the panel already makes: startAssistantAction (and the platform's) returns the chat's words in the account's language beside what it returns today, and ai-manager-launcher.tsx wraps the loaded chat in an AdminTextScope with them (it already waits for start() and for the chat's script before drawing, lines 107-127). The AI manager's own page keeps handing the whole area down.",
+        "src/app/admin/(gated)/[store]/page.tsx:117: give the drafts card its words as a prop (words.drafts), as the demo card beside it gets words.demo, instead of a scope with the whole home area. Do the products list (products/page.tsx:114) when it is next touched: its table and bulk panels read many parts of the area.",
+        "src/lib/store-nav.ts:432-462 and src/components/admin/store-admin-nav.tsx: send each menu address once. Drop also from the tabs and let the client work it out from the area with the same index (its prefixes), or send the sections once and build tabs and sidebars from them in the client.",
+        "Hold it: add the store shell's handed JSON size to AD-12's checks (JSON.stringify of adminTexts() for the gate and of storeNav() for a store with every feature on, against a number that only falls)."
+      ],
+      "tests_and_rules": [
+        "e2e/signed-in/admin-text-fallbacks.spec.ts: fails when a part reads an area nothing handed down (D540). It must pass with the panel opened and a message typed, in English and Norwegian; add that case if it is not there.",
+        "src/components/admin/admin-catalogues.scan.test.ts (no client module imports a whole catalogue) and src/lib/admin-strings.scan.test.ts (which areas client parts read).",
+        "e2e/signed-in/ai-manager-panel.spec.ts (the panel opens, lists notices, sends), e2e/signed-in/admin-view.spec.ts and admin-phone.spec.ts (the menu, the sidebar, the active tab).",
+        "src/lib/store-nav.test.ts and src/lib/admin-layouts.test.ts (the shape of tabs and areas).",
+        "e2e/signed-in/admin-scripts.spec.ts budgets count scripts, not the data in the document: this change does not move them.",
+        "Rule kept: docs/performance.md:170-182 and D540 (hand the area down where the part is drawn; never put the English back into every screen). The chat's words arrive in a scope with the chat, in the account's language."
+      ],
+      "depends_on": [
+        "AD-1 (storeNav() gives one place to change the menu's shape)"
+      ],
+      "done_when": "/tmp/claude-0/-home-user-kaizen-store/875cb21b-0ebd-5663-b7c0-2d04a7548e24/scratchpad/work/skeptic-ad/words.mjs, run again with the layouts' new arguments, prints under 30 KB of JSON for the store shell in English (51 to 54 KB today), and e2e/signed-in/admin-text-fallbacks.spec.ts and ai-manager-panel.spec.ts pass.",
+      "saving": "Estimate from the measured parts: 6.9 KB (setup) plus 12 to 23 KB (assistant) plus about 7.5 KB (menu addresses) less JSON per shell redraw, roughly half; about 8 to 11 KB gzipped. About 20 KB less JSON on each Home view.",
+      "effort": "M",
+      "risk": "Low to medium. D540 makes a missing area a fault, so the split must be done in the catalogue's types first and the chat's words must arrive before the chat draws. A missed reader shows as an English string in a Norwegian account and as a failure of admin-text-fallbacks.spec.ts. Step 1 alone is safe today.",
+      "confidence": "high",
+      "priority": "P1",
+      "already_tracked": "Partly: PSI PERF-01 (open) cut the admin's shared scripts (D540, 10-11 November); the words re-sent as props on each redraw are not in it.",
+      "owner_decision": false,
+      "verdict": "confirmed",
+      "notes": "Step 1 is a one-line change and can ship with the P0 work. The 208 call sites of adminTexts() are not each a fault: a page that hands an area to parts that read most of it is right. The two named pages hand a whole area to one card."
+    },
+    {
+      "id": "AD-6",
+      "title": "The platform Home holds its first paint for 18 statements and reads whole lists to show a number",
+      "kind": "oversize",
+      "where": [
+        "src/app/admin/(gated)/platform/page.tsx:38-44",
+        "src/server/platform-overview.ts:22-47",
+        "src/server/platform-overview.ts:58",
+        "src/server/billing.ts:104-122",
+        "src/server/ai-usage.ts:134-153",
+        "src/server/platform-briefing.ts:81-112",
+        "src/server/plan-analytics.ts:44-82",
+        "src/app/admin/(gated)/platform/layout.tsx:67",
+        "src/components/admin/admin-shell-parts.tsx:25-31",
+        "src/server/platform.ts:206-210"
+      ],
+      "evidence": "The page awaits five loaders in one Promise.all with no Suspense. platformOverview() calls listPlans() (3 statements with sub-counts and the Stripe sync table) to show plans.length, and usageRows() (a grouped join over ai_usage with prices, accounts and stores) to show two totals. planAnalytics(30) returns one row per store's plan and every plan move of the period and sums them in code. Pending access requests are counted four times on a hard load: layout line 67, the level switcher's own cached copy, the overview and the snapshot. Two definitions are in use: platform.ts:208 leaves out unconfirmed self-serve requests, the overview (platform-overview.ts:24-26) does not, so the tab's badge and the Home's figure can disagree.",
+      "cost": "18 statements before the page paints and 6 or 7 in the layout; 4 of them count the same thing. Only the platform's own team opens this page, so the total is small; the plan lines grow by one row per store per view once stores sign up.",
+      "who_pays": "The platform's team on each visit; the database.",
+      "fix_steps": [
+        "src/server/platform-overview.ts:44: count plans with one select count(*) from commerce.plans instead of listPlans().",
+        "src/server/platform-overview.ts:45: sum AI requests and failures of the last 7 days in one aggregate over commerce.ai_usage without the joins (a small aiTotals(days) in src/server/ai-usage.ts, read through typedRows()).",
+        "src/server/platform.ts:206-210: make countPendingRequests() the one count, behind React cache(), and use it in the layout (line 67), the switcher (admin-shell-parts.tsx:25), the overview and the snapshot. Keep its definition (unconfirmed self-serve requests are not yet waiting for the team); the overview keeps its own read only for the oldest date, with the same filter.",
+        "src/server/plan-analytics.ts:44-82: sum the plan lines in SQL (group by plan and currency) instead of returning one row per store.",
+        "src/app/admin/(gated)/platform/page.tsx: draw the attention list from the overview first and put the month's figures (platformSnapshot) and the last-7-days section behind Suspense, as the store Home does."
+      ],
+      "tests_and_rules": [
+        "src/server/platform-overview.int.test.ts, src/server/plan-analytics.int.test.ts, src/server/store-starters.int.test.ts (it reads the overview).",
+        "e2e/signed-in/platform-reports.spec.ts and the platform cases of e2e/signed-in/a11y.spec.ts.",
+        "src/server/ratchet.scan.test.ts (new reads through typedRows()).",
+        "Rule: docs/rules/admin/platform.md:16 names platformOverview() as the platform's twin of the control center; the parity rule in CLAUDE.md is why this page gets the same care as the store Home."
+      ],
+      "depends_on": [
+        "AD-12 step 1 (the statement counter)"
+      ],
+      "done_when": "AD-12's budget test holds the platform Home's loaders to 11 statements or fewer (18 today), and rg finds one definition of pending requests (the filter of platform.ts:208) in src/server.",
+      "saving": "Estimate: 18 statements to about 11, and the attention list after about 5.",
+      "effort": "S",
+      "risk": "Low. Choosing one definition of 'waiting' changes the Home's figure where unconfirmed self-serve requests exist; say so in the commit. The plan lines' sums must stay per currency, never across currencies.",
+      "confidence": "high",
+      "priority": "P2",
+      "already_tracked": "no",
+      "owner_decision": false,
+      "verdict": "confirmed",
+      "notes": "Few people ever load this page, so it comes after the store shell and Home. It is listed because the platform must not lag the stores (the parity rule), and the two definitions of one number are a small correctness matter worth fixing on their own."
+    },
+    {
+      "id": "AD-7",
+      "title": "The products list reads the whole editor context and a per-product check it does not need",
+      "kind": "oversize",
+      "where": [
+        "src/app/admin/(gated)/[store]/products/page.tsx:90-96",
+        "src/app/admin/(gated)/[store]/products/page.tsx:105-106",
+        "src/app/admin/(gated)/[store]/products/page.tsx:115",
+        "src/server/products.ts:126-157",
+        "src/server/products.ts:198-200",
+        "src/server/vat-categories.ts:44-52",
+        "src/server/unit-price-gaps.ts:61-91"
+      ],
+      "evidence": "For a member who may edit, the list calls getEditorContext(): 10 statements in one batch (economic operators, two location reads, terms, the VAT matrix, booking staff, places, hosts, layouts, VAT categories), then 3 more one after another while the object is built (the store's AI provider, shipping profiles, market price rules; lines 198-200). The page uses terms and three fields of markets that are already in the cached store (lines 105-106). ratesNow() calls commerce.vat_rate() for every country and category and the result is dropped. productsNeedingMeasure() returns titles, categories (a recursive query) and SKUs for every active product that passes commerce.unit_price_required(), a function call per product, while the default view uses only the count (line 115).",
+      "cost": "12 or more unused statements per products-list view for editors, 3 of them sequential after the batch, one a function call per country and category; one function call per active product per view for a notice's number. The list streams in only when the slowest chain is done.",
+      "who_pays": "The database and the server per view; the owner waits for the context's four rounds before the list appears.",
+      "fix_steps": [
+        "src/app/admin/(gated)/[store]/products/page.tsx:94: replace getEditorContext(store) with listTerms({ storeId: store.id, contentType: \"product\" }) (the same call products.ts:141 makes) and build the bulk panel's markets from store.markets (code, name, currency: lines 105-106 need nothing else).",
+        "src/server/unit-price-gaps.ts: add countProductsNeedingMeasure(storeId): return 0 at once when the store has no product marked sold_by_measure and no category marked requires_unit_price (one cheap exists), else count the products the present query would return, without titles, categories or SKUs. Read it through typedRows().",
+        "src/app/admin/(gated)/[store]/products/page.tsx:92 and 115: use the count for the notice and the tab; call productsNeedingMeasure() only when ?needs=unit-price is asked (line 151 needs the rows).",
+        "Leave getEditorContext() itself alone: the product editor needs all of it. Its three sequential awaits (products.ts:198-200) can join the Promise.all when the editor is next touched."
+      ],
+      "tests_and_rules": [
+        "src/server/unit-price.int.test.ts (productsNeedingMeasure): add the count and that it equals the list's length for the seeded cases, including a category marked after products were assigned.",
+        "e2e/signed-in/products-bulk.spec.ts (the bulk panel's categories, tags and markets still offered), e2e/signed-in/products-grid.spec.ts.",
+        "src/server/products.int.test.ts and store-features-selling.int.test.ts (listAdminProducts, unchanged).",
+        "src/server/ratchet.scan.test.ts (the new count is a checked read).",
+        "Rule kept: docs/wave-1d-unit-price.md and D160 (the notice and its filter stay; only what is read for the number changes)."
+      ],
+      "depends_on": [
+        "AD-12 step 1 (the statement counter, for the check only)"
+      ],
+      "done_when": "rg -c getEditorContext 'src/app/admin/(gated)/[store]/products/page.tsx' prints nothing (1 today), and AD-12's counter shows the products list at 5 statements or fewer for an editor on the default view (16 or more today).",
+      "saving": "Estimate: 16 or more statements down to 4 per view for an editor (products, the notice's count, terms, import jobs), and three sequential waits gone.",
+      "effort": "S",
+      "risk": "Low. The bulk panel needs only terms and markets. What could break: the notice's number disagreeing with its list (the int test compares them), or the early return hiding a product marked by itself (the exists covers both the product's own mark and a category's).",
+      "confidence": "high",
+      "priority": "P0",
+      "already_tracked": "no (the list's missing paging is code review step 1.13, see AD-10)",
+      "owner_decision": false,
+      "verdict": "corrected",
+      "notes": "The skeptic raised the counts (the auditor missed the three awaits inside the returned object). Small, safe, and on one of the most opened pages of a selling store."
+    },
+    {
+      "id": "AD-8",
+      "title": "An account's memberships are read two to four times per request, in four shapes",
+      "kind": "duplicate",
+      "where": [
+        "src/server/auth.ts:271-287",
+        "src/server/auth.ts:328-340",
+        "src/server/support-desk.ts:130-139",
+        "src/server/books-clients.ts:32-41",
+        "src/server/control-center.ts:61-75",
+        "src/app/admin/(gated)/(owner)/layout.tsx:30-38",
+        "src/app/admin/(gated)/(owner)/stores/page.tsx:32"
+      ],
+      "evidence": "listStores(), ownerDesks(), booksMemberships() and controlCenter()'s first statement each join store_members to stores (three also to store_roles) for the same account with slightly different columns and filters. The owner layout awaits them one after another (stores, desks, domains for a non-owner, books clients, support count: 4 or 5 sequential awaits), and the owner's Stores page calls listStores() directly instead of the cached storesOf(), so the layout's read is repeated. In a store, the member row and the stores list are read on every hard load, and the control center reads the same membership a third time on Home.",
+      "cost": "2 near-identical statements per store hard load, 3 on the store Home, 4 on the owner's home, and 4 or 5 sequential waits before the owner level's frame paints.",
+      "who_pays": "The database and the server per request; the owner on each hard load of /admin.",
+      "fix_steps": [
+        "src/app/admin/(gated)/(owner)/stores/page.tsx:32: call storesOf(account) (the request-cached reader the layout already used) instead of listStores(account). One statement less, no other change.",
+        "src/app/admin/(gated)/(owner)/layout.tsx:30-38: run ownerDesks(), holdsDomains() and booksClientStores() together after storesOf(), then the support count. Five waits become three.",
+        "src/server/auth.ts: add membershipsOf(account) behind React cache(): one statement returning, for every membership that is not disabled or expired, the store's id, slug, name, status, starter, sandbox, whether it is a template's working store, time zone, modules, and the member's role, kind, role id and role permissions.",
+        "Derive from it, each keeping its own filter: listStores() (not closed, not starter, not sandbox), ownerDesks() (keeps closed stores and working starters, support-desk.ts:133-134) and booksMemberships(). Leave controlCenter()'s first statement as it is (it also reads the plan and payments) unless AD-2 reworks it.",
+        "Do not touch memberRow() (auth.ts:319-340): its rule is to be read each time, never from a cache."
+      ],
+      "tests_and_rules": [
+        "src/server/security-review.int.test.ts, store-starters.int.test.ts and design-presets.int.test.ts (listStores: starters and sandboxes stay out).",
+        "src/server/support.int.test.ts (ownerDesks: closed stores stay in), src/server/accountants.int.test.ts and src/lib/books-clients.test.ts (books clients).",
+        "src/server/store-features-website.int.test.ts (storesOf).",
+        "Rule kept: auth.ts:319-327 (the member's row is never cached). React cache() spans one render, so a membership taken away is gone on the next request."
+      ],
+      "depends_on": [
+        "AD-12 step 1 (the statement counter)"
+      ],
+      "done_when": "AD-12's counter shows the owner level's shell at 4 statements or fewer after the guard (5 or 6 today), and rg -n 'listStores\\(' src/app shows no call outside storesOf().",
+      "saving": "Estimate: 2 to 3 statements and 2 to 3 sequential waits per owner-level hard load; 1 statement on the Stores page for certain.",
+      "effort": "M",
+      "risk": "Medium-low. Each caller filters differently, so the shared read must carry the fields and each caller keeps its own filter; a starter or closed store appearing in the level switcher would be the visible fault, and the three int tests above are the checks.",
+      "confidence": "high",
+      "priority": "P2",
+      "already_tracked": "no",
+      "owner_decision": false,
+      "verdict": "corrected",
+      "notes": "A true duplicate, but small next to AD-1 and AD-2. The first two steps are an afternoon; the shared reader is worth doing when AD-2 touches the control center, not before."
+    },
+    {
+      "id": "AD-9",
+      "title": "Progress polls redraw the whole admin, and a notice poll runs in every visible owner tab",
+      "kind": "eager",
+      "where": [
+        "src/components/admin/refresh-while.tsx:7-13",
+        "src/components/admin/analytics/live-refresh.tsx:10-26",
+        "src/components/admin/cookie-scan.tsx:137",
+        "src/components/admin/domains-panel.tsx:175",
+        "src/components/admin/page-jobs-panel.tsx:53",
+        "src/components/admin/legal-pages-panel.tsx:145",
+        "src/app/admin/(gated)/[store]/dream-factory/page.tsx:116",
+        "src/app/admin/(gated)/[store]/dream-factory/rework.tsx:39",
+        "src/app/admin/(gated)/[store]/dream-factory/rework.tsx:135",
+        "src/app/admin/(gated)/platform/ai/dream/[runId]/page.tsx:55",
+        "src/components/admin/pack-pictures.tsx:126-133",
+        "src/components/admin/ai-notices.tsx:29-53",
+        "src/app/admin/(gated)/(owner)/account/notices/feed/route.ts:17-35",
+        "src/server/assistant-notices.ts:146-173",
+        "src/components/admin/store-drafts.tsx:39-45"
+      ],
+      "evidence": "RefreshWhile calls router.refresh() every 5 s (cookie scan), 6 s (Dream Factory, four places), 10 s (page jobs, legal writing), 15 s (pack pictures, its own copy) or 20 s (domains), and does not stop when the tab is hidden; LiveRefresh, 20 lines away, does. A refresh re-fetches dynamic data in shared layouts too, so each tick pays the whole shell of AD-1, AD-4 and AD-5 plus the page. The Dream Factory run is where a new store's owner lands first ([store]/page.tsx:43-46), so this is the first screen most new owners will watch. Separately, the AI manager's button asks the notices feed every 60 s in every owner's tab while it is shown: the route reads the account, looks up the store by slug, runs the list query with limit 1 and throws it away, then counts.",
+      "cost": "During a Dream Factory run: 10 full shell-and-page renders a minute per watching tab, hidden or not, each with the 100 to 125 ms menu build until AD-1. Always: 60 requests an hour per visible owner tab, 4 statements each, one thrown away, plus an Auth call for a session without two-step (AD-3). Estimate at 1,000 owners with a tab in view: 1,000 requests and 4,000 statements a minute for a badge.",
+      "who_pays": "The server per request and the database; the owner's browser re-parsing the shell each tick.",
+      "fix_steps": [
+        "src/components/admin/refresh-while.tsx: draw LiveRefresh with every = seconds * 1000 (or copy its check): refresh only while document.visibilityState is 'visible', and once when the tab comes back. src/components/admin/pack-pictures.tsx:126-133: the same in PackPicturesWatch.",
+        "src/app/admin/(gated)/(owner)/account/notices/feed/route.ts:27-35: when count=1, answer with unreadNotices(account.id, place) alone (assistant-notices.ts:173) and skip listNotices().",
+        "Take the store's id from what the layout knows: [store]/layout.tsx passes store.id to AiManagerLauncher, useNoticeCount() sends it as place, and placeOf() accepts a uuid without the lookup by slug (the notices are filtered by the account's own id, so another store's id returns nothing of anyone else's). The poll is then the account read and one count.",
+        "For job progress, ask the job, not the route: give the Dream Factory views, the page jobs panel, the legal pages panel and the cookie scan a small server action that returns the job's state and does not call refresh() (an action without it sends no page back), poll that as store-drafts.tsx:39-45 does, and call router.refresh() once when the state changes to done or failed. Start with the Dream Factory (the onboarding screen).",
+        "Lengthen the notice poll when the last answer was 0 (for example 60 s, then 120 s, then 300 s, back to 60 s on a press or when the tab is shown again) in src/components/admin/ai-notices.tsx."
+      ],
+      "tests_and_rules": [
+        "e2e/signed-in/live.spec.ts (LiveRefresh), e2e/signed-in/ai-manager-panel.spec.ts (the badge and the notices list), src/server/assistant-notices.int.test.ts (listNotices and the count).",
+        "No e2e spec opens the Dream Factory (rg dream-factory e2e: nothing). Add one signed-in case that a run's page shows the finished state without a reload, or check it by hand with a screenshot for the owner.",
+        "src/app/s/[store]/[market]/order/[orderId]/order-section.test.ts tests the storefront's own RefreshWhile (src/components/refresh-while.tsx), a different file: do not confuse the two.",
+        "Rule kept: ai-notices.tsx:25-28 says polling only, as the support inbox's safety net; D347 decision 2 (polling, never a socket). The fix keeps polling and makes each poll smaller."
+      ],
+      "depends_on": [],
+      "done_when": "rg -n 'setInterval' src/components/admin/refresh-while.tsx src/components/admin/pack-pictures.tsx shows each tick guarded by visibilityState, and AD-12's counter (or a count in assistant-notices.int.test.ts) shows the count=1 feed at 2 statements (4 today).",
+      "saving": "Estimate: a hidden tab stops costing anything; a progress tick drops from the whole route to 2 or 3 statements once it asks the job; the notice poll from 4 statements to 2.",
+      "effort": "S",
+      "risk": "Low. A progress view must still redraw once when the job ends, and once when a hidden tab is shown again (LiveRefresh's 'back' handler does this). Noticed by a run's page not reaching its finished state without a reload: there is no spec for it today, so add the case named under tests.",
+      "confidence": "high",
+      "priority": "P0",
+      "already_tracked": "no",
+      "owner_decision": false,
+      "verdict": "corrected",
+      "notes": "Steps 1 and 2 are a few lines and are the P0 part; steps 3 to 5 are P1. The skeptic fixed two details: the poll's constant lives in src/lib/assistant-notices.ts:13, and the notice poll already stops in a hidden tab."
+    },
+    {
+      "id": "AD-10",
+      "title": "Three lists load everything; the customers list also groups every order before it cuts to 100",
+      "kind": "oversize",
+      "where": [
+        "src/server/products.ts:305-348",
+        "src/app/admin/(gated)/[store]/products/page.tsx:168",
+        "src/components/admin/products-bulk.tsx:1",
+        "src/server/customer-admin.ts:131-177",
+        "src/app/admin/(gated)/platform/stores/page.tsx:25",
+        "docs/audits/code-review-2026-11.md:70",
+        "docs/audits/code-review-2026-11.md:91"
+      ],
+      "evidence": "listAdminProducts() has no limit and runs correlated sub-selects per product (picture, two variant counts, stock, title fallback, price range, and a vat_rate() call); every row is serialised to a client component. The platform's Stores list reads every store with billing. listCustomers() builds its rows from a CTE over every order of the store, grouped by email, and only then keeps 100 (line 177), so paging the result will not bound the work. (The skeptic's reading; this pass read the products page and the code review's rows.)",
+      "cost": "Per view: 6 sub-selects and a function call per product, and one pass over all of a store's orders. Today's catalogues and orders are the team's demo data, so nothing shows; the cost grows with each real store's catalogue and order history from the day it sells.",
+      "who_pays": "The database, and the owner's browser for the products table.",
+      "fix_steps": [
+        "Do code review step 1.13 as written (docs/audits/code-review-2026-11.md:435): move Customers, Products, Invoices and Returns onto ListSearch and Pager, each list read saying when it was cut. Products: a page of 50 by the present order, keyset as the orders list does (src/server/order-list.ts:195-224 is the pattern).",
+        "Products' bulk 'select all that match' must become the server-side pattern the orders list has ('every order that matches' is never a list the browser sent): the bulk actions take the filter, not the ids on the page.",
+        "src/server/customer-admin.ts:131-177: page by email before the aggregates (pick the page's 100 emails first, then sum their orders), so the cut happens before the grouping.",
+        "Then step 2.10 (line 458): the same list pieces on the platform's Stores list (src/app/admin/(gated)/platform/stores/page.tsx:25).",
+        "Set both steps to Done in the code review's Progress table in the same change, with the date, the commit and a change-log line; add a line that the customers aggregate was bounded too."
+      ],
+      "tests_and_rules": [
+        "src/server/products.int.test.ts and store-features-selling.int.test.ts (listAdminProducts), src/server/customer-admin.int.test.ts, avatars.int.test.ts and privacy-erasure.int.test.ts (listCustomers).",
+        "e2e/signed-in/products-bulk.spec.ts, products-grid.spec.ts, customers-staff.spec.ts, orders-list.spec.ts (the pattern to match).",
+        "Code review steps 1.13 (FS2) and 2.10 (FS9), both Open; the review's own done-when: a store with 150 customers shows '100 of 150' and a next page; Stores finds a store by name, owner or domain and pages.",
+        "Parity rule (CLAUDE.md): the platform's list follows in 2.10; tick its rows in docs/platform-parity.md."
+      ],
+      "depends_on": [
+        "code review step 1.12 (the review orders 1.13 after it)"
+      ],
+      "done_when": "The review's done-when for 1.13 and 2.10 holds, and an integration test shows listCustomers() for a store with 150 customers reading the orders of 100 emails only (the plan's aggregate no longer scans every order).",
+      "saving": "Bounds the three views at a fixed page as stores grow (estimate; nothing to measure on demo data).",
+      "effort": "M",
+      "risk": "Low. A bulk action that silently applied to the visible page only, where it used to apply to everything, would be the fault: the bulk panel must say how many it will change, as the orders list does.",
+      "confidence": "high",
+      "priority": "P1",
+      "already_tracked": "code review step 1.13 (FS2): Open; step 2.10 (FS9): Open. The customers aggregate over all orders is not written there.",
+      "owner_decision": false,
+      "verdict": "confirmed",
+      "notes": "Cheapest before opening, while no owner's bulk habits depend on the whole list being on one page. Not a new finding: it is here so the plan carries the customers aggregate, which the review does not name. The pages and articles lists (AD-14) are a fourth unbounded list the review does not name either."
+    },
+    {
+      "id": "AD-11",
+      "title": "The orders list re-reads store facts it already holds and waits in a row for the count",
+      "kind": "duplicate",
+      "where": [
+        "src/server/order-list.ts:44-57",
+        "src/server/order-list.ts:195-224",
+        "src/server/stores.ts:239-242",
+        "src/server/localization.ts:191",
+        "src/server/localization.ts:217",
+        "src/app/admin/(gated)/[store]/orders/page.tsx:68-73"
+      ],
+      "evidence": "loadOrderListContext() runs two statements, one after the other, for the store's time zone, market codes and currency rates; all three are in the cached Store the page already holds (store.timeZone, store.allMarkets, and the currencies with their rates read at stores.ts:239-242), and 'today' can be worked out in code. listOrdersPage() then reads rows, tags, the page before and the count one after another, though the count does not depend on the rows. This pass checked the open risk the skeptic left: both writers of currency rates refresh the store's tag (the owner's save at localization.ts:191, the ECB job at localization.ts:217), so the cached rates follow a change.",
+      "cost": "2 statements and 3 to 4 sequential waits per orders-list view, out of 9 to 11 statements. The orders list will be the most opened admin page of a selling store.",
+      "who_pays": "The server per request; the owner waits a little longer for the list to stream in.",
+      "fix_steps": [
+        "src/server/order-list.ts: add orderListContextOf(store) that builds the same OrderListContext from the Store: timeZone, today through todayIn(new Date(), store.timeZone) (src/lib/analytics-period.ts, as control-center.ts:296 does), marketCodes from store.allMarkets, totalFactors from the store's currencies. Keep loadOrderListContext(storeId) for jobs and the 12 integration tests that call it.",
+        "src/server/order-list.ts (resolveOrderList) and src/app/admin/(gated)/[store]/orders/page.tsx:70: let the page pass the store, so the context costs no statement.",
+        "src/server/order-list.ts:195-224: start countOrders() together with the rows (Promise.all of the rows statement and the count); tags and the page before still follow the rows.",
+        "Add one integration case: orderListContextOf(store) equals loadOrderListContext(store.id) for the seeded store, so the two cannot drift."
+      ],
+      "tests_and_rules": [
+        "src/server/order-list.int.test.ts and src/server/order-list-perf.int.test.ts; the 10 other integration tests that call loadOrderListContext or listOrdersPage (payment-disputes, fulfilment, order-edit-review-fixes, exchange-admin, local-delivery, shipment-undo, order-tags, order-archive, order-money.review, pickup).",
+        "e2e/signed-in/orders-list.spec.ts (sort by total, paging, the count).",
+        "Rule kept: order-list.ts:38-42 (one parser, one builder; every statement names the store). CLAUDE.md: a writer of the store refreshes its tag; the rate writers do."
+      ],
+      "depends_on": [
+        "AD-12 step 1 (the statement counter, for the check only)"
+      ],
+      "done_when": "The new equality case passes, and AD-12's counter shows the orders list body at 2 statements fewer than today on its first page (count them before the change with the same counter).",
+      "saving": "Estimate: 2 statements and 2 sequential waits per view.",
+      "effort": "S",
+      "risk": "Low. 'Today' worked out in Node must be the store's day, not the server's: todayIn() with the store's time zone, and the equality case run near midnight in a test with a fixed clock. Sort by total uses the cached rates; they are refreshed when rates are saved.",
+      "confidence": "high",
+      "priority": "P2",
+      "already_tracked": "no",
+      "owner_decision": false,
+      "verdict": "confirmed",
+      "notes": "Confidence raised from the skeptic's medium: the one open risk (do rate changes refresh the cached store) was checked in this pass and they do."
+    },
+    {
+      "id": "AD-12",
+      "title": "Nothing counts what a screen costs the server, so the Home grew to 30 statements unseen",
+      "kind": "process",
+      "where": [
+        "src/server/control-center.ts:49-59",
+        "src/server/control-center.ts:290-303",
+        "src/db/client.ts:36-53",
+        "src/db/client.ts:63-80",
+        "docs/performance.md:139",
+        "docs/audits/code-review-2026-11.md:503",
+        "e2e/signed-in/admin-scripts.spec.ts",
+        "src/server/ratchet.scan.test.ts"
+      ],
+      "evidence": "The admin has budgets for scripts (seven screens in admin-scripts.spec.ts) and ratchets for unchecked reads, but no count of statements or server time per screen. The skeptic's search of src and docs for a statement or query budget, a per-request counter or Server-Timing found none. control-center.ts states its own rule ('a handful of queries, never per store') in a comment and has since grown to 21 statements plus per-store reads, with nothing to notice it. The admin's speed beacon reports TTFB, which with a static shell says nothing about the data behind it. With no real traffic yet, production's statistics cannot show it either. Every statement the app sends goes through one pool made in src/db/client.ts:63-80, so one place can count them all.",
+      "cost": "No running cost of its own. It is why AD-1, AD-2, AD-6, AD-7 and AD-14 were not seen: each feature added one more read to a shared screen.",
+      "who_pays": "Everyone later: the owner in wait, the database in load, the team in audits like this one.",
+      "fix_steps": [
+        "Step 1, the counter. src/db/client.ts create(): wrap the pool's query so each statement adds one to the store of an AsyncLocalStorage when one is running, and nothing otherwise. Export countStatements(run) that runs a function inside a fresh store and returns { result, statements, ms }. It counts; it never keeps a statement's text or values (D400).",
+        "Step 2, the log line. For renders, where the app cannot wrap the request: a per-render counter from React cache() (cache(() => ({ statements: 0, started: Date.now() }))) that the same wrapper also bumps; in src/app/admin/(gated)/layout.tsx's Gate, take the object and log one line in after(): log('info', 'admin.render', { statements, ms }) through src/server/log.ts. Outside a render cache() returns a fresh object each call, so jobs and routes are unaffected.",
+        "Step 3, the budget. A new src/server/admin-statements.int.test.ts runs, against the seeded store and its owner, the loaders of five screens inside countStatements(): the store shell (storeShellData of AD-4), the store Home (controlCenter for one store, getSetupProgress, demoContent), the orders list (resolveOrderList, listOrdersPage, listOrderViews, tagSuggestions), the products list for an editor, and the platform Home's five loaders. It compares each count to src/server/admin-statements.baseline.json and fails when one rises, and when one falls until the baseline is lowered, exactly as ratchet.scan.test.ts does with scripts/ratchet.mjs.",
+        "Step 4, the menu. The count test of AD-1 (canOpen called at most once per menu item) is the menu's budget.",
+        "Step 5, the rule. One paragraph in docs/performance.md beside the first-scripts budgets, and a line in CLAUDE.md's Conventions: a change that adds a read to the shell or to a home screen raises a number in the baseline and says why in its commit.",
+        "Order: step 1 before the other findings (they measure with it); write the baseline with today's numbers, then let each fix lower them."
+      ],
+      "tests_and_rules": [
+        "New: src/server/admin-statements.int.test.ts with its baseline file; it runs in CI's integration job (pnpm test:int).",
+        "src/server/ratchet.scan.test.ts and scripts/ratchet.mjs are the pattern to copy.",
+        "src/server/cron-routes.scan.test.ts and D400 (logging: ids and counts only, no console.error) bound what the log line may hold.",
+        "docs/performance.md:139 (first scripts, signed in) is where the written rule goes; code review step 4.6 ('Measure, then tune', Open) is about how people use Basic and Advanced, not this.",
+        "replica-readers.scan.test.ts: the counter must count the replica's pool too (create() makes both)."
+      ],
+      "depends_on": [],
+      "done_when": "pnpm test:int runs src/server/admin-statements.int.test.ts with five screens in its baseline, and one admin page load in a local production build writes one admin.render log line with a statements count.",
+      "saving": "No direct saving. It keeps the savings of AD-2, AD-4, AD-6, AD-7, AD-8 and AD-11, and before opening it gives the first real numbers per screen.",
+      "effort": "M",
+      "risk": "Low. The wrapper sits on every statement, so it must add no await and must never throw; the counter must not log statement text or values. A budget that counts loaders, not the rendered page, can miss a read added straight in a page file: step 2's log line is the net for that.",
+      "confidence": "high",
+      "priority": "P0",
+      "already_tracked": "no (code review step 4.6 'Measure, then tune' is Open and is about how people use Basic and Advanced, not a statement budget)",
+      "owner_decision": false,
+      "verdict": "confirmed",
+      "notes": "P0 for step 1 only: it is small, safe, and the measuring tool the other findings' checks read. Steps 3 and 5 land with the fixes. Before opening, the baseline is also the first honest picture of what each screen asks of the database."
+    },
+    {
+      "id": "AD-13",
+      "title": "At least 39 saves draw the whole route twice: the action redraws it, then the browser asks again",
+      "kind": "duplicate",
+      "where": [
+        "src/components/admin/inventory/locations-view.tsx:92",
+        "src/components/admin/inventory/locations-view.tsx:115",
+        "src/components/admin/inventory/locations-view.tsx:128",
+        "src/app/admin/(gated)/[store]/inventory/locations/actions.ts:27-68",
+        "src/components/admin/inventory/inventory-table.tsx:139",
+        "src/components/admin/inventory/inventory-table.tsx:151",
+        "src/app/admin/(gated)/[store]/inventory/actions.ts:23",
+        "src/app/admin/(gated)/[store]/inventory/actions.ts:31",
+        "src/components/admin/passport-editor.tsx:32",
+        "src/app/admin/(gated)/[store]/products/[productId]/passport/actions.ts:15",
+        "src/components/admin/automation/rule-editor.tsx:208-209",
+        "src/app/admin/(gated)/[store]/settings/automation/actions.ts:30",
+        "src/components/admin/discount-editor.tsx:126-127",
+        "src/app/admin/(gated)/[store]/discounts/actions.ts:31",
+        "src/components/admin/campaign-editor.tsx:169-170",
+        "src/app/admin/(gated)/[store]/campaigns/actions.ts:30",
+        "src/components/admin/reminder-editor.tsx:116-117",
+        "node_modules/next/dist/server/web/spec-extension/revalidate.js:67-77",
+        "node_modules/next/dist/server/app-render/action-handler.js:926-935"
+      ],
+      "evidence": "A server action that calls refresh() answers with the route already drawn again: refresh() sets pathWasRevalidated (revalidate.js:67-77), so the action handler does not skip page rendering (action-handler.js:926-935). In many client parts the code then calls router.refresh() as well, which sends a second request that renders every layout and the page once more. Counted in this pass: 90 router.refresh() calls in 50 files of src/components/admin and src/app/admin. A static pass (script in the scratch folder) resolved the action awaited just before each call and read its body: at 36 sites every candidate action already calls refresh(); 6 are mixed; at 11 the action does not refresh, so the client call is needed; 37 were not resolved (polls, fetches to route handlers, helpers), and 3 of those are doubles by hand, which makes 39. Reading both sides by hand confirmed nine: stock adjust and policy (inventory-table.tsx:139 and 151 with inventory/actions.ts:23 and 31), locations (locations-view.tsx:92, 115, 128: all 6 actions of locations/actions.ts refresh), the product passport (passport-editor.tsx:32 with passport/actions.ts:15), an automation rule, a discount and a campaign. The last three and the cart reminder do router.push(back) and then router.refresh(): three renders for one save (the editor being left, the list, the list again). No written rule or scan test says which side refreshes (rg over docs/rules and the scan tests).",
+      "cost": "One whole-route render more than needed on each of these saves, two more where an editor pushes and refreshes: the guard's 2 statements (and an Auth call for a session without two-step, AD-3), the shell (100 to 125 ms of CPU until AD-1, 6 statements until AD-4, 51 to 66 KB until AD-5) and all of the page's own reads. Stock adjustments, redirects, suppliers, imports and moving in from another shop are among them: things an owner does many times in a row.",
+      "who_pays": "The server and the database per save; the owner's browser, which parses the route twice; the owner, who sees the page settle twice.",
+      "fix_steps": [
+        "Run node /tmp/claude-0/-home-user-kaizen-store/875cb21b-0ebd-5663-b7c0-2d04a7548e24/scratchpad/work/planner-ad/double.mjs and take its 'double' lines as the work list (36 today). At each, delete the client's router.refresh() and, where nothing else uses it, the useRouter() import. The action's refresh() has already brought the new page.",
+        "The four editors that push and refresh (discount-editor.tsx:126-127, campaign-editor.tsx:169-170, automation/rule-editor.tsx:208-209, reminder-editor.tsx:116-117): keep router.push(back) and drop router.refresh(). The list is dynamic and is fetched when it is opened (next.config.ts sets no staleTimes). Better where the action knows the way back: let the action redirect() after saving, as deleteDiscountAction already does (discounts/actions.ts:44), which is one render in all.",
+        "Read the 6 'mixed' and the 37 unresolved sites by hand (the script prints them; 3 of the 37 are already known doubles: discount-editor.tsx:127, campaign-editor.tsx:170, locations-view.tsx:92). Where the awaited call is a server action that calls refresh(), delete the client call; where it is a fetch() to a route handler or an action without refresh() (the 11 'single' lines), keep it.",
+        "Write the rule once, in docs/rules/admin/platform.md beside the storeAction rule (line 89): the action refreshes; a client part does not call router.refresh() after a server action.",
+        "Hold it with a scan test, src/components/admin/router-refresh.scan.test.ts: it counts router.refresh() in src/components/admin and src/app/admin against a baseline that only falls, with a short named list of the calls that are not after an action (refresh-while.tsx, analytics/live-refresh.tsx, pack-pictures.tsx's watch, session.tsx's recovery, admin-text.tsx's language change, data/job-tracker.tsx).",
+        "Go file by file with the screen's spec, not by a codemod: a few screens may lean on the second fetch without meaning to."
+      ],
+      "tests_and_rules": [
+        "e2e/signed-in/inventory.spec.ts, stock-transfers.spec.ts and suppliers.spec.ts (the table shows the new figure after a save without a reload).",
+        "e2e/signed-in/passport-claims-ebay.spec.ts, automation.spec.ts, automations.spec.ts, notifications.spec.ts, products-grid.spec.ts and the redirects and moving-in specs (rg the component's name in e2e/signed-in before touching it).",
+        "New: src/components/admin/router-refresh.scan.test.ts with its baseline.",
+        "Rule to add: docs/rules/admin/platform.md:89. The storefront already has it in words (docs/rules/storefront.md:599: 'Mutations are server actions that call refresh()').",
+        "Platform parity: several of the doubled saves are the platform's (the plan reminder, the platform's chat agent, the docs guide at platform/docs/guide/actions.ts); the same rule and scan cover src/app/admin/(gated)/platform."
+      ],
+      "depends_on": [],
+      "done_when": "node /tmp/claude-0/-home-user-kaizen-store/875cb21b-0ebd-5663-b7c0-2d04a7548e24/scratchpad/work/planner-ad/double.mjs prints 'double (every candidate action calls refresh) 0, mixed 0' (36 and 6 today), the new scan test's baseline is about 50 (90 today), and the signed-in e2e job passes.",
+      "saving": "One whole-route render fewer per save at 39 or more save sites, two fewer on four editors. Per render saved, from the measured parts: 100 to 125 ms of CPU (until AD-1), 8 or more statements plus the page's own, and 51 to 66 KB of JSON (until AD-5). After the other fixes it is still the page's reads and the guard, once per save.",
+      "effort": "S",
+      "risk": "Low. What could break: a screen whose action returns before its write is visible, or a list reached by router.push() that the client still holds, would show the old rows without the second fetch. Each such screen has a signed-in spec that waits for the saved value; run it per file. The static pass can be wrong where one prop name is bound to several actions (that is why 6 are 'mixed'): read those by hand.",
+      "confidence": "high",
+      "priority": "P0",
+      "already_tracked": "no (rg router.refresh over docs/rules, docs/performance.md and the scan tests: no rule, no check)",
+      "owner_decision": false,
+      "verdict": "added",
+      "notes": "Added by the planner as completeness critic: the brief asked how much is refreshed after a save, and the report counted the refresh() sites but not the saves that pay twice. High confidence for the nine read by hand and for the mechanism; medium for the script's other 30 until each is read. Deleting lines is the whole fix."
+    },
+    {
+      "id": "AD-14",
+      "title": "The pages and articles lists read and check every page's whole content, twice, to show a title and a state",
+      "kind": "oversize",
+      "where": [
+        "src/server/pages.ts:135-156",
+        "src/server/pages.ts:112-115",
+        "src/lib/page-content.ts:4305-4308",
+        "src/lib/page-content.ts:4317-4319",
+        "src/app/admin/(gated)/[store]/pages/views.tsx:66-79",
+        "src/app/admin/(gated)/[store]/pages/context.ts:79-110",
+        "src/app/admin/(gated)/[store]/pages/views.tsx:124",
+        "src/app/admin/(gated)/[store]/pages/views.tsx:138-139",
+        "src/app/admin/(gated)/[store]/pages/views.tsx:145",
+        "src/app/admin/(gated)/[store]/pages/views.tsx:162",
+        "src/app/admin/(gated)/[store]/pages/views.tsx:179-180",
+        "src/app/admin/(gated)/platform/pages/views.tsx:57",
+        "src/app/admin/(gated)/[store]/pages/actions.ts:408",
+        "src/app/admin/(gated)/platform/pages/actions.ts:332",
+        "src/app/admin/(gated)/[store]/articles/blogs/page.tsx:32",
+        "src/server/shopify-copy.ts:555",
+        "src/server/admin-api-content.ts:222"
+      ],
+      "evidence": "listPages() selects draft and published, the two whole JSON documents of a page, for every page of a type, with no limit (pages.ts:136-140). In code each row is parsed twice with the full page schema (parsePageContent, a zod parse of a 4,300-line schema file) and the two results are compared with JSON.stringify to tell 'published' from 'changed' (pages.ts:112-115, page-content.ts:4317-4319). The list then shows a title, an address, a state, two dates, two flags and a thumbnail. Timed in this pass on ten real page documents from the themes (average 8.3 KB of JSON): 0.64 ms of blocking CPU per row, so 19 ms for 30 pages and 128 ms for 200 articles, with about 16.6 KB per row read from the database (3.3 MB for 200). The same view serves pages, articles, headers, footers and product layouts (views.tsx:66) and the platform's own pages (platform/pages/views.tsx:57). Five callers want only an id, a title or an address (pages/actions.ts:408, platform/pages/actions.ts:332, try/[sandbox]/actions.ts:219, shopify-copy.ts:555, articles/blogs/page.tsx:32), and the Admin API's list filters by date after reading everything (admin-api-content.ts:222). The view then awaits its other reads one after another with no Suspense, 4 to 6 by type (views.tsx:68, 76, 79, 124, then 138-139, or 145 and 162, or 179-180), and siteLayoutChoice() is read twice for headers and footers (145, 162). The first of them, storePageContext() (pages/context.ts:79-110), builds the page builder's whole context, with menu previews, every field group and their lookups in sequence, and the list uses two things from it: siteBase and the duplicate action (views.tsx:150 and 155).",
+      "cost": "Per list view: two documents per page from the database and 0.64 ms of CPU per page, growing without bound with a store's pages and above all its articles. A blog moved in from Shopify or WordPress has hundreds of posts on day one. Today's pages are the team's demo content (1,389 rows, 9.1 MB in production), so nothing shows yet.",
+      "who_pays": "The database (rows and bytes), the server (a synchronous parse that holds the instance), and the owner, who waits for the list.",
+      "fix_steps": [
+        "src/server/pages.ts:135-156: read the list's columns in SQL instead of the documents: id, slug, draft->>'title', draft->'thumbnail'->>'url', the two flags from coalesce(published, draft) with the schema's defaults (page-content.ts:4296-4297: true), published is not null, (published is not null and draft = published) as same, published_at, updated_at. Describe the row with col and read it through typedRows() (the rule for new reads).",
+        "Keep the state's exact meaning: no published document is 'draft'; same is 'published'; for the rows that differ as stored, read draft and published for those ids only (one more statement, bounded to the changed pages) and decide with stateOf() as today, because two documents can differ as stored and be equal after the schema's defaults.",
+        "Keep the fallback for a draft that cannot be parsed (pages.ts:117-128: the address is the title): coalesce(nullif(draft->>'title', ''), slug).",
+        "Add pageTitles(owner, type) returning id, slug and title only, and use it in the five callers that want no more (listed under where).",
+        "src/app/admin/(gated)/[store]/pages/context.ts and views.tsx:68: give the list what it uses without the builder's context: the site's base address and the duplicate action (both need only the store and the type). storePageContext() stays for the editor.",
+        "src/app/admin/(gated)/[store]/pages/views.tsx:66-79: run commentCounts(), scheduleChips(), runningPageJobs(), layoutUses(), listTerms(), siteLayoutChoice() (once) and the home offers in one Promise.all with the list, each only for the types that use it. The platform's view (platform/pages/views.tsx) the same.",
+        "Give articles a page size and the pager of code review step 1.13 (50 by updated_at desc, id), and src/server/admin-api-content.ts:222 a since filter in SQL. Add the pages and articles lists to step 1.13's list of unbounded lists in the code review, with a change-log line."
+      ],
+      "tests_and_rules": [
+        "src/server/pages.int.test.ts (listPages): add that the summaries for a seeded store are the same before and after, with one page of each state (draft, published, changed) and one whose stored documents differ only by a default.",
+        "e2e/signed-in/blogs.spec.ts, page-history.spec.ts, schedule.spec.ts and schedules-and-sharing.spec.ts (the lists, their state and schedule chips), a11y.spec.ts; for the platform's pages e2e/signed-in/theme-store-pages.spec.ts and builder-lines.spec.ts open /admin/platform/pages.",
+        "src/server/ratchet.scan.test.ts (unchecked reads may not rise; the new read is checked) and CLAUDE.md's rule for new reads (col and typedRows()).",
+        "The Admin API's pages and articles lists (docs portal article and src/lib/docs-api-reference.test.ts) keep their fields.",
+        "Parity rule: the platform's pages list uses the same function and gets the same change."
+      ],
+      "depends_on": [
+        "AD-12 step 1 (the statement counter, for the view's round trips)"
+      ],
+      "done_when": "rg -n 'select id, slug, draft, published' src/server/pages.ts shows the statement only in getPageForEdit(), the new case in src/server/pages.int.test.ts passes, and AD-12's counter shows the pages list view in at most 3 waves of statements (6 or more sequential waits today).",
+      "saving": "Measured per-row cost times rows: for 30 pages about 19 ms of CPU and about 500 KB of JSON less per view; for 200 articles about 128 ms and 3.3 MB. Five or more sequential waits become one, and the builder's context is no longer built for a list.",
+      "effort": "M",
+      "risk": "Low to medium. What could break: a page shown as 'changed' when it is not, or the reverse, if the SQL comparison replaced the parsed one outright (step 2 keeps the parsed compare for the rows that differ); a title that differs for a draft that does not parse (step 3). The new integration case and blogs.spec.ts are the checks.",
+      "confidence": "high",
+      "priority": "P1",
+      "already_tracked": "no (code review FS2 and step 1.13 name customers, products, invoices and returns; pages and articles are not there)",
+      "owner_decision": false,
+      "verdict": "added",
+      "notes": "Added by the planner as completeness critic: the brief asked for whole rows read to show three columns, and the report did not open the pages list. Steps 1 to 6 change nothing a person sees. Paging articles is the part that is cheapest before opening."
+    },
+    {
+      "id": "AD-15",
+      "title": "The Payments settings page reads one table three or four times and waits on Stripe and Mollie before it paints",
+      "kind": "eager",
+      "where": [
+        "src/app/admin/(gated)/[store]/settings/payments/page.tsx:49",
+        "src/app/admin/(gated)/[store]/settings/payments/page.tsx:56",
+        "src/app/admin/(gated)/[store]/settings/payments/page.tsx:61-64",
+        "src/app/admin/(gated)/[store]/settings/payments/page.tsx:68",
+        "src/app/admin/(gated)/[store]/settings/payments/page.tsx:70",
+        "src/app/admin/(gated)/[store]/settings/payments/page.tsx:73-74",
+        "src/server/settings.ts:35-52",
+        "src/server/connect.ts:31-39",
+        "src/server/connect.ts:265-275",
+        "src/server/payment-methods.ts:87-94",
+        "src/server/express-checkout.ts:172-178",
+        "src/server/mollie.ts:281-292",
+        "src/server/mollie.ts:339-346"
+      ],
+      "evidence": "The one settings page traced in full. It runs 5 statements together (the provider, the Stripe accounts, the audit log's last 20 rows, the invoice setting, the method choices), then one at a time: the checkout provider, the test account (one statement and, while a Kaizen-made test account is not yet active, a call to Stripe's API awaited in the render, connect.ts:270-275), the method states, the wallet domains, and with Mollie on two more statements and then a call to Mollie's API for its methods (mollie.ts:281-292), also awaited. commerce.stripe_accounts is read by getStripeAccounts(), methodStates() and walletDomains() for different columns of the same rows, and a fourth time by ensureTestAccount(). The page has no Suspense (rg: 0). That is 9 statements in 5 waves for a Stripe store whose test account is active, and up to 13 statements and two outside API calls before anything paints.",
+      "cost": "4 or more sequential waits and 2 to 3 repeated reads per view of Payments, and for a new store (which starts in test mode, D20) a wait on Stripe on the first visits. Every owner opens this page to go live, but rarely after.",
+      "who_pays": "The owner on each visit of Payments; the database; Stripe's and Mollie's API quotas.",
+      "fix_steps": [
+        "src/server/connect.ts: one reader for the page, paymentAccountsFor(storeId), returning per mode the account's id, card_payments, requirements_due, method_states, wallet_domains and wallet_domains_at in one statement; build getStripeAccounts()'s shape, methodStates()'s and walletDomains()'s answers from it in the page. The three functions stay for their other callers.",
+        "src/app/admin/(gated)/[store]/settings/payments/page.tsx:49-73: put checkoutProviderOf(), mollieConnection() and chosenCheckoutProviders() in the first Promise.all (each depends only on the store).",
+        "Move the two outside calls behind Suspense: the test account's set-up result (lines 61-64) and Mollie's method list (line 74) each in a small async component with a one-line fallback, so the page paints from the database and the two answers stream in. D20's promise stays: a problem from Stripe is still shown on this page."
+      ],
+      "tests_and_rules": [
+        "src/server/billing.int.test.ts (ensureTestAccount), src/server/express-checkout.int.test.ts (walletDomains), the payment-methods and Mollie integration tests (rg methodStates and mollieMethodStates in src/server).",
+        "e2e/admin.spec.ts opens settings/payments; the signed-in specs payment-facts.spec.ts, payouts.spec.ts and capture.spec.ts pass through the payment settings.",
+        "src/lib/payment-readers.scan.test.ts lists which files may read payment tables: a new reader in connect.ts must be allowed there if the scan counts it.",
+        "Rules kept: docs/rules/admin/commerce.md:56-65 (the test account is set up on the Payments page too; payment credentials are store settings, D15) and D291 (what Stripe says of each method is shown)."
+      ],
+      "depends_on": [
+        "AD-12 step 1 (the statement counter)"
+      ],
+      "done_when": "AD-12's counter shows the Payments page's database reads in 2 waves and at most 7 statements for a Stripe store with an active test account (9 in 5 waves today), and the page file has a Suspense around each outside call.",
+      "saving": "Estimate: 2 to 3 statements and 3 sequential waits per view; a new store's first paint of Payments no longer waits for Stripe.",
+      "effort": "S",
+      "risk": "Low. The set-up result arriving a moment after the page must not hide a Stripe problem: the streamed section shows it as the page does today. Noticed by e2e/admin.spec.ts and billing.int.test.ts.",
+      "confidence": "high",
+      "priority": "P2",
+      "already_tracked": "no",
+      "owner_decision": false,
+      "verdict": "added",
+      "notes": "Added because the brief asked for one settings page and the report traced only the Settings hub. Small and rarely opened, so it waits until the page is next touched; it is the pattern (one table read per helper, outside calls awaited in the render) that is worth knowing when settings pages are written."
+    }
+  ]
+}

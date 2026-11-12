@@ -1,0 +1,391 @@
+{
+ "headline": "None of this dimension's findings rests on production use or on an empty table, so the owner's clarification changes none of them: these are costs paid per agent session, and they grow with every feature built, not with shoppers. What every session pays holds as measured: CLAUDE.md plus AGENTS.md is 44 KB (about 11,000 tokens, estimate at 4 characters a token), 71% of it a 295-line feature index, and a typical change touches files named by 2 to 4 of those 295 rules. This subagent received the whole file too. Taking the index out (30.8 KB) is already code review step 1.10; path-scoped rule files are a sound way to deliver rules, but only 21% of source files are named by a rule, so auto-loading needs hand-written globs or an index read on demand. The auditor's search costs were wrong in mechanism. The harness's search tool hides every line over 500 characters (98% of decisions.md's bytes, 52% of docs/rules, 33% of all docs), and a command output of 44 KB arrived as a 2 KB preview. So the cost is not 45 to 238 KB read into context; it is rules and decisions that a search cannot show. Line length is the first thing to fix and to cap. \"41% finished history\" was overstated: 2.3 MB of that 3.2 MB is wave and phase specs that 64 index lines and 1,081 code comments cite as the contract; 0.58 MB is cited by no code. Nothing caps any of it: CLAUDE.md regrew 35% in 12 days, and the first draft of this review added 0.8 MB to docs in one evening. Nothing from docs reaches a deployed function.",
+ "metrics": [
+  {
+   "name": "Loaded into every session",
+   "value": "CLAUDE.md 43,361 bytes, 448 lines; AGENTS.md 679 bytes (imported on line 1). Together about 11,000 tokens (estimate, 4 characters a token). The harness's guidance is under 200 lines per CLAUDE.md. Observed: this subagent's own context began with the whole of both files.",
+   "how": "wc -c -l; code.claude.com/docs/en/memory fetched and read in this session (line: 'target under 200 lines per CLAUDE.md file'); my own context"
+  },
+  {
+   "name": "Share of CLAUDE.md that is the feature index",
+   "value": "30,806 of 43,361 bytes (71%): Storefront 33 lines (3,529 bytes), Admin 262 lines (27,277 bytes); 28 lines end in an ellipsis. Everything else is 12,555 bytes.",
+   "how": "node one-liner summing bytes per '## ' section"
+  },
+  {
+   "name": "Rules a typical change needs",
+   "value": "By exact path match: median 2 of 295 (p75 6, p90 9); 22 of 69 commits touch no file a rule names. By a looser match (file name or component name): median 4 (p75 13, p90 38). Under 2% of the index either way.",
+   "how": "the auditor's relevance.mjs re-run at HEAD (115 commits, 69 change non-test src); my rel2.mjs for the looser match"
+  },
+  {
+   "name": "Source files a rule names",
+   "value": "865 of 4,139 non-test files (21%): src/server 408 of 796, src/lib 417 of 1,146, src/components 39 of 878, src/app 0 of 1,307. Of the 301 files changed in the clone's history, 100 (33%). The auditor did not measure this.",
+   "how": "my cover.mjs: each git-tracked file's path searched for in docs/rules"
+  },
+  {
+   "name": "docs folder",
+   "value": "At the audited commit (e5e0a05): 9,714,759 bytes in 193 files; 158 Markdown files, 7,895,137 bytes. At HEAD: 10,518,218 bytes in 225 files; 183 Markdown files, 8,638,973 bytes, 61,326 lines. The difference is the first draft of this review: 32 files, 801,846 bytes. Two images hold 856 KB.",
+   "how": "git ls-tree -r -l sums at both commits; find, wc, du"
+  },
+  {
+   "name": "docs/rules",
+   "value": "565,913 bytes, 295 rules in 7 files (262 admin, 33 storefront); website.md 162,812, commerce.md 112,671. Median rule 1,428 bytes; 17 over 5,000 bytes, 24 over 4,000; 151 are one paragraph. 114 lines over 1,000 characters hold 261,537 bytes (46%); 156 lines over 500 characters hold 291,981 bytes (52%). Longest line 7,436 characters (marketing.md:202). It was 374 KB on 30 October (docs/consolidation.md:12).",
+   "how": "my fanin.mjs; awk on line lengths"
+  },
+  {
+   "name": "docs/decisions.md",
+   "value": "1,330,879 bytes, 931 lines, 564 rows (D1 to D573). Average row 1,580 bytes for D1-D100, 3,489 for D401-D500, 2,305 for D501-D573; median 1,941, p90 3,732, longest 17,986. 197 rows (587,013 bytes) follow a paragraph under '### Migration versions' with no table header. The migration list is 272 rows, 19,820 bytes, last entry 4 October.",
+   "how": "my dec.mjs"
+  },
+  {
+   "name": "What a search can show (new)",
+   "value": "The harness's Grep tool in content mode prints '[Omitted long matching line]' for any line over 500 characters (495 shown, 516 omitted; the D566 row came back as a line number only). Lines over 500 characters hold 97.8% of decisions.md, 51.6% of docs/rules and 33.1% of docs Markdown. A shell command that printed 44 KB arrived as a 2 KB preview with the rest saved to a file; outputs up to about 12 KB arrived whole. Read of one line returns it whole (1.8 KB for D566).",
+   "how": "scratch files with lines of known length through the Grep tool; Grep and Read on docs/decisions.md line 897; one 44 KB Bash output; awk on line lengths (docs measured without the review's own draft)"
+  },
+  {
+   "name": "Cost of looking up one decision",
+   "value": "The row itself is 0.6 KB (D15) to 18 KB (D442), median 1.9 KB. A shell search without an anchor returns every mention: 1.8 KB (D566), 9.1 KB (D211), 20.5 KB (D153), 22.3 KB (D442), 45.3 KB (D178). Source cites decision IDs 19,273 times in 4,931 files (495 distinct IDs).",
+   "how": "rg with and without '^\\| Dnnn \\|' piped to wc -c; rg -o over src"
+  },
+  {
+   "name": "Growth with no cap",
+   "value": "CLAUDE.md: 382 KB before 30 October, 32 KB after its diet, 39.5 KB on 9 November, 43.4 KB on 11 November (+35% in 12 days). In the clone's 33 hours (10 Nov 12:50 to 11 Nov 21:51): CLAUDE.md +3,382 bytes and +26 lines, decisions.md +79,988, docs/rules +21,222, all docs +156,224, non-test src +918,895. Since then the review's draft added 801,846 bytes to docs.",
+   "how": "docs/consolidation.md:12-13; code review FH5; git cat-file -s and git ls-tree -l sums at 74aeb21b, e5e0a05 and HEAD"
+  },
+  {
+   "name": "Doc upkeep per commit",
+   "value": "At HEAD: 65 of 115 commits touch docs/, 44 decisions.md, 25 CLAUDE.md, 21 docs/rules. 13 change both the parity rows and the generated report (one of them is the clone's first commit, which lists every file).",
+   "how": "relevance.mjs output; git log --name-only with awk"
+  },
+  {
+   "name": "History and generated text in docs",
+   "value": "Wave specs: 26 files, 2,233,777 bytes; phase plans: 6 files, 81,674 bytes. These are cited as the contract by 64 of CLAUDE.md's index lines, 102 times in docs/rules and 1,081 times by path in 927 source files; one commit in the clone edits one of them. Cited by no code: 5 dated PSI reports 542,790 bytes (linked from 9 other docs), wave-10-notes 30,059, the A/B spike 9,110. Generated: 269,616 bytes of tables in shopify-parity.md. plan.md 72,617 bytes is cited by 12 other docs.",
+   "how": "wc; rg counts of 'docs/wave-' in CLAUDE.md, docs/rules and src; git log per path"
+  },
+  {
+   "name": "Comment share of src",
+   "value": "All of src: 96,860 comment lines of 1,103,126 (8.8%); 7.84 MB of 56.86 MB (13.8%). By bytes, non-test code: lib 24.9%, server 19.6%, db 31.7% (schema.ts alone 341,884 bytes of comments, 32%), components 12.8%, app 13.1%. Tests 4 to 8%. 2,400 to 2,750 of 4,139 non-test files open with a header comment (two ways of counting), averaging 410 to 520 bytes; about 2,150 to 2,230 of them cite a decision.",
+   "how": "the auditor's comments.mjs re-run; my head.mjs for the headers"
+  },
+  {
+   "name": "What is written about one feature (sample of 18)",
+   "value": "868,954 bytes in all: CLAUDE.md lines 2,070, rule sections 62,244, decision rows 65,648, comments in the main files 146,744, and 13 feature docs or specs 592,248. The feature docs are specs, not copies. Word-for-word overlap is low: on average 11% of a rule's 5-word runs also appear in its decision, doc or main files (2% to 26%).",
+   "how": "the auditor's copies.mjs and overlap.mjs re-run"
+  },
+  {
+   "name": "Docs in the deployment",
+   "value": "None of docs/, CLAUDE.md, AGENTS.md or README.md in any of 834 trace files. content/docs (168 files, 885,306 bytes) is traced into 22 routes: the docs pages and APIs, two platform docs pages, the platform AI page and its eval recording route, and two crons (cart-reminders, subscription-reminders). Source comments appear in no .js chunk; they are in 6,008 server source maps (704 MB in .next/server), which the two traces sampled do not list.",
+   "how": "my nft.mjs over every .nft.json of the finished build (build-summary.txt exit=0); rg for comment text in .next/server and .next/static"
+  },
+  {
+   "name": "content/ and .claude/",
+   "value": "content/docs: 96 English and 70 Norwegian files (75 and 56 articles; 35 are section titles), one index file and one JSON: 168 files, 885,306 bytes. .claude: one file, workflows/parity-wave.js, 37,138 bytes, 279 lines; no rules, settings or hooks. No .rgignore or .ignore at the root.",
+   "how": "find, wc, du, ls"
+  },
+  {
+   "name": "Code review Progress table",
+   "value": "73 steps: 14 Done, 4 In progress, 55 Open. The 18 rows with notes total 16,659 bytes (average 926, largest 1,616); 15 rows are over 500 characters. Lines 22-135 are 21,722 bytes.",
+   "how": "node one-liner over docs/audits/code-review-2026-11.md"
+  }
+ ],
+ "clean": [
+  "Nothing under docs/, CLAUDE.md, AGENTS.md or README.md reaches a deployed function: all 834 trace files of the finished build were read; only content/docs appears, in 22 routes.",
+  "Tailwind does not scan docs: /home/user/kaizen-store/src/app/globals.css:6-9 imports it with source(none) and names src and the migrations' SQL only.",
+  "Source comments are in no .js file of the build (browser or server). They survive only in the server's source maps, which the traces sampled do not list. The 704 MB of server source maps is a build matter for another dimension.",
+  "Comments are short and local: a file header averages 410 to 520 bytes and loads only when the file is read. They are the cheapest place for 'how it works'. Keep them.",
+  "The written rules are accurate where they can be checked: about 900 distinct src paths are cited in docs/rules (1,357 mentions) and every one exists; all 92 docs and 410 src paths cited in CLAUDE.md exist; /home/user/kaizen-store/src/lib/rules-index.test.ts holds every index line to exactly one heading.",
+  "A rule can already be read alone: every rule heading is under 200 characters, so a search for the heading finds its line and a Read of that section costs the rule's own size (median 1.4 KB).",
+  "The docs portal's content is read from disk only when its loader is called, and is traced only into the 22 routes above; /docs transferred 220 KB (routes.md), the lightest page measured.",
+  ".claude holds one workflow file that runs only when called. It has not shaped a spec since wave 3 and feature waves are paused (docs/consolidation.md:3), so it costs nothing today.",
+  "Binary assets in docs are two images, 856 KB together, each used by one doc.",
+  "The wave specs and phase plans are not dead: 64 index lines, 102 rule mentions and 1,081 path citations in source point at them. They are finished specs that are still the cited contract.",
+  "An ignore file works as a default-search filter: tested in a scratch folder, a .rgignore line makes rg and the harness's Grep tool skip a file or folder; naming the file or the folder itself, or passing a glob, still finds it. Naming only the parent folder (rg x docs) still skips it. The Glob tool lists the files either way.",
+  "No finding in this dimension argues from an unused feature or an empty table; the owner's clarification removes nothing here."
+ ],
+ "findings": [
+  {
+   "id": "DC-1",
+   "title": "Every session loads a 295-line feature index; a typical change needs 2 to 4 of its lines",
+   "kind": "eager",
+   "where": [
+    "/home/user/kaizen-store/CLAUDE.md:95-399",
+    "/home/user/kaizen-store/CLAUDE.md:61-93",
+    "/home/user/kaizen-store/src/lib/rules-index.test.ts:28-43",
+    "/home/user/kaizen-store/docs/audits/code-review-2026-11.md:67",
+    "/home/user/kaizen-store/docs/audits/code-review-2026-11.md:291",
+    "/home/user/kaizen-store/docs/audits/code-review-2026-11.md:432",
+    "/home/user/kaizen-store/docs/audits/code-review-2026-11.md:544"
+   ],
+   "evidence": "CLAUDE.md is 43,361 bytes and 448 lines. Its Storefront and Admin sections are 30,806 bytes (71%): 295 one-line pointers, 28 cut with an ellipsis. Over the 69 commits that changed non-test src, the median commit touched files named by 2 of the 295 rules by exact path (p75 6, p90 9; 22 commits none); a looser match by file or component name gives a median of 4 (p75 13, p90 38). This subagent's context began with the whole file, so subagents pay too. The harness's documentation, fetched in this session, says: target under 200 lines; the root CLAUDE.md is re-read after compaction; a file in .claude/rules with a paths: list loads when a matching file is read, written or edited; a CLAUDE.md in a subfolder loads when a file there is read; an on-demand file is cut at 40,000 characters (every rule here is under 11,212 bytes). 273 of 295 rules name at least one src path and every named path exists. A named file has a median of 1 rule (1,990 bytes), p90 6,861, max 17,579 (page-content.ts, 5 rules). What the auditor did not measure: rules name only 865 of 4,139 non-test source files (21%), none of the 1,307 under src/app and 39 of 878 components, because rules name routes by URL and components by name. Of the files changed in the clone's history, 33% are named.",
+   "cost": "About 11,000 tokens (estimate) at the start of every session and every subagent, and again after each compaction. The index alone is 30,806 bytes, about 7,700 tokens (estimate). It grows one line with every new rule (DC-3).",
+   "who_pays": "An agent's session",
+   "fix": "Step 1 (this is code review step 1.10): take the two indexes out of CLAUDE.md, keep one pointer per area, and put the per-rule index at the top of each area file or in a generated docs/rules/INDEX.md that is read on demand; change rules-index.test.ts in the same commit. Step 2, optional: one file per rule in .claude/rules/{area}/ with a paths: list. Generate the list from the files the rule names, then add globs by hand for the routes and components it names by URL or by name, or auto-loading will miss most page and component work. Try three rules first and confirm they load with the InstructionsLoaded hook. Keep in the core every rule that guards an action taken without opening a file: 'Never apply a migration to production by hand' and 'never add a bypass to the app's sign-in' stay; only their how-to detail can move to a CLAUDE.md in src/db, supabase, e2e or src/app/api/cron (all real folders).",
+   "saving": "Step 1: 30.8 KB, about 7,700 tokens, per session, per subagent and per compaction (measured bytes, token figure an estimate). This is the saving step 1.10 already claims. Moving how-to detail to folder files: about 3 to 5 KB more (estimate). Step 2 adds no token saving; it delivers the full rule when a named file is opened (median 2.0 KB per named file).",
+   "effort": "M",
+   "risk": "A path-scoped rule loads on Read, Write or Edit, not on a search, and only for files its globs match: with generated paths alone, two of three changed files load nothing. An agent that plans before opening files must search the index. Globs for src/app paths with [store] and (gated) need escaping. Tools that read only AGENTS.md will not load rule files. Path-scoped loading inside subagents was read in the documentation, not tested. Moving a safety sentence out of the core would be a loss: an agent can apply a migration through a tool without reading any file in supabase/.",
+   "confidence": "high",
+   "already_tracked": "Code review step 1.10 (FH5), Open: it plans to cut CLAUDE.md to about a quarter by moving the index to the area files. That covers the saving. New here: the measured need (2 to 4 of 295), the 21% coverage, path-scoped files as an optional second step, and the subagent and compaction multipliers.",
+   "owner_decision": true,
+   "verdict": "corrected",
+   "verify_note": "Re-ran the auditor's relevance script at HEAD (now 115 commits): median 2, p75 6, p90 9 hold. Added a looser match (median 4). Re-measured section bytes, fan-in and the 273 rules with paths: all hold. Fetched the harness's memory page and confirmed each behaviour claimed; found the 40,000-character limit for on-demand files, which no rule exceeds. Changed: the saving was 36 KB with a 7 KB core, but 30.8 KB of it is step 1.10's and the rest is an estimate; the fix's 'paths from the rule's text' covers only 21% of files (0 of src/app), which the auditor missed; the migration bullets hold a safety rule that must stay in the core; the 13-agent multiplier rested on a workflow that is dormant (DC-9), so I replaced it with what I observed in this session. The owner decides because CLAUDE.md is the owner's instruction file (code review question 5)."
+  },
+  {
+   "id": "DC-2",
+   "title": "decisions.md cannot be searched with the harness's search tool, a row runs to 18 KB, and the newest 197 rows sit under the wrong heading",
+   "kind": "oversize",
+   "where": [
+    "/home/user/kaizen-store/docs/decisions.md:8-379",
+    "/home/user/kaizen-store/docs/decisions.md:420-707",
+    "/home/user/kaizen-store/docs/decisions.md:708-904",
+    "/home/user/kaizen-store/docs/decisions.md:782",
+    "/home/user/kaizen-store/docs/decisions.md:897",
+    "/home/user/kaizen-store/src/lib/docs-content.test.ts:43",
+    "/home/user/kaizen-store/scripts/parity.mjs:44",
+    "/home/user/kaizen-store/src/lib/parity.test.ts:441",
+    "/home/user/kaizen-store/docs/audits/code-review-2026-11.md:254"
+   ],
+   "evidence": "decisions.md is 1,330,879 bytes in 931 lines, 564 rows. 548 lines are over 500 characters and hold 97.8% of the file. The harness's Grep tool in content mode omits any line over 500 characters: a search for the D566 row returned '897:[Omitted long matching line]'. A Read of that one line returned the whole row (1.8 KB); the D442 row at line 782 is 17,986 bytes. So a lookup is two calls, and its cost is the row: median 1,941 bytes, p90 3,732, max 17,986. A shell search without an anchor returns every mention: 1.8 KB (D566) to 45.3 KB (D178). 'Settled' holds D1 to D369 (718 KB). From line 708, D366 to D573 (197 rows, 587 KB) follow a paragraph under '### Migration versions' with no blank line and no table header, so they do not render as a table. The average row grew from 1,580 bytes (D1-D100) to 3,489 (D401-D500) and is 2,305 for D501-D573. 182 rows carry a 'Migration version' note and 205 mention the advisors; the text from the first such marker to the row's end is about 150 KB (rough). Per-hundred files, as step 1.10 offers, would be 147 to 349 KB, over that step's own 100 KB target.",
+   "cost": "One lookup: a search that shows only a line number, then a Read of the whole row, about 490 tokens at the median and up to 4,500 (estimates). A shell search without an anchor returns up to 45 KB, and above roughly 12 to 44 KB only a 2 KB preview arrives. The file grew 80 KB in 33 hours.",
+   "who_pays": "An agent's session",
+   "fix": "Now, small: move rows 708-904 back into the Settled table, and add one line to the core on how to look a decision up (search '^\\| D178 \\|' for the line number, then read that line). With step 1.10: one file per decision (docs/decisions/D566.md) written in lines under 500 characters, with a generated one-line index; change the three readers that parse '| Dnnn |' rows in the same commit. A new decision says what was decided, why, what was rejected and where it lives; test lists, CI runs and advisor results stay out (DC-10).",
+   "saving": "A search then shows the decision's text instead of a line number, and the table renders again. Lookup tokens fall little: an anchored lookup already returns the row alone. About 150 KB of release notes stops growing (rough estimate).",
+   "effort": "M",
+   "risk": "Three readers parse the table (docs-content.test.ts:43, parity.mjs:44, parity.test.ts:441) and must move together. Shortening old rows by hand risks losing a reason; split mechanically first and shorten only new rows.",
+   "confidence": "high",
+   "already_tracked": "Code review step 1.10 (FH4), Open: split with a generated index and a scan test. New here: the search tool's 500-character limit, the misplaced 197 rows, the growth of row size, the release-note content, and that per-hundred files miss the step's own target.",
+   "owner_decision": false,
+   "verdict": "corrected",
+   "verify_note": "Re-measured the file at HEAD (one row and 1.6 KB more than audited), the per-ID search sizes (all match), the three readers and the heading mix-up (line 707 is prose, line 708 starts with '| D366 |'). Changed: the cost. 'One decision costs 2 to 45 KB' is a shell search without an anchor; the row alone is 0.6 to 18 KB, and the harness's own Grep returns no text at all for these rows. I tested that on line 897 and on scratch files (495 characters shown, 516 omitted). '11,000 tokens per ID' and 'most of the 19,251 pointers are not affordable' do not hold: the median row is about 490 tokens. '219 rows cite a CI run' did not reproduce (35 say 'CI run', 235 say 'CI', 182 carry a migration version, 205 the advisors). 'Its average row doubled' is true of D401-D500 only. The fix keeps the split but for a different reason: a table row is always one long line, so only a file per decision makes a decision searchable."
+  },
+  {
+   "id": "DC-3",
+   "title": "Nothing caps the written rules, and one test makes the always-loaded file grow with every feature",
+   "kind": "process",
+   "where": [
+    "/home/user/kaizen-store/src/lib/rules-index.test.ts:28-43",
+    "/home/user/kaizen-store/docs/consolidation.md:12-13",
+    "/home/user/kaizen-store/docs/audits/code-review-2026-11.md:291",
+    "/home/user/kaizen-store/CLAUDE.md:133-399",
+    "/home/user/kaizen-store/src/server/ratchet.scan.test.ts:1",
+    "/home/user/kaizen-store/.github/workflows/ci.yml:10-14"
+   ],
+   "evidence": "CLAUDE.md was cut from 382 KB to 32 KB on 30 October (consolidation.md:12-13), was 39.5 KB on 9 November (code review FH5) and is 43,361 bytes now: +35% in 12 days. In the clone's 33 hours it grew 3,382 bytes and 26 lines; 25 of 115 commits changed it. docs/rules went from 374 KB to 566 KB in the same 12 days (+51%). decisions.md grew 79,988 bytes in 33 hours. rules-index.test.ts fails when a rule heading has no line in CLAUDE.md (the 'orphans' check, lines 30 and 38), so each new rule adds an always-loaded line. A ratchet exists for code (ratchet.scan.test.ts with a baseline file); none exists for docs. The first draft of this review then added 801,846 bytes to docs, 270 of its lines over 500 characters.",
+   "cost": "About 0.95 KB a day added to what every session loads (about 240 tokens a day, average since 30 October); about 16 KB a day in docs/rules and 58 KB a day in decisions.md. This follows the number of features built, not the task in hand.",
+   "who_pays": "An agent's session, every later one",
+   "fix": "A docs ratchet beside src/server/ratchet.scan.test.ts, with a baseline that may only fall. Start it at today's sizes so it can ship before DC-1: CLAUDE.md's bytes and lines; then 10,000 bytes and 200 lines once the index is out. A rule at most 4,000 bytes (24 rules are over that today and go in the baseline). No new line over 500 characters in CLAUDE.md, docs/rules or a new decision: 500 is the search tool's limit, not 600. Drop the check that every rule heading needs a CLAUDE.md line when DC-1 is done. Say in the error where the overflow belongs.",
+   "saving": "Stops the regrowth measured above and keeps the savings of DC-1, DC-2 and DC-4 from being spent again. No token figure claimed.",
+   "effort": "S",
+   "risk": "A hard cap can push agents to write cryptic text; the baseline and a plain error message avoid that. CI runs nothing on a push of Markdown alone (ci.yml:10-14), so the ratchet catches an overflow only on the next push with code, or locally if tests are run before pushing as the workflow rule asks.",
+   "confidence": "high",
+   "already_tracked": "no (step 1.10 sets one-time targets and an index test, no standing size check)",
+   "owner_decision": false,
+   "verdict": "corrected",
+   "verify_note": "Re-measured every growth figure from git objects at the oldest commit, the audited commit and HEAD: they match. Read rules-index.test.ts: the orphan check is real. Changed: the proposed line cap of 600 characters would leave lines of 501 to 600 invisible to the Grep tool (limit tested at 500); the baseline is 24 rules over 4,000 bytes, not 17 (17 are over 5,000); 'its average row doubled' is true only up to D500 (latest hundred averages 2,305 bytes); and the auditor missed that CI skips Markdown-only pushes, which weakens any docs test. Added the review draft's own 0.8 MB as a measured instance."
+  },
+  {
+   "id": "DC-4",
+   "title": "Half of the rules' text is in lines the search tool cannot show, and the admin rule files are walls of text",
+   "kind": "oversize",
+   "where": [
+    "/home/user/kaizen-store/docs/rules/admin/marketing.md:202",
+    "/home/user/kaizen-store/docs/rules/admin/website.md:302",
+    "/home/user/kaizen-store/docs/rules/admin/platform.md:227-229",
+    "/home/user/kaizen-store/docs/rules/admin/website.md:439-441",
+    "/home/user/kaizen-store/docs/rules/admin/README.md:8-13",
+    "/home/user/kaizen-store/CLAUDE.md:97",
+    "/home/user/kaizen-store/CLAUDE.md:135"
+   ],
+   "evidence": "CLAUDE.md:97 and :135 tell agents to read a rule before changing its part. The seven rule files are 49 to 163 KB: website.md 162,812 bytes, commerce.md 112,671. 151 of 295 rules are one paragraph. 156 lines are over 500 characters and hold 291,981 of 565,680 bytes (52%); 114 are over 1,000 characters (261,537 bytes, 46%); the longest is 7,436 (marketing.md:202). The harness's Grep tool omits every one of those lines in content mode. storefront.md is wrapped (longest line 754); the six admin files are not. About 197 rules repeat their heading in bold as the body's first words (about 20 KB), and the same words are the CLAUDE.md line, so each title is stored three times (seen at website.md:439-441). A shell search of docs/rules for 'placeOrder' returns 52,974 bytes for 37 lines; 'featureOn' 6,737 bytes for one line. The README's counts say 241 admin rules; the files hold 262.",
+   "cost": "A content search of the rules returns no text for the lines that hold 52% of the bytes. The agent must then read the whole line (up to 7.4 KB, about 1,900 tokens, estimate) or search through the shell, where one hit is the whole paragraph.",
+   "who_pays": "An agent's session",
+   "fix": "This does not wait for DC-1. Break every line over 500 characters into bullets at sentence ends, one fact a line: a script proposes the breaks, an agent checks the 156 lines. Drop the bold repeat of the heading. Hold a rule to 4 KB with a pointer to its feature doc's section. Generate the README's counts or delete them. Hold the result with DC-3's ratchet.",
+   "saving": "The 52% of the rules that a search cannot show becomes searchable, and a hit returns one fact, not a paragraph of up to 7.4 KB. About 20 KB of repeated titles goes. No saving is claimed for reading a rule: a rule can already be read alone by its heading (median 1.4 KB).",
+   "effort": "M",
+   "risk": "Breaking text by script can split a sentence in the wrong place: check each of the 156 lines, and change no wording in the same commit.",
+   "confidence": "high",
+   "already_tracked": "no (step 1.10 keeps the area files and moves the index to their tops)",
+   "owner_decision": false,
+   "verdict": "corrected",
+   "verify_note": "Re-measured file sizes, rule counts (27+54+30+31+36+84+33 = 295), one-paragraph rules (151), long lines and the README's stale counts: all hold. The cited commerce.md:40 is a 150-character line; the longest line is marketing.md:202. Changed: the mechanism and the cost. The auditor wrote 'one search hit returns up to 7.4 KB'; with the Grep tool it returns nothing readable, which I tested. 'A whole-file read costs 12,000 to 40,000 tokens' was not tested by the auditor or by me and I dropped it; a rule is already readable alone. There are seven rule files, not six. The fix no longer depends on splitting one rule per file."
+  },
+  {
+   "id": "DC-5",
+   "title": "CLAUDE.md sends agents to a 73 KB plan written before the platform was multi-tenant",
+   "kind": "eager",
+   "where": [
+    "/home/user/kaizen-store/CLAUDE.md:5-6",
+    "/home/user/kaizen-store/README.md:15",
+    "/home/user/kaizen-store/docs/plan.md:3",
+    "/home/user/kaizen-store/docs/plan.md:10-12",
+    "/home/user/kaizen-store/docs/plan.md:114-136",
+    "/home/user/kaizen-store/docs/decisions.md:3-6",
+    "/home/user/kaizen-store/docs/decisions.md:422",
+    "/home/user/kaizen-store/docs/platform.md:1-14"
+   ],
+   "evidence": "CLAUDE.md:5-6 says to read docs/plan.md before architectural work; README.md:15 says to skim it. plan.md is 72,617 bytes. Its banner (line 3) was last updated 23 September 2026 and already notes two differences (Dublin, one app). decisions.md:422 dates multi-tenancy to 24 September. The plan's stack (lines 10-12, 114-136) is Frankfurt, Supabase eu-central-1, AI SDK 7 through Vercel AI Gateway and Turborepo; package.json has no AI SDK. decisions.md:3-6 says the plan predates some decisions and loses where they differ. docs/platform.md (16,193 bytes) is the note on how the platform is built. The plan is still a cited source: 12 other docs point at it for conversion evidence, the DPIA and the AI Act notice.",
+   "cost": "About 18,000 tokens (estimate) for an agent that follows the instruction, much of it a stack that was not built. How often sessions follow it was not measured.",
+   "who_pays": "An agent's session",
+   "fix": "Change the two pointers only. CLAUDE.md:5-6 and README.md:15 point at docs/platform.md for how the platform is built, and name plan.md as the research behind it (conversion, law, measurement), to be read by section when a doc cites it. Leave plan.md where it is: 12 docs link to it by path.",
+   "saving": "About 14,000 tokens per session that follows the instruction (72.6 KB less 16.2 KB; estimate).",
+   "effort": "S",
+   "risk": "Low. The plan's research keeps its place and its links.",
+   "confidence": "high",
+   "already_tracked": "no",
+   "owner_decision": false,
+   "verdict": "confirmed",
+   "verify_note": "Opened every cited line: sizes, dates, the stack table and the absence of an AI SDK in package.json hold. Two things the auditor left out: the plan's own banner already corrects the region and the monorepo, and 12 other docs cite plan.md by path (support.md, dpia-ai.md, measurement.md, capacity.md and others). So I dropped 'move plan.md to docs/archive' from the fix; the pointer change alone delivers the saving."
+  },
+  {
+   "id": "DC-6",
+   "title": "The code review's Progress table must be read before every fix and grows by about 0.9 KB a step",
+   "kind": "oversize",
+   "where": [
+    "/home/user/kaizen-store/CLAUDE.md:446-448",
+    "/home/user/kaizen-store/docs/audits/code-review-2026-11.md:26-135",
+    "/home/user/kaizen-store/docs/audits/code-review-2026-11.md:31",
+    "/home/user/kaizen-store/docs/audits/code-review-2026-11.md:136-164"
+   ],
+   "evidence": "CLAUDE.md:447 says to read the table before starting a fix from it. Lines 22-135 are 21,722 bytes. Of 73 steps, 14 are Done, 4 In progress and 55 Open. The 18 rows with notes total 16,659 bytes (average 926, largest 1,616); 15 of them are over 500 characters, so a search for a step shows no text. The doc's own rule (line 31) asks only for the date and the commit in Notes. A change log (lines 136-164) tells the same steps again. D572 is told in CLAUDE.md, ci-migrations.md, twice in the review and in decisions.md.",
+   "cost": "About 5,400 tokens per fix session today; about 17,000 when all 73 rows are written at the same average (estimates). Only sessions that work on a code review step pay it.",
+   "who_pays": "An agent's session",
+   "fix": "Hold Notes to status, date, commit and decision ID, under 200 characters, as line 31 already says; the story belongs in the decision. A finding that proved wrong is corrected in its own row, as line 32 says. Shorten the 18 written rows the same way.",
+   "saving": "About 4,000 tokens per fix session now, about 15,000 by the end of the plan (estimates).",
+   "effort": "S",
+   "risk": "Low; the detail is kept in the decisions and the change log.",
+   "confidence": "high",
+   "already_tracked": "no",
+   "owner_decision": false,
+   "verdict": "confirmed",
+   "verify_note": "Re-counted the table: 73 steps, 55 Open, 18 rows with notes, 16,659 bytes (the auditor had 16,641), average 926, largest 1,616. Lines 22-135 are 21,722 bytes. The numbers hold. Added that 15 rows exceed the search tool's 500-character limit and that the change log repeats the notes. A sibling file has the same shape: psi-followups.md is 60,043 bytes with 12 open items (2,440 bytes of lines) among 93 ticked."
+  },
+  {
+   "id": "DC-7",
+   "title": "Dated reports, draft notes and generated tables turn up in every docs search; the wave specs beside them are cited contracts, not dead history",
+   "kind": "oversize",
+   "where": [
+    "/home/user/kaizen-store/docs/audits/psi-2026-10-24.md:1",
+    "/home/user/kaizen-store/docs/audits/psi-2026-11-01.md:1",
+    "/home/user/kaizen-store/docs/audits/psi-followups.md:1-5",
+    "/home/user/kaizen-store/docs/wave-10-notes/d.md:1-5",
+    "/home/user/kaizen-store/docs/ab-testing-spike/README.md:3",
+    "/home/user/kaizen-store/docs/shopify-parity.md:5",
+    "/home/user/kaizen-store/docs/wave-3-orders.md:3",
+    "/home/user/kaizen-store/CLAUDE.md:133-399"
+   ],
+   "evidence": "The auditor counted 3.23 MB of 7.9 MB as finished history. Split by who cites it: wave specs (26 files, 2,233,777 bytes) and phase plans (6 files, 81,674) are named as the contract by 64 of CLAUDE.md's index lines, 102 times in docs/rules and 1,081 times by path in 927 source files. They are finished (one commit in the clone edits one) but in use. Cited by no code: the 5 dated PSI reports (542,790 bytes; 9 other docs link them), wave-10-notes (30,059; draft decision rows that decisions.md now holds) and the A/B spike (9,110): 581,959 bytes. Generated: 269,616 bytes of tables in shopify-parity.md. Since the audit, the first draft of this review added 801,846 bytes, 189,540 of it evidence tables. A search for 'placeOrder' lists 47 files in docs. Its content is 238,839 bytes over 229 Markdown lines, but that never reaches context: a 44 KB shell output arrived as a 2 KB preview in this session, and the Grep tool omits lines over 500 characters. An ignore file was tested in a scratch folder: rg and the Grep tool skip what it lists unless the file or folder itself is named.",
+   "cost": "Longer file lists and cut-off results that need a second, narrower search. Not the 59,000 tokens the auditor estimated: the harness never loads a result that size.",
+   "who_pays": "An agent's session",
+   "fix": "Add a .rgignore at the root with a narrow list: docs/audits/psi-2026-*.md, docs/wave-10-notes/, docs/ab-testing-spike/, docs/shopify-parity.md and the evidence folders of reviews (docs/audits/*/evidence/). Move nothing: 9 docs link the PSI reports by path. Add one line to the core saying what default searches skip and that naming the file finds it. Leave the wave and phase specs searchable; they are where 64 rules send the reader.",
+   "saving": "Default searches skip about 0.85 MB of the audited 7.9 MB (11%), plus the review's evidence tables. No token saving is claimed.",
+   "effort": "S",
+   "risk": "The filter is silent: an agent that searches docs for a phrase and finds nothing may conclude it is not written down. A search that names only the parent folder (rg x docs) also skips the listed files. A person using rg locally gets the same filter.",
+   "confidence": "medium",
+   "already_tracked": "no",
+   "owner_decision": false,
+   "verdict": "corrected",
+   "verify_note": "Re-measured every size in the auditor's list: all match. Then counted citations, which the auditor had only for 'about 1,900' in source: 64 index lines and 1,081 path citations make the wave and phase specs the cited contract, so 'dead' is wrong for 2.3 MB of the 3.23 MB; I changed the kind and cut the scope to 0.58 MB that no code cites plus 0.27 MB generated. The cost did not reproduce: I printed 44 KB from a command and received a 2 KB preview, and the Grep tool omitted long lines, so a 238 KB result is never read. 'Move what nothing cites' is wrong for the PSI reports (9 docs link them). The .rgignore test reproduced, with one gap the auditor missed (naming the parent folder still skips). I narrowed the ignore list so that no cited spec is hidden."
+  },
+  {
+   "id": "DC-8",
+   "title": "A feature's facts are written at four to six levels, in different words; lists copied from code drift",
+   "kind": "duplicate",
+   "where": [
+    "/home/user/kaizen-store/CLAUDE.md:365",
+    "/home/user/kaizen-store/docs/rules/admin/website.md:439-441",
+    "/home/user/kaizen-store/docs/decisions.md:897",
+    "/home/user/kaizen-store/docs/combined-listings.md:1-12",
+    "/home/user/kaizen-store/src/server/product-groups.ts:14-18",
+    "/home/user/kaizen-store/src/db/schema.ts:2547-2552",
+    "/home/user/kaizen-store/src/lib/store-features.ts:15-30",
+    "/home/user/kaizen-store/docs/rules/admin/platform.md:229",
+    "/home/user/kaizen-store/docs/store-features.md:10-22"
+   ],
+   "evidence": "Combined listings, built on 11 November: 'written only by product-groups.ts' and 'each product keeps its own page, price and stock' appear in the rule (869 bytes, with its title three times), the decision row (1,787 bytes), the feature doc (2,087), the server file's header and the table's comment in schema.ts, for a 12,556-byte server file. Across 18 sampled features, 868,954 bytes are written; but 592,248 of that is 13 feature docs and specs, which hold far more than the rule. The texts are rewritten, not pasted: on average 11% of a rule's 5-word runs appear in its decision, doc or main files (2% to 26%). So measured duplication is small, and no test can hold the texts equal. One drift is confirmed: the code has 14 store features (store-features.ts:15-30, with gift_cards, reviews and sales); the rule lists 11 (platform.md:229); the feature doc's table lists 12 (store-features.md:10-22).",
+   "cost": "Each new feature's facts are written four to six times by the agent that builds it, and a reader of the rule or the doc can get an out-of-date list. No total in bytes is claimed.",
+   "who_pays": "An agent's session",
+   "fix": "For new work, say in the core where each kind of fact lives: the invariant (never, only through) in the rule; why and what was rejected in the decision; how it works in the code's comments; a feature doc only for a spec that spans many files. A list that lives in code is named, not copied (the ids are FEATURE_IDS). Fix the store-features rule and doc now. Do not rewrite old text for this alone.",
+   "saving": "For a small feature like combined listings, about half of 5.7 KB of prose (estimate). No total is claimed: the overlap is paraphrase.",
+   "effort": "S",
+   "risk": "Cutting too much removes context an agent needs; the rule stays the complete list of invariants and is the last place to trim.",
+   "confidence": "medium",
+   "already_tracked": "no",
+   "owner_decision": false,
+   "verdict": "corrected",
+   "verify_note": "Opened all six places for combined listings and the three for store features: the repeated sentences and the 14, 11 and 12 counts hold. Re-ran both of the auditor's scripts: 868,954 bytes and an 11% mean overlap. Changed: the 869 KB is everything written about 18 features, and 68% of it is specs, so it is not a measure of duplication; the measured overlap is low. I reworded the title, cut the effort from L to S (a writing rule for new work and one drift fix) and dropped the hand rewrite of old text, which no measured saving supports."
+  },
+  {
+   "id": "DC-9",
+   "title": "The saved parity-wave workflow asks for specs with no size limit and tells every agent to read them whole; it is dormant",
+   "kind": "process",
+   "where": [
+    "/home/user/kaizen-store/.claude/workflows/parity-wave.js:29",
+    "/home/user/kaizen-store/.claude/workflows/parity-wave.js:74",
+    "/home/user/kaizen-store/.claude/workflows/parity-wave.js:185-274",
+    "/home/user/kaizen-store/.claude/workflows/parity-wave.js:188",
+    "/home/user/kaizen-store/docs/consolidation.md:3",
+    "/home/user/kaizen-store/docs/wave-3-orders.md:3"
+   ],
+   "evidence": "The spec step's prompt (line 188) asks for nine sections with no size limit, including what Shopify does, a section for the lead and drafts of the decision row and the CLAUDE.md bullet. The 14 specs with a 'For the lead' section total 1,694,387 bytes: average 121 KB, largest 184 KB; those sections alone are about 120 to 135 KB. Line 74 tells every later agent to read the spec completely, and a run starts 13 agents (lines 185-274). But the workflow accepts only waves 0 to 9 (line 29), the specs in its shape are waves 1 to 3, later specs written without it are 7 to 113 KB, and docs/consolidation.md:3 says feature waves were paused on 29 October. No run falls inside the clone's history.",
+   "cost": "Nothing today. If run again as written: about 12 x 30,000 tokens of spec reading plus 13 x 11,000 of CLAUDE.md per run (estimates).",
+   "who_pays": "An agent's session, only when the workflow is run",
+   "fix": "Before the next run, not before: cap the spec at about 30 KB, have each agent read the common sections and its own area's part, and return the lead's hand-over in the final report instead of writing it into the doc.",
+   "saving": "None until the workflow is run again; then about 270,000 tokens per run (estimate).",
+   "effort": "S",
+   "risk": "A thinner spec may miss an edge case the long ones caught; the three review lenses and the gates stay.",
+   "confidence": "medium",
+   "already_tracked": "no",
+   "owner_decision": false,
+   "verdict": "corrected",
+   "verify_note": "Read the prompt lines and counted the agent calls (13 with the fix step) and the 14 specs (1,694,387 bytes): they hold. What changes is the weight: the workflow rejects any wave above 9, shaped only waves 1 to 3, and waves are paused, so it has no running cost. I kept it as a note for the next run, set the saving to nothing today, and removed it as a multiplier from DC-1."
+  },
+  {
+   "id": "DC-10",
+   "title": "The Migration versions list has been frozen since 4 October, and the instruction to record versions there now fills decision rows with release notes",
+   "kind": "dead",
+   "where": [
+    "/home/user/kaizen-store/CLAUDE.md:76-78",
+    "/home/user/kaizen-store/docs/decisions.md:420-707",
+    "/home/user/kaizen-store/docs/decisions.md:903",
+    "/home/user/kaizen-store/scripts/db-migrate.mjs:31-40",
+    "/home/user/kaizen-store/docs/ci-migrations.md:153-154",
+    "/home/user/kaizen-store/docs/capacity.md:105"
+   ],
+   "evidence": "The list has 272 rows (19,820 bytes) and its last entry is 20261004. The 789 migrations up to 11 November are now a four-file baseline (D572). The database keeps its own ledger of applied files with checksum, time and who applied it (supabase_migrations.kaizen_files, db-migrate.mjs:31-40). Since the list stopped, agents follow CLAUDE.md:77 by writing the version and the advisor result into the decision's row: 182 rows carry a migration version, 205 mention the advisors. The latest commit to decisions.md (411ac34, after the audit) is a docs-only follow-up that adds exactly that to D572, ending 'INFO only, as before'. New decisions are also appended under this heading (DC-2). No test or script reads the list or the notes.",
+   "cost": "A follow-up docs commit or a sentence or two per migration push, about 150 KB (rough) of release notes inside decisions.md, and the wrong place to append.",
+   "who_pays": "An agent's session",
+   "fix": "Remove 'record the file's version in docs/decisions.md (Migration versions)' from CLAUDE.md:77 and the matching sentences in ci-migrations.md:153-154 and capacity.md:105: the ledger records it. Keep the advisor check, and write its result down only when it shows something new, as a follow-up item. The result cannot go in the push's own commit message, because the check happens after CI has applied the file. Move the 19.8 KB list out of decisions.md with step 1.10.",
+   "saving": "About 20 KB out of decisions.md now, no more release notes added to decision rows, and no docs-only follow-up commit after a migration.",
+   "effort": "S",
+   "risk": "The notes are today the only written record that the advisors were checked after each migration. Dropping the routine 'nothing new' note is the owner's call.",
+   "confidence": "high",
+   "already_tracked": "Partly: step 1.10 moves Migration versions to its own file; it does not retire the instruction.",
+   "owner_decision": true,
+   "verdict": "corrected",
+   "verify_note": "Opened the list (last row 20261004, 272 rows, 19,820 bytes), the ledger's definition and the rule's three copies; searched src, scripts and CI for a reader and found none. The finding holds. The auditor's fix does not: it sends the advisor result to the commit message, but the push comes before CI applies the migration and the check comes after, which the 22:18 follow-up commit shows. I rewrote the fix and marked it an owner decision, because it removes a duty from the owner's instruction file. The frozen list is dead text; whether to keep noting each advisor check is a choice, not waste."
+  },
+  {
+   "id": "DC-11",
+   "title": "The parity report commits 270 KB of generated tables beside the rows they are made from",
+   "kind": "duplicate",
+   "where": [
+    "/home/user/kaizen-store/docs/shopify-parity.md:5",
+    "/home/user/kaizen-store/docs/parity/README.md:1-6",
+    "/home/user/kaizen-store/package.json:21-23",
+    "/home/user/kaizen-store/src/lib/parity.test.ts:449-454",
+    "/home/user/kaizen-store/docs/rules/admin/platform.md:141",
+    "/home/user/kaizen-store/.github/workflows/ci.yml:6-9"
+   ],
+   "evidence": "docs/shopify-parity.md is 288,921 bytes; 269,616 lie between its parity:generated markers and are written by pnpm parity:write from docs/parity/rows (9 files, 794,555 bytes, 233 rows, 183 rated full). 19,305 bytes are hand-written. 13 commits in the clone change both the rows and the report (12 without the clone's first commit). The copy is by design: the rule (platform.md:141) and a unit test (parity.test.ts:449-454) hold the report to the rows.",
+   "cost": "Every rating change means running parity:write and committing a rewritten 270 KB block; both copies appear in docs searches and diffs. No runtime cost and little token cost.",
+   "who_pays": "An agent's session and the repository",
+   "fix": "If the owner does not read the tables on GitHub: keep the report's hand-written text and headline, print the tables with pnpm parity when wanted, and have the test hold the headline only. If the owner does read them there: keep the file and list it in .rgignore (DC-7).",
+   "saving": "270 KB out of docs and out of about one commit in eight.",
+   "effort": "S",
+   "risk": "The owner loses a ready-made table view unless the command is run.",
+   "confidence": "medium",
+   "already_tracked": "no",
+   "owner_decision": true,
+   "verdict": "confirmed",
+   "verify_note": "Re-measured the generated share between the markers (269,616 of 288,921 bytes), the rows (794,555 bytes, 233 rows, 183 full) and the commits that change both (13). All hold. Added that the duplicate is deliberate and held by a test and a written rule, so this is a choice about how the owner reads the report, not waste."
+  }
+ ]
+}

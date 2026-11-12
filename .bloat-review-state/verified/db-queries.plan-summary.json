@@ -1,0 +1,153 @@
+{
+ "key": "db-queries",
+ "file": "/tmp/claude-0/-home-user-kaizen-store/875cb21b-0ebd-5663-b7c0-2d04a7548e24/scratchpad/findings/db-queries.json",
+ "validator": "OK: 16 findings, 0 refuted, 16 metrics",
+ "headline": "All 14 verified findings stand, none argues from a feature being unused, and each now has ordered steps, the tests and rules that hold it, and one check; I added two. Today's cost is small (about 39 minutes of app database time in 78 days) because production holds only demo stores, so what counts before opening is shape: one read fetches every published page whole to find one page (79,778 calls, 781 s), 122 store filters are written so the store index cannot serve them, the five-minute dispatcher starts 78 jobs on 5 connections, and 91,200 of 216,877 transactions deleted nothing. The two additions grow with orders and catalogue size: five document jobs re-check every store's orders of 120 days and every invoice ever issued on each tick, and the catalogue listing calls a VAT function per product row (11.3 µs a row measured, 0.1 µs when each rate is asked once). Do first: the statement counter (DQ-11), the store filter (DQ-8), the slug lookup (DQ-9), the knowledge job (DQ-6), the AI month sum (DQ-4) and the page index (DQ-2).",
+ "findings": [
+  {
+   "id": "DQ-1",
+   "title": "Nine routes are called every minute whether or not there is work, and one of their questions grows with the number of stores",
+   "priority": "P1",
+   "effort": "M",
+   "saving": "Estimate: 1.1 M scans of cookie_scans, 101 s of theme reads and 71,422 idle lock transactions go; the minute cost stops growing with stores.",
+   "verdict": "corrected",
+   "owner_decision": false
+  },
+  {
+   "id": "DQ-2",
+   "title": "Every published page is read whole to find one page or a few titles",
+   "priority": "P0",
+   "effort": "M",
+   "saving": "Estimate: most of 781 s, the costliest app statement; rows shrink from whole documents to a few columns or one row.",
+   "verdict": "confirmed",
+   "owner_decision": false
+  },
+  {
+   "id": "DQ-3",
+   "title": "\"Where is this picture used\" scans every page's text for each picture, and the job re-checks every picture daily",
+   "priority": "P1",
+   "effort": "M",
+   "saving": "Estimate: at least 80% of 382 s and nearly all 13,414 daily re-stamps after step 1; an index lookup after step 4.",
+   "verdict": "confirmed",
+   "owner_decision": false
+  },
+  {
+   "id": "DQ-4",
+   "title": "Each request for an AI connection sums the store's whole month of AI usage",
+   "priority": "P0",
+   "effort": "S",
+   "saving": "Estimate: about 90% of 352 s (one day's rows instead of a month's); the cost stops growing through the month.",
+   "verdict": "confirmed",
+   "owner_decision": false
+  },
+  {
+   "id": "DQ-5",
+   "title": "The five-minute dispatcher starts 78 jobs at once on 5 connections, and several redo work on every tick that grows with the number of stores",
+   "priority": "P1",
+   "effort": "M",
+   "saving": "Estimate: most of 148 s of the embeddings hash and a quarter of the ledger writes; a slow job no longer starves 77 others.",
+   "verdict": "corrected",
+   "owner_decision": false
+  },
+  {
+   "id": "DQ-6",
+   "title": "The knowledge job reads every page whole every five minutes and re-cuts pages that have no text, forever",
+   "priority": "P0",
+   "effort": "S",
+   "saving": "Measured count: 91,200 empty transactions go to zero. Estimate: whole pages are read only after a publish.",
+   "verdict": "confirmed",
+   "owner_decision": false
+  },
+  {
+   "id": "DQ-7",
+   "title": "A page's frame asks about 20 questions each time its cache is cold, some of them one per feature for every store",
+   "priority": "P1",
+   "effort": "M",
+   "saving": "Estimate: a cold frame goes from about 20 statements to 4 or 5; 121 s of JSON scans become a column read.",
+   "verdict": "corrected",
+   "owner_decision": false
+  },
+  {
+   "id": "DQ-8",
+   "title": "\"is not distinct from\" on store_id keeps the index from serving the hottest reads, so they scan all stores' rows",
+   "priority": "P0",
+   "effort": "S",
+   "saving": "Estimate: scans of pages, terms and cookie_scans become index scans of one store's rows; cost stops growing with other stores.",
+   "verdict": "confirmed",
+   "owner_decision": false
+  },
+  {
+   "id": "DQ-9",
+   "title": "The store's slug is looked up by id again and again: the most-called statement in production",
+   "priority": "P0",
+   "effort": "S",
+   "saving": "Estimate: nearly all 560,090 calls, and most of the 237,563 AI provider reads inside one job run.",
+   "verdict": "corrected",
+   "owner_decision": false
+  },
+  {
+   "id": "DQ-10",
+   "title": "Some reads fetch whole JSON documents where a field, a card or a count is needed",
+   "priority": "P2",
+   "effort": "M",
+   "saving": "Estimate: most of 27 s of theme card reads; the Pages list and speed report stop growing with document size and samples.",
+   "verdict": "corrected",
+   "owner_decision": false
+  },
+  {
+   "id": "DQ-11",
+   "title": "Nothing counts queries: no budget per page or per tick, and production's statement statistics are not part of any routine",
+   "priority": "P0",
+   "effort": "M",
+   "saving": "No direct saving: it gives DQ-1, 5, 6, 7 and 9 a number to check against and keeps them from coming back.",
+   "verdict": "confirmed",
+   "owner_decision": false
+  },
+  {
+   "id": "DQ-12",
+   "title": "Every server instance reads the interface translations before it serves and polls them each minute",
+   "priority": "P2",
+   "effort": "S",
+   "saving": "Estimate: 1,440 group-by polls per instance a day become 144, or single-row reads. Small either way.",
+   "verdict": "corrected",
+   "owner_decision": false
+  },
+  {
+   "id": "DQ-13",
+   "title": "341 loops hold a database call in their body; the ones that matter are jobs that loop over sites",
+   "priority": "P2",
+   "effort": "M",
+   "saving": "Estimate: per-tick round trips stop growing with sites; no saving of its own beyond DQ-3, DQ-5, DQ-6 and DQ-15.",
+   "verdict": "confirmed",
+   "owner_decision": false
+  },
+  {
+   "id": "DQ-14",
+   "title": "387 list reads have no limit by a heuristic count; a handful read a whole store's documents or samples",
+   "priority": "P2",
+   "effort": "M",
+   "saving": "Estimate: these reads stop growing with a store's content; nothing measurable at today's sizes.",
+   "verdict": "confirmed",
+   "owner_decision": false
+  },
+  {
+   "id": "DQ-15",
+   "title": "Five document jobs find their due work by re-checking every store's recent orders, invoices and refunds on each tick",
+   "priority": "P1",
+   "effort": "M",
+   "saving": "Nothing today. Estimate after opening: tick work follows what waits, not 120 days of orders; one of two credit-note calls goes.",
+   "verdict": "added",
+   "owner_decision": false
+  },
+  {
+   "id": "DQ-16",
+   "title": "The catalogue's listing reads call a VAT function and an alt-text function once per product row, and Postgres cannot fold them into the query",
+   "priority": "P2",
+   "effort": "S",
+   "saving": "Measured: VAT rate from 11.3 µs to about 0.1 µs a row (112.9 ms to 0.9 ms on 10,000 rows); 5 µs or more a row for alt texts.",
+   "verdict": "added",
+   "owner_decision": false
+  }
+ ],
+ "refuted": []
+}

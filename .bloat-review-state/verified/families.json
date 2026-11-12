@@ -1,0 +1,477 @@
+{
+ "headline": "Copy-paste is still not this codebase's problem: 1.5% of code lines sit in 8-line clones, a scan of 3,974 files finds 41 twin pairs, and carriers, payment providers, emails and the AI tools each have one core. All 13 findings are real; six had inflated savings or a wrong payer, and none of them may rest on \"no store has used it\". What holds under the owner's clarification: (1) two loading faults paid at every cold start whatever the store: both languages of the admin's words (2.8 MB built) load with 802 of 830 server entries, and one re-export makes the four visit beacons load 11.4 MB of server code where about 2 MB would do; (2) four true duplicates: kaizenaflow.com kept twice (parity plan step 7, open, and cheapest before opening), the platform's events pipeline written beside the stores' (27 to 56% alike), five CSV import flows, and Fiken's engine copied from Tripletex's; (3) no check that holds import reach or copies. The platform console's own tables (sales, payouts, targets, team, briefing) are not copies (2 to 11% alike) and were built on the plan's console track: they are not bloat. Line savings in this area are small (about 2,500 to 4,000 lines of 768,000 beyond step 7's 4,400); the cold-start fixes are what matter.",
+ "metrics": [
+  {
+   "name": "Size measured",
+   "value": "768,202 lines of non-test TypeScript in src in 4,139 files; 325,579 lines of tests (lib 266,547; server 214,775; components 169,136; app 96,917; db 20,585)",
+   "how": "find + wc -l over src, test and spec files apart, re-run 12 November. The auditor's 768,077 and 325,551 differ by the day's commits."
+  },
+  {
+   "name": "Verbatim clones",
+   "value": "8,041 lines (1.5% of 554,385 code lines) sit in an 8-line window repeated in another file; 16,575 (3.0%) with 5-line windows. Exact copies only, so near-copies are not counted",
+   "how": "Re-ran the auditor's work/fm/clones.mjs with src 8 and src 5. The separate scan in m/clones.md (10-line windows, catalogues and schema apart) gives 1.1%."
+  },
+  {
+   "name": "Twin file pairs",
+   "value": "41 pairs among 58 files of 3,974 (1,742 shared lines); 14 pairs among 18 files at the stricter threshold (827 lines)",
+   "how": "Re-ran work/fm/twinscan2.mjs (20 lines and 30%) and twinscan.mjs (30 lines and 40%)."
+  },
+  {
+   "name": "Platform family",
+   "value": "24 server modules (4,761 lines), 20 lib modules (1,664), 3,834 lines of tests, 205 platform admin files (16,325 lines); 82 platform screens share a path with a store screen (3,486 lines, 979 of 2,700 significant lines identical, 36%)",
+   "how": "wc -l on src/server/platform-*.ts and src/lib/platform-*.ts; work/fm/twins.mjs over admin/(gated)/[store] and admin/(gated)/platform. All reproduced."
+  },
+  {
+   "name": "Share of a platform module's lines found unchanged in its store module",
+   "value": "endpoints 56% (101 of 181), workflows 56% (150 of 266), theme installs 41%, plan vs cart reminders 41%, API tokens 37%, integrations 29%, ad conversions 27%, discounts 11%, payouts 10%, experiments 10%, API 10%, sales 4%, team 3%. With imports left out and only lines in runs of three or more counted, the five events modules share 209 lines (368 by the loose measure)",
+   "how": "work/fm/sim.mjs (trimmed lines of 12+ characters, multiset) re-run on each pair; stricter count by work/fmv/sim2.mjs. The loose measure counts import lines and idioms, so it is an upper bound."
+  },
+  {
+   "name": "platform_* tables",
+   "value": "19 in the schema. Ten were added on 9 November as steps C2, C3 and C4 of the parity plan's console track (D508, D509, D513, D515, D516, D518, D522, D523), on the owner's instruction. Nine of the ten have a store table of the same job; only the events ones have copied code",
+   "how": "rg over src/db/schema.ts for table names; dates and reasons read in docs/decisions.md lines 848 to 863; docs/platform-parity-plan.md section 6. The auditor's 'never held a row' count is left out: every table is empty before opening."
+  },
+  {
+   "name": "Admin words on disk",
+   "value": "136 catalogue files, 3.56 MB (English 67 files, 31,672 lines, 1.69 MB; Norwegian 69 files, 33,778 lines, 1.87 MB). admin-text.ts imports 134 of them (67 areas, 3.46 MB). 602 files import it, 596 at run time; 35 are outside the admin folders and use 18 areas (1.11 MB). A storefront page reaches it through 14 of them, which use 8 areas (0.55 MB)",
+   "how": "wc -lc on src/lib/admin-messages; work/fmv/at.mjs for importers; work/fmv/areas2.mjs reads each adminText() call's area and sums its two files; work/fmv/reachv.mjs for the storefront's reach."
+  },
+  {
+   "name": "Admin words in the build",
+   "value": "13 server chunks carry the catalogues: 37.3 MB of 205.0 MB of server chunk JS (18%). Ten of the 13 are the same 2.81 MB chunk emitted under ten names. 802 of 830 page.js and route.js entries load one (storefront 74 of 76, API 99 of 113, cron 12 of 13, admin 547 of 548)",
+   "how": "grep of .next/server for a sentence from books.nb.ts; each entry's R.c(...) chunk list read by work/fmv/entries.mjs. build-summary.txt says exit=0."
+  },
+  {
+   "name": "Server JS an entry loads",
+   "value": "/api/visit 11.4 MB in 117 chunks (210 to 237 ms to require here); storefront pages 12.1 to 12.7 MB, median 182 chunks (checkout 201); /api/health 1.2 MB in 16 chunks (30 ms). The admin-words chunk alone 44 to 55 ms to require and roughly 56 to 74 ms more to run its 35 module factories",
+   "how": "Summed file sizes of each entry's R.c list; node require() of every chunk, 3 runs (work/fmv/reqall.cjs), load average about 1.1. The run time is rough: factories run against a stub runtime (work/fmv/evalchunk.cjs). Vercel's own start-up may differ."
+  },
+  {
+   "name": "Import reach",
+   "value": "/api/visit reaches 1,308 of 4,139 non-test modules; 146 (2.68 MB of source) when sameSite is imported from its pure file. catalog.ts, checkout.ts, shopper-emails.ts and chat-route.ts each reach the same 1,307 modules; auth.ts 311; /api/health 54; the storefront front page 1,435",
+   "how": "work/fmv/reachv.mjs and reachbytes.mjs: static imports followed, type-only and dynamic imports left out, comments stripped. Regex-based, so approximate. The built /api/visit chunks do contain chat, Stripe, Fiken and Tripletex code (marker strings found), so the bundler does not drop the re-export."
+  },
+  {
+   "name": "What a third language would cost",
+   "value": "Admin: about 33,800 hand-written lines (1.87 MB) in 69 files, and about 1.4 MB more in the words chunk while the registry is one module (estimate). Storefront: 6 files, 2,246 lines, 125 KB (or none, through ui_translations). Platform site: 30 wrapper route files (404 lines) in three route groups",
+   "how": "wc on the nb files; (platform-nb) 23 files and 303 lines, (docs-nb) 5 and 72, (theme-preview-nb) 2 and 29, counted with find + wc."
+  },
+  {
+   "name": "Server actions",
+   "value": "1,266 exported actions in 235 'use server' files (21,693 lines); 50 wrapper calls in 3 files (orders, returns, books); between 737 and 930 guard calls in 178 to 223 files depending on the pattern; 477 'if (!member) return' lines in 116 action files (516 in 155 files of the whole admin); about 180 local helper definitions: wordsOf 48, noAccess 35, text 25, said 16, failed 12, asOwner 11, done 10",
+   "how": "work/fm/actions.mjs re-run; work/fmv/actions2.mjs for the helper names inside action files. The auditor's per-name counts (text 93, fail 56, isUuid 23) were whole-src figures, not the action files'."
+  },
+  {
+   "name": "Hand-made admin interface today",
+   "value": "154 tables in 116 files (6,110 lines inside them, 2,000 in headers); 436 native selects in 198 files; about 250 date-format calls in about 180 files; Europe/Oslo in 67 TSX files; slice(0, 10) in 46; confirm( in 42 files; between 86 and 128 raw form actions depending on the pattern",
+   "how": "rg -c and work/fmv/tables.mjs over src/app/admin and src/components/admin (1,155 TSX files, 180,581 lines)."
+  },
+  {
+   "name": "Repeated helpers",
+   "value": "437 names defined at top level in 3 or more files (framework names apart): 2,416 definitions, 1,805 of them 8 lines or fewer (4,743 lines). 248 function bodies are byte-identical across files: 770 copies, 1,094 lines beyond the first, of which about 96 are loading.tsx files Next needs one of per route",
+   "how": "Re-ran work/fm/fnames.mjs and fstats.mjs over src; opened text, fail, isUuid, addDays, sha256 and call."
+  },
+  {
+   "name": "Families by size",
+   "value": "Carriers: 10 adapters 1,732 lines with index, 10 lib files 3,760, shared interface 674. Payment providers 508. AI tools: server 12,820, lib 7,676, with 105 direct SQL statements. Tripletex 3,276 and Fiken 1,980 lines of server and lib. CSV import engines 2,401, their routes 1,872, their flow and view components about 1,620",
+   "how": "wc -l per family; rg -c for db().execute and typedRows in src/server/*-tools.ts."
+  },
+  {
+   "name": "Pure lib files used by one server file",
+   "value": "22 lib modules (1,952 lines) are imported only by the server file of the same name; 60 more (6,759 lines) by one other server file; 4 (512 lines: legal-wording-nb, store-export-scope, experiment-legacy, store-modules) by tests only",
+   "how": "work/fm/graph.mjs rebuilt to work/fmv/graph2.json, then pairs.mjs; the test-only ones checked with rg over src, scripts, e2e and next.config.ts."
+  },
+  {
+   "name": "Hand-written queue claims",
+   "value": "'skip locked' in 30 server files (37 uses)",
+   "how": "rg -ci over src/server, tests out."
+  }
+ ],
+ "clean": [
+  "Carriers: one interface (ShippingCarrierAdapter) and ten adapters of 68 to 224 lines; the only repeated piece is a 5 to 18 line call() in each. No carrier code reaches the shopper's browser: the one .next/static chunk that matches a carrier marker is a 1.7 MB admin chunk of words (set-up steps for Porterbuddy and Helthjem), loaded under admin/(gated)/(owner) only.",
+  "Payment providers: two adapters behind a 50-line type file, 508 lines in all.",
+  "AI tools: one registry (about 250 entries in owner-tools.ts) and 12,820 lines of handlers with only 105 direct SQL statements, so tools call the same server functions as the screens. Tools are offered up to 124 a round and the rest wait behind load_tools (owner-assistant.ts:715).",
+  "Emails: the email modules send through one layout and one sender (106 renderEmail and 102 sendEmail calls in about 50 files).",
+  "Verbatim copying is rare: 1.5% of code lines in 8-line clones and 14 strict twin pairs in 3,974 files.",
+  "The platform console's own modules are not copies of the stores': sales 4%, team 3%, payouts 10%, discounts 11%, experiments 10%, API 10% of lines alike. Their tables (platform_sales, platform_payouts, platform_payout_lines, platform_targets, platform_marketing_spend) hold Kaizena Flow's own business of plans and were built as steps C2 and C3 of the parity plan on the owner's instruction. Empty before opening is not a reason to touch them.",
+  "The pure lib and server split costs little: 22 lib modules (1,952 lines) serve nothing but their server twin, at no run-time cost, and it is what lets unit tests run without a database.",
+  "Per-language route groups are thin: Norwegian is 30 wrapper files and 404 lines that hand a lang to shared views in components/platform-routes.",
+  "Most platform Website pages are thin wrappers over the store's views and call the shared server core with a null store.",
+  "Movers: Shopify and WooCommerce share product-csv.ts and old-shop.ts. No Wix, Squarespace, BigCommerce or Shopware importer exists in code, only words.",
+  "Imports already share a core: the job store, tickJob() and tickResponse(), the findings table, the import summary and the job tracker. The five tick routes are 14-line wrappers. What is copied is the per-kind orchestration around that core (FM-6).",
+  "The idle cost of the every-minute deliveries is fixed, not per store: deliverDue() and deliverPlatformDue() are one set-based claim each (integrations.ts:1031, platform-integrations.ts:449). Fiken's five-minute job works per connected store, so a store without Fiken costs it nothing.",
+  "A browser-side import check already exists and is the model for a server-side one: storefront-bundle.scan.test.ts walks every visitor component's static imports, and admin-catalogues.scan.test.ts keeps client modules off whole catalogues.",
+  "Storefront words: four hand-written languages at about 125 KB each; a further language can come through ui_translations without code.",
+  "Work at the owner's level (D123) is a deliberate combined, read-only view over each store's own data: no second table and no second engine. Only its list components repeat the stores' (FM-10)."
+ ],
+ "findings": [
+  {
+   "id": "FM-1",
+   "title": "Both languages of the admin's words (2.8 MB built) load with 802 of 830 server entries, the storefront's included",
+   "kind": "eager",
+   "where": [
+    "/home/user/kaizen-store/src/lib/admin-text.ts:2",
+    "/home/user/kaizen-store/src/lib/admin-text.ts:232",
+    "/home/user/kaizen-store/src/lib/admin-text.ts:303",
+    "/home/user/kaizen-store/src/lib/two-step.ts:13",
+    "/home/user/kaizen-store/src/server/auth.ts:18",
+    "/home/user/kaizen-store/src/server/shopper-emails.ts:17",
+    "/home/user/kaizen-store/src/server/cart-reminders.ts:28",
+    "/home/user/kaizen-store/src/app/s/[store]/[market]/checkout/checkout-section.tsx:42",
+    "/home/user/kaizen-store/.next/server/chunks/src_lib_0upnmb_oo7q5h._.js",
+    "/home/user/kaizen-store/docs/performance.md:167"
+   ],
+   "evidence": "admin-text.ts imports 134 catalogue files (67 areas, English and Norwegian, 3.46 MB of source) into one object. 602 files import it, 596 at run time. 35 of them are outside the admin folders and need 18 areas (1.11 MB). A storefront page reaches it through 14 of those (two-step.ts by way of auth.ts, shopper-emails.ts, staff-alerts.ts, store-closure.ts and others), which need 8 areas, 0.55 MB; none of the admin's own files is on that path. In the finished build 13 server chunks carry the catalogues (found by a sentence from books.nb.ts): 37.3 MB of 205.0 MB of server chunk JS; ten of them are one 2.81 MB chunk emitted under ten names, and it holds at least 124 of the 136 files. 802 of 830 page.js and route.js entries load one: 74 of 76 storefront entries, 99 of 113 API routes, 12 of 13 cron routes, 547 of 548 admin entries. Requiring the chunk took 44 to 55 ms here (3 runs); running its 35 module factories against a stub runtime took roughly 56 to 74 ms more.",
+   "cost": "2.8 MB of server JS read, parsed and run at each cold start of almost every function: about 45 ms to load and roughly 60 ms to run on this machine (the run part is rough). 37.3 MB of build output, 18% of all server chunk JS. A third language would add about 1.4 MB to the chunk (estimate: half of today's).",
+   "who_pays": "The server at every cold start, so the first shopper or owner on a new instance waits for it; and the build. It grows with traffic, instances and deploys, not with the number of stores.",
+   "fix": "1. Give each area its own small module that exports its words by language, importing only that area's two files. 2. Move the 35 non-admin importers to those modules, and add a scan test that fails when a file outside src/app/admin and src/components/admin imports @/lib/admin-text. 3. Move the admin's 561 run-time importers by codemod, area by area; keep adminTexts() only where a layout hands slices to client parts. Re-run the chunk measurement after step 2. Steps 1 and 2 give the storefront its saving; step 3 can follow.",
+   "saving": "Step 2: a storefront function loads 0.55 MB of words source in 8 areas where it loads 3.46 MB today (84% less; measured from source sizes and import reach). The visit beacons load none once FM-2 is done. Step 3 leaves an admin page with its own areas. Up to about 30 MB less server JS emitted (estimate). In time, up to about 0.1 s per cold start on this machine (measured roughly).",
+   "effort": "M",
+   "risk": "Low. The words are plain data and the type check catches a wrong area. Chunking is the bundler's choice, so confirm with the same script. admin-strings.scan.test.ts and the admin-text fallback e2e must stay green. The milliseconds were measured locally; Vercel may cache compiled code, so read them as an order of size.",
+   "confidence": "high",
+   "already_tracked": "no (PSI PERF-01 and docs/performance.md cover the browser's side only)",
+   "owner_decision": false,
+   "verdict": "confirmed",
+   "verify_note": "Opened admin-text.ts, two-step.ts:13, auth.ts:18, shopper-emails.ts:17, cart-reminders.ts:28 and checkout-section.tsx:42. Re-counted importers (602 any, 596 run time, 35 outside), areas (18, 1.11 MB) and the build (13 chunks, 37,300,833 bytes of 205,045,939; 802 of 830 entries). Small corrections: 134 files and 67 areas are imported, not 136 and 68; source is 3.46 MB in the registry (3.56 MB on disk); require took 44 to 55 ms, not 48 to 62. New: ten of the 13 chunks are the same chunk under ten names; running the factories costs about as much again as loading them; the storefront needs only 8 areas, so step 2 saves it 84%, more than the auditor's 69%. No written rule asks for one registry; docs/platform-admin-i18n.md 3.3 only describes it. Nothing here rests on unused features."
+  },
+  {
+   "id": "FM-2",
+   "title": "One import of sameSite through the chat module makes the four visit beacons load the whole server core",
+   "kind": "eager",
+   "where": [
+    "/home/user/kaizen-store/src/app/api/visit/route.ts:3",
+    "/home/user/kaizen-store/src/app/api/visit/touch/route.ts:4",
+    "/home/user/kaizen-store/src/app/api/visit/speed/route.ts:3",
+    "/home/user/kaizen-store/src/app/api/visit/speed/own/route.ts:3",
+    "/home/user/kaizen-store/src/server/chat-route.ts:7",
+    "/home/user/kaizen-store/src/server/chat-route.ts:38",
+    "/home/user/kaizen-store/src/lib/same-site.ts:6",
+    "/home/user/kaizen-store/.next/server/app/api/visit/route.js",
+    "/home/user/kaizen-store/src/app/admin/(gated)/[store]/customers/[customerId]/export/route.test.ts:9"
+   ],
+   "evidence": "sameSite lives in src/lib/same-site.ts, one pure function. chat-route.ts:38 re-exports it, and its own comment says it is 'kept here for the routes that import it from here'. 57 files take it from chat-route.ts; 39 of them take nothing else (32 in the admin, the 4 beacons, 2 in src/server, 1 storefront). 17 import the pure file. chat-route.ts imports ai.ts, chat-agent.ts and support.ts, and about 1,300 modules follow. By static import reach: /api/visit reaches 1,308 of 4,139 modules; with the import pointed at the pure file it reaches 146 and 2.68 MB of source (touch 146, speed 150, own speed 150), and no longer reaches admin-text.ts. The bundler does not drop the re-export: the built /api/visit entry requires 117 chunks, 11.4 MB, and those chunks contain chat, Stripe, Fiken and Tripletex code. Requiring them took 210 to 237 ms here (3 runs); /api/health, with 54 modules, requires 16 chunks, 1.2 MB, in about 30 ms.",
+   "cost": "11.4 MB of server JS and about 0.2 s of loading at each cold start of the beacon functions. Every counted page view sends a beacon, also for pages served from the cache, so the beacons will be the most-called functions once shoppers arrive.",
+   "who_pays": "The server per cold start of the beacon routes. It grows with shoppers' page views and with each deploy.",
+   "fix": "Import sameSite from @/lib/same-site in the 57 files that take it from chat-route.ts and delete the re-export at chat-route.ts:38; change the mock in customers/[customerId]/export/route.test.ts to match. Add an import-walk scan test on the pattern of storefront-bundle.scan.test.ts that fails when a route under src/app/api/visit reaches chat-route.ts, auth.ts or more than about 200 modules.",
+   "saving": "Beacon entries go from 1,308 reachable modules to 146 (measured by reach). Server JS per beacon entry from 11.4 MB to about 2 MB (estimate: /api/ab/assign reaches 113 modules and 2.26 MB of source and is 1.6 MB built). Loading time here from about 220 ms to about 40 ms (estimate by the same comparison).",
+   "effort": "S",
+   "risk": "Low: it is the same function. The bundler may still place some modules in shared chunks, so check the entry's chunk list after the change. Whether a beacon shares a warm instance with other routes on Vercel was not checked here; if it does, the gain per request is smaller but the load is still not needed.",
+   "confidence": "high",
+   "already_tracked": "no",
+   "owner_decision": false,
+   "verdict": "confirmed",
+   "verify_note": "Opened the four beacon routes, chat-route.ts:1-45 and same-site.ts. Re-ran reach with my own script: 1,308 before, 146 after (the auditor's 145 leaves the entry out). Re-read the built entry: 117 chunks, 11,396,857 bytes; found chat, Stripe, Fiken and Tripletex marker strings in its chunks, so tree-shaking does not save it. Timed 210 to 237 ms (auditor 218 to 269). Corrected the file count: 57 files import it from chat-route.ts and 39 import only that, not 37; deleting the re-export touches all 57 and one test mock. No rule or scan test pins the import path."
+  },
+  {
+   "id": "FM-3",
+   "title": "kaizenaflow.com exists twice: the old no-store site is still built and kept beside the store that now serves it",
+   "kind": "duplicate",
+   "where": [
+    "/home/user/kaizen-store/docs/platform-parity-plan.md:118",
+    "/home/user/kaizen-store/docs/platform-parity-plan.md:165",
+    "/home/user/kaizen-store/docs/platform-parity.md:21",
+    "/home/user/kaizen-store/src/lib/house-routing.ts:9",
+    "/home/user/kaizen-store/src/proxy.ts:71",
+    "/home/user/kaizen-store/src/components/platform-root.tsx:59",
+    "/home/user/kaizen-store/src/server/platform-navigation.ts:80",
+    "/home/user/kaizen-store/src/app/admin/(gated)/platform/pages/actions.ts:58",
+    "/home/user/kaizen-store/src/app/(platform)/[slug]/page.tsx:1",
+    "/tmp/claude-0/-home-user-kaizen-store/875cb21b-0ebd-5663-b7c0-2d04a7548e24/scratchpad/m/build.log:1065"
+   ],
+   "evidence": "Since D484 the proxy serves the front page, every page, blog, category, tag and cookies of kaizenaflow.com from the store 'kaizenaflow' (house-routing.ts:9, proxy.ts:71); docs/platform-parity.md:21 says the switch is on in production. The old site stays whole: 20 route files for those addresses in (platform) and (platform-nb) (313 lines), their five views in components/platform-routes (365), platform-page.tsx and platform-layout.tsx (389), platform-theme-installs.ts, platform-roles.ts (server and lib) and platform-navigation.ts (762), and the platform admin's Website folders (about 2,600 lines in pages, articles, headers, footers, menus, navigation, media, fonts, seo, cookies, site-design and templates): about 4,400 lines, plus 392 lines of tests on the roles and theme installs. The build still compiles and prerenders the old routes in both languages (build.log lines 44 to 50 and 1065 to 1120). The routes the platform keeps (sign-up, themes, docs, status) still draw header, footer, theme, fonts and CSS from the null-store rows (platform-root.tsx:59, platform-navigation.ts:80-81), so one site has two sets of chrome. 'store_id is null' or 'is not distinct from' is written in 220 places of 86 server files; plan section 4 item 7 says some of those stay (templates, the support desk, the docs guide).",
+   "cost": "About 4,400 lines of code and about 400 of tests, 3 twin tables (platform_theme_installs, platform_theme_install_updates, platform_page_roles), the old pages' prerender on every build, and two headers, footers and menu sets to keep alike by hand.",
+   "who_pays": "The build and CI on every push, the team's admin (two places that look like the site's editor), and an agent's session (every site change is weighed twice).",
+   "fix": "Do step 7 of the parity plan when the owner calls the switch final: first draw the kept platform routes with the store's header, footer and theme; then delete the old page, blog, category, tag and cookies routes and their views; make Platform, Website one link; retire the three twin tables and the site's null rows; narrow null-store handling only where a null served the site. Finish the media library's move first (the plan lists it as still to do).",
+   "saving": "Up to about 4,400 lines and about 400 test lines (upper bound from the files listed: the theme store's pages and sign-up still use part of the platform page machinery), 3 tables, about 20 fewer routes to build and prerender, one set of chrome.",
+   "effort": "M",
+   "risk": "Medium. The way back to the old pages ends when they go, and today they also answer if the switch cannot be read (proxy.ts:78-81). The plan says to wait weeks after the switch, which was days ago. Against that: before opening nobody is disturbed and there is no outside data in the null rows, so this is the cheapest moment the step will ever have.",
+   "confidence": "high",
+   "already_tracked": "docs/platform-parity-plan.md step 7 'One copy': open (steps 1 to 5 built; 6 and 7 not). The plan says the null rows go 'weeks after the switch'.",
+   "owner_decision": true,
+   "verdict": "confirmed",
+   "verify_note": "Opened house-routing.ts, proxy.ts:63-83, platform-root.tsx:56-66, platform-navigation.ts:74-84, the plan's steps table and docs/platform-parity.md:15-22. Re-counted: 20 route files, not 13 (313 lines holds); layout and page 389, not 384; the four modules 762; views 365; Website folders about 2,550 to 2,770 depending on which are counted. The 220 statements in 86 files reproduce only when 'is not distinct from' is counted with 'is null' (the plain phrase is 98 in 58 files). This is one thing kept twice, not an unused feature, so the clarification leaves it standing. The only choice left to the owner is when: the plan already decided that it happens."
+  },
+  {
+   "id": "FM-4",
+   "title": "The platform's events pipeline is written a second time beside the stores': 27 to 56% of its lines are the stores' own",
+   "kind": "duplicate",
+   "where": [
+    "/home/user/kaizen-store/src/server/platform-endpoints.ts:19",
+    "/home/user/kaizen-store/src/server/platform-integrations.ts:22",
+    "/home/user/kaizen-store/src/server/platform-integrations.ts:394",
+    "/home/user/kaizen-store/src/server/platform-integrations.ts:449",
+    "/home/user/kaizen-store/src/server/integrations.ts:899",
+    "/home/user/kaizen-store/src/server/integrations.ts:1031",
+    "/home/user/kaizen-store/src/server/platform-workflows.ts:26",
+    "/home/user/kaizen-store/src/app/api/cron/integrations/route.ts:30",
+    "/home/user/kaizen-store/src/db/schema.ts:7677",
+    "/home/user/kaizen-store/docs/decisions.md:805",
+    "/home/user/kaizen-store/docs/decisions.md:855",
+    "/home/user/kaizen-store/docs/platform-parity-plan.md:176"
+   ],
+   "evidence": "Share of a platform file's significant lines found unchanged in its store file: endpoints 56% (101 of 181), workflows 56% (150 of 266), API tokens 37% (20 of 54), integrations 29% (114 of 393), ad conversions 27% (30 of 111). With import lines left out the five server modules share 368 lines, 209 of them in runs of three or more. The two runners have the same shape side by side: claim with 'for update skip locked', attempt, fail, retry, keep endpoint health, prune (integrations.ts:899 and 1031; platform-integrations.ts:394 and 449). Their screens are 815 lines, about 200 identical to the store's. They already share the sender (postSigned), the pure rules and the workflow editor's kit (WorkflowKit, D516). Sizes: 2,090 lines in 6 server and 4 lib modules, 1,216 of tests, 815 of screens. The separate tables are a written decision: D465 and D515 say the stores' tables are keyed by the store and every reader filters by it, and the parity plan puts the platform's integrations in the console (section 3) and built them as step C4 on the owner's instruction on 9 November.",
+   "cost": "About 370 identical server lines and about 200 screen lines kept in step by hand: a fix to retry, signing or health on one side must be remembered on the other. At run time the every-minute job makes one more claim and one more prune statement for the platform's queue; that is fixed and does not grow with stores.",
+   "who_pays": "CI and an agent's session, and whoever changes one runner and forgets its twin. The database pays two small statements a minute.",
+   "fix": "Keep the separate tables and screens (D465, D515, D516 stand). Give the store modules a scope: the Drizzle tables, the owner filter, the payload builder and the health keeper passed in, so list, save, claim, attempt, retry and prune exist once and the platform file keeps only its events and payloads. Start with endpoints and workflows, which are 56% alike. The auditor's larger option, moving the platform's events into Kaizena Flow's own store and dropping the platform tables, is not a bloat fix: it goes against section 3 of the plan and D465, and would be the owner's product choice to raise.",
+   "saving": "About 300 to 550 lines (estimate from the 209 to 368 identical server lines and about 200 identical screen lines measured). Tests stay.",
+   "effort": "M",
+   "risk": "Low to medium. Two sets of integration tests hold the behaviour. Pass the tables as Drizzle objects so no sql.raw is needed (sql-raw.scan.test.ts lists every use), and keep store_id in the stores' where clauses so the scoped-write ratchet still passes.",
+   "confidence": "medium",
+   "already_tracked": "no. D465, D515 and D516 give the reason for separate tables; the fix keeps them.",
+   "owner_decision": false,
+   "verdict": "corrected",
+   "verify_note": "Re-ran sim.mjs on all five pairs: the shares reproduce exactly. Opened both deliverDue functions and both attempt functions, the cron route, and D465, D515, D516, D518 in docs/decisions.md and sections 3 and 6 of the parity plan. Removed the case built on 'neither side has been used' and on empty tables: every feature is unused before opening. Removed the preferred fix as a recommendation because it contradicts a written plan the owner approved and built last week. Cut the saving from '4,000 lines and 7 tables' or '700 to 900' to 300 to 550: the stricter count finds 209 to 368 identical server lines, and the loose measure counted imports. The run-time cost is two statements a minute, fixed, not 'four or more' per store."
+  },
+  {
+   "id": "FM-5",
+   "title": "The parity rule names platform_* tables as the way and does not say when the store's module with a scope is expected",
+   "kind": "process",
+   "where": [
+    "/home/user/kaizen-store/CLAUDE.md:403",
+    "/home/user/kaizen-store/docs/platform-parity-plan.md:32",
+    "/home/user/kaizen-store/docs/platform-parity-plan.md:66",
+    "/home/user/kaizen-store/docs/platform-parity-plan.md:73",
+    "/home/user/kaizen-store/docs/platform-parity-plan.md:173",
+    "/home/user/kaizen-store/src/db/schema.ts:7702",
+    "/home/user/kaizen-store/src/db/schema.ts:7733",
+    "/home/user/kaizen-store/src/db/schema.ts:7794",
+    "/home/user/kaizen-store/scripts/ratchet.mjs:9"
+   ],
+   "evidence": "CLAUDE.md:403 asks for every store feature on the platform in the same change and names 'store_id is null or platform_* tables' as where its rows live. The plan of 6 November counted 9 platform_* tables, called building twice the way that grows (line 66) and added 'build it for stores' (line 73), but also set a console track for what no store can give (section 6). That track was built on 9 November on the owner's instruction and added ten tables (D508, D509, D513, D515, D516, D518, D522, D523): the schema has 19 today. Nine of the ten have a store table of the same job. The code is copied only in part: the events modules are 27 to 56% the stores' lines, theme installs 41%, plan reminders 41%; sales, team, payouts, discounts, experiments and the API are 2 to 11% alike and are the platform's own subject. src/server has 24 platform-*.ts modules (4,761 lines) and src/lib has 20 (1,664). Nothing in the rule or in a test tells a copy from a new subject.",
+   "cost": "A copied module adds lines to keep in step for good: today about 370 server lines in the events family (FM-4), 69 in theme installs and 123 in plan reminders. The cost is in upkeep, not at run time.",
+   "who_pays": "An agent's session (the rule is read in every one) and CI.",
+   "fix": "Add one sentence to the rule: where the platform's version does the same job on its own rows, it uses the store's module with a scope, not a copy; a decision that adds a copied platform-*.ts module says why a scope would not do. Do not put the count of platform_* tables in the only-falls ratchet: the console track adds them on purpose and scripts/ratchet.mjs refuses to raise a number. The twin-pair budget of FM-13 catches a copied module instead.",
+   "saving": "No lines today. It keeps the next console step from being built as a copy.",
+   "effort": "S",
+   "risk": "Low. It changes the wording of a rule the owner set on 6 November without changing what the platform gets.",
+   "confidence": "medium",
+   "already_tracked": "partly: docs/platform-parity-plan.md section 3 says 'build it for stores'; the rule in CLAUDE.md does not say how",
+   "owner_decision": true,
+   "verdict": "corrected",
+   "verify_note": "Opened CLAUDE.md:403, the plan's lines 32, 60 to 76 and 170 to 180, and the decisions for each new table. Counted 19 platform_* tables in schema.ts. Three corrections. (1) '12 have never held a row' is removed: it is no evidence before opening. (2) The claim that the console track does not follow the plan is wrong: it is the plan's own section 6, built step by step on the owner's word. (3) 'Ten twin tables' overstates: re-running sim.mjs shows only the events family, theme installs and plan reminders are copies; the money and analytics modules share 2 to 11% of their lines. The proposed ratchet on table and module counts is dropped because the existing ratchet cannot be raised and these counts may rightly grow. What is left is a wording choice for the owner, not waste."
+  },
+  {
+   "id": "FM-6",
+   "title": "Five CSV imports repeat the same orchestration, pages and client flow around one shared job core",
+   "kind": "duplicate",
+   "where": [
+    "/home/user/kaizen-store/src/server/customer-import.ts:92",
+    "/home/user/kaizen-store/src/server/customer-import.ts:104",
+    "/home/user/kaizen-store/src/server/customer-import.ts:325",
+    "/home/user/kaizen-store/src/server/inventory-jobs.ts:227",
+    "/home/user/kaizen-store/src/server/inventory-jobs.ts:523",
+    "/home/user/kaizen-store/src/server/product-import.ts:103",
+    "/home/user/kaizen-store/src/server/redirect-import.ts:77",
+    "/home/user/kaizen-store/src/server/order-history-import.ts:83",
+    "/home/user/kaizen-store/src/server/data-jobs.ts:290",
+    "/home/user/kaizen-store/src/components/admin/data/import-flow.tsx:1",
+    "/home/user/kaizen-store/src/components/admin/inventory/stock-import-flow.tsx:1",
+    "/home/user/kaizen-store/src/components/admin/customer-import-flow.tsx:1",
+    "/home/user/kaizen-store/src/components/admin/redirects/redirect-import-flow.tsx:1"
+   ],
+   "evidence": "A shared core exists: the job store, runJob() and tickJob() in data-jobs.ts, tickResponse(), the findings table, the import summary and the job tracker. Around it, products, customers, redirects, stock and order history each write their own start-upload, register, check, apply and problems-CSV functions of the same shape. Against customer-import.ts, with imports left out, the other four engines share 468 lines (321 in runs of three or more): inventory-jobs 43%, redirect-import 47%, order-history-import 56%, product-import 26% of their own lines. isUniqueViolation is byte-identical in six files and applyCursor in four. The three other client flows share 221 lines with data/import-flow.tsx (59%, 59% and 71% of their lines). The ten pages are 43 to 57% identical to a sibling. The five tick routes are already 14-line wrappers that differ in permission and kind. Sizes: engines 2,401 lines, routes 1,872 (58 of them the reviews import), flow and view components about 1,620.",
+   "cost": "About 5,800 lines for one job done five ways, of which about 1,000 are measured as identical. A change to how an import checks, resumes or reports must be made five times.",
+   "who_pays": "The build, CI and an agent's session. Not the browser: each import page loads only its own flow.",
+   "fix": "One description per kind (read the file, judge a row, write a row, the permission, the words) and one orchestration over the existing job core; one flow component that takes the kind; shared page parts for the upload and job pages, keeping each kind's address. Keep each kind's parsing and writing as it is. Imports are how a new owner moves in, so doing it before opening changes nothing for anyone.",
+   "saving": "About 900 to 1,300 lines (estimate from identical lines measured: engines 320 to 470, flows 155 to 220, pages about 300 to 400, plus part of the views).",
+   "effort": "M",
+   "risk": "Low to medium. Imports write customers, stock and products; each kind has integration tests to hold it.",
+   "confidence": "medium",
+   "already_tracked": "no",
+   "owner_decision": false,
+   "verdict": "corrected",
+   "verify_note": "Re-measured all ten engine pairs with sim.mjs and the stricter sim2.mjs; opened customer-import.ts and data-jobs.ts; diffed three tick routes; listed every import route file. The duplication is real but smaller than claimed. Corrections: a shared job core already exists and the tick routes are already thin, so 'five copies of one engine, screen and tick route' overstates; the saving is about 900 to 1,300 lines, not 2,200 (the auditor's 1,000 for routes exceeds the identical lines in them, and pages must keep their own folders); four flow scripts are not a cost to the owner's browser because no page loads more than one. Nothing in the finding rests on unused features."
+  },
+  {
+   "id": "FM-7",
+   "title": "1,266 server actions, about 45 on the shared wrapper; the count of the rest is not held",
+   "kind": "duplicate",
+   "where": [
+    "/home/user/kaizen-store/src/server/store-action.ts:35",
+    "/home/user/kaizen-store/src/app/admin/(gated)/[store]/customer-groups/actions.ts:17",
+    "/home/user/kaizen-store/src/app/admin/(gated)/[store]/customer-groups/actions.ts:28",
+    "/home/user/kaizen-store/src/app/admin/(gated)/[store]/returns/actions.ts:88",
+    "/home/user/kaizen-store/docs/rules/admin/platform.md:89",
+    "/home/user/kaizen-store/docs/audits/code-review-2026-11.md:61"
+   ],
+   "evidence": "235 'use server' files in the admin hold 1,266 exported actions in 21,693 lines. 50 wrapper calls sit in 3 files (orders, returns, books). The others guard by hand: between 737 and 930 guard calls in 178 to 223 files depending on the pattern, and 477 'if (!member) return' lines in 116 action files. Those files define about 180 small local helpers: wordsOf in 48, noAccess in 35, text in 25, said in 16, failed in 12, asOwner in 11, done in 10. A wrapped action is not shorter than a guarded one: the guard's two lines become the wrapper's opening and closing lines (compare customer-groups/actions.ts:28-29 with returns/actions.ts:88). What the wrapper adds is one logged failure and one refusal in the person's language. The rule moves a file when it is touched; nothing counts what is left.",
+   "cost": "About 300 lines of repeated local helpers (estimate: about 180 definitions of 1 to 4 lines), and failures that are answered and logged differently per file. No run-time cost.",
+   "who_pays": "The owner's admin (an action that throws shows Next's error page instead of a plain line), and an agent's session.",
+   "fix": "Add the number of 'use server' files in the admin that do not use storeAction() or platformAction() (232 today) to the ratchet so it only falls. Put the shared helpers (the no-access answer, the words-of-member reader, the form text reader) in the wrapper's module. Convert by area when an area is opened, as the rule says.",
+   "saving": "About 300 lines (estimate), and one failure behaviour. The wrapper itself saves no lines per action.",
+   "effort": "L",
+   "risk": "Low per file. A conversion changes what a refused person sees (a plain line, not a 404), which the wrapper's rule already asks for. The ratchet alone is S.",
+   "confidence": "medium",
+   "already_tracked": "code review step 1.4: Done for the wrapper on 11 November; the other files move 'when touched' (docs/rules/admin/platform.md:89), with no count",
+   "owner_decision": false,
+   "verdict": "corrected",
+   "verify_note": "Re-ran actions.mjs (235 files, 1,266 actions, 21,693 lines, 50 wrapper calls: holds) and wrote actions2.mjs for the helpers. Corrections: the saving of 2,400 lines does not exist, because a wrapped action is as long as a guarded one (read both forms); the helper counts quoted (text 93, wordsOf 61, fail 56, isUuid 23, refuse 19) are whole-src figures from the helper scan, and inside action files they are wordsOf 48, noAccess 35, text 25, fail 2, isUuid 1; the guard count of 759 in 183 files could not be reproduced exactly (737 to 930 by pattern). What remains is a consistency step that is already a rule, plus a missing count."
+  },
+  {
+   "id": "FM-8",
+   "title": "Lists, tables, dates and selects are still hand-made per screen, and the counts are not held while the kit waits",
+   "kind": "duplicate",
+   "where": [
+    "/home/user/kaizen-store/src/components/admin/ui/list.tsx:14",
+    "/home/user/kaizen-store/docs/audits/code-review-2026-11.md:69",
+    "/home/user/kaizen-store/docs/audits/code-review-2026-11.md:72",
+    "/home/user/kaizen-store/docs/audits/code-review-2026-11.md:250",
+    "/home/user/kaizen-store/docs/audits/code-review-2026-11.md:306"
+   ],
+   "evidence": "Today, over src/app/admin and src/components/admin (1,155 TSX files, 180,581 lines): 154 tables in 116 files with 6,110 lines inside them, 2,000 of those in headers; 436 native selects in 198 files; about 250 date-format calls in about 180 files; Europe/Oslo in 67 files and slice(0, 10) in 46; confirm( in 42 files; 86 to 128 raw form actions depending on the pattern. The kit's List is used in 89 files, PageHeader in 315, Card in 242. The code review's steps already end in scan tests (FS4: no new window.confirm or raw input class; FS5: no Europe/Oslo or slice(0, 10)), but only once each step is built, and all four steps are open.",
+   "cost": "Up to about 2,000 lines of table markup a column-list component would not need (estimate: the header lines), and dates on the wrong day for stores outside Norway (FS5), which matters once stores in other countries open.",
+   "who_pays": "The owner's admin and an agent's session.",
+   "fix": "Before building the kit, add today's counts to the ratchet (tables, native selects, Europe/Oslo, slice(0, 10), confirm(, raw form actions) so a new screen cannot add to them. Then the kit's Table, Select, date formatter and ConfirmButton, list pages first, as steps 1.12 to 1.15 say.",
+   "saving": "Up to about 2,000 lines of markup (estimate). The larger gain is one behaviour everywhere.",
+   "effort": "L",
+   "risk": "Low. The ratchet step alone is S and changes no screen.",
+   "confidence": "medium",
+   "already_tracked": "code review steps 1.12, 1.13, 1.14 and 1.15: all Open. Their findings (FS4, FS5) already plan scan tests once built; holding the counts before that is the only new part.",
+   "owner_decision": false,
+   "verdict": "confirmed",
+   "verify_note": "Re-counted with rg and my own tables.mjs: 154 tables in 116 files, 6,110 lines inside, 2,000 in headers, 436 selects in 198 files, confirm( in 42 files all hold. Date-format, Europe/Oslo, slice and raw-form counts vary by a few with the pattern (given as ranges). Read FS2, FS4, FS5 and FS6 in the code review: the claim that holding counts 'is not in the plan' is only half right, since scan tests are planned at the end of each step. No number here comes from production, so the clarification changes nothing."
+  },
+  {
+   "id": "FM-9",
+   "title": "Fiken's sync engine is a copy of Tripletex's: about 250 to 400 identical lines, and no third system is planned",
+   "kind": "duplicate",
+   "where": [
+    "/home/user/kaizen-store/src/server/fiken-sync.ts:28",
+    "/home/user/kaizen-store/src/server/fiken-sync.ts:108",
+    "/home/user/kaizen-store/src/server/tripletex-sync.ts:120",
+    "/home/user/kaizen-store/src/app/admin/(gated)/[store]/integrations/fiken/page.tsx:1",
+    "/home/user/kaizen-store/src/app/admin/(gated)/[store]/integrations/tripletex/page.tsx:1",
+    "/home/user/kaizen-store/docs/own-books-and-sales.md:45",
+    "/home/user/kaizen-store/docs/fiken.md:5"
+   ],
+   "evidence": "fiken-sync.ts says it is 'the same engine as Tripletex's' (line 28). 220 of its 407 significant lines (54%) are in tripletex-sync.ts unchanged: sweep, claim, release, block, fail, the retry ladder, attaching PDFs, retry and check. With imports out and only runs of three or more counted, 143 lines. The connection modules are 27% alike (94 lines) and the two admin pages 54% (136 lines). Sizes: Tripletex 3,276 lines of server and lib, Fiken 1,980; their screens 724 and 580. A written decision closes the door on more: docs/own-books-and-sales.md:45-47 says Tripletex and Fiken stay as the bridge until a store's books move to Kaizena Flow's own ledger, and no new accounting connector is started. The Fiken job works per connected store, so a store without Fiken costs it nothing.",
+   "cost": "About 250 to 400 duplicate lines today. A fix to the queue, the retry ladder or the alerts must be made twice.",
+   "who_pays": "CI and an agent's session. No run-time cost beyond one small query every five minutes.",
+   "fix": "Leave the two connectors as they are unless one engine is opened for real work: then lift sweep, claim, release, retry and attach into one accounting-sync engine with a connector interface, as carriers have ShippingCarrierAdapter. Do not build it for a third system: the written decision is that none comes.",
+   "saving": "About 250 to 400 lines (estimate from the 143 to 208 identical sync lines, 40 to 84 in the connection modules and 75 to 126 in the pages; an interface costs some back). No saving from later connectors: none is planned.",
+   "effort": "M",
+   "risk": "Medium. This code books invoices in an owner's accounts, and Fiken has not yet been tried against a real Fiken company (docs/fiken.md). The existing integration tests must pass unchanged.",
+   "confidence": "medium",
+   "already_tracked": "no. docs/own-books-and-sales.md decision 6 says no further accounting connector is started.",
+   "owner_decision": false,
+   "verdict": "corrected",
+   "verify_note": "Re-ran sim.mjs: 220 of 407 (54%), connection 27%, pages 54% all hold; sizes 3,276 and 1,980 hold (screens are 724 and 580, not 857 and 614). Two corrections. The case's main saving, 'about 1,500 lines for each later connector', falls away: docs/own-books-and-sales.md says no new accounting connector is started and both are a bridge to the own ledger. And the argument from fiken_connections never holding a row and the job 'still running' is removed: the tables are empty because nobody has opened yet, and the job costs one query when no store is connected. What is left is a true but small duplicate with a medium risk, so it ranks low."
+  },
+  {
+   "id": "FM-10",
+   "title": "Work's combined lists and the account's Domains pages repeat the store's, 29 to 77% the same",
+   "kind": "duplicate",
+   "where": [
+    "/home/user/kaizen-store/src/components/admin/work/owner-time.tsx:1",
+    "/home/user/kaizen-store/src/components/admin/work/owner-invoices.tsx:1",
+    "/home/user/kaizen-store/src/components/admin/work/owner-clients.tsx:1",
+    "/home/user/kaizen-store/src/components/admin/work/owner-report.tsx:1",
+    "/home/user/kaizen-store/src/components/admin/work/owner-overview.tsx:1",
+    "/home/user/kaizen-store/src/server/work-owner.ts:1",
+    "/home/user/kaizen-store/src/app/admin/(gated)/(owner)/account/domains/move/[domain]/page.tsx:1",
+    "/home/user/kaizen-store/docs/work.md:2118"
+   ],
+   "evidence": "D123 gave Work a combined, read-only view across an owner's stores, with the data and the editing left per store (docs/work.md:2118-2130). Its list components repeat the store's: share of the account-level file's significant lines found unchanged in the store-level file is owner-invoices 63% (80 of 128), owner-clients 52% (37 of 71), owner-time 44% (60 of 137, against time-filters.tsx), owner-overview 35% (67 of 192), owner-report 29% (37 of 127): 281 of 655 lines. work-owner.ts (828 lines) shares 41 and 33 long lines with work-attention.ts and work-overview.ts. Domains: the move page is 77% the same (49 of 64), its actions 53%, the list page 33%, the list's actions 26%.",
+   "cost": "About 1,200 lines in the five owner-* list components and 828 of server for the combined view, of which about 280 component lines and about 75 server lines are identical to the store's; three Domains files with about 110 identical lines.",
+   "who_pays": "The build, CI and an agent's session. Not the browser: only two of the nine owner-* files are client components, and a page draws one view or the other.",
+   "fix": "Let the store's list components take rows from one store or from several (a store column when there are several) and draw the account pages with them. One move-domain page and action that take their owner (store or account) as a prop. The combined view itself stays: it is the product's design.",
+   "saving": "About 350 to 450 lines (estimate from the identical lines measured).",
+   "effort": "M",
+   "risk": "Low.",
+   "confidence": "medium",
+   "already_tracked": "no",
+   "owner_decision": false,
+   "verdict": "corrected",
+   "verify_note": "Re-ran sim.mjs on the five Work pairs and the Domains files: every share reproduces (281 of 655). Read docs/work.md on D123: the second view is a decided design, and the fix keeps it. Corrected who pays: the auditor said the owner's admin loads two sets of client components, but seven of the nine owner-* files are server components and no page draws both sets. The five components are 1,209 lines, not 1,127. Nothing rests on unused features."
+  },
+  {
+   "id": "FM-11",
+   "title": "Ten small pairs of near-copies, about 840 identical lines",
+   "kind": "duplicate",
+   "where": [
+    "/home/user/kaizen-store/src/app/s/[store]/[market]/order/[orderId]/order-section.tsx:1",
+    "/home/user/kaizen-store/src/app/s/[store]/[market]/account/orders/[orderId]/page.tsx:1",
+    "/home/user/kaizen-store/src/server/analytics-speed.ts:1",
+    "/home/user/kaizen-store/src/server/own-speed.ts:1",
+    "/home/user/kaizen-store/src/server/cart-reminders.ts:1",
+    "/home/user/kaizen-store/src/server/plan-reminders.ts:1",
+    "/home/user/kaizen-store/src/components/admin/bonus-settings-form.tsx:470",
+    "/home/user/kaizen-store/src/components/admin/affiliate-settings-form.tsx:408",
+    "/home/user/kaizen-store/src/components/admin/discount-editor.tsx:1",
+    "/home/user/kaizen-store/src/components/admin/campaign-editor.tsx:1",
+    "/home/user/kaizen-store/src/components/admin/page-versions-dialog.tsx:1",
+    "/home/user/kaizen-store/src/components/admin/look-versions-dialog.tsx:1",
+    "/home/user/kaizen-store/src/server/draft-pay.ts:131",
+    "/home/user/kaizen-store/src/server/exchange-pay.ts:176",
+    "/home/user/kaizen-store/src/server/order-edit-pay.ts:98"
+   ],
+   "evidence": "Identical significant lines, second file against first: the shopper's order page in two places 115 of 208 (55%); own-speed.ts against analytics-speed.ts 57 of 82 (70%) and their two routes 17 of 20; plan-reminders.ts against cart-reminders.ts 123 of 298 (41%) and their pages 46 of 93; the affiliate and bonus settings forms 157 of 253 (62%); the campaign and discount editors 149 of 438 (34%); the docs-guide and chat-agent forms 58 of 86 (67%); the look and page versions dialogs 57 of 88 (65%); order-edit-pay.ts against draft-pay.ts 57 of 143 (40%), with takeBucket byte-identical in three pay files. The measure counts import lines and common idioms, so it is an upper bound.",
+   "cost": "Up to about 840 identical lines in ten pairs, kept in step by hand. No run-time cost: each twin component sits on its own page (bonus and affiliates, discounts and campaigns, the chat agent and the docs guide), so a browser loads one of a pair.",
+   "who_pays": "The build, CI and an agent's session.",
+   "fix": "One shared part for each pair when either file is next opened: an OrderView for the two order pages, a ProgramSettingsForm, one versions dialog, a reminder runner with a subject (cart or plan), one speed recorder with a target. Leave the three pay steps until one is next touched.",
+   "saving": "About 500 to 700 lines (estimate; the identical-line count is an upper bound).",
+   "effort": "M",
+   "risk": "Low, except the pay steps, which move money and are left out.",
+   "confidence": "medium",
+   "already_tracked": "no",
+   "owner_decision": false,
+   "verdict": "corrected",
+   "verify_note": "Re-ran sim.mjs on every pair named: all ten shares reproduce (the versions dialogs are 57 of 88, not 94). Found where each twin component is drawn: each on a different page, so the claim that the owner's browser loads both is wrong and is removed; the cost is upkeep only. Lowered the saving a little because the measure counts imports. Two of the pairs (speed, reminders) are the platform's twin of a store feature and belong with FM-5's wording. Nothing rests on unused features."
+  },
+  {
+   "id": "FM-12",
+   "title": "Small helpers are rewritten per file: 437 names appear in three or more files",
+   "kind": "duplicate",
+   "where": [
+    "/home/user/kaizen-store/src/lib/analytics-period.ts:103",
+    "/home/user/kaizen-store/src/lib/booking-slots.ts:73",
+    "/home/user/kaizen-store/src/lib/gift-card-line.ts:33",
+    "/home/user/kaizen-store/src/lib/order-list.ts:467",
+    "/home/user/kaizen-store/src/lib/payment-terms.ts:22",
+    "/home/user/kaizen-store/src/lib/retention.ts:256",
+    "/home/user/kaizen-store/src/lib/staff-alerts.ts:171",
+    "/home/user/kaizen-store/src/server/demo-stores.ts:34",
+    "/home/user/kaizen-store/src/lib/admin-api.ts:116",
+    "/home/user/kaizen-store/src/server/work.ts:60",
+    "/home/user/kaizen-store/src/server/autopilot-goals.ts:59",
+    "/home/user/kaizen-store/src/server/analytics-tools.ts:28"
+   ],
+   "evidence": "248 top-level function bodies are byte-identical in two or more files: 770 copies, 1,094 lines beyond the first. About 96 of those lines are 32 identical loading.tsx files, which Next needs one of per route. 1,805 short helpers (4,743 lines) carry a name that three or more files define. Examples read: addDays is exported by seven lib modules and defined locally in three more; isUuid is in 23 files in three forms (a regex in 13, zod in 8, a shared constant in 2); a 3-line 'fail' is identical in 42 server files; adminLink is identical in 13; isUniqueViolation in 6; sha256 in 7; ten carrier files each hold their own call().",
+   "cost": "Up to about 1,000 lines of exact repeats (0.13% of the code) and three ways to check an id. No run-time cost.",
+   "who_pays": "An agent's session and reviewers.",
+   "fix": "Do not sweep. Name one home for dates (addDays), ids (isUuid) and Postgres errors (isUniqueViolation); add a lint rule that refuses a new local definition of those names; fold the copies when a file is touched.",
+   "saving": "Up to about 1,000 lines (measured as exact repeats, loading files apart); near-repeats would add some (estimate).",
+   "effort": "M",
+   "risk": "Low, but it touches hundreds of files, so it is worth doing only as files are opened for other work.",
+   "confidence": "high",
+   "already_tracked": "no",
+   "owner_decision": false,
+   "verdict": "corrected",
+   "verify_note": "Re-ran fnames.mjs and fstats.mjs: 437 names, 2,416 definitions, 248 identical bodies, 770 copies and 1,094 lines all reproduce. Opened addDays, isUuid, fail, sha256 and call. Corrections: addDays is exported by seven lib modules, not five; 32 of the identical copies are loading.tsx files that cannot be folded, so 'about 1,100 lines certain' becomes up to about 1,000; the 'up to 3,000 with near-repeats' was not measured and is left as a note. This is hygiene with no running cost; it belongs at the bottom of the plan."
+  },
+  {
+   "id": "FM-13",
+   "title": "No check holds server import reach or copies, so heavy imports and twins arrive unseen",
+   "kind": "process",
+   "where": [
+    "/home/user/kaizen-store/package.json:1",
+    "/home/user/kaizen-store/src/server/ratchet.baseline.json:1",
+    "/home/user/kaizen-store/scripts/ratchet.mjs:9",
+    "/home/user/kaizen-store/src/lib/storefront-bundle.scan.test.ts:5",
+    "/home/user/kaizen-store/docs/audits/code-review-2026-11.md:59"
+   ],
+   "evidence": "package.json, the CI workflows and the ESLint config name no duplication, unused-code or import-graph tool (rg for jscpd, knip, madge, dependency-cruiser, depcheck, ts-prune: none). 46 scan tests exist. One of them, storefront-bundle.scan.test.ts, already walks static imports, but only for what a visitor's browser loads; nothing does the same for what a server route loads. The ratchet counts casts, unchecked reads and unscoped writes only, and its script refuses to raise any number. The scripts written for this review run in about 2 seconds each.",
+   "cost": "FM-1 and FM-2 each came in by one import line with nothing to flag them, and each costs every cold start. A copied module (FM-4, FM-6, FM-9) is seen only by a reader who knows the other file.",
+   "who_pays": "Later, the server at each cold start, the build and an agent's session.",
+   "fix": "Add a server-side import walk beside storefront-bundle.scan.test.ts: the visit beacons and /api/health may not reach chat-route.ts, auth.ts or admin-text.ts, and no file outside the admin folders may import admin-text.ts (35 today, falling to 0 with FM-1). Hold cloned lines in 8-line windows (8,041) and twin pairs (41) as a budget with a baseline that a deliberate edit may raise with a reason, not in the only-falls ratchet.",
+   "saving": "None by itself. It keeps FM-1, FM-2, FM-6 and FM-11 from coming back.",
+   "effort": "S",
+   "risk": "Low. Set each at today's number. A hard only-falls rule on copies would block honest work, so use a budget there.",
+   "confidence": "high",
+   "already_tracked": "no (code review step 1.2 built the ratchet for other counts)",
+   "owner_decision": false,
+   "verdict": "confirmed",
+   "verify_note": "Searched package.json, .github and the ESLint config for the tools named: none. Counted 46 scan tests (the auditor's 42 was before the day's additions). Found storefront-bundle.scan.test.ts, which the auditor did not name: it is the ready pattern for the server-side walk. Read scripts/ratchet.mjs: it refuses to raise a number, so I moved the clone and twin counts to a budget. Dropped the line about 'ten twin tables in five days' from the cost: those tables were the plan's console track (see FM-5)."
+  }
+ ]
+}

@@ -1,0 +1,12 @@
+import fs from 'node:fs';
+import zlib from 'node:zlib';
+const file = process.argv[2];
+const src = fs.readFileSync(file,'utf8');
+globalThis.__RSC_MANIFEST = {};
+new Function(src)();
+const key = Object.keys(globalThis.__RSC_MANIFEST)[0];
+const m = globalThis.__RSC_MANIFEST[key];
+console.log('route', key, 'keys', Object.keys(m));
+console.log('clientModules', Object.keys(m.clientModules).length);
+const ej = m.entryJSFiles || {};
+for (const [k,v] of Object.entries(ej)) console.log('entry', k, v.length);

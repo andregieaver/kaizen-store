@@ -1,0 +1,431 @@
+{
+ "headline": "Copied code is not where this codebase's bloat is. Exact copy-paste is 1.0 to 1.1% of non-test code, and when every identifier and literal is normalised the share rises only to 4.75% (3.3% across files); if every near-copy family were extracted, at most about 8,500 of 472,586 code lines (1.8%) would go, and the families I can name add up to roughly 7,000 lines (estimate). What exists is concentrated in a few places that were cloned whole: the five file imports, the Work module's account-level views, Tripletex and Fiken, the platform console's second engines for integrations and workflows, and admin form, table and skeleton markup that the UI kit does not cover yet. The two findings that matter beyond line count are a store-slug lookup written out in 27 places that is production's most-called statement (560,090 calls), and the absence of any check that would stop copies growing as features are added. The size of the codebase comes from breadth (many features), not from repetition; 44 AI tool modules, 10 carriers, 15 email modules and 41 cards share almost no code with their siblings.",
+ "metrics": [
+  {
+   "name": "Exact copies, all non-test src",
+   "value": "5,423 of 472,550 code lines (1.1%); my re-run with a stricter filter: 4,803 of 472,586 (1.02%), 4,098 across files",
+   "how": "clones.md (work/clones.mjs); re-run with /tmp/claude-0/-home-user-kaizen-store/875cb21b-0ebd-5663-b7c0-2d04a7548e24/scratchpad/work/cp/near.mjs level 0 (10-line window, >=220 chars, >=6 distinct lines, catalogues and schema.ts aside)"
+  },
+  {
+   "name": "Near-copies in the brief's scope (components/admin, app/admin, server)",
+   "value": "15,777 of 306,730 code lines (5.14%) lie in a repeated window; 11,153 (3.64%) in one repeated across files. With literals only normalised: 5,907 (1.93%)",
+   "how": "near.mjs level 2 (every non-keyword identifier -> ID, every string and number -> LIT) and level 1; same window rules"
+  },
+  {
+   "name": "Near-copies, all non-test src",
+   "value": "22,429 of 472,586 (4.75%); across files 15,404 (3.26%)",
+   "how": "near.mjs level 2 on src"
+  },
+  {
+   "name": "Near-copy share by folder",
+   "value": "src/app/admin 10.3%, src/app/s 10.2%, src/components/admin 6.7%, src/lib 3.8%, src/server 2.2%, other components 1.9%",
+   "how": "near.mjs level 2 per-folder totals"
+  },
+  {
+   "name": "Upper bound of lines extraction could remove",
+   "value": "8,489 lines in the top 400 of 446 cross-file families (1.8% of code lines); top 30 families 2,216; top 100 4,487. Largest family 38 lines in 5 files; most places 14",
+   "how": "sum of (places - 1) x lines per family from near.mjs level 2; I opened 34 top families and 12 sampled from rank 60 to 390: nearly all true near-copies, most small"
+  },
+  {
+   "name": "Exact families in four or more files",
+   "value": "1 (a 10-line drag-handle SVG in 4 files)",
+   "how": "clones.json families"
+  },
+  {
+   "name": "Near-twin files",
+   "value": "65 pairs among 3,969 files share 30% or more of their normalised 4-line shingles; 0 among 44 *-tools.ts, 41 *-card.tsx, 60 *-view.tsx, 30 *-editor.tsx, 15 *-emails.ts",
+   "how": "work/cp/siblings.mjs (pairs with >=25 shingles and >=15 shared), then grouped by file-name suffix"
+  },
+  {
+   "name": "Tests",
+   "value": "4,604 of 260,660 test code lines (1.77%) exact; 8,212 (3.15%) near; largest: 4 exchange test files sharing about 125 lines of setup",
+   "how": "near.mjs run on *.test.* files only, levels 0 and 2"
+  },
+  {
+   "name": "Server actions on the shared wrapper",
+   "value": "271 'use server' files, 1,372 exported actions; 45 actions in 3 files run through storeAction()/platformAction(); 31 of 271 files hold any catch; 223 files are named actions.ts (the code review counted 183)",
+   "how": "work/cp/actions.mjs (split on 'export async function', regex for the wrapper call), plus a per-area count"
+  },
+  {
+   "name": "SQL repetition",
+   "value": "10,364 sql templates, 25,629 SQL lines in 639 files; 15 distinct lines of 40+ chars occur in 10 or more files; 12 three-line windows occur in 4 or more files",
+   "how": "work/cp/sqlfrag.mjs (template bodies, ${...} collapsed, lower-cased)"
+  },
+  {
+   "name": "Small helpers declared again",
+   "value": "84 identical helpers declared in 3 or more files (412 declarations, 576 lines beyond one copy each); 169 more in exactly 2 files (377 lines)",
+   "how": "work/cp/helpers.mjs (top-level const/function of 60 to 600 chars, identical after whitespace collapse)"
+  },
+  {
+   "name": "Class-name constants declared per file",
+   "value": "391 declarations: input 66 (16 values), field 65 (24), control 63 (14), card 59 (11), skeleton block 40 (1), label 38 (4), hint 30 (5), th/td/primary/secondary 30",
+   "how": "rg for ^const <name> = \"...\"; in src, non-test, then sort -u"
+  },
+  {
+   "name": "Sum of the named families' savings",
+   "value": "about 7,000 lines, 1.5% of non-test code lines",
+   "how": "estimate: the savings of the findings below added up"
+  }
+ ],
+ "clean": [
+  "Exact copy-paste is rare: 1.0 to 1.1% of non-test code, and only one block is copied into four or more files.",
+  "The 44 AI manager tool modules (src/server/*-tools.ts, 12,864 lines) are not copies of each other: six pairs compared line by line share 0 to 17 lines in runs of five or more.",
+  "Carriers are well factored: ten adapters behind a 30-line registry (src/server/carriers/index.ts); pairs share 17 to 28 lines, and their pure parts in src/lib 10 to 27% after normalising.",
+  "Store and platform pages are mostly thin over shared components: of 45 same-path page and action pairs under platform/ and [store]/, all but the integrations family share 0 to 37 lines in runs.",
+  "Of 14 platform-X server modules with a store twin X, ten share fewer than 20 lines in runs with it (briefing, payouts, customers, discounts, experiments and others are separate work, not copies).",
+  "SQL is written once far more often than not: 25,629 SQL lines, and only 15 distinct lines of 40+ characters appear in ten or more files.",
+  "A shared request budget exists and is used (src/server/request-budget.ts, imported by 33 files), as is a shared data-job store for imports (src/server/data-job-store.ts).",
+  "The order-history import already reuses the customer import's browser flow and views through words and jobBase props (src/components/admin/customer-import-flow.tsx): proof that one import flow can serve several kinds.",
+  "Message catalogues and schema.ts are parallel by design and hold 0.8% exact copies (clones.md).",
+  "The six signature themes (src/lib/signature/*.ts, 4,303 lines) are 76 to 84% alike in shape but are data built on a shared kit.ts; parallel by design, not a finding here.",
+  "Tests are no worse than code: 1.8% exact and 3.2% near-copies in 260,660 test code lines.",
+  "38 of 85 loading.tsx files are already five-line re-exports of a shared skeleton."
+ ],
+ "findings": [
+  {
+   "id": "CP-1",
+   "title": "Five file imports each carry their own copy of the job lifecycle, the browser flow, the findings table, the pages and the routes",
+   "kind": "duplicate",
+   "where": [
+    "/home/user/kaizen-store/src/server/customer-import.ts:89-197",
+    "/home/user/kaizen-store/src/server/customer-import.ts:265-317",
+    "/home/user/kaizen-store/src/server/customer-import.ts:378-430",
+    "/home/user/kaizen-store/src/server/redirect-import.ts:62-179",
+    "/home/user/kaizen-store/src/server/redirect-import.ts:322-391",
+    "/home/user/kaizen-store/src/server/inventory-jobs.ts:215-320",
+    "/home/user/kaizen-store/src/server/order-history-import.ts:71-170",
+    "/home/user/kaizen-store/src/server/product-import.ts:91-148",
+    "/home/user/kaizen-store/src/components/admin/customer-import-flow.tsx:36-100",
+    "/home/user/kaizen-store/src/components/admin/inventory/stock-import-flow.tsx:36-115",
+    "/home/user/kaizen-store/src/components/admin/data/findings-table.tsx:55",
+    "/home/user/kaizen-store/src/app/admin/(gated)/[store]/customers/import/[jobId]/tick/route.ts:8-13",
+    "/home/user/kaizen-store/src/app/admin/(gated)/[store]/customers/import/[jobId]/problems/route.ts:12"
+   ],
+   "evidence": "Customers, stock, order history, products and redirects all run on one table and store (commerce.data_jobs, data-job-store.ts), but each server file declares its own startXUpload, isUniqueViolation, shownName, registerX, checkX, applyX, checkCursor, applyCursor, runXCheck, runXApply and XProblemsCsv (rg listing of all five files). Line-by-line LCS against customer-import.ts after normalising: inventory-jobs 82% of the smaller file (204 lines in runs of 5+), redirect 68% (128), order history 71% (106), product 52% (79). In the browser, four upload flows are 73 to 83% alike (a diff of the customer and stock flows shows only words and hints differ), and the findings table exists four times (82 to 90% like data/findings-table.tsx). Five tick routes and five problems routes differ in two words: the kind and the permission key (diff). Sizes today: server 2,401 file lines, components 1,856, pages, actions and routes 1,789.",
+   "cost": "About 6,000 file lines for five kinds; a sixth kind costs about 1,200 more; a fix to leases, retries or the upload is made five times; 8 route handlers more than needed in the build.",
+   "who_pays": "The build and CI, an agent's session (five copies to read and keep alike), and owners when a fix reaches one import and not the others.",
+   "fix": "Add src/server/data-import.ts with defineImport({ kind, key, defaultName, readFile, dryOf, canApply, judgeChunk, writeChunk, auditStart, auditEnd }) that returns upload, register, check, apply, runCheck, runApply and problemsCsv; each kind keeps only its parser and its row writer. Make one ImportUpload, ImportCheck and ImportApply in src/components/admin/data taking actions and words as props, as customer-import-flow.tsx already does for order history, and use data/findings-table.tsx everywhere. Replace the ten per-kind tick and problems routes with one pair that reads the permission from the kind's entry.",
+   "saving": "About 1,650 code lines (estimate from the measured LCS runs: server about 500, components about 590, pages, actions and routes about 570) and 8 route handlers.",
+   "effort": "M",
+   "risk": "Imports write customers, stock, orders and redirects. Each kind has its own integration test (customer-import, inventory-jobs, product-import, redirect-import .int.test.ts); keep them unchanged as the check. Medium.",
+   "confidence": "high",
+   "already_tracked": "no",
+   "owner_decision": false
+  },
+  {
+   "id": "CP-2",
+   "title": "The store's address by its id is looked up by hand in 27 places, never cached, and is production's most-called statement",
+   "kind": "duplicate",
+   "where": [
+    "/home/user/kaizen-store/src/server/stores.ts:189-192",
+    "/home/user/kaizen-store/src/server/product-data.ts:27-30",
+    "/home/user/kaizen-store/src/server/custom-fields.ts:545",
+    "/home/user/kaizen-store/src/server/custom-fields.ts:769",
+    "/home/user/kaizen-store/src/server/custom-fields.ts:817",
+    "/home/user/kaizen-store/src/server/content-site.ts:46",
+    "/home/user/kaizen-store/src/server/content-grid.ts:133",
+    "/home/user/kaizen-store/src/server/taxonomy.ts:137",
+    "/tmp/claude-0/-home-user-kaizen-store/875cb21b-0ebd-5663-b7c0-2d04a7548e24/scratchpad/m/prod-db-stats.md:86"
+   ],
+   "evidence": "rg finds `select slug from commerce.stores where id = …` written out 27 times in 21 server files (custom-fields.ts alone has five). The usual next line is the cached getStore(slug). One helper exists, storeOf() in product-data.ts:27 (called in 16 places), and it is not cached either. In production's statistics this exact statement has the most calls of all: 560,090 (prod-db-stats.md:86), with 60 demo stores and no shoppers. Which of the 27 places make those calls was not measured.",
+   "cost": "One uncached database round trip every time code knows a store by its id; 560,090 calls in the statistics period from scheduled work and the team's testing alone. It grows with stores times scheduled jobs and with requests.",
+   "who_pays": "The database and the server, per request and per scheduled run.",
+   "fix": "One storeSlugById(id) in src/server/stores.ts, cached the way getStore is and carrying the store's tag, with getStoreById(id) on top of it; replace the 27 places and storeOf(). Read node_modules/next/dist/docs on 'use cache' and tags first, so a changed store address refreshes it.",
+   "saving": "27 copies become one (about 25 lines), and most of the statement's calls go (estimate; depends on how long a function instance lives).",
+   "effort": "S",
+   "risk": "A store whose address changes must refresh the cached answer by id; the writers of commerce.stores already refresh the store's tag (store-writers.scan.test.ts). Low.",
+   "confidence": "medium",
+   "already_tracked": "no (code review step 3.8 cuts round trips in cart, checkout and auth only)",
+   "owner_decision": false
+  },
+  {
+   "id": "CP-3",
+   "title": "Admin form fields, tables and loading skeletons are spelled out per file because the UI kit has no piece for them",
+   "kind": "duplicate",
+   "where": [
+    "/home/user/kaizen-store/src/components/admin/ui/card.tsx:13",
+    "/home/user/kaizen-store/src/components/admin/data/ui.ts:10-12",
+    "/home/user/kaizen-store/src/app/admin/(gated)/[store]/settings/legal/loading.tsx:3-21",
+    "/home/user/kaizen-store/src/app/admin/(gated)/[store]/settings/orders/loading.tsx:3-21",
+    "/home/user/kaizen-store/src/components/admin/inventory/history-view.tsx:104",
+    "/home/user/kaizen-store/src/components/admin/bulk-result.tsx:98",
+    "/home/user/kaizen-store/docs/audits/code-review-2026-11.md:434"
+   ],
+   "evidence": "391 class-name constants are declared at the top of component and page files: input 66 times with 16 different values, field 65 (24), control 63 (14), card 59 (11; 26 of them are 'rounded-lg border border-line bg-card p-5' while the kit's CARD_CLASS is another look), label 38, hint 30, skeleton block 40 (rg and sort -u). The admin holds 154 hand-written <table> in 116 files and 591 <th scope=\"col\"> in 108, with no shared table; near-copy families 3 and 13 are that markup in 10 and 5 places. Of 85 loading.tsx (1,157 lines), 38 are five-line re-exports; about 40 are drawn by hand, and 27 of those are three bodies that differ only in the function's name and the words key (14, 8 and 5 files, md5 after removing both).",
+   "cost": "About 390 one-line declarations, 10 to 15 lines of shell and head per table, about 480 lines of repeated skeleton; 16 looks for one text input.",
+   "who_pays": "Owners (an uneven admin), the build (each class variant is emitted), and agents (a new screen copies a neighbour's constants).",
+   "fix": "Build step 1.12's Field, TextInput and Select as planned, and add two pieces it does not name: DataTable (caption, columns, rows) and PageSkeleton({ words, blocks }). Then a scan test that fails on a new local `const input = \"` or `const card = \"` under src/app/admin and src/components/admin, with an allow-list that may only shrink.",
+   "saving": "About 1,300 lines (estimate: 390 declarations, about 5 lines from each of some 100 tables, about 450 from skeletons) and one look per control.",
+   "effort": "L",
+   "risk": "Visible changes across the admin; the signed-in Playwright suite and the admin style scan are the check. Do it area by area.",
+   "confidence": "medium",
+   "already_tracked": "Partly: code review step 1.12 Build the admin kit (FS4), Open, names Field, TextInput, Select and Pager; tables and skeletons are not in it. Step 0.10 (FS1, In progress) is about loading files existing, not their bodies.",
+   "owner_decision": false
+  },
+  {
+   "id": "CP-4",
+   "title": "The platform console has a second engine for integrations, own endpoints, workflows and API tokens beside the stores' engines",
+   "kind": "duplicate",
+   "where": [
+    "/home/user/kaizen-store/src/server/platform-workflows.ts:29-37",
+    "/home/user/kaizen-store/src/server/platform-workflows.ts:86-399",
+    "/home/user/kaizen-store/src/server/workflows.ts:104-483",
+    "/home/user/kaizen-store/src/server/platform-endpoints.ts:25",
+    "/home/user/kaizen-store/src/server/webhook-endpoints.ts:1",
+    "/home/user/kaizen-store/src/server/platform-integrations.ts:1",
+    "/home/user/kaizen-store/src/app/api/cron/integrations/route.ts:30-36",
+    "/home/user/kaizen-store/src/app/admin/(gated)/platform/integrations/[provider]/page.tsx:29-52",
+    "/home/user/kaizen-store/docs/decisions.md:805",
+    "/home/user/kaizen-store/docs/decisions.md:855"
+   ],
+   "evidence": "platform-workflows.ts mirrors workflows.ts function for function (list, get, checked, save, switch, delete, test, aboutOf, wouldDo, owners, act, queueScheduledRuns, run, runs): 71% of its lines match after normalising, 119 in runs. platform-endpoints.ts against webhook-endpoints.ts: 65%, 84 lines in runs; platform-integrations.ts against integrations.ts: 44%, 65 lines; the two provider pages: 76%, 108 lines. Platform side today: 1,535 server lines and 296 lib lines, with twin tables (platform_integrations, platform_integration_deliveries, platform_webhook_endpoints, platform_workflows, platform_workflow_runs, platform_api_tokens). The every-minute integrations cron runs both deliverDue() and deliverPlatformDue(), and both runWorkflows() and runPlatformWorkflows() (route.ts:30-36). D465 and D515 record why: separate platform_* tables, because the stores' tables hold store_id not null and every reader filters by it.",
+   "cost": "About 1,830 lines and six tables that follow the stores' engines by hand; about 510 lines are near-copies; two claim passes instead of one in each cron run; every later change to deliveries, signing or retries is made twice.",
+   "who_pays": "The server and the database on every scheduled run, the build, and an agent's session.",
+   "fix": "Keep D465's separate tables (its reason stands: no nullable store_id in store readers) but make one engine take a scope: { tables, ownerClause, payloadOf, recipients }. Workflows, endpoints, deliveries and tokens each become one module called twice. The larger alternative is the owner's: since D484 Kaizena Flow is itself a store, so the platform's events could be that store's own integration topics and the twin tables could go. Before opening is the cheap time for either: the twin tables hold no real data.",
+   "saving": "600 to 800 lines and one runner pass per cron run with a shared engine (estimate); the six twin tables as well if platform events become the Kaizena Flow store's.",
+   "effort": "M",
+   "risk": "Signed deliveries and workflow runs must behave the same; both sides have integration tests. Merging tables would reverse a written decision, so it needs the owner.",
+   "confidence": "medium",
+   "already_tracked": "no; docs/decisions.md D465, D515, D516 and D518 record the choice of separate tables and its reason",
+   "owner_decision": true
+  },
+  {
+   "id": "CP-5",
+   "title": "Work's account-level screens are copies of the store-level ones, and 57 Work actions wrap one call in seven lines",
+   "kind": "duplicate",
+   "where": [
+    "/home/user/kaizen-store/src/components/admin/work/owner-time.tsx:74-140",
+    "/home/user/kaizen-store/src/components/admin/work/time-filters.tsx:46-122",
+    "/home/user/kaizen-store/src/components/admin/work/owner-invoices.tsx:1",
+    "/home/user/kaizen-store/src/components/admin/work/invoices-list.tsx:1",
+    "/home/user/kaizen-store/src/components/admin/work/owner-overview.tsx:230",
+    "/home/user/kaizen-store/src/components/admin/work/work-overview.tsx:146",
+    "/home/user/kaizen-store/src/app/admin/(gated)/(owner)/account/work/s/[store]/actions.ts:107-125",
+    "/home/user/kaizen-store/src/lib/work-text.ts:83-88"
+   ],
+   "evidence": "Lines in runs of five or more shared after normalising: time-filters in owner-time 98 of 122 code lines; invoices-list and owner-invoices 133 of 178; clients-list and owner-clients 64 of 80; report-filters in owner-report 50 of 81; work-overview and owner-overview 147 of 224. The across-stores view is the store view plus a store filter and a store column. Separately, six Work action files hold 57 actions of this shape: `const lang = await actionAdminLang(); return inWorkLang(await (async () => { return change(...); })(), lang);` (rg: 24, 15, 8, 4, 4 and 2 places), seven lines where one would do.",
+   "cost": "About 490 copied component lines and about 340 lines of wrapper around 57 one-line calls; a change to a filter or a column is made twice.",
+   "who_pays": "The build, an agent's session, and owners when the two views drift apart.",
+   "fix": "Give the store-level components optional stores and storeSlug props and delete the owner-* copies of the filter forms, lists and overview sections. Let change() apply inWorkLang itself, or move the Work actions onto storeAction(), which already hands the handler the language.",
+   "saving": "About 700 lines (estimate from the measured runs).",
+   "effort": "M",
+   "risk": "Low to medium: Work has its own integration and signed-in tests; the store filter must stay out of the single-store view.",
+   "confidence": "high",
+   "already_tracked": "Partly: code review step 3.13 Domain folders (FV4, FH6), Open, moves Work first but does not merge the twin views",
+   "owner_decision": false
+  },
+  {
+   "id": "CP-6",
+   "title": "Tripletex and Fiken are twins: the sync runner, the settings page and the actions",
+   "kind": "duplicate",
+   "where": [
+    "/home/user/kaizen-store/src/server/fiken-sync.ts:1",
+    "/home/user/kaizen-store/src/server/tripletex-sync.ts:1",
+    "/home/user/kaizen-store/src/app/admin/(gated)/[store]/integrations/fiken/page.tsx:1",
+    "/home/user/kaizen-store/src/app/admin/(gated)/[store]/integrations/tripletex/page.tsx:1",
+    "/home/user/kaizen-store/src/app/admin/(gated)/[store]/integrations/fiken/actions.ts:1",
+    "/home/user/kaizen-store/docs/audits/code-review-2026-11.md:275",
+    "/home/user/kaizen-store/docs/audits/code-review-2026-11.md:482"
+   ],
+   "evidence": "Both sync files define the same functions in the same order: sweep, claim, release, booked, blockRow, failRow, onFailure, sendOne, attachable, attachPdfs, noteConnection, syncStore, syncDueX, retryX, checkXDocument, postXAgain (rg). After normalising, 66% of fiken-sync's lines match tripletex-sync (205 lines in runs); the two pages 76% (220 lines); the two action files 78% (75 lines); fiken.ts and tripletex.ts 40% (59 lines). The pure parts in src/lib differ, as they should. The code review's count of 16 hand-written `try { after(fn) } catch { await fn() }` blocks still holds (rg, 16 blocks).",
+   "cost": "About 560 near-copied lines today; a third accounting system would add about 1,300 lines instead of about 500.",
+   "who_pays": "The build, an agent's session, and owners when a retry fix reaches one system only.",
+   "fix": "As step 3.12 says: one sync runner and client behind an AccountingAdapter (ensureParty, send, attach, check), one connection page taking the adapter's words and fields, one afterOrNow(fn).",
+   "saving": "About 450 lines (estimate), and each further accounting system costs its adapter only.",
+   "effort": "M",
+   "risk": "Bookkeeping postings; fiken.int.test.ts and the Tripletex tests must pass unchanged.",
+   "confidence": "high",
+   "already_tracked": "Yes: code review step 3.12 One accounting adapter, one afterOrNow (FV10), Open",
+   "owner_decision": false
+  },
+  {
+   "id": "CP-7",
+   "title": "The one wrapper for server actions is marked Done but carries 45 of 1,372 actions, and nothing counts the rest",
+   "kind": "process",
+   "where": [
+    "/home/user/kaizen-store/src/server/store-action.ts:35-50",
+    "/home/user/kaizen-store/docs/audits/code-review-2026-11.md:61",
+    "/home/user/kaizen-store/docs/audits/code-review-2026-11.md:264",
+    "/home/user/kaizen-store/docs/rules/admin/platform.md:87-89",
+    "/home/user/kaizen-store/src/app/admin/(gated)/platform/themes/actions.ts:130-142",
+    "/home/user/kaizen-store/src/app/admin/(gated)/[store]/customers/actions.ts:54-68",
+    "/home/user/kaizen-store/src/server/ratchet.baseline.json:1"
+   ],
+   "evidence": "271 files start with 'use server' (24,583 lines) and export 1,372 actions: store admin 769 in 147 files, platform 297 in 59, account and sandbox 200 in 29, storefront 95 in 29. storeAction() or platformAction() is called in 3 files (orders, returns, books: 45 actions). The other 1,327 guard, refuse and answer by hand (753 hand-written guard calls); only 31 of the 271 files contain a catch, so a failure nobody planned for still shows Next's error page there. 19 files define their own local guard wrapper (asOwner 9 times, member 4). The ratchet (ratchet.baseline.json) counts unchecked reads, casts and store-less writes, not actions off the wrapper. The same guard, language and words preamble is also written at the top of 249 admin pages (324 requirePermission calls, 616 adminLangOf calls).",
+   "cost": "No lines to speak of; the cost is that the hand-written shape stays the default for every new action file (223 files are named actions.ts today; the review counted 183).",
+   "who_pays": "Owners (an error page instead of a line in the form) and agents (each new file copies a hand-written neighbour).",
+   "fix": "Add a count to ratchet.scan.test.ts: admin action files not on the wrapper, which may only fall. Then move the files area by area with a codemod before opening, starting with the 19 that have a local wrapper. Leave the storefront's 95 actions out: they have no member to guard.",
+   "saving": "About 150 lines of local wrappers; the gain is one failure path for 1,066 admin actions and a number that can only fall.",
+   "effort": "L",
+   "risk": "Each action's refusal shape differs, which is what answer() is for; move with the existing int tests per area.",
+   "confidence": "high",
+   "already_tracked": "Yes: code review step 1.4 (FV9), Done for orders, returns and books; the rest 'when touched' (docs/rules/admin/platform.md). No ratchet holds it.",
+   "owner_decision": false
+  },
+  {
+   "id": "CP-8",
+   "title": "Small helpers are declared again in file after file",
+   "kind": "duplicate",
+   "where": [
+    "/home/user/kaizen-store/src/server/redirect-tools.ts:31",
+    "/home/user/kaizen-store/src/server/content-tools.ts:39",
+    "/home/user/kaizen-store/src/server/manager-tools.ts:124",
+    "/home/user/kaizen-store/src/server/exchanges.ts:394",
+    "/home/user/kaizen-store/src/server/theme-installs.ts:55",
+    "/home/user/kaizen-store/src/app/admin/(gated)/[store]/settings/shipping/actions.ts:39",
+    "/home/user/kaizen-store/src/lib/experiments.ts:127",
+    "/home/user/kaizen-store/src/server/customer-import.ts:104-107",
+    "/home/user/kaizen-store/src/server/privacy-erasure.ts:366"
+   ],
+   "evidence": "84 helpers are declared with identical text in three or more files (412 declarations): `const fail = (message): never => { throw new OwnerToolError(message); }` in 42 files, adminLink 13, obj 9, finite, escape, list, iso, mainLocale 8 each. isUuid exists as a regex (8 files), as zod (7 + 6 under two names) and as two exported versions (lib/experiments.ts:127, lib/admin-api.ts:116); a top-level function named text is defined in 94 files with at least six bodies. isUniqueViolation is exported once (privacy-erasure.ts:366) and re-declared in 6 files; 30 files test for '23505' by hand. A further 169 helpers are declared in exactly two files.",
+   "cost": "576 lines beyond one copy for the helpers in three or more files, 377 more for those in two; three meanings of 'is this a uuid'.",
+   "who_pays": "The build and an agent's session; correctness where two spellings disagree.",
+   "fix": "Export fail from owner-tool-error.ts; add src/lib/guards.ts (isUuid, obj, list, finite, isRecord) and src/server/pg-errors.ts (isUniqueViolation); replace the copies with a codemod. A scan test can then forbid a local `const isUuid`.",
+   "saving": "About 950 lines (measured upper bound: 576 + 377).",
+   "effort": "S",
+   "risk": "Low: the bodies are identical; where isUuid's spellings differ, pick the regex (zod must stay off the no-extras storefront paths).",
+   "confidence": "high",
+   "already_tracked": "no",
+   "owner_decision": false
+  },
+  {
+   "id": "CP-9",
+   "title": "Three SQL fragments are typed out in dozens of files: the product title with its fallback, the usage counter and the order event",
+   "kind": "duplicate",
+   "where": [
+    "/home/user/kaizen-store/src/server/catalog.ts:297",
+    "/home/user/kaizen-store/src/server/catalog.ts:315-322",
+    "/home/user/kaizen-store/src/server/exchanges.ts:511",
+    "/home/user/kaizen-store/src/server/wishlist-admin.ts:179",
+    "/home/user/kaizen-store/src/server/reviews.ts:181-190",
+    "/home/user/kaizen-store/src/server/request-budget.ts:13-18",
+    "/home/user/kaizen-store/src/server/order-actor.ts:17",
+    "/home/user/kaizen-store/src/server/return-facts.ts:190"
+   ],
+   "evidence": "The join that finds a product's title in a language, with the fallback to any language (`left join commerce.product_translations tl … left join lateral (select title … limit 1) tf on true`), is in 30 files and 42 places; its result is spelled four ways: coalesce(tl.title, tf.title, p.handle) 28 times, coalesce(tl.title, tf.title) 9 times with no fallback to the handle, one with '' and one with the SKU. The counter upsert on commerce.chat_usage (insert … on conflict … count + 1 returning count) is written 32 times in 28 files although request-budget.ts wraps it for 33 others. `insert into commerce.order_events` is written 34 times in 23 files beside two helpers (writeOrderEvent, writeEvent).",
+   "cost": "About 250 lines; a product with no title row shows a null title in nine reads and its handle in 28.",
+   "who_pays": "The build and agents; shoppers and owners where the fallback differs.",
+   "fix": "A TITLE_JOIN(locale) and TITLE fragment in src/server (or a SQL function commerce.product_title(product_id, locale)); a bumpUsage(executor, storeId, bucket, window) beside request-budget.ts; use writeOrderEvent everywhere.",
+   "saving": "About 250 lines (estimate) and one definition of the title a person sees.",
+   "effort": "S",
+   "risk": "Low for the counter and the event; the title change alters nine reads' result for a product without a title, so check each caller.",
+   "confidence": "high",
+   "already_tracked": "no",
+   "owner_decision": false
+  },
+  {
+   "id": "CP-10",
+   "title": "Twenty-one server files each hand-roll the same claim, lease and retry for their own queue table",
+   "kind": "duplicate",
+   "where": [
+    "/home/user/kaizen-store/src/server/legal-writer.ts:283-297",
+    "/home/user/kaizen-store/src/server/page-looks.ts:235-246",
+    "/home/user/kaizen-store/src/server/cookie-scans.ts:72-84",
+    "/home/user/kaizen-store/src/server/fiken-sync.ts:1",
+    "/home/user/kaizen-store/src/server/data-job-store.ts:1",
+    "/home/user/kaizen-store/src/db/schema.ts:1"
+   ],
+   "evidence": "`for update skip locked` appears 24 times in 21 server files (workflows, integrations, ad conversions and their platform twins, Tripletex, Fiken, staff alerts, theme shots, page looks, legal writer, cookie scans, dream factory, follow-ups, live drills, site tools and more); claimed_until is named 20 times in schema.ts. The three I read (legal-writer.ts:283, page-looks.ts:235, cookie-scans.ts:72) are the same statement with another table: set status to running and a lease, where id = (select … status = 'queued' or the lease ran out … limit 1 for update skip locked). They are not line copies, because each table has its own column names.",
+   "cost": "About 15 lines of claim SQL per queue plus each queue's own sweep and release; a lease or retry rule is decided about twenty times.",
+   "who_pays": "The build and agents; the database, since each queue is polled by its own scheduled pass (the cost of those passes belongs to the scheduled-work dimension).",
+   "fix": "A claimNext({ table, where, lease, order, returning }) and release() in src/server/queue.ts used by the existing tables. Whether new background features should share one job table instead of adding a queue table each is a structural choice that is cheapest to make before opening.",
+   "saving": "About 300 lines (estimate); the larger gain would be fewer polling passes if queues were merged, which I did not measure.",
+   "effort": "M",
+   "risk": "Medium: each queue's state machine differs slightly; move one at a time under its integration test.",
+   "confidence": "low",
+   "already_tracked": "no",
+   "owner_decision": false
+  },
+  {
+   "id": "CP-11",
+   "title": "The affiliate and bonus settings forms are one form written twice",
+   "kind": "duplicate",
+   "where": [
+    "/home/user/kaizen-store/src/components/admin/affiliate-settings-form.tsx:46-110",
+    "/home/user/kaizen-store/src/components/admin/affiliate-settings-form.tsx:356",
+    "/home/user/kaizen-store/src/components/admin/bonus-settings-form.tsx:39-100",
+    "/home/user/kaizen-store/src/components/admin/bonus-settings-form.tsx:418",
+    "/home/user/kaizen-store/src/components/admin/chat-agent-form.tsx:1",
+    "/home/user/kaizen-store/src/components/admin/docs-guide-form.tsx:1",
+    "/home/user/kaizen-store/src/components/admin/campaign-editor.tsx:206",
+    "/home/user/kaizen-store/src/components/admin/discount-editor.tsx:135"
+   ],
+   "evidence": "affiliate-settings-form.tsx (404 code lines) and bonus-settings-form.tsx (469): 91% of the smaller file matches after normalising, 347 lines in runs: the same state (values, errors, serverProblems, saved, savedOn, pending), the same set(), draft and lastGood logic, the same submit with focus on the first wrong field, the same Field wrapper and problems block. Smaller cases of the same kind: chat-agent-form and docs-guide-form (86%, 87 lines), campaign-editor and discount-editor (59%, 118 lines, including the per-market threshold inputs three times).",
+   "cost": "About 550 near-copied lines in six files.",
+   "who_pays": "The build, agents, and owners when the two forms behave differently.",
+   "fix": "A useSettingsForm({ read, toForm, save, words }) hook and a shared Field and FormProblems (these belong in step 1.12's kit); a MarketAmounts component for the per-market inputs.",
+   "saving": "About 300 lines (estimate).",
+   "effort": "S",
+   "risk": "Low; the forms have unit tests for their readers, and the signed-in suite covers saving.",
+   "confidence": "high",
+   "already_tracked": "Partly: Field falls under code review step 1.12 (FS4), Open; the form state is not in it",
+   "owner_decision": false
+  },
+  {
+   "id": "CP-12",
+   "title": "On the storefront an order's totals are drawn in two places and the product card's query is written twice",
+   "kind": "duplicate",
+   "where": [
+    "/home/user/kaizen-store/src/app/s/[store]/[market]/account/orders/[orderId]/page.tsx:180-250",
+    "/home/user/kaizen-store/src/app/s/[store]/[market]/order/[orderId]/order-section.tsx:356-430",
+    "/home/user/kaizen-store/src/server/catalog.ts:284-365",
+    "/home/user/kaizen-store/src/server/catalog.ts:638-750",
+    "/home/user/kaizen-store/docs/audits/code-review-2026-11.md:286"
+   ],
+   "evidence": "The order's totals list (delivery, discount, staff discount, referral, bonus, VAT relief, total, VAT rows, customs, balance at the venue, company) is the same JSX in the account's order page and in the confirmation page: exact runs of 42, 19 and 12 lines, 102 lines in runs after normalising. In catalog.ts, listProducts() and listGridProducts() carry the same product-summary SELECT: four exact runs of 20, 19, 11 and 12 lines (62 lines).",
+   "cost": "About 160 lines; the risk is larger than the size: a money row or a card field added in one place and not the other.",
+   "who_pays": "Shoppers, if the two drift; the build.",
+   "fix": "One OrderTotals component in src/components used by both pages; one summarySelect fragment and row mapper in catalog.ts, as code review step 3.11 says.",
+   "saving": "About 160 lines and one place for what a shopper is shown as owed.",
+   "effort": "S",
+   "risk": "Money on screen: compare both pages before and after on an order with a discount, bonus, customs and a company.",
+   "confidence": "high",
+   "already_tracked": "The card query yes: code review step 3.11 (FF10), Open. The order totals: no.",
+   "owner_decision": false
+  },
+  {
+   "id": "CP-13",
+   "title": "English words are kept twice: in a lib module and again in the English catalogue",
+   "kind": "duplicate",
+   "where": [
+    "/home/user/kaizen-store/src/lib/erasure-plan.ts:93-135",
+    "/home/user/kaizen-store/src/lib/admin-messages/privacy.en.ts:175-183",
+    "/home/user/kaizen-store/src/components/admin/privacy/request-detail.tsx:234",
+    "/home/user/kaizen-store/src/lib/exchange.ts:1",
+    "/home/user/kaizen-store/src/lib/admin-messages/returns.en.ts:1"
+   ],
+   "evidence": "clones.json lists 18 pairs where a .en.ts catalogue and a code module share exact windows, about 320 lines: privacy.en.ts with erasure-plan.ts (39 lines: TABLE_LABELS at erasure-plan.ts:93 is the same list as tables: at privacy.en.ts:175), returns.en.ts with exchange.ts (34), builder.en.ts with page-content.ts (22), design.en.ts with theme-changes.ts and theme-update.ts (22 and 19), legal.en.ts with legal-roles.ts (21), drafts.en.ts with order-edit.ts and draft-order.ts (20 and 16). The screen reads the catalogue and falls back to the lib's copy (request-detail.tsx:234).",
+   "cost": "About 320 lines, and two sources for one English sentence: an edit to one leaves the other, which the AI tools and server messages still use.",
+   "who_pays": "Owners and the AI manager (two wordings of one thing); the build.",
+   "fix": "Let each .en.ts import the lib's constant (tables: TABLE_LABELS) where the lib copy must stay for server use, or move the words to the catalogue and have the lib read adminText('en', …).",
+   "saving": "About 320 lines.",
+   "effort": "S",
+   "risk": "Low; brand.scan.test.ts and the catalogue shape tests still apply.",
+   "confidence": "high",
+   "already_tracked": "no",
+   "owner_decision": false
+  },
+  {
+   "id": "CP-14",
+   "title": "Nothing in CI measures copied code, so each new kind or twin is made by copying a neighbour",
+   "kind": "process",
+   "where": [
+    "/home/user/kaizen-store/package.json:18",
+    "/home/user/kaizen-store/src/server/ratchet.scan.test.ts:1",
+    "/home/user/kaizen-store/src/server/ratchet.baseline.json:1",
+    "/home/user/kaizen-store/docs/audits/code-review-2026-11.md:50-130",
+    "/tmp/claude-0/-home-user-kaizen-store/875cb21b-0ebd-5663-b7c0-2d04a7548e24/scratchpad/work/cp/near.mjs:1"
+   ],
+   "evidence": "rg finds no jscpd, no duplicate rule in eslint.config.mjs and no copy check in the workflows. There are 42 *.scan.test.ts files and a ratchet with a baseline; none counts copies. The code review's Progress table has steps for single cases (1.4, 1.12, 3.11, 3.12) but no step that holds the total. The pattern in the findings above is the same each time: the fifth import, the second accounting system, the account-level Work view and the platform's engines were each made from the one before, and the copies date from the last weeks (D465 to D518 are 6 to 9 November).",
+   "cost": "Today's level is low (1.0% exact, 4.75% near), but nothing keeps it there; each cloned feature adds 500 to 1,300 lines.",
+   "who_pays": "The build and CI over time; agents, whose sessions read every copy.",
+   "fix": "Add the two measures to the ratchet: exact copied lines and near-copied lines (the detector is 120 lines of plain Node, near.mjs; it ran in a few seconds on src), each held to a baseline that may only fall, with the top pairs printed on failure. Add one line to CLAUDE.md's conventions: a second kind of an existing thing extends the first one's engine instead of copying its file.",
+   "saving": "Holds copied code at about 5,000 exact and 22,000 near lines; no lines removed by itself.",
+   "effort": "S",
+   "risk": "A normalised detector flags similar-looking JSX; start with the exact measure as the hard limit and the near measure as a printed number.",
+   "confidence": "high",
+   "already_tracked": "no",
+   "owner_decision": false
+  }
+ ]
+}
