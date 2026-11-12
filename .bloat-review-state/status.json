@@ -1,5 +1,5 @@
 {
- "at": "2026-11-12T01:16:16.030Z",
+ "at": "2026-11-12T01:19:18.459Z",
  "status": [
   {
    "key": "storefront-client",
@@ -101,7 +101,7 @@
    "key": "i18n",
    "audit": true,
    "verify": true,
-   "plan": false
+   "plan": true
   },
   {
    "key": "tests-ci",
@@ -154,7 +154,6 @@
  ],
  "relaunch": {
   "keys": [
-   "i18n",
    "functions",
    "server-graph",
    "client-bundles",
