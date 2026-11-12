@@ -16,7 +16,9 @@ mkdir -p "$D/tools" "$D/page" "$D/evidence"
 for d in audits verified findings; do rm -rf "$D/$d"; cp -r "$S/$d" "$D/$d"; done
 cp "$S/STATUS.md" "$S/status.json" "$S/evidence-raw.tar.xz" "$D/"
 cp "$S"/m/*.md "$D/evidence/"
-cp "$S"/work/*.mjs "$S"/work/*.md "$S"/work/*.json "$D/tools/" 2>/dev/null
+# The review's own tools only: the reviewers leave large scratch files beside them.
+for f in "$D"/tools/*; do case "$(basename "$f")" in build-docs.mjs|plan-data.mjs|main-template.md|summary.mjs|audits.mjs|measure-routes.mjs|routes-md.mjs|chunks.mjs|loaded.mjs|dead.mjs|clones.mjs|storm.mjs|shot.mjs|extract.mjs|save-state.sh|restore.sh|validate-findings.mjs|bloat-review.workflow.js) ;; *) git rm -q --cached "$f" 2>/dev/null; rm -f "$f" ;; esac; done
+for f in build-docs.mjs plan-data.mjs main-template.md summary.mjs audits.mjs measure-routes.mjs routes-md.mjs chunks.mjs loaded.mjs dead.mjs clones.mjs storm.mjs shot.mjs; do cp "$S/work/$f" "$D/tools/" 2>/dev/null; done
 cp "$S"/state-tools/*.mjs "$S"/state-tools/*.sh "$S/validate-findings.mjs" "$D/tools/"
 [ -f "$WF" ] && cp "$WF" "$D/tools/bloat-review.workflow.js"
 cp "$S/bloat-review.html" "$D/page/"
