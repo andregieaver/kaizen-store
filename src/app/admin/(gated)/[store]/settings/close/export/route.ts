@@ -1,6 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 
-import { sameSite } from "@/server/chat-route";
+import { sameSite } from "@/lib/same-site";
 import { checkOwnerRole } from "@/server/permissions";
 import { storeExport } from "@/server/store-export";
 

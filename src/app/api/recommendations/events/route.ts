@@ -1,8 +1,9 @@
 import { connection } from "next/server";
 
 import { recommendEvents } from "@/lib/recommendations-schema";
-import { visitorKey } from "@/server/chat-agent";
-import { fail, sameSite } from "@/server/chat-route";
+import { visitorKey } from "@/server/chat-turns";
+import { fail } from "@/lib/route-fail";
+import { sameSite } from "@/lib/same-site";
 import { recordRecommendEvents, takeRecommendRequest } from "@/server/recommend-events";
 import { featureOn } from "@/lib/store-features";
 import { getOpenStore } from "@/server/stores";

@@ -1,7 +1,7 @@
 import { connection } from "next/server";
 
 import { recordTouch } from "@/server/analytics-visits";
-import { sameSite } from "@/server/chat-route";
+import { sameSite } from "@/lib/same-site";
 
 /**
  * A visitor's first visit in 30 days (D303 I3), from `TouchKeeper` while they allow statistics cookies: kept on today's visit by

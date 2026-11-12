@@ -1,7 +1,9 @@
 import { connection } from "next/server";
 
 import { turnInput } from "@/lib/support-visitor-schema";
-import { chatContext, chatPlace, fail, sameSite, takeTurn } from "@/server/chat-route";
+import { fail } from "@/lib/route-fail";
+import { sameSite } from "@/lib/same-site";
+import { chatContext, chatPlace, takeTurn } from "@/server/chat-route";
 import { log } from "@/server/log";
 import { NO_STORE, readBody, reply, visitorTurn } from "@/server/support-route";
 

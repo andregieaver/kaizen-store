@@ -1,7 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 
 import { tickResponse } from "@/server/data-routes";
-import { sameSite } from "@/server/chat-route";
+import { sameSite } from "@/lib/same-site";
 import { checkPermission } from "@/server/permissions";
 
 /** The step an open import page asks for (wave 2, D165): runs the dry run or the apply once and answers with its state. `products:write`, the same site. */

@@ -129,6 +129,8 @@ cannot be followed from one day to the next, and that adding to the cart lets th
   (`fromStoresOwnPage()`): `Origin` and/or `Referer` must be the host the request came to, which is one of this store's own
   hosts, or, while stores live on Kaizen's host, a page under `/s/{store}` (so a `Referer` is needed there). A request with
   neither header, or from another store's page, is dropped (`wrong_site`).
+  The check is `sameSite()` of `src/lib/same-site.ts`, imported from there: a beacon route must stay light and never import the
+  chat's modules (`src/server/beacon-imports.scan.test.ts`).
 - **The visitor.** One day clock: the **store's calendar day** (`storeDayKey(now, store.timeZone)`) is both the row's `day` and
   the day the key is for. The visitor is `HMAC-SHA256(key = HMAC(purpose key, store day), JSON[store id, ip, user agent])` cut
   to 24 hex characters, where the purpose key is `HMAC(SETTINGS_ENCRYPTION_KEY, "kaizen:visit-counting")`. The key changes every

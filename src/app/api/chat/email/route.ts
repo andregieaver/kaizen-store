@@ -1,7 +1,8 @@
 import { connection } from "next/server";
 
 import { emailInput } from "@/lib/support-visitor-schema";
-import { fail, sameSite } from "@/server/chat-route";
+import { fail } from "@/lib/route-fail";
+import { sameSite } from "@/lib/same-site";
 import { readBody, reply, visitorEmail } from "@/server/support-route";
 
 /**

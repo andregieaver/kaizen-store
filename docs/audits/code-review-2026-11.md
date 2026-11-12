@@ -113,7 +113,7 @@ This report is a working document: the plan below is the list of work, and this 
 | 3.11 | One card query; smaller storefront files | FF10 | M | Open | |
 | 3.12 | One accounting adapter, one `afterOrNow` | FV10 | M | Open | |
 | 3.13 | Domain folders | FV4, FH6 | L | Open | |
-| 3.14 | Split `schema.ts` | FD5 | M | Open | |
+| 3.14 | Split `schema.ts` | FD5 | M | In progress | 12 Nov, bloat review step 0.4 commit 1: client.ts no longer imports the schema; splitting the file by area stays open, it saves reading only |
 | 3.15 | Keep the big tables lean | FD7, FD8 | M | Open | |
 | 3.16 | One error shape for the API | FD10 | M | Open | |
 | 3.17 | Limit floods at the edge | FD11 | S | Open | |
@@ -162,6 +162,7 @@ This report is a working document: the plan below is the list of work, and this 
 - 10 November 2026: Phase 0 looked at in production: 0.7, 0.9, 0.10 and 0.11 are deployed; 0.7's paths have had no order, 0.9's paging no store large enough, and 0.10 and 0.11 are admin screens that need the owner signed in.
 - 11 November 2026: step 1.6 done (D569): the no-transaction marker for concurrent indexes, and the scan test for the hot tables.
 - 11 November 2026: step 1.7 done (D572): the migrations squashed to a baseline, the old files archived.
+- 12 November 2026: FD5 and step 3.14 half done by bloat review step 0.4; FH12 and step 4.4 corrected: the run-time driver is pg, not postgres.
 
 ## 1. The headline
 
@@ -265,7 +266,7 @@ that decide how cheaply the admin's map can change; section 4.3 points back to t
 | FA3 | 2 | The manager's rounds are capped at 1,200 output tokens and `finish_reason` is never read. A long answer stops mid-sentence; a large tool call is cut into bad JSON, blamed on the model and retried, using up rounds. | `ai.ts:681, 737-758`; `owner-assistant.ts:757-759, 895-899` | Read and return `finish_reason`; on "length" retry a tool call once with a higher limit, or add "ask me to continue" to an answer; a larger limit for rounds with tools. | S |
 | FA4 | 2 | One 429, 5xx or network error on any call ends the turn, even after tools ran. There is no retry, and direct providers have no fallback. | `ai.ts:684-715, 389-403`; `owner-assistant.ts:784-790` | Retry once after a short wait when no text has been sent yet; a *Try again* button in `AiManagerChat`. | S |
 | FD3 | 2 | 768 migration files in 47 days: a fresh setup, CI, the template build and the tests replay all of it. The ledger already supports a baseline. | `supabase/migrations`; `docs/ci-migrations.md:13, 17, 56-58` | Squash up to a cut into one schema file and one reference-data file; archive the old files outside the applied path; record it with `baseline_through`; point `commerce.test.ts:6732, 7405` at the archive. Repeat per quarter. | M |
-| FD5 | 2 | `schema.ts` (19,082 lines, 467 tables) is only a source for migrations: no server code uses the query builder. Yet `client.ts` imports all of it into every function's cold start. | `src/db/client.ts:11, 78`; 0 `relations()`; 607 server files write SQL | Drop the `schema` argument from `drizzle()`. Then split along the section banners into `src/db/schema/*.ts`; `pnpm db:check` must write no migration. | M |
+| FD5 | 2 | `schema.ts` (19,614 lines, 481 tables) is only a source for migrations: no server code uses the query builder. Yet `client.ts` imports all of it into every function's cold start. | `src/db/client.ts:11, 78`; 0 `relations()`; 607 server files write SQL | The import is gone since 12 November 2026 (`src/db/schema-import.scan.test.ts` holds it). Drop the `schema` argument from `drizzle()`. Then split along the section banners into `src/db/schema/*.ts`; `pnpm db:check` must write no migration. | M |
 | FD7 | 2 | `orders` carries about 91 columns, 8 jsonb blobs and 24 indexes, at least one of them redundant; every insert and status change keeps them all. | `src/db/schema.ts:4465-4852`; `:4822` and `:4824` (same key) | Drop `orders_retention_idx` now. After some weeks of traffic drop each index with `idx_scan = 0` that backs no constraint; make it a standing check beside the advisors step. | S |
 | FD8 | 2 | Retention blanks rows but never deletes them in carts, webhook_events, email_messages, experiment_events, referral_visits and work_events, and the webhook_events scan has no index that fits. | `src/server/retention.ts:321-322, 500`; `schema.ts:7133-7137` | A delete step per table in `runRetention` with a stated period, listed in `src/lib/retention.ts`; an index on `webhook_events (processed_at)`, or delete by id range. | M |
 | FD10 | 2 | The API has no single error shape (four JSON shapes and plain text), and client address, body cap and JSON parse are typed again per route (`x-forwarded-for` in 15 files). | `src/app/api/admin/v1/[...path]/route.ts:29-30`; `platform/editor/css/route.ts:18-19`; `blog/comments/route.ts:32-41`; `visit/route.ts:35` (`console.warn`) | `src/server/api-route.ts` with `problem()`, `readJson()`, `clientAddress()`; move the browser-facing families one per change; webhooks may stay plain text. | M |
@@ -292,8 +293,7 @@ that decide how cheaply the admin's map can change; section 4.3 points back to t
 | FH7, FH8 | 2 | ESLint is the Next.js default; architecture is policed by 39 regex scan tests that report only in `pnpm test`. One rule has no check at all: `src/lib` is called pure, yet 33 of its files import `server-only`, 3 import `@/server` and 4 drive a browser. | `eslint.config.mjs:1-20`; e.g. `src/lib/order-edit.ts`, `work-invoice-ui.ts`, `cookie-scan.ts`, `theme-shoot.ts` | `no-restricted-imports` for `src/lib/**` with today's offenders as a shrinking allow-list; move the import and call bans from scans to lint rules; keep the whole-repo scans, on one shared file walker. | M |
 
 Severity 1: **FV11** the key that stops a double plan subscription changes every clock minute, and the check before it takes no lock
-(`src/server/billing.ts:772-773, 793`): lock per store and key on something stable. **FH12** `three` is a dependency nothing
-imports; `playwright-core` and `@sparticuz/chromium` are traced into functions; `pg` is kept beside `postgres` for one module
+(`src/server/billing.ts:772-773, 793`): lock per store and key on something stable. **FH12** `three` is a required peer of @google/model-viewer, held by `e2e/product-media.spec.ts`; `playwright-core` and `@sparticuz/chromium` are traced into functions; `pg` is the run-time driver and stays (`src/db/client.ts`, D37); `postgres` is the driver of the build (`next.config.ts` through `src/lib/store-hosts-build.ts`) and of the scripts and reaches no function
 (`package.json:37, 59-61, 68`).
 
 ### 4.2 Usability and intuitiveness
@@ -498,7 +498,7 @@ language, and little else. The point of this phase is that nothing above comes b
 1. **Lint rules for the boundaries.** Add `no-restricted-imports` for `src/lib/**` and move the import and call bans from scan tests to `eslint.config.mjs`. Closes FH7, FH8. M. Done when: a new `@/server` import in `src/lib` fails `pnpm lint` in the editor, and the allow-list of offenders only shrinks.
 2. **All environment reads through `env.ts`.** Closes FD12. S. Done when: `env.scan.test.ts` passes with its short allow-list.
 3. **Generate the navigation doc.** After 1.18. A script and a CI check for `docs/admin-navigation.md`, as `parity:check` works. Closes FN11. S. Done when: CI fails when the doc and the nav data differ. The audit's phase 4 item.
-4. **The small ones.** Tab titles from the navigation data and the account's language (FS11); the decision number out of `domains.en.ts:213`, with a scan for `D` and digits in catalogue values; the AI panel's first paragraph into the catalogue (FA10); `pnpm why three`, and `pg` out of production dependencies (FH12). S to M. Done when: a Norwegian account sees Norwegian tab titles and the three small fixes are in.
+4. **The small ones.** Tab titles from the navigation data and the account's language (FS11); the decision number out of `domains.en.ts:213`, with a scan for `D` and digits in catalogue values; the AI panel's first paragraph into the catalogue (FA10); `postgres` may move to devDependencies only if Vercel's build still installs devDependencies (next.config.ts needs it at build time); otherwise it stays, with this reason (FH12). S to M. Done when: a Norwegian account sees Norwegian tab titles and the three small fixes are in.
 5. **Check that each guard exists.** The table below. Done when: every row is a test or rule that runs in CI.
 6. **Measure, then tune.** The audit's phase 4, unchanged: count how often people in Basic open an Advanced page and what they search for and miss in *Go to*; five owners, five tasks, before and after. Take section 3's figures again in three months.
 

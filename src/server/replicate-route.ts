@@ -5,7 +5,7 @@ import { z } from "zod";
 import { ITERATIONS } from "@/lib/replicate";
 
 import { checkPermission } from "./permissions";
-import { sameSite } from "./chat-route";
+import { sameSite } from "@/lib/same-site";
 import { abortReplication, currentReplication, replicationStatus, startReplication, tickReplication, type ReplicaOwner } from "./replicate";
 
 /**

@@ -1,6 +1,6 @@
 import { marketPath } from "@/lib/paths";
 import { serialiseExport } from "@/lib/privacy-export";
-import { sameSite } from "@/server/chat-route";
+import { sameSite } from "@/lib/same-site";
 import { shopperExport } from "@/server/privacy-shopper";
 import { resolveShop } from "@/server/shop";
 

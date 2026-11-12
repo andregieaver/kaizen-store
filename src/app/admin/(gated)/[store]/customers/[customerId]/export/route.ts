@@ -3,7 +3,7 @@ import { z } from "zod";
 
 import type { ExportProblem } from "@/lib/privacy-admin";
 import { serialiseExport } from "@/lib/privacy-export";
-import { sameSite } from "@/server/chat-route";
+import { sameSite } from "@/lib/same-site";
 import { checkPermission } from "@/server/permissions";
 import { staffExport } from "@/server/privacy-admin";
 

@@ -1,7 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 
 import { tickResponse } from "@/server/data-routes";
-import { sameSite } from "@/server/chat-route";
+import { sameSite } from "@/lib/same-site";
 import { checkPermission } from "@/server/permissions";
 
 /** The step an open product export page asks for (wave 2, D165): runs the job once and answers with its state. `products:read`, the same site. */

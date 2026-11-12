@@ -2,7 +2,7 @@ import { NextResponse, type NextRequest } from "next/server";
 
 import { NOT_FOUND_WINDOWS } from "@/lib/data-limits";
 import { notFoundCsv } from "@/server/not-found";
-import { sameSite } from "@/server/chat-route";
+import { sameSite } from "@/lib/same-site";
 import { checkPermission } from "@/server/permissions";
 
 /**

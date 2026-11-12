@@ -77,7 +77,7 @@ commit as the fix.
 | 0.1 | Put the review's scripts and lists in the repo | GAP-code-1 | S | review |  | Done | 12 Nov, f781ac6: 32 scripts and 4 lists under the review's folder; cycle 229 files, 41 twin pairs, 84 helpers, 4,803 copied lines; 156 rows and sections. |
 | 0.2 | Store a daily reading of production, so every later step has a 'before' |  | S | review |  | In progress | 12 Nov: pushed (D574); Done once two days of readings exist in production. |
 | 0.3 | Let the deploy job, not a visitor, meet the first cold page | SD-3, GAP-server-2 | S | review |  | Done | 12 Nov, 9643872, 95d0866, b357302 and the docs commit (D575): the deploy log reads GET / 200 PRERENDER then HIT, GET /s/demo/no 200 PRERENDER then HIT; the hosts job is green with house-site.spec.ts; Vercel's 8 GB build lists 5 market pages per shop route (demo's 4, kaizenaflow's 1) in 5 min with no out-of-memory line. Commit 3's case 2 asks /<market> on the platform host (see D575). |
-| 0.4 | Cut the two import hubs: the unused schema and the chat module's helpers | DD-1, DP-1, DP-9, SG-6, SF-6, DS-1, TC-5, DP-10, FM-2, FM-14, SG-3, SF-4, GAP-server-s2 | S | cheap | 0.1, 0.3 | Open | |
+| 0.4 | Cut the two import hubs: the unused schema and the chat module's helpers | DD-1, DP-1, DP-9, SG-6, SF-6, DS-1, TC-5, DP-10, FM-2, FM-14, SG-3, SF-4, GAP-server-s2 | S | cheap | 0.1, 0.3 | Done | 12 Nov 2026, afff453 (9a79968, 7b3b1c0), D576; schema chunk files 0 (was 6); /api/visit 639 modules and 1,188 KB (was 1,890 and 10,475), /api/health 259 and 418 KB; the five beacons reach 100 to 107 files (was 1,308); db:check clean. Production: page checks passed, a visit counted, no new runtime error. |
 | 0.5 | Load sharp, the font parser and the AI manager's engine when they are used | AS-1, DP-2, SG-7, SF-9, DP-11, SG-15, SG-10 | S | cheap | 0.1, 0.3 | Open | |
 | 0.6 | Cut the import cycle of 229 server files | SG-1, SF-1, TC-2, SG-18, SG-17 | M | strong | 0.1, 0.3, 0.4 | Open | |
 | 0.7 | Give code outside the admin its own small word modules, so the admin's words leave shoppers' routes | FM-1, SF-5, TX-1, GAP-text-s2 | M | review | 0.1, 0.3 | Open | |
@@ -267,6 +267,7 @@ Change log:
   29 cheap, 77 review, 50 strong. Nothing started.
 - 12 Nov 2026: step 0.1 Done (f781ac6): the review's scripts and lists are in the repo; every check names a path in it.
 - 12 Nov 2026: step 0.2 pushed (325b547, D574); it stays In progress until production has two days of readings. Step 0.3 Done (b357302, D575): the deploy job requests two pages, and Kaizena Flow's own store is prerendered; commit 3 was finished by the reviewer after the executor stopped on a redirect loop that only `pnpm start` on `*.localhost` shows.
+- 12 Nov 2026: step 0.4 Done (afff453, D576): the database client no longer loads the schema, and the beacons no longer load the chat module; `/api/visit` loads 639 server modules (was 1,890), the beacons reach 100 to 107 files (was 1,308).
 
 ## 1. The headline
 

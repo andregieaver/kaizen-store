@@ -1,7 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { z } from "zod";
 
-import { sameSite } from "@/server/chat-route";
+import { sameSite } from "@/lib/same-site";
 import { exportCodeItems } from "@/server/discounts";
 import { checkPermission } from "@/server/permissions";
 

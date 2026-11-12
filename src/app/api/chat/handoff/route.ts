@@ -1,7 +1,8 @@
 import { connection } from "next/server";
 
 import { changeInput } from "@/lib/support-visitor-schema";
-import { fail, sameSite } from "@/server/chat-route";
+import { fail } from "@/lib/route-fail";
+import { sameSite } from "@/lib/same-site";
 import { readBody, reply, visitorHandoff } from "@/server/support-route";
 
 /** *Talk to a person* (D216, 2.3): with the AI first, the visitor's conversation goes from the assistant to the queue. */

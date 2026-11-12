@@ -4,7 +4,7 @@ import { adminLangOf } from "@/lib/admin-lang";
 import { queryRecord } from "@/lib/analytics-export";
 import { analyticsWordsIn } from "@/lib/analytics-words";
 import { exportAnalyticsTable, mayExportTable } from "@/server/analytics-export";
-import { sameSite } from "@/server/chat-route";
+import { sameSite } from "@/lib/same-site";
 import { checkPermission } from "@/server/permissions";
 
 /**

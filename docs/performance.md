@@ -212,3 +212,20 @@ had requested the page itself (D575). Production ran `b357302`.
 
 `cache-control` was `public, max-age=0, must-revalidate` on both. The deploy job's own first request after the deploy read
 `x-vercel-cache PRERENDER` and its second `HIT` (CI run 1229).
+
+## What a server route loads (bloat review step 0.4)
+
+Two cuts made light routes light: `src/db/client.ts` no longer loads the Drizzle schema (it is drizzle-kit's source only, held by
+`src/db/schema-import.scan.test.ts`), and `sameSite()`, `fail()` and `visitorKey()` are imported from the files that define them
+(`src/lib/same-site.ts`, `src/lib/route-fail.ts`, `src/server/chat-turns.ts`), so a beacon no longer loads the chat's modules
+(`src/server/beacon-imports.scan.test.ts`). Measured on a production build with `next analyze --output` and
+`docs/audits/bloat-review-2026-11/scripts/server-graph.mjs`, 12 November 2026:
+
+| Route | Server modules loaded with the route, before | KB, before | Modules, after | KB, after |
+|---|---|---|---|---|
+| `/api/visit` | 1,890 | 10,475 | 639 | 1,188 |
+| `/api/health` | 308 | 1,155 | 259 | 418 |
+
+The import walker (`scripts/import-reach.mjs`) counts the source files each of the five beacons reaches: 103 for `/api/visit` and
+`/api/visit/touch`, 107 for `/api/visit/speed` and `/api/visit/speed/own`, 100 for `/api/recommendations/events` (1,308 before),
+none of them reaching the chat, the AI, the admin's words or the schema.

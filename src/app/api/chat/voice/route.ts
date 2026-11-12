@@ -5,7 +5,9 @@ import { MESSAGE_MAX } from "@/lib/support-rules";
 import type { VisitorReply } from "@/lib/support-visitor";
 import { BODY_MAX, spokenTurnInput } from "@/lib/support-visitor-schema";
 import { AiError, canSpeak, speakText, transcribeAudio } from "@/server/ai";
-import { chatContext, chatPlace, fail, sameSite, takeTurn } from "@/server/chat-route";
+import { fail } from "@/lib/route-fail";
+import { sameSite } from "@/lib/same-site";
+import { chatContext, chatPlace, takeTurn } from "@/server/chat-route";
 import { NO_STORE, visitorTurn } from "@/server/support-route";
 
 /** A spoken message: at most this many bytes of audio (about a minute). */

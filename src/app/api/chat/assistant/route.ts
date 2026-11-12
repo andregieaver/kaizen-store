@@ -1,7 +1,8 @@
 import { connection } from "next/server";
 
 import { changeInput } from "@/lib/support-visitor-schema";
-import { fail, sameSite } from "@/server/chat-route";
+import { fail } from "@/lib/route-fail";
+import { sameSite } from "@/lib/same-site";
 import { readBody, reply, visitorAssistant } from "@/server/support-route";
 
 /** *Continue with the assistant* (D216, 2.3): a visitor waiting for a person goes back to the AI. */
