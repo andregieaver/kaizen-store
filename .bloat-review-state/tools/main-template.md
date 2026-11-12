@@ -39,9 +39,10 @@ change: there is no real data to move and nobody to disturb.
 `docs/performance.md` (the storefront's bundle rules, D211 and D212), `docs/build-memory.md`, `docs/capacity.md` and
 `docs/platform-parity-plan.md`. Nothing here replaces them.
 
-**Where things are.** Beside this file, the folder `bloat-review-2026-11/`: `findings/` has one file per area with every finding in
-full (where, evidence, cost today, the fix in steps, the tests and rules that hold today's behaviour, done-when, risk);
-`grade-a-bars.md` has each area's bar in full; `evidence/` the measurements; `scripts/` what made them.
+**Where things are.** Beside this file, the folder `bloat-review-2026-11/`: `findings/` has a folder per area and a small file per
+finding (where, evidence, cost today, the fix in steps, the tests and rules that hold today's behaviour, done-when, risk);
+`grade-a-bars.md` has each area's bar in full; `evidence/` the measurements; `scripts/` what made them. A step of the plan names
+the findings it closes: open those files, not the folder.
 
 **Words.** Six kinds of bloat: *dead* (nothing uses it), *duplicate* (built more than once), *eager* (loaded, fetched or run before
 it is needed, or for someone who will never need it), *oversize* (bigger than its job), *ahead of use* (paying a running cost before
@@ -191,9 +192,9 @@ Verified figures; each area's file has the rest, with how each was measured.
 
 {{FINDINGS}} findings in 25 areas: {{EAGER}} eager, {{OVERSIZE}} oversize, {{DUPLICATE}} duplicate, {{NOCHECK}} no check, {{AHEAD}} ahead
 of use, {{DEAD}} dead. By priority: {{P0}} P0, {{P1}} P1, {{P2}} P2, {{P3}} P3. By effort: {{SMALL}} small, {{MEDIUM}} medium, {{LARGE}}
-large. Each area's file under `bloat-review-2026-11/findings/` gives every finding in full. "Step" is the step of the plan that
-closes it; *tolerated* means an A lives with it (the list and the reasons follow the tables); *your choice* means it is a product
-choice for the owner, not waste (section 6).
+large. They are not listed here: `bloat-review-2026-11/findings/README.md` lists every one by area with the step that closes it,
+and each has a small file of its own (`findings/<area>/<ID>.md`) with the evidence, the fix in steps, the tests and rules that
+change with it and its check. Open the files of the step you are doing, not the folder.
 
 {{FINDINGS_TABLES}}
 ### What an A lives with
@@ -204,10 +205,11 @@ choice for the owner, not waste (section 6).
 
 ## 5. The plan
 
-{{STEPS}} steps in {{PHASES}} phases, in the order to do them. Every finding is closed by exactly one step, tolerated above, or a choice
-for the owner. A step's "done when" names a script of `bloat-review-2026-11/scripts/`, a production figure
-(`evidence/production-database.md` has the queries), a test or a file. "Platform:" says what the step means for `/admin/platform`
-and Kaizena Flow's own site, by the house rule that the platform gets what stores get.
+{{STEPS}} steps in {{PHASES}} phases, in the order to do them. The Progress table at the top lists every step; each phase has a file
+with its steps in full (`bloat-review-2026-11/plan/phase-N.md`): what to change, the findings it closes, the check that says it is
+done, and what it means for `/admin/platform` and Kaizena Flow's own site, by the house rule that the platform gets what stores get.
+Every finding is closed by exactly one step, tolerated above, or a choice for the owner. A step's "done when" names a script of
+`bloat-review-2026-11/scripts/`, a production figure (`evidence/production-database.md` has the queries), a test or a file.
 
 **How this sits beside the code review's plan.** That plan stays. Where a step here is one of its steps, the step says so (among
 them 1.4 server actions, 1.8 the build's room, 1.10 the written rules, 3.9 and 3.10 the catalogue's reads and tags, 3.14 the schema
