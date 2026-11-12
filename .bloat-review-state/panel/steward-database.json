@@ -1,0 +1,353 @@
+{
+  "area": "database",
+  "title": "The database: its shape and how it is asked",
+  "grade_today": "C",
+  "grade_reasons": "The base is sound: one small pool, statement and lock limits, queues claimed with skip locked, triggers gated by column, retention for nearly every log, and the app's listed statements cost about 30 s of database time a day. The waste is real and measured all the same: pg_cron's run log is 564 MB of the 731 MB database, 162,622 of 216,877 transactions changed nothing, three whole-page reads are 41% of the app's listed statement time, and 122 store filters are written so the store index cannot serve them. Almost none of it is held: nothing counts statements or rows, nothing compares indexes (orders went from 24 to 34 since the code review counted), and nobody reads production's statistics. It is not a D, because the cost is tiny today and migration safety, the typed-read ratchet and the retention test hold part of the shape. The ladder counts the findings' work items only: they end at a strong B, and the A needs the three gap items as well.",
+  "measures": [
+    {
+      "name": "Rows read by scan where an index exists",
+      "today": "About 1.2 billion rows in 78 days on three tables that have the index: cookie_scans 962 M rows in 1,101,927 scans, pages 203 M in 199,789 scans, terms 11 M. Each of the first two is read whole well over 1,000 times a day. Cause: 122 store filters in 40 files written `store_id is not distinct from` (rg, re-run by the steward). Source: m/prod-db-stats.md.",
+      "target_a": "No commerce table with more than 1,000 rows is read whole more than 10 times a day in production. 0 store filters written `is not distinct from` with a parameter. In the test, the rows one store's read touches are the same with 1 and with 20 seeded stores.",
+      "how_measured": "Production: the tables query at the end of m/prod-db-stats.md, two readings a day apart (seq_tup_read a day divided by live rows), kept daily by the first gap's item. Code: the new count in src/server/ratchet.baseline.json (the owned() item, DQ-8). Test: rows-read differences in query-budget.int.test.ts (the second gap's item) and DQ-15's 2,000-order test.",
+      "why_this_is_a": "Zero is not the floor. Postgres rightly scans a table of a few pages (countries, stores), and a daily prune, a backup and an analytics pass each read a table once. So tables under 1,000 rows are left out and 10 whole reads a day are allowed. A B fixes the three tables named today. An A holds the rule for every table, including the 245 that fill only after opening."
+    },
+    {
+      "name": "Whole documents fetched where a field would do",
+      "today": "Three page statements are 968 s of the app's 2,360 s of listed statement time (41%): every published page with its content, 79,778 calls at 29 documents a call; titles dug out of JSON, 57,930 calls; the modal check over every page's JSON, 68,878 calls. The knowledge job reads about 40 documents a call on each tick; two theme reads return every snapshot (35,101 and 10,851 calls). listPublishedPages is named on 37 lines, 12 of them to pick one page.",
+      "target_a": "Among production's 40 costliest and 40 most-called statements, none that selects a document column (pages.published or draft, design_presets.snapshot) returns more than 2 rows a call. listPublishedPages is named on at most 14 lines, all of them readers that draw every document. Titles and the modal flag are columns.",
+      "how_measured": "rg -c 'listPublishedPages(' over src without tests (37 lines today). pg_stat_statements: rows divided by calls for statements that select a document column. PM-14's ratchet count of lists that read whole pages, and theme-store.int.test.ts (the slim-reads item, DQ-10).",
+      "why_this_is_a": "The floor: a reader that draws a document must fetch it (the page, its layout, the editor, the sitemap's SEO fields), so 2 rows a call are allowed. A B moves the 12 single-page callers and stops. An A also takes titles and flags out of the JSON, so no list opens a document however large a store's pages grow, and it holds the count."
+    },
+    {
+      "name": "What scheduled work asks per added store",
+      "today": "Held by nothing. By the code read: about 68 statements a minute from nine minute routes and at least 248 for each five-minute tick; 78 jobs start at once on a pool of 5 connections with a 5 s wait; about 10 more statements a tick for each store with chat and pictures on; five document jobs re-read every order of 120 days and every invoice on each tick (plans read on empty tables).",
+      "target_a": "The idle tick's statements and rows read are the same for 1 and for 20 seeded stores. At most 2 more statements for each added store that has chat and pictures on. Never more than 4 jobs at once. An idle cookie-scan run sends at most 3 statements, theme-shots and pack-pictures 1 each. The absolute totals are the scheduled-work area's bar.",
+      "how_measured": "src/server/query-budget.int.test.ts, which the query-budget item (DQ-11) creates: counts on the seeded database, kept in ratchet.baseline.json so they may only fall. cron-runs.int.test.ts for the cap of 4.",
+      "why_this_is_a": "The floor is one indexed probe per queue and one ledger write per job that ran. Growth of 0 per idle store is the only bar that stays true at 6,000 stores; a B accepts today's small cost at 60. The 2 statements per active store are the slim change checks of the knowledge and media jobs."
+    },
+    {
+      "name": "Statements that can change or learn nothing",
+      "today": "162,622 of 216,877 transactions (75%) changed nothing: 91,200 empty knowledge re-cuts and 71,422 lock claims, about 2,085 a day. The most-called statement fetches a constant: a store's slug by id, 560,090 calls; then the translations poll 278,393 and the AI provider row 237,563. 133,066 statements claim and prune a table that never held a row. 13,414 date-only updates on 468 picture vectors. The AI month sum costs 37 to 57 ms a call (352 s).",
+      "target_a": "Under 100 empty transactions a day. Among the 25 most-called statements none fetches a value that changes less than daily, apart from a written list of at most 3 (the proxy's two 10-second store reads and the per-instance text stamp). Every write among them changes a row at least once in 10 calls. The AI cost statement averages under 5 ms.",
+      "how_measured": "pg_stat_statements, the statements query in m/prod-db-stats.md: calls a day of the named statements, and rows divided by calls for writes. Read weekly (DQ-11 step 5) and kept daily by the first gap's item. rg -c 'select slug from commerce.stores where id' gives at most 3 lines (27 today).",
+      "why_this_is_a": "The floor: a claim may come back empty when another worker took the row, and a read inside a transaction that must see its own write stays. Hence 100 a day and a list of 3. A B removes the offenders named today. An A treats 'asked and learned nothing' as a class that is caught the week it appears, because each such statement is a round trip that grows with instances and stores."
+    },
+    {
+      "name": "Round trips before a cold page's own content",
+      "today": "About 20 statements for a cold frame (21 for Kaizena Flow's own, counted from the code; siteCookies alone asks 8 or 9, one after another). Reads cached for hours still ran 540 to 1,020 times a day each, because a cached read lives in one instance and one deploy. The modal check alone is 121 s.",
+      "target_a": "At most 5 statements for a store's cold frame (siteCookies at most 4), none waiting on another without need, and no jsonb_path_exists over pages among the 40 costliest statements.",
+      "how_measured": "query-budget.int.test.ts, the cold-frame part, written to the baseline before and after (the query-budget item DQ-11 and the cold-frame item DQ-7).",
+      "why_this_is_a": "The floor is the store's row, one site-facts read, the page index, the header and footer rows and the menus: 5 round trips of 1 to 3 ms each in the same region. A B runs today's 20 at once with Promise.all. An A also removes the seven per-feature reads every store pays whether or not it uses the feature. A remote cache is not the answer: Next's guide says it adds a round trip per check."
+    },
+    {
+      "name": "Storage with no ceiling",
+      "today": "731 MB, of which pg_cron's run log is 564 MB (77%), growing about 8 MB a day with no prune. Seven tables grow by time and nothing deletes from them: cron.job_run_details, and carts, webhook_events, email_messages, experiment_events, referral_visits and work_events (blanked, never deleted). page_versions keeps 50 a page with no age rule. docs_index took 49,347 updates on 1,845 rows. A leftover commerce_legacy schema holds 34 tables.",
+      "target_a": "The cron schema under 80 MB at today's schedule (7 days of runs). 0 tables that grow by time without a delete step and a stated period in src/lib/retention.ts. Every prune has its own ledger row. A docs deploy that changes one article updates fewer than 50 rows. No leftover schema.",
+      "how_measured": "The size-by-schema query in m/prod-db-stats.md. src/lib/retention.test.ts and DS-13's check on the tables of code review FD8. commerce.cron_jobs rows named daily.* (CR-17). n_tup_upd of commerce.docs_index.",
+      "why_this_is_a": "The floor is the app's own 124 MB and Postgres's 27 MB catalogue; 7 days of run log is what finding a late job needs. A B prunes the log. An A leaves no table whose size is set by time alone, because carts and webhook events are what real shoppers fill first, and it makes a prune that stops show up within days."
+    },
+    {
+      "name": "What each write to a hot table carries",
+      "today": "89 indexes and 60 triggers on the eight hot tables (orders 34 and 27). 13 indexes duplicate another: 2 extra entries per order, 1 per order line, 1 per counted visit. 46 hand-written indexes are invisible to pnpm db:check, and orders went from 24 indexes to 34 since the code review counted. Nothing counts either, and nobody has measured what one placed order writes.",
+      "target_a": "0 duplicate indexes. Index and trigger counts per hot table held in src/db/schema-budget.json and raised only with a written reason (orders 32 and 27, order_lines 8 and 5, visits 2 and 0). One placed order's statements and rows written held as a number (the third gap's item). After 8 weeks of traffic, no index on a hot table with idx_scan = 0 that backs no constraint.",
+      "how_measured": "src/db/index-duplicates.test.ts and src/db/schema-budget.test.ts (the items for DS-15 and DS-12 create them). select count(*) from pg_indexes on the migrated test database (1,988 today, 1,975 after). The never-scanned-index query of m/prod-db-stats.md at each quarterly squash.",
+      "why_this_is_a": "The floor: an index that enforces a rule or serves a read stays. The 414 foreign-key indexes and the 39 (store_id, id) keys were measured at about 1 µs a row and stay. Whether orders needs 32 cannot be known before traffic. So the A is: none provably redundant now, every addition a visible choice, and the unused ones judged on real statistics. A B drops the 13 and stops."
+    },
+    {
+      "name": "What the database layer costs a cold instance",
+      "today": "src/db/schema.ts (1,059,413 bytes, 19,614 lines) is evaluated at every cold start though 0 queries use it: 115 to 135 ms and 9 to 12 MB measured locally, in 6 server chunk files. Then each instance awaits a group-by read of ui_translations and repeats it every 60 s (278,393 calls).",
+      "target_a": "0 chunk files of the build hold table definitions, and no running file imports the schema. The per-instance poll is a one-row read at most every 10 minutes: under 200 calls a day per instance (1,440 today).",
+      "how_measured": "After pnpm build: rg -l --no-ignore -F orders_store_placed_idx .next/server -g '*.js' | wc -l (6 today). src/db/schema-import.scan.test.ts (the item for DS-1 creates it). pg_stat_statements calls of the ui_translations statements.",
+      "why_this_is_a": "The floor is the driver, drizzle's sql tag and one read at start so t() has its texts. A schema object that no query reads has no floor, so any figure above 0 would be a B. The poll cannot go: an edit by a platform admin must reach every instance."
+    }
+  ],
+  "work_items": [
+    {
+      "title": "Filter a store's rows one way the index can serve: owned() in place of `store_id is not distinct from`",
+      "finding_ids": ["DQ-8", "DS-7"],
+      "also_ids": ["PM-4"],
+      "phase": "now",
+      "effort": "M",
+      "done_when": "The ratchet's new count of `store_id is not distinct from` is no more than the commented column-to-column joins left (122 in 40 files today). EXPLAIN of listPublishedPages' statement with enable_seqscan off shows store_id in the Index Cond of pages_store_slug_key (a Filter today). On production seq_scan of commerce.cookie_scans grows by fewer than 1,000 a day (1,101,927 in 78 days today).",
+      "moves": "Rows read by scan: pages, cookie_scans and terms from about 15 million rows a day to one store's rows by index; filters with a parameter from 122 to 0. Do it first: the knowledge, page-index, cold-frame and page-column items write new reads that should use the helper from birth. It includes the wording of the cookie scan's due query (DQ-1 steps 1 and 2, CR-6). The ten hot reads alone are under a day.",
+      "serves": "database",
+      "owner_decision": false
+    },
+    {
+      "title": "Count statements: one counter and a query budget for the tick, the minute routes and the cold frame",
+      "finding_ids": ["DQ-11"],
+      "also_ids": ["PM-14", "SD-13", "AD-12"],
+      "phase": "now",
+      "effort": "M",
+      "done_when": "pnpm test:int runs src/server/query-budget.int.test.ts green with its three counts in src/server/ratchet.baseline.json; the idle tick is counted with 1 and with 20 seeded stores and the difference is kept as its own number that may only fall; CLAUDE.md and docs/ci-migrations.md name the weekly read of the 25 most-called and the 25 costliest statements.",
+      "moves": "Creates the instrument for 'What scheduled work asks per added store' and 'Round trips before a cold page's own content', and the routine behind 'Statements that can change or learn nothing'. Six other items use it as their check, so it goes first. The review proposes three counters (this one, AD-12's in src/db/client.ts, SD-13's from xact_commit): build one and let every budget read it. The dispatcher's job list moves to src/server/dispatcher-jobs.ts, which CR-14's registry also needs.",
+      "serves": "database",
+      "owner_decision": false
+    },
+    {
+      "title": "Prune pg_cron's run log daily, and empty it once",
+      "finding_ids": ["DS-8"],
+      "also_ids": ["CR-5"],
+      "phase": "now",
+      "effort": "S",
+      "done_when": "On production a week after the deploy the size-by-schema query shows the cron schema under 80 MB (564 MB today) where TRUNCATE ran, or select count(*) from cron.job_run_details is under 100,000 where only the delete could run.",
+      "moves": "Storage with no ceiling: the database from 731 MB to about 230 MB where TRUNCATE is allowed, and growth of about 8 MB a day stopped at 7 days of rows. A new migration only (a baseline is never edited). It needs one read-only look at production first, to learn whether the role may TRUNCATE.",
+      "serves": "database",
+      "owner_decision": false
+    },
+    {
+      "title": "Stop loading the schema file at server start",
+      "finding_ids": ["DS-1"],
+      "also_ids": ["TC-5", "DD-1"],
+      "phase": "now",
+      "effort": "S",
+      "done_when": "After pnpm build, rg -l --no-ignore -F orders_store_placed_idx .next/server -g '*.js' | wc -l prints 0 (6 today), and src/db/schema-import.scan.test.ts fails when a running file imports the schema.",
+      "moves": "What the database layer costs a cold instance: 115 to 135 ms and 9 to 12 MB off every cold start (measured locally) and the schema out of 6 server chunk files. Three lines in src/db/client.ts. It closes the running-cost half of code review step 3.14; splitting the file by area saves reading only and is not planned.",
+      "serves": "server",
+      "owner_decision": false
+    },
+    {
+      "title": "Drop the 13 duplicate indexes and add the test that stops the next one",
+      "finding_ids": ["DS-9", "DS-15"],
+      "also_ids": [],
+      "phase": "now",
+      "effort": "S",
+      "done_when": "On the migrated test database select count(*) from pg_indexes where schemaname = 'commerce' gives 1,975 (1,988 today) and 32 for orders (34 today); src/db/index-duplicates.test.ts returns 0 rows in its first case (11 today) and fails when a scratch migration adds an index on commerce.orders (store_id, placed_at).",
+      "moves": "What each write to a hot table carries: duplicates from 13 to 0 and held; 2 fewer index entries per order write, 1 per order line, 1 per counted visit. The four on hot tables are dropped concurrently in a file that starts `-- kaizen:no-transaction`. Half an hour now, while the tables are tiny.",
+      "serves": "database",
+      "owner_decision": false
+    },
+    {
+      "title": "A budget for what costs per write: index and trigger counts on the eight hot tables",
+      "finding_ids": ["DS-12"],
+      "also_ids": ["FT-2"],
+      "phase": "now",
+      "effort": "S",
+      "done_when": "pnpm test runs src/db/schema-budget.test.ts, and it fails when a scratch migration adds a trigger on commerce.orders without a change to src/db/schema-budget.json.",
+      "moves": "Holds 'What each write to a hot table carries' at orders 32 and 27, order_lines 8 and 5, visits 2 and 0, after the duplicates are dropped. The planner left it to the owner to adopt; the goal's own definition of an A asks for a held measure, so it is planned. Count the per-minute and dispatcher jobs once, in CR-14's registry, not here as well.",
+      "serves": "database",
+      "owner_decision": false
+    },
+    {
+      "title": "Look a store's slug up once, and the AI provider row once per job run",
+      "finding_ids": ["DQ-9"],
+      "also_ids": ["CA-9", "SD-10"],
+      "phase": "now",
+      "effort": "S",
+      "done_when": "rg -c 'select slug from commerce.stores where id' over src without tests gives at most 3 lines (27 today), and on production a week after the deploy that statement grows by fewer than 500 calls a day (at least 7,180 a day today).",
+      "moves": "Statements that can change or learn nothing: the most-called statement from 560,090 calls in 78 days to under 500 a day, and most of the 237,563 AI provider reads inside one job run become one.",
+      "serves": "database",
+      "owner_decision": false
+    },
+    {
+      "title": "AI spend this month: the daily rows plus today, not the whole month on each call",
+      "finding_ids": ["DQ-4"],
+      "also_ids": [],
+      "phase": "now",
+      "effort": "S",
+      "done_when": "limits-enforce.int.test.ts passes with a month of seeded usage split across measured days and today, and on production a week after the deploy the mean_exec_time of the ai_usage cost statement issued from limits.ts is under 5 ms (37 to 57 ms today).",
+      "moves": "Statements that can change or learn nothing: about 90% of 352 s (an estimate), and the cost stops growing through the month. The read carries money, so the new sum goes through typedRow().",
+      "serves": "database",
+      "owner_decision": false
+    },
+    {
+      "title": "Knowledge job: remember what was cut, and fetch documents only for pages that changed",
+      "finding_ids": ["DQ-6", "DS-5"],
+      "also_ids": ["PM-3", "CR-4", "AI-5"],
+      "phase": "now",
+      "effort": "M",
+      "done_when": "A new case in src/server/chat.int.test.ts runs the sync twice over a store with a wordless published page and counts zero transactions and zero rows read from `published` on the second run; on production a day after the deploy the calls of delete from commerce.knowledge_chunks where page_id = $1 grow by fewer than 20 a day (91,200 in 78 days today).",
+      "moves": "Statements that can change or learn nothing: 91,200 empty transactions to zero. Whole documents: about 40 documents a call on each tick to none while nothing was published. Scheduled work per store: two slim statements per site with chat on. One table, knowledge_sources; the three planners differ on its columns, so take PM-3's shape, which works the address out without the document and needs no hourly net. Recording a source that cut to nothing is a few lines and ends the empty transactions by itself.",
+      "serves": "database",
+      "owner_decision": false
+    },
+    {
+      "title": "Read one page, not all: a page index and a page by id",
+      "finding_ids": ["DQ-2"],
+      "also_ids": ["CA-3", "PM-2", "SD-4"],
+      "phase": "now",
+      "effort": "M",
+      "done_when": "rg -c 'listPublishedPages(' over src without tests gives at most 14 lines (37 today; PM-2's bar, which is stricter than DQ-2's 20 and fits DQ-2's own list of readers that stay), and on production a week after the deploy the whole-content pages statement has fewer than a quarter of the calls of the new index statement in pg_stat_statements.",
+      "moves": "Whole documents: most of 781 s; a read that needs one page fetches 1 document where it fetched 29. Round trips before a cold page's own content: the frame's menus and legal links read the index.",
+      "serves": "database",
+      "owner_decision": false
+    },
+    {
+      "title": "Pictures: re-check where a picture is used only when something that can show it was saved",
+      "finding_ids": ["DQ-3", "DS-10"],
+      "also_ids": ["CR-4", "AI-5"],
+      "phase": "now",
+      "effort": "S",
+      "done_when": "On production n_tup_upd of commerce.media_embeddings grows by fewer than 50 a day while no content changes (13,414 in 78 days today), and the statements starting 'with m as (select id, url, thumbnail_url from commerce.media' gain under 7 s a week in pg_stat_statements (about 34 s a week today).",
+      "moves": "Scheduled work per store and statements that learn nothing: at least 80% of 382 s (an estimate) and nearly all 13,414 date-only updates; an idle site costs one small read a run. The two planners disagree on the rest: DQ-3 would keep uses in a new table, DS-10 keeps the written rule at media-library.ts:27 (uses are looked up, never stored). This plan stops at the change test; a uses table is weighed only if the library's own view gets slow for a large site.",
+      "serves": "database",
+      "owner_decision": false
+    },
+    {
+      "title": "Invoice job asks only stores it can issue for, oldest first; delivery prunes leave the minute",
+      "finding_ids": ["DS-3"],
+      "also_ids": ["CR-9", "FT-3"],
+      "phase": "now",
+      "effort": "S",
+      "done_when": "On production a week after the deploy calls of select commerce.issue_waiting_invoices($1, $2) grow by fewer than 20 a day while no store has an issuable invoice waiting (about 127 a day today), and the delete on commerce.integration_deliveries grows by 1 a day (about 853 a day today).",
+      "moves": "Statements that can change or learn nothing: 167 s per 78 days and 133,066 claim-and-prune statements. Scheduled work per store: a store with incomplete details stops costing two function calls a tick for 120 days, and the cap of 50 can no longer starve a store.",
+      "serves": "database",
+      "owner_decision": false
+    },
+    {
+      "title": "Minute routes: one indexed question before any work",
+      "finding_ids": ["DQ-1"],
+      "also_ids": ["CR-1", "CR-6", "CR-7"],
+      "phase": "next",
+      "effort": "M",
+      "done_when": "query-budget.int.test.ts counts at most 3 statements for an idle cookie-scan run and 1 each for an idle theme-shots and pack-pictures run, and on production a day after the deploy seq_scan of commerce.cookie_scans grows by fewer than 100 a day.",
+      "moves": "Scheduled work per store: the minute routes' idle statements stop growing with stores. Statements that learn nothing: the 71,422 lock transactions stop while nothing waits, and 101 s of theme snapshot reads go. One thing for the plan to settle: CR-1 moves the due tests into the scheduler's own SQL as its main fix, and DQ-1 advises against that before opening. From the database's side either works; these due tests are needed both ways. Build one design, not both.",
+      "serves": "scheduled",
+      "owner_decision": false
+    },
+    {
+      "title": "Dispatcher: four jobs at a time, each at its own cadence, and no full re-hash on every tick",
+      "finding_ids": ["DQ-5"],
+      "also_ids": ["CR-2", "CR-14"],
+      "phase": "next",
+      "effort": "M",
+      "done_when": "query-budget.int.test.ts: a second tick run right after the first runs no job marked hourly or daily; the idle tick's statement count is the same for 1 and for 20 seeded stores and lower than the baseline's; with chat and pictures on in each store it issues at most 2 more statements per added store; cron-runs.int.test.ts asserts at most 4 jobs run at once.",
+      "moves": "Scheduled work per store: growth per idle store to 0, never more than 4 of the pool's 5 connections in use, and most of the 148 s of the embeddings hash. One thing for the plan to settle: CR-2 asks for one ledger write a run, DQ-5 keeps one per job (0.15 ms each; a batch loses every job's record when the function dies). The database's side: keep one per job. The rule for a new job (ask which sites have work in one statement, then loop) is written down here.",
+      "serves": "scheduled",
+      "owner_decision": false
+    },
+    {
+      "title": "The cold frame: read together, one site-facts read, the page index for menus",
+      "finding_ids": ["DQ-7"],
+      "also_ids": ["SD-5", "SD-9"],
+      "phase": "next",
+      "effort": "M",
+      "done_when": "query-budget.int.test.ts counts at most 4 statements for siteCookies() of a seeded store with none of the features on (8 or 9 today), and on production a week after the deploy no statement with jsonb_path_exists on commerce.pages is among the 40 costliest (121 s today).",
+      "moves": "Round trips before a cold page's own content: from about 20 statements to 4 or 5. Starting the independent reads together is an hour's work and can go with the now items. No remote cache for these reads. The modal flag is the page-columns item's column (DS-4): one column, one name.",
+      "serves": "server",
+      "owner_decision": false
+    },
+    {
+      "title": "A page's title, its titles by language and its modal flag as columns the database derives",
+      "finding_ids": ["DS-4"],
+      "also_ids": ["PM-6"],
+      "phase": "next",
+      "effort": "M",
+      "done_when": "rg for the JSON operators on published and for jsonb_path_exists(published in src/server/pages.ts and src/server/page-modals.ts prints no line inside publishedPageNames or usesRememberedModals, and on production a week after the deploy the two statements (57,930 and 68,878 calls so far) no longer grow.",
+      "moves": "Whole documents: most of the 187 s the two statements cost per 78 days, and no list opens a document. Stored generated columns, so the 30 or so writers of a page do not change. The table rewrite covers 1,389 rows today: cheapest before opening. After the owned() and page-index items.",
+      "serves": "database",
+      "owner_decision": false
+    },
+    {
+      "title": "Document jobs find due work by a mark or a window an index serves",
+      "finding_ids": ["DQ-15"],
+      "also_ids": ["CR-9"],
+      "phase": "next",
+      "effort": "M",
+      "done_when": "A new int test seeds 2,000 paid, invoiced consumer orders in one store, runs one invoice tick, one email check and one e-invoice check, and seq_tup_read plus idx_tup_fetch of commerce.orders and of commerce.invoices each rose by fewer than 100 (all 2,000 of both today).",
+      "moves": "Rows read by scan and scheduled work per store: the tick's document work follows what waits, not every order of 120 days and every invoice ever issued (an estimate: 1.2 million orders re-proved a tick at 1,000 stores of 10 orders a day). Its first step, six indexes on tables that are empty today, is small and can go with the now items. This is the path that issues legal documents: the full check stays as an hourly net.",
+      "serves": "database",
+      "owner_decision": false
+    },
+    {
+      "title": "Retention: a delete rule for every table that grows by time (the owner names the periods), and prunes off the five-minute tick",
+      "finding_ids": ["DS-13"],
+      "also_ids": ["CR-10"],
+      "phase": "next",
+      "effort": "M",
+      "done_when": "On production seq_scan of commerce.status_checks grows by fewer than 10 a day (about 288 a day today); a deploy that changes one docs article raises n_tup_upd of commerce.docs_index by fewer than 50 (1,845 before); each table named in code review FD8 has a delete step with its period in src/lib/retention.ts, and the privacy text states the same periods.",
+      "moves": "Storage with no ceiling: the six tables retention blanks but never deletes each get a period and a delete step, so no table's size is set by time alone. The owner answers code review Question 6: how long guest carts, processed webhook events and old page versions are kept. The status prune and the docs upsert need no answer and are a day's work; they can go ahead of it.",
+      "serves": "database",
+      "owner_decision": true
+    },
+    {
+      "title": "Interface texts: a version stamp for the poll, read every ten minutes",
+      "finding_ids": ["DQ-12", "DS-2"],
+      "also_ids": ["CA-12", "SD-7"],
+      "phase": "next",
+      "effort": "S",
+      "done_when": "On production a day after the deploy, calls of the group-by on commerce.ui_translations in pg_stat_statements grow by fewer than 50 a day with no text edited (about 3,570 a day today).",
+      "moves": "What the database layer costs a cold instance: per instance from 1,440 group-by polls a day to 144 one-row reads. Statements that learn nothing: the second most-called statement leaves the list. Small today; do it before languages are machine-translated, when the group-by starts counting thousands of rows a minute in every instance.",
+      "serves": "database",
+      "owner_decision": false
+    },
+    {
+      "title": "Sandbox purges one at a time, with the lock arithmetic written down",
+      "finding_ids": ["DS-11"],
+      "also_ids": [],
+      "phase": "next",
+      "effort": "S",
+      "done_when": "src/server/sandbox.int.test.ts has a case where two purges started together both finish, and docs/builder-sandbox.md states production's max_locks_per_transaction and max_connections beside the 2,129 locks one purge holds.",
+      "moves": "No measure moves. It removes the case of two purges holding about 4,300 lock entries together: two thirds of a default lock table, more on a small database. The planner rated the finding P3 and asked for this one step only; it is planned because the public try-it page will end sandboxes daily once open. The 800 deletes a purge stay. That is the stated tolerance: under 1 s and about 2,100 locks per ended sandbox.",
+      "serves": "database",
+      "owner_decision": false
+    },
+    {
+      "title": "Slim reads when their files are next opened: theme cards, the Pages list, fonts, the speed report, and limits on six lists",
+      "finding_ids": ["DQ-10", "DQ-14"],
+      "also_ids": ["CA-13", "PM-5", "AD-14"],
+      "phase": "later",
+      "effort": "M",
+      "done_when": "theme-store.int.test.ts asserts that the rows loadCards() reads have no snapshot key once cards are filled; speedReport() on a store seeded with 10,000 samples issues one statement that returns at most 28 rows per kind and screen; src/server/list-limits.scan.test.ts names the six reads and asserts each carries a limit, an aggregate or a time bound.",
+      "moves": "Whole documents: the theme cards read (27 s, every snapshot to draw a card) shrinks to card facts; the admin's Pages list and the speed report stop growing with document size and sample count. Paging waits for code review step 1.13: no second way to page is invented here. The accessibility, claims and translate screens keep their reads: they need the content and only the owner who opens them pays.",
+      "serves": "database",
+      "owner_decision": false
+    },
+    {
+      "title": "Catalogue listings: ask each VAT rate once and join the alt text",
+      "finding_ids": ["DQ-16"],
+      "also_ids": [],
+      "phase": "later",
+      "effort": "S",
+      "done_when": "On a database seeded with 2,000 products in one store, one call of listProducts() raises seq_scan plus idx_scan of commerce.countries by at most 10 (at least 2,000 today: one or more per product row).",
+      "moves": "Rows read by scan: the VAT rate from 11.3 µs to about 0.1 µs a product row (measured: 112.9 ms to 0.9 ms on 10,000 rows), which is tens of milliseconds per cold listing of a large catalogue. It also explains the 375,215 scans of countries. Do it in the change that takes up code review step 3.9, which opens the same two statements.",
+      "serves": "database",
+      "owner_decision": false
+    },
+    {
+      "title": "Dead objects: drop the unused table and its enum; drop the leftover schema on the owner's word",
+      "finding_ids": ["DS-14"],
+      "also_ids": ["DD-11"],
+      "phase": "later",
+      "effort": "S",
+      "done_when": "rg -n 'idempotency_keys' src, with the two api_*_idempotency_keys tables left out, prints nothing, and production's size-by-schema query lists no commerce_legacy schema.",
+      "moves": "Storage with no ceiling: 1 table and 1 enum now, and after a last dump the 34 leftover tables of commerce_legacy. The five unused columns go when their tables are next changed. Only the schema drop needs the owner's yes.",
+      "serves": "database",
+      "owner_decision": true
+    }
+  ],
+  "tolerated": [
+    {
+      "finding_id": "DQ-13",
+      "why": "It names a pattern, not a cost of its own: 341 loops hold a database call. All but the per-site job loops run over a parent's few rows, and their cost follows use (one insert per order line, fee or language). The per-site loops are closed by the knowledge, pictures, dispatcher and document-job items, and the budget holds the tolerance as a number: at most 2 more statements a tick for each added store with chat and pictures on. The order's own inserts stay with code review step 3.7. Its two small tidy-ups (cart reminders, theme shots) can be made when those files are next opened."
+    }
+  ],
+  "owner_choices": [
+    {
+      "finding_ids": ["DS-6"],
+      "question": "kaizenaflow.com has been served from Kaizena Flow's own store since 7 November (D484; the finding says the switch is off, the parity plan says it is on). The old no-store site and its twin tables are still kept beside it. Remove the old copy before opening (parity plan step 7), or keep it as a fallback for some weeks as the plan first said? And one desk for support and chat (step 6), or two?"
+    }
+  ],
+  "gaps": [
+    {
+      "title": "Production's statistics are read by hand, and no reading is kept to compare with",
+      "evidence": "16 of this area's 31 findings are checked by 'on production, pg_stat_statements or pg_stat_user_tables grows by fewer than N a day'. That needs two readings; the counters have run since 25 August and none is stored (m/prod-db-stats.md). rg finds pg_stat_statements, pg_stat_user_tables and pg_stat_user_indexes in no file of src or scripts, nor in docs/ci-migrations.md or docs/capacity.md; the only live figure the app reads is active connections and database size (src/server/usage.ts:145). DQ-11 step 5 is a weekly read by hand. Everything this review found in the database (91,200 empty deletes, a slug read 560,090 times, 22 table scans in one query, a 564 MB log) stood in those views for weeks and nobody was told.",
+      "proposed_work_item": "Phase now, effort M, before the fixes land so the 'before' is kept. One statement in the daily route writes a dated reading into a small platform table (kept 90 days): the 40 costliest and the 40 most-called statements of the app's role (id, first 200 characters, calls, time, rows; Postgres has already stripped the values), each commerce table's rows, size, seq_scan, seq_tup_read and n_tup_upd, and size by schema. It does nothing where pg_stat_statements is missing. Platform, Usage and limits shows the day's difference and flags four things: a newcomer among the 25 most-called or costliest; a table over 1,000 rows read whole more than 10 times a day; a write that changed a row in fewer than 1 of 10 calls; the cron schema over 80 MB. Done when: the page lists flags from two stored days, and an int test that scans a seeded 2,000-row table 20 times sees its flag."
+    },
+    {
+      "title": "The budget counts statements, not rows, and stops before the daily job",
+      "evidence": "The costliest shape found here is one statement that reads every store's rows: each scan of pages read about 1,000 rows to return 29 (203 M rows in 199,789 scans, m/prod-db-stats.md). DQ-11's budget (findings/db-queries.json, step 3) counts statements for the tick, the minute routes and the cold frame, so it would have passed that read; the ratchet of DQ-8 stops one wording, not the next shape that defeats an index. Production cannot tell before opening: product_variants (841 rows) shows 235,251 scans and stores (60 rows) 204,477, because small tables are scanned by choice. The repo already judges plans by rows read (src/server/inventory-perf.int.test.ts, D383). The daily route is in no planned budget: pruneVisits() (src/server/analytics-visits.ts:316-338) lists every store and runs at least two deletes per store, in turn, though no store younger than 25 months can hold a row that old.",
+      "proposed_work_item": "With the query-budget item, phase now, effort S on top of it. In query-budget.int.test.ts also record rows read: seq_tup_read plus idx_tup_fetch summed over commerce's tables, from pg_stat_user_tables after pg_stat_force_next_flush(), as DQ-15's check does. Record it for the idle tick, the minute routes, the cold frame and the daily route's functions, with 1 and with 20 seeded stores of 30 pages and 200 products each. The budget: the rows read for one store do not grow with the other 19. Make pruneVisits() ask only stores older than the retention period. Done when: the test fails when a scratch change writes `store_id is not distinct from` back into listPublishedPages, and when one adds a per-store statement to a daily prune."
+    },
+    {
+      "title": "Nobody has measured what one placed order writes",
+      "evidence": "orders carries 34 indexes and 27 triggers (rg counts 27 create trigger statements on commerce.orders in baseline_3_rules.sql), and a plain new order writes 22 index entries (DS-9). placeOrder() runs through src/server/checkout.ts (1,800 lines, 18 execute calls) and src/server/order-insert.ts (8 more, with loops at :363 and :413). Every budget the review plans is a read path: the tick, the minute routes and the cold frame (DQ-11), five admin screens (AD-12), five storefront pages (SD-13). The one test that places an order on a large catalogue (src/server/inventory-perf.int.test.ts) holds a ten-second backstop, not a count. Orders and visits are the writes that grow at opening, and code review step 3.7 'Stage placeOrder' is Open with no number.",
+      "proposed_work_item": "Phase next, effort S once the query budget exists. Add two write paths to it: one guest order of three lines from cart to paid, and one counted visit. Keep for each the statements sent and the rows inserted and updated (n_tup_ins plus n_tup_upd over commerce's tables) in the baseline, so they may only fall, and write the per-trigger times that EXPLAIN (ANALYZE) prints for the orders insert into docs/performance.md once. Done when: the baseline holds the four numbers, and a scratch trigger on commerce.orders that writes a row fails the test."
+    }
+  ],
+  "ladder": {
+    "after_now": "B",
+    "after_next": "B",
+    "after_later": "B"
+  }
+}

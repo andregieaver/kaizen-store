@@ -1,0 +1,126 @@
+{
+ "key": "functions",
+ "file": "/tmp/claude-0/-home-user-kaizen-store/875cb21b-0ebd-5663-b7c0-2d04a7548e24/scratchpad/findings/functions.json",
+ "validator": "OK: 13 findings, 0 refuted, 24 metrics",
+ "headline": "One import cycle of 229 server modules makes 559 of 562 pages, 181 of 268 route handlers and the proxy load the same 11 MB of server code: re-measured in this pass, such an entry needs 0.84 to 1.09 s and 71 to 83 MB to start where a route outside the cycle needs 0.16 s and 14 MB, and a start hook adds 0.33 s before any request. None of it rests on a feature being unused; every store pays it after each deploy, on scale-out and after idle, and it grows at opening. Thirteen findings stand (eleven verified, two added); seven are import changes with no data moved, which on the import graph take the visit beacon from 1,306 source files to about 100, the proxy from 1,309 to about 95 and a storefront page from about 1,420 to about 600 (the page renderer is the floor). Added by this pass: every store's own domain is compiled into each deployment (4 to 8 routing rules a store against Vercel's cap of 2,048, of which the app's own dynamic routes already take 685, plus a full redeploy per domain change), and the list of those domains is parsed again for every link a page draws.",
+ "findings": [
+  {
+   "id": "FN-1",
+   "title": "One import cycle makes nearly every function load the whole application",
+   "priority": "P0",
+   "effort": "M",
+   "saving": "Estimate: about 0.45 to 0.55 s and 40 to 46 MB off a cold storefront instance (six lazy imports, with FN-5); cycle 229 to 19 files",
+   "verdict": "confirmed",
+   "owner_decision": false
+  },
+  {
+   "id": "FN-2",
+   "title": "The proxy runs before every page and prefetch, and loads the whole application to do six small reads",
+   "priority": "P1",
+   "effort": "M",
+   "saving": "Estimate: proxy reaches about 95 files, not 1,309; cold start near 240 ms and 22 MB instead of 838 to 884 ms and 71 MB",
+   "verdict": "confirmed",
+   "owner_decision": false
+  },
+  {
+   "id": "FN-3",
+   "title": "Every instance waits on a start hook that loads 2.3 MB of unrelated code before it asks the database for the interface texts",
+   "priority": "P0",
+   "effort": "S",
+   "saving": "Estimate: 0.25 to 0.3 s and about 20 MB off every cold start, together with FN-6; the start query stays",
+   "verdict": "corrected",
+   "owner_decision": false
+  },
+  {
+   "id": "FN-4",
+   "title": "The visit beacons load the whole application because of one re-exported helper",
+   "priority": "P0",
+   "effort": "S",
+   "saving": "Estimate: beacon reaches 145 files, not 1,306; starts in about 0.25 s with 22 to 25 MB instead of 0.93 s and 78 MB",
+   "verdict": "confirmed",
+   "owner_decision": false
+  },
+  {
+   "id": "FN-5",
+   "title": "The admin's words in both languages are loaded by almost every function, shoppers' pages included",
+   "priority": "P0",
+   "effort": "S",
+   "saving": "Estimate: about 100 to 110 ms and 13 MB off each cold start of about 740 entries; 14 small edits, no FN-1 cut needed",
+   "verdict": "corrected",
+   "owner_decision": false
+  },
+  {
+   "id": "FN-6",
+   "title": "The Drizzle schema is built at every start though no code reads it",
+   "priority": "P0",
+   "effort": "S",
+   "saving": "Measured by the verified report: 75 to 114 ms and 7.3 MB per copy per cold start; three lines in src/db/client.ts",
+   "verdict": "confirmed",
+   "owner_decision": false
+  },
+  {
+   "id": "FN-7",
+   "title": "Nothing counts what a server entry loads, so the cycle grew unseen",
+   "priority": "P0",
+   "effort": "S",
+   "saving": "No direct saving: one graph test, baseline and CI step keep FN-1 to FN-6 from growing back",
+   "verdict": "confirmed",
+   "owner_decision": false
+  },
+  {
+   "id": "FN-8",
+   "title": "13 MB of taxonomy JSON rides in every function, and a shopper's product page parses it to show one category",
+   "priority": "P2",
+   "effort": "M",
+   "saving": "12.7 MB off 87 traces now by a derived exclude list; later 16 to 22 MB of heap per storefront instance (estimate)",
+   "verdict": "corrected",
+   "owner_decision": false
+  },
+  {
+   "id": "FN-9",
+   "title": "sharp, a font parser and Supabase's client load at start in functions that draw no picture, and every reader of a store loads the Stripe SDK",
+   "priority": "P1",
+   "effort": "S",
+   "saving": "Estimate: 46 to 52 ms and 21 MB of RSS per cold instance for sharp; 7 to 9 ms for Stripe; about 40 ms more if Supabase is lazy",
+   "verdict": "corrected",
+   "owner_decision": false
+  },
+  {
+   "id": "FN-10",
+   "title": "Nine full-application functions are called every minute, and before opening they find nothing to do",
+   "priority": "P3",
+   "effort": "M",
+   "saving": "12,960 heavy calls a day become 1,440 light ones while queues are empty; shrinks as stores arrive. Owned by CR-1",
+   "verdict": "corrected",
+   "owner_decision": false
+  },
+  {
+   "id": "FN-11",
+   "title": "The build writes the same large server chunks many times",
+   "priority": "P3",
+   "effort": "S",
+   "saving": "Estimate: up to about 105 MB of JS off the build output, as a by-product of FN-1 and FN-5; no other cost measured",
+   "verdict": "corrected",
+   "owner_decision": false
+  },
+  {
+   "id": "FN-12",
+   "title": "The list of every store's own domains is parsed again for every link a page draws",
+   "priority": "P1",
+   "effort": "S",
+   "saving": "Nothing today; at 1,000 stores with a domain about 64 ms per page render and 1.1 ms per proxied request (estimate)",
+   "verdict": "added",
+   "owner_decision": false
+  },
+  {
+   "id": "FN-13",
+   "title": "Every store's own domain is compiled into each deployment: routing rules against a cap of 2,048, and a full redeploy per change",
+   "priority": "P1",
+   "effort": "L",
+   "saving": "One full deploy fewer per domain change, 4 to 8 rules fewer per store, no ceiling near 270 stores with a domain (estimate)",
+   "verdict": "added",
+   "owner_decision": true
+  }
+ ],
+ "refuted": []
+}
