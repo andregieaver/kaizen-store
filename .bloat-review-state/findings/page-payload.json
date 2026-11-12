@@ -1,0 +1,758 @@
+{
+ "key": "page-payload",
+ "title": "What a page sends: HTML, RSC payload and requests",
+ "headline": "On the wire a storefront document is light (13.7 to 21.3 thousand bytes gzipped); only the admin's two editors are heavy (108 and 136 thousand), and about 70% of that is message catalogues, of which the product editor's parts read a third (239 KB handed, 79 KB read). The waste is in what repeats and in what follows a load: the store's layout is rendered and sent twice for a 404 nobody sees (29.7 thousand bytes raw per document, and again inside the 79 KB every Add to cart sends back), a visitor who does nothing causes 11 to 50 prefetches and one or two uncached server calls per storefront view (the wishlist, the tiles, and on a search page a suggestion call nobody typed for), and Kaizena Flow's own pages pull about 141 KB of admin sign-in files. Fourteen findings, none refuted and none resting on 'unused so far': each is a duplicate or an idle cost per view, per press or per open tab, which is what grows when stores open. Seven are small and safe and go first (budgets, two prefetch props, the wishlist marker, the tiles' switches, the search call, the notice count); the two that restructure (the cart drawer's slot out of the root layout, the admin's words by cut) are cheapest before opening.",
+ "metrics": [
+  {
+   "name": "Storefront document, raw / gzip / Brotli",
+   "value": "106.7 to 170.3 thousand bytes raw; 13.7 to 21.3 thousand gzip; 9.8 to 14.7 thousand Brotli (12 pages). 66 to 71% of the raw bytes are the inline RSC payload scripts",
+   "how": "Re-ran /tmp/claude-0/-home-user-kaizen-store/875cb21b-0ebd-5663-b7c0-2d04a7548e24/scratchpad/work/skpl/sizes.mjs: zlib on /tmp/claude-0/-home-user-kaizen-store/875cb21b-0ebd-5663-b7c0-2d04a7548e24/scratchpad/m/html/store-*.html, summing the self.__next_f.push scripts."
+  },
+  {
+   "name": "Admin document, raw / gzip",
+   "value": "82 to 586 thousand bytes raw, 18 to 136 thousand gzip (15 signed-in screens); a product's editor 426,497 / 108,153; a page in the builder 585,943 / 135,710",
+   "how": "The same script on /tmp/claude-0/-home-user-kaizen-store/875cb21b-0ebd-5663-b7c0-2d04a7548e24/scratchpad/m/html/admin-*.html."
+  },
+  {
+   "name": "The not-found copy of the store's layout",
+   "value": "The same 35 rows and 26,151 decoded bytes on all 12 store pages (26 to 39% of the payload); 29,655 bytes raw per document (17 to 28%); 959 to 1,182 bytes gzip; 223 to 305 Brotli. None in the admin's or the site's documents",
+   "how": "Re-ran /tmp/claude-0/-home-user-kaizen-store/875cb21b-0ebd-5663-b7c0-2d04a7548e24/scratchpad/work/skpl/nf.mjs (rows only the root layout's notFound prop reaches) and nfcut.mjs (each document rebuilt without them, then compressed)."
+  },
+  {
+   "name": "Cart links rendered per storefront document",
+   "value": "4 per request (header and bottom bar, each for the drawn layout and for the copy); with a cart the served home says the count 6 times. getCartCount is not memoised: by code 4 count queries per render",
+   "how": "Flight rows of store-home and store-cart-empty in stream order; a headless load with a cart (/tmp/claude-0/-home-user-kaizen-store/875cb21b-0ebd-5663-b7c0-2d04a7548e24/scratchpad/work/plpl/checkout.mjs); src/components/cart-link.tsx:26, src/server/cart.ts:544."
+  },
+  {
+   "name": "What an Add to cart sends back",
+   "value": "79,467 bytes decoded (11,096 gzip, 8,915 Brotli): the whole route again, with both copies of the layout (2 footers, 2 bottom bars). A first wishlist save: 78,649 bytes. After each, 26 to 33 prefetch answers within 2.5 to 5 seconds (125 to 128 KB decoded; most from the browser's cache, 8 from the network in the run that counted them)",
+   "how": "Headless Chromium on the local production build, a phone viewport: /tmp/claude-0/-home-user-kaizen-store/875cb21b-0ebd-5663-b7c0-2d04a7548e24/scratchpad/work/plpl/act2.mjs and act.mjs (the action's response body; next-router-prefetch responses after it)."
+  },
+  {
+   "name": "Admin payload that is message catalogues",
+   "value": "36 to 85% per page; 1,227 of 1,943 KB (63%) over 16 admin documents; product editor 232.9 of 289.2 KB, page builder 304.3 of 356.9 KB. Gzipped on their own: 72.5 of the editor's 105.6 KB document, 94.3 of the builder's 132.5",
+   "how": "Re-ran /tmp/claude-0/-home-user-kaizen-store/875cb21b-0ebd-5663-b7c0-2d04a7548e24/scratchpad/work/skpl/texts.mjs: every texts prop in every row, JSON size against the decoded payload."
+  },
+  {
+   "name": "What the editors read of the areas they are handed",
+   "value": "Product editor: builder 2,883 of 74,880 bytes, website 1,644 of 47,253, products 5,621 of 26,798, fields 4,123 of 24,961; handed text 238.5 KB, read 78.9 KB (gzipped on its own 74.3 to 26.4 KB). Builder: 311.6 KB handed, 195.4 KB read (96.5 to 61.8 KB gzipped)",
+   "how": "Imports followed from product-editor.tsx (1,402 files) and page-editor.tsx (1,555 files) with /tmp/claude-0/-home-user-kaizen-store/875cb21b-0ebd-5663-b7c0-2d04a7548e24/scratchpad/work/skpl/graph.mjs; branch sizes from the payloads with /tmp/claude-0/-home-user-kaizen-store/875cb21b-0ebd-5663-b7c0-2d04a7548e24/scratchpad/work/plpl/slices.mjs and slicegz.mjs."
+  },
+  {
+   "name": "Prefetches by a visitor who does nothing",
+   "value": "Storefront 11 to 50 requests per page (bodies about 14 to 112 KB; the local server adds 1,718 bytes of headers to each); store admin 23 to 46 requests, 18 to 40 of them with no shared-cache header (26 of 32 on Orders)",
+   "how": "Tally of kind rsc in /tmp/claude-0/-home-user-kaizen-store/875cb21b-0ebd-5663-b7c0-2d04a7548e24/scratchpad/m/routes.json (/tmp/claude-0/-home-user-kaizen-store/875cb21b-0ebd-5663-b7c0-2d04a7548e24/scratchpad/work/plpl/after.mjs and a per-page count). Category and search left out (the local prefetch loop)."
+  },
+  {
+   "name": "Other-language and other-currency front pages prefetched",
+   "value": "Empty cart and checkout: 6 views, 18 requests, 509,776 bytes decoded (498 KB), 104,635 as transferred; /om-oss 4 views, 12 requests; account and wishlist 2 views. About 85 KB decoded per view",
+   "how": "/tmp/claude-0/-home-user-kaizen-store/875cb21b-0ebd-5663-b7c0-2d04a7548e24/scratchpad/work/plpl/rsc.mjs: rsc answers by address in routes.json."
+  },
+  {
+   "name": "A press on a product tile against a press on a next/link",
+   "value": "Tile on the home page (plain anchor): a 131,228-byte document (19,694 gzip), the stylesheet and 24 scripts read again (811 KB, cached), the wishlist call, 12 prefetches. Bottom bar's link: 1 navigation request, 7 new scripts, 13 prefetches",
+   "how": "Headless Chromium, a phone viewport: /tmp/claude-0/-home-user-kaizen-store/875cb21b-0ebd-5663-b7c0-2d04a7548e24/scratchpad/work/plpl/nav.mjs. One press each way to two different pages: the shape, not a like-for-like figure."
+  },
+  {
+   "name": "Admin files fetched by Kaizena Flow's site pages",
+   "value": "Front page after load: 11 scripts (168,158 bytes transferred, 500,593 raw) and the admin stylesheet (6,015 / 21,083); 6 of the scripts (134,674 transferred) are the signed-out /admin document's, by the verified report's match",
+   "how": "/tmp/claude-0/-home-user-kaizen-store/875cb21b-0ebd-5663-b7c0-2d04a7548e24/scratchpad/m/routes.json after-load list (/tmp/claude-0/-home-user-kaizen-store/875cb21b-0ebd-5663-b7c0-2d04a7548e24/scratchpad/work/plpl/after.mjs); six next/link elements to /admin found outside the admin with rg."
+  },
+  {
+   "name": "Server calls per storefront view for a visitor who does nothing",
+   "value": "GET {market}/wishlist/saved on 12 of 12 pages (15 bytes, private no-store); GET /api/shop/tiles on the home and the listing (1,193 bytes, no-store, 3 queries by code) while both switches are off; POST suggestAction on the search page (183 bytes; one budget write and one match query by code). 0 beacons",
+   "how": "routes.json after-load lists; the routes' and the action's source; one request to the local wishlist route (200, private, no-store)."
+  },
+  {
+   "name": "Listing grid sent twice",
+   "value": "/products with 9 products: each data-item-id 18 times in the markup and 18 in the payload; 24.7 KB raw (14.5% of the document) by the verified report's cut",
+   "how": "Own count in /tmp/claude-0/-home-user-kaizen-store/875cb21b-0ebd-5663-b7c0-2d04a7548e24/scratchpad/m/html/store-products.html."
+  },
+  {
+   "name": "Shared storefront chunks: what could leave",
+   "value": "Of three chunks named by every store document (106,810 bytes): admin common words 6,210, feature words 5,651, cookie catalogue 24,275, consent look 4,743, filter dialog 11,781: 52,660 bytes raw, 17,158 gzipped on their own. 8% of the three chunks ran on the cart, 22% on the home page",
+   "how": "/tmp/claude-0/-home-user-kaizen-store/875cb21b-0ebd-5663-b7c0-2d04a7548e24/scratchpad/work/skpl/mods.js on .next/static/chunks (module boundaries), each module gzipped on its own in this pass; coverage from routes.json."
+  },
+  {
+   "name": "Page weight against its only budget",
+   "value": "Front page 406,542 bytes and product page 423,097 transferred, against 450,000: 10% and 6% of room. Empty cart 591,352 and checkout 613,556 have no budget",
+   "how": "/tmp/claude-0/-home-user-kaizen-store/875cb21b-0ebd-5663-b7c0-2d04a7548e24/scratchpad/m/routes.json requests.transfer; e2e/performance.spec.ts:126-129."
+  },
+  {
+   "name": "Default icon",
+   "value": "25,931 bytes, four pictures (16, 32, 48, 256 px); 9,292 gzip, 8,802 Brotli; fetched after load on 32 of 32 pages; Cache-Control public, max-age=0",
+   "how": "ICO directory read and zlib on public/kaizen/favicon.ico; routes.json."
+  }
+ ],
+ "clean": [
+  "No row of the home's or a product page's payload holds a product row, the store's settings or a message catalogue. Ranked, the largest are the grid's list (5.4 KB), the header, menu and footer trees (3.5 to 4.7 KB each, twice because of PL-2), the metadata (2.2 to 3.1 KB) and the JSON-LD (2.1 to 2.7 KB) (/tmp/claude-0/-home-user-kaizen-store/875cb21b-0ebd-5663-b7c0-2d04a7548e24/scratchpad/work/plpl/top.mjs).",
+  "A store in a hand-written language sends no message catalogue: the UiTexts prop is null in both layout copies of the home document.",
+  "Chat, referral capture, the business popup, consent and the visit, touch and speed beacons are drawn only when the store has them on; the demo's idle pages sent 0 beacons. A store with visit counting on will add its beacons per view: that is the feature working, cost following use.",
+  "Pictures carry the right loading hints: on the home 5 are lazy and 5 eager, the first with high priority; every picture has a width and a height. Their sizes could not be judged: the demo's pictures are SVG drawings of 0.3 to 0.75 KB.",
+  "Scripts and the stylesheet are served public, max-age=31536000, immutable. Files under public/ (the demo's pictures, the icon) have max-age=0: that is AS-5 of the assets dimension, and PL-12 here.",
+  "Hidden markup is modest once compressed. Every admin document carries its navigation twice in the markup, the rail (9.2 to 15.4 KB raw) and the phone menu's closed dialog (5.1 to 22.0 KB raw), but the dialog is 0.6 to 2.6 KB gzipped (0.5 to 1.3 KB Brotli) of documents of 18 to 136 KB (/tmp/claude-0/-home-user-kaizen-store/875cb21b-0ebd-5663-b7c0-2d04a7548e24/scratchpad/work/plpl/navdup.mjs). On a store page the closed menu dialog is 5.6 KB raw and the filter dialog 8.5 KB on listings.",
+  "Besides the words, the admin's largest prop is the menu's areas (12.5 KB on Orders, in the top bar's row): planned as AD-5 in the admin-data dimension, not repeated here.",
+  "A quantity change in the cart also answers with the whole cart page; there the page's content did change, so it is not counted as waste.",
+  "The local server sends 1,718 bytes of headers with every answer, 1.4 KB of it the report-only Content-Security-Policy on every path (src/lib/csp.ts:198). Production serves HTTP/2 or 3, where a repeated header costs a few bytes, so small answers weigh less there; request and function counts are as measured.",
+  "Not measured, and said so: the checkout with a payment form (the demo store takes no payments, so /checkout leads back to the cart even with a product in it, by a headless run in this pass); a store with several countries (the demo sells in one); a store in an AI-translated language; and what production's Kaizena Flow front page holds in its 244 KB payload (/tmp/claude-0/-home-user-kaizen-store/875cb21b-0ebd-5663-b7c0-2d04a7548e24/scratchpad/m/prod-pages.md gives only totals; production was not queried).",
+  "No written rule or decision covers prefetching (rg prefetch in docs finds only docs/plan.md:120), and no spec measures a document, its payload, an action's answer or an admin page's requests."
+ ],
+ "refuted": [],
+ "findings": [
+  {
+   "id": "PL-1",
+   "title": "The admin's message catalogues travel as props in every document and with each page opened",
+   "kind": "oversize",
+   "where": [
+    "src/app/admin/(gated)/[store]/products/[productId]/page.tsx:45",
+    "src/app/admin/(gated)/[store]/products/new/page.tsx:26",
+    "src/app/admin/(gated)/[store]/pages/editor-views.tsx:30",
+    "src/app/admin/(gated)/[store]/pages/editor-views.tsx:142",
+    "src/app/admin/try/[sandbox]/editor.tsx:25",
+    "src/app/admin/(gated)/layout.tsx:45",
+    "src/app/admin/(gated)/[store]/layout.tsx:114",
+    "src/components/admin/admin-text.tsx:33",
+    "src/components/admin/admin-text.tsx:41",
+    "src/lib/admin-text.ts:308",
+    "src/components/admin/admin-text-later.ts:17",
+    "src/components/admin/rich-text-editor.tsx:155",
+    "src/components/admin/text-styles.tsx:174",
+    "src/components/admin/picture-maker.tsx:44",
+    "src/components/admin/media-picker.tsx:44",
+    "src/components/admin/field-pickers.tsx:258",
+    "docs/performance.md:162",
+    "docs/platform-admin-i18n.md:3",
+    "node_modules/next/dist/docs/01-app/03-api-reference/05-config/01-next-config-js/staleTimes.md:26"
+   ],
+   "evidence": "Re-ran the count of every texts prop in the 16 saved admin documents (/tmp/claude-0/-home-user-kaizen-store/875cb21b-0ebd-5663-b7c0-2d04a7548e24/scratchpad/work/skpl/texts.mjs): 1,227 of 1,943 KB of decoded payload (63%). Product editor 232.9 of 289.2 KB (81%), page builder 304.3 of 356.9 KB (85%), home 56.5 of 103.8, orders 33.3 of 92.0. Gzipped on their own the texts are 72.5 KB of the editor's 105.6 KB document and 94.3 of the builder's 132.5. Followed the imports from product-editor.tsx (1,402 files, dynamic imports included) and from page-editor.tsx (1,555 files) and listed every useAdminText read. The product editor's parts read builder only as textStyles and richText (rich-text-editor.tsx:155, 250, 386; text-styles.tsx:174, 294, 461, 578), website only as pictureMaker and picker (product-editor.tsx:872; picture-maker.tsx:44, 110, 163; media-picker.tsx:44, 63), products only as terms, termRules, termPage, termSeo and termFields, fields as form and pickers. Sized those branches in the payload (/tmp/claude-0/-home-user-kaizen-store/875cb21b-0ebd-5663-b7c0-2d04a7548e24/scratchpad/work/plpl/slices.mjs): builder 2,883 of 74,880 bytes, website 1,644 of 47,253, products 5,621 of 26,798, fields 4,123 of 24,961. The builder reads the same branches of products, fields and website, and of design only fonts and changes (3,050 of 24,195), of blog only editor (166 of 4,796), of schedules dialog, nouns and share (2,871 of 5,672). The scope sits in the page (products/[productId]/page.tsx:45), and the client router does not keep a dynamic page segment (staleTimes: dynamic defaults to 0), so each product opened by a link sends its scope again: 204 KB. No file in src reads the setup area in the browser (rg for useAdminText(\"setup\") and texts.setup: 0 hits), yet the gate hands it to every screen (layout.tsx:45, 6.9 KB). The hand-down dates from 22 October (docs/platform-admin-i18n.md); D540 on 10 November only took the English fallback out of the scripts. The document's share has never been measured: the budgets count scripts.",
+   "cost": "20 to 304 KB raw per admin document (6.9 to 94 KB gzipped on their own); about 70% of the two editors' compressed documents. The page's own scope rides again with each page opened by a link: 204 KB raw per product, about 271 KB per page in the builder. It is a prop, so the browser never caches it.",
+   "who_pays": "An owner's browser on every admin page load and navigation (download, memory); the server per request (it writes the catalogue into the payload each time).",
+   "fix_steps": [
+    "1. First the number: do PL-13 step 3 (the document's bytes in e2e/signed-in/admin-scripts.spec.ts), at today's figures, so each step below shows as a fall.",
+    "2. src/lib/admin-text.ts: add four cut areas. A cut is some branches of an existing area, the same objects, no text moved and no new catalogue file. richText = builder's richText and textStyles. picking = website's picker and pictureMaker. termWords = products' terms, termRules, termPage, termSeo and termFields. fieldForm = fields' form and pickers. Add each to AdminAreaMessages as a Pick of its source's type and to CATALOGUES through one small helper cut(source, keys) that returns { key: source[key] } for en and nb. Add CUTS = { builder: ['richText'], website: ['picking'], products: ['termWords'], fields: ['fieldForm'] } and let adminTexts() (line 308) add an area's cuts whenever the area itself is asked for. The 208 present call sites of adminTexts() then keep working unchanged, and a page that hands the whole area pays nothing more: the cut holds the same objects, which React's Flight writer sends once.",
+    "3. src/components/admin/admin-text-later.ts: add the four cuts to LATER (import the source area's English and pick the branches), so a cut that nothing handed down is still a noted fallback and e2e/signed-in/admin-text-fallbacks.spec.ts still fails on it.",
+    "4. Move the readers to the cuts. useAdminText('richText') in rich-text-editor.tsx:155, 250, 386 and text-styles.tsx:174, 294, 461, 578. useAdminText('picking') in product-editor.tsx:872, picture-maker.tsx:44, 110, 163 and media-picker.tsx:44, 63. useAdminText('termWords') in terms.tsx (8 reads), term-fields.tsx:38, term-page-fields.tsx:38, 110, 221, term-rules-fields.tsx:38, 174 and term-seo-fields.tsx:35. useAdminText('fieldForm') in fields-form.tsx (6 reads), field-pickers.tsx:56, 100, 366 and entity-fields.tsx:67. field-pickers.tsx:258 takes the whole fields area: open it; if it reads only form and pickers move it too, else add the branches it reads to the cut. The type check now proves each reader stays inside its cut.",
+    "5. Hand the cuts where only they are read. products/[productId]/page.tsx:45 and products/new/page.tsx:26: adminTexts(lang, ['product', 'termWords', 'fieldForm', 'richText', 'picking']). editor-views.tsx:30 and src/app/admin/try/[sandbox]/editor.tsx:25 (EDITOR_AREAS): keep builder and blocks, replace products by termWords, fields by fieldForm, website by picking. Kaizena Flow's own page editor gets the same list (rg -n 'EDITOR_AREAS|\"builder\"' src/app/admin --glob '*.tsx' lists every place that hands these areas; a screen that draws only the rich text editor hands richText instead of builder).",
+    "6. The same way, if the trace still holds when you do it, cut design to fonts and changes (font-picker.tsx, page-builder-fields.tsx), blog to editor (page-editor.tsx) and schedules to dialog, nouns and share (schedule-dialog.tsx, share-links.tsx) for the builder's list.",
+    "7. src/app/admin/(gated)/layout.tsx:45: hand ['common', 'shell'] only; nothing in the browser reads setup. (The assistant area's split is AD-5's step in the admin-data plan; do not do it twice.)",
+    "8. Run e2e/signed-in/admin-text-fallbacks.spec.ts. Then open by hand, in Norwegian, the parts a page load does not mount: the media picker's library from a product, a category's dialog, a custom field's pickers, the text styles panel. Any English there is a reader left on a whole area.",
+    "9. New src/components/admin/admin-cuts.scan.test.ts: the reader files of step 4 hold no useAdminText call for builder, website, products or fields, so a later edit cannot bring a whole area back into the editor.",
+    "10. Later, for the builder only (it reads most of builder and blocks, 132 KB): a spike. Make each of the two areas' words in each language a small client provider module (a 'use client' file that imports one catalogue and wraps its children in AdminTextScope) and let the server page draw the one for the account's language, so the words arrive as a content-hashed script the browser keeps. Keep it only if a build shows three things: one language's chunk in the page's script tags, not both; e2e/signed-in/content-types.spec.ts passes (the early Save of 31 October); and the first-scripts budget is raised by no more than the bytes that left the document. It needs an allowed entry in admin-catalogues.scan.test.ts.",
+    "11. Docs: docs/performance.md (after the D540 paragraph: the cuts, the measured before and after), docs/platform-admin-i18n.md 3.3 (a page hands the cut its parts read), a line under PERF-01 in docs/audits/psi-followups.md:482, a decision in docs/decisions.md."
+   ],
+   "tests_and_rules": [
+    "e2e/signed-in/admin-text-fallbacks.spec.ts: the net for an area or cut not handed down; must pass.",
+    "e2e/signed-in/admin-scripts.spec.ts: first-scripts budgets do not move with steps 1 to 9; step 10 raises them on purpose and its header says a rise is a regression to look at.",
+    "src/components/admin/admin-catalogues.scan.test.ts: its ALREADY list may only shrink; step 10's provider modules need a named exception.",
+    "e2e/signed-in/content-types.spec.ts (the early Save), e2e/signed-in/ai-manager-panel.spec.ts, e2e/signed-in/products-grid.spec.ts and products-bulk.spec.ts (the product editor's parts).",
+    "src/components/admin/builder-words.test.ts and the other tests that import admin-messages files: unchanged, no text moves.",
+    "Rule docs/performance.md:162-190 (D540): hand the area down where the page is drawn, never put the English back. Kept: a cut is handed down the same way.",
+    "CLAUDE.md, Conventions: what is built for stores is built for the platform. The platform's page editor and the sandbox editor get the same lists in the same change."
+   ],
+   "depends_on": [
+    "PL-13 step 3 (the admin document budget, so the fall is seen and held)"
+   ],
+   "done_when": "node docs/audits/bloat-review-2026-11/scripts/measure-routes.mjs writes html/admin-product-editor.html under 290,000 bytes (426,497 today) and html/admin-page-builder.html under 500,000 (585,943 today), the new document budgets in e2e/signed-in/admin-scripts.spec.ts hold those figures, and e2e/signed-in/admin-text-fallbacks.spec.ts passes.",
+   "saving": "Steps 1 to 9, measured from the payloads: the product editor's handed text falls from 238.5 to 78.9 KB raw (159.6 KB less; 74.3 to 26.4 KB gzipped on its own), on the document and on each product opened by a link (its scope from 204 KB to about 45 KB). The builder's falls from 311.6 to 195.4 KB raw (116.2 KB less; 96.5 to 61.8 KB gzipped on its own). Every screen loses setup's 6.9 KB. Step 10, estimate: nothing on a first visit; later views and navigations in the builder save up to the remaining 195 KB raw (about 60 KB gzipped).",
+   "effort": "M",
+   "risk": "Medium-low for steps 1 to 9. A part that reads a branch outside its cut fails the type check. A cut nobody handed down is a noted fallback, which admin-text-fallbacks.spec.ts fails on for every screen it visits. What it does not visit is a part that mounts only on a press (the library inside the picker, a dialog): it would show English and wait for a fetch; step 8 opens them by hand and step 9's scan holds the reader files. Medium for step 10: it moves bytes into first scripts, Turbopack may put both languages in the page's scripts or merge the modules into shared chunks, and words fetched after hydration began are what broke the early Save on 31 October (docs/performance.md:168-171).",
+   "confidence": "high",
+   "priority": "P1",
+   "already_tracked": "Partly: PSI PERF-01 (docs/audits/psi-followups.md:482) is open and D540 chose hand-down; neither measures the document nor plans cuts or cached word chunks.",
+   "owner_decision": false,
+   "verdict": "corrected",
+   "notes": "Same ground as AC-4 and AC-9 (admin-client) and AD-5 (admin-data) of this review: do the frame's setup and assistant areas once, as AD-5 plans them. Chosen over the report's 'adminTexts() takes paths': a path-cut area keeps its full type, so a reader of a missing key would only fail at run time; a named cut is checked by the compiler and by the existing fallback test. Before opening is a good time: nobody is editing while the readers move."
+  },
+  {
+   "id": "PL-2",
+   "title": "Every storefront page carries the whole layout twice, and renders its live parts twice per request, for a 404 it is not showing",
+   "kind": "duplicate",
+   "where": [
+    "src/app/s/[store]/[market]/layout.tsx:104",
+    "src/app/s/[store]/[market]/layout.tsx:214",
+    "src/app/s/[store]/[market]/@drawer/default.tsx:1",
+    "src/app/s/[store]/[market]/@drawer/(.)cart/page.tsx:19",
+    "src/app/s/[store]/[market]/not-found.tsx:16",
+    "node_modules/next/dist/server/app-render/create-component-tree.js:551",
+    "node_modules/next/dist/server/app-render/create-component-tree.js:657",
+    "node_modules/next/dist/server/app-render/create-component-tree.js:417",
+    "src/components/cart-link.tsx:26",
+    "src/server/cart.ts:544",
+    "src/server/request-memo.ts:13",
+    "src/components/store-layout.tsx:286",
+    "src/components/store-layout.tsx:582",
+    "src/app/s/[store]/[market]/cart/actions.ts:137",
+    "node_modules/next/dist/docs/01-app/02-guides/server-actions.md:36",
+    "docs/rules/storefront.md:596",
+    "docs/decisions.md:75"
+   ],
+   "evidence": "Re-ran /tmp/claude-0/-home-user-kaizen-store/875cb21b-0ebd-5663-b7c0-2d04a7548e24/scratchpad/work/skpl/nf.mjs on the 12 saved store documents: the market layout's row (8) has notFound and children, each a full html tree, and the rows only the not-found branch reaches are the same 35 rows and 26,151 decoded bytes on every page (39% of the empty cart's payload, 31% of the home's, 26% of the listing's). The admin's and Kaizena Flow's documents have no such copy. Next does it on purpose when a root layout has children and one more slot (create-component-tree.js:551; its comment at 657-661 says it 'renders the RootLayout twice'). The extra slot is @drawer, the phone's slide-out cart (D64). The copy's live parts are rendered per request too: four cart links arrive at the end of each document's stream (home: rows 60, 77, 7f, 80; empty cart: 69, 80, 88, 89), the header's and the bottom bar's, each for the drawn layout and for the copy. CartLink calls getCartCount (cart-link.tsx:26), which is not memoised (cart.ts:544), so by the code a shopper with a cart costs four identical count queries per page view. Served with a cart in a headless browser, the home document says the count six times. New in this pass, measured in a headless browser on the local build (/tmp/claude-0/-home-user-kaizen-store/875cb21b-0ebd-5663-b7c0-2d04a7548e24/scratchpad/work/plpl/act2.mjs): Add to cart calls refresh() (cart/actions.ts:137), and Next answers a refresh with the whole route drawn again (server-actions.md:36-47). The answer was 79,467 bytes decoded (11,096 gzipped, 8,915 Brotli) and held both copies of the layout: 2 footers, 2 bottom bars, the not-found tree. A first wishlist save sets a cookie and gets the same answer (78,649 bytes). After each, the router asked again for the links in view: 33 prefetch answers in 5 seconds (128 KB decoded; most from the browser's cache, 8 from the network). Also checked: the not-found element itself (row 5d, 247 bytes on the demo) is pointed at by the drawn layout's router too (row 47, notFound: a reference into the copy), because Next hands every layout's router its not-found element eagerly (create-component-tree.js:310, 417).",
+   "cost": "29.7 thousand bytes raw of every storefront document (17 to 28%), about 1.0 thousand gzipped and 0.25 thousand with Brotli. The same copy in every server-action answer that re-renders: 26 KB of the 79 KB an Add to cart sends back. On the server: the layout rendered twice per prerender, and every per-request part of the layout rendered twice per page view and per Add to cart; for a shopper with a cart, 4 count queries per render where 1 would do (by code). Each other-market front page a link prefetches carries the copy again. Production's chrome is larger (/tmp/claude-0/-home-user-kaizen-store/875cb21b-0ebd-5663-b7c0-2d04a7548e24/scratchpad/m/prod-pages.md: a 123 KB payload on the empty cart against 74 KB here), so its copy is larger too: roughly 45 to 55 KB raw, an estimate.",
+   "who_pays": "The server and the database per request (double render of the layout's live parts, repeated cart-count queries); the build (the layout twice per prerender); a shopper's browser (30 KB raw held per document, 26 KB more with each Add to cart; about 1 KB on the wire).",
+   "fix_steps": [
+    "1. Now, apart from the move (S, safe): src/server/cart.ts:544: run getCartCount's body through perRequest('cart-count:' + shop.storeId + ':' + shop.market.code, ...) from src/server/request-memo.ts. The cart links of one render then share one query. perRequest shares nothing outside a render, so actions and jobs are unaffected.",
+    "2. Create src/app/s/[store]/[market]/(shop)/layout.tsx: a server component that takes { children, drawer } (type both as ReactNode by hand) and returns them one after the other in a fragment. Nothing else.",
+    "3. git mv into (shop)/: @drawer, page.tsx, term-listing.tsx and the 21 route folders ([...rest], [slug], account, blog, blogs, cart, category, checkout, cookies, deliveries, download, order, p, products, returns, search, subscription, tag, unsubscribe, wishlist, withdraw). Keep at the root: layout.tsx, not-found.tsx, error.tsx, extras.tsx, legacy-redirect.ts. Addresses do not change: a route group is not part of an address, and (.)cart still matches cart at the same level.",
+    "4. src/app/s/[store]/[market]/layout.tsx: drop drawer from the props (line 104) and {drawer} with its comment (lines 213-214). The root layout then has only children, the test at create-component-tree.js:551 is false, and Next builds no fallback copy. The drawer is a dialog opened with showModal() (cart-drawer.tsx:60), so it shows in the top layer wherever it sits in the markup; it now sits inside main.",
+    "5. Rewrite the paths. The 26 files that import from the folder (rg -lF 'from \"@/app/s/[store]/[market]/' src), relative imports inside the moved folders that reach up to the kept files, and the 17 test files that name the folder (rg -lF 's/[store]/[market]' src --glob '*.test.ts*'), among them pay-routes.graph.test.ts, withdraw-no-storage.test.ts, exchange-shopper.scan.test.ts, gift-no-html.scan.test.ts, session-freshness.scan.test.ts and store-starters.scan.test.ts, which read sources by path. Typed route strings (PageProps, RouteContext and LayoutProps of '/s/[store]/[market]/...') do not change. pnpm typecheck names every import that was missed.",
+    "6. Check by hand and with the suites: on a phone the cart drawer opens from the header, the bottom bar and Go to cart, and closes on any other page; a wide screen loads the cart page; an address that does not exist shows the store's 404 page with status 404; a legacy redirect from the layout still fires; the pay routes keep their strict Content-Security-Policy; the PDF route's traced files are still there (read .next/server/app/s/[store]/[market]/(shop)/account/documents/.../pdf/route.js.nft.json against next.config.ts's '/s/**/account/documents/**/pdf').",
+    "7. While the files are open, try the local prefetch loop again (docs/audits/bloat-review-2026-11/scripts/storm.mjs on /s/demo/no/category/belysning): it asks for the drawer slot's catch-all segment, which has just moved. Note the result either way in docs/audits/bloat-review-2026-11/evidence/prefetch-storm.md's successor.",
+    "8. Docs: docs/rules/storefront.md:596-603 (the slot now lives in the (shop) group's layout), any path CLAUDE.md or docs/rules name under the folder (47 doc files mention it: rg -lF 's/[store]/[market]' docs CLAUDE.md), a decision in docs/decisions.md beside D64.",
+    "9. Lower the budgets of PL-13 by what the build then measures: each storefront document by about 30,000 bytes, the Add to cart answer by about 26,000."
+   ],
+   "tests_and_rules": [
+    "src/lib/pay-routes.graph.test.ts (the market folder, the pay routes' folders, the layout's text).",
+    "e2e/cart.spec.ts (the drawer on phones, the page on wide screens), e2e/menus.spec.ts, e2e/backorder.spec.ts and e2e/unit-price.spec.ts (they open the drawer).",
+    "e2e/page-roles.spec.ts (the store's own 404 page), e2e/redirects.spec.ts (the catch-all's redirects and the 404 status), e2e/store-pages.spec.ts (the router patch on these routes, D423).",
+    "Every test that reads files under the folder by path: the 17 listed by rg -lF 's/[store]/[market]' src --glob '*.test.ts*'.",
+    "src/lib/visit-record.test.ts and src/lib/store-address.test.ts: addresses, which do not change.",
+    "Rule docs/rules/storefront.md:596-603 and D64 (docs/decisions.md:75): the slot intercepts /cart on client navigation and [...rest] closes it. Kept; only the folder changes.",
+    "The note in layout.tsx:201-206 (React's 12.8 kB budget outside boundaries): unchanged, the drawer was and stays outside the counted markup."
+   ],
+   "depends_on": [],
+   "done_when": "The served /s/demo/no document opens one html element in its inline payload, not two (count the text [\"$\",\"html\" as it stands escaped in the document's push scripts: 2 today; /admin and / already have 1), its raw size is under 112,000 bytes (138,523 today), and e2e/cart.spec.ts, e2e/page-roles.spec.ts and e2e/redirects.spec.ts pass.",
+   "saving": "Measured: 26.2 KB decoded, 29.7 thousand bytes raw off every storefront document, about 1 thousand gzipped. The same copy off every re-rendering action answer: about 26 KB of the 79,467 bytes an Add to cart sends back today. One of two layout renders per prerender, and one of two renders of each per-request part of the layout per page view and per Add to cart. By code: cart-count queries for a shopper with a cart from 4 per render to 1 with step 1 alone. Not saved: a store's own designed 404 page stays in every payload (once, not twice), because Next hands the not-found element to the router eagerly.",
+   "effort": "M",
+   "risk": "Medium. Intercepted routes are particular about where they sit: if (.)cart stops matching, a phone gets the cart page instead of the drawer, which e2e/cart.spec.ts shows at once. The wide rename can miss a path in a test that reads sources (the test then fails by name) or in a doc (rg finds it). A 404 that lost its layout would show in e2e/page-roles.spec.ts. Step 1 alone has no known risk.",
+   "confidence": "high",
+   "priority": "P1",
+   "already_tracked": "no",
+   "owner_decision": false,
+   "verdict": "corrected",
+   "notes": "Same finding as SC-8 (storefront-client); do it once. One correction to SC-8's check: the 404 page's words do not leave the document with this move (they are the not-found element the router keeps, measured above), so count html elements or bytes instead. Step 1 belongs with the P0 work. Do the move in one sitting with SC-2 if that is taken (it moves the same route files), and before opening: 22 entries move and about 110 files name the path, but nothing outside the repo depends on it yet. The Add to cart measurement also shows what the rule 'mutations are server actions that call refresh()' costs per press; leaving the rule alone and removing the copy takes a third off each answer. The rest is the page itself, which the rule needs redrawn: basket notes on a page (D558) read the cart per request."
+  },
+  {
+   "id": "PL-3",
+   "title": "The language, currency and country links prefetch whole front pages; a language or currency press never opens the one it fetched",
+   "kind": "eager",
+   "where": [
+    "src/components/view-menu.tsx:56",
+    "src/components/view-menu.tsx:62",
+    "src/components/store-layout.tsx:214",
+    "src/components/store-layout.tsx:217",
+    "src/components/store-layout.tsx:236",
+    "src/components/store-layout.tsx:419",
+    "src/components/store-layout.tsx:537",
+    "src/components/site-parts.tsx:190",
+    "node_modules/next/dist/docs/01-app/03-api-reference/02-components/link.md:302",
+    "/tmp/claude-0/-home-user-kaizen-store/875cb21b-0ebd-5663-b7c0-2d04a7548e24/scratchpad/m/routes.json"
+   ],
+   "evidence": "ViewMenu draws each choice as a next/link to that view's front page with default prefetch (view-menu.tsx:56), and its onClick always prevents the link and pushes the page the shopper is on instead (lines 62-72). So the prefetched front page is what a press opens only from the front page. Recounted from routes.json (/tmp/claude-0/-home-user-kaizen-store/875cb21b-0ebd-5663-b7c0-2d04a7548e24/scratchpad/work/plpl/rsc.mjs): on the empty cart /s/demo/no-sv, no-da, no-sek, no-dkk, no-eur and no-en, three requests each, about 85 KB decoded per view: 18 requests, 498 KB raw. The same on the checkout; four views (12 requests) on /om-oss; two on the account and wishlist. On long pages the footer was not in view and nothing was fetched. Each view is another root layout, so its whole chrome comes too, the not-found copy of PL-2 included. On the cart and on /om-oss the front page's four first pictures also arrived after load, though neither page draws them; on the pages that prefetched two views they did not (cause not traced). The country lists are the same shape and were not measured, because the demo sells in one country: three next/link lists to every market's front page (store-layout.tsx:236, 419, 537; site-parts.tsx:190). There a press does open the front page, but each country in view is another whole layout. LanguageLinks, the other switcher, draws plain anchors and prefetches nothing. Next's reference (link.md:302-304): prefetch={false} never prefetches, in view or on hover.",
+   "cost": "Up to 18 requests and 498 KB raw per page view where the footer's list is in view (102 KB as measured locally, about 72 KB of compressed body), for stores that offer several languages or currencies. Each request passes through proxy.ts. It grows with the languages, currencies and countries a store offers and with page views: by the per-view measure, a store selling in ten countries would add about 30 requests and 850 KB decoded per view of a short page (estimate).",
+   "who_pays": "A shopper's browser and data plan; the server per request (the proxy and the CDN behind it).",
+   "fix_steps": [
+    "1. src/components/view-menu.tsx:56: add prefetch={false} to the Link. Nothing else changes: the click handler already navigates with router.push, and without scripts the link still leads to that view's front page.",
+    "2. The country lists: add prefetch={false} to the Link at src/components/store-layout.tsx:236 (the header's menu), 419 (the phone menu) and 537 (the footer), and at src/components/site-parts.tsx:190 (a built footer's list). A country switch then waits for its page like any first visit.",
+    "3. e2e/performance.spec.ts: add a test. Phone context, cold, /s/demo/no/om-oss, wait 2 seconds after load, collect the requests that carry the next-router-prefetch header. Expect none whose path is another view of the store (/s/demo/no- followed by a language or currency).",
+    "4. docs/performance.md, under The rules: 'A link whose press does not open its href (a language, a currency), or that leads to another country's whole layout, is not prefetched.' A decision line in docs/decisions.md."
+   ],
+   "tests_and_rules": [
+    "e2e/localization.spec.ts and e2e/language-switcher.spec.ts: choosing a language or currency keeps the page and its query. Must pass unchanged.",
+    "src/lib/language-switch.test.ts and src/lib/language-rule.test.ts (the remembered language).",
+    "e2e/store-pages.spec.ts:65-70 aborts prefetches on purpose (the Safari patch, D423): not affected.",
+    "Rules docs/rules/storefront.md, 'Language and currency are apart from the country (D109)' and D479: each choice stays a real link to its view. Kept."
+   ],
+   "depends_on": [],
+   "done_when": "The new test in e2e/performance.spec.ts passes (0 prefetch requests to another view on /s/demo/no/om-oss; 12 today), and node docs/audits/bloat-review-2026-11/scripts/measure-routes.mjs shows the empty cart's prefetches fall from 42 to 24 requests.",
+   "saving": "Measured: 18 requests and 498 KB raw (about 72 KB of compressed body) per view of the cart or checkout, 12 requests and 332 KB raw per view of a short content page, for a store with several languages or currencies; over half of the empty cart's prefetch bytes. Not measured: the country lists, about 3 requests and 85 KB decoded per country in view (estimate from the views' size).",
+   "effort": "S",
+   "risk": "Low: a language, currency or country switch waits for its page as any first navigation does. The localization specs show a broken switch at once.",
+   "confidence": "high",
+   "priority": "P0",
+   "already_tracked": "no",
+   "owner_decision": false,
+   "verdict": "confirmed",
+   "notes": "Same finding as SC-1 (storefront-client) and CA-4 (caching); one change. The country lists are added to the report's fix here because they are the same cost per link and an EU-wide store has many; the report measured only languages and currencies."
+  },
+  {
+   "id": "PL-4",
+   "title": "Kaizena Flow's own pages download the admin's sign-in scripts for every visitor",
+   "kind": "eager",
+   "where": [
+    "src/components/platform-layout.tsx:133",
+    "src/components/platform-layout.tsx:176",
+    "src/components/platform-layout.tsx:273",
+    "src/components/platform-routes/home.tsx:55",
+    "src/components/platform-routes/sign-up.tsx:164",
+    "src/components/site-parts.tsx:261",
+    "src/app/admin/layout.tsx:1",
+    "node_modules/next/dist/docs/01-app/03-api-reference/03-file-conventions/layout.md:145",
+    "/tmp/claude-0/-home-user-kaizen-store/875cb21b-0ebd-5663-b7c0-2d04a7548e24/scratchpad/m/routes.json"
+   ],
+   "evidence": "Five next/link elements outside the admin point at /admin and one at /admin/sign-in (rg for a Link whose href starts with /admin outside src/app/admin and src/components/admin: the six lines above): the site's header, its phone menu, its bottom bar, the front page, the sign-up page and the built header's account part. The router prefetches the link in view and pulls its scripts and stylesheet. Listed from routes.json (/tmp/claude-0/-home-user-kaizen-store/875cb21b-0ebd-5663-b7c0-2d04a7548e24/scratchpad/work/plpl/after.mjs): the front page fetched 11 scripts after load (168,158 bytes transferred, 500,593 raw) and one stylesheet (6,015 transferred, 21,083 raw); the verified report matched six of the scripts (134,674 bytes transferred, 437 KB raw) and the stylesheet to the signed-out /admin document. The blog post and the themes page fetch the same six. /admin has its own root layout (src/app/admin/layout.tsx), and Next's docs say a navigation across root layouts is a full page load, so the prefetched payload is thrown away on the press; only the cached files help.",
+   "cost": "About 135 KB of scripts and 6 KB of CSS on the wire per first visit to any Kaizena Flow page: 28% of everything the front page transfers (499,407 bytes).",
+   "who_pays": "Every visitor of kaizenaflow.com (browser and data); the CDN.",
+   "fix_steps": [
+    "1. Add prefetch={false} to the six links: src/components/platform-layout.tsx:133, 176 and 273, src/components/platform-routes/home.tsx:55, src/components/platform-routes/sign-up.tsx:164 and src/components/site-parts.tsx:261.",
+    "2. New scan test src/lib/cross-root-links.scan.test.ts: in every .tsx file outside src/app/admin and src/components/admin, a Link whose href is a literal that starts with /admin must carry prefetch={false} in the same tag. Give it a 'would notice' case on a made-up line.",
+    "3. e2e/performance.spec.ts: on / wait 2 seconds after load and expect no request that carries the next-router-prefetch header for a path under /admin.",
+    "4. docs/performance.md, The rules: 'A link that crosses to another root layout (the site to the admin) is not prefetched: the press is a full page load, so only its files could help, and most visitors never press it.'"
+   ],
+   "tests_and_rules": [
+    "e2e/platform-languages.spec.ts and the sign-up specs (the Sign in links still lead to /admin).",
+    "e2e/performance.spec.ts FIRST_SCRIPTS_BUDGETS for / and /sign-up: unchanged (they count the document's own script tags, not what a prefetch pulls).",
+    "src/lib/platform-chrome.scan.test.ts (the site's chrome): read it before adding the new scan, and put the new case there if it already walks these files.",
+    "No written rule covers prefetching (rg prefetch in docs finds only docs/plan.md:120)."
+   ],
+   "depends_on": [],
+   "done_when": "The new assertion in e2e/performance.spec.ts passes (0 prefetch requests to /admin from /), and measure-routes.mjs shows the front page's after-load scripts fall from 11 files and 168,158 bytes transferred to 5 files and about 33,500 bytes, with no admin stylesheet.",
+   "saving": "Measured: 6 scripts and one stylesheet, about 141 KB on the wire (458 KB raw), per first visit to the site's pages.",
+   "effort": "S",
+   "risk": "Low: an owner who presses Sign in loads its files then, as on any first visit to /admin; returning owners have them cached.",
+   "confidence": "high",
+   "priority": "P0",
+   "already_tracked": "no",
+   "owner_decision": false,
+   "verdict": "corrected",
+   "notes": "Same finding as BN-2 (client-bundles). The admin's View store link is the mirror case on the local build only (it prefetched the storefront and about 92 KB of its scripts on every admin screen measured); in production a store is on its own host, storeHref() is absolute and next/link does not prefetch it, so it is left alone."
+  },
+  {
+   "id": "PL-5",
+   "title": "Prefetching runs per link because partialPrefetching is unset: 11 to 50 requests after a storefront load, 23 to 46 in the admin",
+   "kind": "eager",
+   "where": [
+    "next.config.ts:42",
+    "docs/plan.md:120",
+    "node_modules/next/dist/docs/01-app/03-api-reference/05-config/01-next-config-js/partialPrefetching.md:44",
+    "node_modules/next/dist/docs/01-app/02-guides/adopting-partial-prefetching.md:72",
+    "node_modules/next/dist/docs/01-app/03-api-reference/03-file-conventions/02-route-segment-config/prefetch.md:44",
+    "src/proxy.ts:54",
+    "src/components/product-card.tsx:73",
+    "src/components/content-grid.tsx:147",
+    "src/components/content-grid.tsx:310",
+    "src/components/store-layout.tsx:443",
+    "src/components/store-layout.tsx:498",
+    "src/components/store-layout.tsx:511",
+    "src/components/admin/store-admin-nav.tsx:94",
+    "/tmp/claude-0/-home-user-kaizen-store/875cb21b-0ebd-5663-b7c0-2d04a7548e24/scratchpad/m/start.log"
+   ],
+   "evidence": "The build and the server both warn that cacheComponents is on without a partialPrefetching value (/tmp/claude-0/-home-user-kaizen-store/875cb21b-0ebd-5663-b7c0-2d04a7548e24/scratchpad/m/build.log:6, start.log). Next's docs: unset behaves like false, 'a page with N links to N routes produced ~N route prefetches'; with true there is one reusable App Shell per route. docs/plan.md:120 names partialPrefetching as part of the chosen stack; next.config.ts does not set it. Recounted from routes.json (/tmp/claude-0/-home-user-kaizen-store/875cb21b-0ebd-5663-b7c0-2d04a7548e24/scratchpad/work/plpl/after.mjs and a per-page tally): a visitor who does nothing causes 11 to 50 prefetch requests per storefront page and 23 to 46 per admin screen; in the store admin 18 to 40 of them carry no shared-cache header (26 of 32 on Orders), so no shared cache may keep them; whether production answers those from prerendered segments or with a render was not measured. The local server adds 1,718 bytes of headers to each answer, so bodies are about 14 to 112 KB per storefront page and 37 to 81 KB per admin screen. Product tiles in content grids are plain anchors (content-grid.tsx:147, 310): never prefetched, and a press is a document load. Measured in a headless browser (/tmp/claude-0/-home-user-kaizen-store/875cb21b-0ebd-5663-b7c0-2d04a7548e24/scratchpad/work/plpl/nav.mjs): a press on a home page tile loaded a 131,228-byte document (19,694 gzipped), read the stylesheet and 24 scripts again (811 KB, from the cache), repeated the wishlist call and made 12 new prefetches; a press on the bottom bar's next/link made one navigation request, fetched 7 new scripts and 13 prefetches. Next also offers a per-segment switch, export const prefetch = 'partial' or 'force-disabled' on a page or layout (route-segment-config/prefetch.md), so the change can be tried one route at a time.",
+   "cost": "11 to 50 requests per storefront document load, each through the proxy, and 23 to 46 per admin load, most of which no shared cache may keep. The request count is the cost, and it grows one for one with page views. On the main path of a store built with content grids, every press on a product tile is a whole document load.",
+   "who_pays": "The server per request (proxy.ts on every storefront prefetch; an uncached answer per admin prefetch); a shopper's and an owner's browser and data.",
+   "fix_steps": [
+    "1. next.config.ts:42: beside cacheComponents, write partialPrefetching: false. It records today's behaviour, and the warning leaves the build and the server start (so PL-13's 'no new warning' check has a clean start).",
+    "2. Links few people press, on every store: add prefetch={false} to the footer's cookies link (src/components/store-layout.tsx:498), WithdrawalLink (443) and the legal pages' links (511), and to the built footer's and the platform footer's twins (src/components/site-parts.tsx:224, 283, 287). Measured on the cart: cookies and withdraw are 4 requests and 12,125 bytes per view where the footer is in view.",
+    "3. A trial, one destination at a time, each in its own build: add export const prefetch = 'partial' to the product page (src/app/s/[store]/[market]/p/[handle]/page.tsx, under (shop)/ once PL-2 has moved it) and to the admin's orders page (src/app/admin/(gated)/[store]/orders/page.tsx), run node docs/audits/bloat-review-2026-11/scripts/measure-routes.mjs, and write down requests and bytes per page beside today's. The root layout awaits params above any Suspense (layout.tsx:105), so a store route's shared shell may hold little; the trial says how little.",
+    "4. Decide with those numbers, and write the decision in docs/decisions.md: (a) the storefront keeps per-link prefetching for the header's four tools and the menus, or moves to shells; (b) product tiles in content grids become next/link for internal addresses (keep the anchor for external links and for tracked search results), with prefetch={false} until shells are per route; (c) the admin's sidebar links below the first level (store-admin-nav.tsx:131, 195) get prefetch={false}, or the admin's segments get prefetch = 'partial'.",
+    "5. Hold the result: PL-13's after-load request budgets per page, set at what step 4 leaves.",
+    "6. Docs: docs/performance.md gets a section 'Prefetching' with the rule of step 2, the trial's table and the decision; docs/plan.md:120 is corrected to what is set."
+   ],
+   "tests_and_rules": [
+    "e2e/store-pages.spec.ts (the router patch, D423, exists because of client navigations in Safari: tiles that become links add such navigations; run it).",
+    "e2e/listing.spec.ts, e2e/shop-components.spec.ts and e2e/wishlist.spec.ts (they press product tiles and cards).",
+    "e2e/search.spec.ts (tracked result links stay plain anchors: product-card.tsx:69-72).",
+    "e2e/signed-in suite as a whole for an admin trial; code review step 0.10 (loading.tsx, 'Show that a click worked') is what covers a link that is no longer prefetched.",
+    "Next's guide node_modules/next/dist/docs/01-app/02-guides/adopting-partial-prefetching.md: read before step 3; no link in src sets prefetch={true} (rg: 0), so there is no legacy full prefetch to migrate.",
+    "No written rule covers prefetching today; step 6 writes the first."
+   ],
+   "depends_on": [
+    "PL-3 and PL-4 (the sure cuts first, so the trial measures what is left)",
+    "PL-13 (the request counts are its budget)",
+    "PL-2 (the trial on store routes is cleaner once the drawer's slot has moved)"
+   ],
+   "done_when": "next build and next start print no partialPrefetching warning, docs/performance.md holds the trial's table (requests and bytes per page, before and after, for the product page and the orders page) with the decision, and the after-load request budget of PL-13 passes at the decided figures.",
+   "saving": "Sure and measured: step 2 saves 4 requests and about 12 KB per view of any store page whose footer is in view. Not known before the trial: one shell per route instead of two or three requests per link is the ceiling. If tiles become links: a press costs one navigation request instead of a 131 KB document, 24 scripts and a stylesheet read again, the wishlist call and 12 prefetches (measured for one press each way; the two destinations differ, so read it as the shape, not a like-for-like figure).",
+   "effort": "M",
+   "risk": "Medium. With shells, a pressed link shows the shell first and its page after a fetch, which shoppers will feel on links that were instant. Tiles as links change the main path from document loads to client navigations: back and forward, scroll position and the Safari patch need their e2e runs. Next's next major turns the flag on for everyone, so the trial is due either way and is cheapest before opening.",
+   "confidence": "medium",
+   "priority": "P1",
+   "already_tracked": "Partly: docs/plan.md:120 lists partialPrefetching in the chosen stack; no step or rule tracks that it is not set, and the build's warning fails nothing.",
+   "owner_decision": false,
+   "verdict": "corrected",
+   "notes": "Same ground as CA-7 and CA-5 (caching), AC-12 (admin-client) and SC-1 step 7 (storefront-client). CA-7 says: write false now, adopt per segment, the storefront last; these steps follow that order. Step 1 and step 2 are a few lines and can ship with the P0 work. The tile measurement is new in this pass: the verified report listed plain-anchor tiles under clean, which is fair as bloat goes, but it is the largest thing a shopper is sent again on the main path, so the decision is written into step 4 instead of left open."
+  },
+  {
+   "id": "PL-6",
+   "title": "A listing sends its product grid twice, and a category asks the database again for the list it already drew",
+   "kind": "duplicate",
+   "where": [
+    "src/components/content-grid-section.tsx:42",
+    "src/components/content-grid-section.tsx:86",
+    "src/components/content-grid-section.tsx:97",
+    "src/app/s/[store]/[market]/term-listing.tsx:185",
+    "src/app/s/[store]/[market]/term-listing.tsx:190",
+    "src/app/s/[store]/[market]/products/page.tsx:103",
+    "src/components/product-listing.tsx:78",
+    "src/components/product-listing.tsx:135",
+    "src/server/listing.ts:220",
+    "src/server/listing.ts:74",
+    "docs/rules/storefront.md:355"
+   ],
+   "evidence": "A filterable product grid is a Suspense whose fallback is the whole grid as built and whose content is the same grid drawn again per request with the controls; with no filter chosen the items are literally the same (content-grid-section.tsx:42-44, 97). Recounted in the saved /products document: every data-item-id is there 18 times in the markup and 18 in the payload for 9 products; the verified report found the two grids byte-identical (7,559 bytes each) and the stand-in's payload copy 15.3 KB. The standard category, tag and products pages do the same with ProductGrid (term-listing.tsx:185-198, products/page.tsx:97-104), and there is more: ProductListingFor is given no products there (term-listing.tsx:190, products/page.tsx:103), so ProductListing takes the branch that calls listingPage() even with no filter (product-listing.tsx:78-83). listingPage() is not cached (listing.ts:220-268: an id query with a window count, then a cached read keyed by those ids). The built grid already skips that read when nothing is chosen (content-grid-section.tsx:86). The written rule (docs/rules/storefront.md:355) says listing pages keep their unfiltered grid prerendered as the Suspense fallback: that is why the stand-in exists. The waste is drawing it, and on standard pages reading it, a second time when nothing was asked for.",
+   "cost": "24.7 KB raw (14.5%) of the demo's listing with 9 products, about 2.7 KB raw per product; a full page of 48 would be about 130 KB (estimate). Small on the wire (about 2 thousand bytes gzipped: the copies compress). The server renders the grid a second time per request, and on standard category, tag and products pages runs one uncached list query per unfiltered view. The browser builds the first grid, then swaps in an identical one.",
+   "who_pays": "The server and the database per listing view (the second render; on standard pages the second read); a shopper's browser on every category, tag and products page.",
+   "fix_steps": [
+    "1. The quick part (S), standard pages only: src/components/product-listing.tsx: add a prop firstPage (boolean). When products are given with firstPage, no filter is chosen, the sort is featured, page is 1 and the store does not sell to both kinds of buyer (store.audience is not 'both': the list's scope then does not depend on the viewer, listing.ts:74), skip listingPage() and use the given products with total = Math.max(facets.total, given.length), as the built grid does (content-grid-section.tsx:99). Pass products={products} firstPage from src/app/s/[store]/[market]/term-listing.tsx:190 and src/app/s/[store]/[market]/products/page.tsx:103. Search keeps its own meaning of given products.",
+    "2. The built grid: src/components/content-grid-section.tsx:40-46. Draw the grid as built outside the boundary. Inside one wrapper (class listing, a column with the same gap) in this order: a Suspense with no fallback that streams the controls; the grid as built in a div marked data-grid-built; a second Suspense with no fallback that streams, only when the address asks for something else (a filter, a sort, a page above 1, or a store that sells to both kinds of buyer), the chosen grid in a div marked data-grid-chosen, and after it Show more. Both boundaries get their facts (filters, facets, the listed products, the terms) from one function run through perRequest (src/server/request-memo.ts) keyed by the block and the listing's path, so nothing is read twice.",
+    "3. src/app/globals.css: one rule: inside .listing, when a [data-grid-chosen] child is present, the [data-grid-built] child is not displayed. The built grid then shows until the chosen one arrives, exactly as the fallback does today.",
+    "4. The standard pages the same way: term-listing.tsx:185-198 and products/page.tsx:97-104 draw ProductGrid as built outside the boundary; split ProductListing (product-listing.tsx:38-132) into the controls with TrackOnView (first boundary) and the chosen grid with Show more (second boundary). The search page keeps its single boundary: its results depend on the query.",
+    "5. Tests: e2e/listing.spec.ts must pass unchanged (filtering, sorting, taking a filter away, a category and search). Add to it: an unfiltered /s/demo/no/products holds each product once (count of li[data-item-id] equals the number of products), and with scripts off the grid shows. e2e/wishlist.spec.ts:7 says the streamed list's hearts are the ones to use: with one grid, correct the comment and the locator.",
+    "6. Reword the rule in docs/rules/storefront.md:355: 'Listing pages draw their unfiltered grid once, prerendered; the controls, and a grid only when the address asks for another, stream in per request.' A decision line beside D78."
+   ],
+   "tests_and_rules": [
+    "e2e/listing.spec.ts (filters on /products, a category and search).",
+    "e2e/wishlist.spec.ts:5-12 (hearts on a tag's list, 'the list streams in over the prerendered one').",
+    "e2e/shop-components.spec.ts (tiles' stock and Add to cart in grids; basket notes on category and tag pages).",
+    "src/server/listing.int.test.ts and src/lib/listing-filters.test.ts (the list and the filters do not change).",
+    "Code review FF1 (Show more as a plain link that works without scripts): kept, it moves into the second boundary.",
+    "Rule docs/rules/storefront.md:355 (D78): the unfiltered grid stays prerendered and visible without scripts, which is the rule's reason; its wording changes (step 6)."
+   ],
+   "depends_on": [],
+   "done_when": "The served /s/demo/no/products document holds each product's data-item-id once in its markup and once in its payload (9 and 9; 18 and 18 today) and is under 150,000 bytes raw (170,329 today), and e2e/listing.spec.ts passes with its new once-only assertion.",
+   "saving": "Measured: 24.7 KB raw (14.5%) of the demo's listing; about 2.7 KB raw per product shown; about 2 thousand bytes gzipped. One grid render per unfiltered view instead of two. By code: one uncached list query less per unfiltered view of a standard category, tag or products page (step 1 alone). Filtered views stay as they are.",
+   "effort": "M",
+   "risk": "Medium for steps 2 to 4: a filtered view shows the unfiltered grid until its own arrives, as today, but now by a style rule, so a missed marker would show two grids (e2e/listing.spec.ts counts cards). The hidden built grid stays mounted on filtered views, so its hearts and tile parts wake unseen there. Low for step 1: the given list and the read list are the same query in the same order; a store selling to both kinds of buyer keeps the read.",
+   "confidence": "high",
+   "priority": "P2",
+   "already_tracked": "no",
+   "owner_decision": false,
+   "verdict": "confirmed",
+   "notes": "Step 1 is new in this pass (the report saw the double draw, not the second read) and is worth shipping with the P0 work: a few lines, one query per category view. The rest waits until listings are next touched: its wire saving is small and it moves a tested boundary."
+  },
+  {
+   "id": "PL-7",
+   "title": "Every page of every store asks the server for a wishlist almost no visitor has",
+   "kind": "eager",
+   "where": [
+    "src/components/wishlist-heart.tsx:21",
+    "src/components/wishlist-heart.tsx:38",
+    "src/components/wishlist-heart.tsx:113",
+    "src/components/store-layout.tsx:283",
+    "src/components/site-parts.tsx:172",
+    "src/app/s/[store]/[market]/wishlist/saved/route.ts:9",
+    "src/server/wishlists.ts:36",
+    "src/server/wishlists.ts:44",
+    "src/server/wishlists.ts:64",
+    "src/server/customers.ts:416",
+    "src/lib/cookie-consent.ts:467"
+   ],
+   "evidence": "WishlistCount in the header and every heart call load(), which fetches {market}/wishlist/saved once per document (wishlist-heart.tsx:21-30, 38). The header's wishlist link is always drawn. In routes.json the call fired on all 12 storefront pages, the empty cart and checkout included: a 15-byte answer, private, no-store (asked again from the local server in this pass: 200, cache-control private, no-store). The route resolves the shop, then reads the customer and wishlist cookies; a visitor with neither gets an empty list without a query (wishlists.ts:36-41, 64-66). Both cookies are httpOnly (wishlists.ts:44-50, customers.ts:416-422), so the page cannot know there is nothing to ask for.",
+   "cost": "One uncached function call, and a pass through proxy.ts, per document load per visitor, for every store. No database query for a visitor without cookies. It grows one for one with page views.",
+   "who_pays": "The server per request; a shopper's browser (one more request).",
+   "fix_steps": [
+    "1. src/server/wishlists.ts:44: where the wishlist cookie is first set, also set a marker the page can read: kaizen_mine_{storeId} with the value 1, not httpOnly, sameSite lax, secure in production, path /, the same 365 days. Leave it when the wishlist cookie is deleted (line 455): a stale marker only costs the old request.",
+    "2. src/server/customers.ts:416 (startSession): set the same marker, so a signed-in customer's saved products are asked for on any device they sign in on.",
+    "3. src/components/wishlist-heart.tsx:21-30: in load(), before the fetch, test document.cookie for a cookie whose name starts with kaizen_mine_ and whose value is 1. Without one, call setSaved([]) and return: no request. (Any store's marker counts; on a host shared by several stores that only costs the old request.) The press itself needs no change: toggleWishlistAction's answer already carries the saved products (line 80-81).",
+    "4. src/lib/cookie-consent.ts, beside wishlist_... (line 467): declare the cookie in KNOWN_COOKIES: name 'kaizen_mine_...', pattern /^kaizen_mine_[0-9a-f-]{36}$/, provider Kaizena Flow, category necessary, 365 days, on store, feature shop, and its purpose in en, nb, sv and da ('Tells the page that you have saved products or an account here, so it asks for them only then.'). Update the expected lists in src/lib/cookie-consent.test.ts:47-71.",
+    "5. e2e/wishlist.spec.ts: add that a cold load of /s/demo/no makes no request to /wishlist/saved; and that after a heart is pressed a full reload makes one and shows the heart pressed and the header's count 1.",
+    "6. Docs: the comment at wishlist-heart.tsx:7-11 and D34's rule say the saved products are fetched once per page: add 'only when the marker cookie says there may be some'. Lower PL-13's after-load fetch budget by one per storefront page."
+   ],
+   "tests_and_rules": [
+    "e2e/wishlist.spec.ts (the heart knows on the product page after a full load).",
+    "src/lib/cookie-consent.test.ts:47-71 (the lists of declared cookies: the new one joins the store's necessary ones) and src/lib/cookie-scan.test.ts (the scan knows Kaizena Flow's own cookies from the same list).",
+    "src/server/wishlists.int.test.ts and the customer sign-in integration tests (the marker is set beside the cookies).",
+    "src/lib/visit-record.test.ts:125 and docs/store-features.md:290 list the route's address: the route stays.",
+    "Rule D58 (docs/rules/storefront.md, Cookie consent): a necessary cookie is declared with its purpose in four languages and needs no consent. Kept by step 4.",
+    "The comment in wishlist-heart.tsx:7-11: the pages stay the same for everyone and cached. Kept: nothing per visitor is drawn on the server."
+   ],
+   "depends_on": [],
+   "done_when": "A cold load of each measured storefront page makes 0 requests to /wishlist/saved (1 on each of 12 today, by measure-routes.mjs), and the two new assertions in e2e/wishlist.spec.ts pass.",
+   "saving": "One function call per storefront document load for every visitor who has never saved a product and is not signed in: nearly all of them.",
+   "effort": "S",
+   "risk": "Low. A shopper whose marker was cleared while the httpOnly cookies stayed sees empty hearts until they save again or sign in; the wishlist page itself reads on the server and is right. Team browsers that hold a wishlist cookie from before the change have no marker: before opening that is nobody else.",
+   "confidence": "high",
+   "priority": "P0",
+   "already_tracked": "no",
+   "owner_decision": false,
+   "verdict": "confirmed",
+   "notes": "Same finding as SC-10 (storefront-client), which plans the other fix: seed the saved products through the layout's per-request stream and delete the route. Do one, not both. The marker is chosen here because CA-1 (caching) wants the layout to have no per-request part at all, so that built pages are served whole from the CDN, and names this same marker as its way to ask for the cart count only when there is a cart. If CA-1 is not taken, SC-10's seed is as good and needs no new cookie."
+  },
+  {
+   "id": "PL-8",
+   "title": "Stock and Add to cart on tiles: off by default, yet every view of a product grid pays a server call and three queries",
+   "kind": "eager",
+   "where": [
+    "src/lib/shop-tiles.ts:21",
+    "src/lib/shop-tiles.ts:35",
+    "src/components/content-grid-section.tsx:37",
+    "src/components/content-grid-section.tsx:139",
+    "src/components/content-grid.tsx:222",
+    "src/components/tile-shop.tsx:21",
+    "src/components/tile-shop.tsx:62",
+    "src/app/api/shop/tiles/route.ts:14",
+    "src/server/shop-tiles.ts:27",
+    "src/server/product-settings.ts:14",
+    "docs/rules/admin/website.md:728"
+   ],
+   "evidence": "DEFAULT_PRODUCT_SETTINGS has both switches off (shop-tiles.ts:21), but a grid's ask defaults to 'store' for both (tileAsk, line 35), so every product tile draws a TileShop island (content-grid.tsx:222) that asks /api/shop/tiles to learn the settings with the facts. The route reads the settings, then the products with their variants, then the stock, whatever the settings say (shop-tiles.ts:27-52). In routes.json the home and the listing each made one GET after load (1,193 bytes decoded, no-store); a headless load in this pass shows the same call with a cart. The island then draws nothing, because both switches are off (tile-shop.tsx:62-66). The design is deliberate and two days old (D557): product-settings.ts:14 says the settings are read per request, never cached, so a change shows on the next view without refreshing the catalogue. This is the owner's clarification exactly: a store that never switches the feature on pays for it on every view.",
+   "cost": "Per view of any page with a product grid: one uncached function call, three queries (settings, products with variants, stock), a 1.2 KB answer, and the island's props and script, for every store that leaves the default.",
+   "who_pays": "The server and the database per request; a shopper's browser.",
+   "fix_steps": [
+    "1. src/server/product-settings.ts: beside getProductSettings() add productSettingsCached(storeId) with 'use cache', cacheLife('hours') and cacheTag(catalogTag(storeId)), as src/server/catalog.ts:643-645 does. In saveProductSettings() (line 27) call refreshTag(catalogTag(member.store.id)) (src/server/refresh.ts:10) after the write, so the change still shows on the next view. Correct the comment at lines 12-16.",
+    "2. src/lib/shop-tiles.ts: add the pure tileAskFor(own, store): what a grid still needs to ask once the store's two switches are known. 'show' for each of stock and quantity that will show, null for each that will not, and null for the grid when neither will. Unit cases in src/lib/shop-tiles.test.ts: defaults with no own choice give null; a grid's own 'show' gives an ask; a store's switch on gives an ask; a grid's own 'hide' beats the store.",
+    "3. src/components/content-grid-section.tsx:37 and 139: const tiles = place.owner ? tileAskFor(block.shopTiles, await productSettingsCached(place.owner)) : null. A grid that shows neither then draws no island, loads no script for it and asks nothing.",
+    "4. The route and tileFacts() stay as they are: stock is still asked per request, now only by grids that show it. The answer keeps its settings field for pages already in a browser.",
+    "5. e2e/shop-components.spec.ts:50-71: the second test inserts the settings row with SQL after the page was first drawn and expects the next load to show stock; a cached read cannot see a row written behind its back. Give it two stores: one whose row is inserted before its first page view (stock shows), one without a row (no request to /api/shop/tiles, no [data-tile-shop]). Add a signed-in check that saving Settings, Products shows on the next load of the store's front page.",
+    "6. Docs: docs/rules/admin/website.md:728 (D557): 'the store's two switches are read with the catalogue's cache and refreshed when saved; stock is asked per request, only by grids that show it'. Correct the comment at src/lib/shop-tiles.ts:6-8. Lower PL-13's after-load fetch budget for the home and the listing."
+   ],
+   "tests_and_rules": [
+    "src/lib/shop-tiles.test.ts (tileAsk and tileShows; add tileAskFor).",
+    "e2e/shop-components.spec.ts:30-71 (the first test, a grid that shows them, must pass unchanged; the second relies on the per-request read and changes as step 5 says).",
+    "Rule docs/rules/admin/website.md:728 (D557): stock is never drawn on the server or cached. Kept: only the two switches join the catalogue's cache, whose tag the save refreshes.",
+    "CLAUDE.md, Conventions: a writer refreshes the tag itself. Step 1 does."
+   ],
+   "depends_on": [],
+   "done_when": "A cold phone load of /s/demo/no and of /s/demo/no/products makes 0 requests to /api/shop/tiles (1 each today, by measure-routes.mjs), held by the new assertion in e2e/shop-components.spec.ts.",
+   "saving": "One function call and three queries per view of a front page or listing with a product grid, for every store that leaves the default; about 0.3 KB of props per tile and the island's script.",
+   "effort": "S",
+   "risk": "Low: a store that turns a switch on sees it after the tag refresh, like any catalogue change. A grid whose own choice is 'show' is untouched.",
+   "confidence": "high",
+   "priority": "P0",
+   "already_tracked": "no",
+   "owner_decision": false,
+   "verdict": "confirmed",
+   "notes": "Same finding and the same fix as SC-12 (storefront-client); one change. It is two days old, so nothing else depends on the per-request read yet."
+  },
+  {
+   "id": "PL-9",
+   "title": "A store in an AI-translated language will carry the whole interface catalogue in every document",
+   "kind": "oversize",
+   "where": [
+    "src/server/ui-text.ts:47",
+    "src/server/ui-text.ts:53",
+    "src/server/ui-text.ts:127",
+    "src/app/s/[store]/[market]/layout.tsx:131",
+    "src/app/s/[store]/[market]/layout.tsx:160",
+    "src/components/ui-texts.tsx:17",
+    "src/lib/ui-catalog-all.ts:6",
+    "src/lib/returns-text.ts:15",
+    "src/lib/messages/en-browser.ts:6"
+   ],
+   "evidence": "Only nb, sv, da and en are written by hand (ui-catalog-all.ts:6). For any other language loadLanguage() keeps every stored text that is not an email (ui-text.ts:47-54), uiTextsFor() returns that whole map (line 127), and the layout hands it to the UiTexts client component as a prop (layout.tsx:131, 160). The browser lays it over only its own subset (browserText, ui-texts.tsx:21) and keeps the rest for one reader, the withdrawal function (returns-text.ts:15-20). Sizes read in this pass: the English source is 95,362 bytes (src/lib/messages/en.ts); the browser's own files are 8,659 (en-browser.ts) and 9,480 bytes (en-returns.ts). Not measured in a document: the demo is Norwegian (the prop is null in both layout copies) and no translated language exists yet. That is not the argument: selling EU-wide in German, French or Finnish is what the product is for, and each such store will pay this on every page. The prop will be in the payload once, not twice: both layout copies are handed the same object.",
+   "cost": "Estimate: about 100 KB raw (roughly 30 KB gzipped) in every document of every store in a language without hand-written text. Nothing until such a store exists; then it is as large as the rest of the document.",
+   "who_pays": "A shopper's browser on every page of such a store; the server per render.",
+   "fix_steps": [
+    "1. src/server/ui-text.ts: compute once the key set the browser reads: the keys of catalogOf('ui', enBrowser) (src/lib/ui-catalog.ts:201, src/lib/messages/en-browser.ts) and, apart, of catalogOf('ui', { returns: enReturns }). In loadLanguage() (lines 47-54) keep, beside the whole map the server's registry uses, a browser map with only the first set's keys and a returns map with only the second's. uiTextsFor(lang) returns the browser map; add returnsTextsFor(lang).",
+    "2. src/components/ui-texts.tsx: let registrations add to one another. Take a prop part ('browser' by default), remember the version per language and part, merge the texts into what the registry already holds for the language, and build the ui overlay only for the browser part.",
+    "3. src/app/s/[store]/[market]/withdraw/page.tsx: draw a second UiTexts with returnsTextsFor(market.lang) and part 'returns' before the withdrawal flow, so returnsText() (returns-text.ts:15-20) still finds the function's words in a translated language.",
+    "4. Tests: a unit test (new src/server/ui-text.test.ts or in src/lib/ui-catalog.test.ts) that for a language with every key translated uiTextsFor() holds exactly the browser keys and no other (for instance not 'ui:storeSummary'). An integration case beside src/server/languages.int.test.ts: after a language is generated the prop holds no server-only key. Extend src/lib/storefront-bundle.scan.test.ts's idea to the prop: a test fails if uiTextsFor() returns more keys than the browser set.",
+    "5. By hand in a browser, in a translated language on a local store: a client component's words (the gallery's labels, the quantity words) and the withdrawal page read that language.",
+    "6. docs/performance.md:52-60 (D212): add that a language translated by AI sends the same few texts, and the withdrawal page its own."
+   ],
+   "tests_and_rules": [
+    "src/lib/ui-catalog.test.ts, src/server/languages.int.test.ts, src/server/ui-nightly.int.test.ts.",
+    "src/lib/storefront-bundle.scan.test.ts:107-111 (browser-text and returns-text stay clear of whole languages).",
+    "e2e/gallery.spec.ts (the reason texts are there with the first scripts, D212).",
+    "src/lib/withdraw-no-storage.test.ts and the withdraw actions' integration test (the withdrawal page stores nothing in the browser: UiTexts keeps its texts in memory only).",
+    "Rules D111 (the catalogue) and D212 (docs/performance.md:52-60: the browser has only the texts its components read). The fix makes the translated path follow D212."
+   ],
+   "depends_on": [],
+   "done_when": "The new unit test passes: for a language with every key translated, JSON.stringify(uiTextsFor(lang)) is under 12,000 bytes and holds only keys of the browser set (today it holds every text that is not an email: about 95 KB by the English source's size).",
+   "saving": "Estimate: about 85% of the prop, some 80 KB raw (about 25 KB gzipped) per document of a store in a translated language. Nothing changes for nb, sv, da and en.",
+   "effort": "S",
+   "risk": "Low: a client component that reads a key outside the browser set shows English; the same would already be wrong for the hand-written languages, whose browser files are that set.",
+   "confidence": "medium",
+   "priority": "P1",
+   "already_tracked": "no",
+   "owner_decision": false,
+   "verdict": "corrected",
+   "notes": "Same finding and fix as SC-13 (storefront-client); one change. Costs nothing today, which is why no measurement could see it. Do it before the first store opens in such a language: afterwards every one of its page views carries the catalogue."
+  },
+  {
+   "id": "PL-10",
+   "title": "Shoppers load the admin's common words, the consent catalogue and the filter dialog on every page",
+   "kind": "eager",
+   "where": [
+    "src/components/buyer.tsx:6",
+    "src/lib/b2b.ts:13",
+    "src/lib/b2b.ts:34",
+    "src/lib/store-features.ts:14",
+    "src/lib/store-features.ts:240",
+    "src/lib/cookie-consent.ts:96",
+    "src/components/touch-keeper.tsx:5",
+    "src/components/ab/ab-assign.tsx:5",
+    "src/components/product-listing.tsx:4",
+    "src/components/content-grid-section.tsx:20",
+    "src/app/s/[store]/[market]/extras.tsx:3",
+    "src/lib/storefront-bundle.scan.test.ts:16"
+   ],
+   "evidence": "Three chunks are named by every saved store document (each file name is in store-home, store-cart-empty and store-product): 28,417, 46,302 and 32,091 bytes. Split at their module boundaries in this pass (/tmp/claude-0/-home-user-kaizen-store/875cb21b-0ebd-5663-b7c0-2d04a7548e24/scratchpad/work/skpl/mods.js on .next/static/chunks): the first holds the admin's common English catalogue (6,210 bytes: 'Waiting for payment') and store-features with every feature's words (5,651 bytes: 'Sell to businesses'); the second holds the cookie catalogue (24,275 bytes: '_pinterest_ct_ua') and the consent look (4,743); the third holds the listing's filter dialog (11,781). Together 52.7 KB. The chains, read in the source: buyer.tsx:6 imports b2b.ts, which imports featureOn from store-features.ts (line 13) for one function (effectiveAudience, line 34), and store-features.ts imports commonEn for default words (lines 14, 240). Client components that need three small helpers import lib/cookie-consent (touch-keeper.tsx:5, ab/ab-assign.tsx:5), and the catalogue lives in the same file from line 96. product-listing.tsx:4 imports FilterDialog as it is, and content-grid-section.tsx:20 imports ListingControls from it, so every built page's route carries the dialog. By coverage in routes.json 8% of the three chunks ran on the cart and 22% on the home page.",
+   "cost": "52,660 bytes raw, 17,158 gzipped (each of the five modules gzipped on its own, measured in this pass), per first storefront visit, in three shared chunks.",
+   "who_pays": "A shopper's browser on the first visit (download and parse).",
+   "fix_steps": [
+    "1. Store features: move effectiveAudience() (src/lib/b2b.ts:34-36) to a new src/lib/store-audience.ts that imports featureOn and parseStoreAudience; b2b.ts drops its import of ./store-features (line 13). Change the one caller, src/server/stores.ts:8 (used at 309 and 311). buyer.tsx then reaches neither store-features nor commonEn.",
+    "2. Cookie catalogue: new src/lib/known-cookies.ts holding line 96 to the end of src/lib/cookie-consent.ts (the Texts type, KnownCookie, KNOWN_COOKIES, knownCookie, cookiePurpose, declaredCookies). cookie-consent.ts keeps what is above and does not re-export the catalogue (a re-export would pull it back in). Change the importers of those names: rg -n 'KNOWN_COOKIES|knownCookie|cookiePurpose|declaredCookies' src lists them (the cookie scan, the server's site-cookies, the consent manager, which is already loaded only where drawn, and the tests).",
+    "3. Filter dialog: in src/components/lazy/blocks.tsx add FilterDialog = lazyView(dynamic(() => import('../filter-dialog').then((m) => m.FilterDialog))) as the file's other entries are written (the import() inside dynamic(), so the server preloads it where it is drawn), and import it from there in src/components/product-listing.tsx:4. The type import on line 3 stays.",
+    "4. src/lib/storefront-bundle.scan.test.ts:16: add lib/store-features and lib/known-cookies to FORBIDDEN (known-cookies allowed from the one entry components/consent/consent-manager) and forbid lib/admin-messages/* unless the chain passes components/admin/admin-text-context (sign-up reads 'common' there, docs/performance.md:112-117). Add a 'would notice' case: lib/b2b.ts no longer reaches lib/store-features.",
+    "5. Lower the first-scripts budgets in e2e/performance.spec.ts by what the build then measures, and add to docs/performance.md, The rules: 'Admin words, the features table and the cookie catalogue are not a visitor's scripts; a helper a client component reads lives in a file without them.'"
+   ],
+   "tests_and_rules": [
+    "src/lib/storefront-bundle.scan.test.ts (extended in step 4).",
+    "src/lib/cookie-consent.test.ts, cookie-consent-affiliate.test.ts, cookie-consent-modals.test.ts and src/lib/cookie-scan.test.ts (they import the catalogue's names from cookie-consent today).",
+    "src/server/audience-readers.scan.test.ts (names effectiveAudience() in its comment; its lists of readers do not change).",
+    "e2e/listing.spec.ts (the filter dialog opens and filters; it is now a script of its own).",
+    "e2e/performance.spec.ts first-scripts budgets.",
+    "Rule docs/performance.md:34-37 and docs/rules/admin/website.md:366 (D211: what a visitor loads; a part only some pages draw is imported from components/lazy). This extends it. Rule D58: the cookie list's content does not change."
+   ],
+   "depends_on": [],
+   "done_when": "None of the script files the /s/demo/no/cart document names holds the strings 'Waiting for payment', 'Sell to businesses', '_pinterest_ct_ua' or 'filter-dialog-title' (each is in one of them today), and the extended storefront-bundle.scan.test.ts passes.",
+   "saving": "Estimate from the module sizes measured: 12 KB raw (about 4 KB gzipped) for every store from the first; 29 KB raw (about 9 KB gzipped) more for stores without tracking tools; 12 KB raw (about 4 KB gzipped) off pages that are not listings.",
+   "effort": "S",
+   "risk": "Low. A store with tools must still show its consent banner before any tool loads: the consent manager keeps the catalogue. The filter button must still be in the server's HTML: lazyView draws it there.",
+   "confidence": "high",
+   "priority": "P1",
+   "already_tracked": "Partly: storefront-bundle.scan.test.ts forbids zod, the page model and whole language catalogues in the visitor's scripts, and the first-scripts budgets hold the total; neither names admin-messages, the consent catalogue or the filter dialog.",
+   "owner_decision": false,
+   "verdict": "corrected",
+   "notes": "Same ground as SC-3 (storefront-client) and BN-10 (client-bundles); SC-3 also moves mayRemember and a drawer helper. Do it once, from SC-3's fuller list."
+  },
+  {
+   "id": "PL-11",
+   "title": "Every open admin tab asks for AI manager notices each minute, with three queries for one number",
+   "kind": "eager",
+   "where": [
+    "src/components/admin/ai-notices.tsx:29",
+    "src/lib/assistant-notices.ts:13",
+    "src/app/admin/(gated)/(owner)/account/notices/feed/route.ts:22",
+    "src/app/admin/(gated)/(owner)/account/notices/feed/route.ts:32",
+    "src/server/assistant-notices.ts:146",
+    "src/server/assistant-notices.ts:173",
+    "src/components/admin/ai-manager-launcher.tsx:102"
+   ],
+   "evidence": "useNoticeCount() fetches /admin/account/notices/feed?place=...&count=1 when the admin opens, every 60 seconds while the tab is shown (NOTICE_POLL_MS, assistant-notices.ts:13) and when it is shown again (ai-notices.tsx:29-55). In routes.json every store and platform admin page made the call after load: no-store, a 12-byte answer. Per call the route checks the session, looks the store up by its slug (route.ts:22, one query), then calls listNotices with a limit of 1 (route.ts:32), which runs the list query (assistant-notices.ts:146-157) and the unread count (173-179): three queries for one number. The poll runs whether or not anything that writes notices is on for the account.",
+   "cost": "One function call and three queries plus the session check, per minute per visible admin tab and once per page load: 60 calls and 180 queries an hour per open tab. It grows with the number of owners at work.",
+   "who_pays": "The server and the database, per open admin tab.",
+   "fix_steps": [
+    "1. src/app/admin/(gated)/(owner)/account/notices/feed/route.ts:31-33: when count=1, answer { unread: await unreadNotices(account.id, place) } (src/server/assistant-notices.ts:173) and do not call listNotices().",
+    "2. Skip the slug lookup: src/app/admin/(gated)/[store]/layout.tsx (the launcher at line 114-116) passes the store's id, useNoticeCount() sends it as place, and placeOf() (route.ts:18-24) returns a uuid as it is. Notices are filtered by the account's own id, so another store's id returns nothing of anyone else's. The poll is then the session check and one count.",
+    "3. src/components/admin/ai-notices.tsx:39-45: lengthen the wait while the answers are 0: 60 seconds, then 120, then 300; back to 60 when the tab is shown again, after a press on the launcher, or after an answer above 0.",
+    "4. Add a case to src/server/assistant-notices.int.test.ts: the count for a place equals listNotices().unread for the same place (so step 1 cannot drift)."
+   ],
+   "tests_and_rules": [
+    "src/server/assistant-notices.int.test.ts (the count and the list).",
+    "e2e/signed-in/ai-manager-panel.spec.ts (the launcher's badge and the panel).",
+    "The comment at ai-notices.tsx:25-28 ('every minute while the tab is shown'): reword with step 3. D350 (the notices) says polling only; kept."
+   ],
+   "depends_on": [],
+   "done_when": "The count=1 answer of the feed runs one statement besides the session check (three today: route.ts:22 and assistant-notices.ts:146 and 173), shown by AD-12's statement counter or by reading the route, and a visible tab with no notices asks at most 14 times in its first hour (60 today).",
+   "saving": "By code: two of three queries per call at once. Estimate: about three quarters of the calls per open tab for owners with nothing unread.",
+   "effort": "S",
+   "risk": "Low: a notice may show up to five minutes later for an owner whose tab has sat idle with nothing unread; it shows at once when they come back to the tab.",
+   "confidence": "medium",
+   "priority": "P0",
+   "already_tracked": "no",
+   "owner_decision": false,
+   "verdict": "confirmed",
+   "notes": "Same change as AD-9 steps 2, 3 and 5 (admin-data), which is planned P0; do it once there. Listed here because the call is one of the two things every admin page asks for after load."
+  },
+  {
+   "id": "PL-12",
+   "title": "The default icon is a 26 KB .ico revalidated on every visit",
+   "kind": "oversize",
+   "where": [
+    "src/lib/site-icons.ts:6",
+    "src/lib/site-icons.ts:13",
+    "src/lib/site-icons.ts:24",
+    "public/kaizen/favicon.ico"
+   ],
+   "evidence": "siteIcons() links /kaizen/favicon.ico for every store without an icon of its own, the admin and Kaizena Flow's pages (site-icons.ts:6, 13). In routes.json it is the first request after load on every page measured: 25,931 bytes decoded, 11,080 as transferred locally (the verified report measured 9,292 gzipped and 8,802 with Brotli, four pictures of 16 to 256 px), Cache-Control public, max-age=0. Browsers fetch it at low priority and it blocks nothing.",
+   "cost": "About 9 KB on the wire per first visit per site, and a revalidation request on later visits.",
+   "who_pays": "A shopper's and an owner's browser.",
+   "fix_steps": [
+    "1. Add public/kaizen/icon-32.png (about 1 KB) and public/kaizen/icon-180.png, drawn from the same mark.",
+    "2. src/lib/site-icons.ts:13: when there is no favicon return { icon: [{ url: '/kaizen/icon-32.png', type: 'image/png', sizes: '32x32' }], apple: [{ url: '/kaizen/icon-180.png', sizes: '180x180' }] }. Keep KAIZEN_ICON for faviconRedirect() (line 24), which serves browsers that ask for /favicon.ico unprompted.",
+    "3. Give public files a cache lifetime with the assets work (AS-5 of this review: public files have none): a headers() entry in next.config.ts for /kaizen/:path* with public, max-age=86400, or versioned file names with a year."
+   ],
+   "tests_and_rules": [
+    "Rule D62 (sites' icons are navigation.favicon, linked by siteIcons() in every layout): kept; only the default changes.",
+    "src/lib/brand.scan.test.ts (no old name in a string) and any test that names KAIZEN_ICON (rg -n 'KAIZEN_ICON|kaizen/favicon' src e2e)."
+   ],
+   "depends_on": [],
+   "done_when": "A cold load of /s/demo/no asks for no file over 2,000 bytes as its icon (25,931 today, by measure-routes.mjs's after-load list).",
+   "saving": "About 8 KB on the wire per first visit to any site without its own icon (estimate from a typical 32 px PNG), and the revalidation request on later visits once the files have a lifetime.",
+   "effort": "S",
+   "risk": "Low.",
+   "confidence": "medium",
+   "priority": "P3",
+   "already_tracked": "no",
+   "owner_decision": false,
+   "verdict": "corrected",
+   "notes": "True but small: 9 KB at low priority, smaller than any document. Not worth a change of its own; do it with AS-5 (assets), which gives public files their cache lifetime."
+  },
+  {
+   "id": "PL-13",
+   "title": "No budget watches a document, its payload, an action's answer, an admin page's requests or what most pages ask for after load",
+   "kind": "process",
+   "where": [
+    "e2e/performance.spec.ts:11",
+    "e2e/performance.spec.ts:40",
+    "e2e/performance.spec.ts:126",
+    "e2e/signed-in/admin-scripts.spec.ts:18",
+    "e2e/signed-in/admin-scripts.spec.ts:36",
+    "docs/performance.md:110",
+    "scripts/next-build.mjs:9",
+    "docs/audits/bloat-review-2026-11/scripts/measure-routes.mjs:1"
+   ],
+   "evidence": "The checks hold first scripts per route (e2e/performance.spec.ts:11, 40; admin-scripts.spec.ts:36) and the total transferred weight of two storefront pages, the front page and one product page (450,000 bytes each, counted until two seconds after load, set when they measured 311 and 331 KB on 27 October; performance.spec.ts:126-129). In routes.json they measure 406,542 and 423,097 bytes by a similar method: 10% and 6% of room. Nothing holds a document's raw size or payload, a count of requests after load, any admin document, a cart, a checkout or a listing, or what a server action sends back. So the admin's catalogues have ridden in the document unmeasured since October (up to 304 KB), the store layout's second copy went unseen, an Add to cart answers with 79 KB nobody has looked at (measured in this pass), and the empty cart (591,352 bytes) and checkout (613,556) transfer more than the budget the home is held to. The build's prefetching warning is printed on every build and start and fails nothing (scripts/next-build.mjs passes the output through).",
+   "cost": "Regressions in payload and request count are free, and the one weight budget is nearly used up.",
+   "who_pays": "Everyone the other findings name; CI stays blind to it.",
+   "fix_steps": [
+    "1. e2e/performance.spec.ts: add DOCUMENT_BUDGETS. For each route fetch the HTML with page.request.get and measure its bytes and the bytes of its inline payload (the sum of the script elements that call self.__next_f.push). Set each at today's figure plus 5%: /s/demo/no 145,500 (138,523 today), the product page 147,000 (140,001), /s/demo/no/products 179,000 (170,329), /s/demo/no/cart 112,000 (106,696), / 42,000 (39,845). A change that lowers a figure by more than 5% lowers its budget in the same change.",
+    "2. In the SPEED_BUDGETS test (lines 126-180) count after load, for a visitor who presses nothing: requests that carry the next-router-prefetch header, and fetch or XHR requests that do not. Set each prefetch budget two above today's count and each fetch budget at today's count: the home has 11 prefetches and 2 fetches today, the product page 12 and 1. Add /s/demo/no/cart (weight 620,000; today 42 prefetches and 1 fetch), /s/demo/no/products (weight 440,000; today 12 and 2) and /s/demo/no/om-oss (weight 580,000; today 34 and 1) to SPEED_BUDGETS. Count requests, not bytes, for the small answers: locally 1.7 KB of each is response headers.",
+    "3. e2e/signed-in/admin-scripts.spec.ts: firstScripts() already fetches each screen's HTML (line 19); return its length too and hold it in a second table for four screens: the store's home 175,000 (166,109 today), orders 172,500 (164,140), a product's editor and a page in the builder at what E2E_MEASURE=1 prints for the spec's own addresses plus 5% (measure-routes saw 426,497 and 585,943 for an existing product and page). Count their after-load prefetches the same way as step 2 (28, 32, 24 and 26 today).",
+    "4. e2e/cart.spec.ts: in the test that adds a product, wait for the response whose request carries the next-action header and hold its body under 84,000 bytes (79,467 today).",
+    "5. scripts/next-build.mjs: keep stdio inherited for the build's errors, but tee standard output and error, and exit 1 when a line that starts with the warning sign is not in a short allow-list file beside the script. Start the list empty once PL-5 step 1 has removed the prefetching warning.",
+    "6. Move docs/audits/bloat-review-2026-11/scripts/measure-routes.mjs and routes-table.mjs to scripts/ (they are the tools that drew this review's tables), with a line in docs/performance.md, Checking, on how to run them against pnpm start.",
+    "7. docs/performance.md:110-117: write the rule: a budget only falls; a change that needs one raised says why in docs/decisions.md. Add a line under PERF-11 in docs/audits/psi-followups.md:135.",
+    "8. Each of PL-1 to PL-8 and PL-14 lowers the numbers it moves in its own change."
+   ],
+   "tests_and_rules": [
+    "e2e/performance.spec.ts and e2e/signed-in/admin-scripts.spec.ts themselves (CI's e2e and signed-in jobs build and run them).",
+    "e2e/cart.spec.ts (the new answer budget sits in an existing test).",
+    "docs/performance.md:110-117 (each first-scripts budget has about 5% of room; 'a change that passes one is a regression to look at, not a number to raise'): the new budgets follow the same rule.",
+    "docs/audits/psi-followups.md:135-137: PERF-11 is ticked done; the tick stays, with the new line.",
+    "docs/ci-migrations.md and CLAUDE.md, Workflow: a quick gate deploys before the full checks report (D526); these budgets are in the full checks, so a regression is reported beside the deploy, not before it. Say so in docs/performance.md."
+   ],
+   "depends_on": [],
+   "done_when": "e2e/performance.spec.ts holds a document budget for 5 routes and an after-load request budget for 5 pages (0 and 0 today), e2e/signed-in/admin-scripts.spec.ts a document budget for 4 screens (0 today), e2e/cart.spec.ts the Add to cart answer's budget, and all three pass in CI.",
+   "saving": "None by itself; it keeps the savings above from eroding and makes the next shift of bytes from one place to another visible.",
+   "effort": "S",
+   "risk": "Low. Request counts wobble by one or two with timing (what is in view when the count is taken): set each count budget two above the measure, and keep the phone viewport fixed as SPEED_BUDGETS does.",
+   "confidence": "high",
+   "priority": "P0",
+   "already_tracked": "Partly: FIRST_SCRIPTS_BUDGETS and SPEED_BUDGETS exist (PSI PERF-11, D336) and admin-scripts.spec.ts holds the admin's first scripts; the gaps named here are in no plan.",
+   "owner_decision": false,
+   "verdict": "corrected",
+   "notes": "Do steps 1 to 4 first of everything in this dimension, at today's figures, so each later fix shows as a number that falls. Same ground as SC-6 (storefront-client: tighter first-scripts budgets, the nomodule file) and AC-10 (admin-client: route-bundle-stats.json); this one adds the document, the after-load requests and the action's answer, which neither has."
+  },
+  {
+   "id": "PL-14",
+   "title": "A search results page asks the server for suggestions nobody typed for",
+   "kind": "eager",
+   "where": [
+    "src/components/search-box.tsx:53",
+    "src/components/search-box.tsx:60",
+    "src/components/search-section.tsx:110",
+    "src/app/s/[store]/[market]/search/actions.ts:11",
+    "src/app/s/[store]/[market]/search/actions.ts:18",
+    "src/server/request-budget.ts:138",
+    "src/server/search.ts:376",
+    "/tmp/claude-0/-home-user-kaizen-store/875cb21b-0ebd-5663-b7c0-2d04a7548e24/scratchpad/m/routes.json"
+   ],
+   "evidence": "The results page draws the search box with the query as its starting value (search-section.tsx:110, defaultValue={typed}). The box's effect asks for suggestions whenever its value has two letters or more (search-box.tsx:53-67), and it runs on mount, so the page calls suggestAction for the query it is already showing results for. The list is closed (open starts false), so nothing of the answer is drawn. In routes.json the search page made POST /s/demo/no/search?q=lampe after load (183 bytes decoded); it is the only storefront page that posts for a visitor who does nothing. Per call the action resolves the shop, takes one unit of the type-ahead budget, a write to commerce.chat_usage (actions.ts:18, request-budget.ts:138-155: two upserts in one statement), and runs the keyword match (search.ts:376-387). The store's type-ahead budget (6,000 a minute for all visitors, request-budget.ts:24) is spent by page views, not typing.",
+   "cost": "Per view of a search results page: one server action call through the proxy, one write statement for the budget and one match query, for an answer nobody sees.",
+   "who_pays": "The server and the database per search results view; a shopper's browser (one request).",
+   "fix_steps": [
+    "1. src/components/search-box.tsx: add a state asked (false at first). Set it true in the input's onChange and onFocus (lines 100-106). In the effect (lines 53-67) return early while it is false, and add it to the effect's dependencies. Suggestions for the words already in the box then arrive when the shopper puts the cursor in it, 150 ms after focus, and never on a page load.",
+    "2. e2e/search.spec.ts: add that a load of /s/demo/no/search?q=lampe makes no POST until the box is focused, and that focusing it brings the list (the existing test at lines 27-37 types from an empty box and must pass unchanged).",
+    "3. Lower PL-13's after-load fetch count for the search page if it is added there."
+   ],
+   "tests_and_rules": [
+    "e2e/search.spec.ts:27-37 (a shopper types, picks a suggestion, finds results).",
+    "src/server/search.int.test.ts and src/server/request-budget.int.test.ts (the action and the budget do not change).",
+    "Rule docs/rules/storefront.md:124 (D72: suggestAction is keyword only, never a model call) and D314 (the type-ahead ceiling): kept; the ceiling now counts typing only."
+   ],
+   "depends_on": [],
+   "done_when": "A cold load of /s/demo/no/search?q=lampe makes 0 POST requests before any press (1 today, by measure-routes.mjs's after-load list), held by the new assertion in e2e/search.spec.ts.",
+   "saving": "Measured: one server action call per search results view. By code: one budget write and one match query with it.",
+   "effort": "S",
+   "risk": "Low: on the results page the suggestions show a moment after the box is focused instead of at once.",
+   "confidence": "high",
+   "priority": "P0",
+   "already_tracked": "no",
+   "owner_decision": false,
+   "verdict": "added",
+   "notes": "Added by the planner's completeness pass. The report's table of after-load requests lists the POST, but no finding took it up. It will grow with searches once shoppers arrive, and it is a write."
+  }
+ ]
+}
