@@ -47,7 +47,7 @@ import {
   setGoalTool,
   stopPlanTool,
 } from "./autopilot-tools";
-import { OwnerToolError } from "./owner-tools";
+import { OwnerToolError } from "./owner-tool-error";
 import { planReminderStats } from "./plan-reminders";
 import { ensureBillingEvents } from "./referral-billing";
 import { getReferralSettings, listReferrers, referralTotals, referrerOverview, REFERRALS_TAG, saveReferralSettings } from "./referrals";
