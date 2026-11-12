@@ -1,0 +1,129 @@
+import { OWNER_TOOLS, toolDefinition } from "@/lib/owner-tools";
+import { MANAGER_TOOLS } from "@/lib/manager-tools";
+import { toolArea, loadToolsDefinition, CORE_TOOLS } from "@/lib/tool-budget";
+import { toolKey } from "@/lib/owner-tool-permissions";
+import { toolOffered } from "@/lib/owner-tool-features";
+import { ADMIN_PAGES, findPages, adminMapText } from "@/lib/admin-map";
+import { PAGES_NB } from "@/lib/admin-messages/pages.nb";
+import { areaOfPath } from "@/lib/permissions";
+import { AREAS } from "@/lib/permission-keys";
+import { FEATURE_IDS } from "@/lib/store-features";
+import { EVENT_LINES, EVENT_TOOLS } from "@/lib/autopilot-events";
+import { guideSystemPrompt, guideTools } from "@/lib/docs-guide";
+import { writingMessages } from "@/lib/product-writing";
+import { briefPrompt, stepMessage, STEP_TOOLS, briefSchema, LOOK_TOOLS, reworkPrompt } from "@/lib/dream-factory";
+import { fixedLegalMessages } from "@/server/prompt-versions";
+import { TONE_SYSTEM } from "@/lib/support-tone";
+
+// What JSON.parse returns: a loose object, written without the keyword the lint forbids.
+type Loose = ReturnType<typeof JSON.parse>;
+
+const size = (d: unknown) => JSON.stringify(d).length;
+const sum = (a: number[]) => a.reduce((x, y) => x + y, 0);
+const AUTOMATION = /autopilot|goal|follow|^save_skill$|^delete_skill$/;
+const mgr = (MANAGER_TOOLS as readonly Loose[]).map(toolDefinition);
+const mgrAlways = mgr.filter((t: Loose) => !AUTOMATION.test(t.name));
+const mgrAuto = mgr.filter((t: Loose) => AUTOMATION.test(t.name));
+console.log("manager always", mgrAlways.length, sum(mgrAlways.map(size)), "| automation", mgrAuto.length, sum(mgrAuto.map(size)), mgrAuto.map((t: Loose) => t.name).join(","));
+
+// the lean choice: core, used, wanted, page area, no fill
+const lean = (store: Loose, ctx: { used?: string[]; wanted?: string[]; pageArea?: string | null }) => {
+  const offered = (OWNER_TOOLS as readonly Loose[]).filter((t) => toolOffered(store, t.name)).map((t) => ({ t, area: toolArea(t.name, toolKey(t.name)) }));
+  const picked: Loose[] = [];
+  const take = (o: Loose) => { if (o && !picked.includes(o)) picked.push(o); };
+  for (const n of CORE_TOOLS) take(offered.find((o) => o.t.name === n));
+  for (const n of ctx.used ?? []) take(offered.find((o) => o.t.name === n));
+  for (const a of ctx.wanted ?? []) offered.filter((o) => o.area === a).forEach(take);
+  if (ctx.pageArea) offered.filter((o) => o.area === ctx.pageArea).forEach(take);
+  const held: Loose = {};
+  for (const a of AREAS as readonly string[]) { const all = offered.filter((o) => o.area === a); const h = all.filter((o) => !picked.includes(o)).length; if (h) held[a] = { held: h, of: all.length }; }
+  const load = loadToolsDefinition(held);
+  const defs = picked.map((o) => toolDefinition(o.t));
+  return { n: defs.length, chars: sum(defs.map(size)), load: load ? size(load) : 0, defs };
+};
+const shop: Loose = { features: ["shop"], workOn: false };
+const all: Loose = { features: [...FEATURE_IDS], workOn: true };
+const site: Loose = { features: [], workOn: false };
+for (const [label, store] of [["shop only", shop], ["all on", all], ["website", site]] as const) {
+  for (const page of [null, "orders", "products", "customers", "marketing", "analytics", "website", "settings", "support"]) {
+    const r = lean(store, { pageArea: page });
+    const withAll = r.chars + r.load + sum(mgr.map(size));
+    const withoutAuto = r.chars + r.load + sum(mgrAlways.map(size));
+    console.log(`${label} page=${page ?? "-"}: store tools ${r.n} chars ${r.chars} load ${r.load} | round tools with all manager ${r.n + mgr.length + 1} = ${withAll} | without automation ${r.n + mgrAlways.length + 1} = ${withoutAuto}`);
+  }
+}
+// stable first block: manager + core
+const core = lean(shop, {});
+console.log("stable block (manager 26 + core 12):", sum(mgr.map(size)) + core.chars, "| (manager 9 + core 12):", sum(mgrAlways.map(size)) + core.chars);
+
+// string bounds in the lean sets
+const strOnly = ["maxLength", "minLength", "pattern", "format"];
+const bounds = (defs: Loose[]) => { let s = 0; const walk = (o: Loose) => { if (!o || typeof o !== "object") return; for (const [k, v] of Object.entries(o)) { if (strOnly.includes(k) && typeof v !== "object") s += JSON.stringify(k).length + 1 + JSON.stringify(v).length + 1; walk(v); } }; defs.forEach((d) => walk(d.parameters)); return s; };
+const gateLen = " Calling it changes nothing yet: it asks the owner, who answers with a button. So call it as soon as they ask for this; never ask them to confirm in words first.".length;
+for (const page of [null, "orders", "products"]) { const r = lean(shop, { pageArea: page }); const names = new Set(r.defs.map((d: Loose) => d.name)); const gated = (OWNER_TOOLS as readonly Loose[]).filter((t) => names.has(t.name) && t.gate).length; console.log(`lean shop page=${page ?? "-"}: string bounds ${bounds([...r.defs, ...mgr])} chars, gated ${gated} x ${gateLen} = ${gated * gateLen}`); }
+
+// router experiment: findPages over the message, areas of the best pages
+const flags: Loose = { features: [...FEATURE_IDS], work: true, owner: true };
+const Q: [string, string][] = [
+  ["How many orders did we get last week?", "core"],
+  ["Refund order 1042, the customer returned it", "orders"],
+  ["Create a 10% discount code for returning customers", "marketing"],
+  ["Send a newsletter about the autumn sale", "marketing"],
+  ["Change the hero text on the front page", "website"],
+  ["Publish the about page", "website"],
+  ["Set up free shipping over 500 kr", "settings"],
+  ["Add a new product: blue mug, 199 kr", "products"],
+  ["Raise all prices in the Mugs category by 5%", "products"],
+  ["Invite Kari as staff with access to orders", "staff"],
+  ["What plan am I on and what does it cost?", "billing"],
+  ["Why did sales drop yesterday?", "core"],
+  ["Which customers have not ordered for 90 days?", "customers"],
+  ["Answer the support conversation that is waiting", "support"],
+  ["Lag en rabattkode på 10 % for nye kunder", "marketing"],
+  ["Endre fraktprisen til 79 kr", "settings"],
+  ["Legg til et nytt produkt", "products"],
+  ["Skriv et nyhetsbrev om høstsalget", "marketing"],
+  ["Turn on gift cards", "settings"],
+  ["Connect my domain example.com", "settings"],
+];
+let hit = 0, need = 0;
+for (const [q, want] of Q) {
+  const pages = findPages("store", q, flags, 3);
+  const areas = [...new Set(pages.map((p) => areaOfPath(`/${p.path}`)).filter(Boolean))];
+  const ok = want === "core" ? "(core)" : areas.includes(want as Loose) ? "HIT" : "miss";
+  if (want !== "core") { need++; if (ok === "HIT") hit++; }
+  console.log(`router | ${q} | want ${want} | pages ${pages.map((p) => p.id).join(",")} | areas ${areas.join(",")} | ${ok}`);
+}
+console.log(`router: ${hit} of ${need} non-core questions got their area from the top 3 pages`);
+// top-2 areas only
+let hit2 = 0; for (const [q, want] of Q) { if (want === "core") continue; const areas = [...new Set(findPages("store", q, flags, 3).map((p) => areaOfPath(`/${p.path}`)).filter(Boolean))].slice(0, 2); if (areas.includes(want as Loose)) hit2++; }
+console.log(`router with at most two areas: ${hit2} of ${need}`);
+
+// slim page list for the browser
+const slim = (ADMIN_PAGES as readonly Loose[]).map((p) => ({ id: p.id, area: p.area, path: p.path, title: p.title }));
+console.log("ADMIN_PAGES n", slim.length, "full chars", size(ADMIN_PAGES), "slim chars", size(slim));
+const nb = Object.entries(PAGES_NB as Record<string, Loose>);
+console.log("PAGES_NB n", nb.length, "full chars", size(PAGES_NB), "titles only", size(Object.fromEntries(nb.map(([k, v]) => [k, v.title]))));
+
+// other agents
+console.log("EVENT_LINES", Object.entries(EVENT_LINES).map(([k, v]) => `${k}:${v.length}`).join(" "), "EVENT_TOOLS", Object.entries(EVENT_TOOLS).map(([k, v]) => `${k}:${v.length}`).join(" "));
+const defOf = (name: string) => { const t = (OWNER_TOOLS as readonly Loose[]).find((x) => x.name === name) ?? (MANAGER_TOOLS as readonly Loose[]).find((x) => x.name === name); return t ? size(toolDefinition(t)) : 0; };
+for (const [k, v] of Object.entries(EVENT_TOOLS)) console.log(`event ${k}: tools ${v.length} chars ${sum((v as readonly string[]).map(defOf))} (+ use_skill, recall ${defOf("use_skill") + defOf("recall")})`);
+for (const [k, v] of Object.entries(STEP_TOOLS)) console.log(`dream step ${k}: tools ${v.length} chars ${sum((v as readonly string[]).map(defOf))}`);
+console.log("dream look tools", LOOK_TOOLS.length, sum((LOOK_TOOLS as readonly string[]).map(defOf)));
+const brief = briefSchema.parse({ storeName: "Nordic Mugs", sells: "Handmade ceramic mugs and bowls from a small studio in Bergen, glazed in muted colours, made to order in small batches.", audience: "People who like quiet Scandinavian design and buy gifts for friends.", countries: ["NO", "SE"], languages: ["Norwegian", "Swedish"], currency: "NOK", priceRange: "250 to 900 kr", tone: "Calm, warm, plain words", products: 8, pages: [{ title: "About", purpose: "The studio and how the mugs are made" }, { title: "Care", purpose: "How to look after stoneware" }], business: {} });
+console.log("dream briefPrompt", briefPrompt("Eval Store").length, "reworkPrompt", reworkPrompt().length, "brief JSON", size(brief));
+for (const id of Object.keys(STEP_TOOLS)) console.log(`dream stepMessage ${id}:`, stepMessage(id as Loose, brief).length);
+console.log("guide prompt", guideSystemPrompt({ agentName: "", occupation: "", lang: "en", instructions: "", page: null, signedIn: false, today: "2026-11-12" } as Loose).length, "guide tools", guideTools().length, size(guideTools()));
+const wm = writingMessages({ kind: "write", language: "Norwegian", fromLanguage: "", facts: { kind: "goods", title: "Blue stoneware mug", description: "A 3 dl mug, hand thrown, dishwasher safe.", seoTitle: "", seoDescription: "", categories: ["Mugs"], tags: ["stoneware"], options: [{ name: "Colour", values: ["Blue", "Grey"] }] } } as Loose, null);
+console.log("product writer messages", wm.map((m) => `${m.role}:${m.content.length}`).join(" "));
+const legal0 = fixedLegalMessages("");
+const legal1 = fixedLegalMessages("x".repeat(1000));
+console.log("legal writer messages (5 empty passages)", legal0.map((m: Loose) => `${m.role}:${m.content.length}`).join(" "), "| with 5 passages of 1,000 chars:", sum(legal1.map((m: Loose) => m.content.length)));
+console.log("tone system", TONE_SYSTEM.length);
+
+// a plan step's message against its history
+const steps = Array.from({ length: 10 }, (_, i) => ({ key: `s${i + 1}`, title: `Step ${i + 1} of the plan with a normal title`, brief: "Do this part of the plan with the tools you have, checking the figures first and keeping the brand's tone.".repeat(2), done: "I checked the figures and made the change as the brief asked; one change waits for your yes." }));
+const taskMessage = (k: number) => [`Autopilot: plan "Grow repeat orders", step ${steps[k].key} "${steps[k].title}".`, `Brief: ${steps[k].brief}`, ...(k ? ["", "Earlier steps:", ...steps.slice(0, k).map((s) => `- ${s.key} (${s.title}): done: ${s.done}`)] : []), "", "Do the brief now with your tools, then say in one or two sentences what you did."].join("\n");
+for (const k of [2, 5, 9]) { const own = taskMessage(k).length; const history = sum(Array.from({ length: k }, (_, j) => taskMessage(j).length + steps[j].done.length)); console.log(`plan step ${k + 1}: own message ${own} chars, history resent (earlier task messages and answers, last 20 messages) ${history} chars`); }
+console.log("admin map store all", adminMapText("store", flags).length);

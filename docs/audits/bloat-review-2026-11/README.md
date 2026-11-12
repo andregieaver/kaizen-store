@@ -54,4 +54,35 @@ node docs/audits/bloat-review-2026-11/scripts/twin-count.mjs                    
 node docs/audits/bloat-review-2026-11/scripts/helper-count.mjs                                       # 12 Nov: last line '84 helpers declared with identical text in 3 or more files'
 ```
 
+After a build (`pnpm build`), from the repository root:
+
+```bash
+node docs/audits/bloat-review-2026-11/scripts/trace-sizes.mjs              # bytes traced beside each function in .next/server, by kind; the ten largest and the total
+node docs/audits/bloat-review-2026-11/scripts/trace-packages.mjs [out.json] # megabytes per kind of package across all traces
+node docs/audits/bloat-review-2026-11/scripts/cold-load-route.cjs .next/server/app/api/visit/route.js   # one built route in a fresh process: milliseconds and megabytes
+node docs/audits/bloat-review-2026-11/scripts/cold-load-proxy.cjs          # the same for the proxy (.next/server/middleware.js)
+node docs/audits/bloat-review-2026-11/scripts/cold-load-page.cjs ".next/server/app/s/[store]/[market]/page.js"   # the same for a page
+node docs/audits/bloat-review-2026-11/scripts/cold-load-start-hook.cjs     # what an instance does before its first request (reads DATABASE_URL set inside it: edit it for another database)
+node docs/audits/bloat-review-2026-11/scripts/manifest-time.cjs            # milliseconds and bytes of the server reference manifest
+node docs/audits/bloat-review-2026-11/scripts/flight.mjs saved.html        # bytes of the React flight payload in a saved document, and what is in it twice
+node docs/audits/bloat-review-2026-11/scripts/route.mjs "/s/[store]/[market]"   # a route's first-load client chunks and bytes
+node docs/audits/bloat-review-2026-11/scripts/meta-reader.mjs [dir]        # prerendered entries whose resume data keeps a page list (default .next/server/app)
+node docs/audits/bloat-review-2026-11/scripts/words-in-entries.mjs "<a sentence from a catalogue file>"   # which built chunks and entries hold it
+node docs/audits/bloat-review-2026-11/scripts/cut-simulation.mjs <page> [--cut from=>to] [--drop x] [--show N] [--dir <analyzer export>]   # needs `next analyze --output`
+
+node docs/audits/bloat-review-2026-11/scripts/handed.mjs                   # three admin screens: words handed to the browser against words their client parts name (12 Nov: product editor 204116, order 163851, customer 140715 bytes)
+node docs/audits/bloat-review-2026-11/scripts/ai-round.mjs                 # every agent's round of tools (12 Nov: shop only page=-, round tools with all manager 39 = 33810); bundles ai-round.ts with esbuild
+```
+
+## lists/
+
+Plain lists, one entry a line, kept as they were made on 12 November. A step that deletes reads its list and checks each entry again.
+
+| File | Lines | What it is | Used by |
+|---|---|---|---|
+| `unused-exports-tier-0.txt` | 330 | exports with no test and no other production mention, one per line as `file:line name (kind, lines; tests; mentions)` | DD-2 |
+| `unused-exports-tier-2.txt` | 323 | exports with no other production mention that a test still reads (the test goes with it) | DD-3 |
+| `unused-words.txt` | 120 | unused constants that hold interface words, with their line counts | DD-7 |
+| `dead-text-keys.txt` | 44 | catalogue keys with no reader (the file's own two comment lines say how it was checked) | the TX findings |
+
 `PLAYWRIGHT_CHROMIUM_PATH` names the browser where one is preinstalled; `BASE_URL` another address than `http://localhost:3000`.
