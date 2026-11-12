@@ -1,5 +1,5 @@
 {
- "at": "2026-11-12T00:30:33.955Z",
+ "at": "2026-11-12T00:33:36.452Z",
  "status": [
   {
    "key": "storefront-client",
@@ -11,7 +11,7 @@
    "key": "storefront-data",
    "audit": true,
    "verify": true,
-   "plan": false
+   "plan": true
   },
   {
    "key": "admin-client",
@@ -88,7 +88,7 @@
   {
    "key": "page-model",
    "audit": true,
-   "verify": false,
+   "verify": true,
    "plan": false
   },
   {
@@ -142,7 +142,7 @@
   {
    "key": "unused-code",
    "audit": true,
-   "verify": false,
+   "verify": true,
    "plan": false
   },
   {
@@ -154,7 +154,6 @@
  ],
  "relaunch": {
   "keys": [
-   "storefront-data",
    "caching",
    "db-schema",
    "deps",
@@ -215,9 +214,11 @@
    "features",
    "families",
    "docs-context",
+   "page-model",
    "css",
    "tests-ci",
    "page-payload",
+   "unused-code",
    "copied-code"
   ]
  }
