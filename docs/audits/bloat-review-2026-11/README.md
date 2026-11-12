@@ -47,6 +47,11 @@ node docs/audits/bloat-review-2026-11/scripts/scripts-by-page.mjs out   # needs 
 
 node docs/audits/bloat-review-2026-11/scripts/unused-code.mjs out       # files and exports nothing uses (suspects)
 node docs/audits/bloat-review-2026-11/scripts/copied-code.mjs out       # exact copies
+
+node docs/audits/bloat-review-2026-11/scripts/import-reach.mjs --cycle src/app/api/visit/route.ts   # 12 Nov: 'src/app/api/visit/route.ts: 1308 files', 'largest cycle in src/server: 229 files'; --why <target> prints one import chain
+node docs/audits/bloat-review-2026-11/scripts/copy-count.mjs 0 /tmp/copies.json src                  # 12 Nov: 4803 exact copied lines, 4098 across files, 705 inside one file
+node docs/audits/bloat-review-2026-11/scripts/twin-count.mjs                                         # 12 Nov: last line '41 twin pairs'
+node docs/audits/bloat-review-2026-11/scripts/helper-count.mjs                                       # 12 Nov: last line '84 helpers declared with identical text in 3 or more files'
 ```
 
 `PLAYWRIGHT_CHROMIUM_PATH` names the browser where one is preinstalled; `BASE_URL` another address than `http://localhost:3000`.

@@ -74,7 +74,7 @@ commit as the fix.
 
 | Step | What | Closes | Effort | Who | After | Status | Notes |
 |---|---|---|---|---|---|---|---|
-| 0.1 | Put the review's scripts and lists in the repo | GAP-code-1 | S | review |  | Open | |
+| 0.1 | Put the review's scripts and lists in the repo | GAP-code-1 | S | review |  | In progress | Local, 12 Nov: commit 1 (walker and counters) made. |
 | 0.2 | Store a daily reading of production, so every later step has a 'before' |  | S | review |  | Open | |
 | 0.3 | Let the deploy job, not a visitor, meet the first cold page | SD-3, GAP-server-2 | S | review |  | Open | |
 | 0.4 | Cut the two import hubs: the unused schema and the chat module's helpers | DD-1, DP-1, DP-9, SG-6, SF-6, DS-1, TC-5, DP-10, FM-2, FM-14, SG-3, SF-4, GAP-server-s2 | S | cheap | 0.1, 0.3 | Open | |
