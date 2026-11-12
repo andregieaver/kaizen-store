@@ -76,6 +76,10 @@ test("a word of a heading takes a new style from the Style menu, shown on the ca
   await page.getByRole("menuitem", { name: "New style…" }).click();
   const dialog = page.getByRole("dialog", { name: "New text style" });
   await expect(dialog).toBeVisible();
+  // Start from scratch opens an empty editor for the style's own CSS; a look from the gallery takes over again.
+  await dialog.getByRole("button", { name: "Start from scratch" }).click();
+  await expect(dialog.getByRole("button", { name: "Start from scratch" })).toHaveAttribute("aria-pressed", "true");
+  await expect(dialog.getByText("The style's CSS")).toBeVisible();
   await dialog.getByRole("button", { name: /Gradient/ }).click();
   await dialog.getByLabel("Name").fill("Sunset");
   await dialog.getByRole("button", { name: "Save and apply" }).click();

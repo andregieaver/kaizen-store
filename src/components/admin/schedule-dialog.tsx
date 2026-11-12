@@ -1,10 +1,11 @@
 "use client";
 
 import { CalendarClock } from "lucide-react";
-import { useEffect, useId, useRef, useState, useTransition } from "react";
+import { useEffect, useId, useState, useTransition } from "react";
 
 import { useAdminText } from "./admin-text";
 import { CARD_CLASS } from "./ui";
+import { MoveButton, ResizeHandles, dialogStyle, focusPastMoveButton, useMovable } from "./movable";
 import { fillWords } from "@/lib/admin-fill";
 import type { PageOwnerContext, SaveDraft, ScheduleView } from "./page-context";
 
@@ -41,7 +42,9 @@ export function ScheduleButton({
   const all = useAdminText("schedules");
   const w = all.dialog;
   const id = useId();
-  const dialog = useRef<HTMLDialogElement>(null);
+  // Moves by its title and resizes from its edges, as every dialog in the builder does.
+  const movable = useMovable<HTMLDialogElement>();
+  const { ref: dialog } = movable;
   const [view, setView] = useState<ScheduleView | null>(null);
   const [fields, setFields] = useState(() => dayAt(schedule.zone, 1, "09:00"));
   const [backOpen, setBackOpen] = useState(false);
@@ -64,7 +67,11 @@ export function ScheduleButton({
   const open = () => {
     setMessage(null);
     setProblem(null);
-    dialog.current?.showModal();
+    movable.reset();
+    const element = dialog.current;
+    if (!element) return;
+    element.showModal();
+    focusPastMoveButton(element);
   };
   const submit = () =>
     start(async () => {
@@ -100,59 +107,70 @@ export function ScheduleButton({
         <CalendarClock aria-hidden className="size-4" />
         {view?.waiting ? view.waiting.label : w.schedule}
       </button>
-      <dialog ref={dialog} aria-labelledby={`${id}-title`} className={`m-auto w-[min(30rem,calc(100vw-2rem))] p-6 text-ink backdrop:bg-black/40 ${CARD_CLASS}`}>
-        <div className="flex flex-col gap-4">
-          <h2 id={`${id}-title`} className="text-title text-ink">
-            {w.title}
-          </h2>
-          <p className="text-sm text-muted">{fillWords(w.intro, { noun: named, zone: schedule.zone })}</p>
-          {view?.waiting?.back && <p className="text-sm">{view.waiting.back}</p>}
-          {view?.going && !view.waiting && <p className="rounded-panel bg-sunken p-3 text-sm">{view.going}</p>}
-          {view?.failure && !view.waiting && <p className="rounded-panel bg-warning-soft p-3 text-sm text-warning-text">{view.failure}</p>}
-          <div className="grid grid-cols-2 gap-3">
-            <label className="flex flex-col gap-1 text-sm font-medium">
-              {w.day}
-              <input type="date" value={fields.day} onChange={(e) => setFields((f) => ({ ...f, day: e.target.value }))} className={input} />
-            </label>
-            <label className="flex flex-col gap-1 text-sm font-medium">
-              {w.time}
-              <input type="time" value={fields.time} onChange={(e) => setFields((f) => ({ ...f, time: e.target.value }))} className={input} />
-            </label>
+      <dialog
+        ref={dialog}
+        aria-labelledby={`${id}-title`}
+        style={dialogStyle(movable.rect)}
+        className={`m-auto w-[min(30rem,calc(100vw-2rem))] overflow-visible p-0 text-ink backdrop:bg-black/40 ${CARD_CLASS}`}
+      >
+        <div className={`flex flex-col ${movable.rect?.h != null ? "h-full" : "max-h-[calc(90dvh-2px)]"}`}>
+          <div {...movable.bar} className="flex cursor-move touch-none items-center justify-between gap-4 px-6 pt-4 select-none">
+            <h2 id={`${id}-title`} className="text-title text-ink">
+              {w.title}
+            </h2>
+            <MoveButton movable={movable} />
           </div>
-          <details open={backOpen} onToggle={(e) => setBackOpen((e.target as HTMLDetailsElement).open)} data-schedule-back="">
-            <summary className="cursor-pointer text-sm font-medium">{w.back}</summary>
-            <div className="mt-3 flex flex-col gap-3">
-              <p className="text-sm text-muted">{fillWords(w.backHint, { noun: named })}</p>
-              <div className="grid grid-cols-2 gap-3">
-                <label className="flex flex-col gap-1 text-sm font-medium">
-                  {w.backDay}
-                  <input type="date" value={back.day} onChange={(e) => setBack((f) => ({ ...f, day: e.target.value }))} className={input} />
-                </label>
-                <label className="flex flex-col gap-1 text-sm font-medium">
-                  {w.backTime}
-                  <input type="time" value={back.time} onChange={(e) => setBack((f) => ({ ...f, time: e.target.value }))} className={input} />
-                </label>
-              </div>
+          <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto px-6 pt-2 pb-6">
+            <p className="text-sm text-muted">{fillWords(w.intro, { noun: named, zone: schedule.zone })}</p>
+            {view?.waiting?.back && <p className="text-sm">{view.waiting.back}</p>}
+            {view?.going && !view.waiting && <p className="rounded-panel bg-sunken p-3 text-sm">{view.going}</p>}
+            {view?.failure && !view.waiting && <p className="rounded-panel bg-warning-soft p-3 text-sm text-warning-text">{view.failure}</p>}
+            <div className="grid grid-cols-2 gap-3">
+              <label className="flex flex-col gap-1 text-sm font-medium">
+                {w.day}
+                <input type="date" value={fields.day} onChange={(e) => setFields((f) => ({ ...f, day: e.target.value }))} className={input} />
+              </label>
+              <label className="flex flex-col gap-1 text-sm font-medium">
+                {w.time}
+                <input type="time" value={fields.time} onChange={(e) => setFields((f) => ({ ...f, time: e.target.value }))} className={input} />
+              </label>
             </div>
-          </details>
-          <div role="status" aria-live="polite" className="text-sm">
-            {message && <p>{message}</p>}
-            {problem && <p className="text-danger-text">{problem}</p>}
-          </div>
-          <div className="flex flex-wrap gap-2">
-            <button type="button" onClick={submit} disabled={busy} className="min-h-11 rounded-pill bg-brand px-5 font-medium text-brand-ink disabled:opacity-50">
-              {dirty ? w.saveDraftFirst : w.save}
-            </button>
-            {(view?.waiting || view?.going) && (
-              <button type="button" onClick={cancel} disabled={busy} className="min-h-11 rounded-pill border border-edge px-4 font-medium disabled:opacity-50">
-                {w.cancel}
+            <details open={backOpen} onToggle={(e) => setBackOpen((e.target as HTMLDetailsElement).open)} data-schedule-back="">
+              <summary className="cursor-pointer text-sm font-medium">{w.back}</summary>
+              <div className="mt-3 flex flex-col gap-3">
+                <p className="text-sm text-muted">{fillWords(w.backHint, { noun: named })}</p>
+                <div className="grid grid-cols-2 gap-3">
+                  <label className="flex flex-col gap-1 text-sm font-medium">
+                    {w.backDay}
+                    <input type="date" value={back.day} onChange={(e) => setBack((f) => ({ ...f, day: e.target.value }))} className={input} />
+                  </label>
+                  <label className="flex flex-col gap-1 text-sm font-medium">
+                    {w.backTime}
+                    <input type="time" value={back.time} onChange={(e) => setBack((f) => ({ ...f, time: e.target.value }))} className={input} />
+                  </label>
+                </div>
+              </div>
+            </details>
+            <div role="status" aria-live="polite" className="text-sm">
+              {message && <p>{message}</p>}
+              {problem && <p className="text-danger-text">{problem}</p>}
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <button type="button" onClick={submit} disabled={busy} className="min-h-11 rounded-pill bg-brand px-5 font-medium text-brand-ink disabled:opacity-50">
+                {dirty ? w.saveDraftFirst : w.save}
               </button>
-            )}
-            <button type="button" onClick={() => dialog.current?.close()} className="min-h-11 rounded-pill px-4 font-medium">
-              {w.close}
-            </button>
+              {(view?.waiting || view?.going) && (
+                <button type="button" onClick={cancel} disabled={busy} className="min-h-11 rounded-pill border border-edge px-4 font-medium disabled:opacity-50">
+                  {w.cancel}
+                </button>
+              )}
+              <button type="button" onClick={() => dialog.current?.close()} className="min-h-11 rounded-pill px-4 font-medium">
+                {w.close}
+              </button>
+            </div>
           </div>
         </div>
+        <ResizeHandles movable={movable} />
       </dialog>
     </>
   );

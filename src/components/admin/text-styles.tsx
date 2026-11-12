@@ -313,6 +313,13 @@ function StyleDialog({
     if (next !== "custom") setSettings(starterSettings(next, starter));
     if (!named) setName(w.kinds[next]);
   };
+  /** No look to begin from: an empty editor for the style's own CSS, opened under Advanced. */
+  const scratch = () => {
+    // Pressed again, it keeps what was written.
+    if (kind === "custom") return;
+    setCss("");
+    choose("custom");
+  };
   const cssProblemNow = kind === "custom" && css.trim() ? styleCssProblem(css) : null;
   const cssId = useId();
   const preview = textStyleRule({ ...current, slug: DRAFT_SLUG }, "[data-ts-draft] ");
@@ -322,6 +329,7 @@ function StyleDialog({
     <Modal
       open
       wide
+      remember="text-style"
       onClose={onClose}
       title={style ? fillWords(w.editTitle, { name: style.name }) : w.newTitle}
       footer={
@@ -366,7 +374,7 @@ function StyleDialog({
         <fieldset className="flex flex-col gap-2">
           <legend className="text-sm font-medium">{w.gallery}</legend>
           <style>{GALLERY_KINDS.map((k) => textStyleRule({ slug: `gallery-${k.toLowerCase()}`, kind: k, settings: starterSettings(k, starter), css: null }, "[data-ts-gallery] ")).join("\n")}</style>
-          <div data-ts-gallery="" className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+          <div data-ts-gallery="" className="grid grid-cols-2 gap-2 sm:grid-cols-[repeat(auto-fill,minmax(8rem,1fr))]">
             {GALLERY_KINDS.map((k) => (
               <button
                 key={k}
@@ -379,6 +387,19 @@ function StyleDialog({
                 <span className="text-caption text-ink-2">{w.kinds[k]}</span>
               </button>
             ))}
+            <button
+              type="button"
+              aria-pressed={kind === "custom"}
+              data-ts-scratch=""
+              title={w.scratchHint}
+              onClick={scratch}
+              className="flex min-h-16 flex-col items-center justify-center gap-1 rounded-panel border border-dashed border-line px-2 py-2 text-sm hover:bg-sunken aria-pressed:border-solid aria-pressed:border-brand aria-pressed:ring-2 aria-pressed:ring-brand"
+            >
+              <span aria-hidden className="text-xl text-muted">
+                +
+              </span>
+              <span className="text-caption text-ink-2">{w.scratch}</span>
+            </button>
           </div>
         </fieldset>
         <label className="flex flex-col gap-1 text-sm font-medium">
@@ -580,6 +601,7 @@ function StyleLibrary({
   return (
     <Modal
       open
+      remember="text-styles"
       onClose={onClose}
       title={w.library}
       footer={

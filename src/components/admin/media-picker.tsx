@@ -102,7 +102,7 @@ function LibraryDialog({ list, onClose, onPicked }: { list: PickerList; onClose:
   };
 
   return (
-    <Modal open onClose={onClose} title={w.choose} wide>
+    <Modal open onClose={onClose} title={w.choose} wide remember="media-picker">
       <div className="flex flex-col gap-4 p-5">
         <div className="flex flex-col gap-1">
           <label htmlFor={searchId} className="text-sm font-medium">
@@ -126,7 +126,7 @@ function LibraryDialog({ list, onClose, onPicked }: { list: PickerList; onClose:
           <p className="text-sm text-muted">{query ? w.noMatch : w.empty}</p>
         )}
         {result && result.items.length > 0 && (
-          <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">
+          <ul className="grid grid-cols-2 gap-3 sm:grid-cols-[repeat(auto-fill,minmax(9.5rem,1fr))]">
             {result.items.map((item) => (
               <li key={item.id}>
                 <button

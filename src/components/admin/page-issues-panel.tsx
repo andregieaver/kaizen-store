@@ -1,12 +1,13 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect } from "react";
 
 import { groupIssues, type PageIssue } from "@/lib/page-a11y";
 import { CARD_CLASS } from "@/components/admin/ui";
 import { countWords, fillWords } from "@/lib/admin-fill";
 
 import { useAdminText } from "./admin-text";
+import { MoveButton, ResizeHandles, dialogStyle, focusPastMoveButton, useMovable } from "./movable";
 
 /**
  * Takes the person to a row, column or component on the builder's canvas: scrolls it into view and focuses it, so a keyboard user lands on
@@ -89,11 +90,16 @@ export function PublishWithIssuesDialog({
   onPublishAnyway: () => void;
   onFixFirst: () => void;
 }) {
-  const ref = useRef<HTMLDialogElement>(null);
+  // Moves by its title and resizes from its edges, as every dialog in the builder does.
+  const movable = useMovable<HTMLDialogElement>();
+  const { ref } = movable;
   useEffect(() => {
     const dialog = ref.current;
-    if (dialog && !dialog.open) dialog.showModal();
-  }, []);
+    if (dialog && !dialog.open) {
+      dialog.showModal();
+      focusPastMoveButton(dialog);
+    }
+  }, [ref]);
   const groups = groupIssues(issues);
   const w = useAdminText("builder").issues;
   return (
@@ -104,27 +110,36 @@ export function PublishWithIssuesDialog({
         event.preventDefault();
         onFixFirst();
       }}
-      className={`m-auto w-[min(32rem,calc(100vw-2rem))] p-5 text-ink backdrop:bg-black/40 ${CARD_CLASS}`}
+      style={dialogStyle(movable.rect)}
+      className={`m-auto w-[min(32rem,calc(100vw-2rem))] overflow-visible p-0 text-ink backdrop:bg-black/40 ${CARD_CLASS}`}
     >
-      <h2 id="publish-issues-title" className="mb-2 text-title text-ink">
-        {countWords(issues.length, w.hasProblems)}
-      </h2>
-      <p className="mb-3 text-sm text-muted">{countWords(issues.length, w.fixOrPublish)}</p>
-      <ul className="mb-4 flex max-h-64 flex-col gap-1 overflow-y-auto text-sm">
-        {groups.map((group) => (
-          <li key={group.rule}>
-            <span className="font-medium">{group.title}</span>: {group.issues.length === 1 ? group.issues[0].message : fillWords(w.places, { n: group.issues.length })}
-          </li>
-        ))}
-      </ul>
-      <div className="flex flex-wrap gap-2">
-        <button type="button" onClick={onFixFirst} className="min-h-10 rounded-pill bg-brand px-4 text-sm font-medium text-brand-ink">
-          {w.fixFirst}
-        </button>
-        <button type="button" onClick={onPublishAnyway} disabled={busy} className="min-h-10 rounded-pill border border-edge bg-card px-4 text-sm font-medium disabled:opacity-50">
-          {w.publishAnyway}
-        </button>
+      <div className={`flex flex-col ${movable.rect?.h != null ? "h-full" : "max-h-[calc(90dvh-2px)]"}`}>
+        <div {...movable.bar} className="flex cursor-move touch-none items-center justify-between gap-4 px-5 pt-3 select-none">
+          <h2 id="publish-issues-title" className="text-title text-ink">
+            {countWords(issues.length, w.hasProblems)}
+          </h2>
+          <MoveButton movable={movable} />
+        </div>
+        <div className="flex min-h-0 flex-1 flex-col overflow-y-auto px-5 pt-2 pb-5">
+          <p className="mb-3 text-sm text-muted">{countWords(issues.length, w.fixOrPublish)}</p>
+          <ul className={`mb-4 flex flex-col gap-1 overflow-y-auto text-sm ${movable.rect?.h != null ? "min-h-0 flex-1" : "max-h-64"}`}>
+            {groups.map((group) => (
+              <li key={group.rule}>
+                <span className="font-medium">{group.title}</span>: {group.issues.length === 1 ? group.issues[0].message : fillWords(w.places, { n: group.issues.length })}
+              </li>
+            ))}
+          </ul>
+          <div className="flex flex-wrap gap-2">
+            <button type="button" onClick={onFixFirst} className="min-h-10 rounded-pill bg-brand px-4 text-sm font-medium text-brand-ink">
+              {w.fixFirst}
+            </button>
+            <button type="button" onClick={onPublishAnyway} disabled={busy} className="min-h-10 rounded-pill border border-edge bg-card px-4 text-sm font-medium disabled:opacity-50">
+              {w.publishAnyway}
+            </button>
+          </div>
+        </div>
       </div>
+      <ResizeHandles movable={movable} />
     </dialog>
   );
 }

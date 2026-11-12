@@ -1609,6 +1609,8 @@ export const builderNb: BuilderMessages = {
     css: "Stilens CSS",
     cssPlaceholder: "padding: 5px 10px;\nborder-radius: 99px;\nborder: 2px solid #fff;\n\n&:hover {\n  color: #1d4ed8;\n}",
     fromLook: "Start fra dette utseendets CSS",
+    scratch: "Start fra bunnen av",
+    scratchHint: "Uten utseende: skriv stilens egen CSS",
     save: "Lagre stilen",
     saveApply: "Lagre og bruk",
     saving: "Lagrer …",
