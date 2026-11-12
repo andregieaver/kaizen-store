@@ -1,5 +1,5 @@
 {
- "at": "2026-11-12T00:42:44.221Z",
+ "at": "2026-11-12T00:45:46.593Z",
  "status": [
   {
    "key": "storefront-client",
@@ -29,7 +29,7 @@
    "key": "caching",
    "audit": true,
    "verify": true,
-   "plan": false
+   "plan": true
   },
   {
    "key": "cron",
@@ -124,7 +124,7 @@
   {
    "key": "client-bundles",
    "audit": true,
-   "verify": false,
+   "verify": true,
    "plan": false
   },
   {
@@ -154,7 +154,6 @@
  ],
  "relaunch": {
   "keys": [
-   "caching",
    "assets",
    "families",
    "docs-context",
@@ -215,6 +214,7 @@
    "css",
    "tests-ci",
    "server-graph",
+   "client-bundles",
    "page-payload",
    "unused-code",
    "copied-code"
