@@ -3,11 +3,13 @@ import "server-only";
 import { permanentRedirect, notFound } from "next/navigation";
 
 import { splitSiteVersions } from "@/lib/ab-site";
+import { HOUSE_SLUG } from "@/lib/house-routing";
 import { keptChoices, marketChoices } from "@/lib/localization";
 import { movedMarketSlug } from "@/lib/market-move";
 import { findMarket, type Market } from "@/lib/markets";
 import { featureOn, requirementMet, type FeatureRequirement } from "@/lib/store-features";
 
+import { log } from "./log";
 import { locationIn, missOrRedirect } from "./redirect-resolve";
 import { getOpenStore, templateStoreSlug, type Store } from "./stores";
 
@@ -87,9 +89,9 @@ export async function shopOrMoved(storeSlug: string, marketParam: string, path =
 }
 
 /**
- * Store and market params to prerender at build time: the template store's
- * markets. Other stores render on first visit and are then cached. Cache
- * Components needs at least one entry; "_" simply renders a 404.
+ * Store and market params to prerender at build time: the template store's markets, and Kaizena Flow's own store's while its site is
+ * served from it (D484, bloat review step 0.3). Other stores render on first visit and are then cached. Cache Components needs at
+ * least one entry; "_" simply renders a 404.
  */
 export async function prerenderedShops(): Promise<{ store: string; market: string }[]> {
   const slug = await templateStoreSlug();
@@ -97,6 +99,15 @@ export async function prerenderedShops(): Promise<{ store: string; market: strin
   const params = store
     ? store.markets.map((market) => ({ store: store.slug, market: market.slug }))
     : [];
+  if (slug !== HOUSE_SLUG) {
+    // A build must not fail because the switch could not be read: the house store is then left to its first visit.
+    try {
+      const house = await getOpenStore(HOUSE_SLUG);
+      if (house?.onSite) params.push(...house.markets.map((market) => ({ store: house.slug, market: market.slug })));
+    } catch (error) {
+      log("warn", "shop.prerender_house_failed", {}, error);
+    }
+  }
   return params.length > 0 ? params : [{ store: "_", market: "_" }];
 }
 
