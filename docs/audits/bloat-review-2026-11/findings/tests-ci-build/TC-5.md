@@ -2,7 +2,7 @@
 
 Tests, CI and the build (`README.md` beside this file), part of `docs/audits/bloat-review-2026-11.md`.
 
-- **Kind:** dead. **Priority:** P0. **Effort:** S. **Confidence:** high. **Step:** 0.3.
+- **Kind:** dead. **Priority:** P0. **Effort:** S. **Confidence:** high. **Step:** 0.4.
 - **Second check:** corrected.
 - **Where:** `src/db/client.ts:11`, `src/db/client.ts:31`, `src/db/client.ts:78`, `drizzle.config.ts:7`, `src/server/store-export.scan.test.ts:4`, `docs/audits/code-review-2026-11.md:116`, `docs/audits/code-review-2026-11.md:268`, `docs/audits/code-review-2026-11.md:484`
 - **Evidence:** client.ts imports * from ./schema and passes it to drizzle() (line 78) and to the type NodePgDatabase<typeof schema> (line 31). Outside tests nothing calls the query builder: my rg for .select(, .insert(, .update(, .delete( and .query on db(), replicaDb(), tx or database finds only PGlite fixtures in src/db that call their own tx.query; drizzle-orm is imported 638 times for the sql tag. The only run-time importers of schema.ts are client.ts and one scan test (import graph). client.ts reaches 49 modules, 1.49 MB, with the schema and 2 modules, 18 KB, without. Under Vitest a test file that imports the client takes 0.58 s against 0.42 s for the same packages without the schema (20 probe files each: 11.3-11.9 s and 8.2-8.6 s). The verified report measured 135-147 ms and +55 MB to evaluate drizzle with the schema in plain Node against 12-20 ms and +6 MB without.

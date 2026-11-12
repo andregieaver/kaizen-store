@@ -8,17 +8,17 @@ Part of `docs/audits/bloat-review-2026-11.md`, on commit 0bd814c. Read by one re
 
 | ID | Finding | Kind | Priority | Effort | Step |
 |---|---|---|---|---|---|
-| [DC-1](DC-1.md) ✓ | Every session loads a 295-line feature index; a typical change needs 2 to 4 of its lines *(your choice)* | eager | P0 | M | 0.27 |
+| [DC-1](DC-1.md) ✓ | Every session loads a 295-line feature index; a typical change needs 2 to 4 of its lines *(your choice)* | eager | P0 | M | 2.1 |
 | [DC-3](DC-3.md) ✓ | Nothing caps the written rules, and one test makes the always-loaded file grow with every feature | no check | P0 | S | 1.1 |
-| [DC-4](DC-4.md) ✓ | Half of the rules' text is in lines the search tool cannot show | oversize | P0 | S | 0.27 |
-| [DC-2](DC-2.md) ✓ | decisions.md cannot be searched with the harness's search tool, a row runs to 18 KB, and the newest 197 rows sit under the wrong heading | oversize | P1 | M | 2.24 |
-| [DC-5](DC-5.md) ✓ | CLAUDE.md sends agents to a 73 KB plan written before the platform was multi-tenant | eager | P1 | S | 0.28 |
-| [DC-12](DC-12.md) | Sessions working at once take the same decision number: 5 of 24 merges in 35 hours renumbered one, twice across 64 and 77 files | no check | P1 | S | 0.28 |
-| [DC-6](DC-6.md) ✓ | The trackers a fix must consult keep their finished work in the way: the code review's table grows 0.9 KB a step, and 12 open PSI items hide among 93 ticked | oversize | P2 | S | 0.28 |
-| [DC-7](DC-7.md) ✓ | Dated reports, draft notes, review evidence and generated tables turn up in every docs search | oversize | P2 | S | 0.27 |
-| [DC-8](DC-8.md) ✓ | A feature's facts are written at four to six levels, in different words; lists copied from code drift | duplicate | P2 | S | 0.28 |
-| [DC-10](DC-10.md) ✓ | The Migration versions list has been frozen since 4 October, and the instruction to record versions there now fills decision rows with release notes *(your choice)* | dead | P2 | S | 0.28 |
-| [DC-13](DC-13.md) | A table's definition is in the repo four times, and a search for its name returns more lines from old migrations and Drizzle's snapshot than from code | oversize | P2 | S | 0.27 |
+| [DC-4](DC-4.md) ✓ | Half of the rules' text is in lines the search tool cannot show | oversize | P0 | S | 0.40 |
+| [DC-2](DC-2.md) ✓ | decisions.md cannot be searched with the harness's search tool, a row runs to 18 KB, and the newest 197 rows sit under the wrong heading | oversize | P1 | M | 2.40 |
+| [DC-5](DC-5.md) ✓ | CLAUDE.md sends agents to a 73 KB plan written before the platform was multi-tenant | eager | P1 | S | 0.41 |
+| [DC-12](DC-12.md) | Sessions working at once take the same decision number: 5 of 24 merges in 35 hours renumbered one, twice across 64 and 77 files | no check | P1 | S | 0.41 |
+| [DC-6](DC-6.md) ✓ | The trackers a fix must consult keep their finished work in the way: the code review's table grows 0.9 KB a step, and 12 open PSI items hide among 93 ticked | oversize | P2 | S | 0.41 |
+| [DC-7](DC-7.md) ✓ | Dated reports, draft notes, review evidence and generated tables turn up in every docs search | oversize | P2 | S | 0.40 |
+| [DC-8](DC-8.md) ✓ | A feature's facts are written at four to six levels, in different words; lists copied from code drift | duplicate | P2 | S | 0.41 |
+| [DC-10](DC-10.md) ✓ | The Migration versions list has been frozen since 4 October, and the instruction to record versions there now fills decision rows with release notes *(your choice)* | dead | P2 | S | 2.41 |
+| [DC-13](DC-13.md) | A table's definition is in the repo four times, and a search for its name returns more lines from old migrations and Drizzle's snapshot than from code | oversize | P2 | S | 0.40 |
 | [DC-9](DC-9.md) ✓ | The saved parity-wave workflow asks for specs with no size limit and tells every agent to read them whole; it is dormant | no check | P3 | S | tolerated |
 | [DC-11](DC-11.md) ✓ | The parity report commits 270 KB of generated tables beside the rows they are made from *(your choice)* | duplicate | P3 | S | your choice |
 

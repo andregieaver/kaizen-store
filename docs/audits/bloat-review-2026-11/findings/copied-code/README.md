@@ -8,21 +8,21 @@ Part of `docs/audits/bloat-review-2026-11.md`, on commit 0bd814c. Read by one re
 
 | ID | Finding | Kind | Priority | Effort | Step |
 |---|---|---|---|---|---|
-| [CP-2](CP-2.md) ✓ | A store's address by its id is looked up by hand in 27 places beside a cached helper that already exists; it is production's most-called statement | duplicate | P0 | S | 0.16 |
-| [CP-14](CP-14.md) ✓ | Nothing in CI measures copied code, so each new kind or twin is made by copying a neighbour | no check | P0 | S | 1.9 |
-| [CP-1](CP-1.md) ✓ | Five file imports each repeat the upload, register, start-check, start-apply and cursor code, the browser flow, the findings table, the pages and the routes (leases and retries are already shared) | duplicate | P1 | M | 3.8 |
+| [CP-2](CP-2.md) ✓ | A store's address by its id is looked up by hand in 27 places beside a cached helper that already exists; it is production's most-called statement | duplicate | P0 | S | 0.20 |
+| [CP-14](CP-14.md) ✓ | Nothing in CI measures copied code, so each new kind or twin is made by copying a neighbour | no check | P0 | S | 1.17 |
+| [CP-1](CP-1.md) ✓ | Five file imports each repeat the upload, register, start-check, start-apply and cursor code, the browser flow, the findings table, the pages and the routes (leases and retries are already shared) | duplicate | P1 | M | 3.13 |
 | [CP-3](CP-3.md) ✓ | Admin form fields, tables and loading skeletons are spelled out per file because the UI kit has no piece for them | duplicate | P1 | L | 4.1 |
-| [CP-4](CP-4.md) ✓ | The platform console has a second engine for workflows, own endpoints and integration deliveries beside the stores' engines *(your choice)* | duplicate | P1 | M | 3.6 |
-| [CP-5](CP-5.md) ✓ | Work's account-level screens are copies of the store-level ones, and 58 Work actions are wrapped in a seven-line shell | duplicate | P1 | M | 3.8 |
+| [CP-4](CP-4.md) ✓ | The platform console has a second engine for workflows, own endpoints and integration deliveries beside the stores' engines *(your choice)* | duplicate | P1 | M | 3.10 |
+| [CP-5](CP-5.md) ✓ | Work's account-level screens are copies of the store-level ones, and 58 Work actions are wrapped in a seven-line shell | duplicate | P1 | M | 3.14 |
 | [CP-7](CP-7.md) ✓ | The one wrapper for server actions is marked Done but carries 3 of the admin's 235 action files, and nothing counts the rest | no check | P1 | L | 4.1 |
 | [CP-6](CP-6.md) ✓ | Tripletex and Fiken are twins: the sync runner, the settings page and the actions | duplicate | P2 | M | 4.2 |
-| [CP-8](CP-8.md) ✓ | Small helpers are declared again in file after file | duplicate | P2 | S | 3.9 |
-| [CP-9](CP-9.md) ✓ | Three SQL fragments are typed out in dozens of files: the product title with its fallback, the usage counter and the order event | duplicate | P2 | S | 3.9 |
+| [CP-8](CP-8.md) ✓ | Small helpers are declared again in file after file | duplicate | P2 | S | 3.15 |
+| [CP-9](CP-9.md) ✓ | Three SQL fragments are typed out in dozens of files: the product title with its fallback, the usage counter and the order event | duplicate | P2 | S | 3.15 |
 | [CP-11](CP-11.md) ✓ | The affiliate and bonus settings forms are one form written twice | duplicate | P2 | S | 4.2 |
-| [CP-12](CP-12.md) ✓ | On the storefront an order's totals are drawn in two places (and a third, looser, in checkout) and the product card's query is written twice | duplicate | P2 | S | 3.9 |
-| [CP-13](CP-13.md) ✓ | English words are kept twice: in a lib module and again in the English catalogue | duplicate | P2 | S | 3.9 |
+| [CP-12](CP-12.md) ✓ | On the storefront an order's totals are drawn in two places (and a third, looser, in checkout) and the product card's query is written twice | duplicate | P2 | S | 3.16 |
+| [CP-13](CP-13.md) ✓ | English words are kept twice: in a lib module and again in the English catalogue | duplicate | P2 | S | 3.15 |
 | [CP-15](CP-15.md) | Integration tests repeat their scaffolding: 448 stub a module the config already stubs, next/cache is stubbed in five spellings, and 233 build their own store | duplicate | P2 | S | 4.3 |
-| [CP-16](CP-16.md) | Day arithmetic, country names and the money label are re-solved under one name in many modules with different bodies; the copy detector sees none of it | duplicate | P2 | S | 3.9 |
+| [CP-16](CP-16.md) | Day arithmetic, country names and the money label are re-solved under one name in many modules with different bodies; the copy detector sees none of it | duplicate | P2 | S | 3.15 |
 | [CP-10](CP-10.md) ✓ | Eleven server files hand-write the same claim-with-a-lease statement for their own queue table; ten more use skip locked in other ways | duplicate | P3 | M | tolerated |
 
 ## Measured

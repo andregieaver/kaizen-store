@@ -2,7 +2,7 @@
 
 The server code every route loads (`README.md` beside this file), part of `docs/audits/bloat-review-2026-11.md`.
 
-- **Kind:** eager. **Priority:** P0. **Effort:** S. **Confidence:** high. **Step:** 0.3.
+- **Kind:** eager. **Priority:** P0. **Effort:** S. **Confidence:** high. **Step:** 0.4.
 - **Second check:** confirmed.
 - **Where:** `src/app/api/visit/route.ts:3`, `src/app/api/shop/tiles/route.ts:4`, `src/app/api/recommendations/events/route.ts:4-5`, `src/server/chat-route.ts:8`, `src/server/chat-route.ts:34-38`, `src/lib/same-site.ts:6`, `src/server/replicate-route.ts:8`, `src/server/assistant-route.ts:12`, `src/server/chat-agent.ts:185`
 - **Evidence:** sameSite() lives in src/lib/same-site.ts and imports nothing. chat-route.ts re-exports it (line 38) and also imports chat-agent.ts, private-mode.ts, shop.ts and support.ts (lines 7-12). I counted the importers again: 61 non-test files import chat-route; 37 take only sameSite and 16 take fail and sameSite (53 route files), replicate-route.ts and assistant-route.ts take sameSite, and only the two chat routes and four support modules use anything else. On /api/visit this import is the only edge into the cycle of SG-1: route.ts -> chat-route.ts -> chat-agent.ts -> recommend.ts -> customers.ts -> privacy-erasure.ts -> retention.ts -> order-rules.ts -> follow-ups.ts -> owner-tools.ts (chain traced on the build's graph). Removing that one edge in the build's graph takes the route from 2,015 module paths and 10,420 KB to 708 and 1,898 KB (re-run here, same numbers as the skeptic). /api/recommendations/events has a second such import: visitorKey from chat-agent.ts, which only re-exports it from chat-turns.ts (chat-agent.ts:185).

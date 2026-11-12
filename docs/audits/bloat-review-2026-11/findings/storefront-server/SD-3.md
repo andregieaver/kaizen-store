@@ -2,7 +2,7 @@
 
 What the server does for a storefront request (`README.md` beside this file), part of `docs/audits/bloat-review-2026-11.md`.
 
-- **Kind:** no check. **Priority:** P2. **Effort:** S. **Confidence:** medium. **Step:** 0.2.
+- **Kind:** no check. **Priority:** P2. **Effort:** S. **Confidence:** medium. **Step:** 0.3.
 - **Second check:** corrected.
 - **Where:** `src/server/shop.ts:88-100`, `src/app/s/[store]/[market]/layout.tsx:47-49`, `scripts/await-deploy.mjs:52-56`, `.github/workflows/ci.yml:331`, `node_modules/next/dist/docs/01-app/01-getting-started/08-caching.md:596-606`, `node_modules/next/dist/docs/01-app/03-api-reference/01-directives/use-cache.md:243-262`, `docs/performance.md:83-85`
 - **Evidence:** Only the template store is prerendered at build (prerenderedShops(), shop.ts:93-100); the fallback shell for any other store is a 0-byte file (.next/server/app/s/[store]/[market].html), so its first visit after a deploy is drawn whole at request time. Next's guide: all cache stores 'are scoped to a single deployment. A new deploy starts fresh', and neither caching directive carries over to a new deploy. 90 commits were made on 11 Nov; the verifier found 52 of 89 touched code, and such a push deploys. await-deploy.mjs waits for /api/health and calls two API refusals (SMOKE_CHECKS, :52-56), then stops: it requests no page. docs/performance.md:84 records a page that took 3.1 s to answer while a deploy went live.

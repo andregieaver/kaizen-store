@@ -8,23 +8,23 @@ Part of `docs/audits/bloat-review-2026-11.md`, on commit 0bd814c. Read by one re
 
 | ID | Finding | Kind | Priority | Effort | Step |
 |---|---|---|---|---|---|
-| [SG-3](SG-3.md) ✓ | The visit beacon and 52 other routes import the chat agent to get a ten-line function | eager | P0 | S | 0.3 |
-| [SG-1](SG-1.md) ✓ | One import cycle of 229 server files makes almost every route load everything | eager | P0 | S | 0.5 |
-| [SG-6](SG-6.md) ✓ | schema.ts (19,614 lines) is evaluated in every function and used by none at run time | dead | P0 | S | 0.3 |
-| [SG-5](SG-5.md) ✓ | Every instance start loads 856 modules and queries the database before the first request | eager | P0 | S | 0.7 |
-| [SG-4](SG-4.md) ✓ | The admin's whole interface text, both languages, loads wherever one word is needed | oversize | P0 | S | 2.13 |
-| [SG-14](SG-14.md) ✓ | Nothing measures or limits the server graph, so it only grows | no check | P0 | S | 1.5 |
-| [SG-15](SG-15.md) ✓ | The admin shell loads the AI manager's whole engine on every admin page | eager | P1 | S | 0.4 |
-| [SG-18](SG-18.md) | Eighteen modules import the payment settings file for a three-line key reader, and the Stripe SDK comes with it | eager | P1 | S | 0.5 |
-| [SG-17](SG-17.md) | The page renderer imports the theme store's server code for every page of every store | eager | P1 | S | 0.5 |
-| [SG-2](SG-2.md) ✓ | The proxy that runs before every store page loads the whole graph | eager | P1 | M | 2.11 |
-| [SG-7](SG-7.md) ✓ | The sharp image library is loaded at cold start by routes that never touch a picture | eager | P1 | S | 0.4 |
-| [SG-16](SG-16.md) | Every cold function reads a 10.4 MB list of server references before its first request | oversize | P2 | S | 1.5 |
-| [SG-10](SG-10.md) ✓ | The AI manager's tool catalogue is converted to JSON Schema at import, on routes with no AI | eager | P2 | S | 0.4 |
-| [SG-11](SG-11.md) ✓ | The build writes the same server chunks many times: 124 MiB of 196 MiB is repeats | duplicate | P2 | S | 1.13 |
-| [SG-8](SG-8.md) ✓ | Reader and writer share a file, so a new import between features re-joins reads to writes | no check | P2 | L | 2.11 |
-| [SG-13](SG-13.md) ✓ | The 13 MB taxonomy is traced into every function, including those that cannot read it | oversize | P3 | S | 2.12 |
-| [SG-9](SG-9.md) ✓ | getStore() imports the Stripe SDK to learn which payment modes have keys | eager | P3 | S | 2.12 |
+| [SG-3](SG-3.md) ✓ | The visit beacon and 52 other routes import the chat agent to get a ten-line function | eager | P0 | S | 0.4 |
+| [SG-1](SG-1.md) ✓ | One import cycle of 229 server files makes almost every route load everything | eager | P0 | S | 0.6 |
+| [SG-6](SG-6.md) ✓ | schema.ts (19,614 lines) is evaluated in every function and used by none at run time | dead | P0 | S | 0.4 |
+| [SG-5](SG-5.md) ✓ | Every instance start loads 856 modules and queries the database before the first request | eager | P0 | S | 0.8 |
+| [SG-4](SG-4.md) ✓ | The admin's whole interface text, both languages, loads wherever one word is needed | oversize | P0 | S | 2.25 |
+| [SG-14](SG-14.md) ✓ | Nothing measures or limits the server graph, so it only grows | no check | P0 | S | 1.8 |
+| [SG-15](SG-15.md) ✓ | The admin shell loads the AI manager's whole engine on every admin page | eager | P1 | S | 0.5 |
+| [SG-18](SG-18.md) | Eighteen modules import the payment settings file for a three-line key reader, and the Stripe SDK comes with it | eager | P1 | S | 0.6 |
+| [SG-17](SG-17.md) | The page renderer imports the theme store's server code for every page of every store | eager | P1 | S | 0.6 |
+| [SG-2](SG-2.md) ✓ | The proxy that runs before every store page loads the whole graph | eager | P1 | M | 2.20 |
+| [SG-7](SG-7.md) ✓ | The sharp image library is loaded at cold start by routes that never touch a picture | eager | P1 | S | 0.5 |
+| [SG-16](SG-16.md) | Every cold function reads a 10.4 MB list of server references before its first request | oversize | P2 | S | 1.8 |
+| [SG-10](SG-10.md) ✓ | The AI manager's tool catalogue is converted to JSON Schema at import, on routes with no AI | eager | P2 | S | 0.5 |
+| [SG-11](SG-11.md) ✓ | The build writes the same server chunks many times: 124 MiB of 196 MiB is repeats | duplicate | P2 | S | 4.5 |
+| [SG-8](SG-8.md) ✓ | Reader and writer share a file, so a new import between features re-joins reads to writes | no check | P2 | L | 2.20 |
+| [SG-13](SG-13.md) ✓ | The 13 MB taxonomy is traced into every function, including those that cannot read it | oversize | P3 | S | 2.23 |
+| [SG-9](SG-9.md) ✓ | getStore() imports the Stripe SDK to learn which payment modes have keys | eager | P3 | S | 2.22 |
 | [SG-12](SG-12.md) ✓ | Four storefront languages are imported for every server route; a request needs one | eager | P3 | M | tolerated |
 
 ## Measured

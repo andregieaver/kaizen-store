@@ -2,7 +2,7 @@
 
 The server code every route loads (`README.md` beside this file), part of `docs/audits/bloat-review-2026-11.md`.
 
-- **Kind:** eager. **Priority:** P3. **Effort:** S. **Confidence:** high. **Step:** 2.12.
+- **Kind:** eager. **Priority:** P3. **Effort:** S. **Confidence:** high. **Step:** 2.22.
 - **Second check:** corrected.
 - **Where:** `src/server/stores.ts:182`, `src/server/stores.ts:300`, `src/server/orders.ts:23`, `src/server/orders.ts:555`, `src/server/stripe.ts:3`, `src/server/stripe.ts:33-46`, `src/server/stripe.ts:58-60`, `src/lib/stripe-account.ts:17-26`
 - **Evidence:** stores.ts:182 imports platformModes from stripe.ts to decide paymentsOn (line 300); orders.ts:23 does the same (line 555); stripe.ts imports the Stripe package at the top (line 3). The SDK is 189 modules and 212 KB in the server chunks. platformModes() is not a pure read of the environment today: it calls platformStripe(mode), which builds a Stripe client when a key is set (stripe.ts:33-46); its answer depends only on whether the two keys have the right shape (platformKey in src/lib/stripe-account.ts:17-26). 16 non-test files import platformModes. The price of moving it is in the tests: 113 test files mention platformModes, nearly all in a vi.mock of ./stripe that answers ['test'] (rg, counted here; the skeptic counted 98 integration files).

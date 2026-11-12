@@ -2,7 +2,7 @@
 
 How data is asked for (`README.md` beside this file), part of `docs/audits/bloat-review-2026-11.md`.
 
-- **Kind:** eager. **Priority:** P1. **Effort:** M. **Confidence:** medium. **Step:** 0.21.
+- **Kind:** eager. **Priority:** P1. **Effort:** M. **Confidence:** medium. **Step:** 0.28.
 - **Second check:** confirmed.
 - **Where:** `src/server/media-library.ts:317-391`, `src/server/media-library.ts:793-831`, `src/server/media-library.ts:860-876`, `src/server/alt-texts.ts:110`, `src/server/media-compress.ts:77`, `src/server/media-compress.ts:149`, `docs/media-compression.md:59`, `docs/rules/admin/website.md:676`
 - **Evidence:** mediaUses() joins each picture to every page of the site and tests position(m.url in pg.draft::text) and the same on published, so both documents of every page are cast to text per picture; it does the same over entries, menus, saved parts, theme looks and settings in 12 union branches (media-library.ts:321-381). Production: 1,831 calls at 145 ms, and other shapes 43 at 925 ms, 198 at 133 ms, 205 at 66 ms, 776 at 47 ms: about 382 s in all, the second most expensive app statement. embedMedia() (media-library.ts:798-831, which I opened) picks every picture whose vector is older than a day ('or e.updated_at < now() - interval ''1 day''', line 810, 'so what uses an item is kept current'), 128 a run, calls mediaUses() for them, then only moves the date on the unchanged ones (822-828): media_embeddings shows 13,414 updates on 468 rows, about 29 daily re-stamps of each. refreshMediaEmbeddings() loops over every site with media, one after another (860-874), every five minutes.

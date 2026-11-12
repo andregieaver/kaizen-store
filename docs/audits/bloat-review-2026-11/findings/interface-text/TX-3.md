@@ -2,7 +2,7 @@
 
 Interface text (`README.md` beside this file), part of `docs/audits/bloat-review-2026-11.md`.
 
-- **Kind:** oversize. **Priority:** P1. **Effort:** S. **Confidence:** medium. **Step:** 0.7.
+- **Kind:** oversize. **Priority:** P1. **Effort:** S. **Confidence:** medium. **Step:** 0.8.
 - **Second check:** confirmed.
 - **Where:** `src/server/ui-text.ts:47-54`, `src/server/ui-text.ts:127-129`, `src/app/s/[store]/[market]/layout.tsx:131`, `src/app/s/[store]/[market]/layout.tsx:160`, `src/components/ui-texts.tsx:17-25`, `src/lib/browser-text.ts:15-19`, `src/lib/returns-text.ts:15-21`, `src/app/s/[store]/[market]/withdraw/page.tsx`, `src/server/languages.int.test.ts:130`
 - **Evidence:** loadLanguage() keeps every ui: key of the language for the browser (ui-text.ts:53), the storefront layout passes it to the client component UiTexts (layout.tsx:131 and 160), and UiTexts lays it over browserText('en'), which has 114 keys, keeping the rest only for the withdrawal page's returnsText(). Re-measured from the catalogue: 1,673 keys are 92,809 bytes as JSON at English lengths; the 114 the browser's components read are 5,854 bytes; the withdrawal page's 144 are 10,409 bytes.

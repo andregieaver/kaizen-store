@@ -2,7 +2,7 @@
 
 Interface text (`README.md` beside this file), part of `docs/audits/bloat-review-2026-11.md`.
 
-- **Kind:** no check. **Priority:** P1. **Effort:** M. **Confidence:** high. **Step:** 1.3.
+- **Kind:** no check. **Priority:** P1. **Effort:** M. **Confidence:** high. **Step:** 1.4.
 - **Second check:** confirmed.
 - **Where:** `src/components/admin/admin-catalogues.scan.test.ts:45-55`, `src/components/admin/templates-helpers.ts:1`, `src/lib/store-features.ts:14`, `src/lib/admin-messages/notifications.en.ts:1-9`, `src/lib/admin-messages/orders.en.ts:2-8`, `src/lib/storefront-bundle.scan.test.ts:16`, `e2e/signed-in/admin-scripts.spec.ts:36-46`, `docs/performance.md:190-198`, `.github/workflows/ci.yml:35`
 - **Evidence:** Scripts have budgets per admin screen; the documents the words are handed in have none. The ratchet for catalogues in client code reads only files that say 'use client' and import a catalogue directly (admin-catalogues.scan.test.ts:45-55), so it does not see templates-helpers.ts, store-features.ts or the lib modules that import a catalogue by value (68 outside the admin by my count). Nothing keeps the registry out of code outside the admin (TX-1). 14 catalogue files import code; notifications.en.ts bundled alone is 524 KB minified, of which 47 KB is its own text and 454 KB is zod (verified report). Nothing looks for keys no code names. The comment at ci.yml:35 names the catalogues as the reason for the 7 GB heap; measured alone they take about 125 MB.

@@ -2,7 +2,7 @@
 
 Tests, CI and the build (`README.md` beside this file), part of `docs/audits/bloat-review-2026-11.md`.
 
-- **Kind:** oversize. **Priority:** P1. **Effort:** M. **Confidence:** medium. **Step:** 2.26.
+- **Kind:** oversize. **Priority:** P1. **Effort:** M. **Confidence:** medium. **Step:** 2.42.
 - **Second check:** corrected.
 - **Where:** `tsconfig.json:25-33`, `package.json:10`, `.github/workflows/ci.yml:35-37`, `.github/workflows/ci.yml:300-302`, `scripts/next-build.mjs:1-9`, `next.config.ts:34-46`, `docs/build-memory.md:23`, `docs/build-memory.md:39`, `node_modules/next/dist/docs/01-app/03-api-reference/05-config/02-typescript.md:14-40`, `src/components/admin/product-editor.tsx:25-26`
 - **Evidence:** tsconfig.json includes **/*.ts and excludes only node_modules, so tests, e2e, docs and scripts are in the one program: 8,003 files, of which 1,221 unit tests, 556 integration tests and 232 e2e files (verified report, from .next/cache/.tsbuildinfo). The verified probes: an empty file needs 121 MB; schema.ts and its imports 573 MB; every admin catalogue 537 MB; page-content.ts 358 MB; one admin component, product-editor.tsx, 2,599 MB and 33.9 s for 3,026 files, because it imports server actions and TypeScript follows them into the server code. That is 4 to 6 MB per 1,000 lines for a program of about 1.12 million lines of its own plus 556,829 of definitions. Tests and e2e are 39% of the project's own syntax trees and 24% of the whole program by characters. Next 16.4's doc says `next build` runs the project's own tsc and supports TypeScript 7, and that typescript.tsconfigPath selects the project. I did not re-run the probes: a full type check was ruled out for this review.

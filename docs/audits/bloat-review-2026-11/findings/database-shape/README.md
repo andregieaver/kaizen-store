@@ -8,20 +8,20 @@ Part of `docs/audits/bloat-review-2026-11.md`, on commit 0bd814c. Read by one re
 
 | ID | Finding | Kind | Priority | Effort | Step |
 |---|---|---|---|---|---|
-| [DS-8](DS-8.md) ✓ | pg_cron's run log is 564 MB of the 731 MB database and nothing prunes it | oversize | P0 | S | 0.20 |
-| [DS-1](DS-1.md) ✓ | Every server start loads the whole schema file, which no query uses | eager | P0 | S | 0.3 |
-| [DS-7](DS-7.md) ✓ | `store_id is not distinct from` keeps Postgres from using the store indexes | oversize | P0 | M | 0.18 |
-| [DS-15](DS-15.md) | Indexes are declared in two places and nothing compares them, which is how duplicates reached orders and order_lines | no check | P1 | S | 0.20 |
-| [DS-9](DS-9.md) ✓ | Thirteen indexes duplicate another; orders carries 34, five of them starting (store_id, placed_at) | oversize | P1 | S | 0.20 |
-| [DS-4](DS-4.md) ✓ | A page's title, its titles by language and its flags live only inside its content JSON, so lists read and parse whole pages | oversize | P1 | M | 2.19 |
-| [DS-5](DS-5.md) ✓ | The knowledge job re-cuts pages that have no text every five minutes, and reads every page's content to compare a date | eager | P1 | M | 0.21 |
-| [DS-10](DS-10.md) ✓ | Where each picture is used is found by text-searching every page's JSON, again every day for every picture | eager | P1 | S | 0.21 |
-| [DS-3](DS-3.md) ✓ | Two scheduled jobs do work that does not follow use: a prune every minute and an invoice retry every five minutes for 120 days | eager | P1 | S | 0.22 |
-| [DS-13](DS-13.md) ✓ | Retention gaps: carts and processed webhook events are never deleted, the status prune scans on every tick, and the docs index is rewritten whole *(your choice)* | oversize | P1 | M | 3.3 |
-| [DS-12](DS-12.md) ✓ | Nothing counts what a new table, trigger, index or scheduled job adds to the running cost *(your choice)* | no check | P1 | S | 1.10 |
-| [DS-6](DS-6.md) ✓ | Kaizena Flow's own site and tools are kept more than one way: null-store rows, platform_* twin tables, and a copy in its own store *(your choice)* | duplicate | P1 | L | 3.5 |
-| [DS-2](DS-2.md) ✓ | Each server start waits for a read of the interface-text table, and every warm instance asks again each minute | eager | P2 | S | 0.7 |
-| [DS-14](DS-14.md) ✓ | A very short list of dead database objects: one table, five columns and a leftover schema | dead | P2 | S | 0.20 |
+| [DS-8](DS-8.md) ✓ | pg_cron's run log is 564 MB of the 731 MB database and nothing prunes it | oversize | P0 | S | 0.25 |
+| [DS-1](DS-1.md) ✓ | Every server start loads the whole schema file, which no query uses | eager | P0 | S | 0.4 |
+| [DS-7](DS-7.md) ✓ | `store_id is not distinct from` keeps Postgres from using the store indexes | oversize | P0 | M | 0.23 |
+| [DS-15](DS-15.md) | Indexes are declared in two places and nothing compares them, which is how duplicates reached orders and order_lines | no check | P1 | S | 0.26 |
+| [DS-9](DS-9.md) ✓ | Thirteen indexes duplicate another; orders carries 34, five of them starting (store_id, placed_at) | oversize | P1 | S | 0.26 |
+| [DS-4](DS-4.md) ✓ | A page's title, its titles by language and its flags live only inside its content JSON, so lists read and parse whole pages | oversize | P1 | M | 2.16 |
+| [DS-5](DS-5.md) ✓ | The knowledge job re-cuts pages that have no text every five minutes, and reads every page's content to compare a date | eager | P1 | M | 0.27 |
+| [DS-10](DS-10.md) ✓ | Where each picture is used is found by text-searching every page's JSON, again every day for every picture | eager | P1 | S | 0.28 |
+| [DS-3](DS-3.md) ✓ | Two scheduled jobs do work that does not follow use: a prune every minute and an invoice retry every five minutes for 120 days | eager | P1 | S | 0.30 |
+| [DS-13](DS-13.md) ✓ | Retention gaps: carts and processed webhook events are never deleted, the status prune scans on every tick, and the docs index is rewritten whole *(your choice)* | oversize | P1 | M | 3.5 |
+| [DS-12](DS-12.md) ✓ | Nothing counts what a new table, trigger, index or scheduled job adds to the running cost *(your choice)* | no check | P1 | S | 1.18 |
+| [DS-6](DS-6.md) ✓ | Kaizena Flow's own site and tools are kept more than one way: null-store rows, platform_* twin tables, and a copy in its own store *(your choice)* | duplicate | P1 | L | 3.9 |
+| [DS-2](DS-2.md) ✓ | Each server start waits for a read of the interface-text table, and every warm instance asks again each minute | eager | P2 | S | 0.8 |
+| [DS-14](DS-14.md) ✓ | A very short list of dead database objects: one table, five columns and a leftover schema | dead | P2 | S | 3.8 |
 | [DS-11](DS-11.md) ✓ | Ending one sandbox runs at least 800 deletes and holds about 2,100 locks, one pass per store table per round | oversize | P3 | S | 4.4 |
 
 ## Refuted by the second reviewer

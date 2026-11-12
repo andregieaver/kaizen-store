@@ -2,7 +2,7 @@
 
 Tests, CI and the build (`README.md` beside this file), part of `docs/audits/bloat-review-2026-11.md`.
 
-- **Kind:** duplicate. **Priority:** P0. **Effort:** S. **Confidence:** high. **Step:** 0.26.
+- **Kind:** duplicate. **Priority:** P0. **Effort:** S. **Confidence:** high. **Step:** 0.38.
 - **Second check:** confirmed.
 - **Where:** `.github/workflows/ci.yml:55-56`, `.github/workflows/ci.yml:109-110`, `.github/workflows/ci.yml:152`, `.github/workflows/ci.yml:206`, `.github/workflows/ci.yml:249`, `.github/workflows/ci.yml:297-305`, `next.config.ts:39-46`, `tsconfig.json:25-33`, `docs/build-memory.md:30`, `node_modules/next/dist/docs/01-app/03-api-reference/05-config/01-next-config-js/useTypeScriptCli.md:58-62`
 - **Evidence:** next.config.ts:46 skips the build's type check only on Vercel, so `pnpm build` in the e2e, hosts and signed-in jobs (ci.yml:152, 206, 249) each runs it. In this machine's build the TypeScript step took 182.9 s of 262.0 s (build.log: 'Finished TypeScript in 3.0min'). Next's doc says the build checks the complete project of the tsconfig, test files included, and that typescript.ignoreBuildErrors skips the step. The static job (ci.yml:56) and the quick gate (ci.yml:302) run `pnpm typecheck` on the same tsconfig. Lint runs twice (55, 299). `pnpm db:check` runs in each of the 3 integration shards (110, matrix at 86) although it reads only the repository. With a migration pending the gate's steps are skipped, so the count is four.

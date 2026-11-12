@@ -2,7 +2,7 @@
 
 What a shopper's browser loads (`README.md` beside this file), part of `docs/audits/bloat-review-2026-11.md`.
 
-- **Kind:** eager. **Priority:** P2. **Effort:** S. **Confidence:** low. **Step:** 0.11.
+- **Kind:** eager. **Priority:** P2. **Effort:** S. **Confidence:** low. **Step:** 0.14.
 - **Second check:** corrected.
 - **Where:** `evidence/prefetch-storm.md`, `evidence/routes.json`, `a scratch script`, `src/app/s/[store]/[market]/@drawer/[...rest]/page.tsx:1`, `src/components/product-card.tsx:74`
 - **Evidence:** Re-tallied in this pass from m/routes.json: the category page made 10,358 requests in the measuring window, 5,144 RSC answers for one address (/s/demo/no/p/demo-bordlampe), 5,142 of them 1,435 bytes; the search page 10,950, of which 5,449 for /s/demo/no/search, 5,448 of them 1,435 bytes. The review's note (m/prefetch-storm.md) records the request's header: a segment prefetch of the @drawer slot's catch-all page of the target route. Almost all were served from the browser's cache. The other ten storefront pages made 38 to 107 requests. The note says production, where stores are on their own hosts, made 55 to 58 requests in 5 s and did not loop. The cause is not known, and nobody has reproduced it a second time; this pass could not run a server.

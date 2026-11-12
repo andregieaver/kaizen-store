@@ -2,7 +2,7 @@
 
 Scheduled and background work (`README.md` beside this file), part of `docs/audits/bloat-review-2026-11.md`.
 
-- **Kind:** eager. **Priority:** P1. **Effort:** M. **Confidence:** medium. **Step:** 3.1.
+- **Kind:** eager. **Priority:** P1. **Effort:** M. **Confidence:** medium. **Step:** 3.2.
 - **Second check:** corrected.
 - **Where:** `src/app/api/cron/autopilot/route.ts:22-28`, `src/server/autopilot-reviews.ts:70-122`, `src/server/autopilot-events.ts:83-206`, `src/app/api/cron/broadcasts/route.ts:28-41`, `src/server/automations.ts:184-193`, `src/server/automations.ts:257-289`, `src/server/ad-conversions.ts:55-68`, `src/server/platform-ad-conversions.ts:35-58`, `src/server/support-email.ts:92-124`
 - **Evidence:** An empty table is not a reason to change anything, and the idle statements here are already counted in CR-1 (28 of its 58). What the code shows is how the work grows once a feature is used. runAutomations() loads every enabled automation and then, per store, reads the store once and, per store and kind, runs one due query, every minute, for emails whose delays count in days (automations.ts:264-271). queueAdConversions() re-offers every eligible order of the last seven days to every connected ad platform each minute and relies on 'on conflict do nothing' to drop what is already queued (ad-conversions.ts:55-68). sendReplyEmails() reads every conversation that is not anonymised, with no status filter, twice each minute (support-email.ts:96-124). The autopilot route runs 13 statements a minute, three of them the same 'paused?' read.

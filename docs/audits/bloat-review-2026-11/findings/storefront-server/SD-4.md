@@ -2,7 +2,7 @@
 
 What the server does for a storefront request (`README.md` beside this file), part of `docs/audits/bloat-review-2026-11.md`.
 
-- **Kind:** oversize. **Priority:** P2. **Effort:** M. **Confidence:** high. **Step:** 0.19.
+- **Kind:** oversize. **Priority:** P2. **Effort:** M. **Confidence:** high. **Step:** 0.24.
 - **Second check:** corrected.
 - **Where:** `src/server/pages.ts:664-680`, `src/server/pages.ts:715-736`, `src/server/pages.ts:797-800`, `src/server/pages.ts:859-863`, `src/app/s/[store]/[market]/page.tsx:28-30`, `src/server/legal-links.ts:24-29`, `src/server/checkout-terms.ts:45-57`, `src/components/site-chat.tsx:107-112`, `src/server/platform-roles.ts:34-38`, `src/server/platform-navigation.ts:135-151`, `src/server/media-alts.ts:53-57`
 - **Evidence:** listPublishedPages() selects the whole published document of every published page of an owner, parses each, and looks up every picture of every page in media (withPageAlts, media-alts.ts:53-57). I count 35 call sites. Nine keep one page by id: the front page (page.tsx:29), All products (pages.ts:799), a role page (:862), the chat's privacy link, a blog's listing page, two account pages, the platform's role page and a preview. Legal links (legal-links.ts:24-29) and the terms sentence (checkout-terms.ts:45-57) use titles and addresses only. Kaizena Flow's own header reads all its pages and all its articles this way to name menu links (platform-navigation.ts:138-140), while a store's header uses publishedPageNames(), which takes titles in SQL. The result is cached per owner, so callers in one instance share one read: the waste is in what one fill reads and parses. The read sits in the layout's blocking wave (layout.tsx:127). Production: 79,778 calls, 29 rows a call, 9.8 ms mean, 781 s in all.

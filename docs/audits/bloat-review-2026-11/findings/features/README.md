@@ -8,13 +8,13 @@ Part of `docs/audits/bloat-review-2026-11.md`, on commit 0bd814c. Read by one re
 
 | ID | Finding | Kind | Priority | Effort | Step |
 |---|---|---|---|---|---|
-| [FT-15](FT-15.md) | The cart page works out the whole basket twice per view, and every basket asks the database about bonus, referrals and checkout rules whether or not the store uses them | eager | P0 | S | 0.17 |
-| [FT-8](FT-8.md) ✓ | Order rules ('Automation') and Workflows are two engines for one job *(your choice)* | duplicate | P1 | M | 3.7 |
-| [FT-5](FT-5.md) ✓ | Kaizena Flow's site is kept twice since the switch of 7 November | duplicate | P1 | M | 3.5 |
-| [FT-2](FT-2.md) ✓ | Nothing makes a new feature state what it costs a store that does not use it *(your choice)* | no check | P1 | S | 1.10 |
-| [FT-4](FT-4.md) ✓ | The AI manager sends up to 124 tool definitions a round whatever the store uses; gating tools by feature would not lower that | eager | P1 | M | 2.21 |
-| [FT-3](FT-3.md) ✓ | Nine dispatcher jobs only prune old rows and run 288 times a day, and two run logs are pruned every minute | eager | P2 | S | 0.22 |
-| [FT-12](FT-12.md) ✓ | An owner's own look can be kept in two places: saved themes and the theme library *(your choice)* | duplicate | P2 | S | 3.7 |
+| [FT-15](FT-15.md) | The cart page works out the whole basket twice per view, and every basket asks the database about bonus, referrals and checkout rules whether or not the store uses them | eager | P0 | S | 0.22 |
+| [FT-8](FT-8.md) ✓ | Order rules ('Automation') and Workflows are two engines for one job *(your choice)* | duplicate | P1 | M | 3.11 |
+| [FT-5](FT-5.md) ✓ | Kaizena Flow's site is kept twice since the switch of 7 November | duplicate | P1 | M | 3.9 |
+| [FT-2](FT-2.md) ✓ | Nothing makes a new feature state what it costs a store that does not use it *(your choice)* | no check | P1 | S | 1.18 |
+| [FT-4](FT-4.md) ✓ | The AI manager sends up to 124 tool definitions a round whatever the store uses; gating tools by feature would not lower that | eager | P1 | M | 2.36 |
+| [FT-3](FT-3.md) ✓ | Nine dispatcher jobs only prune old rows and run 288 times a day, and two run logs are pruned every minute | eager | P2 | S | 0.31 |
+| [FT-12](FT-12.md) ✓ | An owner's own look can be kept in two places: saved themes and the theme library *(your choice)* | duplicate | P2 | S | 3.12 |
 | [FT-7](FT-7.md) ✓ | What a new owner sees: 29 links in Basic, 94 in Advanced, 35 under Settings. A product question, mostly planned already *(your choice)* | oversize | P2 | M | your choice |
 | [FT-1](FT-1.md) ✓ | Most features have no switch; adding more is a product choice, because a switch saves almost no running cost *(your choice)* | eager | P3 | S | tolerated |
 | [FT-9](FT-9.md) ✓ | Campaigns and discount codes overlap at their edges; one page is planned, one engine is not worth it *(your choice)* | duplicate | P3 | S | tolerated |

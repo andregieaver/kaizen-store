@@ -8,19 +8,19 @@ Part of `docs/audits/bloat-review-2026-11.md`, on commit 0bd814c. Read by one re
 
 | ID | Finding | Kind | Priority | Effort | Step |
 |---|---|---|---|---|---|
-| [PF-1](PF-1.md) ✓ | Next's route guessing and the cart drawer's catch-all slot make an endless prefetch on the local build and in CI: about 165 requests a second reach the server per open page | eager | P0 | S | 0.11 |
-| [PF-2](PF-2.md) ✓ | Every page of a store with several languages, currencies or countries prefetches the home page of each other view, and for languages and currencies the press does not open it | eager | P0 | S | 0.10 |
-| [PF-11](PF-11.md) | Links that leave their root layout are fetched ahead, and pressing them loads a whole document anyway: a multi-country store's front door fetches every country's home page for nothing | eager | P0 | S | 0.10 |
-| [PF-3](PF-3.md) ✓ | The header tools, bottom bar and footer are prefetched on every full page load, with the script chunks of pages nobody asked for | eager | P1 | S | 2.3 |
-| [PF-4](PF-4.md) ✓ | The links shoppers press most on built pages are full page loads: a whole document and every prefetch made again where one small answer would do | oversize | P1 | M | 2.3 |
-| [PF-5](PF-5.md) ✓ | The admin prefetches its whole sidebar on every load and again after every refresh, to fetch nearly the same loading skeleton twelve times | eager | P1 | S | 0.10 |
-| [PF-7](PF-7.md) ✓ | On wide screens the cart link prefetches a drawer and its scripts that are never shown, and a press renders the drawer before reloading the page | eager | P1 | S | 2.1 |
-| [PF-10](PF-10.md) ✓ | Nothing sets or checks what the router may fetch ahead | no check | P1 | M | 2.3 |
-| [PF-6](PF-6.md) ✓ | Each row of an admin list fetches the same shell again | duplicate | P2 | S | 0.10 |
-| [PF-8](PF-8.md) ✓ | Links in closed drop-down and mega menus are prefetched while invisible | eager | P2 | S | 2.3 |
-| [PF-9](PF-9.md) ✓ | Partial Prefetching was planned, never switched on, and the next major Next release forces it | no check | P2 | M | 2.4 |
-| [PF-12](PF-12.md) | The first add to cart of a visit throws the router's whole prefetch cache away: 20 more requests on a phone, at the moment the shopper buys | eager | P2 | S | 2.3 |
-| [PF-13](PF-13.md) | A real listing prefetches every product tile, and up to six swatch links under each: nothing bounds it, and the test stores are too small to show it | eager | P2 | S | 2.4 |
+| [PF-1](PF-1.md) ✓ | Next's route guessing and the cart drawer's catch-all slot make an endless prefetch on the local build and in CI: about 165 requests a second reach the server per open page | eager | P0 | S | 0.14 |
+| [PF-2](PF-2.md) ✓ | Every page of a store with several languages, currencies or countries prefetches the home page of each other view, and for languages and currencies the press does not open it | eager | P0 | S | 0.12 |
+| [PF-11](PF-11.md) | Links that leave their root layout are fetched ahead, and pressing them loads a whole document anyway: a multi-country store's front door fetches every country's home page for nothing | eager | P0 | S | 0.12 |
+| [PF-3](PF-3.md) ✓ | The header tools, bottom bar and footer are prefetched on every full page load, with the script chunks of pages nobody asked for | eager | P1 | S | 2.6 |
+| [PF-4](PF-4.md) ✓ | The links shoppers press most on built pages are full page loads: a whole document and every prefetch made again where one small answer would do | oversize | P1 | M | 2.7 |
+| [PF-5](PF-5.md) ✓ | The admin prefetches its whole sidebar on every load and again after every refresh, to fetch nearly the same loading skeleton twelve times | eager | P1 | S | 0.13 |
+| [PF-7](PF-7.md) ✓ | On wide screens the cart link prefetches a drawer and its scripts that are never shown, and a press renders the drawer before reloading the page | eager | P1 | S | 2.2 |
+| [PF-10](PF-10.md) ✓ | Nothing sets or checks what the router may fetch ahead | no check | P1 | M | 2.6 |
+| [PF-6](PF-6.md) ✓ | Each row of an admin list fetches the same shell again | duplicate | P2 | S | 0.13 |
+| [PF-8](PF-8.md) ✓ | Links in closed drop-down and mega menus are prefetched while invisible | eager | P2 | S | 2.6 |
+| [PF-9](PF-9.md) ✓ | Partial Prefetching was planned, never switched on, and the next major Next release forces it | no check | P2 | M | 2.8 |
+| [PF-12](PF-12.md) | The first add to cart of a visit throws the router's whole prefetch cache away: 20 more requests on a phone, at the moment the shopper buys | eager | P2 | S | 2.6 |
+| [PF-13](PF-13.md) | A real listing prefetches every product tile, and up to six swatch links under each: nothing bounds it, and the test stores are too small to show it | eager | P2 | S | 2.8 |
 
 ## Measured
 

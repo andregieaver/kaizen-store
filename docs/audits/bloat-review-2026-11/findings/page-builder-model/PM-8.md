@@ -2,7 +2,7 @@
 
 The page builder's model and a built page's render (`README.md` beside this file), part of `docs/audits/bloat-review-2026-11.md`.
 
-- **Kind:** duplicate. **Priority:** P1. **Effort:** M. **Confidence:** high. **Step:** 2.7.
+- **Kind:** duplicate. **Priority:** P1. **Effort:** M. **Confidence:** high. **Step:** 2.12.
 - **Second check:** confirmed.
 - **Where:** `src/components/content-grid-section.tsx:40`, `src/components/content-grid-section.tsx:80`, `src/components/content-grid-section.tsx:86`, `src/components/content-grid-section.tsx:97`, `src/components/content-grid-section.tsx:116`
 - **Evidence:** The grid is the Suspense fallback in the prerendered shell (content-grid-section.tsx:40-44), and FilterableGrid streams a second grid in its place on each request. With no filter on page 1 the second holds the same items (`unfiltered && page === 1 ? null`, then `data.items`, :86-97, drawn again at :116). Re-run in this pass (work/pmsk/grid.mjs on the captured /s/demo/no/products): the streamed block S:1 is 16,702 B with 18 product links and 9 pictures, in a document of 55,163 B of markup; the home page, whose grid has no filters, has no such block.

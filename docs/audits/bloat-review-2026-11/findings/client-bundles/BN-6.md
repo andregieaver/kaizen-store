@@ -2,7 +2,7 @@
 
 The built client bundles, by page (`README.md` beside this file), part of `docs/audits/bloat-review-2026-11.md`.
 
-- **Kind:** oversize. **Priority:** P1. **Effort:** M. **Confidence:** high. **Step:** 2.15.
+- **Kind:** oversize. **Priority:** P1. **Effort:** M. **Confidence:** high. **Step:** 2.29.
 - **Second check:** confirmed.
 - **Where:** `src/lib/i18n.ts:9`, `src/lib/i18n.ts:17`, `src/components/admin/page-builder-fields.tsx:13`, `src/components/admin/page-builder-fields.tsx:1537`, `src/components/admin/block-fields.tsx:21`, `src/components/admin/block-fields.tsx:2684`, `src/components/admin/modal-preview.tsx:18`, `src/components/admin/modal-preview.tsx:34`, `src/components/content-grid.tsx:9`, `src/components/content-grid.tsx:63`, `src/components/admin/drafts/draft-summary.tsx:3`, `src/components/admin/drafts/draft-summary.tsx:35`
 - **Evidence:** Chunk 1u2592k6jkhim.js (318,693 bytes, 102,965 gzip) is lib/i18n with messages nb, sv, da and en merged, in the first-load list of 40 routes: the builder's 39 and the draft order editor. Five client call sites read it through t(lang), one language at a time and a few keys each: the grid's preview (page-builder-fields.tsx:1537, then ContentGridView, which calls t() itself at content-grid.tsx:63), a form's usual words (block-fields.tsx:2684, plain strings), a modal's two words (modal-preview.tsx:34) and the unit price bases of a draft order (draft-summary.tsx:35). A second module with the four languages' returns texts (32,258 bytes) rides with it. The four source files are 383,069 bytes and hold 345 functions in English alone, so a whole language cannot cross from the server as a prop.

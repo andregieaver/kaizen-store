@@ -2,7 +2,7 @@
 
 The server code every route loads (`README.md` beside this file), part of `docs/audits/bloat-review-2026-11.md`.
 
-- **Kind:** dead. **Priority:** P0. **Effort:** S. **Confidence:** high. **Step:** 0.3.
+- **Kind:** dead. **Priority:** P0. **Effort:** S. **Confidence:** high. **Step:** 0.4.
 - **Second check:** confirmed.
 - **Where:** `src/db/client.ts:11`, `src/db/client.ts:31`, `src/db/client.ts:78`, `drizzle.config.ts:7`, `src/server/store-export.scan.test.ts`
 - **Evidence:** client.ts imports * as schema (line 11) and passes it to drizzle() (line 78). Nothing reads through it: I searched src for db().query, db().select, .from(schema. and found none outside tests that call pg's own tx.query(); the server writes SQL through execute(). client.ts is the only non-test importer of the schema (one scan test imports it too); drizzle-kit reads the file from drizzle.config.ts:7, not from the client. In the server chunks the file is 598 KB and builds 481 table objects on import; it also pulls src/lib modules only it needs (/api/health: 321 -> 272 module paths without it). It sits in the proxy and instrumentation layers too, so one process can evaluate it more than once.

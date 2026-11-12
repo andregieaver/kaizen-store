@@ -2,7 +2,7 @@
 
 The built client bundles, by page (`README.md` beside this file), part of `docs/audits/bloat-review-2026-11.md`.
 
-- **Kind:** oversize. **Priority:** P0. **Effort:** S. **Confidence:** high. **Step:** 0.8.
+- **Kind:** oversize. **Priority:** P0. **Effort:** S. **Confidence:** high. **Step:** 0.9.
 - **Second check:** corrected.
 - **Where:** `src/lib/env.ts:1`, `src/lib/supabase/client.ts:3`, `src/lib/push.ts:1`, `src/lib/push.ts:29`, `src/components/admin/push-settings.tsx:6`, `src/components/admin/push-settings.tsx:155`, `src/app/admin/(gated)/layout.tsx:11`, `src/server/push.ts:11`, `src/lib/storefront-bundle.scan.test.ts:16`
 - **Evidence:** Chunk 1-5xy7dnrat0_.js is zod (116,870 bytes, 32,660 gzip), in the first-load list of 432 routes and of no route outside /admin (marker 'ZodError'). Three chains bring it to a plain screen: the Supabase client reads publicEnv() from env.ts, which imports zod (BN-1); the gated layout takes AdminServiceWorker from push-settings.tsx (line 11), whose only import from src/lib/push.ts is deviceName, a function of two regular expressions, while push.ts also holds the subscription's zod schema (lines 1 and 29); and the shortcut sheet's chain (BN-3) reaches typography, visibility and colour. The storefront has a written rule and a scan for this (schemas in *-schema.ts beside the plain module; storefront-bundle.scan.test.ts line 16 forbids zod); the admin's frame has neither. Simulated with all three chains cut (the skeptic's run, repeated here): zod leaves the first scripts of 275 routes and stays on 157 whose own code imports it (the page model, custom fields, the builder).

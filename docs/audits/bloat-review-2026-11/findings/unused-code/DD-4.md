@@ -2,7 +2,7 @@
 
 Code nothing uses (`README.md` beside this file), part of `docs/audits/bloat-review-2026-11.md`.
 
-- **Kind:** no check. **Priority:** P1. **Effort:** S. **Confidence:** high. **Step:** 1.9.
+- **Kind:** no check. **Priority:** P1. **Effort:** S. **Confidence:** high. **Step:** 1.17.
 - **Second check:** corrected.
 - **Where:** `eslint.config.mjs:5`, `package.json:9`, `scripts/lib/ratchet-count.mjs:16`, `src/server/ratchet.scan.test.ts:1`, `scripts/ratchet.mjs:1`, `src/server/ratchet.baseline.json:422`, `docs/audits/bloat-review-2026-11/scripts/unused-code.mjs:1`
 - **Evidence:** ESLint runs Next's two presets with --max-warnings 0: they fail on an unused local or import, never on an unused export. None of the 46 scan tests mentions unused, orphan or importers, and package.json has no tool for it. An export keyword on a name its own file does not use switches off the compiler's and the linter's check: that is the 263 plus 655 suspects, found only because a scanner was written for this review (256 lines on the repo's own TypeScript, 8.8 s over 6,191 files; it is in the repo at docs/audits/bloat-review-2026-11/scripts/unused-code.mjs). The other 2,205 over-exported names are used in their own file and hide nothing. Test support has no single name either: 9 of the 34 test-support files end in something the existing ratchet does not know (NOT_COUNTED, scripts/lib/ratchet-count.mjs:16), so src/server/trust-fixtures.ts is held to production rules with 5 unchecked reads in ratchet.baseline.json.

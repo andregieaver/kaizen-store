@@ -2,7 +2,7 @@
 
 Prefetching: what the router asks for unasked (`README.md` beside this file), part of `docs/audits/bloat-review-2026-11.md`.
 
-- **Kind:** eager. **Priority:** P0. **Effort:** S. **Confidence:** high. **Step:** 0.10.
+- **Kind:** eager. **Priority:** P0. **Effort:** S. **Confidence:** high. **Step:** 0.12.
 - **Second check:** corrected.
 - **Where:** `src/components/view-menu.tsx:50-76`, `src/components/store-layout.tsx:207-221,236,419,531,537`, `src/components/site-parts.tsx:184-208`, `src/server/shop.ts:93-101`
 - **Evidence:** The standard footer lists the view choices as <Link>s to each view's front page (LocaleChoice as a list at store-layout.tsx:531, countries at 537; a built header's or footer's Countries part at site-parts.tsx:184-208). Each is prefetched when it comes into view: 3 requests a link, the other view's layout (55 KB decoded), its home page (29 KB) and the drawer slot's default (0.6 KB). Re-measured by the planner on the demo store's home page read to the footer on a phone: 8 links, 24 of 47 requests, 662.0 of 729.3 KB decoded, 135.4 of 204.0 KB on the wire; the built /products page shows the same 24 of 48. For the 6 language and currency links the press handler cancels the link and pushes the current page in the chosen view (view-menu.tsx:62-72), so the prefetched home page is used only on the home page. The 2 country links have no handler and do open what was fetched. Only the template store's views are built ahead (shop.ts:93-101), so on a real store the first prefetch of a view renders its layout and home page (75 to 78 ms cold per the skeptic), and again when stale (s-maxage 900).

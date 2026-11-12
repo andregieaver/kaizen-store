@@ -8,18 +8,18 @@ Part of `docs/audits/bloat-review-2026-11.md`, on commit 0bd814c. Read by one re
 
 | ID | Finding | Kind | Priority | Effort | Step |
 |---|---|---|---|---|---|
-| [DD-1](DD-1.md) ✓ | Every cold start evaluates the 19,614-line schema that no query reads | eager | P0 | S | 0.3 |
-| [DD-4](DD-4.md) ✓ | Nothing counts unused code, so it grows unseen | no check | P1 | S | 1.9 |
-| [DD-3](DD-3.md) ✓ | 331 exports are used by nothing at all, and some say they are in use | dead | P1 | S | 0.25 |
-| [DD-8](DD-8.md) ✓ | Three files only tests reach, and a rule that still describes one of them | dead | P1 | S | 0.25 |
+| [DD-1](DD-1.md) ✓ | Every cold start evaluates the 19,614-line schema that no query reads | eager | P0 | S | 0.4 |
+| [DD-4](DD-4.md) ✓ | Nothing counts unused code, so it grows unseen | no check | P1 | S | 1.17 |
+| [DD-3](DD-3.md) ✓ | 331 exports are used by nothing at all, and some say they are in use | dead | P1 | S | 0.36 |
+| [DD-8](DD-8.md) ✓ | Three files only tests reach, and a rule that still describes one of them | dead | P1 | S | 0.36 |
 | [DD-2](DD-2.md) ✓ | About 330 exports in production files are kept alive only by a test | dead | P2 | M | 4.3 |
-| [DD-7](DD-7.md) ✓ | English words kept twice: old constants beside the catalogues, held equal by tests | duplicate | P2 | S | 3.9 |
+| [DD-7](DD-7.md) ✓ | English words kept twice: old constants beside the catalogues, held equal by tests | duplicate | P2 | S | 3.15 |
 | [DD-5](DD-5.md) ✓ | Three Work actions have no screen: a logged time entry's hours cannot be corrected *(your choice)* | dead | P2 | S | your choice |
-| [DD-12](DD-12.md) ✓ | The invoice-PDF job has a route and a retry button, but nothing ever calls it *(your choice)* | dead | P2 | S | 3.4 |
-| [DD-13](DD-13.md) | One unit test replays all 789 archived migrations on every run | dead | P2 | S | 0.26 |
-| [DD-10](DD-10.md) ✓ | Tests that quote or replay migrations no database will run again | dead | P2 | S | 0.26 |
-| [DD-11](DD-11.md) ✓ | Small things kept from before: old redirects, a twin switch, a second scheduler, an old schema | duplicate | P2 | M | 0.25 |
-| [DD-9](DD-9.md) ✓ | Upgraders for three old page shapes: almost free to run, still fed by today's code, and pinned by a rule and a spec | dead | P3 | M | 3.10 |
+| [DD-12](DD-12.md) ✓ | The invoice-PDF job has a route and a retry button, but nothing ever calls it *(your choice)* | dead | P2 | S | 3.7 |
+| [DD-13](DD-13.md) | One unit test replays all 789 archived migrations on every run | dead | P2 | S | 0.39 |
+| [DD-10](DD-10.md) ✓ | Tests that quote or replay migrations no database will run again | dead | P2 | S | 0.39 |
+| [DD-11](DD-11.md) ✓ | Small things kept from before: old redirects, a twin switch, a second scheduler, an old schema | duplicate | P2 | M | 0.37 |
+| [DD-9](DD-9.md) ✓ | Upgraders for three old page shapes: almost free to run, still fed by today's code, and pinned by a rule and a spec | dead | P3 | M | 3.17 |
 | [DD-6](DD-6.md) ✓ | Live drills can only be asked for by hand-written SQL, and their job polls every five minutes *(your choice)* | eager | P3 | S | your choice |
 
 ## Measured

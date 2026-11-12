@@ -2,7 +2,7 @@
 
 Files that ship or are stored (`README.md` beside this file), part of `docs/audits/bloat-review-2026-11.md`.
 
-- **Kind:** dead. **Priority:** P3. **Effort:** S. **Confidence:** medium. **Step:** 1.2.
+- **Kind:** dead. **Priority:** P3. **Effort:** S. **Confidence:** medium. **Step:** 0.35.
 - **Second check:** corrected.
 - **Where:** `src/app/globals.css:7`, `src/app/globals.css:9`, `docs/build-memory.md:34`, `docs/decisions.md:719`
 - **Evidence:** globals.css points Tailwind at all of src except data (lines 7-8) and at supabase/migrations/*.sql (line 9); D378 chose both. The second check compared the built CSS's 1,833 class names with the code, the tests and the SQL: none exists only in the SQL, ten only in tests. The css dimension's second check (CS-6) ran Tailwind's scanner with and without these sources: 0.1 to 0.35 s of 0.42 to 0.74 s, and 436 bytes of CSS.

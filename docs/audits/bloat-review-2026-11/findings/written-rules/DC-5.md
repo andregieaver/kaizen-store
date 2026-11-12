@@ -2,7 +2,7 @@
 
 The written rules and the agents' context (`README.md` beside this file), part of `docs/audits/bloat-review-2026-11.md`.
 
-- **Kind:** eager. **Priority:** P1. **Effort:** S. **Confidence:** high. **Step:** 0.28.
+- **Kind:** eager. **Priority:** P1. **Effort:** S. **Confidence:** high. **Step:** 0.41.
 - **Second check:** confirmed.
 - **Where:** `CLAUDE.md:5-6`, `README.md:15`, `docs/plan.md:3`, `docs/decisions.md:3-6`, `docs/decisions.md:422`, `docs/platform.md:1-14`
 - **Evidence:** CLAUDE.md:5-6 says the research and phased build plan are in docs/plan.md and to read it before architectural work; README.md:15 says to skim it. plan.md is 72,617 bytes. Its own banner (line 3, updated 23 September) notes that the region and the single app differ from the plan. decisions.md:422 dates multi-tenancy to 24 September, and decisions.md:3-6 says the plan loses where they differ. docs/platform.md (16,193 bytes) is the note on how the platform is built. 12 other docs cite plan.md by path for its research (skeptic's count).

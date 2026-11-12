@@ -2,7 +2,7 @@
 
 Families and twins (`README.md` beside this file), part of `docs/audits/bloat-review-2026-11.md`.
 
-- **Kind:** duplicate. **Priority:** P2. **Effort:** L. **Confidence:** medium. **Step:** 1.9.
+- **Kind:** duplicate. **Priority:** P2. **Effort:** L. **Confidence:** medium. **Step:** 1.17.
 - **Second check:** corrected.
 - **Where:** `src/server/store-action.ts:35`, `src/app/admin/(gated)/[store]/orders/actions.ts:1`, `src/app/admin/(gated)/[store]/returns/actions.ts:88`, `src/app/admin/(gated)/[store]/customer-groups/actions.ts:28`, `scripts/lib/ratchet-count.mjs:72`, `src/server/ratchet.baseline.json:1`, `docs/rules/admin/platform.md:89`, `docs/audits/code-review-2026-11.md:61`
 - **Evidence:** 235 'use server' files in the admin hold 1,266 exported actions. storeAction() or platformAction() is called 50 times in 3 files (orders, returns, the books settings); 232 files guard by hand. The verified report counted about 180 small local helpers in those files (wordsOf in 48, noAccess in 35, text in 25, said in 16, failed in 12, asOwner in 11, done in 10) and showed that a wrapped action is no shorter than a guarded one: what the wrapper adds is one logged failure and one refusal in the person's language (store-action.ts:35-50). The rule moves a file when it is touched; nothing counts what is left.

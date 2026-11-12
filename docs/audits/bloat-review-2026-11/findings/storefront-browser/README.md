@@ -8,19 +8,19 @@ Part of `docs/audits/bloat-review-2026-11.md`, on commit 0bd814c. Read by one re
 
 | ID | Finding | Kind | Priority | Effort | Step |
 |---|---|---|---|---|---|
-| [SC-1](SC-1.md) ✓ | Every document load prefetches the pages behind its links; language and currency links prefetch a page a press never opens | eager | P0 | S | 0.10 |
-| [SC-3](SC-3.md) ✓ | Admin words, whole catalogues and an unused library ride in every shopper's first scripts | oversize | P0 | S | 0.13 |
-| [SC-4](SC-4.md) ✓ | The product page loads the cart's forms, and every product kind's picker | eager | P0 | S | 0.13 |
-| [SC-6](SC-6.md) ✓ | The byte budgets are loose, count a file no modern browser loads, and cover one storefront route besides home | no check | P0 | S | 1.2 |
-| [SC-10](SC-10.md) ✓ | Every document load asks the server for the wishlist, also for visitors who have none | eager | P0 | S | 0.12 |
-| [SC-12](SC-12.md) | Every page with a product grid loads the tile's Add to cart script and asks the server for stock, also in a store whose tiles show neither (the default) | eager | P0 | S | 0.12 |
-| [SC-2](SC-2.md) ✓ | Listing, search, cart, checkout, account, wishlist and cookies pages all load one bundle of every working part | eager | P1 | M | 2.5 |
-| [SC-7](SC-7.md) ✓ | On a wide screen a press on the cart renders the cart as a drawer, throws it away, then loads the cart page | duplicate | P1 | S | 2.1 |
-| [SC-8](SC-8.md) ✓ | The whole store layout is sent twice in every page, with the store's 404 page inside, because the cart drawer's slot sits on the root layout | duplicate | P1 | M | 2.1 |
-| [SC-13](SC-13.md) | A store in a language translated by AI sends its whole interface text in every page; the browser reads 114 of its 1,673 texts | oversize | P1 | S | 0.7 |
-| [SC-5](SC-5.md) ✓ | One stylesheet for stores, site and admin: shoppers download the admin's utility classes | oversize | P2 | M | 2.6 |
-| [SC-9](SC-9.md) ✓ | Open question, not yet a planned saving: on the local build, listing and search pages asked for one prefetch about 160 times a second | eager | P2 | S | 0.11 |
-| [SC-11](SC-11.md) ✓ | Small parts a plain store's page never draws are in every page's first scripts | eager | P2 | S | 0.13 |
+| [SC-1](SC-1.md) ✓ | Every document load prefetches the pages behind its links; language and currency links prefetch a page a press never opens | eager | P0 | S | 0.12 |
+| [SC-3](SC-3.md) ✓ | Admin words, whole catalogues and an unused library ride in every shopper's first scripts | oversize | P0 | S | 0.16 |
+| [SC-4](SC-4.md) ✓ | The product page loads the cart's forms, and every product kind's picker | eager | P0 | S | 0.16 |
+| [SC-6](SC-6.md) ✓ | The byte budgets are loose, count a file no modern browser loads, and cover one storefront route besides home | no check | P0 | S | 1.3 |
+| [SC-10](SC-10.md) ✓ | Every document load asks the server for the wishlist, also for visitors who have none | eager | P0 | S | 0.15 |
+| [SC-12](SC-12.md) | Every page with a product grid loads the tile's Add to cart script and asks the server for stock, also in a store whose tiles show neither (the default) | eager | P0 | S | 0.15 |
+| [SC-2](SC-2.md) ✓ | Listing, search, cart, checkout, account, wishlist and cookies pages all load one bundle of every working part | eager | P1 | M | 2.9 |
+| [SC-7](SC-7.md) ✓ | On a wide screen a press on the cart renders the cart as a drawer, throws it away, then loads the cart page | duplicate | P1 | S | 2.2 |
+| [SC-8](SC-8.md) ✓ | The whole store layout is sent twice in every page, with the store's 404 page inside, because the cart drawer's slot sits on the root layout | duplicate | P1 | M | 2.2 |
+| [SC-13](SC-13.md) | A store in a language translated by AI sends its whole interface text in every page; the browser reads 114 of its 1,673 texts | oversize | P1 | S | 0.8 |
+| [SC-5](SC-5.md) ✓ | One stylesheet for stores, site and admin: shoppers download the admin's utility classes | oversize | P2 | M | 2.11 |
+| [SC-9](SC-9.md) ✓ | Open question, not yet a planned saving: on the local build, listing and search pages asked for one prefetch about 160 times a second | eager | P2 | S | 0.14 |
+| [SC-11](SC-11.md) ✓ | Small parts a plain store's page never draws are in every page's first scripts | eager | P2 | S | 0.16 |
 
 ## Measured
 

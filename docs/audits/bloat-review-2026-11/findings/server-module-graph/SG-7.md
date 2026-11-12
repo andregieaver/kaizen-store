@@ -2,7 +2,7 @@
 
 The server code every route loads (`README.md` beside this file), part of `docs/audits/bloat-review-2026-11.md`.
 
-- **Kind:** eager. **Priority:** P1. **Effort:** S. **Confidence:** high. **Step:** 0.4.
+- **Kind:** eager. **Priority:** P1. **Effort:** S. **Confidence:** high. **Step:** 0.5.
 - **Second check:** corrected.
 - **Where:** `src/server/theme-highlights.ts:3`, `src/server/theme-shot-files.ts:3`, `src/server/product-import.ts:6`, `src/server/brand-marks.ts:3`, `src/server/ai-pictures.ts:3`, `src/server/replicate-images.ts:3`, `src/server/seo.ts:48`, `src/components/page-article.tsx:35`
 - **Evidence:** 12 server modules write import sharp from "sharp" at the top (counted again: ai-vision, content-packs, page-looks, picture-editor, ai-picture-marks, theme-highlights, product-import, replicate-images, replicate, ai-pictures, theme-shot-files, brand-marks); none loads it lazily. All are admin, AI or cron picture work. 181 handlers and 559 pages reach it, and its files (libvips 17.8 MiB, the addon and wrapper 1.0 MiB) are in each of those functions' traces; /api/health's trace has none. With the other cuts of this plan in the graph, 58 of 59 storefront pages still reach it through one chain, page-article.tsx -> theme-store-section.tsx -> theme-store.ts -> theme-shots.ts -> theme-highlights.ts (SG-17), and 428 admin pages through the store layout -> store-starters.ts -> theme-shots.ts.

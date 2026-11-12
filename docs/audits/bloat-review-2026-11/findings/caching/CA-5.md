@@ -2,7 +2,7 @@
 
 Caching and rendering (`README.md` beside this file), part of `docs/audits/bloat-review-2026-11.md`.
 
-- **Kind:** eager. **Priority:** P0. **Effort:** S. **Confidence:** high. **Step:** 0.10.
+- **Kind:** eager. **Priority:** P0. **Effort:** S. **Confidence:** high. **Step:** 0.13.
 - **Second check:** confirmed.
 - **Where:** `src/components/admin/admin-rail.tsx:47`, `src/components/admin/store-admin-nav.tsx:94`, `src/components/admin/store-admin-nav.tsx:131`, `src/components/admin/store-admin-nav.tsx:195`, `src/app/admin/(gated)/[store]/layout.tsx:132`, `node_modules/next/dist/docs/01-app/02-guides/prefetching.md:120`, `node_modules/next/dist/docs/01-app/03-api-reference/03-file-conventions/02-route-segment-config/prefetch.md`, `node_modules/next/dist/docs/01-app/03-api-reference/04-functions/cacheLife.md:258`, `evidence/routes.json`
 - **Evidence:** Regrouped routes.json in this pass, signed in as an owner: Home 28 prefetch requests to 13 addresses (98,047 bytes on the wire); Orders 32 to 15 (111,733); Pages 46 to 22 (160,192); Settings 44 to 21 (151,731). The View store link alone (layout.tsx:132) is 4 requests, 62,376 bytes decoded and 18,183 on the wire on every screen. The four Link sites of the rail, the area links, the tabs and the sidebar were opened: none sets prefetch. The admin reads cookies, so each prefetch is computed by the server. Next's doc (cacheLife.md:258): a Server Action that calls updateTag, revalidateTag or refresh clears the whole client cache, so after a save the links are fetched again; the verified report counted 668 server refresh() calls in 195 files.

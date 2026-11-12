@@ -2,7 +2,7 @@
 
 Dependencies (`README.md` beside this file), part of `docs/audits/bloat-review-2026-11.md`.
 
-- **Kind:** oversize. **Priority:** P2. **Effort:** S. **Confidence:** high. **Step:** 0.25.
+- **Kind:** oversize. **Priority:** P2. **Effort:** S. **Confidence:** high. **Step:** 0.36.
 - **Second check:** confirmed.
 - **Where:** `src/components/brand-icon.tsx:1-28`, `src/components/brand-icon.tsx:35-36`, `src/components/brand-icon.tsx:46-78`, `package.json:69`
 - **Evidence:** brand-icon.tsx imports 26 named icons from simple-icons, which holds 3,467 (re-counted). The 26 paths total 19,982 bytes. The package is 26 MB installed and its entry module, which the bundler reads on every build to pick those 26, is 5,255,349 bytes. LinkedIn's mark is already hand-kept in the same file because the package dropped it (line 35), and the dependency is one of four with a caret range. Tree-shaking works: no unused icon is in any chunk. The licence is CC0-1.0.

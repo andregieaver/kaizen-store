@@ -2,7 +2,7 @@
 
 The page builder's model and a built page's render (`README.md` beside this file), part of `docs/audits/bloat-review-2026-11.md`.
 
-- **Kind:** eager. **Priority:** P1. **Effort:** M. **Confidence:** medium. **Step:** 2.19.
+- **Kind:** eager. **Priority:** P1. **Effort:** M. **Confidence:** medium. **Step:** 2.16.
 - **Second check:** confirmed.
 - **Where:** `src/server/page-modals.ts:16`, `src/server/site-cookies.ts:100`, `src/components/consent/site-consent.tsx:52`, `src/server/pages.ts:724`, `src/server/content-grid.ts:265`, `src/db/schema.ts:8785`, `src/db/schema.ts:2752`, `src/server/global-parts.ts:166`, `supabase/migrations/20261111172839_baseline_1_schema.sql:7818`
 - **Evidence:** `pages` holds an id, a type, a slug, two JSON documents and dates (schema.ts:8785-8806). usesRememberedModals() runs jsonb_path_exists over every published page of a site for one yes or no (page-modals.ts:20-26); the consent banner asks it on every page outside the pay routes (site-consent.tsx:52 through siteCookies): 68,878 calls and 121 s in production. publishedPageNames() pulls each title out by path for the menus of every page (pages.ts:724): 57,930 calls returning 497,123 rows. Counted in this pass: the documents are written by 9 insert statements in 4 server files, at least 18 update statements in 10 files, four SQL functions of the baseline (lines 4049, 4354, 5283, 7818) and the seed. So a column that each writer must fill would be a second truth with about 30 writers. Every one of those inserts names its columns, and the schema already has the pattern that avoids the problem: stored generated columns (schema.ts:2752, :3587, two search columns).

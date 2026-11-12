@@ -2,7 +2,7 @@
 
 The built client bundles, by page (`README.md` beside this file), part of `docs/audits/bloat-review-2026-11.md`.
 
-- **Kind:** eager. **Priority:** P0. **Effort:** S. **Confidence:** high. **Step:** 0.8.
+- **Kind:** eager. **Priority:** P0. **Effort:** S. **Confidence:** high. **Step:** 0.9.
 - **Second check:** corrected.
 - **Where:** `src/components/admin/shortcut-sheet.tsx:19`, `src/components/admin/shortcut-sheet.tsx:45`, `src/components/admin/responsive-edit.tsx:20`, `src/components/admin/responsive-edit.tsx:24`, `src/components/admin/responsive-edit.tsx:100`, `src/components/admin/responsive-edit.tsx:306`, `src/components/admin/page-builder.tsx:79`, `src/components/admin/admin-catalogues.scan.test.ts:31`
 - **Evidence:** shortcut-sheet.tsx, a client root of every admin screen, imports one four-line function, typingIn, from responsive-edit.tsx (line 19; the function is at 305 to 309 and reads only the DOM). That module imports the builder's whole English by value for a default argument (line 20, used at 100), DisplayFields (line 24) and lib/responsive. Chunk 0pmozty218j-z.js (71,508 bytes, 23,840 gzip) is the catalogue; its marker text 'Set for {size}' is in the first-load chunks of 423 routes. Ranked by what leaves if one root is dropped, the shortcut sheet is the second heaviest root of the admin home (133,588 bytes; session.tsx is first). The skeptic's simulation of the cut on every route: 129 KB off 335 routes, 96 to 111 KB off 48 more, none off the builder's routes, which need these modules.

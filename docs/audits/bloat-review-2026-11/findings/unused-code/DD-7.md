@@ -2,7 +2,7 @@
 
 Code nothing uses (`README.md` beside this file), part of `docs/audits/bloat-review-2026-11.md`.
 
-- **Kind:** duplicate. **Priority:** P2. **Effort:** S. **Confidence:** medium. **Step:** 3.9.
+- **Kind:** duplicate. **Priority:** P2. **Effort:** S. **Confidence:** medium. **Step:** 3.15.
 - **Second check:** confirmed.
 - **Where:** `src/lib/finance-words.test.ts:28`, `src/lib/payouts.ts:12`, `src/lib/payouts.ts:24`, `src/lib/payouts.ts:114`, `src/lib/inventory-words.test.ts:26`, `src/lib/marketing-consent.ts:48`, `src/lib/payment-terms.ts:50`, `src/lib/payment-terms.ts:110`, `src/lib/capture.ts:81`, `src/lib/store-starters.ts:81`, `src/lib/shipping-carriers.ts:39`, `src/lib/privacy-text.ts:720`, `src/lib/data-admin.ts:179`
 - **Evidence:** Between 86 and 121 of the suspect exports are word lists or sentence helpers no production file reads (363 to 572 lines, by the planner's two patterns; the skeptic's gave 85 to 119 and 360 to 577). 52 are read by nothing; 69 are named by a test, in 59 test files. Tests hold a catalogue section equal to the older constant: finance-words.test.ts:27-31 holds financeEn.payouts equal to three constants in payouts.ts that nothing else reads (rg -w: the definitions and the test only), and inventory-words.test.ts:26-35 holds translated sentences equal to old English-only functions. rg counts 37 assertions of the form toEqual(X_WORDS) or toBe(X_TEXT) in tests. The words moved to src/lib/admin-messages and the originals stayed. The same shows inside exported objects: STAFF_TEXT has 11 of 15 members nothing reads, KIND_TITLES 8 of 10 (planner's member scan). No rule in docs/platform-admin-i18n.md or docs/rules asks for the twin.

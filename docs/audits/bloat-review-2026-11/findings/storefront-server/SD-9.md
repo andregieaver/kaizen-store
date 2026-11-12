@@ -2,7 +2,7 @@
 
 What the server does for a storefront request (`README.md` beside this file), part of `docs/audits/bloat-review-2026-11.md`.
 
-- **Kind:** eager. **Priority:** P3. **Effort:** S. **Confidence:** medium. **Step:** 2.10.
+- **Kind:** eager. **Priority:** P3. **Effort:** S. **Confidence:** medium. **Step:** 2.18.
 - **Second check:** corrected.
 - **Where:** `src/server/site-cookies.ts:86-108`, `src/server/experiments.ts:130-133`, `src/server/experiments.ts:155-158`, `src/server/experiments.ts:178-181`, `src/server/experiments.ts:234-237`, `src/server/search-rules.ts:51`, `src/server/search-rules.ts:88`, `src/components/product-parts.tsx:997-1019`
 - **Evidence:** On a cold draw a store's page runs separate cached statements for the chat agent, remembered modals, the affiliate site, recommendation settings, cookie notes and campaigns, and asks about running experiments four separate ways: experimentOfPage (experiments.ts:130), storeHasExperiments (:155), siteTests (:178) and runningExperimentIds (:234), each its own 'use cache' with its own statement. Per search I measured 11 to 12 statements with search_rules read twice (+2), search_synonyms once and search_experiments once. The per-product-view part (back in stock, checkout questions, price breaks, producer schemes) is SD-2. The verifier struck three tables that are read inside statements that run anyway.

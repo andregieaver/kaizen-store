@@ -2,7 +2,7 @@
 
 What a page sends: document, payload and requests (`README.md` beside this file), part of `docs/audits/bloat-review-2026-11.md`.
 
-- **Kind:** eager. **Priority:** P0. **Effort:** S. **Confidence:** high. **Step:** 0.10.
+- **Kind:** eager. **Priority:** P0. **Effort:** S. **Confidence:** high. **Step:** 0.12.
 - **Second check:** corrected.
 - **Where:** `src/components/platform-layout.tsx:133`, `src/components/platform-layout.tsx:176`, `src/components/platform-layout.tsx:273`, `src/components/platform-routes/home.tsx:55`, `src/components/platform-routes/sign-up.tsx:164`, `src/components/site-parts.tsx:261`, `src/app/admin/layout.tsx:1`, `node_modules/next/dist/docs/01-app/03-api-reference/03-file-conventions/layout.md:145`, `evidence/routes.json`
 - **Evidence:** Five next/link elements outside the admin point at /admin and one at /admin/sign-in (rg for a Link whose href starts with /admin outside src/app/admin and src/components/admin: the six lines above): the site's header, its phone menu, its bottom bar, the front page, the sign-up page and the built header's account part. The router prefetches the link in view and pulls its scripts and stylesheet. Listed from routes.json (a scratch script): the front page fetched 11 scripts after load (168,158 bytes transferred, 500,593 raw) and one stylesheet (6,015 transferred, 21,083 raw); the verified report matched six of the scripts (134,674 bytes transferred, 437 KB raw) and the stylesheet to the signed-out /admin document. The blog post and the themes page fetch the same six. /admin has its own root layout (src/app/admin/layout.tsx), and Next's docs say a navigation across root layouts is a full page load, so the prefetched payload is thrown away on the press; only the cached files help.

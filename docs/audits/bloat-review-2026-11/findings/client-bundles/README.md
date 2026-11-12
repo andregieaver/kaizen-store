@@ -8,21 +8,21 @@ Part of `docs/audits/bloat-review-2026-11.md`, on commit 0bd814c. Read by one re
 
 | ID | Finding | Kind | Priority | Effort | Step |
 |---|---|---|---|---|---|
-| [BN-1](BN-1.md) ✓ | Every signed-in admin screen loads the whole Supabase client in its first scripts, for a session listener and for uploads nobody has pressed yet | eager | P0 | S | 0.8 |
-| [BN-2](BN-2.md) ✓ | Kaizena Flow's front page prefetches the admin and downloads its signed-in frame, which a press on Sign in cannot use | eager | P0 | S | 0.10 |
-| [BN-3](BN-3.md) ✓ | The keyboard shortcut sheet brings the page builder's English and field code to every admin screen | eager | P0 | S | 0.8 |
-| [BN-4](BN-4.md) ✓ | zod is in every signed-in admin screen's first scripts through three small imports | oversize | P0 | S | 0.8 |
-| [BN-5](BN-5.md) ✓ | The rich text editor is in the first scripts of 34 screens that are not the builder: lists, orders, customers, deals and the product editor | eager | P0 | M | 0.9 |
-| [BN-7](BN-7.md) ✓ | One Work screen loads 4.27 MB: the admin's whole text in both languages | eager | P0 | S | 0.9 |
+| [BN-1](BN-1.md) ✓ | Every signed-in admin screen loads the whole Supabase client in its first scripts, for a session listener and for uploads nobody has pressed yet | eager | P0 | S | 0.9 |
+| [BN-2](BN-2.md) ✓ | Kaizena Flow's front page prefetches the admin and downloads its signed-in frame, which a press on Sign in cannot use | eager | P0 | S | 0.12 |
+| [BN-3](BN-3.md) ✓ | The keyboard shortcut sheet brings the page builder's English and field code to every admin screen | eager | P0 | S | 0.9 |
+| [BN-4](BN-4.md) ✓ | zod is in every signed-in admin screen's first scripts through three small imports | oversize | P0 | S | 0.9 |
+| [BN-5](BN-5.md) ✓ | The rich text editor is in the first scripts of 34 screens that are not the builder: lists, orders, customers, deals and the product editor | eager | P0 | M | 0.10 |
+| [BN-7](BN-7.md) ✓ | One Work screen loads 4.27 MB: the admin's whole text in both languages | eager | P0 | S | 0.11 |
 | [BN-11](BN-11.md) ✓ | The script budgets watch 15 of 560 routes, and the visitor's one counts a legacy file twice | no check | P0 | S | 1.2 |
-| [BN-14](BN-14.md) | Thirteen preview screens load the whole page builder to draw a page | eager | P0 | S | 0.9 |
-| [BN-6](BN-6.md) ✓ | The page builder and the draft order editor ship all four storefront languages whole | oversize | P1 | M | 2.15 |
-| [BN-9](BN-9.md) ✓ | Twelve storefront routes, the product page among them, carry the cart's, checkout's, order's and account's forms | eager | P1 | M | 2.5 |
-| [BN-10](BN-10.md) ✓ | Three tables a shopper's page never reads at first paint are in its first scripts | oversize | P1 | S | 0.13 |
-| [BN-15](BN-15.md) | The AI manager's chat is a 496 KB script, about 95% of it three tables read for two labels | oversize | P1 | S | 0.9 |
-| [BN-16](BN-16.md) | A store page with a recommending grid downloads 650 KB more script once recommendations answer: zod, the page model and all four languages | oversize | P1 | M | 2.5 |
-| [BN-8](BN-8.md) ✓ | Whole English catalogues are imported as default values, and the check sees only the direct ones | eager | P2 | M | 2.13 |
-| [BN-12](BN-12.md) ✓ | One stylesheet for shoppers and owners: a quarter of what a shopper downloads styles only the admin | oversize | P2 | M | 2.6 |
+| [BN-14](BN-14.md) | Thirteen preview screens load the whole page builder to draw a page | eager | P0 | S | 0.10 |
+| [BN-6](BN-6.md) ✓ | The page builder and the draft order editor ship all four storefront languages whole | oversize | P1 | M | 2.29 |
+| [BN-9](BN-9.md) ✓ | Twelve storefront routes, the product page among them, carry the cart's, checkout's, order's and account's forms | eager | P1 | M | 2.9 |
+| [BN-10](BN-10.md) ✓ | Three tables a shopper's page never reads at first paint are in its first scripts | oversize | P1 | S | 0.16 |
+| [BN-15](BN-15.md) | The AI manager's chat is a 496 KB script, about 95% of it three tables read for two labels | oversize | P1 | S | 0.11 |
+| [BN-16](BN-16.md) | A store page with a recommending grid downloads 650 KB more script once recommendations answer: zod, the page model and all four languages | oversize | P1 | M | 2.10 |
+| [BN-8](BN-8.md) ✓ | Whole English catalogues are imported as default values, and the check sees only the direct ones | eager | P2 | M | 2.26 |
+| [BN-12](BN-12.md) ✓ | One stylesheet for shoppers and owners: a quarter of what a shopper downloads styles only the admin | oversize | P2 | M | 2.11 |
 | [BN-13](BN-13.md) ✓ | 40% of the built client JavaScript is second copies of modules; a browser meets about 14% of it while moving around | duplicate | P3 | M | tolerated |
 
 ## Measured

@@ -2,7 +2,7 @@
 
 Code nothing uses (`README.md` beside this file), part of `docs/audits/bloat-review-2026-11.md`.
 
-- **Kind:** dead. **Priority:** P1. **Effort:** S. **Confidence:** high. **Step:** 0.25.
+- **Kind:** dead. **Priority:** P1. **Effort:** S. **Confidence:** high. **Step:** 0.36.
 - **Second check:** confirmed.
 - **Where:** `src/components/inline-edit/heading-editor.tsx:12`, `src/components/inline-edit/inline-edit.test.ts:5`, `src/components/admin/page-builder.tsx:3281`, `src/components/inline-edit/site-editor.tsx:190`, `docs/rules/admin/website.md:302`, `src/components/admin/work/coming-soon.tsx:10`, `src/components/admin/work/work-pages.test.ts:251`, `src/lib/admin-messages/work.en.ts:44`, `src/lib/admin-messages/work.nb.ts:40`, `src/lib/store-modules.ts:7`, `src/db/commerce.test.ts:3820`, `docs/work.md:1365`
 - **Evidence:** InlineHeadingEditor (143 lines) is rendered only by inline-edit.test.ts (41 lines, three cases, all about it); the builder and the live-site editor both use InlineMarkupEditor (page-builder.tsx:3281, site-editor.tsx:190). The rule at docs/rules/admin/website.md:302 still names InlineHeadingEditor, twice, as the heading's editor. WorkComingSoon (17 lines) stands in for Work pages 'built in a later step'; no page uses it, one test case does (work-pages.test.ts:251); its words off.comingSoon and off.backToWork are read only by it (work-off.tsx reads isOff, switchOn, kept and titles; the settings page reads another backToWork). store-modules.ts (11 lines): MODULES is read by one test (commerce.test.ts:3820), isModule and StoreModule by nothing; docs/work.md:1365 names the file.

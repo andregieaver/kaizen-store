@@ -2,7 +2,7 @@
 
 The server code every route loads (`README.md` beside this file), part of `docs/audits/bloat-review-2026-11.md`.
 
-- **Kind:** oversize. **Priority:** P0. **Effort:** S. **Confidence:** high. **Step:** 2.13.
+- **Kind:** oversize. **Priority:** P0. **Effort:** S. **Confidence:** high. **Step:** 2.25.
 - **Second check:** corrected.
 - **Where:** `src/lib/admin-text.ts:2-135`, `src/lib/admin-text.ts:232-303`, `src/lib/two-step.ts:13`, `src/lib/two-step.ts:59`, `src/server/customer-tiers.ts:21`, `src/server/plan-reminders.ts:270`, `src/server/shopper-emails.ts:1294`, `src/server/company-locations.ts:27`, `src/server/staff-alerts.ts:84`, `src/server/endpoint-emails.ts:36`, `src/server/price-lists.ts:27`
 - **Evidence:** admin-text.ts statically imports 134 catalogues (67 areas in English and Norwegian) into one table; adminText(lang, area) reads one entry (lines 300-303). In the server chunks that is 2,903 KB in 133 modules. 242 of 268 handlers, 560 of 562 pages, the proxy and instrumentation reach it. 723 non-test files import the module. I counted who brings it to shoppers once the cycle is cut: 13 files across the 59 storefront pages, of which eight cover 57 pages: two-step.ts (area signIn, reached through auth.ts on every page), customer-tiers.ts and company-locations.ts and price-lists.ts (customers), plan-reminders.ts, shopper-emails.ts, staff-alerts.ts and endpoint-emails.ts (staffEmails; staff-alerts.ts:672 also reads order). The storefront home page needs only the first three. 66 src/lib modules already import their own area's files directly, so the pattern exists. Turbopack writes the catalogue chunk 10 times (10 copies of 2.7 MiB).

@@ -2,7 +2,7 @@
 
 Code nothing uses (`README.md` beside this file), part of `docs/audits/bloat-review-2026-11.md`.
 
-- **Kind:** eager. **Priority:** P0. **Effort:** S. **Confidence:** high. **Step:** 0.3.
+- **Kind:** eager. **Priority:** P0. **Effort:** S. **Confidence:** high. **Step:** 0.4.
 - **Second check:** confirmed.
 - **Where:** `src/db/client.ts:11`, `src/db/client.ts:31`, `src/db/client.ts:78`, `src/db/schema.ts:19`, `drizzle.config.ts:7`, `docs/audits/code-review-2026-11.md:116`, `docs/audits/code-review-2026-11.md:268`
 - **Evidence:** src/db/client.ts imports the whole schema as a value (line 11), uses it as a type (line 31) and hands it to drizzle (line 78). Nothing else imports it at run time: rg over src, scripts and e2e finds client.ts, one scan test (src/server/store-export.scan.test.ts:4) and drizzle.config.ts. No code uses the query builder: rg for db().select, .insert, .query and for $inferSelect or InferSelectModel finds nothing outside src/db; every query is raw SQL through execute. The skeptic timed the module three times on an esbuild bundle: 117 to 149 ms to evaluate and 16 MB of heap; drizzle's init with the schema 32 to 36 ms and 2.3 MB, against 0.03 to 0.04 ms without. In the finished build 6 server chunk files hold the schema (the planner re-ran rg -l -F orders_store_placed_idx over .next/server: 6).

@@ -2,7 +2,7 @@
 
 Dependencies (`README.md` beside this file), part of `docs/audits/bloat-review-2026-11.md`.
 
-- **Kind:** eager. **Priority:** P0. **Effort:** S. **Confidence:** high. **Step:** 0.3.
+- **Kind:** eager. **Priority:** P0. **Effort:** S. **Confidence:** high. **Step:** 0.4.
 - **Second check:** confirmed.
 - **Where:** `src/db/client.ts:11`, `src/db/client.ts:31`, `src/db/client.ts:78`, `src/db/schema.ts:1-19614`, `drizzle.config.ts:7`, `node_modules/.pnpm/drizzle-orm@0.45.4_@electric-sql+pglite@0.5.13_@types+pg@8.23.1_pg@8.23.1_postgres@3.4.9/node_modules/drizzle-orm/node-postgres/driver.js:36-47`, `docs/audits/code-review-2026-11.md:116`, `docs/audits/code-review-2026-11.md:268`, `docs/audits/code-review-2026-11.md:484`
 - **Evidence:** client.ts line 11 imports all of schema.ts and line 78 passes it to drizzle(); drizzle's driver uses it only to build the relational query config. Re-checked: outside tests there are 0 query-builder or db.query calls and 0 relations(); client.ts is the only run-time importer of schema.ts (the one other importer is store-export.scan.test.ts); 637 files import just the sql tag. Built, the schema module is 614,815 bytes and sits in six chunks: two of 797,650 bytes named by 253 route handlers, two of 847,449 named by 560 pages, one of 2.4 MB and the proxy's 4.7 MB chunk. Timed by the skeptic: evaluating schema.ts 105-138 ms and 10-16 MB heap, drizzle({schema}) 36-37 ms against 0.04 ms without. Timed by the planner as whole routes: /api/health's own code, bundled, loads in 145-148 ms, +21 MB heap, +64 MB RSS with the schema and in 67-87 ms, +7.5 MB, +29 MB without; the beacon after DP-10 falls from 209-215 ms and +80 MB RSS to 130-143 ms and +51 MB.

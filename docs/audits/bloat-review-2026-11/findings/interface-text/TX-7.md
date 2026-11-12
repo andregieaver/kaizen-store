@@ -2,7 +2,7 @@
 
 Interface text (`README.md` beside this file), part of `docs/audits/bloat-review-2026-11.md`.
 
-- **Kind:** eager. **Priority:** P1. **Effort:** M. **Confidence:** high. **Step:** 2.15.
+- **Kind:** eager. **Priority:** P1. **Effort:** M. **Confidence:** high. **Step:** 2.29.
 - **Second check:** corrected.
 - **Where:** `src/components/admin/block-fields.tsx:21`, `src/components/admin/block-fields.tsx:2684`, `src/components/admin/modal-preview.tsx:18`, `src/components/admin/modal-preview.tsx:34`, `src/components/admin/drafts/draft-summary.tsx:3`, `src/components/admin/drafts/draft-summary.tsx:35`, `src/components/admin/page-builder-fields.tsx:13`, `src/components/admin/page-builder-fields.tsx:1537`, `src/components/content-grid.tsx:9`, `src/components/content-grid.tsx:63`, `src/lib/i18n.ts:9-17`, `.next/diagnostics/route-bundle-stats.json`
 - **Evidence:** Five modules in the admin's client graph import t from lib/i18n, which imports every language whole: block-fields.tsx (the form group, line 2684), modal-preview.tsx (the modal group, line 34), draft-summary.tsx (unitPrice.bases, line 35), and page-builder-fields.tsx (line 1537) with content-grid.tsx (line 63), which draw the grid preview with t(data.lang) and pass the whole Messages on to Price and the campaign badge. My client graph finds 21 admin client entries that reach lib/i18n and none outside the admin. In the build, chunk 1u2592k6jkhim.js (314,914 characters) holds a sentence of the Swedish main file and is in the first-load chunks of 40 admin routes. On the measured page builder the two chunks with all four languages are 318,693 + 49,242 bytes raw, 103,098 + 15,315 gzip, 77% executed (verified report).

@@ -2,7 +2,7 @@
 
 What a page sends: document, payload and requests (`README.md` beside this file), part of `docs/audits/bloat-review-2026-11.md`.
 
-- **Kind:** oversize. **Priority:** P1. **Effort:** S. **Confidence:** medium. **Step:** 0.7.
+- **Kind:** oversize. **Priority:** P1. **Effort:** S. **Confidence:** medium. **Step:** 0.8.
 - **Second check:** corrected.
 - **Where:** `src/server/ui-text.ts:47`, `src/server/ui-text.ts:53`, `src/server/ui-text.ts:127`, `src/app/s/[store]/[market]/layout.tsx:131`, `src/app/s/[store]/[market]/layout.tsx:160`, `src/components/ui-texts.tsx:17`, `src/lib/ui-catalog-all.ts:6`, `src/lib/returns-text.ts:15`, `src/lib/messages/en-browser.ts:6`
 - **Evidence:** Only nb, sv, da and en are written by hand (ui-catalog-all.ts:6). For any other language loadLanguage() keeps every stored text that is not an email (ui-text.ts:47-54), uiTextsFor() returns that whole map (line 127), and the layout hands it to the UiTexts client component as a prop (layout.tsx:131, 160). The browser lays it over only its own subset (browserText, ui-texts.tsx:21) and keeps the rest for one reader, the withdrawal function (returns-text.ts:15-20). Sizes read in this pass: the English source is 95,362 bytes (src/lib/messages/en.ts); the browser's own files are 8,659 (en-browser.ts) and 9,480 bytes (en-returns.ts). Not measured in a document: the demo is Norwegian (the prop is null in both layout copies) and no translated language exists yet. That is not the argument: selling EU-wide in German, French or Finnish is what the product is for, and each such store will pay this on every page. The prop will be in the payload once, not twice: both layout copies are handed the same object.

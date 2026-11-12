@@ -2,7 +2,7 @@
 
 What every AI call carries (`README.md` beside this file), part of `docs/audits/bloat-review-2026-11.md`.
 
-- **Kind:** oversize. **Priority:** P2. **Effort:** M. **Confidence:** medium. **Step:** 2.23.
+- **Kind:** oversize. **Priority:** P2. **Effort:** M. **Confidence:** medium. **Step:** 2.39.
 - **Second check:** confirmed.
 - **Where:** `src/server/ai.ts:46-48`, `src/server/ai.ts:229-232`, `src/server/ai.ts:529-536`, `src/server/owner-assistant.ts:843-848`, `src/server/assistant-memory.ts:341-358`, `src/server/support-tone.ts:44-50`, `src/server/query-understanding.ts:81-85`, `src/server/recommend.ts:581-590`, `src/server/content-moderation.ts:43-46`
 - **Evidence:** A connection has one textModel. The same model runs the AI manager's tool loop, the shopper chat, a memory pass after every manager turn (on by default), search understanding for a shopper's new search, the recommendation rerank, tone rating of each customer message (on by default with support on; 60 tokens of answer), support summaries and the check of 10 listings a dispatcher run. 33 completeText call sites in 25 files take whatever model the platform or the store chose (my rg). seeing() at ai.ts:229-232 already shows the pattern for a second model: a copy of the connection with another model as its text model.
