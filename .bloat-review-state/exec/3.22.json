@@ -1,0 +1,99 @@
+{
+ "id": "3.22",
+ "goal": "The ledger's posting job looks at each store's book in a rotating order (ledger_books.checked_at), skips a book with nothing new and looks at an idle one hourly, and keeps a book whose turn stopped short listed: the third of three books is reached within three runs, and the ledger job reads at most 10 more rows per added store on an idle tick.",
+ "why": "runLedgerPosting() orders the books by updated_at, which only the owner's edits move, so a busy book first in the list takes the whole 40-second budget every run and the books behind it never get their turn; and every book is listed on every five-minute tick even when nothing new was issued. After the step the order rotates, an idle book costs nothing between hourly looks, and Kaizena Flow's own books are a book in the same list.",
+ "read_first": [
+  "docs/ci-migrations.md",
+  "docs/own-books-and-sales.md",
+  "src/server/ledger.ts"
+ ],
+ "depends_on": [
+  {
+   "id": "1.10",
+   "why": "its query-budget.int.test.ts counts rows read per job with 1 and 20 stores (and holds runLedgerPosting()'s statements with 20 books); the done-when is read there and its baseline is lowered here"
+  }
+ ],
+ "commits": [
+  {
+   "title": "Every book gets its turn, and an idle book is looked at hourly",
+   "changes": [
+    {
+     "file": "src/db/schema.ts",
+     "action": "edit",
+     "how": "`ledgerBooks` (the table \"ledger_books\", line 18801 today) gains `checkedAt: timestamp(\"checked_at\", { withTimezone: true })` (nullable), `behind: boolean(\"behind\").notNull().default(false)` (the last turn stopped before the book was caught up) and an index ledger_books_checked_idx on (checked_at). Run `pnpm db:generate`. Tripletex's and Fiken's looked_at columns are step 3.23's, not this step's."
+    },
+    {
+     "file": "src/server/ledger.ts",
+     "action": "edit",
+     "how": "runLedgerPosting() (line 1038). Change the list statement's order from `order by updated_at` to `order by checked_at nulls first, id`, and after each book's turn (in a finally around the try that posts and compares) run `update commerce.ledger_books set checked_at = now() where id = ${book.id}::uuid and store_id = ${book.store_id}::uuid`. Narrow the list so an idle book costs nothing between hourly looks: add to the where `and (checked_at is null or checked_at < now() - interval '1 hour' or exists (select 1 from commerce.invoices i where i.store_id = ledger_books.store_id and i.issued_at > ledger_books.checked_at) or exists (... commerce.credit_notes c ... c.issued_at > checked_at) or exists (... commerce.payments p ... p.created_at > checked_at) or exists (... commerce.refunds r ... r.created_at > checked_at) or exists (... commerce.payouts y ... y.created_at > checked_at) or exists (select 1 from commerce.ledger_waiting w where w.store_id = ledger_books.store_id and <its retry is due: copy the condition postDueDocuments() uses near lines 606 and 607>))`. Do the same for the other tables dueDocuments() reads (lines 555 to 605: commerce.work_invoices, work_credit_notes, work_invoice_payments, work_invoice_losses and payout_lines) under the same index rule; a document an exists() misses waits for the hourly look. Check each table's time column name in src/db/schema.ts before writing it; if a table has no index on (store_id, <that time column>), leave that exists() out and rely on the hourly look, and say so in the commit message. Do not touch updated_at: the owner's edits move it. A book whose turn stopped before it was caught up must stay listed, or its backlog would wait an hour per round: in the same finally set `behind = ${cut}` with checked_at, where cut is true unless postDueDocuments() returned and (r.posted + r.waiting) < DOCS_A_ROUND and Date.now() <= deadline after the comparison (a turn that threw counts as cut, as today it is tried again on the next run); add `or behind` to the where. A behind book still goes to the back of the order (its checked_at is now), so the others get their turn first. Books the loop did not reach keep their checked_at and come first next run."
+    },
+    {
+     "file": "src/server/ledger-posting.int.test.ts",
+     "action": "edit",
+     "how": "Add the plan's case: three books; the first always has more documents than one run's budget (pass a small budgetMs); run runLedgerPosting() three times; the third book has been reached (its checked_at is set and its document posted). Add: an idle book checked a minute ago is not listed; the same book is listed after an invoice is issued in its store; and after an hour without anything new. Assert in the three-book case that after the first run the first book has behind = true and is listed again on the second run, after the other two."
+    },
+    {
+     "file": "src/server/ratchet.baseline.json",
+     "action": "edit",
+     "made_by": "1.10",
+     "how": "Step 1.10 keeps the idle tick's figures under the key queryBudget here, and its test fails when a figure FELL until the baseline is lowered. After the code above, on a freshly seeded database (node scripts/db-setup.mjs --seed), run `UPDATE_BASELINE=1 pnpm vitest run --config vitest.integration.config.mts src/server/query-budget.int.test.ts` (it only lowers). In the diff of this file only the figures of dispatcher.ledger (statements and rowsRead, in one, twenty and growth) may change, and only downwards; if the test refuses because a figure would rise, stop. Never type a figure by hand."
+    }
+   ],
+   "checks": [
+    "pnpm db:check : exits 0",
+    "pnpm exec vitest run src/db/ledger.test.ts src/db/commerce.test.ts src/db/migration-safety.scan.test.ts : exits 0",
+    "pnpm lint && pnpm typecheck && pnpm test: exits 0",
+    "pnpm test:int src/server/ledger-posting.int.test.ts src/server/ledger.int.test.ts src/server/ledger-compare.int.test.ts : exits 0",
+    "pnpm test:int src/server/query-budget.int.test.ts : exits 0 on a freshly seeded database (node scripts/db-setup.mjs --seed)"
+   ]
+  }
+ ],
+ "tests": [
+  {
+   "file": "src/server/ledger-posting.int.test.ts",
+   "proves": "A book that never gets its turn behind a busy one, and an idle book listed again within the hour."
+  },
+  {
+   "file": "src/server/query-budget.int.test.ts",
+   "proves": "The ledger job reading more than 10 more rows per added store on an idle tick."
+  }
+ ],
+ "migration": {
+  "needed": true,
+  "notes": "One generated file: ledger_books.checked_at (nullable) with the index ledger_books_checked_idx, and ledger_books.behind (boolean not null default false); a small table, not a hot one, so plain statements. Running code keeps working: both columns are added, nothing is renamed or dropped. CI applies it after every check passes and before the deploy (docs/ci-migrations.md); never apply it by hand. After the deploy check the Supabase security and performance advisors for project ybsozesfuxuitoacntfo and record the file's version in docs/decisions.md under Migration versions."
+ },
+ "done_when": [
+  {
+   "check": "pnpm test:int src/server/ledger-posting.int.test.ts",
+   "expect": "The third book is reached within three runs."
+  },
+  {
+   "check": "pnpm test:int src/server/query-budget.int.test.ts (on a freshly seeded database), then read queryBudget.growth['dispatcher.ledger'] in src/server/ratchet.baseline.json",
+   "expect": "rowsRead growth between 1 and 20 seeded stores is at most 190 (10 per added store). The whole idle tick meets the same figure once steps 3.21 to 3.24 are all in."
+  }
+ ],
+ "after_deploy": [
+  "If a store has books open: Platform or the store's Books screen shows the day's documents posted within the hour.",
+  "Supabase advisors: ledger_books_checked_idx may read as 'unused' until the job has run; no other new warning. Record the migration's version in docs/decisions.md under Migration versions."
+ ],
+ "docs": [
+  "docs/decisions.md: one new row with the next free D-number (find the last with: rg -o '^\\| D[0-9]+' docs/decisions.md | tr -dc '0-9\\n' | sort -n | tail -1, and add one; after step 2.40 use node scripts/decisions.mjs new). It records: ledger_books.checked_at and behind, the turn order (checked_at nulls first, id), a book listed only when it is new, behind, has a new document or was last looked at over an hour ago, updated_at left to the owner's edits, Kaizena Flow's own books being a book in the same list, and the migration's version (also under Migration versions).",
+  "docs/own-books-and-sales.md (B2): an idle book is looked at hourly; a new document is taken on the next five-minute tick; a book that is behind keeps its turn.",
+  "docs/platform-parity.md: no row changes; Kaizena Flow's own books are a book in the same list.",
+  "docs/audits/bloat-review-2026-11.md, Progress table: set the row of step 3.22 to Done with the date and the commit hash, in the same commit as the last change (if the table has no row for 3.22, the split of 12 November, add one in the same shape after the row of step 3.20, with the plan's title for 3.22); tick the step's section in docs/audits/bloat-review-2026-11/plan/phase-3.md if that file has one."
+ ],
+ "do_not": [
+  "Do not move ledger_books.updated_at from the job.",
+  "Do not build an index on orders, order_lines, products, product_variants, customers, carts, cart_lines or visits inside a transaction or without concurrently.",
+  "Do not apply any migration by hand."
+ ],
+ "stop_if": [
+  "src/server/query-budget.int.test.ts (step 1.10) does not exist.",
+  "An existing ledger test fails for a reason other than the new turn order (checked_at instead of updated_at)."
+ ],
+ "executor": "cheap-then-review",
+ "executor_why": "The statements are named, but it changes which accounting books get posted when and adds a migration CI applies: an exists() on the wrong time column, or a behind flag set wrongly, passes the three-book case and leaves a store's documents unposted for an hour per round, so a reviewer checks each exists() against the table's index and the finally block.",
+ "checked_in_code": "Split (12 November) out of step 3.6's commit 3. I opened ledger.ts runLedgerPosting() at 1038: it orders by updated_at, which the job never moves (CR-16), and postDueDocuments() (line 995) posts at most DOCS_A_ROUND documents or until the deadline. Corrected for the split: Tripletex's and Fiken's looked_at columns moved to step 3.23 with their own migration. Found while splitting: the old text set checked_at after every turn, so a book cut short by the budget or the round's limit would leave its backlog to the hourly look (a newly opened book's history would post 40 seconds an hour instead of every five minutes); the behind column keeps such a book listed at the back of the order. The old list of exists() tables left out Work's invoices, credit notes, payments and losses and the dispute lines that dueDocuments() also reads; they are named now under the same index rule.",
+ "rating_checked": "strong",
+ "cheap_commits": []
+}

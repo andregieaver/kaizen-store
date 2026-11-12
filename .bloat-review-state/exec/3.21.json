@@ -1,0 +1,136 @@
+{
+ "id": "3.21",
+ "goal": "The invoice job of the five-minute dispatcher reads only what is marked as waiting (a failed invoice, an applied order edit whose documents wait), through step 3.6's indexes, and today's full check of every store's 120 days runs once an hour as the net: an invoice tick, an email check and an e-invoice check read fewer than 100 rows of orders and of invoices in a store with 2,000 invoiced orders.",
+ "why": "The invoice job re-checks every store's orders of 120 days, every invoice and every refund on each five-minute tick (all 2,000 rows of each in the test store), its refunds branch has no time bound and no order before its limit, and the credit-note function runs twice per store. After the step a tick reads under 100 rows of each, the full check runs hourly, the credit notes are issued once per store, and saving the seller's details issues the waiting invoices at once instead of on the next tick.",
+ "read_first": [
+  "docs/wave-1b-invoices.md",
+  "docs/rules/admin/commerce.md",
+  "src/server/invoice-issue.ts",
+  "src/server/invoice-notices.ts",
+  "src/server/einvoice-sending.ts",
+  "src/server/invoice-settings.ts",
+  "src/server/setup.ts"
+ ],
+ "depends_on": [
+  {
+   "id": "3.6",
+   "why": "it adds the eight partial indexes (invoices, credit_notes, work_invoices, work_credit_notes, order_events where type = 'invoice.failed', order_edits where documents = 'waiting') that this step's marked path and its 2,000-order case read through"
+  },
+  {
+   "id": "3.3",
+   "why": "it turns DISPATCHER_JOBS in src/server/dispatcher-jobs.ts into the registry with cadences, the perStore label (cap and order) and budgets; this step adds the hourly net job invoiceNet there"
+  },
+  {
+   "id": "1.10",
+   "why": "it keeps the idle tick's figures per job in src/server/ratchet.baseline.json (queryBudget), which this step lowers for dispatcher.invoices and adds dispatcher.invoice-net to"
+  },
+  {
+   "id": "0.31",
+   "why": "it made src/server/cron-prunes.scan.test.ts, which counts the keys of DISPATCHER_JOBS; the new key raises that count by one"
+  },
+  {
+   "id": "1.18",
+   "why": "it made the surface budget (src/lib/surface-budget.baseline.json, node scripts/surface-budget.mjs) whose dispatcherJobs count the new key raises"
+  }
+ ],
+ "commits": [
+  {
+   "title": "The invoice job reads what is marked as waiting each tick, and keeps today's full check as an hourly net",
+   "changes": [
+    {
+     "file": "src/server/invoice-issue.ts",
+     "action": "edit",
+     "how": "(1) Keep storesWithDocumentWork() (line 71) as the NET, with two changes: in its refunds branch add `and rf.created_at > now() - make_interval(days => ${LOOKBACK_DAYS})`, and put `order by store_id` before `limit ${limit}` so no store is starved when more than 50 have work. (2) Add `storesWithMarkedWork(limit = STORES_PER_RUN): Promise<string[]>`, the FAST path, one statement: `select store_id from (select e.store_id from commerce.order_events e where e.type = 'invoice.failed' and e.created_at > now() - make_interval(days => ${LOOKBACK_DAYS}) and not exists (select 1 from commerce.invoices i where i.store_id = e.store_id and i.order_id = e.order_id) union select d.store_id from commerce.order_edits d where d.status = 'applied' and d.documents = 'waiting') x order by store_id limit ${limit}`. (3) issueWaitingInvoices(storeId) today swallows a failure into 0: make it return `{ issued: number; failed: boolean }` (or add a sibling that does and keep the old name for its other callers; list them with rg -n 'issueWaitingInvoices\\(' src). (4) invoiceJobs(options: { net?: boolean } = {}) (line 116): `const stores = options.net ? await storesWithDocumentWork() : await storesWithMarkedWork();`. In the loop call issueMissingCreditNotes(storeId) ONLY when issueWaitingInvoices reported failed (the SQL function issue_waiting_invoices() already ends with issue_missing_credit_notes(); today it runs twice per store). Everything else in invoiceJobs() stays in both modes: ensureSubscriptionEvents, reconcilePendingRefunds, sendPendingDocumentNotices, the try and the log. An order paid just now needs no job: its invoice is issued with the payment; the fast path only retries marked failures, and the net finds the rest within the hour."
+    },
+    {
+     "file": "src/server/dispatcher-jobs.ts",
+     "action": "edit",
+     "made_by": "3.3",
+     "how": "The registry is here, not in the route: step 1.10 moved the dispatcher's jobs to `export const DISPATCHER_JOBS = { … }` in this file and step 3.3 made each entry an object (`  key: {` at two spaces, then `every`, `why`, `work`, `budgetMs` and `run` at four spaces, `  },`); src/app/api/cron/cart-reminders/route.ts only calls runRegistry(\"dispatcher\", DISPATCHER_JOBS) and is not changed. In DISPATCHER_JOBS: keep `invoices` at every 300 with its `run` as step 3.3 left it (it calls invoiceJobs() with no argument, the fast path). Add right after it, in the same shape: `invoiceNet: { every: 3600, why: \"the full check for a paid order or refund with no document, which the marked path cannot see; an hour is the longest an unmarked invoice waits\", work: { perStore: { cap: 50, order: \"store_id\" } }, budgetMs: 20000, run: () => invoiceJobs({ net: true }) }`. Its ledger row is dispatcher.invoice-net (kebab of the key)."
+    },
+    {
+     "file": "src/server/cron-prunes.scan.test.ts",
+     "action": "edit",
+     "made_by": "0.31",
+     "how": "Step 0.31 made this scan and steps 1.10 and 3.3 pointed its case 1 at DISPATCHER_JOBS in src/server/dispatcher-jobs.ts, where it counts the key lines and expects the number of keys step 3.3 left. Raise only that expected number by one (invoiceNet). Change nothing else."
+    },
+    {
+     "file": "src/lib/surface-budget.baseline.json",
+     "action": "edit",
+     "made_by": "1.18",
+     "how": "Step 1.18's surface budget counts the keys of DISPATCHER_JOBS (dispatcherJobs), and invoiceNet raises it by one. Write this step's decision row first (see docs) with the line 'Idle cost: one run an hour of the full check that ran every five minutes before (dispatcher.invoice-net); no per-store cost on an idle tick.', then run `node scripts/surface-budget.mjs --raise D<that number>`. Never edit the number by hand."
+    },
+    {
+     "file": "src/server/invoice-settings.ts",
+     "action": "edit",
+     "how": "saveInvoiceSettings(membership, form) (line 63): after a successful save (where it returns its ok result), call the waiting invoices at once: `try { after(() => issueWaitingInvoices(membership.store.id)); } catch { await issueWaitingInvoices(membership.store.id).catch(() => undefined); }` (after from \"next/server\" throws outside a request, as in tests and jobs; import issueWaitingInvoices from './invoice-issue'). Nothing else in the save changes."
+    },
+    {
+     "file": "src/server/setup.ts",
+     "action": "edit",
+     "how": "The seller's details whose absence holds an invoice back ('seller_details' in docs/wave-1b-invoices.md: legal_name, postal_address, organisation_number, country on the store) are written by saveStoreDetails({ account, store }, input) (line 107), the one writer that the Company page (settings/company/actions.ts saveBusinessAction), setup (setup/actions.ts), the AI manager's setup tools (src/server/setup-tools.ts) and the Dream Factory call. After its update succeeds, add the same call as in saveInvoiceSettings: `try { after(() => issueWaitingInvoices(store.id)); } catch { await issueWaitingInvoices(store.id).catch(() => undefined); }`, importing after from \"next/server\" and issueWaitingInvoices from './invoice-issue'. If importing './invoice-issue' into setup.ts makes an import cycle that the type check or src/server/route-load.graph.test.ts reports, import it with `await import(\"./invoice-issue\")` inside the call instead. Nothing else in the function changes."
+    },
+    {
+     "file": "src/server/invoice-issue.int.test.ts",
+     "action": "edit",
+     "how": "Existing cases must pass; where one calls invoiceJobs() and expects an invoice that waited for the seller's details to be issued by the job, pass { net: true } (that is the net's work) and change nothing else. Add: 'a failed invoice (an invoice.failed event) is retried on the next tick through the fast path'; 'completing the seller's details issues the waiting invoice at once'; 'one tick calls issue_missing_credit_notes once per store' (statement counter); and the plan's case: seed one store with 2,000 paid, invoiced consumer orders (insert in batches of 500 with the file's helpers), `select pg_stat_force_next_flush()`, read seq_tup_read + idx_tup_fetch of commerce.orders and commerce.invoices from pg_stat_user_tables, run one invoiceJobs() (fast), one sendPendingDocumentNotices() and one runEinvoiceSending(), flush and read again: each table rose by fewer than 100."
+    },
+    {
+     "file": "src/server/ratchet.baseline.json",
+     "action": "edit",
+     "made_by": "1.10",
+     "how": "Step 1.10 keeps the idle tick's figures under the key queryBudget here, and its test fails when a figure FELL until the baseline is lowered. After the code above, on a freshly seeded database (node scripts/db-setup.mjs --seed), run `UPDATE_BASELINE=1 pnpm vitest run --config vitest.integration.config.mts src/server/query-budget.int.test.ts` (it only lowers). In the diff of this file only the figures of dispatcher.invoices may change, and only downwards, except that dispatcher.invoice-net is added: the test cannot add a new key with the lowering switch alone, so add it with `UPDATE_BASELINE=1 FIRST=1` in the same command and check that no figure of another key rose; say in the commit message that dispatcher.invoice-net was added; if the test refuses because a figure would rise, stop. Never type a figure by hand."
+    }
+   ],
+   "checks": [
+    "pnpm exec vitest run src/server/cron-routes.scan.test.ts src/server/cron-prunes.scan.test.ts src/server/cron-entry-catches.scan.test.ts src/lib/surface-budget.scan.test.ts : exits 0",
+    "pnpm lint && pnpm typecheck && pnpm test: exits 0",
+    "pnpm test:int src/server/invoice-issue.int.test.ts src/server/invoice-documents.int.test.ts src/server/invoice-refunds.int.test.ts src/server/invoice-returns.int.test.ts src/server/notifications-credit-note.int.test.ts src/server/einvoice-sending.int.test.ts : exits 0 (find the notifications file with ls src/server | rg 'credit-note.*int')",
+    "pnpm test:int src/server/query-budget.int.test.ts : exits 0 on a freshly seeded database (node scripts/db-setup.mjs --seed)"
+   ]
+  }
+ ],
+ "tests": [
+  {
+   "file": "src/server/invoice-issue.int.test.ts",
+   "proves": "An invoice tick, an email check or an e-invoice check reading 100 or more rows of orders or invoices in a store with 2,000 invoiced orders; a failed invoice not retried; the credit-note function called twice per store."
+  }
+ ],
+ "migration": {
+  "needed": false,
+  "notes": ""
+ },
+ "done_when": [
+  {
+   "check": "pnpm test:int src/server/invoice-issue.int.test.ts",
+   "expect": "The 2,000-order case passes: rows read from commerce.orders and from commerce.invoices are each fewer than 100 over one invoice tick, one email check and one e-invoice check."
+  }
+ ],
+ "after_deploy": [
+  "On a test store: place and pay a test order; its invoice appears on the order at once (issued with the payment, not by the job). Refund it; the credit note appears. Then check Home's count of waiting documents is 0.",
+  "The ledger row dispatcher.invoice-net exists with every_seconds 3600 and a run in the last hour; dispatcher.invoices runs every five minutes."
+ ],
+ "docs": [
+  "docs/decisions.md: one new row with the next free D-number (find the last with: rg -o '^\\| D[0-9]+' docs/decisions.md | tr -dc '0-9\\n' | sort -n | tail -1, and add one; after step 2.40 use node scripts/decisions.mjs new). It records: the invoice job's marked path (a failed invoice event, an applied order edit whose documents wait) read through step 3.6's eight indexes, today's full check kept as the hourly net (dispatcher.invoice-net) with a 120-day bound and an order on its refunds branch, one credit-note call per store, and saving the seller's details or the invoice settings issuing the waiting invoices at once. Include the line 'Idle cost: one run an hour of the full check that ran every five minutes before (dispatcher.invoice-net); no per-store cost on an idle tick.' (the surface-budget raise reads it).",
+  "docs/wave-1b-invoices.md (the job's section) and docs/rules/admin/commerce.md (Invoices and credit notes, D159): a document job reads a waiting mark or a window an index serves, and keeps the full check as an hourly net; saving the seller's details tries the waiting invoices at once.",
+  "docs/audits/bloat-review-2026-11.md, Progress table: set the row of step 3.21 to Done with the date and the commit hash, in the same commit as the last change (if the table has no row for 3.21, the split of 12 November, add one in the same shape after the row of step 3.20, with the plan's title for 3.21); tick the step's section in docs/audits/bloat-review-2026-11/plan/phase-3.md if that file has one."
+ ],
+ "do_not": [
+  "Do not change what issues a document: commerce.issue_waiting_invoices(), issue_missing_credit_notes() and issue_credit_note() stay as they are. 'Nothing here writes a document itself' stays true.",
+  "Do not drop the full check (storesWithDocumentWork): it becomes the hourly net. Do not shorten the 120-day window.",
+  "Do not record a consumer's invoice in einvoice_sends to 'mark it seen': the partial index is what keeps it from being read.",
+  "Do not change supplier-orders.ts: its cost follows the stores that drop-ship and its tests stay untouched."
+ ],
+ "stop_if": [
+  "src/server/dispatcher-jobs.ts has no DISPATCHER_JOBS whose entries are registry objects ({ every, why, work, budgetMs, run }, step 3.3).",
+  "src/server/query-budget.int.test.ts (step 1.10) does not exist.",
+  "An existing invoice, refund or credit-note test fails for a reason other than the stated call change (net: true where it expects the job to issue an invoice that waited for the seller's details).",
+  "The 2,000-order case still reads 100 or more rows after the indexes and the fast path: print EXPLAIN (ANALYZE, BUFFERS) of the three statements on the seeded database into the report; do not add indexes by guesswork.",
+  "src/server/cron-routes.scan.test.ts reports the sum of every budgetMs over 960000 once invoiceNet is added: stop and report; do not lower another job's budget."
+ ],
+ "executor": "cheap-then-review",
+ "executor_why": "Every change is named, but it changes when legal documents (invoices and credit notes) are issued: a fast path that misses a case, or a credit-note call dropped where the SQL function did not run, passes the listed tests and leaves an order without its invoice until the hourly net, so a reviewer reads the invoice-issue.ts diff against the do_not list.",
+ "checked_in_code": "Split (12 November) out of step 3.6's commit 2. I opened invoice-issue.ts (finder at line 71, job at 116) and invoice-notices.ts lines 115 to 170: the finder has no time bound on refunds and no order before its limit, and issueMissingCreditNotes() runs a second time per store after issue_waiting_invoices(), which already ends with it (DQ-15). The seller-details hook is named as saveStoreDetails() in src/server/setup.ts (the one writer for the Company page, setup, the AI setup tools and the Dream Factory) plus saveInvoiceSettings(). Corrected for the split: the registry edit now goes to src/server/dispatcher-jobs.ts (step 1.10 moved DISPATCHER_JOBS there and step 3.3 made its entries registry objects; the old brief named the route), and the new key invoiceNet now also raises step 0.31's key count, step 1.18's dispatcherJobs surface count (a raise with an 'Idle cost:' line) and adds a figure to step 1.10's query budget, which the old brief left out.",
+ "rating_checked": "strong",
+ "cheap_commits": []
+}

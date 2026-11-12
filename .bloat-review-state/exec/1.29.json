@@ -1,0 +1,173 @@
+{
+ "id": "1.29",
+ "goal": "Only if step 1.21 left docs/build-memory.md saying 'Stage 2 is needed.': the production build is made in CI, in the job that passed the gate or applied the migration, from that run's commit, and deployed with vercel deploy --prebuilt; its peak is at 75% of the runner's memory or less, an older build never lands on a newer one, and a push's runner-minutes end no higher than before. If the file says 'Stage 1 is enough.', nothing changes and the step is Done as not needed. No paid machine, plan or add-on is used.",
+ "why": "Vercel's 8 GB build machine has no room if the two free source-map switches leave the peak above 6.0 GB, and the owner will never pay for a larger machine, plan or add-on. GitHub's runner has more memory than Vercel's machine, building there costs nothing on a public repository, and the deployed build becomes the one CI made from the checked commit.",
+ "read_first": [
+  "docs/build-memory.md",
+  "docs/ci-migrations.md",
+  ".github/workflows/ci.yml",
+  "next.config.ts",
+  "scripts/next-build.mjs",
+  "scripts/await-deploy.mjs",
+  "src/lib/health.ts"
+ ],
+ "depends_on": [
+  {
+   "id": "1.21",
+   "why": "its commits 1 and 2 make the build write build-stats.json (the commit and the peak a prebuilt deployment reports through /api/health), make the wait print the build's line and turn on the source-map switches; its commit 2 writes the sentence 'Stage 1 is enough.' or 'Stage 2 is needed.' into docs/build-memory.md, which decides whether this step does anything. Its commit 3 (the red line) may land after this step, once a build here peaks at or under 75%"
+  },
+  {
+   "id": "0.38",
+   "why": "it takes three type checks out of every push, so one more build in CI does not raise a push's runner-minutes; it also adds the step 'Does this push change what is deployed?' and its condition to the pending job this step edits"
+  },
+  {
+   "id": "1.20",
+   "why": "its recorder (scripts/timed.mjs, src/lib/ci-recorder.scan.test.ts) must wrap every new CI step, prints the build's peak and a push's runner-minutes that this step's done-when reads, and its spawn and peak sampler in scripts/next-build.mjs stay as they are"
+  }
+ ],
+ "commits": [
+  {
+   "title": "Stage 2, only if docs/build-memory.md says 'Stage 2 is needed.' (the peak with the switches stays above 6.0 GB): the limits for one worker and no cache follow the machine that builds, and a preview deployment is built in CI and deployed prebuilt",
+   "changes": [
+    {
+     "file": "next.config.ts",
+     "action": "edit",
+     "how": "First read docs/build-memory.md: rg -n '^Stage 1 is enough\\.$|^Stage 2 is needed\\.$' docs/build-memory.md. If it says 'Stage 1 is enough.', change nothing in this file or any other of this step's files: set step 1.29's row in the Progress table of docs/audits/bloat-review-2026-11.md to Done with the date and 'not needed (docs/build-memory.md: Stage 1 is enough.)' (add the row after 1.28's if the table has none; at most 300 characters), commit and push that alone, and stop. If it says neither sentence, stop (stop_if). Only when it says 'Stage 2 is needed.' go on, and only after step 0.38 is Done (its row in that Progress table). What step 1.21 left here: \"/api/health\": [\"./build-stats.json\"] in outputFileTracingIncludes, '...(ON_VERCEL ? { enablePrerenderSourceMaps: false } : {}),' after the typescript line, and perhaps the second source-map switch inside the 'ON_VERCEL ? { turbopackFileSystemCacheForBuild: false, cpus: 1 }' object (rg -n 'SourceMaps|ON_VERCEL' next.config.ts). vercel build sets VERCEL, so today's ON_VERCEL limits would follow the build to the runner. Add under ON_VERCEL: const TIGHT_MACHINE = ON_VERCEL && !process.env.GITHUB_ACTIONS; (Vercel's own 8 GB machine). Use TIGHT_MACHINE, not ON_VERCEL, for the experimental object's 'turbopackFileSystemCacheForBuild: false, cpus: 1' (and turbopackSourceMaps if set) and for enablePrerenderSourceMaps. Keep 'typescript: { ignoreBuildErrors: ON_VERCEL }' as it is: the gate has type-checked the same commit, so the production build never type-checks. Keep payRouteHeaders' vercel: Boolean(process.env.VERCEL). The heap rule of scripts/next-build.mjs is the next change."
+    },
+    {
+     "file": "scripts/next-build.mjs",
+     "action": "edit",
+     "how": "What steps 1.20 and 1.21 left here: spawn of `next build`, startPeakSampler() and the 'Build: <seconds> s, peak memory <x.x> GB (<source>)' line (1.20), and the read of production's /api/health history and the writes of build-stats.json (1.21). Keep all of that. The 7 GB heap is skipped when VERCEL is set: change that test to skip only when VERCEL is set and GITHUB_ACTIONS is not. Change nothing else."
+    },
+    {
+     "file": ".github/workflows/ci.yml",
+     "action": "edit",
+     "how": "Add a job 'prebuilt-trial' that runs only on workflow_dispatch with a new boolean input 'prebuilt_trial' (default false). Steps: checkout; pnpm/action-setup, setup-node 22 with the pnpm cache and pnpm install --frozen-lockfile, as the job 'pending' does; a step that prints the runner's size: 'nproc; free -g; cat /sys/fs/cgroup/memory.max 2>/dev/null || true'; then with env VERCEL_TOKEN, VERCEL_ORG_ID and VERCEL_PROJECT_ID from secrets of the same names: 'pnpm dlx vercel@<the current major, pinned as a number> pull --yes --environment=preview --token=$VERCEL_TOKEN', 'pnpm dlx vercel@<same> build --token=$VERCEL_TOKEN', and 'pnpm dlx vercel@<same> deploy --prebuilt --token=$VERCEL_TOKEN > deployment-url.txt'; then curl -s \"$(cat deployment-url.txt)/api/health\" into the step summary. Wrap the commands as src/lib/ci-recorder.scan.test.ts (step 1.20) requires of every CI step (node scripts/timed.mjs <label> -- ..., labels unique within the job); if the recorder's own lines would end up in deployment-url.txt, list that one step in the scan test's exceptions with the reason 'its stdout is the deployment URL'. Never echo the pulled environment and never upload .vercel as an artifact: vercel pull writes production's or preview's settings into .vercel/. The three secrets are free to create but only the owner can add them (GitHub, Settings, Secrets and variables, Actions): a Vercel token, and the orgId and projectId that 'vercel link' writes into .vercel/project.json. Ask the owner for them and stop until they exist."
+    },
+    {
+     "file": "docs/build-memory.md",
+     "action": "edit",
+     "how": "Write the runner's printed memory and cores, whether the repository is public or private (read it on GitHub's repository page; on a private one Actions minutes are metered), and the trial's result: the preview's /api/health must report this commit (from build-stats.json, since a prebuilt deployment has no VERCEL_GIT_COMMIT_SHA) and its build figures, with the peak at 75% of the runner or less."
+    }
+   ],
+   "checks": [
+    "rg -n '^Stage 1 is enough\\.$|^Stage 2 is needed\\.$' docs/build-memory.md: prints 'Stage 2 is needed.' (if 'Stage 1 is enough.', only the Progress row changes and the step ends)",
+    "pnpm vitest run src/lib/ci-recorder.scan.test.ts: exits 0",
+    "pnpm lint && pnpm typecheck && pnpm test: exits 0",
+    "Run the workflow by hand with prebuilt_trial on: the job is green, the summary shows a health answer whose commit is the run's commit and whose build.peakKb is at most 75% of build.machineKb",
+    "Open three pages of the preview deployment (the front page, /s/demo/no and /admin/sign-in): each answers 200 and is styled"
+   ]
+  },
+  {
+   "title": "Stage 2: the gate's job and the release job build the commit and deploy it prebuilt; the deploy hook stays for the manual redeploy",
+   "changes": [
+    {
+     "file": "scripts/await-deploy.mjs",
+     "action": "edit",
+     "how": "What step 1.21 left here: reportedHealth(url) returning { commit, build }, buildLines(build) and the build's line printed after 'Production runs ...', and, once 1.21's commit 3 has landed, an exit 1 after the smoke checks when the peak is over its ceiling (rg -n 'reportedHealth|buildLines|buildVerdict|includesWith' scripts/await-deploy.mjs). Keep all of it. Add a mode '--should-deploy': read production's /api/health once; exit 0 and print 'deploy' when production's commit is not this one and does not include this one (use the file's includesWith()); print 'skip: production already runs <commit>, which includes this one' and exit 0 with the word 'skip' on the first line when it does, so an older build never lands on a newer one. A failed read of health prints 'deploy'. Export the decision as a pure function shouldDeploy(expected, reported, includes) and use it in the mode."
+    },
+    {
+     "file": "src/lib/await-deploy.test.ts",
+     "action": "edit",
+     "how": "Keep every existing case (step 1.21 added cases for buildLines() and the ceiling). Add cases for shouldDeploy(expected, reported, includes): reported null (health unread) gives deploy; reported equal to expected gives skip; reported a newer commit that includes expected gives skip; reported an older commit that does not include expected gives deploy."
+    },
+    {
+     "file": ".github/workflows/ci.yml",
+     "action": "edit",
+     "how": "In the job 'pending' and in the job 'release' the same three changes, in the same place and under the same if-conditions as today's hook step. (1) Delete the step 'Is a migration pending at the head of main by now?' and remove 'steps.head.outputs.pending' from the conditions of the steps after it: the prebuilt output is this run's commit, not the head of main (the reason D530 gave for that check is gone). (2) Replace the step that posts to VERCEL_DEPLOY_HOOK_URL with four steps: 'vercel pull --yes --environment=production', 'vercel build --prod', a step 'id: order' that runs 'node scripts/await-deploy.mjs --should-deploy' and writes its first word to $GITHUB_OUTPUT, and 'vercel deploy --prebuilt --prod' with 'if: steps.order.outputs.go == \\'deploy\\'' added to the step's existing condition; all with the three VERCEL_ secrets and the pinned CLI version of the trial, and wrapped in the recorder of step 1.20 as the job's other steps are (src/lib/ci-recorder.scan.test.ts lists the old hook steps as exceptions: take those entries out and keep the scan green). Step 0.38 has added '&& steps.changed.outputs.deploy != 'false'' to the hook step's and the wait step's if: keep that condition on every step that replaces the hook. The build step also needs NODE_OPTIONS as the workflow sets it. (3) The step 'Wait until production runs this commit' stays as it is. In 'release' the build and deploy steps come after 'Apply the pending migrations' and 'Nothing is left pending', as the hook did, and the job now needs the install steps without their 'if: needs.pending.outputs.pending == true' (it always builds). Raise timeout-minutes of both jobs by 10. Leave the job 'redeploy' on the deploy hook: it is the way back. Delete the job 'prebuilt-trial' and its input."
+    },
+    {
+     "file": "docs/ci-migrations.md",
+     "action": "edit",
+     "how": "Rewrite the parts that describe the hook (rg -n -i 'deploy hook|D530|head of main' docs/ci-migrations.md): the production build is made in the job that passed the gate or applied the migration, from that run's commit, and deployed prebuilt; a failed gate or migration still deploys nothing; a migration is still applied before the build that needs it is deployed; the order guard; the three secrets; the hook stays for the manual redeploy. Say what replaced D530's check."
+    }
+   ],
+   "checks": [
+    "pnpm test src/lib/await-deploy.test.ts: exits 0",
+    "pnpm vitest run src/lib/ci-recorder.scan.test.ts: exits 0",
+    "pnpm lint && pnpm typecheck && pnpm test: exits 0",
+    "After the push (no migration in it): the run's 'pending' job builds, deploys and its wait prints 'Production runs <this commit>' and the Build line",
+    "A later push with a migration: 'release' applies it, then builds and deploys; /api/health reports the commit",
+    "Re-run the 'pending' job of an older, already superseded run: its order step prints 'skip' and nothing is deployed"
+   ]
+  }
+ ],
+ "tests": [
+  {
+   "file": "src/lib/await-deploy.test.ts",
+   "proves": "Fails when the order guard would deploy a commit production already includes, or skip one production does not include."
+  },
+  {
+   "file": "src/lib/health.test.ts",
+   "proves": "Written by step 1.21; run it, do not change it: fails when a prebuilt deployment (no VERCEL_GIT_COMMIT_SHA) reports no commit."
+  },
+  {
+   "file": "src/lib/ci-recorder.scan.test.ts",
+   "proves": "Written by step 1.20: fails when a new CI step (vercel pull, build or deploy) runs outside the recorder."
+  }
+ ],
+ "migration": {
+  "needed": false,
+  "notes": ""
+ },
+ "done_when": [
+  {
+   "check": "rg -n '^Stage 1 is enough\\.$|^Stage 2 is needed\\.$' docs/build-memory.md; rg -n '^\\| 1\\.29 ' docs/audits/bloat-review-2026-11.md",
+   "expect": "either 'Stage 1 is enough.' and the row says Done as not needed (nothing else changed), or 'Stage 2 is needed.' and every check below holds"
+  },
+  {
+   "check": "After ten production deploys through CI: the build's peak in the recorder of step 1.20 (the summaries of those runs), or curl -s https://kaizenaflow.com/api/health and read build.peakKb, build.machineKb and build.history",
+   "expect": "ten builds in a row peak at 75% of the runner's printed memory (0.75 * machineKb) or less"
+  },
+  {
+   "check": "The two pushes and the re-run named in the last commit's checks",
+   "expect": "one push with a migration and one without each reach production through vercel deploy --prebuilt with /api/health reporting the commit; the re-run of an already superseded run deploys nothing"
+  },
+  {
+   "check": "The recorder of step 1.20: the median runner-minutes of a push over the ten runs before the move and the ten after",
+   "expect": "no higher after than before"
+  },
+  {
+   "check": "rg -n -i 'enhanced build|16 GB' docs/build-memory.md docs/ci-migrations.md",
+   "expect": "only sentences that rule the paid machine out (no paid machine, plan or add-on is used for the build)"
+  }
+ ],
+ "after_deploy": [
+  "After the trial (first commit): the run's summary shows the runner's memory and cores and a preview /api/health whose commit is the run's and whose build.peakKb is at most 75% of build.machineKb.",
+  "After the last commit: the next push's 'pending' job builds, deploys prebuilt and its wait prints 'Production runs <this commit>' and the Build line; the next push with a migration applies it before the build is deployed.",
+  "Then check that step 1.21's commit 3 (the red line) is in or can be made: production reports a peak at or under 75% of its machine."
+ ],
+ "docs": [
+  "docs/decisions.md (or, once step 2.40 has split it, a new file docs/decisions/D<n>.md plus its index row): one new decision with the next free D-number (claim it with scripts/claim-decision.mjs if step 0.41 has made that script; otherwise pull main and take the highest number plus one). It records: why the build moved to CI (the peak with the switches, from docs/build-memory.md; no paid machine, plan or add-on); the runner's memory and cores and the repository's visibility; what replaced the deploy hook in pending and release (vercel pull, build, the order guard, deploy --prebuilt) and what replaced D530's check (the order guard); the three secrets; the hook kept for the manual redeploy. Keep it under 4,000 bytes. Not needed when the step ends as not needed.",
+  "docs/build-memory.md and docs/ci-migrations.md as the commits say.",
+  "docs/audits/code-review-2026-11.md: under step 1.8, note that 'deploy what was checked' is now true (the deployed build is the one CI made, step 1.29), and add a change-log line.",
+  "docs/audits/psi-followups.md: under 'Decided', after the note on ungated deploys (D378), add one line that the deployed build is now the one CI made.",
+  "docs/audits/bloat-review-2026-11.md, Progress table: set the row of step 1.29 to Done with the date and the commit hash (or 'not needed' when docs/build-memory.md says 'Stage 1 is enough.'), in the same commit as the step's last change; add the row after 1.28's if the table has none. Keep the row at 300 characters or fewer."
+ ],
+ "do_not": [
+  "Do not switch on, recommend or budget for Vercel's Enhanced (16 GB) build machine, Observability Plus or any paid plan or add-on.",
+  "Do not bring back the type check, the Turbopack build cache or the extra workers on Vercel's own machine (TIGHT_MACHINE keeps the limits there).",
+  "Do not remove the deploy hook's secret or the 'redeploy' job: it is the way back.",
+  "Do not print, cat, upload or cache the .vercel folder or any pulled .env file in CI, and do not put the Vercel token in the repository.",
+  "Do not change anything when docs/build-memory.md says 'Stage 1 is enough.' (only the Progress row): the deploy hook, the pending and release jobs and the health gate then stay exactly as they are.",
+  "Do not change the order in 'release': migrations are applied before anything is deployed, and a failed migration deploys nothing.",
+  "Do not use the Vercel or GitHub tools of the session to change project settings; the owner adds secrets.",
+  "Do not put anything but numbers, a commit hash and a history of numbers into build-stats.json: /api/health is public.",
+  "Do not change the ceiling rule of step 1.21 (median of ten plus 10%, never above 75% of the machine) or the constant 0.75 in scripts/lib/build-stats.mjs."
+ ],
+ "stop_if": [
+  "docs/build-memory.md holds neither 'Stage 1 is enough.' nor 'Stage 2 is needed.' on a line of its own: step 1.21's commit 2 is not done.",
+  "Step 0.38 is not Done in the Progress table of docs/audits/bloat-review-2026-11.md.",
+  "Before any change to ci.yml: read the runner's size (the trial job prints it) and the repository's visibility and its Actions usage (GitHub's repository page, Settings, Billing). On a private repository, where minutes are metered: stop and tell the owner if a month's minutes would rise, with the figures.",
+  "The three Vercel secrets (VERCEL_TOKEN, VERCEL_ORG_ID, VERCEL_PROJECT_ID; free, but only the owner can add them) do not exist: ask the owner for them and stop until they do.",
+  "The preview deployment's /api/health does not report the run's commit, or the preview's pages do not answer 200 and styled: stop and tell the owner; production is not touched before a preview deployment has passed.",
+  "Stage 2: the trial build on the runner peaks above 75% of the runner's memory.",
+  "The first builds on the runner go red only on the median rule (their history holds the peaks of Vercel's 8 GB machine, with one worker and no cache): report the figures and leave the rule as it is; a reviewer decides with a decision row.",
+  "Any existing case of src/lib/await-deploy.test.ts or src/lib/health.test.ts must be changed to pass."
+ ],
+ "executor": "strong",
+ "executor_why": "It changes how production is deployed: the pending and release jobs stop calling Vercel's deploy hook and build, order-check and deploy prebuilt themselves, D530's head check goes, and the limits of next.config.ts start to follow the machine that builds. A mistake deploys an old build over a new one, deploys before a migration, or kills the build; it needs owner-held secrets and a preview trial first. Neither commit is mechanical.",
+ "checked_in_code": "Split (12 November) out of step 1.21's commits 4 and 5. Read again on 12 November: ci.yml's pending job posts to VERCEL_DEPLOY_HOOK_URL in the step 'No migration to apply and the quick gate passed, so ask Vercel to deploy the head of main now' after the step with id head ('Is a migration pending at the head of main by now?'), and release does the same in 'Ask Vercel to deploy the head of main'; redeploy also uses the hook; scripts/next-build.mjs skips the 7 GB heap when VERCEL is set; next.config.ts keys the type check, the cache and cpus: 1 on ON_VERCEL (line 39); scripts/await-deploy.mjs already has includesWith() and deployVerdict(). Corrections made in the split: the heap rule of scripts/next-build.mjs is its own change, the order guard's test is its own change, the new CI steps go through step 1.20's recorder (its scan test would fail otherwise), and step 0.38's condition is kept on the steps that replace the hook.",
+ "cheap_commits": [],
+ "rating_checked": "strong"
+}

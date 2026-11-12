@@ -1530,8 +1530,8 @@
     },
     {
      "id": "1.21",
-     "title": "Give the production build room, and fail a run before it runs out",
-     "what": "The build has 0.8 GB of room on Vercel's 8 GB machine and was killed once on 11 November. No paid build machine, plan or add-on is used, now or later. Stage 1, always: scripts/next-build.mjs prints the build's seconds and peak, and a run goes red with the number when the peak passes its ceiling: the median of the last ten production builds plus 10%, never above 75% of the machine (6.0 GB on Vercel's 8 GB), raised only with a decision row. The seconds and the peak reach every run's summary through scripts/await-deploy.mjs. Then read step 1.20's rows in docs/build-memory.md for the two free source-map switches. If the peak with them is 6.0 GB or less, turn them on for Vercel's build and stop: the deploy hook, the pending and release jobs and the health gate stay as they are. Stage 2, only if the peak stays above 6.0 GB: make the production build in CI and deploy it prebuilt. Today (.github/workflows/ci.yml, docs/ci-migrations.md) the pending job, for a push with no migration, runs the quick gate, calls Vercel's deploy hook and waits on /api/health; the release job, for a push with a migration, waits for every check, applies the files, calls the same hook and waits. Vercel then builds the head of main on its own machine. In stage 2 the hook call in both jobs becomes three commands in the same job and the same place: vercel pull --environment=production, vercel build --prod, vercel deploy --prebuilt --prod. So a migration is still applied before the build that needs it is deployed, a failed gate or migration still deploys nothing, and scripts/await-deploy.mjs still waits for the commit and runs its checks. Four things must be made true, and tried on a preview deployment before production. (1) /api/health reports VERCEL_GIT_COMMIT_SHA (src/lib/health.ts:82). If a prebuilt deployment leaves it empty, the build writes GITHUB_SHA into its output and health reads that. (2) vercel build sets VERCEL, so next.config.ts's ON_VERCEL limits (one worker, no build cache, no type check) would follow the build to CI. Key the worker and cache limits on the machine that builds, and bring the cache and the extra workers back only if a build stays at 75% of the runner or less. The type check stays out of this build: the gate has run it on the same commit. (3) The prebuilt output is this run's commit, not the head of main as the hook builds today (D530). The check for a migration pending at the head goes, and an order guard comes: read /api/health just before the deploy, and skip it when production already runs a commit that includes this one, so an older build never lands on a newer one. (4) Three free secrets in GitHub: a Vercel token and the project's two ids. Production's settings reach the runner through vercel pull and are never printed; production's database address is already a secret there for the migrations. The deploy hook stays for the manual redeploy job, as the way back. What the review found about the runner: CI's e2e, hosts and signed-in jobs already run pnpm build with the type check inside on ubuntu-latest and pass, a setup docs/build-memory.md records as killed under 8 GB, and this review's build peaked at 7.61 GB with the type check, the cache and all workers on. So the runner has more room than Vercel's machine, but its size, and whether the repository is private, were not read: the review had no GitHub access. Before stage 2, print the runner's memory and cores in a run and write them into docs/build-memory.md, and read the repository's visibility and its Actions usage. On a public repository minutes are free. On a private one they are metered: stop and tell the owner if a month's minutes would rise. CI's own test builds cannot be the deployed one: they are built on the seeded test database with test addresses compiled in. The production build is therefore one more build of about 4 to 5 minutes (263 s measured in this review), run inside the job that already has the checkout and the install, and it takes the place of Vercel's own build, so the time from push to live does not grow. Steps 0.38 and 3.18 take three type checks and one build out of every push, which is more than this adds, so stage 2 comes after step 0.38 and the push's runner-minutes end no higher than before. It holds the build's measure 5.",
+     "title": "Give the production build room with the free switches, and fail a run before it runs out",
+     "what": "The build has 0.8 GB of room on Vercel's 8 GB machine and was killed once on 11 November. No paid build machine, plan or add-on is used, now or later. Stage 1, always: scripts/next-build.mjs prints the build's seconds and peak, and a run goes red with the number when the peak passes its ceiling: the median of the last ten production builds plus 10%, never above 75% of the machine (6.0 GB on Vercel's 8 GB), raised only with a decision row. The seconds and the peak reach every run's summary through scripts/await-deploy.mjs. Then read step 1.20's rows in docs/build-memory.md for the two free source-map switches. If the peak with them is 6.0 GB or less, turn them on for Vercel's build and stop: the deploy hook, the pending and release jobs and the health gate stay as they are. If the peak stays above 6.0 GB, step 1.29 moves the build into CI (stage 2). It holds the build's measure 5 with step 1.29.",
      "closes": [
       "GAP-build-2",
       "GAP-build-s3"
@@ -1542,12 +1542,15 @@
      "areas": [
       "build"
      ],
-     "effort": "M",
-     "done_when": "No paid machine or plan is used for the build. Ten production builds in a row peak at 75% of their machine or less in the recorder of step 1.20 (6.0 GB on Vercel's machine; the runner's printed size if the build moved to CI), a trial build 12% above the median turns its run red though it is under 75%, docs/build-memory.md holds the two switches' rows and says which stage was taken, and code review step 1.8 is Done. If the build moved to CI: one push with a migration and one without each reach production through vercel deploy --prebuilt with /api/health reporting the commit, a run whose commit production already includes deploys nothing, and the recorder shows the median runner-minutes of a push no higher than before the move.",
+     "effort": "S",
+     "done_when": "No paid machine or plan is used for the build. Every production build's seconds and peak reach the run's summary; a trial build 12% above the median turns its run red though it is under 75%; docs/build-memory.md holds the two switches' rows and says whether stage 1 was enough ('Stage 1 is enough' or 'Stage 2 is needed'); and code review step 1.8 is Done. When stage 1 is enough, ten production builds in a row peak at 6.0 GB or less in the recorder of step 1.20; when it is not, step 1.29 carries the rest.",
      "platform": "One build makes the platform admin and Kaizena Flow's site with the stores.",
      "owner_question": null,
      "asked": "Only if the two free source-map switches, measured first in step 1.20, do not bring the build's peak to 6.0 GB or less: pay for Vercel's 16 GB build machine, or build in CI and deploy the prebuilt output? Without room by one of the three ways the build area stops at a B.",
-     "decision": "The paid build machine is ruled out for good: no paid machine, plan or add-on is ever used for the build. The two free source-map switches are measured first (step 1.20); if the peak is still above 6.0 GB, the production build is made in CI and deployed prebuilt (vercel build, then vercel deploy --prebuilt), which costs nothing and makes the deployed build the one CI made. Effort stays M if the switches are enough and is about a day more if the build moves to CI."
+     "decision": "The paid build machine is ruled out for good: no paid machine, plan or add-on is ever used for the build. The two free source-map switches are measured first (step 1.20); if the peak is still above 6.0 GB, the production build is made in CI and deployed prebuilt (vercel build, then vercel deploy --prebuilt), which costs nothing and makes the deployed build the one CI made. Effort stays M if the switches are enough and is about a day more if the build moves to CI.",
+     "split_into": [
+      "1.29"
+     ]
     },
     {
      "id": "1.22",
@@ -1676,6 +1679,26 @@
      "done_when": "The baseline lists every hand-down site (188 today) in both languages, and pnpm test fails on a planted 'schedules' area in the pages list's hand-down.",
      "platform": "The platform admin's hand-down sites are among the 188 and are held the same way.",
      "owner_question": null
+    },
+    {
+     "id": "1.29",
+     "title": "Only if the free switches are not enough: build in CI and deploy the prebuilt output",
+     "what": "Stage 2 of the build's room, split out of step 1.21: make the production build in CI and deploy it prebuilt. Today (.github/workflows/ci.yml, docs/ci-migrations.md) the pending job, for a push with no migration, runs the quick gate, calls Vercel's deploy hook and waits on /api/health; the release job, for a push with a migration, waits for every check, applies the files, calls the same hook and waits. Vercel then builds the head of main on its own machine. In stage 2 the hook call in both jobs becomes three commands in the same job and the same place: vercel pull --environment=production, vercel build --prod, vercel deploy --prebuilt --prod. So a migration is still applied before the build that needs it is deployed, a failed gate or migration still deploys nothing, and scripts/await-deploy.mjs still waits for the commit and runs its checks. Four things must be made true, and tried on a preview deployment before production. (1) /api/health reports VERCEL_GIT_COMMIT_SHA (src/lib/health.ts:82). If a prebuilt deployment leaves it empty, the build writes GITHUB_SHA into its output and health reads that. (2) vercel build sets VERCEL, so next.config.ts's ON_VERCEL limits (one worker, no build cache, no type check) would follow the build to CI. Key the worker and cache limits on the machine that builds, and bring the cache and the extra workers back only if a build stays at 75% of the runner or less. The type check stays out of this build: the gate has run it on the same commit. (3) The prebuilt output is this run's commit, not the head of main as the hook builds today (D530). The check for a migration pending at the head goes, and an order guard comes: read /api/health just before the deploy, and skip it when production already runs a commit that includes this one, so an older build never lands on a newer one. (4) Three free secrets in GitHub: a Vercel token and the project's two ids. Production's settings reach the runner through vercel pull and are never printed; production's database address is already a secret there for the migrations. The deploy hook stays for the manual redeploy job, as the way back. What the review found about the runner: CI's e2e, hosts and signed-in jobs already run pnpm build with the type check inside on ubuntu-latest and pass, a setup docs/build-memory.md records as killed under 8 GB, and this review's build peaked at 7.61 GB with the type check, the cache and all workers on. So the runner has more room than Vercel's machine, but its size, and whether the repository is private, were not read: the review had no GitHub access. Before stage 2, print the runner's memory and cores in a run and write them into docs/build-memory.md, and read the repository's visibility and its Actions usage. On a public repository minutes are free. On a private one they are metered: stop and tell the owner if a month's minutes would rise. CI's own test builds cannot be the deployed one: they are built on the seeded test database with test addresses compiled in. The production build is therefore one more build of about 4 to 5 minutes (263 s measured in this review), run inside the job that already has the checkout and the install, and it takes the place of Vercel's own build, so the time from push to live does not grow. Steps 0.38 and 3.18 take three type checks and one build out of every push, which is more than this adds, so stage 2 comes after step 0.38 and the push's runner-minutes end no higher than before. If docs/build-memory.md says 'Stage 1 is enough' after step 1.21, this step changes nothing and is set to Done as not needed.",
+     "closes": [],
+     "from": [
+      "W-build-13"
+     ],
+     "areas": [
+      "build"
+     ],
+     "effort": "M",
+     "done_when": "Either docs/build-memory.md says 'Stage 1 is enough' and this step is Done as not needed; or ten production builds in a row peak at 75% of the runner's printed size or less, one push with a migration and one without each reach production through vercel deploy --prebuilt with /api/health reporting the commit, a run whose commit production already includes deploys nothing, and the recorder shows the median runner-minutes of a push no higher than before the move. No paid machine or plan is used.",
+     "platform": "One build makes the platform admin and Kaizena Flow's site with the stores.",
+     "owner_question": null,
+     "asked": "Only if the two free source-map switches, measured first in step 1.20, do not bring the build's peak to 6.0 GB or less: pay for Vercel's 16 GB build machine, or build in CI and deploy the prebuilt output? Without room by one of the three ways the build area stops at a B.",
+     "decision": "The paid build machine is ruled out for good: no paid machine, plan or add-on is ever used for the build. The two free source-map switches are measured first (step 1.20); if the peak is still above 6.0 GB, the production build is made in CI and deployed prebuilt (vercel build, then vercel deploy --prebuilt), which costs nothing and makes the deployed build the one CI made. Effort stays M if the switches are enough and is about a day more if the build moves to CI.",
+     "split_from": "1.21",
+     "added_why": "Split on 12 November at the owner's request: the judge of the second rating found the step too large for one brief. Stage 2 changes how production is deployed and is needed only if stage 1 is not enough."
     }
    ]
   },
@@ -2852,24 +2875,26 @@
     },
     {
      "id": "3.6",
-     "title": "Let per-store jobs find due work by a mark, and look hourly",
-     "what": "Five document jobs find due work by re-checking every store's orders of 120 days, invoices and refunds on each tick: add the partial indexes that fit their windows, concurrently on the hot tables, and a mark for what is done. Six more five-minute jobs (the books, Tripletex, Fiken, auto-archive, autopilot budgets, recurring costs) re-check every store that has the feature on, and the ledger's order never rotates: they look hourly, skip a store with nothing new, and every book gets its turn. Each is labelled per-store in the registry of step 3.3, with its cap and order. The product-words sweep gets a change mark, products.text_changed_at, so an idle tick reads no product to learn that nothing changed.",
-     "closes": [
-      "DQ-15",
-      "CR-16"
-     ],
+     "title": "Indexes that fit the document jobs' windows",
+     "what": "Five document jobs find due work by re-checking every store's orders of 120 days, invoices and refunds on each tick. Add the partial indexes that fit their windows (plain indexes on invoices, credit_notes, work_invoices, work_credit_notes, order_events and order_edits; none is a hot table), so the jobs' existing exists() checks are index probes. Steps 3.21 to 3.24 finish what this step began.",
+     "closes": [],
      "from": [
       "W-database-17",
       "W-scheduled-11"
      ],
      "areas": [
-      "database",
-      "scheduled"
+      "database"
      ],
-     "effort": "M",
-     "done_when": "A new int test seeds 2,000 paid, invoiced orders in one store, runs one invoice tick, one email check and one e-invoice check, and the rows read from commerce.orders and commerce.invoices are fewer than 100 each; an idle tick reads at most 10 more rows per added store, none from pages, products, product_variants, orders or media, and a day later product_variants is read whole 10 times a day or fewer; the new ledger case reaches the third book within three runs; and the ledger rows dispatcher.auto-archive, dispatcher.autopilot-budgets and dispatcher.recurring have every_seconds 3600.",
+     "effort": "S",
+     "done_when": "The migration's indexes exist, src/db/commerce.test.ts holds each of them, and the migration-safety scan passes unchanged.",
      "platform": "Kaizena Flow's own books are a book like any other and get their turn by the same order.",
-     "owner_question": null
+     "owner_question": null,
+     "split_into": [
+      "3.21",
+      "3.22",
+      "3.23",
+      "3.24"
+     ]
     },
     {
      "id": "3.7",
@@ -3158,6 +3183,88 @@
      "owner_question": null,
      "asked": "How long may work that a person watches wait before the admins are told (an AI page build, a look at a page, the Dream Factory)? The step assumes 3 minutes, and 20 for the other queues; any stated figure reaches the bar.",
      "decision": "3 minutes for work a person watches (an AI page build, a look at a page, the Dream Factory) and 20 minutes for the other queues, as the step and the scheduled card assume. Both are constants in one file, so another figure is a one-line change."
+    },
+    {
+     "from": [
+      "W-database-17",
+      "W-scheduled-11"
+     ],
+     "platform": "Kaizena Flow's own books are a book like any other and get their turn by the same order.",
+     "owner_question": null,
+     "split_from": "3.6",
+     "added_why": "Split on 12 November at the owner's request: the judge of the second rating found the step too large for one brief. The judge named the five parts.",
+     "id": "3.21",
+     "title": "The invoice job reads what is marked as waiting, and keeps today's full check as an hourly net",
+     "what": "The invoice job of the five-minute dispatcher reads only the orders marked as waiting for a document, using step 3.6's indexes, and today's full check of every store's 120 days runs once an hour as the net that catches anything a mark missed.",
+     "closes": [
+      "DQ-15"
+     ],
+     "areas": [
+      "database",
+      "scheduled"
+     ],
+     "effort": "S",
+     "done_when": "A new int test seeds 2,000 paid, invoiced orders in one store, runs one invoice tick, one email check and one e-invoice check, and the rows read from commerce.orders and commerce.invoices are fewer than 100 each."
+    },
+    {
+     "from": [
+      "W-database-17",
+      "W-scheduled-11"
+     ],
+     "platform": "Kaizena Flow's own books are a book like any other and get their turn by the same order.",
+     "owner_question": null,
+     "split_from": "3.6",
+     "added_why": "Split on 12 November at the owner's request: the judge of the second rating found the step too large for one brief. The judge named the five parts.",
+     "id": "3.22",
+     "title": "Every book gets its turn, and an idle book is looked at hourly",
+     "what": "The ledger's posting job looks at each store's book in a rotating order (ledger_books.checked_at), skips a book with nothing new and looks at an idle one hourly, so every book gets its turn; Kaizena Flow's own books are a book like any other.",
+     "closes": [],
+     "areas": [
+      "scheduled"
+     ],
+     "effort": "S",
+     "done_when": "The new ledger case reaches the third book within three runs, and an idle tick reads at most 10 more rows per added store."
+    },
+    {
+     "from": [
+      "W-database-17",
+      "W-scheduled-11"
+     ],
+     "platform": "Kaizena Flow's own books are a book like any other and get their turn by the same order.",
+     "owner_question": null,
+     "split_from": "3.6",
+     "added_why": "Split on 12 November at the owner's request: the judge of the second rating found the step too large for one brief. The judge named the five parts.",
+     "id": "3.23",
+     "title": "Tripletex and Fiken skip a store with nothing new, and the registry labels the six per-store jobs",
+     "what": "The Tripletex and Fiken syncs skip a store with nothing new since they last looked (looked_at), and the six per-store five-minute jobs (the books, Tripletex, Fiken, auto-archive, autopilot budgets, recurring costs) are labelled per-store in the registry of step 3.3, with their cap and order; auto-archive, autopilot budgets and recurring costs look hourly.",
+     "closes": [
+      "CR-16"
+     ],
+     "areas": [
+      "scheduled"
+     ],
+     "effort": "S",
+     "done_when": "The ledger rows dispatcher.auto-archive, dispatcher.autopilot-budgets and dispatcher.recurring have every_seconds 3600; an idle tick reads at most 10 more rows per added store."
+    },
+    {
+     "from": [
+      "W-database-17",
+      "W-scheduled-11"
+     ],
+     "platform": "Kaizena Flow's own books are a book like any other and get their turn by the same order.",
+     "owner_question": null,
+     "split_from": "3.6",
+     "added_why": "Split on 12 November at the owner's request: the judge of the second rating found the step too large for one brief. The judge named the five parts.",
+     "id": "3.24",
+     "title": "The product-words sweep reads no product when no text changed",
+     "what": "The product-words sweep (embeddings) asks first whether any product text changed since its last good run, by step 0.28's product_translations.text_changed_at, with an index on product_translations (not a hot table); an idle tick reads no product. Changes to product_terms are caught by the daily net.",
+     "closes": [],
+     "areas": [
+      "database",
+      "scheduled"
+     ],
+     "effort": "S",
+     "done_when": "An idle tick reads no row from pages, products, product_variants, orders or media, and a day later product_variants is read whole 10 times a day or fewer."
     }
    ]
   },
@@ -3662,6 +3769,10 @@
     "3.4",
     "3.5",
     "3.6",
+    "3.21",
+    "3.22",
+    "3.23",
+    "3.24",
     "3.7",
     "3.20",
     "4.5"
@@ -3701,6 +3812,10 @@
     "3.4",
     "3.5",
     "3.6",
+    "3.21",
+    "3.22",
+    "3.23",
+    "3.24",
     "3.8",
     "3.9",
     "4.4",
@@ -3867,6 +3982,7 @@
    ],
    "to_a": [
     "1.21",
+    "1.29",
     "2.42",
     "2.43",
     "2.44",

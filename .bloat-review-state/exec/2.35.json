@@ -22,8 +22,8 @@
    "why": "its scripts/route-budget.mjs prints the routing-rule count from .next/routes-manifest.json on every build, which is how this step's done-when is read; its graph test holds what src/proxy.ts may reach"
   },
   {
-   "id": "1.21",
-   "why": "the owner asked for no deployment per domain change partly because a deploy is a full build at the edge of its memory; if stage 2 of that step changed how production is deployed, the 'deploy' service removed here is the one it left in place"
+   "id": "1.29",
+   "why": "the owner asked for no deployment per domain change partly because a deploy is a full build at the edge of its memory; if step 1.29 changed how production is deployed (the build in CI, vercel deploy --prebuilt), the 'deploy' service removed here is the one it left in place"
   }
  ],
  "commits": [

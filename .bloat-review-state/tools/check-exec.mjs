@@ -24,7 +24,14 @@ if (kind === "plan") {
     for (const k of ["id", "title", "what", "done_when", "platform"]) if (!str(s[k])) problems.push(`step ${s.id}: "${k}" missing`);
     if (s.owner_question) problems.push(`step ${s.id}: owner_question must be null now (move its words to "asked" and write "decision")`);
     if (was?.owner_question && (!str(s.asked) || !str(s.decision))) problems.push(`step ${s.id}: had a question, so it needs "asked" and "decision"`);
-    if (was && JSON.stringify([...was.closes].sort()) !== JSON.stringify([...(s.closes ?? [])].sort()) && !s.dropped) problems.push(`step ${s.id}: closes changed`);
+    if (was && JSON.stringify([...was.closes].sort()) !== JSON.stringify([...(s.closes ?? [])].sort()) && !s.dropped && !s.split_into) problems.push(`step ${s.id}: closes changed`);
+    if (s.split_into) {
+      const group = [s, ...b.filter((x) => x.split_from === s.id)];
+      const u = [...new Set(group.flatMap((x) => x.closes ?? []))].sort();
+      if (JSON.stringify(u) !== JSON.stringify([...(was?.closes ?? [])].sort())) problems.push(`step ${s.id}: its split steps together must close what it closed (${(was?.closes ?? []).join(", ")}), not ${u.join(", ")}`);
+      for (const id of s.split_into) if (!b.some((x) => x.id === id && x.split_from === s.id)) problems.push(`step ${s.id}: split_into names ${id}, which is not a step with split_from ${s.id}`);
+    }
+    if (s.split_from && !b.some((x) => x.id === s.split_from && (x.split_into ?? []).includes(s.id))) problems.push(`step ${s.id}: split_from ${s.split_from} does not list it in split_into`);
     if (!was && !str(s.added_why)) problems.push(`step ${s.id}: new step needs "added_why"`);
   }
   for (const [i, c] of (exe.owner_choices ?? []).entries()) if (!str(c.decision)) problems.push(`owner_choices[${i}]: "decision" missing`);

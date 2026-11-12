@@ -182,7 +182,8 @@ if (plan) {
     const cc = (b.cheap_commits ?? []).filter((n) => n >= 1 && n <= b.commits.length);
     md += `**Who:** ${b.executor === "cheap" ? "a smaller model alone" : b.executor === "strong" ? "a stronger model" : "a smaller model; a stronger one reads the diff before the push"}. ${clean(b.executor_why)}${b.executor !== "cheap" && cc.length ? ` A smaller model may still do commit${cc.length > 1 ? "s" : ""} ${cc.join(", ")} alone.` : ""}${b.rating_checked ? ` *(Rating checked twice, 12 November${b.rating_checked !== b.executor ? `; first written as ${WHO[b.rating_checked]}` : ""}.)*` : ""}\n\n**Goal:** ${clean(b.goal)}\n\n**Why:** ${clean(b.why)}\n\n`;
     if (st.decision) md += `**Decided by the owner (12 November, the recommended way):** ${clean(st.decision)}\n\n`;
-    md += `**Closes:** ${ids.map((id) => (fo(id) ? `[${id}](${fo(id)})` : id)).join(", ")}. Each finding's file has the evidence.\n\n`;
+    const split = st.split_from ? `Split out of step ${st.split_from} on 12 November. ` : st.split_into ? `Steps ${st.split_into.join(", ")} were split out of this step on 12 November. ` : "";
+    md += ids.length ? `**Closes:** ${ids.map((id) => (fo(id) ? `[${id}](${fo(id)})` : id)).join(", ")}. ${split}Each finding's file has the evidence.\n\n` : `**Closes:** no finding on its own. ${split || "It carries a product choice the owner decided. "}${st.split_from || st.split_into ? "The findings close when the steps of the split are Done." : ""}\n\n`;
     md += `## Before you start\n\n**Done first:** ${b.depends_on.length ? b.depends_on.map((d) => `step ${d.id} (${clean(d.why)})`).join("; ") + ". Check the Progress table says Done for each." : "nothing."}\n\n**Read:**\n\n${list(b.read_first, (x) => `\`${x}\``)}\n\n`;
     md += `## The work\n\n`;
     b.commits.forEach((c, i) => {
@@ -205,7 +206,7 @@ if (plan) {
       const b = brief(st.id);
       progress += `| ${st.id} | ${cell(st.title)}${st.owner_question ? " *(owner)*" : ""} | ${ids.join(", ")} | ${st.effort} | ${b ? WHO[b.executor] : ""} | ${b ? b.depends_on.map((d) => d.id).join(", ") : ""} | Open | |\n`;
       if (b) writeBrief(ph, st, b, ids);
-      file += `\n## ${st.id} ${clean(st.title).replace(/\.$/, "")}\n\n${clean(st.what)}\n\n- **Closes:** ${ids.map((id) => (fileOf(id) ? `[${id}](${fileOf(id)})` : id)).join(", ")}\n- **Effort:** ${st.effort}. **Areas it moves:** ${st.areas.map((k) => SCORE.find((x) => x.key === k)?.title ?? k).join("; ")}.\n- **Done when:** ${clean(st.done_when)}\n- **Platform:** ${clean(st.platform)}\n${st.owner_question ? `- **The owner's question first:** ${clean(st.owner_question)}\n` : ""}${st.decision ? `- **Decided (the owner, 12 November: the recommended way):** ${clean(st.decision)} *Asked:* ${clean(st.asked)}\n` : ""}${b ? `- **To carry it out:** [steps/${st.id}.md](steps/${st.id}.md) (${WHO[b.executor]})\n` : ""}`;
+      file += `\n## ${st.id} ${clean(st.title).replace(/\.$/, "")}\n\n${clean(st.what)}\n\n- **Closes:** ${ids.length ? ids.map((id) => (fileOf(id) ? `[${id}](${fileOf(id)})` : id)).join(", ") : "no finding on its own"}${st.split_from ? ` (split out of step ${st.split_from})` : st.split_into ? ` (steps ${st.split_into.join(", ")} split out of it)` : ""}\n- **Effort:** ${st.effort}. **Areas it moves:** ${st.areas.map((k) => SCORE.find((x) => x.key === k)?.title ?? k).join("; ")}.\n- **Done when:** ${clean(st.done_when)}\n- **Platform:** ${clean(st.platform)}\n${st.owner_question ? `- **The owner's question first:** ${clean(st.owner_question)}\n` : ""}${st.decision ? `- **Decided (the owner, 12 November: the recommended way):** ${clean(st.decision)} *Asked:* ${clean(st.asked)}\n` : ""}${b ? `- **To carry it out:** [steps/${st.id}.md](steps/${st.id}.md) (${WHO[b.executor]})\n` : ""}`;
     }
     progress += "\n";
     writeFileSync(`${OUT}/plan/phase-${ph.n}.md`, file);
@@ -301,8 +302,10 @@ node docs/audits/bloat-review-2026-11/scripts/copied-code.mjs out       # exact 
 `);
 
 // ---- The main document.
-const template = readFileSync(`${S}/work/main-template.md`, "utf8");
-const choicesIntro = decided ? "**Decisions.** The owner answered on 12 November: the recommended way for every question, and never a paid machine or service (so step 1.21 builds in CI if the free switches are not enough; Vercel's larger build machine is ruled out). Each answer is written into its step; `bloat-review-2026-11/plan/decisions.md` has them in one table, with how to undo each. The ones without a step are product choices the reviewers met: none is waste." : "**Questions.** Each stops the step it names until answered. The ones without a step are product choices the reviewers met: none is waste, and no step of the plan depends on them.";
+let template = readFileSync(`${S}/work/main-template.md`, "utf8");
+const choicesIntro = decided ? "**Decisions.** The owner answered on 12 November: the recommended way for every question, and never a paid machine or service (so step 1.29 builds in CI if step 1.21's free switches are not enough; Vercel's larger build machine is ruled out). Each answer is written into its step; `bloat-review-2026-11/plan/decisions.md` has them in one table, with how to undo each. The ones without a step are product choices the reviewers met: none is waste." : "**Questions.** Each stops the step it names until answered. The ones without a step are product choices the reviewers met: none is waste, and no step of the plan depends on them.";
+const whoCount = (w) => steps.filter((s) => brief(s.id)?.executor === w).length;
+template = template.replace("{{WHO_COUNTS}}", `${whoCount("cheap")} cheap, ${whoCount("cheap-then-review")} review, ${whoCount("strong")} strong`);
 let main = template.replace("{{CHOICES_INTRO}}", choicesIntro).replace("{{PANEL_STATE}}", panelState).replace("{{PROGRESS}}", progress.trimEnd()).replace("{{SCORECARD}}", scorecard.trimEnd()).replace("{{LADDER}}", ladder.trimEnd()).replace("{{LADDER_NOTE}}", ladderNote).replace("{{FINDINGS_TABLES}}", areaIndex).replace("{{PLAN}}", planText).replace("{{CHOICES}}", choices).replace("{{TOLERATED}}", tolerated);
 for (const [k, v] of Object.entries(counts)) main = main.replaceAll(`{{${k}}}`, String(v).replace(/\B(?=(\d{3})+(?!\d))/g, ","));
 const left = main.match(/\{\{[A-Z0-9_]+\}\}/g);

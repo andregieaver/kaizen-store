@@ -81,7 +81,9 @@ Change log:
   the steps; a brief per step written for a smaller model to carry out. Nothing started.
 - 12 Nov 2026: every brief's rating checked by a blind second reviewer (agreed on 129 of 151; a judge settled 22), and each
   brief checked against the code and the briefs before it: 539 errors fixed in the briefs, 79 reported ones found not to be
-  errors. Ratings now 29 cheap, 72 review, 50 strong. Nothing started.
+  errors. Nothing started.
+- 12 Nov 2026: at the owner's request, step 3.6 split into five steps (3.6, 3.21 to 3.24) and step 1.21's second stage, the
+  build in CI, made its own step (1.29). Ratings now {{WHO_COUNTS}}. Nothing started.
 
 ## 1. The headline
 

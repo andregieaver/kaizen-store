@@ -17,8 +17,8 @@
    "why": "it adds to the pending job the skip of a deploy for a push that changes only tests; this step's rule for 'a newer push that will itself deploy' must use the same test of what is deployable, and src/lib/ci-once.scan.test.ts (made there) reads ci.yml"
   },
   {
-   "id": "1.21",
-   "why": "if its stage 2 moved the build into CI (vercel deploy --prebuilt), the deploy step this brief guards has other commands and already has an order guard; read what 1.21 left before editing"
+   "id": "1.29",
+   "why": "if it moved the build into CI (vercel deploy --prebuilt), the deploy step this brief guards has other commands and already has an order guard; read what 1.29 left before editing"
   },
   {
    "id": "0.43",
@@ -42,7 +42,7 @@
     {
      "file": ".github/workflows/ci.yml",
      "action": "edit",
-     "how": "Only in the job `pending`. Directly after the step with id `head` ('Is a migration pending at the head of main by now?') add: `- name: Is a newer push on main that will deploy it? (a burst of pushes shares one deploy)`, `id: newer`, the same `if:` as the head step (`steps.status.outputs.pending == 'false' && vars.DEPLOY_VIA_CI == 'true'`), `env: SHARE_DEPLOYS: ${{ vars.SHARE_DEPLOYS }}`, `run: node scripts/deploy-share.mjs` (wrapped in the recorder of step 1.20 if the job's other steps are). Then add `&& steps.newer.outputs.superseded != 'true'` to the `if:` of the two steps after it: the deploy step ('No migration to apply and the quick gate passed, so ask Vercel to deploy the head of main now', or the vercel build/deploy steps step 1.21 put in its place) and 'Wait until production runs this commit'. Step 0.38 already appended ` && steps.changed.outputs.deploy != 'false'` to both of those `if:` lines and put its step 'Does this push change what is deployed?' (id changed) right after the head step: put this new step after 0.38's step, keep 0.38's condition and add this one with `&&`. In the comment block above the job ('no pending migration: ...') add two lines: a run whose commit has been followed on main by a push that will deploy asks for no deploy (the newer run deploys main, with this commit in it; SHARE_DEPLOYS = 'false' turns this off), and a run that applied a migration always deploys. Change nothing in the jobs `release`, `redeploy`, `baseline`, `static` or the browser jobs, and nothing in `concurrency`."
+     "how": "Only in the job `pending`. Directly after the step with id `head` ('Is a migration pending at the head of main by now?') add: `- name: Is a newer push on main that will deploy it? (a burst of pushes shares one deploy)`, `id: newer`, the same `if:` as the head step (`steps.status.outputs.pending == 'false' && vars.DEPLOY_VIA_CI == 'true'`), `env: SHARE_DEPLOYS: ${{ vars.SHARE_DEPLOYS }}`, `run: node scripts/deploy-share.mjs` (wrapped in the recorder of step 1.20 if the job's other steps are). Then add `&& steps.newer.outputs.superseded != 'true'` to the `if:` of the two steps after it: the deploy step ('No migration to apply and the quick gate passed, so ask Vercel to deploy the head of main now', or the vercel build/deploy steps step 1.29 put in its place) and 'Wait until production runs this commit'. Step 0.38 already appended ` && steps.changed.outputs.deploy != 'false'` to both of those `if:` lines and put its step 'Does this push change what is deployed?' (id changed) right after the head step: put this new step after 0.38's step, keep 0.38's condition and add this one with `&&`. In the comment block above the job ('no pending migration: ...') add two lines: a run whose commit has been followed on main by a push that will deploy asks for no deploy (the newer run deploys main, with this commit in it; SHARE_DEPLOYS = 'false' turns this off), and a run that applied a migration always deploys. Change nothing in the jobs `release`, `redeploy`, `baseline`, `static` or the browser jobs, and nothing in `concurrency`."
     },
     {
      "file": "src/lib/deploy-share.scan.test.ts",
@@ -139,7 +139,7 @@
  ],
  "stop_if": [
   "scripts/deploy-needed.mjs does not exist or does not export testsOnly (step 0.38 not done), or docs/rules/budgets.md does not exist (step 0.43 not done): stop.",
-  "Step 1.21 moved the build to CI and the pending job already skips when production runs a commit that includes this one: report how the two guards meet before adding a second.",
+  "Step 1.29 moved the build to CI and the pending job already skips when production runs a commit that includes this one: report how the two guards meet before adding a second.",
   "In the trial, the first run skipped and the second run did not deploy, or /api/health does not report the second commit within 20 minutes: set SHARE_DEPLOYS to 'false' (ask the owner), run the manual redeploy job, and report.",
   "ci-once.scan.test.ts needs a change other than listing the new step."
  ],
