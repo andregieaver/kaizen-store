@@ -1,5 +1,5 @@
 {
- "at": "2026-11-12T01:25:24.152Z",
+ "at": "2026-11-12T01:28:26.613Z",
  "status": [
   {
    "key": "storefront-client",
@@ -125,7 +125,7 @@
    "key": "client-bundles",
    "audit": true,
    "verify": true,
-   "plan": false
+   "plan": true
   },
   {
    "key": "page-payload",
@@ -155,7 +155,6 @@
  "relaunch": {
   "keys": [
    "functions",
-   "client-bundles",
    "prefetch"
   ],
   "audited": [
