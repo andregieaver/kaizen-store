@@ -1,0 +1,169 @@
+{
+ "key": "cron",
+ "file": "/tmp/claude-0/-home-user-kaizen-store/875cb21b-0ebd-5663-b7c0-2d04a7548e24/scratchpad/findings/cron.json",
+ "validator": "OK: 17 findings, 6 refuted, 15 metrics",
+ "headline": "Scheduled work is a fixed floor today, not a load: 13,250 scheduled calls a day send about 170,000 statements that nearly all find nothing, because the platform is not open; nothing here argues for retiring a feature. The one measured waste is pg_cron's own run log, never pruned: 564 MB, 77% of the 731 MB database, fixed by one small migration (CR-5). What matters at opening is work that grows per store, page, product or order on every run whether or not anything changed: AI upkeep (CR-4), the listings' check that hashes every product on the platform and re-asks the AI about unreadable ones every five minutes (CR-15, added), automations and ad conversions (CR-3), the cookie scan (CR-6), waiting invoices (CR-9) and accounting loops (CR-16, added). Calling the six queue routes only when a row waits (CR-1), giving about 30 of 83 five-minute jobs an hourly or daily cadence with one ledger write a run (CR-2), and a registry with a scan test (CR-14) keep the floor from growing back; before opening is the cheapest time.",
+ "findings": [
+  {
+   "id": "CR-1",
+   "title": "Nine routes are called every minute whether or not anything waits",
+   "priority": "P1",
+   "effort": "M",
+   "saving": "Est.: 8,640 calls a day to about 576 plus real work; 33,000 idle statements a day gone; pg_cron runs 13,250 to about 1,730.",
+   "verdict": "corrected",
+   "owner_decision": false
+  },
+  {
+   "id": "CR-2",
+   "title": "The dispatcher runs all 83 jobs every five minutes: one cadence for everything, one ledger write per job, five connections",
+   "priority": "P1",
+   "effort": "M",
+   "saving": "Est.: about 8,100 job runs and 24,000 ledger writes a day fewer; headroom on five connections when real work comes.",
+   "verdict": "corrected",
+   "owner_decision": false
+  },
+  {
+   "id": "CR-3",
+   "title": "The marketing and autopilot minute routes: per-store, per-order work every minute once a feature is on",
+   "priority": "P1",
+   "effort": "M",
+   "saving": "None today beyond CR-1; at opening cost follows due work, not stores x kinds and a week of orders.",
+   "verdict": "corrected",
+   "owner_decision": false
+  },
+  {
+   "id": "CR-4",
+   "title": "AI upkeep re-reads whole catalogues, sites and libraries every five minutes to learn nothing changed",
+   "priority": "P0",
+   "effort": "M",
+   "saving": "Est.: four jobs from 1.9 s recorded to a few statements a run; 91,200 empty deletes and the daily re-touch of pictures stop.",
+   "verdict": "confirmed",
+   "owner_decision": false
+  },
+  {
+   "id": "CR-5",
+   "title": "pg_cron's own run log is never pruned and is 77% of the database",
+   "priority": "P0",
+   "effort": "S",
+   "saving": "Up to 564 MB of the 731 MB database; 8 to 21 MB a day of growth stopped (estimate).",
+   "verdict": "corrected",
+   "owner_decision": false
+  },
+  {
+   "id": "CR-6",
+   "title": "The cookie scan's due check reads every site every minute without a usable index, and failing sites are retried hourly ahead of healthy ones",
+   "priority": "P1",
+   "effort": "S",
+   "saving": "Est.: due check from 21 table scans a minute to one index read per 15 min; Chromium runs from 40-50 a day to about 2.",
+   "verdict": "corrected",
+   "owner_decision": false
+  },
+  {
+   "id": "CR-7",
+   "title": "The theme-shots route rebuilds its whole wanted list every minute",
+   "priority": "P2",
+   "effort": "S",
+   "saving": "About 11,500 statements a day; theme snapshot read from 1,440 to at most 96 times a day.",
+   "verdict": "corrected",
+   "owner_decision": false
+  },
+  {
+   "id": "CR-8",
+   "title": "Kaizena Flow's own payouts are read from Stripe every five minutes",
+   "priority": "P2",
+   "effort": "S",
+   "saving": "Stripe calls from 288-576 a day to 24-48 (hourly) or 1-2 (daily).",
+   "verdict": "confirmed",
+   "owner_decision": false
+  },
+  {
+   "id": "CR-9",
+   "title": "The invoice job re-asks the same waiting stores every five minutes, with no back-off and no order",
+   "priority": "P1",
+   "effort": "S",
+   "saving": "About 127 function calls a day to a few; the 50-store cap can no longer starve a store's invoice.",
+   "verdict": "corrected",
+   "owner_decision": false
+  },
+  {
+   "id": "CR-10",
+   "title": "The docs search index is rewritten row by row on every docs change",
+   "priority": "P2",
+   "effort": "S",
+   "saving": "Est.: writes per docs deploy from 1,845 rows to the rows that changed.",
+   "verdict": "confirmed",
+   "owner_decision": false
+  },
+  {
+   "id": "CR-11",
+   "title": "An unscheduled PDF route is deployed with Chromium, and a 'finished' backfill is still fed by every copied AI picture",
+   "priority": "P2",
+   "effort": "S",
+   "saving": "One 102 MiB Chromium function put to use or removed; about 290 job runs and 288 deletes a day; no downloads for copied AI pictures.",
+   "verdict": "corrected",
+   "owner_decision": false
+  },
+  {
+   "id": "CR-12",
+   "title": "The daily job is scheduled twice, at the same minute",
+   "priority": "P2",
+   "effort": "S",
+   "saving": "At most one duplicate run of the daily job a day; one scheduler instead of two.",
+   "verdict": "confirmed",
+   "owner_decision": false
+  },
+  {
+   "id": "CR-13",
+   "title": "Status checks are kept raw for 91 days though the page shows one bar a day",
+   "priority": "P3",
+   "effort": "S",
+   "saving": "Est.: 131,000 rows to about 12,000; the page's read from 131,000 rows to about 550.",
+   "verdict": "confirmed",
+   "owner_decision": false
+  },
+  {
+   "id": "CR-14",
+   "title": "Nothing limits or measures scheduled work, so each feature adds a poll",
+   "priority": "P1",
+   "effort": "S",
+   "saving": "No direct saving; keeps CR-1 to CR-4 from growing back and makes the next audit a query.",
+   "verdict": "confirmed",
+   "owner_decision": false
+  },
+  {
+   "id": "CR-15",
+   "title": "The listings' check hashes every product on the platform every five minutes, and a listing the AI cannot answer for is asked again every run at the head of the queue",
+   "priority": "P1",
+   "effort": "S",
+   "saving": "Est.: up to 2,880 wasted AI calls a day avoided; platform-wide hash 288 to 24 times a day; ten listings can no longer block the queue.",
+   "verdict": "added",
+   "owner_decision": false
+  },
+  {
+   "id": "CR-16",
+   "title": "Six more five-minute jobs re-check every store that has the feature on, and the ledger's order never rotates",
+   "priority": "P2",
+   "effort": "M",
+   "saving": "None measurable today; at opening an idle book or connection costs nothing between hourly looks, and no book is starved.",
+   "verdict": "added",
+   "owner_decision": false
+  },
+  {
+   "id": "CR-17",
+   "title": "The daily job runs about 40 functions in one request under one ledger row, so a prune that fails is not seen",
+   "priority": "P2",
+   "effort": "M",
+   "saving": "No direct saving; a failing prune shows within three days instead of never, and no longer skips the day's retention.",
+   "verdict": "added",
+   "owner_decision": false
+  }
+ ],
+ "refuted": [
+  "CR-3a: Two minute routes and 36 dispatcher jobs are speculative because their tables never held a row - every feature is unused before opening; kept only as growth cost (CR-3)",
+  "CR-11b: Run keepStripeWebhooksCurrent daily - saves 288 one-row reads, risks a day of lost Stripe events",
+  "CR-9a: The owner must decide whether invoicing is broken - the orders are the team's own tests; a drill is kept as a step",
+  "CR-6a: cookie_scans has no index for the due check - the index exists; the null-safe comparison stops its use",
+  "CR-13a: status_checks is never pruned - it is pruned at 91 days; the table is 14 days old",
+  "CR-1a: Each minute call loads a 47 to 125 MB function - the functions are warm; size is paid at deploy and cold start"
+ ]
+}

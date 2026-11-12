@@ -1,0 +1,135 @@
+{
+ "key": "admin-client",
+ "file": "/tmp/claude-0/-home-user-kaizen-store/875cb21b-0ebd-5663-b7c0-2d04a7548e24/scratchpad/findings/admin-client.json",
+ "validator": "OK: 14 findings, 0 refuted, 13 metrics",
+ "headline": "The admin's browser load is moderately bloated, and the worst of it is cheap to fix before opening: a plain screen loads 1.15 MB of script (median of 449 routes), of which 481 KB is Supabase's client, zod and the builder's English, brought in by three stray imports. 26 screens load an editor they never draw, an order screen carries 0.69 MB for custom fields the store may not have, one Work screen ships a 1.7 MB chunk of text, and the builder loads 3.3 MB at once. Four small fixes (AC-1, AC-2, AC-3, AC-7) and two checks (AC-10, AC-11) take a plain screen to about 0.72 MB and keep the leaks from coming back; the builder, the text handed down in each page and link prefetching need more care. I added two things the report missed: the notice badge costs four database statements per open tab per minute whatever the store uses (AC-13), and the Products list sends every product to the browser (AC-14, already code review step 1.13, open).",
+ "findings": [
+  {
+   "id": "AC-1",
+   "title": "Three stray imports put Supabase, zod and the builder's English on every admin screen",
+   "priority": "P0",
+   "effort": "S",
+   "saving": "Plain screen 1.19 MB to ~0.72 MB raw; 222 KB gone on ~290 routes, 260 KB of Supabase loads after the page",
+   "verdict": "confirmed",
+   "owner_decision": false
+  },
+  {
+   "id": "AC-2",
+   "title": "26 screens load an editor they never draw, because lists, previews and editors share one views file",
+   "priority": "P0",
+   "effort": "S",
+   "saving": "Previews 3.3 MB to ~1.2-1.6 MB; content lists 1.95 to ~1.15 MB; page lists 2.0 to ~1.17 MB (estimate)",
+   "verdict": "corrected",
+   "owner_decision": false
+  },
+  {
+   "id": "AC-3",
+   "title": "Order, customer and deal screens load the rich text editor and the builder's schema for custom fields, whether or not the store has any",
+   "priority": "P0",
+   "effort": "S",
+   "saving": "Order screen 2.00 MB to ~1.3 MB raw where the store has no fields for orders; 435 KB less where no rich text field shows",
+   "verdict": "corrected",
+   "owner_decision": false
+  },
+  {
+   "id": "AC-4",
+   "title": "Pages hand whole text areas to the browser where their parts read a few branches; one area on every screen is read by nothing",
+   "priority": "P1",
+   "effort": "M",
+   "saving": "22 KB raw less HTML on every store screen; product editor 426 KB to ~270-350 KB; pages list 279 to ~220 KB (estimate)",
+   "verdict": "corrected",
+   "owner_decision": false
+  },
+  {
+   "id": "AC-5",
+   "title": "The page builder loads everything at once: 3.3 MB of script before the first paint",
+   "priority": "P1",
+   "effort": "M",
+   "saving": "Builder first load 3.3 MB to ~2.3-2.4 MB raw (with AC-6 and AC-9's builder part); Tiptap's 435 KB put off, not removed",
+   "verdict": "corrected",
+   "owner_decision": false
+  },
+  {
+   "id": "AC-6",
+   "title": "The builder and the draft order editor load the storefront's text in all four languages",
+   "priority": "P1",
+   "effort": "M",
+   "saving": "~350 KB raw / 113 KB gzip off 39 builder routes, ~319 KB off the draft order editor; 80-90 KB returns on demand",
+   "verdict": "corrected",
+   "owner_decision": false
+  },
+  {
+   "id": "AC-7",
+   "title": "The Work invoice screen ships the whole admin catalogue, both languages, in one 1.7 MB chunk",
+   "priority": "P0",
+   "effort": "S",
+   "saving": "~1.66 MB raw / ~520 KB gzip; the Work invoice route 4.27 MB to ~2.6 MB",
+   "verdict": "confirmed",
+   "owner_decision": false
+  },
+  {
+   "id": "AC-8",
+   "title": "The AI manager's chat downloads every tool definition, the admin map and the Norwegian page names to label a tool call",
+   "priority": "P1",
+   "effort": "S",
+   "saving": "~400 KB raw / 115 KB gzip of the 496 KB chat chunk, and off the two assistant screens (estimate)",
+   "verdict": "confirmed",
+   "owner_decision": false
+  },
+  {
+   "id": "AC-9",
+   "title": "English text for 23 areas is still compiled into client scripts and then handed down again in the HTML",
+   "priority": "P2",
+   "effort": "M",
+   "saving": "~150 KB raw on the builder, 65 KB on Work screens, 24-45 KB on 73 field screens, 22 KB on the home (estimate)",
+   "verdict": "corrected",
+   "owner_decision": false
+  },
+  {
+   "id": "AC-10",
+   "title": "The script budget covers 9 of 449 admin routes and none of the HTML",
+   "priority": "P0",
+   "effort": "S",
+   "saving": "No bytes itself; covers 449 admin routes instead of 9 and keeps 0.5-2 MB of regressions out",
+   "verdict": "corrected",
+   "owner_decision": false
+  },
+  {
+   "id": "AC-11",
+   "title": "The import guard that keeps zod and whole catalogues out of shoppers' scripts leaves the admin out",
+   "priority": "P0",
+   "effort": "S",
+   "saving": "Prevents AC-1, 3, 6, 7, 8 returning; three more helper leaks worth 18-38 KB on 71-83 routes",
+   "verdict": "confirmed",
+   "owner_decision": false
+  },
+  {
+   "id": "AC-12",
+   "title": "Every navigation link in view is prefetched one by one: 23 to 46 background requests per admin screen",
+   "priority": "P1",
+   "effort": "S",
+   "saving": "Unknown until tried; today 23-46 prefetch requests and 78-160 KB on the wire per screen",
+   "verdict": "corrected",
+   "owner_decision": false
+  },
+  {
+   "id": "AC-13",
+   "title": "The notice badge asks the server every minute from every open admin tab: four database statements a time, one of them thrown away",
+   "priority": "P2",
+   "effort": "S",
+   "saving": "~85-90% fewer polls from an idle tab (6 an hour, not 60); 4 statements per poll down to 2 (estimate)",
+   "verdict": "added",
+   "owner_decision": false
+  },
+  {
+   "id": "AC-14",
+   "title": "The Products list sends every product of the store to the browser: no paging, about 0.9 KB a product",
+   "priority": "P1",
+   "effort": "M",
+   "saving": "~0.9 KB of document per product: ~4.4 MB less at 5,000 products; nothing at today's 10 (estimate)",
+   "verdict": "added",
+   "owner_decision": false
+  }
+ ],
+ "refuted": []
+}
