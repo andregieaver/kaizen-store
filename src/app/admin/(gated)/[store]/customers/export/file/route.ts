@@ -1,7 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 
 import { exportResponse } from "@/server/data-routes";
-import { sameSite } from "@/server/chat-route";
+import { sameSite } from "@/lib/same-site";
 import { checkOwnerRole } from "@/server/permissions";
 
 /**

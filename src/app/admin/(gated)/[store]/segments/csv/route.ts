@@ -3,7 +3,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { RFM_SEGMENTS, type RfmSegment } from "@/lib/analytics-customers";
 import type { SegmentRules } from "@/lib/segments";
 import { audit } from "@/server/auth";
-import { sameSite } from "@/server/chat-route";
+import { sameSite } from "@/lib/same-site";
 import { log } from "@/server/log";
 import { checkOwnerRole } from "@/server/permissions";
 import { getSegment, segmentCsv } from "@/server/segments";

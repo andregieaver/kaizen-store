@@ -8,7 +8,8 @@ import type { VisitorMessage, VisitorReply, VisitorState } from "@/lib/support-v
 import { BODY_MAX, type TurnInput } from "@/lib/support-visitor-schema";
 
 import type { ChatSite } from "./chat-agent";
-import { chatPlace, fail, type ChatContext, type ChatPlace } from "./chat-route";
+import { fail } from "@/lib/route-fail";
+import { chatPlace, type ChatContext, type ChatPlace } from "./chat-route";
 import { createSignInCode, getCustomer, startSession, verifySignInCode } from "./customers";
 import { sendSignInCode } from "./shopper-emails";
 import {

@@ -2,7 +2,8 @@ import { connection } from "next/server";
 
 import { docsPageAt } from "@/lib/docs-content";
 import { readDocsFeedback } from "@/lib/docs-feedback";
-import { fail, sameSite } from "@/server/chat-route";
+import { fail } from "@/lib/route-fail";
+import { sameSite } from "@/lib/same-site";
 import { docsIndex } from "@/server/docs";
 import { addDocsComment, recordDocsVote } from "@/server/docs-feedback";
 import { log } from "@/server/log";

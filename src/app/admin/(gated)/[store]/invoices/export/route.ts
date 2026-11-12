@@ -1,7 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 
 import { EXPORT_PROBLEMS } from "@/lib/invoice-admin";
-import { sameSite } from "@/server/chat-route";
+import { sameSite } from "@/lib/same-site";
 import { exportDocuments } from "@/server/invoice-export";
 import { checkPermission } from "@/server/permissions";
 

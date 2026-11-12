@@ -1,7 +1,8 @@
 import { connection } from "next/server";
 
 import { confirmInput } from "@/lib/support-visitor-schema";
-import { fail, sameSite } from "@/server/chat-route";
+import { fail } from "@/lib/route-fail";
+import { sameSite } from "@/lib/same-site";
 import { readBody, reply, visitorConfirm } from "@/server/support-route";
 
 /** The confirm card (D216, 2.1): Confirm or No thanks to something the assistant proposed; it runs only on Confirm. */

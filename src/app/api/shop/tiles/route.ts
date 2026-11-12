@@ -1,7 +1,8 @@
 import { connection } from "next/server";
 
 import { TILE_FACTS_MAX } from "@/lib/shop-tiles";
-import { fail, sameSite } from "@/server/chat-route";
+import { fail } from "@/lib/route-fail";
+import { sameSite } from "@/lib/same-site";
 import { lockedOut } from "@/server/private-mode";
 import { resolveSellingShop } from "@/server/shop";
 import { tileFacts } from "@/server/shop-tiles";

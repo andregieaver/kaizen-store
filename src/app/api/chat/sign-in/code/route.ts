@@ -1,7 +1,8 @@
 import { connection } from "next/server";
 
 import { signInCodeInput } from "@/lib/support-visitor-schema";
-import { fail, sameSite } from "@/server/chat-route";
+import { fail } from "@/lib/route-fail";
+import { sameSite } from "@/lib/same-site";
 import { readBody, visitorSignInCode } from "@/server/support-route";
 
 /** The chat's sign-in card, second step (D216, 2.1): the emailed code signs the visitor in and links the conversation to them. */

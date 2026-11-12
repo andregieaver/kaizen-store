@@ -1,7 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 
 import { tickResponse } from "@/server/data-routes";
-import { sameSite } from "@/server/chat-route";
+import { sameSite } from "@/lib/same-site";
 import { checkPermission } from "@/server/permissions";
 
 /** The step an open redirect export page asks for (wave 2, D168): runs the export once and answers with its state. `website:read`, the same site. */

@@ -1,7 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 
 import { tickResponse } from "@/server/data-routes";
-import { sameSite } from "@/server/chat-route";
+import { sameSite } from "@/lib/same-site";
 import { checkPermission } from "@/server/permissions";
 
 /** The step an open order history import page asks for (wave 11 unit E, D384): runs the dry run or the apply once and answers with its state. The owner's, the same site. */

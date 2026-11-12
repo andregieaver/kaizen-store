@@ -2,7 +2,7 @@
 
 import { headers } from "next/headers";
 
-import { visitorKey } from "@/server/chat-agent";
+import { visitorKey } from "@/server/chat-turns";
 import { takeBudget } from "@/server/request-budget";
 import { resolveSellingShop } from "@/server/shop";
 import { suggestProducts, type Suggestion } from "@/server/search";

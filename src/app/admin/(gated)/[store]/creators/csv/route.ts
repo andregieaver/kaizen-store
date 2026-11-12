@@ -1,7 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 
 import { audit } from "@/server/auth";
-import { sameSite } from "@/server/chat-route";
+import { sameSite } from "@/lib/same-site";
 import { creatorPayoutsCsv } from "@/server/creators";
 import { log } from "@/server/log";
 import { checkOwnerRole } from "@/server/permissions";

@@ -5,8 +5,6 @@ const checkPermission = vi.fn();
 const staffExport = vi.fn();
 vi.mock("@/server/permissions", () => ({ checkPermission: (...a: unknown[]) => checkPermission(...a) }));
 vi.mock("@/server/privacy-admin", () => ({ staffExport: (...a: unknown[]) => staffExport(...a) }));
-// The route takes `sameSite()` through the chat routes' module; the check itself is the real one (`src/lib/same-site.ts`).
-vi.mock("@/server/chat-route", async () => ({ sameSite: (await import("@/lib/same-site")).sameSite }));
 
 import { POST } from "./route";
 

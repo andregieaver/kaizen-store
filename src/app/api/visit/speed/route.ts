@@ -1,6 +1,6 @@
 import { connection } from "next/server";
 
-import { sameSite } from "@/server/chat-route";
+import { sameSite } from "@/lib/same-site";
 import { recordSpeed } from "@/server/analytics-speed";
 import { log } from "@/server/log";
 

@@ -1,7 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 
 import { inventoryProblemsCsv } from "@/server/data-jobs";
-import { sameSite } from "@/server/chat-route";
+import { sameSite } from "@/lib/same-site";
 import { checkPermission } from "@/server/permissions";
 
 /**

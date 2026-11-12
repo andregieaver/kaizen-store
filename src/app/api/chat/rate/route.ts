@@ -1,7 +1,8 @@
 import { connection } from "next/server";
 
 import { rateInput } from "@/lib/support-visitor-schema";
-import { fail, sameSite } from "@/server/chat-route";
+import { fail } from "@/lib/route-fail";
+import { sameSite } from "@/lib/same-site";
 import { readBody, reply, visitorRate } from "@/server/support-route";
 
 /** The rating card (D216, 2.1): "Did we help?" for an ended conversation, with an optional comment. */

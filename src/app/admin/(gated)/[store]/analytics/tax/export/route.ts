@@ -1,7 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 
 import { exportBackHref, parseExportForm, type ExportProblem } from "@/lib/tax-admin";
-import { sameSite } from "@/server/chat-route";
+import { sameSite } from "@/lib/same-site";
 import { checkPermission } from "@/server/permissions";
 import { exportReconciliation, exportReturnData, exportVatReport, type ExportResult } from "@/server/tax-report-exports";
 

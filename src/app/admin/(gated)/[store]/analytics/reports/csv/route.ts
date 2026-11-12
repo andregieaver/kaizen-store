@@ -4,7 +4,7 @@ import { adminLangOf, ADMIN_LANG_FACTS } from "@/lib/admin-lang";
 import { adminText } from "@/lib/admin-text";
 import { readSpec } from "@/lib/report-catalogue-schema";
 import { audit } from "@/server/auth";
-import { sameSite } from "@/server/chat-route";
+import { sameSite } from "@/lib/same-site";
 import { log } from "@/server/log";
 import { checkPermission } from "@/server/permissions";
 import { reportCsv } from "@/server/report-export";

@@ -9,7 +9,7 @@ import { adminText } from "@/lib/admin-text";
 
 import { actionAdminLang } from "./admin-request-lang";
 import { AiError, aiFor, speakText } from "./ai";
-import { sameSite } from "./chat-route";
+import { sameSite } from "@/lib/same-site";
 import { delegateLive, endLiveCall, LiveVoiceError, saveLiveTurns, startLiveSession } from "./live-voice";
 import { requestStop, STOP_POLL_MS, stopRequestedSince } from "./assistant-stop";
 import { log } from "./log";

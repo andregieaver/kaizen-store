@@ -3,9 +3,11 @@ import "server-only";
 import { z } from "zod";
 
 import { t } from "@/lib/i18n";
+import { fail } from "@/lib/route-fail";
 
 import { aiFor, type AiConnection } from "./ai";
-import { getChatAgent, takeChatTurn, visitorKey, type ChatAgent, type ChatSite } from "./chat-agent";
+import { getChatAgent, takeChatTurn, type ChatAgent, type ChatSite } from "./chat-agent";
+import { visitorKey } from "./chat-turns";
 import { lockedOut } from "./private-mode";
 import { resolveShop } from "./shop";
 import { ensureDesk, type DeskSettings } from "./support";
@@ -30,12 +32,6 @@ export type ChatContext = ChatPlace & { settings: DeskSettings; agent: ChatAgent
 
 /** A site's turns a day while no model is asked (people only): the visitor's own limit still holds. */
 const PEOPLE_DAILY_LIMIT = 100_000;
-
-export const fail = (status: number, message: string) =>
-  Response.json({ error: message }, { status, headers: { "Cache-Control": "no-store" } });
-
-// A request from another site is refused: the chat is for the site's own visitors (kept here for the routes that import it from here).
-export { sameSite } from "@/lib/same-site";
 
 /** The site a request names (a store that is not open is a 404, as its pages are), else the response to give. */
 export async function chatPlace(raw: unknown): Promise<ChatPlace | Response> {
