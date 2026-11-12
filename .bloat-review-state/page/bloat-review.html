@@ -107,7 +107,15 @@ table.ladder td, table.ladder th { text-align: center; padding-right: 10px; } ta
 ol.phases .ph p { font-size: 0.9rem; color: var(--ink-2); }
 ol.phases .sid { font-family: var(--mono); font-size: 0.78rem; color: var(--ink-3); min-width: 2.6em; display: inline-block; }
 ol.phases li.more { color: var(--ink-3); font-size: 0.86rem; }
-ol.phases ul li { display: flex; gap: 10px; align-items: baseline; } ol.phases ul li .sid { flex: none; }
+ol.phases ul li { display: flex; flex-wrap: nowrap; gap: 10px; align-items: baseline; } ol.phases ul li .sid { flex: none; } ol.phases ul li > span:last-child { min-width: 0; }
+@media (max-width: 640px) {
+  table.grades thead { display: none; }
+  table.grades, table.grades tbody { display: block; min-width: 0; }
+  table.grades tr { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 4px 12px; padding: 12px 0; border-bottom: 1px solid var(--rule); }
+  table.grades td { display: block; border: 0; padding: 0; min-width: 0; }
+  table.grades td:nth-child(3) { grid-column: 1 / -1; }
+  table.ladder th:first-child, table.ladder td:first-child { min-width: 9.5em; position: sticky; left: 0; background: var(--bg); }
+}
 .causes > div:last-child { grid-column: 1 / -1; } .causes > div:last-child p { max-width: 70ch; }
 details.qs summary { cursor: pointer; font-family: var(--display); font-weight: 600; font-size: 1.02rem; padding: 6px 0; }
 details.qs ol { margin: 10px 0 0; padding-left: 2.4em; display: flex; flex-direction: column; gap: 9px; max-width: 78ch; color: var(--ink-2); font-size: 0.95rem; }
