@@ -66,7 +66,8 @@ if (kind === "card") {
   for (const k of ["measures", "steps_to_a", "shortfalls", "tolerated", "owner_choices"]) if (!arr(d[k])) problems.push(`"${k}" must be an array`);
   for (const [i, m] of (d.measures ?? []).entries()) for (const k of ["name", "today", "target_a", "how_measured"]) if (!str(m?.[k])) problems.push(`measures[${i}].${k} missing`);
   for (const k of ["after_phase_0", "after_phase_1", "after_phase_2", "after_all"]) if (!GRADES.includes(d.ladder?.[k])) problems.push(`ladder.${k} must be a grade`);
-  if (existsSync(`${S}/panel/plan.json`)) { const plan = JSON.parse(readFileSync(`${S}/panel/plan.json`, "utf8")); const ids = new Set(plan.phases.flatMap((p) => p.steps.map((s) => s.id))); for (const id of d.steps_to_a ?? []) if (!ids.has(id)) problems.push(`steps_to_a names step ${id}, which is not in the plan`); }
+  const planFile = existsSync(`${S}/panel/plan.final.json`) && file.endsWith(".final.json") ? `${S}/panel/plan.final.json` : `${S}/panel/plan.json`;
+  if (existsSync(planFile)) { const plan = JSON.parse(readFileSync(planFile, "utf8")); const ids = new Set(plan.phases.flatMap((p) => p.steps.map((s) => s.id))); for (const id of d.steps_to_a ?? []) if (!ids.has(id)) problems.push(`steps_to_a names step ${id}, which is not in the plan`); }
 }
 if (problems.length) { console.log(problems.slice(0, 60).join("\n") + (problems.length > 60 ? `\n… and ${problems.length - 60} more` : "")); process.exit(1); }
 console.log("OK");

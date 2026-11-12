@@ -62,7 +62,9 @@ const KIND = { dead: "dead", duplicate: "duplicate", eager: "eager", oversize: "
 const json = (p) => JSON.parse(readFileSync(p, "utf8"));
 
 // ---- The plan: where each finding is closed.
-const plan = existsSync(`${S}/panel/plan.json`) ? json(`${S}/panel/plan.json`) : null;
+const planPath = existsSync(`${S}/panel/plan.final.json`) ? `${S}/panel/plan.final.json` : `${S}/panel/plan.json`;
+const amended = planPath.endsWith(".final.json");
+const plan = existsSync(planPath) ? json(planPath) : null;
 const STEP_OF = {};
 if (plan) {
   for (const ph of plan.phases) for (const st of ph.steps) for (const id of st.closes) STEP_OF[rename(id)] = st.id;
@@ -117,7 +119,8 @@ if (existsSync(`${S}/panel`)) {
   scorecard = `| Area | Today | Why | Grade A when | Steps that get it there |\n|---|---|---|---|---|\n`;
   ladder = `| Area | Today | After phase 0 | After phase 1 | After phase 2 | After all |\n|---|---|---|---|---|---|\n`;
   for (const a of SCORE) {
-    const cardPath = `${S}/panel/card-${a.key}.json`, stewardPath = `${S}/panel/steward-${a.key}.json`;
+    const finalCard = `${S}/panel/card-${a.key}.final.json`;
+    const cardPath = amended && existsSync(finalCard) ? finalCard : `${S}/panel/card-${a.key}.json`, stewardPath = `${S}/panel/steward-${a.key}.json`;
     if (existsSync(cardPath)) {
       const c = json(cardPath); cards[a.key] = c;
       const bar = c.bar_in_a_sentence ? clean(c.bar_in_a_sentence) : c.measures.map((m) => `${clean(m.name)}: ${clean(m.target_a)}`).join(". ");
