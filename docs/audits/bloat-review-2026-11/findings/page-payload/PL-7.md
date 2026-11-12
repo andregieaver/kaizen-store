@@ -2,7 +2,7 @@
 
 What a page sends: document, payload and requests (`README.md` beside this file), part of `docs/audits/bloat-review-2026-11.md`.
 
-- **Kind:** eager. **Priority:** P0. **Effort:** S. **Confidence:** high. **Step:** 0.12.
+- **Kind:** eager. **Priority:** P0. **Effort:** S. **Confidence:** high. **Step:** 0.15.
 - **Second check:** confirmed.
 - **Where:** `src/components/wishlist-heart.tsx:21`, `src/components/wishlist-heart.tsx:38`, `src/components/wishlist-heart.tsx:113`, `src/components/store-layout.tsx:283`, `src/components/site-parts.tsx:172`, `src/app/s/[store]/[market]/wishlist/saved/route.ts:9`, `src/server/wishlists.ts:36`, `src/server/wishlists.ts:44`, `src/server/wishlists.ts:64`, `src/server/customers.ts:416`, `src/lib/cookie-consent.ts:467`
 - **Evidence:** WishlistCount in the header and every heart call load(), which fetches {market}/wishlist/saved once per document (wishlist-heart.tsx:21-30, 38). The header's wishlist link is always drawn. In routes.json the call fired on all 12 storefront pages, the empty cart and checkout included: a 15-byte answer, private, no-store (asked again from the local server in this pass: 200, cache-control private, no-store). The route resolves the shop, then reads the customer and wishlist cookies; a visitor with neither gets an empty list without a query (wishlists.ts:36-41, 64-66). Both cookies are httpOnly (wishlists.ts:44-50, customers.ts:416-422), so the page cannot know there is nothing to ask for.

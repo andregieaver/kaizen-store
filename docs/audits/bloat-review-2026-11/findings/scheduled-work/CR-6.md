@@ -2,7 +2,7 @@
 
 Scheduled and background work (`README.md` beside this file), part of `docs/audits/bloat-review-2026-11.md`.
 
-- **Kind:** eager. **Priority:** P1. **Effort:** S. **Confidence:** medium. **Step:** 0.18.
+- **Kind:** eager. **Priority:** P1. **Effort:** S. **Confidence:** medium. **Step:** 0.23.
 - **Second check:** corrected.
 - **Where:** `src/server/cookie-scans.ts:33-35`, `src/server/cookie-scans.ts:72-112`, `src/app/api/cron/cookie-scan/route.ts:18-33`, `src/server/site-cookies.ts:45`, `supabase/migrations/20261111172841_baseline_3_rules.sql:7577-7591`, `next.config.ts:54`
 - **Evidence:** Each minute claimScan() runs two updates and then a statement that lists every open site and, per site, runs two subselects on cookie_scans to find its last scan. Stats: 49,338 calls, 192 s, the fifth most expensive statement; cookie_scans has 1,101,927 sequential scans reading 962 M rows, the most of any table. An index on (store_id, created_at) exists (cookie_scans_store_created_idx), but the subselects compare with 'is not distinct from', which Postgres does not serve from a btree index (confirm with EXPLAIN), so each one reads the table. The schedule started 1,796 scans in 34 to 45 days, 40 to 50 a day, where about ten sites scanned weekly would give under two: a failed scan is retried every hour (RETRY_AFTER) with no back-off, and the pick orders by 'done_at nulls first', so a site that has never scanned well is always taken before a healthy site that is due. The route claims one scan per call.

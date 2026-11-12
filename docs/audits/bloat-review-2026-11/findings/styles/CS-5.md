@@ -2,7 +2,7 @@
 
 Styles (`README.md` beside this file), part of `docs/audits/bloat-review-2026-11.md`.
 
-- **Kind:** duplicate. **Priority:** P3. **Effort:** S. **Confidence:** medium. **Step:** 2.1.
+- **Kind:** duplicate. **Priority:** P3. **Effort:** S. **Confidence:** medium. **Step:** 2.2.
 - **Second check:** corrected.
 - **Where:** `src/app/s/[store]/[market]/layout.tsx:104`, `src/app/s/[store]/[market]/layout.tsx:164`, `src/components/store-theme.tsx:25`, `src/components/custom-css.tsx:15`, `src/lib/custom-css.ts:19`, `node_modules/next/dist/server/app-render/create-component-tree.js:551`, `node_modules/next/dist/server/app-render/create-component-tree.js:659`
 - **Evidence:** Theme variables, breakpoint classes, text styles, the store's own CSS and the header's and footer's CSS are <style href precedence> elements drawn by the layout (layout.tsx:164-170): inline in every document, once in the HTML and once in the payload. In store documents each is there a third time: the theme sheet's href is 3 times in store-home.html and 2 times in Kaizena Flow's front page. The cause, which the verified report left open, is in Next's source: a root layout with a children slot and one more slot is wrapped in a boundary whose not-found fallback is the layout drawn again (create-component-tree.js:551 and 657-668; its comment says it 'renders the RootLayout twice'). The market layout has the cart drawer's slot (layout.tsx:104). With the real functions: a launch theme's layout-level sheets are 6.6-9.5 KB (theme variables 1.4-1.5 KB, breakpoint sheet 1.8 KB, the theme's own CSS 3.4-6.3 KB), so 20-28 KB per document in three copies.

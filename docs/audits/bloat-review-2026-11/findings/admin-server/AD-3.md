@@ -2,7 +2,7 @@
 
 What the server does for an admin navigation (`README.md` beside this file), part of `docs/audits/bloat-review-2026-11.md`.
 
-- **Kind:** eager. **Priority:** P1. **Effort:** S. **Confidence:** high. **Step:** 2.18.
+- **Kind:** eager. **Priority:** P1. **Effort:** S. **Confidence:** high. **Step:** 2.33.
 - **Second check:** confirmed.
 - **Where:** `src/server/auth.ts:132`, `src/server/auth.ts:144-153`, `src/server/auth.ts:158-175`, `src/server/two-step.ts:190`, `src/server/two-step.ts:264`, `src/server/two-step.ts:341`, `src/server/two-step.ts:362`, `src/lib/two-step.ts:8`, `node_modules/.pnpm/@supabase+auth-js@2.118.0/node_modules/@supabase/auth-js/dist/main/GoTrueClient.js:5537-5544`, `e2e/fixtures/auth-stub.mjs:3`
 - **Evidence:** readSession() verifies the token, reads the account row, then for an aal1 session calls supabase.auth.getUser() over HTTP to list factors, on every request (React's cache spans one render only). Every page render, server action, notice poll and admin route handler goes through it. A save pays it twice: once in the action's guard and once in the redraw that follows, which is a new render with a new cache. The writes that follow run only on a mismatch or while the break-glass switch is on. One more thing found in this pass and not checked against production: getClaims() itself verifies locally only when the project signs tokens with an asymmetric key; for an HS256 token it falls back to getUser() (GoTrueClient.js:5537-5544), which is one more HTTP call per request for every session, with or without two-step. The test stand-in signs with HS256 and says so (auth-stub.mjs:3). Which kind production's project uses is not in the repo.

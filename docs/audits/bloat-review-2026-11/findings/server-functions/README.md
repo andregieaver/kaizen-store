@@ -8,19 +8,19 @@ Part of `docs/audits/bloat-review-2026-11.md`, on commit 0bd814c. Read by one re
 
 | ID | Finding | Kind | Priority | Effort | Step |
 |---|---|---|---|---|---|
-| [SF-1](SF-1.md) ✓ | One import cycle makes nearly every function load the whole application | eager | P0 | M | 0.5 |
-| [SF-3](SF-3.md) ✓ | Every instance waits on a start hook that loads 2.3 MB of unrelated code before it asks the database for the interface texts | eager | P0 | S | 0.7 |
-| [SF-4](SF-4.md) ✓ | The visit beacons load the whole application because of one re-exported helper | eager | P0 | S | 0.3 |
-| [SF-5](SF-5.md) ✓ | The admin's words in both languages are loaded by almost every function, shoppers' pages included | eager | P0 | S | 0.6 |
-| [SF-6](SF-6.md) ✓ | The Drizzle schema is built at every start though no code reads it | eager | P0 | S | 0.3 |
-| [SF-7](SF-7.md) ✓ | Nothing counts what a server entry loads, so the cycle grew unseen | no check | P0 | S | 1.5 |
-| [SF-2](SF-2.md) ✓ | The proxy runs before every page and prefetch, and loads the whole application to do six small reads | eager | P1 | M | 2.11 |
-| [SF-9](SF-9.md) ✓ | sharp, a font parser and Supabase's client load at start in functions that draw no picture, and every reader of a store loads the Stripe SDK | eager | P1 | S | 0.4 |
-| [SF-12](SF-12.md) | The list of every store's own domains is parsed again for every link a page draws | eager | P1 | S | 0.16 |
-| [SF-13](SF-13.md) | Every store's own domain is compiled into each deployment: routing rules against a cap of 2,048, and a full redeploy per change *(your choice)* | eager | P1 | L | 2.20 |
-| [SF-8](SF-8.md) ✓ | 13 MB of taxonomy JSON rides in every function, and a shopper's product page parses it to show one category | oversize | P2 | M | 2.12 |
+| [SF-1](SF-1.md) ✓ | One import cycle makes nearly every function load the whole application | eager | P0 | M | 0.6 |
+| [SF-3](SF-3.md) ✓ | Every instance waits on a start hook that loads 2.3 MB of unrelated code before it asks the database for the interface texts | eager | P0 | S | 0.8 |
+| [SF-4](SF-4.md) ✓ | The visit beacons load the whole application because of one re-exported helper | eager | P0 | S | 0.4 |
+| [SF-5](SF-5.md) ✓ | The admin's words in both languages are loaded by almost every function, shoppers' pages included | eager | P0 | S | 0.7 |
+| [SF-6](SF-6.md) ✓ | The Drizzle schema is built at every start though no code reads it | eager | P0 | S | 0.4 |
+| [SF-7](SF-7.md) ✓ | Nothing counts what a server entry loads, so the cycle grew unseen | no check | P0 | S | 1.8 |
+| [SF-2](SF-2.md) ✓ | The proxy runs before every page and prefetch, and loads the whole application to do six small reads | eager | P1 | M | 2.20 |
+| [SF-9](SF-9.md) ✓ | sharp, a font parser and Supabase's client load at start in functions that draw no picture, and every reader of a store loads the Stripe SDK | eager | P1 | S | 0.5 |
+| [SF-12](SF-12.md) | The list of every store's own domains is parsed again for every link a page draws | eager | P1 | S | 0.20 |
+| [SF-13](SF-13.md) | Every store's own domain is compiled into each deployment: routing rules against a cap of 2,048, and a full redeploy per change *(your choice)* | eager | P1 | L | 2.35 |
+| [SF-8](SF-8.md) ✓ | 13 MB of taxonomy JSON rides in every function, and a shopper's product page parses it to show one category | oversize | P2 | M | 2.23 |
 | [SF-10](SF-10.md) ✓ | Nine full-application functions are called every minute, and before opening they find nothing to do | eager | P3 | M | 3.1 |
-| [SF-11](SF-11.md) ✓ | The build writes the same large server chunks many times | duplicate | P3 | S | 1.13 |
+| [SF-11](SF-11.md) ✓ | The build writes the same large server chunks many times | duplicate | P3 | S | 4.5 |
 
 ## Measured
 

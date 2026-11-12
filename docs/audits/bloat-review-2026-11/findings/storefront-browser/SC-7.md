@@ -2,7 +2,7 @@
 
 What a shopper's browser loads (`README.md` beside this file), part of `docs/audits/bloat-review-2026-11.md`.
 
-- **Kind:** duplicate. **Priority:** P1. **Effort:** S. **Confidence:** medium. **Step:** 2.1.
+- **Kind:** duplicate. **Priority:** P1. **Effort:** S. **Confidence:** medium. **Step:** 2.2.
 - **Second check:** corrected.
 - **Where:** `src/components/cart-drawer.tsx:10`, `src/components/cart-drawer.tsx:43`, `src/app/s/[store]/[market]/@drawer/(.)cart/page.tsx:19`, `src/app/s/[store]/[market]/@drawer/(.)cart/page.tsx:38`, `src/components/cart-link.tsx:53`, `src/components/cart-link.tsx:64`, `docs/rules/storefront.md:601`, `docs/pci.md:108`
 - **Evidence:** Read in code in this pass. The header's cart link is a Link (cart-link.tsx:64), so a press is a client navigation that the (.)cart route intercepts; the server renders the drawer with CartContents (page.tsx:38-40); CartDrawer's effect then finds a screen of 768 px or more and calls window.location.reload() (cart-drawer.tsx:43-47), and the cart is fetched and rendered again as a document. The written rule says larger screens load the cart page (docs/rules/storefront.md:601-603), and docs/pci.md:108-113 wants every entry into a pay route to be a full page load, so the reload is the design; the intercepted render before it is the waste. Measured on the phone run only: every page prefetches /cart (3 RSC requests, 10,576 bytes) and fetches the drawer's chunks after load; two of them (28,536 raw, 14,343 transferred) belong to the drawer alone.

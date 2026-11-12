@@ -2,7 +2,7 @@
 
 Scheduled and background work (`README.md` beside this file), part of `docs/audits/bloat-review-2026-11.md`.
 
-- **Kind:** dead. **Priority:** P0. **Effort:** S. **Confidence:** high. **Step:** 0.20.
+- **Kind:** dead. **Priority:** P0. **Effort:** S. **Confidence:** high. **Step:** 0.25.
 - **Second check:** corrected.
 - **Where:** `supabase/migrations/20261111172842_baseline_4_roles_and_supabase.sql:93-114`, `docs/runbooks/restore.md:32-36`
 - **Evidence:** pg_cron writes one row to cron.job_run_details for every run and never deletes them. The baseline schedules 14 jobs; two are retention deletes for commerce tables, none for cron's own log. A search for job_run_details and log_run over src, scripts, docs and supabase/migrations finds nothing outside the first draft of this review. Measured in production: the cron schema is 564 MB of a 731 MB database; the app's own schema is 124 MB.

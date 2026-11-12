@@ -2,7 +2,7 @@
 
 Files that ship or are stored (`README.md` beside this file), part of `docs/audits/bloat-review-2026-11.md`.
 
-- **Kind:** no check. **Priority:** P0. **Effort:** S. **Confidence:** high. **Step:** 1.5.
+- **Kind:** no check. **Priority:** P0. **Effort:** S. **Confidence:** high. **Step:** 1.8.
 - **Second check:** confirmed.
 - **Where:** `src/lib/storefront-bundle.scan.test.ts:5`, `src/lib/chromium-trace.test.ts:8`, `src/server/ratchet.scan.test.ts:1`, `scripts/ratchet.mjs:1`, `next.config.ts:51`, `src/proxy.ts:11`, `src/server/content-packs.ts:112`, `.github/workflows/ci.yml:152`, `a scratch script`, `a scratch script`, `a scratch script`
 - **Evidence:** The browser's scripts have an import walk and byte budgets. The server side has only the Chromium list: no test, script or CI step reads a .nft.json, and nothing limits what src/proxy.ts may import (second check; I re-ran its graph: the proxy reaches 1,309 of 4,126 source files, and still 1,309 with the two cache-tag imports cut). The review's own scripts sum all 832 traces by route and by package in 1.7 s. That report is how I found, in this pass, that four routes carry every file of public/ (5.6 MB) because content-packs.ts:112 reads a file under public by a computed path: harmless, and invisible without the report.

@@ -2,7 +2,7 @@
 
 The server code every route loads (`README.md` beside this file), part of `docs/audits/bloat-review-2026-11.md`.
 
-- **Kind:** no check. **Priority:** P2. **Effort:** L. **Confidence:** medium. **Step:** 2.11.
+- **Kind:** no check. **Priority:** P2. **Effort:** L. **Confidence:** medium. **Step:** 2.20.
 - **Second check:** corrected.
 - **Where:** `src/server/text-styles.ts:11`, `src/server/fonts.ts:15`, `src/server/menus.ts:25`, `src/server/taxonomy.ts:23`, `src/server/site-layouts.ts:9`, `src/server/custom-fields.ts:52-61`, `src/server/house-switch.ts:8-17`, `src/server/theme-shots.ts:34-39`, `src/server/theme-shots.ts:349-355`
 - **Evidence:** A feature is one file under src/server holding its cached storefront read, its admin save and its audit entry. 30 of the 49 server files with a 'use cache' read also import audit from auth.ts (the skeptic's recount), and 193 server modules import auth.ts within the storefront home page's graph. This is why the cycle of SG-1 formed and why the proxy of SG-2 is fat. One clear case I opened: theme-shots.ts holds the reader the theme store uses (lookOf and themeShotsFor, lines 349-355) beside the job that makes the photographs (imports of media, theme-highlights and theme-shot-files, lines 34-39), so reading the theme list reaches sharp. But as a saving of its own the split is small: with SG-1, SG-4 and SG-6 done, removing auth.ts from the storefront home page altogether takes off 19 modules and 32 KB.

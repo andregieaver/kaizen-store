@@ -2,7 +2,7 @@
 
 Caching and rendering (`README.md` beside this file), part of `docs/audits/bloat-review-2026-11.md`.
 
-- **Kind:** duplicate. **Priority:** P2. **Effort:** S. **Confidence:** high. **Step:** 0.16.
+- **Kind:** duplicate. **Priority:** P2. **Effort:** S. **Confidence:** high. **Step:** 0.20.
 - **Second check:** corrected.
 - **Where:** `src/server/menus.ts:284`, `src/server/content-grid.ts:133`, `src/server/content-grid.ts:152`, `src/server/content-site.ts:46`, `src/server/custom-fields.ts:817`, `src/server/ai.ts:206`, `src/server/ai-pause.ts:19`, `src/server/redirect-live.ts:187`, `src/server/limits.ts:26`, `evidence/prod-db-stats.md`
 - **Evidence:** The verified report counted 27 copies of 'select slug from commerce.stores where id = $1' in src/server and 12 callers of the cached helper storeSlugOf() (menus.ts:284, cacheLife days, no tag); the statement is production's most-called: 560,090 calls in 78 days. Opened in this pass: aiFor() (ai.ts:206-210) reads ai_providers with select * on every call, 237,563 calls; aiAutonomyPaused() (ai-pause.ts:19-22) reads one flag, 69,075 calls. The platform is not open, so these calls come from the five-minute dispatcher, the every-minute routes and cold renders. A per-instance memo helper already exists twice: remembered() (redirect-live.ts:187-200) and the limits memo with forgetLimits() (limits.ts:20-45).

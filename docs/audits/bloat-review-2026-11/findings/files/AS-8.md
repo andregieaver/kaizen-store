@@ -2,7 +2,7 @@
 
 Files that ship or are stored (`README.md` beside this file), part of `docs/audits/bloat-review-2026-11.md`.
 
-- **Kind:** oversize. **Priority:** P2. **Effort:** M. **Confidence:** high. **Step:** 2.24.
+- **Kind:** oversize. **Priority:** P2. **Effort:** M. **Confidence:** high. **Step:** 2.40.
 - **Second check:** confirmed.
 - **Where:** `docs/decisions.md:1`, `CLAUDE.md:1`, `docs/audits/code-review-2026-11.md:67`, `docs/audits/code-review-2026-11.md:254`, `src/server/ratchet.scan.test.ts:1`
 - **Evidence:** Re-measured: docs/decisions.md is 1,330,879 bytes in 931 lines, the longest line 17,985 characters; CLAUDE.md is 43,361 bytes in 448 lines and is loaded into every agent session (this one too). The code review measured 1.24 MB and 39.5 KB on 9 November. The history here is shallow, so growth before 10 November rests on the review's own line 254.

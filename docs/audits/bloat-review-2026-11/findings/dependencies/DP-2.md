@@ -2,7 +2,7 @@
 
 Dependencies (`README.md` beside this file), part of `docs/audits/bloat-review-2026-11.md`.
 
-- **Kind:** eager. **Priority:** P1. **Effort:** S. **Confidence:** high. **Step:** 0.4.
+- **Kind:** eager. **Priority:** P1. **Effort:** S. **Confidence:** high. **Step:** 0.5.
 - **Second check:** confirmed.
 - **Where:** `src/server/theme-highlights.ts:3`, `src/server/product-import.ts:6`, `src/server/picture-editor.ts:3`, `src/server/page-looks.ts:4`, `src/server/ai-pictures.ts:3`, `src/server/brand-marks.ts:3`, `src/server/ai-vision.ts:3`, `src/server/content-packs.ts:7`, `src/server/replicate.ts:6`, `src/server/replicate-images.ts:3`, `src/server/theme-shot-files.ts:3`, `src/server/ai-picture-marks.ts:4`, `src/server/font-outlines.ts:4`, `src/server/browser.ts:11`, `src/server/seo.ts`, `src/server/theme-store.ts`, `src/server/theme-shots.ts`
 - **Evidence:** Twelve server modules start with a static import of sharp (43 call sites in 28 functions, every one async; no call at module level), and they sit on static import chains from almost everything. Re-walked: the storefront layout and page reach sharp through seo.ts, theme-store.ts, theme-shots.ts, theme-highlights.ts, and still do after the storefront review's cut at customers.ts; checkout and the admin reach it through customers.ts, privacy-erasure.ts, data-jobs.ts, product-import.ts. Loading the built /api/visit route in a fresh process loads sharp; /api/health does not (re-run). sharp and libvips (18.8 MB) are in the file trace of 741 of 830 routes; opentype.js (226 KB, used only by font-outlines.ts to draw a brand mark) is in the chunks of 740. The repo already loads Chromium, mammoth and unpdf with await import() at the call site (browser.ts:11, knowledge.ts:70).

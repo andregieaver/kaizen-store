@@ -8,17 +8,17 @@ Part of `docs/audits/bloat-review-2026-11.md`, on commit 0bd814c. Read by one re
 
 | ID | Finding | Kind | Priority | Effort | Step |
 |---|---|---|---|---|---|
-| [DP-1](DP-1.md) ✓ | 481 table definitions are loaded and indexed in every function for a query API nobody calls | eager | P0 | S | 0.3 |
-| [DP-10](DP-10.md) ✓ | The page-view beacon loads the whole server through a one-line re-export | eager | P0 | S | 0.3 |
-| [DP-4](DP-4.md) ✓ | supabase-js, its realtime client and zod are 39% of the first scripts of every admin page | eager | P0 | S | 0.8 |
-| [DP-5](DP-5.md) ✓ | The rich text editor is sent to 21 admin lists and detail pages that may never show it | eager | P0 | S | 0.9 |
-| [DP-11](DP-11.md) | Every admin screen loads the AI manager's whole server side through two action files, so the storefront review's cut alone changes nothing for the admin | eager | P1 | S | 0.4 |
-| [DP-2](DP-2.md) ✓ | sharp's native library and a font parser load on nearly every cold start | eager | P1 | S | 0.4 |
-| [DP-6](DP-6.md) ✓ | Nothing limits what a route's server function loads, so nearly every route came to load everything | no check | P1 | M | 1.5 |
-| [DP-12](DP-12.md) | Every route that reads a store builds the whole page model: 468 schemas for a theme's few fields | eager | P2 | M | 2.12 |
+| [DP-1](DP-1.md) ✓ | 481 table definitions are loaded and indexed in every function for a query API nobody calls | eager | P0 | S | 0.4 |
+| [DP-10](DP-10.md) ✓ | The page-view beacon loads the whole server through a one-line re-export | eager | P0 | S | 0.4 |
+| [DP-4](DP-4.md) ✓ | supabase-js, its realtime client and zod are 39% of the first scripts of every admin page | eager | P0 | S | 0.9 |
+| [DP-5](DP-5.md) ✓ | The rich text editor is sent to 21 admin lists and detail pages that may never show it | eager | P0 | S | 0.10 |
+| [DP-11](DP-11.md) | Every admin screen loads the AI manager's whole server side through two action files, so the storefront review's cut alone changes nothing for the admin | eager | P1 | S | 0.5 |
+| [DP-2](DP-2.md) ✓ | sharp's native library and a font parser load on nearly every cold start | eager | P1 | S | 0.5 |
+| [DP-6](DP-6.md) ✓ | Nothing limits what a route's server function loads, so nearly every route came to load everything | no check | P1 | M | 1.8 |
+| [DP-12](DP-12.md) | Every route that reads a store builds the whole page model: 468 schemas for a theme's few fields | eager | P2 | M | 2.22 |
 | [DP-7](DP-7.md) ✓ | Three Chromium routes are woken every minute whether or not there is work | eager | P2 | M | 3.1 |
-| [DP-8](DP-8.md) ✓ | A 26 MB icon package is installed and parsed each build for 26 paths | oversize | P2 | S | 0.25 |
-| [DP-9](DP-9.md) ✓ | The existing plan's dependency item (FH12) points at the wrong Postgres driver, and its note on three is incomplete | no check | P2 | S | 0.3 |
+| [DP-8](DP-8.md) ✓ | A 26 MB icon package is installed and parsed each build for 26 paths | oversize | P2 | S | 0.36 |
+| [DP-9](DP-9.md) ✓ | The existing plan's dependency item (FH12) points at the wrong Postgres driver, and its note on three is incomplete | no check | P2 | S | 0.4 |
 | [DP-3](DP-3.md) ✓ | The Stripe and Supabase SDKs are evaluated by 97% of routes; reading a store imports the Stripe SDK to see if two keys exist | eager | P3 | M | tolerated |
 
 ## Measured

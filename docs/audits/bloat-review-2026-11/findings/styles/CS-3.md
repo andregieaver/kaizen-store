@@ -2,7 +2,7 @@
 
 Styles (`README.md` beside this file), part of `docs/audits/bloat-review-2026-11.md`.
 
-- **Kind:** no check. **Priority:** P0. **Effort:** S. **Confidence:** high. **Step:** 1.2.
+- **Kind:** no check. **Priority:** P0. **Effort:** S. **Confidence:** high. **Step:** 1.3.
 - **Second check:** corrected.
 - **Where:** `e2e/performance.spec.ts:11`, `e2e/performance.spec.ts:40`, `e2e/performance.spec.ts:126`, `src/app/globals.css:6`, `docs/performance.md:61`, `docs/build-memory.md:34`
 - **Evidence:** e2e/performance.spec.ts has budgets for first scripts (lines 11 and 40-50) and for page weight (line 126). Page weight includes the stylesheet, but the budget is 450,000 bytes for pages measured at 311 and 331 KB, so the sheet could double unnoticed. No budget names CSS; none of the scan tests looks at classes or at globals.css's @source lines (rg for globals.css in tests finds five readers, none of the source lines). One sheet takes its classes from every file in src, tests included: the verified report found 13 of 115 commits (11%) adding a utility class that did not exist before, 6 of them only in admin folders or tests (not re-run by the planner). No number is kept for the style text a page builder page puts in a document either; the planner's estimate for a launch theme's home page is 45 to 71 KB.

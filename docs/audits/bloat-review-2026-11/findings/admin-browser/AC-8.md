@@ -2,7 +2,7 @@
 
 What an owner's browser loads in the admin (`README.md` beside this file), part of `docs/audits/bloat-review-2026-11.md`.
 
-- **Kind:** oversize. **Priority:** P1. **Effort:** S. **Confidence:** high. **Step:** 0.9.
+- **Kind:** oversize. **Priority:** P1. **Effort:** S. **Confidence:** high. **Step:** 0.11.
 - **Second check:** confirmed.
 - **Where:** `src/components/admin/ai-manager.tsx:9`, `src/components/admin/ai-manager.tsx:11`, `src/components/admin/ai-manager.tsx:13`, `src/components/admin/ai-manager.tsx:328`, `src/components/admin/ai-manager.tsx:392`, `src/lib/manager-tools.ts:3`, `src/lib/manager-tools.ts:318`, `src/components/admin/ai-manager-launcher.tsx:32`, `src/components/admin/ai-skills.tsx:7`, `src/lib/saved-skills.ts:6`, `src/app/admin/(gated)/[store]/assistant/actions.ts:28`
 - **Evidence:** Chunk 00rxgygh1f--7.js is 496,206 bytes raw / 143,978 gzip. ai-manager.tsx imports one table, TOOL_WORDS (about 13,900 bytes of source, manager-tools.ts lines 318-621), from manager-tools.ts (36 KB), which imports owner-tools.ts (208 KB) and through it the product, site and setup tools; it imports matchPath from admin-map.ts (172 KB) and PAGES_NB (61 KB) to name the current page in one suggested question (lines 392-394). My closure of the chat: 209 files, 2,943,188 bytes of source; without those three imports 39 files, 302,869 bytes. What is left is led by assistant-skills.ts (62,620 bytes), reached because ai-skills.tsx takes three length limits from saved-skills.ts, which imports the built-in skills.

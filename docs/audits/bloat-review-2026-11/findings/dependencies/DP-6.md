@@ -2,7 +2,7 @@
 
 Dependencies (`README.md` beside this file), part of `docs/audits/bloat-review-2026-11.md`.
 
-- **Kind:** no check. **Priority:** P1. **Effort:** M. **Confidence:** high. **Step:** 1.5.
+- **Kind:** no check. **Priority:** P1. **Effort:** M. **Confidence:** high. **Step:** 1.8.
 - **Second check:** confirmed.
 - **Where:** `src/lib/storefront-bundle.scan.test.ts:1`, `src/lib/pay-routes.graph.test.ts:1-60`, `e2e/performance.spec.ts:21`, `e2e/signed-in/admin-scripts.spec.ts:36`, `src/server/document-readers.test.ts:11`, `src/server/ratchet.baseline.json`, `next.config.ts:69`, `.github/workflows/ci.yml:75`, `.github/workflows/ci.yml:152`
 - **Evidence:** The browser side has three guards (a static import scan for visitors, byte budgets for visitor routes, byte budgets for seven admin screens) and they have worked: shoppers' scripts are clean. The server side has one module-level check, for invoice-pdf.ts. Result, read from the build by the skeptic: the median route loads 11.6 MB of server JS and only 28 of 830 routes load under 3 MB. Every large finding of this dimension is one small import of a helper from a large module: sameSite from chat-route.ts (DP-10), six functions for a panel most screens never open (DP-11), an error class from owner-tools.ts (follow-ups.ts:14), two constants from the page model (theme.ts:9, visit-record.ts:8). A 60-line walker finds each in under a second; the planner's is a scratch script No check ties package.json to imports either (CI runs only pnpm audit), and the working plan's own dependency item was wrong about pg (DP-9).

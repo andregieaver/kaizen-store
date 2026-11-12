@@ -2,7 +2,7 @@
 
 What an owner's browser loads in the admin (`README.md` beside this file), part of `docs/audits/bloat-review-2026-11.md`.
 
-- **Kind:** eager. **Priority:** P0. **Effort:** S. **Confidence:** high. **Step:** 0.8.
+- **Kind:** eager. **Priority:** P0. **Effort:** S. **Confidence:** high. **Step:** 0.9.
 - **Second check:** confirmed.
 - **Where:** `src/app/admin/(gated)/layout.tsx:10`, `src/app/admin/(gated)/layout.tsx:11`, `src/app/admin/(gated)/layout.tsx:47`, `src/app/admin/(gated)/layout.tsx:51`, `src/components/admin/session.tsx:8`, `src/lib/supabase/client.ts:3`, `src/lib/env.ts:1`, `src/components/admin/push-settings.tsx:6`, `src/components/admin/push-settings.tsx:155`, `src/lib/push.ts:1`, `src/components/admin/shortcut-sheet.tsx:19`, `src/components/admin/responsive-edit.tsx:20`, `src/components/admin/responsive-edit.tsx:306`, `docs/rules/admin/platform.md:51`
 - **Evidence:** Chunks in the first load of 420 to 432 of 449 admin routes, each opened: supabase-js 179,419 bytes (44,575 gzip), Supabase realtime 57,349, a Buffer polyfill module 22,701, zod 116,870 (32,996 gzip), the builder's English 71,508, schemas built on zod 33,198. The only paths from the signed-in layout, by my import graph: session.tsx to lib/supabase/client.ts to env.ts (zod); push-settings.tsx, which holds the 9-line AdminServiceWorker, to lib/push.ts (zod); shortcut-sheet.tsx to responsive-edit.tsx for the 4-line typingIn(), and responsive-edit imports builder.en and the responsive schemas. With those three edges cut, the store home's client closure falls from 100 files (705,818 bytes of source) to 87 (432,239) and reaches none of zod, @supabase or builder.en. The verified report counted what still needs them after the cut: zod 160 routes, Supabase 83, builder.en 40.

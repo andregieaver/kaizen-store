@@ -2,7 +2,7 @@
 
 Files that ship or are stored (`README.md` beside this file), part of `docs/audits/bloat-review-2026-11.md`.
 
-- **Kind:** oversize. **Priority:** P3. **Effort:** M. **Confidence:** medium. **Step:** 2.12.
+- **Kind:** oversize. **Priority:** P3. **Effort:** M. **Confidence:** medium. **Step:** 2.23.
 - **Second check:** corrected.
 - **Where:** `next.config.ts:69`, `src/server/product-taxonomy.ts:25`, `src/server/catalog.ts:548`, `src/server/listing.ts:575`, `src/server/redirect-resolve.ts:19`, `src/lib/chromium-trace.test.ts:8`, `node_modules/next/dist/docs/01-app/03-api-reference/05-config/01-next-config-js/output.md:93`
 - **Evidence:** next.config.ts:69 traces src/data/product-taxonomy/* into the key "/**"; its comment gives the reason (the editor, imports, listings, feeds and the AI manager's tools all read it). Re-run: 831 of 832 traces list it, 13.28 MB each; /api/health's trace is 16.2 MB, of which 13.3 MB is the taxonomy. The loader is lazy (product-taxonomy.ts:40-52). By static imports 740 of 828 entries reach the loader (graph re-run), the proxy among them through redirect-resolve.ts:19 -> catalog.ts, so narrowing the key today frees 88 entries, and they are the smallest traces.

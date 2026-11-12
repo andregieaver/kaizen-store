@@ -2,7 +2,7 @@
 
 The page builder's model and a built page's render (`README.md` beside this file), part of `docs/audits/bloat-review-2026-11.md`.
 
-- **Kind:** eager. **Priority:** P0. **Effort:** S. **Confidence:** high. **Step:** 0.21.
+- **Kind:** eager. **Priority:** P0. **Effort:** S. **Confidence:** high. **Step:** 0.27.
 - **Second check:** confirmed.
 - **Where:** `src/server/knowledge.ts:167`, `src/server/knowledge.ts:182`, `src/server/knowledge.ts:187`, `src/server/knowledge.ts:249`, `src/server/knowledge.ts:297`, `src/lib/knowledge.ts:63`, `src/lib/blogs.ts:54`, `src/app/api/cron/cart-reminders/route.ts:145`, `docs/rules/storefront.md:407`
 - **Evidence:** syncPageKnowledge() selects `p.published` for every published page and article with two sub-selects each (knowledge.ts:170-176), runs the full schema on each (:182) and only then compares versions (:187). A page that cuts to no passage (cutPassages returns [] for no text, lib/knowledge.ts:63-65) never gets a row to carry its version, so every run cuts it again: a transaction with a delete and no insert (:248-256). Production: that delete ran 91,200 times and removed 782 rows in all; the page statement ran about 24,100 times at about 40 whole pages a call; the job's last run took 542 ms, fourth slowest of 84. Read in this pass: an article's address needs only its blogId (blogOfArticle, lib/blogs.ts:54), so the comparison can be made without the document. A re-cut deletes the page's passages with their vectors, which the store's AI then makes again, so a change here must not re-cut what is already cut.

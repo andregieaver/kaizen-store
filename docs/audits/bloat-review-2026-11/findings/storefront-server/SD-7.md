@@ -2,7 +2,7 @@
 
 What the server does for a storefront request (`README.md` beside this file), part of `docs/audits/bloat-review-2026-11.md`.
 
-- **Kind:** eager. **Priority:** P2. **Effort:** M. **Confidence:** medium. **Step:** 0.7.
+- **Kind:** eager. **Priority:** P2. **Effort:** M. **Confidence:** medium. **Step:** 0.8.
 - **Second check:** corrected.
 - **Where:** `src/instrumentation.ts:6-10`, `src/server/ui-text.ts:1-15`, `src/server/ui-text.ts:59-63`, `src/server/ui-text.ts:92-116`, `.next/server/chunks/src_1e-os9re011nz._.js`
 - **Evidence:** register() imports ui-text.ts and awaits startUi() before the instance takes a request (instrumentation.ts:8-9); a timer repeats the read each minute (ui-text.ts:109-116). ui-text.ts holds the reader and the platform admin's translating tools in one file, so it imports ai.ts and auth.ts (:14-15). My walk: 383 modules and 7.6 MB of source from ui-text.ts; with the four tool imports cut (ai.ts, auth.ts, ui-translate.ts, query-understanding.ts) the reader reaches 93 modules, 2.2 MB, and 47 once the schema import is gone. /api/health reaches 54 modules, so for a light route almost all of the 383 are extra. The verifier timed register() in a bare process at 408 to 528 ms and 107 MB and found all 383 modules are also in the store layout's graph today. Production ran the poll 278,393 times in 78 days (3,569 a day): it counts instance-minutes of every function, cron routes included. The poll is count(*) and max(updated_at) over the whole table grouped by language, so it gets heavier once languages are translated.

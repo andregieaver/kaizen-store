@@ -8,20 +8,20 @@ Part of `docs/audits/bloat-review-2026-11.md`, on commit 0bd814c. Read by one re
 
 | ID | Finding | Kind | Priority | Effort | Step |
 |---|---|---|---|---|---|
-| [FM-2](FM-2.md) ✓ | One import of sameSite through the chat module makes the four visit beacons, and five admin export routes, load the whole server core | eager | P0 | S | 0.3 |
-| [FM-14](FM-14.md) | Two more public routes load the whole server core for three small helpers: the recommendations beacon and the docs' feedback | eager | P0 | S | 0.3 |
-| [FM-1](FM-1.md) ✓ | Both languages of the admin's words (2.8 MB built) load with 802 of 830 server entries, the storefront's included | eager | P0 | M | 0.6 |
-| [FM-13](FM-13.md) ✓ | No check holds server import reach or copies, so heavy imports and twins arrive unseen | no check | P0 | S | 1.9 |
-| [FM-3](FM-3.md) ✓ | kaizenaflow.com exists twice: the old no-store site is still built and kept beside the store that now serves it *(your choice)* | duplicate | P1 | M | 3.5 |
-| [FM-5](FM-5.md) ✓ | The parity rule names platform_* tables as the way and does not say when the store's module with a scope is expected *(your choice)* | no check | P1 | S | 3.6 |
-| [FM-4](FM-4.md) ✓ | The platform's events pipeline is written a second time beside the stores': 26 to 55% of its lines are the stores' own | duplicate | P2 | M | 3.6 |
-| [FM-6](FM-6.md) ✓ | Five CSV imports repeat the same orchestration, pages and client flow around one shared job core | duplicate | P2 | M | 3.8 |
-| [FM-7](FM-7.md) ✓ | 1,266 server actions, 50 on the shared wrapper; the count of the rest is not held | duplicate | P2 | L | 1.9 |
-| [FM-8](FM-8.md) ✓ | Lists, tables, dates and selects are still hand-made per screen, and the counts are not held while the kit waits | duplicate | P2 | L | 1.9 |
-| [FM-10](FM-10.md) ✓ | Work's combined lists and the account's Domains pages repeat the store's, 29 to 77% the same | duplicate | P2 | M | 3.8 |
+| [FM-2](FM-2.md) ✓ | One import of sameSite through the chat module makes the four visit beacons, and five admin export routes, load the whole server core | eager | P0 | S | 0.4 |
+| [FM-14](FM-14.md) | Two more public routes load the whole server core for three small helpers: the recommendations beacon and the docs' feedback | eager | P0 | S | 0.4 |
+| [FM-1](FM-1.md) ✓ | Both languages of the admin's words (2.8 MB built) load with 802 of 830 server entries, the storefront's included | eager | P0 | M | 0.7 |
+| [FM-13](FM-13.md) ✓ | No check holds server import reach or copies, so heavy imports and twins arrive unseen | no check | P0 | S | 1.17 |
+| [FM-3](FM-3.md) ✓ | kaizenaflow.com exists twice: the old no-store site is still built and kept beside the store that now serves it *(your choice)* | duplicate | P1 | M | 3.9 |
+| [FM-5](FM-5.md) ✓ | The parity rule names platform_* tables as the way and does not say when the store's module with a scope is expected *(your choice)* | no check | P1 | S | 3.10 |
+| [FM-4](FM-4.md) ✓ | The platform's events pipeline is written a second time beside the stores': 26 to 55% of its lines are the stores' own | duplicate | P2 | M | 3.10 |
+| [FM-6](FM-6.md) ✓ | Five CSV imports repeat the same orchestration, pages and client flow around one shared job core | duplicate | P2 | M | 3.13 |
+| [FM-7](FM-7.md) ✓ | 1,266 server actions, 50 on the shared wrapper; the count of the rest is not held | duplicate | P2 | L | 1.17 |
+| [FM-8](FM-8.md) ✓ | Lists, tables, dates and selects are still hand-made per screen, and the counts are not held while the kit waits | duplicate | P2 | L | 1.17 |
+| [FM-10](FM-10.md) ✓ | Work's combined lists and the account's Domains pages repeat the store's, 29 to 77% the same | duplicate | P2 | M | 3.14 |
 | [FM-11](FM-11.md) ✓ | Ten small pairs of near-copies, about 840 identical lines | duplicate | P2 | M | 4.2 |
 | [FM-9](FM-9.md) ✓ | Fiken's sync engine is a copy of Tripletex's: about 250 to 400 identical lines, and no third system is planned | duplicate | P3 | M | 4.2 |
-| [FM-12](FM-12.md) ✓ | Small helpers are rewritten per file: addDays in 10 files, isUuid in 23, isUniqueViolation in 9 | duplicate | P3 | M | 3.9 |
+| [FM-12](FM-12.md) ✓ | Small helpers are rewritten per file: addDays in 10 files, isUuid in 23, isUniqueViolation in 9 | duplicate | P3 | M | 3.15 |
 
 ## Measured
 

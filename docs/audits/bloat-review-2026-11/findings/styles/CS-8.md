@@ -2,7 +2,7 @@
 
 Styles (`README.md` beside this file), part of `docs/audits/bloat-review-2026-11.md`.
 
-- **Kind:** eager. **Priority:** P0. **Effort:** S. **Confidence:** high. **Step:** 0.10.
+- **Kind:** eager. **Priority:** P0. **Effort:** S. **Confidence:** high. **Step:** 0.12.
 - **Second check:** confirmed.
 - **Where:** `src/components/site-parts.tsx:261`, `src/components/platform-routes/home.tsx:55`, `src/components/platform-layout.tsx:133`, `src/components/platform-layout.tsx:176`, `src/components/platform-layout.tsx:273`, `src/components/platform-routes/sign-up.tsx:164`, `node_modules/next/dist/docs/01-app/03-api-reference/03-file-conventions/layout.md:145`, `node_modules/next/dist/docs/01-app/03-api-reference/02-components/link.md:300`, `evidence/routes.json`
 - **Evidence:** Read again from m/routes.json: site-home, site-blog-post and site-themes each fetch, after load, the admin's stylesheet 3jc9lkep25kye.css (6,015 B transferred) and two /admin?_rsc answers (2,099 and 4,044 B). site-docs, which has no link to /admin, fetches none; store-home and store-page fetch none. Five <Link href="/admin"> sit in the site's header part, its standard header, phone menu and bottom bar and on the front page, and sign-up links to /admin/sign-in (the six lines in 'where'; rg over the non-admin components finds no other). Next's docs: going between root layouts is a full page load (layout.md:145), so the prefetched answer for /admin cannot be used for a client navigation; prefetch={false} means never, on view or on hover (link.md:300-304).

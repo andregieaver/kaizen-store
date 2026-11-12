@@ -8,22 +8,22 @@ Part of `docs/audits/bloat-review-2026-11.md`, on commit 0bd814c. Read by one re
 
 | ID | Finding | Kind | Priority | Effort | Step |
 |---|---|---|---|---|---|
-| [CA-3](CA-3.md) ✓ | To read one page, the code loads every published page with its whole content | oversize | P0 | M | 0.19 |
-| [CA-4](CA-4.md) ✓ | Language and currency links prefetch whole front pages that their click never opens | eager | P0 | S | 0.10 |
-| [CA-5](CA-5.md) ✓ | Each admin screen prefetches 13 to 22 other screens, and the storefront, on sight | eager | P0 | S | 0.10 |
-| [CA-11](CA-11.md) ✓ | One store owner saving their AI key marks every page of every store stale | oversize | P0 | S | 0.16 |
-| [CA-16](CA-16.md) | Nothing holds what is static: one cookie read in a shared part can move every store page to per-request, and no check would say so | no check | P0 | S | 1.7 |
-| [CA-1](CA-1.md) ✓ | Every store page view runs a render function, to place two cart badges and a country hint | eager | P1 | M | 2.2 |
-| [CA-2](CA-2.md) ✓ | Cached reads and built pages live in one instance and one deploy; each deploy empties them for every store *(your choice)* | no check | P1 | M | 3.11 |
-| [CA-6](CA-6.md) ✓ | A prefetch loop on listing and search pages at /s/{store} addresses | eager | P1 | M | 0.11 |
-| [CA-15](CA-15.md) | Bing, Google's shop and ads crawlers and every link preview get a full render of every page, static ones included | eager | P1 | S | 2.2 |
-| [CA-17](CA-17.md) | One Add to cart redraws the whole page and re-fetches every prefetched link, to change one number | eager | P1 | S | 2.2 |
-| [CA-7](CA-7.md) ✓ | partialPrefetching is unset: Next treats it as off, warns on every build and start, and will remove the choice | no check | P2 | S | 0.11 |
-| [CA-9](CA-9.md) ✓ | The same one-line store lookup is written 27 times, and three tiny facts are asked of the database about 11,000 times a day by scheduled work | duplicate | P2 | S | 0.16 |
-| [CA-10](CA-10.md) ✓ | Pages are rebuilt every hour and dropped after a quiet day, though every write already refreshes a tag | eager | P2 | S | 2.9 |
-| [CA-13](CA-13.md) ✓ | The theme store's list needs a function per view and draws the list twice; a theme's neighbours reload every theme's snapshot | eager | P2 | S | 0.16 |
+| [CA-3](CA-3.md) ✓ | To read one page, the code loads every published page with its whole content | oversize | P0 | M | 0.24 |
+| [CA-4](CA-4.md) ✓ | Language and currency links prefetch whole front pages that their click never opens | eager | P0 | S | 0.12 |
+| [CA-5](CA-5.md) ✓ | Each admin screen prefetches 13 to 22 other screens, and the storefront, on sight | eager | P0 | S | 0.13 |
+| [CA-11](CA-11.md) ✓ | One store owner saving their AI key marks every page of every store stale | oversize | P0 | S | 0.21 |
+| [CA-16](CA-16.md) | Nothing holds what is static: one cookie read in a shared part can move every store page to per-request, and no check would say so | no check | P0 | S | 1.11 |
+| [CA-1](CA-1.md) ✓ | Every store page view runs a render function, to place two cart badges and a country hint | eager | P1 | M | 2.4 |
+| [CA-2](CA-2.md) ✓ | Cached reads and built pages live in one instance and one deploy; each deploy empties them for every store *(your choice)* | no check | P1 | M | 3.19 |
+| [CA-6](CA-6.md) ✓ | A prefetch loop on listing and search pages at /s/{store} addresses | eager | P1 | M | 0.14 |
+| [CA-15](CA-15.md) | Bing, Google's shop and ads crawlers and every link preview get a full render of every page, static ones included | eager | P1 | S | 2.5 |
+| [CA-17](CA-17.md) | One Add to cart redraws the whole page and re-fetches every prefetched link, to change one number | eager | P1 | S | 2.4 |
+| [CA-7](CA-7.md) ✓ | partialPrefetching is unset: Next treats it as off, warns on every build and start, and will remove the choice | no check | P2 | S | 0.14 |
+| [CA-9](CA-9.md) ✓ | The same one-line store lookup is written 27 times, and three tiny facts are asked of the database about 11,000 times a day by scheduled work | duplicate | P2 | S | 0.20 |
+| [CA-10](CA-10.md) ✓ | Pages are rebuilt every hour and dropped after a quiet day, though every write already refreshes a tag | eager | P2 | S | 2.15 |
+| [CA-13](CA-13.md) ✓ | The theme store's list needs a function per view and draws the list twice; a theme's neighbours reload every theme's snapshot | eager | P2 | S | 0.20 |
 | [CA-8](CA-8.md) ✓ | A store's robots.txt, sitemap, llms.txt, blog feed and favicon answer with no HTTP cache | eager | P3 | S | tolerated |
-| [CA-12](CA-12.md) ✓ | A per-instance poll every minute and a five-minute prune that could run far less often | eager | P3 | S | 0.7 |
+| [CA-12](CA-12.md) ✓ | A per-instance poll every minute and a five-minute prune that could run far less often | eager | P3 | S | 0.8 |
 
 ## Refuted by the second reviewer
 

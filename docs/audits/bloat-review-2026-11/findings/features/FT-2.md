@@ -2,7 +2,7 @@
 
 The product's surface (`README.md` beside this file), part of `docs/audits/bloat-review-2026-11.md`.
 
-- **Kind:** no check. **Priority:** P1. **Effort:** S. **Confidence:** high. **Step:** 1.10. **The owner's choice.**
+- **Kind:** no check. **Priority:** P1. **Effort:** S. **Confidence:** high. **Step:** 1.18. **The owner's choice.**
 - **Second check:** corrected.
 - **Where:** `docs/decisions.md:749`, `docs/audits/code-review-2026-11.md:222`, `src/lib/store-nav.test.ts:245`, `src/lib/tool-budget.ts:5`, `src/app/api/cron/cart-reminders/route.ts:128`, `src/server/ratchet.scan.test.ts:1`, `src/server/cron-routes.scan.test.ts:1`, `scripts/ratchet.mjs:1`
 - **Evidence:** Between 29 October and 11 November docs/decisions.md gained 158 rows (D406 to D572, the skeptic's count), many on the owner's instruction: the owner building towards opening, not a pause that failed. What is missing is a check on idle cost. Counted today: 83 dispatcher jobs (78 in runJobs() and 5 after it, cart-reminders/route.ts:128-275), 9 routes every minute (trackedRoute(..., 60) under src/app/api/cron), 560 page.tsx, 268 route handlers, 481 tables, 110 store links (42 in Basic), 254 store tools (tool-budget.ts:5 still says about 190 and 24 of the manager's own). The one budget test covers Basic links only (store-nav.test.ts:245-253). The cart finding (FT-15) is what an unstated idle cost looks like: three features each added a read to every basket and nothing asked. The repo already has the pattern for a count that may only fall or must be raised on purpose: ratchet.scan.test.ts with its baseline file and scripts/ratchet.mjs.

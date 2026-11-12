@@ -8,20 +8,20 @@ Part of `docs/audits/bloat-review-2026-11.md`, on commit 0bd814c. Read by one re
 
 | ID | Finding | Kind | Priority | Effort | Step |
 |---|---|---|---|---|---|
-| [AI-4](AI-4.md) ✓ | The owner's browser downloads the model's whole tool catalogue and admin map | oversize | P0 | S | 0.9 |
-| [AI-1](AI-1.md) ✓ | Every AI manager call sends 124 tool definitions, whatever the question or screen *(your choice)* | eager | P1 | M | 2.21 |
-| [AI-2](AI-2.md) ✓ | The AI connection is fetched, key and month's cost included, by screens and polls that only draw a button | eager | P1 | S | 0.16 |
-| [AI-3](AI-3.md) ✓ | Nothing asks for prompt caching or measures it, and the store is charged the full price either way | eager | P1 | M | 2.23 |
-| [AI-5](AI-5.md) ✓ | The knowledge, product and picture index jobs rescan per store to find nothing | eager | P1 | M | 0.21 |
-| [AI-6](AI-6.md) ✓ | The autopilot's, follow-ups' and saved-skills' tools ride on every AI manager round *(your choice)* | eager | P1 | S | 2.21 |
-| [AI-10](AI-10.md) ✓ | Nothing limits how large an AI call may grow | no check | P1 | S | 1.11 |
-| [AI-13](AI-13.md) | The alt-text job walks every site that has an AI-written alt text, every five minutes, and retries a failed picture every day with no end | eager | P1 | S | 0.21 |
-| [AI-14](AI-14.md) | The agents' eval cannot tell whether the model finds a tool, so the default tool set cannot be lowered safely | no check | P1 | S | 1.11 |
-| [AI-7](AI-7.md) ✓ | One text model does every job, small ones included | oversize | P2 | M | 2.23 |
-| [AI-8](AI-8.md) ✓ | Tool schemas say more than the model needs | oversize | P2 | M | 2.22 |
-| [AI-9](AI-9.md) ✓ | A turn does needless work before the first model call | eager | P2 | S | 2.21 |
-| [AI-11](AI-11.md) ✓ | The prompt lists every playbook and the admin map, whatever the store or the kind of turn | eager | P2 | S | 2.21 |
-| [AI-12](AI-12.md) ✓ | Every open admin tab asks for AI manager notices once a minute | eager | P2 | S | 0.14 |
+| [AI-4](AI-4.md) ✓ | The owner's browser downloads the model's whole tool catalogue and admin map | oversize | P0 | S | 0.11 |
+| [AI-1](AI-1.md) ✓ | Every AI manager call sends 124 tool definitions, whatever the question or screen *(your choice)* | eager | P1 | M | 2.36 |
+| [AI-2](AI-2.md) ✓ | The AI connection is fetched, key and month's cost included, by screens and polls that only draw a button | eager | P1 | S | 0.21 |
+| [AI-3](AI-3.md) ✓ | Nothing asks for prompt caching or measures it, and the store is charged the full price either way | eager | P1 | M | 2.38 |
+| [AI-5](AI-5.md) ✓ | The knowledge, product and picture index jobs rescan per store to find nothing | eager | P1 | M | 0.28 |
+| [AI-6](AI-6.md) ✓ | The autopilot's, follow-ups' and saved-skills' tools ride on every AI manager round *(your choice)* | eager | P1 | S | 2.36 |
+| [AI-10](AI-10.md) ✓ | Nothing limits how large an AI call may grow | no check | P1 | S | 1.19 |
+| [AI-13](AI-13.md) | The alt-text job walks every site that has an AI-written alt text, every five minutes, and retries a failed picture every day with no end | eager | P1 | S | 0.28 |
+| [AI-14](AI-14.md) | The agents' eval cannot tell whether the model finds a tool, so the default tool set cannot be lowered safely | no check | P1 | S | 1.19 |
+| [AI-7](AI-7.md) ✓ | One text model does every job, small ones included | oversize | P2 | M | 2.39 |
+| [AI-8](AI-8.md) ✓ | Tool schemas say more than the model needs | oversize | P2 | M | 2.37 |
+| [AI-9](AI-9.md) ✓ | A turn does needless work before the first model call | eager | P2 | S | 2.36 |
+| [AI-11](AI-11.md) ✓ | The prompt lists every playbook and the admin map, whatever the store or the kind of turn | eager | P2 | S | 2.36 |
+| [AI-12](AI-12.md) ✓ | Every open admin tab asks for AI manager notices once a minute | eager | P2 | S | 2.34 |
 
 ## Measured
 

@@ -2,7 +2,7 @@
 
 What the server does for an admin navigation (`README.md` beside this file), part of `docs/audits/bloat-review-2026-11.md`.
 
-- **Kind:** duplicate. **Priority:** P2. **Effort:** M. **Confidence:** high. **Step:** 2.18.
+- **Kind:** duplicate. **Priority:** P2. **Effort:** M. **Confidence:** high. **Step:** 2.32.
 - **Second check:** corrected.
 - **Where:** `src/server/auth.ts:271-287`, `src/server/auth.ts:328-340`, `src/server/support-desk.ts:130-139`, `src/server/books-clients.ts:32-41`, `src/server/control-center.ts:61-75`, `src/app/admin/(gated)/(owner)/layout.tsx:30-38`, `src/app/admin/(gated)/(owner)/stores/page.tsx:32`
 - **Evidence:** listStores(), ownerDesks(), booksMemberships() and controlCenter()'s first statement each join store_members to stores (three also to store_roles) for the same account with slightly different columns and filters. The owner layout awaits them one after another (stores, desks, domains for a non-owner, books clients, support count: 4 or 5 sequential awaits), and the owner's Stores page calls listStores() directly instead of the cached storesOf(), so the layout's read is repeated. In a store, the member row and the stores list are read on every hard load, and the control center reads the same membership a third time on Home.

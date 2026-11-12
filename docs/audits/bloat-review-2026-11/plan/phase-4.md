@@ -1,12 +1,12 @@
 # Phase 4: Tidy
 
-Part of `docs/audits/bloat-review-2026-11.md`: its Progress table says where each step stands. **Goal:** Smaller things, each done when its area is next touched. The ratchets of phase 1 hold every count until then, so nothing here can grow while it waits, and the last small findings close. **A person will notice:** Little. Admin forms and tables come from one kit, the last small twins are folded, tests share their scaffolding, and three more screens read less.
+Part of `docs/audits/bloat-review-2026-11.md`: its Progress table says where each step stands. **Goal:** Smaller things, each done when its area is next touched. The ratchets of phase 1 hold every count until then, so nothing here can grow while it waits, and the last small findings close. The last step reads every measure against its bar: the plan is done when every area is an A, not when its steps are ticked. **A person will notice:** Little. Admin forms and tables come from one kit, the last small twins are folded, tests share their scaffolding, and three more screens read less. A table shows each area's measures against its bar.
 
 Each step names the findings it closes; a finding's own file has the evidence, the fix in detail, and the tests and rules that change with it.
 
 ## 4.1 Build the admin kit and move action files onto the shared wrapper, area by area
 
-Admin form fields, tables and loading skeletons are spelled out per file (284 class constants in 171 files) because the UI kit has no piece for them: build the field, table and skeleton parts (code review step 1.12), and convert an area when it is next touched. The one wrapper for server actions carries 3 of 235 action files: first move the 23 files that have a guard wrapper of their own (asOwner, member, guarded and the like), then the rest when touched. The ratchet of step 1.9 holds both counts.
+Admin form fields, tables and loading skeletons are spelled out per file (284 class constants in 171 files) because the UI kit has no piece for them: build the field, table and skeleton parts (code review step 1.12), and convert an area when it is next touched. The one wrapper for server actions carries 3 of 235 action files: first move the 23 files that have a guard wrapper of their own (asOwner, member, guarded and the like), then the rest when touched. The ratchet of step 1.17 holds both counts.
 
 - **Closes:** [CP-3](../findings/copied-code/CP-3.md), [CP-7](../findings/copied-code/CP-7.md)
 - **Effort:** L. **Areas it moves:** The code itself.
@@ -28,7 +28,7 @@ About 330 exports in production files are kept alive only by a test (443 names, 
 
 - **Closes:** [DD-2](../findings/unused-code/DD-2.md), [CP-15](../findings/copied-code/CP-15.md), [TC-11](../findings/tests-ci-build/TC-11.md), [TC-10](../findings/tests-ci-build/TC-10.md)
 - **Effort:** M. **Areas it moves:** The code itself; Tests, CI and the build.
-- **Done when:** node scripts/unused.mjs (the scan of step 1.9) shows testOnlyExports empty with 100 to 130 reasoned names in keptForTests, no test file mocks server-only (579 today), fewer than 60 integration tests stub next/cache themselves (465 today), and rg -l readdirSync src --glob '*.test.ts' | wc -l prints 20 or less (86 today).
+- **Done when:** node scripts/unused.mjs (the scan of step 1.17) shows testOnlyExports empty with 100 to 130 reasoned names in keptForTests, no test file mocks server-only (579 today), fewer than 60 integration tests stub next/cache themselves (465 today), and rg -l readdirSync src --glob '*.test.ts' | wc -l prints 20 or less (86 today).
 - **Platform:** Test code only: nothing differs for the platform.
 
 ## 4.4 Make the last reads fetch what they show
@@ -37,5 +37,14 @@ Three screens read more than they draw: the platform Home holds its first paint 
 
 - **Closes:** [AD-6](../findings/admin-server/AD-6.md), [AD-11](../findings/admin-server/AD-11.md), [AD-15](../findings/admin-server/AD-15.md), [DQ-10](../findings/queries/DQ-10.md), [DQ-14](../findings/queries/DQ-14.md), [DQ-16](../findings/queries/DQ-16.md), [DS-11](../findings/database-shape/DS-11.md)
 - **Effort:** M. **Areas it moves:** What the server loads and asks; The database.
-- **Done when:** src/server/admin-statements.baseline.json holds the platform Home's loaders at 11 or fewer (18 today) and the Payments page at 7 or fewer in 2 waves, theme-store.int.test.ts asserts that loadCards() reads no snapshot key, and on a database seeded with 2,000 products one listProducts() raises the scans of commerce.countries by at most 10 (at least 2,000 today).
-- **Platform:** The platform Home is the first of the three screens: the platform gets what the store Home got in step 2.18.
+- **Done when:** src/server/admin-statements.baseline.json holds the platform Home's loaders at 11 or fewer (18 today), the Payments page at 7 or fewer in 2 waves and the orders list at 2 fewer than its first figure; theme-store.int.test.ts asserts that loadCards() reads no snapshot key; src/server/list-limits.scan.test.ts finds a limit, an aggregate or a time bound on each of the six lists; on a database seeded with 2,000 products one listProducts() raises the scans of commerce.countries by at most 10 (at least 2,000 today); and src/server/sandbox.int.test.ts has a case where two purges started together both finish.
+- **Platform:** The platform Home is the first of the three screens: the platform gets what the store Home got in step 2.32.
+
+## 4.5 Measure everything again, and read each area against its bar
+
+The goal is an A in every area, not ticked steps. When the cuts are in, run the whole measured set again (measure-routes.mjs, server-graph.mjs, the route, server and query budgets, the daily reading) and the build under a memory cap. Write one table per area: each measure, its figure, its bar and the check that holds it. Report repeated server chunks (123.6 MiB of 195.5 MiB is the same three chunks written many times today), and try server source maps off, on Vercel only, if memory needs it. Read the figures that need time: decision numbers changed in merges over 100 commits, the scheduler's calls on a quiet day, the AI manager's tokens per call. A measure short of its bar gets a step; the bar does not move.
+
+- **Closes:** [SG-11](../findings/server-module-graph/SG-11.md), [SF-11](../findings/server-functions/SF-11.md)
+- **Effort:** M. **Areas it moves:** The code itself; What a shopper's browser gets; What an owner's browser gets; What the server loads and asks; Scheduled work; The database; AI calls; The product's surface; The written rules; The page builder's model and a built page; Styles; Interface text; Tests, CI and the build.
+- **Done when:** docs/audits/bloat-review-2026-11 holds the table with no measure short of its bar, scripts/route-budget.mjs reports under 40 MiB of repeated server chunk bytes (123.6 MiB today), and docs/build-memory.md holds the build's peak after the cuts.
+- **Platform:** The platform's screens, jobs and pages are rows of the same tables.

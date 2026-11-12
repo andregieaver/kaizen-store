@@ -2,7 +2,7 @@
 
 The database's shape (`README.md` beside this file), part of `docs/audits/bloat-review-2026-11.md`.
 
-- **Kind:** oversize. **Priority:** P0. **Effort:** S. **Confidence:** high. **Step:** 0.20.
+- **Kind:** oversize. **Priority:** P0. **Effort:** S. **Confidence:** high. **Step:** 0.25.
 - **Second check:** corrected.
 - **Where:** `supabase/migrations/20261111172842_baseline_4_roles_and_supabase.sql:64-113`, `docs/ci-migrations.md:30-46`, `scripts/lib/restore-check.mjs:22-30`, `evidence/prod-db-stats.md`
 - **Evidence:** The statistics give 731 MB for the database: the cron schema 564 MB, commerce 124 MB. pg_cron writes one row to cron.job_run_details per run with the whole command text. The baseline schedules 9 jobs a minute, 1 every five minutes and 4 daily (baseline_4:93-113, which I read): 13,252 rows a day. Two of the daily jobs are retention deletes (consents, cookie_scans); none prunes the run log. rg for job_run_details over src, scripts and supabase finds nothing.

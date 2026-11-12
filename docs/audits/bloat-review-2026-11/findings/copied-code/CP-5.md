@@ -2,7 +2,7 @@
 
 Copied code (`README.md` beside this file), part of `docs/audits/bloat-review-2026-11.md`.
 
-- **Kind:** duplicate. **Priority:** P1. **Effort:** M. **Confidence:** high. **Step:** 3.8.
+- **Kind:** duplicate. **Priority:** P1. **Effort:** M. **Confidence:** high. **Step:** 3.14.
 - **Second check:** corrected.
 - **Where:** `src/components/admin/work/owner-time.tsx:60-125`, `src/components/admin/work/time-filters.tsx:46-122`, `src/components/admin/work/owner-invoices.tsx:1`, `src/components/admin/work/invoices-list.tsx:1`, `src/components/admin/work/owner-clients.tsx:1`, `src/components/admin/work/clients-list.tsx:1`, `src/components/admin/work/owner-report.tsx:1`, `src/components/admin/work/report-filters.tsx:1`, `src/components/admin/work/owner-overview.tsx:230`, `src/components/admin/work/work-overview.tsx:146`, `src/app/admin/(gated)/(owner)/account/work/s/[store]/actions.ts:71-125`, `src/lib/work-text.ts:83-88`
 - **Evidence:** Lines in runs of five or more shared after normalising (lcs.mjs): time-filters in owner-time 98 of 122 code lines; invoices-list and owner-invoices 136 of 178; clients-list and owner-clients 64 of 80; report-filters in owner-report 50 of 81; work-overview and owner-overview 147 of 224. The five owner-* files are 1,209 file lines (wc). Separately, `inWorkLang(` is called 58 times in seven Work action files (my rg), each time as `const lang = await actionAdminLang(); return inWorkLang(await (async () => { ... })(), lang);` around a call to the file's own change() (actions.ts:71-125, read); in 33 of them the wrapped body is one return line.

@@ -2,7 +2,7 @@
 
 Prefetching: what the router asks for unasked (`README.md` beside this file), part of `docs/audits/bloat-review-2026-11.md`.
 
-- **Kind:** duplicate. **Priority:** P2. **Effort:** S. **Confidence:** high. **Step:** 0.10.
+- **Kind:** duplicate. **Priority:** P2. **Effort:** S. **Confidence:** high. **Step:** 0.13.
 - **Second check:** confirmed.
 - **Where:** `src/components/admin/products-bulk.tsx:259`, `src/components/admin/ui/list.tsx:28,51`, `src/components/admin/ui/card.tsx:82`, `src/components/admin/ui/button.tsx:79-85`, `src/components/admin/ui/page-header.tsx:37`, `src/components/admin/ui/focus-frame.tsx:36,47`, `node_modules/next/dist/docs/01-app/03-api-reference/05-config/01-next-config-js/partialPrefetching.md:38-55`, `node_modules/next/dist/docs/01-app/03-api-reference/03-file-conventions/02-route-segment-config/prefetch.md:39-45`, `node_modules/next/dist/docs/01-app/02-guides/adopting-partial-prefetching.md:67-79`
 - **Evidence:** The skeptic's measure on the product list with four rows: 8 requests, four identical route trees (741 B) and four identical page answers (9,746 B each); the answer has no product in it, only the editor's shell. The rows are <Link>s in products-bulk.tsx:259; most other lists go through the shared primitives ListRow and RowLead (ui/list.tsx:28, 51; 114 uses in 88 files, counted here), the card tile (ui/card.tsx:82) and ButtonLink (ui/button.tsx:81; 107 uses). Next's docs name the case: with Partial Prefetching the App Shell is shared across every link to a given route, regardless of dynamic params (adopting-partial-prefetching.md:79).

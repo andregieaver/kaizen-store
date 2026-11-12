@@ -2,7 +2,7 @@
 
 Dependencies (`README.md` beside this file), part of `docs/audits/bloat-review-2026-11.md`.
 
-- **Kind:** no check. **Priority:** P2. **Effort:** S. **Confidence:** high. **Step:** 0.3.
+- **Kind:** no check. **Priority:** P2. **Effort:** S. **Confidence:** high. **Step:** 0.4.
 - **Second check:** corrected.
 - **Where:** `docs/audits/code-review-2026-11.md:294-296`, `docs/audits/code-review-2026-11.md:501`, `docs/audits/code-review-2026-11.md:132`, `src/db/client.ts:7`, `src/db/client.ts:56-63`, `src/lib/store-hosts-build.ts:1`, `next.config.ts:12`, `package.json:60`, `package.json:62`, `package.json:72`, `node_modules/@google/model-viewer/package.json`, `e2e/product-media.spec.ts`
 - **Evidence:** FH12 says pg is kept beside postgres for one module, and step 4.4 (Open) says to take pg out of production dependencies. That is backwards: pg is the production driver (client.ts:7, reason at :56-63); the driver with one module in src is postgres, imported by the build's host read (store-hosts-build.ts:1, called from next.config.ts:12), five scripts and tests, and found in no server chunk or trace. FH12 also says three is a dependency nothing imports. True of src, but @google/model-viewer 4.4.0 declares it a peer (^0.183.0) and its module build imports it; 0.187.0 is installed, outside that range for a 0.x version, and e2e/product-media.spec.ts covers the 3D viewer.

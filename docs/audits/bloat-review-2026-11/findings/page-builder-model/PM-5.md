@@ -2,7 +2,7 @@
 
 The page builder's model and a built page's render (`README.md` beside this file), part of `docs/audits/bloat-review-2026-11.md`.
 
-- **Kind:** oversize. **Priority:** P1. **Effort:** S. **Confidence:** high. **Step:** 2.19.
+- **Kind:** oversize. **Priority:** P1. **Effort:** S. **Confidence:** high. **Step:** 2.17.
 - **Second check:** confirmed.
 - **Where:** `src/server/pages.ts:135`, `src/server/pages.ts:112`, `src/lib/page-content.ts:4317`, `src/server/pages.ts:382`, `src/app/admin/(gated)/[store]/pages/actions.ts:408`, `src/app/admin/try/[sandbox]/actions.ts:219`, `src/server/owner-tools.ts:979`, `src/server/manager-tools.ts:574`, `src/server/admin-api-content.ts:222`, `src/server/shopify-copy.ts:555`
 - **Evidence:** listPages() selects `draft, published` for every page of a type (pages.ts:136-140), runs the full schema on both and compares them with two JSON.stringify calls (samePageContent, page-content.ts:4317) to get a title, a state and a thumbnail. My rg: 16 call sites. Several keep only id and title (pages/actions.ts:408, admin/try/[sandbox]/actions.ts:219), one only slugs (shopify-copy.ts:555); the AI manager's list_pages tool and the Admin API's pages list go through it. Publishing writes draft and published from one string (pages.ts:358, :382-384), so an unchanged published page has equal copies as stored.

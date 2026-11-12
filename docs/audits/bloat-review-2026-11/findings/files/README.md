@@ -8,18 +8,18 @@ Part of `docs/audits/bloat-review-2026-11.md`, on commit 0bd814c. Read by one re
 
 | ID | Finding | Kind | Priority | Effort | Step |
 |---|---|---|---|---|---|
-| [AS-3](AS-3.md) ✓ | Nothing checks what a server function carries or what the proxy imports | no check | P0 | S | 1.5 |
-| [AS-4](AS-4.md) ✓ | Search suggestions ask Next's image service for uploaded pictures and get a 400, so real stores will show empty thumbnails; the service itself is open and unused | dead | P0 | S | 0.23 |
-| [AS-9](AS-9.md) ✓ | The font file route does not tell the CDN to keep the file, unlike the stylesheet route beside it | eager | P0 | S | 0.23 |
-| [AS-10](AS-10.md) ✓ | The build's page worker runs with source maps on: about 4.7 MB of heap per MB of server code it loads, and 704 MB of maps written that no function carries | oversize | P0 | S | 1.12 |
-| [AS-1](AS-1.md) ✓ | The image library (sharp, 19.8 MB) is in 742 of 832 route traces and the proxy's, and loads when the proxy or a route as plain as robots.txt starts | eager | P1 | S | 0.4 |
-| [AS-11](AS-11.md) | Nothing is kept between 480 and 1600 pixels, so 3x phones and Retina laptops download the 1600 px file for every product tile | oversize | P1 | M | 0.23 |
-| [AS-5](AS-5.md) ✓ | Flags are downloaded even while the switcher hides them, public files have no cache lifetime, and six flags and two textures are far bigger than their job | eager | P2 | S | 0.23 |
-| [AS-8](AS-8.md) ✓ | The decisions log is one 1.33 MB file and keeps growing; CLAUDE.md is 43 KB in every agent session | oversize | P2 | M | 2.24 |
-| [AS-12](AS-12.md) | Videos, 3D models and theme photographs are stored with a one-hour or five-minute cache, though their addresses never change; pictures get a year | eager | P2 | S | 0.23 |
-| [AS-2](AS-2.md) ✓ | The product taxonomy (13.3 MB of JSON) is traced into every route, the proxy and the health check included | oversize | P3 | M | 2.12 |
+| [AS-3](AS-3.md) ✓ | Nothing checks what a server function carries or what the proxy imports | no check | P0 | S | 1.8 |
+| [AS-4](AS-4.md) ✓ | Search suggestions ask Next's image service for uploaded pictures and get a 400, so real stores will show empty thumbnails; the service itself is open and unused | dead | P0 | S | 0.32 |
+| [AS-9](AS-9.md) ✓ | The font file route does not tell the CDN to keep the file, unlike the stylesheet route beside it | eager | P0 | S | 0.32 |
+| [AS-10](AS-10.md) ✓ | The build's page worker runs with source maps on: about 4.7 MB of heap per MB of server code it loads, and 704 MB of maps written that no function carries | oversize | P0 | S | 1.20 |
+| [AS-1](AS-1.md) ✓ | The image library (sharp, 19.8 MB) is in 742 of 832 route traces and the proxy's, and loads when the proxy or a route as plain as robots.txt starts | eager | P1 | S | 0.5 |
+| [AS-11](AS-11.md) | Nothing is kept between 480 and 1600 pixels, so 3x phones and Retina laptops download the 1600 px file for every product tile | oversize | P1 | M | 0.33 |
+| [AS-5](AS-5.md) ✓ | Flags are downloaded even while the switcher hides them, public files have no cache lifetime, and six flags and two textures are far bigger than their job | eager | P2 | S | 0.32 |
+| [AS-8](AS-8.md) ✓ | The decisions log is one 1.33 MB file and keeps growing; CLAUDE.md is 43 KB in every agent session | oversize | P2 | M | 2.40 |
+| [AS-12](AS-12.md) | Videos, 3D models and theme photographs are stored with a one-hour or five-minute cache, though their addresses never change; pictures get a year | eager | P2 | S | 0.32 |
+| [AS-2](AS-2.md) ✓ | The product taxonomy (13.3 MB of JSON) is traced into every route, the proxy and the health check included | oversize | P3 | M | 2.23 |
 | [AS-6](AS-6.md) ✓ | The PDF routes carry all of react-dom (8.1 MB) to use two server builds of it | oversize | P3 | S | tolerated |
-| [AS-7](AS-7.md) ✓ | Tailwind reads 22.5 MB that adds nothing to the CSS today: the test files and the migrations' SQL | dead | P3 | S | 1.2 |
+| [AS-7](AS-7.md) ✓ | Tailwind reads 22.5 MB that adds nothing to the CSS today: the test files and the migrations' SQL | dead | P3 | S | 0.35 |
 
 ## Measured
 

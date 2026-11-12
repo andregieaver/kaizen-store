@@ -2,7 +2,7 @@
 
 Families and twins (`README.md` beside this file), part of `docs/audits/bloat-review-2026-11.md`.
 
-- **Kind:** no check. **Priority:** P1. **Effort:** S. **Confidence:** medium. **Step:** 3.6. **The owner's choice.**
+- **Kind:** no check. **Priority:** P1. **Effort:** S. **Confidence:** medium. **Step:** 3.10. **The owner's choice.**
 - **Second check:** corrected.
 - **Where:** `CLAUDE.md:403`, `docs/platform-parity-plan.md:32`, `docs/platform-parity-plan.md:73`, `docs/decisions.md:805`, `docs/decisions.md:855`, `docs/decisions.md:856`, `src/db/schema.ts:1446`, `scripts/ratchet.mjs:9`
 - **Evidence:** CLAUDE.md:403 asks for every store feature on the platform in the same change and names 'store_id is null or platform_* tables' as where its rows live. The plan of 6 November counted 9 platform_* tables (line 32) and said 'build it for stores' (line 73), but also set a console track for what no store can give (section 6). That track was built on 9 November on the owner's instruction (D515, D516, D518 and others): the schema has 19 platform_* tables today, and src has 24 platform-*.ts server modules (4,761 lines) and 20 lib ones (1,664). The code is copied only in part: the events modules are 26 to 55% the stores' lines (FM-4), plan reminders 41% and the platform's speed recorder 70% (FM-11); the money, team and analytics modules are the platform's own subject. Nothing in the rule or in a test tells a copy from a new subject.

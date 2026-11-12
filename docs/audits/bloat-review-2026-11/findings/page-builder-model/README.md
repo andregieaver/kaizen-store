@@ -8,21 +8,21 @@ Part of `docs/audits/bloat-review-2026-11.md`, on commit 0bd814c. Read by one re
 
 | ID | Finding | Kind | Priority | Effort | Step |
 |---|---|---|---|---|---|
-| [PM-2](PM-2.md) ✓ | Finding one page, or a title, loads every published page of the store with its whole content | oversize | P0 | M | 0.19 |
-| [PM-3](PM-3.md) ✓ | The five-minute knowledge job reads and parses every published page of every site with chat on, and re-cuts wordless pages for ever | eager | P0 | S | 0.21 |
-| [PM-4](PM-4.md) ✓ | Page reads filter the owner with `is not distinct from`, which no index can serve | oversize | P0 | S | 0.18 |
-| [PM-11](PM-11.md) ✓ | A product page's first scripts carry the cart's parts through one import, and every built page a few parts it does not hold | eager | P0 | S | 0.13 |
-| [PM-14](PM-14.md) ✓ | No budget sees a realistic built page, the document's size or a list that reads whole pages | no check | P0 | S | 1.2 |
-| [PM-1](PM-1.md) ✓ | Every storefront page renders and ships the whole layout twice, because the cart drawer's slot sits on the root layout | duplicate | P1 | M | 2.1 |
-| [PM-5](PM-5.md) ✓ | The admin's page lists, pickers and AI tools read and parse the draft and the published copy of every page to show titles | oversize | P1 | S | 2.19 |
-| [PM-6](PM-6.md) ✓ | Facts about a page are dug out of its JSON on each read; the table has no column for them | eager | P1 | M | 2.19 |
-| [PM-8](PM-8.md) ✓ | A product grid with Filter and sort is sent twice when nothing is chosen | duplicate | P1 | M | 2.7 |
-| [PM-10](PM-10.md) ✓ | The page editor's document carries 277 KB of interface text inline | oversize | P1 | S | 2.14 |
-| [PM-15](PM-15.md) | One cache tag covers all of a store's pages: publishing one page, or describing one picture, makes every built page of the store render again | eager | P1 | M | 2.9 |
-| [PM-9](PM-9.md) ✓ | Every read of a stored page runs the editor's whole input schema and the old-shape upgrades | eager | P2 | M | 3.10 |
-| [PM-12](PM-12.md) ✓ | The page renderer and the page reader pull in the code for saving pages and most of the server | eager | P2 | L | 2.11 |
-| [PM-16](PM-16.md) | A product's layout is cached once per product, whole | duplicate | P2 | S | 2.9 |
-| [PM-7](PM-7.md) ✓ | Each row repeats the same stylesheet text in the payload and the same cached store lookups | duplicate | P3 | S | 2.1 |
+| [PM-2](PM-2.md) ✓ | Finding one page, or a title, loads every published page of the store with its whole content | oversize | P0 | M | 0.24 |
+| [PM-3](PM-3.md) ✓ | The five-minute knowledge job reads and parses every published page of every site with chat on, and re-cuts wordless pages for ever | eager | P0 | S | 0.27 |
+| [PM-4](PM-4.md) ✓ | Page reads filter the owner with `is not distinct from`, which no index can serve | oversize | P0 | S | 0.23 |
+| [PM-11](PM-11.md) ✓ | A product page's first scripts carry the cart's parts through one import, and every built page a few parts it does not hold | eager | P0 | S | 0.16 |
+| [PM-14](PM-14.md) ✓ | No budget sees a realistic built page, the document's size or a list that reads whole pages | no check | P0 | S | 1.3 |
+| [PM-1](PM-1.md) ✓ | Every storefront page renders and ships the whole layout twice, because the cart drawer's slot sits on the root layout | duplicate | P1 | M | 2.2 |
+| [PM-5](PM-5.md) ✓ | The admin's page lists, pickers and AI tools read and parse the draft and the published copy of every page to show titles | oversize | P1 | S | 2.17 |
+| [PM-6](PM-6.md) ✓ | Facts about a page are dug out of its JSON on each read; the table has no column for them | eager | P1 | M | 2.16 |
+| [PM-8](PM-8.md) ✓ | A product grid with Filter and sort is sent twice when nothing is chosen | duplicate | P1 | M | 2.12 |
+| [PM-10](PM-10.md) ✓ | The page editor's document carries 277 KB of interface text inline | oversize | P1 | S | 2.27 |
+| [PM-15](PM-15.md) | One cache tag covers all of a store's pages: publishing one page, or describing one picture, makes every built page of the store render again | eager | P1 | M | 2.14 |
+| [PM-9](PM-9.md) ✓ | Every read of a stored page runs the editor's whole input schema and the old-shape upgrades | eager | P2 | M | 3.17 |
+| [PM-12](PM-12.md) ✓ | The page renderer and the page reader pull in the code for saving pages and most of the server | eager | P2 | L | 2.21 |
+| [PM-16](PM-16.md) | A product's layout is cached once per product, whole | duplicate | P2 | S | 2.14 |
+| [PM-7](PM-7.md) ✓ | Each row repeats the same stylesheet text in the payload and the same cached store lookups | duplicate | P3 | S | 2.3 |
 | [PM-13](PM-13.md) ✓ | Some block types overlap; whether to merge them is a product choice, not waste *(your choice)* | duplicate | P3 | M | your choice |
 
 ## Measured

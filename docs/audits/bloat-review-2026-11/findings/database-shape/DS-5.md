@@ -2,7 +2,7 @@
 
 The database's shape (`README.md` beside this file), part of `docs/audits/bloat-review-2026-11.md`.
 
-- **Kind:** eager. **Priority:** P1. **Effort:** M. **Confidence:** high. **Step:** 0.21.
+- **Kind:** eager. **Priority:** P1. **Effort:** M. **Confidence:** high. **Step:** 0.27.
 - **Second check:** confirmed.
 - **Where:** `src/server/knowledge.ts:167-177`, `src/server/knowledge.ts:179-193`, `src/server/knowledge.ts:196-203`, `src/server/knowledge.ts:233-256`, `src/server/knowledge.ts:296-312`, `supabase/migrations/20261111172839_baseline_1_schema.sql:23688`
 - **Evidence:** refreshKnowledge loops over every site with its chat agent on (knowledge.ts:297). For each, syncPageKnowledge selects `published` for every published page and article (:170-176), then compares the page's date with the version kept on its passages. A page whose text yields no passages has no kept version, so it is cut again on every run: replacePassages opens a transaction and deletes by page (:249). Production: 91,200 such deletes for 782 rows ever deleted; the content read ran 24,134 times. The chat agent is off by default (chat_agents.enabled defaults to false), so the cost follows sites that switch it on, but not change.

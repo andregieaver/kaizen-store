@@ -2,7 +2,7 @@
 
 The written rules and the agents' context (`README.md` beside this file), part of `docs/audits/bloat-review-2026-11.md`.
 
-- **Kind:** oversize. **Priority:** P2. **Effort:** S. **Confidence:** high. **Step:** 0.28.
+- **Kind:** oversize. **Priority:** P2. **Effort:** S. **Confidence:** high. **Step:** 0.41.
 - **Second check:** confirmed.
 - **Where:** `CLAUDE.md:444-448`, `docs/audits/code-review-2026-11.md:26-135`, `docs/audits/code-review-2026-11.md:31`, `docs/audits/code-review-2026-11.md:136-164`, `docs/audits/psi-followups.md:1-5`, `docs/audits/psi-followups.md:61`, `docs/audits/psi-followups.md:482`
 - **Evidence:** CLAUDE.md:446-448 says to read the Progress table before starting a fix from the code review. Of its 73 steps, 14 are Done, 4 In progress and 55 Open. The 18 rows with notes total 16,641 bytes (average 925, largest 1,615); 15 are over 500 characters, so a search for a step shows no text. The document's own rule (line 31) asks only for the date and the commit in Notes, and a change log (lines 136-164, 3,330 bytes) tells the same steps again. CLAUDE.md:444-445 says to tick an item in psi-followups.md when a change does it: that file is 60,043 bytes with 93 ticked items and 12 open ones (2,428 bytes) at lines 61, 116, 120, 126, 145, 253, 270, 276, 353, 446, 477 and 482. No test or script reads either file.

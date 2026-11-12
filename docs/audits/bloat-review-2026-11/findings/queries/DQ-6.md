@@ -2,7 +2,7 @@
 
 How data is asked for (`README.md` beside this file), part of `docs/audits/bloat-review-2026-11.md`.
 
-- **Kind:** eager. **Priority:** P0. **Effort:** S. **Confidence:** high. **Step:** 0.21.
+- **Kind:** eager. **Priority:** P0. **Effort:** S. **Confidence:** high. **Step:** 0.27.
 - **Second check:** confirmed.
 - **Where:** `src/server/knowledge.ts:166-232`, `src/server/knowledge.ts:234-258`, `src/server/knowledge.ts:296-312`, `src/lib/knowledge.ts:63-65`, `supabase/migrations/20261111172839_baseline_1_schema.sql:26639-26655`, `docs/rules/storefront.md:407-411`
 - **Evidence:** For every site with its chat agent on, syncPageKnowledge() selects every published page and article with its whole published document (knowledge.ts:169-175; production: 2,571 + 17,955 + 3,608 calls in three shapes, the first returning 40 rows a call at 16 ms) and compares versions in code. I followed the comparison: the stored version is min(c.version) over the page's chunks (line 171); a page whose text cuts to no passages has no chunk, so its version is null, never equals the published date (line 186), and replacePassages() opens a transaction, deletes nothing and inserts nothing (248-258), on every tick. Production: 91,200 calls of 'delete from commerce.knowledge_chunks where page_id = $1' deleted 782 rows in all; that is 42% of the 216,877 transactions. Around it the job reads the site's languages (two reads), the blogs, every published content entry, deletes dropped passages, reads the AI connection and runs a vector pass, per site, one site after another (296-312).

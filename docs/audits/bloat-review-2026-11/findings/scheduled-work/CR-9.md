@@ -2,7 +2,7 @@
 
 Scheduled and background work (`README.md` beside this file), part of `docs/audits/bloat-review-2026-11.md`.
 
-- **Kind:** eager. **Priority:** P1. **Effort:** S. **Confidence:** high. **Step:** 0.22.
+- **Kind:** eager. **Priority:** P1. **Effort:** S. **Confidence:** high. **Step:** 0.30.
 - **Second check:** corrected.
 - **Where:** `src/server/invoice-issue.ts:25-29`, `src/server/invoice-issue.ts:32-51`, `src/server/invoice-issue.ts:71-101`, `src/server/invoice-issue.ts:116-132`, `supabase/migrations/20261111172839_baseline_1_schema.sql:10533-10556`, `supabase/migrations/20261111172839_baseline_1_schema.sql:20855-20873`
 - **Evidence:** storesWithDocumentWork() returns up to 50 stores that have a paid order of the last 120 days with no invoice, with no 'order by' and no note of why the order waits. The job then calls commerce.issue_waiting_invoices and commerce.issue_missing_credit_notes for each. Stats: 9,909 calls each, 132 s and 35 s (13.3 ms and 3.5 ms a call), and no invoice came of them: the same stores come back on every run. The SQL function already calls issue_missing_credit_notes itself (line 10553), so the job's second call repeats it. The function issues only orders whose reason is 'invoice_failed', which commerce.waiting_invoices() (line 20862-20870) gives only when invoice_eligibility() is 'ok' and invoice_readiness() is 'ready'; a store waiting for its seller's details is asked again all the same.

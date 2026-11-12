@@ -2,7 +2,7 @@
 
 Tests, CI and the build (`README.md` beside this file), part of `docs/audits/bloat-review-2026-11.md`.
 
-- **Kind:** no check. **Priority:** P1. **Effort:** S. **Confidence:** medium. **Step:** 2.26. **The owner's choice.**
+- **Kind:** no check. **Priority:** P1. **Effort:** S. **Confidence:** medium. **Step:** 2.43. **The owner's choice.**
 - **Second check:** corrected.
 - **Where:** `CLAUDE.md:12`, `README.md:57`, `docs/capacity.md:97`, `.github/workflows/ci.yml:40-42`, `.github/workflows/ci.yml:266-269`, `.github/workflows/ci.yml:297-305`, `package.json:11-12`, `docs/audits/code-review-2026-11.md:43`, `docs/audits/code-review-2026-11.md:45`
 - **Evidence:** CLAUDE.md:12 asks for lint, the type check and the tests before every push. Written and measured times: the unit run 5 min 34 s in a sandbox; the type check 183 s in this machine's build; lint about 3 minutes by my one-in-five sample (TC-12). The gate before the deploy runs lint, the type check and 6 smoke files (package.json:12); the full unit suite runs beside the deploy and does not hold it. There is no script for running only what a change touches, though Vitest 5 has `--changed <ref>` and `related`. By the import graph a change to one source file selects a median of 1 unit test file, 108 at the 90th percentile and 651 at most (money.ts); 84 directory-reading tests import nothing and must always run (verified report).

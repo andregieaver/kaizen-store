@@ -2,7 +2,7 @@
 
 What the server does for an admin navigation (`README.md` beside this file), part of `docs/audits/bloat-review-2026-11.md`.
 
-- **Kind:** eager. **Priority:** P0. **Effort:** S. **Confidence:** high. **Step:** 0.14.
+- **Kind:** eager. **Priority:** P0. **Effort:** S. **Confidence:** high. **Step:** 0.17.
 - **Second check:** confirmed.
 - **Where:** `src/lib/admin-map.ts:1461-1479`, `src/lib/admin-map.ts:1375-1377`, `src/lib/permissions.ts:116-124`, `src/lib/permissions.ts:139-142`, `src/lib/store-nav.ts:388-401`, `src/lib/store-nav.ts:432-462`, `src/app/admin/(gated)/[store]/layout.tsx:82`, `src/app/admin/(gated)/[store]/layout.tsx:91-92`, `src/app/admin/(gated)/[store]/settings/page.tsx:21`, `src/app/admin/(gated)/[store]/website/page.tsx:21`, `src/server/owner-assistant.ts:362`
 - **Evidence:** matchPath() filters the 416-page table and sorts the 264 store pages on every call, and the sort runs a regex twice per comparison (pageParams). The layout calls storeTabs() and storeAreas(); each runs storeSections(), which asks canOpenPath() -> permissionOfPath() -> matchPath() for all 110 menu items. My own run in Node 22: 220 lookups for 110 distinct paths and 125 ms per build with every feature on. The skeptic measured 121 to 125 ms (every feature), 101 to 112 ms (shop only), 60 ms (a website), 243 ms (a store that is not open: two lookups per item, layout.tsx:82), 0.46 to 0.53 ms per matchPath() call of which the filter and sort are 0.46 ms, and 0.1 ms for the whole build once the lookup is memoised by path. The answer depends only on the code and the member's keys. The shell is rendered on a hard load, after every save that calls refresh() (599 sites) and on every router.refresh(), not on a soft navigation.

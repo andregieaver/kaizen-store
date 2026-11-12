@@ -2,7 +2,7 @@
 
 The written rules and the agents' context (`README.md` beside this file), part of `docs/audits/bloat-review-2026-11.md`.
 
-- **Kind:** duplicate. **Priority:** P2. **Effort:** S. **Confidence:** medium. **Step:** 0.28.
+- **Kind:** duplicate. **Priority:** P2. **Effort:** S. **Confidence:** medium. **Step:** 0.41.
 - **Second check:** corrected.
 - **Where:** `CLAUDE.md:365`, `docs/rules/admin/website.md:439-441`, `docs/decisions.md:897`, `docs/combined-listings.md:1-12`, `src/server/product-groups.ts:14-18`, `src/lib/store-features.ts:15-30`, `docs/rules/admin/platform.md:229`, `docs/store-features.md:10-22`, `docs/rules/admin/commerce.md:272`, `docs/rules/admin/commerce.md:488`, `docs/rules/admin/website.md:152`, `docs/rules/admin/website.md:252`, `docs/rules/admin/website.md:469`
 - **Evidence:** Combined listings, built on 11 November, is told in a CLAUDE.md line, a rule (with its title three times), a decision row (1.8 KB), a feature doc, the server file's header and the table's comment. The texts are rewritten, not pasted: the skeptic measured 11% shared 5-word runs on average over 18 features, so no test can hold them equal. What can be checked is whether they are true. Of 3,145 distinct code names cited in docs/rules, 5 no longer exist: CustomFieldsView (commerce.md:272; the code has CustomFieldView), freeUnitsFor() (commerce.md:488; freeUnits), revertGrids() (website.md:152), TemplatesPreview (website.md:252 and CLAUDE.md:309) and modalPanelStyle() (website.md:469; modalPanelClass). One copied list has drifted: the code has 14 store features (store-features.ts:15-30), the rule lists 11 (platform.md:229) and the feature doc's table 12 (store-features.md:10-22; no gift_cards or reviews).

@@ -2,7 +2,7 @@
 
 Server functions: size, cold start, per-request overhead (`README.md` beside this file), part of `docs/audits/bloat-review-2026-11.md`.
 
-- **Kind:** eager. **Priority:** P0. **Effort:** S. **Confidence:** high. **Step:** 0.3.
+- **Kind:** eager. **Priority:** P0. **Effort:** S. **Confidence:** high. **Step:** 0.4.
 - **Second check:** confirmed.
 - **Where:** `src/app/api/visit/route.ts:3`, `src/server/chat-route.ts:7-12`, `src/server/chat-route.ts:34-38`, `src/lib/same-site.ts:6-14`, `src/app/admin/(gated)/[store]/customers/[customerId]/export/route.test.ts:9`
 - **Evidence:** The beacon needs analytics-visits.ts (144 files on my graph). It also imports sameSite from src/server/chat-route.ts, which only re-exports it from src/lib/same-site.ts (a pure function of nine lines) and itself imports the chat agent, the AI client, the shop and support, and through them the cycle. 60 non-test files import chat-route.ts: 39 take only sameSite, 16 only fail and sameSite (counted from the import clauses). Re-measured: /api/visit loads 118 chunks (10.91 MB) and starts in 933 to 945 ms with 77.6 MB of heap and sharp's native binary; its trace is 449 files and 47.3 MB. Ten handlers enter the cycle through this one import: /api/visit, /api/visit/touch, /api/visit/speed, /api/visit/speed/own, /api/docs/feedback and five admin export routes.

@@ -2,7 +2,7 @@
 
 Styles (`README.md` beside this file), part of `docs/audits/bloat-review-2026-11.md`.
 
-- **Kind:** dead. **Priority:** P2. **Effort:** S. **Confidence:** high. **Step:** 1.2.
+- **Kind:** dead. **Priority:** P2. **Effort:** S. **Confidence:** high. **Step:** 0.35.
 - **Second check:** confirmed.
 - **Where:** `src/app/globals.css:1`, `src/app/globals.css:7`, `src/app/globals.css:9`, `docs/build-memory.md:34`, `docs/decisions.md:719`
 - **Evidence:** globals.css:6-9 points Tailwind at all of src except src/data, and at supabase/migrations/*.sql. The planner compiled the sheet with and without the noise, with the project's own Tailwind: leaving out **/*.test.ts, **/*.test.tsx, src/test, src/lib/messages, src/lib/admin-messages, src/db and the SQL takes the scan from 5,931 files and 71,891 candidates to 3,984 files and 45,347, and the sheet from 1,750 classes to 1,740. The 10 lost are words in tests: order-1038, order-1042, col-1, row-1, row-2, m-1, sepia, block-1, md:mr-0, lg:ml-auto (436 B). The four migration files (4.0 MB) hold no class attribute (the verified report's regex; the planner's rg for className finds none). The SQL line dates from D378 (docs/decisions.md:719), a caution when the scan was first scoped; CLAUDE.md's own rule says the @source lines point at code, never at data. No test pins the lines.

@@ -2,7 +2,7 @@
 
 Prefetching: what the router asks for unasked (`README.md` beside this file), part of `docs/audits/bloat-review-2026-11.md`.
 
-- **Kind:** eager. **Priority:** P2. **Effort:** S. **Confidence:** medium. **Step:** 2.3.
+- **Kind:** eager. **Priority:** P2. **Effort:** S. **Confidence:** medium. **Step:** 2.6.
 - **Second check:** confirmed.
 - **Where:** `src/components/menu-view.tsx:101,109-118,131,142-146,167`, `node_modules/next/dist/client/components/links.js:95-97,199-216`
 - **Evidence:** The panels under a menu link are hidden with 'invisible ... opacity-0' and stay laid out (menu-view.tsx:131, 167). Next counts a link as in view when its box meets the viewport plus 200 px, by intersection ratio alone (links.js:95-97, 213). The skeptic's browser test (work/pf2/io.mjs): a link in a visibility:hidden panel counts as in view; one in a closed <details>, a hidden part or display:none does not. No menu in the local test database has sub-links, so this is shown by the code and the browser test, not on a real page.

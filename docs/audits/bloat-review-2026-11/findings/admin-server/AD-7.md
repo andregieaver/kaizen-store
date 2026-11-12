@@ -2,7 +2,7 @@
 
 What the server does for an admin navigation (`README.md` beside this file), part of `docs/audits/bloat-review-2026-11.md`.
 
-- **Kind:** oversize. **Priority:** P0. **Effort:** S. **Confidence:** high. **Step:** 0.15.
+- **Kind:** oversize. **Priority:** P0. **Effort:** S. **Confidence:** high. **Step:** 0.19.
 - **Second check:** corrected.
 - **Where:** `src/app/admin/(gated)/[store]/products/page.tsx:90-96`, `src/app/admin/(gated)/[store]/products/page.tsx:105-106`, `src/app/admin/(gated)/[store]/products/page.tsx:115`, `src/server/products.ts:126-157`, `src/server/products.ts:198-200`, `src/server/vat-categories.ts:44-52`, `src/server/unit-price-gaps.ts:61-91`
 - **Evidence:** For a member who may edit, the list calls getEditorContext(): 10 statements in one batch (economic operators, two location reads, terms, the VAT matrix, booking staff, places, hosts, layouts, VAT categories), then 3 more one after another while the object is built (the store's AI provider, shipping profiles, market price rules; lines 198-200). The page uses terms and three fields of markets that are already in the cached store (lines 105-106). ratesNow() calls commerce.vat_rate() for every country and category and the result is dropped. productsNeedingMeasure() returns titles, categories (a recursive query) and SKUs for every active product that passes commerce.unit_price_required(), a function call per product, while the default view uses only the count (line 115).

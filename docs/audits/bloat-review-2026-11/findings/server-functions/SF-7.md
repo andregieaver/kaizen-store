@@ -2,7 +2,7 @@
 
 Server functions: size, cold start, per-request overhead (`README.md` beside this file), part of `docs/audits/bloat-review-2026-11.md`.
 
-- **Kind:** no check. **Priority:** P0. **Effort:** S. **Confidence:** high. **Step:** 1.5.
+- **Kind:** no check. **Priority:** P0. **Effort:** S. **Confidence:** high. **Step:** 1.8.
 - **Second check:** confirmed.
 - **Where:** `docs/performance.md:37`, `src/lib/storefront-bundle.scan.test.ts`, `src/lib/pay-routes.graph.test.ts:13-60`, `src/server/ratchet.scan.test.ts`, `next.config.ts:67-69`, `.github/workflows/ci.yml:152`, `docs/audits/code-review-2026-11.md:129`, `docs/audits/code-review-2026-11.md:532`
 - **Evidence:** The browser's scripts have a budget test (storefront-bundle.scan.test.ts) and unchecked reads have a ratchet. One import-graph test exists, src/lib/pay-routes.graph.test.ts, and it checks only that the pay routes reach no forbidden module, not how much anything loads. I searched the 44 scan tests of src/lib and src/server and ci.yml for nft, cycle, circular and .next/server: nothing counts a server entry's imports, its cycle, its trace or its cold load. So the cycle reached 229 files, one re-export put the beacon in it (SF-4), and a comment in next.config.ts:67-69 accepts that every route carries the taxonomy. A file-level graph is a sound basis for a test: the verified report matched it against the build's chunk source maps (1,294 against 1,306 files for the beacon, 54 against 54 for /api/health), and in this pass the files six handlers import only lazily were all absent from their start chunks. Rebuilding the graph of 4,136 files takes about 5 s.

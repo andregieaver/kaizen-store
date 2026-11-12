@@ -8,19 +8,19 @@ Part of `docs/audits/bloat-review-2026-11.md`, on commit 0bd814c. Read by one re
 
 | ID | Finding | Kind | Priority | Effort | Step |
 |---|---|---|---|---|---|
-| [PL-3](PL-3.md) ✓ | The language, currency and country links prefetch whole front pages; a language or currency press never opens the one it fetched | eager | P0 | S | 0.10 |
-| [PL-4](PL-4.md) ✓ | Kaizena Flow's own pages download the admin's sign-in scripts for every visitor | eager | P0 | S | 0.10 |
-| [PL-7](PL-7.md) ✓ | Every page of every store asks the server for a wishlist almost no visitor has | eager | P0 | S | 0.12 |
-| [PL-8](PL-8.md) ✓ | Stock and Add to cart on tiles: off by default, yet every view of a product grid pays a server call and three queries | eager | P0 | S | 0.12 |
-| [PL-11](PL-11.md) ✓ | Every open admin tab asks for AI manager notices each minute, with three queries for one number | eager | P0 | S | 0.14 |
-| [PL-13](PL-13.md) ✓ | No budget watches a document, its payload, an action's answer, an admin page's requests or what most pages ask for after load | no check | P0 | S | 1.2 |
-| [PL-14](PL-14.md) | A search results page asks the server for suggestions nobody typed for | eager | P0 | S | 0.12 |
-| [PL-1](PL-1.md) ✓ | The admin's message catalogues travel as props in every document and with each page opened | oversize | P1 | M | 2.14 |
-| [PL-2](PL-2.md) ✓ | Every storefront page carries the whole layout twice, and renders its live parts twice per request, for a 404 it is not showing | duplicate | P1 | M | 2.1 |
-| [PL-5](PL-5.md) ✓ | Prefetching runs per link because partialPrefetching is unset: 11 to 50 requests after a storefront load, 23 to 46 in the admin | eager | P1 | M | 2.4 |
-| [PL-9](PL-9.md) ✓ | A store in an AI-translated language will carry the whole interface catalogue in every document | oversize | P1 | S | 0.7 |
-| [PL-10](PL-10.md) ✓ | Shoppers load the admin's common words, the consent catalogue and the filter dialog on every page | eager | P1 | S | 0.13 |
-| [PL-6](PL-6.md) ✓ | A listing sends its product grid twice, and a category asks the database again for the list it already drew | duplicate | P2 | M | 2.7 |
+| [PL-3](PL-3.md) ✓ | The language, currency and country links prefetch whole front pages; a language or currency press never opens the one it fetched | eager | P0 | S | 0.12 |
+| [PL-4](PL-4.md) ✓ | Kaizena Flow's own pages download the admin's sign-in scripts for every visitor | eager | P0 | S | 0.12 |
+| [PL-7](PL-7.md) ✓ | Every page of every store asks the server for a wishlist almost no visitor has | eager | P0 | S | 0.15 |
+| [PL-8](PL-8.md) ✓ | Stock and Add to cart on tiles: off by default, yet every view of a product grid pays a server call and three queries | eager | P0 | S | 0.15 |
+| [PL-11](PL-11.md) ✓ | Every open admin tab asks for AI manager notices each minute, with three queries for one number | eager | P0 | S | 2.34 |
+| [PL-13](PL-13.md) ✓ | No budget watches a document, its payload, an action's answer, an admin page's requests or what most pages ask for after load | no check | P0 | S | 1.3 |
+| [PL-14](PL-14.md) | A search results page asks the server for suggestions nobody typed for | eager | P0 | S | 0.15 |
+| [PL-1](PL-1.md) ✓ | The admin's message catalogues travel as props in every document and with each page opened | oversize | P1 | M | 2.27 |
+| [PL-2](PL-2.md) ✓ | Every storefront page carries the whole layout twice, and renders its live parts twice per request, for a 404 it is not showing | duplicate | P1 | M | 2.2 |
+| [PL-5](PL-5.md) ✓ | Prefetching runs per link because partialPrefetching is unset: 11 to 50 requests after a storefront load, 23 to 46 in the admin | eager | P1 | M | 2.8 |
+| [PL-9](PL-9.md) ✓ | A store in an AI-translated language will carry the whole interface catalogue in every document | oversize | P1 | S | 0.8 |
+| [PL-10](PL-10.md) ✓ | Shoppers load the admin's common words, the consent catalogue and the filter dialog on every page | eager | P1 | S | 0.16 |
+| [PL-6](PL-6.md) ✓ | A listing sends its product grid twice, and a category asks the database again for the list it already drew | duplicate | P2 | M | 2.12 |
 | [PL-12](PL-12.md) ✓ | The default icon is a 26 KB .ico revalidated on every visit | oversize | P3 | S | tolerated |
 
 ## Measured

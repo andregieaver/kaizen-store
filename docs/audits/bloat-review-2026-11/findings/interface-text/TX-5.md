@@ -2,7 +2,7 @@
 
 Interface text (`README.md` beside this file), part of `docs/audits/bloat-review-2026-11.md`.
 
-- **Kind:** eager. **Priority:** P0. **Effort:** S. **Confidence:** high. **Step:** 0.13.
+- **Kind:** eager. **Priority:** P0. **Effort:** S. **Confidence:** high. **Step:** 0.16.
 - **Second check:** corrected.
 - **Where:** `src/lib/cookie-consent.ts:100`, `src/lib/cookie-consent.ts:156-756`, `src/lib/cookie-consent.ts:756-800`, `src/components/consent/consent-manager.tsx:10`, `src/components/consent/consent-manager.tsx:230`, `src/components/touch-keeper.tsx:5`, `src/components/ab/ab-assign.tsx:5`, `src/lib/cookie-scan.ts:4`, `src/server/site-cookies.ts:9`, `src/lib/storefront-bundle.scan.test.ts:16`, `docs/rules/storefront.md:617-620`
 - **Evidence:** cookie-consent.ts (800 lines) holds the small helpers the browser needs and KNOWN_COOKIES: 38 cookies, each with a purpose in en, nb, sv and da. Nine modules in client graphs import the file for its helpers and the table comes with them. Bundled alone the module is 26,573 bytes minified / 7,376 gzip; the purposes are 18,394 / 5,309 of that as JSON. The browser does read the table: consent-manager.tsx:230 matches each cookie's name against the patterns to delete a withdrawn category's cookies. It needs pattern and category, never a purpose: all 38 patterns with their category are 2,171 bytes / 484 gzip. In the build, a Swedish and a Danish cookie purpose are in the first-load chunks of 97 of the 111 routes outside the admin (57 of the 58 storefront routes) and of 96 admin routes; on the store's home 6% of that chunk ran (verified report).

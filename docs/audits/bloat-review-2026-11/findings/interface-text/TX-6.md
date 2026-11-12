@@ -2,7 +2,7 @@
 
 Interface text (`README.md` beside this file), part of `docs/audits/bloat-review-2026-11.md`.
 
-- **Kind:** eager. **Priority:** P3. **Effort:** S. **Confidence:** high. **Step:** 0.7.
+- **Kind:** eager. **Priority:** P3. **Effort:** S. **Confidence:** high. **Step:** 0.8.
 - **Second check:** corrected.
 - **Where:** `src/instrumentation.ts:6-10`, `src/server/ui-text.ts:31`, `src/server/ui-text.ts:57-62`, `src/server/ui-text.ts:92-99`, `src/server/ui-text.ts:106-116`, `src/server/ui-text.ts:127-129`, `src/app/s/[store]/[market]/layout.tsx:131`, `docs/rules/storefront.md:69-71`, `node_modules/next/dist/docs/01-app/03-api-reference/03-file-conventions/instrumentation.md:18`, `node_modules/next/dist/docs/01-app/01-getting-started/08-caching.md:329-333`, `evidence/prod-db-stats.md:87`
 - **Evidence:** The statement's caller is refresh() in ui-text.ts:57-62. instrumentation.ts awaits startUi() when an instance starts (Next: register must complete before requests are taken), and startUi() then runs refresh() every 60 s for the instance's life (lines 106-116). It is not cached because it is the cache check: each instance keeps the languages in its own memory so the synchronous t() never waits, and nothing tells an instance that a language changed. Production: 278,393 calls in 78 days, 2.5 a minute. The answer to the owner's question is yes: the table is empty because no store sells in an AI-translated language yet. The finding does not need it to be empty: the check runs per instance per minute whatever the instance serves.

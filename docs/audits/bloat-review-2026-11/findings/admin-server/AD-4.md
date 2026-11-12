@@ -2,7 +2,7 @@
 
 What the server does for an admin navigation (`README.md` beside this file), part of `docs/audits/bloat-review-2026-11.md`.
 
-- **Kind:** eager. **Priority:** P1. **Effort:** S. **Confidence:** high. **Step:** 2.18.
+- **Kind:** eager. **Priority:** P1. **Effort:** S. **Confidence:** high. **Step:** 2.32.
 - **Second check:** confirmed.
 - **Where:** `src/app/admin/(gated)/[store]/layout.tsx:60-88`, `src/app/admin/(gated)/[store]/layout.tsx:68-73`, `src/app/admin/(gated)/[store]/layout.tsx:151`, `src/app/admin/(gated)/layout.tsx:22-26`, `src/components/admin/admin-shell-parts.tsx:52`, `src/server/connect.ts:257-279`, `src/server/connect.ts:539-546`, `src/server/store-trial.ts:63-70`, `docs/rules/admin/commerce.md:62-65`, `docs/decisions.md:31`, `docs/decisions.md:34`
 - **Evidence:** The layout awaits the member, then the account's stores (used at top level for one footer link, line 151), then the support count, then the starter (starter stores only), then the trial pause, each after the last; the account menu then awaits the Kaizen Life link with no Suspense. A top-level await in a layout holds the whole segment, children included, and the only boundary above is the gate's, so the person sees the waiting screen until all are done. On every render the layout also schedules ensureTestAccount() and ensureStorePaymentMethods() with after(): one statement each, and a Stripe API call per render while a Kaizen-made test account is not yet active (connect.ts:270-275). The second looks for payment methods added to the platform, which changes only at a deploy; checkout runs the same check.

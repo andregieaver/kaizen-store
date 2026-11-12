@@ -8,22 +8,22 @@ Part of `docs/audits/bloat-review-2026-11.md`, on commit 0bd814c. Read by one re
 
 | ID | Finding | Kind | Priority | Effort | Step |
 |---|---|---|---|---|---|
-| [CR-4](CR-4.md) ✓ | AI upkeep re-reads whole catalogues, sites and libraries every five minutes to learn nothing changed | eager | P0 | M | 0.21 |
-| [CR-5](CR-5.md) ✓ | pg_cron's own run log is never pruned and is 77% of the database | dead | P0 | S | 0.20 |
+| [CR-4](CR-4.md) ✓ | AI upkeep re-reads whole catalogues, sites and libraries every five minutes to learn nothing changed | eager | P0 | M | 0.28 |
+| [CR-5](CR-5.md) ✓ | pg_cron's own run log is never pruned and is 77% of the database | dead | P0 | S | 0.25 |
 | [CR-1](CR-1.md) ✓ | Nine routes are called every minute whether or not anything waits | eager | P1 | M | 3.1 |
-| [CR-2](CR-2.md) ✓ | The dispatcher runs all 83 jobs every five minutes: one cadence for everything, one ledger write per job, five connections | eager | P1 | M | 3.2 |
-| [CR-3](CR-3.md) ✓ | The marketing and autopilot minute routes: 28 idle statements a minute now, and per-store, per-order work every minute once a feature is on | eager | P1 | M | 3.1 |
-| [CR-6](CR-6.md) ✓ | The cookie scan's due check reads every site every minute without a usable index, and failing sites are retried hourly ahead of healthy ones | eager | P1 | S | 0.18 |
-| [CR-9](CR-9.md) ✓ | The invoice job re-asks the same waiting stores every five minutes, with no back-off and no order | eager | P1 | S | 0.22 |
-| [CR-14](CR-14.md) ✓ | Nothing limits or measures scheduled work, so each feature adds a poll | no check | P1 | S | 1.6 |
-| [CR-15](CR-15.md) | The listings' check hashes every product on the platform every five minutes, and a listing the AI cannot answer for is asked again every run at the head of the queue | eager | P1 | S | 0.22 |
+| [CR-2](CR-2.md) ✓ | The dispatcher runs all 83 jobs every five minutes: one cadence for everything, one ledger write per job, five connections | eager | P1 | M | 3.3 |
+| [CR-3](CR-3.md) ✓ | The marketing and autopilot minute routes: 28 idle statements a minute now, and per-store, per-order work every minute once a feature is on | eager | P1 | M | 3.2 |
+| [CR-6](CR-6.md) ✓ | The cookie scan's due check reads every site every minute without a usable index, and failing sites are retried hourly ahead of healthy ones | eager | P1 | S | 0.23 |
+| [CR-9](CR-9.md) ✓ | The invoice job re-asks the same waiting stores every five minutes, with no back-off and no order | eager | P1 | S | 0.30 |
+| [CR-14](CR-14.md) ✓ | Nothing limits or measures scheduled work, so each feature adds a poll | no check | P1 | S | 3.3 |
+| [CR-15](CR-15.md) | The listings' check hashes every product on the platform every five minutes, and a listing the AI cannot answer for is asked again every run at the head of the queue | eager | P1 | S | 0.29 |
 | [CR-7](CR-7.md) ✓ | The theme-shots route rebuilds its whole wanted list every minute | eager | P2 | S | 3.1 |
-| [CR-8](CR-8.md) ✓ | Kaizena Flow's own payouts are read from Stripe every five minutes | eager | P2 | S | 3.2 |
-| [CR-10](CR-10.md) ✓ | The docs search index is rewritten row by row on every docs change | oversize | P2 | S | 3.3 |
-| [CR-11](CR-11.md) ✓ | An unscheduled PDF route is deployed with Chromium, and a 'finished' backfill is still fed by every copied AI picture | dead | P2 | S | 3.4 |
-| [CR-12](CR-12.md) ✓ | The daily job is scheduled twice, at the same minute | duplicate | P2 | S | 0.25 |
-| [CR-16](CR-16.md) | Six more five-minute jobs re-check every store that has the feature on, and the ledger's order never rotates | eager | P2 | M | 3.4 |
-| [CR-17](CR-17.md) | The daily job runs about 40 functions in one request under one ledger row, so a prune that fails is not seen | no check | P2 | M | 3.3 |
+| [CR-8](CR-8.md) ✓ | Kaizena Flow's own payouts are read from Stripe every five minutes | eager | P2 | S | 3.3 |
+| [CR-10](CR-10.md) ✓ | The docs search index is rewritten row by row on every docs change | oversize | P2 | S | 3.5 |
+| [CR-11](CR-11.md) ✓ | An unscheduled PDF route is deployed with Chromium, and a 'finished' backfill is still fed by every copied AI picture | dead | P2 | S | 3.7 |
+| [CR-12](CR-12.md) ✓ | The daily job is scheduled twice, at the same minute | duplicate | P2 | S | 1.22 |
+| [CR-16](CR-16.md) | Six more five-minute jobs re-check every store that has the feature on, and the ledger's order never rotates | eager | P2 | M | 3.6 |
+| [CR-17](CR-17.md) | The daily job runs about 40 functions in one request under one ledger row, so a prune that fails is not seen | no check | P2 | M | 3.4 |
 | [CR-13](CR-13.md) ✓ | Status checks are kept raw for 91 days though the page shows one bar a day | oversize | P3 | S | tolerated |
 
 ## Refuted by the second reviewer

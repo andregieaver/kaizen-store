@@ -8,20 +8,20 @@ Part of `docs/audits/bloat-review-2026-11.md`, on commit 0bd814c. Read by one re
 
 | ID | Finding | Kind | Priority | Effort | Step |
 |---|---|---|---|---|---|
-| [AC-1](AC-1.md) ✓ | Three stray imports put Supabase, zod and the builder's English on every admin screen | eager | P0 | S | 0.8 |
-| [AC-2](AC-2.md) ✓ | 26 screens load an editor they never draw, because lists, previews and editors share one views file | eager | P0 | S | 0.9 |
-| [AC-3](AC-3.md) ✓ | Order, customer and deal screens load the rich text editor and the builder's schema for custom fields, whether or not the store has any | eager | P0 | S | 0.9 |
-| [AC-7](AC-7.md) ✓ | The Work invoice screen ships the whole admin catalogue, both languages, in one 1.7 MB chunk | oversize | P0 | S | 0.9 |
+| [AC-1](AC-1.md) ✓ | Three stray imports put Supabase, zod and the builder's English on every admin screen | eager | P0 | S | 0.9 |
+| [AC-2](AC-2.md) ✓ | 26 screens load an editor they never draw, because lists, previews and editors share one views file | eager | P0 | S | 0.10 |
+| [AC-3](AC-3.md) ✓ | Order, customer and deal screens load the rich text editor and the builder's schema for custom fields, whether or not the store has any | eager | P0 | S | 0.10 |
+| [AC-7](AC-7.md) ✓ | The Work invoice screen ships the whole admin catalogue, both languages, in one 1.7 MB chunk | oversize | P0 | S | 0.11 |
 | [AC-10](AC-10.md) ✓ | The script budget covers 9 of 449 admin routes and none of the HTML | no check | P0 | S | 1.2 |
-| [AC-11](AC-11.md) ✓ | The import guard that keeps zod and whole catalogues out of shoppers' scripts leaves the admin out | no check | P0 | S | 1.3 |
-| [AC-4](AC-4.md) ✓ | Pages hand whole text areas to the browser where their parts read a few branches; one area on every screen is read by nothing | oversize | P1 | M | 2.14 |
-| [AC-5](AC-5.md) ✓ | The page builder loads everything at once: 3.3 MB of script before the first paint | eager | P1 | M | 2.15 |
-| [AC-6](AC-6.md) ✓ | The builder and the draft order editor load the storefront's text in all four languages | oversize | P1 | M | 2.15 |
-| [AC-8](AC-8.md) ✓ | The AI manager's chat downloads every tool definition, the admin map and the Norwegian page names to label a tool call | oversize | P1 | S | 0.9 |
-| [AC-12](AC-12.md) ✓ | Every navigation link in view is prefetched one by one: 23 to 46 background requests per admin screen | eager | P1 | S | 0.10 |
-| [AC-14](AC-14.md) | The Products list sends every product of the store to the browser: no paging, about 0.9 KB a product | oversize | P1 | M | 0.15 |
-| [AC-9](AC-9.md) ✓ | English text for 23 areas is still compiled into client scripts and then handed down again in the HTML | duplicate | P2 | M | 2.13 |
-| [AC-13](AC-13.md) | The notice badge asks the server every minute from every open admin tab: four database statements a time, one of them thrown away | eager | P2 | S | 0.14 |
+| [AC-11](AC-11.md) ✓ | The import guard that keeps zod and whole catalogues out of shoppers' scripts leaves the admin out | no check | P0 | S | 1.4 |
+| [AC-4](AC-4.md) ✓ | Pages hand whole text areas to the browser where their parts read a few branches; one area on every screen is read by nothing | oversize | P1 | M | 2.27 |
+| [AC-5](AC-5.md) ✓ | The page builder loads everything at once: 3.3 MB of script before the first paint | eager | P1 | M | 2.29 |
+| [AC-6](AC-6.md) ✓ | The builder and the draft order editor load the storefront's text in all four languages | oversize | P1 | M | 2.29 |
+| [AC-8](AC-8.md) ✓ | The AI manager's chat downloads every tool definition, the admin map and the Norwegian page names to label a tool call | oversize | P1 | S | 0.11 |
+| [AC-12](AC-12.md) ✓ | Every navigation link in view is prefetched one by one: 23 to 46 background requests per admin screen | eager | P1 | S | 0.13 |
+| [AC-14](AC-14.md) | The Products list sends every product of the store to the browser: no paging, about 0.9 KB a product | oversize | P1 | M | 0.19 |
+| [AC-9](AC-9.md) ✓ | English text for 23 areas is still compiled into client scripts and then handed down again in the HTML | duplicate | P2 | M | 2.26 |
+| [AC-13](AC-13.md) | The notice badge asks the server every minute from every open admin tab: four database statements a time, one of them thrown away | eager | P2 | S | 2.34 |
 
 ## Measured
 

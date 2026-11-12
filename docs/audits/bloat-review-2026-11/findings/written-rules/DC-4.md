@@ -2,7 +2,7 @@
 
 The written rules and the agents' context (`README.md` beside this file), part of `docs/audits/bloat-review-2026-11.md`.
 
-- **Kind:** oversize. **Priority:** P0. **Effort:** S. **Confidence:** high. **Step:** 0.27.
+- **Kind:** oversize. **Priority:** P0. **Effort:** S. **Confidence:** high. **Step:** 0.40.
 - **Second check:** corrected.
 - **Where:** `docs/rules/admin/marketing.md:202`, `docs/rules/admin/website.md:302`, `docs/rules/admin/website.md:439-441`, `docs/rules/admin/platform.md:229`, `docs/rules/admin/README.md:8-13`, `docs/rules/storefront.md:9-12`, `CLAUDE.md:97`, `CLAUDE.md:135`
 - **Evidence:** CLAUDE.md:97 and :135 tell agents to read a rule before changing its part. The seven rule files are 49 to 163 KB. 156 lines are over 500 characters and hold 291,981 of 564,581 bytes (52%): website.md 62 lines (110,926 bytes), commerce.md 35 (73,887), marketing.md 18, ai.md 20, platform.md 12, integrations.md 6, storefront.md 3. The longest is 7,436 characters (marketing.md:202). The Grep tool prints no text for any of them (tested on decisions.md, same limit). storefront.md shows the working shape: a bullet wrapped into short continuation lines (lines 9-12). 151 of 295 rules have a body of one line. 292 rules open by repeating their heading's words (29,043 bytes). The README's counts say 241 admin rules; the files hold 262.

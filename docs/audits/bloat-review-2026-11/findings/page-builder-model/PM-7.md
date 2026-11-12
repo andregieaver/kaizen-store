@@ -2,7 +2,7 @@
 
 The page builder's model and a built page's render (`README.md` beside this file), part of `docs/audits/bloat-review-2026-11.md`.
 
-- **Kind:** duplicate. **Priority:** P3. **Effort:** S. **Confidence:** medium. **Step:** 2.1.
+- **Kind:** duplicate. **Priority:** P3. **Effort:** S. **Confidence:** medium. **Step:** 2.3.
 - **Second check:** corrected.
 - **Where:** `src/components/page-article.tsx:197`, `src/components/page-article.tsx:223`, `src/components/part-styles.tsx:40`, `src/components/store-theme.tsx:31`, `src/components/site-parts.tsx:345`, `src/server/theme-elements.ts:10`, `src/server/store-links.ts:15`, `src/server/breakpoints.ts:12`
 - **Evidence:** RowView draws PartStyles for its one row (page-article.tsx:223), and a store's PartStyles draws the breakpoint sheet again (part-styles.tsx:40-48), though the layout already drew it (store-theme.tsx:31). React keeps one copy in the HTML head, but the payload carries the text each time: in the captured one-row page the 1,760 B sheet is three text rows (the layout's, the layout's second copy from PM-1, and the row's). Generated for the Orbit home (6 rows): per-row part sheets sum to 4,982 B against 3,071 B as one sheet, plus 6 times 1,760 B of breakpoint sheet. Each store row also awaits themeLayersFor, storeLinkBase and breakpointsFor (page-article.tsx:198, part-styles.tsx:42): six `use cache` calls a row.

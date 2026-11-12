@@ -8,14 +8,14 @@ Part of `docs/audits/bloat-review-2026-11.md`, on commit 0bd814c. Read by one re
 
 | ID | Finding | Kind | Priority | Effort | Step |
 |---|---|---|---|---|---|
-| [CS-7](CS-7.md) ✓ | Shop pages use admin-only colour roles that have no value outside the admin | no check | P0 | S | 0.24 |
-| [CS-9](CS-9.md) | The admin's form, print and editing parts are drawn on public pages without the colours they read: the main button on Kaizena Flow's status and report pages has no fill | no check | P0 | S | 0.24 |
-| [CS-8](CS-8.md) ✓ | Kaizena Flow's own pages fetch the admin's stylesheet and two admin answers after load | eager | P0 | S | 0.10 |
-| [CS-3](CS-3.md) ✓ | Nothing holds the stylesheet's size, its sources or the style text in a document | no check | P0 | S | 1.2 |
-| [CS-1](CS-1.md) ✓ | Shoppers download the admin's classes: one stylesheet serves every surface | eager | P1 | M | 2.6 |
-| [CS-4](CS-4.md) ✓ | The fixed breakpoint sheet is drawn again with every row | duplicate | P1 | S | 2.1 |
-| [CS-6](CS-6.md) ✓ | Tailwind reads tests, SQL and message files: 37% of its candidates, 10 junk classes | dead | P2 | S | 1.2 |
-| [CS-5](CS-5.md) ✓ | Layout-level style sheets are carried three times in each store document | duplicate | P3 | S | 2.1 |
+| [CS-7](CS-7.md) ✓ | Shop pages use admin-only colour roles that have no value outside the admin | no check | P0 | S | 0.34 |
+| [CS-9](CS-9.md) | The admin's form, print and editing parts are drawn on public pages without the colours they read: the main button on Kaizena Flow's status and report pages has no fill | no check | P0 | S | 0.34 |
+| [CS-8](CS-8.md) ✓ | Kaizena Flow's own pages fetch the admin's stylesheet and two admin answers after load | eager | P0 | S | 0.12 |
+| [CS-3](CS-3.md) ✓ | Nothing holds the stylesheet's size, its sources or the style text in a document | no check | P0 | S | 1.3 |
+| [CS-1](CS-1.md) ✓ | Shoppers download the admin's classes: one stylesheet serves every surface | eager | P1 | M | 2.11 |
+| [CS-4](CS-4.md) ✓ | The fixed breakpoint sheet is drawn again with every row | duplicate | P1 | S | 2.3 |
+| [CS-6](CS-6.md) ✓ | Tailwind reads tests, SQL and message files: 37% of its candidates, 10 junk classes | dead | P2 | S | 0.35 |
+| [CS-5](CS-5.md) ✓ | Layout-level style sheets are carried three times in each store document | duplicate | P3 | S | 2.2 |
 | [CS-2](CS-2.md) ✓ | A store with no builder motion still downloads motion.css | eager | P3 | M | tolerated |
 
 ## Refuted by the second reviewer

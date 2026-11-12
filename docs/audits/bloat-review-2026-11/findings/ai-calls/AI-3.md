@@ -2,7 +2,7 @@
 
 What every AI call carries (`README.md` beside this file), part of `docs/audits/bloat-review-2026-11.md`.
 
-- **Kind:** eager. **Priority:** P1. **Effort:** M. **Confidence:** medium. **Step:** 2.23.
+- **Kind:** eager. **Priority:** P1. **Effort:** M. **Confidence:** medium. **Step:** 2.38.
 - **Second check:** corrected.
 - **Where:** `src/server/owner-assistant.ts:409-415`, `src/server/owner-assistant.ts:743-750`, `src/server/owner-assistant.ts:751-768`, `src/server/ai.ts:676-702`, `src/lib/ai-usage.ts:92-101`, `src/server/ai-usage.ts:66-85`, `src/server/ai-price-sql.ts:16-36`, `docs/audits/code-review-2026-11.md:249`
 - **Evidence:** The request body carries no cache marker (0 lines in src for cache_control and five related names; rg run here). readTokens() reads only prompt_tokens and completion_tokens (ai-usage.ts:92-101), commerce.ai_usage has no column for cached tokens and commerce.ai_model_prices no price for them, so even when a provider discounts a repeated prefix the store's allowance is charged in full and nobody can see whether caching works. Inside one turn the prefix is already stable: the system prompt is built once (owner-assistant.ts:751-768) and the tool list changes only when load_tools runs, which re-sorts it in table order so new tools land in the middle (line 740 filters the table; line 746 puts new areas first). Across turns the prompt's second line carries the time to the minute (line 409, 415), 182 characters in, ahead of about 14,500 characters that do not change. The minute cannot simply go: follow_up takes its time as 'YYYY-MM-DD HH:MM in the time zone of your instructions' (src/lib/manager-tools.ts:96).

@@ -2,7 +2,7 @@
 
 Tests, CI and the build (`README.md` beside this file), part of `docs/audits/bloat-review-2026-11.md`.
 
-- **Kind:** duplicate. **Priority:** P2. **Effort:** M. **Confidence:** medium. **Step:** 3.11.
+- **Kind:** duplicate. **Priority:** P2. **Effort:** M. **Confidence:** medium. **Step:** 3.18.
 - **Second check:** confirmed.
 - **Where:** `.github/workflows/ci.yml:116-166`, `.github/workflows/ci.yml:170-210`, `.github/workflows/ci.yml:215-258`, `.github/workflows/ci.yml:338-347`, `playwright.config.ts:9`, `playwright.config.ts:36-48`, `e2e/smoke.spec.ts:146-150`, `src/lib/ci-playwright.scan.test.ts:29-40`
 - **Evidence:** e2e, hosts and signed-in each install, seed and run `pnpm build` (ci.yml:149-152, 203-206, 246-249). The hosts job then runs 4 spec files with 25 tests (ci.yml:208). The e2e and signed-in builds differ only in NEXT_PUBLIC_SUPABASE_URL and its key (ci.yml:236-237); E2E_SIGNED_IN is read by playwright.config.ts:9 alone, not by the app. Playwright's config sets no shards and no workers; 573 and 208 tests run in two unsharded jobs. Several unsigned specs test the admin 'without a session' and one accepts a health answer of 200 or 503 because Supabase is not configured in that build (e2e/smoke.spec.ts:148).

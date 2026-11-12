@@ -2,7 +2,7 @@
 
 What a page sends: document, payload and requests (`README.md` beside this file), part of `docs/audits/bloat-review-2026-11.md`.
 
-- **Kind:** eager. **Priority:** P0. **Effort:** S. **Confidence:** high. **Step:** 0.12.
+- **Kind:** eager. **Priority:** P0. **Effort:** S. **Confidence:** high. **Step:** 0.15.
 - **Second check:** confirmed.
 - **Where:** `src/lib/shop-tiles.ts:21`, `src/lib/shop-tiles.ts:35`, `src/components/content-grid-section.tsx:37`, `src/components/content-grid-section.tsx:139`, `src/components/content-grid.tsx:222`, `src/components/tile-shop.tsx:21`, `src/components/tile-shop.tsx:62`, `src/app/api/shop/tiles/route.ts:14`, `src/server/shop-tiles.ts:27`, `src/server/product-settings.ts:14`, `docs/rules/admin/website.md:728`
 - **Evidence:** DEFAULT_PRODUCT_SETTINGS has both switches off (shop-tiles.ts:21), but a grid's ask defaults to 'store' for both (tileAsk, line 35), so every product tile draws a TileShop island (content-grid.tsx:222) that asks /api/shop/tiles to learn the settings with the facts. The route reads the settings, then the products with their variants, then the stock, whatever the settings say (shop-tiles.ts:27-52). In routes.json the home and the listing each made one GET after load (1,193 bytes decoded, no-store); a headless load in this pass shows the same call with a cart. The island then draws nothing, because both switches are off (tile-shop.tsx:62-66). The design is deliberate and two days old (D557): product-settings.ts:14 says the settings are read per request, never cached, so a change shows on the next view without refreshing the catalogue. This is the owner's clarification exactly: a store that never switches the feature on pays for it on every view.

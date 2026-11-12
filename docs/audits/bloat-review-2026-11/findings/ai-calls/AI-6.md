@@ -2,7 +2,7 @@
 
 What every AI call carries (`README.md` beside this file), part of `docs/audits/bloat-review-2026-11.md`.
 
-- **Kind:** eager. **Priority:** P1. **Effort:** S. **Confidence:** high. **Step:** 2.21. **The owner's choice.**
+- **Kind:** eager. **Priority:** P1. **Effort:** S. **Confidence:** high. **Step:** 2.36. **The owner's choice.**
 - **Second check:** corrected.
 - **Where:** `src/lib/manager-tools.ts:19-160`, `src/lib/tool-budget.ts:66-68`, `src/lib/tool-budget.ts:115-124`, `src/server/owner-assistant.ts:438`, `src/server/owner-assistant.ts:471`, `src/server/owner-assistant.ts:726-730`
 - **Evidence:** The manager's own 26 tools are always sent and never cut (tool-budget.ts:66-68; owner-assistant.ts:726-730). 12 are the autopilot's (make_autopilot_plan 3,508 characters, revise_autopilot_plan 3,055, set_goal 1,868 and nine more: 12,417), 3 are follow-ups (1,708) and 2 are for saving skills (1,259): 15,384 characters a round, for every store and every question; the other 9 are 4,944 (my bundle, the same split as the skeptic's). The prompt also tells the model to use follow_up and save_skill (owner-assistant.ts:438, 471).

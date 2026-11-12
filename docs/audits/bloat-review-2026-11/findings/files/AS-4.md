@@ -2,7 +2,7 @@
 
 Files that ship or are stored (`README.md` beside this file), part of `docs/audits/bloat-review-2026-11.md`.
 
-- **Kind:** dead. **Priority:** P0. **Effort:** S. **Confidence:** high. **Step:** 0.23.
+- **Kind:** dead. **Priority:** P0. **Effort:** S. **Confidence:** high. **Step:** 0.32.
 - **Second check:** confirmed.
 - **Where:** `src/components/search-box.tsx:144`, `src/lib/picture-sizes.ts:6`, `src/server/media.ts:93`, `src/server/search.ts:376`, `src/server/catalog.ts:298`, `next.config.ts:41`, `.next/images-manifest.json`, `node_modules/next/dist/server/next-server.js:193`, `node_modules/next/dist/shared/lib/get-img-props.js:242`, `node_modules/next/dist/docs/01-app/03-api-reference/02-components/image.md:392`
 - **Evidence:** Ten next/image tags; nine carry unoptimized, as picture-sizes.ts:6 says they must; the one in the search box does not (re-counted with rg). Stored pictures have absolute Supabase Storage addresses (media.ts:93); next.config.ts has no images key, and the build's manifest shows remotePatterns [] and unoptimized false. Measured on the built app in this pass: /_next/image?url=<a Supabase Storage picture address>&w=48&q=75 answers 400 with '"url" parameter is not allowed'. The same endpoint with /demo/themes/orbit/stars.webp and w=64 answers 200 with an image: the resizing service is live although no picture is meant to use it. Next leaves .svg sources alone (get-img-props.js:245) and the demo products' pictures are SVG files, so neither the e2e search test nor the team's demo stores show the fault. With images.unoptimized set, Next treats every Image as unoptimized (get-img-props.js:242) and answers /_next/image with 404 (next-server.js:193).

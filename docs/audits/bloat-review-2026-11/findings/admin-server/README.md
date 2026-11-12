@@ -8,19 +8,19 @@ Part of `docs/audits/bloat-review-2026-11.md`, on commit 0bd814c. Read by one re
 
 | ID | Finding | Kind | Priority | Effort | Step |
 |---|---|---|---|---|---|
-| [AD-1](AD-1.md) ✓ | The store menu is rebuilt with 220 slow permission lookups on every shell render | eager | P0 | S | 0.14 |
-| [AD-7](AD-7.md) ✓ | The products list reads the whole editor context and a per-product check it does not need | oversize | P0 | S | 0.15 |
-| [AD-9](AD-9.md) ✓ | Progress polls redraw the whole admin, and a notice poll runs in every visible owner tab | eager | P0 | S | 0.14 |
-| [AD-12](AD-12.md) ✓ | Nothing counts what a screen costs the server, so the Home grew to 30 statements unseen | no check | P0 | M | 1.6 |
-| [AD-13](AD-13.md) | At least 39 saves draw the whole route twice: the action redraws it, then the browser asks again | duplicate | P0 | S | 0.14 |
-| [AD-2](AD-2.md) ✓ | The store Home runs 29 or more statements before it shows anything, one of them for nothing | eager | P1 | M | 2.18 |
-| [AD-3](AD-3.md) ✓ | Every admin request from a session without two-step calls Supabase Auth | eager | P1 | S | 2.18 |
-| [AD-4](AD-4.md) ✓ | The store shell reads one thing after another, and checks Stripe set-up on every render | eager | P1 | S | 2.18 |
-| [AD-5](AD-5.md) ✓ | Every save and poll re-sends 51 to 66 KB of unchanged shell words and menu | oversize | P1 | M | 2.14 |
-| [AD-10](AD-10.md) ✓ | Three lists load everything; the customers list also groups every order before it cuts to 100 | oversize | P1 | M | 0.15 |
-| [AD-14](AD-14.md) | The pages and articles lists read and check every page's whole content, twice, to show a title and a state | oversize | P1 | M | 2.19 |
+| [AD-1](AD-1.md) ✓ | The store menu is rebuilt with 220 slow permission lookups on every shell render | eager | P0 | S | 0.17 |
+| [AD-7](AD-7.md) ✓ | The products list reads the whole editor context and a per-product check it does not need | oversize | P0 | S | 0.19 |
+| [AD-9](AD-9.md) ✓ | Progress polls redraw the whole admin, and a notice poll runs in every visible owner tab | eager | P0 | S | 0.17 |
+| [AD-12](AD-12.md) ✓ | Nothing counts what a screen costs the server, so the Home grew to 30 statements unseen | no check | P0 | M | 1.9 |
+| [AD-13](AD-13.md) | At least 39 saves draw the whole route twice: the action redraws it, then the browser asks again | duplicate | P0 | S | 0.18 |
+| [AD-2](AD-2.md) ✓ | The store Home runs 29 or more statements before it shows anything, one of them for nothing | eager | P1 | M | 2.32 |
+| [AD-3](AD-3.md) ✓ | Every admin request from a session without two-step calls Supabase Auth | eager | P1 | S | 2.33 |
+| [AD-4](AD-4.md) ✓ | The store shell reads one thing after another, and checks Stripe set-up on every render | eager | P1 | S | 2.32 |
+| [AD-5](AD-5.md) ✓ | Every save and poll re-sends 51 to 66 KB of unchanged shell words and menu | oversize | P1 | M | 2.28 |
+| [AD-10](AD-10.md) ✓ | Three lists load everything; the customers list also groups every order before it cuts to 100 | oversize | P1 | M | 0.19 |
+| [AD-14](AD-14.md) | The pages and articles lists read and check every page's whole content, twice, to show a title and a state | oversize | P1 | M | 2.17 |
 | [AD-6](AD-6.md) ✓ | The platform Home holds its first paint for 18 statements and reads whole lists to show a number | oversize | P2 | S | 4.4 |
-| [AD-8](AD-8.md) ✓ | An account's memberships are read two to four times per request, in four shapes | duplicate | P2 | M | 2.18 |
+| [AD-8](AD-8.md) ✓ | An account's memberships are read two to four times per request, in four shapes | duplicate | P2 | M | 2.32 |
 | [AD-11](AD-11.md) ✓ | The orders list re-reads store facts it already holds and waits in a row for the count | duplicate | P2 | S | 4.4 |
 | [AD-15](AD-15.md) | The Payments settings page reads one table three or four times and waits on Stripe and Mollie before it paints | eager | P2 | S | 4.4 |
 

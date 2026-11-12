@@ -2,7 +2,7 @@
 
 What the server does for a storefront request (`README.md` beside this file), part of `docs/audits/bloat-review-2026-11.md`.
 
-- **Kind:** eager. **Priority:** P2. **Effort:** S. **Confidence:** medium. **Step:** 2.11.
+- **Kind:** eager. **Priority:** P2. **Effort:** S. **Confidence:** medium. **Step:** 2.20.
 - **Second check:** corrected.
 - **Where:** `src/proxy.ts:55-59`, `src/proxy.ts:71`, `src/proxy.ts:109`, `src/server/redirect-resolve.ts:203-231`, `src/server/redirect-live.ts:186-199`, `src/server/experiments.ts:59-68`, `src/server/holding.ts:17-36`, `src/server/house-switch.ts:30-43`, `node_modules/next/dist/docs/01-app/01-getting-started/16-proxy.md:29`
 - **Evidence:** The matcher takes every page on every host (proxy.ts:55-59). A store's facts are kept 10 s per instance (FACTS_MS, redirect-resolve.ts:203) and so is the site switch. Seen again in my measurements: the first /wishlist/saved call after a pause read stores, markets, store_currencies and platform_settings; the next one read nothing. remembered() does not share a read in flight (redirect-live.ts:192-199: it awaits load() and only then stores the value), so requests that arrive together after the memory lapsed each run it; a page load sends 12 to 52 requests through the proxy (routes.json). The same helper exists three times (redirect-live.ts:192, experiments.ts:62, holding.ts:17-36). Next's guide: 'Proxy is not intended for slow data fetching'.

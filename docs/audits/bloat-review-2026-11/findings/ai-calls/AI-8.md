@@ -2,7 +2,7 @@
 
 What every AI call carries (`README.md` beside this file), part of `docs/audits/bloat-review-2026-11.md`.
 
-- **Kind:** oversize. **Priority:** P2. **Effort:** M. **Confidence:** medium. **Step:** 2.22.
+- **Kind:** oversize. **Priority:** P2. **Effort:** M. **Confidence:** medium. **Step:** 2.37.
 - **Second check:** corrected.
 - **Where:** `src/lib/owner-tools.ts:2076-2082`, `src/lib/owner-tools.ts:375-384`, `src/server/owner-assistant.ts:137`, `src/server/owner-assistant.ts:827`, `src/lib/mcp-catalogue.ts:9-15`, `docs/consolidation.md:80-83`
 - **Evidence:** update_product is 11,908 characters and create_product 11,305; both are in today's default set and in any round on a products page. Of 154,036 schema characters over all store tools, 25,804 are length, range and pattern bounds that zod checks again on the server (readToolInput(), owner-tools.ts:2085-2088). In today's default set the string bounds are 7,563 characters (the skeptic's measure); in the lean sets of AI-1 I measure 4,006 (Home), 5,562 (orders) and 7,654 (products). Each gated tool gets a 161-character sentence added (owner-tools.ts:2080); 35 gated tools are in today's default set (5,635 characters), 10 in a lean orders or products round (1,610), none on Home. consolidation.md records that the eval passed only once the sentence was on the tool. Tool results are cut blind at 12,000 characters (owner-assistant.ts:827: a slice of the JSON text, so a cut result is broken JSON with no word that it was cut), and every result stays in the messages for all later rounds of the turn. toolDefinition() also feeds the owner MCP's catalogue, whose rule is that the tools' inputs stay as they are (mcp-catalogue.ts:9-15).

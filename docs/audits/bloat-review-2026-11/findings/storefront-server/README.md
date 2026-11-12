@@ -8,21 +8,21 @@ Part of `docs/audits/bloat-review-2026-11.md`, on commit 0bd814c. Read by one re
 
 | ID | Finding | Kind | Priority | Effort | Step |
 |---|---|---|---|---|---|
-| [SD-10](SD-10.md) ✓ | The store is looked up by its id again and again | duplicate | P0 | S | 0.16 |
-| [SD-11](SD-11.md) ✓ | The same shopper facts are read several times in one request | duplicate | P0 | S | 0.17 |
-| [SD-14](SD-14.md) | Product tiles ask the server for stock on every page load, also in stores that show none | eager | P0 | S | 0.12 |
-| [SD-15](SD-15.md) | Every page load calls a function to learn that the wishlist is empty | eager | P0 | S | 0.12 |
-| [SD-16](SD-16.md) | One owner saving AI settings expires the cached pages of every store | eager | P0 | S | 0.16 |
-| [SD-1](SD-1.md) ✓ | The proxy and every storefront page load about half of the server's code at cold start | eager | P1 | M | 2.11 |
-| [SD-2](SD-2.md) ✓ | A product page asks the database about 18 times per view; one answer changes per view | eager | P1 | M | 2.8 |
-| [SD-8](SD-8.md) ✓ | Tagged reads still expire by the clock: 1 hour for 71 of them, 15 minutes for the home page | eager | P1 | M | 2.9 |
-| [SD-13](SD-13.md) ✓ | The browser's side has budgets; the server's side has none that can see these costs | no check | P1 | M | 1.7 |
-| [SD-3](SD-3.md) ✓ | Every deploy empties the caches and nothing warms them | no check | P2 | S | 0.2 |
-| [SD-4](SD-4.md) ✓ | Every published page is read whole to pick one page or a few titles | oversize | P2 | M | 0.19 |
-| [SD-5](SD-5.md) ✓ | A cold page waits on reads one after another before its first byte | eager | P2 | S | 2.10 |
-| [SD-6](SD-6.md) ✓ | The proxy reads the database before a page view whenever its 10-second memory has lapsed | eager | P2 | S | 2.11 |
-| [SD-7](SD-7.md) ✓ | Every instance loads the interface-text tools and reads the translations table before its first request, then polls it each minute | eager | P2 | M | 0.7 |
-| [SD-9](SD-9.md) ✓ | A store's pages ask about every optional feature, whether that store uses it or not | eager | P3 | S | 2.10 |
+| [SD-10](SD-10.md) ✓ | The store is looked up by its id again and again | duplicate | P0 | S | 0.20 |
+| [SD-11](SD-11.md) ✓ | The same shopper facts are read several times in one request | duplicate | P0 | S | 0.22 |
+| [SD-14](SD-14.md) | Product tiles ask the server for stock on every page load, also in stores that show none | eager | P0 | S | 0.15 |
+| [SD-15](SD-15.md) | Every page load calls a function to learn that the wishlist is empty | eager | P0 | S | 0.15 |
+| [SD-16](SD-16.md) | One owner saving AI settings expires the cached pages of every store | eager | P0 | S | 0.21 |
+| [SD-1](SD-1.md) ✓ | The proxy and every storefront page load about half of the server's code at cold start | eager | P1 | M | 2.20 |
+| [SD-2](SD-2.md) ✓ | A product page asks the database about 18 times per view; one answer changes per view | eager | P1 | M | 2.13 |
+| [SD-8](SD-8.md) ✓ | Tagged reads still expire by the clock: 1 hour for 71 of them, 15 minutes for the home page | eager | P1 | M | 2.15 |
+| [SD-13](SD-13.md) ✓ | The browser's side has budgets; the server's side has none that can see these costs | no check | P1 | M | 1.11 |
+| [SD-3](SD-3.md) ✓ | Every deploy empties the caches and nothing warms them | no check | P2 | S | 0.3 |
+| [SD-4](SD-4.md) ✓ | Every published page is read whole to pick one page or a few titles | oversize | P2 | M | 0.24 |
+| [SD-5](SD-5.md) ✓ | A cold page waits on reads one after another before its first byte | eager | P2 | S | 2.18 |
+| [SD-6](SD-6.md) ✓ | The proxy reads the database before a page view whenever its 10-second memory has lapsed | eager | P2 | S | 2.20 |
+| [SD-7](SD-7.md) ✓ | Every instance loads the interface-text tools and reads the translations table before its first request, then polls it each minute | eager | P2 | M | 0.8 |
+| [SD-9](SD-9.md) ✓ | A store's pages ask about every optional feature, whether that store uses it or not | eager | P3 | S | 2.18 |
 | [SD-12](SD-12.md) ✓ | Whole rows and documents are read for one fact | oversize | P3 | S | tolerated |
 
 ## Measured

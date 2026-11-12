@@ -8,19 +8,19 @@ Part of `docs/audits/bloat-review-2026-11.md`, on commit 0bd814c. Read by one re
 
 | ID | Finding | Kind | Priority | Effort | Step |
 |---|---|---|---|---|---|
-| [DQ-2](DQ-2.md) ✓ | Every published page is read whole to find one page or a few titles | oversize | P0 | M | 0.19 |
-| [DQ-4](DQ-4.md) ✓ | Each request for an AI connection sums the store's whole month of AI usage | eager | P0 | S | 0.16 |
-| [DQ-6](DQ-6.md) ✓ | The knowledge job reads every page whole every five minutes and re-cuts pages that have no text, forever | eager | P0 | S | 0.21 |
-| [DQ-8](DQ-8.md) ✓ | "is not distinct from" on store_id keeps the index from serving the hottest reads, so they scan all stores' rows | oversize | P0 | S | 0.18 |
-| [DQ-9](DQ-9.md) ✓ | The store's slug is looked up by id again and again: the most-called statement in production | duplicate | P0 | S | 0.16 |
-| [DQ-11](DQ-11.md) ✓ | Nothing counts queries: no budget per page or per tick, and production's statement statistics are not part of any routine | no check | P0 | M | 1.6 |
+| [DQ-2](DQ-2.md) ✓ | Every published page is read whole to find one page or a few titles | oversize | P0 | M | 0.24 |
+| [DQ-4](DQ-4.md) ✓ | Each request for an AI connection sums the store's whole month of AI usage | eager | P0 | S | 0.21 |
+| [DQ-6](DQ-6.md) ✓ | The knowledge job reads every page whole every five minutes and re-cuts pages that have no text, forever | eager | P0 | S | 0.27 |
+| [DQ-8](DQ-8.md) ✓ | "is not distinct from" on store_id keeps the index from serving the hottest reads, so they scan all stores' rows | oversize | P0 | S | 0.23 |
+| [DQ-9](DQ-9.md) ✓ | The store's slug is looked up by id again and again: the most-called statement in production | duplicate | P0 | S | 0.20 |
+| [DQ-11](DQ-11.md) ✓ | Nothing counts queries: no budget per page or per tick, and production's statement statistics are not part of any routine | no check | P0 | M | 1.10 |
 | [DQ-1](DQ-1.md) ✓ | Nine routes are called every minute whether or not there is work, and one of their questions grows with the number of stores | eager | P1 | M | 3.1 |
-| [DQ-3](DQ-3.md) ✓ | "Where is this picture used" scans every page's text for each picture, and the job re-checks every picture daily | eager | P1 | M | 0.21 |
-| [DQ-5](DQ-5.md) ✓ | The five-minute dispatcher starts 78 jobs at once on 5 connections, and several redo work on every tick that grows with the number of stores | eager | P1 | M | 3.2 |
-| [DQ-7](DQ-7.md) ✓ | A page's frame asks about 20 questions each time its cache is cold, some of them one per feature for every store, and the cache is cold far more often than the code assumes | eager | P1 | M | 2.10 |
-| [DQ-15](DQ-15.md) | Five document jobs find their due work by re-checking every store's recent orders, invoices and refunds on each tick | eager | P1 | M | 3.4 |
+| [DQ-3](DQ-3.md) ✓ | "Where is this picture used" scans every page's text for each picture, and the job re-checks every picture daily | eager | P1 | M | 0.28 |
+| [DQ-5](DQ-5.md) ✓ | The five-minute dispatcher starts 78 jobs at once on 5 connections, and several redo work on every tick that grows with the number of stores | eager | P1 | M | 3.3 |
+| [DQ-7](DQ-7.md) ✓ | A page's frame asks about 20 questions each time its cache is cold, some of them one per feature for every store, and the cache is cold far more often than the code assumes | eager | P1 | M | 2.18 |
+| [DQ-15](DQ-15.md) | Five document jobs find their due work by re-checking every store's recent orders, invoices and refunds on each tick | eager | P1 | M | 3.6 |
 | [DQ-10](DQ-10.md) ✓ | Some reads fetch whole JSON documents where a field, a card or a count is needed | oversize | P2 | M | 4.4 |
-| [DQ-12](DQ-12.md) ✓ | Every server instance reads the interface translations before it serves and polls them each minute | eager | P2 | S | 0.7 |
+| [DQ-12](DQ-12.md) ✓ | Every server instance reads the interface translations before it serves and polls them each minute | eager | P2 | S | 0.8 |
 | [DQ-13](DQ-13.md) ✓ | 341 loops hold a database call in their body; the ones that matter are jobs that loop over sites | eager | P2 | M | tolerated |
 | [DQ-14](DQ-14.md) ✓ | 387 list reads have no limit by a heuristic count; a handful read a whole store's documents or samples | oversize | P2 | M | 4.4 |
 | [DQ-16](DQ-16.md) | The catalogue's listing reads call a VAT function and an alt-text function once per product row, and Postgres cannot fold them into the query | oversize | P2 | S | 4.4 |

@@ -2,7 +2,7 @@
 
 Interface text (`README.md` beside this file), part of `docs/audits/bloat-review-2026-11.md`.
 
-- **Kind:** eager. **Priority:** P0. **Effort:** S. **Confidence:** high. **Step:** 0.8.
+- **Kind:** eager. **Priority:** P0. **Effort:** S. **Confidence:** high. **Step:** 0.9.
 - **Second check:** confirmed.
 - **Where:** `src/components/admin/shortcut-sheet.tsx:19`, `src/components/admin/admin-frame.tsx:95`, `src/components/admin/responsive-edit.tsx:20`, `src/components/admin/responsive-edit.tsx:100`, `src/components/admin/responsive-edit.tsx:306`, `src/components/admin/typography-fields.tsx:276`, `src/components/admin/responsive-edit.test.ts:103`, `src/components/admin/admin-catalogues.scan.test.ts:31`, `docs/audits/psi-followups.md:482`, `.next/diagnostics/route-bundle-stats.json`
 - **Evidence:** The admin frame draws the shortcut sheet, which imports typingIn from responsive-edit.tsx (shortcut-sheet.tsx:19). That file imports builderEn by value (line 20) only as the default of sizeNote(source, size, words = builderEn) at line 100. All 4 call sites outside tests pass words (responsive-edit.tsx:138 and 152, typography-fields.tsx:276 and 290); one test calls it without (responsive-edit.test.ts:103). In the build, chunk 0pmozty218j-z.js holds the builder's English and nothing else: 71,360 characters, 23,880 bytes gzip. I found it in the first-load chunks of 423 of the 449 admin routes in route-bundle-stats.json; the 26 without it are sign-in, print and preview pages.

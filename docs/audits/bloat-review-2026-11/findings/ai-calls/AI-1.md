@@ -2,7 +2,7 @@
 
 What every AI call carries (`README.md` beside this file), part of `docs/audits/bloat-review-2026-11.md`.
 
-- **Kind:** eager. **Priority:** P1. **Effort:** M. **Confidence:** high. **Step:** 2.21. **The owner's choice.**
+- **Kind:** eager. **Priority:** P1. **Effort:** M. **Confidence:** high. **Step:** 2.36. **The owner's choice.**
 - **Second check:** confirmed.
 - **Where:** `src/lib/tool-budget.ts:15`, `src/lib/tool-budget.ts:70-96`, `src/server/owner-assistant.ts:716-750`, `src/server/owner-assistant.ts:793`, `src/server/ai.ts:693-702`, `src/server/agent-eval.ts:146-153`, `docs/audits/code-review-2026-11.md:120`, `docs/audits/code-review-2026-11.md:549`
 - **Evidence:** chooseTools() fills the budget to the provider's cap: core tools, tools used before, the page's area, then every other area in a fixed order (tool-budget.ts:84-88). Run on a shop-only store it offers 234 store tools and sends 97 plus the manager's 26 and load_tools: 146,889 characters. The system prompt is 14,772. A round is about 161,700 characters, 91% tools. streamWithTools() gets the list on every round but a forced last one (owner-assistant.ts:793). I ran the skeptic's bundle again here and the numbers hold. My own draw of a lean choice (core, used, asked for, the page's area, no fill) gives 33,810 characters of tools on Home, 62,242 on an orders page, 65,146 on marketing, 81,807 on website, 86,581 on products and 88,609 on a settings page: the page's area can itself be large (settings 55 tools, website 41, marketing 32 to 40, products 28 to 30 with two tools of 11,000 characters each).

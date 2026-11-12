@@ -2,7 +2,7 @@
 
 Caching and rendering (`README.md` beside this file), part of `docs/audits/bloat-review-2026-11.md`.
 
-- **Kind:** eager. **Priority:** P1. **Effort:** M. **Confidence:** medium. **Step:** 0.11.
+- **Kind:** eager. **Priority:** P1. **Effort:** M. **Confidence:** medium. **Step:** 0.14.
 - **Second check:** confirmed.
 - **Where:** `src/app/s/[store]/[market]/@drawer/[...rest]/page.tsx:2`, `src/app/s/[store]/[market]/@drawer/default.tsx:2`, `src/components/product-card.tsx:74`, `.next/server/app/s/demo/no/p/demo-bordlampe.segments`, `evidence/prefetch-storm.md`, `a scratch script`, `a scratch script`, `a scratch script`
 - **Evidence:** Reproduced again in this pass on the local production build, and narrowed. /s/demo/no/category/belysning: 1,586 RSC requests in 4 s after load, 1,517 of them for one link (/s/demo/no/p/demo-bordlampe), each asking for the segment /s/$d$store/$d$market/@drawer/(__SLOT__)/$c$rest/__PAGE__ (the slot name is base64 in the header). The search page: 1,089 in 3 s, 1,067 for /s/demo/no/search. Each answer is right: 200, the 1,435-byte segment file that the build wrote (it exists under .next/server/app/s/demo/no/p/demo-bordlampe.segments), Cache-Control s-maxage=3600, x-nextjs-cache HIT. The page itself is quiet meanwhile: 0 history.pushState or replaceState calls, 0 DOM mutations and 0 new IntersectionObserver observations in the 4 s (loop.mjs). So the loop is inside the client router's prefetch scheduling, not a re-render, a navigation or a wrong answer. /s/demo/no/products and a tag page do not loop (48 and 64 requests in all). The measuring pass saw production on stores' own hosts not loop; production was not checked in this review.

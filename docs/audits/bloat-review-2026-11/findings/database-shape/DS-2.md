@@ -2,7 +2,7 @@
 
 The database's shape (`README.md` beside this file), part of `docs/audits/bloat-review-2026-11.md`.
 
-- **Kind:** eager. **Priority:** P2. **Effort:** S. **Confidence:** medium. **Step:** 0.7.
+- **Kind:** eager. **Priority:** P2. **Effort:** S. **Confidence:** medium. **Step:** 0.8.
 - **Second check:** corrected.
 - **Where:** `src/instrumentation.ts:6-9`, `src/server/ui-text.ts:19-31`, `src/server/ui-text.ts:57-71`, `src/server/ui-text.ts:106-115`, `src/server/ui-text.ts:207-218`, `src/server/ui-text.ts:314-319`, `docs/decisions.md:122`
 - **Evidence:** register() awaits startUi() (instrumentation.ts:6-9), which runs `select lang, count(*), max(updated_at) from commerce.ui_translations group by lang` before the instance takes requests, then loads each changed language with its own query, one after the other (ui-text.ts:64-71). A timer repeats the group-by every 60 s in each warm instance (:31, :110-112). Production: 278,393 calls in 78 days, the second most-called statement; it is not in the top-time list, so its total is under 17.5 s while the table is empty. The design is deliberate (D111): t() is synchronous and pages never wait on the database for text. Only three statements write the table, all in ui-text.ts (lines 211, 305, 315).

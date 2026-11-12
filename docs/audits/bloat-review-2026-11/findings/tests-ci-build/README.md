@@ -8,20 +8,20 @@ Part of `docs/audits/bloat-review-2026-11.md`, on commit 0bd814c. Read by one re
 
 | ID | Finding | Kind | Priority | Effort | Step |
 |---|---|---|---|---|---|
-| [TC-1](TC-1.md) ✓ | One push type-checks the same commit five times; three of the checks hide inside CI's builds | duplicate | P0 | S | 0.26 |
-| [TC-3](TC-3.md) ✓ | Every unit test file loads all the admin's English first, in a worker of its own; 91% cannot use the English | eager | P0 | S | 0.26 |
-| [TC-5](TC-5.md) ✓ | The 19,614-line Drizzle schema is loaded at run time for a query builder nobody calls | dead | P0 | S | 0.3 |
-| [TC-12](TC-12.md) | Lint reads all 6,213 files on one thread every time, with no cache: about 3 minutes, and it is on the deploy path | eager | P0 | S | 0.26 |
-| [TC-2](TC-2.md) ✓ | 229 server modules import each other in one cycle; 12 import lines close it | eager | P1 | M | 0.5 |
-| [TC-4](TC-4.md) ✓ | The type check is one 8,003-file program: 3 minutes and a 7 GB heap limit, with no single type to blame | oversize | P1 | M | 2.26 |
-| [TC-6](TC-6.md) ✓ | Every push pays the full checks twice: once by the agent, again by CI *(your choice)* | no check | P1 | S | 2.26 |
-| [TC-8](TC-8.md) ✓ | Nothing measures the build, the type check, lint or the test run, and the build is at its limit | no check | P1 | S | 1.12 |
-| [TC-13](TC-13.md) | Each test file that opens the database spends half a second importing Drizzle and the schema, one small module at a time | eager | P1 | S | 0.26 |
-| [TC-7](TC-7.md) ✓ | Three cold builds per push; the hosts job builds the whole app for 25 tests | duplicate | P2 | M | 3.11 |
-| [TC-9](TC-9.md) ✓ | CI keeps nothing between runs except pnpm's store | no check | P2 | S | 2.26 |
+| [TC-1](TC-1.md) ✓ | One push type-checks the same commit five times; three of the checks hide inside CI's builds | duplicate | P0 | S | 0.38 |
+| [TC-3](TC-3.md) ✓ | Every unit test file loads all the admin's English first, in a worker of its own; 91% cannot use the English | eager | P0 | S | 0.39 |
+| [TC-5](TC-5.md) ✓ | The 19,614-line Drizzle schema is loaded at run time for a query builder nobody calls | dead | P0 | S | 0.4 |
+| [TC-12](TC-12.md) | Lint reads all 6,213 files on one thread every time, with no cache: about 3 minutes, and it is on the deploy path | eager | P0 | S | 0.38 |
+| [TC-2](TC-2.md) ✓ | 229 server modules import each other in one cycle; 12 import lines close it | eager | P1 | M | 0.6 |
+| [TC-4](TC-4.md) ✓ | The type check is one 8,003-file program: 3 minutes and a 7 GB heap limit, with no single type to blame | oversize | P1 | M | 2.42 |
+| [TC-6](TC-6.md) ✓ | Every push pays the full checks twice: once by the agent, again by CI *(your choice)* | no check | P1 | S | 2.43 |
+| [TC-8](TC-8.md) ✓ | Nothing measures the build, the type check, lint or the test run, and the build is at its limit | no check | P1 | S | 1.20 |
+| [TC-13](TC-13.md) | Each test file that opens the database spends half a second importing Drizzle and the schema, one small module at a time | eager | P1 | S | 0.39 |
+| [TC-7](TC-7.md) ✓ | Three cold builds per push; the hosts job builds the whole app for 25 tests | duplicate | P2 | M | 3.18 |
+| [TC-9](TC-9.md) ✓ | CI keeps nothing between runs except pnpm's store | no check | P2 | S | 2.42 |
 | [TC-10](TC-10.md) ✓ | 86 test files read the source tree with 67 private walkers; two parse every file | duplicate | P2 | S | 4.3 |
 | [TC-11](TC-11.md) ✓ | The same mocks and store-makers are written out in hundreds of test files | duplicate | P2 | M | 4.3 |
-| [TC-14](TC-14.md) | A push that changes only tests builds and deploys production again | eager | P2 | S | 3.11 |
+| [TC-14](TC-14.md) | A push that changes only tests builds and deploys production again | eager | P2 | S | 3.18 |
 
 ## Measured
 

@@ -2,7 +2,7 @@
 
 Copied code (`README.md` beside this file), part of `docs/audits/bloat-review-2026-11.md`.
 
-- **Kind:** duplicate. **Priority:** P2. **Effort:** S. **Confidence:** high. **Step:** 3.9.
+- **Kind:** duplicate. **Priority:** P2. **Effort:** S. **Confidence:** high. **Step:** 3.15.
 - **Second check:** confirmed.
 - **Where:** `src/server/catalog.ts:297`, `src/server/catalog.ts:315-322`, `src/server/exchanges.ts:511`, `src/server/wishlist-admin.ts:179`, `src/server/reviews.ts:181-190`, `src/server/request-budget.ts:138-151`, `src/server/order-actor.ts:17-29`, `src/server/return-facts.ts:190`
 - **Evidence:** The join that finds a product's title in a language with a fallback to any language is in 33 files and 40 places (second check, multi-line rg; my one-line rg finds 35 in 27 files). Its result is spelled six ways: coalesce(tl.title, tf.title, p.handle) 28 times, coalesce(tl.title, tf.title) 9 times with no fallback to the handle, and four one-offs. `insert into commerce.chat_usage` is written 32 times in 28 files although request-budget.ts wraps the same upsert (:145-151) and 33 files import it. `insert into commerce.order_events` is written 34 times in 23 files beside two helpers: writeOrderEvent (order-actor.ts:17, read) and writeEvent (return-facts.ts:190).

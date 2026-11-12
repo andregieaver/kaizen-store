@@ -2,7 +2,7 @@
 
 Copied code (`README.md` beside this file), part of `docs/audits/bloat-review-2026-11.md`.
 
-- **Kind:** duplicate. **Priority:** P1. **Effort:** M. **Confidence:** medium. **Step:** 3.6. **The owner's choice.**
+- **Kind:** duplicate. **Priority:** P1. **Effort:** M. **Confidence:** medium. **Step:** 3.10. **The owner's choice.**
 - **Second check:** corrected.
 - **Where:** `src/server/platform-workflows.ts:290-378`, `src/server/workflows.ts:363-459`, `src/server/platform-endpoints.ts:154`, `src/server/webhook-endpoints.ts:1`, `src/server/platform-integrations.ts:1`, `src/server/integrations.ts:1`, `src/app/api/cron/integrations/route.ts:25-38`, `src/app/admin/(gated)/platform/integrations/[provider]/page.tsx:1`, `src/app/admin/(gated)/[store]/integrations/[provider]/page.tsx:1`, `src/lib/sql-raw.scan.test.ts:12`, `docs/decisions.md:805`, `docs/decisions.md:855`, `docs/decisions.md:856`
 - **Evidence:** Read side by side: runPlatformWorkflows() (platform-workflows.ts:315-378) and runWorkflows() (workflows.ts:390-459) are the same claim statement, loop, outcome update and 90-day delete with other table names, a join to stores on the store side and another payload reader. Measured with lcs.mjs (lines in runs of five or more): workflows 119, endpoints 84, integrations 65, the two provider pages 108. API tokens and the platform API are not copies (15 and 14). Platform side today: 1,535 server lines and 296 lib lines. The every-minute route runs deliverDue() and deliverPlatformDue(), runWorkflows() and runPlatformWorkflows() (route.ts:28-37). D465, D515 and D516 give the reason for separate platform_* tables (the stores' tables hold store_id not null and every reader filters by it); D516 already shares the editor, checks and words.

@@ -8,17 +8,17 @@ Part of `docs/audits/bloat-review-2026-11.md`, on commit 0bd814c. Read by one re
 
 | ID | Finding | Kind | Priority | Effort | Step |
 |---|---|---|---|---|---|
-| [TX-4](TX-4.md) ✓ | The page builder's whole English catalogue loads on every signed-in admin screen, for a default nobody uses | eager | P0 | S | 0.8 |
-| [TX-5](TX-5.md) ✓ | Every visitor loads the purposes of all known cookies in four languages | eager | P0 | S | 0.13 |
-| [TX-1](TX-1.md) ✓ | Every server instance, and the proxy, evaluates all 134 admin catalogue files and all four storefront languages when it starts | eager | P1 | M | 0.6 |
-| [TX-2](TX-2.md) ✓ | Admin pages hand whole areas of words to the browser in every document | oversize | P1 | M | 2.14 |
-| [TX-3](TX-3.md) ✓ | A store in an AI-translated language would send the whole catalogue of 1,673 texts in every document | oversize | P1 | S | 0.7 |
-| [TX-7](TX-7.md) ✓ | The page builder and the draft-order editor load all four storefront languages | eager | P1 | M | 2.15 |
-| [TX-8](TX-8.md) ✓ | A shopper's scripts carry the admin's shared words, and three browser languages they do not read | eager | P1 | S | 0.13 |
-| [TX-9](TX-9.md) ✓ | Nothing measures where the words go, so each of the leaks above could return | no check | P1 | M | 1.3 |
-| [TX-11](TX-11.md) ✓ | 34 texts that no code reads | dead | P2 | S | 0.25 |
-| [TX-12](TX-12.md) | Every instance start reads every AI-translated language whole, one after another, and builds it before the first request | eager | P2 | S | 0.7 |
-| [TX-6](TX-6.md) ✓ | Every server instance asks the table of AI translations every minute, whether or not it serves such a language | eager | P3 | S | 0.7 |
+| [TX-4](TX-4.md) ✓ | The page builder's whole English catalogue loads on every signed-in admin screen, for a default nobody uses | eager | P0 | S | 0.9 |
+| [TX-5](TX-5.md) ✓ | Every visitor loads the purposes of all known cookies in four languages | eager | P0 | S | 0.16 |
+| [TX-1](TX-1.md) ✓ | Every server instance, and the proxy, evaluates all 134 admin catalogue files and all four storefront languages when it starts | eager | P1 | M | 0.7 |
+| [TX-2](TX-2.md) ✓ | Admin pages hand whole areas of words to the browser in every document | oversize | P1 | M | 2.27 |
+| [TX-3](TX-3.md) ✓ | A store in an AI-translated language would send the whole catalogue of 1,673 texts in every document | oversize | P1 | S | 0.8 |
+| [TX-7](TX-7.md) ✓ | The page builder and the draft-order editor load all four storefront languages | eager | P1 | M | 2.29 |
+| [TX-8](TX-8.md) ✓ | A shopper's scripts carry the admin's shared words, and three browser languages they do not read | eager | P1 | S | 0.16 |
+| [TX-9](TX-9.md) ✓ | Nothing measures where the words go, so each of the leaks above could return | no check | P1 | M | 1.4 |
+| [TX-11](TX-11.md) ✓ | 34 texts that no code reads | dead | P2 | S | 0.36 |
+| [TX-12](TX-12.md) | Every instance start reads every AI-translated language whole, one after another, and builds it before the first request | eager | P2 | S | 0.8 |
+| [TX-6](TX-6.md) ✓ | Every server instance asks the table of AI translations every minute, whether or not it serves such a language | eager | P3 | S | 0.8 |
 | [TX-10](TX-10.md) ✓ | English refusals are kept twice and matched back to their Norwegian by regular expression | duplicate | P3 | M | tolerated |
 
 ## Refuted by the second reviewer

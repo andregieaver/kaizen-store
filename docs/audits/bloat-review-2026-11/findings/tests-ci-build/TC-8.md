@@ -2,7 +2,7 @@
 
 Tests, CI and the build (`README.md` beside this file), part of `docs/audits/bloat-review-2026-11.md`.
 
-- **Kind:** no check. **Priority:** P1. **Effort:** S. **Confidence:** medium. **Step:** 1.12.
+- **Kind:** no check. **Priority:** P1. **Effort:** S. **Confidence:** medium. **Step:** 1.20.
 - **Second check:** corrected.
 - **Where:** `docs/build-memory.md:40-46`, `scripts/next-build.mjs:1-10`, `next.config.ts:79-88`, `node_modules/next/dist/docs/01-app/02-guides/memory-usage.md:122-131`, `node_modules/next/dist/docs/01-app/03-api-reference/05-config/01-next-config-js/enablePrerenderSourceMaps.md:9-41`, `e2e/performance.spec.ts:21-58`, `.github/workflows/ci.yml:55-57`
 - **Evidence:** docs/build-memory.md says the margin on Vercel is about 0.8 GB and was crossed on 11 November while collecting page data with one worker. The build prerendered 850 pages on 27 October and 1,426 here (build.log). This machine's build peaked at 7.61 GB for the whole machine and wrote about 3.9 GB, of which 672 MB is server source maps (verified report). Budgets exist for browser scripts and page weight only (e2e/performance.spec.ts); no CI step records build seconds, peak memory, type-check seconds, lint seconds, unit seconds or how many modules a route reaches. The numbers in this review had to be measured by hand. Next's memory guide names two switches, experimental.serverSourceMaps: false and enablePrerenderSourceMaps: false (default true since 16.3); next.config.ts sets neither.

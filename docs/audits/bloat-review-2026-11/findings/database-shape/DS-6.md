@@ -2,7 +2,7 @@
 
 The database's shape (`README.md` beside this file), part of `docs/audits/bloat-review-2026-11.md`.
 
-- **Kind:** duplicate. **Priority:** P1. **Effort:** L. **Confidence:** medium. **Step:** 3.5. **The owner's choice.**
+- **Kind:** duplicate. **Priority:** P1. **Effort:** L. **Confidence:** medium. **Step:** 3.9. **The owner's choice.**
 - **Second check:** corrected.
 - **Where:** `docs/platform-parity-plan.md:32-35`, `docs/platform-parity-plan.md:112-118`, `docs/platform-parity-plan.md:153-166`, `docs/decisions.md:824`, `src/app/api/cron/integrations/route.ts:28-36`, `src/app/api/cron/cart-reminders/route.ts:266-269`, `src/server/pages.ts:71`
 - **Evidence:** 63 tables allow a null store_id for Kaizena Flow's own rows and 19 platform_* tables exist (catalog of the migrated test database); the parity plan counted 9 twins on 6 November and says why the gap opens: each store feature is built once for stores and again for the platform (docs/platform-parity-plan.md:32-35). The twins double jobs: the every-minute route runs runWorkflows and runPlatformWorkflows, deliverDue and deliverPlatformDue (integrations/route.ts:28-36); the dispatcher runs theme-updates and platform-theme-updates (cart-reminders/route.ts:266-269). The site exists twice: as null-store rows, which serve kaizenaflow.com today, and as a copy in the house store. The switch to serve from the house store is built and left off (D484, docs/decisions.md:824; plan lines 153-166), and step 7 'One copy' is not done. The owner's own rule asks for every store feature on the platform too.
