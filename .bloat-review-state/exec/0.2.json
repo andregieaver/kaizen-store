@@ -1,0 +1,137 @@
+{
+ "id": "0.2",
+ "goal": "Once a day the daily cron route writes a dated reading of production's own statistics into the new platform table commerce.platform_readings (one row per commerce table, one per schema, at most 80 statement rows), kept 90 days.",
+ "why": "Today production's statistics are read by hand and no reading is kept: 0 stored days. After this step there is one reading a day, so step 0.23 and every later fix has a stored 'before' and 'after'.",
+ "read_first": [
+  "docs/ci-migrations.md",
+  "src/app/api/cron/subscription-reminders/route.ts",
+  "src/server/own-speed.ts",
+  "src/server/own-speed.int.test.ts",
+  "src/server/cron-runs.ts",
+  "src/server/typed-rows.ts",
+  "src/lib/personal-data.ts",
+  "docs/audits/bloat-review-2026-11/evidence/production-database.md"
+ ],
+ "depends_on": [],
+ "commits": [
+  {
+   "title": "A daily reading of production's statistics is kept for 90 days (table and writer)",
+   "changes": [
+    {
+     "file": "src/db/schema.ts",
+     "action": "edit",
+     "how": "Directly after the ownSpeedSamples table (search for 'own_speed_samples'), add `export const platformReadings = commerce.table(\"platform_readings\", …)` with these columns, written with the same helpers that table uses: id uuid primary key defaultRandom; day date('day') not null; kind text not null; name text not null; figures jsonb not null; query text (nullable); createdAt: createdAt(). In the third argument add: uniqueIndex(\"platform_readings_day_kind_name_key\").on(t.day, t.kind, t.name) and check(\"platform_readings_kind\", sql`${t.kind} in ('statement', 'table', 'schema')`). Above it write a doc comment: 'One day's reading of Postgres's own statistics (bloat review step 0.2): for kind table, name is a commerce table and figures hold rows, bytes, seq_scan, seq_tup_read, idx_scan, inserted, updated, deleted; for kind schema, name is a schema and figures hold bytes and tables; for kind statement, name is the statement's queryid and figures hold calls, total_ms, mean_ms, rows and top (time, calls or both), with the statement's text, values already stripped by Postgres, cut at 2,000 characters. No person, store or account. Written only by src/server/production-reading.ts, deleted after 90 days.' Add no store_id column: it is a platform table."
+    },
+    {
+     "file": "supabase/migrations/<timestamp>_platform_readings.sql",
+     "action": "create",
+     "how": "Do not write this by hand. Run `pnpm db:generate` after editing schema.ts; it writes this file (create table commerce.platform_readings, its unique index and its check) and prunes the snapshots. Read the file: it must hold only this table. If it holds anything else, stop."
+    },
+    {
+     "file": "supabase/migrations/<timestamp>_platform_readings_rules.sql",
+     "action": "create",
+     "how": "Run `pnpm exec drizzle-kit generate --custom --name platform_readings_rules`, then write one statement in the empty file: `alter table commerce.platform_readings enable row level security;` (every commerce table has row security on and no policy; src/db/commerce.test.ts 'row-level security is enabled on every commerce table' fails without it). Then run `node scripts/prune-snapshots.mjs`."
+    },
+    {
+     "file": "src/lib/personal-data.ts",
+     "action": "edit",
+     "how": "In the object NOT_PERSONAL (it starts near line 307), add after the own_speed_samples entry: platform_readings: \"One day's reading of Postgres's statistics (bloat review step 0.2): table and schema names with row counts, sizes and scan counters, and the texts of the costliest statements with their values already replaced by $1, $2 by Postgres. No person, store or account.\""
+    },
+    {
+     "file": "src/server/production-reading.ts",
+     "action": "create",
+     "how": "Start with `import \"server-only\";` and import sql from drizzle-orm, db from @/db/client, log from ./log, col and typedRows from ./typed-rows. Export `const READING_KEEP_DAYS = 90` and `const READING_STATEMENTS = 40`. Export `async function recordProductionReading(now: Date = new Date()): Promise<{ tables: number; schemas: number; statements: number }>`. It runs inside one db().transaction: (1) `insert into commerce.platform_readings (day, kind, name, figures) select <day>::date, 'table', relname, jsonb_build_object('rows', n_live_tup, 'bytes', pg_total_relation_size(relid), 'seq_scan', seq_scan, 'seq_tup_read', seq_tup_read, 'idx_scan', coalesce(idx_scan, 0), 'inserted', n_tup_ins, 'updated', n_tup_upd, 'deleted', n_tup_del) from pg_stat_user_tables where schemaname = 'commerce' on conflict (day, kind, name) do nothing returning 1`; (2) the same shape for kind 'schema': `select n.nspname, jsonb_build_object('bytes', coalesce(sum(pg_total_relation_size(c.oid)), 0), 'tables', count(*)) from pg_class c join pg_namespace n on n.oid = c.relnamespace where c.relkind in ('r', 'm') and n.nspname not in ('pg_catalog', 'information_schema') and n.nspname not like 'pg_toast%' group by 1`; (3) statements, only where the view can be read: first `select n.nspname as schema from pg_extension e join pg_namespace n on n.oid = e.extnamespace where e.extname = 'pg_stat_statements'` (read through typedRows with { schema: col.text }); when no row comes back, skip step 3 and count 0; when one does, check the name matches /^[a-z_]+$/ and build the view's name with sql.raw(`${schema}.pg_stat_statements`). Then one insert: `with mine as (select s.queryid::text as id, s.calls, s.total_exec_time, s.mean_exec_time, s.rows, left(s.query, 2000) as query from <view> s where s.userid = (select oid from pg_roles where rolname = current_user) and s.queryid is not null), by_time as (select id from mine order by total_exec_time desc limit 40), by_calls as (select id from mine order by calls desc limit 40) insert into commerce.platform_readings (day, kind, name, figures, query) select <day>::date, 'statement', m.id, jsonb_build_object('calls', m.calls, 'total_ms', round(m.total_exec_time::numeric, 1), 'mean_ms', round(m.mean_exec_time::numeric, 3), 'rows', m.rows, 'top', case when m.id in (select id from by_time) and m.id in (select id from by_calls) then 'both' when m.id in (select id from by_time) then 'time' else 'calls' end), m.query from mine m where m.id in (select id from by_time union select id from by_calls) on conflict (day, kind, name) do nothing returning 1`. Wrap step 3 alone in a savepoint (tx.transaction(async (inner) => …)) with try/catch that logs `log(\"warn\", \"production_reading.statements_failed\", {}, error)` and counts 0, so a database where the extension is installed but not loaded still gets its table and schema rows. <day> is now.toISOString().slice(0, 10). The 40 are the constant READING_STATEMENTS passed as a parameter. Return the three counts (rows returned by each insert). Also export `async function pruneProductionReadings(now: Date = new Date()): Promise<number>`: `delete from commerce.platform_readings where day < <day>::date - 90 returning 1`, in try/catch that logs `production_reading.prune_failed` and returns 0, exactly as pruneOwnSpeedSamples() in src/server/own-speed.ts does. No console.error anywhere."
+    },
+    {
+     "file": "src/server/production-reading.int.test.ts",
+     "action": "create",
+     "how": "Copy the frame of src/server/own-speed.int.test.ts (vi.mock of server-only, dynamic import of the module, beforeEach that deletes from commerce.platform_readings, afterAll closeDb). Cases: (a) recordProductionReading(new Date('2026-11-12T03:00:00Z')) writes exactly one 'table' row for each row of `select relname from pg_stat_user_tables where schemaname = 'commerce'` (compare the two sorted name lists), each with figures.bytes a number; (b) it writes a 'schema' row named 'commerce'; (c) the count of 'statement' rows is at most 80, and each has a query of at most 2,000 characters; (d) calling it twice for the same day leaves the same number of rows (on conflict do nothing); (e) pruneProductionReadings(now) deletes a row inserted by hand with day = now minus 91 days and keeps one of now minus 90 days; (f) when `select 1 from pg_extension where extname = 'pg_stat_statements'` returns a row and a read of the view succeeds, at least one statement row exists; otherwise statements is 0 and the function did not throw. Do not create or drop the extension in the test."
+    }
+   ],
+   "checks": [
+    "git add supabase && pnpm db:check: exits 0 (it fails on an unstaged or untracked file under supabase, so stage the two new migrations and the snapshot first)",
+    "pnpm exec vitest run src/db/commerce.test.ts src/db/privacy.test.ts src/db/snapshots.scan.test.ts src/db/migration-safety.scan.test.ts: all pass",
+    "With DATABASE_URL at a database made by `node scripts/db-setup.mjs --seed`: pnpm exec vitest run --config vitest.integration.config.mts src/server/production-reading.int.test.ts: passes",
+    "pnpm lint && pnpm typecheck && pnpm test: each exits 0",
+    "pnpm test:int: exits 0"
+   ]
+  },
+  {
+   "title": "The daily route takes the reading as its own job",
+   "changes": [
+    {
+     "file": "src/app/api/cron/subscription-reminders/route.ts",
+     "action": "edit",
+     "how": "Add `import { pruneProductionReadings, recordProductionReading } from \"@/server/production-reading\";` with the other imports. In run(), directly after the line `const databaseDoor = await tracked(\"daily.database-door\", 86400, () => checkDatabaseDoor());`, add: a comment 'Production's own statistics, one reading a day, kept 90 days (bloat review step 0.2). Its own job, so a failed reading shows on the platform home and the rest of the route goes on.' then `const productionReading = await tracked(\"daily.production-reading\", 86400, async () => ({ ...(await recordProductionReading()), pruned: await pruneProductionReadings() }));`. Add `productionReading` to the object given to Response.json. Add one sentence to the end of the route's doc comment: 'Production's statistics are read once into commerce.platform_readings and kept 90 days (bloat review step 0.2, job daily.production-reading, never fails the route).' Change nothing else in the file."
+    }
+   ],
+   "checks": [
+    "pnpm exec vitest run src/server/cron-routes.scan.test.ts: passes",
+    "rg -n 'daily.production-reading' src/app/api/cron/subscription-reminders/route.ts: 1 code line and 1 comment line",
+    "pnpm lint && pnpm typecheck && pnpm test: each exits 0"
+   ]
+  }
+ ],
+ "tests": [
+  {
+   "file": "src/server/production-reading.int.test.ts",
+   "proves": "Fails when the daily statement does not write one row per commerce table, writes more than 80 statement rows, writes a day twice, or keeps a reading past 90 days."
+  },
+  {
+   "file": "src/db/commerce.test.ts",
+   "proves": "Its existing case 'row-level security is enabled on every commerce table' fails if the rules migration is missing."
+  }
+ ],
+ "migration": {
+  "needed": true,
+  "notes": "Two files. One generated by `pnpm db:generate` from src/db/schema.ts (create table commerce.platform_readings with its unique index and check). One custom (`pnpm exec drizzle-kit generate --custom --name platform_readings_rules`, then `node scripts/prune-snapshots.mjs`) that enables row level security. A new, empty platform table: not one of the hot tables, so no concurrent index and no '-- kaizen:no-transaction' line. Running code keeps working because nothing reads or writes the table until the same push's code is deployed, and the migration only adds. CI's release job applies both files after every check passes; never apply them by hand. Push the migration and the code of commit 1 together (the int test needs both)."
+ },
+ "done_when": [
+  {
+   "check": "pnpm test:int (the file src/server/production-reading.int.test.ts)",
+   "expect": "passes: one 'table' row per commerce table, a 'commerce' schema row, at most 80 statement rows"
+  },
+  {
+   "check": "pnpm db:check",
+   "expect": "exits 0"
+  },
+  {
+   "check": "In production, two days after the deploy and before step 0.23 is deployed: select day, kind, count(*) from commerce.platform_readings group by 1, 2 order by 1, 2",
+   "expect": "two different days, each with one 'table' row per commerce table (about 481), 5 or more 'schema' rows and 41 to 80 'statement' rows"
+  },
+  {
+   "check": "Platform home, the scheduled jobs list (or select job, last_error from commerce.cron_jobs where job = 'daily.production-reading')",
+   "expect": "the job is there, not late, last_error null"
+  }
+ ],
+ "after_deploy": [
+  "The day after the deploy, read commerce.cron_jobs for the job daily.production-reading: it ran once and has no error.",
+  "select kind, count(*) from commerce.platform_readings where day = current_date group by 1: 'statement' between 41 and 80 (0 means the app's role cannot read extensions.pg_stat_statements: report it, the step is not done), 'table' equal to the number of commerce tables.",
+  "Check Supabase's security and performance advisors for project ybsozesfuxuitoacntfo: no new warning beyond the INFO 'RLS on, no policy' every private table has.",
+  "Do not start step 0.23 until two days of readings exist."
+ ],
+ "docs": [
+  "docs/decisions.md: a new D-number row 'A daily reading of production's statistics (bloat review step 0.2)': what the three kinds hold, 40 costliest plus 40 most-called statements of the app's own role, 90 days, job daily.production-reading in the daily route, no screen until step 1.13; and both migration file names under Migration versions with the date CI applied them and the advisors' result.",
+  "docs/audits/bloat-review-2026-11.md, Progress table: row 0.2 to Done with the date and commit once two days of readings exist (In progress until then).",
+  "docs/platform-parity.md: nothing to tick (a platform-only table; it has no store twin by design: say so in the decision row).",
+  "CLAUDE.md is not edited."
+ ],
+ "do_not": [
+  "Do not apply the migration to production by hand or with a Supabase tool: CI applies it.",
+  "Do not add a store_id column, a screen, a flag or a briefing line: step 1.13 does those.",
+  "Do not store a statement's text beyond 2,000 characters, and do not read pg_stat_activity (it holds live values).",
+  "Do not put the reading inside the route's big Promise.all or let a failure of the reading fail the route: it is its own tracked() job.",
+  "Do not use a plain `set statement_timeout`; the reading needs no longer timeout (it reads statistics views only).",
+  "Do not reset pg_stat_statements or any statistics.",
+  "Do not hand-edit the generated migration or a baseline file, and do not rename an existing column or table."
+ ],
+ "stop_if": [
+  "`pnpm db:generate` writes anything but the new table (it means schema.ts and the migrations already disagreed): stop and report the diff.",
+  "src/db/privacy.test.ts or src/server/store-export.scan.test.ts fails naming platform_readings after the NOT_PERSONAL entry is added: report the detector that fired; do not weaken the detector.",
+  "The int test can only pass by changing an existing test.",
+  "After the first production run there are 0 statement rows, or the job's last_error is set."
+ ],
+ "executor": "cheap-then-review",
+ "executor_why": "A new table, two migrations and one SQL writer, fully specified and held by an int test, but it is a migration and a daily production job, so a stronger model should read the SQL and the migration before the push.",
+ "checked_in_code": "I read src/app/api/cron/subscription-reminders/route.ts (the daily route, 300 s, already runs daily.database-door as its own tracked() job, which is the pattern used here), src/server/own-speed.ts and its int test (the platform table and prune pattern), src/db/commerce.test.ts (it fails for any commerce table without row level security, so a second, custom migration is needed: the step did not say so) and src/lib/personal-data.ts (every table is in a register; the new one goes in NOT_PERSONAL). The step says 'one statement'; pg_stat_statements lives in the extensions schema on Supabase and may be missing or unloaded in CI's pgvector/pgvector:pg17 service and in local Postgres, so the brief uses three inserts in one transaction with the statements insert guarded, and the int test accepts 0 statement rows where the view cannot be read. No finding is closed by this step."
+}

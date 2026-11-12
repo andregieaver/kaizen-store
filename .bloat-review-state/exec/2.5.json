@@ -1,0 +1,107 @@
+{
+ "id": "2.5",
+ "goal": "Search and shopping crawlers on Next's bot list (Bing, Google's shop and ads fetchers, Apple, Yandex, Meta's catalogue) get the cached page like Googlebot does; only link-preview fetchers keep the blocking render.",
+ "why": "Today any user agent on Next's default list gets a full per-request render of every page, static ones included: /docs answers 'private, no-cache, no-store' to Bingbot and 'x-nextjs-cache: HIT' to a browser. After: Bingbot gets the HIT too.",
+ "read_first": [
+  "node_modules/next/dist/docs/01-app/03-api-reference/05-config/01-next-config-js/htmlLimitedBots.md",
+  "node_modules/next/dist/docs/01-app/02-guides/streaming.md",
+  "node_modules/next/dist/shared/lib/router/utils/html-bots.js",
+  "next.config.ts",
+  "docs/rules/storefront.md",
+  "docs/performance.md",
+  "e2e/smoke.spec.ts"
+ ],
+ "depends_on": [
+  {
+   "id": "2.4",
+   "why": "it makes home, built and blog pages whole static files, so a crawler taken off the list gets complete HTML with nothing streamed"
+  },
+  {
+   "id": "1.11",
+   "why": "its scripts/render-modes.mjs holds that every prerendered public page has its title in the head of its static file, which is what makes the bypass unnecessary"
+  }
+ ],
+ "commits": [
+  {
+   "title": "Crawlers on Next's bot list get the cached page; only link previews keep the blocking render",
+   "changes": [
+    {
+     "file": "next.config.ts",
+     "action": "edit",
+     "how": "In the `nextConfig` object, directly under the line `cacheComponents: true,`, add the property `htmlLimitedBots: /facebookexternalhit|Twitterbot|LinkedInBot|Slackbot|Discordbot|WhatsApp|SkypeUriPreview|redditbot|quora link preview|vkShare|tumblr|bitlybot/i,` with this comment above it: `// Next renders every page per request, static ones included, for user agents on this list, so their metadata is in the head. Our prerendered pages already hold title and description in the head (scripts/render-modes.mjs checks it), so the list keeps only link-preview fetchers, which never run scripts and come once per shared link. Bing, Apple, Yandex, Google's shop and ads fetchers and Meta's catalogue then get the cached page, as Googlebot always has (bloat review step 2.5). Setting it replaces Next's default list (html-bots.js).` Change nothing else in the file."
+    },
+    {
+     "file": "e2e/crawlers.spec.ts",
+     "action": "create",
+     "how": "A Playwright file that uses only the `request` fixture (no browser page, so no scripts run). Constant `BING = \"Mozilla/5.0 (compatible; bingbot/2.0; +http://www.bing.com/bingbot.htm)\"`. Helper `read(request, path)` does `request.get(path, { headers: { \"user-agent\": BING } })`, expects status 200 and returns the body text. Test 1 `a crawler without scripts reads the home page`: for `/s/demo/no` expect the text to match `/<title>[^<]+<\\/title>/`, `/<meta name=\"description\" content=\"[^\"]+\"/`, `/<link rel=\"canonical\" href=\"[^\"]+\"/` and `/<meta property=\"og:title\" content=\"[^\"]+\"/`. Test 2 `... a product page`: `/s/demo/no/p/demo-keramikkopp`: the same four, plus the product's name (take the exact name from an existing assertion: `rg -n \"keramikkopp\" e2e/smoke.spec.ts e2e/cart.spec.ts | head`), plus a price (`/\\d+[,.]\\d{2}|\\d+\\s?kr/`), plus `application/ld+json` and, in the HTML, the text `\"@type\":\"Product\"` and `\"price\"` (allow escaped quotes: test with `/\\\\?\"@type\\\\?\":\\\\?\"Product/`). Test 3 `... a category page`: use the category address an existing spec uses (`rg -n \"category/\" e2e/listing.spec.ts e2e/smoke.spec.ts | head`; the review used /s/demo/no/category/belysning): the four head tags and at least one product name. Test 4 `... a blog article`: `/s/demo/no/blog/nye-produkter`: the four head tags and the article's title `Nye produkter i høst`. Test 5 `a crawler gets the cached page`: `request.get(\"/docs\", { headers: { \"user-agent\": BING } })` has the response header `x-nextjs-cache` equal to `HIT` (retry once after a first request, which may be a MISS that fills the cache) and a `cache-control` that does not contain `no-store`. Test 6 `a link preview still gets its metadata in the head`: `/s/demo/no/p/demo-keramikkopp` with user agent `facebookexternalhit/1.1`: `<title>` and `og:title` come before `</head>` (compare `indexOf`)."
+    },
+    {
+     "file": "docs/performance.md",
+     "action": "edit",
+     "how": "Under `## The rules` add a paragraph: which user agents get a blocking per-request render (the pattern in next.config.ts), why the default list was narrowed, that scripts/render-modes.mjs and e2e/crawlers.spec.ts hold what makes it safe, and that a crawler whose tool later shows a missing price or availability is put back on the list by adding its name to the pattern. Leave a line `Share of page runs by listed crawlers: to be measured after opening` for the after-deploy figure."
+    },
+    {
+     "file": "docs/rules/storefront.md",
+     "action": "edit",
+     "how": "In the rule that starts `The template store's product pages are prerendered at build time` (just above the cart's section) add the sentence: `A crawler that runs no scripts finds stock and add-to-cart at the end of the document in hidden containers, as Googlebot does; only link-preview fetchers get a blocking render (`htmlLimitedBots` in `next.config.ts`, `e2e/crawlers.spec.ts`).`"
+    }
+   ],
+   "checks": [
+    "pnpm lint && pnpm typecheck && pnpm test: exits 0",
+    "pnpm build && node -e \"const m=require('./.next/prerender-manifest.json');const s=JSON.stringify(m);console.log(s.includes('facebookexternalhit'), /Bingbot/i.test(s))\": prints true false (the manifest's experimentalBypassFor carries the new pattern and no longer names Bingbot)",
+    "pnpm start, then (twice) curl -sD - -o /dev/null -A 'Mozilla/5.0 (compatible; bingbot/2.0)' http://localhost:3000/docs | rg -i 'x-nextjs-cache|cache-control': the second run prints x-nextjs-cache: HIT and no no-store",
+    "pnpm test:e2e -- e2e/crawlers.spec.ts e2e/smoke.spec.ts e2e/docs.spec.ts e2e/store-pages.spec.ts e2e/blog.spec.ts: exits 0"
+   ]
+  }
+ ],
+ "tests": [
+  {
+   "file": "e2e/crawlers.spec.ts",
+   "proves": "Fails when a no-script crawler's HTML of the home, a product, a category or an article lacks the title, description, canonical, og:title, the product's price or its JSON-LD; when Bingbot stops getting the cached /docs; or when a link preview loses its metadata from the head."
+  }
+ ],
+ "migration": {
+  "needed": false,
+  "notes": ""
+ },
+ "done_when": [
+  {
+   "check": "pnpm build && pnpm start, then twice: curl -sD - -o /dev/null -A 'Mozilla/5.0 (compatible; bingbot/2.0)' http://localhost:3000/docs",
+   "expect": "x-nextjs-cache: HIT (Cache-Control: private, no-cache, no-store before)."
+  },
+  {
+   "check": "pnpm test:e2e -- e2e/crawlers.spec.ts",
+   "expect": "All six tests pass."
+  },
+  {
+   "check": "node scripts/render-modes.mjs",
+   "expect": "Exits 0: every prerendered public page still has its title in the head of its static file."
+  }
+ ],
+ "after_deploy": [
+  "curl -sD - -o /dev/null -A 'Mozilla/5.0 (compatible; bingbot/2.0)' https://kaizenaflow.com/docs twice: the second answer has x-vercel-cache HIT (or PRERENDER) and a public Cache-Control.",
+  "Owner's hands, free tools: in Google's Rich Results Test and in Bing Webmaster Tools' URL inspection, test one product page of the template store: both show the product's name, price and availability. If one shows a missing price, add that crawler's name back to the pattern in next.config.ts and say so in docs/performance.md.",
+  "After opening, with no paid add-on: in the Vercel dashboard's runtime logs included in the current plan (no Observability Plus, no log drain), take one day's sample, filter page routes by user agent for Bingbot, Applebot, Yandex, AdsBot-Google, Storebot-Google and facebookcatalog, and write their share of page runs into the line left in docs/performance.md."
+ ],
+ "docs": [
+  "docs/decisions.md: a new row with the next free D-number: htmlLimitedBots narrowed to link-preview fetchers, why (per-request renders for crawlers, a render not kept), what holds it (render-modes.mjs, e2e/crawlers.spec.ts) and how to put a crawler back.",
+  "docs/performance.md and docs/rules/storefront.md: the edits in the commit.",
+  "The plan's Progress table under docs/audits/bloat-review-2026-11: step 2.5 Done with date and commit; the two tool checks and the log sample noted as waiting until they are made."
+ ],
+ "do_not": [
+  "Do not touch `isBot()` in src/lib/experiments.ts: the app's own bot rule (country hint, A/B tests, visit counting) is separate and stays.",
+  "Do not set htmlLimitedBots to an empty pattern or remove the link-preview fetchers: they never run scripts and need the metadata in the head.",
+  "Do not add Googlebot to the pattern: it already gets the cached page.",
+  "Do not buy or switch on a paid log or observability product for the after-opening count.",
+  "Do not change any generateMetadata function in this step."
+ ],
+ "stop_if": [
+  "Step 2.4 is not deployed (.next/prerender-manifest.json still marks /s/demo/no as resuming): stop, this step waits for it.",
+  "node scripts/render-modes.mjs reports a prerendered public page without its title in the head, other than the docs search pages it already lists.",
+  "A test of e2e/crawlers.spec.ts fails on a missing price or JSON-LD: report which page and which tag; do not loosen the test.",
+  "After the build the manifest still names Bingbot, or `next build` rejects the config key."
+ ],
+ "executor": "cheap",
+ "executor_why": "One line of config, one new test file and two doc paragraphs, all spelled out; the build check and the crawler test catch a wrong pattern.",
+ "checked_in_code": "I opened next.config.ts (cacheComponents at line 42, no htmlLimitedBots today), Next's htmlLimitedBots guide (a regular expression that replaces the default list) and html-bots.js (the default list holds Bingbot, applebot, yandex, facebookcatalog and every *-Google and Google-* name, not Googlebot): all as CA-15 says. One correction to the step: it asks to count crawler runs 'in Vercel's logs'; the brief limits that to the runtime logs the current plan includes, as a one-day sample, because no paid observability may be used. The blog article and product addresses in the test are the ones existing specs already use."
+}

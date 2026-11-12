@@ -1,0 +1,312 @@
+{
+  "id": "2.27",
+  "goal": "Each admin page hands its client parts typed cuts of the big word areas (only the groups those parts name), the assistant's button gets its own small cut and the chat gets its words when it opens, and every hand-down site over 50 KB in the words baseline hands at most 1.25 times what its parts name.",
+  "why": "The product editor is handed 238 KB of words and names about 79 KB, and every store screen carries 34.0 KB of shell words (45.3 KB in Norwegian) and reads 12; after the step shared words are at or under 15.5 KB (16 KB in Norwegian), the product editor's document is under 290,000 bytes (426,497 today) and the builder's under 480,000 (585,943).",
+  "read_first": [
+    "docs/platform-admin-i18n.md",
+    "docs/performance.md",
+    "docs/rules/admin/ai.md",
+    "src/lib/admin-text.ts",
+    "src/components/admin/admin-text.tsx",
+    "src/components/admin/admin-text-later.ts",
+    "src/components/admin/ai-manager-launcher.tsx",
+    "e2e/signed-in/admin-text-fallbacks.spec.ts"
+  ],
+  "depends_on": [
+    { "id": "0.9", "why": "it drops the 'setup' area from src/app/admin/(gated)/layout.tsx; this brief assumes that line already hands only common and shell" },
+    { "id": "1.5", "why": "its budgets in e2e/signed-in/admin-scripts.spec.ts (document bytes, words handed and read, English and Norwegian owner) are the figures this step lowers" },
+    { "id": "1.28", "why": "its src/components/admin/admin-words-handed.scan.test.ts and baseline list every hand-down site; commits 5 onward work that list down" },
+    { "id": "2.26", "why": "its third commit takes home.en out of demo-content-card.tsx, which the home's cut in commit 3 needs" },
+    { "id": "0.10", "why": "it keeps the builder and the category editor off the page lists, so the lists' client parts read only website.list, pageJobs and demoHomes" }
+  ],
+  "commits": [
+    {
+      "title": "Cut areas: a page can hand some groups of an area, typed, and the product, order and customer pages hand the two groups of builder they read",
+      "changes": [
+        {
+          "file": "src/lib/admin-text.ts",
+          "action": "edit",
+          "how": "Add cut areas. A cut is some top-level groups of an existing area: the same objects, no string moved, no new catalogue file. (1) Above CATALOGUES add 'const cut = <T extends object, K extends keyof T>(source: Record<AdminLang, T>, keys: readonly K[]): Record<AdminLang, Pick<T, K>>' that returns, for each language of ADMIN_LANGS, an object with only those keys, each value the source's own object. (2) Add to the type AdminAreaMessages (line 142 on): builderText: Pick<BuilderMessages, 'richText' | 'textStyles' | 'responsive'>; websitePick: Pick<WebsiteMessages, 'picker' | 'pictureMaker'>. (3) Add to CATALOGUES: builderText: cut({ en: builderEn, nb: builderNb }, ['richText', 'textStyles', 'responsive']) and websitePick: cut({ en: websiteEn, nb: websiteNb }, ['picker', 'pictureMaker']). Both are client areas: do not add them to SERVER_AREAS. Add a comment above cut(): a cut is handed where a page's parts read only those groups; a reader of a group outside its cut does not compile. adminText() and adminTexts() need no change."
+        },
+        {
+          "file": "src/components/admin/admin-text-later.ts",
+          "action": "edit",
+          "how": "Add the two cuts to LATER so a cut nobody handed is still a noted fallback and src/test/admin-english.ts settles it for unit tests: builderText: () => import('@/lib/admin-messages/builder.en').then((m) => ({ richText: m.builderEn.richText, textStyles: m.builderEn.textStyles, responsive: m.builderEn.responsive })), websitePick: () => import('@/lib/admin-messages/website.en').then((m) => ({ picker: m.websiteEn.picker, pictureMaker: m.websiteEn.pictureMaker })). The type '{ [A in LaterArea]: ... }' then accepts them; if TypeScript reports a missing key, the cut was not added to AdminAreaMessages."
+        },
+        {
+          "file": "src/components/admin/rich-text-editor.tsx",
+          "action": "edit",
+          "how": "Every useAdminText('builder') in this file (three, near lines 155, 250 and 386) becomes useAdminText('builderText'). The reads after it (.richText, .textStyles) stay. If the type check then reports a group that builderText lacks, add that group's name to the cut in admin-text.ts and admin-text-later.ts and to the docs line; do not go back to 'builder'."
+        },
+        {
+          "file": "src/components/admin/text-styles.tsx",
+          "action": "edit",
+          "how": "Same: its four useAdminText('builder') reads (near lines 174, 294, 461 and 578) become useAdminText('builderText')."
+        },
+        {
+          "file": "src/components/admin/header-stage-fields.tsx",
+          "action": "edit",
+          "how": "It reads builder.richText: if every read of its useAdminText('builder') result is richText, textStyles or responsive, switch it to 'builderText'; if it reads other groups too, leave the file as it is."
+        },
+        {
+          "file": "src/components/admin/responsive-edit.tsx",
+          "action": "edit",
+          "how": "For each of its useAdminText('builder') reads: if the variable is used only as .responsive (or .sizes is not read), switch that read to useAdminText('builderText'). A read that also uses builder.sizes or another group stays on 'builder'. sizeNote() takes Pick<BuilderMessages, 'sizes' | 'responsive'>: do not change its type."
+        },
+        {
+          "file": "src/components/admin/picture-maker.tsx",
+          "action": "edit",
+          "how": "Its useAdminText('website') reads (three) become useAdminText('websitePick') if they read only .pictureMaker and .picker; the type check says so."
+        },
+        {
+          "file": "src/components/admin/media-picker.tsx",
+          "action": "edit",
+          "how": "Same as picture-maker.tsx (two reads)."
+        },
+        {
+          "file": "src/components/admin/product-editor.tsx",
+          "action": "edit",
+          "how": "Its one useAdminText('website') (reads .pictureMaker) becomes useAdminText('websitePick')."
+        },
+        {
+          "file": "src/app/admin/(gated)/[store]/products/[productId]/page.tsx",
+          "action": "edit",
+          "how": "Line 45: adminTexts(lang, ['product', 'products', 'fields', 'builderText', 'websitePick']) in place of ['product', 'products', 'fields', 'builder', 'website']."
+        },
+        {
+          "file": "src/app/admin/(gated)/[store]/products/new/page.tsx",
+          "action": "edit",
+          "how": "Line 26: the same list as the product page."
+        },
+        {
+          "file": "src/app/admin/(gated)/[store]/orders/[orderId]/page.tsx",
+          "action": "edit",
+          "how": "Line 268: ['order', 'drafts', 'privacy', 'builderText'] in place of ['order', 'drafts', 'privacy', 'builder']."
+        },
+        {
+          "file": "src/app/admin/(gated)/[store]/customers/[customerId]/page.tsx",
+          "action": "edit",
+          "how": "Line 131: ['customers', 'privacy', 'loyalty', 'builderText'] in place of [..., 'builder']."
+        },
+        {
+          "file": "src/app/admin/(gated)/[store]/pages/editor-views.tsx",
+          "action": "edit",
+          "how": "Line 30, EDITOR_AREAS: add 'builderText' and 'websitePick' to the list, keeping 'builder' and 'website' for now (the cut holds the same objects, so the document grows by a few bytes of keys only). The editor draws rich-text-editor.tsx and the pickers, which now ask for the cuts."
+        },
+        {
+          "file": "src/app/admin/try/[sandbox]/editor.tsx",
+          "action": "edit",
+          "how": "Line 25, EDITOR_AREAS: the same two additions."
+        },
+        {
+          "file": "src/server/platform-site-words.ts",
+          "action": "edit",
+          "how": "PLATFORM_SITE_AREAS: add 'builderText' and 'websitePick' (Kaizena Flow's own page and theme editors hand this list)."
+        },
+        {
+          "file": "src/components/admin/admin-cuts.scan.test.ts",
+          "action": "create",
+          "how": "A vitest scan test: read rich-text-editor.tsx and text-styles.tsx under src/components/admin and fail if either holds the text useAdminText(\"builder\"); read picture-maker.tsx, media-picker.tsx and fail on useAdminText(\"website\"). Message: 'this part is drawn on screens that hand only a cut (docs/platform-admin-i18n.md 3.3): read the cut'. Later commits add their reader files to its table."
+        }
+      ],
+      "checks": [
+        "rg -n 'useAdminText\\(\"(builder|website)\"\\)' src/components/admin/rich-text-editor.tsx src/components/admin/text-styles.tsx src/components/admin/picture-maker.tsx src/components/admin/media-picker.tsx: prints nothing",
+        "For every other page that draws one of the changed readers and hands 'builder' or 'website' whole, the cut must be handed too. List them: rg -n 'adminTexts\\(' src/app src/components -g '*.tsx' | rg '\"builder\"|\"website\"|_AREAS'. A list that names 'builder' gains 'builderText'; one that names 'website' gains 'websitePick'. Do this in this commit.",
+        "pnpm test src/components/admin/admin-cuts.scan.test.ts src/lib/admin-lang.test.ts src/components/admin/admin-words-handed.scan.test.ts: pass (lower the words baseline for the four pages in this commit, with the script the test's failure message names)",
+        "pnpm lint && pnpm typecheck && pnpm test: exits 0",
+        "pnpm build && E2E_SIGNED_IN=1 pnpm test:e2e e2e/signed-in/admin-text-fallbacks.spec.ts e2e/signed-in/admin-scripts.spec.ts e2e/signed-in/text-styles.spec.ts e2e/signed-in/products-grid.spec.ts: pass; lower the product editor's document budget to the new figure in the same commit",
+        "By hand in a Norwegian account (or in a spec): open a product, open the media picker's library, the picture maker and the text styles panel; window.__adminTextFallbacks is empty and no English shows"
+      ]
+    },
+    {
+      "title": "The assistant's button gets its own few words; the chat's words arrive when the panel opens",
+      "changes": [
+        {
+          "file": "src/lib/admin-text.ts",
+          "action": "edit",
+          "how": "Add the cut assistantBar: Pick<AssistantMessages, 'name' | 'launcher' | 'notices'> to AdminAreaMessages and CATALOGUES (cut({ en: assistantEn, nb: assistantNb }, ['name', 'launcher', 'notices']))."
+        },
+        {
+          "file": "src/components/admin/admin-text-later.ts",
+          "action": "edit",
+          "how": "Add assistantBar to LATER, picked from assistant.en like the cuts of commit 1."
+        },
+        {
+          "file": "src/components/admin/ai-notices.tsx",
+          "action": "edit",
+          "how": "Its three useAdminText('assistant').notices (lines 58, 70, 82) become useAdminText('assistantBar').notices."
+        },
+        {
+          "file": "src/components/admin/ai-manager-launcher.tsx",
+          "action": "edit",
+          "how": "Line 74: const w = useAdminText('assistantBar'). If the type check reports a read of a group other than name, launcher and notices in this file, add that group to the cut (keep it small: do not add chat, voice, approval, skills or memory; if the launcher reads one of those, stop). The type of 'ready' (what start() resolves to) gains 'texts: Pick<AdminAreaMessages, \"assistant\">'. Where the panel draws <Chat ...> (it draws it only when both Chat and ready are set: find the JSX that tests them), wrap it: <AdminTextScope texts={ready.texts}><Chat ... /></AdminTextScope>. Chat must never be drawn before ready is set: if today it is drawn with ready null in some branch, keep showing the panel's waiting state in that branch instead."
+        },
+        {
+          "file": "src/app/admin/(gated)/[store]/assistant/actions.ts",
+          "action": "edit",
+          "how": "startAssistantAction (line 28): return { abilities, conversations, texts: adminTexts(lang, ['assistant']) }, where lang is adminLangOf(member.account.adminLocale) if Membership carries the account, else await actionAdminLang() from @/server/admin-request-lang (the file src/server/platform-site-words.ts shows that call). Import adminTexts from @/lib/admin-text."
+        },
+        {
+          "file": "src/app/admin/(gated)/platform/assistant/actions.ts",
+          "action": "edit",
+          "how": "startPlatformAssistantAction (line 28): the same extra field, in the platform admin's language."
+        },
+        {
+          "file": "src/app/admin/(gated)/[store]/layout.tsx",
+          "action": "edit",
+          "how": "Line 114: adminTexts(lang, ['assistantBar']) in place of ['assistant']."
+        },
+        {
+          "file": "src/app/admin/(gated)/platform/layout.tsx",
+          "action": "edit",
+          "how": "Line 83: the same change. The two assistant pages ([store]/assistant/page.tsx and platform/assistant/page.tsx) keep handing the whole 'assistant' area and must also hand 'assistantBar' if they draw the launcher's or the notices' parts: rg -n 'adminTexts\\(' on both pages and add it."
+        },
+        {
+          "file": "e2e/signed-in/ai-manager-panel.spec.ts",
+          "action": "edit",
+          "how": "Add a case with the Norwegian owner that step 1.5 added to e2e/signed-in/accounts.ts: open the panel on the store home, wait for the chat's input, and assert that window.__adminTextFallbacks is empty and that the input's placeholder is the Norwegian one from src/lib/admin-messages/assistant.nb.ts (read the key the chat uses for its placeholder; do not hard-code English)."
+        }
+      ],
+      "checks": [
+        "pnpm lint && pnpm typecheck && pnpm test: exits 0",
+        "pnpm build && E2E_SIGNED_IN=1 pnpm test:e2e e2e/signed-in/ai-manager-panel.spec.ts e2e/signed-in/admin-text-fallbacks.spec.ts e2e/signed-in/admin-scripts.spec.ts: pass; the shared-words figure in admin-scripts.spec.ts is at or under 15.5 KB in English and 16 KB in Norwegian: lower its baseline to the measured figure"
+      ]
+    },
+    {
+      "title": "The store home hands its drafts card its own words, and the page lists hand what their rows read",
+      "changes": [
+        {
+          "file": "src/lib/admin-text.ts",
+          "action": "edit",
+          "how": "Add cuts homeDrafts: Pick<HomeMessages, 'drafts'> and websiteList: Pick<WebsiteMessages, 'list' | 'pageJobs' | 'demoHomes'>, in AdminAreaMessages and CATALOGUES."
+        },
+        {
+          "file": "src/components/admin/admin-text-later.ts",
+          "action": "edit",
+          "how": "Add homeDrafts and websiteList to LATER, picked from home.en and website.en."
+        },
+        {
+          "file": "src/components/admin/store-drafts.tsx",
+          "action": "edit",
+          "how": "Line 28: useAdminText('homeDrafts').drafts."
+        },
+        {
+          "file": "src/app/admin/(gated)/[store]/page.tsx",
+          "action": "edit",
+          "how": "Line 117: adminTexts(lang, ['homeDrafts']) in place of ['home']. First check no other client part under that scope reads 'home': rg -n 'useAdminText\\(\"home\"\\)' src must show only files not drawn inside this scope."
+        },
+        {
+          "file": "src/components/admin/pages-table.tsx",
+          "action": "edit",
+          "how": "useAdminText('website') becomes useAdminText('websiteList'). Do the same in src/components/admin/site-layouts.tsx, duplicate-button.tsx, page-jobs-panel.tsx, demo-home-pages.tsx and demo-home-take.tsx, each only if the type check accepts it (the file reads only list, pageJobs or demoHomes). A file that does not compile on the cut goes back to 'website' and is written in the tracker's section."
+        },
+        {
+          "file": "src/app/admin/(gated)/[store]/pages/views.tsx",
+          "action": "edit",
+          "how": "Line 81: hand ['websiteList'] in place of ['website', 'schedules'] only if (a) every client reader drawn by this view compiled on the cut in the change above and (b) rg -n 'useAdminText\\(\"schedules\"\\)' src shows no file this list draws. If a reader stayed on 'website', hand ['website', 'websiteList'] and drop only 'schedules'."
+        },
+        {
+          "file": "src/app/admin/(gated)/platform/pages/views.tsx",
+          "action": "edit",
+          "how": "Line 70: the same rule for ['website', 'platformSite']: 'website' becomes 'websiteList' when the readers allow; 'platformSite' stays."
+        },
+        {
+          "file": "src/components/admin/admin-cuts.scan.test.ts",
+          "action": "edit",
+          "how": "Add store-drafts.tsx (must not read 'home') and each file moved to websiteList (must not read 'website') to the test's table."
+        }
+      ],
+      "checks": [
+        "pnpm lint && pnpm typecheck && pnpm test: exits 0",
+        "pnpm build && E2E_SIGNED_IN=1 pnpm test:e2e e2e/signed-in/admin-text-fallbacks.spec.ts e2e/signed-in/admin-scripts.spec.ts e2e/signed-in/page-history.spec.ts: pass; the store home's document is at or under 140,000 characters: lower its budget to the measured figure"
+      ]
+    },
+    {
+      "title": "The page editor hands cuts of website, fields, products, design, blog and schedules",
+      "changes": [
+        {
+          "file": "src/lib/admin-text.ts",
+          "action": "edit",
+          "how": "A stronger model does this commit and the ones after. Add four editor cuts, each holding exactly the groups the editor's client files name. Start from the review's list and let the type check correct it: websiteEditor = website's list, media, picker, pictureMaker; fieldsEditor = fields' categories, linkKinds, choices, text, list, group, form, pickers; productsEditor = products' list, panel, grid, result, upload, apply, summary, terms, termFields, termPage, termRules, termSeo; designEditor = design's page, library, follow, editor, breakpoints, fonts, install, changes, preview, actions, share. Then blogEditor = blog's editor and schedulesEditor = schedules' dialog, nouns, share. Add each to admin-text-later.ts too."
+        },
+        {
+          "file": "src/app/admin/(gated)/[store]/pages/editor-views.tsx",
+          "action": "edit",
+          "how": "EDITOR_AREAS: replace 'website', 'fields', 'products', 'design', 'blog' and 'schedules' by the six editor cuts; keep 'builder', 'blocks', 'builderText', 'websitePick', 'storeParts', 'backdrops' and 'animation'. Move each reader inside the editor to its cut (media-library.tsx, picture-maker.tsx, media-picker.tsx; fields-form.tsx, field-pickers.tsx, entity-fields.tsx, field-editor-dialog.tsx; terms.tsx, term-fields.tsx, term-page-fields.tsx, term-rules-fields.tsx, term-seo-fields.tsx; page-builder-fields.tsx, font-picker.tsx; page-editor.tsx; schedule-dialog.tsx, share-links.tsx) where the type check accepts it. A reader also drawn on a screen that hands the whole area keeps working only if that screen hands the cut too: for each moved reader run rg -n '<ReaderName' src and add the cut to those screens' lists."
+        },
+        {
+          "file": "src/app/admin/try/[sandbox]/editor.tsx",
+          "action": "edit",
+          "how": "The same EDITOR_AREAS list as the store's editor."
+        },
+        {
+          "file": "src/server/platform-site-words.ts",
+          "action": "edit",
+          "how": "PLATFORM_SITE_AREAS: the same replacements, keeping 'platformSite'."
+        }
+      ],
+      "checks": [
+        "pnpm lint && pnpm typecheck && pnpm test: exits 0",
+        "pnpm build && E2E_SIGNED_IN=1 pnpm test:e2e e2e/signed-in (the whole folder: the builder specs, text-styles, schedules-and-sharing, content-types, admin-text-fallbacks, admin-scripts): pass; the builder's document is under 480,000 bytes with a texts object of at most 205,000, and the baselines are lowered",
+        "By hand in a Norwegian account: open a page's editor, open the media library, a custom field's pickers, the font picker, the schedule dialog and a category's page fields: no English, window.__adminTextFallbacks empty"
+      ]
+    },
+    {
+      "title": "Work down the words baseline: every site over 50 KB hands at most 1.25 times what its parts name",
+      "changes": [
+        {
+          "file": "src/components/admin/admin-words-handed.baseline.json",
+          "action": "create",
+          "how": "Marked create only because step 1.28 has not made it yet: EDIT it, never overwrite (its real name is whatever step 1.28 wrote beside src/components/admin/admin-words-handed.scan.test.ts). Sort its sites by bytes handed. For each site that hands over 50 KB and more than 1.25 times the bytes its parts name (24 sites at the review; the largest mixed areas are notifications, blocks, settings, website and products), one commit per site or per group of sites that share a list: (1) read which groups the site's client parts name (the scan prints them); (2) if the parts name under 80% of an area, add a cut for exactly those groups, named <area><Screen> in camelCase, to admin-text.ts and admin-text-later.ts, move the readers, hand the cut; (3) if no part names an area at all, drop it from the list; (4) lower the baseline. Also bring the five budgeted screens (store home, orders, product editor, builder, platform home) to at most 1.1 times. Parts that take a whole area by design: only the builder's two (builder and blocks); the scan's list of whole-area takers must hold nothing else."
+        }
+      ],
+      "checks": [
+        "pnpm test src/components/admin/admin-words-handed.scan.test.ts: passes on the lowered baseline",
+        "pnpm lint && pnpm typecheck && pnpm test: exits 0",
+        "pnpm build && E2E_SIGNED_IN=1 pnpm test:e2e e2e/signed-in/admin-text-fallbacks.spec.ts e2e/signed-in/admin-scripts.spec.ts: pass after each site"
+      ]
+    }
+  ],
+  "tests": [
+    { "file": "src/components/admin/admin-cuts.scan.test.ts", "proves": "fails when a reader that is drawn on cut-only screens asks for the whole area again" },
+    { "file": "src/components/admin/admin-words-handed.scan.test.ts", "proves": "fails when a site hands more than its baseline or an area nothing names (made by step 1.28; this step lowers its baseline)" },
+    { "file": "e2e/signed-in/admin-scripts.spec.ts", "proves": "fails when the document bytes, the shared words or the words handed on the five screens rise, in English and Norwegian" },
+    { "file": "e2e/signed-in/ai-manager-panel.spec.ts", "proves": "fails when the chat opens before its words arrived (English shown to a Norwegian owner, or a noted fallback)" },
+    { "file": "e2e/signed-in/admin-text-fallbacks.spec.ts", "proves": "fails on any screen whose part reads an area or cut that nothing handed" }
+  ],
+  "migration": { "needed": false, "notes": "" },
+  "done_when": [
+    { "check": "pnpm test src/components/admin/admin-words-handed.scan.test.ts, then read its baseline", "expect": "the five budgeted screens hand at most 1.1 times the groups their parts name; no site that hands over 50 KB hands more than 1.25 times; no site hands an area none of its parts names; the list of parts that take a whole area holds only the builder's two" },
+    { "check": "E2E_SIGNED_IN=1 pnpm test:e2e e2e/signed-in/admin-scripts.spec.ts (after pnpm build)", "expect": "shared words at or under 15.5 KB in English and 16 KB in Norwegian (34.0 and 45.3 before); the store home's document at most 140,000 characters (165,942); the product editor's under 290,000 bytes (426,497); the builder's under 480,000 (585,943) with a texts object of at most 205,000 (276,922); the browser's record of step 1.5 has not fallen for any group that is read" },
+    { "check": "E2E_SIGNED_IN=1 pnpm test:e2e e2e/signed-in/admin-text-fallbacks.spec.ts", "expect": "passes; no fallback" }
+  ],
+  "after_deploy": [],
+  "docs": [
+    "docs/decisions.md (or docs/decisions/D{n}.md after step 2.40): one decision with the next free D number: cut areas (what a cut is, their names, that the chat's words come with its start call, that 'read' means named in source).",
+    "docs/platform-admin-i18n.md section 3.3: a page hands the cut its parts read; list the cuts and their source areas.",
+    "docs/performance.md, after the D540 paragraph (about lines 156 to 190): the cuts and the measured before and after for the five screens.",
+    "docs/rules/admin/ai.md, under the AI manager's launcher: the launcher reads assistantBar; the chat's words arrive with start().",
+    "docs/audits/psi-followups.md under PERF-01: one line.",
+    "The plan's tracker under docs/audits/bloat-review-2026-11/: row 2.27 to Done with date and commits; its section lists every cut and the sites still over 1.25, if any, with the reason."
+  ],
+  "do_not": [
+    "Do not move, rename or delete any string or file in src/lib/admin-messages: a cut picks groups, it does not split a catalogue.",
+    "Do not fetch a panel's words when it opens, other than the assistant chat's (it already waits for its start call): a screen that waits for words loses a press (docs/performance.md, the try of 31 October 2026).",
+    "Do not hand a partial object typed as the whole area (no 'as' casts on adminTexts results): a missing group must be a type error.",
+    "Do not remove an area from a list because rg finds no reader in one file: check every client part the page draws, dynamic imports too.",
+    "Do not raise a budget or a baseline to pass; they only fall.",
+    "Do not drop 'builder' or 'blocks' from the editor's list: the builder reads all of both (step 2.30 deals with them).",
+    "Do not leave the platform out: platform/layout.tsx, platform/pages/views.tsx and PLATFORM_SITE_AREAS change in the same commits as the store's."
+  ],
+  "stop_if": [
+    "src/app/admin/(gated)/layout.tsx still hands 'setup' (step 0.9 is not done), or admin-words-handed.scan.test.ts or the document budgets in admin-scripts.spec.ts do not exist.",
+    "The launcher reads a chat group (chat, voice, approval, skills, memory) while the panel is closed.",
+    "The chat can be drawn before start() has answered and you cannot keep the waiting state without changing what the panel shows.",
+    "admin-text-fallbacks.spec.ts reports a fallback that adding the cut to that page's list does not end.",
+    "A figure in done_when is not reached after commit 4: report the measured figures and the largest areas left.",
+    "You are the cheap executor and reach commit 4."
+  ],
+  "executor": "strong",
+  "executor_why": "Commits 1 to 3 are specified and the type check and the fallbacks spec catch a wrong edit, but choosing the cuts for the editor and for the 24 large sites, and keeping the chat from drawing before its words, needs judgement.",
+  "checked_in_code": "I opened src/lib/admin-text.ts (adminTexts at line 308, CATALOGUES at 232), the three layouts, the product, order and customer pages, both EDITOR_AREAS lists and PLATFORM_SITE_AREAS in src/server/platform-site-words.ts, the launcher and the start actions: lines and lists are as the findings say, and the gate still hands 'setup' today (step 0.9 removes it, so this brief does not). The three findings (AC-4, TX-2, PL-1) and PM-10 name the same cuts differently and partly overlap; the brief fixes one set of names (builderText, websitePick, assistantBar, homeDrafts, websiteList, then the editor's six). AD-5's fix of splitting assistant.en.ts into two catalogue files is replaced by the cut, which moves no string. The platform's editor has no EDITOR_AREAS of its own as the findings assumed: it hands PLATFORM_SITE_AREAS, which the brief changes instead. The words baseline and the document budgets do not exist yet (steps 1.28 and 1.5)."
+}

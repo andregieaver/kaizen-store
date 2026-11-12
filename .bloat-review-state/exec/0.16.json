@@ -1,0 +1,296 @@
+{
+  "id": "0.16",
+  "goal": "A store page's first scripts hold only what the page draws: no admin words, no features table, no cookie purposes, no cart forms on the product page, and no carousel, modal helper, theme preview stage, platform language switch or filter panel on a plain page.",
+  "why": "Today /s/demo/no sends 680,264 bytes of first scripts and the product page 777,785; the target is at most 615,000 and 670,000 (690,000 only while a product picker is kept by the press test), with the product page's own entry chunks at most 297,000 (315,368 today).",
+  "read_first": [
+    "docs/performance.md",
+    "src/lib/storefront-bundle.scan.test.ts",
+    "src/lib/cookie-consent.ts",
+    "src/components/lazy/blocks.tsx",
+    "src/components/lazy/lazy-view.tsx",
+    "src/app/s/[store]/[market]/cart/cart-contents.tsx",
+    "src/components/filter-dialog.tsx",
+    "e2e/performance.spec.ts"
+  ],
+  "depends_on": [],
+  "commits": [
+    {
+      "title": "The cookie table's texts and the features table leave shoppers' first scripts",
+      "changes": [
+        {
+          "file": "src/lib/cookie-patterns.ts",
+          "action": "create",
+          "how": "A pure file that imports only `type ConsentCategory` from './cookie-consent'. Export `COOKIE_PATTERNS`: an `as const` array with one object per entry of today's KNOWN_COOKIES (src/lib/cookie-consent.ts, from line 156), in the same order, each with exactly three fields copied from that entry: `name`, `pattern`, `category`. Count the entries first (`rg -c '^    name: ' src/lib/cookie-consent.ts`) and check the new array has the same count. Export `type KnownCookieName = (typeof COOKIE_PATTERNS)[number][\"name\"]` and `export const cookieCategory = (name: string): ConsentCategory | null => COOKIE_PATTERNS.find((c) => c.pattern.test(name))?.category ?? null`."
+        },
+        {
+          "file": "src/lib/known-cookies.ts",
+          "action": "create",
+          "how": "Move here, from src/lib/cookie-consent.ts, everything from the `type Texts` line (about line 100) to the end of the file: the Texts type, the KnownCookie type, KNOWN_COOKIES, knownCookie(), cookiePurpose(), declaredCookies(), with their doc comments. Rebuild the table as: `const DETAILS: Record<KnownCookieName, Omit<KnownCookie, \"name\" | \"pattern\" | \"category\">> = { \"cart_…\": { provider: …, days: …, on: …, purpose: {…}, …every other field the entry had }, … }` and `export const KNOWN_COOKIES: KnownCookie[] = COOKIE_PATTERNS.map((c) => ({ ...c, ...DETAILS[c.name] }));`. Import COOKIE_PATTERNS and KnownCookieName from './cookie-patterns', ConsentCategory and the other types it uses from './cookie-consent', and `type FeatureId` from './store-features'. The order and content of KNOWN_COOKIES must be exactly as before (the tests compare lists in order)."
+        },
+        {
+          "file": "src/lib/cookie-consent.ts",
+          "action": "edit",
+          "how": "Delete from the `type Texts` line to the end of the file (now in known-cookies.ts). Do NOT re-export anything from './known-cookies' or './cookie-patterns' here: a re-export pulls the table back into every client script. Remove the `import type { FeatureId }` line if nothing left uses it. Then move mayRemember() here from src/lib/page-modal.ts (about line 374, with its doc comment): it uses only consentCookieName and decodeConsent, both in this file."
+        },
+        {
+          "file": "src/lib/page-modal.ts",
+          "action": "edit",
+          "how": "Delete mayRemember() (moved to cookie-consent.ts). Keep the import of consentCookieName/decodeConsent only if another function in the file still uses them; otherwise remove it. Do not re-export mayRemember from here."
+        },
+        {
+          "file": "src/components/language-switch.tsx",
+          "action": "edit",
+          "how": "Line 6: import mayRemember from '@/lib/cookie-consent' in place of '@/lib/page-modal'."
+        },
+        {
+          "file": "src/components/page-modal.tsx",
+          "action": "edit",
+          "how": "In the import list from '@/lib/page-modal' (line 14 names mayRemember) remove mayRemember and import it from '@/lib/cookie-consent'."
+        },
+        {
+          "file": "src/lib/page-modal.test.ts",
+          "action": "edit",
+          "how": "Import mayRemember from './cookie-consent' in place of './page-modal' (line 4); the cases at lines 265 to 271 stay as they are."
+        },
+        {
+          "file": "src/components/consent/consent-manager.tsx",
+          "action": "edit",
+          "how": "In forget() (about line 230) replace `const known = KNOWN_COOKIES.find((cookie) => cookie.pattern.test(name)); if (!known || !categories.includes(known.category as OptionalCategory)) continue;` by `const category = cookieCategory(name); if (!category || !categories.includes(category as OptionalCategory)) continue;`. Import cookieCategory from '@/lib/cookie-patterns' and remove KNOWN_COOKIES from the import at line 10. If the file uses any other name that moved (knownCookie, cookiePurpose, declaredCookies), stop: see stop_if."
+        },
+        {
+          "file": "src/lib/cookie-scan.ts",
+          "action": "edit",
+          "how": "Import the moved names (KNOWN_COOKIES, knownCookie, cookiePurpose, declaredCookies, KnownCookie: whichever it uses) from './known-cookies'; the rest stays from './cookie-consent'. Do the same in every other importer: list them with `rg -n 'KNOWN_COOKIES|knownCookie\\(|cookiePurpose\\(|declaredCookies\\(|KnownCookie\\b' src e2e scripts -g '!src/lib/known-cookies.ts' -g '!src/lib/cookie-patterns.ts'`. Known importers today: src/server/site-cookies.ts, src/components/consent/cookie-policy.tsx, src/lib/cookie-consent.test.ts, src/lib/cookie-consent-affiliate.test.ts, src/lib/cookie-consent-modals.test.ts, src/lib/referrals.test.ts, src/lib/redirects.test.ts, src/lib/withdraw-no-storage.test.ts, src/components/documents/shopper-documents.test.ts, src/lib/exchange-shopper.scan.test.ts (the last two may read cookie-consent.ts as TEXT with readFileSync: point them at known-cookies.ts when what they look for moved). `pnpm typecheck` names any left."
+        },
+        {
+          "file": "src/lib/store-audience.ts",
+          "action": "create",
+          "how": "Move effectiveAudience() here from src/lib/b2b.ts (lines 29 to 36, with its doc comment). It imports `featureOn, type FeatureSource` from './store-features' and `parseStoreAudience, type StoreAudience` from './b2b'."
+        },
+        {
+          "file": "src/lib/b2b.ts",
+          "action": "edit",
+          "how": "Delete effectiveAudience() and the line `import { featureOn, type FeatureSource } from \"./store-features\";` (line 13). If another function in b2b.ts still uses featureOn or FeatureSource, stop: see stop_if. Do not re-export effectiveAudience."
+        },
+        {
+          "file": "src/server/stores.ts",
+          "action": "edit",
+          "how": "Line 8: import effectiveAudience from '@/lib/store-audience'; keep parseStoreAudience and StoreAudience from '@/lib/b2b'. Fix any other importer `rg -n 'effectiveAudience' src` lists (tests and the audience scan test src/server/audience-readers.scan.test.ts, which may name the file b2b.ts: point it at store-audience.ts)."
+        },
+        {
+          "file": "src/lib/feature-labels.ts",
+          "action": "create",
+          "how": "Move here from src/lib/store-features.ts, unchanged: requirementLabel() (about line 240), featureOffText() (about line 246) and needWords (about line 466), with the two imports they need (`countWords` from './admin-fill'; `commonEn, type CommonMessages` from './admin-messages/common.en') and the types they use imported from './store-features'."
+        },
+        {
+          "file": "src/lib/store-features.ts",
+          "action": "edit",
+          "how": "Delete the three moved functions and lines 13 and 14 (the imports of countWords and commonEn/CommonMessages) if nothing else in the file uses them. Then fix every importer of the three names: `rg -n 'requirementLabel|featureOffText|needWords' src -g '!src/lib/feature-labels.ts'` lists them (today: src/lib/owner-tool-features.ts, src/lib/feature-words.ts, src/server/bookings.ts, src/server/products.ts, src/server/setup-tools.ts, src/server/store-features.ts, src/components/admin/feature-off-text.tsx, src/components/admin/page-builder.tsx, the admin actions under src/app/admin/(gated)/[store]/ named hosts/actions.ts, deliveries/actions.ts, deals/actions.ts, deals/activity-actions.ts, settings/localization/actions.ts, and src/lib/store-features.test.ts). Each imports the moved names from '@/lib/feature-labels' and keeps its other imports from store-features."
+        },
+        {
+          "file": "src/lib/drawer-background.ts",
+          "action": "create",
+          "how": "Move drawerHasBackground() here from src/lib/menu-drawer.ts (lines 138 to 139) with `import { layersShow } from './background-layers'` and `import type { MenuDrawer } from './menu-drawer'`. In src/lib/menu-drawer.ts delete the function and its import of layersShow (line 10) if unused after. Change the two callers: src/components/site-parts.tsx line 10 and src/app/s/[store]/[market]/@drawer/(.)cart/page.tsx line 8 import drawerHasBackground from '@/lib/drawer-background' and keep their other names from '@/lib/menu-drawer'."
+        },
+        {
+          "file": "src/lib/storefront-bundle.scan.test.ts",
+          "action": "edit",
+          "how": "(1) Add 'lib/store-features', 'lib/known-cookies' and 'lib/background-layers' to FORBIDDEN, and make forbidden() also return true for names matching /^lib\\/admin-messages\\//. (2) In the walk 'never reach zod…' allow one exception each, written as data at the top of the file with a comment: 'lib/known-cookies' may be reached only when the entry is 'components/consent/cookie-policy' (if that file is a client component; if it is a server component no exception is needed), and 'lib/admin-messages/*' only when the chain passes 'components/admin/admin-text-context' (the sign-up wizard, docs/performance.md lines 112 to 117). (3) Add a 'would notice' case: reach('lib/b2b.ts') holds neither lib/store-features nor any lib/admin-messages file, and reach('lib/cookie-consent.ts') does not hold lib/known-cookies. If the walk then reports other chains, each is a real leak: fix it by importing the small file, never by adding an exception; if a chain cannot be cut by an import change in one file, stop and report it."
+        }
+      ],
+      "checks": [
+        "pnpm exec vitest run src/lib/storefront-bundle.scan.test.ts src/lib/cookie-consent.test.ts src/lib/cookie-scan.test.ts src/lib/page-modal.test.ts src/lib/store-features.test.ts src/server/audience-readers.scan.test.ts : all pass",
+        "pnpm lint && pnpm typecheck && pnpm test : exits 0",
+        "pnpm test:int : exits 0",
+        "pnpm build && pnpm exec playwright test e2e/cookies.spec.ts e2e/privacy.spec.ts e2e/b2b.spec.ts e2e/modals.spec.ts e2e/performance.spec.ts : all pass",
+        "With `pnpm start` running on a seeded build, save this as /tmp/first-scripts.mjs and run `node /tmp/first-scripts.mjs`: const b='http://localhost:3000';for(const p of ['/s/demo/no','/s/demo/no/p/demo-keramikkopp']){const h=await(await fetch(b+p)).text();const tags=[...h.matchAll(/<script\\b[^>]*>/g)].map(m=>m[0]).filter(t=>!/nomodule/i.test(t));const urls=new Set(tags.map(t=>(/src=\"([^\"]+)\"/.exec(t)||[])[1]).filter(Boolean));let n=0;const hits={};for(const u of urls){const t=await(await fetch(new URL(u,b))).text();n+=Buffer.byteLength(t);for(const w of ['Sell to businesses','Waiting for payment','Kommer ihåg om du valde ljusa','filter-dialog-title','aspect-[16/7]','data-language-hint'])if(t.includes(w))hits[w]=u}console.log(p,n,JSON.stringify(hits))} : neither page lists 'Sell to businesses', 'Waiting for payment' or 'Kommer ihåg om du valde ljusa'"
+      ]
+    },
+    {
+      "title": "The cart's view is a server file, so the product page's scripts lose the cart's forms",
+      "changes": [
+        {
+          "file": "src/app/s/[store]/[market]/cart/cart-view.ts",
+          "action": "create",
+          "how": "Starts with `import \"server-only\";`. Move here from cart-contents.tsx (lines 63 to about 210): the types CartView and Filled (export both), cartView() (exported), loadCartView() and cartQuote(), unchanged, with exactly the imports they use. The perRequest key inside cartView() stays byte for byte the same, so the cart's parts and the basket notes still share one read. The file must contain no JSX and import no component (no file from src/components): if loadCartView() uses one, stop."
+        },
+        {
+          "file": "src/app/s/[store]/[market]/cart/cart-contents.tsx",
+          "action": "edit",
+          "how": "Delete the moved code; add `import { cartView, type CartView, type Filled } from \"./cart-view\";`. Remove imports that only the moved code used (`pnpm lint` names unused imports). Everything else stays."
+        },
+        {
+          "file": "src/components/shop-notes.tsx",
+          "action": "edit",
+          "how": "Line 1: import cartView from '@/app/s/[store]/[market]/cart/cart-view' in place of '.../cart/cart-contents'."
+        },
+        {
+          "file": "src/lib/storefront-bundle.scan.test.ts",
+          "action": "edit",
+          "how": "Add a case 'the product page's parts reach no cart form': walk the static imports of src/components/product-parts.tsx with the file's reach() (it follows server files too) and expect none of these in the result: 'app/s/[store]/[market]/cart/cart-contents', 'components/checkout-button', 'app/s/[store]/[market]/cart/cart-gift'."
+        }
+      ],
+      "checks": [
+        "pnpm exec vitest run src/lib/storefront-bundle.scan.test.ts src/lib/pay-routes.graph.test.ts : all pass",
+        "pnpm lint && pnpm typecheck && pnpm test : exits 0",
+        "pnpm test:int : exits 0",
+        "pnpm build && pnpm exec playwright test e2e/cart.spec.ts e2e/shop-components.spec.ts e2e/products-page.spec.ts : all pass"
+      ]
+    },
+    {
+      "title": "The carousel, the theme preview stage and the platform's language switch load where they are drawn",
+      "changes": [
+        {
+          "file": "src/components/lazy/blocks.tsx",
+          "action": "edit",
+          "how": "Add three stand-ins written exactly as the file's others: `export const Carousel = lazyView(dynamic(() => import(\"../carousel\").then((m) => m.Carousel)), showChildren);` (it wraps the server's tiles, so showChildren), `export const ThemePreviewStage = lazyView(dynamic(() => import(\"../theme-preview-stage\").then((m) => m.ThemePreviewStage)));` and `export const LanguageSwitch = lazyView(dynamic(() => import(\"../language-switch\").then((m) => m.LanguageSwitch)));`."
+        },
+        {
+          "file": "src/components/content-grid.tsx",
+          "action": "edit",
+          "how": "Line 20: import Carousel from './lazy/blocks' in place of './carousel'. Do the same in src/components/testimonials-view.tsx (line 6), src/components/gallery-view.tsx (line 8) and src/components/instagram-section.tsx (line 10). In src/components/theme-page-parts.tsx line 5 import ThemePreviewStage from '@/components/lazy/blocks' and keep `type StageLook` from '@/components/theme-preview-stage'. In src/components/site-parts.tsx (line 26) and src/components/platform-layout.tsx (line 16) import LanguageSwitch from './lazy/blocks'."
+        },
+        {
+          "file": "src/test/eager-lazy-views.ts",
+          "action": "edit",
+          "how": "In the vi.mock of '@/components/lazy/blocks' add three lines in the style of the others: Carousel from '@/components/carousel', ThemePreviewStage from '@/components/theme-preview-stage', LanguageSwitch from '@/components/language-switch'."
+        }
+      ],
+      "checks": [
+        "pnpm lint && pnpm typecheck && pnpm test : exits 0",
+        "pnpm build && for i in 1 2 3 4 5; do pnpm exec playwright test e2e/carousel.spec.ts e2e/gallery.spec.ts e2e/custom-grid.spec.ts e2e/platform-languages.spec.ts e2e/language-switcher.spec.ts e2e/theme-store.spec.ts || break; done : five passes (skip a spec name that does not exist: ls e2e)",
+        "With `pnpm start` running on a seeded build, save this as /tmp/first-scripts.mjs and run `node /tmp/first-scripts.mjs`: const b='http://localhost:3000';for(const p of ['/s/demo/no','/s/demo/no/p/demo-keramikkopp']){const h=await(await fetch(b+p)).text();const tags=[...h.matchAll(/<script\\b[^>]*>/g)].map(m=>m[0]).filter(t=>!/nomodule/i.test(t));const urls=new Set(tags.map(t=>(/src=\"([^\"]+)\"/.exec(t)||[])[1]).filter(Boolean));let n=0;const hits={};for(const u of urls){const t=await(await fetch(new URL(u,b))).text();n+=Buffer.byteLength(t);for(const w of ['Sell to businesses','Waiting for payment','Kommer ihåg om du valde ljusa','filter-dialog-title','aspect-[16/7]','data-language-hint'])if(t.includes(w))hits[w]=u}console.log(p,n,JSON.stringify(hits))} : /s/demo/no lists neither 'aspect-[16/7]' nor 'data-language-hint'"
+      ]
+    },
+    {
+      "title": "The filter's button stays in first scripts; its panel loads on the first press or when a pointer nears",
+      "changes": [
+        {
+          "file": "src/components/filter-dialog.tsx",
+          "action": "edit",
+          "how": "This commit needs a strong model. Split the 500-line client component in two. (a) A small `FilterDialog` that stays in this file and in first scripts: it draws the same button as today (same text, classes, aria attributes, same count of chosen filters) and holds one state, `wanted`. It starts `import('./filter-panel')` on the button's onPointerEnter, onFocus and onTouchStart (once), and on onClick sets wanted true and starts the same import if not started. When the module has arrived and wanted is true it renders `<FilterPanel … open />`, which calls showModal() in an effect on mount. A press made before the module arrives must open the dialog when it arrives: never drop it. (b) src/components/filter-panel.tsx (new, 'use client') holds everything else: the <dialog>, the draft state, the price and range fields, the title with id 'filter-dialog-title'. The types FilterFacets and FilterLabels stay exported from filter-dialog.tsx (product-listing.tsx line 3 imports the type). Props and the URL the dialog writes on Apply must not change."
+        },
+        {
+          "file": "src/components/filter-panel.tsx",
+          "action": "create",
+          "how": "See the entry above: the dialog and its state, moved from filter-dialog.tsx, opened on mount, telling its parent when it closes so the button can open it again."
+        },
+        {
+          "file": "e2e/listing.spec.ts",
+          "action": "edit",
+          "how": "Add a test 'the filter opens on a first press': goto the demo store's products list, and immediately (no wait for idle) click the filter button; expect the dialog with the accessible name of 'filter-dialog-title' visible within 5 s. This spec must be added to WEBKIT_SPECS in playwright.config.ts only if it passes there five times; otherwise put the one test in e2e/products-page.spec.ts, which already runs on WebKit."
+        }
+      ],
+      "checks": [
+        "pnpm lint && pnpm typecheck && pnpm test : exits 0",
+        "pnpm build && for i in 1 2 3 4 5; do E2E_WEBKIT=1 pnpm exec playwright test e2e/listing.spec.ts e2e/custom-fields-ranges.spec.ts e2e/products-page.spec.ts || break; done : five passes on Chromium and WebKit",
+        "With `pnpm start` running on a seeded build, save this as /tmp/first-scripts.mjs and run `node /tmp/first-scripts.mjs`: const b='http://localhost:3000';for(const p of ['/s/demo/no','/s/demo/no/p/demo-keramikkopp']){const h=await(await fetch(b+p)).text();const tags=[...h.matchAll(/<script\\b[^>]*>/g)].map(m=>m[0]).filter(t=>!/nomodule/i.test(t));const urls=new Set(tags.map(t=>(/src=\"([^\"]+)\"/.exec(t)||[])[1]).filter(Boolean));let n=0;const hits={};for(const u of urls){const t=await(await fetch(new URL(u,b))).text();n+=Buffer.byteLength(t);for(const w of ['Sell to businesses','Waiting for payment','Kommer ihåg om du valde ljusa','filter-dialog-title','aspect-[16/7]','data-language-hint'])if(t.includes(w))hits[w]=u}console.log(p,n,JSON.stringify(hits))} : /s/demo/no does not list 'filter-dialog-title'"
+      ]
+    },
+    {
+      "title": "A product picker loads with the page that draws it, if no press is lost",
+      "changes": [
+        {
+          "file": "src/components/lazy/shop.tsx",
+          "action": "edit",
+          "how": "A trial, kept only if the checks pass. Add lazyView stand-ins for RangePicker ('../range-picker'), AppointmentPicker ('../appointment-picker'), GiftCardBuy ('../gift-card-buy') and QuoteRequest ('../quote-request'), written as the file's others, and correct the file's doc comment. In src/components/product-parts.tsx import the four from '@/components/lazy/shop' (lines 7, 11, 20 and 79 today). Leave cart-contents.tsx's own import of QuoteRequest alone. If any of the five-run checks below loses a press for one picker, take that picker's stand-in out again (keep the others), and record it in docs/performance.md with its bytes."
+        },
+        {
+          "file": "e2e/performance.spec.ts",
+          "action": "edit",
+          "how": "Lower FIRST_SCRIPTS_MAX and the product page's entry in FIRST_SCRIPTS_BUDGETS to the bytes the build now measures plus 3 % (round up to the next 1,000), but never above 615,000 for '/s/demo/no' and 670,000 for the product page (690,000 if a picker was kept in first scripts; name it in the comment with its bytes). Add to the front page's test: no first script holds 'Sell to businesses', 'Waiting for payment', 'Kommer ihåg om du valde ljusa' or 'filter-dialog-title'. Update the comments' dates and figures."
+        },
+        {
+          "file": "docs/performance.md",
+          "action": "edit",
+          "how": "In 'A client component that only some pages draw is loaded where it is drawn' (about lines 38 to 52): correct the rule's text to 'a press never waits for its script: a part a visitor may press at once either stays in first scripts or keeps its button there and loads the rest on the press or when a pointer nears (the listing's filter)'. Add a table 'Kept in first scripts' with one row per part that stays (the site's forms, a booking's changes, the cart's checkout button, the discount codes, the gift box, the delivery choice, the filter's button, signing in, and any picker the trial kept), each with its raw bytes from the build. Add the sentence: 'Admin words, the features table and the cookie catalogue are not a visitor's scripts; a helper a client component reads lives in a file without them.'"
+        },
+        {
+          "file": "docs/decisions.md",
+          "action": "edit",
+          "how": "Append one row with the next free D-number (pull main first; `rg -o '^\\| D[0-9]+' docs/decisions.md | tr -dc '0-9\\n' | sort -n | tail -1`, plus 1). It records: the cookie table split into patterns (browser) and details (server); effectiveAudience, the feature labels, mayRemember and drawerHasBackground moved to small files; cartView() in a server file; the carousel, preview stage and platform language switch as lazy stand-ins; the filter's button and panel; the result of the picker trial with the before and after bytes. Kaizena Flow's site pages share these first scripts and lose the same bytes. No migration."
+        }
+      ],
+      "checks": [
+        "pnpm lint && pnpm typecheck && pnpm test : exits 0",
+        "pnpm build && for i in 1 2 3 4 5; do E2E_WEBKIT=1 pnpm exec playwright test e2e/bookings.spec.ts e2e/gift.spec.ts e2e/components.spec.ts e2e/quotes.spec.ts e2e/gallery.spec.ts e2e/custom-fields-ranges.spec.ts e2e/products-page.spec.ts || break; done : five passes each on Chromium and WebKit",
+        "pnpm test:e2e : exits 0"
+      ]
+    }
+  ],
+  "tests": [
+    {
+      "file": "src/lib/storefront-bundle.scan.test.ts",
+      "proves": "Fails when a visitor's client component reaches lib/store-features, lib/known-cookies, lib/background-layers or an admin word file, and when product-parts.tsx reaches a cart form."
+    },
+    {
+      "file": "e2e/performance.spec.ts",
+      "proves": "Fails when the front page's or the product page's first scripts pass their new byte budget or hold one of the four marker strings."
+    },
+    {
+      "file": "e2e/listing.spec.ts",
+      "proves": "Fails when a first press on the filter button does not open the dialog."
+    },
+    {
+      "file": "src/lib/cookie-consent.test.ts",
+      "proves": "Fails when the rebuilt KNOWN_COOKIES differs from the old list in order or content."
+    }
+  ],
+  "migration": {
+    "needed": false,
+    "notes": ""
+  },
+  "done_when": [
+    {
+      "check": "With `pnpm start` running on a seeded build, save this as /tmp/first-scripts.mjs and run `node /tmp/first-scripts.mjs`: const b='http://localhost:3000';for(const p of ['/s/demo/no','/s/demo/no/p/demo-keramikkopp']){const h=await(await fetch(b+p)).text();const tags=[...h.matchAll(/<script\\b[^>]*>/g)].map(m=>m[0]).filter(t=>!/nomodule/i.test(t));const urls=new Set(tags.map(t=>(/src=\"([^\"]+)\"/.exec(t)||[])[1]).filter(Boolean));let n=0;const hits={};for(const u of urls){const t=await(await fetch(new URL(u,b))).text();n+=Buffer.byteLength(t);for(const w of ['Sell to businesses','Waiting for payment','Kommer ihåg om du valde ljusa','filter-dialog-title','aspect-[16/7]','data-language-hint'])if(t.includes(w))hits[w]=u}console.log(p,n,JSON.stringify(hits))}",
+      "expect": "/s/demo/no at most 615000 and /s/demo/no/p/demo-keramikkopp at most 670000 (690000 only with a picker kept, named in docs/performance.md); the hits object empty for both pages"
+    },
+    {
+      "check": "The product page's own entry chunks: the script step 0.1 put in docs/audits/bloat-review-2026-11/scripts/ for page_client-reference-manifest.js (the review called it crm.mjs; find it: rg -ln 'client-reference-manifest' docs/audits/bloat-review-2026-11/scripts), run on .next/server/app/s/[store]/[market]/p/[handle]/page_client-reference-manifest.js",
+      "expect": "at most 297,000 bytes raw (315,368 before)"
+    },
+    {
+      "check": "pnpm exec vitest run src/lib/storefront-bundle.scan.test.ts",
+      "expect": "passes, with the product-parts walk finding no cart form"
+    },
+    {
+      "check": "The filter test of e2e/listing.spec.ts, five runs on Chromium and WebKit",
+      "expect": "5 of 5 pass on both"
+    },
+    {
+      "check": "rg -n 'Kept in first scripts' docs/performance.md",
+      "expect": "the table, one row per part with its bytes"
+    }
+  ],
+  "after_deploy": [
+    "Open a production store's front page and a product page: the filter opens on the first press on a listing, the cookie banner still removes a withdrawn category's cookies (withdraw Statistics and check _ga is gone), and the cart still shows its notes."
+  ],
+  "docs": [
+    "docs/decisions.md: the new D-row described in the last commit.",
+    "docs/performance.md: the corrected rule, the 'Kept in first scripts' table, the sentence on admin words.",
+    "docs/rules/storefront.md, Cookie consent (rg -n 'KNOWN_COOKIES' docs/rules/storefront.md CLAUDE.md): every cookie is listed in COOKIE_PATTERNS (src/lib/cookie-patterns.ts) with its category and in src/lib/known-cookies.ts with its purpose.",
+    "The plan's tracker: set step 0.16 to Done with the date and commits (find the row: rg -n '^\\| *0\\.16 ' docs/audits/bloat-review-2026-11.md docs/audits/bloat-review-2026-11; if step 0.1 has not made the table yet, say so in the hand-back)."
+  ],
+  "do_not": [
+    "Do not re-export the moved names from their old files (cookie-consent.ts, b2b.ts, page-modal.ts, store-features.ts, menu-drawer.ts): a re-export puts the weight back.",
+    "Do not make a form, the cart's checkout button, the discount code form, the gift box, the delivery choice or sign-in lazy: what is typed before the script runs is lost (docs/performance.md).",
+    "Do not load the consent manager's cookie patterns with import(): withdrawing consent must delete cookies without a second download.",
+    "Do not split the four browser languages (D212) or touch ui-catalog / UiTexts.",
+    "Do not change the perRequest key of cartView().",
+    "Do not add an exception to the scan test to make it pass, other than the two the brief names.",
+    "Do not raise a byte budget.",
+    "If step 0.15 has landed, KNOWN_COOKIES has one more entry (kaizen_mine_…): move it with the rest."
+  ],
+  "stop_if": [
+    "consent-manager.tsx uses knownCookie, cookiePurpose or declaredCookies (more than the category): report the lines.",
+    "b2b.ts still needs featureOn after effectiveAudience leaves, or store-features.ts still needs commonEn after the three functions leave.",
+    "loadCartView() or cartQuote() imports a component.",
+    "The scan test reports a chain that one import change does not cut.",
+    "Any spec loses a press (a test passes fewer than five times in five) after the filter split: do not push that commit; report the spec and browser.",
+    "After all commits the measure is above 615,000 or 670,000 (690,000): report the figures and the largest remaining chunks; do not lower the bar.",
+    "A unit test that draws a page with renderToStaticMarkup shows a fallback where a carousel was (src/test/eager-lazy-views.ts is not loaded by that test): report the test."
+  ],
+  "executor": "strong",
+  "executor_why": "Commits one to three are file moves a cheap model can do under the scan test, but the filter's button-and-panel split and the picker trial need design judgement about lost presses that the brief cannot remove.",
+  "checked_in_code": "I opened cookie-consent.ts (800 lines; the table starts at line 156 and the helpers end the file), b2b.ts, store-features.ts, page-modal.ts, menu-drawer.ts, cart-contents.tsx, shop-notes.tsx, product-parts.tsx, lazy/blocks.tsx, lazy/shop.tsx, filter-dialog.tsx, storefront-bundle.scan.test.ts and e2e/performance.spec.ts: all are as the findings say. The findings offered two designs for the cookie table; the step names src/lib/cookie-patterns.ts, so I wrote TX-5's split (patterns for the browser, details for the server). PM-11 put mayRemember in a new remember-choice.ts with a re-export; I used SC-3's home (cookie-consent.ts, no re-export) because a re-export from page-modal.ts keeps the weight. e2e/performance.spec.ts budgets are 972,000 and 1,040,000, far above today's measure, so the brief lowers them; there is no gift card spec file (gift cards are bought in e2e/components.spec.ts; e2e/gift.spec.ts is the gift box), which the step's list of specs did not say."
+}

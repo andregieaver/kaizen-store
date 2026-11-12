@@ -1,0 +1,235 @@
+{
+ "id": "1.8",
+ "goal": "One import walker and four checks hold what a server entry loads: a graph test with a baseline on every pnpm test, a package list test, and two scripts in CI's e2e job that hold traced megabytes, chunk bytes, the server-reference manifest and the routing-rule count.",
+ "why": "Nothing counts what a route's function loads today, so one import cycle grew to 229 files and /api/visit reaches about 1,308 source files unseen. After this step every figure is a number in a baseline that a push cannot raise without failing a named check.",
+ "read_first": [
+  "docs/audits/bloat-review-2026-11.md",
+  "docs/performance.md",
+  "src/lib/pay-routes.graph.test.ts",
+  "scripts/lib/ratchet-count.mjs",
+  "scripts/ratchet.mjs",
+  "src/server/ratchet.scan.test.ts",
+  ".github/workflows/ci.yml",
+  "node_modules/next/dist/docs/01-app/02-guides/package-bundling.md"
+ ],
+ "depends_on": [
+  {
+   "id": "0.1",
+   "why": "it puts the review's cold-load scripts, the manifest timer, the trace summer and words-in-entries.mjs under docs/audits/bloat-review-2026-11/scripts/, which commits 3 and 4 call"
+  },
+  {
+   "id": "0.4",
+   "why": "it cuts the chat module's helpers and the schema out of the beacons, so the forbidden lists start with few exceptions"
+  },
+  {
+   "id": "0.36",
+   "why": "it removes unused packages, so the package list starts clean"
+  },
+  {
+   "id": "1.1",
+   "why": "it wrote the budgets rule and the scan that fails on a baseline file the rule does not name"
+  }
+ ],
+ "commits": [
+  {
+   "title": "Route load: one import walker, and a graph test that holds what each server entry reaches",
+   "changes": [
+    {
+     "file": "scripts/lib/import-walk.mjs",
+     "action": "create",
+     "how": "Plain Node ESM, no dependency, in the style of scripts/lib/ratchet-count.mjs. Move these out of src/lib/pay-routes.graph.test.ts, with the same behaviour: the IMPORT regular expression, typesOnly(clause), importsOf(text) and resolve(from, specifier). Give each a first argument or an options object instead of the test's module constants: importsOf(text, { dynamic }) returns the specifiers of value imports and re-exports; with dynamic false it leaves out the import('...') form (match group 4 of IMPORT). resolve(srcDir, from, specifier) resolves '@/x' against srcDir and './x' against the importing file, trying the same five candidates as today (x, x.ts, x.tsx, x/index.ts, x/index.tsx), and returns null for a package. Add packageOf(specifier): the package name of a bare specifier ('stripe', '@supabase/supabase-js'), null for '@/' and '.' specifiers and for 'node:' builtins. Export reach(srcDir, entry, { dynamic = true, stop = () => false, clientLeaf = false }): the Map of every file reached (file to the file that imported it), the entry included; with clientLeaf true a file whose first 300 characters hold a 'use client' directive is recorded but its imports are not followed. Export packagesReached(srcDir, entry, options): the Set of package names imported by any file that reach() returns. Export sourceFiles(dir): every .ts and .tsx file under dir that is not a *.test.* file. Export largestCycle(srcDir, files, { dynamic = false }): Tarjan's strongly connected components over the given files with edges from importsOf and resolve; return { size, files } of the largest component (size 1 means no cycle). No function reads process.cwd(): the caller passes the folder."
+    },
+    {
+     "file": "src/lib/pay-routes.graph.test.ts",
+     "action": "edit",
+     "how": "Delete the local IMPORT, typesOnly(), importsOf(), resolve() and reach() (lines 16 to 73 today) and import them from '../../scripts/lib/import-walk.mjs', as src/server/ratchet.scan.test.ts imports ratchet-count.mjs. Keep the file's own SRC, MARKET, sources() and rel(). Where the test called reach(entry, stop), call reach(SRC, entry, { dynamic: true, stop }) so it still follows import(), and where it called resolve(from, spec) or importsOf(text), pass SRC and { dynamic: true }. Change no expectation and no test name: every test of the file must pass with the same assertions."
+    },
+    {
+     "file": "scripts/lib/route-load.mjs",
+     "action": "create",
+     "how": "Export ENTRIES: an object from a short name to a repo-relative file. Exactly these: proxy src/proxy.ts; start-hook src/instrumentation.ts; health src/app/api/health/route.ts; beacon-visit src/app/api/visit/route.ts; beacon-touch src/app/api/visit/touch/route.ts; beacon-speed src/app/api/visit/speed/route.ts; beacon-own-speed src/app/api/visit/speed/own/route.ts; beacon-recommendation-events src/app/api/recommendations/events/route.ts; shop-tiles src/app/api/shop/tiles/route.ts; store-layout src/app/s/[store]/[market]/layout.tsx; store-home src/app/s/[store]/[market]/page.tsx; store-product src/app/s/[store]/[market]/p/[handle]/page.tsx; admin-store-layout src/app/admin/(gated)/[store]/layout.tsx; admin-orders src/app/admin/(gated)/[store]/orders/page.tsx; platform-admin-layout src/app/admin/(gated)/platform/layout.tsx; platform-admin-home src/app/admin/(gated)/platform/page.tsx; site-front-page src/app/(platform)/page.tsx; docs-feedback src/app/api/docs/feedback/route.ts. Export FORBIDDEN: for each entry a list of repo-relative modules and package names it may not reach by static value imports. The five beacons, health and shop-tiles: src/server/chat-route.ts, src/server/chat-agent.ts, src/server/auth.ts, src/server/owner-tools.ts, src/server/owner-assistant.ts, src/server/dream-factory.ts, src/lib/admin-text.ts, any file under src/lib/admin-messages/, src/db/schema.ts, and the packages stripe, sharp, opentype.js, @supabase/supabase-js, playwright-core; health also src/server/stores.ts. proxy and start-hook: src/server/auth.ts, src/server/pages.ts, src/server/seo.ts, src/server/ai.ts, src/lib/admin-text.ts, any file under src/lib/admin-messages/, src/db/schema.ts, src/server/owner-tools.ts, src/server/owner-assistant.ts, src/server/dream-factory.ts, playwright-core. store-layout, store-home, store-product: src/server/owner-tools.ts, src/server/owner-assistant.ts, src/server/privacy-erasure.ts, src/server/retention.ts, src/server/theme-store.ts, src/server/dream-factory.ts, src/lib/admin-text.ts, sharp, playwright-core. admin-store-layout, admin-orders, platform-admin-layout, platform-admin-home: src/server/owner-assistant.ts, src/server/owner-tools.ts, src/lib/owner-tools.ts. site-front-page and docs-feedback: src/server/owner-tools.ts, src/server/owner-assistant.ts, src/server/dream-factory.ts. Export routeLoadCounts(root): using import-walk.mjs with { dynamic: false, clientLeaf: true } it returns { largestCycle (the size among sourceFiles of src/server), entries: { name: files reached }, exceptions: { name: sorted list of the FORBIDDEN items that entry reaches today }, handlers: { repo-relative route.ts path: files reached } for every route.ts under src/app whose count is over 1,500 }."
+    },
+    {
+     "file": "scripts/route-load.mjs",
+     "action": "create",
+     "how": "The twin of scripts/ratchet.mjs for src/server/route-load.baseline.json. It prints each entry's count, the largest cycle and each entry's exceptions. With --write it writes the baseline but refuses, as scripts/ratchet.mjs does (print the lines, exit 1, write nothing), when an entry's count or the cycle is higher than the stored one, when an entry has an exception that the stored list lacks, or when a handler over 1,500 is new; --first writes whatever is there (use it once, for the first baseline). When it writes, it keeps the 'reason' text of each handler already in the file and writes 'reason: TODO' for a new one, and it exits 1 if any reason is still TODO."
+    },
+    {
+     "file": "src/server/route-load.baseline.json",
+     "action": "create",
+     "how": "Made by 'node scripts/route-load.mjs --first', never by hand. Shape: { largestCycle: number, entries: { name: number }, exceptions: { name: [strings] }, heavyHandlers: { path: { files: number, reason: string } } }. After the first write, replace every 'TODO' reason by hand with one short sentence that says why that handler loads over 1,500 files today; where you do not know, write 'reaches the shared server cycle through <the first import that leads there>' (the script's printed chain tells you which). Expect about 181 handlers if step 0.6 has not landed and about 29 if it has."
+    },
+    {
+     "file": "src/server/route-load.graph.test.ts",
+     "action": "create",
+     "how": "A vitest file modelled on src/server/ratchet.scan.test.ts. It calls routeLoadCounts(process.cwd()) once and has these tests. (1) 'no entry reaches more files': each entry's count is at most its baseline; the message names the entry, both numbers and says 'import the helper from the file that defines it, or load the module with import() where it is used'. (2) 'the largest import cycle in src/server does not grow'. (3) 'no entry reaches a forbidden module': the items of FORBIDDEN an entry reaches are all in the baseline's exceptions for it; the message names the entry, the module and the chain of imports from the entry to it (walk the Map that reach() returns back to the entry). (4) 'every handler over 1,500 files is on the named list with a reason': no route.ts over 1,500 is missing from heavyHandlers, and no reason is empty or TODO. (5) 'the baseline is as low as the code': fails when a count or the cycle is lower than the baseline, when a stored exception is no longer reached, or when a listed handler is at 1,500 or under; the message says 'run node scripts/route-load.mjs --write'. (6) 'the walker would notice': with a temporary folder (mkdtempSync) holding three small files where a.ts imports b.ts, b.ts imports c.ts with 'import type', and c.ts imports a.ts, reach() from a.ts returns 2 files with dynamic false, and largestCycle() returns size 1; then with a value import in b.ts it returns 3 files and a cycle of 3. (7) 'the proxy and the beacons reach no admin catalogue': for proxy and the five beacons, no reached file is under src/lib/admin-messages/, unless the baseline's exceptions list it."
+    }
+   ],
+   "checks": [
+    "pnpm vitest run src/lib/pay-routes.graph.test.ts: every test passes, with no expectation changed",
+    "node scripts/route-load.mjs: prints 18 entries; beacon-visit is within 10 of 1,308 if step 0.4 has not landed (the review's parser counted 1,308; a regular-expression walk may differ by a few), and lower if it has",
+    "pnpm vitest run src/server/route-load.graph.test.ts: 7 tests pass",
+    "Trial, never committed: add the line import \"@/server/chat-route\"; to src/app/api/visit/route.ts, run pnpm vitest run src/server/route-load.graph.test.ts: test 3 fails naming beacon-visit and src/server/chat-route.ts; remove the line",
+    "pnpm lint && pnpm typecheck && pnpm test: exits 0"
+   ]
+  },
+  {
+   "title": "Dependencies: every direct package has a reason and an importer",
+   "changes": [
+    {
+     "file": "src/lib/dependencies.scan.test.ts",
+     "action": "create",
+     "how": "A vitest file. It holds a constant PACKAGES: one entry for every key of package.json's dependencies (51 today) and devDependencies (17 today), each { why: one sentence, loads: 'server' | 'browser' | 'both' | 'build' | 'test' | 'peer' }. Fill it by running, for each package, rg -l \"from ['\\\"]<name>\" src scripts e2e *.config.* *.mts and reading one importer. Tests: (1) every key of dependencies and devDependencies has an entry, and PACKAGES has no entry for a package that is not in package.json; the message says 'add a line to PACKAGES in src/lib/dependencies.scan.test.ts saying why the package is here and where it loads'. (2) every package whose loads is not 'peer' or 'build' has at least one non-test importer under src, scripts or a config file at the repo root (use sourceFiles() and importsOf() with packageOf() from scripts/lib/import-walk.mjs over src and scripts, and read the root *.config.* files as text); 'test' packages may be imported by test files only. (3) no non-test file under src imports a devDependency with a value import. Packages that have no importer by design go in with loads 'peer' or 'build' and the reason in why: check 'three', '@tiptap/pm', 'server-only', 'typescript', 'tailwindcss', '@tailwindcss/postcss', 'eslint', 'eslint-config-next', 'drizzle-kit' and the '@types/*' packages first."
+    }
+   ],
+   "checks": [
+    "pnpm vitest run src/lib/dependencies.scan.test.ts: 3 tests pass",
+    "Trial, never committed: add \"left-pad\": \"1.3.0\" to dependencies in package.json (do not install), run the test: test 1 fails naming left-pad; revert package.json",
+    "pnpm lint && pnpm typecheck && pnpm test: exits 0"
+   ]
+  },
+  {
+   "title": "Trace sizes: CI holds the megabytes traced beside a function",
+   "changes": [
+    {
+     "file": "scripts/trace-sizes.mjs",
+     "action": "create",
+     "how": "Plain Node, no dependency. Start from the trace summer that step 0.1 put under docs/audits/bloat-review-2026-11/scripts/ (ls that folder; it was nft.mjs and pkgs.mjs in the review). It walks .next/server for *.nft.json, resolves each listed file against the json's folder, stats it once (cache sizes by absolute path) and sums bytes per trace and per package (the name after the last node_modules/ segment). It prints a Markdown table: the median trace, the proxy's (the nft.json of middleware or proxy at .next/server: find it by name, do not hard-code), the store home's (app/s/[store]/[market]/page.js.nft.json), the store checkout's, /api/health's and /api/visit's; and counts: traces that carry sharp, a file under src/data/product-taxonomy, @sparticuz/chromium (or the Chromium package the repo uses: read CHROMIUM_FILES in next.config.ts), react-dom, a file under public/, and any .map file; then the 15 heaviest packages by bytes times traces. Export the pure summing function (traces in, table rows out) so a test can call it. With --check it reads scripts/trace-budgets.json and exits 1, naming the line, when a size is over its budget or a count is over its number. With --write it rewrites the budgets from the build in front of it: sizes as the measured megabytes times 1.04 rounded up to 0.1, counts as measured; it refuses to raise a count unless --first is given."
+    },
+    {
+     "file": "scripts/trace-budgets.json",
+     "action": "create",
+     "how": "Written by 'pnpm build && node scripts/trace-sizes.mjs --write --first'. Do not type the review's figures in (median 52.6 MB, proxy 47.9, store home 51.9, checkout 52.4, health 16.2; sharp in 742 traces, the taxonomy in 831): phase 0 changed them. If you cannot run a build in your session, hand this commit back."
+    },
+    {
+     "file": "src/lib/trace-sizes.test.ts",
+     "action": "create",
+     "how": "Unit test of the exported summing function on an in-memory fixture of three traces: one file shared by two traces is counted in both, the median is the middle one, and a count over its budget makes the check function return a failure line that names it."
+    },
+    {
+     "file": ".github/workflows/ci.yml",
+     "action": "edit",
+     "how": "In the job 'e2e', directly after the step '- run: pnpm build' (line 152 today), add a step named 'What a function carries' that runs: node scripts/trace-sizes.mjs --check >> \"$GITHUB_STEP_SUMMARY\". Add it to no other job. Keep 'playwright install' on its own line as it is (src/lib/ci-playwright.scan.test.ts reads the job text)."
+    }
+   ],
+   "checks": [
+    "pnpm vitest run src/lib/trace-sizes.test.ts: passes",
+    "pnpm build && node scripts/trace-sizes.mjs --check: prints the table and exits 0",
+    "Trial, never committed: add import \"@/server/product-import\"; to src/proxy.ts, pnpm vitest run src/server/route-load.graph.test.ts fails on the proxy's count; remove the line",
+    "pnpm lint && pnpm typecheck && pnpm test: exits 0"
+   ]
+  },
+  {
+   "title": "Route budget: CI holds chunk bytes per kind of entry, the server-reference manifest, the routing rules and cold-load medians",
+   "changes": [
+    {
+     "file": "scripts/route-budget.mjs",
+     "action": "create",
+     "how": "Plain Node, run after pnpm build from the repo root. Part A, chunk bytes: for each route in .next/app-path-routes-manifest.json read its built entry file under .next/server/app (page.js or route.js), collect the chunk paths it loads at start (the strings passed to R.c(\"...\") in the entry; read the entry of /api/health first to confirm the form this Next version writes, and stop if it is not R.c), and sum the bytes of those files. Group routes into kinds by path: beacon (/api/visit, /api/visit/touch, /api/visit/speed, /api/visit/speed/own, /api/recommendations/events), api (other /api), store (/s/[store]/[market] and below, except cart, checkout and account), pay (cart, checkout, account), site (the (platform) and (docs) groups), admin-store (/admin/(gated)/[store]/...), admin-platform (/admin/(gated)/platform/...), and the proxy and src/instrumentation's built file (.next/server/instrumentation.js) as kinds of their own. Hold the largest route of each kind, not a sample. Part B, the manifest: bytes of .next/server/server-reference-manifest.json, its number of entries, entries per route (median, and the median for admin routes and for the five beacons), and the milliseconds to JSON.parse it and deep-freeze it, median of five (this stands for Next's 'load route manifests' step, which production cannot time). Part C: the bytes of server chunk files whose content hash repeats (group files under .next/server/chunks by sha1), printed only. Part D: the number of routing rules: read .next/routes-manifest.json and add the lengths of headers, redirects, rewrites (beforeFiles, afterFiles and fallback, or the array), dynamicRoutes and staticRoutes; fail above 1,600 (Vercel's cap is 2,048). Part E, cold load: for /api/health, /api/visit, the proxy, the start hook, the store home, the product page and the admin's orders page, run the cold-load script that step 0.1 put under docs/audits/bloat-review-2026-11/scripts/ in a fresh process (child_process.spawnSync of node) five times each and take the median milliseconds; print each median and its distance from /api/health's. Part F: run words-in-entries.mjs from the same folder and fail when an entry outside /admin lists a chunk that holds a sentence of src/lib/admin-messages/builder.nb.ts; and sum the bytes of the files under src/lib/messages that the store layout reaches (reach() of scripts/lib/import-walk.mjs from src/app/s/[store]/[market]/layout.tsx, dynamic false, clientLeaf true) and fail above 590,000. Budgets live in scripts/route-budget.json: chunk bytes per kind at today's figure plus 4%; manifest bytes and entries at today's figures exactly (they may not rise); cold-load distance per entry at its first measured figure plus 25% (timings are noisy on a shared runner: when one is over, rerun that entry's five runs once before failing). With --write the script lowers figures and refuses to raise them unless --first. Print everything as Markdown tables. Exit 1 with one line per breach that names the entry, the figure, the budget and what to do."
+    },
+    {
+     "file": "scripts/route-budget.json",
+     "action": "create",
+     "how": "Written by 'pnpm build && node scripts/route-budget.mjs --write --first'. Shape: { chunkBytes: { kind: { route, bytes, max } }, manifest: { bytes, entries }, routingRules: { max: 1600 }, coldMs: { entry: { firstFigure, max } }, coldBarMs: { beacon: 100, proxy: 100, storePage: 300, adminPage: 450 }, storefrontMessagesBytes: { max: 590000 } }. coldBarMs is printed beside each median as 'bar' and is not enforced yet: the comment field 'coldBarFrom' says 'enforced when phase 2 is in (steps 2.20 to 2.24)'."
+    },
+    {
+     "file": ".github/workflows/ci.yml",
+     "action": "edit",
+     "how": "In the job 'e2e', after the 'What a function carries' step of the previous commit, add a step named 'What a route loads' that runs: node scripts/route-budget.mjs >> \"$GITHUB_STEP_SUMMARY\"."
+    },
+    {
+     "file": "docs/performance.md",
+     "action": "edit",
+     "how": "Add a section '## What a server route loads' after the section '## The admin as people use it'. It holds: the table of the 18 entries with today's counts (paste the output of node scripts/route-load.mjs), the traced megabytes and the chunk bytes per kind (paste the two scripts' tables), the manifest's bytes and entries, and three rules in three sentences: a route imports a helper from the file that defines it, never through a feature's module; a package or module most requests do not need is loaded with import() where it is used; a feature's readers do not import its writers. Then one line per guard: route-load.graph.test.ts with node scripts/route-load.mjs, dependencies.scan.test.ts, scripts/trace-sizes.mjs and scripts/route-budget.mjs in CI's e2e job."
+    },
+    {
+     "file": "docs/ci-migrations.md",
+     "action": "edit",
+     "how": "Where the file describes CI's e2e job, add one sentence: after the build the job runs scripts/trace-sizes.mjs --check and scripts/route-budget.mjs, and a breach fails the job with the figure."
+    }
+   ],
+   "checks": [
+    "pnpm build && node scripts/route-budget.mjs: prints the six parts and exits 0",
+    "Trial, never committed: add import \"@/server/chat-route\"; to src/app/api/visit/route.ts, pnpm build && node scripts/route-budget.mjs: exits 1 naming the beacon kind's chunk bytes; remove the line and rebuild",
+    "Trial: lower manifest.entries in scripts/route-budget.json by 1 and run the script: exits 1 naming the manifest; restore the file",
+    "pnpm lint && pnpm typecheck && pnpm test: exits 0",
+    "pnpm build && pnpm test:e2e: exits 0 (the workflow file changed the e2e job)"
+   ]
+  }
+ ],
+ "tests": [
+  {
+   "file": "src/server/route-load.graph.test.ts",
+   "proves": "fails when an entry reaches more source files, reaches a forbidden module (a beacon importing '@/server/chat-route'; the proxy or a beacon reaching src/lib/admin-messages), when the largest cycle grows, or when a handler passes 1,500 files without a reason"
+  },
+  {
+   "file": "src/lib/dependencies.scan.test.ts",
+   "proves": "fails on a direct package with no line or no importer"
+  },
+  {
+   "file": "src/lib/trace-sizes.test.ts",
+   "proves": "fails when the trace summing or its budget check is wrong"
+  },
+  {
+   "file": "src/lib/pay-routes.graph.test.ts",
+   "proves": "still fails as before when a pay route reaches a forbidden part: its walker moved, its assertions did not"
+  }
+ ],
+ "migration": {
+  "needed": false,
+  "notes": ""
+ },
+ "done_when": [
+  {
+   "check": "pnpm vitest run src/server/route-load.graph.test.ts src/lib/dependencies.scan.test.ts",
+   "expect": "both files pass"
+  },
+  {
+   "check": "Trial: import \"@/server/chat-route\" added to src/app/api/visit/speed/own/route.ts, then pnpm vitest run src/server/route-load.graph.test.ts",
+   "expect": "fails naming beacon-own-speed; passes again when the line is removed"
+  },
+  {
+   "check": "rg -n 'admin-messages' scripts/lib/route-load.mjs",
+   "expect": "the proxy's and the five beacons' forbidden lists name src/lib/admin-messages"
+  },
+  {
+   "check": "CI's e2e job summary of the push",
+   "expect": "shows the trace table, chunk bytes for the largest route of each kind and for instrumentation, the manifest's bytes, entries, entries per route and load time, the routing-rule count, and each cold-load median with its distance from /api/health"
+  },
+  {
+   "check": "node scripts/route-budget.mjs with scripts/route-budget.json's routingRules.max set to 1 (trial)",
+   "expect": "exits 1 naming the routing rules"
+  },
+  {
+   "check": "node scripts/route-budget.mjs on CI's build",
+   "expect": "no entry outside the admin lists a chunk with a sentence of builder.nb.ts, and the bytes of src/lib/messages behind the storefront layout are at most 590,000"
+  }
+ ],
+ "after_deploy": [],
+ "docs": [
+  "The budgets rule that step 1.1 wrote under docs/rules (find it with: rg -l 'baseline.json' docs/rules): add one line for each new baseline (src/server/route-load.baseline.json, scripts/trace-budgets.json, scripts/route-budget.json) with its test and the script that lowers it. Step 1.1's scan fails on a baseline under src that this rule does not name. Do not add a sentence to CLAUDE.md: step 1.1 gave all budgets one sentence there.",
+  "docs/performance.md: the new section 'What a server route loads' (commit 4).",
+  "docs/audits/code-review-2026-11.md: under step 4.1 note that route-load.graph.test.ts exists, add the four guards to the table of step 4.5, and add a change-log line.",
+  "docs/decisions.md: add one row at the end of the decisions table with the next free D-number (read the last row first; D573 was the last on 12 November 2026, and other steps add rows, so never assume the number). It records: the server's load is held by route-load.graph.test.ts, dependencies.scan.test.ts, scripts/trace-sizes.mjs and scripts/route-budget.mjs; the start figures; cold-load times are printed against the bars 100, 300 and 450 ms and enforced after phase 2.",
+  "docs/audits/bloat-review-2026-11.md: in the Progress table set the row of step 1.8 to Done with the date and the commit hash, in the same commit as the last change of this step."
+ ],
+ "do_not": [
+  "Do not change any assertion of src/lib/pay-routes.graph.test.ts, and do not touch src/lib/storefront-bundle.scan.test.ts: its resolve() treats the zod package as a node, which the shared walker does not; step 4.3 moves it.",
+  "Do not make the graph test follow import(): a dynamic import is how a heavy module is kept off a route, so following it would punish the fix.",
+  "Do not fix an import to make a forbidden rule pass in this step: a rule that fails today goes on the baseline's exceptions list, and the steps of phase 0 and 2 empty it.",
+  "Do not type the review's figures into a baseline or budget: every figure is written by its script from the code and build in front of you.",
+  "Do not add a second patch to Next for the manifest, and do not gate CI on a single timing run.",
+  "Do not add a lint plugin or any new package for this."
+ ],
+ "stop_if": [
+  "A script of step 0.1 (the cold-load scripts, the manifest timer, the trace summer, words-in-entries.mjs) is not under docs/audits/bloat-review-2026-11/scripts/: step 0.1 is not done; stop.",
+  "node scripts/route-load.mjs prints over 1,450 or under 100 for beacon-visit before step 0.4: the walker is wrong (it follows types or import(), or misses '@/').",
+  "A test of src/lib/pay-routes.graph.test.ts fails after the move and can only pass with a changed assertion.",
+  "The built entry of /api/health does not load its chunks with R.c(\"...\"): this Next version writes entries another way; report the form you found.",
+  "A cold-load median wobbles by more than 30% between two runs of the script on the same build: report the figures instead of committing a budget.",
+  "You cannot run pnpm build in your session: commits 3 and 4 need a build to write their budgets; hand them back after commits 1 and 2."
+ ],
+ "executor": "cheap-then-review",
+ "executor_why": "Four mechanical commits, but many files, a CI workflow edit and budgets that must be written from a real build; a stronger model should read the walker and the two CI scripts before the push.",
+ "checked_in_code": "I opened src/lib/pay-routes.graph.test.ts, src/lib/storefront-bundle.scan.test.ts, scripts/lib/ratchet-count.mjs, scripts/ratchet.mjs, src/server/ratchet.scan.test.ts and .github/workflows/ci.yml: the walker functions and the ratchet pattern are as the findings say, and 'pnpm build' is at line 152 of the e2e job. All 18 entry files exist, among them src/app/api/visit/touch, speed and speed/own, src/app/api/recommendations/events and src/app/api/docs/feedback. Corrections: finding SF-7 is FN-7 in findings/functions.json; the findings name three different homes for the walker (a test helper, scripts/lib/route-load.mjs, scripts/lib/import-walk.mjs) and I chose scripts/lib/import-walk.mjs with scripts/lib/route-load.mjs on top; storefront-bundle.scan.test.ts is left alone because its resolver differs; AS-3's proxyReach ratchet key is dropped because the graph test's baseline already holds the proxy; the cold-load and words scripts are not in the repo yet (step 0.1 brings them), and package.json has 51 dependencies and 17 devDependencies today."
+}

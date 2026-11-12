@@ -1,0 +1,176 @@
+{
+  "id": "0.15",
+  "goal": "A new visitor to a store with both tile switches off makes no request of the page's own after load: no GET /wishlist/saved, no GET /api/shop/tiles and no suggestion POST on the search results page.",
+  "why": "Today all 12 measured store pages ask /wishlist/saved (a function call and a proxy run for a 15-byte answer), the home and listing pages ask /api/shop/tiles (three statements) and the search results page posts for suggestions nobody typed for. After this step each of these is 0 for a visitor with nothing to fetch.",
+  "read_first": [
+    "docs/rules/storefront.md",
+    "docs/rules/admin/website.md",
+    "src/components/wishlist-heart.tsx",
+    "src/server/wishlists.ts",
+    "src/lib/cookie-consent.ts",
+    "src/lib/shop-tiles.ts",
+    "src/components/content-grid-section.tsx",
+    "src/components/search-box.tsx"
+  ],
+  "depends_on": [],
+  "commits": [
+    {
+      "title": "The search box asks for suggestions after a key or a focus, not on load",
+      "changes": [
+        {
+          "file": "src/components/search-box.tsx",
+          "action": "edit",
+          "how": "In SearchBox add a state `const [touched, setTouched] = useState(false);` beside the other states (the name `asked` is already taken by a ref: do not reuse it). In the input's onChange handler add `setTouched(true);` as its first line. Change `onFocus={() => setOpen(true)}` to `onFocus={() => { setTouched(true); setOpen(true); }}`. In the effect commented 'Ask for suggestions a moment after typing stops' add `if (!touched) return;` as the first line of the effect body and add `touched` to its dependency array (so it becomes `[value, store, market, touched]`). Change nothing else: the 150 ms timer, the ticket in the `asked` ref and suggestAction stay."
+        },
+        {
+          "file": "e2e/search.spec.ts",
+          "action": "edit",
+          "how": "Add a test 'the results page asks for no suggestions until the box is used': register page.on('request') before goto and collect requests with method POST; goto '/s/demo/no/search?q=lampe' with waitUntil 'load'; wait 1500 ms; expect the POST list to have length 0; then focus the search input inside main (the role=search form's input named q) and expect, with expect.poll, that at least one POST to a URL containing '/search' was made. Do not change the existing four tests."
+        }
+      ],
+      "checks": [
+        "pnpm lint && pnpm typecheck && pnpm test : exits 0",
+        "pnpm build && pnpm exec playwright test e2e/search.spec.ts --project=chromium : all pass, the test at line 27 ('a shopper searches from the header, picks a suggestion, and finds results') unchanged"
+      ]
+    },
+    {
+      "title": "A product grid draws the tile island only when stock or Add to cart will show",
+      "changes": [
+        {
+          "file": "src/lib/shop-tiles.ts",
+          "action": "edit",
+          "how": "Add an exported pure function `tileAskFor(own: ShopTiles | undefined, store: ProductSettings): TileAsk | null` below tileShows(). It computes `const ask = tileAsk(own); if (!ask) return null; const shows = tileShows(ask, store); if (!shows.stock && !shows.quantity) return null; return { stock: shows.stock ? ask.stock : null, quantity: shows.quantity ? ask.quantity : null };`. It keeps the ask's own value ('show' or 'store') for a part that shows, so the island's later tileShows() with the route's fresh settings still decides (a switch turned off stops showing at once). Correct the file's header comment (lines 6 to 8): the store's two switches are read on the server with a cached read under their own tag and decide whether the island is drawn; the island still asks the route once a page for stock, which is never cached."
+        },
+        {
+          "file": "src/lib/shop-tiles.test.ts",
+          "action": "edit",
+          "how": "Add a describe 'tileAskFor' with four cases: (1) own undefined with DEFAULT_PRODUCT_SETTINGS gives null; (2) own { stock: 'show' } with defaults gives { stock: 'show', quantity: null }; (3) own undefined with { tileStock: true, tileQuantity: false } gives { stock: 'store', quantity: null }; (4) own { stock: 'hide', quantity: 'hide' } with both switches true gives null."
+        },
+        {
+          "file": "src/server/product-settings.ts",
+          "action": "edit",
+          "how": "Add `export const productSettingsTag = (storeId: string) => `product-settings:${storeId}`;`. Add `export async function productSettingsCached(storeId: string): Promise<ProductSettings>` whose body starts with the directive 'use cache', then `cacheLife(\"hours\")` and `cacheTag(productSettingsTag(storeId))` (import cacheLife and cacheTag from 'next/cache', written exactly as src/server/catalog.ts lines 285 to 287 write theirs), and returns `getProductSettings(storeId)`. In saveProductSettings(), after the insert statement and before the audit line, call `refreshTag(productSettingsTag(member.store.id))` (import refreshTag from './refresh'). Keep getProductSettings() uncached: the facts route and the admin's settings page keep reading it per request. Rewrite the doc comment above getProductSettings: the uncached read is for the facts route and the admin; productSettingsCached() is only for deciding whether a grid draws the island, under a tag of its own so a change does not refresh the catalogue."
+        },
+        {
+          "file": "src/components/content-grid-section.tsx",
+          "action": "edit",
+          "how": "Change the import from '@/lib/shop-tiles' to `import { tileAskFor, type TileAsk } from \"@/lib/shop-tiles\";` and import productSettingsCached from '@/server/product-settings'. At line 37 replace `const tiles = place.owner ? tileAsk(block.shopTiles) : null;` with `const tiles = place.owner ? tileAskFor(block.shopTiles, await productSettingsCached(place.owner)) : null;`. In RecommendingGrid (about line 139) replace `const tiles = tileAsk(block.shopTiles);` with `const tiles = tileAskFor(block.shopTiles, await productSettingsCached(owner));`. If the function holding line 37 is not async, stop and report (see stop_if). Update the two comments to say the store's settings are read on the server from the cached read."
+        },
+        {
+          "file": "e2e/shop-components.spec.ts",
+          "action": "edit",
+          "how": "Leave the first test ('a grid that shows them...') unchanged. Rewrite the second test ('a grid that follows the store shows nothing until...') as two tests. Test A, 'a grid that follows the store draws no island and asks nothing while the switches are off': storePageWith('tiles-off', [grid()]); record every request whose URL contains '/api/shop/tiles' before goto; goto; expect the tote tile visible; wait 1500 ms; expect 0 recorded requests and page.locator('[data-tile-shop]') count 0. Test B, 'a store whose settings show stock gives its tiles stock': storePageWith('tiles-store', [grid()]); insert the commerce.product_settings row (tile_stock true, tile_quantity false) with testDb() BEFORE the first page.goto, exactly the insert the old test used; then goto and expect the tote's [data-tile-stock] to have text 'På lager' and no 'Legg i handlekurven' button. Remove the old comment 'Read per request with the stock, so no cache is in the way'."
+        },
+        {
+          "file": "docs/rules/admin/website.md",
+          "action": "edit",
+          "how": "In the paragraph for D557 (find it: rg -n 'D557' docs/rules/admin/website.md; about line 726 to 728) replace the sentence that says the tile's island asks the route once a page, which answers the settings with the facts, by: 'The store's two switches are read on the server from a cached read under their own tag (`productSettingsCached()`, refreshed by `saveProductSettings()`), so a grid that would show neither draws no island and asks nothing; stock is never drawn on the server or cached: only a grid that shows it asks the route, once a page.'"
+        }
+      ],
+      "checks": [
+        "pnpm exec vitest run src/lib/shop-tiles.test.ts : all pass",
+        "pnpm lint && pnpm typecheck && pnpm test : exits 0",
+        "pnpm test:int : exits 0 (src/server/content-grid.int.test.ts among them)",
+        "pnpm build && pnpm exec playwright test e2e/shop-components.spec.ts --project=chromium : all pass",
+        "E2E_SIGNED_IN=1 run of the signed-in project as CI's signed-in job does, if a spec there saves Settings, Products (rg -n 'settings/products' e2e/signed-in) : passes"
+      ]
+    },
+    {
+      "title": "The page asks for saved products only when a marker cookie says there may be some",
+      "changes": [
+        {
+          "file": "src/server/wishlists.ts",
+          "action": "edit",
+          "how": "Add an exported `export const mineCookieName = (storeId: string) => `kaizen_mine_${storeId}`;` and an exported async function `markMine(storeId: string): Promise<void>` that sets that cookie on `await cookies()` with value '1', httpOnly false, secure `process.env.NODE_ENV === \"production\"`, sameSite 'lax', path '/', maxAge COOKIE_DAYS * 24 * 60 * 60. In currentOwner(), make the first line of the function `if (create) await markMine(storeId);` (before getCustomer), so every save, signed in or not, leaves the marker. Never delete the marker anywhere: a stale marker only costs the old request."
+        },
+        {
+          "file": "src/server/customers.ts",
+          "action": "edit",
+          "how": "In startSession(), at the end where `claimBrowserWishlists` is imported dynamically from './wishlists', also take `markMine` from the same dynamic import and call `await markMine(storeId);` before claimBrowserWishlists. A signed-in customer's saved products are then asked for on any device they sign in on."
+        },
+        {
+          "file": "src/components/wishlist-heart.tsx",
+          "action": "edit",
+          "how": "In load(base), after the `if (loading === base) return;` line and `loading = base;`, add: if document.cookie has no cookie whose name starts with 'kaizen_mine_' and whose value is '1' (test with `/(?:^|;\\s*)kaizen_mine_[0-9a-f-]{36}=1(?:;|$)/.test(document.cookie)`), call `setSaved([])` and return without fetching. The rest of load(), useSaved(), the hearts and WishlistCount stay. toggleWishlistAction's answer already carries the saved products, so a press needs no change. Change the comment at lines 7 to 11 to say: fetched once per page, and only when the marker cookie `kaizen_mine_{storeId}` says this visitor has saved something or signed in."
+        },
+        {
+          "file": "src/lib/cookie-consent.ts",
+          "action": "edit",
+          "how": "In KNOWN_COOKIES, directly after the entry whose name is 'wishlist_…', add an entry: name 'kaizen_mine_…', pattern /^kaizen_mine_[0-9a-f-]{36}$/, provider 'Kaizena Flow', category 'necessary', days 365, on 'store', feature 'shop', purpose en 'Tells the page that you have saved products or an account here, so it asks for them only then.', nb 'Forteller siden at du har lagrede produkter eller en konto her, slik at den bare spør etter dem da.', sv 'Talar om för sidan att du har sparade produkter eller ett konto här, så att den bara frågar efter dem då.', da 'Fortæller siden, at du har gemte produkter eller en konto her, så den kun spørger efter dem da.'. Copy the shape of the 'wishlist_…' entry exactly."
+        },
+        {
+          "file": "src/lib/cookie-consent.test.ts",
+          "action": "edit",
+          "how": "In the case 'knows Kaizena Flow's cookies and the tools'...' change the expected store list to [\"cart_…\", \"account_…\", \"wishlist_…\", \"kaizen_mine_…\", \"consent_…\"] and add `expect(knownCookie(\"kaizen_mine_3f2b8c1e-7a4d-4b9e-9c2a-1d5e6f7a8b9c\")?.category).toBe(\"necessary\");`. If another expected list in this file or in src/server/consents.int.test.ts lists 'wishlist_…' in order, add 'kaizen_mine_…' after it there too (rg -n 'wishlist_…' src)."
+        },
+        {
+          "file": "e2e/wishlist.spec.ts",
+          "action": "edit",
+          "how": "Add a test 'a visitor who saved nothing is not asked for': record requests whose URL contains '/wishlist/saved' before goto; goto '/s/demo/no' and wait 1500 ms after load; expect 0. Add to the end of it (or as a second test in a fresh context): open a product page, press the heart, reload the page fully; expect exactly 1 request to '/wishlist/saved' after the reload, the heart pressed (aria-pressed true, as the existing test reads it) and the header's wishlist count 1. Do not change the existing test."
+        },
+        {
+          "file": "docs/rules/storefront.md",
+          "action": "edit",
+          "how": "In the Cookie consent rule (D58) nothing changes but, where the wishlist (D34) is described (rg -n 'wishlist' docs/rules/storefront.md), add one sentence: 'The hearts ask `/wishlist/saved` only when the marker cookie `kaizen_mine_{storeId}` (necessary, declared in `KNOWN_COOKIES`, set on a first save and on sign-in) is present.' If no line there describes the fetch, add the sentence under the Cookie consent rule."
+        },
+        {
+          "file": "docs/decisions.md",
+          "action": "edit",
+          "how": "Append one row with the next free D-number (pull main first; rg -o '^\\| D[0-9]+' docs/decisions.md | tr -dc '0-9\\n' | sort -n | tail -1, plus 1). It records all three commits: the marker cookie and why it was chosen over seeding the list through the layout's per-request stream (the layout is meant to lose its per-request parts later, so pages can be served whole); the tile switches read from a cached read under tag product-settings:{storeId}, refreshed on save, with stock still never cached (D557 kept); the search box asking after a key or focus. Store-only: Kaizena Flow sells plans, not goods, and has no wishlist, tile stock or product search. No migration."
+        }
+      ],
+      "checks": [
+        "pnpm exec vitest run src/lib/cookie-consent.test.ts src/lib/cookie-scan.test.ts src/lib/visit-record.test.ts : all pass",
+        "pnpm lint && pnpm typecheck && pnpm test : exits 0",
+        "pnpm test:int : exits 0 (src/server/wishlists.int.test.ts and src/server/consents.int.test.ts among them)",
+        "pnpm build && pnpm exec playwright test e2e/wishlist.spec.ts e2e/cookies.spec.ts e2e/account.spec.ts --project=chromium : all pass",
+        "pnpm test:e2e : exits 0"
+      ]
+    }
+  ],
+  "tests": [
+    { "file": "e2e/search.spec.ts", "proves": "Fails when a load of the search results page makes a POST before the box is focused or typed in." },
+    { "file": "e2e/shop-components.spec.ts", "proves": "Fails when a grid in a store with both switches off draws [data-tile-shop] or asks /api/shop/tiles; and when a store with tile stock on stops showing it." },
+    { "file": "src/lib/shop-tiles.test.ts", "proves": "Fails when tileAskFor() returns an ask for a grid that will show neither stock nor the chooser, or lets the store beat a grid's own 'hide'." },
+    { "file": "e2e/wishlist.spec.ts", "proves": "Fails when a visitor who saved nothing causes a request to /wishlist/saved, or when a saved product's heart is not pressed after a full reload." },
+    { "file": "src/lib/cookie-consent.test.ts", "proves": "Fails when the marker cookie is not declared as a necessary store cookie." }
+  ],
+  "migration": { "needed": false, "notes": "" },
+  "done_when": [
+    {
+      "check": "With `pnpm start` running on a seeded build: node docs/audits/bloat-review-2026-11/scripts/measure-routes.mjs /tmp/routes-0.15, then node -e \"const r=require('/tmp/routes-0.15/routes.json');for(const p of (r.pages??r))if(p.group==='storefront')console.log(p.name,(p.afterLoad??[]).filter(x=>/wishlist\\/saved|api\\/shop\\/tiles/.test(x.url)||x.method==='POST').length)\" (read the script's last lines for the output file's exact name and shape first)",
+      "expect": "0 beside each of the 12 storefront pages (one or two on each before)"
+    },
+    { "check": "pnpm exec playwright test e2e/wishlist.spec.ts e2e/shop-components.spec.ts e2e/search.spec.ts --project=chromium", "expect": "all pass, the new assertions among them" },
+    { "check": "rg -n 'kaizen_mine_' src/lib/cookie-consent.ts", "expect": "the KNOWN_COOKIES entry (name and pattern lines)" }
+  ],
+  "after_deploy": [
+    "Open a production store's front page in a private window with the network panel open: no request to /wishlist/saved and none to /api/shop/tiles after load. Press a heart, reload: one request to /wishlist/saved and the heart is pressed."
+  ],
+  "docs": [
+    "docs/decisions.md: the new D-row (marker cookie, cached tile switches, search box).",
+    "docs/rules/admin/website.md: the D557 sentence corrected.",
+    "docs/rules/storefront.md: the sentence on the marker cookie.",
+    "docs/platform-parity.md: no row; the decision says store-only and why.",
+    "The plan's tracker: set step 0.15 to Done with date and commits (rg -n '^\\| *0\\.15 ' docs/audits/bloat-review-2026-11.md docs/audits/bloat-review-2026-11)."
+  ],
+  "do_not": [
+    "Do not delete src/app/s/[store]/[market]/wishlist/saved/route.ts: the marker design keeps the route (two findings proposed deleting it for another design; the plan chose the marker).",
+    "Do not make the marker cookie httpOnly: the page's script must read it. Do not put anything but '1' in it.",
+    "Do not cache stock or tileFacts(): only the two switches are cached.",
+    "Do not tag productSettingsCached() with the catalogue's tag: a settings save must not refresh the catalogue.",
+    "Do not remove getProductSettings() or point the facts route at the cached read.",
+    "Do not seed the saved products through the market layout as well: one design, not both.",
+    "Do not rename the `asked` ref in search-box.tsx or change suggestAction or its budget."
+  ],
+  "stop_if": [
+    "The function around line 37 of src/components/content-grid-section.tsx is not async, or adding the await makes `pnpm build` report a cache or prerender error for a store page: report the message.",
+    "The first test of e2e/shop-components.spec.ts (a grid whose own choice is 'show') fails.",
+    "e2e/cookies.spec.ts or src/lib/cookie-scan.test.ts fails because of the new cookie in a way that needs more than adding its name to an expected list.",
+    "The heart is not pressed after a full reload in the new wishlist test: the marker is not being set; report which path (anonymous save or sign-in).",
+    "measure-routes.mjs still lists a request of the page's own after load on any of the 12 pages: report the page and the URL, do not go on."
+  ],
+  "executor": "cheap-then-review",
+  "executor_why": "Mechanical and fully named, but it adds a cookie (consent rules), a cached read with its own tag and touches sign-in, so a stronger model should read the diff of commits two and three.",
+  "checked_in_code": "I opened wishlist-heart.tsx, wishlists.ts, customers.ts (startSession), cookie-consent.ts and its test, shop-tiles.ts, product-settings.ts, content-grid-section.tsx, tile-shop.tsx, search-box.tsx and e2e/shop-components.spec.ts; all are as the findings describe (line numbers within a few lines). Corrections: search-box.tsx already has a ref named `asked`, so the new state is `touched`; PL-7 set the marker only when the browser's wishlist cookie is first made and at sign-in, which misses a customer already signed in before the deploy, so the brief sets it on every save (currentOwner with create) as well. The findings disagree on the tag for the cached switches; I chose a tag of its own (SD-14) because the comment in product-settings.ts says a change must not refresh the catalogue. The three wishlist findings propose two designs; the plan's text names the marker cookie, so the route stays."
+}

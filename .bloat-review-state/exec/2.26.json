@@ -1,0 +1,379 @@
+{
+  "id": "2.26",
+  "goal": "No admin client module can reach an admin catalogue file (src/lib/admin-messages/*.en.ts or *.nb.ts) by a value import, other than common.en and sign-in.en: every part gets its words as an argument or through useAdminText().",
+  "why": "38 import sites compile an English catalogue into client scripts today (about 150 KB on the builder, 65 KB on the Work screens, 24 to 45 KB on 73 field screens, 22 KB on the home) and the page hands the same words down again; after the step the count is 0 and the median admin route is at or under 650,000 bytes (1,152,953 today).",
+  "read_first": [
+    "docs/platform-admin-i18n.md",
+    "docs/performance.md",
+    "src/components/admin/admin-catalogues.scan.test.ts",
+    "src/components/admin/admin-text.tsx",
+    "src/components/admin/admin-text-later.ts",
+    "src/lib/admin-text.ts",
+    "e2e/signed-in/admin-text-fallbacks.spec.ts",
+    "node_modules/next/dist/docs/01-app/02-guides/server-and-client-boundary.md"
+  ],
+  "depends_on": [
+    {
+      "id": "0.9",
+      "why": "it takes builder.en out of the keyboard sheet through responsive-edit.tsx and moves sign-in's English; this step finishes the same file and must start from its result"
+    },
+    {
+      "id": "1.4",
+      "why": "it creates src/components/admin/admin-bundle.scan.test.ts, the import walk from every admin client module; this step adds the catalogue rule to that walk and works its list down to empty"
+    },
+    {
+      "id": "1.2",
+      "why": "its bundle baseline (scripts/bundle-budget.mjs) is where the five screens' and the median's bytes are read and lowered"
+    }
+  ],
+  "commits": [
+    {
+      "title": "The admin's import walk lists every client path to an English catalogue, and the list may only shrink",
+      "changes": [
+        {
+          "file": "src/components/admin/admin-bundle.scan.test.ts",
+          "action": "create",
+          "how": "Marked create only because the file is not in the repo today: step 1.4 makes it. It must exist when you start; EDIT it and never overwrite it (if it is missing, stop: see stop_if). Open it and find its walk (the function that follows value imports from every file under src/app/admin and src/components/admin that starts with 'use client'; it must skip 'import type', skip files that import 'server-only' and not walk into files that start with 'use server'). Add one test: collect every walked file that has a value import (not 'import type', and not a named import whose every name is prefixed 'type ') of a path matching /admin-messages\\/[\\w-]+\\.(en|nb)$/, leaving out common.en and sign-in.en, and leaving out the importer src/components/admin/admin-text-later.ts (its import() calls are the allowed late fetch). Compare the sorted list 'importer -> catalogue' with a constant CATALOGUE_SITES written in the test. Two assertions, as admin-catalogues.scan.test.ts has: no site outside the list, and no list entry that the code no longer has. Fill CATALOGUE_SITES with what the walk prints today. On 12 November 2026 that was these 37 (the review counted 38; trust the walk's own print and say the number in the commit message): src/app/admin/(gated)/[store]/gift-cards/[cardId]/new-code-form.tsx -> gift-cards.en; src/app/admin/(gated)/[store]/gift-cards/new/issue-form.tsx -> gift-cards.en; src/components/admin/audience-fields.tsx -> settings.en; src/components/admin/company-fields.tsx -> customers.en; src/components/admin/delete-reminder-button.tsx -> platform.en; src/components/admin/demo-content-card.tsx -> home.en; src/components/admin/modal-fields.tsx -> blocks.en; src/components/admin/orders/order-table.tsx -> orders.en; src/components/admin/orders/send-parcel.tsx -> order.en; src/components/admin/orders/view-tools.tsx -> orders.en; src/components/admin/privacy/styles.ts -> privacy.en; src/components/admin/responsive-edit.tsx -> builder.en; src/components/admin/support/conversation-actions.tsx -> support.en; src/components/admin/templates-helpers.ts -> builder.en; src/lib/affiliate-admin.ts -> loyalty.en; src/lib/analytics-words.ts -> analytics.en; src/lib/analytics-words.ts -> analytics.nb; src/lib/bonus-admin.ts -> loyalty.en; src/lib/campaigns.ts -> discounts.en; src/lib/discounts.ts -> discounts.en; src/lib/drafts-words.ts -> drafts.en; src/lib/experiment-results.ts -> experiments.en; src/lib/experiment-words.ts -> experiments.en; src/lib/field-group-editor.ts -> fields.en; src/lib/order-list-words.ts -> orders.en; src/lib/redirect-admin.ts -> redirects.en; src/lib/redirect-words.ts -> redirects.en; src/lib/redirects.ts -> redirects.en; src/lib/return-admin.ts -> returns.en; src/lib/segments.ts -> marketing.en; src/lib/shipping-method-form.ts -> shipping.en; src/lib/store-copy-wizard.ts -> platform.en; src/lib/support-inbox-text.ts -> support.en; src/lib/tax-profile.ts -> tax.en; src/lib/work-timer-ui.ts -> work.en; src/lib/work-ui.ts -> work.en. If the walk also prints src/lib/admin-text.ts (every catalogue) or src/lib/admin-map.ts and src/components/admin/ai-manager.tsx -> pages.nb, a client module imports those by value: do not list them here; stop and report (step 0.11 owns pages.nb, and admin-text.ts must only be imported with 'import type' from client code). The failure message must say: 'pass the words as an argument or read them with useAdminText(); see docs/platform-admin-i18n.md 3.3'."
+        }
+      ],
+      "checks": [
+        "pnpm test src/components/admin/admin-bundle.scan.test.ts src/components/admin/admin-catalogues.scan.test.ts: both pass",
+        "Plant a line 'import { homeEn } from \"@/lib/admin-messages/home.en\";' in src/lib/admin-fill.ts, run pnpm test src/components/admin/admin-bundle.scan.test.ts: it fails and names src/lib/admin-fill.ts; remove the line",
+        "pnpm lint && pnpm typecheck && pnpm test: exits 0"
+      ]
+    },
+    {
+      "title": "The builder's parts take their words as arguments: no English of builder, blocks or fields in its scripts",
+      "changes": [
+        {
+          "file": "src/components/admin/responsive-edit.tsx",
+          "action": "edit",
+          "how": "Line 20: change the import to 'import type { BuilderMessages } from \"@/lib/admin-messages/builder.en\";'. Line 100, sizeNote(source, size, words): drop the default '= builderEn' so words is required. Any other use of builderEn in the file (rg -n 'builderEn' src/components/admin/responsive-edit.tsx): replace by the words the component already holds from useAdminText('builder'). The two callers inside the file (lines 138 and 152) and src/components/admin/typography-fields.tsx (lines 276 and 290) already pass words; leave them."
+        },
+        {
+          "file": "src/components/admin/responsive-edit.test.ts",
+          "action": "edit",
+          "how": "Import { builderEn } from '@/lib/admin-messages/builder.en' in the test and pass it as the third argument to every sizeNote(...) call (line 103 and any other; rg -n 'sizeNote\\(' src/components/admin/responsive-edit.test.ts). The expected strings do not change."
+        },
+        {
+          "file": "src/components/admin/templates-helpers.ts",
+          "action": "edit",
+          "how": "Delete the value import on line 1 and the constant 'const EN = builderEn.templates' (line 16); keep the 'import type { BuilderMessages }' line. Make 'words: TemplateWords' a required parameter (drop '= EN') in kindFilters, groupTemplates, forLabel, blockedReason, noneActivated and nothingShared (and any other function there that defaults to EN: rg -n '= EN' src/components/admin/templates-helpers.ts must print nothing after). Delete the exported constants KIND_FILTERS (line 29) and SOURCE_PHRASES (line 32) if rg -n 'KIND_FILTERS|SOURCE_PHRASES' src -g '!*.test.*' shows no user outside this file and its test; if a non-test file uses one, make that file call the function with its own words instead. Then fix each caller the type check names: src/components/admin/page-builder.tsx, templates-parts.tsx, templates-modal.tsx and templates-tab.tsx pass useAdminText('builder').templates (each already reads the builder area; reuse its variable)."
+        },
+        {
+          "file": "src/components/admin/templates-helpers.test.ts",
+          "action": "edit",
+          "how": "Import builderEn in the test and pass builderEn.templates as the words argument at every call the type check names; where the test read KIND_FILTERS, read kindFilters(builderEn.templates). Expected values stay as they are."
+        },
+        {
+          "file": "src/lib/page-modal.ts",
+          "action": "edit",
+          "how": "Read the function around lines 110 to 130 that returns the modal's problems as English sentences, and the two functions that return the key's and the class's own issue. Export beside each a twin that returns codes: modalProblemCodes(modal) returning an array of 'noName' | 'tooLong' | 'badKey' | 'spaces' | 'badClass' | 'noOpen' | 'days' | 'noClose' in the same order and under the same conditions as the sentences (the codes are the keys of blocks.modal.problems in src/lib/admin-messages/blocks.en.ts; check the eight names there). Keep the English functions as they are: the page's own check and the AI manager's tools read them."
+        },
+        {
+          "file": "src/components/admin/modal-fields.tsx",
+          "action": "edit",
+          "how": "Line 38: change to 'import type { BlocksMessages } ...' only (drop blocksEn). Delete problemText() (lines 45 to 59), which matched English sentences. At lines 120, 127 and 129 use the code twins from page-modal.ts and say each code in the admin's language: w.problems[code], filled with fillWords and the same values problemText used (tooLong: max MODAL_KEY_MAX; badClass: max MODAL_CLASS_MAX; days: min MODAL_DAYS_MIN, max MODAL_DAYS_MAX). The screen must show the same sentences as before in English and in Norwegian."
+        },
+        {
+          "file": "src/lib/field-group-editor.ts",
+          "action": "edit",
+          "how": "Line 31: 'import type { FieldsMessages } from \"./admin-messages/fields.en\";'. Drop '= fieldsEn' from the w parameter of locationParamsFor, paramWord, choiceWord, the functions at lines 92 and 109, entitiesText, layoutsSummary, subFieldsSummary, operatorLabel, draftProblems and the function at line 517, and drop '= fieldsEn.text.copyOf' from duplicateLayout's copyOf (line 352): all required. Where a required parameter now follows an optional one, move it before the optional ones and fix the callers. Callers: run rg -n 'field-group-editor\"' src to list them; a client part passes useAdminText('fields') (or .text.copyOf), a server file passes adminText(lang, 'fields') with the lang it already holds, a unit test imports fieldsEn and passes it. Do not change what any function returns."
+        },
+        {
+          "file": "src/components/admin/admin-bundle.scan.test.ts",
+          "action": "edit",
+          "how": "Remove from CATALOGUE_SITES the four entries this commit ended: responsive-edit.tsx -> builder.en, templates-helpers.ts -> builder.en, modal-fields.tsx -> blocks.en, src/lib/field-group-editor.ts -> fields.en."
+        },
+        {
+          "file": "src/components/admin/admin-catalogues.scan.test.ts",
+          "action": "edit",
+          "how": "Remove 'src/components/admin/modal-fields.tsx' and 'src/components/admin/responsive-edit.tsx' from ALREADY."
+        }
+      ],
+      "checks": [
+        "pnpm test src/components/admin/responsive-edit.test.ts src/components/admin/templates-helpers.test.ts src/lib/page-modal.test.ts src/lib/field-group-editor.test.ts src/components/admin/admin-bundle.scan.test.ts src/components/admin/admin-catalogues.scan.test.ts: all pass (if a named test file does not exist, rg -l 'field-group-editor|page-modal' src -g '*.test.ts' lists the ones to run)",
+        "pnpm lint && pnpm typecheck && pnpm test: exits 0",
+        "pnpm build && E2E_SIGNED_IN=1 pnpm test:e2e e2e/signed-in/admin-text-fallbacks.spec.ts e2e/signed-in/builder-palette.spec.ts e2e/signed-in/builder-saved-edit.spec.ts e2e/signed-in/admin-scripts.spec.ts (in the build CLAUDE.md describes for signed-in tests): all pass, no fallback reported",
+        "node scripts/bundle-budget.mjs: exits 0; lower the baseline for the routes that fell, in this commit"
+      ]
+    },
+    {
+      "title": "Admin client parts on the old list read their area with useAdminText()",
+      "changes": [
+        {
+          "file": "src/components/admin/demo-content-card.tsx",
+          "action": "edit",
+          "how": "Change the import of home.en to 'import type { HomeMessages }'. Wherever homeEn is a default prop or a default argument, make the words a required prop of the same type and let the parent pass them: the parent is a server page that already holds adminText(lang, 'home') (rg -n 'DemoContentCard' src lists the callers; src/app/admin/(gated)/[store]/page.tsx passes words.demo today for part of it). Do not call useAdminText('home') here unless the page that draws the card hands the home area."
+        },
+        {
+          "file": "src/components/admin/orders/order-table.tsx",
+          "action": "edit",
+          "how": "Same pattern for ordersEn: 'import type { OrdersMessages }'; every '= ordersEn...' default becomes required or is read as useAdminText('orders') inside the component; the orders list page hands 'orders' already (check with rg -n 'adminTexts\\(' 'src/app/admin/(gated)/[store]/orders/page.tsx')."
+        },
+        {
+          "file": "src/components/admin/orders/view-tools.tsx",
+          "action": "edit",
+          "how": "Same as order-table.tsx for ordersEn."
+        },
+        {
+          "file": "src/components/admin/orders/send-parcel.tsx",
+          "action": "edit",
+          "how": "Same pattern for orderEn with useAdminText('order'); the order page hands 'order' (src/app/admin/(gated)/[store]/orders/[orderId]/page.tsx line 268)."
+        },
+        {
+          "file": "src/components/admin/audience-fields.tsx",
+          "action": "edit",
+          "how": "Same pattern for settingsEn with useAdminText('settings'). For each page that draws the part (rg -n 'AudienceFields' src -g '*.tsx'), check it sits inside an AdminTextScope or AdminAreas that names 'settings'; if a page does not, add 'settings' to that page's own adminTexts() list."
+        },
+        {
+          "file": "src/components/admin/company-fields.tsx",
+          "action": "edit",
+          "how": "Same pattern for customersEn with useAdminText('customers'); check each drawing page hands 'customers' (rg -n 'CompanyFields' src -g '*.tsx')."
+        },
+        {
+          "file": "src/components/admin/delete-reminder-button.tsx",
+          "action": "edit",
+          "how": "Same pattern for platformEn with useAdminText('platform'); check each drawing page hands 'platform' (rg -n 'DeleteReminderButton' src -g '*.tsx')."
+        },
+        {
+          "file": "src/components/admin/support/conversation-actions.tsx",
+          "action": "edit",
+          "how": "Same pattern for supportEn with useAdminText('support'); check each drawing page hands 'support'."
+        },
+        {
+          "file": "src/app/admin/(gated)/[store]/gift-cards/[cardId]/new-code-form.tsx",
+          "action": "edit",
+          "how": "Same pattern for giftCardsEn with useAdminText('giftCards'); its page.tsx in the same folder must hand 'giftCards' in an AdminTextScope: add it if it does not."
+        },
+        {
+          "file": "src/app/admin/(gated)/[store]/gift-cards/new/issue-form.tsx",
+          "action": "edit",
+          "how": "Same as new-code-form.tsx."
+        },
+        {
+          "file": "src/components/admin/privacy/styles.ts",
+          "action": "edit",
+          "how": "clockWords(daysLeft, overdue, words): drop '= privacyEn.common.clock', keep 'import type { PrivacyMessages }'. Callers (rg -n 'clockWords\\(' src) pass the words they hold: a client part useAdminText('privacy').common.clock, a server part adminText(lang, 'privacy').common.clock, a test privacyEn.common.clock."
+        },
+        {
+          "file": "src/components/admin/admin-catalogues.scan.test.ts",
+          "action": "edit",
+          "how": "Remove from ALREADY every file this commit changed. After it ALREADY holds only src/components/admin/admin-text.tsx and src/components/admin/admin-text-context.tsx."
+        },
+        {
+          "file": "src/components/admin/admin-bundle.scan.test.ts",
+          "action": "edit",
+          "how": "Remove the eleven entries of this commit from CATALOGUE_SITES."
+        }
+      ],
+      "checks": [
+        "pnpm test src/components/admin/admin-catalogues.scan.test.ts src/components/admin/admin-bundle.scan.test.ts: pass; ALREADY has 2 entries",
+        "pnpm lint && pnpm typecheck && pnpm test: exits 0",
+        "pnpm build && E2E_SIGNED_IN=1 pnpm test:e2e e2e/signed-in/admin-text-fallbacks.spec.ts e2e/signed-in/admin-scripts.spec.ts: pass, no fallback",
+        "node scripts/bundle-budget.mjs: exits 0, baseline lowered for the routes that fell"
+      ]
+    },
+    {
+      "title": "Work, redirects, loyalty, shipping, discounts and tax helpers take their words: English is no longer their default",
+      "changes": [
+        {
+          "file": "src/lib/work-ui.ts",
+          "action": "edit",
+          "how": "Line 22 becomes 'import type { WorkMessages }'. remainingLabel (line 370), the function at line 406 and the one at line 532: drop the '= workEn.labels...' defaults; fix callers named by the type check (client: useAdminText('work').labels...; server: adminText(lang, 'work').labels...; tests: workEn)."
+        },
+        {
+          "file": "src/lib/work-timer-ui.ts",
+          "action": "edit",
+          "how": "Same: line 6 type-only, the function at line 186 takes words as required."
+        },
+        {
+          "file": "src/lib/redirect-admin.ts",
+          "action": "edit",
+          "how": "Line 9 type-only. Every 'w: W = redirectsEn' becomes 'w: W' (redirectTabs, filterChoices, kindWords, madeByWords, usedWords, manualCountWords, emptyListWords, deleteSelectedWords, helpLine, existingWords, windowWords, requestsWords, reportSummaryWords and any other: rg -n '= redirectsEn' src/lib/redirect-admin.ts prints nothing after). Where w sat before an optional 'locale', keep the order: a required parameter may stand before an optional one."
+        },
+        {
+          "file": "src/lib/redirects.ts",
+          "action": "edit",
+          "how": "Line 14 type-only; redirectStatusWords(status, more, w): make w required and put it second: redirectStatusWords(status, w, more = 0); fix every caller (rg -n 'redirectStatusWords\\(' src)."
+        },
+        {
+          "file": "src/lib/shipping-method-form.ts",
+          "action": "edit",
+          "how": "Line 2 type-only; groupsFromBlocks and notOfferedWords take words as required."
+        },
+        {
+          "file": "src/lib/campaigns.ts",
+          "action": "edit",
+          "how": "Line 4 type-only; the function whose parameter at line 555 defaults to discountsEn.describe takes it as required; server callers pass adminText(lang, 'discounts').describe, and a caller with no language at hand (a job, an AI tool) passes adminText('en', 'discounts').describe from server code."
+        },
+        {
+          "file": "src/lib/discounts.ts",
+          "action": "edit",
+          "how": "Same as campaigns.ts for the parameter at line 389."
+        },
+        {
+          "file": "src/lib/segments.ts",
+          "action": "edit",
+          "how": "Line 4 type-only. Lines 166 and 199 read 'ctx.words ?? marketingEn.describe': make 'words' a required field of that ctx type and read ctx.words; fix each caller the type check names the same way as campaigns.ts."
+        },
+        {
+          "file": "src/lib/experiment-results.ts",
+          "action": "edit",
+          "how": "Line 4 type-only. Lines 203 and 326 read 'input.words ?? experimentsEn': make input.words required; fix callers."
+        },
+        {
+          "file": "src/lib/order-list-words.ts",
+          "action": "edit",
+          "how": "Line 7 type-only. filterChips, matchingWords, appliedWords, refusalGroups, shipCellWords: words required. filterChips line 21 decides 'english' by identity with ordersEn.filters: replace it with a new optional last parameter 'plainCodes = false' and let the callers that used to rely on the default (English, codes written plainly) pass true; every caller that passed its own words passes nothing. Check with src/lib/order-list-words.test.ts that the English chips still read 'partially refunded'."
+        },
+        {
+          "file": "src/components/admin/admin-bundle.scan.test.ts",
+          "action": "edit",
+          "how": "Remove this commit's ten entries from CATALOGUE_SITES."
+        }
+      ],
+      "checks": [
+        "pnpm test src/lib/work-ui.test.ts src/lib/redirect-admin.test.ts src/lib/redirects.test.ts src/lib/order-list-words.test.ts src/lib/segments.test.ts src/lib/campaigns.test.ts src/lib/discounts.test.ts src/lib/experiment-results.test.ts src/components/admin/admin-bundle.scan.test.ts: pass (tests gain the English catalogue as an argument; no expected string changes)",
+        "pnpm lint && pnpm typecheck && pnpm test: exits 0",
+        "pnpm test:int: exits 0 (campaigns, discounts and segments are read by server code)",
+        "pnpm build && E2E_SIGNED_IN=1 pnpm test:e2e e2e/signed-in/admin-text-fallbacks.spec.ts: pass"
+      ]
+    },
+    {
+      "title": "Modules that keep English constants or match English sentences split in two: rules for the browser, English for the server",
+      "changes": [
+        {
+          "file": "src/lib/return-admin.ts",
+          "action": "edit",
+          "how": "This and the eight files below it cannot be done by 'make the words required' alone; a stronger model does this commit. The rule: the module a client part imports keeps only functions with required words and types; everything that needs the English catalogue at run time moves to a sibling file '<name>-english.ts' that only server code and tests import. For return-admin.ts: move the exported English constants (STATUS_LABELS, STATUS_HINTS, KIND_LABELS, KIND_HINTS, OUTCOME_LABELS, REASON_LABELS, CONDITION_LABELS, ACTION_LABELS, EXCLUSION_LABELS, DECLINE_REASON_LABELS, WORKING_LABELS, CAPPED_WORDS, CHANNEL_LABELS, EXCHANGE_MARK_LABELS, KIND_FILTERS and any other 'EN.' constant) to src/lib/return-admin-english.ts, drop every '= EN' default, make ExchangeMark a type from ReturnsMessages, and move each importer of a constant to the new file if it is server code or to useAdminText('returns') if it is a client part."
+        },
+        {
+          "file": "src/lib/return-admin-english.ts",
+          "action": "create",
+          "how": "Imports returnsEn and exports the English constants moved out of return-admin.ts, unchanged in name and value. First line of its comment: 'Server code and tests only: an admin client module must not import this (admin-bundle.scan.test.ts).'"
+        },
+        {
+          "file": "src/lib/bonus-admin.ts",
+          "action": "edit",
+          "how": "Same rule: defaults at lines 106, 233, 244, 254, 275, 293, 342 and 359 become required; BONUS_EXPLANATION, BONUS_ON_NOTES, BONUS_OFF_NOTE and BONUS_ACCOUNTING_NOTE move to a new src/lib/bonus-admin-english.ts unless their only readers are client parts, which then read useAdminText('loyalty').bonus instead."
+        },
+        {
+          "file": "src/lib/affiliate-admin.ts",
+          "action": "edit",
+          "how": "Same rule for lines 70, 170, 203 and 216 and for AFFILIATE_EXPLANATION, AFFILIATE_NEEDS_BONUS, AFFILIATE_ON_NOTES and AFFILIATE_OFF_NOTE (new src/lib/affiliate-admin-english.ts for server readers)."
+        },
+        {
+          "file": "src/lib/tax-profile.ts",
+          "action": "edit",
+          "how": "Same rule: readiness() takes its words; OSS_SCHEME_LABELS (line 19) and TAX_WARNINGS (line 361) move to src/lib/tax-profile-english.ts for server readers, client readers use useAdminText('tax')."
+        },
+        {
+          "file": "src/lib/store-copy-wizard.ts",
+          "action": "edit",
+          "how": "Same rule: the 8 uses of 'EN' (platformEn.copyWizard.lib) become a required words parameter; NEVER_COPIED is read from the words by its client reader."
+        },
+        {
+          "file": "src/lib/support-inbox-text.ts",
+          "action": "edit",
+          "how": "Same rule: every 'w: LibWords = EN' becomes required (agoWords, handlerWords and the rest: rg -n '= EN' prints nothing after)."
+        },
+        {
+          "file": "src/lib/redirect-words.ts",
+          "action": "edit",
+          "how": "This module turns the server's English sentences into the account's language by matching them against redirectsEn (lines 27, 28 and 32), so the browser needs English to do it. Move the matching to the server: the server page or action that hands findings and problems to a client part calls redirectFindings()/redirectProblems() with adminText(lang, 'redirects') before handing them down, and the client parts draw the text as given. Then the module is imported by server code only; if a client part must still import it, it takes the English patterns as an argument built on the server."
+        },
+        {
+          "file": "src/lib/experiment-words.ts",
+          "action": "edit",
+          "how": "Same as redirect-words.ts: partLabelText, variantNameText, targetLabelText, experimentProblemText and experimentProblems run on the server (adminText(lang, 'experiments')) and their results are handed to the client parts as plain text."
+        },
+        {
+          "file": "src/lib/drafts-words.ts",
+          "action": "edit",
+          "how": "Same as redirect-words.ts for editProblemText() and blockTextWords() (they match draftsEn.edit.problems and blocks): translate on the server before the hand-down, or add the code to what the server returns so the client reads words.problems[code] without English."
+        },
+        {
+          "file": "src/lib/analytics-words.ts",
+          "action": "edit",
+          "how": "This module holds both languages for server renders (analyticsWords() reads the request's language). Client parts must not import it: for each client importer the walk names (run the scan test to print the path), pass the words it needs as props from its server page (analyticsWords() there) or read useAdminText('analytics'); move countText(), which needs no catalogue, to src/lib/admin-fill.ts if a client part needs it. The module itself stays for the server."
+        },
+        {
+          "file": "src/components/admin/admin-bundle.scan.test.ts",
+          "action": "edit",
+          "how": "Empty CATALOGUE_SITES and replace the two list assertions by one: the walk finds no site at all. Add '*-english.ts' files under src/lib to the paths an admin client module must not reach."
+        }
+      ],
+      "checks": [
+        "pnpm test src/components/admin/admin-bundle.scan.test.ts: passes with an empty list",
+        "pnpm lint && pnpm typecheck && pnpm test: exits 0",
+        "pnpm test:int: exits 0",
+        "pnpm build && E2E_SIGNED_IN=1 pnpm test:e2e e2e/signed-in: pass, admin-text-fallbacks.spec.ts reports no fallback",
+        "node scripts/bundle-budget.mjs: exits 0 after the baseline is lowered"
+      ]
+    }
+  ],
+  "tests": [
+    {
+      "file": "src/components/admin/admin-bundle.scan.test.ts",
+      "proves": "fails when any admin client module can reach an admin catalogue other than common.en and sign-in.en by value imports, through a lib module too"
+    },
+    {
+      "file": "src/components/admin/admin-catalogues.scan.test.ts",
+      "proves": "fails when a 'use client' file imports a catalogue directly; its list holds only admin-text.tsx and admin-text-context.tsx"
+    },
+    {
+      "file": "e2e/signed-in/admin-text-fallbacks.spec.ts",
+      "proves": "fails when a part now reading useAdminText() is drawn on a screen that does not hand its area"
+    }
+  ],
+  "migration": {
+    "needed": false,
+    "notes": ""
+  },
+  "done_when": [
+    {
+      "check": "pnpm test src/components/admin/admin-bundle.scan.test.ts",
+      "expect": "passes, and CATALOGUE_SITES is empty (37 or 38 entries at the start)"
+    },
+    {
+      "check": "rg -n '\"src/' src/components/admin/admin-catalogues.scan.test.ts",
+      "expect": "two lines: admin-text.tsx and admin-text-context.tsx"
+    },
+    {
+      "check": "pnpm build && node scripts/bundle-budget.mjs (reads .next/diagnostics/route-bundle-stats.json)",
+      "expect": "/admin/[store], /admin/[store]/orders, /admin/[store]/products, /admin/[store]/settings and /admin/platform each at or under 680,000 bytes; the median admin route at or under 650,000; the baseline holds those figures"
+    },
+    {
+      "check": "E2E_SIGNED_IN=1 pnpm test:e2e e2e/signed-in/admin-text-fallbacks.spec.ts",
+      "expect": "passes with no fallback in English and in Norwegian"
+    }
+  ],
+  "after_deploy": [],
+  "docs": [
+    "docs/decisions.md (or docs/decisions/D{n}.md if step 2.40 is done): one new decision with the next free D number: admin client code takes its words as arguments or through useAdminText(); English constants and sentence matching live in '-english' modules for the server; the walk holds it.",
+    "docs/platform-admin-i18n.md section 3.3: add two sentences: a helper never defaults to an English catalogue, and where the server writes English sentences they are turned into the account's language on the server.",
+    "docs/audits/psi-followups.md under PERF-01: one line that the indirect importers are gone and which test holds it.",
+    "The plan's tracker under docs/audits/bloat-review-2026-11/ (the Progress table made by step 0.1): set row 2.26 to Done with the date and the commits, and write the before and after bytes in its section."
+  ],
+  "do_not": [
+    "Do not delete or rename any string in src/lib/admin-messages: no text moves in this step.",
+    "Do not put an English catalogue back as a fallback to make a test pass, and do not add a file to ALREADY or to CATALOGUE_SITES.",
+    "Do not change common.en or sign-in.en imports in admin-text.tsx and admin-text-context.tsx: they are the two allowed.",
+    "Do not touch src/components/admin/admin-text-later.ts: its import() calls per area are the designed late fetch.",
+    "Do not change server files that import a catalogue (src/server/**, server pages, 'use server' action files such as orders/actions.ts): only paths a client module reaches count.",
+    "Do not change what a helper returns or the wording of a test's expected strings; only where the words come from.",
+    "Do not make a client part call useAdminText(area) without checking that every page drawing it hands that area."
+  ],
+  "stop_if": [
+    "src/components/admin/admin-bundle.scan.test.ts does not exist (step 1.4 is not done).",
+    "The walk prints a site that is not on the list in commit 1, or prints src/lib/admin-text.ts as reached from a client module.",
+    "A unit test needs a changed expected string to pass.",
+    "admin-text-fallbacks.spec.ts reports a fallback you cannot end by adding the area to that page's adminTexts() list.",
+    "After commit 3 the five screens are not at or under 680,000 bytes: report the figures and which catalogue marker is still in the route's chunks.",
+    "You reach commit 5 as the cheap executor: hand it to the stronger model with the scan test's printed list."
+  ],
+  "executor": "strong",
+  "executor_why": "Commits 1 to 4 are mechanical and the type check catches a wrong edit, but commit 5 must decide, per module, whether English matching moves to the server or English constants move to a server-only file, which the brief cannot settle without reading each caller.",
+  "checked_in_code": "I walked value imports from every 'use client' file under src/app/admin and src/components/admin and found 37 sites outside common and sign-in, matching the finding's list of 14 direct and about 22 lib modules; src/components/admin/admin-bundle.scan.test.ts does not exist yet (step 1.4 makes it). The finding's fix 'make the words a required parameter' works for the default-argument modules, but not for nine it lists the same way: redirect-words.ts, experiment-words.ts, drafts-words.ts and modal-fields.tsx match English sentences at run time, return-admin.ts, bonus-admin.ts, affiliate-admin.ts, tax-profile.ts and store-copy-wizard.ts export English constants, order-list-words.ts tests identity with ordersEn.filters, and analytics-words.ts holds both languages for the request; the brief gives each its own fix. templates-helpers.ts also exports KIND_FILTERS and SOURCE_PHRASES built from English, which the finding does not mention."
+}
