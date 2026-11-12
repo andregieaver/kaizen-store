@@ -1,0 +1,260 @@
+{
+  "area": "page-model",
+  "title": "The page builder's model and a built page's render",
+  "grade_today": "C",
+  "grade_reasons": "The stored model and a block's markup are lean and partly held: a stored page is 340 bytes a block, blocks and rows are capped, interactive parts load where drawn, and first scripts have a budget. But every storefront document carries the layout twice, one publish makes all 261 built pages of a store stale, finding one page reads every page, the owner filter cannot use its index, and no budget sees any of this. It is not a B because none of the large causes is gone; it is not a D because the reads are cached and tagged, the doubled layout is about 1 KB on the wire today, and nothing has to be rebuilt.",
+  "measures": [
+    {
+      "name": "1. Copies of the store's layout in one storefront document",
+      "today": "2 html trees in the payload of every storefront document. On /s/demo/no/om-oss 27,070 bytes are reachable only through the unused not-found copy: 38.9% of its 69,548-byte payload, in a 110,415-byte document. The same 35 rows are on all 12 store pages measured (PL-2: 29,655 bytes raw a document). The header, footer, menus and cart links are drawn twice per render; with a cart the count is asked up to 4 times. Sources: work/pmsk/nf2.mjs and work/skpl/nf.mjs on the captures in m/html. Not measured with a builder-made header and footer (gap 3).",
+      "target_a": "1 html tree. 0 bytes reachable only through a not-found copy. The om-oss document at most 85,000 bytes raw. 1 cart count query per render.",
+      "how_measured": "Today: the two scratch scripts on a captured document. After work items 1 and 6: e2e/performance.spec.ts counts the html elements the inline payload opens and holds the document's and the payload's length.",
+      "why_this_is_a": "The floor is one layout: the framework needs the root layout once, and the store's 404 words that the router keeps stay (a few hundred bytes). A second tree is pure repetition, so there is no tolerance for it; the 5% of room is on the document budget only, for content that drifts. A B would accept it because it compresses to 1 KB. An A also counts the server drawing the header, the footer and the menus twice on every render."
+    },
+    {
+      "name": "2. Whole page documents read for something other than drawing that page",
+      "today": "listPublishedPages() has 35 callers (37 rg lines in 22 files, re-counted); 13 keep one page by id. Production: 29 whole documents a call, 79,778 calls, 781 s in 78 days (m/prod-db-stats.md). 45 of the demo store's 261 built entries keep the whole list, 117,432 bytes (re-run today with work/pmplan/rdcall.mjs). The admin's list reads 2 documents a page at 16 call sites. The knowledge job reads about 40 whole pages a call every five minutes and made 91,200 empty transactions. The modal check opens every published document of a store (68,878 calls, 121 s). A product layout is cached once per product. A grid of pages or articles reads up to 48 whole documents (gap 1).",
+      "target_a": "A cold render reads only the documents it draws: 3 on a store's home, built page and product page (the page or the product layout, the header, the footer). 0 built entries keep the page list. 0 documents read for a title, an address, a state, a flag or a yes or no, in the storefront, the admin's lists and the AI tools. The knowledge job reads 0 documents and opens 0 transactions on a run where nothing was published. One cached copy of a product layout per store. At most 14 call lines of the whole-list read are left, each a reader that uses every document (the feed, llms.txt, the admin's search).",
+      "how_measured": "Today: rg, the scratch script on .next, pg_stat_statements. After work item 1: a per-file ratchet count of list statements that select draft or published from commerce.pages (scripts/lib/ratchet-count.mjs, src/server/ratchet.baseline.json) and the build check's count of entries that keep the list. The integration tests of work items 3, 4, 7, 8 and 10. In production a week after each deploy: the whole-list statement has under a quarter of the index statement's calls, and the knowledge delete grows by under 20 calls a day (about 1,170 today).",
+      "why_this_is_a": "The floor is the documents a page draws. Titles, addresses and flags are short values and need no document. The tolerance is the three kinds of reader that use every document, named in the ratchet's baseline. The caching and query planners' own checks stop at 20 callers; that is a B, because titles and cards would still come out of whole documents."
+    },
+    {
+      "name": "3. Built pages one publish makes stale",
+      "today": "261 of 261 prerendered entries of the demo store carry the one tag pages:{store} (re-counted today from the .meta files). 55 places in 31 files refresh it: each publish, unpublish, delete, alt text, translation, scheduled publish and AI page tool. So changing one page's body makes all 261 render again. The alt-text job refreshes it for a store on every five-minute run that wrote one of its texts, 4 texts a run (gap 2).",
+      "target_a": "A publish that changes only a page's body makes that page's own entries stale: 3 of 261 on the demo, one per country. A change other pages show (a title, an address, a card's facts, a header, a footer, a global part) stays store-wide. An alt text makes stale the pages that hold the picture, or the store once when the job's queue is empty. The count of places that refresh the store-wide tag is in the ratchet and only falls.",
+      "how_measured": "Today: the build's .meta files and rg. After work item 7: a unit test of the save action with next/cache stubbed, the scope cases in src/server/pages.int.test.ts, the ratchet's count of store-wide refreshes, and the build check's count of entries per tag (work item 1).",
+      "why_this_is_a": "The floor: a page's own entries must be drawn again, and what other pages show of it must reach them. The tolerance: site-scope changes stay store-wide, and a fact missed by the scope rule is stale for at most the hourly expiry. Per-page tags for publishes alone would be a B while a five-minute job still marks a whole new store stale for its first days."
+    },
+    {
+      "name": "4. Rows read to find one owner's pages",
+      "today": "`store_id is not distinct from $1` gives a Seq Scan that removes 59,973 rows to return 27, on a test table of 2,000 owners with 30 pages each (PostgreSQL 18.6 in PGlite, work/pmsk/pg.mjs). 122 uses in 40 files of src/server (re-counted today). Production: 199,789 sequential scans of commerce.pages read 202 M rows in 78 days, on a table of 1,389 rows.",
+      "target_a": "Every read of an owner's pages touches only that owner's rows: an index scan, 27 of 27. At most 3 uses of the old wording are left, each column against column with a comment that says why. A new use fails the ratchet.",
+      "how_measured": "A plan test on a seeded table (work item 2 turns the skeptic's EXPLAIN into a test) and the per-file count in src/server/ratchet.baseline.json. Production's seq_tup_read for commerce.pages is the figure to watch once the table is large; at 1,389 rows the planner may still choose a scan.",
+      "why_this_is_a": "The floor is the owner's own rows. There is no tolerance on rows: a filter the index cannot serve costs in proportion to every other store's data, 300,000 rows a lookup at 10,000 stores. Fixing only the page path would be a B: about 100 uses in other files would go on scanning."
+    },
+    {
+      "name": "5. Parts of a built page sent twice, on a realistic page",
+      "today": "A product grid with Filter and sort: each of 9 products is 18 times in the markup and 18 in the payload on /s/demo/no/products; the streamed second copy is 16,702 bytes of 55,163 bytes of markup. The 1,760-byte breakpoint sheet is sent once per row and twice with the layout: about 10.7 KB raw of repeated style text on Orbit's six-row home (computed, not rendered). No rendered measure of a page with more than 2 blocks exists: the demo's page is 1 row and 2 blocks, 1,583 bytes of markup.",
+      "target_a": "Each grid item once in the markup and once in the payload. Each stylesheet text once per document, whatever the number of rows. A six-row, 31-block page (Orbit's home) has its document, payload and main-element lengths in a budget at the day's measure plus 5%, lowered by each change that removes something.",
+      "how_measured": "e2e/performance.spec.ts (work item 1 adds the six-row page and the three lengths), a once-only assertion in e2e/listing.spec.ts (work item 9), and the breakpoint sheet's count in the six-row page (work item 13).",
+      "why_this_is_a": "The floor: React sends a server-drawn tree as markup and again as payload. That is the framework's and stays. Beyond it nothing repeats. The tolerance: per-row part sheets may repeat shared rules, at most 2 KB raw on a six-row page (4,982 bytes as six sheets against 3,071 as one), and a filtered listing still carries the built grid hidden, so only a shopper who filters pays. Budgets on the two-block demo page alone would be a B: a cost per row never shows there."
+    },
+    {
+      "name": "6. What one read of a stored page costs the server",
+      "today": "Three stored shapes are accepted. The upgraders run on every read and are still needed: 6 source files and the seed write the old grid shape. Parsing takes 0.80 to 0.93 ms for a theme's home page of 10.5 to 13 KB, about 15 times JSON.parse, at 73 call sites in 29 files (re-counted). The reader's file, src/server/pages.ts, reaches 1,307 modules and 20.5 MB of source; the page model, the alt-text reader and the database client together reach 104 (my run of work/pm/graph.mjs). A stored page is lean, 10,549 bytes for Orbit's 31 blocks, and no test holds that.",
+      "target_a": "One stored shape: scripts/page-shapes.mjs finds 0 documents that differ from their parse, on a fresh seed and on production, and no upgrader is left in src. The page reader reaches at most 130 modules. Orbit's home stays at or under 11,100 bytes as stored. The parse stays: at most 1 ms for a theme's home page and, by measure 2, 3 documents on a cold render.",
+      "how_measured": "scripts/page-shapes.mjs (work item 12 writes it), a graph test on src/server/page-reads.ts (work item 14), a unit test of the stored size (work item 1). The parse time is the skeptic's bench (work/pm/bench.mjs); no timed test holds it, measure 2 holds how many documents are parsed.",
+      "why_this_is_a": "The floor: the schema checks what was stored and fills 35 defaults, about 0.03 ms a block. A read that trusts the stored JSON would save under 1 ms a page and lose the defaults, so the parse is the stated tolerance. 104 modules is what a reader's three imports reach today; 130 leaves room for a tag module and helpers. The planner's own check, under 400 modules, keeps about 250 that no reader needs: a B."
+    },
+    {
+      "name": "7. Script a store page loads for parts it does not draw",
+      "today": "Product page entry: 12 chunks, 315,368 bytes raw, 107,369 gzip. One chunk (28,584 bytes, 8,239 gzip) is the cart's forms and checkout button, reached through one import. Every built page carries about 14 KB minified for three modules it may not draw (carousel 5.2, the modal library 4.7 for one function, the theme preview stage 4.5). So 4 parts are outside the written keep-list. The scan that keeps the page model out of visitors' scripts follows static imports only: behind a recommending grid's lazy import the page model (74,836 bytes) and zod do load (BN-16).",
+      "target_a": "0 parts outside the keep-list of docs/performance.md:44-51 in a page's first scripts. No chunk outside the layout's seven is shared by the product page and the cart page. Product page entry at most 297,000 bytes raw, in a budget at the measure plus 3%. 0 bytes of the page model or zod in any script a store page loads, first or later.",
+      "how_measured": "Today: the built client-reference manifests (work/pmsk/crm.mjs). After work item 5: the import walk in src/lib/storefront-bundle.scan.test.ts and the lowered budget in e2e/performance.spec.ts:41. The lazy half is BN-16's check in e2e/recommendations.spec.ts, on the client-bundles card.",
+      "why_this_is_a": "The floor: the framework, the router and the layout's seven chunks, which the shopper's browser card measures. The written rule already names what must be eager and why: a press before a part has loaded must work. Everything else arrives with the part that draws it. 5% of room is how the cart's chunk got in one day before this review; 3% and an import walk is the A."
+    },
+    {
+      "name": "8. Interface text inline in the page editor's document",
+      "today": "276,922 bytes in one payload row: 76% of the editor's 365,427-byte payload and 85.5 KB of the document's 135.7 KB gzip, to edit a page of 5.8 KB (work/pmsk/admin.mjs on the capture). At least 74,898 bytes (27%) sit in branches no part of the editor asks for, a lower bound; PL-1 counts 311.6 KB handed and 195.4 KB read.",
+      "target_a": "At most 130,000 bytes inline at first paint: no branch that no part of the editor reads (at most 205,000 bytes after the picks), and a block's dialog brings its own words when it opens.",
+      "how_measured": "Today: the scratch script on the captured editor. After work item 11: a document budget in e2e/signed-in/admin-scripts.spec.ts at the measure plus 4%, and a scan test that the editor's readers ask for picks.",
+      "why_this_is_a": "The floor: the words of the frame, the canvas and the palette on screen at first paint. Decision D540 hands them down so no screen waits for its words, and that stays. The planner estimates 77 to 127 KB left once dialogs bring their own; 130,000 is the top of that range. Stopping at 205,000 is a B: the words of 37 block types' dialogs would still ride with every load of the editor."
+    }
+  ],
+  "work_items": [
+    {
+      "title": "Budgets that see a real built page, a list that reads whole pages and what a publish makes stale",
+      "finding_ids": ["PM-14"],
+      "also_ids": ["PL-13", "SC-6"],
+      "phase": "now",
+      "effort": "S",
+      "done_when": "e2e/performance.spec.ts prints and holds a document, a payload and a main-element length for four storefront addresses, one of them a six-row, 31-block page made from Orbit's home; src/server/ratchet.baseline.json holds two new counts (list statements that select draft or published, and store_id is not distinct from); the build check prints how many demo entries keep the page list (45) and carry the pages tag (261); a unit test holds Orbit's home at 11,100 bytes as stored (10,549 today).",
+      "moves": "Gives measures 1, 2, 3, 5 and 6 a number in CI at today's value, so each later item shows as a fall. Removes nothing by itself. Do it first. The reviewers' checks live in the scratchpad (nf2, grid, rdcall, trows, crm, admin, graph); each later item turns its own into an assertion here.",
+      "serves": "page-model",
+      "owner_decision": false
+    },
+    {
+      "title": "One owned() helper, so the store index serves every owner filter",
+      "finding_ids": ["PM-4"],
+      "also_ids": ["DQ-8", "DS-7"],
+      "phase": "now",
+      "effort": "M",
+      "done_when": "The count of 'store_id is not distinct from' in src/server outside tests is at most 3 commented column-to-column lines (122 in 40 files today), the ratchet holds the per-file counts, and a plan test on a seeded table of 200 owners with 30 pages each shows store_id in the Index Cond of the page list, page by address, page names and modal statements.",
+      "moves": "Measure 4: rows read for one owner's 27 pages from 59,973 to 27; uses from 122 to at most 3. Do it before work items 3, 4, 8 and 10, whose new reads use the helper from birth.",
+      "serves": "database",
+      "owner_decision": false
+    },
+    {
+      "title": "Read one page by its id and titles from an index, not every published page whole",
+      "finding_ids": ["PM-2"],
+      "also_ids": ["DQ-2", "CA-3", "SD-4"],
+      "phase": "now",
+      "effort": "M",
+      "done_when": "After a build no prerendered entry of the demo store keeps the page list (45 of 261 today, 117,432 bytes), counted by the build check; the call lines of listPublishedPages outside tests are at most 14 (37 today); and no caller left keeps only ids, addresses or titles, Kaizena Flow's static params included.",
+      "moves": "Measure 2: documents read on a cold render from every published page (29 a call in production) to the 3 drawn; entries that keep the list from 45 to 0. Write the new reads in src/server/page-reads.ts from the start (work item 14).",
+      "serves": "page-model",
+      "owner_decision": false
+    },
+    {
+      "title": "The knowledge job reads no document and opens no transaction when nothing was published",
+      "finding_ids": ["PM-3"],
+      "also_ids": ["DQ-6", "DS-5", "CR-4", "AI-5"],
+      "phase": "now",
+      "effort": "M",
+      "done_when": "A new case in src/server/chat.int.test.ts runs syncPageKnowledge twice over a store with a wordless published page and counts zero rows read from `published` and zero transactions on the second run; in production a day after the deploy the delete on knowledge_chunks by page grows by fewer than 20 calls a day (about 1,170 today).",
+      "moves": "Measure 2, the job's part: about 40 whole pages a call every five minutes to 0 on an idle run; 91,200 empty transactions in 78 days to none.",
+      "serves": "scheduled",
+      "owner_decision": false
+    },
+    {
+      "title": "Take the cart's parts off the product page and three undrawn parts off every built page",
+      "finding_ids": ["PM-11"],
+      "also_ids": ["SC-4", "SC-11"],
+      "phase": "now",
+      "effort": "S",
+      "done_when": "In the built client-reference manifests no chunk outside the layout's seven is in both the product page's and the cart page's entries (one today, 28,584 bytes), the product page's entry is at most 297,000 bytes raw (315,368 today), and the import walk added to src/lib/storefront-bundle.scan.test.ts passes.",
+      "moves": "Measure 7: parts outside the keep-list from 4 to 0; about 20 KB raw off each product page and 14 KB minified off each built page.",
+      "serves": "shopper-browser",
+      "owner_decision": false
+    },
+    {
+      "title": "Move the cart drawer's slot off the root layout, so the layout is drawn and sent once",
+      "finding_ids": ["PM-1"],
+      "also_ids": ["SC-8", "PL-2"],
+      "phase": "next",
+      "effort": "M",
+      "done_when": "The served /s/demo/no/om-oss payload opens one html element (two today) and holds nothing reachable only through a not-found copy (35 rows, 27,070 bytes today); its document budget is lowered to 85,000 bytes (110,415 today); e2e/cart.spec.ts and e2e/page-roles.spec.ts pass.",
+      "moves": "Measure 1: layout copies from 2 to 1; 27,070 bytes to 0; cart count queries per render from up to 4 to 1. Its first step (one cart count per request, a few lines, also SD-11's) ships with the now items. Do the move before opening: only imports depend on these 22 folders today.",
+      "serves": "shopper-browser",
+      "owner_decision": false
+    },
+    {
+      "title": "A page's own cache tag, and one cached copy of a product layout per store",
+      "finding_ids": ["PM-15", "PM-16"],
+      "also_ids": [],
+      "phase": "next",
+      "effort": "M",
+      "done_when": "A unit test of the store's save action with next/cache stubbed sees a body-only publish call updateTag with page:{id} and not with pages:{store}; src/server/pages.int.test.ts holds that a body-only publish is scope 'page' and a changed title is 'site'; src/server/product-layouts.int.test.ts shows one read of the layout's document for two products; the ratchet holds the count of places that refresh the store-wide tag (55 in 31 files today).",
+      "moves": "Measure 3: entries a body-only publish makes stale from 261 of 261 to 3. Measure 2: cached copies of a product layout from one per product to one per store. After work item 3. The code review's step 3.10 is the same mechanism for products: do them together.",
+      "serves": "page-model",
+      "owner_decision": false
+    },
+    {
+      "title": "A page's title, its titles by language and its remembered-modal flag as columns the database derives",
+      "finding_ids": ["PM-6"],
+      "also_ids": ["DS-4"],
+      "phase": "next",
+      "effort": "M",
+      "done_when": "rg for JSON operators and jsonb_path_exists on `published` prints no line inside publishedPageNames() or usesRememberedModals(), and the new cases in src/db/commerce.test.ts pass (the columns follow an insert, an update of published and an unpublish).",
+      "moves": "Measure 2: documents opened for a menu title or the modal yes or no from every published page of the store (57,930 and 68,878 calls in 78 days) to 0. Do it before opening: the column rewrite is instant at 1,389 rows and gets harder with every store. DQ-7's modal step is this same column.",
+      "serves": "database",
+      "owner_decision": false
+    },
+    {
+      "title": "Send a filterable product grid once: the built grid stays, only the controls stream",
+      "finding_ids": ["PM-8"],
+      "also_ids": ["PL-6"],
+      "phase": "next",
+      "effort": "M",
+      "done_when": "The served /s/demo/no/products holds each product's data-item-id once in its markup and once in its payload (18 and 18 today for 9 products) and its streamed blocks hold 3 product links (21 today, 16,702 bytes in one block), held by a once-only assertion in e2e/listing.spec.ts; e2e/products-page.spec.ts passes.",
+      "moves": "Measure 5: copies of the grid from 2 to 1; 16,702 bytes of markup and its twin in the payload off the listing; one grid render less per request on a store's busiest built page.",
+      "serves": "page-model",
+      "owner_decision": false
+    },
+    {
+      "title": "The admin's page lists, pickers and AI tools read list fields, not two documents a page",
+      "finding_ids": ["PM-5"],
+      "also_ids": ["AD-14"],
+      "phase": "next",
+      "effort": "S",
+      "done_when": "The statement 'select id, slug, draft, published' is in src/server/pages.ts only inside getPageForEdit(), and a new case in src/server/pages.int.test.ts shows listPages() gives the same titles, states, flags and thumbnails as today's parse.",
+      "moves": "Measure 2: documents read to list N pages from 2N to 0 (only a page whose stored draft differs from its live copy is read). A 100-page list from about 2 MB and 190 ms to a few KB (estimate). The same for each AI tool call that lists pages. DQ-10's step 3 is this read.",
+      "serves": "server",
+      "owner_decision": false
+    },
+    {
+      "title": "Hand the page editor only the text branches its parts read",
+      "finding_ids": ["PM-10"],
+      "also_ids": ["PL-1", "AC-4"],
+      "phase": "next",
+      "effort": "S",
+      "done_when": "The page editor's captured document holds a texts object of at most 205,000 bytes (276,922 today), held by a document budget in e2e/signed-in/admin-scripts.spec.ts at the new figure plus 4%, and e2e/signed-in/admin-text-fallbacks.spec.ts passes.",
+      "moves": "Measure 8: 276,922 to at most 205,000 bytes, about 23 KB less compressed on every load of the editor. One mechanism with PL-1's cuts and AC-4's derived areas: add it once.",
+      "serves": "owner-browser",
+      "owner_decision": false
+    },
+    {
+      "title": "One stored page shape: the writers first, then count, rewrite once and remove the upgraders",
+      "finding_ids": ["PM-9"],
+      "also_ids": ["DD-9"],
+      "phase": "next",
+      "effort": "M",
+      "done_when": "node scripts/page-shapes.mjs prints 0 documents that differ from their parse on a freshly seeded database and on production, and rg for upgradeRow, upgradeBlock, upgradeLegacy and upgradeResponsive in src outside tests prints nothing.",
+      "moves": "Measure 6: stored shapes from 3 to 1; about 240 lines of upgraders gone. Its first step must not wait for the rest: until the themes, the content packs and the seed write today's shape, every new store adds old-shaped documents and the one-off rewrite grows.",
+      "serves": "page-model",
+      "owner_decision": false
+    },
+    {
+      "title": "Draw the breakpoint sheet once per document, not once per row",
+      "finding_ids": ["PM-7"],
+      "also_ids": ["CS-4"],
+      "phase": "next",
+      "effort": "S",
+      "done_when": "The six-row test page's markup and payload hold the 1,760-byte breakpoint sheet once, whatever the number of rows (today: the layout's, the layout's second copy and one per row), held in e2e/performance.spec.ts.",
+      "moves": "Measure 5: repeated style text on a six-row page from about 10.7 KB raw to under 2 KB. One part sheet per page (the finding's steps 2 to 4) is optional and inside the stated tolerance.",
+      "serves": "styles",
+      "owner_decision": false
+    },
+    {
+      "title": "A page reader that does not import the page writer: tags in a leaf module, reads in page-reads.ts",
+      "finding_ids": ["PM-12"],
+      "also_ids": ["SG-8", "SG-1", "SD-1"],
+      "phase": "later",
+      "effort": "M",
+      "done_when": "A graph test holds src/server/page-reads.ts at 130 modules or fewer by the import walk (pages.ts reaches 1,307 today; the page model, the alt-text reader and the database client reach 104), and it may not reach src/server/pages.ts, design-presets.ts, page-ai.ts or src/lib/signature.",
+      "moves": "Measure 6: modules behind a page read from 1,307 to at most 130. This is the page's share only. What a storefront function loads in all is the server card's measure and needs the code review's steps 3.13 and 3.14.",
+      "serves": "server",
+      "owner_decision": false
+    },
+    {
+      "title": "A block's dialog brings its own words (PM-10's last step, with code review steps 3.2 and 3.4)",
+      "finding_ids": [],
+      "also_ids": ["AC-5"],
+      "phase": "later",
+      "effort": "L",
+      "done_when": "The page editor's captured document holds a texts object of at most 130,000 bytes (at most 205,000 after the picks), in the document budget of e2e/signed-in/admin-scripts.spec.ts, and e2e/signed-in/content-types.spec.ts passes (an early press still works).",
+      "moves": "Measure 8: at most 205,000 to at most 130,000 bytes. Part of the builder's split on the owner's browser card; listed here so this area's bar has a step that reaches it.",
+      "serves": "owner-browser",
+      "owner_decision": false
+    }
+  ],
+  "tolerated": [],
+  "owner_choices": [
+    {
+      "finding_ids": ["PM-13"],
+      "question": "Should the builder's palette show each of these near-twins as one entry, with the second as a switch: FAQ and accordion, button and dual button, email form and newsletter? Yes or no per pair. Nothing stored changes either way, and no visitor, request or build pays for the second entry."
+    }
+  ],
+  "gaps": [
+    {
+      "title": "A grid of pages or articles reads whole documents to draw its cards",
+      "evidence": "src/server/content-grid.ts:264 selects p.published for up to 48 rows and :281 runs parsePageContent on each to keep a title, an excerpt and a thumbnail. The cached entry is keyed by the page the grid is on (place.pageId is passed as exclude at :103 and :106), so a grid in an article's layout or a footer is read again for each page. The digest says PM-2 and PM-6 cover it; their steps do not touch this statement (PM-4 changes only its owner filter). It is the blog home's read and every 'more articles' grid's, and it grows with articles times their length. Needed for an A on measure 2.",
+      "proposed_work_item": "Cards from facts, not documents. Next, S, with the columns of PM-6: the grid's statement selects the card's facts in SQL (title, the language's title, excerpt, seo.description, thumbnail, blogId) and fetches the document only for rows with neither an excerpt nor a description, where pageExcerpt() needs the body. Done when: an integration test draws a 24-article grid whose articles have excerpts and reads no `published` document, and content-grid.ts has no line in the ratchet's count of list statements that select a document."
+    },
+    {
+      "title": "After per-page tags, an alt text still makes a whole store stale, every five minutes while its pictures are being described",
+      "evidence": "src/app/api/cron/cart-reminders/route.ts:276-279 revalidates pagesTag and catalogTag for each owner the alt-text job wrote for, and refreshAltTexts() writes 4 pictures a site a run (src/server/alt-texts.ts:224). A new store with 200 pictures is marked stale on about 50 runs in a row: every built page and its whole catalogue, in its first days. src/app/admin/(gated)/[store]/media/actions.ts:29-32 does the same for each alt text staff save. PM-15's title names this cost, but its step 6 leaves it, and AI-13 changes which sites the job walks, not what it refreshes. Needed for an A on measure 3.",
+      "proposed_work_item": "Alt texts refresh what holds the picture. Next, S, after PM-15: the job refreshes a store's tags once when its queue is empty, or once an hour while it is not, instead of on every run. Then, with the picture-use index of DQ-3 and DS-10, refresh page:{id} for the pages that hold the picture, and the catalogue's tag only for a product's picture. Done when: a unit test of the route with next/cache stubbed sees at most one store-wide refresh for a store across 10 runs that each write alt texts (10 today)."
+    },
+    {
+      "title": "No measure or budget sees a store with a builder-made header and footer, which is every store started from a theme",
+      "evidence": "supabase/seed.sql has no header or footer page (rg for header_id and footer_id finds nothing), so every local measurement and every budget in e2e/performance.spec.ts draws the standard header. Each signature theme ships a built header and footer (src/lib/signature/orbit.ts:369 and :417), drawn as rows with their own part sheets. Production's demo home is 203 KB with a 149 KB payload against 135 KB and 94 KB locally (m/prod-pages.md, m/routes.md). The layout's second copy holds the header and the footer, so it is larger there than the 27,070 bytes measured; nobody measured it. Needed for an A on measures 1 and 5: the budget must hold the shape real stores have.",
+      "proposed_work_item": "A themed store in the budgets. Now, S, with PM-14: the budget's test store wears a launch theme whole (its header, footer, product layout and home, inserted from LAUNCH_THEMES as e2e/theme-shots.spec.ts already inserts a theme's snapshot), and the document, payload and main lengths are held for its home, a product page and a built page. Done when: e2e/performance.spec.ts prints and holds the three lengths for three addresses of a themed store, and docs/performance.md says what a built header and a built footer each add to every document."
+    }
+  ],
+  "ladder": {
+    "after_now": "C",
+    "after_next": "B",
+    "after_later": "B"
+  }
+}

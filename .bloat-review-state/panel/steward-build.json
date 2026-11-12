@@ -1,0 +1,308 @@
+{
+  "area": "build",
+  "title": "Tests, CI and the build",
+  "grade_today": "C",
+  "grade_reasons": "The base is sound: 325,579 lines of tests with no snapshots, a browser suite that does not repeat the unit tests, a test database built once, a docs-only push that runs nothing, and a gate before each deploy. The waste is in how the checks run: one push type-checks the same commit five times (about 9 runner-minutes of repeats) and builds it three times, a plain unit test file spends 0.34 of its 0.48 s on the admin's English and a fresh worker it cannot use, and lint re-reads 6,213 files for an answer a cache gives in a second. It is not a B because not one number here is held (no seconds, no memory) while the production build runs at 90% of its machine and was killed once on 11 November; it is not a D because the tests themselves are lean, the waste is a share of each run and not most of it, and none of it reaches a shopper.",
+  "measures": [
+    {
+      "name": "How often one commit is checked and built on a push",
+      "today": "5 full type checks (static, the gate, and inside the e2e, hosts and signed-in builds), 2 lints, 3 schema checks (one per integration shard), 3 builds in CI and a fourth on Vercel, the only one that deploys. 6 of the last 75 commits that ran CI changed only tests and still deployed. Source: .github/workflows/ci.yml:55-56, 86 and 110, 152, 206, 249, 299-302; next.config.ts:46; the tests-ci digest.",
+      "target_a": "1 lint, 1 schema check and 1 full type check per push; at most 2 builds in CI; no deploy for a push that cannot change the deployed app.",
+      "how_measured": "A new scan test, src/lib/ci-once.scan.test.ts, made by the first work item beside src/lib/ci-playwright.scan.test.ts (which already reads ci.yml): it counts the jobs that run pnpm typecheck, pnpm lint, pnpm db:check and pnpm build on a push and fails above the stated counts. The browser jobs' build logs show no 'Running TypeScript' line.",
+      "why_this_is_a": "The floor is once each. Two things are tolerated. The hosts job keeps a build of its own: its three NEXT_PUBLIC host variables change the routing compiled into the app (next.config.ts:91-103). And if the whole program cannot be checked inside the gate's 60 s, the gate checks the app alone and static's full check beside it is a second one. A B is the state after the first work item alone: 2 type checks, 2 lints, 3 builds."
+    },
+    {
+      "name": "The deploy gate: lint, type check and tests before a deploy is asked for",
+      "today": "5 min 11 s for the three steps on CI run 1160 (code review Progress, step 0.2). Lint re-reads 6,213 files on one thread with no cache: about 3 minutes here, from a one-in-five sample of 36 to 40 s. The type check is one program of 8,003 files, 183 s in this machine's build, under a 7,168 MB heap limit. Vercel's 8 GB build cannot run it, so the gate is the only check before a deploy.",
+      "target_a": "120 s or less: lint 15 s with its cache restored, type check 60 s, the six money test files 15 s. The type check runs under a 4 GB heap limit, so the production build could check again.",
+      "how_measured": "scripts/timed.mjs and scripts/ci-budgets.json, both made by the recorder work item: each step's seconds in the run's summary and a failed run above a ceiling. Read as the median of ten runs.",
+      "why_this_is_a": "Floors, each measured or documented. A cached lint answers in 1.0 s for 1,235 unchanged files, so about 5 s for the tree. The six smoke files need neither the test database (5.9 s today) nor the admin's English. The type check has no cheap floor with tsc 6: the app without tests is still 61% of the syntax trees. But Next 16.4 runs the project's own tsc and supports TypeScript 7's native compiler, and kept build info re-checks only what changed; 60 s is what either should give with room. A B is lint cached and the check still about 3 minutes: a gate of about 3.5 minutes."
+    },
+    {
+      "name": "The unit run (pnpm test)",
+      "today": "5 min 34 s for 1,215 files in an agent sandbox (code review step 0.4, 10 November). A plain unit file costs 0.48 s, 0.34 s of it the admin's English (93 modules, 1.9 MB) and a fresh worker; setup is 40 to 41% of the run on a 187-file sample. Component files cost 0.74 s each (22 sampled), database files 3.0 s (8 sampled).",
+      "target_a": "3 min 30 s or less on the machine where it took 5 min 34 s. Setup under 10% of Vitest's duration line. A plain unit file at 0.15 s or less. For the 281 component and database files: a lower figure per file, or a recorded trial that shows the fresh worker is needed.",
+      "how_measured": "Vitest's own duration line, which splits setup, import and tests. scripts/timed.mjs holds the run's seconds in CI at the median of ten runs plus 25%. The per-file figures by re-running the planner's 187-file, 22-file and 8-file samples.",
+      "why_this_is_a": "The floor by file count: 934 plain files at 0.14 s (measured without the English and without a fresh worker), 214 component files at 0.74 s and 67 database files at 3.0 s. That is 490 CPU-seconds against 807 today, 61%, and 61% of 5 min 34 s is 3 min 23 s. The tolerance is the fresh worker and full setup of the 281 files, 73% of what is left, and only once the third gap's trial has shown they need it. A B is the English gone and a fresh worker kept for every file: 0.35 s a file, about 4 min 45 s."
+    },
+    {
+      "name": "The integration and browser jobs a migration release waits for",
+      "today": "Not recorded. The workflow's own comment says about 10 minutes side by side (ci.yml:40); the timeouts are 20 to 30 minutes. Each of 525 integration files spends 0.48 s importing the database client before its first test (probe of 20 files): about 250 s a run, about 85 s in each of the 3 shards. Each browser job's build type-checks for about 3 minutes. One commit in four that runs CI carries a migration (18 of 75) and waits for every job.",
+      "target_a": "Every required job's seconds recorded on every run and held by a ceiling. The slowest at 8 minutes or less. The client's import at 0.10 s a file or less (0.07 measured with the schema gone and Drizzle pre-bundled). Tests that pass only on a retry counted and held.",
+      "how_measured": "scripts/timed.mjs around each shard and each Playwright run, with ceilings in scripts/ci-budgets.json (the recorder item, widened by the first gap's item). The import by Vitest's importDurations print on one shard. Retried tests from Playwright's JSON report.",
+      "why_this_is_a": "What cannot be removed is the install, the seed, one build without its type check (about 80 s here) and the tests themselves. The tests can be split across shards or workers at will, so 8 minutes is a choice of split, not a limit of the suite. The tolerance is at most 3 shards a suite, because each shard repeats the install and the seed. A B is today's 10 minutes, known only from a comment."
+    },
+    {
+      "name": "The production build: peak memory against its machine",
+      "today": "About 7.2 GB of 8 on Vercel's build machine (90%), with the type check, the build cache and two of three workers already off. 0.8 GB of room, and killed once for memory on 11 November (docs/build-memory.md:18, 40-46). Here, with 4 CPUs, three workers and the type check on: 263 s and 7.61 GB for the whole machine (m/build-summary.txt). No build prints either figure. The page worker runs with source maps on: 4.7 MB of heap per MB of server code it loads (assets AS-10).",
+      "target_a": "75% of the build machine's memory or less on every production build (6.0 GB of 8, or 12 GB of 16), printed by every build and held by a failing check. No deploy killed for memory.",
+      "how_measured": "scripts/next-build.mjs prints seconds and peak after every build (the recorder item). The figure reaches a failing check through scripts/timed.mjs where CI makes the build, or through scripts/await-deploy.mjs after a deploy (the second gap's item). Measurements under a memory cap go in the table of docs/build-memory.md.",
+      "why_this_is_a": "75% is the code review's own done-when for its step 1.8, and a quarter of the machine is the room one large feature can take without a failed deploy. The floor on the present machine is above the bar: Turbopack's compile alone holds 5.8 GB without its cache (docs/build-memory.md:22), and the first page worker (1.3 GB) starts while it is held. So trimming cannot be counted on for an A on 8 GB. It needs the owner's choice: a 16 GB machine (7.2 of 16 is 45%), or the build made in CI and deployed prebuilt. A B is today's build with its peak printed and a ceiling at 7.2 GB."
+    },
+    {
+      "name": "What the pre-push rule costs an agent session",
+      "today": "About 11 to 12 minutes of machine time and about 5 GB of memory before each push: lint about 3 minutes, type check about 3, unit run 5 min 34 s (TC-6). Nothing records it.",
+      "target_a": "5 minutes or less for a push after the session's first, with the whole rule kept: lint 15 s from its cache, type check 60 s, unit run 3 min 30 s. 2 minutes where the owner allows a related test run (85 to 200 test files in place of 1,215).",
+      "how_measured": "A pnpm check script, made by the recorder work item, runs the rule's commands through scripts/timed.mjs and prints one line of seconds per step. Timed in a sandbox before and after.",
+      "why_this_is_a": "It is the sum of the three floors above. Keeping the full rule is the owner's safety choice, not waste, so the bar is set for the rule as it stands. The tolerance is a session's first lint, which is cold (2 to 3 minutes; the cache lives in node_modules/.cache). A B is lint cached and the unit run faster with the type check still 3 minutes: about 7 minutes."
+    },
+    {
+      "name": "Numbers of this area that a failing check holds",
+      "today": "0 of 9. Nothing records the seconds of lint, the type check, the unit run, an integration shard, a browser job or the build, the build's peak memory, how often a commit is checked, or the size of the import cycle (229 modules). One test pins CI's configuration: the Playwright image tags and the list of browser jobs (src/lib/ci-playwright.scan.test.ts). The review's numbers were measured by hand.",
+      "target_a": "9 of 9, each with a ceiling no more than 25% above the median of its last ten runs, and a check that fails when a CI step runs outside the recorder.",
+      "how_measured": "Count the labels in scripts/ci-budgets.json, the test that holds the import cycle (two keys in src/server/ratchet.baseline.json, or the server area's graph test) and the new ci.yml scan test. All are made by work items of this plan.",
+      "why_this_is_a": "This is the second half of what an A means: each measure held, so it cannot slip back unseen. The shoppers' scripts have had budgets in e2e/performance.spec.ts since D211 and are the leanest part of the system; this area has none. 25% is the room a slow runner needs; more than that hides a doubled check. A B is ceilings for four of the nine: lint, type check, unit run and build."
+    }
+  ],
+  "work_items": [
+    {
+      "title": "CI's three builds stop type-checking, the schema check runs in one shard, and a test holds the counts (TC-1 steps 1 to 4)",
+      "finding_ids": [
+        "TC-1"
+      ],
+      "also_ids": [],
+      "phase": "now",
+      "effort": "S",
+      "done_when": "On the next push to main without a migration, the pnpm build logs of the e2e, hosts and signed-in jobs contain no 'Running TypeScript' line, tsc runs in two jobs only (static and pending), and 'Migrations match the schema' ran in one integration shard. src/lib/ci-once.scan.test.ts holds those counts and fails when a job that runs pnpm build lacks SKIP_BUILD_TYPECHECK.",
+      "moves": "Type checks per push 5 to 2, schema checks 3 to 1. About 9 runner-minutes less per push, and each browser job ends about 3 minutes sooner, so a migration release is about 3 minutes sooner. Numbers held: 0 to 1 of 9.",
+      "serves": "build",
+      "owner_decision": false
+    },
+    {
+      "title": "Lint keeps a cache: one line in package.json and a cache step in the static and pending jobs",
+      "finding_ids": [
+        "TC-12"
+      ],
+      "also_ids": [],
+      "phase": "now",
+      "effort": "S",
+      "done_when": "A second pnpm lint on an unchanged tree finishes in under 15 s on the machine where the first took minutes, and the gate's lint step takes under 30 s on a CI run that restored the cache.",
+      "moves": "Lint on an unchanged tree: about 3 minutes to under 15 s. The deploy gate: 5 min 11 s to about 3 minutes (estimate). The pre-push rule: 11 to 12 minutes to about 9 after a session's first lint.",
+      "serves": "build",
+      "owner_decision": false
+    },
+    {
+      "title": "Unit tests in three Vitest projects: the admin's English only where parts are drawn, the test database only where it is opened, no fresh worker for plain unit files",
+      "finding_ids": [
+        "TC-3"
+      ],
+      "also_ids": [],
+      "phase": "now",
+      "effort": "S",
+      "done_when": "pnpm test passes with the same 'Test Files' and 'Tests' totals as before (1,215 files), Vitest's duration line shows setup under 10% (40% on today's sample), and the full run timed on one machine before and after is at least 15% shorter. Both parser scans carry the whole-file pre-test of TC-10 step 1 (two lines, about 8 CPU-seconds a run).",
+      "moves": "A plain unit file: 0.48 s to 0.14 s (187-file sample: 90 s to 27 s). The unit run: 5 min 34 s to between 3 min 25 s and 4 min 15 s. Setup share: 40% to under 10%. The gate's six smoke files stop building the 5.9 s test database.",
+      "serves": "build",
+      "owner_decision": false
+    },
+    {
+      "title": "The database client stops loading the 19,614-line schema: three lines in src/db/client.ts",
+      "finding_ids": [
+        "TC-5"
+      ],
+      "also_ids": [
+        "DP-1"
+      ],
+      "phase": "now",
+      "effort": "S",
+      "done_when": "rg -c schema src/db/client.ts prints nothing, pnpm db:check passes, and the import graph shows src/db/client.ts reaching 2 modules instead of 49.",
+      "moves": "Tests: 0.16 s less per file that opens the database, about 84 s per integration run across its shards. Server: about 125 ms and 50 MB less per cold start, which is the server area's measure; make the edit once, with deps DP-1.",
+      "serves": "server",
+      "owner_decision": false
+    },
+    {
+      "title": "Pre-bundle Drizzle for the tests, so a test file does not load it one small module at a time",
+      "finding_ids": [
+        "TC-13"
+      ],
+      "also_ids": [],
+      "phase": "now",
+      "effort": "S",
+      "done_when": "On one machine, pnpm test:int --shard=1/3 reports a duration at least 30 s shorter than before the change, with the same test counts. If two copies of drizzle-orm meet and adding the importer to the list does not settle it, the setting is dropped and the decision says so.",
+      "moves": "The client's import per test file: 0.48 s to 0.07 s with the item above. About 215 s less per integration run, about 70 s in each shard.",
+      "serves": "build",
+      "owner_decision": false
+    },
+    {
+      "title": "A recorder and ceilings: seconds for every check, the build's peak memory printed by every build, source maps off in the page worker if a capped build shows it pays",
+      "finding_ids": [
+        "TC-8"
+      ],
+      "also_ids": [
+        "AS-10",
+        "SF-7",
+        "SG-14"
+      ],
+      "phase": "now",
+      "effort": "S",
+      "done_when": "Every CI run's summary lists seconds for lint, type check, unit run and build and the build's peak memory. A run fails when one passes its ceiling in scripts/ci-budgets.json. Vercel's build log ends with the peak-memory line. pnpm check prints the same seconds in a session. docs/build-memory.md has a row for each source-map setting, measured under the 8 GB cap, and a switch is kept only if the peak falls by 0.3 GB or more. The largest import cycle and the reach of catalog.ts (229 and 1,305) are held by a test: the server area's graph test (SF-7, SG-14) or, if that comes later, two keys in the ratchet's baseline (TC-2 step 1).",
+      "moves": "Numbers held: 1 to 7 of 9 (lint, type check, unit run and build seconds, the build's peak, the import cycle, with the counts of the first item). Saves no time by itself; every other item here reads its before and after from it.",
+      "serves": "build",
+      "owner_decision": false
+    },
+    {
+      "title": "The type check: a project without tests for the gate, the native TypeScript 7 compiler tried beside tsc for a week, kept build info as the fallback",
+      "finding_ids": [
+        "TC-4",
+        "TC-9"
+      ],
+      "also_ids": [],
+      "phase": "next",
+      "effort": "M",
+      "done_when": "pnpm exec tsc -p tsconfig.app.json --listFilesOnly lists no test or e2e file. The gate's type check has a median of 60 s or less over ten runs (about 3 minutes today), by the native compiler or by a restored tsconfig.tsbuildinfo. A cache step stays only if it cuts the median by a third; otherwise it is removed and the decision says so. If the check then fits under the 8 GB cap with the compile, Vercel's build checks again and the watch item at docs/build-memory.md:39 is closed.",
+      "moves": "The gate's type check: about 3 minutes to 60 s or less. The gate: about 3 minutes to 120 s or less. Heap limit: 7,168 MB to under 4 GB if the native compiler holds. The pre-push rule: about 9 minutes to about 5. If neither route brings the median under 60 s, the item is not done: src/lib becomes a referenced project with kept build info (TC-4 step 5), and the gate stays a B measure until it does.",
+      "serves": "build",
+      "owner_decision": false
+    },
+    {
+      "title": "Cut the 12 imports that close the 229-module cycle, one file's edges per commit",
+      "finding_ids": [
+        "TC-2"
+      ],
+      "also_ids": [
+        "SG-1",
+        "SF-1"
+      ],
+      "phase": "next",
+      "effort": "M",
+      "done_when": "The largest import cycle is 20 modules or less and catalog.ts reaches 417 or less (229 and 1,305 today), held by src/server/ratchet.baseline.json or by the server area's graph test. After each deploy the smoke checks of scripts/await-deploy.mjs, one storefront page, one admin page and /sitemap.xml answer.",
+      "moves": "Largest import cycle: 229 to 20 modules. A route that reaches catalog.ts loads 417 modules, not 1,305: the server area's measure, and the same cuts as SG-1 and SF-1, to be made once. Here: 67 test files stop loading about 1,300 modules each (about 55 CPU-seconds per run of both suites, estimate).",
+      "serves": "server",
+      "owner_decision": false
+    },
+    {
+      "title": "Two builds per push: the unsigned and the signed-in browser suites share one build; hosts keeps its own",
+      "finding_ids": [
+        "TC-7"
+      ],
+      "also_ids": [],
+      "phase": "next",
+      "effort": "M",
+      "done_when": "A push to main runs pnpm build in two CI jobs at most, release still needs every browser suite, and the ci.yml scan test holds the count at 2. The specs that assumed Supabase was not configured (e2e/smoke.spec.ts:146-150 and e2e/csp.spec.ts are the candidates) pass in the shared build.",
+      "moves": "Builds per push in CI: 3 to 2. One install and one seed fewer: about 3 to 4 runner-minutes (estimate), and one runner fewer to wait for.",
+      "serves": "build",
+      "owner_decision": false
+    },
+    {
+      "title": "A related test run (pnpm test:changed, with every directory-reading test named *.scan.test.ts), and the owner's rule for what runs before a push",
+      "finding_ids": [
+        "TC-6"
+      ],
+      "also_ids": [],
+      "phase": "next",
+      "effort": "S",
+      "done_when": "The owner's choice is a decision row and CLAUDE.md states it. pnpm test:changed exists and, after a one-line change to a file in src/lib, its two 'Test Files' lines add up to fewer than 250 files (1,215 in a full run). A scan test fails when a unit test not named *.scan.test.ts reads the src tree.",
+      "moves": "The pre-push rule: about 5 minutes with the whole rule kept (choice A); about 2 minutes with a related run (B or C). With B the gate runs the whole unit suite and the second full unit run per push ends.",
+      "serves": "build",
+      "owner_decision": true
+    },
+    {
+      "title": "The deploy job: no deploy for a push that changes only tests, and lint and the type check once per push (TC-1 step 5)",
+      "finding_ids": [
+        "TC-14"
+      ],
+      "also_ids": [
+        "CA-2"
+      ],
+      "phase": "next",
+      "effort": "S",
+      "done_when": "A push that changes one *.test.ts file shows pending green with the deploy step skipped while /api/health still reports the previous commit. A push that changes one non-test file under src deploys as before. A push with a seeded lint error fails pending and deploys nothing. The ci.yml scan test holds 1 lint per push, and 1 type check where one check of the whole program fits the gate (else the gate checks the app and static the whole).",
+      "moves": "Lints per push 2 to 1, type checks 2 to 1. Deploys of an unchanged app: about 8% of deploys (about 3 a day) to 0. The same step of ci.yml as the server area's shared deploys (CA-2): change it once.",
+      "serves": "build",
+      "owner_decision": false
+    },
+    {
+      "title": "Record every job a release waits for, the time from push to live and the tests that needed a retry; hold the slowest at 8 minutes (gap 1)",
+      "finding_ids": [],
+      "also_ids": [],
+      "phase": "next",
+      "effort": "S",
+      "done_when": "Every run's summary lists each integration shard's and each browser job's seconds, the seconds from the push to production reporting the commit, and the number of tests that passed only on a retry. A run fails above a ceiling in scripts/ci-budgets.json. The slowest required job's median over ten runs is 8 minutes or less; if it is not, the job is split (a second Playwright shard, or a database per worker for the integration files).",
+      "moves": "Numbers held: 7 to 9 of 9. The slowest job of a migration release: about 10 minutes by a comment, to recorded and 8 minutes or less.",
+      "serves": "build",
+      "owner_decision": false
+    },
+    {
+      "title": "Give the production build room and make a check fail before it runs out: the 16 GB machine or a prebuilt deploy from CI (gap 2; code review step 1.8)",
+      "finding_ids": [],
+      "also_ids": [],
+      "phase": "next",
+      "effort": "M",
+      "done_when": "Ten production builds running peak at 75% of their machine or less. A run goes red with the number when one does not, before the deploy where CI makes the build and after it otherwise. docs/build-memory.md's table has the capped measurements with the cycle cut and with source maps off. Code review step 1.8 is Done.",
+      "moves": "The production build's peak: 90% of its machine to 75% or less (45% on a 16 GB machine), and held. With a prebuilt deploy the deployed build is also the one CI made, and Vercel builds nothing.",
+      "serves": "build",
+      "owner_decision": true
+    },
+    {
+      "title": "Component and database test files: show by trial whether each needs a fresh worker, and lower the unit run's ceiling to the result (gap 3)",
+      "finding_ids": [],
+      "also_ids": [],
+      "phase": "next",
+      "effort": "S",
+      "done_when": "A decision row holds two results: the components project with isolate off (kept if every file passes in three runs, one shuffled, and the 22-file sample falls from 16.3 s to 10 s or less; else the failing files are named), and one database file's time split into worker start, PGlite start, template load and tests. The unit run's ceiling in scripts/ci-budgets.json is lowered to the new median plus 25%, and the full run takes 3 min 30 s or less where it took 5 min 34 s.",
+      "moves": "The unit run: between 3 min 25 s and 4 min 15 s after the three-project item, to 3 min 30 s or less. The fresh worker stays only where a recorded trial shows it is needed.",
+      "serves": "build",
+      "owner_decision": false
+    },
+    {
+      "title": "One shared walker for the tests that read the source tree, moved to as each scan is next touched (with code review step 4.1)",
+      "finding_ids": [
+        "TC-10"
+      ],
+      "also_ids": [],
+      "phase": "later",
+      "effort": "S",
+      "done_when": "rg -l readdirSync src --glob '*.test.ts' | wc -l prints 20 or less (86 today), and the scans read the tree through one helper, src/test/source-files.ts, that walks and reads it once per worker.",
+      "moves": "About 600 repeated lines gone and about 7 CPU-seconds of repeated walks per unit run (1.4% of what is left). It moves no measure of this area; the two-line pre-test that saves 8 CPU-seconds has already gone in with the three-project item.",
+      "serves": "code",
+      "owner_decision": false
+    },
+    {
+      "title": "Shared mocks and store-makers for the integration tests: one setup file, and 448 lines that stub a module the config already stubs deleted",
+      "finding_ids": [
+        "TC-11"
+      ],
+      "also_ids": [
+        "CP-15"
+      ],
+      "phase": "later",
+      "effort": "M",
+      "done_when": "rg -l 'vi\\.mock\\(\"server-only\"' src --glob '*.int.test.ts' | wc -l prints 0 (448 today), rg -l 'vi\\.mock\\(\"next/cache\"' src --glob '*.int.test.ts' | wc -l prints under 60 (465 today), and pnpm test:int passes.",
+      "moves": "About 2,000 to 2,800 test lines gone and one place to change when Next's cache API changes. No run time, so it moves no measure of this area. It is the same fault as the code area's CP-15: do it once. With the mocks in one file, running integration files without a fresh worker each can be tried if the slowest shard is over its ceiling.",
+      "serves": "code",
+      "owner_decision": false
+    }
+  ],
+  "tolerated": [],
+  "owner_choices": [
+    {
+      "finding_ids": [],
+      "question": "For the related-run item (TC-6): what must run before a push? A: everything, as today (about 5 minutes after these fixes; 11 to 12 now). B: lint, the type check and the tests the change touches; the deploy gate then runs the whole unit suite, so each deploy waits about 3.5 minutes more and nothing deploys with a failing unit test (the planner's advice). C: as B before the push, the gate unchanged; a failing unit test outside the six money files can be live until someone reads the red run."
+    },
+    {
+      "finding_ids": [],
+      "question": "For the build's room (gap 2; the code review's question 2): pay for Vercel's 16 GB build machine, or build in CI and deploy the prebuilt output? The build has 0.8 GB of room on 8 GB and was killed once on 11 November, and nothing in this plan is measured to give it a quarter of the machine. Without one of the two this area stops at a B."
+    }
+  ],
+  "gaps": [
+    {
+      "title": "The jobs a migration release waits for, and the time from push to live, are neither recorded nor held",
+      "evidence": "TC-8's recorder wraps lint, the type check and the unit run in static, the gate's three steps and the e2e job's build (its fix step 3). It wraps no integration shard and no Playwright run. ci.yml:40 says 'about 10 minutes'; the timeouts are 30, 30, 20 and 25 minutes (ci.yml:80, 119, 173, 218). vitest.integration.config.mts:16 runs 556 files one at a time, and the suite passed 30 minutes as one job on 29 October (ci.yml:81-82). playwright.config.ts sets no workers and no shards for 573 and 208 tests, and line 30 gives one retry in CI with the github reporter, so a test that fails once and passes again is run twice and counted nowhere. scripts/await-deploy.mjs knows when production runs the commit and prints no duration. 18 of the 75 recent commits that ran CI carry a migration and wait for every job.",
+      "proposed_work_item": "Next, S. Widen scripts/timed.mjs to each integration shard, each Playwright run and each browser job's build. Let scripts/await-deploy.mjs write the seconds from the push to production reporting the commit. Add Playwright's JSON reporter in CI and print how many tests passed only on a retry. After ten runs set the ceilings in scripts/ci-budgets.json: the slowest required job at 8 minutes, retried tests at the median plus 2. If a job is still over 8 minutes once TC-1 and TC-13 have landed, split it: a second Playwright shard, or a database per worker for the integration files (scripts/db-template.mjs clone makes one in about a second). Done when every run's summary lists the three figures, a run fails above a ceiling, and the slowest required job's median is 8 minutes or less."
+    },
+    {
+      "title": "Nothing can fail before the production build runs out of memory, and its floor is above the bar",
+      "evidence": "scripts/next-build.mjs is ten lines and measures nothing. TC-8 makes it print the peak, but on Vercel nobody reads that line: its done-when asks only that the log ends with it. CI's builds cannot stand in, because only Vercel's build runs with no Turbopack cache and one worker (next.config.ts:82) and no type check (line 46). docs/build-memory.md:22 puts the compile at 5.8 GB of native memory without its cache, held until the pages render; line 40 gives 0.8 GB of room; lines 44-46 record the kill of 11 November. 5.8 GB plus one page worker of 1.3 GB is 7.1 GB, and no finding is measured to bring that under 6.0 GB: AS-10's switch acts on the page worker and its gain in a whole build is not measured, and neither the cycle's cut (TC-2) nor the repeated chunks (SG-11) has a measured effect on the compile. Code review step 1.8 is Open and waits for the owner's answer to its question 2.",
+      "proposed_work_item": "Next, M, after the owner's choice. Either Vercel's 16 GB machine, with the build cache and the workers back on; or vercel build in CI and vercel deploy --prebuilt, which makes the deployed build the checked one and lets scripts/timed.mjs hold its peak before any deploy. With the 16 GB machine, scripts/await-deploy.mjs reads the build's line through Vercel's API (the token code review step 0.2 also needs), writes it to the run's summary and fails the run, not the deploy, above the ceiling. Either way, measure once under a memory cap as docs/build-memory.md did, with the cycle cut and with source maps off, and add the rows to its table. Done when ten production builds running peak at 75% of their machine or less, a run goes red with the number when one does not, and code review step 1.8 is Done. If the owner chooses neither, the build stays on 8 GB at about 90% and this area stops at a B."
+    },
+    {
+      "title": "After the unit fix, three quarters of the unit run is 281 component and database files that no finding examined",
+      "evidence": "Counted here with find: 214 unit test files under src/components and 67 under src/db, 281 of 1,215. TC-3 keeps a fresh worker and the full setup for both groups. By the planner's samples they cost 0.74 s a file (22 component files, 16.3 s) and 3.0 s a file (8 database files, 24.0 s): 158 and 201 CPU-seconds, 359 of the 490 left after TC-3, 73%. Only 114 unit files can reach admin-text.tsx, all under src/components, so 100 component files still load 1.9 MB of English they cannot use (13 CPU-seconds). src/db/testing.ts:61-66 loads the 12.6 MB template into a new PGlite for every file (1.1 to 1.5 s): that part is needed. Whether a component file needs a worker of its own was never tried; for plain unit files the same trial took 0.35 s a file to 0.14.",
+      "proposed_work_item": "Next, S, in the config TC-3 makes. Trial one: run the components project with isolate off, the English settled once per worker; three runs, one with --sequence.shuffle.files; keep it if every file passes and the 22-file sample falls from 16.3 s to 10 s or less, else name the failing files in the decision. Trial two: split one database file's time into worker start, PGlite start, template load and tests (Vitest's importDurations and a timer around createTestDatabase()); if PGlite's start is over 0.5 s a file, try the db project with isolate off so a worker starts it once. Done when a decision row holds both results, the unit run's ceiling is lowered to the new median plus 25%, and the full run takes 3 min 30 s or less where it took 5 min 34 s."
+    }
+  ],
+  "ladder": {
+    "after_now": "B",
+    "after_next": "A",
+    "after_later": "A"
+  }
+}
