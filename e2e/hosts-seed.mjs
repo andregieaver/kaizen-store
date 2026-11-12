@@ -58,3 +58,16 @@ const SWEDEN_HOST = "sverige.lars.localhost";
     await sql.end();
   }
 }
+
+// Kaizena Flow's site from its own store (D484), read when the site is built: prerenderedShops() then builds its markets (bloat review
+// step 0.3). Only this job has the switch on; the e2e and signed-in jobs test the platform's own pages.
+{
+  const sql = postgres(process.env.DATABASE_URL, { max: 1, onnotice: () => {} });
+  try {
+    const [admin] = await sql`insert into commerce.accounts (email, platform_admin) values ('house-e2e@example.com', true) returning id`;
+    await sql`select commerce.set_site_from_store(true, ${admin.id})`;
+    console.log("Kaizena Flow's site is served from its own store");
+  } finally {
+    await sql.end();
+  }
+}

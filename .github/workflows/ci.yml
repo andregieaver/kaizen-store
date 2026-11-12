@@ -201,11 +201,11 @@ jobs:
           node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - name: Create the database with the demo catalogue and a store on a domain of its own
+      - name: Create the database with the demo catalogue, a store on a domain of its own, and Kaizena Flow's site served from its store
         run: node scripts/db-setup.mjs --seed && node e2e/hosts-seed.mjs
       - run: pnpm build
       - run: pnpm exec playwright install chromium
-      - run: pnpm exec playwright test e2e/store-hosts.spec.ts e2e/inline-edit-hosts.spec.ts e2e/theme-host.spec.ts e2e/docs-host.spec.ts
+      - run: pnpm exec playwright test e2e/store-hosts.spec.ts e2e/inline-edit-hosts.spec.ts e2e/theme-host.spec.ts e2e/docs-host.spec.ts e2e/house-site.spec.ts
         env:
           E2E_CUSTOM_HOSTS: "1"
 
