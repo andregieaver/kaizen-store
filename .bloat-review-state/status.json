@@ -1,5 +1,5 @@
 {
- "at": "2026-11-12T00:33:36.452Z",
+ "at": "2026-11-12T00:36:39.118Z",
  "status": [
   {
    "key": "storefront-client",
@@ -53,7 +53,7 @@
    "key": "deps",
    "audit": true,
    "verify": true,
-   "plan": false
+   "plan": true
   },
   {
    "key": "assets",
@@ -156,7 +156,6 @@
   "keys": [
    "caching",
    "db-schema",
-   "deps",
    "assets",
    "ai-context",
    "families",
