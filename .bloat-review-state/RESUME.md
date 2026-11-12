@@ -94,4 +94,4 @@ challenged by a skeptic, planned by a planner. Its last lines hold the arguments
   and CI green, then do After the deploy.
 - Local DB: Postgres 16 at /home/user/pgdata (start: /usr/lib/postgresql/16/bin/pg_ctl -D /home/user/pgdata -l /home/user/pgdata/log -o '-p 5432 -k /tmp' start);
   DATABASE_URL=postgres://postgres:postgres@127.0.0.1:5432/postgres. pnpm install --frozen-lockfile first in a new container.
-- Done: 0.1 (b29825d). 0.2 pushed 325b547 (D574; In progress until two days of readings; after deploy: advisors, migration date in D574). 0.3 executor running.
+- Done: 0.1 (b29825d). 0.2 live 325b547 (D574): CI applied both migrations 2026-11-12 14:18 UTC; advisors: security only INFO rls_enabled_no_policy, performance nothing on platform_readings; pg_stat_statements readable by postgres (4485 statements); 487 commerce tables. TODO: write that into D574 (replace "(applied by CI; date and advisors to follow)"), then from 13 Nov read cron_jobs daily.production-reading and readings; Done after two days. 0.3 executor running.
