@@ -1,13 +1,13 @@
 import "server-only";
 
-import sharp from "sharp";
-
 import { VISION_COLOURS, VISION_QUESTION, visionAnswerRight, visionChallenge, visionRefusalMessage, type VisionCheck } from "@/lib/ai-vision";
 
 import { AiError, completeText, imagePart, type AiConnection } from "./ai";
+import { loadSharp } from "./sharp-load";
 
 /** A small picture of two bands, the upper in one colour and the lower in another. */
 export async function challengePicture(top: string, bottom: string): Promise<Buffer> {
+  const sharp = await loadSharp();
   const rgb = (name: string) => VISION_COLOURS.find((c) => c.name === name)!.rgb;
   const band = (name: string) => ({ create: { width: 96, height: 48, channels: 3 as const, background: { r: rgb(name)[0], g: rgb(name)[1], b: rgb(name)[2] } } });
   return sharp(band(top))

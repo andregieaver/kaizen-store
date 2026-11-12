@@ -1,6 +1,7 @@
 import "server-only";
 
-import sharp, { type OverlayOptions } from "sharp";
+import type { OverlayOptions } from "sharp";
+import { loadSharp } from "./sharp-load";
 
 import {
   DEVICES,
@@ -40,6 +41,7 @@ const H = HIGHLIGHT_SIZE.height;
 const svg = (body: string, width: number = W, height: number = H) => Buffer.from(`<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}">${body}</svg>`);
 
 async function backdrop(palette: HighlightSources["palette"]): Promise<Buffer> {
+  const sharp = await loadSharp();
   const { from, to } = backdropColours(palette);
   return sharp(svg(`<defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="${from}"/><stop offset="1" stop-color="${to}"/></linearGradient></defs><rect width="${W}" height="${H}" fill="url(#g)"/>`))
     .png()
@@ -48,6 +50,7 @@ async function backdrop(palette: HighlightSources["palette"]): Promise<Buffer> {
 
 /** A soft shadow under a rounded box, as an overlay placed a little below it. */
 async function shadow(place: Place, radius: number, strength = 0.22): Promise<OverlayOptions> {
+  const sharp = await loadSharp();
   const pad = 48;
   const input = await sharp(
     svg(`<rect x="${pad}" y="${pad}" width="${place.width}" height="${place.height}" rx="${radius}" fill="#000" fill-opacity="${strength}"/>`, place.width + pad * 2, place.height + pad * 2),
@@ -60,6 +63,7 @@ async function shadow(place: Place, radius: number, strength = 0.22): Promise<Ov
 
 /** `source` cut at `rect` (or whole), filling `place` from its top, with rounded corners. */
 async function screen(source: Buffer, place: Place, radius: number, rect?: { left: number; top: number; width: number; height: number }): Promise<OverlayOptions> {
+  const sharp = await loadSharp();
   const meta = await sharp(source).metadata();
   const sw = meta.width ?? place.width;
   const sh = meta.height ?? place.height;
@@ -80,6 +84,7 @@ async function screen(source: Buffer, place: Place, radius: number, rect?: { lef
 }
 
 const encode = async (canvas: Buffer, layers: OverlayOptions[]): Promise<{ bytes: Buffer; width: number; height: number }> => {
+  const sharp = await loadSharp();
   const { data, info } = await sharp(canvas).composite(layers).webp({ quality: 86, effort: 4 }).toBuffer({ resolveWithObject: true });
   return { bytes: data, width: info.width, height: info.height };
 };
@@ -87,6 +92,7 @@ const encode = async (canvas: Buffer, layers: OverlayOptions[]): Promise<{ bytes
 const BEZEL = "#1f2023";
 
 async function devices(s: HighlightSources, canvas: Buffer): Promise<Highlight> {
+  const sharp = await loadSharp();
   const { computer, base, phones } = DEVICES;
   const phoneMeta = await sharp(s.phoneFull).metadata();
   const phoneWidth = phoneMeta.width ?? 390;
@@ -116,6 +122,7 @@ async function devices(s: HighlightSources, canvas: Buffer): Promise<Highlight> 
 }
 
 async function collage(s: HighlightSources, canvas: Buffer): Promise<Highlight> {
+  const sharp = await loadSharp();
   const meta = await sharp(s.computerFull).metadata();
   const pageWidth = meta.width ?? 1440;
   const sections = collageSections(s.parts);
@@ -132,6 +139,7 @@ async function collage(s: HighlightSources, canvas: Buffer): Promise<Highlight> 
 }
 
 async function closeup(s: HighlightSources, canvas: Buffer): Promise<Highlight> {
+  const sharp = await loadSharp();
   let detail = s.detail;
   // Photographed at twice the pixels: shown at most at its own size. Cut from the page: a little larger at most.
   const maxScale = detail ? 1 : 1.2;

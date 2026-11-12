@@ -1,7 +1,6 @@
 import "server-only";
 
 import { sql } from "drizzle-orm";
-import sharp from "sharp";
 import { z } from "zod";
 
 import { db } from "@/db/client";
@@ -11,6 +10,7 @@ import { aiSourceXmp, type AiSource } from "./ai-pictures";
 import { log } from "./log";
 import { downloadStoredFile, overwriteStoredFile } from "./media";
 import { col, typedRows } from "./typed-rows";
+import { loadSharp } from "./sharp-load";
 
 /**
  * The AI pictures made before their files were marked (AI Act Art. 50(2), `docs/ai-act.md`): each is given IPTC's digital source type in
@@ -30,6 +30,7 @@ const STORAGE: Storage = { read: downloadStoredFile, write: overwriteStoredFile 
 
 /** One file marked, or found marked already; null when it could not be read or written. */
 async function markFile(storage: Storage, bucket: string, path: string, source: AiSource): Promise<"marked" | "found" | null> {
+  const sharp = await loadSharp();
   const bytes = await storage.read(bucket, path);
   if (!bytes) return null;
   if (webpHasXmp(bytes)?.includes("DigitalSourceType")) return "found";
