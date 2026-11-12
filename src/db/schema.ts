@@ -2983,6 +2983,30 @@ export const ownSpeedSamples = commerce.table(
   ],
 );
 
+/**
+ * One day's reading of Postgres's own statistics (bloat review step 0.2): for kind table, name is a commerce table and figures hold rows,
+ * bytes, seq_scan, seq_tup_read, idx_scan, inserted, updated, deleted; for kind schema, name is a schema and figures hold bytes and tables;
+ * for kind statement, name is the statement's queryid and figures hold calls, total_ms, mean_ms, rows and top (time, calls or both), with the
+ * statement's text, values already stripped by Postgres, cut at 2,000 characters. No person, store or account. Written only by
+ * src/server/production-reading.ts, deleted after 90 days.
+ */
+export const platformReadings = commerce.table(
+  "platform_readings",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    day: date("day").notNull(),
+    kind: text("kind").notNull(),
+    name: text("name").notNull(),
+    figures: jsonb("figures").notNull(),
+    query: text("query"),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    uniqueIndex("platform_readings_day_kind_name_key").on(t.day, t.kind, t.name),
+    check("platform_readings_kind", sql`${t.kind} in ('statement', 'table', 'schema')`),
+  ],
+);
+
 export const productMedia = commerce.table(
   "product_media",
   {

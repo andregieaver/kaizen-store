@@ -337,6 +337,7 @@ export const NOT_PERSONAL: Record<string, string> = {
   live_drills: "A run of a store's money paths in Stripe's test mode (D406): the kinds asked, who asked (an admin's account) and each outcome with order numbers and amounts; no shopper.",
   speed_samples: "How fast one page load was (D336): the store day, the page's kind (front page, product, category, list, page), phone or computer and four timings; no address, visitor, IP address or user agent.",
   own_speed_samples: "How fast one page load of Kaizena Flow's own site or of the admin was (D390): the site, the UTC day, the page's kind, phone or computer and four timings; no address, person, account, IP address or user agent.",
+  platform_readings: "One day's reading of Postgres's statistics (bloat review step 0.2): table and schema names with row counts, sizes and scan counters, and the texts of the costliest statements with their values already replaced by $1, $2 by Postgres. No person, store or account.",
   text_styles: "A site's named looks for words (D393): a name, a look's settings or its CSS, and the staff who saved it.",
   legal_source_reads: "Each read of an official legal text (D311): which act, language and version, when, and whether it worked; no person.",
   legal_source_texts: "Official legal texts cut into passages (D311), as the EU, Riksdagen, Retsinformation and Lovdata publish them; no person.",

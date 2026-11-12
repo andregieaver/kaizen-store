@@ -29,6 +29,20 @@
       "when": 1794418118049,
       "tag": "20261111172842_baseline_4_roles_and_supabase",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1794485622952,
+      "tag": "20261112121342_platform_readings",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1794485624667,
+      "tag": "20261112121344_platform_readings_rules",
+      "breakpoints": true
     }
   ]
 }
