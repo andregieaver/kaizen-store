@@ -9,7 +9,7 @@ what stands behind it. Open the file of the step or the finding you are working 
 | `findings/README.md` | every finding by area, with its priority and the step that closes it |
 | `findings/<area>/README.md` | one area in short: its findings, what was refuted, its measures, what is well made |
 | `findings/<area>/<ID>.md` | one finding: where, the evidence, the cost today, the fix in steps, the tests and rules that change with it, done-when, risk |
-| `grade-a-bars.md` | what grade A means for each area: the measures, today's values, the targets and how each is measured |
+| `grade-a/<area>.md` | what grade A means for one area: the measures, today's values, the targets, how each is measured, and the steps that reach it |
 | `evidence/` | the measurements (below) |
 | `scripts/` | what made them |
 
