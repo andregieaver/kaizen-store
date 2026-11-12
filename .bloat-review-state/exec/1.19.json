@@ -1,0 +1,275 @@
+{
+ "id": "1.19",
+ "goal": "Every agent's round is drawn and held in a baseline, each AI call is stored with its turn, round and cached input tokens and shown on Platform, AI as medians and 90th percentiles, and the agents' eval has at least 12 lean cases that show whether the model finds a tool that was not sent.",
+ "why": "The only AI budget today is a tool count set at the provider's cap of 128, while the AI manager's default round is about 161,661 characters. After this step that figure and seven other agents' rounds are numbers that fail a test when they grow, real tokens per call are on a screen, and a 'before' recording exists for the lean round of step 2.36.",
+ "read_first": [
+  "docs/rules/admin/ai.md",
+  "docs/ai-autopilot.md",
+  "src/lib/tool-budget.ts",
+  "src/server/owner-assistant.ts",
+  "src/server/prompt-versions.ts",
+  "src/server/agent-eval.ts",
+  "src/lib/agent-eval.ts",
+  "src/server/ai-usage.ts"
+ ],
+ "depends_on": [
+  {
+   "id": "0.1",
+   "why": "it puts the review's draw of the AI round at docs/audits/bloat-review-2026-11/scripts/ai-round.mjs, which the scan test's first numbers are checked against"
+  },
+  {
+   "id": "1.1",
+   "why": "it wrote the budgets rule this step adds a line to"
+  },
+  {
+   "id": "0.21",
+   "why": "it changes when the AI connection is read; the round log of commit 3 is added to the loop as that step left it"
+  }
+ ],
+ "commits": [
+  {
+   "title": "AI rounds: every agent's prompt and tools are drawn and held in a baseline",
+   "changes": [
+    {
+     "file": "src/server/ai-round.ts",
+     "action": "create",
+     "how": "Server-only, no database call. Export drawManagerRound(options: { features: 'shop' | 'all'; path: string | null; question?: string }): it builds what runTurn() in src/server/owner-assistant.ts would send for the fixed principal (fixedPrincipal() there, with the store's features set to ['shop'] or to every feature id of src/lib/store-features.ts): the prompt by fixedManagerPrompt() and the tools by the same functions runTurn() uses in toolsNow() (lines 729 to 741 today): the offered owner tools for that store, chooseTools(offered with toolArea(), managerTools.length + 1, { used: [], wanted: [], pageArea }), loadToolsDefinition(choice.heldBack), MANAGER_TOOLS mapped through the same toolDefinition function. To share code and not copy it, first move the body of toolsNow() in owner-assistant.ts into an exported pure function roundTools({ offered, managerTools, appDefinitions, used, wanted, pageArea, allowed }) in that file and call it from both places; runTurn() must behave exactly as before. pageArea comes from areaOfPath(path) as at line 722. It returns { promptChars, toolCount, toolChars (the length of JSON.stringify of the tools as sent: [{ type: 'function', function: tool }]), alwaysSentChars (the manager's own tools, CORE_TOOLS and load_tools), totalChars: promptChars + toolChars, largest: the ten largest tools by JSON length }. Export drawFixedRounds(): the same four numbers for the seven fixed prompts with their tool sets: 'chat' (fixedChatPrompt() with storeTools(false)), 'chat_support' (fixedChatPrompt() with storeTools(true)), 'guide' (fixedGuidePrompt() with guideTools()), 'dream_brief' (fixedBriefMessages('x'), no tools), 'rework' (fixedReworkMessages with empty facts), 'autopilot_event' (the manager's prompt plus each line of EVENT_LINES, AUTOPILOT_LINES and REVIEW_LINES of owner-assistant.ts: export those three constants; record the largest), and 'platform' (the platform assistant's prompt and its tools: find them with rg -n 'platform' src/server/owner-assistant.ts src/server/platform-tools.ts and draw them the way its turn does; 39 tools in the review). Export AGENT_LIMITS: for each agent the output limit and reasoning effort its calls pass today, read from the code, not typed from memory: the manager's streamWithTools default (1,200 in streamWithToolsOnce of src/server/ai.ts, unless runTurn passes maxTokens), chatWithTools' default 800, the docs guide's 700 (src/server/docs-guide.ts line 191), the chat's summary 600 (src/server/chat-agent.ts line 646), the autopilot report's 300, and MODERATION_OPTIONS, BRIEF_OPTIONS and REWORK_OPTIONS where they are defined. Where a limit is a default inside ai.ts, export that default as a named constant from ai.ts and use the constant in both places."
+    },
+    {
+     "file": "src/server/owner-assistant.ts",
+     "action": "edit",
+     "how": "Two changes that do not alter behaviour: (1) move the body of the inner function toolsNow() of runTurn() into an exported function roundTools(...) as described above and make toolsNow() call it; (2) add 'export' to the constants EVENT_LINES, AUTOPILOT_LINES and REVIEW_LINES if they are not exported. Nothing else."
+    },
+    {
+     "file": "src/data/ai-round-questions.json",
+     "action": "create",
+     "how": "A JSON array of 20 fixed owner questions, each { id, says }: plain requests an owner types, spread over the working areas: orders (2), products (2), customers (2), discounts and marketing (3), pages and design (3), settings, shipping and tax (3), analytics (2), team and plan (2), and one greeting. Take the wording from the lean eval cases of commit 4 where they overlap, so the two lists agree. They are data for the draw only; no model is called."
+    },
+    {
+     "file": "scripts/ai-round.mjs",
+     "action": "create",
+     "how": "Because the draw imports server TypeScript, this script only runs the test in update mode: it spawns 'pnpm vitest run src/server/ai-round.scan.test.ts' with the environment variable UPDATE_BASELINE=1 (and FIRST=1 when --first is passed) and prints the result. The header comment says: run it after a change lowers a round, and commit the baseline with the change."
+    },
+    {
+     "file": "src/server/ai-round.scan.test.ts",
+     "action": "create",
+     "how": "It mocks 'server-only' the way src/server/agent-eval-replay.int.test.ts lines 5 to 7 do and needs no database. It draws: the manager's round with no page and on the largest page of each of the nine working areas (for each area of ToolArea in src/lib/tool-budget.ts take one admin path of that area: build the list by calling areaOfPath() on '/orders', '/products', '/customers', '/discounts', '/pages', '/settings', '/analytics', '/marketing', '/support' and so on until each area has a path; 'largest' means the path whose round is largest among those you try for the area), each for a shop-only store and for one with every feature on; the same again for each of the 20 questions of src/data/ai-round-questions.json (a question changes the round only once step 2.36's router exists: today the 20 draws are equal to the no-question draw, and the test says so in a comment); the seven fixed rounds; and AGENT_LIMITS. It compares with src/server/ai-round.baseline.json: a round's totalChars above its baseline fails with the agent, the case, both numbers and the three tools that grew most; a tool over 2,500 characters that is not on the baseline's list 'largeTools' fails ('split it or say why'); a listed large tool that grew fails; an output limit or reasoning effort that differs from the baseline fails ('a changed limit is a decision: update the baseline and docs/decisions.md'); any figure below its baseline fails until 'node scripts/ai-round.mjs' lowers it. With UPDATE_BASELINE=1 it writes the file, refusing to raise a figure unless FIRST=1. A 'would notice' case: drawing with one tool's description lengthened by 2,000 characters (pass a modified copy of the tool list to roundTools) gives totalChars 2,000 higher."
+    },
+    {
+     "file": "src/server/ai-round.baseline.json",
+     "action": "create",
+     "how": "Written by 'node scripts/ai-round.mjs --first'. Shape: { manager: { 'shop|none': {...}, 'shop|orders': {...}, 'all|none': {...}, ... }, fixed: { chat, chat_support, guide, dream_brief, rework, autopilot_event, platform }, largeTools: { name: chars }, limits: { agent: { maxTokens, reasoningEffort } } }. Check the first figure against the review: the manager's default round for a store with every feature on and no page should be near 161,661 characters; say in the commit message what it is."
+    }
+   ],
+   "checks": [
+    "pnpm vitest run src/server/ai-round.scan.test.ts: passes",
+    "Trials, never committed, each followed by the test: add 2,000 characters to list_orders' description (rg -n '\"list_orders\"' src/lib src/server to find it): fails naming the manager's rounds and list_orders; add 500 characters to the shopper chat's prompt (the function fixedChatPrompt() draws): fails naming chat; raise the manager's output limit by 100: fails naming the limit. Revert each.",
+    "pnpm vitest run src/lib/tool-budget.test.ts src/lib/agent-eval.test.ts: pass",
+    "pnpm vitest run --config vitest.integration.config.mts src/server/agent-eval-replay.int.test.ts src/server/agent-eval.int.test.ts: pass (roundTools moved; the prompt and tools hashes must be unchanged, so the committed recording still replays)",
+    "pnpm lint && pnpm typecheck && pnpm test: exits 0"
+   ]
+  },
+  {
+   "title": "AI usage: each call is stored with its turn, its round and its cached input tokens",
+   "changes": [
+    {
+     "file": "src/db/schema.ts",
+     "action": "edit",
+     "how": "In aiUsage (line 11356 today) add three columns after outputTokens: cachedInputTokens: integer('cached_input_tokens').notNull().default(0); turnId: uuid('turn_id') (nullable); round: integer('round') (nullable). Add index('ai_usage_turn_idx').on(t.turnId).where(sql`${t.turnId} is not null`) and check('ai_usage_round', round is null or round between 0 and 100) and check('ai_usage_cached', cached_input_tokens >= 0 and cached_input_tokens <= input_tokens)."
+    },
+    {
+     "file": "supabase/migrations/*_ai_usage_turns.sql",
+     "action": "create",
+     "how": "Generated by 'pnpm db:generate' after the schema edit; commit the new snapshot with it. Do not write it by hand. commerce.ai_usage is not one of the hot tables."
+    },
+    {
+     "file": "src/lib/ai-usage.ts",
+     "action": "edit",
+     "how": "readTokens() (line 92 today) also returns cachedInputTokens: read usage.prompt_tokens_details.cached_tokens (OpenAI-compatible) or usage.cache_read_input_tokens (Anthropic-style), 0 when neither is a number, never more than inputTokens. Add cachedInputTokens: 0 to NO_USAGE and to the UsageAmounts type, and to UsageSums and addSums() so reports can sum it. Add the cached-input price: where a model's input price is looked up for costMicros (rg -n 'costMicros' src/lib src/server to find the price table and the function that multiplies), add an optional cachedInputMicrosPerMillion per model, defaulting to the input price when unknown, and charge cached tokens at it and the rest of the input at the input price. Unit tests in a new file src/lib/ai-usage.test.ts (it does not exist today; create it): both usage shapes, the cap, and a cost with half the input cached."
+    },
+    {
+     "file": "src/server/ai-usage.ts",
+     "action": "edit",
+     "how": "recordUsage() writes the three new columns: cached_input_tokens from the amounts, turn_id and round from the UsageContext (add optional turnId?: string and round?: number to that type; null when absent). usageRows() and usageByDay() select and sum cached_input_tokens."
+    },
+    {
+     "file": "src/server/ai.ts",
+     "action": "edit",
+     "how": "Where an answer's usage is read with readTokens() and handed to the meter (rg -n 'readTokens' src/server/ai.ts), pass cachedInputTokens through to the recorded amounts. Change streamWithTools()'s onTokens callback to receive an object as well: keep calling options.onTokens(total) as today and add an optional options.onUsage({ inputTokens, outputTokens, cachedInputTokens }) called once per call. Allow the connection's usage context to carry turnId and round: find how 'feature' reaches recordUsage() from a connection (the 'metered' wrapper and the function that sets a feature on a connection) and let the same path carry the two fields."
+    },
+    {
+     "file": "src/server/owner-assistant.ts",
+     "action": "edit",
+     "how": "In runTurn(): make one turnId with crypto.randomUUID() before the loop; for each step pass { turnId, round: step } on the connection the round uses (the variable 'metered'), so every row of the turn carries them, also when a round is metered as 'analytics_question'."
+    },
+    {
+     "file": "src/server/ai-usage-turns.int.test.ts",
+     "action": "create",
+     "how": "With a fake model in the manner of src/server/agent-eval.int.test.ts (read how it stubs the provider's fetch), run runTurn() for a turn of three rounds: round 0 calls a report tool (run_report), round 1 calls list_orders, round 2 answers; the fake usage of each round has prompt_tokens 1000, completion_tokens 50 and prompt_tokens_details.cached_tokens 800 from round 1 on. Then read commerce.ai_usage where feature in ('ai_manager', 'analytics_question') and kind = 'text' and not estimated, for the turn's id: exactly 3 rows, one turn_id, rounds 0, 1 and 2, cached_input_tokens 0, 800, 800."
+    }
+   ],
+   "checks": [
+    "pnpm db:check: exits 0",
+    "pnpm vitest run src/lib/ai-usage.test.ts src/db/commerce.test.ts: pass",
+    "pnpm vitest run --config vitest.integration.config.mts src/server/ai-usage-turns.int.test.ts: passes",
+    "pnpm lint && pnpm typecheck && pnpm test: exits 0",
+    "pnpm test:int: exits 0"
+   ]
+  },
+  {
+   "title": "A log line per round, and Platform, AI shows tokens per call by feature",
+   "changes": [
+    {
+     "file": "src/server/owner-assistant.ts",
+     "action": "edit",
+     "how": "In the loop of runTurn(), after streamWithTools() returns (line 793 today), log one line: log('info', 'ai_manager.round', { step, tools: tools.length, toolChars: JSON.stringify(tools).length, promptChars: messages[0].content.length, messageChars: the sum of the other messages' content lengths, inputTokens, outputTokens, cachedTokens, loaded: answer.toolCalls.some((c) => c.function.name === LOAD_TOOLS) }) with the token figures from the new onUsage callback. Numbers and one boolean only: no text, no tool names, no ids of people (D400)."
+    },
+    {
+     "file": "src/server/ai-round-stats.ts",
+     "action": "create",
+     "how": "Server-only. Export roundStats(days = 30): one statement through typedRows(), reading commerce.ai_usage where feature in ('ai_manager', 'analytics_question') and kind = 'text' and not estimated and created_at within the days, that returns: per call the median and 90th percentile of input_tokens and of output_tokens (percentile_cont); per turn (group by turn_id, turn_id not null) the median input and the median number of calls; the cached share in all (sum cached / sum input) and after the first round (the same where round > 0); and the share of turns that have a load_tools round. For that last figure a row must know it: add a boolean column? No: derive it from the round log is not possible in SQL, so store it. Add to recordUsage()'s context an optional 'loaded' flag and write it into the existing text column session_ref as the literal 'load_tools' for that row (session_ref is null for text calls today); the share is turns with any such row. Also return the same per-call figures grouped by feature for every feature with kind = 'text' (the table's other features), so the screen has one row per feature."
+    },
+    {
+     "file": "src/app/admin/(gated)/platform/ai/usage/page.tsx",
+     "action": "edit",
+     "how": "Add a Card 'Tokens per call' above the existing usage tables, fed by roundStats(30): a row per feature with median and 90th percentile input per call and output per call; and for the AI manager a second small table: median input per turn, calls per turn, cached share in all and after the first round, share of turns with a load_tools round. Words go in the admin catalogue the page already uses (read the file's adminText call and add the keys to that area's .en.ts and .nb.ts files). Empty state: 'No calls with real token counts in the last 30 days.'"
+    }
+   ],
+   "checks": [
+    "pnpm vitest run --config vitest.integration.config.mts src/server/ai-usage-turns.int.test.ts: passes, extended with: roundStats() over the seeded turn gives calls per turn 3, cached share after the first round 0.8 and one turn with load_tools when the fake model's first round calls it",
+    "pnpm vitest run src/lib/prompt-safety.scan.test.ts src/lib/admin-strings.scan.test.ts (find the admin strings scan with rg --files -g '*admin-strings*'): pass",
+    "pnpm lint && pnpm typecheck && pnpm test: exits 0",
+    "pnpm test:int: exits 0",
+    "In the Auth stand-in build open /admin/platform/ai/usage as the platform admin: the card draws its empty state. Send the owner a screenshot."
+   ]
+  },
+  {
+   "title": "The eval gets lean cases and can tell whether the model finds a tool",
+   "changes": [
+    {
+     "file": "src/lib/agent-eval.ts",
+     "action": "edit",
+     "how": "Add 'lean?: boolean' to AgentEvalCase and 'loadsTools?: boolean' to its expect (true: load_tools must be called before a required tool; false: load_tools must not be called). In scoreAgentCase() add the two checks, and for a lean case add a problem when no required tool was called and the answer says the task cannot be done. Add at least 12 manager cases marked lean, each a plain owner request with a scripted answer for its tool and requiredTools. Ten need a tool outside CORE_TOOLS (src/lib/tool-budget.ts line 22): a discount code (create_discount), a newsletter (the broadcast tool), free shipping over an amount (set_flat_shipping or save_shipping_method), a change to a page's text (get_page then edit_page), inviting staff (invite_staff), the plan and its price (billing_overview), a product's stock (set_stock), a return label, a customer tag, and one in Norwegian ('Lag en rabattkode på 10 %'). Two must load nothing (loadsTools: false): 'How many orders last week?' (run_report or list_orders) and a greeting with no required tool. Use only tool names that exist: src/lib/agent-eval.test.ts checks every name."
+    },
+    {
+     "file": "src/server/agent-eval.ts",
+     "action": "edit",
+     "how": "In managerTools(): for a lean case do not preload the areas of the tools the case names; start from what a real turn on Home sends (roundTools() of commit 1 with used [], wanted [] and no page) and add areas only as the model's load_tools calls ask (the 'wanted' list the loop already fills). In toolsVersion(): also hash CORE_TOOLS and the load_tools definition for an empty held-back set, so a recording made with one default set is refused for another. Add to AgentEvalResult: lean: { total, passed, withLoad } and fill it in playCases(). Add an optional reasoningEffort to the eval's model for the two tool loops (the manager's and the chat's), read from an option of runAgentEval(), default undefined."
+    },
+    {
+     "file": "src/lib/agent-eval.test.ts",
+     "action": "edit",
+     "how": "Add tests of the lean scoring: a run that calls load_tools and then the required tool passes with loadsTools true; a run that calls the tool without load_tools fails it; a run that calls load_tools fails a loadsTools false case; at least 12 cases are lean and at least two of them have loadsTools false."
+    },
+    {
+     "file": "src/server/agent-eval.int.test.ts",
+     "action": "edit",
+     "how": "Add a fake model that answers a lean case with a load_tools call for the right area and then the tool, and assert the result's lean.withLoad counts it and that the required tool was offered only after the load."
+    },
+    {
+     "file": "src/app/admin/(gated)/platform/ai/page.tsx",
+     "action": "edit",
+     "how": "Beside the eval's result, one line from the latest run: 'Finds its tools: {passed} of {total}, {withLoad} with a load'. Words in the page's catalogue files, English and Norwegian."
+    }
+   ],
+   "checks": [
+    "pnpm vitest run src/lib/agent-eval.test.ts: passes",
+    "pnpm vitest run --config vitest.integration.config.mts src/server/agent-eval.int.test.ts: passes",
+    "pnpm vitest run --config vitest.integration.config.mts src/server/agent-eval-replay.int.test.ts: FAILS with 'the case ... was not recorded' for the new cases. This is expected: do not push this commit until the next commit's recording exists; push the two together.",
+    "pnpm lint && pnpm typecheck: exit 0"
+   ]
+  },
+  {
+   "title": "The first recording with the lean cases, as the 'before'",
+   "changes": [
+    {
+     "file": "src/data/agent-eval-recording.json",
+     "action": "edit",
+     "how": "This file is not typed: it is the recording of a real run. Hand back to a person with platform access: after commit 4's code is in production (it must be deployed with a recording that replays: so first run the eval on a preview or local build against the platform's model with the same code, Platform, AI, 'Run the eval'), download that run's recording from Platform, AI, eval, the run's page, and commit it as this file. Then run the eval a second time with reasoning effort 'low' on the two tool loops (the option of commit 4) and write down both results. Keep 'low' only if every case passes in that run; either way the decision row states the effort chosen and the run behind it, and src/server/ai-round.baseline.json's limits are updated by 'node scripts/ai-round.mjs' if the effort changed."
+    }
+   ],
+   "checks": [
+    "pnpm vitest run --config vitest.integration.config.mts src/server/agent-eval-replay.int.test.ts: passes on the new recording",
+    "node -e \"const r=require('./src/data/agent-eval-recording.json');console.log(JSON.stringify(r).match(/\\\"lean\\\"/g)?.length ?? Object.keys(r.cases ?? r).length)\": the recording holds the 12 lean cases (open the file and count the ids of the lean cases if the shape has no lean field)",
+    "pnpm lint && pnpm typecheck && pnpm test: exits 0",
+    "pnpm test:int: exits 0"
+   ]
+  }
+ ],
+ "tests": [
+  {
+   "file": "src/server/ai-round.scan.test.ts",
+   "proves": "fails when 2,000 characters are added to a tool's description, 500 to the shopper chat's prompt or 100 tokens to the AI manager's output limit, and when a new tool is over 2,500 characters"
+  },
+  {
+   "file": "src/server/ai-usage-turns.int.test.ts",
+   "proves": "a three-round turn that uses a report tool is read back from commerce.ai_usage as one turn of three rounds with its cached tokens, and the screen's figures are worked out from those rows"
+  },
+  {
+   "file": "src/lib/agent-eval.test.ts",
+   "proves": "a lean case passes only when the model loads the area before using a tool that was not sent, and the two no-load cases fail on a load"
+  },
+  {
+   "file": "src/server/agent-eval-replay.int.test.ts",
+   "proves": "the committed recording holds every case, the 12 lean ones included, for today's prompts and tools"
+  }
+ ],
+ "migration": {
+  "needed": true,
+  "notes": "Generated (pnpm db:generate): three columns on commerce.ai_usage (cached_input_tokens integer not null default 0, turn_id uuid null, round integer null), one partial index on turn_id and two checks. commerce.ai_usage is not on the hot-table list, so the index needs no 'concurrently' file; if migration-safety.scan.test.ts objects, follow what it asks. Running code keeps working: the columns are added with a default or nullable, old code never names them, and nothing is renamed or dropped. CI's release job applies it; never by hand. After the deploy check the advisors and record the version in docs/decisions.md (Migration versions)."
+ },
+ "done_when": [
+  {
+   "check": "pnpm vitest run src/server/ai-round.scan.test.ts with 2,000 characters added to list_orders' description, then 500 to the shopper chat's prompt, then 100 tokens to the AI manager's output limit",
+   "expect": "fails each time"
+  },
+  {
+   "check": "src/data/agent-eval-recording.json and pnpm vitest run --config vitest.integration.config.mts src/server/agent-eval-replay.int.test.ts",
+   "expect": "at least 12 lean cases recorded; the replay passes"
+  },
+  {
+   "check": "pnpm vitest run --config vitest.integration.config.mts src/server/ai-usage-turns.int.test.ts",
+   "expect": "a three-round turn with a report tool reads back as one turn of three rounds"
+  },
+  {
+   "check": "/admin/platform/ai/usage in production",
+   "expect": "median and 90th percentile input per call, median per turn, calls per turn, the cached share in all and after the first round, output per call and the share of turns with a load_tools round"
+  },
+  {
+   "check": "docs/decisions.md",
+   "expect": "a row that states each figure's 'before' and the reasoning effort chosen with the run behind it, written before step 2.36 lands"
+  }
+ ],
+ "after_deploy": [
+  "A week after the deploy read /admin/platform/ai/usage and write the figures into the decision row as the 'before'. Expect input per call near 40,000 tokens (about 161,661 characters) until step 2.36.",
+  "From that week's 90th percentile of output per feature, plus 20%, set an output ceiling per feature and add it to the daily flag of step 1.13 (the 'ai' part of its reading): a small follow-up commit.",
+  "Check the Supabase advisors for the migration and record its version."
+ ],
+ "docs": [
+  "The budgets rule (docs/rules/budgets.md after step 1.1; if the name differs find it with: rg -l 'baseline.json' docs/rules): in its table 'Every budget' add one row for each new baseline (src/server/ai-round.baseline.json (node scripts/ai-round.mjs)) with its test and the script that lowers it. Step 1.1's scan fails on a baseline under src that this rule does not name. Do not add a sentence to CLAUDE.md: step 1.1 gave all budgets one sentence there.",
+  "docs/rules/admin/ai.md, under the AI manager's rule: a change that raises a round raises the baseline in the same commit with its reason in the message; a new tool over 2,500 characters is split or says why; a change to which tools a round sends needs a new eval run and recording, as a prompt change does.",
+  "docs/audits/psi-followups.md: tick PSI AGT-02 ('watch TOOLS_PER_TURN').",
+  "docs/platform-parity.md: nothing to tick; say in the decision that the platform's assistant and its tools are a line of the baseline and the panel is Platform, AI.",
+  "docs/decisions.md: add one row at the end of the decisions table with the next free D-number (read the last row first; D573 was the last on 12 November 2026, and other steps add rows, so never assume the number). It records: AI rounds are held by ai-round.scan.test.ts; commerce.ai_usage keeps turn, round and cached input tokens; the 'before' figures; the reasoning effort chosen for the two tool loops and the eval run behind it; the migration's version.",
+  "docs/audits/bloat-review-2026-11.md: in the Progress table set the row of step 1.19 to Done with the date and the commit hash, in the same commit as the last change of this step."
+ ],
+ "do_not": [
+  "Do not change any prompt, tool description, tool set or output limit in this step: it measures; steps 2.36 to 2.39 cut. A changed prompt hash makes the committed recording unusable.",
+  "Do not type or edit src/data/agent-eval-recording.json by hand, and do not weaken agent-eval-replay.int.test.ts to pass without a recording.",
+  "Do not log prompt text, a question, a tool's arguments or a person's id in the round line.",
+  "Do not keep reasoning effort 'low' unless every eval case passed in the run that used it.",
+  "Do not count estimated rows or kinds other than text in the token figures: every query reads feature in ('ai_manager', 'analytics_question'), kind = 'text', not estimated.",
+  "Do not push commit 4 without commit 5's recording: CI's replay would fail on main, and main deploys."
+ ],
+ "stop_if": [
+  "The manager's default round for a store with every feature on is more than 15% away from 161,661 characters and no phase 0 step explains it: the draw differs from what runTurn() sends.",
+  "Moving toolsNow() into roundTools() changes the prompt or tools hash (agent-eval-replay.int.test.ts fails before any eval change).",
+  "The platform assistant's prompt or its tool list cannot be found as a drawable function.",
+  "A lean case needs a tool name that does not exist.",
+  "The provider's streamed usage carries no cached-token field for the platform's model: store 0, say so in the report, and leave the cached share as 'not reported by the provider'.",
+  "You are asked to run the eval against a real model and have no platform access: commit 5 is a person's."
+ ],
+ "executor": "strong",
+ "executor_why": "Drawing each agent's real round, threading turn and round through the metering path of src/server/ai.ts and writing eval cases the model must find tools for all need judgement, and the recording needs a person with platform access; commit 1 is specified for a cheaper model once roundTools() is extracted.",
+ "checked_in_code": "I opened src/server/owner-assistant.ts (runTurn() at line 625, toolsNow() and loadTools() at 729 to 749, the loop and streamWithTools() with onTokens at 793, fixedManagerPrompt() and fixedPrincipal() at 505 to 521), src/lib/tool-budget.ts (TOOLS_PER_TURN 124, CORE_TOOLS, chooseTools, loadToolsDefinition), src/server/agent-eval.ts (managerTools() preloads the areas of the tools a case names, toolsVersion() hashes names, descriptions and parameters only) and src/server/ai-usage.ts with the ai_usage table. Corrections to the findings: commerce.ai_usage has no turn, round or cached-token column today, so the 'counting half of step 2.38' needs a migration, which AI-10 did not say; readTokens() returns input and output only; there is no TOOL_CHOICE_VERSION constant, so toolsVersion() hashes CORE_TOOLS and the load_tools definition instead; and the 20 owner questions change no round until step 2.36's router exists, which the test records in a comment."
+}

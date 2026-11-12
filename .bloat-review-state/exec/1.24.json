@@ -1,0 +1,149 @@
+{
+ "id": "1.24",
+ "goal": "scripts/session-load.mjs reads a session's own transcript and writes one small file saying what it loaded and read of rules and docs; working sessions collect 20 such files as the 'before'; and the code ratchet holds two counts that only fall: source files over 100 KB (15) and over 2,000 lines (11).",
+ "why": "Every figure for the written rules is a file size or an estimate at four characters a token: what a session really loads has never been measured (0 samples today). After: 20 measured sessions with a printed median per code change, and the two file-size counts held at 15 and 11.",
+ "read_first": [
+  "docs/audits/bloat-review-2026-11/grade-a/rules.md",
+  "docs/audits/bloat-review-2026-11/README.md",
+  "scripts/lib/ratchet-count.mjs",
+  "scripts/ratchet.mjs",
+  "src/server/ratchet.scan.test.ts",
+  "src/server/ratchet.baseline.json"
+ ],
+ "depends_on": [
+  {
+   "id": "0.1",
+   "why": "it makes the plan's tracker under docs/audits/bloat-review-2026-11, where the instruction to run the script before a session's last push is written"
+  },
+  {
+   "id": "0.40",
+   "why": "it makes the ignore files that keep dated material out of default searches; the session-load folder is added to one of them"
+  }
+ ],
+ "commits": [
+  {
+   "title": "Two file-size counts join the ratchet: source files over 100 KB and over 2,000 lines",
+   "changes": [
+    {
+     "file": "scripts/lib/ratchet-count.mjs",
+     "action": "edit",
+     "how": "Export two constants `export const BIG_FILE_BYTES = 100_000;` and `export const LONG_FILE_LINES = 2_000;`. In `ratchetCounts(root)` add `let filesOver100Kb = 0; let filesOver2000Lines = 0;` and, inside the existing loop over `sources(root, \"src\")` (tests and test support are already left out by NOT_COUNTED), after `text` is read: `if (Buffer.byteLength(text) > BIG_FILE_BYTES) filesOver100Kb++; if (text.split(\"\\n\").length > LONG_FILE_LINES) filesOver2000Lines++;`. Return both with the others. Update the comment at the top of the file to name the two new counts and why (a file this large is read by window; the counts only fall; splitting belongs to the code area)."
+    },
+    {
+     "file": "scripts/ratchet.mjs",
+     "action": "edit",
+     "how": "In the block that fills `raised`, add two lines in the style of the `unknownCasts` line: `if (now.filesOver100Kb > (before.filesOver100Kb ?? now.filesOver100Kb)) raised.push(`source files over 100 KB: ${before.filesOver100Kb} → ${now.filesOver100Kb}; split the file or move code out`);` and the same for `filesOver2000Lines`. Make sure both numbers are written to the JSON. Add a sentence to the header comment."
+    },
+    {
+     "file": "src/server/ratchet.baseline.json",
+     "action": "edit",
+     "how": "Do not edit by hand: run `node scripts/ratchet.mjs`. The diff must add exactly `\"filesOver100Kb\": 15` and `\"filesOver2000Lines\": 11` (the figures on 12 November 2026; if main has moved, the figures the script counts) and change nothing else."
+    },
+    {
+     "file": "src/server/ratchet.scan.test.ts",
+     "action": "edit",
+     "how": "Add a case after `adds no cast through unknown and no switched-off any`: `adds no source file over 100 KB or over 2,000 lines: read by window, the counts only fall`: `expect(now.filesOver100Kb).toBeLessThanOrEqual(baseline.filesOver100Kb)` and the same for `filesOver2000Lines`, with a failure message that says: split the file, or move code out of it; never raise the number. Extend the case `keeps the baseline as low as the code` so a count that fell below the baseline fails with the message to run `node scripts/ratchet.mjs`. In `counts what it says it counts` add: a 2,001-line string counts as long and a 2,000-line string does not (test the comparison through the exported constants)."
+    }
+   ],
+   "checks": [
+    "pnpm exec vitest run src/server/ratchet.scan.test.ts: exits 0",
+    "node -e \"const b=require('./src/server/ratchet.baseline.json');console.log(b.filesOver100Kb,b.filesOver2000Lines)\": prints 15 11",
+    "pnpm lint && pnpm typecheck && pnpm test: exits 0"
+   ]
+  },
+  {
+   "title": "scripts/session-load.mjs: what a session loaded and read, from its own transcript",
+   "changes": [
+    {
+     "file": "scripts/session-load.mjs",
+     "action": "create",
+     "how": "A Node script with no dependency, in the style of scripts/ratchet.mjs (a header comment that says what it is for and how to run it). Two modes.\n\nMode 1, `node scripts/session-load.mjs [--transcript <file.jsonl>] [--step <id>]`: finds the running session's transcript and writes one file. Finding it: if `--transcript` is given use it; else the folder is `path.join(os.homedir(), \".claude\", \"projects\", process.cwd().replace(/[^a-zA-Z0-9]/g, \"-\"))` and the transcript is the `*.jsonl` file in it with the newest modification time. If none is found, print `no transcript found in <folder>; pass --transcript` and exit 1. Also read every `*.jsonl` under `<folder>/<session id>/subagents/` if that folder exists (the session id is the transcript's file name without `.jsonl`).\n\nReading: one JSON object per line; skip a line that does not parse. (a) Always loaded: lines with `type === \"attachment\"` and `attachment.type === \"instructions\"` hold `attachment.files[]`, each `{ path, content }`: record each path with `Buffer.byteLength(content)` and how many times it was loaded (a compaction loads it again). (b) Read with the Read tool: lines with `type === \"user\"` whose `toolUseResult` is `{ type: \"text\", file: { filePath, content } }`: add `Buffer.byteLength(file.content)` to that path and count the read. (c) Read through the shell: for each assistant `tool_use` block with `name === \"Bash\"`, keep `input.command` by the block's `id`; when the matching `tool_result` arrives (same `tool_use_id` in a user line; its text is `toolUseResult.stdout`), and the command names a file under `docs/` or `CLAUDE.md` or `AGENTS.md` or `.claude/` (regex `/(?:^|[\\s\"'=/])((?:docs|\\.claude)\\/[\\w./\\[\\]()-]+|CLAUDE\\.md|AGENTS\\.md)/`), add the stdout's bytes to the first such path under a separate map `shell`. (d) Omitted long lines: in every tool result's text (Grep's `toolUseResult.content`, Bash's `stdout`) count occurrences of the exact text `[Omitted long matching line]`; record per occurrence group `{ tool, path, count }` where `path` is the Grep input's `path` or `glob` (or `\"\"`), never the pattern and never the command. (e) Code change: true when any `tool_use` named `Edit`, `Write` or `NotebookEdit` has an `input.file_path` under the repo's `src/`, `e2e/`, `scripts/` or `supabase/`.\n\nMake every path repo-relative (strip `process.cwd() + \"/\"`); drop paths outside the repo from the lists and keep only their summed bytes as `outsideRepoBytes`. Split the repo paths into `rulesAndDocs` (CLAUDE.md, AGENTS.md, anything under `docs/` or `.claude/`, any `*.md`) and `source` (the rest).\n\nWriting: `docs/audits/bloat-review-2026-11/session-load/<YYYY-MM-DD>-<first 8 hex characters of sha256(session id)>.json` (create the folder), two-space JSON with exactly these keys: `date`, `session` (the 8 hex characters; never the session id, an email, a prompt or any message text), `step` (from `--step`, else null), `phase` (`\"after\"` when CLAUDE.md is under 15,000 bytes AND the folder docs/decisions exists, that is after steps 2.1 and 2.40; else `\"before\"`), `subagents` (how many subagent transcripts were read), `codeChange`, `alwaysLoaded` (array of `{ path, bytes, times }`), `read` (array of `{ path, bytes, reads, via: \"Read\" | \"shell\" }` for rulesAndDocs only, sorted by bytes, largest first), `omitted` (the array of d), and `totals: { alwaysLoadedBytes (each file once), alwaysLoadedBytesWithReloads, rulesAndDocsReadBytes, sourceReadBytes, outsideRepoBytes, omittedLongLines }`. Running it twice in one session overwrites the same file. Print the totals and the file's path.\n\nMode 2, `node scripts/session-load.mjs --summary`: reads every `*.json` in the folder, sorted by file name. For `phase` before and after apart, it takes the first 20 files of each and prints: how many files; how many with `codeChange` true; the median over those code-change sessions of `totals.alwaysLoadedBytes + totals.rulesAndDocsReadBytes` (the figure the rules area's measure 8 holds at 25,000); the median of `omittedLongLines`; and for each file under docs/rules that any session read, its size on disk now and the median bytes read of it, with the line `WHOLE FILE READ` when the median is 80% or more of the size (that is the signal that the plan needs a step splitting the seven rule files by section). With fewer than 20 files it prints `n of 20` and still prints the medians.\n\nExport the pure parts (`readTranscript(lines)`, `summarise(files)`) so the test can call them; run the command-line part only when the file is the entry (`import.meta.url === pathToFileURL(process.argv[1]).href`)."
+    },
+    {
+     "file": "src/lib/session-load.test.ts",
+     "action": "create",
+     "how": "Vitest, importing `readTranscript` and `summarise` from `../../scripts/session-load.mjs`. Build a small transcript in the test as an array of JSON lines (no fixture file with real session text): one `attachment` line of type `instructions` with CLAUDE.md of 1,000 bytes, loaded twice; one Read result of `docs/rules/storefront.md` with 500 bytes; one Bash `tool_use` with command `sed -n 1,20p docs/performance.md` and its result with 300 bytes of stdout; one Grep result whose content holds `[Omitted long matching line]` twice; one `Edit` tool_use on `src/x.ts`; one Read result of a file outside the repo. Expect: alwaysLoadedBytes 1000 and WithReloads 2000; rulesAndDocsReadBytes 800; omittedLongLines 2; codeChange true; the outside file only in outsideRepoBytes. Expect that the output JSON, stringified, holds none of: the session id given, the Bash command text, the Grep pattern. For `summarise`: three files with codeChange true and figures 10,000, 20,000 and 30,000 and one with codeChange false give a median of 20,000; a rule file of 100,000 bytes read at a median of 90,000 gives the `WHOLE FILE READ` line (pass file sizes in as an argument so the test needs no disk)."
+    },
+    {
+     "file": "docs/audits/bloat-review-2026-11/session-load/README.md",
+     "action": "create",
+     "how": "Six lines: what the folder holds (one file per working session, written by `node scripts/session-load.mjs`), that the first 20 files are the 'before' and the first 20 after steps 2.1 and 2.40 the 'after' (read in step 4.5), that a file holds paths, bytes and counts only and never a prompt, a message or a person's data, how to run the summary, and that the folder is kept out of default searches by the ignore file."
+    },
+    {
+     "file": "{.ignore,docs/.ignore,docs/audits/.ignore}",
+     "action": "edit",
+     "how": "Step 0.40 made three ignore files (`ls -a . docs docs/audits supabase | rg ignore` finds them). In the one that covers docs (the file that already lists the dated reports under docs/audits), add the line `docs/audits/bloat-review-2026-11/session-load/` (write it relative to that ignore file's own folder, as its other lines are). Check: `rg --files docs/audits/bloat-review-2026-11/session-load` prints nothing, and `rg --files --no-ignore docs/audits/bloat-review-2026-11/session-load` prints the README. If step 1.1's docs budget test lists the ignore files' lines, add this line to its expectation."
+    },
+    {
+     "file": "docs/audits/bloat-review-2026-11/README.md",
+     "action": "edit",
+     "how": "In the tracker's section that says how to work a step (made by step 0.1; if there is none, add a short section `## Before a session's last push`), add: `Run `node scripts/session-load.mjs --step <the step's id>` once, before the last push, and commit the file it writes under `session-load/`. It reads this session's own transcript; a cloud session's transcript is gone when its container is. Do not add this sentence to CLAUDE.md.`"
+    },
+    {
+     "file": "docs/audits/bloat-review-2026-11/session-load/{first-session}.json",
+     "action": "create",
+     "how": "Run `node scripts/session-load.mjs --step 1.24` in this very session and commit the file it writes (its real name is the date and the session's 8 hex characters). It is the first of the 20."
+    }
+   ],
+   "checks": [
+    "pnpm exec vitest run src/lib/session-load.test.ts: exits 0",
+    "node scripts/session-load.mjs --step 1.24: prints the totals and writes one file under docs/audits/bloat-review-2026-11/session-load/",
+    "rg -n '@|prompt|sessionId' docs/audits/bloat-review-2026-11/session-load/*.json: prints nothing (no person's data, no message text, no session id)",
+    "node scripts/session-load.mjs --summary: prints `1 of 20` for 'before' and a median",
+    "rg --files docs/audits/bloat-review-2026-11/session-load: prints nothing (the ignore file covers it)",
+    "pnpm lint && pnpm typecheck && pnpm test: exits 0"
+   ]
+  }
+ ],
+ "tests": [
+  {
+   "file": "src/server/ratchet.scan.test.ts",
+   "proves": "Fails when a sixteenth source file passes 100 KB or a twelfth passes 2,000 lines, and when the baseline is higher than the code."
+  },
+  {
+   "file": "src/lib/session-load.test.ts",
+   "proves": "Fails when the script miscounts always-loaded bytes, bytes read through Read or the shell, omitted long lines or the median per code change, or when its output holds a session id, a command or a search pattern."
+  }
+ ],
+ "migration": {
+  "needed": false,
+  "notes": ""
+ },
+ "done_when": [
+  {
+   "check": "node -e \"const b=require('./src/server/ratchet.baseline.json');console.log(b.filesOver100Kb,b.filesOver2000Lines)\"",
+   "expect": "15 11 (or lower)."
+  },
+  {
+   "check": "ls docs/audits/bloat-review-2026-11/session-load/*.json | wc -l",
+   "expect": "20 or more, each written by node scripts/session-load.mjs from a working session. On the day this step's commits land it prints 1: the step's row stays 'In progress, n of 20' until the twentieth file is in, and each working session of the plan adds one."
+  },
+  {
+   "check": "node scripts/session-load.mjs --summary",
+   "expect": "For 'before': 20 of 20, the count of code-change sessions, and their median of always-loaded plus rules-and-docs bytes; each file lists its omitted long lines. If a rule file prints WHOLE FILE READ, report it: the plan then gets a step that splits the seven rule files by section."
+  }
+ ],
+ "after_deploy": [],
+ "docs": [
+  "docs/decisions.md: a new row with the next free D-number: what a session loads is measured from its own transcript by scripts/session-load.mjs (paths, bytes and counts only), the 'before' and 'after' samples of 20, and the two file-size counts in the ratchet (15 and 11). Take the number as the repo then asks: with node scripts/claim-decision.mjs if step 0.41 has made it, and as a file docs/decisions/D{n}.md if step 2.40 has split the decisions.",
+  "The budgets rule file in docs/rules (made by steps 0.43 and 1.1; it lists every baseline with its test and script): add the two ratchet counts and scripts/session-load.mjs. Do not add a sentence to CLAUDE.md.",
+  "The plan's Progress table under docs/audits/bloat-review-2026-11: step 1.24 'In progress, 1 of 20' with date and commits; Done only when the twentieth file is in and the summary's median is written in the step's section."
+ ],
+ "do_not": [
+  "Do not write a prompt, a message, a command, a search pattern, an email address or the session id into a session-load file: paths, bytes and counts only.",
+  "Do not copy a transcript into the repo, and do not commit a fixture made from a real transcript.",
+  "Do not make up sample files to reach 20: each must come from a real working session.",
+  "Do not split or shrink a source file in this step to lower the two counts: holding them is the step; splits belong to the code area.",
+  "Do not count test files: the ratchet's own file list (NOT_COUNTED) is the scope, and with it the counts are 15 and 11.",
+  "Do not add a line to CLAUDE.md."
+ ],
+ "stop_if": [
+  "node scripts/ratchet.mjs counts other figures than 15 and 11 and main has not gained or lost a large file since 12 November 2026 (`git log --since=2026-11-12 --stat` shows none): the scope differs from the review's; report the two numbers.",
+  "No transcript is found under ~/.claude/projects for this working directory, or its lines do not have the shapes the brief names (`attachment.type === \"instructions\"`, `toolUseResult.file.filePath`): report three sample line shapes (keys only, no content).",
+  "The ignore files of step 0.40 are not there.",
+  "node scripts/ratchet.mjs wants to change a number other than the two new ones."
+ ],
+ "executor": "cheap",
+ "executor_why": "The ratchet edit copies an existing pattern and the script's input shapes, output keys and test cases are all spelled out; the unit test and the privacy grep catch a wrong edit.",
+ "checked_in_code": "I opened scripts/lib/ratchet-count.mjs, scripts/ratchet.mjs, the ratchet's baseline and test, and counted with the ratchet's own file list: 4,111 source files, 15 over 100 KB and 11 over 2,000 lines, as the step says. I read this machine's one transcript to fix the shapes the script needs: always-loaded files are `attachment` lines of type `instructions` with `files[].path` and `content`; a Read result is `toolUseResult.file.filePath` and `content`; subagents' transcripts sit in a `subagents` folder beside it. Two things the step leaves open are settled in the brief: sessions also read docs through the shell (sed, cat), so the script counts those too, and 'before' or 'after' is decided by the repo's state (CLAUDE.md under 15,000 bytes and docs/decisions present), not by a flag. The executor can only add the first of the 20 files; the brief says the step stays in progress until the twentieth."
+}

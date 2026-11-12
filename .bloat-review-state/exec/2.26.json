@@ -94,7 +94,7 @@
       "checks": [
         "pnpm test src/components/admin/responsive-edit.test.ts src/components/admin/templates-helpers.test.ts src/lib/page-modal.test.ts src/lib/field-group-editor.test.ts src/components/admin/admin-bundle.scan.test.ts src/components/admin/admin-catalogues.scan.test.ts: all pass (if a named test file does not exist, rg -l 'field-group-editor|page-modal' src -g '*.test.ts' lists the ones to run)",
         "pnpm lint && pnpm typecheck && pnpm test: exits 0",
-        "pnpm build && E2E_SIGNED_IN=1 pnpm test:e2e e2e/signed-in/admin-text-fallbacks.spec.ts e2e/signed-in/builder-palette.spec.ts e2e/signed-in/builder-saved-edit.spec.ts e2e/signed-in/admin-scripts.spec.ts (in the build CLAUDE.md describes for signed-in tests): all pass, no fallback reported",
+        "the signed-in build (as CI's signed-in job in .github/workflows/ci.yml: NEXT_PUBLIC_SUPABASE_URL=http://127.0.0.1:3912, NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=e2e-publishable-key, E2E_SIGNED_IN=1, node scripts/db-setup.mjs --seed, pnpm build), then E2E_SIGNED_IN=1 pnpm exec playwright test --project=signed-in e2e/signed-in/admin-text-fallbacks.spec.ts e2e/signed-in/builder-palette.spec.ts e2e/signed-in/builder-saved-edit.spec.ts e2e/signed-in/admin-scripts.spec.ts (in the build CLAUDE.md describes for signed-in tests): all pass, no fallback reported",
         "node scripts/bundle-budget.mjs: exits 0; lower the baseline for the routes that fell, in this commit"
       ]
     },
@@ -170,7 +170,7 @@
       "checks": [
         "pnpm test src/components/admin/admin-catalogues.scan.test.ts src/components/admin/admin-bundle.scan.test.ts: pass; ALREADY has 2 entries",
         "pnpm lint && pnpm typecheck && pnpm test: exits 0",
-        "pnpm build && E2E_SIGNED_IN=1 pnpm test:e2e e2e/signed-in/admin-text-fallbacks.spec.ts e2e/signed-in/admin-scripts.spec.ts: pass, no fallback",
+        "the signed-in build (as CI's signed-in job in .github/workflows/ci.yml: NEXT_PUBLIC_SUPABASE_URL=http://127.0.0.1:3912, NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=e2e-publishable-key, E2E_SIGNED_IN=1, node scripts/db-setup.mjs --seed, pnpm build), then E2E_SIGNED_IN=1 pnpm exec playwright test --project=signed-in e2e/signed-in/admin-text-fallbacks.spec.ts e2e/signed-in/admin-scripts.spec.ts: pass, no fallback",
         "node scripts/bundle-budget.mjs: exits 0, baseline lowered for the routes that fell"
       ]
     },
@@ -237,7 +237,7 @@
         "pnpm test src/lib/work-ui.test.ts src/lib/redirect-admin.test.ts src/lib/redirects.test.ts src/lib/order-list-words.test.ts src/lib/segments.test.ts src/lib/campaigns.test.ts src/lib/discounts.test.ts src/lib/experiment-results.test.ts src/components/admin/admin-bundle.scan.test.ts: pass (tests gain the English catalogue as an argument; no expected string changes)",
         "pnpm lint && pnpm typecheck && pnpm test: exits 0",
         "pnpm test:int: exits 0 (campaigns, discounts and segments are read by server code)",
-        "pnpm build && E2E_SIGNED_IN=1 pnpm test:e2e e2e/signed-in/admin-text-fallbacks.spec.ts: pass"
+        "the signed-in build (as CI's signed-in job in .github/workflows/ci.yml: NEXT_PUBLIC_SUPABASE_URL=http://127.0.0.1:3912, NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=e2e-publishable-key, E2E_SIGNED_IN=1, node scripts/db-setup.mjs --seed, pnpm build), then E2E_SIGNED_IN=1 pnpm exec playwright test --project=signed-in e2e/signed-in/admin-text-fallbacks.spec.ts: pass"
       ]
     },
     {
@@ -308,7 +308,7 @@
         "pnpm test src/components/admin/admin-bundle.scan.test.ts: passes with an empty list",
         "pnpm lint && pnpm typecheck && pnpm test: exits 0",
         "pnpm test:int: exits 0",
-        "pnpm build && E2E_SIGNED_IN=1 pnpm test:e2e e2e/signed-in: pass, admin-text-fallbacks.spec.ts reports no fallback",
+        "the signed-in build (as CI's signed-in job in .github/workflows/ci.yml: NEXT_PUBLIC_SUPABASE_URL=http://127.0.0.1:3912, NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=e2e-publishable-key, E2E_SIGNED_IN=1, node scripts/db-setup.mjs --seed, pnpm build), then E2E_SIGNED_IN=1 pnpm exec playwright test --project=signed-in e2e/signed-in: pass, admin-text-fallbacks.spec.ts reports no fallback",
         "node scripts/bundle-budget.mjs: exits 0 after the baseline is lowered"
       ]
     }
@@ -345,7 +345,7 @@
       "expect": "/admin/[store], /admin/[store]/orders, /admin/[store]/products, /admin/[store]/settings and /admin/platform each at or under 680,000 bytes; the median admin route at or under 650,000; the baseline holds those figures"
     },
     {
-      "check": "E2E_SIGNED_IN=1 pnpm test:e2e e2e/signed-in/admin-text-fallbacks.spec.ts",
+      "check": "E2E_SIGNED_IN=1 pnpm exec playwright test --project=signed-in (in the signed-in build) e2e/signed-in/admin-text-fallbacks.spec.ts",
       "expect": "passes with no fallback in English and in Norwegian"
     }
   ],
@@ -354,7 +354,7 @@
     "docs/decisions.md (or docs/decisions/D{n}.md if step 2.40 is done): one new decision with the next free D number: admin client code takes its words as arguments or through useAdminText(); English constants and sentence matching live in '-english' modules for the server; the walk holds it.",
     "docs/platform-admin-i18n.md section 3.3: add two sentences: a helper never defaults to an English catalogue, and where the server writes English sentences they are turned into the account's language on the server.",
     "docs/audits/psi-followups.md under PERF-01: one line that the indirect importers are gone and which test holds it.",
-    "The plan's tracker under docs/audits/bloat-review-2026-11/ (the Progress table made by step 0.1): set row 2.26 to Done with the date and the commits, and write the before and after bytes in its section."
+    "docs/audits/bloat-review-2026-11.md, the plan's tracker (find the row with rg -n '^\\| *2\\.26 ' docs/audits/bloat-review-2026-11.md; the step's section is under the heading that starts with 2.26): set row 2.26 to Done with the date and the commits, and write the before and after bytes in its section."
   ],
   "do_not": [
     "Do not delete or rename any string in src/lib/admin-messages: no text moves in this step.",

@@ -1,0 +1,204 @@
+{
+ "id": "1.13",
+ "goal": "Platform, Usage and limits shows the day's difference between the two latest stored readings of production and raises eight flags from them, each flag is also a line in the platform's morning briefing, and each has a seeded case in an integration test.",
+ "why": "A test cannot see production: 564 MB of scheduler log, 13 unused duplicate indexes and a job that refreshed a tag on every run were found only by this review reading statistics by hand. After this step eight written rules read the stored daily reading and say so on one screen and in the morning email.",
+ "read_first": [
+  "docs/rules/admin/platform.md",
+  "docs/capacity.md",
+  "docs/audits/bloat-review-2026-11.md",
+  "src/lib/platform-briefing.ts",
+  "src/server/platform-briefing.ts",
+  "src/app/admin/(gated)/platform/capacity/page.tsx",
+  "src/lib/admin-messages/capacity.en.ts",
+  "src/app/api/cron/subscription-reminders/route.ts"
+ ],
+ "depends_on": [
+  {
+   "id": "0.2",
+   "why": "it creates the platform table of daily readings and the daily statement that fills it; this step reads that table and adds to that statement"
+  },
+  {
+   "id": "0.25",
+   "why": "its prune makes flag four (the cron schema over 80 MB) meaningful"
+  },
+  {
+   "id": "1.9",
+   "why": "flag one's int test and the screen's reads are counted with its counter when step 1.10's budget is extended"
+  }
+ ],
+ "commits": [
+  {
+   "title": "Database flags: eight rules over two daily readings, as pure code with a test each",
+   "changes": [
+    {
+     "file": "src/lib/platform-flags.ts",
+     "action": "create",
+     "how": "Pure: no import of server code, zod or the database. Types: StatementReading = { key: string (the statement's id in the reading: its queryid, or a hash of its text), text: string, calls: number, totalMs: number, meanMs: number, rows: number }; TableReading = { name: string, rows: number, bytes: number, seqScans: number, seqRowsRead: number }; IndexReading = { table: string, name: string, scans: number, backsConstraint: boolean }; JobReading = { job: string, runs: number, worked: number | null }; AiReading = { feature: string, figure: string, value: number, bar: number, daysOver: number }; DailyReading = { day: string, statements: StatementReading[] (the 40 costliest and the 40 most called, without repeats), tables: TableReading[], schemas: { name: string, bytes: number }[], indexes: IndexReading[], jobs: JobReading[], ai: AiReading[] }. Export the two written lists as constants with a reason per entry: WHOLE_READ_ALLOWED: at most 5 { table, reason } entries (start empty) and COSTLY_ALLOWED: { key, reason, ceilingMs }[] (start empty; at most 3 when the plan ends: a comment says so). Export HOT_TABLES = ['orders','order_lines','visits','products','product_variants','customers','carts','cart_lines'] (CLAUDE.md's list). Export type PlatformFlag = { id: FlagId, subject: string, values: Record<string, string | number> } and FLAG_IDS = ['new_top_statement','whole_table_read','idle_write','cron_schema_large','unused_hot_index','costly_statement','idle_route_calls','ai_over_bar']. Export platformFlags(today: DailyReading, yesterday: DailyReading, options: { openedOn: string | null, cronSchemaMaxBytes: number (default 80 MB; step 3.1 lowers it to 20 MB), idleCallsOn: boolean (default false; step 3.2 switches it on) }): PlatformFlag[]. The day's difference of a counter is today's value minus yesterday's, and 0 when negative (the statistics were reset). Rules: (1) new_top_statement: a statement among today's 25 highest by calls-difference whose key is not in yesterday's reading at all. (2) whole_table_read: a table with rows over 500 whose seqScans difference is over 10, unless WHOLE_READ_ALLOWED names it. (3) idle_write: a statement whose text starts with update, delete or insert (case-insensitive, after trimming), with a calls-difference of at least 10, whose rows-difference is under one tenth of its calls-difference. (4) cron_schema_large: the schema 'cron' over options.cronSchemaMaxBytes. (5) unused_hot_index: only when options.openedOn is at least 56 days before today.day: an index on a HOT_TABLES table with scans 0 today and backsConstraint false. (6) costly_statement: a statement among today's 40 highest by totalMs-difference with a calls-difference over 10 and (totalMs-difference divided by calls-difference) over 5, unless COSTLY_ALLOWED names its key and its mean is at or under that entry's ceilingMs. (7) idle_route_calls: only when options.idleCallsOn: the sum over jobs whose name starts with 'route.' of (runs-difference minus worked-difference) over 1,100. (8) ai_over_bar: an AiReading with value over bar and daysOver at least 7. Export dayDifference(today, yesterday): the rows the screen shows: per schema the bytes change, the 10 statements with the largest totalMs-difference, the 10 tables with the largest seqRowsRead-difference."
+    },
+    {
+     "file": "src/lib/platform-flags.test.ts",
+     "action": "create",
+     "how": "One test per rule with a small hand-made pair of readings, each with the case that raises the flag and the nearest case that does not: an 8 ms statement run 20 times raises costly_statement and the same at 4 ms does not; a 600-row table scanned 20 times raises whole_table_read, 400 rows does not, and the same table named in an allowed list passed as a parameter does not; an update called 100 times that changed 5 rows raises idle_write and one that changed 50 does not; a statement new among the top 25 raises new_top_statement; the cron schema at 81 MB raises, at 79 MB not, and at 21 MB with cronSchemaMaxBytes 20 MB raises; an unused index on orders raises only when openedOn is 56 days or more before and it backs no constraint; 1,200 idle route calls raise only with idleCallsOn; an AI figure over its bar for 7 days raises and for 6 does not. One test that a counter that went down (a reset) gives a difference of 0 and no flag. One test that WHOLE_READ_ALLOWED has at most 5 entries and COSTLY_ALLOWED at most 3, each with a reason of at least 20 characters."
+    }
+   ],
+   "checks": [
+    "pnpm vitest run src/lib/platform-flags.test.ts: passes",
+    "pnpm lint && pnpm typecheck && pnpm test: exits 0"
+   ]
+  },
+  {
+   "title": "The daily reading also keeps the hot tables' indexes and each scheduled job's runs",
+   "changes": [
+    {
+     "file": "src/db/schema.ts",
+     "action": "edit",
+     "how": "Step 0.2 made commerce.platform_readings (day, kind, name, figures jsonb, query) with the check platform_readings_kind: kind in ('statement', 'table', 'schema'). Widen that one check to: kind in ('statement', 'table', 'schema', 'index', 'job', 'ai'). Change nothing else of the table. Extend its doc comment: for kind index, name is '<table>.<index>' and figures hold scans and backs_constraint; for kind job, name is the ledger's job key and figures hold runs and worked (null until step 3.2); for kind ai, name is '<feature>.<figure>' and figures hold value, bar and days_over (written from step 1.19's follow-up on)."
+    },
+    {
+     "file": "supabase/migrations/*_platform_readings_kinds.sql",
+     "action": "create",
+     "how": "Generated: run 'pnpm db:generate' after the schema edit. Drizzle writes a drop of the check platform_readings_kind and an add of the wider one. Read the file: it must hold only those two statements on commerce.platform_readings. Commit the new snapshot with it. Do not write it by hand."
+    },
+    {
+     "file": "src/app/api/cron/subscription-reminders/route.ts",
+     "action": "edit",
+     "how": "No new statement in the route itself. Extend recordProductionReading() in src/server/production-reading.ts (step 0.2's function, run here as the job daily.production-reading) with two more inserts inside its transaction, in the same form as its 'table' insert (on conflict (day, kind, name) do nothing returning 1): (a) kind 'index': for every index on the eight hot tables (orders, order_lines, visits, products, product_variants, customers, carts, cart_lines) from pg_stat_user_indexes where schemaname = 'commerce': name relname || '.' || indexrelname, figures jsonb_build_object('scans', idx_scan, 'backs_constraint', exists (select 1 from pg_constraint c where c.conindid = indexrelid)); (b) kind 'job': for every row of commerce.cron_jobs: name job, figures jsonb_build_object('runs', runs, 'worked', null) (the ledger has no 'worked' column yet; step 3.2 adds it and changes this line). Add the two counts to the function's result (indexes, jobs) and to the type the route passes on in its JSON answer; that type is the only reason this route file changes."
+    },
+    {
+     "file": "src/server/platform-flags.ts",
+     "action": "create",
+     "how": "Server-only. Export latestReadings(): reads the two newest days of commerce.platform_readings (day, kind, name, figures, query) through typedRows() with a zod row (col helpers from src/server/typed-rows.ts; figures as z.record(z.string(), z.unknown())) and maps them to the DailyReading type of src/lib/platform-flags.ts: a 'statement' row gives { key: name, text: query, calls, totalMs: figures.total_ms, meanMs: figures.mean_ms, rows }; a 'table' row { name, rows, bytes, seqScans: figures.seq_scan, seqRowsRead: figures.seq_tup_read }; a 'schema' row { name, bytes }; an 'index' row { table and index split from name at the first dot, scans, backsConstraint }; a 'job' row { job: name, runs, worked }; an 'ai' row { feature and figure split from name, value, bar, daysOver }. A kind with no rows is an empty list. Export currentFlags(now = new Date()): returns { today, yesterday, flags: platformFlags(...), difference: dayDifference(...) } or null when fewer than two days are stored; openedOn comes from commerce.platform_settings if step 0.2 or another step keeps an opening date there, else null (flag five then stays off: say so in a comment). It never throws: on an error it logs 'platform_flags.failed' through log() and returns null. Include the platform's own rows: the reading is of the whole database, so Kaizena Flow's store and null-store rows are counted with every other; add no store filter."
+    },
+    {
+     "file": "src/server/platform-flags.int.test.ts",
+     "action": "create",
+     "how": "Seeds two days into commerce.platform_readings directly (insert rows of each kind with the figures keys named above) and asserts currentFlags() returns each of the eight flags for its seeded case: a statement at 8 ms run 20 times; a 600-row table scanned 20 times; an update called 100 times with 5 rows; the cron schema at 81 MB; an unused index on orders with an opening date 60 days back (set whatever currentFlags reads for it); a statement new in the top 25; 1,200 idle route calls with the option on (call platformFlags through an exported test seam, or pass the option to currentFlags); an AI figure over its bar for 7 days. Then one case with a single stored day: currentFlags() returns null. Then one case that runs recordProductionReading() on the test database and asserts the day has an 'index' row for every index of commerce.orders and a 'job' row for every row of commerce.cron_jobs. Clean up the seeded days in afterAll."
+    }
+   ],
+   "checks": [
+    "pnpm vitest run --config vitest.integration.config.mts src/server/platform-flags.int.test.ts: passes",
+    "pnpm db:check: exits 0",
+    "pnpm vitest run src/db/commerce.test.ts src/db/migration-safety.scan.test.ts: pass",
+    "pnpm lint && pnpm typecheck && pnpm test: exits 0",
+    "pnpm test:int: exits 0"
+   ]
+  },
+  {
+   "title": "Usage and limits shows the day's difference and the flags, and the morning briefing carries them",
+   "changes": [
+    {
+     "file": "src/components/admin/platform-flags-card.tsx",
+     "action": "create",
+     "how": "A server component (no 'use client') that takes { flags, difference, allowed: { wholeRead: typeof WHOLE_READ_ALLOWED, costly: typeof COSTLY_ALLOWED }, words, locale } and draws two Card parts from '@/components/admin/ui' as the capacity page's other cards do: 'What changed since yesterday' (the three small tables of dayDifference, statements shown by their first 120 characters in a <code> element) and 'Flags' (one line per flag from words.flags[flag.id] filled with fillWords() from '@/lib/admin-fill'; when there are none, words.none). Under the flags, the two written lists, each entry with its reason (and ceiling). When the reading has fewer than two days, one sentence words.waiting. Homer's view is the flags list; the difference tables sit inside a <details> element whose summary is words.details, so they are one step away."
+    },
+    {
+     "file": "src/app/admin/(gated)/platform/capacity/page.tsx",
+     "action": "edit",
+     "how": "Add currentFlags() from '@/server/platform-flags' to the page's Promise.all (line 36 today) and draw <PlatformFlagsCard> directly under the database card (the Card with title w.platform.database), passing adminText(lang, 'capacity').flags as words."
+    },
+    {
+     "file": "src/lib/admin-messages/capacity.en.ts",
+     "action": "edit",
+     "how": "Add a key 'flags' beside 'speed': { title: 'Flags', changedTitle: 'What changed since yesterday', details: 'Show the figures', none: 'Nothing to look at today.', waiting: 'Two days of readings are needed; the first comparison comes tomorrow.', allowedTitle: 'Written exceptions', flags: { new_top_statement: 'A statement is new among the 25 most called: {subject}', whole_table_read: '{subject} ({rows} rows) was read whole {n} times in a day.', idle_write: 'A write changed a row in {changed} of {calls} calls: {subject}', cron_schema_large: 'The scheduler\\'s own log is {size}.', unused_hot_index: 'No read has used the index {subject} on {table}.', costly_statement: 'A statement ran {calls} times at {ms} ms each: {subject}', idle_route_calls: 'Scheduled routes were called {n} times with nothing to do.', ai_over_bar: '{subject} has been over its bar for a week ({value} against {bar}).' } }. Plain words, no jargon the owner must look up."
+    },
+    {
+     "file": "src/lib/admin-messages/capacity.nb.ts",
+     "action": "edit",
+     "how": "The same keys in Norwegian bokmål, in the file's own tone (see its 'speed' and 'jobs' texts). The type CapacityMessages comes from the English file, so the type check fails until every key is there."
+    },
+    {
+     "file": "src/lib/platform-briefing.ts",
+     "action": "edit",
+     "how": "Add 'database_flag' to AlertId. Add an optional field 'flags?: { id: string; subject: string }[]' to PlatformSnapshot. In platformAlertsFor(), after the existing rules, push one alert when s.flags has entries: { id: 'database_flag', severity: 'warning', values: { n: s.flags.length, first: s.flags[0].id }, href: '/admin/platform/capacity' }. Existing alerts and their order rule stay as they are."
+    },
+    {
+     "file": "src/server/platform-briefing.ts",
+     "action": "edit",
+     "how": "In platformSnapshot(), add currentFlags(now) to the Promise.all and set flags on the returned snapshot (an empty list when it returns null). In alertText(), add before the final return: if (alert.id === 'database_flag') return countWords(Number(v.n), w.database_flag). Nothing else changes in sendPlatformBriefing(): it already prints every alert."
+    },
+    {
+     "file": "src/lib/admin-messages/platform.en.ts",
+     "action": "edit",
+     "how": "In briefing.alerts (line 378 today) add: database_flag: { one: '1 thing to look at under Usage and limits.', many: '{n} things to look at under Usage and limits.' }."
+    },
+    {
+     "file": "src/lib/admin-messages/platform.nb.ts",
+     "action": "edit",
+     "how": "The same key in briefing.alerts in Norwegian bokmål."
+    },
+    {
+     "file": "src/lib/platform-briefing.test.ts",
+     "action": "edit",
+     "how": "If the file does not exist, create it. Add two cases: a snapshot with two flags gives one database_flag alert with n 2 and the href /admin/platform/capacity; a snapshot with no flags or without the field gives none."
+    }
+   ],
+   "checks": [
+    "pnpm vitest run src/lib/platform-briefing.test.ts src/lib/platform-flags.test.ts: pass",
+    "pnpm lint && pnpm typecheck && pnpm test: exits 0",
+    "pnpm test:int: exits 0",
+    "pnpm build, then with the Auth stand-in build: E2E_SIGNED_IN=1 pnpm exec playwright test --project=signed-in e2e/signed-in/platform-reports.spec.ts: passes; and open /admin/platform/capacity as the platform admin: the Flags card shows 'Two days of readings are needed' on a fresh database. Send the owner a screenshot of the card."
+   ]
+  }
+ ],
+ "tests": [
+  {
+   "file": "src/lib/platform-flags.test.ts",
+   "proves": "each of the eight rules raises on its case and not on the nearest case below it, and the two written lists stay within 5 and 3 entries with reasons"
+  },
+  {
+   "file": "src/server/platform-flags.int.test.ts",
+   "proves": "the flags are read from the stored readings, among them an 8 ms statement run 20 times and a 600-row table scanned 20 times, and the daily reading stores index and job rows"
+  },
+  {
+   "file": "src/lib/platform-briefing.test.ts",
+   "proves": "a flag becomes a line of the morning briefing and no flag gives no line"
+  }
+ ],
+ "migration": {
+  "needed": true,
+  "notes": "Generated (pnpm db:generate after editing src/db/schema.ts): the check platform_readings_kind on commerce.platform_readings is dropped and added again with three more allowed values ('index', 'job', 'ai'). The table is a small platform table, not one of the hot tables, so the check is replaced in one statement pair without 'not valid'. Running code keeps working: the code deployed before this change writes only 'statement', 'table' and 'schema', which the wider check still allows; nothing is renamed and no column is dropped. CI's release job applies it; never by hand. After the deploy check the Supabase advisors and record the file's version in docs/decisions.md (Migration versions)."
+ },
+ "done_when": [
+  {
+   "check": "/admin/platform/capacity as a platform admin, with two stored days",
+   "expect": "the Flags card lists flags from the two days and shows both written lists with their reasons"
+  },
+  {
+   "check": "pnpm vitest run --config vitest.integration.config.mts src/server/platform-flags.int.test.ts",
+   "expect": "passes: every flag's seeded case is seen, among them an 8 ms statement run 20 times and a 600-row table scanned 20 times"
+  },
+  {
+   "check": "pnpm vitest run src/lib/platform-briefing.test.ts",
+   "expect": "a snapshot with flags gives the database_flag line"
+  }
+ ],
+ "after_deploy": [
+  "Two days after the deploy, open kaizenaflow.com/admin/platform/capacity: the Flags card shows the day's difference. Expect the cron schema flag until step 0.25's one-off emptying has run, and no unused-index flag before eight weeks after opening.",
+  "Check the Supabase security and performance advisors, and record the migration's version in docs/decisions.md (Migration versions)."
+ ],
+ "docs": [
+  "docs/rules/admin/platform.md, under 'Usage and limits' (line 118 today): three sentences: the screen shows the day's difference of the stored reading and eight flags (src/lib/platform-flags.ts); the two written lists live in that file with a reason per entry; a flag is also a line in the platform's morning briefing.",
+  "docs/capacity.md: one paragraph under its part on the database, naming the eight flags and their thresholds.",
+  "docs/platform-parity.md: nothing to tick; the flags are the platform's own.",
+  "docs/decisions.md: add one row at the end of the decisions table with the next free D-number (read the last row first; D573 was the last on 12 November 2026, and other steps add rows, so never assume the number). It records: eight production flags from the daily reading, their thresholds, the two written exception lists (5 and 3 entries at most), flag five starting eight weeks after opening and flag seven switched on by step 3.2; the migration's version.",
+  "docs/audits/bloat-review-2026-11.md: in the Progress table set the row of step 1.13 to Done with the date and the commit hash, in the same commit as the last change of this step."
+ ],
+ "do_not": [
+  "Do not query pg_stat_statements, pg_stat_user_tables or any statistics view when the screen is opened: the screen reads the stored readings only.",
+  "Do not store or show a statement's values: Postgres has already replaced them in the reading; show the text as stored.",
+  "Do not add an entry to WHOLE_READ_ALLOWED or COSTLY_ALLOWED to quiet a flag in this step; both start empty.",
+  "Do not email flags on their own: they ride in the existing morning briefing, which the platform's owners switch on themselves.",
+  "Do not use a paid log or monitoring service; everything is read from the database's own tables.",
+  "Do not rename or drop a column of commerce.platform_readings, and do not remove an allowed kind from its check."
+ ],
+ "stop_if": [
+  "commerce.platform_readings or recordProductionReading() is not in the code (rg -n 'platform_readings' src/db/schema.ts src/server/production-reading.ts): step 0.2 is not done; stop. Commit 1 can land alone.",
+  "pnpm db:generate writes anything besides the check's drop and add on commerce.platform_readings.",
+  "The reading does not hold what a rule needs (statements without calls, total time and rows; tables without rows and sequential scans): report which rule cannot be computed instead of approximating it.",
+  "pg_stat_statements is not available to the app's role in the test database, so the real daily function cannot run in the int test: keep the seeded cases and report.",
+  "A migration on a table other than commerce.platform_readings would be needed."
+ ],
+ "executor": "cheap-then-review",
+ "executor_why": "The rules, the reader and the screen are fully specified against step 0.2's table, but the change widens a check by migration, edits the daily job and the morning briefing and adds words in two languages, so a stronger model reads the diff before the push.",
+ "checked_in_code": "I opened src/lib/platform-briefing.ts and src/server/platform-briefing.ts: alerts are a typed list (AlertId, platformAlertsFor, alertText with words under platform.briefing.alerts in platform.en.ts line 378 and platform.nb.ts), so a flag becomes a briefing line by one new alert id. Usage and limits is src/app/admin/(gated)/platform/capacity/page.tsx with words in capacity.en.ts and capacity.nb.ts. The reading table of step 0.2 (commerce.platform_readings, written by recordProductionReading() in src/server/production-reading.ts) is not in the code yet; its brief allows only the kinds statement, table and schema, so this step widens that check by a generated migration to store index and job rows. commerce.cron_jobs has runs but no 'worked' column, so flag seven's rule is written and tested now and its input stays null until step 3.2; flag eight's input comes from step 1.19's figures and starts as an empty list. The two GAP findings have no findings file; their text is in the database card."
+}

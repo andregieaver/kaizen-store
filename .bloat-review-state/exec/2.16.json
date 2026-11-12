@@ -1,0 +1,160 @@
+{
+ "id": "2.16",
+ "goal": "commerce.pages has three stored generated columns (published_title, published_titles, remembered_modal) that the database fills for every writer, and publishedPageNames(), usesRememberedModals() and the page index read them instead of digging through page documents.",
+ "why": "Today menus pull titles out of each page's JSON (57,930 calls in 78 days) and the consent banner runs jsonb_path_exists over every published page of a site for one yes or no (68,878 calls, 121 s). After: both read plain columns; timed on 1,392 pages the title read falls from 1.5 ms to 0.8 ms and the modal check from 1.4 ms to 0.6 ms a call, and neither statement names a document.",
+ "read_first": [
+  "docs/ci-migrations.md",
+  "docs/rules/admin/website.md",
+  "src/db/schema.ts:8780",
+  "src/server/pages.ts",
+  "src/server/page-modals.ts",
+  "src/db/commerce.test.ts",
+  "src/server/pages.int.test.ts"
+ ],
+ "depends_on": [
+  {
+   "id": "0.24",
+   "why": "it adds publishedPageIndex() to src/server/pages.ts, whose title expressions this step also moves to the columns"
+  },
+  {
+   "id": "0.23",
+   "why": "it changes how these statements filter a store's rows (the owned() fragment); this step changes only what they select, on top of that"
+  }
+ ],
+ "commits": [
+  {
+   "title": "Pages keep their published title, titles by language and remembered-modal flag in columns the database fills",
+   "changes": [
+    {
+     "file": "supabase/migrations/<timestamp>_page_titles_fn.sql",
+     "action": "create",
+     "how": "Make the file with: pnpm exec drizzle-kit generate --custom --name page_titles_fn (it writes an empty file with the next timestamp), then node scripts/prune-snapshots.mjs. Content, one statement: create or replace function commerce.page_titles(p jsonb) returns jsonb language sql immutable set search_path to '' as $$ select coalesce(jsonb_object_agg(t.key, t.value ->> 'title') filter (where coalesce(t.value ->> 'title', '') <> ''), '{}'::jsonb) from jsonb_each(case when jsonb_typeof(p -> 'translations') = 'object' then p -> 'translations' else '{}'::jsonb end) t $$; A null p gives '{}'. The function must be immutable (a generated column refuses anything else) and must keep 'set search_path' (src/db/vat.test.ts holds a fixed search_path on every function). This file must sort BEFORE the generated file of the next change: make it first."
+    },
+    {
+     "file": "src/db/schema.ts",
+     "action": "edit",
+     "how": "In the table 'pages' (about line 8785), after the 'published' column, add three columns, written like the generated 'search' column at line 2752: publishedTitle: text('published_title').generatedAlwaysAs((): ReturnType<typeof sql> => sql`published ->> 'title'`), publishedTitles: jsonb('published_titles').generatedAlwaysAs((): ReturnType<typeof sql> => sql`commerce.page_titles(published)`), rememberedModal: boolean('remembered_modal').generatedAlwaysAs((): ReturnType<typeof sql> => sql`coalesce(jsonb_path_exists(published, '$.rows[*].modal ? ((@.frequency == \"session\" || @.frequency == \"days\" || !exists(@.frequency)) && (@.triggers.exitIntent == true || exists(@.triggers.timer)))'), false)`). The path text must be copied character for character from src/server/page-modals.ts line 24 (shown here for comparison only). Give each a one-line JSDoc: derived by the database from 'published', never written (bloat review step 2.16). Then run pnpm db:generate: it writes one migration with 'alter table commerce.pages add column ... generated always as (...) stored' and prunes the snapshots. Open the generated SQL: it must only ADD the three columns. If it contains anything else (a drop, another table), stop. Do not hand-edit the generated file except to confirm its timestamp sorts after page_titles_fn."
+    },
+    {
+     "file": "src/db/commerce.test.ts",
+     "action": "edit",
+     "how": "Add cases (the file applies every migration to PGlite; follow its nearest pages case for how a store and a page row are made): (1) insert a page naming its columns as savePage() does (store_id, type, slug, draft, published, published_at) with published = {title:'About', translations:{'nb-NO':{title:'Om oss'},'sv-SE':{}}, rows:[]}: published_title is 'About', published_titles is {\"nb-NO\":\"Om oss\"}, remembered_modal is false. (2) update published to hold a row with modal {frequency:'days', triggers:{timer:5}}: remembered_modal becomes true; with frequency 'always' and the same trigger: false; with no frequency and triggers {exitIntent:true}: true. (3) update only draft: the three columns do not change. (4) set published = null (an unpublish): published_title is null, published_titles is '{}', remembered_modal is false. (5) an insert that tries to write published_title fails (the error names a generated column). (6) the rule in SQL and in code agree: for each sample modal of src/components/page-modal.test.ts (import the samples, or copy the same five into a const shared by both tests), the column's value equals what the code's rule says (after step 2.14, listFacts(content).rememberedModal from src/lib/page-list-facts.ts; before it, the expected boolean written beside each sample)."
+    }
+   ],
+   "checks": [
+    "pnpm db:check: exits 0 (schema and migrations agree)",
+    "pnpm exec vitest run src/db/commerce.test.ts src/db/snapshots.scan.test.ts src/db/migration-safety.scan.test.ts src/db/privacy.test.ts src/server/store-export.scan.test.ts: pass. If privacy.test.ts or store-export.scan.test.ts names the new columns as unregistered, register them the way the message says: they are derived copies of 'published' (same treatment as that column).",
+    "pnpm exec vitest run src/db/house-site.test.ts src/db/design-presets.test.ts src/db/store-starters.test.ts src/db/sandboxes.test.ts: pass (every path that copies pages rows still inserts; a copy that selected every column would fail here with 'cannot insert a non-DEFAULT value')",
+    "pnpm exec vitest run --config vitest.integration.config.mts src/server/page-duplicate.int.test.ts src/server/store-copy.int.test.ts src/server/pages.int.test.ts: pass",
+    "pnpm lint && pnpm typecheck && pnpm test: each exits 0",
+    "pnpm test:int: exits 0"
+   ]
+  },
+  {
+   "title": "Menus' titles and the modal check read the columns",
+   "changes": [
+    {
+     "file": "src/server/pages.ts",
+     "action": "edit",
+     "how": "publishedPageNames() (about line 715): replace the line that builds 'title' (coalesce(nullif(p.published #>> array['translations', locale, 'title'], ''), p.published ->> 'title')) by: const title = sql`coalesce(nullif(p.published_titles ->> ${locale ?? \"\"}, ''), p.published_title)`; The two selects, the union, the where clauses and the row mapping stay exactly as they are. In publishedPageIndex() (step 0.24): select p.published_title as title and p.published_titles as titles in place of its JSON operators on 'published' for the title and the translated titles; leave its other fields (flags, blog id) as step 0.24 wrote them. This commit may go in the same push as the first: CI applies a push's migrations before it deploys the code (docs/ci-migrations.md), so the new code never runs before the columns exist, and the old code never selects them."
+    },
+    {
+     "file": "src/server/page-modals.ts",
+     "action": "edit",
+     "how": "usesRememberedModals() (lines 16 to 28): the statement becomes: select exists (select 1 from commerce.pages where <the same store filter as today: store_id is not distinct from ${storeId}::uuid, or the owned() fragment if step 0.23 put one there> and remembered_modal) as found. Remove 'published is not null' and the jsonb_path_exists line (the column is false for an unpublished page). Keep 'use cache', the life and the tag. Update the JSDoc: the flag is a generated column; its rule is the column's expression in src/db/schema.ts, and changing the rule is a migration that drops and adds the column."
+    },
+    {
+     "file": "src/server/pages.int.test.ts",
+     "action": "edit",
+     "how": "Add cases: (1) a store with a page titled 'About' with a Norwegian title 'Om oss' and a page with no translation: publishedPageNames(storeId, 'nb-NO') gives 'Om oss' and the second page's own title; publishedPageNames(storeId, null) gives 'About'; a moved page's old address still maps to it (the file's existing case for redirects must pass unchanged). (2) usesRememberedModals(storeId) is false, then true after a page with a timed 'days' modal is published, then false after it is unpublished. (3) The plan test: run 'explain (verbose, format text)' on the two statements for that store (build the same SQL through the functions' statements: export the two sql builders as small functions namesQuery(owner, locale, type) and modalsQuery(storeId) from their files so the test can explain them) and assert the plan text contains neither 'published)' as a function argument nor the output columns 'p.published,' / 'pages.published,' nor 'draft': the regex /\\bpublished\\b(?!_)|\\bdraft\\b/ must not match any line of either plan."
+    }
+   ],
+   "checks": [
+    "pnpm exec vitest run --config vitest.integration.config.mts src/server/pages.int.test.ts src/server/consents.int.test.ts src/server/cookie-scans.int.test.ts: pass",
+    "rg -n \"published (->>|#>>)|jsonb_path_exists\\(published\" src/server/pages.ts src/server/page-modals.ts: prints no line inside publishedPageNames(), publishedPageIndex() or usesRememberedModals() (other functions of pages.ts may still print)",
+    "pnpm exec vitest run src/lib/cookie-consent-modals.test.ts src/components/page-modal.test.ts: pass unchanged",
+    "pnpm lint && pnpm typecheck && pnpm test: each exits 0",
+    "pnpm test:int: exits 0",
+    "pnpm build && pnpm exec playwright test e2e/menus.spec.ts e2e/cookies.spec.ts e2e/store-pages.spec.ts: pass"
+   ]
+  },
+  {
+   "title": "Docs: the three derived columns of pages",
+   "changes": [
+    {
+     "file": "docs/rules/admin/website.md",
+     "action": "edit",
+     "how": "In the Pages section (line 6 on) add: 'commerce.pages has three columns the database derives from published and nobody writes: published_title, published_titles (each language's title) and remembered_modal. Menus (publishedPageNames()), the page index and the consent banner (usesRememberedModals()) read them.' In the Modals rule (about line 469) change 'declared by usesRememberedModals()' to say the flag is the generated column remembered_modal, whose expression must match the rule of src/lib/page-modal.ts (src/db/commerce.test.ts holds the two together); changing the rule is a migration that drops and adds the column."
+    },
+    {
+     "file": "docs/decisions.md",
+     "action": "edit",
+     "how": "Append one row with the next free D-number (pull main first; rg -o '^\\| D[0-9]+' docs/decisions.md | tr -dc '0-9\\n' | sort -n | tail -1, plus 1): the three generated columns and why generated, not written (about 30 writers of a page's documents); the two migration versions (file names); advisors checked after the deploy; the platform's pages are rows of the same table. If the section 'Migration versions' still takes entries (step 2.41 retires it), add the two versions there too."
+    },
+    {
+     "file": "docs/audits/bloat-review-2026-11.md",
+     "action": "edit",
+     "how": "Progress table: row 2.16 to Done with the date, the commits and the two migration versions; one change-log line."
+    }
+   ],
+   "checks": [
+    "pnpm lint: exits 0"
+   ]
+  }
+ ],
+ "tests": [
+  {
+   "file": "src/db/commerce.test.ts",
+   "proves": "It fails when the columns do not follow an insert, an update of published or an unpublish, when a draft-only update moves them, and when the SQL rule for a remembered modal disagrees with the code's on the sample modals."
+  },
+  {
+   "file": "src/server/pages.int.test.ts",
+   "proves": "It fails when menus' titles or the modal answer change, and when either statement's plan reads a page document again."
+  }
+ ],
+ "migration": {
+  "needed": true,
+  "notes": "Two files in the first commit. (1) Custom: commerce.page_titles(jsonb), an immutable SQL function with a fixed search_path (pnpm exec drizzle-kit generate --custom --name page_titles_fn, then node scripts/prune-snapshots.mjs). (2) Generated by pnpm db:generate from src/db/schema.ts: alter table commerce.pages add three stored generated columns. Add only: no rename, no drop, no backfill, no writer changes, so the code that is running keeps working while the deploy finishes (every insert into pages names its columns; the tests of the copy paths prove it). commerce.pages is not on the hot-table list, so no concurrent file is needed; adding a stored generated column rewrites the table under a lock, which is instant at about 1,400 rows and fits the 15 s statement limit and 5 s lock wait. No index is added. CI's release job applies both files after the checks pass; never apply them by hand. The readers (second commit) may ride in the same push: the release job applies the files before the deploy. They must never be pushed BEFORE the migration commit. After the deploy check the security and performance advisors of project ybsozesfuxuitoacntfo and record the versions."
+ },
+ "done_when": [
+  {
+   "check": "rg -n \"published (->>|#>>)|jsonb_path_exists\\(published|jsonb_path_exists\" src/server/pages.ts src/server/page-modals.ts",
+   "expect": "No line inside publishedPageNames() or usesRememberedModals() (page-modals.ts prints nothing at all)."
+  },
+  {
+   "check": "pnpm exec vitest run --config vitest.integration.config.mts src/server/pages.int.test.ts",
+   "expect": "Passes, the plan test included: neither statement's plan names published or draft."
+  },
+  {
+   "check": "pnpm db:check && pnpm exec vitest run src/db/commerce.test.ts",
+   "expect": "Both pass."
+  }
+ ],
+ "after_deploy": [
+  "After the first commit's deploy: /api/health reports the commit; in the Supabase dashboard's table view commerce.pages shows the three columns filled for published pages. Check the security and performance advisors: no new warning.",
+  "A week after the second commit: in pg_stat_statements (step 0.2's daily reading) the old statements containing jsonb_path_exists on commerce.pages and 'published #>>' no longer grow (68,878 and 57,930 calls before)."
+ ],
+ "docs": [
+  "docs/rules/admin/website.md, docs/decisions.md and the Progress row, as the last commit says.",
+  "docs/platform-parity.md: nothing to tick; the platform's pages are rows of the same table with a null owner and get the columns in the same migration."
+ ],
+ "do_not": [
+  "Do not write the columns from application code, and do not add them to any insert or update: a generated column refuses a written value.",
+  "Do not push the readers (commit 2) without, or before, the migration commit (commit 1).",
+  "Do not rename, drop or change the type of draft, published or any existing column.",
+  "Do not remove 'set search_path' from the function to make it inlinable.",
+  "Do not change the JSON path of the modal rule; copy it from src/server/page-modals.ts as it is.",
+  "Do not add an index in this step (the bar is statements that open no document; pages is filtered by its existing store index).",
+  "Do not apply the migration to production by hand or with the Supabase tools."
+ ],
+ "stop_if": [
+  "pnpm db:generate writes anything besides the three added columns.",
+  "PGlite or Postgres refuses the generated column (for example 'generation expression is not immutable'): report the message; do not switch to columns written by the application.",
+  "A test of a copy path (store copy, page duplicate, house site, design presets, starters, sandboxes, staging) fails with 'cannot insert a non-DEFAULT value into column': report the statement that copies without naming columns.",
+  "CI's release job fails to apply either migration file: do not retry by hand; report the job's message.",
+  "The plan test shows published or draft in a plan after the change."
+ ],
+ "executor": "cheap-then-review",
+ "executor_why": "The schema lines, SQL and tests are given word for word, but it is a migration that rewrites a table, so a stronger model should read the generated SQL before the push.",
+ "checked_in_code": "I opened src/db/schema.ts (pages at 8785: 12 columns, no title; the generated 'search' columns at 2752 and 3587 are the pattern to copy), pages.ts publishedPageNames() (715 to 737, titles by JSON operators) and page-modals.ts (the jsonb_path_exists over every published page at 20 to 26): all as DS-4 and PM-6 say. The two findings name the flag differently (remembered_modal in DS-4, has_remembered_modal with a partial index in DQ-7); the brief uses remembered_modal and adds no index. I kept the migration and the readers as two commits so the migration can be read alone; CI applies a push's migrations before the deploy, so they may share a push."
+}

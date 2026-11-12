@@ -84,7 +84,7 @@
   "After opening, with no paid add-on: in the Vercel dashboard's runtime logs included in the current plan (no Observability Plus, no log drain), take one day's sample, filter page routes by user agent for Bingbot, Applebot, Yandex, AdsBot-Google, Storebot-Google and facebookcatalog, and write their share of page runs into the line left in docs/performance.md."
  ],
  "docs": [
-  "docs/decisions.md: a new row with the next free D-number: htmlLimitedBots narrowed to link-preview fetchers, why (per-request renders for crawlers, a render not kept), what holds it (render-modes.mjs, e2e/crawlers.spec.ts) and how to put a crawler back.",
+  "docs/decisions.md: a new row with the next free D-number: htmlLimitedBots narrowed to link-preview fetchers, why (per-request renders for crawlers, a render not kept), what holds it (render-modes.mjs, e2e/crawlers.spec.ts) and how to put a crawler back. Take the number as the repo then asks: with node scripts/claim-decision.mjs if step 0.41 has made it, and as a file docs/decisions/D{n}.md if step 2.40 has split the decisions.",
   "docs/performance.md and docs/rules/storefront.md: the edits in the commit.",
   "The plan's Progress table under docs/audits/bloat-review-2026-11: step 2.5 Done with date and commit; the two tool checks and the log sample noted as waiting until they are made."
  ],

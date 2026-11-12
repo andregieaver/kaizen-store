@@ -1,0 +1,194 @@
+{
+ "id": "2.12",
+ "goal": "A product listing with Filter and sort (a built product grid, and the standard All products, category and tag pages) sends its unfiltered grid once, in the prerendered shell, streams only the controls, a chosen grid when the address asks for one, and Show more, and reads its list once per request.",
+ "why": "Today the served /s/demo/no/products holds each product's data-item-id 18 times in its markup and 18 in its payload for 9 products (the built grid is the Suspense fallback and an identical grid streams over it), the document is 170,329 bytes raw, and a standard category, tag or products page runs one uncached list query per unfiltered view. After: 9 and 9, at most 120,000 bytes, and no list query on an unfiltered first page.",
+ "read_first": [
+  "docs/rules/storefront.md",
+  "docs/performance.md",
+  "node_modules/next/dist/docs/01-app/01-getting-started/08-caching.md",
+  "src/components/content-grid-section.tsx",
+  "src/components/product-listing.tsx",
+  "src/app/s/[store]/[market]/term-listing.tsx",
+  "src/app/s/[store]/[market]/products/page.tsx",
+  "e2e/listing.spec.ts"
+ ],
+ "depends_on": [
+  {
+   "id": "2.10",
+   "why": "it adds the prop m={t(data.lang)} to every <ContentGridView> call in src/components/content-grid-section.tsx; this step moves those calls, so do it on top and keep the prop on each call"
+  },
+  {
+   "id": "2.2",
+   "why": "it moves the store's routes under a (shop) folder; if src/app/s/[store]/[market]/products/page.tsx is not at that path, the file is at src/app/s/[store]/[market]/(shop)/products/page.tsx and term-listing.tsx beside its importers (find them with: rg -l 'ProductListingFor' src)"
+  }
+ ],
+ "commits": [
+  {
+   "title": "A standard listing reads its first page once: the list it drew is the list it shows",
+   "changes": [
+    {
+     "file": "src/components/product-listing.tsx",
+     "action": "edit",
+     "how": "In ProductListing add one optional prop 'firstPage?: boolean' (JSDoc: 'The given products are this listing's own first page as prerendered (a category, a tag, All products): with nothing chosen they are shown as given and the list is not read again.'). Add after the line 'const asGiven = ...': const ownFirst = Boolean(given) && Boolean(firstPage) && chosen.length === 0 && filters.sort === 'featured' && page === 1 && store.audience !== 'both'; Change the second entry of the Promise.all to three branches in this order: (1) when given && ownFirst: { products: given, total: -1 } (a marker, replaced below); (2) when given && asGiven && !firstPage: { products: given, total: given.length } (today's branch for search, unchanged); (3) else listingPage(store.id, market, scope, filters, viewer, page) as today. After the Promise.all, when ownFirst, set total = Math.max(facets.total, given.length) (the same rule as content-grid-section.tsx line 99). Change nothing else: search (src/components/search-section.tsx) passes no firstPage and behaves as today. ProductListingFor already spreads its props, so it needs no change."
+    },
+    {
+     "file": "src/app/s/[store]/[market]/term-listing.tsx",
+     "action": "edit",
+     "how": "At the <ProductListingFor ...> call (about line 190) add the two props products={products} firstPage. 'products' is the const read by listGridProducts(... sort: 'manual', limit: 48) a few lines above. Nothing else."
+    },
+    {
+     "file": "src/app/s/[store]/[market]/products/page.tsx",
+     "action": "edit",
+     "how": "At the <ProductListingFor ...> call (about line 103) add products={products} firstPage. Nothing else."
+    },
+    {
+     "file": "src/server/listing.int.test.ts",
+     "action": "edit",
+     "how": "Add one case, in the file's own style (it seeds a store at the top and imports './listing'): for the seeded store and its market, (a) listGridProducts(storeId, market, { categoryIds: [], tagIds: [], sort: 'oldest', limit: 48 }) and listingPage(storeId, market, {}, NO_FILTERS, { buyer: 'consumer', audienceBoth: false }, 1) give the same product ids in the same order; (b) for one seeded category id C: listGridProducts(storeId, market, { categoryIds: [C], tagIds: [], orderTerm: C, sort: 'manual', limit: 48 }) and listingPage(storeId, market, { categoryIds: [C], tagIds: [], orderTerm: C }, NO_FILTERS, viewer, 1) give the same ids in the same order. Use the viewer shape the file already uses (type Viewer). This is the proof that the given list is the read list."
+    }
+   ],
+   "checks": [
+    "pnpm exec vitest run --config vitest.integration.config.mts src/server/listing.int.test.ts: passes, the new case included (needs DATABASE_URL seeded with node scripts/db-setup.mjs --seed)",
+    "pnpm lint && pnpm typecheck && pnpm test: each exits 0",
+    "pnpm build && pnpm exec playwright test e2e/listing.spec.ts e2e/wishlist.spec.ts e2e/shop-components.spec.ts: all pass with no test edited"
+   ]
+  },
+  {
+   "title": "A built product grid with Filter and sort is drawn once: the controls and Show more stream beside it",
+   "changes": [
+    {
+     "file": "src/components/content-grid-section.tsx",
+     "action": "edit",
+     "how": "Replace the block at lines 40 to 46 (the Suspense whose fallback is the grid) and the function FilterableGrid (lines 50 to 128). New shape returned from ContentGridSection when block.filters && products && place.owner && listing: one <div className='listing flex flex-col gap-4'> with three children in this order. (1) <Suspense fallback={null}><ListingTop .../></Suspense>. (2) <div data-grid-built><ContentGridView block={block} data={data} notices={notices} eager={eager} tiles={tiles} /></div> (plus the m prop if step 2.10 added it). (3) <Suspense fallback={null}><ListingMore .../></Suspense>. Both new components are async functions in this file and take { block, owner, market, listing, data, notices, eager, tiles }. Write one loader in this file: function gridListing(block, owner, marketCode, listing, data) that returns perRequest('grid-listing:' + block.id + ':' + listing.path, async () => { ... }) with perRequest imported from '@/server/request-memo'. Its body is FilterableGrid's read part moved as it is, in the same order: storeAndMarket + listing.query; return null when no shop; parseListingParams; gridScope (return null when none); getBuyer; viewer; unfiltered; page; the Promise.all of listingFacets, listingPage (only when not (unfiltered && page === 1), with block.limit) and siteTerms; items through withTileFields when listed, else data.items; total; more. It returns { store, market, m, filters, facets, terms, unfiltered, page, listed: Boolean(listed), items, total, more }. If a block has no stable id field (check the type ContentGridBlock in src/lib/page-content.ts; blocks carry 'id'), stop. ListingTop awaits the loader; null gives null (the built grid stays, as today's early returns showed the grid alone). It draws <ListingControls ...> exactly as lines 104 to 112 today, and then, only when the loader's listed is true: {items.length === 0 ? <p>{m.listing.none}</p> : <div data-grid-listed><ContentGridView block={block} data={{ ...data, items }} notices={notices} eager={eager} tiles={tiles} /></div>}; when the list is empty wrap the <p> in <div data-grid-listed> too, so the built grid is hidden. ListingTop returns a fragment (<>...</>), not a div: its children must be direct children of the .listing div so the gap applies and the sibling rule below works. ListingMore awaits the same loader and draws lines 118 to 125 (the count and the Show more link) unchanged, or null. Update the file's header comment: the grid as set is drawn once in the prerendered page; the controls, a chosen grid and Show more stream in per request. Do not touch RecommendingGrid."
+    },
+    {
+     "file": "src/app/globals.css",
+     "action": "edit",
+     "how": "Add one rule with a one-line comment above it ('A listing's chosen grid takes the built grid's place (bloat review step 2.12); with nothing chosen the built grid is the only one.'): .listing > [data-grid-listed] ~ [data-grid-built] { display: none; } Put it beside the other storefront component rules. If step 2.11 has given the storefront its own stylesheet (a second CSS file imported by the store layout), put the rule there instead: it must load on store pages."
+    },
+    {
+     "file": "e2e/listing.spec.ts",
+     "action": "edit",
+     "how": "Two sanctioned locator changes and one new test. (a) The locator 'cards' (line 43: page.locator('main li').filter({ has: page.locator(\"a[href*='/p/demo-']\") })) counts elements in the document, hidden ones too, and a filtered view now keeps the built grid hidden beside the chosen one. Change it to count what a shopper sees: page.locator('main li:visible').filter({ has: ... }). The same for the category assertion at line 80: page.locator(\"main li:visible a[href*='/p/demo-']\"). Change no expected number and no other line. (b) New test 'an unfiltered listing sends each product once': const res = await request.get('/s/demo/no/products'); const html = await res.text(); collect the distinct ids with /data-item-id=\"([^\"]+)\"/g; expect at least 1 id; for each id expect exactly 1 match of 'data-item-id=\"' + id + '\"' (the markup) and exactly 1 match of the payload's form of it (the same pair inside the inline scripts, where quotes are escaped: search for 'data-item-id\\\\\":\\\\\"' + id, and before writing the regex open the saved document once with curl and copy the exact escaped form you see; if it differs, use what you see); expect Buffer.byteLength(html) to be at most 120000 and console.log the figure. (c) New test 'the built grid shows without scripts': a context with javaScriptEnabled: false opens /s/demo/no/products and expects page.locator('main li[data-item-id]:visible') to have the same count as the number of distinct ids in (b)."
+    },
+    {
+     "file": "e2e/products-page.spec.ts",
+     "action": "edit",
+     "how": "Line 33: the same sanctioned change, 'main li' to 'main li:visible' in the 'tiles' locator. No expected number changes."
+    },
+    {
+     "file": "e2e/wishlist.spec.ts",
+     "action": "edit",
+     "how": "Lines 5 to 8: correct the comment only ('The list streams in over the prerendered one' is no longer true: the prerendered list stays and the controls stream in beside it). The locators stay; this file is finished in the next commit."
+    }
+   ],
+   "checks": [
+    "pnpm lint && pnpm typecheck && pnpm test: each exits 0",
+    "pnpm build && pnpm exec playwright test e2e/listing.spec.ts e2e/products-page.spec.ts e2e/custom-fields-ranges.spec.ts e2e/recommendations.spec.ts e2e/shop-components.spec.ts: all pass; the new test prints the document's bytes",
+    "By hand once on pnpm start: open /s/demo/no/products?sort=priceLow with the network throttled to Slow 4G and see one grid at every moment (the built one, then the sorted one); never two."
+   ]
+  },
+  {
+   "title": "The standard category, tag and All products pages draw their list once too",
+   "changes": [
+    {
+     "file": "src/components/product-listing.tsx",
+     "action": "edit",
+     "how": "Add two exported async components beside ProductListing, for the pages that prerender their own first page; ProductListing itself stays for search. Both take the props of ProductListing that the two pages pass (store, market, scope, base, path, products, searchParams). One loader in this file, standardListing(store, market, scope, path, products, searchParams), wrapped in perRequest('std-listing:' + store.id + ':' + path, ...) from '@/server/request-memo': it awaits searchParams, builds filters = parseListingParams(params) and page = listingPageOf(params.page), then does what ProductListing does today down to 'more' (getBuyer, viewer, chosen, the ownFirst rule of commit 1, the Promise.all of listingFacets, the list, the terms through termsIn, campaignNotices). It returns { m, filters, chosen, facets, terms, notices, products, total, more, page, ownFirst }. StandardListingTop draws, as a fragment: <ListingControls ... live /> with the count worked out as ProductListing does; the TrackOnView block exactly as lines 107 to 116; then, only when ownFirst is false: <div data-grid-listed>{products.length === 0 ? <p>{chosen.length > 0 ? m.listing.none : m.noProducts}</p> : <ProductGrid .../>}</div>. StandardListingMore draws lines 122 to 128 (Show more) from the same loader; for these pages givenMore is always false. Then make ProductListing's own body call nothing new: leave it as commit 1 left it."
+    },
+    {
+     "file": "src/app/s/[store]/[market]/term-listing.tsx",
+     "action": "edit",
+     "how": "Replace the Suspense at lines 185 to 198 by: <div className='listing flex flex-col gap-4'> <Suspense fallback={null}><StandardListingTop store={store} market={market} scope={scope} searchParams={query} base={base} path={...same path} products={products} /></Suspense> <div data-grid-built>{products.length === 0 ? <p>{m.noProducts}</p> : <ProductGrid products={products} market={market} m={m} store={store.slug} base={base} notices={notices} />}</div> <Suspense fallback={null}><StandardListingMore ...same props /></Suspense> </div>. Import the two new components in place of ProductListingFor."
+    },
+    {
+     "file": "src/app/s/[store]/[market]/products/page.tsx",
+     "action": "edit",
+     "how": "The same replacement for the Suspense at lines 98 to 104, with scope={{}} and path={path}."
+    },
+    {
+     "file": "e2e/wishlist.spec.ts",
+     "action": "edit",
+     "how": "Run the spec. If the heart locator at line 9 now matches two buttons on a filtered view it does not matter here (the test opens an unfiltered tag page, which holds one list). If the spec fails for another reason, stop."
+    },
+    {
+     "file": "docs/rules/storefront.md",
+     "action": "edit",
+     "how": "In the section 'Sorting and filtering listings' replace the sentence 'Listing pages keep their unfiltered grid prerendered as the <Suspense> fallback.' (about line 355) by: 'Listing pages draw their unfiltered grid once, prerendered (data-grid-built); the controls, a grid only when the address asks for another (data-grid-listed, which hides the built one by one CSS rule) and Show more stream in per request, all from one loader memoised with perRequest().' Keep lines under the file's wrap width."
+    },
+    {
+     "file": "docs/decisions.md",
+     "action": "edit",
+     "how": "Append one row with the next free D-number (pull main first; rg -o '^\\| D[0-9]+' docs/decisions.md | tr -dc '0-9\\n' | sort -n | tail -1, plus 1), beside the wording of D78: a listing's grid is drawn once; the three siblings and the CSS rule; a filtered view keeps the built grid hidden in the document (so tests count visible tiles); a store that sells to both kinds of buyer always reads its standard list per request; the bytes before and after from the e2e's printed figure."
+    },
+    {
+     "file": "docs/audits/bloat-review-2026-11.md",
+     "action": "edit",
+     "how": "Progress table: row 2.12 to Done with the date, the three commits and the printed bytes of /s/demo/no/products; one change-log line."
+    }
+   ],
+   "checks": [
+    "pnpm exec vitest run --config vitest.integration.config.mts src/server/listing.int.test.ts: passes",
+    "pnpm lint && pnpm typecheck && pnpm test: each exits 0",
+    "pnpm build && pnpm exec playwright test e2e/listing.spec.ts e2e/products-page.spec.ts e2e/wishlist.spec.ts e2e/shop-components.spec.ts e2e/custom-fields-ranges.spec.ts e2e/store-pages.spec.ts: all pass"
+   ]
+  }
+ ],
+ "tests": [
+  {
+   "file": "e2e/listing.spec.ts",
+   "proves": "It fails when an unfiltered listing's document holds a product's data-item-id more than once in the markup or in the payload, when the document passes 120,000 bytes, and when the built grid does not show with scripts off."
+  },
+  {
+   "file": "src/server/listing.int.test.ts",
+   "proves": "It fails when the prerendered first page and the listing's own first page differ in products or order, which would make the skipped read show another list."
+  }
+ ],
+ "migration": {
+  "needed": false,
+  "notes": ""
+ },
+ "done_when": [
+  {
+   "check": "pnpm build && pnpm exec playwright test e2e/listing.spec.ts",
+   "expect": "All tests pass, the new 'sends each product once' test included; it prints the bytes of /s/demo/no/products, at most 120000 (170,329 before)."
+  },
+  {
+   "check": "On pnpm start: curl -s http://localhost:3000/s/demo/no/products | grep -o 'data-item-id' | wc -l",
+   "expect": "Twice the number of products shown (18 for the demo's 9; 36 before)."
+  },
+  {
+   "check": "rg -n 'fallback=\\{<ContentGridView|fallback=\\{\\s*$' src/components/content-grid-section.tsx 'src/app/s/[store]/[market]/term-listing.tsx' 'src/app/s/[store]/[market]/products/page.tsx'",
+   "expect": "No line: no listing uses its grid as a Suspense fallback (the recommending grid's 'fallback={fallback}' in content-grid-section.tsx is another shape and stays)."
+  }
+ ],
+ "after_deploy": [
+  "Open https://<a store>/products in production with and without ?sort=priceLow: one grid shows in both; the filter button opens at once.",
+  "curl the production /s/demo/no/products (or the demo store's own address) and count 'data-item-id': twice the number of tiles."
+ ],
+ "docs": [
+  "docs/decisions.md: append one row with the next free D-number (pull main first; rg -o '^\\| D[0-9]+' docs/decisions.md | tr -dc '0-9\\n' | sort -n | tail -1, plus 1). It records: the listing's grid drawn once (step 2.12), as the third commit says.",
+  "docs/rules/storefront.md, Sorting and filtering listings: the reworded sentence of the third commit.",
+  "docs/audits/bloat-review-2026-11.md, Progress table: set row 2.12 to Done with the date, the commits and the document's bytes; add a line to that file's change log."
+ ],
+ "do_not": [
+  "Do not change src/components/search-section.tsx or how search uses ProductListing: its results depend on the query and keep one boundary.",
+  "Do not remove the built grid from the DOM with a script, and do not put the chosen grid after the built grid in the markup: the CSS rule needs the chosen grid first, and React owns those nodes.",
+  "Do not move the Filter button out of the first scripts or load ListingControls lazily (docs/performance.md: a listing's filter button stays in the first scripts; e2e/custom-fields-ranges.spec.ts holds it).",
+  "Do not add 'use cache' to listingPage(): it reads who is buying.",
+  "Do not skip the list read for a store whose audience is 'both' on standard pages: its list depends on the viewer.",
+  "Do not change any expected count or text in the e2e specs; only the two ':visible' locator changes named above are sanctioned.",
+  "Do not touch RecommendingGrid or src/components/recommended-grid.tsx."
+ ],
+ "stop_if": [
+  "The new int case shows the prerendered first page and listingPage() in a different order or with different products: stop after reporting which page; do not ship commit 1.",
+  "An e2e spec fails for a reason other than the hidden built grid being counted (the two sanctioned locator changes).",
+  "The document of /s/demo/no/products holds each id once but is over 120,000 bytes: report the figure and what the largest parts are; do not raise the number in the test.",
+  "Two grids are visible at once at any moment on a filtered address.",
+  "ContentGridBlock has no id to key the per-request loader with.",
+  "The files are not where this brief says and rg -l 'ProductListingFor' src does not find them."
+ ],
+ "executor": "cheap-then-review",
+ "executor_why": "The moves are specified line by line, but it changes a streaming boundary on a store's busiest page and edits two e2e locators, so a stronger model should read the diff and look at a filtered address before the push.",
+ "checked_in_code": "I opened content-grid-section.tsx (the fallback grid at lines 40 to 46, FilterableGrid at 51 to 128), product-listing.tsx, term-listing.tsx, products/page.tsx, listing.ts and request-memo.ts: all are as the findings say, and ProductListingFor is given no products on the two standard pages. Corrected: both findings say e2e/listing.spec.ts passes unchanged with the built grid hidden by a style rule, but its 'cards' locator (and products-page.spec.ts line 33) uses toHaveCount on DOM nodes, which counts hidden tiles, so a filtered view would count both grids; the brief sanctions ':visible' on those locators and nothing else. I chose PM-8's order (chosen grid inside the first boundary, before the built grid) because a plain sibling selector then hides the built grid without :has(). The 120,000-byte bar also leans on steps 2.2 and 2.3, so the brief stops rather than raises it."
+}

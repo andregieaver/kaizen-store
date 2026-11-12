@@ -1,0 +1,292 @@
+{
+ "id": "2.9",
+ "goal": "Each working route (listing, cart, checkout, order, account, wishlist, subscription, deliveries, cookies, private) imports only the sections it draws, through a small parts module of its own on a shared frame; the search page imports none; and the cookie list no longer carries the consent manager.",
+ "why": "Today category, tag, search, cart, checkout, account, order, wishlist and cookies pages each load the same 54 client modules and 778,166 bytes of first scripts, 98 KB more than a built page, because RolePage imports one switch that imports every working page's sections. After: at most 650,000 bytes for a category, a tag, search, account, wishlist, order and cookies, at most 670,000 for the cart and the checkout, and at most 37 client modules on the listing routes.",
+ "read_first": [
+  "docs/rules/admin/website.md",
+  "docs/performance.md",
+  "docs/pci.md",
+  "src/components/store-part-section.tsx",
+  "src/components/role-page.tsx",
+  "src/lib/store-parts.ts",
+  "src/lib/pay-routes.graph.test.ts",
+  "src/components/consent/cookie-policy.tsx"
+ ],
+ "depends_on": [
+  {
+   "id": "0.16",
+   "why": "it moves cartView() out of cart-contents.tsx into a server file; without it the category and tag bundles still pull the cart's forms through the basket notes"
+  },
+  {
+   "id": "2.2",
+   "why": "it moves the route folders into the (shop) group; the new parts files are created there so files and imports move once"
+  },
+  {
+   "id": "1.2",
+   "why": "it makes scripts/bundle-budget.mjs and its baseline of all routes, which this step lowers"
+  },
+  {
+   "id": "1.3",
+   "why": "it makes the first-scripts budgets for eight store routes in e2e/performance.spec.ts, which this step lowers"
+  }
+ ],
+ "commits": [
+  {
+   "title": "The cookie list's settings button no longer carries the consent manager",
+   "changes": [
+    {
+     "file": "src/lib/consent-open.ts",
+     "action": "create",
+     "how": "A pure module, no imports: `export const OPEN_CONSENT_EVENT = \"kaizen:cookie-settings\";`, `export const PENDING_OPEN = \"__kaizenCookieSettingsPending\";`, `export type PendingWindow = Window & { [PENDING_OPEN]?: boolean };`. Copy the comments from src/components/consent/consent-manager.tsx lines 40-49."
+    },
+    {
+     "file": "src/components/consent/cookie-settings-button.tsx",
+     "action": "create",
+     "how": "`\"use client\"`. Move `CookieSettingsButton` here unchanged from consent-manager.tsx (about lines 466-481), importing `OPEN_CONSENT_EVENT`, `PENDING_OPEN` and `PendingWindow` from `@/lib/consent-open`."
+    },
+    {
+     "file": "src/components/consent/consent-manager.tsx",
+     "action": "edit",
+     "how": "Delete the local definitions of `OPEN_CONSENT_EVENT`, `PENDING_OPEN` and `PendingWindow` (lines 43-49) and the `CookieSettingsButton` function; import the three names from `@/lib/consent-open`; and re-export nothing. Then fix every importer: `rg -n 'CookieSettingsButton|OPEN_CONSENT_EVENT' src e2e` and point each import of `CookieSettingsButton` at `@/components/consent/cookie-settings-button` (at least src/components/consent/cookie-policy.tsx line 4 and the footers that draw the button) and each import of `OPEN_CONSENT_EVENT` at `@/lib/consent-open`."
+    }
+   ],
+   "checks": [
+    "rg -n \"from \\\"./consent-manager\\\"|consent/consent-manager\" src --glob '!*.test.*': prints only the lazy import in src/components/lazy/extras.tsx (and consent-manager's own tests), not cookie-policy.tsx",
+    "pnpm lint && pnpm typecheck && pnpm test: exits 0",
+    "pnpm build && pnpm test:e2e -- e2e/cookies.spec.ts e2e/cookie-scan.spec.ts e2e/privacy.spec.ts: exits 0 (the settings button still opens the choices)"
+   ]
+  },
+  {
+   "title": "Each working route loads its own parts: a frame without sections, and a parts module per route",
+   "changes": [
+    {
+     "file": "src/components/store-part-frame.tsx",
+     "action": "create",
+     "how": "A server file with NO import of any section. Imports only: `Suspense` from react; `t`, `type Messages` from `@/lib/i18n`; `type { StorePartBlock } from \"@/lib/page-content\"`; `requirementMet` from `@/lib/store-features`; `drawsOn, shopPartAfterSale, shopPartFeature, type ShopPart, type StoreRoute` from `@/lib/store-parts`; `storeAndMarket, type GridPlace` from `@/server/content-grid`; `type { StorePartDrawer } from \"./page-article\"`; the types Store and Market. Export `type PartDraw = (p: { part: ShopPart; store: Store; market: Market; route: StoreRoute; query: NonNullable<StoreRoute[\"query\"]>; m: Messages; holdsTerms: boolean; holdsGift: boolean }) => ReactNode;` and `export function storePartDrawer(draw: PartDraw): StorePartDrawer`. The returned function is today's `StorePartSection` body: `const route = place.route; if (!route || !drawsOn(block.part, route.part) || !place.owner) return null;` then the same `<Suspense fallback={<div className=\"h-64 animate-pulse rounded-lg bg-surface\" />}>` around an async inner component `Part` that keeps today's lines in today's order: `storeAndMarket(owner, marketCode)`, return null without a shop; the `requirementMet(store, shopPartFeature(part)) || shopPartAfterSale(part)` test; `query = route.query ?? Promise.resolve({})`; `m = t(market.lang)`; `holdsTerms` and `holdsGift` from `route.holds`; and then `return draw({ part, store, market, route, query, m, holdsTerms, holdsGift }) ?? null;`. Move the doc comment of StorePartSection here."
+    },
+    {
+     "file": "src/app/s/[store]/[market]/(shop)/cart/cart-parts.tsx",
+     "action": "create",
+     "how": "`import { storePartDrawer } from \"@/components/store-part-frame\";` plus only the sections its cases need. `export const cartParts = storePartDrawer(({ part, store, market, m, holdsGift }) => { switch (part) { ... default: return null; } });` with these cases copied character for character from store-part-section.tsx lines 97-185: `cart`, `cart_lines`, `cart_gift`, `cart_summary`, `cart_code`, `cart_credits`, `cart_checkout` (keeps `drawGift={!holdsGift}`), `cart_continue`, `cart_upsell`, `free_shipping`, `you_saved`. Imports: the eight Cart* components from `./cart-contents`, `CartUpsell` from `@/components/cart-upsell`, `CartSavedNote, FreeShippingNote` from `@/components/shop-notes`."
+    },
+    {
+     "file": "src/app/s/[store]/[market]/(shop)/checkout/checkout-parts.tsx",
+     "action": "create",
+     "how": "`export const checkoutParts = storePartDrawer(...)` with the cases `checkout` (keeps `drawTerms={!holdsTerms}`), `checkout_items`, `checkout_code`, `checkout_credits`, `checkout_delivery`, `checkout_totals`, `checkout_terms`, `checkout_payment` (keeps `drawTerms={!holdsTerms}`), `checkout_back`, `cart_upsell`, `free_shipping`, `you_saved`. Imports: the nine Checkout* components from `./checkout-section`, CartUpsell, the two notes."
+    },
+    {
+     "file": "src/app/s/[store]/[market]/(shop)/order/[orderId]/order-parts.tsx",
+     "action": "create",
+     "how": "`export const orderParts = storePartDrawer(({ part, store, market, route, query }) => { const order = route.param ? { store, market, orderId: route.param, query } : null; switch (part) { ... } })` with the cases `order` (the `route.param ? <OrderDetails ... /> : null` line) and the twelve `order_*` pieces exactly as today (`order && <OrderStatus {...order} />` and so on). Imports: the thirteen Order* components from `./order-section`."
+    },
+    {
+     "file": "src/app/s/[store]/[market]/(shop)/account/account-parts.tsx",
+     "action": "create",
+     "how": "`export const accountParts = storePartDrawer(...)` with the cases `account` and `sign_in`, copied as they are. Imports `AccountSection, SignInForm` from `./account-section`."
+    },
+    {
+     "file": "src/app/s/[store]/[market]/(shop)/wishlist/wishlist-parts.tsx",
+     "action": "create",
+     "how": "`export const wishlistParts`: the case `wishlist`. Imports `WishlistSection` from `./wishlist-section`."
+    },
+    {
+     "file": "src/app/s/[store]/[market]/(shop)/subscription/[token]/subscription-parts.tsx",
+     "action": "create",
+     "how": "`export const subscriptionParts`: the case `subscription` (keeps the `route.param ?` test). Imports `SubscriptionSection` from `./subscription-section`."
+    },
+    {
+     "file": "src/app/s/[store]/[market]/(shop)/deliveries/deliveries-parts.tsx",
+     "action": "create",
+     "how": "`export const deliveriesParts`: the case `deliveries`. Imports `DeliveriesSection` from `./deliveries-section`."
+    },
+    {
+     "file": "src/app/s/[store]/[market]/(shop)/cookies/cookies-parts.tsx",
+     "action": "create",
+     "how": "`export const cookiesParts`: the case `cookies`. Imports `CookiesSection` from `./cookies-section`."
+    },
+    {
+     "file": "src/app/s/[store]/private/[market]/private-parts.tsx",
+     "action": "create",
+     "how": "`export const privateParts`: the case `private`. Imports `PrivateSection` from `./private-section`."
+    },
+    {
+     "file": "src/app/s/[store]/[market]/(shop)/term-parts.tsx",
+     "action": "create",
+     "how": "`export const termParts`: the cases `category` and `tag` (one body: `route.param ? <TermListing store={store} market={market} kind={part} slug={route.param} query={query} /> : null`), `free_shipping` and `you_saved`. Imports `TermListing` from `./term-listing` and the two notes. term-listing.tsx will import `termParts` back: if `pnpm typecheck` or the build reports an import cycle, split term-listing.tsx in two: keep the `TermListing` component (and what only it uses) in a new file `term-listing-view.tsx`, keep the page wrappers (`termMetadata`, `termStaticParams`, `TermProducts`, the RolePage call) in term-listing.tsx, and import TermListing from the new file in both places."
+    },
+    {
+     "file": "src/components/role-page.tsx",
+     "action": "edit",
+     "how": "Remove `import { StorePartSection } from \"@/components/store-part-section\";`. Add `import type { StorePartDrawer } from \"@/components/page-article\";`. Add the prop `storePart?: StorePartDrawer` to RolePage's props (with the comment `What draws this route's own working components: the route's parts module.`). Change line 55 from `storePart={route ? StorePartSection : undefined}` to `storePart={route ? storePart : undefined}`. In the doc comment replace `(`StorePartSection`)` with `(the route's parts module, `storePartDrawer()`)`."
+    },
+    {
+     "file": "src/app/s/[store]/[market]/cart/page.tsx",
+     "action": "edit",
+     "how": "Path as of today; after step 2.2 this file is under `src/app/s/[store]/[market]/(shop)/` with the same name: edit it there. Import `cartParts` from `./cart-parts` and add the prop `storePart={cartParts}` to the `<RolePage ... role=\"cart\" ...>` element (about line 47). Change nothing else."
+    },
+    {
+     "file": "src/app/s/[store]/[market]/checkout/page.tsx",
+     "action": "edit",
+     "how": "Path as of today; after step 2.2 this file is under `src/app/s/[store]/[market]/(shop)/` with the same name: edit it there. Import `checkoutParts` from `./checkout-parts` and add the prop `storePart={checkoutParts}` to the `<RolePage ... role=\"checkout\" ...>` element (about line 35). Change nothing else."
+    },
+    {
+     "file": "src/app/s/[store]/[market]/order/[orderId]/page.tsx",
+     "action": "edit",
+     "how": "Path as of today; after step 2.2 this file is under `src/app/s/[store]/[market]/(shop)/` with the same name: edit it there. Import `orderParts` from `./order-parts` and add the prop `storePart={orderParts}` to the `<RolePage ... role=\"order\" ...>` element (about line 37). Change nothing else."
+    },
+    {
+     "file": "src/app/s/[store]/[market]/account/page.tsx",
+     "action": "edit",
+     "how": "Path as of today; after step 2.2 this file is under `src/app/s/[store]/[market]/(shop)/` with the same name: edit it there. Import `accountParts` from `./account-parts` and add `storePart={accountParts}` to BOTH `<RolePage>` elements (role `account`, about line 42, and role `sign_in`, about line 48)."
+    },
+    {
+     "file": "src/app/s/[store]/[market]/wishlist/page.tsx",
+     "action": "edit",
+     "how": "Path as of today; after step 2.2 this file is under `src/app/s/[store]/[market]/(shop)/` with the same name: edit it there. Import `wishlistParts` from `./wishlist-parts` and add the prop `storePart={wishlistParts}` to the `<RolePage ... role=\"wishlist\" ...>` element (about line 37). Change nothing else."
+    },
+    {
+     "file": "src/app/s/[store]/[market]/subscription/[token]/page.tsx",
+     "action": "edit",
+     "how": "Path as of today; after step 2.2 this file is under `src/app/s/[store]/[market]/(shop)/` with the same name: edit it there. Import `subscriptionParts` from `./subscription-parts` and add the prop `storePart={subscriptionParts}` to the `<RolePage ... role=\"subscription\" ...>` element (about line 33). Change nothing else."
+    },
+    {
+     "file": "src/app/s/[store]/[market]/deliveries/page.tsx",
+     "action": "edit",
+     "how": "Path as of today; after step 2.2 this file is under `src/app/s/[store]/[market]/(shop)/` with the same name: edit it there. Import `deliveriesParts` from `./deliveries-parts` and add the prop `storePart={deliveriesParts}` to the `<RolePage ... role=\"deliveries\" ...>` element (about line 39). Change nothing else."
+    },
+    {
+     "file": "src/app/s/[store]/[market]/cookies/page.tsx",
+     "action": "edit",
+     "how": "Path as of today; after step 2.2 this file is under `src/app/s/[store]/[market]/(shop)/` with the same name: edit it there. Import `cookiesParts` from `./cookies-parts` and add the prop `storePart={cookiesParts}` to the `<RolePage ... role=\"cookies\" ...>` element (about line 33). Change nothing else."
+    },
+    {
+     "file": "src/app/s/[store]/private/[market]/page.tsx",
+     "action": "edit",
+     "how": "Import `privateParts` from `./private-parts` and add `storePart={privateParts}` to the `<RolePage ... role=\"private\" ...>` element (about line 32)."
+    },
+    {
+     "file": "src/app/s/[store]/[market]/term-listing.tsx",
+     "action": "edit",
+     "how": "Path as of today; after step 2.2 this file is under `src/app/s/[store]/[market]/(shop)/` with the same name: edit it there. Import `termParts` from `./term-parts` and add `storePart={termParts}` to the `<RolePage ... role={kind} ...>` element (about line 124)."
+    },
+    {
+     "file": "src/components/store-part-section.tsx",
+     "action": "delete",
+     "how": "Delete it after every case has a home: all 44 `case` labels of its switch must appear in exactly the parts files named above (`cart_upsell`, `free_shipping`, `you_saved` in more than one). `src/app/s/[store]/[market]/search/page.tsx` gets no `storePart`: it passes no route and draws no part. Then correct the comments that name `StorePartSection`: src/components/page-article.tsx lines 44 and 369, src/components/page-block.tsx line 127, src/components/lazy/shop.tsx line 11, src/components/store-page-article.tsx line 27, src/lib/part-features.ts line 6 (say `the route's parts module (`storePartDrawer()`)`)."
+    },
+    {
+     "file": "src/lib/store-part-drawers.scan.test.ts",
+     "action": "create",
+     "how": "Vitest, reads sources with node:fs. A map from each working route (`StorePart` key) to its parts file: cart, checkout, order, account, sign_in (account-parts.tsx), wishlist, subscription, deliveries, cookies, private, category and tag (term-parts.tsx); build it so a StorePart key missing from the map fails the test. For every `part` of `SHOP_PART_KEYS` (src/lib/store-parts.ts) and every route `r` with `drawsOn(part, r)`, expect the text of r's parts file to contain `case \"` + part + `\":`. Second test: src/components/store-part-frame.tsx has no import whose path contains `/app/s/` or ends in `-section`, `cart-contents`, `cart-upsell` or `shop-notes`. Third test: src/components/role-page.tsx imports nothing from `store-part-section` and no parts file."
+    },
+    {
+     "file": "src/lib/pay-routes.graph.test.ts",
+     "action": "edit",
+     "how": "The door is gone. Change `const stop = (file: string) => rel(file) === \"components/store-part-section.tsx\";` (about line 119) to `const stop = (_file: string) => false;` or remove `stop` and simplify `stopAtExtras` to `(file) => rel(file) === EXTRAS`; rewrite the comment above it: each pay route's parts module imports only its own sections, so the walk goes through it. Keep the extras' door and every assertion. If the walk now finds a forbidden module on the cart, checkout or order route, that is a real finding: see stop_if."
+    },
+    {
+     "file": "src/lib/storefront-bundle.scan.test.ts",
+     "action": "edit",
+     "how": "Add a walk from src/app/s/[store]/[market]/(shop)/term-listing.tsx and from src/app/s/[store]/[market]/search/page.tsx (use the file's existing walker; after step 2.2 the search page is under (shop)/) that fails, naming the module, if it reaches `cart/cart-contents.tsx`, `components/checkout-button.tsx`, `checkout/checkout-section.tsx`, `account/account-section.tsx` or `components/consent/consent-manager.tsx`."
+    },
+    {
+     "file": "e2e/performance.spec.ts",
+     "action": "edit",
+     "how": "In the first-scripts budget table of step 1.3 (script tags of the server's HTML, nomodule left out) set: /s/demo/no/category/belysning, a tag page and /s/demo/no/search?q=lampe at most 650,000; /s/demo/no/cart and /s/demo/no/checkout at most 670,000; /s/demo/no/account, /s/demo/no/wishlist, an order page and /s/demo/no/cookies at most 650,000. Where the build measures less, write the measured figure plus the table's 3%, never above these."
+    },
+    {
+     "file": "scripts/{bundle-budget.baseline.json}",
+     "action": "edit",
+     "how": "The baseline of step 1.2 (find its real name: `rg -n baseline scripts/bundle-budget.mjs`). After `pnpm build`, run `node scripts/bundle-budget.mjs` in the mode that lowers the baseline (read its header) so the working routes' figures fall to what the build measures. No route's figure may rise."
+    },
+    {
+     "file": "docs/performance.md",
+     "action": "edit",
+     "how": "In the bullet `**The shops' working parts load only where they draw** (D461)` (about line 103) add: since bloat review step 2.9 each working route has its own parts module on `storePartDrawer()` (src/components/store-part-frame.tsx), so a listing no longer carries the cart's, checkout's and account's forms; with the figures before (778,166 bytes, 54 client modules) and after. Correct the last sentence: the cookie list's settings button is its own file and no longer carries the banner."
+    },
+    {
+     "file": "docs/rules/admin/website.md",
+     "action": "edit",
+     "how": "`rg -n StorePartSection docs/rules CLAUDE.md docs/pci.md` and, in docs/rules/admin/website.md (about lines 88-98) and docs/pci.md, replace `a case in `StorePartSection`` with `a case in the route's parts module (`cart-parts.tsx`, `checkout-parts.tsx`, ..., held by `store-part-drawers.scan.test.ts`)`. If CLAUDE.md names it, put the corrected line in the commit message for the owner; do not edit CLAUDE.md."
+    }
+   ],
+   "checks": [
+    "pnpm exec vitest run src/lib/store-part-drawers.scan.test.ts src/lib/pay-routes.graph.test.ts src/lib/storefront-bundle.scan.test.ts src/lib/store-parts.test.ts src/lib/shop-notes.test.ts src/components/checkout-terms.test.ts: exits 0",
+    "rg -n 'store-part-section|StorePartSection' src: prints nothing",
+    "pnpm lint && pnpm typecheck && pnpm test: exits 0",
+    "pnpm test:int: exits 0",
+    "pnpm build && node docs/audits/bloat-review-2026-11/scripts/server-graph.mjs: lists at most 37 client modules for /s/[store]/[market]/category/[slug], /tag/[slug] and /search (54 before); read the script's header for its arguments",
+    "node scripts/bundle-budget.mjs: exits 0 with the lowered baseline",
+    "pnpm test:e2e -- e2e/performance.spec.ts e2e/page-roles.spec.ts e2e/cart.spec.ts e2e/vat-reverse-charge.spec.ts e2e/bookings.spec.ts e2e/wishlist.spec.ts e2e/custom-fields-ranges.spec.ts e2e/shop-components.spec.ts e2e/account.spec.ts e2e/deliveries.spec.ts e2e/cookies.spec.ts e2e/private-mode.spec.ts e2e/listing.spec.ts e2e/search.spec.ts e2e/csp.spec.ts e2e/ab-working-pages.spec.ts e2e/terms.spec.ts: exits 0"
+   ]
+  }
+ ],
+ "tests": [
+  {
+   "file": "src/lib/store-part-drawers.scan.test.ts",
+   "proves": "Fails when a shop part has no case in the parts file of a route it draws on (a new part left out of a route), when the frame imports a section, or when RolePage imports the sections again."
+  },
+  {
+   "file": "e2e/performance.spec.ts",
+   "proves": "Fails when a category, tag, search, account, wishlist, order or cookies page passes 650,000 bytes of first scripts, or the cart or checkout 670,000."
+  },
+  {
+   "file": "src/lib/storefront-bundle.scan.test.ts",
+   "proves": "Fails, naming the module, when a listing or the search page reaches the cart's, checkout's or account's forms or the consent manager again."
+  },
+  {
+   "file": "src/lib/pay-routes.graph.test.ts",
+   "proves": "Fails when a pay route's own imports reach a module forbidden on pay routes, now walked without the old door."
+  }
+ ],
+ "migration": {
+  "needed": false,
+  "notes": ""
+ },
+ "done_when": [
+  {
+   "check": "pnpm build && pnpm test:e2e -- e2e/performance.spec.ts",
+   "expect": "Passes with first scripts at most 650,000 bytes raw for a category, a tag and the search page, at most 670,000 for the cart and the checkout, and at most 650,000 for the account, wishlist, order and cookies pages (778,166 each before)."
+  },
+  {
+   "check": "node docs/audits/bloat-review-2026-11/scripts/server-graph.mjs",
+   "expect": "At most 37 client modules for the listing routes (54 before)."
+  },
+  {
+   "check": "node scripts/bundle-budget.mjs",
+   "expect": "Exits 0; the baseline's figures for the working routes are the lowered ones."
+  },
+  {
+   "check": "pnpm exec vitest run src/lib/store-part-drawers.scan.test.ts",
+   "expect": "Passes; and fails when one `case` is removed from cart-parts.tsx (try it, then put it back)."
+  }
+ ],
+ "after_deploy": [
+  "On the template store open a category, the search page, the cart with one line, the checkout, My account, the wishlist and the cookies page: each draws as before; on the cookies page the settings button opens the choices.",
+  "The release job's log: the bundle budget passes; /api/health reports the commit."
+ ],
+ "docs": [
+  "docs/decisions.md: a new row with the next free D-number: one parts module per working route on storePartDrawer(), the scan that holds it, the cookie settings button split from the consent manager, and the figures before and after. Say it refines D113, D117, D461 and D558. Take the number as the repo then asks: with node scripts/claim-decision.mjs if step 0.41 has made it, and as a file docs/decisions/D{n}.md if step 2.40 has split the decisions.",
+  "docs/performance.md, docs/rules/admin/website.md and docs/pci.md: the corrections in commit 2.",
+  "The plan's Progress table under docs/audits/bloat-review-2026-11: step 2.9 Done with date and commits and the measured figures. docs/platform-parity.md needs no row: Kaizena Flow's site draws no cart or listing."
+ ],
+ "do_not": [
+  "Do not load any form lazily: the written rule (docs/performance.md, 'what a visitor presses at once stays in the page's first scripts') stands; each form stays in its own route's scripts.",
+  "Do not change the order of the checks in the frame (route, drawsOn, owner, Suspense, storeAndMarket, the feature test): a part of a feature that is off must still draw nothing, and an after-sale part must still draw.",
+  "Do not change a case's JSX while moving it (`drawGift={!holdsGift}`, `drawTerms={!holdsTerms}`, the `order &&` and `route.param ?` guards).",
+  "Do not give the search page a parts module.",
+  "Do not weaken src/lib/pay-routes.graph.test.ts: remove only the door.",
+  "Do not edit CLAUDE.md, and do not raise any budget."
+ ],
+ "stop_if": [
+  "cartView() is still defined in cart/cart-contents.tsx (`rg -n 'export (async )?function cartView' src`): step 0.16 is not done; the listing budgets cannot be met.",
+  "The route folders are not under (shop)/: step 2.2 is not done. Stop, so files are not created in a folder that is about to move.",
+  "pay-routes.graph.test.ts finds a forbidden module on a pay route once the door is removed: report the chain it prints.",
+  "A budget is missed by more than 5,000 bytes after both commits: report the route and the output of node docs/audits/bloat-review-2026-11/scripts/scripts-by-page.mjs for it.",
+  "An import cycle remains after splitting term-listing.tsx as described.",
+  "e2e/page-roles.spec.ts fails: a part draws nothing on its built working page."
+ ],
+ "executor": "cheap-then-review",
+ "executor_why": "It is a move of 44 switch cases into ten files with a scan test that proves none was lost, but it touches the cart, checkout and order routes and the pay-routes guard, so a stronger model should read the diff before it is pushed.",
+ "checked_in_code": "I opened store-part-section.tsx (186 lines, 44 cases), role-page.tsx (the import at line 6 and line 55), the eleven callers of RolePage and the search page (no route), StorePartDrawer in page-article.tsx, drawsOn and SHOP_PART_KEYS in store-parts.ts, the door in pay-routes.graph.test.ts:119 and CookieSettingsButton in consent-manager.tsx:467: all as SC-2 and BN-9 say. Corrections: the budgets are the step's (650,000 and 670,000), tighter than SC-2's 701,000 and BN-9's 715,000, which were measured before step 0.16's cuts; BN-9's step 1 (cartView to a server file) is step 0.16's and is a dependency here, not a commit; the module count uses docs/audits/bloat-review-2026-11/scripts/server-graph.mjs, which is in the repo, as the step says. The parts files are created under the (shop) group of step 2.2."
+}

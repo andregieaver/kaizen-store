@@ -1,0 +1,271 @@
+{
+  "id": "0.18",
+  "goal": "A save in the admin draws its route once: the server action refreshes, and no client part calls router.refresh() after an action that already did.",
+  "why": "Today 90 client router.refresh() calls sit in 50 admin files, and at least 39 of them follow an action that has already redrawn the route, so the whole shell and page render twice per save. After, about 50 remain (polls, fetches to route handlers, actions that do not refresh) and none is a double.",
+  "read_first": [
+    "docs/rules/admin/platform.md",
+    "src/server/store-action.ts",
+    "src/server/refresh.ts",
+    "node_modules/next/dist/docs/01-app/03-api-reference/04-functions/refresh.md",
+    "src/components/admin/passport-editor.tsx",
+    "src/app/admin/(gated)/[store]/products/[productId]/passport/actions.ts",
+    "src/components/admin/admin-catalogues.scan.test.ts"
+  ],
+  "depends_on": [],
+  "commits": [
+    {
+      "title": "A scan test counts router.refresh() in the admin, and the rule says the action refreshes",
+      "changes": [
+        {
+          "file": "src/components/admin/router-refresh.scan.test.ts",
+          "action": "create",
+          "how": "In the style of src/components/admin/admin-catalogues.scan.test.ts (its files() walker and ROOT). Walk every .tsx file under src/components/admin and src/app/admin (tests left out) and count matches of /router\\.refresh\\(\\)/g per file. Compare with a baseline object `BASELINE: Record<string, number>` written in the test file itself (repo-relative path to count), holding today's exact counts: fill it by running `rg -c 'router\\.refresh\\(\\)' src/components/admin src/app/admin -g '*.tsx'` (today: 90 calls in 50 files). Three cases: (1) no file has more calls than its baseline, and no file outside the baseline has any, with the message 'the action refreshes; a client part does not call router.refresh() after a server action (docs/rules/admin/platform.md)'; (2) no baseline entry is higher than the real count (so the baseline must be lowered in the same commit that removes a call); (3) the total equals the sum of the baseline. Add a doc comment naming the calls that are not after an action and stay: refresh-while.tsx, analytics/live-refresh.tsx, pack-pictures.tsx's PackPicturesWatch, session.tsx's recovery, admin-text.tsx's language change, data/job-tracker.tsx."
+        },
+        {
+          "file": "docs/rules/admin/platform.md",
+          "action": "edit",
+          "how": "Under the heading that starts '## Server actions run through `storeAction()` / `platformAction()`' add one bullet after the existing one: '- The action refreshes; a client part does not. An action that changes what the route shows calls `refresh()` (or `redirect()`), and its answer already carries the route drawn again, so the client never calls `router.refresh()` after it (that draws every layout and the page a second time). `router.refresh()` stays only where no action refreshed: a poll, a fetch to a route handler, an action that by design does not refresh. `src/components/admin/router-refresh.scan.test.ts` holds the count per file, which may only fall.' Wrap at the file's line width."
+        }
+      ],
+      "checks": [
+        "pnpm exec vitest run src/components/admin/router-refresh.scan.test.ts : passes with a total of 90",
+        "pnpm lint && pnpm typecheck && pnpm test : exits 0"
+      ]
+    },
+    {
+      "title": "Inventory saves draw once",
+      "changes": [
+        {
+          "file": "src/components/admin/inventory/inventory-table.tsx",
+          "action": "edit",
+          "how": "Lines 139 (tools.adjust -> adjustStockAction) and 151 (tools.setPolicy -> setPoliciesAction). At each listed line: open the client file and the action named after the arrow (find it with `rg -n 'export async function <ActionName>' src/app/admin src/server`). Confirm two things: (a) the action's body calls `refresh()` from 'next/cache' (directly, or through storeAction()/platformAction() with a handler that does) on its success path; (b) the client's `router.refresh()` runs only on that same success path, right after the awaited action. If both hold, delete the `router.refresh();` line. If `router` is then unused in the file, delete `const router = useRouter();` and the useRouter import. If (a) does not hold for every action the prop can be bound to, leave the line and add the file and line to the hand-back list. Change nothing else in the file."
+        },
+        {
+          "file": "src/components/admin/inventory/locations-view.tsx",
+          "action": "edit",
+          "how": "Lines 115 (tools.deactivate -> deactivateLocationAction), 128 (tools.reactivate -> reactivateLocationAction) and 92 (the save of a location: read which action `job` is at that line; the actions are in src/app/admin/(gated)/[store]/inventory/locations/actions.ts lines 27 to 68, which all call refresh()). At each listed line: open the client file and the action named after the arrow (find it with `rg -n 'export async function <ActionName>' src/app/admin src/server`). Confirm two things: (a) the action's body calls `refresh()` from 'next/cache' (directly, or through storeAction()/platformAction() with a handler that does) on its success path; (b) the client's `router.refresh()` runs only on that same success path, right after the awaited action. If both hold, delete the `router.refresh();` line. If `router` is then unused in the file, delete `const router = useRouter();` and the useRouter import. If (a) does not hold for every action the prop can be bound to, leave the line and add the file and line to the hand-back list. Change nothing else in the file."
+        },
+        {
+          "file": "src/components/admin/inventory/stock-import-flow.tsx",
+          "action": "edit",
+          "how": "Line 135 (check -> checkStockImportAction). Line 171 (`step`) is unresolved: read which action it awaits and apply the same rule. At each listed line: open the client file and the action named after the arrow (find it with `rg -n 'export async function <ActionName>' src/app/admin src/server`). Confirm two things: (a) the action's body calls `refresh()` from 'next/cache' (directly, or through storeAction()/platformAction() with a handler that does) on its success path; (b) the client's `router.refresh()` runs only on that same success path, right after the awaited action. If both hold, delete the `router.refresh();` line. If `router` is then unused in the file, delete `const router = useRouter();` and the useRouter import. If (a) does not hold for every action the prop can be bound to, leave the line and add the file and line to the hand-back list. Change nothing else in the file."
+        },
+        {
+          "file": "src/components/admin/inventory/suppliers-view.tsx",
+          "action": "edit",
+          "how": "Lines 79 (save -> saveSupplierAction or saveWaitAction), 262 (mark -> markVariantsAction), 454 (make -> makeKeyAction), 471 (revoke -> revokeKeyAction), 497 (answer -> answerOrderAction). At each listed line: open the client file and the action named after the arrow (find it with `rg -n 'export async function <ActionName>' src/app/admin src/server`). Confirm two things: (a) the action's body calls `refresh()` from 'next/cache' (directly, or through storeAction()/platformAction() with a handler that does) on its success path; (b) the client's `router.refresh()` runs only on that same success path, right after the awaited action. If both hold, delete the `router.refresh();` line. If `router` is then unused in the file, delete `const router = useRouter();` and the useRouter import. If (a) does not hold for every action the prop can be bound to, leave the line and add the file and line to the hand-back list. Change nothing else in the file."
+        },
+        {
+          "file": "src/components/admin/router-refresh.scan.test.ts",
+          "action": "edit",
+          "how": "Lower the BASELINE entries of the four files to their new counts (delete an entry that reaches 0)."
+        }
+      ],
+      "checks": [
+        "pnpm exec vitest run src/components/admin/router-refresh.scan.test.ts : passes",
+        "pnpm lint && pnpm typecheck && pnpm test : exits 0",
+        "E2E_SIGNED_IN=1 build and stand-in as CI's signed-in job sets them (.github/workflows/ci.yml, job signed-in), then pnpm exec playwright test --project=signed-in e2e/signed-in/inventory.spec.ts e2e/signed-in/stock-transfers.spec.ts e2e/signed-in/suppliers.spec.ts : pass (the table shows the new figure after a save without a reload)"
+      ]
+    },
+    {
+      "title": "Moving-in, redirects and import saves draw once",
+      "changes": [
+        {
+          "file": "src/components/admin/moving/pipedrive-move.tsx",
+          "action": "edit",
+          "how": "Line 66 (actions.start -> startPipedriveAction, startAddressAction, startMoveAction or startCopyAction). Line 53 (actions.advance) STAYS: its actions do not refresh. Line 162 (connect -> connectShopifyAction, connectWooAction, connectPipedriveAction, connectMoverAction) is mixed: read all four; delete only if all four refresh on success. At each listed line: open the client file and the action named after the arrow (find it with `rg -n 'export async function <ActionName>' src/app/admin src/server`). Confirm two things: (a) the action's body calls `refresh()` from 'next/cache' (directly, or through storeAction()/platformAction() with a handler that does) on its success path; (b) the client's `router.refresh()` runs only on that same success path, right after the awaited action. If both hold, delete the `router.refresh();` line. If `router` is then unused in the file, delete `const router = useRouter();` and the useRouter import. If (a) does not hold for every action the prop can be bound to, leave the line and add the file and line to the hand-back list. Change nothing else in the file."
+        },
+        {
+          "file": "src/components/admin/moving/shop-address.tsx",
+          "action": "edit",
+          "how": "Line 79 (actions.start). Line 39 (actions.check) STAYS. At each listed line: open the client file and the action named after the arrow (find it with `rg -n 'export async function <ActionName>' src/app/admin src/server`). Confirm two things: (a) the action's body calls `refresh()` from 'next/cache' (directly, or through storeAction()/platformAction() with a handler that does) on its success path; (b) the client's `router.refresh()` runs only on that same success path, right after the awaited action. If both hold, delete the `router.refresh();` line. If `router` is then unused in the file, delete `const router = useRouter();` and the useRouter import. If (a) does not hold for every action the prop can be bound to, leave the line and add the file and line to the hand-back list. Change nothing else in the file."
+        },
+        {
+          "file": "src/components/admin/moving/shop-copy.tsx",
+          "action": "edit",
+          "how": "Line 100 (action -> importListAction). Line 86 (actions.advance) STAYS. At each listed line: open the client file and the action named after the arrow (find it with `rg -n 'export async function <ActionName>' src/app/admin src/server`). Confirm two things: (a) the action's body calls `refresh()` from 'next/cache' (directly, or through storeAction()/platformAction() with a handler that does) on its success path; (b) the client's `router.refresh()` runs only on that same success path, right after the awaited action. If both hold, delete the `router.refresh();` line. If `router` is then unused in the file, delete `const router = useRouter();` and the useRouter import. If (a) does not hold for every action the prop can be bound to, leave the line and add the file and line to the hand-back list. Change nothing else in the file."
+        },
+        {
+          "file": "src/components/admin/moving/shop-move.tsx",
+          "action": "edit",
+          "how": "Line 85 (action -> importListAction). Line 62 (actions.advance) STAYS. At each listed line: open the client file and the action named after the arrow (find it with `rg -n 'export async function <ActionName>' src/app/admin src/server`). Confirm two things: (a) the action's body calls `refresh()` from 'next/cache' (directly, or through storeAction()/platformAction() with a handler that does) on its success path; (b) the client's `router.refresh()` runs only on that same success path, right after the awaited action. If both hold, delete the `router.refresh();` line. If `router` is then unused in the file, delete `const router = useRouter();` and the useRouter import. If (a) does not hold for every action the prop can be bound to, leave the line and add the file and line to the hand-back list. Change nothing else in the file."
+        },
+        {
+          "file": "src/components/admin/moving/shop-makers.tsx",
+          "action": "edit",
+          "how": "Line 89 (save -> saveVendorMakerAction). At each listed line: open the client file and the action named after the arrow (find it with `rg -n 'export async function <ActionName>' src/app/admin src/server`). Confirm two things: (a) the action's body calls `refresh()` from 'next/cache' (directly, or through storeAction()/platformAction() with a handler that does) on its success path; (b) the client's `router.refresh()` runs only on that same success path, right after the awaited action. If both hold, delete the `router.refresh();` line. If `router` is then unused in the file, delete `const router = useRouter();` and the useRouter import. If (a) does not hold for every action the prop can be bound to, leave the line and add the file and line to the hand-back list. Change nothing else in the file."
+        },
+        {
+          "file": "src/components/admin/moving/shop-undo.tsx",
+          "action": "edit",
+          "how": "Line 45 (undo -> undoCopyAction). At each listed line: open the client file and the action named after the arrow (find it with `rg -n 'export async function <ActionName>' src/app/admin src/server`). Confirm two things: (a) the action's body calls `refresh()` from 'next/cache' (directly, or through storeAction()/platformAction() with a handler that does) on its success path; (b) the client's `router.refresh()` runs only on that same success path, right after the awaited action. If both hold, delete the `router.refresh();` line. If `router` is then unused in the file, delete `const router = useRouter();` and the useRouter import. If (a) does not hold for every action the prop can be bound to, leave the line and add the file and line to the hand-back list. Change nothing else in the file."
+        },
+        {
+          "file": "src/components/admin/moving/shopify-closed-button.tsx",
+          "action": "edit",
+          "how": "Line 20 (close -> shopifyClosedAction). At each listed line: open the client file and the action named after the arrow (find it with `rg -n 'export async function <ActionName>' src/app/admin src/server`). Confirm two things: (a) the action's body calls `refresh()` from 'next/cache' (directly, or through storeAction()/platformAction() with a handler that does) on its success path; (b) the client's `router.refresh()` runs only on that same success path, right after the awaited action. If both hold, delete the `router.refresh();` line. If `router` is then unused in the file, delete `const router = useRouter();` and the useRouter import. If (a) does not hold for every action the prop can be bound to, leave the line and add the file and line to the hand-back list. Change nothing else in the file."
+        },
+        {
+          "file": "src/components/admin/moving/shopify-connect.tsx",
+          "action": "edit",
+          "how": "Line 130 (disconnect -> disconnectWooAction, disconnectShopifyAction or disconnectPipedriveAction). At each listed line: open the client file and the action named after the arrow (find it with `rg -n 'export async function <ActionName>' src/app/admin src/server`). Confirm two things: (a) the action's body calls `refresh()` from 'next/cache' (directly, or through storeAction()/platformAction() with a handler that does) on its success path; (b) the client's `router.refresh()` runs only on that same success path, right after the awaited action. If both hold, delete the `router.refresh();` line. If `router` is then unused in the file, delete `const router = useRouter();` and the useRouter import. If (a) does not hold for every action the prop can be bound to, leave the line and add the file and line to the hand-back list. Change nothing else in the file."
+        },
+        {
+          "file": "src/components/admin/redirects/not-found-table.tsx",
+          "action": "edit",
+          "how": "Line 102 (actions.redirect -> redirectMissingAction). Line 114 is unresolved: read it; keep it unless it follows an action that refreshes. At each listed line: open the client file and the action named after the arrow (find it with `rg -n 'export async function <ActionName>' src/app/admin src/server`). Confirm two things: (a) the action's body calls `refresh()` from 'next/cache' (directly, or through storeAction()/platformAction() with a handler that does) on its success path; (b) the client's `router.refresh()` runs only on that same success path, right after the awaited action. If both hold, delete the `router.refresh();` line. If `router` is then unused in the file, delete `const router = useRouter();` and the useRouter import. If (a) does not hold for every action the prop can be bound to, leave the line and add the file and line to the hand-back list. Change nothing else in the file."
+        },
+        {
+          "file": "src/components/admin/redirects/old-shop-check.tsx",
+          "action": "edit",
+          "how": "Lines 49 (read -> readOldShopAction), 132 (fix -> fixOldShopAction), 174 (forget -> forgetOldShopAction), 241 (redirect -> redirectOldAddressAction). At each listed line: open the client file and the action named after the arrow (find it with `rg -n 'export async function <ActionName>' src/app/admin src/server`). Confirm two things: (a) the action's body calls `refresh()` from 'next/cache' (directly, or through storeAction()/platformAction() with a handler that does) on its success path; (b) the client's `router.refresh()` runs only on that same success path, right after the awaited action. If both hold, delete the `router.refresh();` line. If `router` is then unused in the file, delete `const router = useRouter();` and the useRouter import. If (a) does not hold for every action the prop can be bound to, leave the line and add the file and line to the hand-back list. Change nothing else in the file."
+        },
+        {
+          "file": "src/components/admin/redirects/redirect-import-flow.tsx",
+          "action": "edit",
+          "how": "Line 139 (check -> checkRedirectImportAction). Line 193 (`step`): read and apply the rule. At each listed line: open the client file and the action named after the arrow (find it with `rg -n 'export async function <ActionName>' src/app/admin src/server`). Confirm two things: (a) the action's body calls `refresh()` from 'next/cache' (directly, or through storeAction()/platformAction() with a handler that does) on its success path; (b) the client's `router.refresh()` runs only on that same success path, right after the awaited action. If both hold, delete the `router.refresh();` line. If `router` is then unused in the file, delete `const router = useRouter();` and the useRouter import. If (a) does not hold for every action the prop can be bound to, leave the line and add the file and line to the hand-back list. Change nothing else in the file."
+        },
+        {
+          "file": "src/components/admin/redirects/redirect-table.tsx",
+          "action": "edit",
+          "how": "Line 97 (actions.remove -> deleteRedirectsAction). At each listed line: open the client file and the action named after the arrow (find it with `rg -n 'export async function <ActionName>' src/app/admin src/server`). Confirm two things: (a) the action's body calls `refresh()` from 'next/cache' (directly, or through storeAction()/platformAction() with a handler that does) on its success path; (b) the client's `router.refresh()` runs only on that same success path, right after the awaited action. If both hold, delete the `router.refresh();` line. If `router` is then unused in the file, delete `const router = useRouter();` and the useRouter import. If (a) does not hold for every action the prop can be bound to, leave the line and add the file and line to the hand-back list. Change nothing else in the file."
+        },
+        {
+          "file": "src/components/admin/customer-import-flow.tsx",
+          "action": "edit",
+          "how": "Line 122 (check -> checkHistoryImportAction or checkCustomerImportAction). Line 162 (`step`): read and apply the rule. At each listed line: open the client file and the action named after the arrow (find it with `rg -n 'export async function <ActionName>' src/app/admin src/server`). Confirm two things: (a) the action's body calls `refresh()` from 'next/cache' (directly, or through storeAction()/platformAction() with a handler that does) on its success path; (b) the client's `router.refresh()` runs only on that same success path, right after the awaited action. If both hold, delete the `router.refresh();` line. If `router` is then unused in the file, delete `const router = useRouter();` and the useRouter import. If (a) does not hold for every action the prop can be bound to, leave the line and add the file and line to the hand-back list. Change nothing else in the file."
+        },
+        {
+          "file": "src/components/admin/data/import-flow.tsx",
+          "action": "edit",
+          "how": "Lines 140 (check -> the five check…ImportAction functions) and 334 (cancel -> the five cancel…ImportAction functions): all five of each must refresh. Line 273 (`step`): read and apply the rule. At each listed line: open the client file and the action named after the arrow (find it with `rg -n 'export async function <ActionName>' src/app/admin src/server`). Confirm two things: (a) the action's body calls `refresh()` from 'next/cache' (directly, or through storeAction()/platformAction() with a handler that does) on its success path; (b) the client's `router.refresh()` runs only on that same success path, right after the awaited action. If both hold, delete the `router.refresh();` line. If `router` is then unused in the file, delete `const router = useRouter();` and the useRouter import. If (a) does not hold for every action the prop can be bound to, leave the line and add the file and line to the hand-back list. Change nothing else in the file."
+        },
+        {
+          "file": "src/components/admin/fields-toolbar.tsx",
+          "action": "edit",
+          "how": "Line 72 (importGroups -> importFieldGroupsAction). At each listed line: open the client file and the action named after the arrow (find it with `rg -n 'export async function <ActionName>' src/app/admin src/server`). Confirm two things: (a) the action's body calls `refresh()` from 'next/cache' (directly, or through storeAction()/platformAction() with a handler that does) on its success path; (b) the client's `router.refresh()` runs only on that same success path, right after the awaited action. If both hold, delete the `router.refresh();` line. If `router` is then unused in the file, delete `const router = useRouter();` and the useRouter import. If (a) does not hold for every action the prop can be bound to, leave the line and add the file and line to the hand-back list. Change nothing else in the file."
+        },
+        {
+          "file": "src/components/admin/router-refresh.scan.test.ts",
+          "action": "edit",
+          "how": "Lower the BASELINE entries of every file touched in this commit to their new counts."
+        }
+      ],
+      "checks": [
+        "pnpm exec vitest run src/components/admin/router-refresh.scan.test.ts : passes",
+        "pnpm lint && pnpm typecheck && pnpm test : exits 0",
+        "rg -l 'redirects|moving|import|custom-fields|fields' e2e/signed-in --files-with-matches | sort : note the list, then E2E_SIGNED_IN=1 build and stand-in as CI's signed-in job sets them (.github/workflows/ci.yml, job signed-in), then pnpm exec playwright test --project=signed-in <those files> : pass"
+      ]
+    },
+    {
+      "title": "Editors and settings forms draw once; the four that push keep the push",
+      "changes": [
+        {
+          "file": "src/components/admin/discount-editor.tsx",
+          "action": "edit",
+          "how": "Lines 126 to 127: keep `router.push(back);` and delete the `router.refresh();` after it (saveDiscount's action in src/app/admin/(gated)/[store]/discounts/actions.ts line 31 refreshes; the list is dynamic and fetched when opened). Do the same in src/components/admin/campaign-editor.tsx (lines 169 to 170), src/components/admin/automation/rule-editor.tsx (lines 208 to 209, saveRuleAction) and src/components/admin/reminder-editor.tsx (lines 116 to 117, saveReminderStepAction or savePlanReminderAction): keep the push, drop the refresh, after confirming each action refreshes on success. Keep useRouter (push still uses it)."
+        },
+        {
+          "file": "src/components/admin/passport-editor.tsx",
+          "action": "edit",
+          "how": "Line 32 (save -> savePassportAction). At each listed line: open the client file and the action named after the arrow (find it with `rg -n 'export async function <ActionName>' src/app/admin src/server`). Confirm two things: (a) the action's body calls `refresh()` from 'next/cache' (directly, or through storeAction()/platformAction() with a handler that does) on its success path; (b) the client's `router.refresh()` runs only on that same success path, right after the awaited action. If both hold, delete the `router.refresh();` line. If `router` is then unused in the file, delete `const router = useRouter();` and the useRouter import. If (a) does not hold for every action the prop can be bound to, leave the line and add the file and line to the hand-back list. Change nothing else in the file."
+        },
+        {
+          "file": "src/components/admin/chat-agent-form.tsx",
+          "action": "edit",
+          "how": "Line 54 (save -> saveChatAgentAction or savePlatformChatAgentAction: both must refresh). At each listed line: open the client file and the action named after the arrow (find it with `rg -n 'export async function <ActionName>' src/app/admin src/server`). Confirm two things: (a) the action's body calls `refresh()` from 'next/cache' (directly, or through storeAction()/platformAction() with a handler that does) on its success path; (b) the client's `router.refresh()` runs only on that same success path, right after the awaited action. If both hold, delete the `router.refresh();` line. If `router` is then unused in the file, delete `const router = useRouter();` and the useRouter import. If (a) does not hold for every action the prop can be bound to, leave the line and add the file and line to the hand-back list. Change nothing else in the file."
+        },
+        {
+          "file": "src/components/admin/docs-guide-form.tsx",
+          "action": "edit",
+          "how": "Line 55 (save -> saveDocsGuideAction, the platform's). At each listed line: open the client file and the action named after the arrow (find it with `rg -n 'export async function <ActionName>' src/app/admin src/server`). Confirm two things: (a) the action's body calls `refresh()` from 'next/cache' (directly, or through storeAction()/platformAction() with a handler that does) on its success path; (b) the client's `router.refresh()` runs only on that same success path, right after the awaited action. If both hold, delete the `router.refresh();` line. If `router` is then unused in the file, delete `const router = useRouter();` and the useRouter import. If (a) does not hold for every action the prop can be bound to, leave the line and add the file and line to the hand-back list. Change nothing else in the file."
+        },
+        {
+          "file": "src/components/admin/notifications/staff-alerts-form.tsx",
+          "action": "edit",
+          "how": "Line 60 (save -> saveStaffAlertsAction). At each listed line: open the client file and the action named after the arrow (find it with `rg -n 'export async function <ActionName>' src/app/admin src/server`). Confirm two things: (a) the action's body calls `refresh()` from 'next/cache' (directly, or through storeAction()/platformAction() with a handler that does) on its success path; (b) the client's `router.refresh()` runs only on that same success path, right after the awaited action. If both hold, delete the `router.refresh();` line. If `router` is then unused in the file, delete `const router = useRouter();` and the useRouter import. If (a) does not hold for every action the prop can be bound to, leave the line and add the file and line to the hand-back list. Change nothing else in the file."
+        },
+        {
+          "file": "src/components/admin/pack-pictures.tsx",
+          "action": "edit",
+          "how": "Line 111 (ask -> askPackPicturesAction). Lines 59 and 178 are mixed (syncContentPacksAction, publishStarterAction, openThemeContentAction, publishThemeContentAction, giveThemeContentAction): read all five; delete only if every one refreshes on success. Line 131 (PackPicturesWatch's poll) STAYS. At each listed line: open the client file and the action named after the arrow (find it with `rg -n 'export async function <ActionName>' src/app/admin src/server`). Confirm two things: (a) the action's body calls `refresh()` from 'next/cache' (directly, or through storeAction()/platformAction() with a handler that does) on its success path; (b) the client's `router.refresh()` runs only on that same success path, right after the awaited action. If both hold, delete the `router.refresh();` line. If `router` is then unused in the file, delete `const router = useRouter();` and the useRouter import. If (a) does not hold for every action the prop can be bound to, leave the line and add the file and line to the hand-back list. Change nothing else in the file."
+        },
+        {
+          "file": "src/components/admin/ebay-parts.tsx",
+          "action": "edit",
+          "how": "Line 177 is mixed (connectEbayAction, disconnectEbayAction): read both; delete only if both refresh. Line 23 (`job`): read and apply the rule. At each listed line: open the client file and the action named after the arrow (find it with `rg -n 'export async function <ActionName>' src/app/admin src/server`). Confirm two things: (a) the action's body calls `refresh()` from 'next/cache' (directly, or through storeAction()/platformAction() with a handler that does) on its success path; (b) the client's `router.refresh()` runs only on that same success path, right after the awaited action. If both hold, delete the `router.refresh();` line. If `router` is then unused in the file, delete `const router = useRouter();` and the useRouter import. If (a) does not hold for every action the prop can be bound to, leave the line and add the file and line to the hand-back list. Change nothing else in the file."
+        },
+        {
+          "file": "src/components/admin/two-step-panel.tsx",
+          "action": "edit",
+          "how": "Line 262 is mixed (removeTwoStepAction, removePushAction): read both; delete only if both refresh. Line 195 STAYS unless it follows an action that refreshes. At each listed line: open the client file and the action named after the arrow (find it with `rg -n 'export async function <ActionName>' src/app/admin src/server`). Confirm two things: (a) the action's body calls `refresh()` from 'next/cache' (directly, or through storeAction()/platformAction() with a handler that does) on its success path; (b) the client's `router.refresh()` runs only on that same success path, right after the awaited action. If both hold, delete the `router.refresh();` line. If `router` is then unused in the file, delete `const router = useRouter();` and the useRouter import. If (a) does not hold for every action the prop can be bound to, leave the line and add the file and line to the hand-back list. Change nothing else in the file."
+        },
+        {
+          "file": "src/components/admin/router-refresh.scan.test.ts",
+          "action": "edit",
+          "how": "Lower the BASELINE entries of every file touched to their new counts. Write the final total in the doc comment with the date."
+        },
+        {
+          "file": "docs/decisions.md",
+          "action": "edit",
+          "how": "Append one row with the next free D-number (pull main first; `rg -o '^\\| D[0-9]+' docs/decisions.md | tr -dc '0-9\\n' | sort -n | tail -1`, plus 1). It records: the rule (the action refreshes; a client part does not), the count before (90 calls in 50 files, 36 certain doubles, 6 mixed, 3 more by hand) and after (the scan test's total), the sites left by design and why, and every site the executor left because one of its actions does not refresh. Platform: the platform's saves (the plan reminder, the platform's chat agent, the docs guide) lose the same second draw. No migration."
+        }
+      ],
+      "checks": [
+        "pnpm exec vitest run src/components/admin/router-refresh.scan.test.ts : passes; its total is about 50",
+        "pnpm lint && pnpm typecheck && pnpm test : exits 0",
+        "pnpm build (signed-in settings) && pnpm exec playwright test --project=signed-in : the whole signed-in project passes"
+      ]
+    }
+  ],
+  "tests": [
+    {
+      "file": "src/components/admin/router-refresh.scan.test.ts",
+      "proves": "Fails when any admin client file gains a router.refresh() call, or when a call is removed without lowering the baseline."
+    }
+  ],
+  "migration": {
+    "needed": false,
+    "notes": ""
+  },
+  "done_when": [
+    {
+      "check": "pnpm exec vitest run src/components/admin/router-refresh.scan.test.ts",
+      "expect": "passes; the BASELINE's sum is about 50 (90 before) and equals `rg -c 'router\\.refresh\\(\\)' src/components/admin src/app/admin -g '*.tsx' | awk -F: '{s+=$2} END {print s}'`"
+    },
+    {
+      "check": "Every line in this brief's four commits",
+      "expect": "either deleted, or listed in the decision row with the action that does not refresh"
+    },
+    {
+      "check": "CI's signed-in job on the last commit",
+      "expect": "green"
+    }
+  ],
+  "after_deploy": [
+    "In production, save a stock adjustment on a store's Inventory with the network panel open: one POST (the action) and no second RSC fetch of the page; the table shows the new figure."
+  ],
+  "docs": [
+    "docs/rules/admin/platform.md: the new bullet under the storeAction rule.",
+    "docs/decisions.md: the D-row described in the last commit.",
+    "docs/audits/bloat-review-2026-11.md, Progress table: set the row of step 0.18 to Done with the date and the commits in Notes (find it: rg -n '^\\| 0\\.18 ' docs/audits/bloat-review-2026-11.md), and add a line under the step's own heading in docs/audits/bloat-review-2026-11/plan/phase-0.md saying what was done differently from the plan, if anything."
+  ],
+  "do_not": [
+    "Do not use a codemod or a search-and-replace across files: each line is read with its action.",
+    "Do not remove refresh() from any server action.",
+    "Do not remove router.push() from the four editors.",
+    "Do not touch the calls that are not after an action: src/components/admin/refresh-while.tsx, analytics/live-refresh.tsx, PackPicturesWatch in pack-pictures.tsx, session.tsx, admin-text.tsx line 90 (the language change), data/job-tracker.tsx, media-library.tsx, store-drafts.tsx, stripe-connect-embed.tsx, products-grid.tsx.",
+    "Do not touch the 11 single sites: ai-manager.tsx:363, ai-skills.tsx:170, field-group-editor.tsx:179, media-library.tsx:1037 and 1090, menu-editor.tsx:313, moving/pipedrive-move.tsx:53, moving/shop-address.tsx:39, moving/shop-copy.tsx:86, moving/shop-move.tsx:62, shipping/method-editor.tsx:112: their actions do not refresh, so the client call is the only draw.",
+    "Do not change a spec to make it pass.",
+    "Do not raise a baseline number."
+  ],
+  "stop_if": [
+    "A signed-in spec fails after a line is removed (the screen leaned on the second fetch): put that one line back, lower nothing for it, and report the screen and spec.",
+    "A line number in this brief does not hold a router.refresh() (main has moved): find the call by the action's name in that file; if it is not there, report it.",
+    "An action named here does not call refresh() on success.",
+    "The final total is above 55 or below 45: report the per-file table."
+  ],
+  "executor": "cheap-then-review",
+  "executor_why": "Each edit is one deleted line under a stated rule and the scan test holds the count, but it touches about 30 files and a screen may lean on the second fetch, so a stronger model should read the diff and the signed-in run.",
+  "checked_in_code": "I ran the review's static pass again on today's main: 90 router.refresh() calls in 50 files, 36 certain doubles, 6 mixed, 11 single, 37 unresolved, the same as the finding, and I copied its full list into the commits because the script lives outside the repo. I opened passport-editor.tsx with its action (the action calls refresh() from next/cache on success; the client then calls router.refresh()) and discount-editor.tsx (push then refresh at lines 126 to 127), both as described. The step's done-when asks the scan test for '0 after an action that always refreshes'; a text scan cannot resolve actions, so the test holds exact per-file counts and the brief's list is the proof of zero doubles."
+}

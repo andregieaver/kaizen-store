@@ -1,0 +1,247 @@
+{
+ "id": "2.11",
+ "goal": "Stores, Kaizena Flow's site and the docs link a stylesheet built from the site's code and the 11 admin parts a public page imports, each named on a line of its own; the admin links its own entry; a scan test fails both ways on the list of lines, and the audiences script fails when a class only admin files name is in the site's sheet.",
+ "why": "Today one sheet of 183,124 bytes raw (25,832 Brotli) serves every surface, 28% of it styles only the admin, and 3,480 of the 5,931 files Tailwind reads can rename it. After: the sheet /s/demo/no links is at most 135,000 bytes raw and 20,600 Brotli, the admin's two sheets at most 208,000 raw, and the build's peak is no more than about 150 MB higher.",
+ "read_first": [
+  "docs/build-memory.md",
+  "docs/performance.md",
+  "docs/admin-style.md",
+  "src/app/globals.css",
+  "src/app/admin/layout.tsx",
+  "src/lib/motion-css.test.ts",
+  "src/app/admin/admin-schemes.test.ts",
+  "content/docs/owners/website/the-page-builder.en.md"
+ ],
+ "depends_on": [
+  {
+   "id": "1.21",
+   "why": "the build had 0.8 GB of room and was killed once; a second Tailwind entry may add about 150 MB, so the build must have its room first, and its Build line (seconds and peak) is how this step measures before and after"
+  },
+  {
+   "id": "1.23",
+   "why": "its script stylesheet-audiences.mjs tells the site's sheet from the admin's and fails on an admin-only class in the site's sheet once two sheets exist"
+  },
+  {
+   "id": "1.3",
+   "why": "its STYLESHEET_BUDGETS in e2e/performance.spec.ts (raw and Brotli, three routes) are the budgets this step lowers"
+  },
+  {
+   "id": "0.35",
+   "why": "it made src/lib/stylesheet-sources.scan.test.ts and pointed Tailwind at code only (the @source not lines for tests, messages and src/db); this step finishes that test and copies those lines into the admin's entry"
+  },
+  {
+   "id": "0.34",
+   "why": "it gave the admin's colour names a value on public pages; without it the 11 shared admin parts would read colours the site's sheet does not set"
+  },
+  {
+   "id": "0.12",
+   "why": "it stops the site prefetching /admin; with two entries such a prefetch would pull the admin's whole sheet"
+  }
+ ],
+ "commits": [
+  {
+   "title": "The hand-written styles move to a shared partial and the builder's canvas rules to a file of their own; still one stylesheet",
+   "changes": [
+    {
+     "file": "src/app/_styles/base.css",
+     "action": "create",
+     "how": "A folder that starts with an underscore is private to Next and skipped by src/lib/house-routing.test.ts. Move here, unchanged and in the same order, everything of src/app/globals.css that comes after its line '@import \"./motion.css\";' (line 12 to the end today: the two @custom-variant blocks, :root, @theme inline and every hand-written rule), except the two builder blocks named in the next entry. Start the file with a comment: the styles every surface shares, imported by both Tailwind entries (src/app/globals.css and, from the next commit, src/app/admin/admin-entry.css); it holds no @source line."
+    },
+    {
+     "file": "src/app/admin/builder.css",
+     "action": "create",
+     "how": "Move here, unchanged, the two blocks of globals.css that only the page builder's canvas uses. Block 1 starts at the comment 'The page builder's canvas (D44): the row, column or block under the pointer' (line 362 today) and ends with the rule '[data-builder-item=\"block\"] iframe { pointer-events: none; }' (line 434), just before the comment 'A header over the page (D80)'. Block 2 starts at the comment 'A modal's row in the builder's canvas is drawn in the page, outlined and badged (D44).' (line 630) and ends with the '@media (prefers-reduced-motion: reduce) { [data-resize-handle] { transition: none; } }' block (line 656), just before the comment 'A footer revealed on scroll (D184)'. Check that nothing else is taken: rg -n 'data-builder|data-resize-handle' src/app/_styles/base.css must print nothing afterwards, and every selector in builder.css must contain data-builder or data-resize-handle (the @keyframes above block 2 stay in base.css)."
+    },
+    {
+     "file": "src/app/globals.css",
+     "action": "edit",
+     "how": "Keep its top comment, the line '@import \"tailwindcss\" source(none);', every @source line exactly as steps 0.35 and 0.34 left them, and '@import \"./motion.css\";'. Replace everything after that by two lines: '@import \"./_styles/base.css\";' and '@import \"./admin/builder.css\";'. In this commit the file still reads all of src, so the built sheet holds the same classes; only the order of the builder's rules moves to the end."
+    },
+    {
+     "file": "src/lib/theme.test.ts",
+     "action": "edit",
+     "how": "Line 73 reads globals.css to find the selectors that set --background: change path.join(__dirname, '..', 'app', 'globals.css') to path.join(__dirname, '..', 'app', '_styles', 'base.css'). Leave the test's name and logic."
+    },
+    {
+     "file": "src/lib/checkout-appearance.test.ts",
+     "action": "edit",
+     "how": "Line 88 reads 'src/app/globals.css' for the .checkout-look rule: change the path to 'src/app/_styles/base.css' and the comment at line 83 to name base.css."
+    }
+   ],
+   "checks": [
+    "pnpm test src/lib/theme.test.ts src/lib/checkout-appearance.test.ts src/lib/motion-css.test.ts src/lib/house-routing.test.ts src/lib/stylesheet-sources.scan.test.ts src/app/admin/admin-css.test.ts: exits 0",
+    "Before this commit and after it: pnpm build, then node docs/audits/bloat-review-2026-11/scripts/stylesheet-audiences.mjs --json. The site sheet's raw bytes differ by less than 300 and the class table is the same.",
+    "pnpm lint && pnpm typecheck && pnpm test: exits 0",
+    "pnpm test:e2e: exits 0; and with E2E_SIGNED_IN=1 on the stand-in build (CLAUDE.md, Commands) pnpm test:e2e -- e2e/signed-in: exits 0 (the builder's canvas outlines and resize handles still draw)"
+   ]
+  },
+  {
+   "title": "The storefront gets a stylesheet of its own: the site's entry reads the site's code and eleven named admin parts, the admin reads everything",
+   "changes": [
+    {
+     "file": "src/app/globals.css",
+     "action": "edit",
+     "how": "First measure 'before': run VERCEL=1 pnpm build twice on the commit before this one and note the two 'Build: ... peak ...' lines (step 1.21 prints them) and the sheets' sizes from stylesheet-audiences.mjs. Then make this file the site's entry. Keep '@import \"tailwindcss\" source(none);', '@source \"../\";', '@source not \"../data\";' and the @source not lines step 0.35 added (tests, src/test, the two message folders, src/db). Add two lines after them: '@source not \"./admin\";' and '@source not \"../components/admin\";'. Then, after every 'not' line (Tailwind reads a single file named after a folder's not line; the order matters), one line for each admin file a public page imports. The list is computed, not typed: write the scan test of this commit first and take the list it prints. On 12 November 2026 it was these 11: '@source \"../components/admin/action-form.tsx\";', admin-text-context.tsx, admin-text.tsx, colour-field.tsx, colour-library.tsx, css-code-editor.tsx, design-cards.tsx, modal.tsx, rich-text-editor.tsx, text-styles.tsx (all in ../components/admin/) and '@source \"../components/admin/work/print-button.tsx\";'. One file per line, sorted. Then '@import \"./motion.css\";' and '@import \"./_styles/base.css\";'. Remove the line '@import \"./admin/builder.css\";' (the canvas is the admin's). Rewrite the top comment: this is the site's entry (stores, Kaizena Flow's site, the docs); it reads no admin folder but the files named one by one, which src/lib/stylesheet-sources.scan.test.ts computes; point Tailwind at code, never at data or snapshots (docs/build-memory.md)."
+    },
+    {
+     "file": "src/app/admin/admin-entry.css",
+     "action": "create",
+     "how": "The admin's entry. Content: a comment (the admin reads all of src, because the builder's canvas and the previews draw store parts inside the admin; its sheet replaces the site's on admin screens), then '@import \"tailwindcss\" source(none);', '@source \"../../\";', '@source not \"../../data\";', the same @source not lines globals.css has for tests, src/test, the two message folders and src/db with every path given one more '../' (for example '@source not \"../../lib/messages\";'), then '@import \"../motion.css\";', '@import \"../_styles/base.css\";' and '@import \"./builder.css\";'. No line names supabase or any data folder."
+    },
+    {
+     "file": "src/app/admin/layout.tsx",
+     "action": "edit",
+     "how": "Line 13: change 'import \"../globals.css\";' to 'import \"./admin-entry.css\";'. It stays the first of the four style imports, before './schemes/meadow.css', './schemes/indigo.css' and './admin.css'. No other file changes its import: the 15 layouts and error pages outside the admin keep importing globals.css (list them with rg -n 'globals.css' src/app -g '*.tsx')."
+    },
+    {
+     "file": "src/lib/{stylesheet-sources.scan.test.ts}",
+     "action": "edit",
+     "how": "The file is src/lib/stylesheet-sources.scan.test.ts (made by step 0.35; keep its cases). Add, using reach() from '../../scripts/lib/import-walk.mjs' (step 1.8): const entries = every non-test .ts and .tsx file under src/app that is not under src/app/admin, plus every non-test file under src/components that is not under src/components/admin; walk reach(srcDir, entry, { dynamic: true, stop: (file) => file.startsWith('src/server/') }) from each and collect the reached files that are under src/app/admin/ or src/components/admin/ and end in .tsx: the admin parts a public page imports. Read the '@source \"...\";' lines of src/app/globals.css that are not 'not' lines and that name a single file under an admin folder, resolved relative to src/app. Cases: (1) 'every admin part a public page imports has its line': the reached parts without a line equal [] with the message 'A public page imports this admin part: add an @source line for it to src/app/globals.css, after the not lines, or its classes are missing on the live site.' (2) 'every line names a part a public page still imports': the lines that name a file not reached equal [] ('Remove this @source line from src/app/globals.css: no public page imports the file any more.'). (3) 'the lines come after every not line' in the file's text. (4) 'the admin has an entry of its own': src/app/admin/layout.tsx contains 'import \"./admin-entry.css\"' and not 'globals.css'; no file outside src/app/admin imports admin-entry.css, a file of src/app/admin/schemes or admin.css (rg-like walk over src with fs). (5) 'both entries read code only': neither entry has an @source line that names supabase, src/data, a .json or a .sql file, and both have the same set of 'not' lines once the admin's extra '../' is removed, apart from the two admin-folder lines of the site's entry. Before writing the @source lines, run case (1) once against the unchanged globals.css to print the list."
+    },
+    {
+     "file": "src/lib/motion-css.test.ts",
+     "action": "edit",
+     "how": "The case 'is imported by the global stylesheet, after Tailwind' keeps its check on src/app/globals.css. Add the same check for src/app/admin/admin-entry.css with the import text '@import \"../motion.css\"'."
+    },
+    {
+     "file": "src/app/admin/admin-schemes.test.ts",
+     "action": "edit",
+     "how": "In the case 'is a stylesheet the admin's root layout imports before admin.css' (lines 60 to 64) add: the layout's 'import \"./admin-entry.css\"' comes before 'import \"./schemes/' + id + '.css\"'."
+    },
+    {
+     "file": "docs/audits/bloat-review-2026-11/scripts/{stylesheet-audiences.mjs}",
+     "action": "edit",
+     "how": "The file is docs/audits/bloat-review-2026-11/scripts/stylesheet-audiences.mjs (made by step 1.23). No logic change is expected: step 1.23 wrote it to treat two candidate sheets as 'split' and to fail on admin-only bytes in the site's sheet. Run it on this commit's build. Only if it picks the wrong sheet as the site's (the site's must be the one without '[data-builder-item]') correct the picking rule."
+    },
+    {
+     "file": "e2e/{performance.spec.ts}",
+     "action": "edit",
+     "how": "The file is e2e/performance.spec.ts; step 1.3 gave it STYLESHEET_BUDGETS (raw and Brotli bytes per route). Read the new figures with the file's own measure switch (E2E_MEASURE=1 pnpm test:e2e -- e2e/performance.spec.ts) and set: for /s/demo/no and for / the measured raw figure plus 3% but never above 135,000, and the measured Brotli figure plus 3% but never above 20,600; for /admin/sign-in the two admin sheets together at the measured figure plus 2% but never above 208,000 raw. Lower the page-weight budgets on the same routes by what the stylesheet fell (about 8 KB on the wire), keeping each within the percentage step 1.3 used."
+    },
+    {
+     "file": "content/docs/owners/website/the-page-builder.en.md",
+     "action": "edit",
+     "how": "After the sentence 'The wrench opens the part's settings in four tabs: **General**, **Style**, **Motion** and **Advanced**.' (line 52) add a paragraph: 'A class you type under **Advanced** is for your own CSS (**Design**, **Custom CSS**): write the rule there and it shows on the canvas and on your site. A class name from the builder's own toolkit may show on the canvas and not on your live site, so do not rely on one.' Use the menu names the article already uses for the store's own CSS (rg -n -i 'css' content/docs/owners/website/*.en.md) rather than these if they differ."
+    },
+    {
+     "file": "content/docs/owners/website/the-page-builder.nb.md",
+     "action": "edit",
+     "how": "After 'Skiftenøkkelen åpner innstillingene i fire faner: **Generelt**, **Stil**, **Bevegelse** og **Avansert**.' add: 'En klasse du skriver under **Avansert**, er til din egen CSS: skriv regelen der, så vises den både på lerretet og på nettstedet. Et klassenavn fra byggerens eget verktøysett kan vises på lerretet uten å vises på det publiserte nettstedet, så ikke stol på et slikt.' Use the article's own Norwegian words for the canvas and the CSS screen if they differ."
+    },
+    {
+     "file": "docs/build-memory.md",
+     "action": "edit",
+     "how": "Under '## What changed' replace the line that says globals.css points Tailwind at src with: two Tailwind entries, what each reads (the site's: src without the admin folders, tests, messages, src/db and data, plus the named admin parts; the admin's: all of src without tests, messages, src/db and data). Add to the measurements table two rows, 'one Tailwind entry' and 'two Tailwind entries', each with the peak of two VERCEL=1 builds (the Build line of step 1.21) on the same machine, and one sentence with the difference."
+    },
+    {
+     "file": "docs/performance.md",
+     "action": "edit",
+     "how": "In the section step 1.23 wrote on the stylesheet's audiences: the two sheets' sizes after the split (raw and Brotli), the new audiences table, and the rule: an admin part drawn outside the admin must be named in src/app/globals.css, and src/lib/stylesheet-sources.scan.test.ts says which line to add or remove. Also the sentence: a class typed in a part's Advanced tab is promised on the live site only when the owner's own CSS styles it; the site's sheet keeps no list of utility names (the owner's decision)."
+    },
+    {
+     "file": "docs/admin-style.md",
+     "action": "edit",
+     "how": "Where it says the admin's styles start from globals.css (rg -n 'globals.css' docs/admin-style.md: lines 559 and 561 today) name src/app/admin/admin-entry.css as the admin's Tailwind entry and src/app/_styles/base.css as the home of the @theme names; one clause each."
+    },
+    {
+     "file": "docs/rules/admin/website.md",
+     "action": "edit",
+     "how": "Three places. (1) rg -n 'rules in globals.css' docs/rules/admin/website.md (line 22 today, the canvas rules): change to 'rules in `src/app/admin/builder.css`'. (2) In the rule that describes the settings dialogs' General, Style and Advanced tabs (line 65 today) add one sentence: a class from the Advanced tab is for the owner's own CSS; a Tailwind name is not promised on the live site, whose sheet reads no admin code (`src/lib/stylesheet-sources.scan.test.ts`). (3) Every other 'globals.css' in the file that means a hand-written rule (lines 486, 505, 707 today) becomes `src/app/_styles/base.css`. Keep each rule under its size in the docs budget."
+    },
+    {
+     "file": "CLAUDE.md",
+     "action": "edit",
+     "how": "One clause in the Commands paragraph about Vercel's build: 'keep Tailwind's `@source` lines in `globals.css` pointed at code' becomes 'keep Tailwind's `@source` lines (`globals.css`, `admin/admin-entry.css`) pointed at code'. Nothing else. If the docs budget fails on bytes, see stop_if."
+    }
+   ],
+   "checks": [
+    "Canary first, not committed: put the made-up class 'kz-canary-9917' in a className of src/components/admin/modal.tsx and 'kz-canary-9918' in src/components/admin/page-builder.tsx, pnpm build, then search the site's sheet (the file stylesheet-audiences.mjs names) for both: 9917 must be there and 9918 must not; the admin's sheet has both. Remove the canaries.",
+    "pnpm test src/lib/stylesheet-sources.scan.test.ts src/lib/motion-css.test.ts src/app/admin/admin-schemes.test.ts src/app/admin/admin-css.test.ts src/lib/theme.test.ts src/lib/checkout-appearance.test.ts: exits 0",
+    "pnpm build && node docs/audits/bloat-review-2026-11/scripts/stylesheet-audiences.mjs: exits 0; the site's sheet is at most 135,000 bytes raw and 20,600 Brotli; 'only admin files name' is 0; 'no store page can draw' is at most 15,000 raw",
+    "VERCEL=1 pnpm build twice: the median peak is no more than about 150 MB above the 'before' median",
+    "pnpm lint && pnpm typecheck && pnpm test: exits 0",
+    "pnpm test:e2e: exits 0 (most of all e2e/inline-edit-live.spec.ts, e2e/sign-up.spec.ts, e2e/content-reports.spec.ts, e2e/platform-languages.spec.ts, e2e/invoices.spec.ts, e2e/responsive-parity.spec.ts, e2e/a11y.spec.ts and e2e/performance.spec.ts); with E2E_SIGNED_IN=1 on the stand-in build pnpm test:e2e -- e2e/signed-in: exits 0; the hosts job's specs (e2e/inline-edit-hosts.spec.ts) run in CI",
+    "Look, in light and in dark, and send the owner screenshots: a store's front page, a product page, the cart and the checkout; Kaizena Flow's front page, sign-up, /status and /report; a docs page; the on-site editor with a text selected; a hosted invoice with its print button; the 404 page; the admin's home; the builder's canvas with a row selected; a theme preview. Nothing is unstyled."
+   ]
+  }
+ ],
+ "tests": [
+  {
+   "file": "src/lib/stylesheet-sources.scan.test.ts",
+   "proves": "Fails when a public page imports an admin part that has no @source line in src/app/globals.css, when a line names a part no public page imports, when a line comes before a not line, when the admin's layout imports globals.css again, and when either entry reads data, SQL or snapshots."
+  },
+  {
+   "file": "e2e/performance.spec.ts",
+   "proves": "Fails when the sheet /s/demo/no or / links passes its raw or Brotli budget (at most 135,000 and 20,600), or the admin's two sheets pass 208,000 raw."
+  },
+  {
+   "file": "docs/audits/bloat-review-2026-11/scripts/stylesheet-audiences.mjs (run after the build in CI's e2e job)",
+   "proves": "Fails the run when a class only admin files name is in the site's sheet, or classes no store page can draw pass 17,000 bytes raw or 2,000 Brotli."
+  }
+ ],
+ "migration": {
+  "needed": false,
+  "notes": ""
+ },
+ "done_when": [
+  {
+   "check": "pnpm build && node docs/audits/bloat-review-2026-11/scripts/stylesheet-audiences.mjs --json",
+   "expect": "the site's sheet at most 135,000 bytes raw and 20,600 Brotli (183,124 and 25,832 today); adminOnlyRaw 0; exit code 0"
+  },
+  {
+   "check": "E2E_MEASURE=1 pnpm test:e2e -- e2e/performance.spec.ts",
+   "expect": "passes with the lowered STYLESHEET_BUDGETS; the admin's two sheets at most 208,000 raw (204,207 today)"
+  },
+  {
+   "check": "Trial 1: delete the @source line for modal.tsx from src/app/globals.css, pnpm test src/lib/stylesheet-sources.scan.test.ts",
+   "expect": "fails naming src/components/admin/modal.tsx; undo"
+  },
+  {
+   "check": "Trial 2: add '@source \"../components/admin/page-builder.tsx\";' to src/app/globals.css and run the test",
+   "expect": "fails: no public page imports it; undo"
+  },
+  {
+   "check": "rg -n 'two Tailwind entries' docs/build-memory.md",
+   "expect": "the row with the peak before and after, no more than about 150 MB apart"
+  },
+  {
+   "check": "rg -n -i 'own CSS' content/docs/owners/website/the-page-builder.en.md",
+   "expect": "the sentence on classes typed under Advanced"
+  }
+ ],
+ "after_deploy": [
+  "The run's summary shows the production build's peak (step 1.21): expect it within about 150 MB of the builds before, and under its ceiling. If the run is red on the peak, see stop_if.",
+  "Open https://kaizenaflow.com and one store's front page: each links one stylesheet from /_next/static and it is not the file an admin screen links. Read the size of the store page's sheet in the network panel: about 20 KB on the wire (26 KB before).",
+  "The first style reading after this deploy on Platform, Usage and limits is unaffected; nothing to read there."
+ ],
+ "docs": [
+  "docs/decisions.md (or, once step 2.40 has split it, a new file docs/decisions/D<n>.md plus its index row): one new decision with the next free D-number. Claim the number first with scripts/claim-decision.mjs if step 0.41 has made that script; otherwise pull main and take the highest number plus one (rg -o '^\\| D[0-9]+' docs/decisions.md | tr -dc '0-9\\n' | sort -n | tail -1). It records: the storefront's own stylesheet: two Tailwind entries and what each reads; the 11 admin parts named one by one and the scan test that keeps the list true both ways; the sizes before and after (site and admin, raw and Brotli); the build's peak before and after; the owner's answer that a Tailwind class typed in a part's Advanced tab is not promised on the live site and the site's sheet keeps no list of utility names; it amends D196 (classes from the Advanced tab are drawn on the canvas as on the site: still true for the owner's own classes). Platform: Kaizena Flow's public site and docs get the site's sheet; the admin, /admin/platform included, keeps its own two. Idle cost: none. Keep it under 4,000 bytes.",
+  "docs/build-memory.md, docs/performance.md, docs/admin-style.md, docs/rules/admin/website.md, the two docs-portal articles and the one clause in CLAUDE.md, as the second commit says.",
+  "The budgets rule under docs/rules (step 1.1): in the row of the stylesheet's audiences note that the admin-only line is now enforced (0 bytes in the site's sheet).",
+  "docs/audits/bloat-review-2026-11.md, Progress table: set the row of step 2.11 to Done with the date and the commit hash, in the same commit as the step's last change. Keep the row at 300 characters or fewer."
+ ],
+ "do_not": [
+  "Do not move the 11 shared files out of src/components/admin instead of naming them: action-form.tsx alone has 356 importers.",
+  "Do not make the admin's entry import the site's entry, and do not point the admin's entry at fewer folders: the builder's canvas and the previews draw store parts inside the admin, so it reads all of src.",
+  "Do not add a safelist of utility names to the site's sheet for classes owners might type (the owner said no).",
+  "Do not add an @source line for supabase, src/data, JSON or SQL to either entry.",
+  "Do not change any of the 15 imports of globals.css outside the admin, and do not import admin-entry.css, a scheme or admin.css outside src/app/admin.",
+  "Do not edit rules while moving them to base.css or builder.css: the move is cut and paste.",
+  "Do not raise a stylesheet budget above the bars (135,000 raw, 20,600 Brotli, 208,000 raw) to make the spec pass.",
+  "Do not use a larger or paid build machine if the peak rises: the way back is one sheet (revert the second commit).",
+  "Do not query production's page content for class names; search the repo's seeded content only (rg -n 'className' src/lib/signature supabase/migrations/*.sql | head)."
+ ],
+ "stop_if": [
+  "Step 1.21 is not Done, or production's last builds are not at 75% of the machine or less: do not start.",
+  "The canary shows Tailwind does not read a single file named after its folder's not line (kz-canary-9917 is missing from the site's sheet): stop; the fallback needs a design choice.",
+  "The build's peak with two entries is more than about 150 MB above the 'before' median, or the build is killed: revert the second commit, keep the first, and report both figures.",
+  "The site's sheet comes out above 135,000 bytes raw or 20,600 Brotli: report the audiences table (what still fills it); do not delete rules to get under.",
+  "The scan test's computed list differs from the 11 named here by more than three files: report the list before writing the lines.",
+  "An e2e test fails on a missing style, or a page in the look-through is unstyled: find the file that names the class; if it is an admin file a public page draws through a path the walk does not follow (a prop, a registry), report it rather than adding a hand-picked line.",
+  "A class the admin's sheet has and the site's lacks appears in seeded page content or theme content (rg for it in src/lib/signature and supabase/migrations/*.sql): report it.",
+  "The docs budget fails on CLAUDE.md's bytes: leave CLAUDE.md's clause as it was and say so; the rule is in docs/build-memory.md either way."
+ ],
+ "executor": "cheap-then-review",
+ "executor_why": "The file moves and lines are exact and the scan test, the budgets and the canary catch a wrong edit, but a class missing from the live site is a silent visual fault and the build's memory is at its edge, so a stronger model should read the diff, the before and after figures and the screenshots before the push.",
+ "checked_in_code": "I opened src/app/globals.css (1,449 lines: Tailwind with source(none), three @source lines and motion.css at lines 6 to 10, then hand-written rules; the builder's canvas rules are lines 362 to 434 and 630 to 656, and every data-builder or data-resize-handle selector is inside them), src/app/admin/layout.tsx line 13, the 15 other importers of globals.css, and the four tests that read globals.css or the admin's import order (theme.test.ts line 73, checkout-appearance.test.ts line 88, motion-css.test.ts lines 13 to 20, admin-schemes.test.ts lines 60 to 64). All match finding CS-1; all 11 named admin files exist. I split the work into two commits the finding did not have: the first only moves rules into partials and changes no class, so the risky commit is small and easy to revert. The step says 11 lines where CS-1 lists 8 with class names: the brief uses the scan test's own rule (every admin .tsx a public page reaches gets a line), which gives 11 and needs no judgement. The SQL @source line and the test and message folders are step 0.35's and are only copied here. src/lib/stylesheet-sources.scan.test.ts, the audiences script and STYLESHEET_BUDGETS do not exist yet; steps 0.35, 1.23 and 1.3 make them."
+}

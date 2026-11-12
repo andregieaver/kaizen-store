@@ -1,0 +1,200 @@
+{
+ "id": "0.13",
+ "goal": "The admin's rail, store menu, account menus and list rows fetch a link's page when the pointer, a touch or the keyboard focus reaches it, not when it comes into view, through one AdminLink built on a small PolicyLink.",
+ "why": "Today an admin screen makes 23 to 46 router prefetch requests at rest (28 on the store home, 8 for product editors on a four-row product list), and about 25 again after every save, to fetch nearly the same loading skeleton twelve times. After: 0 on the admin home, 0 for product editors on the list, and at most 2 after hovering one rail link.",
+ "read_first": [
+  "node_modules/next/dist/docs/01-app/02-guides/prefetching.md",
+  "node_modules/next/dist/docs/01-app/03-api-reference/02-components/link.md",
+  "docs/admin-navigation.md",
+  "docs/rules/admin/platform.md",
+  "src/components/admin/admin-rail.tsx",
+  "src/components/admin/store-admin-nav.tsx",
+  "src/components/admin/ui/button.tsx",
+  "e2e/signed-in/admin-text-fallbacks.spec.ts"
+ ],
+ "depends_on": [
+  {
+   "id": "0.12",
+   "why": "it sets prefetch={false} on the admin layout's View store link and creates the scan and spec conventions (what marks a router prefetch request) this step's spec reuses"
+  }
+ ],
+ "commits": [
+  {
+   "title": "PolicyLink and AdminLink: a link fetched when it is pointed at",
+   "changes": [
+    {
+     "file": "src/components/policy-link.tsx",
+     "action": "create",
+     "how": "First line \"use client\";. Imports only: `import Link from \"next/link\";` and from react `useState, type ComponentProps`. Export `type LinkPolicy = \"view\" | \"intent\" | \"none\";` and `export function PolicyLink({ policy, onPointerEnter, onTouchStart, onFocus, ...rest }: Omit<ComponentProps<typeof Link>, \"prefetch\"> & { policy: LinkPolicy })`. Inside: `const [asked, setAsked] = useState(false);` and render `<Link {...rest} prefetch={policy === \"view\" || (policy === \"intent\" && asked) ? null : false} onPointerEnter={(event) => { setAsked(true); onPointerEnter?.(event); }} onTouchStart={(event) => { setAsked(true); onTouchStart?.(event); }} onFocus={(event) => { setAsked(true); onFocus?.(event); }} />`. `null` is Next's default (fetch when in view), so once asked the link in view is fetched at once. Children pass through untouched, so a server component can draw icons, counts and <LinkPending /> inside it, and useLinkStatus() still works because the child sits inside next/link's Link. Doc comment: 'A link with a written prefetch policy (bloat review step 0.13): view (Next's default, when it scrolls into view), intent (when the pointer, a touch or focus reaches it: Next's hover pattern), none (never; for a link that leaves its root layout or opens a file). Step 2.6 uses it on the storefront.'"
+    },
+    {
+     "file": "src/components/admin/ui/link.tsx",
+     "action": "create",
+     "how": "First line \"use client\";. `import { PolicyLink, type LinkPolicy } from \"@/components/policy-link\";` and `import type { ComponentProps } from \"react\";` and `import type Link from \"next/link\";`. Export `type AdminLinkProps = Omit<ComponentProps<typeof Link>, \"prefetch\"> & { policy?: LinkPolicy; /** As next/link's: false means policy none. Kept so a caller's prefetch={false} still type-checks. */ prefetch?: false };` and `export function AdminLink({ policy, prefetch, ...rest }: AdminLinkProps) { return <PolicyLink policy={policy ?? (prefetch === false ? \"none\" : \"intent\")} {...rest} />; }`. Doc comment: 'The admin's link: fetched on intent unless a policy is given. The rail, the menus and the list primitives use it, so an admin screen at rest prefetches nothing.'"
+    },
+    {
+     "file": "src/components/admin/ui/index.ts",
+     "action": "edit",
+     "how": "Add the line `export { AdminLink, type AdminLinkProps } from \"./link\";`."
+    },
+    {
+     "file": "src/components/policy-link.test.tsx",
+     "action": "create",
+     "how": "A Vitest unit test (name it .test.ts with React.createElement if the unit project does not compile .tsx tests: check how src/components/admin/ui/ui.test.ts draws). vi.mock(\"next/link\", …) with a stand-in that renders `<a data-prefetch={String(props.prefetch)} …>`. With renderToStaticMarkup: PolicyLink policy \"view\" prints data-prefetch=\"null\"; policy \"intent\" prints \"false\" before any event; policy \"none\" prints \"false\"; AdminLink with no policy prints \"false\" (intent, not yet asked); AdminLink with prefetch={false} prints \"false\"; every other attribute given (href, aria-current, role, className) is in the markup unchanged."
+    }
+   ],
+   "checks": [
+    "pnpm exec vitest run src/components/policy-link.test.tsx src/components/admin/ui/ui.test.ts src/lib/storefront-bundle.scan.test.ts: pass (policy-link.tsx imports nothing the visitor's scan forbids)",
+    "pnpm typecheck: exits 0",
+    "pnpm lint && pnpm typecheck && pnpm test: each exits 0"
+   ]
+  },
+  {
+   "title": "The admin's rail, menus and list rows use AdminLink",
+   "changes": [
+    {
+     "file": "src/components/admin/admin-rail.tsx",
+     "action": "edit",
+     "how": "Replace `import Link from \"next/link\";` by `import { AdminLink } from \"./ui/link\";` (adjust the relative path to src/components/admin/ui/link) and write <AdminLink …> … </AdminLink> in place of <Link …> … </Link> at line 47 (each tile of the rail) and line 88 (the home tile). Every attribute stays as it is (href, role, aria-current, aria-label, className, key) and so do the children, <LinkPending /> among them."
+    },
+    {
+     "file": "src/components/admin/store-admin-nav.tsx",
+     "action": "edit",
+     "how": "Line 3 is `import Link, { useLinkStatus } from \"next/link\";`: change it to `import { useLinkStatus } from \"next/link\";` and add `import { AdminLink } from \"./ui/link\";`. Write <AdminLink> in place of <Link> at lines 94, 131 and 195 (the store menu's links, each with <LinkPending /> as a child). LinkPending (near line 154) keeps calling useLinkStatus() from next/link and stays a child of the link."
+    },
+    {
+     "file": "src/components/admin/admin-menus.tsx",
+     "action": "edit",
+     "how": "Replace `import Link from \"next/link\";` by `import { AdminLink } from \"./ui/link\";` (adjust the relative path to src/components/admin/ui/link) and write <AdminLink …> … </AdminLink> in place of <Link …> … </Link> at lines 126, 137, 146, 154, 164, 169, 172 and 233 (the store switcher's and the account menu's items; each has role=\"menuitem\"). Every attribute stays as it is (href, role, aria-current, aria-label, className, key) and so do the children, <LinkPending /> among them."
+    },
+    {
+     "file": "src/components/admin/admin-frame.tsx",
+     "action": "edit",
+     "how": "Replace `import Link from \"next/link\";` by `import { AdminLink } from \"./ui/link\";` (adjust the relative path to src/components/admin/ui/link) and write <AdminLink …> … </AdminLink> in place of <Link …> … </Link> at lines 163 and 250. Every attribute stays as it is (href, role, aria-current, aria-label, className, key) and so do the children, <LinkPending /> among them. This file has no \"use client\" line; importing the client component AdminLink into it is fine."
+    },
+    {
+     "file": "src/components/admin/ui/list.tsx",
+     "action": "edit",
+     "how": "Replace `import Link from \"next/link\";` by `import { AdminLink } from \"./ui/link\";` (adjust the relative path to src/components/admin/ui/link) and write <AdminLink …> … </AdminLink> in place of <Link …> … </Link> at line 28 (ListRow) and line 51 (RowLead). Every attribute stays as it is (href, role, aria-current, aria-label, className, key) and so do the children, <LinkPending /> among them. Import from \"./link\"."
+    },
+    {
+     "file": "src/components/admin/ui/card.tsx",
+     "action": "edit",
+     "how": "Replace `import Link from \"next/link\";` by `import { AdminLink } from \"./ui/link\";` (adjust the relative path to src/components/admin/ui/link) and write <AdminLink …> … </AdminLink> in place of <Link …> … </Link> at line 82. Every attribute stays as it is (href, role, aria-current, aria-label, className, key) and so do the children, <LinkPending /> among them. Import from \"./link\"."
+    },
+    {
+     "file": "src/components/admin/ui/page-header.tsx",
+     "action": "edit",
+     "how": "Replace `import Link from \"next/link\";` by `import { AdminLink } from \"./ui/link\";` (adjust the relative path to src/components/admin/ui/link) and write <AdminLink …> … </AdminLink> in place of <Link …> … </Link> at line 37 (the back link). Every attribute stays as it is (href, role, aria-current, aria-label, className, key) and so do the children, <LinkPending /> among them. Import from \"./link\"."
+    },
+    {
+     "file": "src/components/admin/ui/focus-frame.tsx",
+     "action": "edit",
+     "how": "Line 47 (the back link): use AdminLink (import from \"./link\"). Line 36 (href=\"/\", the logo to the public site) leaves the admin's root layout: write `<AdminLink policy=\"none\" …>` there and drop the prefetch={false} step 0.12 put on it, or keep it as next/link's Link with prefetch={false}; either way src/lib/cross-root-links.scan.test.ts of step 0.12 must still pass (if its rule looks for the literal prefetch={false}, keep the Link as step 0.12 left it)."
+    },
+    {
+     "file": "src/components/admin/ui/button.tsx",
+     "action": "edit",
+     "how": "ButtonLink (near line 79): render AdminLink instead of Link. Change the props type from `ComponentProps<typeof Link>` to `AdminLinkProps` (import both from \"./link\") and keep `{...rest}`: a caller's prefetch={false} (src/app/admin/(gated)/platform/capacity/page.tsx line 55, a CSV file) then becomes policy none inside AdminLink. Remove the next/link import if nothing else uses it."
+    },
+    {
+     "file": "src/components/admin/products-bulk.tsx",
+     "action": "edit",
+     "how": "Line 259, the product row's link (`<Link href={`${base}/${product.id}`} …>`): use AdminLink (import { AdminLink } from \"./ui/link\"). Leave the other links of the file (line 157) as they are unless they are rows."
+    },
+    {
+     "file": "e2e/signed-in/prefetch.spec.ts",
+     "action": "create",
+     "how": "A Playwright spec in the signed-in project. Reuse from e2e/prefetch.spec.ts (step 0.12) the way a router prefetch request is recognised (export that helper from a small e2e/prefetch-watch.ts and import it in both specs). One table at the top, SCREENS, with eight rows: home (/admin/{store}), orders, products, pages, settings, a product's editor (/products/{product}), the builder (/pages/{page}) and the platform home (/admin/platform, signed in as ADMIN; the other seven as OWNER with E2E_STORE from ./accounts). Each row has `prefetches` (the most router prefetch requests allowed in the 3 s after load) and `fetches` (the exact list of paths, without query, of every other fetch or XHR request made in those 3 s: for example the notices poll and the speed beacon; write what the first run shows). Values: home prefetches 0; products 0 with the extra assertion that no prefetch path matches /admin/{store}/products/<uuid>; the other six: run the spec once with E2E_MEASURE=1 printing the counts, and write each screen's measured count as its ceiling with the comment 'held at the count of <date>; may only fall'. Resolve {product} and {page} the way e2e/signed-in/admin-scripts.spec.ts resolves {page}. Cases per row: after goto and the load event, wait 3 s, then expect prefetches <= row.prefetches and the sorted list of other fetch paths to equal row.fetches. Two more cases: (a) on the admin home, hover the rail's Products link (page.getByRole(\"link\", { name: /Products/ }).first().hover()), wait 2 s: at most 2 new router prefetch requests, each for /admin/{store}/products; (b) press that link: the URL becomes /admin/{store}/products and the page's heading shows."
+    },
+    {
+     "file": "e2e/signed-in/admin-scripts.spec.ts",
+     "action": "edit",
+     "how": "Only if a budget fails after this change (the frame gains two small client components): it must not. A screen that goes over its budget by this change means something else came in: stop_if. Make no edit otherwise."
+    },
+    {
+     "file": "docs/admin-navigation.md",
+     "action": "edit",
+     "how": "Add a short section 'What the admin fetches ahead': 'The rail, the store menu, the store switcher and account menu, back links, buttons that are links and the rows of a list are `AdminLink` (`src/components/admin/ui/link.tsx`, on `PolicyLink`): a link's page is fetched when the pointer, a touch or the keyboard focus reaches it, never because it is in view. View store and links to files are never fetched. A press by touch or keyboard shows the pending bar (`LinkPending`) for one round trip before the skeleton. `e2e/signed-in/prefetch.spec.ts` holds eight screens (bloat review step 0.13).'"
+    },
+    {
+     "file": "docs/rules/admin/platform.md",
+     "action": "edit",
+     "how": "In the rule about the admin's frame (search 'LinkPending' or 'loading.tsx' in the file; if neither is there, under the rule 'The admin's look'), add one sentence: 'A new link in the admin's frame or a list row is an `AdminLink`, not `next/link`'s `Link`; a raw `Link` there is fetched on sight and breaks `e2e/signed-in/prefetch.spec.ts`.'"
+    },
+    {
+     "file": "docs/audits/code-review-2026-11.md",
+     "action": "edit",
+     "how": "Progress row 0.10 'Show that a click worked' (FS1, In progress): leave the status; add to its notes and to the change log: '<date>: the skeleton is now fetched on hover, touch or focus (AdminLink, bloat review step 0.13); the pending bar answers a touch or keyboard press for one round trip first.'"
+    }
+   ],
+   "checks": [
+    "pnpm exec vitest run src/components/admin/store-admin-nav.test.ts src/components/admin/admin-rail.test.ts src/components/admin/ui/ui.test.ts src/lib/cross-root-links.scan.test.ts: pass with the anchors unchanged (if a test draws with renderToStaticMarkup and next/link needs a router, follow how these tests already mock it)",
+    "rg -n 'from \"next/link\"' src/components/admin/admin-rail.tsx src/components/admin/admin-menus.tsx src/components/admin/ui/list.tsx src/components/admin/ui/card.tsx src/components/admin/ui/page-header.tsx: prints nothing",
+    "pnpm typecheck: exits 0",
+    "pnpm lint && pnpm typecheck && pnpm test: each exits 0",
+    "pnpm build, then E2E_SIGNED_IN=1 pnpm exec playwright test --project=signed-in (on a build made as CI's signed-in job makes it: NEXT_PUBLIC_SUPABASE_URL=http://127.0.0.1:3912, any publishable key, e2e/fixtures/auth-stub.mjs running) e2e/signed-in/prefetch.spec.ts: passes: 0 router prefetches on the admin home in the 3 s after load (28 before), 0 for product editors on the Products list (8 before), at most 2 after hovering one rail link",
+    "E2E_SIGNED_IN=1 pnpm exec playwright test --project=signed-in (on a build made as CI's signed-in job makes it: NEXT_PUBLIC_SUPABASE_URL=http://127.0.0.1:3912, any publishable key, e2e/fixtures/auth-stub.mjs running): the whole project passes (admin-text-fallbacks.spec.ts holds the pending bar; a11y.spec.ts, admin-phone.spec.ts, recent-pages.spec.ts and admin-scripts.spec.ts among the rest)",
+    "pnpm test:e2e: exits 0 (e2e/admin-look.spec.ts and e2e/admin.spec.ts)"
+   ]
+  }
+ ],
+ "tests": [
+  {
+   "file": "e2e/signed-in/prefetch.spec.ts",
+   "proves": "Fails when the admin home prefetches anything at rest, when the Products list prefetches a product's editor, when one of the other six screens exceeds its recorded count, when a hover causes more than 2 requests, or when a screen makes a fetch after load that its row does not name."
+  },
+  {
+   "file": "src/components/policy-link.test.tsx",
+   "proves": "Fails when a policy maps to the wrong prefetch value or PolicyLink drops an attribute it was given."
+  }
+ ],
+ "migration": {
+  "needed": false,
+  "notes": ""
+ },
+ "done_when": [
+  {
+   "check": "pnpm build, then E2E_SIGNED_IN=1 pnpm exec playwright test --project=signed-in (on a build made as CI's signed-in job makes it: NEXT_PUBLIC_SUPABASE_URL=http://127.0.0.1:3912, any publishable key, e2e/fixtures/auth-stub.mjs running) e2e/signed-in/prefetch.spec.ts",
+   "expect": "passes with one table for eight screens: the admin home makes 0 router prefetch requests in the 3 s after it loads (28 today); the Products list 0 for product editors (8 on a four-row list today); the other six at their recorded counts, which may only fall; at most 2 requests follow hovering one rail link; every fetch after load is named in the table"
+  },
+  {
+   "check": "rg -n 'AdminLink' src/components/admin/admin-rail.tsx src/components/admin/store-admin-nav.tsx src/components/admin/admin-menus.tsx src/components/admin/ui/list.tsx src/components/admin/ui/button.tsx | wc -l",
+   "expect": "15 or more lines (every link of the rail, the menus and the primitives)"
+  }
+ ],
+ "after_deploy": [
+  "Signed in to production with the network panel open: load a store's home and wait five seconds: no request with a `_rsc` parameter other than the page's own; hover Orders in the menu: one or two requests; press it: the page opens.",
+  "On a phone (or a touch emulation): press a menu item: the pending bar shows at once, then the page.",
+  "With the keyboard: Tab to a rail link and press Enter: the page opens; aria-current still marks the current page.",
+  "/admin/platform: the same check on the platform home."
+ ],
+ "docs": [
+  "docs/decisions.md: a new D-number row 'The admin's links are fetched on intent (bloat review step 0.13)': PolicyLink and its three policies, AdminLink's default, where it is used, what stays never fetched (View store, files), the trade (a touch or keyboard press shows the pending bar for one round trip before the skeleton: code review FS1's reason, the owner sees the press worked, is kept by LinkPending, D540), the option not taken (`export const prefetch = 'force-disabled'` on the gated layout, which would also stop the fetch on hover), and the spec's eight screens with their counts.",
+  "docs/admin-navigation.md, docs/rules/admin/platform.md, docs/audits/code-review-2026-11.md: as the second commit says.",
+  "docs/performance.md: one line under the admin's section with the eight screens' prefetch counts before and after.",
+  "docs/platform-parity.md: nothing to tick; the platform admin's rail and lists are the same components and the platform home is one of the eight screens.",
+  "docs/audits/bloat-review-2026-11.md, Progress table: row 0.13 to Done with the date, the commits and the counts."
+ ],
+ "do_not": [
+  "Do not set `export const prefetch = 'force-disabled'` (or any prefetch segment config) on an admin layout, and do not turn on partialPrefetching in next.config.ts: both change every link at once and are other steps' questions.",
+  "Do not use PolicyLink on the storefront in this step: step 2.6 does, with its own budgets.",
+  "Do not remove LinkPending or move it outside the link: useLinkStatus() only works inside next/link's Link.",
+  "Do not drop role=\"menuitem\", aria-current, aria-label or a key while replacing a tag.",
+  "Do not convert every raw <Link> in the admin (there are about 950): only the files named. The remaining rows of other lists stay at their recorded counts in the spec and move later.",
+  "Do not give View store, a print link or the capacity CSV a policy other than none.",
+  "Do not raise a count in the spec's table, and do not widen 'at most 2 after a hover'.",
+  "Do not add a bypass to sign-in for the spec; it signs in through auth.setup.ts's saved states."
+ ],
+ "stop_if": [
+  "After the change the admin home still makes router prefetch requests at rest: print their paths, find which component draws those links (it is one this brief did not name), and report it before converting more files.",
+  "The pending-bar case of e2e/signed-in/admin-text-fallbacks.spec.ts fails: LinkPending no longer sees the navigation.",
+  "A nav unit test's markup changes in anything but the absence of a prefetch attribute.",
+  "A first-scripts budget in admin-scripts.spec.ts fails.",
+  "ButtonLink's callers stop type-checking because one passes prefetch={true} or \"auto\": report the caller.",
+  "A hover leads to more than 2 requests: report them (a link that prefetches its children too)."
+ ],
+ "executor": "cheap-then-review",
+ "executor_why": "Two small new components and about 25 tag swaps at named lines, held by a signed-in spec, but the admin's whole navigation and its accessibility attributes pass through them, so a stronger model should read the diff and the a11y run.",
+ "checked_in_code": "I opened the files the findings name and every link is at its line: admin-rail.tsx 47 and 88, store-admin-nav.tsx 94, 131 and 195 (with LinkPending and useLinkStatus at 154), admin-menus.tsx 126 to 233 (eight menu items), admin-frame.tsx 163 and 250, and the primitives ui/list.tsx 28 and 51, ui/card.tsx 82, ui/page-header.tsx 37, ui/focus-frame.tsx 36 and 47, ui/button.tsx 81 (ButtonLink spreads its props into Link, and one caller passes prefetch={false}), plus products-bulk.tsx 259. Neither src/components/policy-link.tsx nor src/components/admin/ui/link.tsx exists, so this step creates both (finding PF-3 describes PolicyLink; its storefront use is step 2.6). The findings offer three mechanisms (PF-5's AdminLink on PolicyLink, CA-5's intent-link.tsx, AC-12's partialPrefetching flag); the plan names the first and the brief follows it. The step's 'rows of every list' is met through the four list primitives and the product list's row; other lists that draw a raw Link keep today's count in the spec's table, as the done-when allows."
+}

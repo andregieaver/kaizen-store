@@ -179,7 +179,7 @@
   "Open https://kaizenaflow.com and a template-store page at phone width and at 1280 px: the header's menu button shows on the phone and the menu at 1280 px (the kzb- classes still apply). View-source of a store page holds `kz-bp-` 2 times."
  ],
  "docs": [
-  "docs/decisions.md: a new row with the next free D-number: the breakpoint sheet is drawn once per document by the layout (StoreThemeStyles, with rowSizes on Kaizena Flow's roots), an admin preview draws PreviewBreakpoints, held by stylesheet-sources.scan.test.ts; and whether one part sheet per article was built or left, with the counts before and after (6 to 2, 3 to 2). Say it refines D179.",
+  "docs/decisions.md: a new row with the next free D-number: the breakpoint sheet is drawn once per document by the layout (StoreThemeStyles, with rowSizes on Kaizena Flow's roots), an admin preview draws PreviewBreakpoints, held by stylesheet-sources.scan.test.ts; and whether one part sheet per article was built or left, with the counts before and after (6 to 2, 3 to 2). Say it refines D179. Take the number as the repo then asks: with node scripts/claim-decision.mjs if step 0.41 has made it, and as a file docs/decisions/D{n}.md if step 2.40 has split the decisions.",
   "docs/responsive-editing.md and docs/rules/admin/website.md: the corrections named in commit 1.",
   "docs/performance.md: one line: each fixed sheet is in a document twice (HTML and payload), held by e2e/performance.spec.ts.",
   "The plan's Progress table under docs/audits/bloat-review-2026-11: step 2.3 Done with date and commit, and whether commit 2 was made."

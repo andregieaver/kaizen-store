@@ -1,0 +1,121 @@
+{
+  "id": "0.26",
+  "goal": "The 13 indexes that duplicate another index are gone (orders has 32 indexes, not 34), and a test fails when a new index is led by another index of its table.",
+  "why": "Thirteen indexes duplicate another: each costs every order, order line and counted visit one more entry to write, and nothing compares the indexes declared in src/db/schema.ts with the 46 written by hand in migrations. After: 0 plain duplicates (11 found by the catalog query today) and 32 indexes on orders (34).",
+  "read_first": [
+    "docs/ci-migrations.md",
+    "src/db/migration-safety.scan.test.ts",
+    "src/db/testing.ts",
+    "src/db/schema.ts:4895",
+    "src/db/commerce.test.ts",
+    "docs/audits/code-review-2026-11.md",
+    "scripts/db-migrate.mjs"
+  ],
+  "depends_on": [],
+  "commits": [
+    {
+      "title": "Thirteen duplicate indexes dropped, and a test that finds the next one",
+      "changes": [
+        {
+          "file": "supabase/migrations/*_drop_duplicate_hot_indexes.sql",
+          "action": "create",
+          "how": "FIRST, before touching src/db/schema.ts: `pnpm exec drizzle-kit generate --custom --name drop_duplicate_hot_indexes` (an empty file with a new timestamp and a journal entry). Put exactly this in it; the marker must be the file's first line:\n\n-- kaizen:no-transaction\n-- Four indexes on hot tables that duplicate another index of the same table (bloat review step 0.26): dropped concurrently (D569).\n-- orders_retention_idx and orders_invoice_candidates_idx have the key of orders_store_placed_idx; order_lines_order_idx is led by\n-- order_lines_analytics_idx; visits_store_day_idx is led by the unique visits_day_visitor_key.\nDROP INDEX CONCURRENTLY IF EXISTS commerce.orders_retention_idx;\n--> statement-breakpoint\nDROP INDEX CONCURRENTLY IF EXISTS commerce.orders_invoice_candidates_idx;\n--> statement-breakpoint\nDROP INDEX CONCURRENTLY IF EXISTS commerce.order_lines_order_idx;\n--> statement-breakpoint\nDROP INDEX CONCURRENTLY IF EXISTS commerce.visits_store_day_idx;"
+        },
+        {
+          "file": "src/db/schema.ts",
+          "action": "edit",
+          "how": "Delete these twelve declared index lines, finding each by its quoted name (line numbers as of 12 November 2026): \"orders_retention_idx\" (4901), \"order_lines_order_idx\" (5092; in its place leave the comment `// (store_id, order_id) is served by order_lines_analytics_idx, written in SQL because of its INCLUDE.`), \"visits_store_day_idx\" (13544), \"account_recovery_codes_account_idx\" (13723), \"api_tokens_store_idx\" (8319), \"api_uploads_store_idx\" (8353), \"legal_snapshots_store_idx\" (13598), \"order_edits_order_idx\" (14998), \"payout_lines_payout_idx\" (5809), \"recurring_costs_store_idx\" (19270), \"return_exchanges_return_idx\" (6571), \"webhook_endpoints_store_idx\" (8644). Delete exactly the line `index(\"<name>\")…,` (it may span more than one line: delete to its closing `),`). Do not touch similarly named indexes (purchase_order_lines_order_idx, supplier_order_lines_order_idx). orders_invoice_candidates_idx is not declared in schema.ts (it exists only in SQL), so there is no line for it. If removing a line leaves an empty `(t) => []` list, keep the empty list."
+        },
+        {
+          "file": "supabase/migrations/*_drop_duplicate_indexes.sql",
+          "action": "create",
+          "how": "AFTER the schema.ts edit run `pnpm db:generate` (name the file drop_duplicate_indexes if it asks; it prunes snapshots itself). It writes one file with twelve `DROP INDEX` statements. Open it and DELETE the three statements for the hot tables (orders_retention_idx, order_lines_order_idx, visits_store_day_idx) with their `--> statement-breakpoint` lines: the first file drops those concurrently. Nine statements stay (account_recovery_codes_account_idx, api_tokens_store_idx, api_uploads_store_idx, legal_snapshots_store_idx, order_edits_order_idx, payout_lines_payout_idx, recurring_costs_store_idx, return_exchanges_return_idx, webhook_endpoints_store_idx); make each `DROP INDEX IF EXISTS commerce.<name>;` if the generator wrote it without `IF EXISTS` or without the schema. This file's timestamp must sort after the hot file's. Then `pnpm db:check` (it compares schema.ts with the snapshot, which db:generate has just written)."
+        },
+        {
+          "file": "src/db/index-duplicates.test.ts",
+          "action": "create",
+          "how": "A Vitest file using createTestDatabase() from src/db/testing.ts as the other src/db tests do (read src/db/blogs.test.ts for the pattern: create in beforeAll, close in afterAll, db.query()). It runs this catalog query, with the marked condition replaced per case:\n\nwith ix as (\n  select i.indrelid, i.indexrelid, ic.relname as name, i.indisunique as uq, i.indpred is not null as partial,\n         (select array_agg(pg_get_indexdef(i.indexrelid, k, true) order by k) from generate_series(1, i.indnkeyatts) k) as cols\n  from pg_index i join pg_class ic on ic.oid = i.indexrelid join pg_am am on am.oid = ic.relam\n  where ic.relnamespace = 'commerce'::regnamespace and am.amname = 'btree'\n)\nselect a.indrelid::regclass::text as tbl, a.name as redundant, b.name as covered_by\nfrom ix a join ix b on b.indrelid = a.indrelid and b.indexrelid <> a.indexrelid\nwhere not a.uq and <PARTIAL CONDITION>\n  and b.cols[1:cardinality(a.cols)] = a.cols\n  and (cardinality(b.cols) > cardinality(a.cols) or b.uq or a.name > b.name)\norder by 1, 2\n\nCase 1, 'no plain index is led by another': <PARTIAL CONDITION> is `not a.partial and not b.partial`; expect the rows to equal []. (Before this change it returned 11 distinct indexes.) Case 2, 'a partial index led by a whole one is on the list, with its reason': <PARTIAL CONDITION> is `a.partial and not b.partial`; expect the set of `redundant` names to equal an ALLOWED object written in the test, name to reason: ai_usage_autopilot_idx, order_events_restock_idx, price_lists_exclusive_idx, payments_captured_idx ('a selective condition: few rows match'), orders_list_placed_idx and orders_list_archived_idx ('another sort order for the orders list'). If the query returns a name that is not one of these six, do not add it yourself: stop (see stop_if). Case 3, 'orders has 32 indexes': `select count(*)::int as n from pg_indexes where schemaname = 'commerce' and tablename = 'orders'` is 32. Case 4, 'would notice': `create index scratch_dup_idx on commerce.orders (store_id, placed_at)`, run case 1's query and expect one row naming scratch_dup_idx, then `drop index commerce.scratch_dup_idx`. A doc comment at the top: indexes are declared in two places, src/db/schema.ts and hand-written migrations (the hot tables' concurrent builds), and `pnpm db:check` sees only the first; this test sees both."
+        },
+        {
+          "file": "docs/ci-migrations.md",
+          "action": "edit",
+          "how": "After the paragraph that sends hot-table indexes to hand-written files (about lines 60 to 62; rg -n 'concurrently' docs/ci-migrations.md) add: 'An index written by hand is checked against the table's other indexes by `src/db/index-duplicates.test.ts`; when it replaces a declared one, the declared line leaves `src/db/schema.ts` in the same change.'"
+        },
+        {
+          "file": "docs/audits/code-review-2026-11.md",
+          "action": "edit",
+          "how": "Correct finding FD7's row (line 269): orders carried 34 indexes, two of them duplicates of orders_store_placed_idx; 32 since bloat step 0.26, with the date and commit. Leave Progress row 3.15 Open (its unused-index review waits for weeks of traffic, and FD8 is not done) and write in its Notes: 'The 13 duplicate indexes dropped by bloat step 0.26, <date>, <commit>.' Add a line to the change log."
+        },
+        {
+          "file": "docs/decisions.md",
+          "action": "edit",
+          "how": "Append one row with the next free D-number (pull main first; `rg -o '^\\| D[0-9]+' docs/decisions.md | tr -dc '0-9\\n' | sort -n | tail -1`, plus 1). It records: the 13 indexes dropped and what serves each read now (ten were a leading prefix of a unique key on the same table; orders_retention_idx and orders_invoice_candidates_idx had the key of orders_store_placed_idx with conditions nearly every order meets; order_lines_order_idx is led by the covering order_lines_analytics_idx); the four on hot tables dropped concurrently in a marked file (D569); what was kept and why (the six selective partial indexes, the (store_id, id) keys, indexes on nullable foreign keys); the new test. Platform: one database, so the platform's tables are in the duplicate test. After CI has applied the two files, add both versions under Migration versions with the advisors' result."
+        }
+      ],
+      "checks": [
+        "pnpm db:check : exits 0",
+        "pnpm exec vitest run src/db/index-duplicates.test.ts src/db/migration-safety.scan.test.ts src/db/snapshots.scan.test.ts src/db/commerce.test.ts : pass (commerce.test.ts still finds the unique key visits_day_visitor_key)",
+        "pnpm exec vitest run --config vitest.integration.config.mts src/db/migrate-no-transaction.int.test.ts src/server/retention.int.test.ts src/server/invoice-issue.int.test.ts src/server/payouts.int.test.ts : pass unchanged (skip a file name that does not exist)",
+        "On the local seeded Postgres (node scripts/db-setup.mjs --seed on an empty DATABASE_URL), with psql or a node one-liner: `set enable_seqscan = off; explain select id from commerce.orders where store_id = '00000000-0000-0000-0000-000000000001' and anonymised_at is null and placed_at < now() - interval '1 year';` : the plan names orders_store_placed_idx; and `explain select count(*) from commerce.visits where store_id = '00000000-0000-0000-0000-000000000001' and day = current_date;` : names visits_day_visitor_key",
+        "pnpm lint && pnpm typecheck && pnpm test : exits 0",
+        "pnpm test:int : exits 0"
+      ]
+    }
+  ],
+  "tests": [
+    {
+      "file": "src/db/index-duplicates.test.ts",
+      "proves": "Fails when a plain index is a leading prefix of another index of its table (declared in schema.ts or written by hand), when a partial twin is not on the allowed list, or when orders has other than 32 indexes."
+    }
+  ],
+  "migration": {
+    "needed": true,
+    "notes": "Two files, pushed together. (1) Custom, `…_drop_duplicate_hot_indexes.sql`, first line `-- kaizen:no-transaction`: four `DROP INDEX CONCURRENTLY IF EXISTS` on orders (2), order_lines and visits, which are hot tables (D569), split by `--> statement-breakpoint`; CI runs its statements one by one outside a transaction. (2) Generated by `pnpm db:generate` after twelve index lines leave src/db/schema.ts, with the three hot statements removed by hand: nine plain `DROP INDEX IF EXISTS` on tables that are not hot. Dropping an index breaks no statement: the code that is running keeps working and only loses a second path to rows another index already serves; no index backs a constraint that another does not enforce. CI's release job applies both after every check passes, then deploys. Never apply them by hand. After the deploy check the advisors and record both versions in docs/decisions.md."
+  },
+  "done_when": [
+    {
+      "check": "pnpm exec vitest run src/db/index-duplicates.test.ts",
+      "expect": "passes: case 1 returns 0 rows (11 before) and orders has 32 indexes (34 before)"
+    },
+    {
+      "check": "pnpm db:check",
+      "expect": "exits 0"
+    },
+    {
+      "check": "rg -c 'DROP INDEX' supabase/migrations/*_drop_duplicate_hot_indexes.sql supabase/migrations/*_drop_duplicate_indexes.sql",
+      "expect": "4 and 9"
+    }
+  ],
+  "after_deploy": [
+    "CI's release job is green and applied both files.",
+    "In production (the owner, or a session allowed to read it): select count(*) from pg_indexes where schemaname = 'commerce' and tablename = 'orders' gives 32.",
+    "Supabase performance advisor for project ybsozesfuxuitoacntfo: no 'duplicate index' finding for the commerce schema, and no new warning.",
+    "In step 0.2's daily reading over the next week: no statement on orders, order_lines, visits or payout_lines newly among the costliest (a dropped index was not the only fast path)."
+  ],
+  "docs": [
+    "docs/decisions.md: the D-row and both migration versions.",
+    "docs/ci-migrations.md: the sentence on the duplicate test.",
+    "docs/audits/code-review-2026-11.md: FD7 corrected, the note on row 3.15, a change-log line.",
+    "docs/audits/bloat-review-2026-11.md, Progress table: set the row of step 0.26 to Done with the date and the commits in Notes (find it: rg -n '^\\| 0\\.26 ' docs/audits/bloat-review-2026-11.md), and add a line under the step's own heading in docs/audits/bloat-review-2026-11/plan/phase-0.md saying what was done differently from the plan, if anything."
+  ],
+  "do_not": [
+    "Do not drop any index that is not one of the thirteen named here.",
+    "Do not drop a unique index, a primary key, the (store_id, id) keys, or the partial indexes ai_usage_autopilot_idx, order_events_restock_idx, price_lists_exclusive_idx, payments_captured_idx, orders_list_placed_idx, orders_list_archived_idx.",
+    "Do not drop the hot tables' indexes inside a transaction or without CONCURRENTLY: they go in the marked file only.",
+    "Do not edit a baseline migration or supabase/archive.",
+    "Do not add a name to the test's allowed list to make it pass.",
+    "Do not apply either migration by hand.",
+    "Do not set code review step 3.15 to Done."
+  ],
+  "stop_if": [
+    "pnpm db:generate writes anything other than DROP INDEX statements for the twelve names (for example a column or constraint change): the schema and snapshot disagreed before this step; report the file's content.",
+    "Case 1 of the new test still returns rows after the drops, or case 2 returns a name outside the six: report the rows (table, redundant, covered_by); do not drop or allow more.",
+    "orders has a count other than 32 in PGlite after the migrations.",
+    "A plan in the local check does not name orders_store_placed_idx or visits_day_visitor_key.",
+    "src/db/migration-safety.scan.test.ts fails on either file.",
+    "An int test that passed before fails after the drops."
+  ],
+  "executor": "cheap-then-review",
+  "executor_why": "The names, the SQL and the test's query are given whole and the checks catch a wrong drop, but it is a migration on orders, order_lines and visits, so a stronger model should read the two files before they are pushed.",
+  "checked_in_code": "I checked each of the thirteen names: twelve are declared in src/db/schema.ts at the lines the finding gives (4901, 5092, 13544, 13723, 8319, 8353, 13598, 14998, 5809, 19270, 6571, 8644) and created in the baseline; orders_invoice_candidates_idx exists only in SQL (baseline_3 line 10328), as the finding says, and order_lines_analytics_idx (the covering twin) likewise. No file under src names any of them outside schema.ts, so no `on conflict` or hint depends on one. HOT_TABLES in src/db/migration-safety.scan.test.ts lists orders, order_lines and visits, so four of the drops go in a marked file. The review's working catalog query lived in a scratch file; I copied it into the brief whole. The step's done-when speaks of '11 today' while 13 are dropped: the query counts plain twins only, and the two partial ones on orders are covered by the test's second case."
+}

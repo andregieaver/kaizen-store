@@ -1,0 +1,211 @@
+{
+ "id": "1.17",
+ "goal": "Three ratchets of exact lists hold the code's size: unused and test-only exports, unreferenced public files and API routes; exact and near copies, twin files and helpers repeated in three files; and five counts of the admin's hand-made repeats.",
+ "why": "Lint sees unused locals only, and nothing counts copies: 4,098 exact copied lines across files, 41 twin pairs and 232 admin action files off the shared wrapper arrived unseen. After this step each of those numbers is in a baseline, a new unused export or a pasted 30-line block fails pnpm test and the message names the file.",
+ "read_first": [
+  "docs/audits/bloat-review-2026-11.md",
+  "docs/rules/admin/platform.md",
+  "scripts/lib/ratchet-count.mjs",
+  "scripts/ratchet.mjs",
+  "src/server/ratchet.scan.test.ts",
+  "docs/audits/bloat-review-2026-11/scripts/unused-code.mjs",
+  "docs/audits/bloat-review-2026-11/scripts/copied-code.mjs",
+  "vitest.config.mts"
+ ],
+ "depends_on": [
+  {
+   "id": "0.1",
+   "why": "it puts the refined copy counter (copy-count.mjs), the twin counter (twin-count.mjs) and the helper counter (helper-count.mjs) under docs/audits/bloat-review-2026-11/scripts/, which commit 2 turns into a library"
+  },
+  {
+   "id": "0.36",
+   "why": "it deletes the unused exports, so the baseline's unusedExports list starts empty"
+  },
+  {
+   "id": "1.1",
+   "why": "it wrote the budgets rule and the scan that fails on a baseline the rule does not name"
+  },
+  {
+   "id": "1.10",
+   "why": "it makes scripts/ratchet.mjs keep the keys it does not compute; without it this step's ratchet run would drop queryBudget"
+  }
+ ],
+ "commits": [
+  {
+   "title": "Ratchet: five counts of the admin's repeats are held",
+   "changes": [
+    {
+     "file": "scripts/lib/ratchet-count.mjs",
+     "action": "edit",
+     "how": "Add a function adminRepeats(root) and return its result from ratchetCounts() as a new key 'adminRepeats'. It walks src/app/admin and src/components/admin with the file's own sources() (tests and test support aside) and counts: unwrappedActionFiles: .ts and .tsx files whose first statement after leading comments is the directive 'use server' and whose text calls neither storeAction( nor platformAction( (232 today, of 235 'use server' files); tables: occurrences of /<table\\b/ in .tsx files (154 today); nativeSelects: occurrences of /<select\\b/ in .tsx files (436); osloFiles: .tsx files containing 'Europe/Oslo' (67); confirmFiles: .tsx files matching /\\bconfirm\\(/ (42). Export the five patterns as constants so the test can prove them on small strings."
+    },
+    {
+     "file": "scripts/ratchet.mjs",
+     "action": "edit",
+     "how": "In the block that refuses a rise, add one line per key of now.adminRepeats: if (now.adminRepeats[key] > (before.adminRepeats?.[key] ?? Infinity)) raised.push(`${key}: ${before} → ${now}`). A baseline without the key (the first run) is accepted. Add the five numbers to the final console.log."
+    },
+    {
+     "file": "src/server/ratchet.scan.test.ts",
+     "action": "edit",
+     "how": "Widen the type of 'now' with adminRepeats: Record<string, number>. Add a test 'adds no hand-made repeat in the admin': for each of the five keys, now.adminRepeats[key] is at most baseline.adminRepeats[key]; the failure message says what to use instead: unwrappedActionFiles 'run the action through storeAction() or platformAction() (src/server/store-action.ts)'; tables and nativeSelects 'this count only falls until the admin kit of step 4.1 exists; reuse a list part from src/components/admin/ui'; osloFiles 'format dates with the admin's date helper, not a literal time zone'; confirmFiles 'use the admin's confirm button, not window.confirm'. Extend the existing test 'keeps the baseline as low as the code' with the five keys. Extend 'counts what it says it counts' with one positive and one negative string per pattern (a file starting with a comment and then 'use server' that calls storeAction( counts 0)."
+    },
+    {
+     "file": "src/server/ratchet.baseline.json",
+     "action": "edit",
+     "how": "Never by hand: run 'node scripts/ratchet.mjs'. It adds adminRepeats with the five numbers. Expect 232, 154, 436, 67 and 42 if the admin has not changed since 12 November 2026; write whatever the script counts."
+    }
+   ],
+   "checks": [
+    "node scripts/ratchet.mjs: prints the five numbers and writes the baseline; git diff shows only the new key (and queryBudget and other keys still present)",
+    "pnpm vitest run src/server/ratchet.scan.test.ts: passes",
+    "Trial, never committed: add '<select></select>' to any .tsx file under src/components/admin: the test fails naming nativeSelects; remove it",
+    "pnpm lint && pnpm typecheck && pnpm test: exits 0"
+   ]
+  },
+  {
+   "title": "Copies: exact and near copies, twins and repeated helpers are counted against a baseline",
+   "changes": [
+    {
+     "file": "scripts/lib/copy-count.mjs",
+     "action": "create",
+     "how": "Plain Node, no dependency, built from the three scripts step 0.1 put under docs/audits/bloat-review-2026-11/scripts/ (copy-count.mjs, twin-count.mjs, helper-count.mjs; leave those three files as they are): move their logic into exported functions that take the repo root and return data, and remove their hard-coded paths, process.argv reading and file writing. Keep each one's rules exactly, because the baseline numbers come from them. exactCopies(root): copy-count.mjs at level 0 (trim each line; drop blank lines, comment lines, import lines and lone closing brackets; a window of 10 lines whose raw text is at least 220 characters with at least 6 distinct lines; non-test .ts and .tsx under src; set aside src/lib/admin-messages, src/lib/messages, src/db/schema.ts, src/lib/signature and src/lib/admin-api-*.ts): returns { acrossFiles: lines that lie in a window repeated in another file (4,098 in the review), insideFiles: lines in a window repeated only inside its own file (705), pairs: the file pairs with their shared window count, largest first }. nearCopies(root): the same at level 2 (strings and numbers become LIT, every non-keyword identifier becomes ID): { lines (22,429), families: groups of files sharing windows, largest first, each with its line count }. twinPairs(root): twin-count.mjs's rule (two files that share 20 or more lines of 30 or more characters and 30% of the smaller file): the sorted list of 'fileA|fileB' (41). repeatedHelpers(root): helper-count.mjs's rule (a top-level function or arrow of 60 to 600 characters whose normalised text is identical in three or more files): { names: count of distinct helper names (84), declarations: total declarations (412), list: name with its files }. Each function reads every file once; share one cached read of the source tree between them (a Map from path to lines kept in the module)."
+    },
+    {
+     "file": "scripts/copies.mjs",
+     "action": "create",
+     "how": "Writes src/lib/copies.baseline.json and prints a report. Without arguments it prints the four results, the ten largest exact pairs, the ten largest near families, and (printed only, never held) the same exact count over test files. With --write it lowers numbers freely. It raises exactAcrossFiles, exactInsideFiles, repeatedHelperNames or repeatedHelperDeclarations, or adds a twin pair, only with --reason \"...\" (at least 20 characters), which it stores: for a twin pair under twins[pair].reason, for a number in an array 'raised' of { key, from, to, reason, date }. nearLines is rewritten on every --write (its test has 250 lines of room)."
+    },
+    {
+     "file": "src/lib/copies.baseline.json",
+     "action": "create",
+     "how": "Written by 'node scripts/copies.mjs --write --reason \"first baseline, bloat review step 1.17\"'. Shape: { exactAcrossFiles, exactInsideFiles, nearLines, repeatedHelperNames, repeatedHelperDeclarations, twins: { 'fileA|fileB': { reason } }, raised: [] }. After the first write, replace each twin's reason by hand: for the platform's second engines and the modules of its platform_* tables write 'the platform's twin of a store engine; step 3.10 folds it'; for a pair you cannot explain write 'copied; step 4.2 folds it'. Find the platform pairs with: node -e \"const b=require('./src/lib/copies.baseline.json');console.log(Object.keys(b.twins).filter(p=>/platform/.test(p)).join('\\n'))\"."
+    },
+    {
+     "file": "src/lib/copies.scan.test.ts",
+     "action": "create",
+     "how": "A vitest file with 'testTimeout' raised for this file to 120 seconds (describe-level option or vi.setConfig), calling the four functions once in a beforeAll. Tests: (1) exact copies across files do not rise above the baseline; on failure print the file pairs whose shared windows are new or larger (compare with the pairs of a second call restricted to the baseline? no: simply print the ten largest pairs that involve a file changed since the last commit when git is available, else the ten largest), and say 'a second kind of an existing thing extends the first one's engine with a scope; if the copy is on purpose run node scripts/copies.mjs --write --reason \"...\"'. (2) the same for exact copies inside files. (3) near-copied lines are at most the baseline plus 250; on failure print the ten largest families. (4) no twin pair that is not in the baseline; every baseline twin has a reason of at least 20 characters; a baseline pair that is no longer a twin fails with 'run node scripts/copies.mjs --write'. (5) helpers identical in three or more files: neither names nor declarations rise. (6) the numbers that fell are lowered: exactAcrossFiles, exactInsideFiles, names and declarations below the baseline by more than 50 lines (or 2 names) fail until node scripts/copies.mjs --write is run (a small fall from editing one side of a copy must not fail). (7) 'the detector would notice', on strings in a temporary folder: two files that share a 30-line block give acrossFiles of 30; one file with the same 30-line block twice gives insideFiles of at least 30; a 300-line module copied with every identifier renamed gives 0 exact lines and at least 250 near lines; one 20-line form that resembles another (same shape, different field names and labels) gives 0 exact lines and fewer than 250 near lines; a helper pasted into a third file raises declarations by 1 and names by 1."
+    }
+   ],
+   "checks": [
+    "node scripts/copies.mjs: prints the four results, and each equals what step 0.1's script prints for the same thing (node docs/audits/bloat-review-2026-11/scripts/twin-count.mjs, helper-count.mjs, and copy-count.mjs 0 /tmp/c.json src); exact across files is within 2% of 4,098, inside files of 705, twins of 41, helpers of 84 names and 412 declarations, near lines of 22,429, unless phase 0 changed them (say which did)",
+    "pnpm vitest run src/lib/copies.scan.test.ts: 7 tests pass in under 60 seconds",
+    "Trial, never committed: paste a 30-line function of src/server/discounts.ts into src/server/gift-cards-admin.ts: test 1 fails naming the pair; remove it",
+    "pnpm lint && pnpm typecheck && pnpm test: exits 0"
+   ]
+  },
+  {
+   "title": "Unused: exports nothing imports, exports only tests keep alive, public files and API routes nothing references",
+   "changes": [
+    {
+     "file": "scripts/lib/unused-scan.mjs",
+     "action": "create",
+     "how": "Copy docs/audits/bloat-review-2026-11/scripts/unused-code.mjs and turn it into a library: remove the reading of process.argv and every writeFileSync; export unusedScan(root) that returns three sorted lists: unusedExports and testOnlyExports as 'file#name', testOnlyFiles as paths. Keep its rules unchanged: entry points are Next's convention files under src/app, src/proxy.ts, src/instrumentation.ts, scripts/** and the config files; tests are *.test.*, *.spec.*, e2e/**, e2e-live/** and src/test/**; exports of convention files and register in src/instrumentation.ts are skipped; a namespace import, an 'export *' or an import() of a file marks all its exports as used. Add two more exported functions. unreferencedPublic(root): every file under public/ (150 today) whose path from public/ (with a leading slash) or whose file name appears in no file under src, scripts, content, wordpress-plugin, next.config.ts or vercel.json; a folder whose files are addressed by a built name is matched by its folder: if the text '/flags/' appears in src, every file under public/flags is referenced. unreferencedApiRoutes(root): every route.ts under src/app/api (find them with the walker) whose URL path, written with its dynamic segments cut off at the first '[', appears in no non-test file under src other than itself, in no file under scripts, e2e, wordpress-plugin, content or docs/rules, in vercel.json or in supabase/migrations/*.sql (the scheduler calls /api/cron/<name> from SQL)."
+    },
+    {
+     "file": "scripts/lib/ratchet-count.mjs",
+     "action": "edit",
+     "how": "Export 'TEST_SUPPORT = /(fixtures?|test-support|testing|test-helper|test-days)\\.tsx?$/' and use it inside NOT_COUNTED in place of the two alternatives 'fixture\\.ts$' and 'test-support\\.ts$', so test support is known by one name everywhere. Then run node scripts/ratchet.mjs: a file such as src/server/trust-fixtures.ts leaves the baseline's lists; that is expected."
+    },
+    {
+     "file": "scripts/unused.mjs",
+     "action": "create",
+     "how": "The twin of scripts/ratchet.mjs for src/server/unused.baseline.json. Without arguments it prints the counts and the first 20 of each list. With --write it writes the baseline: unusedExports (list), testOnlyExports (list), keptForTests (object 'file#name' to a reason), testOnlyFiles (object path to a reason), publicUnreferenced (object path to a reason), apiUnreferenced (object route path to a reason). It refuses to add an entry to unusedExports or testOnlyExports unless --first is given, keeps every reason already in the file, removes entries that are no longer suspects and prints what it removed. A new entry of the four reason objects is written with the reason 'TODO' and the script exits 1 while any TODO remains."
+    },
+    {
+     "file": "src/server/unused.baseline.json",
+     "action": "create",
+     "how": "Written by 'node scripts/unused.mjs --write --first'. unusedExports must come out empty (step 0.36 deleted them): if it does not, stop. Then fill the reasons by hand. keptForTests: move from testOnlyExports the exports a test needs on purpose, each with its reason: an oracle a test compares against (buildInvoiceSnapshot, buildEditInvoiceSnapshot, creditNoteSnapshot, editCreditNote, nextState, validateExport), a constant a guard test reads (STORE_MATCHER, SECRET_TABLES, NOT_EXPORTED), a reset helper (closeDb, forgetUpsTokens, resetTicks, the two registerProblems), replayAgentEval. testOnlyFiles: i18n-glossary.ts, legal-wording-nb.ts, store-export-scope.ts, signature-themes.ts, experiment-legacy.ts and src/db/migration-files.ts if the scan lists them, each with one sentence. publicUnreferenced and apiUnreferenced: a file or route that is reached from outside the repo (a webhook a provider calls, a file an email links to, a download named in the docs portal) gets that as its reason; one you cannot explain gets 'unexplained on <date>: ask the owner before deleting' and is named in your report."
+    },
+    {
+     "file": "src/server/unused.scan.test.ts",
+     "action": "create",
+     "how": "A vitest file with a 120 second timeout, running unusedScan(), unreferencedPublic() and unreferencedApiRoutes() once in beforeAll. Tests: (a) every export the scan calls unused is in the baseline's unusedExports, else the message names 'file#name' and says 'delete it or use it'; (b) every tests-only export is in testOnlyExports or keptForTests, else 'a helper only tests need lives in a *-test-support.ts file; an oracle is listed in keptForTests with its reason (node scripts/unused.mjs --write)'; (c) every tests-only file that does not match TEST_SUPPORT is in testOnlyFiles; (d) every file under public/ is referenced or listed in publicUnreferenced with a reason; (e) every route.ts under src/app/api is referenced or listed in apiUnreferenced with a reason; (f) the baseline holds nothing that is no longer a suspect and no reason that is empty or TODO ('run node scripts/unused.mjs --write'); (g) unusedExports in the baseline is empty."
+    }
+   ],
+   "checks": [
+    "node scripts/unused.mjs: prints 0 unused exports; if it prints more, stop (step 0.36)",
+    "pnpm vitest run src/server/unused.scan.test.ts: 7 tests pass in under 90 seconds",
+    "Trials, one at a time, never committed, each followed by the test: 'export const NEVER_USED = 1;' appended to src/lib/money.ts fails (a) naming src/lib/money.ts#NEVER_USED; an empty file public/unused.png fails (d); a new src/app/api/never/route.ts containing 'export async function GET() { return new Response(null); }' fails (e). Remove each.",
+    "pnpm vitest run src/server/ratchet.scan.test.ts: passes after node scripts/ratchet.mjs",
+    "pnpm lint && pnpm typecheck && pnpm test: exits 0"
+   ]
+  }
+ ],
+ "tests": [
+  {
+   "file": "src/server/unused.scan.test.ts",
+   "proves": "fails on a new export nothing imports, a new export only tests use that is not listed with a reason, a file under public/ or a route under src/app/api that nothing references"
+  },
+  {
+   "file": "src/lib/copies.scan.test.ts",
+   "proves": "fails on a 30-line block pasted into another file or twice inside one, a 300-line module copied with its names changed, a helper pasted into a third file and a new twin pair; passes when one new 20-line form resembles another"
+  },
+  {
+   "file": "src/server/ratchet.scan.test.ts",
+   "proves": "fails when the admin gains an action file off the shared wrapper, a table, a native select, a literal Europe/Oslo or a confirm( call"
+  }
+ ],
+ "migration": {
+  "needed": false,
+  "notes": ""
+ },
+ "done_when": [
+  {
+   "check": "pnpm test with 'export const NEVER_USED = 1' in a file under src/lib",
+   "expect": "unused.scan.test.ts fails naming that file"
+  },
+  {
+   "check": "pnpm test with public/unused.png added, then with an empty src/app/api/never/route.ts",
+   "expect": "unused.scan.test.ts fails each time naming the file"
+  },
+  {
+   "check": "pnpm test with a 30-line block pasted into another file, then pasted twice inside one file, then a 300-line module copied with its names changed, then a helper pasted into a third file",
+   "expect": "copies.scan.test.ts fails each time and names the pair, the family or the helper"
+  },
+  {
+   "check": "pnpm test with one new 20-line form that resembles another",
+   "expect": "passes"
+  },
+  {
+   "check": "node -e \"const b=require('./src/server/unused.baseline.json');console.log(b.unusedExports.length)\"",
+   "expect": "0"
+  },
+  {
+   "check": "node -e \"console.log(require('./src/server/ratchet.baseline.json').adminRepeats)\"",
+   "expect": "unwrappedActionFiles 232, tables 154, nativeSelects 436, osloFiles 67, confirmFiles 42, or lower"
+  },
+  {
+   "check": "node -e \"const t=require('./src/lib/copies.baseline.json').twins;console.log(Object.values(t).every(x=>x.reason.length>=20))\"",
+   "expect": "true, and the platform's twins carry the reason that names step 3.10"
+  }
+ ],
+ "after_deploy": [],
+ "docs": [
+  "The budgets rule (docs/rules/budgets.md after step 1.1; if the name differs find it with: rg -l 'baseline.json' docs/rules): in its table 'Every budget' add one row for each new baseline (src/server/unused.baseline.json (node scripts/unused.mjs), src/lib/copies.baseline.json (node scripts/copies.mjs) and the key adminRepeats of src/server/ratchet.baseline.json) with its test and the script that lowers it. Step 1.1's scan fails on a baseline under src that this rule does not name. Do not add a sentence to CLAUDE.md: step 1.1 gave all budgets one sentence there.",
+  "docs/rules/admin/platform.md, at the rule on server actions (line 89 today: actions run through storeAction() or platformAction(), other files move when touched): add 'the ratchet holds the number of files still off the wrapper (adminRepeats.unwrappedActionFiles).'",
+  "docs/audits/code-review-2026-11.md: a change-log line: the remaining action files, tables, selects, Oslo dates and confirm calls are counted from now (steps 1.4 and 1.12 to 1.15 keep their status), and the copies budget is a file of its own because scripts/ratchet.mjs refuses any rise.",
+  "docs/platform-parity.md: no row; in the decision say the platform's twins are in the twin baseline with their reason until step 3.10 folds them.",
+  "docs/decisions.md: add one row at the end of the decisions table with the next free D-number (read the last row first; D573 was the last on 12 November 2026, and other steps add rows, so never assume the number). It records: unused exports, test-only exports, public files, API routes, exact and near copies, twins, repeated helpers and five admin repeat counts are held by three scan tests; a copy made on purpose is recorded with --reason; the start numbers.",
+  "docs/audits/bloat-review-2026-11.md: in the Progress table set the row of step 1.17 to Done with the date and the commit hash, in the same commit as the last change of this step."
+ ],
+ "do_not": [
+  "Do not delete anything this scan lists: this step holds the lists; steps 0.36, 3.x and 4.x shrink them. An unused feature or an unreferenced file is never by itself a reason to remove it.",
+  "Do not put the copy counts into src/server/ratchet.baseline.json: scripts/ratchet.mjs refuses any rise, which would block a copy made on purpose.",
+  "Do not change the detectors' rules (window 10, 220 characters, 6 distinct lines; 20 lines and 30% for twins; 60 to 600 characters for helpers): the baseline numbers are theirs.",
+  "Do not hold the tests' own copies: they are printed in scripts/copies.mjs's report only.",
+  "Do not convert an action file, a table or a select in this step.",
+  "Do not add a package (no knip, no jscpd): the scripts use the repo's own TypeScript and plain Node.",
+  "Do not list an export in keptForTests to silence the scan without a reason a reviewer can check."
+ ],
+ "stop_if": [
+  "copy-count.mjs, twin-count.mjs or helper-count.mjs is not under docs/audits/bloat-review-2026-11/scripts/: step 0.1 is not done; commit 1 can land alone.",
+  "node scripts/unused.mjs reports any unused export after step 0.36: list them and stop.",
+  "A count from scripts/copies.mjs is more than 10% away from the review's figure and phase 0 does not explain it: the port changed a rule.",
+  "Either scan test takes over 90 seconds in pnpm test (the unit run's whole budget matters: step 1.20 holds it).",
+  "More than 20 files under public/ or more than 10 API routes come out unreferenced: report the list before writing reasons.",
+  "scripts/ratchet.mjs would drop a key it does not compute (queryBudget): step 1.10's edit is missing."
+ ],
+ "executor": "cheap-then-review",
+ "executor_why": "Porting three review scripts into libraries and writing three baselines is mechanical, but the reasons written into the lists and the many files touched deserve a stronger model's read.",
+ "checked_in_code": "I opened scripts/lib/ratchet-count.mjs (NOT_COUNTED today is tests, src/test, fixture.ts and test-support.ts), scripts/ratchet.mjs, src/server/ratchet.scan.test.ts and the two review scripts in the repo (unused-code.mjs, a TypeScript-parser scan that writes files, and copied-code.mjs, the plain window-of-10 counter). I recounted the admin's repeats on today's code: 232 unwrapped of 235 'use server' files, 154 tables, 436 native selects, 67 files with Europe/Oslo and 42 with confirm(, exactly the step's figures. Corrections: the refined copy counter, the twin counter and the helper counter are not in the repo yet (step 0.1 copies them in as copy-count.mjs, twin-count.mjs and helper-count.mjs); FM-13's server-reach test is step 1.8's route-load test and is not built here; FM-8 asked for six counts and the step keeps five (the 'slice(0, 10)' and raw-form counts are dropped by the plan); CP-14 wanted the copy count inside ratchet.baseline.json and FM-13 a separate file, and the step chose the separate src/lib/copies.baseline.json."
+}

@@ -1,0 +1,306 @@
+{
+ "id": "2.14",
+ "goal": "A read of one page's document carries the tag page:{id}; publishing a change to a page's body refreshes only that tag, a change other pages show (title, address, thumbnail, excerpt, a header or footer, a first publish, an unpublish) still refreshes pages:{store}; a product layout's document is cached once per store; and the alt-text job refreshes a store's tags at most once per pass of its queue.",
+ "why": "Today one tag, pages:{store}, is on all 261 built entries of the demo store and about 60 places refresh it, so one publish makes all 261 render again, and the alt-text job refreshed a store's tag 10 times in 10 runs. After: a body-only publish makes 3 of 261 entries stale (the page's own), and the job refreshes store-wide at most once in 10 runs.",
+ "read_first": [
+  "docs/rules/storefront.md",
+  "docs/rules/admin/website.md",
+  "node_modules/next/dist/docs/01-app/03-api-reference/04-functions/cacheTag.md",
+  "node_modules/next/dist/docs/01-app/03-api-reference/04-functions/updateTag.md",
+  "src/server/pages.ts",
+  "src/server/product-layouts.ts",
+  "src/app/admin/(gated)/[store]/pages/actions.ts",
+  "src/server/alt-texts.ts"
+ ],
+ "depends_on": [
+  {
+   "id": "0.24",
+   "why": "it adds publishedPageById() and publishedPageIndex() to src/server/pages.ts; this step tags the first with page:{id} and compares a publish against what the second holds"
+  },
+  {
+   "id": "1.11",
+   "why": "the .meta reader in CI and src/server/use-cache.scan.test.ts hold each read's tags; this step changes both figures"
+  },
+  {
+   "id": "0.28",
+   "why": "it makes the alt-text job cost one statement when nothing changed and adds the lookup of the pages that hold a picture; the job's refresh here builds on it"
+  }
+ ],
+ "commits": [
+  {
+   "title": "A product layout's document is cached once per store, and one page's reads carry the page's own tag",
+   "changes": [
+    {
+     "file": "src/server/pages.ts",
+     "action": "edit",
+     "how": "Beside pagesTag (about line 69) add: /** One page's own document: refreshed when its body is published (bloat review step 2.14). */ export const pageTag = (id: string) => 'page:' + id; In findPublishedPage() (about line 684) add, after the row is read and only when a row was found: cacheTag(pageTag(String(row.id))); keep the existing cacheTag(pagesTag(owner)) line (cacheTag may be called again after an await: node_modules/next/dist/docs/01-app/03-api-reference/04-functions/cacheTag.md, 'tag from the data you read'). In publishedPageById() (added by step 0.24) add cacheTag(pageTag(id)) beside its pagesTag line. If step 2.20 or 2.24 has moved the tag builders to a leaf file (rg -n 'export const pagesTag' src), put pageTag beside pagesTag there and re-export it from pages.ts."
+    },
+    {
+     "file": "src/server/site-layouts.ts",
+     "action": "edit",
+     "how": "siteLayoutFor() (about line 28): after the row is read and found, add cacheTag(pageTag(String(row.id))). Keep cacheTag(pagesTag(storeId))."
+    },
+    {
+     "file": "src/server/experiments.ts",
+     "action": "edit",
+     "how": "siteVersionContent() (about line 214): after the row is read and found, add cacheTag(pageTag(String(row.page_id))). Keep the two existing tags."
+    },
+    {
+     "file": "src/server/product-layouts.ts",
+     "action": "edit",
+     "how": "Split productLayoutFor() (lines 27 to 63) in two cached reads and keep its name and signature. (1) async function productLayoutIdFor(storeId, productId): Promise<string | null>: 'use cache'; cacheLife('hours'); the same four tags as today; today's statement unchanged except the last select, which becomes 'select p.id from commerce.pages p where p.id = coalesce(...)'; returns the id or null. (2) export async function productLayoutById(storeId: string, layoutId: string): Promise<{ id: string; content: PageContent } | null>: 'use cache'; cacheLife('hours'); cacheTag(pagesTag(storeId), pageTag(layoutId)); one statement: select id, published from commerce.pages where id = ${layoutId}::uuid and store_id = ${storeId}::uuid and type = 'product_layout' and published_at is not null; then parsePageContent(row.published) and withPageAlts([{ content }]) exactly as lines 59 to 62 today. (3) productLayoutFor(storeId, productId) is no longer a cached function itself: const id = await productLayoutIdFor(storeId, productId); return id ? productLayoutById(storeId, id) : null. Remove its own 'use cache', cacheLife and cacheTag lines. productLayoutForVisitor() and the product page do not change."
+    },
+    {
+     "file": "src/server/product-layouts.int.test.ts",
+     "action": "edit",
+     "how": "Add a case: a store with one standard layout (stores.product_layout_id set, the layout published) and two products. Count statements with countStatements() from src/db/statement-count.ts (step 1.9) around productLayoutFor() for product A and then product B, with next/cache mocked so that 'use cache' functions memoise by their arguments for the length of the test (if the file's existing mock of next/cache does not memoise, instead spy: vi.spyOn on the module's productLayoutById is not possible for an inner call, so assert on the statements: exactly two statements select 'published' from commerce.pages when productLayoutById is called twice with the same id, and the test asserts both products resolved to the same layout id through productLayoutIdFor's statement, which selects no 'published'). The assertion that must hold: the statement that returns the document names the layout's id and no product id. Keep the file's cases for a product's own layout, a category's and a tag's."
+    }
+   ],
+   "checks": [
+    "pnpm exec vitest run --config vitest.integration.config.mts src/server/product-layouts.int.test.ts src/server/experiments.int.test.ts src/server/pages.int.test.ts: pass",
+    "rg -n 'select p.id, p.published' src/server/product-layouts.ts: prints nothing",
+    "pnpm exec vitest run src/server/use-cache.scan.test.ts: passes after its list of reads is updated for the two new functions (both have a life and tags)",
+    "pnpm lint && pnpm typecheck && pnpm test: each exits 0"
+   ]
+  },
+  {
+   "title": "What other pages show of a page is one pure function, listFacts()",
+   "changes": [
+    {
+     "file": "src/lib/page-list-facts.ts",
+     "action": "create",
+     "how": "Pure module (no server import). export type ListFacts = { title: string; titles: Record<string, string>; slug: string; thumbnail: string | null; excerpt: string; description: string; categories: string[]; tags: string[]; markets: string[] | null; blogId: string | null; authorId: string | null; author: string | null; searchEngines: boolean; aiAssistants: boolean; rememberedModal: boolean }; export function listFacts(content: PageContent): ListFacts. Fill each field from the content: title; titles = each locale's non-empty title under content.translations; slug; thumbnail = content.thumbnail?.url ?? null; excerpt = content.excerpt ?? ''; description = content.seo?.description ?? ''; and when both excerpt and description are empty, excerpt = pageExcerpt(content) (import the function the grid uses today: rg -n 'export function pageExcerpt' src/lib); categories and tags sorted; markets; blogId; authorId; author; searchEngines and aiAssistants with the schema's default of true; rememberedModal = the rule of src/server/page-modals.ts line 24 written in code: some row has a modal whose frequency is 'session', 'days' or absent, and whose triggers have exitIntent === true or a timer. Read the type PageContent in src/lib/page-content.ts for the exact field names before writing; where a name differs from this list, use the type's. Also export function sameListFacts(a: ListFacts, b: ListFacts): boolean (JSON.stringify of both, keys in the fixed order above)."
+    },
+    {
+     "file": "src/lib/page-list-facts.test.ts",
+     "action": "create",
+     "how": "Unit tests. (1) Two contents that differ only in a row's text give sameListFacts true. (2) Each of these changes gives false, one test each: title, a translated title, slug, thumbnail, excerpt, seo.description, a category, a tag, markets, blogId, author, searchEngines, aiAssistants, adding a timed modal that is not shown every time. (3) The modal rule agrees with the samples of src/components/page-modal.test.ts (import or copy its sample modals: each sample's expected 'remembers' equals listFacts().rememberedModal). (4) The coverage test the plan asks for: the keys of the page index's entry type (PublishedPageEntry of step 0.24, in src/server/pages.ts) and of a grid card's facts for a page or article (the fields the page branch of gridData() in src/server/content-grid.ts reads from a page's content: read that function and list them in a const in this test) are each mapped, in a table in this test, to a key of ListFacts or to the literal 'not content' (id, dates). The test fails when either source has a key the table lacks. To read the index's keys at run time, export from src/server/pages.ts a const PAGE_INDEX_FIELDS: readonly string[] beside the index's row description and assert the table covers it."
+    }
+   ],
+   "checks": [
+    "pnpm exec vitest run src/lib/page-list-facts.test.ts src/components/page-modal.test.ts: pass",
+    "pnpm lint && pnpm typecheck && pnpm test: each exits 0"
+   ]
+  },
+  {
+   "title": "savePage() says how far a publish reaches: the page, or the site",
+   "changes": [
+    {
+     "file": "src/server/pages.ts",
+     "action": "edit",
+     "how": "PageResult's ok branch (line 102) gains 'scope?: \"page\" | \"site\"'. In savePage(), where the result is ok and publish is true (the block that starts 'if (result.ok) {' at about line 415, which already has 'before' from pageSummaryBefore() with before.livePublished), set scope: 'site' when any of these holds: id was null (a new page); before is null; before.livePublished is null (the page was not live); spreadTo > 0 (a global part reached other pages); the type is not 'page' and not 'article' (a header, a footer, a product layout, a variant: every page that draws one carries its tag through pageTag, but keep them site-wide in this step); !sameListFacts(listFacts(before.livePublished), listFacts(content)). Else 'page'. When publish is false leave scope undefined. Return it on the result ({ ...result, scope }). unpublishPage() and deletePage() need no change: their callers refresh the store-wide tag as today."
+    },
+    {
+     "file": "src/server/pages.int.test.ts",
+     "action": "edit",
+     "how": "New cases for savePage()'s scope on a seeded store: a first publish is 'site'; publishing again with only a text block's words changed is 'page'; with the title changed 'site'; with the thumbnail changed 'site'; with a category added 'site'; with the slug changed 'site'; with a timed modal added 'site'; a draft save has no scope."
+    }
+   ],
+   "checks": [
+    "pnpm exec vitest run --config vitest.integration.config.mts src/server/pages.int.test.ts: passes",
+    "pnpm lint && pnpm typecheck && pnpm test: each exits 0"
+   ]
+  },
+  {
+   "title": "The nine places that publish a body refresh the page, and the site only when the site changed",
+   "changes": [
+    {
+     "file": "src/server/page-refresh.ts",
+     "action": "create",
+     "how": "Server-only. export function tagsAfterPublish(owner: PageOwner, id: string, scope: 'page' | 'site' | undefined): string[] returns scope === 'page' ? [pageTag(id)] : [pageTag(id), pagesTag(owner)]. One function so that all nine places decide the same way. Header comment: the rule and the list of the nine callers."
+    },
+    {
+     "file": "src/server/page-refresh.test.ts",
+     "action": "create",
+     "how": "Unit test: 'page' gives only page:{id}; 'site' and undefined give both; a null owner gives 'platform-pages' as the store-wide tag."
+    },
+    {
+     "file": "src/app/admin/(gated)/[store]/pages/actions.ts",
+     "action": "edit",
+     "how": "Place 1, saveStorePageAction (the line 'if (publish || result.pages) pagesChanged(member);', about line 107): replace by: if (publish) for (const tag of tagsAfterPublish(member.store.id, result.id, result.scope)) updateTag(tag); else if (result.pages) pagesChanged(member); Leave every other pagesChanged(member) call in this file as it is (unpublish, delete, restore, roles)."
+    },
+    {
+     "file": "src/app/admin/(gated)/platform/pages/actions.ts",
+     "action": "edit",
+     "how": "Place 2 (about line 70, 'if (publish || result.pages) updateTag(PAGES_TAG);'): the same replacement with owner null. Leave the file's other updateTag(PAGES_TAG) calls."
+    },
+    {
+     "file": "src/server/page-text-edit.ts",
+     "action": "edit",
+     "how": "Place 3 (about line 169, refreshTagNow(pagesTag(owner))): the function has the published content before the edit ('published', line 126) and writes a new one. Compute const site = !sameListFacts(listFacts(published), listFacts(<the new published content it wrote>)); then refreshTagNow(pageTag(page)); if (site) refreshTagNow(pagesTag(owner)); A heading's or a text's words can be a page's excerpt (pageExcerpt), which listFacts() covers."
+    },
+    {
+     "file": "src/server/page-css-edit.ts",
+     "action": "edit",
+     "how": "Place 4 (about line 155): a page's own CSS is body: refreshTagNow(pageTag(input.page)) in place of refreshTagNow(pagesTag(owner)). The site's CSS branch below it (saveSiteCss) keeps its own refresh."
+    },
+    {
+     "file": "src/server/site-tools.ts",
+     "action": "edit",
+     "how": "Places 5, 6 and 7. At about line 425 (publish_page: 'const saved = await savePage(... publish: true ...)' then ctx.invalidate(pagesTag(ownerOf(ctx)))): replace the invalidate by: for (const tag of tagsAfterPublish(ownerOf(ctx), id, saved.scope)) ctx.invalidate(tag). At about line 987 (a header or footer published, then chooseSiteLayout): leave store-wide; add nothing. At about line 678 (a page chosen for a place, no body published): leave. So one edit in this file; the other two are checked and left, and the unit test below holds all three."
+    },
+    {
+     "file": "src/server/owner-tools.ts",
+     "action": "edit",
+     "how": "Place 8: find the tool that saves and publishes a page (rg -n 'savePage\\(' src/server/owner-tools.ts). Where it publishes and then calls ctx.invalidate(pagesTag(ctx.store.id)), replace by the tagsAfterPublish loop with the saved result's id and scope. The unpublish tool at about line 1040 stays store-wide. If owner-tools.ts has no savePage call that publishes, the eighth place is the tool file rg -ln 'savePage\\(.*publish: true' src/server finds besides site-tools.ts; apply the same there and name it in the commit message."
+    },
+    {
+     "file": "src/server/page-schedules.ts",
+     "action": "edit",
+     "how": "Place 9, the schedule runner. ScheduleRun (line 189) gains 'pages: { store: string; id: string; scope: \"page\" | \"site\" }[]'. publishOne() calls savePage (or the publish it uses: read it); make its outcome carry the page's id and the result's scope, and push { store, id, scope } in runSchedules(); keep run.stores as today for reverts and for scope 'site'. A revert (revertOne) stays store-wide."
+    },
+    {
+     "file": "src/app/api/cron/cart-reminders/route.ts",
+     "action": "edit",
+     "how": "Line 262: replace the loop over r.schedules?.stores by: for (const p of r.schedules?.pages ?? []) for (const tag of tagsAfterPublish(p.store, p.id, p.scope)) revalidateTag(tag, 'max'); and keep a loop over r.schedules?.stores only for stores that had a revert or a 'site' publish (run.stores must then hold only those: change the 'changed(outcome.store)' call for a published outcome to run only when its scope is 'site')."
+    },
+    {
+     "file": "src/server/page-publish-tags.test.ts",
+     "action": "create",
+     "how": "One unit test per place (nine), with next/cache mocked (vi.mock('next/cache', () => ({ updateTag: vi.fn(), revalidateTag: vi.fn(), cacheTag: vi.fn(), cacheLife: vi.fn() }))) and savePage / the edit functions mocked to return { ok: true, id: 'p1', scope: 'page' } and then scope 'site'. For each caller assert: with 'page' the refresh functions were called with 'page:p1' and never with 'pages:<store>' (or 'platform-pages'); with 'site' with both. For callers too wide to mock (the cron route), test the small function it calls instead: export from the route's module nothing new; put the loop in a function publishedTags(run) in src/server/page-refresh.ts and test that. Model the mocks on an existing action test: 'src/app/admin/(gated)/[store]/pages/motion-action.test.ts'."
+    }
+   ],
+   "checks": [
+    "pnpm exec vitest run src/server/page-refresh.test.ts src/server/page-publish-tags.test.ts: pass",
+    "pnpm exec vitest run --config vitest.integration.config.mts src/server/pages.int.test.ts src/server/schedules.int.test.ts: pass (find the schedules test with: rg -l 'runSchedules' src -g '*.test.ts')",
+    "pnpm lint && pnpm typecheck && pnpm test: each exits 0",
+    "pnpm build && E2E_SIGNED_IN=1 pnpm exec playwright test e2e/signed-in/page-history.spec.ts e2e/signed-in/schedule.spec.ts e2e/signed-in/blogs.spec.ts, and pnpm exec playwright test e2e/pages.spec.ts e2e/store-pages.spec.ts e2e/menus.spec.ts e2e/legal-pages.spec.ts e2e/blog.spec.ts: all pass unchanged (the signed-in run needs the build of CI's signed-in job: NEXT_PUBLIC_SUPABASE_URL=http://127.0.0.1:3912, as CLAUDE.md says)"
+   ]
+  },
+  {
+   "title": "A publish replayed against built pages: the page changes, the rest stay cached",
+   "changes": [
+    {
+     "file": "e2e/signed-in/publish-reach.spec.ts",
+     "action": "create",
+     "how": "Signed-in spec as the owner (test.use({ storageState: OWNER.state }), store E2E_STORE from e2e/signed-in/accounts.ts). Arrange with SQL as e2e/signed-in/page-history.spec.ts does (its insert at line 35): a published page with slug 'reach-' + Date.now() and one text block. Steps: (1) request.get the store's home, a product page of it and the new page twice each, so each is cached; on the second answer read the header x-nextjs-cache and expect HIT for the home and the product (Next's guide node_modules/next/dist/docs/01-app/02-guides/incremental-static-regeneration.md line 584 names the header). (2) Open the page in the builder, change the text block's words, press Publish (follow page-history.spec.ts for the clicks). (3) request.get the new page: its HTML holds the new words. (4) request.get the home and the product: x-nextjs-cache is HIT. (5) Change the page's title in the builder and publish; add the page to the store's main menu first if it is not there (SQL insert into commerce.menus items as e2e/menus.spec.ts arranges, or through the Menus screen); request.get the home: its menu holds the new title. If the header is absent on these routes under cacheComponents, stop (see stop_if): do not replace the check with a weaker one."
+    }
+   ],
+   "checks": [
+    "pnpm build (with the signed-in job's environment) && E2E_SIGNED_IN=1 pnpm exec playwright test e2e/signed-in/publish-reach.spec.ts: passes",
+    "After the build, the .meta reader of step 1.11 (CI's e2e job step beside scripts/render-modes.mjs; run it locally the way that step's docs/performance.md section says): it prints the tag of /om-oss's page on 3 of 261 entries of the demo store. Update its stored figure with its own --write switch."
+   ]
+  },
+  {
+   "title": "The alt-text job refreshes a store's tags once a pass, then only the pages that hold the picture",
+   "changes": [
+    {
+     "file": "src/server/alt-texts.ts",
+     "action": "edit",
+     "how": "refreshAltTexts() (about line 224) returns today the owners whose texts changed in this run, and the dispatcher refreshes pages:{store} and catalog:{store} for each, every run that wrote anything (4 pictures a run, so a store with 40 new pictures is refreshed 10 times). Change its return type to { owners: MediaOwner[]; pages: { storeId: string | null; id: string }[]; written: number } where: 'owners' holds an owner only when this run wrote texts for it AND nothing is left due for it afterwards (call dueForAltText(owner, since, false, site) again after writeAltTexts and include the owner when the list is empty): the queue is empty, so one store-wide refresh settles everything; 'pages' holds, for an owner whose queue is not yet empty, the ids of the published pages that hold one of the pictures written in this run, from the lookup step 0.28 added (the index of pictures in pages; find it with rg -n 'media_uses|picture_uses|pagesHolding' src/server). If step 0.28 added no such lookup, return an empty pages list for those owners (their pages then show the texts when the queue empties) and say so in the commit message."
+    },
+    {
+     "file": "src/app/api/cron/cart-reminders/route.ts",
+     "action": "edit",
+     "how": "Lines 276 to 279: keep the loop over r.altTexts?.owners (store-wide pages and catalogue tags) and add: for (const p of r.altTexts?.pages ?? []) revalidateTag(pageTag(p.id), 'max'). Import pageTag from '@/server/pages'."
+    },
+    {
+     "file": "src/server/alt-texts.test.ts",
+     "action": "create",
+     "how": "If a unit test file for alt-texts.ts exists (ls src/server/alt-texts*.test.ts), extend it; else create this one with the database and the AI mocked as the nearest existing test of refreshAltTexts does (rg -l 'refreshAltTexts' src -g '*.test.ts'). Case: one store with 40 pictures due and perSite 4: run refreshAltTexts() 10 times; count the runs whose 'owners' includes the store: expect exactly 1 (the tenth); before this change it is 10."
+    }
+   ],
+   "checks": [
+    "pnpm exec vitest run src/server/alt-texts.test.ts (or the extended file): passes with at most one store-wide refresh in 10 runs",
+    "pnpm exec vitest run --config vitest.integration.config.mts src/server/alt-texts.int.test.ts: passes",
+    "pnpm lint && pnpm typecheck && pnpm test: each exits 0"
+   ]
+  },
+  {
+   "title": "Docs: the two page tags",
+   "changes": [
+    {
+     "file": "docs/rules/storefront.md",
+     "action": "edit",
+     "how": "Beside the catalogue's caching rule add a short paragraph: pages have two tags; page:{id} is on every read of one page's document (findPublishedPage, publishedPageById, siteLayoutFor, productLayoutById, siteVersionContent) and is refreshed by a publish; pages:{store} is on reads of lists, menus and indexes and is refreshed when listFacts() of the page changed, on a first publish, an unpublish, a delete, a global part's spread; a new reader of one page's document adds pageTag; a new field another page shows is added to listFacts() (src/lib/page-list-facts.ts, whose test fails otherwise)."
+    },
+    {
+     "file": "docs/decisions.md",
+     "action": "edit",
+     "how": "Append one row with the next free D-number (pull main first; rg -o '^\\| D[0-9]+' docs/decisions.md | tr -dc '0-9\\n' | sort -n | tail -1, plus 1): the two tags, savePage()'s scope and its rule, the nine callers, the product layout cached per store, the alt-text job's refresh, and that the media library's own refresh (media/actions.ts) stays store-wide."
+    },
+    {
+     "file": "docs/audits/bloat-review-2026-11.md",
+     "action": "edit",
+     "how": "Progress table: row 2.14 to Done with the date, the commits and the .meta reader's figure (3 of 261); one change-log line."
+    }
+   ],
+   "checks": [
+    "pnpm lint: exits 0 (docs only; pushes of docs alone run nothing in CI)"
+   ]
+  }
+ ],
+ "tests": [
+  {
+   "file": "e2e/signed-in/publish-reach.spec.ts",
+   "proves": "It fails when a body-only publish makes the home or a product page render again (x-nextjs-cache not HIT), when the published page does not show its new words at once, or when a title change does not reach the home page's menu."
+  },
+  {
+   "file": "src/server/page-publish-tags.test.ts",
+   "proves": "It fails when one of the nine places that publish a body refreshes the store-wide tag for scope 'page', or forgets it for scope 'site'."
+  },
+  {
+   "file": "src/lib/page-list-facts.test.ts",
+   "proves": "It fails when the page index or a grid card's facts gains a field that listFacts() lacks, and when the modal rule in code and the samples disagree."
+  },
+  {
+   "file": "src/server/alt-texts.test.ts",
+   "proves": "It fails when the alt-text job refreshes a store's tags more than once across 10 runs of one queue."
+  },
+  {
+   "file": "src/server/product-layouts.int.test.ts",
+   "proves": "It fails when a layout's document is read once per product instead of once per layout."
+  }
+ ],
+ "migration": {
+  "needed": false,
+  "notes": ""
+ },
+ "done_when": [
+  {
+   "check": "E2E_SIGNED_IN=1 pnpm exec playwright test e2e/signed-in/publish-reach.spec.ts (on the signed-in build)",
+   "expect": "Passes: after a body publish the home and a product answer x-nextjs-cache: HIT, the page shows the new words, and a title change reaches the home's menu."
+  },
+  {
+   "check": "pnpm exec vitest run src/server/page-publish-tags.test.ts src/lib/page-list-facts.test.ts src/server/alt-texts.test.ts",
+   "expect": "All pass: nine places, the coverage table, and at most one store-wide refresh in 10 runs (10 before)."
+  },
+  {
+   "check": "pnpm exec vitest run --config vitest.integration.config.mts src/server/product-layouts.int.test.ts",
+   "expect": "Passes with one read of a layout's document for two products."
+  },
+  {
+   "check": "The .meta reader of step 1.11 on a fresh build",
+   "expect": "The tag page:{id of /om-oss} is on 3 of 261 entries of the demo store; every entry still carries pages:{store}."
+  }
+ ],
+ "after_deploy": [
+  "Publish a one-word change on a test store's page, then view its home: Platform, Usage and limits (step 1.25) shows one refresh of family 'page' and no 'pages' refresh for that store.",
+  "A quiet day: 0 job refreshes of a store's pages tag where nothing changed (step 1.25's flag stays off).",
+  "Change a page's title in production on a test store: the menu on its home shows it on the next view."
+ ],
+ "docs": [
+  "docs/decisions.md, docs/rules/storefront.md and the Progress row, as the last commit says.",
+  "docs/audits/code-review-2026-11.md: in the Progress table note on step 3.10 (cache tags per product, Open) that pages have their own tag since bloat review step 2.14, and add a change-log line.",
+  "CLAUDE.md is not changed here."
+ ],
+ "do_not": [
+  "Do not remove pagesTag(owner) from any reader: every read keeps the store-wide tag and gains the page's.",
+  "Do not change the other refreshes of pagesTag (about 50 places: unpublish, delete, restore, roles, blogs, menus, translations, themes, demo content, store copy, the media library): they stay store-wide. Only the nine named places change.",
+  "Do not make a first publish, an unpublish, a delete, a revert or a header's or footer's publish scope 'page'.",
+  "Do not key productLayoutById() by the product.",
+  "Do not lengthen any cacheLife here: that is step 2.15, after this one.",
+  "Do not drop a field from listFacts() to make a publish 'page' more often; when unsure whether another page shows a field, it belongs in listFacts()."
+ ],
+ "stop_if": [
+  "x-nextjs-cache is not sent on the store's pages by pnpm start under cacheComponents: stop and report what headers are sent; the done-when needs that header or an equal proof (the .meta file's mtime is not one).",
+  "A reader other than the five named returns one page's whole document from a cached function (rg -n 'published' in files with 'use cache'): list it and stop; it needs the page's tag too.",
+  "Some page, feed or file other than the page's own shows body text of a page beyond its excerpt (for example a full-text llms file in src/server/seo.ts, or search knowledge): report it; that reader must carry the page's tag or the fact must join listFacts().",
+  "An existing e2e or int test must be changed to pass.",
+  "publishOne() in src/server/page-schedules.ts does not go through savePage() and no scope can be had without rewriting it.",
+  "The owner-tools.ts tool described as place 8 is not found."
+ ],
+ "executor": "strong",
+ "executor_why": "Which facts of a page other pages show (listFacts) is a judgement over the whole site that tests cannot fully hold, and a miss leaves a page stale for a week once step 2.15 lands; the first commit is mechanical and can go to the cheap model.",
+ "checked_in_code": "I opened pages.ts (pagesTag at 67 to 69, savePage 237 to 430 with 'before.livePublished' already read, findPublishedPage 684), product-layouts.ts (one cached read keyed by store and product returning the whole document), site-layouts.ts, experiments.ts siteVersionContent, the two save actions, page-text-edit.ts, page-css-edit.ts, site-tools.ts, owner-tools.ts, page-schedules.ts and the dispatcher route. rg finds 61 refresh lines of the pages tag today, not 55. Corrected: the finding puts the publish refresh at pages/actions.ts:107 through pagesChanged() (now defined at line 60) and names owner-tools.ts:1040 as a publish, but that line is the unpublish tool, which stays store-wide; the publishing tools are in site-tools.ts. The finding left the alt-text job for later; the plan's done-when holds it here, so the brief does it on step 0.28's lookup and falls back to once-per-queue when that lookup is missing."
+}

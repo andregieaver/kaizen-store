@@ -1,0 +1,236 @@
+{
+  "id": "3.6",
+  "goal": "The per-store document, books and sync jobs find due work through an index or a mark and look at an idle store at most hourly: an invoice tick, an email check and an e-invoice check read fewer than 100 rows of orders and invoices in a store with 2,000 invoiced orders, every book gets its turn, and an idle tick reads no page, product, variant, order or media row.",
+  "why": "Five document jobs re-check every store's orders of 120 days, every invoice and every refund on each five-minute tick (all 2,000 rows of each in the test store), six more jobs re-check every store with the feature on, and the ledger's order never rotates. After the step: under 100 rows each, at most 10 more rows per added store on an idle tick, and the third of three books reached within three runs.",
+  "read_first": [
+    "docs/wave-1b-invoices.md",
+    "docs/rules/admin/commerce.md",
+    "docs/ci-migrations.md",
+    "src/server/invoice-issue.ts",
+    "src/server/invoice-notices.ts",
+    "src/server/einvoice-sending.ts",
+    "src/server/ledger.ts",
+    "src/server/tripletex-sync.ts"
+  ],
+  "depends_on": [
+    {
+      "id": "3.3",
+      "why": "it creates the dispatcher's registry with cadences and the perStore label (cap and order); this step adds an hourly net job and labels six jobs there"
+    },
+    {
+      "id": "1.10",
+      "why": "its query-budget.int.test.ts counts rows read per job with 1 and 20 stores; the done-when is read there"
+    },
+    {
+      "id": "0.28",
+      "why": "it adds the product text marker the product index and the listings' check choose by; this step makes the idle sweep read by it"
+    }
+  ],
+  "commits": [
+    {
+      "title": "Indexes that fit the document jobs' windows",
+      "changes": [
+        {
+          "file": "supabase/migrations/*_document_job_indexes.sql",
+          "action": "create",
+          "how": "Custom migration: `pnpm exec drizzle-kit generate --custom --name document_job_indexes`, then `node scripts/prune-snapshots.mjs`. Eight plain `create index if not exists` statements; none of these tables is on the hot list (orders, order_lines, visits, products, product_variants, customers, carts, cart_lines), so no `concurrently`: (1) invoices_issued_at_idx on commerce.invoices (issued_at); (2) credit_notes_issued_at_idx on commerce.credit_notes (issued_at); (3) invoices_business_issued_idx on commerce.invoices (issued_on) where (snapshot -> 'buyer' ->> 'type') = 'business'; (4) credit_notes_business_issued_idx, the same on commerce.credit_notes; (5) work_invoices_business_issued_idx on commerce.work_invoices (issued_on) where status <> 'draft' and not imported and (buyer ->> 'business')::boolean is true; (6) work_credit_notes_business_issued_idx on commerce.work_credit_notes (issued_on) where (buyer ->> 'business')::boolean is true; (7) order_events_invoice_failed_idx on commerce.order_events (created_at) where type = 'invoice.failed'; (8) order_edits_documents_waiting_idx on commerce.order_edits (store_id) where status = 'applied' and documents = 'waiting'. Write each predicate with exactly the expression the reading statement uses (src/server/einvoice-sending.ts lines 64 to 93, src/server/invoice-notices.ts lines 131 to 162), or Postgres will not match the partial index. Mirror all eight in src/db/schema.ts on their tables so `pnpm db:check` agrees (drizzle's index().on(...).where(sql`...`)); if db:check still reports a difference for an expression index, keep the SQL file as the source and follow what docs/ci-migrations.md says for rules Drizzle cannot express."
+        },
+        {
+          "file": "src/db/commerce.test.ts",
+          "action": "edit",
+          "how": "Add a case that reads pg_indexes for the eight names and expects each to exist with its predicate text containing 'business', 'invoice.failed' or 'waiting' as fits."
+        }
+      ],
+      "checks": [
+        "pnpm db:check : exits 0",
+        "pnpm exec vitest run src/db/commerce.test.ts src/db/migration-safety.scan.test.ts : exits 0",
+        "pnpm lint && pnpm typecheck && pnpm test: exits 0",
+        "pnpm test:int src/server/einvoice-sending.int.test.ts src/server/invoice-issue.int.test.ts : exits 0 (no code changed; they must pass as they are)"
+      ]
+    },
+    {
+      "title": "The invoice job reads what is marked as waiting each tick, and keeps today's full check as an hourly net",
+      "changes": [
+        {
+          "file": "src/server/invoice-issue.ts",
+          "action": "edit",
+          "how": "(1) Keep storesWithDocumentWork() (line 71) as the NET, with two changes: in its refunds branch add `and rf.created_at > now() - make_interval(days => ${LOOKBACK_DAYS})`, and put `order by store_id` before `limit ${limit}` so no store is starved when more than 50 have work. (2) Add `storesWithMarkedWork(limit = STORES_PER_RUN): Promise<string[]>`, the FAST path, one statement: `select store_id from (select e.store_id from commerce.order_events e where e.type = 'invoice.failed' and e.created_at > now() - make_interval(days => ${LOOKBACK_DAYS}) and not exists (select 1 from commerce.invoices i where i.store_id = e.store_id and i.order_id = e.order_id) union select d.store_id from commerce.order_edits d where d.status = 'applied' and d.documents = 'waiting') x order by store_id limit ${limit}`. (3) issueWaitingInvoices(storeId) today swallows a failure into 0: make it return `{ issued: number; failed: boolean }` (or add a sibling that does and keep the old name for its other callers; list them with rg -n 'issueWaitingInvoices\\(' src). (4) invoiceJobs(options: { net?: boolean } = {}) (line 116): `const stores = options.net ? await storesWithDocumentWork() : await storesWithMarkedWork();`. In the loop call issueMissingCreditNotes(storeId) ONLY when issueWaitingInvoices reported failed (the SQL function issue_waiting_invoices() already ends with issue_missing_credit_notes(); today it runs twice per store). Everything else in invoiceJobs() stays in both modes: ensureSubscriptionEvents, reconcilePendingRefunds, sendPendingDocumentNotices, the try and the log. An order paid just now needs no job: its invoice is issued with the payment; the fast path only retries marked failures, and the net finds the rest within the hour."
+        },
+        {
+          "file": "src/app/api/cron/cart-reminders/route.ts",
+          "action": "edit",
+          "how": "In the registry of step 3.3 (JOBS): keep `invoices` at every 300 with `run: () => invoiceJobs()`. Add `invoiceNet: { every: 3600, why: \"the full check for a paid order or refund with no document, which the marked path cannot see; an hour is the longest an unmarked invoice waits\", work: { perStore: { cap: 50, order: \"store_id\" } }, budgetMs: 20000, run: () => invoiceJobs({ net: true }) }`."
+        },
+        {
+          "file": "src/server/invoice-settings.ts",
+          "action": "edit",
+          "how": "A try at once where the cause goes away. Find where the seller's details and the invoice settings are saved: rg -ln 'invoice_settings' src/server -g '!*.test.ts' and, for the seller's details, the writer the Waiting tab's message points to (docs/wave-1b-invoices.md 2.1 names it). If the save function is not in this file, edit the file it is in and name it in the commit message. After a successful save, call `after(() => issueWaitingInvoices(storeId))` (after from \"next/server\"; outside a request, as in tests, call it directly behind a try). Nothing else in the save changes."
+        },
+        {
+          "file": "src/server/invoice-issue.int.test.ts",
+          "action": "edit",
+          "how": "Existing cases must pass; where one calls invoiceJobs() and expects an invoice that waited for the seller's details to be issued by the job, pass { net: true } (that is the net's work) and change nothing else. Add: 'a failed invoice (an invoice.failed event) is retried on the next tick through the fast path'; 'completing the seller's details issues the waiting invoice at once'; 'one tick calls issue_missing_credit_notes once per store' (statement counter); and the plan's case: seed one store with 2,000 paid, invoiced consumer orders (insert in batches of 500 with the file's helpers), `select pg_stat_force_next_flush()`, read seq_tup_read + idx_tup_fetch of commerce.orders and commerce.invoices from pg_stat_user_tables, run one invoiceJobs() (fast), one sendPendingDocumentNotices() and one runEinvoiceSending(), flush and read again: each table rose by fewer than 100."
+        }
+      ],
+      "checks": [
+        "pnpm exec vitest run src/server/cron-routes.scan.test.ts : exits 0",
+        "pnpm lint && pnpm typecheck && pnpm test: exits 0",
+        "pnpm test:int src/server/invoice-issue.int.test.ts src/server/invoice-documents.int.test.ts src/server/invoice-refunds.int.test.ts src/server/invoice-returns.int.test.ts src/server/notifications-credit-note.int.test.ts src/server/einvoice-sending.int.test.ts : exits 0 (find the notifications file with ls src/server | rg 'credit-note.*int')"
+      ]
+    },
+    {
+      "title": "Every book gets its turn, and an idle book is looked at hourly",
+      "changes": [
+        {
+          "file": "src/db/schema.ts",
+          "action": "edit",
+          "how": "`ledgerBooks` (the table \"ledger_books\", line 18801 today) gains `checkedAt: timestamp(\"checked_at\", { withTimezone: true })` (nullable) and an index ledger_books_checked_idx on (checked_at). Run `pnpm db:generate`. The same change adds `lookedAt: timestamp(\"looked_at\", { withTimezone: true })` to the tables tripletex_connections and fiken_connections (for the next commit)."
+        },
+        {
+          "file": "src/server/ledger.ts",
+          "action": "edit",
+          "how": "runLedgerPosting() (line 1038). Change the list statement's order from `order by updated_at` to `order by checked_at nulls first, id`, and after each book's turn (in a finally around the try that posts and compares) run `update commerce.ledger_books set checked_at = now() where id = ${book.id}::uuid and store_id = ${book.store_id}::uuid`. Narrow the list so an idle book costs nothing between hourly looks: add to the where `and (checked_at is null or checked_at < now() - interval '1 hour' or exists (select 1 from commerce.invoices i where i.store_id = ledger_books.store_id and i.issued_at > ledger_books.checked_at) or exists (... commerce.credit_notes c ... c.issued_at > checked_at) or exists (... commerce.payments p ... p.created_at > checked_at) or exists (... commerce.refunds r ... r.created_at > checked_at) or exists (... commerce.payouts y ... y.created_at > checked_at) or exists (select 1 from commerce.ledger_waiting w where w.store_id = ledger_books.store_id and <its retry is due: copy the condition postDueDocuments() uses near lines 606 and 607>))`. Check each table's time column name in src/db/schema.ts before writing it; if a table has no index on (store_id, <that time column>), leave that exists() out and rely on the hourly look, and say so in the commit message. Do not touch updated_at: the owner's edits move it."
+        },
+        {
+          "file": "src/server/ledger-posting.int.test.ts",
+          "action": "edit",
+          "how": "Add the plan's case: three books; the first always has more documents than one run's budget (pass a small budgetMs); run runLedgerPosting() three times; the third book has been reached (its checked_at is set and its document posted). Add: an idle book checked a minute ago is not listed; the same book is listed after an invoice is issued in its store; and after an hour without anything new."
+        }
+      ],
+      "checks": [
+        "pnpm db:check : exits 0",
+        "pnpm exec vitest run src/db/ledger.test.ts src/db/commerce.test.ts src/db/migration-safety.scan.test.ts : exits 0",
+        "pnpm lint && pnpm typecheck && pnpm test: exits 0",
+        "pnpm test:int src/server/ledger-posting.int.test.ts src/server/ledger.int.test.ts src/server/ledger-compare.int.test.ts : exits 0"
+      ]
+    },
+    {
+      "title": "Tripletex and Fiken skip a store with nothing new; the registry labels the six per-store jobs",
+      "changes": [
+        {
+          "file": "src/server/tripletex-sync.ts",
+          "action": "edit",
+          "how": "syncDueTripletex() (line 645): narrow the list statement (line 651) with `and (c.looked_at is null or c.looked_at < now() - interval '1 hour' or exists (select 1 from commerce.invoices i where i.store_id = c.store_id and i.issued_at > c.looked_at) or exists (select 1 from commerce.credit_notes n where n.store_id = c.store_id and n.issued_at > c.looked_at) or exists (select 1 from <the sync rows table this file sweeps into: read lines 515 to 523> y where y.store_id = c.store_id and y.status <> 'synced'))`, and after each store's turn `update commerce.tripletex_connections set looked_at = now() where store_id = ...`. Keep `order by c.last_ok_at nulls first`, the storeIds filter, the 40 s budget and the rule that no session is opened for a store with nothing to send. Make the same change in src/server/fiken-sync.ts syncDueFiken() (line 520) on fiken_connections. Read docs/tripletex.md and docs/fiken.md first: if either promises a delay shorter than an hour for something this narrowing would hold back, stop."
+        },
+        {
+          "file": "src/app/api/cron/cart-reminders/route.ts",
+          "action": "edit",
+          "how": "In JOBS set `work` to perStore with its real cap and order for: ledger ({ cap: 40 (seconds), order: \"checked_at nulls first\" }), tripletex and fiken ({ cap: 40, order: \"last_ok_at nulls first\" }), autoArchive, autopilotBudgets and recurring (read each function for its own limit; if it has none, cap is the number of stores it can do in its budgetMs and the order is the one in its list statement, adding `order by` on the store id if the statement has none). Confirm autoArchive, autopilotBudgets and recurring have every 3600 (step 3.3 set them); set it if not."
+        },
+        {
+          "file": "src/server/tripletex-sync.int.test.ts",
+          "action": "edit",
+          "how": "Add: a connected store looked at a minute ago with nothing new is not listed and costs no statement beyond the list; it is listed again after an invoice is issued, and after an hour. The same in src/server/fiken.int.test.ts."
+        }
+      ],
+      "checks": [
+        "pnpm exec vitest run src/db/tripletex.test.ts src/db/fiken.test.ts src/server/cron-routes.scan.test.ts : exits 0",
+        "pnpm lint && pnpm typecheck && pnpm test: exits 0",
+        "pnpm test:int src/server/tripletex-sync.int.test.ts src/server/fiken.int.test.ts src/server/order-archive.int.test.ts src/server/work-recurring.int.test.ts src/server/query-budget.int.test.ts : exits 0"
+      ]
+    },
+    {
+      "title": "The product-words sweep reads no product when no text changed",
+      "changes": [
+        {
+          "file": "src/server/embeddings.ts",
+          "action": "edit",
+          "how": "First check what step 0.28 left: rg -n 'text_changed_at|textChangedAt' src/db/schema.ts src/server. CASE A, the marker exists on commerce.products: in refreshEmbeddings() (line 110), before `aiFor(null, ...)`, add one statement: `select exists (select 1 from commerce.products p where p.text_changed_at > coalesce((select j.last_ok_at from commerce.cron_jobs j where j.job = 'dispatcher.embeddings'), '-infinity'::timestamptz)) as changed`; when false and the UTC hour is not 3 (once a day the full hash check still runs as the net), return { embedded: 0, failed: 0 } without reading a product, a translation or an AI provider. That exists() needs an index on products (text_changed_at): if step 0.28 did not make one, add it in a migration file whose FIRST line is `-- kaizen:no-transaction` and which holds only `create index concurrently if not exists products_text_changed_idx on commerce.products (text_changed_at);` (products is a hot table, D569). CASE B, no marker exists: add it. src/db/schema.ts: products gains `textChangedAt: timestamp(\"text_changed_at\", { withTimezone: true })` (nullable, no default, so the add rewrites nothing); `pnpm db:generate`; then a custom migration with a trigger function commerce.touch_product_text() that sets `update commerce.products set text_changed_at = now() where store_id = ... and id = ...` after insert or update of title, description on commerce.product_translations and after insert or delete on commerce.product_terms (the three inputs of the hash at lines 31 to 45), and the concurrently-built index in its own no-transaction file as above; then the statement of case A. In both cases also replace `commerce.store_is_active(t.store_id)` in staleTranslations() (line 41) by a join `join commerce.stores s on s.id = t.store_id` with the conditions that function's body has (read it in the baseline: status active, not a starter, not a sandbox, or whatever it says today) so Postgres can inline it."
+        },
+        {
+          "file": "src/server/embeddings.int.test.ts",
+          "action": "edit",
+          "how": "Existing cases must pass (a changed product gets a new vector through the save path). Add: an idle refreshEmbeddings() reads 0 rows from commerce.products, commerce.product_translations and commerce.product_variants (pg_stat_user_tables difference after pg_stat_force_next_flush()); after a translation's title changes, the next run embeds that product."
+        }
+      ],
+      "checks": [
+        "pnpm db:check : exits 0",
+        "pnpm exec vitest run src/db/commerce.test.ts src/db/migration-safety.scan.test.ts : exits 0 (the scan test holds the no-transaction and concurrently rules for products)",
+        "pnpm lint && pnpm typecheck && pnpm test: exits 0",
+        "pnpm test:int src/server/embeddings.int.test.ts src/server/query-budget.int.test.ts : exits 0"
+      ]
+    }
+  ],
+  "tests": [
+    {
+      "file": "src/server/invoice-issue.int.test.ts",
+      "proves": "An invoice tick, an email check or an e-invoice check reading 100 or more rows of orders or invoices in a store with 2,000 invoiced orders; a failed invoice not retried; the credit-note function called twice per store."
+    },
+    {
+      "file": "src/server/ledger-posting.int.test.ts",
+      "proves": "A book that never gets its turn behind a busy one, and an idle book listed again within the hour."
+    },
+    {
+      "file": "src/server/query-budget.int.test.ts",
+      "proves": "An idle tick reading more than 10 more rows per added store, or any row of pages, products, product_variants, orders or media."
+    },
+    {
+      "file": "src/server/tripletex-sync.int.test.ts and src/server/fiken.int.test.ts",
+      "proves": "A connected store with nothing new costing statements on every tick."
+    },
+    {
+      "file": "src/db/migration-safety.scan.test.ts (unchanged)",
+      "proves": "An index on products built without concurrently or inside a transaction."
+    }
+  ],
+  "migration": {
+    "needed": true,
+    "notes": "Up to five files. (1) Custom: eight plain indexes on invoices, credit_notes, work_invoices, work_credit_notes, order_events and order_edits; none is a hot table. (2) Generated: ledger_books.checked_at with an index, tripletex_connections.looked_at, fiken_connections.looked_at; small tables. (3) Only if step 0.28 left no marker: generated, products.text_changed_at, a nullable column with no default on a hot table (an add that rewrites nothing and takes its lock for an instant; production allows a 5 s lock wait), and (4) custom, the trigger function and two triggers on product_translations and product_terms. (5) The index on products (text_changed_at): its own file, first line `-- kaizen:no-transaction`, `create index concurrently if not exists`. Running code keeps working: every change adds; nothing is renamed or dropped. CI applies it after every check passes and before the deploy (docs/ci-migrations.md); never apply it by hand. After the deploy check the Supabase security and performance advisors for project ybsozesfuxuitoacntfo and record the file's version in docs/decisions.md under Migration versions."
+  },
+  "done_when": [
+    {
+      "check": "pnpm test:int src/server/invoice-issue.int.test.ts",
+      "expect": "The 2,000-order case passes: rows read from commerce.orders and from commerce.invoices are each fewer than 100 over one invoice tick, one email check and one e-invoice check."
+    },
+    {
+      "check": "pnpm test:int src/server/query-budget.int.test.ts",
+      "expect": "An idle tick reads at most 10 more rows per added store (1 against 20 seeded stores) and none from commerce.pages, products, product_variants, orders or media."
+    },
+    {
+      "check": "pnpm test:int src/server/ledger-posting.int.test.ts",
+      "expect": "The third book is reached within three runs."
+    },
+    {
+      "check": "Production, read-only, a day after the deploy: select job, every_seconds from commerce.cron_jobs where job in ('dispatcher.auto-archive','dispatcher.autopilot-budgets','dispatcher.recurring')",
+      "expect": "every_seconds is 3600 for all three."
+    },
+    {
+      "check": "Production, read-only, twice 24 hours apart: select seq_scan from pg_stat_user_tables where schemaname = 'commerce' and relname = 'product_variants'",
+      "expect": "It rose by 10 or fewer in the day."
+    }
+  ],
+  "after_deploy": [
+    "On a test store: place and pay a test order; its invoice appears on the order at once (issued with the payment, not by the job). Refund it; the credit note appears. Then check Home's count of waiting documents is 0.",
+    "The ledger row dispatcher.invoice-net exists with every_seconds 3600 and a run in the last hour; dispatcher.invoices runs every five minutes.",
+    "If a store has books open: Platform or the store's Books screen shows the day's documents posted within the hour.",
+    "Supabase advisors: the new indexes may read as 'unused' until the jobs have run; no other new warning."
+  ],
+  "docs": [
+    "docs/decisions.md: one new row with the next free D-number (find the last with: rg -o '^\\| D[0-9]+' docs/decisions.md | tail -1, and add one). It records: the eight indexes, the invoice job's marked path and hourly net, one credit-note call per store, ledger_books.checked_at and the turn order, the hourly look of Tripletex and Fiken, the product text mark as the sweep's first read, and the migrations' versions (also under Migration versions).",
+    "docs/wave-1b-invoices.md (the job's section) and docs/rules/admin/commerce.md (Invoices and credit notes, D159): a document job reads a waiting mark or a window an index serves, and keeps the full check as an hourly net; saving the seller's details tries the waiting invoices at once.",
+    "docs/own-books-and-sales.md (B2), docs/tripletex.md and docs/fiken.md: an idle store or book is looked at hourly; a new document is taken on the next five-minute tick.",
+    "docs/wave-3-orders.md (auto-archive) and docs/work.md (repeating invoices): the job looks hourly.",
+    "docs/platform-parity.md: no row changes; Kaizena Flow's own books are a book in the same list.",
+    "docs/audits/bloat-review-2026-11.md, Progress table: set the row of step 3.6 to Done with the date and the commit hash, in the same commit as the last change; tick the step's section in docs/audits/bloat-review-2026-11/plan/phase-3.md if that file has one."
+  ],
+  "do_not": [
+    "Do not change what issues a document: commerce.issue_waiting_invoices(), issue_missing_credit_notes() and issue_credit_note() stay as they are. 'Nothing here writes a document itself' stays true.",
+    "Do not drop the full check (storesWithDocumentWork): it becomes the hourly net. Do not shorten the 120-day window.",
+    "Do not build an index on orders, order_lines, products, product_variants, customers, carts, cart_lines or visits inside a transaction or without concurrently.",
+    "Do not move ledger_books.updated_at from the job.",
+    "Do not record a consumer's invoice in einvoice_sends to 'mark it seen': the partial index is what keeps it from being read.",
+    "Do not change supplier-orders.ts: its cost follows the stores that drop-ship and its tests stay untouched.",
+    "Do not apply any migration by hand."
+  ],
+  "stop_if": [
+    "The registry of step 3.3 is not in the dispatcher route, or query-budget.int.test.ts does not exist.",
+    "`pnpm db:check` cannot be made to agree with a partial expression index after following docs/ci-migrations.md.",
+    "An existing invoice, refund, credit-note or ledger test fails for a reason other than the two stated call changes (net: true; queue first).",
+    "The 2,000-order case still reads 100 or more rows after the indexes and the fast path: print EXPLAIN (ANALYZE, BUFFERS) of the three statements on the seeded database into the report; do not add indexes by guesswork.",
+    "docs/tripletex.md or docs/fiken.md promises a delay under an hour that the narrowing would break.",
+    "commerce.store_is_active()'s body is more than a few plain conditions on commerce.stores (then leave the call in place and report)."
+  ],
+  "executor": "cheap-then-review",
+  "executor_why": "Each commit is specified down to the statement, but it changes how legal documents are found, adds columns to a hot table and narrows three sync lists, so a stronger model must read the SQL before each push.",
+  "checked_in_code": "I opened invoice-issue.ts (finder at line 71, job at 116), invoice-notices.ts lines 115 to 170, einvoice-sending.ts candidates(), ledger.ts runLedgerPosting() at 1038, tripletex-sync.ts line 645, fiken-sync.ts line 520 and embeddings.ts. All match DQ-15 and CR-16: the finder has no time bound on refunds and no order before its limit, issueMissingCreditNotes() runs a second time per store, the ledger orders by updated_at, which the job never moves. Corrections: the step says 'concurrently on the hot tables' for the document indexes, but none of the six document tables is on the hot list, so they are plain; the only hot-table change is the product text mark, which goes in a no-transaction file. products.text_changed_at does not exist today and step 0.28 is said to add 'a text marker', so the brief covers both cases. Step 3.3 (as briefed) already sets auto-archive, autopilot-budgets and recurring to hourly; this step confirms and labels them."
+}

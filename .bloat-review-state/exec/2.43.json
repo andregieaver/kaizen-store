@@ -1,0 +1,237 @@
+{
+  "id": "2.43",
+  "goal": "`pnpm test:changed` runs only the unit tests a change can reach plus every `*.scan.test.ts` file, the pre-push rule in CLAUDE.md is lint, the type check and `pnpm test:changed`, the deploy gate runs the same related tests after its three steps, and `pnpm check` runs that rule through the recorder.",
+  "why": "Today a session spends 11 to 12 minutes of machine time before each push (lint about 3 min, the type check about 3 min, 1,215 unit test files in 5 min 34 s). After this step a one-line change in src/lib runs fewer than 250 test files and `pnpm check` takes 5 min 30 s or less cold and 2 minutes or less on a second run, while the gate checks more than today's six money files.",
+  "read_first": [
+    "CLAUDE.md",
+    "package.json",
+    "vitest.config.mts",
+    ".github/workflows/ci.yml",
+    "docs/ci-migrations.md",
+    "README.md",
+    "docs/capacity.md",
+    "src/lib/rules-index.test.ts"
+  ],
+  "depends_on": [
+    {
+      "id": "0.38",
+      "why": "it gives `pnpm lint` its cache (the `--cache` flag in package.json) and creates src/lib/ci-once.scan.test.ts, which reads ci.yml and must still pass after this step's new gate step"
+    },
+    {
+      "id": "0.39",
+      "why": "it splits vitest.config.mts into projects and holds 'every src/**/*.test.ts in exactly one project'; this step renames test files and must be done on that layout, not before it"
+    },
+    {
+      "id": "1.20",
+      "why": "it creates scripts/timed.mjs, scripts/ci-budgets.json and the `pnpm check` script that this step edits"
+    },
+    {
+      "id": "2.42",
+      "why": "the 5 min 30 s figure for a cold `pnpm check` holds only if step 2.42 made the type check short; read its decision row to know which figure applies"
+    }
+  ],
+  "commits": [
+    {
+      "title": "Every test that lists a directory is named *.scan.test.ts, and a scan test holds it",
+      "changes": [
+        {
+          "file": "src/**/*.test.ts",
+          "action": "move",
+          "how": "Rename with `git mv` every unit test that lists a directory. Get the list now with: rg -l \"\\b(readdirSync|readdir|opendirSync|globSync)\\s*\\(\" src -g '*.test.ts' -g '!*.scan.test.ts' -g '!*.int.test.ts' | sort . On 12 November 2026 it printed these 44 files: src/components/admin/analytics/layout-contain.test.ts src/components/admin/print-area.test.ts src/components/admin/privacy/forms.test.ts src/components/admin/ui/ui.test.ts src/lib/admin-map.test.ts src/lib/analytics-export-views.test.ts src/lib/audit.test.ts src/lib/csv-writers.test.ts src/lib/custom-grid-isolation.test.ts src/lib/docs-api-reference.test.ts src/lib/docs-content.test.ts src/lib/docs-guide.test.ts src/lib/docs-index.test.ts src/lib/grid-source.test.ts src/lib/house-routing.test.ts src/lib/i18n-glossary.test.ts src/lib/inventory-readers.test.ts src/lib/language-switch.test.ts src/lib/legal-starters.test.ts src/lib/messages/retry-wording.test.ts src/lib/no-card-fields.test.ts src/lib/order-numbers.test.ts src/lib/owner-nav.test.ts src/lib/page-content.test.ts src/lib/parity.test.ts src/lib/pay-routes.graph.test.ts src/lib/personal-data.test.ts src/lib/platform-nav.test.ts src/lib/product-import-writers.test.ts src/lib/replicate-real.test.ts src/lib/rules-index.test.ts src/lib/store-address.test.ts src/lib/store-nav.test.ts src/lib/theme-shots.test.ts src/lib/unit-price-readers.test.ts src/lib/vat-readers.test.ts src/lib/withdraw-no-storage.test.ts src/lib/wordpress-plugin.test.ts src/server/document-readers.test.ts src/server/field-values-readers.test.ts src/server/price-audit-scan.test.ts src/server/redirect-writers.test.ts src/server/retention-readers.test.ts src/server/store-members-expiry.test.ts . Trust the command's output over this list (main moves). New name: put `.scan` before `.test.ts` (src/lib/audit.test.ts becomes src/lib/audit.scan.test.ts). Two special names: src/server/price-audit-scan.test.ts becomes src/server/price-audit.scan.test.ts, and src/lib/pay-routes.graph.test.ts becomes src/lib/pay-routes.graph.scan.test.ts. Do not change a line inside a renamed file except a relative import of another renamed test file. The files stay in their folders, so each stays in the Vitest project it was in."
+        },
+        {
+          "file": "CLAUDE.md",
+          "action": "edit",
+          "how": "For each renamed file, run `rg -n --fixed-strings '<old basename>' . -g '!node_modules' -g '!.next' -g '!supabase/archive/**'` (basename only, for example `vat-readers.test.ts`) and replace the old basename with the new one in every hit in CLAUDE.md, docs/rules/**, docs/*.md, src/** (comments and strings that cite the test), scripts/** and .github/**. Do not rewrite hits under docs/audits/** (they are a record) unless a test fails on one. This one change entry stands for all those text files; the rg output is the list."
+        },
+        {
+          "file": "src/lib/test-names.scan.test.ts",
+          "action": "create",
+          "how": "A new scan test with one case. It walks src with readdirSync (recursive), takes every file ending `.test.ts` that does not end `.scan.test.ts` or `.int.test.ts`, reads its text, and fails with the list of files whose text matches the regular expression /\\b(readdirSync|readdir|opendirSync|globSync)\\s*\\(/ . The failure message says: 'A test that lists a directory must be named *.scan.test.ts, so pnpm test:changed always runs it.' Write it in the style of src/server/ratchet.scan.test.ts (node:fs, node:path, vitest's describe/it/expect, no other imports)."
+        }
+      ],
+      "checks": [
+        "rg -l \"\\b(readdirSync|readdir|opendirSync|globSync)\\s*\\(\" src -g '*.test.ts' -g '!*.scan.test.ts' -g '!*.int.test.ts' | sort : prints nothing",
+        "pnpm exec vitest run src/lib/test-names.scan.test.ts src/lib/rules-index.scan.test.ts: both pass",
+        "pnpm test: the 'Test Files' total on Vitest's last lines is the total before this commit plus 1, and the 'Tests' total is the total before plus 1 (write both totals down before you start)",
+        "pnpm lint && pnpm typecheck && pnpm test: exits 0"
+      ]
+    },
+    {
+      "title": "pnpm test:changed: the tests a change can reach, and every scan test",
+      "changes": [
+        {
+          "file": "scripts/lib/test-changed.mjs",
+          "action": "create",
+          "how": "A pure module, no imports but node:path. Export `WHOLE_SUITE_PATHS`, an array of regular expressions: /^package\\.json$/, /^pnpm-lock\\.yaml$/, /^vitest.*\\.config\\.mts$/, /^tsconfig.*\\.json$/, /^src\\/test\\//, /^test\\//, /^supabase\\// . Export `testPlan(changedFiles)` (an array of repo-relative paths): returns 'whole' when the argument is null (the reference could not be read) or when any path matches one of WHOLE_SUITE_PATHS, otherwise 'related'. The reason for supabase/: the database tests replay the migration files from disk and import none of them, so the import graph cannot see that change."
+        },
+        {
+          "file": "scripts/test-changed.mjs",
+          "action": "create",
+          "how": "A Node script (ES module, node:child_process spawnSync with stdio 'inherit', shell false). Argument 1 is a git reference, default `origin/main`. Steps: (1) run `git rev-parse --verify --quiet <ref>^{commit}`; if it fails, print 'test:changed: <ref> is not in this clone, running the whole unit suite' and run `pnpm exec vitest run`, exit with its status. (2) Otherwise collect the changed files: the union of `git diff --name-only <ref>...HEAD`, `git diff --name-only --cached` and `git diff --name-only` (lines, trimmed, no blanks). If the three-dot diff fails (no merge base in a shallow clone), treat it as step 1 does. (3) Call testPlan() from ./lib/test-changed.mjs. If 'whole': print which path caused it and run `pnpm exec vitest run`. If 'related': run `pnpm exec vitest run --changed <ref> --passWithNoTests`, and if it exits 0 run `pnpm exec vitest run .scan.test.` (Vitest's file filter is a substring of the path, so this runs every *.scan.test.ts in every project). Exit non-zero if either run failed. Print one last line: `test:changed: related run, then scans` or `test:changed: whole suite`. Do not parse Vitest's output."
+        },
+        {
+          "file": "package.json",
+          "action": "edit",
+          "how": "In \"scripts\", add after \"test:smoke\": `\"test:changed\": \"node scripts/test-changed.mjs\"`. Keep \"test\", \"test:smoke\" and every other script as they are."
+        },
+        {
+          "file": "src/lib/test-changed.scan.test.ts",
+          "action": "create",
+          "how": "Imports testPlan and WHOLE_SUITE_PATHS from ../../scripts/lib/test-changed.mjs (src/lib/await-deploy.test.ts shows how a test imports a script's module). Cases: testPlan(null) is 'whole'; testPlan(['src/lib/money.ts']) is 'related'; each of package.json, pnpm-lock.yaml, vitest.config.mts, vitest.integration.config.mts, tsconfig.json, src/test/admin-english.ts, supabase/migrations/x.sql gives 'whole'; and one case reads package.json and expects scripts['test:changed'] to be 'node scripts/test-changed.mjs'."
+        }
+      ],
+      "checks": [
+        "pnpm exec vitest run src/lib/test-changed.scan.test.ts: passes",
+        "Make a one-line change (add a comment line) in src/lib/slug.ts if it exists, else in src/lib/money.ts, do not commit it, run `pnpm test:changed`: it prints two Vitest runs whose 'Test Files' totals add up to fewer than 250, and its last line is 'test:changed: related run, then scans'. Then `git checkout -- <that file>`.",
+        "touch nothing, run `pnpm test:changed origin/does-not-exist`: prints 'is not in this clone' and runs the whole suite (you may stop it with Ctrl-C once Vitest starts)",
+        "pnpm lint && pnpm typecheck && pnpm test: exits 0"
+      ]
+    },
+    {
+      "title": "pnpm check runs lint, the type check and the related tests through the recorder",
+      "changes": [
+        {
+          "file": "package.json",
+          "action": "edit",
+          "how": "Step 1.20 added a \"check\" script that runs lint, the type check and `pnpm test` through scripts/timed.mjs. Open that script (or the file it calls). Replace its `pnpm test` (the whole unit run) with `pnpm test:changed`. Keep the recorder's labels and its printing as step 1.20 wrote them; label the new part 'related tests'. If \"check\" does not exist in package.json, stop: step 1.20 is not done."
+        },
+        {
+          "file": "scripts/check.mjs",
+          "action": "create",
+          "how": "Only if step 1.20's \"check\" is a one-line shell chain in package.json and has no file of its own: create this file and point \"check\" at it (`node scripts/check.mjs`); if step 1.20 already made a file for it, edit that file instead and do not create this one. What the lint part must do: (a) find the lint cache file: read the `--cache-location` value in package.json's \"lint\" script, default `.eslintcache`; (b) run `git diff --name-only origin/main...HEAD` plus the staged and unstaged names; (c) if the cache file exists, or eslint.config.mjs or pnpm-lock.yaml is among the changed names, or origin/main cannot be read, run `pnpm lint` (the whole tree, which fills the cache); (d) otherwise run `pnpm exec eslint --max-warnings 0 <the changed files that still exist and end .ts, .tsx, .mjs, .js or .jsx>` and skip lint with a printed line when that list is empty. Then the type check (`pnpm typecheck`), then `pnpm test:changed`, each started through scripts/timed.mjs exactly as step 1.20 starts them, stopping at the first failure. CI is not changed by this file: the gate and the static job keep `pnpm lint` on the whole tree."
+        }
+      ],
+      "checks": [
+        "rm -f .eslintcache (or the cache file named in the lint script), make a one-line comment change in one src/lib file, run `pnpm check`: the lint part names only the changed file(s), the recorder prints seconds for lint, the type check and the related tests, exit 0; then `git checkout --` the file",
+        "pnpm check a second time on the same tree: 2 minutes or less in the recorder's total",
+        "pnpm lint && pnpm typecheck && pnpm test: exits 0"
+      ]
+    },
+    {
+      "title": "The deploy gate runs the related tests after its three steps",
+      "changes": [
+        {
+          "file": ".github/workflows/ci.yml",
+          "action": "edit",
+          "how": "Only in the job `pending`. (1) Its `actions/checkout` step gets `with: fetch-depth: 50`, so the commit before the push is in the clone. (2) Directly after the step named 'Quick gate: money, cart, checkout and VAT tests' and before the step with id `head`, add a step named 'Quick gate: the tests this push can reach' with the same `if:` as the three gate steps (`steps.status.outputs.pending == 'false' && vars.DEPLOY_VIA_CI == 'true'`) that runs `node scripts/test-changed.mjs ${{ github.event.before }}`. If step 1.20 wrapped the other gate steps in `node scripts/timed.mjs ...`, wrap this one the same way with its own label (the check of step 1.20 fails a CI step that runs outside the recorder). When github.event.before is not in the clone the script runs the whole suite by itself, which is the safe side. (3) In the comment block above the job (the lines that describe 'no pending migration') and in the comment above 'Quick gate: lint', add that the gate also runs the tests the push's commits can reach and every scan test, and that the whole unit suite still runs in `static` beside the deploy. Change nothing in `static`, `release`, `redeploy` or `baseline`: `static` keeps `pnpm test` (the whole suite), and the money tests step stays."
+        },
+        {
+          "file": "scripts/ci-budgets.json",
+          "action": "create",
+          "how": "This file is made by step 1.20 and does not exist before it. If it is not there, stop: the dependency is not done. If it is there, do not overwrite it; edit it: Add a ceiling for the new gate step under the name the recorder gives it, 100 seconds as its first median, and raise the gate's total line to 190 seconds (90 s for lint, the type check and the money tests after step 2.42, plus at most 100 s). Follow the shape step 1.20 gave the file; if the gate's three steps are not yet at 90 s (step 2.42 not done), write the measured median plus 100 s and say so in the decision row."
+        }
+      ],
+      "checks": [
+        "pnpm exec vitest run src/lib/ci-once.scan.test.ts: passes (if it counts gate steps and fails, add the new step to its expected list in the same commit; that is the one test this step may change)",
+        "node -e \"const y=require('fs').readFileSync('.github/workflows/ci.yml','utf8');if(!/fetch-depth: 50/.test(y)||!/scripts\\/test-changed\\.mjs \\$\\{\\{ github\\.event\\.before \\}\\}/.test(y))process.exit(1)\": exits 0",
+        "pnpm lint && pnpm typecheck && pnpm test: exits 0"
+      ]
+    },
+    {
+      "title": "The pre-push rule is lint, the type check and the tests the change can reach",
+      "changes": [
+        {
+          "file": "CLAUDE.md",
+          "action": "edit",
+          "how": "In '## Workflow', first bullet: replace 'so run lint, typecheck and the tests before every push' with 'so before every push run `pnpm check`: lint, the type check and the tests the change can reach (`pnpm test:changed`, with every `*.scan.test.ts`; a test that lists a directory is named so)'. Second bullet: replace '(lint, the type check and the money tests, D526)' with '(lint, the type check, the money tests and the tests the push can reach, D526 and the new D-number)' and keep 'and the full checks report beside it'. In '## Commands', add the lines `pnpm check       # the pre-push rule: lint, the type check, pnpm test:changed` and `pnpm test:changed # unit tests a change can reach, and every *.scan.test.ts`."
+        },
+        {
+          "file": "README.md",
+          "action": "edit",
+          "how": "Replace the line 'Run lint, the type check and the tests before every push.' with 'Run `pnpm check` before every push: lint, the type check and the tests the change can reach. CI runs the whole unit suite beside the deploy.'"
+        },
+        {
+          "file": "docs/capacity.md",
+          "action": "edit",
+          "how": "In the bullet that starts '**Before pushing:**', replace '`pnpm lint`, `pnpm typecheck`, `pnpm test`' with '`pnpm check` (lint, the type check and `pnpm test:changed`)'; keep the rest of the sentence about `pnpm test:int`."
+        },
+        {
+          "file": "docs/ci-migrations.md",
+          "action": "edit",
+          "how": "Where the file describes the quick gate (rg -n 'quick gate|test:smoke' docs/ci-migrations.md), add one sentence: since this step the gate also runs `node scripts/test-changed.mjs <the commit before the push>`: the unit tests the push can reach and every scan test; the whole unit suite still reports beside the deploy."
+        },
+        {
+          "file": "docs/decisions.md",
+          "action": "edit",
+          "how": "Add the decision row described under docs."
+        }
+      ],
+      "checks": [
+        "pnpm exec vitest run src/lib/rules-index.scan.test.ts src/lib/brand.scan.test.ts: pass",
+        "pnpm check: exits 0"
+      ]
+    }
+  ],
+  "tests": [
+    {
+      "file": "src/lib/test-names.scan.test.ts",
+      "proves": "fails when a unit test not named *.scan.test.ts lists a directory, so the related run cannot miss a directory reader"
+    },
+    {
+      "file": "src/lib/test-changed.scan.test.ts",
+      "proves": "fails when a change to package.json, the lockfile, a Vitest or TypeScript config, src/test, test or supabase no longer forces the whole suite, or when the script is renamed"
+    },
+    {
+      "file": "src/lib/ci-once.scan.test.ts",
+      "proves": "(step 0.38's test, extended if it counts gate steps) fails when the gate loses the related-tests step"
+    }
+  ],
+  "migration": {
+    "needed": false,
+    "notes": ""
+  },
+  "done_when": [
+    {
+      "check": "after a one-line comment change in one src/lib file: pnpm test:changed",
+      "expect": "the two 'Test Files' totals add up to fewer than 250 (a full run is 1,215 or more)"
+    },
+    {
+      "check": "in a fresh clone (git clone, pnpm install, no .eslintcache, no .next, no tsbuildinfo), a one-line change in src/lib, then pnpm check",
+      "expect": "5 min 30 s or less if step 2.42's decision row says the native compiler passed; otherwise the recorder shows only the cold type check over its line (about 7 min 30 s in all), which is the stated tolerance"
+    },
+    {
+      "check": "pnpm check a second time",
+      "expect": "2 minutes or less"
+    },
+    {
+      "check": "scripts/ci-budgets.json, the gate's line after ten runs",
+      "expect": "a median of 3 min 10 s (190 s) or less"
+    },
+    {
+      "check": "a trial push to main with one failing assertion in a unit test that the changed file reaches (for example change a return value in a src/lib file whose test then fails), then read the run's `pending` job",
+      "expect": "the step 'Quick gate: the tests this push can reach' is red, the deploy step did not run, and /api/health still reports the commit before. Push the revert at once."
+    },
+    {
+      "check": "rg -n 'pnpm check' CLAUDE.md README.md docs/capacity.md",
+      "expect": "each file has the new sentence, and docs/decisions.md has the row"
+    }
+  ],
+  "after_deploy": [
+    "Read the next ten runs of the `pending` job: the new step's median is 100 s or less and the gate's total 190 s or less; if not, write the measured figures into the decision row and report."
+  ],
+  "docs": [
+    "docs/decisions.md: add one row with the next free D-number (read the last row of the decisions table to find it; never reuse a number) and today's date. It records: the owner's choice on the pre-push rule (asked as A, B or C; decided: before a push lint, the type check and the tests the change can reach; the gate runs the same related tests after its three steps; the whole unit suite reports beside the deploy). Name pnpm test:changed, scripts/test-changed.mjs, the *.scan.test.ts naming rule and its guard test, the paths that force the whole suite, the measured counts and seconds, and the way back: one sentence in CLAUDE.md and one step in ci.yml. Say that tests which read one named file with readFileSync without importing it are not selected by the import graph and are caught by the whole suite beside the deploy.",
+    "CLAUDE.md Workflow and Commands, README.md and docs/capacity.md as written in the last commit.",
+    "docs/audits/code-review-2026-11.md: in the Progress table, add to step 0.2's notes that the gate now also runs the related tests (date, commit), and one line in its change log.",
+    "docs/audits/bloat-review-2026-11.md, Progress table: set the row of step 2.43 to Done with the date and the commit hash (if the table has no row for 2.43, add one in the table of its phase with the step's title), and add one line to that file's change log if it has one."
+  ],
+  "do_not": [
+    "Do not remove `pnpm test` from the `static` job, and do not remove the money tests step or the `test:smoke` script: the whole suite must keep running beside the deploy.",
+    "Do not edit the body of a renamed test to make it pass, and do not rename *.int.test.ts files.",
+    "Do not add a Vitest project for scans: the filename filter `.scan.test.` is enough, and a new project would break step 0.39's rule that each test file is in exactly one project.",
+    "Do not make `pnpm lint` itself lint only changed files: only `pnpm check` narrows it, and only when no cache exists.",
+    "Do not use `--changed` without a reference in CI, and do not set fetch-depth: 0 on every job.",
+    "Do not add a paid CI service or a larger runner."
+  ],
+  "stop_if": [
+    "package.json has no \"check\" script or scripts/timed.mjs does not exist (step 1.20 not done), or vitest.config.mts has no projects (step 0.39 not done).",
+    "After the renames `pnpm test` shows a different number of tests than before plus the one new case.",
+    "pnpm test:changed after a one-line change in a small src/lib file runs 250 files or more: report the two totals and the file changed.",
+    "A test fails in the related run but passes in the whole run, or the other way round.",
+    "The gate's related step takes more than 100 s in its first three runs."
+  ],
+  "executor": "cheap-then-review",
+  "executor_why": "The renames and scripts are mechanical, but the commit that edits ci.yml changes what holds back a production deploy, so a stronger model should read that diff before it is pushed.",
+  "checked_in_code": "I opened package.json, vitest.config.mts, .github/workflows/ci.yml (the pending job's three gate steps at lines 297 to 305), CLAUDE.md, README.md:57 and docs/capacity.md:97; all are as the finding says, and Vitest is 5.0.5, whose --changed <ref> unions the commits since the reference with staged and unstaged files. Today there is no `pnpm check`, no scripts/timed.mjs, no projects in the Vitest config and no ci-once.scan.test.ts: they come from steps 1.20, 0.39 and 0.38, so the brief stops when they are missing. I corrected the finding in three places: 44 unit tests list a directory today (it said about 40) and the list is in the brief; a `scans` project is not needed because Vitest's filename filter runs them; and the import graph cannot see a changed migration or config, so the script runs the whole suite for those paths and when the reference is missing from a shallow CI clone (the pending job's checkout has depth 1 today)."
+}

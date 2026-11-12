@@ -1,0 +1,139 @@
+{
+  "id": "2.33",
+  "goal": "An admin request from a session at aal1 whose account has never verified a second factor makes no call to Supabase Auth, while an account with a verified factor is still held at the challenge on every request.",
+  "why": "Every page render, server action and poll from a session without two-step makes 1 getUser() call over HTTP to Supabase Auth (2 per save: the action and its redraw); after the step that is 0 for an account with no factor and still 1 for an account whose mirror says it has one.",
+  "read_first": [
+    "docs/wave-1-trust.md",
+    "docs/rules/admin/platform.md",
+    "src/server/auth.ts",
+    "src/server/two-step.ts",
+    "src/lib/two-step.ts",
+    "src/server/sign-in.ts",
+    "src/server/trust-fixtures.ts",
+    "src/server/account-gate.int.test.ts"
+  ],
+  "depends_on": [],
+  "commits": [
+    {
+      "title": "Every account with a verified second factor has it in the mirror: a one-time reconcile and one at each sign-in",
+      "changes": [
+        {
+          "file": "supabase/migrations/*_two_step_mirror_reconcile.sql",
+          "action": "create",
+          "how": "Make it with 'pnpm exec drizzle-kit generate --custom --name two_step_mirror_reconcile', then run 'node scripts/prune-snapshots.mjs'. Body, data only: 'do $$ begin if to_regclass(''auth.mfa_factors'') is not null then update commerce.accounts a set two_step_since = now() where a.two_step_since is null and a.auth_user_id is not null and exists (select 1 from auth.mfa_factors f where f.user_id = a.auth_user_id and f.status = ''verified''); end if; exception when insufficient_privilege then raise notice two-step mirror reconcile skipped: no read on auth.mfa_factors; end $;' (single quotes as SQL needs them). The guard makes it do nothing where Supabase's auth schema is absent (PGlite in src/db/commerce.test.ts, CI's Postgres service). If the role that applies migrations may not read auth.mfa_factors the block says so and changes nothing; the owner’s count after the deploy (after_deploy) then shows whether any account is left. It only sets a mirror that is null; it never clears one. First line comment: why (the mirror starts to decide when the Auth call may be skipped, so it must be right for accounts that exist today)."
+        },
+        {
+          "file": "src/server/sign-in.ts",
+          "action": "edit",
+          "how": "In admit(supabase, user) (line 17), after the account is found and before 'return \"admitted\"': reconcile the mirror from the Auth SERVER's own list. Call 'const { data: fresh, error } = await supabase.auth.getUser()'. If it errors or returns no user: sign the person out (await supabase.auth.signOut()) and return 'no-access' (fail closed: a session must not start with an unknown mirror). Otherwise 'const verified = (fresh.user.factors ?? []).some((f) => f.status === \"verified\")' and run one statement: when verified, 'update commerce.accounts set two_step_since = coalesce(two_step_since, now()) where id = ${account.id}::uuid'; when not verified, 'update commerce.accounts set two_step_since = null where id = ${account.id}::uuid and two_step_since is not null'. Never read user.factors from the 'user' argument or from getSession(): only getUser()'s answer. Do not touch two_step_reenrol_at."
+        },
+        {
+          "file": "src/server/account-gate.int.test.ts",
+          "action": "edit",
+          "how": "Add cases for admit() with fakeSupabase(state) from src/server/trust-fixtures.ts (add signOut to the fake if it lacks it, recording 'signOut' in state.calls): (1) the server holds a verified factor and the account's mirror is null: after admit() two_step_since is set; (2) the server holds no factor and the mirror is set: after admit() it is null; (3) state.userError = true: admit() returns 'no-access' and 'signOut' is in state.calls; (4) the cookie's copy (cookieFactors) says verified while the server says none: the mirror stays null."
+        }
+      ],
+      "checks": [
+        "pnpm test src/db/commerce.test.ts src/db/migration-safety.scan.test.ts: pass (the migration applies on PGlite and does nothing there)",
+        "pnpm db:check: exits 0",
+        "pnpm test:int src/server/account-gate.int.test.ts src/server/two-step.int.test.ts src/server/admin-trust.int.test.ts: pass",
+        "pnpm lint && pnpm typecheck && pnpm test: exits 0",
+        "the signed-in build (as CI's signed-in job in .github/workflows/ci.yml: NEXT_PUBLIC_SUPABASE_URL=http://127.0.0.1:3912, NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=e2e-publishable-key, E2E_SIGNED_IN=1, node scripts/db-setup.mjs --seed, pnpm build), then E2E_SIGNED_IN=1 pnpm exec playwright test --project=signed-in e2e/signed-in (auth.setup.ts and the two-step specs among them): pass; e2e/fixtures/auth-stub.mjs already answers GET /auth/v1/user"
+      ]
+    },
+    {
+      "title": "No Supabase Auth call per request for an account that has never verified a second factor",
+      "changes": [
+        {
+          "file": "src/server/auth.ts",
+          "action": "edit",
+          "how": "In readSession() (lines 120 to 180). Today: 'if (level === \"aal1\" && !killSwitch) { ...getUser()... }'. Change the condition so getUser() is called only when the mirror or the re-enrol mark says it is needed: 'const mirrorSaysNone = !row.two_step_since && !row.two_step_reenrol_at; if (level === \"aal1\" && !killSwitch) { if (mirrorSaysNone) enrolled = false; else { ...the existing try/catch with getUser(), unchanged... } }'. So: mirror null and no re-enrol pending: enrolled = false with no call. Mirror set, or re-enrol pending: the call is made exactly as today, and a failure still gives enrolled = null (fail closed). aal2 and the kill switch are unchanged. Then move the two writes below (the mirror update at lines 158 to 163 and the break-glass audit insert at lines 164 to 174) into after() from 'next/server' so they never hold a page: 'after(async () => { try { ...the same statements... } catch {} })'; where after() throws because there is no request scope (a unit or int test calling readSession directly), fall back to running them inline: wrap as the repo's own helper does (src/server/sign-in.ts uses afterAnswer(): use that helper if it does exactly this). Update the comment above the block: the mirror is no longer 'never read for access': it decides only when the Auth call may be skipped for an account that has never verified a factor, it is written when a factor is verified (two-step.ts line 190), cleared on every removal and reset (lines 264, 341, 362), and reconciled at each sign-in (sign-in.ts admit())."
+        },
+        {
+          "file": "src/lib/two-step.ts",
+          "action": "edit",
+          "how": "Line 8 of the header comment says 'accounts.two_step_since is a mirror for display and decides nothing'. Replace that sentence with: 'accounts.two_step_since is the app's mirror of a verified factor: it is shown on the Team page, and it decides one thing only: an aal1 session of an account whose mirror is empty skips the getUser() call. It is written when a factor is verified, cleared when one is removed or reset, and reconciled from getUser() at every sign-in.' No code changes in this file."
+        },
+        {
+          "file": "src/server/two-step.ts",
+          "action": "edit",
+          "how": "The header comment (about line 32) says the same 'mirror for display': correct it with the same sentence. Then check the order of writes at line 190 (enrolment verified): the mirror must be set in the same action that verifies the factor, right after the Auth server's verify succeeds, and a failure of that update must fail the action (do not swallow it): if the update is inside a try/catch that ignores errors, take it out of that catch. Change nothing else."
+        },
+        {
+          "file": "src/server/account-gate.int.test.ts",
+          "action": "edit",
+          "how": "Add a describe 'the Auth call per request' using fakeSupabase(state) and state.calls. Each case runs the gate's read twice (two requests: call the uncached function the test file already uses to read a session; if it only reaches the React-cached readSession, add and export an uncached 'readSessionNow' in auth.ts that readSession wraps, and call that). Cases: (a) aal1, no factor, mirror null: state.calls holds 0 'getUser' after two runs and the account is let in (assurance enrolled false); (b) aal1, the server holds a verified factor, mirror set: 1 'getUser' per run and the session is held at the challenge (getAccount() is null and the gate says challenge); (c) enrol: run the enrol and verify flow of two-step.ts with the fake, then a NEW aal1 session of that account: held at the challenge (the mirror was set by the flow); (d) remove (the account's own switch-off, two-step.ts line 341): afterwards an aal1 session makes 0 getUser calls and is let in; (e) reset by an owner or platform admin (line 362): two_step_reenrol_at is set, so an aal1 session makes the getUser call and is held at enrolment; (f) re-enrol after the reset: mirror set again, an aal1 session is held at the challenge; (g) aal1, mirror set but getUser fails (userError): held (enrolled null), as today; (h) the cookie's copy claims no factors while the mirror is set: still held; (i) kill switch on: 0 calls, as today."
+        },
+        {
+          "file": "docs/audits/code-review-2026-11.md",
+          "action": "edit",
+          "how": "Progress row 3.8 (line 110, 'Cut the repeated round trips', findings FF4 and FV8): if the cart and checkout half (FF4) is already done (its note or the change log says so, or step 3.8's text on line about 478 is satisfied: each loader has at most two waves after getCustomer), set the row to Done with today's date and this commit. If FF4 is not done, do it only if it is small as written there (run cart's and checkout's independent reads together in one Promise.all in their loaders); otherwise write 'FV8 done <date> <commit>; FF4 open' in the note and report it in the hand-back. Correct finding FV8's text to say the fast path uses the column, not a five-minute memory, and add a change-log line."
+        }
+      ],
+      "checks": [
+        "pnpm test:int src/server/account-gate.int.test.ts src/server/two-step.int.test.ts src/server/admin-trust.int.test.ts src/server/security-review.int.test.ts src/server/permissions.int.test.ts: pass; no existing expectation changed",
+        "pnpm test src/server/session-freshness.scan.test.ts src/lib/security-routes.scan.test.ts: pass",
+        "pnpm lint && pnpm typecheck && pnpm test && pnpm test:int: exits 0",
+        "the signed-in build (as CI's signed-in job in .github/workflows/ci.yml: NEXT_PUBLIC_SUPABASE_URL=http://127.0.0.1:3912, NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=e2e-publishable-key, E2E_SIGNED_IN=1, node scripts/db-setup.mjs --seed, pnpm build), then E2E_SIGNED_IN=1 pnpm exec playwright test --project=signed-in e2e/signed-in: pass (a platform admin is still taken through the two-step page with the code from e2e/fixtures/totp.mjs; the owner and the Read-only member sign in as before)"
+      ]
+    }
+  ],
+  "tests": [
+    {
+      "file": "src/server/account-gate.int.test.ts",
+      "proves": "fails when an aal1 account with no factor makes a getUser call, and fails when an account with a verified factor is let in at aal1 after enrol, remove, an owner's reset or re-enrol, or when Auth is unreachable"
+    },
+    {
+      "file": "src/db/commerce.test.ts",
+      "proves": "existing: the reconcile migration applies cleanly where the auth schema is absent"
+    }
+  ],
+  "migration": {
+    "needed": true,
+    "notes": "One custom migration (drizzle-kit generate --custom, then node scripts/prune-snapshots.mjs): a guarded data update of commerce.accounts.two_step_since from auth.mfa_factors, no schema change. commerce.accounts is not on the hot-table list, the update touches only rows with a verified factor and a null mirror (a handful), and it adds nothing the running code reads differently: the code deployed before it treats the column as display only. CI's release job applies it before the deploy; never apply it by hand. It must be in the first commit, so the mirror is right before the second commit starts to trust it; push the second commit only after the first has deployed."
+  },
+  "done_when": [
+    {
+      "check": "pnpm test:int src/server/account-gate.int.test.ts",
+      "expect": "with trust-fixtures an aal1 account with no factor makes 0 getUser calls across two session reads (1 each before); an account with a factor is still held at the challenge; the enrol, remove, reset and re-enrol cases pass"
+    },
+    {
+      "check": "rg -n '^\\| *3\\.8 ' docs/audits/code-review-2026-11.md",
+      "expect": "the row reads Done with the date and commit"
+    },
+    {
+      "check": "The section of docs/audits/bloat-review-2026-11.md for step 2.33",
+      "expect": "records the owner's answer on the project's JWT signing keys (asymmetric, or legacy shared secret and moved)"
+    }
+  ],
+  "after_deploy": [
+    "After the first commit's deploy, the owner (not the executor) runs in the Supabase SQL editor: select count(*) from commerce.accounts a where a.two_step_since is null and exists (select 1 from auth.mfa_factors f where f.user_id = a.auth_user_id and f.status = 'verified'); expect 0. Only then push the second commit.",
+    "After the second commit: sign in as a platform admin; the two-step page still asks for a code. Check the security and performance advisors for the migration and record its version under Migration versions in docs/decisions.md."
+  ],
+  "docs": [
+    "docs/decisions.md (or docs/decisions/D{n}.md after step 2.40): one decision with the next free D number: the two-step mirror decides when the Auth call is skipped; where it is written, cleared and reconciled; which kind of JWT signing key the project uses (the owner's answer) and that an asymmetric key lets getClaims() verify without a call. Add the migration's version to the Migration versions list after the deploy.",
+    "docs/wave-1-trust.md section 2.8 (the two-step gate, how it fails) and the sentence near line 31 ('a server-side getUser() call'): say that the call is made only when the mirror is set or a re-enrolment is pending.",
+    "docs/rules/admin/platform.md, the Staff security rule (about line 149): one sentence on the mirror's new role.",
+    "docs/audits/code-review-2026-11.md: row 3.8 and its change log, as the commit says.",
+    "docs/audits/bloat-review-2026-11.md: row 2.33 to Done (rg -n '^\\| *2\\.33 ' docs/audits/bloat-review-2026-11.md)."
+  ],
+  "do_not": [
+    "Do not read factors from the session cookie's copy of the user (getSession(), or the 'user' object passed around): only getUser()'s answer or the signed aal claim.",
+    "Do not skip the call when the mirror is set, when two_step_reenrol_at is set, or for platform admins as a group: platform admins have a factor (D254), so their mirror is set and they keep the check.",
+    "Do not cache the answer in memory per instance (the finding rejects it: it cannot be cleared on other instances).",
+    "Do not make a getUser() failure let anyone in: unknown stays 'held'.",
+    "Do not push the second commit before the first has deployed and the count above is 0.",
+    "Do not add a bypass to sign-in for a test; the stand-in e2e/fixtures/auth-stub.mjs is the only fake.",
+    "Do not use the Supabase tools or dashboard yourself: the signing-key look and the SQL count are the owner's."
+  ],
+  "stop_if": [
+    "Before starting: ask the owner to look in the Supabase dashboard of the project (Authentication, JWT signing keys) and say whether tokens are signed with an asymmetric key. The code does not wait for the answer, but the step is not done without it; if the answer is 'legacy shared secret', report that every request still pays a getUser() inside getClaims() until the key is moved (Supabase's own migration, free).",
+    "Any existing case in account-gate.int.test.ts, two-step.int.test.ts or security-review.int.test.ts must be changed to pass.",
+    "A flow in src/server/two-step.ts verifies or removes a factor without writing the mirror in the same action (rg -n 'mfa\\.(verify|unenroll)' src/server shows the calls; each must be followed by one of the updates at lines 190, 264, 341, 362).",
+    "A factor can be enrolled anywhere outside src/server/two-step.ts (rg -n 'mfa\\.enroll' src prints another file).",
+    "The owner's count after the first deploy is not 0."
+  ],
+  "executor": "cheap-then-review",
+  "executor_why": "The change is small and fully specified, and the integration cases catch a wrong condition, but it decides who is let into the admin, so a stronger model must read the diff and the tests before each of the two pushes.",
+  "checked_in_code": "I opened src/server/auth.ts: readSession() (lines 120 to 180) selects two_step_since and two_step_reenrol_at in its one account read and calls supabase.auth.getUser() for every aal1 session unless the kill switch is on; the mirror is written at src/server/two-step.ts lines 190, 264, 341 and 362, as the finding says. The finding's 'reconcile at sign-in' has one place to go: admit() in src/server/sign-in.ts, called by the password action and the two link routes. The finding does not cover accounts that already have a factor and a null mirror on the day of the deploy; the brief adds a guarded one-time migration from auth.mfa_factors and a fail-closed sign-in for that. Code review step 3.8 also names cart and checkout reads (FF4), which this plan step does not mention; the brief says how to set the row."
+}

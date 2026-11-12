@@ -1,0 +1,181 @@
+{
+ "id": "2.8",
+ "goal": "On a full listing only the first screen of product tiles is fetched ahead on sight and the rest when touched, swatch links wait for intent, a seeded 48-product category read to the end on a phone makes at most 20 router requests, and docs/performance.md and docs/decisions.md hold the partial-prefetching trial on four pages with the decision it led to.",
+ "why": "Today a real listing prefetches every product tile and up to six swatch links under each: about 96 router requests for 48 products, which no test sees because the test stores have 10 products. After: at most 20 for the same listing, held by e2e/prefetch.spec.ts.",
+ "read_first": [
+  "docs/performance.md",
+  "docs/rules/storefront.md",
+  "node_modules/next/dist/docs/01-app/02-guides/adopting-partial-prefetching.md",
+  "node_modules/next/dist/docs/01-app/03-api-reference/03-file-conventions/02-route-segment-config/prefetch.md",
+  "node_modules/next/dist/docs/01-app/03-api-reference/05-config/01-next-config-js/partialPrefetching.md",
+  "src/components/product-card.tsx",
+  "src/components/product-listing.tsx",
+  "src/server/listing.int.test.ts"
+ ],
+ "depends_on": [
+  {
+   "id": "2.6",
+   "why": "it finished PolicyLink (src/components/policy-link.tsx, policy 'sight', 'intent' or 'never'), set the per-page budgets in e2e/prefetch.spec.ts and wrote the policy table in docs/performance.md that this step adds two rows to"
+  },
+  {
+   "id": "0.14",
+   "why": "it wrote partialPrefetching: false and optimisticRouting: false into next.config.ts and made e2e/prefetch.spec.ts with its helper routerPrefetches(page)"
+  },
+  {
+   "id": "1.3",
+   "why": "it gave e2e/prefetch.spec.ts its one table of router-request budgets, where the listing's row goes"
+  }
+ ],
+ "commits": [
+  {
+   "title": "A listing fetches its first six tiles ahead on sight and the rest on intent; swatches wait for intent",
+   "changes": [
+    {
+     "file": "src/components/product-card.tsx",
+     "action": "edit",
+     "how": "Replace 'import Link from \"next/link\";' with 'import { PolicyLink } from \"@/components/policy-link\";' (use the path step 2.6 left it at: rg -l 'export function PolicyLink' src). Add an optional prop to ProductCard: policy?: 'sight' | 'intent', default 'intent', with the doc comment 'Whether the router fetches this product ahead when the card is seen (the first screen of a listing) or only when it is pointed at or touched (bloat review step 2.8).' In the title, the non-tracked branch becomes <PolicyLink policy={policy} href={href} className=\"after:absolute after:inset-0 focus-visible:outline-2\">. The tracked branch stays the plain <a href={href} rel=\"nofollow\"> exactly as it is (D77: a tracked search result is never prefetched). In GroupSwatches change each swatch's <Link ...> to <PolicyLink policy=\"intent\" ...> with every other prop unchanged (href, aria-label, title, className, style). Export const SIGHT_TILES = 6 from this file with the comment: the tiles of a listing fetched ahead on sight: three rows of two on a phone, a row and a half of four on a computer; with the page's own links this keeps a 48-product listing at 20 router requests or fewer."
+    },
+    {
+     "file": "src/components/product-listing.tsx",
+     "action": "edit",
+     "how": "In ProductGrid's products.map((product, index) => <ProductCard ... />) add the prop policy={!tracked && index < SIGHT_TILES ? \"sight\" : \"intent\"} and import SIGHT_TILES from './product-card' (or '@/components/product-card', as the file imports ProductCard today). Nothing else changes: Show more keeps its own link, and a page 2 of a listing has the same first six on sight."
+    },
+    {
+     "file": "src/app/s/[store]/[market]/page.tsx",
+     "action": "edit",
+     "how": "The list at about line 124 maps products to <ProductCard> without an index. Change 'products.map((product) => (' to 'products.map((product, index) => (' and add policy={index < SIGHT_TILES ? \"sight\" : \"intent\"} to the card; import SIGHT_TILES from '@/components/product-card'. If step 2.4 or 2.7 replaced this list by another part, make the same change where ProductCard is drawn (rg -n '<ProductCard' src/app/s)."
+    },
+    {
+     "file": "src/app/s/[store]/[market]/term-listing.tsx",
+     "action": "edit",
+     "how": "The subcategory chips at about line 174: change <Link href={`${base}/category/${sub.slug}`} ...> to <PolicyLink policy=\"intent\" ...> with the same props, and import PolicyLink. Keep the file's Link import only while another <Link remains in it."
+    },
+    {
+     "file": "src/app/s/[store]/[market]/blog/blog-listing.tsx",
+     "action": "edit",
+     "how": "The term chips at about line 58 (<Link href={href(term.slug)} ...>): the same change to <PolicyLink policy=\"intent\" ...>."
+    },
+    {
+     "file": "src/components/product-card.test.ts",
+     "action": "edit",
+     "how": "At the top, beside the existing vi.mock of wishlist-heart, add vi.mock('@/components/policy-link', () => ({ PolicyLink: ({ policy, href, children, ...rest }: { policy: string; href: string; children?: unknown }) => createElement('a', { 'data-policy': policy, href, ...rest }, children as never) })). Add a describe 'what a card lets the router fetch ahead': (1) card({}) holds data-policy=\"intent\" on its title link; (2) a card rendered with policy 'sight' (extend the file's card() helper with a second argument of extra props) holds data-policy=\"sight\"; (3) a card with product.group = { option: 'Farge', items: [{ handle: 'a', value: 'Hvit', swatch: '#fff' }, { handle: 'b', value: 'Svart', swatch: '#000' }] } (shape as ProductSummary['group'] in src/server/catalog.ts; read it first) and policy 'sight' holds exactly one data-policy=\"sight\" and two data-policy=\"intent\"; (4) a card with tracked true holds no data-policy at all and rel=\"nofollow\"."
+    },
+    {
+     "file": "src/server/{ratchet.baseline.json}",
+     "action": "edit",
+     "how": "The file is src/server/ratchet.baseline.json. Do not edit by hand: run node scripts/ratchet.mjs. Step 2.6's directLinks count falls by the files that no longer import next/link (product-card.tsx, and term-listing.tsx and blog-listing.tsx if no <Link is left in them); the diff must remove only those keys."
+    }
+   ],
+   "checks": [
+    "pnpm test src/components/product-card.test.ts src/server/ratchet.scan.test.ts: exits 0",
+    "rg -n 'next/link' src/components/product-card.tsx: prints nothing",
+    "pnpm lint && pnpm typecheck && pnpm test: exits 0",
+    "pnpm build && pnpm test:e2e -- e2e/listing.spec.ts e2e/products-page.spec.ts e2e/search.spec.ts e2e/terms.spec.ts e2e/store-pages.spec.ts e2e/wishlist.spec.ts: exits 0 (they press tiles and chips)"
+   ]
+  },
+  {
+   "title": "A seeded 48-product category holds a full listing at 20 router requests",
+   "changes": [
+    {
+     "file": "e2e/db.ts",
+     "action": "edit",
+     "how": "Add export async function fullCategory(storeId: string, count = 48): Promise<{ slug: string }>. It makes `count` active products in the store as copies of the demo tote bag and puts them in a new category. Port the helper manyProducts() of src/server/listing.int.test.ts (lines 150 to 190: read it first; it copies the product with handle 'demo-handlenett', its translations, variants, prices through commerce.set_price and media) from drizzle's sql to this file's postgres.js client (testDb()): use sql.begin(async (tx) => { ... }) for the transaction, tx.unsafe(text) for the statements that splice the column lists, and the same temp tables. Use the handles 'full-1' to 'full-48' and titles 'Full 01' to 'Full 48'. Then insert the category as e2e/signed-in/collections.spec.ts lines 40 to 44 do: insert into commerce.terms (store_id, content_type, kind, name, slug) values (storeId, 'product', 'category', 'Full kategori', 'full') returning id, and one row of commerce.product_terms (store_id, product_id, term_id) per copied product. Return { slug: 'full' }. Close the client in a finally, as the file's other helpers do."
+    },
+    {
+     "file": "e2e/{prefetch.spec.ts}",
+     "action": "edit",
+     "how": "The file is e2e/prefetch.spec.ts (made by steps 0.14 and 1.3; reuse its helper routerPrefetches(page) and its budget table). Add a test 'a full listing read to the end fetches no more than 20 pages ahead': const store = await testStore('prefetch-full'); const { slug } = await fullCategory(store.id); a phone page (viewport 390 by 844, isMobile and hasTouch as the file's other phone cases set them); const seen = routerPrefetches(page) registered before page.goto(`/s/${store.slug}/no/category/${slug}`) (the long address with the market, as e2e/terms.spec.ts line 55 writes one); expect 48 product tiles (page.locator(\"main a[href*='/p/full-']\") has count 48); wait 3 s; then scroll to the end in steps of one screen with 300 ms between (await page.mouse.wheel(0, 800) in a loop until window.scrollY stops growing), wait 3 s more; expect the number of router prefetch requests to be at most 20, with the message naming the addresses fetched. Add a second expectation: the set of different '/p/full-' handles among the fetched addresses has at most 6 members (the first screen). Add the row to the file's budget table if it keeps one (page: the seeded category, screen: phone, scroll: to the end, most: 20). Then a third step in the same test: touch (page.locator(...).nth(20).hover() on a non-touch context, or dispatch 'touchstart' on the phone context, whichever the file's intent cases already use) the 21st tile and expect, within 2 s, one more router request for that tile's address."
+    }
+   ],
+   "checks": [
+    "pnpm build && pnpm test:e2e -- e2e/prefetch.spec.ts: exits 0; run it with the count printed once (console.log of the number) and write the measured number into the commit message. Expected between 8 and 20.",
+    "Trial, not committed: set SIGHT_TILES to 48, build, run the same test: it must fail with a count above 20. Set it back to 6.",
+    "pnpm lint && pnpm typecheck && pnpm test: exits 0"
+   ]
+  },
+  {
+   "title": "The partial-prefetching trial on four pages, and the decision it led to",
+   "changes": [
+    {
+     "file": "docs/performance.md",
+     "action": "edit",
+     "how": "This commit changes documents only; the trial itself is run locally and none of its code is pushed. The trial: for each of four destinations, one at a time and each in its own production build (pnpm build, pnpm start on the seeded database plus the 48-product category of commit 2), add the line export const prefetch = 'partial'; to the destination's page file, measure, and remove the line again (git checkout the file). The four: the product page src/app/s/[store]/[market]/p/[handle]/page.tsx; the category listing's page (the page.tsx under src/app/s/[store]/[market]/category that draws term-listing.tsx); the store home src/app/s/[store]/[market]/page.tsx; the admin's orders page src/app/admin/(gated)/[store]/orders/page.tsx (measured in the signed-in stand-in build, E2E_SIGNED_IN=1, with e2e/signed-in/prefetch.spec.ts). Measure for each, before (no line) and after (with it): (a) router prefetch requests and their decoded bytes on the page that links to the destination, read to the end on a phone: for the product page that linking page is the seeded category (/s/<store>/no/category/full), for the listing it is the store home, for the store home it is a product page (its logo and menu), for orders it is the admin home at 1280 px; use the counter of e2e/prefetch.spec.ts with the count printed, or node docs/audits/bloat-review-2026-11/scripts/measure-routes.mjs <outDir> for the bytes; (b) what is on screen at the press: press the link and note whether the destination's heading and price (or the orders table) are drawn at once or after a fetch (time from the press to the heading visible, three runs, the median). Add to the section '## What the router fetches ahead' (step 2.6 made it; create it if missing) a sub-heading 'The partial-prefetching trial (bloat review step 2.8)' with: the date, the Next version (rg '\"next\":' package.json), one table with a row per destination and the columns: linking page | requests before | requests after | bytes before | bytes after | ms to heading before | ms to heading after; then the decision in two or three sentences. Then add two rows to the policy table of that section: 'product tiles: the first six of a listing on sight, the rest on intent (SIGHT_TILES in src/components/product-card.tsx)' and 'swatches under a tile and category chips: intent'. Lines at most 130 characters; table rows at most 300."
+    },
+    {
+     "file": "docs/rules/storefront.md",
+     "action": "edit",
+     "how": "In the rule about links that step 2.6 added ('## Links say what they may fetch ahead ...'; find it with rg -n 'fetch ahead' docs/rules/storefront.md) add one sentence: a listing draws its first six tiles with policy sight and the rest with intent (`SIGHT_TILES`, `ProductGrid`), swatches and chips with intent, and `e2e/prefetch.spec.ts` holds a 48-product category at 20 router requests."
+    }
+   ],
+   "checks": [
+    "git status --short src next.config.ts: prints nothing (no trial line was left in a page file, and partialPrefetching is still false)",
+    "rg -n \"prefetch = 'partial'\" src: prints nothing, unless the decision adopted it for a destination (see stop_if: that is not this executor's call)",
+    "pnpm test src/lib/docs-budget.scan.test.ts src/lib/next-config-prefetch.test.ts: exits 0",
+    "pnpm lint && pnpm typecheck && pnpm test: exits 0"
+   ]
+  }
+ ],
+ "tests": [
+  {
+   "file": "e2e/prefetch.spec.ts",
+   "proves": "Fails when the seeded 48-product category read to the end on a phone makes more than 20 router requests, when more than six tiles are fetched on sight, or when a touched tile is not fetched."
+  },
+  {
+   "file": "src/components/product-card.test.ts",
+   "proves": "Fails when a swatch is drawn with policy sight, when a card's title link has no stated policy, or when a tracked search result becomes a prefetching link."
+  }
+ ],
+ "migration": {
+  "needed": false,
+  "notes": ""
+ },
+ "done_when": [
+  {
+   "check": "pnpm build && pnpm test:e2e -- e2e/prefetch.spec.ts",
+   "expect": "passes; the seeded 48-product category read to the end on a phone makes at most 20 router requests (about 96 before)"
+  },
+  {
+   "check": "rg -n 'partial-prefetching trial' docs/performance.md",
+   "expect": "the sub-heading, with a table of four rows (product page, listing, store home, admin orders) holding before and after figures, and the decision under it"
+  },
+  {
+   "check": "rg -n 'SIGHT_TILES|partial' docs/decisions.md docs/decisions 2>/dev/null | tail -3",
+   "expect": "the new decision row names the first-screen rule and the trial's outcome"
+  },
+  {
+   "check": "pnpm test src/components/product-card.test.ts",
+   "expect": "passes with the four policy cases"
+  }
+ ],
+ "after_deploy": [
+  "On a real store's category with more than 12 products in production (or the demo store's), open the browser's network panel on a phone-sized window, filter on requests with the header next-router-prefetch, scroll to the end: expect about 6 product addresses and the page's own few links, not one per tile."
+ ],
+ "docs": [
+  "docs/decisions.md (or, once step 2.40 has split it, a new file docs/decisions/D<n>.md plus its index row): one new decision with the next free D-number. Claim the number first with scripts/claim-decision.mjs if step 0.41 has made that script; otherwise pull main and take the highest number plus one (rg -o '^\\| D[0-9]+' docs/decisions.md | tr -dc '0-9\\n' | sort -n | tail -1). It records: the owner's yes: on a full listing only the first screen of product tiles (six) is fetched ahead on sight and the rest when touched; swatches and chips on intent; the 20-request bound and its test; the trial's table in short (four destinations, before and after) and its outcome: the first-screen rule stands unless one shared shell did clearly better, and what 'clearly' was (see stop_if); what is left for Next's next major release, which turns partial prefetching on for everyone. Platform: the fourth trial page is an admin page, so the choice covers /admin/platform's lists. Idle cost: none. Keep it under 4,000 bytes.",
+  "docs/performance.md and docs/rules/storefront.md as the third commit says.",
+  "docs/plan.md line 120 names partialPrefetching as part of the stack: if step 0.41 has not already corrected or retired that line, change the words to 'cacheComponents (partialPrefetching recorded as false, see docs/performance.md)'.",
+  "docs/audits/bloat-review-2026-11.md, Progress table: set the row of step 2.8 to Done with the date and the commit hash, in the same commit as the step's last change. Keep the row at 300 characters or fewer."
+ ],
+ "do_not": [
+  "Do not wrap the tracked search-result anchor in PolicyLink or Link (D77: it stays a plain nofollow anchor, never prefetched).",
+  "Do not set partialPrefetching: true in next.config.ts, and do not push a page file with export const prefetch = 'partial': the trial is measured locally and removed.",
+  "Do not add prefetch={true} to any link: in this Next version it means a full per-link prefetch.",
+  "Do not turn the tiles of content grids (src/components/content-grid.tsx, plain anchors) into links here: step 2.7 owns them.",
+  "Do not raise the 20 in the test to make it pass, and do not lower SIGHT_TILES below 4 without reporting: fewer than a first screen breaks the owner's rule.",
+  "Do not seed the 48 products into the shared demo store or the seed script: only into a store the test makes with testStore().",
+  "Do not change patches/next.patch or optimisticRouting.",
+  "Do not query or change production data for the trial."
+ ],
+ "stop_if": [
+  "src/components/policy-link.tsx (or wherever PolicyLink lives) does not exist or has no policy prop with 'sight' and 'intent': step 2.6 is not done.",
+  "e2e/prefetch.spec.ts has no routerPrefetches helper: steps 0.14 and 1.3 are not done.",
+  "With SIGHT_TILES at 6 the listing still makes more than 20 router requests: print which addresses were fetched and report; other links of the page (menu, header tools) are over their own budget of step 2.6.",
+  "The trial shows one shared shell doing clearly better: at least 30% fewer router requests and bytes on the seeded listing AND the pressed product's heading drawn no later than today (median within 50 ms). Then do not adopt it yourself: write the table, state that the shell wins by the rule, leave the first-screen rule in the code and hand the adoption back to a strong model and the owner.",
+  "Adding export const prefetch = 'partial' to a page makes pnpm build fail or warn about the @drawer slot or the root layout's params: record the message in the table's row as 'could not be tried' and go on with the other destinations.",
+  "A press on a tile that was not prefetched takes more than 1.5 s to show the product's heading on the local production build: report it with the figures.",
+  "Porting manyProducts() to e2e/db.ts needs a change to a database function or a migration."
+ ],
+ "executor": "cheap-then-review",
+ "executor_why": "The code change, the seed and the budget are fully specified and the tests catch a wrong edit, but the trial's table and the sentence that decides between the first-screen rule and a shared shell should be read by a stronger model before the decision row is pushed.",
+ "checked_in_code": "I opened src/components/product-card.tsx (the title is a bare next/link at line 74, the tracked branch a plain nofollow anchor at 69 to 72, GroupSwatches draws up to six links at 96 to 118), src/components/product-listing.tsx (ProductGrid maps with an index at line 252, so the first-screen rule is one prop), src/server/listing.ts (LISTING_LIMIT 48, LISTING_PAGES_MAX 20) and Next's three guides: 'partial' is set on the destination segment and a default link then fetches one shared App Shell. The findings match the code. PolicyLink and e2e/prefetch.spec.ts do not exist yet (steps 0.13, 0.14, 1.3 and 2.6 make them), so this brief builds on their contract. Corrections: PF-13 says 'policy view'; the wrapper's word is 'sight'. PF-13 keeps every tile on sight and only bounds the count; the owner's answer is stricter (first screen on sight, rest on touch), so the brief adds SIGHT_TILES. The store's own listing page at src/app/s/[store]/[market]/page.tsx draws ProductCard without ProductGrid, which the findings do not list; it gets the same rule. The e2e seed has no product factory, so the brief ports manyProducts() from src/server/listing.int.test.ts."
+}

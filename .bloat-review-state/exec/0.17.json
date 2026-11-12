@@ -1,0 +1,193 @@
+{
+  "id": "0.17",
+  "goal": "The store menu is built with one memoised permission lookup per item, progress polls stop in hidden tabs and the Dream Factory's poll asks its run and not for a whole redraw, and the notice badge's count costs two statements.",
+  "why": "Today a menu build makes 220 lookups and takes about 125 ms of blocking CPU on every shell render; after, 110 lookups in under 2 ms. The badge's count runs 4 statements every minute per owner tab; after, 2.",
+  "read_first": [
+    "docs/rules/admin/platform.md",
+    "src/lib/admin-map.ts",
+    "src/lib/permissions.ts",
+    "src/lib/store-nav.ts",
+    "src/app/admin/(gated)/[store]/layout.tsx",
+    "src/components/admin/refresh-while.tsx",
+    "src/components/admin/analytics/live-refresh.tsx",
+    "src/app/admin/(gated)/(owner)/account/notices/feed/route.ts"
+  ],
+  "depends_on": [],
+  "commits": [
+    {
+      "title": "The store menu asks each page's permission once, from a memo",
+      "changes": [
+        {
+          "file": "src/lib/admin-map.ts",
+          "action": "edit",
+          "how": "Above matchPath() add a module constant built once: `const PAGES_BY_AREA: Record<AdminArea, { page: AdminPage; pattern: string[] }[]>`: for each area ('store', 'account', 'platform': use the AdminArea type's members), `ADMIN_PAGES.filter((page) => page.area === area)` sorted with the SAME comparison matchPath() uses today (`pageParams(a).length - pageParams(b).length`; Array.prototype.sort is stable, so ties keep table order exactly as today), each mapped to `{ page, pattern: page.path.split('/').filter(Boolean) }`. In matchPath() replace the line `const pages = ADMIN_PAGES.filter(...).sort(...)` and the per-page `const pattern = page.path.split(\"/\").filter(Boolean);` by a loop over `PAGES_BY_AREA[area]` using its `page` and `pattern`. Nothing else in matchPath() changes: same candidates, same params, same return value. Declare the constant AFTER ADMIN_PAGES in the file."
+        },
+        {
+          "file": "src/lib/permissions.ts",
+          "action": "edit",
+          "how": "Memoise permissionOfPath(). Add above it `const KEY_MEMO = new Map<string, PermissionKey | null>(); const KEY_MEMO_MAX = 2000;`. In permissionOfPath(), after computing `clean`, build `const memoKey = `${access}|${clean}`;`; if KEY_MEMO.has(memoKey) return its value; otherwise compute as today, then `if (KEY_MEMO.size >= KEY_MEMO_MAX) KEY_MEMO.clear(); KEY_MEMO.set(memoKey, result); return result;`. The key is the access and the cleaned path ONLY: nothing of the member or holder may enter it. Restructure the three return statements into one `result` variable so every path is stored."
+        },
+        {
+          "file": "src/lib/store-nav.ts",
+          "action": "edit",
+          "how": "Add `export function storeNav(base, flags, canOpen?, counts = {})` with the parameter types of storeTabs(), returning `{ tabs, areas }` where tabs is exactly what storeTabs() returns and areas exactly what storeAreas() returns, but computed from ONE call of `storeSections(flags, canOpen)`. Do it by moving the bodies into two private helpers that take the sections list (`tabsOf(base, sections, counts)` and `areasOf(base, sections)`); storeTabs() becomes `tabsOf(base, storeSections(flags, canOpen), counts)` and storeAreas() becomes `areasOf(base, storeSections(flags, canOpen))`, so their signatures, results and tests do not change."
+        },
+        {
+          "file": "src/app/admin/(gated)/[store]/layout.tsx",
+          "action": "edit",
+          "how": "Replace the line `const canOpen = (path: string) => canOpenPath(holder, path) && (open || keyAllowedWhenNotOpen(permissionOfPath(path, \"read\")));` by a version that reads the key once: `const canOpen = (path: string) => { const key = permissionOfPath(path, \"read\"); return (key === null || can(holder, key)) && (open || keyAllowedWhenNotOpen(key)); };` (import `can` from '@/lib/permissions'; drop the canOpenPath import if unused after). Replace the two lines `const tabs: NavItem[] = storeTabs(base, store, canOpen, { support: waiting });` and `const areas: NavArea[] = storeAreas(base, store, canOpen);` by `const { tabs, areas }: { tabs: NavItem[]; areas: NavArea[] } = storeNav(base, store, canOpen, { support: waiting });`."
+        },
+        {
+          "file": "src/lib/store-nav.test.ts",
+          "action": "edit",
+          "how": "Add a describe 'the menu's cost' with two cases. (1) 'asks once per menu item': build flags with every feature on (use the same all-features fixture the file's other cases use); `const asked: string[] = []; storeNav('/admin/x', flags, (path) => { asked.push(path); return true; });` expect asked.length to equal the number of items in STORE_SECTIONS that the flags offer (compute it in the test: sections filtered by requirementMet, their groups' items filtered the same way) and expect `new Set(asked).size === asked.length` or at most one ask per item. Write the measured number in a comment (110 on 12 November 2026). (2) 'the memoised lookup is fast': call storeNav() once to warm, then time 20 builds with canOpen = (path) => permissionOfPath(path, 'read') !== 'owner'; expect the mean under 2 ms (use performance.now()). (3) 'storeNav equals the two it replaces': expect storeNav(base, flags, canOpen, counts).tabs toEqual storeTabs(base, flags, canOpen, counts) and .areas toEqual storeAreas(base, flags, canOpen)."
+        }
+      ],
+      "checks": [
+        "pnpm exec vitest run src/lib/store-nav.test.ts src/lib/admin-map.test.ts src/lib/admin-layouts.test.ts src/lib/permissions.test.ts src/lib/permissions.matrix.test.ts src/lib/permissions.scan.test.ts src/lib/docs-content.test.ts src/lib/docs-api-reference.test.ts : all pass, none changed but store-nav.test.ts",
+        "pnpm lint && pnpm typecheck && pnpm test : exits 0",
+        "E2E_SIGNED_IN=1 build as CI's signed-in job does (see .github/workflows/ci.yml, job signed-in), then pnpm exec playwright test --project=signed-in e2e/signed-in/permissions.spec.ts e2e/signed-in/admin-view.spec.ts : pass"
+      ]
+    },
+    {
+      "title": "Progress polls stop in a hidden tab, and the Dream Factory's asks its run",
+      "changes": [
+        {
+          "file": "src/lib/progress-poll.ts",
+          "action": "create",
+          "how": "Pure, no imports. Export `async function progressTick(o: { visible: boolean; status?: () => Promise<string | null>; last: { value: string | null }; refresh: () => void }): Promise<void>`: if !o.visible return; if o.status is undefined call o.refresh() and return; otherwise `const now = await o.status().catch(() => null);` if now === null return (a failed ask is caught by the next tick); if o.last.value === null set o.last.value = now and return (first answer: the page is already current); if now !== o.last.value set o.last.value = now and call o.refresh()."
+        },
+        {
+          "file": "src/lib/progress-poll.test.ts",
+          "action": "create",
+          "how": "Vitest cases: hidden tab calls neither status nor refresh; with a status function and an unchanged answer, three ticks call status three times and refresh zero times; when the answer changes, refresh is called exactly once; without a status function a visible tick calls refresh; a status that rejects calls no refresh."
+        },
+        {
+          "file": "src/components/admin/refresh-while.tsx",
+          "action": "edit",
+          "how": "Change the props to `{ seconds: number; status?: () => Promise<string | null> }`. In the effect keep `const last = { value: null as string | null }` and make the interval callback `void progressTick({ visible: document.visibilityState === \"visible\", status, last, refresh: () => router.refresh() })`. Add a 'visibilitychange' listener that, when the tab becomes visible, calls router.refresh() once (as LiveRefresh's `back` does), and remove it in the cleanup. Add `status` to the effect's dependencies. The setInterval line must read the visibility: the done-when greps for it."
+        },
+        {
+          "file": "src/components/admin/pack-pictures.tsx",
+          "action": "edit",
+          "how": "In PackPicturesWatch change the interval callback to `() => { if (document.visibilityState === \"visible\") router.refresh(); }` and add the same 'visibilitychange' listener that refreshes once when the tab is shown again, removed in the cleanup. Nothing else in the file changes."
+        },
+        {
+          "file": "src/app/admin/(gated)/[store]/dream-factory/actions.ts",
+          "action": "edit",
+          "how": "Add `export async function dreamStateAction(storeSlug: string): Promise<string | null>`: `const member = await owner(storeSlug); if (!member) return null; const run = await latestDreamRun(member.store.id); if (!run) return \"none\"; return createHash(\"sha256\").update(JSON.stringify([run.id, run.status, run.readyAt, run.finishedAt, run.steps])).digest(\"hex\").slice(0, 16);` (import latestDreamRun from '@/server/dream-factory' and createHash from 'node:crypto'). It must NOT call revalidatePath(), refresh() or answer(): an action that refreshes nothing sends no page back."
+        },
+        {
+          "file": "src/app/admin/(gated)/[store]/dream-factory/page.tsx",
+          "action": "edit",
+          "how": "Line 116: `{going && <RefreshWhile seconds={REFRESH_SECONDS} status={dreamStateAction.bind(null, slug)} />}` (import dreamStateAction from './actions'; `slug` is the store's slug the page already has). In src/app/admin/(gated)/[store]/dream-factory/rework.tsx do the same at the `{going && <RefreshWhile …/>}` line (about line 135), passing the store slug the component already receives (if it has none, add a `slug` prop from its caller). Leave the `{working && …}` line at about line 39 as it is (an analysis job, not a run)."
+        }
+      ],
+      "checks": [
+        "pnpm exec vitest run src/lib/progress-poll.test.ts : all pass",
+        "rg -n 'setInterval' -A 3 src/components/admin/refresh-while.tsx src/components/admin/pack-pictures.tsx : each interval's callback names visibilityState",
+        "pnpm lint && pnpm typecheck && pnpm test : exits 0",
+        "By hand on `pnpm dev` with a seeded store: open /admin/{store}/dream-factory with a run going, watch the network panel: every 6 s one POST (the action) and no RSC page fetch until the run's state changes; send the owner a screenshot of the page reaching its finished state without a reload"
+      ]
+    },
+    {
+      "title": "The notice badge's count is one statement after the account's",
+      "changes": [
+        {
+          "file": "src/app/admin/(gated)/(owner)/account/notices/feed/route.ts",
+          "action": "edit",
+          "how": "(1) In placeOf(), before the slug test, accept a store's id: `if (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.test(value)) return value;` (no lookup: every notice read is filtered by the person's own account id, so another store's id returns nothing of anyone else's). (2) In GET, when `count` is true answer `{ unread: await unreadNotices(account.id, place) }` and do not call listNotices(); the list branch stays as it is. Import unreadNotices from '@/server/assistant-notices'."
+        },
+        {
+          "file": "src/components/admin/ai-manager-launcher.tsx",
+          "action": "edit",
+          "how": "Add an optional prop `noticePlace?: string` to AiManagerLauncher. Line 102: `const [unread, recount] = useNoticeCount(noticePlace ?? place);`. The NoticeList at about line 217 keeps `place={place}`."
+        },
+        {
+          "file": "src/app/admin/(gated)/[store]/layout.tsx",
+          "action": "edit",
+          "how": "Pass `noticePlace={store.id}` to <AiManagerLauncher>. The platform's layout (src/app/admin/(gated)/platform/layout.tsx) needs no change: its place is 'platform', which placeOf() answers without a lookup."
+        },
+        {
+          "file": "src/server/assistant-notices-count.int.test.ts",
+          "action": "create",
+          "how": "A new int test file of its own (so its mock touches no other case). db() in src/db/client.ts returns a Proxy whose `execute` is made anew on each read, so vi.spyOn cannot count it; count by wrapping instead. At the top: `const sent = { n: 0 }; vi.mock(\"@/db/client\", async (original) => { const real = await original<typeof import(\"@/db/client\")>(); return { ...real, db: () => new Proxy(real.db(), { get(target, property, receiver) { if (property === \"execute\") return (query: never) => { sent.n += 1; return target.execute(query); }; return Reflect.get(target, property, receiver); } }) }; });`. One case, \"the badge's count is one statement\": make an account, a store and one unread notice with the same helpers src/server/assistant-notices.int.test.ts uses in its first case (copy its setup); set sent.n = 0; call `await unreadNotices(accountId, storeId)`; expect the answer 1 and sent.n 1. A comment says: with the route's account read this is 2 statements (4 before: the account, the store by slug, a list of one, the count); step 1.9's counter replaces this wrapper."
+        },
+        {
+          "file": "docs/decisions.md",
+          "action": "edit",
+          "how": "Append one row with the next free D-number (pull main first; `rg -o '^\\| D[0-9]+' docs/decisions.md | tr -dc '0-9\\n' | sort -n | tail -1`, plus 1). It records the three commits: the menu's memo (keyed on path and access only, capped at 2,000) and storeNav(); progress polls guarded by visibility, with the Dream Factory's store page and rework asking dreamStateAction() and redrawing only on a change; the badge's count at two statements. Platform: the same shell, menu builder and notice feed; the platform's own drill page (platform/ai/dream/[runId]) gets the visibility guard now and its own status action as the next step, with the cookie scan, domains, page jobs and legal pages panels. How often an untouched tab asks is step 2.34. No migration."
+        }
+      ],
+      "checks": [
+        "pnpm exec vitest run --config vitest.integration.config.mts src/server/assistant-notices-count.int.test.ts src/server/assistant-notices.int.test.ts : pass",
+        "pnpm lint && pnpm typecheck && pnpm test : exits 0",
+        "E2E_SIGNED_IN=1 pnpm exec playwright test --project=signed-in e2e/signed-in/ai-manager-panel.spec.ts e2e/signed-in/live.spec.ts : pass"
+      ]
+    }
+  ],
+  "tests": [
+    {
+      "file": "src/lib/store-nav.test.ts",
+      "proves": "Fails when a menu build asks canOpen more than once per item or the memoised build takes 2 ms or more, and when storeNav() differs from storeTabs()/storeAreas()."
+    },
+    {
+      "file": "src/lib/progress-poll.test.ts",
+      "proves": "Fails when a tick in a hidden tab asks anything, or when a tick with a status action calls refresh while the status is unchanged."
+    },
+    {
+      "file": "src/server/assistant-notices-count.int.test.ts",
+      "proves": "Fails when the badge's count sends more than one statement."
+    }
+  ],
+  "migration": {
+    "needed": false,
+    "notes": ""
+  },
+  "done_when": [
+    {
+      "check": "pnpm exec vitest run src/lib/store-nav.test.ts -t 'the menu's cost'",
+      "expect": "passes: 110 asks per build (220 before) and under 2 ms (125 ms before)"
+    },
+    {
+      "check": "rg -n 'setInterval' -A 3 src/components/admin/refresh-while.tsx src/components/admin/pack-pictures.tsx",
+      "expect": "each tick guarded by visibilityState"
+    },
+    {
+      "check": "the case in src/server/assistant-notices-count.int.test.ts",
+      "expect": "1 statement for the count; with the account read, 2 for the route (4 before)"
+    },
+    {
+      "check": "pnpm exec vitest run src/lib/progress-poll.test.ts",
+      "expect": "passes: a tick with a status calls it and not refresh()"
+    }
+  ],
+  "after_deploy": [
+    "Open a store's admin in production with the network panel: the request to /admin/account/notices/feed carries place=<a uuid>&count=1 and answers {unread: n}.",
+    "If step 0.2's daily reading exists, the statement `select id from commerce.stores where slug = $1` falls in calls per day by about one per owner tab per minute."
+  ],
+  "docs": [
+    "docs/decisions.md: the D-row described above.",
+    "docs/rules/admin/platform.md: beside the rule on the admin's three levels and navigation add one line: 'The menu is built by `storeNav()` once per shell render; `permissionOfPath()` is memoised by path and access, never by anything of the member.'",
+    "docs/audits/bloat-review-2026-11.md, Progress table: set the row of step 0.17 to Done with the date and the commits in Notes (find it: rg -n '^\\| 0\\.17 ' docs/audits/bloat-review-2026-11.md), and add a line under the step's own heading in docs/audits/bloat-review-2026-11/plan/phase-0.md saying what was done differently from the plan, if anything."
+  ],
+  "do_not": [
+    "Do not put the holder, the member, the role or the store in the memo's key, and do not memoise canOpenPath() or can(): that would show one role's menu to another.",
+    "Do not change the sort order of matchPath(): pages with fewer [param]s are tried first, ties in table order.",
+    "Do not remove storeTabs() or storeAreas(): other callers and tests use them.",
+    "Do not edit src/components/refresh-while.tsx (the storefront's own RefreshWhile for the order page): only src/components/admin/refresh-while.tsx.",
+    "Do not lengthen NOTICE_POLL_MS: that is step 2.34.",
+    "Do not make dreamStateAction() call revalidatePath() or refresh().",
+    "Do not change any expected key in permissions.matrix.test.ts or the permissions baseline."
+  ],
+  "stop_if": [
+    "Any existing case of admin-map.test.ts, permissions*.test.ts or store-nav.test.ts fails after commit one: the memo or the precomputed list changed an answer; report the case.",
+    "The count in the new test is not one ask per item (for example 220): report the number; do not weaken the assertion.",
+    "The counting wrapper in the new int test sees 0 statements (typedRows() does not go through db().execute): report it; do not fake the count.",
+    "The Dream Factory page stops reaching its finished state without a reload in the hand check.",
+    "rework.tsx has no store slug and its caller has none to pass."
+  ],
+  "executor": "cheap-then-review",
+  "executor_why": "The edits are small and named, but the memo sits on the permission lookup that decides what a role's menu offers, so a stronger model should read the diff of commit one.",
+  "checked_in_code": "I opened admin-map.ts (matchPath filters and sorts per call, as found), permissions.ts (permissionOfPath, canOpenPath, can), store-nav.ts (storeTabs and storeAreas each call storeSections), the store layout (lines 82 and 91 to 92), both RefreshWhile files, pack-pictures.tsx, live-refresh.tsx, the notices feed route and assistant-notices.ts. All match the findings. Corrections: the review's nav.mjs timing script is in the scratch folder, so the done-when is a count-and-time case in store-nav.test.ts; no statement counter exists yet (step 1.9), so the badge's count is held by a counting wrapper around db() in an int test file of its own (db() is a Proxy, so a spy cannot count it); the launcher derives its place from the address, so it gets a new noticePlace prop for the store's id. The step says polls 'ask their job': the brief does that for the Dream Factory's two run views through a pure progressTick() (unit tests here do not run effects) and guards every other poll by visibility; the platform's drill page has no actions file and is named as the next step."
+}

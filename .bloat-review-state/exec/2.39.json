@@ -1,0 +1,193 @@
+{
+  "id": "2.39",
+  "goal": "Every completeText call says whether it runs on the main or the quick model, each provider has a default quick model, and each of the 8 named small jobs runs on the quick model once its fixed cases pass on it (or is named as kept on main, with the failing case).",
+  "why": "One text model does every job: 33 completeText sites take whatever model the platform or the store chose, and only 3 of the 8 small jobs have fixed cases; after the step 0 sites lack a tier, all 8 jobs have at least 5 cases each and those that pass show the quick model in commerce.ai_usage.",
+  "read_first": [
+    "docs/rules/admin/ai.md",
+    "docs/audits/code-review-2026-11.md",
+    "src/server/ai.ts",
+    "src/lib/ai-provider.ts",
+    "src/lib/ai-usage.ts",
+    "src/lib/agent-eval.ts",
+    "src/server/agent-eval.ts",
+    "src/lib/query-eval.ts"
+  ],
+  "depends_on": [
+    { "id": "1.19", "why": "it shows real tokens per call by feature and model on Platform, AI, which is where the moved jobs are checked, and holds each agent's round" },
+    { "id": "2.38", "why": "it changes the AI manager's prompt and needs its own eval recording; land that recording first so this step's recording covers one change" }
+  ],
+  "commits": [
+    {
+      "title": "AI connections can name a model for small jobs (the column only)",
+      "changes": [
+        {
+          "file": "src/db/schema.ts",
+          "action": "edit",
+          "how": "In the ai_providers table, after visionModel (line 10665): 'quickModel: text(\"quick_model\"),' with a comment 'The model for small jobs (tone, summaries, memory, search understanding): null uses the provider's default quick model, else the text model.' In the table's checks, beside 'ai_providers_vision_model' (line 10727), add 'check(\"ai_providers_quick_model\", sql`coalesce(length(${t.quickModel}) between 1 and 200, true)`)'. Then run pnpm db:generate (it writes the migration into supabase/migrations and prunes snapshots). Nothing reads the column yet."
+        },
+        {
+          "file": "supabase/migrations/*_quick_model.sql",
+          "action": "create",
+          "how": "The file pnpm db:generate writes: one 'alter table commerce.ai_providers add column quick_model text' and the check. Do not hand-edit it except to confirm it holds only those two statements. This commit is pushed alone: a push with a migration waits for every check, and the later commits make the eval replay fail until a new recording."
+        },
+        {
+          "file": "src/db/commerce.test.ts",
+          "action": "edit",
+          "how": "Add one test beside the vision model's check (rg -n 'ai_providers_vision_model|vision_model' src/db/commerce.test.ts): a quick_model of 201 characters is refused, null and a normal name are accepted."
+        }
+      ],
+      "checks": [
+        "pnpm db:check: exits 0",
+        "pnpm test src/db/commerce.test.ts src/db/migration-safety.scan.test.ts: pass",
+        "pnpm lint && pnpm typecheck && pnpm test: exits 0",
+        "pnpm test:int: exits 0"
+      ]
+    },
+    {
+      "title": "Every completeText call names its tier, all on main: no behaviour change, and a scan holds it",
+      "changes": [
+        {
+          "file": "src/lib/ai-provider.ts",
+          "action": "edit",
+          "how": "Add 'quickModel: string | null' to AiProviderInfo (beside textModels, line 23) and set it for each entry of AI_PROVIDERS from that entry's own textModels list: openai and openai_eu 'gpt-5-nano', mistral 'mistral-small-latest', google 'gemini-2.5-flash', gateway 'anthropic/claude-haiku-4.5', the custom provider (empty textModels) null. Add quickModel to aiProviderInput with the same rule as visionModel (line 240: z.string().default('').pipe(modelName)) and to the form reader near line 336. Export 'export type AiTier = \"main\" | \"quick\"'."
+        },
+        {
+          "file": "src/server/ai.ts",
+          "action": "edit",
+          "how": "(1) Carry quickModel like visionModel: AiSettings and AiConnection (line 48), toSettings() (line 113: row.quick_model), the insert and the upsert in saveAiSettings() (lines 295 to 317: add the column and excluded.quick_model), its return value (line 334) and its audit entry. (2) Beside seeing() (line 229) add 'export function quick(connection: AiConnection): AiConnection': the connection with textModel set to connection.quickModel ?? providerInfo(connection.provider).quickModel ?? connection.textModel; when that equals connection.textModel return the connection itself. (3) completeText() (line 529) gains a required second parameter: 'completeText(connection, tier: AiTier, messages, options)'; first line 'const used = tier === \"quick\" ? quick(connection) : connection;' and the rest uses 'used' (the metered model name too, so commerce.ai_usage records the model that ran). Update the call at line 1006 (the settings test) to 'main'."
+        },
+        {
+          "file": "src/server/**/*.ts",
+          "action": "edit",
+          "how": "Add the tier as the second argument, 'main', at every other call of completeText. The list (rg -n 'completeText\\(' src -g '!*.test.*' prints it; 31 calls outside ai.ts on 12 November 2026): agent-eval.ts:118, support-translate.ts:39, ai-vision.ts:30, legal-writer.ts:97, alt-texts.ts:120, page-looks.ts:308 and 330, content-moderation.ts:47, bill-reading.ts:35, page-ai.ts:207, 243 and 277, page-translate.ts:41, product-writer.ts:33 and 37, query-understanding.ts:43, replicate-ai.ts:39, 42 and 73, autopilot-reports.ts:211, recommend.ts:583, motion-ai.ts:91, support-tone.ts:47, category-suggest.ts:28, ui-text.ts:244, receipt-reading.ts:28, support-summary.ts:88 and 166, assistant-memory.ts:354, theme-highlight-words.ts:90, briefing.ts:81, all under src/server. In content-moderation.ts the helper ask(connection, system, prompt) serves both the reading of a notice and the listing check: give ask() a tier parameter and pass 'main' from both callers for now. Tests and mocks that call or fake completeText (rg -n 'completeText' src -g '*.test.ts') take the new argument in the same commit, the refuse-mock in src/server/agent-eval-replay.int.test.ts among them."
+        },
+        {
+          "file": "src/server/ai-tiers.scan.test.ts",
+          "action": "create",
+          "how": "A vitest scan test in the style of src/server/cron-routes.scan.test.ts: read every .ts and .tsx file under src except *.test.* files, find each 'completeText(' call that is not the function's own definition, and fail unless its argument list's second argument is the literal 'main' or 'quick' (match /completeText\\(\\s*[^,]+,\\s*\"(main|quick)\"/ from the call's position, across line breaks). A second constant, QUICK_JOBS, lists the files that must be on 'quick' (empty in this commit) and KEPT_ON_MAIN lists small jobs kept on main with the failing case's id (empty). Assert each file in QUICK_JOBS has a 'quick' call. Failure message: 'say main or quick (docs/rules/admin/ai.md, AI providers)'."
+        },
+        {
+          "file": "src/lib/ai-usage.ts",
+          "action": "edit",
+          "how": "Add to AI_FEATURES (lines 24 to 63) the key 'assistant_memory: \"What the AI manager remembers\"' after ai_manager. The column commerce.ai_usage.feature is free text (no check constraint in src/db/schema.ts), so no migration."
+        },
+        {
+          "file": "src/server/owner-assistant.ts",
+          "action": "edit",
+          "how": "At the learnFromTurn call (about line 845) pass the connection with its own feature: 'connection: connection.usage ? { ...connection, usage: { ...connection.usage, feature: \"assistant_memory\" } } : connection'. Every other caller of learnFromTurn (rg -n 'learnFromTurn\\(' src) does the same. Queries of the AI area that read feature in ('ai_manager', 'analytics_question') then no longer count the memory pass: that is intended (step 1.19's figures are per call of the manager's loop)."
+        },
+        {
+          "file": "src/components/admin/ai-provider-form.tsx",
+          "action": "edit",
+          "how": "Add one optional field under the form's Advanced part, beside the vision model's field and built the same way: name 'quickModel', label 'Model for small jobs', hint 'For short background tasks such as tone and summaries. Empty uses the usual one for this provider.' Put the words in the admin catalogue the form reads (the same area and group as the vision model's label, in both .en.ts and .nb.ts). The same component serves the store's Settings, AI page and Platform, AI, so the platform gets the field in this commit."
+        },
+        {
+          "file": "src/app/admin/(gated)/[store]/settings/ai/actions.ts",
+          "action": "edit",
+          "how": "Only if the action lists the form's fields by name: add quickModel as visionModel is passed. Do the same in src/app/admin/(gated)/platform/ai/actions.ts."
+        }
+      ],
+      "checks": [
+        "pnpm test src/server/ai-tiers.scan.test.ts src/lib/ai-provider.test.ts src/components/admin/ai-provider-form.test.ts src/lib/admin-strings.scan.test.ts: pass; the scan finds 0 sites without a tier",
+        "rg -c 'completeText\\(' src -g '!*.test.*' | awk -F: '{s+=$2} END {print s}': prints 33 (31 calls, the definition and the settings test)",
+        "pnpm test:int src/server/ai.int.test.ts: passes, with a new case that a saved quickModel is read back and quick(connection) uses it, then the provider's default, then the text model",
+        "pnpm lint && pnpm typecheck && pnpm test && pnpm test:int: exits 0 (the agents' eval replay still passes: no prompt or tool changed)"
+      ]
+    },
+    {
+      "title": "Fixed cases for the five small jobs that had none, and a run that shows each job on the quick model",
+      "changes": [
+        {
+          "file": "src/lib/small-jobs-eval.ts",
+          "action": "create",
+          "how": "A stronger model does this commit and the next. Pure module with fixed cases, at least 5 per job, for the five jobs without any: the memory pass (src/server/assistant-memory.ts learnFromTurn: an exchange in, the memories expected or 'none'), tone (src/server/support-tone.ts: a customer message in, the band expected), the support summary (src/server/support-summary.ts: a conversation in, facts the summary must and must not hold), category suggestion (src/server/category-suggest.ts: a product in, the allowed categories it must pick from) and highlight words (src/server/theme-highlight-words.ts: a heading in, words that must come from the heading). Each case uses the job's REAL prompt and parser (export them from the job's file if they are private) and checks the parsed answer in code, never by a model. Include in each job one case where outside text carries an instruction (the rule of src/lib/prompt-safety.ts). The three jobs that have cases keep theirs: search understanding (src/lib/query-eval.ts EVAL_CASES), recommendation order (src/lib/recommend-eval.ts) and the listing check (the 'moderation' cases of src/lib/agent-eval.ts)."
+        },
+        {
+          "file": "src/server/small-jobs-eval.ts",
+          "action": "create",
+          "how": "The runner, after src/server/agent-eval.ts runAgentEval(): for a given connection it runs all 8 jobs' cases on quick(connection), records per job passed and total and the model's raw answers, and keeps the run in commerce.ai_eval_runs with suite 'small_jobs' (the table has a suite column; the agents' runs use 'agents'). Add a button beside 'Run the agents' eval' on Platform, AI (src/app/admin/(gated)/platform/ai/page.tsx and its actions.ts, behind requirePlatform as that button is) and a 'Download the recording' link for the run, as the agents' eval has. Add src/server/small-jobs-eval-replay.int.test.ts that replays src/data/small-jobs-eval-recording.json through the parsers and checks (no model call), failing when a case was added since the recording or a job listed in QUICK_JOBS did not pass all its cases in it."
+        },
+        {
+          "file": "src/lib/small-jobs-eval.test.ts",
+          "action": "create",
+          "how": "Unit tests: every job has at least 5 cases, every case's check accepts a hand-written right answer and refuses a hand-written wrong one."
+        }
+      ],
+      "checks": [
+        "pnpm test src/lib/small-jobs-eval.test.ts src/lib/prompt-safety.scan.test.ts: pass",
+        "pnpm lint && pnpm typecheck && pnpm test && pnpm test:int: exits 0 (the replay test is a todo until the recording exists, as agent-eval-replay.int.test.ts does without its file)"
+      ]
+    },
+    {
+      "title": "The small jobs whose cases pass run on the quick model",
+      "changes": [
+        {
+          "file": "src/data/small-jobs-eval-recording.json",
+          "action": "create",
+          "how": "Not made by the executor. First the owner adds a price row for each provider's default quick model on Platform, AI, Prices (a model without a row shows 'No price' and does not count toward a store's allowance). Then a person with platform access presses the new button on Platform, AI and downloads the recording; commit it unchanged. Also run the agents' eval again there and commit its recording if the listing check moves (its case then runs on the quick model)."
+        },
+        {
+          "file": "src/server/ai-tiers.scan.test.ts",
+          "action": "edit",
+          "how": "For each job whose cases ALL pass in the recording, change its completeText call to 'quick' and add its file to QUICK_JOBS: assistant-memory.ts (line 354), support-tone.ts (47), support-summary.ts (88 and 166), recommend.ts (583), query-understanding.ts (43), content-moderation.ts (the listing check's call of ask() only; the reading of a notice stays 'main'), category-suggest.ts (28), theme-highlight-words.ts (90), all under src/server. A job with a failing case stays 'main' and goes in KEPT_ON_MAIN with the case's id. The eight are all named in one list or the other."
+        },
+        {
+          "file": "docs/audits/code-review-2026-11.md",
+          "action": "edit",
+          "how": "Progress row 3.20 (line 122, 'A quick model for small jobs', finding FA8): Done with the date and commit; correct FA8's text to the 8 jobs and which moved; add a change-log line."
+        }
+      ],
+      "checks": [
+        "pnpm test src/server/ai-tiers.scan.test.ts: passes; QUICK_JOBS and KEPT_ON_MAIN together name all 8",
+        "pnpm test:int src/server/small-jobs-eval-replay.int.test.ts src/server/agent-eval-replay.int.test.ts src/server/query-understanding.int.test.ts src/server/recommend.int.test.ts src/server/content-moderation.int.test.ts src/server/support-partner.int.test.ts: pass",
+        "pnpm lint && pnpm typecheck && pnpm test && pnpm test:int: exits 0"
+      ]
+    }
+  ],
+  "tests": [
+    { "file": "src/server/ai-tiers.scan.test.ts", "proves": "fails on a completeText call without main or quick, and when a job listed as moved is not on quick" },
+    { "file": "src/server/small-jobs-eval-replay.int.test.ts", "proves": "fails when a moved job did not pass all its cases in the committed recording, or a case was added without a new run" },
+    { "file": "src/lib/small-jobs-eval.test.ts", "proves": "fails when a job has fewer than 5 cases or a case's check cannot tell a right answer from a wrong one" }
+  ],
+  "migration": {
+    "needed": true,
+    "notes": "Generated (pnpm db:generate after editing src/db/schema.ts): one nullable text column quick_model on commerce.ai_providers with a length check. Add-only, so running code keeps working; commerce.ai_providers is not on the hot-table list (no concurrent index, no not-valid step). It goes in a push of its own, first: CI's release job applies it after every check passes, then deploys; never apply it by hand. After the deploy check the security and performance advisors and record the file's version under Migration versions in docs/decisions.md. The new feature name needs no migration (ai_usage.feature has no check)."
+  },
+  "done_when": [
+    { "check": "pnpm test src/server/ai-tiers.scan.test.ts", "expect": "no completeText call site without main or quick (33 sites today, none with a tier)" },
+    { "check": "src/data/small-jobs-eval-recording.json and pnpm test:int src/server/small-jobs-eval-replay.int.test.ts", "expect": "the recorded run shows each of the 8 jobs on its cases (at least 5 each); every job in QUICK_JOBS passed all of them" },
+    { "check": "In production a week after the last commit (the owner runs it): select feature, model, count(*) from commerce.ai_usage where created_at > '<deploy time>' group by 1, 2 order by 1, 2", "expect": "the quick model on every job that moved (support_tone, support_summary, recommendations, search, content_moderation's listing checks, product_taxonomy, theme_highlights, assistant_memory), and the list of all 8 with moved or kept is in the decision" },
+    { "check": "In production, same week: select count(*) from commerce.ai_usage u where u.created_at > '<deploy time>' and not exists (select 1 from commerce.ai_model_prices p where p.model = u.model)", "expect": "0 (adapt the join to the price table's real key columns: read src/server/ai-price-sql.ts)" }
+  ],
+  "after_deploy": [
+    "After the first push: the advisors, and the migration's version into docs/decisions.md.",
+    "Before the last commit: the owner adds a price row per quick model on Platform, AI, Prices, then runs the small-jobs eval and downloads the recording.",
+    "A week after the last commit: the two SQL checks above, and on Platform, AI the cost per feature of the moved jobs against the week before."
+  ],
+  "docs": [
+    "docs/decisions.md (or docs/decisions/D{n}.md after step 2.40): one decision with the next free D number: two tiers, the default quick model per provider, the 8 jobs with 'moved' or 'kept on main' and the failing case, the memory pass's own feature name, the small-jobs eval and its recording. Add the migration's version to Migration versions after the deploy.",
+    "docs/rules/admin/ai.md, under 'AI providers (D73)' ('Nothing else names a provider or model'): every completeText call names main or quick; quick(connection) is the one place the quick model is chosen; a small job moves only when its cases pass. Under the conventions' eval paragraph: the small-jobs eval is run after changing one of those prompts or the quick model.",
+    "docs/audits/code-review-2026-11.md: row 3.20 and its change log, as the last commit says.",
+    "docs/platform-parity.md: nothing to tick: the platform's provider settings gain the field in the same form (say so in the decision).",
+    "docs/audits/bloat-review-2026-11.md: row 2.39 (rg -n '^\\| *2\\.39 ' docs/audits/bloat-review-2026-11.md) to Done once the week's SQL is read."
+  ],
+  "do_not": [
+    "Do not move a job to quick before its cases pass in a committed recording, and never the AI manager's loop, the shopper chat, the reading of a notice of illegal content, legal pages or anything that writes text a customer reads at length.",
+    "Do not put a model's price in code or a migration: prices are rows the owner adds on Platform, AI, Prices.",
+    "Do not name a model anywhere but src/lib/ai-provider.ts.",
+    "Do not make the quick model a required setting: empty means the default, so an owner never has to choose.",
+    "Do not push the migration together with any other commit of this step.",
+    "Do not change a job's prompt to make a case pass on the quick model; keep it on main and name the case.",
+    "Do not buy a plan or a service for the eval: it runs on the platform's own AI connection."
+  ],
+  "stop_if": [
+    "rg -c 'completeText\\(' does not total 33: list the sites and continue only after the scan test names every one.",
+    "A provider's default quick model has no price row when the recording is to be made: ask the owner to add it; do not move any job before.",
+    "A job's prompt or parser cannot be exported without changing its behaviour.",
+    "The agents' eval replay fails after commit 2 (no prompt or tool should have changed).",
+    "You are the cheap executor and reach commit 3."
+  ],
+  "executor": "strong",
+  "executor_why": "Commits 1 and 2 are mechanical, but writing honest fixed cases for five jobs and a runner with a recording is new design, and which jobs move depends on a run only a person with platform access can make.",
+  "checked_in_code": "I opened src/server/ai.ts (completeText at line 529 takes connection, messages, options; seeing() at 229 is the pattern for a second model; saveAiSettings writes vision_model at lines 295 to 334), src/lib/ai-provider.ts (textModels per provider, the lists the brief's defaults come from) and the eight jobs' call sites; rg finds 33 completeText( matches in 26 files (31 calls, the definition and the settings test), matching the finding's 33. The memory pass runs on the manager's own connection (owner-assistant.ts line 845), so its feature is 'ai_manager' today; ai_usage.feature has no check constraint, so the new name needs no migration. The three jobs with fixed cases are search understanding (query-eval.ts), recommendation order (recommend-eval.ts) and the listing check (agent-eval.ts 'moderation'); the other five have none and there is no runner for them, so the brief adds a small-jobs suite in commerce.ai_eval_runs, which already has a suite column. content-moderation.ts shares one ask() between the notice reading and the listing check, so the tier must be a parameter there."
+}

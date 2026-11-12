@@ -1,0 +1,201 @@
+{
+  "id": "3.13",
+  "goal": "The five CSV imports (customers, stock, redirects, order history, products) share one import core on the server, one upload flow and one findings table in the browser, and two job routes in place of fifteen.",
+  "why": "Five files each write their own upload, register, check, apply and problems code: 18 twin pairs and about 1,300 to 1,600 repeated lines. After the step `insert into commerce.data_jobs` is written in one server file (five today), one import-flow component exists (four today) and the copy baseline holds at most 23 twin pairs (41 today).",
+  "read_first": [
+    "docs/rules/admin/integrations.md",
+    "docs/wave-2-data.md",
+    "node_modules/next/dist/docs/01-app/01-getting-started/15-route-handlers.md",
+    "src/server/customer-import.ts",
+    "src/server/inventory-jobs.ts",
+    "src/server/data-jobs.ts",
+    "src/server/data-routes.ts",
+    "src/lib/permissions.scan.test.ts"
+  ],
+  "depends_on": [
+    {
+      "id": "1.17",
+      "why": "it creates src/lib/copies.baseline.json and the twin counter this step's done-when reads and lowers"
+    }
+  ],
+  "commits": [
+    {
+      "title": "One import core, and the customer import on it",
+      "changes": [
+        {
+          "file": "src/server/data-import.ts",
+          "action": "create",
+          "how": "Starts with `import \"server-only\";`. Exports `defineImport<Dry>(def)` where def is `{ kind: JobKind; key: PermissionKey; defaultName: string; noun: string; readFile: (bytes: Uint8Array) => { ok: true; rows: unknown[] } | { ok: false; problems: string[] }; dryOf: (job: Pick<DataJob, \"counts\">) => Dry; canApply: (dry: Dry) => boolean; nothingToApply: string; auditStart: (member: Membership, job: DataJob, dry: Dry) => Promise<void>; applyCursor?: (job: DataJob) => Record<string, unknown>; parseOptions?: (raw: unknown) => { ok: true; options: Record<string, unknown> } | { ok: false; problem: string } }` and returns `{ startUpload, register, check, apply, problemsCsv }`. Move into it, ONCE, the code of src/server/customer-import.ts lines 89 to 197 with the kind-specific words turned into def fields: `startUpload(member, fileName, deps)` is startCustomerUpload with `safeName(fileName, def.defaultName)` and `memberCan(member, def.key)`; `isUniqueViolation` and `shownName` (fallback def.defaultName) are module-private here; `register(member, input, deps)` is registerCustomerImport with def.readFile, the insert `insert into commerce.data_jobs (store_id, kind, status, format, requested_by, input_path, input_name, input_bytes, input_sha256, rows_total) values (..., ${def.kind}, 'uploaded', 'kaizen', ...)` and the refusal sentence `Another ${def.noun} import is open for this store. Finish it or cancel it first.`; `check(member, jobId, rawOptions, run, deps)` is checkCustomerImport with `kind = ${def.kind}` in both the guard and the update, and `options` set from def.parseOptions when given (else '{}'); `apply(member, jobId, run, deps)` is applyCustomerImport with def.dryOf, def.canApply, def.nothingToApply, def.auditStart inside the same try (same log on failure, same sentence), and the cursor from def.applyCursor (default `{ next: 0, files }` as today); `problemsCsv(member, jobId)` is customerProblemsCsv (line 419) with the kind and the file name from the definition. Keep every sentence a person reads exactly as customer-import.ts has it, with the noun as the only variable. Read rows through typedRows() with `col` (a new file starts with no unchecked reads in the ratchet). Export the shared types UploadStart, RegisterResult and StepResult from here."
+        },
+        {
+          "file": "src/server/customer-import.ts",
+          "action": "edit",
+          "how": "Keep readCustomerFile, the row judge, the writer, runCustomerCheck, runCustomerApply and customerDryCountsOf. Delete lines 89 to 197's function bodies and customerProblemsCsv's body, and replace them by `const imp = defineImport({ kind: \"customer_import\", key: KEY, defaultName: \"customers.csv\", noun: \"customer\", readFile: readCustomerFile, dryOf: customerDryCountsOf, canApply: (d) => d.toCreate + d.toUpdate > 0, nothingToApply: \"No row of this file can be imported. Fix the problems the check found and check it again.\", auditStart: (member, job, dry) => audit(member.account.id, member.store.id, \"customer.import_started\", { job: job.id, rows: job.rowsTotal, toCreate: dry.toCreate, toUpdate: dry.toUpdate }, { area: \"customers\", target: { type: \"data_job\", id: job.id } }) });` and export the old names from it so no importer changes: `export const startCustomerUpload = imp.startUpload; export const registerCustomerImport = imp.register; export const checkCustomerImport = (member, jobId, run, deps) => imp.check(member, jobId, undefined, run, deps); export const applyCustomerImport = imp.apply; export const customerProblemsCsv = imp.problemsCsv;` and re-export the types UploadStart, RegisterResult, StepResult from \"./data-import\". src/server/data-jobs.ts lines 617 to 653 and the tests import what they import today."
+        }
+      ],
+      "checks": [
+        "rg -l 'insert into commerce[.]data_jobs' src/server --glob '!*.test.ts' | wc -l : prints 5 (data-import.ts is in, customer-import.ts is out)",
+        "pnpm exec vitest run src/server/ratchet.scan.test.ts src/lib/permissions.scan.test.ts : exits 0 (if the ratchet says a count fell, run node scripts/ratchet.mjs and commit the lowered baseline)",
+        "pnpm lint && pnpm typecheck && pnpm test: exits 0",
+        "pnpm test:int src/server/customer-staff.int.test.ts src/server/data-jobs.int.test.ts src/server/admin-api.int.test.ts : exits 0 with no test edited"
+      ]
+    },
+    {
+      "title": "Stock, redirects, order history and products move onto the core, one file per commit",
+      "changes": [
+        {
+          "file": "src/server/inventory-jobs.ts",
+          "action": "edit",
+          "how": "Same recipe as customers, one commit per file, in this order: src/server/inventory-jobs.ts (startInventoryUpload line 215, registerInventoryImport 235, checkInventoryImport 269, applyInventoryImport 299, inventoryProblemsCsv 619), src/server/redirect-import.ts (lines 65, 89, 123, 155, 370; its check takes rawOptions: give the definition a parseOptions; its problemsCsv takes deps: pass them through), src/server/order-history-import.ts (lines 71, 91, 122, 148, 300), and LAST src/server/product-import.ts (lines 91, 148, 185, 215; it has options, pictures and the editor's door: those stay in its own file; only its upload, register, start-check and start-apply move). In each: read the five functions beside customer-import's originals first. Where a function differs from the core in more than the kind, the key, the default file name, the noun, the dry-count test, the audit call, the options and the cursor, do NOT bend the core silently: add one named optional field to the definition for that difference, with a comment saying which kind needs it, or stop if it is a difference in what is written. Export the old names from the definition as in the first commit. Run that kind's integration test before the next file."
+        },
+        {
+          "file": "src/server/data-jobs.ts",
+          "action": "edit",
+          "how": "After all five are on the core: replace the nested conditional in runJob() (line 297: `const [check, apply] = job.kind === \"redirect_import\" ? ... : [runImportCheck, runImportApply]`) by a record `const IMPORT_RUNNERS: Record<ImportKind, readonly [Check, Apply]> = { redirect_import: [runRedirectCheck, runRedirectApply], inventory_import: [runInventoryCheck, runInventoryApply], customer_import: [runCustomerCheck, runCustomerApply], order_history_import: [runHistoryCheck, runHistoryApply], product_import: [runImportCheck, runImportApply] }` (use the kind type isImport() narrows to; the type checker then fails a sixth kind without an entry) and `const [check, apply] = IMPORT_RUNNERS[job.kind]`. Leave the ten starter exports at lines 617 to 653 as they are; they are one line each and the actions import them."
+        }
+      ],
+      "checks": [
+        "After inventory: pnpm test:int src/server/inventory-jobs.int.test.ts : exits 0, no test edited",
+        "After redirects: pnpm test:int src/server/redirect-import.int.test.ts src/server/redirect-tools.int.test.ts : exits 0",
+        "After order history: pnpm test:int src/server/old-shop-import.int.test.ts : exits 0",
+        "After products: pnpm test:int src/server/product-import.int.test.ts src/server/product-roundtrip.int.test.ts src/server/data-jobs.int.test.ts src/server/admin-api.int.test.ts : exits 0",
+        "rg -l 'insert into commerce[.]data_jobs' src/server --glob '!*.test.ts' : prints one file, src/server/data-import.ts",
+        "pnpm lint && pnpm typecheck && pnpm test: exits 0"
+      ]
+    },
+    {
+      "title": "One upload flow and one findings table in the browser",
+      "changes": [
+        {
+          "file": "src/components/admin/data/import-flow.tsx",
+          "action": "edit",
+          "how": "This file becomes the one flow. Read the four flows side by side first: this one (products), src/components/admin/customer-import-flow.tsx (lines 27 to 60 are the upload part and already take `words` and `jobBase` and serve two kinds), src/components/admin/inventory/stock-import-flow.tsx and src/components/admin/redirects/redirect-import-flow.tsx. Give ImportFlow props for what differs: the words (handed down from the server page; no catalogue import here), the three server actions (start upload, register, start check), the job page's base address, the accepted file types, and an optional `options` slot (a ReactNode the product and redirect imports use for their option fields). The upload itself (signed upload to the bucket the start action names, retry as src/lib/upload-retry.ts does where the flows use it) is written once. Then point the customer, stock and redirect import pages at ImportFlow with their own props and delete the three other flow files in the same commit: src/components/admin/customer-import-flow.tsx, src/components/admin/inventory/stock-import-flow.tsx, src/components/admin/redirects/redirect-import-flow.tsx (find importers first: rg -n 'customer-import-flow|stock-import-flow|redirect-import-flow' src). Replace the findings tables inside src/components/admin/customer-import-views.tsx, src/components/admin/inventory/stock-import-views.tsx and src/components/admin/redirects/redirect-import-views.tsx by src/components/admin/data/findings-table.tsx (line 30), passing each kind's summary numbers and words as props; the views files keep only what is their kind's own."
+        },
+        {
+          "file": "src/components/admin/customer-import-flow.tsx",
+          "action": "delete",
+          "how": "Deleted once no file imports it (see the change above). The same for src/components/admin/inventory/stock-import-flow.tsx and src/components/admin/redirects/redirect-import-flow.tsx."
+        }
+      ],
+      "checks": [
+        "rg --files src/components/admin | rg 'import-flow' : prints one file, src/components/admin/data/import-flow.tsx",
+        "pnpm exec vitest run src/components/admin/data/data-views.test.ts src/components/admin/inventory/inventory-views.test.ts src/components/admin/redirects/redirect-views.test.ts : exits 0 (a test may change only the name of the component it draws)",
+        "pnpm lint && pnpm typecheck && pnpm test: exits 0",
+        "pnpm build && E2E_SIGNED_IN=1 pnpm test:e2e e2e/signed-in (the specs that open an import page: rg -l 'import' e2e/signed-in) : exits 0"
+      ]
+    },
+    {
+      "title": "Fifteen tick and problems routes become two",
+      "changes": [
+        {
+          "file": "src/app/admin/(gated)/[store]/data/jobs/[jobId]/tick/route.ts",
+          "action": "create",
+          "how": "`export async function POST(request: NextRequest, { params }: RouteContext<\"/admin/[store]/data/jobs/[jobId]/tick\">)`: `const { store: slug, jobId } = await params; const member = await checkMemberAny(slug); if (!member) return new NextResponse(\"Not found\", { status: 404 }); if (!sameSite(request)) return new NextResponse(\"Forbidden\", { status: 403 }); return tickResponse(member, jobId, ALL_JOB_KINDS);` where ALL_JOB_KINDS is every key of JOB_KEY (export it from src/server/data-jobs.ts). Before relying on it, read tickResponse() in src/server/data-routes.ts and jobFor() in src/server/data-jobs.ts line 236: the job must be fetched through jobFor(), which answers null unless mayUseKind(member, job.kind) (JOB_KEY's key for that kind); if tickResponse() does not go through jobFor(), make it, and answer 404 for null. Same imports as the per-kind routes use today (checkMemberAny from @/server/permissions, sameSite from @/server/chat-route)."
+        },
+        {
+          "file": "src/app/admin/(gated)/[store]/data/jobs/[jobId]/problems/route.ts",
+          "action": "create",
+          "how": "Same guard order (member, 404; same site, 403). Then `const job = await jobFor(member, jobId); if (!job) return 404;` and pick the kind's problemsCsv from a record keyed by import kind (the five definitions' problemsCsv); a job that is not an import answers 404. Answer with the same three headers the per-kind routes send (Content-Type text/csv; charset=utf-8, Content-Disposition attachment with the file name, Cache-Control no-store)."
+        },
+        {
+          "file": "src/app/admin/(gated)/[store]/customers/import/[jobId]/tick/route.ts",
+          "action": "delete",
+          "how": "Delete the 15 per-kind routes once nothing points at them: under src/app/admin/(gated)/[store]/ the files customers/import/[jobId]/tick/route.ts, customers/import/[jobId]/problems/route.ts, customers/export/[jobId]/tick/route.ts, products/import/[jobId]/tick/route.ts, products/import/[jobId]/problems/route.ts, products/export/[jobId]/tick/route.ts, orders/history-import/[jobId]/tick/route.ts, orders/history-import/[jobId]/problems/route.ts, orders/export/[jobId]/tick/route.ts, inventory/import/[jobId]/tick/route.ts, inventory/import/[jobId]/problems/route.ts, inventory/export/[jobId]/tick/route.ts, redirects/import/[jobId]/tick/route.ts, redirects/import/[jobId]/problems/route.ts, redirects/export/[jobId]/tick/route.ts. Do NOT delete pages/ai/replicate/[jobId]/tick/route.ts (another feature). First point every caller at the two new addresses: JobTracker's tickUrl and problemsHref (rg -n 'tickUrl|problemsHref|/tick|/problems' src/components/admin src/app/admin -g '*.tsx'; src/components/admin/data/export-section.tsx line 40 and each import job page)."
+        },
+        {
+          "file": "src/lib/permissions.scan.test.ts",
+          "action": "edit",
+          "how": "Remove the entries that name deleted routes: in the owner-only record the four lines for orders/export/[jobId]/tick, customers/export/[jobId]/tick, customers/import/[jobId]/tick and customers/import/[jobId]/problems (and any other deleted path the test lists), and in READ_ONLY_ROUTES the three export tick routes (products, redirects, inventory). Add the two shared routes in the way the test lets a route use checkMemberAny (read how it treats other member-any routes; if it needs a listed reason, the reason is: 'the job is read through jobFor(), which applies JOB_KEY's key for its kind'). Then run `node scripts/permission-baseline.mjs` if the test's message asks for a new baseline."
+        },
+        {
+          "file": "src/server/data-jobs.int.test.ts",
+          "action": "edit",
+          "how": "Add two things. A unit-style case that JOB_KEY maps every kind to today's key: write the expected record out in full in the test (copy today's JOB_KEY, src/server/data-jobs.ts line 63) so a changed key fails. An integration case per kind: a member without that kind's key gets null from jobFor() for a job of that kind (so 404 from both shared routes), and a member with it gets the job; an owner-only kind refuses a non-owner with every other permission."
+        },
+        {
+          "file": "e2e/data-export.spec.ts",
+          "action": "edit",
+          "how": "Lines 51 to 57 post to per-kind tick and problems addresses without a session and expect a refusal: point them at /admin/<store>/data/jobs/<id>/tick and /problems with the same expectation. The same in e2e/redirects-admin.spec.ts lines 48 and 49."
+        }
+      ],
+      "checks": [
+        "rg --files 'src/app/admin/(gated)/[store]' | rg '/(tick|problems)/route.ts' : prints 3 files (the two new ones and pages/ai/replicate)",
+        "pnpm exec vitest run src/lib/permissions.scan.test.ts : exits 0",
+        "pnpm lint && pnpm typecheck && pnpm test: exits 0",
+        "pnpm test:int src/server/data-jobs.int.test.ts src/server/customer-staff.int.test.ts src/server/inventory-jobs.int.test.ts src/server/redirect-import.int.test.ts src/server/old-shop-import.int.test.ts src/server/product-import.int.test.ts : exits 0",
+        "pnpm build && pnpm test:e2e e2e/data-export.spec.ts e2e/redirects-admin.spec.ts : exits 0"
+      ]
+    }
+  ],
+  "tests": [
+    {
+      "file": "The nine integration tests, unchanged: customer-staff, inventory-jobs, redirect-import, redirect-tools, old-shop-import, product-import, product-roundtrip, data-jobs, admin-api (.int.test.ts under src/server)",
+      "proves": "A kind's own rule lost in the shared path: a customer's consent, a stock count's location, a redirect loop, an order's number, a product's pictures."
+    },
+    {
+      "file": "src/server/data-jobs.int.test.ts (new cases)",
+      "proves": "A kind whose permission key changed, and a member without a kind's key reaching its job through the shared routes."
+    },
+    {
+      "file": "src/lib/permissions.scan.test.ts",
+      "proves": "A job route that asks for no permission or the wrong one."
+    },
+    {
+      "file": "src/lib/copies.baseline.json with its twin counter (step 1.17)",
+      "proves": "The import files' twin pairs coming back: the count may only fall from 23."
+    }
+  ],
+  "migration": {
+    "needed": false,
+    "notes": ""
+  },
+  "done_when": [
+    {
+      "check": "rg -l 'insert into commerce[.]data_jobs' src/server --glob '!*.test.ts'",
+      "expect": "One file: src/server/data-import.ts (five before)."
+    },
+    {
+      "check": "rg --files src/components/admin | rg 'import-flow'",
+      "expect": "One file (four before)."
+    },
+    {
+      "check": "node -e \"const b=require('./src/lib/copies.baseline.json');console.log(JSON.stringify(b).slice(0,400))\" and the twin counter's test of step 1.17",
+      "expect": "The baseline holds at most 23 twin pairs (41 before); lower it with the script step 1.17 names."
+    },
+    {
+      "check": "pnpm test:int with the nine files named under tests",
+      "expect": "All pass with none of the nine edited except the two added cases in data-jobs.int.test.ts."
+    }
+  ],
+  "after_deploy": [
+    "In a test store, signed in as the owner: upload a three-row customer CSV, check it, apply it; the three customers appear. Upload a stock file and a redirect file the same way; download the problems CSV of a file with one bad row. Start a product export and watch it finish. Each job page moves by itself (the tick answers 200).",
+    "Signed in as a Read-only member: a customer import's job address answers Not found."
+  ],
+  "docs": [
+    "docs/decisions.md: one new row with the next free D-number (find the last with: rg -o '^\\| D[0-9]+' docs/decisions.md | tail -1, and add one). It records: defineImport() in src/server/data-import.ts as the one writer of import jobs, one ImportFlow and findings table, two job routes at /admin/{store}/data/jobs/{jobId}/tick and /problems whose permission is JOB_KEY's through jobFor(), and that the platform has no file import of its own (so nothing to add for the platform).",
+    "docs/wave-2-data.md, docs/wave-2-redirects.md, docs/wave-3-inventory.md, docs/rules/admin/integrations.md (Data in and out) and docs/security.md: where they name a per-kind function or a per-kind tick or problems address, name the core and the two routes. Behaviour text does not change.",
+    "Run node scripts/ratchet.mjs after the reads moved and commit the lowered src/server/ratchet.baseline.json.",
+    "docs/audits/bloat-review-2026-11.md, Progress table: set the row of step 3.13 to Done with the date and the commit hash, in the same commit as the last change; tick the step's section in docs/audits/bloat-review-2026-11/plan/phase-3.md if that file has one."
+  ],
+  "do_not": [
+    "Do not change what a row judge or a row writer does (readCustomerFile, the judges, runCustomerCheck, runCustomerApply and their four siblings stay in their own files).",
+    "Do not edit any of the nine integration tests to make them pass; they are the check.",
+    "Do not fold the five export request functions; they repeat 13 lines each and are not part of this step.",
+    "Do not delete the page files: each import keeps its page.tsx and [jobId]/page.tsx with its guard and words.",
+    "Do not delete pages/ai/replicate/[jobId]/tick/route.ts.",
+    "Do not touch claim, lease, retry or progress in src/server/data-job-store.ts: they are already shared.",
+    "Do not let the shared routes pick a kind from the request; the kind is the job's own, read from the database.",
+    "Do not ship the route commit without the two new test cases: the permission moves from a line the scan test reads to JOB_KEY at run time."
+  ],
+  "stop_if": [
+    "A kind's upload, register, check or apply differs from the core in what it WRITES (another table, another status order, another audit moment), not only in words and keys.",
+    "One of the nine integration tests fails after a file's move and the cause is not a typo.",
+    "tickResponse() cannot be made to go through jobFor() without changing what the tick does for a running job.",
+    "src/lib/copies.baseline.json does not exist (step 1.17 not done): do the work, skip that done-when line and say so.",
+    "The ratchet reports a rise in unchecked reads in any file: type the moved read on the way, do not raise the baseline.",
+    "A signed-in e2e spec that opens an import page fails after the flow commit."
+  ],
+  "executor": "strong",
+  "executor_why": "The first commit is fully specified, but folding four more 300 to 640 line engines needs a reader who can tell a difference in wording from a difference in what is written, and the route commit moves a permission check from static text to run time.",
+  "checked_in_code": "I opened customer-import.ts lines 80 to 200, the export lists of all five engines, data-jobs.ts (JOB_KEY at 63, jobFor at 236, the nested conditional at 297, the starters at 617 to 653), both customer job routes and permissions.scan.test.ts lines 50 to 84. The findings match: five server files hold `insert into commerce.data_jobs`, four import-flow components exist, and 15 per-kind tick and problems routes exist (a sixteenth, pages/ai/replicate, is another feature and must stay). checkMemberAny() exists in src/server/permissions.ts (line 146), so the shared routes are possible as CP-1 wrote them. src/lib/copies.baseline.json does not exist yet (step 1.17). CP-1 and FM-6 name different homes for the core (data-import.ts against import-kinds.ts plus data-jobs.ts); the brief takes CP-1's single file and keeps the ten one-line starters, which the actions import."
+}

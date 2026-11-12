@@ -1,0 +1,264 @@
+{
+ "id": "2.13",
+ "goal": "An anonymous view of a prerendered goods product asks the database for stock once and for nothing an owner set: checkout's look, payment state, checkout fields, quote mode, back in stock, price breaks and producer schemes come from one cached read per store and market, src/server/buy-facts.ts, that is carried in the prerendered page and refreshed by its writers.",
+ "why": "Today one anonymous product view sends about 16 statements beyond the proxy's (stock is read twice, payment facts about 7 times) and the buy button waits for them. After: 2 or fewer for a plain store (stock, once), 3 with producer schemes, 4 with price breaks.",
+ "read_first": [
+  "docs/rules/storefront.md",
+  "docs/rules/admin/commerce.md",
+  "node_modules/next/dist/docs/01-app/03-api-reference/01-directives/use-cache.md",
+  "src/components/product-parts.tsx",
+  "src/server/express-checkout.ts",
+  "src/server/orders.ts",
+  "src/app/s/[store]/[market]/p/[handle]/page.tsx",
+  "src/server/store-writers.scan.test.ts"
+ ],
+ "depends_on": [
+  {
+   "id": "1.11",
+   "why": "scripts/server-budget.mjs and scripts/server-budget.json hold the product page's statement count; this step lowers that budget"
+  },
+  {
+   "id": "1.12",
+   "why": "the product page's known reads are on its named exceptions list in src/server/ratchet.baseline.json, which this step empties"
+  },
+  {
+   "id": "0.22",
+   "why": "it changes how the cart and a shopper's facts are read per request (getCustomer, getBuyer, cartSummary) in the same files; build on its result"
+  }
+ ],
+ "commits": [
+  {
+   "title": "A product view reads stock, the checkout's look and the checkout's state once per request",
+   "changes": [
+    {
+     "file": "src/server/catalog.ts",
+     "action": "edit",
+     "how": "getVariantStock() (about line 566): keep 'await connection();' as the first line, then return perRequest('variant-stock:' + storeId + ':' + [...variantIds].sort().join(','), () => variantStockOf(db(), storeId, variantIds)) with perRequest imported from './request-memo'. The returned Map is shared by the two callers in one render (ProductJsonLdSection and VariantsWithStock in src/components/product-parts.tsx); neither changes it (check: rg -n 'availability\\.(set|delete|clear)' src/components/product-parts.tsx prints nothing; if it prints a line, stop). Do not touch variantStockOf(): the cart and transactions call it and must read live."
+    },
+    {
+     "file": "src/server/connect.ts",
+     "action": "edit",
+     "how": "getCheckoutUi() (about line 476): wrap the read in perRequest('checkout-ui', async () => { ...today's body... }). Import perRequest from './request-memo'. Outside a render perRequest shares nothing, so jobs and actions read as today."
+    },
+    {
+     "file": "src/server/orders.ts",
+     "action": "edit",
+     "how": "getCheckoutInfo() (about line 520): when 'view' is undefined, wrap the whole body in perRequest('checkout-info:' + storeId + ':' + marketCode, ...); when a view is passed, run as today. Easiest: rename today's function body to a private async function readCheckoutInfo(storeId, marketCode, view) and make getCheckoutInfo return view ? readCheckoutInfo(storeId, marketCode, view) : perRequest(key, () => readCheckoutInfo(storeId, marketCode)). The return type must stay exactly as it is."
+    }
+   ],
+   "checks": [
+    "pnpm exec vitest run --config vitest.integration.config.mts src/server/express-checkout.int.test.ts src/server/variants-scale.int.test.ts src/server/checkout-kinds.int.test.ts src/server/store-starters.int.test.ts: all pass unchanged",
+    "pnpm exec vitest run src/server/delivery-readers.scan.test.ts src/lib/payment-readers.scan.test.ts: pass",
+    "pnpm lint && pnpm typecheck && pnpm test: each exits 0",
+    "pnpm test:int: exits 0 (the money tests run here)"
+   ]
+  },
+  {
+   "title": "Buy facts: what only an owner sets about buying, in one cached read per store and market",
+   "changes": [
+    {
+     "file": "src/server/buy-facts.ts",
+     "action": "create",
+     "how": "Server-only module ('import \"server-only\"'). Imports: cacheLife and cacheTag from 'next/cache', db from '@/db/client', sql from 'drizzle-orm', z from 'zod', col and typedRow from './typed-rows', refreshTag from './refresh', catalogTag from './catalog' (or from the tag leaf if step 2.20 or 2.24 made one: rg -n 'export const catalogTag' src). Exports: (1) export const BUY_PLATFORM_TAG = 'buy-platform'; export const buyTag = (storeId: string) => 'buy:' + storeId; (2) export type BuyFacts = { checkoutUi: 'custom' | 'hosted'; paymentsRow: boolean; activeMode: 'test' | 'live' | null; onMollie: boolean; starter: boolean; accountId: string | null; klarnaOff: boolean; klarnaActive: boolean; checkoutFields: boolean; quoteMode: string; backInStock: boolean; hasBreaks: boolean; hasSchemes: boolean }; (3) export async function buyFacts(storeId: string, marketCode: string): Promise<BuyFacts> whose first three lines are 'use cache'; cacheLife('hours'); cacheTag(buyTag(storeId), catalogTag(storeId), BUY_PLATFORM_TAG). One statement through typedRow with a zod row described with col (bool, text and nullable text). Copy each expression from the reader it replaces, word for word, with the store id as ${storeId}::uuid: checkout_ui from 'select checkout_ui from commerce.platform_settings' (connect.ts getCheckoutUi; 'hosted' only when the value is 'hosted', else 'custom'); payments_on, active_mode, on_mollie and starter exactly as the four expressions of getCheckoutInfo() in src/server/orders.ts (lines 523 to 547); account_id as getCheckoutAccount() in src/server/settings.ts reads it (the stripe_accounts row of the active mode with card_payments = 'active', null otherwise); klarna_off: exists (select 1 from commerce.payment_methods where store_id = the store and market_code = ${marketCode} and method = 'klarna' and not enabled); klarna_active: coalesce((select a.method_states -> 'klarna_payments' ->> 'status' = 'active' from commerce.stripe_accounts a join commerce.payment_providers p on p.store_id = a.store_id and p.provider = 'stripe' and a.mode = p.active_mode where a.store_id = the store), false); checkout_fields: exists (select 1 from commerce.checkout_fields where store_id = the store and enabled); quote_mode: coalesce((select quote_requests from commerce.order_settings where store_id = the store), 'off'); back_in_stock: the exists form of backInStockOn()'s statement in src/server/stock-requests.ts (lines 80 to 84), unchanged; has_breaks: exists (select 1 from commerce.price_breaks where store_id = the store) or exists (select 1 from commerce.price_list_breaks where store_id = the store) (open src/db/schema.ts first and confirm both tables have store_id; if price_list_breaks has none, join it to its price list); has_schemes: exists (select 1 from commerce.product_schemes where store_id = the store) (same check). The function returns the row mapped to BuyFacts and nothing computed from the environment. (4) export function refreshBuyFacts(storeId: string): void { refreshTag(buyTag(storeId)); } and export function refreshBuyPlatform(): void { refreshTag(BUY_PLATFORM_TAG); }. (5) Pure helpers that apply the environment after the read, never cached: export function paymentsOnOf(f: BuyFacts): boolean, the same formula as orders.ts lines 553 to 556 with platformModes() and mollieAppOn() imported from where orders.ts imports them; export function providerOf(f: BuyFacts): 'mollie' | 'stripe' as orders.ts line 558. Header comment: what is in it, that the product page reads it with its cached reads so it is part of the prerendered page (Next's use-cache guide: an in-memory entry does not persist between serverless requests), and that a writer of one of its tables calls refreshBuyFacts() (buy-writers.scan.test.ts)."
+    },
+    {
+     "file": "src/server/buy-facts.int.test.ts",
+     "action": "create",
+     "how": "Integration test in the style of src/server/express-checkout.int.test.ts (copy its store fixture and its mocks of next/cache and next/headers). For one fixture store and market 'NO': (a) buyFacts() agrees with the readers it replaces: checkoutUi equals getCheckoutUi(); paymentsOnOf(facts) equals (await getCheckoutInfo(storeId, 'NO')).paymentsOn and providerOf(facts) equals its provider; accountId equals (await getCheckoutAccount(storeId))?.accountId ?? null; checkoutFields equals (await listCheckoutFields(db(), storeId, { onlyOn: true })).length > 0; quoteMode equals await quoteMode(storeId); backInStock equals await backInStockOn(storeId). (b) Each fact flips after its write: switch Klarna off for NO with saveMethodChoices (klarnaOff true); add an enabled checkout field; set quote_requests; enable the back_in_stock automation; insert a price break; insert a product scheme. After each write call buyFacts() again (next/cache is mocked, so it reads again) and expect the fact changed and the old reader still agrees."
+    }
+   ],
+   "checks": [
+    "pnpm exec vitest run --config vitest.integration.config.mts src/server/buy-facts.int.test.ts: passes",
+    "pnpm exec vitest run src/server/use-cache.scan.test.ts src/server/ratchet.scan.test.ts: pass (the new read has a life and tags and goes through typedRow)",
+    "pnpm lint && pnpm typecheck && pnpm test: each exits 0"
+   ]
+  },
+  {
+   "title": "Every writer of a buy fact refreshes it",
+   "changes": [
+    {
+     "file": "src/server/settings.ts",
+     "action": "edit",
+     "how": "After each statement that writes commerce.payment_providers (setStripeProvider, about line 77, and any other: rg -n 'commerce.payment_providers' src/server/settings.ts) call refreshBuyFacts(storeId) from './buy-facts'."
+    },
+    {
+     "file": "src/server/connect.ts",
+     "action": "edit",
+     "how": "After each write of commerce.stripe_accounts (rg -n -U '(insert into|update|delete from)\\s+commerce\\.stripe_accounts' src/server/connect.ts: the account's creation, saveStatus()/refreshStripeAccount and the host's) call refreshBuyFacts(storeId) with that row's store id. In setCheckoutUi() (about line 481) call refreshBuyPlatform() after the update."
+    },
+    {
+     "file": "src/server/express-checkout.ts",
+     "action": "edit",
+     "how": "It writes commerce.stripe_accounts for the wallet domains (rg -n 'commerce.stripe_accounts' src/server/express-checkout.ts). That column is not a buy fact, but the scan of this commit counts writers by table: call refreshBuyFacts(storeId) after the write."
+    },
+    {
+     "file": "src/server/mollie.ts",
+     "action": "edit",
+     "how": "After each write of commerce.checkout_providers and commerce.mollie_connections call refreshBuyFacts(storeId)."
+    },
+    {
+     "file": "src/server/payment-methods.ts",
+     "action": "edit",
+     "how": "After the write of commerce.payment_methods (saveMethodChoices) call refreshBuyFacts(storeId)."
+    },
+    {
+     "file": "src/server/checkout-rules.ts",
+     "action": "edit",
+     "how": "After each insert, update and delete of commerce.checkout_fields call refreshBuyFacts(storeId). Not for commerce.checkout_rules."
+    },
+    {
+     "file": "src/server/order-settings.ts",
+     "action": "edit",
+     "how": "After each write of commerce.order_settings call refreshBuyFacts(storeId). The same one line in src/server/quote-requests.ts, src/server/draft-orders.ts and src/server/suppliers.ts after their writes of commerce.order_settings (four files in all; the list is: rg -l -U '(insert into|update|delete from)\\s+commerce\\.order_settings' src -g '!*.test.*')."
+    },
+    {
+     "file": "src/server/automations.ts",
+     "action": "edit",
+     "how": "After each write of commerce.automations (the switch and the save) call refreshBuyFacts(storeId)."
+    },
+    {
+     "file": "src/server/products.ts",
+     "action": "edit",
+     "how": "After each write of commerce.price_breaks and of commerce.product_schemes call refreshBuyFacts(storeId). products.ts already refreshes the catalogue's tag on a save, which buyFacts() also carries; add the call all the same, so the scan below needs no exception."
+    },
+    {
+     "file": "src/server/price-lists.ts",
+     "action": "edit",
+     "how": "After each write of commerce.price_list_breaks call refreshBuyFacts(storeId)."
+    },
+    {
+     "file": "src/server/buy-writers.scan.test.ts",
+     "action": "create",
+     "how": "A scan in the style of src/server/store-writers.scan.test.ts (copy its sources() walk and TEST_SUPPORT filter). WRITES = /\\b(insert\\s+into|update|delete\\s+from)\\s+commerce\\.(payment_providers|stripe_accounts|checkout_providers|mollie_connections|payment_methods|checkout_fields|order_settings|automations|price_breaks|price_list_breaks|product_schemes)\\b/i. A non-test file under src that matches must contain 'refreshBuyFacts(' or be in a set REFRESHED_BY_CALLERS, which starts empty and may only shrink (the same two tests as the store-writers scan: every writer refreshes or is listed; every listed module still needs listing). A second test: a file that updates commerce.platform_settings with the text 'checkout_ui' contains 'refreshBuyPlatform('. Expected writers today (12 files): src/server/settings.ts, connect.ts, express-checkout.ts, mollie.ts, payment-methods.ts, checkout-rules.ts, order-settings.ts, quote-requests.ts, draft-orders.ts, suppliers.ts, automations.ts, products.ts, price-lists.ts; if the scan finds another, add the call there, not an exception."
+    }
+   ],
+   "checks": [
+    "pnpm exec vitest run src/server/buy-writers.scan.test.ts src/server/store-writers.scan.test.ts: pass",
+    "pnpm exec vitest run --config vitest.integration.config.mts src/server/buy-facts.int.test.ts src/server/payment-methods.int.test.ts src/server/quote-requests.int.test.ts: pass",
+    "pnpm lint && pnpm typecheck && pnpm test: each exits 0"
+   ]
+  },
+  {
+   "title": "The product page carries the buy facts, and the buy button waits only for stock",
+   "changes": [
+    {
+     "file": "src/app/s/[store]/[market]/p/[handle]/page.tsx",
+     "action": "edit",
+     "how": "In the Promise.all at about lines 126 to 133 add buyFacts(store.id, market.code) as a sixth read and name it 'buy'. Add it to the context object: const ctx: ProductPageContext = { store, market, product, m: t(market.lang), back, campaigns, reviews, buy }. Import buyFacts from '@/server/buy-facts'."
+    },
+    {
+     "file": "src/components/product-parts.tsx",
+     "action": "edit",
+     "how": "(1) ProductPageContext (about line 96): add 'buy?: BuyFacts;' with the JSDoc 'What the owner set about buying (bloat review step 2.13), read with the page's cached reads; absent in the admin's layout preview, where the parts read as before.' (2) Hand ctx.buy to VariantsWithStock at both places ProductPartView draws it (rg -n '<VariantsWithStock' src/components/product-parts.tsx) as the prop buy={ctx.buy}, and to the quote part at about line 596 if it has ctx. (3) In VariantsWithStock add the prop 'buy?: BuyFacts' and change five reads, each keeping today's call when buy is undefined: (a) line 997: if (!buy || buy.hasSchemes) run the blockedSchemes() check as today; keep 'await connection();' above it unconditionally. (b) line 1001: quotesOfferedHere(store) becomes quotesOfferedHere(store, buy?.quoteMode). (c) line 1013: backInStockOn(store.id) becomes buy ? buy.backInStock : backInStockOn(store.id). (d) line 1015: priceBreaksFor runs only when (!buy || buy.hasBreaks), else the empty Map on the same line's other branch. (e) lines 1018 and 1019: pass buy as a fourth argument to expressAreaFor(store, market, m, buy) and a third to klarnaMessaging(store, market, buy). Nothing else in this function changes: stock (getVariantStock), list prices and buyer rules stay per request."
+    },
+    {
+     "file": "src/server/quote-requests.ts",
+     "action": "edit",
+     "how": "quotesOfferedHere(store, knownMode?: string): const mode = knownMode && isQuoteMode(knownMode) ? knownMode : await quoteMode(store.id); the rest unchanged (buysForBusiness() stays per request)."
+    },
+    {
+     "file": "src/server/express-checkout.ts",
+     "action": "edit",
+     "how": "expressOn(store, market, facts?: BuyFacts): when facts is given, read only the shopper (getCustomer(store.id) and getBuyer(store)) and return facts.checkoutUi === 'custom' && paymentsOnOf(facts) && providerOf(facts) === 'stripe' && !facts.starter && !signInRequired(store, customer !== null) && buyer === 'private' && !facts.checkoutFields; when facts is undefined, today's body unchanged. expressAreaFor(store, market, m, facts?) passes facts to expressOn. klarnaMessaging(store, market, facts?): when facts is given: return null unless klarnaMessagingFits(...); null unless facts.checkoutUi === 'custom' && paymentsOnOf(facts) && providerOf(facts) === 'stripe' && facts.accountId && facts.activeMode; null when facts.klarnaOff; null unless facts.klarnaActive; then platformPublishableKey(facts.activeMode) as today. When facts is undefined, today's body. Update the two JSDoc comments: the store's part comes from buyFacts() where the caller has it; the shopper's part is read per request."
+    },
+    {
+     "file": "src/app/s/[store]/[market]/cart/actions.ts",
+     "action": "edit",
+     "how": "No code change. Line 428 (expressOn(shop.store, shop.market)) must stay a call with two arguments, so the press reads live. Add a one-line comment above it saying so."
+    },
+    {
+     "file": "src/server/express-checkout.int.test.ts",
+     "action": "edit",
+     "how": "Add cases: for each of the fixture states the file already builds (payments off, Mollie, a checkout field on, sign-in required, a business buyer), expressOn(store, market, await buyFacts(store.id, market.code)) equals expressOn(store, market); and klarnaMessaging with facts equals klarnaMessaging without, for a store with Klarna active, switched off for the country, and not active."
+    },
+    {
+     "file": "scripts/{server-budget.json}",
+     "action": "edit",
+     "how": "The file is scripts/server-budget.json, made by an earlier step of the plan (it does not exist before that step; if it is missing, that step is not done: stop). Do not type numbers by hand. Run pnpm build && node scripts/server-budget.mjs --write (step 1.11's way of lowering a budget). Then open the file: the product page's budget must be 2 or lower for the plain store. If the script has no entries for a store with producer schemes and one with price breaks, add the two pages to its list in scripts/server-budget.mjs the way its other pages are listed (seed one product_schemes row with a valid registration, and one price_breaks row, in scripts/lib/budget-seed.mjs) with budgets 3 and 4."
+    },
+    {
+     "file": "src/server/ratchet.baseline.json",
+     "action": "edit",
+     "how": "The shop-only journey test of step 1.12 keeps, per page, the list of tables scanned, and a named list of the product page's known reads. Run its int test with its update switch (read the top of the test file for the variable name) so the product page's list shrinks to the inventory tables (plus the tables the proxy and the stock view read), and delete the product page's entries from the named exceptions list. The list may only shrink: if the run wants to add a table, stop."
+    }
+   ],
+   "checks": [
+    "pnpm exec vitest run --config vitest.integration.config.mts src/server/express-checkout.int.test.ts src/server/buy-facts.int.test.ts src/server/producer-registrations.int.test.ts src/server/price-breaks.int.test.ts src/server/quote-requests.int.test.ts: pass",
+    "pnpm exec vitest run 'src/app/s/[store]/[market]/cart/cart-contents.test.ts' src/lib/express-checkout.test.ts: pass unchanged",
+    "pnpm lint && pnpm typecheck && pnpm test: each exits 0",
+    "pnpm test:int: exits 0",
+    "pnpm build && pnpm exec playwright test e2e/quotes.spec.ts e2e/shop-components.spec.ts e2e/store-pages.spec.ts: pass",
+    "node scripts/server-budget.mjs: passes; the product page line reads 2 or fewer. Then add one scratch read (a second 'await getCheckoutUi()' is shared now, so use 'await db().execute(sql`select 1 from commerce.order_settings limit 1`)' in VariantsWithStock), rebuild, run again: it must fail naming the product page. Remove the scratch read."
+   ]
+  }
+ ],
+ "tests": [
+  {
+   "file": "src/server/buy-facts.int.test.ts",
+   "proves": "It fails when a buy fact disagrees with the reader it replaced, or does not change after its table is written."
+  },
+  {
+   "file": "src/server/buy-writers.scan.test.ts",
+   "proves": "It fails when a file writes one of the eleven tables behind the buy facts without calling refreshBuyFacts(), or writes checkout_ui without refreshBuyPlatform()."
+  },
+  {
+   "file": "src/server/express-checkout.int.test.ts",
+   "proves": "It fails when the express area or Klarna's line is offered differently from the facts than from the live reads."
+  },
+  {
+   "file": "scripts/server-budget.json",
+   "proves": "CI's e2e job fails when a product view sends more than 2 statements (3 with schemes, 4 with breaks)."
+  }
+ ],
+ "migration": {
+  "needed": false,
+  "notes": ""
+ },
+ "done_when": [
+  {
+   "check": "pnpm build && node scripts/server-budget.mjs",
+   "expect": "The product page of the plain store at 2 statements or fewer beyond the proxy's (about 16 before), 3 or fewer with producer schemes, 4 or fewer with price breaks; and the scratch extra read made it fail."
+  },
+  {
+   "check": "The shop-only journey int test of step 1.12 (pnpm test:int)",
+   "expect": "Passes with the product page reading only the inventory tables per view, and no product-page entry left on its named exceptions list."
+  },
+  {
+   "check": "pnpm exec vitest run src/server/buy-writers.scan.test.ts",
+   "expect": "Passes with an empty REFRESHED_BY_CALLERS."
+  }
+ ],
+ "after_deploy": [
+  "In the admin of a test store switch Payments off, then on: the product page's express buttons go and come back on the next view (not an hour later).",
+  "Platform, Usage and limits (step 1.25, if built): no store whose buy tag a job refreshes more than 10 times a day; the Stripe account webhook is the likely one.",
+  "Supabase pg_stat_statements a week later: the statements of getCheckoutInfo and getCheckoutUi grow far slower than product views."
+ ],
+ "docs": [
+  "docs/decisions.md: append one row with the next free D-number (pull main first; rg -o '^\\| D[0-9]+' docs/decisions.md | tr -dc '0-9\\n' | sort -n | tail -1, plus 1). It records: buy facts (step 2.13): what is in the read, that the product page carries it in its prerender, which parts stay per request (stock, the shopper's sign-in and buyer kind, D342's scheme check for a store that has schemes, a buyer's list prices), the two tags and the writers' scan, and the statements before and after.",
+  "docs/rules/storefront.md, section 'Catalogue reads in src/server/catalog.ts are cached': add one sentence: what only an owner sets about buying is buyFacts() (src/server/buy-facts.ts), cached with tags buy:{store} and buy-platform; stock stays per request.",
+  "docs/rules/admin/commerce.md: one sentence each under Express checkout and wallets (D373: the store's part is cached in buyFacts(), the shopper's part per request; the press reads live), Request a quote (D431: the mode comes with the facts) and Email automations (back in stock comes with the facts).",
+  "docs/wave-7-storefront.md H (D342): the product page reads registrations per request only for a store that has a product under a scheme.",
+  "CLAUDE.md, Conventions: one line: a writer of payment, checkout-field, quote, back-in-stock, price-break or scheme settings calls refreshBuyFacts() (buy-writers.scan.test.ts). Keep the file under its size budget (step 2.1): if the line does not fit, put it in docs/rules/admin/commerce.md and leave CLAUDE.md alone.",
+  "docs/audits/bloat-review-2026-11.md, Progress table: set row 2.13 to Done with the date, the commits and the product page's statements before and after; add a line to that file's change log."
+ ],
+ "do_not": [
+  "Do not cache stock, and do not put getVariantStock() inside buyFacts(): D172 says stock is read per request.",
+  "Do not cache anything that depends on the shopper (getCustomer, getBuyer, buysForBusiness, list prices, buyer rules) or on the environment (platformModes(), mollieAppOn(), platformPublishableKey()).",
+  "Do not change startCheckout(), startExpress() or the cart's press (cart/actions.ts line 428): they keep their live reads.",
+  "Do not remove getCheckoutInfo(), getCheckoutUi(), backInStockOn(), methodChoices() or methodStates(): the cart, checkout and admin still call them.",
+  "Do not drop 'await connection()' in VariantsWithStock: the part must stay per request.",
+  "Do not add a file to REFRESHED_BY_CALLERS in the new scan to make it pass.",
+  "Do not use 'use cache: remote' or a cache handler: no paid service and none is needed, the facts ride in the prerendered page."
+ ],
+ "stop_if": [
+  "price_list_breaks or product_schemes has no store_id column and the join is not obvious from src/db/schema.ts.",
+  "An existing test must be changed to pass (other than the cases this brief adds).",
+  "server-budget.mjs shows more than 2 statements for the plain store after commit 4: report the statements it lists (STATEMENT_LOG lines); do not raise the budget.",
+  "The journey test wants to add a table to the product page's list.",
+  "expressOn() with facts and without disagree in any fixture state.",
+  "The product page stops being prerendered (scripts/render-modes.mjs of step 1.11 reports a change for /s/demo/no/p/...)."
+ ],
+ "executor": "cheap-then-review",
+ "executor_why": "Each edit is named, but the step decides what the buy button and Klarna's line show from a cache, so a stronger model must read the SQL of buyFacts() against the five readers it copies and the list of writers before the push.",
+ "checked_in_code": "I opened product-parts.tsx (VariantsWithStock at 962 to 1020, the JSON-LD's second stock read at 694), express-checkout.ts (expressOn 59 to 76, klarnaMessaging 153 to 162), orders.ts getCheckoutInfo (520 to 560), connect.ts getCheckoutUi (476), stock-requests.ts, quote-requests.ts, price-breaks.ts and the product page's Promise.all (126 to 133): all as the finding says, and priceBreaksFor() has no early return for a guest while buyerRulesFor() and listPricesFor() do. I listed the writers with rg: the finding's list misses src/server/express-checkout.ts, which also writes stripe_accounts (wallet domains), and src/server/mollie.ts writes two tables (checkout_providers, mollie_connections); both are in the brief. The plan's bar is tighter than the finding's (2, 3 and 4, not 4), so the budget is set from the script's own run and the brief stops rather than raise it."
+}

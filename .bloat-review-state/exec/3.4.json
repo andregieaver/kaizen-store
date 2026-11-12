@@ -1,0 +1,182 @@
+{
+  "id": "3.4",
+  "goal": "Every function the daily route calls is a registry entry with its own ledger row daily.<name> at 86,400 s; one that throws no longer stops the others, a prune reports its own failure, and a daily job that failed or was not reached is tried again the same day, at most three times.",
+  "why": "The 40 daily functions share 2 ledger rows and 19 of them catch their error to the console (rg -o 'console.error' src/app/api/cron | wc -l prints 19), so a prune that fails every day is not seen. After the step: one row per function and 0 console.error under src/app/api/cron.",
+  "read_first": [
+    "docs/capacity.md",
+    "docs/wave-1g-gdpr.md",
+    "src/app/api/cron/subscription-reminders/route.ts",
+    "src/app/api/cron/subscription-reminders/route.test.ts",
+    "src/server/cron-runs.ts",
+    "src/server/analytics-visits.ts",
+    "src/server/retention.ts",
+    "src/server/tax-reports.scan.test.ts"
+  ],
+  "depends_on": [
+    {
+      "id": "3.3",
+      "why": "it creates RegistryJob, runRegistry(), jobDue(), worked and budget_ms; the daily route runs through the same function"
+    },
+    {
+      "id": "3.1",
+      "why": "it creates commerce.cron_due() and the tick, which this step uses to call the daily route again when a daily job failed or was not reached"
+    },
+    {
+      "id": "1.22",
+      "why": "it removes Vercel's second schedule of the daily route, so the job is not run twice at once"
+    },
+    {
+      "id": "1.26",
+      "why": "report(error) is how a prune that must go on after a failing part marks its run failed"
+    }
+  ],
+  "commits": [
+    {
+      "title": "Daily prunes report their own failure, ask only the stores with old rows, and delete in batches",
+      "changes": [
+        {
+          "file": "src/server/analytics-visits.ts",
+          "action": "edit",
+          "how": "pruneVisits() (line 313). (1) Replace `select id from commerce.stores` by one statement that lists only stores with something to delete: `select s.id from commerce.stores s where exists (select 1 from commerce.visits v where v.store_id = s.id and v.day < ${cutoff}) or exists (select 1 from commerce.product_views p where p.store_id = s.id and p.day < ${cutoff})` (define `cutoff` before it; both tables have an index that starts (store_id, day), so each exists() is one index probe). (2) The catch at the end today logs with console.warn and returns what was done. Change it to: `log(\"error\", \"visits.prune_stopped\", { visits: done.visits, productViews: done.productViews }, error); throw error;` (import log from \"./log\"). Keep the batches (BATCH 5,000, MAX_BATCHES 40) and both delete statements as they are. Reword the doc comment: it no longer says 'Never throws'."
+        },
+        {
+          "file": "src/server/ai-usage.ts",
+          "action": "edit",
+          "how": "pruneUsage() (line 107) is one unbatched delete. Make it batched like pruneVisits: up to 40 rounds of `delete from commerce.ai_usage where id in (select id from commerce.ai_usage where created_at < now() - make_interval(days => ${USAGE_KEEP_DAYS}) limit 5000) returning 1`, stop when a round deletes fewer than 5,000, return the total. Check the primary key column's name first (rg -n '\"ai_usage\"' -A12 src/db/schema.ts); if the table has no single-column key, use ctid: `where ctid in (select ctid from ... limit 5000)`."
+        },
+        {
+          "file": "src/server/retention.ts",
+          "action": "edit",
+          "how": "runRetention() (ends near line 548): it catches each step's error into run.errors and writes an audit entry. Keep all of that. After the audit block and before the return, add: when the function was given a `report` (new optional field in its deps: `report?: (error: unknown) => void`) and run.errors is not empty, call `report(new Error(`${run.errors.length} retention step(s) failed: ${run.errors.map((e) => e.step).join(\", \")}`))`. Do not throw: its callers read the counts."
+        },
+        {
+          "file": "src/server/analytics-visits.int.test.ts",
+          "action": "edit",
+          "how": "Add: 'only stores with rows older than the period are asked' (two stores, one with an old visit: the statement counter shows deletes for that store only) and 'a failing delete is thrown after what was managed is logged' (make the second delete fail with a stand-in; expect the rejection). In src/server/ai-usage.int.test.ts add: 12,000 old rows are deleted in three rounds and newer rows stay. In src/server/retention.int.test.ts add: a failing step is still logged, the next step still runs, and report was called once."
+        }
+      ],
+      "checks": [
+        "pnpm lint && pnpm typecheck && pnpm test: exits 0",
+        "pnpm test:int src/server/analytics-visits.int.test.ts src/server/ai-usage.int.test.ts src/server/retention.int.test.ts : exits 0"
+      ]
+    },
+    {
+      "title": "The daily route runs a registry: one ledger row per function",
+      "changes": [
+        {
+          "file": "src/app/api/cron/subscription-reminders/route.ts",
+          "action": "edit",
+          "how": "Today run() (line 59) calls 13 functions in one Promise.all (line 61), 8 one after another (lines 63 to 78), then 19 in a second Promise.all (line 79); 19 of the calls end in `.catch((error) => (console.error(...), <zero value>))`. Replace all three groups by `const DAILY_JOBS = { ... } satisfies Record<string, RegistryJob>` and `const r = await runRegistry(\"daily\", DAILY_JOBS, { daily: true })` (the option is added in cron-runs.ts below). One entry per function call, key in camel case from the function's name without its verb where that reads well (reminders: sendDueReminders; memories: fadeMemories; usage: pruneUsage; companyRecords: pruneCompanyRecords; rates: refreshAutoRates; visits: pruneVisits; withdrawals: expireWithdrawalRequests; security: runSecurityJobs; vatRates: syncStandardRates; vatChecks: pruneVatChecks; ecb: storeEcbRates; speedSamples: pruneSpeedSamples; ownSpeedSamples: pruneOwnSpeedSamples; adSignals: pruneAdSignals; platformAdSignals: prunePlatformAdSignals; databaseDoor: checkDatabaseDoor; notices: pruneNotices; domainRenewals: runDomainRenewals; domainReminders: sendRenewalReminders; domainMoves: runDomainMoves; domainArrivals: checkArrivals; retention: runRetention; erasures: resumeErasures; privacyReminders: sendPrivacyReminders; dataJobs: pruneDataJobs; notFound: pruneNotFound; and one for each remaining call of the second Promise.all, read from line 79). Every entry: every 86400, a one-line why, work ('set', or perStore with cap and order for pruneVisits and any other that loops over stores), budgetMs (5000 by default; pruneVisits, runRetention and pruneUsage 60000; the sum must stay at or under 960000), and `run`. Remove every `.catch((error) => (console.error(...), ...))`: runRegistry catches, logs through log() and records. The source text must still contain the literals `runRetention(`, `resumeErasures()` and `sendPrivacyReminders()`; pass report into runRetention: `run: (report) => runRetention({ report })` if its signature takes deps first (check it), and keep the tax job's call in this file (src/server/tax-reports.scan.test.ts line 43 expects this route to be the only one that calls it). `databaseDoor` becomes the entry daily.database-door (same row name as today's tracked(\"daily.database-door\", ...)). Order matters in two places and the registry keeps insertion order within its lanes: put domainRenewals before domainReminders, and retention before erasures; if runRegistry cannot promise order between two entries, chain them in one entry's run and name the entry after the first. Where a result was used after the calls, read it from r with the zero value when null: `for (const store of r.rates ?? [])` for the two revalidateTag lines (or move them into the rates entry's `after`), and build the JSON answer with the same keys as today (`retention: { counts: r.retention?.counts ?? {}, errors: r.retention?.errors ?? [], filesLeft: r.retention?.filesLeft.length ?? 0 }` and so on). Keep `export const GET = trackedRoute(\"route.subscription-reminders\", 86400, run)` and maxDuration."
+        },
+        {
+          "file": "src/server/cron-runs.ts",
+          "action": "edit",
+          "how": "runRegistry() gains the option `daily?: boolean`. With it, the due test for an 86,400 job is not jobDue() but: due when last_ok_at is null or before the start of today (UTC), and its tries today are under 3. For that the first read also selects last_ok_at, day and day_tries, and each write sets `day = current_date, day_tries = case when j.day = current_date then j.day_tries + 1 else 1 end` (both in record() and in the idle batch; for non-daily prefixes the two columns are written the same way and never read). So a second call of the route on the same day runs only the jobs that failed or were not reached, and never a job more than three times a day. A daily job that fails three days running still emails the admins through the existing FAILING_AFTER rule."
+        },
+        {
+          "file": "src/db/schema.ts",
+          "action": "edit",
+          "how": "cronJobs gains `day: date(\"day\")` (nullable) and `dayTries: integer(\"day_tries\").notNull().default(0)`. Run `pnpm db:generate`."
+        },
+        {
+          "file": "supabase/migrations/*_cron_due_daily_retry.sql",
+          "action": "create",
+          "how": "Custom migration (`pnpm exec drizzle-kit generate --custom --name cron_due_daily_retry`, then `node scripts/prune-snapshots.mjs`), after the generated one. `create or replace function commerce.cron_due(...)` with the body it has in the newest migration that defines it (copy it whole; steps 3.1, 3.2 and 3.7 each replaced it), plus one more row: ('subscription-reminders', false) when ALL hold: (p_now at time zone 'UTC')::time >= time '07:30'; exists (select 1 from commerce.cron_jobs j where j.job like 'daily.%' and j.every_seconds = 86400 and (j.last_ok_at is null or j.last_ok_at < date_trunc('day', p_now at time zone 'UTC') at time zone 'UTC') and (j.day is distinct from (p_now at time zone 'UTC')::date or j.day_tries < 3) and (j.last_started_at is null or j.last_started_at < p_now - interval '30 minutes')). The daily schedule of its own (kaizen-subscription-reminders at 07:00 UTC) stays; this only adds the same-day retries, half an hour apart. Revoke as the earlier migrations did."
+        },
+        {
+          "file": "src/app/api/cron/subscription-reminders/route.test.ts",
+          "action": "edit",
+          "how": "It is a source scan. Keep its intent and follow the new shape: the route's source contains `runRetention(`, `resumeErasures()`, `sendPrivacyReminders()`; cronAuthorised appears before DAILY_JOBS is run; the answer still has `retention: { counts:` (now read from `r.retention`: change the literal it looks for to match the new line exactly). Add: the source contains no `console.error` and no `.catch(` inside DAILY_JOBS."
+        },
+        {
+          "file": "src/server/cron-routes.scan.test.ts",
+          "action": "edit",
+          "how": "Add for the daily route what step 3.3 added for the dispatcher: every key of DAILY_JOBS has every 86400, why, work and budgetMs, the budgets sum to 960000 or less, and every function imported from @/server/ in the route file (except cron-auth, cron-runs, and the cache tag helpers) is called inside DAILY_JOBS and nowhere else. Add: `rg`-like check in the test itself that no file under src/app/api/cron contains `console.error`."
+        },
+        {
+          "file": "src/server/cron-runs.int.test.ts",
+          "action": "edit",
+          "how": "Add the plan's case: a daily registry of three jobs where the second throws: the first and third rows are ok, the second has failures 1; a second run the same day runs only the second; after its third try that day a fourth run does not start it; the next day it is due again. Add to src/db/commerce.test.ts: cron_due() names 'subscription-reminders' at 08:00 UTC when a daily row has no ok run today and day_tries 1, and does not at 06:00, nor when day_tries is 3, nor within 30 minutes of its last start."
+        }
+      ],
+      "checks": [
+        "rg -o 'console.error' src/app/api/cron | wc -l : prints 0",
+        "pnpm db:check : exits 0",
+        "pnpm exec vitest run src/app/api/cron/subscription-reminders/route.test.ts src/server/cron-routes.scan.test.ts src/server/tax-reports.scan.test.ts src/db/commerce.test.ts src/db/migration-safety.scan.test.ts src/lib/retention.test.ts : exits 0",
+        "pnpm lint && pnpm typecheck && pnpm test: exits 0",
+        "pnpm test:int src/server/cron-runs.int.test.ts src/server/retention.int.test.ts src/server/query-budget.int.test.ts : exits 0"
+      ]
+    }
+  ],
+  "tests": [
+    {
+      "file": "src/server/cron-runs.int.test.ts",
+      "proves": "A daily job that throws stopping the others or going unrecorded, a failed job not retried the same day, or retried a fourth time."
+    },
+    {
+      "file": "src/server/cron-routes.scan.test.ts",
+      "proves": "A function called by the daily route outside its registry, an entry without cadence, reason or budget, and a console.error under src/app/api/cron."
+    },
+    {
+      "file": "src/app/api/cron/subscription-reminders/route.test.ts",
+      "proves": "The retention run, the erasure resume or the privacy reminders leaving the daily route, or running before the authorisation."
+    },
+    {
+      "file": "src/db/commerce.test.ts",
+      "proves": "cron_due() calling the daily route before 07:30, more than three times a day, or not at all when a daily job has not succeeded today."
+    }
+  ],
+  "migration": {
+    "needed": true,
+    "notes": "Two files. Generated (pnpm db:generate): commerce.cron_jobs gains day date and day_tries integer not null default 0 (a small table, not hot). Custom: replaces commerce.cron_due() with one more row for the daily route's same-day retry. Running code keeps working: old code ignores the two columns, and until the new route is live a retry call simply runs the old route once more, which the old route tolerates only because each reminder goes once whoever calls; to be safe, ship the route change and the migration in the same push (CI applies the migration first, the deploy follows within minutes, and cron_due() names the daily route only after 07:30 UTC, so push outside 07:00 to 09:00 UTC). CI applies it after every check passes and before the deploy (docs/ci-migrations.md); never apply it by hand. After the deploy check the Supabase security and performance advisors for project ybsozesfuxuitoacntfo and record the file's version in docs/decisions.md under Migration versions."
+  },
+  "done_when": [
+    {
+      "check": "Production, read-only, the day after the deploy's first 07:00 UTC run: select count(*) from commerce.cron_jobs where job like 'daily.%' and every_seconds = 86400",
+      "expect": "One row for every function the daily route calls: 38 or more (2 rows before for 40 functions)."
+    },
+    {
+      "check": "rg -o 'console.error' src/app/api/cron | wc -l",
+      "expect": "0 (19 before)."
+    },
+    {
+      "check": "pnpm test:int src/server/cron-runs.int.test.ts",
+      "expect": "The new case passes: a daily job that throws leaves the others' rows ok and its own counted as failed, is tried again the same day, and at most three times."
+    },
+    {
+      "check": "pnpm exec vitest run src/server/cron-routes.scan.test.ts",
+      "expect": "Green; red when a scratch call `await pruneNotices()` is added to the route outside DAILY_JOBS."
+    }
+  ],
+  "after_deploy": [
+    "After the next 07:00 UTC: the platform home lists no daily.* job as late or failing; select job, last_ok_at, failures, day_tries from commerce.cron_jobs where job like 'daily.%' order by job shows every row with last_ok_at today and day_tries 1. A row with failures above 0 is a prune that was failing unseen: read its last_error and report it; do not silence it.",
+    "route.subscription-reminders rose by 1 that day (more only if a daily job failed: then by at most 3).",
+    "Supabase advisors: no new warning."
+  ],
+  "docs": [
+    "docs/decisions.md: one new row with the next free D-number (find the last with: rg -o '^\\| D[0-9]+' docs/decisions.md | tail -1, and add one). It records: the daily route's registry, one ledger row per function, prunes that report, the same-day retry (at most three, half an hour apart, from 07:30 UTC through cron_due()), batched deletes for visits and AI usage, and the migrations' versions (also under Migration versions).",
+    "docs/capacity.md line 112: 'a prune…() in the daily cron that never throws' becomes 'a prune that is an entry of the daily route's registry: its failure is recorded under daily.<name> and never stops the others'.",
+    "docs/wave-1g-gdpr.md, where it describes the daily run: the retention run is the job daily.retention and a failed step marks that row failed.",
+    "The comment above run() in the daily route (one line of several thousand characters): replace by three lines that point at DAILY_JOBS.",
+    "docs/audits/bloat-review-2026-11.md, Progress table: set the row of step 3.4 to Done with the date and the commit hash, in the same commit as the last change; tick the step's section in docs/audits/bloat-review-2026-11/plan/phase-3.md if that file has one."
+  ],
+  "do_not": [
+    "Do not drop a function from the daily route because its table is empty before opening.",
+    "Do not keep a .catch that returns a zero value 'so the answer has a number': the registry returns null for a failed job and the answer uses `?? zero`.",
+    "Do not make runRetention() throw: it must finish its other steps and write its audit entry; it reports.",
+    "Do not remove the 07:00 schedule of the daily route or schedule it a second time elsewhere.",
+    "Do not move the tax job's call out of this route file (tax-reports.scan.test.ts).",
+    "Do not add an index on commerce.visits in this step. If one seems needed, stop: visits is a hot table and needs a concurrently-built index in a `-- kaizen:no-transaction` file.",
+    "Do not change retention periods or which rows a prune deletes."
+  ],
+  "stop_if": [
+    "runRegistry() does not exist (step 3.3 not done), commerce.cron_due() does not exist (3.1 not done), or vercel.json still schedules /api/cron/subscription-reminders (1.22 not done).",
+    "Two daily functions depend on each other's result in a way the registry's order cannot keep (read lines 61 to 79 for a value passed from one call to the next).",
+    "commerce.visits or commerce.product_views has no index starting with (store_id, day): the exists() would scan.",
+    "The budgets of the daily registry add up to more than 960,000 ms.",
+    "After the first production run a daily job shows failures: that is the step working; report the job and its last_error, do not catch the error again."
+  ],
+  "executor": "cheap-then-review",
+  "executor_why": "The conversion is mechanical and held by a source scan and an int test, but it rewires the GDPR retention run and 40 jobs in one file and replaces cron_due() by migration, so a stronger model should read the diff before the push.",
+  "checked_in_code": "I opened src/app/api/cron/subscription-reminders/route.ts (89 lines; the three groups are at lines 61, 63 to 78 and 79), pruneVisits() in analytics-visits.ts (it lists every store and catches to console.warn), pruneUsage() in ai-usage.ts (one unbatched delete) and runRetention()'s step loop in retention.ts. They match CR-17. The step asks for a same-day retry 'at most three times' but names no mechanism and the route is scheduled once a day; I gave it one: two small columns on the ledger and one more row in commerce.cron_due(), so the tick of step 3.1 calls the route again. The finding's 'pruneVisits rethrows' is kept; runRetention() reports instead of throwing because its callers read its counts. route.test.ts and tax-reports.scan.test.ts pin this file's text and are named."
+}

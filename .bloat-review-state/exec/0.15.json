@@ -129,20 +129,44 @@
     }
   ],
   "tests": [
-    { "file": "e2e/search.spec.ts", "proves": "Fails when a load of the search results page makes a POST before the box is focused or typed in." },
-    { "file": "e2e/shop-components.spec.ts", "proves": "Fails when a grid in a store with both switches off draws [data-tile-shop] or asks /api/shop/tiles; and when a store with tile stock on stops showing it." },
-    { "file": "src/lib/shop-tiles.test.ts", "proves": "Fails when tileAskFor() returns an ask for a grid that will show neither stock nor the chooser, or lets the store beat a grid's own 'hide'." },
-    { "file": "e2e/wishlist.spec.ts", "proves": "Fails when a visitor who saved nothing causes a request to /wishlist/saved, or when a saved product's heart is not pressed after a full reload." },
-    { "file": "src/lib/cookie-consent.test.ts", "proves": "Fails when the marker cookie is not declared as a necessary store cookie." }
+    {
+      "file": "e2e/search.spec.ts",
+      "proves": "Fails when a load of the search results page makes a POST before the box is focused or typed in."
+    },
+    {
+      "file": "e2e/shop-components.spec.ts",
+      "proves": "Fails when a grid in a store with both switches off draws [data-tile-shop] or asks /api/shop/tiles; and when a store with tile stock on stops showing it."
+    },
+    {
+      "file": "src/lib/shop-tiles.test.ts",
+      "proves": "Fails when tileAskFor() returns an ask for a grid that will show neither stock nor the chooser, or lets the store beat a grid's own 'hide'."
+    },
+    {
+      "file": "e2e/wishlist.spec.ts",
+      "proves": "Fails when a visitor who saved nothing causes a request to /wishlist/saved, or when a saved product's heart is not pressed after a full reload."
+    },
+    {
+      "file": "src/lib/cookie-consent.test.ts",
+      "proves": "Fails when the marker cookie is not declared as a necessary store cookie."
+    }
   ],
-  "migration": { "needed": false, "notes": "" },
+  "migration": {
+    "needed": false,
+    "notes": ""
+  },
   "done_when": [
     {
       "check": "With `pnpm start` running on a seeded build: node docs/audits/bloat-review-2026-11/scripts/measure-routes.mjs /tmp/routes-0.15, then node -e \"const r=require('/tmp/routes-0.15/routes.json');for(const p of (r.pages??r))if(p.group==='storefront')console.log(p.name,(p.afterLoad??[]).filter(x=>/wishlist\\/saved|api\\/shop\\/tiles/.test(x.url)||x.method==='POST').length)\" (read the script's last lines for the output file's exact name and shape first)",
       "expect": "0 beside each of the 12 storefront pages (one or two on each before)"
     },
-    { "check": "pnpm exec playwright test e2e/wishlist.spec.ts e2e/shop-components.spec.ts e2e/search.spec.ts --project=chromium", "expect": "all pass, the new assertions among them" },
-    { "check": "rg -n 'kaizen_mine_' src/lib/cookie-consent.ts", "expect": "the KNOWN_COOKIES entry (name and pattern lines)" }
+    {
+      "check": "pnpm exec playwright test e2e/wishlist.spec.ts e2e/shop-components.spec.ts e2e/search.spec.ts --project=chromium",
+      "expect": "all pass, the new assertions among them"
+    },
+    {
+      "check": "rg -n 'kaizen_mine_' src/lib/cookie-consent.ts",
+      "expect": "the KNOWN_COOKIES entry (name and pattern lines)"
+    }
   ],
   "after_deploy": [
     "Open a production store's front page in a private window with the network panel open: no request to /wishlist/saved and none to /api/shop/tiles after load. Press a heart, reload: one request to /wishlist/saved and the heart is pressed."
@@ -152,7 +176,7 @@
     "docs/rules/admin/website.md: the D557 sentence corrected.",
     "docs/rules/storefront.md: the sentence on the marker cookie.",
     "docs/platform-parity.md: no row; the decision says store-only and why.",
-    "The plan's tracker: set step 0.15 to Done with date and commits (rg -n '^\\| *0\\.15 ' docs/audits/bloat-review-2026-11.md docs/audits/bloat-review-2026-11)."
+    "docs/audits/bloat-review-2026-11.md, Progress table: set the row of step 0.15 to Done with the date and the commits in Notes (find it: rg -n '^\\| 0\\.15 ' docs/audits/bloat-review-2026-11.md), and add a line under the step's own heading in docs/audits/bloat-review-2026-11/plan/phase-0.md saying what was done differently from the plan, if anything."
   ],
   "do_not": [
     "Do not delete src/app/s/[store]/[market]/wishlist/saved/route.ts: the marker design keeps the route (two findings proposed deleting it for another design; the plan chose the marker).",

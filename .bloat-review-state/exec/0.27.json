@@ -1,0 +1,172 @@
+{
+  "id": "0.27",
+  "goal": "The five-minute knowledge job sends one statement when no site has anything new to cut, fetches a page's document only when that page must be cut, and cuts a wordless page once instead of every five minutes.",
+  "why": "Today the job reads about 40 whole published documents a call every five minutes and re-cuts every page that has no words on every run: 91,200 empty transactions in 78 days (about 1,170 a day). After: an idle run is 1 statement over all sites and 0 documents, and the delete of a page's passages runs only when a page was published.",
+  "read_first": [
+    "docs/rules/storefront.md:383",
+    "src/server/knowledge.ts",
+    "src/server/chat.int.test.ts",
+    "docs/capacity.md:95",
+    "docs/ci-migrations.md",
+    "src/server/variants-scale.int.test.ts:96",
+    "src/lib/store-copy-rules.ts",
+    "src/lib/personal-data.ts:300"
+  ],
+  "depends_on": [],
+  "commits": [
+    {
+      "title": "The chat agent's knowledge keeps what was cut for each page, also when a page has no words",
+      "changes": [
+        {
+          "file": "src/db/schema.ts",
+          "action": "edit",
+          "how": "Directly after the knowledgeDocuments table (rg -n 'export const knowledgeDocuments' src/db/schema.ts; it ends with the line `);` after the two check() lines) add a new table. Doc comment: 'What the chat agent's knowledge was last cut from (bloat review step 0.27): one row per published page, article or content entry that was cut, also when it gave no passage, so the five-minute job can tell in SQL what changed. Dates and addresses only, no words.' Code: export const knowledgeSources = commerce.table('knowledge_sources', { id: uuid('id').primaryKey().defaultRandom(), storeId: uuid('store_id').references(() => stores.id, { onDelete: 'cascade' }), pageId: uuid('page_id').references(() => pages.id, { onDelete: 'cascade' }), entryId: uuid('entry_id').references(() => contentEntries.id, { onDelete: 'cascade' }), publishedAt: timestamp('published_at', { withTimezone: true }).notNull(), slug: text('slug').notNull(), typeVersion: text('type_version'), path: text('path'), cutAt: timestamp('cut_at', { withTimezone: true }).notNull().defaultNow() }, (t) => [ uniqueIndex('knowledge_sources_page_key').on(t.pageId), uniqueIndex('knowledge_sources_entry_key').on(t.entryId), index('knowledge_sources_store_idx').on(t.storeId), check('knowledge_sources_source', sql`num_nonnulls(${t.pageId}, ${t.entryId}) = 1`) ]); storeId null is Kaizena Flow's own site, as in knowledgeDocuments. Every helper used (uuid, text, timestamp, index, uniqueIndex, check, sql, stores, pages, contentEntries) is already imported or declared in this file; pages is declared further down, which is fine because references() takes a function."
+        },
+        {
+          "file": "supabase/migrations/*_knowledge_sources.sql",
+          "action": "create",
+          "how": "Run `pnpm db:generate` (answer `knowledge_sources` if it asks for a name; otherwise rename nothing). It writes one file with CREATE TABLE commerce.knowledge_sources, three foreign keys, two unique indexes and one index, and it rewrites the newest snapshot in supabase/migrations/meta. Open the file and append at its end, after a `--> statement-breakpoint` line, exactly: `-- Row-level security, no policy: the commerce schema is private to the server.` and on the next line `ALTER TABLE \"commerce\".\"knowledge_sources\" ENABLE ROW LEVEL SECURITY;`. Change nothing else in the file. Then run `pnpm db:check`."
+        },
+        {
+          "file": "supabase/migrations/*_knowledge_sources_fill.sql",
+          "action": "create",
+          "how": "After the file above exists, run `pnpm exec drizzle-kit generate --custom --name knowledge_sources_fill` and then `node scripts/prune-snapshots.mjs`. The new empty file must sort after the table's file (a later timestamp). Put exactly this in it:\n\n-- A row for each page, article and entry whose passages are current today (bloat review step 0.27), so the first run after the deploy\n-- cuts nothing again and no vector is thrown away. A source whose passages are older than its publishing gets no row and is cut once.\ninsert into commerce.knowledge_sources (store_id, page_id, published_at, slug, path)\nselect p.store_id, p.id, p.published_at, p.slug, c.path\nfrom commerce.pages p\njoin (select page_id, min(version) as version, min(path) as path from commerce.knowledge_chunks where page_id is not null group by page_id) c on c.page_id = p.id\nwhere p.published_at is not null and p.type in ('page', 'article')\n  and c.version = to_char(p.published_at at time zone 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SS.MS\"Z\"')\non conflict do nothing;\n--> statement-breakpoint\ninsert into commerce.knowledge_sources (store_id, entry_id, published_at, slug, type_version, path)\nselect e.store_id, e.id, e.published_at, e.slug, md5(t.fields::text || t.title_field || t.slug || t.has_pages::text), c.path\nfrom commerce.content_entries e\njoin commerce.content_types t on t.id = e.type_id\njoin (select entry_id, min(version) as version, min(path) as path from commerce.knowledge_chunks where entry_id is not null group by entry_id) c on c.entry_id = e.id\nwhere e.published_at is not null\n  and c.version = to_char(e.published_at at time zone 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SS.MS\"Z\"') || '|' || md5(t.fields::text || t.title_field || t.slug || t.has_pages::text)\non conflict do nothing;\n\nThe to_char pattern writes the same text as JavaScript's toISOString(), which is what the passages' version column holds today."
+        },
+        {
+          "file": "src/lib/store-copy-rules.ts",
+          "action": "edit",
+          "how": "In COPY_RULES, directly after the line `knowledge_chunks: derived(\"The chat agent's knowledge, cut from pages and documents again.\"),` add `knowledge_sources: derived(\"What the chat agent's knowledge was cut from: made again with the passages.\"),`."
+        },
+        {
+          "file": "src/lib/personal-data.ts",
+          "action": "edit",
+          "how": "In NOT_PERSONAL, directly after the `knowledge_chunks:` line add `knowledge_sources: \"Which published page or entry the chat agent's knowledge was cut from, and when: dates and addresses, no words.\",`."
+        },
+        {
+          "file": "src/lib/store-export-scope.ts",
+          "action": "edit",
+          "how": "In STORE_EXPORT_LEFT_OUT add `knowledge_sources: \"record\",` in alphabetical place (after the last key that starts with a letter before `kn`; run `rg -n '^  [a-z_]+: \"' src/lib/store-export-scope.ts` to see the order)."
+        },
+        {
+          "file": "src/server/knowledge.ts",
+          "action": "edit",
+          "how": "Only replacePassages() changes in this commit. (1) Give it a sixth parameter `stamp: { publishedAt: string; slug: string; typeVersion: string | null }`. (2) Inside its transaction, after the optional insert of passages, always run one more statement, also when rows is empty. For a page: insert into commerce.knowledge_sources (store_id, page_id, published_at, slug, type_version, path) values (${storeId}::uuid, ${page}::uuid, ${stamp.publishedAt}::timestamptz, ${stamp.slug}, ${stamp.typeVersion}, ${path}) on conflict (page_id) do update set published_at = excluded.published_at, slug = excluded.slug, type_version = excluded.type_version, path = excluded.path, cut_at = now(). For an entry the same with entry_id in place of page_id in the column list and in `on conflict (entry_id)`. (3) In syncPageKnowledge(), add `p.published_at::text as stamp` to the pages select and `e.published_at::text as stamp` to the entries select, and pass `{ publishedAt: String(page.stamp), slug, typeVersion: null }` for a page and `{ publishedAt: String(entry.stamp), slug: String(entry.slug), typeVersion: String(entry.type_version) }` for an entry. The text form keeps the database's full precision; do not pass the JavaScript Date. (4) Replace the two sub-selects on knowledge_chunks in the pages select (`min(c.version)` and `min(c.path)`) with a left join: `left join commerce.knowledge_sources k on k.page_id = p.id`, selecting `k.path as path, (k.page_id is null or k.published_at <> p.published_at or k.slug <> p.slug) as stale`, and change the skip test to `if (!page.stale && page.path === path) continue;`. (5) In the entries select replace the `min(c.version)` sub-select with `left join commerce.knowledge_sources k on k.entry_id = e.id` and select `(k.entry_id is null or k.published_at <> e.published_at or k.slug <> e.slug or k.type_version is distinct from md5(t.fields::text || t.title_field || t.slug || t.has_pages::text)) as stale`; change the skip test to `if (!entry.stale) continue;`. (6) After the existing `delete from commerce.knowledge_chunks c ... returning c.id` add a second statement: delete from commerce.knowledge_sources k where ${owned(storeId, sql`k.store_id`)} and ((k.page_id is not null and not exists (select 1 from commerce.pages p where p.id = k.page_id and p.published_at is not null)) or (k.entry_id is not null and not exists (select 1 from commerce.content_entries e where e.id = k.entry_id and e.published_at is not null))). Keep `dropped` counting the passages' delete only. (7) When parsePageContent(page.published) returns null, do not `continue` silently: first upsert the page's source row with the same statement as in (2) but outside replacePassages (write a small helper `markSource(storeId, source, path, stamp)` that both use), with path `/${slug}`, so a page that cannot be read is not looked at again until it is next published. Its old passages stay as they are. The `version` text written on knowledge_chunks stays exactly as today."
+        },
+        {
+          "file": "src/server/chat.int.test.ts",
+          "action": "edit",
+          "how": "Add `import pg from \"pg\";` at the top and copy the `counted()` helper from src/server/variants-scale.int.test.ts lines 96 to 105 (it spies on pg.Client.prototype.query and returns [result, number of calls]); change it to return the calls themselves too: `[result, spy.mock.calls.map((c) => String(typeof c[0] === 'string' ? c[0] : (c[0] as { text?: string })?.text ?? ''))]`. Inside describe('the knowledge base (D81)') add, after the case 'reads the store's published pages in each of its languages, once per publishing': it('cuts a published page with no words once, and not again on the next run (bloat review 0.27)'). It inserts a published page with no text: read how the existing case at line 77 makes or finds its page, and insert one row into commerce.pages for storeId with type 'page', a new slug `tom-${run}`, title 'Tom', and `published` and `draft` equal to the smallest content parsePageContent accepts with no blocks (take the JSON shape from an existing row: `select published from commerce.pages where store_id = ... and type = 'page' limit 1`, and empty its blocks array), published_at now(). Then: first run `await knowledge.syncPageKnowledge(storeId)` and expect cut to be at least 1; expect one row in commerce.knowledge_sources for that page and 0 rows in commerce.knowledge_chunks for it. Second run inside counted(): expect cut 0, expect no statement whose text matches /^\\s*begin/i (zero transactions), expect no statement that contains 'delete from commerce.knowledge_chunks where page_id', and expect no statement that selects the document: none matches /p\\.published\\b(?!_at)/ or /e\\.published\\b(?!_at)/ outside `->>`. Also add: it('cuts a page again when it is published again, and forgets a page that is unpublished'): update that page's published_at to now() + interval '1 second', expect the next run's cut to be 1; set published = null, published_at = null, expect the next run to leave 0 rows in commerce.knowledge_sources for the page. Keep every existing case unchanged: the case at line 145 (an article moved to another blog without a new publishing date is cut again) must still pass; it does because the path is worked out on every run."
+        },
+        {
+          "file": "src/db/commerce.test.ts",
+          "action": "edit",
+          "how": "Next to the existing knowledge_chunks case (rg -n 'knowledge_chunks_source' src/db/commerce.test.ts) add a case 'knowledge_sources: one source each, gone with its page': an insert with neither page_id nor entry_id rejects with /knowledge_sources_source/; a second row for the same page_id rejects with /knowledge_sources_page_key/; deleting the page deletes the row (count 0); and `select relrowsecurity from pg_class where oid = 'commerce.knowledge_sources'::regclass` is true. Use the helpers the neighbouring case uses (one(), db.query)."
+        }
+      ],
+      "checks": [
+        "pnpm db:check : exits 0",
+        "pnpm exec vitest run src/db/commerce.test.ts src/db/privacy.test.ts src/db/snapshots.scan.test.ts src/db/migration-safety.scan.test.ts src/server/store-export.scan.test.ts src/lib/store-copy-rules.test.ts : pass (skip a name that does not exist; find the copy-rules test with rg -l 'COPY_RULES' src --glob '*.test.ts')",
+        "node scripts/db-setup.mjs --seed on an empty local DATABASE_URL, then pnpm exec vitest run --config vitest.integration.config.mts src/server/chat.int.test.ts : pass, the two new cases among them",
+        "pnpm lint && pnpm typecheck && pnpm test : exits 0",
+        "pnpm test:int : exits 0"
+      ]
+    },
+    {
+      "title": "The knowledge job fetches a document only for a page it must cut, and asks which sites have work in one statement",
+      "changes": [
+        {
+          "file": "src/server/knowledge.ts",
+          "action": "edit",
+          "how": "Push this only after the first commit's deploy is live and CI has applied both migrations. (A) syncPageKnowledge(): split each of the two reads in two. Pages, first read (no document): select p.id, p.type, p.slug, p.published ->> 'blogId' as blog_id, k.path, (k.page_id is null or k.published_at <> p.published_at or k.slug <> p.slug) as stale from commerce.pages p left join commerce.knowledge_sources k on k.page_id = p.id where <the same where as today>. Call blogsNow(storeId) only when storeId is set and at least one row has type 'article'; otherwise use []. For each row work out the path as today, with `blogOfArticle(blogs, { blogId: row.blog_id ? String(row.blog_id) : undefined })` in place of the parsed content. Collect the ids where `row.stale || row.path !== path`. Only when that list is not empty: read the locales (move `await siteLocales(storeId)` behind a small memo `const locales = async () => (cached ??= await siteLocales(storeId))` so it runs at most once and only when something is cut), then one read `select id, published, published_at::text as stamp from commerce.pages where id = any(${uuidList(ids)}) and published_at is not null` (uuidList from './sql-arrays'), and for each returned row parse, cut and call replacePassages() or markSource() exactly as the first commit does, with the path worked out in the first read and version `new Date(stamp).toISOString()`. Entries, first read (no document, no fields): select e.id, (<the stale expression of the first commit>) as stale from commerce.content_entries e join commerce.content_types t on t.id = e.type_id left join commerce.knowledge_sources k on k.entry_id = e.id where <same where>. Only for the stale ids run today's full entries select with `and e.id = any(${uuidList(ids)})` added, and cut as today. The two deletes at the end stay. (B) Add `async function sitesWithWork(): Promise<(string | null)[]>` that runs ONE statement and returns store ids (null for Kaizena Flow's own site): select a.store_id from commerce.chat_agents a where a.enabled and (a.store_id is null or commerce.store_is_active(a.store_id)) and ( exists (select 1 from commerce.pages p left join commerce.knowledge_sources k on k.page_id = p.id where (p.store_id = a.store_id or (a.store_id is null and p.store_id is null)) and p.type in ('page', 'article') and p.published_at is not null and (k.page_id is null or k.published_at <> p.published_at or k.slug <> p.slug)) or exists (select 1 from commerce.content_entries e join commerce.content_types t on t.id = e.type_id left join commerce.knowledge_sources k on k.entry_id = e.id where (e.store_id = a.store_id or (a.store_id is null and e.store_id is null)) and e.published_at is not null and (k.entry_id is null or k.published_at <> e.published_at or k.slug <> e.slug or k.type_version is distinct from md5(t.fields::text || t.title_field || t.slug || t.has_pages::text))) or exists (select 1 from commerce.knowledge_sources k where (k.store_id = a.store_id or (a.store_id is null and k.store_id is null)) and ((k.page_id is not null and not exists (select 1 from commerce.pages p where p.id = k.page_id and p.published_at is not null)) or (k.entry_id is not null and not exists (select 1 from commerce.content_entries e where e.id = k.entry_id and e.published_at is not null)))) or exists (select 1 from commerce.knowledge_chunks c where (c.store_id = a.store_id or (a.store_id is null and c.store_id is null)) and c.space is null and c.created_at > now() - interval '1 hour') ). (C) refreshKnowledge(options: { now?: Date; full?: boolean } = {}): `const now = options.now ?? new Date(); const full = options.full ?? now.getUTCMinutes() < 5;`. When full, list the sites with today's statement (every enabled agent of an active store, and Kaizena Flow's own) and do today's loop unchanged: this is the hourly net, which also catches a blog whose address changed, a site whose AI model changed and passages still waiting for a vector. When not full, the list is sitesWithWork(), and the same loop body runs for those sites only: syncPageKnowledge(), then aiFor() and embedKnowledge(). A site not on the list costs nothing more: no locales, no blogs, no aiFor(). Return { sites: <number of sites looped over>, cut, embedded } as today. (D) Correct the doc comment at the top of the file: pages are cut 'when the five-minute cron finds them published anew, by comparing commerce.knowledge_sources in SQL; once an hour every site with chat on is gone through whole'. refreshSiteKnowledge() stays as it is."
+        },
+        {
+          "file": "src/server/chat.int.test.ts",
+          "action": "edit",
+          "how": "Extend the new case of the first commit: the second run of syncPageKnowledge() inside counted() now also expects no statement that contains 'published from commerce.pages where id = any' and at most 5 statements in all. Add it('an idle run of the job is one statement and reads no AI connection (bloat review 0.27)'): insert `commerce.chat_agents` row for storeId with enabled true if the store has none (read the columns the table needs from src/db/schema.ts at `export const chatAgents`; use `on conflict (store_id) do update set enabled = true` if a unique key on store_id exists, otherwise update the existing row); run `await knowledge.refreshKnowledge({ full: true })` once to bring every site of the test database up to date; update commerce.knowledge_chunks set created_at = now() - interval '2 hours' where space is null (so no passage counts as newly waiting); then inside counted() run `await knowledge.refreshKnowledge({ full: false })` and expect: cut 0, sites 0, exactly 1 statement, and no statement containing 'commerce.ai_providers'. Then publish the store's page again (published_at = now() + interval '2 seconds') and expect `refreshKnowledge({ full: false })` to return cut 1 and sites 1. If another test file's stores make `sites` more than 0 in the idle run, scope the assertion: expect that storeId's site is not among the sites that had work, by asserting no statement in the run has storeId among its values (extend counted() to keep `c[0].values` or `c[1]`)."
+        },
+        {
+          "file": "docs/rules/storefront.md",
+          "action": "edit",
+          "how": "In 'The chat agent (D81 ...)' section, the sentence that starts 'Knowledge is `knowledge_chunks` (SQL only, like `product_embeddings`):' (about line 407): after 'by `syncPageKnowledge()` in the five-minute cron' insert ', which compares `commerce.knowledge_sources` (what each page and entry was last cut from, also when it gave no passage) in SQL and fetches a document only for a source to cut; `refreshKnowledge()` asks in one statement which sites have work, and once an hour goes through every site with chat on'. Change nothing else in the rule."
+        },
+        {
+          "file": "docs/decisions.md",
+          "action": "edit",
+          "how": "Append one row with the next free D-number (pull main first; `rg -o '^\\| D[0-9]+' docs/decisions.md | tr -dc '0-9\\n' | sort -n | tail -1`, plus 1; 573 was the last on 12 November 2026). It records: commerce.knowledge_sources and why (a page with no words had no passage to carry its version, so it was cut again every five minutes: 91,200 empty transactions in 78 days); that the job now chooses what to cut in SQL and fetches documents only for those; that one statement lists the sites with work and the full pass runs in the first five minutes of each hour as the net (a blog's changed address, a changed AI model, passages waiting for vectors longer than an hour); that the five-minute cadence of the rule is kept. Platform: Kaizena Flow's own site is the null-store rows of the same table and the same job. Under Migration versions add both file versions once CI has applied them, with the advisors' result."
+        },
+        {
+          "file": "docs/audits/bloat-review-2026-11.md",
+          "action": "edit",
+          "how": "In the Progress table set the row of step 0.27 to Done with the date and the two commits in Notes (find it: rg -n '^\\| 0\\.27 ' docs/audits/bloat-review-2026-11.md). If anything was done differently from the plan, add one line under the step's heading in docs/audits/bloat-review-2026-11/plan/phase-0.md."
+        }
+      ],
+      "checks": [
+        "pnpm exec vitest run --config vitest.integration.config.mts src/server/chat.int.test.ts : pass, all old cases unchanged and the three new ones",
+        "On the local seeded Postgres: explain the sitesWithWork() statement (copy it into psql or a node one-liner) : it runs without error; report the plan in the commit message body if it shows 'Seq Scan on pages' inside the SubPlan",
+        "pnpm lint && pnpm typecheck && pnpm test : exits 0",
+        "pnpm test:int : exits 0"
+      ]
+    }
+  ],
+  "tests": [
+    {
+      "file": "src/server/chat.int.test.ts",
+      "proves": "Fails when a wordless published page is cut a second time, when an unchanged run opens a transaction or selects a page's document, when a page published again is not cut again, when an unpublished page keeps its source row, and when an idle refreshKnowledge() sends more than one statement or reads commerce.ai_providers."
+    },
+    {
+      "file": "src/db/commerce.test.ts",
+      "proves": "Fails when knowledge_sources accepts a row with no source or two rows for one page, keeps a row after its page is deleted, or has row-level security off."
+    }
+  ],
+  "migration": {
+    "needed": true,
+    "notes": "Two files in the first commit. (1) Generated by pnpm db:generate from src/db/schema.ts: the new table commerce.knowledge_sources with its keys and indexes, plus the hand-added ENABLE ROW LEVEL SECURITY line. (2) Custom (drizzle-kit generate --custom --name knowledge_sources_fill, then node scripts/prune-snapshots.mjs): two inserts that fill the table from today's passages. Neither touches a hot table (pages, knowledge_chunks and content_entries are not on the hot list, and both are only read). Add-only: the code that is running does not know the table and keeps working; if it cuts a page between the migration and the deploy, the new code cuts that page once more, which is harmless. CI's release job applies both after every check passes, then deploys. Never apply them by hand. After the deploy check the security and performance advisors and record both versions in docs/decisions.md. The second commit has no migration."
+  },
+  "done_when": [
+    {
+      "check": "pnpm exec vitest run --config vitest.integration.config.mts src/server/chat.int.test.ts",
+      "expect": "passes; the new case counts zero transactions and zero selects of a document on the second run over a store with a wordless published page, and the idle refreshKnowledge({ full: false }) sends exactly 1 statement"
+    },
+    {
+      "check": "rg -n 'min\\(c\\.version\\)|min\\(c\\.path\\)' src/server/knowledge.ts",
+      "expect": "prints nothing"
+    },
+    {
+      "check": "pnpm db:check",
+      "expect": "exits 0"
+    }
+  ],
+  "after_deploy": [
+    "CI's release job is green and applied both migration files; Supabase advisors for project ybsozesfuxuitoacntfo show no new warning (INFO 'RLS on, no policy' for knowledge_sources is expected).",
+    "A day after the second commit's deploy (the owner, or a session allowed to read production): in pg_stat_statements the calls of the statement starting `delete from commerce.knowledge_chunks where page_id = $1` rose by no more than the pages published that day (about 1,170 a day before).",
+    "Platform, Usage and limits: the job dispatcher.knowledge is not late and not failing.",
+    "The admin's chat screen for Kaizena Flow's own site still shows its passages and how many have vectors (knowledgeStatus)."
+  ],
+  "docs": [
+    "docs/decisions.md: the D-row and both migration versions.",
+    "docs/rules/storefront.md: the knowledge sentence of the chat agent's rule names knowledge_sources and the hourly full pass.",
+    "docs/audits/bloat-review-2026-11.md, Progress table: step 0.27 set to Done with the date and commits."
+  ],
+  "do_not": [
+    "Do not change the five-minute cadence of the knowledge job or remove it from runJobs() in src/app/api/cron/cart-reminders/route.ts.",
+    "Do not write knowledge_chunks into src/db/schema.ts: it is SQL only because of its vector column.",
+    "Do not delete or re-cut existing passages to fill the new table: a re-cut throws away vectors the store's AI paid for. The fill migration is the only way rows appear before the first run.",
+    "Do not compare versions as JavaScript dates in the new code: compare published_at in SQL, and pass the stamp as the text the database gave.",
+    "Do not drop the `version` column's writes on knowledge_chunks or change its format.",
+    "Do not add a call to refreshSiteKnowledge() in the page savers: ten files write commerce.pages and the job is now cheap enough to find a publish itself.",
+    "Do not remove the hourly full pass: it is the only thing that finds a blog whose address changed, a changed embedding model and passages waiting longer than an hour.",
+    "Do not edit a baseline migration or supabase/archive, and do not apply a migration by hand.",
+    "Do not change an existing case of chat.int.test.ts to make it pass."
+  ],
+  "stop_if": [
+    "pnpm db:generate writes anything besides the new table, its keys and indexes (the schema and the snapshot disagreed before this step): report the file.",
+    "The fill migration fails in src/db/commerce.test.ts (PGlite): report the error; do not drop the fill.",
+    "The existing case 'gives an article its own blog's address, and moves it when it moves to another blog' fails after either commit.",
+    "The idle run sends more than 1 statement, or the second run over a wordless page opens a transaction: report the statements counted.",
+    "src/db/privacy.test.ts, store-export.scan.test.ts or the copy-rules test asks for a register entry other than the three given here.",
+    "commerce.chat_agents has no way to insert a row for the test store with the columns found: report the table's columns."
+  ],
+  "executor": "cheap-then-review",
+  "executor_why": "The table, both migrations and every statement are written out and the int test counts the statements, but the change decides what the chat agent knows and adds a correlated statement over pages for every site, so a stronger model should read the diff and the plan of sitesWithWork() before each push.",
+  "checked_in_code": "I opened src/server/knowledge.ts (syncPageKnowledge at 167, replacePassages at 233, refreshKnowledge at 297), src/server/chat.int.test.ts, the knowledge_chunks table in the baseline and the three registers. The findings match the code: the version lives only on passages, so a page with no passage is cut on every run. Three corrections. The findings disagree on the table's columns; I chose published_at, slug and type_version (DQ-6's) because they can be compared in SQL, which the step's one statement over all sites needs, and the fill compares the stored ISO text with to_char so a stale source is cut once rather than marked current. The existing test at chat.int.test.ts:145 moves an article to another blog without a new publishing date and expects a cut at once, so the path is still worked out on every run from published ->> 'blogId' (PM-3's point), not left to the hourly net. The step counts statements 'with a counter'; none exists until step 1.9, so the test copies the pg.Client spy that variants-scale.int.test.ts already uses. A passage with no vector counts as work for one hour only, otherwise a site with no AI connection would never be idle; the hourly pass covers the rest."
+}

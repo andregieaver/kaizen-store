@@ -163,7 +163,7 @@
   "On a phone-sized window on the template store, add a product and open the cart from the header: the drawer slides out; open a made-up address: the store's own 404 page with status 404."
  ],
  "docs": [
-  "docs/decisions.md: a new row with the next free D-number: the cart drawer's slot moved to the (shop) route group under the market layout because a slot on a root layout makes Next 16 render the layout twice; the header's cart link is a plain anchor from 768 px; getCartCount is shared per render; figures before and after (138,523 to the measured bytes, 2 html elements to 1). Say it refines D64.",
+  "docs/decisions.md: a new row with the next free D-number: the cart drawer's slot moved to the (shop) route group under the market layout because a slot on a root layout makes Next 16 render the layout twice; the header's cart link is a plain anchor from 768 px; getCartCount is shared per render; figures before and after (138,523 to the measured bytes, 2 html elements to 1). Say it refines D64. Take the number as the repo then asks: with node scripts/claim-decision.mjs if step 0.41 has made it, and as a file docs/decisions/D{n}.md if step 2.40 has split the decisions.",
   "docs/rules/storefront.md: the two edits named in commits 2 and 3.",
   "docs/performance.md: one line under the rules: a store document holds its layout once, held by e2e/performance.spec.ts; each layout-level sheet is in a document twice (HTML and payload).",
   "The plan's Progress table under docs/audits/bloat-review-2026-11 (made by step 0.1): set step 2.2 to Done with the date and commit, and write the measured figures in its section."

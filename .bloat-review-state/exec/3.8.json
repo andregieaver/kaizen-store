@@ -1,0 +1,160 @@
+{
+  "id": "3.8",
+  "goal": "commerce.idempotency_keys and its enum are gone from the schema, the code's registers and production, and production has no commerce_legacy schema, after a dump that was restored, counted and shown to the owner.",
+  "why": "Today the schema carries one table and one enum that the api_idempotency_keys tables of D441 replaced (no code names them: 9 lines in 6 files of src), and production holds 34 leftover tables (96 rows) in commerce_legacy. After: `rg -n 'idempotency_keys' src | rg -v 'api_(app_)?idempotency_keys'` prints nothing and the size-by-schema reading lists no commerce_legacy.",
+  "read_first": [
+    "docs/ci-migrations.md",
+    "docs/runbooks/restore.md",
+    "src/db/schema.ts:280",
+    "src/lib/personal-data.ts",
+    "src/lib/store-copy-rules.ts",
+    "src/lib/store-export-scope.ts",
+    "src/db/migration-safety.scan.test.ts",
+    "docs/decisions.md:420"
+  ],
+  "depends_on": [
+    {
+      "id": "0.2",
+      "why": "its daily reading holds the size of each schema, which is how done_when reads that commerce_legacy is gone"
+    }
+  ],
+  "commits": [
+    {
+      "title": "The unused idempotency_keys table and its enum are dropped: the api_idempotency_keys tables of D441 do its job",
+      "changes": [
+        {
+          "file": "src/db/schema.ts",
+          "action": "edit",
+          "how": "Delete the whole declaration `export const idempotencyKeys = commerce.table(\"idempotency_keys\", ...)` with its doc comment '/** Makes retried writes (checkout, refunds) safe to repeat. */' (near line 7180), and the whole declaration `export const idempotencyStatus = commerce.enum(\"idempotency_status\", [\"in_progress\", \"completed\"]);` (near line 289). Do not touch apiIdempotencyKeys, apiAppIdempotencyKeys or any other table. Then run `pnpm db:generate`: it must write one migration that contains `DROP TABLE \"commerce\".\"idempotency_keys\"` and `DROP TYPE \"commerce\".\"idempotency_status\"` and nothing else (the table's primary key, its foreign key to stores and its row-level-security setting go with the table). If drizzle-kit asks whether something was renamed, answer that nothing was renamed. If the generated file contains any other statement, stop."
+        },
+        {
+          "file": "src/lib/personal-data.ts",
+          "action": "edit",
+          "how": "Delete the line that starts `entry(\"idempotency_keys\", \"none\", none, [], null, \"none\", \"An unused table;` (line 238)."
+        },
+        {
+          "file": "src/lib/personal-data.nb.ts",
+          "action": "edit",
+          "how": "Delete the line `idempotency_keys: \"En ubrukt tabell; ...\",` (line 226)."
+        },
+        {
+          "file": "src/lib/personal-purposes.ts",
+          "action": "edit",
+          "how": "Delete the line `idempotency_keys: \"security\",` (line 281)."
+        },
+        {
+          "file": "src/lib/store-export-scope.ts",
+          "action": "edit",
+          "how": "Delete the line `idempotency_keys: \"secret\",` (line 66)."
+        },
+        {
+          "file": "src/lib/store-copy-rules.ts",
+          "action": "edit",
+          "how": "Delete the line `idempotency_keys: never(\"Request de-duplication.\"),` (line 353)."
+        },
+        {
+          "file": "docs/wave-1g-gdpr.md",
+          "action": "edit",
+          "how": "Line 94: remove the words ', `idempotency_keys` (unused table, nothing to do)'. Line 451, the row 'Processors' queues': remove ', `idempotency_keys` (`none`: unused)'. Keep the rest of both lines."
+        }
+      ],
+      "checks": [
+        "rg -n 'idempotency_keys|idempotencyKeys\\b|idempotencyStatus|idempotency_status' src | rg -v 'api_(app_)?idempotency_keys|apiIdempotencyKeys|apiAppIdempotencyKeys': prints nothing. If step 3.5 is done and src/lib/table-classes.ts has an entry idempotency_keys, delete that entry too.",
+        "pnpm db:check: exits 0",
+        "pnpm exec vitest run src/db/privacy.test.ts src/db/commerce.test.ts src/db/migration-safety.scan.test.ts src/db/snapshots.scan.test.ts src/server/store-export.scan.test.ts src/lib/store-copy-rules.test.ts src/lib/personal-data.test.ts: pass (if a file name differs, find it with `rg -l 'store-copy-rules|personal-data|store-export-scope' src --glob '*.test.ts'` and run those)",
+        "pnpm lint && pnpm typecheck && pnpm test: exits 0",
+        "pnpm test:int: exits 0",
+        "BEFORE THE PUSH (the owner does or approves each part; an agent session has no production access and must not use the Supabase tools): (1) from production, `pg_dump --schema=commerce_legacy --table=commerce.idempotency_keys` into one file, as docs/runbooks/restore.md describes; (2) restore the file into a scratch Postgres (an empty database; create the enum's schema with `create schema commerce` first if the restore asks) and compare `select count(*)` of each of the 34 commerce_legacy tables and of commerce.idempotency_keys with production's counts, table by table (the review read 96 rows in commerce_legacy in all); (3) on production, read-only, run the dependency query written in this commit's migration (the select inside the DO block) and expect 0; (4) keep the dump file with the backups; (5) show the owner where the dump is and the 35 counts, and wait for a yes. Without that yes nothing of this step is pushed."
+      ]
+    },
+    {
+      "title": "The leftover commerce_legacy schema is dropped, guarded",
+      "changes": [
+        {
+          "file": "supabase/migrations/*_drop_commerce_legacy.sql",
+          "action": "create",
+          "how": "A custom migration: `pnpm exec drizzle-kit generate --custom --name drop_commerce_legacy`, then `node scripts/prune-snapshots.mjs`. Its text, in this order. A comment: what commerce_legacy is (the single-store schema renamed on 24 September 2026, 34 tables, named by no code), that a verified dump was taken first and where the decision row is. Then a guard as a DO block in plpgsql: if no schema commerce_legacy exists (`not exists (select 1 from pg_namespace where nspname = 'commerce_legacy')`), return. Otherwise count the things outside the schema that depend on it and raise an exception 'commerce_legacy still has dependents outside it: %' when the count is above 0. The count is the sum of: (a) foreign keys whose referenced table is in commerce_legacy and whose own table is not (pg_constraint contype 'f', join pg_class and pg_namespace on conrelid and confrelid); (b) columns of tables outside the schema whose type is defined in commerce_legacy (pg_attribute join pg_type on atttypid, pg_type.typnamespace = the legacy schema's oid, the column's table in another schema, attisdropped false); (c) views outside the schema whose definition names it (pg_views where schemaname <> 'commerce_legacy' and definition ilike '%commerce_legacy.%'); (d) functions outside the schema whose source names it (pg_proc join pg_namespace, nspname <> 'commerce_legacy', prosrc ilike '%commerce_legacy%'). After the DO block, one statement: `DROP SCHEMA IF EXISTS commerce_legacy CASCADE;`. No other statement. CASCADE is needed for the schema's own 34 tables; the guard is what stops it from reaching anything else."
+        },
+        {
+          "file": "src/db/legacy-schema-drop.test.ts",
+          "action": "create",
+          "how": "A database unit test using createTestDatabase() from src/db/testing.ts, as src/db/privacy.test.ts does. It reads the migration file from supabase/migrations (find it by its name ending `_drop_commerce_legacy.sql` with readdirSync; name the test file legacy-schema-drop.scan.test.ts if step 2.43 is done). Cases: (1) on the test database, which has no commerce_legacy, running the file's text changes nothing and does not fail; (2) `create schema commerce_legacy; create table commerce_legacy.orders (id int primary key); insert ... values (1);` then running the text leaves no schema commerce_legacy; (3) the same schema plus `create table commerce.scratch_dep (id int references commerce_legacy.orders(id))`: running the text rejects with /still has dependents/ and the schema is still there; drop the scratch table and the schema at the end."
+        },
+        {
+          "file": "docs/decisions.md",
+          "action": "edit",
+          "how": "In '### Migration versions' (near line 420), change the sentence 'the old schema was not dropped: it was renamed to `commerce_legacy` and can be removed once the platform schema has proved itself.' to say it was renamed to `commerce_legacy` and dropped on <date> by the migration <file name>, after a dump that was restored and counted (see the new decision row). Add the decision row described under docs."
+        }
+      ],
+      "checks": [
+        "pnpm exec vitest run src/db/legacy-schema-drop.test.ts src/db/migration-safety.scan.test.ts: pass",
+        "pnpm db:check: exits 0",
+        "pnpm lint && pnpm typecheck && pnpm test: exits 0",
+        "The owner's yes from the first commit covers this one only if the dump held commerce_legacy too and the dependency query returned 0; otherwise repeat the dump steps before this push."
+      ]
+    }
+  ],
+  "tests": [
+    {
+      "file": "src/db/legacy-schema-drop.test.ts",
+      "proves": "fails when the migration would drop commerce_legacy while a table, column, view or function outside it still depends on it, or when it fails on a database that has no such schema"
+    },
+    {
+      "file": "src/db/privacy.test.ts",
+      "proves": "(existing) fails when a register still names the dropped table or a table has no register row"
+    }
+  ],
+  "migration": {
+    "needed": true,
+    "notes": "Two files, both applied by CI, never by hand. (1) Generated by pnpm db:generate: DROP TABLE commerce.idempotency_keys and DROP TYPE commerce.idempotency_status. Running code keeps working because no code names either (rg proves it); it is a drop of a duplicate, not of something in use. (2) Custom: a guard and DROP SCHEMA IF EXISTS commerce_legacy CASCADE; the test database has no such schema, so the IF EXISTS and the guard's early return matter. Neither touches a hot table. The production limits (15 s a statement, 5 s for a lock) are enough for 35 small tables. After the deploy check the advisors and record both versions in docs/decisions.md under Migration versions. Both drops remove production data for good: the verified dump is the only way back."
+  },
+  "done_when": [
+    {
+      "check": "rg -n 'idempotency_keys' src | rg -v 'api_(app_)?idempotency_keys'",
+      "expect": "prints nothing"
+    },
+    {
+      "check": "production, the daily reading of step 0.2 (size by schema) the day after the second commit is live",
+      "expect": "lists no commerce_legacy"
+    },
+    {
+      "check": "the dump restored into a scratch database: select count(*) per table",
+      "expect": "the same 35 counts as production gave before the drops"
+    },
+    {
+      "check": "the owner's written yes",
+      "expect": "given after seeing where the dump is and the counts, before the first commit was pushed"
+    }
+  ],
+  "after_deploy": [
+    "Production: `select count(*) from pg_namespace where nspname = 'commerce_legacy'` returns 0 and `select to_regclass('commerce.idempotency_keys')` returns null.",
+    "Supabase advisors (project ybsozesfuxuitoacntfo): no new warning.",
+    "The CI run's release job shows both files applied and 'Nothing is left pending'."
+  ],
+  "docs": [
+    "docs/decisions.md: add one row with the next free D-number (read the last row of the decisions table to find it; never reuse a number) and today's date. It records: commerce.idempotency_keys and its enum were dropped as a duplicate of the api_idempotency_keys tables of D441, and the commerce_legacy schema (34 tables, 96 rows, kept since 24 September 2026) was dropped; where the dump is kept, the counts, the date the owner said yes, and both migration versions. It also lists the five unused columns that go when their tables are next changed: domain_registrations.contact_checked_at, not_found_hits.first_seen_at, payment_credentials.secret_key_hint, payment_credentials.webhook_secret_hint, tripletex_sync.source_updated_at.",
+    "docs/decisions.md, Migration versions: the corrected sentence about commerce_legacy (second commit).",
+    "docs/wave-1g-gdpr.md lines 94 and 451 (first commit).",
+    "docs/audits/bloat-review-2026-11.md, Progress table: set the row of step 3.8 to Done with the date and the commit hash (if the table has no row for 3.8, add one in the table of its phase with the step's title), and add one line to that file's change log if it has one."
+  ],
+  "do_not": [
+    "Do not drop or rename api_idempotency_keys or api_app_idempotency_keys, or anything named apiIdempotency* in code.",
+    "Do not drop the five unused columns in this step, and do not drop product_safety_rules.legal_basis ever (it is reference data).",
+    "Do not remove any table because it is empty or unused by shoppers: only this duplicate and the leftover schema go.",
+    "Do not write DROP SCHEMA without the guard, and do not add CASCADE to the DROP TABLE of idempotency_keys.",
+    "Do not edit the baseline files in supabase/migrations or anything under supabase/archive/.",
+    "Do not apply either migration by hand, and do not query production from the session.",
+    "Do not touch supabase/seed.sql or the add_demo_* functions."
+  ],
+  "stop_if": [
+    "The generated migration contains anything but the DROP TABLE and the DROP TYPE.",
+    "rg finds a use of idempotencyKeys or commerce.idempotency_keys in code outside the six files named here.",
+    "Production's commerce.idempotency_keys holds rows (the register says nothing writes to it): report the count before asking the owner.",
+    "The dependency query returns more than 0 in production, or the restored counts differ from production's.",
+    "The owner has not said yes.",
+    "A test other than the ones this brief creates must be changed to pass."
+  ],
+  "executor": "cheap-then-review",
+  "executor_why": "The edits are deletions of named lines and a short guarded migration, but both migrations destroy production data, so a stronger model reads the two SQL files and the dump's counts before the push.",
+  "checked_in_code": "I opened src/db/schema.ts (the enum at line 289, the table at 7180), the five register lines, docs/wave-1g-gdpr.md:94 and :451, the baseline's DDL for the table and docs/decisions.md:424; all match the finding, and rg finds no SQL function and no test that names the table. commerce_legacy is named by no file outside docs. I added what the finding left out: DROP SCHEMA ... CASCADE can reach objects in other schemas, so the migration first raises if anything outside commerce_legacy depends on it, and a PGlite test holds that guard; and the dump covers the idempotency table too, as the step requires."
+}

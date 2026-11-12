@@ -1,0 +1,359 @@
+{
+  "id": "3.9",
+  "goal": "kaizenaflow.com has one copy: its pages, header, footer, menus, look and media live only in Kaizena Flow's own store ('kaizenaflow'), the old no-store site routes, screens and server files are gone, the platform's own routes (sign-up, themes, docs, status) draw the store's header and footer, and in a later push the three twin tables and the site's null-store rows are dropped after a verified dump the owner has seen.",
+  "why": "Today the site exists twice: 20 route pages in two languages, 23 to 32 platform admin pages, 3 twin tables and up to 4,400 lines kept beside the store that has served the site since 7 November (D484). After: `find 'src/app/(platform)' 'src/app/(platform-nb)' -name page.tsx` lists none of the 20, and `rg -l 'platform_theme_installs' src --glob '!*.test.*' | wc -l` prints 0 (7 today).",
+  "read_first": [
+    "docs/platform-parity-plan.md",
+    "docs/platform-parity.md",
+    "docs/site-design.md",
+    "docs/rules/admin/website.md",
+    "node_modules/next/dist/docs/01-app/03-api-reference/03-file-conventions/proxy.md",
+    "src/lib/house-routing.ts",
+    "src/proxy.ts",
+    "src/components/platform-root.tsx"
+  ],
+  "depends_on": [],
+  "commits": [
+    {
+      "title": "An inventory of every reader of the site's null-store rows, as a script and a list that can only shrink",
+      "changes": [
+        {
+          "file": "scripts/null-site-readers.mjs",
+          "action": "create",
+          "how": "A read-only Node script (node:fs, node:path, no dependencies). It walks src (files ending .ts or .tsx, not *.test.ts, not *.test.tsx) and prints, as JSON, one entry per file that matches any of these regular expressions, with the names of the patterns it matched: tables: /platform_theme_installs|platform_theme_install_updates|platform_page_roles|platformThemeInstalls|platformThemeInstallUpdates|platformPageRoles/ ; modules: /from \"(@\\/server\\/|\\.\\/)(platform-theme-installs|platform-roles|platform-theme-preview)\"|from \"(@\\/lib\\/|\\.\\/)platform-roles\"|from \"(@\\/components\\/|\\.\\/)(platform-page|platform-layout)\"/ ; chrome: /getPlatformChrome\\(|siteLayoutFor\\(null|textStylesCssFor\\(null/ ; switch: /site_from_store|siteFromStore|siteStore\\(/ . Output shape: { files: [{ file, patterns: [...] }], count }. With the argument `--write` it writes the same JSON to src/lib/null-site-readers.baseline.json, adding to each entry the field `kind` copied from the existing baseline when the file was already there, else \"unclassed\"."
+        },
+        {
+          "file": "src/lib/null-site-readers.baseline.json",
+          "action": "create",
+          "how": "Run `node scripts/null-site-readers.mjs --write`, then set `kind` on every entry by reading the file: \"site\" (it serves or edits only the old site's pages, header, footer, menus or look: it will be deleted), \"kept-route\" (it serves a route the platform keeps: sign-up, get-domain, report, themes, status, support, unsubscribe, docs, the admin frame, the favicon and manifest: it will be moved to read the store), \"switch\" (it reads the switch platform_settings.site_from_store: the read goes when the old pages go). On 12 November 2026 the counts were: 7 files name platform_theme_installs, 4 name platform_page_roles, 8 name site_from_store, src/server/platform-navigation.ts has 43 importers and src/server/platform-roles.ts 14; getPlatformChrome() is called in 16 files."
+        },
+        {
+          "file": "src/lib/null-site-readers.scan.test.ts",
+          "action": "create",
+          "how": "Imports nothing from scripts; repeats the walk with the same four patterns (keep the patterns in one exported constant in scripts/lib/null-site-readers.mjs and import it from both the script and the test, as src/lib/await-deploy.test.ts imports a script's module). Two cases: (1) every file the walk finds is in the baseline (a new reader of the old site fails, with the message 'Kaizena Flow's site is its store's since D484: read the store, not the null-store rows'); (2) every baseline entry has a kind other than \"unclassed\". A file in the baseline that no longer matches does not fail: it tells the reader to run `node scripts/null-site-readers.mjs --write`."
+        },
+        {
+          "file": "scripts/lib/null-site-readers.mjs",
+          "action": "create",
+          "how": "Exports `PATTERNS` (the four named regular expressions above) and `readersIn(root)` (the walk). The script and the test both use it."
+        }
+      ],
+      "checks": [
+        "node scripts/null-site-readers.mjs | node -e \"const j=JSON.parse(require('fs').readFileSync(0,'utf8'));console.log(j.count)\": prints a number between 40 and 90",
+        "pnpm exec vitest run src/lib/null-site-readers.scan.test.ts: passes",
+        "pnpm lint && pnpm typecheck && pnpm test: exits 0"
+      ]
+    },
+    {
+      "title": "A copy of the live site's addresses is taken, and the media library's rows are the store's",
+      "changes": [
+        {
+          "file": "docs/platform-parity-plan.md",
+          "action": "edit",
+          "how": "This commit is the parity plan's 'still to do at the switch'. First, outside the repo, run `node scripts/site-compare.mjs https://kaizenaflow.com > before.json` and keep before.json outside the repository (it is the 'copy taken before'; every later commit of this step is compared with it). Then find how the site copy treats media: read src/server/house-site.ts and the SQL function it calls. If the store's library already holds a row for every file the store's pages use (the copy made rows for the same files), no data moves and this commit only records that in the plan's step 5 paragraph ('Still to do at the switch: the media library's rows move to the store') with the query that proves it: every storage URL in the store's pages, layouts and menus has a commerce.media row with the store's id. If rows are missing, write a custom migration that inserts a commerce.media row for the house store (commerce.house_store()) for each null-store media row whose url the store's content uses and that the store lacks (insert ... select ... where not exists; the same file, no copy of bytes; no delete, no update of the null rows). Say which of the two happened in the decision row."
+        }
+      ],
+      "checks": [
+        "node scripts/site-compare.mjs https://kaizenaflow.com --against before.json: exits 0 (nothing changed yet)",
+        "pnpm test:int src/server/house-site.int.test.ts (or the int tests `rg -l 'house-site' src --glob '*.int.test.ts'` lists): pass",
+        "pnpm lint && pnpm typecheck && pnpm test: exits 0"
+      ]
+    },
+    {
+      "title": "The platform's own routes draw the store's header, footer, look and fonts",
+      "changes": [
+        {
+          "file": "src/components/platform-root.tsx",
+          "action": "edit",
+          "how": "Today line 59 reads `getPlatformChrome()`, `siteLayoutFor(null, \"header\")`, `siteLayoutFor(null, \"footer\")` and the house store, and line 74 draws `textStylesCssFor(null)`. Change it to read the header layout, footer layout, theme, fonts, text styles and custom CSS of the house store (the store read on that line; its id) through the same functions the storefront's root uses for a store (find them in the store's layout: rg -n 'siteLayoutFor\\(|textStylesCssFor\\(' src/app/s). Keep platformText() for the routes' own words and keep the language handling. The same change in src/components/docs/docs-root.tsx and src/components/theme-preview-root.tsx where they read getPlatformChrome() for look or layout. This is design work: the store's header component and the platform's (KaizenSiteHeader in src/components/platform-layout.tsx) take different inputs; choose the store's component and feed it the store, and say in the commit message what the kept routes lose or gain (cart icon off, account links)."
+        }
+      ],
+      "checks": [
+        "Before and after pictures with the agent's eyes (D310, src/server/page-looks.ts) of /sign-up, /themes, /themes/<one slug>, /status and /docs, phone and computer, light and dark, English and Norwegian: send them to the owner; no header or footer differs from the store's front page",
+        "pnpm build && pnpm test:e2e: exits 0 (the specs e2e/platform-languages.spec.ts, e2e/blog.spec.ts, e2e/blog-feed.spec.ts, e2e/site-layouts.spec.ts and e2e/store-pages.spec.ts among them)",
+        "pnpm exec vitest run src/lib/platform-chrome.scan.test.ts src/lib/house-routing.scan.test.ts: pass (the files are named *.scan.test.ts only if step 2.43 is done; otherwise without .scan)",
+        "pnpm lint && pnpm typecheck && pnpm test: exits 0"
+      ]
+    },
+    {
+      "title": "The theme store's pages and the brand details read the store",
+      "changes": [
+        {
+          "file": "src/components/platform-routes/themes.tsx",
+          "action": "edit",
+          "how": "It uses src/components/platform-page.tsx and the roles 'themes' and 'theme' of src/lib/platform-roles.ts to find its two pages among the null-store pages. Move those two pages' content to pages of the house store (a custom migration that copies the two rows named by commerce.platform_page_roles roles 'themes' and 'theme' into the store's pages if the site copy did not, and records their ids in the store's page roles), and read them from the store. Then the 43 importers of src/server/platform-navigation.ts: for each, replace what it takes from getPlatformChrome() (favicon, logos, business details, custom CSS, menus) with one small reader of the house store's settings in a new file src/server/house-chrome.ts that returns the same field names, so importers change one import and one call. The baseline of the first commit lists them; work through it file by file and re-run `node scripts/null-site-readers.mjs --write` as it shrinks."
+        }
+      ],
+      "checks": [
+        "pnpm exec vitest run src/lib/null-site-readers.scan.test.ts: passes, and the baseline has no entry of kind kept-route with the pattern chrome",
+        "pnpm build && pnpm test:e2e: exits 0 (the specs e2e/platform-languages.spec.ts, e2e/blog.spec.ts, e2e/blog-feed.spec.ts, e2e/site-layouts.spec.ts and e2e/store-pages.spec.ts among them)",
+        "pnpm test:int: exits 0",
+        "pnpm lint && pnpm typecheck && pnpm test: exits 0"
+      ]
+    },
+    {
+      "title": "The old site's 20 route pages and their views are deleted",
+      "changes": [
+        {
+          "file": "src/app/(platform)/page.tsx",
+          "action": "delete",
+          "how": "Delete the file; delete its folder when the folder is then empty (a folder that still holds another route, such as nothing under blog but these pages, goes whole). Keep layout.tsx and not-found.tsx of (platform) and (platform-nb), and every folder in PLATFORM_ROUTES."
+        },
+        {
+          "file": "src/app/(platform)/[slug]/page.tsx",
+          "action": "delete",
+          "how": "Delete the file; delete its folder when the folder is then empty (a folder that still holds another route, such as nothing under blog but these pages, goes whole). Keep layout.tsx and not-found.tsx of (platform) and (platform-nb), and every folder in PLATFORM_ROUTES."
+        },
+        {
+          "file": "src/app/(platform)/[slug]/[...sub]/page.tsx",
+          "action": "delete",
+          "how": "Delete the file; delete its folder when the folder is then empty (a folder that still holds another route, such as nothing under blog but these pages, goes whole). Keep layout.tsx and not-found.tsx of (platform) and (platform-nb), and every folder in PLATFORM_ROUTES."
+        },
+        {
+          "file": "src/app/(platform)/blog/page.tsx",
+          "action": "delete",
+          "how": "Delete the file; delete its folder when the folder is then empty (a folder that still holds another route, such as nothing under blog but these pages, goes whole). Keep layout.tsx and not-found.tsx of (platform) and (platform-nb), and every folder in PLATFORM_ROUTES."
+        },
+        {
+          "file": "src/app/(platform)/blog/[slug]/page.tsx",
+          "action": "delete",
+          "how": "Delete the file; delete its folder when the folder is then empty (a folder that still holds another route, such as nothing under blog but these pages, goes whole). Keep layout.tsx and not-found.tsx of (platform) and (platform-nb), and every folder in PLATFORM_ROUTES."
+        },
+        {
+          "file": "src/app/(platform)/blog/category/[slug]/page.tsx",
+          "action": "delete",
+          "how": "Delete the file; delete its folder when the folder is then empty (a folder that still holds another route, such as nothing under blog but these pages, goes whole). Keep layout.tsx and not-found.tsx of (platform) and (platform-nb), and every folder in PLATFORM_ROUTES."
+        },
+        {
+          "file": "src/app/(platform)/blog/tag/[slug]/page.tsx",
+          "action": "delete",
+          "how": "Delete the file; delete its folder when the folder is then empty (a folder that still holds another route, such as nothing under blog but these pages, goes whole). Keep layout.tsx and not-found.tsx of (platform) and (platform-nb), and every folder in PLATFORM_ROUTES."
+        },
+        {
+          "file": "src/app/(platform)/category/[slug]/page.tsx",
+          "action": "delete",
+          "how": "Delete the file; delete its folder when the folder is then empty (a folder that still holds another route, such as nothing under blog but these pages, goes whole). Keep layout.tsx and not-found.tsx of (platform) and (platform-nb), and every folder in PLATFORM_ROUTES."
+        },
+        {
+          "file": "src/app/(platform)/tag/[slug]/page.tsx",
+          "action": "delete",
+          "how": "Delete the file; delete its folder when the folder is then empty (a folder that still holds another route, such as nothing under blog but these pages, goes whole). Keep layout.tsx and not-found.tsx of (platform) and (platform-nb), and every folder in PLATFORM_ROUTES."
+        },
+        {
+          "file": "src/app/(platform)/cookies/page.tsx",
+          "action": "delete",
+          "how": "Delete the file; delete its folder when the folder is then empty (a folder that still holds another route, such as nothing under blog but these pages, goes whole). Keep layout.tsx and not-found.tsx of (platform) and (platform-nb), and every folder in PLATFORM_ROUTES."
+        },
+        {
+          "file": "src/app/(platform-nb)/no/page.tsx",
+          "action": "delete",
+          "how": "Delete the file; delete its folder when the folder is then empty (a folder that still holds another route, such as nothing under blog but these pages, goes whole). Keep layout.tsx and not-found.tsx of (platform) and (platform-nb), and every folder in PLATFORM_ROUTES."
+        },
+        {
+          "file": "src/app/(platform-nb)/no/[slug]/page.tsx",
+          "action": "delete",
+          "how": "Delete the file; delete its folder when the folder is then empty (a folder that still holds another route, such as nothing under blog but these pages, goes whole). Keep layout.tsx and not-found.tsx of (platform) and (platform-nb), and every folder in PLATFORM_ROUTES."
+        },
+        {
+          "file": "src/app/(platform-nb)/no/[slug]/[...sub]/page.tsx",
+          "action": "delete",
+          "how": "Delete the file; delete its folder when the folder is then empty (a folder that still holds another route, such as nothing under blog but these pages, goes whole). Keep layout.tsx and not-found.tsx of (platform) and (platform-nb), and every folder in PLATFORM_ROUTES."
+        },
+        {
+          "file": "src/app/(platform-nb)/no/blog/page.tsx",
+          "action": "delete",
+          "how": "Delete the file; delete its folder when the folder is then empty (a folder that still holds another route, such as nothing under blog but these pages, goes whole). Keep layout.tsx and not-found.tsx of (platform) and (platform-nb), and every folder in PLATFORM_ROUTES."
+        },
+        {
+          "file": "src/app/(platform-nb)/no/blog/[slug]/page.tsx",
+          "action": "delete",
+          "how": "Delete the file; delete its folder when the folder is then empty (a folder that still holds another route, such as nothing under blog but these pages, goes whole). Keep layout.tsx and not-found.tsx of (platform) and (platform-nb), and every folder in PLATFORM_ROUTES."
+        },
+        {
+          "file": "src/app/(platform-nb)/no/blog/category/[slug]/page.tsx",
+          "action": "delete",
+          "how": "Delete the file; delete its folder when the folder is then empty (a folder that still holds another route, such as nothing under blog but these pages, goes whole). Keep layout.tsx and not-found.tsx of (platform) and (platform-nb), and every folder in PLATFORM_ROUTES."
+        },
+        {
+          "file": "src/app/(platform-nb)/no/blog/tag/[slug]/page.tsx",
+          "action": "delete",
+          "how": "Delete the file; delete its folder when the folder is then empty (a folder that still holds another route, such as nothing under blog but these pages, goes whole). Keep layout.tsx and not-found.tsx of (platform) and (platform-nb), and every folder in PLATFORM_ROUTES."
+        },
+        {
+          "file": "src/app/(platform-nb)/no/category/[slug]/page.tsx",
+          "action": "delete",
+          "how": "Delete the file; delete its folder when the folder is then empty (a folder that still holds another route, such as nothing under blog but these pages, goes whole). Keep layout.tsx and not-found.tsx of (platform) and (platform-nb), and every folder in PLATFORM_ROUTES."
+        },
+        {
+          "file": "src/app/(platform-nb)/no/tag/[slug]/page.tsx",
+          "action": "delete",
+          "how": "Delete the file; delete its folder when the folder is then empty (a folder that still holds another route, such as nothing under blog but these pages, goes whole). Keep layout.tsx and not-found.tsx of (platform) and (platform-nb), and every folder in PLATFORM_ROUTES."
+        },
+        {
+          "file": "src/app/(platform-nb)/no/cookies/page.tsx",
+          "action": "delete",
+          "how": "Delete the file; delete its folder when the folder is then empty (a folder that still holds another route, such as nothing under blog but these pages, goes whole). Keep layout.tsx and not-found.tsx of (platform) and (platform-nb), and every folder in PLATFORM_ROUTES."
+        },
+        {
+          "file": "src/components/platform-routes/home.tsx",
+          "action": "delete",
+          "how": "Delete, with page.tsx, entry.tsx, blog.tsx, terms.tsx and cookies.tsx in the same folder (rg each name first: delete only when no file outside the 20 pages imports it). Keep get-domain.tsx, not-found.tsx, report.tsx, sign-up*.tsx, status.tsx, theme-preview.tsx and themes.tsx."
+        },
+        {
+          "file": "src/components/platform-page.tsx",
+          "action": "delete",
+          "how": "Delete once themes.tsx no longer imports it (previous commit)."
+        },
+        {
+          "file": "src/proxy.ts",
+          "action": "edit",
+          "how": "In the block that calls siteStore() (job 6): the catch that says 'The switch that cannot be read leaves the request alone: Kaizena Flow's own pages answer' has nothing to fall back to. Serve the store: when the read fails, set `house = HOUSE_SLUG` for Kaizena Flow's own host if platformKeeps(pathname) is false. Read node_modules/next/dist/docs/01-app/03-api-reference/03-file-conventions/proxy.md before editing; do not change the matcher."
+        },
+        {
+          "file": "src/lib/house-routing.ts",
+          "action": "edit",
+          "how": "Keep PLATFORM_ROUTES and PLATFORM_ROUTES_NB as they are (the kept folders did not change); rewrite the two doc comments that say a test holds the list to the folders 'that are no page of the site (every one but [slug], blog, category, cookies, tag and the front page)': those folders no longer exist, so the test now holds the list to every folder."
+        }
+      ],
+      "checks": [
+        "find 'src/app/(platform)' 'src/app/(platform-nb)' -name page.tsx | rg -v '/(get-domain|report|sign-up|status|support|themes|unsubscribe|docs)/': prints nothing",
+        "pnpm exec vitest run src/lib/house-routing.scan.test.ts src/proxy.test.ts: pass after their expectations for the deleted folders and the fallback are rewritten (these two tests are the ones this commit may change)",
+        "pnpm build && pnpm test:e2e: exits 0 (the specs e2e/platform-languages.spec.ts, e2e/blog.spec.ts, e2e/blog-feed.spec.ts, e2e/site-layouts.spec.ts and e2e/store-pages.spec.ts among them)",
+        "After the deploy: node scripts/site-compare.mjs https://kaizenaflow.com --against before.json: exits 0",
+        "pnpm lint && pnpm typecheck && pnpm test: exits 0"
+      ]
+    },
+    {
+      "title": "The platform admin's Website section is one link to the store's",
+      "changes": [
+        {
+          "file": "src/lib/platform-nav.ts",
+          "action": "edit",
+          "how": "WEBSITE_ITEMS keeps only what serves more than the site: Templates (/templates), Fonts (/fonts, only if the theme store's themes need it; else it goes), Docs feedback (/docs/feedback) and Docs guide (/docs/guide). Remove the items /pages, /articles, /content, /media, /menus, /headers, /footers and /site-design. HOUSE_STORE_CARD stays as the first card. Then delete the folders articles, content, media, menus, headers, footers, site-design, navigation, seo, cookies and pages under src/app/admin/(gated)/platform (and src/app/admin/(gated)/(print)/platform/site-design), their entries in ADMIN_PAGES (src/lib/admin-map.ts), and add redirects from each old address to the same screen of the store's admin (/admin/kaizenaflow/...). Keep src/app/admin/(gated)/platform/themes (the theme store's own screens) and website (the hub). SiteSwitchCard and 'Copy the site' go from the hub."
+        }
+      ],
+      "checks": [
+        "pnpm exec vitest run src/lib/platform-nav.scan.test.ts src/lib/admin-map.scan.test.ts src/lib/owner-nav.scan.test.ts: pass with their lists updated",
+        "E2E_SIGNED_IN=1 run of e2e/signed-in (as CI's signed-in job does): passes with e2e/signed-in/platform-themes.spec.ts adjusted to the store's screens",
+        "pnpm lint && pnpm typecheck && pnpm test: exits 0"
+      ]
+    },
+    {
+      "title": "The old site's server files and the switch are removed",
+      "changes": [
+        {
+          "file": "src/server/platform-theme-installs.ts",
+          "action": "delete",
+          "how": "Delete with its tests (src/server/platform-theme-installs.int.test.ts, platform-theme-updates.int.test.ts). Before deleting, move each remaining importer in the baseline (media-compress.ts, design-presets.ts, media-library.ts, picture-maker.ts, theme-sections.ts name the table) to the store's theme installs for the house store."
+        },
+        {
+          "file": "src/server/platform-roles.ts",
+          "action": "delete",
+          "how": "Delete with src/lib/platform-roles.ts, src/server/platform-theme-preview.ts and their tests (src/lib/platform-roles.test.ts, src/server/platform-roles.int.test.ts) once no file imports them. src/server/site-tools.ts and src/server/pages.ts read platform_page_roles: their null-store branch for the site goes; a null store there for templates, the support desk and the docs guide stays."
+        },
+        {
+          "file": "src/server/house-switch.ts",
+          "action": "edit",
+          "how": "The readers of platform_settings.site_from_store (src/server/house-switch.ts, house-site.ts, site-store.ts, private-mode.ts, pages.ts, stores.ts, src/lib/house-routing.ts and the proxy) treat the store as the site always: siteStore() returns HOUSE_SLUG without reading the column. Do not drop the column here; the later migration does. In src/db/schema.ts remove nothing yet."
+        }
+      ],
+      "checks": [
+        "rg -l 'platform_theme_installs' src --glob '!*.test.*' | rg -v 'src/db/schema.ts' | wc -l: prints 0",
+        "node scripts/null-site-readers.mjs --write, then the baseline holds only src/db/schema.ts",
+        "pnpm test:int: exits 0",
+        "pnpm build && pnpm test:e2e: exits 0 (the specs e2e/platform-languages.spec.ts, e2e/blog.spec.ts, e2e/blog-feed.spec.ts, e2e/site-layouts.spec.ts and e2e/store-pages.spec.ts among them)",
+        "After the deploy: node scripts/site-compare.mjs https://kaizenaflow.com --against before.json: exits 0",
+        "pnpm lint && pnpm typecheck && pnpm test: exits 0"
+      ]
+    },
+    {
+      "title": "The twin tables and the site's null-store rows are dropped (a later push, after the removal is live and the owner has seen the dump)",
+      "changes": [
+        {
+          "file": "src/db/schema.ts",
+          "action": "edit",
+          "how": "Only after the previous commit has been live in production for at least one deploy with /api/health reporting it. Remove the tables platformThemeInstalls, platformThemeInstallUpdates and platformPageRoles and the column siteFromStore of platformSettings; run `pnpm db:generate` (DROP TABLE x3, DROP COLUMN x1). Add a custom migration after it (`pnpm exec drizzle-kit generate --custom --name null_site_rows_gone`, then `node scripts/prune-snapshots.mjs`) that deletes the site's null-store rows: pages and articles with store_id is null that the store holds a copy of, their versions and redirects, menus, site layouts, text styles, CSS versions, content types and entries, categories and tags of the site, and media rows with store_id is null that no remaining null-store row uses. Write each DELETE with the exact where clause proved on the scratch restore first. Templates, the support desk, the docs guide and every platform_* console table keep their null rows."
+        }
+      ],
+      "checks": [
+        "BEFORE THE PUSH (the owner does or approves; the session has no production access): pg_dump of commerce.platform_theme_installs, commerce.platform_theme_install_updates, commerce.platform_page_roles and of the null-store rows of every table the custom migration deletes from (pg_dump --data-only of those tables); restore into a scratch database made with `node scripts/db-setup.mjs`; compare select count(*) per table, and count(*) where store_id is null, with production's; run the custom migration on the scratch copy and write down how many rows each DELETE removed; keep the dump with the backups; show the owner where it is and the counts; wait for a yes.",
+        "pnpm db:check: exits 0",
+        "pnpm exec vitest run src/db/house-switch.test.ts src/db/house-site.test.ts src/db/house-store.test.ts src/db/privacy.test.ts src/db/commerce.test.ts: pass, with house-switch.test.ts rewritten for a site that is always the store's",
+        "pnpm test:int: exits 0",
+        "pnpm build && pnpm test:e2e: exits 0 (the specs e2e/platform-languages.spec.ts, e2e/blog.spec.ts, e2e/blog-feed.spec.ts, e2e/site-layouts.spec.ts and e2e/store-pages.spec.ts among them)",
+        "pnpm lint && pnpm typecheck && pnpm test: exits 0"
+      ]
+    }
+  ],
+  "tests": [
+    {
+      "file": "src/lib/null-site-readers.scan.test.ts",
+      "proves": "fails when a new file reads the twin tables, the old site's modules, the null-store chrome or the switch"
+    },
+    {
+      "file": "src/lib/house-routing.test.ts",
+      "proves": "(existing) fails when a folder of src/app/(platform) is not in PLATFORM_ROUTES, so a site page cannot come back under the platform's routes"
+    },
+    {
+      "file": "src/proxy.test.ts",
+      "proves": "(rewritten) fails when Kaizena Flow's own host does not serve the store for a site address, also when the store cannot be read"
+    }
+  ],
+  "migration": {
+    "needed": true,
+    "notes": "Up to three, all applied by CI. (a) Possibly a custom insert of media rows for the house store (second commit) and of the theme store's two pages (fourth commit): additive, running code unaffected. (b) Generated: DROP TABLE for the three twin tables and DROP COLUMN platform_settings.site_from_store, pushed only after the code that stopped reading them is live (add, never drop in the same change). (c) Custom: DELETEs of the site's null-store rows. pages, menus and media are not on the hot-table list. (b) and (c) remove production data for good and wait for the dump and the owner's yes. Record every version in docs/decisions.md and check the advisors after each."
+  },
+  "done_when": [
+    {
+      "check": "rg -l 'platform_theme_installs' src --glob '!*.test.*' | wc -l",
+      "expect": "0"
+    },
+    {
+      "check": "find 'src/app/(platform)' 'src/app/(platform-nb)' -name page.tsx",
+      "expect": "lists no front page and nothing under [slug], blog, category, tag or cookies (20 files today)"
+    },
+    {
+      "check": "node scripts/site-compare.mjs https://kaizenaflow.com --against before.json",
+      "expect": "exits 0: no address of the old sitemap answers with another status, redirect, canonical or hreflang"
+    },
+    {
+      "check": "ls src/server/platform-theme-installs.ts src/server/platform-roles.ts src/components/platform-page.tsx",
+      "expect": "none exists"
+    },
+    {
+      "check": "the dump restored into a scratch database and the owner's yes",
+      "expect": "same row counts table by table, and the yes given before the dropping migration was pushed"
+    }
+  ],
+  "after_deploy": [
+    "After each of commits 3 to 7: node scripts/site-compare.mjs https://kaizenaflow.com --against before.json exits 0, and /sign-up, /themes, /status and /docs show the store's header and footer.",
+    "After the last push: the release job applied the migrations, the advisors show no new warning, and the daily reading (step 0.2) lists no table platform_theme_installs, platform_theme_install_updates or platform_page_roles."
+  ],
+  "docs": [
+    "docs/decisions.md: add one row with the next free D-number (read the last row of the decisions table to find it; never reuse a number) and today's date. It records: step 7 of docs/platform-parity-plan.md ('One copy') is built: the owner said the switch of 7 November is final; what was removed (the 20 pages, the views, the platform admin's Website screens, the three server files, the switch), where the platform's own routes now take header, footer and look from, that support stays two desks (the site's visitors on the store's desk, owners on the platform's; step 6 is not part of this), where the dump is, the counts, and the migration versions.",
+    "docs/platform-parity-plan.md: mark step 7 built with the date; correct 'The null rows are deleted only in step 7, weeks after the switch'. docs/platform-parity.md: correct the Website paragraph.",
+    "CLAUDE.md and docs/rules/admin/website.md (and the frame's file in docs/rules/admin, see its README.md): rewrite the entries 'Pages (/admin/platform/pages for Kaizen ...)', 'Kaizen's own front page, blog and 404 page (D143 ...)', 'Kaizena Flow's own site on themes (D251 ...)' and 'Kaizen's own header and footer (/admin/platform/navigation) ...' to say the site is the store's; in Conventions, correct 'the platform's rows are store_id is null or platform_* tables' to say the site's rows are the house store's.",
+    "docs/site-design.md: a new page for kaizenaflow.com is made in the store's admin (/admin/kaizenaflow/pages). docs/themes-unified.md section 3: the platform's installs are the store's.",
+    "docs/audits/bloat-review-2026-11.md, Progress table: set the row of step 3.9 to Done with the date and the commit hash (if the table has no row for 3.9, add one in the table of its phase with the step's title), and add one line to that file's change log if it has one."
+  ],
+  "do_not": [
+    "Do not delete or rename any folder in PLATFORM_ROUTES or PLATFORM_ROUTES_NB (admin, api, auth, demo, docs, get-domain, holding, kaizen, oauth, passport, r, report, s, sign-up, sms, status, supply, support, themes, unsubscribe).",
+    "Do not delete src/server/platform-navigation.ts in one go: 43 files import it (the admin's layout, the favicon and manifest routes, the docs' frame). Move importers first.",
+    "Do not remove null-store handling that serves templates, the support desk, the docs guide, referral visits or any platform_* console table.",
+    "Do not join the two support desks: that is the parity plan's step 6 and no part of this step.",
+    "Do not drop a table or delete a row in the same push as the code that stops reading it, and never before the owner's yes.",
+    "Do not change the proxy's matcher or add a second proxy file; this Next.js names the file proxy.ts (read the guide).",
+    "Do not commit before.json or the dump to the repository."
+  ],
+  "stop_if": [
+    "site-compare --against before.json fails after any deploy: stop, report the addresses, and do not go on to the next commit.",
+    "A kept route (sign-up, themes, status, docs) looks different from the pictures taken before, other than the header and footer becoming the store's.",
+    "A file in the baseline cannot be classed, or an importer of platform-navigation.ts needs a field the store's settings do not hold.",
+    "The media check finds files the store's pages use that have no commerce.media row for the store and cannot be inserted without copying bytes.",
+    "The scratch run of the deleting migration removes a row that is not the site's (a template, a support row, a docs row).",
+    "The owner has not said yes to the dump and the counts."
+  ],
+  "executor": "strong",
+  "executor_why": "This is an L redesign: which component draws the kept routes' header and footer, how 43 importers of platform-navigation.ts are re-pointed and which null-store rows are the site's are design judgements the brief cannot remove; only the first commit (the inventory and its test) is fully specified for a cheap model.",
+  "checked_in_code": "I opened src/lib/house-routing.ts, src/proxy.ts (the switch read and its fallback), src/lib/platform-nav.ts (WEBSITE_ITEMS), src/components/platform-routes/, scripts/site-compare.mjs and docs/platform-parity-plan.md, and counted with rg: the 20 page files are exactly the ones listed in the brief, 7 non-test files name platform_theme_installs, 4 name platform_page_roles, 8 read the switch, platform-navigation.ts has 43 importers and platform-roles.ts 14. The findings match; two corrections: src/components/platform-layout.tsx cannot go (platform-root.tsx, site-parts.tsx and menu-section.tsx use it), and docs/platform-parity.md already says the Website section has nothing left, while the parity plan still lists the media rows as to do, so the brief checks the media rows first instead of assuming a move. The step's done_when counts rg hits of platform_theme_installs outside tests, which includes src/db/schema.ts, so it reaches 0 only after the last, dropping push."
+}

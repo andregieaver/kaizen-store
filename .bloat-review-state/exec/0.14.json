@@ -69,7 +69,10 @@
       "proves": "Fails when next.config.ts loses `optimisticRouting: false`, `partialPrefetching: false` or the comment naming e2e/prefetch.spec.ts."
     }
   ],
-  "migration": { "needed": false, "notes": "" },
+  "migration": {
+    "needed": false,
+    "notes": ""
+  },
   "done_when": [
     {
       "check": "pnpm exec playwright test e2e/prefetch.spec.ts --project=chromium -g 'a store page goes quiet' (after pnpm build on a seeded database, no store domain set)",
@@ -95,7 +98,7 @@
     "docs/decisions.md: the new D-row described in the commit (route guessing off, partial prefetching a recorded false).",
     "CLAUDE.md, Stack: the sentence naming both settings.",
     "docs/performance.md: the section 'The router's two settings'.",
-    "The plan's tracker: set the row of step 0.14 to Done with the date and commit (find it with `rg -n '^\\| *0\\.14 ' docs/audits/bloat-review-2026-11.md docs/audits/bloat-review-2026-11`; if step 0.1 has not made the table yet, say so in the hand-back and change nothing)."
+    "docs/audits/bloat-review-2026-11.md, Progress table: set the row of step 0.14 to Done with the date and the commits in Notes (find it: rg -n '^\\| 0\\.14 ' docs/audits/bloat-review-2026-11.md), and add a line under the step's own heading in docs/audits/bloat-review-2026-11/plan/phase-0.md saying what was done differently from the plan, if anything."
   ],
   "do_not": [
     "Do not delete or rename src/app/s/[store]/[market]/@drawer/[...rest]/page.tsx or @drawer/default.tsx: the phone's cart drawer needs them (D64, docs/rules/storefront.md).",

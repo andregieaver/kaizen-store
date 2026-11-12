@@ -1,0 +1,250 @@
+{
+ "id": "0.5",
+ "goal": "sharp and opentype.js are loaded by the first function that draws a picture or parses a font, the AI manager's server side is loaded when its panel is first used, and the MCP tool list is built when first asked for.",
+ "why": "Today 13 server modules import sharp or opentype.js at the top (the 21 MB image library loads with the proxy and about 740 routes), and /admin/[store]/orders loads 2,349 server modules because two action files import the AI manager's engine. After: 0 static imports of the two packages, and the orders route at or under 2,050 modules without src/server/owner-tools.ts.",
+ "read_first": [
+  "src/server/browser.ts",
+  "src/server/theme-highlights.ts",
+  "src/server/font-outlines.ts",
+  "src/app/admin/(gated)/[store]/assistant/actions.ts",
+  "src/app/admin/(gated)/platform/assistant/actions.ts",
+  "src/lib/mcp-catalogue.ts",
+  "node_modules/next/dist/docs/01-app/02-guides/lazy-loading.md",
+  "docs/rules/admin/ai.md"
+ ],
+ "depends_on": [
+  {
+   "id": "0.1",
+   "why": "the import walker checks what the admin layouts still reach"
+  },
+  {
+   "id": "0.3",
+   "why": "a lazy import changes the order modules load in; the deploy's page checks catch a module that fails to load"
+  }
+ ],
+ "commits": [
+  {
+   "title": "sharp and the font parser load when a picture is drawn or a font is parsed",
+   "changes": [
+    {
+     "file": "src/server/sharp-load.ts",
+     "action": "create",
+     "how": "Content: `import \"server-only\";`, `import type sharp from \"sharp\";`, a doc comment 'The image library, loaded on first use: its native code is about 21 MB and most requests draw no picture (bloat review step 0.5). The one place in src that imports sharp as a value; lazy-packages.scan.test.ts holds it. As browser.ts does for Chromium.', then `let loaded: Promise<typeof sharp> | undefined;` and `export const loadSharp = (): Promise<typeof sharp> => (loaded ??= import(\"sharp\").then((m) => m.default));`."
+    },
+    {
+     "file": "src/server/ai-picture-marks.ts",
+     "action": "edit",
+     "how": "Replace the line `import sharp from \"sharp\";` by `import { loadSharp } from \"./sharp-load\";` (placed with the other relative imports). Add `const sharp = await loadSharp();` as the first statement of: markFile. Every one of these functions is async already, so no signature changes and no caller changes. Do not change any argument given to sharp(...), any pipeline step, or the order of awaits."
+    },
+    {
+     "file": "src/server/ai-pictures.ts",
+     "action": "edit",
+     "how": "Replace the line `import sharp, { type Sharp } from \"sharp\";` by `import type { Sharp } from \"sharp\";` and `import { loadSharp } from \"./sharp-load\";` (placed with the other relative imports). Add `const sharp = await loadSharp();` as the first statement of: shrinkPicture and testPicture. Every one of these functions is async already, so no signature changes and no caller changes. Do not change any argument given to sharp(...), any pipeline step, or the order of awaits."
+    },
+    {
+     "file": "src/server/ai-vision.ts",
+     "action": "edit",
+     "how": "Replace the line `import sharp from \"sharp\";` by `import { loadSharp } from \"./sharp-load\";` (placed with the other relative imports). Add `const sharp = await loadSharp();` as the first statement of: challengePicture. Every one of these functions is async already, so no signature changes and no caller changes. Do not change any argument given to sharp(...), any pipeline step, or the order of awaits."
+    },
+    {
+     "file": "src/server/brand-marks.ts",
+     "action": "edit",
+     "how": "Replace the line `import sharp from \"sharp\";` by `import { loadSharp } from \"./sharp-load\";` (placed with the other relative imports). Add `const sharp = await loadSharp();` as the first statement of: png. Every one of these functions is async already, so no signature changes and no caller changes. Do not change any argument given to sharp(...), any pipeline step, or the order of awaits."
+    },
+    {
+     "file": "src/server/content-packs.ts",
+     "action": "edit",
+     "how": "Replace the line `import sharp from \"sharp\";` by `import { loadSharp } from \"./sharp-load\";` (placed with the other relative imports). Add `const sharp = await loadSharp();` as the first statement of: storeArtPicture. Every one of these functions is async already, so no signature changes and no caller changes. Do not change any argument given to sharp(...), any pipeline step, or the order of awaits."
+    },
+    {
+     "file": "src/server/page-looks.ts",
+     "action": "edit",
+     "how": "Replace the line `import sharp from \"sharp\";` by `import { loadSharp } from \"./sharp-load\";` (placed with the other relative imports). Add `const sharp = await loadSharp();` as the first statement of: forModel. Every one of these functions is async already, so no signature changes and no caller changes. Do not change any argument given to sharp(...), any pipeline step, or the order of awaits."
+    },
+    {
+     "file": "src/server/picture-editor.ts",
+     "action": "edit",
+     "how": "Replace the line `import sharp from \"sharp\";` by `import { loadSharp } from \"./sharp-load\";` (placed with the other relative imports). Add `const sharp = await loadSharp();` as the first statement of: editLibraryPicture. Every one of these functions is async already, so no signature changes and no caller changes. Do not change any argument given to sharp(...), any pipeline step, or the order of awaits."
+    },
+    {
+     "file": "src/server/product-import.ts",
+     "action": "edit",
+     "how": "Replace the line `import sharp from \"sharp\";` by `import { loadSharp } from \"./sharp-load\";` (placed with the other relative imports). Add `const sharp = await loadSharp();` as the first statement of: pictureToLibrary. Every one of these functions is async already, so no signature changes and no caller changes. Do not change any argument given to sharp(...), any pipeline step, or the order of awaits."
+    },
+    {
+     "file": "src/server/replicate-images.ts",
+     "action": "edit",
+     "how": "Replace the line `import sharp from \"sharp\";` by `import { loadSharp } from \"./sharp-load\";` (placed with the other relative imports). Add `const sharp = await loadSharp();` as the first statement of: rasterOf, previewJpeg, stretch, pairImage, slices, pictureKind and asPng (seven functions; in pairImage the callback at panels.map uses the same local). Every one of these functions is async already, so no signature changes and no caller changes. Do not change any argument given to sharp(...), any pipeline step, or the order of awaits."
+    },
+    {
+     "file": "src/server/replicate.ts",
+     "action": "edit",
+     "how": "Replace the line `import sharp from \"sharp\";` by `import { loadSharp } from \"./sharp-load\";` (placed with the other relative imports). Add `const sharp = await loadSharp();` as the first statement of: stepOpen and startBackdrops (in startBackdrops the calls are inside an inner helper near line 811: take the module once at the top of startBackdrops, before the helper is defined, so the helper closes over it). Every one of these functions is async already, so no signature changes and no caller changes. Do not change any argument given to sharp(...), any pipeline step, or the order of awaits."
+    },
+    {
+     "file": "src/server/theme-highlights.ts",
+     "action": "edit",
+     "how": "Replace the line `import sharp, { type OverlayOptions } from \"sharp\";` by `import type { OverlayOptions } from \"sharp\";` and `import { loadSharp } from \"./sharp-load\";` (placed with the other relative imports). Add `const sharp = await loadSharp();` as the first statement of: backdrop, shadow, screen, encode (a const arrow function, already async), devices, collage and closeup (seven). Every one of these functions is async already, so no signature changes and no caller changes. Do not change any argument given to sharp(...), any pipeline step, or the order of awaits."
+    },
+    {
+     "file": "src/server/theme-shot-files.ts",
+     "action": "edit",
+     "how": "Replace the line `import sharp, { type Sharp } from \"sharp\";` by `import type { Sharp } from \"sharp\";` and `import { loadSharp } from \"./sharp-load\";` (placed with the other relative imports). Add `const sharp = await loadSharp();` as the first statement of: fitted, cut and pictureIsBlank. Every one of these functions is async already, so no signature changes and no caller changes. Do not change any argument given to sharp(...), any pipeline step, or the order of awaits."
+    },
+    {
+     "file": "src/server/font-outlines.ts",
+     "action": "edit",
+     "how": "Change line 4 `import { parse, type Font } from \"opentype.js\";` to `import type { Font } from \"opentype.js\";`. In the function that fetches and parses the font (the line `const parsed = parse(data);`, near line 60, inside a try block of an async function), add directly above that line: `const { parse } = await import(\"opentype.js\");`. Nothing else changes; the `kept` cache still holds the parsed font."
+    },
+    {
+     "file": "src/server/lazy-packages.scan.test.ts",
+     "action": "create",
+     "how": "A Vitest scan test, no database. Walk every .ts and .tsx file under src, leaving out names that contain .test. or .spec. . The packages: sharp, opentype.js, playwright-core, @sparticuz/chromium, mammoth, unpdf. For each file find static import statements (lines that match /^import\\s/ possibly spanning lines until the `from \"<pkg>\"`) whose source is exactly one of the packages. `import type …` is allowed. An import whose every named binding is written `type X` and that has no default binding is allowed. Everything else is a static value import. Case 1: the list of `file: package` strings equals [] (13 before this commit). Case 2: only src/server/sharp-load.ts contains the text import(\"sharp\") among non-test files. Case 3 (planted): the checker returns a problem for the text `import sharp from \"sharp\";` and for `import sharp, { type Sharp } from \"sharp\";`, and none for `import type { Sharp } from \"sharp\";`. Comment at the top: 'Heavy packages load where they are used: loadSharp(), launchBrowser(), await import() (bloat review step 0.5).'"
+    },
+    {
+     "file": "docs/performance.md",
+     "action": "edit",
+     "how": "Add one bullet to the section that lists what a visitor or a server loads (or, if step 0.4 has added '## What a server route loads', under it): 'A heavy package is loaded where it is used, never at the top of a server module: `loadSharp()` (`src/server/sharp-load.ts`), `launchBrowser()` (`src/server/browser.ts`), `await import(\"opentype.js\")`; `src/server/lazy-packages.scan.test.ts` fails on a static import of sharp, opentype.js, playwright-core, @sparticuz/chromium, mammoth or unpdf.'"
+    }
+   ],
+   "checks": [
+    "pnpm exec vitest run src/server/lazy-packages.scan.test.ts src/server/theme-highlights.test.ts src/server/theme-shot-files.test.ts src/server/ai-pictures.test.ts src/lib/review-pictures.test.ts src/lib/webp-xmp.test.ts: all pass, none edited",
+    "rg -n '^import .*from \"(sharp|opentype\\.js)\"' src -g '!*.test.ts' -g '!*.test.tsx' | rg -v 'import type': prints nothing",
+    "pnpm typecheck: exits 0 (a function that calls sharp without the local fails here: 'Cannot find name sharp')",
+    "pnpm lint && pnpm typecheck && pnpm test: each exits 0",
+    "pnpm test:int: exits 0 (picture-editor, brand-marks, ai-picture-marks, replicate, replicate-revert, product-import, theme-shots, content-packs, page-looks, review-pictures and woocommerce-mover int tests run the real library)",
+    "pnpm build && pnpm test:e2e: exits 0 (e2e/theme-shots.spec.ts, e2e/page-look.spec.ts and the e2e/replicate*.spec.ts files draw pictures end to end)",
+    "After the build: node docs/audits/bloat-review-2026-11/scripts/cold-load-proxy.cjs and node docs/audits/bloat-review-2026-11/scripts/cold-load-route.cjs .next/server/app/api/shop/tiles/route.js: neither lists a .node file or sharp among the modules loaded (if the scripts of step 0.1 print require.cache, read it there; otherwise run node -e \"process.env.NODE_ENV='production';process.env.NEXT_RUNTIME='nodejs';require('./.next/server/middleware.js');setTimeout(()=>{console.log(Object.keys(require.cache).filter(k=>/sharp|\\.node$/.test(k)).length)},2000)\": prints 0)"
+   ]
+  },
+  {
+   "title": "The AI manager's server side loads when its panel is first used, for stores and the platform",
+   "changes": [
+    {
+     "file": "src/app/admin/(gated)/[store]/assistant/actions.ts",
+     "action": "edit",
+     "how": "The file starts with \"use server\". Replace the block `import { assistantAbilities, decideApproval, deleteConversation, getConversation, listConversations, rateAnswer, type Approval, type Conversation } from \"@/server/owner-assistant\";` by `import type { Approval, Conversation } from \"@/server/owner-assistant\";`. Add, after the imports, an unexported loader (it must NOT be exported: every export of a \"use server\" file is a server action): `/** The AI manager's server side, loaded when an owner first uses the panel, not with every admin page (bloat review step 0.5). */` `const assistant = () => import(\"@/server/owner-assistant\");`. In each of the five actions take the functions first, after the permission check: startAssistantAction: `const { assistantAbilities, listConversations } = await assistant();` before the Promise.all line; loadConversationAction: `const { getConversation } = await assistant();`; decideApprovalAction: `const { decideApproval } = await assistant();`; deleteConversationAction: `const { deleteConversation } = await assistant();`; rateAnswerAction: `const { rateAnswer } = await assistant();`. Keep requireOwner(storeSlug) as the first statement of every action: the permission check runs before anything is loaded. assistantHearAction, saveSkillAction and deleteSkillAction do not change. No signature and no return value changes."
+    },
+    {
+     "file": "src/app/admin/(gated)/platform/assistant/actions.ts",
+     "action": "edit",
+     "how": "The same change for the platform: the type-only import keeps `type Approval, type Conversation, type Principal`; add the same unexported `assistant` loader; in startPlatformAssistantAction, loadPlatformConversationAction, decidePlatformApprovalAction, deletePlatformConversationAction and ratePlatformAnswerAction take the functions with `await assistant()` after `await principal()` (where an action is the one-liner `return getConversation(await principal(), …)`, write two statements: `const p = await principal(); const { getConversation } = await assistant(); return getConversation(p, String(conversationId));`). platformHearAction, savePlatformSkillAction and deletePlatformSkillAction do not change."
+    },
+    {
+     "file": "src/server/follow-ups.ts",
+     "action": "edit",
+     "how": "Line 14: change `import { OwnerToolError } from \"./owner-tools\";` to `import { OwnerToolError } from \"./owner-tool-error\";` (the file that defines it; first confirm with rg -n 'export class OwnerToolError' src/server/owner-tool-error.ts). It is the same class, so `instanceof` checks keep working."
+    },
+    {
+     "file": "src/server/assistant-actions.scan.test.ts",
+     "action": "create",
+     "how": "A Vitest scan test reading two files as text: src/app/admin/(gated)/[store]/assistant/actions.ts and src/app/admin/(gated)/platform/assistant/actions.ts. Case 1: neither has a static value import from @/server/owner-assistant, @/server/owner-tools or @/lib/owner-tools (an `import type` is allowed). Case 2: each contains the text import(\"@/server/owner-assistant\"). Case 3: neither contains `export const assistant`. Case 4: src/server/follow-ups.ts does not import from \"./owner-tools\". Comment: 'Step 1.8's route-load.graph.test.ts replaces this with a walk of what the admin layouts reach.'"
+    }
+   ],
+   "checks": [
+    "pnpm exec vitest run src/server/assistant-actions.scan.test.ts: passes",
+    "pnpm typecheck: exits 0",
+    "pnpm lint && pnpm typecheck && pnpm test: each exits 0",
+    "pnpm exec vitest run --config vitest.integration.config.mts src/server/owner-assistant.int.test.ts src/server/agent-eval-replay.int.test.ts src/server/follow-ups.int.test.ts: pass unchanged (if a named file does not exist, run pnpm test:int whole)",
+    "pnpm build, then E2E_SIGNED_IN=1 pnpm exec playwright test --project=signed-in e2e/signed-in/ai-manager-panel.spec.ts (build as CI's signed-in job does: NEXT_PUBLIC_SUPABASE_URL=http://127.0.0.1:3912 with e2e/fixtures/auth-stub.mjs running): passes; the panel opens, lists conversations and answers"
+   ]
+  },
+  {
+   "title": "The MCP tool list is built when tools are first listed",
+   "changes": [
+    {
+     "file": "src/lib/mcp-catalogue.ts",
+     "action": "edit",
+     "how": "Line 121 starts `export const MCP_TOOLS: McpToolInfo[] = [` followed by the three own tools and then the owner tools mapped with the store argument. Replace it by a memoised function with the same content: `let tools: McpToolInfo[] | undefined;` and `/** Every tool of the owner MCP (/api/mcp): the three of its own, then every owner tool with the store it is for. Built on first use, not at import (bloat review step 0.5). */ export const mcpTools = (): McpToolInfo[] => (tools ??= [ …the same array literal, unchanged… ]);`. In mcpCatalogue() (near line 168) change `MCP_TOOLS.map(` to `mcpTools().map(`. Change any other mention of MCP_TOOLS in this file the same way. The array's content, order and every description must stay byte for byte."
+    },
+    {
+     "file": "src/server/store-mcp.ts",
+     "action": "edit",
+     "how": "Line 7: import mcpTools in place of MCP_TOOLS. Line 136: `export { mcpTools, type McpToolInfo };`. Lines 161 and 165: `MCP_TOOLS.filter(` becomes `mcpTools().filter(`."
+    },
+    {
+     "file": "src/lib/docs-reference.ts",
+     "action": "edit",
+     "how": "Line 12: import mcpTools in place of MCP_TOOLS. Line 81: `MCP_TOOLS.map(` becomes `mcpTools().map(`."
+    },
+    {
+     "file": "src/lib/*.test.ts and src/server/*.int.test.ts: the eight tests that name MCP_TOOLS",
+     "action": "edit",
+     "how": "The files: src/lib/docs-index.test.ts, src/lib/docs-api-reference.test.ts, src/lib/oauth.test.ts, src/lib/mcp-catalogue.test.ts, src/server/return-tools.int.test.ts, src/server/store-mcp.int.test.ts, src/server/owner-tools-fields.int.test.ts, src/server/unit-price-tools.int.test.ts. In each, the import name MCP_TOOLS becomes mcpTools and every use `MCP_TOOLS` becomes `mcpTools()` (`mcp.MCP_TOOLS` becomes `mcp.mcpTools()`). This is the only kind of test edit this step allows: a rename, with no expectation changed."
+    }
+   ],
+   "checks": [
+    "rg -n 'MCP_TOOLS' src: prints nothing",
+    "pnpm exec vitest run src/lib/mcp-catalogue.test.ts src/lib/oauth.test.ts src/lib/docs-index.test.ts src/lib/docs-api-reference.test.ts src/lib/agent-eval.test.ts: all pass",
+    "pnpm exec vitest run $(rg -l 'api-contract' src -g '*.test.ts' | tr '\\n' ' '): passes with no new recording (the catalogue's bytes did not change)",
+    "pnpm lint && pnpm typecheck && pnpm test: each exits 0",
+    "pnpm test:int: exits 0"
+   ]
+  }
+ ],
+ "tests": [
+  {
+   "file": "src/server/lazy-packages.scan.test.ts",
+   "proves": "Fails, naming file and package, on a static value import of sharp, opentype.js, playwright-core, @sparticuz/chromium, mammoth or unpdf anywhere in src outside tests."
+  },
+  {
+   "file": "src/server/assistant-actions.scan.test.ts",
+   "proves": "Fails when either AI manager action file imports the engine as a value again, or exports the loader."
+  }
+ ],
+ "migration": {
+  "needed": false,
+  "notes": ""
+ },
+ "done_when": [
+  {
+   "check": "pnpm exec vitest run src/server/lazy-packages.scan.test.ts",
+   "expect": "passes with 0 static value imports of sharp or opentype.js outside tests and sharp-load.ts (13 today)"
+  },
+  {
+   "check": "rg -n 'MCP_TOOLS' src",
+   "expect": "prints nothing"
+  },
+  {
+   "check": "After step 0.6's first commit (src/server/customers.ts loads privacy-erasure inside deleteCustomer) is also in: pnpm exec next analyze --output, then node docs/audits/bloat-review-2026-11/scripts/server-graph.mjs /tmp/graph-out; read the /admin/[store]/orders section and /tmp/graph-out/analyze for that route",
+   "expect": "2,050 server modules or fewer loaded with the route (2,349 today) and no src/server/owner-tools.ts among them. Before that commit the engine is still reached through customers.ts -> privacy-erasure.ts -> retention.ts -> self-signup.ts -> dream-factory.ts -> owner-assistant.ts, so this figure cannot be met by this step alone: leave row 0.5 'In progress, waits for 0.6 commit 1' until it is read."
+  },
+  {
+   "check": "node docs/audits/bloat-review-2026-11/scripts/import-reach.mjs --why src/server/owner-tools.ts \"src/app/admin/(gated)/[store]/layout.tsx\"",
+   "expect": "after this step: a chain that goes through src/server/customers.ts and src/server/privacy-erasure.ts (not through assistant/actions.ts and not through follow-ups.ts). After step 0.6's first commit: not reached, about 986 files"
+  }
+ ],
+ "after_deploy": [
+  "The release job's page checks show 200.",
+  "Signed in to production: open the AI manager's panel on a store and on /admin/platform, ask one question, open an older conversation. Each works.",
+  "Upload one picture to the media library and edit it (remove background or crop): the picture is made. This is sharp's first load in that function.",
+  "Vercel's runtime logs (free view) show no 'Cannot find module sharp' or 'Could not load the sharp module' in the hour after the deploy."
+ ],
+ "docs": [
+  "docs/decisions.md: a new D-number row 'Heavy server packages and the AI manager's engine load on first use (bloat review step 0.5)': loadSharp(), await import(\"opentype.js\"), the lazy owner-assistant in both assistant action files, mcpTools() in place of MCP_TOOLS, and the two scan tests.",
+  "docs/performance.md: the bullet of commit 1.",
+  "docs/rules/admin/ai.md: under the AI manager's rule (D94, D103) add one sentence: 'The two assistant action files load `@/server/owner-assistant` with import() inside each action, after the permission check; they never import it at the top (bloat review step 0.5).'",
+  "docs/audits/code-review-2026-11.md: no status changes; add one change-log line that the scan test of this step is the first of step 4.1's boundary rules for packages.",
+  "docs/audits/bloat-review-2026-11.md, Progress table: row 0.5 (Done only when the analyze figure has been read, see done_when)."
+ ],
+ "do_not": [
+  "Do not add sharp to outputFileTracingExcludes or change next.config.ts: a route that then called sharp would fail only in production.",
+  "Do not make any of the 28 functions synchronous or change what they return; do not hoist `await loadSharp()` to module level (that is a static load again).",
+  "Do not import sharp in a client component or in src/lib.",
+  "Do not remove the AI manager's launcher from the admin layouts (D103): nothing a person sees changes.",
+  "Do not export the `assistant` loader from a \"use server\" file, and do not move the permission check after the import().",
+  "Do not change a prompt, a tool's description or a tool's schema: no new eval run or recording is part of this step. If the API contract test asks for a new recording, the catalogue's bytes changed: undo and find the difference.",
+  "Do not touch seek-bzip in src/server/legal-sources.ts (2 to 3 ms, its caller is synchronous).",
+  "Do not change tests that import sharp themselves to make fixtures: tests may."
+ ],
+ "stop_if": [
+  "A function that calls sharp is not async (the type check says 'await' is not allowed): report the function; do not change its callers.",
+  "rg finds a static import of sharp or opentype.js in a file not listed here (main has moved): report the file.",
+  "The AI manager's panel does not open or an int test of owner-assistant fails after commit 2.",
+  "A test other than the eight MCP_TOOLS renames must be edited to pass.",
+  "After the build a cold load of the proxy still maps sharp: report which module pulled it (import walker --why)."
+ ],
+ "executor": "cheap-then-review",
+ "executor_why": "All three commits are mechanical and each has a scan test, but 12 picture modules and two server-action files change how they load, which only shows in a production-like run, so a stronger model should read the diff and the e2e results.",
+ "checked_in_code": "I listed the static imports with rg: sharp in exactly the 12 server modules the findings name and opentype.js in src/server/font-outlines.ts (13), and found every sharp(...) call and the function around it: 28 functions, all async, as DP-2 says. I read both assistant action files (five actions each use the engine; three do not) and src/lib/mcp-catalogue.ts (MCP_TOOLS at line 121, three source readers and eight test files). Correction to the step: making the two action files lazy does not by itself take the engine off an admin page. On today's import graph the store layout still reaches src/server/owner-tools.ts through follow-ups.ts (one import line, fixed here as DP-11 says) and through customers.ts -> privacy-erasure.ts -> … -> dream-factory.ts -> owner-assistant.ts, which is the first cut of step 0.6; with all three the layouts and the orders page reach 986 source files instead of 1,396. So the analyze figure in this step's done-when can only be read after step 0.6's first commit. The helper is named sharp-load.ts as the plan says (finding AS-1 called it sharp.ts), and the guard is the scan test the plan names, not AS-1's lint rule."
+}

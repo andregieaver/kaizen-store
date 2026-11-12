@@ -1,0 +1,226 @@
+{
+  "id": "3.1",
+  "goal": "pg_cron runs one job a minute, commerce.cron_claim_tick(), which posts to a cron route only when its queue holds claimable work, and to every route once in 15 minutes as a sweep; the six queue routes and their runners send at most 3 statements when idle and take no lock before asking.",
+  "why": "Nine routes are called every minute whether or not anything waits: 12,960 calls a day of full-application functions (three carry Chromium) and about 13,250 rows a day in cron.job_run_details. After the step: 1 every-minute schedule, about 1,750 log rows a day, and route.page-jobs runs at most 100 times on a quiet day (1,440 today).",
+  "read_first": [
+    "docs/ci-migrations.md",
+    "docs/capacity.md",
+    "node_modules/next/dist/docs/01-app/01-getting-started/15-route-handlers.md",
+    "supabase/migrations/20261111172842_baseline_4_roles_and_supabase.sql",
+    "src/server/cron-runs.ts",
+    "src/server/cron-routes.scan.test.ts",
+    "src/server/theme-shots.ts",
+    "src/server/cookie-scans.ts"
+  ],
+  "depends_on": [
+    {
+      "id": "0.23",
+      "why": "it rewrites the cookie scan's due statement in src/server/cookie-scans.ts (owned(), two indexes, back-off); this step moves that statement into queueDueScans() as it then is"
+    },
+    {
+      "id": "1.10",
+      "why": "it creates src/server/query-budget.int.test.ts on the statement counter, where the tick's and the idle routes' counts are held"
+    },
+    {
+      "id": "1.26",
+      "why": "it wraps the after() work of the seven routes in tracked('<route>.work'); this step changes the same route files and must keep those wrappers"
+    },
+    {
+      "id": "1.22",
+      "why": "its outside watcher reads the dispatcher's ledger row and, once this step makes it, the row 'tick'; the watcher must exist before the minute pings stop keeping routes visible"
+    }
+  ],
+  "commits": [
+    {
+      "title": "Queue routes ask before they lock: theme shots bring the queue in line only on a sweep, pack pictures and cookie scans ask first",
+      "changes": [
+        {
+          "file": "src/server/theme-shots.ts",
+          "action": "edit",
+          "how": "Three changes. (1) Move the third statement of queueThemeShots() (the `update commerce.theme_shots set status = case when tries >= SHOT_TRIES_ALL ...  where status = 'running' and claimed_until < now() and tries % SHOT_TRIES = 0`) into a new exported `settleStoppedShots(): Promise<void>`; queueThemeShots() calls settleStoppedShots() at its end so its own behaviour and its tests stay the same. (2) Add an exported `themeShotsWaiting(): Promise<boolean>`: one statement, `select exists (select 1 from commerce.theme_shots where status in ('waiting', 'running')) as waiting` (served by theme_shots_queue_idx), read through typedRows(). (3) runThemeShots(origin, deadline, deps, scope, now) gains a sixth optional parameter `options: { sweep?: boolean } = {}`. New body: if options.sweep is true, `wanted = await queueThemeShots()` as today. Otherwise: if `!(await themeShotsWaiting())` return { done: 0, taken: 0 } at once (one statement, no transaction, no prune); else call settleStoppedShots() and leave `wanted` undefined. In the loop, work out `wanted ??= await wantedNow()` only after claimThemeShot() returned a unit (takeThemeShot needs it). Call pruneThemeShots() only when options.sweep is true or a unit was taken. Keep claimThemeShot() and its advisory lock unchanged."
+        },
+        {
+          "file": "src/app/api/cron/theme-shots/route.ts",
+          "action": "edit",
+          "how": "In run(): read the body once, `const body = (await request.json().catch(() => ({}))) as { sweep?: unknown };` and `const sweep = body.sweep === true || new Date().getUTCMinutes() % 15 === 0;` (the minute test keeps the sweep alive until the tick of the next commit sends the flag). Pass `{ sweep }` as runThemeShots()'s last argument (keep `{}` for scope before it). Change the last line's cadence: `trackedRoute(\"route.theme-shots\", 900, run)`. Keep maxDuration, RUN_MS, the after() block, the revalidateTag and any tracked('route.theme-shots.work', ...) wrapper step 1.26 added (give that wrapper 900 too)."
+        },
+        {
+          "file": "src/server/content-packs.ts",
+          "action": "edit",
+          "how": "In claimPack() (line 733 today), before `db().transaction(`, add one statement: `select exists (select 1 from commerce.store_starters where pictures_wanted_at is not null and (picture_claimed_until is null or picture_claimed_until < now())) as waiting`; when false, return null without opening the transaction. The column is pictures_wanted_AT (the finding CR-1 wrote pictures_wanted_by, which is the person and is wrong). The transaction, the advisory lock and the claim stay as they are."
+        },
+        {
+          "file": "src/server/cookie-scans.ts",
+          "action": "edit",
+          "how": "Split claimScan() (line 72 today). It keeps, in this order: the update that fails scans running for more than ten minutes, then the claim of the oldest 'queued' scan; it returns that scan or null. Move the third statement (the `with sites as (...) ... insert into commerce.cookie_scans ... limit 1 ... returning id, store_id`, as step 0.23 left it) into a new exported `queueDueScans(limit = 20): Promise<number>`: same CTEs, same where and order, same `on conflict ... do nothing`, but it inserts `(store_id, status)` with status 'queued' (no started_at) and `limit ${limit}`, and returns how many rows it inserted. So that an owner's Scan now is still taken before scheduled ones, change the claim's inner select to `order by (requested_by is null), created_at limit 1 for update skip locked` (asked scans have requested_by set; see the insert at line 57)."
+        },
+        {
+          "file": "src/app/api/cron/cookie-scan/route.ts",
+          "action": "edit",
+          "how": "In run(), before `claimScan()`: read the body and work out `sweep` exactly as in the theme-shots route; `if (sweep) await queueDueScans();`. Then claimScan() as today. Import queueDueScans. Cadence: `trackedRoute(\"route.cookie-scan\", 900, run)`. An idle call that is not a sweep now sends 2 statements; a sweep 3."
+        },
+        {
+          "file": "src/app/api/cron/page-jobs/route.ts",
+          "action": "edit",
+          "how": "Only the cadence: `trackedRoute(\"route.page-jobs\", 900, run)`, and 900 in the tracked('route.page-jobs.work', ...) wrapper of step 1.26 if present. Make the same one-number change in src/app/api/cron/page-looks/route.ts (\"route.page-looks\"), src/app/api/cron/pack-pictures/route.ts (\"route.pack-pictures\") and src/app/api/cron/dream-factory/route.ts (\"route.dream-factory\" and its inner tracked(\"dream-factory.advance\", 60, ...) to 900). Do NOT change autopilot, broadcasts or integrations: they stay 60 until step 3.2. A route with 900 that is still called every minute is harmless: 900 only widens how late it may be (allowanceSeconds(900) = 2,700 s)."
+        },
+        {
+          "file": "src/server/theme-shots.int.test.ts",
+          "action": "edit",
+          "how": "Its runJob helper (line 79) expects a run to bring the queue in line: pass `{ sweep: true }` there. Add two cases: 'a run that is not a sweep reads no theme and still takes a waiting unit' (queue through askForThemeShots() or queueThemeShots(), then runThemeShots without sweep takes it) and 'an idle run that is not a sweep sends one statement and opens no transaction' (count with the counter of step 1.9 from src/db/client.ts)."
+        },
+        {
+          "file": "src/server/cookie-scans.int.test.ts",
+          "action": "edit",
+          "how": "The existing cases hold the order (an asked scan first, then the site whose finished scan is oldest, a failed one again after an hour). Where a case expected claimScan() alone to pick a due site, call queueDueScans() first; change nothing else in those cases. Add: 'a queued schedule scan is taken by the next run', 'an asked scan is taken before scheduled ones queued earlier', 'an idle claimScan() sends 2 statements'."
+        },
+        {
+          "file": "src/server/content-packs.int.test.ts",
+          "action": "edit",
+          "how": "Add: 'with no pack waiting, runPackPictures() sends one statement and opens no transaction' (statement counter; the list of statements holds no 'begin' and no pg_advisory_xact_lock)."
+        },
+        {
+          "file": "src/lib/cron-health.test.ts",
+          "action": "edit",
+          "how": "Add a case: a row with everySeconds 900 is ok 44 minutes after its last finished run and late after 46 (allowanceSeconds(900) is 2,700)."
+        }
+      ],
+      "checks": [
+        "pnpm exec vitest run src/lib/cron-health.test.ts src/lib/theme-shots.test.ts src/server/cron-routes.scan.test.ts : exits 0",
+        "pnpm lint && pnpm typecheck && pnpm test: exits 0",
+        "pnpm test:int src/server/theme-shots.int.test.ts src/server/cookie-scans.int.test.ts src/server/content-packs.int.test.ts src/server/cron-runs.int.test.ts : exits 0",
+        "pnpm build && pnpm test:e2e e2e/cookie-scan.spec.ts : exits 0 (the owner's Scan now still runs)"
+      ]
+    },
+    {
+      "title": "One tick a minute: commerce.cron_due() names the routes with work, and the nine every-minute schedules become one",
+      "changes": [
+        {
+          "file": "supabase/migrations/*_cron_tick.sql",
+          "action": "create",
+          "how": "Create with `pnpm exec drizzle-kit generate --custom --name cron_tick`, then `node scripts/prune-snapshots.mjs`. Contents, in this order. (A) `create or replace function commerce.cron_due(p_now timestamptz default now()) returns table (route text, sweep boolean) language sql stable set search_path = ''` (every table schema-qualified). Let s = (extract(minute from p_now at time zone 'UTC')::int % 15 = 0). It returns one row (name, s) for: 'autopilot', 'broadcasts' and 'integrations' ALWAYS (step 3.2 gates them); and each queue route when s is true OR its predicate holds. The predicates are the routes' own claim conditions; a predicate may be wider than the claim, never narrower: 'page-jobs': exists (select 1 from commerce.page_ai_jobs where status = 'waiting' and (claimed_until is null or claimed_until < p_now)); 'page-looks': exists (select 1 from commerce.page_looks where status = 'queued' or (status = 'running' and claimed_until < p_now)); 'pack-pictures': exists (select 1 from commerce.store_starters where pictures_wanted_at is not null and (picture_claimed_until is null or picture_claimed_until < p_now)); 'dream-factory': exists (select 1 from commerce.dream_runs where status in ('running','asking','ready') and finished_at is null and (claimed_until is null or claimed_until < p_now)); 'theme-shots': exists (select 1 from commerce.theme_shots where (status = 'waiting' and (claimed_until is null or claimed_until < p_now)) or (status = 'running' and claimed_until < p_now)); 'cookie-scan': exists (select 1 from commerce.cookie_scans where status = 'queued' or (status = 'running' and started_at < p_now - interval '10 minutes')). Write it as a `select v.route, s from (values ...) ` or a union all of six guarded selects; no loop over stores, no join to commerce.stores. Null-store rows (the platform's own jobs) match because no predicate names store_id. (B) `create or replace function commerce.cron_claim_tick() returns table (route text, sweep boolean) language plpgsql volatile set search_path = ''`: it upserts the ledger row 'tick' (insert into commerce.cron_jobs (job, every_seconds, last_started_at, last_finished_at, last_ok_at, last_duration_ms, runs, failures) values ('tick', 60, now(), now(), now(), 0, 1, 0) on conflict (job) do update set every_seconds = 60, last_started_at = now(), last_finished_at = now(), last_ok_at = now(), runs = commerce.cron_jobs.runs + 1, failures = 0) and then `return query select * from commerce.cron_due(now());`. (C) After each function: `revoke all on function ... from public;` and the same grants or revokes the baseline gives its other commerce functions for anon and authenticated (copy the pattern at supabase/migrations/20261111172842_baseline_4_roles_and_supabase.sql lines 33 to 38: revoke from anon and authenticated only if the role exists). (D) A DO block guarded exactly like the baseline's (lines 82 to 84: pg_cron and pg_net available and the vault schema present; in a database without them, such as PGlite and CI's Postgres, it does nothing): `perform cron.schedule('kaizen-tick', '* * * * *', $job$ select net.http_post(url := 'https://kaizenaflow.com/api/cron/' || d.route, headers := jsonb_build_object('Authorization', 'Bearer ' || (select decrypted_secret from vault.decrypted_secrets where name = 'kaizen_cron_secret'), 'Content-Type', 'application/json'), body := jsonb_build_object('sweep', d.sweep), timeout_milliseconds := 30000) from commerce.cron_claim_tick() d $job$);` then, for each of the nine names kaizen-autopilot, kaizen-broadcasts, kaizen-cookie-scan, kaizen-dream-factory, kaizen-integrations, kaizen-pack-pictures, kaizen-page-jobs, kaizen-page-looks, kaizen-theme-shots: `if exists (select 1 from cron.job where jobname = n) then perform cron.unschedule(n); end if;`. Leave kaizen-cart-reminders, kaizen-subscription-reminders, kaizen-usage, kaizen-consent-retention and kaizen-cookie-scan-retention alone. Use lower-case SQL keywords or the baseline's style, but write the literal `'* * * * *'` exactly once in the file (the scan test counts it). Never edit a baseline file."
+        },
+        {
+          "file": "src/app/api/cron/theme-shots/route.ts",
+          "action": "edit",
+          "how": "Nothing new if the first commit is in: the route already reads body.sweep. Check the same in src/app/api/cron/cookie-scan/route.ts. The other four queue routes need no sweep flag: their runners always run their own claim when called (page-looks already reads its body for { id }; leave that)."
+        },
+        {
+          "file": "src/server/status.ts",
+          "action": "edit",
+          "how": "In the `jobs` probe (line 166 today) the late test is `j.health === \"late\" && j.job.startsWith(\"dispatcher\")`. Change the condition to `(j.job === \"tick\" || j.job.startsWith(\"dispatcher\"))`, so a stopped tick fails the status page's jobs check as a late dispatcher does."
+        },
+        {
+          "file": "src/db/commerce.test.ts",
+          "action": "edit",
+          "how": "Add a describe 'cron_due' (PGlite applies the migration; the cron block is skipped there). Cases: on an empty database at 12:07 UTC cron_due('...12:07:00Z') returns exactly autopilot, broadcasts, integrations, each with sweep false; at 12:15 it returns all nine with sweep true; one case per queue: insert one claimable row (a waiting page_ai_jobs row; a queued page_looks row; a store_starters row with pictures_wanted_at set; a dream_runs row with status 'running' and finished_at null; a waiting theme_shots row; a queued cookie_scans row) and at 12:07 the route's name appears; and one case per queue that a row held by a live run (claimed_until in the future) does NOT name the route. cron_claim_tick() writes the row 'tick' with every_seconds 60 and raises runs on a second call."
+        },
+        {
+          "file": "src/server/cron-due.int.test.ts",
+          "action": "create",
+          "how": "An integration test on the real database (pnpm test:int). For each of the six gated queues: put one claimable row in through the application's own function where one exists (askForThemeShots()/queueThemeShots(), the cookie page's request function at src/server/cookie-scans.ts line 57, the page job and look request functions) or by insert, run `select route from commerce.cron_due(<a time at minute 7>)`, and expect the route's name; then run the route's runner once so it claims the row, and expect the name gone while the claim is held. On the seed with nothing queued expect exactly autopilot, broadcasts and integrations. Add the sweep case the plan asks for: define a scratch runner inside the test (a function that claims from a temp table) that is NOT in cron_due(); call it the way a sweep call does (directly, as the route would on a POST with { sweep: true }) and see it take its row: a route's runner runs its own claim and never asks cron_due(). Later steps (3.2 and 3.7) add their routes to this file."
+        },
+        {
+          "file": "src/server/query-budget.int.test.ts",
+          "action": "create",
+          "how": "Made by step 1.10; if missing, stop; do not overwrite. Add entries, in the form the file uses, with their counts in src/server/ratchet.baseline.json: the tick (`select * from commerce.cron_due(now())`) is 1 statement and reads the same number of rows (seq_tup_read plus idx_tup_fetch over commerce's tables) with 1 and with 20 seeded stores; an idle cookie-scan run at most 3 statements; an idle theme-shots run 1; an idle pack-pictures run 1; none of the three opens a transaction (no 'begin' among the counted statements)."
+        },
+        {
+          "file": "src/server/cron-routes.scan.test.ts",
+          "action": "edit",
+          "how": "Add two cases. (1) 'only the tick runs every minute': read every .sql file in supabase/migrations (readdirSync; the baseline files included), and for the NEWEST state count schedules of '* * * * *' that are not later unscheduled: simplest rule that holds it: outside the four baseline_ files, the text `'* * * * *'` appears exactly once in the whole folder and that line names 'kaizen-tick'; and the new file unschedules each of the nine names the baseline scheduled every minute. (2) 'every cron route is reached': for each folder under src/app/api/cron, one of these is true: its name appears as a quoted string in the body of commerce.cron_due() (read the newest migration file that contains `function commerce.cron_due`); or a migration holds cron.schedule with `format(call, '<name>')` at a schedule other than every minute (today cart-reminders, subscription-reminders, usage); or it is a key of NOT_SCHEDULED. Keep the existing cases and NOT_SCHEDULED as they are."
+        }
+      ],
+      "checks": [
+        "pnpm exec vitest run src/db/commerce.test.ts src/db/migration-safety.scan.test.ts src/server/cron-routes.scan.test.ts : exits 0",
+        "pnpm db:check : exits 0",
+        "rg -c \"'\\* \\* \\* \\* \\*'\" supabase/migrations --glob '!*baseline*' : prints 1 for the new file only",
+        "pnpm lint && pnpm typecheck && pnpm test: exits 0",
+        "node scripts/db-setup.mjs --seed on an empty DATABASE_URL, then pnpm test:int src/server/cron-due.int.test.ts src/server/query-budget.int.test.ts src/server/cron-runs.int.test.ts : exits 0",
+        "node scripts/restore-check.mjs is not run against production here; read its line 69 (command ilike '%net.http%') and confirm the tick's command contains net.http_post"
+      ]
+    }
+  ],
+  "tests": [
+    {
+      "file": "src/db/commerce.test.ts",
+      "proves": "A cron_due() predicate that misses a claimable row, names a route whose only row is held by a live run, or stops returning all nine on a sweep minute."
+    },
+    {
+      "file": "src/server/cron-due.int.test.ts",
+      "proves": "A queue filled through the application that the tick would not see, and a runner that depends on cron_due() to run."
+    },
+    {
+      "file": "src/server/cron-routes.scan.test.ts",
+      "proves": "A second every-minute schedule in a migration, and a cron route that is in neither cron_due(), a schedule of its own, nor NOT_SCHEDULED."
+    },
+    {
+      "file": "src/server/query-budget.int.test.ts",
+      "proves": "The tick becoming more than one statement or reading more rows with 20 stores than with 1; an idle cookie-scan, theme-shots or pack-pictures run sending more statements or opening a transaction."
+    }
+  ],
+  "migration": {
+    "needed": true,
+    "notes": "One custom migration (drizzle-kit generate --custom --name cron_tick, then node scripts/prune-snapshots.mjs): two functions in schema commerce (cron_due, cron_claim_tick) and a guarded DO block that schedules kaizen-tick and unschedules the nine every-minute jobs. No table is altered and no index built (the six predicates are served by page_ai_jobs_waiting_idx, page_looks_queue_idx, dream_runs_due_idx, theme_shots_queue_idx, cookie_scans_one_active_idx; store_starters is a small platform table), so the hot-table rules do not apply. Running code keeps working: the routes and their addresses are the same before and after, and the first commit (already deployed) made them correct when called rarely. CI applies it after every check passes and before the deploy (docs/ci-migrations.md); never apply it by hand. After the deploy check the Supabase security and performance advisors for project ybsozesfuxuitoacntfo and record the file's version in docs/decisions.md under Migration versions."
+  },
+  "done_when": [
+    {
+      "check": "In production, read-only, in the Supabase SQL editor (the owner or a session with database access runs it): select count(*) from cron.job where schedule = '* * * * *'",
+      "expect": "1 (9 before)."
+    },
+    {
+      "check": "Over one quiet day: select job, runs from commerce.cron_jobs where job = 'route.page-jobs', read twice 24 hours apart",
+      "expect": "runs rose by 100 or fewer (1,440 before)."
+    },
+    {
+      "check": "select count(*) from cron.job_run_details where start_time > now() - interval '1 day'",
+      "expect": "About 1,750 (13,250 before)."
+    },
+    {
+      "check": "pnpm test:int src/server/cron-due.int.test.ts src/server/query-budget.int.test.ts",
+      "expect": "Pass: each gated queue names its route with one claimable row, none on the empty seed; the tick is 1 statement with equal rows for 1 and 20 stores; idle cookie-scan at most 3 statements, theme-shots and pack-pictures 1 each, no transaction."
+    },
+    {
+      "check": "pnpm exec vitest run src/server/cron-routes.scan.test.ts, then a scratch second '* * * * *' schedule in a scratch migration file, and a scratch folder src/app/api/cron/scratch/route.ts",
+      "expect": "Green as committed; each scratch case fails it; remove both."
+    }
+  ],
+  "after_deploy": [
+    "Ten minutes after the deploy: select job, last_finished_at, runs from commerce.cron_jobs where job = 'tick' shows a finished run within the last 2 minutes, and the platform home (/admin/platform) lists no job as late.",
+    "After the next quarter hour (:00, :15, :30 or :45): the six queue routes' rows (route.page-jobs, route.page-looks, route.pack-pictures, route.dream-factory, route.theme-shots, route.cookie-scan) each show a run at that minute.",
+    "A day later, pg_stat_statements: the tick's statement averages under 20 ms, and calls of the statement that selects p.snapshot from commerce.design_presets (the theme snapshot read) rose by 100 or fewer (1,440 a day before).",
+    "Ask the AI manager for a look at a page (or press the owner's Scan now on a store's cookie page): it is taken within about a minute. The first call after a quiet spell is a cold start of the Chromium function; that is expected.",
+    "Supabase advisors: no new warning for commerce.cron_due or commerce.cron_claim_tick."
+  ],
+  "docs": [
+    "docs/decisions.md: one new row with the next free D-number (find the last with: rg -o '^\\| D[0-9]+' docs/decisions.md | tail -1, and add one). It names D33 (the scheduler) and D263 (scheduled calls once failed unnoticed) and records: one tick a minute, cron_due()'s six predicates, the 15-minute sweep, the 'tick' ledger row, the routes' cadence of 900, and the migration's version (also under Migration versions).",
+    "docs/capacity.md lines 197 to 200 ('Scheduled jobs'): replace 'new heavy work gets a route of its own' by: a new queue route gets a predicate in commerce.cron_due() (a new migration that replaces the function), copied from its claim; a route is never scheduled every minute.",
+    "CLAUDE.md, Conventions, the sentence on cron routes: add 'a queue route is named by commerce.cron_due(), the one every-minute job (`cron-routes.scan.test.ts`)'. Keep it to that clause.",
+    "docs/theme-showcase-phase-2.md lines 66 to 72 and docs/rules/admin/website.md (the Theme photographs rule, near line 238): the job brings the queue in line when a theme or demo store is published and on the 15-minute sweep, not on every run.",
+    "docs/rules/storefront.md, Cookie consent (D58): weekly scans are queued on the sweep and taken one a minute.",
+    "docs/audits/psi-followups.md line 477 (REL-06, the seven routes recorded as the Dream Factory's is): tick it only if step 1.26 did that part; otherwise leave it.",
+    "docs/runbooks/restore.md line 74: confirm its grep still finds the schedule (it looks for net.http); change the count of schedules it expects if it names one.",
+    "docs/audits/bloat-review-2026-11.md, Progress table: set the row of step 3.1 to Done with the date and the commit hash, in the same commit as the last change; tick the step's section in docs/audits/bloat-review-2026-11/plan/phase-3.md if that file has one."
+  ],
+  "do_not": [
+    "Do not edit a baseline migration file. The nine old schedules are removed by cron.unschedule in the new file.",
+    "Do not unschedule kaizen-cart-reminders, kaizen-subscription-reminders, kaizen-usage or the two retention jobs.",
+    "Do not make a cron_due() predicate narrower than the route's claim, and do not add `store_is_active()` or a join to stores to it: a wider predicate costs one empty call, a narrower one leaves work waiting.",
+    "Do not make a route ask cron_due() before it works: a route called runs its own claim. The sweep exists to cover a predicate that is wrong.",
+    "Do not remove the three askForThemeShots() calls (src/server/design-presets.ts lines 825 and 2368, src/server/store-starters.ts line 326), triggerLook() in src/server/page-looks.ts, or any request-time kick of a queue.",
+    "Do not gate autopilot, broadcasts or integrations here (step 3.2), and do not add document-pdfs to cron_due() (step 3.7).",
+    "Do not apply the migration by hand, and do not run cron.schedule or cron.unschedule against production yourself.",
+    "Do not remove the advisory locks in claimThemeShot() and claimPack()."
+  ],
+  "stop_if": [
+    "src/server/query-budget.int.test.ts does not exist, or the Progress table does not show 0.23, 1.10, 1.22 and 1.26 as Done.",
+    "The cookie scan's due statement no longer looks like an insert of one due site (step 0.23 changed its shape beyond the where clause): report it; do not guess how to queue 20.",
+    "A claim statement in the code differs from the predicate written here (compare each against src/server/site-tools.ts claimJob, page-looks.ts claim, content-packs.ts claimPack, dream-factory.ts advanceDreamRuns, theme-shots.ts claimThemeShot, cookie-scans.ts claimScan): use the code's, and say so in the commit message; if you cannot tell which is wider, stop.",
+    "cron-due.int.test.ts shows a queue that fills without its route being named.",
+    "After the deploy the row 'tick' does not appear within 5 minutes, or the platform home shows routes late: the tick is not running. Do not fix it by hand in production; report at once (the 15-minute watcher of step 1.22 will also email). The way back is a new migration that schedules the nine again.",
+    "An existing test in theme-shots.int.test.ts or cookie-scans.int.test.ts needs more than the stated change (sweep true; queueDueScans() first) to pass."
+  ],
+  "executor": "cheap-then-review",
+  "executor_why": "Every statement and file is specified, but it moves scheduling into SQL through a migration that unschedules production jobs, and a wrong predicate leaves work waiting silently, so a stronger model must read the migration and the predicates against the claims before the push.",
+  "checked_in_code": "I opened the baseline's scheduler block (baseline_4 lines 66 to 115: nine '* * * * *' jobs, guarded by pg_cron, pg_net and vault), all nine route files, cron-runs.ts, cron-health.ts, cron-routes.scan.test.ts, status.ts line 166 and each claim statement. Corrections to the findings: CR-1's pack-pictures predicate names pictures_wanted_by, the code claims on pictures_wanted_at and picture_claimed_until; its page-looks, dream-factory and theme-shots predicates left out claimed_until, so I wrote each from the claim; its cookie-scan predicate ('queued') would never start a weekly scan between sweeps unless the due sites are queued, so the brief takes DQ-1's queueDueScans() and keeps asked scans first. I also pass the sweep flag in the tick's POST body instead of having each route test the clock alone, and move the routes to a 900 s cadence in the first commit so no route reads as late between the migration and the deploy. The partial indexes the six exists() need are already in the baseline. SF-10 and DP-7 are the same change seen from the functions' and dependencies' side."
+}

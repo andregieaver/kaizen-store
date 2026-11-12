@@ -13,11 +13,26 @@
     "e2e/signed-in/admin-text-fallbacks.spec.ts"
   ],
   "depends_on": [
-    { "id": "0.9", "why": "it drops the 'setup' area from src/app/admin/(gated)/layout.tsx; this brief assumes that line already hands only common and shell" },
-    { "id": "1.5", "why": "its budgets in e2e/signed-in/admin-scripts.spec.ts (document bytes, words handed and read, English and Norwegian owner) are the figures this step lowers" },
-    { "id": "1.28", "why": "its src/components/admin/admin-words-handed.scan.test.ts and baseline list every hand-down site; commits 5 onward work that list down" },
-    { "id": "2.26", "why": "its third commit takes home.en out of demo-content-card.tsx, which the home's cut in commit 3 needs" },
-    { "id": "0.10", "why": "it keeps the builder and the category editor off the page lists, so the lists' client parts read only website.list, pageJobs and demoHomes" }
+    {
+      "id": "0.9",
+      "why": "it drops the 'setup' area from src/app/admin/(gated)/layout.tsx; this brief assumes that line already hands only common and shell"
+    },
+    {
+      "id": "1.5",
+      "why": "its budgets in e2e/signed-in/admin-scripts.spec.ts (document bytes, words handed and read, English and Norwegian owner) are the figures this step lowers"
+    },
+    {
+      "id": "1.28",
+      "why": "its src/components/admin/admin-words-handed.scan.test.ts and baseline list every hand-down site; commits 5 onward work that list down"
+    },
+    {
+      "id": "2.26",
+      "why": "its third commit takes home.en out of demo-content-card.tsx, which the home's cut in commit 3 needs"
+    },
+    {
+      "id": "0.10",
+      "why": "it keeps the builder and the category editor off the page lists, so the lists' client parts read only website.list, pageJobs and demoHomes"
+    }
   ],
   "commits": [
     {
@@ -114,7 +129,7 @@
         "For every other page that draws one of the changed readers and hands 'builder' or 'website' whole, the cut must be handed too. List them: rg -n 'adminTexts\\(' src/app src/components -g '*.tsx' | rg '\"builder\"|\"website\"|_AREAS'. A list that names 'builder' gains 'builderText'; one that names 'website' gains 'websitePick'. Do this in this commit.",
         "pnpm test src/components/admin/admin-cuts.scan.test.ts src/lib/admin-lang.test.ts src/components/admin/admin-words-handed.scan.test.ts: pass (lower the words baseline for the four pages in this commit, with the script the test's failure message names)",
         "pnpm lint && pnpm typecheck && pnpm test: exits 0",
-        "pnpm build && E2E_SIGNED_IN=1 pnpm test:e2e e2e/signed-in/admin-text-fallbacks.spec.ts e2e/signed-in/admin-scripts.spec.ts e2e/signed-in/text-styles.spec.ts e2e/signed-in/products-grid.spec.ts: pass; lower the product editor's document budget to the new figure in the same commit",
+        "the signed-in build (as CI's signed-in job in .github/workflows/ci.yml: NEXT_PUBLIC_SUPABASE_URL=http://127.0.0.1:3912, NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=e2e-publishable-key, E2E_SIGNED_IN=1, node scripts/db-setup.mjs --seed, pnpm build), then E2E_SIGNED_IN=1 pnpm exec playwright test --project=signed-in e2e/signed-in/admin-text-fallbacks.spec.ts e2e/signed-in/admin-scripts.spec.ts e2e/signed-in/text-styles.spec.ts e2e/signed-in/products-grid.spec.ts: pass; lower the product editor's document budget to the new figure in the same commit",
         "By hand in a Norwegian account (or in a spec): open a product, open the media picker's library, the picture maker and the text styles panel; window.__adminTextFallbacks is empty and no English shows"
       ]
     },
@@ -169,7 +184,7 @@
       ],
       "checks": [
         "pnpm lint && pnpm typecheck && pnpm test: exits 0",
-        "pnpm build && E2E_SIGNED_IN=1 pnpm test:e2e e2e/signed-in/ai-manager-panel.spec.ts e2e/signed-in/admin-text-fallbacks.spec.ts e2e/signed-in/admin-scripts.spec.ts: pass; the shared-words figure in admin-scripts.spec.ts is at or under 15.5 KB in English and 16 KB in Norwegian: lower its baseline to the measured figure"
+        "the signed-in build (as CI's signed-in job in .github/workflows/ci.yml: NEXT_PUBLIC_SUPABASE_URL=http://127.0.0.1:3912, NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=e2e-publishable-key, E2E_SIGNED_IN=1, node scripts/db-setup.mjs --seed, pnpm build), then E2E_SIGNED_IN=1 pnpm exec playwright test --project=signed-in e2e/signed-in/ai-manager-panel.spec.ts e2e/signed-in/admin-text-fallbacks.spec.ts e2e/signed-in/admin-scripts.spec.ts: pass; the shared-words figure in admin-scripts.spec.ts is at or under 15.5 KB in English and 16 KB in Norwegian: lower its baseline to the measured figure"
       ]
     },
     {
@@ -198,7 +213,7 @@
         {
           "file": "src/components/admin/pages-table.tsx",
           "action": "edit",
-          "how": "useAdminText('website') becomes useAdminText('websiteList'). Do the same in src/components/admin/site-layouts.tsx, duplicate-button.tsx, page-jobs-panel.tsx, demo-home-pages.tsx and demo-home-take.tsx, each only if the type check accepts it (the file reads only list, pageJobs or demoHomes). A file that does not compile on the cut goes back to 'website' and is written in the tracker's section."
+          "how": "useAdminText('website') becomes useAdminText('websiteList'). Do the same in src/components/admin/site-layouts.tsx, duplicate-button.tsx, page-jobs-panel.tsx, demo-home-pages.tsx and demo-home-take.tsx, each only if the type check accepts it (the file reads only list, pageJobs or demoHomes). A file that does not compile on the cut goes back to 'website' and is written in that step's section of docs/audits/bloat-review-2026-11.md."
         },
         {
           "file": "src/app/admin/(gated)/[store]/pages/views.tsx",
@@ -218,7 +233,7 @@
       ],
       "checks": [
         "pnpm lint && pnpm typecheck && pnpm test: exits 0",
-        "pnpm build && E2E_SIGNED_IN=1 pnpm test:e2e e2e/signed-in/admin-text-fallbacks.spec.ts e2e/signed-in/admin-scripts.spec.ts e2e/signed-in/page-history.spec.ts: pass; the store home's document is at or under 140,000 characters: lower its budget to the measured figure"
+        "the signed-in build (as CI's signed-in job in .github/workflows/ci.yml: NEXT_PUBLIC_SUPABASE_URL=http://127.0.0.1:3912, NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=e2e-publishable-key, E2E_SIGNED_IN=1, node scripts/db-setup.mjs --seed, pnpm build), then E2E_SIGNED_IN=1 pnpm exec playwright test --project=signed-in e2e/signed-in/admin-text-fallbacks.spec.ts e2e/signed-in/admin-scripts.spec.ts e2e/signed-in/page-history.spec.ts: pass; the store home's document is at or under 140,000 characters: lower its budget to the measured figure"
       ]
     },
     {
@@ -247,7 +262,7 @@
       ],
       "checks": [
         "pnpm lint && pnpm typecheck && pnpm test: exits 0",
-        "pnpm build && E2E_SIGNED_IN=1 pnpm test:e2e e2e/signed-in (the whole folder: the builder specs, text-styles, schedules-and-sharing, content-types, admin-text-fallbacks, admin-scripts): pass; the builder's document is under 480,000 bytes with a texts object of at most 205,000, and the baselines are lowered",
+        "the signed-in build (as CI's signed-in job in .github/workflows/ci.yml: NEXT_PUBLIC_SUPABASE_URL=http://127.0.0.1:3912, NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=e2e-publishable-key, E2E_SIGNED_IN=1, node scripts/db-setup.mjs --seed, pnpm build), then E2E_SIGNED_IN=1 pnpm exec playwright test --project=signed-in e2e/signed-in (the whole folder: the builder specs, text-styles, schedules-and-sharing, content-types, admin-text-fallbacks, admin-scripts): pass; the builder's document is under 480,000 bytes with a texts object of at most 205,000, and the baselines are lowered",
         "By hand in a Norwegian account: open a page's editor, open the media library, a custom field's pickers, the font picker, the schedule dialog and a category's page fields: no English, window.__adminTextFallbacks empty"
       ]
     },
@@ -263,22 +278,49 @@
       "checks": [
         "pnpm test src/components/admin/admin-words-handed.scan.test.ts: passes on the lowered baseline",
         "pnpm lint && pnpm typecheck && pnpm test: exits 0",
-        "pnpm build && E2E_SIGNED_IN=1 pnpm test:e2e e2e/signed-in/admin-text-fallbacks.spec.ts e2e/signed-in/admin-scripts.spec.ts: pass after each site"
+        "the signed-in build (as CI's signed-in job in .github/workflows/ci.yml: NEXT_PUBLIC_SUPABASE_URL=http://127.0.0.1:3912, NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=e2e-publishable-key, E2E_SIGNED_IN=1, node scripts/db-setup.mjs --seed, pnpm build), then E2E_SIGNED_IN=1 pnpm exec playwright test --project=signed-in e2e/signed-in/admin-text-fallbacks.spec.ts e2e/signed-in/admin-scripts.spec.ts: pass after each site"
       ]
     }
   ],
   "tests": [
-    { "file": "src/components/admin/admin-cuts.scan.test.ts", "proves": "fails when a reader that is drawn on cut-only screens asks for the whole area again" },
-    { "file": "src/components/admin/admin-words-handed.scan.test.ts", "proves": "fails when a site hands more than its baseline or an area nothing names (made by step 1.28; this step lowers its baseline)" },
-    { "file": "e2e/signed-in/admin-scripts.spec.ts", "proves": "fails when the document bytes, the shared words or the words handed on the five screens rise, in English and Norwegian" },
-    { "file": "e2e/signed-in/ai-manager-panel.spec.ts", "proves": "fails when the chat opens before its words arrived (English shown to a Norwegian owner, or a noted fallback)" },
-    { "file": "e2e/signed-in/admin-text-fallbacks.spec.ts", "proves": "fails on any screen whose part reads an area or cut that nothing handed" }
+    {
+      "file": "src/components/admin/admin-cuts.scan.test.ts",
+      "proves": "fails when a reader that is drawn on cut-only screens asks for the whole area again"
+    },
+    {
+      "file": "src/components/admin/admin-words-handed.scan.test.ts",
+      "proves": "fails when a site hands more than its baseline or an area nothing names (made by step 1.28; this step lowers its baseline)"
+    },
+    {
+      "file": "e2e/signed-in/admin-scripts.spec.ts",
+      "proves": "fails when the document bytes, the shared words or the words handed on the five screens rise, in English and Norwegian"
+    },
+    {
+      "file": "e2e/signed-in/ai-manager-panel.spec.ts",
+      "proves": "fails when the chat opens before its words arrived (English shown to a Norwegian owner, or a noted fallback)"
+    },
+    {
+      "file": "e2e/signed-in/admin-text-fallbacks.spec.ts",
+      "proves": "fails on any screen whose part reads an area or cut that nothing handed"
+    }
   ],
-  "migration": { "needed": false, "notes": "" },
+  "migration": {
+    "needed": false,
+    "notes": ""
+  },
   "done_when": [
-    { "check": "pnpm test src/components/admin/admin-words-handed.scan.test.ts, then read its baseline", "expect": "the five budgeted screens hand at most 1.1 times the groups their parts name; no site that hands over 50 KB hands more than 1.25 times; no site hands an area none of its parts names; the list of parts that take a whole area holds only the builder's two" },
-    { "check": "E2E_SIGNED_IN=1 pnpm test:e2e e2e/signed-in/admin-scripts.spec.ts (after pnpm build)", "expect": "shared words at or under 15.5 KB in English and 16 KB in Norwegian (34.0 and 45.3 before); the store home's document at most 140,000 characters (165,942); the product editor's under 290,000 bytes (426,497); the builder's under 480,000 (585,943) with a texts object of at most 205,000 (276,922); the browser's record of step 1.5 has not fallen for any group that is read" },
-    { "check": "E2E_SIGNED_IN=1 pnpm test:e2e e2e/signed-in/admin-text-fallbacks.spec.ts", "expect": "passes; no fallback" }
+    {
+      "check": "pnpm test src/components/admin/admin-words-handed.scan.test.ts, then read its baseline",
+      "expect": "the five budgeted screens hand at most 1.1 times the groups their parts name; no site that hands over 50 KB hands more than 1.25 times; no site hands an area none of its parts names; the list of parts that take a whole area holds only the builder's two"
+    },
+    {
+      "check": "E2E_SIGNED_IN=1 pnpm exec playwright test --project=signed-in (in the signed-in build) e2e/signed-in/admin-scripts.spec.ts (after pnpm build)",
+      "expect": "shared words at or under 15.5 KB in English and 16 KB in Norwegian (34.0 and 45.3 before); the store home's document at most 140,000 characters (165,942); the product editor's under 290,000 bytes (426,497); the builder's under 480,000 (585,943) with a texts object of at most 205,000 (276,922); the browser's record of step 1.5 has not fallen for any group that is read"
+    },
+    {
+      "check": "E2E_SIGNED_IN=1 pnpm exec playwright test --project=signed-in (in the signed-in build) e2e/signed-in/admin-text-fallbacks.spec.ts",
+      "expect": "passes; no fallback"
+    }
   ],
   "after_deploy": [],
   "docs": [
@@ -287,7 +329,7 @@
     "docs/performance.md, after the D540 paragraph (about lines 156 to 190): the cuts and the measured before and after for the five screens.",
     "docs/rules/admin/ai.md, under the AI manager's launcher: the launcher reads assistantBar; the chat's words arrive with start().",
     "docs/audits/psi-followups.md under PERF-01: one line.",
-    "The plan's tracker under docs/audits/bloat-review-2026-11/: row 2.27 to Done with date and commits; its section lists every cut and the sites still over 1.25, if any, with the reason."
+    "docs/audits/bloat-review-2026-11.md, the plan's tracker (find the row with rg -n '^\\| *2\\.27 ' docs/audits/bloat-review-2026-11.md; the step's section is under the heading that starts with 2.27): row 2.27 to Done with date and commits; its section lists every cut and the sites still over 1.25, if any, with the reason."
   ],
   "do_not": [
     "Do not move, rename or delete any string or file in src/lib/admin-messages: a cut picks groups, it does not split a catalogue.",

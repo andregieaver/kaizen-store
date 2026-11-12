@@ -1,0 +1,151 @@
+{
+  "id": "2.28",
+  "goal": "A save in the page builder or the product editor answers with under 20 KB of interface words, and a redraw of the store shell re-sends under 30 KB of shell JSON (words and menu).",
+  "why": "Every save or poll that redraws the route re-sends 51 to 66 KB of unchanged shell words and menu, and the builder's save re-sends its two big word areas (about 130 KB); after the step a redraw of the shell is under 30 KB and a save carries under 20 KB of words.",
+  "read_first": [
+    "node_modules/next/dist/docs/01-app/02-guides/server-actions.md",
+    "node_modules/next/dist/docs/01-app/03-api-reference/04-functions/updateTag.md",
+    "node_modules/next/dist/docs/01-app/03-api-reference/04-functions/revalidateTag.md",
+    "docs/performance.md",
+    "docs/platform-admin-i18n.md",
+    "src/lib/store-nav.ts",
+    "src/components/admin/store-admin-nav.tsx",
+    "e2e/signed-in/admin-scripts.spec.ts"
+  ],
+  "depends_on": [
+    {
+      "id": "1.5",
+      "why": "its record in e2e/signed-in/admin-scripts.spec.ts of the bytes a builder save and a product save answer with is the measure, and the Norwegian owner is its fixture"
+    },
+    {
+      "id": "2.27",
+      "why": "it takes the assistant's chat words and the unread areas out of the shell and the editors, so this step starts from about 15 KB of shell words and the product editor's cuts"
+    },
+    {
+      "id": "0.17",
+      "why": "it gives the menu one builder (storeNav()), the one place where commit 1 changes the menu's shape"
+    }
+  ],
+  "commits": [
+    {
+      "title": "The store's menu sends each address once",
+      "changes": [
+        {
+          "file": "src/lib/store-nav.ts",
+          "action": "edit",
+          "how": "storeTabs() (about line 432) gives every tab an 'also' list that repeats every address of the section, and storeAreas() (about line 451) sends the same addresses again as 'prefixes' and a third time as each item's href. Stop sending 'also' for section tabs: in storeTabs() keep 'also' only on the Home tab (HOME_PATHS) and give each section tab its section key instead ('section: s.key'). Give each entry of storeAreas() the same key ('section: s.key'; the Home entry gets 'home'). Do not change storeSections(), the labels, the order, 'exact', 'badge', 'foot' or 'advanced'. If step 0.17 has replaced these two functions by one storeNav(), make the same change inside it: one list of sections, each address once."
+        },
+        {
+          "file": "src/components/admin/store-admin-nav.tsx",
+          "action": "edit",
+          "how": "Line 43 decides the active tab from item.also. For a tab with a 'section' key and no 'also', take the prefixes from the area whose 'section' is the same (the areas prop is already passed to this component: check; if only the tabs reach the part that draws them, pass the areas down). The active tab, the sidebar and the phone menu must mark the same items as before for every address."
+        },
+        {
+          "file": "src/lib/store-nav.test.ts",
+          "action": "edit",
+          "how": "Update the expected shape of storeTabs() (no 'also' on section tabs, a 'section' key). Add one test: for a store with every feature on, JSON.stringify({ tabs: storeTabs(base, flags), areas: storeAreas(base, flags) }).length is under 14,000 characters, and every address under the base appears in it at most twice (once as an item's href, once as a prefix)."
+        },
+        {
+          "file": "src/lib/admin-layouts.test.ts",
+          "action": "edit",
+          "how": "Only if it fails: update the expected tab shape the same way. Do not change what it asserts about which tab is active."
+        }
+      ],
+      "checks": [
+        "pnpm test src/lib/store-nav.test.ts src/lib/admin-layouts.test.ts: pass",
+        "pnpm lint && pnpm typecheck && pnpm test: exits 0",
+        "the signed-in build (as CI's signed-in job in .github/workflows/ci.yml: NEXT_PUBLIC_SUPABASE_URL=http://127.0.0.1:3912, NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=e2e-publishable-key, E2E_SIGNED_IN=1, node scripts/db-setup.mjs --seed, pnpm build), then E2E_SIGNED_IN=1 pnpm exec playwright test --project=signed-in e2e/signed-in/admin-view.spec.ts e2e/signed-in/admin-phone.spec.ts e2e/signed-in/recent-pages.spec.ts e2e/signed-in/admin-scripts.spec.ts: pass"
+      ]
+    },
+    {
+      "title": "Measure both ways to stop a save re-sending words, on the builder and the product editor",
+      "changes": [
+        {
+          "file": "e2e/signed-in/admin-scripts.spec.ts",
+          "action": "edit",
+          "how": "A stronger model does this commit and the next. Extend the save record of step 1.5: for a builder save, a product save and a store-shell redraw (a press that calls router.refresh() or an action that calls refresh(), for example stopping a page job on the Pages list), record the response's bytes and, inside it, the bytes of interface words (the texts props: find the JSON objects keyed by area names such as 'builder', 'blocks', 'common', 'shell') and of the menu (tabs and areas). Write today's figures as budgets with 4% room. This commit only measures."
+        }
+      ],
+      "checks": [
+        "the signed-in build (as CI's signed-in job in .github/workflows/ci.yml: NEXT_PUBLIC_SUPABASE_URL=http://127.0.0.1:3912, NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=e2e-publishable-key, E2E_SIGNED_IN=1, node scripts/db-setup.mjs --seed, pnpm build), then E2E_SIGNED_IN=1 pnpm exec playwright test --project=signed-in e2e/signed-in/admin-scripts.spec.ts: passes and prints the three figures; write them in the section of docs/audits/bloat-review-2026-11.md for step 2.28 as 'before'"
+      ]
+    },
+    {
+      "title": "A save no longer carries the words: keep the way that measured better",
+      "changes": [
+        {
+          "file": "src/app/admin/(gated)/[store]/pages/actions.ts",
+          "action": "edit",
+          "how": "Way B, try first: a save that answers without drawing the route again. The Next guide (server-actions.md, 'A single response carries data and UI') says the response carries a re-render when the action calls updateTag, revalidatePath, refresh, sets a cookie or redirects. saveStorePageAction calls pagesChanged() (updateTag(pagesTag(...)) at about line 61). The editor already takes the saved page from the action's return value (onSaved in page-editor.tsx), so it does not need the redraw. Try, for the save action only: revalidateTag(pagesTag(member.store.id), { expire: 0 }) in place of updateTag, and measure whether the response still carries the route (the guide says only a stale-while-revalidate profile skips it; { expire: 0 } is not documented either way, so the measurement decides). The storefront must show a published change on its very next request: prove it with an int or e2e test that saves and then reads the public page. Never use the 'max' profile for a publish: the next visitor would get the old page. If { expire: 0 } still redraws, way B is not available for this action: go to way A. Apply the same to the platform's save in src/app/admin/(gated)/platform/pages/actions.ts and the sandbox's in src/app/admin/try/[sandbox]/actions.ts, and to the product save in src/app/admin/(gated)/[store]/products/actions.ts (updateTag(catalogTag) at about line 74), but only where the screen takes everything it shows after a save from the action's own answer; if a screen relies on the redraw (a list, a status line drawn by the server), return that value from the action first."
+        },
+        {
+          "file": "src/components/admin/words/editor-words-en.tsx",
+          "action": "create",
+          "how": "Way A, if way B does not reach the figure: the two big areas as client modules the browser keeps. A 'use client' file that imports builderEn and blocksEn and exports EditorWordsEn({ children }) drawing <AdminTextScope texts={{ builder: builderEn, blocks: blocksEn }}>{children}</AdminTextScope>. A twin editor-words-nb.tsx for Norwegian. The server editor views (src/app/admin/(gated)/[store]/pages/editor-views.tsx, the platform's editor-views.tsx, src/app/admin/try/[sandbox]/editor.tsx) draw the one for the account's language around the editor and drop 'builder' and 'blocks' from their adminTexts() lists. The words then travel as a content-hashed script, and a redraw sends only a reference. Keep it only if a build shows all three: one language's chunk in the page's script tags, not both; e2e/signed-in/content-types.spec.ts passes (the early Save of 31 October 2026); and the builder's first-scripts budget rises by no more than the bytes that left the document. It needs a named exception in src/components/admin/admin-catalogues.scan.test.ts and in the catalogue rule of src/components/admin/admin-bundle.scan.test.ts (these two files, and nothing else)."
+        }
+      ],
+      "checks": [
+        "pnpm lint && pnpm typecheck && pnpm test: exits 0",
+        "pnpm test:int: exits 0 (the saves' tags are read by the storefront's caches)",
+        "the signed-in build (as CI's signed-in job in .github/workflows/ci.yml: NEXT_PUBLIC_SUPABASE_URL=http://127.0.0.1:3912, NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=e2e-publishable-key, E2E_SIGNED_IN=1, node scripts/db-setup.mjs --seed, pnpm build), then E2E_SIGNED_IN=1 pnpm exec playwright test --project=signed-in e2e/signed-in: the builder specs, page-history, products-grid, products-bulk, content-types, admin-text-fallbacks and admin-scripts pass; admin-scripts shows a builder save and a product save each under 20 KB of interface words and a shell redraw under 30 KB of shell JSON; set the budgets to the measured figures",
+        "pnpm test:e2e e2e/store-pages.spec.ts (after pnpm build): passes; and the new test that a published page shows at once on the storefront passes"
+      ]
+    }
+  ],
+  "tests": [
+    {
+      "file": "e2e/signed-in/admin-scripts.spec.ts",
+      "proves": "fails when a builder save or a product save answers with 20 KB or more of interface words, or a shell redraw re-sends 30 KB or more of shell JSON"
+    },
+    {
+      "file": "src/lib/store-nav.test.ts",
+      "proves": "fails when the menu's JSON grows past its figure or an address is sent more than twice"
+    },
+    {
+      "file": "src/server/page-publish-fresh.int.test.ts",
+      "proves": "new, only with way B: fails when a published page's change is not on the storefront's next read (the tag was not expired at once)"
+    }
+  ],
+  "migration": {
+    "needed": false,
+    "notes": ""
+  },
+  "done_when": [
+    {
+      "check": "the signed-in build (as CI's signed-in job in .github/workflows/ci.yml: NEXT_PUBLIC_SUPABASE_URL=http://127.0.0.1:3912, NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=e2e-publishable-key, E2E_SIGNED_IN=1, node scripts/db-setup.mjs --seed, pnpm build), then E2E_SIGNED_IN=1 pnpm exec playwright test --project=signed-in e2e/signed-in/admin-scripts.spec.ts",
+      "expect": "a builder save and a product save each answer with under 20 KB of interface words; a redraw of the store shell re-sends under 30 KB of shell JSON (51 to 66 KB before); the same for the Norwegian owner"
+    },
+    {
+      "check": "The section of docs/audits/bloat-review-2026-11.md for step 2.28",
+      "expect": "holds the before and after bytes of both ways and says which was kept and why"
+    }
+  ],
+  "after_deploy": [
+    "Open a page in the builder on production, publish a small change, then open the public page in a private window: the change shows on the first load."
+  ],
+  "docs": [
+    "docs/decisions.md (or docs/decisions/D{n}.md after step 2.40): one decision with the next free D number: which way was kept (a save without a redraw, or the editor's words as client modules), the measured bytes of both, and the rule for new save actions.",
+    "docs/performance.md, after the D540 paragraph: what a save answers with, before and after.",
+    "docs/platform-admin-i18n.md 3.3: only if way A was kept: the editor's two areas come as a script per language, and why that is the one exception.",
+    "docs/audits/bloat-review-2026-11.md, the plan's tracker (find the row with rg -n '^\\| *2\\.28 ' docs/audits/bloat-review-2026-11.md; the step's section is under the heading that starts with 2.28): row 2.28 to Done with date and commits."
+  ],
+  "do_not": [
+    "Do not use revalidateTag(tag, 'max') for anything a shopper or the owner must see at once (a publish, a price, stock).",
+    "Do not remove an updateTag from an action whose screen shows server-drawn state after the save; return that state from the action first.",
+    "Do not move saves out of storeAction()/platformAction() into route handlers.",
+    "Do not fetch words after the page has loaded (no import() of a catalogue on a press): docs/performance.md says why.",
+    "Do not ship both ways: keep one and delete the other's code.",
+    "Do not change the menu's labels, order, permissions or which item is marked active.",
+    "Do not leave the platform out: its shell (src/app/admin/(gated)/platform/layout.tsx) and its builder save go through the same change."
+  ],
+  "stop_if": [
+    "The save record of step 1.5 is not in e2e/signed-in/admin-scripts.spec.ts.",
+    "After commit 1 a tab or sidebar item is marked differently for any address in admin-view.spec.ts or admin-phone.spec.ts.",
+    "Way B: the storefront test shows the old page after a publish.",
+    "Way A: both languages' chunks are in the page's script tags, or content-types.spec.ts fails, or first scripts rise by more than left the document.",
+    "Neither way reaches under 20 KB: report both measurements and stop."
+  ],
+  "executor": "strong",
+  "executor_why": "The step is an experiment between two designs that touch caching rules and what a shopper sees after a publish; only commit 1 (the menu) is mechanical.",
+  "checked_in_code": "I opened src/lib/store-nav.ts (storeTabs and storeAreas at about lines 432 to 462: each address is sent as 'also', as 'prefixes' and as an href, as AD-5 says), store-admin-nav.tsx line 43, and the save actions: saveStorePageAction calls updateTag(pagesTag) and the product save updateTag(catalogTag), which by the Next guide puts a re-render of the route in the action's answer. AD-5's steps for the setup area, the assistant split and the home's drafts card are done by steps 0.9 and 2.27, so this brief keeps only the menu and the save. The finding's done-when names a scratch script (words.mjs); the brief measures in admin-scripts.spec.ts instead, as the plan's step says. Whether revalidateTag with { expire: 0 } skips the re-render is not stated in the guide, so the brief makes the executor measure it."
+}

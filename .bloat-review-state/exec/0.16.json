@@ -269,7 +269,7 @@
     "docs/decisions.md: the new D-row described in the last commit.",
     "docs/performance.md: the corrected rule, the 'Kept in first scripts' table, the sentence on admin words.",
     "docs/rules/storefront.md, Cookie consent (rg -n 'KNOWN_COOKIES' docs/rules/storefront.md CLAUDE.md): every cookie is listed in COOKIE_PATTERNS (src/lib/cookie-patterns.ts) with its category and in src/lib/known-cookies.ts with its purpose.",
-    "The plan's tracker: set step 0.16 to Done with the date and commits (find the row: rg -n '^\\| *0\\.16 ' docs/audits/bloat-review-2026-11.md docs/audits/bloat-review-2026-11; if step 0.1 has not made the table yet, say so in the hand-back)."
+    "docs/audits/bloat-review-2026-11.md, Progress table: set the row of step 0.16 to Done with the date and the commits in Notes (find it: rg -n '^\\| 0\\.16 ' docs/audits/bloat-review-2026-11.md), and add a line under the step's own heading in docs/audits/bloat-review-2026-11/plan/phase-0.md saying what was done differently from the plan, if anything."
   ],
   "do_not": [
     "Do not re-export the moved names from their old files (cookie-consent.ts, b2b.ts, page-modal.ts, store-features.ts, menu-drawer.ts): a re-export puts the weight back.",

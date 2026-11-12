@@ -1,0 +1,112 @@
+{
+  "id": "2.31",
+  "goal": "The admin keeps its session fresh with Supabase's auth client alone, so an idle admin screen loads none of Supabase's realtime, storage or database client; uploads still load the full client on the press.",
+  "why": "After step 0.9 the whole Supabase client (259 KB) still loads on every admin screen once it is idle, leaving an idle store home near 930,000 bytes of script (1,428,740 at the review); the auth client alone is about 117 KB, which brings the idle home to 800,000 or less.",
+  "read_first": [
+    "docs/rules/admin/platform.md",
+    "docs/platform.md",
+    "src/components/admin/session.tsx",
+    "src/lib/supabase/client.ts",
+    "src/lib/supabase/server.ts",
+    "node_modules/@supabase/ssr/dist/main/createBrowserClient.js",
+    "e2e/fixtures/auth-stub.mjs",
+    "e2e/signed-in/admin-scripts.spec.ts"
+  ],
+  "depends_on": [
+    { "id": "0.9", "why": "it changes src/components/admin/session.tsx to load the Supabase client with import() once the page is idle; this step swaps what that import() loads" },
+    { "id": "1.5", "why": "its by-idle case in e2e/signed-in/admin-scripts.spec.ts is the measure" }
+  ],
+  "commits": [
+    {
+      "title": "The admin's session keeper loads Supabase's auth client alone",
+      "changes": [
+        {
+          "file": "package.json",
+          "action": "edit",
+          "how": "Add \"@supabase/auth-js\": \"2.118.0\" to dependencies, the exact version already installed under @supabase/supabase-js (check: ls node_modules/.pnpm | rg 'supabase\\+auth-js' prints @supabase+auth-js@2.118.0; if the installed version differs, use the installed one, pinned exactly like the other Supabase lines). Run pnpm install and commit pnpm-lock.yaml: the lockfile must gain only the importer line, no new package."
+        },
+        {
+          "file": "src/lib/supabase/auth-client.ts",
+          "action": "create",
+          "how": "Export createAuthClient(), a per-tab singleton (keep it in a module variable) that builds the same auth client @supabase/ssr's createBrowserClient builds, without the rest of supabase-js. Read node_modules/@supabase/ssr/dist/main/createBrowserClient.js lines 25 to 60 and node_modules/@supabase/supabase-js/dist/index.cjs (_initSupabaseAuthClient) and copy their arguments exactly: import { AuthClient } from '@supabase/auth-js'; import { createStorageFromOptions } from '@supabase/ssr/dist/module/cookies' (the package has no exports map, so the path resolves; if the type check cannot find its types, add a one-line declaration for that path in src/types beside the repo's other declarations); const env = publicEnv() from '@/lib/env'; const { storage } = createStorageFromOptions({ cookieEncoding: 'base64url' }, false); const base = new URL(env.NEXT_PUBLIC_SUPABASE_URL); return new AuthClient({ url: new URL('auth/v1', base.href.endsWith('/') ? base.href : base.href + '/').href, headers: { Authorization: 'Bearer ' + key, apikey: key, 'X-Client-Info': 'supabase-ssr/0.12.7 createBrowserClient' }, storageKey: 'sb-' + base.hostname.split('.')[0] + '-auth-token', flowType: 'pkce', autoRefreshToken: true, detectSessionInUrl: true, persistSession: true, storage }) where key is env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY. The storage key and the cookie encoding must be the same as the server's client (src/lib/supabase/server.ts uses createServerClient with the same URL, so the default key is the same formula): the server must read the cookies this client writes. Comment: why the auth client alone (259 KB against about 117 KB), and that the values mirror @supabase/ssr 0.12.7, to be re-read on an upgrade."
+        },
+        {
+          "file": "src/lib/supabase/auth-client.test.ts",
+          "action": "create",
+          "how": "A vitest test (jsdom or a stubbed document.cookie, as other browser-side tests in src/lib do; rg -l 'document.cookie' src -g '*.test.ts' shows one to copy). (1) With NEXT_PUBLIC_SUPABASE_URL='https://abcd.supabase.co' the client's storage key is 'sb-abcd-auth-token', equal to the key of createBrowserClient(url, key) from @supabase/ssr built in the same test (read both through the private field the library keeps, or by writing a session with one and reading it with the other). (2) A session written by createBrowserClient's auth.setSession-equivalent storage write is returned by createAuthClient().getSession(), and the reverse. (3) The test reads node_modules/@supabase/ssr/package.json and fails with the message 're-read createBrowserClient.js and update auth-client.ts' when its version is not 0.12.7."
+        },
+        {
+          "file": "src/components/admin/session.tsx",
+          "action": "edit",
+          "how": "Replace the use of createClient from '@/lib/supabase/client' by createAuthClient from '@/lib/supabase/auth-client', keeping the way step 0.9 loads it (an import() once the page is idle: the import() now names '@/lib/supabase/auth-client'). SessionKeeper: client.onAuthStateChange(() => {}) on the auth client itself (it was createClient().auth.onAuthStateChange) and unsubscribe on unmount, still skipped when cookiesReadable(document) is false. SessionRecovery: client.getSession() on the auth client (it was client.auth.getSession()); every branch after it stays as it is. The file must no longer import '@/lib/supabase/client' in any form."
+        },
+        {
+          "file": "src/lib/supabase/client.ts",
+          "action": "edit",
+          "how": "Keep createClient() as it is. Add to its comment: the full client is for uploads and imports only and must be loaded on the press with import(); the session is kept by auth-client.ts."
+        }
+      ],
+      "checks": [
+        "pnpm test src/lib/supabase/auth-client.test.ts: passes",
+        "rg -n 'supabase/client' src/components/admin/session.tsx: prints nothing",
+        "pnpm lint && pnpm typecheck && pnpm test: exits 0",
+        "the signed-in build (as CI's signed-in job in .github/workflows/ci.yml: NEXT_PUBLIC_SUPABASE_URL=http://127.0.0.1:3912, NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=e2e-publishable-key, E2E_SIGNED_IN=1, node scripts/db-setup.mjs --seed, pnpm build), then E2E_SIGNED_IN=1 pnpm exec playwright test --project=signed-in e2e/signed-in (the whole folder, in the build CLAUDE.md describes: NEXT_PUBLIC_SUPABASE_URL is the stand-in http://127.0.0.1:3912): passes, the two-step sign-in specs among them",
+        "E2E_SIGNED_IN=1 pnpm exec playwright test --project=signed-in (in the signed-in build) e2e/signed-in/admin-scripts.spec.ts: the by-idle case shows the store home at or under 800,000 bytes of script, and none of the idle scripts holds 'RealtimeClient', 'StorageClient' or 'PostgrestClient'; lower the by-idle budgets to the measured figures"
+      ]
+    },
+    {
+      "title": "Uploads and imports load the full Supabase client on the press, and a scan holds it",
+      "changes": [
+        {
+          "file": "src/components/admin/admin-bundle.scan.test.ts",
+          "action": "create",
+          "how": "Marked create only because step 1.4 has not made it yet: EDIT it, never overwrite. Add a rule: no admin client module may reach '@supabase/supabase-js', '@supabase/ssr' or 'src/lib/supabase/client.ts' by a static value import. Start the rule with a list of today's static importers that may only shrink: run rg -n 'from \"@/lib/supabase/client\"' src -g '!*.test.*' (on 12 November 2026: video-upload.tsx, media-compress.ts, customer-import-flow.tsx, product-media-tools.tsx, redirects/redirect-import-flow.tsx, product-editor.tsx, field-file-upload.ts, inventory/stock-import-flow.tsx and data/import-flow.tsx under src/components/admin; session.tsx has left). For each file on the list, in this commit: replace the static import by 'const { createClient } = await import(\"@/lib/supabase/client\")' inside the async function that uploads (every use is inside an upload or import handler: check each; if a file calls createClient() during render, leave it on the list and say so). Take each converted file off the list."
+        }
+      ],
+      "checks": [
+        "pnpm test src/components/admin/admin-bundle.scan.test.ts: passes; the Supabase list is empty or names only files reported in the commit message",
+        "pnpm lint && pnpm typecheck && pnpm test: exits 0",
+        "the signed-in build (as CI's signed-in job in .github/workflows/ci.yml: NEXT_PUBLIC_SUPABASE_URL=http://127.0.0.1:3912, NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=e2e-publishable-key, E2E_SIGNED_IN=1, node scripts/db-setup.mjs --seed, pnpm build), then E2E_SIGNED_IN=1 pnpm exec playwright test --project=signed-in e2e/signed-in/products-grid.spec.ts e2e/signed-in/customers-staff.spec.ts e2e/signed-in/inventory.spec.ts e2e/signed-in/admin-scripts.spec.ts: pass (uploads and imports still work against the stand-in)",
+        "node scripts/bundle-budget.mjs: no admin route's first-load chunks hold 'GoTrueClient' together with 'RealtimeClient'; lower the baseline for routes that fell"
+      ]
+    }
+  ],
+  "tests": [
+    { "file": "src/lib/supabase/auth-client.test.ts", "proves": "fails when the auth-only client and the server's client would disagree on the cookie's name or encoding, or when @supabase/ssr is upgraded without re-reading the mirrored options" },
+    { "file": "e2e/signed-in/admin-scripts.spec.ts", "proves": "fails when an idle store home loads more than its lowered budget or any of Supabase's realtime, storage or database client" },
+    { "file": "src/components/admin/admin-bundle.scan.test.ts", "proves": "fails when an admin client module imports the full Supabase client statically" }
+  ],
+  "migration": { "needed": false, "notes": "" },
+  "done_when": [
+    { "check": "the signed-in build (as CI's signed-in job in .github/workflows/ci.yml: NEXT_PUBLIC_SUPABASE_URL=http://127.0.0.1:3912, NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=e2e-publishable-key, E2E_SIGNED_IN=1, node scripts/db-setup.mjs --seed, pnpm build), then E2E_SIGNED_IN=1 pnpm exec playwright test --project=signed-in e2e/signed-in/admin-scripts.spec.ts (the by-idle case)", "expect": "an idle store home with at most 800,000 bytes of script (1,428,740 at the review) and none of Supabase's realtime, storage or database client in it" },
+    { "check": "E2E_SIGNED_IN=1 pnpm exec playwright test --project=signed-in (in the signed-in build) e2e/signed-in (the sign-in, two-step and permissions specs)", "expect": "pass: the owner, the Read-only member and the platform admin sign in through the stand-in as before" },
+    { "check": "By hand on a local build against the stand-in: sign in, leave a tab open past the access token's life (or shorten it in the stand-in), then open a page", "expect": "the page opens without a sign-in; the cookie 'sb-…-auth-token' was rewritten" }
+  ],
+  "after_deploy": [
+    "Sign in to the production admin, leave the tab open for over an hour (the access token's life), then press a link: the page opens without the sign-in screen. Open a second tab in the same hour and do the same there.",
+    "In the browser's network panel on an idle store home, no script holds 'RealtimeClient'."
+  ],
+  "docs": [
+    "docs/decisions.md (or docs/decisions/D{n}.md after step 2.40): one decision with the next free D number: the session is kept by the auth client alone (auth-client.ts mirrors @supabase/ssr's options), the full client loads on an upload's press, the bytes before and after, and that the refresh-route way was not taken (it would change how two tabs share a refresh token).",
+    "docs/rules/admin/platform.md, the paragraph 'There is no proxy: getAccount() verifies the session on each request, SessionKeeper refreshes tokens in the browser': add that SessionKeeper uses src/lib/supabase/auth-client.ts and that the full client is never imported statically in the admin.",
+    "docs/audits/bloat-review-2026-11.md: row 2.31 to Done (rg -n '^\\| *2\\.31 ' docs/audits/bloat-review-2026-11.md) with the measured idle figure."
+  ],
+  "do_not": [
+    "Do not add a bypass or a test-only branch to sign-in or to the session keeper: the stand-in e2e/fixtures/auth-stub.mjs is the only fake.",
+    "Do not change src/lib/supabase/server.ts, src/server/sign-in.ts or any cookie name or option.",
+    "Do not build the refresh route (the step's second way) in this brief: it changes the rule in docs/rules/admin/platform.md and how two tabs share a refresh token.",
+    "Do not remove SessionRecovery or change its branches (no session: go to sign-in; refused twice in 15 seconds: no access).",
+    "Do not upgrade any @supabase package in this change.",
+    "Do not pay for anything: no monitoring service is needed to check the session."
+  ],
+  "stop_if": [
+    "src/components/admin/session.tsx is not as step 0.9 leaves it (it still imports createClient statically at the top).",
+    "auth-client.test.ts cannot make the two clients read each other's session.",
+    "Any signed-in spec fails at sign-in, at the two-step page or with an unexpected redirect to /admin/sign-in.",
+    "The by-idle figure is above 800,000 bytes after commit 1: report the idle scripts and their sizes; do not start the refresh route.",
+    "pnpm install changes more of pnpm-lock.yaml than the one importer line."
+  ],
+  "executor": "cheap-then-review",
+  "executor_why": "The edits are few and fully named and the signed-in suite catches a broken session, but this is the admin's auth, so a stronger model must read the diff (the mirrored client options above all) before it is pushed.",
+  "checked_in_code": "I opened src/components/admin/session.tsx (SessionKeeper calls createClient().auth.onAuthStateChange, SessionRecovery calls client.auth.getSession), src/lib/supabase/client.ts (createBrowserClient of @supabase/ssr 0.12.7) and the library's createBrowserClient.js and supabase-js's _initSupabaseAuthClient, from which the brief copies the options. The step says the rule is in docs/platform.md; it is in docs/rules/admin/platform.md (line 50: 'There is no proxy ... SessionKeeper refreshes tokens in the browser'). @supabase/auth-js is installed at 2.118.0 only as a dependency of supabase-js, so it must be added to package.json to be imported; createStorageFromOptions is not exported from @supabase/ssr's index and is imported from its dist path. Nine other admin modules import the full client statically for uploads; the step says uploads keep importing it on the press, so commit 2 makes that true and holds it."
+}

@@ -1,0 +1,87 @@
+{
+  "id": "4.7",
+  "goal": "Every text that describes live drills says they are a console tool: asked for by an insert into commerce.live_drills and read from that row, with no screen or button; no code changes.",
+  "why": "Today four texts say or imply that 'a platform admin' asks for a drill through requestDrills(), but only the integration test calls it and no screen exists (0 callers outside tests). After: 0 texts say a person asks through a screen, and all four say how a drill is really asked for.",
+  "read_first": [
+    "src/server/live-drills.ts",
+    "docs/rules/admin/platform.md:231",
+    "docs/decisions.md:746",
+    "docs/consolidation.md:46",
+    "src/lib/rules-index.test.ts"
+  ],
+  "depends_on": [],
+  "commits": [
+    {
+      "title": "Live drills are a console tool, and the texts say so",
+      "changes": [
+        {
+          "file": "src/server/live-drills.ts",
+          "action": "edit",
+          "how": "Comments only; change no line of code. (1) In the file's header comment (the block that starts 'Live drills (consolidation, D406)'), replace the sentence part 'Requested by a platform admin (`requestDrills()`) and run only by `runLiveDrills()` in the five-minute dispatcher, a request at a time.' with: 'A console tool on purpose: asked for by an insert into `commerce.live_drills` (store_id, kinds, requested_by or null) and read from the row (status, results, finished_at); no screen, action or assistant tool asks for one. `requestDrills()` is that insert with its checks, used by the tests. Run only by `runLiveDrills()` in the five-minute dispatcher, a request at a time.' Keep the rest of the comment (the test-mode refusal, DRILL_EMAIL_DOMAIN, the screens' own functions). (2) The doc comment above requestDrills() ('/** A platform admin's request for a store's drills. Returns the request's id, or why not. */') becomes '/** A request for a store's drills, as an insert into `commerce.live_drills` with its checks (the tests use it; in production the row is inserted from the console). Returns the request's id, or why not. */'. Do not touch the comments near lines 251 to 314 that say 'the platform admin who asked': they describe the account in requested_by, which is still right."
+        },
+        {
+          "file": "docs/rules/admin/platform.md",
+          "action": "edit",
+          "how": "In the entry '**Live drills (D406, `docs/consolidation.md`, `src/lib/live-drills.ts`, `src/server/live-drills.ts`)**' (line 233), replace the words '(`commerce.live_drills`, requested by `requestDrills()`, run only by `runLiveDrills()` in the five-minute dispatcher)' with '(`commerce.live_drills`, run only by `runLiveDrills()` in the five-minute dispatcher)', and add this as the entry's second sentence, after the sentence that ends 'does not call a test.': 'A drill is asked for by an insert into `commerce.live_drills` (`store_id`, `kinds`, and `requested_by` or null) from the database console, by the person or AI doing the development, and its outcome is read from the same row (`status`, `results`, `finished_at`). No screen, action or assistant tool asks for one or shows one, on purpose (the owner, November 2026); `requestDrills()` is the same insert with its checks, used by the tests. The runner checks test mode again before anything runs, so an insert for a store that is not in Stripe's test mode does nothing.' Change nothing else in the entry, and do not change the heading line above it (line 231) or CLAUDE.md's index line 'Live drills (D406, ...)': src/lib/rules-index.test.ts holds the two to the same words."
+        },
+        {
+          "file": "docs/decisions.md",
+          "action": "edit",
+          "how": "In the row of D406 (line 746), replace 'A platform admin (or the platform's AI) asks for a store's drills (`requestDrills()`, `commerce.live_drills`, refused unless the store's checkout is in test mode);' with 'A store's drills are asked for by an insert into `commerce.live_drills` from the database console, by the person or AI doing the development, and read from the row (a console tool on purpose, with no screen: the owner, November 2026; `requestDrills()` is the insert with its checks, used by the tests; the runner refuses a store whose checkout is not in test mode);'. Keep every other word of the row, its date and its Why cell."
+        },
+        {
+          "file": "docs/consolidation.md",
+          "action": "edit",
+          "how": "Under '### What the AI could not do, and the answer' (line 48 on), replace 'a platform admin (or the platform's AI) asks for a store's drills, and the five-minute dispatcher runs them' with 'a store's drills are asked for by an insert into `commerce.live_drills` from the database console and read from the row (no screen or button asks for one), and the five-minute dispatcher runs them'. This is the fourth text; the step named three, and this one also says 'a platform admin'."
+        }
+      ],
+      "checks": [
+        "git diff --stat: four files changed, and `git diff src/server/live-drills.ts` shows only comment lines (every changed line starts with ' *' or '/**')",
+        "rg -n -i 'requested by a platform admin|platform admin \\(or the platform.s AI\\) asks|A platform admin.s request' src/server/live-drills.ts docs/rules/admin/platform.md docs/decisions.md docs/consolidation.md: prints nothing",
+        "rg -c 'insert into `commerce.live_drills`' src/server/live-drills.ts docs/rules/admin/platform.md docs/decisions.md docs/consolidation.md: prints 1 or more for each of the four files",
+        "pnpm exec vitest run src/lib/rules-index.test.ts src/lib/brand.scan.test.ts: pass (rules-index may be named rules-index.scan.test.ts after step 2.43)",
+        "pnpm lint && pnpm typecheck && pnpm test: exits 0"
+      ]
+    }
+  ],
+  "tests": [],
+  "migration": {
+    "needed": false,
+    "notes": ""
+  },
+  "done_when": [
+    {
+      "check": "rg -n 'live_drills' src/server/live-drills.ts docs/rules/admin/platform.md docs/decisions.md docs/consolidation.md, then read the four passages",
+      "expect": "each says a drill is asked for by an insert into commerce.live_drills and read from its row"
+    },
+    {
+      "check": "rg -n -i 'button|screen' on the same four passages",
+      "expect": "the only mentions say that no screen or button asks for a drill"
+    },
+    {
+      "check": "git diff --stat for the commit",
+      "expect": "no file under src changed except comments in src/server/live-drills.ts"
+    }
+  ],
+  "after_deploy": [],
+  "docs": [
+    "docs/decisions.md: the row of D406 is corrected in place (above). Also add one new decision row (next free D-number, today's date) that records the owner's choice on finding DD-6: live drills stay a console tool, with no screen and no assistant tool, and the texts say so; this is what the repo's rule 'every decision gets a D-number row' asks for.",
+    "docs/rules/admin/platform.md and docs/consolidation.md as in the commit.",
+    "docs/audits/bloat-review-2026-11.md, Progress table: set the row of step 4.7 to Done with the date and the commit hash (if the table has no row for 4.7, add one in the table of its phase with the step's title), and add one line to that file's change log if it has one."
+  ],
+  "do_not": [
+    "Do not change any code: not requestDrills(), not runLiveDrills(), not the dispatcher's job list, not the table.",
+    "Do not delete requestDrills() as unused: the integration test src/server/live-drills.int.test.ts uses it, and it documents the insert's checks. If the unused-exports ratchet of step 1.17 lists it as test-only, leave it listed with the reason 'the console tool's insert with its checks'.",
+    "Do not build a form, an action or an assistant tool for drills: the owner chose not to.",
+    "Do not change the heading line of the rule in docs/rules/admin/platform.md or CLAUDE.md's index line for live drills.",
+    "Do not reword the comments about 'the platform admin who asked' near lines 251 to 314 of src/server/live-drills.ts."
+  ],
+  "stop_if": [
+    "One of the four passages is not as quoted (main has moved): report the passage as it reads now instead of forcing the replacement.",
+    "A screen, action or tool that calls requestDrills() exists by now (rg -n 'requestDrills\\(' src --glob '!*.test.*' prints a caller outside src/server/live-drills.ts): then the texts are no longer wrong in this way; stop and report.",
+    "rules-index.test.ts fails after the edit."
+  ],
+  "executor": "cheap",
+  "executor_why": "It is four text replacements with the old and new words given, no code, and a test holds the rule's heading to CLAUDE.md's line.",
+  "checked_in_code": "I opened src/server/live-drills.ts (header comment and requestDrills() at lines 30 to 47), docs/rules/admin/platform.md line 233, the D406 row at docs/decisions.md line 746 and docs/consolidation.md lines 48 to 50, and the table's columns in the baseline (store_id, requested_by, kinds, status, results, finished_at). rg confirms requestDrills() has no caller outside its own file and the integration test. One correction to the step: the rule in docs/rules/admin/platform.md does not say 'a platform admin'; it says 'requested by `requestDrills()`', which is just as untrue of production; the third text that does say 'a platform admin (or the platform's AI) asks' is docs/consolidation.md, so the brief corrects all four."
+}

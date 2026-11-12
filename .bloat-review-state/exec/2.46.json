@@ -96,7 +96,7 @@
       ],
       "checks": [
         "for f in theme motion visibility typography colour; do rg -n 'from \"zod\"' src/lib/$f.ts; done : prints nothing",
-        "pnpm exec vitest run src/lib/theme.test.ts src/lib/motion.test.ts src/lib/visibility.test.ts src/lib/typography.test.ts src/components/admin/admin-bundle.scan.test.ts : exits 0",
+        "pnpm exec vitest run src/lib/theme.test.ts src/lib/motion-css.test.ts src/lib/visibility.test.ts src/lib/typography.test.ts src/components/admin/admin-bundle.scan.test.ts : exits 0",
         "pnpm lint && pnpm typecheck && pnpm test: exits 0",
         "pnpm build && node scripts/bundle-budget.mjs : exits 0 after lowering the baseline"
       ]

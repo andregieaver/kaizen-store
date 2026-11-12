@@ -1,0 +1,192 @@
+{
+  "id": "0.22",
+  "goal": "One cart or checkout render works the basket out once, reads the customer, the cart count and stock once each, and sends no statement about bonus, referrals or checkout rules for a store that does not use them.",
+  "why": "Today the cart page calls cartSummary() twice per view and each call sends 5 statements to learn that bonus, referrals and checkout rules are not in use; getCustomer(), getCartCount() and stock are read two to four times in one render. After: one summary per render, one read each, and none for a feature that is off.",
+  "read_first": [
+    "docs/rules/storefront.md",
+    "src/server/request-memo.ts",
+    "src/app/s/[store]/[market]/cart/cart-contents.tsx",
+    "src/app/s/[store]/[market]/cart/bonus.ts",
+    "src/server/cart-summary.ts",
+    "src/server/bonus.ts",
+    "src/server/checkout-rules.ts",
+    "src/app/s/[store]/[market]/cart/cart-contents.test.ts"
+  ],
+  "depends_on": [],
+  "commits": [
+    {
+      "title": "The customer, the cart count and stock are read once a render",
+      "changes": [
+        {
+          "file": "src/server/customers.ts",
+          "action": "edit",
+          "how": "In getCustomer() (line 454) keep the two first lines (read the cookie; return null without a token) and run the rest (the session statement and the mapping) through `perRequest(`customer:${storeId}:${sha256(token)}`, async () => { … })` (import perRequest from './request-memo'). The token's hash is in the key on purpose: after a sign-in in the same request the cookie holds a new token, so the old answer is never reused; after a sign-out there is no token and the function returns null before the memo."
+        },
+        {
+          "file": "src/components/cart-link.tsx",
+          "action": "edit",
+          "how": "Line 26: `const count = await perRequest(`cart-count:${storeId}:${market.slug}`, () => getCartCount({ storeId, market }));` (import perRequest from '@/server/request-memo'). The header's link and the phone bar's then share one count. Do not put the memo inside getCartCount() itself: actions call it after they change the cart."
+        },
+        {
+          "file": "src/server/visibility.ts",
+          "action": "edit",
+          "how": "Line 62: `const customer = await getCustomer(store.id);` (drop the file's own `visibility:customer:` key; getCustomer() shares its read now)."
+        },
+        {
+          "file": "src/components/product-parts.tsx",
+          "action": "edit",
+          "how": "Add near the top `const stockOnce = (storeId: string, ids: string[]) => perRequest(`stock:${storeId}:${[...ids].sort().join(\",\")}`, () => getVariantStock(storeId, ids));` and use it at the two call sites of getVariantStock() (ProductJsonLdSection about line 694, and the buy part's Promise.all about line 1012; both pass the product's variant ids). Stock is still read per request and never cached across requests: perRequest lives for one render only."
+        },
+        {
+          "file": "src/server/request-shared.test.ts",
+          "action": "create",
+          "how": "A unit test that one render shares the reads. React's cache() does nothing outside a server render, so stand in for one render: `vi.mock('react', async (original) => ({ ...(await original<typeof import('react')>()), cache: <T>(make: () => T) => { let made: T | undefined; let has = false; return () => (has ? (made as T) : ((has = true), (made = make()))); } }))`. Mock 'server-only' to {}. Mock 'next/headers' so cookies() returns a jar whose get(name) gives { value: 'tok' } for any name. Mock '@/db/client' so db() and readDb() return an object whose `execute` is a vi.fn() resolving to [{ id: 'c1', email: 'a@example.com', name: '', phone: null, address: null, has_password: false, company_name: null, organisation_number: null, avatar_path: null }]. Case 1: call getCustomer('s1') twice (await both) and expect execute called once and both answers equal. Case 2: getCustomer('s1') then, with the jar now returning { value: 'other' }, getCustomer('s1') again: execute called twice (a new session is read). If getCustomer imports modules that cannot load in a unit test, mock them as src/app/s/[store]/[market]/account/privacy/actions.test.ts mocks its server imports."
+        }
+      ],
+      "checks": [
+        "pnpm exec vitest run src/server/request-shared.test.ts : passes",
+        "pnpm lint && pnpm typecheck && pnpm test : exits 0",
+        "pnpm exec vitest run --config vitest.integration.config.mts src/server/customers.int.test.ts : passes",
+        "pnpm build && pnpm exec playwright test e2e/cart.spec.ts e2e/account.spec.ts e2e/wishlist.spec.ts e2e/products-page.spec.ts : pass (sign in, then the header shows the account; add to cart, then both cart links show the count)"
+      ]
+    },
+    {
+      "title": "The cart and the checkout work the basket out once, and ask nothing of a feature that is off",
+      "changes": [
+        {
+          "file": "src/lib/bonus.ts",
+          "action": "edit",
+          "how": "Export `cartBonusOff(signedIn: boolean): CartBonus` returning exactly the object cartBonusOf() returns today when `!program.on` (src/server/bonus.ts lines 402 to 414: enabled false, signedIn, every amount 0, pendingAvailableAt null, earnPercent 0, pendingDays 0). In src/server/bonus.ts make cartBonusOf() return `cartBonusOff(signedIn)` there, so there is one 'off' shape. Also export from src/server/bonus.ts `bonusProgramOff(market)`: the BonusProgram value bonusProgram() returns for a store with the programme off (read bonusProgram() at line 69 and build the same object from its defaults without a statement: `on: false`, the default settings, the market's currency, no rates)."
+        },
+        {
+          "file": "src/server/cart-summary.ts",
+          "action": "edit",
+          "how": "(1) Add `features?: FeatureSource` to cartSummary()'s third parameter (the `who` object). At the line `const program = await bonusProgram(db(), storeId);` (about line 99) use `const program = who.features && !featureOn(who.features, \"bonus\") ? bonusProgramOff(market) : await bonusProgram(db(), storeId);`. At the next line, when `who.features && !featureOn(who.features, \"referrals\")`, set `friend = null` and call neither codeInPlay() nor friendState(). Without `features` everything reads as today. (2) At line 82 pass `cachedRules: true` in the options of checkoutRuleOutcome() (see the checkout-rules.ts entry). (3) Add `export function requestCartSummary(store: Store, market: Market)`: `perRequest(`cart-summary:${store.id}:${market.slug}`, async () => { const shop = { storeId: store.id, market }; const cart = await getCart(shop); const summary = cart.lines.length === 0 ? null : await cartSummary(shop, cart, { features: store }); return { cart, summary }; })`. Server actions keep calling cartSummary() directly: they read after they write. Do NOT touch placeOrder() in src/server/checkout.ts: it reads the switches and settings inside its own transaction."
+        },
+        {
+          "file": "src/server/checkout-rules.ts",
+          "action": "edit",
+          "how": "Add `export const checkoutRulesTag = (storeId: string) => `checkout-rules:${storeId}`;` and `async function enabledRulesCached(storeId: string): Promise<CheckoutRule[]>` whose body starts with 'use cache', then cacheLife('hours') and cacheTag(checkoutRulesTag(storeId)) (written as src/server/catalog.ts lines 285 to 287), and returns `activeRules(readDb(), storeId)`. checkoutRuleOutcome() takes a new option `cachedRules?: boolean` in its last parameter object: `const rules = cachedRules ? await enabledRulesCached(storeId) : await activeRules(runner, storeId);`. Only cart-summary.ts passes it; placeOrder() (src/server/checkout.ts line 561) and src/server/delivery-options.ts line 683 keep the live read. In the four writers saveCheckoutRule(), switchCheckoutRule(), moveCheckoutRule() and deleteCheckoutRule(), after the write succeeds, call `refreshTag(checkoutRulesTag(member.store.id))` (import from './refresh')."
+        },
+        {
+          "file": "src/app/s/[store]/[market]/cart/cart-contents.tsx",
+          "action": "edit",
+          "how": "In loadCartView() (lines 71 to 80; if step 0.16 moved it, the same function in ./cart-view.ts): replace the first `getCart(...)` and the `cartSummary(...)` of the Promise.all by `const { cart, summary: known } = await requestCartSummary(store, market);` (buyer still read beside it); return the empty view when `cart.lines.length === 0`; `const summary = known!;`. Take `readCartBonus(store, market)` out of the Promise.all and use `const bonus = summary.bonus;` (cartSummary() already returns it, built by the same cartBonusOf()). Remove the readCartBonus import from this file. The perRequest key of cartView() stays."
+        },
+        {
+          "file": "src/app/s/[store]/[market]/checkout/checkout-section.tsx",
+          "action": "edit",
+          "how": "Line 73: `const bonus = featureOn(store, \"bonus\") ? ((await requestCartSummary(store, market)).summary?.bonus ?? null) : cartBonusOff(false);` and remove the readCartBonus import if unused. First check that the credits part of the checkout draws nothing while `bonus.enabled` is false and reads nothing else of it; if it does, stop. At line 465 pass the known summary: `deliveryView({ storeId: store.id, market }, cartId, m.shipping, (await requestCartSummary(store, market)).summary)`."
+        },
+        {
+          "file": "src/server/delivery-choice.ts",
+          "action": "edit",
+          "how": "deliveryView() takes an optional fourth parameter `known?: Awaited<ReturnType<typeof cartSummary>> | null`; line 23 becomes `const summary = known ?? (await cartSummary(shop, await getCart(shop), { cartId, customerId }));`. Other callers are unchanged."
+        },
+        {
+          "file": "src/app/s/[store]/[market]/cart/cart-contents.test.ts",
+          "action": "edit",
+          "how": "The file mocks ./bonus and asserts `expect(readCartBonus).toHaveBeenCalledWith(store, market)` (line 209). Change the bonus cases (lines 204 to 231) to feed the bonus through the mocked summary (`summary({ bonus: bonus({...}) })`, as the file's summary helper allows; add a `bonus` field to that helper if it has none) and replace that assertion by `expect(readCartBonus).not.toHaveBeenCalled()`. Mock '@/server/cart-summary' so that requestCartSummary returns { cart, summary } from the same fixtures and cartSummary is a vi.fn(); add a case: rendering CartLines, CartSummary and CartCheckout of one store in one test calls the summary once (with the stand-in for React's cache from src/server/request-shared.test.ts). This is the one existing test the step is allowed to change, because it asserts the call being removed."
+        },
+        {
+          "file": "src/server/cart-summary.test.ts",
+          "action": "create",
+          "how": "A unit test of cartSummary() with features ['shop']: mock 'server-only', '@/db/client', './bonus' (bonusProgram: vi.fn(), bonusProgramOff and cartBonusOf passing through simple stubs), './affiliates' (codeInPlay: vi.fn(), friendState: vi.fn()), './checkout-rules' (checkoutRuleOutcome resolving NO_RULES) and the other server imports cartSummary() reaches (see how src/app/s/[store]/[market]/cart/cart-contents.test.ts mocks a cart). Call cartSummary(shop, cartWithOneLine, { customerId: null, cartId: 'c1', features: ['shop'] }) and expect bonusProgram, codeInPlay and friendState not to have been called. A second call with features ['shop', 'bonus', 'referrals'] expects bonusProgram called once. If cartSummary() cannot be loaded with mocks in reasonable size (more than about 15 mocked modules), write the same two cases as an int test in src/server/cart-summary-features.int.test.ts with a counting Proxy around db() that counts statements naming commerce.bonus_settings, commerce.affiliate and commerce.checkout_rules (0 for a shop-only store), and say so in the hand-back."
+        },
+        {
+          "file": "src/app/s/[store]/[market]/checkout/checkout-section.test.ts",
+          "action": "edit",
+          "how": "Add two cases: with a store whose features are ['shop'], rendering the checkout's pieces does not call readCartBonus (it stays mocked) and the credits part draws nothing; with Bonus on, the cart summary stand-in is asked at most once for one render of the pieces (delivery and credits together)."
+        },
+        {
+          "file": "docs/decisions.md",
+          "action": "edit",
+          "how": "Append one row with the next free D-number (pull main first; `rg -o '^\\| D[0-9]+' docs/decisions.md | tr -dc '0-9\\n' | sort -n | tail -1`, plus 1). It records: getCustomer() shared per render (keyed by the session token), the cart count and stock shared per render at their call sites; requestCartSummary() as the one summary of a cart or checkout render; cartSummary() given the store's features so Bonus off and Referrals off send no statement; checkout rules read through a cached list under checkout-rules:{storeId}, refreshed by its four writers; placeOrder() unchanged and still the one that decides, under its own locks. Gift cards are left: cards already sold stay usable while the feature is off. Store-only: Kaizena Flow sells plans through Stripe and draws no cart. No migration."
+        }
+      ],
+      "checks": [
+        "pnpm exec vitest run 'src/app/s/[store]/[market]/cart/cart-contents.test.ts' 'src/app/s/[store]/[market]/cart/bonus.test.ts' 'src/app/s/[store]/[market]/checkout/checkout-section.test.ts' src/server/cart-summary.test.ts : pass",
+        "rg -c 'use cache' src/server/checkout-rules.ts : prints 1 or more",
+        "pnpm lint && pnpm typecheck && pnpm test : exits 0",
+        "pnpm test:int : exits 0 (the money tests that hold cartSummary() equal to placeOrder(): checkout-kinds, vat-engine, gift-cards, store-features-world and the other files `rg -l 'cartSummary\\(' src --glob '*.int.test.ts'` lists; none may be edited)",
+        "pnpm build && pnpm exec playwright test e2e/cart.spec.ts e2e/discounts.spec.ts e2e/gift.spec.ts e2e/deliveries.spec.ts e2e/pickup.spec.ts e2e/vat-reverse-charge.spec.ts : pass",
+        "signed-in build, then pnpm exec playwright test --project=signed-in -g 'checkout rule' : pass (a saved rule shows on the cart's next load); if no spec matches, check it by hand on pnpm dev and say so"
+      ]
+    }
+  ],
+  "tests": [
+    {
+      "file": "src/server/request-shared.test.ts",
+      "proves": "Fails when two getCustomer() calls in one render send two statements, or when a new session token reuses the old answer."
+    },
+    {
+      "file": "src/app/s/[store]/[market]/cart/cart-contents.test.ts",
+      "proves": "Fails when a cart render asks for the summary more than once or calls ./bonus."
+    },
+    {
+      "file": "src/server/cart-summary.test.ts",
+      "proves": "Fails when cartSummary() with features ['shop'] calls bonusProgram, codeInPlay or friendState."
+    },
+    {
+      "file": "src/app/s/[store]/[market]/checkout/checkout-section.test.ts",
+      "proves": "Fails when the checkout reads the cart's bonus with Bonus off, or works the summary out more than once per render."
+    }
+  ],
+  "migration": {
+    "needed": false,
+    "notes": ""
+  },
+  "done_when": [
+    {
+      "check": "pnpm exec vitest run 'src/app/s/[store]/[market]/cart/cart-contents.test.ts'",
+      "expect": "passes: the summary is asked once per cart render and ./bonus is not called"
+    },
+    {
+      "check": "pnpm exec vitest run src/server/cart-summary.test.ts",
+      "expect": "passes: with features ['shop'] bonusProgram, codeInPlay and friendState are not called"
+    },
+    {
+      "check": "pnpm exec vitest run 'src/app/s/[store]/[market]/checkout/checkout-section.test.ts'",
+      "expect": "passes: readCartBonus not called with Bonus off; at most one summary per checkout render"
+    },
+    {
+      "check": "rg -c 'use cache' src/server/checkout-rules.ts",
+      "expect": "1 or more"
+    },
+    {
+      "check": "pnpm exec vitest run src/server/request-shared.test.ts",
+      "expect": "passes: one read for two getCustomer() calls in one render (two to four before); the cart link's count is shared by its perRequest key (rg -n \"cart-count:\" src/components/cart-link.tsx prints the line)"
+    },
+    {
+      "check": "pnpm test && pnpm test:int",
+      "expect": "exit 0 with no money test edited"
+    }
+  ],
+  "after_deploy": [
+    "Place a test order on a production store through the cart and checkout (the owner's test mode): the cart's totals, the checkout's and the order's agree to the minor unit."
+  ],
+  "docs": [
+    "docs/decisions.md: the D-row described above.",
+    "docs/rules/admin/commerce.md, under 'Checkout rules and questions': add 'The cart reads the store's enabled rules through a cached list (`checkout-rules:{storeId}`, refreshed by the rule's writers); `placeOrder()` reads them live inside its transaction.'",
+    "docs/audits/bloat-review-2026-11.md, Progress table: set the row of step 0.22 to Done with the date and the commits in Notes (find it: rg -n '^\\| 0\\.22 ' docs/audits/bloat-review-2026-11.md), and add a line under the step's own heading in docs/audits/bloat-review-2026-11/plan/phase-0.md saying what was done differently from the plan, if anything."
+  ],
+  "do_not": [
+    "Do not change placeOrder() or anything in src/server/checkout.ts.",
+    "Do not memoise inside getCartCount(), getCart() or cartSummary(): actions read after they write.",
+    "Do not cache stock across requests: perRequest only.",
+    "Do not skip the gift card read when gift cards are off: cards already sold stay usable.",
+    "Do not edit an int test or a money test to make it pass; only cart-contents.test.ts changes, as the brief says.",
+    "Do not key the customer memo on the store alone.",
+    "Do not make the cached rules the read placeOrder() or delivery-options.ts uses."
+  ],
+  "stop_if": [
+    "Any money test or int test fails after commit two: revert the commit's part that caused it and report the test and the differing figure.",
+    "The checkout's credits part reads a field of `bonus` while `enabled` is false.",
+    "bonusProgram()'s 'off' value cannot be built without a statement (it depends on a row even when the feature is off).",
+    "pnpm build reports a cache error for enabledRulesCached() (a 'use cache' function reached from a per-request part is allowed; a cookie read inside it is not).",
+    "After a sign-in in e2e/account.spec.ts the header does not show the account."
+  ],
+  "executor": "cheap-then-review",
+  "executor_why": "The edits are named line by line, but they sit on the cart, the checkout and the figures an order is placed with, so a stronger model should read the diff before it is pushed.",
+  "checked_in_code": "I opened cart-contents.tsx (loadCartView runs cartSummary() and readCartBonus() side by side), cart/bonus.ts and server/bonus.ts (cartBonus() reads the cart and runs cartSummary() again only to return summary.bonus), cart-summary.ts (bonusProgram, codeInPlay, friendState and checkoutRuleOutcome on every call), checkout-section.tsx, delivery-choice.ts, checkout-rules.ts, customers.ts, cart.ts, cart-link.tsx, visibility.ts and product-parts.tsx; all are as the findings say. Corrections: SD-11 put the memo inside getCustomer() keyed by the store; I added the session token's hash to the key so a sign-in in the same request is never answered from before it, and put the cart count's memo at the cart link, not inside getCartCount(), which actions call after a write. No test of request-memo exists and React's cache() does nothing in a unit test, so the brief gives the stand-in the new tests need. The done-when's 'stock' is the two getVariantStock() calls of a product page, which the brief shares the same way."
+}

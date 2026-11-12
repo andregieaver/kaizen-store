@@ -1,0 +1,209 @@
+{
+ "id": "1.23",
+ "goal": "A script reads the built stylesheet and prints the bytes each audience alone names, failing above a written line; Platform, Usage and limits shows each store's layout-level style text and the share of published pages that use motion; and docs/performance.md holds the audiences' definition and figure, the first reading, the three trigger lines and the sentence that an owner's CSS is limited per sheet.",
+ "why": "Today nothing counts whose classes the one 183 KB sheet holds (51.8 KB raw of it only admin screens name) or how much style text owners add to every document (up to 3 sheets of 50,000 characters each), so two open decisions have no trigger. After: both are numbers with a line, read on every CI build and each quarter.",
+ "read_first": [
+  "docs/performance.md",
+  "docs/rules/admin/platform.md",
+  "src/app/globals.css",
+  "src/lib/custom-css.ts",
+  "src/app/s/[store]/[market]/layout.tsx",
+  "src/app/admin/(gated)/platform/capacity/page.tsx",
+  "src/server/usage.ts",
+  "src/lib/motion-attrs.ts"
+ ],
+ "depends_on": [
+  {
+   "id": "1.8",
+   "why": "it made scripts/lib/import-walk.mjs (reach(), importsOf(), resolve()), which the audiences script uses to find the files each root layout can reach, and src/lib/dependencies.scan.test.ts, which wants a line for the one package added here"
+  },
+  {
+   "id": "0.1",
+   "why": "it made docs/audits/bloat-review-2026-11/scripts/ the home of the review's scripts and its README the list of them"
+  },
+  {
+   "id": "1.1",
+   "why": "it wrote the budgets rule under docs/rules, where the audiences line gets its row"
+  }
+ ],
+ "commits": [
+  {
+   "title": "Stylesheet audiences: a script counts the classes only the admin, only Kaizena Flow's pages or only the on-site editor name",
+   "changes": [
+    {
+     "file": "package.json",
+     "action": "edit",
+     "how": "Add postcss to devDependencies at the version the lockfile already has for @tailwindcss/postcss (rg -n '^  postcss@' pnpm-lock.yaml prints it: 8.5.x), written exactly, then run pnpm install so pnpm-lock.yaml gains only the importer line. It is already installed as a dependency of Tailwind's plugin, so nothing new is downloaded and nothing is paid. If src/lib/dependencies.scan.test.ts exists (step 1.8), add postcss to its PACKAGES with why 'parses the built stylesheet in stylesheet-audiences.mjs' and loads 'build'."
+    },
+    {
+     "file": "docs/audits/bloat-review-2026-11/scripts/stylesheet-audiences.mjs",
+     "action": "create",
+     "how": "Plain Node ESM run from the repository root after pnpm build: 'node docs/audits/bloat-review-2026-11/scripts/stylesheet-audiences.mjs [--json]'. Imports: fs, path, zlib (brotliCompressSync with BROTLI_PARAM_QUALITY 11), postcss, and reach() from scripts/lib/import-walk.mjs (relative import '../../../../scripts/lib/import-walk.mjs'). Steps. (1) Find the sheets: every .css file under .next/static (walk it). The candidates are those whose text contains '.checkout-look'. The site's sheet is the candidate that does not contain '[data-builder-item]' when one such exists (after step 2.11 the admin has an entry of its own), else the only candidate; print its file name and its raw and Brotli bytes. Set split = true when two candidates exist. (2) Audiences by root layout. Group the root layouts so: store = src/app/s (every layout.tsx, page.tsx, route.ts and other .tsx file under it is an entry); platform = the folders src/app/(platform), (platform-nb), (docs), (docs-nb), (theme-preview), (theme-preview-nb); other = src/app/holding, passport, supply, sms and the files src/app/global-error.tsx and src/app/global-not-found.tsx plus every other top-level folder of src/app that is not admin, api or one of the above; admin = src/app/admin. For each group walk reach(srcDir, entry, { dynamic: true }) from every non-test .ts and .tsx file of its folders and collect the set of files reached. A reached file under src/components/admin/ or src/components/inline-edit/ that the store, platform or other group reaches counts for the audience 'editor' (the staff's on-site editor and the admin parts a public page draws), not for the group that reached it. (3) Tokens: for every file reached by any group read the text and split it at /[\\s\"'`<>{}()=;,]+/; drop tokens longer than 120 characters; keep a Map from token to the Set of audiences (store, platform, other, editor, admin) of the files that hold it. (4) Parse the site's sheet with postcss; take the at-rule 'layer' whose params start with 'utilities' and that has nodes; visit its rules, going into nested at-rules and wrapping a nested rule's text in its at-rule for the byte count. A rule's class is the first class in its selector, unescaped (\\\\: and the like). Its audience: 'store' when the token's set has store; else 'admin-only' when the set is exactly {admin}; else 'platform-only' when every member is platform or other; else 'editor-only' when exactly {editor} or {editor, admin}; else 'platform+editor'; a class no token matches is 'unknown'. (5) Print a table: audience, rules, raw bytes, Brotli bytes of that audience's rules joined; then the line 'no store page can draw: <raw> raw, <brotli> Brotli' for platform-only + editor-only + platform+editor together, and 'only admin files name: <raw> raw'. With --json print one object with the same numbers and the file name. (6) Exit 1 with a one-line reason when the 'no store page can draw' figure is above 17,000 bytes raw or above 2,000 bytes Brotli; and, only when split is true, when 'only admin files name' is above 0 (print the first 20 such classes). Otherwise exit 0. Export nothing; keep every figure's computation in small functions at the top so the test below can import classAudience(set) and overLine(numbers, split) from this file (guard the main part with 'if (import.meta.url === pathToFileURL(process.argv[1]).href)')."
+    },
+    {
+     "file": "src/lib/stylesheet-audiences.test.ts",
+     "action": "create",
+     "how": "Vitest, importing classAudience and overLine from '../../docs/audits/bloat-review-2026-11/scripts/stylesheet-audiences.mjs'. Cases: a set with store is 'store'; {admin} is 'admin-only'; {platform} and {platform, other} are 'platform-only'; {editor} and {editor, admin} are 'editor-only'; {platform, editor} is 'platform+editor'. overLine({ noStoreRaw: 16000, noStoreBrotli: 1900, adminOnlyRaw: 50000 }, false) is null (before the split the admin's share is printed, not failed); with noStoreRaw 17001 it is a string; with noStoreBrotli 2001 it is a string; overLine({ noStoreRaw: 0, noStoreBrotli: 0, adminOnlyRaw: 1 }, true) is a string that names the admin."
+    },
+    {
+     "file": ".github/workflows/ci.yml",
+     "action": "edit",
+     "how": "In the job 'e2e', directly after the step '- run: pnpm build' (and after any step earlier bloat-review steps added right behind the build), add a step named 'Whose classes the stylesheet holds' that runs: node docs/audits/bloat-review-2026-11/scripts/stylesheet-audiences.mjs | tee -a \"$GITHUB_STEP_SUMMARY\" with 'shell: bash' and 'set -o pipefail' on the line before the command, so the script's exit code fails the step. If step 1.20's recorder (scripts/timed.mjs) wraps CI steps by now, run the command through it as the other steps of the job do."
+    },
+    {
+     "file": "docs/audits/bloat-review-2026-11/README.md",
+     "action": "edit",
+     "how": "In the list of scripts add stylesheet-audiences.mjs with one line: what it prints, that it needs a build, and the two lines it fails above."
+    }
+   ],
+   "checks": [
+    "pnpm test src/lib/stylesheet-audiences.test.ts: exits 0",
+    "pnpm build && node docs/audits/bloat-review-2026-11/scripts/stylesheet-audiences.mjs: prints the site sheet's file name and a table; before step 2.11 expect 'only admin files name' near 51,800 bytes raw (45,000 to 56,000) and 'no store page can draw' between 13,000 and 17,000 raw and under 2,000 Brotli; exits 0",
+    "git diff --stat pnpm-lock.yaml: a few lines only (the importer entry for postcss)",
+    "pnpm lint && pnpm typecheck && pnpm test: exits 0"
+   ]
+  },
+  {
+   "title": "Usage and limits reads the style text each store adds to every document, and how many published pages use motion",
+   "changes": [
+    {
+     "file": "src/lib/style-reading.ts",
+     "action": "create",
+     "how": "Pure, no imports from src/server. Export const STYLE_MEDIAN_LINE = 10_000, STYLE_STORE_LINE = 20_000, MOTION_SHARE_LINE = 0.5. Export type StyleRow = { storeId: string | null; slug: string | null; name: string | null; cssBytes: number; pages: number; motionPages: number }. Export styleOver(row) = row.cssBytes > STYLE_STORE_LINE. Export styleSummary(rows): { stores: number; medianBytes: number; over: number; pages: number; motionPages: number; motionShare: number | null; triggers: ('median' | 'store' | 'motion')[] } : the median of cssBytes (0 for no rows), how many rows are over, the sums of pages and motionPages, motionShare = motionPages / pages or null when pages is 0, and triggers holding 'median' when medianBytes > STYLE_MEDIAN_LINE, 'store' when over > 0 and 'motion' when motionShare is not null and below MOTION_SHARE_LINE."
+    },
+    {
+     "file": "src/lib/style-reading.test.ts",
+     "action": "create",
+     "how": "Cases: three rows of 1,000, 12,000 and 25,600 bytes give medianBytes 12000, over 1 and triggers containing 'median' and 'store'; a row of exactly 20,000 is not over and one of 20,001 is; 10 pages with 4 using motion give motionShare 0.4 and the trigger 'motion'; 10 with 5 give no 'motion' trigger; no rows give medianBytes 0, motionShare null and no trigger."
+    },
+    {
+     "file": "src/server/style-reading.ts",
+     "action": "create",
+     "how": "Starts with import 'server-only'. Export async function styleReading(): Promise<StyleRow[]>. One statement through typedRows() of src/server/typed-rows.ts (describe the row with col: store_id col.uuid.nullable(), slug and name col.textOrNull, css_bytes, pages and motion_pages col.int), no page document leaves the database. For stores: from commerce.stores s left join commerce.pages h on h.id = s.header_id left join commerce.pages f on f.id = s.footer_id, where not (s.is_template or s.starter or s.sandbox) (the same stores platformUsage() lists, but the house store stays in: do not filter s.house). css_bytes = octet_length(s.custom_css) + coalesce(octet_length(h.published->>'css'), 0) + coalesce(octet_length(f.published->>'css'), 0): the three sheets src/app/s/[store]/[market]/layout.tsx writes into every document with <CustomCss> (the store's, the header's, the footer's). pages = (select count(*)::int from commerce.pages p where p.store_id = s.id and p.type in ('page', 'article') and p.published is not null). motion_pages = the same count with and (jsonb_path_exists(p.published, '$.**.motion.enter') or jsonb_path_exists(p.published, '$.**.motion.hover') or jsonb_path_exists(p.published, '$.**.motion.scroll') or jsonb_path_exists(p.published, '$.**.backgroundMotion.effect') or jsonb_path_exists(p.published, '$.**.backgroundLayers[*].scroll') or jsonb_path_exists(p.published, '$.**.backgroundLayers[*].ambient')): the parts motionNeeds() in src/lib/motion-attrs.ts reads; an upper bound, said so in a comment. Union all one row for Kaizena Flow's own site with store_id, slug and name null: the same sums from commerce.platform_settings (custom_css, header_id, footer_id) and the pages where store_id is null. Order by css_bytes desc. Call longerTimeout(tx, 30) inside a transaction as src/db/client.ts describes, because the path test reads every published page once."
+    },
+    {
+     "file": "src/server/style-reading.int.test.ts",
+     "action": "create",
+     "how": "An integration test in the style of the other src/server/*.int.test.ts files (copy the store setup of one that inserts a store and a page, for example src/server/site-layouts.int.test.ts if it exists, else src/server/assistant-notices.int.test.ts for the store). Cases: (1) a test store whose custom_css is 25,000 characters of 'a{color:red}' repeated (under the 50,000 check) has cssBytes of at least 25,000 and styleOver() true: the mark. (2) the same store with a header page whose published is {\"css\": \"x\".repeat(3000), \"rows\": []} linked as header_id adds 3,000. (3) a published page of type 'page' with published = {\"rows\":[{\"columns\":[{\"blocks\":[{\"type\":\"heading\",\"motion\":{\"enter\":{\"effect\":\"fade\"}}}]}]}]} counts in pages and motionPages; a second published page without motion counts in pages only; a draft counts in neither. (4) the row with storeId null is present once."
+    },
+    {
+     "file": "src/app/admin/(gated)/platform/capacity/page.tsx",
+     "action": "edit",
+     "how": "The page reads searchParams as 'query' already. Add: const reading = query.reading === 'styles' ? await styleReading() : null; (the reading is taken on demand, once a quarter, so the page's ordinary view sends no new statement). Below the database card add <Card title={w.platform.styles.title} compact>: a paragraph w.platform.styles.description; when reading is null a ButtonLink to `${BASE}?month=${month}&reading=styles` with prefetch={false} and the words w.platform.styles.take; when it is there: one line with the summary through fillWords (median, how many stores are over, the motion share as a whole percent, or w.platform.styles.noPages when the share is null), one line for each trigger of styleSummary(reading).triggers (w.platform.styles.triggers.median, .store, .motion), and a table with the columns store (the name, or w.platform.kaizen for the null row), style text (formatted with the page's existing formatUsage('storage_bytes', …) helper), a mark (the admin's existing warning badge or tone used on this page for a limit reached; the words w.platform.styles.over) on rows where styleOver(row), published pages, and pages with motion. Use the admin kit parts the page already imports (Card, the table part it uses for usage rows); write no new colour or class. Add 'reading?: string' to the page's searchParams type."
+    },
+    {
+     "file": "src/lib/admin-messages/capacity.en.ts",
+     "action": "edit",
+     "how": "Inside platform: { ... } add styles: { title: 'Style text owners add', description: 'The CSS a store adds to every one of its documents: its own, its header\\'s and its footer\\'s. Read before opening and each quarter.', take: 'Take the reading', summary: 'Median {median} a store, {over} above 20 KB, {share}% of published pages use motion.', noPages: 'No published pages yet.', over: 'Above 20 KB', store: 'Store', bytes: 'Style text', pages: 'Published pages', motion: 'Pages with motion', triggers: { median: 'The median store is above 10 KB: look again at serving this CSS as an external stylesheet.', store: 'A store is above 20 KB: its sheets should move to one external hashed stylesheet.', motion: 'Under half of published pages use motion: load motion.css only where a page uses it (bloat review step 2.49).' } }. Use the placeholders in the form fillWords() of this file's other strings uses."
+    },
+    {
+     "file": "src/lib/admin-messages/capacity.nb.ts",
+     "action": "edit",
+     "how": "The same keys in Norwegian (the type is the English file's, so a missing key does not compile): title 'Stiltekst eierne legger til', description 'CSS-en en butikk legger i hvert av dokumentene sine: sin egen, toppens og bunnens. Leses før åpning og hvert kvartal.', take 'Ta avlesningen', summary 'Median {median} per butikk, {over} over 20 KB, {share} % av publiserte sider bruker bevegelse.', noPages 'Ingen publiserte sider ennå.', over 'Over 20 KB', store 'Butikk', bytes 'Stiltekst', pages 'Publiserte sider', motion 'Sider med bevegelse', triggers.median 'Medianbutikken er over 10 KB: se på nytt på å levere denne CSS-en som et eksternt stilark.', triggers.store 'En butikk er over 20 KB: stilarkene bør flyttes til ett eksternt stilark med hash.', triggers.motion 'Under halvparten av publiserte sider bruker bevegelse: last motion.css bare der en side bruker den (trinn 2.49 i gjennomgangen).'"
+    }
+   ],
+   "checks": [
+    "pnpm test src/lib/style-reading.test.ts src/lib/admin-lang.test.ts src/lib/admin-strings.scan.test.ts: exits 0",
+    "pnpm test:int -- src/server/style-reading.int.test.ts (after node scripts/db-setup.mjs --seed on a local DATABASE_URL): exits 0",
+    "pnpm lint && pnpm typecheck && pnpm test: exits 0",
+    "pnpm build, then with E2E_SIGNED_IN=1 on the stand-in build (CLAUDE.md, Commands) run pnpm test:e2e -- e2e/signed-in: exits 0 (the platform's Usage and limits page still draws)"
+   ]
+  },
+  {
+   "title": "docs/performance.md: the stylesheet's audiences, the first style-text reading and the three trigger lines",
+   "changes": [
+    {
+     "file": "docs/performance.md",
+     "action": "edit",
+     "how": "Add a section '## Whose classes the stylesheet holds, and the style text owners add' at the end, lines at most 130 characters. It holds, in this order: (1) The definition: a class's audience is decided by which root layouts can reach the file that names it (store pages under src/app/s; Kaizena Flow's own pages, docs and theme previews; the admin; and the on-site editor, meaning files of src/components/admin and src/components/inline-edit that a public page reaches). (2) The audiences figure: paste the table that stylesheet-audiences.mjs printed on this commit's build, with the date and the site sheet's file name. (3) The tolerance: at most 15 KB raw of classes no store page can draw once step 2.11 has split the sheet; the script fails above 17 KB raw or 2.0 KB Brotli; a third stylesheet for stores is weighed only above the tolerance. (4) The sentence: 'An owner's own CSS is limited per sheet: 50,000 characters for each of the store's, the header's and the footer's (CSS_MAX in src/lib/custom-css.ts and the database checks). The limit is not on the sum (the owner, bloat review step 1.23); the 20 KB line below watches the sum.' (5) The first reading: a table of the reading taken on Platform, Usage and limits with ?reading=styles (per store: style text bytes, published pages, pages with motion; then the median, the number above 20 KB and the motion share), with its date. The owner or a platform admin takes it in production and it is pasted here; until then write the line 'First reading: to be taken on production before opening' and leave the table's rows empty. (6) The three trigger lines, each as one sentence: above 10 KB for the median store, look again at an external sheet; any store above 20 KB, its sheets move to one external hashed stylesheet, and the page marks that store; under half of published pages using motion, build step 2.49 (motion.css loaded only where a page uses it). (7) 'Read again each quarter, with the migrations' squash.'"
+    },
+    {
+     "file": "docs/rules/{budgets.md}",
+     "action": "edit",
+     "how": "The file is the budgets rule step 1.1 wrote under docs/rules (rg -l 'baseline.json' docs/rules). Add one row: the stylesheet's audiences | docs/audits/bloat-review-2026-11/scripts/stylesheet-audiences.mjs, run after the build in CI's e2e job | lines written in the script: 17,000 bytes raw and 2,000 Brotli of classes no store page can draw; from step 2.11 on, 0 bytes of admin-only classes in the site's sheet | no baseline file. Row at most 300 characters."
+    },
+    {
+     "file": "docs/rules/admin/platform.md",
+     "action": "edit",
+     "how": "Find the rule 'Usage and limits' (rg -n '^## Usage and limits' docs/rules/admin). Add two sentences at its end: the page's 'Style text owners add' card is a reading taken on demand (`?reading=styles`, `styleReading()` in `src/server/style-reading.ts`, pure parts in `src/lib/style-reading.ts`): one statement, no page document leaves the database; its lines (10 KB median, 20 KB a store, half of pages with motion) are in `docs/performance.md`. Wrap at 130 characters. Add no line to CLAUDE.md."
+    }
+   ],
+   "checks": [
+    "rg -n '50,000 characters for each' docs/performance.md: one line",
+    "rg -c 'external' docs/performance.md: at least 2 (the two trigger lines)",
+    "pnpm test src/lib/docs-budget.scan.test.ts src/lib/rules-index.test.ts: exits 0 (no line over 500 characters, no rule over its size, cited names exist)",
+    "pnpm lint && pnpm typecheck && pnpm test: exits 0"
+   ]
+  }
+ ],
+ "tests": [
+  {
+   "file": "src/lib/stylesheet-audiences.test.ts",
+   "proves": "Fails when a class's audience is decided another way, when the script stops failing above 17,000 bytes raw or 2,000 Brotli of classes no store page can draw, and when, after the split, an admin-only class in the site's sheet no longer fails."
+  },
+  {
+   "file": "src/lib/style-reading.test.ts",
+   "proves": "Fails when the 20 KB mark, the 10 KB median line or the half-of-pages motion line moves or stops triggering."
+  },
+  {
+   "file": "src/server/style-reading.int.test.ts",
+   "proves": "Fails when a store with 25 KB of own CSS no longer shows the mark, when the header's or footer's CSS is left out of the sum, or when a published page with a motion effect is not counted."
+  }
+ ],
+ "migration": {
+  "needed": false,
+  "notes": ""
+ },
+ "done_when": [
+  {
+   "check": "rg -n 'audience' docs/performance.md | head",
+   "expect": "the definition, the figure's table and the tolerance are there, with the three trigger lines and the per-sheet sentence in the same section"
+  },
+  {
+   "check": "A CI run of the e2e job after the push: open its summary",
+   "expect": "the audiences table with the site sheet's file name"
+  },
+  {
+   "check": "Trial, not pushed: in scripts' terms, lower the two lines in a scratch copy (17,000 to 1,000) or add 40 new utility classes to a file under src/app/(platform) only, build, run the script",
+   "expect": "exit code 1 with the reason; in CI the step and the run are red. Undo."
+  },
+  {
+   "check": "pnpm test:int -- src/server/style-reading.int.test.ts",
+   "expect": "passes: a test store with 25 KB of own CSS has the mark"
+  },
+  {
+   "check": "On a local build signed in as a platform admin (the stand-in build): /admin/platform/capacity?reading=styles",
+   "expect": "the card lists each store's style text with 'Above 20 KB' on the test store, the published pages and the pages with motion; send the owner a screenshot"
+  }
+ ],
+ "after_deploy": [
+  "The owner or a platform admin opens Platform, Usage and limits in production and presses 'Take the reading': the table for the team's stores (about 60) and Kaizena Flow's own row. Paste it into docs/performance.md as the first reading, with the median, the number of stores above 20 KB and the share of published pages with motion. Under half with motion means step 2.49 is built; half or more means motion.css stays as a stated tolerance."
+ ],
+ "docs": [
+  "docs/decisions.md (or, once step 2.40 has split it, a new file docs/decisions/D<n>.md plus its index row): one new decision with the next free D-number. Claim the number first with scripts/claim-decision.mjs if step 0.41 has made that script; otherwise pull main and take the highest number plus one (rg -o '^\\| D[0-9]+' docs/decisions.md | tr -dc '0-9\\n' | sort -n | tail -1). It records: what is counted in the stylesheet and in owners' style text: the audiences script and its two lines (17 KB raw, 2.0 KB Brotli) with the 15 KB tolerance after the split; the owner's answer that the 50,000-character limit stays per sheet (no code change); the three trigger lines (10 KB median, 20 KB a store, half of pages with motion) and that the reading is read again each quarter. Platform: Kaizena Flow's own site is a row of the reading and one of the audiences. Idle cost: none per request (the reading runs only when a platform admin asks for it). Keep it under 4,000 bytes.",
+  "docs/performance.md, the budgets rule and docs/rules/admin/platform.md as the third commit says.",
+  "docs/platform-parity.md: nothing to tick; the reading includes the platform's own row from the start.",
+  "docs/audits/bloat-review-2026-11.md, Progress table: set the row of step 1.23 to Done with the date and the commit hash, in the same commit as the step's last change. Keep the row at 300 characters or fewer."
+ ],
+ "do_not": [
+  "Do not change CSS_MAX, the database checks on custom_css or anything in src/lib/custom-css.ts: the owner decided the limit stays per sheet and needs no code.",
+  "Do not change src/app/globals.css or split the stylesheet here: that is step 2.11. Before it, the admin's 51.8 KB share is printed and must not fail the run.",
+  "Do not run the reading on every view of the capacity page, and do not select pages.published or pages.draft into the app: the count is done inside the database.",
+  "Do not filter the house store or Kaizena Flow's own row out of the reading.",
+  "Do not add a paid monitoring service or a Vercel add-on to collect these figures.",
+  "Do not query production yourself for the first reading: the owner takes it on the page.",
+  "Do not add a sentence to CLAUDE.md.",
+  "Do not write English into the page's markup: every word goes through the capacity catalogue in both languages (src/lib/admin-strings.scan.test.ts fails otherwise)."
+ ],
+ "stop_if": [
+  "scripts/lib/import-walk.mjs does not exist or exports no reach(): step 1.8 is not done.",
+  "The script's first run prints 'only admin files name' outside 45,000 to 56,000 bytes raw, or 'no store page can draw' above 17,000 raw or 2,000 Brotli on today's sheet: the audiences are assigned differently from the review (51.8 KB; 13.8 to 16.2 KB raw and 1.5 to 1.6 KB Brotli). Report the table; do not move the lines to make it pass.",
+  "No .css file under .next/static contains '.checkout-look', or more than two do: the build's output is not as described.",
+  "pnpm install changes more of pnpm-lock.yaml than the importer entry for postcss.",
+  "The header's or footer's CSS is not at published->>'css' of the page that stores.header_id points at (read src/server/site-layouts.ts lines 30 to 40 first): report where it is.",
+  "jsonb_path_exists is refused by the test database, or the statement takes over 15 seconds on the seeded database."
+ ],
+ "executor": "cheap-then-review",
+ "executor_why": "Each file is specified, but the audiences script's figures must come out near the review's and the reading's SQL touches every published page, so a stronger model should compare the first table and read the statement before the push.",
+ "checked_in_code": "I opened src/app/globals.css (one Tailwind entry reading all of src, imported by 15 root layouts and error pages and by src/app/admin/layout.tsx), src/lib/custom-css.ts (CSS_MAX = 50_000 at line 19) with the checks stores_custom_css and platform_settings_custom_css in schema.ts, the market layout lines 166 to 170 (the store's, header's and footer's CSS written with <CustomCss>), src/server/site-layouts.ts (headers and footers are rows of commerce.pages reached through stores.header_id and footer_id, their CSS inside published), src/lib/motion-attrs.ts motionNeeds() and the platform's capacity page with src/server/usage.ts. All as the step says. Corrections: postcss is not importable from the repo root today (it is only a transitive package), so it becomes a devDependency at the version already locked; the script cannot run 'on the built sheet' without choosing it, so the brief says how the site's sheet is told from the admin's before and after step 2.11; and the motion share is counted in SQL as an upper bound, because reading every published document into the app would add the whole-document reads the plan removes elsewhere."
+}

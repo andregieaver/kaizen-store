@@ -1,0 +1,367 @@
+{
+ "id": "0.10",
+ "goal": "No admin screen outside the page builder's own editors loads the rich text editor or the builder in its first scripts: previews, page lists, content lists, orders, customers, deals and the product editor load what they draw.",
+ "why": "Today 13 preview routes load the whole 3.3 MB builder (3,303,372 bytes), and 34 routes outside the builder load the rich text editor: an order page is 1,998,644 bytes and a product's editor 2,130,796. After: a preview at or under 1,450,000, an order page at or under 1,350,000, the product editor under 1,300,000, and 0 routes outside the builder's family with the editor.",
+ "read_first": [
+  "docs/rules/admin/website.md",
+  "docs/performance.md",
+  "node_modules/next/dist/docs/01-app/02-guides/lazy-loading.md",
+  "src/components/lazy/lazy-view.tsx",
+  "src/test/eager-lazy-views.ts",
+  "src/lib/permission-guards.ts",
+  "src/app/admin/(gated)/[store]/pages/editor-views.tsx",
+  "src/components/admin/content-views.tsx"
+ ],
+ "depends_on": [
+  {
+   "id": "0.9",
+   "why": "it adds the marker counter (docs/audits/bloat-review-2026-11/scripts/markers.mjs) this step is measured with, and its frame cuts are part of every byte figure here"
+  }
+ ],
+ "commits": [
+  {
+   "title": "Previews draw a page without loading the page builder (stores, the platform and the sandbox)",
+   "changes": [
+    {
+     "file": "src/app/admin/(gated)/[store]/pages/preview-views.tsx",
+     "action": "create",
+     "how": "Move StorePreviewPageView here from src/app/admin/(gated)/[store]/pages/editor-views.tsx (it starts near line 276 with the doc comment 'The last saved draft of a store's page or article' and runs to the end of the function, near line 329), with only the imports it uses: Link, notFound, z, requireFeature, PAGE_TYPE_COPY, adminLangOf, adminText, the type PageType, requirePageTypeAccess, testOfVersionPage, getPageForEdit, stagedCopy, storePagesBase from ./context, PageDrawing from ./drawing, and the local types PageParams and Query (copy their definitions, or export them from a small types file both import). It must NOT import ./editor-views, @/components/admin/page-editor or @/components/admin/dual-page-editor. It calls requirePageTypeAccess() itself, as now."
+    },
+    {
+     "file": "src/app/admin/(gated)/[store]/pages/editor-views.tsx",
+     "action": "edit",
+     "how": "Remove StorePreviewPageView and the imports only it used. Do not re-export it."
+    },
+    {
+     "file": "src/app/admin/(gated)/[store]/{pages,articles,headers,footers,product-layouts}/[pageId]/preview/page.tsx, src/app/admin/(gated)/[store]/content/layouts/[pageId]/preview/page.tsx, src/app/admin/(gated)/[store]/experiments/variants/[pageId]/preview/page.tsx",
+     "action": "edit",
+     "how": "Seven route files. In each, line 3 imports StorePreviewPageView from a relative path ending in pages/editor-views (\"../../editor-views\", \"../../../pages/editor-views\" or \"../../../../pages/editor-views\"): change only the last segment to preview-views. List them: rg -l 'StorePreviewPageView' src/app."
+    },
+    {
+     "file": "src/app/admin/(gated)/platform/pages/preview-views.tsx",
+     "action": "create",
+     "how": "The platform's twin: move PreviewPageView here from src/app/admin/(gated)/platform/pages/editor-views.tsx (line 231 on) with only what it uses. It shares helpers with the editors in that file (the review names load, editedElsewhere and themeStoreView): move each helper that both need into a new src/app/admin/(gated)/platform/pages/page-load.ts that both files import; a helper only the preview uses moves with it. The new file must not import ./editor-views, page-editor or dual-page-editor."
+    },
+    {
+     "file": "src/app/admin/(gated)/platform/pages/editor-views.tsx",
+     "action": "edit",
+     "how": "Remove PreviewPageView; import the shared helpers from ./page-load. Do not re-export the preview."
+    },
+    {
+     "file": "src/app/admin/(gated)/platform/{pages,articles,headers,footers}/[pageId]/preview/page.tsx, src/app/admin/(gated)/platform/themes/pages/[pageId]/preview/page.tsx",
+     "action": "edit",
+     "how": "Five route files: change the import of PreviewPageView from …/pages/editor-views to …/pages/preview-views. List them: rg -l 'PreviewPageView' src/app/admin/\\(gated\\)/platform."
+    },
+    {
+     "file": "src/app/admin/try/[sandbox]/params.ts",
+     "action": "create",
+     "how": "Move sandboxAndKind() and isPageId here from src/app/admin/try/[sandbox]/editor.tsx (lines 31 and 40) with the types and imports they need (Params, Sandbox, SandboxKind, z, the sandbox reader). No import of the editor's components."
+    },
+    {
+     "file": "src/app/admin/try/[sandbox]/editor.tsx",
+     "action": "edit",
+     "how": "Import sandboxAndKind and isPageId from ./params and re-export them (`export { isPageId, sandboxAndKind } from \"./params\";`) so [kind]/[pageId]/page.tsx and [kind]/new/page.tsx keep working."
+    },
+    {
+     "file": "src/app/admin/try/[sandbox]/[kind]/[pageId]/preview/page.tsx",
+     "action": "edit",
+     "how": "Line 11: `import { isPageId, sandboxAndKind } from \"../../../editor\";` becomes `import { isPageId, sandboxAndKind } from \"../../../params\";`. This file must not import ../../../editor at all."
+    },
+    {
+     "file": "src/lib/permission-guards.ts",
+     "action": "edit",
+     "how": "Line 48: the entry StorePreviewPageView names \"src/app/admin/(gated)/[store]/pages/editor-views.tsx\": change it to \"src/app/admin/(gated)/[store]/pages/preview-views.tsx\"."
+    }
+   ],
+   "checks": [
+    "pnpm exec vitest run src/lib/permissions.scan.test.ts: passes (each delegated guard names the file that calls requirePageTypeAccess())",
+    "rg -n 'editor-views|/editor\"' $(rg -l '/preview/page.tsx$' --files src/app/admin | tr '\\n' ' ') : prints nothing (list the preview route files with: rg --files src/app/admin | rg '/preview/page.tsx$')",
+    "pnpm typecheck: exits 0",
+    "pnpm lint && pnpm typecheck && pnpm test: each exits 0",
+    "pnpm build, then node docs/audits/bloat-review-2026-11/scripts/markers.mjs ProseMirror and read the lines for /admin/[store]/pages/[pageId]/preview: at or under 1,450,000 bytes (3,303,372 before); no route ending in /preview is among the ProseMirror routes (print them with: node -e \"const s=require('./.next/diagnostics/route-bundle-stats.json');const fs=require('fs');console.log(s.filter(r=>/\\/preview$/.test(r.route)&&r.firstLoadChunkPaths.some(p=>fs.readFileSync(p,'utf8').includes('ProseMirror'))).map(r=>r.route))\": prints [])",
+    "E2E_SIGNED_IN=1 pnpm exec playwright test --project=signed-in (on a build made as CI's signed-in job makes it): passes (e2e/signed-in/template-preview.spec.ts and every spec that opens a /preview address); pnpm test:e2e passes (e2e/try-builder.spec.ts, the sandbox's preview)"
+   ]
+  },
+  {
+   "title": "Page lists and content lists no longer load the category editor and the content editors",
+   "changes": [
+    {
+     "file": "src/app/admin/(gated)/[store]/pages/terms-views.tsx",
+     "action": "create",
+     "how": "Move StorePageTermsView here from src/app/admin/(gated)/[store]/pages/views.tsx (line 229 to its end) with the TermsManager import (views.tsx line 9) and the other imports it uses. It calls requirePageTypeAccess() itself, as now. It must not import ./views if that would bring the lists' imports back in a circle; share small helpers through a file both import."
+    },
+    {
+     "file": "src/app/admin/(gated)/[store]/pages/views.tsx",
+     "action": "edit",
+     "how": "Remove StorePageTermsView and the TermsManager import (line 9). Do not re-export."
+    },
+    {
+     "file": "src/app/admin/(gated)/[store]/pages/categories/page.tsx",
+     "action": "edit",
+     "how": "Line 3: import StorePageTermsView from \"../terms-views\" instead of \"../views\"."
+    },
+    {
+     "file": "src/app/admin/(gated)/[store]/articles/categories/page.tsx",
+     "action": "edit",
+     "how": "Line 3: import StorePageTermsView from \"../../pages/terms-views\" instead of \"../../pages/views\"."
+    },
+    {
+     "file": "src/app/admin/(gated)/platform/pages/terms-views.tsx",
+     "action": "create",
+     "how": "The platform's twin: move PageTermsView here from src/app/admin/(gated)/platform/pages/views.tsx (line 152 on) with its TermsManager import (line 8)."
+    },
+    {
+     "file": "src/app/admin/(gated)/platform/pages/views.tsx",
+     "action": "edit",
+     "how": "Remove PageTermsView and the TermsManager import."
+    },
+    {
+     "file": "src/app/admin/(gated)/platform/pages/categories/page.tsx",
+     "action": "edit",
+     "how": "Import PageTermsView from \"../terms-views\"."
+    },
+    {
+     "file": "src/app/admin/(gated)/platform/articles/categories/page.tsx",
+     "action": "edit",
+     "how": "Import PageTermsView from \"../../pages/terms-views\"."
+    },
+    {
+     "file": "src/lib/permission-guards.ts",
+     "action": "edit",
+     "how": "Line 45: the entry StorePageTermsView names \"src/app/admin/(gated)/[store]/pages/views.tsx\": change it to \"src/app/admin/(gated)/[store]/pages/terms-views.tsx\"."
+    },
+    {
+     "file": "src/components/admin/content-type-views.tsx",
+     "action": "create",
+     "how": "Move NewContentTypeView (content-views.tsx line 102) and ContentTypeSettingsView (line 119) here with the ContentTypeEditor import (line 6) and the helpers they use. A helper that the list views also use is exported from content-views.tsx or moved to a small shared file; do not copy it."
+    },
+    {
+     "file": "src/components/admin/content-entry-views.tsx",
+     "action": "create",
+     "how": "Move EntryView (content-views.tsx line 253) here with the EntryEditor import (line 8) and what it uses."
+    },
+    {
+     "file": "src/components/admin/content-views.tsx",
+     "action": "edit",
+     "how": "Keep ContentListView and ContentEntriesView. Remove the three moved views and the two editor imports. After this the file has no import of content-type-editor or entry-editor (check with rg -n 'content-type-editor|entry-editor' src/components/admin/content-views.tsx)."
+    },
+    {
+     "file": "src/app/admin/(gated)/[store]/content/** and src/app/admin/(gated)/platform/content/**: the eight route files that draw an editor",
+     "action": "edit",
+     "how": "Under both src/app/admin/(gated)/[store]/content and src/app/admin/(gated)/platform/content: new/page.tsx imports NewContentTypeView from \"@/components/admin/content-type-views\"; [typeId]/settings/page.tsx imports ContentTypeSettingsView from \"@/components/admin/content-type-views\"; [typeId]/new/page.tsx and [typeId]/[entryId]/page.tsx import EntryView from \"@/components/admin/content-entry-views\". The four list routes (content/page.tsx and content/[typeId]/page.tsx under each) keep importing from content-views."
+    },
+    {
+     "file": "src/lib/page-role-copy.ts",
+     "action": "create",
+     "how": "Move here from src/lib/page-roles.ts what the pages table needs and nothing more: PAGE_ROLES, the type PageRole, isPageRole, partOfRole, ROLE_GROUPS, ROLE_COPY and roleAddress (the review places them at lines 16-160 and 248; they import only from ./store-parts). Do not move starterPage() or anything that imports the page model."
+    },
+    {
+     "file": "src/lib/page-roles.ts",
+     "action": "edit",
+     "how": "Replace the moved declarations by `export { PAGE_ROLES, isPageRole, partOfRole, ROLE_GROUPS, ROLE_COPY, roleAddress, type PageRole } from \"./page-role-copy\";` and import the ones this file itself uses. Its other exports and its tests do not change."
+    },
+    {
+     "file": "src/components/admin/pages-table.tsx",
+     "action": "edit",
+     "how": "Line 5: `import { ROLE_COPY, type PageRole } from \"@/lib/page-roles\";` becomes `import { ROLE_COPY, type PageRole } from \"@/lib/page-role-copy\";`."
+    },
+    {
+     "file": "docs/rules/admin/website.md",
+     "action": "edit",
+     "how": "Lines 111-114 say why views.tsx and editor-views.tsx are apart. Add: 'Previews (`preview-views.tsx`) and the categories screen (`terms-views.tsx`) are files of their own for the same reason, for stores and for the platform, and a sandbox preview imports `params.ts`, never `editor.tsx`: a route loads every client component its server modules import (bloat review step 0.10).'"
+    },
+    {
+     "file": "docs/rules/storefront.md",
+     "action": "edit",
+     "how": "Near line 181 the content types' rule names `content-views.tsx`: add that the editors' views are `content-type-views.tsx` and `content-entry-views.tsx`, so the lists do not load an editor."
+    }
+   ],
+   "checks": [
+    "pnpm exec vitest run src/lib/permissions.scan.test.ts src/lib/page-roles.test.ts src/lib/legal-roles.test.ts src/lib/store-parts.test.ts src/lib/admin-messages/website.test.ts: pass unchanged",
+    "pnpm typecheck: exits 0",
+    "pnpm lint && pnpm typecheck && pnpm test: each exits 0",
+    "pnpm test:int: exits 0 (src/server/permissions.int.test.ts and page-roles.int.test.ts)",
+    "pnpm build, then node docs/audits/bloat-review-2026-11/scripts/markers.mjs ProseMirror: /admin/[store]/pages and /admin/[store]/content are not among the routes; read their bytes with node -e \"const s=require('./.next/diagnostics/route-bundle-stats.json');for(const r of ['/admin/[store]/pages','/admin/[store]/content','/admin/platform/pages'])console.log(r,s.find(x=>x.route===r)?.firstLoadUncompressedJsBytes)\": each at or under 1,300,000 (2,002,798 and 1,953,143 before; lower still with step 0.9 in)",
+    "E2E_SIGNED_IN=1 pnpm exec playwright test --project=signed-in (on a build made as CI's signed-in job makes it): passes (content-types.spec.ts, blogs.spec.ts, collections.spec.ts, admin-text-fallbacks.spec.ts)"
+   ]
+  },
+  {
+   "title": "Orders, customers, deals and the product editor load the custom-field card and the rich text editor where one is drawn",
+   "changes": [
+    {
+     "file": "src/lib/rich-text-doc.ts",
+     "action": "create",
+     "how": "Move the rich text part of src/lib/page-content.ts here, verbatim: everything under the banner comment '// Rich text' from the doc comment above `export type Mark` (near line 118) to the end of richTextPlain() (near line 312), that is the types Mark to RichTextDoc, EMPTY_DOC, isLinkAddress, the RichTextProblem class and the private cleaners, cleanRichText and richTextPlain; plus richTextIsEmpty() (near line 2273) and the constant RICH_TEXT_MAX (line 72). Its only imports are `HEX6` and `isOpacity` from ./colour (add any other small helper the moved lines name; if they name a zod schema or anything from the page model, stop). No zod import."
+    },
+    {
+     "file": "src/lib/page-content.ts",
+     "action": "edit",
+     "how": "Remove the moved lines and add `export * from \"./rich-text-doc\";` plus an `import { … } from \"./rich-text-doc\";` of the names this file still uses (RichTextDoc, cleanRichText, RICH_TEXT_MAX and whatever the type check asks for). Its public surface must not change: every importer of these names from page-content keeps working."
+    },
+    {
+     "file": "src/lib/custom-fields.ts",
+     "action": "edit",
+     "how": "Line 5: `import { cleanRichText, richTextPlain, type RichTextDoc } from \"./page-content\";` becomes `… from \"./rich-text-doc\";`. If the file has another import from ./page-content, leave it and report it (stop_if)."
+    },
+    {
+     "file": "src/components/admin/lazy/editors.tsx",
+     "action": "create",
+     "how": "First line \"use client\";. On the pattern of src/components/lazy/blocks.tsx: `import dynamic from \"next/dynamic\";` and `import { lazyView } from \"@/components/lazy/lazy-view\";`. Export two stand-ins, each with the import() written inside dynamic() (Next finds the script to preload by it): `export const RichTextEditor = lazyView(dynamic(() => import(\"../rich-text-editor\").then((m) => m.RichTextEditor)), () => <div className=\"min-h-32 rounded-md border border-line\" aria-hidden />);` (use the height and border classes the real editor's frame has: open src/components/admin/rich-text-editor.tsx and copy its outer box's classes) and `export const EntityFieldsCard = lazyView(dynamic(() => import(\"../entity-fields-card\").then((m) => m.EntityFieldsCard)));`. Do not pass { ssr: false }: the server must still draw the field."
+    },
+    {
+     "file": "src/components/admin/fields-form.tsx",
+     "action": "edit",
+     "how": "Line 41: import RichTextEditor from \"./lazy/editors\" instead of \"./rich-text-editor\". Line 35: `import { EMPTY_DOC, type RichTextDoc } from \"@/lib/page-content\";` becomes `… from \"@/lib/rich-text-doc\";`. Line 33: `import { moveItem } from \"@/lib/field-group-editor\";` becomes `import { moveItem } from \"@/lib/move-item\";`."
+    },
+    {
+     "file": "src/components/admin/term-page-fields.tsx",
+     "action": "edit",
+     "how": "Line 10: import RichTextEditor from \"./lazy/editors\". Line 12: `import { EMPTY_DOC, richTextIsEmpty, type RichTextDoc } from \"@/lib/page-content\";` becomes `… from \"@/lib/rich-text-doc\";`."
+    },
+    {
+     "file": "src/components/admin/staff-fields-section.tsx",
+     "action": "edit",
+     "how": "Line 2: import EntityFieldsCard from \"@/components/admin/lazy/editors\" instead of \"@/components/admin/entity-fields-card\". Keep the `return null` when there is no group (near line 31). src/app/admin/(gated)/[store]/fields/store/page.tsx keeps its direct import: that screen is the form."
+    },
+    {
+     "file": "src/lib/move-item.ts",
+     "action": "create",
+     "how": "No imports. Move moveItem<T>() here verbatim from src/lib/field-group-editor.ts (lines 41-47)."
+    },
+    {
+     "file": "src/lib/field-group-editor.ts",
+     "action": "edit",
+     "how": "Replace the moved function by `import { moveItem } from \"./move-item\";` and `export { moveItem } from \"./move-item\";` (the file uses it at lines 267 and 341, and field-group-editor.tsx, field-editor-dialog.tsx, content-type-editor.tsx and the test import it from here)."
+    },
+    {
+     "file": "src/components/admin/field-pickers.tsx",
+     "action": "edit",
+     "how": "Line 19: `import { moveItem } from \"@/lib/field-group-editor\";` becomes `import { moveItem } from \"@/lib/move-item\";`."
+    },
+    {
+     "file": "src/lib/address-change.ts",
+     "action": "create",
+     "how": "No catalogue import. Move here from src/lib/redirect-admin.ts: the type AddressChange, productAddressChange(), termAddressChange() and addressChangeWords() (lines 137-155), and move the one sentence addressChangeWords needs out of src/lib/redirects.ts: `export const handleChangedSentence = (from: string, to: string) => `The old address ${from} now redirects to ${to}.`;` defined here, with redirects.ts's redirectSentences.handleChanged set to that function (`handleChanged: handleChangedSentence`, imported from ./address-change) so the words exist once. Check first that src/lib/redirects.ts does not import an admin catalogue or zod at its top; if it does, this leaf must not import redirects.ts (it does not, as written)."
+    },
+    {
+     "file": "src/lib/redirect-admin.ts",
+     "action": "edit",
+     "how": "Remove the moved declarations and add `export { addressChangeWords, productAddressChange, termAddressChange, type AddressChange } from \"./address-change\";` so the server action and the test keep importing them from here."
+    },
+    {
+     "file": "src/components/admin/product-editor.tsx",
+     "action": "edit",
+     "how": "Line 38: `import { addressChangeWords } from \"@/lib/redirect-admin\";` becomes `import { addressChangeWords } from \"@/lib/address-change\";`. Nothing else in this file."
+    },
+    {
+     "file": "src/test/eager-lazy-views.ts",
+     "action": "edit",
+     "how": "Add a second vi.mock beside the one for \"@/components/lazy/blocks\": `vi.mock(\"@/components/admin/lazy/editors\", async () => ({ RichTextEditor: await pick(() => import(\"@/components/admin/rich-text-editor\"), \"RichTextEditor\"), EntityFieldsCard: await pick(() => import(\"@/components/admin/entity-fields-card\"), \"EntityFieldsCard\") }));` so unit tests that draw with renderToStaticMarkup see the real components."
+    },
+    {
+     "file": "e2e/signed-in/admin-scripts.spec.ts",
+     "action": "edit",
+     "how": "After the build, measure and lower the \"/pages\" and \"/products/new\" budgets to the measured bytes plus 4% (never raise one), and add three entries to BUDGETS with their measured bytes plus 4%: an order page, a draft page's preview and the content list. Use the placeholders the spec already has for a page id ({page}); for the order and the preview follow how the spec resolves {page} and add {order} the same way from the seeded store's first order, or leave the order entry out and say so if the seed has no order."
+    }
+   ],
+   "checks": [
+    "pnpm exec vitest run src/components/admin/fields-form.test.ts src/components/admin/fields-form-flexible.test.ts src/components/admin/fields-form-helpers.test.ts src/components/admin/term-seo-fields.test.ts src/components/admin/unit-price-fields.test.ts src/lib/page-content.test.ts src/lib/field-group-editor.test.ts src/lib/redirect-admin.test.ts src/lib/redirects.test.ts src/lib/storefront-bundle.scan.test.ts: all pass unchanged",
+    "rg -n 'from \"zod\"' src/lib/rich-text-doc.ts src/lib/move-item.ts src/lib/address-change.ts: prints nothing",
+    "pnpm typecheck: exits 0",
+    "pnpm lint && pnpm typecheck && pnpm test: each exits 0",
+    "pnpm test:int: exits 0",
+    "pnpm build, then node docs/audits/bloat-review-2026-11/scripts/markers.mjs ProseMirror: only routes of the builder's family are listed (addresses that open a page, header, footer, article, product layout, template, theme or sandbox page in the editor; 39 before this step counted 13 previews among them, 26 remain). None of /admin/[store]/orders/[orderId], customers/[customerId], deals/[dealId], products/[productId], products/new, pages, content",
+    "The same run's last lines: /admin/[store]/orders/[orderId] at or under 1,350,000 (1,998,644 before), /admin/[store]/products/[productId] under 1,300,000 (2,130,796 before), /admin/[store]/pages/[pageId]/preview at or under 1,450,000, and 'over 1,300,000' prints 27 or fewer (90 before; step 0.11 takes the Work invoice off the list to reach 26)",
+    "E2E_SIGNED_IN=1 pnpm exec playwright test --project=signed-in (on a build made as CI's signed-in job makes it): passes (customers-staff.spec.ts, deals.spec.ts, orders-list.spec.ts, content-types.spec.ts, text-styles.spec.ts, admin-scripts.spec.ts); pnpm test:e2e passes (e2e/pages.spec.ts types into the editor)",
+    "By hand on the local build, in a store with a custom field group for orders that has a rich text field: open an order, type in the rich text field, press Save on the card, reload: the text is there. Then press Save within a second of the page loading: nothing is lost (the stored text stays)"
+   ]
+  },
+  {
+   "title": "docs: which admin screens load an editor, after the split",
+   "changes": [
+    {
+     "file": "docs/performance.md",
+     "action": "edit",
+     "how": "Near lines 162-170 (the admin's routes and what they load) add the date and the figures: a preview, the pages list, the content list, an order page, a product's editor (before and after), and the count of routes with the rich text editor in their first scripts (73 before: 39 of the builder's family and 34 others; after: the builder's editors only). Add the rule: 'A screen that only sometimes draws a rich text field takes the editor from `src/components/admin/lazy/editors.tsx`; the builder and the block fields import it directly.'"
+    }
+   ],
+   "checks": [
+    "git diff --stat: docs/performance.md only"
+   ]
+  }
+ ],
+ "tests": [
+  {
+   "file": "src/lib/permissions.scan.test.ts",
+   "proves": "Existing: fails if a moved view's guard entry names the wrong file or the new file does not call requirePageTypeAccess() itself."
+  },
+  {
+   "file": "e2e/signed-in/admin-scripts.spec.ts",
+   "proves": "Fails when the pages list, a new product, an order page, a draft preview or the content list grows past its budget (the new measurement plus 4%)."
+  },
+  {
+   "file": "src/lib/storefront-bundle.scan.test.ts",
+   "proves": "Existing: still forbids lib/page-content in a visitor's scripts; rich-text-doc.ts has no zod and is allowed."
+  }
+ ],
+ "migration": {
+  "needed": false,
+  "notes": ""
+ },
+ "done_when": [
+  {
+   "check": "pnpm build, then node docs/audits/bloat-review-2026-11/scripts/markers.mjs ProseMirror",
+   "expect": "no route outside the builder's family is listed (34 such routes today, 13 of them previews)"
+  },
+  {
+   "check": "The run's line for /admin/[store]/pages/[pageId]/preview",
+   "expect": "at or under 1,450,000 bytes (3,303,372 today)"
+  },
+  {
+   "check": "The run's line for /admin/[store]/orders/[orderId]",
+   "expect": "at or under 1,350,000 bytes (1,998,644 today)"
+  },
+  {
+   "check": "The run's line for /admin/[store]/products/[productId]",
+   "expect": "under 1,300,000 bytes (2,130,796 today)"
+  },
+  {
+   "check": "The run's 'over 1,300,000' count",
+   "expect": "27 or fewer now, and 26 once step 0.11 is in (90 today)"
+  }
+ ],
+ "after_deploy": [
+  "Signed in to production: open a page's preview, the pages list, a content list, an order, a customer, a deal and a product. Each draws, and a product saves.",
+  "In a test store with a custom field group on orders: edit a rich text field on an order and save it.",
+  "Platform admin: open a platform page's preview and the platform's pages list."
+ ],
+ "docs": [
+  "docs/decisions.md: a new D-number row 'Admin screens load an editor only where they draw one (bloat review step 0.10)': preview-views.tsx and terms-views.tsx for stores and the platform, params.ts for the sandbox, the three content view files, page-role-copy.ts, rich-text-doc.ts, lazy/editors.tsx, move-item.ts and address-change.ts, with the figures before and after.",
+  "docs/rules/admin/website.md, docs/rules/storefront.md, docs/performance.md: as the commits say.",
+  "docs/custom-fields.md: one sentence that the staff's field card and its rich text editor are loaded where drawn (lazy/editors.tsx).",
+  "docs/platform-parity.md: nothing to tick; the platform's previews, categories and content screens move in the same commits.",
+  "docs/audits/code-review-2026-11.md: note on step 3.2 (one definition per block, Open) that rich-text-doc.ts is the first slice out of page-content.ts with the public surface unchanged; add a change-log line.",
+  "docs/audits/bloat-review-2026-11.md, Progress table: row 0.10 to Done with the date, the commits and the five figures."
+ ],
+ "do_not": [
+  "Do not lazy-load the editor inside the page builder (page-builder.tsx line 96, block-fields.tsx line 33 keep their direct import): that is a later step.",
+  "Do not use dynamic(..., { ssr: false }) for the field editor: a unit test holds that the server draws the field.",
+  "Do not change what page-content.ts exports, and do not move any schema or block type out of it besides the rich text part.",
+  "Do not leave a re-export of a moved view in editor-views.tsx or views.tsx: the import would bring the editor back.",
+  "Do not do only the store's half: every move has a platform twin in the same commit.",
+  "Do not change the words of the address-change sentence or of any catalogue.",
+  "Do not raise a budget, and do not delete a permission guard entry: change the file it names.",
+  "Do not split terms.tsx or move TermPicker (finding BN-5 step 6 is optional and not needed for the figures)."
+ ],
+ "stop_if": [
+  "The rich text lines of page-content.ts use zod or a page-model helper that cannot move with them.",
+  "src/lib/custom-fields.ts or another file in the product editor's client closure still imports page-content after the edits: report the chain (the review's simulation expects the closure to fall from 157 files to 106).",
+  "permissions.scan.test.ts fails for a reason other than the two guard entries.",
+  "After the build the product editor is 1,300,000 bytes or more, or an order page above 1,350,000: report the ten largest first-load chunks of that route and what each holds; do not add more dynamic imports on your own.",
+  "A unit test that draws a form shows the fallback box instead of the editor (the eager-lazy mock is not applied to that test's setup).",
+  "The hand check loses typed text."
+ ],
+ "executor": "cheap-then-review",
+ "executor_why": "The work is file moves, import path changes and one lazy stand-in, proved by the build's figures, but it spans about 45 files, moves permission-guarded views and changes when a form's editor wakes up, so a stronger model should read the diff and the signed-in run.",
+ "checked_in_code": "I opened the store's and the platform's editor-views.tsx and views.tsx (StorePreviewPageView at line 277, PreviewPageView at 231, StorePageTermsView at 229, PageTermsView at 152), the twelve preview and four category route files, the sandbox's editor.tsx (sandboxAndKind at 31, isPageId at 40), content-views.tsx (five views; the two editor imports at lines 6 and 8; twelve route files), permission-guards.ts lines 45 and 48, staff-fields-section.tsx, fields-form.tsx, term-page-fields.tsx, custom-fields.ts line 5 and the rich text block of page-content.ts (lines 115-312 use only HEX6, isOpacity and RICH_TEXT_MAX: no zod). The step's 'product editor's English import sites' were not named anywhere, so I walked the product editor's client imports: two catalogues arrive through one helper each, redirects.en through addressChangeWords (src/lib/redirect-admin.ts) and fields.en through moveItem (src/lib/field-group-editor.ts), and the 197 KB page model through custom-fields.ts. With those three moved and the editor lazy, the closure falls from 157 to 106 source files (1.84 MB to 1.03 MB of source), which is what the 1,300,000 line needs. The marker counter printed 73 routes with ProseMirror on the 11 November build."
+}

@@ -1,0 +1,240 @@
+{
+ "id": "1.26",
+ "goal": "No scheduled job can fail in silence: a job's entry function reports every error it catches through report(), which logs it and marks the run failed after the job's other parts have run, and the work seven routes do after answering is kept as a job of its own.",
+ "why": "Today at least 11 of the 83 dispatcher jobs catch an error in their entry function and neither log nor rethrow it (17 catches), so the ledger says ok while, for one, the refund-deadline reminder fails on every run; seven routes that work after answering record only the answer. After: 0 silent catches, held by a scan test, and seven `route.<name>.work` rows in the ledger.",
+ "read_first": [
+  "src/server/cron-runs.ts",
+  "src/server/cron-runs.int.test.ts",
+  "src/server/cron-routes.scan.test.ts",
+  "src/app/api/cron/cart-reminders/route.ts",
+  "src/app/api/cron/dream-factory/route.ts",
+  "src/server/return-jobs.ts",
+  "src/lib/cron-health.ts",
+  "node_modules/next/dist/docs/01-app/03-api-reference/04-functions/after.md"
+ ],
+ "depends_on": [
+  {
+   "id": "1.22",
+   "why": "it changes the same ledger (the outside watcher reads commerce.cron_jobs and the daily job's rows), so the new failed rows and the `.work` rows are added on top of it, not under it"
+  }
+ ],
+ "commits": [
+  {
+   "title": "runJobs() hands each job a report(error): logged, and the run counted as failed once its other parts have run",
+   "changes": [
+    {
+     "file": "src/server/cron-runs.ts",
+     "action": "edit",
+     "how": "(1) Export `export type JobReport = (error: unknown, part?: string) => void;` and `export const logOnly: JobReport = (error, part) => log(\"error\", \"cron.job_part_failed\", { part: part ?? null }, error);` (what an entry function uses when it is called outside the dispatcher: a test, a person's action). (2) Change `tracked` to `export async function tracked<T>(job: string, everySeconds: number, run: (report: JobReport) => Promise<T>): Promise<T | null>`. Inside: `const reported: { part: string | null; error: unknown }[] = [];` and `const report: JobReport = (error, part) => { reported.push({ part: part ?? null, error }); log(\"error\", \"cron.job_part_failed\", { job, part: part ?? null }, error); };`. Call `const result = await run(report);`. Then, when `reported.length === 0`, `await record(job, everySeconds, started, null)` as today; otherwise `await record(job, everySeconds, started, new Error(`${reported.length} part(s) failed (${reported.map((r) => r.part ?? \"?\").join(\", \")})`, { cause: reported[0].error }))` (record() already writes an Error's cause into the message). In both cases `return result`: a job whose part failed still answers what its other parts did. The existing `catch` branch (the job threw) stays as it is. Callers that pass `() => x()` keep compiling: a function may take fewer parameters. (3) Change `runJobs`'s type to `J extends Record<string, (report: JobReport) => Promise<unknown>>` and its call to `tracked(`${prefix}.${kebab(name)}`, everySeconds, (report) => jobs[name](report))`. (4) Add `export function trackedWork<T>(route: string, everySeconds: number, run: (report: JobReport) => Promise<T>): Promise<T | null> { return tracked(`${route}.work`, everySeconds, run); }` with the comment: the work a route does after answering (`after()`), kept as a job of its own, since the route's own row records only that it answered. (5) Update the file's header comment: a job that throws, or reports a caught error, is logged and recorded as failed, and the others finish."
+    },
+    {
+     "file": "src/server/cron-runs.int.test.ts",
+     "action": "edit",
+     "how": "Add two cases in the file's style (jobs named with its `prefix`, console.error silenced as the first case does). Case A `a job whose first part fails still runs its second part, and its run is counted as failed`: `let second = false; const answer = await tracked(job, 300, async (report) => { try { throw new Error(\"mail down\"); } catch (error) { report(error, \"first\"); } second = true; return 5; });` expect `answer` 5, `second` true, and the row `{ failures: 1 }` with `lastError` containing `1 part(s) failed (first)` and `mail down`; a following clean run sets failures back to 0. The same through `runJobs(prefix, 300, { a: async (report) => { report(new Error(\"x\"), \"p\"); return 1; }, b: async () => 2 })`: the answer is `{ a: 1, b: 2 }`, row `${prefix}.a` failed and `${prefix}.b` ok. Case B `a runner that throws after the answer leaves the route's work failed`: `await trackedWork(`${prefix}.page-jobs`, 60, async () => { throw new Error(\"model down\"); });` expect the row `${prefix}.page-jobs.work` with failures 1. Then one more assertion with the real name the step asks for: `await trackedWork(\"route.page-jobs\", 60, async () => { throw new Error(\"model down\"); })` leaves `route.page-jobs.work` with failures at least 1; delete that row in the test's clean-up (`delete from commerce.cron_jobs where job = 'route.page-jobs.work'`)."
+    }
+   ],
+   "checks": [
+    "pnpm exec vitest run src/server/cron-routes.scan.test.ts src/lib/cron-health.test.ts: exits 0",
+    "pnpm lint && pnpm typecheck && pnpm test: exits 0",
+    "pnpm test:int: exits 0, with the two new cases of src/server/cron-runs.int.test.ts in the run"
+   ]
+  },
+  {
+   "title": "Jobs report what they catch: no silent catch is left in an entry function",
+   "changes": [
+    {
+     "file": "src/server/cron-entry-catches.scan.test.ts",
+     "action": "create",
+     "how": "Write this test FIRST and let it list the work. Vitest, node:fs only. (1) Read src/app/api/cron/cart-reminders/route.ts. Collect the dispatcher's jobs: every `name: (…) => fn(…)` line inside the object passed to `runJobs(\"dispatcher\", …)` (find the object by brace matching from `runJobs(\"dispatcher\"`), and every `tracked(\"dispatcher.<name>\", EVERY, (…) => fn(…))` in the same file; for each take the first identifier called (`fn`). Expect at least 83 jobs, so a parsing mistake cannot pass by finding none. (2) Resolve `fn` to its file through the route's `import { … } from \"@/server/…\"` lines (`@/` is `src/`; try `.ts` then `.tsx`); if the name is re-exported, follow one `export { fn } from` hop. A job whose function cannot be found goes in a const `NOT_FOUND_OK: Record<string, string>` with a reason, and the test fails for one that is not listed. (3) In that file find `export (async )?function fn` (or `export const fn = `), take its body by brace matching from the first `{` that ends its signature line. (4) In the body find every `catch` block (`/catch\\s*(\\([^)]*\\))?\\s*\\{/`, block by brace matching) and every `.catch(` callback (to the matching `)`). A catch is silent when its text contains none of: `report(`, `throw `, `throw;`. (`log(` alone does NOT count: a logged error must also mark the run failed, so it reports; report() logs.) (5) `expect(silent).toEqual([])` where each entry reads `<job> <file>:<line> <first 60 characters of the catch>` and the failure message says: `report the error: catch (error) { report(error, \"<part>\"); … } — see src/server/cron-runs.ts`. (6) A second test: each of the seven routes src/app/api/cron/{autopilot,page-jobs,broadcasts,pack-pictures,page-looks,theme-shots,cookie-scan}/route.ts contains `trackedWork(\"route.<its folder name>\"`, and no route under src/app/api/cron calls `after(` without `trackedWork(` or `tracked(` inside the same call (dream-factory keeps its `tracked(\"dream-factory.advance\"`)."
+    },
+    {
+     "file": "src/app/api/cron/cart-reminders/route.ts",
+     "action": "edit",
+     "how": "For every job the scan names, pass the report through: `returns: () => runReturnJobs()` becomes `returns: (report) => runReturnJobs(report)` (or `(report) => pollTracking({ report })` where the function takes an options object). Do the same in the five `tracked(\"dispatcher.…\", EVERY, () => fn())` calls near the end of `dispatch()` only if the scan names their function. Change no job's name and no job's order."
+    },
+    {
+     "file": "src/server/return-jobs.ts",
+     "action": "edit",
+     "how": "Entry function `runReturnJobs` (about line 46; the dispatcher's job `returns`). Give it a way to report: if its parameters are a single options object, add the field `report?: JobReport` to that object's type and read `const report = options.report ?? logOnly;`; otherwise add a last parameter `report: JobReport = logOnly`. Import `type JobReport` and `logOnly` from `./cron-runs`. Then, inside this function's body only (not in the helpers it calls), change each catch that neither logs nor rethrows (5 found by the review's count): `catch {` or `catch (e) {` becomes `catch (error) { report(error, \"<part>\");` followed by whatever the block did before (a `return summary`, a counter, nothing); `.catch(() => X)` becomes `.catch((error: unknown) => { report(error, \"<part>\"); return X; })`. `<part>` is a short kebab-case name of what failed, unique inside the function (for example `overdue-reminders`, `acknowledgements`). Keep the comment that explains the catch. The code after the catch must still run exactly as before: that is why the catches exist. Parts: `overdue-reminders` (the outer catch of the first block), `overdue-reminder` (the per-row `.catch(() => null)` on sendRefundOverdueReminder), `acknowledgements`, `exchanges`, `labels`."
+    },
+    {
+     "file": "src/server/bonus.ts",
+     "action": "edit",
+     "how": "Entry function `runBonusJobs` (about line 550; the dispatcher's job `bonus`). Give it a way to report: if its parameters are a single options object, add the field `report?: JobReport` to that object's type and read `const report = options.report ?? logOnly;`; otherwise add a last parameter `report: JobReport = logOnly`. Import `type JobReport` and `logOnly` from `./cron-runs`. Then, inside this function's body only (not in the helpers it calls), change each catch that neither logs nor rethrows (3 found by the review's count): `catch {` or `catch (e) {` becomes `catch (error) { report(error, \"<part>\");` followed by whatever the block did before (a `return summary`, a counter, nothing); `.catch(() => X)` becomes `.catch((error: unknown) => { report(error, \"<part>\"); return X; })`. `<part>` is a short kebab-case name of what failed, unique inside the function (for example `overdue-reminders`, `acknowledgements`). Keep the comment that explains the catch. The code after the catch must still run exactly as before: that is why the catches exist. "
+    },
+    {
+     "file": "src/server/host-payments.ts",
+     "action": "edit",
+     "how": "Entry function `payHostCommissions` (about line 316; the dispatcher's job `commissions`). Give it a way to report: if its parameters are a single options object, add the field `report?: JobReport` to that object's type and read `const report = options.report ?? logOnly;`; otherwise add a last parameter `report: JobReport = logOnly`. Import `type JobReport` and `logOnly` from `./cron-runs`. Then, inside this function's body only (not in the helpers it calls), change each catch that neither logs nor rethrows (2 found by the review's count): `catch {` or `catch (e) {` becomes `catch (error) { report(error, \"<part>\");` followed by whatever the block did before (a `return summary`, a counter, nothing); `.catch(() => X)` becomes `.catch((error: unknown) => { report(error, \"<part>\"); return X; })`. `<part>` is a short kebab-case name of what failed, unique inside the function (for example `overdue-reminders`, `acknowledgements`). Keep the comment that explains the catch. The code after the catch must still run exactly as before: that is why the catches exist. "
+    },
+    {
+     "file": "src/server/shipment-tracking.ts",
+     "action": "edit",
+     "how": "Entry function `pollTracking` (about line 294; the dispatcher's job `tracking`). Give it a way to report: if its parameters are a single options object, add the field `report?: JobReport` to that object's type and read `const report = options.report ?? logOnly;`; otherwise add a last parameter `report: JobReport = logOnly`. Import `type JobReport` and `logOnly` from `./cron-runs`. Then, inside this function's body only (not in the helpers it calls), change each catch that neither logs nor rethrows (2 found by the review's count): `catch {` or `catch (e) {` becomes `catch (error) { report(error, \"<part>\");` followed by whatever the block did before (a `return summary`, a counter, nothing); `.catch(() => X)` becomes `.catch((error: unknown) => { report(error, \"<part>\"); return X; })`. `<part>` is a short kebab-case name of what failed, unique inside the function (for example `overdue-reminders`, `acknowledgements`). Keep the comment that explains the catch. The code after the catch must still run exactly as before: that is why the catches exist. It takes an options object: add `report?: JobReport` there. Parts: `due-parcels` (the catch that returns `summary`) and `parcel` (the catch inside `pool(...)` that returns null)."
+    },
+    {
+     "file": "src/server/knowledge.ts",
+     "action": "edit",
+     "how": "Entry function `refreshKnowledge` (about line 297; the dispatcher's job `knowledge`). Give it a way to report: if its parameters are a single options object, add the field `report?: JobReport` to that object's type and read `const report = options.report ?? logOnly;`; otherwise add a last parameter `report: JobReport = logOnly`. Import `type JobReport` and `logOnly` from `./cron-runs`. Then, inside this function's body only (not in the helpers it calls), change each catch that neither logs nor rethrows (1 found by the review's count): `catch {` or `catch (e) {` becomes `catch (error) { report(error, \"<part>\");` followed by whatever the block did before (a `return summary`, a counter, nothing); `.catch(() => X)` becomes `.catch((error: unknown) => { report(error, \"<part>\"); return X; })`. `<part>` is a short kebab-case name of what failed, unique inside the function (for example `overdue-reminders`, `acknowledgements`). Keep the comment that explains the catch. The code after the catch must still run exactly as before: that is why the catches exist. "
+    },
+    {
+     "file": "src/server/media-library.ts",
+     "action": "edit",
+     "how": "Entry function `refreshMediaEmbeddings` (about line 860; the dispatcher's job `media`). Give it a way to report: if its parameters are a single options object, add the field `report?: JobReport` to that object's type and read `const report = options.report ?? logOnly;`; otherwise add a last parameter `report: JobReport = logOnly`. Import `type JobReport` and `logOnly` from `./cron-runs`. Then, inside this function's body only (not in the helpers it calls), change each catch that neither logs nor rethrows (1 found by the review's count): `catch {` or `catch (e) {` becomes `catch (error) { report(error, \"<part>\");` followed by whatever the block did before (a `return summary`, a counter, nothing); `.catch(() => X)` becomes `.catch((error: unknown) => { report(error, \"<part>\"); return X; })`. `<part>` is a short kebab-case name of what failed, unique inside the function (for example `overdue-reminders`, `acknowledgements`). Keep the comment that explains the catch. The code after the catch must still run exactly as before: that is why the catches exist. "
+    },
+    {
+     "file": "src/server/affiliate-emails.ts",
+     "action": "edit",
+     "how": "Entry function `runAffiliateJobs` (about line 92; the dispatcher's job `affiliates`). Give it a way to report: if its parameters are a single options object, add the field `report?: JobReport` to that object's type and read `const report = options.report ?? logOnly;`; otherwise add a last parameter `report: JobReport = logOnly`. Import `type JobReport` and `logOnly` from `./cron-runs`. Then, inside this function's body only (not in the helpers it calls), change each catch that neither logs nor rethrows (1 found by the review's count): `catch {` or `catch (e) {` becomes `catch (error) { report(error, \"<part>\");` followed by whatever the block did before (a `return summary`, a counter, nothing); `.catch(() => X)` becomes `.catch((error: unknown) => { report(error, \"<part>\"); return X; })`. `<part>` is a short kebab-case name of what failed, unique inside the function (for example `overdue-reminders`, `acknowledgements`). Keep the comment that explains the catch. The code after the catch must still run exactly as before: that is why the catches exist. "
+    },
+    {
+     "file": "src/server/invoice-issue.ts",
+     "action": "edit",
+     "how": "Entry function `invoiceJobs` (about line 116; the dispatcher's job `invoices`). Give it a way to report: if its parameters are a single options object, add the field `report?: JobReport` to that object's type and read `const report = options.report ?? logOnly;`; otherwise add a last parameter `report: JobReport = logOnly`. Import `type JobReport` and `logOnly` from `./cron-runs`. Then, inside this function's body only (not in the helpers it calls), change each catch that neither logs nor rethrows (1 found by the review's count): `catch {` or `catch (e) {` becomes `catch (error) { report(error, \"<part>\");` followed by whatever the block did before (a `return summary`, a counter, nothing); `.catch(() => X)` becomes `.catch((error: unknown) => { report(error, \"<part>\"); return X; })`. `<part>` is a short kebab-case name of what failed, unique inside the function (for example `overdue-reminders`, `acknowledgements`). Keep the comment that explains the catch. The code after the catch must still run exactly as before: that is why the catches exist. This function also has a catch that already logs: make that one report too (replace its `log(...)` call with `report(error, \"<part>\")`, which logs), so the run is counted as failed."
+    },
+    {
+     "file": "src/server/staff-alerts.ts",
+     "action": "edit",
+     "how": "Entry function `sendDueSummaries` (about line 1009; the dispatcher's job `summaries`). Give it a way to report: if its parameters are a single options object, add the field `report?: JobReport` to that object's type and read `const report = options.report ?? logOnly;`; otherwise add a last parameter `report: JobReport = logOnly`. Import `type JobReport` and `logOnly` from `./cron-runs`. Then, inside this function's body only (not in the helpers it calls), change each catch that neither logs nor rethrows (1 found by the review's count): `catch {` or `catch (e) {` becomes `catch (error) { report(error, \"<part>\");` followed by whatever the block did before (a `return summary`, a counter, nothing); `.catch(() => X)` becomes `.catch((error: unknown) => { report(error, \"<part>\"); return X; })`. `<part>` is a short kebab-case name of what failed, unique inside the function (for example `overdue-reminders`, `acknowledgements`). Keep the comment that explains the catch. The code after the catch must still run exactly as before: that is why the catches exist. The same file holds `sendAnalyticsAlertEmails` (about line 1117; job `analyticsAlerts`, 1 silent catch): change it the same way. Where either function has a catch that only logs, make it report."
+    },
+    {
+     "file": "src/server/vat-admin.ts",
+     "action": "edit",
+     "how": "Entry function `refreshVatLabelsAtMidnight` (about line 361; the dispatcher's job `vatLabels`). Give it a way to report: if its parameters are a single options object, add the field `report?: JobReport` to that object's type and read `const report = options.report ?? logOnly;`; otherwise add a last parameter `report: JobReport = logOnly`. Import `type JobReport` and `logOnly` from `./cron-runs`. Then, inside this function's body only (not in the helpers it calls), change each catch that neither logs nor rethrows (1 found by the review's count): `catch {` or `catch (e) {` becomes `catch (error) { report(error, \"<part>\");` followed by whatever the block did before (a `return summary`, a counter, nothing); `.catch(() => X)` becomes `.catch((error: unknown) => { report(error, \"<part>\"); return X; })`. `<part>` is a short kebab-case name of what failed, unique inside the function (for example `overdue-reminders`, `acknowledgements`). Keep the comment that explains the catch. The code after the catch must still run exactly as before: that is why the catches exist. "
+    },
+    {
+     "file": "src/server/*.ts named by the scan",
+     "action": "edit",
+     "how": "Run `pnpm exec vitest run src/server/cron-entry-catches.scan.test.ts` after the ten files above. Every further line it prints is an entry function with a catch that neither rethrows nor reports (the review counted 'at least 11' jobs; a catch that only logs is also listed). Change each the same way, in its own file, until the list is empty. Callers of a changed function other than the dispatcher (`rg -n '<fn>\\(' src`) keep working: the new parameter has a default."
+    }
+   ],
+   "checks": [
+    "pnpm exec vitest run src/server/cron-entry-catches.scan.test.ts: its first test passes with an empty list (the second test, about the seven routes, still fails until commit 3: mark it `it.todo` in this commit and turn it on in the next)",
+    "git diff --stat: only the files named above and those the scan named; no file under src/app except the dispatcher's route",
+    "pnpm lint && pnpm typecheck && pnpm test: exits 0",
+    "pnpm test:int: exits 0 (return-jobs, bonus, tracking, invoices and staff-alerts have integration tests that call these functions without a report)"
+   ]
+  },
+  {
+   "title": "The work seven cron routes do after answering is kept as a job of its own",
+   "changes": [
+    {
+     "file": "src/app/api/cron/page-jobs/route.ts",
+     "action": "edit",
+     "how": "Change `after(() => runPageJobs(until));` to `after(async () => { await trackedWork(\"route.page-jobs\", 60, () => runPageJobs(until)); });` and import `trackedWork` beside `trackedRoute` from `@/server/cron-runs`. Add the comment the Dream Factory route has: the route's own record says only that it answered; the work is kept as `route.page-jobs.work`."
+    },
+    {
+     "file": "src/app/api/cron/autopilot/route.ts",
+     "action": "edit",
+     "how": "Wrap the whole body of the existing `after(async () => { … })` (about line 22: `runAutopilot({ deadline })` and the lines after it) in `await trackedWork(\"route.autopilot\", 60, async () => { …the same lines… });`. Import `trackedWork`."
+    },
+    {
+     "file": "src/app/api/cron/broadcasts/route.ts",
+     "action": "edit",
+     "how": "Wrap the body of its `after(async () => { … })` (about line 28: `runBroadcasts`, `runAutomations` and what follows) in `await trackedWork(\"route.broadcasts\", 60, async () => { … });`. Import `trackedWork`."
+    },
+    {
+     "file": "src/app/api/cron/pack-pictures/route.ts",
+     "action": "edit",
+     "how": "Wrap the body of its `after(async () => { … })` (about line 20: `runPackPictures(until)` and `refreshPackStores`) in `await trackedWork(\"route.pack-pictures\", 60, async () => { … });`. Import `trackedWork`."
+    },
+    {
+     "file": "src/app/api/cron/page-looks/route.ts",
+     "action": "edit",
+     "how": "Wrap the body of its `after(async () => { … })` (about line 30: `runPageLooks(deadline, deps)`) in `await trackedWork(\"route.page-looks\", 60, async () => { … });`. Import `trackedWork`."
+    },
+    {
+     "file": "src/app/api/cron/theme-shots/route.ts",
+     "action": "edit",
+     "how": "Wrap the body of its `after(async () => { … })` (about line 26: `runThemeShots(...)` and the refreshes after it) in `await trackedWork(\"route.theme-shots\", 60, async () => { … });`. Import `trackedWork`."
+    },
+    {
+     "file": "src/app/api/cron/cookie-scan/route.ts",
+     "action": "edit",
+     "how": "Wrap the body of its `after(async () => { … })` (about line 23: `runScan(scan)` and the refreshes after it) in `await trackedWork(\"route.cookie-scan\", 60, async () => { … });`. This `after` is inside a branch that runs only when a scan is due: leave the branch as it is, so a minute with nothing to scan writes no `.work` run. Import `trackedWork`."
+    },
+    {
+     "file": "src/server/cron-entry-catches.scan.test.ts",
+     "action": "edit",
+     "how": "Turn the second test on (remove `it.todo`)."
+    },
+    {
+     "file": "src/lib/cron-health.ts",
+     "action": "edit",
+     "how": "Read how `cronHealth()` decides a job is late (`allowanceSeconds`). A `.work` job of a route that does not work every minute (cookie-scan) must not be called late: if lateness is computed from `every_seconds` alone, add the rule `a job whose name ends in \".work\" is never late, only failing or ok` with a unit test in src/lib/cron-health.test.ts (a `.work` row last run two days ago with failures 0 is ok; with failures 3 it is failing). If the function already ignores lateness for some names, add `.work` to that rule instead."
+    },
+    {
+     "file": "docs/rules/admin/platform.md",
+     "action": "edit",
+     "how": "Find the rule on scheduled jobs (`rg -n 'runJobs|cron_jobs' docs/rules`) and add: an entry function never swallows an error: it reports it (`report(error, part)`, handed in by `runJobs()`/`tracked()`), which logs it and counts the run as failed after the job's other parts have run; work done after a route's answer runs inside `trackedWork(\"route.<name>\", …)`; `cron-entry-catches.scan.test.ts` holds both. If the rule is in another file of docs/rules, edit it there."
+    }
+   ],
+   "checks": [
+    "pnpm exec vitest run src/server/cron-entry-catches.scan.test.ts src/server/cron-routes.scan.test.ts src/lib/cron-health.test.ts: exits 0",
+    "pnpm lint && pnpm typecheck && pnpm test: exits 0",
+    "pnpm test:int: exits 0",
+    "pnpm build: exits 0"
+   ]
+  }
+ ],
+ "tests": [
+  {
+   "file": "src/server/cron-entry-catches.scan.test.ts",
+   "proves": "Fails, naming the job, file and line, for a dispatcher job's entry function with a catch that neither rethrows nor reports, and for a cron route that works after answering outside trackedWork()."
+  },
+  {
+   "file": "src/server/cron-runs.int.test.ts",
+   "proves": "Fails when a job whose first part reports an error does not run its second part or is recorded as ok, and when a runner that throws after the answer does not leave route.page-jobs.work failed."
+  },
+  {
+   "file": "src/lib/cron-health.test.ts",
+   "proves": "Fails when a `.work` job that had nothing to do is called late."
+  }
+ ],
+ "migration": {
+  "needed": false,
+  "notes": ""
+ },
+ "done_when": [
+  {
+   "check": "pnpm exec vitest run src/server/cron-entry-catches.scan.test.ts",
+   "expect": "Passes: 0 silent catches in the entry functions of at least 83 dispatcher jobs (at least 11 jobs had one before), and all seven routes use trackedWork()."
+  },
+  {
+   "check": "pnpm test:int (src/server/cron-runs.int.test.ts)",
+   "expect": "Passes: a job whose first part throws still runs its second part and its row is counted as failed; a runner that throws inside the after-work leaves route.page-jobs.work failed."
+  },
+  {
+   "check": "rg -n 'trackedWork\\(' src/app/api/cron | wc -l",
+   "expect": "7"
+  }
+ ],
+ "after_deploy": [
+  "An hour after the deploy open /admin/platform/capacity#jobs: seven new rows `route.<name>.work`; note every dispatcher job that now shows failing with its last error. Each is a failure that was hidden before: write the list into the step's section of the tracker and report it; do not silence one.",
+  "The platform admins' inbox: a job that fails three turns in a row sends its one alert (cron-alerts). Expect one for the returns job if the refund-deadline reminder still fails."
+ ],
+ "docs": [
+  "docs/decisions.md: a new row with the next free D-number: report() for scheduled jobs (logged, run counted as failed after the other parts ran), trackedWork() for work after a route's answer, the scan that holds both, and the count before (at least 11 jobs, 17 catches, 7 routes) and after (0). Take the number as the repo then asks: with node scripts/claim-decision.mjs if step 0.41 has made it, and as a file docs/decisions/D{n}.md if step 2.40 has split the decisions.",
+  "docs/rules/admin/platform.md (or the rule file that holds the scheduled-jobs rule): the sentence in commit 3. CLAUDE.md's Conventions bullet on cron routes says the same thing in short; propose the added clause to the owner in the commit message, do not edit CLAUDE.md.",
+  "The plan's Progress table under docs/audits/bloat-review-2026-11: step 1.26 Done with date and commits, and the list of jobs that showed failing after the deploy. Note for step 3.3 in its section: the registry keeps report(). docs/platform-parity.md needs no row: the platform's jobs are in the same dispatcher list."
+ ],
+ "do_not": [
+  "Do not remove a try/catch or let an error leave a part: the catches exist so one part's failure does not stop the next. Only add the report.",
+  "Do not rename a job, change its schedule or its order in the dispatcher: the ledger's rows are keyed by name.",
+  "Do not change catches in helper functions the entry functions call: the scan and this step cover entry functions only.",
+  "Do not make report() throw.",
+  "Do not log a person's data in a part's name: a part is a fixed word, never an email address or an order's contents.",
+  "Do not add a list of exempt catches to the scan to make it pass.",
+  "Do not fix the job failures this uncovers in this step: report them."
+ ],
+ "stop_if": [
+  "The scan finds fewer than 83 dispatcher jobs or cannot resolve more than 5 entry functions: the dispatcher's shape differs from the brief; report what it found.",
+  "A catch handles a normal state, not an error (the code after it treats the thrown value as an answer, for example `not connected`), so reporting it would mark the job failed on every run: list the job, file and line and stop on that catch only.",
+  "An integration test of a changed job fails for any reason other than a missing argument.",
+  "`cronHealth()` cannot tell a `.work` job from the others without a change to commerce.cron_jobs: stop before commit 3's cron-health edit and report (no migration in this step).",
+  "Step 1.22 is not in (vercel.json still schedules the daily job itself)."
+ ],
+ "executor": "cheap-then-review",
+ "executor_why": "The scan test lists every catch to change and the change is the same few words each time, but about a dozen money and legal-deadline jobs are touched (returns, invoices, host commissions, bonus), so a stronger model should read the diff before it is pushed.",
+ "checked_in_code": "I opened cron-runs.ts (record, tracked, runJobs, trackedRoute), the dispatcher (src/app/api/cron/cart-reminders/route.ts: 78 jobs in runJobs plus 5 tracked calls, 83 in all), the Dream Factory route and the seven routes that work inside after() (autopilot, page-jobs, broadcasts, pack-pictures, page-looks, theme-shots, cookie-scan), and runReturnJobs and pollTracking. A walk of the 78 entry functions found silent catches in 11 jobs, as the step says: returns 5, bonus 3, commissions 2, tracking 2, and one each in knowledge, media, affiliates, invoices, summaries, analyticsAlerts and vatLabels (19 by my pattern against the review's 17, so the brief lets the scan test list them). Two things the step does not say are settled: after() cannot run in an integration test, so the wrapper is a plain function trackedWork() the test can call; and a `.work` job of a route that has nothing to do must not be called late, so cron-health gets a rule for it."
+}

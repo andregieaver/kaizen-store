@@ -1,0 +1,253 @@
+{
+ "id": "2.6",
+ "goal": "Every storefront and site link in the header tools, bottom bar, footers and menus states what it may fetch ahead through PolicyLink (sight, intent or never), the policy per group is written in docs/performance.md, and a ratchet count directLinks lets direct imports of next/link only fall.",
+ "why": "Today 400 files import next/link directly, 947 links state no policy, the phone home makes 47 router prefetch requests read to the footer and the first Add to cart asks again for 32 links. After: at most 6 on the phone home, a product page, a content page and the cart, at most 10 after the first add, at most 8 on the home at 1280 px, and a new file that imports next/link fails pnpm test.",
+ "read_first": [
+  "node_modules/next/dist/docs/01-app/02-guides/prefetching.md",
+  "node_modules/next/dist/docs/01-app/03-api-reference/02-components/link.md",
+  "docs/rules/storefront.md",
+  "src/components/store-layout.tsx",
+  "src/components/menu-view.tsx",
+  "src/lib/pay-routes.graph.test.ts",
+  "scripts/lib/ratchet-count.mjs",
+  "src/server/ratchet.scan.test.ts"
+ ],
+ "depends_on": [
+  {
+   "id": "0.13",
+   "why": "it makes PolicyLink in its first form, AdminLink (src/components/admin/ui/link.tsx) on top of it and e2e/signed-in/prefetch.spec.ts with its table of eight admin screens"
+  },
+  {
+   "id": "1.3",
+   "why": "it makes e2e/prefetch.spec.ts with the table of router-request budgets this step lowers and extends"
+  },
+  {
+   "id": "2.2",
+   "why": "it makes the header's cart link a plain anchor from 768 px, which this step's policy table records as 'never' and must not undo"
+  }
+ ],
+ "commits": [
+  {
+   "title": "PolicyLink for the storefront: header tools, the bottom bar and footers are fetched on intent",
+   "changes": [
+    {
+     "file": "src/components/{policy-link.tsx}",
+     "action": "edit",
+     "how": "Step 0.13 made this component; find it with `rg -l 'export function PolicyLink' src` (expected src/components/policy-link.tsx; if it lives under src/components/admin, move it to src/components/policy-link.tsx with git mv and fix its importers). Make sure it has exactly this contract, adding what is missing and keeping what 0.13 built: a `\"use client\"` file that imports only `next/link` and `react`; `PolicyLink` takes every prop of next/link's Link except `prefetch`, plus `policy: \"sight\" | \"intent\" | \"never\"`. It keeps `const [asked, setAsked] = useState(false)` and renders `<Link {...rest} prefetch={policy === \"sight\" || (policy === \"intent\" && asked) ? null : false} onPointerEnter=... onTouchStart=... onFocus=...>`, where each of the three handlers calls `setAsked(true)` and then the handler of the same name it was given, if any. `prefetch={null}` is Next's default (fetch when in view); `false` fetches nothing. Children pass through untouched, so server components keep drawing icons and counts inside it. All other props (`scroll`, `replace`, `aria-current`, `hrefLang`, `lang`, `className`, `target`, `rel`) must reach the Link."
+    },
+    {
+     "file": "src/components/store-layout.tsx",
+     "action": "edit",
+     "how": "Add `import { PolicyLink } from \"./policy-link\";` and keep the `Link` import only while a `<Link` remains in the file. Change `<Link` to `<PolicyLink policy=\"intent\"` (and the matching `</Link>` to `</PolicyLink>`) at these places, found by their href: the logo (`href={marketHome(store.slug, market.slug)}`, about line 128); search (`${base}/search`, 267); account (the Link at 273); wishlist (`${base}/wishlist`, 281); the phone menu's account (`${base}/account`, 400) and cart (`${base}/cart`, 406); the withdrawal link (`\"/withdraw\"`, 443); cookies (`\"/cookies\"`, 498); the legal pages (`href={page.href}`, 511); the bottom bar's home (`href={base || \"/\"}`, 564) and account (577). The three lists of country links (`href={marketHome(store.slug, other.slug)}`, about lines 236, 419 and 537): if an earlier step has not already given them `prefetch={false}`, change them to `<PolicyLink policy=\"never\"`; if they already have `prefetch={false}`, change them to `<PolicyLink policy=\"never\"` and drop the `prefetch` prop. Keep every other prop of each link as it is."
+    },
+    {
+     "file": "src/components/site-parts.tsx",
+     "action": "edit",
+     "how": "Same change with `policy=\"intent\"` for a built header's or footer's search (`${base}/search`, about line 156), account (163), wishlist (170), the store's cookies link (224), Kaizena Flow's footer pages (283) and cookies (287) and the `/admin` icon link (261). The two sign-up links (`platformPath(lang, \"/sign-up\")`, 241 and 268) get `policy=\"sight\"`: the site's main action. The Link at about line 190 is a list of countries or languages: `policy=\"never\"` (read it first; if it is something else, give it `intent`)."
+    },
+    {
+     "file": "src/components/platform-layout.tsx",
+     "action": "edit",
+     "how": "`policy=\"intent\"` for the logo (79), the footer's cookies (223) and pages (230), the bottom bar's home (264) and the `/admin` links (133, 176, 273). `policy=\"sight\"` for the two sign-up links (137 and 171)."
+    },
+    {
+     "file": "src/components/cart-link.tsx",
+     "action": "edit",
+     "how": "The bottom bar's variant: `<PolicyLink policy=\"sight\"` (phones only; the one link a phone fetches on sight). The header's phone element (the `md:hidden` Link of step 2.2): `<PolicyLink policy=\"sight\"`. The plain `<a>` shown from 768 px stays a plain anchor. If step 2.4 has moved this markup to src/components/cart-link-live.tsx, make the same change there."
+    },
+    {
+     "file": "src/lib/pay-routes.graph.test.ts",
+     "action": "edit",
+     "how": "In the test `is never a client-side <Link> to the checkout...` (about line 184) change the pattern `/<Link[^>]*href=\\{[^}]*\\/checkout[`\"'/}]/` to `/<(?:Link|PolicyLink|BlockLink|AdminLink)[^>]*href=\\{[^}]*\\/checkout[`\"'/}]/` so a wrapper can never client-navigate to the checkout unseen. Change the offender text to `a Link or wrapper to /checkout`."
+    }
+   ],
+   "checks": [
+    "pnpm exec vitest run src/lib/pay-routes.graph.test.ts src/lib/storefront-bundle.scan.test.ts src/components/menu-view.test.ts: exits 0",
+    "pnpm lint && pnpm typecheck && pnpm test: exits 0",
+    "pnpm build && pnpm test:e2e -- e2e/store-pages.spec.ts e2e/navigation.spec.ts e2e/menus.spec.ts e2e/legal-pages.spec.ts e2e/search.spec.ts e2e/cookies.spec.ts e2e/withdrawal.spec.ts e2e/cart.spec.ts e2e/account.spec.ts e2e/language-switcher.spec.ts e2e/localization.spec.ts e2e/platform-languages.spec.ts e2e/performance.spec.ts: exits 0 on every project of playwright.config.ts, WebKit included (D423's test presses the search link)"
+   ]
+  },
+  {
+   "title": "Menus: top links of a header on sight, footers, the phone menu and sub-links on intent",
+   "changes": [
+    {
+     "file": "src/components/menu-view.tsx",
+     "action": "edit",
+     "how": "Import `PolicyLink` from `./policy-link` in place of `Link`. Give the inner function `anchor` a fifth parameter: `const anchor = (node, className, chevron = false, picture = false, policy: \"sight\" | \"intent\" = \"intent\")`, and in its last branch render `<PolicyLink policy={policy} href={node.href} className={className}>` (the plain `<a>` for `node.external || node.newTab` stays). Then pass `\"sight\"` only for the top links of a row menu: in the `layout === \"row\"` branch, the `anchor(node, ...)` call that draws a top-level node (the one inside `mega` with `chevron` true, and the row's own top-level call further down). Every other call keeps the default `intent`: the `dropdown` list's `anchor(child, SUB_LINK)`, the mega panel's `anchor(child, ...)` and `anchor(grandchild, ...)`, and every call in the column and drawer branch (about lines 178-199). Menus stay script-free to open (D85, D87): only the fetch ahead waits."
+    },
+    {
+     "file": "src/components/menu-view.test.ts",
+     "action": "edit",
+     "how": "Add a case: mock `./policy-link` with `vi.mock` so `PolicyLink` renders `<a data-policy={policy} href={href}>{children}</a>`; render a row menu with one top link that has two children (a dropdown) and one with a mega menu to a string with `renderToStaticMarkup`; expect every top link to carry `data-policy=\"sight\"` and every sub-link `data-policy=\"intent\"`; render the same nodes with layout `column` and `drawer` and expect only `intent`."
+    },
+    {
+     "file": "e2e/menus.spec.ts",
+     "action": "edit",
+     "how": "Add a case using the file's own helper that builds a menu: one header link with one sub-link under it. At 1280x720 load the page, wait 3 s, and expect 0 requests whose headers hold `next-router-prefetch` (or an `rsc` header) for the sub-link's address; hover the top link, wait 1 s, expect at least 1."
+    }
+   ],
+   "checks": [
+    "pnpm exec vitest run src/components/menu-view.test.ts: exits 0",
+    "pnpm lint && pnpm typecheck && pnpm test: exits 0",
+    "pnpm build && pnpm test:e2e -- e2e/menus.spec.ts e2e/menu-hover.spec.ts e2e/navigation.spec.ts e2e/site-layouts.spec.ts: exits 0"
+   ]
+  },
+  {
+   "title": "Hold what the router fetches ahead: budgets per page and the written policy",
+   "changes": [
+    {
+     "file": "e2e/{prefetch.spec.ts}",
+     "action": "edit",
+     "how": "The file is e2e/prefetch.spec.ts, made by step 1.3 with one table of budgets (page, screen, scroll, most router prefetch requests) and one helper that counts requests carrying the `next-router-prefetch` header. Set or add these rows: phone (390x800) at the top and read to the footer, each at most 6: /s/demo/no (47 before, read to the footer), /s/demo/no/p/demo-keramikkopp, /s/demo/no/om-oss and /s/demo/no/cart. /s/demo/no at 1280x720 at the top: at most 8. Add the test `a footer link waits to be pointed at`: on the phone home, scroll to the footer, expect 0 requests for /s/demo/no/cookies; hover (or focus) the cookies link, expect at least 1; press it and expect the address to change with no document request. Add `the first add to cart asks for little again`: phone, top of /s/demo/no/p/demo-handlenett, count router prefetch requests in the 4 s after the first press of Add to cart: at most 10 (32 before); after a second press: 0. Keep the comment that a change which passes a budget is a regression to look at, not a number to raise."
+    },
+    {
+     "file": "docs/performance.md",
+     "action": "edit",
+     "how": "Add a section `## What the router fetches ahead` with this table. sight: the cart link on phones, a header menu's top links, product tiles (bounded by step 2.8), the site's sign-up button. intent: the logo, search, account, wishlist, the bottom bar's home and account, footers (menu, cookies, withdrawal, legal pages), menu sub-links, the phone menu, every admin link (AdminLink). never: countries, languages and currencies, links that leave their root layout, file links, the cart link from 768 px (a plain anchor). Then two sentences: a link states its policy through PolicyLink or AdminLink and next/link is imported only by them (ratchet count directLinks); a server action that sets a cookie or revalidates makes the router ask again for every link in view, so the number of sight links is also the cost of every such action."
+    },
+    {
+     "file": "docs/rules/storefront.md",
+     "action": "edit",
+     "how": "Add a short rule at the end, under the heading `## Links say what they may fetch ahead (bloat review step 2.6)`: the sentence about PolicyLink's three policies, that a new file may not import next/link (ratchet), and that the table lives in docs/performance.md. Add the same one-line rule to the admin frame's file in docs/rules/admin/ (docs/rules/admin/README.md says which file is the frame's), naming AdminLink. CLAUDE.md itself is the owner's file: do not edit it; put the proposed one-line bullet for Conventions in the commit message for the owner to accept."
+    }
+   ],
+   "checks": [
+    "pnpm build && pnpm test:e2e -- e2e/prefetch.spec.ts e2e/performance.spec.ts e2e/cart.spec.ts: exits 0; no byte budget in performance.spec.ts is raised",
+    "pnpm lint && pnpm typecheck && pnpm test: exits 0"
+   ]
+  },
+  {
+   "title": "A ratchet lets direct imports of next/link only fall",
+   "changes": [
+    {
+     "file": "scripts/lib/ratchet-count.mjs",
+     "action": "edit",
+     "how": "Export `export const DIRECT_LINK = /from\\s+[\"']next\\/link[\"']/g;` and a list `LINK_WRAPPERS = [\"src/components/policy-link.tsx\", \"src/components/block-link.tsx\", \"src/components/admin/ui/link.tsx\"]`. In `ratchetCounts(root)` add `const directLinks = {};` and, inside the loop over files, `if (!LINK_WRAPPERS.includes(file) && count(text, DIRECT_LINK) > 0) directLinks[file] = 1;`. Return it with the others: `{ unknownCasts, anySuppressed, untypedReads, byIdWrites, directLinks }`. Update the comment at the top of the file to name the new count."
+    },
+    {
+     "file": "scripts/ratchet.mjs",
+     "action": "edit",
+     "how": "In the block that collects `raised`, add: `for (const file of Object.keys(now.directLinks)) if (!(before.directLinks ?? now.directLinks)[file]) raised.push(`${file}: imports next/link directly; use PolicyLink or AdminLink`);` (when the baseline has no `directLinks` yet, the first run writes it as things stand). Make sure the written JSON includes `directLinks`."
+    },
+    {
+     "file": "src/server/ratchet.baseline.json",
+     "action": "edit",
+     "how": "Do not edit by hand: run `node scripts/ratchet.mjs`. The diff must only add the `directLinks` map (about 395 files; 400 before this step's commits) and change no other number."
+    },
+    {
+     "file": "src/server/ratchet.scan.test.ts",
+     "action": "edit",
+     "how": "In the style of the first case (`adds no unchecked read...`) add `adds no direct import of next/link: a file not in the baseline imports it not at all (use PolicyLink or AdminLink)`: every key of `ratchetCounts(root).directLinks` is a key of the baseline's `directLinks`. Extend the case `keeps the baseline as low as the code` so a file in the baseline's `directLinks` that no longer imports next/link fails with the message to run `node scripts/ratchet.mjs`. In `counts what it says it counts` add one line: `DIRECT_LINK` matches `import Link from \"next/link\";` and does not match `import { PolicyLink } from \"./policy-link\";`."
+    }
+   ],
+   "checks": [
+    "pnpm exec vitest run src/server/ratchet.scan.test.ts: exits 0",
+    "printf 'import Link from \"next/link\";\\nexport const X = Link;\\n' > src/components/zz-trial.tsx && pnpm exec vitest run src/server/ratchet.scan.test.ts; rm src/components/zz-trial.tsx: the run fails and names src/components/zz-trial.tsx; after the rm the test passes again",
+    "pnpm lint && pnpm typecheck && pnpm test: exits 0"
+   ]
+  },
+  {
+   "title": "The admin's in-page links go through AdminLink on the eight budgeted screens",
+   "changes": [
+    {
+     "file": "src/components/admin/**/*.tsx and src/app/admin/**/*.tsx that import next/link and draw a link the spec names",
+     "action": "edit",
+     "how": "Run `E2E_SIGNED_IN=1 pnpm test:e2e -- e2e/signed-in/prefetch.spec.ts` on the stand-in build (CLAUDE.md, Commands). The spec names every router fetch each of the eight screens makes after load. For each named address, find the component that draws that link (`rg -n '<Link' <the screen's files>`; the screens are the admin home, orders, products, pages, settings, a product's editor, the builder and the platform home) and, in that file only, replace `import Link from \"next/link\";` with `import { AdminLink as Link } from \"@/components/admin/ui/link\";` (adjust the relative path the file's other imports use). AdminLink's default policy is intent, so no JSX changes. Do not do this in a file that passes `prefetch`, `legacyBehavior` or `passHref` to Link, or that hands `Link` to another component as a value: list those files in the commit message and leave them. After each batch run `node scripts/ratchet.mjs` so the baseline's directLinks falls."
+    },
+    {
+     "file": "e2e/signed-in/{prefetch.spec.ts}",
+     "action": "edit",
+     "how": "The file is e2e/signed-in/prefetch.spec.ts, made by step 0.13. Set the at-rest budget of all eight screens to 0 router prefetch requests in the 3 s after load. If a screen cannot reach 0 because of a file left out above, keep its measured count, name the file in the table's comment, and report it."
+    }
+   ],
+   "checks": [
+    "pnpm lint && pnpm typecheck && pnpm test: exits 0",
+    "E2E_SIGNED_IN=1 pnpm build && E2E_SIGNED_IN=1 pnpm test:e2e -- e2e/signed-in/prefetch.spec.ts e2e/signed-in/admin-view.spec.ts e2e/signed-in/orders-list.spec.ts e2e/signed-in/products-grid.spec.ts e2e/signed-in/recent-pages.spec.ts e2e/signed-in/a11y.spec.ts: exits 0 (build with NEXT_PUBLIC_SUPABASE_URL=http://127.0.0.1:3912 as CI's signed-in job does)",
+    "pnpm exec vitest run src/server/ratchet.scan.test.ts: exits 0 with the lowered baseline"
+   ]
+  }
+ ],
+ "tests": [
+  {
+   "file": "e2e/prefetch.spec.ts",
+   "proves": "Fails when the phone home, a product page, a content page or the cart makes more than 6 router prefetch requests at the top or read to the footer, the 1280 px home more than 8, the first add to cart more than 10, or a footer link is fetched before it is pointed at."
+  },
+  {
+   "file": "src/server/ratchet.scan.test.ts",
+   "proves": "Fails for a new file that imports next/link directly, and when the directLinks baseline is higher than the code."
+  },
+  {
+   "file": "src/components/menu-view.test.ts",
+   "proves": "Fails when a sub-link, a footer menu link or a phone-menu link is drawn with policy sight, or a header's top link is not."
+  },
+  {
+   "file": "e2e/menus.spec.ts",
+   "proves": "Fails when a sub-link in a closed drop-down is fetched before its top link is hovered."
+  },
+  {
+   "file": "e2e/signed-in/prefetch.spec.ts",
+   "proves": "Fails when one of the eight admin screens makes a router prefetch request at rest."
+  },
+  {
+   "file": "src/lib/pay-routes.graph.test.ts",
+   "proves": "Fails when a Link or any wrapper client-navigates to the checkout."
+  }
+ ],
+ "migration": {
+  "needed": false,
+  "notes": ""
+ },
+ "done_when": [
+  {
+   "check": "pnpm build && pnpm test:e2e -- e2e/prefetch.spec.ts",
+   "expect": "Passes with at most 6 router prefetch requests on the phone home, a product page, a content page and the cart, at the top and read to the footer (47 on the home before); at most 10 after the first add to cart (32); at most 8 on the home at 1280 px."
+  },
+  {
+   "check": "pnpm test:e2e -- e2e/menus.spec.ts",
+   "expect": "Passes; 0 router requests for a sub-link before its top link is hovered."
+  },
+  {
+   "check": "A scratch file src/components/zz-trial.tsx that imports next/link, then pnpm test",
+   "expect": "ratchet.scan.test.ts fails naming the file; remove the file afterwards."
+  },
+  {
+   "check": "E2E_SIGNED_IN=1 pnpm test:e2e -- e2e/signed-in/prefetch.spec.ts",
+   "expect": "0 router prefetch requests at rest on all eight admin screens, or the named exceptions reported."
+  },
+  {
+   "check": "rg -n 'What the router fetches ahead' docs/performance.md",
+   "expect": "One heading, with the policy table under it."
+  }
+ ],
+ "after_deploy": [
+  "On a phone-sized window open a template-store page with the Network panel filtered to requests with `_rsc`: at most 6 after scrolling to the footer; pressing search, account and a footer link still opens each page without a full reload.",
+  "Open kaizenaflow.com at 1280 px: the header menu's top links respond at once, and a drop-down's links are fetched only after the pointer reaches the top link."
+ ],
+ "docs": [
+  "docs/decisions.md: a new row with the next free D-number: links state a prefetch policy through PolicyLink and AdminLink (sight, intent, never), the table of groups, the directLinks ratchet, and the figures before and after (47 to at most 6; 32 to at most 10; 400 direct imports to the new count). Take the number as the repo then asks: with node scripts/claim-decision.mjs if step 0.41 has made it, and as a file docs/decisions/D{n}.md if step 2.40 has split the decisions.",
+  "docs/performance.md: the section 'What the router fetches ahead' (commit 3).",
+  "docs/rules/storefront.md and the admin frame's file in docs/rules/admin/: the one-line rule (commit 3). The CLAUDE.md bullet is proposed to the owner, not written.",
+  "The plan's Progress table under docs/audits/bloat-review-2026-11: step 2.6 Done with date and commits, and the admin screens left as exceptions, if any. docs/platform-parity.md needs no row: platform-layout.tsx and the platform admin use the same wrappers."
+ ],
+ "do_not": [
+  "Do not replace next/link in all 400 files: the ratchet lets them move as they are touched; this step moves only the files it names.",
+  "Do not turn a link into a button or a plain anchor to stop its prefetch: the withdrawal link (D153) and the cookies link (D58) stay links with the same href.",
+  "Do not give the main menu's top links intent: they stay on sight (a speed trade to decide by measurement, not here).",
+  "Do not raise a byte budget in e2e/performance.spec.ts or a request budget to make a test pass.",
+  "Do not drop a prop when wrapping (`scroll`, `replace`, `aria-current`, `hrefLang`, `lang`, `target`, `rel`).",
+  "Do not change the plain cart anchor of step 2.2 back into a Link.",
+  "Do not edit CLAUDE.md.",
+  "Do not import anything but next/link and react in policy-link.tsx (storefront-bundle.scan.test.ts walks it)."
+ ],
+ "stop_if": [
+  "`rg -l 'export function PolicyLink' src` finds nothing: step 0.13 is not done.",
+  "PolicyLink from step 0.13 has other policy names than sight, intent and never and renaming them would touch more than its own file and AdminLink: report the names and stop.",
+  "e2e/store-pages.spec.ts's D423 test (the search link with its prefetches aborted) fails on WebKit.",
+  "A budget cannot be met after commits 1 and 2: report the page and the addresses still fetched (the helper prints them); do not widen the budget.",
+  "node scripts/ratchet.mjs wants to change a number other than directLinks.",
+  "An admin screen still fetches at rest from a link that is not drawn by a Link in the screen's own files (a shared part): report it."
+ ],
+ "executor": "cheap-then-review",
+ "executor_why": "Each edit is a named link getting a named policy and the request budgets catch a miss, but about thirty links in the store's and the site's chrome and an unknown number of admin files change, so a stronger model should read the diff before it is pushed.",
+ "checked_in_code": "I opened store-layout.tsx, site-parts.tsx, platform-layout.tsx, menu-view.tsx (anchor(), dropdown and mega), menu-section.tsx, the pay-routes graph test's Link scan and the ratchet's counter, script, baseline and test. The link lines match PF-3 (store-layout 128 to 577, site-parts 156 to 287, platform-layout 79 to 273) and `rg -l 'from \"next/link\"' src` gives exactly 400 files. Corrections: the findings name the policies view, intent and none, the plan names them sight, intent and never, and the brief uses the plan's; PolicyLink is expected from step 0.13, so the brief edits it and does not create it; the three country-link lists in store-layout.tsx (236, 419, 537) belong to PF-2 and get 'never' here only if no earlier step did it. e2e/prefetch.spec.ts and e2e/signed-in/prefetch.spec.ts do not exist yet: they come from steps 1.3 and 0.13."
+}

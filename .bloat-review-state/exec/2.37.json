@@ -1,0 +1,178 @@
+{
+  "id": "2.37",
+  "goal": "The tool schemas the AI manager's model is sent carry no maxLength, minLength or pattern, a long tool result reaches the model as valid JSON that says it was cut, update_product is split, and no first round is over 56,000 characters.",
+  "why": "After step 2.36's lean round, string bounds still take 4,006 to 7,654 characters a round (5,562 in a lean orders round), update_product alone is 11,908 characters and a cut result is broken JSON; after the step no round's tools hold a string bound, no tool is over 2,500 characters outside a named list, and no first round is over 56,000 characters (34,000 with no page and no question).",
+  "read_first": [
+    "docs/rules/admin/ai.md",
+    "docs/consolidation.md",
+    "src/lib/owner-tools.ts",
+    "src/server/owner-assistant.ts",
+    "src/server/agent-eval.ts",
+    "src/lib/mcp-catalogue.ts",
+    "src/lib/product-tools.ts",
+    "src/server/agent-eval-replay.int.test.ts"
+  ],
+  "depends_on": [
+    {
+      "id": "1.19",
+      "why": "it makes src/server/ai-round.scan.test.ts with src/server/ai-round.baseline.json (every agent's round drawn and held) and the lean eval cases; this step adds assertions to that test and lowers its baseline"
+    },
+    {
+      "id": "2.36",
+      "why": "it makes the lean default round, the tool groups and the router; the bounds and the split are measured on that round, and one eval recording can cover both if they land together"
+    }
+  ],
+  "commits": [
+    {
+      "title": "The model is sent tool schemas without string bounds, and a long tool result is cut as valid JSON",
+      "changes": [
+        {
+          "file": "src/lib/owner-tools.ts",
+          "action": "edit",
+          "how": "Below toolDefinition() (line 2076) add 'export function modelDefinition(t: OwnerTool)': it returns toolDefinition(t) with the keys 'maxLength', 'minLength', 'pattern' and 'format' removed from 'parameters' at every depth (walk objects and arrays; build a new object, do not change toolDefinition's result in place), kept per tool in a WeakMap<OwnerTool, ...> so each tool is stripped once. Number ranges (minimum, maximum), enum, required, additionalProperties, minItems, maxItems, default and description stay. toolDefinition() itself does not change: the owner MCP's catalogue (src/lib/mcp-catalogue.ts line 107) and the Admin API keep the full schema, and readToolInput() (the zod check on the server) is what enforces the bounds."
+        },
+        {
+          "file": "src/server/owner-assistant.ts",
+          "action": "edit",
+          "how": "Every place that sends tools to the model through toolDefinition (today lines 727, 732 and 740: '.map(toolDefinition)'; step 2.36 may have moved them: rg -n 'toolDefinition' src/server/owner-assistant.ts) uses modelDefinition instead, and the import on line 18 follows. Then the result cut at line 827: 'content: JSON.stringify(result).slice(0, RESULT_MAX)' becomes: 'const text = JSON.stringify(result); const content = text.length <= RESULT_MAX ? text : JSON.stringify({ cut: true, note: \"Longer than fits here: ask for fewer rows or a narrower question.\", start: text.slice(0, RESULT_MAX - 200) });' and push that content. Do not rewrite older results already in 'messages': the prefix of a turn must stay byte for byte the same (step 2.38 relies on it)."
+        },
+        {
+          "file": "src/server/agent-eval.ts",
+          "action": "edit",
+          "how": "Lines 79 and 152: '.map(toolDefinition)' becomes '.map(modelDefinition)', so toolsVersion() hashes what the model is really sent and the eval plays the same schemas. Import modelDefinition."
+        },
+        {
+          "file": "src/server/support-partner.ts",
+          "action": "edit",
+          "how": "Line 163 sends owner tools to a model: use modelDefinition there too."
+        },
+        {
+          "file": "src/server/holder-assistant.ts",
+          "action": "edit",
+          "how": "Line 56: if the definitions built there are sent to a model (read the file's caller: if the list goes into chatWithTools or streamWithTools), use modelDefinition; if they are served to an outside client, leave toolDefinition. Say which in the commit message."
+        },
+        {
+          "file": "src/lib/model-definition.test.ts",
+          "action": "create",
+          "how": "There is no src/lib/owner-tools.test.ts today, so make this file (vitest, in the style of src/lib/mcp-catalogue.test.ts). A test over every tool of OWNER_TOOLS: JSON.stringify(modelDefinition(t).parameters) holds none of the four keys as a schema key (walk the object and check keys; a property that is itself NAMED 'pattern' or 'format' under 'properties' is allowed: skip the direct children of every 'properties' object when checking names), and modelDefinition(t) lists the same property names and the same 'required' arrays as toolDefinition(t) at every depth."
+        },
+        {
+          "file": "src/lib/mcp-catalogue.test.ts",
+          "action": "edit",
+          "how": "Add one assertion that the catalogue's inputSchema of a tool with a bounded string (pick one whose zod input has .max(): for example create_product's title) still carries maxLength."
+        },
+        {
+          "file": "src/server/owner-assistant.int.test.ts",
+          "action": "edit",
+          "how": "Add a case: a tool whose scripted result is over 12,000 characters reaches the model's next round as a tool message whose content JSON.parse()s, has cut === true and a 'start' string, and is at most 12,000 characters. Use the file's existing way of scripting a model and a tool answer."
+        },
+        {
+          "file": "src/server/ai-round.scan.test.ts",
+          "action": "create",
+          "how": "Marked create only because step 1.19 has not made it yet: EDIT it, never overwrite. Add two assertions over every round the test draws: (1) no key named maxLength, minLength or pattern anywhere in the round's tool definitions (same walk as the unit test); (2) no tool definition over 2,500 characters of JSON, except the names in a constant LONG_TOOLS written in the test, filled with the tools over 2,500 today, with a second assertion that every name in LONG_TOOLS is still over 2,500 (so the list only shrinks). Then lower src/server/ai-round.baseline.json to the new figures with the script or flag the test's failure message names."
+        }
+      ],
+      "checks": [
+        "pnpm test src/lib/model-definition.test.ts src/lib/mcp-catalogue.test.ts src/server/ai-round.scan.test.ts src/lib/agent-eval.test.ts src/lib/tool-budget.test.ts: pass",
+        "pnpm test:int src/server/owner-assistant.int.test.ts: passes",
+        "pnpm lint && pnpm typecheck && pnpm test: exits 0",
+        "pnpm test:int src/server/agent-eval-replay.int.test.ts: FAILS with 'Record the eval again' because the tools' version changed. That is expected until the recording of the last commit; this push has no migration, so it still deploys after the quick gate. Say so in the commit message and hand back for the eval run before any other AI change is pushed."
+      ]
+    },
+    {
+      "title": "update_product is three tools: the product, its variants and prices, its pictures and translations",
+      "changes": [
+        {
+          "file": "src/lib/product-tools.ts",
+          "action": "edit",
+          "how": "A stronger model does this commit. updateProductInput (line 230) holds everything a product can change (11,908 characters as a definition). Split it so the main tool keeps title, texts, status, categories, tags, the taxonomy and the price-on-request words, and two new tools in the products group take the rest: update_product_variants (the variants array, options, prices per market as today through 'variants', not_sold_in) and update_product_media (pictures, videos, alt texts, translations), each with the product's id or handle and each laid over the stored product by the same function (the merge at about line 557 and the server tool at src/server/product-tools.ts line 370), so one code path writes. Each new tool is registered everywhere update_product is: OWNER_TOOLS and its group in src/lib/owner-tools.ts (lines 383 and 2192), the server table in src/server/owner-tools.ts (lines 2168, 2382 and 2611), src/lib/owner-tool-permissions.ts line 262 (products:write), src/lib/owner-tool-features.ts line 116 (shop), src/lib/autopilot-autonomy.ts line 20 (catalogue), src/lib/autopilot-effects.ts line 21, GATED_WHEN_LIVE in src/lib/product-tools.ts line 40 (a change to a product on the site still asks for a yes), the Dream Factory's lists in src/lib/dream-factory.ts lines 336 and 596, the add-product playbook in src/lib/assistant-skills.ts line 318, TOOL_WORDS in src/lib/admin-messages/assistant.en.ts and assistant.nb.ts, the Admin API's catalogue (src/lib/admin-api-catalogue.ts) and src/data/api-contract-surface.json if the contract test asks, and the forbiddenTools of the eval cases in src/lib/agent-eval.ts lines 186 and 226 (add the new names beside update_product). The group map of step 2.36 puts the two new tools in the products page's group, not in the core. Keep update_product's name and its remaining fields unchanged, so stored approvals and saved skills that name it still run."
+        }
+      ],
+      "checks": [
+        "pnpm test src/lib/product-tools.test.ts src/lib/model-definition.test.ts src/lib/agent-eval.test.ts src/lib/permissions.scan.test.ts src/server/ai-round.scan.test.ts src/lib/tool-budget.test.ts: pass; update_product leaves LONG_TOOLS or its figure falls, and no first round is over 56,000 characters",
+        "pnpm test:int src/server/product-tools.int.test.ts src/server/owner-assistant.int.test.ts: pass",
+        "pnpm lint && pnpm typecheck && pnpm test && pnpm test:int (the replay test still fails until the recording): exits 0 otherwise"
+      ]
+    },
+    {
+      "title": "The agents' eval recorded on the slimmed tools",
+      "changes": [
+        {
+          "file": "src/data/agent-eval-recording.json",
+          "action": "edit",
+          "how": "Not made by the executor. After the commits above are live in production, a person with platform access opens Platform, AI, presses 'Run the agents' eval', and 'Download the recording' of that run; the executor replaces this file with the download, unchanged. In the same run, if the owner agrees, try the shorter gate sentence of the finding ('Calling it only asks the owner; call it when they ask, never ask in words first.') in toolDefinition() line 2080: keep it only if the case 'manager-asked-refund' still passes, otherwise leave today's sentence (docs/consolidation.md lines 80 to 83 say why it is on the tool)."
+        }
+      ],
+      "checks": [
+        "pnpm test:int src/server/agent-eval-replay.int.test.ts: passes on the new recording, the lean cases of step 1.19 among them",
+        "pnpm lint && pnpm typecheck && pnpm test: exits 0"
+      ]
+    }
+  ],
+  "tests": [
+    {
+      "file": "src/server/ai-round.scan.test.ts",
+      "proves": "fails when a round's tools hold maxLength, minLength or pattern, when a tool outside LONG_TOOLS passes 2,500 characters, or when a first round passes 56,000 characters (34,000 with no page and no question)"
+    },
+    {
+      "file": "src/lib/model-definition.test.ts",
+      "proves": "fails when modelDefinition() drops a property or a required key, or keeps a string bound"
+    },
+    {
+      "file": "src/lib/mcp-catalogue.test.ts",
+      "proves": "fails when the MCP catalogue's schemas lose their bounds"
+    },
+    {
+      "file": "src/server/owner-assistant.int.test.ts",
+      "proves": "fails when a long tool result reaches the model as broken JSON"
+    }
+  ],
+  "migration": {
+    "needed": false,
+    "notes": ""
+  },
+  "done_when": [
+    {
+      "check": "pnpm test src/server/ai-round.scan.test.ts",
+      "expect": "no first round over 56,000 characters for any of the 20 questions on any admin page drawn, none over 34,000 with no page and no question, no maxLength, minLength or pattern key in the round's tools, no tool over 2,500 characters outside LONG_TOOLS"
+    },
+    {
+      "check": "pnpm test:int src/server/agent-eval-replay.int.test.ts",
+      "expect": "passes on a recording made after the change, with the lean eval cases"
+    },
+    {
+      "check": "Platform, AI in production, over a week of the team's use",
+      "expect": "median AI manager call 15,000 input tokens or fewer, 90th percentile 25,000 or fewer, median turn 45,000 or fewer"
+    }
+  ],
+  "after_deploy": [
+    "The owner runs the agents' eval on Platform, AI and downloads the recording (the last commit).",
+    "A week later read Platform, AI: median input per AI manager call 15,000 or fewer, 90th percentile 25,000 or fewer, median per turn 45,000 or fewer; and compare the count of 'The arguments could not be read' tool answers in the round log with the week before (a rise means the model now sends over-long text: report it)."
+  ],
+  "docs": [
+    "docs/decisions.md (or docs/decisions/D{n}.md after step 2.40): one decision with the next free D number: the model's schemas drop string bounds (the server still checks them), a cut result is valid JSON, update_product is split into three, the eval run that covers it, and which gate sentence was kept.",
+    "docs/rules/admin/ai.md, under 'The AI manager's catalogue tools (D308)': name the three product tools; under the AI manager's rule: tools are sent with modelDefinition(), the MCP keeps toolDefinition().",
+    "docs/consolidation.md lines 80 to 83: add the result of the gate-sentence try.",
+    "docs/audits/code-review-2026-11.md: a note on row 3.18 (date, commit) and a change-log line.",
+    "docs/platform-parity.md: nothing to tick; the platform's tools are grouped in the same map (say so in the decision).",
+    "docs/audits/bloat-review-2026-11.md: row 2.37 to Done (rg -n '^\\| *2\\.37 ' docs/audits/bloat-review-2026-11.md) once the week's figures are in; until then 'code done, waiting for the week'."
+  ],
+  "do_not": [
+    "Do not change toolDefinition() or the zod inputs to drop bounds: the server's check and the MCP catalogue need them.",
+    "Do not strip minimum, maximum, enum, required or array limits.",
+    "Do not shorten or rewrite tool results already sent earlier in a turn.",
+    "Do not rename update_product or remove a field without moving it to one of the two new tools.",
+    "Do not edit src/data/agent-eval-recording.json by hand, and do not skip or loosen agent-eval-replay.int.test.ts to get a green run.",
+    "Do not push another prompt or tool change between the first commit and the recording: one recording must cover one version."
+  ],
+  "stop_if": [
+    "src/server/ai-round.scan.test.ts does not exist, or step 2.36's lean round is not in (the default round is still about 161,000 characters).",
+    "A first round is still over 56,000 characters after the split: report the round, its page and its ten largest tools.",
+    "The new recording fails a case: report the case and the model's answer; do not change the case.",
+    "holder-assistant.ts's definitions go to an outside client and to a model through the same list.",
+    "You are the cheap executor and reach the second commit."
+  ],
+  "executor": "strong",
+  "executor_why": "The first commit is mechanical, but splitting update_product means choosing which fields go where and registering two tools in about a dozen maps, and the step ends in an eval run that only a person with platform access can make.",
+  "checked_in_code": "I opened src/lib/owner-tools.ts (toolDefinition at line 2076, with the gate sentence at 2080 and readToolInput below it), src/server/owner-assistant.ts (tools mapped with toolDefinition at lines 727, 732 and 740; RESULT_MAX 12,000 and the blind slice at line 827), src/server/agent-eval.ts (lines 79 and 152) and src/lib/mcp-catalogue.ts line 107: as the finding says. Two more callers send owner tools on: src/server/support-partner.ts line 163 and src/server/holder-assistant.ts line 56, which the finding does not list. src/server/agent-eval-replay.int.test.ts fails whenever toolsVersion() differs from the recording, so the first push turns CI's full checks red until the owner records again; the brief says so and ends with the recording. ai-round.scan.test.ts does not exist yet (step 1.19)."
+}

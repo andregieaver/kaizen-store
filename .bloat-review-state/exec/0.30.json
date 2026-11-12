@@ -1,0 +1,176 @@
+{
+  "id": "0.30",
+  "goal": "The five-minute invoice job lists a store only when an invoice or credit note can be issued for it now, the store that waited longest first, calls the credit-note function once, and an owner who saves the missing seller details gets the waiting invoices at once; a live drill can prove one invoice end to end.",
+  "why": "Today the job calls commerce.issue_waiting_invoices and then commerce.issue_missing_credit_notes for the same waiting stores every five minutes for 120 days: about 127 calls of each a day and no invoice issued. After: fewer than 10 calls a day on today's data, and no second call for credit notes.",
+  "read_first": [
+    "docs/wave-1b-invoices.md",
+    "docs/rules/admin/commerce.md:89",
+    "src/server/invoice-issue.ts",
+    "src/server/invoice-issue.int.test.ts",
+    "src/server/invoice-test-fixture.ts",
+    "src/server/live-drills.ts",
+    "src/lib/live-drills.ts",
+    "docs/consolidation.md"
+  ],
+  "depends_on": [],
+  "commits": [
+    {
+      "title": "The invoice job asks only stores it can issue for, the longest-waiting first, and calls the credit notes once",
+      "changes": [
+        {
+          "file": "src/server/invoice-issue.ts",
+          "action": "edit",
+          "how": "(1) storesWithDocumentWork(): rewrite the statement so each of its four branches also gives the moment its work began, and the outer query orders by it. Exact shape: select store_id from ( <branch 1> union all <branch 2> union all <branch 3> union all <branch 4> ) x group by store_id order by min(at), store_id limit ${limit}. Branch 1 (orders): `select o.store_id, o.placed_at as at from commerce.orders o left join commerce.invoice_settings cfg on cfg.store_id = o.store_id where` every condition it has today, plus two more at the end: `and commerce.invoice_eligibility(o.id) = 'ok' and commerce.invoice_readiness(o.id) = 'ready'`. Above the two lines write the comment: '-- The same two tests commerce.waiting_invoices() makes before issue_waiting_invoices() issues (reason invoice_failed): a store whose orders wait for its seller details or tax profile is not asked every five minutes (bloat review step 0.30). Keep them the same as that function.' Branch 2 (refunds): today's select with `rf.created_at as at` added to the select list. Branch 3 (order edits): `select e.store_id, coalesce(e.applied_at, e.created_at) as at from commerce.order_edits e where e.status = 'applied' and e.documents = 'waiting'`. Branch 4 (returns refunded outside): today's select with `rt.created_at as at` added. Change `union` to `union all` between them (the outer group by removes duplicates). Keep the SQL comment on branch 3. (2) Split issueWaitingInvoices(): add a private `async function issueWaiting(storeId: string, limit: number): Promise<number | null>` that holds today's body but returns null in the catch (after the same log line); the exported `issueWaitingInvoices(storeId, limit = PER_STORE)` becomes `return (await issueWaiting(storeId, limit)) ?? 0;` so every caller and test sees what it sees today. (3) invoiceJobs(): replace the two lines in the loop with: `const issued = await issueWaiting(storeId, PER_STORE); if (issued === null) await issueMissingCreditNotes(storeId); else result.invoices += issued;` and the comment '// commerce.issue_waiting_invoices() ends by issuing the missing credit notes itself; the second call is only for a store whose invoices failed, so its credit notes do not wait on them.' (4) Update the doc comment of storesWithDocumentWork(): 'a paid order of the last days that has no invoice and can be issued one now (invoicing on, not copied, not a host's, eligible and ready), ...; the stores whose work is oldest first.' Keep issueMissingCreditNotes() exported: the owner's Check again (src/app/admin/(gated)/[store]/invoices/actions.ts) and tests call it."
+        },
+        {
+          "file": "src/server/invoice-issue.int.test.ts",
+          "action": "edit",
+          "how": "(a) In the existing case that makes the store `wait` (rg -n 'iss-wait|const wait' src/server/invoice-issue.int.test.ts; it pays an order while the seller's details are missing): directly after the line `expect(await issue.issueWaitingInvoices(wait.storeId)).toBe(0);` and before the `update commerce.stores set legal_name` line add `expect(await issue.storesWithDocumentWork(1000)).not.toContain(wait.storeId);`. In the next case (the store `noProfile`): after the first `expect((await inv.waitingInvoices(noProfile.storeId))[0]).toMatchObject({ reason: \"tax_profile_missing\" ...` line add `expect(await issue.storesWithDocumentWork(1000)).not.toContain(noProfile.storeId);`. (b) Add a new case 'a store whose orders wait for the seller's details is not picked, and does not keep an issuable store out (bloat review 0.30)': make three stores the way the `wait` store is made (same fixture call and options, names 'iss-q1', 'iss-q2', 'iss-q3'), pay one order in each in that order (q1 first). Then give q1 and q2 their details with the same `update commerce.stores set legal_name = ..., organisation_number = ..., postal_address = ..., country = 'NO'` statement the `wait` case uses; leave q3 waiting. `const list = await issue.storesWithDocumentWork(1000);` expect list to contain q1 and q2, not q3, and `list.indexOf(q1.storeId)` to be less than `list.indexOf(q2.storeId)` (the longest-waiting first). (c) Add a case 'the job issues the invoices and calls the credit notes once': with the pg.Client spy (copy `counted()` from src/server/variants-scale.int.test.ts lines 96 to 105, returning the statements' texts), run `await issue.invoiceJobs()` and expect: no statement contains 'issue_missing_credit_notes', q1 and q2 now have an invoice (`fx.invoiceOf`), q3 has none, and no statement containing 'issue_waiting_invoices' has q3's store id among its values. If invoiceJobs() makes network calls in this fixture (ensureSubscriptionEvents, reconcilePendingRefunds), look at how another case of this file or of src/server/invoice-refunds.int.test.ts runs invoiceJobs() and stub the same things. Leave line `expect(await issue.storesWithDocumentWork()).toContain(wait.storeId);` as it is unless it fails only because more than 50 older stores are ahead in the shared database: then, and only then, pass 1000."
+        }
+      ],
+      "checks": [
+        "pnpm exec vitest run --config vitest.integration.config.mts src/server/invoice-issue.int.test.ts src/server/invoice-refunds.int.test.ts src/server/invoice-documents.int.test.ts src/server/invoice-returns.int.test.ts : pass",
+        "pnpm exec vitest run src/db/invoices.test.ts : pass (no SQL function changed)",
+        "pnpm lint && pnpm typecheck && pnpm test : exits 0",
+        "pnpm test:int : exits 0"
+      ]
+    },
+    {
+      "title": "Saving the business details, the tax profile or the invoice settings issues the invoices that waited for them",
+      "changes": [
+        {
+          "file": "src/server/setup.ts",
+          "action": "edit",
+          "how": "In saveStoreDetails(), after `refreshTag(storeTag(store.slug));` and before `return { ok: true };` add: `const { issueWaitingInvoices } = await import(\"./invoice-issue\"); await issueWaitingInvoices(store.id, 20);` with the comment '// An invoice that waited for these details is issued by the save itself (docs/wave-1b-invoices.md 2.7), not by the next run of the job; never throws. Twenty at once, the job takes the rest. Imported here so the setup pages do not load the invoice job's modules.'"
+        },
+        {
+          "file": "src/server/tax-profile.ts",
+          "action": "edit",
+          "how": "In saveTaxProfile(), directly before its last line `return { ok: true, profile: await getTaxProfile(store.id) };` add the same two statements (dynamic import of ./invoice-issue, then `await issueWaitingInvoices(store.id, 20);`) with the same comment."
+        },
+        {
+          "file": "src/server/invoice-settings.ts",
+          "action": "edit",
+          "how": "In saveInvoiceSettings(), directly before `return { ok: true, settings: await getInvoiceSettings(store.id) };` add: `if (v.enabled) { const { issueWaitingInvoices } = await import(\"./invoice-issue\"); await issueWaitingInvoices(store.id, 20); }`. If ./invoice-issue imports ./invoice-settings (check with rg -n 'invoice-settings' src/server/invoice-issue.ts src/server/invoice-notices.ts), the dynamic import keeps it from being a cycle at load; keep it dynamic."
+        },
+        {
+          "file": "src/server/invoice-issue.int.test.ts",
+          "action": "edit",
+          "how": "Add a case 'saving the business details issues the invoice that waited for them': make a store as `wait` is made and pay an order; build a Membership for its owner the way src/server/setup-tools.int.test.ts does before its saveStoreDetails call at line 138 (copy that helper; do not sign anyone in); call `saveStoreDetails(member, storeDetailsInput.parse({...}))` from './setup' with a legal name, organisation number '923456789', a postal address and country 'NO', as that test does; expect `fx.invoiceOf(store.storeId, order.orderId)` not to be null with no call of issueWaitingInvoices or invoiceJobs in the test."
+        }
+      ],
+      "checks": [
+        "pnpm exec vitest run --config vitest.integration.config.mts src/server/invoice-issue.int.test.ts src/server/setup-tools.int.test.ts src/server/store-features-onboarding.int.test.ts src/server/vat-money-review.int.test.ts src/server/invoice-settings.int.test.ts : pass",
+        "pnpm lint && pnpm typecheck && pnpm test : exits 0",
+        "pnpm test:int : exits 0"
+      ]
+    },
+    {
+      "title": "A live drill reads that every paid test order has its invoice",
+      "changes": [
+        {
+          "file": "src/lib/live-drills.ts",
+          "action": "edit",
+          "how": "In DRILL_KINDS add \"invoices\" directly after \"payment_facts\" (the checks that read come first). In DRILL_WORDS add `invoices: \"Each paid test order of the last day has its invoice, issued by the payment or by the job\",`. Run `rg -n 'payment_facts' src` and add an `invoices` entry in every other record or switch keyed by DrillKind that the type check then asks for (the type check lists them)."
+        },
+        {
+          "file": "src/db/schema.ts",
+          "action": "edit",
+          "how": "In liveDrills (rg -n 'live_drills_kinds' src/db/schema.ts) change `cardinality(${t.kinds}) between 1 and 10` to `between 1 and 20`: there are 11 kinds now and a run of all of them must be storable."
+        },
+        {
+          "file": "supabase/migrations/*_live_drill_kinds.sql",
+          "action": "create",
+          "how": "Run `pnpm db:generate` (name live_drill_kinds if asked). The file must hold only: drop constraint live_drills_kinds on commerce.live_drills, and add it again with `between 1 and 20`. Leave it as generated; `pnpm db:check`. live_drills is not a hot table."
+        },
+        {
+          "file": "src/server/live-drills.ts",
+          "action": "edit",
+          "how": "Add `async function invoicesDrill(storeId: string): Promise<DrillResult>` after factsDrill(), built the same way: first `const { issueWaitingInvoices } = await import(\"./invoice-issue\"); await issueWaitingInvoices(storeId);` then one typedRows read with z.object({ paid: col.int, invoiced: col.int }): select count(*)::int as paid, count(*) filter (where exists (select 1 from commerce.invoices i where i.store_id = o.store_id and i.order_id = o.id and i.kind = 'order'))::int as invoiced from commerce.orders o where ${drillOrders(storeId)} and o.placed_at > now() - interval '1 day'. When paid is 0: { kind: 'invoices', outcome: 'skipped', detail: 'No drill order was paid in the last day.' }. When invoiced equals paid: passed, detail `${row.paid} paid orders, each with its invoice.`. Otherwise failed, detail `${row.paid - row.invoiced} of ${row.paid} paid orders have no invoice: the Waiting tab under Invoices says why.` In runOne() add `if (kind === \"invoices\") return await invoicesDrill(storeId);` after the payment_facts line."
+        },
+        {
+          "file": "src/lib/live-drills.test.ts",
+          "action": "edit",
+          "how": "Add one expectation: `drillPlan([\"invoices\", \"database_door\"])` equals [\"database_door\", \"invoices\"] (a known kind, kept in the list's order). Correct any existing expectation that lists every kind."
+        },
+        {
+          "file": "docs/consolidation.md",
+          "action": "edit",
+          "how": "Where the drills are listed (rg -n 'payment_facts|Payment facts|partial refund' docs/consolidation.md) add the invoices drill in one line: what it reads, and that one run of it in production before opening is the proof that an invoice is issued end to end (none had been issued there on 12 November 2026)."
+        },
+        {
+          "file": "docs/decisions.md",
+          "action": "edit",
+          "how": "Append one row with the next free D-number (pull main first; `rg -o '^\\| D[0-9]+' docs/decisions.md | tr -dc '0-9\\n' | sort -n | tail -1`, plus 1). It records: the job's list now applies commerce.invoice_eligibility() and commerce.invoice_readiness(), the same tests the SQL function makes, and orders stores by their oldest work; the job no longer calls issue_missing_credit_notes after issue_waiting_invoices (the function ends with it), except for a store whose invoices failed; saving the business details, the tax profile or the invoice settings issues up to 20 waiting invoices at once; the new live drill `invoices`. Platform: one statement finds the work of every store, Kaizena Flow's own included; its plan invoices are Stripe's and not this job's. Add the migration version (live_drill_kinds) under Migration versions once CI has applied it."
+        },
+        {
+          "file": "docs/audits/bloat-review-2026-11.md",
+          "action": "edit",
+          "how": "Progress table: set the row of step 0.30 to Done with the date and the three commits (rg -n '^\\| 0\\.30 ' docs/audits/bloat-review-2026-11.md). Write in Notes that the production drill run is the owner's and whether it has been run."
+        }
+      ],
+      "checks": [
+        "pnpm db:check : exits 0",
+        "pnpm exec vitest run src/lib/live-drills.test.ts src/db/commerce.test.ts src/db/snapshots.scan.test.ts : pass",
+        "pnpm exec vitest run --config vitest.integration.config.mts src/server/live-drills.int.test.ts : pass (skip if the file does not exist)",
+        "pnpm lint && pnpm typecheck && pnpm test : exits 0",
+        "pnpm test:int : exits 0"
+      ]
+    }
+  ],
+  "tests": [
+    {
+      "file": "src/server/invoice-issue.int.test.ts",
+      "proves": "Fails when a store waiting for seller details or a tax profile is on the job's list, when an older issuable store is not ahead of a newer one, when the job calls issue_missing_credit_notes for a store whose invoices were issued, or when saving the business details leaves the invoice waiting."
+    }
+  ],
+  "migration": {
+    "needed": true,
+    "notes": "Only the third commit: one generated file that replaces the check live_drills_kinds on commerce.live_drills (1 to 10 kinds) with a wider one (1 to 20). Not a hot table, a handful of rows. The code that is running requests at most 10 kinds, which the wider check also allows, so it keeps working. CI's release job applies it after every check passes, then deploys. Never apply it by hand; record the version in docs/decisions.md and check the advisors. The first two commits change no SQL: commerce.issue_waiting_invoices(), waiting_invoices(), invoice_eligibility() and invoice_readiness() are used as they are."
+  },
+  "done_when": [
+    {
+      "check": "pnpm exec vitest run --config vitest.integration.config.mts src/server/invoice-issue.int.test.ts",
+      "expect": "passes, with the two cases the step names (a waiting store is not picked; it does not keep an issuable store out) and the two further ones"
+    },
+    {
+      "check": "rg -n 'issueMissingCreditNotes\\(storeId\\)' src/server/invoice-issue.ts",
+      "expect": "one line, inside `if (issued === null)`"
+    },
+    {
+      "check": "rg -n \"invoice_readiness\\(o.id\\) = 'ready'\" src/server/invoice-issue.ts",
+      "expect": "one line, in storesWithDocumentWork()"
+    }
+  ],
+  "after_deploy": [
+    "A day after the first commit's deploy (the owner, or a session allowed to read production): in pg_stat_statements the calls of `select commerce.issue_waiting_invoices($1, $2)` rose by fewer than 10 (about 127 a day before), and `select commerce.issue_missing_credit_notes($1)` by about as few.",
+    "Platform, Usage and limits: dispatcher.invoices is not late and not failing.",
+    "Before opening, the owner runs the live drills on a store in Stripe test mode after paying one test order (Platform, live drills): the `invoices` drill says passed, and the order's invoice opens as a PDF from the store's Invoices page. Write the date of that run in the Progress row's Notes.",
+    "The store's Invoices, Waiting tab still lists an order that waits for seller details with its reason: the job skips it, the screen does not."
+  ],
+  "docs": [
+    "docs/decisions.md: the D-row and the migration version.",
+    "docs/consolidation.md: the invoices drill.",
+    "docs/audits/bloat-review-2026-11.md Progress row 0.30."
+  ],
+  "do_not": [
+    "Do not change any SQL function (issue_waiting_invoices, waiting_invoices, invoice_eligibility, invoice_readiness, issue_missing_credit_notes): the job's list is brought to them, not the other way.",
+    "Do not write the store-level tests of invoice_readiness() out by hand in TypeScript or SQL (legal name, address, organisation number): call the function, so the two cannot drift.",
+    "Do not remove the exported issueMissingCreditNotes() or the owner's Check again, which has no filter and no 120-day limit.",
+    "Do not make issueWaitingInvoices() throw or return null: callers and tests expect a number.",
+    "Do not import ./invoice-issue statically into setup.ts, tax-profile.ts or invoice-settings.ts.",
+    "Do not change LOOKBACK_DAYS, PER_STORE or STORES_PER_RUN.",
+    "Do not run a drill or issue an invoice in production yourself: the drill run is the owner's."
+  ],
+  "stop_if": [
+    "An existing case of the invoice int tests fails or needs another expectation than the one allowance named for line 181.",
+    "invoiceJobs() in the new case reaches Stripe or another network address that the file does not already stub: report which.",
+    "commerce.refunds, commerce.returns or commerce.order_edits lacks the column used for `at` (created_at, applied_at): report the table's columns.",
+    "pnpm db:generate writes anything other than the one constraint replaced.",
+    "A test of setup, the tax profile or the Dream Factory fails because saving now issues invoices: report the test and what it expected.",
+    "DrillKind is used in a place that cannot take an eleventh kind without a design choice (a fixed grid, a translated list): report the file."
+  ],
+  "executor": "cheap-then-review",
+  "executor_why": "The edits are small and each has a test, but they decide when legal documents are issued and add a call on three settings saves, so a stronger model should read the diff before each push.",
+  "checked_in_code": "I opened src/server/invoice-issue.ts (storesWithDocumentWork at 71, invoiceJobs at 116), the two SQL functions in the baseline and the int test at lines 165 to 200. The findings match: the list has no order by and does not ask readiness, and commerce.issue_waiting_invoices() ends with PERFORM commerce.issue_missing_credit_notes(p_store). The two findings differ on the filter; I took CR-9's (call the two SQL functions) because the step says so and it cannot drift. I kept DS-3's safety for the dropped call: the job still asks for credit notes when the invoice call failed. The writers of the seller's details are saveStoreDetails() in src/server/setup.ts (called by the company settings page, setup, the AI manager and the Dream Factory), saveTaxProfile() and saveInvoiceSettings(); the save issues in the server function, not with after() in the page action, so every caller gets it. The step's live drill did not exist as a kind and the table's check allows at most 10 kinds, which are all taken, so the third commit widens the check; DS-3's prune of deliveries is step 0.31's and is not here."
+}

@@ -1,0 +1,141 @@
+{
+ "id": "2.34",
+ "goal": "An admin tab nobody touches asks for the AI manager's notice count on opening and then every ten minutes; it asks every minute only for ten minutes after the count was above zero or the assistant was used, and while an approval waits; and it asks at once when the tab is shown again or the path changes.",
+ "why": "Today every open admin tab asks once a minute whatever the answer: 10 requests in ten minutes and 60 an hour, each two statements after step 0.17. After: at most 2 in ten minutes and 6 in an hour from an untouched tab, with the badge at most ten minutes late there and immediate on the next click.",
+ "read_first": [
+  "docs/rules/admin/ai.md",
+  "src/components/admin/ai-notices.tsx",
+  "src/lib/assistant-notices.ts",
+  "src/server/assistant-notices.ts",
+  "src/app/admin/(gated)/(owner)/account/notices/feed/route.ts",
+  "src/components/admin/ai-manager-launcher.tsx",
+  "e2e/signed-in/ai-manager-panel.spec.ts",
+  "src/server/assistant-notices.int.test.ts"
+ ],
+ "depends_on": [
+  {
+   "id": "0.17",
+   "why": "it made the count one statement (the feed answers a count from unreadNotices() alone and takes the store's id as place) and wrote src/server/assistant-notices-count.int.test.ts, which this step extends"
+  }
+ ],
+ "commits": [
+  {
+   "title": "An untouched admin tab asks for notices every ten minutes; every minute only after use, an unread notice or a waiting approval",
+   "changes": [
+    {
+     "file": "src/lib/assistant-notices.ts",
+     "action": "edit",
+     "how": "Keep NOTICE_POLL_MS = 60_000 and reword its comment: how often an open admin asks while the count was lately above zero, the assistant was lately used, or an approval waits. Add: export const NOTICE_IDLE_MS = 600_000 (how often an untouched tab asks); export const NOTICE_ACTIVE_MS = 600_000 (how long after the last sign of use the one-minute pace is kept); export const NOTICE_PATH_MS = 60_000 (a change of path asks again, at most this often). Add the pure function export function noticeWait(state: { now: number; activeAt: number | null; waiting: boolean }): number, which returns NOTICE_POLL_MS when state.waiting is true or when activeAt is not null and now - activeAt < NOTICE_ACTIVE_MS, and NOTICE_IDLE_MS otherwise. Doc comment: the milliseconds until an open tab asks again; activeAt is when the count was last above zero or the person last used the assistant; waiting is whether one of their approvals waits."
+    },
+    {
+     "file": "src/lib/assistant-notices.test.ts",
+     "action": "edit",
+     "how": "Add a describe 'how often an open tab asks': noticeWait({ now: 0, activeAt: null, waiting: false }) is 600000; with waiting true it is 60000; with activeAt 0 and now 599_999 it is 60000; with activeAt 0 and now 600_000 it is 600000. Then a simulation that proves the step's numbers: starting at t = 0 with activeAt null and waiting false, ask at 0 and then after each noticeWait(); count the asks with t <= 600_000 (expect at most 2) and with t < 3_600_000 (expect at most 6); the same simulation with waiting true gives 60 asks in the hour."
+    },
+    {
+     "file": "src/server/assistant-notices.ts",
+     "action": "edit",
+     "how": "Add beside unreadNotices(): export async function noticeCount(accountId: string, place: NoticePlace): Promise<{ unread: number; waiting: boolean }>. One statement through typedRows() with the row z.object({ n: col.int, waiting: col.bool }): select (select count(*)::int from commerce.assistant_notices n where n.account_id = <accountId>::uuid and n.read_at is null and <placeWhere(place)>) as n, exists (select 1 from commerce.assistant_approvals a where a.account_id = <accountId>::uuid and a.status = 'pending' and <the same place test on a.store_id>) as waiting. For the approvals write a second small helper beside placeWhere: approvalPlace(place) = sql`true` for 'all', sql`a.store_id is null` for null, sql`a.store_id = ${place}::uuid` otherwise. Return { unread: row?.n ?? 0, waiting: row?.waiting ?? false }. Leave unreadNotices() and listNotices() as they are."
+    },
+    {
+     "file": "src/app/admin/(gated)/(owner)/account/notices/feed/route.ts",
+     "action": "edit",
+     "how": "In GET, the count branch (after step 0.17 it answers { unread: await unreadNotices(account.id, place) }): answer the object noticeCount(account.id, place) returns, so the body is { unread, waiting }. Import noticeCount in place of unreadNotices if nothing else in the file uses it. The list branch, the 401 answer, the no-store header and POST do not change."
+    },
+    {
+     "file": "src/components/admin/ai-notices.tsx",
+     "action": "edit",
+     "how": "Rewrite the body of useNoticeCount(place); its return type stays [number, () => void]. Import useRef and usePathname (from 'next/navigation') and NOTICE_PATH_MS and noticeWait from '@/lib/assistant-notices' (NOTICE_POLL_MS is no longer used here). State and refs: unread (useState 0); activeAt = useRef<number | null>(null); waiting = useRef(false); askedAt = useRef(0); timer = useRef<number | undefined>(undefined). schedule(): window.clearTimeout(timer.current); timer.current = window.setTimeout(tick, noticeWait({ now: Date.now(), activeAt: activeAt.current, waiting: waiting.current })). tick(): when document.visibilityState is 'visible' call ask(), otherwise do nothing (the visibilitychange listener asks when the tab is shown). ask(): set askedAt.current = Date.now(); fetch the same address as today (`${FEED}?place=${encodeURIComponent(place)}&count=1`, cache 'no-store'); on a JSON body with a number unread: setUnread(it), and when it is above 0 set activeAt.current = Date.now(); set waiting.current = body.waiting === true; in a finally (answer, bad answer or network error alike) call schedule(). Effects: (1) on mount and when place changes: ask(); add the visibilitychange listener that calls ask() when the tab becomes visible; clean up the listener and the timer. (2) when the pathname changes (const pathname = usePathname(); an effect on [pathname] that skips its first run): if Date.now() - askedAt.current >= NOTICE_PATH_MS call ask(). The returned second function, recount, sets activeAt.current = Date.now() and calls ask(): the launcher calls it when the person uses the assistant. Use useCallback so the functions are stable, and keep ask, tick and schedule free of stale closures (read refs, not state). Rewrite the doc comment above the hook: asked when the admin opens, when the tab is shown again and when the path changes (at most once a minute); every ten minutes in a tab nobody touches; every minute for ten minutes after the count was above zero or the assistant was used, and while an approval waits. Polling only, as before."
+    },
+    {
+     "file": "src/components/admin/ai-manager-launcher.tsx",
+     "action": "edit",
+     "how": "In toggle(), inside the existing 'if (value) { ... }' block that loads the chat, add a call recount() so opening the panel counts as using the assistant (add recount to the useCallback's dependency list). useNoticeCount is called above toggle already (line 102), so no order changes. Nothing else: NoticeList keeps onChange={recount}."
+    },
+    {
+     "file": "src/server/{assistant-notices-count.int.test.ts}",
+     "action": "edit",
+     "how": "The file is src/server/assistant-notices-count.int.test.ts (made by step 0.17: it counts the statements of unreadNotices() through a wrapped db()). If step 1.9's counter replaced the wrapper, use that. Add two cases with the same setup. (1) 'the badge's count with the waiting approval is still one statement': set the counter to 0, call noticeCount(accountId, storeId), expect { unread: 1, waiting: false } and exactly 1 statement. (2) 'a pending approval makes it wait': insert a conversation and a pending approval for the account and store the way src/db/commerce.test.ts line 7916 does (insert into commerce.assistant_approvals (store_id, conversation_id, account_id, tool, args, summary, category) values (..., 'create_product', '{}', 'x', 'public'); read the lines above it for how the conversation row is made and which category values the check allows), expect noticeCount(...).waiting true for the store and for 'all', and false for place null (the platform); then update the approval's status to 'done' and expect waiting false."
+    },
+    {
+     "file": "e2e/signed-in/ai-manager-panel.spec.ts",
+     "action": "edit",
+     "how": "Add two tests with a clock; keep the existing test. Both: const asked: number[] = []; await page.route('**/admin/account/notices/feed?*', (route) => { if (route.request().method() === 'GET' && route.request().url().includes('count=1')) { asked.push(Date.now()); return route.fulfill({ json: BODY }); } return route.continue(); }); await page.clock.install(); await page.goto(`/admin/${E2E_STORE}/products`); await expect(page.locator('main').first()).toBeVisible(). A helper minutes(n) that loops n times: await page.clock.runFor(60_000); await page.waitForTimeout(50) (the short real wait lets the fulfilled fetch settle and re-arm its timer). Test 1 'an untouched tab asks for notices at most twice in ten minutes and six times in an hour', BODY = { unread: 0, waiting: false }: after minutes(10) expect asked.length to be at least 1 and at most 2; after minutes(49) more (59 minutes in all) expect at most 6. Test 2 'while an approval waits the tab asks every minute', BODY = { unread: 0, waiting: true }: after minutes(10) expect asked.length to be at least 9. Test 3 'the next click asks at once', BODY = { unread: 0, waiting: false }: after minutes(3) note asked.length, click a link of the admin's menu to another page of the store (for example the Orders link the other signed-in specs press) and expect asked.length to grow by exactly 1 within 2 s without advancing the clock."
+    },
+    {
+     "file": "docs/rules/admin/ai.md",
+     "action": "edit",
+     "how": "In the rule 'The AI manager's notices and saved skills (wave 8 unit F, D350)' the sentence 'Counts and lists are only `/admin/account/notices/feed` (`useNoticeCount()`, polling, never a socket).' becomes: 'Counts and lists are only `/admin/account/notices/feed` (`useNoticeCount()`, polling, never a socket): asked on opening, when the tab is shown and when the path changes; every ten minutes in a tab nobody touches, every minute for ten minutes after the count was above zero or the assistant was used and while an approval waits (`noticeWait()` in `src/lib/assistant-notices.ts`; the count's answer carries `waiting`).' Wrap at the file's width."
+    }
+   ],
+   "checks": [
+    "pnpm test src/lib/assistant-notices.test.ts: exits 0",
+    "pnpm test:int -- src/server/assistant-notices-count.int.test.ts src/server/assistant-notices.int.test.ts: exits 0",
+    "rg -n 'setInterval' src/components/admin/ai-notices.tsx: prints nothing",
+    "pnpm lint && pnpm typecheck && pnpm test: exits 0 (src/server/ratchet.scan.test.ts too: the new read goes through typedRows())",
+    "pnpm build on the stand-in (CLAUDE.md, Commands), then E2E_SIGNED_IN=1 pnpm test:e2e -- e2e/signed-in/ai-manager-panel.spec.ts e2e/signed-in/notifications.spec.ts: exits 0"
+   ]
+  }
+ ],
+ "tests": [
+  {
+   "file": "e2e/signed-in/ai-manager-panel.spec.ts",
+   "proves": "Fails when an untouched tab asks the notices feed more than 2 times in ten minutes or more than 6 times in an hour, when a waiting approval no longer keeps the one-minute pace, or when a click does not ask at once."
+  },
+  {
+   "file": "src/lib/assistant-notices.test.ts",
+   "proves": "Fails when the wait between asks is not ten minutes for an idle tab and one minute for ten minutes after use or while an approval waits."
+  },
+  {
+   "file": "src/server/assistant-notices-count.int.test.ts",
+   "proves": "Fails when the count with its waiting flag takes more than one statement, or a pending approval of the person in that place is not reported."
+  }
+ ],
+ "migration": {
+  "needed": false,
+  "notes": ""
+ },
+ "done_when": [
+  {
+   "check": "E2E_SIGNED_IN=1 pnpm test:e2e -- e2e/signed-in/ai-manager-panel.spec.ts (stand-in build)",
+   "expect": "passes: at most 2 requests to /admin/account/notices/feed in ten minutes from an untouched tab (10 today) and at most 6 in an hour (60)"
+  },
+  {
+   "check": "pnpm test:int -- src/server/assistant-notices-count.int.test.ts",
+   "expect": "passes: one statement for the count with waiting"
+  },
+  {
+   "check": "rg -n 'every ten minutes' docs/rules/admin/ai.md",
+   "expect": "one line, in the notices rule"
+  }
+ ],
+ "after_deploy": [
+  "A day after the deploy, in the stored daily reading of step 0.2 (or Supabase's statement statistics on the dashboard, read by the owner): the calls of the statement that counts commerce.assistant_notices with read_at is null fall to about a tenth per open tab-hour. No exact figure is expected before owners use the admin daily."
+ ],
+ "docs": [
+  "docs/decisions.md (or, once step 2.40 has split it, a new file docs/decisions/D<n>.md plus its index row): one new decision with the next free D-number. Claim the number first with scripts/claim-decision.mjs if step 0.41 has made that script; otherwise pull main and take the highest number plus one (rg -o '^\\| D[0-9]+' docs/decisions.md | tr -dc '0-9\\n' | sort -n | tail -1). It records: the owner's yes: the notice badge in a tab nobody touches may be up to ten minutes late (60 requests an hour become 6); it shows at once on the next click or when the tab is shown, and stays at one minute for ten minutes after the count was above zero or the assistant was used, and while an approval waits; the count's answer carries waiting; polling stays (no socket). Platform: the platform admin's badge is the same component and feed (place 'platform'). Idle cost: 6 requests of one statement an hour per open tab. Keep it under 4,000 bytes.",
+  "docs/rules/admin/ai.md as the commit says. No line in CLAUDE.md.",
+  "docs/audits/psi-followups.md: nothing to tick.",
+  "docs/audits/bloat-review-2026-11.md, Progress table: set the row of step 2.34 to Done with the date and the commit hash, in the same commit as the step's last change. Keep the row at 300 characters or fewer."
+ ],
+ "do_not": [
+  "Do not replace polling by a socket, server-sent events or a paid realtime service.",
+  "Do not stop asking when the count is zero: an untouched tab still asks every ten minutes.",
+  "Do not lengthen the one-minute pace while an approval waits (the owner's condition).",
+  "Do not make the count two statements again (no separate query for the approval, no lookup of the store by slug).",
+  "Do not change POST, the list branch of the feed, markNoticesRead() or addNotice().",
+  "Do not read another person's approvals: the exists() is filtered by the signed-in account's id, like the notices.",
+  "Do not add a bypass to sign-in for the new e2e tests: they run in the stand-in build as the file's existing test does.",
+  "Do not keep a setInterval beside the new timeout chain."
+ ],
+ "stop_if": [
+  "The feed's count branch still calls listNotices() or src/server/assistant-notices-count.int.test.ts does not exist: step 0.17 is not done.",
+  "commerce.assistant_approvals has no account_id, store_id or status column as src/db/schema.ts lines 11153 to 11170 show today.",
+  "page.clock is not available in the installed Playwright, or the clock test cannot see the timers re-arm (asked.length stays 1 after an hour): report it; do not replace the e2e case by a longer real wait.",
+  "An existing assertion of e2e/signed-in/ai-manager-panel.spec.ts, e2e/signed-in/notifications.spec.ts or src/server/assistant-notices.int.test.ts must be changed to pass.",
+  "The count statement with the exists() needs an index that is missing (the int test's statement is slow on the seeded database): report it; a new index would be a migration and is not part of this brief."
+ ],
+ "executor": "cheap",
+ "executor_why": "One hook, one pure function, one statement and their tests are specified line by line, and the clock test fails at once on a wrong pace.",
+ "checked_in_code": "I opened src/components/admin/ai-notices.tsx (useNoticeCount: a fetch on mount, a setInterval of NOTICE_POLL_MS guarded by visibility, and a visibilitychange listener), src/lib/assistant-notices.ts (NOTICE_POLL_MS = 60_000), the feed route (today it looks the store up by slug and calls listNotices() with limit 1; step 0.17 changes both), src/server/assistant-notices.ts (unreadNotices() and placeWhere()) and the launcher (useNoticeCount at line 102, recount passed to NoticeList). All match the three findings. They differ on the pace (AC-13: ten minutes; PL-11 and AI-12: 60, 120, 300 seconds); the plan and the owner chose AC-13's, so the brief uses ten minutes. The step's 'while an approval waits' has no source in today's answer: an approval the person already read leaves the count at zero, so the count's statement gains an exists() on commerce.assistant_approvals (status 'pending', same account and place) and still runs once. The launcher already has usePathname; the hook gets its own."
+}
