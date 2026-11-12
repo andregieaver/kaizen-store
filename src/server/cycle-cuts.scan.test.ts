@@ -26,8 +26,16 @@ describe("the cuts of the server's import cycle (bloat review step 0.6)", () => 
     ["src/server/customer-timeline.ts", "./customer-admin"],
     ["src/components/page-article.tsx", "./theme-store-section"],
     ["src/server/seo.ts", "./theme-store"],
+    // Which payment modes Kaizena Flow has is read from stripe-keys.ts, which never loads the Stripe SDK (commit 6).
+    ["src/server/stores.ts", "./stripe"],
+    ["src/server/orders.ts", "./stripe"],
+    ["src/server/settings.ts", "./stripe"],
   ])("%s has no static import from %s", (file, from) => {
     expect(importsFrom(file, from)).toBe(false);
+  });
+
+  it("stripe-keys.ts does not import the Stripe SDK", () => {
+    expect(importsFrom("src/server/stripe-keys.ts", "stripe")).toBe(false);
   });
 
   it("settings.ts does not define encryptionKey (it lives in encryption-key.ts)", () => {

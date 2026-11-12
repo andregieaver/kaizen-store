@@ -45,6 +45,7 @@ vi.mock("./stripe", async (importOriginal) => ({
   // Kaizena Flow's test keys are set, so a store in Stripe's test mode takes payments (a draft's pay link can be made).
   platformModes: () => ["test"],
 }));
+vi.mock("./stripe-keys", () => ({ platformModes: () => ["test"], platformPublishableKey: () => "pk_test_x", platformSecretKey: () => "sk_test_x" }));
 // An endpoint's host is taken as public (the address guard's DNS lookup is the endpoints' own tests').
 vi.mock("./replicate-fetch", async (importOriginal) => ({ ...(await importOriginal<typeof import("./replicate-fetch")>()), hostProblem: async () => null }));
 // The private buckets and the public picture bucket, in memory (D440: an upload's file, and the library's pictures).

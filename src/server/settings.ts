@@ -14,7 +14,7 @@ import { getStripeAccounts, type StripeAccount } from "./connect";
 import { memberCan, NO_ACCESS } from "./permissions";
 import { encryptionKey } from "./encryption-key";
 import { checkLimit } from "./limits";
-import { platformModes } from "./stripe";
+import { platformModes } from "./stripe-keys";
 import type { Store } from "./stores";
 import { checkoutProviderOf } from "./mollie";
 

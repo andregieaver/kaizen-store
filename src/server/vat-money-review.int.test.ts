@@ -66,6 +66,7 @@ vi.mock("./stripe", () => ({
   platformPublishableKey: () => "pk_test_vat",
   platformModes: () => ["test"],
 }));
+vi.mock("./stripe-keys", () => ({ platformModes: () => ["test"], platformPublishableKey: () => "pk_test_vat", platformSecretKey: () => "sk_test_x" }));
 vi.mock("next/cache", () => ({ cacheLife: () => {}, cacheTag: () => {}, updateTag: () => {}, revalidateTag: () => {} }));
 
 const { changeLine, getCart, setCartVatNumber } = await import("./cart");

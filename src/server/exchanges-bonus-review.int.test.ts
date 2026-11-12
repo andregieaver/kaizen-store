@@ -54,6 +54,7 @@ const fake = vi.hoisted(() => {
   return { client, refunds, sessions, created, state };
 });
 vi.mock("./stripe", () => ({ platformStripe: () => fake.client, platformPublishableKey: () => "pk_test_x", platformModes: () => ["test", "live"], WEBHOOK_EVENTS: [] }));
+vi.mock("./stripe-keys", () => ({ platformModes: () => ["test", "live"], platformPublishableKey: () => "pk_test_x", platformSecretKey: () => "sk_test_x" }));
 
 process.env.RESEND_API_KEY = "re_test_key";
 process.env.EMAIL_FROM = "butikk@example.com";

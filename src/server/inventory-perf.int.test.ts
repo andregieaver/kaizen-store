@@ -12,6 +12,7 @@ vi.mock("next/headers", () => ({
   headers: async () => new Headers(),
 }));
 vi.mock("./stripe", () => ({ platformStripe: () => ({}), platformPublishableKey: () => "pk_test_x", platformModes: () => ["test"], WEBHOOK_EVENTS: [] }));
+vi.mock("./stripe-keys", () => ({ platformModes: () => ["test"], platformPublishableKey: () => "pk_test_x", platformSecretKey: () => "sk_test_x" }));
 
 const { inventoryPage, inventoryCounts } = await import("./inventory");
 const { variantStockOf } = await import("./catalog");

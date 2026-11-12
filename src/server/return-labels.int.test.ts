@@ -43,6 +43,7 @@ const carrier = vi.hoisted(() => {
 });
 vi.mock("./carriers", () => ({ adapterFor: (id: string) => (id === "bring" ? carrier.adapter : null) }));
 vi.mock("./stripe", () => ({ platformStripe: () => ({ refunds: { create: async () => ({ id: `re_l_${Date.now()}${Math.random()}`, status: "succeeded" }) }, checkout: { sessions: { retrieve: async (id: string) => ({ id, payment_intent: `pi_${id}` }) } } }), platformPublishableKey: () => "pk_test_l", platformModes: () => ["test", "live"], WEBHOOK_EVENTS: [] }));
+vi.mock("./stripe-keys", () => ({ platformModes: () => ["test", "live"], platformPublishableKey: () => "pk_test_l", platformSecretKey: () => "sk_test_x" }));
 
 /** The network: the email provider, and Bring's label host (anything else is recorded and refused). */
 const net = vi.hoisted(() => ({ calls: [] as { url: string; headers: Record<string, string>; body: string }[] }));

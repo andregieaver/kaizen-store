@@ -16,6 +16,7 @@ vi.mock("next/headers", () => ({
   headers: async () => new Headers(),
 }));
 vi.mock("./stripe", () => ({ platformStripe: () => null, platformPublishableKey: () => "pk_test_x", platformModes: () => ["test"], WEBHOOK_EVENTS: [] }));
+vi.mock("./stripe-keys", () => ({ platformModes: () => ["test"], platformPublishableKey: () => "pk_test_x", platformSecretKey: () => "sk_test_x" }));
 
 const { getCart, getCartGift, setCartGift } = await import("./cart");
 const { placeOrder } = await import("./checkout");

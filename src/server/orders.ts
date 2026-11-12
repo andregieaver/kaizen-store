@@ -19,7 +19,7 @@ import type { ShownMeasure } from "@/lib/unit-price";
 import { snapshotMeasureFromColumns } from "@/lib/unit-price-rules";
 
 import { mollieAppOn } from "./mollie";
-import { platformModes } from "./stripe";
+import { platformModes } from "./stripe-keys";
 
 type Row = Record<string, unknown>;
 

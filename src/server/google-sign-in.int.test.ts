@@ -17,6 +17,7 @@ vi.mock("next/headers", () => ({
   headers: async () => new Headers(),
 }));
 vi.mock("./stripe", () => ({ platformStripe: () => ({}), platformPublishableKey: () => "pk_test_x", platformModes: () => ["test"], WEBHOOK_EVENTS: [] }));
+vi.mock("./stripe-keys", () => ({ platformModes: () => ["test"], platformPublishableKey: () => "pk_test_x", platformSecretKey: () => "sk_test_x" }));
 
 const google = await import("./google-sign-in");
 const { GOOGLE_STATE_COOKIE } = await import("@/lib/google-sign-in");

@@ -18,6 +18,7 @@ vi.mock("./stripe", () => ({
   platformModes: () => ["test"],
   WEBHOOK_EVENTS: [],
 }));
+vi.mock("./stripe-keys", () => ({ platformModes: () => ["test"], platformPublishableKey: () => "pk_test_x", platformSecretKey: () => "sk_test_x" }));
 
 const { sendOrderConfirmation } = await import("./shopper-emails");
 const { newStore, pay, place } = await import("./inventory-test-support");

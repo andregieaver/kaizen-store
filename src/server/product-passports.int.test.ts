@@ -8,6 +8,7 @@ vi.mock("next/cache", () => ({ cacheLife: () => {}, cacheTag: () => {}, updateTa
 vi.mock("next/headers", () => ({ cookies: async () => ({ get: () => undefined, set: () => {}, delete: () => {} }), headers: async () => new Headers() }));
 vi.mock("next/server", async (original) => ({ ...(await original<typeof import("next/server")>()), connection: async () => {} }));
 vi.mock("./stripe", () => ({ platformStripe: () => ({}), platformPublishableKey: () => "pk_test_x", platformModes: () => ["test"], WEBHOOK_EVENTS: [] }));
+vi.mock("./stripe-keys", () => ({ platformModes: () => ["test"], platformPublishableKey: () => "pk_test_x", platformSecretKey: () => "sk_test_x" }));
 
 const { passportForEdit, publicPassport, publishedPassportId, savePassport } = await import("./product-passports");
 const { getProduct } = await import("./catalog");
