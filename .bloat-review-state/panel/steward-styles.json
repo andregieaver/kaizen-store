@@ -1,0 +1,166 @@
+{
+  "area": "styles",
+  "title": "Styles",
+  "grade_today": "C",
+  "grade_reasons": "The base is sound: hand-written CSS has almost no dead weight, a built page carries under 5 KB of inline style, fonts and style generation are cached, and the admin's own CSS is already a file apart. But the one render-blocking sheet every shopper loads is 28% the admin's (183 KB raw / 25.8 KB Brotli, against 130 KB / 19.8 KB when compiled without it), fixed sheets are copied once per row and a third time per document, and no test or number holds the sheet's size, its sources or the style text. One fault is visible rather than waste: the main button on Kaizena Flow's status and illegal-content pages has no fill, because the admin's colour names have no value outside the admin.",
+  "measures": [
+    {
+      "name": "The stylesheet every store, site and docs page loads before it paints",
+      "today": "183,124 bytes raw / 25,832 Brotli (32,018 gzip): one file for stores, the site, the docs and the admin. 51.8 KB raw / 5.6 KB Brotli of it (28% / 22%) are classes that only admin screens, tests or the builder's canvas name. Source: wc and zlib on .next/static/chunks/3-w0shgm-eqtf.css, re-measured by the steward; the planner's compile of the proposed site entry with the project's own Tailwind gives 129,745 / 19,762.",
+      "target_a": "At most 135,000 bytes raw and 20,600 Brotli, with no class that only admin, test, message, schema or SQL files name, except those of the admin parts a public page draws (45 classes, 3.0 KB today).",
+      "how_measured": "STYLESHEET_BUDGETS in e2e/performance.spec.ts (made by the first work item): raw bytes of the /_next/static stylesheets that the HTML of /s/demo/no and of / links, printed with E2E_MEASURE=1. Brotli by node zlib on the built file.",
+      "why_this_is_a": "The floor is what the site's own code names: Tailwind's fixed layers 13 KB, hand-written site CSS 28 KB, motion.css 19 KB and 70 KB of utilities, 129,745 bytes in all. The bar is that floor plus 4% of room. Two things inside it are the stated tolerance, because a given shopper may not need them: motion.css (18.7 KB raw, 3.4 to 3.8 KB Brotli) for a store with no builder motion, and 13.8 KB raw / 1.5 KB Brotli of utilities that only Kaizena Flow's own pages or the staff's on-site editor name (the steward's count on the compiled sheet). A B is the same sheet with the admin's share still in it, or with the 16% of room the script budgets have today."
+    },
+    {
+      "name": "Files that can rename the shoppers' stylesheet though no public page draws them",
+      "today": "3,480 of the 5,931 files Tailwind reads for the one sheet: the two admin folders, tests, the message files, src/db and four SQL files (src/app/globals.css:6-9). In a sample of 115 commits, 13 added a class and 6 of those touched only admin folders or tests. Ten classes are in the sheet only because a test names them.",
+      "target_a": "0. The site's entry reads the site's code (2,451 files) and the admin parts a public page imports, each named by a line of its own (11 today). A test fails for any other source.",
+      "how_measured": "src/lib/stylesheet-sources.scan.test.ts (made by the first work item, finished by the split): it reads the @source lines of each entry and walks imports from every public page to the admin files it reaches.",
+      "why_this_is_a": "A shopper's cached sheet should be thrown away only when a class a public page can draw changes; a rename costs every returning shopper of every store one fetch. Zero outside files is the floor and a test can hold it exactly. With tests and SQL out but the admin still in (1,533 files) it is a B: admin screens are where most new classes land."
+    },
+    {
+      "name": "Copies of one style sheet in a store document",
+      "today": "The breakpoint sheet (1,760 bytes) is in a store document 3 times plus once per row: 4 on the demo's one-row front page (rg on m/html/store-home.html), 6 on a three-row page, 9 to 13 on a launch theme's home page. The theme's sheet is there 3 times. For a launch theme's home page that is an estimated 17 to 27 KB raw of whole-sheet copies in 45 to 71 KB of style text (computed with the real functions, not seen in a browser).",
+      "target_a": "Each sheet 2 times, whatever the number of rows: once in the HTML and once in the payload Next sends with it. Rows' own sheets may repeat rules between them: at most 6 KB raw per copy on the largest launch theme, under 0.3 KB Brotli.",
+      "how_measured": "The count of the hrefs kz-bp- and theme- in the served HTML of /s/demo/no and of a three-row test page, in e2e/performance.spec.ts (the first work item adds it at 4; the two fixes lower it to 3, then 2). The same count on PM-14's six-row launch-theme page.",
+      "why_this_is_a": "Two is the framework's floor: Next writes the tree once as HTML and once as payload. Three plus one per row is waste that grows with rows, pages and prefetched pages. The repeats between row sheets are the stated tolerance: a row's sheet arrives with its row, which lets a streamed row paint styled. Removing them (one sheet per page, PM-7) changes when styles arrive, so it rides with the next change to page-article.tsx."
+    },
+    {
+      "name": "Classes on public pages that read a colour with no value there",
+      "today": "145 uses: 20 in seven shop and site files and 125 in eleven admin parts that public pages draw, over 13 colour names the global sheet never defines. Checked in the build by the steward: the submit button of status.html and report.html has class bg-brand, the page has no data-admin, and the sheet holds .bg-brand{background-color:var(--brand)} with no --brand. The same default button is on the sign-up confirm page, /get-domain and every hosted invoice. Not yet looked at in a browser.",
+      "target_a": "0. Every colour name a public page can meet has a value in light and in dark, and shop files use the site's own names.",
+      "how_measured": "Two rules in src/lib/stylesheet-sources.scan.test.ts and a computed-colour check on /report and on a hosted invoice in e2e (all made by the second work item). rg with the role pattern over the non-admin files counts 0.",
+      "why_this_is_a": "A main button that does not look like a button is a fault, so the only bar is none. It is also what the split waits for: with one shared sheet the build cannot tell a shop file that it used an admin class."
+    },
+    {
+      "name": "Admin styles and answers a visitor of kaizenaflow.com fetches without pressing anything",
+      "today": "12.2 KB and 3 requests per view of the front page, a blog post and the theme store: the admin's stylesheet (6,015 bytes on the wire) and two /admin?_rsc answers (m/routes.json, re-read by the steward). After the split the same prefetch would pull the admin's whole sheet, about 25 KB Brotli more.",
+      "target_a": "0 requests and 0 bytes.",
+      "how_measured": "A test in e2e/performance.spec.ts that loads /, waits 2 s and expects no request to /admin and no stylesheet beyond those the HTML links (made by the third work item). docs/audits/bloat-review-2026-11/scripts/measure-routes.mjs shows the same.",
+      "why_this_is_a": "The answer can never be used: the site and the admin have different root layouts, so a press is a full page load. Zero is the floor and costs nothing to reach."
+    },
+    {
+      "name": "The admin's stylesheets",
+      "today": "204,207 bytes raw / 29.3 KB Brotli on every admin screen, sign-in included: the global sheet (183,124) and the admin's own (21,083). No number holds it.",
+      "target_a": "At most 211,000 bytes raw now and 208,000 after the split (the admin's entry compiles to 181,142, plus its own 21,083), held by a budget that only falls.",
+      "how_measured": "STYLESHEET_BUDGETS for /admin/sign-in in e2e/performance.spec.ts (the first work item).",
+      "why_this_is_a": "The admin cannot have a smaller sheet without losing the canvas: the builder and the previews draw every storefront part inside the admin, so its entry must read the storefront's code too. About 49 KB raw of storefront feature CSS and motion on plain admin screens is the stated tolerance: one cached file for a signed-in owner. An A here is that the number is held; with no budget it is a B."
+    },
+    {
+      "name": "A real store's styles under a budget",
+      "today": "None. Every measured storefront page is the seeded demo store: one row, no theme CSS of its own, and 0 font files and 0 font stylesheets on all 32 measured pages (m/routes.md). The 45 to 71 KB of style text on a launch theme's home page is computed, not measured. Production's documents are 203 KB (demo home) and 338 KB (front page) against 135 and 39 KB locally (m/prod-pages.md), and nobody split out their style text.",
+      "target_a": "One store page on a launch theme (its theme CSS, its two font families, header and footer rows, six or more rows) in the e2e seed, with a budget on the stylesheets it links (count and bytes, the fonts' included), on its style text and on the copies of each sheet.",
+      "how_measured": "e2e/performance.spec.ts on PM-14's six-row page and on the launch-theme store of the first gap's work item; one more page in docs/audits/bloat-review-2026-11/scripts/measure-routes.mjs.",
+      "why_this_is_a": "The budgets of an A must sit on a page that looks like the stores that will open. Held only on the one-row demo it is a B: per-row and per-theme costs never show there, which is how the per-row copy went unseen."
+    },
+    {
+      "name": "Style text owners add to every document",
+      "today": "No figure. An owner's CSS is capped at 50,000 characters a sheet (src/lib/custom-css.ts:19) and the layout writes five sheets into every document (layout.tsx:164-170), in the HTML and in the payload, and a third time today: up to 750 KB raw. The launch themes' own layout-level sheets are 6.6 to 9.5 KB.",
+      "target_a": "A production figure per store (bytes of layout-level CSS; share of published pages that need motion.css), read before opening and each quarter, with two written lines: above 10 KB for the median store, look again at an external sheet; under half of pages needing motion.css, build CS-2.",
+      "how_measured": "A read-only script beside the review's scripts, or a line on Platform, Usage and limits (made by the second gap's work item); the first reading written into docs/performance.md.",
+      "why_this_is_a": "This is the one style cost that appears only at opening and grows with stores. A test cannot hold what owners type; a production figure can. Without it the two decisions the planners left open (an external sheet, motion.css apart) can never be taken on facts."
+    }
+  ],
+  "work_items": [
+    {
+      "title": "Put numbers under the styles first: budgets for the stylesheets and the style text, and Tailwind reads code only (land it with SC-6 and PL-13, so the spec is edited once)",
+      "finding_ids": ["CS-3", "CS-6"],
+      "also_ids": ["AS-7"],
+      "phase": "now",
+      "effort": "S",
+      "done_when": "e2e/performance.spec.ts holds a stylesheet budget for 3 routes (/s/demo/no and / at 189,000 bytes, /admin/sign-in at 211,000), each within 4% of its E2E_MEASURE=1 figure, and an inline-style budget for the store's front page (6,000 bytes; the breakpoint sheet's href at most 4 times). The built sheet holds none of the ten test-only classes (order-1038, sepia and the like) and all 1,739 others. The rule 'Tailwind reads code only' in src/lib/stylesheet-sources.scan.test.ts passes in CI.",
+      "moves": "Holds the shoppers' stylesheet, the admin's stylesheets and the copies per document at today's figures (none is held today). Files that can rename the shoppers' sheet: 3,480 to 1,533 (tests, message files, src/db and SQL are no longer read). The build's Tailwind step: 221-223 MB to 160-169 MB.",
+      "serves": "styles",
+      "owner_decision": false
+    },
+    {
+      "title": "Give the admin's colour names a value outside the admin, and make shop files use the site's own names",
+      "finding_ids": ["CS-7", "CS-9"],
+      "also_ids": [],
+      "phase": "now",
+      "effort": "S",
+      "done_when": "rg with the role pattern counts 0 uses in src/components and src/app outside the admin folders (20 today). On the built app the submit buttons of /report and /status have a computed background-color other than rgba(0, 0, 0, 0), held by a new line in e2e/content-reports.spec.ts. Both colour rules of src/lib/stylesheet-sources.scan.test.ts pass. The owner has before and after screenshots of /status, /report, a hosted invoice and the on-site editor, in light and dark.",
+      "moves": "Classes on public pages that read a colour with no value: 145 to 0. It also removes the two blockers of the split.",
+      "serves": "styles",
+      "owner_decision": false
+    },
+    {
+      "title": "No prefetch of /admin from Kaizena Flow's own pages (the six links)",
+      "finding_ids": ["CS-8"],
+      "also_ids": ["PL-4", "BN-2"],
+      "phase": "now",
+      "effort": "S",
+      "done_when": "After loading / on the built app and waiting 2 s, 0 requests go to /admin and no admin stylesheet is fetched (today 2 requests and 1 stylesheet, 12.2 KB), held by a new test in e2e/performance.spec.ts and by a scan rule that every Link to /admin outside the admin carries prefetch={false}.",
+      "moves": "Admin styles and answers fetched by a site visitor: 12.2 KB and 3 requests to 0. The same six lines take about 135 KB of admin scripts off each first visit (PL-4, BN-2).",
+      "serves": "shopper-browser",
+      "owner_decision": false
+    },
+    {
+      "title": "Draw the breakpoint sheet once per document, not once per row",
+      "finding_ids": ["CS-4"],
+      "also_ids": ["PM-7"],
+      "phase": "now",
+      "effort": "S",
+      "done_when": "A three-row test page's HTML holds the breakpoint sheet's href at most 3 times (6 today), held in e2e/performance.spec.ts, and a scan rule finds PreviewBreakpoints in every admin file that draws site rows. The finding's second step (one part sheet per page) is PM-7's and is done with it, when page-article.tsx is next opened.",
+      "moves": "Copies of one sheet in a store document: 3 plus one per row, to 3 whatever the rows. 10.6 to 17.6 KB raw off a launch theme's home document and off each payload answer for it.",
+      "serves": "styles",
+      "owner_decision": false
+    },
+    {
+      "title": "Two Tailwind entries: the site's stylesheet without the admin's classes (first of the next phase; cheapest before real shoppers arrive)",
+      "finding_ids": ["CS-1"],
+      "also_ids": ["SC-5", "BN-12"],
+      "phase": "next",
+      "effort": "M",
+      "done_when": "The stylesheet that /s/demo/no links is at most 135,000 bytes raw (183,124 today; 129,745 when the proposed entry is compiled outside the build) and the two site budgets are lowered to 135,000. src/lib/stylesheet-sources.scan.test.ts and the whole e2e suite pass. The build's peak under the 8 GB cap, before and after, is written into docs/build-memory.md and rose by no more than about 150 MB. The docs say what a class typed in a part's Advanced tab promises.",
+      "moves": "The shoppers' stylesheet: 183,124 raw / 25,832 Brotli to about 129,745 / 19,762. Files that can rename it: 1,533 to 0. The admin's stylesheets: 204,207 to about 202,225.",
+      "serves": "styles",
+      "owner_decision": true
+    },
+    {
+      "title": "Send the layout's style sheets twice, not three times: the cart drawer's slot leaves the root layout (this is SC-8's change; nothing is built for styles apart)",
+      "finding_ids": ["CS-5"],
+      "also_ids": ["SC-8", "PL-2", "PM-1"],
+      "phase": "next",
+      "effort": "M",
+      "done_when": "After SC-8, the theme sheet's href (theme-<store id>-) appears 2 times in /s/demo/no's HTML (3 today) and the breakpoint sheet's 2 times, and the counts in e2e/performance.spec.ts are lowered to 2. docs/performance.md says why layout-level CSS stays inline and names the 10 KB line.",
+      "moves": "Copies of one sheet in a store document: 3 to 2, the framework's floor. 6.6 to 9.5 KB raw off each document of a launch-theme store (estimate).",
+      "serves": "shopper-browser",
+      "owner_decision": false
+    }
+  ],
+  "tolerated": [
+    {
+      "finding_id": "CS-2",
+      "why": "motion.css stays in the sheet: 18.7 KB raw, 3.8 KB Brotli on a first visit, also for a store with no builder motion. Taking it out needs a build step and a second render-blocking request on every page that does use motion, and whether that is a gain depends on use nobody can know before opening. The stylesheet budget holds it. Look again when the production reading of the second gap shows under half of published pages need it."
+    }
+  ],
+  "owner_choices": [
+    {
+      "finding_ids": [],
+      "question": "After the split (CS-1), a Tailwind class name typed in a part's Advanced tab can show on the builder's canvas and not on the live site: about 700 admin-only names leave the site's sheet, and D196 made canvas and site agree. Is it enough to say in the docs that only classes styled by the owner's own CSS are promised (the plan), or should the site's sheet keep a short fixed list of utility names owners may type?"
+    }
+  ],
+  "gaps": [
+    {
+      "title": "No store with a theme and fonts is measured or under a budget",
+      "evidence": "m/routes.md: all 12 storefront pages are the seeded demo store, and the Fonts column is '0 KB (0)' on all 32 pages. m/html/store-home.html holds 2 style elements, 4,365 bytes, and one row. FontLinks draws one render-blocking stylesheet link per family (src/components/font-links.tsx:13) and a launch theme sets two families (src/lib/signature/arcade.ts:603), so a real store's first paint waits for three stylesheets, two of them never measured. docs/performance.md:88 records 38 KB of CSS on the wire for production's front page on 5 November, against 25.8 KB Brotli for the global sheet. PM-14 adds a six-row Orbit page, but inside the demo store on its plain theme: no theme CSS, no fonts, no header or footer rows. CS-3's step 6 assumes 'a store on a launch theme in the e2e seed', which no step creates.",
+      "proposed_work_item": "Next, S to M. Seed one e2e store from a launch theme's preset (the path of Starting from a preset, D259), with its two families as fixture rows in commerce.fonts, since CI cannot reach Google Fonts. In e2e/performance.spec.ts hold on its front page: the stylesheets the HTML links (at most 3; the bytes of each, the fonts' route included), the style text in the document, and 2 copies of each sheet. Add the page to docs/audits/bloat-review-2026-11/scripts/measure-routes.mjs. Done when the spec prints and holds those figures and docs/performance.md lists them. This item and the two below are what take the area from B to A once every finding is closed: all three are small and fit the next phase."
+    },
+    {
+      "title": "Nothing will report the style text real owners write, so two open decisions have no trigger",
+      "evidence": "src/lib/custom-css.ts:19 caps one sheet at 50,000 characters, and the market layout writes five sheets into every document (src/app/s/[store]/[market]/layout.tsx:164-170: theme, text styles, the store's CSS, the header's, the footer's). CS-5 states the ceiling itself: five sheets of 50,000 characters, each three times. CS-5 step 3 says to look again at an external sheet 'when real stores' layout-level CSS commonly passes about 10 KB', and CS-2 waits for 'a measured share of real pages that need motion.css'. No script, query or admin screen produces either number; the e2e budget sees the seeded demo store only.",
+      "proposed_work_item": "Next, S; it can run today on the team's 60 stores. A read-only script docs/audits/bloat-review-2026-11/scripts/style-text.mjs, or a line on Platform, Usage and limits (D314), that lists per store the bytes of its layout-level sheets and of its largest page's row sheets, and the share of published pages, headers and footers that need motion.css. Write the first reading and the two lines into docs/performance.md: above 10 KB for the median store, decide on an external hashed sheet; under half of pages needing motion.css, build CS-2. Also decide whether the 50,000-character limit should be on the sum of a store's sheets. Done when the reading is in the doc and the team can repeat it each quarter with one command or one screen."
+    },
+    {
+      "title": "After the split the site's sheet still serves three audiences, and nothing counts the share",
+      "evidence": "The steward classified the 880 top-level utility rules of the planner's compiled site sheet (work/plan-css/out-siteFinal.css, 129,745 bytes) by which source files name each class (token match over the 2,453 files the entry reads). 205 rules, 13,786 bytes raw / 1,476 Brotli (11% / 7%), are named only by Kaizena Flow's own pages (src/app/(platform) and (docs), components/platform-routes, components/docs, the theme store's parts: 138 rules, 9.6 KB) or by the staff's on-site editor (components/inline-edit and the 11 shared admin parts: 61 rules, 3.6 KB). A store's shopper downloads them, and a class added to a marketing page renames every store's sheet. The split's scan test holds the admin's share at zero but not this one.",
+      "proposed_work_item": "Next, S, in the same change as the split. Put the classification in a script (docs/audits/bloat-review-2026-11/scripts/stylesheet-audiences.mjs) that reads the built site sheet and prints the bytes each audience alone names. Write the tolerance into docs/performance.md: at most 15 KB raw / 2 KB Brotli of classes no store page can draw; a third entry for the stores is weighed only above it. Done when the script's figure is in the doc. No third entry now: it would save a shopper 1.5 KB Brotli and add a third Tailwind run to a build near its memory cap."
+    }
+  ],
+  "ladder": {
+    "after_now": "C",
+    "after_next": "B",
+    "after_later": "B"
+  }
+}
