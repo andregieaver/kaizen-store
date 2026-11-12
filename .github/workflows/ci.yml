@@ -327,6 +327,7 @@ jobs:
         if: steps.status.outputs.pending == 'false' && vars.DEPLOY_VIA_CI == 'true' && steps.head.outputs.pending == 'false'
         env:
           PRODUCTION_URL: ${{ vars.PRODUCTION_URL || 'https://kaizenaflow.com' }}
+          SMOKE_PAGES: ${{ vars.SMOKE_PAGES || '/,/s/demo/no' }}
         # The deploy is verified (D389): /api/health reports the deployment's commit; a later push's deployment that includes it counts.
         run: node scripts/await-deploy.mjs
 
@@ -393,6 +394,7 @@ jobs:
         if: vars.DEPLOY_VIA_CI == 'true' && steps.head.outputs.pending != 'true'
         env:
           PRODUCTION_URL: ${{ vars.PRODUCTION_URL || 'https://kaizenaflow.com' }}
+          SMOKE_PAGES: ${{ vars.SMOKE_PAGES || '/,/s/demo/no' }}
         # The deploy is verified (D389): /api/health reports the deployment's commit; a later push's deployment that includes it counts.
         run: node scripts/await-deploy.mjs
 
@@ -414,6 +416,7 @@ jobs:
       - name: Wait until production runs this commit
         env:
           PRODUCTION_URL: ${{ vars.PRODUCTION_URL || 'https://kaizenaflow.com' }}
+          SMOKE_PAGES: ${{ vars.SMOKE_PAGES || '/,/s/demo/no' }}
         # The deploy is verified (D389): /api/health reports the deployment's commit; a later push's deployment that includes it counts.
         run: node scripts/await-deploy.mjs
 

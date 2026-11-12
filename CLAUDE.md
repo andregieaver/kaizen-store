@@ -15,7 +15,7 @@ phased build plan are in `docs/plan.md`; read it before architectural work.
   applies it, then deploys. Pushes
   of `*.md` and `docs/**` alone run nothing, except the docs portal's articles under `content/` (D442), which are
   checked and deployed like code. Each deploy then waits until `/api/health` reports the commit (D389,
-  `scripts/await-deploy.mjs`), and fails the job when it does not.
+  `scripts/await-deploy.mjs`), then requests two pages (`SMOKE_PAGES`), and fails the job when the commit does not arrive or a page does not answer 200.
 - The owner loves to see frequent screenshots and graphics of what is built: send screenshots of new or changed
   screens (and a diagram where it explains how something works) as the work goes, not only at the end.
 
