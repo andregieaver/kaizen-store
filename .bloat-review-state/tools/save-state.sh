@@ -17,7 +17,7 @@ for d in audits verified findings digest panel; do rm -rf "$D/$d"; [ -d "$S/$d" 
 cp "$S/STATUS.md" "$S/status.json" "$S/evidence-raw.tar.xz" "$D/"
 cp "$S"/m/*.md "$D/evidence/"
 # The review's own tools only: the reviewers leave large scratch files beside them.
-for f in "$D"/tools/*; do case "$(basename "$f")" in build-docs.mjs|plan-data.mjs|main-template.md|summary.mjs|audits.mjs|measure-routes.mjs|routes-md.mjs|chunks.mjs|loaded.mjs|dead.mjs|clones.mjs|storm.mjs|shot.mjs|extract.mjs|digest.mjs|check-panel.mjs|save-state.sh|restore.sh|validate-findings.mjs|bloat-review.workflow.js|bloat-grade-panel.workflow.js) ;; *) git rm -q --cached "$f" 2>/dev/null; rm -f "$f" ;; esac; done
+for f in "$D"/tools/*; do case "$(basename "$f")" in build-docs.mjs|plan-data.mjs|main-template.md|summary.mjs|audits.mjs|measure-routes.mjs|routes-md.mjs|chunks.mjs|loaded.mjs|dead.mjs|clones.mjs|storm.mjs|shot.mjs|extract.mjs|digest.mjs|compact-stewards.mjs|check-panel.mjs|save-state.sh|restore.sh|validate-findings.mjs|bloat-review.workflow.js|bloat-grade-panel.workflow.js) ;; *) git rm -q --cached "$f" 2>/dev/null; rm -f "$f" ;; esac; done
 for f in build-docs.mjs plan-data.mjs main-template.md summary.mjs audits.mjs measure-routes.mjs routes-md.mjs chunks.mjs loaded.mjs dead.mjs clones.mjs storm.mjs shot.mjs; do cp "$S/work/$f" "$D/tools/" 2>/dev/null; done
 cp "$S"/state-tools/*.mjs "$S"/state-tools/*.sh "$S/validate-findings.mjs" "$D/tools/"
 [ -f "$WF" ] && cp "$WF" "$D/tools/bloat-review.workflow.js"

@@ -51,8 +51,11 @@ challenged by a skeptic, planned by a planner. Its last lines hold the arguments
    - `{"stage":"steward","areas":[...]}`: one steward per area writes `panel/steward-<area>.json` (measures and the bar for an A,
      today's grade, work items that place every finding of the area once, tolerated findings, the owner's choices, gaps). Launch
      three areas per workflow. First run `node tools/digest.mjs <scratchpad>` so `digest/` covers all 25 audited areas.
-   - `{"stage":"weave"}` when all 13 steward files exist: one weaver writes `panel/plan.json` (steps by phase, every finding
-     closed once, ladders per area).
+   - `{"stage":"weave"}` when all 13 steward files exist (they do, since 12 November 01:56 UTC): first
+     `node tools/compact-stewards.mjs <scratchpad>` writes `panel/stewards-compact.md` and `panel/clusters.md`; then one weaver
+     writes `panel/plan.json` (steps by phase, every finding closed once, ladders per area).
+   - `{"stage":"weave-review"}`: one reviewer splits, joins and moves steps in `panel/plan.json` and logs it in
+     `panel/weave-review.md`.
    - `{"stage":"challenge","areas":[...]}`: one challenger per area writes `panel/card-<area>.json` (the final bar, today's
      grade, whether the plan's steps reach an A, shortfalls).
    - `{"stage":"critic"}`: one critic writes `panel/critic.json` (grades comparable across areas, steps to add).
