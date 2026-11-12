@@ -40,7 +40,7 @@
     {
      "file": "docs/rules/admin/platform.md",
      "action": "edit",
-     "how": "Find the rule that describes the job ledger (search for `runJobs()`; if it is not in platform.md, rg -n 'runJobs' docs/rules finds its file). Add one sentence at the end of that bullet, wrapped to 130 characters with the bullet's indent: '`runJobs()` runs four jobs at a time (`JOB_LANES`; the pool has five connections) and a job that has run 60 s gives up its lane (`JOB_LANE_MS`, `src/lib/job-pool.ts`): it goes on and is recorded when it ends.' If no rule mentions runJobs(), put the sentence in docs/rules/budgets.md under a heading '## The dispatcher' instead. CLAUDE.md's Conventions bullet about cron routes already says each job runs through runJobs(); do not edit CLAUDE.md."
+     "how": "Find the rule that describes the job ledger (search for `runJobs()`; if it is not in platform.md, rg -n 'runJobs' docs/rules finds its file). Add one sentence at the end of that bullet, wrapped to 130 characters with the bullet's indent: '`runJobs()` runs four jobs at a time (`JOB_LANES`; the pool has five connections) and a job that has run 60 s gives up its lane (`JOB_LANE_MS`, `src/lib/job-pool.ts`): it goes on and is recorded when it ends.' On 12 November no file under docs/rules mentions runJobs(): then put the sentence in docs/rules/budgets.md under a new heading '## The dispatcher' (step 0.43 makes that file), and if that file does not exist yet, in docs/capacity.md at the end of the part that describes the scheduled jobs. CLAUDE.md's Conventions bullet about cron routes already says each job runs through runJobs(); do not edit CLAUDE.md."
     }
    ],
    "checks": [

@@ -1,8 +1,9 @@
 {
  "id": "0.1",
  "goal": "Every script and list that a bar or a done-when of the bloat review names is a file under docs/audits/bloat-review-2026-11/scripts/ or docs/audits/bloat-review-2026-11/lists/, runs with node from the repository root with no path outside the repo, and prints its number again; and the plan's tracker has one Progress row and one section per step.",
- "why": "Today 7 scripts are in the repo and about 25 more exist only in the review's scratch folder (/tmp/claude-0/-home-user-kaizen-store/875cb21b-0ebd-5663-b7c0-2d04a7548e24/scratchpad), which dies with its container. Steps 0.4, 0.6, 0.7, 0.8 and 0.36 are proved with them, so after this step 0 checks name a path outside the repo.",
+ "why": "Today 7 scripts are in the repo and about 25 more are kept only as raw text copies under docs/audits/bloat-review-2026-11/scripts/sources/, with hard-coded paths and hidden inputs. Steps 0.4, 0.6, 0.7, 0.8 and 0.36 are proved with them, so after this step 0 checks name a path outside the repo.",
  "read_first": [
+  "docs/audits/bloat-review-2026-11/scripts/sources/README.md",
   "docs/audits/bloat-review-2026-11/README.md",
   "docs/audits/bloat-review-2026-11/scripts/server-graph.mjs",
   "docs/audits/bloat-review-2026-11/scripts/copied-code.mjs",
@@ -112,7 +113,7 @@
     {
      "file": "docs/audits/bloat-review-2026-11/scripts/manifest-time.cjs",
      "action": "create",
-     "how": "Find the manifest timer with: rg -l 'server-reference-manifest' /tmp/claude-0/-home-user-kaizen-store/875cb21b-0ebd-5663-b7c0-2d04a7548e24/scratchpad/work -g '*.cjs' -g '*.mjs'. Copy the one that requires .next/server/server-reference-manifest.js (or .json) in a fresh process and prints milliseconds; replace absolute paths by process.cwd(). If rg finds none, write it: 10 lines that time JSON.parse of .next/server/server-reference-manifest.json five times and print the median and the file's bytes."
+     "how": "Write it (no source was kept): about 10 lines that, in a fresh process, time require() or JSON.parse of .next/server/server-reference-manifest.js (or .json, whichever the build wrote) under process.cwd(), and print the milliseconds and the file's bytes."
     },
     {
      "file": "docs/audits/bloat-review-2026-11/scripts/cut-simulation.mjs",
@@ -239,7 +240,7 @@
   "Do not merge the session branch's .bloat-review-state folder into main."
  ],
  "stop_if": [
-  "The folder /tmp/claude-0/-home-user-kaizen-store/875cb21b-0ebd-5663-b7c0-2d04a7548e24/scratchpad/work does not exist in your session. The sources are only there (or in the folder .bloat-review-state on the branch ccr-fc510f5b-x0whis, restored with 'bash .bloat-review-state/tools/restore.sh <a folder>'). Without them stop and report: do not rewrite the counters from their descriptions.",
+  "A source this brief names is not in docs/audits/bloat-review-2026-11/scripts/sources/ (each scratch script and list the plan names was kept there on 12 November, with .txt added to its name; inside them <scratch> stands for the review's working folder, which is gone). Do not rewrite a counter from its description: stop and report which file is missing.",
   "A copied script prints a number more than 2% from the one named here (1,308; 229; 4,098; 41; 84): report the script, the number and the commit you ran on.",
   "A scratch script needs an input you cannot rebuild in the repo (a capture, a bundle, a graph file) and this brief did not say how to make it.",
   "The Progress table or the phase files do not have 149 rows and sections: report the two counts; do not write rows by hand from memory."

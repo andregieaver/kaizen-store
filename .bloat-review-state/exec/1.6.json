@@ -1,0 +1,169 @@
+{
+ "id": "1.6",
+ "goal": "CI seeds one store that wears the Orbit launch theme whole (its content pack, header, footer, product layout, two font families and photographs with all their stored sizes), and e2e/performance.spec.ts prints and holds its home, a product page, a listing and a built page: document, payload, main, style text, each stylesheet, font files, picture bytes on a 3x phone and router requests; the four pages are in measure-routes.mjs.",
+ "why": "All 12 measured store pages are the bare template: no font file, one-row pages and pictures of about 1 KB, while every store started from a theme has a builder-made header and footer, two font families and photographs. After: four themed pages are held within 5% of their first figures, with at most 2 font files and 80 KB and at most 3 stylesheets on the themed home.",
+ "read_first": [
+  "docs/themes-content-and-demo-stores.md",
+  "docs/theme-showcase-phase-1.md",
+  "docs/performance.md",
+  "src/server/launch-themes.ts",
+  "src/server/demo-stores.ts",
+  "src/server/theme-store.int.test.ts",
+  "e2e/db.ts",
+  "e2e/performance.spec.ts"
+ ],
+ "depends_on": [
+  {
+   "id": "1.3",
+   "why": "it adds the document, stylesheet, wire and router-request helpers and tables to e2e/performance.spec.ts and e2e/prefetch.spec.ts that the themed pages are added to"
+  },
+  {
+   "id": "0.33",
+   "why": "it gives every picture an 800 px copy; the themed store's photographs are seeded with all three stored sizes"
+  },
+  {
+   "id": "0.44",
+   "why": "it gives pictures in page content the 800 px copy; the picture bytes on a 3x phone are measured after it"
+  },
+  {
+   "id": "0.46",
+   "why": "the Orbit pages are written in today's shape, so the seeded store has no old-shaped document"
+  },
+  {
+   "id": "0.1",
+   "why": "the review's measure-routes.mjs and routes-table.mjs are kept under docs/audits/bloat-review-2026-11/scripts, where the four pages are added"
+  }
+ ],
+ "commits": [
+  {
+   "title": "CI seeds a store on the Orbit theme through the platform's own functions, with its fonts and photographs as fixtures",
+   "changes": [
+    {
+     "file": "vitest.seed.config.mts",
+     "action": "create",
+     "how": "A copy of vitest.integration.config.mts with three differences: test.include is ['e2e/seed/*.seed.ts'], no globalSetup, and testTimeout 120_000. It keeps the two aliases ('@' to src, 'server-only' to test/server-only.ts), which is what lets server modules run under Node. Add to package.json scripts: \"seed:themed\": \"vitest run --config vitest.seed.config.mts\"."
+    },
+    {
+     "file": "e2e/seed/themed-store.seed.ts",
+     "action": "create",
+     "how": "One Vitest file with one test, 'seeds the Orbit store', that runs the real server functions against DATABASE_URL, as src/server/theme-store.int.test.ts does (read its beforeAll and its demoStore() helper first and copy their imports: db and closeDb, sql, the dynamic imports of ./launch-themes, ./store-starters, ./demo-stores). It must be safe to run twice: if a store with the slug 'e2e-orbit' exists, return at once. Steps. (1) A platform admin account: insert into commerce.accounts (email 'e2e-seed@example.com', name 'Seed', platform_admin true) on conflict do nothing; build the Account object as that test does. (2) Fonts as fixtures, since CI cannot reach Google Fonts: Orbit's families are Unbounded (headings) and Manrope (body) (src/lib/signature/orbit.ts, fonts: { heading: 'Unbounded', body: 'Manrope' }). Pass a deps object { installFonts: fixtureFonts } to every call that takes ApplyDeps. fixtureFonts(families) inserts, for each family asked for, one row in commerce.font_files (name: a 32-hex-character name plus '.woff2', the md5 of the file; data: the bytes of e2e/fixtures/fonts/<family>.woff2) and one row in commerce.fonts (family, slug, category 'sans-serif', css: an @font-face rule that points at that file the way real rows do, bytes) and returns { ok: true }. To write the css string correctly, read installFonts() and the functions it calls in src/server/fonts.ts and build the row with the same helpers it uses for the css and the class (import them; do not copy the format by hand). (3) await syncLaunchThemes(admin, deps) and expect its problems to equal []. (4) Find Orbit: select id from commerce.design_presets where launch_key = 'orbit'; and its content: select id, store_id from commerce.store_starters where design_preset_id = <that id> (syncLaunchThemes links a theme to the starter of its content pack, 'astronomy'). If no starter is linked on a fresh database, make and publish the pack's starting content the way the platform does (read src/server/content-packs.ts for the function that builds a pack's template store, and src/server/store-starters.ts createStarter() and publishStarter()), then giveThemeContent(admin, presetId, starterId). (5) The store a new owner gets: read docs/theme-showcase-phase-1.md step 4 ('Starting from a preset', D259) and src/server/self-signup.ts to find the one function sign-up calls to create a store from a theme's content and preset, and call that function with the slug 'e2e-orbit', the name 'Orbit Test' and the owner email 'e2e-orbit@example.com'. If sign-up needs a browser session, use createDemoStore(admin, { name: 'Orbit Test', slug: 'e2e-orbit', look: { id: presetId, variation: null }, contentId: starterId }, deps) and publishDemoStore(admin, id) instead (the demoStore() helper of the test file shows the calls), and say in the decision which path was used. (6) Photographs: the pack's pictures normally go through storeArtPicture() (src/server/content-packs.ts) into Supabase storage, which CI does not have. Read storeArtPicture(): if it takes the uploader as a dependency, pass one that writes the three sizes (480, 800 and the large file) with sharp into public/e2e-orbit/ and returns addresses under /e2e-orbit/; if it does not, give it that dependency in a separate small commit first (an optional parameter whose default is today's uploader, no behaviour change, with its integration test still green), and then use it here. The source files are public/demo/themes/orbit/*.webp. Add public/e2e-orbit/ to .gitignore. (7) After the store exists: update commerce.stores set private_mode = false, setup_completed_at = now() where slug = 'e2e-orbit' (e2e/global-setup.ts opens stores the same way). (8) Assert before finishing, so a broken seed fails CI here and not in a budget: the store has a published page in commerce.pages for its home with 6 rows; commerce.site_layouts (or the table src/server/site-layouts.ts reads) has a header and a footer for the store; a product layout exists; commerce.fonts has both families; at least 8 commerce.media rows of the store have thumbnail_url and medium_url set. Close the database in afterAll."
+    },
+    {
+     "file": "e2e/fixtures/fonts/Unbounded.woff2",
+     "action": "create",
+     "how": "A real WOFF2 file of the family, Latin subset, the weights the theme uses (200, 300 and the heading weight; read the weights in src/lib/signature/orbit.ts). Both families are under the SIL Open Font License, which allows keeping the files in the repo: add e2e/fixtures/fonts/OFL.txt with the licence text and one line per family naming its copyright holder. Get the file from the fonts' own public repository or from a developer machine that has run the font installer (the rows in commerce.font_files of a database where Orbit was installed hold exactly these bytes: select name, data from commerce.font_files). Keep each file under 60 KB so the themed home can meet '2 files and 80 KB' only if the theme really loads that little: do not shrink a file below what installFonts() would store, or the budget measures a fiction; if the real stored files are larger than 40 KB each, keep the real ones and report the figure (see stop_if)."
+    },
+    {
+     "file": "e2e/fixtures/fonts/Manrope.woff2",
+     "action": "create",
+     "how": "As Unbounded.woff2: the real stored file for the weights the theme's body text uses."
+    },
+    {
+     "file": ".github/workflows/ci.yml",
+     "action": "edit",
+     "how": "In the e2e job only (the job with '- run: pnpm test:e2e'): after the step 'Create the database with the demo catalogue' and before '- run: pnpm build' add a step '      - name: Seed a store on the Orbit theme (e2e/seed/themed-store.seed.ts)' with '        run: pnpm seed:themed'. It must run before the build: stores' pages are prerendered from the database, and e2e/hosts-seed.mjs runs before the build for the same reason."
+    }
+   ],
+   "checks": [
+    "On an empty Postgres in DATABASE_URL, node scripts/db-setup.mjs --seed (in a sandbox set PLAYWRIGHT_CHROMIUM_PATH instead of running playwright install): pnpm seed:themed: exits 0; run it again: exits 0 and makes no second store",
+    "psql or a node one-liner on DATABASE_URL: select count(*) from commerce.stores where slug = 'e2e-orbit' prints 1; select count(*) from commerce.fonts where family in ('Unbounded','Manrope') prints 2",
+    "pnpm build && pnpm start, then open /s/e2e-orbit (or the address the store's market gives; read it from the page list) in a browser at 390 px: Orbit's header, a night-sky hero with a photograph, product tiles with photographs and the footer show, in the theme's fonts. Take a phone and a desktop screenshot and send them to the owner.",
+    "pnpm test:int: exits 0 (the uploader dependency, if added, changed no behaviour)",
+    "pnpm lint && pnpm typecheck && pnpm test: exits 0"
+   ]
+  },
+  {
+   "title": "Budgets for the themed store's home, product page, listing and built page",
+   "changes": [
+    {
+     "file": "e2e/performance.spec.ts",
+     "action": "edit",
+     "how": "Add a describe 'a store on a launch theme (Orbit)'. In beforeAll read from the database the four addresses of the store 'e2e-orbit': its home, its first product's page (/p/<handle>), its products listing, and its about page (the built page), using the store's market as other tests build addresses. Skip the whole describe with test.skip when the store does not exist and process.env.CI is not set (a local run without the seed); in CI a missing store is a failure. For each of the four pages hold, with the helpers step 1.3 added and each budget at the E2E_MEASURE figure times 1.05: document, payload and main (documentOf); style text (the summed <style> contents); and identicalRows: the number of row elements in <main> whose outer HTML is equal to another's (0 expected unless the theme repeats a row; hold the measured count). For the home also hold: every linked stylesheet by file, the two font sheets included (for each <link rel=stylesheet> of the HTML, whatever its host path: its raw bytes within 5%, and the number of such links at most 3 plus the font sheets; write the list of hrefs' path patterns in the table so a new sheet fails); font files: on a phone context load the home from a cold cache, wait for the quiet rule, and take the responses whose resourceType is 'font': at most 2 files and at most 80,000 bytes together, and each of their addresses is in a <link rel=\"preload\" as=\"font\"> of the HTML; pictures on a 3x phone (viewport 390 by 844, deviceScaleFactor 3): for every <img> in view after load, naturalWidth divided by (its box's width times 3) is at most 1.5, and the summed transferred bytes of image responses are within 5% of the first figure; router requests after load with the count helper of e2e/prefetch.spec.ts (copy the rule: scroll to the footer, three quiet seconds), budget the count plus 2. Also assert Orbit's home as stored: select octet_length(published::text) from commerce.pages for the home page is at or under 11,100. Print every figure when E2E_MEASURE=1 as `[themed] <page> <measure> <value>`."
+    },
+    {
+     "file": "docs/audits/bloat-review-2026-11/scripts/measure-routes.mjs",
+     "action": "edit",
+     "how": "In PAGES, after the demo store's entries, add four entries in the same shape with the phone settings: { name: 'themed-home', group: 'storefront', path: '<home address of e2e-orbit>' }, 'themed-product', 'themed-products' and 'themed-page'. Take the product handle and the about page's slug from the script's JSON argument (add keys themedProduct and themedPage beside product and pageId) and document them in the header comment and in docs/audits/bloat-review-2026-11/README.md. If step 0.1 moved the script, edit it where it is (rg --files | rg measure-routes.mjs)."
+    },
+    {
+     "file": "docs/rules/budgets.md",
+     "action": "create",
+     "how": "Marked create only because the file is not in the repo today: steps 0.43 and 1.1 make it. EDIT it and never overwrite it. Add under '## The visitor's pages' a paragraph 'A store on a launch theme': the seed (pnpm seed:themed, before the build), the four pages, what is held for each, and the sentence 'A first figure is not the end: after phase 2 the themed pages are judged against the bare store's bars (router requests, the page's own calls, duplicate rows, late scripts), and step 4.5's table lists each figure beside its bar.'"
+    },
+    {
+     "file": "docs/performance.md",
+     "action": "edit",
+     "how": "Add a section '## A store on a launch theme' with the day's figures for the four pages in one table (document, payload, main, style text, stylesheets and bytes, font files and bytes, picture bytes at 3x, router requests), and how the store is seeded."
+    }
+   ],
+   "checks": [
+    "pnpm seed:themed && pnpm build && E2E_MEASURE=1 pnpm exec playwright test e2e/performance.spec.ts -g 'launch theme': prints the [themed] lines; run twice: byte figures identical, request counts within 2",
+    "pnpm exec playwright test e2e/performance.spec.ts --repeat-each 2: exits 0",
+    "node docs/audits/bloat-review-2026-11/scripts/measure-routes.mjs out '<json with the four keys>' against pnpm start: the four themed pages are in out/routes.json",
+    "pnpm lint && pnpm typecheck && pnpm test: exits 0"
+   ]
+  }
+ ],
+ "tests": [
+  {
+   "file": "e2e/performance.spec.ts",
+   "proves": "fails when a themed page's document, payload, main or style text grows by more than 5%, when the themed home loads a third font file or more than 80 KB of fonts or a font that is not preloaded, links a new stylesheet, draws a picture from a file more than 1.5 times as wide as its box on a 3x phone, or makes more router requests than its count plus 2"
+  },
+  {
+   "file": "e2e/seed/themed-store.seed.ts",
+   "proves": "fails in CI before the build when the Orbit theme can no longer dress a store whole: no header, footer, product layout, fonts or photographs with their copies"
+  }
+ ],
+ "migration": {
+  "needed": false,
+  "notes": ""
+ },
+ "done_when": [
+  {
+   "check": "E2E_MEASURE=1 pnpm exec playwright test e2e/performance.spec.ts -g 'launch theme' after the seed and the build",
+   "expect": "prints and the spec holds, each within 5% of its first figure: the themed home's font files (at most 2 files and 80 KB, both preloaded), stylesheets (at most 3, each one's bytes held, the two font sheets included), style text, document and router requests; document, payload, main and the identical-rows count of all four pages"
+  },
+  {
+   "check": "select octet_length(published::text) from commerce.pages p join commerce.stores s on s.id = p.store_id where s.slug = 'e2e-orbit' and p.slug = <home's slug>",
+   "expect": "at or under 11,100"
+  },
+  {
+   "check": "rg -n 'themed-' docs/audits/bloat-review-2026-11/scripts/measure-routes.mjs",
+   "expect": "four entries"
+  },
+  {
+   "check": "After phase 2 (not now): the themed rows of step 4.5's table",
+   "expect": "the themed home, product page, listing and built page meet the bare store's bars for router requests, the page's own calls, duplicate rows and late scripts; no picture on the themed home comes from a file more than 1.5 times as wide as its box on a 3x phone; the nightly run of step 1.14 reads at most 2 font files and 80 KB before the largest paint from the production demo store. The step's row stays 'In progress' until then."
+  }
+ ],
+ "after_deploy": [
+  "Nothing in production changes: the seed runs only in CI's database. The production demo store is read by step 1.14's nightly run."
+ ],
+ "docs": [
+  "docs/decisions.md (or docs/decisions/D<n>.md once step 2.40 has split it): one new decision. Take its number with node scripts/claim-decision.mjs \"<title>\" (step 0.41 made the script). It records: CI seeds a store on Orbit with the platform's own functions (which path: sign-up's function or createDemoStore), fonts and photographs as fixtures and why (CI reaches neither Google Fonts nor storage); what is held for the four pages and the first figures; that the step is finished only after phase 2.",
+  "docs/rules/budgets.md, docs/performance.md, docs/audits/bloat-review-2026-11/README.md: as commit 2 says.",
+  "docs/platform-parity.md: nothing to tick. Kaizena Flow's own site runs on a theme in its own store; the themed store's budgets are the nearest held figure for it.",
+  "docs/audits/bloat-review-2026-11.md, Progress table: set row 1.6 to 'In progress' with the date, the commits and 'first figures held; judged after phase 2' (at most 300 characters). It becomes Done in step 4.5."
+ ],
+ "do_not": [
+  "Do not build the themed store with hand-written SQL that copies a theme's snapshot into rows: the point is the path a new owner's store takes.",
+  "Do not fetch fonts from Google or pictures from the internet in CI, and do not call Supabase storage.",
+  "Do not shrink the font fixtures below what the installer would store, and do not use 1 KB drawings as the photographs.",
+  "Do not change Orbit's theme, its pack or its version to make a budget pass: this step measures.",
+  "Do not add the seed to the integration or signed-in jobs, and do not run it after the build.",
+  "Do not put the generated public/e2e-orbit/ files in git.",
+  "Do not mark the step Done at the first figures."
+ ],
+ "stop_if": [
+  "No function creates a store from a theme's content and preset without a browser session, and createDemoStore() refuses on the seeded database: report what each needs.",
+  "storeArtPicture() cannot be given an uploader without changing how production stores pictures: stop and report; do not fork it.",
+  "The real font files are larger than 80 KB together, or the themed home loads more than 2 font files: that is a finding, not a fixture problem. Hold the measured figure, report it, and do not trim the fixtures.",
+  "syncLaunchThemes() returns problems on the seeded database.",
+  "The themed home's stored page is over 11,100 bytes.",
+  "The licence of a font file is not the SIL Open Font License.",
+  "A themed page's figures differ between two runs of the same build."
+ ],
+ "executor": "strong",
+ "executor_why": "Seeding a themed store through the platform's own functions needs judgement the brief cannot remove: which function a new owner's store really goes through, how to give the picture and font pipelines fixtures without forking them, and what to do when a real figure breaks the bar.",
+ "checked_in_code": "I read e2e/db.ts, e2e/theme-shots.spec.ts, src/server/theme-store.int.test.ts, src/server/demo-stores.ts and the fonts tables. What exists: syncLaunchThemes(admin, deps) takes an installFonts dependency (the integration tests pass a stub), createDemoStore(admin, { name, slug, look, contentId }, deps) and publishDemoStore() make a store that wears a theme, and Orbit's families are Unbounded and Manrope with its art under public/demo/themes/orbit. What does not exist: any e2e seed that runs server code (e2e/hosts-seed.mjs is plain SQL, and server modules import 'server-only', which only the integration config aliases), so the brief adds a small Vitest seed config; and a way to store pictures without Supabase storage, which the executor must add as a dependency of storeArtPicture() if it is not there. I could not verify in the time I had which single function sign-up uses to start a store from a preset (D259), so the first commit names where to read it and a fallback; that is the main reason this brief is for a strong model."
+}

@@ -83,7 +83,7 @@
    "expect": "passes: the pages of the six signature themes (home, about, header, footer, product page, sections), of every content pack and the 10 page documents of the seed all equal their parse; the 'would notice' case passes"
   },
   {
-   "check": "node scripts/db-setup.mjs --seed on an empty database, then open /s/demo/no and /s/demo/no/alle-produkter in the built site at 390 px, 800 px and 1280 px",
+   "check": "node scripts/db-setup.mjs --seed on an empty database, then open the demo store's front page /s/demo/no and its All products page (the page whose slug is alle-produkter; take its address from the front page's menu) in the built site at 390 px, 800 px and 1280 px",
    "expect": "2, 3 and 4 product columns, as before the change"
   }
  ],

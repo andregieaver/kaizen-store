@@ -4,7 +4,8 @@
 // Inputs under the scratchpad: findings/<area>.json (25 areas: verified and planned), panel/plan.json (the woven plan),
 // panel/card-<area>.json (each scorecard area's final bar and grade; steward-<area>.json until a card exists), m/*.md (evidence),
 // work/main-template.md (the hand-written parts, with {{PLACEHOLDERS}}).
-import { readFileSync, writeFileSync, mkdirSync, existsSync, rmSync } from "node:fs";
+import { readFileSync, writeFileSync, mkdirSync, existsSync, rmSync, statSync } from "node:fs";
+import { dirname } from "node:path";
 
 const S = "/tmp/claude-0/-home-user-kaizen-store/875cb21b-0ebd-5663-b7c0-2d04a7548e24/scratchpad";
 const OUT = "/home/user/kaizen-store/docs/audits/bloat-review-2026-11";
@@ -56,7 +57,14 @@ const SCORE = [
 ];
 
 const rename = (id) => String(id).replace(/^FN-/, "SF-"); // the code review's FN is navigation; server functions are SF here
-const clean = (s) => String(s ?? "").replace(/\/home\/user\/kaizen-store\//g, "").replace(/\/tmp\/claude-0\/[^\s;,)`]*scratchpad\/m\//g, "evidence/").replace(/\/tmp\/claude-0\/[^\s;,)`]*scratchpad\/work\/[^\s;,)`]*/g, "a scratch script").replace(/\/tmp\/claude-0\/[^\s;,)`]*scratchpad\/?/g, "the review's scratch folder/").replace(/\bFN-(\d+)/g, "SF-$1").replace(/\s+/g, " ").trim();
+// The review's working scripts and lists that a step names: kept in the repo as text, so a brief does not rest on a folder that is gone.
+const SOURCES = new Map();
+if (existsSync(`${S}/work/scratch-refs.txt`)) for (const f of readFileSync(`${S}/work/scratch-refs.txt`, "utf8").split("\n").filter((x) => x.startsWith("work/"))) {
+  const from = `${S}/${f}`;
+  if (existsSync(from) && statSync(from).isFile() && statSync(from).size < 200000) SOURCES.set(f.slice(5), `docs/audits/bloat-review-2026-11/scripts/sources/${f.slice(5)}.txt`);
+}
+const source = (m, rel) => { const tail = rel.match(/[.:]+$/)?.[0] ?? ""; const key = rel.slice(0, rel.length - tail.length); return SOURCES.has(key) ? SOURCES.get(key) + tail : "a scratch script"; };
+const clean = (s) => String(s ?? "").replace(/\/home\/user\/kaizen-store\//g, "").replace(/\/tmp\/claude-0\/[^\s;,)`]*scratchpad\/m\//g, "evidence/").replace(/\/tmp\/claude-0\/[^\s;,)`'"]*scratchpad\/work\/([^\s;,)`'"]*)/g, source).replace(/<scratch>\/work\/([^\s;,)`'"]*)/g, source).replace(/\/tmp\/claude-0\/[^\s;,)`]*scratchpad\/?/g, "the review's scratch folder/").replace(/\bFN-(\d+)/g, "SF-$1").replace(/\s+/g, " ").trim();
 const cell = (s) => clean(s).replace(/\|/g, "\\|");
 const KIND = { dead: "dead", duplicate: "duplicate", eager: "eager", oversize: "oversize", speculative: "ahead of use", process: "no check" };
 const json = (p) => JSON.parse(readFileSync(p, "utf8"));
@@ -233,6 +241,9 @@ const panelState = haveCards && criticDone
   ? "A reviewer went over the plan as someone who must carry it out; a challenger per area tested whether the bar is truly an A and whether the plan's steps reach it; one critic compared the grades across areas."
   : `**Not finished as this is written:** ${[reviewed ? null : "the plan's reviewer (steps may still be split, joined or moved between phases)", haveCards ? null : "a challenger per area (is the bar truly an A; can the plan's steps reach it)", criticDone ? null : "the critic who compares grades across areas"].filter(Boolean).join("; ")}. Until then the grades and bars below are the stewards' own.`;
 
+for (const [rel, to] of SOURCES) { const dest = `/home/user/kaizen-store/${to}`; mkdirSync(dirname(dest), { recursive: true }); writeFileSync(dest, readFileSync(`${S}/work/${rel}`, "utf8").replaceAll(S, "<scratch>")); }
+writeFileSync(`${OUT}/scripts/sources/README.md`, `# The review's working scripts and lists\n\n${SOURCES.size} files the reviewers wrote while measuring, kept as they were, each with \`.txt\` added so that nothing lints, type-checks or runs them. They are not tools: they have hard-coded paths (\`<scratch>\` is the review's working folder, which is gone) and hidden inputs. A step's brief names the one it needs and says what to make of it; step 0.1 turns the ones the plan's checks rest on into real scripts in \`scripts/\`.\n`);
+console.log("sources kept:", SOURCES.size);
 // ---- The folder's index.
 writeFileSync(`${OUT}/README.md`, `# Bloat review, November 2026: the plan in full, the findings, the bars, the evidence
 

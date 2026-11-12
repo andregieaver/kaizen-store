@@ -1,0 +1,134 @@
+{
+ "id": "1.2",
+ "goal": "After every build in CI, scripts/bundle-budget.mjs compares the first-load script bytes of every route (560 today) with a committed baseline, fails when a route is more than 15,000 bytes over it or has no entry, and prints and holds the number of routes whose first-load chunks contain each of eight marker strings.",
+ "why": "Budgets watch 15 of 560 routes today (9 of the admin's 449, none of its worst four), so growth such as 12.6 KB a day on the admin home passes unseen. After: all 560 routes are held within 15,000 bytes of their figure, and eight marker counts can only fall.",
+ "read_first": [
+  "docs/performance.md",
+  "docs/audits/bloat-review-2026-11/README.md",
+  "node_modules/next/dist/build/route-bundle-stats.js",
+  "scripts/ratchet.mjs",
+  "scripts/lib/ratchet-count.mjs",
+  "src/server/ratchet.scan.test.ts",
+  ".github/workflows/ci.yml",
+  "e2e/signed-in/admin-scripts.spec.ts"
+ ],
+ "depends_on": [
+  {
+   "id": "0.9",
+   "why": "it removes Supabase's client, zod, the builder's English and sign-in's English from the admin's frame; the baseline starts at the figures phase 0 leaves, and its script markers.mjs counts the same way"
+  },
+  {
+   "id": "0.16",
+   "why": "it takes the common English and the cookie purposes out of store routes' first scripts; the two /s/ markers start at what it left"
+  },
+  {
+   "id": "1.1",
+   "why": "it wrote the table of every baseline file in docs/rules/budgets.md, where this baseline gets its row"
+  }
+ ],
+ "commits": [
+  {
+   "title": "scripts/bundle-budget.mjs: every route's first scripts against a baseline, and eight marker counts",
+   "changes": [
+    {
+     "file": "scripts/lib/bundle-budget.mjs",
+     "action": "create",
+     "how": "The pure part, node built-ins only, nothing read from process.cwd() (callers pass data). Exports. (1) ROOM = 15_000. (2) MARKERS, an array of { key, text, only? } in this order: { key: 'supabase', text: 'GoTrueClient' }, { key: 'zod', text: 'ZodError' }, { key: 'editor', text: 'ProseMirror' }, { key: 'builderEnglish', text: 'Set for {size}' }, { key: 'signInEnglish', text: 'Open your authenticator app and type the six-digit code' }, { key: 'storefrontLanguage', text: 'Kommer ihåg om du valde ljusa' }, { key: 'cookiePurposes', text: 'Remembers whether you chose' }, { key: 'commonEnglishOnStores', text: 'is switched off under Settings', only: '/s/' }. Before using each text, check it is in the source with rg -n -F '<text>' src/lib src/components | head -2; if a text has been reworded since 12 November, take the new wording of the same sentence and say so in the commit message. (3) parseStats(json): throws an Error that starts 'route-bundle-stats.json is not what this script reads' unless json is a non-empty array whose every item has a string route, a number firstLoadUncompressedJsBytes and an array firstLoadChunkPaths of strings; returns it. This file is written by Next's build and is not in its docs (node_modules/next/dist/build/route-bundle-stats.js), so an upgrade may change it: the error must be loud. (4) routeBytes(stats): an object route -> bytes with its keys sorted. (5) markerCounts(stats, textOf): textOf(chunkPath) returns the chunk's text; for each marker count the routes (only those whose route starts with marker.only when it is set) that have at least one chunk in firstLoadChunkPaths whose text includes marker.text; return { key: count }. Read each chunk once (cache in a Map). (6) problems(now, baseline): now and baseline are { routes: { route: bytes }, markers: { key: count } }; returns a list of strings: for each route in now.routes not in baseline.routes: '<route>: new route at <bytes> bytes; run node scripts/bundle-budget.mjs --write to add it'; for each route more than ROOM above its baseline: '<route>: <bytes> bytes, baseline <b> (+<diff>). Find the import that grew it (node docs/audits/bloat-review-2026-11/scripts/markers.mjs and docs/performance.md say how); a budget is not raised to pass.'; for each marker whose count is above the baseline's: '<key> (<text>) is in the first scripts of <n> routes, baseline <b>'. (7) fallen(now, baseline): strings for each route more than ROOM under its baseline, each route in the baseline that the build no longer has, and each marker count under its baseline, each ending '; run node scripts/bundle-budget.mjs --write in this change'. (8) lowered(now, baseline): the baseline to write: for every route of now: the new figure when it is lower than the old one or the route is new, else the old figure; routes gone from the build are left out; markers: Math.min(now, old) per key, a new key takes now."
+    },
+    {
+     "file": "scripts/bundle-budget.mjs",
+     "action": "create",
+     "how": "The command, run from anywhere (root = path.join(import.meta.dirname, '..'), as scripts/ratchet.mjs). It reads <root>/.next/diagnostics/route-bundle-stats.json; when the file is missing it prints 'No .next/diagnostics/route-bundle-stats.json: run pnpm build first.' and exits 1. It builds now = { routes: routeBytes(stats), markers: markerCounts(stats, (p) => readFileSync(path.join(root, p), 'utf8')) } (the chunk paths in the file are relative to the repository root, for example '.next/static/chunks/33fehdj3n8030.js'). Sanity check on the markers: for each marker, when its text is found in NO .js file under <root>/.next/static/chunks at all (read the folder once), print '<key>: the marker text is in no chunk; the library or the sentence changed, update MARKERS' and exit 1; a marker may be in 0 routes' first scripts and still be in a lazy chunk. Modes. No flag (the check CI runs): read scripts/bundle-budget.baseline.json; print one line per marker '<key>: <n> routes (baseline <b>)'; print the five heaviest routes; print every string of problems() and fallen(); exit 1 when either list is not empty, else print '<n> routes within 15,000 bytes of the baseline' and exit 0. --write: refuse with exit 1 and the list when problems() has a route over its room or a marker above its baseline ('The bundle budget only falls. Not written:'); else write lowered() (new routes added, fallen ones lowered, gone ones removed) with JSON.stringify(x, null, 1) and a final newline, and print how many routes fell. --first: write now as it stands, only when the baseline file does not exist. There is no flag that raises a number."
+    },
+    {
+     "file": "src/lib/bundle-budget.test.ts",
+     "action": "create",
+     "how": "Vitest unit test of the pure file ('../../scripts/lib/bundle-budget.mjs'). Cases: parseStats throws on {} and on [{ route: '/x' }] and returns a good array; routeBytes sorts; markerCounts on three made-up routes and two made-up chunk texts counts a marker once per route even when two of its chunks hold it, and honours `only: '/s/'`; problems(): a route 20,000 bytes over its baseline is reported and one 14,000 over is not (this is the planted 'branch that adds a 20 KB import to one admin route'); a route missing from the baseline is reported; a marker count one above its baseline is reported; fallen(): a route 16,000 under, a route gone from the build and a marker count one under are each reported; lowered() never returns a figure above the old one for a route that was in the old baseline, drops a route the build no longer has, and adds a new route."
+    },
+    {
+     "file": "scripts/bundle-budget.baseline.json",
+     "action": "create",
+     "how": "Never typed by hand. Build as CI's e2e job does: an empty Postgres in DATABASE_URL, node scripts/db-setup.mjs --seed, then pnpm build (in a sandbox set PLAYWRIGHT_CHROMIUM_PATH instead of running playwright install). Then run node scripts/bundle-budget.mjs --first and commit the file it writes: { routes: { '<route>': bytes, ... }, markers: { supabase: n, ... } }. Then compare its marker counts with what phase 0 should have left: supabase 0 (432 before step 0.9), zod at most 160 (432), builderEnglish only the builder's routes (423), signInEnglish at most 2 (456), editor about 73, storefrontLanguage, cookiePurposes and commonEnglishOnStores as step 0.16 left them (193, 193 and 57 store routes before it; its done-when asks 0 on store routes). The file has one entry per route of the build (560 on 11 November; more if routes were added)."
+    },
+    {
+     "file": ".github/workflows/ci.yml",
+     "action": "edit",
+     "how": "In the job that builds for the end-to-end tests (the job whose steps are 'Create the database with the demo catalogue', '- run: pnpm build', '- run: pnpm exec playwright install chromium webkit', '- run: pnpm test:e2e'; the build is at line 152 today) add one step directly after '- run: pnpm build': '      - name: Every route's first scripts against the baseline (scripts/bundle-budget.mjs)' and '        run: node scripts/bundle-budget.mjs'. Add it to no other job: the signed-in and hosts jobs build with other public settings, and one build is enough. Do not add it to the quick gate (the pending job): it needs a build."
+    },
+    {
+     "file": "docs/rules/budgets.md",
+     "action": "create",
+     "how": "Marked create only because the file is not in the repo today: steps 0.43 and 1.1 make it. It must exist when you start (read it first, with docs/audits/bloat-review-2026-11/scripts/markers.mjs, which step 0.9 made); EDIT it and never overwrite it. In the table 'Every budget' (step 1.1) add the row: scripts/bundle-budget.baseline.json | node scripts/bundle-budget.mjs (CI's e2e job, after the build) and src/lib/bundle-budget.test.ts | node scripts/bundle-budget.mjs --write after pnpm build | first-load script bytes of every route, 15,000 bytes of room each, and the routes whose first scripts hold each of eight markers. Under the table add three lines: 'The bundle budget needs a build, so it runs in CI, not in the list run before a push.' 'A change that lowers a route by more than 15,000 bytes, removes a route or lowers a marker count runs --write and commits the baseline in the same change.' 'A route that must grow is the owner's call: say why in the decision; there is no flag that raises a figure.' Keep the table row at 300 characters or fewer."
+    },
+    {
+     "file": "docs/performance.md",
+     "action": "edit",
+     "how": "In '## Checking' add one bullet: '- `node scripts/bundle-budget.mjs`, after `pnpm build`, holds every route's first scripts (`.next/diagnostics/route-bundle-stats.json`, raw bytes) within 15,000 bytes of `scripts/bundle-budget.baseline.json`, and the number of routes whose first scripts hold each of eight marker sentences (Supabase's client, zod, the rich text editor, the builder's English, sign-in's English, a storefront language, the cookie purposes, the admin's common English on store routes). CI's e2e job runs it. The figures only fall.' Wrap to the file's line length."
+    }
+   ],
+   "checks": [
+    "pnpm exec vitest run src/lib/bundle-budget.test.ts: exits 0",
+    "pnpm build, then node scripts/bundle-budget.mjs: exits 0 and its last line is '<n> routes within 15,000 bytes of the baseline' with n the number of routes in the build",
+    "node -e \"const b=require('./scripts/bundle-budget.baseline.json');console.log(Object.keys(b.routes).length, Object.keys(b.markers).length)\": prints the build's route count (560 or more) and 8",
+    "Plant, then undo: add `import { z } from \"zod\"; console.log(z.string().min(1).safeParse(\"x\"));` to src/components/admin/admin-rail.tsx (or, if step 0.9 left zod in that file's chunk already, add a 20 KB string constant export that the component reads), pnpm build, node scripts/bundle-budget.mjs: exits 1 and names admin routes or the zod marker; git checkout the file",
+    "pnpm exec vitest run src/lib/docs-budget.scan.test.ts: exits 0 (the budgets rule names the new baseline)",
+    "pnpm lint && pnpm typecheck && pnpm test: exits 0"
+   ]
+  }
+ ],
+ "tests": [
+  {
+   "file": "src/lib/bundle-budget.test.ts",
+   "proves": "fails when the comparison stops reporting a route 20,000 bytes over its baseline, a route with no entry, a marker count that rose, or when --write could raise a figure"
+  },
+  {
+   "file": "scripts/bundle-budget.baseline.json",
+   "proves": "with the CI step, fails a push that grows any route's first scripts by more than 15,000 bytes or puts a marker sentence into another route's first scripts"
+  }
+ ],
+ "migration": {
+  "needed": false,
+  "notes": ""
+ },
+ "done_when": [
+  {
+   "check": "CI's e2e job on main, the step 'Every route's first scripts against the baseline'",
+   "expect": "green, with the line '<n> routes within 15,000 bytes of the baseline' and n at least 560"
+  },
+  {
+   "check": "The planted import of the commit's fourth check, on a local build",
+   "expect": "node scripts/bundle-budget.mjs exits 1 and names the grown route"
+  },
+  {
+   "check": "node scripts/bundle-budget.mjs after pnpm build",
+   "expect": "prints eight lines, one per marker, each with its count and the same count in the baseline: supabase, zod, editor, builderEnglish, signInEnglish, storefrontLanguage, cookiePurposes, commonEnglishOnStores"
+  }
+ ],
+ "after_deploy": [],
+ "docs": [
+  "docs/decisions.md (or docs/decisions/D<n>.md once step 2.40 has split it): one new decision. Take its number with node scripts/claim-decision.mjs \"<title>\" (step 0.41 made the script). It records: every route's first scripts are held by scripts/bundle-budget.mjs against scripts/bundle-budget.baseline.json with 15,000 bytes of room; eight marker counts are held; the figures only fall and --write lowers them; the check runs in CI's e2e job after the build; the file it reads is an undocumented output of Next's build and the script fails loudly if its shape changes; the figures on the day (the median admin route, the heaviest route, each marker's count).",
+  "docs/rules/budgets.md and docs/performance.md: as the commit says.",
+  "docs/audits/psi-followups.md: under the ticked PERF-11 item add one line 'the first-scripts budgets cover every route since <date> (scripts/bundle-budget.mjs)'; the tick stays.",
+  "docs/audits/code-review-2026-11.md: in the row of step 3.4 add 'every route held, bloat review 1.2' to Notes if the row stays at 300 characters or fewer; else one change-log line.",
+  "docs/audits/bloat-review-2026-11.md, Progress table: set the row of step 1.2 to Done with the date and the commit hash, in the last commit of the step. Keep the row at 300 characters or fewer."
+ ],
+ "do_not": [
+  "Do not add the script to the commands run before every push or to the quick gate: it needs a build.",
+  "Do not give the script a flag that raises a figure, and do not edit the baseline by hand.",
+  "Do not change e2e/performance.spec.ts or e2e/signed-in/admin-scripts.spec.ts here: steps 1.3 and 1.5 edit them once.",
+  "Do not delete docs/audits/bloat-review-2026-11/scripts/markers.mjs: other steps' checks name it.",
+  "Do not pass when .next/diagnostics/route-bundle-stats.json is missing or has another shape.",
+  "Do not write the baseline from a build made with `next dev` or with other public settings than CI's e2e job.",
+  "Do not add a sentence to CLAUDE.md."
+ ],
+ "stop_if": [
+  "The stats file has no route key or no firstLoadChunkPaths (a Next upgrade changed it): report its first entry; do not guess another file.",
+  "A marker text is in no chunk of the build: report which; do not delete the marker.",
+  "The first baseline shows supabase above 0 or signInEnglish above 2: step 0.9 is not done; stop.",
+  "CI's build and the local build differ by more than 15,000 bytes on some route (the first CI run fails with no code change): report the routes and both figures; do not widen ROOM.",
+  "docs/rules/budgets.md has no table 'Every budget': step 1.1 is not done."
+ ],
+ "executor": "cheap",
+ "executor_why": "A reader of one JSON file with a pure comparison and a unit test; a wrong script is caught by the planted import and by CI's first run.",
+ "checked_in_code": "I read node_modules/next/dist/build/route-bundle-stats.js and the file it wrote in the repo's last build: an array of 560 entries { route, firstLoadUncompressedJsBytes, firstLoadChunkPaths }, 449 of them under /admin and 58 under /s/, with chunk paths relative to the repository root. I ran the marker count as specified on that build in 0.1 s: GoTrueClient and ZodError in 432 routes, ProseMirror 73, 'Set for {size}' 423, the sign-in sentence 456, 'Kommer ihåg om du valde ljusa' 193 (57 store routes), 'is switched off under Settings' 543 (57), which are the review's figures. The findings disagree on the baseline's place and shape (e2e/bundle-baseline.json per route in AC-10, per-kind ceilings in BN-11); the plan's step settles it: one entry per route with 15,000 bytes of room, kept beside the script as scripts/bundle-budget.baseline.json, and later briefs (2.9, 2.26, 2.29, 2.46) already name scripts/bundle-budget.mjs. For 'the cookie purposes' I chose the English purpose sentence 'Remembers whether you chose', which is in the same 193 routes today."
+}
