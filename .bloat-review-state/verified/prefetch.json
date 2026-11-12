@@ -1,0 +1,351 @@
+{
+ "headline": "The prefetch findings hold on re-measurement, and none of them rests on a feature being unused: they are costs every page view pays, so they grow with shoppers and stores. Next's default (prefetch every link in view) decides for all but 4 of 947 links. A phone shopper who reads the demo store's home page to the footer makes 47 router requests (about 730 KB decoded) plus 10 script chunks (87 KB on the wire, not counted by the auditor) for pages not asked for; 90% of the router bytes are the home pages of eight other language, currency and country views. Each request runs the proxy, and for a store not built ahead (every real store) a cold or stale one runs a render. The endless prefetch loop is real and its cause is proven by switching it off, but it is local and CI only: production's rewrites spare it by construction, and it reaches the server about 165 times a second, not 280 (half of the counted requests are answered by the browser's own cache). Three claims were wrong and are corrected: the \"checkout\" figure is a checkout that bounces to the cart (the pay step was never measured); the admin does not poll five requests a second except while a job runs; and turning built-page links into client links saves about 37 requests and 60 KB a press, not 100 KB. One config line stops the loop; a short link policy, cheapest to set before opening, removes most of the rest.",
+ "metrics": [
+  {
+   "name": "Links that set a prefetch policy",
+   "value": "4 call sites of 947 <Link uses in 400 files (3 Link, 1 ButtonLink; ButtonLink has 107 more uses); none pass prefetch={true}; no router.prefetch(); no next/form; no staleTimes",
+   "how": "rg over src without tests, re-run in this check"
+  },
+  {
+   "name": "The loop's rate, one open tab",
+   "value": "2,643 to 3,017 request events in 8 s on /s/demo/no/search?q=lampe (phone), but only 1,335 went on the network: about 165 a second reach the server. The other half are the same fetches answered from the browser's HTTP cache; each stale answer starts one background revalidation (the 'Other' twin). The auditor's 280 a second counted both.",
+   "how": "work/pf2/loopnet.mjs re-run, and my work/pfsk/net.mjs counting CDP responseReceivedExtraInfo (fires only for requests on the network)"
+  },
+  {
+   "name": "Pages that loop at CI's screen size with no interaction",
+   "value": "9 of 11 demo-store pages never go idle at 1280x720: product, category, search results, empty cart, checkout (which bounces to the cart), om-oss, the blog index, account, wishlist. A blog post was quiet in 3 runs. Home loops once scrolled to the footer at 1280x720, not on a phone. A cart with one item loops at the top on a phone.",
+   "how": "work/pf2/count2.mjs (4 to 5 s each), work/pfsk/net.mjs with scroll, work/pfsk/checkout.mjs"
+  },
+  {
+   "name": "What one looping page costs",
+   "value": "Server: 4.7 s of CPU (470 and 476 ticks) against 0.16 s for a quiet page over the same 9 s. Browser: 2.79 s of main-thread task time in 8 s against 0.08 s; JS heap 3.1 to 12.8 MB against 3.3 to 5.4 MB; 7.5 MB decoded passed through the browser in 13 s on a scrolled product page.",
+   "how": "/proc/<next-server pid>/stat around one page (other agents idle: 0 ticks in a 9 s control); CDP Performance.getMetrics; watch.mjs body bytes"
+  },
+  {
+   "name": "Cause proven by switching it off",
+   "value": "Router requests in 4 s on the search results page: 495 as built, 23 with route guessing off, 21 with the two-line bail-out",
+   "how": "work/pf/probe.mjs re-run in its three modes (the router chunk rewritten in flight; nothing on disk changed)"
+  },
+  {
+   "name": "Same pages behind a rewrite",
+   "value": "4 of 4 pages of the one-country test store (cart, category, search, product) are quiet with the same link set: the footer's product link costs 2 requests there against 582 on the demo store",
+   "how": "my work/pfsk/links.mjs at 1280x720; x-middleware-rewrite header seen with curl"
+  },
+  {
+   "name": "Store home on a phone, top of the page",
+   "value": "11 router requests for 4 links (search 3, wishlist 3, cart 3, account 2), 19.4 KB decoded, 30 KB on the wire; plus 3 script chunks (24.4 KB on the wire, 57 KB decoded) that those answers pull in: 2 for the cart drawer, 1 for search and wishlist",
+   "how": "watch.mjs + uniq.mjs; my work/pfsk/chunks-of-prefetch2.mjs matched each after-load script to the prefetched answer that names it"
+  },
+  {
+   "name": "Store home on a phone, read to the footer",
+   "value": "47 router requests for 18 links, 729 to 747 KB decoded, 204 to 209 KB on the wire here (HTTP/1.1, gzip, about 2 KB of response headers each); plus 10 script chunks, 87 KB on the wire, 204 KB decoded, all named by prefetched answers",
+   "how": "watch.mjs --scroll slow (two runs) + uniq.mjs + chunks-of-prefetch.mjs"
+  },
+  {
+   "name": "Share taken by the other views",
+   "value": "8 links (3 languages, 3 currencies, 2 countries): 24 requests, 662.0 KB decoded, 135.5 KB on the wire, 89 to 91% of the router bytes; each is the other view's layout (55 KB) and home page (29 KB)",
+   "how": "uniq.mjs grouping of my run; per-segment sizes from watch.mjs"
+  },
+  {
+   "name": "Product page on a phone",
+   "value": "12 router requests, 67.1 KB decoded at the top; 48 distinct requests for 19 links, 777 KB decoded read to the end (4,721 sent in 13 s with the loop's repeats)",
+   "how": "watch.mjs + uniq.mjs re-run"
+  },
+  {
+   "name": "Cart and checkout",
+   "value": "The 'empty checkout' is not a pay step: with no order waiting, the checkout redirects to the cart, with one item in the cart too. The two documents together make 50 router requests (42 distinct for 17 links, 592 KB decoded). A cart with one item on a phone, read to the end: about 52 distinct requests for 20 links. A real pay step was not measured by anyone.",
+   "how": "watch.mjs on /s/demo/no/checkout (documents seen: checkout then cart); checkout-section.tsx:80-83; work/pfsk/checkout.mjs"
+  },
+  {
+   "name": "Admin home",
+   "value": "24 router requests for the 12 store-admin links (592 to 671 B tree and 8.3 to 10.9 KB page answer each), 28 to 30 in all with /admin and the local-only store link; 171 to 181 KB decoded in all. The Products and Customers answers differ in 3 places (segment name, title, one script address).",
+   "how": "watch.mjs signed in as the test owner (two runs); diff of the auditor's saved answers"
+  },
+  {
+   "name": "What one router.refresh() asks for again",
+   "value": "25 prefetch requests and 1 navigation on the admin product list (78 KB and 116 KB on the wire in two runs); 23 prefetches on the store home at desktop width",
+   "how": "work/pf2/refresh.mjs re-run"
+  },
+  {
+   "name": "A cold prefetch on the server",
+   "value": "75 and 78 ms for the first tree prefetch of a route the test store had not rendered (x-nextjs-cache MISS), 6 to 12 ms after; in my home page run 10 of 18 prefetched routes answered STALE (13 in the auditor's)",
+   "how": "curl -L with the router's prefetch headers; cache state from watch.mjs"
+  },
+  {
+   "name": "A press on a product tile of the home page",
+   "value": "A full page load: 42 requests, 104.5 KB on the wire (document 24.0 KB, 12 prefetches made again 40.3 KB, scripts 33.5 KB). A cart tap through <Link>: 1 navigation, 4,859 B. A <Link> press to a product page from the same page (footer menu): 5 requests, 12.9 KB after the press.",
+   "how": "work/pf2/click.mjs re-run; my work/pfsk/softnav.mjs"
+  },
+  {
+   "name": "CI exposure",
+   "value": "25 spec files open /s/demo/... addresses in 99 goto calls (31 files mention the address), in Desktop Chrome at 1280x720. Only the e2e job is exposed; the hosts job sets NEXT_PUBLIC_STORE_DOMAIN and is spared.",
+   "how": "rg over e2e; viewport read from playwright-core's device list; .github/workflows/ci.yml:116-157 and 170-191"
+  },
+  {
+   "name": "Kaizena Flow's own pages",
+   "value": "/ 8 router requests, /themes 6, /blog/welcome 6, /docs 0; all idle within 0.8 s",
+   "how": "count2.mjs at 390x844"
+  }
+ ],
+ "clean": [
+  "Storefront prefetch answers are cacheable once rendered (s-maxage 900 s for a home page, 3,600 s otherwise, with stale-while-revalidate), and no link asks for a full dynamic prefetch. Corrected: they are not static from the start. Store routes have no shared fallback shell (.next/prerender-manifest.json: fallback null, root params store and market), and only the template store's views are built ahead (src/server/shop.ts:93-101). So the first ask of each route of each store and view runs a render (75 to 150 ms here), and a stale one a background render.",
+  "The admin's prefetch answers are prerendered shells without any store's or person's data (x-nextjs-prerender: 1; fallbackRevalidate 3600 in the manifest; 5 ms here), and admin paths are outside the proxy's matcher (src/proxy.ts:54-60). Not checked: locally they carry no Cache-Control header, so whether the CDN holds them rests on Vercel serving prerenders.",
+  "The language switcher of built headers and footers (src/components/language-links.tsx:83-93) uses plain anchors and router.push on press: no prefetch.",
+  "Search results' tracked product links are plain anchors with nofollow, so a prefetch can never record a click (src/components/product-card.tsx:30-33, 68-71); export, CSV and print links pass prefetch={false} for the same reason.",
+  "Links inside a closed <details>, a hidden part or display:none do not count as in view (work/pf2/io.mjs re-run), so the header's closed country, language and currency menus and the phone's slide-out menu prefetch nothing.",
+  "The cart link on a phone is prefetching well spent: the tap is one navigation request of 4,859 B and the drawer opens from the prefetched shell. Its prefetch also brings the drawer's 2 script chunks (14 KB on the wire), which a phone uses.",
+  "The @drawer slot follows Next's own documented pattern for closing a modal, a catch-all page that returns null (parallel-routes.md:468-486, which names a shopping cart in a side modal), and D64 explains it. The loop is the framework's fault, not the route's. It is the app's only parallel slot.",
+  "The proxy has to see prefetch requests: it rewrites the short addresses of one-country stores and holds the private-store gate (src/proxy.ts:100-146). Skipping it for prefetches, as Next's docs allow, would break both. The remedy is fewer prefetches.",
+  "Production's store hosts are spared the loop by construction: with the store domain set every /s/ address is redirected to the store's host (src/lib/store-hosts.ts:89-104), every store address is then rewritten, and route guessing refuses an address that does not spell its route (optimistic-routes.js:174-182, 222-232). Re-tested here on the proxy-rewritten test store. Production itself was not re-checked in this pass.",
+  "The docs portal makes no router prefetches; Kaizena Flow's own pages make 6 to 8.",
+  "No finding in this dimension argues from an unused feature or an empty table. The owner's clarification changes no verdict here; it only confirms that today's production numbers are idle cost and that these per-page-view costs are what will grow."
+ ],
+ "findings": [
+  {
+   "id": "PF-1",
+   "title": "Next's route guessing and the cart drawer's catch-all slot make an endless prefetch on the local build and in CI: about 165 requests a second reach the server per open page",
+   "kind": "eager",
+   "where": [
+    "/home/user/kaizen-store/src/app/s/[store]/[market]/@drawer/[...rest]/page.tsx:1-4",
+    "/home/user/kaizen-store/src/app/s/[store]/[market]/layout.tsx:104-105,214",
+    "/home/user/kaizen-store/node_modules/next/dist/client/components/segment-cache/optimistic-routes.js:174-182,222-232,348-416,578-594",
+    "/home/user/kaizen-store/node_modules/next/dist/client/components/segment-cache/cache.js:335-348",
+    "/home/user/kaizen-store/node_modules/next/dist/server/config-shared.js:212",
+    "/home/user/kaizen-store/node_modules/next/dist/build/define-env.js:206",
+    "/home/user/kaizen-store/next.config.ts:79-88",
+    "/home/user/kaizen-store/playwright.config.ts:11-15,36",
+    "/home/user/kaizen-store/.github/workflows/ci.yml:116-157,170-191",
+    "/home/user/kaizen-store/src/lib/store-hosts.ts:89-104",
+    "/home/user/kaizen-store/e2e/a11y.ts:51"
+   ],
+   "evidence": "Cause, read and then proven. Next 16.4.3 guesses a link's route tree from a route of the same shape it already learned (experimental.optimisticRouting, true by default). The guess walks the address through the main branch only, so the 'rest' param of the @drawer/[...rest] slot is never filled; the code keeps the old value under its own comment 'TODO: This should never happen. Bail out with null' (optimistic-routes.js:590-594). The slot's segments are then written under one key and looked up under another, read Empty, and asked for again without end. Proven by switching it off (probe.mjs, re-run): 495 router requests in 4 s as built, 23 with guessing off, 21 with a two-line bail-out. Trigger, corrected: any link whose route shape was already learned when its prefetch starts. Three product links that start together at the top of the home page do not loop; the footer's product link, scheduled later, does (2 requests on the rewritten test store, 582 in 3 s on the demo store). So short pages whose footer is in view loop untouched: 9 of 11 demo pages at 1280x720 (a blog post was quiet in 3 runs; the blog index loops). Rate, corrected: 2,643 request events in 8 s, of which 1,335 went on the network. Each fetch is answered from the browser's HTTP cache and starts one background revalidation, so about 165 requests a second reach the server, not 280. Behind a rewrite it does not happen: the address does not spell the route, so no shape is learned (optimistic-routes.js:174-182, 222-232). With the store domain set, /s/ addresses redirect to store hosts (store-hosts.ts:89-104), so production cannot loop today.",
+   "cost": "Today, per looping page: 4.7 s of server CPU per 9 s (0.16 s when quiet), 2.8 s of browser main-thread time per 8 s (0.08 s when quiet), a heap that grows from 3 to 13 MB in 8 s. waitForLoadState('networkidle') never resolves on such a page (e2e/a11y.ts:51 swallows that). In production nothing today.",
+   "who_pays": "CI's e2e job (25 spec files, 99 goto calls to /s/demo addresses, at 1280x720; the hosts job is spared) and anyone running the production build at /s/ addresses. Shoppers would pay only if a later Next release learns shapes through rewrites while the TODO stands: a risk, not a cost.",
+   "fix": "1. In next.config.ts add optimisticRouting: false to the experimental block (config-schema.js:246 and the NextConfig type accept it; define-env.js:206 turns it into the flag that cache.js:344 reads). 2. Add an e2e spec that opens the search results page, a category page and an empty cart at 1280x720 and fails unless the network is idle within 3 s and fewer than 60 router requests were made. 3. Report it upstream. When Next fixes the TODO, or with two lines added to patches/next.patch (a guessed tree that leaves a param unresolved is not used), switch guessing back on. Keep @drawer/[...rest]: D64 needs it and it is Next's documented pattern.",
+   "saving": "Measured: 495 to 23 router requests in 4 s on the search results page; server CPU for an open store page from 4.7 s to 0.16 s per 9 s; store specs at desktop size run on an idle page again. Removes a latent production failure before opening.",
+   "effort": "S",
+   "risk": "Low. With guessing off, a link of a known shape asks for its route tree again (0.4 to 1 KB), as every link on production's store hosts already does; the admin and Kaizena Flow's own pages lose that small saving too. The flag is experimental and undocumented, so check its name at each Next upgrade; the new spec says if the loop is back.",
+   "confidence": "high",
+   "already_tracked": "no (not in the code review's Progress table, the PSI follow-ups, performance.md or the rules)",
+   "owner_decision": false,
+   "verdict": "corrected",
+   "verify_note": "Opened every cited file. Re-ran count2.mjs on 11 pages, loopnet.mjs, probe.mjs in three modes, and wrote work/pfsk/net.mjs, twins.mjs and links.mjs. The loop, its cause and the fix all reproduce. Changed: the rate (165 a second on the network, not 280: the auditor counted the cache-served twin of each request as answered by the server); the trigger (a shape learned before the link's prefetch starts, not simply a second product link); 'blog' means the blog index; CI spec count is 25 files, 99 calls, and only the e2e job; the title now says local and CI only. Dropped the untested remark about D423. The clarification does not touch this finding."
+  },
+  {
+   "id": "PF-2",
+   "title": "Every page of a store with several languages, currencies or countries prefetches the home page of each other view, and for languages and currencies the press does not open it",
+   "kind": "eager",
+   "where": [
+    "/home/user/kaizen-store/src/components/view-menu.tsx:50-76",
+    "/home/user/kaizen-store/src/components/store-layout.tsx:207-221,236,419,531,537",
+    "/home/user/kaizen-store/src/components/site-parts.tsx:184-195",
+    "/home/user/kaizen-store/src/server/shop.ts:93-101",
+    "/home/user/kaizen-store/.next/prerender-manifest.json"
+   ],
+   "evidence": "The standard footer lists the view choices as <Link>s to each view's front page (LocaleChoice list at store-layout.tsx:531, countries at 537; built footers at site-parts.tsx:184-195). Each is prefetched when the footer comes into view: 3 requests a link, the other view's layout (55 KB), its home page (29 KB) and the drawer slot's default (0.6 KB). Re-measured on the demo store: 8 links, 24 of 47 requests, 662.0 of 729 KB decoded, 135.5 KB on the wire. The same set shows on product, listing and cart pages. For the 6 language and currency links the press handler cancels the link and pushes the current page in the chosen view (view-menu.tsx:62-72), so the prefetched home page (29 KB each) is used only on the home page; the layout part (55 KB) would be reused on any page. The 2 country links have no handler and do open what was fetched. Store routes have no shared fallback (prerender-manifest: fallback null, root params store and market) and only the template store's views are built ahead (shop.ts:93-101), so on a real store the first prefetch of a view renders its layout and home page on the server (75 to 150 ms cold here), and again when stale (s-maxage 900); in my run all 8 answered STALE.",
+   "cost": "Per page view that reaches the footer: 24 requests and 662 KB decoded in the browser, 24 proxy runs, and up to 8 server renders of pages nobody opened when the cache is cold or stale. On a store host each link also asks for its route tree, so about 32 requests (estimate from the mechanism; the rewritten test store shows the extra tree request per link).",
+   "who_pays": "The shopper's browser and data plan; the proxy and the server per request. Only stores with Several languages, Several currencies or several countries pay, but every page view of theirs does, whether or not a shopper ever switches. It grows with stores times views.",
+   "fix": "Pass prefetch={false} on the view links: view-menu.tsx:56, store-layout.tsx:236, 419 and 537, site-parts.tsx:190. Keep the href (the no-script fallback) and the press handler.",
+   "saving": "Measured on the home page read to the footer: 24 of 47 requests and 662 of 729 KB decoded; the same on every page whose footer is seen. Up to 8 fewer cold or stale renders per visit to a quiet store.",
+   "effort": "S",
+   "risk": "Low. Changing language, currency or country waits for one round trip; it is a rare press.",
+   "confidence": "high",
+   "already_tracked": "no",
+   "owner_decision": false,
+   "verdict": "corrected",
+   "verify_note": "Opened view-menu.tsx, store-layout.tsx, site-parts.tsx, shop.ts and the prerender manifest; re-ran watch.mjs --scroll slow twice and uniq.mjs: the numbers match to the kilobyte. Changed wording only: the press goes elsewhere for the 6 language and currency links, not the 2 country links; the layout segment would be reused on any page; the cold render measured here was 75 to 78 ms (the auditor's 112 and 153 ms not reproduced exactly). Under the clarification this stands: it is a per-page-view cost of stores that use the feature, not an argument about an unused feature."
+  },
+  {
+   "id": "PF-3",
+   "title": "The header tools, bottom bar and footer are prefetched on every full page load, with the script chunks of pages nobody asked for",
+   "kind": "eager",
+   "where": [
+    "/home/user/kaizen-store/src/components/store-layout.tsx:128,267,273,281,443,498,511,564,577",
+    "/home/user/kaizen-store/src/components/site-parts.tsx:156,163,170,224",
+    "/home/user/kaizen-store/src/components/cart-link.tsx:53,64",
+    "/home/user/kaizen-store/src/components/menu-view.tsx:101",
+    "/home/user/kaizen-store/src/proxy.ts:54-60,100-146",
+    "/home/user/kaizen-store/src/app/s/[store]/[market]/checkout/checkout-section.tsx:80-83",
+    "/home/user/kaizen-store/node_modules/next/dist/docs/01-app/02-guides/prefetching.md:127-152,251-268"
+   ],
+   "evidence": "Each link costs a route-tree request plus one per segment not yet held: search 3, wishlist 3, account 2, cart 3 at the top of a phone page (11 requests, 19.4 KB decoded). Those answers also name script chunks, which the router then loads: 3 chunks, 24.4 KB on the wire at the top (2 for the cart drawer, 1 for search and wishlist); 10 chunks, 87 KB on the wire, 204 KB decoded when read to the footer. In the footer: cookies 2, withdraw 2, the footer menu's four links 8. A cart with one item, read to the end on a phone: about 52 distinct requests for 20 links. Every full load starts again from nothing. Each request runs the proxy (its matcher takes every store page) and then the prerender cache; 10 of 18 routes answered STALE in my run, each a background render. Corrected: the auditor's 'checkout, 50 requests, on the pay step' is not a pay step. With no order waiting, the checkout redirects to the cart (checkout-section.tsx:80-83); the 50 are the two documents together. No real pay step was measured.",
+   "cost": "Per full page load on a phone: 11 to 12 router requests and 3 script chunks at the top (about 55 KB on the wire here); 23 router requests with the footer (other views left to PF-2). One proxy run each; on a quiet store a render per route when cold and one per hour or quarter hour when stale.",
+   "who_pays": "The shopper's browser; the proxy and the server per request. It grows with page views across all stores, whatever features they use.",
+   "fix": "One small client wrapper (Next's own pattern, prefetching.md:127-152): prefetch={active ? null : false}, set active on pointer enter, touch start and focus. Use it for the header tools (search, account, wishlist), the bottom bar's home and account, the logo, and the footer (cookies, withdraw, legal pages, the footer menu). Keep viewport prefetch for the cart link on phones and for the main menu's top links: they are the likely next press. Moving the main menu to intent as well, as the auditor proposed, is a speed trade to decide with a measurement, not waste.",
+   "saving": "By subtraction from measured counts: phone home 11 to 3 router requests and 3 to 2 script chunks at the top; with PF-2, 47 to 3 router requests and 10 to 2 chunks read to the footer; product page 12 to 3 at the top. At desktop width the top goes from 17 to 8 if the three menu links keep viewport prefetch (5 with PF-7).",
+   "effort": "S",
+   "risk": "Low to medium. A tap gives about 100 ms of warning, so a press on search, account or wishlist may wait for one cached answer where today the page is already held. Check with a spec that a hovered link is prefetched and a pressed one navigates. e2e/store-pages.spec.ts:57-84 (D423) aborts prefetches of the search link and still passes with this.",
+   "confidence": "high",
+   "already_tracked": "no",
+   "owner_decision": false,
+   "verdict": "corrected",
+   "verify_note": "Opened all cited files and the Next prefetching guide. Re-ran watch.mjs on the home, product and checkout pages; wrote work/pfsk/checkout.mjs and chunks-of-prefetch.mjs. Counts at the top and the footer reproduce. Changed: 'including at checkout' is removed from the title, because the checkout measured was one that bounces to the cart (documents seen: /checkout then /cart, also with an item in the cart); added the script chunks that prefetched answers pull in, which the auditor did not count; kept the main menu on viewport prefetch in the fix, as the review's brief asked, and gave the desktop figure. The clarification does not touch this finding."
+  },
+  {
+   "id": "PF-4",
+   "title": "The links shoppers press most on built pages are full page loads: a whole document and every prefetch made again where one small answer would do",
+   "kind": "oversize",
+   "where": [
+    "/home/user/kaizen-store/src/components/content-grid.tsx:147,304,310",
+    "/home/user/kaizen-store/src/components/icon-list-view.tsx:48",
+    "/home/user/kaizen-store/src/components/page-parts.tsx:452",
+    "/home/user/kaizen-store/src/components/product-card.tsx:68-75",
+    "/home/user/kaizen-store/docs/pci.md:108-113"
+   ],
+   "evidence": "The page builder's blocks link with plain anchors: the content grid's tiles, icon lists and column links. The demo's home page is a built page with nine product tiles. Re-measured on a phone: a tap on a home page tile is a document load of 42 requests and 104.5 KB on the wire (document 24.0 KB, 12 prefetches made again 40.3 KB, scripts 33.5 KB). A press on a <Link> to a product page from the same page (the footer menu's) is 5 requests and 12.9 KB after the press, its scripts having come with the prefetch. Listing cards (ProductCard) already use <Link>. No rule in docs/rules and no decision says why the builder's blocks differ. One rule does bind the fix: every entry into a pay route (/cart, /checkout, /order) is a full page load (docs/pci.md:108-113), and the scan test only sees a literal <Link> to /checkout, not an address an owner typed into a block.",
+   "cost": "Per press on a built page's tile or button: a whole document, every script evaluated again and 12 prefetches repeated. What the page fetched ahead before the press is lost.",
+   "who_pays": "The shopper's browser on every step from a built page; the server renders a document where a 5 KB segment would do. It grows with shoppers; built pages are the home page of most stores.",
+   "fix": "Draw internal links in the builder's storefront blocks with the intent wrapper of PF-3. Keep plain anchors for external and new-tab links (externalAttributes already decides), for any address under /cart, /checkout or /order, and inside the admin's builder canvas. Run the pay-route, consent and motion specs, since these presses have always started from a fresh document.",
+   "saving": "Estimate from the two measured presses: about 37 fewer requests and about 60 KB less on the wire per press (104.5 KB against 12.9 KB plus the product page's 33.5 KB of scripts, which are needed once either way). The auditor's 'under 10 KB' left the scripts out.",
+   "effort": "M",
+   "risk": "Medium. Per-page CSS, owner code and the motion runtime have only been exercised on fresh documents from these links; the blocks are also drawn inside the builder. PayRouteGuard reloads a pay page reached by a client link, so a missed pay-route address costs a double load, not a policy breach.",
+   "confidence": "medium",
+   "already_tracked": "no",
+   "owner_decision": false,
+   "verdict": "corrected",
+   "verify_note": "Opened the cited components and docs/pci.md; searched docs/decisions.md and docs/rules for a reason behind the plain anchors (none). Re-ran click.mjs (42 requests, 104.5 KB; cart tap 4,859 B) and wrote work/pfsk/softnav.mjs for the <Link> press (5 requests, 12.9 KB). Changed: the kind from duplicate to oversize (nothing is built twice; the press is bigger than its job); the saving from '105 KB down to under 10 KB' to about 60 KB; added the pay-route rule the fix must keep. The clarification does not touch this finding; before opening is the cheap time to change how built pages navigate."
+  },
+  {
+   "id": "PF-5",
+   "title": "The admin prefetches its whole sidebar on every load and again after every refresh, to fetch nearly the same loading skeleton twelve times",
+   "kind": "eager",
+   "where": [
+    "/home/user/kaizen-store/src/components/admin/store-admin-nav.tsx:94,131,148-160,195",
+    "/home/user/kaizen-store/src/components/admin/refresh-while.tsx:7-13",
+    "/home/user/kaizen-store/src/components/admin/analytics/live-refresh.tsx:10-25",
+    "/home/user/kaizen-store/src/server/analytics-live.ts:30",
+    "/home/user/kaizen-store/node_modules/next/dist/client/components/router-reducer/reducers/refresh-reducer.js:30-46",
+    "/home/user/kaizen-store/node_modules/next/dist/client/components/router-reducer/reducers/server-action-reducer.js:225-230",
+    "/home/user/kaizen-store/node_modules/next/dist/client/components/links.js:288-306",
+    "/home/user/kaizen-store/docs/audits/code-review-2026-11.md:51,414"
+   ],
+   "evidence": "Admin home, re-measured: 24 router requests for the 12 store-admin links (28 to 30 with /admin and the local-only store link). Each link is a route tree (592 to 671 B) and a page answer of 8.3 to 10.9 KB that holds the [store]/loading.tsx skeleton; the Products and Customers answers differ in the segment's name, the title and one script address. The product list makes 38. A router.refresh() throws the segment cache away and re-asks for every link in view (refresh-reducer.js:43, links.js pingVisibleLinks): 25 prefetch requests and 78 to 116 KB on the wire, measured twice on the product list. There are 103 router.refresh() call sites, 50 files of them in the admin. Corrected: RefreshWhile polls only while a scan or job runs (each use is conditional), and the Live page polls every 10 s while shown (analytics-live.ts:30), so the standing rate is about 25 requests per 10 s on the Live page, not 5 a second. A save whose action revalidates evicts the whole prefetch cache the same way (server-action-reducer.js:225-230, read, not measured).",
+   "cost": "Per admin load 24 to 38 requests and 110 to 225 KB decoded; about 25 more per refresh or save; about 150 a minute while the Live page is open (estimate from the measured refresh). The answers are prerendered shells outside the proxy, so the server's share is small.",
+   "who_pays": "The owner's browser and connection; the CDN. It grows with owners and with how often they save.",
+   "fix": "Use the intent wrapper of PF-3 for the sidebar, the area row, the tabs and the account menus: the skeleton and the page's script arrive on hover, touch or focus. LinkPending must stay a child of the link (it reads useLinkStatus).",
+   "saving": "Measured: 24 requests and about 110 KB decoded per load of the admin home; about 25 requests per refresh, save and Live tick.",
+   "effort": "S",
+   "risk": "Low to medium. Code review step 0.10 (FS1, In progress) is done 'when a slow page shows the skeleton within a frame of the click'. That holds today because the skeleton is prefetched. With intent only, a mouse press still has it (hover comes first); a touch or keyboard press may show the pending bar for one round trip before the skeleton. The rule's reason (the owner sees the click worked) is kept by LinkPending.",
+   "confidence": "high",
+   "already_tracked": "no for the cost. Related: docs/audits/code-review-2026-11.md step 0.10 (FS1, In progress), whose done-criterion leans on the prefetched skeleton.",
+   "owner_decision": false,
+   "verdict": "corrected",
+   "verify_note": "Opened the nav, both refresh components, Next's two reducers and links.js; re-ran watch.mjs signed in on the admin home and product list and refresh.mjs twice. Counts reproduce. Changed: the polling claim (conditional RefreshWhile; the Live page at 10 s), the refresh bytes (78 KB in one run, 116 KB in the other), and added the FS1 criterion as a written rule the fix must be weighed against. The clarification does not touch this finding."
+  },
+  {
+   "id": "PF-6",
+   "title": "Each row of an admin list fetches the same shell again",
+   "kind": "duplicate",
+   "where": [
+    "/home/user/kaizen-store/next.config.ts:42",
+    "/home/user/kaizen-store/node_modules/next/dist/docs/01-app/03-api-reference/05-config/01-next-config-js/partialPrefetching.md:42-48",
+    "/home/user/kaizen-store/node_modules/next/dist/docs/01-app/03-api-reference/03-file-conventions/02-route-segment-config/prefetch.md:39-45",
+    "/home/user/kaizen-store/node_modules/next/dist/docs/01-app/02-guides/adopting-partial-prefetching.md:67-79"
+   ],
+   "evidence": "Re-measured on the product list with four rows: 8 requests, four identical route trees (741 B) and four identical page answers (9,746 B each); the answer has no product in it, only the editor's shell. Next's docs name the case: with Partial Prefetching 'the App Shell is shared across every link to a given route, regardless of dynamic params, so rendering many <Link>s to the same destination doesn't multiply the work'.",
+   "cost": "Two requests and about 10.5 KB decoded per row in view, all copies. A list of 25 rows in view would make 50 requests and about 260 KB (estimate by multiplication). Repeated after every refresh or save (PF-5).",
+   "who_pays": "The owner's browser; the CDN. It grows with real catalogues, order lists and customer lists.",
+   "fix": "Now: row links through the intent wrapper. With PF-9: export const prefetch = 'partial' on the admin's gated store layout, so all rows of a list share one shell (from the docs; not built or measured here).",
+   "saving": "Measured: 8 requests and 42 KB decoded on a four-row list; in proportion on longer lists.",
+   "effort": "S",
+   "risk": "Low.",
+   "confidence": "high",
+   "already_tracked": "no",
+   "owner_decision": false,
+   "verdict": "confirmed",
+   "verify_note": "Re-ran watch.mjs on /admin/e2e-shop/products signed in: four rows, each 741 B tree and 9,746 B page answer, byte for byte the same sizes. Read the two Next docs cited. Nothing changed. The clarification does not touch this finding."
+  },
+  {
+   "id": "PF-7",
+   "title": "On wide screens the cart link prefetches a drawer and its scripts that are never shown, and a press renders the drawer before reloading the page",
+   "kind": "eager",
+   "where": [
+    "/home/user/kaizen-store/src/components/cart-link.tsx:51-72",
+    "/home/user/kaizen-store/src/components/cart-drawer.tsx:10,43-50",
+    "/home/user/kaizen-store/src/app/s/[store]/[market]/@drawer/(.)cart/page.tsx:19-43",
+    "/home/user/kaizen-store/docs/decisions.md:75",
+    "/home/user/kaizen-store/docs/pci.md:108-113"
+   ],
+   "evidence": "The cart link's prefetch is 3 requests (route tree, the children slot's default, the drawer page of 5.9 KB decoded) on every full page load at any width, and the drawer page names 2 script chunks that are then loaded (14.3 KB on the wire, 28.5 KB decoded), at desktop width too. From 768 px the drawer reloads the address as soon as it mounts (cart-drawer.tsx:44-47; D64 says so). Re-measured press at 1440 px: one router navigation (the server renders the drawer), then a document load of the cart page (17.4 KB), then the page's prefetches again. A page holds five cart links.",
+   "cost": "Per full page view at 768 px or wider: 3 router requests (7.2 KB decoded) and 2 script chunks (14.3 KB on the wire), never used. Per cart open there: one server render of the drawer thrown away, then the full cart page.",
+   "who_pays": "Desktop and tablet shoppers' browsers; the proxy per request; the server per cart open.",
+   "fix": "From 768 px make the cart link a plain navigation with no prefetch: a small client part of CartLinkShell that renders prefetch={false}, turns viewport prefetch on after mount only below the DESKTOP width, and at that width or above lets the browser load the address. Phones keep the prefetched drawer. This keeps the rule that entering a pay route is a full page load (docs/pci.md:108-113).",
+   "saving": "Measured: 5 requests per full page view at desktop width (3 router, 2 scripts; about 25 KB on the wire here) and one drawer render per cart open.",
+   "effort": "S",
+   "risk": "Low. D64's behaviour on phones is untouched; cart.spec.ts covers both widths.",
+   "confidence": "high",
+   "already_tracked": "no",
+   "owner_decision": false,
+   "verdict": "corrected",
+   "verify_note": "Opened cart-link.tsx, cart-drawer.tsx, the intercepting page, D64 and docs/pci.md. Re-ran click.mjs at desktop width (1 navigation, then a 17,363 B document) and on a phone (1 navigation, 4,859 B). Added what the auditor missed: the drawer's 2 script chunks are loaded on desktop as well (chunks-of-prefetch2.mjs on a 1440 px run), so the saving is 5 requests, not 3. The clarification does not touch this finding."
+  },
+  {
+   "id": "PF-8",
+   "title": "Links in closed drop-down and mega menus are prefetched while invisible",
+   "kind": "eager",
+   "where": [
+    "/home/user/kaizen-store/src/components/menu-view.tsx:101,131,167",
+    "/home/user/kaizen-store/node_modules/next/dist/client/components/links.js:95-97,205-213"
+   ],
+   "evidence": "The panels under a menu link are hidden with 'invisible ... opacity-0' and stay laid out (menu-view.tsx:131, 167). Next counts a link as in view when its box meets the viewport plus 200 px, by intersection ratio alone (links.js:95-97, 211). Re-tested in Chromium (work/pf2/io.mjs): a link in a visibility:hidden panel counts as in view; one in a closed <details>, a hidden part or display:none does not. No menu in the local database has sub-links (checked commerce.menus: four menus, none nested), so this is shown by the code and the browser test, not on a real page.",
+   "cost": "Nothing on the demo store. On a store with nested menus, 2 to 3 requests per sub-link on every full page load at desktop width, plus the script chunks their pages name: 30 sub-links would be 60 to 90 requests (estimate by multiplication), each a proxy run and, cold or stale, a render.",
+   "who_pays": "Desktop shoppers' browsers and the server, on stores with real catalogue menus: the stores that are about to arrive.",
+   "fix": "Sub-links (the dropdown's and the mega menu's) through the intent wrapper of PF-3, so they are fetched when a shopper points at them.",
+   "saving": "All of it: sub-links are fetched only on hover or focus (estimate; no nested menu to measure).",
+   "effort": "S",
+   "risk": "Low.",
+   "confidence": "medium",
+   "already_tracked": "no",
+   "owner_decision": false,
+   "verdict": "confirmed",
+   "verify_note": "Opened menu-view.tsx and links.js; re-ran io.mjs (hidden panel true; closed details, display:none and hidden false); looked for a nested menu in the local test database and found none. Confidence stays medium for that reason. This is not an 'unused feature' argument: it is what nested menus will cost once owners build them."
+  },
+  {
+   "id": "PF-9",
+   "title": "Partial Prefetching was planned, never switched on, and the next major Next release forces it",
+   "kind": "process",
+   "where": [
+    "/home/user/kaizen-store/next.config.ts:41-43",
+    "/home/user/kaizen-store/docs/plan.md:120",
+    "/tmp/claude-0/-home-user-kaizen-store/875cb21b-0ebd-5663-b7c0-2d04a7548e24/scratchpad/m/start.log:8-14",
+    "/home/user/kaizen-store/node_modules/next/dist/docs/01-app/02-guides/adopting-partial-prefetching.md:15-17,57-79,266-268,362-390",
+    "/home/user/kaizen-store/node_modules/next/dist/docs/01-app/03-api-reference/05-config/01-next-config-js/partialPrefetching.md:42-48",
+    "/home/user/kaizen-store/src/app/s/[store]/[market]/layout.tsx:104-105"
+   ],
+   "evidence": "The plan's stack line reads cacheComponents + partialPrefetching; the config sets only cacheComponents. Every start logs that the option is unset and that both will be on everywhere in the next major release. From Next's docs (not measured; no build was allowed): a default link then fetches one App Shell per route, shared by all links to that route, and content that depends on params or searchParams comes after the press unless the link passes prefetch={true}. For this app: the 8 view links and all admin rows collapse to one fetch per route (the 18 links of the home page are 11 routes, counted from my run), but every storefront page depends on the store and market params, which the market layout reads at its top (layout.tsx:105), so by default almost nothing of a store page would be fetched ahead.",
+   "cost": "Today: the duplicate shells of PF-6 and one prefetch per link everywhere, and a warning in every build and start log. Later: a forced migration on Next's date, with shoppers watching.",
+   "who_pays": "Shoppers' and owners' browsers now; the team at the next major upgrade.",
+   "fix": "Now: write partialPrefetching: false in the config, so the choice is recorded and the warning stops. Before opening, a time-boxed local spike: export const prefetch = 'partial' on the admin's gated store layout, build, and re-run the request counts with work/pf2/watch.mjs; then decide per storefront route which links earn prefetch={true} (product tiles and the main menu are the candidates).",
+   "saving": "Estimate from the docs: on the home page read to the footer, 18 link prefetches become 11 route shells; admin list rows become one.",
+   "effort": "M",
+   "risk": "Medium. It changes what is ready at a press; done blind it would make store pages slower to appear. The spike is M; adopting it across the storefront, where every layout and page reads URL data at its top, is larger. Before opening there is nobody to notice a wrong first attempt.",
+   "confidence": "medium",
+   "already_tracked": "docs/plan.md:120 names it as part of the recommended stack; no plan has a step for it",
+   "owner_decision": false,
+   "verdict": "confirmed",
+   "verify_note": "Read next.config.ts, docs/plan.md:120, the start log's warning, and Next's partialPrefetching, prefetch-config and adoption docs. The description of what changes matches the docs. Counted the 11 routes behind the 18 links from my own run. Nothing measured, as the auditor said; confidence stays medium. Added that full adoption on the storefront is more than the spike. The clarification does not touch this finding."
+  },
+  {
+   "id": "PF-10",
+   "title": "Nothing sets or checks what the router may fetch ahead",
+   "kind": "process",
+   "where": [
+    "/home/user/kaizen-store/e2e/performance.spec.ts:118-175",
+    "/home/user/kaizen-store/e2e/a11y.ts:51",
+    "/home/user/kaizen-store/docs/performance.md:70-75,110-113"
+   ],
+   "evidence": "943 of 947 links take Next's default; the four that set the prop do it to protect a log, none for cost. The speed budget counts bytes until two seconds after load at the top of a phone page (performance.spec.ts:150-154), so it sees 11 of the 47 router requests and holds no request count at all; its comment already notes a page that 'never reaches' network idle, and a11y.ts:51 swallows the same wait. The loop of PF-1 ran in CI unnoticed. docs/performance.md has no line on prefetching.",
+   "cost": "No direct cost; it is why PF-1 to PF-8 could grow unseen.",
+   "who_pays": "Everyone the other findings name.",
+   "fix": "1. Two wrappers (store and admin) with the policy as a prop: view, intent, none. 2. A check that bars importing next/link outside them, as a ratchet that only lets the count fall (the repo's own pattern, ratchet.scan.test.ts), so the 400 files move over as they are touched. 3. An e2e budget on router requests after load, scrolled to the footer, for the home, product, listing and cart pages and the admin home, plus the idle check of PF-1. 4. A paragraph in docs/performance.md stating the policy per link group.",
+   "saving": "Keeps the gains of the other findings: phone home 47 to 3 router requests read to the footer, admin home 24 to 0 at rest (by subtraction from measured counts).",
+   "effort": "M",
+   "risk": "Low.",
+   "confidence": "high",
+   "already_tracked": "no",
+   "owner_decision": false,
+   "verdict": "corrected",
+   "verify_note": "Opened performance.spec.ts, a11y.ts and docs/performance.md; re-counted the links (947 uses in 400 files, plus 107 ButtonLink uses). The finding holds. Changed: effort from S to M, because a rule that bars next/link outside two wrappers touches 400 files unless it is a ratchet, which the fix now says; removed 'checkout 50 to 3' from the saving, since no checkout pay step was measured. The clarification does not touch this finding; before opening is the cheap time to set the rule."
+  }
+ ]
+}

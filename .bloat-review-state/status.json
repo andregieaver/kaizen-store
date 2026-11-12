@@ -1,5 +1,5 @@
 {
- "at": "2026-11-12T01:07:08.644Z",
+ "at": "2026-11-12T01:10:10.961Z",
  "status": [
   {
    "key": "storefront-client",
@@ -107,7 +107,7 @@
    "key": "tests-ci",
    "audit": true,
    "verify": true,
-   "plan": false
+   "plan": true
   },
   {
    "key": "functions",
@@ -136,7 +136,7 @@
   {
    "key": "prefetch",
    "audit": true,
-   "verify": false,
+   "verify": true,
    "plan": false
   },
   {
@@ -156,7 +156,6 @@
   "keys": [
    "page-model",
    "i18n",
-   "tests-ci",
    "functions",
    "server-graph",
    "client-bundles",
@@ -213,6 +212,7 @@
    "server-graph",
    "client-bundles",
    "page-payload",
+   "prefetch",
    "unused-code",
    "copied-code"
   ]

@@ -1,0 +1,135 @@
+{
+ "key": "tests-ci",
+ "file": "/tmp/claude-0/-home-user-kaizen-store/875cb21b-0ebd-5663-b7c0-2d04a7548e24/scratchpad/findings/tests-ci.json",
+ "validator": "OK: 14 findings, 0 refuted, 20 metrics",
+ "headline": "The tests are not the bloat: 325,579 lines of tests against 768,202 of source, no snapshots, and only 37 of 781 end-to-end tests use no browser page. The waste is in how the checks run, paid per push whoever uses the platform: one push type-checks the same commit five times (183 s each here, 70% of the build) and builds it four times; every unit test file loads 1.9 MB of admin English in a fresh worker (a 187-file sample takes 90 s today and 27 s without both); lint re-reads about 6,200 files on one thread (about 3 minutes, 1 s with a cache); and 229 server modules form one import cycle that 12 import lines close. Four small changes (TC-1, TC-3, TC-5, TC-12) remove about 9 runner-minutes of repeated type checks, about a quarter of the unit run and about 3 minutes of lint per push without checking any less. Before opening is the cheap time for the two with risk: cutting the cycle (TC-2) and changing what runs before a push (TC-6, the owner's call).",
+ "findings": [
+  {
+   "id": "TC-1",
+   "title": "One push type-checks the same commit five times; three of the checks hide inside CI's builds",
+   "priority": "P0",
+   "effort": "S",
+   "saving": "About 9 runner-minutes per push; each browser job and every migration release about 3 minutes sooner.",
+   "verdict": "confirmed",
+   "owner_decision": false
+  },
+  {
+   "id": "TC-2",
+   "title": "229 server modules import each other in one cycle; 12 import lines close it",
+   "priority": "P1",
+   "effort": "M",
+   "saving": "Largest cycle 229 -> 20 modules; catalog.ts loads 417 modules, not 1,305; roughly 0.4-0.5 s per cold start (estimate).",
+   "verdict": "corrected",
+   "owner_decision": false
+  },
+  {
+   "id": "TC-3",
+   "title": "Every unit test file loads all the admin's English first, in a worker of its own; 91% cannot use the English",
+   "priority": "P0",
+   "effort": "S",
+   "saving": "About a quarter of the unit run (about 80 s of 5 min 34 s; 187-file sample went 90 s -> 27 s); the gate loses 5.9 s.",
+   "verdict": "corrected",
+   "owner_decision": false
+  },
+  {
+   "id": "TC-4",
+   "title": "The type check is one 8,003-file program: 3 minutes and a 7 GB heap limit, with no single type to blame",
+   "priority": "P1",
+   "effort": "M",
+   "saving": "A fifth to a third off the gate's 3-minute check before each deploy (estimate); the native compiler is unmeasured.",
+   "verdict": "corrected",
+   "owner_decision": false
+  },
+  {
+   "id": "TC-5",
+   "title": "The 19,614-line Drizzle schema is loaded at run time for a query builder nobody calls",
+   "priority": "P0",
+   "effort": "S",
+   "saving": "125 ms and 50 MB per cold start; 0.16 s per test file that opens the database, about 84 s of the integration run.",
+   "verdict": "corrected",
+   "owner_decision": false
+  },
+  {
+   "id": "TC-6",
+   "title": "Every push pays the full checks twice: once by the agent, again by CI",
+   "priority": "P1",
+   "effort": "S",
+   "saving": "With a related run: about 4 minutes per push per agent session (estimate); typically 85-200 test files, not 1,215.",
+   "verdict": "corrected",
+   "owner_decision": true
+  },
+  {
+   "id": "TC-7",
+   "title": "Three cold builds per push; the hosts job builds the whole app for 25 tests",
+   "priority": "P2",
+   "effort": "M",
+   "saving": "One build, one install and one seed per push: about 3 to 4 runner-minutes (estimate).",
+   "verdict": "confirmed",
+   "owner_decision": false
+  },
+  {
+   "id": "TC-8",
+   "title": "Nothing measures the build, the type check, lint or the test run, and the build is at its limit",
+   "priority": "P1",
+   "effort": "S",
+   "saving": "No time by itself; makes build, check, lint and test growth visible and fails a run that passes a ceiling.",
+   "verdict": "corrected",
+   "owner_decision": false
+  },
+  {
+   "id": "TC-9",
+   "title": "CI keeps nothing between runs except pnpm's store",
+   "priority": "P2",
+   "effort": "S",
+   "saving": "Unmeasured: most of a 183 s type check for a small commit if build info is restored; Vitest's part about 20 s.",
+   "verdict": "corrected",
+   "owner_decision": false
+  },
+  {
+   "id": "TC-10",
+   "title": "86 test files read the source tree with 67 private walkers; two parse every file",
+   "priority": "P2",
+   "effort": "S",
+   "saving": "About 8 CPU-seconds per unit run and some 600 lines.",
+   "verdict": "corrected",
+   "owner_decision": false
+  },
+  {
+   "id": "TC-11",
+   "title": "The same mocks and store-makers are written out in hundreds of test files",
+   "priority": "P2",
+   "effort": "M",
+   "saving": "About 2,000 to 2,800 lines and one place to change a mock; no run time.",
+   "verdict": "confirmed",
+   "owner_decision": false
+  },
+  {
+   "id": "TC-12",
+   "title": "Lint reads all 6,213 files on one thread every time, with no cache: about 3 minutes, and it is on the deploy path",
+   "priority": "P0",
+   "effort": "S",
+   "saving": "Lint from about 3 minutes to seconds after the first run: 2-3 minutes off the deploy gate, static and each agent push.",
+   "verdict": "added",
+   "owner_decision": false
+  },
+  {
+   "id": "TC-13",
+   "title": "Each test file that opens the database spends half a second importing Drizzle and the schema, one small module at a time",
+   "priority": "P1",
+   "effort": "S",
+   "saving": "About 0.25 s per test file that opens the database: about 130 s of the integration run across its shards (estimate).",
+   "verdict": "added",
+   "owner_decision": false
+  },
+  {
+   "id": "TC-14",
+   "title": "A push that changes only tests builds and deploys production again",
+   "priority": "P2",
+   "effort": "S",
+   "saving": "About 8% of deploys: about 3 Vercel builds a day at today's pace (estimate).",
+   "verdict": "added",
+   "owner_decision": false
+  }
+ ],
+ "refuted": []
+}
