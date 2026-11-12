@@ -1,0 +1,465 @@
+<title>Kaizena Flow Bloat Review</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&family=Space+Grotesk:wght@500;600&display=swap">
+<style>
+/* Layout: one reading column for a measured report; figures sit in the column, wide tables scroll inside themselves. */
+:root {
+  --bg: #f4f6f8; --surface: #ffffff; --ink: #12161c; --ink-2: #4a5361; --ink-3: #6b7482; --rule: #dde2e8; --wash: #eaeef3;
+  --s1: #2a78d6; --s2: #eb6834; --s3: #1baf7a; --rest: #c5ccd6;
+  --good: #0ca30c; --warning: #fab219; --serious: #ec835a; --critical: #d03b3b;
+  --display: "Space Grotesk", "IBM Plex Sans", system-ui, sans-serif;
+  --text: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #101317; --surface: #191d22; --ink: #eef1f4; --ink-2: #bfc6cf; --ink-3: #8e97a3; --rule: #2b3139; --wash: #20252c;
+    --s1: #3987e5; --s2: #d95926; --s3: #199e70; --rest: #3b434e; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #101317; --surface: #191d22; --ink: #eef1f4; --ink-2: #bfc6cf; --ink-3: #8e97a3; --rule: #2b3139; --wash: #20252c;
+  --s1: #3987e5; --s2: #d95926; --s3: #199e70; --rest: #3b434e; color-scheme: dark;
+}
+body { background: var(--bg); color: var(--ink); font-family: var(--text); font-size: 16px; line-height: 1.55; }
+.page { max-width: 1040px; margin: 0 auto; padding-block: 40px 96px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); display: flex; flex-direction: column; gap: 56px; }
+h1, h2, h3 { font-family: var(--display); font-weight: 600; text-wrap: balance; margin: 0; letter-spacing: -0.01em; }
+h1 { font-size: clamp(2rem, 5vw, 3.1rem); line-height: 1.08; }
+h2 { font-size: clamp(1.35rem, 3vw, 1.75rem); line-height: 1.2; }
+h3 { font-size: 1.05rem; }
+p { margin: 0; max-width: 68ch; }
+.eyebrow { font-family: var(--mono); font-size: 0.78rem; letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-3); }
+.lede { font-size: 1.17rem; line-height: 1.5; color: var(--ink); max-width: 62ch; }
+.muted { color: var(--ink-2); }
+header.top { display: flex; flex-direction: column; gap: 18px; }
+.note { border-left: 3px solid var(--s1); padding: 10px 14px; background: var(--surface); color: var(--ink-2); font-size: 0.95rem; max-width: 68ch; }
+section { display: flex; flex-direction: column; gap: 18px; }
+section > .head { display: flex; flex-direction: column; gap: 8px; }
+.tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 1px; background: var(--rule); border: 1px solid var(--rule); }
+.tile { background: var(--surface); padding: 16px 18px; display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.tile .v { font-family: var(--display); font-weight: 600; font-size: 1.9rem; line-height: 1.1; font-variant-numeric: tabular-nums; }
+.tile .l { font-size: 0.9rem; color: var(--ink-2); }
+.tile .s { font-family: var(--mono); font-size: 0.76rem; color: var(--ink-3); }
+figure.chart { margin: 0; background: var(--surface); border: 1px solid var(--rule); padding: 20px 20px 14px; display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+figure.chart figcaption { display: flex; flex-direction: column; gap: 2px; }
+figure.chart figcaption b { font-family: var(--display); font-weight: 600; font-size: 1.02rem; }
+figure.chart figcaption span { font-size: 0.86rem; color: var(--ink-3); }
+.legend { display: flex; flex-wrap: wrap; gap: 6px 18px; font-size: 0.84rem; color: var(--ink-2); }
+.legend i { display: inline-block; width: 12px; height: 12px; margin-right: 6px; vertical-align: -1px; }
+.bars { display: flex; flex-direction: column; gap: 7px; }
+.bars .group { font-family: var(--mono); font-size: 0.72rem; letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-3); margin-top: 8px; }
+.bars .group:first-child { margin-top: 0; }
+.row { display: grid; grid-template-columns: 200px minmax(0, 1fr); align-items: center; gap: 12px; border-radius: 2px; outline-offset: 3px; }
+.row:focus-visible { outline: 2px solid var(--s1); }
+.row .name { font-size: 0.88rem; color: var(--ink-2); overflow-wrap: anywhere; }
+.row .track { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.row .stack { display: flex; gap: 2px; height: 16px; min-width: 2px; }
+.row .seg { height: 100%; min-width: 2px; }
+.row .seg:last-child { border-radius: 0 4px 4px 0; }
+.row:hover .seg, .row:focus-visible .seg { filter: brightness(1.08); }
+.row .tipv { font-family: var(--mono); font-size: 0.78rem; color: var(--ink); white-space: nowrap; font-variant-numeric: tabular-nums; }
+details.numbers { font-size: 0.86rem; color: var(--ink-2); }
+details.numbers summary { cursor: pointer; width: max-content; max-width: 100%; }
+.scroll { overflow-x: auto; }
+table { border-collapse: collapse; font-size: 0.86rem; font-variant-numeric: tabular-nums; min-width: 100%; }
+th, td { text-align: left; padding: 7px 14px 7px 0; border-bottom: 1px solid var(--rule); vertical-align: top; }
+th { font-weight: 500; color: var(--ink-3); font-size: 0.78rem; white-space: nowrap; }
+td.n, th.n { text-align: right; font-family: var(--mono); font-size: 0.8rem; white-space: nowrap; }
+#tt { position: fixed; z-index: 20; pointer-events: none; background: var(--ink); color: var(--bg); padding: 9px 11px; font-size: 0.8rem; line-height: 1.45; max-width: 280px; box-shadow: 0 6px 22px rgba(0,0,0,.25); }
+#tt b { display: block; font-weight: 500; margin-bottom: 4px; }
+#tt .r { display: flex; align-items: center; gap: 7px; white-space: nowrap; }
+#tt .r i { width: 12px; height: 2px; flex: none; }
+#tt .r strong { font-family: var(--mono); font-weight: 500; }
+.reading { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 14px 28px; }
+.reading p { font-size: 0.96rem; color: var(--ink-2); }
+.reading p strong { color: var(--ink); font-weight: 600; }
+.chip { display: inline-flex; align-items: center; gap: 6px; font-family: var(--mono); font-size: 0.74rem; padding: 2px 8px; border: 1px solid var(--rule); background: var(--surface); color: var(--ink-2); white-space: nowrap; }
+.chip i { width: 8px; height: 8px; border-radius: 50%; flex: none; }
+.chip i { background: var(--rest); } .chip.good i { background: var(--good); } .chip.warning i { background: var(--warning); } .chip.serious i { background: var(--serious); } .chip.critical i { background: var(--critical); }
+footer { font-size: 0.84rem; color: var(--ink-3); border-top: 1px solid var(--rule); padding-top: 18px; display: flex; flex-direction: column; gap: 6px; }
+code { font-family: var(--mono); font-size: 0.86em; background: var(--wash); padding: 1px 4px; }
+@media (max-width: 640px) {
+  .row { grid-template-columns: minmax(0, 1fr); gap: 3px; }
+  figure.chart { padding: 16px 14px 12px; }
+  .page { gap: 44px; padding-block: 24px 72px; }
+}
+
+.causes { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1px; background: var(--rule); border: 1px solid var(--rule); }
+.causes > div { background: var(--surface); padding: 16px 18px; display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.causes p { font-size: 0.92rem; color: var(--ink-2); }
+.goal { border-left: 3px solid var(--good); padding: 12px 16px; background: var(--surface); display: flex; flex-direction: column; gap: 6px; }
+.goal p { color: var(--ink-2); font-size: 0.96rem; max-width: 76ch; }
+table.grades td:first-child { font-weight: 500; white-space: nowrap; }
+table.grades td { color: var(--ink-2); min-width: 120px; } table.grades td:first-child { color: var(--ink); }
+ol.phases { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 1px; background: var(--rule); border: 1px solid var(--rule); }
+ol.phases > li { background: var(--surface); padding: 18px 20px; display: grid; grid-template-columns: 240px minmax(0, 1fr); gap: 10px 28px; }
+ol.phases .ph { display: flex; flex-direction: column; gap: 6px; }
+ol.phases ul { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 7px; font-size: 0.94rem; color: var(--ink-2); }
+ol.phases ul li { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; }
+ol.questions { margin: 0; padding-left: 1.4em; display: flex; flex-direction: column; gap: 8px; max-width: 72ch; color: var(--ink-2); }
+ol.questions li::marker { font-family: var(--mono); font-size: 0.8rem; color: var(--ink-3); }
+@media (max-width: 640px) { ol.phases > li { grid-template-columns: minmax(0, 1fr); } table.grades td:first-child { white-space: normal; } }
+@media (prefers-reduced-motion: no-preference) { .row .seg { transition: filter .12s; } }
+</style>
+
+<div class="page">
+  <header class="top">
+    <div class="eyebrow">Review · 11 November 2026 · commit 0bd814c</div>
+    <h1>Is Kaizena Flow bloated?</h1>
+    <p class="lede">Yes, but not where bloat usually hides. The code itself is tidy: no file is unreachable, one export in a hundred is unused and one line in a hundred is a copy. The weight is in what gets loaded and run without need. A shopper's browser loads scripts of which more than half never run. Every server function carries the same ten megabytes, whatever its job. A feature costs the same whether or not a store uses it. And about 37,000 scheduled runs a day look for work that is almost never there.</p>
+    <p class="note" id="status-note"><strong>The platform is not open yet.</strong> The 60 stores are the team's own demo and test stores, so an unused feature or an empty table is expected and is not a finding. What counts is what a feature costs a store that does not use it, and that grows with every store that signs up. The full review and its 38-step plan are in the repository at <code>docs/audits/bloat-review-2026-11.md</code>. The second reviewers are running now; 32 of 171 findings have had their second check so far, among them every one behind the plan's first phase.</p>
+  </header>
+
+  <section>
+    <div class="head"><div class="eyebrow">Scale</div><h2>What has been built, and what uses it today</h2></div>
+    <div class="tiles">
+      <div class="tile"><span class="v">1.09 M</span><span class="l">lines of TypeScript</span><span class="s">768 K source · 326 K tests</span></div>
+      <div class="tile"><span class="v">828</span><span class="l">routes</span><span class="s">560 pages · 268 handlers</span></div>
+      <div class="tile"><span class="v">486</span><span class="l">database tables</span><span class="s">617 functions · 391 triggers</span></div>
+      <div class="tile"><span class="v">60</span><span class="l">demo and test stores, before opening</span><span class="s">102 test orders</span></div>
+    </div>
+    <p class="muted">Read from the repository and from production's own statistics on 11 November. The platform is built ahead of its opening, which is as it should be. The review's subject is what that size costs on every request, every build and every five minutes, whether or not a store uses it.</p>
+  </section>
+
+  <section>
+    <div class="head"><div class="eyebrow">Measured in a browser</div><h2>More than half of the script a page loads never runs</h2>
+      <p class="muted">Each page of the production build was opened once in a fresh browser, left alone until it went quiet, and asked which bytes of its scripts had executed.</p></div>
+    <figure class="chart" id="c-scripts">
+      <figcaption><b>Script loaded by a page, and how much of it ran</b><span>KB before compression · a visitor who presses nothing</span></figcaption>
+      <div class="legend"></div><div class="bars"></div>
+      <details class="numbers"><summary>Show the numbers</summary><div class="scroll"></div></details>
+    </figure>
+    <div class="reading">
+      <p><strong>An empty cart loads 938 KB of script.</strong> A third of it runs. Every storefront page loads between 0.8 and 1.1 MB, with 54 to 70% untouched when the page is idle.</p>
+      <p><strong>Kaizena Flow's own front page is heavier than a store's.</strong> It loads 1.17 MB and runs 23% of it.</p>
+      <p><strong>Every admin screen starts at 1.4 MB.</strong> The page builder loads 3.8 MB. The admin's home still carries 299 KB of interface text, 113 KB of validation code and about 225 KB of database client that it uses only to sign in.</p>
+    </div>
+  </section>
+
+  <section>
+    <div class="head"><div class="eyebrow">Measured in a browser</div><h2>Two thirds of every document is the page sent a second time</h2>
+      <p class="muted">A page arrives as markup, then again as data so the browser can wake its interactive parts. That second copy should be small. Here it is the larger part.</p></div>
+    <figure class="chart" id="c-docs">
+      <figcaption><b>What each HTML document is made of</b><span>KB before compression</span></figcaption>
+      <div class="legend"></div><div class="bars"></div>
+      <details class="numbers"><summary>Show the numbers</summary><div class="scroll"></div></details>
+    </figure>
+    <div class="reading">
+      <p><strong>An empty cart's document is 104 KB,</strong> of which 74 KB is data for the browser. There is nothing in the cart.</p>
+      <p><strong>The page builder's document is 572 KB</strong> and the product editor's 416 KB, before a single script is counted.</p>
+    </div>
+  </section>
+
+  <section>
+    <div class="head"><div class="eyebrow">Measured in the build</div><h2>Every server function carries almost the whole application</h2>
+      <p class="muted">Next's bundle analyzer lists the source modules behind each route. A route with a small job should load a small set. Only the health check does.</p></div>
+    <figure class="chart" id="c-server">
+      <figcaption><b>Source modules a route's server code loads</b><span>modules · megabytes of built code</span></figcaption>
+      <div class="bars"></div>
+      <details class="numbers"><summary>Show the numbers</summary><div class="scroll"></div></details>
+    </figure>
+    <div class="reading">
+      <p><strong>The visit beacon, called on every page view, loads 1,890 modules.</strong> Among them are the admin's whole interface text, the AI manager's tools and the full database schema. The health check shows what a lean route looks like: 308.</p>
+      <p><strong>Another 34 MB of files travel beside every function:</strong> a 13 MB product taxonomy in four languages and a 19 MB image library, whether the route reads them or not.</p>
+    </div>
+  </section>
+
+  <section>
+    <div class="head"><div class="eyebrow">Read from production</div><h2>Half the database is waiting for opening day</h2>
+      <p class="muted">From Postgres's own counters, running since 25 August. No personal data was read.</p></div>
+    <figure class="chart" id="c-db">
+      <figcaption><b>Tables and indexes in production, by whether anything has touched them</b><span>share of each kind</span></figcaption>
+      <div class="legend"></div><div class="bars"></div>
+      <details class="numbers"><summary>Show the numbers</summary><div class="scroll"></div></details>
+    </figure>
+    <div class="reading">
+      <p><strong>245 of 486 tables have never held a row.</strong> Before opening that is expected, and it says nothing about whether a feature is wanted. It does show which work is done for nobody: every job, query and AI tool tied to those tables runs today as if they were full.</p>
+      <p><strong>The orders table has 34 indexes for 102 orders.</strong> With tables this small the database often skips an index, so "never scanned" overstates a little; each one is still updated on every write.</p>
+    </div>
+  </section>
+
+  <section>
+    <div class="head"><div class="eyebrow">Read from production</div><h2>37,000 scheduled runs a day, mostly finding nothing</h2></div>
+    <div class="tiles">
+      <div class="tile"><span class="v">12,960</span><span class="l">function calls a day from nine routes woken every minute</span><span class="s">seven of nine last ran 0 to 1 ms</span></div>
+      <div class="tile"><span class="v">24,192</span><span class="l">job runs a day: 84 jobs, every five minutes</span><span class="s">about 12.5 s of database work per round</span></div>
+      <div class="tile"><span class="v">564 MB</span><span class="l">of the 731 MB database is the scheduler's own log of those runs</span><span class="s">nothing prunes it</span></div>
+      <div class="tile"><span class="v">1.1 M</span><span class="l">full scans of a 1,945-row table of cookie scans</span><span class="s">962 M rows read</span></div>
+    </div>
+    <figure class="chart">
+      <figcaption><b>Where the database's time goes</b><span>statements by total time since 25 August</span></figcaption>
+      <div class="scroll"><table>
+        <thead><tr><th>What the statement does</th><th class="n">Calls</th><th class="n">Total</th><th class="n">Each</th></tr></thead>
+        <tbody>
+          <tr><td>The scheduler calling the app's timed routes</td><td class="n">352,514</td><td class="n">3,974 s</td><td class="n">11.3 ms</td></tr>
+          <tr><td>Every published page of one type, with its whole content (29 rows a call)</td><td class="n">79,778</td><td class="n">781 s</td><td class="n">9.8 ms</td></tr>
+          <tr><td>Where each picture is used, for the media library</td><td class="n">1,831</td><td class="n">266 s</td><td class="n">145 ms</td></tr>
+          <tr><td>AI cost, summed again from the usage log</td><td class="n">8,514</td><td class="n">351 s</td><td class="n">41 ms</td></tr>
+          <tr><td>Scanning every page's content for one component</td><td class="n">68,878</td><td class="n">121 s</td><td class="n">1.8 ms</td></tr>
+          <tr><td>Every published theme, with its whole snapshot</td><td class="n">35,101</td><td class="n">101 s</td><td class="n">2.9 ms</td></tr>
+          <tr><td>Bookkeeping: one write per job per run</td><td class="n">565,049</td><td class="n">84 s</td><td class="n">0.15 ms</td></tr>
+        </tbody>
+      </table></div>
+    </figure>
+  </section>
+
+  <section>
+    <div class="head"><div class="eyebrow">Also measured</div><h2>What is not bloated</h2>
+      <p class="muted">A review should say where things are well made. The usual suspects came back clean.</p></div>
+    <div class="tiles">
+      <div class="tile"><span class="v">0</span><span class="l">source files nothing reaches</span><span class="s">of 4,133 · 42 reached only by tests</span></div>
+      <div class="tile"><span class="v">1.0%</span><span class="l">of exports are unused</span><span class="s">263 of 25,753</span></div>
+      <div class="tile"><span class="v">1.1%</span><span class="l">of code lines are exact copies</span><span class="s">5,423 of 472,550</span></div>
+      <div class="tile"><span class="v">0</span><span class="l">fonts or third-party scripts on the demo storefront</span><span class="s">budgets already hold first scripts</span></div>
+    </div>
+  </section>
+
+
+  <section>
+    <div class="head"><div class="eyebrow">Tried in a copy</div><h2>Two one-line edits took a route from 1,890 modules to 639</h2>
+      <p class="muted">The visit beacon imports one small check through the chat module, which brings the chat, the AI layer and the support desk with it. And the database client is handed all 481 table definitions for a query builder nothing uses. Both were changed in a throwaway copy and measured again.</p></div>
+    <figure class="chart" id="c-spike">
+      <figcaption><b>The visit beacon's server code, before and after the two edits</b><span>source modules</span></figcaption>
+      <div class="bars"></div>
+      <details class="numbers"><summary>Show the numbers</summary><div class="scroll"></div></details>
+    </figure>
+  </section>
+
+  <section>
+    <div class="head"><div class="eyebrow">The verdict</div><h2>Four causes explain most of the 171 findings</h2></div>
+    <div class="causes">
+      <div><h3>A few imports tie everything to everything</h3><p>One helper imported through a heavy module, one catalogue object that 602 files import, one schema handed to a client that never reads it. Every route pays for all of it.</p></div>
+      <div><h3>Work is found by asking, not by being told</h3><p>Routes woken every minute to look, pages read whole to find a title, the same store slug asked for 560,000 times.</p></div>
+      <div><h3>An idle feature is not free</h3><p>A feature costs the same whether or not a store uses it: its job runs, its tools go to the AI, its code loads. Little for one store; it multiplies with every store that signs up.</p></div>
+      <div><h3>Nothing weighs a change</h3><p>The storefront's first scripts have a budget, and the storefront is the leanest part. Nothing else has one. 21 findings are this one finding.</p></div>
+    </div>
+    <div class="goal">
+      <h3>The goal: an A in every area</h3>
+      <p>The plan is done when every area is an A, not when its steps are ticked. An A means nothing in the area is loaded, fetched, run or shown without need, and a test or a production figure holds each measure so it cannot slip back unseen. A grade is raised only for fixes seen working in production.</p>
+    </div>
+    <div class="scroll"><table class="grades">
+      <thead><tr><th>Area</th><th>Today</th><th>Why</th><th>Grade A when</th></tr></thead>
+      <tbody>
+        <tr><td>The code itself</td><td><span class="chip good"><i></i>A</span></td><td>No unreachable file, 1% unused exports, 1.1% copies, every package used.</td><td>It stays so, with the two scans run as commands.</td></tr>
+        <tr><td>What a shopper's browser gets</td><td><span class="chip warning"><i></i>C</span></td><td>Budgets held, no third-party script. But over half the script never runs, and every view runs a function that sends the page twice.</td><td>A store page costs a visitor without a cart no function run; the home document is under 60 KB; under 45% of script unused when idle; under 12 requests after load; a budget on every route.</td></tr>
+        <tr><td>What an owner's browser gets</td><td><span class="chip serious"><i></i>D</span></td><td>1.4 MB on every admin screen, 3.8 MB in the page builder; three stray imports put 481 KB on every screen.</td><td>A plain screen under 0.7 MB of script and 100 KB of document; editors load when opened (the builder under 2 MB); prefetch on intent; a budget on all 449 routes.</td></tr>
+        <tr><td>What the server loads and asks</td><td><span class="chip serious"><i></i>D</span></td><td>10 to 12 MB per function whatever its job; 18 database questions for one product view, 30 before the admin's home shows.</td><td>A beacon under 300 modules; a storefront page under 4 MB; a product view asks 3 questions, the admin's home 10; budgets hold each.</td></tr>
+        <tr><td>Scheduled work</td><td><span class="chip serious"><i></i>D</span></td><td>37,000 runs a day that find nothing, and a 564 MB log of them.</td><td>Under 1,000 route calls and 3,000 job runs a day while nothing waits; an idle round under 20 statements; a week of log.</td></tr>
+        <tr><td>The database</td><td><span class="chip warning"><i></i>C</span></td><td>Careful table by table, but the hottest reads cannot use their index and whole pages are read to find a title.</td><td>No hot read scans past an index; no read fetches a document to pick a field; nothing redundant or dead; growth held.</td></tr>
+        <tr><td>AI calls</td><td><span class="chip warning"><i></i>C</span></td><td>The shopper chat is lean. The AI manager sends about 40,000 tokens on every call, up to 11 times a turn.</td><td>A round under 60,000 characters with its fixed part cached; a quick model for small jobs; a test holds the size.</td></tr>
+        <tr><td>The product's surface</td><td><span class="chip"><i></i>not graded</span></td><td>Before opening every feature is unused, so use cannot be judged. A few things are built twice.</td><td>A feature a store has not switched on costs that store nothing; one of each engine; one Kaizena Flow site.</td></tr>
+        <tr><td>The written rules</td><td><span class="chip warning"><i></i>C</span></td><td>Every session loads 11,000 tokens of which a typical change needs a few hundred.</td><td>Under 10 KB of standing rules; a file's rule loaded with the file; a ceiling holds it.</td></tr>
+        <tr><td>Page builder's model, styles, interface text, tests and build, server functions</td><td><span class="chip"><i></i>being audited</span></td><td>Their reviewers are running now.</td><td>Set when they report.</td></tr>
+      </tbody>
+    </table></div>
+    <p class="muted">Nothing is slow or broken today: the platform is not open, the database is idle and pages answer quickly. What is at stake at opening is that each cause grows with every store, every visit and every feature. Before opening is the cheapest time to remove them: there is no real data to move and nobody to disturb.</p>
+  </section>
+
+  <section>
+    <div class="head"><div class="eyebrow">The plan</div><h2>Five phases, 38 steps, one goal: an A in every area</h2>
+      <p class="muted">Each step names the findings it closes and a check that says when it is done. The first phase is small, safe and can be measured from production the day after.</p></div>
+    <ol class="phases">
+      <li><div class="ph"><span class="eyebrow">Phase 0 · 12 steps, 9 small</span><h3>Stop the work done for nobody</h3></div>
+        <ul>
+          <li>Cut the two import hubs <span class="chip">1,890 → 639 modules</span></li>
+          <li>Wake the per-minute routes only when work waits <span class="chip">12,960 → under 1,500 calls a day</span></li>
+          <li>Give each job its own period, skip unused features <span class="chip">24,192 → under 9,000 runs a day</span></li>
+          <li>Prune the scheduler's log <span class="chip">731 → under 200 MB</span></li>
+          <li>Read one page, not all of them <span class="chip">the costliest app query</span></li>
+          <li>Let the store's index serve the hottest reads <span class="chip">1.1 M full scans</span></li>
+          <li>Stop asking for what does not change <span class="chip">560,000 slug lookups</span></li>
+          <li>Stop prefetching what nobody opens <span class="chip">cart: 42 → under 15 requests</span></li>
+          <li>Take three stray imports off every admin screen <span class="chip">1.28 → under 0.8 MB</span></li>
+          <li>Load the image library on use · end the prefetch loop · let the CDN keep shared answers</li>
+        </ul></li>
+      <li><div class="ph"><span class="eyebrow">Phase 1 · 6 steps</span><h3>Budgets, so it stays removed</h3></div>
+        <ul>
+          <li>The measurements become commands</li>
+          <li>A budget for what a function loads, for every route's scripts and document, for database questions per page and per round of jobs, for an AI call, for the standing rules</li>
+          <li>A budget for the surface: a new page, table, job or AI tool says who asked for it and what switch it sits behind</li>
+        </ul></li>
+      <li><div class="ph"><span class="eyebrow">Phase 2 · 10 steps</span><h3>Load on demand</h3></div>
+        <ul>
+          <li>Give each area its own words <span class="chip">2.9 MB off every non-admin route</span></li>
+          <li>Serve store pages from their static shell <span class="chip">home document 135 → under 60 KB, no function run</span></li>
+          <li>A product view asks for what changes per view <span class="chip">18 → 3 questions</span></li>
+          <li>Editors load when they are drawn <span class="chip">builder 3.3 → under 2.2 MB</span></li>
+          <li>A lighter admin shell and home <span class="chip">30 → 10 questions</span></li>
+          <li>A smaller AI manager round <span class="chip">160,000 → under 60,000 characters</span></li>
+          <li>Caches that outlive a deploy · the remaining import hubs · jobs that find work without loading it · styles and parts per route</li>
+        </ul></li>
+      <li><div class="ph"><span class="eyebrow">Phase 3 · 5 steps · your decisions</span><h3>Cost follows use, and one of each</h3></div>
+        <ul>
+          <li>A feature costs nothing until a store uses it: no job, no code, no AI tool</li>
+          <li>One Kaizena Flow site, not two</li>
+          <li>One way to model the platform, now that it has a store of its own</li>
+          <li>One engine for one job: order rules and Workflows, campaigns and discount codes, four reward ledgers</li>
+          <li>Decide what opens on day one: the developer platform's public handlers</li>
+        </ul></li>
+      <li><div class="ph"><span class="eyebrow">Phase 4 · 5 steps</span><h3>Tidy, and finish the review</h3></div>
+        <ul>
+          <li>The database's loose ends, including a leftover schema of 34 tables</li>
+          <li>Families with one core each · unused code by tier · written rules a session can afford</li>
+          <li>Audit the 11 areas that were not, and give the 139 unchecked findings their second look</li>
+        </ul></li>
+    </ol>
+  </section>
+
+  <section>
+    <div class="head"><div class="eyebrow">Waiting for you</div><h2>Ten questions only the owner can answer</h2></div>
+    <ol class="questions">
+      <li>Now that Kaizena Flow has a store of its own, may a store feature serve the platform through it, with a twin built only where there is no store form?</li>
+      <li>Which feature groups should a new store start with switched on? A product choice, not a saving.</li>
+      <li>May the old Kaizena Flow pages without a store be removed, now that the store serves the site?</li>
+      <li>For each pair of overlapping engines, which stays? Before opening, no data needs moving.</li>
+      <li>Do the developer platform's public handlers open on day one, or behind a switch until someone asks?</li>
+      <li>May a new table, job or AI tool have to name the gate that keeps it free for stores that do not use it?</li>
+      <li>May pushes share a deploy, so cached pages live longer?</li>
+      <li>May <code>CLAUDE.md</code> shrink to a small core with rules loaded by path?</li>
+      <li>May an AI manager round start with the core tools and load the rest on need?</li>
+      <li>Should this plan get a pointer in <code>CLAUDE.md</code>, as the code review has?</li>
+    </ol>
+  </section>
+
+
+  <footer>
+    <span>Method: a production build of commit 0bd814c, served locally with the demo catalogue; 32 pages measured in Chromium with a cold cache; Next's bundle analyzer for the module lists; production's statistics views for the database; own scans for unused and copied code. Findings without a second check are one reviewer's reading; the document marks which.</span>
+    <span>Sizes are before compression unless a line says otherwise. Compressed, a storefront page's scripts are 270 to 330 KB and an admin screen's about 490 KB.</span>
+  </footer>
+</div>
+<div id="tt" hidden></div>
+
+<script>
+const fmt = (n) => n.toLocaleString("en-GB");
+const tt = document.getElementById("tt");
+function showTip(title, lines, x, y) {
+  tt.replaceChildren();
+  const b = document.createElement("b"); b.textContent = title; tt.append(b);
+  for (const l of lines) {
+    const r = document.createElement("div"); r.className = "r";
+    const k = document.createElement("i"); k.style.background = l.color || "transparent";
+    const v = document.createElement("strong"); v.textContent = l.value;
+    const s = document.createElement("span"); s.textContent = l.label;
+    r.append(k, v, s); tt.append(r);
+  }
+  tt.hidden = false;
+  const w = tt.offsetWidth, h = tt.offsetHeight;
+  tt.style.left = Math.max(8, Math.min(x + 14, innerWidth - w - 8)) + "px";
+  tt.style.top = Math.max(8, Math.min(y + 14, innerHeight - h - 8)) + "px";
+}
+const hideTip = () => { tt.hidden = true; };
+
+/** Horizontal bars, one row per item, stacked by series; the total (or a given text) sits at the bar's end. */
+function bars(id, spec) {
+  const root = document.getElementById(id);
+  const max = Math.max(...spec.rows.map((r) => spec.series.reduce((n, s) => n + (r.v[s.key] || 0), 0)));
+  const legend = root.querySelector(".legend");
+  if (legend) for (const s of spec.series) {
+    const item = document.createElement("span"); const sw = document.createElement("i"); sw.style.background = s.color;
+    item.append(sw, document.createTextNode(s.label)); legend.append(item);
+  }
+  const box = root.querySelector(".bars");
+  let group = null;
+  for (const r of spec.rows) {
+    if (r.group && r.group !== group) { group = r.group; const g = document.createElement("div"); g.className = "group"; g.textContent = group; box.append(g); }
+    const total = spec.series.reduce((n, s) => n + (r.v[s.key] || 0), 0);
+    const row = document.createElement("div"); row.className = "row"; row.tabIndex = 0;
+    const name = document.createElement("div"); name.className = "name"; name.textContent = r.label;
+    const track = document.createElement("div"); track.className = "track";
+    const stack = document.createElement("div"); stack.className = "stack";
+    stack.style.width = `calc((100% - ${spec.room || 92}px) * ${(spec.normalize ? 1 : total / max).toFixed(4)})`;
+    for (const s of spec.series) {
+      const val = r.v[s.key] || 0; if (!val) continue;
+      const seg = document.createElement("span"); seg.className = "seg"; seg.style.background = s.color; seg.style.flex = `${val} 1 0`;
+      stack.append(seg);
+    }
+    const tip = document.createElement("span"); tip.className = "tipv"; tip.textContent = r.end || `${fmt(total)} ${spec.unit}`;
+    track.append(stack, tip); row.append(name, track); box.append(row);
+    const lines = spec.series.map((s) => ({ color: s.color, value: `${fmt(r.v[s.key] || 0)} ${spec.unit}`, label: s.label + (spec.share ? ` (${Math.round(((r.v[s.key] || 0) / total) * 100)}%)` : "") })).concat(r.extra || []);
+    row.setAttribute("aria-label", `${r.label}: ${lines.map((l) => `${l.label} ${l.value}`).join(", ")}`);
+    row.addEventListener("pointermove", (e) => showTip(r.label, lines, e.clientX, e.clientY));
+    row.addEventListener("pointerleave", hideTip);
+    row.addEventListener("focus", () => { const b = row.getBoundingClientRect(); showTip(r.label, lines, b.left + 40, b.bottom - 8); });
+    row.addEventListener("blur", hideTip);
+  }
+  // The same numbers as a table.
+  const wrap = root.querySelector("details .scroll");
+  if (wrap) {
+    const t = document.createElement("table"); const head = t.createTHead().insertRow();
+    for (const h of [spec.rowHead || "Page", ...spec.series.map((s) => `${s.label} (${spec.unit})`), ...(spec.series.length > 1 ? [`Total (${spec.unit})`] : []), ...(spec.cols || []).map((c) => c.label)]) { const th = document.createElement("th"); th.textContent = h; if (h !== (spec.rowHead || "Page")) th.className = "n"; head.append(th); }
+    const body = t.createTBody();
+    for (const r of spec.rows) {
+      const tr = body.insertRow(); tr.insertCell().textContent = r.label;
+      const total = spec.series.reduce((n, s) => n + (r.v[s.key] || 0), 0);
+      for (const s of spec.series) { const c = tr.insertCell(); c.className = "n"; c.textContent = fmt(r.v[s.key] || 0); }
+      if (spec.series.length > 1) { const c = tr.insertCell(); c.className = "n"; c.textContent = fmt(total); }
+      for (const col of spec.cols || []) { const c = tr.insertCell(); c.className = "n"; c.textContent = col.get(r); }
+    }
+    wrap.append(t);
+  }
+}
+const css = (v) => `var(${v})`;
+
+const PAGES = [
+  { label: "Home", group: "A store, on a phone", scripts: 834, ran: 361, gz: 273, doc: 135, rsc: 94, markup: 33, rest: 8 },
+  { label: "Product", group: "A store, on a phone", scripts: 883, ran: 377, gz: 295, doc: 137, rsc: 90, markup: 38, rest: 9 },
+  { label: "All products", group: "A store, on a phone", scripts: 851, ran: 390, gz: 273, doc: 166, rsc: 112, markup: 48, rest: 6 },
+  { label: "Cart, empty", group: "A store, on a phone", scripts: 938, ran: 314, gz: 324, doc: 104, rsc: 74, markup: 25, rest: 5 },
+  { label: "Checkout, empty", group: "A store, on a phone", scripts: 1098, ran: 333, gz: 324, doc: 104, rsc: 74, markup: 25, rest: 5 },
+  { label: "Front page", group: "Kaizena Flow's own site", scripts: 1173, ran: 273, gz: 400, doc: 39, rsc: 23, markup: 11, rest: 5 },
+  { label: "Docs", group: "Kaizena Flow's own site", scripts: 517, ran: 208, gz: 165, doc: 46, rsc: 32, markup: 10, rest: 4 },
+  { label: "Sign-in", group: "The admin, signed in as an owner", scripts: 753, ran: 240, gz: 267, doc: 34, rsc: 27, markup: 6, rest: 1 },
+  { label: "Store home", group: "The admin, signed in as an owner", scripts: 1512, ran: 577, gz: 494, doc: 162, rsc: 116, markup: 44, rest: 2 },
+  { label: "Orders", group: "The admin, signed in as an owner", scripts: 1510, ran: 562, gz: 504, doc: 160, rsc: 104, markup: 54, rest: 2 },
+  { label: "Settings", group: "The admin, signed in as an owner", scripts: 1430, ran: 522, gz: 477, doc: 159, rsc: 87, markup: 69, rest: 3 },
+  { label: "Pages list", group: "The admin, signed in as an owner", scripts: 2358, ran: 729, gz: 762, doc: 273, rsc: 174, markup: 96, rest: 3 },
+  { label: "Product editor", group: "The admin, signed in as an owner", scripts: 2627, ran: 1036, gz: 799, doc: 416, rsc: 319, markup: 95, rest: 2 },
+  { label: "Page builder", group: "The admin, signed in as an owner", scripts: 3761, ran: 1632, gz: 1145, doc: 572, rsc: 392, markup: 172, rest: 8 },
+];
+bars("c-scripts", {
+  unit: "KB", share: true,
+  series: [{ key: "ran", label: "Ran before the page was idle", color: css("--s1") }, { key: "idle", label: "Loaded, not run", color: css("--rest") }],
+  rows: PAGES.map((p) => ({ label: p.label, group: p.group, v: { ran: p.ran, idle: p.scripts - p.ran }, extra: [{ value: `${fmt(p.gz)} KB`, label: "on the wire, compressed" }] })),
+  cols: [{ label: "Not run", get: (r) => `${Math.round((r.v.idle / (r.v.ran + r.v.idle)) * 100)}%` }],
+});
+bars("c-docs", {
+  unit: "KB", share: true,
+  series: [{ key: "markup", label: "Markup the visitor sees", color: css("--s1") }, { key: "rsc", label: "The same page as data, for the browser's scripts", color: css("--s2") }, { key: "rest", label: "Styles and other inline code", color: css("--s3") }],
+  rows: PAGES.map((p) => ({ label: p.label, group: p.group, v: { markup: p.markup, rsc: p.rsc, rest: p.rest } })),
+});
+const ROUTES = [
+  { label: "Health check", mods: 308, mb: 1.2 },
+  { label: "Visit beacon (every page view)", mods: 1890, mb: 10.5 },
+  { label: "Timed route, every minute", mods: 1891, mb: 10.5 },
+  { label: "Stock for product tiles", mods: 1893, mb: 10.5 },
+  { label: "Five-minute dispatcher", mods: 2019, mb: 11.1 },
+  { label: "Admin sign-in", mods: 2145, mb: 11.3 },
+  { label: "Admin store home", mods: 2414, mb: 12.3 },
+  { label: "Storefront home", mods: 2419, mb: 11.9 },
+  { label: "Storefront product", mods: 2516, mb: 12.3 },
+  { label: "Admin page builder", mods: 2852, mb: 14.9 },
+];
+bars("c-server", {
+  unit: "modules", room: 190, rowHead: "Route",
+  series: [{ key: "mods", label: "Source modules", color: css("--s1") }],
+  rows: ROUTES.map((r) => ({ label: r.label, v: { mods: r.mods }, end: `${fmt(r.mods)} · ${r.mb.toFixed(1)} MB`, mb: r.mb, extra: [{ value: `${r.mb.toFixed(1)} MB`, label: "of built server code" }] })),
+  cols: [{ label: "Built code (MB)", get: (r) => r.mb.toFixed(1) }],
+});
+bars("c-spike", {
+  unit: "modules", room: 190, rowHead: "State",
+  series: [{ key: "mods", label: "Source modules", color: css("--s1") }],
+  rows: [
+    { label: "Today", v: { mods: 1890 }, end: "1,890 · 10.5 MB", mb: 10.5, extra: [{ value: "10.5 MB", label: "of built server code" }] },
+    { label: "With the two edits", v: { mods: 639 }, end: "639 · 1.2 MB", mb: 1.2, extra: [{ value: "1.2 MB", label: "of built server code" }] },
+  ],
+  cols: [{ label: "Built code (MB)", get: (r) => r.mb.toFixed(1) }],
+});
+bars("c-db", {
+  unit: "", share: true, normalize: true, room: 150, rowHead: "Kind",
+  series: [{ key: "used", label: "In use", color: css("--s1") }, { key: "never", label: "Never used", color: css("--rest") }],
+  rows: [
+    { label: "Tables: has it ever held a row?", v: { used: 241, never: 245 }, end: "245 of 486 never" },
+    { label: "Indexes: has a query ever scanned it?", v: { used: 983, never: 1006 }, end: "1,006 of 1,989 never" },
+  ],
+});
+</script>

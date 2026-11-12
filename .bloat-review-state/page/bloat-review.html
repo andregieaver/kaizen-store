@@ -100,29 +100,107 @@ ol.questions { margin: 0; padding-left: 1.4em; display: flex; flex-direction: co
 ol.questions li::marker { font-family: var(--mono); font-size: 0.8rem; color: var(--ink-3); }
 @media (max-width: 640px) { ol.phases > li { grid-template-columns: minmax(0, 1fr); } table.grades td:first-child { white-space: normal; } }
 @media (prefers-reduced-motion: no-preference) { .row .seg { transition: filter .12s; } }
+
+.chip.grade { font-weight: 500; color: var(--ink); min-width: 2.6em; justify-content: center; }
+.chip.ga i { background: var(--good); } .chip.gb i { background: var(--s1); } .chip.gc i { background: var(--warning); } .chip.gd i { background: var(--serious); } .chip.ge i { background: var(--critical); }
+table.ladder td, table.ladder th { text-align: center; padding-right: 10px; } table.ladder td:first-child, table.ladder th:first-child { text-align: left; font-weight: 500; }
+ol.phases .ph p { font-size: 0.9rem; color: var(--ink-2); }
+ol.phases .sid { font-family: var(--mono); font-size: 0.78rem; color: var(--ink-3); min-width: 2.6em; display: inline-block; }
+ol.phases li.more { color: var(--ink-3); font-size: 0.86rem; }
+ol.phases ul li { display: flex; gap: 10px; align-items: baseline; } ol.phases ul li .sid { flex: none; }
+.causes > div:last-child { grid-column: 1 / -1; } .causes > div:last-child p { max-width: 70ch; }
+details.qs summary { cursor: pointer; font-family: var(--display); font-weight: 600; font-size: 1.02rem; padding: 6px 0; }
+details.qs ol { margin: 10px 0 0; padding-left: 2.4em; display: flex; flex-direction: column; gap: 9px; max-width: 78ch; color: var(--ink-2); font-size: 0.95rem; }
+details.qs li strong { color: var(--ink); font-weight: 600; }
 </style>
 
 <div class="page">
   <header class="top">
-    <div class="eyebrow">Review · 11 November 2026 · commit 0bd814c</div>
+    <div class="eyebrow">Review · 11 and 12 November 2026 · commit 0bd814c</div>
     <h1>Is Kaizena Flow bloated?</h1>
-    <p class="lede">Yes, but not where bloat usually hides. The code itself is tidy: no file is unreachable, one export in a hundred is unused and one line in a hundred is a copy. The weight is in what gets loaded and run without need. A shopper's browser loads scripts of which more than half never run. Every server function carries the same ten megabytes, whatever its job. A feature costs the same whether or not a store uses it. And about 37,000 scheduled runs a day look for work that is almost never there.</p>
-    <p class="note" id="status-note"><strong>The platform is not open yet.</strong> The 60 stores are the team's own demo and test stores, so an unused feature or an empty table is expected and is not a finding. What counts is what a feature costs a store that does not use it, and that grows with every store that signs up. The full review and its 38-step plan are in the repository at <code>docs/audits/bloat-review-2026-11.md</code>. The second reviewers are running now; 32 of 171 findings have had their second check so far, among them every one behind the plan's first phase.</p>
+    <p class="lede">Not in what it is. In how it loads, asks and checks. The platform is carefully built and not open yet: 0.35% of the code is dead, 1% is a copy, and a feature a store does not use costs it close to nothing. The waste has five causes, and almost all of it is cheap to remove before the doors open. The plan's goal is an A in every area.</p>
+    <p class="note" id="status-note">25 areas of the system were each read by one reviewer, challenged by a second and planned by a third: <strong>353 findings stand and 22 claims were refuted</strong>, several of them this review's own first figures. A panel then set each area's bar for an A in numbers and wove one plan of <strong>134 steps</strong>. The full review is in the repository at <code>docs/audits/bloat-review-2026-11.md</code>.</p>
   </header>
 
   <section>
-    <div class="head"><div class="eyebrow">Scale</div><h2>What has been built, and what uses it today</h2></div>
-    <div class="tiles">
-      <div class="tile"><span class="v">1.09 M</span><span class="l">lines of TypeScript</span><span class="s">768 K source · 326 K tests</span></div>
-      <div class="tile"><span class="v">828</span><span class="l">routes</span><span class="s">560 pages · 268 handlers</span></div>
-      <div class="tile"><span class="v">486</span><span class="l">database tables</span><span class="s">617 functions · 391 triggers</span></div>
-      <div class="tile"><span class="v">60</span><span class="l">demo and test stores, before opening</span><span class="s">102 test orders</span></div>
-    </div>
-    <p class="muted">Read from the repository and from production's own statistics on 11 November. The platform is built ahead of its opening, which is as it should be. The review's subject is what that size costs on every request, every build and every five minutes, whether or not a store uses it.</p>
+    <div class="head"><div class="eyebrow">The verdict, and the goal</div><h2>3 areas are a D today, 10 a C, none an A. The plan takes every one to an A.</h2>
+      <p class="muted">An A means nothing in the area is loaded, fetched, run or shown without need, beyond a small stated tolerance, and a test or a production figure holds each number so it cannot slip back unseen. No area is an A today, the tidy ones included, because almost no number is held by a check. A grade is raised only for fixes seen working in production.</p></div>
+    <div class="scroll"><table class="grades">
+      <thead><tr><th>Area</th><th>Today</th><th>Grade A when</th></tr></thead>
+      <tbody>
+        <tr><td>What a shopper's browser gets</td><td><span class="chip grade gc"><i></i>C</span></td><td>A shopper's first page loads React and Next plus at most 168 KB of the store's own script on a built page (203 to 223 KB where it sells or pays), one document with nothing in it twice, and no more than 350 KB on the wire in all; left alone it fetches at most 6 answers ahead and calls the server for nothing. A themed store in production scores 90 on a slow phone every night, and a check fails on the day any of this slips.</td></tr>
+        <tr><td>What an owner's browser gets</td><td><span class="chip grade gd"><i></i>D</span></td><td>A plain admin screen starts with at most 650 KB of script (447 KB of it is React and Next), a product's editor with at most 1.1 MB and the page builder with at most 1.8 MB; nothing is downloaded for a part the screen does not draw, nine tenths of the words handed to a screen are read, and a screen nobody touches asks the server for nothing but a notice count every ten minutes. Every route sits under a budget that only falls, and owners' real page loads paint within 2.5 seconds.</td></tr>
+        <tr><td>What the server loads and asks</td><td><span class="chip grade gd"><i></i>D</span></td><td>A function loads what its own job needs and little more: about 1 MB for a beacon and for the proxy, 4 to 5 MB for a store page, and a small, counted start for every instance. A page view asks the database only for what changes per view (stock on a product page, nothing on a home page), an admin screen shows its first content after one or two waves of reads, a cached page is drawn again only when something it shows has changed, and a test or a production figure holds each of these numbers.</td></tr>
+        <tr><td>Scheduled work</td><td><span class="chip grade gd"><i></i>D</span></td><td>On a quiet day the scheduler makes at most 1,350 calls and 45,000 statements, none of them per store, and every job runs at the pace of its work, four at a time, inside a time budget. Every scheduled function has a ledger row that shows its work and its failures, due work starts within minutes, and a test or a daily production figure holds each of these.</td></tr>
+        <tr><td>The database</td><td><span class="chip grade gc"><i></i>C</span></td><td>A read or a scheduled run costs what the asking store holds and what has changed, never what the whole platform holds. No statement fetches a document it does not draw, asks twice, writes nothing or runs slow, and a test or a daily production reading holds each of these numbers.</td></tr>
+        <tr><td>The page builder's model and a built page</td><td><span class="chip grade gc"><i></i>C</span></td><td>A built page is sent once and read once: one layout, each part once in the HTML and once in React's payload, only the documents it draws and only the scripts of the parts on it. A publish redraws that page alone, every owner's read stays inside that owner's rows, and tests on pages shaped like real stores' hold each figure.</td></tr>
+        <tr><td>Styles</td><td><span class="chip grade gc"><i></i>C</span></td><td>A shopper's browser loads one stylesheet of at most 135 KB (20.6 KB compressed) with nothing in it that only the admin uses, a store's document carries each style sheet twice and no more, and every colour a public page reads has a value. A test fails, or a figure on the platform's own screen shows it, when any of this slips.</td></tr>
+        <tr><td>Interface text</td><td><span class="chip grade gc"><i></i>C</span></td><td>A shopper's function and scripts carry no admin words, an admin screen is handed the words its parts name and its function loads only the areas it names, a save sends no words again, and a translated language costs what it uses. Each of these is a number that a test fails on, for an English and a Norwegian owner.</td></tr>
+        <tr><td>AI calls</td><td><span class="chip grade gc"><i></i>C</span></td><td>The AI manager's first round is a third of today's size or less (at most 56,000 characters, and a median of 15,000 real tokens a call), at least half of its input comes from the provider's cache, and an eval shows it still finds its tools. Small jobs run on a small model, nothing reads the AI connection or walks the stores when no model is called, and a test or a daily figure holds every agent's size, output and ceiling.</td></tr>
+        <tr><td>The product's surface</td><td><span class="chip grade gc"><i></i>C</span></td><td>A store that uses only the shop sends no statement, makes no call, gets no scheduled work and carries no AI tool for a feature it has off, from the front page to a paid order, and a test walks that road and fails on the next one. Every count of the product's size is held, and nothing is built twice unless the owner chose it in writing.</td></tr>
+        <tr><td>The code itself</td><td><span class="chip grade gc"><i></i>C</span></td><td>Nothing in the code is kept without a caller or written twice beyond a short list with reasons: no unused export, at most five small twin pairs, exact copies under half a percent, one site, one of each helper, no package or stored file that is not used, and no library or picture sent that the screen does not need. Eight checks, each proven by a planted mistake, fail the build when one of these numbers rises.</td></tr>
+        <tr><td>Tests, CI and the build</td><td><span class="chip grade gc"><i></i>C</span></td><td>One push lints, checks and type-checks a commit once and builds it twice in CI; the gate before a deploy takes 90 seconds, a job a release waits for 8 minutes, the unit run 3 and a half, and a session's checks before a push 5. The production build keeps a quarter of its machine free, and a failing check holds every one of these numbers.</td></tr>
+        <tr><td>The written rules</td><td><span class="chip grade gc"><i></i>C</span></td><td>A session starts with at most 11 KB of standing rules, finds any rule, decision or tracker row with one search that shows its text, and is never told to read more than 20 KB before it starts. A check on every push, docs-only ones too, holds each size, and a sample of real sessions shows a code change takes in at most 25 KB of rules and docs.</td></tr>
+      </tbody>
+    </table></div>
   </section>
 
   <section>
-    <div class="head"><div class="eyebrow">Measured in a browser</div><h2>More than half of the script a page loads never runs</h2>
+    <div class="head"><div class="eyebrow">The ladder</div><h2>How each area climbs, phase by phase</h2>
+      <p class="muted">As the plan stands some areas stop at a B: their challengers named the missing steps, which are being added. The goal does not move.</p></div>
+    <div class="scroll"><table class="ladder">
+      <thead><tr><th>Area</th><th>Today</th><th>After phase 0</th><th>After phase 1</th><th>After phase 2</th><th>After all</th></tr></thead>
+      <tbody>
+        <tr><td>What a shopper's browser gets</td><td><span class="chip grade gc"><i></i>C</span></td><td><span class="chip grade gc"><i></i>C</span></td><td><span class="chip grade gc"><i></i>C</span></td><td><span class="chip grade gb"><i></i>B</span></td><td><span class="chip grade gb"><i></i>B</span></td></tr>
+        <tr><td>What an owner's browser gets</td><td><span class="chip grade gd"><i></i>D</span></td><td><span class="chip grade gc"><i></i>C</span></td><td><span class="chip grade gc"><i></i>C</span></td><td><span class="chip grade gb"><i></i>B</span></td><td><span class="chip grade ga"><i></i>A</span></td></tr>
+        <tr><td>What the server loads and asks</td><td><span class="chip grade gd"><i></i>D</span></td><td><span class="chip grade gc"><i></i>C</span></td><td><span class="chip grade gc"><i></i>C</span></td><td><span class="chip grade gb"><i></i>B</span></td><td><span class="chip grade gb"><i></i>B</span></td></tr>
+        <tr><td>Scheduled work</td><td><span class="chip grade gd"><i></i>D</span></td><td><span class="chip grade gc"><i></i>C</span></td><td><span class="chip grade gc"><i></i>C</span></td><td><span class="chip grade gc"><i></i>C</span></td><td><span class="chip grade gb"><i></i>B</span></td></tr>
+        <tr><td>The database</td><td><span class="chip grade gc"><i></i>C</span></td><td><span class="chip grade gc"><i></i>C</span></td><td><span class="chip grade gb"><i></i>B</span></td><td><span class="chip grade gb"><i></i>B</span></td><td><span class="chip grade gb"><i></i>B</span></td></tr>
+        <tr><td>The page builder's model and a built page</td><td><span class="chip grade gc"><i></i>C</span></td><td><span class="chip grade gc"><i></i>C</span></td><td><span class="chip grade gc"><i></i>C</span></td><td><span class="chip grade gb"><i></i>B</span></td><td><span class="chip grade ga"><i></i>A</span></td></tr>
+        <tr><td>Styles</td><td><span class="chip grade gc"><i></i>C</span></td><td><span class="chip grade gc"><i></i>C</span></td><td><span class="chip grade gc"><i></i>C</span></td><td><span class="chip grade ga"><i></i>A</span></td><td><span class="chip grade ga"><i></i>A</span></td></tr>
+        <tr><td>Interface text</td><td><span class="chip grade gc"><i></i>C</span></td><td><span class="chip grade gc"><i></i>C</span></td><td><span class="chip grade gc"><i></i>C</span></td><td><span class="chip grade gb"><i></i>B</span></td><td><span class="chip grade gb"><i></i>B</span></td></tr>
+        <tr><td>AI calls</td><td><span class="chip grade gc"><i></i>C</span></td><td><span class="chip grade gc"><i></i>C</span></td><td><span class="chip grade gc"><i></i>C</span></td><td><span class="chip grade gb"><i></i>B</span></td><td><span class="chip grade gb"><i></i>B</span></td></tr>
+        <tr><td>The product's surface</td><td><span class="chip grade gc"><i></i>C</span></td><td><span class="chip grade gc"><i></i>C</span></td><td><span class="chip grade gc"><i></i>C</span></td><td><span class="chip grade gb"><i></i>B</span></td><td><span class="chip grade ga"><i></i>A</span></td></tr>
+        <tr><td>The code itself</td><td><span class="chip grade gc"><i></i>C</span></td><td><span class="chip grade gc"><i></i>C</span></td><td><span class="chip grade gb"><i></i>B</span></td><td><span class="chip grade gb"><i></i>B</span></td><td><span class="chip grade gb"><i></i>B</span></td></tr>
+        <tr><td>Tests, CI and the build</td><td><span class="chip grade gc"><i></i>C</span></td><td><span class="chip grade gc"><i></i>C</span></td><td><span class="chip grade gb"><i></i>B</span></td><td><span class="chip grade gb"><i></i>B</span></td><td><span class="chip grade gb"><i></i>B</span></td></tr>
+        <tr><td>The written rules</td><td><span class="chip grade gc"><i></i>C</span></td><td><span class="chip grade gc"><i></i>C</span></td><td><span class="chip grade gc"><i></i>C</span></td><td><span class="chip grade gb"><i></i>B</span></td><td><span class="chip grade ga"><i></i>A</span></td></tr>
+      </tbody>
+    </table></div>
+  </section>
+
+  <section>
+    <div class="head"><div class="eyebrow">Why</div><h2>Five causes explain most of the 353 findings</h2></div>
+    <div class="causes">
+      <div><h3>One import cycle ties the server together</h3><p>229 server modules import each other in a ring, so 559 of 562 pages and the proxy each load the same 10 to 11 MB whatever their job. A few dozen import changes cure it. No feature is removed.</p></div>
+      <div><h3>Pages are drawn and sent more often than needed</h3><p>Every store page view runs a function to place two cart badges. The layout is sent twice in every page. A visitor who does nothing causes 11 to 50 prefetches.</p></div>
+      <div><h3>Every admin screen loads twice the script it needs</h3><p>1.16 MB at the median, where about 0.6 MB will do. Three stray imports put a database client and a validation library on every screen.</p></div>
+      <div><h3>Work is found by asking, data fetched whole</h3><p>13,250 scheduled calls a day find almost nothing. Finding one page reads every page of the store. A product view asks the database 18 times where one answer changes.</p></div>
+      <div><h3>Nothing holds the numbers</h3><p>43 findings are the same finding: no check would notice this growing. The one place with a budget, the storefront's first scripts, is the leanest place in the product.</p></div>
+    </div>
+    <p class="muted">Nothing is slow or broken today: the platform is not open, the database is idle and pages answer quickly. What is at stake at opening is that these causes grow with every store, page, product, order and visit. Before opening is the cheapest time to remove them: there is no real data to move and nobody to disturb.</p>
+  </section>
+
+  <section>
+    <div class="head"><div class="eyebrow">Measured in the build</div><h2>Almost every route carries the whole server</h2>
+      <p class="muted">Next's bundle analyzer lists the source modules behind each route. A route with a small job should load a small set. Only the health check does. On the review's machine a route inside the cycle takes about 1 s and 70 to 80 MB to start cold, against 0.16 s and 14 MB outside it.</p></div>
+    <figure class="chart" id="c-server">
+      <figcaption><b>Source modules a route's server code loads</b><span>modules · megabytes of built code</span></figcaption>
+      <div class="bars"></div>
+      <details class="numbers"><summary>Show the numbers</summary><div class="scroll"></div></details>
+    </figure>
+    <figure class="chart" id="c-spike">
+      <figcaption><b>The visit beacon, before and after two one-line import edits tried in a copy</b><span>source modules</span></figcaption>
+      <div class="bars"></div>
+      <details class="numbers"><summary>Show the numbers</summary><div class="scroll"></div></details>
+    </figure>
+    <div class="reading">
+      <p><strong>The visit beacon, called on every page view, loads 1,890 modules.</strong> It imports one ten-line check through the chat module, which brings the chat, the AI layer and the support desk with it.</p>
+      <p><strong>The trial closed one of two doors.</strong> The reviewers confirmed the beacon's saving and found the admin reaches the same code through two files of its own. Cutting the cycle itself is step by step in phase 0.</p>
+    </div>
+  </section>
+
+  <section>
+    <div class="head"><div class="eyebrow">Measured in a browser</div><h2>More than half of the script a page loads has not run when the page is idle</h2>
       <p class="muted">Each page of the production build was opened once in a fresh browser, left alone until it went quiet, and asked which bytes of its scripts had executed.</p></div>
     <figure class="chart" id="c-scripts">
       <figcaption><b>Script loaded by a page, and how much of it ran</b><span>KB before compression · a visitor who presses nothing</span></figcaption>
@@ -130,201 +208,145 @@ ol.questions li::marker { font-family: var(--mono); font-size: 0.8rem; color: va
       <details class="numbers"><summary>Show the numbers</summary><div class="scroll"></div></details>
     </figure>
     <div class="reading">
-      <p><strong>An empty cart loads 938 KB of script.</strong> A third of it runs. Every storefront page loads between 0.8 and 1.1 MB, with 54 to 70% untouched when the page is idle.</p>
-      <p><strong>Kaizena Flow's own front page is heavier than a store's.</strong> It loads 1.17 MB and runs 23% of it.</p>
-      <p><strong>Every admin screen starts at 1.4 MB.</strong> The page builder loads 3.8 MB. The admin's home still carries 299 KB of interface text, 113 KB of validation code and about 225 KB of database client that it uses only to sign in.</p>
+      <p><strong>A shopper's page is the lean part.</strong> Its first scripts are 680 KB, of which 447 KB is the framework itself; the store's own code is about 80 KB compressed.</p>
+      <p><strong>The admin is where the weight is.</strong> The median of 432 signed-in screens is 1.16 MB. Seven small import changes take it to about 0.6 MB in a simulation on the built files.</p>
+      <p><strong>Kaizena Flow's own front page fetches 437 KB of admin scripts</strong> that a visitor cannot use.</p>
     </div>
   </section>
 
   <section>
     <div class="head"><div class="eyebrow">Measured in a browser</div><h2>Two thirds of every document is the page sent a second time</h2>
-      <p class="muted">A page arrives as markup, then again as data so the browser can wake its interactive parts. That second copy should be small. Here it is the larger part.</p></div>
+      <p class="muted">A page arrives as markup, then again as data so the browser can wake its interactive parts. On a store page that second copy is made by a function on every view, to place two cart badges and a country hint, and it carries the whole layout twice.</p></div>
     <figure class="chart" id="c-docs">
       <figcaption><b>What each HTML document is made of</b><span>KB before compression</span></figcaption>
       <div class="legend"></div><div class="bars"></div>
       <details class="numbers"><summary>Show the numbers</summary><div class="scroll"></div></details>
     </figure>
     <div class="reading">
-      <p><strong>An empty cart's document is 104 KB,</strong> of which 74 KB is data for the browser. There is nothing in the cart.</p>
-      <p><strong>The page builder's document is 572 KB</strong> and the product editor's 416 KB, before a single script is counted.</p>
+      <p><strong>On the demo store's home page 98 of 138 KB</strong> comes from that function. Served from its static shell, the page would need no function run for a visitor without a cart.</p>
+      <p><strong>The product editor hands the browser 238 KB of interface text</strong> and its parts read 79 KB of it.</p>
     </div>
   </section>
 
   <section>
-    <div class="head"><div class="eyebrow">Measured in the build</div><h2>Every server function carries almost the whole application</h2>
-      <p class="muted">Next's bundle analyzer lists the source modules behind each route. A route with a small job should load a small set. Only the health check does.</p></div>
-    <figure class="chart" id="c-server">
-      <figcaption><b>Source modules a route's server code loads</b><span>modules · megabytes of built code</span></figcaption>
-      <div class="bars"></div>
-      <details class="numbers"><summary>Show the numbers</summary><div class="scroll"></div></details>
-    </figure>
-    <div class="reading">
-      <p><strong>The visit beacon, called on every page view, loads 1,890 modules.</strong> Among them are the admin's whole interface text, the AI manager's tools and the full database schema. The health check shows what a lean route looks like: 308.</p>
-      <p><strong>Another 34 MB of files travel beside every function:</strong> a 13 MB product taxonomy in four languages and a 19 MB image library, whether the route reads them or not.</p>
-    </div>
-  </section>
-
-  <section>
-    <div class="head"><div class="eyebrow">Read from production</div><h2>Half the database is waiting for opening day</h2>
-      <p class="muted">From Postgres's own counters, running since 25 August. No personal data was read.</p></div>
-    <figure class="chart" id="c-db">
-      <figcaption><b>Tables and indexes in production, by whether anything has touched them</b><span>share of each kind</span></figcaption>
-      <div class="legend"></div><div class="bars"></div>
-      <details class="numbers"><summary>Show the numbers</summary><div class="scroll"></div></details>
-    </figure>
-    <div class="reading">
-      <p><strong>245 of 486 tables have never held a row.</strong> Before opening that is expected, and it says nothing about whether a feature is wanted. It does show which work is done for nobody: every job, query and AI tool tied to those tables runs today as if they were full.</p>
-      <p><strong>The orders table has 34 indexes for 102 orders.</strong> With tables this small the database often skips an index, so "never scanned" overstates a little; each one is still updated on every write.</p>
-    </div>
-  </section>
-
-  <section>
-    <div class="head"><div class="eyebrow">Read from production</div><h2>37,000 scheduled runs a day, mostly finding nothing</h2></div>
+    <div class="head"><div class="eyebrow">Read from production</div><h2>13,250 scheduled calls a day, nearly all finding nothing</h2>
+      <p class="muted">From Postgres's own counters since 25 August and the job ledger. No personal data was read. With no shoppers yet, these are the fixed floor: what the platform does when nobody is there.</p></div>
     <div class="tiles">
-      <div class="tile"><span class="v">12,960</span><span class="l">function calls a day from nine routes woken every minute</span><span class="s">seven of nine last ran 0 to 1 ms</span></div>
-      <div class="tile"><span class="v">24,192</span><span class="l">job runs a day: 84 jobs, every five minutes</span><span class="s">about 12.5 s of database work per round</span></div>
-      <div class="tile"><span class="v">564 MB</span><span class="l">of the 731 MB database is the scheduler's own log of those runs</span><span class="s">nothing prunes it</span></div>
-      <div class="tile"><span class="v">1.1 M</span><span class="l">full scans of a 1,945-row table of cookie scans</span><span class="s">962 M rows read</span></div>
+      <div class="tile"><span class="v">13,250</span><span class="l">scheduled calls a day</span><span class="s">about 170,000 statements</span></div>
+      <div class="tile"><span class="v">564 MB</span><span class="l">of the 731 MB database is the scheduler's own log</span><span class="s">nothing prunes it</span></div>
+      <div class="tile"><span class="v">79,778</span><span class="l">times every page of a store was read whole to find one</span><span class="s">the costliest app query</span></div>
+      <div class="tile"><span class="v">560,090</span><span class="l">lookups of one store's address, with no shoppers</span><span class="s">it never changes</span></div>
     </div>
-    <figure class="chart">
-      <figcaption><b>Where the database's time goes</b><span>statements by total time since 25 August</span></figcaption>
-      <div class="scroll"><table>
-        <thead><tr><th>What the statement does</th><th class="n">Calls</th><th class="n">Total</th><th class="n">Each</th></tr></thead>
-        <tbody>
-          <tr><td>The scheduler calling the app's timed routes</td><td class="n">352,514</td><td class="n">3,974 s</td><td class="n">11.3 ms</td></tr>
-          <tr><td>Every published page of one type, with its whole content (29 rows a call)</td><td class="n">79,778</td><td class="n">781 s</td><td class="n">9.8 ms</td></tr>
-          <tr><td>Where each picture is used, for the media library</td><td class="n">1,831</td><td class="n">266 s</td><td class="n">145 ms</td></tr>
-          <tr><td>AI cost, summed again from the usage log</td><td class="n">8,514</td><td class="n">351 s</td><td class="n">41 ms</td></tr>
-          <tr><td>Scanning every page's content for one component</td><td class="n">68,878</td><td class="n">121 s</td><td class="n">1.8 ms</td></tr>
-          <tr><td>Every published theme, with its whole snapshot</td><td class="n">35,101</td><td class="n">101 s</td><td class="n">2.9 ms</td></tr>
-          <tr><td>Bookkeeping: one write per job per run</td><td class="n">565,049</td><td class="n">84 s</td><td class="n">0.15 ms</td></tr>
-        </tbody>
-      </table></div>
-    </figure>
   </section>
 
   <section>
-    <div class="head"><div class="eyebrow">Also measured</div><h2>What is not bloated</h2>
-      <p class="muted">A review should say where things are well made. The usual suspects came back clean.</p></div>
+    <div class="head"><div class="eyebrow">Checked, and found in good order</div><h2>What is not bloated</h2>
+      <p class="muted">A review should say where things are well made. The usual suspects came back clean, and an unused feature is no finding before opening.</p></div>
     <div class="tiles">
-      <div class="tile"><span class="v">0</span><span class="l">source files nothing reaches</span><span class="s">of 4,133 · 42 reached only by tests</span></div>
-      <div class="tile"><span class="v">1.0%</span><span class="l">of exports are unused</span><span class="s">263 of 25,753</span></div>
-      <div class="tile"><span class="v">1.1%</span><span class="l">of code lines are exact copies</span><span class="s">5,423 of 472,550</span></div>
-      <div class="tile"><span class="v">0</span><span class="l">fonts or third-party scripts on the demo storefront</span><span class="s">budgets already hold first scripts</span></div>
+      <div class="tile"><span class="v">0.35%</span><span class="l">of source lines have no caller</span><span class="s">about 2,700 of 772,000</span></div>
+      <div class="tile"><span class="v">1.0%</span><span class="l">of code is an exact copy</span><span class="s">4.75% with every name normalised</span></div>
+      <div class="tile"><span class="v">51</span><span class="l">runtime packages, every one used</span><span class="s">heavy ones load on the press that needs them</span></div>
+      <div class="tile"><span class="v">340</span><span class="l">bytes a block in a stored page</span><span class="s">the page model is lean</span></div>
+      <div class="tile"><span class="v">29</span><span class="l">links in a new shop's Basic view</span><span class="s">an unused feature costs close to nothing</span></div>
+      <div class="tile"><span class="v">0</span><span class="l">snapshot tests</span><span class="s">326 K lines of tests that do not repeat each other</span></div>
     </div>
   </section>
 
-
   <section>
-    <div class="head"><div class="eyebrow">Tried in a copy</div><h2>Two one-line edits took a route from 1,890 modules to 639</h2>
-      <p class="muted">The visit beacon imports one small check through the chat module, which brings the chat, the AI layer and the support desk with it. And the database client is handed all 481 table definitions for a query builder nothing uses. Both were changed in a throwaway copy and measured again.</p></div>
-    <figure class="chart" id="c-spike">
-      <figcaption><b>The visit beacon's server code, before and after the two edits</b><span>source modules</span></figcaption>
-      <div class="bars"></div>
-      <details class="numbers"><summary>Show the numbers</summary><div class="scroll"></div></details>
-    </figure>
-  </section>
-
-  <section>
-    <div class="head"><div class="eyebrow">The verdict</div><h2>Four causes explain most of the 171 findings</h2></div>
-    <div class="causes">
-      <div><h3>A few imports tie everything to everything</h3><p>One helper imported through a heavy module, one catalogue object that 602 files import, one schema handed to a client that never reads it. Every route pays for all of it.</p></div>
-      <div><h3>Work is found by asking, not by being told</h3><p>Routes woken every minute to look, pages read whole to find a title, the same store slug asked for 560,000 times.</p></div>
-      <div><h3>An idle feature is not free</h3><p>A feature costs the same whether or not a store uses it: its job runs, its tools go to the AI, its code loads. Little for one store; it multiplies with every store that signs up.</p></div>
-      <div><h3>Nothing weighs a change</h3><p>The storefront's first scripts have a budget, and the storefront is the leanest part. Nothing else has one. 21 findings are this one finding.</p></div>
-    </div>
-    <div class="goal">
-      <h3>The goal: an A in every area</h3>
-      <p>The plan is done when every area is an A, not when its steps are ticked. An A means nothing in the area is loaded, fetched, run or shown without need, and a test or a production figure holds each measure so it cannot slip back unseen. A grade is raised only for fixes seen working in production.</p>
-    </div>
-    <div class="scroll"><table class="grades">
-      <thead><tr><th>Area</th><th>Today</th><th>Why</th><th>Grade A when</th></tr></thead>
-      <tbody>
-        <tr><td>The code itself</td><td><span class="chip good"><i></i>A</span></td><td>No unreachable file, 1% unused exports, 1.1% copies, every package used.</td><td>It stays so, with the two scans run as commands.</td></tr>
-        <tr><td>What a shopper's browser gets</td><td><span class="chip warning"><i></i>C</span></td><td>Budgets held, no third-party script. But over half the script never runs, and every view runs a function that sends the page twice.</td><td>A store page costs a visitor without a cart no function run; the home document is under 60 KB; under 45% of script unused when idle; under 12 requests after load; a budget on every route.</td></tr>
-        <tr><td>What an owner's browser gets</td><td><span class="chip serious"><i></i>D</span></td><td>1.4 MB on every admin screen, 3.8 MB in the page builder; three stray imports put 481 KB on every screen.</td><td>A plain screen under 0.7 MB of script and 100 KB of document; editors load when opened (the builder under 2 MB); prefetch on intent; a budget on all 449 routes.</td></tr>
-        <tr><td>What the server loads and asks</td><td><span class="chip serious"><i></i>D</span></td><td>10 to 12 MB per function whatever its job; 18 database questions for one product view, 30 before the admin's home shows.</td><td>A beacon under 300 modules; a storefront page under 4 MB; a product view asks 3 questions, the admin's home 10; budgets hold each.</td></tr>
-        <tr><td>Scheduled work</td><td><span class="chip serious"><i></i>D</span></td><td>37,000 runs a day that find nothing, and a 564 MB log of them.</td><td>Under 1,000 route calls and 3,000 job runs a day while nothing waits; an idle round under 20 statements; a week of log.</td></tr>
-        <tr><td>The database</td><td><span class="chip warning"><i></i>C</span></td><td>Careful table by table, but the hottest reads cannot use their index and whole pages are read to find a title.</td><td>No hot read scans past an index; no read fetches a document to pick a field; nothing redundant or dead; growth held.</td></tr>
-        <tr><td>AI calls</td><td><span class="chip warning"><i></i>C</span></td><td>The shopper chat is lean. The AI manager sends about 40,000 tokens on every call, up to 11 times a turn.</td><td>A round under 60,000 characters with its fixed part cached; a quick model for small jobs; a test holds the size.</td></tr>
-        <tr><td>The product's surface</td><td><span class="chip"><i></i>not graded</span></td><td>Before opening every feature is unused, so use cannot be judged. A few things are built twice.</td><td>A feature a store has not switched on costs that store nothing; one of each engine; one Kaizena Flow site.</td></tr>
-        <tr><td>The written rules</td><td><span class="chip warning"><i></i>C</span></td><td>Every session loads 11,000 tokens of which a typical change needs a few hundred.</td><td>Under 10 KB of standing rules; a file's rule loaded with the file; a ceiling holds it.</td></tr>
-        <tr><td>Page builder's model, styles, interface text, tests and build, server functions</td><td><span class="chip"><i></i>being audited</span></td><td>Their reviewers are running now.</td><td>Set when they report.</td></tr>
-      </tbody>
-    </table></div>
-    <p class="muted">Nothing is slow or broken today: the platform is not open, the database is idle and pages answer quickly. What is at stake at opening is that each cause grows with every store, every visit and every feature. Before opening is the cheapest time to remove them: there is no real data to move and nobody to disturb.</p>
-  </section>
-
-  <section>
-    <div class="head"><div class="eyebrow">The plan</div><h2>Five phases, 38 steps, one goal: an A in every area</h2>
-      <p class="muted">Each step names the findings it closes and a check that says when it is done. The first phase is small, safe and can be measured from production the day after.</p></div>
+    <div class="head"><div class="eyebrow">The plan</div><h2>134 steps in five phases, one goal: an A in every area</h2>
+      <p class="muted">Every finding is closed by exactly one step, tolerated with a stated reason (15), or left to you as a product choice (7). Each step names the check that says it is done. Phase 0 asks you nothing. The steps shown are the ones that close the most findings in each phase.</p></div>
     <ol class="phases">
-      <li><div class="ph"><span class="eyebrow">Phase 0 · 12 steps, 9 small</span><h3>Stop the work done for nobody</h3></div>
+      <li><div class="ph"><span class="eyebrow">Phase 0 · 42 steps · 23 small, 19 medium, 0 large</span><h3>Before the doors open</h3><p>Almost nothing on a screen changes, apart from two faults a shopper would have met on day one (empty search thumbnails, and a button with no fill on the status and report pages) and admin lists that show 100 rows at a time. Cold pages answer sooner, an admin screen loads about half the script, a store page stops asking the server for a wishlist and stock nobody has, and the database falls from 731 MB to about 230 MB.</p></div>
         <ul>
-          <li>Cut the two import hubs <span class="chip">1,890 → 639 modules</span></li>
-          <li>Wake the per-minute routes only when work waits <span class="chip">12,960 → under 1,500 calls a day</span></li>
-          <li>Give each job its own period, skip unused features <span class="chip">24,192 → under 9,000 runs a day</span></li>
-          <li>Prune the scheduler's log <span class="chip">731 → under 200 MB</span></li>
-          <li>Read one page, not all of them <span class="chip">the costliest app query</span></li>
-          <li>Let the store's index serve the hottest reads <span class="chip">1.1 M full scans</span></li>
-          <li>Stop asking for what does not change <span class="chip">560,000 slug lookups</span></li>
-          <li>Stop prefetching what nobody opens <span class="chip">cart: 42 → under 15 requests</span></li>
-          <li>Take three stray imports off every admin screen <span class="chip">1.28 → under 0.8 MB</span></li>
-          <li>Load the image library on use · end the prefetch loop · let the CDN keep shared answers</li>
+          <li><span class="sid">0.4</span><span>Cut the two import hubs: the unused schema and the chat module's helpers</span></li>
+          <li><span class="sid">0.5</span><span>Load sharp, the font parser and the AI manager's engine when they are used</span></li>
+          <li><span class="sid">0.8</span><span>Make a language translated by AI cost what it uses: at start, per document and per minute</span></li>
+          <li><span class="sid">0.12</span><span>Stop prefetching what a press cannot use on stores and on Kaizena Flow's site</span></li>
+          <li><span class="sid">0.15</span><span>Make no server call after load for a visitor with nothing to fetch</span></li>
+          <li><span class="sid">0.16</span><span>Send shoppers' first scripts only what the page draws</span></li>
+          <li class="more">and 36 more</li>
         </ul></li>
-      <li><div class="ph"><span class="eyebrow">Phase 1 · 6 steps</span><h3>Budgets, so it stays removed</h3></div>
+      <li><div class="ph"><span class="eyebrow">Phase 1 · 24 steps · 5 small, 19 medium, 0 large · 3 wait for you</span><h3>Budgets, so it stays removed</h3><p>A change that makes a page, a function, a scheduled run, an AI call, a build or the standing rules heavier fails a check that names the number and says what to do. Platform, Usage and limits shows cold starts, the day's costliest statements and the admin's speed, and a stopped scheduler sends an email.</p></div>
         <ul>
-          <li>The measurements become commands</li>
-          <li>A budget for what a function loads, for every route's scripts and document, for database questions per page and per round of jobs, for an AI call, for the standing rules</li>
-          <li>A budget for the surface: a new page, table, job or AI tool says who asked for it and what switch it sits behind</li>
+          <li><span class="sid">1.3</span><span>Hold documents, stylesheets and requests on real store pages</span></li>
+          <li><span class="sid">1.6</span><span>Put a launch-theme store into the measured set</span></li>
+          <li><span class="sid">1.8</span><span>Hold what a server entry loads and carries</span></li>
+          <li><span class="sid">1.17</span><span>Hold unused code, copies and the admin's repeats with ratchets of exact lists</span></li>
+          <li><span class="sid">1.18</span><span>Hold the surface: fourteen counts, the hot tables' indexes and triggers, and a new store's rows</span></li>
+          <li><span class="sid">1.19</span><span>Hold every agent's round, show real tokens per call, and let the eval see whether the model finds a tool</span></li>
+          <li class="more">and 18 more</li>
         </ul></li>
-      <li><div class="ph"><span class="eyebrow">Phase 2 · 10 steps</span><h3>Load on demand</h3></div>
+      <li><div class="ph"><span class="eyebrow">Phase 2 · 44 steps · 7 small, 32 medium, 5 large · 9 wait for you</span><h3>Load on demand</h3><p>A store page arrives as a static file with nothing in it twice. A product view asks the database for stock and nothing else. A publish redraws one page, not the whole store. Admin screens hand the browser only the words they show, and the builder paints before its editors load. The AI manager answers on a third of the tokens. With the owner's yes, an agent session starts with a quarter of today's standing rules.</p></div>
         <ul>
-          <li>Give each area its own words <span class="chip">2.9 MB off every non-admin route</span></li>
-          <li>Serve store pages from their static shell <span class="chip">home document 135 → under 60 KB, no function run</span></li>
-          <li>A product view asks for what changes per view <span class="chip">18 → 3 questions</span></li>
-          <li>Editors load when they are drawn <span class="chip">builder 3.3 → under 2.2 MB</span></li>
-          <li>A lighter admin shell and home <span class="chip">30 → 10 questions</span></li>
-          <li>A smaller AI manager round <span class="chip">160,000 → under 60,000 characters</span></li>
-          <li>Caches that outlive a deploy · the remaining import hubs · jobs that find work without loading it · styles and parts per route</li>
+          <li><span class="sid">2.2</span><span>Send the store's layout once</span></li>
+          <li><span class="sid">2.6</span><span>Route every link through one wrapper with a stated policy</span></li>
+          <li><span class="sid">2.20</span><span>Turn the proxy's readers into leaf modules</span></li>
+          <li><span class="sid">2.27</span><span>Hand each admin page only the words its parts read</span></li>
+          <li><span class="sid">2.29</span><span>Let the builder paint first: the rich text editor and a store language load after</span></li>
+          <li><span class="sid">2.36</span><span>Send the AI manager a lean default round</span></li>
+          <li class="more">and 38 more</li>
         </ul></li>
-      <li><div class="ph"><span class="eyebrow">Phase 3 · 5 steps · your decisions</span><h3>Cost follows use, and one of each</h3></div>
+      <li><div class="ph"><span class="eyebrow">Phase 3 · 19 steps · 5 small, 11 medium, 3 large · 8 wait for you</span><h3>One of each</h3><p>On a quiet day the scheduler makes about 1,200 function calls, not 13,250, and the platform home shows every scheduled function with a row of its own. With the owner's yes there is one place to edit Kaizena Flow's site, one engine for what happens when an order is paid, and one deploy for a burst of pushes. There is one import flow.</p></div>
         <ul>
-          <li>A feature costs nothing until a store uses it: no job, no code, no AI tool</li>
-          <li>One Kaizena Flow site, not two</li>
-          <li>One way to model the platform, now that it has a store of its own</li>
-          <li>One engine for one job: order rules and Workflows, campaigns and discount codes, four reward ledgers</li>
-          <li>Decide what opens on day one: the developer platform's public handlers</li>
+          <li><span class="sid">3.1</span><span>Run one tick a minute, and call a route only when work waits</span></li>
+          <li><span class="sid">3.2</span><span>Let the three feature routes follow what is due</span></li>
+          <li><span class="sid">3.3</span><span>Run the dispatcher from a registry: a cadence and a time budget per job, four at a time</span></li>
+          <li><span class="sid">3.9</span><span>Keep one kaizenaflow.com</span></li>
+          <li><span class="sid">3.10</span><span>Run the platform's workflows, own endpoints and integration deliveries on the stores' engine with a scope</span></li>
+          <li><span class="sid">3.15</span><span>Keep one of each small thing: helpers, SQL fragments, English word lists</span></li>
+          <li class="more">and 13 more</li>
         </ul></li>
-      <li><div class="ph"><span class="eyebrow">Phase 4 · 5 steps</span><h3>Tidy, and finish the review</h3></div>
+      <li><div class="ph"><span class="eyebrow">Phase 4 · 5 steps · 0 small, 4 medium, 1 large</span><h3>Tidy</h3><p>Little. Admin forms and tables come from one kit, the last small twins are folded, tests share their scaffolding, and three more screens read less. A table shows each area's measures against its bar.</p></div>
         <ul>
-          <li>The database's loose ends, including a leftover schema of 34 tables</li>
-          <li>Families with one core each · unused code by tier · written rules a session can afford</li>
-          <li>Audit the 11 areas that were not, and give the 139 unchecked findings their second look</li>
+          <li><span class="sid">4.1</span><span>Build the admin kit and move action files onto the shared wrapper, area by area</span></li>
+          <li><span class="sid">4.2</span><span>Fold the remaining twins as each is opened</span></li>
+          <li><span class="sid">4.3</span><span>Tidy the tests' side: exports only a test keeps alive, shared mocks and one tree walker</span></li>
+          <li><span class="sid">4.4</span><span>Make the last reads fetch what they show</span></li>
+          <li><span class="sid">4.5</span><span>Measure everything again, and read each area against its bar</span></li>
+          
         </ul></li>
     </ol>
   </section>
 
   <section>
-    <div class="head"><div class="eyebrow">Waiting for you</div><h2>Ten questions only the owner can answer</h2></div>
-    <ol class="questions">
-      <li>Now that Kaizena Flow has a store of its own, may a store feature serve the platform through it, with a twin built only where there is no store form?</li>
-      <li>Which feature groups should a new store start with switched on? A product choice, not a saving.</li>
-      <li>May the old Kaizena Flow pages without a store be removed, now that the store serves the site?</li>
-      <li>For each pair of overlapping engines, which stays? Before opening, no data needs moving.</li>
-      <li>Do the developer platform's public handlers open on day one, or behind a switch until someone asks?</li>
-      <li>May a new table, job or AI tool have to name the gate that keeps it free for stores that do not use it?</li>
-      <li>May pushes share a deploy, so cached pages live longer?</li>
-      <li>May <code>CLAUDE.md</code> shrink to a small core with rules loaded by path?</li>
-      <li>May an AI manager round start with the core tools and load the rest on need?</li>
-      <li>Should this plan get a pointer in <code>CLAUDE.md</code>, as the code review has?</li>
-    </ol>
+    <div class="head"><div class="eyebrow">Waiting for you</div><h2>20 steps wait for your answer; 7 more are product choices</h2>
+      <p class="muted">None of them holds up phase 0.</p></div>
+    <details class="qs" open><summary>Questions that stop a step (20)</summary><ol>
+        <li><strong>Step 1.1.</strong> Should this plan get lines of its own in CLAUDE.md, as the code review has? Proposed: no. One shared line names the trackers, and each tracker keeps its rules at its own top.</li>
+        <li><strong>Step 1.18.</strong> May a test refuse a new table, trigger, scheduled job, navigation link or AI tool until its decision row states what it costs a store that does not use it?</li>
+        <li><strong>Step 1.21.</strong> Pay for Vercel's 16 GB build machine, or build in CI and deploy the prebuilt output? Without one of the two the build area stops at a B.</li>
+        <li><strong>Step 2.1.</strong> CLAUDE.md is your instruction file. First: may its 295-line feature index go, leaving a map of the seven rule files and a three-line look-up (44 KB to under 15 KB per session)? Second, and it can be declined on its own: may the database, e2e, typed-row and AI-eval how-to load only when those folders are opened (to under 10.5 KB)? Without the first yes the rules area cannot reach a B; without the second it stops short of an A, at the 15 KB ceiling.</li>
+        <li><strong>Step 2.8.</strong> On a full listing, may only the first screen of product tiles be fetched ahead on sight, and the rest when touched (or all through one shared product shell)? A yes lets the shopper's browser reach an A.</li>
+        <li><strong>Step 2.11.</strong> After the split, a Tailwind class typed in a part's Advanced tab can show on the builder's canvas and not on the live site. Is it enough to say in the docs that only classes styled by the owner's own CSS are promised, or should the site's sheet keep a short fixed list of utility names owners may type?</li>
+        <li><strong>Step 2.25.</strong> Is a third language for the admin (Swedish or Danish) wanted in the first half year? If yes, this step moves before opening: until it is done each language adds about 1.5 MB to every function.</li>
+        <li><strong>Step 2.34.</strong> May the notice badge in a tab nobody touches be up to ten minutes late (60 requests an hour become 6)? It shows at once on the next click, and stays at one minute while an approval waits.</li>
+        <li><strong>Step 2.35.</strong> May a store's own domain be resolved at request time, replacing decision P8's compiled routing rules? If P8 stays, the ceiling still needs an answer before about 250 stores have a domain, and the server area stops at a B.</li>
+        <li><strong>Step 2.36.</strong> What should the AI manager offer unprompted (question 8 of the code review)? In particular: always carry its 17 plan, reminder and saved-skill tools at about 3,800 tokens a round, or load them when the talk turns to them or the store has a plan, goal or reminder alive (a round with no page then falls to about 33,000 characters)?</li>
+        <li><strong>Step 2.41.</strong> After a migration, should 'advisors checked, nothing new' still be written down, and where? The check itself stays either way; today 205 of 564 decision rows carry the note.</li>
+        <li><strong>Step 2.43.</strong> What must run before a push? A: everything, as today (about 5 minutes after these fixes; 11 to 12 now). B: lint, the type check and the tests the change touches, with the whole unit suite in the deploy gate, so each deploy waits about 3.5 minutes more (the planner's advice). C: as B before the push with the gate unchanged, so a failing unit test outside the six money files can be live until someone reads the red run.</li>
+        <li><strong>Step 3.5.</strong> How long are guest carts, processed webhook events and old page versions kept (the code review's question 6)? The privacy text states the same periods.</li>
+        <li><strong>Step 3.7.</strong> Should invoice PDFs be made ahead by the scheduled job, so that 'Try again' is true (recommended), or made on the first download, with the route nothing calls and its 102 MB function removed?</li>
+        <li><strong>Step 3.8.</strong> May the commerce_legacy schema, kept since 24 September as a renamed copy of the single-store tables, be dropped after a last dump? The unused table goes either way.</li>
+        <li><strong>Step 3.9.</strong> Is the switch of 7 November final, so that the old no-store site and its twin tables can be removed before opening (or kept as a fallback for some weeks, as the parity plan first said)? And one desk for support and chat (parity plan step 6), or two?</li>
+        <li><strong>Step 3.10.</strong> First the choice listed with the owner's choices (FT-10): keep the platform's four engines as twins on shared code, which is this step, or serve Kaizena Flow's events through its own store's engines once the site is one (then the twins are removed with step 3.9 and this step is dropped)? If twins: may the parity rule in CLAUDE.md say that where the platform's version does the same job on its own rows, it uses the store's module with a scope, not a copy? Separate tables stay.</li>
+        <li><strong>Step 3.11.</strong> May order rules fold into Workflows, so one engine decides what happens when an order is paid?</li>
+        <li><strong>Step 3.12.</strong> May an owner's own look be saved only in the theme library, not also as a saved theme in the editor?</li>
+        <li><strong>Step 3.19.</strong> Once stores are open, may a CI run skip its deploy when a newer commit is already on main, so a burst of pushes shares one deploy? It changes D5's 'at once' by a few minutes.</li>
+    </ol></details>
+    <details class="qs"><summary>Product choices the reviewers met (7): not waste, and no step depends on them</summary><ol>
+        <li>Should a logged time entry's hours be editable in Work (the server side is built and tested; an afternoon's work), or is delete and log again the intended way (then about 130 lines go)? Either way two invoice actions no screen uses are deleted.</li>
+        <li>Should live drills get a Run drills button on the platform's store page, or stay a console tool asked for by SQL, with the rule saying so?</li>
+        <li>A new shop shows 29 links in Basic and 94 in Advanced, 35 of them under Settings. Is that what Lisa should meet, or should the moves already planned (code review step 2.4: about 85 links, 20 under Settings) be made before opening? It changes reading time, not running cost; the surface budget of step 1.18 holds whichever number you choose.</li>
+        <li>The platform has its own copy of four store engines (workflows, integrations, own endpoints, the read-only API: about 2,100 lines and 8 tables), built on the parity rule. Keep them as twins on shared code (step 3.10), or serve Kaizena Flow's events through its own store's engines once the site is one (step 3.9)? The idle cost is a few polls a minute either way.</li>
+        <li>Creators earn money commission (1,411 lines, 5 tables); referrals pay in bonus credits. Keep creators as a programme of their own, as built, or make a creator a kind of referrer who is paid in money? No running cost either way.</li>
+        <li>Do you read the parity report's detail tables on GitHub? If not, docs/shopify-parity.md can keep its five summary blocks (under 30 KB; 289 KB today) and pnpm parity prints the rest. If you do, it stays as it is and only leaves default searches (step 0.40).</li>
+        <li>Should the builder's palette show each of these near-twins as one entry, with the second as a switch: FAQ and accordion, button and dual button, email form and newsletter? Yes or no per pair. Nothing stored changes either way, and no visitor, request or build pays for the second entry.</li>
+    </ol></details>
   </section>
-
 
   <footer>
-    <span>Method: a production build of commit 0bd814c, served locally with the demo catalogue; 32 pages measured in Chromium with a cold cache; Next's bundle analyzer for the module lists; production's statistics views for the database; own scans for unused and copied code. Findings without a second check are one reviewer's reading; the document marks which.</span>
-    <span>Sizes are before compression unless a line says otherwise. Compressed, a storefront page's scripts are 270 to 330 KB and an admin screen's about 490 KB.</span>
+    <span>Method: a production build of commit 0bd814c, served locally with the demo catalogue; 32 pages measured in Chromium with a cold cache; Next's bundle analyzer for the module lists; production's statistics views for the database; then 25 areas each read, challenged and planned, and a panel that graded 13 areas and wove the plan.</span>
+    <span>Limits: times and megabytes were measured on the review's machine, not on Vercel. Real cold starts and visitors' speed in production were not measured. Sizes are before compression unless a line says otherwise.</span>
   </footer>
 </div>
 <div id="tt" hidden></div>
@@ -453,13 +475,5 @@ bars("c-spike", {
     { label: "With the two edits", v: { mods: 639 }, end: "639 · 1.2 MB", mb: 1.2, extra: [{ value: "1.2 MB", label: "of built server code" }] },
   ],
   cols: [{ label: "Built code (MB)", get: (r) => r.mb.toFixed(1) }],
-});
-bars("c-db", {
-  unit: "", share: true, normalize: true, room: 150, rowHead: "Kind",
-  series: [{ key: "used", label: "In use", color: css("--s1") }, { key: "never", label: "Never used", color: css("--rest") }],
-  rows: [
-    { label: "Tables: has it ever held a row?", v: { used: 241, never: 245 }, end: "245 of 486 never" },
-    { label: "Indexes: has a query ever scanned it?", v: { used: 983, never: 1006 }, end: "1,006 of 1,989 never" },
-  ],
 });
 </script>

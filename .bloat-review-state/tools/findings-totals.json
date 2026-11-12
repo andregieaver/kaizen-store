@@ -1,0 +1,52 @@
+{
+ "totals": {
+  "findings": 353,
+  "confirmed": 128,
+  "corrected": 174,
+  "added": 51,
+  "refuted": 22,
+  "owner": 26,
+  "byKind": {
+   "eager": 163,
+   "oversize": 66,
+   "process": 43,
+   "duplicate": 63,
+   "dead": 18
+  },
+  "byEffort": {
+   "S": 227,
+   "M": 116,
+   "L": 10
+  },
+  "byPriority": {
+   "P0": 103,
+   "P1": 119,
+   "P2": 97,
+   "P3": 34
+  }
+ },
+ "counts": {
+  "STEPS": 134,
+  "PHASES": 5,
+  "FINDINGS": 353,
+  "CONFIRMED": 128,
+  "CORRECTED": 174,
+  "ADDED": 51,
+  "REFUTED": 22,
+  "NOCHECK": 43,
+  "P0": 103,
+  "P1": 119,
+  "P2": 97,
+  "P3": 34,
+  "EAGER": 163,
+  "OVERSIZE": 66,
+  "DUPLICATE": 63,
+  "DEAD": 18,
+  "AHEAD": 0,
+  "SMALL": 227,
+  "MEDIUM": 116,
+  "LARGE": 10,
+  "OWNER": 26,
+  "TOLERATED_COUNT": 15
+ }
+}

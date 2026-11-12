@@ -58,8 +58,14 @@ challenged by a skeptic, planned by a planner. Its last lines hold the arguments
      `panel/weave-review.md`.
    - `{"stage":"challenge","areas":[...]}`: one challenger per area writes `panel/card-<area>.json` (the final bar, today's
      grade, whether the plan's steps reach an A, shortfalls).
-   - `{"stage":"critic"}`: one critic writes `panel/critic.json` (grades comparable across areas, steps to add).
-   Then fold the plan, the cards and the critic into `plan-data.mjs` and `main-template.md` (the plan's steps, the scorecard with
-   each area's bar and ladder, the owner's choices as questions) and rebuild the docs.
-6. **Finish:** rebuild the docs, commit, push docs to `main`; update the page (publish `page/bloat-review.html` to the same
-   artifact); tell the owner what changed: refuted findings, new areas' grades, steps added to reach an A.
+   - `{"stage":"finish"}` (all 13 cards exist and pass the checker since 12 November 06:20 UTC): a critic writes
+     `panel/critic.json` (grades made comparable, which shortfalls stand, steps to add), then an amender writes NEW files
+     `panel/plan.final.json`, `panel/card-<area>.final.json` and `panel/amend-log.md`, so a cut-off cannot leave the plan half
+     edited. If `critic.json` exists and the final files do not, launch `finish` again: the critic's work is kept in the run's
+     journal only when the same run is resumed, so check the file first. `panel/plan.reviewed.json` is the plan before amending.
+   `tools/build-docs.mjs` and `tools/build-page.mjs` read the final files when they exist and the reviewed ones when not;
+   `node tools/check-panel.mjs plan panel/plan.final.json` and `... card panel/card-<area>.final.json` check them.
+6. **Finish:** `node tools/build-docs.mjs` (in the repository), commit, push docs to `main`; `node tools/build-page.mjs` writes
+   the page (`page/bloat-review.html`; it needs `tools/page-v4.html` for the styles and chart code and
+   `tools/findings-totals.json`, which build-docs writes) and publish it to the same artifact; tell the owner what changed:
+   refuted findings, each area's grade today, steps added to reach an A, and the questions that wait for an answer.
