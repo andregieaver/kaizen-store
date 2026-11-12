@@ -150,6 +150,11 @@ jobs:
       - name: Create the database with the demo catalogue
         run: node scripts/db-setup.mjs --seed
       - run: pnpm build
+      # Each built route and page loads in a fresh process, as a cold Vercel function loads it (bloat review step 0.6): a lazy
+      # import changes load order, and a route that first loads a module of an import cycle can fail while the same code loads
+      # fine behind another route (the Mollie webhook, 12 November 2026). A server that has answered other requests hides that.
+      - name: Every built route loads on its own
+        run: node scripts/cold-load-routes.mjs
       # WebKit too: the shopper's pages also run in Safari's engine (playwright.config.ts, the webkit project; PSI UX-12).
       # The image has both browsers, so this finds them and does nothing; were the pinned version ever ahead of the
       # image, it would fetch the browsers from Playwright's own servers, never the Ubuntu mirror (no --with-deps).

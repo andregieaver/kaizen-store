@@ -1,11 +1,12 @@
 "use client";
 
-import { useEffect, useId, useRef, useState, type KeyboardEvent } from "react";
+import { useEffect, useId, useLayoutEffect, useRef, useState, type KeyboardEvent } from "react";
 
 import { fillWords } from "@/lib/admin-fill";
 import type { TemplateItem } from "@/lib/templates";
 
 import { useAdminText } from "./admin-text";
+import { MoveButton, ResizeHandles, dialogStyle, focusPastMoveButton, useMovable } from "./movable";
 
 import { PREVIEW_DEVICES, PREVIEW_TIMEOUT_MS, deviceWidth, type PreviewDevice } from "./templates-helpers";
 import { KaizenBadge, PageTypeBadge, Problems } from "./templates-parts";
@@ -50,7 +51,9 @@ export function TemplatePreviewDialog({
   onUse: () => void;
   onClose: () => void;
 }) {
-  const ref = useRef<HTMLDialogElement>(null);
+  // It moves by its title bar and resizes from its edges, as every dialog in the builder does; a larger preview is kept.
+  const movable = useMovable<HTMLDialogElement>({ remember: "template-preview" });
+  const { ref, rect, reset } = movable;
   const titleId = useId();
   const reasonId = useId();
   const w = useAdminText("builder").templates;
@@ -61,17 +64,21 @@ export function TemplatePreviewDialog({
     opener.current = returnFocus;
   }, [returnFocus]);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     const dialog = ref.current;
     if (!dialog) return;
-    if (open && !dialog.open) dialog.showModal();
+    if (open && !dialog.open) {
+      reset();
+      dialog.showModal();
+      focusPastMoveButton(dialog);
+    }
     if (!open && dialog.open) {
       dialog.close();
       // The browser returns the focus too, but the button may be in a list that was drawn again since.
       const button = opener.current;
       if (button?.isConnected) button.focus();
     }
-  }, [open]);
+  }, [open, ref, reset]);
 
   return (
     <dialog
@@ -82,13 +89,14 @@ export function TemplatePreviewDialog({
         onClose();
       }}
       onClick={(event) => {
-        if (event.target === event.currentTarget) onClose();
+        if (event.target === event.currentTarget && !movable.justMoved()) onClose();
       }}
-      className="m-auto max-h-[94dvh] w-[calc(100%-1rem)] max-w-5xl rounded-panel border border-line bg-card p-0 text-ink shadow-2xl backdrop:bg-black/50"
+      style={dialogStyle(rect, "94dvh")}
+      className="m-auto max-h-[94dvh] w-[calc(100%-1rem)] max-w-5xl overflow-visible rounded-panel border border-line bg-card p-0 text-ink shadow-2xl backdrop:bg-black/50"
     >
       {item && (
-        <div className="flex max-h-[calc(94dvh-2px)] flex-col">
-          <div className="flex items-start justify-between gap-4 border-b border-line px-5 py-3">
+        <div className={`flex flex-col ${rect?.h != null ? "h-full" : "max-h-[calc(94dvh-2px)]"}`}>
+          <div {...movable.bar} className="flex cursor-move touch-none items-start justify-between gap-4 rounded-t-lg border-b border-line px-5 py-3 select-none">
             <div className="flex min-w-0 flex-col gap-1">
               <h2 id={titleId} className="truncate text-title text-ink">
                 {fillWords(w.previewTitle, { name: item.name })}
@@ -102,16 +110,20 @@ export function TemplatePreviewDialog({
               </p>
               {item.summary && <p className="text-xs text-muted">{item.summary}</p>}
             </div>
-            <button
-              type="button"
-              onClick={onClose}
-              aria-label={w.closePreview}
-              className="flex size-9 shrink-0 items-center justify-center rounded-full hover:bg-sunken"
-            >
-              <svg viewBox="0 0 24 24" aria-hidden className="size-5" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M6 6l12 12M18 6L6 18" strokeLinecap="round" />
-              </svg>
-            </button>
+            <div className="flex shrink-0 items-center gap-1">
+              <MoveButton movable={movable} />
+              <button
+                type="button"
+                onPointerDown={(event) => event.stopPropagation()}
+                onClick={onClose}
+                aria-label={w.closePreview}
+                className="flex size-9 shrink-0 items-center justify-center rounded-full hover:bg-sunken"
+              >
+                <svg viewBox="0 0 24 24" aria-hidden className="size-5" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M6 6l12 12M18 6L6 18" strokeLinecap="round" />
+                </svg>
+              </button>
+            </div>
           </div>
 
           <div className="flex min-h-0 flex-1 flex-col gap-3 p-4">
@@ -155,6 +167,7 @@ export function TemplatePreviewDialog({
           </div>
         </div>
       )}
+      {item && <ResizeHandles movable={movable} />}
     </dialog>
   );
 }
@@ -220,8 +233,9 @@ function PreviewFrame({ title, href, device }: { title: string; href: string; de
     return () => clearTimeout(timer);
   }, [status, attempt]);
 
+  // As tall as it was, and taller or shorter with the dialog when that is resized.
   return (
-    <div className="relative flex h-[min(60dvh,44rem)] min-h-64 justify-center overflow-auto rounded-md border border-line bg-sunken">
+    <div className="relative flex min-h-64 flex-auto basis-[min(60dvh,44rem)] justify-center overflow-auto rounded-md border border-line bg-sunken">
       {status !== "failed" && (
         <iframe
           key={attempt}

@@ -32,7 +32,7 @@ import { memberCan } from "./permissions";
 import { refreshTag } from "./refresh";
 import { cookiesTag } from "./site-cookies";
 import { STORES_TAG } from "./seo";
-import { storeObligations } from "./store-closure";
+import { storeObligations } from "./store-obligations";
 import { storeTag } from "./stores";
 
 /**

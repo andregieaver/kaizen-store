@@ -19,7 +19,6 @@ import type { ShownMeasure } from "@/lib/unit-price";
 import { snapshotMeasureFromColumns } from "@/lib/unit-price-rules";
 
 import { mollieAppOn } from "./mollie";
-import { providerOf } from "./payment-providers";
 import { platformModes } from "./stripe";
 
 type Row = Record<string, unknown>;
@@ -500,6 +499,7 @@ export async function getShopperOrder(
   if (order?.status !== "pending_payment" && !termsBalance) return order;
 
   // The payment's own provider is asked (D292); unreachable or slow, the webhook will follow.
+  const { providerOf } = await import("./payment-providers");
   const provider = providerOf(payment.provider);
   if (!provider) return order;
   const asked = await provider.refresh(storeId, {

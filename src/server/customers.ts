@@ -14,7 +14,6 @@ import { isFresh } from "@/lib/privacy-request";
 import { chooseBusinessBuyer } from "./b2b";
 import { saveDefaultAddress } from "./customer-addresses";
 import type { Address } from "./orders";
-import { eraseSubject } from "./privacy-erasure";
 import { normaliseEmail } from "@/lib/email-address";
 
 type Row = Record<string, unknown>;
@@ -497,6 +496,8 @@ export async function updateCustomerDetails(
  * deleted. Throws with the plain message when Stripe did not answer (nothing was changed). The caller ends the session.
  */
 export async function deleteCustomer(storeId: string, customerId: string): Promise<void> {
+  // Loaded here, not at the top: the shop's read path must not import the erasure, which leads to retention, sign-up and the AI manager's tools (bloat review step 0.6).
+  const { eraseSubject } = await import("./privacy-erasure");
   const result = await eraseSubject(storeId, { customerId }, { channel: "shopper", accountId: null });
   if (!result.ok) throw new Error(result.message);
 }

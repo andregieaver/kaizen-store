@@ -1393,7 +1393,7 @@
       "was": null
     },
     "weight": 4,
-    "gap": "Two accounting connectors, built against their published specs and in-memory fakes: Tripletex (D453, a pasted token, vouchers) and Fiken (D460, OAuth2 through Fiken's consent page, sales as Annet salg), each idempotent by the document's own number, VAT mapped per bucket from the company's own chart, failures shown per document with Try again, and alerts. Neither is yet tried against the vendor's sandbox or a real company; Fiken waits for Kaizena Flow's app to be set up and later for Fiken's production status. NOK only; no payments read back, no SAF-T or SIE export, no connector beyond Norway.",
+    "gap": "Two accounting connectors, built against their published specs and in-memory fakes: Tripletex (D453, a pasted token, vouchers) and Fiken (D460, OAuth2 through Fiken's consent page, sales as Annet salg), each idempotent by the document's own number, VAT mapped per bucket from the company's own chart, failures shown per document with Try again, and alerts. Neither is yet tried against the vendor's sandbox or a real company; Fiken waits for Kaizena Flow's app to be set up and later for Fiken's production status. NOK only; no payments read back, no connector beyond Norway. Beside the connectors, the store's own ledger (D478) now keeps the books inside Kaizena Flow, with the VAT return (D496), SAF-T Financial (D497) and bank statements (D486); that is an alternative to an accounting system, not an integration with one, so it does not move this row (no SIE export either).",
     "history": [],
     "bucket": "B",
     "wave": 2,
@@ -1429,7 +1429,10 @@
       "D165",
       "D290",
       "D453",
-      "D460"
+      "D460",
+      "D478",
+      "D496",
+      "D497"
     ]
   },
   {

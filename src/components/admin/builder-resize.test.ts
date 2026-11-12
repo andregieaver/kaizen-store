@@ -6,6 +6,8 @@ vi.mock("server-only", () => ({}));
 
 import { RailTabsHeader } from "./builder-rails";
 import { FloatingPanel } from "./floating-panel";
+import { Modal } from "./modal";
+import { dialogStyle } from "./movable";
 import { RowWidthHandles } from "./row-resize";
 
 /** The builder's resize handles, theme tab header and floating panel as they are first drawn (D182). */
@@ -38,6 +40,39 @@ describe("the floating settings panel", () => {
     for (const edge of ["n", "s", "e", "w", "ne", "nw", "se", "sw"]) expect(html).toContain(`data-resize="${edge}"`);
     // Not modal: no backdrop to keep the page behind from being used.
     expect(html).not.toContain("backdrop");
+  });
+});
+
+describe("every dialog on Modal (the media library, text styles…)", () => {
+  const modal = (open: boolean) =>
+    renderToString(
+      createElement(
+        Modal,
+        { open, onClose: noop, title: "Choose a picture", remember: "media-picker" } as unknown as ComponentProps<typeof Modal>,
+        createElement("p", null, "Pictures"),
+      ),
+    );
+
+  it("moves by its title bar and resizes from its edges and corners, as the settings panel does", () => {
+    const html = modal(true);
+    expect(html).toContain("<dialog");
+    expect(html).toContain('data-edge="move"');
+    expect(html).toContain('aria-label="Move the panel"');
+    expect(html).toContain('aria-label="Close"');
+    expect(html).toContain("Pictures");
+    for (const edge of ["n", "s", "e", "w", "ne", "nw", "se", "sw"]) expect(html).toContain(`data-resize="${edge}"`);
+    // It opens centred by its CSS, with no place of its own until it is moved.
+    expect(html).not.toMatch(/<dialog[^>]*style=/);
+  });
+
+  it("draws no handles while closed", () => {
+    expect(modal(false)).not.toContain("data-resize");
+  });
+
+  it("is placed where it was moved, at the size it was given", () => {
+    expect(dialogStyle(null)).toBeUndefined();
+    expect(dialogStyle({ x: 40, y: 30, w: 700, h: null })).toMatchObject({ margin: 0, left: 40, top: 30, width: 700, maxHeight: "90dvh" });
+    expect(dialogStyle({ x: 40, y: 30, w: 700, h: 500 })).toMatchObject({ height: 500, maxHeight: "100dvh" });
   });
 });
 

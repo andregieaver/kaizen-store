@@ -560,6 +560,7 @@ function Details({
         onClose={onClose}
         title={item.fileName}
         wide
+        remember="media-file"
         footer={
           <>
             <button type="button" onClick={() => setConfirming(true)} className={`${button} mr-auto border-danger-text text-danger-text`}>

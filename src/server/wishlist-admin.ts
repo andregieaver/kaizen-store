@@ -4,7 +4,7 @@ import { sql, type SQL } from "drizzle-orm";
 
 import { db } from "@/db/client";
 
-import { bought } from "./customer-admin";
+import { bought } from "./bought-sql";
 
 type Row = Record<string, unknown>;
 

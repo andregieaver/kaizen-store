@@ -1310,7 +1310,7 @@
       "was": null
     },
     "weight": 4,
-    "gap": "Vercel's network serves the storefront, with functions in Dublin next to a single-region Supabase database (D6); `/api/health` reports the database, email and key checks (`src/lib/health.ts`). Since D314 each store's use is measured per day (requests and server errors from Vercel's log drain), with per-store budgets on costly public endpoints, a read replica option, a capacity runbook and a restore runbook (docs/runbooks/restore.md); since D318 every scheduled job is recorded and the platform's home says which is late or failing (src/server/cron-runs.ts, src/lib/cron-health.ts) and server code logs one JSON line through log(). Since D360 the public status page `/status` (and `/no/status`) shows five parts (stores and websites with the database behind them, sign-in, payments, email, background work) from real checks every five minutes, each with a 90-day bar and its uptime, a check that did not run shown as missing; platform admins post incidents and updates (Platform → Status page), which go to confirmed email subscribers and an Atom feed, no account needed; a part that fails two checks in a row emails platform admins once. Checkout and the admin are not checked apart from the site (they are the same app and database; payments is checked at Stripe). Still missing: error tracking in an EU-hosted tool (D13 chose none until needed; the company's choice of a vendor); a restore drill recorded (the runbook's drill log is empty); and pushes still go straight to production (D5). The uptime promise is a contract, so the row can be built as far as software goes and then declared, never Full.",
+    "gap": "Vercel's network serves the storefront, with functions in Dublin next to a single-region Supabase database (D6); `/api/health` reports the database, email and key checks (`src/lib/health.ts`). Since D314 each store's use is measured per day (requests and server errors from Vercel's log drain), with per-store budgets on costly public endpoints, a read replica option, a capacity runbook and a restore runbook (docs/runbooks/restore.md); since D318 every scheduled job is recorded and the platform's home says which is late or failing (src/server/cron-runs.ts, src/lib/cron-health.ts) and server code logs one JSON line through log(). Since D360 the public status page `/status` (and `/no/status`) shows five parts (stores and websites with the database behind them, sign-in, payments, email, background work) from real checks every five minutes, each with a 90-day bar and its uptime, a check that did not run shown as missing; platform admins post incidents and updates (Platform → Status page), which go to confirmed email subscribers and an Atom feed, no account needed; a part that fails two checks in a row emails platform admins once. Checkout and the admin are not checked apart from the site (they are the same app and database; payments is checked at Stripe). Still missing: error tracking in an EU-hosted tool (D13 chose none until needed; the company's choice of a vendor); a restore drill recorded (the runbook's drill log is empty; postponed by the owner for cost on 29 October 2026, docs/consolidation.md); and pushes still go straight to production (D5), though since D526 a quick gate (lint, the type check and the money tests) runs before every deploy and a migration waits for every suite, and each deploy waits for `/api/health` to report its commit and then requests two pages (D389, D575). The uptime promise is a contract, so the row can be built as far as software goes and then declared, never Full.",
     "bucket": "D",
     "wave": 9,
     "criteria": [
@@ -1347,7 +1347,10 @@
       "D13",
       "D314",
       "D318",
-      "D360"
+      "D360",
+      "D389",
+      "D526",
+      "D575"
     ],
     "history": []
   },

@@ -363,7 +363,7 @@
     "src/server/stock-tools.ts": 4,
     "src/server/stock-transfers.ts": 1,
     "src/server/store-checkup.ts": 2,
-    "src/server/store-closure.ts": 8,
+    "src/server/store-closure.ts": 7,
     "src/server/store-copy-media.ts": 9,
     "src/server/store-copy.ts": 21,
     "src/server/store-drafts.ts": 2,
