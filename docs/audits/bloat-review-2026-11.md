@@ -74,7 +74,7 @@ commit as the fix.
 
 | Step | What | Closes | Effort | Who | After | Status | Notes |
 |---|---|---|---|---|---|---|---|
-| 0.1 | Put the review's scripts and lists in the repo | GAP-code-1 | S | review |  | In progress | Local, 12 Nov: commits 1 to 3 made locally. |
+| 0.1 | Put the review's scripts and lists in the repo | GAP-code-1 | S | review |  | Done | 12 Nov, f781ac6: 32 scripts and 4 lists under the review's folder; cycle 229 files, 41 twin pairs, 84 helpers, 4,803 copied lines; 156 rows and sections. |
 | 0.2 | Store a daily reading of production, so every later step has a 'before' |  | S | review |  | Open | |
 | 0.3 | Let the deploy job, not a visitor, meet the first cold page | SD-3, GAP-server-2 | S | review |  | Open | |
 | 0.4 | Cut the two import hubs: the unused schema and the chat module's helpers | DD-1, DP-1, DP-9, SG-6, SF-6, DS-1, TC-5, DP-10, FM-2, FM-14, SG-3, SF-4, GAP-server-s2 | S | cheap | 0.1, 0.3 | Open | |
@@ -265,6 +265,7 @@ Change log:
   build in CI, made its own step (1.29). The three design changes the split brought (3.22's `behind` column, 3.23's skip
   rule, 3.24's sweep check) reviewed by a stronger model against the code: all kept, with 37 exact fixes. Ratings now
   29 cheap, 77 review, 50 strong. Nothing started.
+- 12 Nov 2026: step 0.1 Done (f781ac6): the review's scripts and lists are in the repo; every check names a path in it.
 
 ## 1. The headline
 
