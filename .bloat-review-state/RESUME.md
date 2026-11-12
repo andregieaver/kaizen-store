@@ -82,3 +82,7 @@ challenged by a skeptic, planned by a planner. Its last lines hold the arguments
    into `rating/<id>.json`; launch only the ids that lack a file. Then `node tools/rating-compare.mjs` writes
    `work/rating-diff.json`, and `{"stage":"settle"}` writes `work/rating-final.json`. Apply its decisions to `exec/<id>.json`
    (executor, executor_why, cheap_commits, any brief edits), rebuild the docs and the page, push docs to `main`.
+9. **Repair the briefs** (the owner, 12 November: "Fix the real errors in the briefs too"). After `settle`, run
+   `{"stage":"repair","chunks": <work/rating-chunks.json>}`: each agent verifies the flagged problems in its briefs, fixes the
+   real ones in `exec/<id>.json`, sets the final rating, and logs to `repair/<id>.json`. `exec.before-repair/` is the copy before.
+   Launch only the ids without a `repair/<id>.json`. Then rebuild docs and page and push.

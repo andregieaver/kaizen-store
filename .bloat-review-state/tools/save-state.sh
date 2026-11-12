@@ -13,7 +13,7 @@ git merge -q --no-edit "origin/$BR" >/dev/null 2>&1
 git merge -q --no-edit origin/main >/dev/null 2>&1
 D="$T/.bloat-review-state"
 mkdir -p "$D/tools" "$D/page" "$D/evidence"
-for d in audits verified findings digest panel exec rating; do rm -rf "$D/$d"; [ -d "$S/$d" ] && cp -r "$S/$d" "$D/$d"; done
+for d in audits verified findings digest panel exec rating repair; do rm -rf "$D/$d"; [ -d "$S/$d" ] && cp -r "$S/$d" "$D/$d"; done
 cp "$S/STATUS.md" "$S/status.json" "$S/evidence-raw.tar.xz" "$D/"
 cp "$S"/m/*.md "$D/evidence/"
 # The review's own tools only: the reviewers leave large scratch files beside them.

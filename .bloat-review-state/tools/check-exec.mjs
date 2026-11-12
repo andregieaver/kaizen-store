@@ -46,6 +46,7 @@ if (kind === "briefs") {
     if (d.id !== id) P(`"id" must be "${id}"`);
     for (const k of ["goal", "why", "executor_why", "checked_in_code"]) if (!str(d[k])) P(`"${k}" missing`);
     if (!["cheap", "cheap-then-review", "strong"].includes(d.executor)) P('"executor" must be cheap, cheap-then-review or strong');
+    if (d.cheap_commits !== undefined && (!arr(d.cheap_commits) || d.cheap_commits.some((n) => !Number.isInteger(n) || n < 1 || n > (d.commits ?? []).length))) P('"cheap_commits" must list commit numbers');
     for (const k of ["read_first", "depends_on", "commits", "tests", "done_when", "after_deploy", "docs", "do_not", "stop_if"]) if (!arr(d[k])) P(`"${k}" must be an array`);
     for (const [i, x] of (d.depends_on ?? []).entries()) { if (!known.has(x?.id)) P(`depends_on[${i}].id "${x?.id}" is not a step`); if (x?.id === id) P("depends on itself"); if (!str(x?.why)) P(`depends_on[${i}].why missing`); }
     if (arr(d.commits) && !d.commits.length) P("give at least one commit");
@@ -56,7 +57,9 @@ if (kind === "briefs") {
         if (!str(ch?.file) || !str(ch?.how)) P(`commits[${i}].changes[${j}] needs "file" and "how"`);
         if (!["edit", "create", "delete", "move"].includes(ch?.action)) P(`commits[${i}].changes[${j}].action must be edit, create, delete or move`);
         if (str(ch?.file) && ch.file.startsWith("/")) P(`commits[${i}].changes[${j}].file must be relative to the repo`);
-        if (str(ch?.file) && ["edit", "delete", "move"].includes(ch?.action) && !/[*{]/.test(ch.file) && !existsSync(`${REPO}/${ch.file}`) && !(d.commits ?? []).some((c2) => (c2.changes ?? []).some((x) => x.action === "create" && x.file === ch.file))) P(`commits[${i}].changes[${j}].file does not exist: ${ch.file}`);
+        if (ch?.made_by !== undefined && !known.has(ch.made_by)) P(`commits[${i}].changes[${j}].made_by "${ch.made_by}" is not a step`);
+        if (ch?.made_by && !(d.depends_on ?? []).some((x) => x.id === ch.made_by)) P(`commits[${i}].changes[${j}] is made by step ${ch.made_by}, which depends_on must name`);
+        if (str(ch?.file) && ["edit", "delete", "move"].includes(ch?.action) && !ch?.made_by && !/[*{]/.test(ch.file) && !existsSync(`${REPO}/${ch.file}`) && !(d.commits ?? []).some((c2) => (c2.changes ?? []).some((x) => x.action === "create" && x.file === ch.file))) P(`commits[${i}].changes[${j}].file does not exist: ${ch.file}`);
       }
       if (!arr(c?.checks) || !c.checks.length) P(`commits[${i}].checks must name at least one command`);
     }
