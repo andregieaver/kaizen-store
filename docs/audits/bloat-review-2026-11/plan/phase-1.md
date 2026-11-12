@@ -13,7 +13,7 @@ This plan's own checks would add about 27 sentences to CLAUDE.md. Write one rule
 - **Done when:** pnpm test src/lib/docs-budget.scan.test.ts passes at the figures phase 0 left, node scripts/docs-ratchet.mjs --check runs on a docs-only push, and the test fails on each planted case: a 600-character prose line in docs/rules, a new rule of 5,000 bytes, a *.baseline.json under src that the budgets rule does not name, and a dated report under docs/audits that no ignore file covers. The budget counts CLAUDE.md with every file it imports and every .claude/rules file without a paths list, and fails on a new import. It lists the ten never-sentences and fails when one leaves. It checks cited paths, functions, components, constants and SQL names in CLAUDE.md, docs/rules and .claude/rules. It holds each rule file's list of headings at 10,000 bytes, 0 lines over 500 characters in CLAUDE.md, and each row of every tracker CLAUDE.md names at 300 characters or fewer. Each has its planted case, among them a 400-character row planted in each of the three trackers. CLAUDE.md names this plan only in the shared line of trackers.
 - **Platform:** One rule for all budgets: the platform's routes, jobs and tables are counted in the same baselines.
 - **Decided (the owner, 12 November: the recommended way):** No. This plan gets no lines of its own in CLAUDE.md: one shared line names the trackers and each tracker keeps its rules at its own top, as the step proposed. *Asked:* Should this plan get lines of its own in CLAUDE.md, as the code review has? Proposed: no. One shared line names the trackers, and each tracker keeps its rules at its own top.
-- **To carry it out:** [steps/1.1.md](steps/1.1.md) (review)
+- **To carry it out:** [steps/1.1.md](steps/1.1.md) (cheap)
 
 ## 1.2 Hold every route's first scripts
 
@@ -53,7 +53,7 @@ Every admin figure is for an English account, the spec reads the HTML's script t
 - **Effort:** M. **Areas it moves:** Interface text; What an owner's browser gets.
 - **Done when:** e2e/signed-in/admin-scripts.spec.ts holds an English and a Norwegian figure for each of the five screens (document, words handed and read, script by idle) and a save's answer for two, and fails when a 10 KB area is added to a layout's hand-down in Norwegian.
 - **Platform:** The platform home is one of the five screens, in both languages.
-- **To carry it out:** [steps/1.5.md](steps/1.5.md) (review)
+- **To carry it out:** [steps/1.5.md](steps/1.5.md) (cheap)
 
 ## 1.6 Put a launch-theme store into the measured set
 
@@ -143,7 +143,7 @@ No figure of time is measured or held, and no finding covers it. measure-routes.
 - **Effort:** M. **Areas it moves:** What a shopper's browser gets; What an owner's browser gets.
 - **Done when:** The nightly job has run for a week on the four production pages (the median of three runs each) with its figures in docs/performance.md; e2e/performance.spec.ts holds the script bytes run by idle on four store pages; and in the slowed signed-in run the admin's home and orders paint within 2.5 s, with the script run by idle on the four admin screens held within 5%.
 - **Platform:** Kaizena Flow's front page is one of the two pages measured each night.
-- **To carry it out:** [steps/1.14.md](steps/1.14.md) (review)
+- **To carry it out:** [steps/1.14.md](steps/1.14.md) (cheap)
 
 ## 1.15 Hold the admin's speed with a line in the morning briefing
 
@@ -173,7 +173,7 @@ Lint sees unused locals only, and no test counts copies, twins, public files or 
 - **Effort:** M. **Areas it moves:** The code itself.
 - **Done when:** pnpm test fails on each planted case: export const NEVER_USED = 1 in a file under src/lib, public/unused.png, an empty src/app/api/never/route.ts, a 30-line block pasted into another file or twice inside one, a 300-line module copied with its names changed, and a helper pasted into a third file. It passes when one new 20-line form resembles another, and unusedExports in the baseline is empty.
 - **Platform:** The platform's twins (its second engines and the modules of its 19 platform_* tables) are in the twin baseline with their reason until step 3.10 folds them.
-- **To carry it out:** [steps/1.17.md](steps/1.17.md) (review)
+- **To carry it out:** [steps/1.17.md](steps/1.17.md) (cheap)
 
 ## 1.18 Hold the surface: fourteen counts, the hot tables' indexes and triggers, and a new store's rows
 
@@ -286,4 +286,4 @@ The bar says every screen, and step 1.5 holds five. Make the review's handed.mjs
 - **Effort:** M. **Areas it moves:** Interface text; What an owner's browser gets; The page builder's model and a built page.
 - **Done when:** The baseline lists every hand-down site (188 today) in both languages, and pnpm test fails on a planted 'schedules' area in the pages list's hand-down.
 - **Platform:** The platform admin's hand-down sites are among the 188 and are held the same way.
-- **To carry it out:** [steps/1.28.md](steps/1.28.md) (review)
+- **To carry it out:** [steps/1.28.md](steps/1.28.md) (cheap)

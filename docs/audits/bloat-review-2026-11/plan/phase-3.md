@@ -63,7 +63,7 @@ Five document jobs find due work by re-checking every store's orders of 120 days
 - **Effort:** M. **Areas it moves:** The database; Scheduled work.
 - **Done when:** A new int test seeds 2,000 paid, invoiced orders in one store, runs one invoice tick, one email check and one e-invoice check, and the rows read from commerce.orders and commerce.invoices are fewer than 100 each; an idle tick reads at most 10 more rows per added store, none from pages, products, product_variants, orders or media, and a day later product_variants is read whole 10 times a day or fewer; the new ledger case reaches the third book within three runs; and the ledger rows dispatcher.auto-archive, dispatcher.autopilot-budgets and dispatcher.recurring have every_seconds 3600.
 - **Platform:** Kaizena Flow's own books are a book like any other and get their turn by the same order.
-- **To carry it out:** [steps/3.6.md](steps/3.6.md) (review)
+- **To carry it out:** [steps/3.6.md](steps/3.6.md) (strong)
 
 ## 3.7 Call the PDF route when a document waits
 

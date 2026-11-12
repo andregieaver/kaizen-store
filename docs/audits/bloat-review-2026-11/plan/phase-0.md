@@ -12,7 +12,7 @@ The detectors this plan's checks name exist only in the review's scratch folder:
 - **Effort:** S. **Areas it moves:** The code itself; What the server loads and asks; The page builder's model and a built page; The written rules; What a shopper's browser gets; Interface text.
 - **Done when:** Each script, run with node from a fresh checkout, gives its number again (41 twin pairs, 4,098 exact copied lines across files, 1,308 files reached by /api/visit), no bar and no done-when names a path under the scratchpad or work/ (rg -n 'scratchpad|work/' over this plan, its cards and the findings files prints nothing), and the plan's tracker under docs/audits/bloat-review-2026-11 has one Progress row and one section for each step.
 - **Platform:** The scripts read the whole of src, so the platform's files and routes are counted with the stores'.
-- **To carry it out:** [steps/0.1.md](steps/0.1.md) (strong)
+- **To carry it out:** [steps/0.1.md](steps/0.1.md) (review)
 
 ## 0.2 Store a daily reading of production, so every later step has a 'before'
 
@@ -42,7 +42,7 @@ src/db/client.ts hands the 19,614-line Drizzle schema to a query builder nobody 
 - **Effort:** S. **Areas it moves:** What the server loads and asks; The database; Tests, CI and the build; The code itself.
 - **Done when:** After pnpm build, rg -l --no-ignore -F orders_store_placed_idx .next/server -g '*.js' | wc -l prints 0 (6 today), pnpm db:check exits 0, a next analyze export shows /api/visit at or under 710 modules (1,890 today), each of the five beacons (the four /api/visit routes and /api/recommendations/events) reaches under 160 source files by the import walker of step 0.1, and src/db/schema-import.scan.test.ts fails on a scratch import of './schema' as a value from src/db/client.ts. That scan is the one ban on the schema: the server's and the build's areas use the same test.
 - **Platform:** The same client and beacons serve the platform admin and Kaizena Flow's site, so their cold starts lose the same 115 to 135 ms.
-- **To carry it out:** [steps/0.4.md](steps/0.4.md) (review)
+- **To carry it out:** [steps/0.4.md](steps/0.4.md) (cheap)
 
 ## 0.5 Load sharp, the font parser and the AI manager's engine when they are used
 
@@ -52,7 +52,7 @@ Thirteen server modules import sharp or opentype.js at the top, so the image lib
 - **Effort:** S. **Areas it moves:** What the server loads and asks; The code itself.
 - **Done when:** src/server/lazy-packages.scan.test.ts passes with 0 static value imports of sharp or opentype.js outside tests and sharp-load.ts (13 today), a next analyze export shows /admin/[store]/orders without src/server/owner-tools.ts at or under 2,050 modules (2,349 today), and rg -n 'MCP_TOOLS' src prints nothing.
 - **Platform:** The platform admin's pages drop the same engine, and its assistant loads it on first use like a store's.
-- **To carry it out:** [steps/0.5.md](steps/0.5.md) (review)
+- **To carry it out:** [steps/0.5.md](steps/0.5.md) (cheap)
 
 ## 0.6 Cut the import cycle of 229 server files
 
@@ -82,7 +82,7 @@ The start hook (src/instrumentation.ts) loads 856 modules, among them the transl
 - **Effort:** M. **Areas it moves:** What the server loads and asks; Interface text; What a shopper's browser gets; The database.
 - **Done when:** In src/server/languages.int.test.ts uiTextsFor(lang) holds exactly the 114 browser keys in under 9,000 bytes for a fully translated language (92,809 today), a unit test of startUi() runs a simulated day on a fake clock and counts 2 statements at start, under 150 in the day and no call of overlayMessages() before t() reads a language, and the import walker of step 0.1 counts 60 source files or fewer behind src/instrumentation.ts (383 today) with no src/server/ai.ts.
 - **Platform:** Kaizena Flow's own site in more than one language (D312) reads through the same reader, so it gains the same start and the same document.
-- **To carry it out:** [steps/0.8.md](steps/0.8.md) (strong)
+- **To carry it out:** [steps/0.8.md](steps/0.8.md) (review)
 
 ## 0.9 Take Supabase's client, zod and the builder's English off every signed-in screen
 
@@ -132,7 +132,7 @@ An admin screen makes 23 to 46 router requests at rest, and about 25 again after
 - **Effort:** M. **Areas it moves:** What an owner's browser gets; What a shopper's browser gets; What the server loads and asks.
 - **Done when:** e2e/signed-in/prefetch.spec.ts (new) keeps one table for eight screens: home, orders, products, pages, settings, a product's editor, the builder and the platform home. The admin home makes 0 router prefetch requests in the 3 s after it loads (28 today) and the Products list 0 for product editors (8 on a four-row list today). The other six are held at today's count and may only fall. At most 2 requests follow hovering one rail link, and every fetch after load is named in the table.
 - **Platform:** The platform admin's rail and lists are the same components.
-- **To carry it out:** [steps/0.13.md](steps/0.13.md) (review)
+- **To carry it out:** [steps/0.13.md](steps/0.13.md) (cheap)
 
 ## 0.14 End the prefetch loop on /s/ addresses, and write both router settings down
 
@@ -202,7 +202,7 @@ select slug from commerce.stores where id is written by hand in 27 places and is
 - **Effort:** S. **Areas it moves:** The database; What the server loads and asks; The code itself.
 - **Done when:** rg -c 'select slug from commerce[.]stores where id' src --glob '!*.test.ts' sums to at most 3 (27 today), rg -n 'loadCards\(\)' src/server/theme-store.ts shows two call sites (three today), and the new case in src/lib/store-hosts.test.ts shows 1,000 calls of marketPath() with a 1,000-store hosts list calling JSON.parse once (2,000 or more today).
 - **Platform:** The slug helper and the hosts list are shared code: the platform admin's links and Kaizena Flow's own store read through them.
-- **To carry it out:** [steps/0.20.md](steps/0.20.md) (cheap)
+- **To carry it out:** [steps/0.20.md](steps/0.20.md) (review)
 
 ## 0.21 Read the AI connection only to call a model, and give search a ceiling
 
@@ -252,7 +252,7 @@ pg_cron's run log is 564 MB of the 731 MB database and nothing prunes it. A dail
 - **Effort:** S. **Areas it moves:** Scheduled work; The database.
 - **Done when:** In production select min(end_time) from cron.job_run_details is never older than 8 days, and the size by schema in the reading of step 0.2 shows the cron schema under 80 MB a week after the one-off emptying (564 MB today; eight days of rows are 58 to 64 MB) and under 20 MB once step 3.1 is in.
 - **Platform:** One scheduler: the prune covers the platform's jobs too.
-- **To carry it out:** [steps/0.25.md](steps/0.25.md) (cheap)
+- **To carry it out:** [steps/0.25.md](steps/0.25.md) (review)
 
 ## 0.26 Drop the 13 duplicate indexes, and add the test that stops the next one
 
