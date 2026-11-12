@@ -23,7 +23,7 @@ import { parseTermRules, type TermRules } from "@/lib/term-rules";
 import { audit, type Account } from "./auth";
 import { refreshRedirects } from "./redirect-live";
 import { getStore } from "./stores";
-import { checkedRules, namedByRules, ruleMemberIds, type RuleChoices, type RuleCount } from "./term-rules";
+import type { RuleChoices, RuleCount } from "./term-rules";
 
 /**
  * Categories and tags (D50): Kaizen's for its pages, and each store's for
@@ -196,9 +196,11 @@ async function rulesFor(
   if (scope.storeId === null || scope.contentType !== "product") return { ok: false, problems: [RULES_SCOPE_PROBLEM] };
   if (marked) return { ok: false, problems: [RULES_UNIT_PRICE_PROBLEM] };
   if (termId) {
+    const { namedByRules } = await import("./term-rules");
     const naming = await namedByRules(scope.storeId, termId);
     if (naming) return { ok: false, problems: [`${naming} is filled by rules that name this one, so this one is filled by hand.`] };
   }
+  const { checkedRules } = await import("./term-rules");
   return checkedRules(scope.storeId, termId, raw);
 }
 
@@ -415,6 +417,7 @@ export const TERM_ORDER_MAX = 500;
  */
 export async function termProducts(storeId: string, termId: string): Promise<TermProduct[]> {
   // A collection filled by rules (D319) lists what its rules hold now, newest first, as its page does; none is placed.
+  const { ruleMemberIds } = await import("./term-rules");
   const ruled = await ruleMemberIds(storeId, termId, TERM_ORDER_MAX);
   if (ruled.length > 0) {
     const rows = await db().execute<Row>(sql`
