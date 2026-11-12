@@ -1,0 +1,238 @@
+{
+  "area": "scheduled",
+  "title": "Scheduled and background work",
+  "grade_today": "D",
+  "grade_reasons": "D, at the top of the band. Nearly all of the scheduler's 13,250 function calls a day find nothing, all 83 dispatcher jobs share one five-minute cadence with 78 started at once on five connections, at least 13 jobs and 3 minute routes do work per store on every run, and the scheduler's own log is 564 MB, 77% of the database. The one test asks only that a route has a time limit and a ledger row, so nothing holds the cost. It is not an E because today's cost is small and flat (a few minutes of database time a day), and the base is sound: claimed queues, mostly set-based jobs and a run ledger.",
+  "measures": [
+    {
+      "name": "Function calls a day by the scheduler when nothing waits",
+      "today": "13,250 a day: 12,960 from nine every-minute routes, 288 dispatcher runs, 2 daily runs. The ledger says the nine last took 0 to 72 ms, so nearly every call finds nothing. Source: the schedule in supabase/migrations/20261111172842_baseline_4_roles_and_supabase.sql:93-113, and cron.job and commerce.cron_jobs in m/prod-db-stats.md.",
+      "target_a": "At most 1,200 on a quiet day: 288 dispatcher runs, 2 daily runs and a 15-minute safety sweep of the nine routes (864). One every-minute schedule in pg_cron, the tick, which by itself wakes no function. After opening: calls that take no work stay under 1,000 a day.",
+      "how_measured": "Production: the day's rise of runs on the route.* rows of commerce.cron_jobs, and select count(*) from cron.job where schedule = '* * * * *' (both queries are at the end of m/prod-db-stats.md). Held by the registry item's scan test, which fails a second every-minute schedule in supabase/migrations; after opening by the ledger's idle count per route, which the same item adds.",
+      "why_this_is_a": "The floor is the dispatcher's 288 runs, which always measure the status page, and the 2 daily runs. The database can answer 'does a row wait' without waking a function, so every other idle call can go. The tolerance is the sweep: 864 calls a day that guard against a wrong predicate. The planned steps reach about 5,200, which is a B; gap 1 closes the rest."
+    },
+    {
+      "name": "Statements a day sent by scheduled work that finds nothing",
+      "today": "About 170,000: about 68 a minute from the nine minute routes (97,900 a day) and at least 248 per dispatcher run (71,400 a day), with 84 ledger writes a run. The auditor's count from the code, re-read in part by the skeptic; pg_stat_statements shows 565,049 ledger upserts in 78 days (m/prod-db-stats.md).",
+      "target_a": "Under 40,000 a day. An ordinary idle dispatcher run, with no hourly or daily job due, sends at most 125 statements with today's job list (an estimate until the counter gives the real figure, which may then only fall). An idle call of a route sends at most 3. The minute tick is one statement inside the database.",
+      "how_measured": "src/server/query-budget.int.test.ts, made by DQ-11 and the registry item: it counts one idle dispatcher run and one idle call of each route and keeps the counts in src/server/ratchet.baseline.json. Cross-check in production: calls of the single-row 'insert into commerce.cron_jobs' in pg_stat_statements rise by under 15,000 a day (about 38,600 now).",
+      "why_this_is_a": "The floor is one indexed 'is anything due' read per queue per period. The auditor counted about 2 statements per idle job, so 58 five-minute jobs give about 33,000 a day, plus the sweep and the tick. The target allows about a tenth above that. A B is a count that is written down and can only fall; an A is the count at its floor."
+    },
+    {
+      "name": "Jobs whose idle run does work per store, site or product",
+      "today": "At least 13 of the 83 dispatcher jobs (knowledge, picture vectors, alt texts, product vectors, invoices, ledger, Tripletex, Fiken, auto-archive, autopilot budgets, recurring, eBay, the listings' check), 3 minute routes (automations and ad conversions in broadcasts, support emails in integrations, the cookie scan's due check) and the daily visits prune. Source: the planner's scan of the 83 job functions for loops, each loop then read; CR-3, CR-6, CR-15, CR-17.",
+      "target_a": "0. An idle run sends the same number of statements with 1 store and with 20. A job that must visit stores one by one (it polls eBay, Tripletex, Fiken, Stripe or a carrier for a connected store) visits only stores with something new or due their hourly look, with a stated cap and an order that rotates.",
+      "how_measured": "The same query-budget.int.test.ts, run on the seeded database and again with 19 more open stores: the two counts must be equal. The registry labels each job 'set' or 'per-store' with its cap and order, and src/server/cron-routes.scan.test.ts fails a job without them (the registry item).",
+      "why_this_is_a": "This measure decides the cost at opening: a set-based check costs the same at 60 stores and at 6,000. Idle work has no floor above zero. The tolerance is the hourly full pass kept as a safety net (one statement over all stores) and outside systems that offer no push."
+    },
+    {
+      "name": "Jobs that run more often than their work changes",
+      "today": "About 30 of the 83 dispatcher jobs run every 300 s though their work is hourly or daily (9 pure prunes, about 21 tied to an hour, a day or a week): 23,904 job runs a day. Two prunes run every minute inside the integrations route, and the theme shots' wanted list is rebuilt every minute (every published theme's snapshot read 1,440 times a day). Source: the skeptic's count in the cron findings; src/app/api/cron/cart-reminders/route.ts:128-275, where I counted 78 + 5 jobs.",
+      "target_a": "0. Every job names its cadence (300, 3,600 or 86,400 s) and a one-line reason in one registry. Under 17,500 job runs a day with today's list. No prune runs more often than hourly.",
+      "how_measured": "src/server/cron-routes.scan.test.ts fails a registry job without a cadence and a reason (the registry item). Production: select every_seconds, count(*) from commerce.cron_jobs group by 1, and runs of dispatcher.searches rising by 1 a day (288 now).",
+      "why_this_is_a": "A cadence is a stated promise per job: five minutes where a shopper or owner waits, hourly or daily elsewhere. Nothing here needs a tolerance: a job has a reason for its period or it does not. A B is the 30 slowed; an A is that the 84th job cannot be added without a cadence."
+    },
+    {
+      "name": "pg_cron's own run log",
+      "today": "564 MB, 77% of the 731 MB database; no retention anywhere; about 13,250 new rows a day. Source: 'Size and shape' in m/prod-db-stats.md; my rg finds job_run_details nowhere in src, scripts or supabase/migrations.",
+      "target_a": "The oldest row is at most 8 days old and the cron schema is under 60 MB. About 1,750 new rows a day once the tick replaces nine schedules.",
+      "how_measured": "Production: select min(end_time) from cron.job_run_details, and the size-by-schema query in m/prod-db-stats.md. Held by the daily scheduler check of gap 2, which fails when the oldest row is over 8 days old.",
+      "why_this_is_a": "The log serves recent debugging only; commerce.cron_jobs keeps each job's health. Its floor is one row per pg_cron run: about 12,000 rows for a week after the tick, a few megabytes. 60 MB leaves room for space the one-off cleanup may not give back."
+    },
+    {
+      "name": "Scheduled functions that are seen: own ledger row, real work recorded, no silent failure",
+      "today": "83 dispatcher jobs and 12 routes have a row. The 40 daily functions share 2 rows, and 19 of them catch their error to the console. Seven routes that work after answering record 0 to 1 ms. pg_cron's 2 plain-SQL deletes have no row. No row says when a job last did any work. Source: src/app/api/cron/subscription-reminders/route.ts:61-79 (rg counts 19 console.error), src/server/cron-runs.ts, baseline_4:105-113.",
+      "target_a": "Every scheduled function, pg_cron's own SQL jobs included, has a ledger row with its cadence, last run, last work and failures. 0 catches to the console in src/app/api/cron. A failing prune emails the admins within three days; a stopped scheduler within the hour.",
+      "how_measured": "Production: select count(*) from commerce.cron_jobs where job like 'daily.%' (38 or more). rg -c 'console.error' src/app/api/cron (19 today, 0). src/server/cron-routes.scan.test.ts: every function a cron route calls is an entry of the registry or the daily list (CR-17 step 5). The outside check of gap 2.",
+      "why_this_is_a": "Retention is the only brake on table growth, and 24 of the daily functions are prunes: a prune nobody sees failing is how the run log reached 564 MB. An A needs each measure held by something that speaks up, and a ledger only the scheduler reads cannot report its own stop. No tolerance: a job is seen or it is not."
+    },
+    {
+      "name": "Room in a dispatcher run: jobs at once, time budgets, run length",
+      "today": "78 jobs start at once on a pool of 5 connections with a 5 s wait; their recorded times sum to 12.1 s in a 1.3 s run. At most 16 of the 83 job modules mention a time budget (my grep; some are other deadlines). The run's limit (300 s) equals its period. The 5 trailing jobs and every cache refresh wait for the slowest job. Source: src/server/cron-runs.ts:117, src/db/client.ts:68-70, cart-reminders/route.ts:89-92 and 262-279, m/prod-db-stats.md.",
+      "target_a": "At most 4 jobs at a time. Every job has a time budget and a deadline. A run starts no job after 240 s and stays under 150 s, half its period; one over that is flagged 'slow' beside late and failing. A job's cache refresh follows that job.",
+      "how_measured": "A unit test of runJobs(): never more than 4 running, and a job that never returns leaves the others' rows written. The scan test fails a registry job without a budget (gap 3). Production: last_duration_ms of route.cart-reminders in commerce.cron_jobs.",
+      "why_this_is_a": "The pool of 5 is fixed by the pooler's design, so 4 jobs and one connection for the ledger is the floor. Half the period is the tolerance: a full margin before Vercel stops the run and before the next run starts. Today's 1.3 s proves nothing, because no queue holds work yet."
+    },
+    {
+      "name": "Work repeated on things that did not change (production counters, a day)",
+      "today": "Empty knowledge re-cuts about 1,170 (91,200 deletes removed 782 rows in 78 days). Picture vectors re-stamped about 172 (13,414 updates on 468 rows). issue_waiting_invoices called about 127 with no invoice issued. Every theme snapshot read 1,440 times. cookie_scans read by scan about 21 M rows; 40 to 50 scheduled scans where about 2 are due. Stripe payout reads 288 to 576. The listings' check can spend up to 2,880 AI calls on answers it could not read (not measured). Source: m/prod-db-stats.md and the cron findings.",
+      "target_a": "Each counter is at most the day's real changes plus 20: knowledge deletes no more than the pages published, picture updates under 100, invoice calls under 10, snapshot reads under 100, cookie_scans under 1 M rows read and scans at most a seventh of the sites plus 5, payout reads at most 48, and no listing asked twice in a day for the same words.",
+      "how_measured": "Production: pg_stat_statements and pg_stat_user_tables read a day apart with the queries at the end of m/prod-db-stats.md, and commerce.ai_usage where feature = 'content_moderation'. Each fix adds an integration test that holds its count (knowledge.int.test.ts, invoice-issue.int.test.ts, content-moderation.int.test.ts, platform-books.int.test.ts). The weekly read of the costliest statements (DQ-11 step 5) keeps watching.",
+      "why_this_is_a": "These are the places where a job re-does finished work; the floor is the number of real changes. The 20 covers the hourly safety passes. A B has the large ones gone; an A has each one counted against changes with a test behind it."
+    }
+  ],
+  "work_items": [
+    {
+      "title": "Keep pg_cron's run log for a week and clear the backlog once",
+      "finding_ids": ["CR-5"],
+      "also_ids": ["DS-8"],
+      "phase": "now",
+      "effort": "S",
+      "done_when": "In production select min(end_time) from cron.job_run_details is never older than 8 days, and the size-by-schema query shows the cron schema under 60 MB after the one-off cleanup (564 MB today).",
+      "moves": "Run log: from 564 MB with no retention to a week of rows under 60 MB. Do it before the tick, which then cuts new rows by about 87%.",
+      "serves": "scheduled",
+      "owner_decision": false
+    },
+    {
+      "title": "One scheduler: take the daily job out of Vercel's cron",
+      "finding_ids": ["CR-12"],
+      "also_ids": [],
+      "phase": "now",
+      "effort": "S",
+      "done_when": "vercel.json schedules no job route, and commerce.cron_jobs.runs for route.subscription-reminders rises by exactly 1 a day.",
+      "moves": "Seen and held: the 40 daily functions can no longer run twice in the same minute. Function calls: at most 1 fewer a day. It comes before the daily list (CR-17). Gap 2 says what should watch the scheduler from outside once this schedule is gone.",
+      "serves": "scheduled",
+      "owner_decision": false
+    },
+    {
+      "title": "AI upkeep costs one statement when nothing changed: knowledge, picture vectors, alt texts, product vectors",
+      "finding_ids": ["CR-4"],
+      "also_ids": ["DQ-6", "DS-5", "DQ-3", "DS-10", "DQ-13"],
+      "phase": "now",
+      "effort": "M",
+      "done_when": "In pg_stat_statements the calls of 'delete from commerce.knowledge_chunks where page_id = $1' rise by no more than the pages published that day (about 1,170 a day now), n_tup_upd on commerce.media_embeddings rises by fewer than 100 a day, and a new knowledge.int.test.ts shows an idle refreshKnowledge() sends the same number of statements for 1 site and for 20.",
+      "moves": "Per-store idle work: 4 of the 13 looping jobs gone. Repeated work: empty re-cuts from about 1,170 a day to 0, picture re-stamps from about 172 a day to under 100. It adds products.text_changed_at, which the listings' check then uses. Panel choices: one table for what was cut, under one name (CR-4 says knowledge_cuts, DQ-6 knowledge_sources); for pictures the change test of DS-10, not DQ-3's stored uses.",
+      "serves": "scheduled",
+      "owner_decision": false
+    },
+    {
+      "title": "The invoice job asks only stores it can issue for now, the longest-waiting first",
+      "finding_ids": ["CR-9"],
+      "also_ids": ["DS-3", "DQ-15"],
+      "phase": "now",
+      "effort": "S",
+      "done_when": "Calls of 'select commerce.issue_waiting_invoices($1, $2)' in pg_stat_statements rise by fewer than 10 a day on today's data (about 127 a day now), and the two new cases in invoice-issue.int.test.ts pass.",
+      "moves": "Repeated work: invoice calls from about 127 a day to under 10, and the second credit-note call per store goes. Per-store idle work: one more looping job gone. No store can be kept out of the 50 picked. It includes one invoice issued end to end in production by a live drill before opening.",
+      "serves": "scheduled",
+      "owner_decision": false
+    },
+    {
+      "title": "The listings' check records a try, stops on a provider error and reads only reworded products",
+      "finding_ids": ["CR-15"],
+      "also_ids": ["DQ-5"],
+      "phase": "now",
+      "effort": "S",
+      "done_when": "The two new cases in content-moderation.int.test.ts pass, and in production the day's commerce.ai_usage rows with feature 'content_moderation' are at most the products created or reworded that day plus the notices plus 10.",
+      "moves": "Repeated work: AI calls for answers that could not be read from up to 2,880 a day to at most one try a day per listing. Per-store idle work: the platform-wide hash of every product's words, run 288 times a day, becomes a read of what changed (it uses the marker the AI upkeep item adds).",
+      "serves": "scheduled",
+      "owner_decision": false
+    },
+    {
+      "title": "The cookie scan's due check uses its index, and a failing site backs off",
+      "finding_ids": ["CR-6"],
+      "also_ids": ["DQ-1", "DQ-8", "DS-7"],
+      "phase": "now",
+      "effort": "S",
+      "done_when": "seq_tup_read on commerce.cookie_scans in pg_stat_user_tables grows by under 1 M a day (about 21 M a day now), and scheduled scans in a day are at most a seventh of the sites plus 5 (40 to 50 a day now).",
+      "moves": "Per-store idle work: the one every-minute question that grows with sites times scans is served by an index. Repeated work: Chromium runs from 40 to 50 a day to about 2 at today's size. Panel choice: DQ-1's rewrite, which needs no new index. The weekly pick leaves the minute with the tick.",
+      "serves": "scheduled",
+      "owner_decision": false
+    },
+    {
+      "title": "One tick a minute: the database says which queue holds a row, and only those routes are called",
+      "finding_ids": ["CR-1", "CR-7"],
+      "also_ids": ["DQ-1"],
+      "phase": "next",
+      "effort": "M",
+      "done_when": "In production select count(*) from cron.job where schedule = '* * * * *' returns 1, and over one quiet day commerce.cron_jobs.runs for route.page-jobs rises by no more than 100 (1,440 today).",
+      "moves": "Function calls on a quiet day: 13,250 to about 5,200 (the three feature routes stay at 4,320 until gap 1). Idle statements: about 33,000 a day fewer, and the theme shots' 8 a minute become 0 or 1. Run log rows: 13,250 to about 1,750 a day. Seen: the seven routes that work after answering record their real work. Panel choice: CR-1 over DQ-1 step 8, which left the gate optional.",
+      "serves": "scheduled",
+      "owner_decision": false
+    },
+    {
+      "title": "The dispatcher runs from a registry: a cadence per job, four at a time, one ledger write for idle jobs, and a scan test and an idle budget that hold it",
+      "finding_ids": ["CR-2", "CR-14", "CR-8"],
+      "also_ids": ["DQ-5", "DQ-11", "FT-3", "FT-2", "DS-12"],
+      "phase": "next",
+      "effort": "L",
+      "done_when": "cron-routes.scan.test.ts fails on a fixture job that names no cadence, and a day after the deploy select count(*) from commerce.cron_jobs where job like 'dispatcher.%' and every_seconds = 300 is 58 or fewer (83 today) while runs of dispatcher.searches rise by 1 a day (288 now).",
+      "moves": "Cadence: about 30 jobs faster than their work to 0, and 23,904 job runs a day to under 17,500. Idle statements: a dispatcher run from at least 248 to at most 125, held by query-budget.int.test.ts. Room: 78 jobs at once to 4. Repeated work: Stripe payout reads from 288 to 576 a day to at most 48. Seen: each job shows when it last worked. Panel choices: cadences as CR-2 lists them (trials and the Stripe webhook check stay at five minutes; DQ-5 had them hourly). A job that worked or failed is written when it ends and only the idle jobs share one write, which keeps what DQ-5 step 4 protects.",
+      "serves": "scheduled",
+      "owner_decision": false
+    },
+    {
+      "title": "The minute routes' work follows what is due: automations, ad conversions and support emails",
+      "finding_ids": ["CR-3"],
+      "also_ids": ["DQ-13"],
+      "phase": "next",
+      "effort": "M",
+      "done_when": "A new case in src/server/automations.int.test.ts counts the statements of one runAutomations() with 20 stores, two enabled automations each and nothing due: 4 or fewer (at least 61 today).",
+      "moves": "Per-store idle work: the 3 minute routes stop costing stores times kinds, a week of orders and every kept conversation each minute. Idle statements: their 28 a minute to about 3. Its 'is anything due' statements are what gap 1 moves into the tick.",
+      "serves": "scheduled",
+      "owner_decision": false
+    },
+    {
+      "title": "Each daily job has its own ledger row, and no prune fails unseen",
+      "finding_ids": ["CR-17"],
+      "also_ids": ["DS-13", "FT-3"],
+      "phase": "next",
+      "effort": "M",
+      "done_when": "select count(*) from commerce.cron_jobs where job like 'daily.%' and every_seconds = 86400 is 38 or more, and a new case in cron-runs.int.test.ts shows a daily job that throws leaves the others' rows ok and its own counted as failed.",
+      "moves": "Seen: 40 daily functions under 2 rows become a row each, 19 catches to the console become 0, and a failing prune emails the admins within three days. Per-store idle work: the visits prune stops looping over every store. After the registry item and the single scheduler.",
+      "serves": "scheduled",
+      "owner_decision": false
+    },
+    {
+      "title": "Books, Tripletex and Fiken: every book gets its turn, and an idle one costs nothing between hourly looks",
+      "finding_ids": ["CR-16"],
+      "also_ids": ["DQ-13", "DQ-15"],
+      "phase": "later",
+      "effort": "M",
+      "done_when": "The new ledger case passes (the third book is reached within three runs), and in production the ledger rows dispatcher.auto-archive, dispatcher.autopilot-budgets and dispatcher.recurring have every_seconds 3600.",
+      "moves": "Per-store idle work: the last 6 looping jobs to 0. A store with books or a connection on and nothing new costs no statement between hourly looks, where it costs 2 to 5 every five minutes today. No book can be starved by a fixed order.",
+      "serves": "scheduled",
+      "owner_decision": false
+    },
+    {
+      "title": "The PDF route is called when a document waits, and a copied AI picture keeps its mark",
+      "finding_ids": ["CR-11"],
+      "also_ids": [],
+      "phase": "later",
+      "effort": "S",
+      "done_when": "cron-routes.scan.test.ts passes with document-pdfs out of NOT_SCHEDULED, and the count of AI pictures with no mark is 0 a week after a store was made from a theme with AI pictures.",
+      "moves": "Seen: no cron route is left outside the schedule, and 'Try again' does what it says. Dispatcher jobs: 83 to 82 once the picture-mark backfill is retired, and two storage downloads per copied AI picture never start. After the tick.",
+      "serves": "scheduled",
+      "owner_decision": false
+    },
+    {
+      "title": "The docs index rewrites only the rows that changed",
+      "finding_ids": ["CR-10"],
+      "also_ids": ["DS-13"],
+      "phase": "later",
+      "effort": "S",
+      "done_when": "After a deploy that changes one docs article, n_tup_upd for commerce.docs_index in pg_stat_user_tables rises by fewer than 50 (1,845 before).",
+      "moves": "Repeated work: rows rewritten per docs deploy from 1,845 to the rows that changed, with their three GIN indexes.",
+      "serves": "database",
+      "owner_decision": false
+    }
+  ],
+  "tolerated": [
+    {
+      "finding_id": "CR-13",
+      "why": "Raw status checks for 91 days are bounded: about 131,000 rows and 20 MB at steady state, the platform's own table, pruned, not growing with stores. An A can live with that. Its one-line fix (bound the newest-check read to one day) is done when status.ts is next opened, which DS-13 does when it moves the status prune to the daily job."
+    }
+  ],
+  "owner_choices": [],
+  "gaps": [
+    {
+      "title": "After the tick, three feature routes are still called every minute: about 5,200 calls on a quiet day against a bar of 1,200",
+      "evidence": "CR-1's first fix step has commerce.cron_due() return 'autopilot', 'broadcasts' and 'integrations' always, and its saving line says they stay at one call a minute (4,320 a day). CR-3 puts their 'is anything due' statement inside the route. I read the three routes: src/app/api/cron/integrations/route.ts:28-37 does its work before it answers, broadcasts/route.ts:28-41 starts eight runners and autopilot/route.ts:22-28 three. So after every planned step a quiet day still has 4,320 + 576 sweep + 290 calls. DQ-1 step 8 calls this gate optional because the saving shrinks once these queues hold work most minutes. That is true, and it is still the only way the bar holds.",
+      "proposed_work_item": "Next, S on top of CR-3: write each feature route's 'is anything due' statement (CR-3 steps 4 and 5) as one SQL function that both the tick and the route read, so the test lives in one place. commerce.cron_due() then returns a feature route only when a part is due, or in the 15-minute sweep. A scan test fails a runner called in a gated route that has no part in the function. Done when: on a quiet day commerce.cron_jobs.runs for route.integrations, route.broadcasts and route.autopilot each rise by no more than 100 (1,440 today)."
+    },
+    {
+      "title": "The scheduler and its own SQL jobs are watched only from inside the scheduler",
+      "evidence": "baseline_4_roles_and_supabase.sql:105-113 schedules two retention deletes as plain SQL, and CR-5 adds a third for the run log. src/server/cron-runs.ts writes a ledger row only from tracked(), so these have none and a failing one shows nowhere; docs/wave-1g-gdpr.md:674 asks the owner to check the consent job by hand. src/server/status.ts:166-171 reads 'late' jobs but runs from the dispatcher, and cron-runs.ts:49-52 emails only on a third failure, never on 'late'. docs/decisions.md D263: every scheduled call answered 401 for hours and it was found by chance. CR-12 then removes the one schedule outside pg_cron and CR-1 hangs every route on one tick. The PSI audit of 28 October names an outside probe of cron freshness; nothing is built.",
+      "proposed_work_item": "Next, S, with CR-17: (1) a job of the daily list reads cron.job_run_details and fails when a pg_cron job's last run failed or the oldest row is over 8 days old; or run the three deletes as daily jobs themselves, if the app's role may delete there. Either way each has a ledger row and its failure emails the admins. (2) Keep one Vercel cron, pointed at a small new route that reads the ledger rows of the tick and the dispatcher and emails the admins when either is over 15 minutes old: 24 calls a day. Done when: the ledger holds a row for each pg_cron SQL job, and stopping the tick on a test database sends the email within the hour."
+    },
+    {
+      "title": "Most jobs have no time budget, and nothing flags a run that nears its limit",
+      "evidence": "src/app/api/cron/cart-reminders/route.ts:89-92: maxDuration is 300 for a job called every 300 s. My grep of the 83 job modules finds at most 16 that mention a budget (sms and legal writes 120 s; Tripletex, Fiken, ledger, store copies and data jobs 40 s). The rest have none: summarisePending() asks the AI for up to 30 summaries one after another (src/server/support-summary.ts:123-141) and the listings' check makes 10 AI calls. Today the run takes 1.3 s because nothing is due. src/lib/cron-health.ts knows late and failing, not slow. CR-2 then runs four at a time and writes the idle jobs' rows at the end, so one slow AI job holds a quarter of the run, and a run stopped at 300 s loses those rows.",
+      "proposed_work_item": "Next, S on top of the registry item: each job names a budget in milliseconds and gets a deadline, as runSms() and runLegalWrites() take today. runJobs() starts no job after 240 s and writes the ledger then. cron-health gains 'slow' when a job passes its budget or the run passes 150 s, shown beside late and failing. Done when: the scan test fails a registry job without a budget, and a unit test shows that a job that never returns leaves the other jobs' rows written."
+    }
+  ],
+  "ladder": {
+    "after_now": "C",
+    "after_next": "B",
+    "after_later": "B"
+  }
+}

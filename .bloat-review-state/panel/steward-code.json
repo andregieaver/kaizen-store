@@ -1,0 +1,553 @@
+{
+  "area": "code",
+  "title": "The code itself: unused, copied, packages, files",
+  "grade_today": "C",
+  "grade_reasons": "The base is the tidiest in the review: about 2,700 of 772,000 lines are dead (0.35%), 0.87% are exact copies across files, no package is unused and all 150 public files are referenced. But not one of those numbers is held by a test (lint sees unused locals only), so by the scale it cannot be an A, and without budgets it is not a B either: the draft's A rested on the counts alone. And the waste is real: 14 twin file pairs share more than 50 lines (five imports, two accounting syncs, the platform's second engines, Work drawn twice), kaizenaflow.com is kept twice (up to 4,400 lines), every admin page loads 354 KB of libraries it does not call, a 3x phone downloads the 1,600 px file for each product tile, and search thumbnails of uploaded pictures answer 400. The findings this area owns about what server functions load (the schema, sharp, both languages of the admin's words) are graded in the server area.",
+  "measures": [
+    {
+      "name": "Dead code: exports nothing uses, and production code only a test keeps alive",
+      "today": "331 exports (721 lines) used by nothing; 3 dead files (171 lines); 443 exports (2,959 lines) named only by tests, about 330 of them dead but for the test. About 2,700 dead lines in all, 0.35% of 772,235. Source: digest/unused-code.md and m/dead.md.",
+      "target_a": "0 exports used by nothing. 0 files only tests reach outside named test support and a list with reasons. Every export only tests import is in keptForTests with its reason: at most 130 names (the oracles, about 500 lines). Dead lines under 0.05% (under 400).",
+      "how_measured": "docs/audits/bloat-review-2026-11/scripts/unused-code.mjs today. After the work item for DD-4: src/server/unused.scan.test.ts with scripts/unused.mjs and src/server/unused.baseline.json.",
+      "why_this_is_a": "The floor is not zero lines. Invoice and credit-note oracles and reset helpers exist for tests by design, and the scan cannot see inside a file that is namespace-imported (about 13 exports, 30 lines). So the tolerance is a list of at most 130 names, each with a reason, and nothing unlisted. A B would be a count that may only fall; an A is exact lists, so one dead export cannot take another's place."
+    },
+    {
+      "name": "Copied lines",
+      "today": "Exact copies: 4,803 of 472,586 code lines (1.02%); 4,098 across files (0.87%), 705 inside one file. Near-copies with names and literals normalised: 22,429 (4.75%). Source: digest/copied-code.md (the review's detector, work/cp/near.mjs).",
+      "target_a": "Exact copies across files at most 0.6% (2,850 lines), failing the test above that. Near-copies at most 3.7%, printed with the ten largest pairs on each run.",
+      "how_measured": "The review's detector as scripts/lib/copy-count.mjs, run by the copy test against src/lib/copies.baseline.json (work item for CP-14 and FM-13). The detector is not in the repo yet: gap 1.",
+      "why_this_is_a": "Data that is parallel by design (catalogues, the schema, signature themes, API catalogue entries) is set aside, not counted. About 7,100 near-copied lines across files could be extracted at all; if every one went the share would be 3.2%, and about 1,400 lines are per-language text that only looks alike. An A is within half a point of that floor. Today's 0.87% exact is already under the 3% most tools call good, which is why the bar is set from the floor and not from a tool's default."
+    },
+    {
+      "name": "Things built twice: twin file pairs",
+      "today": "41 pairs among 58 files share 20 or more long lines and 30% of the smaller file (1,742 shared lines); 14 pairs share more than 50. By family: imports 18, Work 6, platform engines and screens 4, accounting 3, settings forms and editors 4, Domains 2, order pages 1, others 3. kaizenaflow.com is also kept twice (20 routes, 3 tables, up to 4,400 lines). Source: work/fm/twinscan2.mjs, re-run for this panel: 41.",
+      "target_a": "At most 8 pairs, none over 50 shared lines, each with its reason in the baseline. One kaizenaflow.com: no front page, [slug], blog, category, tag or cookies route under src/app/(platform).",
+      "how_measured": "The twin counter (twinscan2.mjs) in scripts/lib/copies-count.mjs, held by src/lib/copies.scan.test.ts and src/lib/copies.baseline.json (FM-13). For the old site: find 'src/app/(platform)' 'src/app/(platform-nb)' -name page.tsx.",
+      "why_this_is_a": "Some pairs are honest parallels: two carriers' booking shims, a test helper that mirrors a reader. Eight pairs of at most 50 lines is under 400 shared lines, less than 0.1% of the code. A B would hold today's 41. An A has no engine written twice: one import definition, one workflow and delivery engine with a scope, one Work view, one accounting sync core, one site."
+    },
+    {
+      "name": "Hand-made repeats too small for a copy detector: helpers and admin controls",
+      "today": "fail() is declared in 43 server files, isUuid in 23, isUniqueViolation in 9; addDays, daysBetween, isDay and countryName have 31 declarations with up to 6 bodies. 284 input, field, card, label and hint class constants in 171 admin files; 154 hand-written tables; 436 native selects. 232 of 235 admin action files are off the shared wrapper, 23 with a guard wrapper of their own. A store's address by id is looked up by hand in 27 places. Source: digest/copied-code.md and digest/families.md; the 27 re-counted with rg.",
+      "target_a": "Each helper declared once (isUuid and isUniqueViolation 2 declarations in all; the day and country helpers at most 8 with re-exports; the store-address lookup at most 3). Class constants under 100. No local guard wrapper (23 today). Tables, selects and off-wrapper files are counts in the ratchet that only fall.",
+      "how_measured": "The rg counts of the planners' done-whens; seven new counts in scripts/lib/ratchet-count.mjs and src/server/ratchet.baseline.json (FM-7, FM-8); a lint rule for the helper names (FM-12).",
+      "why_this_is_a": "These repeats are below any copy window, so no detector sees them: they need their own counts. The floor is one declaration per helper. A kit cannot cover every one-off layout, so 100 class constants (a third of today's) is the tolerance. The 209 action files left off the wrapper cost no lines, so an A asks only that their number is held and falls."
+    },
+    {
+      "name": "Packages",
+      "today": "51 runtime and 17 dev packages, 0 without an importer, checked once by hand. One oversize: simple-icons, 26 MB installed and a 5.25 MB module parsed each build for 26 icons (20 KB). Libraries sent where they are not called: 354 KB of the 899 KB of every admin page's first scripts (Supabase's client, its realtime client, zod), and the 435 KB rich text editor on 21 lists and detail pages. Storefront: none. Source: digest/deps.md.",
+      "target_a": "0 packages without an importer, held by a test. No package over 5 MB installed for under 1% of its content. 0 KB of a library in the first scripts of a screen that does not call it: the admin home falls by at least 330,000 bytes from 1,284,745, and the pages list from 2,093,288 to under 1,700,000.",
+      "how_measured": "src/lib/dependencies.scan.test.ts (the work item for DP-6 creates it); e2e/signed-in/admin-scripts.spec.ts with E2E_MEASURE=1; du -sm node_modules/.pnpm.",
+      "why_this_is_a": "The floor is React, Next and what the screen itself calls. Three packages have no import of their own and stay on a short list with reasons (three and @tiptap/pm are required peers; server-only). Supabase's client still loads after first paint, because keeping the session needs it: the A is that it no longer blocks the page."
+    },
+    {
+      "name": "Files stored and served",
+      "today": "public/: 150 files, 5.6 MB, 0 unreferenced, checked once by hand; six flags weigh 165 KB. Lifetimes: public files max-age=0; font files are not kept by the CDN; videos, 3D models and field files get 1 hour and theme photographs 5 minutes though their addresses never change (0 of 9 browser upload calls set a lifetime); pictures get 1 year. Each picture is kept in 2 sizes (480 and 1,600 px), so a 3x phone takes the 1,600 px file for a tile (71 KB where 18 KB would do). /_next/image is open and answers 400 for uploaded pictures, so search thumbnails are empty. Source: digest/assets.md; the upload calls and the font header re-checked with rg.",
+      "target_a": "0 unreferenced public files, held by a test; flags under 20 KB. Every file with a fixed address is kept a year (public files a day): 9 of 9 upload calls set it, and the second request for a font file is a CDN hit. A tile at 390 px and 3x takes the 800 px file. /_next/image answers 404 and the search box draws stored thumbnails.",
+      "how_measured": "A public-files case in the unused scan (gap 2); curl -sI on a public file, a font file and an uploaded video; rg -n 'uploadToSignedUrl' src/components; the new test of currentSrc in e2e/performance.spec.ts; e2e/search.spec.ts.",
+      "why_this_is_a": "A file must be fetched once per browser: that is the floor. Public files keep one conditional request a day because their names can be reused. Three stored widths, not five, is the tolerance: a 2x phone may still take a file up to a third wider than it needs."
+    },
+    {
+      "name": "What the lightest routes load (shared with the server area)",
+      "today": "The four visit beacons and the recommendations beacon reach 1,308 of 4,136 source files; the health route 54. The 19,614-line schema is in 6 built chunks and 816 of 830 routes. 13 static imports of sharp or opentype.js; sharp's 19.8 MB is in 742 of 832 traces and the 13.3 MB taxonomy in 831. 254 of 278 entries outside the admin reach the admin's words (3.46 MB of source). An admin page's server graph is 1,396 files. Source: digest/deps.md, families.md and assets.md.",
+      "target_a": "Each beacon under 160 files. The schema in 0 built chunks. 0 static value imports of sharp or opentype.js. 0 entries outside the admin reach admin-text.ts. The admin layouts with the orders page under 1,000 files. The trace counts (sharp 742, taxonomy 831) only fall.",
+      "how_measured": "src/server/route-load.graph.test.ts with its baseline, scripts/trace-sizes.mjs --check in CI's e2e job, and the rg over .next/server of DP-1's done-when. All three are created by the work items below.",
+      "why_this_is_a": "A route that does one insert needs about what /api/ab/assign reaches today (113 files). The beacon measured 145 to 149 with the import swapped, so 160 is that floor plus 7%. The server steward owns the wider bars (megabytes per function, statements per page); this measure is here because the findings that move it live in this area."
+    },
+    {
+      "name": "Checks that hold these numbers",
+      "today": "0 of 7. Lint fails on an unused local, never on an unused export. No test counts copies, twins, admin repeats, packages, public files, or what a route loads and carries; the ratchet holds four other counts. Source: rg over package.json, eslint.config.mjs, .github and the scan tests.",
+      "target_a": "7 of 7 run in pnpm test or CI: the unused scan, the copy and twin baseline, the admin repeat counts, the dependency scan, the public-files and route-handler case, the route-load graph test and the trace report. Each is proven once by a trial edit that makes it fail.",
+      "how_measured": "pnpm test and the summary of CI's e2e job; the trial edits named in the done-whens (an unused export, a pasted 30-line block, an import of chat-route into the beacon).",
+      "why_this_is_a": "The scale's A needs a test or a production figure behind each measure; without them the numbers above are a snapshot. The price is about 15 seconds of unit-test time (9 s for the unused scan, about 3.5 s for copies, 2.7 s for the import walk), none of it on the quick gate before a deploy."
+    }
+  ],
+  "work_items": [
+    {
+      "title": "Build the unused-code scan as a ratchet of exact lists",
+      "finding_ids": ["DD-4"],
+      "also_ids": [],
+      "phase": "now",
+      "effort": "S",
+      "done_when": "pnpm test src/server/unused.scan.test.ts passes, and with export const NEVER_USED = 1 added to any file under src/lib it fails naming that file.",
+      "moves": "Checks that hold: 0 to 1 of 7. Dead code: today's lists are held and can only shrink (about 57 dead lines a day arrived unseen).",
+      "serves": "code",
+      "owner_decision": false
+    },
+    {
+      "title": "Delete what nothing uses: 331 exports and three dead files, and correct the rule that names one",
+      "finding_ids": ["DD-3", "DD-8"],
+      "also_ids": [],
+      "phase": "now",
+      "effort": "S",
+      "done_when": "node scripts/unused.mjs reports 0 unused exports (262 today) and none of the 69 names in testOnlyExports; rg -n -w 'InlineHeadingEditor|WorkComingSoon|store-modules' src docs --glob '!docs/audits/**' prints nothing; lint, typecheck, test and test:int pass.",
+      "moves": "Dead code: exports used by nothing 331 to 0, dead files 3 to 0; about 950 lines gone (0.35% to about 0.23%).",
+      "serves": "code",
+      "owner_decision": false
+    },
+    {
+      "title": "One copy counter and one twin counter, held in a baseline that takes a reason (CP-14's detector, FM-13's baseline file: build it once, not twice)",
+      "finding_ids": ["CP-14", "FM-13"],
+      "also_ids": [],
+      "phase": "now",
+      "effort": "S",
+      "done_when": "pnpm test fails on a branch where a 30-line block of one file is pasted into another; src/lib/copies.baseline.json holds 4,098 or fewer exact copied lines across files and 41 or fewer twin pairs; scripts/copies.mjs lowers a number freely and raises one only with --reason.",
+      "moves": "Checks that hold: plus 1. Copied lines held at 4,098 (0.87%) and twin pairs at 41. FM-13's rule for light routes is built in the route-load item below.",
+      "serves": "code",
+      "owner_decision": false
+    },
+    {
+      "title": "Hold the admin's repeat counts in the ratchet: action files off the wrapper, tables, selects, Oslo dates, confirm calls",
+      "finding_ids": ["FM-7", "FM-8"],
+      "also_ids": [],
+      "phase": "now",
+      "effort": "S",
+      "done_when": "src/server/ratchet.baseline.json holds unwrappedActionFiles (232) and the six admin counts (tables 154, native selects 436, files with Europe/Oslo 67, with slice(0, 10) 46, with confirm( 42, with a hand-made filter form 31), and src/server/ratchet.scan.test.ts fails when a new admin screen adds one.",
+      "moves": "Hand-made repeats: seven counts held, none can rise. Checks that hold: plus 1.",
+      "serves": "code",
+      "owner_decision": false
+    },
+    {
+      "title": "One cached store-address helper for the 27 hand-written lookups behind production's most-called statement",
+      "finding_ids": ["CP-2"],
+      "also_ids": ["DQ-9", "SD-10", "CA-9"],
+      "phase": "now",
+      "effort": "S",
+      "done_when": "rg -c 'select slug from commerce[.]stores where id' src --glob '!*.test.ts' sums to at most 3 (27 in 21 files today), and the helper's tag is refreshed when a sandbox is kept.",
+      "moves": "Hand-made repeats: store-address lookups 27 to 3. Serves the database area: the statement with 560,090 calls in 78 days falls; by how much is read from pg_stat_statements a week later.",
+      "serves": "database",
+      "owner_decision": false
+    },
+    {
+      "title": "Remove the eight old admin redirects before opening; then the bookings and deliveries twin switch",
+      "finding_ids": ["DD-11"],
+      "also_ids": ["CR-12", "DS-14"],
+      "phase": "now",
+      "effort": "M",
+      "done_when": "rg -n 'LEGACY_(WORK|THEME)_REDIRECTS|legacyModule|setBookingsModule|setDeliveriesModule' src next.config.ts prints nothing; in production no store has bookings or deliveries in modules; the e2e suite passes. The second scheduler and the commerce_legacy schema are closed by CR-12 and DS-14.",
+      "moves": "Dead code: about 100 source lines and 150 test lines, 8 redirect patterns matched on requests and one trigger branch gone. The redirects can go without asking anyone only before opening.",
+      "serves": "code",
+      "owner_decision": false
+    },
+    {
+      "title": "Stop replaying and quoting archived migrations in tests",
+      "finding_ids": ["DD-13", "DD-10"],
+      "also_ids": [],
+      "phase": "now",
+      "effort": "S",
+      "done_when": "rg -l 'readMigration|findMigration|migrationHistory' src --glob '*.test.ts' | wc -l prints 0 (17 today), src/db/migration-files.ts is gone, pnpm test passes, and the time vitest reports for src/db/vat.test.ts falls by about 6 seconds.",
+      "moves": "Dead code: about 420 test lines and a 40-line helper gone. Serves the build area: about 6 s and 630 MB less in every unit-test run.",
+      "serves": "build",
+      "owner_decision": false
+    },
+    {
+      "title": "Serve every picture as stored and close Next's image endpoint, so search thumbnails of uploaded pictures show",
+      "finding_ids": ["AS-4"],
+      "also_ids": [],
+      "phase": "now",
+      "effort": "S",
+      "done_when": "On the built app a request to /_next/image for /demo/themes/orbit/stars.webp at w=64 answers 404 (200 today), and the new assertion in e2e/search.spec.ts passes: a suggested product with an uploaded picture shows its thumbnail.",
+      "moves": "Files: /_next/image open to closed; up to six failed requests per suggestion list to 0. A bug real stores would meet on day one.",
+      "serves": "shopper-browser",
+      "owner_decision": false
+    },
+    {
+      "title": "Give every file with a fixed address a long lifetime: fonts at the CDN, uploads to Storage, public files; and fetch no hidden flag",
+      "finding_ids": ["AS-9", "AS-12", "AS-5"],
+      "also_ids": [],
+      "phase": "now",
+      "effort": "S",
+      "done_when": "The second curl -sI of one /api/fonts/files/{name}.woff2 on a production host answers x-vercel-cache: HIT; rg -n 'uploadToSignedUrl' src/components shows cacheControl on all 9 calls (0 today); curl -sI /flags/no.svg shows max-age=86400; a store page with flags off makes no request under /flags/; du -cb public/flags/* is under 20 KB (176 KB today).",
+      "moves": "Files: file kinds with a short lifetime 4 to 0; upload calls that set one 0 to 9 of 9; flags 176 KB to under 20 KB. The lifetime is fixed when a file is uploaded, so this is cheapest before owners upload videos.",
+      "serves": "shopper-browser",
+      "owner_decision": false
+    },
+    {
+      "title": "Turn source maps off in the Vercel build's page worker, and write the measured peak into docs/build-memory.md",
+      "finding_ids": ["AS-10"],
+      "also_ids": [],
+      "phase": "now",
+      "effort": "S",
+      "done_when": "docs/build-memory.md's table has a row for each of the two settings with the build's peak under the 8 GB cap, and the kept setting's peak is below today's 7.2 GB.",
+      "moves": "Serves the build area: several hundred MB of the page worker's memory (4.7 MB of heap per MB of server code, measured) on a build that already ran out of its 8 GB once; 704 MB of maps no function carries.",
+      "serves": "build",
+      "owner_decision": false
+    },
+    {
+      "title": "Take Supabase's client and zod off the first scripts of every admin page",
+      "finding_ids": ["DP-4"],
+      "also_ids": ["AC-1", "TX-4"],
+      "phase": "now",
+      "effort": "S",
+      "done_when": "No script tag of .next/server/app/admin.html names a chunk containing zod or Supabase (3 chunks, 353,638 bytes today), and the admin home measured by e2e/signed-in/admin-scripts.spec.ts with E2E_MEASURE=1 falls by at least 330,000 bytes from 1,284,745; the spec's budgets are lowered to the new figures.",
+      "moves": "Packages: library bytes in the admin's first scripts 354 KB to 0 (117 KB gone, 237 KB moved to after first paint).",
+      "serves": "owner-browser",
+      "owner_decision": false
+    },
+    {
+      "title": "Load the rich text editor when an editor is drawn, not on 21 lists and detail pages",
+      "finding_ids": ["DP-5"],
+      "also_ids": ["AC-2", "AC-3"],
+      "phase": "now",
+      "effort": "S",
+      "done_when": "The pages list measured by e2e/signed-in/admin-scripts.spec.ts with E2E_MEASURE=1 falls from 2,093,288 bytes to under 1,700,000, and the HTML of an order page has no script tag for the chunk that contains 'ProseMirror-'.",
+      "moves": "Packages: screens that load the 435 KB editor without drawing it 21 to 0.",
+      "serves": "owner-browser",
+      "owner_decision": false
+    },
+    {
+      "title": "Point the visit beacons, the recommendations beacon and the docs' feedback at the helpers' own files",
+      "finding_ids": ["DP-10", "FM-2", "FM-14"],
+      "also_ids": [],
+      "phase": "now",
+      "effort": "S",
+      "done_when": "src/server/route-load.graph.test.ts passes: each of the four /api/visit routes and /api/recommendations/events reaches fewer than 160 source files (1,308 today), /api/docs/feedback at most 450 (1,324), and none reaches chat-route.ts; rg -n 'sameSite' src/server/chat-route.ts prints nothing; after a build the beacon's entry lists under 3 MB of chunks (11.40 MB today).",
+      "moves": "Lightest routes: beacon reach 1,308 to under 160 files; nine entries leave the server core. Measured on the beacon's own code: 549-590 ms to 209-215 ms and 158 MB to 80 MB at cold start.",
+      "serves": "server",
+      "owner_decision": false
+    },
+    {
+      "title": "Drop the 19,614-line schema from the run-time database client (three lines), and correct the plan's note on the Postgres driver in the same change",
+      "finding_ids": ["DD-1", "DP-1", "DP-9"],
+      "also_ids": ["DS-1", "TC-5"],
+      "phase": "now",
+      "effort": "S",
+      "done_when": "After pnpm build, rg -l --no-ignore -F orders_store_placed_idx .next/server -g '*.js' | wc -l prints 0 (6 today); pnpm db:check exits 0; rg -n 'out of production dependencies' docs/audits/code-review-2026-11.md prints nothing.",
+      "moves": "Lightest routes: the schema in 6 built chunks and 816 of 830 routes to 0; 60 to 190 ms and about 18 MB less at each cold start (measured here; an estimate for Vercel).",
+      "serves": "server",
+      "owner_decision": false
+    },
+    {
+      "title": "Load sharp and opentype.js where a picture or a font is drawn",
+      "finding_ids": ["AS-1", "DP-2"],
+      "also_ids": [],
+      "phase": "now",
+      "effort": "S",
+      "done_when": "src/server/lazy-packages.scan.test.ts passes: 0 static value imports of sharp or opentype.js under src outside tests (13 today); loading .next/server/middleware.js in bare node and awaiting its exports maps no libvips.",
+      "moves": "Lightest routes: static imports of sharp or opentype.js 13 to 0; 45 to 60 ms and about 24 MB less at each cold start of the proxy and of about 740 routes. The 19.8 MB stays in 742 traces until the trace is narrowed (a later item).",
+      "serves": "server",
+      "owner_decision": false
+    },
+    {
+      "title": "Give each admin area its own words module, so nothing outside the admin loads the whole registry",
+      "finding_ids": ["FM-1"],
+      "also_ids": ["TX-1"],
+      "phase": "now",
+      "effort": "M",
+      "done_when": "The scan test's list of files outside the admin folders that import @/lib/admin-text at run time is empty (35 today), and by the import walk no page or route entry outside src/app/admin reaches src/lib/admin-text.ts (254 of 278 today). The admin's 561 importers then follow by codemod under a ratchet count that only falls.",
+      "moves": "Lightest routes: entries outside the admin that reach the admin's words 254 to 0 (3.46 MB of source to 0.55 MB); 2.8 MB of built words out of 802 of 830 entries, then an admin page at a median of 0.75 MB.",
+      "serves": "server",
+      "owner_decision": false
+    },
+    {
+      "title": "Load the AI manager's server side when it is opened, not with every admin screen",
+      "finding_ids": ["DP-11"],
+      "also_ids": [],
+      "phase": "now",
+      "effort": "S",
+      "done_when": "src/server/route-load.graph.test.ts asserts, and passes, that the admin root, gated and store layouts plus the orders page together reach fewer than 1,000 source files by static value imports (1,396 today) and none reaches src/lib/owner-tools.ts. The saving needs the storefront plan's cut at customers.ts (SD-1 step 1) as well, in either order.",
+      "moves": "Lightest routes: an admin page's server graph 1,396 to under 1,000 files; about 90 to 105 ms and 17 MB less at each admin cold start (estimate from bundles).",
+      "serves": "server",
+      "owner_decision": false
+    },
+    {
+      "title": "One import walker, one graph test and one trace report for what a function loads and carries, and a scan of the package list (three planners named three tests: build one)",
+      "finding_ids": ["DP-6", "AS-3"],
+      "also_ids": ["SD-13"],
+      "phase": "now",
+      "effort": "M",
+      "done_when": "pnpm test runs src/server/route-load.graph.test.ts and src/lib/dependencies.scan.test.ts green; the summary of CI's e2e job shows the trace table of scripts/trace-sizes.mjs --check; a trial import of '@/server/chat-route' into the beacon fails the graph test, and a trial import of '@/server/product-import' into src/proxy.ts fails the proxy rule.",
+      "moves": "Checks that hold: plus 3 (route-load graph, trace report, dependency scan). Packages: 0 unimported is now held. Lightest routes: every number can only fall.",
+      "serves": "server",
+      "owner_decision": false
+    },
+    {
+      "title": "Delete or name every export only a test keeps alive",
+      "finding_ids": ["DD-2"],
+      "also_ids": [],
+      "phase": "next",
+      "effort": "M",
+      "done_when": "node scripts/unused.mjs: testOnlyExports is empty and keptForTests holds about 100 to 130 names, each with a reason; pnpm test and pnpm test:int pass.",
+      "moves": "Dead code: tests-only exports 443 to 0 unlisted; about 1,700 source lines and 1,000 to 2,000 test lines gone; dead lines to under 0.05%.",
+      "serves": "code",
+      "owner_decision": false
+    },
+    {
+      "title": "One source for each English word list: delete the old constants beside the catalogues, and let a catalogue import a module's own list",
+      "finding_ids": ["DD-7", "CP-13"],
+      "also_ids": [],
+      "phase": "next",
+      "effort": "S",
+      "done_when": "No test holds a catalogue section equal to a words constant (37 such assertions today, by the rg of DD-7's done-when), and the exact-copy detector run with the catalogues included lists no pair of a .en.ts catalogue and a code module (17 pairs, 311 lines today).",
+      "moves": "Dead code and copied lines: up to about 800 lines (500 of old constants, a subset of the dead-code totals, and 311 of copied lists); one place to change a word.",
+      "serves": "code",
+      "owner_decision": false
+    },
+    {
+      "title": "One import definition for the five file imports; 15 tick and problems routes become 2",
+      "finding_ids": ["CP-1", "FM-6"],
+      "also_ids": [],
+      "phase": "next",
+      "effort": "M",
+      "done_when": "rg -l 'insert into commerce[.]data_jobs' src/server --glob '!*.test.ts' prints one file (five today); rg --files src/components/admin | rg 'import-flow' lists one file (four today); the nine integration tests pass unchanged.",
+      "moves": "Twin pairs: 41 to 23 (18 import pairs gone, the largest at 115 shared lines); about 1,300 to 1,600 lines; 13 fewer route handlers to build. Before opening no import is in flight.",
+      "serves": "code",
+      "owner_decision": false
+    },
+    {
+      "title": "One engine with a scope for the platform's workflows, own endpoints and integration deliveries (separate tables and addresses stay)",
+      "finding_ids": ["CP-4", "FM-4"],
+      "also_ids": ["FT-10"],
+      "phase": "next",
+      "effort": "M",
+      "done_when": "rg -c 'for update skip locked' src/server/workflows.ts src/server/platform-workflows.ts prints nothing (the claim lives in workflow-engine.ts only); the five platform and store pairs share under 60 lines in runs of three or more (209 today); the six integration tests pass unchanged.",
+      "moves": "Twin pairs: 3 gone (workflows, endpoints, the two provider pages); about 300 to 550 lines; a fix to retry or signing is made once.",
+      "serves": "code",
+      "owner_decision": false
+    },
+    {
+      "title": "One Work view for store and account, the 58 Work actions unwrapped, and one Domains move page",
+      "finding_ids": ["CP-5", "FM-10"],
+      "also_ids": [],
+      "phase": "next",
+      "effort": "M",
+      "done_when": "wc -l of the five owner-time, owner-invoices, owner-clients, owner-report and owner-overview files totals under 800 (1,209 today); rg -c 'inWorkLang[(]' src/app/admin sums to at most 14 (58 today); the two move-domain page.tsx files are under 30 lines each (101 each today).",
+      "moves": "Twin pairs: 7 gone (six Work pairs and the Domains move pages); about 650 to 750 lines.",
+      "serves": "code",
+      "owner_decision": false
+    },
+    {
+      "title": "One kaizenaflow.com: remove the old no-store site (step 7 of the parity plan), once the owner says the switch is final",
+      "finding_ids": ["FM-3"],
+      "also_ids": ["FT-5", "DS-6"],
+      "phase": "next",
+      "effort": "M",
+      "done_when": "find 'src/app/(platform)' 'src/app/(platform-nb)' -name page.tsx lists no front page and nothing under [slug], blog, category, tag or cookies (20 files today); src/server/platform-theme-installs.ts, src/server/platform-roles.ts and src/components/platform-page.tsx do not exist; scripts/site-compare.mjs against the copy taken before shows no lost address.",
+      "moves": "Things built twice: one site, not two. Up to 4,400 lines and 560 test lines, 3 tables, about 20 fewer routes built and prerendered in two languages.",
+      "serves": "code",
+      "owner_decision": true
+    },
+    {
+      "title": "One OrderTotals part for the two order pages and checkout, and one product-card query",
+      "finding_ids": ["CP-12"],
+      "also_ids": [],
+      "phase": "next",
+      "effort": "S",
+      "done_when": "The two order page files total under 900 lines (327 + 661 = 988 today), each draws its totals through OrderTotals, and src/server/catalog.ts is under 700 lines (750 today).",
+      "moves": "Twin pairs: 1 gone (the two order pages); about 160 lines; one place for what a shopper is shown as owed, changed while no real order exists.",
+      "serves": "code",
+      "owner_decision": false
+    },
+    {
+      "title": "One home for each re-declared helper (fail, isUuid, isUniqueViolation, the day helpers, countryName), and a lint rule that keeps it so",
+      "finding_ids": ["CP-8", "CP-16", "FM-12"],
+      "also_ids": [],
+      "phase": "next",
+      "effort": "S",
+      "done_when": "rg -c '^(export )?(const|function) (isUuid|isUniqueViolation)' src --glob '!*.test.ts' sums to 2 (32 today); rg -l 'const fail = [(]message: string[)]: never' src/server prints one file (43 today); rg -c '^(export )?(function|const) (addDays|daysBetween|isDay|countryName)' src/lib src/server --glob '!*.test.ts' sums to at most 8 (31 today); pnpm lint fails on a trial 'const isUuid = ...' in a new file.",
+      "moves": "Hand-made repeats: 106 helper declarations to 11; about 450 to 750 lines; one answer for a missing country and for a day difference.",
+      "serves": "code",
+      "owner_decision": false
+    },
+    {
+      "title": "One fragment each for the product title with its fallback, the usage counter and the order event",
+      "finding_ids": ["CP-9"],
+      "also_ids": [],
+      "phase": "next",
+      "effort": "S",
+      "done_when": "rg -c 'insert into commerce[.]chat_usage' src --glob '!*.test.ts' sums to at most 2 (32 in 28 files today) and rg -c 'insert into commerce[.]order_events' src --glob '!*.test.ts' to 1 (34 in 23 files today).",
+      "moves": "Hand-made repeats: 106 hand-typed fragments to 4; about 250 lines; no null title in the nine reads that lack the fallback.",
+      "serves": "code",
+      "owner_decision": false
+    },
+    {
+      "title": "Move the 23 admin action files that have a guard wrapper of their own onto the shared wrapper; the rest follow when touched",
+      "finding_ids": ["CP-7"],
+      "also_ids": [],
+      "phase": "next",
+      "effort": "M",
+      "done_when": "No 'use server' file under src/app/admin defines a local guard wrapper (asOwner, member, owner, change, guarded or act: 23 files today), and unwrappedActionFiles in src/server/ratchet.baseline.json is 209 or lower (232 today).",
+      "moves": "Hand-made repeats: local guard wrappers 23 to 0; about 150 lines; an unplanned failure in those files shows a line in the form, not Next's error page.",
+      "serves": "code",
+      "owner_decision": false
+    },
+    {
+      "title": "Keep an 800 px copy of every picture, so a 3x phone does not take the 1,600 px file for a tile",
+      "finding_ids": ["AS-11"],
+      "also_ids": [],
+      "phase": "next",
+      "effort": "M",
+      "done_when": "The new test in e2e/performance.spec.ts passes: at 390 px and 3x the first product tile's currentSrc is the 800 px file (the 1,600 px file today).",
+      "moves": "Files: sizes kept per picture 2 to 3; about 53 KB less per product tile on 3x phones and 2x laptops for the art measured. Before opening no library needs a backfill.",
+      "serves": "shopper-browser",
+      "owner_decision": false
+    },
+    {
+      "title": "Replace the 26 MB icon package with the 27 paths it is used for",
+      "finding_ids": ["DP-8"],
+      "also_ids": [],
+      "phase": "next",
+      "effort": "S",
+      "done_when": "rg -n 'simple-icons' package.json src prints nothing, and du -sm node_modules/.pnpm falls by about 26 MB.",
+      "moves": "Packages: oversize packages 1 to 0; 26 MB less to install and one 5.25 MB parse less per build.",
+      "serves": "code",
+      "owner_decision": false
+    },
+    {
+      "title": "Shared test scaffolding: delete the 579 mocks of server-only and share one stub of next/cache",
+      "finding_ids": ["CP-15"],
+      "also_ids": ["TC-11"],
+      "phase": "next",
+      "effort": "S",
+      "done_when": "No test file mocks server-only (579 today: 448 integration, 131 unit) and about 40 integration tests stub next/cache themselves (465 today), with pnpm test and pnpm test:int green.",
+      "moves": "Serves the build area: about 1,100 test lines at once and 1,500 with a shared store helper; one stub of next/cache where there are five spellings.",
+      "serves": "build",
+      "owner_decision": false
+    },
+    {
+      "title": "Wake the three Chromium routes only when work waits (done inside the scheduler change, not apart)",
+      "finding_ids": ["DP-7"],
+      "also_ids": ["CR-1", "DQ-1"],
+      "phase": "next",
+      "effort": "S",
+      "done_when": "With empty queues, commerce.cron_jobs shows no new run of route.cookie-scan, route.page-looks or route.theme-shots over an hour (60 each today), and the platform home shows none of them late.",
+      "moves": "Serves the scheduled area: most of 4,320 calls a day gone while queues are empty; three functions with 125 MB traces no longer kept warm for nothing.",
+      "serves": "scheduled",
+      "owner_decision": false
+    },
+    {
+      "title": "CLAUDE.md under 15 KB and no decisions file over 200 KB (done inside the rules area's change, not apart)",
+      "finding_ids": ["AS-8"],
+      "also_ids": ["DC-1", "DC-2", "DC-3"],
+      "phase": "next",
+      "effort": "M",
+      "done_when": "wc -c CLAUDE.md prints under 15,000 and no decisions file is over 200 KB, both held by ratchet.scan.test.ts.",
+      "moves": "Serves the rules area: about 10,000 tokens less in every agent session; the 1.33 MB decisions log becomes files a session can open.",
+      "serves": "rules",
+      "owner_decision": true
+    },
+    {
+      "title": "Build the admin kit (code review step 1.12) with a field, a table and a skeleton part, and convert area by area",
+      "finding_ids": ["CP-3"],
+      "also_ids": [],
+      "phase": "later",
+      "effort": "L",
+      "done_when": "Step 1.12's own done-when passes, and rg -c '^const (input|field|control|card|label|hint) = ' src/app/admin src/components/admin sums below 100 (284 in 171 files today).",
+      "moves": "Hand-made repeats: class constants 284 to under 100; near-copies about 900 to 1,100 lines less, the last step to 3.7%.",
+      "serves": "code",
+      "owner_decision": false
+    },
+    {
+      "title": "One accounting sync core for Tripletex and Fiken, and one afterOrNow (code review step 3.12)",
+      "finding_ids": ["CP-6", "FM-9"],
+      "also_ids": [],
+      "phase": "later",
+      "effort": "M",
+      "done_when": "rg -c 'for update skip locked' src/server/fiken-sync.ts src/server/tripletex-sync.ts prints nothing (one claim in each today); the two sync files share under 40 lines in runs of three or more (143 today); a try block followed by after( is found only in after-or-now.ts and after-answer.ts (16 in 12 files today).",
+      "moves": "Twin pairs: 3 gone, among them the two largest left after the imports (93 and 73 shared lines); about 400 to 450 lines. Until then the twin is recorded with its reason in copies.baseline.json and cannot become three.",
+      "serves": "code",
+      "owner_decision": false
+    },
+    {
+      "title": "Fold the small twin pairs as each is opened: the bonus and affiliate forms, the campaign and discount editors, the two agent forms, the reminders, the speed recorders",
+      "finding_ids": ["CP-11", "FM-11"],
+      "also_ids": [],
+      "phase": "later",
+      "effort": "M",
+      "done_when": "The twin counter no longer lists the affiliate and bonus forms, the campaign and discount editors or the chat-agent and docs-guide forms, and wc -l of affiliate-settings-form.tsx and bonus-settings-form.tsx totals under 700 (968 today).",
+      "moves": "Twin pairs: to at most 8, none over 50 shared lines; about 500 to 700 lines.",
+      "serves": "code",
+      "owner_decision": false
+    },
+    {
+      "title": "Narrow what is traced beside a function: the taxonomy and sharp's native library only where a route can read them (after the import cycle is cut)",
+      "finding_ids": ["AS-2"],
+      "also_ids": [],
+      "phase": "later",
+      "effort": "M",
+      "done_when": "scripts/trace-sizes.mjs reports the taxonomy in fewer than 831 traces and sharp in fewer than 742, and the scan test passes: every entry that can reach product-taxonomy.ts is covered by a trace key.",
+      "moves": "Lightest routes: 13.3 MB and 19.8 MB less in each trace that cannot read them (about 90 today, more once the cycle is cut); the health check's trace from 16.2 MB to under 3 MB.",
+      "serves": "server",
+      "owner_decision": false
+    },
+    {
+      "title": "Cut the page model so that reading a store builds no block schema (a constraint on code review step 3.2)",
+      "finding_ids": ["DP-12"],
+      "also_ids": [],
+      "phase": "later",
+      "effort": "M",
+      "done_when": "The graph test shows src/server/stores.ts reaching no file that defines a block schema, and a fresh-process load of the built /api/visit route is within 60 ms of /api/health's (about 800 ms apart today).",
+      "moves": "Lightest routes: up to 45 ms, 6 MB of heap and 20 to 26 MB resident less at each cold start of a route that reads a store and draws no page.",
+      "serves": "server",
+      "owner_decision": false
+    },
+    {
+      "title": "Point Tailwind at code only, not at tests and SQL (done inside the styles area's change, not apart)",
+      "finding_ids": ["AS-7"],
+      "also_ids": ["CS-6"],
+      "phase": "later",
+      "effort": "S",
+      "done_when": "The built stylesheet has the same class names as today minus the ten that only tests name, by the comparison script.",
+      "moves": "Serves the styles area: about a third less text for Tailwind to scan per build (0.1 to 0.35 s); a word in a test can no longer change the production stylesheet.",
+      "serves": "styles",
+      "owner_decision": false
+    }
+  ],
+  "tolerated": [
+    {
+      "finding_id": "DD-9",
+      "why": "About 240 lines of upgraders for three old page shapes. They cost about 10 microseconds per page read, six production writers still produce the old grid shape, and a written rule keeps them. If the page-model area rewrites the reader (PM-9) they go with it."
+    },
+    {
+      "finding_id": "CP-10",
+      "why": "Eleven hand-written claim-with-a-lease statements, about 130 lines in all. It is an idiom with another table, join and retry column each time, not a copy. Merging the queues is the scheduled area's choice."
+    },
+    {
+      "finding_id": "DP-3",
+      "why": "The Stripe and Supabase SDKs load with 97% of routes: 18 to 28 ms and 14 ms by one measure, nothing visible and about 1 MB of heap on a lean route by the other. The route-load graph test will show the edge; cut it when stores.ts or stripe.ts is next changed."
+    },
+    {
+      "finding_id": "AS-6",
+      "why": "All of react-dom (8.1 MB) rides in four PDF traces of 107 to 140 MB: 5 to 7% of them and nothing a person feels, and a wrong glob would break invoices. The trace report shows the number; act only if a function nears Vercel's size limit."
+    }
+  ],
+  "owner_choices": [
+    {
+      "finding_ids": ["DD-5"],
+      "question": "Should a logged time entry's hours be editable in Work (the server side is built and tested; an afternoon's work), or is delete and log again the intended way (then about 130 lines go)? Either way two invoice actions no screen uses are deleted."
+    },
+    {
+      "finding_ids": ["DD-12"],
+      "question": "Should invoice PDFs be made ahead by a scheduled job, so the 'Try again' sentence owners see is true (recommended; the same change as the scheduled area's CR-11), or made on the first download, with the route nothing calls and its 102 MB function removed?"
+    },
+    {
+      "finding_ids": ["DD-6"],
+      "question": "Should live drills get a Run drills button on the platform's store page, or stay a console tool asked for by SQL, with the rule saying so?"
+    },
+    {
+      "finding_ids": ["FM-5"],
+      "question": "May the parity rule in CLAUDE.md say: where the platform's version does the same job on its own rows, it uses the store's module with a scope, not a copy? One sentence; separate tables stay."
+    }
+  ],
+  "gaps": [
+    {
+      "title": "The detectors and lists the plan's checks name are not in the repo",
+      "evidence": "docs/audits/bloat-review-2026-11/scripts holds 7 scripts (ls): the first unused scan, the first plain copy scan and five route scripts. The refined copy detector (work/cp/near.mjs, lcs.mjs), the twin counter (work/fm/twinscan2.mjs, re-run for this panel: 41 pairs), the import-reach walkers (work/fmp/reach.mjs), the similarity scripts (work/fmv/sim2.mjs, work/fm/sim.mjs), the trace summers (work/as-plan/nft.mjs, pkgs.mjs, srcset-test.cjs) and the deletion lists (work/ddplan/T0.txt, T2.txt, T3.txt, words.txt) exist only in this session's scratchpad. Ten places in this area's findings name a scratchpad path (rg 'scratchpad/work' over the five digests: families 6, unused-code 3, assets 1), and three of the eight measures above are counted by these scripts.",
+      "proposed_work_item": "Now, S, before any other step: copy those scripts to docs/audits/bloat-review-2026-11/scripts/ and the four lists to docs/audits/bloat-review-2026-11/lists/, and rewrite each done-when to the repo path. Done when: rg 'scratchpad' over the plan and the findings files prints nothing, and each script, run with node from a fresh checkout, gives its number again (41 twin pairs; 4,098 exact copied lines across files; 1,308 files reached by /api/visit)."
+    },
+    {
+      "title": "Nothing holds the zeroes: an unreferenced public file or a route handler nothing calls would arrive unseen",
+      "evidence": "public/ has 150 files, 5.6 MB (find, du). The review found all of them referenced by one hand check of names. No test walks public/: rg for a readdir over public in src, scripts and e2e finds nothing, and the tests that touch it only check that named files exist (src/lib/docs-content.test.ts:60, src/lib/signature-themes.test.ts:13). The unused scan of DD-4 skips the exports of Next's convention files, so a route.ts nothing calls is invisible to it: /api/cron/document-pdfs (DD-12) was found by a reader. cron-routes.scan.test.ts (its NOT_SCHEDULED list) covers the 13 cron routes, not the other 250 handlers.",
+      "proposed_work_item": "Now, S, in the same change as the unused scan (DD-4): two more cases in src/server/unused.scan.test.ts. (a) Every file under public/ is named in src, content/ or a script, or sits in a list with its reason (the WordPress zips a rule keeps). (b) Every route.ts under src/app/api has its address in a fetch, a link, a form or a schedule, or sits in a list of outside callers with the caller named (payment and carrier webhooks, OAuth, MCP, the Admin API). Done when: adding public/unused.png, or an empty src/app/api/never/route.ts, makes pnpm test fail."
+    },
+    {
+      "title": "Repeats inside one file are in no finding, and the planned copy ratchet will not see them",
+      "evidence": "digest/copied-code.md: 7,025 near-copied lines sit inside one file (1.49%, in 161 files) and 705 exact ones; about 1,400 are per-language text. CP-14's counter returns exact copies across files only, and the twin counter compares pairs of files. Opened: src/components/admin/ai-provider-form.tsx (670 lines) writes the provider, address and key fields three times, for text (lines 81 to 135), pictures (205 to 290) and live voice (294 to 365); the review counts 197 of its 604 code lines as repeats. A fourth provider would be a fourth paste, and no check would notice.",
+      "proposed_work_item": "Now, S, inside the copy-counter item: scripts/lib/copy-count.mjs also returns exact copied lines inside a file (705 today), held in copies.baseline.json beside the cross-file number, and prints the ten files with most in-file near-copies. Later, S, when the form is next touched: one ProviderFields part for the three blocks of ai-provider-form.tsx. Done when: pasting a 30-line block twice inside one file fails pnpm test, and ai-provider-form.tsx is under 520 lines (670 today)."
+    }
+  ],
+  "ladder": {
+    "after_now": "B",
+    "after_next": "B",
+    "after_later": "A"
+  }
+}
