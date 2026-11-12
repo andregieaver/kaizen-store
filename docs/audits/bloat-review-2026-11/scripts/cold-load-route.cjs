@@ -1,0 +1,17 @@
+// Fresh process: require a built route handler entry (chunk load + template), then ensureUserland() (the route's own module graph, as the first request does).
+// node docs/audits/bloat-review-2026-11/scripts/cold-load-route.cjs .next/server/app/api/visit/route.js (from the repository root)
+const { performance } = process.getBuiltinModule("node:perf_hooks");
+const path = process.getBuiltinModule("node:path");
+const load = process.getBuiltinModule("node:module").createRequire(path.join(process.cwd(), "package.json"));
+process.env.NODE_ENV = "production"; process.env.NEXT_RUNTIME = "nodejs";
+const f = path.resolve(process.argv[2]);
+(async () => {
+  const m0 = process.memoryUsage(); const t0 = performance.now();
+  const mod = load(f); const t1 = performance.now(); const m1 = process.memoryUsage();
+  let err = null;
+  try { await mod.routeModule.ensureUserland(); } catch (e) { err = e; }
+  const t2 = performance.now(); const m2 = process.memoryUsage();
+  const cache = Object.keys(load.cache);
+  console.log(JSON.stringify({ route: f.split(".next/server/app/")[1], require_ms: +(t1 - t0).toFixed(0), userland_ms: +(t2 - t1).toFixed(0), total_ms: +(t2 - t0).toFixed(0), heap_mb_after_require: +((m1.heapUsed - m0.heapUsed) / 1048576).toFixed(1), heap_mb_total: +((m2.heapUsed - m0.heapUsed) / 1048576).toFixed(1), rss_mb_total: +((m2.rss - m0.rss) / 1048576).toFixed(1), sharpLoaded: cache.some((k) => /node_modules\/sharp\//.test(k)), pgLoaded: cache.some((k) => /node_modules\/pg\//.test(k)), error: err ? String(err.message).slice(0, 300) : null }));
+  process.exit(0);
+})();

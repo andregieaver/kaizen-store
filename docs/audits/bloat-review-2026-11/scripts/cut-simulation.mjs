@@ -1,0 +1,46 @@
+// node docs/audits/bloat-review-2026-11/scripts/cut-simulation.mjs <page> [--cut from=>to ...] [--drop rootSubstring ...] [--show N] [--dir <analyzer export directory>]
+// The analyzer export is read from --dir, or .next/diagnostics/analyze under the working directory: <dir>/admin-home.graph.ndjson and <dir>/<page>.ndjson.
+// First-load client set of a route = bootstrap + every render-dependent group (as the build's HTML loads them).
+// Recomputed here as the sync closure of the groups' trigger modules over the client module graph; a cut removes an edge.
+import { readFileSync } from "node:fs";
+import path from "node:path";
+const args = process.argv.slice(2); const page = args[0];
+let dir = path.join(process.cwd(), ".next/diagnostics/analyze");
+const di = args.indexOf("--dir"); if (di >= 0) { dir = path.resolve(args[di + 1]); args.splice(di, 2); }
+const cuts = [], drops = []; let show = 0, lazy = [];
+for (let i = 1; i < args.length; i++) { if (args[i] === "--cut") cuts.push(args[++i].split("=>")); else if (args[i] === "--drop") drops.push(args[++i]); else if (args[i] === "--show") show = +args[++i]; else if (args[i] === "--lazy") lazy.push(args[++i]); }
+const short = (p) => p.replace(/\[project\]\//g, "").replace(/node_modules\/\.pnpm\/[^/]+\/node_modules\//g, "~/");
+const mods = new Map(), pathOf = new Map();
+for (const line of readFileSync(path.join(dir, "admin-home.graph.ndjson"), "utf8").split("\n")) { if (!line) continue; const m = JSON.parse(line); mods.set(m.ident, m.dependencies ?? {}); pathOf.set(m.ident, m.path); }
+const size = new Map(); const groups = [];
+for (const line of readFileSync(path.join(dir, `${page}.ndjson`), "utf8").split("\n")) {
+  if (line.startsWith('{"type":"part"')) { const p = JSON.parse(line); if (p.filename.startsWith("[client-fs]/") && p.filename.endsWith(".js")) size.set(p.source_path, Math.max(size.get(p.source_path) ?? 0, p.size)); }
+  else if (line.startsWith('{"type":"group"')) { const g = JSON.parse(line); if (g.outputs.some((o) => o.startsWith("[client-fs]"))) groups.push(g); }
+}
+const partsOf = new Map();
+for (const line of readFileSync(path.join(dir, `${page}.ndjson`), "utf8").split("\n")) if (line.startsWith('{"type":"part"')) { const p = JSON.parse(line); if (!p.filename.startsWith("[client-fs]/") || !p.filename.endsWith(".js")) continue; (partsOf.get(p.filename) ?? partsOf.set(p.filename, []).get(p.filename)).push([p.source_path, p.size]); }
+const rd = groups.filter((g) => g.kind === "render_dependent" || g.kind === "bootstrap");
+// actual: union of outputs
+const outs = new Set(); for (const g of rd) for (const o of g.outputs) if (o.endsWith(".js")) outs.add(o);
+let actual = 0; const actualMods = new Map(); for (const o of outs) for (const [p, z] of partsOf.get(o) ?? []) { actual += z; actualMods.set(p, z); }
+const bootMods = new Set(rd.filter((g) => g.kind === "bootstrap").flatMap((g) => g.outputs).flatMap((o) => (partsOf.get(o) ?? []).map((p) => p[0])));
+function closure(cutList, dropList) {
+  const seen = new Set(); const stack = [];
+  for (const g of rd) { if (g.kind === "bootstrap") continue; const id = g.trigger_module_ident; if (dropList.some((d) => id.includes(d))) continue; stack.push(id); }
+  while (stack.length) { const id = stack.pop(); if (seen.has(id)) continue; seen.add(id);
+    for (const d of mods.get(id)?.sync ?? []) { if (!d.includes("[app-client]")) continue; if (cutList.some(([a, b]) => id.includes(a) && d.includes(b))) continue; if (lazy.some((l) => d.includes(l))) continue; if (!seen.has(d)) stack.push(d); } }
+  const paths = new Map(); for (const id of seen) { const p = pathOf.get(id); if (p && size.has(p) && !bootMods.has(p)) paths.set(p, size.get(p)); }
+  return paths;
+}
+const base = closure([], []); const after = closure(cuts, drops);
+const sum = (m) => [...m.values()].reduce((a, b) => a + b, 0);
+const boot = rd.filter((g) => g.kind === "bootstrap").flatMap((g) => g.outputs).filter((o) => o.endsWith(".js")).reduce((a, o) => a + (partsOf.get(o) ?? []).reduce((x, p) => x + p[1], 0), 0);
+const missing = [...actualMods.entries()].filter(([p]) => !base.has(p) && !bootMods.has(p)).sort((a, b) => b[1] - a[1]); const extra = [...base.entries()].filter(([p]) => !actualMods.has(p)).sort((a, b) => b[1] - a[1]);
+if (process.env.DIFF) { console.log("in actual, not in model:", (sum(new Map(missing)) / 1024).toFixed(0), "KB", missing.slice(0, 10).map(([p, z]) => short(p) + " " + (z / 1024).toFixed(1)).join("; ")); console.log("in model, not in actual:", (sum(new Map(extra)) / 1024).toFixed(0), "KB", extra.slice(0, 10).map(([p, z]) => short(p) + " " + (z / 1024).toFixed(1)).join("; ")); }
+console.log(`${page}: render-dependent groups ${rd.length - 1}; actual first-load parts ${(actual / 1024).toFixed(0)} KB (bootstrap ${(boot / 1024).toFixed(0)} KB); closure model ${(sum(base) / 1024).toFixed(0)} KB + bootstrap`);
+if (cuts.length || drops.length || lazy.length) {
+  const gone = [...base.entries()].filter(([p]) => !after.has(p)).sort((a, b) => b[1] - a[1]);
+  console.log(`after cut: ${(sum(after) / 1024).toFixed(0)} KB; removed ${(sum(new Map(gone)) / 1024).toFixed(0)} KB in ${gone.length} modules`);
+  for (const [p, z] of gone.slice(0, show || 25)) console.log(`   -${(z / 1024).toFixed(1).padStart(6)}  ${short(p)}`);
+  if (process.env.REMAIN) { console.log("remaining:"); for (const [p, z] of [...after.entries()].sort((a, b) => b[1] - a[1]).slice(0, +process.env.REMAIN)) console.log(`   ${(z / 1024).toFixed(1).padStart(6)}  ${short(p)}`); }
+} else if (show) { for (const [p, z] of [...base.entries()].sort((a, b) => b[1] - a[1]).slice(0, show)) console.log(`   ${(z / 1024).toFixed(1).padStart(6)}  ${short(p)}`); }

@@ -22,7 +22,7 @@ What the server does for a storefront request (`README.md` beside this file), pa
 7. the cart's drawing (src/app/s/[store]/[market]/cart/cart-contents.tsx:159-160) may use the same facts. The press itself (cart/actions.ts:428) keeps its live expressOn() read, and startCheckout() keeps its own checks.
 8. lower the product page's statements budget (SD-13) to 4.
 
-**Done when:** One anonymous GET of a prerendered goods product on a warm production build commits 4 statements or fewer beyond the proxy's (about 16 today) and reads only the inventory tables, by the pg_stat_database method of work/sdp/measure.sh; then the budget of SD-13 holds it.
+**Done when:** One anonymous GET of a prerendered goods product on a warm production build commits 4 statements or fewer beyond the proxy's (about 16 today) and reads only the inventory tables, by the pg_stat_database method of the review's working files (not kept); then the budget of SD-13 holds it.
 
 **Tests and rules that hold today's behaviour, and change with it:**
 

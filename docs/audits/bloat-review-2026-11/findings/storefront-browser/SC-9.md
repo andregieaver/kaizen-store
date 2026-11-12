@@ -9,7 +9,7 @@ What a shopper's browser loads (`README.md` beside this file), part of `docs/aud
 - **Cost today:** On a local build or in CI's e2e jobs, which use the same /s/ addresses: a busy loop in the browser for as long as a listing or search page is open. No bytes to speak of. Production was not seen to do it, so no shopper is known to pay. Paid by: CI and developers' machines; a shopper only if it also happens on a store's own host, which one 5-second check did not show
 - **Saving:** Unknown until reproduced. If real in CI: steadier listing and search specs. Count no saving for it.
 - **Risk:** Low: the first three steps only measure.
-- **Already tracked:** No; written up during this review in scratchpad/m/prefetch-storm.md.
+- **Already tracked:** No; written up during this review in the review's working files (not kept)
 
 ## The fix
 

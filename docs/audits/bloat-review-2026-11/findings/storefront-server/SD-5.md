@@ -19,7 +19,7 @@ What the server does for a storefront request (`README.md` beside this file), pa
 4. src/app/s/[store]/[market]/page.tsx:22-32 and :68 start the front page, the products and the campaign notices together.
 5. the four questions about experiments become one cached read (SD-9 step 1).
 
-**Done when:** The first request for a store's home page after a restart of a local production server makes at least 3 fewer statements than before the change (work/sdp/measure.sh), and layout.tsx has one awaited Promise.all before <html> and no await inside its JSX.
+**Done when:** The first request for a store's home page after a restart of a local production server makes at least 3 fewer statements than before the change (the review's working files (not kept)), and layout.tsx has one awaited Promise.all before <html> and no await inside its JSX.
 
 **Tests and rules that hold today's behaviour, and change with it:**
 

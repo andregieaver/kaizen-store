@@ -18,9 +18,9 @@ What the server does for a storefront request (`README.md` beside this file), pa
 3. src/server/customers.ts:17 and :500 import eraseSubject inside the one function that deletes an account (const { eraseSubject } = await import("./privacy-erasure")).
 4. the eight importers of src/lib/admin-text.ts on this path take their area's two catalogues directly. Add src/lib/admin-area.ts with areaWords(lang, en, nb). Move enrolReasonText and lockedText from src/lib/two-step.ts:58-62 and :91-94 to a new src/lib/two-step-words.ts (their importers: src/app/admin/sign-in/two-step/set-up/page.tsx:11 and src/server/two-step.ts:11). Change the adminText() call in src/server/customer-tiers.ts, store-closure.ts, plan-reminders.ts, shopper-emails.ts, company-locations.ts, staff-alerts.ts and endpoint-emails.ts to areaWords() with the area each names.
 5. a graph test, src/proxy.graph.test.ts, in the style of src/lib/pay-routes.graph.test.ts (move its reach() into a shared test helper). From src/proxy.ts nothing reaches src/server/auth.ts, pages.ts, stores.ts, catalog.ts, customers.ts, src/lib/admin-text.ts or src/db/schema.ts, and the module count stays at or under a number kept in the test. The same file holds the market layout and src/instrumentation.ts to numbers that may only fall.
-6. build, run work/sd/load-proxy.cjs three times, and write the before and after into docs/performance.md.
+6. build, run docs/audits/bloat-review-2026-11/scripts/cold-load-proxy.cjs three times, and write the before and after into docs/performance.md.
 
-**Done when:** src/proxy.graph.test.ts passes with the proxy at 120 modules or fewer (1,311 today) and the market layout at 900 or fewer (1,466 today), by the same import walk; as a second reading, work/sd/load-proxy.cjs on a fresh build loads the proxy in under 300 ms on the machine where it took 800 to 950.
+**Done when:** src/proxy.graph.test.ts passes with the proxy at 120 modules or fewer (1,311 today) and the market layout at 900 or fewer (1,466 today), by the same import walk; as a second reading, docs/audits/bloat-review-2026-11/scripts/cold-load-proxy.cjs on a fresh build loads the proxy in under 300 ms on the machine where it took 800 to 950.
 
 **Tests and rules that hold today's behaviour, and change with it:**
 

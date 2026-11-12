@@ -1,0 +1,21 @@
+import fs from 'node:fs';
+import zlib from 'node:zlib';
+import path from 'node:path';
+const root=path.join(process.cwd(), '.next/');
+const rootMain = new Set(JSON.parse(fs.readFileSync(root+'build-manifest.json','utf8')).rootMainFiles);
+const routes = process.argv.slice(2);
+const res = {};
+for (const r of routes) {
+  const file = root+'server/app'+r+'/page_client-reference-manifest.js';
+  if (!fs.existsSync(file)) { console.log('no manifest', r); continue; }
+  globalThis.__RSC_MANIFEST = {}; new Function(fs.readFileSync(file,'utf8'))();
+  const m = Object.values(globalThis.__RSC_MANIFEST)[0];
+  const mods = new Set(); const chunks = new Set();
+  for (const k of Object.keys(m.clientModules)) { const n=k.replace(/^\[project\]\//,'').replace(/ <.*$/,'').replace(/ \[.*$/,''); if (n.startsWith('src/')) mods.add(n); }
+  for (const arr of Object.values(m.entryJSFiles||{})) for (const c of arr) chunks.add(c);
+  let raw=0,gz=0; for (const c of chunks) { if (rootMain.has(c)) continue; const b=fs.readFileSync(root+c); raw+=b.length; gz+=zlib.gzipSync(b).length; }
+  res[r] = {mods:[...mods].sort(), chunks:[...chunks].filter(c=>!rootMain.has(c)).sort()};
+  console.log(r, 'srcModules', mods.size, 'allClientModules', Object.keys(m.clientModules).length, 'chunks', res[r].chunks.length, 'raw', raw, 'gz', gz);
+}
+if (process.env.DIFF) { const [a,b]=routes; const A=new Set(res[a].mods); console.log('only in', b); for (const x of res[b].mods) if(!A.has(x)) console.log('  ',x); const B=new Set(res[b].mods); console.log('only in', a); for (const x of res[a].mods) if(!B.has(x)) console.log('  ',x);}
+if (process.env.MODS) for (const r of routes) console.log(r, '\n  '+res[r].mods.join('\n  '));
