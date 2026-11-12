@@ -8,8 +8,6 @@ import { Pool, type PoolConfig } from "pg";
 
 import { serverEnv } from "@/lib/env";
 
-import * as schema from "./schema";
-
 /** Seconds an unused connection stays open. */
 const IDLE_SECONDS = 5;
 
@@ -28,7 +26,7 @@ function connectionConfig(url: string): PoolConfig {
   };
 }
 
-type Database = NodePgDatabase<typeof schema>;
+type Database = NodePgDatabase;
 
 /** The database as the app uses it: `execute` gives the rows, in a transaction too. */
 export type Db = Omit<Database, "execute" | "transaction"> & {
@@ -75,7 +73,7 @@ function create(url: string = serverEnv().DATABASE_URL) {
   // open, it would wake up to dead ones. This keeps the instance running
   // after each query until its idle connections have closed.
   attachDatabasePool(pool);
-  return { pool, database: withRows(drizzle({ client: pool, schema })) };
+  return { pool, database: withRows(drizzle({ client: pool })) };
 }
 
 let instance: ReturnType<typeof create> | undefined;
