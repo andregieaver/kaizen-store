@@ -18,7 +18,7 @@ Part of `docs/audits/bloat-review-2026-11.md`, on commit 0bd814c. Read by one re
 | [DQ-3](DQ-3.md) ✓ | "Where is this picture used" scans every page's text for each picture, and the job re-checks every picture daily | eager | P1 | M | 0.28 |
 | [DQ-5](DQ-5.md) ✓ | The five-minute dispatcher starts 78 jobs at once on 5 connections, and several redo work on every tick that grows with the number of stores | eager | P1 | M | 3.3 |
 | [DQ-7](DQ-7.md) ✓ | A page's frame asks about 20 questions each time its cache is cold, some of them one per feature for every store, and the cache is cold far more often than the code assumes | eager | P1 | M | 2.18 |
-| [DQ-15](DQ-15.md) | Five document jobs find their due work by re-checking every store's recent orders, invoices and refunds on each tick | eager | P1 | M | 3.6 |
+| [DQ-15](DQ-15.md) | Five document jobs find their due work by re-checking every store's recent orders, invoices and refunds on each tick | eager | P1 | M | 3.21 |
 | [DQ-10](DQ-10.md) ✓ | Some reads fetch whole JSON documents where a field, a card or a count is needed | oversize | P2 | M | 4.4 |
 | [DQ-12](DQ-12.md) ✓ | Every server instance reads the interface translations before it serves and polls them each minute | eager | P2 | S | 0.8 |
 | [DQ-13](DQ-13.md) ✓ | 341 loops hold a database call in their body; the ones that matter are jobs that loop over sites | eager | P2 | M | tolerated |

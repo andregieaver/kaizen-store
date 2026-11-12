@@ -22,7 +22,7 @@ Part of `docs/audits/bloat-review-2026-11.md`, on commit 0bd814c. Read by one re
 | [CR-10](CR-10.md) ✓ | The docs search index is rewritten row by row on every docs change | oversize | P2 | S | 3.5 |
 | [CR-11](CR-11.md) ✓ | An unscheduled PDF route is deployed with Chromium, and a 'finished' backfill is still fed by every copied AI picture | dead | P2 | S | 3.7 |
 | [CR-12](CR-12.md) ✓ | The daily job is scheduled twice, at the same minute | duplicate | P2 | S | 1.22 |
-| [CR-16](CR-16.md) | Six more five-minute jobs re-check every store that has the feature on, and the ledger's order never rotates | eager | P2 | M | 3.6 |
+| [CR-16](CR-16.md) | Six more five-minute jobs re-check every store that has the feature on, and the ledger's order never rotates | eager | P2 | M | 3.23 |
 | [CR-17](CR-17.md) | The daily job runs about 40 functions in one request under one ledger row, so a prune that fails is not seen | no check | P2 | M | 3.4 |
 | [CR-13](CR-13.md) ✓ | Status checks are kept raw for 91 days though the page shows one bar a day | oversize | P3 | S | tolerated |
 

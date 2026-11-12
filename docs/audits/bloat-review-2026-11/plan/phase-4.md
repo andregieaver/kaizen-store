@@ -58,7 +58,7 @@ The goal is an A in every area, not ticked steps. When the cuts are in, run the 
 
 A logged time entry's hours cannot be corrected on any screen, though updateTimeEntry() is built and tested (src/server/work-time.ts). Give entryAccess() in src/lib/work-ui.ts an edit flag, true where delete is true; on a draft invoice only the date and the note may change, as the server already rules. Add Edit to the entry's row in src/components/admin/work/time-entry-list.tsx with the fields of the log-time form, saved through updateTimeEntryAction, with its words in the Work catalogue in both languages. The default view stays one row with Edit and Delete. Delete saveInvoiceLinesAction and saveInvoiceHeaderAction, which no screen uses, as finding DD-5 lists.
 
-- **Closes:** 
+- **Closes:** no finding on its own
 - **Effort:** S. **Areas it moves:** The code itself.
 - **Done when:** A case in src/components/admin/work/work-pages.test.ts shows Edit for an owner and not on an invoiced entry, the work-ui test covers the flag, and rg -n 'saveInvoiceLinesAction|saveInvoiceHeaderAction' src prints nothing.
 - **Platform:** Work runs at the store owner's level, and Kaizena Flow's own store uses the same list; the platform console logs no time, so it has no twin to change.
@@ -68,7 +68,7 @@ A logged time entry's hours cannot be corrected on any screen, though updateTime
 
 Live drills can only be asked for by an insert into commerce.live_drills, and three texts say 'a platform admin' asks for them. They stay a console tool on purpose. Correct docs/rules/admin/platform.md, the row for D406 in docs/decisions.md and the comment in src/server/live-drills.ts to say: asked for by an insert into commerce.live_drills, read from the row. No code changes.
 
-- **Closes:** 
+- **Closes:** no finding on its own
 - **Effort:** S. **Areas it moves:** The code itself.
 - **Done when:** The three texts say that a drill is asked for by an insert into commerce.live_drills and read from its row, and none says a screen or a button asks for one.
 - **Platform:** Live drills are the platform's own tool; stores have no part in it.

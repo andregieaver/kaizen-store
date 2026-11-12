@@ -18,7 +18,7 @@ The detectors this plan's checks name exist only in the review's scratch folder:
 
 Production's statistics are read by hand and no reading is kept. Add one statement to the daily route (src/app/api/cron/subscription-reminders/route.ts). It writes a dated reading into a small platform table, kept 90 days. The reading holds the 40 costliest and the 40 most-called statements of the app's role (Postgres has already stripped the values), each commerce table's rows, size and scan counters, and the size of each schema. No screen yet: step 1.13 shows the reading and adds the flags, and closes the gap this step starts on. Land it before the fixes, so their 'before' is on record.
 
-- **Closes:** 
+- **Closes:** no finding on its own
 - **Effort:** S. **Areas it moves:** The database; Scheduled work.
 - **Done when:** In production the new table holds two days of readings before step 0.23 is deployed, and an int test shows the daily statement writing one row for each commerce table and at most 80 statement rows.
 - **Platform:** The reading is the platform's own table, and it counts Kaizena Flow's store and its null-store rows with every other.

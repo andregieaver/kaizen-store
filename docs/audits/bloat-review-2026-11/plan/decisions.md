@@ -1,6 +1,6 @@
 # The owner's questions, decided
 
-Decided on 12 November 2026 by the owner's rule: the recommended answer to each question, and no paid Vercel build machine (step 1.21).
+Decided on 12 November 2026 by the owner's rule: the recommended answer to each question, and no paid Vercel build machine (steps 1.21 and 1.29).
 Where nothing was recommended: the answer an area needs for an A, else the cheapest to build and run and the easiest to undo. Never one that costs money.
 Nothing is executed yet. Each decision is written into its step (`phase-N.md` and the step's brief in `steps/`).
 
@@ -13,7 +13,7 @@ Three steps delete production data for good (3.5, 3.8, 3.9). Each takes a dump f
 | --- | --- | --- | --- | --- |
 | 1.1 | Should this plan get lines of its own in CLAUDE.md? | No. One shared line names the trackers; each tracker keeps its rules at its own top. | Nothing. | Add the lines later. |
 | 1.18 | May a test refuse a new table, trigger, job, link or AI tool until its decision row states its idle cost? | Yes. | Whoever adds one writes one more line ("Idle cost:") in its decision row. | Remove the check from the surface budget test. |
-| 1.21 | Paid 16 GB build machine, or build in CI? | The paid machine is ruled out for good. First the two free source-map switches are measured. If the peak stays above 6.0 GB, the build is made in CI and deployed prebuilt. | Nothing on a screen. If the build moves to CI: three free secrets to add in GitHub (a Vercel token and two ids). On a private repository the executor stops and asks if the month's CI minutes would rise. | The deploy hook stays; putting its call back restores today's deploy. |
+| 1.21, 1.29 | Paid 16 GB build machine, or build in CI? | The paid machine is ruled out for good. First the two free source-map switches are measured. If the peak stays above 6.0 GB, the build is made in CI and deployed prebuilt (step 1.29). | Nothing on a screen. If the build moves to CI: three free secrets to add in GitHub (a Vercel token and two ids). On a private repository the executor stops and asks if the month's CI minutes would rise. | The deploy hook stays; putting its call back restores today's deploy. |
 | 1.23 | Own CSS limit: 50,000 characters per sheet, or on the sum? | Per sheet, as today. | Nothing. | Change the limit later; it is one constant. |
 | 2.1 **TELL ME IF NOT** | May CLAUDE.md lose its 295-line feature index, and may four how-to blocks load only when their folders are opened? | Yes to both. 44 KB becomes under 10.5 KB. Every "never" sentence stays. The commit lists what moved and where. | Every agent session starts with a quarter of today's rules. Your instruction file is rewritten. | Revert the commit; nothing is lost, the text only moves to `docs/rules` and `.claude/rules`. |
 | 2.8 | On a full listing, may only the first screen of tiles be fetched ahead? | Yes. The rest is fetched on touch; on a computer the main menu's links wait for the pointer. A trial decides whether one shared product shell does better. | A shopper who presses a tile far down a long listing may wait a moment longer for the page. Fewer requests on phones. | One setting in the link component. |
