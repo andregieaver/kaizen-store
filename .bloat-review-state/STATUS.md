@@ -1,4 +1,4 @@
-# Where the reviewers stand (2026-11-12 00:48 UTC)
+# Where the reviewers stand (2026-11-12 00:51 UTC)
 
 | Area | Read (audit) | Challenged (verify) | Planned |
 |---|---|---|---|
@@ -14,11 +14,11 @@
 | assets | done | done | to do |
 | ai-context | done | done | done |
 | features | done | done | done |
-| families | done | done | to do |
+| families | done | done | done |
 | docs-context | done | done | to do |
 | page-model | done | done | to do |
 | css | done | done | to do |
-| i18n | done | to do | to do |
+| i18n | done | done | to do |
 | tests-ci | done | done | to do |
 | functions | done | to do | to do |
 | server-graph | done | done | to do |
@@ -28,10 +28,10 @@
 | unused-code | done | done | to do |
 | copied-code | done | done | done |
 
-Done: 12 of 25 areas through all three stages; 22 challenged; 25 read.
+Done: 13 of 25 areas through all three stages; 23 challenged; 25 read.
 
 To relaunch what is left, pass these args to the workflow (split the keys over several launches of three or four):
 
 ```json
-{"keys":["assets","families","docs-context","page-model","css","i18n","tests-ci","functions","server-graph","client-bundles","page-payload","prefetch","unused-code"],"audited":["storefront-client","storefront-data","admin-client","admin-data","caching","cron","db-queries","db-schema","deps","assets","ai-context","features","families","docs-context","page-model","css","i18n","tests-ci","functions","server-graph","client-bundles","page-payload","prefetch","unused-code","copied-code"],"verified":["storefront-client","storefront-data","admin-client","admin-data","caching","cron","db-queries","db-schema","deps","assets","ai-context","features","families","docs-context","page-model","css","tests-ci","server-graph","client-bundles","page-payload","unused-code","copied-code"]}
+{"keys":["assets","docs-context","page-model","css","i18n","tests-ci","functions","server-graph","client-bundles","page-payload","prefetch","unused-code"],"audited":["storefront-client","storefront-data","admin-client","admin-data","caching","cron","db-queries","db-schema","deps","assets","ai-context","features","families","docs-context","page-model","css","i18n","tests-ci","functions","server-graph","client-bundles","page-payload","prefetch","unused-code","copied-code"],"verified":["storefront-client","storefront-data","admin-client","admin-data","caching","cron","db-queries","db-schema","deps","assets","ai-context","features","families","docs-context","page-model","css","i18n","tests-ci","server-graph","client-bundles","page-payload","unused-code","copied-code"]}
 ```
