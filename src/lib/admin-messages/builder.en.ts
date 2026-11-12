@@ -1679,6 +1679,8 @@ export const builderEn = {
     css: "The style's CSS",
     cssPlaceholder: "padding: 5px 10px;\nborder-radius: 99px;\nborder: 2px solid #fff;\n\n&:hover {\n  color: #1d4ed8;\n}",
     fromLook: "Start from this look's CSS",
+    scratch: "Start from scratch",
+    scratchHint: "No look: write the style's own CSS",
     save: "Save style",
     saveApply: "Save and apply",
     saving: "Saving…",
