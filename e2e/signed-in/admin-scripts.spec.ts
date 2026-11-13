@@ -34,15 +34,16 @@ const MEASURE = process.env.E2E_MEASURE === "1";
  * left the first scripts (`admin-text-later.ts`): about 1.1 MB off each.
  */
 const BUDGETS: Record<string, number> = {
-  // Measured 10 November 2026 once the admin's English was fetched per area (PSI PERF-01): home 1,284,745, products 1,257,183, a new
-  // product 2,221,325, orders 1,275,688, pages 2,093,288, a page in the builder 3,341,746, settings 1,229,972 bytes; about 4 % of room.
-  "": 1_340_000,
-  "/products": 1_310_000,
-  "/products/new": 2_310_000,
-  "/orders": 1_330_000,
-  "/pages": 2_180_000,
-  "/pages/{page}": 3_480_000,
-  "/settings": 1_280_000,
+  // Measured 13 November 2026 once sign-in's English, the Supabase client and zod left the frame (bloat review step 0.9): home 778,609,
+  // products 744,357, a new product 1,868,975, orders 762,732, pages 1,741,320, a page in the builder 3,135,169, settings 716,511 bytes;
+  // about 4 % of room, rounded up to 10,000. Lowered from the 10 November budgets below, never raised.
+  "": 810_000,
+  "/products": 780_000,
+  "/products/new": 1_950_000,
+  "/orders": 800_000,
+  "/pages": 1_820_000,
+  "/pages/{page}": 3_270_000,
+  "/settings": 750_000,
 };
 
 for (const [path, max] of Object.entries(BUDGETS)) {

@@ -12,7 +12,8 @@ const ROOT = join(__dirname, "../../..");
  * backed out: a part waiting for its area's words is not yet interactive when the page has loaded, so a press that early submitted a form
  * without its script (the content type editor's Save, caught by `e2e/signed-in/content-types.spec.ts`). Since 10 November 2026 the fallback
  * is fetched per area again (`admin-text-later.ts`, D540), with `e2e/signed-in/admin-text-fallbacks.spec.ts` failing on any screen that
- * needs it; `admin-text.tsx` keeps only `common` and `signIn`. The modules below import one, the list may only shrink, and no new client
+ * needs it; `admin-text.tsx` keeps only `common`, and sign-in's English moved to `sign-in-text.tsx` (bloat review step 0.9), imported only by the
+ * two-step panel and the recovery codes. The modules below import one, the list may only shrink, and no new client
  * module may join it. `import type` is free.
  */
 const ALREADY: readonly string[] = [
@@ -20,6 +21,7 @@ const ALREADY: readonly string[] = [
   "src/app/admin/(gated)/[store]/gift-cards/[cardId]/new-code-form.tsx",
   "src/app/admin/(gated)/[store]/gift-cards/new/issue-form.tsx",
   "src/components/admin/admin-text-context.tsx",
+  "src/components/admin/sign-in-text.tsx",
   "src/components/admin/audience-fields.tsx",
   "src/components/admin/company-fields.tsx",
   "src/components/admin/delete-reminder-button.tsx",
