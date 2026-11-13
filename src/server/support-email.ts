@@ -7,7 +7,7 @@ import { sql } from "drizzle-orm";
 import { db } from "@/db/client";
 import { fillWords } from "@/lib/admin-fill";
 import { ADMIN_LANG_FACTS, adminLangOf, type AdminLang } from "@/lib/admin-lang";
-import { adminText } from "@/lib/admin-text";
+import { STAFF_EMAILS_WORDS } from "@/lib/admin-words/staff-emails";
 import type { ChatProduct } from "@/lib/chat";
 import { renderEmail, type EmailBlock, type RenderedEmail } from "@/lib/email-layout";
 import { EMAIL_CHANNEL_MAX, EMAIL_SETTLE_SECONDS, answerSubject, inboundDomain, replyAddress } from "@/lib/inbound-email";
@@ -284,7 +284,7 @@ export async function sendWaitingAlerts(now: Date = new Date(), limit = 100): Pr
       const emailIn = (lang: AdminLang): RenderedEmail => {
         const hit = made.get(lang);
         if (hit) return hit;
-        const w = adminText(lang, "staffEmails").supportWaiting;
+        const w = STAFF_EMAILS_WORDS[lang].supportWaiting;
         const email = renderEmail({
           subject: fillWords(w.subject, { where }),
           preview: fillWords(w.preview, { minutes }),

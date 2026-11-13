@@ -16,7 +16,7 @@ import {
 } from "@/lib/cart-reminders";
 import { fillWords } from "@/lib/admin-fill";
 import { ADMIN_LANG_FACTS, adminLangOf, type AdminLang } from "@/lib/admin-lang";
-import { adminText } from "@/lib/admin-text";
+import { STAFF_EMAILS_WORDS } from "@/lib/admin-words/staff-emails";
 import { renderEmail } from "@/lib/email-layout";
 import { ON_PLAN_STATUSES } from "@/lib/plans";
 import { siteUrl } from "@/lib/site";
@@ -267,7 +267,7 @@ export async function sendDuePlanReminders(): Promise<{ sent: number; failed: nu
 type PlanShown = { name: string; amountMinor: number; currency: string; interval: string };
 
 function planLine(plan: PlanShown, lang: AdminLang = "en"): ReminderLine {
-  const w = adminText(lang, "staffEmails").planReminder;
+  const w = STAFF_EMAILS_WORDS[lang].planReminder;
   return {
     variantId: "plan",
     sellingPlanId: null,

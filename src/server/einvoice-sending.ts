@@ -7,7 +7,8 @@ import { db } from "@/db/client";
 import { fillWords } from "@/lib/admin-fill";
 import type { AdminLang } from "@/lib/admin-lang";
 import type { ScreensMessages } from "@/lib/admin-messages/screens.en";
-import { adminText } from "@/lib/admin-text";
+import { INVOICES_WORDS } from "@/lib/admin-words/invoices";
+import { SCREENS_WORDS } from "@/lib/admin-words/screens";
 import { participantOf, type PeppolDocument } from "@/lib/peppol";
 import { workDocumentUbl } from "@/lib/work-einvoice";
 
@@ -297,8 +298,8 @@ export function einvoiceLine(state: EinvoiceState, words: ScreensMessages["einvo
 /** Each document's e-invoice line in the reader's language, by `type:id`; none for a document the job has not looked at (a consumer's, or not yet). */
 export async function einvoiceLines(storeId: string, documents: readonly { type: DocType; id: string }[], lang: AdminLang): Promise<Record<string, string>> {
   const states = await einvoiceStates(storeId, documents);
-  const words = adminText(lang, "screens").einvoiceState;
-  const problems = adminText(lang, "invoices").einvoice.problems as Record<string, string>;
+  const words = SCREENS_WORDS[lang].einvoiceState;
+  const problems = INVOICES_WORDS[lang].einvoice.problems as Record<string, string>;
   return Object.fromEntries([...states].map(([key, state]) => [key, einvoiceLine(state, words, problems)]));
 }
 

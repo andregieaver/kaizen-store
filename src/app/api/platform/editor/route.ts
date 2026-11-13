@@ -1,7 +1,7 @@
 import { connection } from "next/server";
 
 import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
-import { adminText } from "@/lib/admin-text";
+import { WEBSITE_WORDS } from "@/lib/admin-words/website";
 import { getAccount, platformCan, type Account } from "@/server/auth";
 import { checkPassPermission, checkPermission } from "@/server/permissions";
 
@@ -26,6 +26,6 @@ export async function GET(request: Request) {
   }
   const editor = account !== null;
   const lang = adminLangOf(account?.adminLocale);
-  const words = editor ? { lang: ADMIN_LANG_FACTS[lang].tag, ...adminText(lang, "website").liveEdit } : undefined;
+  const words = editor ? { lang: ADMIN_LANG_FACTS[lang].tag, ...WEBSITE_WORDS[lang].liveEdit } : undefined;
   return Response.json({ editor, ...(words && { words }) }, { headers: { "Cache-Control": "private, no-store" } });
 }

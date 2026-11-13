@@ -8,7 +8,7 @@ import { z } from "zod";
 import { db } from "@/db/client";
 import { fillWords } from "@/lib/admin-fill";
 import { adminLangOf } from "@/lib/admin-lang";
-import { adminText } from "@/lib/admin-text";
+import { OAUTH_WORDS } from "@/lib/admin-words/oauth";
 import { APP_DIRECTORY_OPEN, APPS_MAX, DEVELOPER_TERMS_VERSION, isAppScope, LISTING_NOTE_MAX, normaliseAppScopes, type AppDistribution, type AppInput, type AppScope } from "@/lib/apps";
 import { renderEmail } from "@/lib/email-layout";
 import { isEvent, type IntegrationEvent } from "@/lib/integrations";
@@ -337,7 +337,7 @@ export async function decideListing(admin: Account, appId: string, decision: "ap
   });
   if (row.email) {
     const lang = adminLangOf(row.admin_locale);
-    const w = adminText(lang, "oauth").developer.listing;
+    const w = OAUTH_WORDS[lang].developer.listing;
     const subject = fillWords(decision === "approved" ? w.approvedSubject : w.declinedSubject, { app: safeClientName(row.name) });
     const message = renderEmail({
       subject,

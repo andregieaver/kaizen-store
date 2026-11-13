@@ -4,7 +4,7 @@ import { sql } from "drizzle-orm";
 
 import { db } from "@/db/client";
 import { adminLangOf } from "@/lib/admin-lang";
-import { adminText } from "@/lib/admin-text";
+import { STAFF_EMAILS_WORDS } from "@/lib/admin-words/staff-emails";
 import { renderEmail } from "@/lib/email-layout";
 import { siteUrl } from "@/lib/site";
 import {
@@ -424,7 +424,7 @@ async function notifyOwners(
     const emailIn = (stored: unknown) => {
       const lang = adminLangOf(typeof stored === "string" ? stored : null);
       return renderEmail(
-        statusEmail(facts, adminText(lang, "staffEmails"), lang),
+        statusEmail(facts, STAFF_EMAILS_WORDS[lang], lang),
       );
     };
     for (const person of people) {

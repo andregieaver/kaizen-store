@@ -5,7 +5,7 @@ import { sql } from "drizzle-orm";
 import { db } from "@/db/client";
 import { countWords, fillWords } from "@/lib/admin-fill";
 import { ADMIN_LANG_FACTS, type AdminLang } from "@/lib/admin-lang";
-import { adminText } from "@/lib/admin-text";
+import { STAFF_EMAILS_WORDS } from "@/lib/admin-words/staff-emails";
 import { renderEmail, type RenderedEmail } from "@/lib/email-layout";
 import { emailText } from "@/lib/email-text";
 import { INVENTORY_RETENTION_MONTHS, LOW_STOCK_EMAIL_LINES } from "@/lib/inventory";
@@ -106,7 +106,7 @@ export async function sendLowStockNotices(deps: { send?: typeof sendEmail } = {}
       const emailIn = (lang: AdminLang): RenderedEmail => {
         const hit = made.get(lang);
         if (hit) return hit;
-        const w = adminText(lang, "staffEmails").alerts.lowStock;
+        const w = STAFF_EMAILS_WORDS[lang].alerts.lowStock;
         const one = crossings.length === 1;
         const lines = shown.map((c) => ({ label: `${c.label} (${c.sku})`, value: fillWords(w.line, { stock: c.stock, level: c.threshold }), muted: false }));
         const email = renderEmail({
@@ -118,7 +118,7 @@ export async function sendLowStockNotices(deps: { send?: typeof sendEmail } = {}
             { type: "heading", text: w.heading },
             { type: "paragraph", text: one ? w.textOne : w.textMany },
             { type: "lines", rows: lines },
-            ...(more > 0 ? [{ type: "paragraph" as const, text: fillWords(adminText(lang, "staffEmails").alerts.more, { n: more }) }] : []),
+            ...(more > 0 ? [{ type: "paragraph" as const, text: fillWords(STAFF_EMAILS_WORDS[lang].alerts.more, { n: more }) }] : []),
             { type: "button", text: w.button, url: `${siteUrl()}/admin/${store.slug}/inventory?status=low` },
           ],
         });

@@ -3,7 +3,7 @@ import "server-only";
 import { unstable_rethrow } from "next/navigation";
 
 import { adminLangOf, type AdminLang } from "@/lib/admin-lang";
-import { adminText } from "@/lib/admin-text";
+import { COMMON_WORDS } from "@/lib/admin-words/common";
 import type { PlatformAccess, PlatformArea } from "@/lib/platform-access";
 import type { PermissionKey } from "@/lib/permission-keys";
 
@@ -28,7 +28,7 @@ import { checkPermission } from "./permissions";
 export type ActionAnswer<T> = (message: string, kind: "refused" | "failed") => T;
 
 type Common = { noAccess: string; failed: string };
-const wordsIn = (lang: AdminLang): Common => adminText(lang, "common").action;
+const wordsIn = (lang: AdminLang): Common => COMMON_WORDS[lang].action;
 
 /** A store admin's action: `key` is checked for the member, `answer` turns a refusal or a failure into the action's result. */
 export async function storeAction<T>(

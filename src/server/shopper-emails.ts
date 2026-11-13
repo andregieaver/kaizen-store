@@ -14,7 +14,7 @@ import { confirmationDeliveryBlocks, outForDeliveryBlocks, pickupReadyBlocks } f
 import { formatWindow } from "@/lib/porterbuddy";
 import { fillWords } from "@/lib/admin-fill";
 import { ADMIN_LANG_FACTS } from "@/lib/admin-lang";
-import { adminText } from "@/lib/admin-text";
+import { STAFF_EMAILS_WORDS } from "@/lib/admin-words/staff-emails";
 import { renderEmail, type EmailBlock } from "@/lib/email-layout";
 import { deliveryEmailText, emailText, orderBonusEarned, orderBonusRows, orderReferralRows, orderVatParagraph, orderVatReliefRows, refundVatNote, type EmailText } from "@/lib/email-text";
 import { calendarFile, type CalendarEvent } from "@/lib/ics";
@@ -1291,7 +1291,7 @@ export async function sendBookingStaffNotices(storeId: string, orderId: string):
   // The address is a resource's, no account: the store's main language when it is Norwegian, else English (D312 A10).
   const lang = contactLang(store.markets[0]?.ownLocale ?? null);
   const locale = ADMIN_LANG_FACTS[lang].locale;
-  const words = adminText(lang, "staffEmails").bookingStaff;
+  const words = STAFF_EMAILS_WORDS[lang].bookingStaff;
   const m = t(lang);
   const customer = [order.billingAddress.name, order.email, order.billingAddress.phone].filter(Boolean).join(" · ");
   const outcomes: SendOutcome[] = [];

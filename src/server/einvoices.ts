@@ -1,7 +1,8 @@
 import "server-only";
 
 import type { AdminLang } from "@/lib/admin-lang";
-import { adminText } from "@/lib/admin-text";
+import { INVOICES_WORDS } from "@/lib/admin-words/invoices";
+import { SCREENS_WORDS } from "@/lib/admin-words/screens";
 import { creditNoteUbl, einvoiceRefusedPage, invoiceUbl, type Einvoice } from "@/lib/einvoice";
 
 import { getCreditNote, getInvoice } from "./invoices";
@@ -43,8 +44,8 @@ export function einvoiceResponse(
   if (!out) return new Response("Not found", { status: 404 });
   if (!out.ok) {
     // A shop document's reasons, and those only Work's documents can have (D463).
-    const words = adminText(page.lang, "invoices").einvoice;
-    const more = adminText(page.lang, "screens").einvoiceState.problems;
+    const words = INVOICES_WORDS[page.lang].einvoice;
+    const more = SCREENS_WORDS[page.lang].einvoiceState.problems;
     const html = einvoiceRefusedPage(out.problems, { ...words, problems: { ...more, ...words.problems } }, page.back, page.lang);
     return new Response(html, { status: 422, headers: { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "private, no-store" } });
   }

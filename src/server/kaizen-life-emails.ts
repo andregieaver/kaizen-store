@@ -4,7 +4,7 @@ import { sql } from "drizzle-orm";
 import { z } from "zod";
 
 import { adminLangOf } from "@/lib/admin-lang";
-import { adminText } from "@/lib/admin-text";
+import { STAFF_EMAILS_WORDS } from "@/lib/admin-words/staff-emails";
 import { renderEmail } from "@/lib/email-layout";
 import { kaizenLifeLinkedEmail } from "@/lib/kaizen-life-emails";
 import { siteUrl } from "@/lib/site";
@@ -34,7 +34,7 @@ export async function sendKaizenLifeLinkedEmail(
     const email = renderEmail(
       kaizenLifeLinkedEmail(
         { person: account.name || account.email, when: stamp(at), how, connectedUrl: `${siteUrl()}/admin/account/connected` },
-        adminText(lang, "staffEmails"),
+        STAFF_EMAILS_WORDS[lang],
         lang,
       ),
     );

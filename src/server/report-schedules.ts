@@ -7,7 +7,7 @@ import { db } from "@/db/client";
 import { countWords, fillWords } from "@/lib/admin-fill";
 import { ADMIN_LANG_FACTS, adminLangOf, type AdminLang } from "@/lib/admin-lang";
 import type { CustomReportsMessages } from "@/lib/admin-messages/custom-reports.en";
-import { adminText } from "@/lib/admin-text";
+import { CUSTOM_REPORTS_WORDS } from "@/lib/admin-words/custom-reports";
 import { formatNumber, formatPercent } from "@/lib/analytics-core";
 import { formatAmount } from "@/lib/analytics-format";
 import { renderEmail, type EmailBlock, type RenderedEmail } from "@/lib/email-layout";
@@ -180,7 +180,7 @@ export function reportEmail(
   labels: Awaited<ReturnType<typeof reportLabels>>,
   lang: AdminLang,
 ): RenderedEmail {
-  const words = adminText(lang, "customReports");
+  const words = CUSTOM_REPORTS_WORDS[lang];
   const w = words.email;
   const locale = ADMIN_LANG_FACTS[lang].locale;
   const rows = report.rows.slice(0, REPORT_EMAIL_ROWS);

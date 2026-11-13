@@ -5,7 +5,7 @@ import { z } from "zod";
 
 import { db } from "@/db/client";
 import { adminLangOf, ADMIN_LANG_FACTS } from "@/lib/admin-lang";
-import { adminText } from "@/lib/admin-text";
+import { STAFF_EMAILS_WORDS } from "@/lib/admin-words/staff-emails";
 import { addDays, customPeriod, startOfWeek, todayIn } from "@/lib/analytics-period";
 import { previousMonth, signedMoney } from "@/lib/autopilot-effects";
 import { autopilotEmail, checkedNote, digestWorthSending, reportFactsSchema, STEPS_LISTED, type ReportFacts } from "@/lib/autopilot-report";
@@ -274,7 +274,7 @@ async function sendOne(who: Recipient, kind: "daily" | "weekly" | "monthly", per
       storeId,
       kind: kind === "daily" ? "autopilot.digest" : kind === "weekly" ? "autopilot.weekly" : "autopilot.monthly",
       to: who.account.email,
-      email: renderEmail(autopilotEmail(facts, url, note, adminText(lang, "staffEmails"), lang)),
+      email: renderEmail(autopilotEmail(facts, url, note, STAFF_EMAILS_WORDS[lang], lang)),
       fromName: "Kaizena Flow",
       idempotencyKey: `autopilot.${kind}:${storeId ?? "platform"}:${who.account.id}:${periodStart}`,
     });

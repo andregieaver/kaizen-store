@@ -6,7 +6,8 @@ import { db } from "@/db/client";
 import { targetLabel } from "@/lib/ab-site";
 import { fillWords } from "@/lib/admin-fill";
 import { adminLangOf, type AdminLang } from "@/lib/admin-lang";
-import { adminText } from "@/lib/admin-text";
+import { EXPERIMENTS_WORDS } from "@/lib/admin-words/experiments";
+import { STAFF_EMAILS_WORDS } from "@/lib/admin-words/staff-emails";
 import { renderEmail } from "@/lib/email-layout";
 import { guardrailEmail } from "@/lib/experiment-emails";
 import { partLabelText, targetLabelText } from "@/lib/experiment-words";
@@ -48,9 +49,9 @@ export async function notifyGuardrailStop(
         const page = targetLabel(test.page.kind, test.page.slug, test.page.title, test.page.role);
         return test.part ? `${test.part.label} on ${page}` : page;
       }
-      const words = adminText(lang, "experiments");
+      const words = EXPERIMENTS_WORDS[lang];
       const page = targetLabelText(test.page.kind, test.page.slug, test.page.title, test.page.role, words);
-      return test.part ? fillWords(adminText(lang, "staffEmails").guardrail.partOn, { part: partLabelText(test.part.label, words), page }) : page;
+      return test.part ? fillWords(STAFF_EMAILS_WORDS[lang].guardrail.partOn, { part: partLabelText(test.part.label, words), page }) : page;
     };
     const facts = {
       storeName: store.name,
@@ -74,7 +75,7 @@ export async function notifyGuardrailStop(
         emails.set(
           lang,
           renderEmail(
-            guardrailEmail(facts, adminText(lang, "staffEmails"), lang),
+            guardrailEmail(facts, STAFF_EMAILS_WORDS[lang], lang),
           ),
         );
       return emails.get(lang)!;

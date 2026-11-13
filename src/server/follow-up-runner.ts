@@ -5,7 +5,7 @@ import { z } from "zod";
 
 import { db } from "@/db/client";
 import { adminLangOf, ADMIN_LANG_FACTS, type AdminLang } from "@/lib/admin-lang";
-import { adminText } from "@/lib/admin-text";
+import { STAFF_EMAILS_WORDS } from "@/lib/admin-words/staff-emails";
 import { renderEmail } from "@/lib/email-layout";
 import { followUpEmail } from "@/lib/follow-up-email";
 import { FOLLOW_UP_REPEATS, FOLLOW_UP_TRIES, followUpMessage, nextDue, RETRY_MINUTES } from "@/lib/follow-ups";
@@ -197,7 +197,7 @@ async function tell(
       email: renderEmail(
         followUpEmail(
           { task: item.task, store: facts.storeName, url, outcome: facts.outcome, waiting: facts.waiting, next },
-          adminText(lang, "staffEmails"),
+          STAFF_EMAILS_WORDS[lang],
           lang,
         ),
       ),

@@ -2,7 +2,7 @@ import "server-only";
 
 import { adminLangOf, type AdminLang } from "@/lib/admin-lang";
 import type { PlatformSiteMessages } from "@/lib/admin-messages/platform-site.en";
-import { adminText } from "@/lib/admin-text";
+import { PLATFORM_SITE_WORDS } from "@/lib/admin-words/platform-site";
 import { actionAdminLang } from "@/server/admin-request-lang";
 import { requirePlatformAdmin } from "@/server/auth";
 
@@ -13,7 +13,7 @@ import { requirePlatformAdmin } from "@/server/auth";
 export async function platformSiteWords(): Promise<{ lang: AdminLang; w: PlatformSiteMessages }> {
   const admin = await requirePlatformAdmin();
   const lang = adminLangOf(admin.adminLocale);
-  return { lang, w: adminText(lang, "platformSite") };
+  return { lang, w: PLATFORM_SITE_WORDS[lang] };
 }
 
 /** The areas a theme's or Kaizena Flow's own page hands its client parts: its own, and the shared builder's and theme editor's (A7). */
@@ -21,5 +21,5 @@ export const PLATFORM_SITE_AREAS = ["platformSite", "design", "builder", "blocks
 
 /** What a platform site or theme action answers, in the account's language (`actionAdminLang()`: English when no request is known). */
 export async function platformActionWords(): Promise<PlatformSiteMessages["actions"]> {
-  return adminText(await actionAdminLang(), "platformSite").actions;
+  return PLATFORM_SITE_WORDS[await actionAdminLang()].actions;
 }

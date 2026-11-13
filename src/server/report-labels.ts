@@ -4,7 +4,8 @@ import { sql } from "drizzle-orm";
 import { z } from "zod";
 
 import type { AdminLang } from "@/lib/admin-lang";
-import { adminText } from "@/lib/admin-text";
+import { CUSTOM_REPORTS_WORDS } from "@/lib/admin-words/custom-reports";
+import { REPORTS_WORDS } from "@/lib/admin-words/reports";
 import { fillWords } from "@/lib/admin-fill";
 import { methodGroup } from "@/lib/payment-facts";
 import type { DimensionKey } from "@/lib/report-catalogue";
@@ -53,8 +54,8 @@ function timeLabel(key: DimensionKey, day: string, locale: string, words: { week
 
 /** Every label a report needs, keyed `{dimension}:{value}`. */
 export async function reportLabels(store: Store, report: Pick<ReportResult, "rows" | "spec">, lang: AdminLang, locale: string): Promise<RowLabels> {
-  const words = adminText(lang, "customReports");
-  const channels = adminText(lang, "reports").channels as Record<string, string>;
+  const words = CUSTOM_REPORTS_WORDS[lang];
+  const channels = REPORTS_WORDS[lang].channels as Record<string, string>;
   const values = (d: DimensionKey) => {
     const at = report.spec.dimensions.indexOf(d);
     const filtered = report.spec.filters.filter((f) => f.dimension === d).flatMap((f) => f.values);
