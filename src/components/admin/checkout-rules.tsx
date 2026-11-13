@@ -398,10 +398,27 @@ export function RuleEditor({
   );
 }
 
+/** Delete behind one more press: a line under the row asks in words, then Delete or Keep it (a slip of the finger never deletes). */
+function DeleteAsk({ ask, pending, onDelete, onKeep }: { ask: string; pending: boolean; onDelete: () => void; onKeep: () => void }) {
+  const w = useAdminText("shipping").checkoutRules;
+  return (
+    <div role="group" aria-label={ask} className="flex basis-full flex-wrap items-center gap-2 rounded-panel bg-sunken px-3 py-2 text-sm">
+      <span className="min-w-0 flex-1">{ask}</span>
+      <Button kind="danger" size="dense" disabled={pending} onClick={onDelete}>
+        {w.remove}
+      </Button>
+      <Button kind="quiet" size="dense" onClick={onKeep}>
+        {w.keepIt}
+      </Button>
+    </div>
+  );
+}
+
 /** The rules in the order they are read, each with its switch, place and what kept it out lately. */
 export function RuleList({ rules, choices, canWrite, actions }: { rules: RuleView[]; choices: RuleChoices; canWrite: boolean; actions: CheckoutRuleActions }) {
   const w = useAdminText("shipping").checkoutRules;
   const [editing, setEditing] = useState<string | null>(null);
+  const [asking, setAsking] = useState<string | null>(null);
   const [pending, run] = useTransition();
   return (
     <Card title={w.rules} aside={canWrite && editing !== "new" ? <Button kind="strong" onClick={() => setEditing("new")}>{w.newRule}</Button> : undefined}>
@@ -451,10 +468,18 @@ export function RuleList({ rules, choices, canWrite, actions }: { rules: RuleVie
                         {w.down}
                       </Button>
                     )}
-                    <Button kind="quiet" disabled={pending} onClick={() => run(() => actions.removeRule(rule.id))}>
+                    <Button kind="quiet" disabled={pending || asking === rule.id} onClick={() => setAsking(rule.id)}>
                       {w.remove}
                     </Button>
                   </div>
+                )}
+                {asking === rule.id && (
+                  <DeleteAsk
+                    ask={fillWords(w.deleteRuleAsk, { name: rule.name })}
+                    pending={pending}
+                    onDelete={() => run(() => actions.removeRule(rule.id))}
+                    onKeep={() => setAsking(null)}
+                  />
                 )}
               </ListRow>
             ),
@@ -526,6 +551,7 @@ function FieldEditor({ start, locales, save, onDone }: { start: FieldView | null
 export function FieldList({ fields, locales, canWrite, actions }: { fields: FieldView[]; locales: Choice[]; canWrite: boolean; actions: CheckoutRuleActions }) {
   const w = useAdminText("shipping").checkoutRules;
   const [editing, setEditing] = useState<string | null>(null);
+  const [asking, setAsking] = useState<string | null>(null);
   const [pending, run] = useTransition();
   const [shown, moveShown] = useOptimistic(fields, (now: FieldView[], { id, to }: { id: string; to: number }) => {
     const order = movedTo(
@@ -560,7 +586,21 @@ export function FieldList({ fields, locales, canWrite, actions }: { fields: Fiel
         <FieldEditor start={f} locales={locales} save={actions.saveField} onDone={() => setEditing(null)} />
       </li>
     ) : (
-      <FieldRowView key={f.id} field={f} sortable={sortable}>
+      <FieldRowView
+        key={f.id}
+        field={f}
+        sortable={sortable}
+        after={
+          asking === f.id ? (
+            <DeleteAsk
+              ask={fillWords(w.deleteFieldAsk, { name: f.label.text })}
+              pending={pending}
+              onDelete={() => run(() => actions.removeField(f.id))}
+              onKeep={() => setAsking(null)}
+            />
+          ) : null
+        }
+      >
         {sortable && (
           <>
             <Button kind="icon" size="dense" disabled={i === 0} onClick={() => move(f.id, i - 1)} aria-label={fillWords(w.fieldUp, { name: f.label.text })} icon={<ArrowUp aria-hidden />} />
@@ -582,7 +622,7 @@ export function FieldList({ fields, locales, canWrite, actions }: { fields: Fiel
             <Button kind="quiet" onClick={() => setEditing(f.id)}>
               {w.edit}
             </Button>
-            <Button kind="quiet" disabled={pending} onClick={() => run(() => actions.removeField(f.id))}>
+            <Button kind="quiet" disabled={pending || asking === f.id} onClick={() => setAsking(f.id)}>
               {w.remove}
             </Button>
           </>
@@ -628,8 +668,8 @@ export function FieldList({ fields, locales, canWrite, actions }: { fields: Fiel
 
 const FIELD_ROW = "flex min-h-16 flex-wrap items-center gap-x-4 gap-y-1 py-3";
 
-/** One question in the list: a handle to drag it while the list can be sorted, its words, kind and switch, and the buttons given. */
-function FieldRowView({ field, sortable, children }: { field: FieldView; sortable: boolean; children: ReactNode }) {
+/** One question in the list: a handle to drag it while the list can be sorted, its words, kind and switch, the buttons given, and what goes under it. */
+function FieldRowView({ field, sortable, after, children }: { field: FieldView; sortable: boolean; after: ReactNode; children: ReactNode }) {
   const w = useAdminText("shipping").checkoutRules;
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: field.id });
   return (
@@ -655,6 +695,7 @@ function FieldRowView({ field, sortable, children }: { field: FieldView; sortabl
         {field.enabled ? w.on : w.off}
       </Chip>
       <div className="flex flex-wrap items-center gap-1">{children}</div>
+      {after}
     </li>
   );
 }

@@ -31,7 +31,7 @@ import {
   type ApiAnswer,
 } from "./admin-api-kit";
 import type { ApiCaller } from "./api-tokens";
-import { deleteCheckoutField, deleteCheckoutRule, listCheckoutFields, listCheckoutRules, saveCheckoutField, saveCheckoutRule, switchCheckoutField, switchCheckoutRule } from "./checkout-rules";
+import { deleteCheckoutField, deleteCheckoutRule, listCheckoutFields, listCheckoutRules, moveCheckoutField, saveCheckoutField, saveCheckoutRule, switchCheckoutField, switchCheckoutRule } from "./checkout-rules";
 import { saveDiscount } from "./discounts";
 import { documentUbl } from "./einvoices";
 import { adjustStock } from "./inventory";
@@ -494,25 +494,31 @@ async function answerCore(caller: ApiCaller, route: CoreRoute, request: Request)
       await record(caller, "checkout_field_made", {}, { type: "checkout_field", id: saved.id });
       return ok(route.name, { data: { id: saved.id } }, 201);
     }
-    case "checkout.rule_update":
-    case "checkout.field_update": {
-      const rule = route.name === "checkout.rule_update";
-      const { enabled, ...rest } = rule ? await readBody("checkout.rule_update", request) : await readBody("checkout.field_update", request);
-      // A body of `enabled` alone switches it; anything else is the whole rule or question as made, its switch kept unless given.
+    case "checkout.rule_update": {
+      const { enabled, ...rest } = await readBody(route.name, request);
+      // A body of `enabled` alone switches it; anything else is the whole rule as made, its switch kept unless given.
       if (Object.keys(rest).length > 0) {
-        const saved = rule ? await saveCheckoutRule(caller.member, route.id, rest) : await saveCheckoutField(caller.member, route.id, rest);
+        const saved = await saveCheckoutRule(caller.member, route.id, rest);
         if (!saved.ok) return saved.problems.some((p) => / is gone\.$/.test(p)) ? fail("not_found", saved.problems.join(" ")) : fail("invalid", saved.problems.join(" "));
       } else if (enabled === undefined) return fail("invalid", "Send the changes, or `enabled`.");
-      if (typeof enabled === "boolean") {
-        if (rule) {
-          if (!(await switchCheckoutRule(caller.member, route.id, enabled))) return fail("not_found", "No such checkout rule in this store.");
-        } else {
-          const exists = (await listCheckoutFields(db(), storeId)).some((f) => f.id === route.id);
-          if (!exists) return fail("not_found", "No such checkout question in this store.");
-          await switchCheckoutField(caller.member, route.id, enabled);
-        }
+      if (typeof enabled === "boolean" && !(await switchCheckoutRule(caller.member, route.id, enabled))) return fail("not_found", "No such checkout rule in this store.");
+      await record(caller, "checkout_rule_changed", { enabled: enabled ?? null }, { type: "checkout_rule", id: route.id });
+      return ok(route.name, { data: { id: route.id } });
+    }
+    case "checkout.field_update": {
+      const { enabled, position, ...rest } = await readBody(route.name, request);
+      // `enabled` alone switches it and `position` alone moves it; anything else is the whole question as made, its switch and place kept unless given.
+      if (Object.keys(rest).length > 0) {
+        const saved = await saveCheckoutField(caller.member, route.id, rest);
+        if (!saved.ok) return saved.problems.some((p) => / is gone\.$/.test(p)) ? fail("not_found", saved.problems.join(" ")) : fail("invalid", saved.problems.join(" "));
+      } else if (enabled === undefined && position === undefined) return fail("invalid", "Send the changes, `enabled` or `position`.");
+      if (enabled !== undefined || position !== undefined) {
+        const exists = (await listCheckoutFields(db(), storeId)).some((f) => f.id === route.id);
+        if (!exists) return fail("not_found", "No such checkout question in this store.");
+        if (enabled !== undefined) await switchCheckoutField(caller.member, route.id, enabled);
+        if (position !== undefined) await moveCheckoutField(caller.member, route.id, position);
       }
-      await record(caller, rule ? "checkout_rule_changed" : "checkout_field_changed", { enabled: enabled ?? null }, { type: rule ? "checkout_rule" : "checkout_field", id: route.id });
+      await record(caller, "checkout_field_changed", { enabled: enabled ?? null, position: position ?? null }, { type: "checkout_field", id: route.id });
       return ok(route.name, { data: { id: route.id } });
     }
     case "checkout.rule_delete":

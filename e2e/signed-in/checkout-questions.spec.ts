@@ -6,7 +6,7 @@ import { E2E_STORE, OWNER } from "./accounts";
 /**
  * Questions at checkout in their order (D357, docs/checkout-fields-tasks.md task 1): in Settings → Checkout rules the owner moves a question
  * with its up button and drags another with the keyboard on its handle; each lands in its new place at once and is still there after a
- * reload, as the cart reads them in that order (`moveCheckoutField()`, held by checkout-rules.int.test.ts).
+ * reload, as the cart reads them in that order (`moveCheckoutField()`, held by checkout-rules.int.test.ts). Deleting one asks first.
  */
 
 test.use({ storageState: OWNER.state });
@@ -22,7 +22,8 @@ test.beforeAll(async () => {
   try {
     const [store] = await sql`select id from commerce.stores where slug = ${E2E_STORE}`;
     storeId = String(store.id);
-    await sql`delete from commerce.checkout_fields where store_id = ${storeId} and label->>'text' like 'E2E %'`;
+    // The store's questions are this spec's alone (no other spec asks any), so a question left from elsewhere cannot shift the places.
+    await sql`delete from commerce.checkout_fields where store_id = ${storeId}`;
     for (const [i, text] of LABELS.entries()) {
       await sql`
         insert into commerce.checkout_fields (store_id, kind, required, label, position)
@@ -79,4 +80,20 @@ test("drags a question by its handle with the keyboard, and the order is kept", 
   await saved(p);
   await p.reload();
   await expect.poll(() => order(p)).toEqual([LABELS[2], LABELS[1], LABELS[0]]);
+});
+
+test("asks before deleting a question: Keep it keeps it, Delete deletes it", async ({ page: p }) => {
+  await p.goto(page);
+  const row = p.locator("[data-checkout-field]").filter({ hasText: LABELS[1] });
+  await row.getByRole("button", { name: "Delete", exact: true }).click();
+  const ask = row.getByRole("group", { name: `Delete “${LABELS[1]}”? Answers already given stay on their orders.` });
+  await expect(ask).toBeVisible();
+  await ask.getByRole("button", { name: "Keep it" }).click();
+  await expect(ask).toBeHidden();
+  await expect.poll(() => order(p)).toEqual([LABELS[2], LABELS[1], LABELS[0]]);
+  await row.getByRole("button", { name: "Delete", exact: true }).click();
+  await ask.getByRole("button", { name: "Delete", exact: true }).click();
+  await expect.poll(() => order(p)).toEqual([LABELS[2], LABELS[0]]);
+  await p.reload();
+  await expect.poll(() => order(p)).toEqual([LABELS[2], LABELS[0]]);
 });
