@@ -1924,6 +1924,8 @@ export const platformSettings = commerce.table(
     /** When the switch was last turned on or off, and by whom (D484). */
     siteFromStoreAt: timestamp("site_from_store_at", { withTimezone: true }),
     siteFromStoreBy: uuid("site_from_store_by").references(() => accounts.id),
+    /** Raised by one by every writer of commerce.ui_translations (bloat review step 0.8): an instance polls this one row, not the table. */
+    uiTextVersion: bigint("ui_text_version", { mode: "number" }).notNull().default(0),
     updatedAt: updatedAt(),
     updatedBy: uuid("updated_by").references(() => accounts.id),
   },

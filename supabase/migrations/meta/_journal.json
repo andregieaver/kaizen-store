@@ -92,6 +92,13 @@
       "when": 1794576498445,
       "tag": "20261113132818_ad_accounts_rules",
       "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1794593358291,
+      "tag": "20261113180918_lowly_ultimatum",
+      "breakpoints": true
     }
   ]
 }

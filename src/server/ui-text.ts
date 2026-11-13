@@ -96,6 +96,8 @@ export async function planGeneration(lang: string, mode: GenerateMode): Promise<
 
 export type ChunkResult = { ok: true; saved: number; problems: { key: string; problem: string }[] } | { ok: false; problem: string };
 
+const bumpUiVersion = (executor = db()) => executor.execute(sql`update commerce.platform_settings set ui_text_version = ui_text_version + 1`);
+
 async function saveRows(lang: string, rows: { key: string; text: string; origin: "ai" | "staff"; reviewed: boolean }[]): Promise<void> {
   for (const row of rows) {
     const entry = catalogEntry(row.key)!;
@@ -107,6 +109,7 @@ async function saveRows(lang: string, rows: { key: string; text: string; origin:
         reviewed_at = excluded.reviewed_at, updated_at = now()
     `);
   }
+  if (rows.length > 0) await bumpUiVersion();
 }
 
 /**
@@ -205,6 +208,7 @@ export async function markUiReviewed(accountId: string, lang: string, keys: stri
 /** Deletes a language's texts, to start again. */
 export async function clearUiTexts(accountId: string, lang: string): Promise<number> {
   const rows = await db().execute<Row>(sql`delete from commerce.ui_translations where lang = ${lang} returning key`);
+  await bumpUiVersion();
   await audit(accountId, null, "language.ui_cleared", { lang, count: rows.length });
   await reloadUi(lang);
   return rows.length;

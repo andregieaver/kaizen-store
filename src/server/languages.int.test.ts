@@ -103,16 +103,20 @@ describe("the platform's languages", () => {
   });
 });
 
+const uiVersion = async () => Number((await db().execute<Row>(sql`select ui_text_version from commerce.platform_settings`))[0].ui_text_version);
+
 describe("a language's interface text", () => {
   it("is planned, translated in chunks, checked and kept as a draft", async () => {
     const keys = await text.planGeneration("de", "missing");
     expect(keys).toHaveLength(catalog.length);
     const chunk = keys.slice(0, 60);
+    const versionBefore = await uiVersion();
     const result = await text.generateChunk(connection, { accountId }, { lang: "de", name: "German" }, chunk);
     expect(result).toMatchObject({ ok: true, saved: 60, problems: [] });
     expect((await text.planGeneration("de", "missing")).length).toBe(catalog.length - 60);
     const rows = await text.uiRows("de");
     expect(rows.size).toBe(60);
+    expect(await uiVersion()).toBeGreaterThan(versionBefore);
     expect([...rows.values()].every((r) => r.origin === "ai" && !r.reviewed)).toBe(true);
     // The rest.
     const rest = await text.generateChunk(connection, { accountId }, { lang: "de", name: "German" }, (await text.planGeneration("de", "missing")));
@@ -185,7 +189,9 @@ describe("a language's interface text", () => {
   });
 
   it("can be cleared to start again", async () => {
+    const versionBefore = await uiVersion();
     expect(await text.clearUiTexts(accountId, "de")).toBe(catalog.length);
+    expect(await uiVersion()).toBeGreaterThan(versionBefore);
     expect(t("de").stay.nights(1)).toBe("1 night");
     expect(read.uiTextsFor("de")).not.toBeNull();
   });

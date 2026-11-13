@@ -1,0 +1,1 @@
+ALTER TABLE "commerce"."platform_settings" ADD COLUMN "ui_text_version" bigint DEFAULT 0 NOT NULL;
