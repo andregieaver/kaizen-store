@@ -89,6 +89,11 @@ per-language page texts (D55, `mapTexts()`, `localizePage()`), and `formatMoney(
   every admin screen's first scripts, so an area only server pages read is listed in `SERVER_AREAS` (`src/lib/admin-text.ts`; the
   carriers' own words, `carriers`, the page builder's sandbox, `sandbox`, and the Fiken page's, `fiken`, since 5 November 2026): the fallback
   leaves it out and `useAdminText()` refuses it.
+- **Outside the admin:** code that is not under `src/app/admin` or `src/components/admin` (emails, cron jobs, routes, `src/lib`) never
+  imports `src/lib/admin-text.ts`, which loads every area in both languages. It reads its area from `src/lib/admin-words/{stem}.ts`
+  (`STAFF_EMAILS_WORDS[lang]`); a new area read outside the admin gets such a module and its `CATALOGUES` entry becomes that pair.
+  `src/lib/admin-text-reach.scan.test.ts` holds it, with a ceiling of catalogue files for the proxy, the beacons and the storefront
+  layout that only falls (bloat review step 0.7).
 - **Plural and choice:** the ICU subset of `src/lib/icu-lite.ts` (`{count, plural, one {…} other {…}}`), never string joins; dates, numbers
   and money with the account's locale (`formatMoney(…, "nb-NO")`, `Intl.DateTimeFormat`).
 - **Messages from the server:** a saver's refusal becomes a key with values (`problem("shipping.notSold", { country })`), turned into words
