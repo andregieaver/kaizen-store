@@ -36,7 +36,7 @@ import { dayWords } from "@/lib/payment-terms";
 import { sendEmail, type OutgoingEmail, type SendOutcome } from "./email";
 import { documentBlocks, emailsCarryInvoice, recordDocumentDeliveries, type DocumentBlocks, type DocumentWant } from "./invoice-emails";
 import { firstNameOf, notificationOn, templatedSlots } from "./notifications";
-import { ensureUi } from "./ui-text";
+import { ensureUi } from "./ui-text-read";
 import { withdrawalInfoBlocks, withdrawBlocks } from "./withdraw-link";
 import { getOrder, type OrderBooking, type OrderView } from "./orders";
 import { knowStoreAddress, type Store } from "./stores";

@@ -62,6 +62,7 @@ export const SUPPORT_ITEMS: SectionItem[] = [
   item("/support/stores", "Stores", "Each store's support in figures: counts and rates only, never a conversation.", "store"),
   item("/support/replies", "Saved replies", "Texts Kaizena Flow's people put in an answer with / in the inbox, filled in with names.", "message-text"),
   item("/chat", "Chat assistant", "Kaizena Flow's public site chat assistant and its knowledge base.", "bot"),
+  item("/support/widgets", "Website chat", "Kaizena Flow's chat on its other websites: widgets with their own look, each with a tag to paste on its sites.", "globe"),
   item("/support/settings", "Settings", "Who answers Kaizena Flow's visitors (the assistant alone, the AI first, or people only), opening hours, email follow-up and how long conversations are kept.", "settings-2"),
 ];
 

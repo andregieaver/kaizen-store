@@ -139,6 +139,9 @@ test("a picture from the library goes on as a layer, placed or filling the part,
   await expect(picture).toHaveAttribute("alt", "");
   const fields = page.locator("[data-layer-fields]");
   await expect(fields.getByRole("slider", { name: "Width" })).toHaveAttribute("aria-valuetext", "50%");
+  // A new layer starts at a depth (D584): a placed picture a little closer than the page.
+  const depth = fields.getByRole("slider", { name: "As the page scrolls" });
+  await expect(depth).toHaveAttribute("aria-valuetext", "Close 30");
   // A picture is drawn as it is: alone, it gives the hue nothing to turn.
   await expect(page.getByRole("slider", { name: "Hue" })).toHaveCount(0);
 
@@ -146,6 +149,7 @@ test("a picture from the library goes on as a layer, placed or filling the part,
   await fields.locator("label").filter({ hasText: /^Fills the part$/ }).click();
   await expect(picture).toHaveAttribute("data-fx-pic", "cover");
   await expect(fields.getByRole("slider", { name: "Width" })).toHaveCount(0);
+  await expect(depth).toHaveAttribute("aria-valuetext", "Far 30");
   const blur = fields.getByRole("slider", { name: "Blur" });
   await blur.focus();
   for (let i = 0; i < 6; i++) await blur.press("ArrowRight");

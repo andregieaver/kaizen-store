@@ -30,6 +30,7 @@ import { platformManagerCostToday } from "./ai-usage";
 import { log } from "./log";
 import { platformGateNeeded, preflightPlatformTool, runManagerTool, runPlatformTool, type ManagerContext, type OutsideAsker } from "./manager-tools";
 import { experimentApprovalSummary } from "./experiment-tools";
+import { adBudgetApprovalWords } from "./ad-budget-tools";
 import { broadcastApprovalSummary, segmentApprovalSummary } from "./marketing-tools";
 import { replyApprovalSummary, supportApprovalSummary } from "./support-manager-tools";
 import { withInputWords } from "@/lib/approval-summaries";
@@ -1096,6 +1097,8 @@ export async function keepForApproval(
   }
   // A broadcast's send is described from the broadcast itself: its name, subject, audience and how many it reaches now (PSI AGT-01).
   if (store && tool === "send_broadcast") summary = (await broadcastApprovalSummary(store, args)) ?? summary;
+  // An ad budget's change is described from the account as Meta has it: the budget's name and its amounts before and after (D585).
+  if (store && tool === "set_ad_budget") summary = (await adBudgetApprovalWords(store, args)) ?? summary;
   // An order change is described from the editor's own preview, and the order's state it was previewed on is kept with the call (a value the
   // model passed is replaced): the change is made to that order or refused as changed (PSI AGT-01).
   if (store && tool === "change_order") {

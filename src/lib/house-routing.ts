@@ -4,7 +4,7 @@
  *
  * While the switch (`platform_settings.site_from_store`) is on, a page request on Kaizena Flow's own host is the store's unless its first part
  * is one of the platform's own routes: the admin, the API, sign-in and OAuth, sign-up, the theme store, the docs, the status page, the
- * notice form, get-domain, support, a drop-shipping supplier's page (`supply`, D551), a product passport (`passport`, D554), an SMS's stop link (`sms`, D565), the holding pages, referral links, and the platform's own files. The same few stay the platform's under
+ * notice form, get-domain, support, a drop-shipping supplier's page (`supply`, D551), a product passport (`passport`, D554), the chat's frame on an owner's own site (`embed`, D582), an SMS's stop link (`sms`, D565), the holding pages, referral links, and the platform's own files. The same few stay the platform's under
  * `/no/` (`PLATFORM_ROUTES_NB`, the folders of `src/app/(platform-nb)/no/`, `(docs-nb)` and `(theme-preview-nb)` that are no page of the
  * site). Everything else, the front page, every page, `blog`, `category`, `tag` and `cookies`, is the store's.
  */
@@ -24,6 +24,8 @@ export const PLATFORM_ROUTES: readonly string[] = [
   "auth",
   "demo",
   "docs",
+  // The chat's frame and loader on an owner's own site (D582).
+  "embed",
   "favicon.ico",
   "get-domain",
   "holding",

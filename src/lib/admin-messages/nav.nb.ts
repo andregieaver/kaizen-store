@@ -210,6 +210,11 @@ export const NAV_NB: Record<string, string> = {
   "How the store's conversations went: how many, how many the AI handled alone, how long customers waited, ratings, tone and topics.":
     "Hvordan butikkens samtaler gikk: hvor mange, hvor mange KI-en tok alene, hvor lenge kundene ventet, vurderinger, tone og emner.",
   "Saved replies": "Lagrede svar",
+  "Website chat": "Chat på nettsider",
+  "The chat on your other websites: widgets with their own look, each with a tag to paste on one or several sites.":
+    "Chatten på de andre nettsidene deres: widgeter med eget utseende, hver med en tagg å lime inn på én eller flere sider.",
+  "Kaizena Flow's chat on its other websites: widgets with their own look, each with a tag to paste on its sites.":
+    "Kaizena Flows chat på de andre nettsidene: widgeter med eget utseende, hver med en tagg å lime inn på sidene.",
   "Texts your team puts in an answer with / in the inbox, filled in with the customer's and the person's names and the store's.":
     "Tekster teamet ditt setter inn i et svar med / i innboksen, fylt ut med kundens, personens og butikkens navn.",
   "Chat assistant": "Chatassistent",

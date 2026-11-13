@@ -95,8 +95,8 @@ import type { ReportsMessages } from "./admin-messages/reports.en";
 import { REPORTS_WORDS } from "./admin-words/reports";
 import type { CustomReportsMessages } from "./admin-messages/custom-reports.en";
 import { CUSTOM_REPORTS_WORDS } from "./admin-words/custom-reports";
-import { supportEn, type SupportMessages } from "./admin-messages/support.en";
-import { supportNb } from "./admin-messages/support.nb";
+import type { SupportMessages } from "./admin-messages/support.en";
+import { SUPPORT_WORDS } from "./admin-words/support";
 import type { WorkMessages } from "./admin-messages/work.en";
 import { WORK_WORDS } from "./admin-words/work";
 import type { AssistantMessages } from "./admin-messages/assistant.en";
@@ -243,7 +243,7 @@ const CATALOGUES: { [A in AdminArea]: Record<AdminLang, AdminAreaMessages[A]> } 
   platformSite: PLATFORM_SITE_WORDS,
   platformTools: { en: platformToolsEn, nb: platformToolsNb },
   bookings: { en: bookingsEn, nb: bookingsNb },
-  support: { en: supportEn, nb: supportNb },
+  support: SUPPORT_WORDS,
   work: WORK_WORDS,
   assistant: ASSISTANT_WORDS,
   staffEmails: STAFF_EMAILS_WORDS,

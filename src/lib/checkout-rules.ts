@@ -300,6 +300,18 @@ export type CheckoutField = { id: string; kind: CheckoutFieldKind; required: boo
 /** A field as the page shows it: words in the basket's language. */
 export type ShownField = { id: string; kind: CheckoutFieldKind; required: boolean; label: string; help: string | null };
 
+/**
+ * The ids in their new order once `id` is moved to place `to` (0 is first), the others keeping theirs; a place past either end is that end.
+ * `null` when `id` is not in the list. Used for questions at checkout (`moveCheckoutField()`), whose order the cart asks them in.
+ */
+export function movedTo(ids: readonly string[], id: string, to: number): string[] | null {
+  const from = ids.indexOf(id);
+  if (from < 0) return null;
+  const rest = ids.filter((x) => x !== id);
+  const at = Number.isFinite(to) ? Math.min(Math.max(Math.trunc(to), 0), rest.length) : rest.length;
+  return [...rest.slice(0, at), id, ...rest.slice(at)];
+}
+
 export const shownField = (f: CheckoutField, locale: string): ShownField => ({
   id: f.id,
   kind: f.kind,

@@ -2007,6 +2007,24 @@ export const OWNER_TOOLS = [
     }),
     "send",
   ),
+  // Ad budgets in the owner's own Meta ad account (D585): Meta bills the owner; these read and move budgets inside it, never pay.
+  tool(
+    "list_ad_budgets",
+    "The store's Meta ad account, when the owner connected it (Marketing, Ads, Ad budgets): what it spent this month, about where the month ends at today's budgets, the monthly limit the owner lets the AI keep to, and each campaign's or ad set's budget (its id, name, on or paused, daily or lifetime budget, and what its campaign spent this month). Amounts are worked out by the store in the account's currency; never add them up yourself. Read-only.",
+    z.object({}),
+  ),
+  tool(
+    "set_ad_budget",
+    "Changes one budget in the store's Meta ad account: a campaign's or ad set's daily budget (daily, in the account's currency), and/or switches it on or pauses it (on). Give the budget's id from list_ad_budgets. A lifetime budget's amount is not changed here. Meta keeps billing the owner; nothing is paid by the store. Needs the owner's approval.",
+    z
+      .object({
+        budget: z.string().trim().regex(/^\d{1,20}$/, "Give the budget's id from list_ad_budgets.").describe("The campaign's or ad set's id, from list_ad_budgets."),
+        daily: z.string().trim().min(1).max(20).optional().describe("The new daily budget in the account's currency, such as 250 or 250.50. Leave out to keep it."),
+        on: z.boolean().optional().describe("true to switch it on, false to pause it. Leave out to keep it as it is."),
+      })
+      .refine((v) => v.daily !== undefined || v.on !== undefined, "Give a new daily budget, on, or both."),
+    "spend",
+  ),
   tool(
     "list_price_lists",
     "The store's price lists (Customers, Price lists; D321): each one's name, whether it is on, its percentage off the market price, how many fixed prices it holds, and the customer groups and companies it is for, by name. A buyer pays the lowest price their lists give, never above the shop's price, worked out by the store; never quote a buyer's price from this. Read-only.",
@@ -2111,6 +2129,9 @@ export function approvalSummary(name: string, input: Record<string, unknown>): s
       return quoteToolSummary(name, input) ?? inputSummary(name, input);
     case "send_broadcast":
       return input.at ? `Send the broadcast "${text("broadcast")}" at ${text("at")} (the store's time) to the people on the list who asked for your emails.` : `Send the broadcast "${text("broadcast")}" now to the people on the list who asked for your emails.`;
+    // The account's own names and figures are put in by the server (`adBudgetApprovalWords()`); these words name the change as given.
+    case "set_ad_budget":
+      return `Change the ad budget ${text("budget")} in your Meta ad account:${input.daily ? ` a daily budget of ${text("daily")} in the account's currency` : ""}${input.daily && input.on !== undefined ? ", and" : ""}${input.on === undefined ? "" : input.on ? " switch it on" : " pause it"}. Meta bills you as before.`;
     case "issue_work_invoice":
       return `Issue the Work draft invoice ${text("invoice")} today${input.email === false ? "" : " and email it to the client"}.`;
     case "change_order":

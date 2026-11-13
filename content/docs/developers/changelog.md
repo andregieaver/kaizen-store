@@ -8,13 +8,30 @@ areas: [api, webhooks, mcp]
 features: []
 plans: []
 order: 1000
-checked: 2026-11-09
-sources: [D438, D439, D440, D441, D458, D464, D511, D512]
+checked: 2026-11-13
+sources: [D357, D438, D439, D440, D441, D458, D464, D511, D512, D585]
 ---
 
 Every change to a published contract gets a version here, newest first: the Admin API (`/api/admin/v1/openapi.json`), the storefront API
 (`/api/storefront/v1/openapi.json`), the webhook topics (`/api/webhooks/v1/topics.json`) and the MCP catalogues (`/api/mcp/catalogue.json`,
 `/api/ucp/catalogue.json`). Within a major version nothing a caller relies on is renamed or removed; answers and payloads may gain fields.
+
+## 1.14 — 2026-11-13
+
+An addition to the Admin API's checkout questions (D357).
+
+- `PATCH /checkout/fields/{id}` takes `position`: the place to move the question to, 0 being first. The other questions keep their
+  order, and the checkout asks them in that order. `{ position }` alone moves the question; it may also come with `enabled` or with the
+  whole question. A place past the end is the end; a negative place is refused (`invalid`).
+
+## 1.13 — 2026-11-13
+
+An addition to the owner MCP's catalogue (D585).
+
+- `list_ad_budgets`: the store's Meta ad account, when its owner connected it: this month's spend, where the month ends at today's
+  budgets, the AI's monthly limit and each campaign's or ad set's budget.
+- `set_ad_budget`: changes one of those budgets (a daily amount, on or paused). It costs money, so it waits for the owner's yes, and
+  only the store's owner may ask for it. Meta bills the owner as before.
 
 ## 1.12 — 2026-11-09
 

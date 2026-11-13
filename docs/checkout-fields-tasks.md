@@ -1,6 +1,6 @@
 # Checkout fields: tasks for later
 
-Written 10 November 2026, not started. Builds on checkout questions (D357, `src/lib/checkout-rules.ts`,
+Written 10 November 2026; reordering questions, the confirm before deleting and `position` in the Admin API built 13 November 2026, the rest not started. Builds on checkout questions (D357, `src/lib/checkout-rules.ts`,
 `src/server/checkout-rules.ts`, `commerce.checkout_fields`, Settings → Checkout rules). Read the rule in
 `docs/rules/admin/commerce.md` (*Checkout rules and questions*) before starting any of these.
 
@@ -10,7 +10,8 @@ Written 10 November 2026, not started. Builds on checkout questions (D357, `src/
   not, with words per language, and at most 10 per store (`FIELDS_MAX`).
 - The cart shows them above the checkout button. Answers are kept on the cart and copied to the order by
   `placeOrder()` (`orders.checkout_answers`), shown to staff and in the export, and treated as personal data.
-- `checkout_fields.position` exists, but no writer moves a question (rules have `moveCheckoutRule`, questions do not).
+- Questions are asked in their `position`. Since 13 November 2026 the owner moves them in the editor: drag by the handle (or the
+  keyboard on it) or the up and down buttons, each move saved at once by `moveCheckoutField()`.
 - The standard contact and address fields (email, name, address, phone) belong to Stripe's form, not to us. We only
   choose whether an address is asked (not for pickup) and a phone (only for local delivery).
 - Express checkout is off for any store with a question (`expressOn()`, D373).
@@ -19,15 +20,21 @@ Written 10 November 2026, not started. Builds on checkout questions (D357, `src/
 
 ### 1. Add, remove, reorder and hide checkout fields
 
-- [ ] **Reorder questions.** Add `moveCheckoutField()` beside `moveCheckoutRule()`, and drag to reorder in `FieldList`
-      (dnd-kit, as menus and the builder use). Order by `position` in `listCheckoutFields()` and in the cart.
-- [ ] **Add, remove and hide** already work (save, delete, switch). Check the editor makes them obvious to Homer: one
-      *Add a question* button, a visible on/off switch, and delete behind a confirm.
+- [x] **Reorder questions.** Built 13 November 2026: `moveCheckoutField(member, id, to)` beside `moveCheckoutRule()` (the
+      store's questions locked while their places are written, audited `shipping.checkout_field_moved`, the new order worked
+      out by the pure `movedTo()`), and `FieldList` drags by a handle with dnd-kit, moves with the keyboard on it, and has up and
+      down buttons as the one-press alternative to dragging. The list shows the new order at once (`useOptimistic`).
+      `listCheckoutFields()` and the cart already read by `position`. Held by `checkout-rules.test.ts`,
+      `checkout-rules.int.test.ts` and `e2e/signed-in/checkout-questions.spec.ts`.
+- [x] **Add, remove and hide** already work (save, delete, switch). Checked for Homer 13 November 2026: one *Add a question*
+      button and a visible on/off chip with its switch were there; Delete now asks first, on a line under the question
+      ("Delete …? Answers already given stay on their orders.", Delete or Keep it), and so does deleting a rule on the same page.
 - [ ] **Decide about the standard fields.** Can an owner hide or require Stripe's own fields, such as phone, company
       name or a second address line? This depends on what Stripe's form lets us set (`phone_number_collection`,
       the Address Element's options, `custom_fields` on a Checkout Session, Mollie's own page). List what each
       provider allows before promising it, and say plainly in the editor which fields are the payment provider's.
-- [ ] Admin API (`checkout:write`): a move route, or `position` on the existing write routes.
+- [x] Admin API (`checkout:write`): `position` on `PATCH /checkout/fields/{id}` (alone, or with `enabled` or the whole question),
+      through `moveCheckoutField()`; contract 1.14 in the developers' changelog. Built 13 November 2026.
 - [ ] AI manager: tools to list, add and move questions. No tool reaches them today.
 
 ### 2. Field width: left, right or full width

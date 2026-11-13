@@ -29,6 +29,11 @@ import {
   layersShow,
   mapLayerPictures,
   moveLayer,
+  GLOW_DEPTH,
+  HORIZON_DEPTH,
+  LAYER_SCROLL_MAX,
+  PATTERN_DEPTHS,
+  PICTURE_DEPTHS,
   newLayer,
   newPictureLayer,
   patchLayer,
@@ -276,10 +281,52 @@ describe("editing the layers", () => {
     }
     // A picture starts from its file: in the middle, half as wide as the part, with nothing kept of what the upload said besides.
     const fresh = newPictureLayer("new-picture", { url: "https://cdn.example.com/a.webp", width: 800, height: 600, alt: "ignored" } as never);
-    expect(fresh).toEqual({ id: "new-picture", type: "picture", image: { url: "https://cdn.example.com/a.webp", width: 800, height: 600 }, x: 50, y: 50, width: PICTURE_WIDTH_DEFAULT });
+    expect(fresh).toEqual({
+      id: "new-picture",
+      type: "picture",
+      image: { url: "https://cdn.example.com/a.webp", width: 800, height: 600 },
+      x: 50,
+      y: 50,
+      width: PICTURE_WIDTH_DEFAULT,
+      scroll: PICTURE_DEPTHS.placed,
+    });
     expect(backgroundLayerSchema.safeParse(fresh).success).toBe(true);
     expect(layerDraw(fresh)).not.toBeNull();
     expect(Object.keys(LAYER_KINDS)).toEqual(["glow", "pattern", "horizon", "picture"]);
+  });
+
+  it("starts each new layer at its kind's depth, so layers added one by one move apart as the page scrolls (D584)", () => {
+    const depths = (["glow", "pattern", "horizon"] as const).map((kind) => newLayer(kind, kind).scroll);
+    expect(depths).toEqual([GLOW_DEPTH, PATTERN_DEPTHS.grid, HORIZON_DEPTH]);
+    // Far ones fall behind the page, and none of them sits with it.
+    for (const depth of depths) expect(depth).toBeLessThan(0);
+    expect(new Set(depths).size).toBe(depths.length);
+    // Every start is one the slider reaches (steps of 5) and the page accepts, and travels.
+    for (const depth of [GLOW_DEPTH, HORIZON_DEPTH, ...Object.values(PATTERN_DEPTHS), ...Object.values(PICTURE_DEPTHS)]) {
+      expect(Math.abs(depth) % 5).toBe(0);
+      expect(Math.abs(depth)).toBeLessThanOrEqual(LAYER_SCROLL_MAX);
+      expect(layerTravel(depth)).not.toBe(0);
+    }
+    expect(layerFx(newLayer("glow", "g")).attrs["data-fx-scroll"]).toBe("layer");
+    expect(PATTERN_DEPTHS.stars).toBeGreaterThan(0);
+    expect(PICTURE_DEPTHS.placed).toBeGreaterThan(0);
+  });
+
+  it("moves a layer's depth with what it is, unless the owner set their own (D584)", () => {
+    // A new grid made stars comes close, and back to a grid falls behind again.
+    const stars = setPattern(newLayer("pattern", "p") as PatternLayer, "stars");
+    expect(stars.scroll).toBe(PATTERN_DEPTHS.stars);
+    expect(setPattern(stars, "grid").scroll).toBe(PATTERN_DEPTHS.grid);
+    // A depth of the owner's own stays, and so does none.
+    expect(setPattern({ ...grid, scroll: -80 }, "stars").scroll).toBe(-80);
+    expect(setPattern(grid, "stars").scroll).toBeUndefined();
+    // A picture that fills the part lies behind; placed again it comes close.
+    const placedNew = newPictureLayer("n", { url: "https://cdn.example.com/a.webp", width: 800, height: 600 });
+    const cover = setPictureFit(placedNew, "cover");
+    expect(cover.scroll).toBe(PICTURE_DEPTHS.cover);
+    expect(setPictureFit(cover, "placed").scroll).toBe(PICTURE_DEPTHS.placed);
+    expect(setPictureFit({ ...picture, scroll: 15 }, "cover").scroll).toBe(15);
+    expect("scroll" in setPictureFit(picture, "cover")).toBe(false);
   });
 
   it("changes how a picture sits: filling the part it keeps no width, placed again it gets one", () => {

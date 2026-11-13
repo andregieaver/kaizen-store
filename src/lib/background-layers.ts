@@ -58,6 +58,19 @@ export const HORIZON_CURVE_DEFAULT: HorizonCurve = "gentle";
 
 /** A layer's travel against the page: -100 (far away: slower than the page) to 100 (close: faster); 0 moves with the page. */
 export const LAYER_SCROLL_MAX = 100;
+/**
+ * Where a new layer starts in depth (D584): what lies far behind (a glow, a horizon, a grid) falls behind the page, stars and a cut-out
+ * picture come close, so layers added one by one already move apart as the page scrolls. The ready-made backdrops set their own.
+ */
+export const GLOW_DEPTH = -60;
+export const HORIZON_DEPTH = -40;
+export const PATTERN_DEPTHS: Record<LayerPattern, number> = { grid: -20, dots: -15, stars: 50 };
+export const PICTURE_DEPTHS: Record<PictureFit, number> = { placed: 30, cover: -30 };
+/**
+ * A layer's travel when what it is changes: the new kind's start where the owner had left the old kind's, else theirs.
+ */
+const followDepth = (scroll: number | undefined, was: number, now: number): number | undefined =>
+  (scroll ?? 0) === was ? now || undefined : scroll;
 /** How soft a layer may be drawn, in pixels (D535). */
 export const LAYER_BLUR_MAX = 40;
 /** A glow's width and height, as a per cent of the part's. */
@@ -263,14 +276,17 @@ export const backgroundHasHue = (background: Tinted | undefined, layers: readonl
 // Editing
 // ---------------------------------------------------------------------------
 
-/** A new layer of a kind as it starts: white on nothing would not show on a light page, so each starts in a colour that shows on both. */
+/**
+ * A new layer of a kind as it starts: white on nothing would not show on a light page, so each starts in a colour that shows on both,
+ * and at its kind's depth (D584).
+ */
 export function newLayer(kind: Exclude<LayerKind, "picture">, id: string): ColourLayer {
-  if (kind === "glow") return { id, type: "glow", color: "#8b5cf6", x: 50, y: 50, width: 80, height: 60, opacity: 70 };
-  if (kind === "pattern") return { id, type: "pattern", pattern: "grid", color: "#8b8b9a", opacity: 25, fade: "edges" };
-  return { id, type: "horizon", color: "#d946ef", fill: "#07051a", y: 64 };
+  if (kind === "glow") return { id, type: "glow", color: "#8b5cf6", x: 50, y: 50, width: 80, height: 60, opacity: 70, scroll: GLOW_DEPTH };
+  if (kind === "pattern") return { id, type: "pattern", pattern: "grid", color: "#8b8b9a", opacity: 25, fade: "edges", scroll: PATTERN_DEPTHS.grid };
+  return { id, type: "horizon", color: "#d946ef", fill: "#07051a", y: 64, scroll: HORIZON_DEPTH };
 }
 
-/** A new picture layer (D537) as it starts: the picture in the middle, half as wide as the part. */
+/** A new picture layer (D537) as it starts: the picture in the middle, half as wide as the part, a little closer than the page (D584). */
 export const newPictureLayer = (id: string, image: { url: string; width: number; height: number }): PictureLayer => ({
   id,
   type: "picture",
@@ -278,13 +294,18 @@ export const newPictureLayer = (id: string, image: { url: string; width: number;
   x: 50,
   y: 50,
   width: PICTURE_WIDTH_DEFAULT,
+  scroll: PICTURE_DEPTHS.placed,
 });
 
-/** A picture layer set to sit another way: filling the part it has no width of its own. */
+/**
+ * A picture layer set to sit another way: filling the part it has no width of its own. Its depth follows (D584: one that fills the part
+ * lies behind, one placed comes close) unless the owner had set their own.
+ */
 export function setPictureFit(layer: PictureLayer, fit: PictureFit): PictureLayer {
-  const { fit: _fit, width, ...rest } = layer;
-  void _fit;
-  return fit === "cover" ? { ...rest, fit: "cover" } : { ...rest, width: width ?? PICTURE_WIDTH_DEFAULT };
+  const { fit: was, width, scroll, ...rest } = layer;
+  const depth = followDepth(scroll, PICTURE_DEPTHS[was === "cover" ? "cover" : PICTURE_FIT_DEFAULT], PICTURE_DEPTHS[fit]);
+  const travel = depth === undefined ? {} : { scroll: depth };
+  return fit === "cover" ? { ...rest, ...travel, fit: "cover" } : { ...rest, ...travel, width: width ?? PICTURE_WIDTH_DEFAULT };
 }
 
 /** The addresses of the layers' pictures, for their small copies and for copying a part to another store. */
@@ -352,11 +373,13 @@ export function patchLayer(layers: readonly BackgroundLayer[], id: string, patch
   });
 }
 
-/** A pattern changed to another: its size was the old pattern's, so it starts at the new one's. */
+/** A pattern changed to another: its size was the old pattern's, so it starts at the new one's, and its depth too where it was the old one's (D584). */
 export function setPattern(layer: PatternLayer, pattern: LayerPattern): PatternLayer {
-  const { size: _size, ...rest } = layer;
+  const { size: _size, scroll, ...rest } = layer;
   void _size;
-  return { ...rest, pattern };
+  // Stars come close and a grid lies behind (D584), unless the owner had set the depth themselves.
+  const depth = followDepth(scroll, PATTERN_DEPTHS[layer.pattern] ?? 0, PATTERN_DEPTHS[pattern]);
+  return { ...rest, pattern, ...(depth === undefined ? {} : { scroll: depth }) };
 }
 
 /** A list as a part keeps it: none at all when it is empty. */

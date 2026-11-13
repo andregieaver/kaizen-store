@@ -8,6 +8,7 @@ import { actionAdminLang } from "@/server/admin-request-lang";
 import {
   deleteCheckoutField,
   deleteCheckoutRule,
+  moveCheckoutField,
   moveCheckoutRule,
   saveCheckoutField,
   saveCheckoutRule,
@@ -62,6 +63,13 @@ export async function switchFieldAction(storeSlug: string, id: string, on: boole
   const member = await checkPermission(storeSlug, "settings:write");
   if (!member) return;
   await switchCheckoutField(member, id, on);
+  refresh();
+}
+
+export async function moveFieldAction(storeSlug: string, id: string, to: number): Promise<void> {
+  const member = await checkPermission(storeSlug, "settings:write");
+  if (!member || !Number.isInteger(to)) return;
+  await moveCheckoutField(member, id, to);
   refresh();
 }
 

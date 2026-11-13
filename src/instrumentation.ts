@@ -5,6 +5,6 @@
  */
 export async function register() {
   if (process.env.NEXT_RUNTIME !== "nodejs" || !process.env.DATABASE_URL) return;
-  const { startUi } = await import("@/server/ui-text");
+  const { startUi } = await import("@/server/ui-text-read");
   await startUi();
 }

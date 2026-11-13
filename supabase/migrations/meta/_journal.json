@@ -50,6 +50,55 @@
       "when": 1794505642142,
       "tag": "20261112174722_site_layout_checks_changed_only",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1794556065237,
+      "tag": "20261113074745_support_widgets",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1794556074333,
+      "tag": "20261113074754_support_widgets_rules",
+      "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1794564502654,
+      "tag": "20261113100822_widget_site_pages",
+      "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1794564512779,
+      "tag": "20261113100832_widget_site_pages_rules",
+      "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1794576495749,
+      "tag": "20261113132815_ad_accounts",
+      "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1794576498445,
+      "tag": "20261113132818_ad_accounts_rules",
+      "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1794593358291,
+      "tag": "20261113180918_lowly_ultimatum",
+      "breakpoints": true
     }
   ]
 }

@@ -5,13 +5,16 @@ import { marketPath } from "@/lib/paths";
 import { unitLabelsOf } from "@/lib/unit-price-text";
 import { chatWidgetFor, type ChatWidgetProfile } from "@/server/chat-agent";
 import { listPublishedPages } from "@/server/pages";
+import type { Shop } from "@/server/shop";
+import { PANEL_WIDTH } from "@/lib/support-widget-style";
+import type { FrameWidget } from "@/server/support-widgets";
 import type { Store } from "@/server/stores";
 
 import type { ChatLabels } from "./chat-widget";
-import { ChatWidget } from "./lazy/extras";
+import { ChatWidget, FrameChatWidget } from "./lazy/extras";
 
 /** The widget's words in a language, with the agent's own greeting for the locale if it has one, for the desk's mode (D216). */
-function chatLabels(lang: string, locale: string, profile: ChatWidgetProfile, deskName: string): ChatLabels {
+export function chatLabels(lang: string, locale: string, profile: ChatWidgetProfile, deskName: string): ChatLabels {
   const m = t(lang);
   const c = m.chat;
   // The AI first with no AI set up answers as people only do (every conversation goes to the queue).
@@ -124,6 +127,46 @@ export async function StoreChat({ store, market }: { store: Store; market: Marke
       agent={profile}
       deskName={store.name}
       labels={chatLabels(market.lang, market.locale, profile, store.name)}
+    />
+  );
+}
+
+/**
+ * A chat widget on a site of the owner's own (D582), drawn in its frame (`/embed/chat/{key}/{host}`): the store's desk in the market
+ * chosen for the widget, or Kaizena Flow's, with the widget's privacy page, button words, greeting and placing; its requests carry the
+ * widget's key and the page's host. The widget's colours, corners and font are the frame page's (`widgetCss()`).
+ */
+export async function FrameChat({ widget, shop, widgetKey, host, path }: { widget: FrameWidget; shop: Shop | null; widgetKey: string; host: string; path: string }) {
+  const profile = await chatWidgetFor(shop ? shop.store.id : null);
+  if (!profile) return null;
+  const { style } = widget;
+  const embedded = {
+    path,
+    parentOrigin: `https://${host}`,
+    side: style.side,
+    offsetX: style.offsetX,
+    offsetY: style.offsetY,
+    launcher: style.launcher,
+    panel: PANEL_WIDTH[style.width],
+  };
+  const privacy = profile.mode === "off" ? undefined : (widget.privacyUrl ?? undefined);
+  // The widget's own words for its button and greeting, where the owner wrote them (shown to the visitor only, never to the AI).
+  const own = (labels: ChatLabels): ChatLabels => ({ ...labels, ...(style.label && { open: style.label }), ...(style.greeting && { greeting: style.greeting }) });
+  const site = { embed: widgetKey, host };
+  if (!shop) {
+    const { locale, messages } = PLATFORM_LANG_FACTS.en;
+    return <FrameChatWidget site={site} locale={locale} agent={profile} deskName="Kaizena Flow" privacyHref={privacy} labels={own(chatLabels(messages, locale, profile, "Kaizena Flow"))} embedded={embedded} />;
+  }
+  const { store, market } = shop;
+  return (
+    <FrameChatWidget
+      site={site}
+      locale={market.locale}
+      agent={profile}
+      deskName={store.name}
+      privacyHref={privacy}
+      labels={own(chatLabels(market.lang, market.locale, profile, store.name))}
+      embedded={embedded}
     />
   );
 }

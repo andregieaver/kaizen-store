@@ -2,8 +2,11 @@ import { describe, expect, it } from "vitest";
 
 import { emailText } from "./email-text";
 import { t } from "./i18n";
+import { enBrowser } from "./messages/en-browser";
+import { enReturns } from "./messages/en-returns";
 import { editDocumentText } from "./invoice-text";
 import { templateArguments, templateProblem } from "./icu-lite";
+import { fullCatalog } from "./ui-catalog-all";
 import { catalogOf, CHOOSING, HAND_WRITTEN_ONLY, isHandWrittenOnly, overlayMessages, runTemplate, sourceHash } from "./ui-catalog";
 
 const ui = catalogOf("ui", t("en"));
@@ -29,6 +32,13 @@ describe("the catalogue", () => {
       expect(used.length, entry.key).toBeLessThanOrEqual(Math.max(entry.arity, 4));
       expect(templateProblem(entry.source, entry.source, "en"), entry.key).toBeNull();
     }
+  });
+
+  it("knows every text a browser component or the withdrawal page reads, so each can be translated", () => {
+    const known = new Set(fullCatalog().map((e) => e.key));
+    const read = [...catalogOf("ui", enBrowser), ...catalogOf("ui", { returns: enReturns })];
+    expect(read.length).toBeGreaterThan(0);
+    for (const entry of read) expect(known.has(entry.key), entry.key).toBe(true);
   });
 
   it("names every message that is chosen by its arguments, and only real ones", () => {

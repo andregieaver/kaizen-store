@@ -279,6 +279,9 @@ export const TOOL_PERMISSIONS: Record<OwnerToolName, PermissionKey> = {
   adjust_customer_credits: "customers:write",
   set_affiliate_program: "owner",
   block_affiliate: "marketing:write",
+  // The ad account's figures are marketing's; moving its money is the owner's, as connecting it is (D585).
+  list_ad_budgets: "marketing:read",
+  set_ad_budget: "owner",
   create_field_group: "products:write",
   set_fields: "products:write",
   email_customer: "customers:write",

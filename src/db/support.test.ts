@@ -358,4 +358,81 @@ describe("support in the database (D216)", () => {
     const id = await conversation("ai_first");
     await expect(add(id, "customer", null, "Hello")).resolves.toBeDefined();
   });
+
+  it("11. keeps a desk's chat widgets and their websites (D582): named once per desk, a key of its shape, a style object, a host once per widget", async () => {
+    const widget = (name: string, key: string, extra: Record<string, unknown> = {}, storeId: string | null = store) =>
+      one<{ id: string }>(
+        `insert into commerce.support_widgets (store_id, name, key, privacy_url, market, style) values ($1, $2, $3, $4, $5, coalesce($6::jsonb, '{}'::jsonb)) returning id`,
+        [storeId, name, key, extra.privacy ?? null, extra.market ?? null, extra.style ?? null],
+      );
+    const site = (widgetId: string, host: string, extra: Record<string, unknown> = {}) =>
+      db.query(`insert into commerce.support_widget_sites (widget_id, host, verified_at, verified_by) values ($1, $2, $3, $4)`, [
+        widgetId,
+        host,
+        extra.verifiedAt ?? null,
+        extra.verifiedBy ?? null,
+      ]);
+    const { id: shop } = await widget("Company site", "a".repeat(20), { style: JSON.stringify({ accent: "#ffcc00" }) });
+    expect(await refusal(widget("Company site", "b".repeat(20)))).toMatch(/support_widgets_name_key/);
+    // Kaizena Flow's desk is its own: the same name may be on it, but only once.
+    await widget("Company site", "c".repeat(20), {}, null);
+    expect(await refusal(widget("Company site", "d".repeat(20), {}, null))).toMatch(/support_widgets_name_key/);
+    expect(await refusal(widget("Blog", "a".repeat(20)))).toMatch(/support_widgets_key/);
+    expect(await refusal(widget("Blog", "A".repeat(20)))).toMatch(/support_widgets_key_shape/);
+    expect(await refusal(widget("", "e".repeat(20)))).toMatch(/support_widgets_name/);
+    expect(await refusal(widget("Blog", "e".repeat(20), { privacy: "http://example.com/privacy" }))).toMatch(/support_widgets_privacy_url/);
+    expect(await refusal(widget("Blog", "e".repeat(20), { style: "[]" }))).toMatch(/support_widgets_style/);
+    expect(await refusal(widget("Blog", "f".repeat(20), { market: "no" }, null))).toMatch(/support_widgets_market/);
+    const { id: blog } = await widget("Blog", "e".repeat(20), { privacy: "https://example.com/privacy", market: "no" });
+
+    // A widget goes on several websites; each host once per widget, of a host's shape, found by page or DNS only.
+    await site(shop, "www.example.com");
+    await site(shop, "shop.example.com", { verifiedAt: new Date().toISOString(), verifiedBy: "page" });
+    await site(blog, "www.example.com");
+    expect(await refusal(site(shop, "www.example.com"))).toMatch(/support_widget_sites_host_key/);
+    expect(await refusal(site(shop, "Example.com"))).toMatch(/support_widget_sites_host_shape/);
+    expect(await refusal(site(shop, "example.com/path"))).toMatch(/support_widget_sites_host_shape/);
+    expect(await refusal(site(shop, "a.example.com", { verifiedAt: new Date().toISOString() }))).toMatch(/support_widget_sites_verified/);
+    expect(await refusal(site(shop, "a.example.com", { verifiedAt: new Date().toISOString(), verifiedBy: "email" }))).toMatch(/support_widget_sites_verified/);
+
+    // Deleting a widget takes its websites with it.
+    await db.query("delete from commerce.support_widgets where id = $1", [shop]);
+    const left = await one<{ n: number }>("select count(*)::int as n from commerce.support_widget_sites where widget_id = $1", [shop]);
+    expect(left.n).toBe(0);
+    for (const table of ["support_widgets", "support_widget_sites"]) {
+      const rls = await one<{ relrowsecurity: boolean }>(`select relrowsecurity from pg_class where oid = 'commerce.${table}'::regclass`);
+      expect(rls.relrowsecurity).toBe(true);
+    }
+  });
+
+  it("12. keeps a widget's website pages (D583): a path once per site, of its shape, and their passages go with the page, the site or the widget", async () => {
+    const { id: widget } = await one<{ id: string }>(`insert into commerce.support_widgets (store_id, name, key) values ($1, 'Pages', $2) returning id`, [store, "p".repeat(20)]);
+    const { id: site } = await one<{ id: string }>(`insert into commerce.support_widget_sites (widget_id, host) values ($1, 'pages.example.com') returning id`, [widget]);
+    const page = (path: string, extra: { problem?: string; title?: string } = {}) =>
+      one<{ id: string }>(`insert into commerce.support_widget_site_pages (site_id, path, title, problem) values ($1, $2, $3, $4) returning id`, [site, path, extra.title ?? "", extra.problem ?? null]);
+    const { id: about } = await page("/about", { title: "About us" });
+    expect(await refusal(page("/about"))).toMatch(/support_widget_site_pages_path_key/);
+    expect(await refusal(page("about"))).toMatch(/support_widget_site_pages_path/);
+    expect(await refusal(page(`/${"x".repeat(500)}`))).toMatch(/support_widget_site_pages_path/);
+    expect(await refusal(page("/x", { problem: "lost" }))).toMatch(/support_widget_site_pages_problem/);
+    expect(await refusal(db.query(`update commerce.support_widget_sites set crawl_problem = 'busy' where id = $1`, [site]))).toMatch(/support_widget_sites_crawl_problem/);
+
+    // A passage has one source: a site page is one now, and two at once is none.
+    const passage = (source: string, id: string) =>
+      db.query(`insert into commerce.knowledge_chunks (store_id, ${source}, position, title, path, body, version) values ($1, $2, 0, 'About us', '/about', 'We make bags.', 'v1')`, [store, id]);
+    await passage("site_page_id", about);
+    const { id: doc } = await one<{ id: string }>(`insert into commerce.knowledge_documents (store_id, title, content) values ($1, 'Doc', 'Text') returning id`, [store]);
+    expect(await refusal(db.query(`insert into commerce.knowledge_chunks (store_id, document_id, site_page_id, position, title, body, version) values ($1, $2, $3, 0, 't', 'b', 'v')`, [store, doc, about]))).toMatch(/knowledge_chunks_source/);
+    const count = async () => (await one<{ n: number }>(`select count(*)::int as n from commerce.knowledge_chunks where site_page_id is not null and store_id = $1`, [store])).n;
+    expect(await count()).toBe(1);
+    await db.query("delete from commerce.support_widget_site_pages where id = $1", [about]);
+    expect(await count()).toBe(0);
+    const { id: pricing } = await page("/pricing");
+    await passage("site_page_id", pricing);
+    await db.query("delete from commerce.support_widgets where id = $1", [widget]);
+    expect(await count()).toBe(0);
+    const rls = await one<{ relrowsecurity: boolean }>("select relrowsecurity from pg_class where oid = 'commerce.support_widget_site_pages'::regclass");
+    expect(rls.relrowsecurity).toBe(true);
+  });
 });
+

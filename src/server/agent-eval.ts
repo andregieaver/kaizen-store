@@ -16,7 +16,7 @@ import {
   type RecordedCase,
   type RecordedReply,
 } from "@/lib/agent-eval";
-import { storeTools } from "@/lib/chat";
+import { embedTools, storeTools } from "@/lib/chat";
 import { cleanGuideReply, guideTools } from "@/lib/docs-guide";
 import { MODERATION_OPTIONS } from "@/lib/content-moderation";
 import { BRIEF_OPTIONS, REWORK_OPTIONS, type ReworkFacts } from "@/lib/dream-factory";
@@ -38,6 +38,7 @@ import {
   fixedReworkMessages,
   fixedBriefMessages,
   fixedChatPrompt,
+  fixedWidgetPrompt,
   fixedGuidePrompt,
   fixedLegalMessages,
   fixedModerationMessages,
@@ -76,7 +77,7 @@ export function promptVersions(): PromptVersions {
  * read them.
  */
 export function toolsVersion(): string {
-  const all: ToolDefinition[] = [...OWNER_TOOLS, ...MANAGER_TOOLS].map(toolDefinition).concat(storeTools(true), guideTools());
+  const all: ToolDefinition[] = [...OWNER_TOOLS, ...MANAGER_TOOLS].map(toolDefinition).concat(storeTools(true), guideTools(), embedTools().map((t) => ({ ...t, name: `widget:${t.name}` })));
   return promptHash(JSON.stringify(all.map((t) => [t.name, t.description, t.parameters]).sort((a, b) => String(a[0]).localeCompare(String(b[0])))));
 }
 
@@ -161,9 +162,10 @@ async function runCase(model: EvalModel, testCase: AgentEvalCase): Promise<Agent
   if (testCase.agent === "dream") return { answer: await model.write(fixedBriefMessages(testCase.says), BRIEF_OPTIONS), calls: [] };
   if (testCase.agent === "rework") return { answer: await model.write(fixedReworkMessages(testCase.says, testCase.script.facts as ReworkFacts), REWORK_OPTIONS), calls: [] };
   const wanted: ToolArea[] = [];
-  const ownTools = testCase.agent === "guide" ? guideTools() : storeTools(true);
+  const ownTools = testCase.agent === "guide" ? guideTools() : testCase.widget ? embedTools() : storeTools(true);
   const toolsNow = () => (testCase.agent === "manager" ? managerTools(testCase, wanted) : ownTools);
-  const prompt = testCase.agent === "manager" ? fixedManagerPrompt() : testCase.agent === "guide" ? fixedGuidePrompt() : fixedChatPrompt();
+  const prompt =
+    testCase.agent === "manager" ? fixedManagerPrompt() : testCase.agent === "guide" ? fixedGuidePrompt() : testCase.widget ? fixedWidgetPrompt() : fixedChatPrompt();
   const messages: ToolChatMessage[] = [
     { role: "system", content: prompt },
     { role: "user", content: testCase.says },

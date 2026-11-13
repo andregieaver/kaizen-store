@@ -24,6 +24,7 @@ vi.mock("./ai", () => ({ AiError, aiFor: async () => null, completeText: (...arg
 
 const languages = await import("./languages");
 const text = await import("./ui-text");
+const read = await import("./ui-text-read");
 const localization = await import("./localization");
 const { getStore } = await import("./stores");
 
@@ -102,16 +103,20 @@ describe("the platform's languages", () => {
   });
 });
 
+const uiVersion = async () => Number((await db().execute<Row>(sql`select ui_text_version from commerce.platform_settings`))[0].ui_text_version);
+
 describe("a language's interface text", () => {
   it("is planned, translated in chunks, checked and kept as a draft", async () => {
     const keys = await text.planGeneration("de", "missing");
     expect(keys).toHaveLength(catalog.length);
     const chunk = keys.slice(0, 60);
+    const versionBefore = await uiVersion();
     const result = await text.generateChunk(connection, { accountId }, { lang: "de", name: "German" }, chunk);
     expect(result).toMatchObject({ ok: true, saved: 60, problems: [] });
     expect((await text.planGeneration("de", "missing")).length).toBe(catalog.length - 60);
     const rows = await text.uiRows("de");
     expect(rows.size).toBe(60);
+    expect(await uiVersion()).toBeGreaterThan(versionBefore);
     expect([...rows.values()].every((r) => r.origin === "ai" && !r.reviewed)).toBe(true);
     // The rest.
     const rest = await text.generateChunk(connection, { accountId }, { lang: "de", name: "German" }, (await text.planGeneration("de", "missing")));
@@ -120,15 +125,37 @@ describe("a language's interface text", () => {
   });
 
   it("is read back as t() and emailText(), key by key with English for what is missing", async () => {
-    await text.reloadUi("de");
+    await read.reloadUi("de");
     const de = t("de") as unknown as Record<string, unknown>;
     const path = plain.key.slice(3).split(".");
     const value = path.reduce<unknown>((node, k) => (node as Record<string, unknown>)[k], de);
     expect(value).toBe(`DE ${plain.source}`);
     expect(t("de").stay.nights(2)).toBe("2 nights");
     expect(t("xx").stay.nights(2)).toBe("2 nights");
-    expect(text.uiTextsFor("de")?.[plain.key]).toBe(`DE ${plain.source}`);
-    expect(text.uiTextsFor("nb")).toBeNull();
+    // The browser gets the texts its components read, not the whole catalogue.
+    const browserKey = [...read.BROWSER_KEYS][0];
+    expect(read.uiTextsFor("de")?.[browserKey]).toBe(`DE ${catalog.find((e) => e.key === browserKey)!.source}`);
+    expect(read.uiTextsFor("nb")).toBeNull();
+  });
+
+  it("is built by t() on its first read and kept", async () => {
+    await read.reloadUi("de");
+    const path = plain.key.slice(3).split(".");
+    const value = path.reduce<unknown>((node, k) => (node as Record<string, unknown>)[k], t("de") as unknown as Record<string, unknown>);
+    expect(value).toBe(`DE ${plain.source}`);
+    expect(t("de")).toBe(t("de"));
+    expect(Object.keys(read.uiTextsFor("de")!).sort()).toEqual([...read.BROWSER_KEYS].sort());
+  });
+
+  it("sends the browser the keys its components read, and the withdrawal page its own", async () => {
+    const browser = read.uiTextsFor("de")!;
+    expect(Object.keys(browser).sort()).toEqual([...read.BROWSER_KEYS].sort());
+    expect(Object.keys(browser)).toHaveLength(read.BROWSER_KEYS.size);
+    expect(JSON.stringify(browser).length).toBeLessThan(9000);
+    const serverOnly = catalog.find((e) => e.key.startsWith("ui:storeSummary") && !read.BROWSER_KEYS.has(e.key) && !read.RETURNS_KEYS.has(e.key))
+      ?? catalog.find((e) => e.key.startsWith("ui:") && !read.BROWSER_KEYS.has(e.key) && !read.RETURNS_KEYS.has(e.key))!;
+    expect(browser[serverOnly.key]).toBeUndefined();
+    expect(Object.keys(read.returnsTextsFor("de")!).sort()).toEqual([...read.RETURNS_KEYS].sort());
   });
 
   it("refuses a model that fails, and one that answers wrongly", async () => {
@@ -171,8 +198,10 @@ describe("a language's interface text", () => {
   });
 
   it("can be cleared to start again", async () => {
+    const versionBefore = await uiVersion();
     expect(await text.clearUiTexts(accountId, "de")).toBe(catalog.length);
+    expect(await uiVersion()).toBeGreaterThan(versionBefore);
     expect(t("de").stay.nights(1)).toBe("1 night");
-    expect(text.uiTextsFor("de")).not.toBeNull();
+    expect(read.uiTextsFor("de")).not.toBeNull();
   });
 });

@@ -535,6 +535,8 @@ export const PAGES_NB: Record<string, { title: string; keywords: string[] }> = {
     keywords: ["kundestøtterapport", "svartid", "første svar", "kundetilfredshet", "overleveringsrate", "tapte chatter"],
   },
   "store:support.replies": { title: "Lagrede svar", keywords: ["lagrede svar", "ferdige svar", "maler", "snarveier", "kundestøtte"] },
+  "store:support.widgets": { title: "Chat på nettsider", keywords: ["chat-widget", "chat på nettsiden", "bygg inn chat", "chat på wordpress", "chat-tagg"] },
+  "store:support.widget": { title: "Chat-widget", keywords: ["chat-widget", "utseende", "chat-farge", "chat-tagg"] },
   "store:support.settings": {
     title: "Innstillinger for kundestøtte",
     keywords: ["kundestøtte", "støttemodus", "livechat", "åpningstider", "oppfølging på e-post", "samtalelogger", "overlevering"],
@@ -746,6 +748,8 @@ export const PAGES_NB: Record<string, { title: string; keywords: string[] }> = {
     keywords: ["butikkenes kundestøtte", "kundestøtte per butikk", "totaler", "kundestøtte"],
   },
   "platform:support.replies": { title: "Lagrede svar", keywords: ["lagrede svar", "ferdige svar", "maler", "snarveier"] },
+  "platform:support.widgets": { title: "Chat på nettsider", keywords: ["chat-widget", "chat på nettsiden", "bygg inn chat"] },
+  "platform:support.widget": { title: "Chat-widget", keywords: ["chat-widget", "utseende"] },
   "platform:support.settings": {
     title: "Innstillinger for kundestøtte",
     keywords: ["kundestøtte", "støttemodus", "livechat", "åpningstider", "oppfølging på e-post"],

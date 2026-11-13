@@ -1,5 +1,5 @@
 {
- "version": "1.12",
+ "version": "1.14",
  "surface": [
   "admin DELETE /categories/{id}",
   "admin DELETE /categories/{id} -> data",
@@ -2146,6 +2146,8 @@
   "mcp issue_work_invoice <- store (required)",
   "mcp legal_pages_status",
   "mcp legal_pages_status <- store (required)",
+  "mcp list_ad_budgets",
+  "mcp list_ad_budgets <- store (required)",
   "mcp list_blogs",
   "mcp list_blogs <- store (required)",
   "mcp list_bookings",
@@ -2438,6 +2440,9 @@
   "mcp send_draft_order",
   "mcp send_draft_order <- draft (required)",
   "mcp send_draft_order <- store (required)",
+  "mcp set_ad_budget",
+  "mcp set_ad_budget <- budget (required)",
+  "mcp set_ad_budget <- store (required)",
   "mcp set_affiliate_program",
   "mcp set_affiliate_program <- store (required)",
   "mcp set_backorder",

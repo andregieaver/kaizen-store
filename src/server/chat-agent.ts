@@ -4,7 +4,7 @@ import { sql } from "drizzle-orm";
 import { cacheLife, cacheTag } from "next/cache";
 
 import { db, readDb } from "@/db/client";
-import { cleanReply, kaizenTools, returnFacts, SHOP_DESTINATIONS, SHOP_TOOLS, shownSoFar, storeTools, systemPrompt, type ChatAction, type ChatProduct, type ChatReply } from "@/lib/chat";
+import { cleanReply, embedTools, kaizenTools, returnFacts, SHOP_DESTINATIONS, SHOP_TOOLS, shownSoFar, storeTools, systemPrompt, type ChatAction, type ChatProduct, type ChatReply } from "@/lib/chat";
 import { brandVoiceGuide } from "@/lib/brand";
 import { chatAgentInput, navigateArgs, type ChatRequest } from "@/lib/chat-schema";
 import { cleanAvatarStyle, type AvatarStyle } from "@/lib/chat-avatar";
@@ -186,8 +186,14 @@ export { VISITOR_LIMIT, pruneChatUsage, takeChatTurn, visitorKey } from "./chat-
 
 // The conversation ----------------------------------------------------------------
 
-/** Where the agent talks: a store in one of its countries, or Kaizen's site. */
-export type ChatSite = { kind: "store"; store: Store; market: Market } | { kind: "kaizen" };
+/** A chat widget on a site of the owner's own (D582, `support-widgets.ts`): the widget's id, the site's host and the privacy page. */
+export type ChatEmbed = { id: string; host: string; privacyUrl: string | null };
+
+/**
+ * Where the agent talks: a store in one of its countries, or Kaizen's site; with `embed`, in the chat that desk shows on a site of its
+ * own (D582), where only the knowledge base is searched and nothing of the shop, its pages or a customer's orders is offered.
+ */
+export type ChatSite = { kind: "store"; store: Store; market: Market; embed?: ChatEmbed } | { kind: "kaizen"; embed?: ChatEmbed };
 
 /** Rounds of tools before the model must answer. */
 const ROUNDS = 4;
@@ -257,7 +263,11 @@ function card(
 
 const json = (value: unknown) => JSON.stringify(value).slice(0, 6000);
 
-type ToolOutcome = { result: string; action?: ChatAction; products?: ChatProduct[] };
+/** A site tool's answer: JSON for the model, and what the widget draws from it (a page opened, product cards, link chips, D583). */
+type ToolOutcome = { result: string; action?: ChatAction; products?: ChatProduct[]; chips?: SupportChip[] };
+
+/** The site pages a widget's search found, as chips under the answer (at most this many, the best first). */
+const PAGE_CHIPS = 2;
 
 async function storeTool(site: Extract<ChatSite, { kind: "store" }>, name: string, args: Record<string, unknown>, request: ChatRequest): Promise<ToolOutcome> {
   const { store, market } = site;
@@ -439,6 +449,23 @@ async function navigateStore(site: Extract<ChatSite, { kind: "store" }>, raw: Re
   return { result: json({ error: "The agent cannot open that." }) };
 }
 
+/**
+ * The chat's one tool in a widget on the owner's own websites (D582, D583): the desk's knowledge base documents and the pages of the
+ * widget's own sites. A page's address goes to the model as data and, for the best few, to the visitor as a chip (made by code, never
+ * written by the model).
+ */
+async function embedTool(site: ChatSite, name: string, args: Record<string, unknown>): Promise<ToolOutcome> {
+  if (name !== "search_content" || !site.embed) return { result: json({ error: `No tool called ${name}.` }) };
+  const storeId = site.kind === "store" ? site.store.id : null;
+  const locale = site.kind === "store" ? site.market.locale : "en-GB";
+  const passages = await searchKnowledge(storeId, typeof args.query === "string" ? args.query.slice(0, 200) : "", locale, 5, { widget: site.embed.id });
+  const chips = [...new Map(passages.filter((p) => p.url).map((p) => [p.url!, { kind: "page" as const, label: p.title.slice(0, 80), href: p.url! }])).values()].slice(0, PAGE_CHIPS);
+  return {
+    result: json({ passages: passages.map((p) => ({ title: p.title, text: p.body, ...(p.url ? { page: p.url } : {}) })) }),
+    ...(chips.length > 0 ? { chips } : {}),
+  };
+}
+
 async function kaizenTool(name: string, args: Record<string, unknown>): Promise<ToolOutcome> {
   switch (name) {
     case "search_content": {
@@ -537,11 +564,12 @@ export async function runChat(
         // A brand that cannot be read leaves the tone to the agent's own guidance; the chat never fails for it.
         email: options.email,
         voice: brandVoiceGuide(await brandOf(site.kind === "store" ? site.store.id : null).catch(() => null)),
+        embed: site.embed ? { host: site.embed.host } : null,
       }),
     },
     ...request.messages.map((message) => ({ role: message.role, content: message.content }) as ToolChatMessage),
   ];
-  const siteTools: ToolDefinition[] = site.kind === "store" ? storeTools(featureOn(site.store, "shop")) : kaizenTools();
+  const siteTools: ToolDefinition[] = site.embed ? embedTools() : site.kind === "store" ? storeTools(featureOn(site.store, "shop")) : kaizenTools();
   const supportTools = options.support?.definitions ?? [];
   const supportNames = new Set(supportTools.map((tool) => tool.name));
   const tools = [...siteTools, ...(options.handoff ? [handoffTool] : []), ...supportTools];
@@ -581,7 +609,7 @@ export async function runChat(
     for (const { call, args } of asked) {
       const name = call.function.name;
       if ((options.handoff && name === HANDOFF.name) || (options.support && supportNames.has(name))) continue;
-      const answer = (site.kind === "store" ? storeTool(site, name, args, request) : kaizenTool(name, args)).catch((error: unknown): ToolOutcome => {
+      const answer = (site.embed ? embedTool(site, name, args) : site.kind === "store" ? storeTool(site, name, args, request) : kaizenTool(name, args)).catch((error: unknown): ToolOutcome => {
         if (error instanceof AiError) throw error;
         console.warn(`[chat] tool ${name} failed: ${error instanceof Error ? error.message : String(error)}`);
         return { result: json({ error: "That did not work just now." }) };
@@ -616,6 +644,7 @@ export async function runChat(
       const outcome = await siteAnswers.get(call.id)!;
       if (outcome.action) action = outcome.action;
       for (const product of outcome.products ?? []) products.set(product.handle, product);
+      for (const chip of outcome.chips ?? []) chips.set(chip.href, chip);
       messages.push({ role: "tool", tool_call_id: call.id, content: outcome.result });
     }
     // Tool calls beyond the first four get an answer too, so the conversation stays well formed.

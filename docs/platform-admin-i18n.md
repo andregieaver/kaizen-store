@@ -53,6 +53,9 @@ per-language page texts (D55, `mapTexts()`, `localizePage()`), and `formatMoney(
 - `platform_settings.locales` (`{en, nb-NO}`, the main first), edited on a Languages page under Kaizena Flow's Settings, as a store's are;
   the platform's hand-written languages are the ones `src/lib/messages` holds. A language is offered on the site as soon as it is turned on
   there (no readiness check; the owner, 2026-10-22); Norwegian is on in production from migration `platform_norwegian_on`.
+- A language translated by AI (D111) that is new or edited reaches every instance within ten minutes on an instance that serves a translated
+  language (at once on the instance where the edit was made): each reads the one-row stamp `platform_settings.ui_text_version`, raised by
+  every writer of `commerce.ui_translations` (`src/server/ui-text-read.ts`, bloat review step 0.8).
 - One reader, `platformLang(request or params)`, gives the language a page is drawn in; every platform route and layout takes it, and
   `<html lang>`, `og:locale`, `SiteConsent`, `hreflang` alternates, the sitemap (one entry per language with alternates) and `llms.txt`
   follow it.

@@ -1924,6 +1924,8 @@ export const platformSettings = commerce.table(
     /** When the switch was last turned on or off, and by whom (D484). */
     siteFromStoreAt: timestamp("site_from_store_at", { withTimezone: true }),
     siteFromStoreBy: uuid("site_from_store_by").references(() => accounts.id),
+    /** Raised by one by every writer of commerce.ui_translations (bloat review step 0.8): an instance polls this one row, not the table. */
+    uiTextVersion: bigint("ui_text_version", { mode: "number" }).notNull().default(0),
     updatedAt: updatedAt(),
     updatedBy: uuid("updated_by").references(() => accounts.id),
   },
@@ -15532,6 +15534,106 @@ export const supportReplies = commerce.table(
   ],
 );
 
+/**
+ * A chat widget a desk puts on websites of the owner's own (D582, `docs/support-embed.md`): its name, the public key its tag carries, the
+ * market whose language it speaks, the privacy page its notice links, and its own look (`style`, read by `readStyle()` in
+ * `src/lib/support-widget-style.ts`). A desk has any number (up to `WIDGETS_MAX`); `store_id` null is Kaizena Flow's desk. Written only by
+ * `src/server/support-widgets.ts`; never copied with a store (a copy is another business's websites). No person's data.
+ */
+export const supportWidgets = commerce.table(
+  "support_widgets",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    storeId: uuid("store_id").references(() => stores.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    /** Public: read by anyone in the sites' HTML. */
+    key: text("key").notNull(),
+    /** The store's market whose language the chat speaks; null for the store's first. */
+    market: text("market"),
+    /** The privacy page the chat's notice links. */
+    privacyUrl: text("privacy_url"),
+    style: jsonb("style").notNull().default(sql`'{}'::jsonb`),
+    createdBy: uuid("created_by").references(() => accounts.id, { onDelete: "set null" }),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [
+    unique("support_widgets_key").on(t.key),
+    unique("support_widgets_name_key").on(t.storeId, t.name).nullsNotDistinct(),
+    index("support_widgets_created_by_idx").on(t.createdBy),
+    check("support_widgets_key_shape", sql`${t.key} ~ '^[a-z0-9]{20}$'`),
+    check("support_widgets_name", sql`length(${t.name}) between 1 and 60`),
+    check("support_widgets_market", sql`${t.market} is null or (${t.storeId} is not null and length(${t.market}) between 2 and 20)`),
+    check("support_widgets_privacy_url", sql`${t.privacyUrl} is null or (${t.privacyUrl} ~ '^https://' and length(${t.privacyUrl}) <= 500)`),
+    check("support_widgets_style", sql`jsonb_typeof(${t.style}) = 'object' and length(${t.style}::text) <= 40000`),
+  ],
+);
+
+/**
+ * A website a widget is on (D582): one host (its `www.` twin is the same site), and whether the widget's tag was found there (`verified_at`,
+ * by the front page or a DNS record). The chat shows only on a site whose tag was found. Written only by `src/server/support-widgets.ts`.
+ */
+export const supportWidgetSites = commerce.table(
+  "support_widget_sites",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    widgetId: uuid("widget_id")
+      .notNull()
+      .references(() => supportWidgets.id, { onDelete: "cascade" }),
+    host: text("host").notNull(),
+    verifiedAt: timestamp("verified_at", { withTimezone: true }),
+    /** `page` (the tag on the front page) or `dns` (the TXT record). */
+    verifiedBy: text("verified_by"),
+    checkedAt: timestamp("checked_at", { withTimezone: true }),
+    /** Why the last check did not find the tag (`CHECK_PROBLEMS`). */
+    checkProblem: text("check_problem"),
+    /** Step 2 (D583): when the owner asked for the site to be read again, and when its pages were last listed (robots.txt, sitemap, links). */
+    crawlRequestedAt: timestamp("crawl_requested_at", { withTimezone: true }),
+    discoveredAt: timestamp("discovered_at", { withTimezone: true }),
+    /** Why the last listing found no page to read (`CRAWL_PROBLEMS`). */
+    crawlProblem: text("crawl_problem"),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    unique("support_widget_sites_host_key").on(t.widgetId, t.host),
+    check("support_widget_sites_crawl_problem", sql`${t.crawlProblem} is null or ${t.crawlProblem} in ('robots', 'no_pages', 'unreachable')`),
+    check("support_widget_sites_host_shape", sql`length(${t.host}) between 4 and 253 and ${t.host} ~ '^([a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?\\.)+[a-z]([a-z0-9-]{0,61}[a-z0-9])?$'`),
+    check("support_widget_sites_verified", sql`(${t.verifiedAt} is null) = (${t.verifiedBy} is null) and (${t.verifiedBy} is null or ${t.verifiedBy} in ('page', 'dns'))`),
+    check("support_widget_sites_check_problem", sql`${t.checkProblem} is null or ${t.checkProblem} in ('unreachable', 'not_found', 'moved')`),
+  ],
+);
+
+/**
+ * A page of a widget's website that the chat reads (D583, step 2 of `docs/support-embed.md`): its path on the site's host, its title, and a
+ * hash of the text last read, so an unchanged page is not cut again. Listed from the site's robots.txt, sitemap and links
+ * (`seen_at` the last listing that found it), read again weekly; its passages are `knowledge_chunks` rows with `site_page_id`, which go
+ * with it. Written only by `src/server/site-crawl.ts`. A public page of the owner's own site: no person's data is looked for or kept apart.
+ */
+export const supportWidgetSitePages = commerce.table(
+  "support_widget_site_pages",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    siteId: uuid("site_id")
+      .notNull()
+      .references(() => supportWidgetSites.id, { onDelete: "cascade" }),
+    path: text("path").notNull(),
+    title: text("title").notNull().default(""),
+    contentHash: text("content_hash"),
+    fetchedAt: timestamp("fetched_at", { withTimezone: true }),
+    seenAt: timestamp("seen_at", { withTimezone: true }).notNull().defaultNow(),
+    /** Why the last read kept nothing (`PAGE_PROBLEMS`). */
+    problem: text("problem"),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    unique("support_widget_site_pages_path_key").on(t.siteId, t.path),
+    index("support_widget_site_pages_fetched_idx").on(t.fetchedAt),
+    check("support_widget_site_pages_path", sql`${t.path} ~ '^/' and length(${t.path}) <= 500`),
+    check("support_widget_site_pages_title", sql`length(${t.title}) <= 300`),
+    check("support_widget_site_pages_problem", sql`${t.problem} is null or ${t.problem} in ('unreachable', 'unreadable', 'moved', 'empty')`),
+  ],
+);
+
 // ---------------------------------------------------------------------------
 // Customer notifications, delivery tracking and staff alerts (wave 3, D238, docs/wave-3-notifications.md 3.2)
 // ---------------------------------------------------------------------------
@@ -16745,6 +16847,44 @@ export const adConnections = commerce.table(
     check("ad_connections_level", sql`${t.dataLevel} in ('standard', 'enhanced')`),
     check("ad_connections_account", sql`char_length(${t.accountId}) between 4 and 40`),
     check("ad_connections_test_code", sql`${t.testCode} is null or char_length(${t.testCode}) between 1 and 40`),
+  ],
+);
+
+/**
+ * A store's ad account, connected so its budgets can be read and changed (D585, step 1 of `docs/agent-spending.md`): the platform bills the
+ * owner as it always has, and Kaizena Flow only moves budgets inside it, never pays. The token is encrypted (`secret-box.ts`), never sent to a
+ * page. `monthly_limit_minor` is what the autopilot may let the account spend in a calendar month (in the account's own currency and time
+ * zone, as the platform counts it); null: it never raises a budget itself. Written only by `src/server/ad-accounts.ts`. Kaizena Flow's own
+ * ad accounts are its house store's.
+ */
+export const adAccounts = commerce.table(
+  "ad_accounts",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    storeId: uuid("store_id")
+      .notNull()
+      .references(() => stores.id),
+    platform: text("platform").notNull().default("meta"),
+    /** The platform's own account number, digits only (Meta's `act_` left off). */
+    accountId: text("account_id").notNull(),
+    /** The account's name, its currency and its time zone, as the platform gave them when connected. */
+    name: text("name").notNull(),
+    currency: char("currency", { length: 3 }).notNull(),
+    timeZone: text("time_zone").notNull(),
+    token: text("token").notNull(),
+    tokenHint: text("token_hint").notNull(),
+    monthlyLimitMinor: bigint("monthly_limit_minor", { mode: "number" }),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [
+    unique("ad_accounts_store_platform").on(t.storeId, t.platform),
+    unique("ad_accounts_store_id_key").on(t.storeId, t.id),
+    check("ad_accounts_platform", sql`${t.platform} in ('meta')`),
+    check("ad_accounts_account", sql`${t.accountId} ~ '^[0-9]{5,20}$'`),
+    check("ad_accounts_name", sql`char_length(${t.name}) between 1 and 200`),
+    check("ad_accounts_time_zone", sql`char_length(${t.timeZone}) between 1 and 64`),
+    check("ad_accounts_limit", sql`${t.monthlyLimitMinor} is null or ${t.monthlyLimitMinor} between 0 and 100000000000`),
   ],
 );
 

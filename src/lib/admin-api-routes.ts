@@ -264,7 +264,15 @@ export const apiCheckoutField = z.object({
 
 const enabledOnly = z.strictObject({ enabled: z.boolean().describe("Switches it on or off; nothing else changes.") });
 export const ruleUpdateBody = z.union([enabledOnly, ruleInputSchema.extend({ enabled: z.boolean().optional() })]);
-export const fieldUpdateBody = z.union([enabledOnly, fieldInputSchema.extend({ enabled: z.boolean().optional() })]);
+const fieldPlace = z
+  .int()
+  .min(0)
+  .describe("Moves the question to this place, 0 being first, the others keeping their order; a place past the end is the end.");
+const fieldSwitchOrMove = z.strictObject({
+  enabled: z.boolean().optional().describe("Switches it on or off; nothing else changes."),
+  position: fieldPlace.optional(),
+});
+export const fieldUpdateBody = z.union([fieldSwitchOrMove, fieldInputSchema.extend({ enabled: z.boolean().optional(), position: fieldPlace.optional() })]);
 
 // ---------------------------------------------------------------------------
 // The registry
@@ -649,8 +657,9 @@ const CORE_API = [
     scope: "checkout:write",
     permission: "settings:write",
     tag: "Checkout",
-    summary: "Change or switch a checkout question",
-    description: "`{ enabled }` alone switches the question; anything else is the whole question as it should be.",
+    summary: "Change, switch or move a checkout question",
+    description:
+      "`{ enabled }` alone switches the question and `{ position }` alone moves it (the checkout asks them in that order); anything else is the whole question as it should be, and may carry either.",
     params: byId,
     body: fieldUpdateBody,
     response: madeId,

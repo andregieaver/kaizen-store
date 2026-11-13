@@ -103,6 +103,8 @@ export const TOOL_AREAS: Readonly<Record<string, AutonomyArea>> = {
   schedule_report: "messages",
   // Money
   block_affiliate: "money",
+  // An ad budget in the owner's own ad account (D585): a raise also meets the account's monthly limit and the largest raise (`adProblem`).
+  set_ad_budget: "money",
 };
 
 /**
@@ -178,8 +180,13 @@ export const autonomySettingsSchema = z.object({
       priceChangePercent: z.number().int().min(0).max(1000).default(10),
       /** Emails to customers (`CUSTOMER_EMAIL_TOOLS`) it may send without a yes in seven days; 0: every one asks. */
       customerEmailsPerWeek: z.number().int().min(0).max(100).default(5),
+      /**
+       * The largest raise of an ad budget it may make without a yes, in percent of the daily budget now (D585). What the ads may spend in a
+       * month is the ad account's own limit (`ad_accounts.monthly_limit_minor`, on the Ads page), in its currency.
+       */
+      adRaisePercent: z.number().int().min(0).max(1000).default(20),
     })
-    .default({ aiMonthlyUsd: 5, discountPercent: 20, priceChangePercent: 10, customerEmailsPerWeek: 5 }),
+    .default({ aiMonthlyUsd: 5, discountPercent: 20, priceChangePercent: 10, customerEmailsPerWeek: 5, adRaisePercent: 20 }),
   /** Whether and how it keeps working toward the goals once a plan ends (D328, `docs/ai-autopilot.md` 12.1). */
   planning: z
     .object({
@@ -219,6 +226,8 @@ export type AutonomyFacts = {
   discountPercent?: number | null;
   costsMoney?: boolean | null;
   customerEmailsThisWeek?: number | null;
+  /** An ad budget's change (D585): why it must ask by the owner's ad limit and largest raise (`adChangeProblem()`), or null when it may. */
+  adProblem?: string | null;
 };
 
 export type AutonomyDecision = { run: true; tell: boolean; area: AutonomyArea } | { run: false; why: string };
@@ -243,6 +252,10 @@ export function autonomyDecision(settings: AutonomySettings, tool: string, gate:
   if (tool === "make_theme_live") {
     if (facts.costsMoney === undefined || facts.costsMoney === null) return { run: false, why: "What the theme costs could not be read." };
     if (facts.costsMoney) return { run: false, why: "This theme costs money, which always waits for your yes." };
+  }
+  if (tool === "set_ad_budget") {
+    if (facts.adProblem === undefined) return { run: false, why: "The ad account could not be read." };
+    if (facts.adProblem !== null) return { run: false, why: facts.adProblem };
   }
   if ((CUSTOMER_EMAIL_TOOLS as readonly string[]).includes(tool)) {
     if (facts.customerEmailsThisWeek === undefined || facts.customerEmailsThisWeek === null) return { run: false, why: "The emails it sent this week could not be counted." };

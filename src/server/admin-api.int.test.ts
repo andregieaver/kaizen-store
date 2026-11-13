@@ -289,8 +289,19 @@ describe("checkout rules and questions (D399)", () => {
     const fieldId = field.body.data.id as string;
     expect((await call("PATCH", `checkout/fields/${fieldId}`, token, { enabled: false })).status).toBe(200);
     expect((await call("GET", "checkout/fields", token)).body.data).toEqual([expect.objectContaining({ id: fieldId, enabled: false, kind: "text" })]);
+    // A second question, moved first by `position` alone; a negative place is refused, another store's question is not found.
+    const second = (await call("POST", "checkout/fields", token, { kind: "checkbox", label: { text: "Leave at the door" } })).body.data.id as string;
+    expect((await call("PATCH", `checkout/fields/${second}`, token, { position: 0 })).status).toBe(200);
+    expect((await call("GET", "checkout/fields", token)).body.data.map((f: Row) => [f.id, f.position])).toEqual([
+      [second, 0],
+      [fieldId, 1],
+    ]);
+    expect((await call("PATCH", `checkout/fields/${second}`, token, { position: -1 })).status).toBe(422);
+    expect((await call("PATCH", "checkout/fields/00000000-0000-4000-8000-000000000000", token, { position: 0 })).status).toBe(404);
+    expect((await call("PATCH", `checkout/fields/${second}`, token, {})).status).toBe(422);
 
     expect((await call("DELETE", `checkout/rules/${id}`, token)).body.data).toEqual({ id, deleted: true });
+    expect((await call("DELETE", `checkout/fields/${second}`, token)).status).toBe(200);
     expect((await call("DELETE", `checkout/fields/${fieldId}`, token)).status).toBe(200);
     expect((await call("DELETE", `checkout/fields/${fieldId}`, token)).status).toBe(404);
     const audit = await db().execute<Row>(sql`
@@ -302,7 +313,10 @@ describe("checkout rules and questions (D399)", () => {
       "integration.api_checkout_rule_changed",
       "integration.api_checkout_field_made",
       "integration.api_checkout_field_changed",
+      "integration.api_checkout_field_made",
+      "integration.api_checkout_field_changed",
       "integration.api_checkout_rule_deleted",
+      "integration.api_checkout_field_deleted",
       "integration.api_checkout_field_deleted",
     ]);
   });

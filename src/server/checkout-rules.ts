@@ -8,6 +8,7 @@ import {
   answersByField,
   applyCheckoutRules,
   FIELDS_MAX,
+  movedTo,
   NO_RULES,
   RULES_MAX,
   type CheckoutFacts,
@@ -266,6 +267,8 @@ const fieldRow = z.object({ id: col.uuid, kind: col.text, required: col.bool, la
 
 export type FieldRow = CheckoutField & { position: number; enabled: boolean };
 
+const placeRow = z.object({ id: col.uuid, position: col.int });
+
 const asWords = (v: unknown): Words => {
   const w = (v ?? {}) as Partial<Words>;
   return { text: typeof w.text === "string" ? w.text : "", byLocale: w.byLocale && typeof w.byLocale === "object" ? w.byLocale : {} };
@@ -325,6 +328,36 @@ export async function switchCheckoutField(member: Membership, id: string, on: bo
     update commerce.checkout_fields set enabled = ${on}, updated_at = now() where store_id = ${member.store.id}::uuid and id = ${id}::uuid returning id
   `);
   if (done.length > 0) await audit(member.account.id, member.store.id, on ? "shipping.checkout_field_on" : "shipping.checkout_field_off", {}, { target: { type: "checkout_field", id } });
+}
+
+/**
+ * Moves a question to place `to` (0 is first), the others keeping their order: the order the cart asks them in. The store's questions are
+ * locked while their places are written, so two moves at once end in one order. False when the question is not the store's.
+ */
+export async function moveCheckoutField(member: Membership, id: string, to: number): Promise<boolean> {
+  const storeId = member.store.id;
+  const moved = await db().transaction(async (tx) => {
+    const rows = await typedRows(
+      placeRow,
+      sql`select id, position from commerce.checkout_fields where store_id = ${storeId}::uuid order by position, created_at for update`,
+      tx,
+    );
+    const order = movedTo(
+      rows.map((r) => r.id),
+      id,
+      to,
+    );
+    if (!order) return null;
+    const from = rows.findIndex((r) => r.id === id);
+    for (const [i, fieldId] of order.entries()) {
+      if (rows.find((r) => r.id === fieldId)?.position === i) continue;
+      await tx.execute(sql`update commerce.checkout_fields set position = ${i}, updated_at = now() where store_id = ${storeId}::uuid and id = ${fieldId}::uuid`);
+    }
+    return { from, to: order.indexOf(id) };
+  });
+  if (!moved) return false;
+  if (moved.from !== moved.to) await audit(member.account.id, storeId, "shipping.checkout_field_moved", moved, { target: { type: "checkout_field", id } });
+  return true;
 }
 
 export async function deleteCheckoutField(member: Membership, id: string): Promise<void> {
