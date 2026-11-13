@@ -68,7 +68,9 @@ changing it; a rule changes here, and its line in CLAUDE.md when its gist change
   `HAND_WRITTEN_ONLY` prefix before it is added. The languages stores can offer
   are `commerce.platform_languages` (`/admin/platform/languages`), never a
   list in code; never read the texts from the database while rendering (they
-  are in memory, `src/server/ui-text.ts`).
+  are in memory, `src/server/ui-text-read.ts`). An instance reads them at start with two statements, builds a language when `t()` first
+  reads it, and polls the one-row stamp `platform_settings.ui_text_version` every ten minutes only while it is asked for a translated
+  language; every writer of `commerce.ui_translations` raises the stamp (bloat review step 0.8).
 
 ## Language and currency are apart from the country (D109; offered only while Several languages and Several currencies are on, D178 step 4)
 

@@ -138,6 +138,15 @@ describe("a language's interface text", () => {
     expect(read.uiTextsFor("nb")).toBeNull();
   });
 
+  it("is built by t() on its first read and kept", async () => {
+    await read.reloadUi("de");
+    const path = plain.key.slice(3).split(".");
+    const value = path.reduce<unknown>((node, k) => (node as Record<string, unknown>)[k], t("de") as unknown as Record<string, unknown>);
+    expect(value).toBe(`DE ${plain.source}`);
+    expect(t("de")).toBe(t("de"));
+    expect(Object.keys(read.uiTextsFor("de")!).sort()).toEqual([...read.BROWSER_KEYS].sort());
+  });
+
   it("sends the browser the keys its components read, and the withdrawal page its own", async () => {
     const browser = read.uiTextsFor("de")!;
     expect(Object.keys(browser).sort()).toEqual([...read.BROWSER_KEYS].sort());
