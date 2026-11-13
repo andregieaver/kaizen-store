@@ -237,6 +237,12 @@ export const da: Messages = {
     instructions: "Instruktioner til afhentning",
     noteLabel: "Besked til chaufføren (valgfrit)",
     noteHint: "For eksempel en dørkode eller hvor varerne kan stilles. Højst 500 tegn.",
+    /** Local delivery paid on Stripe's form on our page: Stripe draws no phone field there, so the page asks it for the driver. */
+    driverPhone: {
+      label: "Telefon til chaufføren",
+      hint: "Chaufføren ringer eller skriver til dette nummer om leveringen.",
+      problem: "Skriv et telefonnummer, chaufføren kan træffe dig på. Et nummer fra et andet land begynder med + og landekoden.",
+    },
     yourNote: "Din besked til chaufføren",
     localFrom: (minimum: string) => `Lokal levering fra ${minimum}`,
     noShipping: (postalCode: string) => `Vi kan ikke levere denne kurv til ${postalCode}. Afhent den selv, eller kontakt butikken.`,

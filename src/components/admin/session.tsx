@@ -5,25 +5,37 @@ import { useEffect } from "react";
 
 import { cookiesReadable } from "@/lib/browser-access";
 import { signInFor } from "@/lib/sign-in-for";
-import { createClient } from "@/lib/supabase/client";
 import { AdminWaiting } from "./admin-waiting";
 import type { AdminLang } from "@/lib/admin-lang";
 
 /**
  * Keeps the admin session fresh while a tab is open. The browser client
  * refreshes the access token before it expires and writes the new cookies,
- * so server rendering keeps seeing a valid session.
+ * so server rendering keeps seeing a valid session. The client is loaded once the page is idle (bloat review step 0.9), so it is not in a screen's first scripts.
  */
 export function SessionKeeper() {
   useEffect(() => {
     // A template's sandboxed preview frame (D127) cannot read cookies: no session to keep there, and the client's timer would only fail.
     if (!cookiesReadable(document)) return;
-    try {
-      const { data } = createClient().auth.onAuthStateChange(() => {});
-      return () => data.subscription.unsubscribe();
-    } catch {
-      return undefined;
-    }
+    let cancelled = false;
+    let unsubscribe: (() => void) | undefined;
+    const start = async () => {
+      try {
+        const { createClient } = await import("@/lib/supabase/client");
+        if (cancelled) return;
+        const { data } = createClient().auth.onAuthStateChange(() => {});
+        unsubscribe = () => data.subscription.unsubscribe();
+        if (cancelled) unsubscribe();
+      } catch {}
+    };
+    const useIdle = typeof window.requestIdleCallback === "function";
+    const idle = useIdle ? window.requestIdleCallback(() => void start(), { timeout: 2000 }) : window.setTimeout(() => void start(), 2000);
+    return () => {
+      cancelled = true;
+      if (useIdle) window.cancelIdleCallback(idle);
+      else window.clearTimeout(idle);
+      unsubscribe?.();
+    };
   }, []);
   return null;
 }
@@ -43,11 +55,13 @@ export function SessionRecovery({ waiting }: { waiting: Record<AdminLang, string
     (async () => {
       let client;
       try {
+        const { createClient } = await import("@/lib/supabase/client");
         client = createClient();
       } catch {
         router.replace(signIn);
         return;
       }
+      if (cancelled) return;
       const { data } = await client.auth.getSession();
       if (cancelled) return;
       if (!data.session) {

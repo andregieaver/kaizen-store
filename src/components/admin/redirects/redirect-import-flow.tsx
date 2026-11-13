@@ -10,7 +10,7 @@ import { ADMIN_LANG_FACTS } from "@/lib/admin-lang";
 import { fillWords } from "@/lib/admin-fill";
 import { existingChoiceWords, importConfirmation, type ExistingChoice } from "@/lib/redirect-admin";
 import { redirectProblems } from "@/lib/redirect-words";
-import { createClient } from "@/lib/supabase/client";
+import { uploadToSignedUrl } from "@/lib/supabase/signed-upload";
 
 import { useAdminLang, useAdminText } from "../admin-text";
 
@@ -64,9 +64,7 @@ export function RedirectUpload({
         setProblems(redirectProblems([started.problem], w));
         return;
       }
-      const stored = await createClient()
-        .storage.from(started.bucket)
-        .uploadToSignedUrl(started.path, started.token, file, { contentType: TYPES.includes(file.type) ? file.type : "text/csv" });
+      const stored = await uploadToSignedUrl(started.bucket, started.path, started.token, file, { contentType: TYPES.includes(file.type) ? file.type : "text/csv" });
       if (stored.error) {
         setProblems([u.didNotArrive]);
         return;

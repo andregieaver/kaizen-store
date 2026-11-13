@@ -11,6 +11,7 @@ vi.mock("@/lib/motion-attrs", () => ({
 }));
 vi.mock("@/lib/motion-runtime", () => ({ initMotion: vi.fn(() => () => {}) }));
 
+import { builderEn } from "@/lib/admin-messages/builder.en";
 import { DEFAULT_BREAKPOINTS, type Size } from "@/lib/breakpoints";
 import type { PageBlock, PageRow } from "@/lib/page-content";
 
@@ -100,7 +101,7 @@ describe("a field at a size", () => {
     const out = field("xl");
     expect(out).not.toContain("data-size-from");
     expect(out).not.toContain("data-size-own");
-    expect(sizeNote({ own: false, from: null }, "sm")).toBe("Default");
+    expect(sizeNote({ own: false, from: null }, "sm", builderEn)).toBe("Default");
   });
 });
 

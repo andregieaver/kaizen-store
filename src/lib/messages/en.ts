@@ -245,6 +245,12 @@ export const en = {
     instructions: "Pickup instructions",
     noteLabel: "Note for the driver (optional)",
     noteHint: "For example a door code or where to leave it. At most 500 characters.",
+    /** Local delivery paid on Stripe's form on our page: Stripe draws no phone field there, so the page asks it for the driver. */
+    driverPhone: {
+      label: "Phone for the driver",
+      hint: "The driver calls or texts this number about the delivery.",
+      problem: "Write a phone number the driver can reach. A number from another country starts with + and its country code.",
+    },
     yourNote: "Your note for the driver",
     localFrom: (minimum: string) => `Local delivery from ${minimum}`,
     noShipping: (postalCode: string) => `We cannot deliver this basket to ${postalCode}. Collect it, or contact the store.`,

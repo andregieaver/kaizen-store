@@ -237,6 +237,12 @@ export const nb: Messages = {
     instructions: "Henteinstruksjoner",
     noteLabel: "Beskjed til sjåføren (valgfritt)",
     noteHint: "For eksempel en dørkode eller hvor varene kan settes. Høyst 500 tegn.",
+    /** Local delivery paid on Stripe's form on our page: Stripe draws no phone field there, so the page asks it for the driver. */
+    driverPhone: {
+      label: "Telefon til sjåføren",
+      hint: "Sjåføren ringer eller sender melding til dette nummeret om leveringen.",
+      problem: "Skriv et telefonnummer sjåføren kan nå deg på. Et nummer fra et annet land begynner med + og landskoden.",
+    },
     yourNote: "Din beskjed til sjåføren",
     localFrom: (minimum: string) => `Lokal levering fra ${minimum}`,
     noShipping: (postalCode: string) => `Vi kan ikke levere denne handlekurven til ${postalCode}. Hent den selv, eller kontakt butikken.`,

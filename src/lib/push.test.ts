@@ -2,7 +2,8 @@ import { describe, expect, it } from "vitest";
 
 import { adminManifest, adminServiceWorker, ADMIN_OFFLINE_PATH } from "./admin-sw";
 import { vapidEnv } from "./env";
-import { deviceName, isPushEndpoint, newOrderPush, pushSubscriptionInput } from "./push";
+import { deviceName, isPushEndpoint, newOrderPush } from "./push";
+import { pushSubscriptionInput } from "./push-schema";
 
 describe("the installable admin and its notifications (D361)", () => {
   it("takes only a push service's own https address, never anyone else's", () => {

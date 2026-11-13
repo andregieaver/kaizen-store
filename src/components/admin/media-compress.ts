@@ -1,6 +1,6 @@
 import { compressPicture, extensionOf } from "@/lib/image-compress";
 import { compressPlan, COMPRESS_WORTH } from "@/lib/media-compress";
-import { createClient } from "@/lib/supabase/client";
+import { uploadToSignedUrl } from "@/lib/supabase/signed-upload";
 import { compressVideo } from "@/lib/video-compress";
 import type { VideoUpload } from "@/server/media";
 import type { CompressOutcome } from "@/server/media-compress";
@@ -57,9 +57,7 @@ export async function compressLibraryFile(
   if (!compressed || compressed.file.size > before * COMPRESS_WORTH) return { ok: false, problem: ALREADY };
   const started = await actions.startVideo(item.id, { type: "video/mp4", size: compressed.file.size });
   if (!started.ok) return started;
-  const stored = await createClient()
-    .storage.from(started.bucket)
-    .uploadToSignedUrl(started.path, started.token, compressed.file, { contentType: "video/mp4" });
+  const stored = await uploadToSignedUrl(started.bucket, started.path, started.token, compressed.file, { contentType: "video/mp4" });
   if (stored.error) return { ok: false, problem: "The smaller video could not be uploaded. Try again." };
   return actions.finishVideo(item.id, started.path);
 }

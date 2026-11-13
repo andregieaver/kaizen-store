@@ -4,7 +4,6 @@ import { createContext, useContext, type ReactNode } from "react";
 
 import type { AdminLang } from "@/lib/admin-lang";
 import { commonEn } from "@/lib/admin-messages/common.en";
-import { signInEn } from "@/lib/admin-messages/sign-in.en";
 import type { AdminAreaMessages } from "@/lib/admin-text";
 
 /**
@@ -24,9 +23,4 @@ export function AdminTextProvider({ lang, texts, children }: ProvidedAdminText &
 /** The common words (buttons, fields), in English unless handed down: for parts shown outside the signed-in admin too (PERF-11). */
 export function useCommonText(): AdminAreaMessages["common"] {
   return useContext(AdminTextContext).texts.common ?? commonEn;
-}
-
-/** The sign-in words, in English unless handed down: on the signed-out pages as in the admin (PERF-11). */
-export function useSignInText(): AdminAreaMessages["signIn"] {
-  return useContext(AdminTextContext).texts.signIn ?? signInEn;
 }

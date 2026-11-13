@@ -48,7 +48,7 @@ CLAUDE.md keeps one line per rule pointing here; each rule is under that line as
   that signs in and lands there (`next`, checked by `safeNext()`). Password
   rules are in `src/lib/password.ts`.
   There is no proxy: `getAccount()` verifies the session on each request,
-  `SessionKeeper` refreshes tokens in the browser, and `SessionRecovery`
+  `SessionKeeper` refreshes tokens in the browser (its Supabase client is loaded with import() once the page is idle, at most 2 s after it, and uploads load it on the press through `uploadToSignedUrl()`, `src/lib/supabase/signed-upload.ts`; no admin client module imports `@/lib/supabase/client` at its top, bloat review step 0.9), and `SessionRecovery`
   handles an expired token.
 
 ## `/admin` lists the account's stores; `/admin/{store}/…` is one store

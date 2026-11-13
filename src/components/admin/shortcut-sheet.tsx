@@ -16,7 +16,7 @@ import {
   type ShortcutGroup,
 } from "@/lib/shortcut-sheet";
 
-import { typingIn } from "./responsive-edit";
+import { typingIn } from "@/lib/typing-in";
 
 const noChange = () => () => undefined;
 const onMac = () =>

@@ -433,3 +433,26 @@ describe("the checkout's look (D337)", () => {
     expect(stripeAppearance(look, false).variables).toMatchObject({ colorPrimary: "#171717", colorBackground: "#ffffff", buttonBorderRadius: "9999px" });
   });
 });
+
+describe("the driver's phone for local delivery (D237)", () => {
+  beforeEach(() => {
+    stripeNow.key = "pk_test_1";
+    termsNow.display = null;
+    formNow.props = null;
+  });
+
+  it("asks it on the page for a local delivery, in the market's country, since Stripe's form on our page draws no phone field", async () => {
+    getOrder.mockResolvedValue(order({ ships: true, deliveryMethod: "local" }));
+    renderToString(await CheckoutPayment({ store, market }));
+    const words = t("en").deliveryOptions.driverPhone;
+    expect(formNow.props!.phone).toEqual({ country: "IE", labels: { label: words.label, hint: words.hint, problem: words.problem } });
+  });
+
+  it("asks none for an order sent by post or collected", async () => {
+    for (const deliveryMethod of ["ship", "pickup"]) {
+      getOrder.mockResolvedValue(order({ ships: true, deliveryMethod }));
+      renderToString(await CheckoutPayment({ store, market }));
+      expect(formNow.props!.phone, deliveryMethod).toBeNull();
+    }
+  });
+});

@@ -5,7 +5,6 @@ import { useRouter } from "next/navigation";
 
 import { ADMIN_LANG_FACTS, ADMIN_LANG_KEY, ADMIN_LANGS, type AdminLang } from "@/lib/admin-lang";
 import { commonEn } from "@/lib/admin-messages/common.en";
-import { signInEn } from "@/lib/admin-messages/sign-in.en";
 import type { AdminAreaMessages, ClientArea, HandedArea } from "@/lib/admin-text";
 
 import { AdminTextContext } from "./admin-text-context";
@@ -18,10 +17,10 @@ import { arrivedEnglish, englishLater, noteFallback, type LaterArea } from "./ad
  */
 
 /**
- * The two areas read outside the signed-in admin too (`useCommonText()`, `useSignInText()`), so their English is at hand at once. Every
- * other area's English is fetched only when a part reads one that nothing handed down (`admin-text-later.ts`, PSI PERF-01).
+ * The one area read outside the signed-in admin too (`useCommonText()`), so its English is at hand at once; sign-in's English is in
+ * `sign-in-text.tsx`. Every other area's English is fetched only when a part reads one that nothing handed down (`admin-text-later.ts`, PSI PERF-01).
  */
-const ENGLISH = { common: commonEn, signIn: signInEn } as const;
+const ENGLISH = { common: commonEn } as const;
 type AtHand = keyof typeof ENGLISH;
 
 export { AdminTextProvider } from "./admin-text-context";

@@ -3,7 +3,7 @@
 import { useState } from "react";
 
 import { savingWords } from "@/lib/image-quality";
-import { createClient } from "@/lib/supabase/client";
+import { uploadToSignedUrl } from "@/lib/supabase/signed-upload";
 import { putWithRetry } from "@/lib/upload-retry";
 import { canCompressVideo, compressVideo, VIDEO_CHOOSE_MAX_BYTES, VIDEO_MAX_BYTES } from "@/lib/video-compress";
 
@@ -124,9 +124,8 @@ export async function sendVideo(
 ): Promise<{ ok: true; url: string } | { ok: false; problem: string | null }> {
   const started = await startVideo({ name: details.name, type: file.type, size: file.size, compressed: details.compressed });
   if (!started.ok) return { ok: false, problem: started.problem };
-  const storage = createClient().storage.from(started.bucket);
   const stored = await putWithRetry(
-    () => storage.uploadToSignedUrl(started.path, started.token, file, { contentType: file.type }),
+    () => uploadToSignedUrl(started.bucket, started.path, started.token, file, { contentType: file.type }),
     (ms) => new Promise((resolve) => setTimeout(resolve, ms)),
   );
   if (!stored.ok) {

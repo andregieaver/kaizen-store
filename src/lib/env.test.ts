@@ -18,6 +18,12 @@ describe("publicEnv", () => {
       /NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY/,
     );
   });
+
+  it("names only the key when only the key is missing", () => {
+    expect(() => publicEnv({ NEXT_PUBLIC_SUPABASE_URL: "https://example.supabase.co" })).toThrow(
+      "Invalid or missing environment: NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY",
+    );
+  });
 });
 
 describe("serverEnv", () => {

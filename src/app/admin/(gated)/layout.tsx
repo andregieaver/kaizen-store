@@ -8,7 +8,7 @@ import { AdminLangSync, AdminTextProvider } from "@/components/admin/admin-text"
 import { adminLangOf } from "@/lib/admin-lang";
 import { adminTexts } from "@/lib/admin-text";
 import { SessionKeeper, SessionRecovery } from "@/components/admin/session";
-import { AdminServiceWorker } from "@/components/admin/push-settings";
+import { AdminServiceWorker } from "@/components/admin/admin-service-worker";
 import { getAccount, getAssurance, heldDestination } from "@/server/auth";
 import { shellEn } from "@/lib/admin-messages/shell.en";
 import { shellNb } from "@/lib/admin-messages/shell.nb";
@@ -42,7 +42,7 @@ async function Gate({ children }: { children: React.ReactNode }) {
   // The account's language for the admin (D312 A0): its client parts read their areas' words from the provider.
   const lang = adminLangOf(account.adminLocale);
   return (
-    <AdminTextProvider lang={lang} texts={adminTexts(lang, ["common", "setup", "shell"])}>
+    <AdminTextProvider lang={lang} texts={adminTexts(lang, ["common", "shell"])}>
       <div className="flex min-h-screen flex-col">
         <SessionKeeper />
         <AdminColorSync saved={account.colorMode ?? "system"} />

@@ -6,7 +6,7 @@ import { useId, useState, useTransition } from "react";
 
 import { fillWords } from "@/lib/admin-fill";
 
-import { useSignInText } from "./admin-text-context";
+import { useSignInText } from "./sign-in-text";
 import { RecoveryCodesView } from "./recovery-codes-view";
 import { CARD_CLASS } from "@/components/admin/ui";
 

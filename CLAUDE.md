@@ -410,7 +410,7 @@ Each rule is in full under the same words in one file of `docs/rules/admin/` by 
   store feature done, check the platform has it. `docs/platform-parity.md` lists what the platform still lacks; tick a row there when a
   change brings it.
 - The platform's name is Kaizena Flow (D240) in every string a person or an assistant reads, and its domain `kaizenaflow.com`; `Kaizen` stays in code names, cookie names, the webhook headers and Kaizen Life (another product). `src/lib/brand.scan.test.ts` fails on the old name or an old domain in any string.
-- Environment variables are validated in `src/lib/env.ts` when used, not at
+- Environment variables are validated in `src/lib/env.ts` (the two public ones in `src/lib/public-env.ts`, without zod, for the browser) when used, not at
   import, so builds and tests run without secrets.
 - Server-only modules import `server-only`.
 - New reads, and every read that carries money, describe their row with `col` and go through `typedRows()`/`typedRow()`
