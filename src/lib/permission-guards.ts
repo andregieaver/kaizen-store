@@ -45,5 +45,5 @@ export const DELEGATED_GUARDS: Record<string, string> = {
   StorePageTermsView: "src/app/admin/(gated)/[store]/pages/views.tsx",
   StoreNewPageView: "src/app/admin/(gated)/[store]/pages/editor-views.tsx",
   StoreEditPageView: "src/app/admin/(gated)/[store]/pages/editor-views.tsx",
-  StorePreviewPageView: "src/app/admin/(gated)/[store]/pages/editor-views.tsx",
+  StorePreviewPageView: "src/app/admin/(gated)/[store]/pages/preview-views.tsx",
 };

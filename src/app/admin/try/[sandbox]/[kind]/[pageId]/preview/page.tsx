@@ -8,7 +8,7 @@ import { sandboxBase } from "@/lib/sandbox";
 import { requestAdminLang } from "@/server/admin-request-lang";
 import { getPageForEdit, listPublishedPages } from "@/server/pages";
 
-import { isPageId, sandboxAndKind } from "../../../editor";
+import { isPageId, sandboxAndKind } from "../../../params";
 
 export const metadata: Metadata = { title: "Preview" };
 
