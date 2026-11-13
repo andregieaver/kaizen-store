@@ -1,7 +1,7 @@
 import "server-only";
 
 import { ADMIN_LANG_FACTS, adminLangOf, type AdminLang } from "@/lib/admin-lang";
-import { adminText } from "@/lib/admin-text";
+import { WORK_WORDS } from "@/lib/admin-words/work";
 import { setWorkLang } from "@/lib/work-text";
 
 import { getAccount } from "./auth";
@@ -19,5 +19,5 @@ export async function workWords() {
     lang = "en";
   }
   setWorkLang(lang);
-  return { w: adminText(lang, "work"), locale: ADMIN_LANG_FACTS[lang].locale, lang };
+  return { w: WORK_WORDS[lang], locale: ADMIN_LANG_FACTS[lang].locale, lang };
 }

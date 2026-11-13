@@ -1,6 +1,6 @@
 import "server-only";
 
-import { adminText } from "@/lib/admin-text";
+import { SANDBOX_WORDS } from "@/lib/admin-words/sandbox";
 import type { AiFeature } from "@/lib/ai-usage";
 import { sameSite } from "@/lib/same-site";
 
@@ -34,7 +34,7 @@ async function asked(request: Request, sandboxId: string): Promise<Asked | Respo
 async function connection(sandbox: Sandbox, feature: AiFeature) {
   const ai = await sandboxAi(sandbox, feature);
   if (ai) return ai;
-  return json({ ok: false, problem: adminText(await actionAdminLang(), "sandbox").refused.aiSpent }, 400);
+  return json({ ok: false, problem: SANDBOX_WORDS[await actionAdminLang()].refused.aiSpent }, 400);
 }
 
 export async function sandboxPictureRequest(request: Request, sandboxId: string): Promise<Response> {

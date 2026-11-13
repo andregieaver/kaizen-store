@@ -61,4 +61,15 @@ describe("the admin's English catalogues in client modules (PSI PERF-01)", () =>
     const now = new Set(importers());
     expect(ALREADY.filter((path) => !now.has(path))).toEqual([]);
   });
+
+  it("is read by no client module through an area module, which holds both languages (bloat review step 0.7)", () => {
+    const found = files(join(ROOT, "src"))
+      .filter((path) => {
+        const text = readFileSync(path, "utf8");
+        return /^\s*["']use client["']/.test(text) && /^import (?!type )[^;]*from "@\/lib\/admin-words\/[\w-]+";/m.test(text);
+      })
+      .map((path) => relative(ROOT, path))
+      .sort();
+    expect(found).toEqual([]);
+  });
 });

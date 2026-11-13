@@ -6,7 +6,7 @@ import { db } from "@/db/client";
 import { adminLangOf } from "@/lib/admin-lang";
 import { customersEn, type CustomersMessages } from "@/lib/admin-messages/customers.en";
 import { fillWords } from "@/lib/admin-fill";
-import { adminText } from "@/lib/admin-text";
+import { CUSTOMERS_WORDS } from "@/lib/admin-words/customers";
 import { memberDiscount, tierInput, type MemberDiscount, type TierInput } from "@/lib/customer-tiers";
 
 import { audit, type Membership } from "./auth";
@@ -18,7 +18,7 @@ type Row = Record<string, unknown>;
 
 /** What a staff member's action is answered in (D312 A6): their admin language. */
 export function staffWords(account: { adminLocale?: string | null }): CustomersMessages["saved"] {
-  return adminText(adminLangOf(account.adminLocale), "customers").saved;
+  return CUSTOMERS_WORDS[adminLangOf(account.adminLocale)].saved;
 }
 
 /** The form checks' messages (`tierInput`, `companyInput`, which write English) in the reader's words, each once. */

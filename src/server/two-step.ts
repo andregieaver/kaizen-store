@@ -7,7 +7,7 @@ import { normaliseRecoveryCode, type RandomBytes } from "@/lib/recovery-codes";
 import { createClient } from "@/lib/supabase/server";
 import { adminLangOf, type AdminLang } from "@/lib/admin-lang";
 import { fillWords } from "@/lib/admin-fill";
-import { adminText } from "@/lib/admin-text";
+import { SIGN_IN_WORDS } from "@/lib/admin-words/sign-in";
 import { attemptState, lockedText, normaliseTotp, TWO_STEP_LIMIT } from "@/lib/two-step";
 
 import { auditAccount, auditChange } from "./audit";
@@ -36,7 +36,7 @@ type Row = Record<string, unknown>;
 export type StepResult = { ok: true } | { ok: false; problem: string; locked?: boolean };
 
 /** The words of the answers in a language (D312 A1): the account's own, which its first sign-in set from the browser. */
-const wordsFor = (lang: AdminLang) => adminText(lang, "signIn").problems;
+const wordsFor = (lang: AdminLang) => SIGN_IN_WORDS[lang].problems;
 const langOf = (account: Pick<Account, "adminLocale">): AdminLang => adminLangOf(account.adminLocale);
 
 type Factor = { id: string; status?: string; factor_type?: string };

@@ -5,7 +5,7 @@ import { after } from "next/server";
 import { z } from "zod";
 
 import { adminLangOf } from "@/lib/admin-lang";
-import { adminText } from "@/lib/admin-text";
+import { ASSISTANT_WORDS } from "@/lib/admin-words/assistant";
 
 import { actionAdminLang } from "./admin-request-lang";
 import { AiError, aiFor, speakText } from "./ai";
@@ -26,7 +26,7 @@ const turnInput = z.object({
 
 /** The refusals people read, in their admin's language (D312 A10). */
 function refusals(principal: Principal) {
-  return adminText(adminLangOf(principal.account.adminLocale ?? null), "assistant").errors;
+  return ASSISTANT_WORDS[adminLangOf(principal.account.adminLocale ?? null)].errors;
 }
 
 /**
@@ -140,7 +140,7 @@ const speechInput = z.object({ text: z.string().trim().min(1).max(600) });
  */
 export async function assistantSpeech(request: Request, storeId: string | null, accountId: string): Promise<Response> {
   if (!sameSite(request)) return new Response("Forbidden", { status: 403 });
-  const w = adminText(await actionAdminLang(), "assistant").errors;
+  const w = ASSISTANT_WORDS[await actionAdminLang()].errors;
   const input = speechInput.safeParse(await request.json().catch(() => null));
   if (!input.success) return Response.json({ error: w.nothingToSay }, { status: 400 });
   const connection = await aiFor(storeId, { feature: "ai_manager", accountId });

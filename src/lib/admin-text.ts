@@ -1,18 +1,18 @@
 import type { AdminLang } from "./admin-lang";
-import { commonEn, type CommonMessages } from "./admin-messages/common.en";
-import { commonNb } from "./admin-messages/common.nb";
+import type { CommonMessages } from "./admin-messages/common.en";
+import { COMMON_WORDS } from "./admin-words/common";
 import { domainsEn, type DomainsMessages } from "./admin-messages/domains.en";
 import { domainsNb } from "./admin-messages/domains.nb";
 import { ordersEn, type OrdersMessages } from "./admin-messages/orders.en";
 import { ordersNb } from "./admin-messages/orders.nb";
-import { orderEn, type OrderMessages } from "./admin-messages/order.en";
-import { orderNb } from "./admin-messages/order.nb";
+import type { OrderMessages } from "./admin-messages/order.en";
+import { ORDER_WORDS } from "./admin-words/order";
 import { draftsEn, type DraftsMessages } from "./admin-messages/drafts.en";
 import { draftsNb } from "./admin-messages/drafts.nb";
 import { returnsEn, type ReturnsMessages } from "./admin-messages/returns.en";
 import { returnsNb } from "./admin-messages/returns.nb";
-import { invoicesEn, type InvoicesMessages } from "./admin-messages/invoices.en";
-import { invoicesNb } from "./admin-messages/invoices.nb";
+import type { InvoicesMessages } from "./admin-messages/invoices.en";
+import { INVOICES_WORDS } from "./admin-words/invoices";
 import { productsEn, type ProductsMessages } from "./admin-messages/products.en";
 import { productsNb } from "./admin-messages/products.nb";
 import { productEn, type ProductMessages } from "./admin-messages/product.en";
@@ -27,8 +27,8 @@ import { contentEn, type ContentMessages } from "./admin-messages/content.en";
 import { contentNb } from "./admin-messages/content.nb";
 import { fieldsEn, type FieldsMessages } from "./admin-messages/fields.en";
 import { fieldsNb } from "./admin-messages/fields.nb";
-import { customersEn, type CustomersMessages } from "./admin-messages/customers.en";
-import { customersNb } from "./admin-messages/customers.nb";
+import type { CustomersMessages } from "./admin-messages/customers.en";
+import { CUSTOMERS_WORDS } from "./admin-words/customers";
 import { privacyEn, type PrivacyMessages } from "./admin-messages/privacy.en";
 import { privacyNb } from "./admin-messages/privacy.nb";
 import { marketingEn, type MarketingMessages } from "./admin-messages/marketing.en";
@@ -39,16 +39,16 @@ import { builderEn, type BuilderMessages } from "./admin-messages/builder.en";
 import { builderNb } from "./admin-messages/builder.nb";
 import { blocksEn, type BlocksMessages } from "./admin-messages/blocks.en";
 import { blocksNb } from "./admin-messages/blocks.nb";
-import { websiteEn, type WebsiteMessages } from "./admin-messages/website.en";
-import { websiteNb } from "./admin-messages/website.nb";
+import type { WebsiteMessages } from "./admin-messages/website.en";
+import { WEBSITE_WORDS } from "./admin-words/website";
 import { designEn, type DesignMessages } from "./admin-messages/design.en";
 import { designNb } from "./admin-messages/design.nb";
 import { movingEn, type MovingMessages } from "./admin-messages/moving.en";
 import { movingNb } from "./admin-messages/moving.nb";
 import { redirectsEn, type RedirectsMessages } from "./admin-messages/redirects.en";
 import { redirectsNb } from "./admin-messages/redirects.nb";
-import { experimentsEn, type ExperimentsMessages } from "./admin-messages/experiments.en";
-import { experimentsNb } from "./admin-messages/experiments.nb";
+import type { ExperimentsMessages } from "./admin-messages/experiments.en";
+import { EXPERIMENTS_WORDS } from "./admin-words/experiments";
 import { settingsEn, type SettingsMessages } from "./admin-messages/settings.en";
 import { settingsNb } from "./admin-messages/settings.nb";
 import { taxEn, type TaxMessages } from "./admin-messages/tax.en";
@@ -65,12 +65,12 @@ import { consoleEn, type ConsoleMessages } from "./admin-messages/console.en";
 import { consoleNb } from "./admin-messages/console.nb";
 import { businessEn, type BusinessMessages } from "./admin-messages/business.en";
 import { businessNb } from "./admin-messages/business.nb";
-import { booksEn, type BooksMessages } from "./admin-messages/books.en";
-import { booksNb } from "./admin-messages/books.nb";
+import type { BooksMessages } from "./admin-messages/books.en";
+import { BOOKS_WORDS } from "./admin-words/books";
 import { dealsEn, type DealsMessages } from "./admin-messages/deals.en";
 import { dealsNb } from "./admin-messages/deals.nb";
-import { screensEn, type ScreensMessages } from "./admin-messages/screens.en";
-import { screensNb } from "./admin-messages/screens.nb";
+import type { ScreensMessages } from "./admin-messages/screens.en";
+import { SCREENS_WORDS } from "./admin-words/screens";
 import { storePartsEn, type StorePartsMessages } from "./admin-messages/store-parts.en";
 import { storePartsNb } from "./admin-messages/store-parts.nb";
 import { backdropsEn, type BackdropsMessages } from "./admin-messages/backdrops.en";
@@ -91,22 +91,22 @@ import { financeEn, type FinanceMessages } from "./admin-messages/finance.en";
 import { financeNb } from "./admin-messages/finance.nb";
 import { taxReportsEn, type TaxReportsMessages } from "./admin-messages/tax-reports.en";
 import { taxReportsNb } from "./admin-messages/tax-reports.nb";
-import { reportsEn, type ReportsMessages } from "./admin-messages/reports.en";
-import { reportsNb } from "./admin-messages/reports.nb";
-import { customReportsEn, type CustomReportsMessages } from "./admin-messages/custom-reports.en";
-import { customReportsNb } from "./admin-messages/custom-reports.nb";
+import type { ReportsMessages } from "./admin-messages/reports.en";
+import { REPORTS_WORDS } from "./admin-words/reports";
+import type { CustomReportsMessages } from "./admin-messages/custom-reports.en";
+import { CUSTOM_REPORTS_WORDS } from "./admin-words/custom-reports";
 import { supportEn, type SupportMessages } from "./admin-messages/support.en";
 import { supportNb } from "./admin-messages/support.nb";
-import { workEn, type WorkMessages } from "./admin-messages/work.en";
-import { workNb } from "./admin-messages/work.nb";
-import { assistantEn, type AssistantMessages } from "./admin-messages/assistant.en";
-import { assistantNb } from "./admin-messages/assistant.nb";
-import { staffEmailsEn, type StaffEmailsMessages } from "./admin-messages/staff-emails.en";
-import { staffEmailsNb } from "./admin-messages/staff-emails.nb";
-import { platformEn, type PlatformMessages } from "./admin-messages/platform.en";
-import { platformNb } from "./admin-messages/platform.nb";
-import { platformSiteEn, type PlatformSiteMessages } from "./admin-messages/platform-site.en";
-import { platformSiteNb } from "./admin-messages/platform-site.nb";
+import type { WorkMessages } from "./admin-messages/work.en";
+import { WORK_WORDS } from "./admin-words/work";
+import type { AssistantMessages } from "./admin-messages/assistant.en";
+import { ASSISTANT_WORDS } from "./admin-words/assistant";
+import type { StaffEmailsMessages } from "./admin-messages/staff-emails.en";
+import { STAFF_EMAILS_WORDS } from "./admin-words/staff-emails";
+import type { PlatformMessages } from "./admin-messages/platform.en";
+import { PLATFORM_WORDS } from "./admin-words/platform";
+import type { PlatformSiteMessages } from "./admin-messages/platform-site.en";
+import { PLATFORM_SITE_WORDS } from "./admin-words/platform-site";
 import { platformToolsEn, type PlatformToolsMessages } from "./admin-messages/platform-tools.en";
 import { platformToolsNb } from "./admin-messages/platform-tools.nb";
 import { bookingsEn, type BookingsMessages } from "./admin-messages/bookings.en";
@@ -123,21 +123,22 @@ import { shellEn, type ShellMessages } from "./admin-messages/shell.en";
 import { shellNb } from "./admin-messages/shell.nb";
 import { setupEn, type SetupMessages } from "./admin-messages/setup.en";
 import { setupNb } from "./admin-messages/setup.nb";
-import { signInEn, type SignInMessages } from "./admin-messages/sign-in.en";
-import { signInNb } from "./admin-messages/sign-in.nb";
+import type { SignInMessages } from "./admin-messages/sign-in.en";
+import { SIGN_IN_WORDS } from "./admin-words/sign-in";
 import { blogEn, type BlogMessages } from "./admin-messages/blog.en";
 import { blogNb } from "./admin-messages/blog.nb";
 import { schedulesEn, type SchedulesMessages } from "./admin-messages/schedules.en";
 import { schedulesNb } from "./admin-messages/schedules.nb";
-import { oauthEn, type OauthMessages } from "./admin-messages/oauth.en";
-import { oauthNb } from "./admin-messages/oauth.nb";
-import { sandboxEn, type SandboxMessages } from "./admin-messages/sandbox.en";
-import { sandboxNb } from "./admin-messages/sandbox.nb";
+import type { OauthMessages } from "./admin-messages/oauth.en";
+import { OAUTH_WORDS } from "./admin-words/oauth";
+import type { SandboxMessages } from "./admin-messages/sandbox.en";
+import { SANDBOX_WORDS } from "./admin-words/sandbox";
 
 /**
  * The admin's words by area and language (D312, `docs/platform-admin-i18n.md` 3.3): one pair of catalogues per area in
  * `src/lib/admin-messages/{area}.{lang}.ts`, English the type. A new area is its two files and an entry here; an area is converted with
- * the screens that show it, and `admin-strings.scan.test.ts` holds what is converted.
+ * the screens that show it, and `admin-strings.scan.test.ts` holds what is converted. An area that code outside the admin reads has an
+ * index module, `src/lib/admin-words/{stem}.ts`, and its entry here is that pair (bloat review step 0.7).
  */
 export type AdminAreaMessages = {
   common: CommonMessages;
@@ -230,27 +231,27 @@ export type ClientArea = Exclude<AdminArea, (typeof SERVER_AREAS)[number]>;
 export type HandedArea = "storeParts" | "backdrops" | "animation";
 
 const CATALOGUES: { [A in AdminArea]: Record<AdminLang, AdminAreaMessages[A]> } = {
-  common: { en: commonEn, nb: commonNb },
+  common: COMMON_WORDS,
   domains: { en: domainsEn, nb: domainsNb },
   home: { en: homeEn, nb: homeNb },
-  customers: { en: customersEn, nb: customersNb },
+  customers: CUSTOMERS_WORDS,
   privacy: { en: privacyEn, nb: privacyNb },
   marketing: { en: marketingEn, nb: marketingNb },
   discounts: { en: discountsEn, nb: discountsNb },
   loyalty: { en: loyaltyEn, nb: loyaltyNb },
-  platform: { en: platformEn, nb: platformNb },
-  platformSite: { en: platformSiteEn, nb: platformSiteNb },
+  platform: PLATFORM_WORDS,
+  platformSite: PLATFORM_SITE_WORDS,
   platformTools: { en: platformToolsEn, nb: platformToolsNb },
   bookings: { en: bookingsEn, nb: bookingsNb },
   support: { en: supportEn, nb: supportNb },
-  work: { en: workEn, nb: workNb },
-  assistant: { en: assistantEn, nb: assistantNb },
-  staffEmails: { en: staffEmailsEn, nb: staffEmailsNb },
+  work: WORK_WORDS,
+  assistant: ASSISTANT_WORDS,
+  staffEmails: STAFF_EMAILS_WORDS,
   analytics: { en: analyticsEn, nb: analyticsNb },
   finance: { en: financeEn, nb: financeNb },
   taxReports: { en: taxReportsEn, nb: taxReportsNb },
-  reports: { en: reportsEn, nb: reportsNb },
-  customReports: { en: customReportsEn, nb: customReportsNb },
+  reports: REPORTS_WORDS,
+  customReports: CUSTOM_REPORTS_WORDS,
   settings: { en: settingsEn, nb: settingsNb },
   tax: { en: taxEn, nb: taxNb },
   payments: { en: paymentsEn, nb: paymentsNb },
@@ -260,8 +261,8 @@ const CATALOGUES: { [A in AdminArea]: Record<AdminLang, AdminAreaMessages[A]> } 
   deals: { en: dealsEn, nb: dealsNb },
   console: { en: consoleEn, nb: consoleNb },
   business: { en: businessEn, nb: businessNb },
-  books: { en: booksEn, nb: booksNb },
-  screens: { en: screensEn, nb: screensNb },
+  books: BOOKS_WORDS,
+  screens: SCREENS_WORDS,
   storeParts: { en: storePartsEn, nb: storePartsNb },
   backdrops: { en: backdropsEn, nb: backdropsNb },
   animation: { en: animationEn, nb: animationNb },
@@ -272,11 +273,11 @@ const CATALOGUES: { [A in AdminArea]: Record<AdminLang, AdminAreaMessages[A]> } 
   capacity: { en: capacityEn, nb: capacityNb },
   builder: { en: builderEn, nb: builderNb },
   blocks: { en: blocksEn, nb: blocksNb },
-  website: { en: websiteEn, nb: websiteNb },
+  website: WEBSITE_WORDS,
   design: { en: designEn, nb: designNb },
   redirects: { en: redirectsEn, nb: redirectsNb },
   moving: { en: movingEn, nb: movingNb },
-  experiments: { en: experimentsEn, nb: experimentsNb },
+  experiments: EXPERIMENTS_WORDS,
   products: { en: productsEn, nb: productsNb },
   product: { en: productEn, nb: productNb },
   inventory: { en: inventoryEn, nb: inventoryNb },
@@ -285,18 +286,18 @@ const CATALOGUES: { [A in AdminArea]: Record<AdminLang, AdminAreaMessages[A]> } 
   fields: { en: fieldsEn, nb: fieldsNb },
   content: { en: contentEn, nb: contentNb },
   orders: { en: ordersEn, nb: ordersNb },
-  order: { en: orderEn, nb: orderNb },
+  order: ORDER_WORDS,
   drafts: { en: draftsEn, nb: draftsNb },
   returns: { en: returnsEn, nb: returnsNb },
-  invoices: { en: invoicesEn, nb: invoicesNb },
+  invoices: INVOICES_WORDS,
   platformLegal: { en: platformLegalEn, nb: platformLegalNb },
   setup: { en: setupEn, nb: setupNb },
   shell: { en: shellEn, nb: shellNb },
-  signIn: { en: signInEn, nb: signInNb },
+  signIn: SIGN_IN_WORDS,
   blog: { en: blogEn, nb: blogNb },
   schedules: { en: schedulesEn, nb: schedulesNb },
-  oauth: { en: oauthEn, nb: oauthNb },
-  sandbox: { en: sandboxEn, nb: sandboxNb },
+  oauth: OAUTH_WORDS,
+  sandbox: SANDBOX_WORDS,
 };
 
 /** An area's words in `lang`, on the server; a client part reads its area's slice through `useAdminText()`. */

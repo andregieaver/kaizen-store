@@ -1,7 +1,8 @@
 import { cache } from "react";
 
 import { ADMIN_LANG_FACTS, type AdminLang } from "./admin-lang";
-import { adminText } from "./admin-text";
+import { SCREENS_WORDS } from "./admin-words/screens";
+import { WORK_WORDS } from "./admin-words/work";
 
 /**
  * Work's words for a server component (D312 A10), read synchronously: a Work page sets the request's language once
@@ -15,12 +16,12 @@ export function setWorkLang(lang: AdminLang): void {
 }
 
 export function workText() {
-  return adminText(current().lang, "work");
+  return WORK_WORDS[current().lang];
 }
 
 /** The server-only words of Work's screens (`screens`, D312), in the request's language. */
 export function workScreens() {
-  return adminText(current().lang, "screens");
+  return SCREENS_WORDS[current().lang];
 }
 
 /** A Work invoice's readiness problem in the request's language (D312), by its code; the server's own English in English, or when the code has no words. */
@@ -57,7 +58,7 @@ const escape = (text: string) => text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
  */
 export function workProblemText(message: string, lang: AdminLang = current().lang): string {
   if (lang === "en") return message;
-  const found = pairs(adminText("en", "work").errors, adminText(lang, "work").errors).sort((a, b) => b[0].length - a[0].length);
+  const found = pairs(WORK_WORDS.en.errors, WORK_WORDS[lang].errors).sort((a, b) => b[0].length - a[0].length);
   let out = message;
   for (const [en, other] of found) {
     if (!en.includes("{")) {

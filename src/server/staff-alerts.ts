@@ -8,7 +8,8 @@ import { db } from "@/db/client";
 import { countWords, fillWords } from "@/lib/admin-fill";
 import { ADMIN_LANG_FACTS, adminLangOf, type AdminLang } from "@/lib/admin-lang";
 import type { StaffEmailsMessages } from "@/lib/admin-messages/staff-emails.en";
-import { adminText } from "@/lib/admin-text";
+import { ORDER_WORDS } from "@/lib/admin-words/order";
+import { STAFF_EMAILS_WORDS } from "@/lib/admin-words/staff-emails";
 import { alertsFor, type Alert } from "@/lib/analytics-alerts";
 import { analyticsWordsIn } from "@/lib/analytics-words";
 import { renderEmail, type EmailBlock, type RenderedEmail } from "@/lib/email-layout";
@@ -81,7 +82,7 @@ export const MAX_ATTEMPTS = 10;
 const LINES_SHOWN = 20;
 
 /** The words, the shopper texts' footer and the formats of a staff email in a language (D312 A10). */
-const wordsOf = (lang: AdminLang): StaffEmailsMessages["alerts"] => adminText(lang, "staffEmails").alerts;
+const wordsOf = (lang: AdminLang): StaffEmailsMessages["alerts"] => STAFF_EMAILS_WORDS[lang].alerts;
 const footerText = (lang: AdminLang) => emailText(lang);
 const formatOf = (lang: AdminLang) => ADMIN_LANG_FACTS[lang].locale;
 
@@ -669,7 +670,7 @@ export function disputeEmail(store: EmailStore, kind: "opened" | "due", f: Dispu
   const amount = formatMoney(f.amountMinor, f.currency, formatOf(lang));
   const needs = disputeNeedsResponse(f.status);
   const due = lang !== "en" && f.dueAt ? dueWords(f.dueAt, f.timeZone ?? "UTC", formatOf(lang)) : f.due;
-  const status = lang === "en" ? DISPUTE_STATUS_WORDS[f.status] : adminText(lang, "order").payment.statuses[f.status];
+  const status = lang === "en" ? DISPUTE_STATUS_WORDS[f.status] : ORDER_WORDS[lang].payment.statuses[f.status];
   return renderEmail({
     subject: kind === "opened" ? fillWords(w.subjectOpened, { order: f.orderNumber, amount }) : fillWords(w.subjectDue, { due: due ? ` ${due}` : "", order: f.orderNumber }),
     preview: kind === "opened" ? fillWords(w.previewOpened, { amount, order: f.orderNumber }) : fillWords(w.previewDue, { order: f.orderNumber }),

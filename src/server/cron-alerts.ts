@@ -5,7 +5,7 @@ import { sql } from "drizzle-orm";
 import { db } from "@/db/client";
 import { fillWords } from "@/lib/admin-fill";
 import { ADMIN_LANG_FACTS, adminLangOf, type AdminLang } from "@/lib/admin-lang";
-import { adminText } from "@/lib/admin-text";
+import { STAFF_EMAILS_WORDS } from "@/lib/admin-words/staff-emails";
 import { FAILING_AFTER } from "@/lib/cron-health";
 import { renderEmail, type RenderedEmail } from "@/lib/email-layout";
 import { siteUrl } from "@/lib/site";
@@ -29,7 +29,7 @@ export async function alertFailingJob(job: string, facts: { failedAt: Date; last
     const emails = new Map<AdminLang, RenderedEmail>();
     const emailIn = (lang: AdminLang) => {
       if (!emails.has(lang)) {
-        const words = adminText(lang, "staffEmails");
+        const words = STAFF_EMAILS_WORDS[lang];
         const w = words.jobFailing;
         const when = (at: Date) => at.toLocaleString(ADMIN_LANG_FACTS[lang].locale, { dateStyle: "medium", timeStyle: "short", timeZone: "Europe/Oslo" });
         const values = {

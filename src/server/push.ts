@@ -5,7 +5,7 @@ import webpush from "web-push";
 
 import { db } from "@/db/client";
 import { adminLangOf, ADMIN_LANG_FACTS, type AdminLang } from "@/lib/admin-lang";
-import { adminText } from "@/lib/admin-text";
+import { STAFF_EMAILS_WORDS } from "@/lib/admin-words/staff-emails";
 import { vapidEnv } from "@/lib/env";
 import { formatMoney } from "@/lib/money";
 import { newOrderPush, PUSH_DEVICES_MAX, pushSubscriptionInput } from "@/lib/push";
@@ -114,7 +114,7 @@ export async function sendOrderPush(storeId: string, orderId: string, send: Send
       `);
       if (!order) return null;
       return (sub: Row, lang: AdminLang) => {
-        const words = adminText(lang, "staffEmails").push;
+        const words = STAFF_EMAILS_WORDS[lang].push;
         return newOrderPush(
           {
             number: String(order.number),
@@ -144,7 +144,7 @@ export async function sendQuotePush(storeId: string, draftId: string, send: Send
       `);
       if (!draft) return null;
       return (sub: Row, lang: AdminLang) => {
-        const words = adminText(lang, "staffEmails").push;
+        const words = STAFF_EMAILS_WORDS[lang].push;
         const payload = newOrderPush(
           { number: String(draft.number), total: "", store: String(sub.name), url: `${siteUrl()}/admin/${String(sub.slug)}/orders/drafts/${draftId}` },
           { title: words.quoteTitle, body: words.quoteBody },
@@ -178,7 +178,7 @@ export async function sendActivityPush(storeId: string, activityId: string, acco
             ? `companies/${String(activity.company_id)}`
             : "";
       return (sub: Row, lang: AdminLang) => {
-        const words = adminText(lang, "staffEmails").push;
+        const words = STAFF_EMAILS_WORDS[lang].push;
         const fill = (text: string) => text.replaceAll("{title}", String(activity.title)).replaceAll("{store}", String(sub.name));
         return { title: fill(words.activityTitle), body: fill(words.activityBody), url: `${siteUrl()}/admin/${String(sub.slug)}/${path}`, tag: `activity-${activityId}` };
       };

@@ -4,7 +4,7 @@ import { sql } from "drizzle-orm";
 
 import { db } from "@/db/client";
 import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
-import { adminText } from "@/lib/admin-text";
+import { BOOKS_WORDS } from "@/lib/admin-words/books";
 import { todayIn } from "@/lib/analytics-period";
 import { featureOn } from "@/lib/store-features";
 import { watchText } from "@/lib/turnover-watch";
@@ -286,7 +286,7 @@ export async function controlCenter(account: Account, onlyStore?: string): Promi
   // The threshold watch (D514), where the member may read the books: each threshold near or just passed, in their language.
   const booksReaders = new Set(idsWith(storeRows, "books:read"));
   const lang = adminLangOf(account.adminLocale);
-  const watchWords = adminText(lang, "books").watch;
+  const watchWords = BOOKS_WORDS[lang].watch;
   const turnoverBy = new Map(
     (
       await Promise.all(

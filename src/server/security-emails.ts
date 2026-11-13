@@ -4,7 +4,7 @@ import { sql } from "drizzle-orm";
 
 import { db } from "@/db/client";
 import { adminLangOf } from "@/lib/admin-lang";
-import { adminText } from "@/lib/admin-text";
+import { STAFF_EMAILS_WORDS } from "@/lib/admin-words/staff-emails";
 import { renderEmail } from "@/lib/email-layout";
 import { securityEmail, type SecurityEvent } from "@/lib/security-emails";
 import { siteUrl } from "@/lib/site";
@@ -46,7 +46,7 @@ export async function sendSecurityEmail(
           by: options.by ?? null,
           signInUrl: `${siteUrl()}/admin/sign-in`,
         },
-        adminText(lang, "staffEmails"),
+        STAFF_EMAILS_WORDS[lang],
         lang,
       ),
     );

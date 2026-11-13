@@ -5,7 +5,7 @@ import { sql } from "drizzle-orm";
 import { db } from "@/db/client";
 import { fillWords } from "@/lib/admin-fill";
 import { ADMIN_LANG_FACTS, adminLangOf, type AdminLang } from "@/lib/admin-lang";
-import { adminText } from "@/lib/admin-text";
+import { STAFF_EMAILS_WORDS } from "@/lib/admin-words/staff-emails";
 import { renderEmail, type RenderedEmail } from "@/lib/email-layout";
 import { siteUrl } from "@/lib/site";
 
@@ -33,7 +33,7 @@ export async function notifyEndpointOff(
     const emails = new Map<AdminLang, RenderedEmail>();
     const emailIn = (lang: AdminLang) => {
       if (!emails.has(lang)) {
-        const words = adminText(lang, "staffEmails");
+        const words = STAFF_EMAILS_WORDS[lang];
         const w = words.endpointOff;
         const since = new Date(endpoint.since).toLocaleString(ADMIN_LANG_FACTS[lang].locale, { dateStyle: "medium", timeStyle: "short", timeZone: "Europe/Oslo" });
         const facts = { name: endpoint.name, hint: endpoint.hint, store: store.name, since, error: endpoint.error.slice(0, 200) || "-" };

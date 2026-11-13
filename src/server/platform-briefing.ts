@@ -6,7 +6,7 @@ import { z } from "zod";
 import { db } from "@/db/client";
 import { countWords, fillWords } from "@/lib/admin-fill";
 import { ADMIN_LANG_FACTS, adminLangOf, type AdminLang } from "@/lib/admin-lang";
-import { adminText } from "@/lib/admin-text";
+import { PLATFORM_WORDS } from "@/lib/admin-words/platform";
 import { renderEmail } from "@/lib/email-layout";
 import { formatMoney } from "@/lib/money";
 import {
@@ -191,13 +191,13 @@ async function periodFigures(from: string, to: string) {
 
 /** An alert in a person's words. */
 export function alertText(alert: PlatformAlert, lang: AdminLang): string {
-  const w = adminText(lang, "platform").briefing.alerts;
+  const w = PLATFORM_WORDS[lang].briefing.alerts;
   const locale = ADMIN_LANG_FACTS[lang].locale;
   const v = alert.values;
   if (alert.id === "requests_old") return fillWords(w.requests_old, { n: v.n, days: v.days });
   if (alert.id === "late_payments") return countWords(Number(v.n), w.late_payments);
   if (alert.id === "mrr_down") return fillWords(w.mrr_down, { amount: formatMoney(Number(v.minor), String(v.currency), locale) });
-  if (alert.id === "target_behind") return fillWords(w.target_behind, { metric: adminText(lang, "platform").briefing.metrics[v.metric as TargetMetric], pct: v.pct });
+  if (alert.id === "target_behind") return fillWords(w.target_behind, { metric: PLATFORM_WORDS[lang].briefing.metrics[v.metric as TargetMetric], pct: v.pct });
   return countWords(Number(v.n), w.trials_ending);
 }
 
@@ -223,7 +223,7 @@ export async function sendPlatformBriefing(options: { now?: Date } = {}): Promis
     const alerts = platformAlertsFor(snapshot);
     let sent = 0;
     for (const r of recipients) {
-      const w = adminText(r.lang, "platform").briefing;
+      const w = PLATFORM_WORDS[r.lang].briefing;
       const locale = ADMIN_LANG_FACTS[r.lang].locale;
       const money = (minor: number, currency: string) => formatMoney(minor, currency, locale);
       const day = (iso: string) => new Date(`${iso}T12:00:00Z`).toLocaleDateString(locale, { dateStyle: "long", timeZone: "UTC" });

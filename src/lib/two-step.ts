@@ -10,7 +10,7 @@
 
 import { fillWords } from "./admin-fill";
 import type { AdminLang } from "./admin-lang";
-import { adminText } from "./admin-text";
+import { SIGN_IN_WORDS } from "./admin-words/sign-in";
 
 /** What the gate knows about a session; `enrolled` is null when it could not be found out (Supabase Auth unreachable). */
 export type AssuranceInput = {
@@ -56,7 +56,7 @@ export function assuranceOf(input: AssuranceInput): Assurance {
 
 /** Why a person is held at enrolment, in a sentence for the page, in the admin's language (D312 A1). */
 export function enrolReasonText(reason: EnrolReason, storeName?: string | null, lang: AdminLang = "en"): string {
-  const w = adminText(lang, "signIn").setUp;
+  const w = SIGN_IN_WORDS[lang].setUp;
   if (reason === "platform") return w.platformRequires;
   if (reason === "store") return fillWords(w.storeRequires, { store: storeName?.trim() || w.thisStore });
   return w.reset;
@@ -89,7 +89,7 @@ export function attemptState(failures: readonly Date[], now: Date): AttemptState
 
 /** The refusal's words while paused. */
 export function lockedText(minutes: number, lang: AdminLang = "en"): string {
-  const w = adminText(lang, "signIn").problems;
+  const w = SIGN_IN_WORDS[lang].problems;
   return minutes <= 1 ? w.lockedMinute : fillWords(w.lockedMinutes, { minutes });
 }
 

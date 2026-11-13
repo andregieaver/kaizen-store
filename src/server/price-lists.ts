@@ -6,7 +6,7 @@ import { z } from "zod";
 import { db } from "@/db/client";
 import { fillWords } from "@/lib/admin-fill";
 import { adminLangOf } from "@/lib/admin-lang";
-import { adminText } from "@/lib/admin-text";
+import { CUSTOMERS_WORDS } from "@/lib/admin-words/customers";
 import { assignmentsInput, listBreaksInput, listRulesInput, priceListInput, pricesInput, scopeInput, type PriceListInput } from "@/lib/price-lists";
 import { formatPriceInput, parsePrice } from "@/lib/product-input";
 import { ruleOf, ruleProblem, type QuantityRule } from "@/lib/quantity-rules";
@@ -24,7 +24,7 @@ import { col, typedRow, typedRows, type Executor } from "./typed-rows";
 export type SaveResult = { ok: true; id?: string } | { ok: false; problems: string[] };
 
 type Account = Membership["account"];
-const wordsOf = (account: Account) => adminText(adminLangOf(account.adminLocale), "customers").priceLists;
+const wordsOf = (account: Account) => CUSTOMERS_WORDS[adminLangOf(account.adminLocale)].priceLists;
 
 const LIST_ROW = z.object({
   id: col.uuid,

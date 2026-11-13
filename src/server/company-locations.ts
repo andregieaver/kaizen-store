@@ -6,7 +6,7 @@ import { z } from "zod";
 import { db } from "@/db/client";
 import { fillWords } from "@/lib/admin-fill";
 import { adminLangOf } from "@/lib/admin-lang";
-import { adminText } from "@/lib/admin-text";
+import { CUSTOMERS_WORDS } from "@/lib/admin-words/customers";
 import { BUYER_ROLES, cleanLocation, cleanPoNumber, LOCATIONS_MAX, type BuyerRole } from "@/lib/company-locations";
 import type { SavedAddressFields } from "@/lib/customer-addresses";
 import { toRates, type Rates } from "@/lib/currency";
@@ -24,7 +24,7 @@ import { col, typedRow, typedRows, type Executor } from "./typed-rows";
 export type SaveResult = { ok: true; id?: string } | { ok: false; problems: string[] };
 
 type Account = Membership["account"];
-const wordsOf = (account: Account) => adminText(adminLangOf(account.adminLocale), "customers").locations;
+const wordsOf = (account: Account) => CUSTOMERS_WORDS[adminLangOf(account.adminLocale)].locations;
 
 const ADDRESS = z
   .object({ name: z.string(), line1: z.string(), line2: z.string().nullable(), postalCode: z.string(), city: z.string(), country: z.string() })
