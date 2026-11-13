@@ -125,6 +125,7 @@ import { preflightProducerTool, producerRegistrationsTool, saveProducerRegistrat
 import { declineQuoteTool, preflightDeclineQuote, preflightPriceDisplay, priceDisplayTool, setDraftPricesTool, setPriceDisplayTool, setQuoteRequestsTool } from "./quote-tools";
 import { blogCommentsTool, listBlogsTool, moderateBlogCommentTool, preflightModerateTool, preflightScheduleTool, scheduleArticleTool } from "./blog-tools";
 import { listScheduledChangesTool, preflightSiteScheduleTool, scheduleSiteChangeTool } from "./schedule-tools";
+import { checkoutQuestionsTool, preflightCheckoutQuestion, saveCheckoutQuestionTool } from "./checkout-question-tools";
 import { customsDutiesTool } from "./customs-tools";
 import { deleteSearchMerchandisingTool, preflightSearchTool, saveSearchRuleTool, saveSearchSynonymTool, searchMerchandisingTool } from "./search-tools";
 import {
@@ -2119,6 +2120,12 @@ export async function preflightOwnerTool(ctx: OwnerToolContext, name: string, ra
     if (!input.ok) return fail(`The arguments could not be read: ${input.problem}`);
     return preflightSiteScheduleTool(ctx, input.input as Record<string, unknown>);
   }
+  // A checkout question the page would refuse (or one that is not the store's) is refused now, never kept for a yes (D357).
+  if (name === "save_checkout_question") {
+    const input = readToolInput(OWNER_TOOLS_BY_NAME[name], raw);
+    if (!input.ok) return fail(`The arguments could not be read: ${input.problem}`);
+    return preflightCheckoutQuestion(ctx, input.input as Record<string, unknown>);
+  }
   // A producer registration the page would refuse is refused now, never kept for a yes (D342).
   if (name === "save_producer_registration") {
     const tool = OWNER_TOOLS_BY_NAME[name];
@@ -2358,6 +2365,8 @@ const handlersOf = (): Record<OwnerToolName, Handler> => (handlers ??= {
   price_display: (ctx: OwnerToolContext) => priceDisplayTool(ctx),
   set_price_display: setPriceDisplayTool,
   set_quote_requests: setQuoteRequestsTool,
+  checkout_questions: checkoutQuestionsTool,
+  save_checkout_question: saveCheckoutQuestionTool,
   list_returns: listReturnsTool,
   explain_return: explainReturnTool,
   list_privacy_requests: listPrivacyRequestsTool,

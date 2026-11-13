@@ -1,6 +1,7 @@
 # Checkout fields: tasks for later
 
-Written 10 November 2026; reordering questions, the confirm before deleting and `position` in the Admin API built 13 November 2026, the rest not started. Builds on checkout questions (D357, `src/lib/checkout-rules.ts`,
+Written 10 November 2026; reordering questions, the confirm before deleting, `position` in the Admin API and the AI manager's tools built 13 November 2026; the
+standard fields and tasks 2 to 4 not started. Builds on checkout questions (D357, `src/lib/checkout-rules.ts`,
 `src/server/checkout-rules.ts`, `commerce.checkout_fields`, Settings → Checkout rules). Read the rule in
 `docs/rules/admin/commerce.md` (*Checkout rules and questions*) before starting any of these.
 
@@ -35,7 +36,8 @@ Written 10 November 2026; reordering questions, the confirm before deleting and 
       provider allows before promising it, and say plainly in the editor which fields are the payment provider's.
 - [x] Admin API (`checkout:write`): `position` on `PATCH /checkout/fields/{id}` (alone, or with `enabled` or the whole question),
       through `moveCheckoutField()`; contract 1.14 in the developers' changelog. Built 13 November 2026.
-- [ ] AI manager: tools to list, add and move questions. No tool reaches them today.
+- [x] AI manager: `checkout_questions` and `save_checkout_question` (add, reword, switch, move; the owner's yes first), built
+      13 November 2026 through the page's writers. Deleting stays on the page.
 
 ### 2. Field width: left, right or full width
 

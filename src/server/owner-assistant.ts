@@ -58,6 +58,7 @@ import { productApprovalWords } from "./product-tools";
 import { headerFooterApprovalWords,
   chooseHeaderFooterApprovalWords, menuApprovalWords, placeApprovalWords, publishApprovalWords } from "./site-tools";
 import { categoryApprovalWords } from "./category-tools";
+import { checkoutQuestionApprovalWords } from "./checkout-question-tools";
 import { contentApprovalWords } from "./content-tools";
 import { setupApprovalWords } from "./setup-tools";
 import { liveApprovalDetails } from "./design-tools";
@@ -1099,6 +1100,8 @@ export async function keepForApproval(
   if (store && tool === "send_broadcast") summary = (await broadcastApprovalSummary(store, args)) ?? summary;
   // An ad budget's change is described from the account as Meta has it: the budget's name and its amounts before and after (D585).
   if (store && tool === "set_ad_budget") summary = (await adBudgetApprovalWords(store, args)) ?? summary;
+  // A checkout question's change is named by the question's own words (D357).
+  if (store && tool === "save_checkout_question") summary = await checkoutQuestionApprovalWords({ account: ctx.account, store }, args);
   // An order change is described from the editor's own preview, and the order's state it was previewed on is kept with the call (a value the
   // model passed is replaced): the change is made to that order or refused as changed (PSI AGT-01).
   if (store && tool === "change_order") {

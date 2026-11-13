@@ -71,6 +71,8 @@ export const TOOL_FEATURES: Partial<Record<OwnerToolName, FeatureRequirement>> =
   customs_duties: "shop",
   producer_registrations: "shop",
   save_producer_registration: "shop",
+  checkout_questions: "shop",
+  save_checkout_question: "shop",
   search_merchandising: "shop",
   save_search_synonym: "shop",
   save_search_rule: "shop",
