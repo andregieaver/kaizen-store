@@ -5,7 +5,9 @@ import { z } from "zod";
 
 import { readDb } from "@/db/client";
 import { isBuiltIn } from "@/lib/built-in-languages";
-import { overlayMessages } from "@/lib/ui-catalog";
+import { enBrowser } from "@/lib/messages/en-browser";
+import { enReturns } from "@/lib/messages/en-returns";
+import { catalogOf, overlayMessages } from "@/lib/ui-catalog";
 import { forgetMessages, registerMessages, registeredLanguages } from "@/lib/ui-registry";
 
 import { log } from "./log";
@@ -20,6 +22,11 @@ import { col, typedRows } from "./typed-rows";
  */
 
 const KEY = "__kaizenUiState";
+
+/** The keys a visitor's client components read (`en-browser.ts`) and the withdrawal page's own (`en-returns.ts`): all a document gets of a language (D212). */
+export const BROWSER_KEYS = new Set(catalogOf("ui", enBrowser).map((e) => e.key));
+export const RETURNS_KEYS = new Set(catalogOf("ui", { returns: enReturns }).map((e) => e.key));
+
 /** How long a server instance trusts what it has read before asking whether a language changed. */
 const FRESH_MS = 60_000;
 
@@ -28,13 +35,15 @@ type State = {
   checkedAt: number;
   inflight: Promise<void> | null;
   versions: Map<string, string>;
-  /** The storefront's texts by language, for the browser (`UiProvider`). */
-  texts: Map<string, Record<string, string>>;
+  /** The texts the browser's components read, by language (`UiTexts`, `uiTextsFor()`). */
+  browser: Map<string, Record<string, string>>;
+  /** The withdrawal page's texts, by language (`returnsTextsFor()`). */
+  returns: Map<string, Record<string, string>>;
 };
 
 function state(): State {
   const scope = globalThis as unknown as Record<string, State | undefined>;
-  return (scope[KEY] ??= { loaded: false, checkedAt: 0, inflight: null, versions: new Map(), texts: new Map() });
+  return (scope[KEY] ??= { loaded: false, checkedAt: 0, inflight: null, versions: new Map(), browser: new Map(), returns: new Map() });
 }
 
 async function loadLanguage(lang: string): Promise<void> {
@@ -43,8 +52,12 @@ async function loadLanguage(lang: string): Promise<void> {
   const ui = new Map<string, string>();
   const email = new Map<string, string>();
   for (const row of rows) (String(row.key).startsWith("email:") ? email : ui).set(String(row.key), String(row.text));
-  registerMessages(lang, { ui: overlayMessages("ui", t("en"), ui, lang), email: overlayMessages("email", emailText("en"), email, lang) });
-  state().texts.set(lang, Object.fromEntries(ui));
+  const pick = (keys: Set<string>) => Object.fromEntries([...ui].filter(([key]) => keys.has(key)));
+  const browser = pick(BROWSER_KEYS);
+  const returns = pick(RETURNS_KEYS);
+  registerMessages(lang, { ui: overlayMessages("ui", t("en"), ui, lang), email: overlayMessages("email", emailText("en"), email, lang), texts: returns });
+  state().browser.set(lang, browser);
+  state().returns.set(lang, returns);
 }
 
 /** Reads the languages that changed since last time; a failure leaves what there is (English where nothing is). */
@@ -69,7 +82,8 @@ async function refresh(): Promise<void> {
       if (!seen.has(lang)) {
         forgetMessages(lang);
         s.versions.delete(lang);
-        s.texts.delete(lang);
+        s.browser.delete(lang);
+        s.returns.delete(lang);
       }
     }
   } catch (error) {
@@ -119,8 +133,12 @@ export async function reloadUi(lang: string): Promise<void> {
   s.checkedAt = 0;
 }
 
-/** The storefront's texts for a language, for the browser; null for a language written by hand or not translated. */
+/** The texts a visitor's browser reads, for a language translated by AI; null for a language written by hand or not translated. */
 export function uiTextsFor(lang: string): Record<string, string> | null {
-  return isBuiltIn(lang) ? null : (state().texts.get(lang) ?? null);
+  return isBuiltIn(lang) ? null : (state().browser.get(lang) ?? null);
 }
 
+/** The withdrawal page's own texts, with the same null rule: memory only, so a page may call it while it renders. */
+export function returnsTextsFor(lang: string): Record<string, string> | null {
+  return isBuiltIn(lang) ? null : (state().returns.get(lang) ?? null);
+}

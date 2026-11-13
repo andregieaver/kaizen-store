@@ -128,8 +128,21 @@ describe("a language's interface text", () => {
     expect(value).toBe(`DE ${plain.source}`);
     expect(t("de").stay.nights(2)).toBe("2 nights");
     expect(t("xx").stay.nights(2)).toBe("2 nights");
-    expect(read.uiTextsFor("de")?.[plain.key]).toBe(`DE ${plain.source}`);
+    // The browser gets the texts its components read, not the whole catalogue.
+    const browserKey = [...read.BROWSER_KEYS][0];
+    expect(read.uiTextsFor("de")?.[browserKey]).toBe(`DE ${catalog.find((e) => e.key === browserKey)!.source}`);
     expect(read.uiTextsFor("nb")).toBeNull();
+  });
+
+  it("sends the browser the keys its components read, and the withdrawal page its own", async () => {
+    const browser = read.uiTextsFor("de")!;
+    expect(Object.keys(browser).sort()).toEqual([...read.BROWSER_KEYS].sort());
+    expect(Object.keys(browser)).toHaveLength(read.BROWSER_KEYS.size);
+    expect(JSON.stringify(browser).length).toBeLessThan(9000);
+    const serverOnly = catalog.find((e) => e.key.startsWith("ui:storeSummary") && !read.BROWSER_KEYS.has(e.key) && !read.RETURNS_KEYS.has(e.key))
+      ?? catalog.find((e) => e.key.startsWith("ui:") && !read.BROWSER_KEYS.has(e.key) && !read.RETURNS_KEYS.has(e.key))!;
+    expect(browser[serverOnly.key]).toBeUndefined();
+    expect(Object.keys(read.returnsTextsFor("de")!).sort()).toEqual([...read.RETURNS_KEYS].sort());
   });
 
   it("refuses a model that fails, and one that answers wrongly", async () => {

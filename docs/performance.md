@@ -57,7 +57,9 @@ with its processor slowed four times, and a computer.
   with the page's first scripts: a first try loaded the page's language on its own and made the page wait for it before waking
   up, and a press in that moment was lost (`e2e/gallery.spec.ts`). A new text a visitor's client component reads goes in each
   `*-browser.ts`; the scan test fails for a visitor's component that reaches `lib/i18n`, `lib/email-text` or a whole language. A
-  language translated by AI lays the catalogue's texts over these (`UiTexts`, which also keeps them for `returnsText()`).
+  language translated by AI sends the same few texts and no more: `uiTextsFor()` (`src/server/ui-text-read.ts`) hands `UiTexts` only
+  the keys of `en-browser.ts` (114 keys, under 9 KB, where it sent all 1,673 texts, 93 KB), and the withdrawal page sends its own with
+  `returnsTextsFor()` and `part="returns"` (bloat review step 0.8).
 - **Font stylesheets are kept for a year** (`immutable`); a change to how one is written raises `FONT_CSS_VERSION`, which is in
   every stylesheet's address.
 

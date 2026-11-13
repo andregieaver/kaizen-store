@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
 
+import { UiTexts } from "@/components/ui-texts";
 import { t } from "@/lib/i18n";
 import { marketPath } from "@/lib/paths";
 import { emptyForm, orderInfoOf } from "@/lib/withdraw-form";
@@ -9,6 +10,7 @@ import { getCustomer } from "@/server/customers";
 import { featureOn } from "@/lib/store-features";
 import { getExchangeLabelSettings } from "@/server/return-settings";
 import { resolveAfterSaleShop } from "@/server/shop";
+import { returnsTextsFor } from "@/server/ui-text-read";
 import { lookupWithdrawableOrder } from "@/server/withdrawals";
 
 import { WithdrawFlow } from "./withdraw-flow";
@@ -63,6 +65,7 @@ async function Withdraw({ params, searchParams }: Pick<Props, "params" | "search
         <p>{m.intro}</p>
         <p className="text-sm text-muted">{m.rights}</p>
       </div>
+      <UiTexts lang={market.lang} texts={returnsTextsFor(market.lang)} part="returns" />
       <WithdrawFlow
         storeSlug={store.slug}
         marketSlug={market.slug}
