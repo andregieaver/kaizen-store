@@ -282,6 +282,7 @@ Each rule is in full under the same words in one file of `docs/rules/admin/` by 
 - Sign in with Google (wave 10 unit L, D375, `src/lib/google-sign-in.ts`, `src/server/google-sign-in.ts`)
 - Leaving (wave 10 unit P, D377)
 - Ad tags and shop events (wave 5 unit I1, D303, `docs/wave-5-marketing.md` 12, `src/lib/shop-events.ts`)
+- Ad budgets in the owner's own ad account (D585, `docs/agent-spending.md`, `src/lib/ad-budgets.ts`, `src/server/ad-accounts.ts`)
 - Product feeds (wave 5 unit H, D302, `docs/wave-5-marketing.md` 13, `src/lib/feeds.ts` pure, `src/server/feeds.ts`, `src/server/feed-settings.ts`)
 - Saved addresses (wave 5 unit J1, D304, `docs/wave-5-marketing.md` 11.1, `src/lib/customer-addresses.ts`, `src/server/customer-addresses.ts`)
 - Themes, one concept (D273, `docs/themes-unified.md`, `src/lib/theme-admin-paths.ts`)

@@ -78,6 +78,20 @@
       "when": 1794564512779,
       "tag": "20261113100832_widget_site_pages_rules",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1794576495749,
+      "tag": "20261113132815_ad_accounts",
+      "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1794576498445,
+      "tag": "20261113132818_ad_accounts_rules",
+      "breakpoints": true
     }
   ]
 }
