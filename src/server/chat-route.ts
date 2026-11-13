@@ -10,6 +10,7 @@ import { getChatAgent, takeChatTurn, type ChatAgent, type ChatSite } from "./cha
 import { visitorKey } from "./chat-turns";
 import { lockedOut } from "./private-mode";
 import { resolveShop } from "./shop";
+import { embedForFrame, embedShop } from "./support-embeds";
 import { ensureDesk, type DeskSettings } from "./support";
 import { visitorDesk } from "./support-desk";
 
@@ -18,7 +19,13 @@ import { visitorDesk } from "./support-desk";
  * requests come only from the site's own pages. The conversation itself is support's (D216, `support-route.ts`).
  */
 
-const siteInput = z.object({ store: z.string().regex(/^[a-z0-9-]{1,63}$/).optional(), market: z.string().regex(/^[a-z]{2}(?:-[a-z]{2})?(?:-[a-z]{3})?$/).optional() });
+const siteInput = z.object({
+  store: z.string().regex(/^[a-z0-9-]{1,63}$/).optional(),
+  market: z.string().regex(/^[a-z]{2}(?:-[a-z]{2})?(?:-[a-z]{3})?$/).optional(),
+  /** The chat on a site of the owner's own (D581): the site's key and the host of the page its frame is on. */
+  embed: z.string().regex(/^[a-z0-9]{20}$/).optional(),
+  host: z.string().max(253).optional(),
+});
 
 /** The site a visitor writes from: a store in one of its countries, or Kaizen's. */
 export type ChatPlace = { site: ChatSite; storeId: string | null; lang: string; locale: string; market: string | null };
@@ -37,12 +44,28 @@ const PEOPLE_DAILY_LIMIT = 100_000;
 export async function chatPlace(raw: unknown): Promise<ChatPlace | Response> {
   const where = siteInput.safeParse(raw);
   if (!where.success) return fail(400, "The chat could not read that message.");
+  if (where.data.embed) return embedPlace(where.data.embed, where.data.host ?? "");
   if (!where.data.store) return { site: { kind: "kaizen" }, storeId: null, lang: "en", locale: "en-GB", market: null };
   const shop = await resolveShop(where.data.store, where.data.market ?? "");
   if (!shop) return fail(404, "No such store.");
   // A private store's chat (D339) answers only a visitor let in, as its pages do.
   if (await lockedOut(shop.store)) return fail(404, "No such store.");
   return { site: { kind: "store", store: shop.store, market: shop.market }, storeId: shop.store.id, lang: shop.market.lang, locale: shop.market.locale, market: shop.market.slug };
+}
+
+/**
+ * The chat on a site of the owner's own (D581): the desk of the site whose tag carries the key, when the page's host is the site's and its
+ * tag was found, in the market the owner chose (else the store's first); a store that is not open is a 404, as its own chat is. A private
+ * store (D339) still answers there: the owner put the chat on their own site, and it reads only the knowledge base.
+ */
+async function embedPlace(key: string, host: string): Promise<ChatPlace | Response> {
+  const embed = await embedForFrame(key, host);
+  if (!embed?.verified) return fail(404, "No such site.");
+  const site = { id: embed.id, host: embed.host, privacyUrl: embed.privacyUrl };
+  if (!embed.storeId) return { site: { kind: "kaizen", embed: site }, storeId: null, lang: "en", locale: "en-GB", market: null };
+  const shop = await embedShop(embed);
+  if (!shop) return fail(404, "No such site.");
+  return { site: { kind: "store", store: shop.store, market: shop.market, embed: site }, storeId: shop.store.id, lang: shop.market.lang, locale: shop.market.locale, market: shop.market.slug };
 }
 
 /** The site's desk, and its agent and AI while the AI answers there (see `ChatContext`), else the response to give. */

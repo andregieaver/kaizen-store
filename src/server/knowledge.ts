@@ -342,8 +342,9 @@ export type Passage = { title: string; path: string | null; body: string };
  * any, for documents): by meaning with the site's AI where it has vectors,
  * and by keyword, merged by reciprocal rank.
  */
-export async function searchKnowledge(storeId: string | null, query: string, locale: string, limit = 5): Promise<Passage[]> {
-  const inLanguage = sql`(locale is null or locale = ${locale})`;
+export async function searchKnowledge(storeId: string | null, query: string, locale: string, limit = 5, options: { documentsOnly?: boolean } = {}): Promise<Passage[]> {
+  // The chat on a site of the owner's own (D581) reads the knowledge base alone: the store's pages are another site's.
+  const inLanguage = options.documentsOnly ? sql`(locale is null or locale = ${locale}) and document_id is not null` : sql`(locale is null or locale = ${locale})`;
   const keyword = readDb().execute<Row>(sql`
     select id, title, path, body from commerce.knowledge_chunks,
       websearch_to_tsquery(commerce.search_config(${locale}), ${query}) q,

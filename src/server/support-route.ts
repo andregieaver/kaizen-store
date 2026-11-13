@@ -64,7 +64,8 @@ export async function readBody(request: Request): Promise<unknown | Response> {
 
 /** The signed-in customer of a store's desk (their id and their own email), or null (Kaizen's desk has no customers). */
 async function sessionCustomer(place: ChatPlace): Promise<SupportCustomer> {
-  if (!place.storeId) return null;
+  // On a site of the owner's own (D581) nobody is signed in: a store's cookie that reached the frame is not that site's visitor.
+  if (!place.storeId || place.site.embed) return null;
   const customer = await getCustomer(place.storeId);
   return customer ? { id: customer.id, email: customer.email } : null;
 }
@@ -173,7 +174,9 @@ export async function visitorTurn(
   }
   if (conversation && conversation.messageSeq >= CONVERSATION_MESSAGES_MAX) return fail(409, m.chat.full);
   if (!conversation) {
-    const opened = await openConversation(desk, { mode: settings.mode, locale: context.locale, market: context.market, pagePath: input.path ?? null, customerId: signedIn?.id ?? null });
+    // On a site of the owner's own (D581) the page is that site's: its host goes with the path, so the staff see where it started.
+    const pagePath = context.site.embed ? `${context.site.embed.host}${input.path ?? "/"}` : (input.path ?? null);
+    const opened = await openConversation(desk, { mode: settings.mode, locale: context.locale, market: context.market, pagePath, customerId: signedIn?.id ?? null });
     conversation = opened.conversation;
     token = opened.token;
     after = 0;
@@ -310,7 +313,7 @@ export async function visitorSignIn(raw: unknown, ref: { id: string; token: stri
   const found = await visitorPlace(raw, ref);
   if (found instanceof Response) return found;
   const { site } = found.place;
-  if (site.kind !== "store") return fail(404, t(found.place.lang).chat.sorry);
+  if (site.kind !== "store" || site.embed) return fail(404, t(found.place.lang).chat.sorry);
   const code = await createSignInCode(site.store.id, email);
   if (!code) return Response.json({ ok: false, error: t(site.market.lang).account.tooManyCodes }, { status: 429, headers: NO_STORE });
   await sendSignInCode(site.store.id, site.market.code, site.market.locale, email, code);
@@ -326,7 +329,7 @@ export async function visitorSignInCode(raw: unknown, ref: { id: string; token: 
   const found = await visitorPlace(raw, ref);
   if (found instanceof Response) return found;
   const { site } = found.place;
-  if (site.kind !== "store") return fail(404, t(found.place.lang).chat.sorry);
+  if (site.kind !== "store" || site.embed) return fail(404, t(found.place.lang).chat.sorry);
   const m = t(site.market.lang);
   const customerId = await verifySignInCode(site.store.id, email, code);
   if (!customerId) return Response.json({ signedIn: false, error: m.account.wrongCode }, { status: 400, headers: NO_STORE });
@@ -348,7 +351,7 @@ export async function visitorConfirm(raw: unknown, ref: { id: string; token: str
   if (found instanceof Response) return found;
   const { site } = found.place;
   const m = t(found.place.lang);
-  if (site.kind !== "store") return fail(404, m.chat.sorry);
+  if (site.kind !== "store" || site.embed) return fail(404, m.chat.sorry);
   const customer = await customerOf(found.place, found.conversation);
   const outcome = await confirmAction(
     { site, settings: found.settings, customer, desk: found.desk, conversationId: found.conversation.id, conversation: found.conversation },

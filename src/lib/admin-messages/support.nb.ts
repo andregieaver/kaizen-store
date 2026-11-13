@@ -2,6 +2,48 @@ import type { SupportMessages } from "./support.en";
 
 /** Norwegian (bokmål), written by hand (D312 A10). */
 export const supportNb: SupportMessages = {
+  embed: {
+    title: "Chat på deres egen nettside",
+    description:
+      "Vis denne chatten på en annen nettside dere driver, som firmasiden eller bloggen: legg til adressen, lim inn taggen i bunnteksten, så kommer chatten på hver side. Samtalene kommer til denne innboksen.",
+    knowledge: "Der svarer den bare fra kunnskapsbasen, så legg inn det besøkende spør om.",
+    knowledgeLink: "Åpne kunnskapsbasen",
+    chatOff: "Chatten er av her, så taggen viser ingenting før dere velger hvem som svarer over.",
+    host: "Nettsidens adresse",
+    hostPlaceholder: "www.eksempel.no",
+    privacy: "Personvernsiden (valgfritt)",
+    privacyPlaceholder: "https://www.eksempel.no/personvern",
+    market: "Språk og land",
+    add: "Legg til nettside",
+    live: "I bruk",
+    waiting: "Venter på taggen",
+    pasteTag: "Lim inn dette før </body> i bunnteksten på siden. Chatten kommer når taggen er funnet: trykk Sjekk nå, eller åpne siden.",
+    copy: "Kopier",
+    copied: "Kopiert",
+    check: "Sjekk nå",
+    remove: "Fjern",
+    foundBy: { page: "Funnet på forsiden.", dns: "Funnet i DNS." },
+    checkProblem: {
+      unreachable: "{host} kunne ikke åpnes.",
+      not_found: "Taggen er ikke på forsiden til {host} ennå.",
+      moved: "Forsiden til {host} sender besøkende til en annen nettside.",
+    },
+    tagManager: "Lagt inn med en tag manager?",
+    dnsRecord: "En tag manager legger inn taggen etter at siden er lastet, der den ikke kan finnes. Legg heller denne TXT-posten i DNS for {host}, og trykk Sjekk nå:",
+    added: "Lagt til. Lim inn taggen på siden.",
+    addedLive: "Lagt til, og taggen er allerede der: chatten er i bruk.",
+    checkedLive: "Taggen er der: chatten er i bruk.",
+    checkedNot: "Taggen er ikke funnet ennå.",
+    removed: "Fjernet. Taggen viser ikke lenger chatten.",
+    problems: {
+      noAccess: "Du har ikke tilgang til dette.",
+      host: "Skriv nettsidens adresse, som www.eksempel.no.",
+      taken: "Den nettsiden er allerede lagt til.",
+      max: "Chatten kan være på høyst {n} nettsider.",
+      privacy: "Personvernsiden må være en https-adresse på samme nettside.",
+      market: "Velg et av butikkens land.",
+    },
+  },
   email: {
     title: "Kundeservice på e-post",
     description:

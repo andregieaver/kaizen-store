@@ -61,6 +61,14 @@ export function managerStaffDesk(account: Account, store: { id: string; slug: st
   };
 }
 
+/**
+ * The desk of a site that shows its chat (D581, `support-embeds.ts`): the site the chat's frame found by its key and the page's host, so
+ * the frame may check that site's own tag, and nothing else of the desk.
+ */
+export function embedDesk(embed: { storeId: string | null }): Desk {
+  return make(embed.storeId);
+}
+
 /** A desk for the platform's own jobs (ending idle conversations, retention, erasure), which act on every store's data by design. */
 export function systemDesk(storeId: string | null): Desk {
   return make(storeId);

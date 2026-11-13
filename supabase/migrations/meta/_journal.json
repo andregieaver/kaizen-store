@@ -50,6 +50,20 @@
       "when": 1794505642142,
       "tag": "20261112174722_site_layout_checks_changed_only",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1794552744024,
+      "tag": "20261113065223_support_embeds",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1794552755971,
+      "tag": "20261113065235_support_embeds_rules",
+      "breakpoints": true
     }
   ]
 }

@@ -5,6 +5,48 @@ import type { Widen } from "./common.en";
  * `countWords()`, with `{n}` the number.
  */
 export const supportEn = {
+  embed: {
+    title: "Chat on your own website",
+    description:
+      "Show this chat on another website you run, such as your company site or blog: add its address, paste the tag in its footer, and the chat appears on every page. Conversations come to this inbox.",
+    knowledge: "There it answers only from your knowledge base, so add what your visitors ask about.",
+    knowledgeLink: "Open the knowledge base",
+    chatOff: "The chat is off on this desk, so the tag shows nothing until you choose who answers above.",
+    host: "Website address",
+    hostPlaceholder: "www.example.com",
+    privacy: "Its privacy page (optional)",
+    privacyPlaceholder: "https://www.example.com/privacy",
+    market: "Language and country",
+    add: "Add website",
+    live: "Live",
+    waiting: "Waiting for the tag",
+    pasteTag: "Paste this before </body> in the site's footer. The chat appears once the tag is found: press Check now, or open the site.",
+    copy: "Copy",
+    copied: "Copied",
+    check: "Check now",
+    remove: "Remove",
+    foundBy: { page: "Found on the site's front page.", dns: "Found in the site's DNS." },
+    checkProblem: {
+      unreachable: "{host} could not be opened.",
+      not_found: "The tag is not on {host}'s front page yet.",
+      moved: "{host}'s front page sends visitors to another website.",
+    },
+    tagManager: "Added through a tag manager?",
+    dnsRecord: "A tag manager adds the tag after the page loads, where it cannot be found. Add this TXT record to {host}'s DNS instead, then press Check now:",
+    added: "Added. Paste the tag on the site.",
+    addedLive: "Added, and the tag is already there: the chat is live.",
+    checkedLive: "The tag is there: the chat is live.",
+    checkedNot: "The tag was not found yet.",
+    removed: "Removed. The tag no longer shows the chat.",
+    problems: {
+      noAccess: "You do not have access to this.",
+      host: "Write the website's address, such as www.example.com.",
+      taken: "That website is already added.",
+      max: "The chat can be on at most {n} websites.",
+      privacy: "The privacy page must be an https address on the same website.",
+      market: "Choose one of the store's countries.",
+    },
+  },
   email: {
     title: "Support by email",
     description:

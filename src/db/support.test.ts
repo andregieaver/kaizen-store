@@ -358,4 +358,29 @@ describe("support in the database (D216)", () => {
     const id = await conversation("ai_first");
     await expect(add(id, "customer", null, "Hello")).resolves.toBeDefined();
   });
+
+  it("11. keeps a desk's websites (D581): one host per desk, a key of its shape, a privacy page in https, found by page or DNS only", async () => {
+    const insert = (host: string, key: string, extra: Record<string, unknown> = {}, storeId: string | null = store) =>
+      db.query(
+        `insert into commerce.support_embeds (store_id, host, key, privacy_url, market, verified_at, verified_by)
+         values ($1, $2, $3, $4, $5, $6, $7)`,
+        [storeId, host, key, extra.privacy ?? null, extra.market ?? null, extra.verifiedAt ?? null, extra.verifiedBy ?? null],
+      );
+    await insert("www.example.com", "a".repeat(20));
+    expect(await refusal(insert("www.example.com", "b".repeat(20)))).toMatch(/support_embeds_host_key/);
+    // Kaizena Flow's desk is its own: the same host may be on it, but only once.
+    await insert("www.example.com", "c".repeat(20), {}, null);
+    expect(await refusal(insert("www.example.com", "d".repeat(20), {}, null))).toMatch(/support_embeds_host_key/);
+    expect(await refusal(insert("shop.example.com", "a".repeat(20)))).toMatch(/support_embeds_key/);
+    expect(await refusal(insert("shop.example.com", "A".repeat(20)))).toMatch(/support_embeds_key_shape/);
+    expect(await refusal(insert("Example.com", "e".repeat(20)))).toMatch(/support_embeds_host_shape/);
+    expect(await refusal(insert("example.com/path", "e".repeat(20)))).toMatch(/support_embeds_host_shape/);
+    expect(await refusal(insert("example.com", "e".repeat(20), { privacy: "http://example.com/privacy" }))).toMatch(/support_embeds_privacy_url/);
+    expect(await refusal(insert("example.com", "e".repeat(20), { verifiedAt: new Date().toISOString() }))).toMatch(/support_embeds_verified/);
+    expect(await refusal(insert("example.com", "e".repeat(20), { verifiedAt: new Date().toISOString(), verifiedBy: "email" }))).toMatch(/support_embeds_verified/);
+    expect(await refusal(insert("other.example.com", "f".repeat(20), { market: "no" }, null))).toMatch(/support_embeds_market/);
+    await insert("example.com", "e".repeat(20), { privacy: "https://example.com/privacy", market: "no", verifiedAt: new Date().toISOString(), verifiedBy: "dns" });
+    const rls = await one<{ relrowsecurity: boolean }>("select relrowsecurity from pg_class where oid = 'commerce.support_embeds'::regclass");
+    expect(rls.relrowsecurity).toBe(true);
+  });
 });

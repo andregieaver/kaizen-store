@@ -558,6 +558,17 @@ changing it; a rule changes here, and its line in CLAUDE.md when its gist change
   A product question (D431, a product layout's question part, `src/server/product-questions.ts`) takes the same path with the product's
   title, chosen variant and address as its first answer; its fields and copy addresses come from the published layout only.
 
+
+## The chat on an owner's own website (D581, `docs/support-embed.md`, `src/lib/support-embed.ts`, `src/server/support-embeds.ts`, `public/embed/chat.js`)
+
+- **The chat on an owner's own website (D581)**: a desk's chat is shown on a site of the owner's own by one tag, the loader
+  `public/embed/chat.js` with the site's public key, which frames `/embed/chat/{key}/{host}` from Kaizena Flow's own origin. The frame is
+  framed by the page's host alone (`embedFrameHeaders()` in `next.config.ts`) and draws the chat only for a host that is the site's or its
+  `www.` twin (`mayFrame()`), once the site's tag was found (`checkEmbed()`: the front page through `safeFetch()`, or the TXT record
+  `kaizena-flow-chat={key}`). The chat's routes are not opened to other origins: their requests come from the frame, carry `embed` and
+  `host`, and `chatPlace()` makes the desk (`site.embed`). There the AI searches only the knowledge base's documents (`embedTools()`), nobody
+  signs in (no order tools; sign-in and confirm refuse), and `page_path` holds the site's host. Sites live in `commerce.support_embeds`
+  (at most `EMBEDS_MAX`, never copied with a store), managed on Support → Settings at a store and on Kaizena Flow's desk.
 ## Prices are shown with `<Price>`, which adds the VAT label and shows the 30-day reference only for a genuine reduction
 
 - Prices are shown with `<Price>`, which adds the VAT label and shows the

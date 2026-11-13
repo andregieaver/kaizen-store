@@ -61,7 +61,8 @@ export async function runSupportTurn(
   let reply: ChatReply;
   try {
     const support =
-      context.site.kind === "store"
+      // On a site of the owner's own (D581) nobody can sign in, so none of support's tools for a customer's orders is offered there.
+      context.site.kind === "store" && !context.site.embed
         ? await supportToolsFor({ site: context.site, settings: context.settings, customer: channel.email ? null : customer, desk, conversationId, email: channel.email })
         : admin
           ? kaizenToolsFor(admin.requester, await aboutStoreOf(conversationId))

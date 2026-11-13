@@ -5,10 +5,12 @@ import { marketPath } from "@/lib/paths";
 import { unitLabelsOf } from "@/lib/unit-price-text";
 import { chatWidgetFor, type ChatWidgetProfile } from "@/server/chat-agent";
 import { listPublishedPages } from "@/server/pages";
+import type { Shop } from "@/server/shop";
+import type { FrameEmbed } from "@/server/support-embeds";
 import type { Store } from "@/server/stores";
 
 import type { ChatLabels } from "./chat-widget";
-import { ChatWidget } from "./lazy/extras";
+import { ChatWidget, FrameChatWidget } from "./lazy/extras";
 
 /** The widget's words in a language, with the agent's own greeting for the locale if it has one, for the desk's mode (D216). */
 function chatLabels(lang: string, locale: string, profile: ChatWidgetProfile, deskName: string): ChatLabels {
@@ -124,6 +126,35 @@ export async function StoreChat({ store, market }: { store: Store; market: Marke
       agent={profile}
       deskName={store.name}
       labels={chatLabels(market.lang, market.locale, profile, store.name)}
+    />
+  );
+}
+
+/**
+ * The chat on a site of the owner's own (D581), drawn in its frame (`/embed/chat/{key}/{host}`): the store's desk in the market the owner
+ * chose for the site, or Kaizena Flow's, with the site's own privacy page; its requests carry the site's key and the page's host.
+ */
+export async function FrameChat({ embed, shop, siteKey, host, path }: { embed: FrameEmbed; shop: Shop | null; siteKey: string; host: string; path: string }) {
+  const profile = await chatWidgetFor(shop ? shop.store.id : null);
+  if (!profile) return null;
+  const embedded = { path, parentOrigin: `https://${host}` };
+  const privacy = profile.mode === "off" ? undefined : (embed.privacyUrl ?? undefined);
+  if (!shop) {
+    const { locale, messages } = PLATFORM_LANG_FACTS.en;
+    return (
+      <FrameChatWidget site={{ embed: siteKey, host }} locale={locale} agent={profile} deskName="Kaizena Flow" privacyHref={privacy} labels={chatLabels(messages, locale, profile, "Kaizena Flow")} embedded={embedded} />
+    );
+  }
+  const { store, market } = shop;
+  return (
+    <FrameChatWidget
+      site={{ embed: siteKey, host }}
+      locale={market.locale}
+      agent={profile}
+      deskName={store.name}
+      privacyHref={privacy}
+      labels={chatLabels(market.lang, market.locale, profile, store.name)}
+      embedded={embedded}
     />
   );
 }

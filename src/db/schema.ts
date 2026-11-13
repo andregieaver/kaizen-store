@@ -15532,6 +15532,46 @@ export const supportReplies = commerce.table(
   ],
 );
 
+/**
+ * A site of the owner's own that shows the desk's chat (D581, `docs/support-embed.md`): one host, the public key its tag carries, and
+ * whether the tag was found on the site (`verified_at`, by the page or a DNS record). `store_id` null is Kaizena Flow's desk. Written
+ * only by `src/server/support-embeds.ts`; never copied with a store (a copy is another business's site). No person's data.
+ */
+export const supportEmbeds = commerce.table(
+  "support_embeds",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    storeId: uuid("store_id").references(() => stores.id, { onDelete: "cascade" }),
+    host: text("host").notNull(),
+    /** Public: read by anyone in the site's HTML. */
+    key: text("key").notNull(),
+    /** The store's market whose language the chat speaks there; null for the store's first. */
+    market: text("market"),
+    /** The site's own privacy page, linked from the chat's notice. */
+    privacyUrl: text("privacy_url"),
+    verifiedAt: timestamp("verified_at", { withTimezone: true }),
+    /** `page` (the tag on the front page) or `dns` (the TXT record). */
+    verifiedBy: text("verified_by"),
+    checkedAt: timestamp("checked_at", { withTimezone: true }),
+    /** Why the last check did not find the tag (`CHECK_PROBLEMS`). */
+    checkProblem: text("check_problem"),
+    createdBy: uuid("created_by").references(() => accounts.id, { onDelete: "set null" }),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [
+    unique("support_embeds_key").on(t.key),
+    unique("support_embeds_host_key").on(t.storeId, t.host).nullsNotDistinct(),
+    index("support_embeds_created_by_idx").on(t.createdBy),
+    check("support_embeds_key_shape", sql`${t.key} ~ '^[a-z0-9]{20}$'`),
+    check("support_embeds_host_shape", sql`length(${t.host}) between 4 and 253 and ${t.host} ~ '^([a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?\\.)+[a-z]([a-z0-9-]{0,61}[a-z0-9])?$'`),
+    check("support_embeds_market", sql`${t.market} is null or (${t.storeId} is not null and length(${t.market}) between 2 and 20)`),
+    check("support_embeds_privacy_url", sql`${t.privacyUrl} is null or (${t.privacyUrl} ~ '^https://' and length(${t.privacyUrl}) <= 500)`),
+    check("support_embeds_verified", sql`(${t.verifiedAt} is null) = (${t.verifiedBy} is null) and (${t.verifiedBy} is null or ${t.verifiedBy} in ('page', 'dns'))`),
+    check("support_embeds_check_problem", sql`${t.checkProblem} is null or ${t.checkProblem} in ('unreachable', 'not_found', 'moved')`),
+  ],
+);
+
 // ---------------------------------------------------------------------------
 // Customer notifications, delivery tracking and staff alerts (wave 3, D238, docs/wave-3-notifications.md 3.2)
 // ---------------------------------------------------------------------------

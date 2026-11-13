@@ -1,6 +1,6 @@
 {
-  "id": "b215d61c-0194-4666-8c25-cbfd5c3ead47",
-  "prevId": "44d1fbda-1112-46a2-a9f6-c7ba4d5eb47b",
+  "id": "a44d499a-edfd-4860-8385-96678d32b3c0",
+  "prevId": "f44c44bb-ac95-40e8-824c-4de9764f50f1",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -81921,6 +81921,186 @@
         "support_conversations_emails": {
           "name": "support_conversations_emails",
           "value": "\"commerce\".\"support_conversations\".\"email_count\" between 0 and 20 and \"commerce\".\"support_conversations\".\"contact_changes\" between 0 and 3"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "commerce.support_embeds": {
+      "name": "support_embeds",
+      "schema": "commerce",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "store_id": {
+          "name": "store_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "host": {
+          "name": "host",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "key": {
+          "name": "key",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "market": {
+          "name": "market",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "privacy_url": {
+          "name": "privacy_url",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "verified_at": {
+          "name": "verified_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "verified_by": {
+          "name": "verified_by",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "checked_at": {
+          "name": "checked_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "check_problem": {
+          "name": "check_problem",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_by": {
+          "name": "created_by",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "support_embeds_created_by_idx": {
+          "name": "support_embeds_created_by_idx",
+          "columns": [
+            {
+              "expression": "created_by",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "with": {},
+          "method": "btree",
+          "concurrently": false
+        }
+      },
+      "foreignKeys": {
+        "support_embeds_store_id_stores_id_fk": {
+          "name": "support_embeds_store_id_stores_id_fk",
+          "tableFrom": "support_embeds",
+          "columnsFrom": [
+            "store_id"
+          ],
+          "tableTo": "stores",
+          "schemaTo": "commerce",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "cascade"
+        },
+        "support_embeds_created_by_accounts_id_fk": {
+          "name": "support_embeds_created_by_accounts_id_fk",
+          "tableFrom": "support_embeds",
+          "columnsFrom": [
+            "created_by"
+          ],
+          "tableTo": "accounts",
+          "schemaTo": "commerce",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "set null"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "support_embeds_key": {
+          "name": "support_embeds_key",
+          "columns": [
+            "key"
+          ],
+          "nullsNotDistinct": false
+        },
+        "support_embeds_host_key": {
+          "name": "support_embeds_host_key",
+          "columns": [
+            "store_id",
+            "host"
+          ],
+          "nullsNotDistinct": true
+        }
+      },
+      "policies": {},
+      "checkConstraints": {
+        "support_embeds_key_shape": {
+          "name": "support_embeds_key_shape",
+          "value": "\"commerce\".\"support_embeds\".\"key\" ~ '^[a-z0-9]{20}$'"
+        },
+        "support_embeds_host_shape": {
+          "name": "support_embeds_host_shape",
+          "value": "length(\"commerce\".\"support_embeds\".\"host\") between 4 and 253 and \"commerce\".\"support_embeds\".\"host\" ~ '^([a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?\\.)+[a-z]([a-z0-9-]{0,61}[a-z0-9])?$'"
+        },
+        "support_embeds_market": {
+          "name": "support_embeds_market",
+          "value": "\"commerce\".\"support_embeds\".\"market\" is null or (\"commerce\".\"support_embeds\".\"store_id\" is not null and length(\"commerce\".\"support_embeds\".\"market\") between 2 and 20)"
+        },
+        "support_embeds_privacy_url": {
+          "name": "support_embeds_privacy_url",
+          "value": "\"commerce\".\"support_embeds\".\"privacy_url\" is null or (\"commerce\".\"support_embeds\".\"privacy_url\" ~ '^https://' and length(\"commerce\".\"support_embeds\".\"privacy_url\") <= 500)"
+        },
+        "support_embeds_verified": {
+          "name": "support_embeds_verified",
+          "value": "(\"commerce\".\"support_embeds\".\"verified_at\" is null) = (\"commerce\".\"support_embeds\".\"verified_by\" is null) and (\"commerce\".\"support_embeds\".\"verified_by\" is null or \"commerce\".\"support_embeds\".\"verified_by\" in ('page', 'dns'))"
+        },
+        "support_embeds_check_problem": {
+          "name": "support_embeds_check_problem",
+          "value": "\"commerce\".\"support_embeds\".\"check_problem\" is null or \"commerce\".\"support_embeds\".\"check_problem\" in ('unreachable', 'not_found', 'moved')"
         }
       },
       "isRLSEnabled": false

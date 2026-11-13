@@ -4,6 +4,10 @@ import { adminLangOf } from "@/lib/admin-lang";
 import { adminText, adminTexts } from "@/lib/admin-text";
 
 import { SupportEmailCard } from "@/components/admin/support/email-card";
+import { SupportEmbedsCard } from "@/components/admin/support/embeds-card";
+import { siteUrl } from "@/lib/site";
+import { chatWidgetFor } from "@/server/chat-agent";
+import { listEmbeds } from "@/server/support-embeds";
 import { SupportSettingsForm } from "@/components/admin/support/settings-form";
 import { can } from "@/lib/permissions";
 import { holderOf } from "@/server/auth";
@@ -14,7 +18,7 @@ import { deskEmailAddress, deskEmailsKeyRefused } from "@/server/support-inbound
 import { settingsForEdit } from "@/server/support-settings";
 import { PageHeader } from "@/components/admin/ui";
 
-import { saveSupportSettingsAction } from "./actions";
+import { addSupportEmbedAction, checkSupportEmbedAction, removeSupportEmbedAction, saveSupportSettingsAction } from "./actions";
 
 export const metadata: Metadata = { title: "Support settings" };
 
@@ -32,7 +36,12 @@ export default async function SupportSettingsPage({
     openConversationCount(staff.desk),
   ]);
   // Made after the desk's row (settingsForEdit() makes it on a desk's first look).
-  const [emailAddress, keyRefused] = await Promise.all([deskEmailAddress(staff.desk), deskEmailsKeyRefused(staff.desk)]);
+  const [emailAddress, keyRefused, embeds, chat] = await Promise.all([
+    deskEmailAddress(staff.desk),
+    deskEmailsKeyRefused(staff.desk),
+    listEmbeds(staff.desk),
+    chatWidgetFor(member.store.id),
+  ]);
   return (
     <AdminTextScope texts={adminTexts(lang, ["support", "settings"])}>
       <div className="flex flex-col gap-6">
@@ -54,6 +63,16 @@ export default async function SupportSettingsPage({
           formChoice
         />
         <SupportEmailCard address={emailAddress} mode={settings.mode} keyRefused={keyRefused} words={t.email} />
+        <SupportEmbedsCard
+          embeds={embeds}
+          origin={siteUrl()}
+          add={staff.canWrite ? addSupportEmbedAction.bind(null, slug) : null}
+          check={staff.canWrite ? checkSupportEmbedAction.bind(null, slug) : null}
+          remove={staff.canWrite ? removeSupportEmbedAction.bind(null, slug) : null}
+          markets={member.store.markets.map((market) => ({ slug: market.slug, name: market.name }))}
+          chatOn={chat !== null}
+          knowledgeHref={`/admin/${slug}/chat`}
+        />
       </div>
     </AdminTextScope>
   );
