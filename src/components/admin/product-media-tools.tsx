@@ -7,7 +7,7 @@ import { fillWords } from "@/lib/admin-fill";
 import type { AdminAreaMessages } from "@/lib/admin-text";
 import type { ProductInput } from "@/lib/product-input";
 import { MAX_MODELS, MAX_VIDEOS, MODEL_MAX_BYTES, MODEL_MAX_MB, MODEL_TYPE, type UploadPoster } from "@/lib/product-media";
-import { createClient } from "@/lib/supabase/client";
+import { uploadToSignedUrl } from "@/lib/supabase/signed-upload";
 import { embedUrl, youtubeId } from "@/lib/video-embed";
 
 import { takeStill, uploadVideoFile } from "./video-upload";
@@ -217,7 +217,7 @@ function AddModel({ storeSlug, onAdd, onCancel, uploadPoster, w }: { storeSlug: 
       setBusy(false);
       return setProblem(started.problem);
     }
-    const stored = await createClient().storage.from(started.bucket).uploadToSignedUrl(started.path, started.token, file, { contentType: MODEL_TYPE });
+    const stored = await uploadToSignedUrl(started.bucket, started.path, started.token, file, { contentType: MODEL_TYPE });
     setBusy(false);
     if (stored.error) return setProblem(fillWords(w.uploadFailed, { name: file.name }));
     onAdd({ kind: "model", source: null, mediaUrl: started.url, url: poster.url, thumbnailUrl: poster.thumbnailUrl, alt: "", alts: {} });

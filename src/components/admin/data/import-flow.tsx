@@ -8,7 +8,7 @@ import { useAdminLang, useAdminText } from "@/components/admin/admin-text";
 import { fillWords } from "@/lib/admin-fill";
 import { ADMIN_LANG_FACTS } from "@/lib/admin-lang";
 import { formatBytes, wholeNumber } from "@/lib/data-admin";
-import { createClient } from "@/lib/supabase/client";
+import { uploadToSignedUrl } from "@/lib/supabase/signed-upload";
 import type { ImportOptions } from "@/lib/product-import";
 
 import { card, field, hint, label, primary, secondary } from "./ui";
@@ -61,9 +61,7 @@ export function ImportUpload({
         setProblems([started.problem]);
         return;
       }
-      const stored = await createClient()
-        .storage.from(started.bucket)
-        .uploadToSignedUrl(started.path, started.token, file, { contentType: TYPES.includes(file.type) ? file.type : "text/csv" });
+      const stored = await uploadToSignedUrl(started.bucket, started.path, started.token, file, { contentType: TYPES.includes(file.type) ? file.type : "text/csv" });
       if (stored.error) {
         setProblems([w.didNotArrive]);
         return;

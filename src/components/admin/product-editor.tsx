@@ -72,7 +72,7 @@ import {
   type PlanInterval,
 } from "@/lib/subscriptions";
 import { slugify } from "@/lib/slug";
-import { createClient } from "@/lib/supabase/client";
+import { uploadToSignedUrl } from "@/lib/supabase/signed-upload";
 import type { EditorContext, Operator } from "@/server/products";
 import { SoldByMeasureField, ContentFields, type ContentContext } from "@/components/admin/unit-price-fields";
 import { BundleSection, NEW_BUNDLE } from "@/components/admin/bundle-section";
@@ -2321,9 +2321,7 @@ function DigitalSection({ storeSlug, product, update, uploads }: SectionProps & 
           const started = await startFileUploadAction(storeSlug, file.name);
           if (!started.ok) return setProblem(started.problem);
           const contentType = file.type || "application/octet-stream";
-          const { error } = await createClient()
-            .storage.from(started.bucket)
-            .uploadToSignedUrl(started.path, started.token, file, { contentType });
+          const { error } = await uploadToSignedUrl(started.bucket, started.path, started.token, file, { contentType });
           if (error) return setProblem(fillWords(w.tooLarge, { name: file.name }));
           update((p) => ({
             ...p,

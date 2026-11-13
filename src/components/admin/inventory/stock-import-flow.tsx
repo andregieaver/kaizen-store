@@ -10,7 +10,7 @@ import { ADMIN_LANG_FACTS } from "@/lib/admin-lang";
 import { IMPORT_MAX_BYTES } from "@/lib/data-limits";
 import { INVENTORY_FILE_ROWS_MAX } from "@/lib/inventory";
 import { bytesIn, numberIn } from "@/lib/inventory-words";
-import { createClient } from "@/lib/supabase/client";
+import { uploadToSignedUrl } from "@/lib/supabase/signed-upload";
 
 type Upload = { ok: true; path: string; token: string; bucket: string } | { ok: false; problem: string };
 type Registered = { ok: true; jobId: string } | { ok: false; problems: string[] };
@@ -62,9 +62,7 @@ export function StockUpload({
         setProblems([started.problem]);
         return;
       }
-      const stored = await createClient()
-        .storage.from(started.bucket)
-        .uploadToSignedUrl(started.path, started.token, file, { contentType: TYPES.includes(file.type) ? file.type : "text/csv" });
+      const stored = await uploadToSignedUrl(started.bucket, started.path, started.token, file, { contentType: TYPES.includes(file.type) ? file.type : "text/csv" });
       if (stored.error) {
         setProblems([w.didNotArrive]);
         return;

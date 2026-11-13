@@ -1,5 +1,5 @@
 import type { FieldFile } from "@/lib/custom-fields";
-import { createClient } from "@/lib/supabase/client";
+import { uploadToSignedUrl } from "@/lib/supabase/signed-upload";
 
 import type { FieldFileUploader } from "./fields-form-helpers";
 
@@ -22,9 +22,7 @@ export function fieldFileUploader(start: StartFieldFile): FieldFileUploader {
     try {
       const started = await start({ name: file.name, type: file.type, size: file.size });
       if (!started.ok) return { problem: started.problem };
-      const stored = await createClient()
-        .storage.from(started.bucket)
-        .uploadToSignedUrl(started.path, started.token, file, { contentType: file.type });
+      const stored = await uploadToSignedUrl(started.bucket, started.path, started.token, file, { contentType: file.type });
       if (stored.error) return { problem: `${file.name} could not be uploaded. Try again.` };
       return { url: started.url, name: started.name, size: file.size, contentType: file.type };
     } catch {
