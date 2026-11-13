@@ -422,7 +422,7 @@
     "src/server/trust-fixtures.ts": 5,
     "src/server/two-step.ts": 6,
     "src/server/typed-rows.ts": 1,
-    "src/server/ui-text.ts": 7,
+    "src/server/ui-text.ts": 5,
     "src/server/unit-price-gaps.ts": 5,
     "src/server/usage-alerts.ts": 3,
     "src/server/usage-traffic.ts": 2,

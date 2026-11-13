@@ -34,7 +34,7 @@ import { storeShareImage, storeShareTags, verificationTags } from "@/server/seo"
 import { prerenderedShops, resolveAfterSaleShop, resolveShop } from "@/server/shop";
 import { legalLinksFor } from "@/server/legal-links";
 import { siteLayoutForVisitor } from "@/server/site-layouts";
-import { uiTextsFor } from "@/server/ui-text";
+import { uiTextsFor } from "@/server/ui-text-read";
 
 import { MarketExtras } from "./extras";
 import { CountryHintSection } from "@/components/country-hint-section";

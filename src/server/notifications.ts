@@ -35,7 +35,7 @@ import { storeSiteUrl } from "@/lib/paths";
 import { audit } from "./auth";
 import { sendEmail, type SendOutcome } from "./email";
 import { emailFooter, storeById, type EmailStore } from "./shopper-emails";
-import { ensureUi } from "./ui-text";
+import { ensureUi } from "./ui-text-read";
 
 type Row = Record<string, unknown>;
 

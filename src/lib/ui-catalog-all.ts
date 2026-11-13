@@ -2,9 +2,7 @@ import { emailText } from "./email-text";
 import { t } from "./i18n";
 import { catalogOf, type CatalogEntry } from "./ui-catalog";
 
-/** The languages whose interface text is written by hand, in code (D111): they are never in the database. */
-export const BUILT_IN_LANGUAGES = ["nb", "sv", "da", "en"] as const;
-export const isBuiltIn = (lang: string) => (BUILT_IN_LANGUAGES as readonly string[]).includes(lang);
+export { BUILT_IN_LANGUAGES, isBuiltIn } from "./built-in-languages";
 
 let memo: CatalogEntry[] | null = null;
 

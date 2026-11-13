@@ -24,6 +24,7 @@ vi.mock("./ai", () => ({ AiError, aiFor: async () => null, completeText: (...arg
 
 const languages = await import("./languages");
 const text = await import("./ui-text");
+const read = await import("./ui-text-read");
 const localization = await import("./localization");
 const { getStore } = await import("./stores");
 
@@ -120,15 +121,15 @@ describe("a language's interface text", () => {
   });
 
   it("is read back as t() and emailText(), key by key with English for what is missing", async () => {
-    await text.reloadUi("de");
+    await read.reloadUi("de");
     const de = t("de") as unknown as Record<string, unknown>;
     const path = plain.key.slice(3).split(".");
     const value = path.reduce<unknown>((node, k) => (node as Record<string, unknown>)[k], de);
     expect(value).toBe(`DE ${plain.source}`);
     expect(t("de").stay.nights(2)).toBe("2 nights");
     expect(t("xx").stay.nights(2)).toBe("2 nights");
-    expect(text.uiTextsFor("de")?.[plain.key]).toBe(`DE ${plain.source}`);
-    expect(text.uiTextsFor("nb")).toBeNull();
+    expect(read.uiTextsFor("de")?.[plain.key]).toBe(`DE ${plain.source}`);
+    expect(read.uiTextsFor("nb")).toBeNull();
   });
 
   it("refuses a model that fails, and one that answers wrongly", async () => {
@@ -173,6 +174,6 @@ describe("a language's interface text", () => {
   it("can be cleared to start again", async () => {
     expect(await text.clearUiTexts(accountId, "de")).toBe(catalog.length);
     expect(t("de").stay.nights(1)).toBe("1 night");
-    expect(text.uiTextsFor("de")).not.toBeNull();
+    expect(read.uiTextsFor("de")).not.toBeNull();
   });
 });

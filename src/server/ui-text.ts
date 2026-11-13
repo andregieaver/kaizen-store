@@ -3,130 +3,22 @@ import "server-only";
 import { sql } from "drizzle-orm";
 
 import { db, readDb } from "@/db/client";
-import { emailText } from "@/lib/email-text";
-import { t } from "@/lib/i18n";
-import { forgetMessages, registerMessages, registeredLanguages } from "@/lib/ui-registry";
-import { overlayMessages, sourceHash } from "@/lib/ui-catalog";
+import { sourceHash } from "@/lib/ui-catalog";
 import { catalogEntry, fullCatalog, isBuiltIn } from "@/lib/ui-catalog-all";
 import { batchEntries, entryProblem, readUiAnswer, uiMessages } from "@/lib/ui-translate";
 import { parseModelJson } from "@/lib/query-understanding";
 
 import { AiError, aiFor, completeText, type AiConnection } from "./ai";
 import { audit } from "./auth";
+import { reloadUi } from "./ui-text-read";
 
 type Row = Record<string, unknown>;
 
 /**
- * The interface text of languages without hand-written text (D111): what is
- * kept in `commerce.ui_translations`, read into the registry that `t()` and
- * `emailText()` use, and the platform admin's tools to make it: translating
- * with AI, a person's edits, and marking it reviewed. The server reads it when
- * an instance starts and looks for changes each minute (`startUi()`, from
- * `src/instrumentation.ts`), and pages are drawn from memory: the sync `t()`
- * never waits on the database, and never reads it while a page is prerendered.
+ * The platform admin's tools to make the interface text of languages without hand-written text (D111): translating with AI, a
+ * person's edits, and marking it reviewed. It is kept in `commerce.ui_translations` and read by `src/server/ui-text-read.ts`: the
+ * start hook and pages import that file, never this one (bloat review step 0.8).
  */
-
-const KEY = "__kaizenUiState";
-/** How long a server instance trusts what it has read before asking whether a language changed. */
-const FRESH_MS = 60_000;
-
-type State = {
-  loaded: boolean;
-  checkedAt: number;
-  inflight: Promise<void> | null;
-  versions: Map<string, string>;
-  /** The storefront's texts by language, for the browser (`UiProvider`). */
-  texts: Map<string, Record<string, string>>;
-};
-
-function state(): State {
-  const scope = globalThis as unknown as Record<string, State | undefined>;
-  return (scope[KEY] ??= { loaded: false, checkedAt: 0, inflight: null, versions: new Map(), texts: new Map() });
-}
-
-async function loadLanguage(lang: string): Promise<void> {
-  const rows = await readDb().execute<Row>(sql`select key, text from commerce.ui_translations where lang = ${lang}`);
-  const ui = new Map<string, string>();
-  const email = new Map<string, string>();
-  for (const row of rows) (String(row.key).startsWith("email:") ? email : ui).set(String(row.key), String(row.text));
-  registerMessages(lang, { ui: overlayMessages("ui", t("en"), ui, lang), email: overlayMessages("email", emailText("en"), email, lang) });
-  state().texts.set(lang, Object.fromEntries(ui));
-}
-
-/** Reads the languages that changed since last time; a failure leaves what there is (English where nothing is). */
-async function refresh(): Promise<void> {
-  const s = state();
-  try {
-    const rows = await readDb().execute<Row>(sql`
-      select lang, count(*)::int as n, max(updated_at)::text as v from commerce.ui_translations group by lang
-    `);
-    const seen = new Set<string>();
-    for (const row of rows) {
-      const lang = String(row.lang);
-      const version = `${row.n}:${row.v}`;
-      seen.add(lang);
-      if (s.versions.get(lang) === version || isBuiltIn(lang)) continue;
-      await loadLanguage(lang);
-      s.versions.set(lang, version);
-    }
-    for (const lang of registeredLanguages()) {
-      if (!seen.has(lang)) {
-        forgetMessages(lang);
-        s.versions.delete(lang);
-        s.texts.delete(lang);
-      }
-    }
-  } catch (error) {
-    console.warn("Interface text could not be read:", error instanceof Error ? error.message : error);
-  } finally {
-    s.loaded = true;
-    s.checkedAt = Date.now();
-    s.inflight = null;
-  }
-}
-
-/**
- * Makes sure the languages' text is read: the first call waits for it, later
- * ones return at once and, once a minute, look for changes in the background.
- */
-export async function ensureUi(): Promise<void> {
-  const s = state();
-  if (!s.loaded) {
-    await (s.inflight ??= refresh());
-    return;
-  }
-  if (!s.inflight && Date.now() - s.checkedAt > FRESH_MS) s.inflight = refresh();
-}
-
-/**
- * Keeps the text current in a long-lived server: the first read waits, then a
- * timer looks for changes each minute (pages are drawn from memory, never
- * waiting on the database). Called once when the instance starts.
- */
-export async function startUi(): Promise<void> {
-  const s = state();
-  await ensureUi();
-  if ((globalThis as Record<string, unknown>).__kaizenUiTimer) return;
-  const timer = setInterval(() => {
-    if (!s.inflight) s.inflight = refresh();
-  }, FRESH_MS);
-  timer.unref?.();
-  (globalThis as Record<string, unknown>).__kaizenUiTimer = timer;
-}
-
-/** Reads a language again now, after the platform admin changed it. */
-export async function reloadUi(lang: string): Promise<void> {
-  const s = state();
-  await loadLanguage(lang);
-  s.versions.delete(lang);
-  // Other instances notice within a minute.
-  s.checkedAt = 0;
-}
-
-/** The storefront's texts for a language, for the browser; null for a language written by hand or not translated. */
-export function uiTextsFor(lang: string): Record<string, string> | null {
-  return isBuiltIn(lang) ? null : (state().texts.get(lang) ?? null);
-}
 
 // ---------------------------------------------------------------------------
 // What a language has
