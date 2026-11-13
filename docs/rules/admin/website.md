@@ -406,7 +406,9 @@ CLAUDE.md keeps one line per rule pointing here; each rule is under that line as
   an `<img>` with an empty alt text, and the hue does not turn it. A layer is only names from the lists, `#rrggbb` colours and whole numbers inside
   limits (`background-layers-schema.ts`); it reaches the page through `layerDraw()` (attributes and `--fx-*` properties, each value remade)
   and `layerFx()` (its travel on the frame's scroll timeline as `--fx-sk`, its movement by itself as `data-fx-amb`), drawn by `motion.css`:
-  never write a layer's value into a style yourself. A new kind, pattern, fade or movement is an id in `background-layers.ts`, its CSS in
+  never write a layer's value into a style yourself. A new layer starts at its kind's depth (D584: `GLOW_DEPTH`, `HORIZON_DEPTH`,
+  `PATTERN_DEPTHS`, `PICTURE_DEPTHS`), never *With the page*, and a change of pattern or fit carries the depth only where the owner left
+  the old kind's (`setPattern()`, `setPictureFit()`); a new kind gets a depth there too. A new kind, pattern, fade or movement is an id in `background-layers.ts`, its CSS in
   `motion.css` (a test fails without it), its words in `BACKDROP_WORDS` and `backdrops.nb.ts`, and its fields in `backdrop-fields.tsx`; only
   `translate`, `scale` and `opacity` move, and a glow or a horizon is a gradient on a box no larger than the frame needs, never a
   shadow or an element larger than the part. A layer is two elements, the one that travels and inside it the one that draws; a layer's
