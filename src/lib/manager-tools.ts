@@ -586,6 +586,8 @@ export const TOOL_WORDS: Record<string, string> = {
   get_affiliate_program: "Looking at the referral program",
   set_affiliate_program: "Preparing the referral change",
   block_affiliate: "Preparing the change",
+  list_ad_budgets: "Looking at the ad budgets",
+  set_ad_budget: "Preparing the budget change",
   find_admin_page: "Finding the page",
   open_admin_page: "Opening the page",
   use_skill: "Getting the playbook",

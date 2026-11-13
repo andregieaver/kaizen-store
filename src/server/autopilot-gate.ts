@@ -5,6 +5,7 @@ import type { MakeThemeLiveInput } from "@/lib/design-tools";
 import type { GateCategory } from "@/lib/owner-tools";
 import type { SetPricesInput } from "@/lib/product-tools";
 
+import { adBudgetAutopilotProblem } from "./ad-budget-tools";
 import type { Account } from "./auth";
 import { autopilotCustomerEmailsThisWeek } from "./autopilot-settings";
 import { liveCostsMoney } from "./design-tools";
@@ -30,7 +31,9 @@ export async function autopilotDecision(
         ? { discountPercent: discountDepth(tool, args) }
         : tool === "make_theme_live" && p.store
           ? { costsMoney: await liveCostsMoney(p.store, p.account, args as MakeThemeLiveInput) }
-          : (CUSTOMER_EMAIL_TOOLS as readonly string[]).includes(tool)
+          : tool === "set_ad_budget" && p.store
+            ? { adProblem: await adBudgetAutopilotProblem(p.store, args, settings.budgets.adRaisePercent) }
+            : (CUSTOMER_EMAIL_TOOLS as readonly string[]).includes(tool)
             ? { customerEmailsThisWeek: p.store ? await autopilotCustomerEmailsThisWeek(p.store.id) : null }
             : {};
   return autonomyDecision(settings, tool, gate, facts);

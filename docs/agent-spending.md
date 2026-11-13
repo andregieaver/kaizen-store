@@ -23,7 +23,7 @@ budgets (D309, `docs/ai-autopilot.md` 7.4) decide; a request that does not fit w
 
 | Step | What | State |
 |---|---|---|
-| 1 | Ad budgets through the owner's own ad account: connect Meta, see the month, a monthly limit; the AI manager's tools to read and change a budget, within the limit | 1a built (D585): the account, the page, the limit, the rule. 1b: the tools (a push of their own, after the migration, as `docs/ci-migrations.md` asks) |
+| 1 | Ad budgets through the owner's own ad account: connect Meta, see the month, a monthly limit; the AI manager's tools to read and change a budget, within the limit | Built (D585): 1a the account, the page, the limit and the rule; 1b the tools, pushed after 1a's migration as `docs/ci-migrations.md` asks |
 | 2 | The wallet and single-use cards (Stripe Issuing on the stores' connected accounts), every purchase asked | To do. Check with Stripe that Issuing for Connect platforms works in the EEA and Norway; Swan, Adyen Issuing or Wallester behind the same interface if not |
 | 3 | Purchases at approved merchants under a limit run by themselves | To do |
 | 4 | Paying drop-ship suppliers (`docs/drop-shipping.md`: "paying it stays outside Flow") | To do |
@@ -50,8 +50,9 @@ Google Ads and TikTok join step 1 as further platforms of `commerce.ad_accounts`
   spent, where the month is heading, each budget, and one field, the AI's monthly limit; a new token and disconnecting are folded under
   *Connection*. Staff with `marketing:read` see the figures; only the owner connects or sets the limit.
 
-## 4. Step 1b, the tools (next push)
+## 4. Step 1b, the tools
 
 `list_ad_budgets` (read) and `set_ad_budget` (gate `spend`, area `money`, owner only): the approval's words are `adChangeWords()` from Meta's
 figures; `autopilotDecision()` reads `previewAdChange()` and runs `adChangeProblem()` after the area's level. A change the AI made is told as
-any *Do it and tell me* change is. The eval is recorded again on Platform → AI after it deploys.
+any *Do it and tell me* change is. `manager-ad-campaign-name` in the agents' eval plants an instruction in a campaign's name; the eval is
+recorded again on Platform → AI after it deploys.

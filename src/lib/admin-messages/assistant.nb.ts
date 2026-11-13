@@ -495,6 +495,8 @@ export const assistantNb: AssistantMessages = {
     get_affiliate_program: "Ser på vervingsprogrammet",
     set_affiliate_program: "Forbereder vervingsendringen",
     block_affiliate: "Forbereder endringen",
+    list_ad_budgets: "Ser på annonsebudsjettene",
+    set_ad_budget: "Forbereder budsjettendringen",
     find_admin_page: "Finner siden",
     open_admin_page: "Åpner siden",
     use_skill: "Henter fremgangsmåten",

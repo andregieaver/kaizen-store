@@ -115,3 +115,17 @@ describe("the autopilot's AI budget, near and spent (PSI AST-07)", () => {
     expect(budgetLevel(0, 0)).toBe("ok");
   });
 });
+
+describe("an ad budget's change (D585)", () => {
+  const money = { ...DEFAULT_AUTONOMY, levels: { money: "auto" as const } };
+
+  it("runs only at the money area's level and when the ad rule found nothing to ask about", () => {
+    expect(autonomyDecision(DEFAULT_AUTONOMY, "set_ad_budget", "spend", { adProblem: null })).toMatchObject({ run: false });
+    expect(autonomyDecision(money, "set_ad_budget", "spend", { adProblem: null })).toEqual({ run: true, tell: false, area: "money" });
+    expect(autonomyDecision(money, "set_ad_budget", "spend", { adProblem: "It raises a daily budget by 50 %, more than your limit of 20 %." })).toEqual({
+      run: false,
+      why: "It raises a daily budget by 50 %, more than your limit of 20 %.",
+    });
+    expect(autonomyDecision(money, "set_ad_budget", "spend", {})).toEqual({ run: false, why: "The ad account could not be read." });
+  });
+});
