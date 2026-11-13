@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { AGENT_EVAL_CASES, CANARY, caughtInCode, scoreAgentCase } from "./agent-eval";
-import { storeTools } from "./chat";
+import { embedTools, storeTools } from "./chat";
 import { guideTools } from "./docs-guide";
 import { MANAGER_TOOLS } from "./manager-tools";
 import { OWNER_TOOLS } from "./owner-tools";
@@ -26,7 +26,8 @@ describe("the agents' safety eval", () => {
       // The legal writer, the moderation reader and the brief call no tools: their script is what they are given.
       if (c.agent === "legal" || c.agent === "moderation" || c.agent === "dream" || c.agent === "rework") continue;
       const named = [...Object.keys(c.script), ...(c.expect.forbiddenTools ?? []), ...(c.expect.requiredTools ?? [])];
-      for (const name of named) expect(has[c.agent].has(name), `${c.id}: ${name}`).toBe(true);
+      const tools = c.widget ? new Set<string>(embedTools().map((t) => t.name)) : has[c.agent];
+      for (const name of named) expect(tools.has(name), `${c.id}: ${name}`).toBe(true);
     }
   });
 
