@@ -483,4 +483,7 @@ The re-score ([psi-2026-11-01.md](psi-2026-11-01.md)) put the overall at 80.0 (8
       2026, D540): each area's English is fetched only where a page did not hand it down, which a signed-in test now fails on; every admin
       screen's first scripts about 1.1 MB smaller (home 2.46 to 1.28 MB, the builder 4.39 to 3.34 MB). Left: read the admin's p75 again
       from the speed beacon once a month of loads is in, and tick this when it is under 2.5 s.
+      13 November 2026 (bloat review step 0.9): the Supabase client, zod, the builder's English and sign-in's English left the
+      signed-in frame; home 1.28 to 0.78 MB, the builder 3.34 to 3.14 MB, `/admin/[store]` 1,194,862 to 682,999 bytes in the build's
+      statistics (`docs/performance.md`). Still open: the p75 from the beacon.
 - [x] **AST-09, AGT-14** Record the eval again with DSA and Dream Factory cases, its recording carrying `tools`. Done: recorded 2 November 2026 on Platform → AI's model (gpt-4.1-mini, 17 of 17, run `9a725030`) after the filter took out lines addressed to a reviewer or a "system override" and the brief stopped guessing the business's country (683e9a13); the recording carries `tools` and is `src/data/agent-eval-recording.json`.

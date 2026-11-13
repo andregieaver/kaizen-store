@@ -202,6 +202,39 @@ and fails on any. Its first runs found the platform's docs guide (`website`) and
 Besides every screen without an id in its address, the test follows each screen's links to one screen of each kind behind them (an
 order, a product, a type made from a preset), at most 150 for each person.
 
+**Three stray imports go (13 November 2026, bloat review step 0.9).** Three imports put 481 KB on 432 of 449 admin routes: the session
+listener and every upload imported the Supabase client (`GoTrueClient`), the shortcut sheet took the page builder's English through
+`typingIn()`, and the gated layout's service worker took zod through the push schema; sign-in's English sat in the shared text module and
+the layout handed every screen the `setup` area, which no client part reads. Now the client arrives by `import()` once the page is idle
+(at most 2 s after it) or when an upload is pressed (`uploadToSignedUrl()`, `src/lib/supabase/signed-upload.ts`), the public settings are
+checked without zod (`src/lib/public-env.ts`), and sign-in's words live in `sign-in-text.tsx`. From the build's route statistics
+(`docs/audits/bloat-review-2026-11/scripts/markers.mjs`), raw first scripts:
+
+| Route or marker | Before (11 November build) | After |
+|---|---:|---:|
+| `/admin/[store]` | 1,194,862 bytes | 682,999 bytes |
+| The median admin route | 1,152,953 bytes | 641,331 bytes |
+| Routes holding `GoTrueClient` | 432 | 0 |
+| Routes holding `ZodError` | 432 | 159 |
+| Routes holding the builder's `Set for {size}` | 423 | 39, all the builder's own |
+| Routes holding sign-in's two-step sentence | 456 | 2 (`/admin/account`, the two-step set-up) |
+
+Counted from the HTML the server sends (`admin-scripts.spec.ts`), with the budgets lowered to the new figures plus about 4 %:
+
+| Screen | Before (10 November) | After | Budget |
+|---|---:|---:|---:|
+| The store's home | 1.28 MB | 0.78 MB | 0.81 MB |
+| Products | 1.26 MB | 0.74 MB | 0.78 MB |
+| A new product (the editor) | 2.22 MB | 1.87 MB | 1.95 MB |
+| Orders | 1.28 MB | 0.76 MB | 0.80 MB |
+| Pages (the list) | 2.09 MB | 1.74 MB | 1.82 MB |
+| A page in the builder | 3.34 MB | 3.14 MB | 3.27 MB |
+| Settings | 1.23 MB | 0.72 MB | 0.75 MB |
+
+The rule: the signed-in frame's client parts import no schema, no SDK and no catalogue at their top: a helper they need lives in a file
+without them (`src/lib/typing-in.ts`, `src/lib/public-env.ts`, `src/lib/push-schema.ts`, `admin-service-worker.tsx`, `sign-in-text.tsx`),
+and the Supabase client arrives by `import()`.
+
 ## Kaizena Flow's front page, served from its store (measured 12 November 2026)
 
 The bloat review measured this page in the platform's own form (`/`, the `(platform)` route), which production stopped serving when the
