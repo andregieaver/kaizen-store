@@ -323,7 +323,8 @@ export async function openPaymentSession(
             }),
         // A business's invoice needs its full address (Art. 226 point 5, D159): Stripe asks for a billing address, not only a postal code.
         ...(order.company && { billing_address_collection: "required" as const }),
-        // Collected at the store's place (D237): no address is asked; the store's own driver needs a phone number.
+        // Local delivery (D237): the store's own driver brings it and needs a phone number. Stripe's form on our page draws no phone field, so the
+        // checkout page asks it and passes it to `confirm()` (`CheckoutPhoneOption`); Stripe's own page asks it itself.
         ...(order.deliveryMethod === "local" && { phone_number_collection: { enabled: true } }),
         ...(order.ships && order.deliveryMethod !== "pickup" && {
           shipping_address_collection: {

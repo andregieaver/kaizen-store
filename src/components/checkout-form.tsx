@@ -15,6 +15,7 @@ import { checkoutAccountAction } from "@/app/s/[store]/[market]/account/actions"
 import { captureCheckoutEmailAction, checkoutNewsAction, checkoutRemindersAction, checkoutSmsAction, deliveryReadyAction } from "@/app/s/[store]/[market]/checkout/actions";
 import { recordTermsAction } from "@/app/s/[store]/[market]/checkout/terms-actions";
 import { stripeAppearance, stripeFonts, type CheckoutAppearance } from "@/lib/checkout-appearance";
+import { e164Phone } from "@/lib/phone";
 import { payHeld, payStep, type TermsDisplay } from "@/lib/checkout-terms";
 
 import { useShowsDark } from "./color-mode-switch";
@@ -97,6 +98,17 @@ export type CheckoutDeliveryCheck = {
   labels: { postal_code: string; changed: string; no_shipping: string; seeNewPrice: string; checkFailed: string };
 };
 
+/**
+ * A phone number for the driver (D237): local delivery turns on the session's `phone_number_collection`, but Stripe draws no phone field on
+ * our page, so the page asks it, required, and hands it to `confirm({ phoneNumber })` in E.164 (`e164Phone()`, a national number read in the
+ * market's country). Wallets give their own.
+ */
+export type CheckoutPhoneOption = {
+  /** The market's country, for a number typed without its country code. */
+  country: string;
+  labels: { label: string; hint: string; problem: string };
+};
+
 /** Stripe's form in the store's own look (D337), light or dark: the theme's colours, body font and corners, and the checkout's own choices. */
 function appearance(look: CheckoutAppearance, dark: boolean): Appearance {
   return stripeAppearance(look, dark);
@@ -126,6 +138,7 @@ export function CheckoutForm({
   terms = null,
   termsSlot = null,
   delivery = null,
+  phone = null,
   look,
 }: {
   /** The store's look for Stripe's form (`checkoutAppearanceFor()`, D337), worked out on the server from its theme. */
@@ -147,6 +160,8 @@ export function CheckoutForm({
   /** The sentence and box for the terms (`CheckoutTerms`), drawn above the pay button; null where the page has its own piece. */
   termsSlot?: ReactNode;
   delivery?: CheckoutDeliveryCheck | null;
+  /** Local delivery: the driver's phone number, asked here because Stripe's form on our page asks none. */
+  phone?: CheckoutPhoneOption | null;
 }) {
   // Stripe runs in the browser only; the server sends the waiting state.
   const inBrowser = useSyncExternalStore(noSubscribe, () => true, () => false);
@@ -175,6 +190,7 @@ export function CheckoutForm({
         terms={terms}
         termsSlot={termsSlot}
         delivery={delivery}
+        phone={phone}
       />
     </CheckoutElementsProvider>
   );
@@ -202,6 +218,7 @@ function Form({
   terms,
   termsSlot,
   delivery,
+  phone,
 }: {
   labels: CheckoutFormLabels;
   links: { cart: string; order: string };
@@ -213,6 +230,7 @@ function Form({
   terms: CheckoutTermsOption | null;
   termsSlot: ReactNode;
   delivery: CheckoutDeliveryCheck | null;
+  phone: CheckoutPhoneOption | null;
 }) {
   const state = useCheckoutElements();
   // Where the order placed again after a delivery change waits (D237): the shopper opens it to see the new price.
@@ -232,6 +250,9 @@ function Form({
   const [wantsNews, setWantsNews] = useState(false);
   const [wantsSms, setWantsSms] = useState(false);
   const smsPhone = useRef<HTMLInputElement>(null);
+  // The driver's number (local delivery): checked on the pay press, said under the field when it is not one.
+  const driverPhone = useRef<HTMLInputElement>(null);
+  const [phoneProblem, setPhoneProblem] = useState(false);
   // The last complete email typed, and the pause before keeping it.
   const typedEmail = useRef<string | null>(null);
   const captureTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -362,6 +383,15 @@ function Form({
     return false;
   };
 
+  /** The driver's number in E.164, or null when none is asked; false (said under the field, which is focused) when it is not a number. */
+  const phoneNumber = (): string | null | false => {
+    if (!phone) return null;
+    const number = e164Phone(driverPhone.current?.value ?? "", phone.country);
+    setPhoneProblem(number === null);
+    if (number === null) requestAnimationFrame(() => driverPhone.current?.focus());
+    return number ?? false;
+  };
+
   const pay = async (event: FormEvent) => {
     event.preventDefault();
     // The button is disabled while the box is unticked; a keyboard submit or a script gets the same answer.
@@ -369,6 +399,9 @@ function Form({
       setProblem(terms?.labels.hint ?? null);
       return;
     }
+    // Before anything is kept or paid, as the delivery check: a driver who cannot call is a delivery that fails.
+    const number = phoneNumber();
+    if (number === false) return;
     setBusy(true);
     setProblem(null);
     if (!(await deliverySettled())) return;
@@ -377,7 +410,7 @@ function Form({
     await askForNews();
     await askForSms();
     // On success Stripe takes the shopper to the order page.
-    const result = await checkout.confirm();
+    const result = await checkout.confirm(number ? { phoneNumber: number } : undefined);
     if (result.type === "error") fail(result.error.message);
   };
 
@@ -412,6 +445,34 @@ function Form({
           {labels.contact}
         </h2>
         <ContactDetailsElement onChange={onContactChange} />
+        {phone && (
+          <div className="flex flex-col gap-1">
+            <label htmlFor={`${id}-driver-phone`} className="font-medium">
+              {phone.labels.label}
+            </label>
+            <input
+              ref={driverPhone}
+              id={`${id}-driver-phone`}
+              type="tel"
+              required
+              autoComplete="tel"
+              inputMode="tel"
+              maxLength={32}
+              aria-invalid={phoneProblem || undefined}
+              aria-describedby={`${id}-driver-phone-hint${phoneProblem ? ` ${id}-driver-phone-problem` : ""}`}
+              onChange={() => phoneProblem && setPhoneProblem(false)}
+              className="min-h-11 w-full rounded-md border border-border bg-background px-3"
+            />
+            <p id={`${id}-driver-phone-hint`} className="text-sm text-muted">
+              {phone.labels.hint}
+            </p>
+            {phoneProblem && (
+              <p id={`${id}-driver-phone-problem`} role="alert" className="text-sm text-red-700 dark:text-red-400">
+                {phone.labels.problem}
+              </p>
+            )}
+          </div>
+        )}
         {reminders && (
           <p aria-live="polite" className="text-sm text-muted">
             {optedOut ? reminders.labels.optedOut : reminders.labels.notice}{" "}

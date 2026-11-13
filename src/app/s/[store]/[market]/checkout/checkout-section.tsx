@@ -633,6 +633,12 @@ async function paymentForm(store: Store, market: Market, view: CheckoutView, dra
                   }
                 : null
             }
+            // Local delivery (D237): the session collects a phone for the driver, which Stripe's form on our page does not draw, so the page asks it.
+            phone={
+              order.deliveryMethod === "local"
+                ? { country: market.code, labels: { label: m.deliveryOptions.driverPhone.label, hint: m.deliveryOptions.driverPhone.hint, problem: m.deliveryOptions.driverPhone.problem } }
+                : null
+            }
             links={{
               cart: `${base}/cart`,
               order: `${base}/order/${open.orderId}?session_id=${encodeURIComponent(open.sessionId)}`,

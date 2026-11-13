@@ -237,6 +237,12 @@ export const sv: Messages = {
     instructions: "Instruktioner för hämtning",
     noteLabel: "Meddelande till föraren (valfritt)",
     noteHint: "Till exempel en portkod eller var leveransen kan lämnas. Högst 500 tecken.",
+    /** Local delivery paid on Stripe's form on our page: Stripe draws no phone field there, so the page asks it for the driver. */
+    driverPhone: {
+      label: "Telefon till föraren",
+      hint: "Föraren ringer eller skickar sms till det här numret om leveransen.",
+      problem: "Skriv ett telefonnummer som föraren kan nå dig på. Ett nummer från ett annat land börjar med + och landsnumret.",
+    },
     yourNote: "Ditt meddelande till föraren",
     localFrom: (minimum: string) => `Lokal leverans från ${minimum}`,
     noShipping: (postalCode: string) => `Vi kan inte leverera den här varukorgen till ${postalCode}. Hämta den själv eller kontakta butiken.`,

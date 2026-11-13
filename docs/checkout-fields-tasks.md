@@ -77,10 +77,12 @@ let in, those fields become required for it.
 But on our page nothing collects a phone or calls `updatePhoneNumber()`, and `ContactDetailsElement` asks only for the email. So a
 local-delivery order paid by Stripe on our page arrives without a phone (or, unverified, is refused by `confirm()`). Production has no
 local delivery areas yet (13 November 2026), so no order has met it. A Mollie store asks the phone itself (`PayerNeeds.phone`).
+**Fixed 13 November 2026:** the checkout page asks *Phone for the driver* (required) for a local delivery and passes it to
+`confirm({ phoneNumber })` in E.164 (`e164Phone()` in the zod-free `src/lib/phone.ts`, a national number read in the market's country).
 
 **Recommendation.**
 
-1. Fix the gap first: a phone field on our checkout page, required for local delivery, passed with `updatePhoneNumber()`.
+1. ~~Fix the gap first~~ Done 13 November 2026: a phone field on our checkout page, required for local delivery, passed with `confirm()`.
 2. Then one setting per field under *Customise*, Off, Optional or Required: phone, the person's name and the company name, through
    `name_collection` and our own fields on Stripe and `cleanPayer()` on Mollie. Lisa's step away; Homer keeps today's defaults.
 3. Address line 2 only with our own address form on Stripe (`updateShippingAddress()`), which costs Stripe's autocomplete. Leave it
