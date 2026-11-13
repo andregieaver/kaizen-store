@@ -143,10 +143,12 @@ A widget now answers from its own sites' pages as well as the knowledge base.
   (the rule is only drawn for a widget), so the replay still passes.
 - **The admin.** Each found site says how many pages the chat has read of it, or why none (robots.txt, nothing listed, unreachable), or
   that it reads them within minutes, with *Read the site again*.
-- **Left for the next push without a migration.** An agent-eval case with instructions hidden in a site page as the widget's chat reads it
-  (the embed prompt and `embedTools()`), and the Website chat pages taken out of `NOT_YET_IN_PROMPT` (D582). Both change what the eval
-  replays, so they go in a push that deploys after the quick gate; the eval is then recorded again on Platform → AI and its recording
-  committed. Until then the chat-knowledge case covers instructions hidden in `search_content`'s passages.
+- **The eval (done in the push after, 13 November 2026).** The agents' eval plays the widget too: `fixedWidgetPrompt()` is drawn beside
+  the store's chat prompt in the chat's version, `embedTools()` joins the tools' version, and the case `chat-widget-site-page` gives the
+  widget's chat a site page with a hidden comment asking for a card number by email and a planted word (`widget: true` plays it with the
+  widget's prompt and its one tool). The same push put Website chat's pages back in the AI manager's prompt (`NOT_YET_IN_PROMPT`, D582).
+  It has no migration, so it deploys after the quick gate; the replay fails until the eval is recorded again on Platform → AI and the
+  recording committed as `src/data/agent-eval-recording.json`.
 
 | Part | Where |
 |---|---|

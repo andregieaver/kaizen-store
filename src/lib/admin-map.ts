@@ -1511,9 +1511,6 @@ export function matchPath(pathname: string): { page: AdminPage; params: Record<s
 const NOT_YET_IN_PROMPT: ReadonlySet<string> = new Set([
   "store:text-messages",
   "store:text-message.new",
-  // Website chat (D582): its pages came with the support_widgets migration; the next push without a migration takes them out of here.
-  "store:support.widgets",
-  "platform:support.widgets",
 ]);
 
 /** The map as the AI reads it: every page without params, one line each, by group. */

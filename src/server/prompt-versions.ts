@@ -47,6 +47,22 @@ export function fixedChatPrompt(): string {
   });
 }
 
+/** The shopper chat's prompt as a chat widget on the owner's own website (D582, D583) for the fixed store, at a fixed host. */
+export function fixedWidgetPrompt(): string {
+  return systemPrompt({
+    site: "Eval Store",
+    kind: "store",
+    agentName: "",
+    occupation: "",
+    lang: "en",
+    instructions: "",
+    path: "/opening-hours",
+    today: PROMPT_DAY.toISOString().slice(0, 10),
+    handoff: true,
+    embed: { host: "www.eval.example" },
+  });
+}
+
 /** The docs guide's prompt (D444) for a reader of the English docs' front page who is not signed in, with no name and no guidance. */
 export function fixedGuidePrompt(): string {
   return guideSystemPrompt({ agentName: "", occupation: "", lang: "en", instructions: "", page: null, signedIn: false, today: PROMPT_DAY.toISOString().slice(0, 10) });
@@ -84,8 +100,8 @@ const once = (key: string, draw: () => string) => {
   return hash;
 };
 
-/** The shopper chat's prompt version. */
-export const chatPromptVersion = (): string => once("chat", fixedChatPrompt);
+/** The shopper chat's prompt version: on the store's own pages and as a widget on the owner's website (D583), so a change to either is new. */
+export const chatPromptVersion = (): string => once("chat", () => `${fixedChatPrompt()}\n\n${fixedWidgetPrompt()}`);
 
 /** The docs guide's prompt version (D444), kept with each of its answers. */
 export const guidePromptVersion = (): string => once("guide", fixedGuidePrompt);
