@@ -369,6 +369,8 @@ export const assistantNb: AssistantMessages = {
     customs_duties: "Ser på toll og avgifter",
     producer_registrations: "Ser på registreringene for produsentansvar",
     save_producer_registration: "Forbereder registreringen",
+    checkout_questions: "Ser på spørsmålene i kassen",
+    save_checkout_question: "Forbereder spørsmålet",
     list_blogs: "Ser på bloggene",
     blog_comments: "Ser på bloggkommentarene",
     moderate_blog_comment: "Forbereder avgjørelsen om kommentaren",

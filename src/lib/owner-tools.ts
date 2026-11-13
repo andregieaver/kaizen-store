@@ -32,6 +32,7 @@ import { compareOptionsInput, listResearchNotesInput, readWebPageInput, saveRese
 import { archiveOrdersInput, createDraftOrderInput, listDraftOrdersInput, listOrdersInput, sendDraftOrderInput, sendDraftSummary, tagOrdersInput } from "./order-ops-tools";
 import { categoryApprovalSummary, listCategoriesInput, updateCategoryInput } from "./category-tools";
 import { createProductInput, productApprovalSummary, setPricesInput, setProductStatusInput, updateProductInput, writeProductTextsInput } from "./product-tools";
+import { checkoutQuestionSummary, checkoutQuestionsInput, saveCheckoutQuestionInput } from "./checkout-question-tools";
 import { declineQuoteInput, priceDisplayInput, quoteToolSummary, setDraftPricesInput, setPriceDisplayInput, setQuoteRequestsInput } from "./quote-tools";
 import {
   saveShippingMethodInput,
@@ -1317,6 +1318,18 @@ export const OWNER_TOOLS = [
     setQuoteRequestsInput,
     "public",
   ),
+  // Questions at checkout (D357, `src/lib/checkout-question-tools.ts`, `src/server/checkout-question-tools.ts`).
+  tool(
+    "checkout_questions",
+    "The questions the store's checkout asks (D357), as on Settings, Checkout rules: each one's place (1 is asked first), its words in the main language and the others, text or tick box, required or not, its help line, and whether it is on; how many a store may have. Shoppers' answers are not here: they are on each order's page. Read-only. Add, change, switch or move one with save_checkout_question (the owner's yes first).",
+    checkoutQuestionsInput,
+  ),
+  tool(
+    "save_checkout_question",
+    "Adds a question the checkout asks (in the owner's words; never make one up), or changes one by `id` from checkout_questions: its words in any of the store's languages, text or tick box, required, its help line, on or off, and its place (1 first; the others keep their order). Only what is given changes. Ask only what the order needs: nothing about health, beliefs or other sensitive matters unless the owner says the sale cannot be made without it (GDPR article 9). A store with a question on loses express checkout. Deleting one is done on the page. Needs the owner's approval: shoppers are asked it.",
+    saveCheckoutQuestionInput,
+    "public",
+  ),
   tool(
     "cancel_booking",
     "Cancels a confirmed booking, freeing its time, and tells the customer by email if asked. Paying back is done from the order. Needs the owner's approval.",
@@ -2127,6 +2140,9 @@ export function approvalSummary(name: string, input: Record<string, unknown>): s
     case "set_quote_requests":
     case "decline_quote":
       return quoteToolSummary(name, input) ?? inputSummary(name, input);
+    // A change names the question by its own words, put in by the server (`checkoutQuestionApprovalWords()`).
+    case "save_checkout_question":
+      return checkoutQuestionSummary(input);
     case "send_broadcast":
       return input.at ? `Send the broadcast "${text("broadcast")}" at ${text("at")} (the store's time) to the people on the list who asked for your emails.` : `Send the broadcast "${text("broadcast")}" now to the people on the list who asked for your emails.`;
     // The account's own names and figures are put in by the server (`adBudgetApprovalWords()`); these words name the change as given.

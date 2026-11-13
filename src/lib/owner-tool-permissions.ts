@@ -116,6 +116,9 @@ export const TOOL_PERMISSIONS: Record<OwnerToolName, PermissionKey> = {
   // Producer responsibility (D342): the Producer responsibility page's own keys.
   producer_registrations: "settings:read",
   save_producer_registration: "settings:write",
+  // Settings, Checkout rules asks `settings:read` to see and `settings:write` to change (D357).
+  checkout_questions: "settings:read",
+  save_checkout_question: "settings:write",
   // Blogs (D341): the Blogs and Comments pages' own keys (articles are the Website area's).
   list_blogs: "website:read",
   blog_comments: "website:read",

@@ -69,6 +69,8 @@ export const TOOL_AREAS: Readonly<Record<string, AutonomyArea>> = {
   // How prices show and who may request a quote (D437): settings of the shop, as its shipping is.
   set_price_display: "setup",
   set_quote_requests: "setup",
+  // What the checkout asks (D357): a setting of the shop, as its shipping is.
+  save_checkout_question: "setup",
   save_shipping_method: "setup",
   // A member of staff's hours (AGT-01): when shoppers can book them.
   set_working_hours: "setup",

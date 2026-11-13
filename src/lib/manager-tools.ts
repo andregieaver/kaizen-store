@@ -409,6 +409,8 @@ export const TOOL_WORDS: Record<string, string> = {
   customs_duties: "Looking at customs and duties",
   producer_registrations: "Looking at the producer registrations",
   save_producer_registration: "Preparing the registration",
+  checkout_questions: "Looking at the questions at checkout",
+  save_checkout_question: "Preparing the question",
   list_blogs: "Looking at the blogs",
   blog_comments: "Looking at the blog's comments",
   moderate_blog_comment: "Preparing the comment's decision",

@@ -16,6 +16,14 @@ Every change to a published contract gets a version here, newest first: the Admi
 (`/api/storefront/v1/openapi.json`), the webhook topics (`/api/webhooks/v1/topics.json`) and the MCP catalogues (`/api/mcp/catalogue.json`,
 `/api/ucp/catalogue.json`). Within a major version nothing a caller relies on is renamed or removed; answers and payloads may gain fields.
 
+## 1.15 — 2026-11-13
+
+An addition to the owner MCP's catalogue (D357).
+
+- `checkout_questions`: the questions the store's checkout asks, in order, with their words per language, kind, required and on or off.
+- `save_checkout_question`: adds a question, or changes one's words, kind, required, on or off and place (1 is first). Shoppers are
+  asked it, so it waits for the owner's yes. Deleting one stays on the Checkout rules page.
+
 ## 1.14 — 2026-11-13
 
 An addition to the Admin API's checkout questions (D357).

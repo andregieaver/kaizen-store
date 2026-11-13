@@ -1,5 +1,5 @@
 {
- "version": "1.14",
+ "version": "1.15",
  "surface": [
   "admin DELETE /categories/{id}",
   "admin DELETE /categories/{id} -> data",
@@ -1975,6 +1975,8 @@
   "mcp check_domain <- store (required)",
   "mcp check_recommendations",
   "mcp check_recommendations <- store (required)",
+  "mcp checkout_questions",
+  "mcp checkout_questions <- store (required)",
   "mcp compare_options",
   "mcp compare_options <- criteria (required)",
   "mcp compare_options <- criteria[].name (required)",
@@ -2366,6 +2368,8 @@
   "mcp sales_summary <- store (required)",
   "mcp sales_trend",
   "mcp sales_trend <- store (required)",
+  "mcp save_checkout_question",
+  "mcp save_checkout_question <- store (required)",
   "mcp save_content_type",
   "mcp save_content_type <- name (required)",
   "mcp save_content_type <- store (required)",
