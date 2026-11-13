@@ -6,11 +6,12 @@ import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { closeDb, db } from "@/db/client";
 
 vi.mock("server-only", () => ({}));
+vi.mock("next/cache", () => ({ cacheLife: () => {}, cacheTag: () => {}, updateTag: () => {}, revalidateTag: () => {}, refresh: () => {} }));
 process.env.SETTINGS_ENCRYPTION_KEY ??= randomBytes(32).toString("base64");
 
 const { connectAdAccount, setAdMonthlyLimit } = await import("./ad-accounts");
 const { adBudgetApprovalWords, adBudgetAutopilotProblem, listAdBudgetsTool, preflightSetAdBudget, setAdBudgetTool } = await import("./ad-budget-tools");
-const { storeById } = await import("./shopper-emails");
+const { getStore } = await import("./stores");
 type Store = import("./stores").Store;
 type Account = import("./auth").Account;
 
@@ -51,7 +52,8 @@ beforeAll(async () => {
     insert into commerce.access_requests (email, name, store_name) values (${`ad-tools-${run}@example.com`}, 'Kari', 'Butikk') returning id
   `);
   const [row] = await db().execute<Row>(sql`select commerce.approve_access_request(${String(request.id)}::uuid, ${`ad-tools-${run}`}, 'Butikk', null) as id`);
-  store = (await storeById(String(row.id)))!;
+  store = (await getStore(`ad-tools-${run}`))!;
+  expect(store.id).toBe(String(row.id));
   const [member] = await db().execute<Row>(sql`select account_id from commerce.store_members where store_id = ${store.id}::uuid limit 1`);
   actor = { id: String(member.account_id) } as Account;
 });
