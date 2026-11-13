@@ -19,6 +19,7 @@ import {
   checkWidgetSiteAction,
   deleteWidgetAction,
   installWidgetFontAction,
+  readWidgetSiteAgainAction,
   removeWidgetSiteAction,
   saveWidgetAction,
 } from "../actions";
@@ -51,6 +52,7 @@ export default async function SupportWidgetPage({ params }: PageProps<"/admin/[s
           add={write ? addWidgetSiteAction.bind(null, slug, widget.id) : null}
           check={write ? checkWidgetSiteAction.bind(null, slug) : null}
           remove={write ? removeWidgetSiteAction.bind(null, slug) : null}
+          readAgain={write ? readWidgetSiteAgainAction.bind(null, slug) : null}
         />
         <WidgetEditor
           widget={widget}

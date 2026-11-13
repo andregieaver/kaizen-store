@@ -64,6 +64,20 @@
       "when": 1794556074333,
       "tag": "20261113074754_support_widgets_rules",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1794564502654,
+      "tag": "20261113100822_widget_site_pages",
+      "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1794564512779,
+      "tag": "20261113100832_widget_site_pages_rules",
+      "breakpoints": true
     }
   ]
 }

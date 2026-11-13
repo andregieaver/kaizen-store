@@ -18,6 +18,7 @@ import {
   checkKaizenWidgetSiteAction,
   deleteKaizenWidgetAction,
   installKaizenWidgetFontAction,
+  readKaizenWidgetSiteAgainAction,
   removeKaizenWidgetSiteAction,
   saveKaizenWidgetAction,
 } from "../actions";
@@ -49,6 +50,7 @@ export default async function KaizenWidgetPage({ params }: PageProps<"/admin/pla
           add={write ? addKaizenWidgetSiteAction.bind(null, widget.id) : null}
           check={write ? checkKaizenWidgetSiteAction : null}
           remove={write ? removeKaizenWidgetSiteAction : null}
+          readAgain={write ? readKaizenWidgetSiteAgainAction : null}
         />
         <WidgetEditor
           widget={widget}

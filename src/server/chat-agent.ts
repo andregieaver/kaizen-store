@@ -263,7 +263,11 @@ function card(
 
 const json = (value: unknown) => JSON.stringify(value).slice(0, 6000);
 
-type ToolOutcome = { result: string; action?: ChatAction; products?: ChatProduct[] };
+/** A site tool's answer: JSON for the model, and what the widget draws from it (a page opened, product cards, link chips, D583). */
+type ToolOutcome = { result: string; action?: ChatAction; products?: ChatProduct[]; chips?: SupportChip[] };
+
+/** The site pages a widget's search found, as chips under the answer (at most this many, the best first). */
+const PAGE_CHIPS = 2;
 
 async function storeTool(site: Extract<ChatSite, { kind: "store" }>, name: string, args: Record<string, unknown>, request: ChatRequest): Promise<ToolOutcome> {
   const { store, market } = site;
@@ -445,13 +449,21 @@ async function navigateStore(site: Extract<ChatSite, { kind: "store" }>, raw: Re
   return { result: json({ error: "The agent cannot open that." }) };
 }
 
-/** The chat's one tool on a site of the owner's own (D582): the desk's knowledge base, its documents alone. */
+/**
+ * The chat's one tool in a widget on the owner's own websites (D582, D583): the desk's knowledge base documents and the pages of the
+ * widget's own sites. A page's address goes to the model as data and, for the best few, to the visitor as a chip (made by code, never
+ * written by the model).
+ */
 async function embedTool(site: ChatSite, name: string, args: Record<string, unknown>): Promise<ToolOutcome> {
-  if (name !== "search_content") return { result: json({ error: `No tool called ${name}.` }) };
+  if (name !== "search_content" || !site.embed) return { result: json({ error: `No tool called ${name}.` }) };
   const storeId = site.kind === "store" ? site.store.id : null;
   const locale = site.kind === "store" ? site.market.locale : "en-GB";
-  const passages = await searchKnowledge(storeId, typeof args.query === "string" ? args.query.slice(0, 200) : "", locale, 5, { documentsOnly: true });
-  return { result: json({ passages: passages.map((p) => ({ title: p.title, text: p.body })) }) };
+  const passages = await searchKnowledge(storeId, typeof args.query === "string" ? args.query.slice(0, 200) : "", locale, 5, { widget: site.embed.id });
+  const chips = [...new Map(passages.filter((p) => p.url).map((p) => [p.url!, { kind: "page" as const, label: p.title.slice(0, 80), href: p.url! }])).values()].slice(0, PAGE_CHIPS);
+  return {
+    result: json({ passages: passages.map((p) => ({ title: p.title, text: p.body, ...(p.url ? { page: p.url } : {}) })) }),
+    ...(chips.length > 0 ? { chips } : {}),
+  };
 }
 
 async function kaizenTool(name: string, args: Record<string, unknown>): Promise<ToolOutcome> {
@@ -632,6 +644,7 @@ export async function runChat(
       const outcome = await siteAnswers.get(call.id)!;
       if (outcome.action) action = outcome.action;
       for (const product of outcome.products ?? []) products.set(product.handle, product);
+      for (const chip of outcome.chips ?? []) chips.set(chip.href, chip);
       messages.push({ role: "tool", tool_call_id: call.id, content: outcome.result });
     }
     // Tool calls beyond the first four get an answer too, so the conversation stays well formed.

@@ -7,7 +7,7 @@ import type { FormState } from "@/components/admin/action-form";
 import { installFont } from "@/server/fonts";
 import { storeAction } from "@/server/store-action";
 import { memberDesk } from "@/server/support-desk";
-import { addSiteFromForm, checkSiteFromForm, createFromForm, deleteFromForm, removeSiteFromForm, saveFromForm } from "@/server/support-widget-actions";
+import { addSiteFromForm, checkSiteFromForm, createFromForm, deleteFromForm, readAgainFromForm, removeSiteFromForm, saveFromForm } from "@/server/support-widget-actions";
 
 /**
  * A store's chat widgets on the owner's own websites (D582): every change asks `support:write`. The widget's frame reads the widget
@@ -48,6 +48,14 @@ export async function addWidgetSiteAction(slug: string, id: string, _state: Form
 export async function checkWidgetSiteAction(slug: string, _state: FormState, form: FormData): Promise<FormState> {
   return storeAction(write(slug, "support.widget_site_check"), async (member, lang) => {
     const result = await checkSiteFromForm(memberDesk(member), lang, form);
+    refresh();
+    return result;
+  });
+}
+
+export async function readWidgetSiteAgainAction(slug: string, _state: FormState, form: FormData): Promise<FormState> {
+  return storeAction(write(slug, "support.widget_site_read_again"), async (member, lang) => {
+    const result = await readAgainFromForm(memberDesk(member), lang, form);
     refresh();
     return result;
   });

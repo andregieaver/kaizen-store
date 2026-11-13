@@ -80,6 +80,15 @@ export const supportEn = {
     checkedLive: "The tag is there: the chat is live.",
     checkedNot: "The tag was not found yet.",
     removed: "Removed. The tag no longer shows the chat there.",
+    pagesRead: { one: "The chat has read 1 page of it.", many: "The chat has read {n} pages of it." },
+    notReadYet: "The chat reads its pages within a few minutes, then every week.",
+    readAgain: "Read the site again",
+    readQueued: "It is read again within a few minutes.",
+    crawlProblem: {
+      robots: "Its robots.txt does not let the chat read it, so it answers from the knowledge base alone there.",
+      no_pages: "No page of it could be found to read.",
+      unreachable: "It could not be opened to read its pages; the chat tries again.",
+    },
     deleteWidget: "Delete widget",
     deleteHint: "Its tag stops showing the chat on every one of its websites at once.",
     problems: {

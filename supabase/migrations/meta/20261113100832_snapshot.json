@@ -1,6 +1,6 @@
 {
-  "id": "0e301f17-d71c-432a-a0a9-2f9403daace9",
-  "prevId": "a7a6b28f-906d-4767-beee-a0a7d6198aef",
+  "id": "52e35f98-8fd0-4e45-8d7b-fed198a715d3",
+  "prevId": "2772298b-9c78-4f5b-b587-8a9a5fa2ba3d",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -82847,6 +82847,130 @@
       },
       "isRLSEnabled": false
     },
+    "commerce.support_widget_site_pages": {
+      "name": "support_widget_site_pages",
+      "schema": "commerce",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "site_id": {
+          "name": "site_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "path": {
+          "name": "path",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "title": {
+          "name": "title",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "''"
+        },
+        "content_hash": {
+          "name": "content_hash",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "fetched_at": {
+          "name": "fetched_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "seen_at": {
+          "name": "seen_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "problem": {
+          "name": "problem",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "support_widget_site_pages_fetched_idx": {
+          "name": "support_widget_site_pages_fetched_idx",
+          "columns": [
+            {
+              "expression": "fetched_at",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "with": {},
+          "method": "btree",
+          "concurrently": false
+        }
+      },
+      "foreignKeys": {
+        "support_widget_site_pages_site_id_support_widget_sites_id_fk": {
+          "name": "support_widget_site_pages_site_id_support_widget_sites_id_fk",
+          "tableFrom": "support_widget_site_pages",
+          "columnsFrom": [
+            "site_id"
+          ],
+          "tableTo": "support_widget_sites",
+          "schemaTo": "commerce",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "cascade"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "support_widget_site_pages_path_key": {
+          "name": "support_widget_site_pages_path_key",
+          "columns": [
+            "site_id",
+            "path"
+          ],
+          "nullsNotDistinct": false
+        }
+      },
+      "policies": {},
+      "checkConstraints": {
+        "support_widget_site_pages_path": {
+          "name": "support_widget_site_pages_path",
+          "value": "\"commerce\".\"support_widget_site_pages\".\"path\" ~ '^/' and length(\"commerce\".\"support_widget_site_pages\".\"path\") <= 500"
+        },
+        "support_widget_site_pages_title": {
+          "name": "support_widget_site_pages_title",
+          "value": "length(\"commerce\".\"support_widget_site_pages\".\"title\") <= 300"
+        },
+        "support_widget_site_pages_problem": {
+          "name": "support_widget_site_pages_problem",
+          "value": "\"commerce\".\"support_widget_site_pages\".\"problem\" is null or \"commerce\".\"support_widget_site_pages\".\"problem\" in ('unreachable', 'unreadable', 'moved', 'empty')"
+        }
+      },
+      "isRLSEnabled": false
+    },
     "commerce.support_widget_sites": {
       "name": "support_widget_sites",
       "schema": "commerce",
@@ -82894,6 +83018,24 @@
           "primaryKey": false,
           "notNull": false
         },
+        "crawl_requested_at": {
+          "name": "crawl_requested_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "discovered_at": {
+          "name": "discovered_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "crawl_problem": {
+          "name": "crawl_problem",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
         "created_at": {
           "name": "created_at",
           "type": "timestamp with time zone",
@@ -82932,6 +83074,10 @@
       },
       "policies": {},
       "checkConstraints": {
+        "support_widget_sites_crawl_problem": {
+          "name": "support_widget_sites_crawl_problem",
+          "value": "\"commerce\".\"support_widget_sites\".\"crawl_problem\" is null or \"commerce\".\"support_widget_sites\".\"crawl_problem\" in ('robots', 'no_pages', 'unreachable')"
+        },
         "support_widget_sites_host_shape": {
           "name": "support_widget_sites_host_shape",
           "value": "length(\"commerce\".\"support_widget_sites\".\"host\") between 4 and 253 and \"commerce\".\"support_widget_sites\".\"host\" ~ '^([a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?\\.)+[a-z]([a-z0-9-]{0,61}[a-z0-9])?$'"

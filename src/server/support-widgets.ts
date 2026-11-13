@@ -22,6 +22,7 @@ import {
   tagFoundIn,
   type CheckProblem,
 } from "@/lib/support-embed";
+import { CRAWL_PROBLEMS, type CrawlProblem } from "@/lib/site-crawl";
 import { readStyle, styleProblem, widgetStyleSchema, type WidgetStyle } from "@/lib/support-widget-style";
 
 import { audit } from "./auth";
@@ -48,6 +49,11 @@ export type WidgetSite = {
   verifiedBy: "page" | "dns" | null;
   checkedAt: string | null;
   checkProblem: CheckProblem | null;
+  /** Step 2 (D583): the pages of the site the chat has read, when they were last listed, and why none could be. */
+  pagesRead: number;
+  discoveredAt: string | null;
+  crawlRequestedAt: string | null;
+  crawlProblem: CrawlProblem | null;
 };
 
 export type SupportWidget = {
@@ -79,6 +85,10 @@ const SITE_ROW = z.object({
   verified_by: z.enum(["page", "dns"]).nullable(),
   checked_at: col.timestampOrNull,
   check_problem: z.enum(CHECK_PROBLEMS).nullable(),
+  pages_read: col.int,
+  discovered_at: col.timestampOrNull,
+  crawl_requested_at: col.timestampOrNull,
+  crawl_problem: z.enum(CRAWL_PROBLEMS).nullable(),
 });
 
 const toSite = (row: z.output<typeof SITE_ROW>): WidgetSite => ({
@@ -88,10 +98,16 @@ const toSite = (row: z.output<typeof SITE_ROW>): WidgetSite => ({
   verifiedBy: row.verified_by,
   checkedAt: row.checked_at,
   checkProblem: row.check_problem,
+  pagesRead: row.pages_read,
+  discoveredAt: row.discovered_at,
+  crawlRequestedAt: row.crawl_requested_at,
+  crawlProblem: row.crawl_problem,
 });
 
 const WIDGET_COLUMNS = sql`w.id, w.name, w.key, w.market, w.privacy_url, w.style, w.created_at`;
-const SITE_COLUMNS = sql`s.id, s.widget_id, s.host, s.verified_at, s.verified_by, s.checked_at, s.check_problem`;
+const SITE_COLUMNS = sql`s.id, s.widget_id, s.host, s.verified_at, s.verified_by, s.checked_at, s.check_problem,
+  s.discovered_at, s.crawl_requested_at, s.crawl_problem,
+  (select count(*)::int from commerce.support_widget_site_pages p where p.site_id = s.id and p.content_hash is not null) as pages_read`;
 
 /** The desk's rows: a store's, or Kaizena Flow's (`store_id` null). */
 const owned = (storeId: string | null, column: SQL = sql`store_id`): SQL => (storeId ? sql`${column} = ${storeId}::uuid` : sql`${column} is null`);

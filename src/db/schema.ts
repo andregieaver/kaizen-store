@@ -15585,13 +15585,50 @@ export const supportWidgetSites = commerce.table(
     checkedAt: timestamp("checked_at", { withTimezone: true }),
     /** Why the last check did not find the tag (`CHECK_PROBLEMS`). */
     checkProblem: text("check_problem"),
+    /** Step 2 (D583): when the owner asked for the site to be read again, and when its pages were last listed (robots.txt, sitemap, links). */
+    crawlRequestedAt: timestamp("crawl_requested_at", { withTimezone: true }),
+    discoveredAt: timestamp("discovered_at", { withTimezone: true }),
+    /** Why the last listing found no page to read (`CRAWL_PROBLEMS`). */
+    crawlProblem: text("crawl_problem"),
     createdAt: createdAt(),
   },
   (t) => [
     unique("support_widget_sites_host_key").on(t.widgetId, t.host),
+    check("support_widget_sites_crawl_problem", sql`${t.crawlProblem} is null or ${t.crawlProblem} in ('robots', 'no_pages', 'unreachable')`),
     check("support_widget_sites_host_shape", sql`length(${t.host}) between 4 and 253 and ${t.host} ~ '^([a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?\\.)+[a-z]([a-z0-9-]{0,61}[a-z0-9])?$'`),
     check("support_widget_sites_verified", sql`(${t.verifiedAt} is null) = (${t.verifiedBy} is null) and (${t.verifiedBy} is null or ${t.verifiedBy} in ('page', 'dns'))`),
     check("support_widget_sites_check_problem", sql`${t.checkProblem} is null or ${t.checkProblem} in ('unreachable', 'not_found', 'moved')`),
+  ],
+);
+
+/**
+ * A page of a widget's website that the chat reads (D583, step 2 of `docs/support-embed.md`): its path on the site's host, its title, and a
+ * hash of the text last read, so an unchanged page is not cut again. Listed from the site's robots.txt, sitemap and links
+ * (`seen_at` the last listing that found it), read again weekly; its passages are `knowledge_chunks` rows with `site_page_id`, which go
+ * with it. Written only by `src/server/site-crawl.ts`. A public page of the owner's own site: no person's data is looked for or kept apart.
+ */
+export const supportWidgetSitePages = commerce.table(
+  "support_widget_site_pages",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    siteId: uuid("site_id")
+      .notNull()
+      .references(() => supportWidgetSites.id, { onDelete: "cascade" }),
+    path: text("path").notNull(),
+    title: text("title").notNull().default(""),
+    contentHash: text("content_hash"),
+    fetchedAt: timestamp("fetched_at", { withTimezone: true }),
+    seenAt: timestamp("seen_at", { withTimezone: true }).notNull().defaultNow(),
+    /** Why the last read kept nothing (`PAGE_PROBLEMS`). */
+    problem: text("problem"),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    unique("support_widget_site_pages_path_key").on(t.siteId, t.path),
+    index("support_widget_site_pages_fetched_idx").on(t.fetchedAt),
+    check("support_widget_site_pages_path", sql`${t.path} ~ '^/' and length(${t.path}) <= 500`),
+    check("support_widget_site_pages_title", sql`length(${t.title}) <= 300`),
+    check("support_widget_site_pages_problem", sql`${t.problem} is null or ${t.problem} in ('unreachable', 'unreadable', 'moved', 'empty')`),
   ],
 );
 

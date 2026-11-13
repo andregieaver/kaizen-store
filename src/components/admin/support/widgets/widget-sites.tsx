@@ -4,7 +4,7 @@ import { useState } from "react";
 
 import { ActionForm, SubmitButton, type FormState } from "@/components/admin/action-form";
 import { Button, Card, Chip } from "@/components/admin/ui";
-import { fillWords } from "@/lib/admin-fill";
+import { countWords, fillWords } from "@/lib/admin-fill";
 import { dnsRecordFor, embedTag } from "@/lib/support-embed";
 import type { SupportWidget } from "@/server/support-widgets";
 
@@ -44,7 +44,22 @@ export function CopyLine({ text, label }: { text: string; label: string }) {
  * A widget's tag and its websites (D582): the one tag to paste on each, every site with whether its tag was found (Live) and why not,
  * *Check now* and *Remove*, and a site added by its address. For a tag a tag manager adds, the DNS record is one step away.
  */
-export function WidgetSites({ widget, origin, add, check, remove }: { widget: SupportWidget; origin: string; add: Action | null; check: Action | null; remove: Action | null }) {
+export function WidgetSites({
+  widget,
+  origin,
+  add,
+  check,
+  remove,
+  readAgain = null,
+}: {
+  widget: SupportWidget;
+  origin: string;
+  add: Action | null;
+  check: Action | null;
+  remove: Action | null;
+  /** *Read the site again* (D583), for a site whose tag was found. */
+  readAgain?: Action | null;
+}) {
   const w = useAdminText("support").widgets;
   const waiting = widget.sites.some((site) => !site.verifiedAt);
   return (
@@ -86,8 +101,26 @@ export function WidgetSites({ widget, origin, add, check, remove }: { widget: Su
                       ? site.verifiedBy && w.foundBy[site.verifiedBy]
                       : site.checkProblem && fillWords(w.checkProblem[site.checkProblem], { host: site.host })}
                   </span>
+                  {site.verifiedAt && (
+                    // What the chat has read of the site (D583): its pages, or why none, or that they are read soon.
+                    <span className="text-sm text-muted" data-pages-read={site.pagesRead}>
+                      {site.crawlProblem && site.pagesRead === 0
+                        ? w.crawlProblem[site.crawlProblem]
+                        : site.pagesRead > 0
+                          ? countWords(site.pagesRead, w.pagesRead)
+                          : w.notReadYet}
+                    </span>
+                  )}
                 </span>
                 <span className="flex flex-wrap gap-2">
+                  {readAgain && site.verifiedAt && (
+                    <ActionForm action={readAgain} successMessage={w.readQueued}>
+                      <input type="hidden" name="id" value={site.id} />
+                      <SubmitButton variant="secondary" skipValidation>
+                        {w.readAgain}
+                      </SubmitButton>
+                    </ActionForm>
+                  )}
                   {check && !site.verifiedAt && (
                     <ActionForm action={check} successMessage={w.checkedLive}>
                       <input type="hidden" name="id" value={site.id} />

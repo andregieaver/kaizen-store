@@ -335,18 +335,34 @@ export async function knowledgeStatus(storeId: string | null): Promise<{ pages: 
 
 // Finding -----------------------------------------------------------------------
 
-export type Passage = { title: string; path: string | null; body: string };
+export type Passage = {
+  title: string;
+  path: string | null;
+  body: string;
+  /** A widget's site page's full address (D583); absent for every other passage. */
+  url?: string;
+};
 
 /**
  * The passages that best answer a question, in the visitor's language (or
  * any, for documents): by meaning with the site's AI where it has vectors,
  * and by keyword, merged by reciprocal rank.
  */
-export async function searchKnowledge(storeId: string | null, query: string, locale: string, limit = 5, options: { documentsOnly?: boolean } = {}): Promise<Passage[]> {
-  // The chat on a site of the owner's own (D582) reads the knowledge base alone: the store's pages are another site's.
-  const inLanguage = options.documentsOnly ? sql`(locale is null or locale = ${locale}) and document_id is not null` : sql`(locale is null or locale = ${locale})`;
+export async function searchKnowledge(storeId: string | null, query: string, locale: string, limit = 5, options: { widget?: string } = {}): Promise<Passage[]> {
+  // A chat widget on the owner's own websites (D582, D583) reads the knowledge base's documents and the pages of its own sites, never the
+  // store's pages (another site's) nor another widget's sites; the store's own chat never reads a widget's sites.
+  const scope = options.widget
+    ? sql`(document_id is not null or site_page_id in (
+        select p.id from commerce.support_widget_site_pages p join commerce.support_widget_sites s on s.id = p.site_id
+        where s.widget_id = ${options.widget}::uuid))`
+    : sql`site_page_id is null`;
+  const inLanguage = sql`(locale is null or locale = ${locale}) and ${scope}`;
+  // A site page's passage is at its full address on the site; every other passage at a path of the store's own.
+  const columns = sql`id, title, path, body, (
+    select 'https://' || s.host || p.path from commerce.support_widget_site_pages p join commerce.support_widget_sites s on s.id = p.site_id
+    where p.id = site_page_id) as url`;
   const keyword = readDb().execute<Row>(sql`
-    select id, title, path, body from commerce.knowledge_chunks,
+    select ${columns} from commerce.knowledge_chunks,
       websearch_to_tsquery(commerce.search_config(${locale}), ${query}) q,
       websearch_to_tsquery('simple', ${query}) qs
     where ${owned(storeId)} and ${inLanguage} and (search @@ q or search @@ qs)
@@ -359,7 +375,7 @@ export async function searchKnowledge(storeId: string | null, query: string, loc
     try {
       const { vectors } = await embedTexts(connection, [query], 5000);
       return await readDb().execute<Row>(sql`
-        select id, title, path, body from commerce.knowledge_chunks
+        select ${columns} from commerce.knowledge_chunks
         where ${owned(storeId)} and ${inLanguage} and space = ${connection.space}
         order by embedding OPERATOR(extensions.<=>) ${vectorLiteral(vectors[0])}::extensions.vector
         limit ${limit * 2}
@@ -382,5 +398,5 @@ export async function searchKnowledge(storeId: string | null, query: string, loc
   return [...scores.values()]
     .sort((a, b) => b.score - a.score)
     .slice(0, limit)
-    .map(({ row }) => ({ title: String(row.title), path: row.path ? String(row.path) : null, body: String(row.body) }));
+    .map(({ row }) => ({ title: String(row.title), path: row.path ? String(row.path) : null, body: String(row.body), ...(row.url ? { url: String(row.url) } : {}) }));
 }

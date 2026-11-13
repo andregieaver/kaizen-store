@@ -49,6 +49,7 @@ import { pruneFormSubmissions } from "@/server/forms";
 import { pruneRecommendEvents } from "@/server/recommend-events";
 import { pruneSearchCache } from "@/server/search-cache";
 import { refreshKnowledge } from "@/server/knowledge";
+import { crawlWidgetSites } from "@/server/site-crawl";
 import { pruneDocsCounts, refreshDocsIndex } from "@/server/docs-search";
 import { refreshMediaEmbeddings } from "@/server/media-library";
 import { PAGES_TAG, pagesTag } from "@/server/pages";
@@ -143,6 +144,8 @@ async function dispatch() {
     embeddings: () => refreshEmbeddings(),
     cache: () => pruneSearchCache(),
     knowledge: () => refreshKnowledge(),
+    // Chat widgets' websites (D583): a few due sites listed, then a few dozen due pages read into the knowledge base, within two minutes.
+    widgetSites: () => crawlWidgetSites(),
     // The docs' search index (D443): rewritten when this deployment's articles or contracts differ from the fingerprint stored, then rows
     // given vectors by the platform's AI where it has an embedding model; reads older than 90 days and misses unseen for 180 forgotten.
     docsIndex: () => refreshDocsIndex(),

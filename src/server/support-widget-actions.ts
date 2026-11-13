@@ -6,6 +6,7 @@ import type { AdminLang } from "@/lib/admin-lang";
 import { SUPPORT_WORDS } from "@/lib/admin-words/support";
 import { SITES_MAX, WIDGETS_MAX } from "@/lib/support-embed";
 
+import { requestCrawl } from "./site-crawl";
 import type { StaffDesk } from "./support-desk";
 import { addSite, checkSite, createWidget, deleteWidget, removeSite, saveWidget, type WidgetProblem } from "./support-widgets";
 
@@ -62,6 +63,11 @@ export async function checkSiteFromForm(staff: StaffDesk, lang: AdminLang, form:
   if (!site) return error(problemText(lang, "gone"));
   if (site.verifiedAt) return { status: "ok", messages: [w.checkedLive] };
   return error(site.checkProblem ? fillWords(w.checkProblem[site.checkProblem], { host: site.host }) : w.checkedNot);
+}
+
+/** *Read the site again* (D583): the site is listed and read again by the next runs of the five-minute job. */
+export async function readAgainFromForm(staff: StaffDesk, lang: AdminLang, form: FormData): Promise<FormState> {
+  return (await requestCrawl(staff, text(form, "id"))) ? { status: "ok", messages: [words(lang).readQueued] } : error(problemText(lang, "gone"));
 }
 
 export async function removeSiteFromForm(staff: StaffDesk, lang: AdminLang, form: FormData): Promise<FormState> {

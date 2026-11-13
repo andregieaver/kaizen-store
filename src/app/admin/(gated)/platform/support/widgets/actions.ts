@@ -9,7 +9,7 @@ import { platformAction } from "@/server/store-action";
 import { adminText } from "@/lib/admin-text";
 import type { AdminLang } from "@/lib/admin-lang";
 import { checkKaizenDesk } from "@/server/support-desk";
-import { addSiteFromForm, checkSiteFromForm, createFromForm, deleteFromForm, removeSiteFromForm, saveFromForm } from "@/server/support-widget-actions";
+import { addSiteFromForm, checkSiteFromForm, createFromForm, deleteFromForm, readAgainFromForm, removeSiteFromForm, saveFromForm } from "@/server/support-widget-actions";
 
 /** Kaizena Flow's own chat widgets on its other websites (D582): Kaizena Flow's team with the support area (D510). */
 
@@ -65,6 +65,16 @@ export async function checkKaizenWidgetSiteAction(_state: FormState, form: FormD
     const staff = await desk(lang);
     if (!("desk" in staff)) return staff;
     const result = await checkSiteFromForm(staff, lang, form);
+    refresh();
+    return result;
+  });
+}
+
+export async function readKaizenWidgetSiteAgainAction(_state: FormState, form: FormData): Promise<FormState> {
+  return platformAction(write("support.widget_site_read_again"), async (_account, lang) => {
+    const staff = await desk(lang);
+    if (!("desk" in staff)) return staff;
+    const result = await readAgainFromForm(staff, lang, form);
     refresh();
     return result;
   });

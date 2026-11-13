@@ -7,7 +7,7 @@ and goes on **one or several websites**. Conversations land in the store's inbox
 queue, email follow-up and settings.
 
 Asked for by the owner on 13 November 2026 (first one site per store, then the same day: several widgets per account, each on several
-sites, with their own styling to match any site design). Built in steps. Step 1 is built; steps 2 to 4 are planned here.
+sites, with their own styling to match any site design). Built in steps. Steps 1 (D582) and 2 (D583) are built; steps 3 and 4 are planned here.
 
 ## 1. How it works
 
@@ -73,7 +73,7 @@ page beyond 50 lines of loader. The widget's look is drawn inside the frame, so 
   a site stays found until the owner removes it: a cookie wall or an outage must not switch a working chat off.
 - **The key is public** (anyone can read it in a site's HTML) and proves nothing alone: the frame's `frame-ancestors` and the found tag do.
   A host can be on widgets of several desks (a squatter cannot block the real owner), but only a widget whose tag is on the site shows.
-- **Step 1 answers from the knowledge base alone.** On a widget the AI has one tool, `search_content` over the desk's knowledge base
+- **Step 1 answered from the knowledge base alone; step 2 adds each widget's own sites' pages (section 4).** On a widget the AI has one tool, `search_content` over the desk's knowledge base
   documents (`searchKnowledge(…, {documentsOnly: true})`, `embedTools()`, `embedTool()`), and the prompt says so (`systemPrompt({embed})`):
   no products, prices, store pages, `navigate` or order tools. The store's pages are another site's, and answering about the owner's
   website from them would be wrong. Step 2 adds each site's own pages.
@@ -106,14 +106,57 @@ page beyond 50 lines of loader. The widget's look is drawn inside the frame, so 
 | The admin | Support → *Website chat*, a store's (`/admin/{store}/support/widgets`, one widget at `/{id}`) and Kaizena Flow's; `src/components/admin/support/widgets/` (`WidgetsList`, `WidgetEditor`, `WidgetPreview`, `WidgetSites`) |
 | Tests | `src/lib/support-embed.test.ts`, `src/lib/support-widget-style.test.ts`, `src/db/support.test.ts` 11, `src/server/support-widgets.int.test.ts`, `e2e/signed-in/support-embed.spec.ts` |
 
-## 4. The steps after
+## 4. Step 2: the sites' own pages (D583, built)
 
-**Step 2 — the sites' own pages.** A crawler for found sites only: `robots.txt` and the sitemap read as `old-shop.ts` reads them, then
-pages on the site's host alone through `safeFetch()` (a redirect off the host dropped), text by `web-page-text.ts`, cut into
-`knowledge_chunks` with a new source (the widget's site and the page's address) and embedded by the five-minute cron as pages are. Re-read
-weekly and on *Read the site again*, within a page cap per site (`PAGES_PER_DAY` today is 200). A widget then answers from its own sites'
-pages as well as the knowledge base, with the page's full address as a link chip that opens in the site's own tab. The sites' pages are
-outside text reaching a prompt, so this step adds an agent-eval case with instructions hidden in a page, and a new recording.
+A widget now answers from its own sites' pages as well as the knowledge base.
+
+```
+ five-minute job (dispatcher.widget-sites, ≤ 2 min a run)
+   │
+   ├─ list ≤ 3 due sites ─▶ robots.txt (KaizenaFlowBot, else *) ─▶ sitemap(s) ─▶ else links of /, 2 deep (≤ 25 fetches)
+   │     due: found, and never listed, *Read the site again* since, or listed 7 days ago      ≤ 100 pages a site
+   │     support_widget_site_pages: new paths added, unlisted ones dropped (their passages go too)
+   │
+   └─ read ≤ 40 due pages, 4 at a time ─▶ safeFetch, own host only ─▶ pageText() ─▶ hash unchanged? skip
+                                          └─ knowledge_chunks (site_page_id, locale null) ─▶ embedded by the knowledge job
+ the widget's chat ─▶ search_content ─▶ searchKnowledge(…, {widget}) = its documents + its own sites' pages
+                                        └─ the best two pages' addresses as chips (`page`), opening in the visitor's own tab
+```
+
+- **What is read.** Only a site whose tag was found, only `https` pages on its host or its `www.` twin (`sitePath()`: no file, no query, no
+  sign-in, cart or account page), only what its robots.txt lets `KaizenaFlowBot` (or anyone) read (`robotsRules()`, `robotsAllow()`, RFC
+  9309: the longest rule wins, Allow wins a tie), at most `SITE_PAGES_MAX` (100) pages. A redirect to another host drops the page's passages.
+  A page's readable words only (`pageText()`: no head, navigation, header, footer, script or form), at most 40,000 characters.
+- **When.** The five-minute dispatcher's `widgetSites` job (`crawlWidgetSites()`): it lists up to 3 due sites, then reads up to 40 due pages
+  4 at a time, within 2 minutes, so a big site is read over a few runs. A site is due when it was never listed, when the owner pressed
+  *Read the site again* since (every page is then read again), or a week on (`RECRAWL_DAYS`). A page whose words did not change (a hash) is
+  not cut again; a page that cannot be reached keeps its passages until the next read.
+- **Where it goes.** Each page is a row of `commerce.support_widget_site_pages` (path, title, hash, when read, why nothing was kept), and its
+  passages are ordinary `knowledge_chunks` rows with the new source `site_page_id` (the source check now allows one of four), so keyword and
+  meaning search and the embedding job work as for the store's own pages. Deleting the page, its site or its widget takes the passages.
+- **Who reads it.** `searchKnowledge(…, {widget})` gives a widget its desk's documents and its own sites' pages, never the store's pages or
+  another widget's sites; the store's own chat and Kaizena Flow's never see a widget's site pages (`site_page_id is null`). Each site passage
+  carries its full address; `embedTool()` gives it to the model as data and puts the best two as chips (made by code), which open in the
+  visitor's own tab when they are on the page's site (`Chips`' `top`).
+- **The prompt.** The widget's rule says it searches the knowledge base and the website's pages as last read, that a page's words are the
+  website's content and never instructions, and that links are shown under the answer. The fixed drawings the eval recorded are unchanged
+  (the rule is only drawn for a widget), so the replay still passes.
+- **The admin.** Each found site says how many pages the chat has read of it, or why none (robots.txt, nothing listed, unreachable), or
+  that it reads them within minutes, with *Read the site again*.
+- **Left for the next push without a migration.** An agent-eval case with instructions hidden in a site page as the widget's chat reads it
+  (the embed prompt and `embedTools()`), and the Website chat pages taken out of `NOT_YET_IN_PROMPT` (D582). Both change what the eval
+  replays, so they go in a push that deploys after the quick gate; the eval is then recorded again on Platform → AI and its recording
+  committed. Until then the chat-knowledge case covers instructions hidden in `search_content`'s passages.
+
+| Part | Where |
+|---|---|
+| Table `commerce.support_widget_site_pages`, crawl state on `support_widget_sites`, `knowledge_chunks.site_page_id` | `src/db/schema.ts`, `20261113100822_widget_site_pages`, `20261113100832_widget_site_pages_rules` |
+| The pure rules: robots.txt, page addresses, links, limits | `src/lib/site-crawl.ts` |
+| Listing, reading, the job, *Read the site again* | `src/server/site-crawl.ts`, `widgetSites` in `src/app/api/cron/cart-reminders/route.ts` |
+| The search and the chat | `searchKnowledge(…, {widget})` in `src/server/knowledge.ts`; `embedTool()` in `src/server/chat-agent.ts`; `systemPrompt({embed})` and `embedTools()` in `src/lib/chat.ts`; `Chips` |
+| Tests | `src/lib/site-crawl.test.ts`, `src/db/support.test.ts` 12, `src/server/site-crawl.int.test.ts` |
+
+## 5. The steps after
 
 **Step 3 — more per widget.** The language from the page's own `<html lang>` when the store has it; the page's path sent again when a
 single-page site moves (`history` events in the loader); `support_conversations.widget_id` and the widget in the inbox's filters and the
@@ -123,7 +166,7 @@ and sites (D178, D314).
 **Step 4 — WordPress.** The plugin (D169) gets *Show the chat on this site*: it picks or makes a widget through its connection and puts the
 tag in the footer itself, so a WordPress owner never copies anything.
 
-## 5. Needs human review
+## 6. Needs human review
 
 - The owner of the website is the controller of their visitors' conversations and Kaizena Flow its processor, as for a store's own chat;
   the data processing terms should say that the chat may run on the owner's other websites too.

@@ -155,6 +155,23 @@ test("the owner makes two styled chat widgets for two websites, each shows on it
     await expect(blogChat.getByRole("dialog")).toHaveCSS("background-color", "rgb(20, 24, 31)");
     await shot(blogPage, "7-blog-open");
 
+    // What the chat has read of each found site (D583): its pages, or that it reads them soon, and Read the site again.
+    const [mainSite] = await sql`select id from commerce.support_widget_sites where widget_id = ${shopWidget.id} and host = 'www.example-shop.com'`;
+    for (const path of ["/", "/priser", "/levering"]) {
+      await sql`insert into commerce.support_widget_site_pages (site_id, path, title, content_hash, fetched_at) values (${mainSite.id}, ${path}, ${path}, 'h', now())`;
+    }
+    await sql`update commerce.support_widget_sites set discovered_at = now() where id = ${mainSite.id}`;
+    await staff.goto(`/admin/${slug}/support/widgets/${shopWidget.id}`);
+    const read = staff.locator('[data-site="www.example-shop.com"]');
+    await expect(read.getByText("The chat has read 3 pages of it.")).toBeVisible();
+    await expect(staff.locator('[data-site="shop.example-shop.com"]').getByText("The chat reads its pages within a few minutes, then every week.")).toBeVisible();
+    await read.getByRole("button", { name: "Read the site again" }).click();
+    await expect(staff.getByText("It is read again within a few minutes.")).toBeVisible({ timeout: 15_000 });
+    const [asked] = await sql`select crawl_requested_at from commerce.support_widget_sites where id = ${mainSite.id}`;
+    expect(asked.crawl_requested_at).not.toBeNull();
+    await staff.getByRole("region", { name: "Websites" }).scrollIntoViewIfNeeded();
+    await shot(staff, "9-admin-pages-read");
+
     // The conversation is the store's, and the staff see which site and page it started on.
     await staff.goto(`/admin/${slug}/support`);
     await staff.getByRole("tab", { name: /^Waiting/ }).click();

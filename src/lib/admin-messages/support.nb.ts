@@ -77,6 +77,15 @@ export const supportNb: SupportMessages = {
     checkedLive: "Taggen er der: chatten er i bruk.",
     checkedNot: "Taggen er ikke funnet ennå.",
     removed: "Fjernet. Taggen viser ikke lenger chatten der.",
+    pagesRead: { one: "Chatten har lest 1 side av den.", many: "Chatten har lest {n} sider av den." },
+    notReadYet: "Chatten leser sidene i løpet av noen minutter, og deretter hver uke.",
+    readAgain: "Les siden på nytt",
+    readQueued: "Den leses på nytt i løpet av noen minutter.",
+    crawlProblem: {
+      robots: "robots.txt lar ikke chatten lese den, så der svarer den bare fra kunnskapsbasen.",
+      no_pages: "Fant ingen sider på den å lese.",
+      unreachable: "Den kunne ikke åpnes for å lese sidene; chatten prøver igjen.",
+    },
     deleteWidget: "Slett widget",
     deleteHint: "Taggen slutter å vise chatten på alle nettsidene på en gang.",
     problems: {

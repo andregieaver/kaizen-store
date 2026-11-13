@@ -559,7 +559,7 @@ changing it; a rule changes here, and its line in CLAUDE.md when its gist change
   title, chosen variant and address as its first answer; its fields and copy addresses come from the published layout only.
 
 
-## Chat widgets on the owner's own websites (D582, `docs/support-embed.md`, `src/lib/support-embed.ts`, `src/lib/support-widget-style.ts`, `src/server/support-widgets.ts`, `public/embed/chat.js`)
+## Chat widgets on the owner's own websites (D582, D583, `docs/support-embed.md`, `src/lib/support-embed.ts`, `src/lib/support-widget-style.ts`, `src/server/support-widgets.ts`, `src/server/site-crawl.ts`, `public/embed/chat.js`)
 
 - **Chat widgets on the owner's own websites (D582)**: a desk (a store's, or Kaizena Flow's) has up to `WIDGETS_MAX` chat widgets
   (`commerce.support_widgets`), each with a public key, a name, a market, a privacy page and its own look (`style`, read only through
@@ -571,8 +571,11 @@ changing it; a rule changes here, and its line in CLAUDE.md when its gist change
   own CSS (checked by `cssProblem()`, inside the frame only); the admin's preview draws the same CSS. The frame tells the loader its state
   (`FrameMessage`) and is never `display: none`. The chat's routes are not opened to other origins: their requests come from the frame,
   carry `embed` and `host`, and `chatPlace()` makes the desk (`site.embed`). There the AI searches only the knowledge base's documents
-  (`embedTools()`), nobody signs in (no order tools; sign-in and confirm refuse), and `page_path` holds the site's host. Widgets are never
-  copied with a store and are managed on Support → Website chat at a store and on Kaizena Flow's desk.
+  and the widget's own sites' pages (`embedTools()`), nobody signs in (no order tools; sign-in and confirm refuse), and `page_path` holds the site's host. Widgets are never
+  copied with a store and are managed on Support → Website chat at a store and on Kaizena Flow's desk. A found site's pages (D583) are
+  listed and read by the five-minute job (`crawlWidgetSites()`, `src/server/site-crawl.ts`): its robots.txt for `KaizenaFlowBot`, its
+  sitemap or links, only its own host (`sitePath()`), at most `SITE_PAGES_MAX`; their words are `knowledge_chunks` with `site_page_id`,
+  which only that widget's search reads (`searchKnowledge(…, {widget})`); every other search leaves them out (`site_page_id is null`).
 ## Prices are shown with `<Price>`, which adds the VAT label and shows the 30-day reference only for a genuine reduction
 
 - Prices are shown with `<Price>`, which adds the VAT label and shows the

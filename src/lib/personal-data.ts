@@ -389,6 +389,7 @@ export const NOT_PERSONAL: Record<string, string> = {
   support_replies: "A support desk's saved replies (D216), written by staff for every customer, and the staff account that wrote them.",
   support_widgets: "A chat widget for the owner's own websites (D582): its name, public key, look and privacy page, and the staff account that made it; no shopper's data.",
   support_widget_sites: "A website a chat widget is on (D582): its host and whether the widget's tag was found there; no person's data.",
+  support_widget_site_pages: "A public page of a chat widget's website that the chat reads (D583): its path, title and a hash of its text; its words are knowledge passages, the owner's own public site, no person's data looked for.",
   support_agents: "Who answers on a support desk (D216): a staff account, its status, its limit and the name customers see; staff data, not a shopper's.",
   cookie_notes: "A cookie's description.",
   countries: "Reference data.",

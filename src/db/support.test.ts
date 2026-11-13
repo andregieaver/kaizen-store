@@ -404,4 +404,35 @@ describe("support in the database (D216)", () => {
       expect(rls.relrowsecurity).toBe(true);
     }
   });
+
+  it("12. keeps a widget's website pages (D583): a path once per site, of its shape, and their passages go with the page, the site or the widget", async () => {
+    const { id: widget } = await one<{ id: string }>(`insert into commerce.support_widgets (store_id, name, key) values ($1, 'Pages', $2) returning id`, [store, "p".repeat(20)]);
+    const { id: site } = await one<{ id: string }>(`insert into commerce.support_widget_sites (widget_id, host) values ($1, 'pages.example.com') returning id`, [widget]);
+    const page = (path: string, extra: { problem?: string; title?: string } = {}) =>
+      one<{ id: string }>(`insert into commerce.support_widget_site_pages (site_id, path, title, problem) values ($1, $2, $3, $4) returning id`, [site, path, extra.title ?? "", extra.problem ?? null]);
+    const { id: about } = await page("/about", { title: "About us" });
+    expect(await refusal(page("/about"))).toMatch(/support_widget_site_pages_path_key/);
+    expect(await refusal(page("about"))).toMatch(/support_widget_site_pages_path/);
+    expect(await refusal(page(`/${"x".repeat(500)}`))).toMatch(/support_widget_site_pages_path/);
+    expect(await refusal(page("/x", { problem: "lost" }))).toMatch(/support_widget_site_pages_problem/);
+    expect(await refusal(db.query(`update commerce.support_widget_sites set crawl_problem = 'busy' where id = $1`, [site]))).toMatch(/support_widget_sites_crawl_problem/);
+
+    // A passage has one source: a site page is one now, and two at once is none.
+    const passage = (source: string, id: string) =>
+      db.query(`insert into commerce.knowledge_chunks (store_id, ${source}, position, title, path, body, version) values ($1, $2, 0, 'About us', '/about', 'We make bags.', 'v1')`, [store, id]);
+    await passage("site_page_id", about);
+    const { id: doc } = await one<{ id: string }>(`insert into commerce.knowledge_documents (store_id, title, content) values ($1, 'Doc', 'Text') returning id`, [store]);
+    expect(await refusal(db.query(`insert into commerce.knowledge_chunks (store_id, document_id, site_page_id, position, title, body, version) values ($1, $2, $3, 0, 't', 'b', 'v')`, [store, doc, about]))).toMatch(/knowledge_chunks_source/);
+    const count = async () => (await one<{ n: number }>(`select count(*)::int as n from commerce.knowledge_chunks where site_page_id is not null and store_id = $1`, [store])).n;
+    expect(await count()).toBe(1);
+    await db.query("delete from commerce.support_widget_site_pages where id = $1", [about]);
+    expect(await count()).toBe(0);
+    const { id: pricing } = await page("/pricing");
+    await passage("site_page_id", pricing);
+    await db.query("delete from commerce.support_widgets where id = $1", [widget]);
+    expect(await count()).toBe(0);
+    const rls = await one<{ relrowsecurity: boolean }>("select relrowsecurity from pg_class where oid = 'commerce.support_widget_site_pages'::regclass");
+    expect(rls.relrowsecurity).toBe(true);
+  });
 });
+

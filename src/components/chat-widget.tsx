@@ -720,7 +720,7 @@ export function ChatWidget({ site, signInHref, locale, agent, deskName, privacyH
                     {avatar("size-7")}
                     <p className="max-w-[85%] rounded-2xl rounded-bl-sm bg-surface px-3 py-2 whitespace-pre-line">{message.body}</p>
                   </div>
-                  {message.data?.chips && message.data.chips.length > 0 && <Chips chips={message.data.chips} labels={labels.chips} onOpen={() => phone() && setOpen(false)} />}
+                  {message.data?.chips && message.data.chips.length > 0 && <Chips chips={message.data.chips} labels={labels.chips} onOpen={() => phone() && setOpen(false)} {...(site.host ? { top: { host: site.host } } : {})} />}
                   {message.action && stored.conversation && (
                     <ConfirmCard
                       action={message.action}
