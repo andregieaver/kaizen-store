@@ -106,8 +106,8 @@ export const STORE_EXPORT_TABLES = [
   "staff_alert_settings",
   "support_settings",
   "support_replies",
-  // The sites of the owner's own that show the chat (D581): hosts and their public keys.
-  "support_embeds",
+  // The chat widgets on the owner's own websites (D581): their names, public keys and looks (their sites hang off them, without a store_id).
+  "support_widgets",
   "autopilot_settings",
   "autopilot_effects",
   "work_settings",

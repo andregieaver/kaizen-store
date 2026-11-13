@@ -10,7 +10,7 @@ import { getChatAgent, takeChatTurn, type ChatAgent, type ChatSite } from "./cha
 import { visitorKey } from "./chat-turns";
 import { lockedOut } from "./private-mode";
 import { resolveShop } from "./shop";
-import { embedForFrame, embedShop } from "./support-embeds";
+import { frameWidget, widgetShop } from "./support-widgets";
 import { ensureDesk, type DeskSettings } from "./support";
 import { visitorDesk } from "./support-desk";
 
@@ -22,7 +22,7 @@ import { visitorDesk } from "./support-desk";
 const siteInput = z.object({
   store: z.string().regex(/^[a-z0-9-]{1,63}$/).optional(),
   market: z.string().regex(/^[a-z]{2}(?:-[a-z]{2})?(?:-[a-z]{3})?$/).optional(),
-  /** The chat on a site of the owner's own (D581): the site's key and the host of the page its frame is on. */
+  /** A chat widget on a site of the owner's own (D581): the widget's key and the host of the page its frame is on. */
   embed: z.string().regex(/^[a-z0-9]{20}$/).optional(),
   host: z.string().max(253).optional(),
 });
@@ -54,18 +54,18 @@ export async function chatPlace(raw: unknown): Promise<ChatPlace | Response> {
 }
 
 /**
- * The chat on a site of the owner's own (D581): the desk of the site whose tag carries the key, when the page's host is the site's and its
- * tag was found, in the market the owner chose (else the store's first); a store that is not open is a 404, as its own chat is. A private
- * store (D339) still answers there: the owner put the chat on their own site, and it reads only the knowledge base.
+ * A chat widget on a site of the owner's own (D581): the desk of the widget whose tag carries the key, when the page's host is one of its
+ * sites and the tag was found there, in the market chosen for the widget (else the store's first); a store that is not open is a 404, as its
+ * own chat is. A private store (D339) still answers there: the owner put the chat on their own site, and it reads only the knowledge base.
  */
 async function embedPlace(key: string, host: string): Promise<ChatPlace | Response> {
-  const embed = await embedForFrame(key, host);
-  if (!embed?.verified) return fail(404, "No such site.");
-  const site = { id: embed.id, host: embed.host, privacyUrl: embed.privacyUrl };
-  if (!embed.storeId) return { site: { kind: "kaizen", embed: site }, storeId: null, lang: "en", locale: "en-GB", market: null };
-  const shop = await embedShop(embed);
+  const widget = await frameWidget(key, host);
+  if (!widget?.verified) return fail(404, "No such site.");
+  const embed = { id: widget.id, host: widget.host, privacyUrl: widget.privacyUrl };
+  if (!widget.storeId) return { site: { kind: "kaizen", embed }, storeId: null, lang: "en", locale: "en-GB", market: null };
+  const shop = await widgetShop(widget);
   if (!shop) return fail(404, "No such site.");
-  return { site: { kind: "store", store: shop.store, market: shop.market, embed: site }, storeId: shop.store.id, lang: shop.market.lang, locale: shop.market.locale, market: shop.market.slug };
+  return { site: { kind: "store", store: shop.store, market: shop.market, embed }, storeId: shop.store.id, lang: shop.market.lang, locale: shop.market.locale, market: shop.market.slug };
 }
 
 /** The site's desk, and its agent and AI while the AI answers there (see `ChatContext`), else the response to give. */

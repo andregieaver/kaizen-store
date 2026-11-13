@@ -37,13 +37,15 @@ describe("the chat on an owner's own website (D581)", () => {
     expect(mayFrame("example.com", "example.com.evil.net")).toBe(false);
   });
 
-  it("takes a privacy page only as https on the site itself", () => {
-    expect(privacyUrlFor("example.com", "")).toBeNull();
-    expect(privacyUrlFor("example.com", "/privacy")).toBe("https://example.com/privacy");
-    expect(privacyUrlFor("example.com", "https://www.example.com/privacy")).toBe("https://www.example.com/privacy");
-    expect(privacyUrlFor("example.com", "http://example.com/privacy")).toBe("invalid");
-    expect(privacyUrlFor("example.com", "https://other.net/privacy")).toBe("invalid");
-    expect(privacyUrlFor("example.com", "javascript:alert(1)")).toBe("invalid");
+  it("takes a privacy page only as an https address of a public site", () => {
+    expect(privacyUrlFor("")).toBeNull();
+    expect(privacyUrlFor("https://www.example.com/privacy")).toBe("https://www.example.com/privacy");
+    expect(privacyUrlFor("https://legal.example.net/privacy")).toBe("https://legal.example.net/privacy");
+    expect(privacyUrlFor("/privacy")).toBe("invalid");
+    expect(privacyUrlFor("http://example.com/privacy")).toBe("invalid");
+    expect(privacyUrlFor("https://localhost/privacy")).toBe("invalid");
+    expect(privacyUrlFor("https://example.com:8443/privacy")).toBe("invalid");
+    expect(privacyUrlFor("javascript:alert(1)")).toBe("invalid");
   });
 
   it("finds the tag with the site's own key, and only as the loader's script", () => {

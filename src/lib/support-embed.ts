@@ -1,17 +1,21 @@
 /**
- * The chat on a site of the owner's own (D581, `docs/support-embed.md`), the pure parts: what a site's address may be, the key its tag
- * carries, the tag itself, how the tag is found on the site's front page, and which hosts may frame the chat. A site is one host,
- * written as the owner typed it or pasted from the address bar (`normalizeHost()`); its `www.` twin is the same site (`framingHosts()`).
+ * Chat widgets on the owner's own websites (D581, `docs/support-embed.md`), the pure parts: what a site's address may be, the key a
+ * widget's tag carries, the tag itself, how the tag is found on a site's front page, and which hosts may frame the chat. A desk has any
+ * number of widgets (each with its own look, `support-widget-style.ts`), and each widget any number of sites; a site is one host, written
+ * as the owner typed it or pasted from the address bar (`normalizeHost()`), and its `www.` twin is the same site (`framingHosts()`).
  *
  * The chat is drawn in a frame from Kaizena Flow (`/embed/chat/{key}/{host}`), so its requests stay on Kaizena Flow's own origin and the
  * chat's routes keep refusing every other site (`sameSite()`); only the hosts of a site whose tag was found may frame it (`frame-ancestors`
  * in `next.config.ts`, `embedFrameHeaders()`), and the page draws the chat only for those hosts.
  */
 
-/** Sites per desk. */
-export const EMBEDS_MAX = 5;
+/** Widgets per desk, and sites per widget. */
+export const WIDGETS_MAX = 20;
+export const SITES_MAX = 20;
+/** A widget's name, as the owner tells their widgets apart. */
+export const WIDGET_NAME_MAX = 60;
 
-/** The key a site's tag carries: public (anyone can read it in the site's HTML), so it proves nothing on its own. */
+/** The key a widget's tag carries: public (anyone can read it in the site's HTML), so it proves nothing on its own. */
 export const EMBED_KEY = /^[a-z0-9]{20}$/;
 
 /** A host as stored: lower case, letters, digits and hyphens in dotted labels, at least two labels, no port. */
@@ -51,21 +55,21 @@ export function framingHosts(host: string): string[] {
 /** Whether a page on `asked` may show the chat of the site registered as `host`. */
 export const mayFrame = (host: string, asked: string): boolean => framingHosts(host).includes(asked);
 
-/** The site's own privacy page, linked from the chat's notice: an `https` address on the site itself, or null for none. */
-export function privacyUrlFor(host: string, input: string): string | null | "invalid" {
+/** The privacy page the chat's notice links on the widget's sites: an `https` address of a public site, or null for none. */
+export function privacyUrlFor(input: string): string | null | "invalid" {
   const raw = input.trim();
   if (!raw) return null;
   let url: URL;
   try {
-    url = new URL(raw.startsWith("/") ? `https://${host}${raw}` : raw);
+    url = new URL(raw);
   } catch {
     return "invalid";
   }
-  if (url.protocol !== "https:" || url.username || url.password || !mayFrame(host, url.hostname) || url.href.length > 500) return "invalid";
+  if (url.protocol !== "https:" || url.username || url.password || url.port || !isHost(url.hostname) || url.href.length > 500) return "invalid";
   return url.href;
 }
 
-/** The tag the owner puts in their site's footer: the loader, from Kaizena Flow's own origin, with the site's key. */
+/** The tag the owner puts in the footer of each of a widget's sites: the loader, from Kaizena Flow's own origin, with the widget's key. */
 export function embedTag(origin: string, key: string): string {
   return `<script src="${origin}/embed/chat.js" data-key="${key}" async></script>`;
 }
@@ -116,5 +120,8 @@ export function embedFrameHeaders(): { source: string; headers: { key: string; v
   ];
 }
 
-/** What the frame tells the page that holds it (`public/embed/chat.js` reads these). */
-export type FrameMessage = { kaizenaChat: "ready" } | { kaizenaChat: "open"; open: boolean };
+/**
+ * What the frame tells the page that holds it (`public/embed/chat.js` reads it), whenever it changes: whether the chat is open, the side
+ * it sits on, the room its closed button needs (measured, so any words and offset fit) and the open panel's width on a large screen.
+ */
+export type FrameMessage = { kaizenaChat: "state"; open: boolean; side: "left" | "right"; width: number; height: number; panel: number };

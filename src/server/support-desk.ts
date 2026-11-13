@@ -62,8 +62,8 @@ export function managerStaffDesk(account: Account, store: { id: string; slug: st
 }
 
 /**
- * The desk of a site that shows its chat (D581, `support-embeds.ts`): the site the chat's frame found by its key and the page's host, so
- * the frame may check that site's own tag, and nothing else of the desk.
+ * The desk of a chat widget on a site of the owner's own (D581, `support-widgets.ts`): the widget the chat's frame found by its key and the
+ * page's host, so the frame may check that site's own tag, and nothing else of the desk.
  */
 export function embedDesk(embed: { storeId: string | null }): Desk {
   return make(embed.storeId);

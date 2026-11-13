@@ -272,7 +272,7 @@ export const COPY_RULES: Record<string, CopyRule> = {
   delivery_quotes: never("What a carrier offered a shopper's cart."),
   support_settings: never("A copy starts with support off (D216): the row is made on first use with its own realtime key, so clone_store() and duplicate_store() need no patch."),
   support_replies: never("Saved replies (D216) are not copied yet: docs/support.md 11 says when duplicate_store() starts copying them."),
-  support_embeds: never("A site that shows the chat (D581) is the original business's own website, proved by its tag; a copy adds its own."),
+  support_widgets: never("A chat widget (D581) and its websites are the original business's own, proved by its tag; a copy makes its own."),
   support_conversations: never("Support conversations (D216) are the original store's customers' and its staff's."),
   support_messages: never("Support messages (D216) belong to the original store's conversations."),
   support_actions: never("Support actions (D216) belong to the original store's conversations."),

@@ -1,6 +1,6 @@
 {
-  "id": "a44d499a-edfd-4860-8385-96678d32b3c0",
-  "prevId": "f44c44bb-ac95-40e8-824c-4de9764f50f1",
+  "id": "0e301f17-d71c-432a-a0a9-2f9403daace9",
+  "prevId": "a7a6b28f-906d-4767-beee-a0a7d6198aef",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -81925,186 +81925,6 @@
       },
       "isRLSEnabled": false
     },
-    "commerce.support_embeds": {
-      "name": "support_embeds",
-      "schema": "commerce",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "uuid",
-          "primaryKey": true,
-          "notNull": true,
-          "default": "gen_random_uuid()"
-        },
-        "store_id": {
-          "name": "store_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "host": {
-          "name": "host",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "key": {
-          "name": "key",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "market": {
-          "name": "market",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "privacy_url": {
-          "name": "privacy_url",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "verified_at": {
-          "name": "verified_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "verified_by": {
-          "name": "verified_by",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "checked_at": {
-          "name": "checked_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "check_problem": {
-          "name": "check_problem",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "created_by": {
-          "name": "created_by",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "updated_at": {
-          "name": "updated_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        }
-      },
-      "indexes": {
-        "support_embeds_created_by_idx": {
-          "name": "support_embeds_created_by_idx",
-          "columns": [
-            {
-              "expression": "created_by",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "with": {},
-          "method": "btree",
-          "concurrently": false
-        }
-      },
-      "foreignKeys": {
-        "support_embeds_store_id_stores_id_fk": {
-          "name": "support_embeds_store_id_stores_id_fk",
-          "tableFrom": "support_embeds",
-          "columnsFrom": [
-            "store_id"
-          ],
-          "tableTo": "stores",
-          "schemaTo": "commerce",
-          "columnsTo": [
-            "id"
-          ],
-          "onUpdate": "no action",
-          "onDelete": "cascade"
-        },
-        "support_embeds_created_by_accounts_id_fk": {
-          "name": "support_embeds_created_by_accounts_id_fk",
-          "tableFrom": "support_embeds",
-          "columnsFrom": [
-            "created_by"
-          ],
-          "tableTo": "accounts",
-          "schemaTo": "commerce",
-          "columnsTo": [
-            "id"
-          ],
-          "onUpdate": "no action",
-          "onDelete": "set null"
-        }
-      },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {
-        "support_embeds_key": {
-          "name": "support_embeds_key",
-          "columns": [
-            "key"
-          ],
-          "nullsNotDistinct": false
-        },
-        "support_embeds_host_key": {
-          "name": "support_embeds_host_key",
-          "columns": [
-            "store_id",
-            "host"
-          ],
-          "nullsNotDistinct": true
-        }
-      },
-      "policies": {},
-      "checkConstraints": {
-        "support_embeds_key_shape": {
-          "name": "support_embeds_key_shape",
-          "value": "\"commerce\".\"support_embeds\".\"key\" ~ '^[a-z0-9]{20}$'"
-        },
-        "support_embeds_host_shape": {
-          "name": "support_embeds_host_shape",
-          "value": "length(\"commerce\".\"support_embeds\".\"host\") between 4 and 253 and \"commerce\".\"support_embeds\".\"host\" ~ '^([a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?\\.)+[a-z]([a-z0-9-]{0,61}[a-z0-9])?$'"
-        },
-        "support_embeds_market": {
-          "name": "support_embeds_market",
-          "value": "\"commerce\".\"support_embeds\".\"market\" is null or (\"commerce\".\"support_embeds\".\"store_id\" is not null and length(\"commerce\".\"support_embeds\".\"market\") between 2 and 20)"
-        },
-        "support_embeds_privacy_url": {
-          "name": "support_embeds_privacy_url",
-          "value": "\"commerce\".\"support_embeds\".\"privacy_url\" is null or (\"commerce\".\"support_embeds\".\"privacy_url\" ~ '^https://' and length(\"commerce\".\"support_embeds\".\"privacy_url\") <= 500)"
-        },
-        "support_embeds_verified": {
-          "name": "support_embeds_verified",
-          "value": "(\"commerce\".\"support_embeds\".\"verified_at\" is null) = (\"commerce\".\"support_embeds\".\"verified_by\" is null) and (\"commerce\".\"support_embeds\".\"verified_by\" is null or \"commerce\".\"support_embeds\".\"verified_by\" in ('page', 'dns'))"
-        },
-        "support_embeds_check_problem": {
-          "name": "support_embeds_check_problem",
-          "value": "\"commerce\".\"support_embeds\".\"check_problem\" is null or \"commerce\".\"support_embeds\".\"check_problem\" in ('unreachable', 'not_found', 'moved')"
-        }
-      },
-      "isRLSEnabled": false
-    },
     "commerce.support_inbound_emails": {
       "name": "support_inbound_emails",
       "schema": "commerce",
@@ -83023,6 +82843,265 @@
         "support_settings_agent_naming": {
           "name": "support_settings_agent_naming",
           "value": "\"commerce\".\"support_settings\".\"agent_naming\" in ('first_name', 'desk')"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "commerce.support_widget_sites": {
+      "name": "support_widget_sites",
+      "schema": "commerce",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "widget_id": {
+          "name": "widget_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "host": {
+          "name": "host",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "verified_at": {
+          "name": "verified_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "verified_by": {
+          "name": "verified_by",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "checked_at": {
+          "name": "checked_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "check_problem": {
+          "name": "check_problem",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "support_widget_sites_widget_id_support_widgets_id_fk": {
+          "name": "support_widget_sites_widget_id_support_widgets_id_fk",
+          "tableFrom": "support_widget_sites",
+          "columnsFrom": [
+            "widget_id"
+          ],
+          "tableTo": "support_widgets",
+          "schemaTo": "commerce",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "cascade"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "support_widget_sites_host_key": {
+          "name": "support_widget_sites_host_key",
+          "columns": [
+            "widget_id",
+            "host"
+          ],
+          "nullsNotDistinct": false
+        }
+      },
+      "policies": {},
+      "checkConstraints": {
+        "support_widget_sites_host_shape": {
+          "name": "support_widget_sites_host_shape",
+          "value": "length(\"commerce\".\"support_widget_sites\".\"host\") between 4 and 253 and \"commerce\".\"support_widget_sites\".\"host\" ~ '^([a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?\\.)+[a-z]([a-z0-9-]{0,61}[a-z0-9])?$'"
+        },
+        "support_widget_sites_verified": {
+          "name": "support_widget_sites_verified",
+          "value": "(\"commerce\".\"support_widget_sites\".\"verified_at\" is null) = (\"commerce\".\"support_widget_sites\".\"verified_by\" is null) and (\"commerce\".\"support_widget_sites\".\"verified_by\" is null or \"commerce\".\"support_widget_sites\".\"verified_by\" in ('page', 'dns'))"
+        },
+        "support_widget_sites_check_problem": {
+          "name": "support_widget_sites_check_problem",
+          "value": "\"commerce\".\"support_widget_sites\".\"check_problem\" is null or \"commerce\".\"support_widget_sites\".\"check_problem\" in ('unreachable', 'not_found', 'moved')"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "commerce.support_widgets": {
+      "name": "support_widgets",
+      "schema": "commerce",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "store_id": {
+          "name": "store_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "key": {
+          "name": "key",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "market": {
+          "name": "market",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "privacy_url": {
+          "name": "privacy_url",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "style": {
+          "name": "style",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'{}'::jsonb"
+        },
+        "created_by": {
+          "name": "created_by",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "support_widgets_created_by_idx": {
+          "name": "support_widgets_created_by_idx",
+          "columns": [
+            {
+              "expression": "created_by",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "with": {},
+          "method": "btree",
+          "concurrently": false
+        }
+      },
+      "foreignKeys": {
+        "support_widgets_store_id_stores_id_fk": {
+          "name": "support_widgets_store_id_stores_id_fk",
+          "tableFrom": "support_widgets",
+          "columnsFrom": [
+            "store_id"
+          ],
+          "tableTo": "stores",
+          "schemaTo": "commerce",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "cascade"
+        },
+        "support_widgets_created_by_accounts_id_fk": {
+          "name": "support_widgets_created_by_accounts_id_fk",
+          "tableFrom": "support_widgets",
+          "columnsFrom": [
+            "created_by"
+          ],
+          "tableTo": "accounts",
+          "schemaTo": "commerce",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "set null"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "support_widgets_key": {
+          "name": "support_widgets_key",
+          "columns": [
+            "key"
+          ],
+          "nullsNotDistinct": false
+        },
+        "support_widgets_name_key": {
+          "name": "support_widgets_name_key",
+          "columns": [
+            "store_id",
+            "name"
+          ],
+          "nullsNotDistinct": true
+        }
+      },
+      "policies": {},
+      "checkConstraints": {
+        "support_widgets_key_shape": {
+          "name": "support_widgets_key_shape",
+          "value": "\"commerce\".\"support_widgets\".\"key\" ~ '^[a-z0-9]{20}$'"
+        },
+        "support_widgets_name": {
+          "name": "support_widgets_name",
+          "value": "length(\"commerce\".\"support_widgets\".\"name\") between 1 and 60"
+        },
+        "support_widgets_market": {
+          "name": "support_widgets_market",
+          "value": "\"commerce\".\"support_widgets\".\"market\" is null or (\"commerce\".\"support_widgets\".\"store_id\" is not null and length(\"commerce\".\"support_widgets\".\"market\") between 2 and 20)"
+        },
+        "support_widgets_privacy_url": {
+          "name": "support_widgets_privacy_url",
+          "value": "\"commerce\".\"support_widgets\".\"privacy_url\" is null or (\"commerce\".\"support_widgets\".\"privacy_url\" ~ '^https://' and length(\"commerce\".\"support_widgets\".\"privacy_url\") <= 500)"
+        },
+        "support_widgets_style": {
+          "name": "support_widgets_style",
+          "value": "jsonb_typeof(\"commerce\".\"support_widgets\".\"style\") = 'object' and length(\"commerce\".\"support_widgets\".\"style\"::text) <= 40000"
         }
       },
       "isRLSEnabled": false

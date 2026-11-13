@@ -297,6 +297,7 @@ export const STORE_SECTIONS: StoreSection[] = [
           item("/support/reports", "Reports", "How the store's conversations went: how many, how many the AI handled alone, how long customers waited, ratings, tone and topics.", { icon: "chart-column" }),
           item("/support/replies", "Saved replies", "Texts your team puts in an answer with / in the inbox, filled in with the customer's and the person's names and the store's.", { icon: "message-text" }),
           item("/chat", "Chat assistant", "The store's chat assistant for shoppers, and the knowledge it answers from.", { icon: "bot" }),
+          item("/support/widgets", "Website chat", "The chat on your other websites: widgets with their own look, each with a tag to paste on one or several sites.", { icon: "globe", basic: true }),
           item("/support/settings", "Settings", "Who answers the store's customers (the assistant alone, the AI first, or people only), opening hours, email follow-up and how long conversations are kept.", { icon: "settings-2" }),
         ],
       },

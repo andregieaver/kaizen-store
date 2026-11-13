@@ -123,7 +123,7 @@ Each rule is in full in `docs/rules/storefront.md` under the same words; read it
 - AI product texts (D76, `src/lib/product-writing.ts`, `src/server/product-writer.ts`, `AiWriter`)
 - The chat agent (D81, `src/lib/chat.ts`, `src/server/chat-agent.ts`, `src/server/knowledge.ts`, `ChatWidget`)
 - Support (D216, `docs/support.md`, built in steps; §11 says what each step found)
-- The chat on an owner's own website (D581, `docs/support-embed.md`, `src/lib/support-embed.ts`, `src/server/support-embeds.ts`, `public/embed/chat.js`)
+- Chat widgets on the owner's own websites (D581, `docs/support-embed.md`, `src/lib/support-embed.ts`, `src/lib/support-widget-style.ts`, `src/server/support-widgets.ts`, `public/embed/chat.js`)
 - Prices are shown with `<Price>`, which adds the VAT label and shows the 30-day reference only for a genuine reduction
 - Choosing in the storefront (D82) uses `Dropdown` (`src/components/dropdown.tsx`, a themed select-only combobox with pictures), never a native…
 - The template store's product pages are prerendered at build time, so their content is plain HTML; stock and add-to-cart stream in and need JavaScript

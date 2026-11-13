@@ -1,13 +1,14 @@
 /*
- * Kaizena Flow's chat on a site of its owner's own (D581, docs/support-embed.md). The site's tag:
+ * Kaizena Flow's chat widget on a website of its owner's own (D581, docs/support-embed.md). The widget's tag, the same on each of its sites:
  *
- *   <script src="https://kaizenaflow.com/embed/chat.js" data-key="{the site's key}" async></script>
+ *   <script src="https://kaizenaflow.com/embed/chat.js" data-key="{the widget's key}" async></script>
  *
  * puts one frame in the page's corner, from the origin this file came from: /embed/chat/{key}/{host}?p={path}. The frame stays
- * see-through and lets clicks through until the chat in it says it is ready (a site whose tag was not found yet, or a desk with the chat
- * off, never says so); it is never `display: none`, as browsers do not run a hidden frame's scripts. Then it takes the room of the chat's
- * button, and the right-hand edge of the window (the whole window on a phone) while the chat is open. Nothing else
- * of the page is read or changed, no cookie is set, and only messages from the frame itself are listened to.
+ * see-through and lets clicks through until the chat in it tells its state (a site whose tag was not found yet, or a desk with the chat
+ * off, never does); it is never `display: none`, as browsers do not run a hidden frame's scripts. Then it takes the room the chat's button
+ * says it needs (on the widget's side, with its offsets and words), and that side's edge of the window at the widget's panel width (the
+ * whole window on a phone) while the chat is open. Nothing else of the page is read or changed, no cookie is set, and only messages from
+ * the frame itself are listened to.
  */
 (function () {
   "use strict";
@@ -25,25 +26,28 @@
   frame.title = "Chat";
   frame.setAttribute("allow", "microphone");
   frame.setAttribute("data-kaizena-chat", "");
-  var base = "position:fixed;right:0;bottom:0;border:0;margin:0;padding:0;background:transparent;color-scheme:normal;z-index:2147483000;max-width:100%;max-height:100%;";
-  var closed = "width:144px;height:100px;";
-  frame.style.cssText = base + closed + "opacity:0;pointer-events:none;";
+  var base = "position:fixed;bottom:0;border:0;margin:0;padding:0;background:transparent;color-scheme:normal;z-index:2147483000;max-width:100%;max-height:100%;";
+  frame.style.cssText = base + "right:0;width:144px;height:100px;opacity:0;pointer-events:none;";
 
-  function place(open) {
-    var phone = window.matchMedia("(max-width: 767px)").matches;
-    if (open) {
-      frame.style.cssText = base + "top:0;height:100%;width:" + (phone ? "100%" : "24rem") + ";";
+  function size(value, min, max, fallback) {
+    return typeof value === "number" && isFinite(value) ? Math.min(max, Math.max(min, Math.round(value))) : fallback;
+  }
+
+  // The chat's state, as the frame tells it: open or closed, its side, its closed button's room, and the open panel's width.
+  function place(state) {
+    var side = state.side === "left" ? "left:0;" : "right:0;";
+    if (state.open) {
+      var phone = window.matchMedia("(max-width: 767px)").matches;
+      frame.style.cssText = base + side + "top:0;height:100%;width:" + (phone ? "100%" : size(state.panel, 280, 640, 384) + "px") + ";";
     } else {
-      frame.style.cssText = base + closed;
+      frame.style.cssText = base + side + "width:" + size(state.width, 40, 640, 144) + "px;height:" + size(state.height, 40, 400, 100) + "px;";
     }
   }
 
   window.addEventListener("message", function (event) {
     if (event.origin !== origin || event.source !== frame.contentWindow) return;
     var data = event.data;
-    if (!data || typeof data !== "object") return;
-    if (data.kaizenaChat === "ready") place(false);
-    else if (data.kaizenaChat === "open") place(data.open === true);
+    if (data && typeof data === "object" && data.kaizenaChat === "state") place(data);
   });
 
   function mount() {

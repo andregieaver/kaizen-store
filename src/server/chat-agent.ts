@@ -186,7 +186,7 @@ export { VISITOR_LIMIT, pruneChatUsage, takeChatTurn, visitorKey } from "./chat-
 
 // The conversation ----------------------------------------------------------------
 
-/** A site of the owner's own that shows the chat (D581, `support-embeds.ts`): its host and privacy page. */
+/** A chat widget on a site of the owner's own (D581, `support-widgets.ts`): the widget's id, the site's host and the privacy page. */
 export type ChatEmbed = { id: string; host: string; privacyUrl: string | null };
 
 /**

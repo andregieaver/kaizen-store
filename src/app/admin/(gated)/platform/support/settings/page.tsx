@@ -4,10 +4,6 @@ import { adminLangOf } from "@/lib/admin-lang";
 import { adminText, adminTexts } from "@/lib/admin-text";
 
 import { SupportEmailCard } from "@/components/admin/support/email-card";
-import { SupportEmbedsCard } from "@/components/admin/support/embeds-card";
-import { siteUrl } from "@/lib/site";
-import { chatWidgetFor } from "@/server/chat-agent";
-import { listEmbeds } from "@/server/support-embeds";
 import { SupportSettingsForm } from "@/components/admin/support/settings-form";
 import { openConversationCount } from "@/server/support";
 import { kaizenDesk } from "@/server/support-desk";
@@ -15,7 +11,7 @@ import { deskEmailAddress, deskEmailsKeyRefused } from "@/server/support-inbound
 import { settingsForEdit } from "@/server/support-settings";
 import { PageHeader } from "@/components/admin/ui";
 
-import { addKaizenEmbedAction, checkKaizenEmbedAction, removeKaizenEmbedAction, saveKaizenSupportSettingsAction } from "./actions";
+import { saveKaizenSupportSettingsAction } from "./actions";
 
 export const metadata: Metadata = { title: "Support settings" };
 
@@ -29,12 +25,7 @@ export default async function KaizenSupportSettingsPage() {
     openConversationCount(staff.desk),
   ]);
   // Made after the desk's row (settingsForEdit() makes it on a desk's first look).
-  const [emailAddress, keyRefused, embeds, chat] = await Promise.all([
-    deskEmailAddress(staff.desk),
-    deskEmailsKeyRefused(staff.desk),
-    listEmbeds(staff.desk),
-    chatWidgetFor(null),
-  ]);
+  const [emailAddress, keyRefused] = await Promise.all([deskEmailAddress(staff.desk), deskEmailsKeyRefused(staff.desk)]);
   return (
     <AdminTextScope texts={adminTexts(lang, ["support", "settings"])}>
       <div className="flex flex-col gap-6">
@@ -53,16 +44,6 @@ export default async function KaizenSupportSettingsPage() {
           openCount={open}
         />
         <SupportEmailCard address={emailAddress} mode={settings.mode} keyRefused={keyRefused} words={t.email} />
-        <SupportEmbedsCard
-          embeds={embeds}
-          origin={siteUrl()}
-          add={staff.canWrite ? addKaizenEmbedAction : null}
-          check={staff.canWrite ? checkKaizenEmbedAction : null}
-          remove={staff.canWrite ? removeKaizenEmbedAction : null}
-          markets={null}
-          chatOn={chat !== null}
-          knowledgeHref="/admin/platform/chat"
-        />
       </div>
     </AdminTextScope>
   );
