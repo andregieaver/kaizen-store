@@ -17,7 +17,7 @@ import {
 import { clearAt, sizeSource, visibilityPatch, type SizeField, type SizeSource } from "@/lib/responsive";
 import type { Show } from "@/lib/visibility";
 
-import { builderEn, type BuilderMessages } from "@/lib/admin-messages/builder.en";
+import type { BuilderMessages } from "@/lib/admin-messages/builder.en";
 import { fillWords } from "@/lib/admin-fill";
 
 import { useAdminText } from "./admin-text";
@@ -97,7 +97,7 @@ export function SizeSwitch({ label }: { label: string }) {
 }
 
 /** Where a field's value comes from at the size edited: set there, inherited from a larger size, or the default. */
-export function sizeNote(source: SizeSource, size: Size, words: Pick<BuilderMessages, "sizes" | "responsive"> = builderEn): string {
+export function sizeNote(source: SizeSource, size: Size, words: Pick<BuilderMessages, "sizes" | "responsive">): string {
   const w = words.responsive;
   if (source.own) return fillWords(w.setFor, { size: words.sizes[size] });
   return source.from ? fillWords(w.from, { size: words.sizes[source.from] }) : w.default;
@@ -302,11 +302,7 @@ export function useResponsiveMode(breakpoints: Breakpoints, room: () => number) 
   };
 }
 
-/** Whether a key press is in something that takes typing, where the builder's shortcuts stay out of the way. */
-export function typingIn(target: EventTarget | null): boolean {
-  if (!target || typeof (target as Element).closest !== "function") return false;
-  return Boolean((target as Element).closest('input, textarea, select, [contenteditable=""], [contenteditable="true"], [contenteditable="plaintext-only"]'));
-}
+export { typingIn } from "@/lib/typing-in";
 
 /** Ctrl or Cmd, Shift and R: responsive mode on or off. */
 export const isResponsiveShortcut = (event: { key: string; ctrlKey: boolean; metaKey: boolean; shiftKey: boolean; altKey: boolean }) =>

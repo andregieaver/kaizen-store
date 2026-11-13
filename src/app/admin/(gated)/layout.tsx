@@ -8,7 +8,7 @@ import { AdminLangSync, AdminTextProvider } from "@/components/admin/admin-text"
 import { adminLangOf } from "@/lib/admin-lang";
 import { adminTexts } from "@/lib/admin-text";
 import { SessionKeeper, SessionRecovery } from "@/components/admin/session";
-import { AdminServiceWorker } from "@/components/admin/push-settings";
+import { AdminServiceWorker } from "@/components/admin/admin-service-worker";
 import { getAccount, getAssurance, heldDestination } from "@/server/auth";
 import { shellEn } from "@/lib/admin-messages/shell.en";
 import { shellNb } from "@/lib/admin-messages/shell.nb";

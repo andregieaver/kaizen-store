@@ -28,7 +28,6 @@ const ALREADY: readonly string[] = [
   "src/components/admin/orders/order-table.tsx",
   "src/components/admin/orders/send-parcel.tsx",
   "src/components/admin/orders/view-tools.tsx",
-  "src/components/admin/responsive-edit.tsx",
   "src/components/admin/support/conversation-actions.tsx",
 ];
 

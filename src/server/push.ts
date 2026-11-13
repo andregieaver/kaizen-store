@@ -8,7 +8,8 @@ import { adminLangOf, ADMIN_LANG_FACTS, type AdminLang } from "@/lib/admin-lang"
 import { STAFF_EMAILS_WORDS } from "@/lib/admin-words/staff-emails";
 import { vapidEnv } from "@/lib/env";
 import { formatMoney } from "@/lib/money";
-import { newOrderPush, PUSH_DEVICES_MAX, pushSubscriptionInput } from "@/lib/push";
+import { newOrderPush, PUSH_DEVICES_MAX } from "@/lib/push";
+import { pushSubscriptionInput } from "@/lib/push-schema";
 import { siteUrl } from "@/lib/site";
 
 import { passMembership, type Membership } from "./auth";

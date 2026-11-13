@@ -1,5 +1,3 @@
-import { z } from "zod";
-
 /**
  * Web Push for the admin (wave 9 unit H, D361, `docs/wave-9-platform.md` section 3, H), the pure part: what a browser's subscription must
  * look like, the push services it may name (the server POSTs to the endpoint, so an address of anyone else's is refused, never fetched), and
@@ -22,16 +20,6 @@ export function isPushEndpoint(value: string): boolean {
   const host = url.hostname.toLowerCase();
   return (PUSH_HOSTS as readonly string[]).includes(host) || PUSH_HOST_SUFFIXES.some((suffix) => host.endsWith(suffix) && host.length > suffix.length);
 }
-
-const base64url = z.string().regex(/^[A-Za-z0-9_-]+={0,2}$/);
-
-/** A browser's `PushSubscription.toJSON()` with the device's name the person gave. */
-export const pushSubscriptionInput = z.object({
-  endpoint: z.string().max(2000).refine(isPushEndpoint, "Not a push service's address."),
-  keys: z.object({ p256dh: base64url.min(40).max(200), auth: base64url.min(8).max(64) }),
-  device: z.string().trim().max(60).default(""),
-});
-export type PushSubscriptionInput = z.infer<typeof pushSubscriptionInput>;
 
 /** Devices a person may have per store. */
 export const PUSH_DEVICES_MAX = 10;
