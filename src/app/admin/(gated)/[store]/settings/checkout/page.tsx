@@ -17,7 +17,7 @@ import { db } from "@/db/client";
 import { listCheckoutFields, listCheckoutRules, ruleChoices } from "@/server/checkout-rules";
 import { memberCan, requirePermission } from "@/server/permissions";
 
-import { saveAccountsModeAction, deleteFieldAction, deleteRuleAction, moveRuleAction, saveFieldAction, saveRuleAction, switchFieldAction, switchRuleAction } from "./actions";
+import { saveAccountsModeAction, deleteFieldAction, deleteRuleAction, moveFieldAction, moveRuleAction, saveFieldAction, saveRuleAction, switchFieldAction, switchRuleAction } from "./actions";
 
 export const metadata: Metadata = { title: "Checkout rules" };
 
@@ -49,6 +49,7 @@ export default async function CheckoutRulesPage({ params }: PageProps<"/admin/[s
     removeRule: deleteRuleAction.bind(null, slug),
     saveField: saveFieldAction.bind(null, slug),
     switchField: switchFieldAction.bind(null, slug),
+    moveField: moveFieldAction.bind(null, slug),
     removeField: deleteFieldAction.bind(null, slug),
   };
 

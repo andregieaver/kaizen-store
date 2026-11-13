@@ -231,6 +231,28 @@ describe("rules that name what is gone, and another store's ids", () => {
 });
 
 describe("questions at checkout", () => {
+  it("moves a question to its place, asks them in that order, audits the move and leaves another store's questions alone", async () => {
+    const ids: string[] = [];
+    for (const text of ["First", "Second", "Third"]) {
+      const saved = await rules.saveCheckoutField(member, null, { kind: "text", required: false, label: { text, byLocale: {} }, help: null });
+      if (!saved.ok) throw new Error(saved.problems.join("; "));
+      ids.push(saved.id);
+    }
+    expect(await rules.moveCheckoutField(member, ids[2], 0)).toBe(true);
+    expect((await rules.listCheckoutFields(db(), store.storeId)).map((f) => f.label.text)).toEqual(["Third", "First", "Second"]);
+    expect((await rules.checkoutQuestionsFor(store.storeId, "en", null)).fields.map((f) => f.label)).toEqual(["Third", "First", "Second"]);
+    expect(await rules.moveCheckoutField(member, ids[2], 99)).toBe(true);
+    expect((await rules.listCheckoutFields(db(), store.storeId)).map((f) => f.position)).toEqual([0, 1, 2]);
+    expect((await rules.listCheckoutFields(db(), store.storeId)).map((f) => f.label.text)).toEqual(["First", "Second", "Third"]);
+    const [audit] = await db().execute<Row>(
+      sql`select details from commerce.audit_log where store_id = ${store.storeId}::uuid and action = 'shipping.checkout_field_moved' order by created_at limit 1`,
+    );
+    expect(audit?.details).toMatchObject({ from: 2, to: 0 });
+    const elsewhere = { ...member, store: { ...member.store, id: other.storeId } } as Member;
+    expect(await rules.moveCheckoutField(elsewhere, ids[0], 2)).toBe(false);
+    expect((await rules.listCheckoutFields(db(), store.storeId)).map((f) => f.label.text)).toEqual(["First", "Second", "Third"]);
+  });
+
   it("refuses an order without a required answer, and keeps the answers on the order", async () => {
     const field = await rules.saveCheckoutField(member, null, { kind: "text", required: true, label: { text: "Delivery door code", byLocale: { "nb-NO": "Portkode" } }, help: null });
     const box = await rules.saveCheckoutField(member, null, { kind: "checkbox", required: false, label: { text: "Leave at the door", byLocale: {} }, help: null });

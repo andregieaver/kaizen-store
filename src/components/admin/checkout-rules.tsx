@@ -1,9 +1,13 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { DndContext, KeyboardSensor, PointerSensor, closestCenter, useSensor, useSensors, type DragEndEvent, type UniqueIdentifier } from "@dnd-kit/core";
+import { SortableContext, sortableKeyboardCoordinates, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
+import { ArrowDown, ArrowUp, GripVertical } from "lucide-react";
+import { useId, useOptimistic, useState, useTransition, type ReactNode } from "react";
 
 import { fillWords } from "@/lib/admin-fill";
-import { CONDITION_KINDS, EFFECT_KINDS, type CheckoutFieldKind, type RuleCondition, type RuleEffect, type Words } from "@/lib/checkout-rules";
+import { CONDITION_KINDS, EFFECT_KINDS, movedTo, type CheckoutFieldKind, type RuleCondition, type RuleEffect, type Words } from "@/lib/checkout-rules";
 
 import { useAdminText } from "./admin-text";
 import { Button, Card, Chip, List, ListRow, RowLead } from "./ui";
@@ -49,6 +53,8 @@ export type CheckoutRuleActions = {
   removeRule: (id: string) => AsyncDone;
   saveField: (id: string | null, input: FieldInputView) => AsyncSaved;
   switchField: (id: string, on: boolean) => AsyncDone;
+  /** Moves a question to place `to` (0 is first). */
+  moveField: (id: string, to: number) => AsyncDone;
   removeField: (id: string) => AsyncDone;
 };
 
@@ -513,11 +519,77 @@ function FieldEditor({ start, locales, save, onDone }: { start: FieldView | null
   );
 }
 
-/** The questions the checkout asks, in order. */
+/**
+ * The questions the checkout asks, in the order the cart asks them: each dragged by its handle (or moved with the keyboard on it, or with its
+ * up and down buttons), shown in its new place at once and saved as it is dropped.
+ */
 export function FieldList({ fields, locales, canWrite, actions }: { fields: FieldView[]; locales: Choice[]; canWrite: boolean; actions: CheckoutRuleActions }) {
   const w = useAdminText("shipping").checkoutRules;
   const [editing, setEditing] = useState<string | null>(null);
   const [pending, run] = useTransition();
+  const [shown, moveShown] = useOptimistic(fields, (now: FieldView[], { id, to }: { id: string; to: number }) => {
+    const order = movedTo(
+      now.map((f) => f.id),
+      id,
+      to,
+    );
+    return order ? order.flatMap((fid) => now.filter((f) => f.id === fid)) : now;
+  });
+  const dndId = useId();
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+  );
+  const move = (id: string, to: number) =>
+    run(async () => {
+      moveShown({ id, to });
+      await actions.moveField(id, to);
+    });
+  const onDragEnd = ({ active, over }: DragEndEvent) => {
+    if (!over || active.id === over.id) return;
+    move(String(active.id), shown.findIndex((f) => f.id === over.id));
+  };
+  // What a screen reader hears while a question is moved: its words and place, never its id.
+  const nameOf = (id: UniqueIdentifier) => shown.find((f) => f.id === id)?.label.text ?? "";
+  const placeOf = (id: UniqueIdentifier) => String(shown.findIndex((f) => f.id === id) + 1);
+  const count = String(shown.length);
+  const sortable = canWrite && shown.length > 1 && editing === null;
+  const rows = shown.map((f, i) =>
+    editing === f.id ? (
+      <li key={f.id} className="py-3">
+        <FieldEditor start={f} locales={locales} save={actions.saveField} onDone={() => setEditing(null)} />
+      </li>
+    ) : (
+      <FieldRowView key={f.id} field={f} sortable={sortable}>
+        {sortable && (
+          <>
+            <Button kind="icon" size="dense" disabled={i === 0} onClick={() => move(f.id, i - 1)} aria-label={fillWords(w.fieldUp, { name: f.label.text })} icon={<ArrowUp aria-hidden />} />
+            <Button
+              kind="icon"
+              size="dense"
+              disabled={i === shown.length - 1}
+              onClick={() => move(f.id, i + 1)}
+              aria-label={fillWords(w.fieldDown, { name: f.label.text })}
+              icon={<ArrowDown aria-hidden />}
+            />
+          </>
+        )}
+        {canWrite && (
+          <>
+            <Button kind="quiet" disabled={pending} onClick={() => run(() => actions.switchField(f.id, !f.enabled))}>
+              {f.enabled ? w.switchOff : w.switchOn}
+            </Button>
+            <Button kind="quiet" onClick={() => setEditing(f.id)}>
+              {w.edit}
+            </Button>
+            <Button kind="quiet" disabled={pending} onClick={() => run(() => actions.removeField(f.id))}>
+              {w.remove}
+            </Button>
+          </>
+        )}
+      </FieldRowView>
+    ),
+  );
   return (
     <Card title={w.fields} description={w.fieldsHint} aside={canWrite && editing !== "new" ? <Button kind="strong" onClick={() => setEditing("new")}>{w.newField}</Button> : undefined}>
       {editing === "new" && (
@@ -525,39 +597,64 @@ export function FieldList({ fields, locales, canWrite, actions }: { fields: Fiel
           <FieldEditor start={null} locales={locales} save={actions.saveField} onDone={() => setEditing(null)} />
         </div>
       )}
-      {fields.length === 0 ? (
+      {shown.length === 0 ? (
         <p className="text-sm text-muted">{w.noFields}</p>
       ) : (
-        <List>
-          {fields.map((f) =>
-            editing === f.id ? (
-              <li key={f.id} className="py-3">
-                <FieldEditor start={f} locales={locales} save={actions.saveField} onDone={() => setEditing(null)} />
-              </li>
-            ) : (
-              <ListRow key={f.id}>
-                <RowLead title={f.label.text} sub={`${w.fieldKinds[f.kind]} · ${f.required ? w.required : w.optional}`} />
-                <Chip signal={f.enabled ? "positive" : "neutral"} dot>
-                  {f.enabled ? w.on : w.off}
-                </Chip>
-                {canWrite && (
-                  <div className="flex flex-wrap gap-1" aria-busy={pending}>
-                    <Button kind="quiet" disabled={pending} onClick={() => run(() => actions.switchField(f.id, !f.enabled))}>
-                      {f.enabled ? w.switchOff : w.switchOn}
-                    </Button>
-                    <Button kind="quiet" onClick={() => setEditing(f.id)}>
-                      {w.edit}
-                    </Button>
-                    <Button kind="quiet" disabled={pending} onClick={() => run(() => actions.removeField(f.id))}>
-                      {w.remove}
-                    </Button>
-                  </div>
-                )}
-              </ListRow>
-            ),
-          )}
-        </List>
+        <DndContext
+          id={dndId}
+          sensors={sensors}
+          collisionDetection={closestCenter}
+          onDragEnd={onDragEnd}
+          accessibility={{
+            announcements: {
+              onDragStart: ({ active }) => fillWords(w.dragPicked, { name: nameOf(active.id), place: placeOf(active.id), count }),
+              onDragOver: ({ active, over }) => (over ? fillWords(w.dragOver, { name: nameOf(active.id), place: placeOf(over.id), count }) : undefined),
+              onDragEnd: ({ active, over }) => fillWords(w.dragDropped, { name: nameOf(active.id), place: placeOf(over?.id ?? active.id), count }),
+              onDragCancel: ({ active }) => fillWords(w.dragCancelled, { name: nameOf(active.id) }),
+            },
+            screenReaderInstructions: { draggable: w.dragInstructions },
+          }}
+        >
+          <SortableContext items={shown.map((f) => f.id)} strategy={verticalListSortingStrategy} disabled={!sortable}>
+            <ol aria-label={w.fields} aria-busy={pending} className="divide-y divide-line">
+              {rows}
+            </ol>
+          </SortableContext>
+        </DndContext>
       )}
     </Card>
+  );
+}
+
+const FIELD_ROW = "flex min-h-16 flex-wrap items-center gap-x-4 gap-y-1 py-3";
+
+/** One question in the list: a handle to drag it while the list can be sorted, its words, kind and switch, and the buttons given. */
+function FieldRowView({ field, sortable, children }: { field: FieldView; sortable: boolean; children: ReactNode }) {
+  const w = useAdminText("shipping").checkoutRules;
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: field.id });
+  return (
+    <li
+      ref={setNodeRef}
+      style={{ transform: CSS.Translate.toString(transform ? { ...transform, x: 0 } : null), transition }}
+      className={`${FIELD_ROW} ${isDragging ? "relative z-10 rounded-panel bg-card shadow-md" : ""}`}
+      data-checkout-field={field.id}
+    >
+      {sortable && (
+        <button
+          type="button"
+          {...attributes}
+          {...listeners}
+          aria-label={fillWords(w.dragField, { name: field.label.text })}
+          className="-mr-2 flex size-9 shrink-0 cursor-grab touch-none items-center justify-center rounded-pill text-muted hover:bg-sunken active:cursor-grabbing"
+        >
+          <GripVertical aria-hidden className="size-4" />
+        </button>
+      )}
+      <RowLead title={field.label.text} sub={`${w.fieldKinds[field.kind]} · ${field.required ? w.required : w.optional}`} />
+      <Chip signal={field.enabled ? "positive" : "neutral"} dot>
+        {field.enabled ? w.on : w.off}
+      </Chip>
+      <div className="flex flex-wrap items-center gap-1">{children}</div>
+    </li>
   );
 }

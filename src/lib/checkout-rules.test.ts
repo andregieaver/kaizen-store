@@ -4,6 +4,7 @@ import {
   answersByField,
   applyCheckoutRules,
   cleanAnswers,
+  movedTo,
   pricedBy,
   rulesOnOffer,
   wordsIn,
@@ -215,3 +216,23 @@ describe("delivery prices (D402)", () => {
   });
 });
 
+
+describe("moving a question (movedTo)", () => {
+  const ids = ["a", "b", "c", "d"];
+
+  it("moves one question to its place and keeps the others in their order", () => {
+    expect(movedTo(ids, "d", 0)).toEqual(["d", "a", "b", "c"]);
+    expect(movedTo(ids, "a", 2)).toEqual(["b", "c", "a", "d"]);
+    expect(movedTo(ids, "b", 1)).toEqual(ids);
+  });
+
+  it("takes a place past either end as that end, and anything not a number as the end", () => {
+    expect(movedTo(ids, "c", -3)).toEqual(["c", "a", "b", "d"]);
+    expect(movedTo(ids, "a", 99)).toEqual(["b", "c", "d", "a"]);
+    expect(movedTo(ids, "b", Number.NaN)).toEqual(["a", "c", "d", "b"]);
+  });
+
+  it("gives null for a question that is not in the list", () => {
+    expect(movedTo(ids, "x", 0)).toBeNull();
+  });
+});
