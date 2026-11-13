@@ -869,6 +869,13 @@ const PAGES: readonly AdminPage[] = [
     keywords: ["saved replies", "canned responses", "macros", "templates", "shortcuts", "support"],
     tasks: ["Add a saved reply", "Change a saved reply's text"],
   }),
+  store("support.widgets", "/support/widgets", "Website chat", "Store", "The store's chat on the owner's other websites (D582): chat widgets, each with its own look (button colour, background, text colour, corners, side, the button's words, panel width, font, greeting, own CSS) and language, and a tag to paste on one or several websites. A website shows the chat once its tag is found on its front page or in its DNS. Conversations come to the support inbox; there the chat answers from the knowledge base only.", {
+    keywords: ["chat widget", "embed chat", "website chat", "live chat on my site", "wordpress chat", "chat script", "chat tag"],
+    tasks: ["Put the chat on another website", "Style the chat to match a website", "Add a website to a chat widget"],
+  }),
+  store("support.widget", "/support/widgets/[id]", "Chat widget", "Store", "One chat widget for the owner's websites (D582): its look with a live preview, its tag, its websites and whether each shows the chat, and deleting it.", {
+    keywords: ["chat widget", "widget style", "chat colour", "chat tag"],
+  }),
   store("support.settings", "/support/settings", "Support settings", "Store", "Who answers the store's customers in the chat: the chat assistant alone, the AI first and then your team, or your team only. Also email follow-up when nobody is there, opening hours, when quiet conversations end, when your people are emailed about a waiting customer, how they are named, and (the owner's) how long transcripts are kept.", {
     keywords: ["support mode", "live chat", "people only", "opening hours", "email follow-up", "transcripts", "handover"],
     tasks: ["Let people answer the chat", "Answer customers with the AI first", "Set support opening hours", "Turn email answers on or off"],
@@ -1151,6 +1158,12 @@ const PAGES: readonly AdminPage[] = [
   }),
   platform("support.replies", "/support/replies", "Saved replies", "Support", "Kaizena Flow's support desk's saved replies: texts with a /shortcut that Kaizena Flow's people put in an answer from the inbox, with {customer_first_name}, {agent_first_name} and {store} filled in.", {
     keywords: ["saved replies", "canned responses", "macros"],
+  }),
+  platform("support.widgets", "/support/widgets", "Website chat", "Support", "Kaizena Flow's own chat on its other websites (D582): chat widgets, each with its own look and a tag to paste on its websites; a website shows the chat once its tag is found.", {
+    keywords: ["chat widget", "embed chat", "website chat"],
+  }),
+  platform("support.widget", "/support/widgets/[id]", "Chat widget", "Support", "One of Kaizena Flow's chat widgets (D582): its look with a live preview, its tag and its websites.", {
+    keywords: ["chat widget", "widget style"],
   }),
   platform("support.settings", "/support/settings", "Support settings", "Support", "Who answers Kaizena Flow's visitors in the chat (the assistant alone, the AI first, or people only), email follow-up, opening hours, when quiet conversations end, when platform admins are emailed and how long transcripts are kept.", {
     keywords: ["support mode", "live chat", "opening hours", "email follow-up"],

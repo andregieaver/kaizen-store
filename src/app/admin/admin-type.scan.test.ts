@@ -25,7 +25,8 @@ function files(dir: string): string[] {
 }
 
 /** Their colours are someone else's on purpose. */
-const OWN_COLOURS = ["row-resize.tsx", "integration-mark.tsx", "seo-fields.tsx", "scheme-preview.tsx"];
+// `widget-preview.tsx` draws a chat widget in the store's look and the widget's own colours (D582), as the chat draws itself on a website.
+const OWN_COLOURS = ["row-resize.tsx", "integration-mark.tsx", "seo-fields.tsx", "scheme-preview.tsx", "widget-preview.tsx"];
 
 const admin = DIRS.flatMap((d) => files(join(ROOT, d)))
   .map((path) => relative(ROOT, path))

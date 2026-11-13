@@ -15532,6 +15532,69 @@ export const supportReplies = commerce.table(
   ],
 );
 
+/**
+ * A chat widget a desk puts on websites of the owner's own (D582, `docs/support-embed.md`): its name, the public key its tag carries, the
+ * market whose language it speaks, the privacy page its notice links, and its own look (`style`, read by `readStyle()` in
+ * `src/lib/support-widget-style.ts`). A desk has any number (up to `WIDGETS_MAX`); `store_id` null is Kaizena Flow's desk. Written only by
+ * `src/server/support-widgets.ts`; never copied with a store (a copy is another business's websites). No person's data.
+ */
+export const supportWidgets = commerce.table(
+  "support_widgets",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    storeId: uuid("store_id").references(() => stores.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    /** Public: read by anyone in the sites' HTML. */
+    key: text("key").notNull(),
+    /** The store's market whose language the chat speaks; null for the store's first. */
+    market: text("market"),
+    /** The privacy page the chat's notice links. */
+    privacyUrl: text("privacy_url"),
+    style: jsonb("style").notNull().default(sql`'{}'::jsonb`),
+    createdBy: uuid("created_by").references(() => accounts.id, { onDelete: "set null" }),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [
+    unique("support_widgets_key").on(t.key),
+    unique("support_widgets_name_key").on(t.storeId, t.name).nullsNotDistinct(),
+    index("support_widgets_created_by_idx").on(t.createdBy),
+    check("support_widgets_key_shape", sql`${t.key} ~ '^[a-z0-9]{20}$'`),
+    check("support_widgets_name", sql`length(${t.name}) between 1 and 60`),
+    check("support_widgets_market", sql`${t.market} is null or (${t.storeId} is not null and length(${t.market}) between 2 and 20)`),
+    check("support_widgets_privacy_url", sql`${t.privacyUrl} is null or (${t.privacyUrl} ~ '^https://' and length(${t.privacyUrl}) <= 500)`),
+    check("support_widgets_style", sql`jsonb_typeof(${t.style}) = 'object' and length(${t.style}::text) <= 40000`),
+  ],
+);
+
+/**
+ * A website a widget is on (D582): one host (its `www.` twin is the same site), and whether the widget's tag was found there (`verified_at`,
+ * by the front page or a DNS record). The chat shows only on a site whose tag was found. Written only by `src/server/support-widgets.ts`.
+ */
+export const supportWidgetSites = commerce.table(
+  "support_widget_sites",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    widgetId: uuid("widget_id")
+      .notNull()
+      .references(() => supportWidgets.id, { onDelete: "cascade" }),
+    host: text("host").notNull(),
+    verifiedAt: timestamp("verified_at", { withTimezone: true }),
+    /** `page` (the tag on the front page) or `dns` (the TXT record). */
+    verifiedBy: text("verified_by"),
+    checkedAt: timestamp("checked_at", { withTimezone: true }),
+    /** Why the last check did not find the tag (`CHECK_PROBLEMS`). */
+    checkProblem: text("check_problem"),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    unique("support_widget_sites_host_key").on(t.widgetId, t.host),
+    check("support_widget_sites_host_shape", sql`length(${t.host}) between 4 and 253 and ${t.host} ~ '^([a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?\\.)+[a-z]([a-z0-9-]{0,61}[a-z0-9])?$'`),
+    check("support_widget_sites_verified", sql`(${t.verifiedAt} is null) = (${t.verifiedBy} is null) and (${t.verifiedBy} is null or ${t.verifiedBy} in ('page', 'dns'))`),
+    check("support_widget_sites_check_problem", sql`${t.checkProblem} is null or ${t.checkProblem} in ('unreachable', 'not_found', 'moved')`),
+  ],
+);
+
 // ---------------------------------------------------------------------------
 // Customer notifications, delivery tracking and staff alerts (wave 3, D238, docs/wave-3-notifications.md 3.2)
 // ---------------------------------------------------------------------------

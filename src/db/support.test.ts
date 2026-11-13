@@ -358,4 +358,50 @@ describe("support in the database (D216)", () => {
     const id = await conversation("ai_first");
     await expect(add(id, "customer", null, "Hello")).resolves.toBeDefined();
   });
+
+  it("11. keeps a desk's chat widgets and their websites (D582): named once per desk, a key of its shape, a style object, a host once per widget", async () => {
+    const widget = (name: string, key: string, extra: Record<string, unknown> = {}, storeId: string | null = store) =>
+      one<{ id: string }>(
+        `insert into commerce.support_widgets (store_id, name, key, privacy_url, market, style) values ($1, $2, $3, $4, $5, coalesce($6::jsonb, '{}'::jsonb)) returning id`,
+        [storeId, name, key, extra.privacy ?? null, extra.market ?? null, extra.style ?? null],
+      );
+    const site = (widgetId: string, host: string, extra: Record<string, unknown> = {}) =>
+      db.query(`insert into commerce.support_widget_sites (widget_id, host, verified_at, verified_by) values ($1, $2, $3, $4)`, [
+        widgetId,
+        host,
+        extra.verifiedAt ?? null,
+        extra.verifiedBy ?? null,
+      ]);
+    const { id: shop } = await widget("Company site", "a".repeat(20), { style: JSON.stringify({ accent: "#ffcc00" }) });
+    expect(await refusal(widget("Company site", "b".repeat(20)))).toMatch(/support_widgets_name_key/);
+    // Kaizena Flow's desk is its own: the same name may be on it, but only once.
+    await widget("Company site", "c".repeat(20), {}, null);
+    expect(await refusal(widget("Company site", "d".repeat(20), {}, null))).toMatch(/support_widgets_name_key/);
+    expect(await refusal(widget("Blog", "a".repeat(20)))).toMatch(/support_widgets_key/);
+    expect(await refusal(widget("Blog", "A".repeat(20)))).toMatch(/support_widgets_key_shape/);
+    expect(await refusal(widget("", "e".repeat(20)))).toMatch(/support_widgets_name/);
+    expect(await refusal(widget("Blog", "e".repeat(20), { privacy: "http://example.com/privacy" }))).toMatch(/support_widgets_privacy_url/);
+    expect(await refusal(widget("Blog", "e".repeat(20), { style: "[]" }))).toMatch(/support_widgets_style/);
+    expect(await refusal(widget("Blog", "f".repeat(20), { market: "no" }, null))).toMatch(/support_widgets_market/);
+    const { id: blog } = await widget("Blog", "e".repeat(20), { privacy: "https://example.com/privacy", market: "no" });
+
+    // A widget goes on several websites; each host once per widget, of a host's shape, found by page or DNS only.
+    await site(shop, "www.example.com");
+    await site(shop, "shop.example.com", { verifiedAt: new Date().toISOString(), verifiedBy: "page" });
+    await site(blog, "www.example.com");
+    expect(await refusal(site(shop, "www.example.com"))).toMatch(/support_widget_sites_host_key/);
+    expect(await refusal(site(shop, "Example.com"))).toMatch(/support_widget_sites_host_shape/);
+    expect(await refusal(site(shop, "example.com/path"))).toMatch(/support_widget_sites_host_shape/);
+    expect(await refusal(site(shop, "a.example.com", { verifiedAt: new Date().toISOString() }))).toMatch(/support_widget_sites_verified/);
+    expect(await refusal(site(shop, "a.example.com", { verifiedAt: new Date().toISOString(), verifiedBy: "email" }))).toMatch(/support_widget_sites_verified/);
+
+    // Deleting a widget takes its websites with it.
+    await db.query("delete from commerce.support_widgets where id = $1", [shop]);
+    const left = await one<{ n: number }>("select count(*)::int as n from commerce.support_widget_sites where widget_id = $1", [shop]);
+    expect(left.n).toBe(0);
+    for (const table of ["support_widgets", "support_widget_sites"]) {
+      const rls = await one<{ relrowsecurity: boolean }>(`select relrowsecurity from pg_class where oid = 'commerce.${table}'::regclass`);
+      expect(rls.relrowsecurity).toBe(true);
+    }
+  });
 });

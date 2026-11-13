@@ -558,6 +558,21 @@ changing it; a rule changes here, and its line in CLAUDE.md when its gist change
   A product question (D431, a product layout's question part, `src/server/product-questions.ts`) takes the same path with the product's
   title, chosen variant and address as its first answer; its fields and copy addresses come from the published layout only.
 
+
+## Chat widgets on the owner's own websites (D582, `docs/support-embed.md`, `src/lib/support-embed.ts`, `src/lib/support-widget-style.ts`, `src/server/support-widgets.ts`, `public/embed/chat.js`)
+
+- **Chat widgets on the owner's own websites (D582)**: a desk (a store's, or Kaizena Flow's) has up to `WIDGETS_MAX` chat widgets
+  (`commerce.support_widgets`), each with a public key, a name, a market, a privacy page and its own look (`style`, read only through
+  `readStyle()`), and each on up to `SITES_MAX` sites (`commerce.support_widget_sites`, one host each; a host on one of the desk's widgets at
+  a time). The widget's tag, the loader `public/embed/chat.js`, frames `/embed/chat/{key}/{host}` from Kaizena Flow's own origin; the frame
+  is framed by the page's host alone (`embedFrameHeaders()` in `next.config.ts`) and draws the chat only on a site of that widget, or its
+  `www.` twin (`mayFrame()`, `frameWidget()`), whose tag was found (`checkSite()`: the front page through `safeFetch()`, or the TXT record
+  `kaizena-flow-chat={key}`). The look is drawn by `widgetCss()` on the element around the chat, over the store's theme, then the owner's
+  own CSS (checked by `cssProblem()`, inside the frame only); the admin's preview draws the same CSS. The frame tells the loader its state
+  (`FrameMessage`) and is never `display: none`. The chat's routes are not opened to other origins: their requests come from the frame,
+  carry `embed` and `host`, and `chatPlace()` makes the desk (`site.embed`). There the AI searches only the knowledge base's documents
+  (`embedTools()`), nobody signs in (no order tools; sign-in and confirm refuse), and `page_path` holds the site's host. Widgets are never
+  copied with a store and are managed on Support → Website chat at a store and on Kaizena Flow's desk.
 ## Prices are shown with `<Price>`, which adds the VAT label and shows the 30-day reference only for a genuine reduction
 
 - Prices are shown with `<Price>`, which adds the VAT label and shows the

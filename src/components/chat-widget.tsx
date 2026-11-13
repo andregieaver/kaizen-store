@@ -21,6 +21,7 @@ import {
 } from "@/lib/support-visitor";
 
 import { TYPING_SHOWN_MS, visitorDelay, widgetListens } from "@/lib/support-realtime";
+import type { FrameMessage } from "@/lib/support-embed";
 import type { UnitLabels } from "@/lib/unit-price-text";
 
 import { Chips, type ChipLabels } from "./chat/chips";
@@ -86,8 +87,11 @@ export type ChatLabels = {
 };
 
 export type ChatWidgetProps = {
-  /** Which site the messages are for: a store in one of its countries, or Kaizen's (neither). */
-  site: { store?: string; market?: string };
+  /**
+   * Which site the messages are for: a store in one of its countries, or Kaizen's (neither); on a site of the owner's own (D582), that
+   * site's key and the host of the page the frame is on.
+   */
+  site: { store?: string; market?: string; embed?: string; host?: string };
   /** Where a customer signs in (a store's account page), for the card a person can send; none on Kaizen's site. */
   signInHref?: string;
   locale: string;
@@ -109,6 +113,20 @@ export type ChatWidgetProps = {
   /** The site's privacy page, linked from the notice while support is on. */
   privacyHref?: string;
   labels: ChatLabels;
+  /**
+   * Drawn in a frame on a site of the owner's own (D582, `public/embed/chat.js`): the path of the page the frame is on, that page's
+   * origin, and the widget's placing (its side, the button's offsets in pixels, the icon alone or with words, the open panel's width).
+   * The page is told whenever the chat opens or closes and how much room its button needs (`FrameMessage`), so the frame takes just that.
+   */
+  embedded?: {
+    path: string;
+    parentOrigin: string;
+    side: "left" | "right";
+    offsetX: number;
+    offsetY: number;
+    launcher: "icon" | "label";
+    panel: number;
+  };
 };
 
 /** A sentence from the widget itself (a limit, an error): shown after the conversation, never kept or sent. */
@@ -201,7 +219,7 @@ async function answerOf(response: Response, onText: (text: string) => void): Pro
  * The conversation is the site's (D216): the widget sends only the new
  * message and draws what the site answers.
  */
-export function ChatWidget({ site, signInHref, locale, agent, deskName, privacyHref, labels }: ChatWidgetProps) {
+export function ChatWidget({ site, signInHref, locale, agent, deskName, privacyHref, labels, embedded }: ChatWidgetProps) {
   const router = useRouter();
   const key = `${site.store ?? ""}/${site.market ?? ""}`;
   const [open, setOpen] = useState(false);
@@ -308,6 +326,22 @@ export function ChatWidget({ site, signInHref, locale, agent, deskName, privacyH
   useEffect(() => {
     listRef.current?.lastElementChild?.scrollIntoView({ block: "end" });
   }, [messages, notices, pending, waiting, open, streaming]);
+  // In a frame on the owner's own site (D582), the page holding it is told whether the chat is open and the room the closed button needs:
+  // measured from the button and what it holds (the new-message badge), so any words and offsets fit, plus room for its shadow.
+  useEffect(() => {
+    if (!embedded) return;
+    let width = 0;
+    let height = 0;
+    const button = launcherRef.current;
+    if (!open && button) {
+      const rects = [button, ...button.querySelectorAll("*")].map((element) => element.getBoundingClientRect());
+      const shadow = 12;
+      width = Math.ceil(embedded.side === "right" ? window.innerWidth - Math.min(...rects.map((r) => r.left)) : Math.max(...rects.map((r) => r.right))) + shadow;
+      height = Math.ceil(window.innerHeight - Math.min(...rects.map((r) => r.top))) + shadow;
+    }
+    const message: FrameMessage = { kaizenaChat: "state", open, side: embedded.side, width, height, panel: embedded.panel };
+    window.parent.postMessage(message, embedded.parentOrigin);
+  }, [embedded, open, unseen]);
   // Focus moves into the chat as it opens, and back to its button as it closes.
   useEffect(() => {
     if (open) inputRef.current?.focus();
@@ -341,19 +375,20 @@ export function ChatWidget({ site, signInHref, locale, agent, deskName, privacyH
         .filter((message) => message.author === "ai")
         .flatMap((message) => message.data?.actions ?? [])
         .find((action) => action.type === "navigate");
-      if (go) {
+      // In a frame (D582) the chat opens no page: the owner's site is not Kaizena Flow's to move.
+      if (go && !embedded) {
         router.push(go.href);
         // On a phone the conversation covers the page, so it steps aside to show it.
         if (phone()) setOpen(false);
       }
     },
-    [router],
+    [router, embedded],
   );
 
   /** The request every message carries: the site, the page, the tab's signals and the conversation with the last message seen. */
   const turn = () => ({
     ...site,
-    path: window.location.pathname,
+    path: embedded?.path ?? window.location.pathname,
     signals: tabSignals(),
     ...(stored.conversation ? { conversation: stored.conversation } : {}),
     after: stored.lastSeq,
@@ -601,6 +636,7 @@ export function ChatWidget({ site, signInHref, locale, agent, deskName, privacyH
       {open && (
         <section
           id={panelId}
+          data-chat-panel=""
           role="dialog"
           aria-label={who}
           onKeyDown={(event) => {
@@ -821,7 +857,7 @@ export function ChatWidget({ site, signInHref, locale, agent, deskName, privacyH
               {agent.mode !== "off" && privacyHref && (
                 <>
                   {" "}
-                  <a href={privacyHref} className="underline">
+                  <a href={privacyHref} className="underline" {...(embedded ? { target: "_blank", rel: "noopener" } : {})}>
                     {labels.privacy}
                   </a>
                 </>
@@ -843,10 +879,15 @@ export function ChatWidget({ site, signInHref, locale, agent, deskName, privacyH
           }}
           aria-expanded={false}
           aria-label={`${labels.open}: ${who}`}
-          className="fixed right-4 bottom-[calc(5rem+env(safe-area-inset-bottom))] z-[55] flex items-center gap-2 rounded-full bg-foreground p-1 text-background shadow-lg md:right-6 md:bottom-6 md:pr-4"
+          data-chat-launcher=""
+          // In a frame (D582) the widget places its button itself, from its side and offsets: there is no bottom bar of the store's.
+          style={embedded ? { [embedded.side]: embedded.offsetX, bottom: embedded.offsetY } : undefined}
+          className={`fixed z-[55] flex items-center gap-2 rounded-full bg-foreground p-1 text-background shadow-lg ${
+            embedded ? (embedded.launcher === "label" ? "pr-4" : "") : "right-4 bottom-[calc(5rem+env(safe-area-inset-bottom))] md:right-6 md:bottom-6 md:pr-4"
+          }`}
         >
           {avatar("size-12")}
-          <span className="hidden text-sm font-medium md:inline">{labels.open}</span>
+          <span className={`text-sm font-medium whitespace-nowrap ${embedded ? (embedded.launcher === "label" ? "inline" : "hidden") : "hidden md:inline"}`}>{labels.open}</span>
           {unseen && (
             <span className="absolute -top-1 -right-1 rounded-full bg-accent px-2 py-0.5 text-xs font-medium text-accent-foreground">{labels.newMessage}</span>
           )}
