@@ -16849,6 +16849,44 @@ export const adConnections = commerce.table(
 );
 
 /**
+ * A store's ad account, connected so its budgets can be read and changed (D585, step 1 of `docs/agent-spending.md`): the platform bills the
+ * owner as it always has, and Kaizena Flow only moves budgets inside it, never pays. The token is encrypted (`secret-box.ts`), never sent to a
+ * page. `monthly_limit_minor` is what the autopilot may let the account spend in a calendar month (in the account's own currency and time
+ * zone, as the platform counts it); null: it never raises a budget itself. Written only by `src/server/ad-accounts.ts`. Kaizena Flow's own
+ * ad accounts are its house store's.
+ */
+export const adAccounts = commerce.table(
+  "ad_accounts",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    storeId: uuid("store_id")
+      .notNull()
+      .references(() => stores.id),
+    platform: text("platform").notNull().default("meta"),
+    /** The platform's own account number, digits only (Meta's `act_` left off). */
+    accountId: text("account_id").notNull(),
+    /** The account's name, its currency and its time zone, as the platform gave them when connected. */
+    name: text("name").notNull(),
+    currency: char("currency", { length: 3 }).notNull(),
+    timeZone: text("time_zone").notNull(),
+    token: text("token").notNull(),
+    tokenHint: text("token_hint").notNull(),
+    monthlyLimitMinor: bigint("monthly_limit_minor", { mode: "number" }),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [
+    unique("ad_accounts_store_platform").on(t.storeId, t.platform),
+    unique("ad_accounts_store_id_key").on(t.storeId, t.id),
+    check("ad_accounts_platform", sql`${t.platform} in ('meta')`),
+    check("ad_accounts_account", sql`${t.accountId} ~ '^[0-9]{5,20}$'`),
+    check("ad_accounts_name", sql`char_length(${t.name}) between 1 and 200`),
+    check("ad_accounts_time_zone", sql`char_length(${t.timeZone}) between 1 and 64`),
+    check("ad_accounts_limit", sql`${t.monthlyLimitMinor} is null or ${t.monthlyLimitMinor} between 0 and 100000000000`),
+  ],
+);
+
+/**
  * One server-side conversion event of an order for a platform (D303 I2): made only by `queueAdConversions()`, sent only by
  * `sendAdConversions()`, once per order, platform and event. No personal field: the payload is built when sent.
  */

@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 
 import { ActionForm, SubmitButton } from "@/components/admin/action-form";
 import { Button, Card, Chip, PageHeader } from "@/components/admin/ui";
@@ -11,6 +12,7 @@ import { adConversionCounts } from "@/server/ad-conversions";
 import { memberCan, requirePermission } from "@/server/permissions";
 
 import { removeAdConnectionAction, saveAdConnectionAction } from "./actions";
+import { AdBudgetsCard } from "./ad-budgets-card";
 
 export const metadata: Metadata = { title: "Ads and conversions" };
 
@@ -18,8 +20,9 @@ const input = "min-h-10 w-full rounded-md border border-line bg-card px-3 font-m
 const label = "flex flex-col gap-1 text-sm";
 
 /**
- * The store's server-side conversion events (wave 5 unit I2, D303, `docs/wave-5-marketing.md` 12.3): per ad platform its connection, what it
- * sends and what happened in the last seven days, counted, never a person. Staff with `marketing:read` see it; only the owner changes it.
+ * The store's ad budgets (D585: its Meta ad account, what it spends and the AI's monthly limit) and its server-side conversion events (wave 5
+ * unit I2, D303, `docs/wave-5-marketing.md` 12.3): per ad platform its connection, what it sends and what happened in the last seven days,
+ * counted, never a person. Staff with `marketing:read` see it; only the owner changes it.
  */
 export default async function AdsPage({ params }: PageProps<"/admin/[store]/ads">) {
   const member = await requirePermission((await params).store, "marketing:read");
@@ -34,6 +37,9 @@ export default async function AdsPage({ params }: PageProps<"/admin/[store]/ads"
   return (
     <div className="flex flex-col gap-6">
       <PageHeader title={w.title} description={w.description} />
+      <Suspense fallback={<Card title={w.budgets.title}>{null}</Card>}>
+        <AdBudgetsCard storeId={store.id} storeSlug={store.slug} owner={owner} lang={lang} />
+      </Suspense>
       <div className="grid gap-4 lg:grid-cols-2">
         {AD_PLATFORMS.map((platform) => {
           const c = connections.find((x) => x.platform === platform);

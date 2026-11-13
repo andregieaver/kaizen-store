@@ -178,8 +178,13 @@ export const autonomySettingsSchema = z.object({
       priceChangePercent: z.number().int().min(0).max(1000).default(10),
       /** Emails to customers (`CUSTOMER_EMAIL_TOOLS`) it may send without a yes in seven days; 0: every one asks. */
       customerEmailsPerWeek: z.number().int().min(0).max(100).default(5),
+      /**
+       * The largest raise of an ad budget it may make without a yes, in percent of the daily budget now (D585). What the ads may spend in a
+       * month is the ad account's own limit (`ad_accounts.monthly_limit_minor`, on the Ads page), in its currency.
+       */
+      adRaisePercent: z.number().int().min(0).max(1000).default(20),
     })
-    .default({ aiMonthlyUsd: 5, discountPercent: 20, priceChangePercent: 10, customerEmailsPerWeek: 5 }),
+    .default({ aiMonthlyUsd: 5, discountPercent: 20, priceChangePercent: 10, customerEmailsPerWeek: 5, adRaisePercent: 20 }),
   /** Whether and how it keeps working toward the goals once a plan ends (D328, `docs/ai-autopilot.md` 12.1). */
   planning: z
     .object({

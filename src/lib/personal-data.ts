@@ -348,6 +348,7 @@ export const NOT_PERSONAL: Record<string, string> = {
   ai_eval_runs: "Runs of the AI evals per model (PSI 2026-10-24): counts, failed cases' ids, problems and the model's answers to scripted cases, and the platform admin account that ran it; no shopper.",
   cron_jobs: "The last run of each scheduled job (PSI 2026-10-24): its name, times, run counts and the last error's message; no person.",
   ad_connections: "A store's connection to an ad platform (D303 I2): the platform's id and the owner's encrypted token; no shopper.",
+  ad_accounts: "A store's ad account connected for its budgets (D585): the platform's account number, name, currency and time zone, the owner's encrypted token and the autopilot's monthly limit; no shopper.",
   feed_settings: "A store's product feeds (D302): the hash and the encrypted secret of their address and a switch; no person.",
   ad_conversions: "That an order's event was sent to an ad platform (D303 I2): order id, platform, event, status and the platform's answer code; the payload, with the ids, is built when sent and never kept.",
   domain_registrations: "A domain registered by Kaizena Flow (D315, D317), held by an account and maybe used by a store: the name, its dates and renewal; the registrant is its own entry.",

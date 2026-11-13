@@ -1,6 +1,6 @@
 {
-  "id": "52e35f98-8fd0-4e45-8d7b-fed198a715d3",
-  "prevId": "2772298b-9c78-4f5b-b587-8a9a5fa2ba3d",
+  "id": "b3a0372b-3559-4bf7-acdd-9ff4a7ca7c3a",
+  "prevId": "9e3d37fa-69c3-411b-a891-1043b3a88165",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -1786,6 +1786,148 @@
         "activities_done": {
           "name": "activities_done",
           "value": "\"commerce\".\"activities\".\"done_by\" is null or \"commerce\".\"activities\".\"done_at\" is not null"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "commerce.ad_accounts": {
+      "name": "ad_accounts",
+      "schema": "commerce",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "store_id": {
+          "name": "store_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "platform": {
+          "name": "platform",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'meta'"
+        },
+        "account_id": {
+          "name": "account_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "currency": {
+          "name": "currency",
+          "type": "char(3)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "time_zone": {
+          "name": "time_zone",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "token": {
+          "name": "token",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "token_hint": {
+          "name": "token_hint",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "monthly_limit_minor": {
+          "name": "monthly_limit_minor",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "ad_accounts_store_id_stores_id_fk": {
+          "name": "ad_accounts_store_id_stores_id_fk",
+          "tableFrom": "ad_accounts",
+          "columnsFrom": [
+            "store_id"
+          ],
+          "tableTo": "stores",
+          "schemaTo": "commerce",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "ad_accounts_store_platform": {
+          "name": "ad_accounts_store_platform",
+          "columns": [
+            "store_id",
+            "platform"
+          ],
+          "nullsNotDistinct": false
+        },
+        "ad_accounts_store_id_key": {
+          "name": "ad_accounts_store_id_key",
+          "columns": [
+            "store_id",
+            "id"
+          ],
+          "nullsNotDistinct": false
+        }
+      },
+      "policies": {},
+      "checkConstraints": {
+        "ad_accounts_platform": {
+          "name": "ad_accounts_platform",
+          "value": "\"commerce\".\"ad_accounts\".\"platform\" in ('meta')"
+        },
+        "ad_accounts_account": {
+          "name": "ad_accounts_account",
+          "value": "\"commerce\".\"ad_accounts\".\"account_id\" ~ '^[0-9]{5,20}$'"
+        },
+        "ad_accounts_name": {
+          "name": "ad_accounts_name",
+          "value": "char_length(\"commerce\".\"ad_accounts\".\"name\") between 1 and 200"
+        },
+        "ad_accounts_time_zone": {
+          "name": "ad_accounts_time_zone",
+          "value": "char_length(\"commerce\".\"ad_accounts\".\"time_zone\") between 1 and 64"
+        },
+        "ad_accounts_limit": {
+          "name": "ad_accounts_limit",
+          "value": "\"commerce\".\"ad_accounts\".\"monthly_limit_minor\" is null or \"commerce\".\"ad_accounts\".\"monthly_limit_minor\" between 0 and 100000000000"
         }
       },
       "isRLSEnabled": false
