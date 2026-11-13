@@ -30,10 +30,72 @@ standard fields and tasks 2 to 4 not started. Builds on checkout questions (D357
 - [x] **Add, remove and hide** already work (save, delete, switch). Checked for Homer 13 November 2026: one *Add a question*
       button and a visible on/off chip with its switch were there; Delete now asks first, on a line under the question
       ("Delete …? Answers already given stay on their orders.", Delete or Keep it), and so does deleting a rule on the same page.
-- [ ] **Decide about the standard fields.** Can an owner hide or require Stripe's own fields, such as phone, company
-      name or a second address line? This depends on what Stripe's form lets us set (`phone_number_collection`,
-      the Address Element's options, `custom_fields` on a Checkout Session, Mollie's own page). List what each
-      provider allows before promising it, and say plainly in the editor which fields are the payment provider's.
+- [ ] **Decide about the standard fields.** Researched 13 November 2026 (findings below); the decision and the build are next.
+      Can an owner hide or require phone, company name or a second address line? It depends on which page asks them.
+
+#### What each provider lets us set (13 November 2026)
+
+Read in the code and in each provider's own documentation that day (Stripe API version `2026-10-28`).
+
+**Which page asks what today.**
+
+- **Stripe, on our page** (`ui_mode: "elements"`, production's `platform_settings.checkout_ui` is `custom`): Stripe draws the email
+  (`ContactDetailsElement`, email and Link only), the delivery address (`ShippingAddressElement`) and the payment details
+  (`PaymentElement`). Everything else on the page is ours.
+- **Stripe's own page** (`hosted`: the platform setting, and always for draft, change, exchange, terms and company-approval pay links).
+  Stripe draws every field there.
+- **Mollie** (D292): Mollie's hosted page asks only for payment details. Name, email, phone and the delivery address are already our
+  own form on the cart (`cleanPayer()`, `PayerNeeds`), so they are ours to change today.
+
+**Stripe, on our page.** Every field outside the payment details can be ours:
+
+| Field | How | Required or optional |
+|---|---|---|
+| Phone | `phone_number_collection.enabled`. Stripe draws no phone field in this mode: "you collect the phone number on your checkout page" and pass it with `checkout.updatePhoneNumber()` or `confirm({ phoneNumber })`. | Ours to decide on our field |
+| Person's name | `name_collection.individual` (`enabled`, `optional`), our own field and `checkout.updateIndividualName()`; Stripe has no element for it | `required` or `optional` |
+| Company name | `name_collection.business` (`enabled`, `optional`), through Stripe's Tax ID element or our own field and `checkout.updateBusinessName()` (with `fields.businessName: 'never'` on the Tax ID element) | `required` or `optional`; required moves wallet buttons down or turns them off |
+| Delivery address | `ShippingAddressElement` takes only `contacts`, `display.name` (`full`, `split`, `organization`) and `autocomplete` | It cannot hide line 2, add a phone or change what is required |
+| Delivery address, our own form | `checkout.updateShippingAddress({ name, address: { country, line1, line2, city, postal_code, state } })` | Ours: line 2 can be hidden; we lose Stripe's address autocomplete |
+| Billing address | `billing_address_collection`: `auto` or `required` (required today for a company order, D159) | Only those two |
+| Extra questions | `custom_fields` (at most 3) "can't be set if `ui_mode` is `elements`" | Not usable on our page; our own questions (D357) are the way |
+| Tax ID | `tax_id_collection` and the Tax ID element | n/a |
+
+**Stripe's own page.** It follows only the session's settings: `phone_number_collection` (required when on),
+`billing_address_collection`, `name_collection`, `shipping_address_collection.allowed_countries`, and `custom_fields` (3 at most:
+text, numeric or dropdown). Line 2 and the address's other fields stay Stripe's.
+
+**Wallets** (Express Checkout Element, Apple Pay, Google Pay) give their own phone and address; `updatePhoneNumber()` and
+`updateShippingAddress()` are "not used for express checkout payments". Express is already off for a store with a question (D373).
+
+**Mollie.** `billingAddress` and `shippingAddress` take `title`, `givenName`, `familyName`, `organizationName`, `streetAndNumber`,
+`streetAdditional`, `postalCode`, `city`, `region`, `country`, `email` and `phone`. The name, street, postal code, city, country and email
+are required only for `alma`, `billie`, `in3`, `klarna` and `riverty` (`organizationName` for `billie`). Those pay-later methods are left
+out today (`MOLLIE_LEFT_OUT`), so every contact and address field of a Mollie store is ours to show, hide or require. If pay-later is ever
+let in, those fields become required for it.
+
+**A gap found on the way.** A local-delivery order turns on `phone_number_collection` (`payment-session.ts`) so the driver has a number.
+But on our page nothing collects a phone or calls `updatePhoneNumber()`, and `ContactDetailsElement` asks only for the email. So a
+local-delivery order paid by Stripe on our page arrives without a phone (or, unverified, is refused by `confirm()`). Production has no
+local delivery areas yet (13 November 2026), so no order has met it. A Mollie store asks the phone itself (`PayerNeeds.phone`).
+
+**Recommendation.**
+
+1. Fix the gap first: a phone field on our checkout page, required for local delivery, passed with `updatePhoneNumber()`.
+2. Then one setting per field under *Customise*, Off, Optional or Required: phone, the person's name and the company name, through
+   `name_collection` and our own fields on Stripe and `cleanPayer()` on Mollie. Lisa's step away; Homer keeps today's defaults.
+3. Address line 2 only with our own address form on Stripe (`updateShippingAddress()`), which costs Stripe's autocomplete. Leave it
+   until an owner asks.
+4. In the editor, say plainly that Stripe's own page (and every pay link) follows only phone and names, and that wallets give their own.
+
+Sources:
+- [Create a Checkout Session](https://docs.stripe.com/api/checkout/sessions/create)
+- [Collect phone numbers, Elements](https://docs.stripe.com/payments/checkout/phone-numbers?ui=elements)
+- [Collect customer names, Elements](https://docs.stripe.com/payments/advanced/collect-names)
+- [Shipping Address Element for Checkout](https://docs.stripe.com/js/custom_checkout/create_shipping_address_element)
+- [`updateShippingAddress`](https://docs.stripe.com/js/custom_checkout/update_shipping_address)
+- [Contact Details Element](https://docs.stripe.com/js/custom_checkout/create_contact_details_element)
+- [Mollie, Create payment](https://docs.mollie.com/reference/create-payment)
+
 - [x] Admin API (`checkout:write`): `position` on `PATCH /checkout/fields/{id}` (alone, or with `enabled` or the whole question),
       through `moveCheckoutField()`; contract 1.14 in the developers' changelog. Built 13 November 2026.
 - [x] AI manager: `checkout_questions` and `save_checkout_question` (add, reword, switch, move; the owner's yes first), built
