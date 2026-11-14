@@ -7,7 +7,8 @@ import { toggleWishlistAction } from "@/app/s/[store]/[market]/wishlist/actions"
 /**
  * The shopper's saved products (D34), fetched once per page for every
  * heart on it, so the pages themselves stay the same for everyone (and
- * cached). Null until it arrives.
+ * cached), and only when the marker cookie `kaizen_mine_{storeId}` says this
+ * visitor has saved something or signed in. Null until it arrives.
  */
 let saved: Set<string> | null = null;
 let loading: string | null = null;
@@ -21,6 +22,11 @@ function setSaved(products: string[]) {
 function load(base: string) {
   if (loading === base) return;
   loading = base;
+  // Nothing saved and no account here: nothing to ask for.
+  if (!/(?:^|;\s*)kaizen_mine_[0-9a-f-]{36}=1(?:;|$)/.test(document.cookie)) {
+    setSaved([]);
+    return;
+  }
   fetch(`${base}/wishlist/saved`, { cache: "no-store" })
     .then((response) => response.json())
     .then((data: { products: string[] }) => setSaved(data.products))

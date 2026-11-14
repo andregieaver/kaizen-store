@@ -47,25 +47,34 @@ test("a grid that shows them gives tiles their stock and a quantity chooser that
   await expect(page.getByRole("link", { name: "Handlekurv (2)" }).first()).toBeAttached();
 });
 
-test("a grid that follows the store shows nothing until the store's product settings switch it on", async ({ page }) => {
-  const address = await storePageWith("tiles-store", [grid()]);
-  const slug = address.split("/")[2];
+test("a grid that follows the store draws no island and asks nothing while the switches are off", async ({ page }) => {
+  const address = await storePageWith("tiles-off", [grid()]);
+  const asked: string[] = [];
+  page.on("request", (request) => {
+    if (request.url().includes("/api/shop/tiles")) asked.push(request.url());
+  });
   await page.goto(address);
   const tote = page.locator("li[data-item-id]").filter({ hasText: "Demo: Handlenett i lerret" });
   await expect(tote).toBeVisible();
-  await page.waitForLoadState("networkidle");
+  await page.waitForTimeout(1500);
+  expect(asked).toHaveLength(0);
   await expect(page.locator("[data-tile-shop]")).toHaveCount(0);
+});
 
+test("a store whose settings show stock gives its tiles stock", async ({ page }) => {
+  const address = await storePageWith("tiles-store", [grid()]);
+  const slug = address.split("/")[2];
   const sql = testDb();
   try {
-    // Settings, Products: the stock left only. Read per request with the stock, so no cache is in the way.
+    // Settings, Products: the stock left only.
     await sql`
       insert into commerce.product_settings (store_id, tile_stock, tile_quantity)
       select id, true, false from commerce.stores where slug = ${slug}`;
   } finally {
     await sql.end();
   }
-  await page.reload();
+  await page.goto(address);
+  const tote = page.locator("li[data-item-id]").filter({ hasText: "Demo: Handlenett i lerret" });
   await expect(tote.locator("[data-tile-stock]")).toHaveText("På lager");
   await expect(tote.getByRole("button", { name: "Legg i handlekurven" })).toHaveCount(0);
 });

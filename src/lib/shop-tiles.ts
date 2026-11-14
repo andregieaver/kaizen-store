@@ -3,9 +3,10 @@
  * Add to cart. The store decides for every grid (Settings, Products: `commerce.product_settings`) and a grid may say otherwise for itself
  * (`ContentGridBlock.shopTiles`). Pure.
  *
- * The tiles are prerendered with the catalogue, and stock is never cached, so neither is drawn on the server: a small island in each
- * product tile (`TileShop`) asks `/api/shop/tiles` once for all the tiles of the page, and that answer carries the store's settings
- * with the facts. A grid that hides both draws no island and asks nothing.
+ * The tiles are prerendered with the catalogue, and stock is never cached, so neither is drawn on the server. The store's two switches
+ * are read on the server with a cached read under their own tag and decide whether the island is drawn (`tileAskFor()`); a grid that
+ * would show neither draws no island and asks nothing. The island (`TileShop`) still asks `/api/shop/tiles` once a page for the stock,
+ * which is never cached, and that answer carries the store's settings with the facts.
  */
 
 import type { Messages } from "./i18n";
@@ -44,6 +45,19 @@ export function tileShows(ask: TileAsk, store: ProductSettings): { stock: boolea
     stock: ask.stock === "show" || (ask.stock === "store" && store.tileStock),
     quantity: ask.quantity === "show" || (ask.quantity === "store" && store.tileQuantity),
   };
+}
+
+/**
+ * What a grid asks the island to consider once the store's switches are known on the server: null when neither stock nor the chooser
+ * would show (no island). A part that shows keeps the ask's own value, so the island's later `tileShows()` with the route's fresh
+ * settings still decides (a switch turned off stops showing at once). A grid's own `hide` beats the store.
+ */
+export function tileAskFor(own: ShopTiles | undefined, store: ProductSettings): TileAsk | null {
+  const ask = tileAsk(own);
+  if (!ask) return null;
+  const shows = tileShows(ask, store);
+  if (!shows.stock && !shows.quantity) return null;
+  return { stock: shows.stock ? ask.stock : null, quantity: shows.quantity ? ask.quantity : null };
 }
 
 /** Cleans a grid's overrides as saved: only `show` and `hide` are kept; nothing left is undefined. */

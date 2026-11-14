@@ -49,9 +49,12 @@ export function SearchBox({
   const [active, setActive] = useState(-1);
   const [, startLoading] = useTransition();
   const asked = useRef(0);
+  // Nothing is asked for until the shopper focuses or types in the box.
+  const [touched, setTouched] = useState(false);
 
   // Ask for suggestions a moment after typing stops; only the latest answer counts.
   useEffect(() => {
+    if (!touched) return;
     const text = value.trim();
     if (text.length < 2) return;
     const ticket = ++asked.current;
@@ -64,7 +67,7 @@ export function SearchBox({
       });
     }, 150);
     return () => clearTimeout(timer);
-  }, [value, store, market]);
+  }, [value, store, market, touched]);
 
   const shown = open && value.trim().length >= 2 && suggestions.length > 0;
   const productHref = (s: Suggestion) => `${base}/p/${s.handle}`;
@@ -98,11 +101,15 @@ export function SearchBox({
         type="search"
         value={value}
         onChange={(e) => {
+          setTouched(true);
           setValue(e.target.value);
           setOpen(true);
           if (e.target.value.trim().length < 2) setSuggestions([]);
         }}
-        onFocus={() => setOpen(true)}
+        onFocus={() => {
+          setTouched(true);
+          setOpen(true);
+        }}
         onBlur={() => setTimeout(() => setOpen(false), 150)}
         onKeyDown={onKeyDown}
         placeholder={labels.placeholder}
