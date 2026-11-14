@@ -41,14 +41,25 @@ with its processor slowed four times, and a computer.
   extras (`lazy/extras.tsx`) are `lazyView()` stand-ins: the server still draws the component into the page, and React keeps that
   HTML while the script loads; one that wraps the server's content shows it meanwhile (`showChildren`). The chat's button and a
   referral capture wait until the browser is idle; the consent manager and the owner's necessary code do not. A new client
-  component that is not on most pages is added to the right `lazy/*.tsx` and imported from there. Not one a visitor came to the
-  page to use at once, as what is typed or pressed before a part's own script runs is lost: the site's forms
+  component that is not on most pages is added to the right `lazy/*.tsx` and imported from there. A press never waits for its
+  script: a part a visitor may press at once either stays in first scripts or keeps its button there and loads the rest on the
+  press or when a pointer nears (the listing's filter: `FilterDialog` draws the button, and `filter-panel.tsx` is fetched with
+  `import()` when a pointer or the focus comes to it, or on the press, which is kept and opens the dialog when it arrives;
+  `e2e/products-page.spec.ts`). What is typed or pressed before a part's own script runs is otherwise lost: the site's forms
   (`e2e/components.spec.ts`), a booking's changes (`e2e/bookings.spec.ts`), the cart's checkout button with its company and VAT
-  fields (`e2e/vat-reverse-charge.spec.ts`), the discount codes, the gift box, the delivery choice, a listing's filter button
-  (`e2e/custom-fields-ranges.spec.ts`) and signing in stay in the
-  first scripts. `next/dynamic` (not
+  fields (`e2e/vat-reverse-charge.spec.ts`), the discount codes, the gift box, the delivery choice and signing in stay in the first
+  scripts. A product page's pickers (a stay's or rental's dates, an appointment's time, a gift card, a request for a quote) are
+  `lazy/shop.tsx` stand-ins: the server draws them and asks for their scripts with the page's, and five runs each of the bookings,
+  gift card, quote and filter specs lost no press (bloat review step 0.16). `next/dynamic` (not
   `React.lazy`) is what lets the server ask for a drawn part's script with the page's: with `React.lazy` alone, galleries, tabs
   and filters answered only a moment after the rest of the page, and 27 end-to-end tests failed.
+- **Admin words, the features table and the cookie catalogue are not a visitor's scripts; a helper a client component reads lives
+  in a file without them** (bloat review step 0.16): the cookies' categories are `COOKIE_PATTERNS` (`lib/cookie-patterns.ts`) and
+  their purposes `lib/known-cookies.ts`, the server's; `effectiveAudience()` is `lib/store-audience.ts`, the feature labels
+  `lib/feature-labels.ts`, `mayRemember()` is in `lib/cookie-consent.ts` and `drawerHasBackground()` in `lib/drawer-background.ts`;
+  the cart's view (`cartView()`) is a server file, `cart/cart-view.ts`, so the product page reaches no cart form.
+  `storefront-bundle.scan.test.ts` holds it.
+
 - **A visitor's browser gets only the interface text its client components read (D212).** Every text of the four hand-written
   languages is 270 KB (`src/lib/messages/{nb,sv,da,en}.ts`), which `t()` in `i18n.ts` gives the server, emails and the admin. A
   visitor's client components read `browserText()` (`src/lib/browser-text.ts`): the few texts they use, in
@@ -78,13 +89,35 @@ scores 92 to 96 for performance on a phone.
 Not changed: Next's own polyfills (14 KB, flagged as legacy JavaScript; the audit carries no weight and the browsers Next targets
 need none of them), React (70 KB) and the router (35 KB).
 
+### Kept in first scripts
+
+What a visitor may press or type into at once stays in the page's first scripts (bloat review step 0.16). Bytes are each part's own
+module, minified (esbuild, its imports not counted), measured on 14 November 2026:
+
+| Part | File | Bytes |
+|---|---|---:|
+| The site's forms | `components/site-form.tsx` | 6,236 |
+| A booking's changes | `components/booking-changes.tsx` | 2,166 |
+| The cart's checkout button (company and VAT fields) | `components/checkout-button.tsx` | 8,343 |
+| The discount codes | `components/discount-code-form.tsx` | 1,698 |
+| The gift box | `app/s/[store]/[market]/cart/cart-gift.tsx` | 3,559 |
+| The delivery choice | `components/delivery-choice.tsx` | 7,198 |
+| The listing filter's button (its dialog, `filter-panel.tsx`, 9,237, loads on the press) | `components/filter-dialog.tsx` | 1,284 |
+| Signing in | `components/account-sign-in.tsx` | 7,679 |
+
+No product picker is kept: the trial moved all four out, and none lost a press. Their own chunks in the build: the range picker
+9,597 bytes, the appointment picker 6,842, the gift card 4,592, the quote request 11,091; the product page's first scripts fell
+from 686,952 to 661,266 bytes (`node first-scripts.mjs`, the plain build). The carousel stays in first scripts (5,386 bytes of its
+own): as a `lazyView()` stand-in the server streams it after its fallback, so a page read without JavaScript holds its tiles twice
+and `e2e/carousel.spec.ts` ("without JavaScript the row scrolls") fails.
+
 ## Checking
 
 - `pnpm perf` builds nothing: after `pnpm build` it starts the app and runs Lighthouse on the demo store's front page, or on any
   address given (`pnpm perf https://kaizenalabs.com/`), for a phone and a computer, and lists the scores, the measures and the
   largest scripts; `--min=90` fails below a score.
 - `e2e/performance.spec.ts` holds what does not wobble: the demo front page's first scripts under a byte budget, without zod, the
-  lightbox or the checkout's payment form; no language's whole interface text; the first grid's and the first row's pictures eager and the next ones lazy; a blurred
+  lightbox, the checkout's payment form, the admin's words, the cookie catalogue's purposes or the filter's dialog; no language's whole interface text; the first grid's and the first row's pictures eager and the next ones lazy; a blurred
   background from its small copy; an embedded frame named.
 
 Scores move a few points between runs, and a page's own content (large pictures, many components) decides much of it.

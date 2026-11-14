@@ -117,3 +117,20 @@ export async function paidOrderCount(storeId: string): Promise<number> {
   const row = await typedRow(COUNT_ROW, sql`select count(*)::int as n from commerce.orders o where o.store_id = ${storeId}::uuid and ${PAID}`);
   return row?.n ?? 0;
 }
+
+const LINE_PICTURE_ROW = z.object({ id: col.uuid, picture: col.textOrNull });
+
+/** A picture for each of an order's lines (its variant's, else its product's first), by line id: for the order page's items. */
+export async function linePictures(storeId: string, orderId: string): Promise<Map<string, string | null>> {
+  const rows = await typedRows(LINE_PICTURE_ROW, sql`
+    select l.id, coalesce(v.image_thumbnail_url, v.image_url, m.picture) as picture
+    from commerce.order_lines l
+    left join commerce.product_variants v on v.store_id = l.store_id and v.id = l.variant_id
+    left join lateral (
+      select coalesce(pm.thumbnail_url, pm.url) as picture from commerce.product_media pm
+      where pm.store_id = v.store_id and pm.product_id = v.product_id order by pm.position limit 1
+    ) m on true
+    where l.store_id = ${storeId}::uuid and l.order_id = ${orderId}::uuid
+  `);
+  return new Map(rows.map((r) => [r.id, r.picture]));
+}

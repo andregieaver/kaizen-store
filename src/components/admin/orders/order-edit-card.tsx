@@ -68,7 +68,7 @@ export function OrderEditCard({
       aside={
         canWrite &&
         !blockText && (
-          <ButtonLink href={editHref} kind="main">
+          <ButtonLink href={editHref} kind="secondary">
             {w.edit}
           </ButtonLink>
         )

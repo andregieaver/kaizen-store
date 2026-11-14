@@ -74,6 +74,7 @@ import {
 import { slugify } from "@/lib/slug";
 import { uploadToSignedUrl } from "@/lib/supabase/signed-upload";
 import type { EditorContext, Operator } from "@/server/products";
+import { ProductPreview } from "./product-preview";
 import { SoldByMeasureField, ContentFields, type ContentContext } from "@/components/admin/unit-price-fields";
 import { BundleSection, NEW_BUNDLE } from "@/components/admin/bundle-section";
 import { PriceBreaksSection } from "@/components/admin/price-breaks-section";
@@ -274,17 +275,27 @@ export function ProductEditor(props: Props) {
           <h1 className="text-xl font-medium">{title || (productId ? w.top.untitled : w.top.newProduct)}</h1>
         </div>
         <div className="flex items-center gap-3">
-          <label className="flex items-center gap-2 text-sm">
-            <span className="sr-only">{w.top.status}</span>
-            <select
-              value={product.status}
-              onChange={(e) => update((p) => ({ ...p, status: e.target.value as ProductInput["status"] }))}
-              className={`${input} w-auto`}
-            >
-              <option value="draft">{w.top.draft}</option>
-              <option value="active">{w.top.published}</option>
-            </select>
-          </label>
+          {/* Round 1 (D595, step 5): whether shoppers can buy it, as a two-way switch in words rather than a dropdown. */}
+          <fieldset className="flex gap-0.5 rounded-pill bg-card p-[3px] ring-1 ring-edge">
+            <legend className="sr-only">{w.top.status}</legend>
+            {(["draft", "active"] as const).map((status) => (
+              <label
+                key={status}
+                className="flex min-h-9 cursor-pointer items-center gap-1.5 rounded-pill px-3.5 text-sm text-ink-2 has-checked:bg-inverse has-checked:text-inverse-ink has-focus-visible:ring-2 has-focus-visible:ring-focus"
+              >
+                <input
+                  type="radio"
+                  name="product-status"
+                  value={status}
+                  checked={product.status === status}
+                  onChange={() => update((p) => ({ ...p, status }))}
+                  className="sr-only"
+                />
+                {status === "active" && <span aria-hidden className="size-1.5 rounded-pill bg-brand" />}
+                {status === "draft" ? w.top.draft : w.top.published}
+              </label>
+            ))}
+          </fieldset>
           <button
             type="submit"
             disabled={saving}
@@ -333,16 +344,10 @@ export function ProductEditor(props: Props) {
         </div>
       )}
 
-      <TextSection
-        product={product}
-        update={update}
-        context={context}
-        languageNames={languageNames}
-        handleTouched={handleTouched}
-        onHandleTouched={() => setHandleTouched(true)}
-        productUrl={`${props.siteOrigin}${props.storefrontPath ?? ""}/p/${product.handle || slugify(title) || "product"}`}
-        suggest={(request) => suggestTextAction(storeSlug, productId, request)}
-      />
+      {/* Round 1 (D595, step 5): photos first, then the words, then price and stock, then where shoppers find it; beside it, the
+          product as a shopper sees it and what it still lacks. */}
+      <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_19rem]">
+      <div className="flex min-w-0 flex-col gap-6">
       <MediaSection
         storeSlug={storeSlug}
         product={product}
@@ -353,6 +358,54 @@ export function ProductEditor(props: Props) {
         otherLocales={context.locales.filter((l) => l !== context.primaryLocale)}
         languageNames={languageNames}
       />
+      <TextSection
+        product={product}
+        update={update}
+        context={context}
+        languageNames={languageNames}
+        handleTouched={handleTouched}
+        onHandleTouched={() => setHandleTouched(true)}
+        productUrl={`${props.siteOrigin}${props.storefrontPath ?? ""}/p/${product.handle || slugify(title) || "product"}`}
+        suggest={(request) => suggestTextAction(storeSlug, productId, request)}
+      />
+      {/* The kinds a store's features offer (D178), and the product's own kind as it was loaded, which it keeps while its feature is off. */}
+      {/* A bundle (D322) is chosen when a product is made and stays one: a saved product is offered no move into or out of it. */}
+      {(productId === null || context.appointmentsOn || context.staysOn || context.giftCardsOn || product.kind !== "goods" || props.initial.kind !== "goods") && (
+        <KindSection
+          product={product}
+          update={update}
+          offered={
+            productId !== null && props.initial.kind === "bundle"
+              ? { goods: false, appointment: false, stay: false, rental: false, gift_card: false, bundle: true }
+              : {
+                  goods: true,
+                  appointment: context.appointmentsOn || props.initial.kind === "appointment",
+                  stay: context.staysOn || props.initial.kind === "stay",
+                  rental: context.staysOn || props.initial.kind === "rental",
+                  gift_card: context.giftCardsOn || props.initial.kind === "gift_card",
+                  bundle: productId === null,
+                }
+          }
+        />
+      )}
+      {product.kind === "appointment" && product.appointment && (
+        <AppointmentSection storeSlug={storeSlug} product={product} update={update} context={context} />
+      )}
+      {(product.kind === "stay" || product.kind === "rental") && product.appointment && (
+        <RangeSection storeSlug={storeSlug} product={product} update={update} context={context} />
+      )}
+      {product.kind === "bundle" ? (
+        <BundleSection storeSlug={storeSlug} product={product} update={update} context={context} />
+      ) : (
+        <VariantsSection
+          storeSlug={storeSlug}
+          product={product}
+          update={update}
+          context={context}
+          countries={props.countries}
+          upload={uploads ? (file) => uploadPicture(storeSlug, file, w.media.unreadable) : null}
+        />
+      )}
       <section aria-labelledby="terms-heading" className={card}>
         <h2 id="terms-heading" className="mb-1 text-title text-ink">
           {w.terms.title}
@@ -457,44 +510,6 @@ export function ProductEditor(props: Props) {
           })}
         </section>
       )}
-      {/* The kinds a store's features offer (D178), and the product's own kind as it was loaded, which it keeps while its feature is off. */}
-      {/* A bundle (D322) is chosen when a product is made and stays one: a saved product is offered no move into or out of it. */}
-      {(productId === null || context.appointmentsOn || context.staysOn || context.giftCardsOn || product.kind !== "goods" || props.initial.kind !== "goods") && (
-        <KindSection
-          product={product}
-          update={update}
-          offered={
-            productId !== null && props.initial.kind === "bundle"
-              ? { goods: false, appointment: false, stay: false, rental: false, gift_card: false, bundle: true }
-              : {
-                  goods: true,
-                  appointment: context.appointmentsOn || props.initial.kind === "appointment",
-                  stay: context.staysOn || props.initial.kind === "stay",
-                  rental: context.staysOn || props.initial.kind === "rental",
-                  gift_card: context.giftCardsOn || props.initial.kind === "gift_card",
-                  bundle: productId === null,
-                }
-          }
-        />
-      )}
-      {product.kind === "appointment" && product.appointment && (
-        <AppointmentSection storeSlug={storeSlug} product={product} update={update} context={context} />
-      )}
-      {(product.kind === "stay" || product.kind === "rental") && product.appointment && (
-        <RangeSection storeSlug={storeSlug} product={product} update={update} context={context} />
-      )}
-      {product.kind === "bundle" ? (
-        <BundleSection storeSlug={storeSlug} product={product} update={update} context={context} />
-      ) : (
-        <VariantsSection
-          storeSlug={storeSlug}
-          product={product}
-          update={update}
-          context={context}
-          countries={props.countries}
-          upload={uploads ? (file) => uploadPicture(storeSlug, file, w.media.unreadable) : null}
-        />
-      )}
       {product.kind !== "bundle" && product.variants.some((v) => v.delivery === "digital") && (
         <DigitalSection storeSlug={storeSlug} product={product} update={update} uploads={uploads} />
       )}
@@ -548,6 +563,19 @@ export function ProductEditor(props: Props) {
           />
         </div>
       </details>
+      </div>
+      <aside className="hidden lg:block">
+        <div className="sticky top-6">
+          <ProductPreview
+            product={product}
+            locale={context.primaryLocale}
+            market={context.markets[0]}
+            href={productId && product.status === "active" ? `${props.siteOrigin}${props.storefrontPath ?? ""}/p/${product.handle}` : null}
+            words={w.preview}
+          />
+        </div>
+      </aside>
+      </div>
 
       <div className="flex justify-end">
         <button
@@ -708,6 +736,10 @@ function TextSection({
             onChange={(countryTexts) => update((p) => ({ ...p, countryTexts }))}
           />
         )}
+        {/* Round 1 (D595, step 5): the words most products never need, folded; open when safety warnings are written (they have legal weight). */}
+        <details open={Boolean(current.safetyInformation) || undefined} className="group flex flex-col gap-4 border-t border-line pt-4">
+          <summary className="cursor-pointer text-body-strong text-ink">{w.text.more}</summary>
+          <div className="mt-4 flex flex-col gap-4">
         <label className={label}>
           <span>
             {w.text.safety} <span className={hint}>{w.text.safetyHint}</span>
@@ -772,6 +804,8 @@ function TextSection({
             lang={locale}
           />
         </div>
+          </div>
+        </details>
       </div>
     </section>
   );

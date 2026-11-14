@@ -7,7 +7,7 @@ import { storePageRows, testDb, testStore } from "./db";
  * would move with but that do not wobble as a score does. `pnpm perf` runs Lighthouse itself.
  */
 
-/** The first scripts of the demo store's front page may not grow past this, raw (before compression): 893 KB when this was set (D212; 1.01 MB while every language's whole interface text came with it); 965 KB from D303 (the consent manager's ads tags and shop-event bus; the events' mapping loads only when a tag is on); 972 KB from D303 I2 and I3 (the consent manager posting the ad platforms' ids after a choice, and the first-visit keeper's idle wrapper; the keeper itself loads only where drawn). */
+/** The first scripts of the demo store's front page may not grow past this, raw (before compression): 893 KB when this was set (D212; 1.01 MB while every language's whole interface text came with it); 965 KB from D303 (the consent manager's ads tags and shop-event bus; the events' mapping loads only when a tag is on); 972 KB from D303 I2 and I3 (the consent manager posting the ad platforms' ids after a choice, and the first-visit keeper's idle wrapper; the keeper itself loads only where drawn). Counted here, every `script[src]` of the page, Next's `nomodule` polyfills (112,541 bytes, in the page twice) included: 840,647 on 14 November 2026 after bloat review step 0.16, which is 615,961 without them. Step 0.16 lowers this only once the page meets its target, 615,000 without the polyfills (840,000 counted here): it is still 961 bytes over. */
 const FIRST_SCRIPTS_MAX = 972_000;
 
 const base = `http://localhost:${process.env.PORT ?? 3000}`;
@@ -28,6 +28,11 @@ test("the front page's first scripts stay within their budget, without zod or th
   // A part the page does not draw is not in its first scripts: the gallery's lightbox, the checkout's payment form.
   expect(scripts.filter((script) => script.text.includes("kz-lightbox")).map((s) => s.url)).toEqual([]);
   expect(scripts.filter((script) => script.text.includes("CheckoutSdkContext")).map((s) => s.url)).toEqual([]);
+  // Not a visitor's scripts (bloat review step 0.16): the features table and the admin's words, the cookie catalogue's purposes, and
+  // the listing filter's dialog, which loads on the first press or when a pointer nears (only its button is here).
+  for (const marker of ["Sell to businesses", "Waiting for payment", "Kommer ihåg om du valde ljusa", "filter-dialog-title"]) {
+    expect(scripts.filter((script) => script.text.includes(marker)).map((s) => s.url), marker).toEqual([]);
+  }
 });
 
 /**
@@ -38,7 +43,11 @@ test("the front page's first scripts stay within their budget, without zod or th
  * regression to look at, not a number to raise.
  */
 const FIRST_SCRIPTS_BUDGETS: Record<string, number> = {
-  "/s/demo/no/p/demo-keramikkopp": 1_040_000,
+  // 885,949 on 14 November 2026 after bloat review step 0.16 (661,266 without the two `nomodule` polyfills counted here, 225,082;
+  // 778,503 without them before the step). Measured plus 3 % would be 913,000, above the step's ceiling of 670,000 without the
+  // polyfills, so the ceiling: 670,000 + 225,082, rounded down. No product picker is kept in first scripts (the range and appointment pickers, the
+  // gift card and the quote request load with the page that draws them, `lazy/shop.tsx`).
+  "/s/demo/no/p/demo-keramikkopp": 895_000,
   "/": 870_000,
   "/sign-up": 880_000,
   "/status": 880_000,

@@ -1,4 +1,7 @@
 import type { Metadata } from "next";
+import { DotChip, StepPath, Thumb, type PathStep } from "@/components/admin/home/home-parts";
+import { FoldOnHash, MoreMenu } from "@/components/admin/orders/order-folds";
+import { linePictures } from "@/server/home";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense, type ReactNode } from "react";
@@ -264,17 +267,64 @@ export default async function OrderPage({ params }: PageProps<"/admin/[store]/or
     })),
   ].sort((a, b) => b.at.localeCompare(a.at));
 
+  // Round 1 (D595, step 4): the order's path, pictures of what is in it, and state chips in the header.
+  const pictures = await linePictures(store.id, order.id);
+  const shipsByPost = order.ships && order.deliveryMethod === "ship" && !order.copied;
+  const sentState = fulfilment.state === "sent" || fulfilment.state === "closed";
+  const deliveredOn = Boolean(returns?.deliveredOn || receipt);
+  const pathSteps: PathStep[] | null =
+    shipsByPost && order.status !== "cancelled"
+      ? (() => {
+          const reached = [true, paid, sentState || fulfilment.state === "partly_sent", sentState, deliveredOn];
+          const current = reached.findIndex((r) => !r);
+          const steps: PathStep[] = [
+            { label: w.path.ordered, caption: when(order.placedAt), state: "done" },
+            { label: paid ? w.path.paid : w.path.notPaid, state: paid ? "done" : current === 1 ? "current" : "todo" },
+            { label: w.path.pack, state: reached[2] ? "done" : current === 2 ? "current" : "todo" },
+            { label: fulfilment.state === "partly_sent" ? w.path.partly : w.path.sent, caption: order.delivery?.label, state: reached[3] ? "done" : current === 3 ? "current" : "todo" },
+            { label: w.path.delivered, caption: w.path.withdraw, state: reached[4] ? "done" : current === 4 ? "current" : "todo" },
+          ];
+          return steps.map((step) => (step.state === "current" ? { ...step, caption: w.path.here } : step));
+        })()
+      : null;
+  const stateChips = (
+    <>
+      {order.status === "cancelled" ? (
+        <DotChip tone="neutral">{w.chipCancelled}</DotChip>
+      ) : (
+        paid && <DotChip tone="positive">{w.chipPaid}</DotChip>
+      )}
+      {paid && order.ships && !order.copied && (sentState ? <DotChip tone="positive">{w.chipSent}</DotChip> : <DotChip tone="warning">{fulfilment.state === "partly_sent" ? w.path.partly : w.chipToSend}</DotChip>)}
+    </>
+  );
+
   return (
     <AdminTextScope texts={adminTexts(lang, ["order", "drafts", "privacy", "builder"])}>
     <div className="flex flex-col gap-6">
       <div className="flex flex-wrap items-end justify-between gap-4">
         <PageHeader
           back={{ href: `/admin/${store.slug}/orders`, label: w.back }}
+          status={stateChips}
           title={<>{fillWords(w.title, { number: order.number })}</>}
           description={<>{cancelledAfterPayment ? w.cancelledRefunded : toCharge ? w.toCharge : order.awaitingBank ? w.awaitingBank : statuses[order.status]}{fulfilment.state === "partly_sent" && countWords(fulfilment.unitsToSend, w.partlySent)}{awaitingEdit && w.changeAwaiting}{order.edits.some((e) => e.status === "applied") && w.edited}{fillWords(w.placed, { when: when(order.placedAt), market: order.marketCode })}{order.archivedAt && w.archived}{order.copied && w.copied}{order.source === "draft" && (<>{" · "}{w.staffMade}{order.draft?.number && (<>{w.fromDraft}<Link href={`/admin/${store.slug}/orders/drafts/${order.draft.id}`} className="underline">{order.draft.number}</Link></>)}{order.madeBy?.email && fillWords(w.by, { email: order.madeBy.email })}</>)}{order.exchange && (<>{" · "}{w.exchangeFor}{" "}<Link href={`/admin/${store.slug}/returns/${order.exchange.returnId}`} className="underline">{order.exchange.returnNumber}</Link>{w.ofOrder}<Link href={`/admin/${store.slug}/orders/${order.exchange.originalOrderId}`} className="underline">#{order.exchange.originalOrderNumber}</Link></>)}{order.subscriptionId && (<>{" · "}<Link href={`/admin/${store.slug}/subscriptions/${order.subscriptionId}`} className="underline">{w.partOfSubscription}</Link></>)}</>}
         />
         {(paid || canWrite || memberCan(member, "owner")) && (
           <div className="flex flex-wrap items-start gap-2">
+            {paid && order.ships && !order.copied && (
+              <Link
+                href={`/admin/${store.slug}/orders/${order.id}/packing-slip`}
+                target="_blank"
+                className="inline-flex h-11 items-center rounded-pill border border-edge bg-card px-4 text-body text-ink hover:bg-sunken"
+              >
+                {order.gift ? w.printGiftSlip : w.packingSlip}
+              </Link>
+            )}
+            <MoreMenu label={w.more}>
+              {((paid || cancelledAfterPayment) && (order.refundableMinor > 0 || restockable.length > 0)) || (order.status === "paid" && sentParcels === 0) || toCharge ? (
+                <a href="#refund-cancel" className="inline-flex min-h-10 items-center rounded-pill border border-edge px-4 text-sm hover:bg-sunken">
+                  {w.refundOrCancel}
+                </a>
+              ) : null}
             {canWrite && (
               <ArchiveButton
                 archived={Boolean(order.archivedAt)}
@@ -292,20 +342,14 @@ export default async function OrderPage({ params }: PageProps<"/admin/[store]/or
                 {w.exportOrder}
               </Link>
             )}
-            {paid && order.ships && !order.copied && (
-              <Link
-                href={`/admin/${store.slug}/orders/${order.id}/packing-slip`}
-                target="_blank"
-                className="inline-flex min-h-10 items-center rounded-pill border border-edge px-4 text-sm"
-              >
-                {order.gift ? w.printGiftSlip : w.packingSlip}
-              </Link>
-            )}
+
             {paid && order.email && <ResendButton {...ids} />}
+            </MoreMenu>
           </div>
         )}
       </div>
       <OrderPrivacyBanner privacy={privacy} />
+      {pathSteps && <StepPath label={w.path.label} steps={pathSteps} />}
       {/* A fulfilment hold (D238): set by a rule or a person; nothing is sent or handed over until it is released. */}
       {!order.copied && (
         <HoldPanel
@@ -337,214 +381,6 @@ export default async function OrderPage({ params }: PageProps<"/admin/[store]/or
 
       <div className="grid gap-6 md:grid-cols-[minmax(0,1fr)_20rem]">
         <div className="flex min-w-0 flex-col gap-6">
-          <section aria-labelledby="items" className={card}>
-            <h2 id="items" className="mb-3 text-title text-ink">{w.items}</h2>
-            <div className="overflow-x-auto">
-              {/* On a phone the SKU goes under the product's name, so its quantity and total stay in view without scrolling sideways. */}
-              <table className="w-full text-left text-sm">
-                <thead>
-                  <tr className="border-b border-line">
-                    <th scope="col" className="py-2 font-medium">{w.product}</th>
-                    <th scope="col" className="hidden py-2 font-medium sm:table-cell">{w.sku}</th>
-                    <th scope="col" className="py-2 text-right font-medium">{w.qty}</th>
-                    <th scope="col" className="py-2 text-right font-medium">{w.total}</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {order.lines.map((line) => (
-                    <tr key={line.id} className="border-b border-line">
-                      <td className="py-2 pr-3">
-                        {line.title}
-                        {line.sku && <span className="block font-mono text-xs text-muted sm:hidden">{line.sku}</span>}
-                        {line.delivery === "digital" && line.variantId && <span className="block text-xs text-muted">{w.digital}</span>}
-                        {line.custom && <span className="block text-xs text-muted">{w.customItem}</span>}
-                        {!line.custom && line.listPriceMinor !== null && line.listPriceMinor !== line.unitPriceMinor && (
-                          <span className="block text-xs text-muted">{fillWords(w.customPrice, { price: money(line.unitPriceMinor), list: money(line.listPriceMinor) })}</span>
-                        )}
-                        {line.booking && (
-                          <span className="block text-xs">
-                            {bookingWhen(line.booking, "en-GB", t("en"))}
-                            {line.booking.status !== "confirmed" && ` · ${line.booking.status === "held" ? w.heldUntilPaid : w.notBooked}`}
-                          </span>
-                        )}
-                        {line.backorder && (
-                          <span className="block text-xs font-medium">
-                            {line.backorder.until
-                              ? fillWords(w.preordered, { units: line.backorder.units, qty: line.quantity, date: line.backorder.until })
-                              : countWords(line.backorder.days, w.backordered, { units: line.backorder.units, qty: line.quantity })}
-                          </span>
-                        )}
-                        {line.components.length > 0 && <span className="block text-xs text-muted">{fillWords(w.includes, { items: componentsText(line.components) })}</span>}
-                        {takenFrom(line.variantId, stockByVariant, stockLocations) && <span className="block text-xs text-muted">{fillWords(w.takenFrom, { places: takenFrom(line.variantId, stockByVariant, stockLocations) })}</span>}
-                        {line.restocked > 0 && <span className="block text-xs text-muted">{fillWords(w.restocked, { n: line.restocked })}</span>}
-                        {fromWishlists
-                          .filter((add) => line.variantId && add.variantId === line.variantId)
-                          .slice(0, 1)
-                          .map((add) => (
-                            <span key={add.id} className="block text-xs text-muted">
-                              {w.fromWishlist}{" "}
-                              {add.wishlist.id ? (
-                                <Link href={`/admin/${store.slug}/wishlists/${add.wishlist.id}`} className="underline">
-                                  {add.wishlist.name}
-                                </Link>
-                              ) : (
-                                add.wishlist.name
-                              )}
-                            </span>
-                          ))}
-                      </td>
-                      <td className="hidden py-2 font-mono text-xs sm:table-cell">{line.sku}</td>
-                      <td className="py-2 text-right">{line.quantity}</td>
-                      <td className="py-2 text-right">{money(line.unitPriceMinor * line.quantity)}{line.gift && <span className="block text-xs text-muted">{w.freeGift}</span>}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-            <dl className="mt-3 flex flex-col gap-1 text-sm">
-              <div className="flex justify-between"><dt>{w.subtotal}</dt><dd>{money(order.subtotalMinor)}</dd></div>
-              {order.ships && <div className="flex justify-between"><dt>{w.shipping}{order.delivery && <span className="text-muted"> ({order.delivery.label})</span>}</dt><dd>{money(order.shippingMinor)}</dd></div>}
-              {order.discountMinor > 0 && (
-                <div className="flex justify-between">
-                  <dt>
-                    {w.discount}
-                    {order.campaignDiscountMinor > 0 && order.campaignLabel && (
-                      <span className="text-xs text-muted">
-                        {" "}
-                        (<Link href={`/admin/${store.slug}/campaigns`} className="underline">{order.campaignLabel}</Link>, −{money(order.campaignDiscountMinor)})
-                      </span>
-                    )}
-                    {order.memberDiscountMinor > 0 && order.memberLabel && (
-                      <span className="text-xs text-muted">
-                        {" "}
-                        ({order.memberLabel}
-                        {order.memberPercent ? ` ${percentText(order.memberPercent)} %` : ""}, −{money(order.memberDiscountMinor)})
-                      </span>
-                    )}
-                    {order.discountCode && (
-                      <>
-                        {" "}
-                        <Link href={`/admin/${store.slug}/discounts`} className="font-mono text-xs underline">
-                          {order.discountCode}
-                        </Link>
-                      </>
-                    )}
-                  </dt>
-                  <dd>−{money(order.discountMinor)}</dd>
-                </div>
-              )}
-              {order.staffDiscountMinor > 0 && (
-                <div className="flex justify-between">
-                  <dt>
-                    {order.staffDiscountLabel ?? w.discount} <span className="text-xs text-muted">{w.staffDiscount}</span>
-                  </dt>
-                  <dd>−{money(order.staffDiscountMinor)}</dd>
-                </div>
-              )}
-              <ReferralDiscountRow minor={order.copied ? 0 : order.referralDiscountMinor} currency={order.currency} locale={locale} words={words.referral} />
-              <BonusUsedRow bonus={bonus} currency={bonusCurrency} locale={locale} words={words.bonus} />
-              <VatReliefRow kind={order.vatKind} reliefMinor={order.vatReliefMinor} money={money} words={words.vatTreatment} />
-              <div className="flex justify-between font-medium"><dt>{w.total}</dt><dd>{money(order.totalMinor)}</dd></div>
-              <div className="flex justify-between text-muted"><dt>{order.vatKind === "reverse_charge" ? w.vatReverse : w.vatIncluded}</dt><dd>{money(order.taxMinor)}</dd></div>
-              {order.balanceMinor > 0 && (
-                <div className="flex justify-between"><dt>{w.payAtAppointment}</dt><dd>{money(order.balanceMinor)}</dd></div>
-              )}
-              <BonusEarnedRow bonus={bonus} currency={bonusCurrency} locale={locale} words={words.bonus} />
-              {order.company && (
-                <div className="flex justify-between text-muted"><dt>{w.totalExVat}</dt><dd>{money(order.totalMinor - order.taxMinor)}</dd></div>
-              )}
-              {order.refundedMinor > 0 && (
-                <>
-                  <div className="flex justify-between border-t border-line pt-1"><dt>{w.refunded}</dt><dd>−{money(order.refundedMinor)}</dd></div>
-                  <div className="flex justify-between font-medium"><dt>{w.kept}</dt><dd>{money(order.paidMinor - order.refundedMinor)}</dd></div>
-                </>
-              )}
-            </dl>
-            {order.paidOutside && (
-              <p className="mt-3 rounded-md border border-line bg-sunken p-3 text-sm">
-                {fillWords(w.paidOutside, { method: words.manualMethods[order.paidOutside.method].toLowerCase(), when: when(order.paidOutside.recordedAt) })}
-              </p>
-            )}
-          </section>
-
-          {editability && (
-            <OrderEditCard
-              editHref={`/admin/${store.slug}/orders/${order.id}/edit`}
-              words={adminText(lang, "drafts")}
-              canWrite={canWrite}
-              blockText={editability.text}
-              edits={order.edits}
-              money={money}
-              when={when}
-              hasEmail={Boolean(order.email)}
-              mayRecordOutside={mayRecordOutside}
-              awaitingActions={
-                canWrite && awaitingEdit
-                  ? {
-                      resend: resendOrderEditAction.bind(null, store.slug, awaitingEdit.id),
-                      cancel: cancelOrderEditAction.bind(null, store.slug, awaitingEdit.id),
-                      paidOutside: recordWaitingEditPaidOutsideAction.bind(null, store.slug, awaitingEdit.id),
-                    }
-                  : null
-              }
-            />
-          )}
-
-          {!order.copied && (
-            <VatTreatmentPanel
-              treatment={treatment}
-              kind={order.vatKind}
-              reliefMinor={order.vatReliefMinor}
-              shippingReliefMinor={order.shippingReliefMinor}
-              currency={order.currency}
-              locale={locale}
-              typedCompany={order.company?.name ?? null}
-              words={words.vatTreatment}
-            />
-          )}
-
-          {held && (
-            <CaptureCard
-              heldLabel={formatMoney(held.amountMinor, held.currency, locale)}
-              heldTyped={typedAmount(held.amountMinor)}
-              currency={held.currency}
-              deadline={dueWords(new Date(held.captureBefore), store.timeZone)}
-              whenSent={held.mode === "when_sent" && order.ships}
-              hasEmail={Boolean(order.email)}
-              capture={canWrite ? captureOrderAction.bind(null, store.slug, order.id) : null}
-              release={canWrite ? releaseCardAction.bind(null, store.slug, order.id) : null}
-            />
-          )}
-
-          {!order.copied && <OrderAttributionCard attribution={attribution} storeSlug={store.slug} locale={locale} words={words.referral} />}
-
-          {order.paymentTerms && (
-            // Bought on payment terms (D293): what is owed and by when; money that arrived outside Kaizena Flow is recorded here.
-            <section aria-labelledby="payment-terms" className={card} data-payment-terms={order.paymentTerms.state}>
-              <h2 id="payment-terms" className="mb-1 text-title text-ink">
-                {fillWords(w.termsTitle, { terms: words.termsLengths[order.paymentTerms.terms] })}
-              </h2>
-              <p className="mb-3 text-sm text-muted">
-                {order.paymentTerms.state === "paid"
-                  ? fillWords(w.termsPaid, { when: when(order.paymentTerms.paidAt!) })
-                  : order.paymentTerms.state === "cancelled"
-                    ? w.termsCancelled
-                    : fillWords(w.termsDue, { state: words.termsStates[order.paymentTerms.state], amount: money(order.balanceMinor), day: dayWords(order.paymentTerms.dueOn, adminLocale) })}
-              </p>
-              {order.balanceMinor > 0 && order.paymentTerms.state !== "cancelled" && !order.paymentTerms.paidAt && mayRecordOutside && (
-                <TermsPaidForm {...ids} balance={amountText(order.balanceMinor, order.currency)} currency={order.currency} today={todayIn(store.timeZone)} />
-              )}
-            </section>
-          )}
-
-          {order.balanceMinor > 0 && order.status !== "cancelled" && !order.paymentTerms && (
-            <section aria-labelledby="balance" className={card}>
-              <h2 id="balance" className="mb-1 text-title text-ink">{w.payAtAppointment}</h2>
-              <p className="mb-3 text-sm text-muted">{fillWords(w.balanceText, { amount: money(order.balanceMinor) })}</p>
-              <BalanceForm {...ids} amountLabel={money(order.balanceMinor)} />
-            </section>
-          )}
-
           {/* Collected at the store's place, or delivered by its own driver (D237): handed over, never sent as a parcel here. */}
           {sendable && order.ships && order.deliveryMethod !== "ship" && (
             <section aria-labelledby="handover" className={card}>
@@ -736,6 +572,221 @@ export default async function OrderPage({ params }: PageProps<"/admin/[store]/or
             </section>
           )}
 
+          <section aria-labelledby="items" className={card}>
+            <h2 id="items" className="mb-3 text-title text-ink">{w.items}</h2>
+            <div className="overflow-x-auto">
+              {/* On a phone the SKU goes under the product's name, so its quantity and total stay in view without scrolling sideways. */}
+              <table className="w-full text-left text-sm">
+                <thead>
+                  <tr className="border-b border-line">
+                    <th scope="col" className="py-2 font-medium">{w.product}</th>
+                    <th scope="col" className="hidden py-2 font-medium sm:table-cell">{w.sku}</th>
+                    <th scope="col" className="py-2 text-right font-medium">{w.qty}</th>
+                    <th scope="col" className="py-2 text-right font-medium">{w.total}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {order.lines.map((line) => (
+                    <tr key={line.id} className="border-b border-line">
+                      <td className="py-2 pr-3">
+                        <span className="flex items-start gap-3">
+                        <Thumb src={pictures.get(line.id) ?? null} title={line.title} size={44} />
+                        <span className="min-w-0">
+                        {line.title}
+                        {line.sku && <span className="block font-mono text-xs text-muted sm:hidden">{line.sku}</span>}
+                        {line.delivery === "digital" && line.variantId && <span className="block text-xs text-muted">{w.digital}</span>}
+                        {line.custom && <span className="block text-xs text-muted">{w.customItem}</span>}
+                        {!line.custom && line.listPriceMinor !== null && line.listPriceMinor !== line.unitPriceMinor && (
+                          <span className="block text-xs text-muted">{fillWords(w.customPrice, { price: money(line.unitPriceMinor), list: money(line.listPriceMinor) })}</span>
+                        )}
+                        {line.booking && (
+                          <span className="block text-xs">
+                            {bookingWhen(line.booking, "en-GB", t("en"))}
+                            {line.booking.status !== "confirmed" && ` · ${line.booking.status === "held" ? w.heldUntilPaid : w.notBooked}`}
+                          </span>
+                        )}
+                        {line.backorder && (
+                          <span className="block text-xs font-medium">
+                            {line.backorder.until
+                              ? fillWords(w.preordered, { units: line.backorder.units, qty: line.quantity, date: line.backorder.until })
+                              : countWords(line.backorder.days, w.backordered, { units: line.backorder.units, qty: line.quantity })}
+                          </span>
+                        )}
+                        {line.components.length > 0 && <span className="block text-xs text-muted">{fillWords(w.includes, { items: componentsText(line.components) })}</span>}
+                        {takenFrom(line.variantId, stockByVariant, stockLocations) && <span className="block text-xs text-muted">{fillWords(w.takenFrom, { places: takenFrom(line.variantId, stockByVariant, stockLocations) })}</span>}
+                        {line.restocked > 0 && <span className="block text-xs text-muted">{fillWords(w.restocked, { n: line.restocked })}</span>}
+                        {fromWishlists
+                          .filter((add) => line.variantId && add.variantId === line.variantId)
+                          .slice(0, 1)
+                          .map((add) => (
+                            <span key={add.id} className="block text-xs text-muted">
+                              {w.fromWishlist}{" "}
+                              {add.wishlist.id ? (
+                                <Link href={`/admin/${store.slug}/wishlists/${add.wishlist.id}`} className="underline">
+                                  {add.wishlist.name}
+                                </Link>
+                              ) : (
+                                add.wishlist.name
+                              )}
+                            </span>
+                          ))}
+                        </span>
+                        </span>
+                      </td>
+                      <td className="hidden py-2 font-mono text-xs sm:table-cell">{line.sku}</td>
+                      <td className="py-2 text-right">{line.quantity}</td>
+                      <td className="py-2 text-right">{money(line.unitPriceMinor * line.quantity)}{line.gift && <span className="block text-xs text-muted">{w.freeGift}</span>}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <dl className="mt-3 flex flex-col gap-1 text-sm">
+              <div className="flex justify-between"><dt>{w.subtotal}</dt><dd>{money(order.subtotalMinor)}</dd></div>
+              {order.ships && <div className="flex justify-between"><dt>{w.shipping}{order.delivery && <span className="text-muted"> ({order.delivery.label})</span>}</dt><dd>{money(order.shippingMinor)}</dd></div>}
+              {order.discountMinor > 0 && (
+                <div className="flex justify-between">
+                  <dt>
+                    {w.discount}
+                    {order.campaignDiscountMinor > 0 && order.campaignLabel && (
+                      <span className="text-xs text-muted">
+                        {" "}
+                        (<Link href={`/admin/${store.slug}/campaigns`} className="underline">{order.campaignLabel}</Link>, −{money(order.campaignDiscountMinor)})
+                      </span>
+                    )}
+                    {order.memberDiscountMinor > 0 && order.memberLabel && (
+                      <span className="text-xs text-muted">
+                        {" "}
+                        ({order.memberLabel}
+                        {order.memberPercent ? ` ${percentText(order.memberPercent)} %` : ""}, −{money(order.memberDiscountMinor)})
+                      </span>
+                    )}
+                    {order.discountCode && (
+                      <>
+                        {" "}
+                        <Link href={`/admin/${store.slug}/discounts`} className="font-mono text-xs underline">
+                          {order.discountCode}
+                        </Link>
+                      </>
+                    )}
+                  </dt>
+                  <dd>−{money(order.discountMinor)}</dd>
+                </div>
+              )}
+              {order.staffDiscountMinor > 0 && (
+                <div className="flex justify-between">
+                  <dt>
+                    {order.staffDiscountLabel ?? w.discount} <span className="text-xs text-muted">{w.staffDiscount}</span>
+                  </dt>
+                  <dd>−{money(order.staffDiscountMinor)}</dd>
+                </div>
+              )}
+              <ReferralDiscountRow minor={order.copied ? 0 : order.referralDiscountMinor} currency={order.currency} locale={locale} words={words.referral} />
+              <BonusUsedRow bonus={bonus} currency={bonusCurrency} locale={locale} words={words.bonus} />
+              <VatReliefRow kind={order.vatKind} reliefMinor={order.vatReliefMinor} money={money} words={words.vatTreatment} />
+              <div className="flex justify-between font-medium"><dt>{w.total}</dt><dd>{money(order.totalMinor)}</dd></div>
+              <div className="flex justify-between text-muted"><dt>{order.vatKind === "reverse_charge" ? w.vatReverse : w.vatIncluded}</dt><dd>{money(order.taxMinor)}</dd></div>
+              {order.balanceMinor > 0 && (
+                <div className="flex justify-between"><dt>{w.payAtAppointment}</dt><dd>{money(order.balanceMinor)}</dd></div>
+              )}
+              <BonusEarnedRow bonus={bonus} currency={bonusCurrency} locale={locale} words={words.bonus} />
+              {order.company && (
+                <div className="flex justify-between text-muted"><dt>{w.totalExVat}</dt><dd>{money(order.totalMinor - order.taxMinor)}</dd></div>
+              )}
+              {order.refundedMinor > 0 && (
+                <>
+                  <div className="flex justify-between border-t border-line pt-1"><dt>{w.refunded}</dt><dd>−{money(order.refundedMinor)}</dd></div>
+                  <div className="flex justify-between font-medium"><dt>{w.kept}</dt><dd>{money(order.paidMinor - order.refundedMinor)}</dd></div>
+                </>
+              )}
+            </dl>
+            {order.paidOutside && (
+              <p className="mt-3 rounded-md border border-line bg-sunken p-3 text-sm">
+                {fillWords(w.paidOutside, { method: words.manualMethods[order.paidOutside.method].toLowerCase(), when: when(order.paidOutside.recordedAt) })}
+              </p>
+            )}
+          </section>
+
+          {editability && (
+            <OrderEditCard
+              editHref={`/admin/${store.slug}/orders/${order.id}/edit`}
+              words={adminText(lang, "drafts")}
+              canWrite={canWrite}
+              blockText={editability.text}
+              edits={order.edits}
+              money={money}
+              when={when}
+              hasEmail={Boolean(order.email)}
+              mayRecordOutside={mayRecordOutside}
+              awaitingActions={
+                canWrite && awaitingEdit
+                  ? {
+                      resend: resendOrderEditAction.bind(null, store.slug, awaitingEdit.id),
+                      cancel: cancelOrderEditAction.bind(null, store.slug, awaitingEdit.id),
+                      paidOutside: recordWaitingEditPaidOutsideAction.bind(null, store.slug, awaitingEdit.id),
+                    }
+                  : null
+              }
+            />
+          )}
+
+          {!order.copied && (
+            <VatTreatmentPanel
+              treatment={treatment}
+              kind={order.vatKind}
+              reliefMinor={order.vatReliefMinor}
+              shippingReliefMinor={order.shippingReliefMinor}
+              currency={order.currency}
+              locale={locale}
+              typedCompany={order.company?.name ?? null}
+              words={words.vatTreatment}
+            />
+          )}
+
+          {held && (
+            <CaptureCard
+              heldLabel={formatMoney(held.amountMinor, held.currency, locale)}
+              heldTyped={typedAmount(held.amountMinor)}
+              currency={held.currency}
+              deadline={dueWords(new Date(held.captureBefore), store.timeZone)}
+              whenSent={held.mode === "when_sent" && order.ships}
+              hasEmail={Boolean(order.email)}
+              capture={canWrite ? captureOrderAction.bind(null, store.slug, order.id) : null}
+              release={canWrite ? releaseCardAction.bind(null, store.slug, order.id) : null}
+            />
+          )}
+
+          {!order.copied && <OrderAttributionCard attribution={attribution} storeSlug={store.slug} locale={locale} words={words.referral} />}
+
+          {order.paymentTerms && (
+            // Bought on payment terms (D293): what is owed and by when; money that arrived outside Kaizena Flow is recorded here.
+            <section aria-labelledby="payment-terms" className={card} data-payment-terms={order.paymentTerms.state}>
+              <h2 id="payment-terms" className="mb-1 text-title text-ink">
+                {fillWords(w.termsTitle, { terms: words.termsLengths[order.paymentTerms.terms] })}
+              </h2>
+              <p className="mb-3 text-sm text-muted">
+                {order.paymentTerms.state === "paid"
+                  ? fillWords(w.termsPaid, { when: when(order.paymentTerms.paidAt!) })
+                  : order.paymentTerms.state === "cancelled"
+                    ? w.termsCancelled
+                    : fillWords(w.termsDue, { state: words.termsStates[order.paymentTerms.state], amount: money(order.balanceMinor), day: dayWords(order.paymentTerms.dueOn, adminLocale) })}
+              </p>
+              {order.balanceMinor > 0 && order.paymentTerms.state !== "cancelled" && !order.paymentTerms.paidAt && mayRecordOutside && (
+                <TermsPaidForm {...ids} balance={amountText(order.balanceMinor, order.currency)} currency={order.currency} today={todayIn(store.timeZone)} />
+              )}
+            </section>
+          )}
+
+          {order.balanceMinor > 0 && order.status !== "cancelled" && !order.paymentTerms && (
+            <section aria-labelledby="balance" className={card}>
+              <h2 id="balance" className="mb-1 text-title text-ink">{w.payAtAppointment}</h2>
+              <p className="mb-3 text-sm text-muted">{fillWords(w.balanceText, { amount: money(order.balanceMinor) })}</p>
+              <BalanceForm {...ids} amountLabel={money(order.balanceMinor)} />
+            </section>
+          )}
+
+          {(((paid || cancelledAfterPayment) && (order.refundableMinor > 0 || restockable.length > 0)) || (order.status === "paid" && sentParcels === 0) || toCharge) && (
+            <FoldOnHash id="refund-cancel" summary={w.refundOrCancel} hint={w.refundOrCancelHint}>
           {(paid || cancelledAfterPayment) && (order.refundableMinor > 0 || restockable.length > 0) && (
             <section aria-labelledby="refund" className={card}>
               <h2 id="refund" className="mb-1 text-title text-ink">{w.refund}</h2>
@@ -759,6 +810,7 @@ export default async function OrderPage({ params }: PageProps<"/admin/[store]/or
                 hasEmail={Boolean(order.email)}
                 canRefund={order.canRefund && order.refundableMinor > 0}
                 outside={order.paidOutside ? { allowed: outsideAllowed } : null}
+                currency={order.currency}
                 unitsToSend={order.status === "paid" ? fulfilment.unitsToSend : 0}
                 notifyOff={notifyOff("order.refunded")}
               />
@@ -784,6 +836,8 @@ export default async function OrderPage({ params }: PageProps<"/admin/[store]/or
               )}
               <CancelForm {...ids} amountLabel={money(order.refundableMinor)} hasEmail={Boolean(order.email)} unpaid={toCharge} outside={Boolean(order.paidOutside)} notifyOff={notifyOff("order.cancelled")} />
             </section>
+          )}
+            </FoldOnHash>
           )}
 
           <DocumentsCard

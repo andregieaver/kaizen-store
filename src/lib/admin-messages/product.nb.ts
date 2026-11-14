@@ -5,6 +5,25 @@ import type { ProductMessages } from "./product.en";
  * (`src/lib/i18n-glossary.ts`): merverdiavgift / mva., lager, varenummer, angrerett, enhetspris, abonnement, gebyr.
  */
 export const productNb: ProductMessages = {
+  preview: {
+    title: "Dette ser kundene",
+    open: "Åpne",
+    noTitle: "Produktets navn",
+    noPrice: "Ingen pris ennå",
+    inclVat: "inkl. mva.",
+    onlyLeft: "Bare {n} igjen",
+    addToCart: "Legg i handlekurven",
+    ready: "Klar til salg",
+    readyCount: "{done} av {total}",
+    checks: {
+      photo: "Et bilde",
+      namePrice: "Et navn og en pris",
+      stock: "På lager",
+      category: "I en kategori",
+      description: "En beskrivelse på minst to setninger",
+      secondPhoto: "Et bilde fra en annen vinkel",
+    },
+  },
   top: {
     products: "Produkter",
     untitled: "Produkt uten navn",
@@ -63,6 +82,7 @@ export const productNb: ProductMessages = {
     many: "Kjøpsvalg: Abonnementer er slått av under Innstillinger, Funksjoner, så produktets {n} valg er beholdt, men tilbys ikke.",
   },
   text: {
+    more: "Sikkerhetsadvarsler, nettadresse, utdrag og søkeresultater",
     title: "Tittel og beskrivelse",
     language: "Språk",
     empty: " (tom)",

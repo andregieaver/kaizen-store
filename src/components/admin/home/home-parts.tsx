@@ -66,7 +66,7 @@ export function NextUp({
   children,
 }: {
   eyebrow: string;
-  title: string;
+  title: ReactNode;
   text?: ReactNode;
   action?: { href: string; label: string };
   second?: { href: string; label: string; print?: boolean };
@@ -206,7 +206,8 @@ export function WeekBars({
 }) {
   const last = heights.length - 1;
   return (
-    <div role="img" aria-label={label} className="flex flex-col gap-2">
+    <div className="flex flex-col gap-2">
+      <div role="img" aria-label={label} className="flex flex-col gap-2">
       <div className="grid h-48 grid-cols-7 items-end gap-2 border-b border-line sm:gap-3">
         {heights.map((h, i) => (
           <div key={dayNames[i] ?? i} className="flex h-full flex-col items-center justify-end gap-1.5">
@@ -224,6 +225,7 @@ export function WeekBars({
             {name}
           </span>
         ))}
+      </div>
       </div>
       <div className="mt-1 flex flex-wrap items-center gap-4 text-caption text-muted">
         <span className="flex items-center gap-1.5">
@@ -287,5 +289,45 @@ export function MilestoneTrack({ share, marks, label, firstSale }: { share: numb
         ))}
       </div>
     </div>
+  );
+}
+
+export type PathStep = { label: string; caption?: string; state: "done" | "current" | "todo" };
+
+/**
+ * A process as a path (round 1): a dot per step joined by a line, the steps done in green with a tick, the current one dark with a ring
+ * and its caption in the warning's words, the rest as empty rings. An order's path is the first; returns and setup can use it too.
+ */
+export function StepPath({ label, steps }: { label: string; steps: PathStep[] }) {
+  return (
+    <section aria-label={label} className={`${CARD_CLASS} px-5 py-5 sm:px-7`}>
+      <ol className="grid" style={{ gridTemplateColumns: `repeat(${steps.length}, minmax(0, 1fr))` }}>
+        {steps.map((step, i) => {
+          const next = steps[i + 1];
+          return (
+            <li key={step.label} aria-current={step.state === "current" ? "step" : undefined} className="flex min-w-0 flex-col gap-2.5">
+              <div className="flex items-center">
+                {step.state === "done" ? (
+                  <span className="flex size-7 shrink-0 items-center justify-center rounded-pill bg-brand text-brand-ink">
+                    <Check aria-hidden className="size-3.5" strokeWidth={3} />
+                  </span>
+                ) : step.state === "current" ? (
+                  <span className="flex size-7 shrink-0 items-center justify-center rounded-pill bg-inverse ring-5 ring-warning-soft">
+                    <span className="size-2 rounded-pill bg-warning-solid" />
+                  </span>
+                ) : (
+                  <span className="size-7 shrink-0 rounded-pill border-2 border-edge bg-card" />
+                )}
+                {next && <span aria-hidden className={`h-[3px] flex-1 ${step.state === "done" && next.state === "done" ? "bg-brand" : step.state === "done" ? "bg-[linear-gradient(90deg,var(--brand)_50%,var(--line)_50%)]" : "bg-line"}`} />}
+              </div>
+              <span className="flex min-w-0 flex-col gap-0.5 pr-2">
+                <span className={`truncate text-body ${step.state === "current" ? "font-medium text-ink" : step.state === "done" ? "text-ink" : "text-ink-2"}`}>{step.label}</span>
+                {step.caption && <span className={`text-caption ${step.state === "current" ? "text-warning-text" : "text-muted"}`}>{step.caption}</span>}
+              </span>
+            </li>
+          );
+        })}
+      </ol>
+    </section>
   );
 }

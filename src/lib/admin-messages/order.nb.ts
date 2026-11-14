@@ -3,6 +3,25 @@ import type { OrderMessages } from "./order.en";
 /** Én bestillings side på norsk bokmål (D312 A4), skrevet for hånd mot ordlisten (`src/lib/i18n-glossary.ts`). */
 export const orderNb: OrderMessages = {
   page: {
+    path: {
+      label: "Hvor bestillingen er",
+      ordered: "Bestilt",
+      paid: "Betalt",
+      notPaid: "Ikke betalt ennå",
+      pack: "Pakk den",
+      sent: "Sendt",
+      partly: "Delvis sendt",
+      delivered: "Levert",
+      here: "Du er her",
+      withdraw: "Så 14 dager til å angre",
+    },
+    chipPaid: "Betalt",
+    chipToSend: "Skal sendes",
+    chipSent: "Sendt",
+    chipCancelled: "Kansellert",
+    more: "Refunder, kanseller, mer",
+    refundOrCancel: "Betal tilbake eller kanseller",
+    refundOrCancelHint: "Send penger tilbake for hele eller deler av bestillingen, eller kanseller den før den sendes.",
     back: "Bestillinger",
     title: "Bestilling #{number}",
     cancelledRefunded: "Kansellert og tilbakebetalt",
@@ -182,6 +201,8 @@ export const orderNb: OrderMessages = {
   termsLengths: { net_15: "15 dager", net_30: "30 dager", net_60: "60 dager" },
   termsStates: { due: "Forfaller", due_soon: "Forfaller snart", overdue: "Forfalt", paid: "Betalt", cancelled: "Kansellert" },
   forms: {
+    refundAmount: "Betal tilbake {amount}",
+    confirmRefund: "Sende {amount} tilbake til kunden? En tilbakebetaling kan ikke angres.",
     paidOutsideNote:
       "Denne ble betalt utenfor Kaizena Flow: betal kunden tilbake selv, og registrer det her. Kaizena Flow kan ikke se om du har betalt kunden tilbake, og sender ingen penger. Tilbakebetalingen får en kreditnota, som alle tilbakebetalinger.",
     paidOutsideOwner: "Denne ble betalt utenfor Kaizena Flow. Bare eieren kan registrere en tilbakebetaling av den, med mindre eieren har latt ansatte gjøre det (Innstillinger, Bestillinger).",
