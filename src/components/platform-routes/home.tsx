@@ -48,11 +48,11 @@ export async function HomeRoute({ lang, searchParams }: { lang: PlatformLang; se
           {w.start}
         </Link>
         {demo && (
-          <Link href={storeHref(demo, storeBase(demo))} className="rounded-full border border-border px-5 py-2.5 font-medium">
+          <Link href={storeHref(demo, storeBase(demo))} prefetch={false} className="rounded-full border border-border px-5 py-2.5 font-medium">
             {w.demo}
           </Link>
         )}
-        <Link href="/admin" className="rounded-full border border-border px-5 py-2.5 font-medium">
+        <Link href="/admin" prefetch={false} className="rounded-full border border-border px-5 py-2.5 font-medium">
           {w.signIn}
         </Link>
       </div>

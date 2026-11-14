@@ -55,6 +55,7 @@ export function ViewMenu({
   const link = (item: ViewItem, classes: string) => (
     <Link
       href={item.base || "/"}
+      prefetch={false}
       lang={item.lang}
       hrefLang={item.lang}
       aria-current={item.current ? "true" : undefined}

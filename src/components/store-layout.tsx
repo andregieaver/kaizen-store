@@ -235,6 +235,7 @@ export function MarketChoice({ store, market, m, className = "hidden md:block" }
           <li key={other.slug}>
             <Link
               href={marketHome(store.slug, other.slug)}
+              prefetch={false}
               hrefLang={other.lang}
               lang={other.lang}
               aria-current={other.code === market.code ? "page" : undefined}
@@ -418,6 +419,7 @@ export function StoreMenu({ store, market, header }: Props & { header?: Pick<Pag
               <li key={other.slug}>
                 <Link
                   href={marketHome(store.slug, other.slug)}
+                  prefetch={false}
                   hrefLang={other.lang}
                   lang={other.lang}
                   aria-current={other.code === market.code ? "page" : undefined}
@@ -440,7 +442,7 @@ export function StoreMenu({ store, market, header }: Props & { header?: Pick<Pag
  */
 export function WithdrawalLink({ store, market }: Props) {
   return (
-    <Link href={marketPath(store.slug, market.slug, "/withdraw")} className="inline-flex min-h-6 w-fit items-center text-muted underline">
+    <Link href={marketPath(store.slug, market.slug, "/withdraw")} prefetch={false} className="inline-flex min-h-6 w-fit items-center text-muted underline">
       {t(market.lang).returns.footerLink}
     </Link>
   );
@@ -495,7 +497,7 @@ export function StoreFooter({
             )}
           </address>
           {/* What the store stores in the browser, and the choice about it (D58). */}
-          <Link href={marketPath(store.slug, market.slug, "/cookies")} className="inline-flex min-h-6 w-fit items-center text-muted underline">
+          <Link href={marketPath(store.slug, market.slug, "/cookies")} prefetch={false} className="inline-flex min-h-6 w-fit items-center text-muted underline">
             {m.cookies}
           </Link>
           {/* Notices of illegal content go to Kaizena Flow, which hosts the store (DSA art. 16, D411). */}
@@ -508,7 +510,7 @@ export function StoreFooter({
               <ul className="flex flex-col gap-1">
                 {legalPages.map((page) => (
                   <li key={page.role}>
-                    <Link href={page.href} className="inline-flex min-h-10 items-center text-muted underline">
+                    <Link href={page.href} prefetch={false} className="inline-flex min-h-10 items-center text-muted underline">
                       {page.title}
                     </Link>
                   </li>
@@ -536,6 +538,7 @@ export function StoreFooter({
                 <li key={other.slug}>
                   <Link
                     href={marketHome(store.slug, other.slug)}
+                    prefetch={false}
                     hrefLang={other.lang}
                     lang={other.lang}
                     aria-current={other.code === market.code ? "page" : undefined}

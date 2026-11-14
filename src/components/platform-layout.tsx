@@ -130,7 +130,7 @@ export function PlatformHeader({ chrome, lang = "en" }: Props) {
           )}
 
           <div className="ml-auto flex items-center gap-1">
-            <Link href="/admin" className="flex size-11 items-center justify-center rounded-full hover:bg-surface">
+            <Link href="/admin" prefetch={false} className="flex size-11 items-center justify-center rounded-full hover:bg-surface">
               <Icon name="user" />
               <span className="sr-only">{nav.signIn}</span>
             </Link>
@@ -173,7 +173,7 @@ export function PlatformMenu({ chrome, lang = "en", header }: Props & { header?:
           </Link>
         </li>
         <li>
-          <Link href="/admin" className="flex min-h-12 items-center gap-3">
+          <Link href="/admin" prefetch={false} className="flex min-h-12 items-center gap-3">
             <Icon name="user" /> {nav.signIn}
           </Link>
         </li>
@@ -270,7 +270,7 @@ export function PlatformBottomBar({ lang = "en" }: { lang?: PlatformLang }) {
           <Icon name="menu" />
           {m.menu}
         </button>
-        <Link href="/admin" className={item}>
+        <Link href="/admin" prefetch={false} className={item}>
           <Icon name="user" />
           {nav.signIn}
         </Link>

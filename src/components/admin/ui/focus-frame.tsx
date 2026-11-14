@@ -33,7 +33,7 @@ export function FocusFrame({ title, description, back, aside, width = "narrow", 
   return (
     <div data-admin-layout="focus" lang={lang ? ADMIN_LANG_FACTS[lang].tag : undefined} className="flex min-h-dvh flex-col bg-canvas">
       <header className="flex h-16 items-center justify-between gap-4 px-4 sm:px-6">
-        <Link href="/" className="flex items-center gap-3 text-body-strong text-ink">
+        <Link href="/" prefetch={false} className="flex items-center gap-3 text-body-strong text-ink">
           <span aria-hidden className="flex size-9 items-center justify-center rounded-tile bg-brand text-title text-brand-ink">
             K
           </span>

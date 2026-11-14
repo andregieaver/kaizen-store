@@ -38,7 +38,7 @@ async function SignIn({ searchParams }: { searchParams: PageProps<"/admin/sign-i
         lang={lang}
         title={w.heading}
         aside={
-          <Link href="/sign-up" className="underline-offset-2 hover:underline">
+          <Link href="/sign-up" prefetch={false} className="underline-offset-2 hover:underline">
             {w.askForStore}
           </Link>
         }
@@ -80,7 +80,7 @@ async function SignIn({ searchParams }: { searchParams: PageProps<"/admin/sign-i
         </ActionForm>
         <p className="text-body text-muted">
           {w.beta}{" "}
-          <Link href="/sign-up" className="underline">
+          <Link href="/sign-up" prefetch={false} className="underline">
             {w.betaAsk}
           </Link>
           {w.betaInvite}
