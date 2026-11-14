@@ -137,3 +137,6 @@ challenged by a skeptic, planned by a planner. Its last lines hold the arguments
 - 67aa344: CI all green (e2e, signed-in, integration x3, static, hosts). Prod: /no 616,839, product 662,244; filter first press OK on prod (screenshot sent). Waiting on carousel commit 6.
 - Step 0.16 commit 6 (carousel split) pushed as 49236ef. Local: /no 609,885 (target met), product 655,190, entry 216,992. Deploy wait bphm9yr92. Then prod checks + write-up (D-number: recheck, other session at D599).
 - Step 0.17 executor (Sonnet, ad8c9ae7351cf5cb4) started from $S/run/executor-0.17.md.
+- Step 0.16 DONE: write-up 792d048 (D600). Hand check: withdraw Statistics on a store with GA -> _ga gone.
+- CI red since ccc14cf (other session's AI wallet tool, D599 step 2b): agent-eval-replay needs a new recording from Platform → AI. Told the user; not mine to fix.
+- Next free D: D601 (recheck). Step 0.17 executor running.
