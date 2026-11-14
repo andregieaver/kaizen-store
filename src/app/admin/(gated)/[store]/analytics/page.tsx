@@ -4,7 +4,10 @@ import { Suspense } from "react";
 import { requireFeature } from "@/components/admin/feature-off";
 import { AnalyticsHeader } from "@/components/admin/analytics/analytics-header";
 import { ExportScope } from "@/components/admin/analytics/export-scope";
-import { AnswerSection, ChartsSection, OverviewLayout, SectionSkeleton, type OverviewFrame } from "@/components/admin/analytics/overview-sections";
+import { AnswerSection, ChartsSection, SalesPerDaySection, SectionSkeleton, SeeMoreSection, type OverviewFrame } from "@/components/admin/analytics/overview-sections";
+import { moneyLines, moneyWriter } from "@/components/admin/analytics/overview-text";
+import { fillWords } from "@/lib/admin-fill";
+import { CARD_CLASS } from "@/components/admin/ui";
 import { AlertsStream, ChannelsStream, DiagnosisStream, ForecastStream, FunnelStream, ProductsStream, TargetStream, type StreamProps } from "@/components/admin/analytics/overview-streams";
 import { adminTexts } from "@/lib/admin-text";
 import { queryText } from "@/lib/analytics-export";
@@ -17,6 +20,9 @@ import { overviewHead } from "@/server/analytics-totals";
 import { sessionTotals } from "@/server/analytics-traffic-data";
 
 export const metadata: Metadata = { title: "Analytics" };
+
+/** Round 3 (D603): the figures the page leads with, those of them that have a value. */
+const HEADLINE = ["netRevenue", "orders", "aov", "newCustomers"] as const;
 
 /**
  * The store's first screen of analytics (D152): are we making money, why are sales moving, is there anything to act on today.
@@ -46,55 +52,47 @@ export default async function AnalyticsOverviewPage({ params, searchParams }: Pa
     <AdminTextScope texts={adminTexts(ctx.lang, ["analytics"])}>
     <ExportScope base={ctx.base} query={queryText(query)} owner={ctx.owner} canExport={ctx.canExport} captions={analyticsCaptions(ctx.lang)}>
       <div className="flex flex-col gap-8">
-        <AnalyticsHeader
-          ctx={ctx}
-          path="/analytics"
-          title={w.title}
-          description={w.description}
-        />
-        <OverviewLayout
-          currency={data.currency}
-          slots={{
-            // The place of "Needs you today" is kept, at about the height of one alert, so what is under it does not jump when it arrives.
-            alerts: (
-              <Suspense fallback={<SectionSkeleton kind="alerts" label={loading.alerts} />}>
-                <AlertsStream {...stream} />
-              </Suspense>
-            ),
-            answer: <AnswerSection frame={frame} data={data} visitCounting={store.visitCounting} />,
-            why: (
-              <Suspense fallback={<SectionSkeleton kind="why" label={loading.why} />}>
-                <DiagnosisStream {...stream} />
-              </Suspense>
-            ),
-            charts: <ChartsSection frame={frame} data={data} />,
-            funnel: (
-              <Suspense fallback={<SectionSkeleton kind="funnel" label={loading.funnel} />}>
-                <FunnelStream {...stream} />
-              </Suspense>
-            ),
-            products: (
-              <Suspense fallback={<SectionSkeleton kind="products" label={loading.products} />}>
-                <ProductsStream {...stream} />
-              </Suspense>
-            ),
-            channels: (
-              <Suspense fallback={<SectionSkeleton kind="channels" label={loading.channels} />}>
-                <ChannelsStream {...stream} />
-              </Suspense>
-            ),
-            target: (
-              <Suspense fallback={<SectionSkeleton kind="target" label={loading.target} />}>
-                <TargetStream {...stream} />
-              </Suspense>
-            ),
-            forecast: (
-              <Suspense fallback={<SectionSkeleton kind="forecast" label={loading.forecast} />}>
-                <ForecastStream {...stream} />
-              </Suspense>
-            ),
-          }}
-        />
+        {/* Round 3 (D603): the answer in a sentence, the period as one button, then what needs doing, four figures, the chart and what sells;
+            every other figure and section is one fold away. */}
+        <AnalyticsHeader ctx={ctx} path="/analytics" title={w.answerTitle} lead={moneyLines(data, moneyWriter(data.currency, frame.locale))[0]} compact />
+        <Suspense fallback={<SectionSkeleton kind="alerts" label={loading.alerts} />}>
+          <AlertsStream {...stream} />
+        </Suspense>
+        <AnswerSection frame={frame} data={data} visitCounting={store.visitCounting} pick={HEADLINE} />
+        {/* The chart beside what is not set up yet: the chart is drawn at a size its labels read at. */}
+        <div className="grid items-start gap-5 lg:grid-cols-[minmax(0,1.7fr)_minmax(0,1fr)]">
+          <SalesPerDaySection frame={frame} data={data} />
+          <SeeMoreSection frame={frame} data={data} visitCounting={store.visitCounting} />
+        </div>
+        <Suspense fallback={null}>
+          <TargetStream {...stream} quiet />
+        </Suspense>
+        <Suspense fallback={<SectionSkeleton kind="products" label={loading.products} />}>
+          <ProductsStream {...stream} />
+        </Suspense>
+        <details className={`group px-5 py-4 ${CARD_CLASS}`}>
+          <summary className="cursor-pointer">
+            <span className="text-title text-ink">{w.everything}</span>
+            <span className="mt-1 block text-caption text-muted">{w.everythingSub}</span>
+          </summary>
+          <div className="mt-6 flex flex-col gap-8">
+            <AnswerSection frame={frame} data={data} visitCounting={store.visitCounting} />
+            <Suspense fallback={<SectionSkeleton kind="why" label={loading.why} />}>
+              <DiagnosisStream {...stream} />
+            </Suspense>
+            <ChartsSection frame={frame} data={data} />
+            <Suspense fallback={<SectionSkeleton kind="funnel" label={loading.funnel} />}>
+              <FunnelStream {...stream} />
+            </Suspense>
+            <Suspense fallback={<SectionSkeleton kind="channels" label={loading.channels} />}>
+              <ChannelsStream {...stream} />
+            </Suspense>
+            <Suspense fallback={<SectionSkeleton kind="forecast" label={loading.forecast} />}>
+              <ForecastStream {...stream} />
+            </Suspense>
+          </div>
+        </details>
+        <p className="text-xs text-muted">{fillWords(w.footer, { currency: data.currency })}</p>
       </div>
     </ExportScope>
     </AdminTextScope>

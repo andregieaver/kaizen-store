@@ -7,7 +7,7 @@ import { fillWords } from "@/lib/admin-fill";
 import { ADMIN_LANG_FACTS } from "@/lib/admin-lang";
 import type { PrivacyCard as PrivacyCardData } from "@/server/privacy-admin";
 
-import { alertText, buttonPrimary, buttonSecondary, card, clockWords, dayText } from "./styles";
+import { alertText, buttonSecondary, card, clockWords, dayText } from "./styles";
 
 /**
  * The banner at the top of a customer's page when staff logged a request for them that is past its day (wave 1, 1g, D162,
@@ -104,7 +104,11 @@ export function PrivacyCard({
                 {c.downloadData}
               </button>
             </form>
-            <Link href={`${base}/customers/${customerKey}/erase${request ? `?request=${request.id}` : ""}`} className={buttonPrimary}>
+            {/* Round 3 (D603): erasing cannot be undone, so it is never the page's green button; its own page asks first. */}
+            <Link
+              href={`${base}/customers/${customerKey}/erase${request ? `?request=${request.id}` : ""}`}
+              className="inline-flex min-h-10 items-center rounded-pill border border-danger-text px-4 text-sm font-medium text-danger-text hover:bg-danger-soft"
+            >
               {c.eraseData}
             </Link>
           </div>

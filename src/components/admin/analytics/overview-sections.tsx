@@ -161,7 +161,7 @@ function Stat({ label, caption, value, reason }: { label: string; caption: strin
 // ---------------------------------------------------------------------------
 
 /** The sentence and cards that answer "are we making money?", and under them what the figures are and are not. */
-export function AnswerSection({ frame, data, visitCounting }: { frame: OverviewFrame; data: OverviewHead; visitCounting: boolean }) {
+export function AnswerSection({ frame, data, visitCounting, pick }: { frame: OverviewFrame; data: OverviewHead; visitCounting: boolean; /** Round 3 (D603): only these figures, those that have a value, as the page's headline; nothing else. */ pick?: readonly string[] }) {
   const { base, currency, locale, isOwner } = frame;
   const money = moneyWriter(currency, locale);
   const settingsHref = `${base}/analytics/settings`;
@@ -232,6 +232,18 @@ export function AnswerSection({ frame, data, visitCounting }: { frame: OverviewF
       ...(hint ? { hint } : {}),
     };
   });
+
+  if (pick) {
+    const chosen = pick.flatMap((id) => cards.filter((card) => card.id === id && card.state !== "missing"));
+    if (chosen.length === 0) return null;
+    return (
+      <section aria-label={words.overview.figuresLabel} className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        {chosen.map(({ id, ...props }) => (
+          <KpiCard key={id} {...props} emphasis={false} />
+        ))}
+      </section>
+    );
+  }
 
   return (
     <>
@@ -344,6 +356,64 @@ export function ChartsSection({ frame, data }: { frame: OverviewFrame; data: Ove
         )}
       </div>
     </AnalyticsSection>
+  );
+}
+
+/** Round 3 (D603): net revenue per day across the period, the one chart the page leads with (the comparison is in the fold below). */
+export function SalesPerDaySection({ frame, data }: { frame: OverviewFrame; data: OverviewHead }) {
+  const money = moneyWriter(frame.currency, frame.locale);
+  const words = analyticsWords();
+  const w = words.overview;
+  const points = data.series.current;
+  if (!points.some((p) => p.orders > 0 || p.revenueMinor !== 0 || p.refundsMinor !== 0)) return null;
+  return (
+    <AnalyticsSection id="overview-per-day" title={w.perDay} description={w.perDayDescription}>
+      <div className={`p-4 ${CARD_CLASS}`}>
+        <LineChart
+          label={w.perDay}
+          labels={points.map((p) => p.label)}
+          series={[{ key: "net", label: w.charts.net, values: points.map((p) => p.netRevenueMinor) }]}
+          format={money}
+          area
+          exportId="overview.net_revenue"
+          exportLeftOut={{ orders: data.unconverted, currencies: data.missingCurrencies }}
+        />
+      </div>
+    </AnalyticsSection>
+  );
+}
+
+/** Round 3 (D603): what is not set up, said once, each with its one button: product costs (profit, margin) and visit counting (visitors, conversion, channels). */
+export function SeeMoreSection({ frame, data, visitCounting }: { frame: OverviewFrame; data: OverviewHead; visitCounting: boolean }) {
+  const w = analyticsWords().overview.seeMore;
+  const { costsMissing } = moneySignals(data);
+  const settingsHref = `${frame.base}/analytics/settings`;
+  const steps = [
+    ...(costsMissing ? [{ key: "costs", title: w.costs, body: w.costsBody, button: w.costsButton }] : []),
+    ...(!visitCounting ? [{ key: "visits", title: w.visits, body: w.visitsBody, button: w.visitsButton }] : []),
+  ];
+  if (steps.length === 0) return null;
+  return (
+    <section aria-labelledby="overview-see-more" className="flex flex-col gap-4 rounded-panel bg-insight-soft p-5 lg:mt-14">
+      <h2 id="overview-see-more" className="text-title text-ink">
+        {w.title}
+      </h2>
+      <div className="flex flex-col gap-5">
+        {steps.map((step) => (
+          <div key={step.key} className="flex flex-col gap-1.5">
+            <span className="text-body text-ink">{step.title}</span>
+            <span className="text-caption text-ink-2">{step.body}</span>
+            {frame.isOwner ? (
+              <Link href={settingsHref} className="mt-1 inline-flex h-9 items-center self-start rounded-pill bg-card px-3.5 text-caption font-medium text-ink hover:bg-sunken">
+                {step.button}
+              </Link>
+            ) : (
+              <span className="text-caption text-muted">{w.ownerCan}</span>
+            )}
+          </div>
+        ))}
+      </div>
+    </section>
   );
 }
 
@@ -564,12 +634,13 @@ export function ChannelsSection({ frame, marketing }: { frame: OverviewFrame; ma
 // The target and the forecast
 // ---------------------------------------------------------------------------
 
-export function TargetSection({ frame, target }: { frame: OverviewFrame; target: OverviewTarget }) {
+export function TargetSection({ frame, target, quiet = false }: { frame: OverviewFrame; target: OverviewTarget; /** Round 3 (D603): nothing at all while no target runs. */ quiet?: boolean }) {
   const money = moneyWriter(frame.currency, frame.locale);
   const p = target.progress;
   const words = analyticsWords();
   const w = words.overview.target;
   const lines = targetLines(p, money, words);
+  if (quiet && p.status === "no_target" && !(target.others && target.others.length > 0)) return null;
   return (
     <AnalyticsSection id="overview-target" title={fillWords(w.title, { month: target.monthLabel })} description={w.description}>
       {p.status === "no_target" ? (

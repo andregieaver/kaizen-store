@@ -70,6 +70,8 @@ test("a tag goes on everyone the list finds, a code is limited to a segment, and
 
   // Everyone the search finds gets the tag at once.
   await page.goto(`/admin/${STORE}/customers?q=${encodeURIComponent(`bulk-${RUN}`)}`);
+  // Tagging the whole list is a fold under the list since the redesign's round 3 (D603).
+  await page.locator("summary").filter({ hasText: "Tag everyone the search finds" }).click();
   await page.getByRole("textbox", { name: "Tag", exact: true }).fill(`Messe ${RUN}`);
   await page.getByRole("button", { name: "Add the tag" }).click();
   await expect(page.getByRole("status").filter({ hasText: "1 person changed." })).toBeVisible();

@@ -95,7 +95,7 @@ const REVIEW_LINES = [
 ].join("\n");
 
 /**
- * What the autopilot is told on top while the store is in the 100-day challenge (`docs/100-day-challenge.md`, D603): it runs the store alone,
+ * What the autopilot is told on top while the store is in the 100-day challenge (`docs/100-day-challenge.md`, D604): it runs the store alone,
  * nobody answers its questions, and it is judged on profit. Added to every turn it runs there (steps, reviews, events).
  */
 export const CHALLENGE_LINES = [

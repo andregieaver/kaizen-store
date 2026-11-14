@@ -90,7 +90,7 @@ export function AlertsStream({ ctx, frame, reads }: StreamProps) {
 }
 
 /** This month's net revenue against its target, whatever period the page shows: the shared daily history and one read of the target. */
-export function TargetStream({ ctx, frame, reads }: StreamProps) {
+export function TargetStream({ ctx, frame, reads, quiet = false }: StreamProps & { quiet?: boolean }) {
   const load = async (): Promise<OverviewTarget> => {
     const history = await reads.history();
     const [target, others] = await Promise.all([monthTargetMinor(ctx.store, history.today), runningTargets(ctx.store, ctx.now, { history: Promise.resolve(history) })]);
@@ -98,7 +98,7 @@ export function TargetStream({ ctx, frame, reads }: StreamProps) {
   };
   return (
     <Streamed id="overview-target" title={analyticsWords().overview.sections.target} load={load}>
-      {(target) => <TargetSection frame={frame} target={target} />}
+      {(target) => <TargetSection frame={frame} target={target} quiet={quiet} />}
     </Streamed>
   );
 }

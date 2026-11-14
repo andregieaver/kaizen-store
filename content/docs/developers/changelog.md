@@ -9,7 +9,7 @@ features: []
 plans: []
 order: 1000
 checked: 2026-11-14
-sources: [D357, D438, D439, D440, D441, D458, D464, D511, D512, D585, D599, D605]
+sources: [D357, D438, D439, D440, D441, D458, D464, D511, D512, D585, D599, D606]
 ---
 
 Every change to a published contract gets a version here, newest first: the Admin API (`/api/admin/v1/openapi.json`), the storefront API
@@ -18,7 +18,7 @@ Every change to a published contract gets a version here, newest first: the Admi
 
 ## 1.20 — 2026-11-14
 
-An addition to the owner MCP's catalogue (D605).
+An addition to the owner MCP's catalogue (D606).
 
 - `profit_overview`: what a period earned after what it cost, counted as the Analytics pages count it: net sales, the cost of goods, fees,
   shipping, marketing and lost disputes, gross and contribution profit, contribution margin, profit per krone of marketing and revenue
