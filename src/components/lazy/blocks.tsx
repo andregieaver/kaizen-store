@@ -1,6 +1,7 @@
 "use client";
 
 import dynamic from "next/dynamic";
+import type { ReactNode } from "react";
 
 import { lazyView, showChildren } from "./lazy-view";
 
@@ -35,3 +36,8 @@ export const StatsView = lazyView(dynamic(() => import("../stats-view").then((m)
 export const ThemePreviewStage = lazyView(dynamic(() => import("../theme-preview-stage").then((m) => m.ThemePreviewStage)));
 /** The language switch (D479, D312): drawn only where a site offers more than one language. */
 export const LanguageSwitch = lazyView(dynamic(() => import("../language-switch").then((m) => m.LanguageSwitch)));
+/** A carousel's controls (D155): the frame (`carousel.tsx`) draws the row and the arrows as the server does until they are here. */
+export const CarouselControls = lazyView(
+  dynamic(() => import("../carousel-controls").then((m) => m.CarouselControls)),
+  ({ still }: { still?: ReactNode }) => still,
+);
