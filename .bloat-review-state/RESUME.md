@@ -123,3 +123,6 @@ challenged by a skeptic, planned by a planner. Its last lines hold the arguments
 - Step 0.15 pushed as acc324b (rebased 7d15785, df83014, f10b77c, acc324b). Reviewed OK. Waiting deploy (task br4k0suss) -> prod checks (no /wishlist/saved or /api/shop/tiles after load on a prod store front page) -> write D593, row 0.15 Done, change log.
   Note for D593: existing visitors with old wishlist/account cookies but no marker see hearts empty until they save or sign in again (platform not open; acceptable). Marker regex matches any store's marker on the same host: a harmless extra fetch.
 - Step 0.16: executor (Sonnet, agent a6b84b9ae3f62bf4c) doing commits 1-3 from $S/run/executor-0.16a.md. Then commits 4-5 (filter split, picker trial) by a stronger executor (Opus) or me. D594 for 0.16.
+- Step 0.15 DONE: write-up 4054615 (D593). Owner hand check: press a heart on a production store, reload: stays pressed, header counts 1.
+- Observed: product page loads Stripe.js beacons (m.stripe.com, r.stripe.com) after load; not in 0.15's scope; mention to the owner.
+- Next free D: D594 (step 0.16).
