@@ -129,3 +129,4 @@ challenged by a skeptic, planned by a planner. Its last lines hold the arguments
 - ANOTHER SESSION pushes to main too (admin redesign D595, checkout contact D594). Next free D is D596+ : always recheck with rg before writing a D-row.
 - Step 0.16 commits 1-3 pushed as af93b41 (3282160, a3141d0, 6095105, af93b41). Carousel left eager (no-JS test). Figures: /s/demo/no 682,151 -> 624,774; product 778,503 -> 695,765; product entry chunks 340,305 -> 257,567.
 - Deploy wait: task btjg3vxjy. Commits 4-5: Opus executor a5a0f93814579270d from $S/run/executor-0.16b.md (no WebKit locally).
+- af93b41 deployed; prod first scripts /no 625,642, product 696,603 (match local). Pages 200, Mollie 200, only cookie-scan timeout. No prod site has optional trackers, so the consent-withdraw check (_ga gone after withdrawing Statistics) is a hand check / local check; no e2e covers forget().
