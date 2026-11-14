@@ -277,8 +277,8 @@ async function reviewGoal(reviewId: string, due: Due, deps: ReviewDeps): Promise
 async function newConversation(p: Principal, reviewId: string, title: string): Promise<string> {
   const row = await typedRow(
     z.object({ id: col.uuid }),
-    sql`insert into commerce.assistant_conversations (store_id, account_id, title)
-      values (${p.store?.id ?? null}::uuid, ${p.account.id}::uuid, ${`Autopilot: ${title}`.slice(0, 80)}) returning id`,
+    sql`insert into commerce.assistant_conversations (store_id, account_id, title, source)
+      values (${p.store?.id ?? null}::uuid, ${p.account.id}::uuid, ${`Autopilot: ${title}`.slice(0, 80)}, 'autopilot') returning id`,
   );
   if (!row) throw new Error("The review's conversation could not be made.");
   await db().execute(sql`update commerce.autopilot_reviews set conversation_id = ${row.id}::uuid where id = ${reviewId}::uuid`);

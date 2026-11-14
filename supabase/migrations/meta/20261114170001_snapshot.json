@@ -1,6 +1,6 @@
 {
-  "id": "718be465-e855-4091-9a0a-a82450095822",
-  "prevId": "af8eeee8-8c9d-45f6-81a7-ab329ec8182f",
+  "id": "c350043b-e4b1-4c9a-97fa-6deaa1afacfc",
+  "prevId": "718be465-e855-4091-9a0a-a82450095822",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -5509,7 +5509,7 @@
       "checkConstraints": {
         "assistant_conversations_source": {
           "name": "assistant_conversations_source",
-          "value": "\"commerce\".\"assistant_conversations\".\"source\" in ('admin', 'kaizen-life', 'mcp')"
+          "value": "\"commerce\".\"assistant_conversations\".\"source\" in ('admin', 'kaizen-life', 'mcp', 'autopilot')"
         },
         "assistant_conversations_title": {
           "name": "assistant_conversations_title",
@@ -6706,6 +6706,12 @@
           "primaryKey": false,
           "notNull": false
         },
+        "paused_for": {
+          "name": "paused_for",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
         "started_at": {
           "name": "started_at",
           "type": "timestamp with time zone",
@@ -6863,6 +6869,10 @@
       "uniqueConstraints": {},
       "policies": {},
       "checkConstraints": {
+        "assistant_plans_paused_for": {
+          "name": "assistant_plans_paused_for",
+          "value": "\"commerce\".\"assistant_plans\".\"paused_for\" is null or \"commerce\".\"assistant_plans\".\"paused_for\" = 'budget'"
+        },
         "assistant_plans_status": {
           "name": "assistant_plans_status",
           "value": "\"commerce\".\"assistant_plans\".\"status\" in ('draft', 'running', 'paused', 'done', 'stopped')"
@@ -8527,6 +8537,12 @@
           "notNull": true,
           "default": "'{}'::jsonb"
         },
+        "challenge": {
+          "name": "challenge",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
         "updated_by": {
           "name": "updated_by",
           "type": "uuid",
@@ -8611,6 +8627,10 @@
         "autopilot_settings_planning": {
           "name": "autopilot_settings_planning",
           "value": "jsonb_typeof(\"commerce\".\"autopilot_settings\".\"planning\") = 'object'"
+        },
+        "autopilot_settings_challenge": {
+          "name": "autopilot_settings_challenge",
+          "value": "\"commerce\".\"autopilot_settings\".\"challenge\" is null or jsonb_typeof(\"commerce\".\"autopilot_settings\".\"challenge\") = 'object'"
         }
       },
       "isRLSEnabled": false

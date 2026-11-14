@@ -63,6 +63,13 @@ export function AutopilotPage({
           </Link>
         ))}
       </nav>
+      {overview.settings.challenge && (
+        <p role="status" className="rounded-panel border border-edge bg-card p-4 text-ink">
+          {overview.settings.challenge.day >= 1
+            ? fillWords(a.challenge, { day: String(overview.settings.challenge.day), end: overview.settings.challenge.endsOn })
+            : fillWords(a.rehearsal, { dayOne: overview.settings.challenge.dayOne })}
+        </p>
+      )}
       {overview.settings.paused && (
         <p role="status" className="rounded-panel border border-warning-line bg-warning-soft p-4 text-warning-text">
           {a.paused}
@@ -366,6 +373,8 @@ function Settings({ overview, words: a, action }: { overview: AutopilotOverview;
             <span className="text-caption text-muted">{s.runningHelp}</span>
           </span>
         </label>
+        {/* In the challenge everything but the pause is locked (`docs/100-day-challenge.md` 4A1): shown as it is, not sent. */}
+        <fieldset disabled={Boolean(settings.challenge)} className="flex flex-col gap-6">
         <fieldset className="flex flex-col gap-3">
           <legend className="mb-2 text-title text-ink">{s.planning}</legend>
           <label className="flex items-start gap-3">
@@ -462,6 +471,7 @@ function Settings({ overview, words: a, action }: { overview: AutopilotOverview;
             <input name="ad_raise_percent" type="number" min={0} max={1000} defaultValue={settings.budgets.adRaisePercent} className="min-h-10 max-w-40 rounded-lg border border-edge bg-card px-3 text-sm" />
             <span className="text-caption text-muted">{s.adRaiseHelp}</span>
           </label>
+        </fieldset>
         </fieldset>
         <div>
           <Button type="submit" kind="main">

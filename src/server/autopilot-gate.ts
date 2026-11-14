@@ -7,7 +7,7 @@ import type { SetPricesInput } from "@/lib/product-tools";
 
 import { adBudgetAutopilotProblem } from "./ad-budget-tools";
 import type { Account } from "./auth";
-import { autopilotCustomerEmailsThisWeek } from "./autopilot-settings";
+import { autopilotBroadcastsThisWeek, autopilotCustomerEmailsThisWeek, autopilotSupportRepliesToday } from "./autopilot-settings";
 import { liveCostsMoney } from "./design-tools";
 import { priceChangePercent } from "./product-tools";
 import type { Store } from "./stores";
@@ -24,6 +24,12 @@ export async function autopilotDecision(
   gate: GateCategory,
   args: Record<string, unknown>,
 ): Promise<AutonomyDecision> {
+  // Challenge mode's own budgets (`docs/100-day-challenge.md` 4A2): a broadcast a week, answers on the support desk a day.
+  if (settings.challenge && p.store && (tool === "send_broadcast" || tool === "reply_to_support")) {
+    const facts =
+      tool === "send_broadcast" ? { broadcastsThisWeek: await autopilotBroadcastsThisWeek(p.store.id) } : { supportRepliesToday: await autopilotSupportRepliesToday(p.store.id) };
+    return autonomyDecision(settings, tool, gate, facts);
+  }
   const facts =
     tool === "set_prices" && p.store
       ? { priceChangePercent: await priceChangePercent(p.store, p.account, args as SetPricesInput) }

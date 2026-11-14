@@ -1,5 +1,6 @@
 import { z } from "zod";
 
+import type { ChallengeState } from "./autopilot-challenge";
 import type { GateCategory } from "./owner-tools";
 
 /**
@@ -206,6 +207,11 @@ export const autonomySettingsSchema = z.object({
       waitMinutes: z.number().int().min(5).max(240).default(15),
     })
     .default({ continues: false, starts: "ask", reviewDays: 7, plansPerWeek: 3, reacts: false, waitMinutes: 15 }),
+  /**
+   * Challenge mode while it is on (`src/lib/autopilot-challenge.ts`): set by the server from `autopilot_settings.challenge` (`withChallenge()`),
+   * never saved from here, so an owner's form cannot switch it.
+   */
+  challenge: z.custom<ChallengeState>((v) => v === null || (typeof v === "object" && v !== null && (v as { active?: unknown }).active === true)).nullable().default(null),
 });
 export type AutonomySettings = z.output<typeof autonomySettingsSchema>;
 
@@ -214,7 +220,8 @@ export const DEFAULT_AUTONOMY: AutonomySettings = autonomySettingsSchema.parse({
 /** Settings as stored, read safely: anything unreadable falls back to the defaults (ask for everything). */
 export function readAutonomy(raw: unknown): AutonomySettings {
   const parsed = autonomySettingsSchema.safeParse(raw ?? {});
-  return parsed.success ? parsed.data : DEFAULT_AUTONOMY;
+  // Challenge mode is never read from what was given: only the server's `withChallenge()` sets it.
+  return parsed.success ? { ...parsed.data, challenge: null } : DEFAULT_AUTONOMY;
 }
 
 export const levelOf = (settings: AutonomySettings, area: AutonomyArea): AutonomyLevel => settings.levels[area] ?? "ask";
@@ -230,7 +237,17 @@ export type AutonomyFacts = {
   customerEmailsThisWeek?: number | null;
   /** An ad budget's change (D585): why it must ask by the owner's ad limit and largest raise (`adChangeProblem()`), or null when it may. */
   adProblem?: string | null;
+  /** Broadcasts it sent itself in the last seven days (challenge mode). */
+  broadcastsThisWeek?: number | null;
+  /** Answers to customers on the support desk it sent itself in the last 24 hours (challenge mode). */
+  supportRepliesToday?: number | null;
 };
+
+/**
+ * Calls that otherwise always ask but run in challenge mode within its own budgets (`docs/100-day-challenge.md` 4A2): a broadcast within the
+ * broadcasts a week. Refunds and every other money back to a customer stay the person's (the rule allows exactly that).
+ */
+export const CHALLENGE_AUTOMATIC: Readonly<Record<string, AutonomyArea>> = { send_broadcast: "marketing" };
 
 export type AutonomyDecision = { run: true; tell: boolean; area: AutonomyArea } | { run: false; why: string };
 
@@ -239,6 +256,14 @@ export type AutonomyDecision = { run: true; tell: boolean; area: AutonomyArea } 
  * keep it for their yes, with the reason in words.
  */
 export function autonomyDecision(settings: AutonomySettings, tool: string, gate: GateCategory, facts: AutonomyFacts = {}): AutonomyDecision {
+  const challenge = settings.challenge;
+  if (challenge && tool === "send_broadcast") {
+    if (facts.broadcastsThisWeek === undefined || facts.broadcastsThisWeek === null) return { run: false, why: "The broadcasts it sent this week could not be counted." };
+    if (facts.broadcastsThisWeek >= challenge.broadcastsPerWeek) {
+      return { run: false, why: `It has sent ${facts.broadcastsThisWeek} broadcasts itself in seven days, the challenge's limit is ${challenge.broadcastsPerWeek}.` };
+    }
+    return { run: true, tell: levelOf(settings, CHALLENGE_AUTOMATIC.send_broadcast) === "tell", area: CHALLENGE_AUTOMATIC.send_broadcast };
+  }
   if (NEVER_AUTOMATIC.has(tool) || NEVER_CATEGORIES.has(gate)) return { run: false, why: "This always waits for your yes." };
   const area = TOOL_AREAS[tool];
   if (!area) return { run: false, why: "This always waits for your yes." };
@@ -258,6 +283,14 @@ export function autonomyDecision(settings: AutonomySettings, tool: string, gate:
   if (tool === "set_ad_budget") {
     if (facts.adProblem === undefined) return { run: false, why: "The ad account could not be read." };
     if (facts.adProblem !== null) return { run: false, why: facts.adProblem };
+  }
+  // In challenge mode an answer on the support desk has a daily budget of its own: answering customers is the work, not marketing.
+  if (challenge && tool === "reply_to_support") {
+    if (facts.supportRepliesToday === undefined || facts.supportRepliesToday === null) return { run: false, why: "The answers it sent today could not be counted." };
+    if (facts.supportRepliesToday >= challenge.supportRepliesPerDay) {
+      return { run: false, why: `It has answered ${facts.supportRepliesToday} customers itself in 24 hours, the challenge's limit is ${challenge.supportRepliesPerDay}.` };
+    }
+    return { run: true, tell: level === "tell", area };
   }
   if ((CUSTOMER_EMAIL_TOOLS as readonly string[]).includes(tool)) {
     if (facts.customerEmailsThisWeek === undefined || facts.customerEmailsThisWeek === null) return { run: false, why: "The emails it sent this week could not be counted." };

@@ -593,3 +593,13 @@ A mix of goods (fashion, home, food, sport) makes the result read as a rule, not
 The platform's own team carries the load the stores do not: one person on call per week for pages (F3), who never touches a store's
 operations (that would be an intervention), only the platform.
 
+## 15. Progress
+
+Each item of section 4 moves here when it is built, with its decision.
+
+| Item | State | Decision |
+|---|---|---|
+| A1 Challenge mode | Built: the dates and budgets, the preset, the lock with the pause audited as an intervention, a third failure and a question skipped. A screen to set it waits for H2; the dates are UTC. | D597 |
+| A2 Never automatic, re-sorted | Partly: broadcasts within a week's budget, support answers on a daily budget, money back to customers kept for the person. The money-free order change and price rules are still to do. | D597 |
+| F2 Limits for a business | Built: the AI budget from the challenge, the autopilot's turns apart from the owner's, events limited per kind, plans paused by the budget started again. | D597 |
+

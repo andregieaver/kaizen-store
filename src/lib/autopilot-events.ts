@@ -11,8 +11,8 @@ export type EventKind = (typeof EVENT_KINDS)[number];
 
 /** Events answered in one run of the loop, at most one per store. */
 export const EVENTS_PER_RUN = 2;
-/** Events a store may have answered in 24 hours, whatever they are. */
-export const EVENTS_PER_DAY = 12;
+/** Events a store may have answered in 24 hours, per kind (`docs/100-day-challenge.md` F2): a waiting customer is the busiest. */
+export const EVENTS_PER_DAY: Readonly<Record<EventKind, number>> = { support_waiting: 48, test_ended: 12, alert: 12 };
 /** A pending event older than this is no longer worth a turn. */
 export const EVENT_STALE_HOURS = 24;
 /** Events are kept this long, then pruned (their outcomes may say what a customer asked about). */

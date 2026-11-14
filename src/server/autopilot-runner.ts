@@ -14,7 +14,7 @@ import { aiFor, type AiConnection } from "./ai";
 import { activeAccount, passMembership } from "./auth";
 import { checkStep } from "./autopilot-checks";
 import { autopilotDecision } from "./autopilot-gate";
-import { completeStep, failStep, loadSteps, stopPlanIn, type PlanStep, type StepResult } from "./autopilot-plans";
+import { completeStep, failStep, loadSteps, skipStep, stopPlanIn, type PlanStep, type StepResult } from "./autopilot-plans";
 import { aiBudgetProblem, autonomyFor } from "./autopilot-settings";
 import { log } from "./log";
 import { platformGateNeeded, preflightPlatformTool, runPlatformTool } from "./manager-tools";
@@ -56,6 +56,7 @@ export async function runAutopilot(deps: AutopilotDeps = {}): Promise<AutopilotR
   const result: AutopilotRun = { done: 0, waiting: 0, asking: 0, retried: 0, paused: 0 };
   // Every AI that acts on its own waits while a platform admin has paused them (PSI AST-07).
   if (await skipWhilePaused("autopilot")) return result;
+  await resumeAfterBudget();
   // A run that died with a step in hand: the step goes back to be tried again (a try counted).
   await db().execute(sql`
     update commerce.assistant_plan_steps set status = 'pending', tries = tries + 1, claimed_until = null, not_before = now()
@@ -160,9 +161,35 @@ async function release(stepId: string, at: Date | null = null): Promise<void> {
   `);
 }
 
-async function pausePlanFor(planId: string, stepId: string, reason: string): Promise<void> {
+async function pausePlanFor(planId: string, stepId: string, reason: string, pausedFor: "budget" | null = null): Promise<void> {
   await release(stepId);
-  await db().execute(sql`update commerce.assistant_plans set status = 'paused', pause_reason = ${reason.slice(0, 500)} where id = ${planId}::uuid and status = 'running'`);
+  await db().execute(sql`
+    update commerce.assistant_plans set status = 'paused', pause_reason = ${reason.slice(0, 500)}, paused_for = ${pausedFor}
+    where id = ${planId}::uuid and status = 'running'
+  `);
+}
+
+/**
+ * Plans the month's AI budget paused start again by themselves once it allows (a new month, or a raised budget; `docs/100-day-challenge.md`
+ * F2): their pause was code's, not the owner's. A pause the owner pressed, or one a person must lift, is never touched.
+ */
+export async function resumeAfterBudget(): Promise<number> {
+  const paused = await typedRows(
+    z.object({ store_id: col.uuid.nullable() }),
+    sql`select distinct store_id from commerce.assistant_plans where status = 'paused' and paused_for = 'budget' limit 50`,
+  );
+  let resumed = 0;
+  for (const { store_id } of paused) {
+    const settings = await autonomyFor(store_id);
+    if (settings.paused || (await aiBudgetProblem(store_id, settings))) continue;
+    const rows = await db().execute(sql`
+      update commerce.assistant_plans set status = 'running', pause_reason = null, paused_for = null
+      where status = 'paused' and paused_for = 'budget' and store_id is not distinct from ${store_id}::uuid
+      returning id
+    `);
+    resumed += rows.length;
+  }
+  return resumed;
 }
 
 async function runStep(stepId: string, deps: AutopilotDeps): Promise<keyof AutopilotRun> {
@@ -194,6 +221,11 @@ async function runStep(stepId: string, deps: AutopilotDeps): Promise<keyof Autop
 
   switch (step.spec.kind) {
     case "question": {
+      // Nobody answers a question in the challenge: the step is skipped, and the plan's later turns decide for themselves.
+      if (settings.challenge) {
+        await skipStep(stepId, plan.id, "Skipped for the challenge: nobody answers questions, so the autopilot decides for itself.");
+        return "retried";
+      }
       await db().execute(sql`
         update commerce.assistant_plan_steps set status = 'asking', question = ${JSON.stringify({ text: step.spec.text, options: step.spec.options })}::jsonb, claimed_until = null
         where id = ${stepId}::uuid and status = 'running'
@@ -214,7 +246,7 @@ async function runStep(stepId: string, deps: AutopilotDeps): Promise<keyof Autop
     case "task": {
       const budget = await aiBudgetProblem(plan.store_id, settings);
       if (budget) {
-        await pausePlanFor(plan.id, stepId, budget);
+        await pausePlanFor(plan.id, stepId, budget, "budget");
         return "paused";
       }
       return runTaskStep(plan, principal, step, steps, settings, deps);

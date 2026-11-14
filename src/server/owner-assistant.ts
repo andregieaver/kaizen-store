@@ -135,6 +135,11 @@ const MAX_STEPS = 10;
 const HISTORY = 20;
 /** What the owner may send the assistant in a day, per store. */
 export const DAILY_TURNS = 300;
+/**
+ * The autopilot's own turns a day per store (its plans', reviews' and events' conversations, `source = 'autopilot'`), counted apart from the
+ * person's `DAILY_TURNS` so a busy autopilot never leaves the owner without their AI manager (`docs/100-day-challenge.md` F2).
+ */
+export const AUTOPILOT_DAILY_TURNS = 1000;
 /** A tool's answer is cut to this, keeping the model's context. */
 const RESULT_MAX = 12_000;
 /** The report tools (D346): the rounds after one are metered as `analytics_question`. */
@@ -595,19 +600,24 @@ export type AutopilotTurn = {
   told: string[];
 };
 
-/** Whether today's turns have reached the limit: per store, or per platform admin. */
-async function overLimit(p: Principal): Promise<boolean> {
+/**
+ * Whether today's turns have reached the limit: per store, or per platform admin. The autopilot's turns (in its own conversations) count
+ * against `AUTOPILOT_DAILY_TURNS`, everything else against `DAILY_TURNS`.
+ */
+async function overLimit(p: Principal, autopilot: boolean): Promise<boolean> {
+  const own = autopilot ? sql`c.source = 'autopilot'` : sql`c.source <> 'autopilot'`;
   const [row] = p.store
     ? await db().execute<Row>(sql`
-        select count(*)::int as n from commerce.assistant_messages
-        where store_id = ${p.store.id}::uuid and role = 'user' and created_at > now() - interval '1 day'
+        select count(*)::int as n from commerce.assistant_messages m
+        join commerce.assistant_conversations c on c.id = m.conversation_id
+        where m.store_id = ${p.store.id}::uuid and m.role = 'user' and m.created_at > now() - interval '1 day' and ${own}
       `)
     : await db().execute<Row>(sql`
         select count(*)::int as n from commerce.assistant_messages m
         join commerce.assistant_conversations c on c.id = m.conversation_id
-        where m.store_id is null and c.account_id = ${p.account.id}::uuid and m.role = 'user' and m.created_at > now() - interval '1 day'
+        where m.store_id is null and c.account_id = ${p.account.id}::uuid and m.role = 'user' and m.created_at > now() - interval '1 day' and ${own}
       `);
-  return Number(row.n) >= DAILY_TURNS;
+  return Number(row.n) >= (autopilot ? AUTOPILOT_DAILY_TURNS : DAILY_TURNS);
 }
 
 /**
@@ -636,8 +646,9 @@ export async function runTurn(input: TurnInput): Promise<void> {
       message: `The AI manager needs a text model: set one up under ${store ? "Settings → AI" : "Platform → AI"}.`,
     });
   }
-  if (await overLimit(p)) {
-    return emit({ type: "error", message: `The AI manager has answered ${DAILY_TURNS} messages ${store ? "for this store" : "for you"} today. It is back tomorrow.` });
+  if (await overLimit(p, Boolean(input.autopilot))) {
+    const limit = input.autopilot ? AUTOPILOT_DAILY_TURNS : DAILY_TURNS;
+    return emit({ type: "error", message: `The AI manager has answered ${limit} messages ${store ? "for this store" : "for you"} today. It is back tomorrow.` });
   }
   // A platform admin's turns are paid by Kaizena Flow and held to a cost a day (FA5); a store's by its plan's monthly allowance.
   if (!store && (await platformManagerCostToday(account.id)) >= PLATFORM_DAILY_COST_MICROS) {

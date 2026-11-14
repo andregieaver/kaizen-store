@@ -198,8 +198,11 @@ export async function runEvents(deps: EventDeps = {}): Promise<EventRun> {
       where e.status = 'pending'
         and (
           select count(*) from commerce.autopilot_events d
-          where d.store_id = e.store_id and d.status in ('running', 'done', 'failed') and d.created_at > now() - interval '1 day'
-        ) < ${EVENTS_PER_DAY}
+          where d.store_id = e.store_id and d.kind = e.kind and d.status in ('running', 'done', 'failed') and d.created_at > now() - interval '1 day'
+        ) < (case e.kind ${sql.join(
+          EVENT_KINDS.map((kind) => sql`when ${kind} then ${EVENTS_PER_DAY[kind]}::int`),
+          sql` `,
+        )} else 0 end)
       order by e.created_at
       limit 20
     `,
@@ -393,8 +396,8 @@ async function eventConversation(p: Principal): Promise<string> {
   if (kept) return kept.id;
   const made = await typedRow(
     z.object({ id: col.uuid }),
-    sql`insert into commerce.assistant_conversations (store_id, account_id, title)
-      values (${storeId}::uuid, ${p.account.id}::uuid, 'Autopilot: what happened') returning id`,
+    sql`insert into commerce.assistant_conversations (store_id, account_id, title, source)
+      values (${storeId}::uuid, ${p.account.id}::uuid, 'Autopilot: what happened', 'autopilot') returning id`,
   );
   if (!made) throw new Error("The events' conversation could not be made.");
   return made.id;

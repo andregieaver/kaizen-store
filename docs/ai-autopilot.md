@@ -1084,8 +1084,8 @@ From `/api/cron/autopilot` (every minute), after the reviews:
 - `detectEvents()`: per store with `reacts` on and the autopilot not paused, inserts the waiting conversations and the tests that ended
   (one query each), and once a day (`ALERT_CHECK_HOURS`, kept in `commerce.autopilot_event_checks`) the store's alerts through
   `alertsForStore()`. Conflicts on the reference do nothing.
-- `runEvents()`: takes up to `EVENTS_PER_RUN` (2) pending events, at most one per store, under `EVENTS_PER_DAY` (12) per store in 24
-  hours, each claimed (`running`, `claimed_until`); a run that died leaves it `failed` once its claim passes. A pending event older than
+- `runEvents()`: takes up to `EVENTS_PER_RUN` (2) pending events, at most one per store, under `EVENTS_PER_DAY` per store and kind in 24
+  hours (48 waiting customers, 12 of each other kind, since 14 November 2026), each claimed (`running`, `claimed_until`); a run that died leaves it `failed` once its claim passes. A pending event older than
   `EVENT_STALE_HOURS` (24) is `skipped` as stale; a support event whose conversation has been answered, taken or ended since is `skipped`
   (*a person answered*); a test event whose test was applied or discarded since is `skipped`.
 - The turn is `runTurn({ scheduled: true, autopilot: { event: kind } })` in one conversation per store for events (`Autopilot: what

@@ -191,6 +191,8 @@ export const assistantEn = {
     description: "The work the AI manager does for {site} on its own: what waits for you, its plans, your goals, and how far it may go.",
     tabs: { decisions: "Decisions", plans: "Plans", goals: "Goals", results: "Results", settings: "Settings" },
     paused: "The autopilot is paused: no step runs until you switch it on again.",
+    challenge: "The 100-day challenge is on: day {day} of 100, until {end}. The autopilot runs the store alone and its settings are locked. Only the switch that pauses it is yours, and pausing suspends the challenge.",
+    rehearsal: "The challenge's rehearsal is on: Day 1 is {dayOne}. The autopilot runs the store alone and its settings are locked. Only the switch that pauses it is yours.",
     decisions: {
       empty: "Nothing waits for you. When the autopilot needs your yes or an answer, it shows here.",
       calls: "Waiting for your yes",

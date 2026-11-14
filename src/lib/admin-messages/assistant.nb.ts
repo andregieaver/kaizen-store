@@ -184,6 +184,8 @@ export const assistantNb: AssistantMessages = {
     description: "Arbeidet KI-assistenten gjør for {site} på egen hånd: det som venter på deg, planene, målene dine og hvor langt den kan gå.",
     tabs: { decisions: "Beslutninger", plans: "Planer", goals: "Mål", results: "Resultater", settings: "Innstillinger" },
     paused: "Autopiloten er satt på pause: ingen steg kjøres før du slår den på igjen.",
+    challenge: "100-dagersutfordringen pågår: dag {day} av 100, til {end}. Autopiloten driver butikken alene, og innstillingene er låst. Bare bryteren som setter den på pause er din, og en pause stanser utfordringen.",
+    rehearsal: "Generalprøven før utfordringen pågår: dag 1 er {dayOne}. Autopiloten driver butikken alene, og innstillingene er låst. Bare bryteren som setter den på pause er din.",
     decisions: {
       empty: "Ingenting venter på deg. Når autopiloten trenger ditt ja eller et svar, vises det her.",
       calls: "Venter på ditt ja",
