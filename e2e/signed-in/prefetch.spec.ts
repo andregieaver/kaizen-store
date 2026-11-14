@@ -31,7 +31,7 @@ const SCREENS: { name: string; address: string; as: typeof OWNER | typeof ADMIN;
   { name: "settings", address: `${STORE}/settings`, as: OWNER, prefetches: 16, fetches: ["/admin/account/notices/feed"] },
   { name: "a product's editor", address: `${STORE}/products/{product}`, as: OWNER, prefetches: 2, fetches: ["/admin/account/notices/feed"] },
   { name: "the builder", address: `${STORE}/pages/{page}`, as: OWNER, prefetches: 0, fetches: ["/admin/account/notices/feed", `${STORE}/pages/{page}`] },
-  { name: "the platform home", address: "/admin/platform", as: ADMIN, prefetches: 2, fetches: ["/admin/account/notices/feed"] },
+  { name: "the platform home", address: "/admin/platform", as: ADMIN, prefetches: 0, fetches: ["/admin/account/notices/feed"] },
 ];
 
 type Seen = { path: string; prefetch: boolean };

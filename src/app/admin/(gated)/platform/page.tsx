@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { connection } from "next/server";
 
 import { ActionForm, SubmitButton } from "@/components/admin/action-form";
@@ -14,7 +13,7 @@ import { platformOverview } from "@/server/platform-overview";
 import { cronJobRows } from "@/server/cron-runs";
 import { failedWebhookEvents } from "@/server/stripe-webhooks";
 import { jobsNeedingLook } from "@/lib/cron-health";
-import { PageHeader } from "@/components/admin/ui";
+import { AdminLink, PageHeader } from "@/components/admin/ui";
 import { countWords, fillWords } from "@/lib/admin-fill";
 import { adminLangOf } from "@/lib/admin-lang";
 import { adminText } from "@/lib/admin-text";
@@ -76,7 +75,7 @@ export default async function PlatformOverviewPage() {
 
       <Attention items={attention} empty={w.empty} />
 
-      <Section id="month-heading" title={bw.thisMonth} action={<Link href="/admin/platform/plans/analytics" className="text-sm underline">{w.seeAnalytics}</Link>}>
+      <Section id="month-heading" title={bw.thisMonth} action={<AdminLink href="/admin/platform/plans/analytics" className="text-sm underline">{w.seeAnalytics}</AdminLink>}>
         <StatGrid>
           <Stat
             label={bw.mrrLabel}
@@ -126,7 +125,7 @@ export default async function PlatformOverviewPage() {
         </section>
       )}
 
-      <Section id="numbers-heading" title={w.storesAndPlans} action={<Link href="/admin/platform/stores" className="text-sm underline">{w.allStores}</Link>}>
+      <Section id="numbers-heading" title={w.storesAndPlans} action={<AdminLink href="/admin/platform/stores" className="text-sm underline">{w.allStores}</AdminLink>}>
         <StatGrid>
           <Stat label={w.stores} value={o.stores.total} sub={o.stores.newThisWeek > 0 ? fillWords(w.newThisWeek, { n: o.stores.newThisWeek }) : w.noneNew} href="/admin/platform/stores" />
           <Stat label={w.paying} value={o.stores.paying} sub={o.stores.overdue > 0 ? fillWords(w.overdueSub, { n: o.stores.overdue }) : undefined} href="/admin/platform/stores" />
