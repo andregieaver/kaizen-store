@@ -615,3 +615,25 @@ Each item of section 4 moves here when it is built, with its decision.
 | D2 Ad spend into the books | Built: Meta's daily spend per campaign, every six hours. | D602 |
 | F1 A second AI provider | Built: up to three fallback text models through the AI Gateway. | D603 |
 | H1 The loop scales per store | Built: steps, reviews and events claimed one per store and run side by side. | D603 |
+
+### 15.1 To deploy what is built
+
+The work is on the branch `claude/100-day-store-challenge-ybk066`, not yet on `main`. Six migrations come with it, all additive
+(`20261114170001` to `20261114191429`). The new tools and prompt lines change the version the recorded agents' eval checks, so
+`agent-eval-replay.int.test.ts` fails until a new recording is committed. A push with a migration waits for every check, so merge in two steps:
+
+1. Push the six migration files and the schema alone. Nothing reads the new columns yet, so every check passes, CI applies them and deploys.
+2. Push the rest. With no new migration it deploys after the quick gate (D526). Then run the agents' eval on Platform → AI and commit its
+   recording as `src/data/agent-eval-recording.json`, as after D357.
+
+### 15.2 Next
+
+In order of the Day 1 minimum (8.1):
+
+- **C:** cancelling an unsent order, purchase orders by the AI within a purchasing budget, supplier orders as tools, order events.
+- **B3:** staff requests carried out by code (address change, cancellation).
+- **E1 and E7:** one contribution profit (label costs in Finance), and the scoreboard with the original read from a signed monthly P&L.
+- **F4 and F5:** the hourly watch after each change, and the store protected from deploys (prompts pinned, smoke on its pages).
+- **H2:** the challenge console: setting a store's challenge, its stalls, its interventions, its ratios.
+- **D1 and D4:** Meta campaigns of the AI's own, and retention flows it writes, during the first weeks of the run.
+
