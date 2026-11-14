@@ -616,7 +616,12 @@ Each item of section 4 moves here when it is built, with its decision.
 | F1 A second AI provider | Built: up to three fallback text models through the AI Gateway. | D610 |
 | H1 The loop scales per store | Built: steps, reviews and events claimed one per store and run side by side. | D610 |
 
-### 15.1 To deploy what is built
+### 15.1 Deployed (14 November 2026)
+
+Step 1 (the migration alone) went live with CI run 1288, step 2 (the code) with commit 1112efa. Left: the agents' eval run again on
+Platform → AI with these tools, and its recording committed. The steps as they were planned:
+
+#### How it was deployed
 
 The work is on the branch `claude/100-day-store-challenge-ybk066`, brought up to date with `main` on 14 November 2026 (its decisions
 renumbered D604 to D610 after `main`'s D597 to D603). One migration comes with it, additive only: `20261114202420_overrated_whirlwind`.
