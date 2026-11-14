@@ -1,5 +1,5 @@
 {
- "version": "1.19",
+ "version": "1.20",
  "surface": [
   "admin DELETE /categories/{id}",
   "admin DELETE /categories/{id} -> data",
@@ -2320,6 +2320,8 @@
   "mcp producer_registrations <- store (required)",
   "mcp product_performance",
   "mcp product_performance <- store (required)",
+  "mcp profit_overview",
+  "mcp profit_overview <- store (required)",
   "mcp propose_exchange",
   "mcp propose_exchange <- replacements (required)",
   "mcp propose_exchange <- replacements[].quantity (required)",
