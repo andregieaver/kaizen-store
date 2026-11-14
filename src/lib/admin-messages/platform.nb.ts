@@ -878,6 +878,9 @@ export const platformNb: PlatformMessages = {
       "I Resend: legg til domenet i regionen Irland (eu-west-1) og legg DNS-postene inn hos domenets DNS-leverandør.",
   },
   stores: {
+    shownOf: "{shown} av {total}",
+    next: "Neste 100 butikker",
+    previous: "Forrige 100 butikker",
     title: "Butikker",
     description:
       "Abonnementet hver butikk har hos Kaizena Flow og gebyret per salg. Åpne en butikk for å starte, endre eller avslutte abonnementet, eller gi den et eget gebyr.",

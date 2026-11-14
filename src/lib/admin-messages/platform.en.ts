@@ -879,6 +879,9 @@ export const platformEn = {
       "In Resend: add the domain in the Ireland (eu-west-1) region and put its DNS records at the domain's DNS host.",
   },
   stores: {
+    shownOf: "{shown} of {total}",
+    next: "Next 100 stores",
+    previous: "Previous 100 stores",
     title: "Stores",
     description:
       "Each store's plan with Kaizena Flow and its fee per sale. Open a store to start, change or cancel its plan, or give it its own fee.",
