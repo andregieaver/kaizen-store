@@ -15,7 +15,7 @@ import { latestAppearance } from "@/server/page-looks";
 import { reworkPrepared, type ReworkPrepared } from "@/server/dream-showcase";
 import type { Store } from "@/server/stores";
 
-import { analyseExistingAction, agreeReworkAction, applyReworkAction, askReworkAction, retryDreamAction, startReworkAction, stopDreamAction } from "./actions";
+import { analyseExistingAction, agreeReworkAction, applyReworkAction, askReworkAction, dreamStateAction, retryDreamAction, startReworkAction, stopDreamAction } from "./actions";
 
 type Words = HomeMessages["dream"];
 
@@ -132,7 +132,7 @@ export async function ReworkRun({ store, run, words: w }: { store: Store; run: D
   const words = run.status === "ready" || run.status === "open" ? r.run.running : r.run[run.status];
   return (
     <>
-      {going && <RefreshWhile seconds={REFRESH_SECONDS} />}
+      {going && <RefreshWhile seconds={REFRESH_SECONDS} status={dreamStateAction.bind(null, slug)} />}
       <div className="flex max-w-4xl flex-col gap-6">
         <PageHeader title={r.title} description={<>{words}</>} />
 

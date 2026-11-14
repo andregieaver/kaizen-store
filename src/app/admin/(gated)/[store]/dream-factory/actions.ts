@@ -1,5 +1,7 @@
 "use server";
 
+import { createHash } from "node:crypto";
+
 import { revalidatePath } from "next/cache";
 import { after } from "next/server";
 import { redirect } from "next/navigation";
@@ -13,6 +15,7 @@ import {
   approveLook,
   askLookChange,
   askReworkChange,
+  latestDreamRun,
   confirmDreamBrief,
   retryDreamStep,
   startDreamOver,
@@ -23,6 +26,7 @@ import {
 import { startAppearance } from "@/server/page-looks";
 import { closeStore } from "@/server/store-closure";
 import { NO_ACCESS, checkPermission } from "@/server/permissions";
+import { storeAction } from "@/server/store-action";
 
 /** The Dream Factory page's presses (D409): owners only, each read again here. */
 
@@ -34,6 +38,18 @@ const answer = (result: { ok: true } | { ok: false; problem: string }, slug: str
   revalidatePath(`/admin/${slug}/dream-factory`);
   return result.ok ? { status: "ok", messages: [] } : { status: "error", messages: [result.problem] };
 };
+
+/**
+ * The Dream Factory's poll (bloat review step 0.17): a short fingerprint of the store's latest run, so the page redraws only when it changed.
+ * Refreshes nothing, so no page is sent back.
+ */
+export async function dreamStateAction(storeSlug: string): Promise<string | null> {
+  return storeAction({ store: storeSlug, key: "owner", action: "dream.state", answer: () => null }, async (member) => {
+    const run = await latestDreamRun(member.store.id);
+    if (!run) return "none";
+    return createHash("sha256").update(JSON.stringify([run.id, run.status, run.readyAt, run.finishedAt, run.steps])).digest("hex").slice(0, 16);
+  });
+}
 
 export async function startDreamAction(storeSlug: string, _state: FormState, formData: FormData): Promise<FormState> {
   const member = await owner(storeSlug);
