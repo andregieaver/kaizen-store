@@ -24,7 +24,7 @@ import type { SiteLayout } from "@/server/site-layouts";
 import type { Store } from "@/server/stores";
 
 import { ReportContentLink } from "./report-content-link";
-import { LanguageSwitch } from "./language-switch";
+import { LanguageSwitch } from "./lazy/blocks";
 import { BuyerSwitch } from "./buyer";
 import { StoreColorSwitch } from "./store-color-switch";
 import { CartLink, CartLinkShell } from "./cart-link";

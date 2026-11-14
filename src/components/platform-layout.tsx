@@ -13,7 +13,7 @@ import { platformText } from "@/lib/platform-text";
 import type { PlatformChrome } from "@/server/platform-navigation";
 
 import { Icon } from "./icons";
-import { LanguageSwitch } from "./language-switch";
+import { LanguageSwitch } from "./lazy/blocks";
 import { AnimatedLogo } from "./animated-logo";
 import { LogoPicture } from "./logo-picture";
 import type { MenuHover } from "@/lib/menu-hover";
