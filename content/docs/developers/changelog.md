@@ -16,6 +16,15 @@ Every change to a published contract gets a version here, newest first: the Admi
 (`/api/storefront/v1/openapi.json`), the webhook topics (`/api/webhooks/v1/topics.json`) and the MCP catalogues (`/api/mcp/catalogue.json`,
 `/api/ucp/catalogue.json`). Within a major version nothing a caller relies on is renamed or removed; answers and payloads may gain fields.
 
+## 1.17 — 2026-11-14
+
+An addition to the Admin API's checkout questions (D357, task 3).
+
+- A question's `kind` may be `checklist`: one question with several options to tick. It has `options` (1 to 30, each with `label` words per
+  language and an `id`; `none` marks the option that clears the others) and `sensitive`: when true, the cart asks the shopper's explicit
+  consent once an option other than `none` is ticked (GDPR article 9, such as allergies). Every question now returns `sensitive`.
+- Writing a question takes `options` and `sensitive` as optional fields: left out on a change, a checklist keeps its options and its consent.
+
 ## 1.16 — 2026-11-14
 
 An addition to the Admin API's checkout questions (D357, task 2).

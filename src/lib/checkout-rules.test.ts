@@ -2,6 +2,8 @@ import { describe, expect, it } from "vitest";
 
 import {
   answersByField,
+  readAnswers,
+  answerText,
   applyCheckoutRules,
   cleanAnswers,
   movedTo,
@@ -234,5 +236,49 @@ describe("moving a question (movedTo)", () => {
 
   it("gives null for a question that is not in the list", () => {
     expect(movedTo(ids, "x", 0)).toBeNull();
+  });
+});
+
+describe("a tick list's answers (task 3)", () => {
+  const words = (text: string) => ({ text, byLocale: {} });
+  const allergies: CheckoutField = {
+    id: "f1",
+    kind: "checklist",
+    required: true,
+    label: words("Allergies"),
+    help: null,
+    sensitive: true,
+    options: [
+      { id: "milk", label: words("Milk") },
+      { id: "nuts", label: words("Nuts") },
+      { id: "none", label: words("None of these"), none: true },
+    ],
+  };
+
+  it("keeps the options ticked among its own, in its order and the store's words, with the shopper's consent", () => {
+    const { answers, missing } = cleanAnswers([allergies], { f1: { options: ["nuts", "milk", "gone"], consent: true } });
+    expect(missing).toEqual([]);
+    expect(answers).toEqual([{ fieldId: "f1", label: "Allergies", kind: "checklist", answer: ["Milk", "Nuts"], optionIds: ["milk", "nuts"], consent: true }]);
+    expect(answerText(answers[0], "yes", "no")).toBe("Milk, Nuts");
+  });
+
+  it("refuses a sensitive answer without consent, and needs none for None of these, which clears the others", () => {
+    expect(cleanAnswers([allergies], { f1: { options: ["milk"], consent: false } })).toEqual({ answers: [], missing: ["f1"] });
+    expect(cleanAnswers([allergies], { f1: { options: ["milk", "none"], consent: false } }).answers).toEqual([
+      { fieldId: "f1", label: "Allergies", kind: "checklist", answer: ["None of these"], optionIds: ["none"], consent: false },
+    ]);
+  });
+
+  it("asks a required list for at least one option, and lets an optional one be left empty", () => {
+    expect(cleanAnswers([allergies], { f1: { options: [], consent: true } }).missing).toEqual(["f1"]);
+    expect(cleanAnswers([{ ...allergies, required: false }], {})).toEqual({ answers: [], missing: [] });
+  });
+
+  it("reads back from the order what it kept, and gives the cart back the ids it showed", () => {
+    const kept = cleanAnswers([allergies], { f1: { options: ["milk"], consent: true } }).answers;
+    const stored = JSON.parse(JSON.stringify(kept));
+    expect(readAnswers(stored)).toEqual(kept);
+    expect(answersByField(stored)).toEqual({ f1: { options: ["milk"], consent: true } });
+    expect(readAnswers([{ fieldId: "f1", label: "Allergies", kind: "checklist", answer: "Milk" }])).toEqual([]);
   });
 });

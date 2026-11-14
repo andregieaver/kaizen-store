@@ -96,7 +96,7 @@ export type OrderRow = {
   /** The buyer's gift (D173): the buyer's own words, and the name of another person (the recipient). Staff tags on the order (staff text, which can name a person). */
   gift?: { to: string | null; from: string | null; message: string | null } | null;
   /** The answers to the store's checkout fields (D357): the buyer's own words. */
-  checkoutAnswers?: { question: string; answer: string | boolean }[];
+  checkoutAnswers?: { question: string; answer: string | boolean | string[] }[];
   tags?: string[];
   lines: OrderLineRow[];
   payments: { provider: string; amountMinor: number; currency: string; status: string; createdAt: Ts; providerReference: string | null }[];

@@ -8324,13 +8324,21 @@ export const checkoutFields = commerce.table(
      * question can never leave a right-hand one alone.
      */
     width: text("width").notNull().default("full"),
+    /** A tick list's options in order (`checklist`, task 3): `[{ id, label: { text, byLocale }, none? }]`; null for the other kinds. */
+    options: jsonb("options"),
+    /** The answer may be sensitive personal data (GDPR article 9, such as allergies): the cart asks the shopper's explicit consent with it. */
+    sensitive: boolean("sensitive").notNull().default(false),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
   },
   (t) => [
     unique("checkout_fields_store_id_key").on(t.storeId, t.id),
     index("checkout_fields_store_idx").on(t.storeId, t.position),
-    check("checkout_fields_kind", sql`${t.kind} in ('text', 'checkbox')`),
+    check("checkout_fields_kind", sql`${t.kind} in ('text', 'checkbox', 'checklist')`),
+    check(
+      "checkout_fields_options",
+      sql`(${t.kind} = 'checklist') = (${t.options} is not null) and (${t.options} is null or (jsonb_typeof(${t.options}) = 'array' and jsonb_array_length(${t.options}) between 1 and 30))`,
+    ),
     check("checkout_fields_width", sql`${t.width} in ('full', 'half')`),
   ],
 );

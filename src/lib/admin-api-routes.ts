@@ -254,13 +254,18 @@ export const apiCheckoutRule = z.object({
 
 export const apiCheckoutField = z.object({
   id,
-  kind: z.enum(["text", "checkbox"]),
+  kind: z.enum(["text", "checkbox", "checklist"]),
   required: z.boolean(),
   label: words,
   help: words.nullable(),
   position: z.int(),
   enabled: z.boolean(),
   width: z.enum(["full", "half"]).describe("How wide the cart draws it: two halves next to each other share a line."),
+  options: z
+    .array(z.object({ id: z.string(), label: words, none: z.boolean().optional() }))
+    .optional()
+    .describe("A checklist's options, in order; `none` marks the option that clears the others."),
+  sensitive: z.boolean().describe("The answer may be sensitive personal data: the cart asks the shopper's explicit consent with it."),
 });
 
 const enabledOnly = z.strictObject({ enabled: z.boolean().describe("Switches it on or off; nothing else changes.") });

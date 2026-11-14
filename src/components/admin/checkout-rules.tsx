@@ -7,7 +7,8 @@ import { ArrowDown, ArrowUp, GripVertical } from "lucide-react";
 import { useId, useOptimistic, useState, useTransition, type ReactNode } from "react";
 
 import { fillWords } from "@/lib/admin-fill";
-import { CONDITION_KINDS, EFFECT_KINDS, movedTo, type CheckoutFieldKind, type FieldWidth, type RuleCondition, type RuleEffect, type Words } from "@/lib/checkout-rules";
+import { allergenQuestion } from "@/lib/checkout-presets";
+import { CONDITION_KINDS, EFFECT_KINDS, movedTo, type ChecklistOption, type CheckoutFieldKind, type FieldWidth, type RuleCondition, type RuleEffect, type Words } from "@/lib/checkout-rules";
 
 import { useAdminText } from "./admin-text";
 import { Button, Card, Chip, List, ListRow, RowLead } from "./ui";
@@ -41,10 +42,28 @@ export type RuleView = {
   skips: { reason: string; count: number; since: string }[];
 };
 
-export type FieldView = { id: string; kind: CheckoutFieldKind; required: boolean; label: Words; help: Words | null; enabled: boolean; width: FieldWidth };
+export type FieldView = {
+  id: string;
+  kind: CheckoutFieldKind;
+  required: boolean;
+  label: Words;
+  help: Words | null;
+  enabled: boolean;
+  width: FieldWidth;
+  options?: ChecklistOption[];
+  sensitive: boolean;
+};
 
 export type RuleInputView = { name: string; conditions: RuleCondition[]; effect: RuleEffect };
-export type FieldInputView = { kind: CheckoutFieldKind; required: boolean; label: Words; help: Words | null; width: FieldWidth };
+export type FieldInputView = {
+  kind: CheckoutFieldKind;
+  required: boolean;
+  label: Words;
+  help: Words | null;
+  width: FieldWidth;
+  options?: { id?: string; label: Words; none?: boolean }[];
+  sensitive?: boolean;
+};
 
 export type CheckoutRuleActions = {
   saveRule: (id: string | null, input: RuleInputView) => AsyncSaved;
@@ -490,7 +509,19 @@ export function RuleList({ rules, choices, canWrite, actions }: { rules: RuleVie
   );
 }
 
-function FieldEditor({ start, locales, save, onDone }: { start: FieldView | null; locales: Choice[]; save: CheckoutRuleActions["saveField"]; onDone: () => void }) {
+function FieldEditor({
+  start,
+  locales,
+  mainLocale,
+  save,
+  onDone,
+}: {
+  start: FieldView | null;
+  locales: Choice[];
+  mainLocale: string;
+  save: CheckoutRuleActions["saveField"];
+  onDone: () => void;
+}) {
   const w = useAdminText("shipping").checkoutRules;
   const [pending, run] = useTransition();
   const [problems, setProblems] = useState<string[]>([]);
@@ -501,6 +532,17 @@ function FieldEditor({ start, locales, save, onDone }: { start: FieldView | null
   // How wide the cart draws it (task 2): Lisa's step away, open from the start only when the question is already half width.
   const [width, setWidth] = useState<FieldWidth>(start?.width ?? "full");
   const [customise, setCustomise] = useState(start?.width === "half");
+  // A tick list's options and whether it asks the shopper's explicit consent (task 3).
+  const [options, setOptions] = useState<{ id?: string; label: Words; none?: boolean }[]>(start?.options ?? []);
+  const [sensitive, setSensitive] = useState(start?.sensitive ?? false);
+  const useAllergens = () => {
+    const preset = allergenQuestion([mainLocale, ...locales.map((l) => l.id)]);
+    setKind("checklist");
+    if (!label.text.trim()) setLabel(preset.label);
+    if (!help.text.trim()) setHelp(preset.help);
+    setOptions(preset.options);
+    setSensitive(true);
+  };
   return (
     <form
       aria-busy={pending}
@@ -508,7 +550,8 @@ function FieldEditor({ start, locales, save, onDone }: { start: FieldView | null
       onSubmit={(e) => {
         e.preventDefault();
         run(async () => {
-          const saved = await save(start?.id ?? null, { kind, required, label, help: help.text.trim() ? help : null, width });
+          const list = kind === "checklist" ? { options: options.filter((o) => o.label.text.trim()), sensitive } : { sensitive: false };
+          const saved = await save(start?.id ?? null, { kind, required, label, help: help.text.trim() ? help : null, width, ...list });
           if (saved.ok) {
             setProblems([]);
             onDone();
@@ -520,6 +563,7 @@ function FieldEditor({ start, locales, save, onDone }: { start: FieldView | null
         <select value={kind} onChange={(e) => setKind(e.target.value as CheckoutFieldKind)} className={FIELD} aria-label={w.question}>
           <option value="text">{w.fieldKinds.text}</option>
           <option value="checkbox">{w.fieldKinds.checkbox}</option>
+          <option value="checklist">{w.fieldKinds.checklist}</option>
         </select>
         <label className="flex items-center gap-2 text-sm">
           <input type="checkbox" checked={required} onChange={(e) => setRequired(e.target.checked)} className="size-4" />
@@ -528,6 +572,57 @@ function FieldEditor({ start, locales, save, onDone }: { start: FieldView | null
       </div>
       <WordsField value={label} onChange={setLabel} label={w.question} locales={locales} max={80} />
       <WordsField value={help} onChange={setHelp} label={w.help} locales={locales} max={200} />
+      {kind === "checklist" && (
+        <fieldset className="flex flex-col gap-3 rounded-panel bg-sunken p-3 text-sm">
+          <legend className="sr-only">{w.options}</legend>
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <span className="font-medium">{w.options}</span>
+            <Button type="button" kind="secondary" size="dense" onClick={useAllergens}>
+              {w.useAllergens}
+            </Button>
+          </div>
+          {options.length === 0 && <p className="text-muted">{w.noOptions}</p>}
+          <ol className="flex flex-col gap-3">
+            {options.map((o, i) => (
+              <li key={o.id ?? `new-${i}`} className="flex flex-col gap-1">
+                <WordsField
+                  value={o.label}
+                  onChange={(next) => setOptions(options.map((x, j) => (j === i ? { ...x, label: next } : x)))}
+                  label={fillWords(w.optionN, { n: String(i + 1) })}
+                  locales={locales}
+                  max={80}
+                />
+                <div className="flex flex-wrap items-center gap-3">
+                  <label className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      checked={o.none === true}
+                      onChange={(e) => setOptions(options.map((x, j) => (j === i ? { ...x, none: e.target.checked } : e.target.checked ? { ...x, none: false } : x)))}
+                      className="size-4"
+                    />
+                    {w.optionNone}
+                  </label>
+                  <Button type="button" kind="quiet" size="dense" onClick={() => setOptions(options.filter((_, j) => j !== i))}>
+                    {w.removeOption}
+                  </Button>
+                </div>
+              </li>
+            ))}
+          </ol>
+          <div>
+            <Button type="button" kind="link" onClick={() => setOptions([...options, { label: { text: "", byLocale: {} } }])}>
+              {w.addOption}
+            </Button>
+          </div>
+          <label className="flex items-start gap-2">
+            <input type="checkbox" checked={sensitive} onChange={(e) => setSensitive(e.target.checked)} className="mt-0.5 size-4" />
+            <span>
+              {w.sensitive}
+              <span className="block text-muted">{w.sensitiveHint}</span>
+            </span>
+          </label>
+        </fieldset>
+      )}
       {customise ? (
         <fieldset className="flex flex-col gap-2 text-sm">
           <legend className="mb-1 font-medium">{w.width}</legend>
@@ -571,7 +666,20 @@ function FieldEditor({ start, locales, save, onDone }: { start: FieldView | null
  * The questions the checkout asks, in the order the cart asks them: each dragged by its handle (or moved with the keyboard on it, or with its
  * up and down buttons), shown in its new place at once and saved as it is dropped.
  */
-export function FieldList({ fields, locales, canWrite, actions }: { fields: FieldView[]; locales: Choice[]; canWrite: boolean; actions: CheckoutRuleActions }) {
+export function FieldList({
+  fields,
+  locales,
+  mainLocale,
+  canWrite,
+  actions,
+}: {
+  fields: FieldView[];
+  locales: Choice[];
+  /** The store's main locale, for ready-made words (the allergen list). */
+  mainLocale: string;
+  canWrite: boolean;
+  actions: CheckoutRuleActions;
+}) {
   const w = useAdminText("shipping").checkoutRules;
   const [editing, setEditing] = useState<string | null>(null);
   const [asking, setAsking] = useState<string | null>(null);
@@ -606,7 +714,7 @@ export function FieldList({ fields, locales, canWrite, actions }: { fields: Fiel
   const rows = shown.map((f, i) =>
     editing === f.id ? (
       <li key={f.id} className="py-3">
-        <FieldEditor start={f} locales={locales} save={actions.saveField} onDone={() => setEditing(null)} />
+        <FieldEditor start={f} locales={locales} mainLocale={mainLocale} save={actions.saveField} onDone={() => setEditing(null)} />
       </li>
     ) : (
       <FieldRowView
@@ -657,7 +765,7 @@ export function FieldList({ fields, locales, canWrite, actions }: { fields: Fiel
     <Card title={w.fields} description={w.fieldsHint} aside={canWrite && editing !== "new" ? <Button kind="strong" onClick={() => setEditing("new")}>{w.newField}</Button> : undefined}>
       {editing === "new" && (
         <div className="mb-4">
-          <FieldEditor start={null} locales={locales} save={actions.saveField} onDone={() => setEditing(null)} />
+          <FieldEditor start={null} locales={locales} mainLocale={mainLocale} save={actions.saveField} onDone={() => setEditing(null)} />
         </div>
       )}
       {shown.length === 0 ? (

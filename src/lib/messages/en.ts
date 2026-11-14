@@ -911,7 +911,9 @@ export const en = {
   checkoutQuestions: {
     legend: "A few questions from the store",
     required: "required",
-    problem: "Answer the store's questions marked required, then try again.",
+    problem: "Answer the store's questions marked required, and give your consent where a list asks for it, then try again.",
+    // legal: needs review. The explicit consent a sensitive list asks (GDPR article 9(2)(a)), such as allergies (task 3).
+    consent: "I agree that the store uses what I ticked here only to prepare this order.",
   },
   /**
    * Producer responsibility (D342): a product under a scheme the seller has no valid registration for in the shopper's country is not sold

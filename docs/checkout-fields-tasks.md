@@ -119,21 +119,22 @@ Built 14 November 2026 (D596).
 
 ### 3. Many tick boxes at once, for example allergens on food orders
 
-- [ ] A new kind, `checklist`: one question with several options to tick, each option with words per language,
-      required or not. It counts as one question against the limit (14 allergens as single tick boxes would pass the
-      limit of 10 on their own).
-- [ ] A ready-made list: **the EU's 14 allergens** (Regulation (EU) No 1169/2011, Annex II: cereals containing gluten,
-      crustaceans, eggs, fish, peanuts, soybeans, milk, nuts, celery, mustard, sesame, sulphites, lupin, molluscs),
-      written in nb, sv, da and en. Also an optional "None of these" option that clears the others.
-- [ ] Keep the answer as the options ticked, with their words in the store's main language at the time of the order
-      (`CheckoutAnswer` gets a `string[]` answer), and change `readAnswers()` and `answersByField()` to match.
-- [ ] **Check the privacy side first.** A customer's allergies can be health data (GDPR art. 9). Decide, with the
-      privacy texts (D162), whether such a question needs its own explicit consent line, a shorter retention, or a note in
-      the store's privacy page. Do not ship the allergen preset before this is settled.
-- [ ] Should allergens be asked per order or per product line? Recommended: per order first, since kitchens read the
-      order as a whole.
-- [ ] Show the ticked allergens clearly on the order page, the packing slip and staff alerts, not only in the Full
-      profile.
+Built 14 November 2026 (D598).
+
+- [x] A new kind, `checklist`: one question with several options to tick, each option with words per language,
+      required or not. It counts as one question against the limit. At most 30 options (`CHECKLIST_OPTIONS_MAX`).
+- [x] A ready-made list: **the EU's 14 allergens** (Regulation (EU) No 1169/2011, Annex II), hand-written in nb, sv, da
+      and en (`src/lib/checkout-presets.ts`), with "None of these", which clears the others. *Use the EU's 14 allergens* in
+      the editor fills a tick list with them in the store's languages.
+- [x] The answer keeps the options ticked in the store's main words at the time of the order, their ids (to show the cart
+      again) and the consent; `readAnswers()`, `answersByField()` and `answerText()` read it.
+- [x] **The privacy side, decided by the owner 14 November 2026:** a consent line only. A list marked *Ask for the
+      shopper's explicit consent* (the allergen list is) shows a consent box once an option other than None of these is
+      ticked, and the order is refused without it; answers are kept as long as the order's other answers. The consent
+      sentence is hand-written in four languages and marked for legal review.
+- [x] Asked per order, as recommended.
+- [ ] The order page and the export show the ticked options (joined). The packing slip and staff alerts do not show
+      checkout answers at all yet; that is its own step.
 
 ### 4. More field types for edge cases
 

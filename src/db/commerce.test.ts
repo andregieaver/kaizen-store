@@ -8202,3 +8202,19 @@ describe("a question's width at checkout (task 2)", () => {
     await db.query("delete from commerce.checkout_fields where id = $1", [id]);
   });
 });
+
+describe("a tick list at checkout (task 3)", () => {
+  it("has options exactly when it is a checklist, between 1 and 30 of them", async () => {
+    const label = '{"text":"Allergies","byLocale":{}}';
+    await expect(db.query(`insert into commerce.checkout_fields (store_id, kind, label) values ($1, 'checklist', $2)`, [store, label])).rejects.toThrow(/checkout_fields_options/);
+    await expect(db.query(`insert into commerce.checkout_fields (store_id, kind, label, options) values ($1, 'text', $2, '[{"id":"a"}]')`, [store, label])).rejects.toThrow(/checkout_fields_options/);
+    await expect(db.query(`insert into commerce.checkout_fields (store_id, kind, label, options) values ($1, 'checklist', $2, '[]')`, [store, label])).rejects.toThrow(/checkout_fields_options/);
+    const { id, sensitive } = await one<{ id: string; sensitive: boolean }>(
+      `insert into commerce.checkout_fields (store_id, kind, label, options) values ($1, 'checklist', $2, '[{"id":"milk","label":{"text":"Milk","byLocale":{}}}]') returning id, sensitive`,
+      [store, label],
+    );
+    expect(sensitive).toBe(false);
+    await expect(db.query("update commerce.checkout_fields set kind = 'radio' where id = $1", [id])).rejects.toThrow(/checkout_fields_kind/);
+    await db.query("delete from commerce.checkout_fields where id = $1", [id]);
+  });
+});

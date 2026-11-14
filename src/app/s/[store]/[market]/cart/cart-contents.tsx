@@ -758,7 +758,7 @@ function checkoutAction({ store, market, m, view }: Draw) {
           savedAddresses={addressChoices.length ? { choices: addressChoices, label: m.account.addresses.choose, typeNew: m.account.addresses.typeNew } : undefined}
           questions={
             view.questions.fields.length > 0
-              ? { fields: view.questions.fields, answers: view.questions.answers, legend: m.checkoutQuestions.legend, required: m.checkoutQuestions.required }
+              ? { fields: view.questions.fields, answers: view.questions.answers, legend: m.checkoutQuestions.legend, required: m.checkoutQuestions.required, consent: m.checkoutQuestions.consent }
               : undefined
           }
           company={{
