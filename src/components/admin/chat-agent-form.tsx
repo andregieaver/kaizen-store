@@ -1,6 +1,5 @@
 "use client";
 
-import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 
 import { avatarFrameStyle } from "@/lib/chat-avatar";
@@ -36,7 +35,6 @@ export function ChatAgentForm({
   upload: Upload | null;
   save: SaveChatAgent;
 }) {
-  const router = useRouter();
   const w = useAdminText("platformTools").chat.form;
   const [value, setValue] = useState(agent);
   const [pending, start] = useTransition();
@@ -51,7 +49,6 @@ export function ChatAgentForm({
         start(async () => {
           const result = await save(JSON.stringify(value));
           setOutcome(result.ok ? { ok: true, messages: [w.saved] } : { ok: false, messages: result.problems });
-          if (result.ok) router.refresh();
         });
       }}
     >

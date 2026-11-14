@@ -206,7 +206,6 @@ export function RuleEditor({
       setMessage(answer);
       if (answer.ok) {
         router.push(back);
-        router.refresh();
       }
     });
 

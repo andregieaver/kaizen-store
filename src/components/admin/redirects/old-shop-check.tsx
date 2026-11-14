@@ -33,7 +33,6 @@ export type NeedingRow = { path: string; kind: OldKind; fate: "missing" | "broke
  */
 export function OldShopStart({ read, initial = "", again = false }: { read: OldShopActions["read"]; initial?: string; again?: boolean }) {
   const w = useAdminText("redirects").oldShop;
-  const router = useRouter();
   const id = useId();
   const [address, setAddress] = useState(initial);
   const [problem, setProblem] = useState<Problem | null>(null);
@@ -46,7 +45,6 @@ export function OldShopStart({ read, initial = "", again = false }: { read: OldS
         setProblem(result.problem);
         return;
       }
-      router.refresh();
     });
   if (again)
     return (
@@ -103,7 +101,6 @@ export function OldShopStart({ read, initial = "", again = false }: { read: OldS
 /** The one press: a redirect from every old link with a sure target. Says how many were made, and how many could not be. */
 export function OldShopFix({ fix, count }: { fix: OldShopActions["fix"]; count: number }) {
   const w = useAdminText("redirects").oldShop;
-  const router = useRouter();
   const [done, setDone] = useState<{ written: number; refused: number } | null>(null);
   const [problem, setProblem] = useState<Problem | null>(null);
   const [pending, start] = useTransition();
@@ -129,7 +126,6 @@ export function OldShopFix({ fix, count }: { fix: OldShopActions["fix"]; count: 
                     return;
                   }
                   setDone({ written: result.written ?? 0, refused: result.refused ?? 0 });
-                  router.refresh();
                 })
               }
             >
@@ -218,7 +214,6 @@ function OldRow({ row, redirect, canWrite }: { row: NeedingRow; redirect: OldSho
   const words = useAdminText("redirects");
   const w = words.oldShop;
   const t = words.report.table;
-  const router = useRouter();
   const id = useId();
   const [done, setDone] = useState<string | null>(null);
   const [form, setForm] = useState(false);
@@ -238,7 +233,6 @@ function OldRow({ row, redirect, canWrite }: { row: NeedingRow; redirect: OldSho
       }
       setDone(result.target ?? to);
       setForm(false);
-      router.refresh();
     });
   return (
     <tr className="border-b border-line last:border-0" aria-busy={pending}>

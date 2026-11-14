@@ -100,7 +100,6 @@ export function CustomerUpload({
 
 /** The dry run's button: *Check the file*, or *Check the file again* after a check. Nothing about anyone is written. */
 export function CustomerCheck({ check, checked }: { check: () => Promise<Step>; checked: boolean }) {
-  const router = useRouter();
   const w = useAdminText("inventory").import.check;
   const [problem, setProblem] = useState<string | null>(null);
   const [pending, start] = useTransition();
@@ -117,7 +116,6 @@ export function CustomerCheck({ check, checked }: { check: () => Promise<Step>; 
               setProblem(null);
               const result = await check();
               if (!result.ok) setProblem(result.problem);
-              else router.refresh();
             })
           }
         >
@@ -143,7 +141,6 @@ export function CustomerImportApply({
   cancel: () => Promise<Step>;
   words?: Pick<ImportWords, "ready" | "counts" | "skippedRows" | "confirm">;
 }) {
-  const router = useRouter();
   const shared = useAdminText("inventory").import.apply;
   const customers = useAdminText("customers").staff.import;
   const w = words ?? customers;
@@ -157,7 +154,6 @@ export function CustomerImportApply({
       setProblem(null);
       const result = await step();
       if (!result.ok) setProblem(result.problem);
-      else router.refresh();
     });
   const writes = counts.toCreate + counts.toUpdate;
   return (

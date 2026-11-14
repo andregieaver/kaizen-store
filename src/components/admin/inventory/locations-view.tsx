@@ -1,6 +1,5 @@
 "use client";
 
-import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 
 import { useAdminLang, useAdminText } from "@/components/admin/admin-text";
@@ -63,7 +62,6 @@ export function LocationsView({
   /** The store's routing as saved. */
   routing?: "rank" | "nearest";
 }) {
-  const router = useRouter();
   const t = useAdminText("inventory");
   const w = t.locations;
   const locale = ADMIN_LANG_FACTS[useAdminLang()].locale;
@@ -89,7 +87,6 @@ export function LocationsView({
   const show = (result: Step | { ok: true; id: string }, done: string) => {
     if (result.ok) {
       setMessage({ tone: "ok", text: done });
-      router.refresh();
     } else setMessage({ tone: "problem", text: result.problem });
     return result.ok;
   };
@@ -112,7 +109,6 @@ export function LocationsView({
       if (result.ok) {
         setConfirming(null);
         setMessage({ tone: "ok", text: deactivationIn(result.impact, t, locale).notice });
-        router.refresh();
         return;
       }
       // The figure moved since the page was drawn: show the new one and ask again.
@@ -125,7 +121,6 @@ export function LocationsView({
       const result = await tools.reactivate(id);
       if (result.ok) {
         setMessage({ tone: "ok", text: countWords(result.impact.units, w.activeAgain, { held: heldWords(result.impact.units, result.impact.variants) }) });
-        router.refresh();
       } else setMessage({ tone: "problem", text: result.problem });
     });
 

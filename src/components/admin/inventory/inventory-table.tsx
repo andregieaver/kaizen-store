@@ -1,7 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { Fragment, useMemo, useState, useTransition } from "react";
 
 import { useAdminLang, useAdminText } from "@/components/admin/admin-text";
@@ -63,7 +62,6 @@ export function InventoryTable({
   historyBase: string;
   productBase: string;
 }) {
-  const router = useRouter();
   const t = useAdminText("inventory");
   const w = t.table;
   const locale = ADMIN_LANG_FACTS[useAdminLang()].locale;
@@ -136,7 +134,6 @@ export function InventoryTable({
       setTyped({});
       setReviewing(false);
       setNote("");
-      router.refresh();
     });
 
   const applyPolicy = (change: unknown) =>
@@ -148,7 +145,6 @@ export function InventoryTable({
       if (result.unchanged > 0) bits.push(fillWords(w.policyUnchanged, { n: result.unchanged.toLocaleString(locale) }));
       setPolicyNote(`${bits.join(", ")}.${result.problems.length > 0 ? ` ${result.problems.join(" ")}` : ""}`);
       setSelected(new Set());
-      router.refresh();
     });
 
   const toggle = (id: string) =>

@@ -1,6 +1,5 @@
 "use client";
 
-import { useRouter } from "next/navigation";
 import { useId, useState, useTransition } from "react";
 
 import { field, hint, primary, secondary, tableShell, td, th } from "@/components/admin/data/ui";
@@ -76,7 +75,6 @@ function MissingRowView({ row, timeZone, actions, canWrite }: { row: MissingRow;
   const w = useAdminText("redirects");
   const t = w.report.table;
   const locale = ADMIN_LANG_FACTS[useAdminLang()].locale;
-  const router = useRouter();
   const id = useId();
   const [done, setDone] = useState<string | null>(null);
   const [hiddenNow, setHiddenNow] = useState<boolean | null>(null);
@@ -99,7 +97,6 @@ function MissingRowView({ row, timeZone, actions, canWrite }: { row: MissingRow;
       }
       setDone(result.target ?? to);
       setForm(false);
-      router.refresh();
     });
 
   const toggleIgnored = () =>
@@ -111,7 +108,6 @@ function MissingRowView({ row, timeZone, actions, canWrite }: { row: MissingRow;
         return;
       }
       setHiddenNow(!ignored);
-      router.refresh();
     });
 
   return (

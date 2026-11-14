@@ -112,7 +112,6 @@ export function StockUpload({
 
 /** The dry run's button (step 2): there are no options, so it is only *Check the file*, or *Check the file again* after a check. */
 export function StockCheck({ check, checked }: { check: () => Promise<Step>; checked: boolean }) {
-  const router = useRouter();
   const w = useAdminText("inventory").import.check;
   const [problem, setProblem] = useState<string | null>(null);
   const [pending, start] = useTransition();
@@ -130,7 +129,6 @@ export function StockCheck({ check, checked }: { check: () => Promise<Step>; che
               setProblem(null);
               const result = await check();
               if (!result.ok) setProblem(result.problem);
-              else router.refresh();
             })
           }
         >
@@ -154,7 +152,6 @@ export function StockImportApply({
   apply: () => Promise<Step>;
   cancel: () => Promise<Step>;
 }) {
-  const router = useRouter();
   const w = useAdminText("inventory").import.apply;
   const locale = ADMIN_LANG_FACTS[useAdminLang()].locale;
   const wholeNumber = (n: number) => numberIn(Math.round(n), locale);
@@ -166,7 +163,6 @@ export function StockImportApply({
       setProblem(null);
       const result = await step();
       if (!result.ok) setProblem(result.problem);
-      else router.refresh();
     });
   return (
     <section aria-label={w.label} className={`${card} flex flex-col gap-3`} aria-busy={pending}>
