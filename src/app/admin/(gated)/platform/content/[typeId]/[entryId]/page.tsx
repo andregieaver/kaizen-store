@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 
-import { EntryView } from "@/components/admin/content-views";
+import { EntryView } from "@/components/admin/content-entry-views";
 import { requirePlatformReader } from "@/server/auth";
 
 import { platformContentSite } from "../../site";

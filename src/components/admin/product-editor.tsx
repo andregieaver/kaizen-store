@@ -35,7 +35,7 @@ import { PRODUCT_AUDIENCES, type ProductAudience } from "@/lib/b2b";
 import { EMPTY_DATA, changesFrom, withParents, type FieldData, type FieldGroup, type FieldLookups } from "@/lib/custom-fields";
 import { fileSize } from "@/lib/file-size";
 import { shrinkImage } from "@/lib/image-resize";
-import { addressChangeWords } from "@/lib/redirect-admin";
+import { addressChangeWords } from "@/lib/address-change";
 import type { CountryOption } from "@/lib/iso-countries";
 import {
   combineOptions,

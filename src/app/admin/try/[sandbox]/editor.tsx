@@ -1,7 +1,6 @@
 import "server-only";
 
 import { notFound } from "next/navigation";
-import { z } from "zod";
 
 import { AdminTextScope } from "@/components/admin/admin-text";
 import { DualPageEditor, type DualDoc } from "@/components/admin/dual-page-editor";
@@ -10,7 +9,7 @@ import type { AdminLang } from "@/lib/admin-lang";
 import { adminText, adminTexts } from "@/lib/admin-text";
 import { parseDualLayout, templateAsPage, type DualKind, type DualLayout, type DualWith } from "@/lib/dual-page";
 import { termContentOf } from "@/lib/page-content";
-import { SANDBOX_KINDS, isSandboxSegment, type SandboxKind } from "@/lib/sandbox";
+import { SANDBOX_KINDS, type SandboxKind } from "@/lib/sandbox";
 import { requestAdminLang } from "@/server/admin-request-lang";
 import { getFieldData } from "@/server/custom-fields";
 import { getPageForEdit } from "@/server/pages";
@@ -19,25 +18,14 @@ import type { Sandbox } from "@/server/sandbox";
 import { bothTerms, listTerms } from "@/server/taxonomy";
 
 import { sandboxPageContext } from "./context";
-import { offers, sandboxOf } from "./sandbox";
+import { offers } from "./sandbox";
 
 /** The catalogue areas the page editor's parts read (D312 A7), as the store's own editor hands them down. */
 const EDITOR_AREAS = ["builder", "blocks", "fields", "products", "design", "website", "blog", "schedules", "storeParts", "backdrops", "animation"] as const;
 
-type Params = Promise<{ sandbox: string; kind: string }>;
 type Query = Record<string, string | string[] | undefined>;
 
-/** The sandbox and the kind of page an address names, or a 404 for a kind the sandbox does not offer. */
-export async function sandboxAndKind(params: Params): Promise<{ sandbox: Sandbox | null; kind: SandboxKind }> {
-  const { sandbox: id, kind: segment } = await params;
-  if (!isSandboxSegment(segment)) notFound();
-  const sandbox = await sandboxOf(id);
-  const kind = SANDBOX_KINDS[segment];
-  if (sandbox && !offers(sandbox, kind)) notFound();
-  return { sandbox, kind };
-}
-
-export const isPageId = (value: string) => z.uuid().safeParse(value).success;
+export { isPageId, sandboxAndKind } from "./params";
 
 const isOffered = (sandbox: Sandbox, kind: DualKind): kind is SandboxKind =>
   (Object.values(SANDBOX_KINDS) as string[]).includes(kind) && offers(sandbox, kind as SandboxKind);

@@ -2,7 +2,7 @@
 
 import type { PageSummary } from "@/server/pages";
 import type { DuplicateResult } from "@/lib/page-duplicate";
-import { ROLE_COPY, type PageRole } from "@/lib/page-roles";
+import { ROLE_COPY, type PageRole } from "@/lib/page-role-copy";
 import { ADMIN_LANG_FACTS } from "@/lib/admin-lang";
 import { fillWords } from "@/lib/admin-fill";
 import type { ScheduleChip } from "@/lib/page-schedules";

@@ -29,6 +29,9 @@ import {
 } from "./custom-fields";
 import { countWords, fillWords } from "./admin-fill";
 import { fieldsEn, type FieldsMessages } from "./admin-messages/fields.en";
+import { moveItem } from "./move-item";
+
+export { moveItem } from "./move-item";
 
 /**
  * The pure parts of the field group generator (D118): the location rule
@@ -37,14 +40,6 @@ import { fieldsEn, type FieldsMessages } from "./admin-messages/fields.en";
  * server checks the group again with `fieldGroupInput`.
  */
 
-/** Moves an item from one place to another, as a new list. */
-export function moveItem<T>(list: readonly T[], from: number, to: number): T[] {
-  if (from === to || from < 0 || to < 0 || from >= list.length || to >= list.length) return [...list];
-  const next = [...list];
-  const [item] = next.splice(from, 1);
-  next.splice(to, 0, item);
-  return next;
-}
 
 // ---------------------------------------------------------------------------
 // Where a group applies

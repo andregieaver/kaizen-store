@@ -1,5 +1,5 @@
 import { AdminTextScope } from "@/components/admin/admin-text";
-import { EntityFieldsCard } from "@/components/admin/entity-fields-card";
+import { EntityFieldsCard } from "@/components/admin/lazy/editors";
 import { entityFieldsSetup } from "@/app/admin/(gated)/[store]/fields/data";
 import { fillWords } from "@/lib/admin-fill";
 import { ADMIN_LANG_FACTS } from "@/lib/admin-lang";

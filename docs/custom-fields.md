@@ -236,6 +236,10 @@ icon picker (the page builder has icons), user (customers are not content).
 
 ### 3.6 Editing the values
 
+The staff's field card (customer, order, deal) and the rich text editor inside `FieldsForm` are loaded where they are drawn
+(`src/components/admin/lazy/editors.tsx`, bloat review step 0.10): the server still draws them, and a Save pressed before the editor has loaded
+sends the value the form started with.
+
 - A shared `FieldsForm` renders any group from its definition: it is the
   one place the field types' inputs live, used in the product editor (a
   panel per group: main, or side), the page editor's sidebar, the term

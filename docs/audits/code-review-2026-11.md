@@ -101,7 +101,7 @@ This report is a working document: the plan below is the list of work, and this 
 | Step | What | Closes | Effort | Status | Notes |
 |---|---|---|---|---|---|
 | 3.1 | Split the page builder | FB1 | L | Open | |
-| 3.2 | One definition per block | FB6, FB9 | M | Open | |
+| 3.2 | One definition per block | FB6, FB9 | M | Open | 14 Nov: first slice out of `page-content.ts`: `rich-text-doc.ts` (bloat review step 0.10), public surface unchanged. |
 | 3.3 | Stop re-drawing the canvas | FB2 | M | Open | |
 | 3.4 | Load the builder's dialogs on demand | FB8 | M | Open | |
 | 3.5 | Split the product editor | FB10 | M | Open | |
@@ -166,6 +166,7 @@ This report is a working document: the plan below is the list of work, and this 
 - 12 November 2026: bloat review step 0.5: `src/server/lazy-packages.scan.test.ts` holds that no server module imports sharp, opentype.js, playwright-core, @sparticuz/chromium, mammoth or unpdf as a value; it is the first of step 4.1's boundary rules for packages.
 - 12 November 2026: bloat review step 0.6: the import cycle of src/server cut from 229 to 15 files (notes on steps 3.13 and 4.1); the line on circular imports corrected; `encryption-key.ts` noted on step 4.2; CI loads every built route in a fresh process (`scripts/cold-load-routes.mjs`).
 - 13 November 2026: bloat review step 0.9: notes on step 0.10 (the signed-in frame's first scripts after three stray imports went; status unchanged).
+- 14 November 2026: bloat review step 0.10: step 3.2 (one definition per block, still Open) has its first slice: `src/lib/rich-text-doc.ts` holds the rich text part of `page-content.ts`, which re-exports it with its public surface unchanged.
 
 ## 1. The headline
 

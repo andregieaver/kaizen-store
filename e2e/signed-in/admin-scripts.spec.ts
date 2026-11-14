@@ -34,15 +34,20 @@ const MEASURE = process.env.E2E_MEASURE === "1";
  * left the first scripts (`admin-text-later.ts`): about 1.1 MB off each.
  */
 const BUDGETS: Record<string, number> = {
+  // Measured 14 November 2026 once the page builder and the rich text editor left the screens that do not edit a page (bloat review step
+  // 0.10): a new product 1,197,589, pages 754,535, a page's preview 971,898, content 715,153 bytes; about 4 % of room, rounded up to 10,000.
+  // The order page has no entry: e2e-shop has no order of its own (`markers.mjs` holds it). Lowered, never raised.
   // Measured 13 November 2026 once sign-in's English, the Supabase client and zod left the frame (bloat review step 0.9): home 778,609,
   // products 744,357, a new product 1,868,975, orders 762,732, pages 1,741,320, a page in the builder 3,135,169, settings 716,511 bytes;
   // about 4 % of room, rounded up to 10,000. Lowered from the 10 November budgets below, never raised.
   "": 810_000,
   "/products": 780_000,
-  "/products/new": 1_950_000,
+  "/products/new": 1_250_000,
   "/orders": 800_000,
-  "/pages": 1_820_000,
+  "/pages": 790_000,
   "/pages/{page}": 3_270_000,
+  "/pages/{page}/preview": 1_020_000,
+  "/content": 750_000,
   "/settings": 750_000,
 };
 

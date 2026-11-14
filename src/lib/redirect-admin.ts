@@ -10,7 +10,7 @@ import { redirectsEn, type RedirectsMessages } from "./admin-messages/redirects.
 import { momentText, wholeNumber } from "./data-admin";
 import type { Finding } from "./data-job";
 import { NOT_FOUND_WINDOWS } from "./data-limits";
-import { findingField, redirectSentences, type RedirectKind } from "./redirects";
+import { findingField, type RedirectKind } from "./redirects";
 
 type W = RedirectsMessages;
 
@@ -134,25 +134,7 @@ export function existingWords(existing: { kind: "manual"; target: string } | { k
 // After a product or a category is saved with another address (2.2.6)
 // ---------------------------------------------------------------------------
 
-export type AddressChange = { from: string; to: string };
-
-/**
- * The pair a saved product's changed handle gives (`/p/old` and `/p/new`): null when the handle did not change, or when the database left no redirect (a
- * product that was never live leaves none, since nobody has the address). `redirected` is whether a redirect from the old address exists after the save.
- */
-export function productAddressChange(oldHandle: string | null, newHandle: string, redirected: boolean): AddressChange | null {
-  if (!oldHandle || oldHandle === newHandle || !redirected) return null;
-  return { from: `/p/${oldHandle}`, to: `/p/${newHandle}` };
-}
-
-/** The same for a category or a tag (`/category/old`, `/tag/old`). */
-export function termAddressChange(kind: "category" | "tag", oldSlug: string | null, newSlug: string, redirected: boolean): AddressChange | null {
-  if (!oldSlug || oldSlug === newSlug || !redirected) return null;
-  return { from: `/${kind}/${oldSlug}`, to: `/${kind}/${newSlug}` };
-}
-
-/** The sentence a saved product or category says. */
-export const addressChangeWords = (change: AddressChange): string => redirectSentences.handleChanged(change.from, change.to);
+export { addressChangeWords, productAddressChange, termAddressChange, type AddressChange } from "./address-change";
 
 // ---------------------------------------------------------------------------
 // The report of pages not found

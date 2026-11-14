@@ -111,7 +111,9 @@ CLAUDE.md keeps one line per rule pointing here; each rule is under that line as
   unless said); the routes share views in each `pages/views.tsx` (the lists and
   categories) and `pages/editor-views.tsx` (new, edit, preview), kept apart
   so a list never imports `PageEditor` (a route loads every client component
-  its modules import: the builder's 1.7 MB, PSI PERF-01). On the
+  its modules import: the builder's 1.7 MB, PSI PERF-01). Previews (`preview-views.tsx`) and the categories screen
+  (`terms-views.tsx`) are files of their own for the same reason, for stores and for the platform, and a sandbox preview imports
+  `params.ts`, never `editor.tsx`: a route loads every client component its server modules import (bloat review step 0.10). On the
   site, `ArticleView` draws an article's header over its rows, with
   `articleJsonLd()`; `/blog` lists (Kaizen's in `(platform)/term-listing.tsx`,
   a store's in `blog/blog-listing.tsx`) are content grids of articles. New block kinds go in `PageBlock`, `pageInput`,

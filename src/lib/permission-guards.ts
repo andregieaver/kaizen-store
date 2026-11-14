@@ -42,8 +42,8 @@ export const DELEGATED_GUARDS: Record<string, string> = {
   storeChangeRequest: "src/server/page-change-route.ts",
   /** The page builder's lists and editors, for every kind of page: each calls `requirePageTypeAccess()` with the kind it was given. */
   StorePagesListView: "src/app/admin/(gated)/[store]/pages/views.tsx",
-  StorePageTermsView: "src/app/admin/(gated)/[store]/pages/views.tsx",
+  StorePageTermsView: "src/app/admin/(gated)/[store]/pages/terms-views.tsx",
   StoreNewPageView: "src/app/admin/(gated)/[store]/pages/editor-views.tsx",
   StoreEditPageView: "src/app/admin/(gated)/[store]/pages/editor-views.tsx",
-  StorePreviewPageView: "src/app/admin/(gated)/[store]/pages/editor-views.tsx",
+  StorePreviewPageView: "src/app/admin/(gated)/[store]/pages/preview-views.tsx",
 };

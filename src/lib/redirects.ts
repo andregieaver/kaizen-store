@@ -11,6 +11,7 @@
  * loop, a chain stored as its final destination (and followed at serve time, at most 10 hops, in one response), at most 100,000 manual redirects a store.
  */
 import { countWords } from "./admin-fill";
+import { handleChangedSentence } from "./address-change";
 import { redirectsEn, type RedirectsMessages } from "./admin-messages/redirects.en";
 import { finding, type Finding } from "./data-job";
 import { REDIRECTS_MAX, REDIRECT_HOPS_MAX } from "./data-limits";
@@ -286,6 +287,6 @@ export const redirectSentences = {
   replaceAsk: (from: string, old: string) => `Replace the redirect from ${from}? It goes to ${old} now.`,
   automaticReplaced: (from: string) => `Kaizena Flow made a redirect from ${from} when an address changed. Saving this one replaces it.`,
   count: (n: number, max: number) => `${n.toLocaleString("en")} of ${max.toLocaleString("en")} manual redirects`,
-  handleChanged: (from: string, to: string) => `The old address ${from} now redirects to ${to}.`,
+  handleChanged: handleChangedSentence,
   atLeast: "Counts are at least what happened: a request answered from a cache is not seen.",
 } as const;

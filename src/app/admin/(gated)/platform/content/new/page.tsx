@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 
-import { NewContentTypeView } from "@/components/admin/content-views";
+import { NewContentTypeView } from "@/components/admin/content-type-views";
 import { requirePlatformReader } from "@/server/auth";
 
 import { platformContentSite } from "../site";

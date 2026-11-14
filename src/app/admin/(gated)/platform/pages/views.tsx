@@ -5,16 +5,14 @@ import { PAGE_TYPE_COPY } from "@/components/admin/page-type-copy";
 import { PagePlaceForm } from "@/components/admin/page-place-form";
 import { PageJobsPanel } from "@/components/admin/page-jobs-panel";
 import { PagesTable } from "@/components/admin/pages-table";
-import { TermsManager } from "@/components/admin/terms";
 import { SiteLayoutChoice, SiteLayoutsTable } from "@/components/admin/site-layouts";
-import { LAYOUT_TYPES, termContentOf, type PageType } from "@/lib/page-content";
+import { LAYOUT_TYPES, type PageType } from "@/lib/page-content";
 import { isThemeStoreRole, PLATFORM_ROLE_COPY, SPECIAL_ROLES, type PlatformRole } from "@/lib/platform-roles";
 import { requirePlatformReader } from "@/server/auth";
 import { listPages } from "@/server/pages";
 import { runningPageJobs } from "@/server/page-jobs";
 import { getPlatformPageRoles } from "@/server/platform-roles";
 import { siteLayoutChoice } from "@/server/site-layouts";
-import { listTerms } from "@/server/taxonomy";
 import { CARD_CLASS, PageHeader } from "@/components/admin/ui";
 import { PlatformLegalCard } from "@/components/admin/platform-legal-card";
 import { adminLangOf } from "@/lib/admin-lang";
@@ -25,12 +23,9 @@ import { platformSiteWords } from "@/server/platform-site-words";
 
 import {
   choosePlatformSiteLayoutAction,
-  createPageTermAction,
   createPlatformRolePageAction,
   setPlatformPageRoleAction,
-  deletePageTermAction,
   stopPlatformPageJobAction,
-  updatePageTermAction,
 } from "./actions";
 import { duplicatePageAction } from "./duplicate-action";
 import { writeLegalPagesAction } from "./legal-action";
@@ -145,34 +140,6 @@ export async function PagesListView({ type, searchParams }: { type: PageType; se
           action={choosePlatformSiteLayoutAction.bind(null, type)}
         />
       )}
-    </AdminTextScope>
-  );
-}
-
-export async function PageTermsView({ type }: { type: PageType }) {
-  await connection();
-  await requirePlatformReader();
-  const { lang, w } = await platformSiteWords();
-  const tw = typeWords(w, type);
-  const copy = PAGE_TYPE_COPY[type];
-  const terms = await listTerms({ storeId: null, contentType: termContentOf(type) });
-  return (
-    <AdminTextScope texts={adminTexts(lang, ["products", "platformSite"])}>
-      <div className="flex flex-col gap-1">
-        <Link href={`/admin/platform/${copy.segment}`} className="w-fit text-sm underline">
-          {tw.list}
-        </Link>
-        <PageHeader title={w.pages.categories} description={tw.terms} />
-        </div>
-      <TermsManager
-        initial={terms}
-        usedBy={copy.many}
-        actions={{
-          create: createPageTermAction.bind(null, type),
-          update: updatePageTermAction.bind(null, type),
-          remove: deletePageTermAction.bind(null, type),
-        }}
-      />
     </AdminTextScope>
   );
 }

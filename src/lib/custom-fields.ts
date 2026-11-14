@@ -2,7 +2,7 @@ import { z } from "zod";
 
 import { isMoney, majorOf, minorOf, shownMoney, MAX_MONEY_MINOR, type FieldMoney } from "./field-money";
 import { isCurrency } from "./money";
-import { cleanRichText, richTextPlain, type RichTextDoc } from "./page-content";
+import { cleanRichText, richTextPlain, type RichTextDoc } from "./rich-text-doc";
 import { isPictureAddress } from "./picture-address";
 import { embedUrl } from "./video-embed";
 
