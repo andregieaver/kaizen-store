@@ -40,8 +40,8 @@ import { OFFERABLE_CURRENCIES } from "@/lib/money";
 import { InvoiceElsewhere } from "./invoice-elsewhere";
 import { IssueDialog } from "./invoice-issue-dialog";
 import { InvoiceLinesEditor } from "./invoice-lines-editor";
-import { ReadinessList } from "./invoice-readiness";
-import { InvoiceTotalsView } from "./invoice-totals";
+import { ReadinessList, type ReadinessWords } from "./invoice-readiness";
+import { InvoiceTotalsParts } from "./invoice-totals-view";
 import { UnbilledTimeDialog } from "./invoice-unbilled-dialog";
 import { useWorkTimerApi } from "./timer-context";
 import {
@@ -73,6 +73,8 @@ export type DraftEditorProps = {
   nextNumber: string | null;
   /** Suggested exchange rates by invoice currency. */
   fxSuggestions: Record<string, string>;
+  /** The checklist's words in the account's language, read on the server (`workScreens()`): no catalogue in this client part. */
+  readinessWords: Omit<ReadinessWords, "readyToIssue">;
 };
 
 const AUTOSAVE_MS = 600;
@@ -90,7 +92,8 @@ const AUTOSAVE_MS = 600;
  * touching what the person is typing (`mergeServerRows`).
  */
 export function DraftEditor(props: DraftEditorProps) {
-  const tw = useAdminText("work").invoiceDraftEditor;
+  const work = useAdminText("work");
+  const tw = work.invoiceDraftEditor;
   const { storeSlug, locale, detail, vat } = props;
   const { invoice, client, assignment } = detail;
   const router = useRouter();
@@ -652,7 +655,8 @@ export function DraftEditor(props: DraftEditorProps) {
         />
         <div className="mt-6 border-t border-line pt-4">
           {live ? (
-            <InvoiceTotalsView
+            <InvoiceTotalsParts
+              words={work.invoiceTotals}
               totals={live.totals}
               currency={currency}
               locale={locale}
@@ -673,7 +677,13 @@ export function DraftEditor(props: DraftEditorProps) {
           {tw.beforeYouIssue}
         </h2>
         {readiness ? (
-          <ReadinessList readiness={readiness} storeSlug={storeSlug} clientId={client.id} checking={checking} />
+          <ReadinessList
+            readiness={readiness}
+            storeSlug={storeSlug}
+            clientId={client.id}
+            checking={checking}
+            words={{ readyToIssue: work.invoiceReadiness.readyToIssue, ...props.readinessWords }}
+          />
         ) : (
           <p className="text-sm text-muted">{tw.checking}</p>
         )}
@@ -691,6 +701,7 @@ export function DraftEditor(props: DraftEditorProps) {
         locale={locale}
         totalMinor={settled?.totals.totalMinor ?? 0}
         readiness={readiness}
+        readinessWords={props.readinessWords}
         nextNumber={props.nextNumber}
         today={detail.today}
         paymentDays={dueDays}

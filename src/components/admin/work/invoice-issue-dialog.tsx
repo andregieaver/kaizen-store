@@ -9,7 +9,7 @@ import { dueOn, formatDay, isDay } from "@/lib/work-dates";
 import { readFxRate } from "@/lib/work-invoice-ui";
 import type { InvoiceReadiness } from "@/server/work-invoices";
 
-import { ReadinessList } from "./invoice-readiness";
+import { ReadinessList, type ReadinessWords } from "./invoice-readiness";
 import { Field, Problems, control, hintText, primaryButton, secondaryButton, smallButton } from "./work-parts";
 import { useAdminText } from "@/components/admin/admin-text";
 import { fillWords } from "@/lib/admin-fill";
@@ -25,6 +25,8 @@ export type IssueDialogProps = {
   /** The total with VAT the person sees: sent back so issuing is refused if it moved. */
   totalMinor: number;
   readiness: InvoiceReadiness | null;
+  /** The checklist's words in the account's language, from the server. */
+  readinessWords: Omit<ReadinessWords, "readyToIssue">;
   /** The number it will get, as printed (`W-12`); null when the series cannot be read. */
   nextNumber: string | null;
   /** Today in the store's time zone. */
@@ -58,7 +60,8 @@ export function IssueDialog(props: IssueDialogProps) {
 }
 
 function IssueForm(props: IssueDialogProps) {
-  const tw = useAdminText("work").invoiceIssueDialog;
+  const work = useAdminText("work");
+  const tw = work.invoiceIssueDialog;
   const { storeSlug, invoiceId, currency, locale, totalMinor, readiness, nextNumber, today, paymentDays, blocked } =
     props;
   const id = useId();
@@ -123,7 +126,14 @@ function IssueForm(props: IssueDialogProps) {
 
   return (
     <form onSubmit={submit} noValidate aria-busy={pending} className="flex flex-col gap-5">
-      {readiness && !ready && <ReadinessList readiness={readiness} storeSlug={storeSlug} clientId={props.clientId} />}
+      {readiness && !ready && (
+        <ReadinessList
+          readiness={readiness}
+          storeSlug={storeSlug}
+          clientId={props.clientId}
+          words={{ readyToIssue: work.invoiceReadiness.readyToIssue, ...props.readinessWords }}
+        />
+      )}
 
       <p className="text-sm">
         {nextNumber ? (

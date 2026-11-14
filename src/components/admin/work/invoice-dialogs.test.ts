@@ -8,6 +8,8 @@ vi.mock("@/app/admin/(gated)/(owner)/account/work/s/[store]/invoice-actions", ()
 vi.mock("@/app/admin/(gated)/(owner)/account/work/s/[store]/invoice-view-actions", () => ({}));
 vi.mock("next/navigation", () => ({ useRouter: () => ({ push: () => {}, refresh: () => {} }) }));
 
+import { screensEn } from "@/lib/admin-messages/screens.en";
+
 import { CreditForm, CreditInvoiceButton } from "./invoice-credit-dialog";
 import { IssueDialog } from "./invoice-issue-dialog";
 import { PaymentForm, RecordPaymentButton, ReversePaymentButton } from "./invoice-payments";
@@ -41,6 +43,13 @@ describe("the issue dialog", () => {
     locale: "en",
     totalMinor: 325_000,
     readiness: readyReadiness,
+    readinessWords: {
+      toFix: screensEn.workReadiness.toFix,
+      fix: screensEn.workReadiness.fix,
+      check: screensEn.workReadiness.check,
+      open: screensEn.workReadiness.open,
+      problems: null,
+    },
     nextNumber: "W-13",
     today: TODAY,
     paymentDays: 14,
