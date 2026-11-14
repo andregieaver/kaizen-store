@@ -1,3 +1,4 @@
+import { answerText } from "@/lib/checkout-rules";
 import { t } from "@/lib/i18n";
 import type { PackingSlip } from "@/server/packing-slips";
 
@@ -8,7 +9,7 @@ type SellerDetails = { legalName?: string | null; postalAddress?: string | null;
  * because the data it is drawn from holds none (D27). In the ORDER's language. For a gift order it gains a block above the lines, *A gift for {To}* with the buyer's own words as
  * text (`white-space: pre-line`, escaped by React, never HTML) and *From {From}*; nothing else about the slip changes. `breakAfter` puts each slip of a bulk print on its own page.
  * Sending in parts (D174): a slip prints what is still to send, one parcel's items (with "More of this order follows in another parcel" when units remain), or, reprinted
- * for an order with nothing left, every item under *All items (already sent)*.
+ * for an order with nothing left, every item under *All items (already sent)*. The shopper's answers to the checkout questions (D357) follow the lines, as text.
  */
 export function PackingSlipView({ slip, storeName, seller, breakAfter = false }: { slip: PackingSlip; storeName: string; seller: SellerDetails; breakAfter?: boolean }) {
   const m = t(slip.lang);
@@ -86,6 +87,19 @@ export function PackingSlipView({ slip, storeName, seller, breakAfter = false }:
           ))}
         </tbody>
       </table>
+      {slip.answers && slip.answers.length > 0 && (
+        <section aria-label={m.slip.answers} className="flex flex-col gap-1">
+          <p className="text-sm font-medium">{m.slip.answers}</p>
+          <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1">
+            {slip.answers.map((a) => (
+              <div key={a.fieldId} className="contents">
+                <dt className="font-medium">{a.label}</dt>
+                <dd className="whitespace-pre-line">{answerText(a, m.customFields.yes, m.customFields.no)}</dd>
+              </div>
+            ))}
+          </dl>
+        </section>
+      )}
       {slip.moreFollows && <p className="border-2 border-black p-3 text-center font-medium">{m.slip.moreFollows}</p>}
       <p className="text-center text-lg">{m.thanks}</p>
     </article>

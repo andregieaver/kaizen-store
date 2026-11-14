@@ -563,6 +563,7 @@ export const sv: Messages = {
     // legal: needs review
     moreFollows: "Mer av den här beställningen kommer i ett annat paket.",
     alreadySent: "Alla varor (redan skickade)",
+    answers: "Svar i kassan",
   },
   /**
    * The page a customer opens from the pay link of a change to their order (wave 3, run 3, D174): what changes, what is already paid and what is to pay now, the right of

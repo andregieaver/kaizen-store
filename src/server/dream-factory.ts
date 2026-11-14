@@ -1,5 +1,7 @@
 import "server-only";
 
+import { createHash } from "node:crypto";
+
 import { sql } from "drizzle-orm";
 import { z } from "zod";
 
@@ -230,6 +232,15 @@ export async function startDreamStore(account: Account, input: { name: string; s
   const run = member ? await startDreamRun(member, prompt) : ({ ok: false, problem: "The new store has no owner." } as const);
   if (!run.ok) log("warn", "dream_factory.store_run_not_started", { store: made.storeId });
   return { ok: true, slug: made.slug, run };
+}
+
+/**
+ * A short fingerprint of a store's newest run (bloat review step 0.17): what the Dream Factory page draws changes exactly when it does. The page
+ * passes the one it drew to its poll, and the poll's action answers the current one, so the page is redrawn only when the run moved.
+ */
+export function dreamFingerprint(run: DreamRun | null): string {
+  if (!run) return "none";
+  return createHash("sha256").update(JSON.stringify([run.id, run.status, run.readyAt, run.finishedAt, run.steps])).digest("hex").slice(0, 16);
 }
 
 /** The store's newest run, for its Dream Factory page. */

@@ -3,7 +3,7 @@ import { sql } from "drizzle-orm";
 
 import { db } from "@/db/client";
 import { sameSite } from "@/lib/same-site";
-import { listNotices, markNoticesRead, type NoticePlace } from "@/server/assistant-notices";
+import { listNotices, markNoticesRead, unreadNotices, type NoticePlace } from "@/server/assistant-notices";
 import { adminText } from "@/lib/admin-text";
 import { actionAdminLang } from "@/server/admin-request-lang";
 import { getAccount } from "@/server/auth";
@@ -18,6 +18,8 @@ const NO_STORE = { "Cache-Control": "no-store" } as const;
 async function placeOf(value: string | null): Promise<NoticePlace | undefined> {
   if (!value || value === "all") return "all";
   if (value === "platform") return null;
+  // A store's id needs no lookup: every notice read is filtered by the person's own account id, so another store's id returns nothing of anyone else's.
+  if (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.test(value)) return value;
   if (!/^[a-z0-9-]{1,63}$/.test(value)) return undefined;
   const [store] = await db().execute<{ id: string }>(sql`select id from commerce.stores where slug = ${value}`);
   return store ? String(store.id) : undefined;
@@ -29,8 +31,8 @@ export async function GET(request: NextRequest) {
   const place = await placeOf(request.nextUrl.searchParams.get("place"));
   if (place === undefined) return NextResponse.json({ unread: 0, items: [] }, { headers: NO_STORE });
   const count = request.nextUrl.searchParams.get("count") === "1";
-  const listed = await listNotices(account.id, place, count ? 1 : 30);
-  return NextResponse.json(count ? { unread: listed.unread } : listed, { headers: NO_STORE });
+  if (count) return NextResponse.json({ unread: await unreadNotices(account.id, place) }, { headers: NO_STORE });
+  return NextResponse.json(await listNotices(account.id, place, 30), { headers: NO_STORE });
 }
 
 export async function POST(request: NextRequest) {

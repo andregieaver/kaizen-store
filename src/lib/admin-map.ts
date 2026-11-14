@@ -1470,6 +1470,16 @@ export function findPages(area: "store" | "platform", query: string, flags: Site
     .map((s) => s.page);
 }
 
+/** Each area's pages with their address split once, fewer `[param]`s first and ties in table order (bloat review step 0.17): matchPath() ran this filter and sort on every call. */
+const PAGES_BY_AREA: Record<AdminArea, { page: AdminPage; pattern: string[] }[]> = Object.fromEntries(
+  (["store", "account", "platform"] as const).map((area) => [
+    area,
+    ADMIN_PAGES.filter((page) => page.area === area)
+      .sort((a, b) => pageParams(a).length - pageParams(b).length)
+      .map((page) => ({ page, pattern: page.path.split("/").filter(Boolean) })),
+  ]),
+) as Record<AdminArea, { page: AdminPage; pattern: string[] }[]>;
+
 /** Which page an address is, with its params: for telling the AI where the person is. */
 export function matchPath(pathname: string): { page: AdminPage; params: Record<string, string>; storeSlug: string | null } | null {
   const clean = pathname.split(/[?#]/)[0].replace(/\/+$/, "") || "/admin";
@@ -1482,9 +1492,7 @@ export function matchPath(pathname: string): { page: AdminPage; params: Record<s
   } else candidates.push({ area: "store", rest: segments.slice(2), storeSlug: segments[1] });
   for (const { area, rest, storeSlug } of candidates) {
     // Fixed segments beat params: try pages with fewer params first.
-    const pages = ADMIN_PAGES.filter((page) => page.area === area).sort((a, b) => pageParams(a).length - pageParams(b).length);
-    for (const page of pages) {
-      const pattern = page.path.split("/").filter(Boolean);
+    for (const { page, pattern } of PAGES_BY_AREA[area]) {
       if (pattern.length !== rest.length) continue;
       const params: Record<string, string> = {};
       const ok = pattern.every((part, i) => {

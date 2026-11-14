@@ -133,8 +133,10 @@ Built 14 November 2026 (D598).
       ticked, and the order is refused without it; answers are kept as long as the order's other answers. The consent
       sentence is hand-written in four languages and marked for legal review.
 - [x] Asked per order, as recommended.
-- [ ] The order page and the export show the ticked options (joined). The packing slip and staff alerts do not show
-      checkout answers at all yet; that is its own step.
+- [x] The order page and the export show the ticked options (joined). Since 14 November 2026 the packing slip prints every
+      answer under the lines (*Answers at checkout*), but a gift's slip leaves out an answer given with consent, since the
+      gift's recipient reads it (`slipAnswers()`); the staff alert for a new order says how many questions were answered and
+      never the answers (rule 4.8 of `docs/wave-3-notifications.md`: the buyer's own words stay on the order).
 
 ### 4. More field types for edge cases
 

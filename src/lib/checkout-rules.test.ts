@@ -9,6 +9,7 @@ import {
   movedTo,
   pricedBy,
   rulesOnOffer,
+  slipAnswers,
   wordsIn,
   type CheckoutFacts,
   type CheckoutField,
@@ -280,5 +281,16 @@ describe("a tick list's answers (task 3)", () => {
     expect(readAnswers(stored)).toEqual(kept);
     expect(answersByField(stored)).toEqual({ f1: { options: ["milk"], consent: true } });
     expect(readAnswers([{ fieldId: "f1", label: "Allergies", kind: "checklist", answer: "Milk" }])).toEqual([]);
+  });
+
+  it("prints every answer on a packing slip, but not a sensitive one on a gift's, which its recipient reads", () => {
+    const note = { fieldId: "f2", label: "Door code", kind: "text" as const, answer: "1234" };
+    const ticked = cleanAnswers([allergies], { f1: { options: ["milk"], consent: true } }).answers;
+    const none = cleanAnswers([allergies], { f1: { options: ["none"], consent: false } }).answers;
+    const stored = JSON.parse(JSON.stringify([...ticked, note]));
+    expect(slipAnswers(stored, false)).toEqual([...ticked, note]);
+    expect(slipAnswers(stored, true)).toEqual([note]);
+    // None of these says nothing about health: it stays on a gift's slip.
+    expect(slipAnswers(JSON.parse(JSON.stringify(none)), true)).toEqual(none);
   });
 });

@@ -62,6 +62,7 @@ export function AiManagerLauncher({
   settingsHref,
   start,
   actions,
+  noticePlace,
 }: {
   area: "store" | "platform";
   base: string;
@@ -69,6 +70,8 @@ export function AiManagerLauncher({
   settingsHref: string;
   start: AiManagerStart;
   actions: AiManagerActions;
+  /** The place the badge counts (a store's id): the count then needs no lookup of the store by its name (bloat review step 0.17). */
+  noticePlace?: string;
 }) {
   const pathname = usePathname();
   const w = useAdminText("assistant");
@@ -99,7 +102,7 @@ export function AiManagerLauncher({
   }, [pathname, recentKey]);
   // What it finished or waits on while the person was away (D350): this place's notices, counted on the button and listed in the panel.
   const place = base.split("/")[2] ?? "platform";
-  const [unread, recount] = useNoticeCount(place);
+  const [unread, recount] = useNoticeCount(noticePlace ?? place);
   const [showNotices, setShowNotices] = useState(false);
 
   const openRef = useRef(false);
