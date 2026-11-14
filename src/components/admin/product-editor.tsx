@@ -39,6 +39,7 @@ import { addressChangeWords } from "@/lib/address-change";
 import type { CountryOption } from "@/lib/iso-countries";
 import {
   combineOptions,
+  parsePrice,
   DEFAULT_APPOINTMENT,
   defaultBooking,
   GENERAL_TAX_CODE,
@@ -61,6 +62,8 @@ import { lineMax, MAX_ORDER_QUANTITY, ruleProblem } from "@/lib/quantity-rules";
 import { INHERIT_WORDS, NO_WORDS, PRICE_WORD_MAX, shownPriceWords, withWords, wordsIn, type PriceWords, type ProductPriceWords } from "@/lib/price-words";
 import { priceWordProblem } from "@/lib/price-words-check";
 import type { ProductMessages } from "@/lib/admin-messages/product.en";
+import { vatIncluded } from "@/lib/checkout";
+import { formatMoney } from "@/lib/money";
 import type { ProductFacts, WriteRequest, WrittenText } from "@/lib/product-writing";
 import { EXCERPT_FIELD_MAX, summarize } from "@/lib/seo";
 import {
@@ -526,6 +529,23 @@ export function ProductEditor(props: Props) {
           <span className="mt-1 block text-sm text-muted">{w.advanced.text}</span>
         </summary>
         <div className="mt-4 flex flex-col gap-6">
+          {/* Round 2 (D597): a way straight to each part of the fold, for Lisa. */}
+          <nav aria-label={w.advanced.jump} className="flex flex-wrap items-center gap-1.5">
+            <span className="mr-1 text-eyebrow text-muted uppercase">{w.advanced.jump}</span>
+            {[
+              context.audience === "both" && (["audience-heading", w.advanced.parts.audience] as const),
+              product.kind !== "gift_card" && (["price-words-heading", w.advanced.parts.priceWords] as const),
+              !isBooked(product.kind) && product.kind !== "bundle" && context.subscriptionsOn && (["subscription-heading", w.advanced.parts.subscriptions] as const),
+              !isBooked(product.kind) && (["safety-heading", w.advanced.parts.safety] as const),
+              ["legal-heading", w.advanced.parts.legal] as const,
+            ]
+              .flatMap((part) => (part ? [part as readonly [string, string]] : []))
+              .map(([id, label]) => (
+                <a key={id} href={`#${id}`} className="inline-flex min-h-8 items-center rounded-pill bg-card px-3 text-caption text-ink hover:bg-sunken">
+                  {label}
+                </a>
+              ))}
+          </nav>
           <ProductCategoryCard
             category={product.standardCategory ?? null}
             attributes={product.standardAttributes ?? {}}
@@ -1424,6 +1444,8 @@ function VariantsSection({
                   name={name}
                   markets={context.markets}
                   mainCurrency={context.mainCurrency}
+                  vatCategory={product.vatCategory}
+                  netPrices={context.audience === "businesses"}
                   countries={countries}
                   showDelivery={mixed}
                   showPeriod={product.kind === "rental"}
@@ -1693,7 +1715,12 @@ function VariantRow({
   onChange,
   ruleAll = null,
   ruled = [],
+  vatCategory = "standard",
+  netPrices = false,
 }: {
+  /** The product's VAT category and whether prices are typed without VAT, for the VAT line under each price (round 2, D597). */
+  vatCategory?: string;
+  netPrices?: boolean;
   variant: VariantInput;
   /** Markets whose prices a rule works out (D335 A.2): an empty price there says it is the rule's. */
   ruled?: readonly string[];
@@ -1792,15 +1819,24 @@ function VariantRow({
                 </Link>
               </span>
             ) : (
-              <input
-                type="number"
-                min={0}
-                inputMode="numeric"
-                value={variant.stock}
-                onChange={(e) => onChange({ stock: Math.max(0, Math.floor(Number(e.target.value) || 0)) })}
-                aria-label={fillWords(r.stockFor, { name })}
-                className={`${cell} w-24`}
-              />
+              // Round 2 (D597): one fewer and one more beside the number, for counting stock on a phone.
+              <span className="inline-flex items-center gap-1">
+                <button type="button" aria-label={fillWords(r.oneFewer, { name })} disabled={variant.stock <= 0} onClick={() => onChange({ stock: Math.max(0, variant.stock - 1) })} className="flex size-9 shrink-0 items-center justify-center rounded-pill border border-edge bg-card text-ink disabled:opacity-40">
+                  −
+                </button>
+                <input
+                  type="number"
+                  min={0}
+                  inputMode="numeric"
+                  value={variant.stock}
+                  onChange={(e) => onChange({ stock: Math.max(0, Math.floor(Number(e.target.value) || 0)) })}
+                  aria-label={fillWords(r.stockFor, { name })}
+                  className={`${cell} w-16 text-center`}
+                />
+                <button type="button" aria-label={fillWords(r.oneMore, { name })} onClick={() => onChange({ stock: variant.stock + 1 })} className="flex size-9 shrink-0 items-center justify-center rounded-pill border border-edge bg-card text-ink">
+                  +
+                </button>
+              </span>
             )}
           </td>
         )}
@@ -1818,6 +1854,7 @@ function VariantRow({
               className={`${cell} w-28`}
             />
             {variant.derivedIn?.includes(market.code) && <span className="mt-0.5 block text-xs text-muted">{r.byRule}</span>}
+            <VatLine typed={variant.prices[market.code] ?? ""} market={market} category={vatCategory} netPrices={netPrices} words={r} />
           </td>
         ))}
         <td className="py-2">
@@ -1937,6 +1974,15 @@ function VariantRow({
 }
 
 /** The rule in a few words after its summary (D323): ": at least 12, in sixes, at most 48", or nothing for one at a time. */
+/** Under a typed price (round 2, D597): how much of it is VAT, worked out in code from the country's rate for the product's category. */
+function VatLine({ typed, market, category, netPrices, words: r }: { typed: string; market: EditorContext["markets"][number]; category: string; netPrices: boolean; words: ProductMessages["row"] }) {
+  const minor = parsePrice(typed, market.currency);
+  const rate = market.vatRates[category as keyof typeof market.vatRates] ?? market.vatRates.standard;
+  if (minor === null || minor <= 0 || !rate || netPrices) return null;
+  const vat = vatIncluded(minor, rate);
+  return <span className="mt-0.5 block text-xs text-muted">{fillWords(r.vatPart, { amount: formatMoney(vat, market.currency, "en"), rate: Math.round(rate * 1000) / 10 })}</span>;
+}
+
 function quantityRuleLine(variant: VariantInput, w: ProductMessages["quantityRules"]): string {
   const parts = [
     variant.minQuantity > variant.quantityStep && fillWords(w.atLeast, { n: variant.minQuantity }),

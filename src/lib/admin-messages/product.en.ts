@@ -42,6 +42,8 @@ export const productEn = {
     pleaseFix: "Nothing was saved yet. Please fix:",
   },
   advanced: {
+    jump: "Jump to",
+    parts: { audience: "Who buys it", priceWords: "Words around the price", subscriptions: "Subscriptions", safety: "Product safety", legal: "Tax, returns and countries" },
     title: "Advanced",
     text: "The standard category, who buys it, words around its price, prices by quantity, subscriptions, product safety, tax, returns and where it is sold.",
   },
@@ -235,6 +237,9 @@ export const productEn = {
     stockAtLocations: "Stock at each location for {name}",
     stockAtFor: "Stock for {name} at {location}",
     stockFor: "Stock for {name}",
+    oneFewer: "One fewer of {name}",
+    oneMore: "One more of {name}",
+    vatPart: "Of which VAT {amount} ({rate} %)",
     priceFor: "Price in {market} for {name}, {currency}",
     byRule: "By the country's price rule",
     byRulePlaceholder: "By rule",

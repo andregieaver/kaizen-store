@@ -11,7 +11,11 @@ import { listOrdersPage, resolveOrderList } from "@/server/order-list";
 import { listOrderViews } from "@/server/order-views";
 import { tagSuggestions } from "@/server/order-tags";
 import { memberCan, requirePermission } from "@/server/permissions";
-import { PageHeader } from "@/components/admin/ui";
+import { AdminLink, PageHeader } from "@/components/admin/ui";
+import { MoreMenu } from "@/components/admin/orders/order-folds";
+import { countWords, fillWords } from "@/lib/admin-fill";
+import { whenWords } from "@/lib/home";
+import { orderPreviews, toSendSummary } from "@/server/home";
 
 import { bulkOrdersAction, deleteOrderViewAction, reorderOrderViewsAction, saveOrderViewAction, updateOrderViewAction } from "./list-actions";
 
@@ -30,48 +34,69 @@ export default async function OrdersPage({ params, searchParams }: Props) {
   const shopOff = await requireShopOrAfterSale(member);
   if (shopOff) return shopOff;
   const { store } = member;
-  const w = adminText(adminLangOf(member.account.adminLocale), "orders").page;
+  const lang = adminLangOf(member.account.adminLocale);
+  const w = adminText(lang, "orders").page;
+  const sending = await toSendSummary(store.id);
+  // Round 2 (D597): the bare address shows what needs sending while anything does, without a second trip; All has its own address (`?show=all`).
+  const query = await searchParams;
+  const listQuery = sending.count > 0 && Object.keys(query).length === 0 ? { show: "to-send" } : query;
+  const canWrite = memberCan(member, "orders:write");
+  const when = sending.oldest ? whenWords(sending.oldest, new Date(), store.timeZone, adminText(lang, "home").today.when) : null;
+  const menuItem = "flex min-h-10 items-center rounded-panel px-3 text-sm text-ink hover:bg-sunken";
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex flex-wrap items-end justify-between gap-3">
-        <PageHeader title={w.title} />
-        <nav aria-label={w.tools} className="flex flex-wrap gap-2 text-sm">
-          {memberCan(member, "orders:write") && (
-            <Link href={`/admin/${store.slug}/orders/drafts/new`} className="inline-flex min-h-10 items-center rounded-pill bg-brand px-4 font-medium text-brand-ink">
-              {w.makeDraft}
-            </Link>
-          )}
-          <Link href={`/admin/${store.slug}/orders/drafts`} className="inline-flex min-h-10 items-center rounded-pill border border-edge px-4">
-            {w.drafts}
-          </Link>
-          <Link href={`/admin/${store.slug}/emails`} className="inline-flex min-h-10 items-center rounded-pill border border-edge px-4">
-            {w.emails}
-          </Link>
-          {/* The order file (D165) holds personal data, so only the owner is offered it. */}
-          {memberCan(member, "owner") && (
-            <Link href={`/admin/${store.slug}/orders/export`} className="inline-flex min-h-10 items-center rounded-pill border border-edge px-4">
-              {w.export}
-            </Link>
-          )}
-        </nav>
-      </div>
+      <PageHeader
+        title={w.title}
+        meta={[sending.count > 0 ? `${countWords(sending.count, w.toSendLead)}${when ? fillWords(w.oldest, { when }) : ""}` : w.nothingToSend]}
+        actions={
+          <>
+            <MoreMenu label={w.more}>
+              {canWrite && (
+                <Link href={`/admin/${store.slug}/orders/drafts/new`} className={menuItem}>
+                  {w.makeDraft}
+                </Link>
+              )}
+              <Link href={`/admin/${store.slug}/orders/drafts`} className={menuItem}>
+                {w.drafts}
+              </Link>
+              <Link href={`/admin/${store.slug}/emails`} className={menuItem}>
+                {w.emails}
+              </Link>
+              {/* The order file (D165) holds personal data, so only the owner is offered it. */}
+              {memberCan(member, "owner") && (
+                <Link href={`/admin/${store.slug}/orders/export`} className={menuItem}>
+                  {w.export}
+                </Link>
+              )}
+            </MoreMenu>
+            {sending.firstId && (
+              <AdminLink href={`/admin/${store.slug}/orders/${sending.firstId}`} className="inline-flex h-11 items-center gap-2 rounded-pill bg-brand px-5 text-body-strong text-brand-ink hover:bg-brand-hover">
+                {w.startPacking} →
+              </AdminLink>
+            )}
+          </>
+        }
+      />
       <Suspense fallback={<div className="h-64 animate-pulse rounded-lg bg-card" />}>
-        <OrderListBody storeSlug={store.slug} searchParams={searchParams} />
+        <OrderListBody storeSlug={store.slug} query={listQuery} toSend={sending.count} />
       </Suspense>
     </div>
   );
 }
 
-async function OrderListBody({ storeSlug, searchParams }: { storeSlug: string; searchParams: Props["searchParams"] }) {
+async function OrderListBody({ storeSlug, query, toSend }: { storeSlug: string; query: Awaited<Props["searchParams"]>; toSend: number }) {
   const member = await requirePermission(storeSlug, "orders:read");
   const { store } = member;
-  const resolved = await resolveOrderList(store.id, await searchParams);
+  const resolved = await resolveOrderList(store.id, query);
   const [page, views, suggestions] = await Promise.all([
     listOrdersPage(store.id, resolved.params, resolved.context),
     listOrderViews(store.id),
     tagSuggestions(store.id),
   ]);
   const lang = adminLangOf(member.account.adminLocale);
+  // Round 2 (D597): a picture of what is in each order on the page.
+  const previews = await orderPreviews(store.id, page.rows.map((r) => r.id));
+  const pictures = new Map(previews.map((p) => [p.id, p.lines.map(({ title, picture }) => ({ title, picture }))]));
   // Dates and totals in the store's own format for English, as before; another admin language writes them its own way.
   const locale = lang === "en" ? (store.markets[0]?.locale ?? "en") : ADMIN_LANG_FACTS[lang].locale;
   const canWrite = memberCan(member, "orders:write");
@@ -81,7 +106,8 @@ async function OrderListBody({ storeSlug, searchParams }: { storeSlug: string; s
     <OrderListView
       slug={store.slug}
       params={resolved.params}
-      rows={tableRowsOf(page.rows, { locale, timeZone: store.timeZone })}
+      rows={tableRowsOf(page.rows, { locale, timeZone: store.timeZone }).map((row) => ({ ...row, pictures: pictures.get(row.id) }))}
+      toSend={toSend}
       count={page.count}
       capped={page.capped}
       hasPrevious={page.hasPrevious}
