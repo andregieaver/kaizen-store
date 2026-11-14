@@ -76,7 +76,6 @@ export function ShopAddress({ view, actions, hrefs }: { view: AddressView; actio
     start(async () => {
       const result = await actions.start();
       setProblems(result.ok ? [] : (result.problems ?? []));
-      router.refresh();
     });
 
   return (

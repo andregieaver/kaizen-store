@@ -1,6 +1,5 @@
 "use client";
 
-import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 
 import { hint, primary, secondary, tableShell, td, th } from "@/components/admin/data/ui";
@@ -64,7 +63,6 @@ export function TargetCell({ row }: { row: Pick<TableRow, "kind" | "target" | "r
 export function RedirectTable({ rows, timeZone, actions, canWrite }: { rows: TableRow[]; timeZone: string; actions: RedirectTableActions; canWrite: boolean }) {
   const w = useAdminText("redirects");
   const locale = ADMIN_LANG_FACTS[useAdminLang()].locale;
-  const router = useRouter();
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [editing, setEditing] = useState<string | null>(null);
   const [asking, setAsking] = useState<string[] | null>(null);
@@ -94,7 +92,6 @@ export function RedirectTable({ rows, timeZone, actions, canWrite }: { rows: Tab
       setAsking(null);
       setSelected(new Set());
       setNotice(countWords(result.deleted, w.table.deleted));
-      router.refresh();
     });
 
   const columns = canWrite ? 8 : 7;

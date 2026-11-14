@@ -82,7 +82,6 @@ export function ShopMove({
       const result = await action();
       if (!result.ok) setProblem(w.problems[result.problem ?? "gone"]);
       else setChoosing(false);
-      router.refresh();
     });
 
   if (moving || state.status === "moved") {

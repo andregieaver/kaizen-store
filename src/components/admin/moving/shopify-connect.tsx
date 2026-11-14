@@ -1,6 +1,5 @@
 "use client";
 
-import { useRouter } from "next/navigation";
 import { useId, useState, useTransition } from "react";
 
 import { field, hint, primary, secondary } from "@/components/admin/data/ui";
@@ -107,7 +106,6 @@ export function CheckOldLinks({ check }: { check: () => Promise<{ ok: false }> }
 /** *Disconnect*, behind a question (`ask`: the question's own words, WooCommerce's). */
 export function ShopifyDisconnect({ disconnect, ask, label }: { disconnect: () => Promise<{ ok: boolean }>; ask?: string; label?: string }) {
   const w = useAdminText("moving").connected;
-  const router = useRouter();
   const [asking, setAsking] = useState(false);
   const [pending, start] = useTransition();
   if (!asking)
@@ -127,7 +125,6 @@ export function ShopifyDisconnect({ disconnect, ask, label }: { disconnect: () =
           start(async () => {
             await disconnect();
             setAsking(false);
-            router.refresh();
           })
         }
       >
