@@ -182,6 +182,12 @@ own `AdminTextScope`), and the crawl found none left. Pages with an id the crawl
 the content type editor's early Save failed with the per-area fallback is not explained by these (the editor itself reads nothing it is
 not handed), so the fallback stays whole for now.
 
+**Editors only where one is drawn (14 November 2026, bloat review step 0.10, D588).** On a local build, before and after: a page's preview
+3,303,372 to 877,072 bytes, the pages list 658,928 and the content list 619,531, an order page 1,998,644 to 913,239, a product's editor
+2,130,796 to 1,102,108. Routes with the rich text editor in their first scripts: 73 before (39 of the builder's family and 34 others), 26
+after, the builder's editors only. A screen that only sometimes draws a rich text field takes the editor from
+`src/components/admin/lazy/editors.tsx`; the builder and the block fields import it directly.
+
 **The fallback goes (10 November 2026, D540).** Each area's English is now fetched only when a part reads an area its page did not hand
 down (`src/components/admin/admin-text-later.ts`); `common` and `signIn`, read outside the admin too, stay at hand. So that no screen waits
 for its words, a part that falls back notes it on the page (`window.__adminTextFallbacks`) and `e2e/signed-in/admin-text-fallbacks.spec.ts`
