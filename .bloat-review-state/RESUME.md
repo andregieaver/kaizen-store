@@ -149,3 +149,5 @@ challenged by a skeptic, planned by a planner. Its last lines hold the arguments
 - Step 0.19 executor (Sonnet ac5ad4f17bf3f32cd) started from $S/run/executor-0.19.md; commit 3 (customers statement) needs my close read.
 - Step 0.18 DONE: write-up 7b4e3b78 (D611). CI on 35724ae all green (eval fixed by other session). Hand check: Inventory stock save -> one request, no second _rsc.
 - Step 0.19 executor running.
+- Step 0.19 PARTIAL pushed as 038e56e9 (commit 1 Products reads count not editor context; commit 4 Stores list 100/page). Commits 2 (Products paging) and 3 (Customers pick-then-aggregate) blocked: the other session's redesign (D597, D603) made Products a client catalogue over the whole list and rewrote listCustomers (show/sort/city). Needs a re-brief / coordination with the redesign: told the user. Row 0.19 stays In progress.
+- Deploy wait bjfehx1qn. Step 0.20 executor (Sonnet ab0f2c855e6874c78) started.
