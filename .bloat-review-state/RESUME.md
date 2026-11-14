@@ -130,3 +130,7 @@ challenged by a skeptic, planned by a planner. Its last lines hold the arguments
 - Step 0.16 commits 1-3 pushed as af93b41 (3282160, a3141d0, 6095105, af93b41). Carousel left eager (no-JS test). Figures: /s/demo/no 682,151 -> 624,774; product 778,503 -> 695,765; product entry chunks 340,305 -> 257,567.
 - Deploy wait: task btjg3vxjy. Commits 4-5: Opus executor a5a0f93814579270d from $S/run/executor-0.16b.md (no WebKit locally).
 - af93b41 deployed; prod first scripts /no 625,642, product 696,603 (match local). Pages 200, Mollie 200, only cookie-scan timeout. No prod site has optional trackers, so the consent-withdraw check (_ga gone after withdrawing Statistics) is a hand check / local check; no e2e covers forget().
+- Step 0.16 commits 4-5 pushed as 67aa344 (d6af769 filter split, 67aa344 pickers lazy). Local: /no 615,961 (961 over 615,000), product 661,266 (met), entry 223,068 (met). Deploy wait task bfcbhjizv.
+- Commit 6 (carousel split, server-drawn track + lazy controls) asked of the Opus executor a5a0f93814579270d via $S/run/executor-0.16c.md. Step 1.27 needs the carousel out of content-grid.
+- Other session took D594, D595, D596. Recheck next D before writing 0.16's row.
+- 0.16 hand checks after deploy: filter opens on first press on a prod listing; cart notes; withdraw Statistics removes _ga (no prod site has trackers).
