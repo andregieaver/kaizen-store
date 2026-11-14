@@ -30,15 +30,15 @@ import {
   type FieldVideo,
   type Values,
 } from "@/lib/custom-fields";
-import { moveItem } from "@/lib/field-group-editor";
+import { moveItem } from "@/lib/move-item";
 import { amountText, isMoney, parseAmount } from "@/lib/field-money";
-import { EMPTY_DOC, type RichTextDoc } from "@/lib/page-content";
+import { EMPTY_DOC, type RichTextDoc } from "@/lib/rich-text-doc";
 import { shrinkImage } from "@/lib/image-resize";
 
 import { FileField, LinkField, RelationField } from "./field-pickers";
 import { editableSubs, ownView, rowLimits, rowsNeeded, withCell, type FieldFileUploader } from "./fields-form-helpers";
 import { LibraryButton } from "./media-picker";
-import { RichTextEditor } from "./rich-text-editor";
+import { RichTextEditor } from "./lazy/editors";
 
 export type { FieldFileUploader };
 

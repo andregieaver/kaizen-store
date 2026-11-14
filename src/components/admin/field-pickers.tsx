@@ -16,7 +16,7 @@ import {
   type LinkKind,
 } from "@/lib/custom-fields";
 import { fileSize } from "@/lib/file-size";
-import { moveItem } from "@/lib/field-group-editor";
+import { moveItem } from "@/lib/move-item";
 
 import {
   FIELD_FILE_ACCEPT_TYPES,

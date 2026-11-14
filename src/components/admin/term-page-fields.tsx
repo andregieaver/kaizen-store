@@ -7,9 +7,9 @@ import { useId, useState, useTransition } from "react";
 
 import { useAdminText } from "@/components/admin/admin-text";
 import { ImageUploadButton, type Upload } from "@/components/admin/image-upload";
-import { RichTextEditor } from "@/components/admin/rich-text-editor";
+import { RichTextEditor } from "./lazy/editors";
 import { fillWords } from "@/lib/admin-fill";
-import { EMPTY_DOC, richTextIsEmpty, type RichTextDoc } from "@/lib/page-content";
+import { EMPTY_DOC, richTextIsEmpty, type RichTextDoc } from "@/lib/rich-text-doc";
 import { TERM_NAME_MAX } from "@/lib/taxonomy";
 import type { TermTexts } from "@/lib/term-texts";
 import type { TermOrderActions, TermProduct } from "@/server/taxonomy";

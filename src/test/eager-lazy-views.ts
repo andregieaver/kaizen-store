@@ -51,3 +51,18 @@ vi.mock("@/components/lazy/extras", async () => ({
   ChatWidget: await pick(() => import("@/components/chat-widget"), "ChatWidget"),
   AffiliateCapture: await pick(() => import("@/components/affiliate-capture"), "AffiliateCapture"),
 }));
+
+/**
+ * The field card imports the fields form, which imports these stand-ins: awaiting the card inside this factory would wait for itself. So the
+ * card is loaded without waiting and the stand-in draws it once it is there (nothing here when the card cannot load in a unit test).
+ */
+vi.mock("@/components/admin/lazy/editors", async () => {
+  let card: ((props: never) => unknown) | undefined;
+  void pick(() => import("@/components/admin/entity-fields-card"), "EntityFieldsCard").then((c) => {
+    card = c as ((props: never) => unknown) | undefined;
+  });
+  return {
+    RichTextEditor: await pick(() => import("@/components/admin/rich-text-editor"), "RichTextEditor"),
+    EntityFieldsCard: (props: never) => card?.(props) ?? null,
+  };
+});
