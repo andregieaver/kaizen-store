@@ -140,3 +140,5 @@ challenged by a skeptic, planned by a planner. Its last lines hold the arguments
 - Step 0.16 DONE: write-up 792d048 (D600). Hand check: withdraw Statistics on a store with GA -> _ga gone.
 - CI red since ccc14cf (other session's AI wallet tool, D599 step 2b): agent-eval-replay needs a new recording from Platform → AI. Told the user; not mine to fix.
 - Next free D: D601 (recheck). Step 0.17 executor running.
+- Step 0.17 pushed as 49dca14 (bb6c9aa memo, b7ae693 polls, 8926e72 badge, 49dca14 my fix: poll baseline = dreamFingerprint of the drawn run). Figures: menu 220->110 asks, 125 ms -> 0.2 ms; badge 4 -> 2 statements. Deploy wait b0o5ba5bw. Then prod checks (feed ?place=<uuid>&count=1 answers {unread}) + write-up (D601 recheck).
+- Step 0.18 executor (Sonnet a6d384f073d14c86d) started from $S/run/executor-0.18.md.
