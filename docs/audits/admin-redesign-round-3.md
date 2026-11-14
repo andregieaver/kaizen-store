@@ -27,3 +27,9 @@ proposals are on the owner's design canvas "Admin redesign, round 3"; the owner 
   next step (its front page, its parts' states).
 - The phone's day headings on the customers and orders lists ("Today", "Yesterday") are not drawn yet; the rows themselves are.
 - No page of cards follows Basic/Advanced any more; the sidebars still do (`admin-view.spec.ts` now checks the Website sidebar).
+
+## Fixed after
+
+- A store without the online shop had a Products tab that opened on Custom fields, the only page left in its section. Custom fields is now
+  marked `aside` in `store-nav.ts`: a tab never opens on it, and a section with only such pages left is not in the menu. Such a store finds
+  Custom fields on its Website page, under Everything else.

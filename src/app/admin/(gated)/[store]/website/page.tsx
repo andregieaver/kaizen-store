@@ -35,7 +35,11 @@ export default async function StoreWebsitePage({ params }: PageProps<"/admin/[st
   const items = section.groups.flatMap((g) => g.items);
   const dream = items.find((i) => i.path === "/dream-factory") ?? null;
   const parts = items.filter((i) => i.basic && i !== dream);
-  const rest = items.filter((i) => !i.basic && i !== dream);
+  // A store without the shop has no Products tab (its only page left there, Custom fields, is aside), so its fields are listed here: a site's
+  // pages use them too.
+  const products = storeSections(store, (path) => canOpenPath(holder, path)).find((s) => s.key === "products");
+  const fields = products ? null : (STORE_SECTIONS.find((s) => s.key === "products")?.groups.flatMap((g) => g.items).find((i) => i.path === "/fields" && canOpenPath(holder, i.path)) ?? null);
+  const rest = [...items.filter((i) => !i.basic && i !== dream), ...(fields ? [fields] : [])];
   const facts = await siteFacts(store.id);
   const base = `/admin/${store.slug}`;
   const front = store.frontPageId;
