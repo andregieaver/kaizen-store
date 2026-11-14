@@ -118,3 +118,8 @@ challenged by a skeptic, planned by a planner. Its last lines hold the arguments
 - 0.14 Done (D592, 6e2a69b). Next free D-number: D593 (reserved for 0.15).
 - 0.15 executor running (run/executor-0.15.md): 3 local commits; review diff closely (use cache, tag, refreshTag, markMine placement, cookie not httpOnly, regex).
 - Lesson: a local signed-in run is needed for steps that change router behaviour; CI signed-in counts differ with data.
+
+## 14 Nov, later
+- Step 0.15 pushed as acc324b (rebased 7d15785, df83014, f10b77c, acc324b). Reviewed OK. Waiting deploy (task br4k0suss) -> prod checks (no /wishlist/saved or /api/shop/tiles after load on a prod store front page) -> write D593, row 0.15 Done, change log.
+  Note for D593: existing visitors with old wishlist/account cookies but no marker see hearts empty until they save or sign in again (platform not open; acceptable). Marker regex matches any store's marker on the same host: a harmless extra fetch.
+- Step 0.16: executor (Sonnet, agent a6b84b9ae3f62bf4c) doing commits 1-3 from $S/run/executor-0.16a.md. Then commits 4-5 (filter split, picker trial) by a stronger executor (Opus) or me. D594 for 0.16.
