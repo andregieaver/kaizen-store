@@ -231,6 +231,88 @@ describe("rules that name what is gone, and another store's ids", () => {
 });
 
 describe("questions at checkout", () => {
+  it("asks a tick list: refuses a sensitive answer without consent, keeps the options ticked on the order, and keeps its options when reworded (task 3)", async () => {
+    const { allergenQuestion } = await import("@/lib/checkout-presets");
+    const preset = allergenQuestion(["nb-NO", "en"]);
+    const made = await rules.saveCheckoutField(member, null, { kind: "checklist", required: true, label: preset.label, help: preset.help, options: preset.options, sensitive: true });
+    if (!made.ok) throw new Error(made.problems.join("; "));
+    const [field] = await rules.listCheckoutFields(db(), store.storeId);
+    expect(field).toMatchObject({ kind: "checklist", sensitive: true });
+    expect(field.options).toHaveLength(15);
+    const milk = field.options!.find((o) => o.label.text === "Melk")!.id;
+    const none = field.options!.find((o) => o.none)!.id;
+    const shown = await rules.checkoutQuestionsFor(store.storeId, "en", null);
+    expect(shown.fields[0]).toMatchObject({ kind: "checklist", label: "Allergies we should know about", sensitive: true });
+    expect(shown.fields[0].options.find((o) => o.id === milk)?.label).toBe("Milk");
+
+    const cartId = await cartOf(store, [["DEMO-MUG-WHITE", 1]]);
+    // Milk ticked without the shopper's consent: the order is refused.
+    await rules.setCartAnswers(store.storeId, cartId, [{ fieldId: made.id, label: "Allergier vi bør vite om", kind: "checklist", answer: ["Melk"], optionIds: [milk], consent: false }]);
+    expect(await placeOrder({ storeId: store.storeId, market: NO }, cartId, {}, { customerId: null })).toEqual({ ok: false, problem: "checkout_fields" });
+    // With consent it is kept on the order in the store's main words.
+    await rules.setCartAnswers(store.storeId, cartId, [{ fieldId: made.id, label: "Allergier vi bør vite om", kind: "checklist", answer: ["Melk"], optionIds: [milk], consent: true }]);
+    const placed = await placeOrder({ storeId: store.storeId, market: NO }, cartId, {}, { customerId: null });
+    if (!placed.ok) throw new Error(placed.problem);
+    expect((await getOrder(store.storeId, placed.order.orderId))?.checkoutAnswers).toEqual([
+      { fieldId: made.id, label: "Allergier vi bør vite om", kind: "checklist", answer: ["Melk"], optionIds: [milk], consent: true },
+    ]);
+    // None of these needs no consent.
+    const second = await cartOf(store, [["DEMO-MUG-WHITE", 1]]);
+    await rules.setCartAnswers(store.storeId, second, [{ fieldId: made.id, label: "x", kind: "checklist", answer: ["Ingen av disse"], optionIds: [none], consent: false }]);
+    expect((await placeOrder({ storeId: store.storeId, market: NO }, second, {}, { customerId: null })).ok).toBe(true);
+
+    // Reworded without options (the AI manager): the options and the consent stay.
+    expect(await rules.saveCheckoutField(member, made.id, { kind: "checklist", required: true, label: { text: "Allergier", byLocale: {} }, help: null })).toEqual({ ok: true, id: made.id });
+    const [after] = await rules.listCheckoutFields(db(), store.storeId);
+    expect(after).toMatchObject({ label: { text: "Allergier" }, sensitive: true });
+    expect(after.options).toHaveLength(15);
+    // A tick list without options is refused.
+    expect(await rules.saveCheckoutField(member, null, { kind: "checklist", label: { text: "Empty", byLocale: {} }, options: [] })).toEqual({ ok: false, problems: ["Give the tick list at least one option."] });
+  });
+
+  it("asks a dropdown, a choice of one and longer text, keeps each answer on the order, and refuses a tick list's None of these in a dropdown (task 4)", async () => {
+    const w = (text: string) => ({ text, byLocale: {} });
+    const size = await rules.saveCheckoutField(member, null, { kind: "select", required: true, label: w("Størrelse"), options: [{ label: w("Liten") }, { label: w("Stor") }] });
+    const diet = await rules.saveCheckoutField(member, null, { kind: "radio", label: w("Kost"), options: [{ label: w("Vegansk") }, { label: w("Halal") }], sensitive: true });
+    const notes = await rules.saveCheckoutField(member, null, { kind: "textarea", required: true, label: w("Beskjed"), sensitive: true });
+    if (!size.ok || !diet.ok || !notes.ok) throw new Error("fields not saved");
+    const fields = await rules.listCheckoutFields(db(), store.storeId);
+    expect(fields.map((f) => [f.kind, f.options?.length ?? 0, f.sensitive])).toEqual([
+      ["select", 2, false],
+      ["radio", 2, true],
+      // Longer text has no options, and no consent to ask.
+      ["textarea", 0, false],
+    ]);
+    const big = fields[0].options![1].id;
+    const halal = fields[1].options![1].id;
+    expect((await rules.checkoutQuestionsFor(store.storeId, "nb", null)).fields.map((f) => f.kind)).toEqual(["select", "radio", "textarea"]);
+
+    const cartId = await cartOf(store, [["DEMO-MUG-WHITE", 1]]);
+    const answers = [
+      { fieldId: size.id, label: "Størrelse", kind: "choice" as const, answer: "Stor", optionId: big, consent: false },
+      { fieldId: diet.id, label: "Kost", kind: "choice" as const, answer: "Halal", optionId: halal, consent: true },
+      { fieldId: notes.id, label: "Beskjed", kind: "text" as const, answer: "Ring på\nBlå port" },
+    ];
+    // The sensitive choice without consent: refused.
+    await rules.setCartAnswers(store.storeId, cartId, answers.map((a) => (a.fieldId === diet.id ? { ...a, consent: false } : a)));
+    expect(await placeOrder({ storeId: store.storeId, market: NO }, cartId, {}, { customerId: null })).toEqual({ ok: false, problem: "checkout_fields" });
+    await rules.setCartAnswers(store.storeId, cartId, answers);
+    const placed = await placeOrder({ storeId: store.storeId, market: NO }, cartId, {}, { customerId: null });
+    if (!placed.ok) throw new Error(placed.problem);
+    expect((await getOrder(store.storeId, placed.order.orderId))?.checkoutAnswers).toEqual(answers);
+
+    // A dropdown needs two options; a tick list with None of these cannot become one without its options being changed.
+    expect(await rules.saveCheckoutField(member, null, { kind: "select", label: w("Én"), options: [{ label: w("A") }] })).toEqual({ ok: false, problems: ["Give the question at least two options to choose from."] });
+    const list = await rules.saveCheckoutField(member, null, { kind: "checklist", label: w("Allergier"), options: [{ label: w("Melk") }, { label: w("Ingen"), none: true }] });
+    if (!list.ok) throw new Error("list not saved");
+    expect(await rules.saveCheckoutField(member, list.id, { kind: "select", label: w("Allergier") })).toEqual({ ok: false, problems: ["Only a tick list has a None of these option."] });
+    // Made a line of text, it loses its options and its consent.
+    expect(await rules.saveCheckoutField(member, diet.id, { kind: "text", label: w("Kost") })).toEqual({ ok: true, id: diet.id });
+    const plain = (await rules.listCheckoutFields(db(), store.storeId)).find((f) => f.id === diet.id);
+    expect(plain).toMatchObject({ kind: "text", sensitive: false });
+    expect(plain?.options).toBeUndefined();
+  });
+
   it("keeps a question half width, keeps its width when changed without one, and gives the cart its width (task 2)", async () => {
     const half = await rules.saveCheckoutField(member, null, { kind: "text", required: false, label: { text: "Postcode", byLocale: {} }, help: null, width: "half" });
     const full = await rules.saveCheckoutField(member, null, { kind: "text", required: false, label: { text: "Gift note", byLocale: {} }, help: null });

@@ -67,8 +67,9 @@ export default async function CheckoutRulesPage({ params }: PageProps<"/admin/[s
           actions={actions}
         />
         <FieldList
-          fields={fields.map((f) => ({ id: f.id, kind: f.kind, required: f.required, label: f.label, help: f.help, enabled: f.enabled, width: f.width }))}
+          fields={fields.map((f) => ({ id: f.id, kind: f.kind, required: f.required, label: f.label, help: f.help, enabled: f.enabled, width: f.width, options: f.options, sensitive: f.sensitive }))}
           locales={choices.locales}
+          mainLocale={store.localization.locales[0] ?? "en"}
           canWrite={canWrite}
           actions={actions}
         />

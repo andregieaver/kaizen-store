@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import { FIELD_LABEL_MAX, FIELDS_MAX, type CheckoutField, type CheckoutFieldKind, type Words } from "./checkout-rules";
+import { FIELD_LABEL_MAX, FIELDS_MAX, hasOptions, type CheckoutField, type CheckoutFieldKind, type Words } from "./checkout-rules";
 import { fieldInputSchema, type FieldInput } from "./checkout-rules-schema";
 import { localeFor } from "./quote-tools";
 
@@ -78,11 +78,14 @@ export function questionChange(
     const label = overlay({ text: input.question ?? had?.label.text ?? "", byLocale: had?.label.byLocale ?? {} }, input.question_in, locales, problems);
     const helpText = input.help === undefined ? (had?.help?.text ?? "") : (input.help ?? "");
     const help = overlay({ text: helpText, byLocale: had?.help?.byLocale ?? {} }, input.help_in, locales, problems);
+    const kind = input.kind ?? had?.kind ?? "text";
     const parsed = fieldInputSchema.safeParse({
-      kind: input.kind ?? had?.kind ?? "text",
+      kind,
       required: input.required ?? had?.required ?? false,
       label,
       help: help.text.trim() ? help : null,
+      // A tick list, a select or radio buttons keeps its options and consent: this tool words a question, the page makes its options (tasks 3, 4).
+      ...(hasOptions(kind) && had?.options && { options: had.options }),
     });
     if (parsed.success) field = parsed.data;
     else problems.push(...new Set(parsed.error.issues.map((i) => `${i.path.join(".") || "question"}: ${i.message}`)));
@@ -92,7 +95,14 @@ export function questionChange(
   return { ok: true, change: { field, on: input.on, to: input.place === undefined ? undefined : input.place - 1 } };
 }
 
-const KIND_WORDS: Record<CheckoutFieldKind, string> = { text: "a line to type", checkbox: "a tick box" };
+const KIND_WORDS: Record<CheckoutFieldKind, string> = {
+  text: "a line to type",
+  textarea: "lines to type",
+  checkbox: "a tick box",
+  checklist: "a list to tick",
+  select: "a dropdown to choose one from",
+  radio: "a choice of one",
+};
 
 /** What the owner says yes to, from the call's own arguments; `name` is the question's words as the store has them, for a change. */
 export function checkoutQuestionSummary(input: Record<string, unknown>, name?: string): string {

@@ -1324,7 +1324,7 @@ minute in `/api/cron/integrations` (`processInboundEmails()`: claimed, three tri
    person (`handoff_to_human`); and it has no `ask_to_sign_in` or `propose_action` (an email has no sign-in card or Confirm button). The
    desk's daily turns count it under the sender (`takeChatTurn()`); past the limit, or with no AI, it goes to the queue, as in the chat.
    In mode `people` the AI never writes.
-   **Since D600 (14 November 2026)**, with the desk's *Let the AI answer emails about the sender's own orders* on (`email_orders`, off by
+   **Since D606 (14 November 2026)**, with the desk's *Let the AI answer emails about the sender's own orders* on (`email_orders`, off by
    default, never for a sensitive store) or the store in the 100-day challenge, the conversation's own address is matched to the one
    customer of the store with it (`emailCustomer()`), and the AI then has the order tools for that customer's own orders and is told it may
    answer about them. This is safe although an address proves no one: the email passed its DMARC check, a thread continues only from the

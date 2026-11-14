@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { Initials, Pictures } from "@/components/admin/home/home-parts";
 import { AdminLink } from "../ui/link";
 import { useId, useMemo, useState, useTransition } from "react";
 
@@ -18,7 +19,8 @@ import { ORDER_STATUS_LABELS } from "@/lib/order-status";
 import { releaseDate } from "@/lib/stock-words";
 
 /** A row with the words the server already worked out (the date in the store's own time zone, the total in its currency), so the page draws the same on the server and in the browser. */
-export type OrderTableRow = OrderListItem & { placedText: string; totalText: string };
+/** `pictures`: what is in the order, a picture of each line (round 2, D597); absent where the page did not read them. */
+export type OrderTableRow = OrderListItem & { placedText: string; totalText: string; pictures?: { title: string; picture: string | null }[] };
 
 export type OrderTableProps = {
   slug: string;
@@ -367,7 +369,7 @@ function OrderRow({
         </td>
       )}
       <td className={td}>
-        <AdminLink href={`${base}/orders/${row.id}`} className="font-medium underline-offset-2 hover:underline">
+        <AdminLink href={`${base}/orders/${row.id}`} className="whitespace-nowrap font-medium underline-offset-2 hover:underline">
           #{row.number}
         </AdminLink>
         {row.archived && <span className={badge}>{g.archived}</span>}
@@ -407,7 +409,8 @@ function OrderRow({
           {row.erased ? (
             <span className="text-muted">{t.erased}</span>
           ) : row.email ? (
-            <AdminLink href={`${base}/customers/${row.id}`} className="underline-offset-2 hover:underline">
+            <AdminLink href={`${base}/customers/${row.id}`} className="inline-flex items-center gap-2.5 underline-offset-2 hover:underline">
+              <Initials name={row.name || row.email} size={32} strong={row.ship === "to_send" || row.ship === "partly_sent"} />
               {row.name || row.email}
             </AdminLink>
           ) : (
@@ -419,7 +422,17 @@ function OrderRow({
       {col("payment") && <td className={`${td} hidden sm:table-cell`}>{t.pay[row.pay]}</td>}
       {col("fulfilment") && (
         <td className={`${td} hidden sm:table-cell`}>
-          {row.ship === "none" ? (row.status === "pending_payment" ? "–" : statusWords[row.status]) : shipCellWords(row, t)}
+          {row.ship === "none" ? (
+            row.status === "pending_payment" ? "–" : statusWords[row.status]
+          ) : (
+            // Round 2 (D597): what needs a person in the warning's colour, what is done in green, both with their words.
+            <span
+              className={`inline-flex h-6 items-center whitespace-nowrap gap-1.5 rounded-pill px-2.5 text-xs ${row.ship === "to_send" || row.ship === "partly_sent" ? "bg-warning-soft text-warning-text" : row.ship === "sent" ? "bg-positive-soft text-positive-text" : "bg-neutral-soft text-neutral-text"}`}
+            >
+              {(row.ship === "to_send" || row.ship === "partly_sent") && <span aria-hidden className="size-1.5 rounded-pill bg-warning-solid" />}
+              {shipCellWords(row, t)}
+            </span>
+          )}
           {row.owed > 0 && (
             <span className="block text-xs">
               {countWords(row.owed, t.owed)}
@@ -434,7 +447,14 @@ function OrderRow({
       )}
       {col("items") && (
         <td className={`${td} hidden md:table-cell`}>
-          {countWords(row.items, t.items)}
+          {row.pictures && row.pictures.length > 0 ? (
+            <span className="flex items-center gap-2">
+              <Pictures lines={row.pictures} size={32} max={3} moreWord={(n) => `+${n}`} />
+              <span className="sr-only">{countWords(row.items, t.items)}</span>
+            </span>
+          ) : (
+            countWords(row.items, t.items)
+          )}
         </td>
       )}
       {col("tags") && (

@@ -31,6 +31,7 @@ import { log } from "./log";
 import { platformGateNeeded, preflightPlatformTool, runManagerTool, runPlatformTool, type ManagerContext, type OutsideAsker } from "./manager-tools";
 import { experimentApprovalSummary } from "./experiment-tools";
 import { adBudgetApprovalWords } from "./ad-budget-tools";
+import { purchaseApprovalWords } from "./purchase-tools";
 import { broadcastApprovalSummary, segmentApprovalSummary } from "./marketing-tools";
 import { replyApprovalSummary, supportApprovalSummary } from "./support-manager-tools";
 import { withInputWords } from "@/lib/approval-summaries";
@@ -94,7 +95,7 @@ const REVIEW_LINES = [
 ].join("\n");
 
 /**
- * What the autopilot is told on top while the store is in the 100-day challenge (`docs/100-day-challenge.md`, D597): it runs the store alone,
+ * What the autopilot is told on top while the store is in the 100-day challenge (`docs/100-day-challenge.md`, D603): it runs the store alone,
  * nobody answers its questions, and it is judged on profit. Added to every turn it runs there (steps, reviews, events).
  */
 export const CHALLENGE_LINES = [
@@ -1124,6 +1125,8 @@ export async function keepForApproval(
   if (store && tool === "send_broadcast") summary = (await broadcastApprovalSummary(store, args)) ?? summary;
   // An ad budget's change is described from the account as Meta has it: the budget's name and its amounts before and after (D585).
   if (store && tool === "set_ad_budget") summary = (await adBudgetApprovalWords(store, args)) ?? summary;
+  // A purchase is described from the wallet: the amount in its currency, for how long, and whose Airwallex app the card appears in (D599).
+  if (store && tool === "request_purchase") summary = (await purchaseApprovalWords(store, args)) ?? summary;
   // A checkout question's change is named by the question's own words (D357).
   if (store && tool === "save_checkout_question") summary = await checkoutQuestionApprovalWords({ account: ctx.account, store }, args);
   // An order change is described from the editor's own preview, and the order's state it was previewed on is kept with the call (a value the

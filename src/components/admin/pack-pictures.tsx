@@ -128,8 +128,18 @@ export function PackPicturesWatch({ active }: { active: boolean }) {
   const router = useRouter();
   useEffect(() => {
     if (!active) return;
-    const timer = window.setInterval(() => router.refresh(), LOOK_AGAIN_MS);
-    return () => window.clearInterval(timer);
+    const timer = window.setInterval(() => {
+      if (document.visibilityState === "visible") router.refresh();
+    }, LOOK_AGAIN_MS);
+    // A hidden tab asks nothing (bloat review step 0.17); it looks again once when shown.
+    const back = () => {
+      if (document.visibilityState === "visible") router.refresh();
+    };
+    document.addEventListener("visibilitychange", back);
+    return () => {
+      window.clearInterval(timer);
+      document.removeEventListener("visibilitychange", back);
+    };
   }, [active, router]);
   return null;
 }

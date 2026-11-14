@@ -678,8 +678,8 @@ section 8.
 ### 4.8 What a staff email may hold
 
 Order and return numbers, line titles and quantities, the total charged in the order's currency, the delivery method and country, the buyer's kind
-(business/consumer), host, gift and hold flags, store figures, links into the admin. **Never** the buyer's name, email, phone, address, company name, organisation or VAT
-number, gift message, notes, return reason note, or a token. A test renders each staff email for an order whose name, email, phone, address and gift message hold
+(business/consumer), host, gift and hold flags, how many checkout questions were answered (D357, 14 November 2026), store figures, links into the admin. **Never** the buyer's name, email, phone, address, company name, organisation or VAT
+number, gift message, notes, return reason note, the answers to checkout questions, or a token. A test renders each staff email for an order whose name, email, phone, address and gift message hold
 canary strings and asserts none is in the subject, html or text (6.3). Source: GDPR Art. 5(1)(c) (data minimisation; the email log keeps every email, D162), and the
 row's criterion.
 

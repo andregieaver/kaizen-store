@@ -22,6 +22,12 @@ export const ordersEn = {
     emails: "Emails to customers",
     export: "Export",
     loading: "Loading the orders…",
+    /** Round 2 (D597): the header's one sentence, its main action and its menu. */
+    toSendLead: { one: "{n} to send", many: "{n} to send" },
+    oldest: ", the oldest from {when}",
+    startPacking: "Start packing",
+    more: "More",
+    nothingToSend: "Nothing to send right now",
   },
   views: {
     label: "Order views",
@@ -35,6 +41,7 @@ export const ordersEn = {
       archived: "Archived",
     },
     ignored: "Some of the view “{title}” settings no longer apply, so the list shows the rest.",
+    moreViews: "More views",
   },
   list: {
     truncated: "Only the first 5 words of the search are used.",

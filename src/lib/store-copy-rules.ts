@@ -172,6 +172,9 @@ export const COPY_RULES: Record<string, CopyRule> = {
   // Never ------------------------------------------------------------------------------------------------------
   feed_settings: never("A store's feed address (D302) is its own secret; a copy makes its own."),
   ad_connections: never("A store's ad platform tokens (D303 I2) are its owner's secrets; a copy connects its own."),
+  card_wallets: never("A store's AI wallet (D599) is its owner's own Airwallex grant; a copy connects its own."),
+  agent_purchases: never("What the original's AI bought with its own wallet (D599)."),
+  agent_purchase_charges: never("The charges on the original's AI purchases (D599)."),
   ad_accounts: never("A store's ad account and its token (D585) are its owner's; a copy connects its own."),
   ad_conversions: never("What the original's orders sent to ad platforms (D303 I2)."),
   broadcasts: never("A store's broadcasts are sent to its own list (D297); a copy starts without them."),

@@ -585,6 +585,7 @@ export const en = {
     // legal: needs review
     moreFollows: "More of this order follows in another parcel.",
     alreadySent: "All items (already sent)",
+    answers: "Answers at checkout",
   },
   /**
    * The page a customer opens from the pay link of a change to their order (wave 3, run 3, D174): what changes, what is already paid and what is to pay now, the right of
@@ -911,7 +912,12 @@ export const en = {
   checkoutQuestions: {
     legend: "A few questions from the store",
     required: "required",
-    problem: "Answer the store's questions marked required, then try again.",
+    problem: "Answer the store's questions marked required, and give your consent where a list asks for it, then try again.",
+    // legal: needs review. The explicit consent a sensitive list asks (GDPR article 9(2)(a)), such as allergies (task 3).
+    consent: "I agree that the store uses what I ticked here only to prepare this order.",
+    // legal: needs review. The same consent for a dropdown or a choice of one (task 4).
+    consentChosen: "I agree that the store uses what I chose here only to prepare this order.",
+    choose: "Choose",
   },
   /**
    * Producer responsibility (D342): a product under a scheme the seller has no valid registration for in the shopper's country is not sold

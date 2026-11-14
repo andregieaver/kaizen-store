@@ -5,7 +5,10 @@ import { Suspense } from "react";
 
 import { AdminTextScope } from "@/components/admin/admin-text";
 import { requireFeature } from "@/components/admin/feature-off";
-import { ProductsTable, type BulkTools } from "@/components/admin/products-bulk";
+import type { BulkTools } from "@/components/admin/products-bulk";
+import { ProductCatalogue } from "@/components/admin/product-catalogue";
+import { MoreMenu } from "@/components/admin/orders/order-folds";
+import { productSkus } from "@/server/home";
 import { NeedsContentList, NeedsContentNotice } from "@/components/admin/unit-price-gaps-view";
 import { fillWords } from "@/lib/admin-fill";
 import { adminLangOf } from "@/lib/admin-lang";
@@ -31,39 +34,34 @@ export default async function ProductsPage({ params, searchParams }: Props) {
   const { store } = member;
   const canWrite = memberCan(member, "products:write");
   const w = adminText(adminLangOf(member.account.adminLocale), "products").list;
+  const menuItem = "flex min-h-10 items-center rounded-panel px-3 text-sm text-ink hover:bg-sunken";
+  const c = adminText(adminLangOf(member.account.adminLocale), "products").catalogue;
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <PageHeader title={w.title} />
-        <div className="flex flex-wrap gap-2">
-          <Link
-            href={`/admin/${store.slug}/products/export`}
-            className="inline-flex min-h-10 items-center rounded-pill border border-edge px-4 text-sm font-medium"
-          >
-            {w.exportLink}
-          </Link>
-          {canWrite && (
-            <Link
-              href={`/admin/${store.slug}/products/import`}
-              className="inline-flex min-h-10 items-center rounded-pill border border-edge px-4 text-sm font-medium"
-            >
-              {w.importLink}
+      {/* Round 2 (D597): the header's one green action, Lisa's tools in one menu. */}
+      <PageHeader
+        title={w.title}
+        actions={
+          <>
+            <MoreMenu label={c.more}>
+              <Link href={`/admin/${store.slug}/products/export`} className={menuItem}>
+                {w.exportLink}
+              </Link>
+              {canWrite && (
+                <Link href={`/admin/${store.slug}/products/import`} className={menuItem}>
+                  {w.importLink}
+                </Link>
+              )}
+              <Link href={`/admin/${store.slug}/products/categories`} className={menuItem}>
+                {w.categories}
+              </Link>
+            </MoreMenu>
+            <Link href={`/admin/${store.slug}/products/new`} className="inline-flex h-11 items-center rounded-pill bg-brand px-5 text-body-strong text-brand-ink hover:bg-brand-hover">
+              + {w.add}
             </Link>
-          )}
-          <Link
-            href={`/admin/${store.slug}/products/categories`}
-            className="inline-flex min-h-10 items-center rounded-pill border border-edge px-4 text-sm font-medium"
-          >
-            {w.categories}
-          </Link>
-          <Link
-            href={`/admin/${store.slug}/products/new`}
-            className="inline-flex min-h-10 items-center rounded-pill bg-brand px-4 text-sm font-medium text-brand-ink"
-          >
-            {w.add}
-          </Link>
-        </div>
-      </div>
+          </>
+        }
+      />
       <Suspense fallback={<div className="h-40 animate-pulse rounded-lg bg-card" />}>
         <ProductList storeSlug={store.slug} searchParams={searchParams} />
       </Suspense>
@@ -95,6 +93,7 @@ async function ProductList({
     canWrite && !needsFilter ? getEditorContext(store) : Promise.resolve(null),
     canWrite && !archived && !needsFilter ? listJobs(member, "product_import", 5) : Promise.resolve([]),
   ]);
+  const skus = needsFilter ? {} : await productSkus(store.id);
   const openImport = imports.find((j) => (ACTIVE_IMPORT_STATUSES as readonly string[]).includes(j.status)) ?? null;
   const bulk: BulkTools | null = editor
     ? {
@@ -160,11 +159,12 @@ async function ProductList({
           )}
         </div>
       ) : (
-        <ProductsTable
+        <ProductCatalogue
           slug={store.slug}
           archived={archived}
           locale={locale}
           bulk={bulk}
+          skus={skus}
           priceHeader={market ? fillWords(store.audience === "businesses" ? w.priceInExclVat : w.priceIn, { market: market.name }) : w.price}
           rows={products.map((p) => ({ id: p.id, title: p.title, status: p.status, image: p.image, variants: p.variants, digitalVariants: p.digitalVariants, stock: p.stock, price: p.price }))}
         />

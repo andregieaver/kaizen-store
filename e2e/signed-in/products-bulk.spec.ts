@@ -30,6 +30,8 @@ async function pricesOf(handles: string[]) {
 
 test("ticks two products, lowers their price by 10 % in one confirmed step, and undoes it", async ({ page }) => {
   await page.goto(`/admin/${E2E_STORE}/products`);
+  // The list opens as pictures (round 2, D597); the bulk tools are the table's.
+  await page.getByRole("button", { name: "Table", exact: true }).click();
   const boxes = page.getByRole("checkbox", { name: /^Choose (?!all)/ });
   await expect(boxes.first()).toBeVisible();
 

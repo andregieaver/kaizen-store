@@ -77,3 +77,16 @@ test("the All products page has one address, and product pages lead back to it b
   await page.goto(`/s/${slug}/se/p/demo-handlenett`);
   await expect(page.getByRole("link", { name: "Tillbaka till Alla produkter" })).toHaveAttribute("href", `/s/${slug}/se/products`);
 });
+
+test("the filter opens on a first press", async ({ page }) => {
+  // Only the filter's button is in the page's first scripts; its dialog is fetched as a pointer nears or on the press (D78,
+  // `docs/performance.md`). A press made before the dialog's script has arrived opens it when it arrives: here every script asked
+  // for after the page has loaded is held back a second and a half, so the press always comes first.
+  await page.goto("/s/demo/no/products");
+  await page.route("**/_next/static/chunks/**", async (route) => {
+    await new Promise((resolve) => setTimeout(resolve, 1500));
+    await route.continue();
+  });
+  await page.getByRole("button", { name: "Filtrer og sorter" }).click();
+  await expect(page.getByRole("dialog", { name: "Filtrer og sorter" })).toBeVisible({ timeout: 5000 });
+});

@@ -9,7 +9,7 @@ import { COMPANY_NAME_MAX, organisationNumber } from "@/lib/b2b";
 import { MAX_RANGE_LENGTH } from "@/lib/booking-ranges";
 import { MAX_ORDER_QUANTITY } from "@/lib/cart";
 import type { CreditsState } from "@/lib/bonus-shopper";
-import { cleanAnswers } from "@/lib/checkout-rules";
+import { cleanAnswers, type AnswerInput } from "@/lib/checkout-rules";
 import type { GiftFields, GiftProblem } from "@/lib/gift";
 import { cleanGiftCardRecipient, type GiftCardProblem } from "@/lib/gift-card-line";
 import { todayIn } from "@/lib/analytics-period";
@@ -186,7 +186,7 @@ export async function checkoutAction(
   /** Gift cards pay it all (D300 F3), or a booking is paid wholly at the venue (D379): no payment page follows, so the store's terms of sale are accepted here, as on terms. */
   paidByCards: { termsTicked: boolean } | null = null,
   /** The answers to the store's checkout fields (D357), by field; checked here and again when the order is placed. */
-  answers: Record<string, string | boolean> | null = null,
+  answers: Record<string, AnswerInput> | null = null,
 ): Promise<CheckoutState> {
   const shop = await resolveSellingShop(storeSlug, marketSlug);
   if (!shop) return { problem: "empty" };

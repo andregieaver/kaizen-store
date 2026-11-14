@@ -20,6 +20,9 @@ export type LeftOutReason = keyof typeof LEFT_OUT_REASONS;
 export const STORE_EXPORT_LEFT_OUT: Readonly<Record<string, LeftOutReason>> = {
   ad_connections: "secret",
   ad_accounts: "secret",
+  card_wallets: "secret",
+  agent_purchases: "record",
+  agent_purchase_charges: "record",
   email_filing: "secret",
   ad_conversions: "record",
   ai_providers: "secret",

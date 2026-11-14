@@ -13,6 +13,8 @@ import {
   approveLook,
   askLookChange,
   askReworkChange,
+  dreamFingerprint,
+  latestDreamRun,
   confirmDreamBrief,
   retryDreamStep,
   startDreamOver,
@@ -23,6 +25,7 @@ import {
 import { startAppearance } from "@/server/page-looks";
 import { closeStore } from "@/server/store-closure";
 import { NO_ACCESS, checkPermission } from "@/server/permissions";
+import { storeAction } from "@/server/store-action";
 
 /** The Dream Factory page's presses (D409): owners only, each read again here. */
 
@@ -34,6 +37,16 @@ const answer = (result: { ok: true } | { ok: false; problem: string }, slug: str
   revalidatePath(`/admin/${slug}/dream-factory`);
   return result.ok ? { status: "ok", messages: [] } : { status: "error", messages: [result.problem] };
 };
+
+/**
+ * The Dream Factory's poll (bloat review step 0.17): a short fingerprint of the store's latest run, so the page redraws only when it changed.
+ * Refreshes nothing, so no page is sent back.
+ */
+export async function dreamStateAction(storeSlug: string): Promise<string | null> {
+  return storeAction({ store: storeSlug, key: "owner", action: "dream.state", answer: () => null }, async (member) => {
+    return dreamFingerprint(await latestDreamRun(member.store.id));
+  });
+}
 
 export async function startDreamAction(storeSlug: string, _state: FormState, formData: FormData): Promise<FormState> {
   const member = await owner(storeSlug);

@@ -565,6 +565,7 @@ export const nb: Messages = {
     // legal: needs review
     moreFollows: "Mer av denne bestillingen kommer i en annen pakke.",
     alreadySent: "Alle varer (allerede sendt)",
+    answers: "Svar i kassen",
   },
   /**
    * The page a customer opens from the pay link of a change to their order (wave 3, run 3, D174): what changes, what is already paid and what is to pay now, the right of
@@ -884,7 +885,12 @@ export const nb: Messages = {
   checkoutQuestions: {
     legend: "Noen spørsmål fra butikken",
     required: "må fylles ut",
-    problem: "Svar på butikkens spørsmål som må fylles ut, og prøv igjen.",
+    problem: "Svar på butikkens spørsmål som må fylles ut, og gi samtykke der en liste ber om det, og prøv igjen.",
+    // legal: needs review. The explicit consent a sensitive list asks (GDPR article 9(2)(a)), such as allergies (task 3).
+    consent: "Jeg samtykker i at butikken bruker det jeg har krysset av her, bare til å klargjøre denne bestillingen.",
+    // legal: needs review. The same consent for a dropdown or a choice of one (task 4).
+    consentChosen: "Jeg samtykker i at butikken bruker det jeg har valgt her, bare til å klargjøre denne bestillingen.",
+    choose: "Velg",
   },
   producer: {
     notSoldHere: "Selges ikke i dette landet nå: selgerens registrering for produsentansvar mangler her.",

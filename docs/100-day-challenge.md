@@ -599,32 +599,33 @@ Each item of section 4 moves here when it is built, with its decision.
 
 | Item | State | Decision |
 |---|---|---|
-| A1 Challenge mode | Built: the dates and budgets, the preset, the lock with the pause audited as an intervention, a third failure and a question skipped. A screen to set it waits for H2; the dates are UTC. | D597 |
-| A2 Never automatic, re-sorted | Partly: broadcasts within a week's budget, support answers on a daily budget, money back to customers kept for the person. The money-free order change and price rules are still to do. | D597 |
-| F2 Limits for a business | Built: the AI budget from the challenge, the autopilot's turns apart from the owner's, events limited per kind, plans paused by the budget started again. | D597 |
-| D5 Margin floor | Built: prices, discounts and campaigns under the owner's lowest margin wait for a yes; the challenge's own floor is 10 % by default. | D598 |
-| E2 Profit goals | Built: contribution and margin over 30 days, net sales and contribution since a first day. | D599 |
-| E3 The review sees money | Partly: `profit_overview` (contribution, margin, profit per krone of marketing, per visitor, the month's forecast) in the review's and events' tools; the budget and the campaigns report still have no tool. | D599 |
-| B1 Email answers about the sender's own orders | Built: a desk switch, on by itself in the challenge. | D600 |
+| A1 Challenge mode | Built: the dates and budgets, the preset, the lock with the pause audited as an intervention, a third failure and a question skipped. A screen to set it waits for H2; the dates are UTC. | D603 |
+| A2 Never automatic, re-sorted | Partly: broadcasts within a week's budget, support answers on a daily budget, money back to customers kept for the person. The money-free order change and price rules are still to do. | D603 |
+| F2 Limits for a business | Built: the AI budget from the challenge, the autopilot's turns apart from the owner's, events limited per kind, plans paused by the budget started again. | D603 |
+| D5 Margin floor | Built: prices, discounts and campaigns under the owner's lowest margin wait for a yes; the challenge's own floor is 10 % by default. | D604 |
+| E2 Profit goals | Built: contribution and margin over 30 days, net sales and contribution since a first day. | D605 |
+| E3 The review sees money | Partly: `profit_overview` (contribution, margin, profit per krone of marketing, per visitor, the month's forecast) in the review's and events' tools; the budget and the campaigns report still have no tool. | D605 |
+| B1 Email answers about the sender's own orders | Built: a desk switch, on by itself in the challenge. | D606 |
 | B2 Forms to the AI | Not yet. | |
-| B4 The waiting customer | Changed course: a fault is prevented and paged (A6), escalations stay the owner's. | D601 |
-| A3 The refund queue | Built: the owner sees and decides what the autopilot kept in anyone's name, pushed to their phone. | D601 |
-| A4 Escalations | Built: a category on every hand-over; faults are not escalations. | D601 |
-| A5 The intervention log | Built (no screen yet): refund, escalation, platform, other. | D601 |
-| A6 The stall watch | Built: the platform team emailed of each stall once a day while it lasts. | D601 |
-| D2 Ad spend into the books | Built: Meta's daily spend per campaign, every six hours. | D602 |
-| F1 A second AI provider | Built: up to three fallback text models through the AI Gateway. | D603 |
-| H1 The loop scales per store | Built: steps, reviews and events claimed one per store and run side by side. | D603 |
+| B4 The waiting customer | Changed course: a fault is prevented and paged (A6), escalations stay the owner's. | D607 |
+| A3 The refund queue | Built: the owner sees and decides what the autopilot kept in anyone's name, pushed to their phone. | D607 |
+| A4 Escalations | Built: a category on every hand-over; faults are not escalations. | D607 |
+| A5 The intervention log | Built (no screen yet): refund, escalation, platform, other. | D607 |
+| A6 The stall watch | Built: the platform team emailed of each stall once a day while it lasts. | D607 |
+| D2 Ad spend into the books | Built: Meta's daily spend per campaign, every six hours. | D608 |
+| F1 A second AI provider | Built: up to three fallback text models through the AI Gateway. | D609 |
+| H1 The loop scales per store | Built: steps, reviews and events claimed one per store and run side by side. | D609 |
 
 ### 15.1 To deploy what is built
 
-The work is on the branch `claude/100-day-store-challenge-ybk066`, not yet on `main`. Six migrations come with it, all additive
-(`20261114170001` to `20261114191429`). The new tools and prompt lines change the version the recorded agents' eval checks, so
-`agent-eval-replay.int.test.ts` fails until a new recording is committed. A push with a migration waits for every check, so merge in two steps:
+The work is on the branch `claude/100-day-store-challenge-ybk066`, brought up to date with `main` on 14 November 2026 (its decisions
+renumbered D603 to D609 after `main`'s D597 to D602). One migration comes with it, additive only: `20261114202420_overrated_whirlwind`.
+The new tools and prompt lines change the version the recorded agents' eval checks, so `agent-eval-replay.int.test.ts` fails until a new
+recording is committed. A push with a migration waits for every check, so merge in two steps:
 
-1. Push the six migration files and the schema alone. Nothing reads the new columns yet, so every check passes, CI applies them and deploys.
+1. Push the migration and the schema alone. Nothing reads the new columns yet, so every check passes, CI applies it and deploys.
 2. Push the rest. With no new migration it deploys after the quick gate (D526). Then run the agents' eval on Platform → AI and commit its
-   recording as `src/data/agent-eval-recording.json`, as after D357.
+   recording as `src/data/agent-eval-recording.json`, as after D357. A run before step 2 is live checks `main`'s tools, not these.
 
 ### 15.2 Next
 

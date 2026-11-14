@@ -1,6 +1,6 @@
 {
-  "id": "a6baff39-a433-4c36-a9ad-b44a64706714",
-  "prevId": "7a176507-3c04-4636-92da-e879a0d6bcd6",
+  "id": "d004c998-aab2-4dd9-8c0d-8f2949538741",
+  "prevId": "2353eae2-e935-4fcb-92e0-9baad99df42a",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -2734,6 +2734,462 @@
         "affiliates_code": {
           "name": "affiliates_code",
           "value": "\"commerce\".\"affiliates\".\"code\" ~ '^[a-z0-9]{6,16}$'"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "commerce.agent_purchase_charges": {
+      "name": "agent_purchase_charges",
+      "schema": "commerce",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "store_id": {
+          "name": "store_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "purchase_id": {
+          "name": "purchase_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "provider_ref": {
+          "name": "provider_ref",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "kind": {
+          "name": "kind",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "status": {
+          "name": "status",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "amount_minor": {
+          "name": "amount_minor",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "currency": {
+          "name": "currency",
+          "type": "char(3)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "merchant_name": {
+          "name": "merchant_name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "merchant_category": {
+          "name": "merchant_category",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "happened_at": {
+          "name": "happened_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "agent_purchase_charges_purchase_idx": {
+          "name": "agent_purchase_charges_purchase_idx",
+          "columns": [
+            {
+              "expression": "purchase_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "agent_purchase_charges_store_id_stores_id_fk": {
+          "name": "agent_purchase_charges_store_id_stores_id_fk",
+          "tableFrom": "agent_purchase_charges",
+          "tableTo": "stores",
+          "schemaTo": "commerce",
+          "columnsFrom": [
+            "store_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "agent_purchase_charges_purchase_id_agent_purchases_id_fk": {
+          "name": "agent_purchase_charges_purchase_id_agent_purchases_id_fk",
+          "tableFrom": "agent_purchase_charges",
+          "tableTo": "agent_purchases",
+          "schemaTo": "commerce",
+          "columnsFrom": [
+            "purchase_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "agent_purchase_charges_ref": {
+          "name": "agent_purchase_charges_ref",
+          "nullsNotDistinct": false,
+          "columns": [
+            "store_id",
+            "provider_ref"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {
+        "agent_purchase_charges_kind": {
+          "name": "agent_purchase_charges_kind",
+          "value": "\"commerce\".\"agent_purchase_charges\".\"kind\" in ('authorization', 'clearing', 'reversal', 'refund', 'other')"
+        },
+        "agent_purchase_charges_status": {
+          "name": "agent_purchase_charges_status",
+          "value": "char_length(\"commerce\".\"agent_purchase_charges\".\"status\") between 1 and 40"
+        },
+        "agent_purchase_charges_ref_length": {
+          "name": "agent_purchase_charges_ref_length",
+          "value": "char_length(\"commerce\".\"agent_purchase_charges\".\"provider_ref\") between 1 and 120"
+        },
+        "agent_purchase_charges_amount": {
+          "name": "agent_purchase_charges_amount",
+          "value": "\"commerce\".\"agent_purchase_charges\".\"amount_minor\" between 0 and 100000000000"
+        },
+        "agent_purchase_charges_merchant": {
+          "name": "agent_purchase_charges_merchant",
+          "value": "\"commerce\".\"agent_purchase_charges\".\"merchant_name\" is null or char_length(\"commerce\".\"agent_purchase_charges\".\"merchant_name\") <= 200"
+        },
+        "agent_purchase_charges_category": {
+          "name": "agent_purchase_charges_category",
+          "value": "\"commerce\".\"agent_purchase_charges\".\"merchant_category\" is null or \"commerce\".\"agent_purchase_charges\".\"merchant_category\" ~ '^[0-9]{4}$'"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "commerce.agent_purchases": {
+      "name": "agent_purchases",
+      "schema": "commerce",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "store_id": {
+          "name": "store_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "wallet_id": {
+          "name": "wallet_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "what": {
+          "name": "what",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "merchant": {
+          "name": "merchant",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "merchant_url": {
+          "name": "merchant_url",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "why": {
+          "name": "why",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "''"
+        },
+        "amount_minor": {
+          "name": "amount_minor",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "currency": {
+          "name": "currency",
+          "type": "char(3)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "spent_minor": {
+          "name": "spent_minor",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "status": {
+          "name": "status",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'issuing'"
+        },
+        "card_id": {
+          "name": "card_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "card_last4": {
+          "name": "card_last4",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "active_to": {
+          "name": "active_to",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "failure": {
+          "name": "failure",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "approved_by": {
+          "name": "approved_by",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "closed_at": {
+          "name": "closed_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "agent_purchases_store_idx": {
+          "name": "agent_purchases_store_idx",
+          "columns": [
+            {
+              "expression": "store_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "created_at",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "agent_purchases_open_idx": {
+          "name": "agent_purchases_open_idx",
+          "columns": [
+            {
+              "expression": "status",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "where": "\"commerce\".\"agent_purchases\".\"status\" in ('issuing', 'card_ready', 'spent')",
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "agent_purchases_wallet_idx": {
+          "name": "agent_purchases_wallet_idx",
+          "columns": [
+            {
+              "expression": "wallet_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "agent_purchases_approved_by_idx": {
+          "name": "agent_purchases_approved_by_idx",
+          "columns": [
+            {
+              "expression": "approved_by",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "agent_purchases_store_id_stores_id_fk": {
+          "name": "agent_purchases_store_id_stores_id_fk",
+          "tableFrom": "agent_purchases",
+          "tableTo": "stores",
+          "schemaTo": "commerce",
+          "columnsFrom": [
+            "store_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "agent_purchases_wallet_id_card_wallets_id_fk": {
+          "name": "agent_purchases_wallet_id_card_wallets_id_fk",
+          "tableFrom": "agent_purchases",
+          "tableTo": "card_wallets",
+          "schemaTo": "commerce",
+          "columnsFrom": [
+            "wallet_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        },
+        "agent_purchases_approved_by_accounts_id_fk": {
+          "name": "agent_purchases_approved_by_accounts_id_fk",
+          "tableFrom": "agent_purchases",
+          "tableTo": "accounts",
+          "schemaTo": "commerce",
+          "columnsFrom": [
+            "approved_by"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "agent_purchases_store_id_key": {
+          "name": "agent_purchases_store_id_key",
+          "nullsNotDistinct": false,
+          "columns": [
+            "store_id",
+            "id"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {
+        "agent_purchases_status": {
+          "name": "agent_purchases_status",
+          "value": "\"commerce\".\"agent_purchases\".\"status\" in ('issuing', 'card_ready', 'spent', 'closed', 'cancelled', 'failed')"
+        },
+        "agent_purchases_what": {
+          "name": "agent_purchases_what",
+          "value": "char_length(\"commerce\".\"agent_purchases\".\"what\") between 1 and 200"
+        },
+        "agent_purchases_merchant": {
+          "name": "agent_purchases_merchant",
+          "value": "char_length(\"commerce\".\"agent_purchases\".\"merchant\") between 1 and 120"
+        },
+        "agent_purchases_url": {
+          "name": "agent_purchases_url",
+          "value": "\"commerce\".\"agent_purchases\".\"merchant_url\" is null or (char_length(\"commerce\".\"agent_purchases\".\"merchant_url\") <= 500 and \"commerce\".\"agent_purchases\".\"merchant_url\" like 'https://%')"
+        },
+        "agent_purchases_why": {
+          "name": "agent_purchases_why",
+          "value": "char_length(\"commerce\".\"agent_purchases\".\"why\") <= 500"
+        },
+        "agent_purchases_amount": {
+          "name": "agent_purchases_amount",
+          "value": "\"commerce\".\"agent_purchases\".\"amount_minor\" between 1 and 100000000000"
+        },
+        "agent_purchases_spent": {
+          "name": "agent_purchases_spent",
+          "value": "\"commerce\".\"agent_purchases\".\"spent_minor\" between 0 and 100000000000"
+        },
+        "agent_purchases_card": {
+          "name": "agent_purchases_card",
+          "value": "\"commerce\".\"agent_purchases\".\"card_last4\" is null or \"commerce\".\"agent_purchases\".\"card_last4\" ~ '^[0-9]{4}$'"
+        },
+        "agent_purchases_failure": {
+          "name": "agent_purchases_failure",
+          "value": "\"commerce\".\"agent_purchases\".\"failure\" is null or char_length(\"commerce\".\"agent_purchases\".\"failure\") between 1 and 40"
         }
       },
       "isRLSEnabled": false
@@ -13756,6 +14212,227 @@
       },
       "isRLSEnabled": false
     },
+    "commerce.card_wallets": {
+      "name": "card_wallets",
+      "schema": "commerce",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "store_id": {
+          "name": "store_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "provider": {
+          "name": "provider",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'airwallex'"
+        },
+        "mode": {
+          "name": "mode",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "account_id": {
+          "name": "account_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "access_token_encrypted": {
+          "name": "access_token_encrypted",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "access_expires_at": {
+          "name": "access_expires_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "refresh_token_encrypted": {
+          "name": "refresh_token_encrypted",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "refresh_expires_at": {
+          "name": "refresh_expires_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "cardholder_id": {
+          "name": "cardholder_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "cardholder_name": {
+          "name": "cardholder_name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "currency": {
+          "name": "currency",
+          "type": "char(3)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "monthly_limit_minor": {
+          "name": "monthly_limit_minor",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "paused": {
+          "name": "paused",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "state": {
+          "name": "state",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'choose'"
+        },
+        "updated_by": {
+          "name": "updated_by",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "card_wallets_updated_by_idx": {
+          "name": "card_wallets_updated_by_idx",
+          "columns": [
+            {
+              "expression": "updated_by",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "card_wallets_store_id_stores_id_fk": {
+          "name": "card_wallets_store_id_stores_id_fk",
+          "tableFrom": "card_wallets",
+          "tableTo": "stores",
+          "schemaTo": "commerce",
+          "columnsFrom": [
+            "store_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "card_wallets_updated_by_accounts_id_fk": {
+          "name": "card_wallets_updated_by_accounts_id_fk",
+          "tableFrom": "card_wallets",
+          "tableTo": "accounts",
+          "schemaTo": "commerce",
+          "columnsFrom": [
+            "updated_by"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "card_wallets_store": {
+          "name": "card_wallets_store",
+          "nullsNotDistinct": false,
+          "columns": [
+            "store_id"
+          ]
+        },
+        "card_wallets_store_id_key": {
+          "name": "card_wallets_store_id_key",
+          "nullsNotDistinct": false,
+          "columns": [
+            "store_id",
+            "id"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {
+        "card_wallets_provider": {
+          "name": "card_wallets_provider",
+          "value": "\"commerce\".\"card_wallets\".\"provider\" in ('airwallex')"
+        },
+        "card_wallets_mode": {
+          "name": "card_wallets_mode",
+          "value": "\"commerce\".\"card_wallets\".\"mode\" in ('sandbox', 'live')"
+        },
+        "card_wallets_state": {
+          "name": "card_wallets_state",
+          "value": "\"commerce\".\"card_wallets\".\"state\" in ('choose', 'on', 'auth_failed')"
+        },
+        "card_wallets_account": {
+          "name": "card_wallets_account",
+          "value": "char_length(\"commerce\".\"card_wallets\".\"account_id\") between 1 and 80"
+        },
+        "card_wallets_cardholder": {
+          "name": "card_wallets_cardholder",
+          "value": "\"commerce\".\"card_wallets\".\"cardholder_id\" is null or char_length(\"commerce\".\"card_wallets\".\"cardholder_id\") between 1 and 80"
+        },
+        "card_wallets_cardholder_name": {
+          "name": "card_wallets_cardholder_name",
+          "value": "\"commerce\".\"card_wallets\".\"cardholder_name\" is null or char_length(\"commerce\".\"card_wallets\".\"cardholder_name\") between 1 and 200"
+        },
+        "card_wallets_limit": {
+          "name": "card_wallets_limit",
+          "value": "\"commerce\".\"card_wallets\".\"monthly_limit_minor\" is null or \"commerce\".\"card_wallets\".\"monthly_limit_minor\" between 0 and 100000000000"
+        },
+        "card_wallets_on": {
+          "name": "card_wallets_on",
+          "value": "\"commerce\".\"card_wallets\".\"state\" <> 'on' or \"commerce\".\"card_wallets\".\"cardholder_id\" is not null"
+        }
+      },
+      "isRLSEnabled": false
+    },
     "commerce.carrier_labels": {
       "name": "carrier_labels",
       "schema": "commerce",
@@ -15394,6 +16071,19 @@
           "notNull": true,
           "default": "'full'"
         },
+        "options": {
+          "name": "options",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "sensitive": {
+          "name": "sensitive",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
         "created_at": {
           "name": "created_at",
           "type": "timestamp with time zone",
@@ -15463,7 +16153,11 @@
       "checkConstraints": {
         "checkout_fields_kind": {
           "name": "checkout_fields_kind",
-          "value": "\"commerce\".\"checkout_fields\".\"kind\" in ('text', 'checkbox')"
+          "value": "\"commerce\".\"checkout_fields\".\"kind\" in ('text', 'textarea', 'checkbox', 'checklist', 'select', 'radio')"
+        },
+        "checkout_fields_options": {
+          "name": "checkout_fields_options",
+          "value": "(\"commerce\".\"checkout_fields\".\"kind\" in ('checklist', 'select', 'radio')) = (\"commerce\".\"checkout_fields\".\"options\" is not null) and (\"commerce\".\"checkout_fields\".\"options\" is null or (jsonb_typeof(\"commerce\".\"checkout_fields\".\"options\") = 'array' and jsonb_array_length(\"commerce\".\"checkout_fields\".\"options\") between 1 and 30))"
         },
         "checkout_fields_width": {
           "name": "checkout_fields_width",

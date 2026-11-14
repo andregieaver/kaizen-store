@@ -134,3 +134,39 @@ export async function linePictures(storeId: string, orderId: string): Promise<Ma
   `);
   return new Map(rows.map((r) => [r.id, r.picture]));
 }
+
+const SEND_COUNT_ROW = z.object({ n: col.int, oldest: col.timestampOrNull, first: z.string().nullable() });
+
+/** How many orders wait to be sent, when the oldest was placed and which it is: the orders list's header and its default view (round 2, D597). */
+export async function toSendSummary(storeId: string): Promise<{ count: number; oldest: string | null; firstId: string | null }> {
+  const row = await typedRow(SEND_COUNT_ROW, sql`
+    select count(*)::int as n, min(o.placed_at) as oldest,
+           (array_agg(o.id::text order by o.placed_at))[1] as first
+    from commerce.orders o
+    where o.store_id = ${storeId}::uuid and (o.status = 'paid' or (o.status = 'authorized' and o.capture_mode = 'when_sent')) and o.copied_from is null and o.delivery_method = 'ship'
+      and o.archived_at is null
+      and exists (select 1 from commerce.order_lines l where l.store_id = o.store_id and l.order_id = o.id and l.delivery = 'physical')
+  `);
+  return { count: row?.n ?? 0, oldest: row?.oldest ?? null, firstId: row?.first ?? null };
+}
+
+const SKU_ROW = z.object({ product_id: col.uuid, sku: col.text });
+
+/** Every product's SKUs, by product: the products list searches them in the browser (round 2, D597). */
+export async function productSkus(storeId: string): Promise<Record<string, string[]>> {
+  const rows = await typedRows(SKU_ROW, sql`select product_id, sku from commerce.product_variants where store_id = ${storeId}::uuid`);
+  const out: Record<string, string[]> = {};
+  for (const row of rows) (out[row.product_id] ??= []).push(row.sku);
+  return out;
+}
+
+const TEAM_ROW = z.object({ n: col.int });
+
+/** How many people work in the store (members not switched off and not expired): the Team card's line (round 2, D597). */
+export async function teamSize(storeId: string): Promise<number> {
+  const row = await typedRow(TEAM_ROW, sql`
+    select count(*)::int as n from commerce.store_members m
+    where m.store_id = ${storeId}::uuid and m.disabled_at is null and (m.expires_at is null or m.expires_at > now())
+  `);
+  return row?.n ?? 0;
+}

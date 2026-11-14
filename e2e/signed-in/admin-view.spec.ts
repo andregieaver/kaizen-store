@@ -33,13 +33,14 @@ async function storedView(): Promise<string> {
 
 test.afterEach(async () => setView("basic"));
 
-test("Basic lists the everyday settings, says where the rest are, and switches to Advanced for good", async ({ page }) => {
+// The Website's page of cards follows the view; Settings lists every setting by name since round 2 (D597), so it is not the example here.
+test("Basic lists the everyday pages, says where the rest are, and switches to Advanced for good", async ({ page }) => {
   await setView("basic");
-  await page.goto(`/admin/${E2E_STORE}/settings`);
+  await page.goto(`/admin/${E2E_STORE}/website`);
   const main = page.locator("#admin-main");
-  const selling = main.getByRole("region", { name: "Selling" });
-  await expect(selling.getByRole("link", { name: /^Payments/ })).toBeVisible();
-  await expect(selling.getByRole("link", { name: /^Checkout rules/ })).toHaveCount(0);
+  const selling = main.getByRole("region", { name: "Structure" });
+  await expect(selling.getByRole("link", { name: /^Menus/ })).toBeVisible();
+  await expect(selling.getByRole("link", { name: /^Redirects/ })).toHaveCount(0);
 
   const note = main.getByRole("note");
   await expect(note).toContainText("more in Advanced view");
@@ -47,23 +48,23 @@ test("Basic lists the everyday settings, says where the rest are, and switches t
   await note.getByRole("button", { name: "Switch to Advanced view" }).click();
 
   // At once, without a reload: every card, no note, and the switch at the top says Advanced.
-  await expect(selling.getByRole("link", { name: /^Checkout rules/ })).toBeVisible();
+  await expect(selling.getByRole("link", { name: /^Redirects/ })).toBeVisible();
   await expect(main.getByRole("note")).toHaveCount(0);
   await expect(page.getByRole("group", { name: "How much the admin shows" }).getByRole("button", { name: "Advanced" })).toHaveAttribute("aria-pressed", "true");
 
   // Kept with the account, so it is there on the next visit.
   await expect.poll(storedView).toBe("advanced");
   await page.reload();
-  await expect(selling.getByRole("link", { name: /^Checkout rules/ })).toBeVisible();
+  await expect(selling.getByRole("link", { name: /^Redirects/ })).toBeVisible();
 });
 
 test("the switch at the top goes back to Basic", async ({ page }) => {
   await setView("advanced");
-  await page.goto(`/admin/${E2E_STORE}/settings`);
-  const selling = page.locator("#admin-main").getByRole("region", { name: "Selling" });
-  await expect(selling.getByRole("link", { name: /^Checkout rules/ })).toBeVisible();
+  await page.goto(`/admin/${E2E_STORE}/website`);
+  const selling = page.locator("#admin-main").getByRole("region", { name: "Structure" });
+  await expect(selling.getByRole("link", { name: /^Redirects/ })).toBeVisible();
   await page.getByRole("group", { name: "How much the admin shows" }).getByRole("button", { name: "Basic" }).click();
-  await expect(selling.getByRole("link", { name: /^Checkout rules/ })).toHaveCount(0);
+  await expect(selling.getByRole("link", { name: /^Redirects/ })).toHaveCount(0);
   await expect.poll(storedView).toBe("basic");
 });
 

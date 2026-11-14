@@ -119,29 +119,38 @@ Built 14 November 2026 (D596).
 
 ### 3. Many tick boxes at once, for example allergens on food orders
 
-- [ ] A new kind, `checklist`: one question with several options to tick, each option with words per language,
-      required or not. It counts as one question against the limit (14 allergens as single tick boxes would pass the
-      limit of 10 on their own).
-- [ ] A ready-made list: **the EU's 14 allergens** (Regulation (EU) No 1169/2011, Annex II: cereals containing gluten,
-      crustaceans, eggs, fish, peanuts, soybeans, milk, nuts, celery, mustard, sesame, sulphites, lupin, molluscs),
-      written in nb, sv, da and en. Also an optional "None of these" option that clears the others.
-- [ ] Keep the answer as the options ticked, with their words in the store's main language at the time of the order
-      (`CheckoutAnswer` gets a `string[]` answer), and change `readAnswers()` and `answersByField()` to match.
-- [ ] **Check the privacy side first.** A customer's allergies can be health data (GDPR art. 9). Decide, with the
-      privacy texts (D162), whether such a question needs its own explicit consent line, a shorter retention, or a note in
-      the store's privacy page. Do not ship the allergen preset before this is settled.
-- [ ] Should allergens be asked per order or per product line? Recommended: per order first, since kitchens read the
-      order as a whole.
-- [ ] Show the ticked allergens clearly on the order page, the packing slip and staff alerts, not only in the Full
-      profile.
+Built 14 November 2026 (D598).
+
+- [x] A new kind, `checklist`: one question with several options to tick, each option with words per language,
+      required or not. It counts as one question against the limit. At most 30 options (`CHECKLIST_OPTIONS_MAX`).
+- [x] A ready-made list: **the EU's 14 allergens** (Regulation (EU) No 1169/2011, Annex II), hand-written in nb, sv, da
+      and en (`src/lib/checkout-presets.ts`), with "None of these", which clears the others. *Use the EU's 14 allergens* in
+      the editor fills a tick list with them in the store's languages.
+- [x] The answer keeps the options ticked in the store's main words at the time of the order, their ids (to show the cart
+      again) and the consent; `readAnswers()`, `answersByField()` and `answerText()` read it.
+- [x] **The privacy side, decided by the owner 14 November 2026:** a consent line only. A list marked *Ask for the
+      shopper's explicit consent* (the allergen list is) shows a consent box once an option other than None of these is
+      ticked, and the order is refused without it; answers are kept as long as the order's other answers. The consent
+      sentence is hand-written in four languages and marked for legal review.
+- [x] Asked per order, as recommended.
+- [x] The order page and the export show the ticked options (joined). Since 14 November 2026 the packing slip prints every
+      answer under the lines (*Answers at checkout*), but a gift's slip leaves out an answer given with consent, since the
+      gift's recipient reads it (`slipAnswers()`); the staff alert for a new order says how many questions were answered and
+      never the answers (rule 4.8 of `docs/wave-3-notifications.md`: the buyer's own words stay on the order).
 
 ### 4. More field types for edge cases
 
 Candidates, each a kind in `fieldInputSchema` and in `cleanAnswers()`, the editor, the cart, the order page, the export and a test:
 
-- [ ] `select`: one choice from a list, drawn with `Dropdown` (D82), never a native select.
-- [ ] `radio`: one choice, all options visible.
-- [ ] `textarea`: several lines (longer than today's one line of 500 characters).
+Step 1 built 14 November 2026 (D601): select, radio and textarea.
+
+- [x] `select`: one choice from a list, drawn with `Dropdown` (D82), never a native select. It starts on *Choose*, which is no
+      answer; its choice goes in a hidden field.
+- [x] `radio`: one choice, all options visible.
+- [x] `textarea`: several lines, at most 2,000 characters, the lines kept (at most one empty line in a row).
+- Both one-choice kinds use a tick list's options (2 to 30, no None of these) and may ask for consent like a tick list; the order
+  keeps the option as an answer of kind `choice`. The AI manager rewords these but does not make them (its tool's kinds stay
+  `text` and `checkbox`, so its eval recording holds).
 - [ ] `number`, with a lowest and highest value.
 - [ ] `date`, with earliest and latest days (check first that bookings, D65, or delivery days do not already cover the need).
 - [ ] `email` and `phone`, checked for shape (for example a gift recipient's contact).

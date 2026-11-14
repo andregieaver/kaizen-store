@@ -1,1 +1,0 @@
-ALTER TABLE "commerce"."support_settings" ADD COLUMN "email_orders" boolean DEFAULT false NOT NULL;

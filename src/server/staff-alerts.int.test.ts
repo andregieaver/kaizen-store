@@ -261,13 +261,13 @@ describe("the summary (2.8, 4.7)", () => {
 });
 
 describe("no shopper's personal field in a staff email (4.8, 6.3 C4)", () => {
-  it("leaves out the canary name, email, phone, address, company and gift message of every staff email", async () => {
+  it("leaves out the canary name, email, phone, address, company, gift message and checkout answer of every staff email", async () => {
     const fx = await newStore("alerts-canary");
     await db().execute(sql`
       insert into commerce.order_settings (store_id, gift_messages) values (${fx.storeId}::uuid, true)
       on conflict (store_id) do update set gift_messages = true
     `);
-    const canaries = ["Canaryname Zqx", "canary-email-zqx@example.com", "+47 99 88 77 66", "Canaryveien 13", "Canary Holding AS", "Canary gift words zqx", "Canarytown"];
+    const canaries = ["Canaryname Zqx", "canary-email-zqx@example.com", "+47 99 88 77 66", "Canaryveien 13", "Canary Holding AS", "Canary gift words zqx", "Canarytown", "Canary answer zqx"];
     // A gift is frozen from the cart on (D173): the cart carries it, as a shopper's would.
     const [cart] = await db().execute<Row>(sql`
       insert into commerce.carts (store_id, market_code, currency, locale, expires_at, is_gift, gift_to, gift_from, gift_message)
@@ -282,7 +282,8 @@ describe("no shopper's personal field in a staff email (4.8, 6.3 C4)", () => {
     const orderId = placed.order.orderId;
     const address = JSON.stringify({ name: canaries[0], line1: canaries[3], city: canaries[6], postalCode: "0155", country: "NO", phone: canaries[2] });
     await db().execute(sql`
-      update commerce.orders set shipping_address = ${address}::jsonb, billing_address = ${address}::jsonb, company_name = ${canaries[4]}, email = ${canaries[1]}
+      update commerce.orders set shipping_address = ${address}::jsonb, billing_address = ${address}::jsonb, company_name = ${canaries[4]}, email = ${canaries[1]},
+        checkout_answers = ${JSON.stringify([{ fieldId: "f1", label: "Door code", kind: "text", answer: canaries[7] }])}::jsonb
       where id = ${orderId}::uuid
     `);
     const [o] = await db().execute<Row>(sql`select total_minor from commerce.orders where id = ${orderId}::uuid`);
@@ -326,5 +327,7 @@ describe("no shopper's personal field in a staff email (4.8, 6.3 C4)", () => {
     expect(String(newOrder.text)).toContain("Business buyer");
     expect(String(newOrder.text)).toContain("Gift");
     expect(String(newOrder.text)).toContain("Norway");
+    // That the buyer answered, never what (4.8).
+    expect(String(newOrder.text)).toContain("Checkout questions answered: 1 (on the order)");
   });
 });

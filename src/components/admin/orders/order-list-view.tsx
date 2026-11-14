@@ -39,7 +39,10 @@ export function OrderListView({
   words = ordersEn,
   statusWords,
   locale = "en",
+  toSend = 0,
 }: {
+  /** Orders waiting to be sent, for the To send tab's count (round 2, D597). */
+  toSend?: number;
   slug: string;
   params: OrderListParams;
   rows: OrderTableRow[];
@@ -68,7 +71,7 @@ export function OrderListView({
   const filtered = hasFilters(params);
   return (
     <div className="flex flex-col gap-4">
-      <ViewBar base={base} params={params} views={views} openViewId={openView?.id ?? null} words={words.views} />
+      <ViewBar base={base} params={params} views={views} openViewId={openView?.id ?? null} toSend={toSend} words={words.views} />
       {openView && ignoredInView && (
         <p role="status" className="rounded-panel bg-sunken p-3 text-sm">
           {fillWords(words.views.ignored, { title: openView.title })}

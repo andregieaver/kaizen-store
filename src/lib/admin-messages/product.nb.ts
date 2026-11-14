@@ -40,6 +40,8 @@ export const productNb: ProductMessages = {
     pleaseFix: "Ingenting er lagret ennå. Rett opp dette:",
   },
   advanced: {
+    jump: "Gå til",
+    parts: { audience: "Hvem kjøper den", priceWords: "Ord rundt prisen", subscriptions: "Abonnement", safety: "Produktsikkerhet", legal: "Mva., retur og land" },
     title: "Avansert",
     text: "Standardkategori, hvem som kjøper, ord rundt prisen, pris etter antall, abonnement, produktsikkerhet, avgift, retur og hvor den selges.",
   },
@@ -233,6 +235,9 @@ export const productNb: ProductMessages = {
     stockAtLocations: "Lager på hvert sted for {name}",
     stockAtFor: "Lager for {name} på {location}",
     stockFor: "Lager for {name}",
+    oneFewer: "Én færre av {name}",
+    oneMore: "Én til av {name}",
+    vatPart: "Herav mva. {amount} ({rate} %)",
     priceFor: "Pris i {market} for {name}, {currency}",
     byRule: "Etter landets prisregel",
     byRulePlaceholder: "Etter regel",

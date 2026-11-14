@@ -17,6 +17,8 @@ CLAUDE.md keeps one line per rule pointing here; each rule is under that line as
   Owner pages go under `/admin/account/…`, never a new `/admin/{word}`, which
   would take a store address. A layout's auth check does not stop its page
   streaming: every page checks for itself.
+- The menu is built by `storeNav()` once per shell render; `permissionOfPath()` is memoised by path and access,
+  never by anything of the member.
 
 ## The admin's look (D149, D217–D232, `src/app/admin/admin.css`, `docs/admin-style.md`)
 

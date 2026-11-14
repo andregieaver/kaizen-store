@@ -30,6 +30,7 @@ vi.mock("@/components/lazy/blocks", async () => ({
   SearchBox: await pick(() => import("@/components/search-box"), "SearchBox"),
   ThemePreviewStage: await pick(() => import("@/components/theme-preview-stage"), "ThemePreviewStage"),
   LanguageSwitch: await pick(() => import("@/components/language-switch"), "LanguageSwitch"),
+  CarouselControls: await pick(() => import("@/components/carousel-controls"), "CarouselControls"),
 }));
 
 vi.mock("@/components/lazy/shop", async () => ({
