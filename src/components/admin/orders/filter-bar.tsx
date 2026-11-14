@@ -1,4 +1,4 @@
-import Link from "next/link";
+import { AdminLink } from "../ui/link";
 
 import { field, hint, primary, secondary } from "@/components/admin/data/ui";
 import { fillWords } from "@/lib/admin-fill";
@@ -83,9 +83,9 @@ export function FilterBar({
             {w.searchButton}
           </button>
           {filtered && (
-            <Link href={base} className={secondary}>
+            <AdminLink href={base} className={secondary}>
               {w.clearAll}
-            </Link>
+            </AdminLink>
           )}
         </div>
 
@@ -214,10 +214,10 @@ export function FilterBar({
         <ul aria-label={w.chipsLabel} className="flex flex-wrap gap-2">
           {chips.map((chip) => (
             <li key={chip.key}>
-              <Link href={clearHref(base, params, chip.key)} className="inline-flex min-h-8 items-center gap-1 rounded-full border border-line bg-sunken px-3 text-xs hover:bg-card" aria-label={fillWords(w.removeChip, { label: chip.label })}>
+              <AdminLink href={clearHref(base, params, chip.key)} className="inline-flex min-h-8 items-center gap-1 rounded-full border border-line bg-sunken px-3 text-xs hover:bg-card" aria-label={fillWords(w.removeChip, { label: chip.label })}>
                 {chip.label}
                 <span aria-hidden="true">×</span>
-              </Link>
+              </AdminLink>
             </li>
           ))}
         </ul>

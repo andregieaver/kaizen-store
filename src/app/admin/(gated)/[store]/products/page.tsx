@@ -1,3 +1,4 @@
+import { AdminLink } from "@/components/admin/ui/link";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
@@ -123,28 +124,28 @@ async function ProductList({
         </p>
       )}
       <nav aria-label={w.filters} className="flex gap-2 text-sm">
-        <Link
+        <AdminLink
           href={base}
           aria-current={archived || needsFilter ? undefined : "page"}
           className="rounded px-2 py-1 aria-[current=page]:bg-card aria-[current=page]:font-medium"
         >
           {w.current}
-        </Link>
-        <Link
+        </AdminLink>
+        <AdminLink
           href={`${base}?show=archived`}
           aria-current={archived ? "page" : undefined}
           className="rounded px-2 py-1 aria-[current=page]:bg-card aria-[current=page]:font-medium"
         >
           {w.archived}
-        </Link>
+        </AdminLink>
         {(needing.length > 0 || needsFilter) && (
-          <Link
+          <AdminLink
             href={needsHref}
             aria-current={needsFilter ? "page" : undefined}
             className="rounded px-2 py-1 aria-[current=page]:bg-card aria-[current=page]:font-medium"
           >
             {w.needsContent}
-          </Link>
+          </AdminLink>
         )}
       </nav>
       {needsFilter ? (

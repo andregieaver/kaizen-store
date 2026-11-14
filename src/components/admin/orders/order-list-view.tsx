@@ -1,3 +1,4 @@
+import { AdminLink } from "../ui/link";
 import Link from "next/link";
 
 import { hint, primary, secondary } from "@/components/admin/data/ui";
@@ -103,9 +104,9 @@ export function OrderListView({
                         : w.none}
           </p>
           {filtered ? (
-            <Link href={base} className={secondary}>
+            <AdminLink href={base} className={secondary}>
               {w.clear}
-            </Link>
+            </AdminLink>
           ) : (
             <Link href={`/admin/${slug}/orders/drafts/new`} className={primary}>
               {words.page.makeDraft}
@@ -132,14 +133,14 @@ export function OrderListView({
       {(hasPrevious || nextCursor) && (
         <nav aria-label={w.pages} className="flex flex-wrap items-center gap-4 text-sm">
           {hasPrevious && (
-            <Link href={pageHref(base, params, previousCursor)} rel="prev" className="underline underline-offset-2">
+            <AdminLink href={pageHref(base, params, previousCursor)} rel="prev" className="underline underline-offset-2">
               {previousCursor ? w.previous : w.first}
-            </Link>
+            </AdminLink>
           )}
           {nextCursor && (
-            <Link href={pageHref(base, params, nextCursor)} rel="next" className="underline underline-offset-2">
+            <AdminLink href={pageHref(base, params, nextCursor)} rel="next" className="underline underline-offset-2">
               {w.next}
-            </Link>
+            </AdminLink>
           )}
         </nav>
       )}
