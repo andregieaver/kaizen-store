@@ -17,8 +17,8 @@ const ENGINE_ACTIONS = {
   [PLATFORM]: ["startPlatformAssistantAction", "loadPlatformConversationAction", "decidePlatformApprovalAction", "deletePlatformConversationAction", "ratePlatformAnswerAction"],
 };
 const OTHER_ACTIONS = {
-  [STORE]: ["assistantHearAction", "saveSkillAction", "deleteSkillAction"],
-  [PLATFORM]: ["platformHearAction", "savePlatformSkillAction", "deletePlatformSkillAction"],
+  [STORE]: ["assistantHearAction", "saveSkillAction", "deleteSkillAction", "pageHereAction"],
+  [PLATFORM]: ["platformHearAction", "savePlatformSkillAction", "deletePlatformSkillAction", "pagePlatformHereAction"],
 };
 const GUARD = { [STORE]: "requireOwner(", [PLATFORM]: "principal()" };
 
@@ -48,7 +48,7 @@ describe.each([STORE, PLATFORM])("%s", (file) => {
     expect(text).not.toContain("export const assistant");
   });
 
-  it("exports its eight actions and nothing else", () => {
+  it("exports its nine actions and nothing else", () => {
     const names = [...text.matchAll(/^export async function (\w+)/gm)].map((m) => m[1]).sort();
     expect(names).toEqual([...ENGINE_ACTIONS[file as keyof typeof ENGINE_ACTIONS], ...OTHER_ACTIONS[file as keyof typeof OTHER_ACTIONS]].sort());
     const exports = [...text.matchAll(/^export .*$/gm)].map((m) => m[0]).filter((line) => !line.startsWith("export async function "));

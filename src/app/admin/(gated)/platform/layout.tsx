@@ -20,6 +20,7 @@ import {
   decidePlatformApprovalAction,
   deletePlatformConversationAction,
   loadPlatformConversationAction,
+  pagePlatformHereAction,
   platformHearAction,
   ratePlatformAnswerAction,
   startPlatformAssistantAction,
@@ -94,6 +95,7 @@ export default async function PlatformLayout({ children }: LayoutProps<"/admin/p
               rate: ratePlatformAnswerAction,
               hear: platformHearAction,
               saveSkill: savePlatformSkillAction,
+              pageHere: pagePlatformHereAction,
             }}
           />
         </AdminTextScope>

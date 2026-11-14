@@ -12,6 +12,7 @@ import {
   loadConversationAction,
   rateAnswerAction,
   deleteSkillAction,
+  pageHereAction,
   saveSkillAction,
 } from "./actions";
 
@@ -48,6 +49,7 @@ export default async function StoreAssistantPage({ params, searchParams }: PageP
         rate: rateAnswerAction.bind(null, slug),
         hear: abilities.hear ? assistantHearAction.bind(null, slug) : null,
         saveSkill: saveSkillAction.bind(null, slug),
+        pageHere: pageHereAction.bind(null, slug),
       }}
     />
   );

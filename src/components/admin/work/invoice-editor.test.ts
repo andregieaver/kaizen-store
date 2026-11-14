@@ -2,6 +2,7 @@ import { createElement, type ComponentProps } from "react";
 import { renderToString } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 
+import { screensEn } from "@/lib/admin-messages/screens.en";
 import { timerFromServer } from "@/lib/work-timer-ui";
 import type { RunningTimer } from "@/server/work-time";
 
@@ -39,6 +40,13 @@ const props = (over: Partial<Props> = {}): Props => ({
   newLineRateMinor: 120_000,
   nextNumber: "W-13",
   fxSuggestions: {},
+  readinessWords: {
+    toFix: screensEn.workReadiness.toFix,
+    fix: screensEn.workReadiness.fix,
+    check: screensEn.workReadiness.check,
+    open: screensEn.workReadiness.open,
+    problems: null,
+  },
   ...over,
 });
 

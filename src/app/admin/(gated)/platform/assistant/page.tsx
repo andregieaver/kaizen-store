@@ -9,6 +9,7 @@ import {
   decidePlatformApprovalAction,
   deletePlatformConversationAction,
   loadPlatformConversationAction,
+  pagePlatformHereAction,
   platformHearAction,
   ratePlatformAnswerAction,
   deletePlatformSkillAction,
@@ -47,6 +48,7 @@ export default async function PlatformAssistantPage({ searchParams }: PageProps<
         rate: ratePlatformAnswerAction,
         hear: abilities.hear ? platformHearAction : null,
         saveSkill: savePlatformSkillAction,
+        pageHere: pagePlatformHereAction,
       }}
     />
   );

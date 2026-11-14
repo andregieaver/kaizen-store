@@ -6,13 +6,11 @@ import { useEffect, useId, useRef, useState, type ReactNode, type RefObject } fr
 
 import { AI_COMPOSER_ATTRIBUTE } from "@/lib/ai-composer";
 import { alreadySaid, answerToAnnounce } from "@/lib/answer-announce";
-import { matchPath } from "@/lib/admin-map";
 import { lifeReportOf } from "@/lib/kaizen-life-handoffs";
-import { TOOL_WORDS } from "@/lib/manager-tools";
+import { TOOL_WORDS } from "@/lib/tool-words";
 import { fillWords } from "@/lib/admin-fill";
-import { PAGES_NB } from "@/lib/admin-messages/pages.nb";
 
-import { useAdminLang, useAdminText } from "./admin-text";
+import { useAdminText } from "./admin-text";
 import { MicIcon } from "./mic-icon";
 
 import { SkillForm, type SaveSkill } from "./ai-skills";
@@ -32,6 +30,8 @@ export type AiManagerActions = {
   hear: ((form: FormData) => Promise<Result<{ text: string }>>) | null;
   /** *Save as skill* on a request (D350); none where skills cannot be saved. */
   saveSkill?: SaveSkill;
+  /** The name of the page the owner is on, from the server; none where it is not bound. */
+  pageHere?: (pathname: string) => Promise<string | null>;
 };
 
 const button = "inline-flex min-h-10 items-center justify-center rounded-md px-4 text-sm font-medium disabled:opacity-50";
@@ -112,7 +112,6 @@ export function AiManagerChat({
 }) {
   const router = useRouter();
   const pathname = usePathname();
-  const lang = useAdminLang();
   const words = useAdminText("assistant");
   const w = words.chat;
   const inputId = useId();
@@ -129,6 +128,25 @@ export function AiManagerChat({
   const [working, setWorking] = useState<string | null>(null);
   const [problem, setProblem] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  // The name of the page the owner is on comes from the server, which keeps the admin map (bloat review step 0.11). The answer is kept
+  // with the path it was asked for, so after a move to another page the old name is not shown while the new one is on its way: the
+  // usual suggestions show until it arrives. It is asked again for each page while the suggestions are drawn.
+  const [pageAnswer, setPageAnswer] = useState<{ path: string; name: string | null } | null>(null);
+  const showStarters = messages.length === 0 && !busy;
+  const pageHere = actions.pageHere;
+  useEffect(() => {
+    if (!showStarters || !pageHere) return;
+    let live = true;
+    pageHere(pathname)
+      .then((name) => {
+        if (live) setPageAnswer({ path: pathname, name });
+      })
+      .catch(() => {});
+    return () => {
+      live = false;
+    };
+  }, [pathname, pageHere, showStarters]);
+  const pageName = pageAnswer && pageAnswer.path === pathname ? pageAnswer.name : null;
   const [aloud, setAloud] = useState(false);
   const abortRef = useRef<AbortController | null>(null);
   const busyRef = useRef(false);
@@ -389,9 +407,7 @@ export function AiManagerChat({
   }
 
   // Suggestions: about the page they are on, then the usual ones.
-  const here = matchPath(pathname);
-  const onPage = here && here.page.id !== "assistant" && (here.page.area === area || here.page.area === "account") ? here.page : null;
-  const starters = [...(onPage ? [fillWords(w.helpHere, { page: ((lang === "nb" ? PAGES_NB[`${onPage.area}:${onPage.id}`]?.title : undefined) ?? onPage.title).toLowerCase() })] : []), ...w.starters[area]];
+  const starters = [...(pageName ? [fillWords(w.helpHere, { page: pageName.toLowerCase() })] : []), ...w.starters[area]];
 
   // Messages in order, each approval under the answer of the turn that asked for it (saved after it).
   const thread: ReactNode[] = [];

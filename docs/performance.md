@@ -161,6 +161,15 @@ next opening tries again; `e2e/signed-in/ai-manager-panel.spec.ts` holds that th
 the panel draws the chat). Each screen dropped 0.51 to 0.76 MB, and the budgets were set again with about 4 % of room, so growth is
 caught where it starts.
 
+The chat still weighed 496,206 bytes on opening, about 437 KB of it three tables read for two labels: the tool definitions (for the
+words of a working line), the admin map and the Norwegian page list (for the first suggestion). Step 0.11 of the bloat review
+(14 November 2026) moved the labels to `src/lib/tool-words.ts` and made the server name the page (`pageHere`, a server action beside
+the chat's others), so the chat imports neither; the budget lives in the panel's spec, 130,000 bytes of script on first opening, and the
+chat now fetches 49,786 bytes in two files there (496,206 before).
+The Work invoice screen carried the whole admin catalogue in both languages because two shared parts (`ReadinessList`,
+`InvoiceTotalsParts`) imported `work-text.ts`; they now take their words as props, and the route's first load fell from 4,274,839
+to 982,520 bytes (the largest chunk from 1,704,595 to 464,505 bytes; routes over 1,300,000 bytes from 90 to 26).
+
 Measuring found the page lists loading the whole builder (4.71 MB, the builder's own figure): a route loads every client component its
 server modules import, drawn or not, and the lists and the editor shared one `views.tsx`. The editors now live in `editor-views.tsx` (a
 store's and Kaizena Flow's), and every list of pages, articles, headers, footers and product layouts dropped 1.13 MB. What is left is the

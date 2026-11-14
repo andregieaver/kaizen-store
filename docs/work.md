@@ -1244,6 +1244,9 @@ and `vat_number` for DAC7), and **no** "not VAT registered" flag for a store.
     charges. Overdue is a derived status (`sent` and `due_on < today` in the
     store's time zone), with an owner-triggered reminder email later.
 
+`src/lib/work-text.ts` is for server components only: a client part of Work takes its words from `useAdminText("work")` or as a prop
+from the page (the invoice editor's checklist words are a prop, `readinessWords`), so no client chunk carries the catalogue (bloat review step 0.11).
+
 ### 4.6 Invoice lifecycle in Store (redesign)
 
 ```
@@ -1441,6 +1444,9 @@ read they change. The invoice editor keeps Life's **JSON save** for the lines
 (one call with the whole list, idempotent upsert by id) because autosave with
 600 ms debounce and in-flight queueing depends on it; validate with zod
 (`workLinesInput`, shared with the browser like `productInput`).
+
+`work-text.ts` is for server components only; the invoice page hands the draft editor the checklist's words as a prop, and the editor's
+other words come from `useAdminText("work")` (bloat review step 0.11).
 
 ---
 

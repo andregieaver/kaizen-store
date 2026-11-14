@@ -147,6 +147,8 @@ signed-in browser tests (`e2e/signed-in/`, an owner with `admin_locale = nb-NO`)
 | A11 | Kaizena Flow's admin (`/admin/platform`) |
 | A12 | Swedish and Danish, area by area, with their own glossaries |
 
+A10's `work-text.ts` is for server components only: a client part of Work takes its words from `useAdminText("work")` or as a prop from the page (bloat review step 0.11).
+
 ## 5. Getting legal and financial Norwegian right
 
 ### 5.1 The rule

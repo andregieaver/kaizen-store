@@ -5,7 +5,31 @@ import { countWords } from "@/lib/admin-fill";
 import { problemHref } from "@/lib/work-invoice-ui";
 
 import { Badge } from "./work-parts";
-import { readinessText, workScreens, workText } from "@/lib/work-text";
+import type { ScreensMessages } from "@/lib/admin-messages/screens.en";
+
+/**
+ * The words the list reads, handed in by the caller (a server page or a client part) so this file imports no catalogue:
+ * `problems` is the templates by problem code in the account's language, or null for English (the server's own text).
+ */
+export type ReadinessWords = {
+  readyToIssue: string;
+  toFix: ScreensMessages["workReadiness"]["toFix"];
+  fix: string;
+  check: string;
+  open: Record<string, string>;
+  problems: Record<string, string | undefined> | null;
+};
+
+/** A problem in the account's words: the server's own text when English or when the code has none, else the template with its `{name}`s filled. */
+function problemText(
+  words: ReadinessWords,
+  problem: { code: string; message: string; values?: Record<string, string> },
+): string {
+  const template = words.problems?.[problem.code];
+  return template
+    ? template.replace(/\{(\w+)\}/g, (whole, name: string) => problem.values?.[name] ?? whole)
+    : problem.message;
+}
 
 /**
  * What is missing before the draft can be issued, as the owner reads it (docs/work.md 4.5 6): each problem in words,
@@ -17,22 +41,22 @@ export function ReadinessList({
   storeSlug,
   clientId,
   checking = false,
+  words,
 }: {
   readiness: InvoiceReadiness;
   storeSlug: string;
   clientId: string;
   checking?: boolean;
+  words: ReadinessWords;
 }) {
-  const tw = workText().invoiceReadiness;
-  const rw = workScreens().workReadiness;
   const errors = readiness.problems.filter((p) => p.severity === "error");
   const warnings = readiness.problems.filter((p) => p.severity !== "error");
   return (
     <div className="flex flex-col gap-3" aria-busy={checking}>
       <p role="status" className="text-sm font-medium">
         {readiness.ready
-          ? tw.readyToIssue
-          : countWords(errors.length, rw.toFix)}
+          ? words.readyToIssue
+          : countWords(errors.length, words.toFix)}
       </p>
       {readiness.problems.length > 0 && (
         <ul className="flex flex-col gap-2">
@@ -45,12 +69,12 @@ export function ReadinessList({
               >
                 <span className="flex flex-wrap items-center gap-2">
                   <Badge tone={problem.severity === "error" ? "bad" : "warn"}>
-                    {problem.severity === "error" ? rw.fix : rw.check}
+                    {problem.severity === "error" ? words.fix : words.check}
                   </Badge>
-                  <span>{readinessText(problem)}</span>
+                  <span>{problemText(words, problem)}</span>
                 </span>
                 <Link href={fix.href} className="self-start text-sm underline">
-                  {rw.open[problem.where]}
+                  {words.open[problem.where]}
                 </Link>
               </li>
             );

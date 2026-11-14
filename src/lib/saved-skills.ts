@@ -5,11 +5,11 @@
 
 import { ASSISTANT_SKILLS } from "./assistant-skills";
 import { findClaims, type ClaimKind } from "./claims";
+import { SKILL_STEPS_MAX, SKILL_TITLE_MAX, SKILL_WHEN_MAX } from "./skill-limits";
 import { slugify } from "./slug";
 
-export const SKILL_TITLE_MAX = 120;
-export const SKILL_WHEN_MAX = 300;
-export const SKILL_STEPS_MAX = 2000;
+export { SKILL_STEPS_MAX, SKILL_TITLE_MAX, SKILL_WHEN_MAX } from "./skill-limits";
+
 /** At most this many of a person's own skills in one place, so the prompt that lists them stays short. */
 export const SKILLS_PER_PLACE = 30;
 

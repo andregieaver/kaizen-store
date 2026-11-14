@@ -133,6 +133,8 @@ export default async function WorkInvoicePage({ params }: PageProps<"/admin/acco
     getClient(store.id, client.id),
     invoice.assignmentId ? getAssignment(store.id, invoice.assignmentId) : Promise.resolve(null),
   ]);
+  // The checklist's words in the account's language, read here so the client editor imports no catalogue (bloat review step 0.11).
+  const rw = workScreens().workReadiness;
   const newLineRateMinor = (assignment?.summary.rateMinor || fullClient?.defaultHourlyRateMinor) ?? null;
   return (
     <div className="flex flex-col gap-6">
@@ -147,6 +149,13 @@ export default async function WorkInvoicePage({ params }: PageProps<"/admin/acco
         newLineRateMinor={newLineRateMinor || null}
         nextNumber={nextNumber}
         fxSuggestions={fxSuggestions(store, detail.readiness?.homeCurrency ?? null)}
+        readinessWords={{
+          toFix: rw.toFix,
+          fix: rw.fix,
+          check: rw.check,
+          open: rw.open,
+          problems: adminLangOf(viewer.account.adminLocale) === "en" ? null : rw.problems,
+        }}
       />
     </div>
   );
