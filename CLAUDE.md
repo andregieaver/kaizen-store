@@ -24,6 +24,8 @@ phased build plan are in `docs/plan.md`; read it before architectural work.
 - Next.js 16.4 (App Router, `cacheComponents` on), React 19, TypeScript, Tailwind 4, pnpm. Next.js carries one patch
   (`patches/next.patch`, D423: its router no longer sends a Safari visitor back to a page they were leaving), applied to any
   version; an upgrade that changes the patched lines fails the install until the patch is moved or dropped, and `e2e/store-pages.spec.ts` says which.
+  Two router settings are written in `next.config.ts` (D592): `optimisticRouting: false` (the `@drawer/[...rest]` slot made an endless prefetch;
+  `e2e/prefetch.spec.ts` says when it may go) and `partialPrefetching: false` (a recorded choice).
 - Supabase project "Kaizen Store" (`ybsozesfuxuitoacntfo`, eu-west-1 Ireland).
 - Vercel functions pinned to `dub1` (Dublin) in `vercel.json` to sit next to the
   database. Keep data processing in the EU when adding any vendor.

@@ -1,4 +1,4 @@
-import Link from "next/link";
+import { AdminLink } from "../ui/link";
 
 import { ordersEn, type OrdersMessages } from "@/lib/admin-messages/orders.en";
 import { builtInHref, viewHref } from "@/lib/order-list-admin";
@@ -31,15 +31,15 @@ export function ViewBar({
   return (
     <nav aria-label={w.label} className="flex flex-wrap items-center gap-1 border-b border-line pb-2">
       {BUILT_IN_VIEWS.map((view) => (
-        <Link key={view.label} href={builtInHref(base, params, view.show)} aria-current={onlyShow(view.show) ? "page" : undefined} className={tab}>
+        <AdminLink key={view.label} href={builtInHref(base, params, view.show)} aria-current={onlyShow(view.show) ? "page" : undefined} className={tab}>
           {w.builtIn[view.show ?? "all"]}
-        </Link>
+        </AdminLink>
       ))}
       {views.length > 0 && <span className="mx-1 h-5 w-px bg-line" aria-hidden="true" />}
       {views.map((view) => (
-        <Link key={view.id} href={viewHref(base, view.id)} aria-current={openViewId === view.id ? "page" : undefined} className={tab}>
+        <AdminLink key={view.id} href={viewHref(base, view.id)} aria-current={openViewId === view.id ? "page" : undefined} className={tab}>
           {view.title}
-        </Link>
+        </AdminLink>
       ))}
     </nav>
   );

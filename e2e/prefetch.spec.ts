@@ -13,7 +13,7 @@ const BUDGETS = { phoneHomePrefetches: 23, frontDoorPrefetches: 0 };
 const PAGES = ["/", "/s/demo", "/s/demo/no", "/s/demo/no/cart"];
 const PREFETCH_HEADERS = ["next-router-prefetch", "next-router-segment-prefetch"];
 
-type Seen = { path: string; prefetch: boolean };
+type Seen = { path: string; prefetch: boolean; segment: string };
 type Sheet = { url: string; afterLoad: boolean };
 
 /** Every request the page makes (whether it is a router prefetch, from its headers) and every stylesheet (and whether it began after the load event). */
@@ -29,6 +29,7 @@ function watch(page: Page) {
       request.allHeaders().then((headers) => ({
         path: new URL(request.url()).pathname,
         prefetch: PREFETCH_HEADERS.some((name) => name in headers),
+        segment: headers["next-router-segment-prefetch"] ?? "",
       })),
     );
     if (request.resourceType() === "stylesheet") stylesheets.push({ url: request.url(), afterLoad: loaded });
@@ -37,6 +38,8 @@ function watch(page: Page) {
     stylesheets,
     all: () => Promise.all(requests),
     prefetches: async () => (await Promise.all(requests)).filter((seen) => seen.prefetch).map((seen) => seen.path),
+    /** The same router prefetches with their segment header, for a report of what repeats. */
+    prefetchesWithSegment: async () => (await Promise.all(requests)).filter((seen) => seen.prefetch).map((seen) => `${seen.path} ${seen.segment}`.trim()),
   };
 }
 
@@ -129,3 +132,25 @@ for (const path of PAGES) {
     }
   });
 }
+
+/**
+ * A store page goes quiet (bloat review step 0.14, `next.config.ts` `optimisticRouting: false`): the count is `watch()`'s router prefetches, registered before `goto`.
+ * Before the setting the search page made 624 in 4 s and never stopped (the `@drawer/[...rest]` slot's segment asked for without end). The 60 and the 0 do not move.
+ */
+test.describe("a store page goes quiet", () => {
+  for (const path of ["/s/demo/no/search?q=lampe", "/s/demo/no/category/hjem", "/s/demo/no/cart", "/themes"]) {
+    test(path, async ({ page }) => {
+      const seen = watch(page);
+      await page.goto(path, { waitUntil: "load" });
+      await page.waitForTimeout(3000);
+      const first = (await seen.prefetches()).length;
+      expect(first, `router prefetches in the 3 s after load of ${path}`).toBeLessThan(60);
+      await page.waitForTimeout(2000);
+      const all = await seen.prefetchesWithSegment();
+      const counts = new Map<string, number>();
+      for (const line of all) counts.set(line, (counts.get(line) ?? 0) + 1);
+      const top = [...counts].sort((a, b) => b[1] - a[1]).slice(0, 3).map(([line, n]) => `${n} x ${line}`).join("\n");
+      expect(all.length - first, `router prefetches after the first 3 s of ${path} (total ${all.length}); most repeated:\n${top}`).toBe(0);
+    });
+  }
+});
