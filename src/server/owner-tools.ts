@@ -187,6 +187,7 @@ import {
   rulesSummary as affiliateRulesSummary,
 } from "@/lib/affiliate-admin";
 import { listAdBudgetsTool, preflightSetAdBudget, setAdBudgetTool } from "./ad-budget-tools";
+import { cancelPurchaseTool, listPurchasesTool, preflightRequestPurchase, requestPurchaseTool, walletStatusTool } from "./purchase-tools";
 import { affiliateOverview, affiliateTag, customerAffiliate, getAffiliateSettings, saveAffiliateSettings, setAffiliateBlocked } from "./affiliates";
 import { cookiesTag } from "./site-cookies";
 import { catalogTag } from "./catalog";
@@ -2235,6 +2236,8 @@ export async function preflightOwnerTool(ctx: OwnerToolContext, name: string, ra
     issue_work_invoice: preflightIssueWorkInvoice,
     // An ad budget change Meta would refuse, or that changes nothing, is refused now (D585).
     set_ad_budget: preflightSetAdBudget,
+    // A purchase the wallet could not make a card for (not connected, paused, no limit, over it) is refused now (D599).
+    request_purchase: preflightRequestPurchase,
   };
   if (name in TEAM_AND_PLAN) {
     const input = readToolInput(OWNER_TOOLS_BY_NAME[name], raw);
@@ -2457,6 +2460,10 @@ const handlersOf = (): Record<OwnerToolName, Handler> => (handlers ??= {
   block_affiliate: blockAffiliateTool,
   list_ad_budgets: listAdBudgetsTool,
   set_ad_budget: setAdBudgetTool,
+  wallet_status: walletStatusTool,
+  request_purchase: requestPurchaseTool,
+  list_purchases: listPurchasesTool,
+  cancel_purchase: cancelPurchaseTool,
   customer_insights: customerInsights,
   product_performance: productPerformance,
   sales_trend: salesTrend,

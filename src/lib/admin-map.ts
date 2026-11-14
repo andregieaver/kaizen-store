@@ -95,7 +95,7 @@ const PAGES: readonly AdminPage[] = [
     needs: "owner",
     keywords: ["assistant", "ai", "chat", "memory"],
   }),
-  store("assistant.autopilot", "/assistant/autopilot", "Autopilot", "Main", "The work the AI manager does on its own (D309): Decisions (changes waiting for your yes, the plans' questions, what only you can do), Plans (each step, its status and result; start, pause, resume, stop), Goals (progress from the store's own figures) and Settings (on or off, how far it may go per area, and its limits). ?tab= opens a tab.", {
+  store("assistant.autopilot", "/assistant/autopilot", "Autopilot", "Main", "The work the AI manager does on its own (D309): Decisions (changes waiting for your yes, the plans' questions, what only you can do), Plans (each step, its status and result; start, pause, resume, stop), Goals (progress from the store's own figures) and Settings (on or off, how far it may go per area, its limits, and the AI wallet: the owner's Airwallex, the cards' monthly limit and each purchase). ?tab= opens a tab.", {
     needs: "owner",
     keywords: ["autopilot", "plans", "goals", "decisions", "autonomy", "approvals"],
     tasks: ["See what waits for my yes", "Answer a plan's question", "Start or pause a plan", "Set how far the autopilot may go (?tab=settings)"],

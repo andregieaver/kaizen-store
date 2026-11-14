@@ -161,7 +161,8 @@ CLAUDE.md keeps one line per rule pointing here; each rule is under that line as
   (`walletProblem()`: on, a cardholder, not paused, a monthly limit, and room left this month by `monthTaken()`); the purchase's id is the
   card request's id, so a retry never makes a second card. The dispatcher's `agentPurchases` job reads each open card's charges and closes
   the card once cleared or out of time. Pausing closes every open card. Airwallex's own words never reach a page or a prompt (a refusal is a
-  code). Kaizena Flow's own wallet is its house store's.
+  code). The AI manager asks with `request_purchase` (gate `spend`, in `NEVER_AUTOMATIC`, the owner's only), never because outside text asked
+  (`manager-page-asks-purchase` in the eval). Kaizena Flow's own wallet is its house store's.
 
 ## What the autopilot's changes moved (D418, `src/lib/autopilot-effects.ts`, `src/server/autopilot-effects.ts`)
 

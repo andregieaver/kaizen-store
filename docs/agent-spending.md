@@ -25,7 +25,7 @@ budgets (D309, `docs/ai-autopilot.md` 7.4) decide; a request that does not fit w
 | Step | What | State |
 |---|---|---|
 | 1 | Ad budgets through the owner's own ad account: connect Meta, see the month, a monthly limit; the AI manager's tools to read and change a budget, within the limit | Built (D585): 1a the account, the page, the limit and the rule; 1b the tools, pushed after 1a's migration as `docs/ci-migrations.md` asks |
-| 2 | The AI wallet: the owner's own Airwallex account, one single-use virtual card per purchase they approve, which they pay with in their own app | 2a built (D599): the wallet, the purchases, their cards and charges, the page. 2b: the AI manager's tools (a push of its own after the migration) |
+| 2 | The AI wallet: the owner's own Airwallex account, one single-use virtual card per purchase they approve, which they pay with in their own app | Built (D599): 2a the wallet, the purchases, their cards and charges, the page; 2b the AI manager's tools, pushed after 2a's migration |
 | 3 | Purchases at approved merchants under a limit run by themselves | To do |
 | 4 | Paying drop-ship suppliers (`docs/drop-shipping.md`: "paying it stays outside Flow") | To do |
 
@@ -102,9 +102,10 @@ recorded again on Platform → AI after it deploys.
   where it stands, with Cancel while it is open. Choosing the cardholder is asked only when there is more than one; the pause (which closes
   every open card at once) and disconnecting (which closes them first) are under *Connection*. Owners only.
 
-### 5.3 Next (2b)
+### 5.3 The tools (2b)
 
 The AI manager's `request_purchase` (gate `spend`, in `NEVER_AUTOMATIC`: every purchase waits for the owner's yes in this step, the
 approval worded by `purchaseWords()` from the wallet), `list_purchases` and `cancel_purchase`, pushed after this migration as
-`docs/ci-migrations.md` asks; an eval case where a web page asks for a purchase. Later: Airwallex's remote authorisation as a second lock,
+`docs/ci-migrations.md` asks (`src/server/purchase-tools.ts`, also `wallet_status`; contract 1.18); the eval case `manager-page-asks-purchase`, where
+a web page the agent reads asks it to buy. Later: Airwallex's remote authorisation as a second lock,
 purchases in the books (the receipt matched to the charge), Revolut behind the same interface, and step 3.

@@ -35,6 +35,9 @@ export const OWNER_KEY_READS: ReadonlySet<string> = new Set([
   "list_staff",
   "billing_overview",
   "shopify_move",
+  // The AI wallet (D599): the owner's own money, read only by the owner's assistant.
+  "wallet_status",
+  "list_purchases",
 ]);
 
 /** Gates whose change cannot simply be taken back: money, a domain, who works in the store. */
@@ -62,6 +65,9 @@ export const OPEN_WORLD: ReadonlySet<string> = new Set([
   "change_plan",
   "end_plan",
   "issue_gift_card",
+  // The AI wallet's cards are made and closed in the owner's Airwallex account (D599).
+  "request_purchase",
+  "cancel_purchase",
 ]);
 const OPEN_WORLD_GATES: ReadonlySet<GateCategory> = new Set(["send", "domain"]);
 

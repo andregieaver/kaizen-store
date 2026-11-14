@@ -157,6 +157,8 @@ export const NEVER_AUTOMATIC: ReadonlySet<string> = new Set([
   "contact_kaizen_support",
   "start_autopilot_plan",
   "resume_autopilot_plan",
+  // A purchase with the AI wallet (D599): every one waits for the owner's yes in this step (`docs/agent-spending.md` 5).
+  "request_purchase",
 ]);
 
 /** Emails to one customer the autopilot may send itself, at most `customerEmailsPerWeek` in seven days (counted from the audit log). */
