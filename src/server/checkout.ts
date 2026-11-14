@@ -46,6 +46,7 @@ import { decideCustoms, loadCustomsFacts } from "./customs";
 import { decideTax, loadTaxFacts } from "./tax-treatment";
 import { refreshStaleCartCheck } from "./vat-checks";
 import { bookable, cartLinesFirst } from "./cart";
+import { checkoutPhoneRequired } from "./checkout-contact";
 import { checkoutRuleOutcome, listCheckoutFields } from "./checkout-rules";
 import { STORE_AUDIENCE, offeredTo, plansOffered, LIST_PRICED } from "./product-conditions";
 import { ensureStorePaymentMethods, getCheckoutUi } from "./connect";
@@ -1507,7 +1508,11 @@ export async function startCheckout(
   // An order gift cards pay in full (D300 F3) has no provider's page either: who pays is asked on the cart and given here, checked the same way.
   if (mollieMode || onTerms || payer) {
     const resolved = await resolveDelivery(db(), shop.storeId, cartId, shop.market, { customerId });
-    const needs = { address: onTerms || (resolved?.delivery != null && resolved.method !== "pickup"), phone: resolved?.method === "local" };
+    // A local delivery's driver calls (D237); the store may require a phone of every order (D357, `stores.checkout_phone`).
+    const needs = {
+      address: onTerms || (resolved?.delivery != null && resolved.method !== "pickup"),
+      phone: resolved?.method === "local" || (await checkoutPhoneRequired(shop.storeId)),
+    };
     const cleaned = payer ? cleanPayer(payer, needs) : null;
     if (cleaned?.ok) cleanedPayer = cleaned.payer;
   }

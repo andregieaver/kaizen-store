@@ -24,6 +24,7 @@ import { formatWindow } from "@/lib/porterbuddy";
 import { bookingWhen, isRange } from "@/lib/booking-text";
 import { withoutVat } from "@/lib/b2b";
 import { CHECKOUT_MINUTES, stripeLocale } from "@/lib/checkout";
+import { contactAsked } from "@/lib/checkout-contact";
 import { checkoutLabels } from "@/lib/checkout-labels";
 import { customsText, orderCustomsSentence } from "@/lib/customs-text";
 import { checkoutAppearanceFor, checkoutLookOf } from "@/lib/checkout-look";
@@ -509,6 +510,31 @@ async function deliveryBlock(store: Store, market: Market, view: CheckoutView) {
   );
 }
 
+/** What the checkout page asks besides the email, or null when it asks nothing (D357, `contactAsked()`). */
+function contactOption(store: Store, market: Market, order: CheckoutView["order"], m: CheckoutView["m"]) {
+  const asked = contactAsked(store.checkoutContact, order);
+  if (asked.name === "off" && asked.phone === "off") return null;
+  const driver = order.deliveryMethod === "local";
+  const c = m.checkoutContact;
+  return {
+    store: store.slug,
+    market: market.slug,
+    country: market.code,
+    asked,
+    driver,
+    labels: {
+      name: c.name,
+      phone: c.phone,
+      optional: c.optional,
+      driverPhone: m.deliveryOptions.driverPhone.label,
+      driverHint: m.deliveryOptions.driverPhone.hint,
+      nameProblem: c.nameProblem,
+      phoneProblem: driver ? m.deliveryOptions.driverPhone.problem : c.phoneProblem,
+      saveFailed: c.saveFailed,
+    },
+  };
+}
+
 async function paymentForm(store: Store, market: Market, view: CheckoutView, drawTerms: boolean) {
   const { m, base, cartId, open, order } = view;
   const publishableKey = platformPublishableKey(open.mode);
@@ -633,12 +659,8 @@ async function paymentForm(store: Store, market: Market, view: CheckoutView, dra
                   }
                 : null
             }
-            // Local delivery (D237): the session collects a phone for the driver, which Stripe's form on our page does not draw, so the page asks it.
-            phone={
-              order.deliveryMethod === "local"
-                ? { country: market.code, labels: { label: m.deliveryOptions.driverPhone.label, hint: m.deliveryOptions.driverPhone.hint, problem: m.deliveryOptions.driverPhone.problem } }
-                : null
-            }
+            // A name and a phone besides the email (D357), as this order asks them: the store's choice, a local delivery always the phone (D237).
+            contact={contactOption(store, market, order, m)}
             links={{
               cart: `${base}/cart`,
               order: `${base}/order/${open.orderId}?session_id=${encodeURIComponent(open.sessionId)}`,

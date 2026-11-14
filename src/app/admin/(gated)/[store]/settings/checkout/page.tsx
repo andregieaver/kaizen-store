@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 
 import { AdminTextScope } from "@/components/admin/admin-text";
 import { FieldList, RuleList, type CheckoutRuleActions, type RuleChoices } from "@/components/admin/checkout-rules";
+import { ContactFieldsCard } from "@/components/admin/contact-fields-card";
 import { CustomerAccountsCard } from "@/components/admin/customer-accounts-card";
 import { accountsMode } from "@/lib/customer-accounts";
 import { requireFeature } from "@/components/admin/feature-off";
@@ -17,7 +18,7 @@ import { db } from "@/db/client";
 import { listCheckoutFields, listCheckoutRules, ruleChoices } from "@/server/checkout-rules";
 import { memberCan, requirePermission } from "@/server/permissions";
 
-import { saveAccountsModeAction, deleteFieldAction, deleteRuleAction, moveFieldAction, moveRuleAction, saveFieldAction, saveRuleAction, switchFieldAction, switchRuleAction } from "./actions";
+import { saveAccountsModeAction, saveContactFieldsAction, deleteFieldAction, deleteRuleAction, moveFieldAction, moveRuleAction, saveFieldAction, saveRuleAction, switchFieldAction, switchRuleAction } from "./actions";
 
 export const metadata: Metadata = { title: "Checkout rules" };
 
@@ -58,6 +59,7 @@ export default async function CheckoutRulesPage({ params }: PageProps<"/admin/[s
       <div className="flex flex-col gap-6">
         <PageHeader title={w.title} description={<>{w.description}</>} />
         <CustomerAccountsCard mode={accountsMode(store)} canWrite={canWrite} save={saveAccountsModeAction.bind(null, slug)} />
+        <ContactFieldsCard settings={store.checkoutContact} canWrite={canWrite} save={saveContactFieldsAction.bind(null, slug)} />
         <RuleList
           rules={rules.map((r) => ({ id: r.id, name: r.name, enabled: r.enabled, conditions: r.conditions, effect: r.effect, skips: r.skips.map((s) => ({ reason: s.reason, count: s.count, since: when(s.lastAt) })) }))}
           choices={choices}

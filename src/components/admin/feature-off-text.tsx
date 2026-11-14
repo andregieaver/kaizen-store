@@ -3,7 +3,8 @@
 import Link from "next/link";
 
 import { countWords, fillWords } from "@/lib/admin-fill";
-import { needWords, requirementLabel, type FeatureId, type FeatureRequirement } from "@/lib/store-features";
+import { type FeatureId, type FeatureRequirement } from "@/lib/store-features";
+import { needWords, requirementLabel } from "@/lib/feature-labels";
 
 import { useAdminText } from "./admin-text";
 

@@ -895,6 +895,15 @@ export const sv: Messages = {
       tyres: "Däck",
     },
   },
+  /** A name and a phone at checkout besides the email (D357): asked on our page as the store chooses, kept on the order. */
+  checkoutContact: {
+    name: "Namn",
+    phone: "Telefon",
+    optional: "(valfritt)",
+    nameProblem: "Skriv ditt namn.",
+    phoneProblem: "Skriv ett telefonnummer som vi kan nå dig på. Ett nummer från ett annat land börjar med + och landsnumret.",
+    saveFailed: "Dina uppgifter kunde inte sparas. Försök igen.",
+  },
   /** Who pays and where the goods go, asked before Mollie's page, which asks for neither (D292). */
   payer: {
     legend: "Dina uppgifter",

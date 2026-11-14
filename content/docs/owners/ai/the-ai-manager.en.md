@@ -15,7 +15,7 @@ sources: [D73, D94, D103, D104, D105, D308, D318, D350, D391]
 
 ## Open it
 
-Press **AI manager** in the admin's header, or press ⌘K (Ctrl+K on Windows) on any page of your store's admin. It opens as a panel
+Press **AI manager** in the admin's header, or press ⌘J (Ctrl+J on Windows) on any page of your store's admin. It opens as a panel
 beside the page: the page stays usable, and the conversation goes on as you move from page to page. Escape closes it.
 
 Write what you want in plain words and press **Send**. A new conversation offers a few questions to start with, such as *What needs

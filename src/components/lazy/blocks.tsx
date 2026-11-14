@@ -31,4 +31,7 @@ export const TileShop = lazyView(dynamic(() => import("../tile-shop").then((m) =
 export const CountdownView = lazyView(dynamic(() => import("../countdown-view").then((m) => m.CountdownView)));
 /** Figures that count up as they come into view (D561); the server's HTML holds them as typed. */
 export const StatsView = lazyView(dynamic(() => import("../stats-view").then((m) => m.StatsView)));
-
+/** The theme store's preview stage (D247): drawn only on the theme pages. */
+export const ThemePreviewStage = lazyView(dynamic(() => import("../theme-preview-stage").then((m) => m.ThemePreviewStage)));
+/** The language switch (D479, D312): drawn only where a site offers more than one language. */
+export const LanguageSwitch = lazyView(dynamic(() => import("../language-switch").then((m) => m.LanguageSwitch)));

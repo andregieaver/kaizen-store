@@ -6,7 +6,8 @@ import { z } from "zod";
 import { db } from "@/db/client";
 import { defaultHours, type OpeningHours } from "@/lib/opening-hours";
 import { openingHoursInput, parseOpeningHours } from "@/lib/opening-hours-schema";
-import { featureOffText, featureOn, resourceFeature } from "@/lib/store-features";
+import { featureOn, resourceFeature } from "@/lib/store-features";
+import { featureOffText } from "@/lib/feature-labels";
 
 import { audit, type Membership } from "./auth";
 import { noShowFeeFor } from "./no-show";

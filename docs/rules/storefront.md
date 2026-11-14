@@ -639,8 +639,9 @@ changing it; a rule changes here, and its line in CLAUDE.md when its gist change
 ## Cookie consent (D58, `src/lib/cookie-consent.ts`)
 
 - Cookie consent (D58, `src/lib/cookie-consent.ts`): every cookie or storage
-  item the site sets is listed in `KNOWN_COOKIES` with its category and
-  purpose, so a new one goes there too. Only necessary ones need no consent;
+  item the site sets is listed in `COOKIE_PATTERNS`
+  (`src/lib/cookie-patterns.ts`) with its category and in `KNOWN_COOKIES`
+  (`src/lib/known-cookies.ts`) with its purpose, so a new one goes in both. Only necessary ones need no consent;
   `<SiteConsent>` shows the banner only when the site uses an optional
   category (a tracking tool in `stores.tracking` / `platform_settings.tracking`).
   Third-party scripts load only from `ConsentManager` after consent, never

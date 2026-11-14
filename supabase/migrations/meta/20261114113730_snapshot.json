@@ -1,6 +1,6 @@
 {
-  "id": "2b815292-7697-4129-9bcf-5a93465be51e",
-  "prevId": "b3a0372b-3559-4bf7-acdd-9ff4a7ca7c3a",
+  "id": "af8eeee8-8c9d-45f6-81a7-ab329ec8182f",
+  "prevId": "2b815292-7697-4129-9bcf-5a93465be51e",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -78719,6 +78719,20 @@
           "notNull": true,
           "default": "'optional'"
         },
+        "checkout_phone": {
+          "name": "checkout_phone",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'off'"
+        },
+        "checkout_name": {
+          "name": "checkout_name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'off'"
+        },
         "assistant_keep_months": {
           "name": "assistant_keep_months",
           "type": "integer",
@@ -79151,6 +79165,14 @@
         "stores_customer_accounts": {
           "name": "stores_customer_accounts",
           "value": "\"commerce\".\"stores\".\"customer_accounts\" in ('optional', 'required', 'off')"
+        },
+        "stores_checkout_phone": {
+          "name": "stores_checkout_phone",
+          "value": "\"commerce\".\"stores\".\"checkout_phone\" in ('off', 'optional', 'required')"
+        },
+        "stores_checkout_name": {
+          "name": "stores_checkout_name",
+          "value": "\"commerce\".\"stores\".\"checkout_name\" in ('off', 'optional', 'required')"
         },
         "stores_assistant_keep_months": {
           "name": "stores_assistant_keep_months",

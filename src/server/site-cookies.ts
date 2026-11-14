@@ -6,7 +6,8 @@ import { cacheLife, cacheTag } from "next/cache";
 
 import type { ListedCookie } from "@/components/consent/cookie-policy";
 import { db, readDb } from "@/db/client";
-import { declaredCookies, OPTIONAL_CATEGORIES, STORE_ONLY_TOOLS, toolCategories, type KnownCookie, type OptionalCategory, type TrackingSettings } from "@/lib/cookie-consent";
+import { OPTIONAL_CATEGORIES, STORE_ONLY_TOOLS, toolCategories, type OptionalCategory, type TrackingSettings } from "@/lib/cookie-consent";
+import { declaredCookies, type KnownCookie } from "@/lib/known-cookies";
 import { trackingSchema } from "@/lib/cookie-consent-schema";
 import { cookieNoteInput, parseScannedItems, reviewFindings, type CookieNote, type ScannedItem } from "@/lib/cookie-scan";
 import { codeCategories, type CustomCode } from "@/lib/custom-code";

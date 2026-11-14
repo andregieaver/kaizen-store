@@ -103,6 +103,7 @@ async function createStore(slug: string): Promise<Store> {
     legalPages: {},
     termsAtCheckout: "link",
     customerAccounts: "optional",
+    checkoutContact: { phone: "off", name: "off" },
     tracking: {},
     customCode: {},
     customCss: "",

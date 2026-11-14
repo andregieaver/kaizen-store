@@ -12,13 +12,13 @@ import {
   dependentsOf,
   featureOn,
   missingNeeds,
-  needWords,
   featureOffered,
   normaliseFeatures,
   type FeatureFacts,
   type FeatureId,
   type FeatureOffer,
 } from "@/lib/store-features";
+import { needWords } from "@/lib/feature-labels";
 import { FEATURES_NEEDING_ACCOUNTS } from "@/lib/customer-accounts";
 import { FEATURE_WORDS_EN, featureBlockers, featureWarnings, type FeatureBlocker, type FeatureWords } from "@/lib/feature-words";
 

@@ -4,7 +4,7 @@ import type { AssistantMessages } from "./assistant.en";
 export const assistantNb: AssistantMessages = {
   name: "KI-assistent",
   page: {
-    description: "Din guide til administrasjonen og din høyre hånd for {site}. Åpne den fra hvilken som helst side med KI-assistent-knappen eller ⌘K (Ctrl+K).",
+    description: "Din guide til administrasjonen og din høyre hånd for {site}. Åpne den fra hvilken som helst side med KI-assistent-knappen eller ⌘J (Ctrl+J).",
     kaizen: "Kaizena Flow",
     conversations: "Samtaler",
     memory: "Minne",
@@ -65,7 +65,7 @@ export const assistantNb: AssistantMessages = {
     loading: "Laster …",
     failed: "KI-assistenten ble ikke lastet.",
     openPage: "Åpne den på sin egen side",
-    title: "KI-assistent (⌘K / Ctrl+K)",
+    title: "KI-assistent (⌘J / Ctrl+J)",
     talkTitle: "Snakk med KI-assistenten (talemodus)",
     talk: "Snakk med KI-assistenten",
   },

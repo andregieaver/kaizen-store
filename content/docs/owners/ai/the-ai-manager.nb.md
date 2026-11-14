@@ -15,7 +15,7 @@ sources: [D73, D94, D103, D104, D105, D308, D318, D350, D391]
 
 ## Åpne den
 
-Trykk **KI-assistent** øverst i administrasjonen, eller trykk ⌘K (Ctrl+K på Windows) på hvilken som helst side i butikkens
+Trykk **KI-assistent** øverst i administrasjonen, eller trykk ⌘J (Ctrl+J på Windows) på hvilken som helst side i butikkens
 administrasjon. Den åpnes som et panel ved siden av siden: siden kan fortsatt brukes, og samtalen fortsetter mens du går fra side til
 side. Esc lukker den.
 

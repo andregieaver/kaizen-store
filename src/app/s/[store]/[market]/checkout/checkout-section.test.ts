@@ -53,7 +53,7 @@ import { Checkout, CheckoutCredits, CheckoutDelivery, CheckoutItems, CheckoutPay
 
 let bonusNow: CartBonus | null = null;
 const market = { slug: "ie", code: "IE", currency: "EUR", locale: "en-IE", lang: "en" } as Market;
-const store = { id: "s1", slug: "demo", name: "Demo", theme: parseStoreTheme(null), navigation: EMPTY_NAVIGATION } as Store;
+const store = { id: "s1", slug: "demo", name: "Demo", theme: parseStoreTheme(null), navigation: EMPTY_NAVIGATION, checkoutContact: { phone: "off", name: "off" } } as Store;
 
 const order = (over: Record<string, unknown> = {}) => ({
   id: "o1",
@@ -434,25 +434,42 @@ describe("the checkout's look (D337)", () => {
   });
 });
 
-describe("the driver's phone for local delivery (D237)", () => {
+describe("contact details on the checkout page (D357, D237)", () => {
   beforeEach(() => {
     stripeNow.key = "pk_test_1";
     termsNow.display = null;
     formNow.props = null;
   });
 
-  it("asks it on the page for a local delivery, in the market's country, since Stripe's form on our page draws no phone field", async () => {
+  it("asks the driver's phone, required, for a local delivery, even when the store asks nothing, since Stripe's form on our page draws no phone field", async () => {
     getOrder.mockResolvedValue(order({ ships: true, deliveryMethod: "local" }));
     renderToString(await CheckoutPayment({ store, market }));
-    const words = t("en").deliveryOptions.driverPhone;
-    expect(formNow.props!.phone).toEqual({ country: "IE", labels: { label: words.label, hint: words.hint, problem: words.problem } });
+    const driver = t("en").deliveryOptions.driverPhone;
+    expect(formNow.props!.contact).toMatchObject({
+      store: "demo",
+      market: "ie",
+      country: "IE",
+      asked: { phone: "required", name: "off" },
+      driver: true,
+      labels: { driverPhone: driver.label, driverHint: driver.hint, phoneProblem: driver.problem },
+    });
   });
 
-  it("asks none for an order sent by post or collected", async () => {
+  it("asks nothing when the store asks nothing and the order is sent by post or collected", async () => {
     for (const deliveryMethod of ["ship", "pickup"]) {
       getOrder.mockResolvedValue(order({ ships: true, deliveryMethod }));
       renderToString(await CheckoutPayment({ store, market }));
-      expect(formNow.props!.phone, deliveryMethod).toBeNull();
+      expect(formNow.props!.contact, deliveryMethod).toBeNull();
     }
+  });
+
+  it("asks what the store chose: the phone of every order, the name when nothing goes to an address", async () => {
+    const asking = { ...store, checkoutContact: { phone: "optional", name: "required" } } as Store;
+    getOrder.mockResolvedValue(order({ ships: true, deliveryMethod: "ship" }));
+    renderToString(await CheckoutPayment({ store: asking, market }));
+    expect(formNow.props!.contact).toMatchObject({ asked: { phone: "optional", name: "off" }, driver: false, labels: { phoneProblem: t("en").checkoutContact.phoneProblem } });
+    getOrder.mockResolvedValue(order({ ships: true, deliveryMethod: "pickup" }));
+    renderToString(await CheckoutPayment({ store: asking, market }));
+    expect(formNow.props!.contact).toMatchObject({ asked: { phone: "optional", name: "required" } });
   });
 });

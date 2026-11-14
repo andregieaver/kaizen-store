@@ -50,7 +50,7 @@ function Spark({ className }: { className?: string }) {
 
 /**
  * The AI manager's launcher (D103): a button in the admin's header and
- * ⌘K / Ctrl+K anywhere in the admin open the AI manager as a panel at the
+ * ⌘J / Ctrl+J anywhere in the admin (⌘K is the page finder's, admin redesign round 1) open the AI manager as a panel at the
  * side. The panel is not modal: the page stays usable beside it, pages the
  * AI manager opens load behind it, and the conversation carries on across
  * pages. Escape closes it.
@@ -130,7 +130,7 @@ export function AiManagerLauncher({
 
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
-      if ((event.metaKey || event.ctrlKey) && !event.shiftKey && !event.altKey && event.key.toLowerCase() === "k") {
+      if ((event.metaKey || event.ctrlKey) && !event.shiftKey && !event.altKey && event.key.toLowerCase() === "j") {
         event.preventDefault();
         if (onItsPage) {
           focusAiComposer();
@@ -266,14 +266,14 @@ export function AiManagerLauncher({
         type="button"
         onClick={() => toggle()}
         aria-expanded={open && !onItsPage}
-        aria-keyshortcuts="Meta+K Control+K"
+        aria-keyshortcuts="Meta+J Control+J"
         title={w.launcher.title}
-        className="inline-flex min-h-9 items-center gap-2 rounded-full bg-brand px-3 text-sm font-medium text-brand-ink hover:opacity-90"
+        className="inline-flex min-h-10 items-center gap-2 rounded-full border border-edge bg-card px-3 text-sm text-ink hover:bg-sunken"
       >
-        <Spark className="size-4" />
+        {/* A secondary button with the AI's sign in green (round 1): the page's own main action is its only green fill. */}
+        <Spark className="size-4 text-brand-text" />
         <span className="sr-only sm:not-sr-only">{w.name}</span>
         <NoticeBadge count={unread} />
-        <kbd className="hidden rounded border border-card/30 px-1 font-sans text-xs opacity-80 md:inline">⌘K</kbd>
       </button>
       {!onItsPage && (
         <button

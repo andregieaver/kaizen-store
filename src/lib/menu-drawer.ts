@@ -7,7 +7,6 @@
  * pages read it.
  */
 
-import { layersShow } from "./background-layers";
 import type { MenuDrawer } from "./page-content";
 
 /** How a phone drawer is shown: a panel from an edge (the default), the whole screen, a panel dropping under the header, or a floating card. */
@@ -133,8 +132,3 @@ export function menuDrag(look: MenuLook, dx: number, dy: number): number {
 
 /** Whether a drag has gone far enough to close it: a quarter of the panel's size along the swipe. */
 export const menuDragCloses = (drag: number, size: number): boolean => Math.abs(drag) > size / 4;
-
-/** Whether the drawer has a background of its own (a colour, picture or gradient, or layers over none). */
-export const drawerHasBackground = (drawer: MenuDrawer | undefined): boolean =>
-  Boolean(drawer?.background) || layersShow(drawer?.backgroundLayers) || Boolean(drawer?.backdropBlur);
-

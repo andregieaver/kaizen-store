@@ -7,7 +7,8 @@ import type { Market } from "@/lib/markets";
 import { motionNeeds } from "@/lib/motion-attrs";
 import { headerStageGradients, headerStageLook } from "@/lib/header-stages";
 import { rowShows, type HeaderOverlay, type MenuDrawer, type PageBlock, type PageContent, type SiteBlock } from "@/lib/page-content";
-import { drawerHasBackground, menuLookAttrs } from "@/lib/menu-drawer";
+import { drawerHasBackground } from "@/lib/drawer-background";
+import { menuLookAttrs } from "@/lib/menu-drawer";
 import { surfaceClass } from "@/lib/background-surface";
 import { flowRows } from "@/lib/page-modal";
 import { localizePage } from "@/lib/page-translation";
@@ -23,7 +24,7 @@ import type { SiteLayout } from "@/server/site-layouts";
 import type { Store } from "@/server/stores";
 
 import { ReportContentLink } from "./report-content-link";
-import { LanguageSwitch } from "./language-switch";
+import { LanguageSwitch } from "./lazy/blocks";
 import { BuyerSwitch } from "./buyer";
 import { StoreColorSwitch } from "./store-color-switch";
 import { CartLink, CartLinkShell } from "./cart-link";

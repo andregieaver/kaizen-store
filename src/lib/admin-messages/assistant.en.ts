@@ -7,7 +7,7 @@ import type { Widen } from "./common.en";
 export const assistantEn = {
   name: "AI manager",
   page: {
-    description: "Your guide to the admin and your right hand for {site}. Open it from any page with the AI manager button or ⌘K (Ctrl+K).",
+    description: "Your guide to the admin and your right hand for {site}. Open it from any page with the AI manager button or ⌘J (Ctrl+J).",
     kaizen: "Kaizena Flow",
     conversations: "Conversations",
     memory: "Memory",
@@ -70,7 +70,7 @@ export const assistantEn = {
     loading: "Loading …",
     failed: "The AI manager did not load.",
     openPage: "Open it on its own page",
-    title: "AI manager (⌘K / Ctrl+K)",
+    title: "AI manager (⌘J / Ctrl+J)",
     talkTitle: "Talk to the AI manager (voice mode)",
     talk: "Talk to the AI manager",
   },

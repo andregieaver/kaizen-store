@@ -17,6 +17,15 @@ export const shellEn = {
     checkingSession: "Checking your session …",
     skipToContent: "Skip to content",
   },
+  /** The page finder (admin redesign round 1): the search button in the top bar and ⌘K. `{query}` is what was typed. */
+  finder: {
+    open: "Search the admin",
+    placeholder: "Search pages and tasks, such as refunds or shipping",
+    hint: "Type a page or a task. Every page is found here, in Basic view too.",
+    none: "Nothing matches “{query}”. Try another word, or ask the AI manager.",
+    results: "Pages",
+    close: "Close",
+  },
   /** What a page's loading screen says while it is read (D312), drawn by `LoadingWords`. */
   loading: {
     page: "Loading the page…",
@@ -69,6 +78,7 @@ export const shellEn = {
     builder: "Page builder",
     writing: "Writing a message",
     keys: {
+      finder: "Search the admin",
       assistant: "Open the AI manager",
       sheet: "Show this list",
       save: "Save the draft",

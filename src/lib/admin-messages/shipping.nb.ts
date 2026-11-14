@@ -445,6 +445,18 @@ export const shippingNb: ShippingMessages = {
     blockedFeature: "Slå av {label} først: den trenger kundekontoer.",
     blockedCompanies: { one: "{n} bedriftskonto handler i butikken din. Fjern den først: den trenger kundekontoer.", many: "{n} bedriftskontoer handler i butikken din. Fjern dem først: de trenger kundekontoer." },
   },
+  contactFields: {
+    title: "Kontaktopplysninger",
+    description: "Kassen spør alltid etter e-post, og etter leveringsadresse når varer sendes. Be om mer bare når du trenger det.",
+    phone: "Telefon",
+    phoneHint: "Spørres om på alle bestillinger. Lokal levering spør alltid, for sjåføren.",
+    name: "Navn",
+    nameHint: "Spørres om når ingenting sendes til en adresse: nedlastinger, bookinger og henting. En leveringsadresse har allerede et navn.",
+    modes: { off: "Spørres ikke om", optional: "Valgfritt", required: "Påkrevd" },
+    where: "Spørres om på kassesiden på nettstedet ditt og lagres på bestillingen. Stripes egen betalingsside og betalingslenker spør bare om det Stripe spør om. En Mollie-kasse spør alltid etter navn, og krever telefon når du velger Påkrevd.",
+    save: "Lagre",
+    saved: "Lagret.",
+  },
   checkoutRules: {
     title: "Regler i kassen",
     description:

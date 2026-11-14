@@ -17,6 +17,8 @@ import {
 } from "@/server/checkout-rules";
 import type { AccountsMode } from "@/lib/customer-accounts";
 import { saveAccountsMode } from "@/server/customer-accounts";
+import { saveCheckoutContact } from "@/server/checkout-contact";
+import type { CheckoutContactSettings } from "@/lib/checkout-contact";
 import { checkPermission } from "@/server/permissions";
 
 /** Checkout rules and questions change what shoppers are offered and asked, so they are `settings:write` (D357). */
@@ -88,6 +90,15 @@ export async function saveAccountsModeAction(storeSlug: string, mode: AccountsMo
   const words = adminText(lang, "shipping").customerAccounts;
   const labels = adminText(lang, "common").features.labels as Record<string, string>;
   const saved = await saveAccountsMode(member, mode, words, (id) => labels[id] ?? id);
+  if (saved.ok) refresh();
+  return saved;
+}
+
+/** The phone and name the checkout asks besides the email (D357): `settings:write`. */
+export async function saveContactFieldsAction(storeSlug: string, settings: CheckoutContactSettings): Promise<{ ok: true } | { ok: false; problems: string[] }> {
+  const member = await checkPermission(storeSlug, "settings:write");
+  if (!member) return { ok: false, problems: [await noAccess()] };
+  const saved = await saveCheckoutContact(member, settings);
   if (saved.ok) refresh();
   return saved;
 }

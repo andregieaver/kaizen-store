@@ -5,7 +5,9 @@ import { cacheLife, cacheTag } from "next/cache";
 
 import { db, readDb } from "@/db/client";
 import { isAccountsMode, type AccountsMode } from "@/lib/customer-accounts";
-import { effectiveAudience, parseStoreAudience, type StoreAudience } from "@/lib/b2b";
+import { isContactMode, type CheckoutContactSettings } from "@/lib/checkout-contact";
+import { parseStoreAudience, type StoreAudience } from "@/lib/b2b";
+import { effectiveAudience } from "@/lib/store-audience";
 import type { StoreCurrency } from "@/lib/currency";
 import type { Localization } from "@/lib/localization";
 import type { Market } from "@/lib/markets";
@@ -152,6 +154,8 @@ export type Store = {
   termsAtCheckout: TermsMode;
   /** Whether shoppers may, must or cannot have an account (D365); read through `accountsMode()`. */
   customerAccounts: AccountsMode;
+  /** Phone and a person's name at checkout (D357, `contactAsked()`): off, optional or required each. */
+  checkoutContact: CheckoutContactSettings;
   /** Analytics and marketing tools, loaded only with the shopper's consent (D58). */
   tracking: TrackingSettings;
   /** The owner's own code for the head and body (D61), as saved; `liveCustomCode()` says whether it is added. */
@@ -234,7 +238,7 @@ async function readStore(slug: string): Promise<Store | null> {
       s.id, s.slug, s.name, s.status, s.closed_at, s.is_template, s.starter, s.sandbox, s.house, s.setup_completed_at,
       (s.house and coalesce((select p.site_from_store from commerce.platform_settings p), false)) as on_site,
       s.legal_name, s.organisation_number, s.contact_email, s.postal_address, s.country, s.seo, s.navigation, s.header_menu_id, s.footer_menu_id, s.front_page_id, s.products_page_id, s.tracking, s.custom_code, s.custom_css, s.theme,
-      s.terms_at_checkout, s.customer_accounts, s.audience, s.business_popup, s.open_cart_on_add, s.visit_counting, s.private_mode, s.shopping_agents, s.private_password is not null as private_password, s.modules, s.features, s.time_zone, s.booking_reminder_hours,
+      s.terms_at_checkout, s.customer_accounts, s.checkout_phone, s.checkout_name, s.audience, s.business_popup, s.open_cart_on_add, s.visit_counting, s.private_mode, s.shopping_agents, s.private_password is not null as private_password, s.modules, s.features, s.time_zone, s.booking_reminder_hours,
       s.price_decimals, s.price_words, s.quantity_picker,
       s.locales, s.rates_auto, s.rates_updated_at, s.language_rule, s.currency_follows_language, s.language_currencies,
       (
@@ -334,6 +338,10 @@ async function readStore(slug: string): Promise<Store | null> {
     legalPages: Object.fromEntries(Object.entries((row.page_roles ?? {}) as Record<string, string>).filter(([role]) => isLegalRole(role))),
     termsAtCheckout: isTermsMode(row.terms_at_checkout) ? row.terms_at_checkout : "link",
     customerAccounts: isAccountsMode(row.customer_accounts) ? row.customer_accounts : "optional",
+    checkoutContact: {
+      phone: isContactMode(row.checkout_phone) ? row.checkout_phone : "off",
+      name: isContactMode(row.checkout_name) ? row.checkout_name : "off",
+    },
     tracking: parseTracking(row.tracking),
     customCode: parseCustomCode(row.custom_code),
     customCss: String(row.custom_css ?? ""),
