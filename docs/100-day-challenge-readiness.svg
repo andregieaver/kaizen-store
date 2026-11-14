@@ -1,0 +1,97 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="830" viewBox="0 0 1200 830" font-family="Inter, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif">
+  <title>The 100-day challenge: where each area stands today</title>
+  <defs>
+    <g id="yes"><rect x="-48" y="-13" width="96" height="26" rx="13" fill="#e3f1e7" stroke="#1f6b3a"/><text x="0" y="5" text-anchor="middle" font-size="13" font-weight="600" fill="#1f6b3a">Yes</text></g>
+    <g id="partly"><rect x="-48" y="-13" width="96" height="26" rx="13" fill="#fbf0d9" stroke="#b7791f"/><text x="0" y="5" text-anchor="middle" font-size="13" font-weight="600" fill="#8a5a12">Partly</text></g>
+    <g id="no"><rect x="-48" y="-13" width="96" height="26" rx="13" fill="#fbe9e5" stroke="#c2412d"/><text x="0" y="5" text-anchor="middle" font-size="13" font-weight="600" fill="#a3321f">No</text></g>
+    <g id="na"><rect x="-48" y="-13" width="96" height="26" rx="13" fill="#eeeeea" stroke="#c9ccc6"/><text x="0" y="5" text-anchor="middle" font-size="13" fill="#6b716d">n/a</text></g>
+  </defs>
+  <rect width="1200" height="830" fill="#f4f4ef"/>
+
+  <text x="40" y="50" font-size="24" font-weight="700" fill="#141a17">Where each area stands today</text>
+  <text x="40" y="78" font-size="15" fill="#4d5450">Held to the challenge's rule (a person only for refunds and escalated support), 2 of 15 areas run without a person.</text>
+
+  <!-- Header -->
+  <rect x="30" y="98" width="1140" height="56" rx="10" fill="#141a17"/>
+  <text x="50" y="132" font-size="14" font-weight="700" fill="#ffffff">Area</text>
+  <text x="340" y="122" text-anchor="middle" font-size="13" font-weight="700" fill="#ffffff">The AI has</text>
+  <text x="340" y="140" text-anchor="middle" font-size="13" font-weight="700" fill="#ffffff">the tools</text>
+  <text x="460" y="122" text-anchor="middle" font-size="13" font-weight="700" fill="#ffffff">Runs without</text>
+  <text x="460" y="140" text-anchor="middle" font-size="13" font-weight="700" fill="#ffffff">a person</text>
+  <text x="580" y="122" text-anchor="middle" font-size="13" font-weight="700" fill="#ffffff">Steered by the</text>
+  <text x="580" y="140" text-anchor="middle" font-size="13" font-weight="700" fill="#ffffff">right figure</text>
+  <text x="650" y="132" font-size="14" font-weight="700" fill="#ffffff">What blocks it</text>
+
+  <!-- Rows: 42 px apart, starting at 184 -->
+  <g font-size="14" fill="#141a17">
+    <rect x="30" y="163" width="1140" height="42" rx="6" fill="#ffffff"/>
+    <text x="50" y="189" font-weight="600">Order process</text>
+    <use href="#partly" x="340" y="184"/><use href="#partly" x="460" y="184"/><use href="#yes" x="580" y="184"/>
+    <text x="650" y="189" font-size="13" fill="#4d5450">No label booked by itself; no cancel tool; order changes never automatic</text>
+
+    <text x="50" y="231" font-weight="600">Returns</text>
+    <use href="#partly" x="340" y="226"/><use href="#no" x="460" y="226"/><use href="#yes" x="580" y="226"/>
+    <text x="650" y="231" font-size="13" fill="#4d5450">After approval every step is a button: in transit, received, inspected, refund</text>
+
+    <rect x="30" y="247" width="1140" height="42" rx="6" fill="#ffffff"/>
+    <text x="50" y="273" font-weight="600">Customer support</text>
+    <use href="#partly" x="340" y="268"/><use href="#partly" x="460" y="268"/><use href="#yes" x="580" y="268"/>
+    <text x="650" y="273" font-size="13" fill="#4d5450">Order emails always go to a person; forms skip the AI; no WhatsApp or DMs</text>
+
+    <text x="50" y="315" font-weight="600">Stock and purchasing</text>
+    <use href="#partly" x="340" y="310"/><use href="#no" x="460" y="310"/><use href="#partly" x="580" y="310"/>
+    <text x="650" y="315" font-size="13" fill="#4d5450">No tool makes a purchase order; the reorder pace knows no seasons</text>
+
+    <rect x="30" y="331" width="1140" height="42" rx="6" fill="#ffffff"/>
+    <text x="50" y="357" font-weight="600">Advertising</text>
+    <use href="#no" x="340" y="352"/><use href="#partly" x="460" y="352"/><use href="#no" x="580" y="352"/>
+    <text x="650" y="357" font-size="13" fill="#4d5450">Meta budgets only: no campaign, audience or creative; spend not in the books</text>
+
+    <text x="50" y="399" font-weight="600">Email and campaigns</text>
+    <use href="#partly" x="340" y="394"/><use href="#partly" x="460" y="394"/><use href="#partly" x="580" y="394"/>
+    <text x="650" y="399" font-size="13" fill="#4d5450">Broadcasts never automatic; flows are single emails it cannot edit</text>
+
+    <rect x="30" y="415" width="1140" height="42" rx="6" fill="#ffffff"/>
+    <text x="50" y="441" font-weight="600">A/B testing</text>
+    <use href="#yes" x="340" y="436"/><use href="#yes" x="460" y="436"/><use href="#partly" x="580" y="436"/>
+    <text x="650" y="441" font-size="13" fill="#4d5450">Page words only; counts only visitors who accept statistics cookies</text>
+
+    <text x="50" y="483" font-weight="600">Pricing</text>
+    <use href="#partly" x="340" y="478"/><use href="#partly" x="460" y="478"/><use href="#no" x="580" y="478"/>
+    <text x="650" y="483" font-size="13" fill="#4d5450">No floor at cost: it can price below cost; no competitor prices</text>
+
+    <rect x="30" y="499" width="1140" height="42" rx="6" fill="#ffffff"/>
+    <text x="50" y="525" font-weight="600">Budgeting</text>
+    <use href="#no" x="340" y="520"/><use href="#no" x="460" y="520"/><use href="#partly" x="580" y="520"/>
+    <text x="650" y="525" font-size="13" fill="#4d5450">No AI tool reads the budget; no purchasing or stock-capital budget</text>
+
+    <text x="50" y="567" font-weight="600">Growth analysis</text>
+    <use href="#yes" x="340" y="562"/><use href="#yes" x="460" y="562"/><use href="#partly" x="580" y="562"/>
+    <text x="650" y="567" font-size="13" fill="#4d5450">Reviews see gross profit only; effects measured on sales, 14 + 14 days</text>
+
+    <rect x="30" y="583" width="1140" height="42" rx="6" fill="#ffffff"/>
+    <text x="50" y="609" font-weight="600">Revenue forecast</text>
+    <use href="#no" x="340" y="604"/><use href="#no" x="460" y="604"/><use href="#partly" x="580" y="604"/>
+    <text x="650" y="609" font-size="13" fill="#4d5450">This month only, on one page; no AI tool returns it</text>
+
+    <text x="50" y="651" font-weight="600">Profit</text>
+    <use href="#no" x="340" y="646"/><use href="#no" x="460" y="646"/><use href="#partly" x="580" y="646"/>
+    <text x="650" y="651" font-size="13" fill="#4d5450">Goals cannot target profit; ads, AI cost and packaging left out</text>
+
+    <rect x="30" y="667" width="1140" height="42" rx="6" fill="#ffffff"/>
+    <text x="50" y="693" font-weight="600">Running unattended</text>
+    <use href="#partly" x="340" y="688"/><use href="#no" x="460" y="688"/><use href="#partly" x="580" y="688"/>
+    <text x="650" y="693" font-size="13" fill="#4d5450">One AI provider, a 5 USD budget, no paging, no rollback, no deploy freeze</text>
+
+    <text x="50" y="735" font-weight="600">Cloning the store</text>
+    <use href="#yes" x="340" y="730"/><use href="#partly" x="460" y="730"/><use href="#na" x="580" y="730"/>
+    <text x="650" y="735" font-size="13" fill="#4d5450">Copy works; reviews and logo by hand; never press Move my shop</text>
+
+    <rect x="30" y="751" width="1140" height="42" rx="6" fill="#ffffff"/>
+    <text x="50" y="777" font-weight="600">The scoreboard</text>
+    <use href="#no" x="340" y="772"/><use href="#no" x="460" y="772"/><use href="#no" x="580" y="772"/>
+    <text x="650" y="777" font-size="13" fill="#4d5450">Nothing compares two stores; the original's refunds and fees are not read</text>
+  </g>
+
+  <text x="40" y="816" font-size="12" fill="#6b716d">Read from the code at c681a95, 14 November 2026. Details and evidence: docs/100-day-challenge.md, section 2.</text>
+</svg>
