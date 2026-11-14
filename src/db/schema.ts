@@ -10754,6 +10754,11 @@ export const aiProviders = commerce.table(
     textEuOnly: boolean("text_eu_only").notNull().default(true),
     /** Gateway only: only providers that keep nothing after the request. */
     zeroDataRetention: boolean("zero_data_retention").notNull().default(true),
+    /**
+     * Gateway only: text models tried in order when the text model fails (`providerOptions.gateway.models`), at most three
+     * (`docs/100-day-challenge.md` F1). Never for embeddings: another model would put vectors in another space.
+     */
+    fallbackModels: text("fallback_models").array().notNull().default([]),
     enabled: boolean("enabled").notNull().default(true),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
@@ -11104,7 +11109,8 @@ export const assistantConversations = commerce.table(
     title: text("title").notNull().default(""),
     /**
      * `admin`, the owner in the admin; `kaizen-life`, Kaizen Life's assistant asking for the owner (D96); `mcp`, another AI assistant or
-     * app connected through Kaizena Flow's authorization server (D439), one conversation per client and person (`oauth_client_id`).
+     * app connected through Kaizena Flow's authorization server (D439), one conversation per client and person (`oauth_client_id`);
+     * `autopilot`, a plan's, a goal review's or the events' own (D309, D328, D331), whose turns count apart from the person's.
      */
     source: text("source").notNull().default("admin"),
     oauthClientId: uuid("oauth_client_id").references(() => oauthClients.id, { onDelete: "set null" }),
@@ -11125,7 +11131,7 @@ export const assistantConversations = commerce.table(
       .on(t.storeId, t.accountId, t.oauthClientId)
       .where(sql`${t.source} = 'mcp'`),
     index("assistant_conversations_oauth_client_idx").on(t.oauthClientId),
-    check("assistant_conversations_source", sql`${t.source} in ('admin', 'kaizen-life', 'mcp')`),
+    check("assistant_conversations_source", sql`${t.source} in ('admin', 'kaizen-life', 'mcp', 'autopilot')`),
     index("assistant_conversations_account_idx").on(t.accountId),
     check("assistant_conversations_title", sql`length(${t.title}) <= 200`),
   ],
@@ -15225,6 +15231,12 @@ export const supportSettings = commerce.table(
      * their conversations, and people, never the AI, answer their emails. The owner's alone to change.
      */
     sensitive: boolean("sensitive").notNull().default(false),
+    /**
+     * The AI answers an email about the sender's own orders (`docs/100-day-challenge.md` B1): it reads the orders of the customer whose
+     * address the email came from (DMARC checked) and answers only to that address. Off: such an email goes to a person. On by itself
+     * while the store is in the challenge.
+     */
+    emailOrders: boolean("email_orders").notNull().default(false),
     toneAlert: smallint("tone_alert").default(-40),
     toneHandoff: smallint("tone_handoff").default(-60),
     notifyAfterMinutes: smallint("notify_after_minutes").notNull().default(5),
@@ -15298,6 +15310,8 @@ export const supportConversations = commerce.table(
     toneAlertAt: timestamp("tone_alert_at", { withTimezone: true }),
     handoffReason: text("handoff_reason"),
     aiReason: text("ai_reason"),
+    /** Why a person must answer, as the AI named it when it handed over (`ESCALATION_CATEGORIES`, `docs/100-day-challenge.md` A4). */
+    escalation: text("escalation"),
     messageSeq: integer("message_seq").notNull().default(0),
     /** The last customer message the silent partner has answered. */
     partnerSeq: integer("partner_seq").notNull().default(0),
@@ -15365,6 +15379,10 @@ export const supportConversations = commerce.table(
     check("support_conversations_requester", sql`(${t.source} = 'admin') = (${t.requesterId} is not null) or ${t.anonymisedAt} is not null`),
     check("support_conversations_kaizen_customer", sql`${t.storeId} is not null or ${t.customerId} is null`),
     check("support_conversations_handoff_reason", sql`${t.handoffReason} is null or ${t.handoffReason} in ('customer', 'ai', 'tone', 'no_ai', 'limit')`),
+    check(
+      "support_conversations_escalation",
+      sql`${t.escalation} is null or ${t.escalation} in ('asked_for_person', 'upset', 'legal', 'safety', 'chargeback', 'privacy', 'abuse', 'could_not_help')`,
+    ),
     check("support_conversations_ended_by", sql`${t.endedBy} is null or ${t.endedBy} in ('customer', 'agent', 'timeout', 'system')`),
     check("support_conversations_summary_status", sql`${t.summaryStatus} in ('none', 'pending', 'done', 'failed', 'skipped')`),
     check("support_conversations_rating", sql`${t.rating} is null or ${t.rating} in ('good', 'bad')`),
@@ -17037,6 +17055,8 @@ export const adAccounts = commerce.table(
     token: text("token").notNull(),
     tokenHint: text("token_hint").notNull(),
     monthlyLimitMinor: bigint("monthly_limit_minor", { mode: "number" }),
+    /** When the account's daily spend was last written into `marketing_spend` (`syncAdSpend()`, `docs/100-day-challenge.md` D2). */
+    spendSyncedAt: timestamp("spend_synced_at", { withTimezone: true }),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
   },
@@ -17371,12 +17391,18 @@ export const assistantPlans = commerce.table(
     version: integer("version").notNull().default(1),
     status: text("status").notNull().default("draft"),
     pauseReason: text("pause_reason"),
+    /**
+     * Why code paused it, when the reason passes by itself: `budget`, the month's AI budget spent or unknown, so the loop starts it again once
+     * the budget allows (`docs/100-day-challenge.md` F2). Null for a pause the owner or a person must lift.
+     */
+    pausedFor: text("paused_for"),
     startedAt: timestamp("started_at", { withTimezone: true }),
     finishedAt: timestamp("finished_at", { withTimezone: true }),
     createdAt: createdAt(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [
+    check("assistant_plans_paused_for", sql`${t.pausedFor} is null or ${t.pausedFor} = 'budget'`),
     foreignKey({ name: "assistant_plans_conversation_fk", columns: [t.conversationId], foreignColumns: [assistantConversations.id] }).onDelete("cascade"),
     index("assistant_plans_store_idx").on(t.storeId, t.status),
     index("assistant_plans_account_idx").on(t.accountId),
@@ -17488,6 +17514,11 @@ export const autopilotSettings = commerce.table(
     budgets: jsonb("budgets").notNull().default({}),
     /** Whether and how the autopilot keeps working toward the goals (D328), read only through `readAutonomy()`. */
     planning: jsonb("planning").notNull().default({}),
+    /**
+     * The 100-day challenge (`docs/100-day-challenge.md`), read only through `readChallenge()` (`src/lib/autopilot-challenge.ts`) and written
+     * only by `saveChallenge()` (a platform admin's): its dates and budgets. While it is on, the preset rules and the owner's settings are locked.
+     */
+    challenge: jsonb("challenge"),
     updatedBy: uuid("updated_by").references(() => accounts.id, { onDelete: "set null" }),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },
@@ -17497,6 +17528,7 @@ export const autopilotSettings = commerce.table(
     check("autopilot_settings_levels", sql`jsonb_typeof(${t.levels}) = 'object'`),
     check("autopilot_settings_budgets", sql`jsonb_typeof(${t.budgets}) = 'object'`),
     check("autopilot_settings_planning", sql`jsonb_typeof(${t.planning}) = 'object'`),
+    check("autopilot_settings_challenge", sql`${t.challenge} is null or jsonb_typeof(${t.challenge}) = 'object'`),
   ],
 );
 

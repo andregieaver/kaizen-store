@@ -1,6 +1,6 @@
 {
-  "id": "2353eae2-e935-4fcb-92e0-9baad99df42a",
-  "prevId": "f9bf38dd-ceeb-4996-bb70-9359812efd8a",
+  "id": "d004c998-aab2-4dd9-8c0d-8f2949538741",
+  "prevId": "2353eae2-e935-4fcb-92e0-9baad99df42a",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -1856,6 +1856,12 @@
           "primaryKey": false,
           "notNull": false
         },
+        "spend_synced_at": {
+          "name": "spend_synced_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
         "created_at": {
           "name": "created_at",
           "type": "timestamp with time zone",
@@ -3649,6 +3655,13 @@
           "primaryKey": false,
           "notNull": true,
           "default": true
+        },
+        "fallback_models": {
+          "name": "fallback_models",
+          "type": "text[]",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'{}'"
         },
         "enabled": {
           "name": "enabled",
@@ -5965,7 +5978,7 @@
       "checkConstraints": {
         "assistant_conversations_source": {
           "name": "assistant_conversations_source",
-          "value": "\"commerce\".\"assistant_conversations\".\"source\" in ('admin', 'kaizen-life', 'mcp')"
+          "value": "\"commerce\".\"assistant_conversations\".\"source\" in ('admin', 'kaizen-life', 'mcp', 'autopilot')"
         },
         "assistant_conversations_title": {
           "name": "assistant_conversations_title",
@@ -7162,6 +7175,12 @@
           "primaryKey": false,
           "notNull": false
         },
+        "paused_for": {
+          "name": "paused_for",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
         "started_at": {
           "name": "started_at",
           "type": "timestamp with time zone",
@@ -7319,6 +7338,10 @@
       "uniqueConstraints": {},
       "policies": {},
       "checkConstraints": {
+        "assistant_plans_paused_for": {
+          "name": "assistant_plans_paused_for",
+          "value": "\"commerce\".\"assistant_plans\".\"paused_for\" is null or \"commerce\".\"assistant_plans\".\"paused_for\" = 'budget'"
+        },
         "assistant_plans_status": {
           "name": "assistant_plans_status",
           "value": "\"commerce\".\"assistant_plans\".\"status\" in ('draft', 'running', 'paused', 'done', 'stopped')"
@@ -8983,6 +9006,12 @@
           "notNull": true,
           "default": "'{}'::jsonb"
         },
+        "challenge": {
+          "name": "challenge",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
         "updated_by": {
           "name": "updated_by",
           "type": "uuid",
@@ -9067,6 +9096,10 @@
         "autopilot_settings_planning": {
           "name": "autopilot_settings_planning",
           "value": "jsonb_typeof(\"commerce\".\"autopilot_settings\".\"planning\") = 'object'"
+        },
+        "autopilot_settings_challenge": {
+          "name": "autopilot_settings_challenge",
+          "value": "\"commerce\".\"autopilot_settings\".\"challenge\" is null or jsonb_typeof(\"commerce\".\"autopilot_settings\".\"challenge\") = 'object'"
         }
       },
       "isRLSEnabled": false
@@ -82309,6 +82342,12 @@
           "primaryKey": false,
           "notNull": false
         },
+        "escalation": {
+          "name": "escalation",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
         "message_seq": {
           "name": "message_seq",
           "type": "integer",
@@ -82773,6 +82812,10 @@
         "support_conversations_handoff_reason": {
           "name": "support_conversations_handoff_reason",
           "value": "\"commerce\".\"support_conversations\".\"handoff_reason\" is null or \"commerce\".\"support_conversations\".\"handoff_reason\" in ('customer', 'ai', 'tone', 'no_ai', 'limit')"
+        },
+        "support_conversations_escalation": {
+          "name": "support_conversations_escalation",
+          "value": "\"commerce\".\"support_conversations\".\"escalation\" is null or \"commerce\".\"support_conversations\".\"escalation\" in ('asked_for_person', 'upset', 'legal', 'safety', 'chargeback', 'privacy', 'abuse', 'could_not_help')"
         },
         "support_conversations_ended_by": {
           "name": "support_conversations_ended_by",
@@ -83538,6 +83581,13 @@
         },
         "sensitive": {
           "name": "sensitive",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "email_orders": {
+          "name": "email_orders",
           "type": "boolean",
           "primaryKey": false,
           "notNull": true,
