@@ -101,3 +101,9 @@ challenged by a skeptic, planned by a planner. Its last lines hold the arguments
 - 0.11 Done: 66796ed, 940acaa on main; write-up 835471f (D589). Next free D-number: D590.
 - 0.12 executor running (prompt run/executor-0.12.md), local commits only. Review: exact links, rg counts 1,6,4,3,2, scan-test tag matcher with arrow functions, header names.
 - Owner hand checks for 0.11: Norwegian Work invoice draft, issuing an invoice, chat's first suggestion on Products and /admin/platform.
+
+## Update 14 Nov (after step 0.12)
+- 0.12 Done: e1dc484 on main; write-up 59a40cc (D590). Next free D-number: D591.
+- 0.13 executor running (prompt run/executor-0.13.md), local commits only. Review: attributes kept, View store/CSV/logo never fetched, spec fetches lists, eight counts.
+- Owner hand check for 0.12: change language then country on the demo store.
+- Production prefetch probe: $S/probe/prefetch.cjs (node, from $S/probe).
