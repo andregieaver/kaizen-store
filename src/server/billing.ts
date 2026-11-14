@@ -444,7 +444,7 @@ const billingQuery = (where: ReturnType<typeof sql>) => sql`
     order by m.created_at limit 1
   ) o on true
   where ${where}
-  order by s.is_template desc, lower(s.name)
+  order by s.is_template desc, lower(s.name), s.id
 `;
 
 function toBilling(row: Row, defaultBps: number): StoreBilling {
@@ -485,14 +485,34 @@ function toBilling(row: Row, defaultBps: number): StoreBilling {
   };
 }
 
-/** Every store's billing; closed stores only for the platform's own list, which must find them to reopen them (D171). */
-export async function listStoreBilling({ includeClosed = false }: { includeClosed?: boolean } = {}): Promise<StoreBilling[]> {
+/**
+ * The stores the billing lists hold, so the list and its count cannot drift. Store templates (D175) have no plan: they are listed
+ * under Store templates, not here. Nor has Kaizena Flow's own store (D466).
+ */
+const billingWhere = (includeClosed: boolean) =>
+  includeClosed ? sql`not s.starter and not s.sandbox and not s.house` : sql`s.status <> 'closed' and not s.starter and not s.sandbox and not s.house`;
+
+/**
+ * Every store's billing; closed stores only for the platform's own list, which must find them to reopen them (D171). With `limit`, one page
+ * of that list (the platform's Stores page reads 100 at a time); without it, every store, as the AI manager's tool and the account's billing page read it.
+ */
+export async function listStoreBilling({
+  includeClosed = false,
+  limit,
+  offset,
+}: { includeClosed?: boolean; limit?: number; offset?: number } = {}): Promise<StoreBilling[]> {
+  const where = billingWhere(includeClosed);
   const [rows, defaultBps] = await Promise.all([
-    // Store templates (D175) have no plan: they are listed under Store templates, not here. Nor has Kaizena Flow's own store (D466).
-    typedRows(BILLING_ROW, billingQuery(includeClosed ? sql`not s.starter and not s.sandbox and not s.house` : sql`s.status <> 'closed' and not s.starter and not s.sandbox and not s.house`)),
+    typedRows(BILLING_ROW, limit === undefined ? billingQuery(where) : sql`${billingQuery(where)} limit ${limit} offset ${offset ?? 0}`),
     getSaleFeeBps(),
   ]);
   return rows.map((row) => toBilling(row, defaultBps));
+}
+
+/** How many stores `listStoreBilling()` lists with the same `includeClosed`: the Stores page's total. */
+export async function countStoreBilling({ includeClosed = false }: { includeClosed?: boolean } = {}): Promise<number> {
+  const row = await typedRow(z.object({ n: col.int }), sql`select count(*)::int as n from commerce.stores s where ${billingWhere(includeClosed)}`);
+  return row?.n ?? 0;
 }
 
 export async function getStoreBilling(storeId: string): Promise<StoreBilling | null> {

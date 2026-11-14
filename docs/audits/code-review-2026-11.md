@@ -67,7 +67,7 @@ This report is a working document: the plan below is the list of work, and this 
 | 1.10 | Make the written rules cheap to read | FH4, FH5 | M | Open | |
 | 1.11 | Pull the drop rules out of the builder | FB7 | M | Open | |
 | 1.12 | Build the admin kit | FS4 | L | Open | |
-| 1.13 | One way to search and page a list | FS2 | M | Open | |
+| 1.13 | One way to search and page a list | FS2 | M | Open | Stores (2.10) paged at 100 with a count by bloat step 0.19, 14 Nov 2026 (Products and Customers not yet: the redesign changed those screens); the shared kit and the rest remain. |
 | 1.14 | One date formatter | FS5 | M | Open | |
 | 1.15 | Forms that answer | FS6 | M | Open | |
 | 1.16 | Unsaved work survives | FB5 | M | Open | |
@@ -88,7 +88,7 @@ This report is a working document: the plan below is the list of work, and this 
 | 2.7 | Fit the menu to a phone | FN10 | M | Open | |
 | 2.8 | One way to start | FS7 | M | Open | |
 | 2.9 | Empty screens with a next step | FS8 | M | Open | |
-| 2.10 | Give the platform's Stores list the store admin's list | FS9 | M | Open | |
+| 2.10 | Give the platform's Stores list the store admin's list | FS9 | M | Open | Stores (2.10) paged at 100 with a count by bloat step 0.19, 14 Nov 2026, commit 4 of the step; the shared kit and the rest (the Stores search, Invoices, Returns) remain. |
 | 2.11 | A Basic view in the builder | FB3 | M | Open | |
 | 2.12 | Select parts in the builder | FB4 | M | Open | |
 | 2.13 | A trail on the storefront | FF7 | S | Open | |
@@ -168,6 +168,7 @@ This report is a working document: the plan below is the list of work, and this 
 - 13 November 2026: bloat review step 0.9: notes on step 0.10 (the signed-in frame's first scripts after three stray imports went; status unchanged).
 - 14 November 2026: bloat review step 0.10: step 3.2 (one definition per block, still Open) has its first slice: `src/lib/rich-text-doc.ts` holds the rich text part of `page-content.ts`, which re-exports it with its public surface unchanged.
 - 14 November 2026: bloat review step 0.13: the skeleton is now fetched on hover, touch or focus (`AdminLink`); the pending bar answers a touch or keyboard press for one round trip first (step 0.10's row, status unchanged).
+- 14 November 2026: bloat step 0.19: the platform's Stores list reads and shows 100 a page with a count (the Stores part of 2.10); 1.13 and 2.10 stay Open (the shared ListSearch and Pager are not built). The Products list's notice no longer reads the whole editor context. The customers aggregate is not yet bounded: round 3 of the redesign rewrote that statement.
 
 ## 1. The headline
 
