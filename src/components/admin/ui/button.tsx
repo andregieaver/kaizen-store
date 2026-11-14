@@ -1,6 +1,6 @@
 import { ChevronRight } from "lucide-react";
-import Link from "next/link";
-import type { ButtonHTMLAttributes, ComponentProps, ReactNode } from "react";
+import { AdminLink, type AdminLinkProps } from "./link";
+import type { ButtonHTMLAttributes, ReactNode } from "react";
 
 /**
  * The admin's buttons (docs/admin-style.md 5.6), in the colour roles only: one `main` action a page, `strong` for a card's own
@@ -71,15 +71,15 @@ export function Button({ kind = "secondary", size = "card", full, icon, classNam
   );
 }
 
-export type ButtonLinkProps = Common & ComponentProps<typeof Link> & (
+export type ButtonLinkProps = Common & AdminLinkProps & (
   | { kind: "icon"; "aria-label": string }
   | { kind?: Exclude<ButtonKind, "icon"> }
 );
 
 export function ButtonLink({ kind = "secondary", size = "card", full, icon, className, children, ...rest }: ButtonLinkProps) {
   return (
-    <Link className={[buttonClass(kind, size, full), className].filter(Boolean).join(" ")} {...rest}>
+    <AdminLink className={[buttonClass(kind, size, full), className].filter(Boolean).join(" ")} {...rest}>
       {inside(kind, icon, children)}
-    </Link>
+    </AdminLink>
   );
 }

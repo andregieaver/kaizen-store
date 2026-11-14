@@ -1,5 +1,6 @@
 import { ChevronLeft } from "lucide-react";
 import Link from "next/link";
+import { AdminLink } from "./link";
 import type { ReactNode } from "react";
 
 import { ADMIN_LANG_FACTS, type AdminLang } from "@/lib/admin-lang";
@@ -44,10 +45,10 @@ export function FocusFrame({ title, description, back, aside, width = "narrow", 
       <main className="flex flex-1 justify-center px-4 pt-6 pb-16 sm:items-center sm:pt-0">
         <div className={`w-full ${WIDTH[width]}`}>
           {back && (
-            <Link href={back.href} className="mb-3 inline-flex items-center gap-1 text-body text-ink-2 hover:text-ink">
+            <AdminLink href={back.href} className="mb-3 inline-flex items-center gap-1 text-body text-ink-2 hover:text-ink">
               <ChevronLeft aria-hidden className="size-4" />
               {back.label}
-            </Link>
+            </AdminLink>
           )}
           <div className={`flex flex-col gap-6 p-6 sm:p-8 ${CARD_CLASS}`}>
             {title && <FocusHeading title={title} description={description} />}

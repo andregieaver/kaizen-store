@@ -1,6 +1,7 @@
 "use client";
 
-import Link, { useLinkStatus } from "next/link";
+import { useLinkStatus } from "next/link";
+import { AdminLink } from "./ui/link";
 import { usePathname } from "next/navigation";
 import type { ReactNode } from "react";
 
@@ -91,7 +92,7 @@ export function AreaLinks({ areas, fallback, label }: { areas: NavArea[]; fallba
       <ul className="flex min-w-max gap-1">
         {items.map((item) => (
           <li key={item.href}>
-            <Link
+            <AdminLink
               href={item.href}
               aria-current={isCurrent(item) ? "page" : undefined}
               className="relative flex h-9 items-center rounded-pill px-3 text-body text-ink-2 hover:bg-card hover:text-ink aria-[current=page]:bg-card aria-[current=page]:text-body-strong aria-[current=page]:text-ink"
@@ -100,7 +101,7 @@ export function AreaLinks({ areas, fallback, label }: { areas: NavArea[]; fallba
               {item.label}
               <Badge count={item.badge} />
               <LinkPending />
-            </Link>
+            </AdminLink>
           </li>
         ))}
       </ul>
@@ -128,7 +129,7 @@ export function StoreTabs({ items, label }: { items: NavItem[]; label: string })
       <ul className="flex min-w-max gap-1">
         {items.map((item) => (
           <li key={item.href}>
-            <Link
+            <AdminLink
               href={item.href}
               aria-current={isCurrent(item) ? "page" : undefined}
               className="relative flex min-h-11 items-center border-b-2 border-transparent px-3 text-sm text-muted hover:text-ink aria-[current=page]:border-brand aria-[current=page]:font-medium aria-[current=page]:text-ink"
@@ -137,7 +138,7 @@ export function StoreTabs({ items, label }: { items: NavItem[]; label: string })
               {item.label}
               <Badge count={item.badge} />
               <LinkPending />
-            </Link>
+            </AdminLink>
           </li>
         ))}
       </ul>
@@ -192,7 +193,7 @@ export function StoreSidebar({ groups, label, hint = true }: { groups: NavGroup[
           <ul className="flex flex-col gap-0.5">
             {group.items.map((item) => (
               <li key={item.href}>
-                <Link
+                <AdminLink
                   href={item.href}
                   aria-current={isCurrent(item) ? "page" : undefined}
                   className="relative flex min-h-10 items-center rounded-pill px-3 text-sm hover:bg-sunken aria-[current=page]:bg-sunken aria-[current=page]:font-medium"
@@ -201,7 +202,7 @@ export function StoreSidebar({ groups, label, hint = true }: { groups: NavGroup[
                   {item.label}
                   <Badge count={item.badge} />
                   <LinkPending />
-                </Link>
+                </AdminLink>
               </li>
             ))}
           </ul>

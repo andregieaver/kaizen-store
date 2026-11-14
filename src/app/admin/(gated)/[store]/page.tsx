@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { askedAlert } from "@/lib/briefing-actions";
 import { redirect } from "next/navigation";
 import { Suspense } from "react";
@@ -12,7 +11,7 @@ import { DemoContentCard } from "@/components/admin/demo-content-card";
 import { HomeAnalyticsAlerts, HomeAnalyticsAlertsFallback } from "@/components/admin/analytics/home-alerts";
 import { StaffAlertsFailed } from "@/components/admin/notifications/staff-alerts-failed";
 import { Attention, Section, Stat, StatGrid } from "@/components/admin/overview-parts";
-import { ButtonLink, Card, Chip, List, ListRow, PageHeader, RowAmount, RowDate, RowId, RowText } from "@/components/admin/ui";
+import { AdminLink, ButtonLink, Card, Chip, List, ListRow, PageHeader, RowAmount, RowDate, RowId, RowText } from "@/components/admin/ui";
 import { fillWords } from "@/lib/admin-fill";
 import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
 import { adminText, adminTexts } from "@/lib/admin-text";
@@ -127,9 +126,9 @@ export default async function AdminOverview({ params, searchParams }: Props) {
       {/* An open store is changed with the Dream Factory too (D527): the owner says what to change, and nothing goes live before their press. */}
       {store.setupCompletedAt && owner && !store.starter && (
         <p className="text-body text-muted">
-          <Link href={`${base}/dream-factory`} className="underline">
+          <AdminLink href={`${base}/dream-factory`} className="underline">
             {words.dream.rework.offer}
-          </Link>
+          </AdminLink>
         </p>
       )}
       {/* Today's calls, meetings and tasks (S3, D468), the viewer's or the team's: read after the page is shown. */}
@@ -208,12 +207,12 @@ export default async function AdminOverview({ params, searchParams }: Props) {
                   {step.label}
                 </span>
                 {!step.done && memberCan(current, "owner") && (
-                  <Link
+                  <AdminLink
                     href={`/admin/${store.slug}/${"href" in step ? step.href : `setup/${step.step}`}`}
                     className="underline"
                   >
                     {h.doItNow}
-                  </Link>
+                  </AdminLink>
                 )}
               </li>
             ))}

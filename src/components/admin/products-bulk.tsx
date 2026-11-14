@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { AdminLink } from "./ui/link";
 import { useMemo, useRef, useState, useTransition } from "react";
 
 import { countWords, fillWords } from "@/lib/admin-fill";
@@ -256,7 +257,7 @@ export function ProductsTable({ slug, rows, archived, priceHeader, locale, bulk 
                 </td>
               )}
               <td className="px-4 py-2">
-                <Link href={`${base}/${product.id}`} className="flex items-center gap-3 font-medium hover:underline">
+                <AdminLink href={`${base}/${product.id}`} className="flex items-center gap-3 font-medium hover:underline">
                   {product.image ? (
                     // eslint-disable-next-line @next/next/no-img-element -- small admin thumbnail
                     <img src={product.image} alt="" width={40} height={40} loading="lazy" className="size-10 rounded border border-line object-cover" />
@@ -267,7 +268,7 @@ export function ProductsTable({ slug, rows, archived, priceHeader, locale, bulk 
                     {product.title}
                     {product.variants > 1 && <span className="block text-xs font-normal text-muted">{fillWords(w.variants, { n: product.variants })}</span>}
                   </span>
-                </Link>
+                </AdminLink>
               </td>
               <td className="px-4 py-2">
                 {product.status === "active" ? w.published : product.status === "draft" ? w.draft : w.archived}

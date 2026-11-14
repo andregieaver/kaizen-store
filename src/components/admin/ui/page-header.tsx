@@ -1,5 +1,5 @@
 import { ChevronLeft } from "lucide-react";
-import Link from "next/link";
+import { AdminLink } from "./link";
 import { Fragment, type ReactNode } from "react";
 
 /**
@@ -34,10 +34,10 @@ export function PageHeader({
     <header className="flex flex-wrap items-end justify-between gap-x-8 gap-y-4">
       <div className="min-w-0">
         {back && (
-          <Link href={back.href} className="mb-3 inline-flex items-center gap-1 text-body text-ink-2 hover:text-ink">
+          <AdminLink href={back.href} className="mb-3 inline-flex items-center gap-1 text-body text-ink-2 hover:text-ink">
             <ChevronLeft aria-hidden className="size-4" />
             {back.label}
-          </Link>
+          </AdminLink>
         )}
         {(eyebrow || status) && (
           <div className="mb-2 flex flex-wrap items-center gap-3">
