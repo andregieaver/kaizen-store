@@ -147,3 +147,5 @@ challenged by a skeptic, planned by a planner. Its last lines hold the arguments
 - Step 0.18 pushed as 35724ae (6f43131.. rebased; 44 router.refresh() deleted, 92 -> 48 in 28 files). Deploy wait bbiwi94n8. Then prod checks + write-up (next D: recheck; other session at D609?).
 - Other session re-recorded agent eval (049f2fc): CI integration(1) should be green again.
 - Step 0.19 executor (Sonnet ac5ad4f17bf3f32cd) started from $S/run/executor-0.19.md; commit 3 (customers statement) needs my close read.
+- Step 0.18 DONE: write-up 7b4e3b78 (D611). CI on 35724ae all green (eval fixed by other session). Hand check: Inventory stock save -> one request, no second _rsc.
+- Step 0.19 executor running.
