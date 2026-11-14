@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { AdminLink } from "../ui/link";
 import { useId, useMemo, useState, useTransition } from "react";
 
 import type { BulkActionResponse } from "@/app/admin/(gated)/[store]/orders/list-actions";
@@ -366,9 +367,9 @@ function OrderRow({
         </td>
       )}
       <td className={td}>
-        <Link href={`${base}/orders/${row.id}`} className="font-medium underline-offset-2 hover:underline">
+        <AdminLink href={`${base}/orders/${row.id}`} className="font-medium underline-offset-2 hover:underline">
           #{row.number}
-        </Link>
+        </AdminLink>
         {row.archived && <span className={badge}>{g.archived}</span>}
         {row.held && <span className={badge}>{g.held}</span>}
         {row.disputed && <span className={badge}>{g.disputed}</span>}
@@ -406,9 +407,9 @@ function OrderRow({
           {row.erased ? (
             <span className="text-muted">{t.erased}</span>
           ) : row.email ? (
-            <Link href={`${base}/customers/${row.id}`} className="underline-offset-2 hover:underline">
+            <AdminLink href={`${base}/customers/${row.id}`} className="underline-offset-2 hover:underline">
               {row.name || row.email}
-            </Link>
+            </AdminLink>
           ) : (
             "–"
           )}

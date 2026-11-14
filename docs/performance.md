@@ -259,7 +259,7 @@ The rule: the signed-in frame's client parts import no schema, no SDK and no cat
 without them (`src/lib/typing-in.ts`, `src/lib/public-env.ts`, `src/lib/push-schema.ts`, `admin-service-worker.tsx`, `sign-in-text.tsx`),
 and the Supabase client arrives by `import()`.
 
-The admin fetches a link's page when it is pointed at, not when it is in view (bloat review step 0.13, `AdminLink`). Router prefetches in the 3 s after load, held by `e2e/signed-in/prefetch.spec.ts` (home 28 before, product editors on the Products list 8 before): home 0, orders 19, products 8 (none a product's editor), pages 6, settings 16, a product's editor 2, the builder 0, the platform home 2; hovering a rail link 2.
+The admin fetches a link's page when it is pointed at, not when it is in view (bloat review step 0.13, `AdminLink`). Router prefetches in the 3 s after load, held by `e2e/signed-in/prefetch.spec.ts` (home 28 before, product editors on the Products list 8 before): home 0, orders 8 (none an order or customer row), products 8 (none a product's editor), pages 6, settings 16, a product's editor 2, the builder 0, the platform home 2; hovering a rail link 2.
 
 ## Kaizena Flow's front page, served from its store (measured 12 November 2026)
 

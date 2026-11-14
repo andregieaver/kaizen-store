@@ -20,11 +20,12 @@ const STORE = `/admin/${E2E_STORE}`;
  * The eight screens: their address (`{product}` and `{page}` are one of the store's own), who opens it, `prefetches` (the most router prefetch
  * requests allowed in the 3 s after load; each ceiling was written at the count measured then and may only fall) and `fetches` (the exact
  * paths, without query, of every other fetch or XHR request made in those 3 s, as the first run showed them).
- * Held at the count of 14 November 2026; may only fall. The products list's 8 are its own toolbar links (export, import, categories, new), never a product's editor.
+ * Held at the count of 14 November 2026; may only fall. The products list's 8 are its own toolbar links (export, import, categories, new), never a product's editor;
+ * the orders list's 8 its toolbar links (a new draft, drafts, emails, export), never an order or a customer of a row, so neither count grows with the rows.
  */
 const SCREENS: { name: string; address: string; as: typeof OWNER | typeof ADMIN; prefetches: number; fetches: string[] }[] = [
   { name: "home", address: STORE, as: OWNER, prefetches: 0, fetches: ["/admin/account/notices/feed"] },
-  { name: "orders", address: `${STORE}/orders`, as: OWNER, prefetches: 19, fetches: ["/admin/account/notices/feed"] },
+  { name: "orders", address: `${STORE}/orders`, as: OWNER, prefetches: 8, fetches: ["/admin/account/notices/feed"] },
   { name: "products", address: `${STORE}/products`, as: OWNER, prefetches: 8, fetches: ["/admin/account/notices/feed"] },
   { name: "pages", address: `${STORE}/pages`, as: OWNER, prefetches: 6, fetches: ["/admin/account/notices/feed"] },
   { name: "settings", address: `${STORE}/settings`, as: OWNER, prefetches: 16, fetches: ["/admin/account/notices/feed"] },
@@ -106,6 +107,10 @@ for (const screen of SCREENS) {
         if (screen.name === "products") {
           const editors = prefetches.filter((path) => new RegExp(`^${STORE}/products/${UUID}`).test(path));
           expect(editors, "the list prefetches a product's editor").toEqual([]);
+        }
+        if (screen.name === "orders") {
+          const rows = prefetches.filter((path) => new RegExp(`^${STORE}/(orders|customers)/${UUID}`).test(path));
+          expect(rows, "the list prefetches an order or a customer of a row").toEqual([]);
         }
       }
     });
