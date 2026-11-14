@@ -737,7 +737,7 @@ function TextSection({
           />
         )}
         {/* Round 1 (D595, step 5): the words most products never need, folded; open when safety warnings are written (they have legal weight). */}
-        <details data-advanced open={Boolean(current.safetyInformation) || undefined} className="group flex flex-col gap-4 border-t border-line pt-4">
+        <details open={Boolean(current.safetyInformation) || undefined} className="group flex flex-col gap-4 border-t border-line pt-4">
           <summary className="cursor-pointer text-body-strong text-ink">{w.text.more}</summary>
           <div className="mt-4 flex flex-col gap-4">
         <label className={label}>
