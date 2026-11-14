@@ -1,0 +1,5 @@
+ALTER TABLE "commerce"."checkout_fields" DROP CONSTRAINT "checkout_fields_kind";--> statement-breakpoint
+ALTER TABLE "commerce"."checkout_fields" ADD COLUMN "options" jsonb;--> statement-breakpoint
+ALTER TABLE "commerce"."checkout_fields" ADD COLUMN "sensitive" boolean DEFAULT false NOT NULL;--> statement-breakpoint
+ALTER TABLE "commerce"."checkout_fields" ADD CONSTRAINT "checkout_fields_options" CHECK (("commerce"."checkout_fields"."kind" = 'checklist') = ("commerce"."checkout_fields"."options" is not null) and ("commerce"."checkout_fields"."options" is null or (jsonb_typeof("commerce"."checkout_fields"."options") = 'array' and jsonb_array_length("commerce"."checkout_fields"."options") between 1 and 30)));--> statement-breakpoint
+ALTER TABLE "commerce"."checkout_fields" ADD CONSTRAINT "checkout_fields_kind" CHECK ("commerce"."checkout_fields"."kind" in ('text', 'checkbox', 'checklist'));

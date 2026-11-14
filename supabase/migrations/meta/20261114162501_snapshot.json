@@ -1,6 +1,6 @@
 {
-  "id": "718be465-e855-4091-9a0a-a82450095822",
-  "prevId": "af8eeee8-8c9d-45f6-81a7-ab329ec8182f",
+  "id": "74b2ae2a-2bb7-4245-a945-228fa7bda36c",
+  "prevId": "718be465-e855-4091-9a0a-a82450095822",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -15361,6 +15361,19 @@
           "notNull": true,
           "default": "'full'"
         },
+        "options": {
+          "name": "options",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "sensitive": {
+          "name": "sensitive",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
         "created_at": {
           "name": "created_at",
           "type": "timestamp with time zone",
@@ -15430,7 +15443,11 @@
       "checkConstraints": {
         "checkout_fields_kind": {
           "name": "checkout_fields_kind",
-          "value": "\"commerce\".\"checkout_fields\".\"kind\" in ('text', 'checkbox')"
+          "value": "\"commerce\".\"checkout_fields\".\"kind\" in ('text', 'checkbox', 'checklist')"
+        },
+        "checkout_fields_options": {
+          "name": "checkout_fields_options",
+          "value": "(\"commerce\".\"checkout_fields\".\"kind\" = 'checklist') = (\"commerce\".\"checkout_fields\".\"options\" is not null) and (\"commerce\".\"checkout_fields\".\"options\" is null or (jsonb_typeof(\"commerce\".\"checkout_fields\".\"options\") = 'array' and jsonb_array_length(\"commerce\".\"checkout_fields\".\"options\") between 1 and 30))"
         },
         "checkout_fields_width": {
           "name": "checkout_fields_width",

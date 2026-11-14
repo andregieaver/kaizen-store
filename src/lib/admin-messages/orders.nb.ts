@@ -10,6 +10,11 @@ export const ordersNb: OrdersMessages = {
     emails: "E-post til kunder",
     export: "Eksporter",
     loading: "Henter bestillingene …",
+    toSendLead: { one: "{n} skal sendes", many: "{n} skal sendes" },
+    oldest: ", den eldste fra {when}",
+    startPacking: "Begynn å pakke",
+    more: "Mer",
+    nothingToSend: "Ingenting å sende akkurat nå",
   },
   views: {
     label: "Visninger av bestillinger",
@@ -23,6 +28,7 @@ export const ordersNb: OrdersMessages = {
       archived: "Arkivert",
     },
     ignored: "Noen av innstillingene i visningen «{title}» gjelder ikke lenger, så listen viser resten.",
+    moreViews: "Flere visninger",
   },
   list: {
     truncated: "Bare de fem første ordene i søket brukes.",

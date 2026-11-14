@@ -14,6 +14,8 @@ export const RULE_CONDITIONS_MAX = 10;
 export const FIELDS_MAX = 10;
 export const FIELD_LABEL_MAX = 80;
 export const FIELD_ANSWER_MAX = 500;
+/** The most options a tick list (`checklist`) holds: the EU's 14 allergens and "None of these" fit with room (task 3). */
+export const CHECKLIST_OPTIONS_MAX = 30;
 export const REFUSAL_MAX = 300;
 
 export type AmountOp = "at_least" | "below";
@@ -292,10 +294,27 @@ export const shownLabel = (d: OfferedDelivery, own: string): string => (d as Ren
 
 // Checkout fields
 
-export type CheckoutFieldKind = "text" | "checkbox";
+export type CheckoutFieldKind = "text" | "checkbox" | "checklist";
+
+/**
+ * One option of a tick list (task 3): its own words per language, and `none` for the option that says none of the others apply (ticking it
+ * clears the others). Its `id` is kept with the answer, so renaming an option never changes what an order said.
+ */
+export type ChecklistOption = { id: string; label: Words; none?: boolean };
 
 /** A question the shopper answers in the checkout (the store's `checkout_fields`), in the basket's language. */
-export type CheckoutField = { id: string; kind: CheckoutFieldKind; required: boolean; label: Words; help: Words | null; width?: FieldWidth };
+export type CheckoutField = {
+  id: string;
+  kind: CheckoutFieldKind;
+  required: boolean;
+  label: Words;
+  help: Words | null;
+  width?: FieldWidth;
+  /** A tick list's options, in order (task 3). */
+  options?: ChecklistOption[];
+  /** The answer may be sensitive personal data (GDPR article 9, such as allergies): the shopper ticks an explicit consent with it. */
+  sensitive?: boolean;
+};
 
 /**
  * How wide the cart draws a question (task 2): `full` (the default) or `half`. Two halves next to each other share a line, one alone takes its
@@ -305,7 +324,16 @@ export const FIELD_WIDTHS = ["full", "half"] as const;
 export type FieldWidth = (typeof FIELD_WIDTHS)[number];
 
 /** A field as the page shows it: words in the basket's language. */
-export type ShownField = { id: string; kind: CheckoutFieldKind; required: boolean; label: string; help: string | null; width: FieldWidth };
+export type ShownField = {
+  id: string;
+  kind: CheckoutFieldKind;
+  required: boolean;
+  label: string;
+  help: string | null;
+  width: FieldWidth;
+  options: { id: string; label: string; none: boolean }[];
+  sensitive: boolean;
+};
 
 /**
  * The ids in their new order once `id` is moved to place `to` (0 is first), the others keeping theirs; a place past either end is that end.
@@ -326,14 +354,35 @@ export const shownField = (f: CheckoutField, locale: string): ShownField => ({
   label: wordsIn(f.label, locale),
   help: f.help ? wordsIn(f.help, locale) : null,
   width: f.width ?? "full",
+  options: (f.options ?? []).map((o) => ({ id: o.id, label: wordsIn(o.label, locale), none: o.none === true })),
+  sensitive: f.sensitive === true,
 });
 
 /** What the order keeps of an answer (`orders.checkout_answers`): the question as it was asked in the store's main words, and the answer. */
-export type CheckoutAnswer = { fieldId: string; label: string; kind: CheckoutFieldKind; answer: string | boolean };
+/**
+ * What the order keeps of an answer: the question as it was asked in the store's main words, and the answer. A tick list keeps the options
+ * ticked in the store's main words as they were (`answer`), their ids (`optionIds`, to show the cart again) and whether the shopper gave the
+ * explicit consent a sensitive question asks (`consent`).
+ */
+export type CheckoutAnswer =
+  | { fieldId: string; label: string; kind: "text"; answer: string }
+  | { fieldId: string; label: string; kind: "checkbox"; answer: boolean }
+  | { fieldId: string; label: string; kind: "checklist"; answer: string[]; optionIds: string[]; consent: boolean };
+
+/** What a shopper sends for one question: a text, a box, or a tick list's option ids and consent. */
+export type AnswerInput = string | boolean | { options: string[]; consent: boolean };
+
+/** The option ids a tick list's answer names, as sent: an array, or `{ options }`; anything else is none. */
+function tickedIds(raw: unknown): string[] {
+  const list = Array.isArray(raw) ? raw : raw && typeof raw === "object" && Array.isArray((raw as { options?: unknown }).options) ? (raw as { options: unknown[] }).options : [];
+  return [...new Set(list.filter((v): v is string => typeof v === "string"))];
+}
 
 /**
- * The shopper's answers checked against the store's fields: a text trimmed to one line of at most `FIELD_ANSWER_MAX`, a box ticked or not, every
- * required one answered (a required box ticked), anything for a field that is not there left out. `missing` names the required fields left empty.
+ * The shopper's answers checked against the store's fields: a text trimmed to one line of at most `FIELD_ANSWER_MAX`, a box ticked or not, a
+ * tick list's options among its own (its `none` option alone when ticked), every required one answered (a required box ticked, a required
+ * list with at least one option), a sensitive list with an option other than `none` only with the shopper's consent, anything for a field that
+ * is not there left out. `missing` names the fields that stop the order.
  */
 export function cleanAnswers(
   fields: readonly CheckoutField[],
@@ -349,6 +398,23 @@ export function cleanAnswers(
       answers.push({ fieldId: f.id, label: f.label.text, kind: "checkbox", answer: ticked });
       continue;
     }
+    if (f.kind === "checklist") {
+      const options = f.options ?? [];
+      const wanted = new Set(tickedIds(raw));
+      const none = options.find((o) => o.none && wanted.has(o.id));
+      const ticked = none ? [none] : options.filter((o) => !o.none && wanted.has(o.id));
+      const consent = raw !== null && typeof raw === "object" && !Array.isArray(raw) && (raw as { consent?: unknown }).consent === true;
+      if (ticked.length === 0) {
+        if (f.required) missing.push(f.id);
+        continue;
+      }
+      if (f.sensitive && !none && !consent) {
+        missing.push(f.id);
+        continue;
+      }
+      answers.push({ fieldId: f.id, label: f.label.text, kind: "checklist", answer: ticked.map((o) => o.label.text), optionIds: ticked.map((o) => o.id), consent: f.sensitive === true && !none && consent });
+      continue;
+    }
     const text = typeof raw === "string" ? raw.replace(/[\u0000-\u001f\u007f]+/g, " ").replace(/\s+/g, " ").trim().slice(0, FIELD_ANSWER_MAX) : "";
     if (!text) {
       if (f.required) missing.push(f.id);
@@ -359,23 +425,30 @@ export function cleanAnswers(
   return { answers, missing };
 }
 
-/** An answer in words for staff and the export. */
-export const answerText = (a: CheckoutAnswer, yes: string, no: string): string => (typeof a.answer === "boolean" ? (a.answer ? yes : no) : a.answer);
+/** An answer in words for staff and the export: a tick list's options joined. */
+export const answerText = (a: CheckoutAnswer, yes: string, no: string): string =>
+  a.kind === "checkbox" ? (a.answer ? yes : no) : a.kind === "checklist" ? a.answer.join(", ") : a.answer;
 
 /** Reads `orders.checkout_answers` as stored; anything not of the shape is left out. */
 export function readAnswers(value: unknown): CheckoutAnswer[] {
   if (!Array.isArray(value)) return [];
+  const strings = (v: unknown): string[] | null => (Array.isArray(v) && v.every((x) => typeof x === "string") ? (v as string[]) : null);
   return value.flatMap((v): CheckoutAnswer[] => {
     if (!v || typeof v !== "object") return [];
     const a = v as Record<string, unknown>;
     if (typeof a.fieldId !== "string" || typeof a.label !== "string") return [];
     if (a.kind === "checkbox" && typeof a.answer === "boolean") return [{ fieldId: a.fieldId, label: a.label, kind: "checkbox" as const, answer: a.answer }];
     if (a.kind === "text" && typeof a.answer === "string") return [{ fieldId: a.fieldId, label: a.label, kind: "text" as const, answer: a.answer }];
+    const words = strings(a.answer);
+    const ids = strings(a.optionIds);
+    if (a.kind === "checklist" && words && ids) return [{ fieldId: a.fieldId, label: a.label, kind: "checklist" as const, answer: words, optionIds: ids, consent: a.consent === true }];
     return [];
   });
 }
 
 /** Answers as kept (on a cart or an order) back to what was typed, by field, for `cleanAnswers()` to check again. */
-export function answersByField(value: unknown): Record<string, string | boolean> {
-  return Object.fromEntries(readAnswers(value).map((a) => [a.fieldId, a.answer]));
+export function answersByField(value: unknown): Record<string, AnswerInput> {
+  return Object.fromEntries(
+    readAnswers(value).map((a): [string, AnswerInput] => [a.fieldId, a.kind === "checklist" ? { options: a.optionIds, consent: a.consent } : a.answer]),
+  );
 }

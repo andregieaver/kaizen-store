@@ -884,7 +884,9 @@ export const nb: Messages = {
   checkoutQuestions: {
     legend: "Noen spørsmål fra butikken",
     required: "må fylles ut",
-    problem: "Svar på butikkens spørsmål som må fylles ut, og prøv igjen.",
+    problem: "Svar på butikkens spørsmål som må fylles ut, og gi samtykke der en liste ber om det, og prøv igjen.",
+    // legal: needs review. The explicit consent a sensitive list asks (GDPR article 9(2)(a)), such as allergies (task 3).
+    consent: "Jeg samtykker i at butikken bruker det jeg har krysset av her, bare til å klargjøre denne bestillingen.",
   },
   producer: {
     notSoldHere: "Selges ikke i dette landet nå: selgerens registrering for produsentansvar mangler her.",
