@@ -195,6 +195,7 @@ The Products list sends every product of the store to the browser (about 0.9 KB 
 - **Done when:** With a store seeded with 500 products the Products document is under 300,000 characters and says '100 of 500', rg -c getEditorContext 'src/app/admin/(gated)/[store]/products/page.tsx' prints nothing, an integration test shows listCustomers() for a store with 150 customers returning 100 rows and the count, the Products list sends 5 statements or fewer (16 or more today) and enters the baseline of step 1.9 at that number, and 'select all' on the Products list says '100 of 500 selected'.
 - **Platform:** The platform's Stores list is one of the three lists and pages the same way.
 - **To carry it out:** [steps/0.19.md](steps/0.19.md) (review)
+- **Done differently (14 Nov):** only commits 1 and 4 were made. The admin redesign (D597 round 2, D603 round 3) rewrote the Products list (a client catalogue that searches, filters and counts over the whole list it is sent, with its own *Show more* of 60, and `productSkus()` for every product) and the Customers list (`listCustomers()` now has `show` and `sort`, and `customerCounts()`), so commits 2 and 3 as written would undo or contradict it; they wait for a decision on how the redesigned screens page (server search and counts in place of the browser's). Commit 1 fits and was made (the editor context is gone from the Products page; the notice reads a count). Commit 4 fits and was made.
 
 ## 0.20 Stop asking for what does not change: a store's slug, the theme cards, the hosts list
 
