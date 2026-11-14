@@ -105,12 +105,12 @@ describe("the store admin's sections (D147)", () => {
   it("leaves the online shop's sections and pages out of a website, and opens a section on what is left (D178 step 5)", () => {
     const website = { features: [] as string[] };
     const tabs = storeTabs("/admin/s", website);
-    expect(tabs.map((t) => t.label)).toEqual(["Home", "Products", "Customers", "Marketing", "Analytics", "Website", "Support", "Settings"]);
+    // Products has only Custom fields left, a page its tab does not stand for, so it is not in the menu (the round 4 fix).
+    expect(tabs.map((t) => t.label)).toEqual(["Home", "Customers", "Marketing", "Analytics", "Website", "Support", "Settings"]);
     // Orders is not in the menu (reached from Home while an order can still be withdrawn from or returned).
     expect(tabs.map((t) => t.href)).not.toContain("/admin/s/orders");
     // A section whose main page is hidden opens on the first page it has left.
     const href = (label: string) => tabs.find((t) => t.label === label)!.href;
-    expect(href("Products")).toBe("/admin/s/fields");
     expect(href("Customers")).toBe("/admin/s/privacy");
     // Since Marketing is in groups (code review step 0.11), Email comes before the site's own tools: a website opens it on Broadcasts.
     expect(href("Marketing")).toBe("/admin/s/broadcasts");
@@ -120,7 +120,7 @@ describe("the store admin's sections (D147)", () => {
     for (const path of ["/products", "/inventory", "/product-layouts", "/customers", "/customer-groups", "/wishlists", "/campaigns", "/discounts", "/recommendations", "/cart-reminders", "/analytics", "/analytics/finance", "/analytics/tax", "/settings/payments", "/settings/shipping", "/settings/orders", "/settings/returns", "/settings/tax", "/settings/invoices", "/search"]) {
       expect(paths, path).not.toContain(path);
     }
-    for (const path of ["/fields", "/privacy", "/experiments", "/analytics/traffic", "/analytics/settings", "/pages", "/settings/legal", "/settings/features", "/integrations", "/chat"]) {
+    for (const path of ["/privacy", "/experiments", "/analytics/traffic", "/analytics/settings", "/pages", "/settings/legal", "/settings/features", "/integrations", "/chat"]) {
       expect(paths, path).toContain(path);
     }
     // The pages of what was sold that stay reachable are the shop's in the map and the menu, and are pages the map knows.

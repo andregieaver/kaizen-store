@@ -97,7 +97,6 @@ export function ShopCopy({
     start(async () => {
       await action();
       setAsking(false);
-      router.refresh();
     });
 
   if (!started)

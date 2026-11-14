@@ -69,7 +69,6 @@ export function FieldsToolbar({
       const result = await importGroups(raw);
       if (result.ok) {
         setNotice(countWords(result.ids?.length ?? 0, t.imported));
-        router.refresh();
       } else setProblems(result.problems);
       if (file.current) file.current.value = "";
     });

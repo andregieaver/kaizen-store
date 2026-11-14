@@ -33,6 +33,8 @@ test.describe("the owner", () => {
 
   test("downloads a customer's data from the Privacy card, as one JSON file", async ({ page }) => {
     await page.goto(`/admin/${E2E_STORE}/customers/${customerId}`);
+    // The Privacy card sits in the page's Account and privacy fold (D603).
+    await page.getByText("Account and privacy", { exact: true }).click();
     const card = page.getByRole("region", { name: "Privacy" });
     await expect(card).toBeVisible();
     await expect(card).toContainText("The file includes internal notes about the customer");
@@ -45,6 +47,8 @@ test.describe("the owner", () => {
 
   test("previews what erasing would do and asks for the email before anything happens", async ({ page }) => {
     await page.goto(`/admin/${E2E_STORE}/customers/${customerId}`);
+    // The Privacy card sits in the page's Account and privacy fold (D603).
+    await page.getByText("Account and privacy", { exact: true }).click();
     await page.getByRole("region", { name: "Privacy" }).getByRole("link", { name: "Erase personal data" }).click();
     await expect(page).toHaveURL(new RegExp(`/admin/${E2E_STORE}/customers/${customerId}/erase`));
     await expect(page.getByRole("heading", { level: 1, name: "Erase personal data" })).toBeVisible();
@@ -68,6 +72,8 @@ test.describe("a member who may only read customers", () => {
 
   test("is told downloading and erasing need more, and the erase page is not found", async ({ page }) => {
     await page.goto(`/admin/${E2E_STORE}/customers/${customerId}`);
+    // The Privacy card sits in the page's Account and privacy fold (D603).
+    await page.getByText("Account and privacy", { exact: true }).click();
     const card = page.getByRole("region", { name: "Privacy" });
     await expect(card).toContainText("Downloading or erasing a customer's data needs permission to change customers.");
     await expect(card.getByRole("button", { name: "Download data" })).toHaveCount(0);

@@ -76,7 +76,6 @@ export function SupplierFormCard({
         return;
       }
       setMessage({ tone: "ok", text: w.saved });
-      router.refresh();
     });
 
   return (
@@ -244,7 +243,6 @@ export function SupplierProducts({
   mark: (variantIds: string[], on: boolean) => Promise<{ ok: true; changed: number } | { ok: false; problem: string }>;
 }) {
   const w = useAdminText("inventory").suppliers;
-  const router = useRouter();
   const [chosen, setChosen] = useState<Set<string>>(new Set());
   const [message, setMessage] = useState<{ tone: "ok" | "problem"; text: string } | null>(null);
   const [pending, start] = useTransition();
@@ -259,7 +257,6 @@ export function SupplierProducts({
       if (!result.ok) return setMessage({ tone: "problem", text: result.problem });
       setChosen(new Set());
       setMessage({ tone: "ok", text: countWords(result.changed, on ? w.marked : w.unmarked, { name: supplierName }) });
-      router.refresh();
     });
 
   const toggle = (id: string) => {
@@ -451,7 +448,6 @@ export function SupplierKeyCard({
                 const result = await make();
                 if (result.ok) {
                   setKey(result.key);
-                  router.refresh();
                 } else setMessage({ tone: "problem", text: result.problem });
               })
             }
@@ -487,14 +483,12 @@ export function SupplierKeyCard({
 /** Send a supplier order with a problem (or a late one) again, or cancel the supplier's part (D553). */
 export function AnswerSupplierOrder({ answer }: { answer: (choice: "resend" | "cancel") => Promise<{ ok: true } | { ok: false; problem: string }> }) {
   const w = useAdminText("inventory").suppliers;
-  const router = useRouter();
   const [message, setMessage] = useState<{ tone: "ok" | "problem"; text: string } | null>(null);
   const [pending, start] = useTransition();
   const run = (choice: "resend" | "cancel") =>
     start(async () => {
       const result = await answer(choice);
       setMessage(result.ok ? { tone: "ok", text: w.answered } : { tone: "problem", text: result.problem });
-      if (result.ok) router.refresh();
     });
   return (
     <span className="flex flex-wrap gap-2">

@@ -1,6 +1,5 @@
 "use client";
 
-import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 
 import { avatarFrameStyle } from "@/lib/chat-avatar";
@@ -33,7 +32,6 @@ export function DocsGuideForm({
   upload: Upload | null;
   save: SaveDocsGuide;
 }) {
-  const router = useRouter();
   const w = useAdminText("platform").docsGuide.form;
   const [value, setValue] = useState(guide);
   const [pending, start] = useTransition();
@@ -52,7 +50,6 @@ export function DocsGuideForm({
         start(async () => {
           const result = await save(JSON.stringify(value));
           setOutcome(result.ok ? { ok: true, messages: [w.saved] } : { ok: false, messages: result.problems });
-          if (result.ok) router.refresh();
         });
       }}
     >

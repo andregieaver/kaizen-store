@@ -63,7 +63,6 @@ export function PipedriveMove({
   const begin = (mode: PdRun["mode"]) =>
     start(async () => {
       await actions.start(mode);
-      router.refresh();
     });
 
   if (!connected) return <ConnectForm connect={actions.connect} />;
@@ -142,7 +141,6 @@ export function PipedriveMove({
 
 function ConnectForm({ connect }: { connect: PipedriveActions["connect"] }) {
   const w = useAdminText("moving").pipedrive;
-  const router = useRouter();
   const id = useId();
   const [token, setToken] = useState("");
   const [problem, setProblem] = useState<ConnectProblem | null>(null);
@@ -159,7 +157,6 @@ function ConnectForm({ connect }: { connect: PipedriveActions["connect"] }) {
             if (!result.ok) setProblem(result.problem);
             else {
               setToken("");
-              router.refresh();
             }
           });
         }}

@@ -184,6 +184,7 @@ At least 39 saves in the admin draw the whole route twice: the action refreshes 
 - **Done when:** src/components/admin/router-refresh.scan.test.ts holds the exact count of client router.refresh() calls left in the admin in its baseline (about 50; 90 today), with 0 after an action that always refreshes (36 today) and 0 mixed ones, and the signed-in e2e job passes.
 - **Platform:** The platform admin's saves run through platformAction() and lose the same second draw.
 - **To carry it out:** [steps/0.18.md](steps/0.18.md) (review)
+- **Done differently (14 Nov):** main held 92 calls in 50 files, not 90, so the baseline starts at 92; the brief's pack-pictures lines named other actions than the file now binds (its client calls sit in a `finally` after ask, stop, remake and put back), and a refresh in a `finally` or after an unread answer runs when the action fails, so those and the supplier key's revoke and the old-shop forget stay; the final total is 48, inside the brief's 45 to 55.
 
 ## 0.19 Read the products, customers and stores lists a page at a time
 

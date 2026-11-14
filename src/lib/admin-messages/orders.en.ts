@@ -68,7 +68,7 @@ export const ordersEn = {
     searchPlaceholder: "Order number, email, name, product, SKU, tag or tracking number",
     searchButton: "Search",
     clearAll: "Clear all",
-    more: "Filters, sorting and columns",
+    more: "Filters",
     payment: "Payment",
     fulfilment: "Fulfilment",
     status: "Order status",

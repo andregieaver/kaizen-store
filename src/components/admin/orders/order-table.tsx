@@ -398,6 +398,12 @@ function OrderRow({
             .filter(Boolean)
             .join(" · ")}
         </span>
+        {/* Round 3 (D603): on a phone, what is in the order as pictures under it. */}
+        {row.pictures && row.pictures.length > 0 && (
+          <div className="mt-2 flex sm:hidden">
+            <Pictures lines={row.pictures} size={36} max={4} moreWord={(n) => `+${n}`} />
+          </div>
+        )}
       </td>
       {col("placed") && (
         <td className={`${td} hidden sm:table-cell`}>

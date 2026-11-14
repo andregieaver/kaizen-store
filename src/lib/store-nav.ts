@@ -31,6 +31,9 @@ export type StoreItem = {
   feature?: FeatureRequirement;
   /** A page only a customer's store has: left out for Kaizena Flow's own store (D466), which has no plan and is never closed. */
   customer?: true;
+  /** A page that is not what its section's tab stands for (Custom fields under Products): the tab never opens on it, and a section with only
+   * such pages left is not in the menu. */
+  aside?: true;
 };
 export type StoreGroup = { heading: string; items: StoreItem[] };
 
@@ -97,7 +100,7 @@ export const STORE_SECTIONS: StoreSection[] = [
           item("/gift-cards", "Gift cards", "Cards customers buy or you issue: what they hold, each card's history, issuing and changing one.", { feature: "gift_cards", icon: "gift", basic: true }),
           item("/reviews", "Reviews", "What buyers say about your products: check new reviews, publish or hide them and answer.", { feature: "reviews", icon: "star", basic: true }),
           item("/product-layouts", "Product layouts", "How a product's page is laid out, for all products, a category, a tag or one product.", { feature: "shop", icon: "layout-template" }),
-          item("/fields", "Custom fields", "Your own groups of fields for products, pages, customers and more.", { icon: "list-plus" }),
+          item("/fields", "Custom fields", "Your own groups of fields for products, pages, customers and more.", { icon: "list-plus", aside: true }),
         ],
       },
     ],
@@ -394,11 +397,13 @@ export function storeSections(flags: StoreFlags, canOpen?: CanOpen): StoreSectio
     .map((s) => {
       const groups = s.groups.map((g) => ({ ...g, items: g.items.filter((i) => on(i.feature) && open(i.path) && !(house && i.customer)) })).filter((g) => g.items.length > 0);
       // A section whose main page is hidden opens on the first page it has left (D178 step 5: a website's Customers open on Privacy requests).
-      const left = groups.flatMap((g) => g.items.map((i) => i.path));
+      // A page that is aside (Custom fields under Products) is never where a tab leads: a website's Products tab would open on Custom fields.
+      const left = groups.flatMap((g) => g.items.filter((i) => !i.aside).map((i) => i.path));
       const start = s.hub || left.length === 0 || left.includes(s.start) ? s.start : left[0];
-      return { ...s, start, groups };
+      return { section: { ...s, start, groups }, onlyAside: !s.hub && left.length === 0 && groups.length > 0 };
     })
-    .filter((s) => !canOpen || s.groups.length > 0);
+    .filter(({ section, onlyAside }) => (!canOpen || section.groups.length > 0) && !onlyAside)
+    .map(({ section }) => section);
 }
 
 /** Addresses inside a section, after the store's: its hub (if it has one) and every page in its sidebar. */

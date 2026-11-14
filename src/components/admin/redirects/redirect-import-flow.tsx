@@ -120,7 +120,6 @@ export function RedirectImportOptions({ initial, check, checked }: { initial: Ex
   const w = useAdminText("redirects");
   const o = w.import.options;
   const choices = existingChoiceWords(w);
-  const router = useRouter();
   const [existing, setExisting] = useState<ExistingChoice>(initial);
   const [problem, setProblem] = useState<string | null>(null);
   const [pending, start] = useTransition();
@@ -134,7 +133,6 @@ export function RedirectImportOptions({ initial, check, checked }: { initial: Ex
           setProblem(null);
           const result = await check({ existing });
           if (!result.ok) setProblem(redirectProblems([result.problem], w)[0]);
-          else router.refresh();
         });
       }}
     >
@@ -178,7 +176,6 @@ export function RedirectImportApply({
   const a = w.import.apply;
   const locale = ADMIN_LANG_FACTS[useAdminLang()].locale;
   const n = (x: number) => wholeNumber(x, locale);
-  const router = useRouter();
   const [confirming, setConfirming] = useState(false);
   const [problem, setProblem] = useState<string | null>(null);
   const [pending, start] = useTransition();
@@ -188,7 +185,6 @@ export function RedirectImportApply({
       setProblem(null);
       const result = await step();
       if (!result.ok) setProblem(redirectProblems([result.problem], w)[0]);
-      else router.refresh();
     });
   return (
     <section aria-label={a.label} className={`${card} flex flex-col gap-3`} aria-busy={pending}>

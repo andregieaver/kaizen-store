@@ -1,6 +1,5 @@
 "use client";
 
-import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 
 import { useAdminText } from "@/components/admin/admin-text";
@@ -15,7 +14,6 @@ type Save = (raw: unknown, publish: boolean) => Promise<{ ok: true; id: string; 
  */
 export function PassportEditor({ initial, published, countries, save }: { initial: Passport; published: boolean; countries: { code: string; name: string }[]; save: Save }) {
   const w = useAdminText("products").passport;
-  const router = useRouter();
   const [p, setP] = useState<Passport>(initial);
   const [more, setMore] = useState(Boolean(initial.originCountry || initial.substances || initial.certifications.length || initial.documents.length || initial.carbon || initial.sparePartsYears || initial.durabilityYears));
   const [message, setMessage] = useState<{ tone: "ok" | "problem"; text: string } | null>(null);
@@ -29,7 +27,6 @@ export function PassportEditor({ initial, published, countries, save }: { initia
       const result = await save(p, publish);
       if (!result.ok) return setMessage({ tone: "problem", text: result.problem });
       setMessage({ tone: "ok", text: done });
-      router.refresh();
     });
 
   return (
