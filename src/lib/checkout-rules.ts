@@ -446,6 +446,14 @@ export function readAnswers(value: unknown): CheckoutAnswer[] {
   });
 }
 
+/**
+ * The answers a packing slip prints (D357, task 3 of `docs/checkout-fields-tasks.md`): all of them, but a gift's slip leaves out those given with the
+ * shopper's consent (a sensitive tick list such as allergies, D598), since the person who reads it is not the buyer.
+ */
+export function slipAnswers(value: unknown, gift: boolean): CheckoutAnswer[] {
+  return readAnswers(value).filter((a) => !(gift && a.kind === "checklist" && a.consent));
+}
+
 /** Answers as kept (on a cart or an order) back to what was typed, by field, for `cleanAnswers()` to check again. */
 export function answersByField(value: unknown): Record<string, AnswerInput> {
   return Object.fromEntries(

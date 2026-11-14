@@ -4,6 +4,7 @@ import { sql } from "drizzle-orm";
 
 import { db } from "@/db/client";
 import { componentsText } from "@/lib/bundles";
+import { slipAnswers, type CheckoutAnswer } from "@/lib/checkout-rules";
 import { pickupPlaceLine, readDelivery } from "@/lib/delivery-options";
 import { giftOfRow, NO_GIFT, type GiftFields } from "@/lib/gift";
 import { BULK_PRINT_MAX, slipSkip, type BulkRefusal, type BulkRequestProblem } from "@/lib/order-bulk";
@@ -16,7 +17,7 @@ type Row = Record<string, unknown>;
 /**
  * What a packing slip prints, for one order or many (wave 3, run 2, D173, `docs/wave-3-orders.md` 2.5). The slip has NO prices, no VAT, no totals and no payment, discount or invoice words
  * (D27): this data holds none, so no page built from it can print one. It is the order's number and date, the deliver-to address, the physical lines with quantity and SKU, and, for a
- * gift, the buyer's own words (`gift`: To, From and the message, drawn as text with `white-space: pre-line`, never as HTML). Each slip is in the ORDER's language. Copied history (D129) and
+ * gift, the buyer's own words (`gift`: To, From and the message, drawn as text with `white-space: pre-line`, never as HTML), and the answers to the checkout questions (`answers`, D357; a gift's slip without the sensitive ones). Each slip is in the ORDER's language. Copied history (D129) and
  * orders with nothing physical to ship are left out, with the reason; so are ids that are not this store's (no more than `not_found`). It changes no state.
  */
 
@@ -46,6 +47,12 @@ export type PackingSlip = {
   shipmentId?: string | null;
   /** Units of the order remain to send after what this slip holds: the slip says "More of this order follows in another parcel" (`m.slip.moreFollows`). */
   moreFollows?: boolean;
+  /**
+   * The shopper's answers to the store's checkout questions (D357, task 3 of `docs/checkout-fields-tasks.md`), as the order kept them: the question in the
+   * store's main words and the answer, drawn as text. A gift's slip leaves out a sensitive answer (one given with the shopper's consent, such as allergies,
+   * D598): the person the gift is for reads the slip, not the buyer.
+   */
+  answers?: CheckoutAnswer[];
 };
 
 export type PackingSlipSet =
@@ -66,7 +73,7 @@ export async function packingSlipData(storeId: string, ids: readonly string[], o
   const valid = unique.filter((id) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id)).map((id) => id.toLowerCase());
   const orders = valid.length
     ? await db().execute<Row>(sql`
-        select o.id, o.number, o.placed_at, o.locale, o.shipping_address, o.copied_from is not null as copied, o.is_gift, o.gift_to, o.gift_from, o.gift_message, o.delivery_method, o.delivery, o.delivery_note,
+        select o.id, o.number, o.placed_at, o.locale, o.shipping_address, o.copied_from is not null as copied, o.is_gift, o.gift_to, o.gift_from, o.gift_message, o.delivery_method, o.delivery, o.delivery_note, o.checkout_answers,
           exists (select 1 from commerce.order_lines l where l.store_id = o.store_id and l.order_id = o.id and l.delivery = 'physical') as physical
         from commerce.orders o where o.store_id = ${storeId}::uuid and o.id = any(${uuidList(valid)})
       `)
@@ -133,6 +140,7 @@ function slipHead(order: Row): Omit<PackingSlip, "lines"> {
     shipTo: { name: text(a.name), line1: text(a.line1), line2: text(a.line2), postalCode: text(a.postalCode), city: text(a.city), country: text(a.country) },
     gift: gift === NO_GIFT ? null : gift,
     handover: handoverOf(order),
+    answers: slipAnswers(order.checkout_answers, gift !== NO_GIFT),
   };
 }
 
@@ -155,7 +163,7 @@ export async function parcelSlipData(storeId: string, orderId: string, shipmentI
   const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
   if (!uuid.test(orderId) || !uuid.test(shipmentId)) return null;
   const [order] = await db().execute<Row>(sql`
-    select o.id, o.number, o.placed_at, o.locale, o.shipping_address, o.copied_from is not null as copied, o.is_gift, o.gift_to, o.gift_from, o.gift_message, o.delivery_method, o.delivery, o.delivery_note
+    select o.id, o.number, o.placed_at, o.locale, o.shipping_address, o.copied_from is not null as copied, o.is_gift, o.gift_to, o.gift_from, o.gift_message, o.delivery_method, o.delivery, o.delivery_note, o.checkout_answers
     from commerce.orders o
     where o.store_id = ${storeId}::uuid and o.id = ${orderId}::uuid
       and exists (select 1 from commerce.shipments sh where sh.store_id = o.store_id and sh.order_id = o.id and sh.id = ${shipmentId}::uuid and sh.undone_at is null)

@@ -67,7 +67,7 @@ type Row = Record<string, unknown>;
  *   webhook, a replayed session or a second run sends nothing more. A failure is tried again after 1, 5, 15 and 60 minutes, then every 6 hours, at most
  *   10 tries, then `failed_at` (shown on the store's Home).
  * - **What an email holds**: order and return numbers, line titles and quantities, the total charged in the order's currency, the delivery method and
- *   country, the buyer's kind, host, gift and hold flags, store figures and links into the admin. **Never** a buyer's name, email, phone, address, company
+ *   country, the buyer's kind, host, gift and hold flags, how many checkout questions were answered (never the answers), store figures and links into the admin. **Never** a buyer's name, email, phone, address, company
  *   name, VAT number, gift message, note, reason or token (4.8).
  * - In the recipient's own admin language (D312 A10: `accounts.admin_locale`; the contact address in the store's main language when it is
  *   Norwegian, else English), English exactly as before.
@@ -300,6 +300,8 @@ export type NewOrderFacts = {
   gift: boolean;
   heldByRule: boolean;
   renewal: boolean;
+  /** How many checkout questions the buyer answered (D357): the email says so, never the answers (4.8: the buyer's own words stay on the order). */
+  answers?: number;
   /** For another language than English (D312 A10): the standard delivery word when the order's delivery is one (`null`: a carrier's own words), and the country's code. */
   deliveryKind?: "pickup" | "local" | "shipping" | "none" | null;
   countryCode?: string | null;
@@ -330,6 +332,7 @@ export function newOrderEmail(store: EmailStore, orderId: string, f: NewOrderFac
     f.host ? fillWords(w.host, { host: f.host }) : null,
     f.gift ? w.gift : null,
     f.heldByRule ? w.held : null,
+    (f.answers ?? 0) > 0 ? fillWords(w.answers, { n: f.answers ?? 0 }) : null,
   ].filter((x): x is string => x !== null);
   const delivery = lang === "en" ? f.delivery : (f.deliveryKind ? w[f.deliveryKind] : f.delivery);
   const country = lang === "en" ? f.country : (f.countryCode ? countryName(f.countryCode, lang) : f.country);
@@ -382,6 +385,7 @@ async function newOrderFacts(storeId: string, orderId: string): Promise<NewOrder
     gift: order.gift !== null,
     heldByRule: Boolean(row.held_by_rule),
     renewal: Boolean(row.renewal),
+    answers: order.checkoutAnswers.length,
   };
 }
 

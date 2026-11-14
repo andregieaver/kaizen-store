@@ -132,6 +132,21 @@ describe("the packing slip", () => {
     expect(text).toContain("Happy birthday");
     expect(text).toContain(t("en").slip.moreFollows);
   });
+
+  it("prints the checkout answers after the lines, in the order's language for yes and no", () => {
+    const answers = [
+      { fieldId: "f1", label: "Allergier", kind: "checklist" as const, answer: ["Melk", "Egg"], optionIds: ["a", "b"], consent: true },
+      { fieldId: "f2", label: "Gaveinnpakning", kind: "checkbox" as const, answer: true },
+      { fieldId: "f3", label: "Portkode", kind: "text" as const, answer: "<b>1234</b>" },
+    ];
+    const text = plain(draw(slip({ answers }))).replace(/<[^>]+>/g, "");
+    expect(text).toContain(t("nb").slip.answers);
+    expect(text).toContain("AllergierMelk, Egg");
+    expect(text).toContain(`Gaveinnpakning${t("nb").customFields.yes}`);
+    // The shopper's words are text, never HTML.
+    expect(draw(slip({ answers }))).toContain("&lt;b&gt;1234&lt;/b&gt;");
+    expect(plain(draw(slip()))).not.toContain(t("nb").slip.answers);
+  });
 });
 
 describe("the order settings", () => {

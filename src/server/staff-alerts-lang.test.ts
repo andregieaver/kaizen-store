@@ -64,6 +64,10 @@ describe("staff alerts in the recipient's language (D312 A10)", () => {
   it("keeps the English as it was", () => {
     expect(newOrderEmail(store, "o", order).subject).toMatch(/^New order 1001: NOK\s1,234\.50$/);
     expect(newOrderEmail(store, "o", order).text).toContain("Delivery: Shipping\nCountry: Norway");
+    expect(newOrderEmail(store, "o", order).text).not.toContain("Checkout questions");
+    // How many checkout questions were answered, never the answers (4.8).
+    expect(newOrderEmail(store, "o", { ...order, answers: 2 }).text).toContain("Checkout questions answered: 2 (on the order)");
+    expect(newOrderEmail(store, "o", { ...order, answers: 2 }, "nb").text).toContain("Spørsmål i kassen besvart: 2 (på bestillingen)");
     expect(returnRequestedEmail(store, "r", { number: "R-1", orderNumber: "1001", kind: "return", lines: [] }).subject).toBe("Return requested: R-1 (order 1001)");
     expect(summaryEmail(store, "weekly", figures).subject).toBe("Shop: weekly summary for 2026-01-01 to 2026-01-07");
     expect(disputeEmail(store, "due", dispute).subject).toBe("Dispute evidence due Thu 1 Jan 2026, 10:00: order 1001");

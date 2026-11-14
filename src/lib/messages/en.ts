@@ -585,6 +585,7 @@ export const en = {
     // legal: needs review
     moreFollows: "More of this order follows in another parcel.",
     alreadySent: "All items (already sent)",
+    answers: "Answers at checkout",
   },
   /**
    * The page a customer opens from the pay link of a change to their order (wave 3, run 3, D174): what changes, what is already paid and what is to pay now, the right of

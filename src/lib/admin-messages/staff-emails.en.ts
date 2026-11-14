@@ -70,6 +70,7 @@ export const staffEmailsEn = {
       host: "Host's listing: {host}",
       gift: "Gift",
       held: "On hold by a rule",
+      answers: "Checkout questions answered: {n} (on the order)",
       subject: "New order {number}: {total}",
       preview: "{store} has a new paid order, {number}, of {total}.",
       heading: "New order",

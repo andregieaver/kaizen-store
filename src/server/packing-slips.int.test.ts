@@ -102,3 +102,33 @@ describe("a parcel's slip (P3, P4)", () => {
     expect(Number(count.n)).toBe(2);
   });
 });
+
+describe("the checkout answers on a slip (D357, D598)", () => {
+  const answers = [
+    { fieldId: "f1", label: "Allergier", kind: "checklist", answer: ["Melk"], optionIds: ["a1"], consent: true },
+    { fieldId: "f2", label: "Portkode", kind: "text", answer: "1234" },
+  ];
+  const withAnswers = async (orderId: string) => {
+    await db().execute(sql`update commerce.orders set checkout_answers = ${JSON.stringify(answers)}::jsonb where id = ${orderId}::uuid`);
+  };
+
+  it("prints them as the order kept them, on the order's slip and a parcel's, and leaves the sensitive one off a gift's", async () => {
+    const own = await paidOrder(store, [["DEMO-TOTE", 2]], { beforePaid: withAnswers });
+    const set = await packingSlipData(store.storeId, [own.orderId]);
+    if (!set.ok) throw new Error("no slips");
+    expect(set.slips[0]?.answers).toEqual(answers);
+    const sent = await markSent(store.storeId, own.orderId, parcel, null, null, { lines: [{ lineId: lineOf(own, "DEMO-TOTE").id, quantity: 1 }] });
+    if (!sent.ok) throw new Error(sent.reason);
+    expect((await parcelSlipData(store.storeId, own.orderId, sent.shipment.id))?.answers).toEqual(answers);
+    // A gift (frozen once written: set with the triggers off, as the checkout writes it from the cart): its recipient reads the slip.
+    const gift = await paidOrder(store, [["DEMO-TOTE", 1]], { beforePaid: withAnswers });
+    await db().transaction(async (tx) => {
+      await tx.execute(sql`set local session_replication_role = replica`);
+      await tx.execute(sql`update commerce.orders set is_gift = true, gift_to = 'Anna' where id = ${gift.orderId}::uuid`);
+    });
+    const giftSet = await packingSlipData(store.storeId, [gift.orderId]);
+    if (!giftSet.ok) throw new Error("no slips");
+    expect(giftSet.slips[0]?.answers).toEqual([answers[1]]);
+    noMoney([set.slips, giftSet.slips]);
+  });
+});
