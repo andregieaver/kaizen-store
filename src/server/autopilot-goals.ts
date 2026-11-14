@@ -20,6 +20,9 @@ import {
 import { mainCurrency } from "@/lib/markets";
 import { parsePrice } from "@/lib/product-input";
 
+import { derive } from "@/lib/analytics-kpi";
+
+import { getAnalyticsSettings } from "./analytics-settings";
 import { periodTotals } from "./analytics-totals";
 import { audit } from "./auth";
 import { isDemoProduct } from "./demo-content";
@@ -140,7 +143,7 @@ export async function dropGoal(scope: GoalScope, id: string): Promise<void> {
 const COUNT = z.object({ n: col.int });
 
 /** The figures every goal of a scope is measured against, read once. */
-export async function goalFigures(store: Store | null, now = new Date()): Promise<GoalFigures> {
+export async function goalFigures(store: Store | null, now = new Date(), sinceDays: readonly string[] = []): Promise<GoalFigures> {
   const missing: GoalFigures["missing"] = {};
   if (!store) {
     const [pages, stores] = await Promise.all([
@@ -160,12 +163,16 @@ export async function goalFigures(store: Store | null, now = new Date()): Promis
       products: null,
       pages: pages?.n ?? 0,
       stores: stores?.n ?? 0,
+      contribution30d: null,
+      margin30d: null,
+      since: {},
       missing,
     };
   }
   const today = todayIn(now, store.timeZone);
+  const settings = await getAnalyticsSettings(store.id);
   const [totals, products, pages] = await Promise.all([
-    periodTotals(store, customPeriod(addDays(today, -29), today)),
+    periodTotals(store, customPeriod(addDays(today, -29), today), settings),
     typedRow(COUNT, sql`select count(*)::int as n from commerce.products p where p.store_id = ${store.id}::uuid and p.status = 'active' and not ${isDemoProduct(sql`p`)}`),
     typedRow(COUNT, sql`select count(*)::int as n from commerce.pages where store_id = ${store.id}::uuid and type = 'page' and published is not null`),
   ]);
@@ -182,6 +189,31 @@ export async function goalFigures(store: Store | null, now = new Date()): Promis
   let conversion30d: number | null = null;
   if (t.sessions === null || t.sessions === 0) missing.conversion_30d = "Visit counting is off, or no visits were counted in 30 days (Settings → Analytics).";
   else conversion30d = ((t.checkoutOrders ?? t.orders) / t.sessions) * 100;
+  // Profit as the analytics count it (`derive()`): not known while too few sold goods have a cost (under 30 %), an estimate below all of them.
+  const derived = derive(t, settings, 30);
+  const noProfit = "Too few of the goods sold have a cost (Products, each variant's cost), so profit cannot be worked out.";
+  let contribution30d = derived.contributionProfit;
+  let margin30d = contribution30d !== null && derived.netRevenue > 0 ? (contribution30d / derived.netRevenue) * 100 : null;
+  if (totals.unconverted > 0) {
+    contribution30d = null;
+    margin30d = null;
+    missing.contribution_30d = missing.revenue_30d;
+    missing.margin_30d = missing.revenue_30d;
+  } else if (contribution30d === null) {
+    missing.contribution_30d = noProfit;
+    missing.margin_30d = noProfit;
+  } else if (margin30d === null) missing.margin_30d = "No net sales in 30 days to measure a margin against.";
+  const since: GoalFigures["since"] = {};
+  for (const day of new Set(sinceDays)) {
+    if (day > today) continue;
+    const period = await periodTotals(store, customPeriod(day, today), settings);
+    if (period.unconverted > 0) {
+      since[day] = { revenue: null, contribution: null, missing: `${period.unconverted} orders in ${period.missingCurrencies.join(", ")} have no exchange rate.` };
+      continue;
+    }
+    const d = derive(period.totals, settings, Math.max(1, Math.round((Date.parse(today) - Date.parse(day)) / 86_400_000) + 1));
+    since[day] = { revenue: d.netRevenue, contribution: d.contributionProfit, ...(d.contributionProfit === null ? { missing: noProfit } : {}) };
+  }
   const openedOn = store.setupCompletedAt ? todayIn(new Date(store.setupCompletedAt), store.timeZone) : null;
   return {
     revenue30d,
@@ -193,6 +225,9 @@ export async function goalFigures(store: Store | null, now = new Date()): Promis
     products: products?.n ?? 0,
     pages: pages?.n ?? 0,
     stores: null,
+    contribution30d,
+    margin30d,
+    since,
     missing,
   };
 }
@@ -203,7 +238,8 @@ export type GoalWithProgress = Goal & { progress: TargetProgress[]; met: boolean
 export async function goalsWithProgress(scope: GoalScope, options: { all?: boolean; now?: Date } = {}): Promise<GoalWithProgress[]> {
   const goals = await listGoals(scope, options);
   if (goals.length === 0) return [];
-  const figures = await goalFigures(scope.store, options.now);
+  const sinceDays = goals.flatMap((g) => g.targets.flatMap((t) => ("since" in t ? [t.since] : [])));
+  const figures = await goalFigures(scope.store, options.now, sinceDays);
   const locale = scope.store?.markets[0]?.locale ?? "en-GB";
   const out: GoalWithProgress[] = [];
   for (const goal of goals) {

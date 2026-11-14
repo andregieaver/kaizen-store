@@ -158,6 +158,7 @@ export const TOOL_WORDS: Record<string, string> = {
   sales_trend: "Working out the trend",
   sales_funnel: "Following carts to orders",
   analytics_overview: "Reading the analytics",
+  profit_overview: "Working out the profit",
   explain_change: "Working out why sales changed",
   analytics_alerts: "Checking what needs a look",
   report_catalogue: "Reading what reports can show",

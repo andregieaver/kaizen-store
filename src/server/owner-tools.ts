@@ -76,6 +76,7 @@ import { activeFieldGroups, fieldsTag, getFieldData, listFieldGroups, pageFacts,
 import { listIntegrations, postToSlack } from "./integrations";
 import { ownedStores, usageRows } from "./ai-usage";
 import { analyticsAlertsTool, analyticsOverviewTool, explainChangeTool, speedReportTool } from "./analytics-tools";
+import { profitOverviewTool } from "./profit-tools";
 import { reportCatalogueTool, runReportTool, saveReportTool } from "./report-tools";
 import { issueWorkInvoiceTool, listWorkAssignmentsTool, listWorkClientsTool, logTimeTool, preflightIssueWorkInvoice, workOverviewTool } from "./work-tools";
 import { changeOrderTool, preflightChangeOrder, previewOrderChangeTool } from "./order-change-tools";
@@ -2462,6 +2463,7 @@ const handlersOf = (): Record<OwnerToolName, Handler> => (handlers ??= {
   sales_trend: salesTrend,
   sales_funnel: salesFunnel,
   analytics_overview: analyticsOverviewTool,
+  profit_overview: profitOverviewTool,
   explain_change: explainChangeTool,
   analytics_alerts: analyticsAlertsTool,
   report_catalogue: reportCatalogueTool,

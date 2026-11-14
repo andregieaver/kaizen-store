@@ -8,12 +8,25 @@ import { formatMoney } from "./money";
  * `goalProgress()` in `src/server/autopilot-goals.ts`. A figure that cannot be known is *not measured* with its reason, never 0 and never met.
  */
 
-export const GOAL_TARGETS = ["revenue_30d", "orders_30d", "conversion_30d", "open_by", "products", "pages", "stores"] as const;
+export const GOAL_TARGETS = [
+  "revenue_30d",
+  "orders_30d",
+  "conversion_30d",
+  "open_by",
+  "products",
+  "pages",
+  "stores",
+  // Profit (`docs/100-day-challenge.md` E2): what the challenge is won on, so the autopilot can steer by it rather than by sales alone.
+  "contribution_30d",
+  "margin_30d",
+  "revenue_since",
+  "contribution_since",
+] as const;
 export type GoalTargetKind = (typeof GOAL_TARGETS)[number];
 
 /** The targets each scope measures: a store's figures, or Kaizena Flow's own (pages and open stores). */
 export const TARGETS_FOR: Record<"store" | "platform", readonly GoalTargetKind[]> = {
-  store: ["revenue_30d", "orders_30d", "conversion_30d", "open_by", "products", "pages"],
+  store: ["revenue_30d", "orders_30d", "conversion_30d", "open_by", "products", "pages", "contribution_30d", "margin_30d", "revenue_since", "contribution_since"],
   platform: ["pages", "stores"],
 };
 
@@ -33,6 +46,10 @@ export const goalTargetSchema = z.discriminatedUnion("kind", [
   z.object({ kind: z.literal("products"), count: z.number().int().positive().max(1_000_000) }),
   z.object({ kind: z.literal("pages"), count: z.number().int().positive().max(100_000) }),
   z.object({ kind: z.literal("stores"), count: z.number().int().positive().max(10_000_000) }),
+  z.object({ kind: z.literal("contribution_30d"), amount_minor: z.number().int().positive(), currency: z.string().regex(/^[A-Z]{3}$/) }),
+  z.object({ kind: z.literal("margin_30d"), percent: z.number().positive().max(100) }),
+  z.object({ kind: z.literal("revenue_since"), amount_minor: z.number().int().positive(), currency: z.string().regex(/^[A-Z]{3}$/), since: day }),
+  z.object({ kind: z.literal("contribution_since"), amount_minor: z.number().int().positive(), currency: z.string().regex(/^[A-Z]{3}$/), since: day }),
 ]);
 export type GoalTarget = z.infer<typeof goalTargetSchema>;
 export const goalTargetsSchema = z.array(goalTargetSchema).max(TARGETS_MAX);
@@ -40,10 +57,18 @@ export const goalTargetsSchema = z.array(goalTargetSchema).max(TARGETS_MAX);
 /** A target as the model gives it: flat, an amount typed in the main currency's major units ("50 000"). */
 export const goalTargetInput = z.object({
   kind: z.enum(GOAL_TARGETS),
-  amount: z.string().trim().max(30).optional().describe("revenue_30d: net sales of 30 days without VAT, in the store's main currency, such as '50000'."),
+  amount: z
+    .string()
+    .trim()
+    .max(30)
+    .optional()
+    .describe(
+      "revenue_30d: net sales of 30 days without VAT; contribution_30d: contribution profit of 30 days (net sales less goods, fees, shipping and marketing); revenue_since and contribution_since: the same added up since `since`. In the store's main currency, such as '50000'.",
+    ),
   count: z.number().int().positive().max(10_000_000).optional().describe("orders_30d, products, pages or stores: how many."),
-  percent: z.number().positive().max(100).optional().describe("conversion_30d: orders per 100 visits."),
+  percent: z.number().positive().max(100).optional().describe("conversion_30d: orders per 100 visits; margin_30d: contribution profit per 100 of net sales, last 30 days."),
   date: day.optional().describe("open_by: the date the store should be open, YYYY-MM-DD."),
+  since: day.optional().describe("revenue_since and contribution_since: the first day counted, YYYY-MM-DD (the challenge's Day 1)."),
 });
 export type GoalTargetInput = z.infer<typeof goalTargetInput>;
 
@@ -57,14 +82,21 @@ export function targetFromInput(
   if (!TARGETS_FOR[scope].includes(input.kind)) return { ok: false, problem: `A ${scope === "store" ? "store" : "Kaizena Flow"} goal cannot measure ${input.kind}.` };
   const need = (what: string) => ({ ok: false as const, problem: `${input.kind} needs ${what}.` });
   switch (input.kind) {
-    case "revenue_30d": {
+    case "revenue_30d":
+    case "contribution_30d":
+    case "revenue_since":
+    case "contribution_since": {
       if (!input.amount || !currency) return need("an amount");
       const minor = parseAmount(input.amount, currency);
       if (minor === null || minor <= 0) return { ok: false, problem: `"${input.amount}" is not an amount in ${currency}.` };
-      return { ok: true, target: { kind: "revenue_30d", amount_minor: minor, currency } };
+      if (input.kind === "revenue_since" || input.kind === "contribution_since") {
+        return input.since ? { ok: true, target: { kind: input.kind, amount_minor: minor, currency, since: input.since } } : need("a first day (since)");
+      }
+      return { ok: true, target: { kind: input.kind, amount_minor: minor, currency } };
     }
     case "conversion_30d":
-      return input.percent ? { ok: true, target: { kind: "conversion_30d", percent: input.percent } } : need("a percent");
+    case "margin_30d":
+      return input.percent ? { ok: true, target: { kind: input.kind, percent: input.percent } } : need("a percent");
     case "open_by":
       return input.date ? { ok: true, target: { kind: "open_by", date: input.date } } : need("a date");
     default:
@@ -86,6 +118,12 @@ export type GoalFigures = {
   products: number | null;
   pages: number | null;
   stores: number | null;
+  /** Contribution profit of the last 30 store days in `currency` (`derive()`: net sales less goods, fees, shipping, marketing, lost disputes). */
+  contribution30d: number | null;
+  /** Contribution profit per 100 of net sales, last 30 days. */
+  margin30d: number | null;
+  /** Net sales and contribution profit since each first day a goal names, keyed by the day; null where not known. */
+  since: Record<string, { revenue: number | null; contribution: number | null; missing?: string }>;
   /** Why a figure is null, by target kind. */
   missing: Partial<Record<GoalTargetKind, string>>;
 };
@@ -125,6 +163,27 @@ export function targetProgress(target: GoalTarget, f: GoalFigures, locale = "en-
       const words = `Open by ${target.date}`;
       if (f.openedOn) return { kind: target.kind, target: words, now: `Open since ${f.openedOn}`, met: f.openedOn <= target.date };
       return { kind: target.kind, target: words, now: f.today > target.date ? "Not open, and the date has passed" : "Not open yet", met: false };
+    }
+    case "contribution_30d": {
+      const words = `${formatMoney(target.amount_minor, target.currency, locale)} contribution profit in 30 days`;
+      if (f.currency && f.currency !== target.currency) return { ...notMeasured(words), missing: `The target is in ${target.currency} and the store's figures are in ${f.currency}.` };
+      if (f.contribution30d === null) return notMeasured(words);
+      return { kind: target.kind, target: words, now: formatMoney(f.contribution30d, target.currency, locale), met: f.contribution30d >= target.amount_minor };
+    }
+    case "margin_30d":
+      return f.margin30d === null
+        ? notMeasured(`${pct(target.percent)} contribution margin`)
+        : { kind: target.kind, target: `${pct(target.percent)} contribution margin`, now: pct(f.margin30d), met: f.margin30d >= target.percent };
+    case "revenue_since":
+    case "contribution_since": {
+      const what = target.kind === "revenue_since" ? "net sales" : "contribution profit";
+      const words = `${formatMoney(target.amount_minor, target.currency, locale)} ${what} since ${target.since}`;
+      if (f.currency && f.currency !== target.currency) return { ...notMeasured(words), missing: `The target is in ${target.currency} and the store's figures are in ${f.currency}.` };
+      if (target.since > f.today) return { kind: target.kind, target: words, now: `Counting starts on ${target.since}`, met: null, missing: "The first day has not come." };
+      const since = f.since[target.since];
+      const value = since ? (target.kind === "revenue_since" ? since.revenue : since.contribution) : null;
+      if (value === null) return { ...notMeasured(words), missing: since?.missing ?? f.missing[target.kind] ?? "The figure is not known." };
+      return { kind: target.kind, target: words, now: formatMoney(value, target.currency, locale), met: value >= target.amount_minor };
     }
     case "products":
     case "pages":

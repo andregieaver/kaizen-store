@@ -31,6 +31,7 @@ export const REVIEW_READ_TOOLS = [
   "store_checkup",
   "setup_progress",
   "analytics_overview",
+  "profit_overview",
   "analytics_alerts",
   "explain_change",
   "report_catalogue",

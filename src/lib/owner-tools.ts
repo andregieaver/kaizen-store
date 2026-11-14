@@ -1164,6 +1164,18 @@ export const OWNER_TOOLS = [
     }),
   ),
   tool(
+    "profit_overview",
+    "What a period earned after what it cost (docs/100-day-challenge.md E3), counted in code as the Analytics pages count it: net sales, the cost of goods, payment and platform fees, shipping, marketing and lost disputes, gross and contribution profit, contribution margin, profit per krone of marketing (contribution before marketing per krone spent) and revenue and contribution per visitor; for 30 days or this month also the month's sales forecast with its 80 % range. A figure that cannot be known says why (costs missing, visit counting off, no marketing recorded), never zero. Amounts are in the store's main currency without VAT. Use it before deciding on prices, offers or ad budgets, and to judge a goal of profit or margin; quote it, never add up or compare figures yourself.",
+    z.object({
+      period: z.enum(["7d", "30d", "month", "last_month", "since"]).default("30d").describe("The last 7 or 30 days (today included), this month so far, the whole of last month, or since a first day."),
+      since: z
+        .string()
+        .regex(/^\d{4}-\d{2}-\d{2}$/)
+        .optional()
+        .describe("For period since: the first day counted, YYYY-MM-DD (the challenge's Day 1)."),
+    }),
+  ),
+  tool(
     "explain_change",
     "Why revenue changed between a period and the one before it (or last year), worked out in code and never guessed: how much came from traffic, conversion and the average order (each one's part of the change), the device, channel, country and product that carry most of it, the day it began, and which analytics page to look at next. Revenue here is before refunds, without VAT. Repeat the sentences it gives and add no cause it did not find; when it says there is too little to explain, say so.",
     z.object({

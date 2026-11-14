@@ -93,6 +93,17 @@ const REVIEW_LINES = [
   "- End with one or two plain sentences on what you planned and why: the owner reads them.",
 ].join("\n");
 
+/**
+ * What the autopilot is told on top while the store is in the 100-day challenge (`docs/100-day-challenge.md`, D597): it runs the store alone,
+ * nobody answers its questions, and it is judged on profit. Added to every turn it runs there (steps, reviews, events).
+ */
+export const CHALLENGE_LINES = [
+  "This store is in the 100-day challenge: you run it alone, and a person only decides refunds and answers escalated support.",
+  "- Nobody answers questions: never make a question step and never wait for the owner's opinion; decide yourself within your levels and budgets.",
+  "- The challenge is judged on profit, not sales: margin, profit per krone of marketing and revenue per visitor. Judge every plan by contribution profit (profit_overview), keep prices and offers above the margin floor, and move ad money toward what earns.",
+  "- Refunds and any money back to a customer always wait for the owner; prepare them with the facts, and do everything else yourself.",
+].join("\n");
+
 /** Who a change the AI manager makes is audited as: the AI manager, or the autopilot inside its turns (D309). */
 const aiActor = () => (currentActor() === "autopilot" ? "autopilot" : "ai_manager");
 
@@ -774,7 +785,9 @@ export async function runTurn(input: TurnInput): Promise<void> {
         waiting: waiting.map((row) => ({ id: String(row.id), summary: String(row.summary) })),
         // The outside assistant asking (D439), Kaizen Life's or another: named, so the model knows whose words it reads.
         outside: input.outside?.client,
-      }) + (autopilot ? `\n\n${autopilot.review ? REVIEW_LINES : autopilot.event ? EVENT_LINES[autopilot.event] : AUTOPILOT_LINES}` : ""),
+      }) +
+      (autopilot ? `\n\n${autopilot.review ? REVIEW_LINES : autopilot.event ? EVENT_LINES[autopilot.event] : AUTOPILOT_LINES}` : "") +
+      (autopilot?.settings.challenge ? `\n\n${CHALLENGE_LINES}` : ""),
     },
     ...history.map((row) => ({ role: row.role === "user" ? ("user" as const) : ("assistant" as const), content: String(row.content) })),
     { role: "user", content: text },

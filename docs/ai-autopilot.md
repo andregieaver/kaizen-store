@@ -275,6 +275,8 @@ the platform principal (`store_id` null), with the targets and checks that make 
   | `products` | active products, demo products left out (`isDemoProduct()`) | yes | no |
   | `pages` | published pages (type `page`) | yes | yes |
   | `stores` | open stores that are real businesses (`not (is_template or starter)`) | no | yes |
+  | `contribution_30d`, `margin_30d` | contribution profit and its share of net sales, last 30 store days (`derive()`); not measured under 30 % cost coverage (D599) | yes | no |
+  | `revenue_since`, `contribution_since` | net sales and contribution profit added up from a first day (D599) | yes | no |
 
   A figure that cannot be known (no rate for a currency, no visits counted) is *not measured* with the reason, never 0 and never met.
   A goal is `met` when every target is met; the code marks it, the model never does.

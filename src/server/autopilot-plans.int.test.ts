@@ -193,7 +193,7 @@ describe("the Autopilot page's buttons", () => {
     expect(await autonomyFor(store.id)).toEqual({
       paused: false,
       levels: { website: "tell" },
-      budgets: { aiMonthlyUsd: null, discountPercent: 15, priceChangePercent: 5, customerEmailsPerWeek: 3, adRaisePercent: 25 },
+      budgets: { aiMonthlyUsd: null, discountPercent: 15, priceChangePercent: 5, customerEmailsPerWeek: 3, adRaisePercent: 25, marginFloorPercent: null },
       planning: { continues: false, starts: "ask", reviewDays: 7, plansPerWeek: 3, reacts: false, waitMinutes: 15 },
       challenge: null,
     });

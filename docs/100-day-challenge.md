@@ -603,3 +603,5 @@ Each item of section 4 moves here when it is built, with its decision.
 | A2 Never automatic, re-sorted | Partly: broadcasts within a week's budget, support answers on a daily budget, money back to customers kept for the person. The money-free order change and price rules are still to do. | D597 |
 | F2 Limits for a business | Built: the AI budget from the challenge, the autopilot's turns apart from the owner's, events limited per kind, plans paused by the budget started again. | D597 |
 | D5 Margin floor | Built: prices, discounts and campaigns under the owner's lowest margin wait for a yes; the challenge's own floor is 10 % by default. | D598 |
+| E2 Profit goals | Built: contribution and margin over 30 days, net sales and contribution since a first day. | D599 |
+| E3 The review sees money | Partly: `profit_overview` (contribution, margin, profit per krone of marketing, per visitor, the month's forecast) in the review's and events' tools; the budget and the campaigns report still have no tool. | D599 |

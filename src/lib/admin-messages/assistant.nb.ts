@@ -429,6 +429,7 @@ export const assistantNb: AssistantMessages = {
     sales_trend: "Regner ut trenden",
     sales_funnel: "Følger handlekurver til bestillinger",
     analytics_overview: "Leser analysene",
+    profit_overview: "Regner ut fortjenesten",
     explain_change: "Finner ut hvorfor salget endret seg",
     analytics_alerts: "Sjekker hva som bør ses på",
     report_catalogue: "Leser hva rapporter kan vise",
