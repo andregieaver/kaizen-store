@@ -19,7 +19,7 @@ import { featureOn } from "@/lib/store-features";
 import { storeBase, storeHref, storeOrigins } from "@/lib/paths";
 import { canOpenPath, permissionOfPath } from "@/lib/permissions";
 import { keyAllowedWhenNotOpen, ownerMayReopen } from "@/lib/store-closure";
-import { storeAreas, storeTabs } from "@/lib/store-nav";
+import { storeNav } from "@/lib/store-nav";
 import { STARTING_CONTENT_HREF, demoStoreHref } from "@/lib/theme-admin-paths";
 import { holderOf } from "@/server/auth";
 import { memberCan, requireMemberAny } from "@/server/permissions";
@@ -91,8 +91,7 @@ export default async function StoreAdminLayout({ children, params }: LayoutProps
   const trialPaused = open ? await pausedAfter(store.id) : null;
   const lang = adminLangOf(account.adminLocale);
   const w = adminText(lang, "shell");
-  const tabs: NavItem[] = storeTabs(base, store, canOpen, { support: waiting });
-  const areas: NavArea[] = storeAreas(base, store, canOpen);
+  const { tabs, areas }: { tabs: NavItem[]; areas: NavArea[] } = storeNav(base, store, canOpen, { support: waiting });
   // Basic or Advanced (D454): the person's own, around the whole frame, so the sidebar, the phone's menu and the pages of cards follow it.
   return (
     <AdminViewProvider saved={account.adminView ?? "basic"} save={adminViewAction}>
