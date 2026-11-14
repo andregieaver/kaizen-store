@@ -13,7 +13,7 @@ import { ByPath } from "./by-path";
 import { AdminRail } from "./admin-rail";
 import { ShortcutSheet } from "./shortcut-sheet";
 import { AdminTooltips } from "./tooltips";
-import { AreaLinks, AreaMenu, AreaSidebar, StoreSidebar, StoreTabs, type NavArea, type NavGroup, type NavItem } from "./store-admin-nav";
+import { AreaLinks, AreaMenu, AreaSidebar, PhoneTabBar, StoreSidebar, StoreTabs, type NavArea, type NavGroup, type NavItem } from "./store-admin-nav";
 
 /**
  * The shell every level of the admin is drawn in (D107, docs/admin-navigation.md):
@@ -103,12 +103,14 @@ export function AdminFrame({
   const hasMenu = tabs.length > 0 || groups.length > 0 || (areas?.length ?? 0) > 0 || Boolean(menuFooter);
   const bar = wide ? "" : "max-w-7xl";
   // Under `lg` a section's sidebar is not drawn (beside the rail too), so its pages are in the slide-out menu.
+  // In the `rail` layout a phone has the bottom bar (round 1), whose More opens the menu: the top bar's button is for tablets only.
+  const phoneTabs = layout === "rail" && hasMenu && tabs.length > 0;
   const menuButton = hasMenu && (
     <button
       type="button"
       data-open-menu
       aria-haspopup="dialog"
-      className="-ml-2 flex size-11 shrink-0 items-center justify-center rounded-pill hover:bg-sunken lg:hidden"
+      className={`-ml-2 size-11 shrink-0 items-center justify-center rounded-pill hover:bg-sunken lg:hidden ${phoneTabs ? "hidden md:flex" : "flex"}`}
     >
       <svg viewBox="0 0 24 24" aria-hidden="true" className="size-6" fill="none" stroke="currentColor" strokeWidth="2">
         <path d="M4 7h16M4 12h16M4 17h16" strokeLinecap="round" />
@@ -200,8 +202,11 @@ export function AdminFrame({
             <AdminMain fullWidth={workspace} focus={focus?.pattern} wide={wide} railed sidebar={sidebar(true)}>
               {children}
             </AdminMain>
+            {/* Room under the page for the phone's bottom bar. */}
+            {phoneTabs && focused(<div aria-hidden className="h-24 shrink-0 md:hidden" />, null)}
           </div>
         </div>
+        {phoneTabs && focused(<PhoneTabBar items={tabs} label={w.sections} more={w.more} />, null)}
         {menu}
       </>
     );

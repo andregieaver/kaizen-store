@@ -9,6 +9,7 @@ import { AdminTrail } from "@/components/admin/admin-trail";
 import { AiManagerLauncher } from "@/components/admin/ai-manager-launcher";
 import { AdminTextScope } from "@/components/admin/admin-text";
 import { AdminViewProvider, AdminViewToggle } from "@/components/admin/admin-view";
+import { PageFinder } from "@/components/admin/page-finder";
 import type { NavArea, NavItem } from "@/components/admin/store-admin-nav";
 import { fillWords } from "@/lib/admin-fill";
 import { adminLangOf } from "@/lib/admin-lang";
@@ -38,6 +39,7 @@ import {
   pageHereAction,
   saveSkillAction,
 } from "./assistant/actions";
+import { findStorePagesAction } from "./finder-actions";
 
 /**
  * Tools drawn in the `workspace` layout (D230): the page editor (a page's own address, or a new page, D53) and the media library use the
@@ -106,6 +108,8 @@ export default async function StoreAdminLayout({ children, params }: LayoutProps
         }
         actions={
           <>
+            {/* The page finder (round 1): any page by name, ⌘K. */}
+            <PageFinder find={findStorePagesAction.bind(null, store.slug)} words={w.finder} />
             {/* Basic or Advanced (D454), from every page; on phones it is in the menu. */}
             <div className="hidden md:block">
               <AdminViewToggle compact />
