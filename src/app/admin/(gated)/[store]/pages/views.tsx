@@ -6,13 +6,12 @@ import { DemoHomePages } from "@/components/admin/demo-home-pages";
 import { AdminTextScope } from "@/components/admin/admin-text";
 import { PageJobsPanel } from "@/components/admin/page-jobs-panel";
 import { PagesTable } from "@/components/admin/pages-table";
-import { TermsManager } from "@/components/admin/terms";
 import { SiteLayoutChoice, SiteLayoutsTable } from "@/components/admin/site-layouts";
 import { fillWords, countWords } from "@/lib/admin-fill";
 import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
 import type { WebsiteMessages } from "@/lib/admin-messages/website.en";
 import { adminText, adminTexts } from "@/lib/admin-text";
-import { LAYOUT_TYPES, termContentOf, type PageType } from "@/lib/page-content";
+import { LAYOUT_TYPES, type PageType } from "@/lib/page-content";
 import { ROLE_COPY, ROLE_GROUPS, partOfRole, type PageRole } from "@/lib/page-roles";
 import { featureOn, requirementMet } from "@/lib/store-features";
 import { shopPartFeature } from "@/lib/store-parts";
@@ -32,15 +31,11 @@ import { commentCounts } from "@/server/blog-comments";
 import {
   chooseStoreSiteLayoutAction,
   createRolePageAction,
-  createStorePageTermAction,
-  deleteStorePageTermAction,
   setFrontPageAction,
   setPageRoleAction,
   setProductsPageAction,
   stopPageJobAction,
-  updateStorePageTermAction,
 } from "./actions";
-import { termFieldsSetup } from "../fields/data";
 import { storePageContext, storePagesBase } from "./context";
 import { undoDemoHomeAction, useDemoHomeAction } from "./home-actions";
 
@@ -224,41 +219,6 @@ export async function StorePagesListView({ type, params, searchParams }: { type:
     </AdminTextScope>
   );
 }
-
-/** A store's page or article categories and tags (D50, D53, D57): chosen in the editor, shown by content grids. */
-export async function StorePageTermsView({ type, params }: { type: PageType; params: StoreParams }) {
-  const gated = await requirePageTypeAccess((await params).store, type, "read");
-  // Product layouts are part of the online shop (D178 step 5): hidden while it is off.
-  const shopOff = type === "product_layout" ? requireFeature(gated, "shop") : null;
-  if (shopOff) return shopOff;
-  const { store, account } = gated;
-  const tw = adminText(adminLangOf(account.adminLocale), "website").storePages.types[type];
-  const [terms, fields] = await Promise.all([listTerms({ storeId: store.id, contentType: termContentOf(type) }), termFieldsSetup(store)]);
-  return (
-    // The categories manager's words are the products' (it is the same manager as theirs).
-    <AdminTextScope texts={adminTexts(adminLangOf(account.adminLocale), ["products"])}>
-    <div className="flex flex-col gap-6">
-      <div className="flex flex-col gap-1">
-        <Link href={storePagesBase(store, type)} className="w-fit text-sm underline">
-          {tw.list}
-        </Link>
-        <PageHeader title={tw.termsTitle} description={tw.terms} />
-        </div>
-      <TermsManager
-        initial={terms}
-        usedBy={tw.many}
-        fields={fields}
-        actions={{
-          create: createStorePageTermAction.bind(null, store.slug, type),
-          update: updateStorePageTermAction.bind(null, store.slug, type),
-          remove: deleteStorePageTermAction.bind(null, store.slug, type),
-        }}
-      />
-    </div>
-    </AdminTextScope>
-  );
-}
-
 
 /**
  * Which page shoppers land on (D54): the product list, or one of the store's

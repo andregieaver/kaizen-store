@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 
-import { NewContentTypeView } from "@/components/admin/content-views";
+import { NewContentTypeView } from "@/components/admin/content-type-views";
 import { requirePermission } from "@/server/permissions";
 
 import { storeContentSite } from "../site";

@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 
-import { StorePageTermsView } from "../views";
+import { StorePageTermsView } from "../terms-views";
 
 export const metadata: Metadata = { title: "Page categories and tags" };
 

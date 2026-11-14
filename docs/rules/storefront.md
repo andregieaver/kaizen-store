@@ -180,7 +180,8 @@ changing it; a rule changes here, and its line in CLAUDE.md when its gist change
   entries (`commerce.content_entries`, a draft and a published `EntryContent`), a store's (Website → Content) or Kaizena Flow's own (`store_id`
   null, `/admin/platform/content`, no money or file field); every query asks `store_id is not distinct from`. Types are written only by
   `src/server/content-types.ts` and entries only by `src/server/content-entries.ts`, values checked and drawn by the custom fields' own
-  functions (`typeAsGroup()`); the screens are the shared views of `components/admin/content-views.tsx` given a `ContentSite`. The field type
+  functions (`typeAsGroup()`); the screens are the shared views of `components/admin/content-views.tsx` given a `ContentSite`, and the editors' views are
+  `content-type-views.tsx` and `content-entry-views.tsx`, so the lists do not load an editor. The field type
   `entry` holds the owner's own entries of one type (`keepOwnRelations()`), drawn as a link while published (`entryTargets()`), and deleting
   an entry clears every reference in its transaction (`clearEntryRefs()`, `withoutEntry()`). A grid's `entries` source is `gridEntries()`; a
   type with pages serves `/{type}/{entry}` where no page has the address (`findEntryPage()`: a store's `EntryPageView` with its layout bound by
