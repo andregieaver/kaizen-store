@@ -91,7 +91,9 @@ describe("decisions in challenge mode", () => {
   it("runs what the preset's levels allow, within the challenge's budgets", () => {
     expect(autonomyDecision(on, "publish_page", "public", {})).toEqual({ run: true, tell: false, area: "website" });
     expect(autonomyDecision(on, "make_theme_live", "public", { costsMoney: false })).toEqual({ run: true, tell: true, area: "design" });
-    expect(autonomyDecision(on, "set_prices", "public", { priceChangePercent: 15 })).toMatchObject({ run: true });
-    expect(autonomyDecision(on, "set_prices", "public", { priceChangePercent: 16 })).toMatchObject({ run: false });
+    expect(autonomyDecision(on, "set_prices", "public", { priceChangePercent: 15, lowestMarginPercent: 30 })).toMatchObject({ run: true });
+    expect(autonomyDecision(on, "set_prices", "public", { priceChangePercent: 16, lowestMarginPercent: 30 })).toMatchObject({ run: false });
+    // The challenge's margin floor (10 % by default) holds too.
+    expect(autonomyDecision(on, "set_prices", "public", { priceChangePercent: 5, lowestMarginPercent: 8 })).toMatchObject({ run: false });
   });
 });

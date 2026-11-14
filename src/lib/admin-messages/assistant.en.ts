@@ -265,6 +265,8 @@ export const assistantEn = {
       priceChangeHelp: "A price change larger than this always asks.",
       adRaise: "Largest ad budget raise (%)",
       adRaiseHelp: "A larger raise always asks. What your ads may spend in a month is set on the Ads page.",
+      marginFloor: "Lowest margin (%)",
+      marginFloorHelp: "A price, discount or campaign that would leave any product a smaller margin, before VAT, asks first. Empty for no floor.",
       customerEmails: "Emails to customers a week",
       customerEmailsHelp: "Emails to one customer and answers in support it may send itself in seven days; past this they ask. 0: every one asks.",
       never: "Always asks, whatever you choose: who works in the store, your domains, a broadcast to your list, refunds and order changes, credits and gift cards, your plan with Kaizena Flow, features and opening the store.",

@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import type { ChallengeState } from "./autopilot-challenge";
+import { marginFloorProblem } from "./margin-floor";
 import type { GateCategory } from "./owner-tools";
 
 /**
@@ -188,8 +189,13 @@ export const autonomySettingsSchema = z.object({
        * month is the ad account's own limit (`ad_accounts.monthly_limit_minor`, on the Ads page), in its currency.
        */
       adRaisePercent: z.number().int().min(0).max(1000).default(20),
+      /**
+       * The lowest margin a price, discount or campaign it makes itself may leave any product, in percent of the price without VAT
+       * (`src/lib/margin-floor.ts`, `docs/100-day-challenge.md` D5); null: no floor of its own.
+       */
+      marginFloorPercent: z.number().min(0).max(95).nullable().default(null),
     })
-    .default({ aiMonthlyUsd: 5, discountPercent: 20, priceChangePercent: 10, customerEmailsPerWeek: 5, adRaisePercent: 20 }),
+    .default({ aiMonthlyUsd: 5, discountPercent: 20, priceChangePercent: 10, customerEmailsPerWeek: 5, adRaisePercent: 20, marginFloorPercent: null }),
   /** Whether and how it keeps working toward the goals once a plan ends (D328, `docs/ai-autopilot.md` 12.1). */
   planning: z
     .object({
@@ -237,6 +243,10 @@ export type AutonomyFacts = {
   customerEmailsThisWeek?: number | null;
   /** An ad budget's change (D585): why it must ask by the owner's ad limit and largest raise (`adChangeProblem()`), or null when it may. */
   adProblem?: string | null;
+  /** The lowest margin any product would have after the call (`lowestMargin()`), null when it cannot be measured. */
+  lowestMarginPercent?: number | null;
+  /** The call takes nothing off a product's price (free shipping): the floor does not apply. */
+  marginUntouched?: boolean;
   /** Broadcasts it sent itself in the last seven days (challenge mode). */
   broadcastsThisWeek?: number | null;
   /** Answers to customers on the support desk it sent itself in the last 24 hours (challenge mode). */
@@ -304,8 +314,15 @@ export function autonomyDecision(settings: AutonomySettings, tool: string, gate:
       return { run: false, why: `It takes ${round(facts.discountPercent)} % off, more than your limit of ${settings.budgets.discountPercent} %.` };
     }
   }
+  if (MARGIN_TOOLS.has(tool) && !facts.marginUntouched) {
+    const problem = marginFloorProblem(facts.lowestMarginPercent, settings.budgets.marginFloorPercent);
+    if (problem) return { run: false, why: problem };
+  }
   return { run: true, tell: level === "tell", area };
 }
+
+/** The calls the margin floor holds: what changes what a product sells for. */
+export const MARGIN_TOOLS: ReadonlySet<string> = new Set(["set_prices", "create_discount", "create_campaign"]);
 
 const round = (n: number) => Math.round(n * 10) / 10;
 

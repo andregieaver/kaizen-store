@@ -9,7 +9,7 @@ import { adBudgetAutopilotProblem } from "./ad-budget-tools";
 import type { Account } from "./auth";
 import { autopilotBroadcastsThisWeek, autopilotCustomerEmailsThisWeek, autopilotSupportRepliesToday } from "./autopilot-settings";
 import { liveCostsMoney } from "./design-tools";
-import { priceChangePercent } from "./product-tools";
+import { marginAfterOffer, marginAfterPrices, priceChangePercent } from "./product-tools";
 import type { Store } from "./stores";
 
 /**
@@ -30,11 +30,20 @@ export async function autopilotDecision(
       tool === "send_broadcast" ? { broadcastsThisWeek: await autopilotBroadcastsThisWeek(p.store.id) } : { supportRepliesToday: await autopilotSupportRepliesToday(p.store.id) };
     return autonomyDecision(settings, tool, gate, facts);
   }
+  // The margin floor (D5) is read only where the owner, or the challenge, set one: it costs a read of the catalogue.
+  const floor = settings.budgets.marginFloorPercent !== null;
+  const depth = tool === "create_discount" || tool === "create_campaign" ? discountDepth(tool, args) : null;
   const facts =
     tool === "set_prices" && p.store
-      ? { priceChangePercent: await priceChangePercent(p.store, p.account, args as SetPricesInput) }
+      ? {
+          priceChangePercent: await priceChangePercent(p.store, p.account, args as SetPricesInput),
+          ...(floor ? { lowestMarginPercent: await marginAfterPrices(p.store, p.account, args as SetPricesInput) } : {}),
+        }
       : tool === "create_discount" || tool === "create_campaign"
-        ? { discountPercent: discountDepth(tool, args) }
+        ? {
+            discountPercent: depth,
+            ...(depth === 0 ? { marginUntouched: true } : floor && depth !== null && p.store ? { lowestMarginPercent: await marginAfterOffer(p.store, depth) } : {}),
+          }
         : tool === "make_theme_live" && p.store
           ? { costsMoney: await liveCostsMoney(p.store, p.account, args as MakeThemeLiveInput) }
           : tool === "set_ad_budget" && p.store

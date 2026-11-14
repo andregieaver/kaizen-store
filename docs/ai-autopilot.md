@@ -363,7 +363,7 @@ only (the platform's by platform admins):
 - `budgets`: the AI cost of the autopilot a month (US dollars, priced as D145 prices every call; reached, the plans pause with the reason),
   the deepest discount (percent; a discount or campaign deeper than it is kept for a yes), the largest price change (percent of a variant's
   current price; a larger one is kept for a yes), and the emails to customers it may send itself in seven days (`customerEmailsPerWeek`,
-  default 5, 0 asks every time: `email_customer` and `reply_to_support`, counted from the audit log; D334). Theme purchases wait for A4.
+  default 5, 0 asks every time: `email_customer` and `reply_to_support`, counted from the audit log; D334). A lowest margin (`marginFloorPercent`, D598) holds prices, discounts and campaigns that would leave a product under it. Theme purchases wait for A4.
   The AI cost counts every call the autopilot made (`ai_usage.acted_by`, D334), whatever its feature: page builds, pictures and page
   looks keep who asked for them and run as them. A call no price covers makes the month's cost unknown, so the autopilot stops with that
   reason (`aiBudgetProblem()`) while it has a limit of its own.

@@ -37,6 +37,8 @@ export const challengeSchema = z
     discountPercent: z.number().int().min(0).max(100).default(20),
     /** The largest raise of an ad budget it may make itself, in percent of today's daily budget. */
     adRaisePercent: z.number().int().min(0).max(1000).default(20),
+    /** The lowest margin it may leave a product, in percent of the price without VAT (D5): the owner's, agreed before Day 1. */
+    marginFloorPercent: z.number().min(0).max(95).default(10),
   })
   .superRefine((c, ctx) => {
     if (c.startsOn > c.dayOne) ctx.addIssue({ code: "custom", path: ["startsOn"], message: "Challenge mode starts on or before Day 1." });
@@ -121,6 +123,7 @@ export function withChallenge(settings: AutonomySettings, c: Challenge | null, t
       priceChangePercent: c.priceChangePercent,
       discountPercent: c.discountPercent,
       adRaisePercent: c.adRaisePercent,
+      marginFloorPercent: c.marginFloorPercent,
     },
     challenge: {
       active: true,

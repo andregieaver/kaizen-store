@@ -256,6 +256,8 @@ export const assistantNb: AssistantMessages = {
       priceChangeHelp: "En prisendring større enn dette spør alltid.",
       adRaise: "Største økning av et annonsebudsjett (%)",
       adRaiseHelp: "En større økning spør alltid. Hva annonsene kan bruke i måneden, setter du på Annonser-siden.",
+      marginFloor: "Laveste margin (%)",
+      marginFloorHelp: "En pris, rabatt eller kampanje som ville gi et produkt lavere margin, uten mva., spør først. Tomt for ingen grense.",
       customerEmails: "E-poster til kunder i uken",
       customerEmailsHelp: "E-poster til én kunde og svar i kundeservice den kan sende selv på sju dager; utover dette spør den. 0: alle spør.",
       never: "Spør alltid, uansett hva du velger: hvem som jobber i butikken, domenene dine, en utsendelse til listen din, tilbakebetalinger og endringer i bestillinger, kreditt og gavekort, abonnementet ditt hos Kaizena Flow, funksjoner og åpning av butikken.",

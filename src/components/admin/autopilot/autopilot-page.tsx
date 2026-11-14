@@ -471,6 +471,11 @@ function Settings({ overview, words: a, action }: { overview: AutopilotOverview;
             <input name="ad_raise_percent" type="number" min={0} max={1000} defaultValue={settings.budgets.adRaisePercent} className="min-h-10 max-w-40 rounded-lg border border-edge bg-card px-3 text-sm" />
             <span className="text-caption text-muted">{s.adRaiseHelp}</span>
           </label>
+          <label className="flex flex-col gap-1 text-sm">
+            {s.marginFloor}
+            <input name="margin_floor" type="number" min={0} max={95} step="0.5" defaultValue={settings.budgets.marginFloorPercent ?? ""} className="min-h-10 max-w-40 rounded-lg border border-edge bg-card px-3 text-sm" />
+            <span className="text-caption text-muted">{s.marginFloorHelp}</span>
+          </label>
         </fieldset>
         </fieldset>
         <div>
