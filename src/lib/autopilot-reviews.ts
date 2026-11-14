@@ -7,7 +7,7 @@ import type { AutonomySettings } from "./autopilot-autonomy";
  */
 
 /** Reviews taken in one run of the loop, at most one per store. */
-export const REVIEWS_PER_RUN = 2;
+export const REVIEWS_PER_RUN = 12;
 /** Reviews a store may have in 24 hours, whatever brings them up. */
 export const REVIEWS_PER_DAY = 6;
 /** A finished plan brings its goal up again only this long after the last review. */

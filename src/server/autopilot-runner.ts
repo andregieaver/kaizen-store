@@ -33,7 +33,11 @@ import { skipWhilePaused } from "./ai-pause";
  */
 
 /** Steps taken in one run. */
-const PER_RUN = 3;
+/**
+ * Steps taken in one run, one per store, run side by side (`docs/100-day-challenge.md` H1): with ten challenge stores, one store's long turn
+ * never holds another's step back.
+ */
+const PER_RUN = 12;
 /** How long a run holds a step before another may take it. */
 const CLAIM_MINUTES = 10;
 /** The longest a task step's turn may take. */
@@ -74,20 +78,25 @@ export async function runAutopilot(deps: AutopilotDeps = {}): Promise<AutopilotR
       limit 50
     `,
   );
-  let taken = 0;
+  // Claimed one by one (each under its store's lock), then run side by side: stores never share a step, so their turns do not wait on each other.
+  const claimed: string[] = [];
   for (const candidate of stores) {
-    if (taken >= PER_RUN || (deps.deadline && Date.now() > deps.deadline)) break;
+    if (claimed.length >= PER_RUN || (deps.deadline && Date.now() > deps.deadline)) break;
     const step = await claimFor(candidate.store_id);
-    if (!step) continue;
-    taken++;
-    try {
-      result[await runStep(step.id, deps)]++;
-    } catch (error) {
-      log("error", "autopilot.step_failed", { step: step.id }, error);
-      await failStep(step.id, "Something went wrong while running it.").catch(() => undefined);
-      result.retried++;
-    }
+    if (step) claimed.push(step.id);
   }
+  const taken = claimed.length;
+  await Promise.all(
+    claimed.map(async (id) => {
+      try {
+        result[await runStep(id, deps)]++;
+      } catch (error) {
+        log("error", "autopilot.step_failed", { step: id }, error);
+        await failStep(id, "Something went wrong while running it.").catch(() => undefined);
+        result.retried++;
+      }
+    }),
+  );
   // The questions this run asked and the plans it finished are notices for their makers (D350).
   if (taken > 0) await noticeAutopilot();
   return result;

@@ -119,6 +119,7 @@ export async function runGoalReviews(deps: ReviewDeps = {}): Promise<ReviewRun> 
   `);
   const seen = new Set<string>();
   let taken = 0;
+  const work: { id: string; due: Awaited<ReturnType<typeof dueReviews>>[number] }[] = [];
   for (const due of await dueReviews()) {
     if (taken >= REVIEWS_PER_RUN || (deps.deadline && Date.now() > deps.deadline)) break;
     const storeKey = due.store_id ?? "platform";
@@ -138,14 +139,20 @@ export async function runGoalReviews(deps: ReviewDeps = {}): Promise<ReviewRun> 
     if (!claimed) continue;
     seen.add(storeKey);
     taken++;
-    try {
-      result[await reviewGoal(claimed.id, due, deps)]++;
-    } catch (error) {
-      log("error", "autopilot.review_failed", { review: claimed.id }, error);
-      await finish(claimed.id, "failed", { outcome: "Something went wrong during the review." }).catch(() => undefined);
-      result.failed++;
-    }
+    work.push({ id: claimed.id, due });
   }
+  // Claimed one by one, run side by side: one store's long review never holds another's back (`docs/100-day-challenge.md` H1).
+  await Promise.all(
+    work.map(async ({ id, due }) => {
+      try {
+        result[await reviewGoal(id, due, deps)]++;
+      } catch (error) {
+        log("error", "autopilot.review_failed", { review: id }, error);
+        await finish(id, "failed", { outcome: "Something went wrong during the review." }).catch(() => undefined);
+        result.failed++;
+      }
+    }),
+  );
   return result;
 }
 

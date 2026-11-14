@@ -1,0 +1,1 @@
+ALTER TABLE "commerce"."ai_providers" ADD COLUMN "fallback_models" text[] DEFAULT '{}' NOT NULL;

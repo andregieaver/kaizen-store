@@ -10746,6 +10746,11 @@ export const aiProviders = commerce.table(
     textEuOnly: boolean("text_eu_only").notNull().default(true),
     /** Gateway only: only providers that keep nothing after the request. */
     zeroDataRetention: boolean("zero_data_retention").notNull().default(true),
+    /**
+     * Gateway only: text models tried in order when the text model fails (`providerOptions.gateway.models`), at most three
+     * (`docs/100-day-challenge.md` F1). Never for embeddings: another model would put vectors in another space.
+     */
+    fallbackModels: text("fallback_models").array().notNull().default([]),
     enabled: boolean("enabled").notNull().default(true),
     createdAt: createdAt(),
     updatedAt: updatedAt(),

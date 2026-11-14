@@ -209,6 +209,7 @@ export async function runEvents(deps: EventDeps = {}): Promise<EventRun> {
   );
   const seen = new Set<string>();
   let taken = 0;
+  const work: { event: (typeof pending)[number]; settings: Awaited<ReturnType<typeof autonomyFor>> }[] = [];
   for (const event of pending) {
     if (taken >= EVENTS_PER_RUN || (deps.deadline && Date.now() > deps.deadline)) break;
     if (seen.has(event.store_id)) continue;
@@ -227,14 +228,20 @@ export async function runEvents(deps: EventDeps = {}): Promise<EventRun> {
     if (!claimed) continue;
     seen.add(event.store_id);
     taken++;
-    try {
-      result[await reactTo(event, settings, deps)]++;
-    } catch (error) {
-      log("error", "autopilot.event_failed", { event: event.id }, error);
-      await finish(event.id, "failed", { outcome: "Something went wrong while reacting." }).catch(() => undefined);
-      result.failed++;
-    }
+    work.push({ event, settings });
   }
+  // Claimed one by one, run side by side: one store's long reaction never holds another's back (`docs/100-day-challenge.md` H1).
+  await Promise.all(
+    work.map(async ({ event, settings }) => {
+      try {
+        result[await reactTo(event, settings, deps)]++;
+      } catch (error) {
+        log("error", "autopilot.event_failed", { event: event.id }, error);
+        await finish(event.id, "failed", { outcome: "Something went wrong while reacting." }).catch(() => undefined);
+        result.failed++;
+      }
+    }),
+  );
   return result;
 }
 

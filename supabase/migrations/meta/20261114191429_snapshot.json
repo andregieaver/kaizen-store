@@ -1,6 +1,6 @@
 {
-  "id": "7a176507-3c04-4636-92da-e879a0d6bcd6",
-  "prevId": "d65f2135-e04f-4f0f-b9be-bb892c1fd681",
+  "id": "a6baff39-a433-4c36-a9ad-b44a64706714",
+  "prevId": "7a176507-3c04-4636-92da-e879a0d6bcd6",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -3199,6 +3199,13 @@
           "primaryKey": false,
           "notNull": true,
           "default": true
+        },
+        "fallback_models": {
+          "name": "fallback_models",
+          "type": "text[]",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'{}'"
         },
         "enabled": {
           "name": "enabled",

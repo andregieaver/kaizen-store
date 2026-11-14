@@ -325,7 +325,7 @@ the platform principal (`store_id` null), with the targets and checks that make 
 `/api/cron/autopilot`, every minute (`pg_cron` as the broadcasts' route, `maxDuration` 300, inside `trackedRoute()`), runs
 `runAutopilot()`:
 
-- Takes up to three runnable steps, at most one per store (and one for the platform), none where a step is already running: the plan is
+- Takes up to twelve runnable steps (three until D603), at most one per store (and one for the platform), and runs them side by side, none where a step is already running: the plan is
   `running`, the store's autopilot is not paused (7.4), the store is active (`store_is_active()`, which a store being set up is), the steps it
   follows are `done` or `skipped`, `not_before` has passed. Each is claimed (`claimed_until`, ten minutes, `for update skip locked`).
 - Reads the plan's person again (`principalFor()`, the follow-up runner's: an account disabled, a member removed or a platform admin no

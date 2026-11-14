@@ -613,3 +613,5 @@ Each item of section 4 moves here when it is built, with its decision.
 | A5 The intervention log | Built (no screen yet): refund, escalation, platform, other. | D601 |
 | A6 The stall watch | Built: the platform team emailed of each stall once a day while it lasts. | D601 |
 | D2 Ad spend into the books | Built: Meta's daily spend per campaign, every six hours. | D602 |
+| F1 A second AI provider | Built: up to three fallback text models through the AI Gateway. | D603 |
+| H1 The loop scales per store | Built: steps, reviews and events claimed one per store and run side by side. | D603 |

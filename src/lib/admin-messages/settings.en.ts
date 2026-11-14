@@ -767,6 +767,9 @@ export const settingsEn = {
       textEuHint: "A request fails rather than run elsewhere, and search carries on without it.",
       zdr: "Only providers that keep nothing",
       zdrHint: "Zero data retention: prompts and answers are deleted after each request.",
+      fallback: "Fallback text models",
+      fallbackExample: "anthropic/claude-sonnet-5, google/gemini-3.6-flash",
+      fallbackHint: "Up to three, tried in order when the text model fails, so the chat, support and the autopilot keep answering. Written provider/model, separated by commas. Never used for search by meaning.",
       similarity: "Similarity needed for search by meaning",
       similarityHint:
         "From 0 to 1. Products less like the search than this are not found by meaning. Each model scores differently: Test shows a matching and an unrelated product's scores, and the limit belongs between them.",

@@ -36,6 +36,7 @@ export type AiFormSettings = {
   embeddingEuOnly: boolean;
   textEuOnly: boolean;
   zeroDataRetention: boolean;
+  fallbackModels?: string[];
   enabled: boolean;
 };
 
@@ -391,6 +392,11 @@ export function AiProviderForm({
             {w.zdr}
             <span className="block text-xs text-muted">{w.zdrHint}</span>
           </span>
+        </label>
+        <label className="flex flex-col gap-1 text-sm font-medium">
+          {w.fallback}
+          <input name="fallbackModels" defaultValue={(settings?.fallbackModels ?? []).join(", ")} placeholder={w.fallbackExample} className={field} />
+          <span className="text-xs font-normal text-muted">{w.fallbackHint}</span>
         </label>
       </fieldset>
 

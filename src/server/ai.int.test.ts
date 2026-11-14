@@ -168,6 +168,16 @@ describe("AI providers (D73)", () => {
     });
   });
 
+  it("gives the gateway fallback text models for text, never for embeddings (docs/100-day-challenge.md F1)", async () => {
+    const connection = { ...(await ai.aiFor(storeId))!, fallbackModels: ["anthropic/claude-sonnet-5", "google/gemini-3.6-flash"] };
+    const chat = fakeProvider({ choices: [{ message: { content: "OK" } }] });
+    await ai.completeText(connection, [{ role: "user", content: "Hi" }], { maxTokens: 5 });
+    expect((chat[0].body as { providerOptions: { gateway: { models: string[] } } }).providerOptions.gateway.models).toEqual(["anthropic/claude-sonnet-5", "google/gemini-3.6-flash"]);
+    const vectors = fakeProvider({ data: [{ index: 0, embedding: [1, 0] }] });
+    await ai.embedTexts(connection, ["a"]);
+    expect(vectors[0].body).toEqual({ model: "mistral/mistral-embed", input: ["a"], providerOptions: { gateway: { zeroDataRetention: true } } });
+  });
+
   it("sends other providers plain OpenAI-compatible requests, and reports their errors", async () => {
     await ai.saveAiSettings(
       accountId,
