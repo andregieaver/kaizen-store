@@ -1,6 +1,6 @@
 {
-  "id": "c350043b-e4b1-4c9a-97fa-6deaa1afacfc",
-  "prevId": "718be465-e855-4091-9a0a-a82450095822",
+  "id": "184ae652-2782-4215-b89f-fe58550e4d53",
+  "prevId": "c350043b-e4b1-4c9a-97fa-6deaa1afacfc",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -82864,6 +82864,13 @@
         },
         "sensitive": {
           "name": "sensitive",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "email_orders": {
+          "name": "email_orders",
           "type": "boolean",
           "primaryKey": false,
           "notNull": true,

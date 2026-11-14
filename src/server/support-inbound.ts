@@ -43,6 +43,11 @@ import { systemDesk, type Desk } from "./support-desk";
 import { handOver } from "./support-route";
 import { scoreTone, scoresTone } from "./support-tone";
 import { runSupportTurn } from "./support-turn";
+import type { SupportCustomer } from "./support-tools";
+import { autonomyFor } from "./autopilot-settings";
+import { col, typedRow, typedRows } from "./typed-rows";
+import { z } from "zod";
+import { normaliseEmail } from "@/lib/email-address";
 
 type Row = Record<string, unknown>;
 
@@ -421,9 +426,33 @@ async function answer(desk: Desk, settings: DeskSettings, site: ChatSite, conver
     await handOver(desk, conversationId, "system", "limit");
     return;
   }
-  const result = await (deps.turn ?? runSupportTurn)(desk, context, conversationId, { signals: NO_SIGNALS }, null, null, { email: true });
+  const customer = await emailCustomer(desk, settings, conversationId);
+  const result = await (deps.turn ?? runSupportTurn)(desk, context, conversationId, { signals: NO_SIGNALS }, customer, null, { email: true });
   if (result.error) await handOver(desk, conversationId, "system", "no_ai");
   else if (result.handoff) await handOver(desk, conversationId, "ai", "ai", result.handoff);
+}
+
+/**
+ * The customer an email conversation is from, for the AI to read their own orders (`docs/100-day-challenge.md` B1), or null: only while the
+ * desk's *Answer emails about orders* is on, or the store is in the challenge, and only the one customer of the store whose address is the
+ * conversation's own. That address is safe to answer about: an email reaches the AI only when its DMARC check did not fail and, in a thread,
+ * only from the conversation's address, and every answer goes to that address alone (`sendReplyEmails()`), so whoever sent it, only the
+ * address's owner reads what the orders say.
+ */
+export async function emailCustomer(desk: Desk, settings: DeskSettings, conversationId: string): Promise<SupportCustomer> {
+  if (!desk.storeId || settings.sensitive) return null;
+  if (!settings.emailOrders && !(await autonomyFor(desk.storeId)).challenge) return null;
+  const conversation = await typedRow(
+    z.object({ contact_email: col.textOrNull }),
+    sql`select contact_email from commerce.support_conversations where id = ${conversationId}::uuid and store_id = ${desk.storeId}::uuid and source = 'email'`,
+  );
+  const address = conversation?.contact_email ? normaliseEmail(conversation.contact_email) : "";
+  if (!address) return null;
+  const found = await typedRows(
+    z.object({ id: col.uuid, email: col.text }),
+    sql`select id, email from commerce.customers where store_id = ${desk.storeId}::uuid and lower(email) = ${address} limit 2`,
+  );
+  return found.length === 1 ? { id: found[0].id, email: found[0].email } : null;
 }
 
 /**

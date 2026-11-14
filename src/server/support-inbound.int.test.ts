@@ -281,6 +281,24 @@ describe("email into the desk", () => {
     expect(await conversation(row.conversation_id)).toMatchObject({ contact_email: null, reply_key: null, email_subject: null, email_message_id: null });
     expect(await messages(row.conversation_id)).toHaveLength(0);
   });
+
+  it("gives the AI the sender's own orders only with Answer emails about orders on, and only for the one customer with that address (B1)", async () => {
+    await setMode("ai_first");
+    background.aiStores.add(store.id);
+    const [buyer] = await db().execute<Row>(sql`insert into commerce.customers (store_id, email) values (${store.id}::uuid, 'Kari.Buyer@example.com') returning id`);
+    // Off (the default): no customer, so orders go to a person.
+    await receive(deskAddress, "kari.buyer@example.com", { subject: "Order 1001" });
+    expect(turns.at(-1)).toEqual({ email: true, customer: null });
+    await db().execute(sql`update commerce.support_settings set email_orders = true where store_id = ${store.id}::uuid`);
+    await receive(deskAddress, "kari.buyer@example.com", { subject: "Order 1002" });
+    expect(turns.at(-1)).toEqual({ email: true, customer: { id: String(buyer.id), email: "Kari.Buyer@example.com" } });
+    // Someone else's address is no one's customer here.
+    await receive(deskAddress, "stranger@example.com", { subject: "Order 1001" });
+    expect(turns.at(-1)).toEqual({ email: true, customer: null });
+    // Never for a store with sensitive information, whatever the switch.
+    expect(support.settingsOf({ sensitive: true, email_orders: true }).emailOrders).toBe(false);
+    await db().execute(sql`update commerce.support_settings set email_orders = false where store_id = ${store.id}::uuid`);
+  });
 });
 
 const answerEmails = async (conversationId: unknown) =>

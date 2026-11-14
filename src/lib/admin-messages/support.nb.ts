@@ -548,6 +548,11 @@ export const supportNb: SupportMessages = {
       text: "Skrevet av KI-en ut fra samtalen, på engelsk, bare for teamet ditt; du kan rette et sammendrag. Krever en tekstmodell{none}.",
       toldInChat: "Når dette er på, forteller chatten kundene at en KI lager et sammendrag av samtalen til teamet ditt.",
     },
+    emailOrdersTitle: "E-post om bestillinger",
+    emailOrders: {
+      title: "La KI-en svare på e-post om avsenderens egne bestillinger.",
+      text: "Den leser bare bestillinger lagt inn med adressen e-posten kom fra, og svarer bare til den adressen. Av: en slik e-post går til en person. Alltid på under 100-dagersutfordringen; aldri for en butikk med sensitive opplysninger.",
+    },
     conversationsTitle: "Samtaler",
     endAfter: {
       before: "Avslutt en samtale med assistenten etter",

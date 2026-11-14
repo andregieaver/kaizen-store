@@ -15218,6 +15218,12 @@ export const supportSettings = commerce.table(
      * their conversations, and people, never the AI, answer their emails. The owner's alone to change.
      */
     sensitive: boolean("sensitive").notNull().default(false),
+    /**
+     * The AI answers an email about the sender's own orders (`docs/100-day-challenge.md` B1): it reads the orders of the customer whose
+     * address the email came from (DMARC checked) and answers only to that address. Off: such an email goes to a person. On by itself
+     * while the store is in the challenge.
+     */
+    emailOrders: boolean("email_orders").notNull().default(false),
     toneAlert: smallint("tone_alert").default(-40),
     toneHandoff: smallint("tone_handoff").default(-60),
     notifyAfterMinutes: smallint("notify_after_minutes").notNull().default(5),

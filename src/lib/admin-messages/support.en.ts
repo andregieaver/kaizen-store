@@ -512,6 +512,11 @@ export const supportEn = {
       text: "Written by the AI from the conversation, in English, for your team only; you can correct a summary. Needs a text model{none}.",
       toldInChat: "While this is on, the chat's notice tells customers that an AI summarises their conversation for your team.",
     },
+    emailOrdersTitle: "Emails about orders",
+    emailOrders: {
+      title: "Let the AI answer emails about the sender's own orders.",
+      text: "It reads only the orders placed with the address the email came from, and answers only to that address. Off, such an email goes to a person. Always on during the 100-day challenge; never for a store with sensitive information.",
+    },
     conversationsTitle: "Conversations",
     endAfter: {
       before: "End a conversation with the assistant after",

@@ -537,6 +537,8 @@ export async function runChat(
     support?: SupportToolSet;
     admin?: boolean;
     email?: boolean;
+    /** By email, from the address the customer's orders were placed with (`docs/100-day-challenge.md` B1). */
+    emailOrders?: boolean;
     /**
      * The answer as it is written (PSI PERF-08): its finished sentences so far, cleaned (`shownSoFar()`), each time they grow; empty
      * again when the model turns to tools after all. The reply returned is the whole answer, cleaned, as without it.
@@ -563,6 +565,7 @@ export async function runChat(
         admin: options.admin,
         // A brand that cannot be read leaves the tone to the agent's own guidance; the chat never fails for it.
         email: options.email,
+        emailOrders: Boolean(options.email && options.emailOrders),
         voice: brandVoiceGuide(await brandOf(site.kind === "store" ? site.store.id : null).catch(() => null)),
         embed: site.embed ? { host: site.embed.host } : null,
       }),

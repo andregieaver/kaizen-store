@@ -605,3 +605,5 @@ Each item of section 4 moves here when it is built, with its decision.
 | D5 Margin floor | Built: prices, discounts and campaigns under the owner's lowest margin wait for a yes; the challenge's own floor is 10 % by default. | D598 |
 | E2 Profit goals | Built: contribution and margin over 30 days, net sales and contribution since a first day. | D599 |
 | E3 The review sees money | Partly: `profit_overview` (contribution, margin, profit per krone of marketing, per visitor, the month's forecast) in the review's and events' tools; the budget and the campaigns report still have no tool. | D599 |
+| B1 Email answers about the sender's own orders | Built: a desk switch, on by itself in the challenge. | D600 |
+| B2 Forms to the AI, B4 the waiting customer answered | Not yet: B4 comes with A4's escalation categories. | |

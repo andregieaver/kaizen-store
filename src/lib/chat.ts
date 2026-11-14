@@ -209,6 +209,11 @@ export type PromptContext = {
   voice?: string | null;
   /** The conversation is by email (D332): the sender cannot sign in there, so their orders go to a person. */
   email?: boolean;
+  /**
+   * By email, and the sender's address is the one their orders were placed with (`docs/100-day-challenge.md` B1): the order tools read their
+   * own orders, and the answer goes only to that address.
+   */
+  emailOrders?: boolean;
   /** The chat is on a site of the owner's own (D582): its host, and that only the knowledge base can be searched there. */
   embed?: { host: string } | null;
 };
@@ -253,11 +258,15 @@ export function systemPrompt(ctx: PromptContext): string {
           `People from ${ctx.site} can take over this conversation. When the visitor asks for a person, is upset, or you could not help after two tries, write one short sentence saying a person will answer here, and call handoff_to_human. Never promise when.`,
         ]
       : []),
-    ...(ctx.email
+    ...(ctx.email && ctx.emailOrders
       ? [
-          "This conversation is by email: your answer is sent to the customer as an email reply. Nobody is signed in here and the customer cannot sign in or press a button in an email, so never offer a sign-in, a form or a confirmation. For anything about their own orders, parcels, returns, bookings, subscriptions or account, write one short sentence saying a person from the store will answer by email, and call handoff_to_human. Write it as an email: plain text, a short greeting is fine, at most about 150 words, no web addresses.",
+          "This conversation is by email: your answer is sent to the customer as an email reply, only to the address their orders were placed with. You can read that customer's own orders, parcels and return options with your tools and answer about them; never about anyone else's. The customer cannot press a button in an email, so never offer a sign-in, a form or a confirmation. For a refund, a cancellation, a changed address or anything else you cannot do yourself, say what you found and call request_staff_action, or handoff_to_human when they ask for a person. Write it as an email: plain text, a short greeting is fine, at most about 150 words, no web addresses.",
         ]
-      : []),
+      : ctx.email
+        ? [
+            "This conversation is by email: your answer is sent to the customer as an email reply. Nobody is signed in here and the customer cannot sign in or press a button in an email, so never offer a sign-in, a form or a confirmation. For anything about their own orders, parcels, returns, bookings, subscriptions or account, write one short sentence saying a person from the store will answer by email, and call handoff_to_human. Write it as an email: plain text, a short greeting is fine, at most about 150 words, no web addresses.",
+          ]
+        : []),
     ...(ctx.voice ? [ctx.voice] : []),
     ...(ctx.instructions.trim() ? [`The site's own guidance on tone and what to point out (follow it unless it goes against the rules above):\n${ctx.instructions.trim()}`] : []),
     `The visitor is on ${ctx.path ?? "the front page"}. Today is ${ctx.today}.`,

@@ -311,6 +311,16 @@ export function SupportSettingsForm({
           </section>
 
           <section className="flex flex-col gap-3">
+            <h2 className="text-title text-ink">{w.emailOrdersTitle}</h2>
+            <label className="flex items-start gap-2 text-sm">
+              <input type="checkbox" name="emailOrders" defaultChecked={settings.emailOrders} className="mt-0.5 size-4" />
+              <span>
+                <span className="font-medium">{w.emailOrders.title}</span> <span className="text-muted">{w.emailOrders.text}</span>
+              </span>
+            </label>
+          </section>
+
+          <section className="flex flex-col gap-3">
             <h2 className="text-title text-ink">{w.conversationsTitle}</h2>
             <label className="flex flex-wrap items-center gap-2 text-sm">
               {w.endAfter.before}
