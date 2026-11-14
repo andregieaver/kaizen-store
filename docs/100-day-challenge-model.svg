@@ -14,14 +14,14 @@
   <rect width="1200" height="800" fill="#f4f4ef"/>
 
   <text x="40" y="48" font-size="24" font-weight="700" fill="#141a17">How the hundred days run</text>
-  <text x="40" y="74" font-size="15" fill="#4d5450">Format 1: one business, two operators, demand split at random. A person touches only the two queues on the right.</text>
+  <text x="40" y="74" font-size="15" fill="#4d5450">Format 2: two brands, head to head, scored on ratios. A person touches only the two queues on the right.</text>
 
   <!-- Demand -->
   <rect x="400" y="98" width="400" height="98" rx="14" fill="#ffffff" stroke="#c9ccc6"/>
-  <text x="420" y="126" font-size="16" font-weight="700" fill="#141a17">Demand, split at random</text>
-  <text x="420" y="150" font-size="13" fill="#141a17">Customers and subscribers in two halves</text>
-  <text x="420" y="169" font-size="13" fill="#141a17">Equal ad budgets, neither bids on the brand</text>
-  <text x="420" y="188" font-size="13" fill="#4d5450">Each store markets only to its own half</text>
+  <text x="420" y="126" font-size="16" font-weight="700" fill="#141a17">Two brands, the same start</text>
+  <text x="420" y="150" font-size="13" fill="#141a17">Same products, costs and starting prices</text>
+  <text x="420" y="169" font-size="13" fill="#141a17">Equal ad money, neither bids on the other</text>
+  <text x="420" y="188" font-size="13" fill="#4d5450">Each store wins its own customers</text>
 
   <path d="M450 198 L250 236" stroke="#6b716d" stroke-width="2" fill="none" marker-end="url(#arrow-grey)"/>
   <path d="M700 198 L700 236" stroke="#6b716d" stroke-width="2" fill="none" marker-end="url(#arrow-grey)"/>
@@ -30,7 +30,7 @@
   <rect x="40" y="240" width="320" height="230" rx="14" fill="#ffffff" stroke="#c9ccc6"/>
   <text x="62" y="272" font-size="17" font-weight="700" fill="#141a17">The original store</text>
   <text x="62" y="294" font-size="13" fill="#4d5450">Run by its owner, on its own platform</text>
-  <text x="62" y="326" font-size="13" fill="#141a17">Its half of the customers</text>
+  <text x="62" y="326" font-size="13" fill="#141a17">Its own name, customers and list</text>
   <text x="62" y="348" font-size="13" fill="#141a17">The same ad budget</text>
   <text x="62" y="370" font-size="13" fill="#141a17">Keeps its domain and search traffic</text>
   <text x="62" y="392" font-size="13" fill="#141a17">Ships from its stock pool</text>
@@ -40,7 +40,7 @@
   <!-- The clone -->
   <rect x="400" y="240" width="500" height="306" rx="14" fill="#ffffff" stroke="#1f6b3a" stroke-width="2"/>
   <text x="422" y="272" font-size="17" font-weight="700" fill="#141a17">The clone on Kaizena Flow</text>
-  <text x="422" y="294" font-size="13" fill="#4d5450">Challenge mode: settings locked, every step logged (A1)</text>
+  <text x="422" y="294" font-size="13" fill="#4d5450">A new name and domain; challenge mode locked (A1, G2)</text>
 
   <rect x="422" y="310" width="212" height="58" rx="10" fill="#e3f1e7"/>
   <text x="436" y="334" font-size="13" font-weight="700" fill="#1f6b3a">Goals</text>
@@ -103,7 +103,7 @@
   <!-- Scoreboard -->
   <rect x="40" y="694" width="1120" height="80" rx="14" fill="#141a17"/>
   <text x="62" y="724" font-size="17" font-weight="700" fill="#ffffff">Scoreboard, checked by a referee (E7)</text>
-  <text x="62" y="752" font-size="13" fill="#d8dbd5">Contribution profit on like-for-like demand · margin · revenue · every human action by class: refund, escalation, platform fix, other (A5)</text>
+  <text x="62" y="752" font-size="13" fill="#d8dbd5">Two of three: margin · profit per krone of marketing · revenue per visitor. Beside them: totals, the trend, every human action (A5)</text>
   <path d="M90 472 L90 690" stroke="#6b716d" stroke-width="2" stroke-dasharray="4 4" fill="none" marker-end="url(#arrow-grey)"/>
   <path d="M920 548 L920 690" stroke="#6b716d" stroke-width="2" stroke-dasharray="4 4" fill="none" marker-end="url(#arrow-grey)"/>
   <path d="M902 530 L920 530 L920 548" stroke="#6b716d" stroke-width="2" stroke-dasharray="4 4" fill="none"/>
