@@ -26,9 +26,12 @@ import {
   type Words,
   shownField,
   CHECKOUT_FIELD_KINDS,
+  hasBounds,
   hasOptions,
+  todayInZone,
+  type FieldBounds,
 } from "@/lib/checkout-rules";
-import { checklistProblems, fieldInputSchema, ruleInputSchema } from "@/lib/checkout-rules-schema";
+import { boundsProblems, checklistProblems, fieldInputSchema, ruleInputSchema } from "@/lib/checkout-rules-schema";
 import { shown, type Market } from "@/lib/markets";
 import { SWITCHABLE_METHODS } from "@/lib/payment-methods";
 import { DEFAULT_WEIGHT_GRAMS } from "@/lib/shipping-limits";
@@ -282,7 +285,18 @@ const fieldRow = z.object({
   width: col.text,
   options: z.unknown(),
   sensitive: col.bool,
+  bounds: z.unknown(),
 });
+
+/** A number's or a date's bounds as stored (task 4); anything not a whole number is left out. */
+function asBounds(v: unknown): FieldBounds | undefined {
+  if (!v || typeof v !== "object") return undefined;
+  const b = v as Record<string, unknown>;
+  const whole = (n: unknown) => (typeof n === "number" && Number.isInteger(n) ? n : undefined);
+  const min = whole(b.min);
+  const max = whole(b.max);
+  return { ...(min !== undefined && { min }), ...(max !== undefined && { max }) };
+}
 
 /** A tick list's options as stored; anything not of the shape is left out. */
 const asOptions = (v: unknown): ChecklistOption[] =>
@@ -307,7 +321,7 @@ export async function listCheckoutFields(runner: Runner, storeId: string, { only
   const rows = await typedRows(
     fieldRow,
     sql`
-      select id, kind, required, label, help, position, enabled, width, options, sensitive from commerce.checkout_fields
+      select id, kind, required, label, help, position, enabled, width, options, sensitive, bounds from commerce.checkout_fields
       where store_id = ${storeId}::uuid and (${!onlyOn} or enabled) order by position, created_at
     `,
     runner,
@@ -323,6 +337,7 @@ export async function listCheckoutFields(runner: Runner, storeId: string, { only
     width: r.width === "half" ? "half" : "full",
     ...(r.options !== null && { options: asOptions(r.options) }),
     sensitive: r.sensitive,
+    ...(r.bounds !== null && r.bounds !== undefined && { bounds: asBounds(r.bounds) }),
   }));
 }
 
@@ -341,13 +356,19 @@ export async function saveCheckoutField(member: Membership, id: string | null, r
     const problems = had ? checklistProblems({ kind: f.kind, options: had.options === null || had.options === undefined ? [] : asOptions(had.options) }) : [];
     if (problems.length > 0) return { ok: false, problems };
   }
+  // A number's or a date's bounds (task 4): checked when given; a change without them keeps the ones it has while its kind stays.
+  const boundsWrong = boundsProblems(f);
+  if (boundsWrong.length > 0) return { ok: false, problems: boundsWrong };
+  const bounds = hasBounds(f.kind) && f.bounds ? JSON.stringify(f.bounds) : null;
   const options = hasOptions(f.kind) && f.options ? JSON.stringify(f.options.map((o) => ({ id: o.id ?? randomUUID().slice(0, 8), label: o.label, ...(o.none && { none: true }) }))) : null;
   if (id) {
     const done = await db().execute(sql`
       update commerce.checkout_fields set kind = ${f.kind}, required = ${f.required}, label = ${JSON.stringify(f.label)}::jsonb,
         help = ${f.help ? JSON.stringify(f.help) : null}::jsonb, width = coalesce(${f.width ?? null}::text, width),
         options = case when ${f.kind} in ('checklist', 'select', 'radio') then coalesce(${options}::jsonb, options) end,
-        sensitive = ${hasOptions(f.kind)} and coalesce(${f.sensitive ?? null}::boolean, sensitive), updated_at = now()
+        sensitive = ${hasOptions(f.kind)} and coalesce(${f.sensitive ?? null}::boolean, sensitive),
+        bounds = case when ${f.kind} in ('number', 'date') then coalesce(${f.bounds === undefined ? null : bounds}::jsonb, case when kind = ${f.kind} and ${f.bounds === undefined} then bounds end) end,
+        updated_at = now()
       where store_id = ${storeId}::uuid and id = ${id}::uuid returning id
     `);
     if (done.length === 0) return { ok: false, problems: ["This field is gone."] };
@@ -357,9 +378,9 @@ export async function saveCheckoutField(member: Membership, id: string | null, r
   const [count] = await db().execute(sql`select count(*)::int as n from commerce.checkout_fields where store_id = ${storeId}::uuid`);
   if (Number(count?.n ?? 0) >= FIELDS_MAX) return { ok: false, problems: [`A checkout asks at most ${FIELDS_MAX} questions.`] };
   const [row] = await db().execute(sql`
-    insert into commerce.checkout_fields (store_id, kind, required, label, help, width, options, sensitive, position)
+    insert into commerce.checkout_fields (store_id, kind, required, label, help, width, options, sensitive, bounds, position)
     values (${storeId}::uuid, ${f.kind}, ${f.required}, ${JSON.stringify(f.label)}::jsonb, ${f.help ? JSON.stringify(f.help) : null}::jsonb, ${f.width ?? "full"},
-      ${options}::jsonb, ${hasOptions(f.kind) && (f.sensitive ?? false)},
+      ${options}::jsonb, ${hasOptions(f.kind) && (f.sensitive ?? false)}, ${bounds}::jsonb,
       (select coalesce(max(position), -1) + 1 from commerce.checkout_fields where store_id = ${storeId}::uuid))
     returning id
   `);
@@ -425,7 +446,15 @@ export async function checkoutQuestionsFor(storeId: string, locale: string, cart
   const [cart] = cartId
     ? await db().execute(sql`select checkout_answers from commerce.carts where store_id = ${storeId}::uuid and id = ${cartId}::uuid`)
     : [];
-  return { fields: fields.map((f) => shownField(f, locale)), answers: answersByField(cart?.checkout_answers) };
+  // A date's earliest and latest day are counted from the store's own today (task 4).
+  const today = fields.some((f) => f.kind === "date") ? await storeToday(storeId) : undefined;
+  return { fields: fields.map((f) => shownField(f, locale, today)), answers: answersByField(cart?.checkout_answers) };
+}
+
+/** The store's today (`YYYY-MM-DD`) in its own time zone. */
+export async function storeToday(storeId: string): Promise<string> {
+  const row = await typedRow(z.object({ time_zone: col.text }), sql`select time_zone from commerce.stores where id = ${storeId}::uuid`);
+  return todayInZone(row?.time_zone ?? "Europe/Oslo");
 }
 
 /** What the rule editor offers (D357): the store's delivery options in every country (named with the country), products, categories, tags, groups. */

@@ -16,6 +16,15 @@ Every change to a published contract gets a version here, newest first: the Admi
 (`/api/storefront/v1/openapi.json`), the webhook topics (`/api/webhooks/v1/topics.json`) and the MCP catalogues (`/api/mcp/catalogue.json`,
 `/api/ucp/catalogue.json`). Within a major version nothing a caller relies on is renamed or removed; answers and payloads may gain fields.
 
+## 1.21 — 2026-11-14
+
+More kinds of checkout question (D357, task 4).
+
+- `kind` on a checkout field may now also be `number` (a whole number), `date` (a day), `email` and `phone`, each checked for its shape
+  when the shopper answers.
+- `bounds` (`{ min?, max? }`) gives a `number` its lowest and highest value, and a `date` its earliest and latest day counted from the
+  store's today (0 to 730). Only those two kinds have it; a change without `bounds` keeps them while the kind stays.
+
 ## 1.20 — 2026-11-14
 
 An addition to the owner MCP's catalogue (D606).

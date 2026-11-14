@@ -313,6 +313,53 @@ describe("questions at checkout", () => {
     expect(plain?.options).toBeUndefined();
   });
 
+  it("asks a number, a date, an email and a phone, checked again when the order is placed, and keeps a number's bounds while it stays one (task 4)", async () => {
+    const w = (text: string) => ({ text, byLocale: {} });
+    const guests = await rules.saveCheckoutField(member, null, { kind: "number", required: true, label: w("Gjester"), bounds: { min: 1, max: 40 } });
+    const day = await rules.saveCheckoutField(member, null, { kind: "date", label: w("Ønsket dato"), bounds: { min: 2 } });
+    const mail = await rules.saveCheckoutField(member, null, { kind: "email", label: w("Mottakers e-post") });
+    const tel = await rules.saveCheckoutField(member, null, { kind: "phone", label: w("Mottakers telefon") });
+    if (!guests.ok || !day.ok || !mail.ok || !tel.ok) throw new Error("fields not saved");
+    expect((await rules.listCheckoutFields(db(), store.storeId)).map((f) => [f.kind, f.bounds ?? null])).toEqual([
+      ["number", { min: 1, max: 40 }],
+      ["date", { min: 2 }],
+      ["email", null],
+      ["phone", null],
+    ]);
+    const today = await rules.storeToday(store.storeId);
+    const { daysAfter } = await import("@/lib/checkout-rules");
+    expect((await rules.checkoutQuestionsFor(store.storeId, "nb", null)).fields.map((f) => [f.min, f.max])).toEqual([
+      ["1", "40"],
+      [daysAfter(today, 2), null],
+      [null, null],
+      [null, null],
+    ]);
+
+    const cartId = await cartOf(store, [["DEMO-MUG-WHITE", 1]]);
+    const answers = [
+      { fieldId: guests.id, label: "Gjester", kind: "text" as const, answer: "12" },
+      { fieldId: day.id, label: "Ønsket dato", kind: "text" as const, answer: daysAfter(today, 5) },
+      { fieldId: mail.id, label: "Mottakers e-post", kind: "text" as const, answer: "anna@example.no" },
+      { fieldId: tel.id, label: "Mottakers telefon", kind: "text" as const, answer: "+4791234567" },
+    ];
+    // A day before the earliest, kept on the cart: placing the order checks it again and refuses it.
+    await rules.setCartAnswers(store.storeId, cartId, answers.map((a) => (a.fieldId === day.id ? { ...a, answer: today } : a)));
+    expect(await placeOrder({ storeId: store.storeId, market: NO }, cartId, {}, { customerId: null })).toEqual({ ok: false, problem: "checkout_fields" });
+    await rules.setCartAnswers(store.storeId, cartId, answers);
+    const placed = await placeOrder({ storeId: store.storeId, market: NO }, cartId, {}, { customerId: null });
+    if (!placed.ok) throw new Error(placed.problem);
+    expect((await getOrder(store.storeId, placed.order.orderId))?.checkoutAnswers).toEqual(answers);
+
+    // Reworded without bounds (the AI manager): kept. Made a date: a number's bounds are not a date's days, so they go. Made an email: none.
+    expect(await rules.saveCheckoutField(member, guests.id, { kind: "number", required: true, label: w("Antall gjester") })).toEqual({ ok: true, id: guests.id });
+    const bounded = async () => (await rules.listCheckoutFields(db(), store.storeId)).find((f) => f.id === guests.id)?.bounds;
+    expect(await bounded()).toEqual({ min: 1, max: 40 });
+    expect(await rules.saveCheckoutField(member, guests.id, { kind: "date", label: w("Dato") })).toEqual({ ok: true, id: guests.id });
+    expect(await bounded()).toBeUndefined();
+    expect(await rules.saveCheckoutField(member, guests.id, { kind: "number", label: w("Tall"), bounds: { min: 5, max: 1 } })).toEqual({ ok: false, problems: ["The lowest answer is above the highest."] });
+    expect(await rules.saveCheckoutField(member, mail.id, { kind: "email", label: w("E-post"), bounds: { max: 3 } })).toEqual({ ok: false, problems: ["Only a number or a date has a lowest and a highest answer."] });
+  });
+
   it("keeps a question half width, keeps its width when changed without one, and gives the cart its width (task 2)", async () => {
     const half = await rules.saveCheckoutField(member, null, { kind: "text", required: false, label: { text: "Postcode", byLocale: {} }, help: null, width: "half" });
     const full = await rules.saveCheckoutField(member, null, { kind: "text", required: false, label: { text: "Gift note", byLocale: {} }, help: null });

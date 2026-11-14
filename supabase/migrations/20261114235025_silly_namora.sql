@@ -1,0 +1,4 @@
+ALTER TABLE "commerce"."checkout_fields" DROP CONSTRAINT "checkout_fields_kind";--> statement-breakpoint
+ALTER TABLE "commerce"."checkout_fields" ADD COLUMN "bounds" jsonb;--> statement-breakpoint
+ALTER TABLE "commerce"."checkout_fields" ADD CONSTRAINT "checkout_fields_bounds" CHECK ("commerce"."checkout_fields"."bounds" is null or ("commerce"."checkout_fields"."kind" in ('number', 'date') and jsonb_typeof("commerce"."checkout_fields"."bounds") = 'object'));--> statement-breakpoint
+ALTER TABLE "commerce"."checkout_fields" ADD CONSTRAINT "checkout_fields_kind" CHECK ("commerce"."checkout_fields"."kind" in ('text', 'textarea', 'checkbox', 'checklist', 'select', 'radio', 'number', 'date', 'email', 'phone'));

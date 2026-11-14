@@ -5,7 +5,10 @@ import {
   DELIVERY_PERCENT_MIN,
   CHECKLIST_OPTIONS_MAX,
   CHECKOUT_FIELD_KINDS,
+  DATE_DAYS_MAX,
+  hasBounds,
   hasOptions,
+  NUMBER_LIMIT,
   FIELD_LABEL_MAX,
   FIELD_WIDTHS,
   REFUSAL_MAX,
@@ -98,7 +101,26 @@ export const fieldInputSchema = z.object({
     .boolean()
     .optional()
     .describe("The answer may be sensitive personal data (GDPR article 9, such as allergies): the shopper ticks an explicit consent with it."),
+  // A number's or a date's (task 4); checked with its kind by `boundsProblems()`.
+  bounds: z
+    .object({
+      min: z.int().min(-NUMBER_LIMIT).max(NUMBER_LIMIT).optional(),
+      max: z.int().min(-NUMBER_LIMIT).max(NUMBER_LIMIT).optional(),
+    })
+    .optional()
+    .describe("A number's lowest and highest value, or a date's earliest and latest day counted from today (0 to 730); each optional."),
 });
+
+/** A number's or a date's bounds' own rules: only those kinds have them, the lowest is not above the highest, and a date's days are 0 to 730. */
+export function boundsProblems(input: Pick<z.infer<typeof fieldInputSchema>, "kind" | "bounds">): string[] {
+  const b = input.bounds;
+  if (!b || (b.min === undefined && b.max === undefined)) return [];
+  if (!hasBounds(input.kind)) return ["Only a number or a date has a lowest and a highest answer."];
+  const problems: string[] = [];
+  if (b.min !== undefined && b.max !== undefined && b.min > b.max) problems.push("The lowest answer is above the highest.");
+  if (input.kind === "date" && [b.min, b.max].some((d) => d !== undefined && (d < 0 || d > DATE_DAYS_MAX))) problems.push(`Count a date's days from today: 0 to ${DATE_DAYS_MAX}.`);
+  return problems;
+}
 
 /**
  * The options' own rules, apart from the schema so the Admin API can extend it: a checklist has at least one option and at most one `none`; a

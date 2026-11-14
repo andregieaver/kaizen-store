@@ -8219,6 +8219,18 @@ describe("a tick list at checkout (task 3)", () => {
   });
 });
 
+describe("a number, a date, an email and a phone at checkout (task 4)", () => {
+  it("lets only a number or a date have bounds, as an object", async () => {
+    const label = '{"text":"Guests","byLocale":{}}';
+    const { id } = await one<{ id: string }>(`insert into commerce.checkout_fields (store_id, kind, label, bounds) values ($1, 'number', $2, '{"min":1,"max":40}') returning id`, [store, label]);
+    await db.query("update commerce.checkout_fields set kind = 'date', bounds = '{\"min\":0}' where id = $1", [id]);
+    await expect(db.query("update commerce.checkout_fields set kind = 'email' where id = $1", [id])).rejects.toThrow(/checkout_fields_bounds/);
+    await expect(db.query("update commerce.checkout_fields set bounds = '[1, 2]' where id = $1", [id])).rejects.toThrow(/checkout_fields_bounds/);
+    await db.query("update commerce.checkout_fields set kind = 'phone', bounds = null where id = $1", [id]);
+    await db.query("delete from commerce.checkout_fields where id = $1", [id]);
+  });
+});
+
 describe("a dropdown, a choice of one and longer text at checkout (task 4)", () => {
   it("gives a select and radio buttons options, as a checklist has, and longer text none", async () => {
     const label = '{"text":"Size","byLocale":{}}';

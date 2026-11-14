@@ -102,6 +102,10 @@ const KIND_WORDS: Record<CheckoutFieldKind, string> = {
   checklist: "a list to tick",
   select: "a dropdown to choose one from",
   radio: "a choice of one",
+  number: "a number",
+  date: "a date",
+  email: "an email address",
+  phone: "a phone number",
 };
 
 /** What the owner says yes to, from the call's own arguments; `name` is the question's words as the store has them, for a change. */

@@ -8,7 +8,7 @@ import { useId, useOptimistic, useState, useTransition, type ReactNode } from "r
 
 import { fillWords } from "@/lib/admin-fill";
 import { allergenQuestion } from "@/lib/checkout-presets";
-import { CHECKOUT_FIELD_KINDS, CONDITION_KINDS, EFFECT_KINDS, hasOptions, movedTo, type ChecklistOption, type CheckoutFieldKind, type FieldWidth, type RuleCondition, type RuleEffect, type Words } from "@/lib/checkout-rules";
+import { CHECKOUT_FIELD_KINDS, CONDITION_KINDS, EFFECT_KINDS, hasBounds, hasOptions, movedTo, type ChecklistOption, type CheckoutFieldKind, type FieldWidth, type RuleCondition, type RuleEffect, type Words } from "@/lib/checkout-rules";
 
 import { useAdminText } from "./admin-text";
 import { Button, Card, Chip, List, ListRow, RowLead } from "./ui";
@@ -52,6 +52,7 @@ export type FieldView = {
   width: FieldWidth;
   options?: ChecklistOption[];
   sensitive: boolean;
+  bounds?: { min?: number; max?: number };
 };
 
 export type RuleInputView = { name: string; conditions: RuleCondition[]; effect: RuleEffect };
@@ -63,6 +64,7 @@ export type FieldInputView = {
   width: FieldWidth;
   options?: { id?: string; label: Words; none?: boolean }[];
   sensitive?: boolean;
+  bounds?: { min?: number; max?: number };
 };
 
 export type CheckoutRuleActions = {
@@ -535,6 +537,8 @@ function FieldEditor({
   // A tick list's options and whether it asks the shopper's explicit consent (task 3).
   const [options, setOptions] = useState<{ id?: string; label: Words; none?: boolean }[]>(start?.options ?? []);
   const [sensitive, setSensitive] = useState(start?.sensitive ?? false);
+  // A number's lowest and highest value, or a date's earliest and latest day from today (task 4), as typed ("" is no limit).
+  const [bounds, setBounds] = useState({ min: start?.bounds?.min?.toString() ?? "", max: start?.bounds?.max?.toString() ?? "" });
   const useAllergens = () => {
     const preset = allergenQuestion([mainLocale, ...locales.map((l) => l.id)]);
     setKind("checklist");
@@ -553,7 +557,9 @@ function FieldEditor({
           // A dropdown or a choice of one has no None of these: a tick list's turned into one loses that mark (task 4).
           const kept = options.filter((o) => o.label.text.trim()).map((o) => (kind === "checklist" ? o : { ...o, none: undefined }));
           const list = hasOptions(kind) ? { options: kept, sensitive } : { sensitive: false };
-          const saved = await save(start?.id ?? null, { kind, required, label, help: help.text.trim() ? help : null, width, ...list });
+          const whole = (s: string) => (s.trim() === "" ? undefined : Number(s));
+          const limits = hasBounds(kind) ? { bounds: { min: whole(bounds.min), max: whole(bounds.max) } } : {};
+          const saved = await save(start?.id ?? null, { kind, required, label, help: help.text.trim() ? help : null, width, ...list, ...limits });
           if (saved.ok) {
             setProblems([]);
             onDone();
@@ -629,6 +635,28 @@ function FieldEditor({
               <span className="block text-muted">{w.sensitiveHint}</span>
             </span>
           </label>
+        </fieldset>
+      )}
+      {hasBounds(kind) && (
+        <fieldset className="flex flex-col gap-2 text-sm">
+          <div className="flex flex-wrap gap-3">
+            {(["min", "max"] as const).map((end) => (
+              <label key={end} className="flex flex-col gap-1">
+                {kind === "date" ? (end === "min" ? w.earliest : w.latest) : end === "min" ? w.lowest : w.highest}
+                <input
+                  type="number"
+                  inputMode="numeric"
+                  step={1}
+                  min={kind === "date" ? 0 : undefined}
+                  max={kind === "date" ? 730 : undefined}
+                  value={bounds[end]}
+                  onChange={(e) => setBounds({ ...bounds, [end]: e.target.value })}
+                  className={`${FIELD} w-40`}
+                />
+              </label>
+            ))}
+          </div>
+          <p className="text-muted">{kind === "date" ? w.dateHint : w.numberHint}</p>
         </fieldset>
       )}
       {customise ? (

@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useEffect, useState, useTransition, type ReactNode } from "react";
+import { useActionState, useEffect, useState, useTransition, type InputHTMLAttributes, type ReactNode } from "react";
 
 import { checkoutAction, vatNumberAction, type CheckoutState } from "@/app/s/[store]/[market]/cart/actions";
 import { payHeld, type TermsDisplay } from "@/lib/checkout-terms";
@@ -518,6 +518,18 @@ function Checklist({
 }
 
 /**
+ * How the cart's input asks each kind typed in one line (task 4): the browser's own number, date, email and phone inputs, which the server
+ * checks again (`cleanAnswers()`); a number's lowest and highest and a date's earliest and latest day come as `min` and `max`.
+ */
+const INPUT_OF: Partial<Record<ShownField["kind"], InputHTMLAttributes<HTMLInputElement>>> & { text: InputHTMLAttributes<HTMLInputElement> } = {
+  text: { type: "text", maxLength: 500 },
+  number: { type: "number", inputMode: "numeric", step: 1 },
+  date: { type: "date" },
+  email: { type: "email", maxLength: 254, autoComplete: "off" },
+  phone: { type: "tel", inputMode: "tel", maxLength: 32, autoComplete: "off" },
+};
+
+/**
  * A select or radio buttons (task 4): one option. A select is the storefront's `Dropdown` (D82), never a native select, with its choice in a
  * hidden field; it starts on Choose, which is no answer. A sensitive one shows its consent box once an option is chosen, as a tick list does.
  */
@@ -635,7 +647,15 @@ function Questions({ questions, field }: { questions: NonNullable<Parameters<typ
                   className="w-full rounded-md border border-border bg-background px-3 py-2"
                 />
               ) : (
-                <input name={`question_${f.id}`} defaultValue={typeof answer === "string" ? answer : ""} required={f.required} maxLength={500} className={field} />
+                <input
+                  name={`question_${f.id}`}
+                  defaultValue={typeof answer === "string" ? answer : ""}
+                  required={f.required}
+                  {...(INPUT_OF[f.kind] ?? INPUT_OF.text)}
+                  min={f.min ?? undefined}
+                  max={f.max ?? undefined}
+                  className={field}
+                />
               )}
               {f.help && <span className="text-muted">{f.help}</span>}
             </label>
