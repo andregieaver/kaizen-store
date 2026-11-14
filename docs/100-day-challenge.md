@@ -39,11 +39,16 @@ they are roughly 210 days of work at the sizes given there. The owner wants the 
 
 Anything earlier would start the challenge with known stalls, such as every order email going to a person.
 
-**Winning depends more on the format than on the AI.** A clone on a new domain starts with no search traffic, no returning customers, no
-list it may email and no reviews. Head to head on absolute revenue, it has lost on day one. Section 3 proposes a format that splits demand
-fairly and scores contribution profit on like-for-like demand. Under that format, and with sections 4A to 4F built, the AI has a real chance
-on profit margin. Its edges are more EU markets in shoppers' own languages and payment methods, answers within minutes at any hour,
-retention flows that are always on, and ad budgets moved daily by measured profit. Revenue is winnable only if demand is split fairly.
+**The format is decided: two brands, head to head** (format 2, 14 November 2026).
+
+- The clone opens under a new name and address, with the same products, costs and ad money.
+- It starts with no search traffic, no customers and no reviews. So it will very likely sell less in total than the original over 100 days.
+  That is expected, and it is not the test.
+- The winner is counted in ratios (section 3.3): margin, profit per krone of marketing, and revenue per visitor.
+- With sections 4A to 4F built, the AI has a real chance on these. Its edges are more EU markets in shoppers' own languages and payment
+  methods, answers within minutes at any hour, retention flows that are always on, and ad budgets moved daily by measured profit.
+- The store owner may keep the clone afterwards, or move the whole business onto it (section 12). So the clone is built as a business to
+  keep from Day 0, not as a test.
 
 ## Decided by the owner (14 November 2026)
 
@@ -56,7 +61,8 @@ retention flows that are always on, and ad budgets moved daily by measured profi
   - The AI spends the owner's money only within limits the owner sets before Day 1 (section 5).
   - Kaizena Flow's plan and the AI's cost count as the clone's costs in the scoreboard, whoever pays them.
 - **As soon as possible**: Day 1 on Monday 4 January 2027, if the rehearsal's gate passes (sections 7 and 8).
-- **Still open: the format** (section 3). The answers above already make it one business with two operators, which is format 1's premise.
+- **The format: two brands, head to head** (format 2, section 3): a new name and address for the clone, scored on ratios.
+- **After Day 100** the store owner may keep the clone indefinitely, or move all operations over to it and close the original (section 12).
 
 ## 1. What the rule means in the platform's terms
 
@@ -123,8 +129,8 @@ auctions.
 
 | Format | How | Fair? | Cost to run |
 |---|---|---|---|
-| **1. One business, two operators, split demand (recommended)** | The store owner stays merchant and data controller of both stores; Kaizena Flow runs the clone as their processor (a data processing agreement). Same brand, same catalogue and the same supplier costs. Physical stock split into two pools at Day 0 in an agreed ratio. Customers and subscribers split at random into two halves (by a hash of the customer id); each store markets only to its half, and both sell to anyone who arrives. Equal ad budgets in each store's own ad account; neither bids on the brand's name. | Best: the comparable demand is split at random, as in an A/B test | Moderate: a list split, two ad accounts, one warehouse serving both. Shoppers may meet one name on two sites with different prices. |
-| 2. Separate brands, head to head | The clone gets a new name and domain, the same catalogue, costs and starting prices, and the same ad budget | Only on ratios: scored on contribution profit per krone of marketing and on margin, since the clone has no organic traffic or list | Low |
+| 1. One business, two operators, split demand | The store owner stays merchant and data controller of both stores; Kaizena Flow runs the clone as their processor (a data processing agreement). Same brand, same catalogue and the same supplier costs. Physical stock split into two pools at Day 0 in an agreed ratio. Customers and subscribers split at random into two halves (by a hash of the customer id); each store markets only to its half, and both sell to anyone who arrives. Equal ad budgets in each store's own ad account; neither bids on the brand's name. | Best: the comparable demand is split at random, as in an A/B test | Moderate: a list split, two ad accounts, one warehouse serving both. Shoppers may meet one name on two sites with different prices. |
+| **2. Separate brands, head to head (chosen 14 November 2026)** | The clone gets a new name and domain, the same catalogue, costs and starting prices, and the same ad budget. It markets only to customers it wins itself. Physical stock split into two pools at Day 0. | Only on ratios: scored on margin, profit per krone of marketing and revenue per visitor, since the clone has no organic traffic or list | Low |
 | 3. Takeover | The AI runs the real store for 100 days; compared with the same 100 days last year and the owner's own forecast | Weak: seasons, the market and the weather move it | Lowest; a good pilot, poor proof |
 
 ### 3.3 Scoring (pre-registered, before Day 1)
@@ -140,9 +146,14 @@ auctions.
   - all marketing spend (ads, SMS, creators, tools);
   - apps and platform subscriptions;
   - for the clone, its AI cost and Kaizena Flow's plan, whoever pays them.
-- **Winner:** higher contribution profit on like-for-like demand (format 1: purchases by each store's half of the customers, plus
-  paid-traffic orders on equal budgets). Margin (contribution ÷ revenue) is the second test. Total revenue and total profit are reported
-  beside these.
+- **Winner (format 2):** the store ahead on two of these three ratios over the 100 days:
+  1. **Margin:** contribution profit ÷ revenue.
+  2. **Profit per krone of marketing:** contribution profit before marketing ÷ marketing spend.
+  3. **Revenue per visitor:** revenue ÷ sessions, which is conversion times the average order, counted the same way on both sites.
+- **Reported beside the ratios:**
+  - total revenue and total contribution profit;
+  - the clone's weekly trend in the last 30 days, which says where it is heading for the decision of section 12.
+- **No winning by not trying:** each store spends at least 80 % of the agreed ad money, so a ratio cannot be won by spending little.
 - **Stock at the end:** goods bought during the challenge and not sold are valued at cost and are not a loss. A clearance in the last two
   weeks counts like any sale. The AI buys stock only within the owner's purchasing budget, so what is left at Day 100 stays within what the
   owner agreed to fund.
@@ -151,6 +162,9 @@ auctions.
 ### 3.4 Fairness rules
 
 - Neither side changes the other's prices, stock, ads or customers.
+- Neither bids on the other's name in ads, and neither says it is the other.
+- The clone markets only to customers it wins itself. It does not use the original's customer list, and it does not show the original's
+  reviews.
 - The original's owner works as they normally would.
 - Refunds and escalations for the clone are handled by the store owner (decided 14 November 2026). They also run the competing store, and
   a slow refund costs the clone reviews, repeat buyers and chargebacks. So the agreement sets response times, and the scoreboard shows the
@@ -244,7 +258,7 @@ What each never-automatic tool becomes in challenge mode:
 | E4 | **Effects on profit, sooner**: D418 on contribution, with an early 7 + 7 day reading beside the 14 + 14, and tests where they can be run. | M | `src/lib/autopilot-effects.ts` |
 | E5 | **A 100-day forecast**: revenue and contribution with a range, and the stock capital it needs. `forecastMonth()` covers this month only. | M | `src/lib/analytics-forecast.ts` |
 | E6 | **Profit and spend alerts**: a margin drop and spend without orders. `ALERT_RULES` has neither. | S | `src/lib/analytics-alerts.ts` |
-| E7 | **The scoreboard**: the referee's page with both stores, one definition, updated daily. The clone is read from the platform. The original is read from its platform's API (Shopify needs `read_all_orders` approved, plus refunds, transactions and payout fees, which the copy does not read today) or from a monthly P&L its accountant signs. The baseline is frozen before Day 1. | L | new; `src/lib/shopify.ts` scopes |
+| E7 | **The scoreboard**: the referee's page with both stores, one definition, updated daily. The clone is read from the platform. The original is read from its platform's API (Shopify needs `read_all_orders` approved, plus refunds, transactions and payout fees, which the copy does not read today) or from a monthly P&L its accountant signs. The baseline is frozen before Day 1. Revenue per visitor needs sessions counted the same way on both sites: visit counting switched on in the clone (it is off by default), and the same GA4 set-up on both. | L | new; `src/lib/shopify.ts` scopes |
 
 ### F. A hundred days without a person at the wheel (P0)
 
@@ -262,11 +276,11 @@ What each never-automatic tool becomes in challenge mode:
 
 | # | What |
 |---|---|
-| G1 | **Copy, never Move**: Shopify's *Move my shop* issues new gift-card codes and emails every holder, and *Point it here* moves the domain. Use Copy only, with gift cards left out. *Undo this copy* works only before the first real order. |
-| G2 | What does not come across: reviews from Shopify (spike S6: import them by CSV), the logo and icon, compare-at prices, metafields. The replicator copies one page per job and needs a person's open page: done by the team before Day 1. |
+| G1 | **Copy, never Move**: Shopify's *Move my shop* issues new gift-card codes and emails every holder, and *Point it here* moves the domain. Use Copy only. Under format 2 the copy brings products, variants, pictures, prices, costs and the clone's stock pool. It leaves out customers, subscribers, orders, gift cards and reviews, which belong to the original's name (they come over only at a move, section 12). *Undo this copy* works only before the first real order. |
+| G2 | **A brand of its own**: the AI proposes three names, each checked for a free domain and for trademarks; the store owner chooses, since they may keep it. The brand profile, look, logo and icon come from the brand tools (D330). Pages and product texts are written fresh in the new brand's voice, not replicated. The logo and icon are not copied from Shopify in any case. |
 | G3 | **Approvals to start now** (outside lead times set the critical path): Shopify's protected customer data and `read_all_orders`; Meta's app review for ads management (and for WhatsApp or Messenger if B5 needs them); a Google Ads developer token; Stripe Connect onboarding of the merchant (identity is a person's); the warehouse or 3PL agreement. |
-| G4 | **Domain and search**: the clone on its own domain (format 1 and 2), with product texts rewritten by the AI so the two sites are not duplicates; a canonical cannot point at another domain. |
-| G5 | **Ads to start from**: the original's Meta campaigns are copied into the clone's ad account before Day 1. Both stores then start from the same campaigns, and the AI has budgets to move from Day 1 while D1 (campaigns of its own) is built. |
+| G4 | **Domain and search**: the clone's domain is registered in the store owner's name. Its texts are its own, so the two sites are not duplicates. |
+| G5 | **Ads to start from**: the original's Meta campaign structure is copied into the clone's ad account before Day 1, with the new brand's pictures and words. Both stores then start from the same campaigns, and the AI has budgets to move from Day 1 while D1 (campaigns of its own) is built. |
 
 ## 5. Challenge mode's settings
 
@@ -295,12 +309,14 @@ The phases are set as goals with due dates and a saved playbook (D350), so each 
    - Every flow on: cart reminders, welcome, after purchase, win-back, back in stock.
    - Feeds and shopping campaigns live.
    - Support answering in minutes.
+   - A sign-up offer from the first visit, to build a list of its own.
+   - Review requests from the first orders, since it starts with none.
    - The markets to add chosen from research.
 2. **Days 21 to 60, grow what earns.**
    - New markets opened.
    - Ad budgets moved daily toward campaigns that make contribution profit, not just revenue.
    - Five tests running at all times.
-   - Weekly broadcasts to its half of the list.
+   - Weekly broadcasts to the list it has built.
 3. **Days 61 to 100, harvest margin.**
    - Spend that makes no contribution cut.
    - Prices set per market.
@@ -328,15 +344,15 @@ starts only when all of these hold:
 The owner asked for the earliest start (14 November 2026). The earliest honest Day 1 is **Monday 4 January 2027**. Before then, the clone
 would stall on every order email, parcel and return. The date holds only if three things happen in the week of 16 November:
 
-- the format is chosen;
+- the clone's name is chosen;
 - the store owner signs;
 - the approvals of G3 start.
 
 | When | What |
 |---|---|
-| 16 to 20 November 2026 | The format chosen. The agreement signed: response times (3.4) and money limits (5). Stripe onboarding, the Shopify approvals and the warehouse agreement started. The referee named. |
+| 16 to 20 November 2026 | The clone's name chosen from the AI's three (G2) and its domain registered. The agreement signed, including what happens after Day 100 (section 12): response times (3.4) and money limits (5). Stripe onboarding, the Shopify approvals and the warehouse agreement started. The referee named. |
 | 16 November to 11 December | The Day 1 minimum (8.1) built in six streams side by side: (1) A, (2) B, (3) C, (4) E, (5) F, (6) the clone (G) with D2 and D5. Each stream is about 20 days of work in 20 working days, so the last items may land in the rehearsal's first week. |
-| by 11 December | The clone made; the original's Meta campaigns copied into the clone's ad account (G5) |
+| by 11 December | The clone made under its new brand; the original's Meta campaign structure copied into the clone's ad account with the new brand (G5) |
 | 14 December to 1 January | The rehearsal (section 7), with real shoppers, through Christmas |
 | 2 to 3 January 2027 | The gate checked; figures reset; baseline frozen; prompts and model pinned |
 | Monday 4 January 2027 | Day 1. Easter (28 March) falls inside the run for both stores. |
@@ -375,7 +391,9 @@ Campaigns of its own (D1) and retention flows it writes (D4) arrive in January a
 
 | Risk | What keeps it small |
 |---|---|
-| The traffic gap decides the result | Format 1, scored on like-for-like demand |
+| The traffic gap decides the result | Scored on ratios, not totals (3.3); at least 80 % of the ad money spent by each store |
+| The two brands bid against each other for the same shoppers | Neither bids on the other's name; equal ad money; both see the same rules |
+| The new name is weak, taken or confusing | Three names checked for domain and trademark; the store owner chooses |
 | Stock runs out, or is sold twice | Stock pools, the forecast (C4), purchase orders within a budget (C3) |
 | Ads overspend | The account's monthly limit, spend in the books daily (D2), profit-based ROAS in the review (E3) |
 | A wrong answer to a customer goes public | Grounding rules, the eval, the replay bar (B8), clear escalation categories |
@@ -384,7 +402,7 @@ Campaigns of its own (D1) and retention flows it writes (D4) arrive in January a
 | The store owner, who runs the competing store, decides the clone's refunds and escalations | Response times in the agreement, measured for both stores on the scoreboard; refunds judged against the written refund policy; stock pools |
 | The AI spends the owner's money badly | Limits the owner sets before Day 1 (ad money, purchasing, margin floor), locked by challenge mode; spend in the books daily (D2) |
 | Four weeks of build leaves little slack | Only the Day 1 minimum (8.1); the gate decides, and a failed gate moves Day 1 a week at a time |
-| Customers' data used without a basis | The owner stays controller (format 1); a data processing agreement |
+| Customers' data used without a basis | The clone uses only customers it wins itself; a data processing agreement between the owner and Kaizena Flow |
 | Too few visitors for tests to say anything | Fewer, bigger tests; decisions on profit; no claim of cause where there is only a comparison (as D418 says) |
 | Losing in public | Pre-registered rules; nothing announced before the rehearsal's figures are in |
 
@@ -407,20 +425,97 @@ Campaigns of its own (D1) and retention flows it writes (D4) arrive in January a
 - Physical work.
 - Starting without the original's search ranking and reviews.
 
-**Verdict:** with format 1 and sections 4A to 4F built, the AI has a credible chance of the better margin. On revenue it has a chance only
-because the format splits demand fairly. Without D (growth), it can at best run the store as well as the owner. Without E (profit), it may
-grow revenue and lose on margin. Without A, B, C and F, it cannot finish the 100 days under the rule at all.
+**Verdict (format 2):**
+
+- **Margin and profit per krone of marketing:** with sections 4A to 4F built, the AI has a credible chance of winning both.
+- **Revenue per visitor:** about even. The clone's visitors come mostly from ads, and paid visitors buy less often than returning customers.
+- **Total revenue:** the clone will very likely be behind. It starts from zero.
+- **What decides section 12** is the clone's trend over the last 30 days: whether a business the AI runs is growing faster than the original.
+- **The parts that make it work:**
+  - without D (growth), the AI can at best run the store as well as the owner;
+  - without E (profit), it may grow and lose on margin;
+  - without A, B, C and F, it cannot finish the 100 days under the rule at all.
 
 ## 11. Decisions for the owner
 
-1. **The format** (open): format 1 is recommended, and the decisions below fit it; format 2 if the store owner will not share their name
-   and customer list.
+1. **The format** (decided 14 November 2026): format 2, two brands head to head, scored on ratios.
 2. **Who presses the two buttons** (decided 14 November 2026): the store owner, with response times in the agreement. Recommended: 24 hours
    for a refund, 4 working hours for an escalation.
-3. **The winning measure** (open): contribution profit on like-for-like demand, with margin as the second test, is recommended.
+3. **The winning measure** (open): recommended is two of three ratios (margin, profit per krone of marketing, revenue per visitor), with
+   at least 80 % of the ad money spent (3.3).
 4. **Money** (decided 14 November 2026): the store owner funds the ad budgets and the stock of both stores and keeps the profit. They set the
    limits before Day 1.
 5. **Fulfilment** (open): the owner's warehouse as a paid service, or a 3PL.
 6. **The start date** (decided 14 November 2026): as soon as possible. Day 1 is Monday 4 January 2027 if the gate passes.
 7. **The support channels** in scope (open): those the original store uses.
 8. **Public or private** (open): the challenge announced before Day 1, or after the result.
+9. **The clone's name** (open): chosen by the store owner from the AI's three, in the week of 16 November.
+10. **After Day 100** (open until Day 130): keep both brands, or move everything onto the clone and close the original; and if so, which
+    name survives (section 12).
+
+## 12. After Day 100: keep the clone, or move everything over
+
+The store owner may keep the clone indefinitely, or move all operations over to it and close the original (14 November 2026). Both are
+planned for now, so nothing built for the challenge is thrown away, and the result at Day 130 doubles as the owner's decision paper. It
+shows:
+
+- what the clone earned;
+- where its trend points;
+- what a move would bring and cost.
+
+### 12.1 Built to be kept, from Day 0
+
+- **The owner owns everything**: the name and domain are registered in the store owner's name, and the Stripe account, ad account and
+  warehouse agreement are already the owner's company's.
+- **The agreement says what happens at Day 100**:
+  - the store, its customers, data, content, pictures and look are the owner's;
+  - the plan price after Day 100;
+  - the owner can leave with everything (D377, Leaving).
+- **Challenge mode ends at Day 100.** The AI's levels and budgets become what the owner chooses: they can keep *Just do it*. The refund and
+  escalation queues stay as they are.
+
+### 12.2 Keeping both brands
+
+- **Stock.** Two pools in one warehouse work, but two brands selling the same goods do better from one shared stock. Today Kaizena Flow has
+  neither stock shared between an owner's stores nor a sync with another platform (C8). Two ways to get there:
+  - move the original onto Kaizena Flow as a second store, and build stock shared between an owner's stores (M to L);
+  - keep the pools and let the AI move units between them by purchase and transfer.
+- **Ads.** The two brands keep bidding for the same shoppers. Once the challenge is over, the owner sets a split by market, channel or
+  audience, and the AI keeps to it.
+- **One assistant for both.** With both stores on Kaizena Flow, one owner account and one AI manager see both, and each store has its own
+  autopilot and goals.
+
+### 12.3 Moving everything over and closing the original
+
+This is what the Shopify move (D445) is built for:
+
+- customers with their consent evidence, and subscribers;
+- the order history, redirects, pages and menus;
+- gift cards re-issued: every holder gets an email, which is right at a real move;
+- the domain pointed at the new store (*Point it here*).
+
+WooCommerce's move has steps 1 to 5 built; the other platforms are plans only.
+
+**First choice: which name survives.**
+
+- **Keep the original's name and domain** (recommended in most cases: its search ranking, reviews and returning customers are the asset).
+  - The clone is renamed to the original's brand, and the original's domain is pointed at it.
+  - The clone's own domain redirects there.
+  - The clone's customers and orders stay where they are.
+- **Keep the new name.**
+  - The original's addresses redirect permanently to the clone's, and its customers are told.
+  - Search ranking takes months to follow.
+  - The original's reviews were written for another name, so showing them needs a legal check.
+
+**To do before a move:**
+
+| What | Today |
+|---|---|
+| Reviews | Not copied from Shopify (spike S6); a CSV import exists |
+| Subscriptions with saved cards | Cards cannot move without the payment provider's help (spike S8); subscribers are listed and invited to sign up again |
+| Two customer lists made one | Each person's consent kept as they gave it, to the name they gave it to; a person on both lists counted once |
+| Two stock pools made one | A transfer into one pool, counted by the warehouse |
+| The original's apps and platform subscription | Ended after the move, once nothing reads them |
+| The original's order history | Imported as history (numbered `C-`), never counted as the new store's sales |
+
+**When:** after Day 130, once the result is in, never during the run. A move during the run would end the comparison.
