@@ -5,7 +5,7 @@ import type { CampaignNotices } from "@/lib/campaign-notices";
 import type { GridData } from "@/lib/content-grid";
 import { t } from "@/lib/i18n";
 import { sourceTraits } from "@/lib/grid-source";
-import { tileAsk, type TileAsk } from "@/lib/shop-tiles";
+import { tileAskFor, type TileAsk } from "@/lib/shop-tiles";
 import { chosenFilters, listingQuery, parseListingParams } from "@/lib/listing-filters";
 import type { ContentGridBlock } from "@/lib/page-content";
 import { tileFieldIds } from "@/lib/tile-fields";
@@ -13,6 +13,7 @@ import { getBuyer } from "@/server/b2b";
 import { campaignNoticesAt } from "@/server/campaign-notices";
 import { gridData, gridScope, ownerSells, productItem, storeAndMarket, withTileFields, type GridPlace, type ListingPlace } from "@/server/content-grid";
 import { recommendBlockOf, recommendingGrid, recommendPlaceOf, recommends } from "@/server/recommend-grid";
+import { productSettingsCached } from "@/server/product-settings";
 import { listingFacets, listingPage, listingPageOf, LISTING_PAGES_MAX } from "@/server/listing";
 import { siteTerms } from "@/server/taxonomy";
 
@@ -33,8 +34,9 @@ export async function ContentGridSection({ block, place, eager = false }: { bloc
   if (recommends(block, place) && place.owner) return <RecommendingGrid block={block} place={place} owner={place.owner} eager={eager} />;
   const data = await gridData(block, place);
   const { listing } = place;
-  // The stock left and a quantity chooser on a store's own product tiles (D557), as the grid allows; the store's settings come with the facts.
-  const tiles = place.owner ? tileAsk(block.shopTiles) : null;
+  // The stock left and a quantity chooser on a store's own product tiles (D557), as the grid allows; the store's two switches are read
+  // here from the cached read, so a grid that would show neither draws no island.
+  const tiles = place.owner ? tileAskFor(block.shopTiles, await productSettingsCached(place.owner)) : null;
   const products = sourceTraits(block.source).products;
   const notices = products && place.owner ? await campaignNoticesAt(place.owner, place.market ?? null) : undefined;
   if (block.filters && products && place.owner && listing) {
@@ -135,8 +137,8 @@ async function RecommendingGrid({ block, place, owner, eager }: { block: Content
   const where = recommendPlaceOf(place);
   const [grid, notices] = await Promise.all([recommendingGrid(owner, place.market ?? null, block, where), campaignNoticesAt(owner, place.market ?? null)]);
   if (!grid) return null;
-  // The stock left and a quantity chooser on its tiles too (D557), as the grid allows.
-  const tiles = tileAsk(block.shopTiles);
+  // The stock left and a quantity chooser on its tiles too (D557), as the grid allows; the store's switches come from the cached read.
+  const tiles = tileAskFor(block.shopTiles, await productSettingsCached(owner));
   const fallback = <ContentGridView block={block} data={grid.data} notices={notices} eager={eager} tiles={tiles} />;
   // While the store's recommendations are off there is nothing to ask for: the grid is as built (empty, or its own text).
   if (!grid.enabled) return fallback;
