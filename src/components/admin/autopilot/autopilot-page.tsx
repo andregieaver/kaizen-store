@@ -374,7 +374,7 @@ function Settings({ overview, words: a, action }: { overview: AutopilotOverview;
           </span>
         </label>
         {/* In the challenge everything but the pause is locked (`docs/100-day-challenge.md` 4A1): shown as it is, not sent. */}
-        <fieldset disabled={Boolean(settings.challenge)} className="flex flex-col gap-6">
+        <fieldset disabled={Boolean(settings.challenge)} className="flex flex-col gap-6 disabled:opacity-60">
         <fieldset className="flex flex-col gap-3">
           <legend className="mb-2 text-title text-ink">{s.planning}</legend>
           <label className="flex items-start gap-3">

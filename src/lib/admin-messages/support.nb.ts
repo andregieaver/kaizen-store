@@ -109,7 +109,7 @@ export const supportNb: SupportMessages = {
   email: {
     title: "Kundeservice på e-post",
     description:
-      "Videresend kundeserviceadressen deres til denne adressen, så blir hver e-post en samtale i innboksen. Med AI først svarer den på generelle spørsmål på e-post; alt om en bestilling går til en person, fordi en e-postadresse ikke beviser hvem noen er.",
+      "Videresend kundeserviceadressen deres til denne adressen, så blir hver e-post en samtale i innboksen. Med AI først svarer den på generelle spørsmål på e-post. Alt om en bestilling går til en person, med mindre E-post om bestillinger er på under Avansert: da svarer den om avsenderens egne bestillinger, bare til avsenderens adresse.",
     address: "Videresend til",
     off: "Kundeservice er av: e-post til denne adressen tas ikke imot før dere velger hvem som svarer.",
     notSetUp: "Mottak av e-post er ikke satt opp på plattformen ennå.",

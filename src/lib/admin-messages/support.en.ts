@@ -112,7 +112,7 @@ export const supportEn = {
   email: {
     title: "Support by email",
     description:
-      "Forward your support address to this address, and every email becomes a conversation in the inbox. With the AI first, it answers general questions by email; anything about an order goes to a person, because an email address proves no one.",
+      "Forward your support address to this address, and every email becomes a conversation in the inbox. With the AI first, it answers general questions by email. Anything about an order goes to a person, unless Emails about orders is on under Advanced: then it answers about the sender's own orders, only to their address.",
     address: "Forward to",
     off: "Support is off: emails to this address are not taken until you choose who answers.",
     notSetUp: "Receiving email is not set up on this platform yet.",
