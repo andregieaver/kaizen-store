@@ -103,3 +103,16 @@ test("opening a result goes to the product and is recorded against the search, w
     await sql.end();
   }
 });
+
+test("the results page asks for no suggestions until the box is used", async ({ page }) => {
+  const posts: string[] = [];
+  page.on("request", (request) => {
+    if (request.method() === "POST") posts.push(request.url());
+  });
+  await page.goto("/s/demo/no/search?q=lampe", { waitUntil: "load" });
+  await page.waitForTimeout(1500);
+  expect(posts).toHaveLength(0);
+
+  await page.getByRole("main").getByRole("search").getByRole("combobox").focus();
+  await expect.poll(() => posts.filter((url) => url.includes("/search")).length).toBeGreaterThan(0);
+});
