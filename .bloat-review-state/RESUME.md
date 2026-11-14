@@ -95,3 +95,9 @@ challenged by a skeptic, planned by a planner. Its last lines hold the arguments
 - Local DB: Postgres 16 at /home/user/pgdata (start: /usr/lib/postgresql/16/bin/pg_ctl -D /home/user/pgdata -l /home/user/pgdata/log -o '-p 5432 -k /tmp' start);
   DATABASE_URL=postgres://postgres:postgres@127.0.0.1:5432/postgres. pnpm install --frozen-lockfile first in a new container.
 - Done: 0.1, 0.3 (D575), 0.4 (D576), 0.5 (D578), 0.6 (D580), 0.7 (D581, 9fc9314, write-up 1d26952). D577 sandbox fix. 0.2: first reading 13 Nov OK (487/9/67, ce1d2e3); reminder set 14 Nov 07:12 to set Done; then 0.23 may start. 0.8 Done (D586, 434a2f3, write-up 7a22fc7; read the statement count two days after deploy with 0.2's second reading). 0.9 Done (D587, 14722a8, write-up 90e14d1; owner's hand checks after deploy: sign in, uploads, service worker). 0.10 Done (D588, 0d31743, write-up 2eb124b). Signed-in failures on main locally too: a11y platform x5 + /admin + /admin/account, docs-guide:63, quotes:115, payment-facts:97, tax-report:62. 0.11 executor running (prompt $S/run/executor-0.11.md; review the 2 server actions and nb words). Local DB is `kaizen` (fresh 13 Nov). Next D: D589. Local e2e failures from local data (fail on main too): invoices.spec:76, sign-up.spec x3, platform-languages.spec:11. Flake: dream-rework.int. 13-file payments cycle for step 1.8. cookie-scan cron timeouts (unreported fix). kz-fix worktree has real node_modules.
+
+
+## Update 14 Nov (after step 0.11)
+- 0.11 Done: 66796ed, 940acaa on main; write-up 835471f (D589). Next free D-number: D590.
+- 0.12 executor running (prompt run/executor-0.12.md), local commits only. Review: exact links, rg counts 1,6,4,3,2, scan-test tag matcher with arrow functions, header names.
+- Owner hand checks for 0.11: Norwegian Work invoice draft, issuing an invoice, chat's first suggestion on Products and /admin/platform.
