@@ -540,6 +540,13 @@ export const shippingNb: ShippingMessages = {
     dragDropped: "{name} sluppet på plass {place} av {count}.",
     dragCancelled: "Flyttingen av {name} er avbrutt.",
     dragInstructions: "For å flytte et spørsmål trykker du mellomrom eller Enter på håndtaket, flytter det med pil opp og ned og trykker mellomrom eller Enter for å slippe det, eller Escape for å avbryte.",
+    width: "Bredde i handlekurven",
+    widths: { full: "Full bredde", half: "Halv bredde" },
+    widthHints: {
+      full: "Spørsmålet tar hele linjen.",
+      half: "To spørsmål med halv bredde ved siden av hverandre deler en linje. På mobil har alle spørsmål full bredde.",
+    },
+    customise: "Tilpass",
     limits: "Høyst {rules} regler og {fields} spørsmål. Reglene leses ovenfra: det første nye navnet og den første stoppen gjelder.",
   },
 };

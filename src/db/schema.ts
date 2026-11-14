@@ -8318,6 +8318,12 @@ export const checkoutFields = commerce.table(
     help: jsonb("help"),
     position: integer("position").notNull().default(0),
     enabled: boolean("enabled").notNull().default(true),
+    /**
+     * How wide the cart draws it (task 2 of `docs/checkout-fields-tasks.md`): `full` (the default) or `half`. Two halves next to each other share
+     * a line, one alone takes its left half; a narrow box draws every question full width. Only `half` is kept, never a side, so moving a
+     * question can never leave a right-hand one alone.
+     */
+    width: text("width").notNull().default("full"),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
   },
@@ -8325,6 +8331,7 @@ export const checkoutFields = commerce.table(
     unique("checkout_fields_store_id_key").on(t.storeId, t.id),
     index("checkout_fields_store_idx").on(t.storeId, t.position),
     check("checkout_fields_kind", sql`${t.kind} in ('text', 'checkbox')`),
+    check("checkout_fields_width", sql`${t.width} in ('full', 'half')`),
   ],
 );
 

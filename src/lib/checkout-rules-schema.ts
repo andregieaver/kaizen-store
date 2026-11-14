@@ -4,6 +4,7 @@ import {
   DELIVERY_PERCENT_MAX,
   DELIVERY_PERCENT_MIN,
   FIELD_LABEL_MAX,
+  FIELD_WIDTHS,
   REFUSAL_MAX,
   RULE_CONDITIONS_MAX,
   type CheckoutRule,
@@ -70,6 +71,8 @@ export const fieldInputSchema = z.object({
   required: z.boolean().default(false),
   label: words(FIELD_LABEL_MAX),
   help: words(200).nullable().default(null),
+  // Left out, a new question is full width and a changed one keeps its width (task 2).
+  width: z.enum(FIELD_WIDTHS).optional().describe("How wide the cart draws it: full, or half (two halves next to each other share a line)."),
 });
 
 export type FieldInput = z.infer<typeof fieldInputSchema>;

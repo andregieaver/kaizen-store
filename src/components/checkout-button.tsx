@@ -457,35 +457,46 @@ export function CheckoutButton({
   );
 }
 
-/** The store's own questions (D357): a text or a box each, kept as typed while the form is sent (`defaultValue` from the cart). */
+/**
+ * The store's own questions (D357): a text or a box each, kept as typed while the form is sent (`defaultValue` from the cart). Two half-width
+ * questions next to each other share a line and one alone takes its left half (task 2): a two-column grid, a full one spanning both, from a
+ * tablet's width up. On a phone every question is full width. (Not a container query: the cart's summary column is narrower on a desktop
+ * than the whole page on a phone, which drew halves on the phone and none on the desktop.)
+ */
 function Questions({ questions, field }: { questions: NonNullable<Parameters<typeof CheckoutButton>[0]["questions"]>; field: string }) {
   return (
-    <fieldset className="flex min-w-0 flex-col gap-2 text-sm" data-checkout-questions>
-      <legend className="mb-1 font-medium">{questions.legend}</legend>
-      {questions.fields.map((f) => {
-        const answer = questions.answers[f.id];
-        const label = (
-          <>
-            {f.label}
-            {f.required && <span className="text-muted"> ({questions.required})</span>}
-          </>
-        );
-        return f.kind === "checkbox" ? (
-          <label key={f.id} className="flex items-start gap-2">
-            <input type="checkbox" name={`question_${f.id}`} defaultChecked={answer === true} required={f.required} className="mt-0.5 size-4 shrink-0" />
-            <span>
-              {label}
-              {f.help && <span className="block text-muted">{f.help}</span>}
-            </span>
-          </label>
-        ) : (
-          <label key={f.id} className="flex flex-col gap-1">
-            <span>{label}</span>
-            <input name={`question_${f.id}`} defaultValue={typeof answer === "string" ? answer : ""} required={f.required} maxLength={500} className={field} />
-            {f.help && <span className="text-muted">{f.help}</span>}
-          </label>
-        );
-      })}
+    <fieldset className="min-w-0 text-sm" data-checkout-questions>
+      <legend className="mb-3 font-medium">{questions.legend}</legend>
+      <div className="grid grid-cols-1 gap-x-3 gap-y-2 sm:grid-cols-2">
+        {questions.fields.map((f) => {
+          const answer = questions.answers[f.id];
+          const label = (
+            <>
+              {f.label}
+              {f.required && <span className="text-muted"> ({questions.required})</span>}
+            </>
+          );
+          const span = f.width === "half" ? "" : "sm:col-span-2";
+          return f.kind === "checkbox" ? (
+            <label key={f.id} data-width={f.width} className={`flex items-start gap-2 ${span}`}>
+              <input type="checkbox" name={`question_${f.id}`} defaultChecked={answer === true} required={f.required} className="mt-0.5 size-4 shrink-0" />
+              <span>
+                {label}
+                {f.help && <span className="block text-muted">{f.help}</span>}
+              </span>
+            </label>
+          ) : (
+            <label key={f.id} data-width={f.width} className={`flex min-w-0 flex-col gap-1 ${span}`}>
+              {/* The words take the spare height, so two halves' boxes line up when one label wraps. */}
+              <span className="flex flex-1 items-end">
+                <span>{label}</span>
+              </span>
+              <input name={`question_${f.id}`} defaultValue={typeof answer === "string" ? answer : ""} required={f.required} maxLength={500} className={field} />
+              {f.help && <span className="text-muted">{f.help}</span>}
+            </label>
+          );
+        })}
+      </div>
     </fieldset>
   );
 }

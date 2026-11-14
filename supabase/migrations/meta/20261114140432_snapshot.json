@@ -1,6 +1,6 @@
 {
-  "id": "af8eeee8-8c9d-45f6-81a7-ab329ec8182f",
-  "prevId": "2b815292-7697-4129-9bcf-5a93465be51e",
+  "id": "718be465-e855-4091-9a0a-a82450095822",
+  "prevId": "af8eeee8-8c9d-45f6-81a7-ab329ec8182f",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -15354,6 +15354,13 @@
           "notNull": true,
           "default": true
         },
+        "width": {
+          "name": "width",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'full'"
+        },
         "created_at": {
           "name": "created_at",
           "type": "timestamp with time zone",
@@ -15424,6 +15431,10 @@
         "checkout_fields_kind": {
           "name": "checkout_fields_kind",
           "value": "\"commerce\".\"checkout_fields\".\"kind\" in ('text', 'checkbox')"
+        },
+        "checkout_fields_width": {
+          "name": "checkout_fields_width",
+          "value": "\"commerce\".\"checkout_fields\".\"width\" in ('full', 'half')"
         }
       },
       "isRLSEnabled": false

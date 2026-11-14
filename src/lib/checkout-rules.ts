@@ -295,10 +295,17 @@ export const shownLabel = (d: OfferedDelivery, own: string): string => (d as Ren
 export type CheckoutFieldKind = "text" | "checkbox";
 
 /** A question the shopper answers in the checkout (the store's `checkout_fields`), in the basket's language. */
-export type CheckoutField = { id: string; kind: CheckoutFieldKind; required: boolean; label: Words; help: Words | null };
+export type CheckoutField = { id: string; kind: CheckoutFieldKind; required: boolean; label: Words; help: Words | null; width?: FieldWidth };
+
+/**
+ * How wide the cart draws a question (task 2): `full` (the default) or `half`. Two halves next to each other share a line, one alone takes its
+ * left half, and a narrow box draws all of them full width. Only `half` is kept, never a side.
+ */
+export const FIELD_WIDTHS = ["full", "half"] as const;
+export type FieldWidth = (typeof FIELD_WIDTHS)[number];
 
 /** A field as the page shows it: words in the basket's language. */
-export type ShownField = { id: string; kind: CheckoutFieldKind; required: boolean; label: string; help: string | null };
+export type ShownField = { id: string; kind: CheckoutFieldKind; required: boolean; label: string; help: string | null; width: FieldWidth };
 
 /**
  * The ids in their new order once `id` is moved to place `to` (0 is first), the others keeping theirs; a place past either end is that end.
@@ -318,6 +325,7 @@ export const shownField = (f: CheckoutField, locale: string): ShownField => ({
   required: f.required,
   label: wordsIn(f.label, locale),
   help: f.help ? wordsIn(f.help, locale) : null,
+  width: f.width ?? "full",
 });
 
 /** What the order keeps of an answer (`orders.checkout_answers`): the question as it was asked in the store's main words, and the answer. */

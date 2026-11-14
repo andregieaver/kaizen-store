@@ -15,7 +15,7 @@ const { checkoutQuestionApprovalWords } = await import("./checkout-question-tool
 const { checkoutQuestionsFor } = await import("./checkout-rules");
 
 type Row = Record<string, unknown>;
-type Question = { id: string; place: number; question: string; on: boolean; required: boolean; kind: string };
+type Question = { id: string; place: number; question: string; on: boolean; required: boolean; kind: string; width: string };
 
 /**
  * The AI manager's questions at checkout (D357): read as the page lists them, refused before a yes when the page would refuse them, and added,
@@ -49,14 +49,16 @@ describe("the AI manager's checkout questions", () => {
     const second = (await runOwnerTool(c, "save_checkout_question", { question: "Ikke ring på", kind: "checkbox", on: false })) as { done: string; question: Question };
     expect(second.done).toBe("The question is added, switched off.");
 
+    // Half width as set on the page, kept when the AI manager changes it (task 2).
+    await db().execute(sql`update commerce.checkout_fields set width = 'half' where store_id = ${fx.storeId}::uuid and id = ${first.question.id}::uuid`);
     // Moved first and switched on, without its words changing; then reworded alone.
     await runOwnerTool(c, "save_checkout_question", { id: second.question.id, place: 1, on: true });
     expect(await checkoutQuestionApprovalWords(c, { id: first.question.id, required: false })).toBe('Change the checkout question "Portkode": make it optional.');
     await runOwnerTool(c, "save_checkout_question", { id: first.question.id, required: false });
     const read = (await runOwnerTool(c, "checkout_questions", {})) as { questions: Question[] };
-    expect(read.questions.map((q) => [q.place, q.question, q.kind, q.required, q.on])).toEqual([
-      [1, "Ikke ring på", "checkbox", false, true],
-      [2, "Portkode", "text", false, true],
+    expect(read.questions.map((q) => [q.place, q.question, q.kind, q.required, q.on, q.width])).toEqual([
+      [1, "Ikke ring på", "checkbox", false, true, "full"],
+      [2, "Portkode", "text", false, true, "half"],
     ]);
     // The cart asks them in that order.
     expect((await checkoutQuestionsFor(fx.storeId, "nb-NO", null)).fields.map((f) => f.label)).toEqual(["Ikke ring på", "Portkode"]);

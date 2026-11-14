@@ -16,6 +16,14 @@ Every change to a published contract gets a version here, newest first: the Admi
 (`/api/storefront/v1/openapi.json`), the webhook topics (`/api/webhooks/v1/topics.json`) and the MCP catalogues (`/api/mcp/catalogue.json`,
 `/api/ucp/catalogue.json`). Within a major version nothing a caller relies on is renamed or removed; answers and payloads may gain fields.
 
+## 1.16 — 2026-11-14
+
+An addition to the Admin API's checkout questions (D357, task 2).
+
+- A question has `width`: `full` or `half`. The cart draws two half-width questions next to each other on one line, and one alone on the left
+  half; a narrow cart draws every question full width. `GET /checkout/fields` returns it. `POST` and `PATCH /checkout/fields` take it as an
+  optional field: left out, a new question is full width and a changed one keeps its width.
+
 ## 1.15 — 2026-11-13
 
 An addition to the owner MCP's catalogue (D357).

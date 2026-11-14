@@ -1,0 +1,2 @@
+ALTER TABLE "commerce"."checkout_fields" ADD COLUMN "width" text DEFAULT 'full' NOT NULL;--> statement-breakpoint
+ALTER TABLE "commerce"."checkout_fields" ADD CONSTRAINT "checkout_fields_width" CHECK ("commerce"."checkout_fields"."width" in ('full', 'half'));

@@ -260,6 +260,7 @@ export const apiCheckoutField = z.object({
   help: words.nullable(),
   position: z.int(),
   enabled: z.boolean(),
+  width: z.enum(["full", "half"]).describe("How wide the cart draws it: two halves next to each other share a line."),
 });
 
 const enabledOnly = z.strictObject({ enabled: z.boolean().describe("Switches it on or off; nothing else changes.") });
