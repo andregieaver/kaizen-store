@@ -118,6 +118,7 @@ export default async function StoreAdminLayout({ children, params }: LayoutProps
               <AdminTextScope texts={adminTexts(lang, ["assistant"])}>
                 <AiManagerLauncher
                   area="store"
+                  noticePlace={store.id}
                   base={`${base}/assistant`}
                   siteName={store.name}
                   settingsHref={`${base}/settings/ai`}
