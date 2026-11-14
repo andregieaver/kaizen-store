@@ -6,6 +6,26 @@ import type { Widen } from "./common.en";
  * filled by `fillWords()`; a count is a `{ one, many }` pair read by `countWords()`, with `{n}` the number.
  */
 export const productEn = {
+  /** Round 1 (D595, step 5): the shopper's view beside the editor and what the product still lacks. */
+  preview: {
+    title: "What shoppers see",
+    open: "Open",
+    noTitle: "Your product's name",
+    noPrice: "No price yet",
+    inclVat: "incl. VAT",
+    onlyLeft: "Only {n} left",
+    addToCart: "Add to cart",
+    ready: "Ready to sell",
+    readyCount: "{done} of {total}",
+    checks: {
+      photo: "A photo",
+      namePrice: "A name and a price",
+      stock: "In stock",
+      category: "In a category",
+      description: "A description of two sentences or more",
+      secondPhoto: "A photo from another angle",
+    },
+  },
   top: {
     products: "Products",
     untitled: "Untitled product",
@@ -64,6 +84,7 @@ export const productEn = {
     many: "Purchase options: Subscriptions is switched off under Settings, Features, so this product's {n} options are kept but not offered.",
   },
   text: {
+    more: "Safety warnings, web address, excerpt and search results",
     title: "Title and description",
     language: "Language",
     empty: " (empty)",
