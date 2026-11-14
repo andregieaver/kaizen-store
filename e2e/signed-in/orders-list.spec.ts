@@ -94,7 +94,7 @@ test("searches, pages, filters, saves a view and acts on many orders at once", a
   expect(new Set([...first, ...second]).size).toBe(ORDERS);
 
   // A filter from the bar: only the orders with a parcel to send, said in a chip that takes it away again.
-  await page.getByText("Filters, sorting and columns").click();
+  await search.locator("summary").filter({ hasText: /^Filters/ }).click();
   await search.getByRole("checkbox", { name: "To send", exact: true }).check();
   await search.getByRole("button", { name: "Apply" }).click();
   await expect(page.getByText(`${TO_SEND} orders`, { exact: true })).toBeVisible();

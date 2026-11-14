@@ -55,7 +55,7 @@ export const ordersNb: OrdersMessages = {
     searchPlaceholder: "Bestillingsnummer, e-post, navn, produkt, varenummer, stikkord eller sporingsnummer",
     searchButton: "Søk",
     clearAll: "Fjern alt",
-    more: "Filtre, sortering og kolonner",
+    more: "Filtre",
     payment: "Betaling",
     fulfilment: "Forsendelse",
     status: "Bestillingsstatus",

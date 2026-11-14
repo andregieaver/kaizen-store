@@ -1,3 +1,4 @@
+import { ChevronDown } from "lucide-react";
 import type { ReactNode } from "react";
 
 import { fillWords } from "@/lib/admin-fill";
@@ -23,6 +24,8 @@ export function AnalyticsHeader({
   showCompare = true,
   explicitPeriod = false,
   amountsNote,
+  lead,
+  compact = false,
   children,
 }: {
   ctx: AnalyticsContext;
@@ -40,6 +43,10 @@ export function AnalyticsHeader({
   explicitPeriod?: boolean;
   /** What the amounts are in, when it is not the usual "main currency without VAT" (the VAT reports show the VAT itself, with it). */
   amountsNote?: string;
+  /** Round 3 (D603): the page's answer in a sentence, in the header's line. */
+  lead?: ReactNode;
+  /** Round 3 (D603): the picker folded into one button that names the period, beside the title (the Overview). */
+  compact?: boolean;
   children?: ReactNode;
 }) {
   const { params, store } = ctx;
@@ -47,6 +54,32 @@ export function AnalyticsHeader({
   const lastDay = addDays(period.to, -1);
   const today = new Intl.DateTimeFormat("en-CA", { timeZone: store.timeZone }).format(ctx.now);
   const w = analyticsWords().header;
+  const picked = (
+    <PeriodPicker basePath={`${ctx.base}${path}`} preset={period.preset} from={period.from} to={lastDay} compare={compare.mode} preserve={preserve} max={today} showCompare={showCompare} explicitPeriod={explicitPeriod} />
+  );
+  if (compact) {
+    return (
+      <header className="space-y-4">
+        <PageHeader
+          title={<>{title}</>}
+          meta={[lead ?? description]}
+          actions={
+            picker ? (
+              <details className="group relative">
+                <summary className="inline-flex h-11 cursor-pointer list-none items-center gap-2 rounded-pill border border-edge bg-card px-4 text-body text-ink hover:bg-sunken [&::-webkit-details-marker]:hidden">
+                  {period.label}
+                  <ChevronDown aria-hidden className="size-4" />
+                </summary>
+                <div className="absolute right-0 z-30 mt-2 w-[min(40rem,calc(100vw-2rem))] rounded-panel border border-line bg-card p-4 shadow-[var(--shadow-float)]">{picked}</div>
+              </details>
+            ) : undefined
+          }
+        />
+        {params.notice ? <Note tone="info">{params.notice}</Note> : null}
+        {children}
+      </header>
+    );
+  }
   return (
     <header className="space-y-4">
       <div>
@@ -55,7 +88,7 @@ export function AnalyticsHeader({
       </div>
       {picker ? (
         <>
-          <PeriodPicker basePath={`${ctx.base}${path}`} preset={period.preset} from={period.from} to={lastDay} compare={compare.mode} preserve={preserve} max={today} showCompare={showCompare} explicitPeriod={explicitPeriod} />
+          {picked}
           <p className="text-sm text-muted">
             {period.label}
             {showCompare && compare.previous ? fillWords(w.comparedWith, { label: compare.previous.label }) : ""}

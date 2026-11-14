@@ -170,3 +170,20 @@ export async function teamSize(storeId: string): Promise<number> {
   `);
   return row?.n ?? 0;
 }
+
+const SITE_ROW = z.object({ pages: col.int, drafts: col.int, articles: col.int, media: col.int, menus: col.int });
+
+export type SiteFacts = { pages: number; drafts: number; articles: number; media: number; menus: number };
+
+/** Round 3 (D603): what the Website hub says of each part: pages and articles live, pages only drafted, pictures in the library, menus. */
+export async function siteFacts(storeId: string): Promise<SiteFacts> {
+  const row = await typedRow(SITE_ROW, sql`
+    select
+      (select count(*) from commerce.pages p where p.store_id = ${storeId}::uuid and p.type = 'page' and p.published is not null)::int as pages,
+      (select count(*) from commerce.pages p where p.store_id = ${storeId}::uuid and p.type = 'page' and p.published is null)::int as drafts,
+      (select count(*) from commerce.pages p where p.store_id = ${storeId}::uuid and p.type = 'article' and p.published is not null)::int as articles,
+      (select count(*) from commerce.media m where m.store_id = ${storeId}::uuid)::int as media,
+      (select count(*) from commerce.menus n where n.store_id = ${storeId}::uuid)::int as menus
+  `);
+  return row ?? { pages: 0, drafts: 0, articles: 0, media: 0, menus: 0 };
+}
