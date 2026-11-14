@@ -142,3 +142,5 @@ challenged by a skeptic, planned by a planner. Its last lines hold the arguments
 - Next free D: D601 (recheck). Step 0.17 executor running.
 - Step 0.17 pushed as 49dca14 (bb6c9aa memo, b7ae693 polls, 8926e72 badge, 49dca14 my fix: poll baseline = dreamFingerprint of the drawn run). Figures: menu 220->110 asks, 125 ms -> 0.2 ms; badge 4 -> 2 statements. Deploy wait b0o5ba5bw. Then prod checks (feed ?place=<uuid>&count=1 answers {unread}) + write-up (D601 recheck).
 - Step 0.18 executor (Sonnet a6d384f073d14c86d) started from $S/run/executor-0.18.md.
+- Step 0.17 DONE: write-up bc32c97 (D602; the other session took D601). Hand checks: AI manager badge count signed in; Dream Factory page follows a run and is quiet in a hidden tab.
+- Step 0.18 executor running (a6d384f073d14c86d).
