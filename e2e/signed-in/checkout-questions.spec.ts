@@ -6,7 +6,8 @@ import { E2E_STORE, OWNER } from "./accounts";
 /**
  * Questions at checkout in their order (D357, docs/checkout-fields-tasks.md task 1): in Settings → Checkout rules the owner moves a question
  * with its up button and drags another with the keyboard on its handle; each lands in its new place at once and is still there after a
- * reload, as the cart reads them in that order (`moveCheckoutField()`, held by checkout-rules.int.test.ts). Deleting one asks first.
+ * reload, as the cart reads them in that order (`moveCheckoutField()`, held by checkout-rules.int.test.ts). Deleting one asks first. A dropdown
+ * is made with its options (task 4).
  */
 
 test.use({ storageState: OWNER.state });
@@ -96,4 +97,32 @@ test("asks before deleting a question: Keep it keeps it, Delete deletes it", asy
   await expect.poll(() => order(p)).toEqual([LABELS[2], LABELS[0]]);
   await p.reload();
   await expect.poll(() => order(p)).toEqual([LABELS[2], LABELS[0]]);
+});
+
+test("makes a dropdown with two options to choose one from, and the list names its kind (task 4)", async ({ page: p }) => {
+  await p.goto(page);
+  await p.getByRole("button", { name: "Add a question" }).click();
+  // The question's own form (the page has other editors with a Save of their own).
+  const form = p.locator("form").filter({ has: p.getByRole("combobox", { name: "Question" }) });
+  await form.getByRole("combobox", { name: "Question" }).selectOption("select");
+  await form.getByRole("textbox", { name: "Question", exact: true }).fill("E2E size");
+  // A dropdown's options are to choose one from: no None of these, no allergen list.
+  await expect(form.getByText("No options yet. Add at least two: the shopper chooses one.")).toBeVisible();
+  await expect(form.getByRole("button", { name: "Use the EU's 14 allergens" })).toHaveCount(0);
+  await form.getByRole("button", { name: "Add an option" }).click();
+  await form.getByRole("button", { name: "Add an option" }).click();
+  await form.getByRole("textbox", { name: "Option 1", exact: true }).fill("Small");
+  await form.getByRole("textbox", { name: "Option 2", exact: true }).fill("Large");
+  await expect(form.getByRole("checkbox", { name: "Means none of the others" })).toHaveCount(0);
+  await form.getByRole("button", { name: "Save", exact: true }).click();
+  const row = p.locator("[data-checkout-field]").filter({ hasText: "E2E size" });
+  await expect(row).toContainText("Dropdown · Optional");
+  const sql = testDb();
+  try {
+    const [made] = await sql`select kind, options from commerce.checkout_fields where store_id = ${storeId} and label->>'text' = 'E2E size'`;
+    expect(made.kind).toBe("select");
+    expect((made.options as { label: { text: string } }[]).map((o) => o.label.text)).toEqual(["Small", "Large"]);
+  } finally {
+    await sql.end();
+  }
 });

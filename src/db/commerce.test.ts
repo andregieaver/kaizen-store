@@ -8214,7 +8214,25 @@ describe("a tick list at checkout (task 3)", () => {
       [store, label],
     );
     expect(sensitive).toBe(false);
-    await expect(db.query("update commerce.checkout_fields set kind = 'radio' where id = $1", [id])).rejects.toThrow(/checkout_fields_kind/);
+    await expect(db.query("update commerce.checkout_fields set kind = 'date' where id = $1", [id])).rejects.toThrow(/checkout_fields_kind/);
+    await db.query("delete from commerce.checkout_fields where id = $1", [id]);
+  });
+});
+
+describe("a dropdown, a choice of one and longer text at checkout (task 4)", () => {
+  it("gives a select and radio buttons options, as a checklist has, and longer text none", async () => {
+    const label = '{"text":"Size","byLocale":{}}';
+    const options = '[{"id":"s","label":{"text":"S","byLocale":{}}},{"id":"m","label":{"text":"M","byLocale":{}}}]';
+    for (const kind of ["select", "radio"]) {
+      await expect(db.query(`insert into commerce.checkout_fields (store_id, kind, label) values ($1, $2, $3)`, [store, kind, label])).rejects.toThrow(/checkout_fields_options/);
+      const { id } = await one<{ id: string }>(`insert into commerce.checkout_fields (store_id, kind, label, options) values ($1, $2, $3, $4) returning id`, [store, kind, label, options]);
+      // Turned into a line of text, it must lose its options.
+      await expect(db.query("update commerce.checkout_fields set kind = 'text' where id = $1", [id])).rejects.toThrow(/checkout_fields_options/);
+      await db.query("update commerce.checkout_fields set kind = 'checklist' where id = $1", [id]);
+      await db.query("delete from commerce.checkout_fields where id = $1", [id]);
+    }
+    await expect(db.query(`insert into commerce.checkout_fields (store_id, kind, label, options) values ($1, 'textarea', $2, $3)`, [store, label, options])).rejects.toThrow(/checkout_fields_options/);
+    const { id } = await one<{ id: string }>(`insert into commerce.checkout_fields (store_id, kind, label) values ($1, 'textarea', $2) returning id`, [store, label]);
     await db.query("delete from commerce.checkout_fields where id = $1", [id]);
   });
 });

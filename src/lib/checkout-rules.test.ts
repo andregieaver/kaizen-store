@@ -294,3 +294,49 @@ describe("a tick list's answers (task 3)", () => {
     expect(slipAnswers(JSON.parse(JSON.stringify(none)), true)).toEqual(none);
   });
 });
+
+describe("a dropdown, a choice of one and longer text (task 4)", () => {
+  const words = (text: string) => ({ text, byLocale: {} });
+  const size: CheckoutField = {
+    id: "f1",
+    kind: "select",
+    required: true,
+    label: words("Size"),
+    help: null,
+    options: [
+      { id: "s", label: words("Small") },
+      { id: "m", label: words("Medium") },
+    ],
+  };
+  const diet: CheckoutField = { ...size, id: "f2", kind: "radio", required: false, label: words("Diet"), sensitive: true, options: [{ id: "v", label: words("Vegan") }, { id: "h", label: words("Halal") }] };
+  const note: CheckoutField = { id: "f3", kind: "textarea", required: true, label: words("Delivery notes"), help: null };
+
+  it("keeps one option among its own, by id as the dropdown sends it or as a list, in the store's words", () => {
+    const choice = { fieldId: "f1", label: "Size", kind: "choice", answer: "Medium", optionId: "m", consent: false };
+    expect(cleanAnswers([size], { f1: "m" })).toEqual({ answers: [choice], missing: [] });
+    expect(cleanAnswers([size], { f1: { options: ["m", "s"], consent: false } }).answers).toEqual([choice]);
+    // Choose (no answer) or an option it does not have: a required one stops the order.
+    expect(cleanAnswers([size], { f1: "" }).missing).toEqual(["f1"]);
+    expect(cleanAnswers([size], { f1: "xl" }).missing).toEqual(["f1"]);
+    expect(answerText(choice as never, "yes", "no")).toBe("Medium");
+  });
+
+  it("asks a sensitive choice for the shopper's consent once an option is chosen, and nothing of an optional one left empty", () => {
+    expect(cleanAnswers([diet], {})).toEqual({ answers: [], missing: [] });
+    expect(cleanAnswers([diet], { f2: { options: ["h"], consent: false } }).missing).toEqual(["f2"]);
+    const kept = cleanAnswers([diet], { f2: { options: ["h"], consent: true } }).answers;
+    expect(kept).toEqual([{ fieldId: "f2", label: "Diet", kind: "choice", answer: "Halal", optionId: "h", consent: true }]);
+    // Read back from the order and given to the cart again; a gift's slip leaves it out.
+    const stored = JSON.parse(JSON.stringify(kept));
+    expect(readAnswers(stored)).toEqual(kept);
+    expect(answersByField(stored)).toEqual({ f2: { options: ["h"], consent: true } });
+    expect(slipAnswers(stored, true)).toEqual([]);
+  });
+
+  it("keeps longer text's lines, with at most one empty line in a row, and other control characters as spaces", () => {
+    const typed = "Ring  the bell\r\n\r\n\r\n\tGate is blue\u0007 \nThanks";
+    expect(cleanAnswers([note], { f3: typed }).answers).toEqual([{ fieldId: "f3", label: "Delivery notes", kind: "text", answer: "Ring the bell\n\nGate is blue\nThanks" }]);
+    expect(cleanAnswers([note], { f3: " \n \n" }).missing).toEqual(["f3"]);
+    expect((cleanAnswers([note], { f3: "a".repeat(2500) }).answers[0] as { answer: string }).answer).toHaveLength(2000);
+  });
+});

@@ -4,6 +4,8 @@ import {
   DELIVERY_PERCENT_MAX,
   DELIVERY_PERCENT_MIN,
   CHECKLIST_OPTIONS_MAX,
+  CHECKOUT_FIELD_KINDS,
+  hasOptions,
   FIELD_LABEL_MAX,
   FIELD_WIDTHS,
   REFUSAL_MAX,
@@ -78,14 +80,20 @@ const checklistOption = z.object({
 });
 
 export const fieldInputSchema = z.object({
-  kind: z.enum(["text", "checkbox", "checklist"]),
+  kind: z
+    .enum(CHECKOUT_FIELD_KINDS)
+    .describe("text: one line; textarea: several lines; checkbox: one box; checklist: options to tick; select: one option from a list; radio: one option, all shown."),
   required: z.boolean().default(false),
   label: words(FIELD_LABEL_MAX),
   help: words(200).nullable().default(null),
   // Left out, a new question is full width and a changed one keeps its width (task 2).
   width: z.enum(FIELD_WIDTHS).optional().describe("How wide the cart draws it: full, or half (two halves next to each other share a line)."),
-  // A tick list (task 3); checked with the rest of it by `checklistProblems()`.
-  options: z.array(checklistOption).max(CHECKLIST_OPTIONS_MAX).optional().describe("A checklist's options, in order (1 to 30)."),
+  // A tick list's, a select's or radio buttons' (tasks 3 and 4); checked with the rest of it by `checklistProblems()`.
+  options: z
+    .array(checklistOption)
+    .max(CHECKLIST_OPTIONS_MAX)
+    .optional()
+    .describe("The options of a checklist (1 to 30), a select or radio buttons (2 to 30), in order. Only a checklist has a none option."),
   sensitive: z
     .boolean()
     .optional()
@@ -93,15 +101,21 @@ export const fieldInputSchema = z.object({
 });
 
 /**
- * A tick list's own rules, apart from the schema so the Admin API can extend it: a checklist has at least one option, at most one `none`, and
- * no two options with the same id; the other kinds have no options. Sentences for the owner.
+ * The options' own rules, apart from the schema so the Admin API can extend it: a checklist has at least one option and at most one `none`; a
+ * select or radio buttons at least two and no `none` (one choice is always one of them); no two options share an id; the other kinds have no
+ * options. Sentences for the owner.
  */
 export function checklistProblems(input: Pick<z.infer<typeof fieldInputSchema>, "kind" | "options">): string[] {
   const options = input.options ?? [];
-  if (input.kind !== "checklist") return options.length > 0 ? ["Only a tick list has options."] : [];
+  if (!hasOptions(input.kind)) return options.length > 0 ? ["Only a tick list, a dropdown or a choice of one has options."] : [];
   const problems: string[] = [];
-  if (options.filter((o) => !o.none).length === 0) problems.push("Give the tick list at least one option.");
-  if (options.filter((o) => o.none).length > 1) problems.push("Only one option can be None of these.");
+  if (input.kind === "checklist") {
+    if (options.filter((o) => !o.none).length === 0) problems.push("Give the tick list at least one option.");
+    if (options.filter((o) => o.none).length > 1) problems.push("Only one option can be None of these.");
+  } else {
+    if (options.length < 2) problems.push("Give the question at least two options to choose from.");
+    if (options.some((o) => o.none)) problems.push("Only a tick list has a None of these option.");
+  }
   const ids = options.flatMap((o) => (o.id ? [o.id] : []));
   if (new Set(ids).size !== ids.length) problems.push("Two options have the same id.");
   return problems;

@@ -270,6 +270,49 @@ describe("questions at checkout", () => {
     expect(await rules.saveCheckoutField(member, null, { kind: "checklist", label: { text: "Empty", byLocale: {} }, options: [] })).toEqual({ ok: false, problems: ["Give the tick list at least one option."] });
   });
 
+  it("asks a dropdown, a choice of one and longer text, keeps each answer on the order, and refuses a tick list's None of these in a dropdown (task 4)", async () => {
+    const w = (text: string) => ({ text, byLocale: {} });
+    const size = await rules.saveCheckoutField(member, null, { kind: "select", required: true, label: w("Størrelse"), options: [{ label: w("Liten") }, { label: w("Stor") }] });
+    const diet = await rules.saveCheckoutField(member, null, { kind: "radio", label: w("Kost"), options: [{ label: w("Vegansk") }, { label: w("Halal") }], sensitive: true });
+    const notes = await rules.saveCheckoutField(member, null, { kind: "textarea", required: true, label: w("Beskjed"), sensitive: true });
+    if (!size.ok || !diet.ok || !notes.ok) throw new Error("fields not saved");
+    const fields = await rules.listCheckoutFields(db(), store.storeId);
+    expect(fields.map((f) => [f.kind, f.options?.length ?? 0, f.sensitive])).toEqual([
+      ["select", 2, false],
+      ["radio", 2, true],
+      // Longer text has no options, and no consent to ask.
+      ["textarea", 0, false],
+    ]);
+    const big = fields[0].options![1].id;
+    const halal = fields[1].options![1].id;
+    expect((await rules.checkoutQuestionsFor(store.storeId, "nb", null)).fields.map((f) => f.kind)).toEqual(["select", "radio", "textarea"]);
+
+    const cartId = await cartOf(store, [["DEMO-MUG-WHITE", 1]]);
+    const answers = [
+      { fieldId: size.id, label: "Størrelse", kind: "choice" as const, answer: "Stor", optionId: big, consent: false },
+      { fieldId: diet.id, label: "Kost", kind: "choice" as const, answer: "Halal", optionId: halal, consent: true },
+      { fieldId: notes.id, label: "Beskjed", kind: "text" as const, answer: "Ring på\nBlå port" },
+    ];
+    // The sensitive choice without consent: refused.
+    await rules.setCartAnswers(store.storeId, cartId, answers.map((a) => (a.fieldId === diet.id ? { ...a, consent: false } : a)));
+    expect(await placeOrder({ storeId: store.storeId, market: NO }, cartId, {}, { customerId: null })).toEqual({ ok: false, problem: "checkout_fields" });
+    await rules.setCartAnswers(store.storeId, cartId, answers);
+    const placed = await placeOrder({ storeId: store.storeId, market: NO }, cartId, {}, { customerId: null });
+    if (!placed.ok) throw new Error(placed.problem);
+    expect((await getOrder(store.storeId, placed.order.orderId))?.checkoutAnswers).toEqual(answers);
+
+    // A dropdown needs two options; a tick list with None of these cannot become one without its options being changed.
+    expect(await rules.saveCheckoutField(member, null, { kind: "select", label: w("Én"), options: [{ label: w("A") }] })).toEqual({ ok: false, problems: ["Give the question at least two options to choose from."] });
+    const list = await rules.saveCheckoutField(member, null, { kind: "checklist", label: w("Allergier"), options: [{ label: w("Melk") }, { label: w("Ingen"), none: true }] });
+    if (!list.ok) throw new Error("list not saved");
+    expect(await rules.saveCheckoutField(member, list.id, { kind: "select", label: w("Allergier") })).toEqual({ ok: false, problems: ["Only a tick list has a None of these option."] });
+    // Made a line of text, it loses its options and its consent.
+    expect(await rules.saveCheckoutField(member, diet.id, { kind: "text", label: w("Kost") })).toEqual({ ok: true, id: diet.id });
+    const plain = (await rules.listCheckoutFields(db(), store.storeId)).find((f) => f.id === diet.id);
+    expect(plain).toMatchObject({ kind: "text", sensitive: false });
+    expect(plain?.options).toBeUndefined();
+  });
+
   it("keeps a question half width, keeps its width when changed without one, and gives the cart its width (task 2)", async () => {
     const half = await rules.saveCheckoutField(member, null, { kind: "text", required: false, label: { text: "Postcode", byLocale: {} }, help: null, width: "half" });
     const full = await rules.saveCheckoutField(member, null, { kind: "text", required: false, label: { text: "Gift note", byLocale: {} }, help: null });

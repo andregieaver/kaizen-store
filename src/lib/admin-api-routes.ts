@@ -9,6 +9,7 @@ import { CONTENT_API } from "./admin-api-content";
 import { CUSTOMERS_API } from "./admin-api-customers";
 import { ORDERS_API } from "./admin-api-orders";
 import { fieldInputSchema, ruleInputSchema, conditionSchema, effectSchema } from "./checkout-rules-schema";
+import { CHECKOUT_FIELD_KINDS } from "./checkout-rules";
 import { DISCOUNT_KINDS } from "./discounts";
 import { FULFILMENT_STATES } from "./fulfilment";
 import { ADJUST_REASONS } from "./inventory";
@@ -254,7 +255,7 @@ export const apiCheckoutRule = z.object({
 
 export const apiCheckoutField = z.object({
   id,
-  kind: z.enum(["text", "checkbox", "checklist"]),
+  kind: z.enum(CHECKOUT_FIELD_KINDS),
   required: z.boolean(),
   label: words,
   help: words.nullable(),
@@ -264,7 +265,7 @@ export const apiCheckoutField = z.object({
   options: z
     .array(z.object({ id: z.string(), label: words, none: z.boolean().optional() }))
     .optional()
-    .describe("A checklist's options, in order; `none` marks the option that clears the others."),
+    .describe("The options of a checklist, a select or radio buttons, in order; `none` marks a checklist's option that clears the others."),
   sensitive: z.boolean().describe("The answer may be sensitive personal data: the cart asks the shopper's explicit consent with it."),
 });
 
@@ -650,7 +651,7 @@ const CORE_API = [
     permission: "settings:write",
     tag: "Checkout",
     summary: "Create a checkout question",
-    description: "Adds a question the checkout asks: a text or a checkbox, with its words.",
+    description: "Adds a question the checkout asks: a line or several lines of text, a checkbox, a checklist, a select or radio buttons, with its words.",
     body: fieldInputSchema,
     response: madeId,
     status: 201,
