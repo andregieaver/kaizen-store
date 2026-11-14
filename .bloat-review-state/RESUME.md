@@ -134,3 +134,4 @@ challenged by a skeptic, planned by a planner. Its last lines hold the arguments
 - Commit 6 (carousel split, server-drawn track + lazy controls) asked of the Opus executor a5a0f93814579270d via $S/run/executor-0.16c.md. Step 1.27 needs the carousel out of content-grid.
 - Other session took D594, D595, D596. Recheck next D before writing 0.16's row.
 - 0.16 hand checks after deploy: filter opens on first press on a prod listing; cart notes; withdraw Statistics removes _ga (no prod site has trackers).
+- 67aa344: CI all green (e2e, signed-in, integration x3, static, hosts). Prod: /no 616,839, product 662,244; filter first press OK on prod (screenshot sent). Waiting on carousel commit 6.
