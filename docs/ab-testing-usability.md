@@ -13,7 +13,8 @@ know? What should I do?**
 
 | # | Finding | Where |
 |---|---|---|
-| 1 | While the verdict says "Too early to say", the table already shows a change and "94 % chance it is better": it invites the early peeking the design rules out. | `experiment-results-view.tsx`, column "Against the original" |
+| 1 | The verdict and the table disagree. Day 3: "Too early to say" above "−12 %, 37 % chance it is better". After the minimum: "No clear difference" above "+16.1 %, 96 % chance it is better" (the verdict needs the 95 % range to clear zero, a one-sided 97.5 %; the table shows the one-sided chance), and the table rounds to "100 %" where the verdict says "more than 99 %". | `experiment-results-view.tsx` column "Against the original" vs `verdictOf()` |
+| 1b | On a phone the results tables wrap to three lines a cell and "What visitors did" overflows sideways; while running, the only button is "Stop the test", placed above the verdict, so a clear winner can't be used without stopping first. | `ExperimentResultsView`, `RunPanel` |
 | 2 | No progress: how far the test is from an answer is one sentence ("Wait for 412 more visitors … and 6 more days"); no bar, no date. | `verdictOf()` → `earlyDetail` |
 | 3 | The one chart (cumulative rate) has no axes, no gridlines, no minimum-days marker; early days swing wildly. | `Trend` in `experiment-results-view.tsx` |
 | 4 | Uncertainty is a number, never a shape: `Comparison.low/high` are computed and never drawn. | `compareToOriginal()` |
