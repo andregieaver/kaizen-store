@@ -950,7 +950,7 @@ export default async function OrderPage({ params }: PageProps<"/admin/[store]/or
                   {order.checkoutAnswers.map((a) => (
                     <div key={a.fieldId}>
                       <dt className="text-muted">{a.label}</dt>
-                      <dd>{answerText(a, w.answerYes, w.answerNo)}</dd>
+                      <dd className="whitespace-pre-line">{answerText(a, w.answerYes, w.answerNo)}</dd>
                     </div>
                   ))}
                 </dl>

@@ -8,7 +8,7 @@ import { useId, useOptimistic, useState, useTransition, type ReactNode } from "r
 
 import { fillWords } from "@/lib/admin-fill";
 import { allergenQuestion } from "@/lib/checkout-presets";
-import { CONDITION_KINDS, EFFECT_KINDS, movedTo, type ChecklistOption, type CheckoutFieldKind, type FieldWidth, type RuleCondition, type RuleEffect, type Words } from "@/lib/checkout-rules";
+import { CHECKOUT_FIELD_KINDS, CONDITION_KINDS, EFFECT_KINDS, hasOptions, movedTo, type ChecklistOption, type CheckoutFieldKind, type FieldWidth, type RuleCondition, type RuleEffect, type Words } from "@/lib/checkout-rules";
 
 import { useAdminText } from "./admin-text";
 import { Button, Card, Chip, List, ListRow, RowLead } from "./ui";
@@ -550,7 +550,9 @@ function FieldEditor({
       onSubmit={(e) => {
         e.preventDefault();
         run(async () => {
-          const list = kind === "checklist" ? { options: options.filter((o) => o.label.text.trim()), sensitive } : { sensitive: false };
+          // A dropdown or a choice of one has no None of these: a tick list's turned into one loses that mark (task 4).
+          const kept = options.filter((o) => o.label.text.trim()).map((o) => (kind === "checklist" ? o : { ...o, none: undefined }));
+          const list = hasOptions(kind) ? { options: kept, sensitive } : { sensitive: false };
           const saved = await save(start?.id ?? null, { kind, required, label, help: help.text.trim() ? help : null, width, ...list });
           if (saved.ok) {
             setProblems([]);
@@ -561,9 +563,11 @@ function FieldEditor({
     >
       <div className="flex flex-wrap gap-3">
         <select value={kind} onChange={(e) => setKind(e.target.value as CheckoutFieldKind)} className={FIELD} aria-label={w.question}>
-          <option value="text">{w.fieldKinds.text}</option>
-          <option value="checkbox">{w.fieldKinds.checkbox}</option>
-          <option value="checklist">{w.fieldKinds.checklist}</option>
+          {CHECKOUT_FIELD_KINDS.map((k) => (
+            <option key={k} value={k}>
+              {w.fieldKinds[k]}
+            </option>
+          ))}
         </select>
         <label className="flex items-center gap-2 text-sm">
           <input type="checkbox" checked={required} onChange={(e) => setRequired(e.target.checked)} className="size-4" />
@@ -572,16 +576,18 @@ function FieldEditor({
       </div>
       <WordsField value={label} onChange={setLabel} label={w.question} locales={locales} max={80} />
       <WordsField value={help} onChange={setHelp} label={w.help} locales={locales} max={200} />
-      {kind === "checklist" && (
+      {hasOptions(kind) && (
         <fieldset className="flex flex-col gap-3 rounded-panel bg-sunken p-3 text-sm">
-          <legend className="sr-only">{w.options}</legend>
+          <legend className="sr-only">{kind === "checklist" ? w.options : w.choices}</legend>
           <div className="flex flex-wrap items-center justify-between gap-2">
-            <span className="font-medium">{w.options}</span>
-            <Button type="button" kind="secondary" size="dense" onClick={useAllergens}>
-              {w.useAllergens}
-            </Button>
+            <span className="font-medium">{kind === "checklist" ? w.options : w.choices}</span>
+            {kind === "checklist" && (
+              <Button type="button" kind="secondary" size="dense" onClick={useAllergens}>
+                {w.useAllergens}
+              </Button>
+            )}
           </div>
-          {options.length === 0 && <p className="text-muted">{w.noOptions}</p>}
+          {options.length === 0 && <p className="text-muted">{kind === "checklist" ? w.noOptions : w.noChoices}</p>}
           <ol className="flex flex-col gap-3">
             {options.map((o, i) => (
               <li key={o.id ?? `new-${i}`} className="flex flex-col gap-1">
@@ -593,15 +599,17 @@ function FieldEditor({
                   max={80}
                 />
                 <div className="flex flex-wrap items-center gap-3">
-                  <label className="flex items-center gap-2">
-                    <input
-                      type="checkbox"
-                      checked={o.none === true}
-                      onChange={(e) => setOptions(options.map((x, j) => (j === i ? { ...x, none: e.target.checked } : e.target.checked ? { ...x, none: false } : x)))}
-                      className="size-4"
-                    />
-                    {w.optionNone}
-                  </label>
+                  {kind === "checklist" && (
+                    <label className="flex items-center gap-2">
+                      <input
+                        type="checkbox"
+                        checked={o.none === true}
+                        onChange={(e) => setOptions(options.map((x, j) => (j === i ? { ...x, none: e.target.checked } : e.target.checked ? { ...x, none: false } : x)))}
+                        className="size-4"
+                      />
+                      {w.optionNone}
+                    </label>
+                  )}
                   <Button type="button" kind="quiet" size="dense" onClick={() => setOptions(options.filter((_, j) => j !== i))}>
                     {w.removeOption}
                   </Button>

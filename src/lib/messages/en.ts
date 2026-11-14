@@ -915,6 +915,9 @@ export const en = {
     problem: "Answer the store's questions marked required, and give your consent where a list asks for it, then try again.",
     // legal: needs review. The explicit consent a sensitive list asks (GDPR article 9(2)(a)), such as allergies (task 3).
     consent: "I agree that the store uses what I ticked here only to prepare this order.",
+    // legal: needs review. The same consent for a dropdown or a choice of one (task 4).
+    consentChosen: "I agree that the store uses what I chose here only to prepare this order.",
+    choose: "Choose",
   },
   /**
    * Producer responsibility (D342): a product under a scheme the seller has no valid registration for in the shopper's country is not sold

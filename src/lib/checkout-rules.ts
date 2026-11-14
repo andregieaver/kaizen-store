@@ -14,6 +14,8 @@ export const RULE_CONDITIONS_MAX = 10;
 export const FIELDS_MAX = 10;
 export const FIELD_LABEL_MAX = 80;
 export const FIELD_ANSWER_MAX = 500;
+/** A `textarea` answer's most characters, its lines kept (task 4). */
+export const FIELD_LONG_ANSWER_MAX = 2000;
 /** The most options a tick list (`checklist`) holds: the EU's 14 allergens and "None of these" fit with room (task 3). */
 export const CHECKLIST_OPTIONS_MAX = 30;
 export const REFUSAL_MAX = 300;
@@ -294,7 +296,18 @@ export const shownLabel = (d: OfferedDelivery, own: string): string => (d as Ren
 
 // Checkout fields
 
-export type CheckoutFieldKind = "text" | "checkbox" | "checklist";
+/**
+ * What a question asks (D357, tasks 3 and 4 of `docs/checkout-fields-tasks.md`): `text` one line, `textarea` several lines, `checkbox` one box,
+ * `checklist` any number of options, `select` one option from a closed list (drawn with `Dropdown`, D82), `radio` one option, all of them shown.
+ */
+export const CHECKOUT_FIELD_KINDS = ["text", "textarea", "checkbox", "checklist", "select", "radio"] as const;
+export type CheckoutFieldKind = (typeof CHECKOUT_FIELD_KINDS)[number];
+
+/** The kinds that have options to choose from: a tick list (any number), a select and radio buttons (exactly one). */
+export const OPTION_KINDS = ["checklist", "select", "radio"] as const satisfies readonly CheckoutFieldKind[];
+export const hasOptions = (kind: CheckoutFieldKind): boolean => (OPTION_KINDS as readonly string[]).includes(kind);
+/** The kinds answered with one option. */
+export const isSingleChoice = (kind: CheckoutFieldKind): boolean => kind === "select" || kind === "radio";
 
 /**
  * One option of a tick list (task 3): its own words per language, and `none` for the option that says none of the others apply (ticking it
@@ -310,7 +323,7 @@ export type CheckoutField = {
   label: Words;
   help: Words | null;
   width?: FieldWidth;
-  /** A tick list's options, in order (task 3). */
+  /** The options of a tick list, a select or radio buttons, in order (tasks 3 and 4); only a tick list has a `none` one. */
   options?: ChecklistOption[];
   /** The answer may be sensitive personal data (GDPR article 9, such as allergies): the shopper ticks an explicit consent with it. */
   sensitive?: boolean;
@@ -367,9 +380,11 @@ export const shownField = (f: CheckoutField, locale: string): ShownField => ({
 export type CheckoutAnswer =
   | { fieldId: string; label: string; kind: "text"; answer: string }
   | { fieldId: string; label: string; kind: "checkbox"; answer: boolean }
-  | { fieldId: string; label: string; kind: "checklist"; answer: string[]; optionIds: string[]; consent: boolean };
+  | { fieldId: string; label: string; kind: "checklist"; answer: string[]; optionIds: string[]; consent: boolean }
+  /** A select's or radio buttons' one option (task 4), in the store's main words as it was, its id, and the consent a sensitive one asks. */
+  | { fieldId: string; label: string; kind: "choice"; answer: string; optionId: string; consent: boolean };
 
-/** What a shopper sends for one question: a text, a box, or a tick list's option ids and consent. */
+/** What a shopper sends for one question: a text, a box, or the option ids chosen (one for a select or radio buttons) and the consent. */
 export type AnswerInput = string | boolean | { options: string[]; consent: boolean };
 
 /** The option ids a tick list's answer names, as sent: an array, or `{ options }`; anything else is none. */
@@ -379,10 +394,11 @@ function tickedIds(raw: unknown): string[] {
 }
 
 /**
- * The shopper's answers checked against the store's fields: a text trimmed to one line of at most `FIELD_ANSWER_MAX`, a box ticked or not, a
- * tick list's options among its own (its `none` option alone when ticked), every required one answered (a required box ticked, a required
- * list with at least one option), a sensitive list with an option other than `none` only with the shopper's consent, anything for a field that
- * is not there left out. `missing` names the fields that stop the order.
+ * The shopper's answers checked against the store's fields: a text trimmed to one line of at most `FIELD_ANSWER_MAX` (a `textarea` keeps its
+ * lines, at most `FIELD_LONG_ANSWER_MAX`), a box ticked or not, a tick list's options among its own (its `none` option alone when ticked), a select's
+ * or radio buttons' one option among its own, every required one answered (a required box ticked, a required list with at least one option), a
+ * sensitive list with an option other than `none` (or a sensitive one-choice question with its option) only with the shopper's consent, anything
+ * for a field that is not there left out. `missing` names the fields that stop the order.
  */
 export function cleanAnswers(
   fields: readonly CheckoutField[],
@@ -396,6 +412,30 @@ export function cleanAnswers(
       const ticked = raw === true || raw === "on" || raw === "true";
       if (f.required && !ticked) missing.push(f.id);
       answers.push({ fieldId: f.id, label: f.label.text, kind: "checkbox", answer: ticked });
+      continue;
+    }
+    if (isSingleChoice(f.kind)) {
+      const id = typeof raw === "string" ? raw : tickedIds(raw)[0];
+      const chosen = (f.options ?? []).find((o) => !o.none && o.id === id);
+      const consent = raw !== null && typeof raw === "object" && !Array.isArray(raw) && (raw as { consent?: unknown }).consent === true;
+      if (!chosen) {
+        if (f.required) missing.push(f.id);
+        continue;
+      }
+      if (f.sensitive && !consent) {
+        missing.push(f.id);
+        continue;
+      }
+      answers.push({ fieldId: f.id, label: f.label.text, kind: "choice", answer: chosen.label.text, optionId: chosen.id, consent: f.sensitive === true });
+      continue;
+    }
+    if (f.kind === "textarea") {
+      const long = typeof raw === "string" ? longText(raw) : "";
+      if (!long) {
+        if (f.required) missing.push(f.id);
+        continue;
+      }
+      answers.push({ fieldId: f.id, label: f.label.text, kind: "text", answer: long });
       continue;
     }
     if (f.kind === "checklist") {
@@ -425,6 +465,19 @@ export function cleanAnswers(
   return { answers, missing };
 }
 
+/** Several lines as a shopper typed them: other control characters and runs of spaces made one space, at most one empty line in a row. */
+function longText(raw: string): string {
+  return raw
+    .replace(/\r\n?/g, "\n")
+    .replace(/[\u0000-\u0009\u000b-\u001f\u007f]+/g, " ")
+    .split("\n")
+    .map((line) => line.replace(/\s+/g, " ").trim())
+    .join("\n")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim()
+    .slice(0, FIELD_LONG_ANSWER_MAX);
+}
+
 /** An answer in words for staff and the export: a tick list's options joined. */
 export const answerText = (a: CheckoutAnswer, yes: string, no: string): string =>
   a.kind === "checkbox" ? (a.answer ? yes : no) : a.kind === "checklist" ? a.answer.join(", ") : a.answer;
@@ -442,6 +495,8 @@ export function readAnswers(value: unknown): CheckoutAnswer[] {
     const words = strings(a.answer);
     const ids = strings(a.optionIds);
     if (a.kind === "checklist" && words && ids) return [{ fieldId: a.fieldId, label: a.label, kind: "checklist" as const, answer: words, optionIds: ids, consent: a.consent === true }];
+    if (a.kind === "choice" && typeof a.answer === "string" && typeof a.optionId === "string")
+      return [{ fieldId: a.fieldId, label: a.label, kind: "choice" as const, answer: a.answer, optionId: a.optionId, consent: a.consent === true }];
     return [];
   });
 }
@@ -451,12 +506,15 @@ export function readAnswers(value: unknown): CheckoutAnswer[] {
  * shopper's consent (a sensitive tick list such as allergies, D598), since the person who reads it is not the buyer.
  */
 export function slipAnswers(value: unknown, gift: boolean): CheckoutAnswer[] {
-  return readAnswers(value).filter((a) => !(gift && a.kind === "checklist" && a.consent));
+  return readAnswers(value).filter((a) => !(gift && (a.kind === "checklist" || a.kind === "choice") && a.consent));
 }
 
 /** Answers as kept (on a cart or an order) back to what was typed, by field, for `cleanAnswers()` to check again. */
 export function answersByField(value: unknown): Record<string, AnswerInput> {
   return Object.fromEntries(
-    readAnswers(value).map((a): [string, AnswerInput] => [a.fieldId, a.kind === "checklist" ? { options: a.optionIds, consent: a.consent } : a.answer]),
+    readAnswers(value).map((a): [string, AnswerInput] => [
+      a.fieldId,
+      a.kind === "checklist" ? { options: a.optionIds, consent: a.consent } : a.kind === "choice" ? { options: [a.optionId], consent: a.consent } : a.answer,
+    ]),
   );
 }

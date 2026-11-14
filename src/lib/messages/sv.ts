@@ -882,6 +882,9 @@ export const sv: Messages = {
     problem: "Svara på butikens obligatoriska frågor och ge ditt samtycke där en lista ber om det, och försök igen.",
     // legal: needs review. The explicit consent a sensitive list asks (GDPR article 9(2)(a)), such as allergies (task 3).
     consent: "Jag samtycker till att butiken använder det jag har kryssat i här endast för att förbereda den här beställningen.",
+    // legal: needs review. The same consent for a dropdown or a choice of one (task 4).
+    consentChosen: "Jag samtycker till att butiken använder det jag har valt här endast för att förbereda den här beställningen.",
+    choose: "Välj",
   },
   producer: {
     notSoldHere: "Säljs inte i det här landet just nu: säljarens registrering för producentansvar saknas här.",

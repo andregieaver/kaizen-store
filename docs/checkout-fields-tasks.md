@@ -142,9 +142,15 @@ Built 14 November 2026 (D598).
 
 Candidates, each a kind in `fieldInputSchema` and in `cleanAnswers()`, the editor, the cart, the order page, the export and a test:
 
-- [ ] `select`: one choice from a list, drawn with `Dropdown` (D82), never a native select.
-- [ ] `radio`: one choice, all options visible.
-- [ ] `textarea`: several lines (longer than today's one line of 500 characters).
+Step 1 built 14 November 2026 (D601): select, radio and textarea.
+
+- [x] `select`: one choice from a list, drawn with `Dropdown` (D82), never a native select. It starts on *Choose*, which is no
+      answer; its choice goes in a hidden field.
+- [x] `radio`: one choice, all options visible.
+- [x] `textarea`: several lines, at most 2,000 characters, the lines kept (at most one empty line in a row).
+- Both one-choice kinds use a tick list's options (2 to 30, no None of these) and may ask for consent like a tick list; the order
+  keeps the option as an answer of kind `choice`. The AI manager rewords these but does not make them (its tool's kinds stay
+  `text` and `checkbox`, so its eval recording holds).
 - [ ] `number`, with a lowest and highest value.
 - [ ] `date`, with earliest and latest days (check first that bookings, D65, or delivery days do not already cover the need).
 - [ ] `email` and `phone`, checked for shape (for example a gift recipient's contact).

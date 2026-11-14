@@ -17,6 +17,7 @@ import {
   type CheckoutFacts,
   type ChecklistOption,
   type CheckoutField,
+  type CheckoutFieldKind,
   type FieldWidth,
   type CheckoutRule,
   type KnownIds,
@@ -24,6 +25,8 @@ import {
   type ShownField,
   type Words,
   shownField,
+  CHECKOUT_FIELD_KINDS,
+  hasOptions,
 } from "@/lib/checkout-rules";
 import { checklistProblems, fieldInputSchema, ruleInputSchema } from "@/lib/checkout-rules-schema";
 import { shown, type Market } from "@/lib/markets";
@@ -34,7 +37,7 @@ import { audit, type Membership } from "./auth";
 import { termsOfProducts } from "./campaigns";
 import { customerTierIds } from "./customer-tiers";
 import { log } from "./log";
-import { col, typedRows } from "./typed-rows";
+import { col, typedRow, typedRows } from "./typed-rows";
 
 type Runner = Pick<ReturnType<typeof db>, "execute">;
 
@@ -311,14 +314,14 @@ export async function listCheckoutFields(runner: Runner, storeId: string, { only
   );
   return rows.map((r) => ({
     id: r.id,
-    kind: r.kind === "checkbox" ? "checkbox" : r.kind === "checklist" ? "checklist" : "text",
+    kind: (CHECKOUT_FIELD_KINDS as readonly string[]).includes(r.kind) ? (r.kind as CheckoutFieldKind) : "text",
     required: r.required,
     label: asWords(r.label),
     help: r.help ? asWords(r.help) : null,
     position: r.position,
     enabled: r.enabled,
     width: r.width === "half" ? "half" : "full",
-    ...(r.kind === "checklist" && { options: asOptions(r.options) }),
+    ...(r.options !== null && { options: asOptions(r.options) }),
     sensitive: r.sensitive,
   }));
 }
@@ -328,18 +331,23 @@ export async function saveCheckoutField(member: Membership, id: string | null, r
   if (!parsed.success) return { ok: false, problems: [...new Set(parsed.error.issues.map((i) => i.message))] };
   const f = parsed.data;
   const storeId = member.store.id;
-  // A tick list's options (task 3): checked when given or when a question is made; a change without them keeps the ones it has.
+  // Options (tasks 3 and 4): checked when given or when a question is made; a change without them keeps the ones it has, checked against the
+  // kind it becomes (a tick list's None of these does not become a dropdown's option).
   if (!id || f.options !== undefined) {
     const problems = checklistProblems(f);
     if (problems.length > 0) return { ok: false, problems };
+  } else if (hasOptions(f.kind)) {
+    const had = await typedRow(z.object({ options: z.unknown() }), sql`select options from commerce.checkout_fields where store_id = ${storeId}::uuid and id = ${id}::uuid`);
+    const problems = had ? checklistProblems({ kind: f.kind, options: had.options === null || had.options === undefined ? [] : asOptions(had.options) }) : [];
+    if (problems.length > 0) return { ok: false, problems };
   }
-  const options = f.kind === "checklist" && f.options ? JSON.stringify(f.options.map((o) => ({ id: o.id ?? randomUUID().slice(0, 8), label: o.label, ...(o.none && { none: true }) }))) : null;
+  const options = hasOptions(f.kind) && f.options ? JSON.stringify(f.options.map((o) => ({ id: o.id ?? randomUUID().slice(0, 8), label: o.label, ...(o.none && { none: true }) }))) : null;
   if (id) {
     const done = await db().execute(sql`
       update commerce.checkout_fields set kind = ${f.kind}, required = ${f.required}, label = ${JSON.stringify(f.label)}::jsonb,
         help = ${f.help ? JSON.stringify(f.help) : null}::jsonb, width = coalesce(${f.width ?? null}::text, width),
-        options = case when ${f.kind} = 'checklist' then coalesce(${options}::jsonb, options) end,
-        sensitive = coalesce(${f.sensitive ?? null}::boolean, sensitive), updated_at = now()
+        options = case when ${f.kind} in ('checklist', 'select', 'radio') then coalesce(${options}::jsonb, options) end,
+        sensitive = ${hasOptions(f.kind)} and coalesce(${f.sensitive ?? null}::boolean, sensitive), updated_at = now()
       where store_id = ${storeId}::uuid and id = ${id}::uuid returning id
     `);
     if (done.length === 0) return { ok: false, problems: ["This field is gone."] };
@@ -351,7 +359,7 @@ export async function saveCheckoutField(member: Membership, id: string | null, r
   const [row] = await db().execute(sql`
     insert into commerce.checkout_fields (store_id, kind, required, label, help, width, options, sensitive, position)
     values (${storeId}::uuid, ${f.kind}, ${f.required}, ${JSON.stringify(f.label)}::jsonb, ${f.help ? JSON.stringify(f.help) : null}::jsonb, ${f.width ?? "full"},
-      ${options}::jsonb, ${f.sensitive ?? false},
+      ${options}::jsonb, ${hasOptions(f.kind) && (f.sensitive ?? false)},
       (select coalesce(max(position), -1) + 1 from commerce.checkout_fields where store_id = ${storeId}::uuid))
     returning id
   `);

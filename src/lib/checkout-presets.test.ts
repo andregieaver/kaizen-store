@@ -31,7 +31,15 @@ describe("a tick list's own rules (checklistProblems)", () => {
       "Only one option can be None of these.",
     ]);
     expect(checklistProblems({ kind: "checklist", options: [{ id: "a", label: w("A") }, { id: "a", label: w("B") }] })).toEqual(["Two options have the same id."]);
-    expect(checklistProblems({ kind: "text", options: [{ label: w("A") }] })).toEqual(["Only a tick list has options."]);
+    expect(checklistProblems({ kind: "text", options: [{ label: w("A") }] })).toEqual(["Only a tick list, a dropdown or a choice of one has options."]);
     expect(checklistProblems({ kind: "text" })).toEqual([]);
+  });
+  it("gives a dropdown and a choice of one at least two options and no None of these", () => {
+    for (const kind of ["select", "radio"] as const) {
+      expect(checklistProblems({ kind, options: [{ label: w("A") }] })).toEqual(["Give the question at least two options to choose from."]);
+      expect(checklistProblems({ kind, options: [{ label: w("A") }, { label: w("B"), none: true }] })).toEqual(["Only a tick list has a None of these option."]);
+      expect(checklistProblems({ kind, options: [{ label: w("A") }, { label: w("B") }] })).toEqual([]);
+    }
+    expect(checklistProblems({ kind: "textarea", options: [{ label: w("A") }] })).toEqual(["Only a tick list, a dropdown or a choice of one has options."]);
   });
 });

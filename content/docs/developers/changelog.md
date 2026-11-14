@@ -16,6 +16,14 @@ Every change to a published contract gets a version here, newest first: the Admi
 (`/api/storefront/v1/openapi.json`), the webhook topics (`/api/webhooks/v1/topics.json`) and the MCP catalogues (`/api/mcp/catalogue.json`,
 `/api/ucp/catalogue.json`). Within a major version nothing a caller relies on is renamed or removed; answers and payloads may gain fields.
 
+## 1.19 — 2026-11-14
+
+New kinds of checkout question (D357, task 4).
+
+- `kind` on a checkout field may now also be `textarea` (several lines, at most 2,000 characters, its lines kept), `select` (one option
+  from a closed list) and `radio` (one option, all shown). A `select` or `radio` question has `options` like a `checklist` (2 to 30, no
+  `none` option) and may be `sensitive`; the other kinds have no options.
+
 ## 1.18 — 2026-11-14
 
 An addition to the owner MCP's catalogue (D599).
