@@ -106,13 +106,16 @@ Sources:
 
 ### 2. Field width: left, right or full width
 
-- [ ] An additive column `checkout_fields.width` (`full` | `half`, default `full`). Two `half` questions next to each
-      other share a row; one alone takes the row's left half. On a phone every question is full width.
-- [ ] Homer sees no width setting until he asks for it. The default is full width, and the half and full choice is under
-      the question's *Customise*.
-- [ ] Should "left" and "right" be stored as such, or only "half" with the order deciding the side? Recommended: only
-      `half`, so moving a question can never leave a right-hand field alone on a row.
-- [ ] Show the layout in the editor's preview of the cart.
+Built 14 November 2026 (D596).
+
+- [x] An additive column `checkout_fields.width` (`full` | `half`, default `full`). Two `half` questions next to each
+      other share a row; one alone takes the row's left half. On a phone every question is full width (from a tablet's width up
+      halves share a line; a container query drew them the wrong way round, as the cart's column is narrower on a desktop).
+- [x] Homer sees no width setting until he asks for it. The default is full width, and the half and full choice is under
+      the question's *Customise* (open from the start only for a question already half width).
+- [x] Only `half` is stored, the order deciding the side, so moving a question can never leave a right-hand field alone.
+- [ ] Show the layout in the editor's preview of the cart. The editor has no cart preview; the list says *Half width* on such
+      a question. A drawn preview waits until the editor has one.
 
 ### 3. Many tick boxes at once, for example allergens on food orders
 

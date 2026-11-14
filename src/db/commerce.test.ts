@@ -8189,3 +8189,16 @@ describe("contact details at checkout (D357)", () => {
     await db.query("update commerce.stores set checkout_phone = 'off', checkout_name = 'off' where id = $1", [store]);
   });
 });
+
+describe("a question's width at checkout (task 2)", () => {
+  it("is full by default and only full or half", async () => {
+    const { id, width } = await one<{ id: string; width: string }>(
+      `insert into commerce.checkout_fields (store_id, kind, label) values ($1, 'text', '{"text":"Door code","byLocale":{}}') returning id, width`,
+      [store],
+    );
+    expect(width).toBe("full");
+    await db.query("update commerce.checkout_fields set width = 'half' where id = $1", [id]);
+    await expect(db.query("update commerce.checkout_fields set width = 'left' where id = $1", [id])).rejects.toThrow(/checkout_fields_width/);
+    await db.query("delete from commerce.checkout_fields where id = $1", [id]);
+  });
+});

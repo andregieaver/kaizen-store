@@ -231,6 +231,25 @@ describe("rules that name what is gone, and another store's ids", () => {
 });
 
 describe("questions at checkout", () => {
+  it("keeps a question half width, keeps its width when changed without one, and gives the cart its width (task 2)", async () => {
+    const half = await rules.saveCheckoutField(member, null, { kind: "text", required: false, label: { text: "Postcode", byLocale: {} }, help: null, width: "half" });
+    const full = await rules.saveCheckoutField(member, null, { kind: "text", required: false, label: { text: "Gift note", byLocale: {} }, help: null });
+    if (!half.ok || !full.ok) throw new Error("fields not saved");
+    expect((await rules.listCheckoutFields(db(), store.storeId)).map((f) => [f.label.text, f.width])).toEqual([
+      ["Postcode", "half"],
+      ["Gift note", "full"],
+    ]);
+    // Reworded without a width (the AI manager, an older API caller): it stays half.
+    expect(await rules.saveCheckoutField(member, half.id, { kind: "text", required: true, label: { text: "Post code", byLocale: {} }, help: null })).toEqual({ ok: true, id: half.id });
+    expect((await rules.checkoutQuestionsFor(store.storeId, "en", null)).fields.map((f) => [f.label, f.width])).toEqual([
+      ["Post code", "half"],
+      ["Gift note", "full"],
+    ]);
+    expect(await rules.saveCheckoutField(member, half.id, { kind: "text", required: true, label: { text: "Post code", byLocale: {} }, help: null, width: "full" })).toEqual({ ok: true, id: half.id });
+    expect((await rules.listCheckoutFields(db(), store.storeId))[0].width).toBe("full");
+    expect(await rules.saveCheckoutField(member, null, { kind: "text", label: { text: "Wide", byLocale: {} }, width: "wide" })).toMatchObject({ ok: false });
+  });
+
   it("moves a question to its place, asks them in that order, audits the move and leaves another store's questions alone", async () => {
     const ids: string[] = [];
     for (const text of ["First", "Second", "Third"]) {

@@ -13,6 +13,7 @@ import {
   RULES_MAX,
   type CheckoutFacts,
   type CheckoutField,
+  type FieldWidth,
   type CheckoutRule,
   type KnownIds,
   type RuleOutcome,
@@ -263,9 +264,9 @@ async function recordSkips(storeId: string, skipped: RuleOutcome["skipped"]): Pr
 
 // Checkout fields
 
-const fieldRow = z.object({ id: col.uuid, kind: col.text, required: col.bool, label: z.unknown(), help: z.unknown(), position: col.int, enabled: col.bool });
+const fieldRow = z.object({ id: col.uuid, kind: col.text, required: col.bool, label: z.unknown(), help: z.unknown(), position: col.int, enabled: col.bool, width: col.text });
 
-export type FieldRow = CheckoutField & { position: number; enabled: boolean };
+export type FieldRow = CheckoutField & { position: number; enabled: boolean; width: FieldWidth };
 
 const placeRow = z.object({ id: col.uuid, position: col.int });
 
@@ -279,7 +280,7 @@ export async function listCheckoutFields(runner: Runner, storeId: string, { only
   const rows = await typedRows(
     fieldRow,
     sql`
-      select id, kind, required, label, help, position, enabled from commerce.checkout_fields
+      select id, kind, required, label, help, position, enabled, width from commerce.checkout_fields
       where store_id = ${storeId}::uuid and (${!onlyOn} or enabled) order by position, created_at
     `,
     runner,
@@ -292,6 +293,7 @@ export async function listCheckoutFields(runner: Runner, storeId: string, { only
     help: r.help ? asWords(r.help) : null,
     position: r.position,
     enabled: r.enabled,
+    width: r.width === "half" ? "half" : "full",
   }));
 }
 
@@ -303,23 +305,23 @@ export async function saveCheckoutField(member: Membership, id: string | null, r
   if (id) {
     const done = await db().execute(sql`
       update commerce.checkout_fields set kind = ${f.kind}, required = ${f.required}, label = ${JSON.stringify(f.label)}::jsonb,
-        help = ${f.help ? JSON.stringify(f.help) : null}::jsonb, updated_at = now()
+        help = ${f.help ? JSON.stringify(f.help) : null}::jsonb, width = coalesce(${f.width ?? null}::text, width), updated_at = now()
       where store_id = ${storeId}::uuid and id = ${id}::uuid returning id
     `);
     if (done.length === 0) return { ok: false, problems: ["This field is gone."] };
-    await audit(member.account.id, storeId, "shipping.checkout_field_changed", { kind: f.kind, required: f.required }, { target: { type: "checkout_field", id } });
+    await audit(member.account.id, storeId, "shipping.checkout_field_changed", { kind: f.kind, required: f.required, ...(f.width && { width: f.width }) }, { target: { type: "checkout_field", id } });
     return { ok: true, id };
   }
   const [count] = await db().execute(sql`select count(*)::int as n from commerce.checkout_fields where store_id = ${storeId}::uuid`);
   if (Number(count?.n ?? 0) >= FIELDS_MAX) return { ok: false, problems: [`A checkout asks at most ${FIELDS_MAX} questions.`] };
   const [row] = await db().execute(sql`
-    insert into commerce.checkout_fields (store_id, kind, required, label, help, position)
-    values (${storeId}::uuid, ${f.kind}, ${f.required}, ${JSON.stringify(f.label)}::jsonb, ${f.help ? JSON.stringify(f.help) : null}::jsonb,
+    insert into commerce.checkout_fields (store_id, kind, required, label, help, width, position)
+    values (${storeId}::uuid, ${f.kind}, ${f.required}, ${JSON.stringify(f.label)}::jsonb, ${f.help ? JSON.stringify(f.help) : null}::jsonb, ${f.width ?? "full"},
       (select coalesce(max(position), -1) + 1 from commerce.checkout_fields where store_id = ${storeId}::uuid))
     returning id
   `);
   const made = String(row.id);
-  await audit(member.account.id, storeId, "shipping.checkout_field_made", { kind: f.kind, required: f.required }, { target: { type: "checkout_field", id: made } });
+  await audit(member.account.id, storeId, "shipping.checkout_field_made", { kind: f.kind, required: f.required, width: f.width ?? "full" }, { target: { type: "checkout_field", id: made } });
   return { ok: true, id: made };
 }
 

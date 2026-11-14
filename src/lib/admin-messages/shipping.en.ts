@@ -558,6 +558,13 @@ export const shippingEn = {
     dragDropped: "{name} dropped in place {place} of {count}.",
     dragCancelled: "Moving {name} cancelled.",
     dragInstructions: "To move a question, press Space or Enter on its handle, move it with the up and down arrows, then press Space or Enter to drop it, or Escape to cancel.",
+    width: "Width in the cart",
+    widths: { full: "Full width", half: "Half width" },
+    widthHints: {
+      full: "The question takes the whole line.",
+      half: "Two half-width questions next to each other share a line. On a phone every question is full width.",
+    },
+    customise: "Customise",
     limits: "At most {rules} rules and {fields} questions. Rules are read from the top: the first new name and the first stop count.",
   },
 };

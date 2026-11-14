@@ -7,7 +7,7 @@ import { ArrowDown, ArrowUp, GripVertical } from "lucide-react";
 import { useId, useOptimistic, useState, useTransition, type ReactNode } from "react";
 
 import { fillWords } from "@/lib/admin-fill";
-import { CONDITION_KINDS, EFFECT_KINDS, movedTo, type CheckoutFieldKind, type RuleCondition, type RuleEffect, type Words } from "@/lib/checkout-rules";
+import { CONDITION_KINDS, EFFECT_KINDS, movedTo, type CheckoutFieldKind, type FieldWidth, type RuleCondition, type RuleEffect, type Words } from "@/lib/checkout-rules";
 
 import { useAdminText } from "./admin-text";
 import { Button, Card, Chip, List, ListRow, RowLead } from "./ui";
@@ -41,10 +41,10 @@ export type RuleView = {
   skips: { reason: string; count: number; since: string }[];
 };
 
-export type FieldView = { id: string; kind: CheckoutFieldKind; required: boolean; label: Words; help: Words | null; enabled: boolean };
+export type FieldView = { id: string; kind: CheckoutFieldKind; required: boolean; label: Words; help: Words | null; enabled: boolean; width: FieldWidth };
 
 export type RuleInputView = { name: string; conditions: RuleCondition[]; effect: RuleEffect };
-export type FieldInputView = { kind: CheckoutFieldKind; required: boolean; label: Words; help: Words | null };
+export type FieldInputView = { kind: CheckoutFieldKind; required: boolean; label: Words; help: Words | null; width: FieldWidth };
 
 export type CheckoutRuleActions = {
   saveRule: (id: string | null, input: RuleInputView) => AsyncSaved;
@@ -498,6 +498,9 @@ function FieldEditor({ start, locales, save, onDone }: { start: FieldView | null
   const [required, setRequired] = useState(start?.required ?? false);
   const [label, setLabel] = useState<Words>(start?.label ?? EMPTY_WORDS);
   const [help, setHelp] = useState<Words>(start?.help ?? EMPTY_WORDS);
+  // How wide the cart draws it (task 2): Lisa's step away, open from the start only when the question is already half width.
+  const [width, setWidth] = useState<FieldWidth>(start?.width ?? "full");
+  const [customise, setCustomise] = useState(start?.width === "half");
   return (
     <form
       aria-busy={pending}
@@ -505,7 +508,7 @@ function FieldEditor({ start, locales, save, onDone }: { start: FieldView | null
       onSubmit={(e) => {
         e.preventDefault();
         run(async () => {
-          const saved = await save(start?.id ?? null, { kind, required, label, help: help.text.trim() ? help : null });
+          const saved = await save(start?.id ?? null, { kind, required, label, help: help.text.trim() ? help : null, width });
           if (saved.ok) {
             setProblems([]);
             onDone();
@@ -525,6 +528,26 @@ function FieldEditor({ start, locales, save, onDone }: { start: FieldView | null
       </div>
       <WordsField value={label} onChange={setLabel} label={w.question} locales={locales} max={80} />
       <WordsField value={help} onChange={setHelp} label={w.help} locales={locales} max={200} />
+      {customise ? (
+        <fieldset className="flex flex-col gap-2 text-sm">
+          <legend className="mb-1 font-medium">{w.width}</legend>
+          {(["full", "half"] as const).map((choice) => (
+            <label key={choice} className="flex items-start gap-2">
+              <input type="radio" name="width" value={choice} checked={width === choice} onChange={() => setWidth(choice)} className="mt-0.5 size-4" />
+              <span>
+                {w.widths[choice]}
+                <span className="block text-muted">{w.widthHints[choice]}</span>
+              </span>
+            </label>
+          ))}
+        </fieldset>
+      ) : (
+        <div>
+          <Button type="button" kind="link" onClick={() => setCustomise(true)}>
+            {w.customise}
+          </Button>
+        </div>
+      )}
       {problems.length > 0 && (
         <ul className="text-sm text-danger-text" role="alert">
           {problems.map((p) => (
@@ -690,7 +713,10 @@ function FieldRowView({ field, sortable, after, children }: { field: FieldView; 
           <GripVertical aria-hidden className="size-4" />
         </button>
       )}
-      <RowLead title={field.label.text} sub={`${w.fieldKinds[field.kind]} · ${field.required ? w.required : w.optional}`} />
+      <RowLead
+        title={field.label.text}
+        sub={[w.fieldKinds[field.kind], field.required ? w.required : w.optional, ...(field.width === "half" ? [w.widths.half] : [])].join(" · ")}
+      />
       <Chip signal={field.enabled ? "positive" : "neutral"} dot>
         {field.enabled ? w.on : w.off}
       </Chip>
