@@ -191,6 +191,8 @@ export const assistantEn = {
     description: "The work the AI manager does for {site} on its own: what waits for you, its plans, your goals, and how far it may go.",
     tabs: { decisions: "Decisions", plans: "Plans", goals: "Goals", results: "Results", settings: "Settings" },
     paused: "The autopilot is paused: no step runs until you switch it on again.",
+    challenge: "The 100-day challenge is on: day {day} of 100, until {end}. The autopilot runs the store alone and its settings are locked. Only the switch that pauses it is yours, and pausing suspends the challenge.",
+    rehearsal: "The challenge's rehearsal is on: Day 1 is {dayOne}. The autopilot runs the store alone and its settings are locked. Only the switch that pauses it is yours.",
     decisions: {
       empty: "Nothing waits for you. When the autopilot needs your yes or an answer, it shows here.",
       calls: "Waiting for your yes",
@@ -263,6 +265,8 @@ export const assistantEn = {
       priceChangeHelp: "A price change larger than this always asks.",
       adRaise: "Largest ad budget raise (%)",
       adRaiseHelp: "A larger raise always asks. What your ads may spend in a month is set on the Ads page.",
+      marginFloor: "Lowest margin (%)",
+      marginFloorHelp: "A price, discount or campaign that would leave any product a smaller margin, before VAT, asks first. Empty for no floor.",
       customerEmails: "Emails to customers a week",
       customerEmailsHelp: "Emails to one customer and answers in support it may send itself in seven days; past this they ask. 0: every one asks.",
       never: "Always asks, whatever you choose: who works in the store, your domains, a broadcast to your list, refunds and order changes, credits and gift cards, your plan with Kaizena Flow, features and opening the store.",

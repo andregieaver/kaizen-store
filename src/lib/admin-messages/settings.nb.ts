@@ -761,6 +761,9 @@ export const settingsNb: SettingsMessages = {
       textEuHint: "En forespørsel feiler heller enn å kjøres et annet sted, og søket fortsetter uten den.",
       zdr: "Bare leverandører som ikke lagrer noe",
       zdrHint: "Ingen lagring av data: forespørsler og svar slettes etter hver forespørsel.",
+      fallback: "Reservemodeller for tekst",
+      fallbackExample: "anthropic/claude-sonnet-5, google/gemini-3.6-flash",
+      fallbackHint: "Opptil tre, prøvd i rekkefølge når tekstmodellen feiler, så chatten, kundeservicen og autopiloten fortsetter å svare. Skrevet leverandør/modell, skilt med komma. Brukes aldri til søk etter betydning.",
       similarity: "Likhet som kreves for søk etter betydning",
       similarityHint:
         "Fra 0 til 1. Produkter som ligner søket mindre enn dette, blir ikke funnet etter betydning. Hver modell gir ulike verdier: Test viser verdiene for et produkt som passer og et som ikke har noe med søket å gjøre, og grensen hører hjemme mellom dem.",

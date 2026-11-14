@@ -109,3 +109,8 @@ approval worded by `purchaseWords()` from the wallet), `list_purchases` and `can
 `docs/ci-migrations.md` asks (`src/server/purchase-tools.ts`, also `wallet_status`; contract 1.18); the eval case `manager-page-asks-purchase`, where
 a web page the agent reads asks it to buy. Later: Airwallex's remote authorisation as a second lock,
 purchases in the books (the receipt matched to the charge), Revolut behind the same interface, and step 3.
+
+## 6. Spend in the books (D609)
+
+Every six hours each connected account's spend per campaign and day of the last seven days is written into the books' marketing spend
+(`syncAdSpend()`, channel `paid_social`, the store's main currency), so contribution profit and ROAS count what the ads cost.

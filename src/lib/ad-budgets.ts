@@ -204,3 +204,28 @@ export function adChangeWords(before: AdBudget, after: AdBudget, currency: strin
   const text = parts.join(" and ");
   return `${text[0].toUpperCase()}${text.slice(1)}.`;
 }
+
+/** Meta's spend per campaign per day (`time_increment=1`), as `syncAdSpend()` asks for it. */
+export const metaDailySpendSchema = z.object({
+  data: z.array(z.object({ campaign_id: digits.optional(), campaign_name: z.string().optional(), spend: z.string().optional(), date_start: z.string().regex(/^\d{4}-\d{2}-\d{2}$/) })),
+});
+
+/** One day's spend of one campaign, in minor units of the account's currency; the campaign named as Meta names it (at most 100 characters). */
+export type DailySpend = { day: string; campaign: string; amountMinor: number };
+
+/**
+ * Meta's daily rows as the books keep them (`docs/100-day-challenge.md` D2): a row per campaign and day with spend above nothing, the campaign's
+ * name (else its number), amounts in the account's minor units. A row whose spend cannot be read is left out, never guessed. Pure.
+ */
+export function dailySpendRows(data: z.output<typeof metaDailySpendSchema>["data"], currency: string): DailySpend[] {
+  const out = new Map<string, DailySpend>();
+  for (const row of data) {
+    const amount = spendMinor(row.spend, currency);
+    if (amount === null || amount <= 0) continue;
+    const campaign = (row.campaign_name?.trim() || (row.campaign_id ? `Campaign ${row.campaign_id}` : "Meta")).slice(0, 100);
+    const key = `${row.date_start}|${campaign}`;
+    const before = out.get(key);
+    out.set(key, { day: row.date_start, campaign, amountMinor: (before?.amountMinor ?? 0) + amount });
+  }
+  return [...out.values()];
+}

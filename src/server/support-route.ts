@@ -3,7 +3,7 @@ import "server-only";
 import { after as afterResponse } from "next/server";
 
 import { t } from "@/lib/i18n";
-import { CONVERSATION_MESSAGES_MAX, REOPEN_HOURS } from "@/lib/support-rules";
+import { CONVERSATION_MESSAGES_MAX, REOPEN_HOURS, type EscalationCategory } from "@/lib/support-rules";
 import type { VisitorMessage, VisitorReply, VisitorState } from "@/lib/support-visitor";
 import { BODY_MAX, type TurnInput } from "@/lib/support-visitor-schema";
 
@@ -130,10 +130,10 @@ export async function visitorReply(
  * system did because the AI failed or is not set up (`no_ai`) or reached its daily limit (`limit`). A conversation a person took in
  * the meantime is left as it is.
  */
-export async function handOver(desk: Desk, conversationId: string, by: "ai" | "system", reason: "ai" | "no_ai" | "limit", aiReason?: string): Promise<void> {
+export async function handOver(desk: Desk, conversationId: string, by: "ai" | "system", reason: "ai" | "no_ai" | "limit", aiReason?: string, escalation?: EscalationCategory): Promise<void> {
   try {
     await transition(desk, conversationId, "handoff", { kind: by }, { reason });
-    if (aiReason) await setAiReason(desk, conversationId, aiReason);
+    if (aiReason) await setAiReason(desk, conversationId, aiReason, escalation);
   } catch (error) {
     if (!(error instanceof SupportError)) throw error;
   }
@@ -211,7 +211,7 @@ export async function visitorTurn(
       const turn = await runSupportTurn(desk, context, conversation.id, { path: input.path, signals: input.signals }, customer, null, options.onText ? { onText: options.onText } : {});
       if (turn.error && settings.mode === "ai_first") await handOver(desk, conversation.id, "system", "no_ai");
       else if (turn.error) error = turn.error;
-      else if (turn.handoff && settings.mode === "ai_first") await handOver(desk, conversation.id, "ai", "ai", turn.handoff);
+      else if (turn.handoff && settings.mode === "ai_first") await handOver(desk, conversation.id, "ai", "ai", turn.handoff, turn.escalation);
     }
   }
   const fresh = (await visitorConversation(desk, ref)) ?? conversation;

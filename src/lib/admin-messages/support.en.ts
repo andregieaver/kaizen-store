@@ -112,7 +112,7 @@ export const supportEn = {
   email: {
     title: "Support by email",
     description:
-      "Forward your support address to this address, and every email becomes a conversation in the inbox. With the AI first, it answers general questions by email; anything about an order goes to a person, because an email address proves no one.",
+      "Forward your support address to this address, and every email becomes a conversation in the inbox. With the AI first, it answers general questions by email. Anything about an order goes to a person, unless Emails about orders is on under Advanced: then it answers about the sender's own orders, only to their address.",
     address: "Forward to",
     off: "Support is off: emails to this address are not taken until you choose who answers.",
     notSetUp: "Receiving email is not set up on this platform yet.",
@@ -511,6 +511,11 @@ export const supportEn = {
       title: "Summarise ended conversations, and brief whoever takes one over.",
       text: "Written by the AI from the conversation, in English, for your team only; you can correct a summary. Needs a text model{none}.",
       toldInChat: "While this is on, the chat's notice tells customers that an AI summarises their conversation for your team.",
+    },
+    emailOrdersTitle: "Emails about orders",
+    emailOrders: {
+      title: "Let the AI answer emails about the sender's own orders.",
+      text: "It reads only the orders placed with the address the email came from, and answers only to that address. Off, such an email goes to a person. Always on during the 100-day challenge; never for a store with sensitive information.",
     },
     conversationsTitle: "Conversations",
     endAfter: {

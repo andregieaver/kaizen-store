@@ -109,7 +109,7 @@ export const supportNb: SupportMessages = {
   email: {
     title: "Kundeservice på e-post",
     description:
-      "Videresend kundeserviceadressen deres til denne adressen, så blir hver e-post en samtale i innboksen. Med AI først svarer den på generelle spørsmål på e-post; alt om en bestilling går til en person, fordi en e-postadresse ikke beviser hvem noen er.",
+      "Videresend kundeserviceadressen deres til denne adressen, så blir hver e-post en samtale i innboksen. Med AI først svarer den på generelle spørsmål på e-post. Alt om en bestilling går til en person, med mindre E-post om bestillinger er på under Avansert: da svarer den om avsenderens egne bestillinger, bare til avsenderens adresse.",
     address: "Videresend til",
     off: "Kundeservice er av: e-post til denne adressen tas ikke imot før dere velger hvem som svarer.",
     notSetUp: "Mottak av e-post er ikke satt opp på plattformen ennå.",
@@ -547,6 +547,11 @@ export const supportNb: SupportMessages = {
         "Lag sammendrag av avsluttede samtaler, og oppsummer for den som tar over en.",
       text: "Skrevet av KI-en ut fra samtalen, på engelsk, bare for teamet ditt; du kan rette et sammendrag. Krever en tekstmodell{none}.",
       toldInChat: "Når dette er på, forteller chatten kundene at en KI lager et sammendrag av samtalen til teamet ditt.",
+    },
+    emailOrdersTitle: "E-post om bestillinger",
+    emailOrders: {
+      title: "La KI-en svare på e-post om avsenderens egne bestillinger.",
+      text: "Den leser bare bestillinger lagt inn med adressen e-posten kom fra, og svarer bare til den adressen. Av: en slik e-post går til en person. Alltid på under 100-dagersutfordringen; aldri for en butikk med sensitive opplysninger.",
     },
     conversationsTitle: "Samtaler",
     endAfter: {

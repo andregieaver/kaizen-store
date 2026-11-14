@@ -98,3 +98,17 @@ describe("the model a site's pictures are edited with (D349, D413)", () => {
     expect(isGptImage("flux-pro")).toBe(false);
   });
 });
+
+describe("fallback text models (docs/100-day-challenge.md F1)", () => {
+  const base = { provider: "gateway", baseUrl: "", apiKey: "", embeddingModel: "", textModel: "anthropic/claude-haiku-4.5", minSimilarity: "0.3", embeddingEuOnly: false, textEuOnly: true, zeroDataRetention: true, enabled: true };
+  it("reads up to three, written provider/model, each once", () => {
+    expect(aiProviderInput.parse({ ...base, fallbackModels: "anthropic/claude-sonnet-5, google/gemini-3.6-flash anthropic/claude-sonnet-5" }).fallbackModels).toEqual([
+      "anthropic/claude-sonnet-5",
+      "google/gemini-3.6-flash",
+    ]);
+    expect(aiProviderInput.parse({ ...base }).fallbackModels).toEqual([]);
+    expect(aiProviderInput.safeParse({ ...base, fallbackModels: "a/b, c/d, e/f, g/h" }).success).toBe(false);
+    expect(aiProviderInput.safeParse({ ...base, fallbackModels: "just-a-name" }).success).toBe(false);
+  });
+});
+

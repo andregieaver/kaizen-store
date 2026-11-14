@@ -343,5 +343,20 @@ export const staffEmailsNb: StaffEmailsMessages = {
     after: "Bruk og grenser viser alle jobbene og når de sist kjørte. Det sendes én e-post hver gang en jobb begynner å feile; den neste kommer først når den har kjørt bra igjen og feilet på nytt.",
     button: "Åpne bruk og grenser",
   },
-  push: { newOrderTitle: "Ny ordre {number}", newOrderBody: "{total} · {store}", quoteTitle: "Tilbud etterspurt {number}", quoteBody: "{store}", activityTitle: "Nå: {title}", activityBody: "{store}" },
+  challengeStall: {
+    subject: "Utfordringsbutikken {store}: {what}",
+    heading: "En utfordringsbutikk trenger tilsyn: {store}",
+    kinds: {
+      paused: "Eieren satte autopiloten på pause. Det er et inngrep, og utfordringen er stanset så lenge det varer.",
+      budget: "Autopilotens KI-budsjett stoppet den for denne måneden. Øk utfordringens KI-budsjett eller sett pris på modellen.",
+      plan_paused: "En plan står på pause av en grunn budsjettet ikke løser: den som laget den kan være borte, eller en person satte den på pause.",
+      asking: "Et steg i en plan stiller et spørsmål ({count}), som ingen svarer på i utfordringen.",
+      decision_waiting: "{count} refusjoner eller andre tilbakebetalinger har ventet på eieren i over et døgn.",
+      support_fault: "En kunde venter på en person fordi butikkens KI var av, feilet eller nådde grensen sin. Det er en feil, ikke en eskalering.",
+      escalation_waiting: "{count} eskalerte kunder har ventet på eieren i over fire timer.",
+    },
+    after: "Utfordringens regler tillater en person bare refusjoner og eskalert kundeservice: alt annet må gå uten. Én e-post hver dag så lenge dette varer.",
+    button: "Åpne butikkens autopilot",
+  },
+  push: { newOrderTitle: "Ny ordre {number}", newOrderBody: "{total} · {store}", quoteTitle: "Tilbud etterspurt {number}", quoteBody: "{store}", activityTitle: "Nå: {title}", activityBody: "{store}", decisionTitle: "Venter på ditt ja", decisionBody: "{summary} · {store}" },
 };

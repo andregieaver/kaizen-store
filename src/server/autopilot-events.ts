@@ -198,14 +198,18 @@ export async function runEvents(deps: EventDeps = {}): Promise<EventRun> {
       where e.status = 'pending'
         and (
           select count(*) from commerce.autopilot_events d
-          where d.store_id = e.store_id and d.status in ('running', 'done', 'failed') and d.created_at > now() - interval '1 day'
-        ) < ${EVENTS_PER_DAY}
+          where d.store_id = e.store_id and d.kind = e.kind and d.status in ('running', 'done', 'failed') and d.created_at > now() - interval '1 day'
+        ) < (case e.kind ${sql.join(
+          EVENT_KINDS.map((kind) => sql`when ${kind} then ${EVENTS_PER_DAY[kind]}::int`),
+          sql` `,
+        )} else 0 end)
       order by e.created_at
       limit 20
     `,
   );
   const seen = new Set<string>();
   let taken = 0;
+  const work: { event: (typeof pending)[number]; settings: Awaited<ReturnType<typeof autonomyFor>> }[] = [];
   for (const event of pending) {
     if (taken >= EVENTS_PER_RUN || (deps.deadline && Date.now() > deps.deadline)) break;
     if (seen.has(event.store_id)) continue;
@@ -224,14 +228,20 @@ export async function runEvents(deps: EventDeps = {}): Promise<EventRun> {
     if (!claimed) continue;
     seen.add(event.store_id);
     taken++;
-    try {
-      result[await reactTo(event, settings, deps)]++;
-    } catch (error) {
-      log("error", "autopilot.event_failed", { event: event.id }, error);
-      await finish(event.id, "failed", { outcome: "Something went wrong while reacting." }).catch(() => undefined);
-      result.failed++;
-    }
+    work.push({ event, settings });
   }
+  // Claimed one by one, run side by side: one store's long reaction never holds another's back (`docs/100-day-challenge.md` H1).
+  await Promise.all(
+    work.map(async ({ event, settings }) => {
+      try {
+        result[await reactTo(event, settings, deps)]++;
+      } catch (error) {
+        log("error", "autopilot.event_failed", { event: event.id }, error);
+        await finish(event.id, "failed", { outcome: "Something went wrong while reacting." }).catch(() => undefined);
+        result.failed++;
+      }
+    }),
+  );
   return result;
 }
 
@@ -393,8 +403,8 @@ async function eventConversation(p: Principal): Promise<string> {
   if (kept) return kept.id;
   const made = await typedRow(
     z.object({ id: col.uuid }),
-    sql`insert into commerce.assistant_conversations (store_id, account_id, title)
-      values (${storeId}::uuid, ${p.account.id}::uuid, 'Autopilot: what happened') returning id`,
+    sql`insert into commerce.assistant_conversations (store_id, account_id, title, source)
+      values (${storeId}::uuid, ${p.account.id}::uuid, 'Autopilot: what happened', 'autopilot') returning id`,
   );
   if (!made) throw new Error("The events' conversation could not be made.");
   return made.id;

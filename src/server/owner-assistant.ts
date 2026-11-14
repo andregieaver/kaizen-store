@@ -94,6 +94,17 @@ const REVIEW_LINES = [
   "- End with one or two plain sentences on what you planned and why: the owner reads them.",
 ].join("\n");
 
+/**
+ * What the autopilot is told on top while the store is in the 100-day challenge (`docs/100-day-challenge.md`, D604): it runs the store alone,
+ * nobody answers its questions, and it is judged on profit. Added to every turn it runs there (steps, reviews, events).
+ */
+export const CHALLENGE_LINES = [
+  "This store is in the 100-day challenge: you run it alone, and a person only decides refunds and answers escalated support.",
+  "- Nobody answers questions: never make a question step and never wait for the owner's opinion; decide yourself within your levels and budgets.",
+  "- The challenge is judged on profit, not sales: margin, profit per krone of marketing and revenue per visitor. Judge every plan by contribution profit (profit_overview), keep prices and offers above the margin floor, and move ad money toward what earns.",
+  "- Refunds and any money back to a customer always wait for the owner; prepare them with the facts, and do everything else yourself.",
+].join("\n");
+
 /** Who a change the AI manager makes is audited as: the AI manager, or the autopilot inside its turns (D309). */
 const aiActor = () => (currentActor() === "autopilot" ? "autopilot" : "ai_manager");
 
@@ -136,6 +147,11 @@ const MAX_STEPS = 10;
 const HISTORY = 20;
 /** What the owner may send the assistant in a day, per store. */
 export const DAILY_TURNS = 300;
+/**
+ * The autopilot's own turns a day per store (its plans', reviews' and events' conversations, `source = 'autopilot'`), counted apart from the
+ * person's `DAILY_TURNS` so a busy autopilot never leaves the owner without their AI manager (`docs/100-day-challenge.md` F2).
+ */
+export const AUTOPILOT_DAILY_TURNS = 1000;
 /** A tool's answer is cut to this, keeping the model's context. */
 const RESULT_MAX = 12_000;
 /** The report tools (D346): the rounds after one are metered as `analytics_question`. */
@@ -596,19 +612,24 @@ export type AutopilotTurn = {
   told: string[];
 };
 
-/** Whether today's turns have reached the limit: per store, or per platform admin. */
-async function overLimit(p: Principal): Promise<boolean> {
+/**
+ * Whether today's turns have reached the limit: per store, or per platform admin. The autopilot's turns (in its own conversations) count
+ * against `AUTOPILOT_DAILY_TURNS`, everything else against `DAILY_TURNS`.
+ */
+async function overLimit(p: Principal, autopilot: boolean): Promise<boolean> {
+  const own = autopilot ? sql`c.source = 'autopilot'` : sql`c.source <> 'autopilot'`;
   const [row] = p.store
     ? await db().execute<Row>(sql`
-        select count(*)::int as n from commerce.assistant_messages
-        where store_id = ${p.store.id}::uuid and role = 'user' and created_at > now() - interval '1 day'
+        select count(*)::int as n from commerce.assistant_messages m
+        join commerce.assistant_conversations c on c.id = m.conversation_id
+        where m.store_id = ${p.store.id}::uuid and m.role = 'user' and m.created_at > now() - interval '1 day' and ${own}
       `)
     : await db().execute<Row>(sql`
         select count(*)::int as n from commerce.assistant_messages m
         join commerce.assistant_conversations c on c.id = m.conversation_id
-        where m.store_id is null and c.account_id = ${p.account.id}::uuid and m.role = 'user' and m.created_at > now() - interval '1 day'
+        where m.store_id is null and c.account_id = ${p.account.id}::uuid and m.role = 'user' and m.created_at > now() - interval '1 day' and ${own}
       `);
-  return Number(row.n) >= DAILY_TURNS;
+  return Number(row.n) >= (autopilot ? AUTOPILOT_DAILY_TURNS : DAILY_TURNS);
 }
 
 /**
@@ -637,8 +658,9 @@ export async function runTurn(input: TurnInput): Promise<void> {
       message: `The AI manager needs a text model: set one up under ${store ? "Settings → AI" : "Platform → AI"}.`,
     });
   }
-  if (await overLimit(p)) {
-    return emit({ type: "error", message: `The AI manager has answered ${DAILY_TURNS} messages ${store ? "for this store" : "for you"} today. It is back tomorrow.` });
+  if (await overLimit(p, Boolean(input.autopilot))) {
+    const limit = input.autopilot ? AUTOPILOT_DAILY_TURNS : DAILY_TURNS;
+    return emit({ type: "error", message: `The AI manager has answered ${limit} messages ${store ? "for this store" : "for you"} today. It is back tomorrow.` });
   }
   // A platform admin's turns are paid by Kaizena Flow and held to a cost a day (FA5); a store's by its plan's monthly allowance.
   if (!store && (await platformManagerCostToday(account.id)) >= PLATFORM_DAILY_COST_MICROS) {
@@ -764,7 +786,9 @@ export async function runTurn(input: TurnInput): Promise<void> {
         waiting: waiting.map((row) => ({ id: String(row.id), summary: String(row.summary) })),
         // The outside assistant asking (D439), Kaizen Life's or another: named, so the model knows whose words it reads.
         outside: input.outside?.client,
-      }) + (autopilot ? `\n\n${autopilot.review ? REVIEW_LINES : autopilot.event ? EVENT_LINES[autopilot.event] : AUTOPILOT_LINES}` : ""),
+      }) +
+      (autopilot ? `\n\n${autopilot.review ? REVIEW_LINES : autopilot.event ? EVENT_LINES[autopilot.event] : AUTOPILOT_LINES}` : "") +
+      (autopilot?.settings.challenge ? `\n\n${CHALLENGE_LINES}` : ""),
     },
     ...history.map((row) => ({ role: row.role === "user" ? ("user" as const) : ("assistant" as const), content: String(row.content) })),
     { role: "user", content: text },
@@ -1238,17 +1262,24 @@ async function decideApprovalNow(
     select 1 from commerce.oauth_grants g join commerce.oauth_clients c on c.id = g.client_id
     where g.id = oauth_grant_id and g.revoked_at is null and c.blocked_at is null and store_id = any(g.store_ids)
   ))`;
+  // Whose calls this person decides: their own, and for a store's owner also what the autopilot kept in the store in anyone's name
+  // (`docs/100-day-challenge.md` A3), run then as the owner. Anyone else decides their own only.
+  const holder = holderOfPrincipal(p);
+  const theirs =
+    p.store && holder && can(holder, "owner")
+      ? sql`(account_id = ${p.account.id}::uuid or exists (select 1 from commerce.assistant_conversations c where c.id = conversation_id and c.source = 'autopilot'))`
+      : sql`account_id = ${p.account.id}::uuid`;
   // A yes counts only before the call's end (PSI AGT-03): one asked for more than seven days ago is never run.
   const [claimed] = await db().execute<Row>(sql`
     update commerce.assistant_approvals set status = ${approve ? "done" : "declined"}, decided_at = now()
-    where id = ${approvalId}::uuid and ${inScope(p)} and account_id = ${p.account.id}::uuid and status = 'pending'
+    where id = ${approvalId}::uuid and ${inScope(p)} and ${theirs} and status = 'pending'
       and ((expires_at > now() and not ${grantEnded}) or ${!approve})
     returning *
   `);
   if (!claimed && approve) {
     const [ended] = await db().execute<Row>(sql`
       update commerce.assistant_approvals set status = 'expired', decided_at = now(), result = ${JSON.stringify({ error: GRANT_ENDED_NOTE })}::jsonb
-      where id = ${approvalId}::uuid and ${inScope(p)} and account_id = ${p.account.id}::uuid and status = 'pending' and ${grantEnded}
+      where id = ${approvalId}::uuid and ${inScope(p)} and ${theirs} and status = 'pending' and ${grantEnded}
       returning *
     `);
     if (ended) {
@@ -1257,7 +1288,7 @@ async function decideApprovalNow(
     }
   }
   if (!claimed) {
-    const [ended] = await expireAssistantApprovals(sql`id = ${approvalId}::uuid and ${inScope(p)} and account_id = ${p.account.id}::uuid`);
+    const [ended] = await expireAssistantApprovals(sql`id = ${approvalId}::uuid and ${inScope(p)} and ${theirs}`);
     if (ended && note) await addMessage(p, String(ended.conversation_id), "assistant", `${EXPIRED_NOTE}: ${ended.summary}`);
     return ended ? toApproval(ended) : null;
   }

@@ -30,6 +30,22 @@ export type ConversationSource = (typeof SOURCES)[number];
 export const HANDOFF_REASONS = ["customer", "ai", "tone", "no_ai", "limit"] as const;
 export type HandoffReason = (typeof HANDOFF_REASONS)[number];
 
+/**
+ * Why a conversation is a person's to answer (`docs/100-day-challenge.md` A4): the cases the challenge lets reach a person. The AI names one
+ * when it hands over (`handoff_to_human`'s category); a customer pressing *Talk to a person* is `asked_for_person`, a tone under the line is
+ * `upset`. An AI that is off, failed or reached its limit is no escalation: a fault, which the autopilot picks up in the challenge (B4).
+ */
+export const ESCALATION_CATEGORIES = ["asked_for_person", "upset", "legal", "safety", "chargeback", "privacy", "abuse", "could_not_help"] as const;
+export type EscalationCategory = (typeof ESCALATION_CATEGORIES)[number];
+
+/** A conversation's escalation from why it went to a person and the category the AI gave; null when it is no escalation. */
+export function escalationOf(handoffReason: string | null, escalation: string | null): EscalationCategory | null {
+  if (handoffReason === "customer") return "asked_for_person";
+  if (handoffReason === "tone") return "upset";
+  if (handoffReason === "ai") return (ESCALATION_CATEGORIES as readonly string[]).includes(escalation ?? "") ? (escalation as EscalationCategory) : "could_not_help";
+  return null;
+}
+
 export const ENDED_BY = ["customer", "agent", "timeout", "system"] as const;
 export type EndedBy = (typeof ENDED_BY)[number];
 

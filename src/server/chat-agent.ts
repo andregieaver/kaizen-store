@@ -19,7 +19,7 @@ import type { PriceView } from "@/lib/pricing";
 import { priceUnitSentence } from "@/lib/unit-price-text";
 import { SUPPORT_TOOLS } from "@/lib/support-tools";
 import { CHIPS_MAX, type SupportCard, type SupportChip } from "@/lib/support-visitor";
-import { TRANSCRIPT_DAYS_OFF, type SupportMode } from "@/lib/support-rules";
+import { TRANSCRIPT_DAYS_OFF, type EscalationCategory, type SupportMode } from "@/lib/support-rules";
 import { z } from "zod";
 
 import { AI_TAG, AiError, aiFor, canSpeak, chatWithTools, streamWithTools, type AiConnection, type ToolChatMessage, type ToolDefinition } from "./ai";
@@ -537,6 +537,8 @@ export async function runChat(
     support?: SupportToolSet;
     admin?: boolean;
     email?: boolean;
+    /** By email, from the address the customer's orders were placed with (`docs/100-day-challenge.md` B1). */
+    emailOrders?: boolean;
     /**
      * The answer as it is written (PSI PERF-08): its finished sentences so far, cleaned (`shownSoFar()`), each time they grow; empty
      * again when the model turns to tools after all. The reply returned is the whole answer, cleaned, as without it.
@@ -563,6 +565,7 @@ export async function runChat(
         admin: options.admin,
         // A brand that cannot be read leaves the tone to the agent's own guidance; the chat never fails for it.
         email: options.email,
+        emailOrders: Boolean(options.email && options.emailOrders),
         voice: brandVoiceGuide(await brandOf(site.kind === "store" ? site.store.id : null).catch(() => null)),
         embed: site.embed ? { host: site.embed.host } : null,
       }),
@@ -574,11 +577,12 @@ export async function runChat(
   const supportNames = new Set(supportTools.map((tool) => tool.name));
   const tools = [...siteTools, ...(options.handoff ? [handoffTool] : []), ...supportTools];
   let handoff: string | undefined;
+  let escalation: EscalationCategory | undefined;
   const chips = new Map<string, SupportChip>();
   let card: SupportCard | undefined;
   let kept: string | undefined;
   const extras = () => ({
-    ...(handoff ? { handoff } : {}),
+    ...(handoff ? { handoff, ...(escalation ? { escalation } : {}) } : {}),
     ...(chips.size > 0 ? { chips: [...chips.values()].slice(0, CHIPS_MAX) } : {}),
     ...(card ? { card } : {}),
     ...(kept ? { action: kept } : {}),
@@ -622,6 +626,7 @@ export async function runChat(
       if (options.handoff && call.function.name === HANDOFF.name) {
         const parsed = HANDOFF.input.safeParse(args);
         handoff = parsed.success ? (parsed.data as { reason: string }).reason : "The customer asked for a person.";
+        escalation = parsed.success ? (parsed.data as { category: EscalationCategory }).category : "asked_for_person";
         messages.push({ role: "tool", tool_call_id: call.id, content: json({ ok: true, note: "A person takes over after your reply. Tell the visitor in one short sentence." }) });
         continue;
       }

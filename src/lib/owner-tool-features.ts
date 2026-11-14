@@ -94,6 +94,7 @@ export const TOOL_FEATURES: Partial<Record<OwnerToolName, FeatureRequirement>> =
   sales_trend: "shop",
   sales_funnel: "shop",
   analytics_overview: "shop",
+  profit_overview: "shop",
   explain_change: "shop",
   analytics_alerts: "shop",
   report_catalogue: "shop",

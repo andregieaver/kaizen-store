@@ -68,6 +68,12 @@ const CALL = z.object({
 
 export async function autopilotOverview(a: OverviewActor): Promise<AutopilotOverview> {
   const scope = a.store ? sql`ap.store_id = ${a.store.id}::uuid` : sql`ap.store_id is null`;
+  // A store's owner also sees what the autopilot kept in the store in anyone's name (`docs/100-day-challenge.md` A3): the refunds of the
+  // challenge reach them whoever its plans, reviews and events run for. Anyone else sees their own.
+  const ownerOfStore = Boolean(a.store) && (!a.holder || can(a.holder, "owner"));
+  const whose = ownerOfStore
+    ? sql`(ap.account_id = ${a.account.id}::uuid or exists (select 1 from commerce.assistant_conversations c where c.id = ap.conversation_id and c.source = 'autopilot'))`
+    : sql`ap.account_id = ${a.account.id}::uuid`;
   const [callRows, plansAll, goals, settings, cost, progress, report, reviews, events, followUps, effects] = await Promise.all([
     typedRows(
       CALL,
@@ -76,7 +82,7 @@ export async function autopilotOverview(a: OverviewActor): Promise<AutopilotOver
         from commerce.assistant_approvals ap
         left join commerce.assistant_plan_steps s on s.id = ap.plan_step_id
         left join commerce.assistant_plans p on p.id = s.plan_id
-        where ${scope} and ap.account_id = ${a.account.id}::uuid and ap.status = 'pending' and ap.expires_at > now()
+        where ${scope} and ${whose} and ap.status = 'pending' and ap.expires_at > now()
         order by ap.created_at
         limit 50
       `,

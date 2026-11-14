@@ -119,6 +119,7 @@ export async function runGoalReviews(deps: ReviewDeps = {}): Promise<ReviewRun> 
   `);
   const seen = new Set<string>();
   let taken = 0;
+  const work: { id: string; due: Awaited<ReturnType<typeof dueReviews>>[number] }[] = [];
   for (const due of await dueReviews()) {
     if (taken >= REVIEWS_PER_RUN || (deps.deadline && Date.now() > deps.deadline)) break;
     const storeKey = due.store_id ?? "platform";
@@ -138,14 +139,20 @@ export async function runGoalReviews(deps: ReviewDeps = {}): Promise<ReviewRun> 
     if (!claimed) continue;
     seen.add(storeKey);
     taken++;
-    try {
-      result[await reviewGoal(claimed.id, due, deps)]++;
-    } catch (error) {
-      log("error", "autopilot.review_failed", { review: claimed.id }, error);
-      await finish(claimed.id, "failed", { outcome: "Something went wrong during the review." }).catch(() => undefined);
-      result.failed++;
-    }
+    work.push({ id: claimed.id, due });
   }
+  // Claimed one by one, run side by side: one store's long review never holds another's back (`docs/100-day-challenge.md` H1).
+  await Promise.all(
+    work.map(async ({ id, due }) => {
+      try {
+        result[await reviewGoal(id, due, deps)]++;
+      } catch (error) {
+        log("error", "autopilot.review_failed", { review: id }, error);
+        await finish(id, "failed", { outcome: "Something went wrong during the review." }).catch(() => undefined);
+        result.failed++;
+      }
+    }),
+  );
   return result;
 }
 
@@ -277,8 +284,8 @@ async function reviewGoal(reviewId: string, due: Due, deps: ReviewDeps): Promise
 async function newConversation(p: Principal, reviewId: string, title: string): Promise<string> {
   const row = await typedRow(
     z.object({ id: col.uuid }),
-    sql`insert into commerce.assistant_conversations (store_id, account_id, title)
-      values (${p.store?.id ?? null}::uuid, ${p.account.id}::uuid, ${`Autopilot: ${title}`.slice(0, 80)}) returning id`,
+    sql`insert into commerce.assistant_conversations (store_id, account_id, title, source)
+      values (${p.store?.id ?? null}::uuid, ${p.account.id}::uuid, ${`Autopilot: ${title}`.slice(0, 80)}, 'autopilot') returning id`,
   );
   if (!row) throw new Error("The review's conversation could not be made.");
   await db().execute(sql`update commerce.autopilot_reviews set conversation_id = ${row.id}::uuid where id = ${reviewId}::uuid`);

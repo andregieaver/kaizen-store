@@ -15,6 +15,9 @@ const figures = (over: Partial<GoalFigures> = {}): GoalFigures => ({
   products: 12,
   pages: 4,
   stores: null,
+  contribution30d: 850_000,
+  margin30d: 20,
+  since: { "2026-10-01": { revenue: 3_000_000, contribution: 600_000 } },
   missing: {},
   ...over,
 });
@@ -55,3 +58,30 @@ describe("targetProgress", () => {
     expect(goalMet([{ kind: "pages", target: "", now: "", met: true }])).toBe(true);
   });
 });
+
+describe("profit targets (docs/100-day-challenge.md E2)", () => {
+  it("reads contribution, margin and totals since a first day from what the model types", () => {
+    expect(targetFromInput({ kind: "contribution_30d", amount: "8 000" }, "store", "NOK", parsePrice)).toEqual({ ok: true, target: { kind: "contribution_30d", amount_minor: 800_000, currency: "NOK" } });
+    expect(targetFromInput({ kind: "margin_30d", percent: 18 }, "store", "NOK", parsePrice)).toEqual({ ok: true, target: { kind: "margin_30d", percent: 18 } });
+    expect(targetFromInput({ kind: "revenue_since", amount: "30000", since: "2026-10-01" }, "store", "NOK", parsePrice)).toEqual({
+      ok: true,
+      target: { kind: "revenue_since", amount_minor: 3_000_000, currency: "NOK", since: "2026-10-01" },
+    });
+    expect(targetFromInput({ kind: "contribution_since", amount: "30000" }, "store", "NOK", parsePrice)).toMatchObject({ ok: false, problem: expect.stringContaining("first day") });
+    expect(targetFromInput({ kind: "margin_30d", percent: 18 }, "platform", null, parsePrice)).toMatchObject({ ok: false });
+  });
+
+  it("measures them from the figures, and never meets one it cannot know", () => {
+    expect(targetProgress({ kind: "contribution_30d", amount_minor: 800_000, currency: "NOK" }, figures())).toMatchObject({ met: true });
+    expect(targetProgress({ kind: "margin_30d", percent: 25 }, figures())).toMatchObject({ met: false, now: "20 %" });
+    expect(targetProgress({ kind: "contribution_since", amount_minor: 500_000, currency: "NOK", since: "2026-10-01" }, figures())).toMatchObject({ met: true });
+    expect(targetProgress({ kind: "revenue_since", amount_minor: 5_000_000, currency: "NOK", since: "2026-10-01" }, figures())).toMatchObject({ met: false });
+    // A first day still to come counts nothing yet.
+    expect(targetProgress({ kind: "revenue_since", amount_minor: 1, currency: "NOK", since: "2027-01-04" }, figures())).toMatchObject({ met: null, now: "Counting starts on 2027-01-04" });
+    const unknown = figures({ contribution30d: null, margin30d: null, since: { "2026-10-01": { revenue: 3_000_000, contribution: null, missing: "Too few costs." } }, missing: { contribution_30d: "Too few costs." } });
+    expect(targetProgress({ kind: "contribution_30d", amount_minor: 1, currency: "NOK" }, unknown)).toMatchObject({ met: null, now: "not measured", missing: "Too few costs." });
+    expect(targetProgress({ kind: "contribution_since", amount_minor: 1, currency: "NOK", since: "2026-10-01" }, unknown)).toMatchObject({ met: null, missing: "Too few costs." });
+    expect(targetProgress({ kind: "contribution_30d", amount_minor: 1, currency: "EUR" }, figures())).toMatchObject({ met: null });
+  });
+});
+

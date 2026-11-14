@@ -5,6 +5,7 @@ import { z } from "zod";
 
 import { db } from "@/db/client";
 import { autonomySettingsSchema, budgetLevel, CUSTOMER_EMAIL_TOOLS, readAutonomy, type AutonomySettings } from "@/lib/autopilot-autonomy";
+import { challengeOn, challengeSchema, lockedWords, readChallenge, utcDay, withChallenge, type Challenge } from "@/lib/autopilot-challenge";
 import { renderEmail } from "@/lib/email-layout";
 import { siteUrl } from "@/lib/site";
 import { autopilotBudgetEmail } from "@/lib/usage-emails";
@@ -27,12 +28,19 @@ import { col, typedRow, typedRows } from "./typed-rows";
 
 const inScope = (storeId: string | null) => (storeId ? sql`store_id = ${storeId}::uuid` : sql`store_id is null`);
 
-export async function autonomyFor(storeId: string | null): Promise<AutonomySettings> {
-  const row = await typedRow(
-    z.object({ paused: col.bool, levels: z.unknown(), budgets: z.unknown(), planning: z.unknown() }),
-    sql`select paused, levels, budgets, planning from commerce.autopilot_settings where ${inScope(storeId)}`,
-  );
-  return row ? readAutonomy({ paused: row.paused, levels: row.levels, budgets: row.budgets, planning: row.planning }) : readAutonomy({});
+const SETTINGS_ROW = z.object({ paused: col.bool, levels: z.unknown(), budgets: z.unknown(), planning: z.unknown(), challenge: z.unknown() });
+
+/** The settings in force: the owner's, or the challenge's preset over them while challenge mode is on (`withChallenge()`). */
+export async function autonomyFor(storeId: string | null, now: Date = new Date()): Promise<AutonomySettings> {
+  const row = await typedRow(SETTINGS_ROW, sql`select paused, levels, budgets, planning, challenge from commerce.autopilot_settings where ${inScope(storeId)}`);
+  const own = row ? readAutonomy({ paused: row.paused, levels: row.levels, budgets: row.budgets, planning: row.planning }) : readAutonomy({});
+  return withChallenge(own, storeId ? readChallenge(row?.challenge) : null, utcDay(now));
+}
+
+/** The store's challenge as set, on or not (null: none). */
+export async function challengeFor(storeId: string): Promise<Challenge | null> {
+  const row = await typedRow(z.object({ challenge: z.unknown() }), sql`select challenge from commerce.autopilot_settings where store_id = ${storeId}::uuid`);
+  return readChallenge(row?.challenge);
 }
 
 export type SettingsActor = { account: Account; store: Store | null; holder?: PermissionHolder };
@@ -43,7 +51,17 @@ export async function saveAutonomy(a: SettingsActor, input: unknown): Promise<Au
   if (!a.store && !a.account.platformAdmin) throw new OwnerToolError("Only a platform admin sets the autopilot for Kaizena Flow's own site.");
   const parsed = autonomySettingsSchema.safeParse(input);
   if (!parsed.success) throw new OwnerToolError(`The settings could not be read: ${parsed.error.issues.map((i) => i.path.join(".") || i.message).join(", ")}.`);
-  const s = parsed.data;
+  const s = { ...parsed.data, challenge: null };
+  // While challenge mode is on the settings are locked: only the pause is the owner's, and pressing it suspends the challenge (an
+  // intervention, audited as such, `docs/100-day-challenge.md` 4A1).
+  const challenge = a.store ? await challengeFor(a.store.id) : null;
+  if (a.store && challengeOn(challenge, utcDay())) {
+    const current = await autonomyFor(a.store.id);
+    if (s.paused === current.paused) throw new OwnerToolError(lockedWords(challenge));
+    await db().execute(sql`update commerce.autopilot_settings set paused = ${s.paused}, updated_at = now() where store_id = ${a.store.id}::uuid`);
+    await audit(a.account.id, a.store.id, s.paused ? "ai.challenge_paused" : "ai.challenge_resumed", { paused: s.paused, intervention: true }, auditArea(a));
+    return autonomyFor(a.store.id);
+  }
   const storeId = a.store ? sql`${a.store.id}::uuid` : sql`null`;
   await db().execute(sql`
     insert into commerce.autopilot_settings (store_id, paused, levels, budgets, planning, updated_by, updated_at)
@@ -54,6 +72,52 @@ export async function saveAutonomy(a: SettingsActor, input: unknown): Promise<Au
   await audit(a.account.id, a.store?.id ?? null, "ai.autopilot_settings", { paused: s.paused, levels: s.levels, budgets: s.budgets, planning: s.planning }, auditArea(a));
   return s;
 }
+
+/**
+ * Sets the 100-day challenge on a store, or changes its dates and budgets (`docs/100-day-challenge.md`): a platform admin's alone, since the
+ * store's owner is a contestant. Read by the schema first; audited with the figures.
+ */
+export async function saveChallenge(a: { account: Account }, storeId: string, input: unknown): Promise<Challenge> {
+  if (!a.account.platformAdmin) throw new OwnerToolError("Only a platform admin sets the challenge on a store.");
+  const parsed = challengeSchema.safeParse(input);
+  if (!parsed.success) throw new OwnerToolError(`The challenge could not be read: ${parsed.error.issues.map((i) => i.message).join(" ")}`);
+  const c = parsed.data;
+  await db().execute(sql`
+    insert into commerce.autopilot_settings (store_id, challenge, updated_at) values (${storeId}::uuid, ${JSON.stringify(c)}::jsonb, now())
+    on conflict (store_id) do update set challenge = excluded.challenge, updated_at = now()
+  `);
+  await audit(a.account.id, storeId, "ai.challenge_set", c, { area: "platform" });
+  return c;
+}
+
+/** Takes the challenge off a store (a platform admin's): the owner's own settings are in force again, as they were. */
+export async function endChallenge(a: { account: Account }, storeId: string): Promise<void> {
+  if (!a.account.platformAdmin) throw new OwnerToolError("Only a platform admin ends the challenge on a store.");
+  await db().execute(sql`update commerce.autopilot_settings set challenge = null, updated_at = now() where store_id = ${storeId}::uuid`);
+  await audit(a.account.id, storeId, "ai.challenge_ended", {}, { area: "platform" });
+}
+
+/** Calls of a tool the autopilot made itself in a recent period, counted from the audit log. */
+async function autopilotCallsSince(storeId: string, tools: readonly string[], interval: string): Promise<number> {
+  const row = await typedRow(
+    z.object({ n: col.int }),
+    sql`
+      select count(*)::int as n from commerce.audit_log
+      where store_id = ${storeId}::uuid and acted_by = 'autopilot' and created_at > now() - ${interval}::interval
+        and action in (${sql.join(
+          tools.map((tool) => sql`${`store.assistant.${tool}`}`),
+          sql`, `,
+        )})
+    `,
+  );
+  return row?.n ?? 0;
+}
+
+/** Broadcasts the autopilot sent itself in the last seven days (challenge mode's budget). */
+export const autopilotBroadcastsThisWeek = (storeId: string): Promise<number> => autopilotCallsSince(storeId, ["send_broadcast"], "7 days");
+
+/** Answers on the support desk the autopilot sent itself in the last 24 hours (challenge mode's budget). */
+export const autopilotSupportRepliesToday = (storeId: string): Promise<number> => autopilotCallsSince(storeId, ["reply_to_support"], "1 day");
 
 /**
  * The autopilot's AI cost this calendar month (UTC), in millionths of a dollar, at the prices in force for each call (D145): every call it made,
@@ -146,17 +210,4 @@ export async function aiBudgetSpent(storeId: string | null, settings: AutonomySe
 }
 
 /** Emails to customers the autopilot sent itself in the last seven days (`CUSTOMER_EMAIL_TOOLS`, counted from the audit log). */
-export async function autopilotCustomerEmailsThisWeek(storeId: string): Promise<number> {
-  const row = await typedRow(
-    z.object({ n: col.int }),
-    sql`
-      select count(*)::int as n from commerce.audit_log
-      where store_id = ${storeId}::uuid and acted_by = 'autopilot' and created_at > now() - interval '7 days'
-        and action in (${sql.join(
-          CUSTOMER_EMAIL_TOOLS.map((tool) => sql`${`store.assistant.${tool}`}`),
-          sql`, `,
-        )})
-    `,
-  );
-  return row?.n ?? 0;
-}
+export const autopilotCustomerEmailsThisWeek = (storeId: string): Promise<number> => autopilotCallsSince(storeId, CUSTOMER_EMAIL_TOOLS, "7 days");
