@@ -28,7 +28,8 @@ As built, though, it is a careful co-pilot, not an operator. Held to the challen
 
 It also steers by revenue, not profit. It cannot create a single ad. And nobody could check the result against the original store.
 
-None of this is a rewrite. Section 4 has about 50 items in seven workstreams, some of them settings or rules rather than code. Together
+None of this is a rewrite. Section 4 has about 50 items in seven workstreams, some of them settings or rules rather than code; section 14
+adds six more for running up to ten stores. Together
 they are roughly 210 days of work at the sizes given there. The owner wants the earliest start. The earliest honest Day 1 is **Monday
 4 January 2027** (Day 100 is Tuesday 13 April 2027):
 
@@ -63,6 +64,13 @@ Anything earlier would start the challenge with known stalls, such as every orde
 - **As soon as possible**: Day 1 on Monday 4 January 2027, if the rehearsal's gate passes (sections 7 and 8).
 - **The format: two brands, head to head** (format 2, section 3): a new name and address for the clone, scored on ratios.
 - **After Day 100** the store owner may keep the clone indefinitely, or move all operations over to it and close the original (section 12).
+- **The clone's name** is decided later, by Friday 4 December at the latest: the brand, look and texts are made in the week of 7 December.
+- **Fulfilment**: the owner's warehouse ships the clone's orders as a paid service (C1).
+- **Support channels**: email and the platform's built-in store support (the shop chat). WhatsApp, social messages and SMS are out of
+  scope, so B5 is dropped.
+- **The winning measures** are confirmed: two of three ratios, with at least 80 % of the ad money spent (3.3).
+- **Public before Day 1** (section 13).
+- **Up to ten stores** may run the challenge in parallel, each store with its own owner, warehouse and clone (section 14).
 
 ## 1. What the rule means in the platform's terms
 
@@ -180,7 +188,7 @@ Priorities:
 - **P0**: without it, the challenge cannot run under its rule or cannot be judged.
 - **P1**: without it, the AI has little chance to win.
 
-Sizes are at the pace of recent units: S is a day or two, M about a week, L two weeks or more. Summed: A about 23 days, B 44, C 26,
+Sizes are at the pace of recent units: S is a day or two, M about a week, L two weeks or more. Summed: A about 23 days, B 32 (B5 dropped), C 26,
 D 52, E 39, F 28 (G is setup). The P0 workstreams alone are about 160 days.
 
 Platform parity (CLAUDE.md): stock, fulfilment and returns cannot apply to Kaizena Flow, which sells plans. The profit goals, failover,
@@ -216,7 +224,7 @@ What each never-automatic tool becomes in challenge mode:
 | B2 | **Contact forms read by the AI** as email is. | S | `src/server/support-forms.ts` |
 | B3 | **Staff requests carried out by code**: support step 15's executors (address change and cancel before sending, resend, exchange), offered to the chat, the email agent and the autopilot; money goes to the refund queue; a `staff_request` event. | L | `support-actions.ts`, `docs/support.md` step 15 |
 | B4 | **The waiting customer gets an answer**: in challenge mode the `support_waiting` event may `reply_to_support`, labelled as the AI's (Art. 50). Support replies get a budget of their own instead of sharing `customerEmailsPerWeek` (max 100 a week). | S | `src/lib/autopilot-events.ts` (`EVENT_TOOLS`), `autopilot-autonomy.ts` |
-| B5 | **The channels the original uses**, through the same desk and agent: WhatsApp Business, Instagram and Messenger DMs, SMS replies (46elks inbound keeps only STOP today), marketplace messages. Build only those the original store actually has. | L | `commerce.support_conversations.source`, new channel adapters |
+| B5 | **Dropped (14 November 2026)**: the challenge's channels are email and the built-in store support, both already on the desk. WhatsApp, social messages and SMS replies are not built for it. | — | `commerce.support_conversations.source`, new channel adapters |
 | B6 | **Returns run to the refund**: voluntary returns approved by policy; a `return_requested` event; in transit from tracking, received from the carrier's or warehouse's scan, inspected on the warehouse's confirmation; then the refund proposal to the queue. | M | `src/server/withdrawals.ts`, `return-jobs.ts`, `docs/returns.md` |
 | B7 | **Reviews**: the AI answers reviews and switches review requests on. | S | `reviews-admin.ts` (`answerReview`) |
 | B8 | **A quality bar before Day 1**: replay the original's last 90 days of support emails, with its owner's permission and names removed, through the agent; measure right answers, escalations and grounding. Target under 10 % escalated. | M | an offline run of `chat-agent.ts` |
@@ -225,7 +233,7 @@ What each never-automatic tool becomes in challenge mode:
 
 | # | What | Size | Where |
 |---|---|---|---|
-| C1 | **A warehouse that ships for the clone**: set the owner's warehouse, or a 3PL, up as the clone's drop-ship supplier (D550). It is the one path that already runs alone: orders sent after payment, tracking back. The handling fee per order is a cost in the scoreboard. Self-shipping would need labels booked on payment, which is not built. | S to set up | `docs/drop-shipping.md`, `src/server/suppliers.ts` |
+| C1 | **The owner's warehouse ships for the clone, as a paid service (decided 14 November 2026)**: it is set up as the clone's drop-ship supplier (D550), the one path that already runs alone. Each order is emailed to the warehouse after payment, or read by its own system through `/api/supply/v1` if it has one. The warehouse types the carrier and tracking number on a page from that email (no account needed), and the customer gets the shipped email from the clone. The warehouse's packing and typing is the service, not an intervention in the store. The handling fee per order is a cost in the scoreboard. | S to set up | `docs/drop-shipping.md`, `src/server/suppliers.ts` |
 | C2 | **Supplier orders as tools and events**: a late or refused supplier order is a person's resend or cancel today, with no AI tool. | M | `src/server/suppliers.ts` |
 | C3 | **Purchase orders by the AI**: `create_purchase_order`, sent to the supplier by email or its system, within a new purchasing budget (a month and per order) in the `money` area. Today *Prepare reorder* waits for a person's Create. | M | `src/server/purchase-orders.ts` |
 | C4 | **Demand forecast for reordering**: weekday and season profile, planned campaigns, lead times; a stock-out risk event. `restockSuggestions()` is a pace rule today. | M | `src/server/owner-insights.ts` |
@@ -341,17 +349,19 @@ starts only when all of these hold:
 
 ## 8. Timeline: as soon as possible
 
+This is the first wave's timeline. With up to ten stores, a second wave starts on Monday 1 February 2027 (section 14.1).
+
 The owner asked for the earliest start (14 November 2026). The earliest honest Day 1 is **Monday 4 January 2027**. Before then, the clone
 would stall on every order email, parcel and return. The date holds only if three things happen in the week of 16 November:
 
-- the clone's name is chosen;
 - the store owner signs;
 - the approvals of G3 start.
 
 | When | What |
 |---|---|
-| 16 to 20 November 2026 | The clone's name chosen from the AI's three (G2) and its domain registered. The agreement signed, including what happens after Day 100 (section 12): response times (3.4) and money limits (5). Stripe onboarding, the Shopify approvals and the warehouse agreement started. The referee named. |
+| 16 to 20 November 2026 | The agreement signed, including what happens after Day 100 (section 12): response times (3.4) and money limits (5). Stripe onboarding, the Shopify approvals and the warehouse agreement started. The referee named. |
 | 16 November to 11 December | The Day 1 minimum (8.1) built in six streams side by side: (1) A, (2) B, (3) C, (4) E, (5) F, (6) the clone (G) with D2 and D5. Each stream is about 20 days of work in 20 working days, so the last items may land in the rehearsal's first week. |
+| by Friday 4 December | The clone's name chosen by the store owner from the AI's three (G2), and its domain registered |
 | by 11 December | The clone made under its new brand; the original's Meta campaign structure copied into the clone's ad account with the new brand (G5) |
 | 14 December to 1 January | The rehearsal (section 7), with real shoppers, through Christmas |
 | 2 to 3 January 2027 | The gate checked; figures reset; baseline frozen; prompts and model pinned |
@@ -366,15 +376,14 @@ would stall on every order email, parcel and return. The date holds only if thre
 **In before the rehearsal** (about 110 days of work):
 
 - **A:** all six.
-- **B:** B1, B2, B4, B6 and B8, and the part of B3 that cancels an unsent order and changes its address. B5 too, if the original store
-  answers customers on WhatsApp or social messages today.
+- **B:** B1, B2, B4, B6 and B8, and the part of B3 that cancels an unsent order and changes its address. (B5 is dropped.)
 - **C:** all but C4.
 - **E:** E1, E2, E3 and E6, and E7 in a simple form: the clone read from the platform, the original from a monthly P&L its accountant signs.
 - **F:** all but the automatic part of F4. An hourly watch that pages the team is in from Day 1; until the automatic revert lands, the team
   reverts by hand, as a logged platform fix.
 - **D:** D2 and D5.
 
-**During the run:** the rest of B3, B5 if it can wait, B7, C4, D1, D3, D4, D6 to D9, E4, E5, E7's read of the original's platform, and
+**During the run:** the rest of B3, B7, C4, D1, D3, D4, D6 to D9, E4, E5, E7's read of the original's platform, and
 F4's automatic revert.
 
 **What a late D costs:** for the first weeks the AI grows with the tools it has:
@@ -404,7 +413,8 @@ Campaigns of its own (D1) and retention flows it writes (D4) arrive in January a
 | Four weeks of build leaves little slack | Only the Day 1 minimum (8.1); the gate decides, and a failed gate moves Day 1 a week at a time |
 | Customers' data used without a basis | The clone uses only customers it wins itself; a data processing agreement between the owner and Kaizena Flow |
 | Too few visitors for tests to say anything | Fewer, bigger tests; decisions on profit; no claim of cause where there is only a comparison (as D418 says) |
-| Losing in public | Pre-registered rules; nothing announced before the rehearsal's figures are in |
+| Losing in public | Rules published before Day 1 and never changed; the announcement after the gate passes (section 13); with up to ten stores, the headline is how many the AI won, not one result |
+| Ten stores at once overload the loop, the team or the AI provider | Waves (section 14), the loop scaled per store (H1), the challenge console (H2), two providers (F1) |
 
 ## 10. Can it outperform?
 
@@ -441,15 +451,15 @@ Campaigns of its own (D1) and retention flows it writes (D4) arrive in January a
 1. **The format** (decided 14 November 2026): format 2, two brands head to head, scored on ratios.
 2. **Who presses the two buttons** (decided 14 November 2026): the store owner, with response times in the agreement. Recommended: 24 hours
    for a refund, 4 working hours for an escalation.
-3. **The winning measure** (open): recommended is two of three ratios (margin, profit per krone of marketing, revenue per visitor), with
+3. **The winning measure** (decided 14 November 2026): two of three ratios (margin, profit per krone of marketing, revenue per visitor), with
    at least 80 % of the ad money spent (3.3).
 4. **Money** (decided 14 November 2026): the store owner funds the ad budgets and the stock of both stores and keeps the profit. They set the
    limits before Day 1.
-5. **Fulfilment** (open): the owner's warehouse as a paid service, or a 3PL.
+5. **Fulfilment** (decided 14 November 2026): the owner's warehouse as a paid service (C1).
 6. **The start date** (decided 14 November 2026): as soon as possible. Day 1 is Monday 4 January 2027 if the gate passes.
-7. **The support channels** in scope (open): those the original store uses.
-8. **Public or private** (open): the challenge announced before Day 1, or after the result.
-9. **The clone's name** (open): chosen by the store owner from the AI's three, in the week of 16 November.
+7. **The support channels** (decided 14 November 2026): email and the platform's built-in store support.
+8. **Public or private** (decided 14 November 2026): public before Day 1 (section 13).
+9. **The clone's name** (decided later): chosen by the store owner from the AI's three, by Friday 4 December at the latest.
 10. **After Day 100** (open until Day 130): keep both brands, or move everything onto the clone and close the original; and if so, which
     name survives (section 12).
 
@@ -519,3 +529,67 @@ WooCommerce's move has steps 1 to 5 built; the other platforms are plans only.
 | The original's order history | Imported as history (numbered `C-`), never counted as the new store's sales |
 
 **When:** after Day 130, once the result is in, never during the run. A move during the run would end the comparison.
+
+## 13. Public before Day 1
+
+The owner decided the challenge is announced before Day 1 (14 November 2026).
+
+- **When:** after the rehearsal's gate passes (2 to 3 January for the first wave), in the days before Day 1. Not before: announcing a date the
+  gate may move is a promise the AI has not yet earned.
+- **What is published:**
+  - the rules of section 3, unchanged from then on;
+  - the stores taking part (with each owner's written consent to be named);
+  - the referee;
+  - how the result is counted.
+- **What is shown during the run:** each store's three ratios weekly, and the count of human actions by class (A5). Totals are shown only
+  where the store owner agrees, since they are the owner's business figures.
+- **Where:** a page on kaizenaflow.com, built from `docs/site-design.md` and saved as a draft for the owner to publish (CLAUDE.md), with the
+  figures read from the scoreboard (E7), never typed by hand.
+- **Words:** every public claim passes the claims filter, and the page says the result compares two stores, not that the AI caused a
+  difference (as D418 says).
+- **The agreement** gives Kaizena Flow the right to publish the agreed figures and each owner the right to see them first.
+
+## 14. Up to ten stores in parallel
+
+The owner may run the challenge for up to ten stores at once (14 November 2026). The plan holds per store; what changes is scale.
+
+### 14.1 Waves
+
+Ten clones, ten agreements, ten Stripe onboardings, ten warehouses and ten ad accounts in four weeks is more than one team can do well while
+building the Day 1 minimum. So the stores start in waves that run side by side:
+
+| Wave | Stores | Rehearsal | Day 1 | Day 100 | Day 130, the result |
+|---|---|---|---|---|---|
+| 1 | 2 or 3 | 14 December to 1 January | Monday 4 January 2027 | Tuesday 13 April | Thursday 13 May |
+| 2 | the rest, up to 10 in all | 11 to 31 January | Monday 1 February 2027 | Tuesday 11 May | Thursday 10 June |
+
+Wave 2 gains from what wave 1's first weeks teach. Every fix lands on the platform for all stores at once, logged as a platform fix (3.4),
+so no store gets an advantage another lacks.
+
+### 14.2 Choosing the stores
+
+Each store should:
+
+- sell physical goods in the EU from its own warehouse;
+- run on Shopify or WooCommerce today, the two moves that are built;
+- answer customers by email and chat only;
+- already advertise on Meta;
+- sell enough for the ratios to mean something: as a guide, at least a few hundred orders a month;
+- sell something different from every other store in the challenge, so no two clones bid against each other or against another original.
+
+A mix of goods (fashion, home, food, sport) makes the result read as a rule, not a lucky case.
+
+### 14.3 What ten stores need from the platform (workstream H, P0 for wave 2)
+
+| # | What | Size | Where |
+|---|---|---|---|
+| H1 | **The loop scales per store**: today's limits are platform-wide. At most 3 plan steps a minute (`PER_RUN` in `autopilot-runner.ts`), 2 reviews and 2 events a run, and 2 follow-ups every five minutes are shared by every store, each turn up to 120 s inside a 300 s route. Ten busy stores need a run per store, side by side, with fair turns, so one store's long turn never delays another's waiting customer. | M | `autopilot-runner.ts`, `autopilot-reviews.ts`, `autopilot-events.ts`, `follow-up-runner.ts` |
+| H2 | **The challenge console** for the platform team, on the platform admin: every challenge store's stalls, queues waiting and how long, AI cost against budget, interventions by class, and the three ratios. | M | `/admin/platform` |
+| H3 | **The public page** of section 13, fed by the scoreboard. | S | a draft page on Kaizena Flow's site |
+| H4 | **The onboarding kit**: the agreement template (response times, money limits, after Day 100, publicity), the clone runbook (G1 to G5) and the selection checklist (14.2). | S | `docs/runbooks/` |
+| H5 | **AI capacity**: ten stores' AI use measured in wave 1, the providers' rate limits raised before wave 2, and both providers of F1 carrying load. | S | `src/server/ai.ts` |
+| H6 | **One challenge playbook** for every challenge store, pinned like the prompts (F5): a change is a platform fix, logged and applied to all. | S | saved skills (D350) |
+
+The platform's own team carries the load the stores do not: one person on call per week for pages (F3), who never touches a store's
+operations (that would be an intervention), only the platform.
+
