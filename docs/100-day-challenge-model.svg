@@ -1,0 +1,110 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="800" viewBox="0 0 1200 800" font-family="Inter, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif">
+  <title>The 100-day challenge: how the hundred days run (format 1)</title>
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M0 0 L10 5 L0 10 z" fill="#1f6b3a"/>
+    </marker>
+    <marker id="arrow-red" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M0 0 L10 5 L0 10 z" fill="#c2412d"/>
+    </marker>
+    <marker id="arrow-grey" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M0 0 L10 5 L0 10 z" fill="#6b716d"/>
+    </marker>
+  </defs>
+  <rect width="1200" height="800" fill="#f4f4ef"/>
+
+  <text x="40" y="48" font-size="24" font-weight="700" fill="#141a17">How the hundred days run</text>
+  <text x="40" y="74" font-size="15" fill="#4d5450">Format 1: one business, two operators, demand split at random. A person touches only the two queues on the right.</text>
+
+  <!-- Demand -->
+  <rect x="400" y="98" width="400" height="98" rx="14" fill="#ffffff" stroke="#c9ccc6"/>
+  <text x="420" y="126" font-size="16" font-weight="700" fill="#141a17">Demand, split at random</text>
+  <text x="420" y="150" font-size="13" fill="#141a17">Customers and subscribers in two halves</text>
+  <text x="420" y="169" font-size="13" fill="#141a17">Equal ad budgets, neither bids on the brand</text>
+  <text x="420" y="188" font-size="13" fill="#4d5450">Each store markets only to its own half</text>
+
+  <path d="M450 198 L250 236" stroke="#6b716d" stroke-width="2" fill="none" marker-end="url(#arrow-grey)"/>
+  <path d="M700 198 L700 236" stroke="#6b716d" stroke-width="2" fill="none" marker-end="url(#arrow-grey)"/>
+
+  <!-- The original store -->
+  <rect x="40" y="240" width="320" height="230" rx="14" fill="#ffffff" stroke="#c9ccc6"/>
+  <text x="62" y="272" font-size="17" font-weight="700" fill="#141a17">The original store</text>
+  <text x="62" y="294" font-size="13" fill="#4d5450">Run by its owner, on its own platform</text>
+  <text x="62" y="326" font-size="13" fill="#141a17">Its half of the customers</text>
+  <text x="62" y="348" font-size="13" fill="#141a17">The same ad budget</text>
+  <text x="62" y="370" font-size="13" fill="#141a17">Keeps its domain and search traffic</text>
+  <text x="62" y="392" font-size="13" fill="#141a17">Ships from its stock pool</text>
+  <text x="62" y="430" font-size="13" fill="#4d5450">Read by the scoreboard through its</text>
+  <text x="62" y="449" font-size="13" fill="#4d5450">platform's API or a signed P&amp;L</text>
+
+  <!-- The clone -->
+  <rect x="400" y="240" width="500" height="306" rx="14" fill="#ffffff" stroke="#1f6b3a" stroke-width="2"/>
+  <text x="422" y="272" font-size="17" font-weight="700" fill="#141a17">The clone on Kaizena Flow</text>
+  <text x="422" y="294" font-size="13" fill="#4d5450">Challenge mode: settings locked, every step logged (A1)</text>
+
+  <rect x="422" y="310" width="212" height="58" rx="10" fill="#e3f1e7"/>
+  <text x="436" y="334" font-size="13" font-weight="700" fill="#1f6b3a">Goals</text>
+  <text x="436" y="354" font-size="12" fill="#141a17">Contribution profit, margin (E2)</text>
+
+  <rect x="666" y="310" width="212" height="58" rx="10" fill="#e3f1e7"/>
+  <text x="680" y="334" font-size="13" font-weight="700" fill="#1f6b3a">Review makes a plan</text>
+  <text x="680" y="354" font-size="12" fill="#141a17">Every 3 days, sees money (E3)</text>
+
+  <rect x="666" y="392" width="212" height="58" rx="10" fill="#e3f1e7"/>
+  <text x="680" y="416" font-size="13" font-weight="700" fill="#1f6b3a">Steps run alone</text>
+  <text x="680" y="436" font-size="12" fill="#141a17">Within levels and budgets</text>
+
+  <rect x="422" y="392" width="212" height="58" rx="10" fill="#e3f1e7"/>
+  <text x="436" y="416" font-size="13" font-weight="700" fill="#1f6b3a">What it moved</text>
+  <text x="436" y="436" font-size="12" fill="#141a17">Measured on profit (E4)</text>
+
+  <path d="M636 339 L662 339" stroke="#1f6b3a" stroke-width="2" fill="none" marker-end="url(#arrow)"/>
+  <path d="M772 370 L772 388" stroke="#1f6b3a" stroke-width="2" fill="none" marker-end="url(#arrow)"/>
+  <path d="M664 421 L638 421" stroke="#1f6b3a" stroke-width="2" fill="none" marker-end="url(#arrow)"/>
+  <path d="M528 390 L528 372" stroke="#1f6b3a" stroke-width="2" fill="none" marker-end="url(#arrow)"/>
+
+  <rect x="422" y="464" width="456" height="32" rx="8" fill="#f4f4ef"/>
+  <text x="436" y="485" font-size="12" fill="#141a17"><tspan font-weight="700">Events:</tspan> a customer waiting, an order stuck, a return, low stock (C5)</text>
+  <rect x="422" y="502" width="456" height="32" rx="8" fill="#f4f4ef"/>
+  <text x="436" y="523" font-size="12" fill="#141a17"><tspan font-weight="700">Guards:</tspan> margin floor, ad limit, a second AI provider, rollback (D5, F1, F4)</text>
+
+  <!-- Human queues -->
+  <rect x="940" y="240" width="220" height="140" rx="14" fill="#fbe9e5" stroke="#c2412d"/>
+  <text x="958" y="270" font-size="16" font-weight="700" fill="#a3321f">Refunds</text>
+  <text x="958" y="294" font-size="13" fill="#141a17">A neutral person at</text>
+  <text x="958" y="312" font-size="13" fill="#141a17">Kaizena Flow</text>
+  <text x="958" y="336" font-size="13" fill="#141a17">One press on the phone,</text>
+  <text x="958" y="354" font-size="13" fill="#141a17">amount from code (A3)</text>
+
+  <rect x="940" y="400" width="220" height="146" rx="14" fill="#fbe9e5" stroke="#c2412d"/>
+  <text x="958" y="430" font-size="16" font-weight="700" fill="#a3321f">Escalated support</text>
+  <text x="958" y="454" font-size="13" fill="#141a17">Asks for a person, legal,</text>
+  <text x="958" y="472" font-size="13" fill="#141a17">safety, chargebacks, abuse,</text>
+  <text x="958" y="490" font-size="13" fill="#141a17">two failed tries (A4)</text>
+  <text x="958" y="520" font-size="13" fill="#4d5450">Everything else: the AI,</text>
+  <text x="958" y="538" font-size="13" fill="#4d5450">on every channel (B)</text>
+
+  <path d="M902 312 L936 312" stroke="#c2412d" stroke-width="2.5" stroke-dasharray="6 5" fill="none" marker-end="url(#arrow-red)"/>
+  <path d="M902 470 L936 470" stroke="#c2412d" stroke-width="2.5" stroke-dasharray="6 5" fill="none" marker-end="url(#arrow-red)"/>
+
+  <!-- Warehouse -->
+  <rect x="400" y="584" width="500" height="72" rx="14" fill="#ffffff" stroke="#c9ccc6"/>
+  <text x="422" y="612" font-size="16" font-weight="700" fill="#141a17">Warehouse or 3PL</text>
+  <text x="422" y="636" font-size="13" fill="#141a17">Two stock pools from Day 0; orders sent after payment, tracking back (C1)</text>
+  <path d="M650 548 L650 580" stroke="#6b716d" stroke-width="2" fill="none" marker-end="url(#arrow-grey)"/>
+  <path d="M200 472 L200 620 L396 620" stroke="#6b716d" stroke-width="2" fill="none" marker-end="url(#arrow-grey)"/>
+
+  <!-- Platform team -->
+  <rect x="940" y="584" width="220" height="72" rx="14" fill="#ffffff" stroke="#c9ccc6"/>
+  <text x="958" y="610" font-size="14" font-weight="700" fill="#141a17">Platform team</text>
+  <text x="958" y="630" font-size="12" fill="#4d5450">Paged on a stall, a budget stop</text>
+  <text x="958" y="646" font-size="12" fill="#4d5450">or an AI outage (A6, F3)</text>
+
+  <!-- Scoreboard -->
+  <rect x="40" y="694" width="1120" height="80" rx="14" fill="#141a17"/>
+  <text x="62" y="724" font-size="17" font-weight="700" fill="#ffffff">Scoreboard, checked by a referee (E7)</text>
+  <text x="62" y="752" font-size="13" fill="#d8dbd5">Contribution profit on like-for-like demand · margin · revenue · every human action by class: refund, escalation, platform fix, other (A5)</text>
+  <path d="M90 472 L90 690" stroke="#6b716d" stroke-width="2" stroke-dasharray="4 4" fill="none" marker-end="url(#arrow-grey)"/>
+  <path d="M920 548 L920 690" stroke="#6b716d" stroke-width="2" stroke-dasharray="4 4" fill="none" marker-end="url(#arrow-grey)"/>
+  <path d="M902 530 L920 530 L920 548" stroke="#6b716d" stroke-width="2" stroke-dasharray="4 4" fill="none"/>
+</svg>
