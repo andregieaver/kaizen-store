@@ -53,4 +53,13 @@ describe("a progress poll's tick (bloat review step 0.17)", () => {
     expect(refresh).not.toHaveBeenCalled();
     expect(last.value).toBe("first");
   });
+
+  it("redraws when the run moved before the first tick, measured from what the page drew", async () => {
+    // RefreshWhile seeds `last` with the fingerprint the server drew the page from, so a change before the first tick is not taken as the baseline.
+    const refresh = vi.fn();
+    const last = { value: "drawn" as string | null };
+    await progressTick({ visible: true, status: async () => "moved", last, refresh });
+    expect(refresh).toHaveBeenCalledTimes(1);
+    expect(last.value).toBe("moved");
+  });
 });

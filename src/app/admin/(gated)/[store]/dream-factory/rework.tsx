@@ -9,7 +9,7 @@ import { fillWords } from "@/lib/admin-fill";
 import type { HomeMessages } from "@/lib/admin-messages/home.en";
 import { PROMPT_MAX, PROMPT_MIN, REVIEW_ROUNDS, REWORK_STEPS, passed } from "@/lib/dream-factory";
 import { marketPath, storeHref } from "@/lib/paths";
-import type { DreamRun } from "@/server/dream-factory";
+import { dreamFingerprint, type DreamRun } from "@/server/dream-factory";
 import { APPEARANCE_ASPECTS } from "@/lib/site-appearance";
 import { latestAppearance } from "@/server/page-looks";
 import { reworkPrepared, type ReworkPrepared } from "@/server/dream-showcase";
@@ -132,7 +132,7 @@ export async function ReworkRun({ store, run, words: w }: { store: Store; run: D
   const words = run.status === "ready" || run.status === "open" ? r.run.running : r.run[run.status];
   return (
     <>
-      {going && <RefreshWhile seconds={REFRESH_SECONDS} status={dreamStateAction.bind(null, slug)} />}
+      {going && <RefreshWhile seconds={REFRESH_SECONDS} status={dreamStateAction.bind(null, slug)} drawn={dreamFingerprint(run)} />}
       <div className="flex max-w-4xl flex-col gap-6">
         <PageHeader title={r.title} description={<>{words}</>} />
 

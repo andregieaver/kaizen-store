@@ -10,7 +10,7 @@ import { adminLangOf } from "@/lib/admin-lang";
 import { adminText, adminTexts } from "@/lib/admin-text";
 import { DREAM_STEPS, LOOK_ROUNDS, PROMPT_MAX, PROMPT_MIN, briefQuestions, detailsQuestions, ownerWaitMs, scoreOf } from "@/lib/dream-factory";
 import { marketPath, storeHref } from "@/lib/paths";
-import { latestDreamRun } from "@/server/dream-factory";
+import { dreamFingerprint, latestDreamRun } from "@/server/dream-factory";
 import { dreamShowcase } from "@/server/dream-showcase";
 import { getPageForEdit } from "@/server/pages";
 import { requirePermission } from "@/server/permissions";
@@ -113,7 +113,7 @@ export default async function DreamFactoryPage({ params }: { params: Promise<{ s
   const ready = run.status === "ready" || run.status === "open";
   return (
     <AdminTextScope texts={adminTexts(lang, ["home"])}>
-      {going && <RefreshWhile seconds={REFRESH_SECONDS} status={dreamStateAction.bind(null, slug)} />}
+      {going && <RefreshWhile seconds={REFRESH_SECONDS} status={dreamStateAction.bind(null, slug)} drawn={dreamFingerprint(run)} />}
       <div className="flex max-w-6xl flex-col gap-6">
         <PageHeader title={w.title} description={<>{runWords}</>} status={run.test ? <Chip signal="insight">{w.test}</Chip> : undefined} />
 

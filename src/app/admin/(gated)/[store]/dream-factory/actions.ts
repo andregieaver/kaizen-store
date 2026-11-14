@@ -1,7 +1,5 @@
 "use server";
 
-import { createHash } from "node:crypto";
-
 import { revalidatePath } from "next/cache";
 import { after } from "next/server";
 import { redirect } from "next/navigation";
@@ -15,6 +13,7 @@ import {
   approveLook,
   askLookChange,
   askReworkChange,
+  dreamFingerprint,
   latestDreamRun,
   confirmDreamBrief,
   retryDreamStep,
@@ -45,9 +44,7 @@ const answer = (result: { ok: true } | { ok: false; problem: string }, slug: str
  */
 export async function dreamStateAction(storeSlug: string): Promise<string | null> {
   return storeAction({ store: storeSlug, key: "owner", action: "dream.state", answer: () => null }, async (member) => {
-    const run = await latestDreamRun(member.store.id);
-    if (!run) return "none";
-    return createHash("sha256").update(JSON.stringify([run.id, run.status, run.readyAt, run.finishedAt, run.steps])).digest("hex").slice(0, 16);
+    return dreamFingerprint(await latestDreamRun(member.store.id));
   });
 }
 
