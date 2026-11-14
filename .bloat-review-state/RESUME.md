@@ -107,3 +107,8 @@ challenged by a skeptic, planned by a planner. Its last lines hold the arguments
 - 0.13 executor running (prompt run/executor-0.13.md), local commits only. Review: attributes kept, View store/CSV/logo never fetched, spec fetches lists, eight counts.
 - Owner hand check for 0.12: change language then country on the demo store.
 - Production prefetch probe: $S/probe/prefetch.cjs (node, from $S/probe).
+
+## Update 14 Nov 07:20
+- 0.2 Done (76f5791): readings 13 Nov 487/9/67, 14 Nov 491/9/67. 0.23 may start (in order, after 0.22).
+- 0.13 pushed c041d22 (3 commits incl. my order-table addition); CI run 43569961791; write-up pending as D591.
+- 0.14 executor running (run/executor-0.14.md; D592 reserved for it in its CLAUDE.md sentence).
