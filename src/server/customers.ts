@@ -422,7 +422,9 @@ export async function startSession(storeId: string, customerId: string, { verifi
   // A customer who saved their company buys as a business from here on (B2B).
   if (signedIn?.audience === "both" && signedIn.organisation_number) await chooseBusinessBuyer(storeId);
   // Wishlists kept in this browser join the account (D34).
-  const { claimBrowserWishlists } = await import("./wishlists");
+  // The marker says so too, so the hearts ask for the account's saved products on any device it signs in on.
+  const { claimBrowserWishlists, markMine } = await import("./wishlists");
+  await markMine(storeId);
   await claimBrowserWishlists(storeId, customerId);
 }
 

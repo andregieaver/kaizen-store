@@ -43,3 +43,31 @@ test("a shopper saves products with the heart, sorts them into lists and adds a 
   await expect(page.getByText("Listen er tom.")).toBeVisible();
   await expect(page.getByRole("link", { name: "Handlekurv (1)" }).first()).toBeAttached();
 });
+
+test("a visitor who saved nothing is not asked for", async ({ page }) => {
+  const asked: string[] = [];
+  page.on("request", (request) => {
+    if (request.url().includes("/wishlist/saved")) asked.push(request.url());
+  });
+  await page.goto("/s/demo/no");
+  await page.waitForLoadState("load");
+  await page.waitForTimeout(1500);
+  expect(asked).toHaveLength(0);
+});
+
+test("a saved product is asked for after a reload", async ({ page }) => {
+  await page.goto("/s/demo/no/p/demo-handlenett");
+  const heart = page.getByRole("button", { name: /i ønskelisten$/ });
+  await heart.click();
+  // Really saved (the words come once it is), so the reload cannot cut the save short.
+  await expect(page.getByRole("status").filter({ hasText: "Lagret i ønskelisten." }).first()).toBeAttached();
+
+  const asked: string[] = [];
+  page.on("request", (request) => {
+    if (request.url().includes("/wishlist/saved")) asked.push(request.url());
+  });
+  await page.reload();
+  await expect(page.getByRole("button", { name: /i ønskelisten$/ })).toHaveAttribute("aria-pressed", "true");
+  expect(asked).toHaveLength(1);
+  await expect(page.getByRole("link", { name: "Ønskeliste" }).first()).toContainText("1");
+});

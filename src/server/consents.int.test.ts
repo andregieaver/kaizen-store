@@ -61,7 +61,7 @@ describe("cookie consent (D58)", () => {
     expect((await getStore(`consent-${run}`))?.tracking).toEqual({ ga4: "G-ABC123" });
     const store = await siteCookies(storeId, { ga4: "G-ABC123" });
     expect(store.categories).toEqual(["statistics"]);
-    expect(store.cookies.map((c) => c.name)).toEqual(["cart_…", "account_…", "wishlist_…", "consent_…", "_ga", "_ga_…"]);
+    expect(store.cookies.map((c) => c.name)).toEqual(["cart_…", "account_…", "wishlist_…", "kaizen_mine_…", "consent_…", "_ga", "_ga_…"]);
     // Kaizen's own tools are kept apart.
     expect(await saveTracking(admin, null, { metaPixel: "1234567" })).toMatchObject({ ok: true });
     const [row] = await db().execute<Row>(sql`select tracking from commerce.platform_settings`);

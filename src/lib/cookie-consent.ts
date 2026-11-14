@@ -480,6 +480,22 @@ export const KNOWN_COOKIES: KnownCookie[] = [
     },
   },
   {
+    name: "kaizen_mine_…",
+    pattern: /^kaizen_mine_[0-9a-f-]{36}$/,
+    provider: "Kaizena Flow",
+    category: "necessary",
+    days: 365,
+    on: "store",
+    // The online shop's (D178 step 5): a website sets none of it.
+    feature: "shop",
+    purpose: {
+      en: "Tells the page that you have saved products or an account here, so it asks for them only then.",
+      nb: "Forteller siden at du har lagrede produkter eller en konto her, slik at den bare spør etter dem da.",
+      sv: "Talar om för sidan att du har sparade produkter eller ett konto här, så att den bara frågar efter dem då.",
+      da: "Fortæller siden, at du har gemte produkter eller en konto her, så den kun spørger efter dem da.",
+    },
+  },
+  {
     name: "buyer_…",
     pattern: /^buyer_[0-9a-f-]{36}$/,
     provider: "Kaizena Flow",

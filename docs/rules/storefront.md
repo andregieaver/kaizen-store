@@ -655,3 +655,5 @@ changing it; a rule changes here, and its line in CLAUDE.md when its gist change
   is added in the browser: necessary code at once, the rest by
   `ConsentManager` after consent. Pass it through `liveCustomCode()`, which
   gives none until stores have their own hosts (P7).
+  The wishlist (D34) hearts ask `/wishlist/saved` only when the marker cookie `kaizen_mine_{storeId}` (necessary, declared in
+  `KNOWN_COOKIES`, set on a first save and on sign-in) is present.
