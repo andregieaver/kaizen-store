@@ -1,0 +1,2 @@
+ALTER TABLE "commerce"."support_conversations" ADD COLUMN "escalation" text;--> statement-breakpoint
+ALTER TABLE "commerce"."support_conversations" ADD CONSTRAINT "support_conversations_escalation" CHECK ("commerce"."support_conversations"."escalation" is null or "commerce"."support_conversations"."escalation" in ('asked_for_person', 'upset', 'legal', 'safety', 'chargeback', 'privacy', 'abuse', 'could_not_help'));

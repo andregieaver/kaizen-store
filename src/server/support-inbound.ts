@@ -429,7 +429,7 @@ async function answer(desk: Desk, settings: DeskSettings, site: ChatSite, conver
   const customer = await emailCustomer(desk, settings, conversationId);
   const result = await (deps.turn ?? runSupportTurn)(desk, context, conversationId, { signals: NO_SIGNALS }, customer, null, { email: true });
   if (result.error) await handOver(desk, conversationId, "system", "no_ai");
-  else if (result.handoff) await handOver(desk, conversationId, "ai", "ai", result.handoff);
+  else if (result.handoff) await handOver(desk, conversationId, "ai", "ai", result.handoff, result.escalation);
 }
 
 /**

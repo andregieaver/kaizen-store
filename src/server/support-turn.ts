@@ -4,7 +4,7 @@ import type { ChatReply } from "@/lib/chat";
 import type { ChatRequest } from "@/lib/chat-schema";
 import { t } from "@/lib/i18n";
 import type { Signals } from "@/lib/recommendations";
-import { AI_HISTORY, MESSAGE_MAX } from "@/lib/support-rules";
+import { AI_HISTORY, MESSAGE_MAX, type EscalationCategory } from "@/lib/support-rules";
 import type { VisitorMessageData } from "@/lib/support-visitor";
 
 import { AiError } from "./ai";
@@ -29,7 +29,7 @@ import { chatPromptVersion } from "./prompt-versions";
 export const PERSON_PREFIX = "(A person from the store wrote:)";
 
 /** The AI's answer; `error` when it could not answer (the customer's message is kept), `handoff` when it asked for a person. */
-export type SupportTurn = { reply: ChatReply | null; error?: string; handoff?: string };
+export type SupportTurn = { reply: ChatReply | null; error?: string; handoff?: string; escalation?: EscalationCategory };
 
 /** Runs only where the AI answers (`context.agent` and `context.connection` are set: `chatContext()`). */
 export async function runSupportTurn(
@@ -90,5 +90,5 @@ export async function runSupportTurn(
   const body = (reply.reply || m.chat.sorry).slice(0, MESSAGE_MAX.ai);
   // The prompt version the answer was written under (D391) is kept with it, for the desk; the visitor's feed leaves it out.
   await addMessage(desk, conversationId, "ai", null, body, { data: { ...data, prompt: chatPromptVersion() }, ...(reply.action ? { action: reply.action } : {}) });
-  return { reply, ...(reply.handoff ? { handoff: reply.handoff } : {}) };
+  return { reply, ...(reply.handoff ? { handoff: reply.handoff, ...(reply.escalation ? { escalation: reply.escalation } : {}) } : {}) };
 }

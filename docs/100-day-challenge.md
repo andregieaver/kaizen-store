@@ -606,4 +606,9 @@ Each item of section 4 moves here when it is built, with its decision.
 | E2 Profit goals | Built: contribution and margin over 30 days, net sales and contribution since a first day. | D599 |
 | E3 The review sees money | Partly: `profit_overview` (contribution, margin, profit per krone of marketing, per visitor, the month's forecast) in the review's and events' tools; the budget and the campaigns report still have no tool. | D599 |
 | B1 Email answers about the sender's own orders | Built: a desk switch, on by itself in the challenge. | D600 |
-| B2 Forms to the AI, B4 the waiting customer answered | Not yet: B4 comes with A4's escalation categories. | |
+| B2 Forms to the AI | Not yet. | |
+| B4 The waiting customer | Changed course: a fault is prevented and paged (A6), escalations stay the owner's. | D601 |
+| A3 The refund queue | Built: the owner sees and decides what the autopilot kept in anyone's name, pushed to their phone. | D601 |
+| A4 Escalations | Built: a category on every hand-over; faults are not escalations. | D601 |
+| A5 The intervention log | Built (no screen yet): refund, escalation, platform, other. | D601 |
+| A6 The stall watch | Built: the platform team emailed of each stall once a day while it lasts. | D601 |

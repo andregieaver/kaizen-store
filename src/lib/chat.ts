@@ -1,5 +1,6 @@
 import { findClaims } from "./claims";
 import type { ReturnPolicyFacts } from "./structured-data";
+import type { EscalationCategory } from "./support-rules";
 import type { SupportCard, SupportChip } from "./support-visitor";
 import type { ShownMeasure } from "./unit-price";
 import type { PriceDecimals } from "./money";
@@ -53,6 +54,8 @@ export type ChatReply = {
   products: ChatProduct[];
   /** The AI asked for a person (D216, `handoff_to_human`, only with the AI first): what the customer needs, for the staff. */
   handoff?: string;
+  /** Why a person must answer, as the AI named it (`docs/100-day-challenge.md` A4). */
+  escalation?: EscalationCategory;
   /** Links the support tools gave (D216, step 9), drawn as chips under the answer. */
   chips?: SupportChip[];
   /** A card a support tool asked for (the sign-in card, the email card). */

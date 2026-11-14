@@ -1,6 +1,6 @@
 {
-  "id": "184ae652-2782-4215-b89f-fe58550e4d53",
-  "prevId": "c350043b-e4b1-4c9a-97fa-6deaa1afacfc",
+  "id": "d65f2135-e04f-4f0f-b9be-bb892c1fd681",
+  "prevId": "184ae652-2782-4215-b89f-fe58550e4d53",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -81635,6 +81635,12 @@
           "primaryKey": false,
           "notNull": false
         },
+        "escalation": {
+          "name": "escalation",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
         "message_seq": {
           "name": "message_seq",
           "type": "integer",
@@ -82099,6 +82105,10 @@
         "support_conversations_handoff_reason": {
           "name": "support_conversations_handoff_reason",
           "value": "\"commerce\".\"support_conversations\".\"handoff_reason\" is null or \"commerce\".\"support_conversations\".\"handoff_reason\" in ('customer', 'ai', 'tone', 'no_ai', 'limit')"
+        },
+        "support_conversations_escalation": {
+          "name": "support_conversations_escalation",
+          "value": "\"commerce\".\"support_conversations\".\"escalation\" is null or \"commerce\".\"support_conversations\".\"escalation\" in ('asked_for_person', 'upset', 'legal', 'safety', 'chargeback', 'privacy', 'abuse', 'could_not_help')"
         },
         "support_conversations_ended_by": {
           "name": "support_conversations_ended_by",

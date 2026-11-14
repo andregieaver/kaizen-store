@@ -647,6 +647,8 @@ export const EMAIL_KINDS: Record<string, EmailClass> = {
   "platform.status_incident": "staff",
   "platform.status_alert": "staff",
   "platform.job_failing": "staff",
+  /** What holds a challenge store up (`docs/100-day-challenge.md` A6), to platform admins: the store's name, the kind and a count, never a customer. */
+  "platform.challenge_stall": "staff",
   "referral.credit_applied": "staff",
   "plan_reminder": "staff",
   "plan_reminder.test": "staff",

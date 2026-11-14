@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 import { CUSTOMER_ACTION_KINDS, DETAILS_MAX, STAFF_REQUEST_KINDS } from "./support-actions";
-import { AI_REASON_MAX } from "./support-rules";
+import { AI_REASON_MAX, ESCALATION_CATEGORIES } from "./support-rules";
 
 /**
  * The tools the support AI is given beyond the chat's own (D216, `docs/support.md` 4.3a), as names, descriptions, inputs and
@@ -38,8 +38,14 @@ const orderNumber = z.string().trim().min(1).max(64).describe("The order's numbe
 export const SUPPORT_TOOLS = [
   supportTool(
     "handoff_to_human",
-    "Hand the conversation to a person from the store. Use it when the customer asks for a person, is upset, or you could not help after two tries. Write your reply first; the hand-over happens after it.",
-    z.object({ reason: z.string().trim().min(1).max(AI_REASON_MAX).describe("For the staff: what the customer needs, in one sentence.") }),
+    "Hand the conversation to a person from the store. Use it when the customer asks for a person, is upset, raises something legal (a complaint to an authority, a lawyer), a product's safety, a chargeback, their personal data, is abusive, or you could not help after two tries. Write your reply first; the hand-over happens after it.",
+    z.object({
+      reason: z.string().trim().min(1).max(AI_REASON_MAX).describe("For the staff: what the customer needs, in one sentence."),
+      category: z
+        .enum(ESCALATION_CATEGORIES)
+        .default("could_not_help")
+        .describe("Why a person must answer: asked_for_person, upset, legal, safety, chargeback, privacy (their personal data), abuse, or could_not_help."),
+    }),
   ),
   supportTool("ask_to_sign_in", "Show the customer a sign-in form (an emailed code). Needed before you can look at their orders.", why, { shopOrAfterSale: true }),
   supportTool("ask_for_email", "Show the customer a form to leave their email, so the store can answer later.", why, { emailFollowup: true }),

@@ -28,6 +28,7 @@ import {
   type Handler,
   type MessageAuthor,
   type SupportMode,
+  type EscalationCategory,
 } from "@/lib/support-rules";
 import { REFUSALS, type Refusal, type SupportEvent } from "@/lib/support-state";
 import type { ToneBand } from "@/lib/support-tone";
@@ -258,9 +259,9 @@ export async function newEmailToken(desk: Desk, conversationId: string): Promise
 }
 
 /** The AI's words when it handed the conversation to a person (2.3), shown to staff as text. */
-export async function setAiReason(desk: Desk, conversationId: string, reason: string): Promise<void> {
+export async function setAiReason(desk: Desk, conversationId: string, reason: string, escalation: EscalationCategory | null = null): Promise<void> {
   await db().execute(sql`
-    update commerce.support_conversations set ai_reason = ${reason.slice(0, AI_REASON_MAX)}
+    update commerce.support_conversations set ai_reason = ${reason.slice(0, AI_REASON_MAX)}, escalation = ${escalation}
     where id = ${conversationId}::uuid and ${deskIs(desk, sql`store_id`)}
   `);
 }

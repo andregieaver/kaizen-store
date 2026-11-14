@@ -15297,6 +15297,8 @@ export const supportConversations = commerce.table(
     toneAlertAt: timestamp("tone_alert_at", { withTimezone: true }),
     handoffReason: text("handoff_reason"),
     aiReason: text("ai_reason"),
+    /** Why a person must answer, as the AI named it when it handed over (`ESCALATION_CATEGORIES`, `docs/100-day-challenge.md` A4). */
+    escalation: text("escalation"),
     messageSeq: integer("message_seq").notNull().default(0),
     /** The last customer message the silent partner has answered. */
     partnerSeq: integer("partner_seq").notNull().default(0),
@@ -15364,6 +15366,10 @@ export const supportConversations = commerce.table(
     check("support_conversations_requester", sql`(${t.source} = 'admin') = (${t.requesterId} is not null) or ${t.anonymisedAt} is not null`),
     check("support_conversations_kaizen_customer", sql`${t.storeId} is not null or ${t.customerId} is null`),
     check("support_conversations_handoff_reason", sql`${t.handoffReason} is null or ${t.handoffReason} in ('customer', 'ai', 'tone', 'no_ai', 'limit')`),
+    check(
+      "support_conversations_escalation",
+      sql`${t.escalation} is null or ${t.escalation} in ('asked_for_person', 'upset', 'legal', 'safety', 'chargeback', 'privacy', 'abuse', 'could_not_help')`,
+    ),
     check("support_conversations_ended_by", sql`${t.endedBy} is null or ${t.endedBy} in ('customer', 'agent', 'timeout', 'system')`),
     check("support_conversations_summary_status", sql`${t.summaryStatus} in ('none', 'pending', 'done', 'failed', 'skipped')`),
     check("support_conversations_rating", sql`${t.rating} is null or ${t.rating} in ('good', 'bad')`),

@@ -7,6 +7,7 @@ import { db } from "@/db/client";
 import { NOTICE_DAYS, NOTICE_KINDS, type NoticeKind } from "@/lib/assistant-notices";
 
 import { log } from "./log";
+import { sendDecisionPush } from "./push";
 import { col, typedRows } from "./typed-rows";
 
 /**
@@ -87,6 +88,15 @@ export async function noticeApproval(
     path: `assistant?c=${conversationId}`,
     facts: { summary: approval.summary },
   });
+  // What the autopilot kept reaches the store's owners' phones (`docs/100-day-challenge.md` A3): in the challenge, a refund waits on them.
+  if (storeId) {
+    try {
+      const own = await db().execute(sql`select 1 from commerce.assistant_conversations where id = ${conversationId}::uuid and source = 'autopilot'`);
+      if (own.length > 0) await sendDecisionPush(storeId, approval.id);
+    } catch (error) {
+      log("error", "assistant_notice.push_failed", { store: storeId }, error);
+    }
+  }
 }
 
 /**

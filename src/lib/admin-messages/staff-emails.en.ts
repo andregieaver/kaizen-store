@@ -350,8 +350,24 @@ export const staffEmailsEn = {
     after: "Usage and limits lists every job with when it last ran. One email is sent each time a job starts failing; the next comes only after it has run well again and failed again.",
     button: "Open usage and limits",
   },
+  /** The challenge's stall watch (`docs/100-day-challenge.md` A6), to platform admins: what holds a store up, never a customer's details. */
+  challengeStall: {
+    subject: "Challenge store {store}: {what}",
+    heading: "A challenge store needs a look: {store}",
+    kinds: {
+      paused: "The owner paused the autopilot. That is an intervention, and the challenge is suspended while it lasts.",
+      budget: "The autopilot's AI budget stopped it for this month. Raise the challenge's AI budget or price the model.",
+      plan_paused: "A plan is paused for a reason the budget does not lift: its maker may be gone, or a person paused it.",
+      asking: "A plan's step asks a question ({count}), which nobody answers in the challenge.",
+      decision_waiting: "{count} refunds or other money back have waited on the owner for more than a day.",
+      support_fault: "A customer waits for a person because the store's AI was off, failed or reached its limit. That is a fault, not an escalation.",
+      escalation_waiting: "{count} escalated customers have waited on the owner for more than four hours.",
+    },
+    after: "The challenge's rules allow a person only refunds and escalated support: everything else must run without one. One email each day while this lasts.",
+    button: "Open the store's autopilot",
+  },
   /** A push notification of a new order (D361): its number and total only. */
-  push: { newOrderTitle: "New order {number}", newOrderBody: "{total} · {store}", quoteTitle: "Quote requested {number}", quoteBody: "{store}", activityTitle: "Due now: {title}", activityBody: "{store}" },
+  push: { newOrderTitle: "New order {number}", newOrderBody: "{total} · {store}", quoteTitle: "Quote requested {number}", quoteBody: "{store}", activityTitle: "Due now: {title}", activityBody: "{store}", decisionTitle: "Waiting for your yes", decisionBody: "{summary} · {store}" },
 };
 
 export type StaffEmailsMessages = Widen<typeof staffEmailsEn>;

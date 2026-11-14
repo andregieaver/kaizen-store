@@ -1259,17 +1259,24 @@ async function decideApprovalNow(
     select 1 from commerce.oauth_grants g join commerce.oauth_clients c on c.id = g.client_id
     where g.id = oauth_grant_id and g.revoked_at is null and c.blocked_at is null and store_id = any(g.store_ids)
   ))`;
+  // Whose calls this person decides: their own, and for a store's owner also what the autopilot kept in the store in anyone's name
+  // (`docs/100-day-challenge.md` A3), run then as the owner. Anyone else decides their own only.
+  const holder = holderOfPrincipal(p);
+  const theirs =
+    p.store && holder && can(holder, "owner")
+      ? sql`(account_id = ${p.account.id}::uuid or exists (select 1 from commerce.assistant_conversations c where c.id = conversation_id and c.source = 'autopilot'))`
+      : sql`account_id = ${p.account.id}::uuid`;
   // A yes counts only before the call's end (PSI AGT-03): one asked for more than seven days ago is never run.
   const [claimed] = await db().execute<Row>(sql`
     update commerce.assistant_approvals set status = ${approve ? "done" : "declined"}, decided_at = now()
-    where id = ${approvalId}::uuid and ${inScope(p)} and account_id = ${p.account.id}::uuid and status = 'pending'
+    where id = ${approvalId}::uuid and ${inScope(p)} and ${theirs} and status = 'pending'
       and ((expires_at > now() and not ${grantEnded}) or ${!approve})
     returning *
   `);
   if (!claimed && approve) {
     const [ended] = await db().execute<Row>(sql`
       update commerce.assistant_approvals set status = 'expired', decided_at = now(), result = ${JSON.stringify({ error: GRANT_ENDED_NOTE })}::jsonb
-      where id = ${approvalId}::uuid and ${inScope(p)} and account_id = ${p.account.id}::uuid and status = 'pending' and ${grantEnded}
+      where id = ${approvalId}::uuid and ${inScope(p)} and ${theirs} and status = 'pending' and ${grantEnded}
       returning *
     `);
     if (ended) {
@@ -1278,7 +1285,7 @@ async function decideApprovalNow(
     }
   }
   if (!claimed) {
-    const [ended] = await expireAssistantApprovals(sql`id = ${approvalId}::uuid and ${inScope(p)} and account_id = ${p.account.id}::uuid`);
+    const [ended] = await expireAssistantApprovals(sql`id = ${approvalId}::uuid and ${inScope(p)} and ${theirs}`);
     if (ended && note) await addMessage(p, String(ended.conversation_id), "assistant", `${EXPIRED_NOTE}: ${ended.summary}`);
     return ended ? toApproval(ended) : null;
   }
