@@ -47,7 +47,7 @@ test("the page counts who wants the store's emails and lists them, newest first"
   const list = page.getByRole("list", { name: "Subscribers" });
   await expect(list.getByRole("link", { name: email })).toBeVisible();
   await page.getByRole("searchbox", { name: "Search by email or name" }).fill(RUN);
-  await page.getByRole("button", { name: "Search" }).click();
+  await page.getByRole("button", { name: "Search", exact: true }).click();
   await expect(list.getByRole("listitem")).toHaveCount(1);
 });
 

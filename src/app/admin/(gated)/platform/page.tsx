@@ -209,11 +209,11 @@ export default async function PlatformOverviewPage() {
                       </span>
                     ))}
                   </div>
-                  <div className="mt-1 flex justify-end text-caption">
-                    <AdminLink href="/admin/platform/plans/analytics" className="text-ink-2 hover:text-ink">
-                      {w.seeAnalytics} ›
-                    </AdminLink>
-                  </div>
+                </div>
+                <div className="-mt-3 flex justify-end text-caption">
+                  <AdminLink href="/admin/platform/plans/analytics" className="text-ink-2 hover:text-ink">
+                    {w.seeAnalytics} ›
+                  </AdminLink>
                 </div>
               </section>
             )}
@@ -241,7 +241,7 @@ export default async function PlatformOverviewPage() {
                         {stuck !== null && stuck > 0 && (
                           <>
                             {" "}
-                            <AdminLink href="/admin/platform/stores" className="whitespace-nowrap text-warning-text hover:underline">
+                            <AdminLink href="/admin/platform/stores" className="whitespace-nowrap text-warning-text underline underline-offset-2">
                               {fillWords(t.stuck, { n: stuck })} ›
                             </AdminLink>
                           </>

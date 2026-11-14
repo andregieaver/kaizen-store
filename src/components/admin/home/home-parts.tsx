@@ -206,7 +206,8 @@ export function WeekBars({
 }) {
   const last = heights.length - 1;
   return (
-    <div role="img" aria-label={label} className="flex flex-col gap-2">
+    <div className="flex flex-col gap-2">
+      <div role="img" aria-label={label} className="flex flex-col gap-2">
       <div className="grid h-48 grid-cols-7 items-end gap-2 border-b border-line sm:gap-3">
         {heights.map((h, i) => (
           <div key={dayNames[i] ?? i} className="flex h-full flex-col items-center justify-end gap-1.5">
@@ -224,6 +225,7 @@ export function WeekBars({
             {name}
           </span>
         ))}
+      </div>
       </div>
       <div className="mt-1 flex flex-wrap items-center gap-4 text-caption text-muted">
         <span className="flex items-center gap-1.5">
