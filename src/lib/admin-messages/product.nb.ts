@@ -33,6 +33,8 @@ export const productNb: ProductMessages = {
     published: "Publisert",
     saving: "Lagrer …",
     save: "Lagre",
+    notSaved: "Endringer er ikke lagret ennå",
+    allSaved: "Alt er lagret",
     saved: "Lagret.",
     seeInStore: "Se det i butikken",
     draftsHidden: "Utkast er skjult for kundene.",
@@ -223,6 +225,7 @@ export const productNb: ProductMessages = {
     nothing: "Fyll ut minst ett felt.",
   },
   row: {
+    moreFor: "Mer for {name}",
     skuFor: "Varenummer for {name}",
     deliveryFor: "Levering for {name}",
     rentedHow: "Hvordan {name} leies ut",

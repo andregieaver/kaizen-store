@@ -16,8 +16,9 @@ import { adminText, adminTexts } from "@/lib/admin-text";
 import { ACTIVE_IMPORT_STATUSES } from "@/lib/data-job";
 import { listJobs } from "@/server/data-jobs";
 import { memberCan, requirePermission } from "@/server/permissions";
-import { getEditorContext, listAdminProducts } from "@/server/products";
-import { productsNeedingMeasure } from "@/server/unit-price-gaps";
+import { listAdminProducts } from "@/server/products";
+import { listTerms } from "@/server/taxonomy";
+import { countProductsNeedingMeasure, productsNeedingMeasure } from "@/server/unit-price-gaps";
 import { CARD_CLASS, PageHeader } from "@/components/admin/ui";
 
 import { continueBulkAction, matchingAction, previewBulkAction, startBulkAction, undoBatchAction } from "./bulk/actions";
@@ -86,24 +87,26 @@ async function ProductList({
   const needsFilter = !archived && query.needs === "unit-price";
   const locale = store.markets[0]?.locale ?? "en";
   // Unit price (D160): active products that need a content and have none, for the notice and its filter.
-  const [products, needing, editor, imports] = await Promise.all([
+  const [products, needingCount, needing, terms, imports] = await Promise.all([
     needsFilter ? Promise.resolve([]) : listAdminProducts(store, { archived }),
-    archived ? Promise.resolve([]) : productsNeedingMeasure(store.id, store.localization.locales[0] ?? locale),
-    // Bulk editing (D165): the store's categories, tags and markets for the action panels, read only for a member who can change products.
-    canWrite && !needsFilter ? getEditorContext(store) : Promise.resolve(null),
+    // The notice needs the number; the list itself is read only on its own filter.
+    archived || needsFilter ? Promise.resolve(0) : countProductsNeedingMeasure(store.id),
+    needsFilter ? productsNeedingMeasure(store.id, store.localization.locales[0] ?? locale) : Promise.resolve([]),
+    // Bulk editing (D165): the store's categories and tags for the action panels (the markets come from the store), read only for a member who can change products.
+    canWrite && !needsFilter ? listTerms({ storeId: store.id, contentType: "product" }) : Promise.resolve(null),
     canWrite && !archived && !needsFilter ? listJobs(member, "product_import", 5) : Promise.resolve([]),
   ]);
   const skus = needsFilter ? {} : await productSkus(store.id);
   const openImport = imports.find((j) => (ACTIVE_IMPORT_STATUSES as readonly string[]).includes(j.status)) ?? null;
-  const bulk: BulkTools | null = editor
+  const bulk: BulkTools | null = terms
     ? {
         preview: previewBulkAction.bind(null, store.slug),
         start: startBulkAction.bind(null, store.slug),
         next: continueBulkAction.bind(null, store.slug),
         matching: matchingAction.bind(null, store.slug),
         undo: undoBatchAction.bind(null, store.slug),
-        terms: editor.terms.map((t) => ({ id: t.id, name: t.name, kind: t.kind })),
-        markets: editor.markets.map((m) => ({ code: m.code, name: m.name, currency: m.currency })),
+        terms: terms.map((t) => ({ id: t.id, name: t.name, kind: t.kind })),
+        markets: store.markets.map((m) => ({ code: m.code, name: m.name, currency: m.currency })),
       }
     : null;
   const base = `/admin/${store.slug}/products`;
@@ -112,7 +115,7 @@ async function ProductList({
   const market = store.markets[0];
   return (
     <AdminTextScope texts={adminTexts(lang, ["products"])}>
-      {!needsFilter && <NeedsContentNotice count={needing.length} href={needsHref} words={adminText(lang, "screens").unitGaps} />}
+      {!needsFilter && <NeedsContentNotice count={needingCount} href={needsHref} words={adminText(lang, "screens").unitGaps} />}
       {openImport && (
         <p className="rounded-panel bg-sunken p-3 text-sm">
           {fillWords(w.openImport, { name: openImport.inputName ?? w.aFile })}{" "}
@@ -137,7 +140,7 @@ async function ProductList({
         >
           {w.archived}
         </AdminLink>
-        {(needing.length > 0 || needsFilter) && (
+        {(needingCount > 0 || needsFilter) && (
           <AdminLink
             href={needsHref}
             aria-current={needsFilter ? "page" : undefined}

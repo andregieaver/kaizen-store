@@ -3,18 +3,20 @@ import Link from "next/link";
 import { connection } from "next/server";
 
 import { formatBps, priceLabel } from "@/lib/plans";
-import { listStoreBilling } from "@/server/billing";
+import { countStoreBilling, listStoreBilling } from "@/server/billing";
 import { sandboxFunnel, sandboxSettings } from "@/server/sandbox";
 import { requirePlatformReader } from "@/server/auth";
-import { ButtonLink, Card, Chip, List, ListRow, PageHeader, RowAmount, RowFact, RowLead } from "@/components/admin/ui";
+import { AdminLink, ButtonLink, Card, Chip, List, ListRow, PageHeader, RowAmount, RowFact, RowLead } from "@/components/admin/ui";
 import { countWords, fillWords } from "@/lib/admin-fill";
 import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
 import { adminText } from "@/lib/admin-text";
 
 export const metadata: Metadata = { title: "Stores" };
 
-/** Every store with its plan, subscription and fee. */
-export default async function PlatformStoresPage() {
+const PAGE_SIZE = 100;
+
+/** Every store with its plan, subscription and fee, a hundred a page with the count. */
+export default async function PlatformStoresPage({ searchParams }: PageProps<"/admin/platform/stores">) {
   // Per request: admin pages never read the database while the site is built.
   await connection();
   const account = await requirePlatformReader();
@@ -22,7 +24,14 @@ export default async function PlatformStoresPage() {
   const w = adminText(lang, "platform").stores;
   const billingWords = adminText(lang, "billing");
   const locale = ADMIN_LANG_FACTS[lang].locale;
-  const [stores, funnel, sandbox] = await Promise.all([listStoreBilling({ includeClosed: true }), sandboxFunnel(), sandboxSettings()]);
+  const raw = (await searchParams).page;
+  const page = Math.max(1, Math.floor(Number(typeof raw === "string" ? raw : "1")) || 1);
+  const [stores, total, funnel, sandbox] = await Promise.all([
+    listStoreBilling({ includeClosed: true, limit: PAGE_SIZE, offset: (page - 1) * PAGE_SIZE }),
+    countStoreBilling({ includeClosed: true }),
+    sandboxFunnel(),
+    sandboxSettings(),
+  ]);
   const f = adminText(lang, "sandbox").funnel;
   const share = (n: number, of: number) => (of > 0 ? ` (${Math.round((n / of) * 100)} %)` : "");
   return (
@@ -111,6 +120,21 @@ export default async function PlatformStoresPage() {
             </ListRow>
           ))}
         </List>
+        {total > PAGE_SIZE && (
+          <nav aria-label={w.title} className="flex flex-wrap items-center gap-4 px-1 pt-3 text-body">
+            <p className="text-muted">{fillWords(w.shownOf, { shown: String(Math.min((page - 1) * PAGE_SIZE + stores.length, total)), total: String(total) })}</p>
+            {page > 1 && (
+              <AdminLink href={page === 2 ? "/admin/platform/stores" : `/admin/platform/stores?page=${page - 1}`} className="underline">
+                {w.previous}
+              </AdminLink>
+            )}
+            {page * PAGE_SIZE < total && (
+              <AdminLink href={`/admin/platform/stores?page=${page + 1}`} className="underline">
+                {w.next}
+              </AdminLink>
+            )}
+          </nav>
+        )}
       </Card>
     </>
   );
