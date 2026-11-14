@@ -7,8 +7,8 @@ import { storePageRows, testDb, testStore } from "./db";
  * would move with but that do not wobble as a score does. `pnpm perf` runs Lighthouse itself.
  */
 
-/** The first scripts of the demo store's front page may not grow past this, raw (before compression): 893 KB when this was set (D212; 1.01 MB while every language's whole interface text came with it); 965 KB from D303 (the consent manager's ads tags and shop-event bus; the events' mapping loads only when a tag is on); 972 KB from D303 I2 and I3 (the consent manager posting the ad platforms' ids after a choice, and the first-visit keeper's idle wrapper; the keeper itself loads only where drawn). Counted here, every `script[src]` of the page, Next's `nomodule` polyfills (112,541 bytes, in the page twice) included: 840,647 on 14 November 2026 after bloat review step 0.16, which is 615,961 without them. Step 0.16 lowers this only once the page meets its target, 615,000 without the polyfills (840,000 counted here): it is still 961 bytes over. */
-const FIRST_SCRIPTS_MAX = 972_000;
+/** The first scripts of the demo store's front page may not grow past this, raw (before compression): 893 KB when this was set (D212; 1.01 MB while every language's whole interface text came with it); 965 KB from D303 (the consent manager's ads tags and shop-event bus; the events' mapping loads only when a tag is on); 972 KB from D303 I2 and I3 (the consent manager posting the ad platforms' ids after a choice, and the first-visit keeper's idle wrapper; the keeper itself loads only where drawn). Counted here, every `script[src]` of the page, Next's `nomodule` polyfills (112,541 bytes, in the page twice) included: 834,571 on 14 November 2026 after bloat review step 0.16 (the carousel's controls load where a carousel is drawn), which is 609,885 without them. Measured plus 3 % would be 860,000, above the step's ceiling of 615,000 without the polyfills, so the ceiling: 615,000 + 225,082, rounded down. */
+const FIRST_SCRIPTS_MAX = 840_000;
 
 const base = `http://localhost:${process.env.PORT ?? 3000}`;
 
@@ -43,8 +43,8 @@ test("the front page's first scripts stay within their budget, without zod or th
  * regression to look at, not a number to raise.
  */
 const FIRST_SCRIPTS_BUDGETS: Record<string, number> = {
-  // 885,949 on 14 November 2026 after bloat review step 0.16 (661,266 without the two `nomodule` polyfills counted here, 225,082;
-  // 778,503 without them before the step). Measured plus 3 % would be 913,000, above the step's ceiling of 670,000 without the
+  // 879,873 on 14 November 2026 after bloat review step 0.16 (655,190 without the two `nomodule` polyfills counted here, 225,082;
+  // 778,503 without them before the step). Measured plus 3 % would be 907,000, above the step's ceiling of 670,000 without the
   // polyfills, so the ceiling: 670,000 + 225,082, rounded down. No product picker is kept in first scripts (the range and appointment pickers, the
   // gift card and the quote request load with the page that draws them, `lazy/shop.tsx`).
   "/s/demo/no/p/demo-keramikkopp": 895_000,

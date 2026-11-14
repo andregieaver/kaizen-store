@@ -285,6 +285,12 @@ export const TOOL_PERMISSIONS: Record<OwnerToolName, PermissionKey> = {
   // The ad account's figures are marketing's; moving its money is the owner's, as connecting it is (D585).
   list_ad_budgets: "marketing:read",
   set_ad_budget: "owner",
+  // The AI wallet is the owner's own money (D599): only the owner's assistant reads or uses it.
+  wallet_status: "owner",
+  request_purchase: "owner",
+  list_purchases: "owner",
+  // Closing a purchase's card only lowers what can be spent: settings' writers may, as the wallet's pause is a setting.
+  cancel_purchase: "settings:write",
   create_field_group: "products:write",
   set_fields: "products:write",
   email_customer: "customers:write",

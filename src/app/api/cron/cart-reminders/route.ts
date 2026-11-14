@@ -75,6 +75,7 @@ import { runStoreCopies } from "@/server/store-copy";
 import { prepareDueRecurringWork } from "@/server/work-recurring";
 import { syncDueTripletex } from "@/server/tripletex-sync";
 import { syncDueFiken } from "@/server/fiken-sync";
+import { syncAgentPurchases } from "@/server/agent-purchases";
 import { runActivityPushes } from "@/server/activities";
 import { runBusinessChanges } from "@/server/business-change";
 import { runPipedriveMoves } from "@/server/pipedrive";
@@ -176,6 +177,8 @@ async function dispatch() {
     platformBriefing: () => sendPlatformBriefing(),
     // Fiken (D460): the same for stores whose Fiken connection is on, booked as sales (Annet salg), within 40 seconds.
     fiken: () => syncDueFiken(),
+    // The AI's single-use cards (D599): each open card's charges read, and the card closed once charged or out of time.
+    agentPurchases: () => syncAgentPurchases(),
     storeCopies: () => runStoreCopies(),
     bonus: () => runBonusJobs(),
     affiliates: () => runAffiliateJobs(),

@@ -107,9 +107,17 @@ module, minified (esbuild, its imports not counted), measured on 14 November 202
 
 No product picker is kept: the trial moved all four out, and none lost a press. Their own chunks in the build: the range picker
 9,597 bytes, the appointment picker 6,842, the gift card 4,592, the quote request 11,091; the product page's first scripts fell
-from 686,952 to 661,266 bytes (`node first-scripts.mjs`, the plain build). The carousel stays in first scripts (5,386 bytes of its
-own): as a `lazyView()` stand-in the server streams it after its fallback, so a page read without JavaScript holds its tiles twice
-and `e2e/carousel.spec.ts` ("without JavaScript the row scrolls") fails.
+from 686,952 to 661,266 bytes (`node first-scripts.mjs`, the plain build).
+
+The carousel is split (bloat review step 0.16). As a whole `lazyView()` stand-in it failed: the server streams it after its
+fallback, so a page read without JavaScript held its tiles twice and `e2e/carousel.spec.ts` ("without JavaScript the row scrolls")
+failed. Now the frame (`carousel.tsx`: the group, the server's row and the arrows as the server draws them, Previous off and Next on,
+from `carousel-arrows.tsx`) stays in first scripts and draws the same HTML as before; once in the browser it draws
+`CarouselControls` (`carousel-controls.tsx`: the controller, measuring, the arrows' moves, dots, Pause/Play and autoplay), a
+`lazy/blocks.tsx` stand-in whose fallback is the frame's own arrows, never the row. A press on an arrow before the controls arrive
+is kept and made by them as they arrive (`e2e/gallery.spec.ts` and `e2e/custom-grid.spec.ts` press Next at once). /s/demo/no's
+first scripts fell from 615,961 to 609,885 bytes, the product page's from 661,266 to 655,190, and the product page's own entry
+chunks (`route.mjs`) from 223,068 to 216,992.
 
 ## Checking
 

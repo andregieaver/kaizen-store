@@ -154,6 +154,8 @@ test("a Swedish price emptied in the editor follows the rule, and a product take
 
 test("sells the product in Denmark again from the products list's bulk bar", async ({ page }) => {
   await page.goto(`/admin/${E2E_STORE}/products`);
+  // The list opens as pictures (D597); the bulk tools are in the table.
+  await page.getByRole("button", { name: "Table", exact: true }).click();
   await page.getByRole("checkbox", { name: `Choose ${product.title}`, exact: true }).check();
   const bar = page.getByRole("region", { name: "Bulk actions" });
   await bar.getByRole("button", { name: "Sell in", exact: true }).click();
