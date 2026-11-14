@@ -61,7 +61,7 @@ import { hasMotion, type EnterMotion } from "@/lib/motion";
 import { drawTarget, motionSignature, type MotionPart } from "@/lib/motion-edit";
 import { PIECE_GROUPS, STORE_NOTE_KEYS, STORE_PART_KEYS, STORE_PARTS, notesForRoles, piecesOf, shopPartCopy, type ShopPart, type StoreNote } from "@/lib/store-parts";
 import { partDrawsWhenOff, partFeature, partFeatureOn } from "@/lib/part-features";
-import { requirementLabel } from "@/lib/store-features";
+import { requirementLabel } from "@/lib/feature-labels";
 import { type ColumnSpot, type DroppedColumns, columnsLostTo, copyBlock, copyColumn, copyRow, duplicateBlock, addColumn, duplicateColumn, duplicateRow, findBlock, findHolder, nestColumn, newColumnsBlock, htmlIds, insertBlock, insertColumn, insertColumnAt, insertRow, moveBlock, linesOf, locateColumn, moveColumnAt, moveRow, newBlock, newRow, removeBlock, removeColumn, removeRow, setLineLayout, setLineShares, clearLineShares, partOf, patchBlock, patchColumn, patchPart, patchRow, setSpacing, updateBlock, type BlockPatch, type Styled } from "@/lib/page-rows";
 import { blockTextFields, setBlockText } from "@/lib/page-translation";
 import { planCurrencies, type PlanChoice } from "@/lib/plan-offer";

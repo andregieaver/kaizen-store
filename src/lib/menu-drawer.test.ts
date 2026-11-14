@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
-import { CART_DRAWER_LOOK, DEFAULT_MENU_LOOK, drawerHasBackground, ownDrawer, menuDrag, menuDragCloses, menuLook, menuLookAttrs, menuLookFrom, menuOverlayClass, menuPanelClass, menuSwipe } from "./menu-drawer";
+import { CART_DRAWER_LOOK, DEFAULT_MENU_LOOK, ownDrawer, menuDrag, menuDragCloses, menuLook, menuLookAttrs, menuLookFrom, menuOverlayClass, menuPanelClass, menuSwipe } from "./menu-drawer";
+import { drawerHasBackground } from "./drawer-background";
 import { MENU_SIDES, MENU_TYPES, pageBlockSchema } from "./page-content";
 import { headerDrawer, phoneMenuIds } from "./site-layout";
 import { partCss } from "./part-css";

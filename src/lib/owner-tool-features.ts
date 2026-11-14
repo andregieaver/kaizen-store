@@ -5,7 +5,8 @@
  * name here is a tool.
  */
 import type { OwnerToolName } from "./owner-tools";
-import { requirementLabel, requirementMet, type FeatureRequirement, type FeatureSource } from "./store-features";
+import { requirementMet, type FeatureRequirement, type FeatureSource } from "./store-features";
+import { requirementLabel } from "./feature-labels";
 
 const BOOKED: FeatureRequirement = ["appointments", "bookings"];
 

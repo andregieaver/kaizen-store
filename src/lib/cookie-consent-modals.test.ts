@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { KNOWN_COOKIES, declaredCookies, knownCookie, cookiePurpose } from "./cookie-consent";
+import { KNOWN_COOKIES, declaredCookies, knownCookie, cookiePurpose } from "./known-cookies";
 import { modalStorageName } from "./page-modal";
 
 /** The pop-ups that remember being closed (D121) are listed with the other things a site stores (D58). */

@@ -1,7 +1,8 @@
 import type { Browser, BrowserContext, Page } from "playwright-core";
 import { z } from "zod";
 
-import { CONSENT_CATEGORIES, knownCookie, type ConsentCategory, type KnownCookie } from "./cookie-consent";
+import { CONSENT_CATEGORIES, type ConsentCategory } from "./cookie-consent";
+import { knownCookie, type KnownCookie } from "./known-cookies";
 
 /**
  * The cookie scan (D58): a real browser opens a site's pages as a first-time
