@@ -1,6 +1,6 @@
 # The 100-day challenge: can the autopilot run a store alone and win?
 
-**Status: proposal, 14 November 2026.** Written from a read of the code at commit `c681a95` (the autopilot D308 to D331 and D418, support
+**Status: proposal, 14 November 2026, with the owner's first decisions of the same day.** Written from a read of the code at commit `c681a95` (the autopilot D308 to D331 and D418, support
 D216 and D332, orders, returns, drop shipping, ads D585, analytics, the books and the Shopify move D445) for the owner's question:
 
 > The AI store manager works autonomously for 100 days, with no human intervention other than approving refunds and dealing with escalated
@@ -29,16 +29,34 @@ As built, though, it is a careful co-pilot, not an operator. Held to the challen
 It also steers by revenue, not profit. It cannot create a single ad. And nobody could check the result against the original store.
 
 None of this is a rewrite. Section 4 has about 50 items in seven workstreams, some of them settings or rules rather than code. Together
-they are roughly 210 days of work at the sizes given there. Then come a three-week rehearsal on the cloned store and a few outside approvals
-that should start this month, because they set the critical path. A start on **Monday 1 March 2027** (Day 100 is Tuesday 8 June 2027) is
-realistic if the P0 work (about 160 days) is built in four streams side by side through December and January (the last five days
-recorded 37 decisions). Growth (D, about 52 days) needs two more streams. With fewer streams, Day 1 moves to April.
+they are roughly 210 days of work at the sizes given there. The owner wants the earliest start. The earliest honest Day 1 is **Monday
+4 January 2027** (Day 100 is Tuesday 13 April 2027):
+
+- a Day 1 minimum of about 110 days of work (section 8.1), built in six streams side by side over four weeks (the last five days recorded
+  37 decisions);
+- a three-week rehearsal through Christmas;
+- the rest landing during the run, announced to both sides before Day 1.
+
+Anything earlier would start the challenge with known stalls, such as every order email going to a person.
 
 **Winning depends more on the format than on the AI.** A clone on a new domain starts with no search traffic, no returning customers, no
 list it may email and no reviews. Head to head on absolute revenue, it has lost on day one. Section 3 proposes a format that splits demand
 fairly and scores contribution profit on like-for-like demand. Under that format, and with sections 4A to 4F built, the AI has a real chance
 on profit margin. Its edges are more EU markets in shoppers' own languages and payment methods, answers within minutes at any hour,
 retention flows that are always on, and ad budgets moved daily by measured profit. Revenue is winnable only if demand is split fairly.
+
+## Decided by the owner (14 November 2026)
+
+- **Refunds and escalated support** for the clone are handled by the store owner. They also run the competing store, so:
+  - the agreement sets how fast they answer (section 3.4);
+  - the queue reaches them whoever the autopilot works for (A3).
+- **The money is the store owner's.** They fund the ad budgets and the stock of both stores and keep the profit of both.
+  - The clone's sales are paid out to the owner's company, through its own Stripe account, which the owner onboards.
+  - Its ads run in an ad account of the owner's business.
+  - The AI spends the owner's money only within limits the owner sets before Day 1 (section 5).
+  - Kaizena Flow's plan and the AI's cost count as the clone's costs in the scoreboard, whoever pays them.
+- **As soon as possible**: Day 1 on Monday 4 January 2027, if the rehearsal's gate passes (sections 7 and 8).
+- **Still open: the format** (section 3). The answers above already make it one business with two operators, which is format 1's premise.
 
 ## 1. What the rule means in the platform's terms
 
@@ -82,7 +100,13 @@ retention flows that are always on, and ad budgets moved daily by measured profi
 | The clone | Shopify Copy (products, variants, prices, cost, stock, customers, subscribers with consent evidence, orders as history, pages, menus, redirects, discounts, theme colours), WooCommerce steps 1 to 5 | Partly | Reviews (Shopify), logo, compare-at prices, metafields not copied; replicator needs a person's open page; no sync after the copy; *Move my shop* would email every gift-card holder and move the domain |
 | The scoreboard | Nothing compares two stores | No | Copied orders never count as sales; Shopify read-back lacks refunds, fees and costs; the "Before the move" view (decision 3 of D445) is open |
 
-## 3. Decide the format before building
+## 3. The format: the rules of the match
+
+The format is how the competition is set up. It must be decided before anything is built, and it answers three questions:
+
+- **Who the clone is:** the same shop under the same name, or a new shop with a new name and address.
+- **Where its shoppers come from:** a share of the original's customers and the same ad money, or only what it earns from scratch.
+- **How the winner is counted:** total revenue and profit, only the parts where both stores started level, or ratios such as margin.
 
 ### 3.1 The traffic problem
 
@@ -99,7 +123,7 @@ auctions.
 
 | Format | How | Fair? | Cost to run |
 |---|---|---|---|
-| **1. One business, two operators, split demand (recommended)** | The store owner stays merchant and data controller of both stores; Kaizena Flow runs the clone as their processor (a data processing agreement). Same brand, same catalogue and the same supplier costs. Physical stock split into two pools at Day 0 in an agreed ratio. Customers and subscribers split at random into two halves (by a hash of the customer id); each store markets only to its half, and both sell to anyone who arrives. Equal ad budgets in each store's own ad account; neither bids on the brand's name. | Best: the comparable demand is split at random, as in an A/B test | Moderate: a list split, two ad accounts, one warehouse serving both |
+| **1. One business, two operators, split demand (recommended)** | The store owner stays merchant and data controller of both stores; Kaizena Flow runs the clone as their processor (a data processing agreement). Same brand, same catalogue and the same supplier costs. Physical stock split into two pools at Day 0 in an agreed ratio. Customers and subscribers split at random into two halves (by a hash of the customer id); each store markets only to its half, and both sell to anyone who arrives. Equal ad budgets in each store's own ad account; neither bids on the brand's name. | Best: the comparable demand is split at random, as in an A/B test | Moderate: a list split, two ad accounts, one warehouse serving both. Shoppers may meet one name on two sites with different prices. |
 | 2. Separate brands, head to head | The clone gets a new name and domain, the same catalogue, costs and starting prices, and the same ad budget | Only on ratios: scored on contribution profit per krone of marketing and on margin, since the clone has no organic traffic or list | Low |
 | 3. Takeover | The AI runs the real store for 100 days; compared with the same 100 days last year and the owner's own forecast | Weak: seasons, the market and the weather move it | Lowest; a good pilot, poor proof |
 
@@ -115,20 +139,23 @@ auctions.
   - packaging;
   - all marketing spend (ads, SMS, creators, tools);
   - apps and platform subscriptions;
-  - for the clone, its AI cost.
+  - for the clone, its AI cost and Kaizena Flow's plan, whoever pays them.
 - **Winner:** higher contribution profit on like-for-like demand (format 1: purchases by each store's half of the customers, plus
   paid-traffic orders on equal budgets). Margin (contribution ÷ revenue) is the second test. Total revenue and total profit are reported
   beside these.
 - **Stock at the end:** goods bought during the challenge and not sold are valued at cost and are not a loss. A clearance in the last two
-  weeks counts like any sale.
+  weeks counts like any sale. The AI buys stock only within the owner's purchasing budget, so what is left at Day 100 stays within what the
+  owner agreed to fund.
 - **Referee:** an accountant both sides accept reconciles the scoreboard with payouts and bank statements at Day 50 and Day 100.
 
 ### 3.4 Fairness rules
 
 - Neither side changes the other's prices, stock, ads or customers.
 - The original's owner works as they normally would.
-- Refunds and escalations for the clone are handled by a neutral person from Kaizena Flow following the store's own refund policy, never by
-  the competing owner (a conflict of interest).
+- Refunds and escalations for the clone are handled by the store owner (decided 14 November 2026). They also run the competing store, and
+  a slow refund costs the clone reviews, repeat buyers and chargebacks. So the agreement sets response times, and the scoreboard shows the
+  owner's times for both stores side by side. Recommended: a refund decided within 24 hours, an escalation answered within 4 working hours.
+  Refunds are judged against the store's written refund policy, and a decline against it is logged.
 - Fixes by Kaizena Flow's engineers to the platform are not store interventions, but each is logged and published.
 - The intervention log (4A5) is public to both sides.
 
@@ -149,10 +176,10 @@ paging and rollback reach the platform's own autopilot in the same change.
 
 | # | What | Size | Where |
 |---|---|---|---|
-| A1 | **Challenge mode**: a store setting with a start and end date that applies the preset of section 5. It locks the autonomy settings (a change is a logged intervention). A step that fails three times re-plans or is skipped with the reason instead of asking the owner. Kept refund items escalate instead of expiring after 7 days. | M | `autopilot-settings.ts`, `autopilot-runner.ts`, `autopilot-plans.ts`, `assistant_approvals` expiry |
+| A1 | **Challenge mode**: a store setting with a start and end date that applies the preset of section 5. It locks the autonomy settings (a change is a logged intervention). A step that fails three times re-plans or is skipped with the reason instead of asking the owner. Kept refund items escalate instead of expiring after 7 days. The store owner is the clone's owner too and could change its settings, so the lock matters. | M | `autopilot-settings.ts`, `autopilot-runner.ts`, `autopilot-plans.ts`, `assistant_approvals` expiry |
 | A2 | **Re-sort what is never automatic** for the challenge (table below). | M | `src/lib/autopilot-autonomy.ts`, `autopilot-autonomy.test.ts` |
-| A3 | **The refund queue**: one list, with push to the phone (push today covers paid orders, quotes and activities only, `src/server/push.ts`). Each item shows the AI's recommendation, the evidence, and an amount worked out by the return's `refundFor()`, approved with one press. `refund_order` uses that amount and records the refund on the return. | M | `src/server/owner-tools.ts` (`refund_order`), `withdrawals.ts`, `push.ts`, the Decisions page |
-| A4 | **The escalation queue**: the categories that may reach a person: the customer asks for one; legal (a complaint to an authority, a lawyer, a GDPR request, a chargeback); product safety; abuse; the AI could not help after two tries. Each handoff names its category; escalation rate and time to answer are measured. | M | `support-tools.ts` (`handoff_to_human`), `docs/support.md` 233–240 |
+| A3 | **The refund queue**: one list, with push to the phone (push today covers paid orders, quotes and activities only, `src/server/push.ts`). Each item shows the AI's recommendation, the evidence, and an amount worked out by the return's `refundFor()`, approved with one press. `refund_order` uses that amount and records the refund on the return. The queue reaches the store owner whoever the autopilot works for. Today the Decisions page shows a person only their own pending calls (`autopilot-overview.ts`: `ap.account_id = ` the person); plans run in the name of whoever made them, and events in the name of whoever last saved the settings. | M | `src/server/owner-tools.ts` (`refund_order`), `withdrawals.ts`, `push.ts`, the Decisions page |
+| A4 | **The escalation queue**: the categories that may reach a person: the customer asks for one; legal (a complaint to an authority, a lawyer, a GDPR request, a chargeback); product safety; abuse; the AI could not help after two tries. Each handoff names its category and reaches the store owner on their phone. The escalation rate and the owner's time to answer are measured. | M | `support-tools.ts` (`handoff_to_human`), `docs/support.md` 233–240 |
 | A5 | **The intervention log**: every person's action on the store (`audit_log.acted_by = 'person'`) is classed as refund, escalation, platform fix or other, and counted on the scoreboard. *Other* must stay at zero. | S | `src/server/actor.ts`, audit readers |
 | A6 | **Stall watch**: a kept call, a question, a paused plan, a budget stop or a stale event pages the platform team within minutes (today the owner gets one digest a day after 18:00). | S | `autopilot-reports.ts`, `cron-alerts.ts` |
 
@@ -239,6 +266,7 @@ What each never-automatic tool becomes in challenge mode:
 | G2 | What does not come across: reviews from Shopify (spike S6: import them by CSV), the logo and icon, compare-at prices, metafields. The replicator copies one page per job and needs a person's open page: done by the team before Day 1. |
 | G3 | **Approvals to start now** (outside lead times set the critical path): Shopify's protected customer data and `read_all_orders`; Meta's app review for ads management (and for WhatsApp or Messenger if B5 needs them); a Google Ads developer token; Stripe Connect onboarding of the merchant (identity is a person's); the warehouse or 3PL agreement. |
 | G4 | **Domain and search**: the clone on its own domain (format 1 and 2), with product texts rewritten by the AI so the two sites are not duplicates; a canonical cannot point at another domain. |
+| G5 | **Ads to start from**: the original's Meta campaigns are copied into the clone's ad account before Day 1. Both stores then start from the same campaigns, and the AI has budgets to move from Day 1 while D1 (campaigns of its own) is built. |
 
 ## 5. Challenge mode's settings
 
@@ -249,10 +277,14 @@ What each never-automatic tool becomes in challenge mode:
 | Deepest discount | 20 % | 20 %, and never under the margin floor |
 | Largest price change | 10 % | 15 % a change, never under the margin floor |
 | Emails to customers itself a week | 5 | support replies on a budget of their own; marketing emails on the broadcast budget |
-| Largest ad raise | 20 % | 20 % a day; the ad account's monthly limit = the agreed envelope |
+| Largest ad raise | 20 % | 20 % a day; the ad account's monthly limit = the ad money the store owner puts in |
 | Keep working toward goals | off | on; plans start themselves; goals reviewed every 3 days; up to 10 plans a week |
 | React to what happens | off | on; a waiting customer looked at after 5 minutes |
-| New budgets | none | broadcasts a week, purchasing a month and per order |
+| New budgets | none | broadcasts a week; purchasing a month and per order, set by the store owner |
+
+The store owner sets the money limits (ad money a month, purchasing a month and per order, the margin floor) before Day 1, in the
+agreement. Challenge mode then locks them. The store's pause stays the owner's emergency stop, but pressing it suspends the challenge,
+because it is an intervention.
 
 ## 6. How the AI plays the 100 days
 
@@ -278,8 +310,10 @@ The phases are set as goals with due dates and a saved playbook (D350), so each 
 
 ## 7. Rehearsal and the Day 1 gate
 
-The clone opens three weeks before Day 1 in challenge mode, with real shoppers, while the team watches. Interventions are allowed but logged,
-and each is fixed so it cannot happen again. Day 1 starts only when all of these hold:
+The clone opens three weeks before Day 1 in challenge mode, with real shoppers, while the team watches. On the fast track that is 14 December
+to 1 January: Christmas is a hard test, and the store owner handles the rehearsal's refunds and escalations too. Interventions are allowed
+but logged, and each is fixed so it cannot happen again. The gate decides, not the date: if it fails, Day 1 moves a week at a time. Day 1
+starts only when all of these hold:
 
 - [ ] no intervention of the class *other* in the last seven days;
 - [ ] escalated support under 10 %, and every escalation answered within the agreed time;
@@ -289,18 +323,53 @@ and each is fixed so it cannot happen again. Day 1 starts only when all of these
 - [ ] the scoreboard reconciles with payouts and the bank for the rehearsal weeks;
 - [ ] the safety eval passed on the pinned prompts and model.
 
-## 8. Timeline
+## 8. Timeline: as soon as possible
+
+The owner asked for the earliest start (14 November 2026). The earliest honest Day 1 is **Monday 4 January 2027**. Before then, the clone
+would stall on every order email, parcel and return. The date holds only if three things happen in the week of 16 November:
+
+- the format is chosen;
+- the store owner signs;
+- the approvals of G3 start.
 
 | When | What |
 |---|---|
-| 15 to 30 November 2026 | The format chosen and agreed with the store owner; the approvals of G3 started; the referee named |
-| December 2026 to January 2027 | Build the P0 work in four streams side by side: (1) A and F without F4, (2) B, (3) C and F4, (4) E, each about 40 days. Growth (D) in two more streams; D1, D2 and D5 must be in before the rehearsal, and the rest may land in the run's first weeks as platform improvements announced to both sides before Day 1 |
-| 1 to 21 February 2027 | The clone made (G); the rehearsal (section 7) |
-| 22 to 28 February | Figures reset, baseline frozen, prompts pinned |
-| Monday 1 March 2027 | Day 1 (Easter, 28 March, falls inside the run for both stores) |
-| Day 50, 19 April | The referee's mid-point reconciliation |
-| Tuesday 8 June 2027 | Day 100 |
-| 8 July 2027 | Refunds settled (Day 130); the result |
+| 16 to 20 November 2026 | The format chosen. The agreement signed: response times (3.4) and money limits (5). Stripe onboarding, the Shopify approvals and the warehouse agreement started. The referee named. |
+| 16 November to 11 December | The Day 1 minimum (8.1) built in six streams side by side: (1) A, (2) B, (3) C, (4) E, (5) F, (6) the clone (G) with D2 and D5. Each stream is about 20 days of work in 20 working days, so the last items may land in the rehearsal's first week. |
+| by 11 December | The clone made; the original's Meta campaigns copied into the clone's ad account (G5) |
+| 14 December to 1 January | The rehearsal (section 7), with real shoppers, through Christmas |
+| 2 to 3 January 2027 | The gate checked; figures reset; baseline frozen; prompts and model pinned |
+| Monday 4 January 2027 | Day 1. Easter (28 March) falls inside the run for both stores. |
+| January and February | The rest of section 4 lands as platform improvements announced to both sides before Day 1, each behind the deploy smoke (F5) |
+| Monday 22 February | Day 50: the referee's mid-point reconciliation |
+| Tuesday 13 April 2027 | Day 100 |
+| Thursday 13 May 2027 | Day 130: refunds settled; the result |
+
+### 8.1 The Day 1 minimum
+
+**In before the rehearsal** (about 110 days of work):
+
+- **A:** all six.
+- **B:** B1, B2, B4, B6 and B8, and the part of B3 that cancels an unsent order and changes its address. B5 too, if the original store
+  answers customers on WhatsApp or social messages today.
+- **C:** all but C4.
+- **E:** E1, E2, E3 and E6, and E7 in a simple form: the clone read from the platform, the original from a monthly P&L its accountant signs.
+- **F:** all but the automatic part of F4. An hourly watch that pages the team is in from Day 1; until the automatic revert lands, the team
+  reverts by hand, as a logged platform fix.
+- **D:** D2 and D5.
+
+**During the run:** the rest of B3, B5 if it can wait, B7, C4, D1, D3, D4, D6 to D9, E4, E5, E7's read of the original's platform, and
+F4's automatic revert.
+
+**What a late D costs:** for the first weeks the AI grows with the tools it has:
+
+- budgets on the copied campaigns;
+- discounts and sale campaigns;
+- flows switched on;
+- page tests;
+- more countries and languages.
+
+Campaigns of its own (D1) and retention flows it writes (D4) arrive in January and February.
 
 ## 9. Risks
 
@@ -312,7 +381,9 @@ and each is fixed so it cannot happen again. Day 1 starts only when all of these
 | A wrong answer to a customer goes public | Grounding rules, the eval, the replay bar (B8), clear escalation categories |
 | The AI provider fails | F1, and the stall watch (A6) |
 | A deploy breaks the store mid-run | F5 and the rollback runbook |
-| The competing owner decides the clone's refunds or controls its stock | A neutral approver, stock pools, rules signed before Day 1 |
+| The store owner, who runs the competing store, decides the clone's refunds and escalations | Response times in the agreement, measured for both stores on the scoreboard; refunds judged against the written refund policy; stock pools |
+| The AI spends the owner's money badly | Limits the owner sets before Day 1 (ad money, purchasing, margin floor), locked by challenge mode; spend in the books daily (D2) |
+| Four weeks of build leaves little slack | Only the Day 1 minimum (8.1); the gate decides, and a failed gate moves Day 1 a week at a time |
 | Customers' data used without a basis | The owner stays controller (format 1); a data processing agreement |
 | Too few visitors for tests to say anything | Fewer, bigger tests; decisions on profit; no claim of cause where there is only a comparison (as D418 says) |
 | Losing in public | Pre-registered rules; nothing announced before the rehearsal's figures are in |
@@ -342,11 +413,14 @@ grow revenue and lose on margin. Without A, B, C and F, it cannot finish the 100
 
 ## 11. Decisions for the owner
 
-1. **The format**: format 1 recommended; format 2 if the store owner will not share brand and list.
-2. **Who presses the two buttons**: a neutral person at Kaizena Flow with the store's refund policy is recommended.
-3. **The winning measure**: contribution profit on like-for-like demand, with margin as the second test, is recommended.
-4. **Money**: the ad envelope and the stock capital, who funds them, and who keeps the profit.
-5. **Fulfilment**: the owner's warehouse as a paid service, or a 3PL.
-6. **The start date**: 1 March 2027 recommended; a run through next November and December would test the peak season instead.
-7. **The support channels** in scope: those the original store uses.
-8. **Public or private**: the challenge announced before Day 1, or after the result.
+1. **The format** (open): format 1 is recommended, and the decisions below fit it; format 2 if the store owner will not share their name
+   and customer list.
+2. **Who presses the two buttons** (decided 14 November 2026): the store owner, with response times in the agreement. Recommended: 24 hours
+   for a refund, 4 working hours for an escalation.
+3. **The winning measure** (open): contribution profit on like-for-like demand, with margin as the second test, is recommended.
+4. **Money** (decided 14 November 2026): the store owner funds the ad budgets and the stock of both stores and keeps the profit. They set the
+   limits before Day 1.
+5. **Fulfilment** (open): the owner's warehouse as a paid service, or a 3PL.
+6. **The start date** (decided 14 November 2026): as soon as possible. Day 1 is Monday 4 January 2027 if the gate passes.
+7. **The support channels** in scope (open): those the original store uses.
+8. **Public or private** (open): the challenge announced before Day 1, or after the result.

@@ -71,8 +71,8 @@
   <!-- Human queues -->
   <rect x="940" y="240" width="220" height="140" rx="14" fill="#fbe9e5" stroke="#c2412d"/>
   <text x="958" y="270" font-size="16" font-weight="700" fill="#a3321f">Refunds</text>
-  <text x="958" y="294" font-size="13" fill="#141a17">A neutral person at</text>
-  <text x="958" y="312" font-size="13" fill="#141a17">Kaizena Flow</text>
+  <text x="958" y="294" font-size="13" fill="#141a17">The store owner, within</text>
+  <text x="958" y="312" font-size="13" fill="#141a17">24 hours (3.4)</text>
   <text x="958" y="336" font-size="13" fill="#141a17">One press on the phone,</text>
   <text x="958" y="354" font-size="13" fill="#141a17">amount from code (A3)</text>
 
