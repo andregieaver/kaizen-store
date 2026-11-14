@@ -895,6 +895,15 @@ export const da: Messages = {
       tyres: "Dæk",
     },
   },
+  /** A name and a phone at checkout besides the email (D357): asked on our page as the store chooses, kept on the order. */
+  checkoutContact: {
+    name: "Navn",
+    phone: "Telefon",
+    optional: "(valgfrit)",
+    nameProblem: "Skriv dit navn.",
+    phoneProblem: "Skriv et telefonnummer, vi kan træffe dig på. Et nummer fra et andet land begynder med + og landekoden.",
+    saveFailed: "Dine oplysninger kunne ikke gemmes. Prøv igen.",
+  },
   /** Who pays and where the goods go, asked before Mollie's page, which asks for neither (D292). */
   payer: {
     legend: "Dine oplysninger",

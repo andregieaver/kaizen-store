@@ -463,6 +463,18 @@ export const shippingEn = {
     blockedFeature: "Switch off {label} first: it needs customer accounts.",
     blockedCompanies: { one: "{n} company account buys in your store. Remove it first: it needs customer accounts.", many: "{n} company accounts buy in your store. Remove them first: they need customer accounts." },
   },
+  contactFields: {
+    title: "Contact details",
+    description: "Checkout always asks for the email, and the delivery address when goods are sent. Ask for more only when you need it.",
+    phone: "Phone",
+    phoneHint: "Asked of every order. A local delivery always asks it, for the driver.",
+    name: "Name",
+    nameHint: "Asked when nothing is sent to an address: downloads, bookings and pickup. A delivery address already holds a name.",
+    modes: { off: "Not asked", optional: "Optional", required: "Required" },
+    where: "Asked on the checkout page on your site and kept on the order. Stripe's own payment page and payment links ask only what Stripe asks. A Mollie checkout always asks the name, and asks the phone as required when you choose Required.",
+    save: "Save",
+    saved: "Saved.",
+  },
   checkoutRules: {
     title: "Checkout rules",
     description:

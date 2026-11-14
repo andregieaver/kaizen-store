@@ -879,7 +879,8 @@ function checkoutAction({ store, market, m, view }: Draw) {
               ? {
                   needs: {
                     address: summary.ships && summary.deliveryState?.method !== "pickup",
-                    phone: summary.deliveryState?.method === "local",
+                    // A local delivery's driver calls (D237); the store may require a phone of every order (D357).
+                    phone: summary.deliveryState?.method === "local" || store.checkoutContact.phone === "required",
                   },
                   name: saved?.name ?? "",
                   email: saved?.email ?? "",

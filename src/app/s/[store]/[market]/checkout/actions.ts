@@ -8,12 +8,15 @@ import { z } from "zod";
 import type { CreditsState } from "@/lib/bonus-shopper";
 import { withDeliveryWords, type ShownDeliveryOptions } from "@/lib/delivery-words";
 import { t } from "@/lib/i18n";
+import { cleanContact, contactAsked, type ContactProblem } from "@/lib/checkout-contact";
 import { formatMoney } from "@/lib/money";
 import { marketPath } from "@/lib/paths";
 import { siteUrl } from "@/lib/site";
 import { readCartId } from "@/server/cart";
 import { captureCheckout, setCheckoutOptOut } from "@/server/cart-reminders";
 import { getOpenCheckout, startCheckout } from "@/server/checkout";
+import { saveOrderContact } from "@/server/checkout-contact";
+import { getOrder } from "@/server/orders";
 import { getCustomer } from "@/server/customers";
 import { deliveryView } from "@/server/delivery-choice";
 import { db } from "@/db/client";
@@ -357,6 +360,27 @@ export async function chooseDeliveryAction(
   });
   if (!chosen.ok) return { problem: chosen.problem };
   return placeAgain(found, open.digital);
+}
+
+/**
+ * The phone and name the shopper typed on our checkout page (D357), kept on the order before Stripe is asked to pay it: checked again here
+ * against what this order asks (`contactAsked()`, the store's choice; a local delivery always the phone), so a script cannot skip a required one.
+ */
+export async function saveCheckoutContactAction(
+  storeSlug: string,
+  marketSlug: string,
+  typed: { name?: string; phone?: string },
+): Promise<{ ok: true } | { ok: false; problem: ContactProblem | "gone" }> {
+  const found = await openCheckout(storeSlug, marketSlug);
+  if (!found) return { ok: false, problem: "gone" };
+  const { shop, orderId } = found;
+  const order = await getOrder(shop.store.id, orderId);
+  if (!order) return { ok: false, problem: "gone" };
+  const asked = contactAsked(shop.store.checkoutContact, order);
+  const clean = cleanContact(typed, asked, shop.market.code);
+  if (!clean.ok) return clean;
+  if (!clean.name && !clean.phone) return { ok: true };
+  return (await saveOrderContact(shop.store.id, orderId, clean)) ? { ok: true } : { ok: false, problem: "gone" };
 }
 
 /** Why the pay press may not go ahead yet (a key of `ReadyProblem`), and, when the delivery changed, where the order placed again waits. */

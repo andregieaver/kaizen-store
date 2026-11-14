@@ -767,6 +767,13 @@ export const stores = commerce.table(
      */
     customerAccounts: text("customer_accounts").notNull().default("optional"),
     /**
+     * Contact details the checkout asks besides the email (task 1 of `docs/checkout-fields-tasks.md`, D357): `off` (the default), `optional`
+     * or `required`, for the phone and for a person's name. Read through `contactAsked()` (a local delivery always asks the phone; the name only
+     * when nothing is sent to an address), written only by `saveCheckoutContact()`. A copy of a store starts with `off`.
+     */
+    checkoutPhone: text("checkout_phone").notNull().default("off"),
+    checkoutName: text("checkout_name").notNull().default("off"),
+    /**
      * How many months the AI manager's conversations about the store are kept after their last message (wave 11 unit L, D391); null is the
      * retention rule's period (`assistant_conversations`, 12 months). The owner's choice, written only by `saveAssistantKeep()`.
      */
@@ -862,6 +869,8 @@ export const stores = commerce.table(
     check("stores_audience", sql`${t.audience} in ('consumers', 'businesses', 'both')`),
     check("stores_terms_at_checkout", sql`${t.termsAtCheckout} in ('link', 'checkbox', 'off')`),
     check("stores_customer_accounts", sql`${t.customerAccounts} in ('optional', 'required', 'off')`),
+    check("stores_checkout_phone", sql`${t.checkoutPhone} in ('off', 'optional', 'required')`),
+    check("stores_checkout_name", sql`${t.checkoutName} in ('off', 'optional', 'required')`),
     check("stores_assistant_keep_months", sql`${t.assistantKeepMonths} is null or ${t.assistantKeepMonths} between 1 and 60`),
     check("stores_modules", sql`${t.modules} <@ array['bookings', 'deliveries', 'work']::text[]`),
     check(

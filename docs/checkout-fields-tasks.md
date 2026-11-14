@@ -83,7 +83,8 @@ local delivery areas yet (13 November 2026), so no order has met it. A Mollie st
 **Recommendation.**
 
 1. ~~Fix the gap first~~ Done 13 November 2026: a phone field on our checkout page, required for local delivery, passed with `confirm()`.
-2. Then one setting per field under *Customise*, Off, Optional or Required: phone, the person's name and the company name, through
+2. ~~Then one setting per field~~ Done 14 November 2026 (D594) for the phone and the person's name, kept on our own order; the company name
+   stays the business buyer's form (D63). As first written: one setting per field, Off, Optional or Required: phone, the person's name and the company name, through
    `name_collection` and our own fields on Stripe and `cleanPayer()` on Mollie. Lisa's step away; Homer keeps today's defaults.
 3. Address line 2 only with our own address form on Stripe (`updateShippingAddress()`), which costs Stripe's autocomplete. Leave it
    until an owner asks.

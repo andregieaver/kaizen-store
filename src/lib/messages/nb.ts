@@ -901,6 +901,15 @@ export const nb: Messages = {
       tyres: "Dekk",
     },
   },
+  /** A name and a phone at checkout besides the email (D357): asked on our page as the store chooses, kept on the order. */
+  checkoutContact: {
+    name: "Navn",
+    phone: "Telefon",
+    optional: "(valgfritt)",
+    nameProblem: "Skriv navnet ditt.",
+    phoneProblem: "Skriv et telefonnummer vi kan nå deg på. Et nummer fra et annet land begynner med + og landskoden.",
+    saveFailed: "Opplysningene dine kunne ikke lagres. Prøv igjen.",
+  },
   /** Who pays and where the goods go, asked before Mollie's page, which asks for neither (D292). */
   payer: {
     legend: "Dine opplysninger",

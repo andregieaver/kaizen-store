@@ -12,10 +12,10 @@ import {
 import { useId, useMemo, useRef, useState, useSyncExternalStore, type FormEvent, type ReactNode } from "react";
 
 import { checkoutAccountAction } from "@/app/s/[store]/[market]/account/actions";
-import { captureCheckoutEmailAction, checkoutNewsAction, checkoutRemindersAction, checkoutSmsAction, deliveryReadyAction } from "@/app/s/[store]/[market]/checkout/actions";
+import { captureCheckoutEmailAction, checkoutNewsAction, checkoutRemindersAction, checkoutSmsAction, deliveryReadyAction, saveCheckoutContactAction } from "@/app/s/[store]/[market]/checkout/actions";
 import { recordTermsAction } from "@/app/s/[store]/[market]/checkout/terms-actions";
 import { stripeAppearance, stripeFonts, type CheckoutAppearance } from "@/lib/checkout-appearance";
-import { e164Phone } from "@/lib/phone";
+import { cleanContact, type CheckoutContactSettings, type ContactProblem } from "@/lib/checkout-contact";
 import { payHeld, payStep, type TermsDisplay } from "@/lib/checkout-terms";
 
 import { useShowsDark } from "./color-mode-switch";
@@ -99,14 +99,30 @@ export type CheckoutDeliveryCheck = {
 };
 
 /**
- * A phone number for the driver (D237): local delivery turns on the session's `phone_number_collection`, but Stripe draws no phone field on
- * our page, so the page asks it, required, and hands it to `confirm({ phoneNumber })` in E.164 (`e164Phone()`, a national number read in the
- * market's country). Wallets give their own.
+ * Contact details besides the email (D357): a person's name and a phone, each as this order asks them (`contactAsked()`: the store's choice,
+ * a local delivery always the phone). Stripe draws neither on our page, so the page asks them, checks them (`cleanContact()`) and keeps them on
+ * the order before paying (`saveCheckoutContactAction()`). A local delivery's phone also goes to `confirm({ phoneNumber })`, as its session
+ * collects one for the driver (D237). Wallets give their own.
  */
-export type CheckoutPhoneOption = {
-  /** The market's country, for a number typed without its country code. */
+export type CheckoutContactOption = {
+  store: string;
+  market: string;
+  /** The market's country, for a phone typed without its country code. */
   country: string;
-  labels: { label: string; hint: string; problem: string };
+  asked: CheckoutContactSettings;
+  /** A local delivery: the phone is the driver's, and Stripe's session collects it too. */
+  driver: boolean;
+  labels: {
+    name: string;
+    phone: string;
+    /** Added to a field's label when it may be left empty. */
+    optional: string;
+    driverPhone: string;
+    driverHint: string;
+    nameProblem: string;
+    phoneProblem: string;
+    saveFailed: string;
+  };
 };
 
 /** Stripe's form in the store's own look (D337), light or dark: the theme's colours, body font and corners, and the checkout's own choices. */
@@ -138,7 +154,7 @@ export function CheckoutForm({
   terms = null,
   termsSlot = null,
   delivery = null,
-  phone = null,
+  contact = null,
   look,
 }: {
   /** The store's look for Stripe's form (`checkoutAppearanceFor()`, D337), worked out on the server from its theme. */
@@ -160,8 +176,8 @@ export function CheckoutForm({
   /** The sentence and box for the terms (`CheckoutTerms`), drawn above the pay button; null where the page has its own piece. */
   termsSlot?: ReactNode;
   delivery?: CheckoutDeliveryCheck | null;
-  /** Local delivery: the driver's phone number, asked here because Stripe's form on our page asks none. */
-  phone?: CheckoutPhoneOption | null;
+  /** A name and a phone besides the email, as the order asks them; Stripe's form on our page asks neither. */
+  contact?: CheckoutContactOption | null;
 }) {
   // Stripe runs in the browser only; the server sends the waiting state.
   const inBrowser = useSyncExternalStore(noSubscribe, () => true, () => false);
@@ -190,7 +206,7 @@ export function CheckoutForm({
         terms={terms}
         termsSlot={termsSlot}
         delivery={delivery}
-        phone={phone}
+        contact={contact}
       />
     </CheckoutElementsProvider>
   );
@@ -218,7 +234,7 @@ function Form({
   terms,
   termsSlot,
   delivery,
-  phone,
+  contact,
 }: {
   labels: CheckoutFormLabels;
   links: { cart: string; order: string };
@@ -230,7 +246,7 @@ function Form({
   terms: CheckoutTermsOption | null;
   termsSlot: ReactNode;
   delivery: CheckoutDeliveryCheck | null;
-  phone: CheckoutPhoneOption | null;
+  contact: CheckoutContactOption | null;
 }) {
   const state = useCheckoutElements();
   // Where the order placed again after a delivery change waits (D237): the shopper opens it to see the new price.
@@ -250,9 +266,10 @@ function Form({
   const [wantsNews, setWantsNews] = useState(false);
   const [wantsSms, setWantsSms] = useState(false);
   const smsPhone = useRef<HTMLInputElement>(null);
-  // The driver's number (local delivery): checked on the pay press, said under the field when it is not one.
-  const driverPhone = useRef<HTMLInputElement>(null);
-  const [phoneProblem, setPhoneProblem] = useState(false);
+  // A name and a phone besides the email (D357): checked on the pay press, the field that is not right said under it and focused.
+  const nameInput = useRef<HTMLInputElement>(null);
+  const phoneInput = useRef<HTMLInputElement>(null);
+  const [contactProblem, setContactProblem] = useState<ContactProblem | null>(null);
   // The last complete email typed, and the pause before keeping it.
   const typedEmail = useRef<string | null>(null);
   const captureTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -383,13 +400,33 @@ function Form({
     return false;
   };
 
-  /** The driver's number in E.164, or null when none is asked; false (said under the field, which is focused) when it is not a number. */
-  const phoneNumber = (): string | null | false => {
-    if (!phone) return null;
-    const number = e164Phone(driverPhone.current?.value ?? "", phone.country);
-    setPhoneProblem(number === null);
-    if (number === null) requestAnimationFrame(() => driverPhone.current?.focus());
-    return number ?? false;
+  /** The name and phone as typed and checked, null when none is asked; false (said under the field, which is focused) when one is not right. */
+  const contactTyped = (): { name: string | null; phone: string | null } | null | false => {
+    if (!contact) return null;
+    const checked = cleanContact({ name: nameInput.current?.value, phone: phoneInput.current?.value }, contact.asked, contact.country);
+    setContactProblem(checked.ok ? null : checked.problem);
+    if (checked.ok) return { name: checked.name, phone: checked.phone };
+    requestAnimationFrame(() => (checked.problem === "name" ? nameInput : phoneInput).current?.focus());
+    return false;
+  };
+
+  /** Keeps what was typed on the order before paying; false when it could not be kept (said, as the other checks are). */
+  const saveContact = async (typed: { name: string | null; phone: string | null } | null): Promise<boolean> => {
+    if (!contact || !typed || (!typed.name && !typed.phone)) return true;
+    try {
+      const saved = await saveCheckoutContactAction(contact.store, contact.market, { name: typed.name ?? "", phone: typed.phone ?? "" });
+      if (saved.ok) return true;
+      if (saved.problem === "name" || saved.problem === "phone") {
+        setContactProblem(saved.problem);
+        setBusy(false);
+        requestAnimationFrame(() => (saved.problem === "name" ? nameInput : phoneInput).current?.focus());
+        return false;
+      }
+    } catch {
+      // Said below, as a refusal of the other checks is.
+    }
+    fail(contact.labels.saveFailed);
+    return false;
   };
 
   const pay = async (event: FormEvent) => {
@@ -399,18 +436,19 @@ function Form({
       setProblem(terms?.labels.hint ?? null);
       return;
     }
-    // Before anything is kept or paid, as the delivery check: a driver who cannot call is a delivery that fails.
-    const number = phoneNumber();
-    if (number === false) return;
+    // Before anything is kept or paid: a required name or phone left out, or a phone that is not one, is said under its field.
+    const typed = contactTyped();
+    if (typed === false) return;
     setBusy(true);
     setProblem(null);
     if (!(await deliverySettled())) return;
+    if (!(await saveContact(typed))) return;
     if (!(await saveAccount())) return;
     if (!(await recordTerms())) return;
     await askForNews();
     await askForSms();
-    // On success Stripe takes the shopper to the order page.
-    const result = await checkout.confirm(number ? { phoneNumber: number } : undefined);
+    // On success Stripe takes the shopper to the order page. A local delivery's session collects the driver's phone too (D237).
+    const result = await checkout.confirm(contact?.driver && typed?.phone ? { phoneNumber: typed.phone } : undefined);
     if (result.type === "error") fail(result.error.message);
   };
 
@@ -428,7 +466,9 @@ function Form({
               fail(terms?.labels.hint ?? "");
               return;
             }
-            if (!(await deliverySettled()) || !(await saveAccount()) || !(await recordTerms())) {
+            // What was typed above is kept too; a wallet gives its own phone for a local delivery's session.
+            const typed = contactTyped();
+            if (typed === false || !(await deliverySettled()) || !(await saveContact(typed)) || !(await saveAccount()) || !(await recordTerms())) {
               event.paymentFailed();
               return;
             }
@@ -445,30 +485,58 @@ function Form({
           {labels.contact}
         </h2>
         <ContactDetailsElement onChange={onContactChange} />
-        {phone && (
+        {contact && contact.asked.name !== "off" && (
           <div className="flex flex-col gap-1">
-            <label htmlFor={`${id}-driver-phone`} className="font-medium">
-              {phone.labels.label}
+            <label htmlFor={`${id}-contact-name`} className="font-medium">
+              {contact.labels.name}
+              {contact.asked.name === "optional" ? ` ${contact.labels.optional}` : ""}
             </label>
             <input
-              ref={driverPhone}
-              id={`${id}-driver-phone`}
+              ref={nameInput}
+              id={`${id}-contact-name`}
+              type="text"
+              required={contact.asked.name === "required"}
+              autoComplete="name"
+              maxLength={120}
+              aria-invalid={contactProblem === "name" || undefined}
+              aria-describedby={contactProblem === "name" ? `${id}-contact-name-problem` : undefined}
+              onChange={() => contactProblem === "name" && setContactProblem(null)}
+              className="min-h-11 w-full rounded-md border border-border bg-background px-3"
+            />
+            {contactProblem === "name" && (
+              <p id={`${id}-contact-name-problem`} role="alert" className="text-sm text-red-700 dark:text-red-400">
+                {contact.labels.nameProblem}
+              </p>
+            )}
+          </div>
+        )}
+        {contact && contact.asked.phone !== "off" && (
+          <div className="flex flex-col gap-1">
+            <label htmlFor={`${id}-contact-phone`} className="font-medium">
+              {contact.driver ? contact.labels.driverPhone : contact.labels.phone}
+              {contact.asked.phone === "optional" ? ` ${contact.labels.optional}` : ""}
+            </label>
+            <input
+              ref={phoneInput}
+              id={`${id}-contact-phone`}
               type="tel"
-              required
+              required={contact.asked.phone === "required"}
               autoComplete="tel"
               inputMode="tel"
               maxLength={32}
-              aria-invalid={phoneProblem || undefined}
-              aria-describedby={`${id}-driver-phone-hint${phoneProblem ? ` ${id}-driver-phone-problem` : ""}`}
-              onChange={() => phoneProblem && setPhoneProblem(false)}
+              aria-invalid={contactProblem === "phone" || undefined}
+              aria-describedby={[contact.driver ? `${id}-contact-phone-hint` : "", contactProblem === "phone" ? `${id}-contact-phone-problem` : ""].filter(Boolean).join(" ") || undefined}
+              onChange={() => contactProblem === "phone" && setContactProblem(null)}
               className="min-h-11 w-full rounded-md border border-border bg-background px-3"
             />
-            <p id={`${id}-driver-phone-hint`} className="text-sm text-muted">
-              {phone.labels.hint}
-            </p>
-            {phoneProblem && (
-              <p id={`${id}-driver-phone-problem`} role="alert" className="text-sm text-red-700 dark:text-red-400">
-                {phone.labels.problem}
+            {contact.driver && (
+              <p id={`${id}-contact-phone-hint`} className="text-sm text-muted">
+                {contact.labels.driverHint}
+              </p>
+            )}
+            {contactProblem === "phone" && (
+              <p id={`${id}-contact-phone-problem`} role="alert" className="text-sm text-red-700 dark:text-red-400">
+                {contact.labels.phoneProblem}
               </p>
             )}
           </div>

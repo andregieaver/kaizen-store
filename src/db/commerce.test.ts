@@ -8178,3 +8178,14 @@ describe("a webhook event is claimed before it is worked on (D529)", () => {
     expect(rows[0].mine).toBe(true);
   });
 });
+
+describe("contact details at checkout (D357)", () => {
+  it("asks nothing by default, and keeps only off, optional or required for the phone and the name", async () => {
+    const row = await one<{ checkout_phone: string; checkout_name: string }>("select checkout_phone, checkout_name from commerce.stores where id = $1", [store]);
+    expect(row).toEqual({ checkout_phone: "off", checkout_name: "off" });
+    await db.query("update commerce.stores set checkout_phone = 'required', checkout_name = 'optional' where id = $1", [store]);
+    await expect(db.query("update commerce.stores set checkout_phone = 'always' where id = $1", [store])).rejects.toThrow(/stores_checkout_phone/);
+    await expect(db.query("update commerce.stores set checkout_name = '' where id = $1", [store])).rejects.toThrow(/stores_checkout_name/);
+    await db.query("update commerce.stores set checkout_phone = 'off', checkout_name = 'off' where id = $1", [store]);
+  });
+});

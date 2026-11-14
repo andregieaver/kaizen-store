@@ -932,6 +932,15 @@ export const en = {
       tyres: "Tyres",
     },
   },
+  /** A name and a phone at checkout besides the email (D357): asked on our page as the store chooses, kept on the order. */
+  checkoutContact: {
+    name: "Name",
+    phone: "Phone",
+    optional: "(optional)",
+    nameProblem: "Write your name.",
+    phoneProblem: "Write a phone number we can reach you on. A number from another country starts with + and its country code.",
+    saveFailed: "Your details could not be saved. Try again.",
+  },
   /** Who pays and where the goods go, asked before Mollie's page, which asks for neither (D292). */
   payer: {
     legend: "Your details",
