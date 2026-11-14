@@ -42,7 +42,7 @@ const { getOrder } = await import("./orders");
 const { emptyProduct, getEditorContext, getProductForEdit, saveProduct } = await import("./products");
 const { getStore } = await import("./stores");
 const { createTerm, updateTerm, listTerms } = await import("./taxonomy");
-const { categoryGaps, categoryMarks, productsNeedingMeasure, variantUnitPrices } = await import("./unit-price-gaps");
+const { categoryGaps, categoryMarks, countProductsNeedingMeasure, productsNeedingMeasure, variantUnitPrices } = await import("./unit-price-gaps");
 const { sendOrderConfirmation } = await import("./shopper-emails");
 const { applySession } = await import("./stripe-webhooks");
 const { getSubscription, renewSubscription } = await import("./subscriptions");
@@ -365,6 +365,9 @@ describe("marking a category", () => {
 
 describe("what still needs its content", () => {
   it("lists the products that were on sale before the category was marked, with why, and counts them per category", async () => {
+    // Nothing marked yet: the count is 0, as the list is empty.
+    expect(await countProductsNeedingMeasure(storeId)).toBe((await productsNeedingMeasure(storeId, "nb-NO")).length);
+    expect(await countProductsNeedingMeasure(storeId)).toBe(0);
     const mat = await category(`Gaps ${run}`);
     const sub = await category(`Gaps under ${run}`, { parentId: mat });
     const flagged = await saved({ ...coffee(`gap-flag-${run}`), categories: [] });
@@ -389,6 +392,7 @@ describe("what still needs its content", () => {
     });
 
     const gaps = await productsNeedingMeasure(storeId, "nb-NO");
+    expect(await countProductsNeedingMeasure(storeId)).toBe(gaps.length);
     const mine = gaps.filter((g) => g.handle.endsWith(run));
     expect(mine.map((g) => [g.handle, g.reason, g.skus.length])).toEqual([
       [`gap-cat-${run}`, { kind: "category", category: `Gaps ${run}` }, 2],
@@ -406,7 +410,9 @@ describe("what still needs its content", () => {
     expect(await save(productInput.parse(input), catId)).toMatchObject({ ok: false });
     input.variants.forEach((v) => (v.measure = { amount: "250", unit: "g", base: null }));
     expect(await save(productInput.parse(input), catId)).toMatchObject({ ok: true });
-    expect((await productsNeedingMeasure(storeId, "nb-NO")).some((g) => g.productId === catId)).toBe(false);
+    const afterFix = await productsNeedingMeasure(storeId, "nb-NO");
+    expect(afterFix.some((g) => g.productId === catId)).toBe(false);
+    expect(await countProductsNeedingMeasure(storeId)).toBe(afterFix.length);
     expect((await categoryGaps(storeId)).get(mat)).toBe(1);
   });
 
@@ -419,6 +425,8 @@ describe("what still needs its content", () => {
     const mine = await productsNeedingMeasure(storeId, "nb-NO");
     const theirs = await productsNeedingMeasure(otherId, "nb-NO");
     expect(theirs.length).toBeGreaterThan(0);
+    expect(await countProductsNeedingMeasure(storeId)).toBe(mine.length);
+    expect(await countProductsNeedingMeasure(otherId)).toBe(theirs.length);
     expect(new Set(mine.map((g) => g.productId)).size).toBe(mine.length);
     const ids = new Set(theirs.map((g) => g.productId));
     expect(mine.some((g) => ids.has(g.productId))).toBe(false);
