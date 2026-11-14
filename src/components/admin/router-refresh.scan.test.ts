@@ -15,21 +15,17 @@ const ROOT = join(__dirname, "../../..");
  * `PackPicturesWatch` (a poll), `session.tsx`'s recovery, `admin-text.tsx`'s language change and `data/job-tracker.tsx`. So do the
  * sites whose actions by design do not refresh, where the client call is the only draw.
  *
- * Total at the time of writing (14 November 2026): 92 calls in 50 files.
+ * Total on 14 November 2026: 92 calls in 50 files before step 0.18, 48 calls in 28 files after it. What is left besides the calls above:
+ * the admin's other screens whose actions do not refresh, and the calls whose action refreshes only when it succeeds while the client
+ * call also runs when it fails (a `finally`, or an answer that is not looked at); they stay until their action refreshes on every path.
  */
 const BASELINE: Record<string, number> = {
   "src/components/admin/admin-text.tsx": 1,
   "src/components/admin/ai-manager.tsx": 1,
   "src/components/admin/ai-skills.tsx": 2,
   "src/components/admin/analytics/live-refresh.tsx": 2,
-  "src/components/admin/automation/rule-editor.tsx": 1,
-  "src/components/admin/campaign-editor.tsx": 1,
-  "src/components/admin/chat-agent-form.tsx": 1,
   "src/components/admin/content-type-editor.tsx": 1,
   "src/components/admin/data/job-tracker.tsx": 1,
-  "src/components/admin/discount-editor.tsx": 1,
-  "src/components/admin/docs-guide-form.tsx": 1,
-  "src/components/admin/ebay-parts.tsx": 2,
   "src/components/admin/entry-editor.tsx": 2,
   "src/components/admin/experiment-controls.tsx": 1,
   "src/components/admin/field-group-editor.tsx": 1,
@@ -42,14 +38,11 @@ const BASELINE: Record<string, number> = {
   "src/components/admin/moving/shop-copy.tsx": 1,
   "src/components/admin/moving/shop-move.tsx": 1,
   "src/components/admin/notifications/notification-editor.tsx": 2,
-  "src/components/admin/notifications/staff-alerts-form.tsx": 1,
   "src/components/admin/pack-pictures.tsx": 5,
-  "src/components/admin/passport-editor.tsx": 1,
   "src/components/admin/products-grid.tsx": 1,
   "src/components/admin/redirects/old-shop-check.tsx": 1,
   "src/components/admin/redirects/redirect-form.tsx": 1,
   "src/components/admin/refresh-while.tsx": 2,
-  "src/components/admin/reminder-editor.tsx": 1,
   "src/components/admin/session.tsx": 1,
   "src/components/admin/shipping/method-editor.tsx": 1,
   "src/components/admin/store-drafts.tsx": 1,

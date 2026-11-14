@@ -1,6 +1,5 @@
 "use client";
 
-import { useRouter } from "next/navigation";
 import { useId, useState, useTransition } from "react";
 
 import { useAdminText } from "@/components/admin/admin-text";
@@ -33,7 +32,6 @@ const toggle = (list: StaffAlertEvent[], event: StaffAlertEvent, on: boolean) =>
  * typed here: recipients are members or the store's own contact address.
  */
 export function StaffAlertsForm({ view, save, test }: { view: StaffAlertsView; save: (input: StaffAlertsInput) => Promise<Said>; test: (event: StaffAlertEvent) => Promise<Said> }) {
-  const router = useRouter();
   const uid = useId();
   const all = useAdminText("notifications");
   const w = all.staff;
@@ -57,7 +55,6 @@ export function StaffAlertsForm({ view, save, test }: { view: StaffAlertsView; s
         alertFloor: floor,
       });
       setMessage(answer);
-      if (answer.ok) router.refresh();
     });
 
   const sendTest = (event: StaffAlertEvent) =>
