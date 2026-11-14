@@ -4,7 +4,8 @@ import { useRouter } from "next/navigation";
 import { useId, useState, useTransition } from "react";
 
 import { fillWords } from "@/lib/admin-fill";
-import { SKILL_STEPS_MAX, SKILL_TITLE_MAX, SKILL_WHEN_MAX, type RemoveSkill, type SaveSkill, type SkillDraft } from "@/lib/saved-skills";
+import { SKILL_STEPS_MAX, SKILL_TITLE_MAX, SKILL_WHEN_MAX } from "@/lib/skill-limits";
+import type { RemoveSkill, SaveSkill, SkillDraft } from "@/lib/saved-skills";
 
 import { useAdminText } from "./admin-text";
 import { Button, CARD_CLASS } from "./ui";

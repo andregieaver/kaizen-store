@@ -62,6 +62,11 @@ CLAUDE.md keeps one line per rule pointing here; each rule is under that line as
   which reads `stop_requested_at` every `STOP_POLL_MS`, aborts the turn at its next check. Kaizen Life's `ask_store_assistant` takes
   `continue_admin_conversation` to go on in the owner's admin conversation of the last 24 hours (`recentAdminConversation()`), else its own.
 
+- A new tool has a line in `TOOL_WORDS`, which lives in `src/lib/tool-words.ts` (re-exported by `manager-tools.ts`). The chat
+  (`ai-manager.tsx`, a client part) imports neither `manager-tools`, `owner-tools`, `admin-map` nor a `pages.*` catalogue: it asks
+  the server for the page's name through the `pageHere` action (`pageHereAction`, `pagePlatformHereAction`).
+  `e2e/signed-in/ai-manager-panel.spec.ts` holds the scripts fetched on first opening to 130,000 bytes (bloat review step 0.11).
+
 ## The AI manager's marketing tools (PSI AGT-01, D318, `src/server/marketing-tools.ts`)
 
 - **The AI manager's marketing tools (PSI AGT-01, D318, `src/server/marketing-tools.ts`)**: broadcasts, segments, customer tags and email automations, only through the screens' functions (`suggestBroadcast()` then `saveBroadcast()` as a draft; `startBroadcast()`/`scheduleBroadcast()` behind the `send` gate, checked by `preflightSendBroadcast()` and described by `broadcastApprovalSummary()`; `addTag()`/`removeTag()`; `switchAutomation()` behind the `send` gate; `issue_gift_card` through `issueGiftCard()` behind the `spend` gate, always emailed, its code never in an answer). Answers carry counts, never who is on a list. Review moderation has no tool: a review's words never reach a model.
