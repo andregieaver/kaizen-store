@@ -315,3 +315,21 @@ provider was made, a 500 that neither the tests nor the deploy's page checks cou
 - A heavy package is loaded where it is used, never at the top of a server module: `loadSharp()` (`src/server/sharp-load.ts`),
   `launchBrowser()` (`src/server/browser.ts`), `await import("opentype.js")`; `src/server/lazy-packages.scan.test.ts` fails on a
   static import of sharp, opentype.js, playwright-core, @sparticuz/chromium, mammoth or unpdf.
+
+## The router's two settings (bloat review step 0.14, D592)
+
+`next.config.ts` states both: `optimisticRouting: false` and `partialPrefetching: false`.
+
+`optimisticRouting` is false because of the `@drawer/[...rest]` slot (the phone's cart drawer, D64). Next guesses a link's route
+tree from a route of the same shape, and the guess never fills the slot's `rest` param (the TODO "This should never happen. Bail
+out with null" in `node_modules/next/dist/client/components/segment-cache/optimistic-routes.js`), so the slot's segment is asked
+for without end at /s/{store} addresses, about 165 requests a second. On the search page at 1440x900 that was 624 router requests
+in 4 s and no end; with route guessing off it is about 55 and quiet. Production could not loop while stores are on their own
+hosts, since behind a rewrite no shape is learned.
+
+`e2e/prefetch.spec.ts` ('a store page goes quiet') holds it on four pages: fewer than 60 router prefetches in the 3 s after load
+and none in the next 2 s. At each Next upgrade read `optimistic-routes.js` for the TODO; when it is gone, remove the flag and case
+(a) of `src/lib/next-config-prefetch.test.ts`, and keep the e2e test.
+
+`partialPrefetching` is false as a recorded choice: unset, Next treats it as false and prints a warning on every build and start,
+and the next major release turns it on for everyone. Step 2.8 of the bloat review decides adoption by trial.

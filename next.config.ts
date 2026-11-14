@@ -41,6 +41,9 @@ const ON_VERCEL = Boolean(process.env.VERCEL);
 
 const nextConfig: NextConfig = {
   cacheComponents: true,
+  // A recorded choice, not an oversight: unset, Next treats it as false and warns on every build and start. The next major release turns it on
+  // for everyone; step 2.8 of docs/audits/bloat-review-2026-11 decides adoption by trial.
+  partialPrefetching: false,
   poweredByHeader: false,
   // On Vercel (`ON_VERCEL`) the type check is left to CI, whose `static` job runs
   // `pnpm typecheck` on every push and whose builds still check; everywhere else `next build` checks as ever.
@@ -86,6 +89,11 @@ const nextConfig: NextConfig = {
     // Product pictures are uploaded through a server action. The browser
     // shrinks them first, so this is headroom, kept under Vercel's 4.5 MB.
     serverActions: { bodySizeLimit: "4mb" },
+    // Next guesses a link's route tree from a route of the same shape; the guess never fills the `rest` param of the `@drawer/[...rest]` slot (the TODO
+    // "This should never happen. Bail out with null" in next/dist/client/components/segment-cache/optimistic-routes.js), so the slot's segment is asked
+    // for without end at /s/{store} addresses (about 165 requests a second). Remove this line when that TODO is fixed upstream and
+    // e2e/prefetch.spec.ts 'a store page goes quiet' passes without it.
+    optimisticRouting: false,
   },
 };
 
