@@ -135,3 +135,5 @@ challenged by a skeptic, planned by a planner. Its last lines hold the arguments
 - Other session took D594, D595, D596. Recheck next D before writing 0.16's row.
 - 0.16 hand checks after deploy: filter opens on first press on a prod listing; cart notes; withdraw Statistics removes _ga (no prod site has trackers).
 - 67aa344: CI all green (e2e, signed-in, integration x3, static, hosts). Prod: /no 616,839, product 662,244; filter first press OK on prod (screenshot sent). Waiting on carousel commit 6.
+- Step 0.16 commit 6 (carousel split) pushed as 49236ef. Local: /no 609,885 (target met), product 655,190, entry 216,992. Deploy wait bphm9yr92. Then prod checks + write-up (D-number: recheck, other session at D599).
+- Step 0.17 executor (Sonnet, ad8c9ae7351cf5cb4) started from $S/run/executor-0.17.md.
