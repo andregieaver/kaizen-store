@@ -144,3 +144,6 @@ challenged by a skeptic, planned by a planner. Its last lines hold the arguments
 - Step 0.18 executor (Sonnet a6d384f073d14c86d) started from $S/run/executor-0.18.md.
 - Step 0.17 DONE: write-up bc32c97 (D602; the other session took D601). Hand checks: AI manager badge count signed in; Dream Factory page follows a run and is quiet in a hidden tab.
 - Step 0.18 executor running (a6d384f073d14c86d).
+- Step 0.18 pushed as 35724ae (6f43131.. rebased; 44 router.refresh() deleted, 92 -> 48 in 28 files). Deploy wait bbiwi94n8. Then prod checks + write-up (next D: recheck; other session at D609?).
+- Other session re-recorded agent eval (049f2fc): CI integration(1) should be green again.
+- Step 0.19 executor (Sonnet ac5ad4f17bf3f32cd) started from $S/run/executor-0.19.md; commit 3 (customers statement) needs my close read.
