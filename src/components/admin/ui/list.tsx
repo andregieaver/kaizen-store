@@ -1,4 +1,4 @@
-import Link from "next/link";
+import { AdminLink } from "./link";
 import type { ReactNode } from "react";
 
 /**
@@ -25,9 +25,9 @@ export function ListRow({ href, highlight = false, children }: { href?: string; 
   if (href) {
     return (
       <li>
-        <Link href={href} className={`${ROW} -mx-3 rounded-panel px-3 hover:bg-sunken ${shape}`}>
+        <AdminLink href={href} className={`${ROW} -mx-3 rounded-panel px-3 hover:bg-sunken ${shape}`}>
           {children}
-        </Link>
+        </AdminLink>
       </li>
     );
   }
@@ -48,9 +48,9 @@ export function RowLead({ title, href, sub, avatar }: { title: ReactNode; href?:
       {avatar}
       <span className="min-w-0">
         {href ? (
-          <Link href={href} className="text-body-strong text-ink underline-offset-2 hover:underline">
+          <AdminLink href={href} className="text-body-strong text-ink underline-offset-2 hover:underline">
             {title}
-          </Link>
+          </AdminLink>
         ) : (
           <span className="text-body-strong text-ink">{title}</span>
         )}

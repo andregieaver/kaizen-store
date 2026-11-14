@@ -1,4 +1,4 @@
-import Link from "next/link";
+import { AdminLink } from "@/components/admin/ui/link";
 
 import { Section } from "@/components/admin/overview-parts";
 import type { AdminLang } from "@/lib/admin-lang";
@@ -40,9 +40,9 @@ export async function HomeAnalyticsAlerts({ store, base, now, lang = "en", ask =
       id="analytics-alerts-heading"
       title={w.homeTitle}
       action={
-        <Link href={`${base}/analytics`} className="text-sm underline">
+        <AdminLink href={`${base}/analytics`} className="text-sm underline">
           {w.seeAll}
-        </Link>
+        </AdminLink>
       }
     >
       <AlertList alerts={alerts} base={base} />

@@ -1,7 +1,7 @@
 "use client";
 
 import { PanelLeftClose, PanelLeftOpen } from "lucide-react";
-import Link from "next/link";
+import { AdminLink } from "./ui/link";
 import { usePathname } from "next/navigation";
 import { useSyncExternalStore } from "react";
 
@@ -44,7 +44,7 @@ export function AdminRail({ items, home, label, collapseOn }: { items: NavItem[]
     const waiting = item.badge ? `, ${item.badge} waiting` : "";
     return (
       <li key={item.href}>
-        <Link
+        <AdminLink
           href={item.href}
           aria-label={`${item.label}${waiting}`}
           aria-current={current ? "page" : undefined}
@@ -71,7 +71,7 @@ export function AdminRail({ items, home, label, collapseOn }: { items: NavItem[]
           >
             {item.label}
           </span>
-        </Link>
+        </AdminLink>
       </li>
     );
   };
@@ -85,9 +85,9 @@ export function AdminRail({ items, home, label, collapseOn }: { items: NavItem[]
       data-collapsed={collapsed ? "" : undefined}
       className={`sticky top-0 hidden h-dvh shrink-0 flex-col items-center bg-rail md:flex ${collapsed ? "w-16 py-4" : "w-20 py-5 [[data-rail=names]_&]:w-56 [[data-rail=names]_&]:items-stretch [[data-rail=names]_&]:px-3"}`}
     >
-      <Link href={home.href} aria-label={home.label} className="flex size-10 items-center justify-center rounded-tile bg-brand text-title text-brand-ink">
+      <AdminLink href={home.href} aria-label={home.label} className="flex size-10 items-center justify-center rounded-tile bg-brand text-title text-brand-ink">
         <span aria-hidden>K</span>
-      </Link>
+      </AdminLink>
       <nav aria-label={label} className={`mt-8 flex flex-1 flex-col items-center justify-between ${collapsed ? "" : "[[data-rail=names]_&]:items-stretch"}`}>
         <ul className={`flex flex-col ${collapsed ? "gap-2" : "gap-3"} [@media(max-height:720px)]:gap-1`}>{main.map(tile)}</ul>
         {foot.length > 0 && <ul className="mt-3 flex flex-col gap-3">{foot.map(tile)}</ul>}

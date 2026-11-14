@@ -1,4 +1,4 @@
-import Link from "next/link";
+import { AdminLink } from "@/components/admin/ui/link";
 
 import { alertAction } from "@/lib/briefing-actions";
 import { fillWords } from "@/lib/admin-fill";
@@ -36,16 +36,16 @@ export function AlertList({ alerts, base }: { alerts: readonly Alert[]; base: st
           <StatusPill tone={SEVERITY[a.severity]}>{w.severity[a.severity]}</StatusPill>
           {/* On a phone the words keep a line of their own width and the link drops under them, instead of the words being squeezed into a sliver. */}
           <span className="min-w-[14rem] flex-1 basis-56">{a.text}</span>
-          <Link href={alertHref(base, a)} className={linkClass}>
+          <AdminLink href={alertHref(base, a)} className={linkClass}>
             {a.action || w.open}
-          </Link>
+          </AdminLink>
           {/* The one-press action (D416): a page with the reorder or the campaign prepared, never done from here. */}
           {(() => {
             const act = alertAction(a);
             return act.kind === "reorder" || act.kind === "campaign" ? (
-              <Link href={`${base}${act.href}`} className={linkClass} data-alert-action={act.kind}>
+              <AdminLink href={`${base}${act.href}`} className={linkClass} data-alert-action={act.kind}>
                 {w.actions[act.kind]}
-              </Link>
+              </AdminLink>
             ) : null;
           })()}
           <AskAboutAlert message={askAboutAlert(a, w)} label={w.ask} srLabel={fillWords(w.askFor, { text: a.text })} />

@@ -1,6 +1,6 @@
 "use client";
 
-import Link from "next/link";
+import { AdminLink } from "./ui/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 
@@ -123,55 +123,55 @@ export function AdminSwitcher({
       {open && (
         <div role="menu" aria-label={w.goTo} className="absolute left-0 top-full z-50 mt-1 flex max-h-[80dvh] w-72 max-w-[calc(100vw-2rem)] flex-col gap-2 overflow-y-auto rounded-panel border border-line bg-card p-2 shadow-xl">
           {owner && (
-            <Link role="menuitem" href="/admin" aria-current={level === "control" ? "page" : undefined} className={`${item} font-medium`}>
+            <AdminLink role="menuitem" href="/admin" aria-current={level === "control" ? "page" : undefined} className={`${item} font-medium`}>
               {w.controlCenter}
               <span className="ml-auto text-xs font-normal text-muted">{level === "control" ? "" : w.allYourStoresShort}</span>
               <Here on={level === "control"} />
-            </Link>
+            </AdminLink>
           )}
           {shown.length > 0 && (
             <Section id="switch-stores" title={w.stores} first={!owner}>
               {shown.map((s) => {
                 const here = level === "store" && s.slug === currentSlug;
                 return (
-                  <Link key={s.slug} role="menuitem" href={`/admin/${s.slug}`} aria-current={here ? "page" : undefined} className={item}>
+                  <AdminLink key={s.slug} role="menuitem" href={`/admin/${s.slug}`} aria-current={here ? "page" : undefined} className={item}>
                     <span className="truncate">{s.name}</span>
                     {s.suspended && <span className="rounded bg-sunken px-1.5 py-0.5 text-xs text-muted">{w.suspended}</span>}
                     {s.role === "admin" && <span className="ml-auto text-xs text-muted">{w.staff}</span>}
                     {here && !(s.role === "admin") && <Here on />}
-                  </Link>
+                  </AdminLink>
                 );
               })}
               {stores.length > shown.length && (
-                <Link role="menuitem" href="/admin/stores" className={`${item} text-muted`}>
+                <AdminLink role="menuitem" href="/admin/stores" className={`${item} text-muted`}>
                   {fillWords(w.allStores, { count: stores.length })}
-                </Link>
+                </AdminLink>
               )}
             </Section>
           )}
           {platform && (
             <Section id="switch-kaizen" title="Kaizena Flow" first={!owner && shown.length === 0}>
-              <Link role="menuitem" href="/admin/platform" aria-current={level === "platform" ? "page" : undefined} className={item}>
+              <AdminLink role="menuitem" href="/admin/platform" aria-current={level === "platform" ? "page" : undefined} className={item}>
                 {w.platform}
                 {platform.waiting > 0 && (
                   <span className="ml-auto rounded-full bg-brand px-1.5 py-0.5 text-xs leading-none text-brand-ink">{fillWords(w.waiting, { count: platform.waiting })}</span>
                 )}
                 {platform.waiting === 0 && <Here on={level === "platform"} />}
-              </Link>
+              </AdminLink>
             </Section>
           )}
           <Section id="switch-you" title={w.you} first={!owner && shown.length === 0 && !platform}>
-            <Link role="menuitem" href="/admin/account" className={item}>
+            <AdminLink role="menuitem" href="/admin/account" className={item}>
               {w.yourAccount}
-            </Link>
+            </AdminLink>
             {owner && (
               <>
-                <Link role="menuitem" href="/admin/account/billing" className={item}>
+                <AdminLink role="menuitem" href="/admin/account/billing" className={item}>
                   {w.billing}
-                </Link>
-                <Link role="menuitem" href="/admin/account/usage" className={item}>
+                </AdminLink>
+                <AdminLink role="menuitem" href="/admin/account/usage" className={item}>
                   {w.aiUsage}
-                </Link>
+                </AdminLink>
               </>
             )}
           </Section>
@@ -230,9 +230,9 @@ export function AccountMenu({
 /** A row of the account menu that is a link. */
 export function MenuLink({ href, children }: { href: string; children: ReactNode }) {
   return (
-    <Link role="menuitem" href={href} className={item}>
+    <AdminLink role="menuitem" href={href} className={item}>
       {children}
-    </Link>
+    </AdminLink>
   );
 }
 

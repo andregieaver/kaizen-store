@@ -1,4 +1,4 @@
-import Link from "next/link";
+import { AdminLink } from "./ui/link";
 import type { ReactNode } from "react";
 
 import { fillWords } from "@/lib/admin-fill";
@@ -22,9 +22,9 @@ export function Stat({ label, value, sub, href }: { label: string; value: ReactN
   );
   const box = `flex flex-col gap-1.5 p-5 ${CARD_CLASS}`;
   return href ? (
-    <Link href={href} className={`${box} hover:bg-sunken`}>
+    <AdminLink href={href} className={`${box} hover:bg-sunken`}>
       {body}
-    </Link>
+    </AdminLink>
   ) : (
     <div className={box}>{body}</div>
   );
@@ -66,9 +66,9 @@ export function Attention({
                 {item.urgent && <span className="sr-only">{w.urgent}</span>}
                 {item.text}
               </span>
-              <Link href={item.href} className="shrink-0 text-body-strong text-ink-2 underline underline-offset-2 hover:text-ink">
+              <AdminLink href={item.href} className="shrink-0 text-body-strong text-ink-2 underline underline-offset-2 hover:text-ink">
                 {item.action}
-              </Link>
+              </AdminLink>
             </li>
           ))}
         </ul>

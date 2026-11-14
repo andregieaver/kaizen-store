@@ -1,4 +1,4 @@
-import Link from "next/link";
+import { AdminLink } from "./ui/link";
 import type { ReactNode } from "react";
 
 import { HidingHeader, MobileMenu } from "@/components/store-chrome";
@@ -160,12 +160,12 @@ export function AdminFrame({
     focus ? <ByPath pattern={focus.pattern} match={inFocus} otherwise={normal} /> : normal;
   const focusStart = focus && (
     <div className="flex min-w-0 items-center gap-3">
-      <Link href={focus.back.href} className="inline-flex shrink-0 items-center gap-1 text-body text-ink-2 hover:text-ink">
+      <AdminLink href={focus.back.href} className="inline-flex shrink-0 items-center gap-1 text-body text-ink-2 hover:text-ink">
         <svg viewBox="0 0 24 24" aria-hidden="true" className="size-4" fill="none" stroke="currentColor" strokeWidth="2">
           <path d="m15 18-6-6 6-6" strokeLinecap="round" strokeLinejoin="round" />
         </svg>
         {focus.back.label}
-      </Link>
+      </AdminLink>
       <span aria-hidden className="h-5 w-px bg-line" />
       <span className="truncate text-body-strong text-ink">{focus.title}</span>
     </div>
@@ -247,8 +247,8 @@ export function AdminFrame({
 /** A slide-out menu's plain link. */
 export function MenuFooterLink({ href, children }: { href: string; children: ReactNode }) {
   return (
-    <Link href={href} className="underline">
+    <AdminLink href={href} className="underline">
       {children}
-    </Link>
+    </AdminLink>
   );
 }

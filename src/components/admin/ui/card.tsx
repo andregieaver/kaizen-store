@@ -1,4 +1,4 @@
-import Link from "next/link";
+import { AdminLink } from "./link";
 import { useId, type ReactNode } from "react";
 
 import { CountBadge } from "./chip";
@@ -79,9 +79,9 @@ export function KpiTile({ label, value, context, href }: KpiTileProps) {
   );
   const tile = `${CARD_CLASS} block p-5`;
   return href ? (
-    <Link href={href} className={`${tile} hover:bg-sunken`}>
+    <AdminLink href={href} className={`${tile} hover:bg-sunken`}>
       {body}
-    </Link>
+    </AdminLink>
   ) : (
     <div className={tile}>{body}</div>
   );
