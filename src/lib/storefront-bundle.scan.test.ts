@@ -126,6 +126,13 @@ describe("the visitor's scripts", () => {
     expect([...reach(join(SRC, "lib/cookie-consent.ts")).keys()].map(rel)).not.toContain("lib/known-cookies");
   });
 
+  it("the product page's parts reach no cart form", () => {
+    const reached = [...reach(join(SRC, "components/product-parts.tsx")).keys()].map(rel);
+    for (const form of ["app/s/[store]/[market]/cart/cart-contents", "components/checkout-button", "app/s/[store]/[market]/cart/cart-gift"]) {
+      expect(reached, form).not.toContain(form);
+    }
+  });
+
   it("would notice: the product editor (admin) reaches zod", () => {
     const form = join(SRC, "components/admin/product-editor.tsx");
     expect([...reach(form).keys()].map(rel)).toContain("zod");
