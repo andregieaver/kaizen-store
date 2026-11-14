@@ -123,6 +123,15 @@ export const supportEn = {
   },
   inbox: {
     title: "Inbox",
+    // Round 4 (D612): who waits, in a sentence, and one menu for being reachable.
+    leadWaiting: { one: "{n} person is waiting for you", many: "{n} people are waiting for you" },
+    leadLongest: ", the longest for {time}.",
+    leadNobody: "Nobody is waiting for you.",
+    reach: "How people reach you",
+    available: "Available",
+    alertsShort: { on: "alerts on", off: "alerts off" },
+    partnerHint: "The AI partner suggests replies",
+    filters: "Search and filters",
     tabTitle: "Support",
     tabTitleWaiting: "({n}) Support",
     waiting: { one: "1 waiting", many: "{n} waiting" },

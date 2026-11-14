@@ -131,8 +131,9 @@ export const STORE_SECTIONS: StoreSection[] = [
     key: "marketing",
     label: "Marketing",
     icon: "megaphone",
-    start: "/campaigns",
-    hub: false,
+    // Round 4 (D612): a first page of its own, what brings people back and what it did, before any one tool.
+    start: "/marketing",
+    hub: true,
     intro: "Ways to get people to buy, and to come back.",
     groups: [
       {

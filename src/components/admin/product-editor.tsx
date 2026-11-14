@@ -267,7 +267,7 @@ export function ProductEditor(props: Props) {
         event.preventDefault();
         save();
       }}
-      className="flex flex-col gap-6"
+      className="flex flex-col gap-6 max-md:pb-24"
       aria-busy={saving}
     >
       <div className="sticky top-0 z-10 -mx-4 flex flex-wrap items-center justify-between gap-3 border-b border-line bg-sunken/95 px-4 py-3 backdrop-blur">
@@ -302,11 +302,20 @@ export function ProductEditor(props: Props) {
           <button
             type="submit"
             disabled={saving}
-            className="min-h-10 rounded-pill bg-brand px-5 text-sm font-medium text-brand-ink disabled:opacity-50"
+            className="hidden min-h-10 rounded-pill bg-brand px-5 text-sm font-medium text-brand-ink disabled:opacity-50 md:inline-flex md:items-center"
           >
             {saving ? w.top.saving : w.top.save}
           </button>
         </div>
+      </div>
+      {/* Round 4 (D612): on a phone, Save stays at the thumb above the tab bar and says whether anything is unsaved. */}
+      <div className="fixed inset-x-0 bottom-[calc(4.75rem+env(safe-area-inset-bottom))] z-30 flex items-center gap-3 bg-sunken/95 px-4 py-2.5 shadow-[0_-8px_20px_-12px_rgb(16_22_20/0.25)] backdrop-blur md:hidden">
+        <span className="flex-1 text-caption text-ink-2" aria-live="polite">
+          {dirty ? w.top.notSaved : w.top.allSaved}
+        </span>
+        <button type="submit" disabled={saving} className="min-h-12 rounded-pill bg-brand px-7 text-body font-medium text-brand-ink disabled:opacity-50">
+          {saving ? w.top.saving : w.top.save}
+        </button>
       </div>
 
       <div role="status" aria-live="polite">
@@ -351,6 +360,8 @@ export function ProductEditor(props: Props) {
           product as a shopper sees it and what it still lacks. */}
       <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_19rem]">
       <div className="flex min-w-0 flex-col gap-6">
+      {/* Round 4 (D612): on a phone, the photos, then the price and stock (what an owner changes in the shop), then the words. */}
+      <div className="max-md:-order-2">
       <MediaSection
         storeSlug={storeSlug}
         product={product}
@@ -361,6 +372,7 @@ export function ProductEditor(props: Props) {
         otherLocales={context.locales.filter((l) => l !== context.primaryLocale)}
         languageNames={languageNames}
       />
+      </div>
       <TextSection
         product={product}
         update={update}
@@ -372,6 +384,7 @@ export function ProductEditor(props: Props) {
         suggest={(request) => suggestTextAction(storeSlug, productId, request)}
       />
       {/* The kinds a store's features offer (D178), and the product's own kind as it was loaded, which it keeps while its feature is off. */}
+      <div className="flex flex-col gap-6 max-md:-order-1">
       {/* A bundle (D322) is chosen when a product is made and stays one: a saved product is offered no move into or out of it. */}
       {(productId === null || context.appointmentsOn || context.staysOn || context.giftCardsOn || product.kind !== "goods" || props.initial.kind !== "goods") && (
         <KindSection
@@ -409,6 +422,7 @@ export function ProductEditor(props: Props) {
           upload={uploads ? (file) => uploadPicture(storeSlug, file, w.media.unreadable) : null}
         />
       )}
+      </div>
       <section aria-labelledby="terms-heading" className={card}>
         <h2 id="terms-heading" className="mb-1 text-title text-ink">
           {w.terms.title}
@@ -960,8 +974,8 @@ function MediaSection({
       <h2 id="media-heading" className="mb-1 text-title text-ink">
         {w.media.title}
       </h2>
-      <p className="mb-1 text-sm text-muted">{w.media.intro}</p>
-      <p className="mb-4 text-xs text-muted">
+      <p className="mb-1 text-sm text-muted max-md:hidden">{w.media.intro}</p>
+      <p className="mb-4 text-xs text-muted max-md:hidden">
         {fillWords(w.media.limits, { max: MAX_MEDIA, videos: MAX_VIDEOS, videoMb: PRODUCT_VIDEO_MAX_MB, models: MAX_MODELS, modelMb: MODEL_MAX_MB })}
       </p>
       {product.media.length > 0 && (
@@ -1380,12 +1394,13 @@ function VariantsSection({
         <table
           ref={listRef}
           aria-rowcount={large ? shown.length + 1 : undefined}
-          className="w-full min-w-[40rem] text-left text-sm"
+          className="w-full min-w-[40rem] text-left text-sm max-sm:block max-sm:min-w-0"
         >
           <caption className="sr-only">
             {allDigital ? w.variants.captionDigital : w.variants.caption}
           </caption>
-          <thead>
+          {/* Round 4 (D612): on a phone each option is a card (name and stock first, then its price), so no column runs off the screen. */}
+          <thead className="max-sm:hidden">
             <tr className="border-b border-line">
               <th scope="col" className="py-2 pr-3 font-medium">
                 {w.variants.variant}
@@ -1437,7 +1452,7 @@ function VariantsSection({
               const key = rowKeys[start + at];
               // Each variant's rows are a body of their own, measured as one while drawn (`useVirtualRows()`).
               return (
-                <tbody key={key} ref={large ? measureRow(key) : undefined}>
+                <tbody key={key} ref={large ? measureRow(key) : undefined} className="max-sm:mb-3 max-sm:block max-sm:rounded-panel max-sm:bg-card max-sm:p-3 max-sm:shadow-[inset_0_0_0_1px_var(--color-line)]">
                 <VariantRow
                   variant={variant}
                   rowIndex={large ? start + at + 2 : undefined}
@@ -1753,11 +1768,13 @@ function VariantRow({
   const cell = "min-h-9 w-full rounded-md border border-line bg-card px-2 text-sm";
   // Nothing to weigh or send through customs for a download or an appointment.
   const digital = variant.delivery !== "physical";
+  // Round 4 (D612): on a phone the option's rarer settings open on its own button.
+  const [more, setMore] = useState(false);
   const columns = 3 + Number(showDelivery) + Number(showPeriod) + Number(showStock) + markets.length;
   return (
     <>
-      <tr className="border-b border-line align-top" aria-rowindex={rowIndex}>
-        <th scope="row" className="py-2 pr-3 font-normal">
+      <tr className="border-b border-line align-top max-sm:grid max-sm:grid-cols-[minmax(0,1fr)_auto] max-sm:items-center max-sm:gap-x-3 max-sm:gap-y-2 max-sm:border-0" aria-rowindex={rowIndex}>
+        <th scope="row" className="py-2 pr-3 font-normal max-sm:order-1 max-sm:col-span-2 max-sm:p-0 max-sm:text-body">
           <span className="flex items-center gap-2">
             <VariantPicture
               name={name}
@@ -1769,7 +1786,8 @@ function VariantRow({
             {name}
           </span>
         </th>
-        <td className="py-2 pr-3">
+        <td className="py-2 pr-3 max-sm:order-5 max-sm:col-span-2 max-sm:p-0">
+          <span className="mb-1 block text-caption text-muted sm:hidden">{w.variants.sku}</span>
           <input
             value={variant.sku}
             onChange={(e) => onChange({ sku: e.target.value })}
@@ -1779,7 +1797,7 @@ function VariantRow({
           />
         </td>
         {showDelivery && (
-          <td className="py-2 pr-3">
+          <td className="py-2 pr-3 max-sm:order-6 max-sm:col-span-2 max-sm:p-0">
             <select
               value={variant.delivery}
               onChange={(e) => onChange({ delivery: e.target.value as Delivery })}
@@ -1792,7 +1810,7 @@ function VariantRow({
           </td>
         )}
         {showPeriod && (
-          <td className="py-2 pr-3">
+          <td className="py-2 pr-3 max-sm:order-6 max-sm:col-span-2 max-sm:p-0">
             <select
               value={variant.rentalPeriod}
               onChange={(e) => onChange({ rentalPeriod: e.target.value as VariantInput["rentalPeriod"] })}
@@ -1806,7 +1824,7 @@ function VariantRow({
           </td>
         )}
         {showStock && (
-          <td className="py-2 pr-3">
+          <td className="py-2 pr-3 max-sm:order-2 max-sm:p-0">
             {digital ? (
               <span className="inline-flex min-h-9 items-center text-muted">{r.notNeeded}</span>
             ) : stockHref ? (
@@ -1841,7 +1859,8 @@ function VariantRow({
           </td>
         )}
         {markets.map((market) => (
-          <td key={market.code} className="py-2 pr-3">
+          <td key={market.code} className="py-2 pr-3 max-sm:order-4 max-sm:col-span-2 max-sm:p-0">
+            <span className="mb-1 block text-caption text-muted sm:hidden">{market.name}</span>
             <input
               inputMode="decimal"
               value={variant.prices[market.code] ?? ""}
@@ -1851,13 +1870,13 @@ function VariantRow({
               }
               aria-label={fillWords(r.priceFor, { market: market.name, name, currency: market.currency })}
               placeholder={ruled.includes(market.code) ? r.byRulePlaceholder : "0,00"}
-              className={`${cell} w-28`}
+              className={`${cell} w-28 max-sm:w-full`}
             />
             {variant.derivedIn?.includes(market.code) && <span className="mt-0.5 block text-xs text-muted">{r.byRule}</span>}
             <VatLine typed={variant.prices[market.code] ?? ""} market={market} category={vatCategory} netPrices={netPrices} words={r} />
           </td>
         ))}
-        <td className="py-2">
+        <td className="py-2 max-sm:order-3 max-sm:self-center max-sm:p-0">
           <input
             type="checkbox"
             checked={variant.active}
@@ -1867,8 +1886,14 @@ function VariantRow({
           />
         </td>
       </tr>
-      <tr className="border-b border-line">
-        <td colSpan={columns} className="pb-3">
+      <tr className="border-b border-line max-sm:block max-sm:border-0">
+        <td colSpan={columns} className="pb-3 max-sm:block max-sm:pt-2 max-sm:pb-0">
+          {/* Round 4 (D612): on a phone an option's rarer settings are one press away, behind its own button. */}
+          <button type="button" onClick={() => setMore((shown) => !shown)} aria-expanded={more} className="mb-1 flex min-h-10 w-full items-center justify-between rounded-md text-left text-caption text-ink-2 sm:hidden">
+            {fillWords(r.moreFor, { name })}
+            <span aria-hidden>{more ? "−" : "+"}</span>
+          </button>
+          <div className={more ? "" : "max-sm:hidden"}>
           {!digital && locations && locations.length > 1 && <LocationStock name={name} variant={variant} locations={locations} cell={cell} onChange={onChange} />}
           {!digital && (
             <details className="mb-2">
@@ -1967,6 +1992,7 @@ function VariantRow({
               )}
             </div>
           </details>
+          </div>
         </td>
       </tr>
     </>
