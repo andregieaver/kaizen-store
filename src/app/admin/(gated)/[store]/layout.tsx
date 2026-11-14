@@ -131,7 +131,7 @@ export default async function StoreAdminLayout({ children, params }: LayoutProps
                 />
               </AdminTextScope>
             )}
-            <Link href={storeHref(store.slug, storeBase(store.slug))} className="flex min-h-10 items-center gap-1.5 rounded-pill border border-edge px-3 hover:bg-sunken">
+            <Link href={storeHref(store.slug, storeBase(store.slug))} prefetch={false} className="flex min-h-10 items-center gap-1.5 rounded-pill border border-edge px-3 hover:bg-sunken">
               <span className="hidden sm:inline">{w.store.viewStore}</span>
               <span className="sr-only sm:hidden">{w.store.viewStore}</span>
               <svg viewBox="0 0 24 24" aria-hidden="true" className="size-4" fill="none" stroke="currentColor" strokeWidth="2">

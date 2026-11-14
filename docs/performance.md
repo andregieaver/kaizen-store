@@ -60,6 +60,15 @@ with its processor slowed four times, and a computer.
   language translated by AI sends the same few texts and no more: `uiTextsFor()` (`src/server/ui-text-read.ts`) hands `UiTexts` only
   the keys of `en-browser.ts` (114 keys, under 9 KB, where it sent all 1,673 texts, 93 KB), and the withdrawal page sends its own with
   `returnsTextsFor()` and `part="returns"` (bloat review step 0.8).
+- **A link whose press does not open its href** (a language or a currency: the handler goes to the same page in the other view), **or
+  that few visitors press and that leads to another country's whole layout or to a legal page** (countries, cookies, withdrawal, the
+  legal pages), **is not prefetched:** `prefetch={false}`.
+- **A link that crosses to another root layout is not prefetched** (Kaizena Flow's site to the admin or to a store and back, a store's
+  front door to a country, the admin's *View store*): the press is a full page load, so the answer cannot be used, and it pulls the
+  other surface's scripts and stylesheet. The root layouts are the two `(platform)` groups, the two `(docs)` groups, the two
+  `(theme-preview)` groups, `admin`, `s/[store]/(chooser)`, `s/[store]/[market]`, `s/[store]/private/[market]`, `holding`,
+  `passport/[id]`, `sms`, `supply` (and `embed`). `src/lib/cross-root-links.scan.test.ts` and `e2e/prefetch.spec.ts` hold both
+  (bloat review step 0.12).
 - **Font stylesheets are kept for a year** (`immutable`); a change to how one is written raises `FONT_CSS_VERSION`, which is in
   every stylesheet's address.
 

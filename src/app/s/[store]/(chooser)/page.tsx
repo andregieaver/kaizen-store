@@ -95,6 +95,7 @@ function MarketLinks({ store, slugs }: { store: Store; slugs: Record<string, str
         <li key={market.slug}>
           <Link
             href={marketHome(store.slug, slugs?.[market.code] ?? market.slug)}
+            prefetch={false}
             hrefLang={market.lang}
             lang={market.lang}
             className="block rounded-lg border border-border px-4 py-3 font-medium hover:bg-surface"
@@ -118,7 +119,7 @@ async function Suggestion({ store }: { store: Store }) {
   const slug = (await visitorSlugs(store))?.[market.code] ?? market.slug;
   return (
     <p lang={market.lang}>
-      <Link href={marketHome(store.slug, slug)} className="underline">
+      <Link href={marketHome(store.slug, slug)} prefetch={false} className="underline">
         {t(market.lang).products} · {market.name}
       </Link>
     </p>

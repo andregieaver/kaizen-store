@@ -161,7 +161,7 @@ export async function SignUpRoute({ lang }: { lang: PlatformLang }) {
         </ActionForm>
         <p className="text-center text-sm text-muted">
           {w.haveAccount}{" "}
-          <Link href="/admin/sign-in" className="font-medium text-foreground underline underline-offset-4">
+          <Link href="/admin/sign-in" prefetch={false} className="font-medium text-foreground underline underline-offset-4">
             {w.signIn}
           </Link>
         </p>
