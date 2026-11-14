@@ -7,3 +7,4 @@ export { InsightPanel } from "./insight";
 export { List, ListRow, RowActions, RowAmount, RowDate, RowFact, RowId, RowLead, RowText } from "./list";
 export { PageHeader } from "./page-header";
 export { FocusFrame, FocusHeading } from "./focus-frame";
+export { AdminLink, type AdminLinkProps } from "./link";
