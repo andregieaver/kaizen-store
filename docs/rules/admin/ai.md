@@ -150,6 +150,19 @@ CLAUDE.md keeps one line per rule pointing here; each rule is under that line as
   dispatcher's `autopilotBudgets`, `budgetLevel()`, emails `autopilot.budget_near` and `autopilot.budget_reached`); the plan's AI limit has its own
   warning (`sendUsageAlerts()`).
 
+## The AI wallet (D599, `docs/agent-spending.md` 5, `src/lib/card-wallet.ts`, `src/server/card-wallet.ts`, `src/server/agent-purchases.ts`)
+
+- **The AI wallet (D599, `docs/agent-spending.md` 5, `src/lib/card-wallet.ts`, `src/server/card-wallet.ts`, `src/server/agent-purchases.ts`)**: the AI pays only with a single-use virtual card made in the owner's own Airwallex account (connected by OAuth to Kaizena Flow's
+  partner app, `AIRWALLEX_*`), one per purchase the owner approved: virtual, one charge, at most the purchase's amount in the wallet's
+  currency, open 48 hours (`cardRequest()`). Kaizena Flow never holds money and never sees a card number (only a card's id and last four
+  digits are kept), so it stays outside PCI DSS: the cardholder pays with the card in their own app. `card-wallet.ts` is the only writer of
+  `commerce.card_wallets` and holder of the grant (refreshed under the row's lock; a refused refresh turns it `auth_failed`);
+  `agent-purchases.ts` the only writer of the purchases and their charges. A purchase is checked under the wallet row's lock
+  (`walletProblem()`: on, a cardholder, not paused, a monthly limit, and room left this month by `monthTaken()`); the purchase's id is the
+  card request's id, so a retry never makes a second card. The dispatcher's `agentPurchases` job reads each open card's charges and closes
+  the card once cleared or out of time. Pausing closes every open card. Airwallex's own words never reach a page or a prompt (a refusal is a
+  code). Kaizena Flow's own wallet is its house store's.
+
 ## What the autopilot's changes moved (D418, `src/lib/autopilot-effects.ts`, `src/server/autopilot-effects.ts`)
 
 - **What the autopilot's changes moved (D418, `src/lib/autopilot-effects.ts`, `src/server/autopilot-effects.ts`)**: `commerce.autopilot_effects` is

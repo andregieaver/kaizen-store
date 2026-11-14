@@ -16875,6 +16875,145 @@ export const adConnections = commerce.table(
 );
 
 /**
+ * A store's card wallet (D599, step 2 of `docs/agent-spending.md`): the owner's own Airwallex account, connected by OAuth to Kaizena Flow's
+ * partner app, in which Kaizena Flow makes one single-use virtual card per purchase the owner approved. Kaizena Flow never holds the money
+ * nor sees a card number. Tokens encrypted (`secret-box.ts`); written only by `src/server/card-wallet.ts`. `cardholder_id` is the person
+ * the cards are made for (they appear in that person's Airwallex app, and a 3-D Secure check goes to them); `monthly_limit_minor` is what
+ * the AI's cards may take in a calendar month, in `currency`; `paused` is the owner's switch that stops new cards and closes open ones.
+ * Kaizena Flow's own wallet is its house store's.
+ */
+export const cardWallets = commerce.table(
+  "card_wallets",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    storeId: uuid("store_id")
+      .notNull()
+      .references(() => stores.id),
+    provider: text("provider").notNull().default("airwallex"),
+    /** `sandbox` or `live`: which Airwallex the grant is for, fixed when connected. */
+    mode: text("mode").notNull(),
+    accountId: text("account_id").notNull(),
+    accessTokenEncrypted: text("access_token_encrypted").notNull(),
+    accessExpiresAt: timestamp("access_expires_at", { withTimezone: true }),
+    refreshTokenEncrypted: text("refresh_token_encrypted"),
+    refreshExpiresAt: timestamp("refresh_expires_at", { withTimezone: true }),
+    cardholderId: text("cardholder_id"),
+    cardholderName: text("cardholder_name"),
+    currency: char("currency", { length: 3 }).notNull(),
+    monthlyLimitMinor: bigint("monthly_limit_minor", { mode: "number" }),
+    paused: boolean("paused").notNull().default(false),
+    /** `choose`: connected, the cardholder not chosen yet; `on`; `auth_failed`: Airwallex refused the grant, connect again. */
+    state: text("state").notNull().default("choose"),
+    updatedBy: uuid("updated_by").references(() => accounts.id),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [
+    unique("card_wallets_store").on(t.storeId),
+    unique("card_wallets_store_id_key").on(t.storeId, t.id),
+    index("card_wallets_updated_by_idx").on(t.updatedBy),
+    check("card_wallets_provider", sql`${t.provider} in ('airwallex')`),
+    check("card_wallets_mode", sql`${t.mode} in ('sandbox', 'live')`),
+    check("card_wallets_state", sql`${t.state} in ('choose', 'on', 'auth_failed')`),
+    check("card_wallets_account", sql`char_length(${t.accountId}) between 1 and 80`),
+    check("card_wallets_cardholder", sql`${t.cardholderId} is null or char_length(${t.cardholderId}) between 1 and 80`),
+    check("card_wallets_cardholder_name", sql`${t.cardholderName} is null or char_length(${t.cardholderName}) between 1 and 200`),
+    check("card_wallets_limit", sql`${t.monthlyLimitMinor} is null or ${t.monthlyLimitMinor} between 0 and 100000000000`),
+    check("card_wallets_on", sql`${t.state} <> 'on' or ${t.cardholderId} is not null`),
+  ],
+);
+
+/**
+ * One purchase the owner approved for the AI (D599): what, from whom, up to how much, and the single-use card made for it in the wallet
+ * (its id and last four digits, never its number). `amount_minor` is the card's own limit, in the wallet's currency; `spent_minor` what the
+ * card's charges took (`agent_purchase_charges`). Written only by `src/server/agent-purchases.ts`.
+ */
+export const agentPurchases = commerce.table(
+  "agent_purchases",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    storeId: uuid("store_id")
+      .notNull()
+      .references(() => stores.id),
+    walletId: uuid("wallet_id").references(() => cardWallets.id, { onDelete: "set null" }),
+    what: text("what").notNull(),
+    merchant: text("merchant").notNull(),
+    merchantUrl: text("merchant_url"),
+    why: text("why").notNull().default(""),
+    amountMinor: bigint("amount_minor", { mode: "number" }).notNull(),
+    currency: char("currency", { length: 3 }).notNull(),
+    spentMinor: bigint("spent_minor", { mode: "number" }).notNull().default(0),
+    /** `issuing` (the card is being made), `card_ready`, `spent` (charged), `closed`, `cancelled` (by the owner), `failed` (no card). */
+    status: text("status").notNull().default("issuing"),
+    cardId: text("card_id"),
+    cardLast4: text("card_last4"),
+    activeTo: timestamp("active_to", { withTimezone: true }).notNull(),
+    /** Why no card was made, or why it closed early: a code the page words. */
+    failure: text("failure"),
+    approvedBy: uuid("approved_by")
+      .notNull()
+      .references(() => accounts.id),
+    closedAt: timestamp("closed_at", { withTimezone: true }),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [
+    unique("agent_purchases_store_id_key").on(t.storeId, t.id),
+    index("agent_purchases_store_idx").on(t.storeId, t.createdAt),
+    index("agent_purchases_open_idx").on(t.status).where(sql`${t.status} in ('issuing', 'card_ready', 'spent')`),
+    index("agent_purchases_wallet_idx").on(t.walletId),
+    index("agent_purchases_approved_by_idx").on(t.approvedBy),
+    check("agent_purchases_status", sql`${t.status} in ('issuing', 'card_ready', 'spent', 'closed', 'cancelled', 'failed')`),
+    check("agent_purchases_what", sql`char_length(${t.what}) between 1 and 200`),
+    check("agent_purchases_merchant", sql`char_length(${t.merchant}) between 1 and 120`),
+    check("agent_purchases_url", sql`${t.merchantUrl} is null or (char_length(${t.merchantUrl}) <= 500 and ${t.merchantUrl} like 'https://%')`),
+    check("agent_purchases_why", sql`char_length(${t.why}) <= 500`),
+    check("agent_purchases_amount", sql`${t.amountMinor} between 1 and 100000000000`),
+    check("agent_purchases_spent", sql`${t.spentMinor} between 0 and 100000000000`),
+    check("agent_purchases_card", sql`${t.cardLast4} is null or ${t.cardLast4} ~ '^[0-9]{4}$'`),
+    check("agent_purchases_failure", sql`${t.failure} is null or char_length(${t.failure}) between 1 and 40`),
+  ],
+);
+
+/**
+ * A charge on a purchase's card as the wallet's provider reported it (D599): an authorisation, its clearing, a reversal or a refund, with
+ * the amount in the wallet's currency and the merchant's name and category. Kept once per provider transaction; written only by
+ * `src/server/agent-purchases.ts`.
+ */
+export const agentPurchaseCharges = commerce.table(
+  "agent_purchase_charges",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    storeId: uuid("store_id")
+      .notNull()
+      .references(() => stores.id),
+    purchaseId: uuid("purchase_id")
+      .notNull()
+      .references(() => agentPurchases.id, { onDelete: "cascade" }),
+    providerRef: text("provider_ref").notNull(),
+    kind: text("kind").notNull(),
+    /** The provider's status of the transaction, as it says it (`APPROVED`, `PENDING`, `FAILED`, …). */
+    status: text("status").notNull(),
+    amountMinor: bigint("amount_minor", { mode: "number" }).notNull(),
+    currency: char("currency", { length: 3 }).notNull(),
+    merchantName: text("merchant_name"),
+    merchantCategory: text("merchant_category"),
+    happenedAt: timestamp("happened_at", { withTimezone: true }).notNull(),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    unique("agent_purchase_charges_ref").on(t.storeId, t.providerRef),
+    index("agent_purchase_charges_purchase_idx").on(t.purchaseId),
+    check("agent_purchase_charges_kind", sql`${t.kind} in ('authorization', 'clearing', 'reversal', 'refund', 'other')`),
+    check("agent_purchase_charges_status", sql`char_length(${t.status}) between 1 and 40`),
+    check("agent_purchase_charges_ref_length", sql`char_length(${t.providerRef}) between 1 and 120`),
+    check("agent_purchase_charges_amount", sql`${t.amountMinor} between 0 and 100000000000`),
+    check("agent_purchase_charges_merchant", sql`${t.merchantName} is null or char_length(${t.merchantName}) <= 200`),
+    check("agent_purchase_charges_category", sql`${t.merchantCategory} is null or ${t.merchantCategory} ~ '^[0-9]{4}$'`),
+  ],
+);
+
+/**
  * A store's ad account, connected so its budgets can be read and changed (D585, step 1 of `docs/agent-spending.md`): the platform bills the
  * owner as it always has, and Kaizena Flow only moves budgets inside it, never pays. The token is encrypted (`secret-box.ts`), never sent to a
  * page. `monthly_limit_minor` is what the autopilot may let the account spend in a calendar month (in the account's own currency and time

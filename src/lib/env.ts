@@ -140,6 +140,28 @@ export function fikenEnv(
 }
 
 /**
+ * Kaizena Flow's partner app at Airwallex (D599, `docs/agent-spending.md` 5): its OAuth client id and secret from Airwallex's partner
+ * program, and which Airwallex it talks to (`sandbox` until `AIRWALLEX_MODE=live`). Owners connect their own Airwallex account to it for the
+ * AI's single-use cards. Null without both: the wallet says it is not available yet. Confidential client: the secret stays on the server.
+ */
+export function airwallexEnv(
+  source: Record<string, string | undefined> = {
+    AIRWALLEX_CLIENT_ID: process.env.AIRWALLEX_CLIENT_ID,
+    AIRWALLEX_CLIENT_SECRET: process.env.AIRWALLEX_CLIENT_SECRET,
+    AIRWALLEX_MODE: process.env.AIRWALLEX_MODE,
+  },
+): { clientId: string; clientSecret: string; mode: "sandbox" | "live" } | null {
+  const clientId = source.AIRWALLEX_CLIENT_ID?.trim();
+  const clientSecret = source.AIRWALLEX_CLIENT_SECRET?.trim();
+  if (!clientId || !clientSecret) return null;
+  if (!/^[A-Za-z0-9._-]{8,128}$/.test(clientId)) throw new Error("AIRWALLEX_CLIENT_ID must be the client id of Kaizena Flow's partner app at Airwallex.");
+  if (clientSecret.length < 8 || clientSecret.length > 512 || /\s/.test(clientSecret)) throw new Error("AIRWALLEX_CLIENT_SECRET must be the client secret of Kaizena Flow's partner app at Airwallex.");
+  const mode = source.AIRWALLEX_MODE?.trim() || "sandbox";
+  if (mode !== "sandbox" && mode !== "live") throw new Error("AIRWALLEX_MODE must be sandbox or live.");
+  return { clientId, clientSecret, mode };
+}
+
+/**
  * Kaizena Flow's own Shopify app for moving a shop in (D445 step 2, `docs/moving-from-shopify.md` 4.2, `shopify/shopify.app.toml`): its
  * client id and secret from Shopify's Dev Dashboard, with `{SITE_URL}/api/shopify/callback` as its redirect address. `SHOPIFY_ALL_ORDERS=1`
  * once Shopify has approved `read_all_orders` for the app. Null without both: *Connect Shopify* is not offered and the files stay the way in.

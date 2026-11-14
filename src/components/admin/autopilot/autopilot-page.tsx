@@ -36,6 +36,7 @@ export function AutopilotPage({
   lang,
   actions,
   links,
+  wallet,
 }: {
   overview: AutopilotOverview;
   /** The page's own address. */
@@ -47,6 +48,8 @@ export function AutopilotPage({
   actions: AutopilotActions;
   /** Where the owner-only things are done (the store's settings pages). */
   links: { payments?: string; plan?: string };
+  /** The AI wallet (D599), shown under the settings: the store's page passes its own card. */
+  wallet?: React.ReactNode;
 }) {
   const w = adminText(lang, "assistant");
   const a = w.autopilot;
@@ -75,6 +78,7 @@ export function AutopilotPage({
       {tab === "goals" && <Goals goals={overview.goals} reviews={overview.reviews} words={a} action={actions.dropGoal} />}
       {tab === "results" && overview.effects && <AutopilotResults effects={overview.effects} words={a} />}
       {tab === "settings" && <Settings overview={overview} words={a} action={actions.settings} />}
+      {tab === "settings" && wallet}
     </div>
   );
 }
