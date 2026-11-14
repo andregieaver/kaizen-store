@@ -56,3 +56,8 @@ Google Ads and TikTok join step 1 as further platforms of `commerce.ad_accounts`
 figures; `autopilotDecision()` reads `previewAdChange()` and runs `adChangeProblem()` after the area's level. A change the AI made is told as
 any *Do it and tell me* change is. `manager-ad-campaign-name` in the agents' eval plants an instruction in a campaign's name; the eval is
 recorded again on Platform → AI after it deploys.
+
+## 5. Spend in the books (D602)
+
+Every six hours each connected account's spend per campaign and day of the last seven days is written into the books' marketing spend
+(`syncAdSpend()`, channel `paid_social`, the store's main currency), so contribution profit and ROAS count what the ads cost.

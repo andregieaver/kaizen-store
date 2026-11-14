@@ -1,6 +1,6 @@
 {
-  "id": "d65f2135-e04f-4f0f-b9be-bb892c1fd681",
-  "prevId": "184ae652-2782-4215-b89f-fe58550e4d53",
+  "id": "7a176507-3c04-4636-92da-e879a0d6bcd6",
+  "prevId": "d65f2135-e04f-4f0f-b9be-bb892c1fd681",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -1853,6 +1853,12 @@
         "monthly_limit_minor": {
           "name": "monthly_limit_minor",
           "type": "bigint",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "spend_synced_at": {
+          "name": "spend_synced_at",
+          "type": "timestamp with time zone",
           "primaryKey": false,
           "notNull": false
         },

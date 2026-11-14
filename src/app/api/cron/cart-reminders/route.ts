@@ -84,6 +84,7 @@ import { sendPlatformBriefing } from "@/server/platform-briefing";
 import { runEinvoiceSending } from "@/server/einvoice-sending";
 import { sendAutopilotBudgetAlerts } from "@/server/autopilot-settings";
 import { sendChallengeStallAlerts } from "@/server/challenge-watch";
+import { syncAllAdSpend } from "@/server/ad-accounts";
 import { runNightlyUiTranslations } from "@/server/ui-nightly";
 import { syncHouseCustomers } from "@/server/house-customers";
 
@@ -242,6 +243,8 @@ async function dispatch() {
     autopilotBudgets: () => sendAutopilotBudgetAlerts(),
     // The 100-day challenge's stall watch (docs/100-day-challenge.md A6): what holds a challenge store up, to the platform team at once.
     challengeStalls: () => sendChallengeStallAlerts(),
+    // The Meta ad accounts' daily spend into the books (docs/100-day-challenge.md D2), each account every six hours.
+    adSpend: () => syncAllAdSpend(),
     // Saved reports emailed on their schedules (D395), each once a store day.
     reportEmails: () => sendScheduledReports(),
     // The official legal texts the AI's legal pages rest on (D311): a few due reads, each source a week after its last good read.

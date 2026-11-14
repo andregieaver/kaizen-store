@@ -612,3 +612,4 @@ Each item of section 4 moves here when it is built, with its decision.
 | A4 Escalations | Built: a category on every hand-over; faults are not escalations. | D601 |
 | A5 The intervention log | Built (no screen yet): refund, escalation, platform, other. | D601 |
 | A6 The stall watch | Built: the platform team emailed of each stall once a day while it lasts. | D601 |
+| D2 Ad spend into the books | Built: Meta's daily spend per campaign, every six hours. | D602 |

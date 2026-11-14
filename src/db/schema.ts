@@ -16903,6 +16903,8 @@ export const adAccounts = commerce.table(
     token: text("token").notNull(),
     tokenHint: text("token_hint").notNull(),
     monthlyLimitMinor: bigint("monthly_limit_minor", { mode: "number" }),
+    /** When the account's daily spend was last written into `marketing_spend` (`syncAdSpend()`, `docs/100-day-challenge.md` D2). */
+    spendSyncedAt: timestamp("spend_synced_at", { withTimezone: true }),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
   },

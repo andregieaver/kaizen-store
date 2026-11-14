@@ -1,0 +1,1 @@
+ALTER TABLE "commerce"."ad_accounts" ADD COLUMN "spend_synced_at" timestamp with time zone;
