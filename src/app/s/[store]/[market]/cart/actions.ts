@@ -9,7 +9,7 @@ import { COMPANY_NAME_MAX, organisationNumber } from "@/lib/b2b";
 import { MAX_RANGE_LENGTH } from "@/lib/booking-ranges";
 import { MAX_ORDER_QUANTITY } from "@/lib/cart";
 import type { CreditsState } from "@/lib/bonus-shopper";
-import { cleanAnswers, type AnswerInput } from "@/lib/checkout-rules";
+import { cleanAnswers, todayInZone, type AnswerInput } from "@/lib/checkout-rules";
 import type { GiftFields, GiftProblem } from "@/lib/gift";
 import { cleanGiftCardRecipient, type GiftCardProblem } from "@/lib/gift-card-line";
 import { todayIn } from "@/lib/analytics-period";
@@ -209,7 +209,8 @@ export async function checkoutAction(
   // The store's questions (D357): kept on the cart as answered, so placing the order again (a code, a delivery) keeps them.
   const fields = await listCheckoutFields(db(), shop.store.id, { onlyOn: true });
   if (fields.length > 0) {
-    const asked = cleanAnswers(fields, answers);
+    // A date is checked against the store's own today, a phone typed without its code against the basket's country (task 4).
+    const asked = cleanAnswers(fields, answers, { today: todayInZone(shop.store.timeZone), country: shop.market.code });
     await setCartAnswers(shop.store.id, cartId, asked.answers);
     if (asked.missing.length > 0) return { problem: "checkout_fields" };
   }

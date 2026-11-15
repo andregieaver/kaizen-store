@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { allergenQuestion, EU_ALLERGEN_COUNT } from "./checkout-presets";
-import { checklistProblems, fieldInputSchema } from "./checkout-rules-schema";
+import { boundsProblems, checklistProblems, fieldInputSchema } from "./checkout-rules-schema";
 
 describe("the EU allergen list (Regulation (EU) No 1169/2011, Annex II)", () => {
   it("has the 14 allergens and None of these, in the store's main language and its others", () => {
@@ -41,5 +41,12 @@ describe("a tick list's own rules (checklistProblems)", () => {
       expect(checklistProblems({ kind, options: [{ label: w("A") }, { label: w("B") }] })).toEqual([]);
     }
     expect(checklistProblems({ kind: "textarea", options: [{ label: w("A") }] })).toEqual(["Only a tick list, a dropdown or a choice of one has options."]);
+  });
+  it("lets only a number or a date have bounds, the lowest not above the highest, and a date's days 0 to 730", () => {
+    expect(boundsProblems({ kind: "number", bounds: { min: -5, max: 5 } })).toEqual([]);
+    expect(boundsProblems({ kind: "number", bounds: { min: 6, max: 5 } })).toEqual(["The lowest answer is above the highest."]);
+    expect(boundsProblems({ kind: "date", bounds: { min: -1 } })).toEqual(["Count a date's days from today: 0 to 730."]);
+    expect(boundsProblems({ kind: "text", bounds: { max: 3 } })).toEqual(["Only a number or a date has a lowest and a highest answer."]);
+    expect(boundsProblems({ kind: "text", bounds: {} })).toEqual([]);
   });
 });

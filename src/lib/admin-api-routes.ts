@@ -267,6 +267,10 @@ export const apiCheckoutField = z.object({
     .optional()
     .describe("The options of a checklist, a select or radio buttons, in order; `none` marks a checklist's option that clears the others."),
   sensitive: z.boolean().describe("The answer may be sensitive personal data: the cart asks the shopper's explicit consent with it."),
+  bounds: z
+    .object({ min: z.int().optional(), max: z.int().optional() })
+    .optional()
+    .describe("A number's lowest and highest value, or a date's earliest and latest day counted from the store's today."),
 });
 
 const enabledOnly = z.strictObject({ enabled: z.boolean().describe("Switches it on or off; nothing else changes.") });
@@ -651,7 +655,7 @@ const CORE_API = [
     permission: "settings:write",
     tag: "Checkout",
     summary: "Create a checkout question",
-    description: "Adds a question the checkout asks: a line or several lines of text, a checkbox, a checklist, a select or radio buttons, with its words.",
+    description: "Adds a question the checkout asks: a line or several lines of text, a checkbox, a checklist, a select, radio buttons, a number, a date, an email or a phone, with its words.",
     body: fieldInputSchema,
     response: madeId,
     status: 201,

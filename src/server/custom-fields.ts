@@ -55,7 +55,7 @@ import { entryLookups, entryTargets } from "./entry-targets";
 import { pgUuidArray } from "./pg-arrays";
 import type { SaveResult } from "./settings";
 import { marketIn } from "./shop";
-import { getStore, storeTag } from "./stores";
+import { getStore, storeSlugOf, storeTag } from "./stores";
 import { OFFERED } from "./product-conditions";
 import { pagesTag } from "./pages";
 
@@ -544,9 +544,9 @@ export async function saveTermFields({ account, store }: Membership, termId: str
 }
 
 /** The currencies a store offers for money fields, its main one first (`store.localization`, D109). */
-async function offeredCurrencies(storeId: string, run: Runner = db()): Promise<string[]> {
-  const [row] = await run.execute<Row>(sql`select slug from commerce.stores where id = ${storeId}::uuid`);
-  const store = row ? await getStore(String(row.slug)) : null;
+async function offeredCurrencies(storeId: string): Promise<string[]> {
+  const slug = await storeSlugOf(storeId);
+  const store = slug ? await getStore(slug) : null;
   return store ? moneyCurrencies(store) : [];
 }
 
@@ -742,7 +742,7 @@ export async function termFieldsForEditor(storeId: string, termId: string): Prom
 export async function fieldLookups(storeId: string): Promise<FieldLookups> {
   const run = db();
   const [currencies, products, pages, terms, entries] = await Promise.all([
-    offeredCurrencies(storeId, run),
+    offeredCurrencies(storeId),
     run.execute<Row>(sql`
       select p.id, coalesce((select title from commerce.product_translations where product_id = p.id order by locale limit 1), p.handle) as title
       from commerce.products p where p.store_id = ${storeId}::uuid and p.status <> 'archived'
@@ -756,7 +756,7 @@ export async function fieldLookups(storeId: string): Promise<FieldLookups> {
     run.execute<Row>(sql`
       select id, kind, name from commerce.terms where store_id = ${storeId}::uuid order by kind, name limit ${MAX_LOOKUPS}
     `),
-    mainLocale(storeId, run).then((main) => entryLookups(run, storeId, main, MAX_LOOKUPS)),
+    mainLocale(storeId).then((main) => entryLookups(run, storeId, main, MAX_LOOKUPS)),
   ]);
   return {
     products: products.map((r) => ({ id: String(r.id), title: String(r.title) })),
@@ -768,9 +768,9 @@ export async function fieldLookups(storeId: string): Promise<FieldLookups> {
 }
 
 /** A store's main language, as its texts are written (the first of `store.localization.locales`). */
-async function mainLocale(storeId: string, run: Runner): Promise<string> {
-  const [row] = await run.execute<Row>(sql`select slug from commerce.stores where id = ${storeId}::uuid`);
-  const store = row ? await getStore(String(row.slug)) : null;
+async function mainLocale(storeId: string): Promise<string> {
+  const slug = await storeSlugOf(storeId);
+  const store = slug ? await getStore(slug) : null;
   return store?.localization.locales[0] ?? "en";
 }
 
@@ -817,8 +817,8 @@ export async function shownFieldsFor(
   const groups = (await activeFieldGroups(storeId, entity)).filter((g) => !g.entities.some(isStaffEntity));
   if (groups.length === 0) return [];
   const run = readDb();
-  const [slug] = await run.execute<Row>(sql`select slug from commerce.stores where id = ${storeId}::uuid`);
-  const store = slug ? await getStore(String(slug.slug)) : null;
+  const slug = await storeSlugOf(storeId);
+  const store = slug ? await getStore(slug) : null;
   // Money is shown at the store's rates: a change to its currencies refreshes it.
   if (store) cacheTag(storeTag(store.slug));
   const main = store?.localization.locales[0] ?? locale;
@@ -857,8 +857,8 @@ export async function shownFieldsForVariants(
   if (!facts) return {};
   const applying = groups.filter((g) => groupApplies(g, { ...facts, entity: "variant" }) && g.fields.some((f) => f.access === "public"));
   if (applying.length === 0) return {};
-  const [slug] = await run.execute<Row>(sql`select slug from commerce.stores where id = ${storeId}::uuid`);
-  const store = slug ? await getStore(String(slug.slug)) : null;
+  const slug = await storeSlugOf(storeId);
+  const store = slug ? await getStore(slug) : null;
   if (store) cacheTag(storeTag(store.slug));
   const main = store?.localization.locales[0] ?? locale;
   const rows = await run.execute<Row>(sql`
@@ -907,8 +907,8 @@ export async function shownEntryFields(
     where e.store_id = ${storeId}::uuid and e.id = ${entryId}::uuid and e.published is not null
   `);
   if (!row) return [];
-  const [slug] = await run.execute<Row>(sql`select slug from commerce.stores where id = ${storeId}::uuid`);
-  const store = slug ? await getStore(String(slug.slug)) : null;
+  const slug = await storeSlugOf(storeId);
+  const store = slug ? await getStore(slug) : null;
   if (store) cacheTag(storeTag(store.slug));
   const main = store?.localization.locales[0] ?? locale;
   const type = { id: String(row.id), name: String(row.name), slug: String(row.slug), fields: (row.fields ?? []) as FieldDef[] };

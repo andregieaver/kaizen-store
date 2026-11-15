@@ -22,6 +22,7 @@ import { testPayment } from "./payment-mode-sql";
 import { setArchived } from "./products";
 import { refreshTag } from "./refresh";
 import { confirmSelfSignup, selfServeOn, startSelfSignup } from "./self-signup";
+import { storeSlugOf } from "./stores";
 import { connectWebhookUrl, type WebhookKind } from "./stripe";
 import { col, typedRows } from "./typed-rows";
 import type { PaymentModeName } from "@/lib/stripe-account";
@@ -202,8 +203,8 @@ async function pilotProduct(storeId: string, name: string): Promise<(PilotProduc
  */
 async function pilotDrill(storeId: string, requestedBy: string | null): Promise<DrillResult> {
   if (!requestedBy) return { kind: "manager_pilot", outcome: "skipped", detail: "The pilot runs in an owner's name, and none asked for it." };
-  const [store] = await typedRows(z.object({ slug: col.text }), sql`select slug from commerce.stores where id = ${storeId}::uuid`);
-  const member = store ? await passMembership(store.slug, requestedBy) : null;
+  const slug = await storeSlugOf(storeId);
+  const member = slug ? await passMembership(slug, requestedBy) : null;
   if (!member || !memberCan(member, "owner")) return { kind: "manager_pilot", outcome: "skipped", detail: "The one who asked is not an owner of this store." };
   const principal: Principal = { account: member.account, store: member.store, role: member.role, kind: member.kind, permissions: member.permissions };
   const name = `Pilot drill mug ${new Date().toISOString().slice(0, 16).replace(/[-:T]/g, "")}`;

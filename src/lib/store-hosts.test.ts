@@ -144,6 +144,22 @@ describe("stores on their own hosts (P7)", () => {
     const local = storeHostRoutes("localhost:3000", "http://localhost:3000", hosts);
     expect(route(local, "kari.localhost:3000", "/no")).toEqual({ redirect: "http://butikk.example.no:3000/no" });
   });
+
+  it("the hosts list is parsed once", () => {
+    const list = Object.fromEntries(Array.from({ length: 1000 }, (_, i) => [`s${i}`, { primary: `shop${i}.example.no`, hosts: [`shop${i}.example.no`] }]));
+    vi.stubEnv("NEXT_PUBLIC_STORE_DOMAIN", "kaizenstore.site");
+    vi.stubEnv("NEXT_PUBLIC_STORE_HOSTS", JSON.stringify(list));
+    const spy = vi.spyOn(JSON, "parse");
+    try {
+      for (let i = 0; i < 1000; i++) marketPath("s1", "no", "/cart");
+      expect(spy.mock.calls.length).toBeLessThanOrEqual(1);
+    } finally {
+      spy.mockRestore();
+    }
+    // A changed text is seen by the next call: the memory is keyed on the text, not on first use.
+    vi.stubEnv("NEXT_PUBLIC_STORE_HOSTS", JSON.stringify({ s1: { primary: "other.example.no", hosts: ["other.example.no"] } }));
+    expect(storeOrigin("s1")).toBe("https://other.example.no");
+  });
 });
 
 describe("a store's own files where they are served (D353)", () => {

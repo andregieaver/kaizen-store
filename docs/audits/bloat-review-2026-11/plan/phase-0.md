@@ -206,6 +206,7 @@ select slug from commerce.stores where id is written by hand in 27 places and is
 - **Done when:** rg -c 'select slug from commerce[.]stores where id' src --glob '!*.test.ts' sums to at most 3 (27 today), rg -n 'loadCards\(\)' src/server/theme-store.ts shows two call sites (three today), and the new case in src/lib/store-hosts.test.ts shows 1,000 calls of marketPath() with a 1,000-store hosts list calling JSON.parse once (2,000 or more today).
 - **Platform:** The slug helper and the hosts list are shared code: the platform admin's links and Kaizena Flow's own store read through them.
 - **To carry it out:** [steps/0.20.md](steps/0.20.md) (review)
+- **Done differently (15 Nov):** at `dream-factory.ts` the loop below the replaced read used `store.slug`, so it reads `member.store.slug` (the same value; `slug` is not narrowed inside the loop). `offeredCurrencies()` and `mainLocale()` in `custom-fields.ts` lost their `run` argument, which nothing read any more (their callers were changed to match). `store-copy.ts`, `live-drills.ts` and `product-questions.ts` gained a static import of `storeSlugOf` from `./stores`. Menus' own copy is the 24th read: 23 hand-written copies in 17 files were replaced and the one in `menus.ts` moved. The ratchet baseline was lowered for the twelve files that lost unchecked reads.
 
 ## 0.21 Read the AI connection only to call a model, and give search a ceiling
 

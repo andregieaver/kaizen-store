@@ -509,6 +509,10 @@ export const PAGES_NB: Record<string, { title: string; keywords: string[] }> = {
   },
 
   // Website and settings
+  "store:marketing": {
+    title: "Markedsføring",
+    keywords: ["få kunder tilbake", "gjenkjøp", "e-post", "tilbud", "kampanje", "resultater"],
+  },
   "store:website": { title: "Nettsted", keywords: ["nettsted", "nettside", "butikkfront", "innhold", "sider"] },
   "store:settings": { title: "Innstillinger", keywords: ["innstillinger", "konfigurasjon", "oppsett", "valg"] },
   "store:countries": {

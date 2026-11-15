@@ -33,7 +33,7 @@ import { log } from "./log";
 import { addMessage, kaizenLifeConversation, runTurn, type Principal, type TurnInput } from "./owner-assistant";
 import { refreshTag } from "./refresh";
 import { callerOfLink } from "./store-mcp";
-import { getStore } from "./stores";
+import { getStore, storeSlugOf } from "./stores";
 import { col, typedRow, typedRows } from "./typed-rows";
 
 /**
@@ -113,8 +113,8 @@ async function principalOf(accountId: string, storeId: string | null): Promise<P
   const account = await activeAccount(accountId);
   if (!account) return null;
   if (!storeId) return { account, store: null };
-  const found = await typedRow(z.object({ slug: col.text }), sql`select slug from commerce.stores where id = ${storeId}::uuid`);
-  const store = found ? await getStore(found.slug) : null;
+  const slug = await storeSlugOf(storeId);
+  const store = slug ? await getStore(slug) : null;
   return store ? { account, store } : null;
 }
 

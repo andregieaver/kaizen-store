@@ -826,6 +826,10 @@ const PAGES: readonly AdminPage[] = [
     tasks: ["Set this month's revenue target", "Turn visit counting on or off", "Apply costs to earlier orders"],
   }),
 
+  store("marketing", "/marketing", "Marketing", "Marketing", "What brings people back and what it did in the last 30 days, ready plays to switch on (an email after a purchase, cart reminders, a first offer), the list, and every marketing tool by name.", {
+    keywords: ["bring back", "repeat customers", "email", "offer", "promotion", "results"],
+    tasks: ["See what marketing is running", "Set up an email after a purchase", "Set up cart reminders", "Start a first offer"],
+  }),
   store("website", "/website", "Website", "Website", "The store's website at a glance: a card for each of its pages, blog, media, menus, headers, footers, design and translations.", {
     keywords: ["site", "storefront", "content"],
   }),

@@ -151,9 +151,15 @@ Step 1 built 14 November 2026 (D601): select, radio and textarea.
 - Both one-choice kinds use a tick list's options (2 to 30, no None of these) and may ask for consent like a tick list; the order
   keeps the option as an answer of kind `choice`. The AI manager rewords these but does not make them (its tool's kinds stay
   `text` and `checkbox`, so its eval recording holds).
-- [ ] `number`, with a lowest and highest value.
-- [ ] `date`, with earliest and latest days (check first that bookings, D65, or delivery days do not already cover the need).
-- [ ] `email` and `phone`, checked for shape (for example a gift recipient's contact).
+Step 2 built 14 November 2026 (D613): number, date, email and phone.
+
+- [x] `number`, a whole number, with an optional lowest and highest value (`bounds`).
+- [x] `date`, with an optional earliest and latest day counted from the store's today (0 to 730 days). Checked first: bookings (D65)
+      are for appointment products and the only delivery day is a subscription box's (D102), so a one-off order had no way to say when.
+- [x] `email` and `phone`, checked for shape (a phone typed without its code is read in the basket's country, `e164Phone()`, and kept
+      in international form).
+- An answer given but not of its question's shape stops the order even when the question is optional, and placing the order checks
+  again (a date chosen yesterday as tomorrow's earliest may be too early today).
 - [ ] `file`: probably not, since the cart is a pay route (D158) and an upload brings storage, scanning and size limits.
       Only build it if a real store asks.
 - [ ] **Conditional questions:** show a question only for some markets, delivery methods or baskets (a product,

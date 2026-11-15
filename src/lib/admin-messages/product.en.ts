@@ -35,6 +35,9 @@ export const productEn = {
     published: "Published",
     saving: "Saving …",
     save: "Save",
+    // Round 4 (D612): the Save bar at the thumb on a phone.
+    notSaved: "Changes not saved yet",
+    allSaved: "Everything is saved",
     saved: "Saved.",
     seeInStore: "See it in your store",
     draftsHidden: "Drafts are hidden from shoppers.",
@@ -225,6 +228,7 @@ export const productEn = {
     nothing: "Fill in at least one field.",
   },
   row: {
+    moreFor: "More for {name}",
     skuFor: "SKU for {name}",
     deliveryFor: "Delivery for {name}",
     rentedHow: "How {name} is rented",

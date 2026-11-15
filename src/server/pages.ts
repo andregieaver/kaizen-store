@@ -39,7 +39,7 @@ import { houseStoreId } from "./house-customers";
 import { keepVersion } from "./page-versions";
 import { listTextStyles } from "./text-styles";
 import { scopedTermIds } from "./taxonomy";
-import { getStore, refreshStoreById } from "./stores";
+import { getStore, refreshStoreById, storeSlugOf } from "./stores";
 import { ownMarkets } from "@/lib/page-markets";
 import { linksToRemoved } from "@/lib/demo-content";
 import { withoutItems } from "@/lib/menu-structure";
@@ -205,8 +205,8 @@ const takenProblem = (slug: string, type: PageType) =>
  * choice of language or currency, never as a page, so a page may not be called `en` while the store keeps English.
  */
 async function choiceSlugsOf(storeId: string): Promise<string[]> {
-  const [row] = await readDb().execute<{ slug: string }>(sql`select slug from commerce.stores where id = ${storeId}::uuid`);
-  const store = row ? await getStore(String(row.slug)) : null;
+  const slug = await storeSlugOf(storeId);
+  const store = slug ? await getStore(slug) : null;
   return reservedChoiceSlugs(store?.address);
 }
 

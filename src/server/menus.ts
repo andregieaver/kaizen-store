@@ -1,9 +1,8 @@
 import "server-only";
 
 import { sql } from "drizzle-orm";
-import { cacheLife } from "next/cache";
 
-import { db, readDb } from "@/db/client";
+import { db } from "@/db/client";
 import { t } from "@/lib/i18n";
 import { PLATFORM_PAGE_LOCALES } from "@/lib/platform-lang";
 import {
@@ -279,10 +278,4 @@ export async function platformMenuPreviews(): Promise<MenuPreview[]> {
   }));
 }
 
-/** A store's address by its id, for menu components, which know the store by id (cached: addresses do not change). */
-export async function storeSlugOf(storeId: string): Promise<string | null> {
-  "use cache";
-  cacheLife("days");
-  const [row] = await readDb().execute<Row>(sql`select slug from commerce.stores where id = ${storeId}::uuid`);
-  return row ? String(row.slug) : null;
-}
+export { storeSlugOf } from "./stores";

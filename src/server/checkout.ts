@@ -12,7 +12,7 @@ import { formatClock, formatRangeDates, parseRentalPeriod, rangeEndsAt } from "@
 import { formatBookingTime } from "@/lib/booking-slots";
 import { companyRequired, parseProductAudience, parseStoreAudience } from "@/lib/b2b";
 import { CHECKOUT_MINUTES, lineWithdrawal, vatIncluded } from "@/lib/checkout";
-import { answersByField, cleanAnswers, NO_RULES } from "@/lib/checkout-rules";
+import { answersByField, cleanAnswers, NO_RULES, todayInZone } from "@/lib/checkout-rules";
 import { isNative, shown, type Market } from "@/lib/markets";
 import { quantityProblem, ruleForKind } from "@/lib/quantity-rules";
 import { marketPath, storeOrigin } from "@/lib/paths";
@@ -562,7 +562,12 @@ export async function placeOrder(
     const rules = flatRateOnly ? NO_RULES : await checkoutRuleOutcome(tx, storeId, cartId, market, { customerId, basketValueMinor });
     if (rules.refusal) return { ok: false, problem: "checkout_rule" };
     // The store's questions (D357): the answers kept on the cart, checked again against the fields as they are now.
-    const asked = flatRateOnly ? { answers: [], missing: [] } : cleanAnswers(await listCheckoutFields(tx, storeId, { onlyOn: true }), answersByField(cart.checkout_answers));
+    const asked = flatRateOnly
+      ? { answers: [], missing: [] }
+      : cleanAnswers(await listCheckoutFields(tx, storeId, { onlyOn: true }), answersByField(cart.checkout_answers), {
+          today: todayInZone(String(cart.time_zone ?? "Europe/Oslo")),
+          country: market.code,
+        });
     if (asked.missing.length > 0) return { ok: false, problem: "checkout_fields" };
     const resolved = ships && !rhythm && !flatRateOnly ? await resolveDelivery(tx, storeId, cartId, market, { basketValueMinor, customerId, rules }) : null;
     const chosen = resolved?.chosen ?? null;

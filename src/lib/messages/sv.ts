@@ -879,7 +879,7 @@ export const sv: Messages = {
   checkoutQuestions: {
     legend: "Några frågor från butiken",
     required: "obligatorisk",
-    problem: "Svara på butikens obligatoriska frågor och ge ditt samtycke där en lista ber om det, och försök igen.",
+    problem: "Svara på butikens obligatoriska frågor, kontrollera siffrorna, datumen, e-postadresserna och telefonnumren du skrev och ge ditt samtycke där en fråga ber om det, och försök igen.",
     // legal: needs review. The explicit consent a sensitive list asks (GDPR article 9(2)(a)), such as allergies (task 3).
     consent: "Jag samtycker till att butiken använder det jag har kryssat i här endast för att förbereda den här beställningen.",
     // legal: needs review. The same consent for a dropdown or a choice of one (task 4).

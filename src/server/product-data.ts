@@ -12,7 +12,7 @@ import { getFieldData, getVariantFieldData, listFieldGroups } from "./custom-fie
 import { productSafety } from "./product-safety";
 import { pgTextArray } from "./pg-arrays";
 import { getEditorContext, getProductForEdit, type EditorContext } from "./products";
-import { getStore, type Store } from "./stores";
+import { getStore, storeSlugOf, type Store } from "./stores";
 import { taxonomy, taxonomyPaths, taxonomyWords } from "./product-taxonomy";
 
 type Row = Record<string, unknown>;
@@ -25,8 +25,8 @@ type Row = Record<string, unknown>;
 
 /** A store by its id, for a job that runs with no request (the cron, `after()`): its slug, then the store as the admin reads it. */
 export async function storeOf(storeId: string): Promise<Store | null> {
-  const [row] = await db().execute<Row>(sql`select slug from commerce.stores where id = ${storeId}::uuid`);
-  return row ? getStore(String(row.slug)) : null;
+  const slug = await storeSlugOf(storeId);
+  return slug ? getStore(slug) : null;
 }
 
 /** The product file's context from the editor's: languages, markets with their VAT, terms, plain custom fields of products and variants. */

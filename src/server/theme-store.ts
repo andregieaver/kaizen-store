@@ -96,7 +96,7 @@ export async function themePreviewNeighbours(slug: string): Promise<{ previous: 
   "use cache";
   cacheLife("hours");
   cacheTag(DESIGNS_TAG, STARTERS_TAG);
-  const around = previewNeighbours(await loadCards(), slug);
+  const around = previewNeighbours(await themeStoreCards(), slug);
   return around && { previous: { slug: around.previous.slug, title: around.previous.title }, next: { slug: around.next.slug, title: around.next.title } };
 }
 

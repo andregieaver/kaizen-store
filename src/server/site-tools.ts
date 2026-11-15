@@ -65,7 +65,7 @@ import { getPageForEdit, pagesTag, savePage, setFrontPage, setPageRole, setProdu
 import { memberCan } from "./permissions";
 import { PLATFORM_NAVIGATION_TAG, getPlatformSiteCss, getPlatformTheme, savePlatformNavigation } from "./platform-navigation";
 import { setPlatformPageRole } from "./platform-roles";
-import { storeTag, type Store } from "./stores";
+import { storeSlugOf, storeTag, type Store } from "./stores";
 import { chooseSiteLayout } from "./site-layouts";
 import { themeLayersFor } from "./theme-elements";
 import { aiFor } from "./ai";
@@ -486,8 +486,8 @@ async function jobOwner(job: ClaimedJob): Promise<StudioOwner | string> {
   const account = await activeAccount(job.askedBy);
   if (!account) return "The person who asked can no longer sign in.";
   if (job.storeId === null) return account.platformAdmin ? { storeId: null, storeSlug: null, account } : "The person who asked is no longer one of Kaizena Flow's admins.";
-  const [store] = await db().execute<Row>(sql`select slug from commerce.stores where id = ${job.storeId}::uuid`);
-  const member = store ? await passMembership(String(store.slug), account.id) : null;
+  const slug = await storeSlugOf(job.storeId);
+  const member = slug ? await passMembership(slug, account.id) : null;
   if (!member || !memberCan(member, "website:write")) return "The person who asked may no longer change this store's website.";
   return { storeId: job.storeId, storeSlug: member.store.slug, account: member.account };
 }

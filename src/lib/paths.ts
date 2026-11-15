@@ -30,15 +30,35 @@ export type StoreHosts = Record<string, { primary: string | null; hosts: string[
 /**
  * The stores' custom domains as they were when this deployment was built
  * (`next.config.ts` reads them into `NEXT_PUBLIC_STORE_HOSTS`), so links
- * and routing always agree. A change takes a new deployment.
+ * and routing always agree. A change takes a new deployment. Parsed once per
+ * instance (again only when the text changes, as tests do) and frozen,
+ * because the one list is now shared by every caller.
  */
+let parsedFrom: string | null = null;
+let parsedHosts: StoreHosts = {};
+
 export function storeHosts(): StoreHosts {
+  const raw = process.env.NEXT_PUBLIC_STORE_HOSTS || "{}";
+  if (raw === parsedFrom) return parsedHosts;
+  let next: StoreHosts = {};
   try {
-    const parsed: unknown = JSON.parse(process.env.NEXT_PUBLIC_STORE_HOSTS || "{}");
-    return parsed && typeof parsed === "object" ? (parsed as StoreHosts) : {};
+    const parsed: unknown = JSON.parse(raw);
+    if (parsed && typeof parsed === "object") next = parsed as StoreHosts;
   } catch {
-    return {};
+    next = {};
   }
+  for (const entry of Object.values(next)) {
+    if (entry && typeof entry === "object") {
+      if (Array.isArray(entry.hosts)) Object.freeze(entry.hosts);
+      if (entry.languages && typeof entry.languages === "object") Object.freeze(entry.languages);
+      if (entry.countries && typeof entry.countries === "object") Object.freeze(entry.countries);
+      Object.freeze(entry);
+    }
+  }
+  Object.freeze(next);
+  parsedFrom = raw;
+  parsedHosts = next;
+  return next;
 }
 
 /** A host's origin: plain http with the local port when trying hosts on localhost. */

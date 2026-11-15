@@ -1,5 +1,5 @@
 {
- "version": "1.20",
+ "version": "1.21",
  "surface": [
   "admin DELETE /categories/{id}",
   "admin DELETE /categories/{id} -> data",
@@ -87,6 +87,9 @@
   "admin GET /categories/{id} -> data.updated_at",
   "admin GET /checkout/fields",
   "admin GET /checkout/fields -> data",
+  "admin GET /checkout/fields -> data[].bounds",
+  "admin GET /checkout/fields -> data[].bounds.max",
+  "admin GET /checkout/fields -> data[].bounds.min",
   "admin GET /checkout/fields -> data[].enabled",
   "admin GET /checkout/fields -> data[].help",
   "admin GET /checkout/fields -> data[].help.byLocale",

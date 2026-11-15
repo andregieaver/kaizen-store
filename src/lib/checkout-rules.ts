@@ -1,3 +1,4 @@
+import { e164Phone } from "./phone";
 import type { DeliveryOffer, OfferedDelivery } from "./shipping-methods";
 
 /**
@@ -298,9 +299,10 @@ export const shownLabel = (d: OfferedDelivery, own: string): string => (d as Ren
 
 /**
  * What a question asks (D357, tasks 3 and 4 of `docs/checkout-fields-tasks.md`): `text` one line, `textarea` several lines, `checkbox` one box,
- * `checklist` any number of options, `select` one option from a closed list (drawn with `Dropdown`, D82), `radio` one option, all of them shown.
+ * `checklist` any number of options, `select` one option from a closed list (drawn with `Dropdown`, D82), `radio` one option, all of them shown,
+ * `number` a whole number, `date` a day, `email` an email address and `phone` a phone number, each checked for its shape.
  */
-export const CHECKOUT_FIELD_KINDS = ["text", "textarea", "checkbox", "checklist", "select", "radio"] as const;
+export const CHECKOUT_FIELD_KINDS = ["text", "textarea", "checkbox", "checklist", "select", "radio", "number", "date", "email", "phone"] as const;
 export type CheckoutFieldKind = (typeof CHECKOUT_FIELD_KINDS)[number];
 
 /** The kinds that have options to choose from: a tick list (any number), a select and radio buttons (exactly one). */
@@ -308,6 +310,16 @@ export const OPTION_KINDS = ["checklist", "select", "radio"] as const satisfies 
 export const hasOptions = (kind: CheckoutFieldKind): boolean => (OPTION_KINDS as readonly string[]).includes(kind);
 /** The kinds answered with one option. */
 export const isSingleChoice = (kind: CheckoutFieldKind): boolean => kind === "select" || kind === "radio";
+/** The kinds with a lowest and a highest answer (`bounds`): a number's values, a date's days from the store's today. */
+export const hasBounds = (kind: CheckoutFieldKind): boolean => kind === "number" || kind === "date";
+
+/**
+ * A number's lowest and highest value, or a date's earliest and latest day counted from the store's today (0 is today), each optional (task 4).
+ * A number is whole; a date's days are 0 to `DATE_DAYS_MAX`.
+ */
+export type FieldBounds = { min?: number; max?: number };
+export const NUMBER_LIMIT = 1_000_000_000;
+export const DATE_DAYS_MAX = 730;
 
 /**
  * One option of a tick list (task 3): its own words per language, and `none` for the option that says none of the others apply (ticking it
@@ -327,6 +339,8 @@ export type CheckoutField = {
   options?: ChecklistOption[];
   /** The answer may be sensitive personal data (GDPR article 9, such as allergies): the shopper ticks an explicit consent with it. */
   sensitive?: boolean;
+  /** A number's or a date's lowest and highest answer (task 4). */
+  bounds?: FieldBounds;
 };
 
 /**
@@ -346,6 +360,9 @@ export type ShownField = {
   width: FieldWidth;
   options: { id: string; label: string; none: boolean }[];
   sensitive: boolean;
+  /** A number's lowest and highest value, or a date's earliest and latest day (`YYYY-MM-DD`, from the store's today), for the input's `min` and `max`. */
+  min: string | null;
+  max: string | null;
 };
 
 /**
@@ -360,16 +377,69 @@ export function movedTo(ids: readonly string[], id: string, to: number): string[
   return [...rest.slice(0, at), id, ...rest.slice(at)];
 }
 
-export const shownField = (f: CheckoutField, locale: string): ShownField => ({
-  id: f.id,
-  kind: f.kind,
-  required: f.required,
-  label: wordsIn(f.label, locale),
-  help: f.help ? wordsIn(f.help, locale) : null,
-  width: f.width ?? "full",
-  options: (f.options ?? []).map((o) => ({ id: o.id, label: wordsIn(o.label, locale), none: o.none === true })),
-  sensitive: f.sensitive === true,
-});
+/** `today` (`YYYY-MM-DD`, the store's) resolves a date question's earliest and latest day. */
+export function shownField(f: CheckoutField, locale: string, today?: string): ShownField {
+  const [min, max] = boundsOf(f, today);
+  return {
+    id: f.id,
+    kind: f.kind,
+    required: f.required,
+    label: wordsIn(f.label, locale),
+    help: f.help ? wordsIn(f.help, locale) : null,
+    width: f.width ?? "full",
+    options: (f.options ?? []).map((o) => ({ id: o.id, label: wordsIn(o.label, locale), none: o.none === true })),
+    sensitive: f.sensitive === true,
+    min,
+    max,
+  };
+}
+
+/** A day `n` days after `day` (`YYYY-MM-DD`), counted on the calendar. */
+export function daysAfter(day: string, n: number): string {
+  const [y, m, d] = day.split("-").map(Number);
+  return new Date(Date.UTC(y, m - 1, d + n)).toISOString().slice(0, 10);
+}
+
+/** Today's day (`YYYY-MM-DD`) in a time zone. */
+export const todayInZone = (timeZone: string, now: Date = new Date()): string =>
+  new Intl.DateTimeFormat("en-CA", { year: "numeric", month: "2-digit", day: "2-digit", timeZone }).format(now);
+
+/** A field's lowest and highest answer as the input takes them: a number's values, a date's days from `today` (none without a today). */
+function boundsOf(f: Pick<CheckoutField, "kind" | "bounds">, today?: string): [string | null, string | null] {
+  const b = f.bounds ?? {};
+  if (f.kind === "number") return [b.min === undefined ? null : String(b.min), b.max === undefined ? null : String(b.max)];
+  if (f.kind === "date" && today) return [b.min === undefined ? null : daysAfter(today, b.min), b.max === undefined ? null : daysAfter(today, b.max)];
+  return [null, null];
+}
+
+/** What answers are checked against besides the fields: the store's today (a date's days) and the basket's country (a phone without its code). */
+export type AnswerContext = { today?: string; country?: string | null };
+
+/** A real day of the calendar written `YYYY-MM-DD`. */
+const isDay = (s: string): boolean => /^\d{4}-\d{2}-\d{2}$/.test(s) && daysAfter(s, 0) === s;
+
+/** An email address's shape: something, an @, a domain with a dot; no spaces; at most 254 characters. */
+const isEmail = (s: string): boolean => s.length <= 254 && /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(s);
+
+/**
+ * A typed answer to a number, date, email or phone question, made what the order keeps, or `null` when it is not of the question's shape or is
+ * out of its bounds: a whole number, a day between its earliest and latest, an email address as typed (trimmed), a phone in international form.
+ */
+function shapedAnswer(f: CheckoutField, typed: string, ctx: AnswerContext): string | null {
+  const [min, max] = boundsOf(f, ctx.today);
+  if (f.kind === "number") {
+    if (!/^-?\d{1,10}$/.test(typed)) return null;
+    const n = Number(typed);
+    if (Math.abs(n) > NUMBER_LIMIT || (min !== null && n < Number(min)) || (max !== null && n > Number(max))) return null;
+    return String(n);
+  }
+  if (f.kind === "date") {
+    if (!isDay(typed) || (min !== null && typed < min) || (max !== null && typed > max)) return null;
+    return typed;
+  }
+  if (f.kind === "email") return isEmail(typed) ? typed : null;
+  return e164Phone(typed, ctx.country ?? null);
+}
 
 /** What the order keeps of an answer (`orders.checkout_answers`): the question as it was asked in the store's main words, and the answer. */
 /**
@@ -397,12 +467,14 @@ function tickedIds(raw: unknown): string[] {
  * The shopper's answers checked against the store's fields: a text trimmed to one line of at most `FIELD_ANSWER_MAX` (a `textarea` keeps its
  * lines, at most `FIELD_LONG_ANSWER_MAX`), a box ticked or not, a tick list's options among its own (its `none` option alone when ticked), a select's
  * or radio buttons' one option among its own, every required one answered (a required box ticked, a required list with at least one option), a
- * sensitive list with an option other than `none` (or a sensitive one-choice question with its option) only with the shopper's consent, anything
- * for a field that is not there left out. `missing` names the fields that stop the order.
+ * sensitive list with an option other than `none` (or a sensitive one-choice question with its option) only with the shopper's consent, a
+ * number, date, email or phone of its shape and within its bounds (`ctx`: the store's today, the basket's country; one given but wrong stops
+ * the order even when optional), anything for a field that is not there left out. `missing` names the fields that stop the order.
  */
 export function cleanAnswers(
   fields: readonly CheckoutField[],
   typed: Record<string, unknown> | null | undefined,
+  ctx: AnswerContext = {},
 ): { answers: CheckoutAnswer[]; missing: string[] } {
   const answers: CheckoutAnswer[] = [];
   const missing: string[] = [];
@@ -427,6 +499,21 @@ export function cleanAnswers(
         continue;
       }
       answers.push({ fieldId: f.id, label: f.label.text, kind: "choice", answer: chosen.label.text, optionId: chosen.id, consent: f.sensitive === true });
+      continue;
+    }
+    if (f.kind === "number" || f.kind === "date" || f.kind === "email" || f.kind === "phone") {
+      const given = typeof raw === "string" ? raw.trim() : typeof raw === "number" ? String(raw) : "";
+      if (!given) {
+        if (f.required) missing.push(f.id);
+        continue;
+      }
+      // Given but not of the question's shape: it stops the order, even when the question is optional, so nothing wrong is kept.
+      const shaped = shapedAnswer(f, given.slice(0, 254), ctx);
+      if (shaped === null) {
+        missing.push(f.id);
+        continue;
+      }
+      answers.push({ fieldId: f.id, label: f.label.text, kind: "text", answer: shaped });
       continue;
     }
     if (f.kind === "textarea") {
