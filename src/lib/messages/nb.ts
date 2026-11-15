@@ -97,6 +97,8 @@ export const nb: Messages = {
   problemDiscount: "Rabattkoden kan ikke brukes lenger. Se over handlekurven og prøv igjen.",
   discountCode: "Rabattkode",
   haveCode: "Har du en rabattkode?",
+  codeOrCard: "Rabattkode eller gavekort",
+  haveCodeOrCard: "Har du en rabattkode eller et gavekort?",
   applyCode: "Bruk",
   removeCode: "Fjern",
   discount: "Rabatt",

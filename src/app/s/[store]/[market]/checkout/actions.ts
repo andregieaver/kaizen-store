@@ -1,5 +1,6 @@
 "use server";
 
+import { looksLikeGiftCode } from "@/lib/gift-cards";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { refresh } from "next/cache";
@@ -161,6 +162,13 @@ export async function checkoutCodeAction(
   const removing = form.get("intent") === "remove";
   const text = String(form.get("code") ?? "").slice(0, 60);
   if (removing && !text.trim()) return { problem: null, tried: "" };
+  // One field for codes and gift cards (the owner's decision of 15 November 2026): what is shaped like a gift card goes on as a card, a payment.
+  if (!removing && looksLikeGiftCode(text)) {
+    const card = new FormData();
+    card.set("giftCard", text);
+    const { problem } = await checkoutGiftCardAction(storeSlug, marketSlug, { problem: null }, card);
+    return { problem, tried: problem ? text : "" };
+  }
   if (!removing) {
     if (!text.trim()) return { problem: null, tried: "" };
     const check = await checkCodeForOrder(cartShop, open.orderId, text);

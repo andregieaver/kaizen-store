@@ -45,7 +45,7 @@ import { makePicture } from "./ai-pictures";
 import { audit, type Account } from "./auth";
 import { brandOf } from "./brand";
 import { getGoogleSettings } from "./google-reviews";
-import { listPublishedPages, ownerLanguages, savePage } from "./pages";
+import { publishedPageIndex, ownerLanguages, savePage } from "./pages";
 import { getStore } from "./stores";
 import { siteTerms } from "./taxonomy";
 import { owned } from "./owned";
@@ -94,17 +94,17 @@ export async function siteFacts(owner: StudioOwner, connection: AiConnection | n
   const languages = await ownerLanguages(owner.storeId);
   const main = languages[0] ?? { locale: "en", name: "English" };
   const language = { locale: main.locale, name: new Intl.DisplayNames(["en"], { type: "language" }).of(main.locale) ?? main.locale };
-  const articles = await listPublishedPages(owner.storeId, "article");
-  const pages = await listPublishedPages(owner.storeId, "page");
+  const articles = await publishedPageIndex(owner.storeId, "article");
+  const pages = await publishedPageIndex(owner.storeId, "page");
   const pictures = Boolean(connection?.image);
 
   if (owner.storeId === null) {
     const links: SiteLink[] = [
       { label: "Kaizena Flow's front page", href: "/" },
       { label: "Start a store (sign up)", href: "/sign-up" },
-      ...pages.map((page) => ({ label: `Page: ${page.content.title}`, href: `/${page.slug}` })),
+      ...pages.map((page) => ({ label: `Page: ${page.title}`, href: `/${page.slug}` })),
       ...(articles.length > 0 ? [{ label: "The blog", href: "/blog" }] : []),
-      ...articles.slice(0, 10).map((article) => ({ label: `Article: ${article.content.title}`, href: `/blog/${article.slug}` })),
+      ...articles.slice(0, 10).map((article) => ({ label: `Article: ${article.title}`, href: `/blog/${article.slug}` })),
     ];
     return {
       kind: "kaizen",
@@ -140,9 +140,9 @@ export async function siteFacts(owner: StudioOwner, connection: AiConnection | n
     { label: "The store's front page", href: at("") },
     { label: "All products", href: at("/products") },
     ...categories.map((category) => ({ label: `Category: ${category.name}`, href: at(`/category/${category.slug}`) })),
-    ...pages.map((page) => ({ label: `Page: ${page.content.title}`, href: at(`/${page.slug}`) })),
+    ...pages.map((page) => ({ label: `Page: ${page.title}`, href: at(`/${page.slug}`) })),
     ...(articles.length > 0 ? [{ label: "The blog", href: at("/blog") }] : []),
-    ...articles.slice(0, 10).map((article) => ({ label: `Article: ${article.content.title}`, href: at(`/blog/${article.slug}`) })),
+    ...articles.slice(0, 10).map((article) => ({ label: `Article: ${article.title}`, href: at(`/blog/${article.slug}`) })),
     ...told.map((product) => ({ label: `Product: ${product.title}`, href: product.href })),
     ...(store.details.contactEmail ? [{ label: "Email the store", href: `mailto:${store.details.contactEmail}` }] : []),
   ];

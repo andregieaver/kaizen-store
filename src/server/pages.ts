@@ -2,6 +2,7 @@ import "server-only";
 
 import { sql } from "drizzle-orm";
 import { cacheLife, cacheTag } from "next/cache";
+import { z } from "zod";
 
 import { db, readDb } from "@/db/client";
 import {
@@ -29,6 +30,7 @@ import { parseStoreTheme } from "@/lib/theme";
 import { textStylesCss } from "@/lib/text-styles";
 
 import { audit, type Account } from "./auth";
+import { col, typedRow, typedRows } from "./typed-rows";
 import { auditChange } from "./audit";
 import { findFont, installFonts } from "./fonts";
 import { GlobalsRefused, globalsIn, lockSavedParts, spreadGlobals } from "./global-parts";
@@ -659,8 +661,9 @@ const published = (row: Row, content: PageContent): PublishedPage => ({
 });
 
 /**
- * Every published page of an owner's, oldest first, for its routes, menus,
- * sitemap and llms.txt; or its articles (D57), newest first.
+ * Every published page with its whole document: only for readers that draw or read every document (the sitemaps, llms.txt, the blog
+ * feed, the platform's page and blog routes, the admin's search page). One page: publishedPageById(). Addresses and titles:
+ * publishedPageIndex().
  */
 export async function listPublishedPages(owner: PageOwner = null, type: PageType = "page"): Promise<PublishedPage[]> {
   "use cache";
@@ -678,6 +681,103 @@ export async function listPublishedPages(owner: PageOwner = null, type: PageType
       return content ? [published(row, content)] : [];
     }),
   );
+}
+
+const publishedRow = z.object({
+  id: col.uuid,
+  slug: col.text,
+  published: z.unknown(),
+  published_at: col.timestamp,
+  first_published_at: col.timestampOrNull,
+});
+
+const UUID = z.uuid();
+
+/**
+ * One published page of an owner's by its id, as the list of published pages gives it (same tag and life, so a publish or delete refreshes
+ * it), or null: a draft, another owner's page, another type, or a document its schema rejects.
+ */
+export async function publishedPageById(owner: PageOwner, id: string, type: PageType = "page"): Promise<PublishedPage | null> {
+  "use cache";
+  cacheLife("hours");
+  cacheTag(pagesTag(owner));
+  if (!UUID.safeParse(id).success) return null;
+  const row = await typedRow(
+    publishedRow,
+    sql`
+      select id, slug, published, published_at, first_published_at from commerce.pages
+      where id = ${id}::uuid and ${ownedBy(owner, type)} and published_at is not null
+    `,
+    readDb(),
+  );
+  const content = row ? parsePageContent(row.published) : null;
+  if (!row || !content) return null;
+  return (await withPageAlts([published(row, content)]))[0];
+}
+
+export type PublishedPageEntry = {
+  id: string;
+  slug: string;
+  title: string;
+  /** The title in each language that has one of its own. */
+  titles: Record<string, string>;
+  publishedAt: string;
+  firstPublishedAt: string;
+  blogId: string | null;
+  aiAssistants: boolean;
+  searchEngines: boolean;
+};
+
+const indexRow = z.object({
+  id: col.uuid,
+  slug: col.text,
+  title: col.text,
+  titles: z.record(z.string(), z.string()),
+  published_at: col.timestamp,
+  first_published_at: col.timestampOrNull,
+  blog_id: col.textOrNull,
+  ai_assistants: col.bool,
+  search_engines: col.bool,
+});
+
+/**
+ * Addresses, titles and flags of an owner's published pages, read from the stored JSON without parsing the document (that is the
+ * saving). The list drops a published document its schema rejects; the index still names it, and its readers already meet a page that
+ * is not drawn (a link that answers 404, a static param that prerenders a 404). On every page saved through savePage() the two agree.
+ */
+export async function publishedPageIndex(owner: PageOwner = null, type: PageType = "page"): Promise<PublishedPageEntry[]> {
+  "use cache";
+  cacheLife("hours");
+  cacheTag(pagesTag(owner));
+  const rows = await typedRows(
+    indexRow,
+    sql`
+      select id, slug, coalesce(published ->> 'title', '') as title,
+        coalesce((
+          select jsonb_object_agg(t.key, t.value ->> 'title')
+          from jsonb_each(case when jsonb_typeof(published -> 'translations') = 'object' then published -> 'translations' else '{}'::jsonb end) t
+          where coalesce(t.value ->> 'title', '') <> ''
+        ), '{}'::jsonb) as titles,
+        published_at, first_published_at, published ->> 'blogId' as blog_id,
+        coalesce((published ->> 'aiAssistants')::boolean, false) as ai_assistants,
+        coalesce((published ->> 'searchEngines')::boolean, false) as search_engines
+      from commerce.pages
+      where ${ownedBy(owner, type)} and published_at is not null
+      order by ${type === "article" ? sql`coalesce(first_published_at, published_at) desc, slug` : sql`created_at`}
+    `,
+    readDb(),
+  );
+  return rows.map((row) => ({
+    id: row.id,
+    slug: row.slug,
+    title: row.title,
+    titles: row.titles,
+    publishedAt: row.published_at,
+    firstPublishedAt: row.first_published_at ?? row.published_at,
+    blogId: row.blog_id,
+    aiAssistants: row.ai_assistants,
+    searchEngines: row.search_engines,
+  }));
 }
 
 /** The published page at an address, or where a page that was there went, or null. */
@@ -797,7 +897,7 @@ export async function setProductsPage(
 /** A store's All products page (D83) while it is published, else null (the standard list). */
 export async function productsPageOf(store: { id: string; productsPageId: string | null }): Promise<PublishedPage | null> {
   if (!store.productsPageId) return null;
-  return (await listPublishedPages(store.id)).find((page) => page.id === store.productsPageId) ?? null;
+  return publishedPageById(store.id, store.productsPageId);
 }
 
 /**
@@ -860,7 +960,7 @@ export async function setPageRole(
 export async function pageForRole(store: { id: string; pageRoles: Partial<Record<PageRole, string>> }, role: PageRole): Promise<PublishedPage | null> {
   const id = store.pageRoles[role];
   if (!id) return null;
-  return (await listPublishedPages(store.id)).find((page) => page.id === id) ?? null;
+  return publishedPageById(store.id, id);
 }
 
 /** An owner's pages (or articles) for the menu editor to link to: published or not, by title. */

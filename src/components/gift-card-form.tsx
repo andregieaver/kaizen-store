@@ -6,7 +6,9 @@ import { useActionState } from "react";
 export type ShownGiftCard = { id: string; label: string; pays: string | null; left: string | null; problem: string | null };
 
 /**
- * The gift cards an order is paid with (D300 F3), beside the discount code and never in its field: a card is money, a code is a discount. Each
+ * The gift cards an order is paid with (D300 F3): a card is money, a code is a discount, so each is listed apart. Since 15 November 2026 (the
+ * owner's decision) one field takes both, the discount code's, which puts a code shaped like a gift card on as a card (`field={false}` here
+ * lists the cards only). Each
  * card on the cart shows what it pays and what is left on it, with a way to take it off; a field takes another, up to three. Whether a card
  * pays, and how much, is said by the server, which works it out against the basket every time, as checkout will.
  */
@@ -16,6 +18,7 @@ export function GiftCardForm({
   apply,
   remove,
   labels,
+  field = true,
 }: {
   cards: ShownGiftCard[];
   /** The words for a cart holding three cards. */
@@ -25,6 +28,8 @@ export function GiftCardForm({
   /** Takes a card off, by its id. */
   remove: (form: FormData) => Promise<void>;
   labels: { field: string; apply: string; applying: string; remove: string };
+  /** Its own field; false lists the cards only, as the one field for codes and cards takes them. */
+  field?: boolean;
 }) {
   const [state, action, pending] = useActionState(apply, { problem: null });
   return (
@@ -55,7 +60,7 @@ export function GiftCardForm({
         </ul>
       )}
       {/* Three cards at most (`GIFT_CARDS_PER_CART`). */}
-      {cards.length >= 3 ? (
+      {!field ? null : cards.length >= 3 ? (
         <p className="text-sm text-muted">{full}</p>
       ) : (
         <form action={action} className="flex flex-col gap-1">

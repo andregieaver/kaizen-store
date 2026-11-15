@@ -253,7 +253,7 @@ function codeForm(store: Store, market: Market, view: CheckoutView, codes: CodeO
       codes={(codes ?? []).map((c) => ({ code: c.code, problem: c.ok ? null : codeProblemText(m, c, money) }))}
       full={m.codeProblems.codes_full}
       labels={{
-        label: m.haveCode,
+        label: m.haveCodeOrCard,
         code: m.discountCode,
         apply: m.applyCode,
         remove: m.removeCode,
@@ -266,6 +266,7 @@ function codeForm(store: Store, market: Market, view: CheckoutView, codes: CodeO
         apply={checkoutGiftCardAction.bind(null, store.slug, market.slug)}
         remove={checkoutRemoveGiftCardAction.bind(null, store.slug, market.slug)}
         labels={{ field: m.giftCardPay.field, apply: m.giftCardPay.apply, applying: m.giftCardPay.applying, remove: m.giftCardPay.remove }}
+        field={false}
       />
     </div>
   );

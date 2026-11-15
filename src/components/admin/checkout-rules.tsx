@@ -4,7 +4,7 @@ import { DndContext, KeyboardSensor, PointerSensor, closestCenter, useSensor, us
 import { SortableContext, sortableKeyboardCoordinates, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { ArrowDown, ArrowUp, GripVertical } from "lucide-react";
-import { useId, useOptimistic, useState, useTransition, type ReactNode } from "react";
+import { useEffect, useId, useOptimistic, useRef, useState, useTransition, type ReactNode } from "react";
 
 import { fillWords } from "@/lib/admin-fill";
 import { allergenQuestion } from "@/lib/checkout-presets";
@@ -493,15 +493,18 @@ export function RuleList({
       }
     >
       {canWrite && rules.length === 0 && editing !== "new" && examples.length > 0 && (
-        <ul aria-label={w.examplesLabel} className="mb-3 flex flex-wrap gap-2">
-          {examples.map((example) => (
-            <li key={example.label}>
-              <button type="button" onClick={() => { setPreset(example.start); setEditing("new"); }} className="inline-flex min-h-10 items-center rounded-pill border border-edge bg-card px-3.5 text-caption text-ink hover:bg-sunken">
-                {example.label}
-              </button>
-            </li>
-          ))}
-        </ul>
+        <>
+          <p className="mb-2 text-sm text-muted">{w.examplesStart}</p>
+          <ul aria-label={w.examplesLabel} className="mb-3 flex flex-wrap gap-2">
+            {examples.map((example) => (
+              <li key={example.label}>
+                <button type="button" onClick={() => { setPreset(example.start); setEditing("new"); }} className="inline-flex min-h-10 items-center rounded-pill border border-edge bg-card px-3.5 text-caption text-ink hover:bg-sunken">
+                  {example.label}
+                </button>
+              </li>
+            ))}
+          </ul>
+        </>
       )}
       {editing === "new" && (
         <div className="mb-4 flex flex-col gap-2">
@@ -769,6 +772,15 @@ function FieldEditor({
   );
 }
 
+/** Where the questions are on the page, for the checkout's preview to bring them into view. */
+export const QUESTIONS_ID = "checkout-questions";
+const OPEN_QUESTION = "kaizen:open-checkout-question";
+
+/** Opens a question in the list below, or a new one (`"new"`): the preview's links ask this, so a second press works too. */
+export function openCheckoutQuestion(target: string): void {
+  window.dispatchEvent(new CustomEvent(OPEN_QUESTION, { detail: target }));
+}
+
 /**
  * The questions the checkout asks, in the order the cart asks them: each dragged by its handle (or moved with the keyboard on it, or with its
  * up and down buttons), shown in its new place at once and saved as it is dropped.
@@ -797,6 +809,33 @@ export function FieldList({
   const [preset, setPreset] = useState<FieldInputView | null>(null);
   const [editing, setEditing] = useState<string | null>(null);
   const [asking, setAsking] = useState<string | null>(null);
+  // The checkout's preview opens a question here (`openCheckoutQuestion()`), or a new one; so does a link to #question-{id} or #question-new.
+  // The latest list, read by the listeners below, so they are added once and a refreshed list (after a save) never reopens a question.
+  const known = useRef({ canWrite, ids: fields.map((f) => f.id) });
+  useEffect(() => {
+    known.current = { canWrite, ids: fields.map((f) => f.id) };
+  }, [canWrite, fields]);
+  useEffect(() => {
+    const open = (target: string) => {
+      const { canWrite: may, ids } = known.current;
+      if (may && target === "new") {
+        setPreset(null);
+        setEditing("new");
+      } else if (may && ids.includes(target)) setEditing(target);
+      requestAnimationFrame(() => document.getElementById(QUESTIONS_ID)?.scrollIntoView({ behavior: "smooth", block: "start" }));
+    };
+    const fromHash = () => {
+      if (window.location.hash.startsWith("#question-")) open(window.location.hash.slice("#question-".length));
+    };
+    const fromPreview = (e: Event) => open(String((e as CustomEvent<string>).detail));
+    fromHash();
+    window.addEventListener("hashchange", fromHash);
+    window.addEventListener(OPEN_QUESTION, fromPreview);
+    return () => {
+      window.removeEventListener("hashchange", fromHash);
+      window.removeEventListener(OPEN_QUESTION, fromPreview);
+    };
+  }, []);
   const [pending, run] = useTransition();
   const [shown, moveShown] = useOptimistic(fields, (now: FieldView[], { id, to }: { id: string; to: number }) => {
     const order = movedTo(
@@ -876,6 +915,7 @@ export function FieldList({
     ),
   );
   return (
+    <div id={QUESTIONS_ID} className="scroll-mt-4">
     <Card
       title={w.fields}
       description={shown.length === 0 && examples.length > 0 && editing !== "new" ? undefined : w.fieldsHint}
@@ -888,15 +928,18 @@ export function FieldList({
       }
     >
       {canWrite && shown.length === 0 && editing !== "new" && examples.length > 0 && (
-        <ul aria-label={w.examplesLabel} className="mb-3 flex flex-wrap gap-2">
-          {examples.map((example) => (
-            <li key={example.label}>
-              <button type="button" onClick={() => { setPreset(example.start); setEditing("new"); }} className="inline-flex min-h-10 items-center rounded-pill border border-edge bg-card px-3.5 text-caption text-ink hover:bg-sunken">
-                {example.label}
-              </button>
-            </li>
-          ))}
-        </ul>
+        <>
+          <p className="mb-2 text-sm text-muted">{w.examplesStart}</p>
+          <ul aria-label={w.examplesLabel} className="mb-3 flex flex-wrap gap-2">
+            {examples.map((example) => (
+              <li key={example.label}>
+                <button type="button" onClick={() => { setPreset(example.start); setEditing("new"); }} className="inline-flex min-h-10 items-center rounded-pill border border-edge bg-card px-3.5 text-caption text-ink hover:bg-sunken">
+                  {example.label}
+                </button>
+              </li>
+            ))}
+          </ul>
+        </>
       )}
       {editing === "new" && (
         <div className="mb-4 flex flex-col gap-2">
@@ -938,6 +981,7 @@ export function FieldList({
         </DndContext>
       )}
     </Card>
+    </div>
   );
 }
 

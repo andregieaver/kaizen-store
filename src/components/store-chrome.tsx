@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore, type CSSProperties, type ReactNode } from "react";
+import { createPortal } from "react-dom";
 
 import type { HeaderStageLook } from "@/lib/header-stages";
 import { DEFAULT_MENU_LOOK, menuLookFrom, type MenuLook } from "@/lib/menu-drawer";
@@ -127,25 +128,33 @@ export function HidingHeader({
   );
 }
 
+/** Whether this render is in the browser after hydration (false on the server and in the first, hydrating render). */
+const noSubscribe = () => () => {};
+const useInBrowser = () => useSyncExternalStore(noSubscribe, () => true, () => false);
+
 /**
  * The bar along the bottom of a phone's screen; slides down out of view
- * while scrolling up, when the header comes back, so only one shows.
+ * while scrolling up, when the header comes back, so only one shows. A product's bar is drawn in the product's own part, deep in the page,
+ * where a row with motion or its own layer would keep it under what follows (the tiles of You may also like, 15 November 2026): once the
+ * page has hydrated it is moved to the end of the body, above every row, and stays under the admin's own buttons (z-50).
  */
 export function HidingBottomBar({ children, product = false }: { children: ReactNode; product?: boolean }) {
   const { direction, atTop } = useScroll();
   const { focused, onFocus } = useFocusShows();
+  const inBrowser = useInBrowser();
   const hidden = direction === "up" && !atTop && !focused;
-  return (
+  const bar = (
     <div
       onFocus={onFocus}
       {...(product ? { "data-product-bar": "" } : { "data-default-bar": "" })}
-      className={`fixed inset-x-0 bottom-0 z-30 border-t border-border bg-background/95 pb-[env(safe-area-inset-bottom)] backdrop-blur md:hidden ${slide} ${
+      className={`fixed inset-x-0 bottom-0 ${product ? "z-40" : "z-30"} border-t border-border bg-background/95 pb-[env(safe-area-inset-bottom)] backdrop-blur md:hidden ${slide} ${
         hidden ? "translate-y-full" : "translate-y-0"
       }`}
     >
       {children}
     </div>
   );
+  return product && inBrowser ? createPortal(bar, document.body) : bar;
 }
 
 /**

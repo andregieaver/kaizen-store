@@ -490,6 +490,10 @@ export const shippingNb: ShippingMessages = {
     address: "Navn og adresse",
     city: "Postnummer og sted",
     follows: "Endres etter det du velger.",
+    questions: "Dine spørsmål",
+    addQuestion: "Legg til et spørsmål",
+    editQuestion: "Rediger {name}",
+    changeAsks: "Endre hva som spørres om",
     more: "Hvor hvert felt spørres om",
   },
   customerAccounts: {
@@ -527,6 +531,7 @@ export const shippingNb: ShippingMessages = {
       rules: { one: ", og {n} regel endrer hva de ser.", many: ", og {n} regler endrer hva de ser." },
     },
     examplesLabel: "Eksempler",
+    examplesStart: "Start fra et eksempel, eller lag ditt eget:",
     examples: {
       klarna: "Ingen Klarna under {amount}",
       heavy: "Stopp ordrer over 30 kg",

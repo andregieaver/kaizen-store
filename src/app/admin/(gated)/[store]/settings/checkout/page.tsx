@@ -111,6 +111,7 @@ export default async function CheckoutRulesPage({ params }: PageProps<"/admin/[s
           canWrite={canWrite}
           saveMode={saveAccountsModeAction.bind(null, slug)}
           saveContact={saveContactFieldsAction.bind(null, slug)}
+          questions={fields.filter((f) => f.enabled).map((f) => ({ id: f.id, label: f.label.text, required: f.required }))}
         />
         <RuleList
           examples={ruleExamples}

@@ -97,6 +97,8 @@ export const sv: Messages = {
   problemDiscount: "Rabattkoden kan inte längre användas. Se över varukorgen och försök igen.",
   discountCode: "Rabattkod",
   haveCode: "Har du en rabattkod?",
+  codeOrCard: "Rabattkod eller presentkort",
+  haveCodeOrCard: "Har du en rabattkod eller ett presentkort?",
   applyCode: "Använd",
   removeCode: "Ta bort",
   discount: "Rabatt",

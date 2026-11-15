@@ -5,7 +5,10 @@ import { useState, useTransition } from "react";
 import { CONTACT_MODES, type CheckoutContactSettings, type ContactMode } from "@/lib/checkout-contact";
 import type { AccountsMode } from "@/lib/customer-accounts";
 
+import { fillWords } from "@/lib/admin-fill";
+
 import { useAdminText } from "./admin-text";
+import { openCheckoutQuestion } from "./checkout-rules";
 import { Button, CARD_CLASS } from "./ui";
 
 type Answer = { ok: true } | { ok: false; problems: string[] };
@@ -17,7 +20,8 @@ const FIELD = "min-h-10 rounded-md border border-line bg-card px-3 text-sm";
  * Settings → Checkout rules, what the checkout asks (round 7, D624): customer accounts (D365) as three choices, the phone and the name (D357)
  * as two selects, one Save for all of them, and beside it a picture of the form a shopper fills in, which follows the choices as they are made.
  * Where each is asked, and what Stripe's own page and Mollie do, is one fold away. The two settings keep their own actions; Save calls the one
- * whose choice changed.
+ * whose choice changed. Under the form the picture lists the store's own questions (D357), each a link that opens it in the list below
+ * (`openCheckoutQuestion()`), or Add a question when there is none, and a link back to these choices.
  */
 export function CheckoutAsksCard({
   mode,
@@ -25,12 +29,15 @@ export function CheckoutAsksCard({
   canWrite,
   saveMode,
   saveContact,
+  questions = [],
 }: {
   mode: AccountsMode;
   contact: CheckoutContactSettings;
   canWrite: boolean;
   saveMode: (mode: AccountsMode) => Promise<Answer>;
   saveContact: (settings: CheckoutContactSettings) => Promise<Answer>;
+  /** The questions the checkout asks (those switched on), in order, by their words in the store's main language. */
+  questions?: { id: string; label: string; required: boolean }[];
 }) {
   const shipping = useAdminText("shipping");
   const w = shipping.checkoutAsks;
@@ -176,6 +183,39 @@ export function CheckoutAsksCard({
           {field(w.city, false)}
           <span className="text-caption text-muted">{w.follows}</span>
         </div>
+        <div className="flex flex-col gap-2">
+          <span className="text-caption text-muted">{w.questions}</span>
+          {questions.map((q) => (
+            <a
+              key={q.id}
+              href={`#question-${q.id}`}
+              onClick={(e) => {
+                e.preventDefault();
+                openCheckoutQuestion(q.id);
+              }}
+              aria-label={fillWords(w.editQuestion, { name: q.label })}
+              className="flex min-h-10 items-center rounded-md border border-dashed border-edge bg-card px-3 text-caption text-ink hover:bg-sunken"
+            >
+              <span className="truncate">{q.label}</span>
+              {!q.required && <span className="ml-1 shrink-0 text-muted">{w.optional}</span>}
+            </a>
+          ))}
+          {canWrite && (
+            <a
+              href="#question-new"
+              onClick={(e) => {
+                e.preventDefault();
+                openCheckoutQuestion("new");
+              }}
+              className="text-sm text-ink underline"
+            >
+              {w.addQuestion}
+            </a>
+          )}
+        </div>
+        <a href="#checkout-asks" className="text-sm text-muted underline">
+          {w.changeAsks}
+        </a>
       </aside>
     </div>
   );

@@ -17,7 +17,7 @@ import { articleJsonLd } from "@/lib/structured-data";
 import { approvedComments } from "@/server/blog-comments";
 import { authorOf, bylineOf, findBlog, storeAuthors, storeBlogs } from "@/server/blogs";
 import { bindForPlace } from "@/server/field-binding";
-import { findPublishedPage, listPublishedPages } from "@/server/pages";
+import { findPublishedPage, publishedPageIndex } from "@/server/pages";
 import { missOrRedirect } from "@/server/redirect-resolve";
 import { storeFacts, storeShareImage, storeShareTags } from "@/server/seo";
 import { marketMoved, resolveShop } from "@/server/shop";
@@ -37,8 +37,8 @@ type ArticleParams = Promise<{ store: string; market: string; slug: string }>;
 export async function articleStaticParams(params: { store: string; market: string }, handle: string | null) {
   const shop = await resolveShop(params.store, params.market);
   const blog = shop ? await findBlog(shop.store.id, handle) : null;
-  const [blogs, articles] = shop && blog ? await Promise.all([storeBlogs(shop.store.id), listPublishedPages(shop.store.id, "article")]) : [[], []];
-  const own = blog ? articles.filter((article) => inBlog(blogs, blog, article.content)) : [];
+  const [blogs, articles] = shop && blog ? await Promise.all([storeBlogs(shop.store.id), publishedPageIndex(shop.store.id, "article")]) : [[], []];
+  const own = blog ? articles.filter((article) => inBlog(blogs, blog, { blogId: article.blogId ?? undefined })) : [];
   // Cache Components needs at least one entry; "_" simply renders a 404.
   return own.length > 0 ? own.map((article) => ({ slug: article.slug })) : [{ slug: "_" }];
 }
@@ -50,10 +50,10 @@ export async function articleStaticParams(params: { store: string; market: strin
 export async function otherBlogArticleParams(params: { store: string; market: string }) {
   const shop = await resolveShop(params.store, params.market);
   const blogs = shop ? await storeBlogs(shop.store.id) : [];
-  const articles = shop && blogs.some((blog) => !blog.main) ? await listPublishedPages(shop.store.id, "article") : [];
+  const articles = shop && blogs.some((blog) => !blog.main) ? await publishedPageIndex(shop.store.id, "article") : [];
   const pairs = blogs
     .filter((blog) => !blog.main)
-    .flatMap((blog) => articles.filter((article) => inBlog(blogs, blog, article.content)).map((article) => ({ blog: blog.handle, slug: article.slug })));
+    .flatMap((blog) => articles.filter((article) => inBlog(blogs, blog, { blogId: article.blogId ?? undefined })).map((article) => ({ blog: blog.handle, slug: article.slug })));
   // Cache Components needs at least one entry; "_" simply renders a 404.
   return pairs.length > 0 ? pairs : [{ blog: "_", slug: "_" }];
 }

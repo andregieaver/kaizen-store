@@ -97,6 +97,8 @@ export const da: Messages = {
   problemDiscount: "Rabatkoden kan ikke længere bruges. Se kurven igennem, og prøv igen.",
   discountCode: "Rabatkode",
   haveCode: "Har du en rabatkode?",
+  codeOrCard: "Rabatkode eller gavekort",
+  haveCodeOrCard: "Har du en rabatkode eller et gavekort?",
   applyCode: "Brug",
   removeCode: "Fjern",
   discount: "Rabat",

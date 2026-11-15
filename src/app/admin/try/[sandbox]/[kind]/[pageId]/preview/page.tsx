@@ -6,7 +6,7 @@ import { PageDrawing } from "@/app/admin/(gated)/[store]/pages/drawing";
 import { adminText } from "@/lib/admin-text";
 import { sandboxBase } from "@/lib/sandbox";
 import { requestAdminLang } from "@/server/admin-request-lang";
-import { getPageForEdit, listPublishedPages } from "@/server/pages";
+import { getPageForEdit, publishedPageById } from "@/server/pages";
 
 import { isPageId, sandboxAndKind } from "../../../params";
 
@@ -25,7 +25,7 @@ export default async function SandboxPreviewPage({ params, searchParams }: PageP
   if (!page) notFound();
   const ew = adminText(lang, "builder").editor;
   const w = adminText(lang, "sandbox").view;
-  const live = query.published === "1" && page.published ? (await listPublishedPages(sandbox.store.id, kind)).find((p) => p.id === page.id) : undefined;
+  const live = query.published === "1" && page.published ? ((await publishedPageById(sandbox.store.id, page.id, kind)) ?? undefined) : undefined;
   const note = query.published === "1" ? (live ? w.published : w.notPublished) : w.draft;
   return (
     <div className="flex flex-col gap-6 pt-4">

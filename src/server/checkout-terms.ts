@@ -25,7 +25,7 @@ import { marketPath } from "@/lib/paths";
 import { readCartId } from "./cart";
 import { getOpenCheckout } from "./checkout";
 import { log } from "./log";
-import { listPublishedPages, type PublishedPage } from "./pages";
+import { publishedPageById, type PublishedPage } from "./pages";
 import { resolveShop } from "./shop";
 import type { Store } from "./stores";
 
@@ -43,13 +43,14 @@ type Row = Record<string, unknown>;
 
 /** The pages the sentence names, as the shopper's market shows them: the store's published page for each role. */
 export async function termsPagesFor(store: Pick<Store, "id" | "slug" | "legalPages">, market: Market): Promise<{ display: (role: TermsRole) => PublishedPage | null; pages: ReturnType<typeof termsPagesOf> }> {
-  const published = await listPublishedPages(store.id);
+  const found = await Promise.all(
+    TERMS_ROLES.map(async (role) => {
+      const id = store.legalPages[role];
+      return [role, id ? await publishedPageById(store.id, id) : null] as const;
+    }),
+  );
   const byRole = new Map<TermsRole, PublishedPage>();
-  for (const role of TERMS_ROLES) {
-    const id = store.legalPages[role];
-    const page = id ? published.find((p) => p.id === id) : undefined;
-    if (page) byRole.set(role, page);
-  }
+  for (const [role, page] of found) if (page) byRole.set(role, page);
   const chosen = Object.fromEntries(
     [...byRole].map(([role, page]) => [role, { title: localizePage(page.content, market.locale).title, href: marketPath(store.slug, market.slug, `/${page.slug}`) }]),
   ) as Partial<Record<TermsRole, { title: string; href: string }>>;

@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 
-import { listPublishedPages } from "@/server/pages";
+import { publishedPageIndex } from "@/server/pages";
 import { resolveShop } from "@/server/shop";
 
 import { StorePageView, storePageMetadata } from "./store-page-view";
@@ -17,7 +17,7 @@ type Props = PageProps<"/s/[store]/[market]/[slug]">;
  */
 export async function generateStaticParams({ params }: { params: { store: string; market: string } }) {
   const shop = await resolveShop(params.store, params.market);
-  const pages = shop ? await listPublishedPages(shop.store.id) : [];
+  const pages = shop ? await publishedPageIndex(shop.store.id) : [];
   // Cache Components needs at least one entry; "_" simply renders a 404.
   const top = pages.filter((page) => !page.slug.includes("/"));
   return top.length > 0 ? top.map((page) => ({ slug: page.slug })) : [{ slug: "_" }];

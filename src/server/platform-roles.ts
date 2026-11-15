@@ -7,7 +7,7 @@ import { db, readDb } from "@/db/client";
 import { PLATFORM_ROLE_COPY, platformStarterPage, isPlatformRole, isThemeStoreRole, THEME_STORE_ROLES, type PlatformRole, type ThemeStoreRole } from "@/lib/platform-roles";
 
 import { audit, type Account } from "./auth";
-import { listPages, listPublishedPages, pagesTag, savePage, type PageSummary, type PublishedPage } from "./pages";
+import { listPages, publishedPageById, pagesTag, savePage, type PageSummary, type PublishedPage } from "./pages";
 
 type Row = Record<string, unknown>;
 type Result = { ok: true } | { ok: false; problems: string[] };
@@ -34,7 +34,7 @@ async function readPlatformPageRoles(): Promise<[PlatformRole, string][]> {
 export async function platformPageForRole(role: PlatformRole): Promise<PublishedPage | null> {
   const chosen = (await getPlatformPageRoles()).find(([r]) => r === role)?.[1];
   if (!chosen) return null;
-  return (await listPublishedPages(null)).find((page) => page.id === chosen) ?? null;
+  return publishedPageById(null, chosen);
 }
 
 /** The place a published page of Kaizen's holds, if any: its own address then leads to the place's. */
