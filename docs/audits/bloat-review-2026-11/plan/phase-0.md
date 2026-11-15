@@ -270,6 +270,7 @@ Thirteen indexes duplicate another: orders carries 34, five of them starting wit
 - **Done when:** src/db/index-duplicates.test.ts returns 0 rows (11 today) with 32 indexes on orders (34 today), and pnpm db:check exits 0.
 - **Platform:** One database: the platform's tables are in the duplicate test.
 - **To carry it out:** [steps/0.26.md](steps/0.26.md) (review)
+- **Done differently:** the marked file's `--> statement-breakpoint` lines each stand alone on a line (`statementsOf` splits only there), not after the semicolon as the brief wrote them; the test's second case checks that every partial twin found is on the allowed list and that at least one is found, because the catalog query finds only two of the six listed (order_events_restock_idx, price_lists_exclusive_idx): the other four differ in column order or are not led by a whole index. Schema lines had moved (orders_retention_idx is at 4936 and so on); the orders_retention_idx doc comment left with its line.
 
 ## 0.27 Let the knowledge job read no document when nothing was published
 
