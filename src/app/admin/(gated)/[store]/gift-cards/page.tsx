@@ -13,6 +13,7 @@ import { giftCardCounts, giftCardOutstanding, giftCardSettings, listGiftCards } 
 import { memberCan, requirePermission } from "@/server/permissions";
 
 import { saveGiftCardSettingsAction } from "./actions";
+import { switchOnFromPageAction } from "../settings/features/actions";
 
 export const metadata: Metadata = { title: "Gift cards" };
 
@@ -57,40 +58,67 @@ export default async function GiftCardsPage({ params, searchParams }: PageProps<
   const total = Object.values(counts).reduce((sum, n) => sum + n, 0);
   const last = page.rows.at(-1);
   const canIssue = memberCan(member, "products:write");
+  const owner = memberCan(member, "owner");
+  const on = featureOn(store, "gift_cards");
+  const mainCurrencyCode = store.localization.currencies[0]?.currency ?? "EUR";
+  const held = outstanding.map((o) => formatMoney(o.amountMinor, o.currency, locale)).join(", ");
 
   return (
     <div className="flex flex-col gap-6">
       <PageHeader
         title={w.title}
-        description={w.description}
-        actions={canIssue ? <ButtonLink href={`${base}/new`} kind="main">{w.issue}</ButtonLink> : undefined}
+        meta={[
+          <span key="lead">
+            <span className="text-ink">
+              {!on ? w.leadOff : total === 0 ? w.leadNone : fillWords(w.leadHold, { amount: held || formatMoney(0, mainCurrencyCode, locale) })}
+            </span>
+            {!on ? w.leadOffRest : total === 0 ? w.leadNoneRest : w.leadHoldRest}
+          </span>,
+        ]}
+        actions={canIssue ? <ButtonLink href={`${base}/new`} kind="secondary">{w.issueCard}</ButtonLink> : undefined}
       />
 
-      {!featureOn(store, "gift_cards") && (
-        <p className={`p-4 text-body text-ink-2 ${CARD_CLASS}`}>
-          {w.off}{" "}
-          <Link href={`/admin/${store.slug}/settings/features`} className="underline underline-offset-2">
-            {w.features}
-          </Link>
-        </p>
+      {/* Round 12 (D637): off is one press to switch on, on with no card one press to make the product; tiles only once cards exist. */}
+      {!on ? (
+        <section aria-labelledby="sell" className={`flex flex-wrap items-center justify-between gap-6 px-6 py-5 ${CARD_CLASS}`}>
+          <div className="flex max-w-xl flex-col gap-2">
+            <h2 id="sell" className="text-title text-ink">{w.sellTitle}</h2>
+            <p className="text-body text-ink-2">{w.sellText}</p>
+            <p className="text-caption text-muted">{w.off}</p>
+          </div>
+          {owner ? (
+            <ActionForm action={switchOnFromPageAction.bind(null, store.slug, "gift_cards")}>
+              <SubmitButton>{w.sellOn}</SubmitButton>
+            </ActionForm>
+          ) : (
+            <p className="text-caption text-muted">{w.ownerOnly}</p>
+          )}
+        </section>
+      ) : (
+        total === 0 &&
+        canIssue && (
+          <section aria-labelledby="make" className={`flex flex-wrap items-center justify-between gap-6 px-6 py-5 ${CARD_CLASS}`}>
+            <div className="flex max-w-xl flex-col gap-2">
+              <h2 id="make" className="text-title text-ink">{w.makeTitle}</h2>
+              <p className="text-body text-ink-2">{w.makeText}</p>
+            </div>
+            <ButtonLink kind="main" href={`/admin/${store.slug}/products/new`}>
+              {w.makeProduct}
+            </ButtonLink>
+          </section>
+        )
       )}
 
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-        {outstanding.length === 0 ? (
-          <KpiTile label={w.customersHold} value={formatMoney(0, store.localization.currencies[0]?.currency ?? "EUR", locale)} context={w.onNoCard} />
-        ) : (
-          outstanding.map((o) => (
+      {total > 0 && (
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+          {outstanding.map((o) => (
             <KpiTile key={o.currency} label={fillWords(w.customersHoldIn, { currency: o.currency })} value={formatMoney(o.amountMinor, o.currency, locale)} context={countWords(o.cards, w.onCards)} />
-          ))
-        )}
-        <KpiTile label={w.activeCards} value={counts.active.toLocaleString(dateLocale)} href={filter({ state: "active" })} />
-      </div>
+          ))}
+          <KpiTile label={w.activeCards} value={counts.active.toLocaleString(dateLocale)} href={filter({ state: "active" })} />
+        </div>
+      )}
 
-      {total === 0 ? (
-        <p className={`p-8 text-center text-body text-muted ${CARD_CLASS}`}>
-          {w.empty}
-        </p>
-      ) : (
+      {total > 0 && (
         <Card
           compact
           title={state ? g.states[state] : w.allCards}
@@ -159,28 +187,38 @@ export default async function GiftCardsPage({ params, searchParams }: PageProps<
         </Card>
       )}
 
-      <Card title={w.lastTitle} description={w.lastDescription} compact>
-        {memberCan(member, "products:write") ? (
-          <ActionForm action={saveGiftCardSettingsAction.bind(null, store.slug)} className="flex flex-wrap items-end gap-3">
-            <label className="flex flex-col gap-1 text-body">
-              <span className="text-caption text-muted">{w.newCardsLast}</span>
-              <select name="expiry" defaultValue={settings.expiryMonths === null ? "never" : String(settings.expiryMonths)} className="min-h-10 rounded-md border border-line px-3">
-                {EXPIRY_CHOICES.map((months) => (
-                  <option key={String(months)} value={months === null ? "never" : String(months)}>
-                    {expiryWords(months, g.expiry)}
-                  </option>
-                ))}
-                {settings.expiryMonths !== null && !EXPIRY_CHOICES.includes(settings.expiryMonths) && (
-                  <option value={String(settings.expiryMonths)}>{expiryWords(settings.expiryMonths, g.expiry)}</option>
-                )}
-              </select>
-            </label>
-            <SubmitButton>{w.save}</SubmitButton>
-          </ActionForm>
+      <section aria-labelledby="how" className={`px-6 py-3 ${CARD_CLASS}`}>
+        <h2 id="how" className="mt-2 mb-1 text-title text-ink">{w.howTitle}</h2>
+        {canIssue ? (
+          <details>
+            <summary className="flex min-h-14 cursor-pointer list-none items-center justify-between gap-3 py-3 [&::-webkit-details-marker]:hidden">
+              <span className="flex min-w-0 flex-col">
+                <span className="text-body text-ink">{fillWords(w.lastRow, { time: expiryWords(settings.expiryMonths, g.expiry).toLowerCase() })}</span>
+                <span className="text-caption text-ink-2">{w.lastSub}</span>
+              </span>
+              <span className="shrink-0 text-sm font-medium text-ink underline underline-offset-2">{w.change}</span>
+            </summary>
+            <ActionForm action={saveGiftCardSettingsAction.bind(null, store.slug)} className="flex flex-wrap items-end gap-3 pb-5">
+              <label className="flex flex-col gap-1 text-body">
+                <span className="text-caption text-muted">{w.newCardsLast}</span>
+                <select name="expiry" defaultValue={settings.expiryMonths === null ? "never" : String(settings.expiryMonths)} className="min-h-10 rounded-md border border-line px-3">
+                  {EXPIRY_CHOICES.map((months) => (
+                    <option key={String(months)} value={months === null ? "never" : String(months)}>
+                      {expiryWords(months, g.expiry)}
+                    </option>
+                  ))}
+                  {settings.expiryMonths !== null && !EXPIRY_CHOICES.includes(settings.expiryMonths) && (
+                    <option value={String(settings.expiryMonths)}>{expiryWords(settings.expiryMonths, g.expiry)}</option>
+                  )}
+                </select>
+              </label>
+              <SubmitButton>{w.save}</SubmitButton>
+            </ActionForm>
+          </details>
         ) : (
-          <p className="text-body text-ink">{expiryWords(settings.expiryMonths, g.expiry)}</p>
+          <p className="flex min-h-14 items-center py-3 text-body text-ink">{fillWords(w.lastRow, { time: expiryWords(settings.expiryMonths, g.expiry).toLowerCase() })}</p>
         )}
-      </Card>
+      </section>
     </div>
   );
 }

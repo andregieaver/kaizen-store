@@ -7,7 +7,7 @@ import { returnsEn, type ReturnsMessages } from "@/lib/admin-messages/returns.en
 import { countsSentence, dayText, exchangeFilters, kindFilters, queueHref, statusFilters, type ExchangeMark } from "@/lib/return-admin";
 import type { ReturnQueueFilter } from "@/lib/return-input";
 import type { Queue, ReturnCounts } from "@/server/returns";
-import { Card, CARD_CLASS, Chip, List, ListRow, PageHeader, RowAmount, RowLead } from "@/components/admin/ui";
+import { ButtonLink, Card, CARD_CLASS, Chip, List, ListRow, PageHeader, RowAmount, RowLead } from "@/components/admin/ui";
 
 import { DueMark, KindBadge, StatusBadge } from "./ui";
 
@@ -42,79 +42,90 @@ export function ReturnsQueueView({
   const filtered = filter.status !== "open" || filter.kind !== "all" || filter.q !== "" || filter.overdue || exchange !== null;
   const pages = Math.max(1, Math.ceil(queue.total / queue.pageSize));
   const orders = base.replace(/\/returns$/, "/orders");
+  const stats = [
+    { label: q.open, value: counts.open, href: base },
+    { label: q.toApprove, value: counts.requested, href: queueHref(base, { status: "requested" }) },
+    { label: q.pastDeadline, value: counts.overdue, sub: q.lawGives, href: queueHref(base, { overdue: true }) },
+    { label: q.notSent, value: counts.acknowledgementPending, sub: q.sendAgainHint },
+  ].filter((stat) => stat.value > 0);
+  const showFilters = filtered || counts.open > 0 || queue.total > 0;
   return (
     <div className="flex flex-col gap-6">
-      <div>
-        <PageHeader
-          title={q.title}
-          description={q.description}
-        />
-        <p className="mt-1 text-sm text-muted">{q.outside}</p>
-        <p role="status" className="mt-1 text-sm">
-          {countsSentence(counts, w)}
-        </p>
-      </div>
+      {/* Round 12 (D637): what waits, in the header's sentence; the rules one fold away; zeros and filters only when there is something. */}
+      <PageHeader title={q.title} meta={[<span key="lead" role="status" className="text-ink">{countsSentence(counts, w)}</span>]} />
 
-      <StatGrid>
-        <Stat label={q.open} value={counts.open} href={base} />
-        <Stat label={q.toApprove} value={counts.requested} href={queueHref(base, { status: "requested" })} />
-        <Stat label={q.pastDeadline} value={counts.overdue} sub={counts.overdue > 0 ? q.lawGives : undefined} href={queueHref(base, { overdue: true })} />
-        <Stat label={q.notSent} value={counts.acknowledgementPending} sub={counts.acknowledgementPending > 0 ? q.sendAgainHint : undefined} />
-      </StatGrid>
+      {stats.length > 0 && (
+        <StatGrid>
+          {stats.map((stat) => (
+            <Stat key={stat.label} {...stat} />
+          ))}
+        </StatGrid>
+      )}
 
-      <form method="get" action={base} className="flex flex-wrap items-end gap-3" aria-label={q.filterLabel}>
-        <label className="flex flex-col gap-1 text-sm font-medium">
-          {q.status}
-          <select name="status" defaultValue={filter.status} className={control}>
-            {statusFilters(w).map((option) => (
-              <option key={option.value} value={option.value}>
-                {option.label}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label className="flex flex-col gap-1 text-sm font-medium">
-          {q.kind}
-          <select name="kind" defaultValue={filter.kind} className={control}>
-            {kindFilters(w).map((option) => (
-              <option key={option.value} value={option.value}>
-                {option.label}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label className="flex flex-col gap-1 text-sm font-medium">
-          {q.exchange}
-          <select name="exchange" defaultValue={exchange ?? ""} className={control}>
-            {exchangeFilters(w).map((option) => (
-              <option key={option.value} value={option.value}>
-                {option.label}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label className="flex min-w-48 flex-1 flex-col gap-1 text-sm font-medium">
-          {q.search}
-          <input name="q" type="search" defaultValue={filter.q} placeholder={q.searchPlaceholder} maxLength={100} className={`${control} w-full`} />
-        </label>
-        <label className="flex min-h-10 items-center gap-2 text-sm">
-          <input type="checkbox" name="overdue" value="1" defaultChecked={filter.overdue} className="size-4" />
-          {q.pastDeadline}
-        </label>
-        <button type="submit" className="min-h-10 rounded-pill bg-brand px-4 text-sm font-medium text-brand-ink">
-          {q.filter}
-        </button>
-        {filtered && (
-          <Link href={base} className="flex min-h-10 items-center text-sm underline">
-            {q.clear}
-          </Link>
-        )}
-      </form>
+      {showFilters && (
+        <form method="get" action={base} className="flex flex-wrap items-end gap-3" aria-label={q.filterLabel}>
+          <label className="flex flex-col gap-1 text-sm font-medium">
+            {q.status}
+            <select name="status" defaultValue={filter.status} className={control}>
+              {statusFilters(w).map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="flex flex-col gap-1 text-sm font-medium">
+            {q.kind}
+            <select name="kind" defaultValue={filter.kind} className={control}>
+              {kindFilters(w).map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="flex flex-col gap-1 text-sm font-medium">
+            {q.exchange}
+            <select name="exchange" defaultValue={exchange ?? ""} className={control}>
+              {exchangeFilters(w).map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="flex min-w-48 flex-1 flex-col gap-1 text-sm font-medium">
+            {q.search}
+            <input name="q" type="search" defaultValue={filter.q} placeholder={q.searchPlaceholder} maxLength={100} className={`${control} w-full`} />
+          </label>
+          <label className="flex min-h-10 items-center gap-2 text-sm">
+            <input type="checkbox" name="overdue" value="1" defaultChecked={filter.overdue} className="size-4" />
+            {q.pastDeadline}
+          </label>
+          <button type="submit" className="min-h-10 rounded-pill bg-brand px-4 text-sm font-medium text-brand-ink">
+            {q.filter}
+          </button>
+          {filtered && (
+            <Link href={base} className="flex min-h-10 items-center text-sm underline">
+              {q.clear}
+            </Link>
+          )}
+        </form>
+      )}
 
       {queue.rows.length === 0 ? (
-        <p className={`p-8 text-center text-sm ${CARD_CLASS}`}>
-          {filtered ? q.noMatch : q.empty}
-        </p>
+        filtered ? (
+          <p className={`p-8 text-center text-sm ${CARD_CLASS}`}>{q.noMatch}</p>
+        ) : (
+          <section aria-label={q.list} className={`flex flex-col items-start gap-3 px-6 py-8 ${CARD_CLASS}`}>
+            <p className="text-body text-ink">{q.nothingWaits}</p>
+            <p className="text-sm text-ink-2">{q.empty}</p>
+            <p className="text-sm text-ink-2">{q.byHand}</p>
+            <ButtonLink kind="secondary" href={orders}>
+              {q.findOrder}
+            </ButtonLink>
+          </section>
+        )
       ) : (
         <Card compact>
           <List label={q.list}>
@@ -176,6 +187,11 @@ export function ReturnsQueueView({
           )}
         </nav>
       )}
+      <details className={`px-6 py-3 ${CARD_CLASS}`}>
+        <summary className="flex min-h-10 cursor-pointer items-center text-body text-ink">{q.rules}</summary>
+        <p className="mt-2 text-sm text-ink-2">{q.description}</p>
+        <p className="mt-2 text-sm text-ink-2">{q.outside}</p>
+      </details>
     </div>
   );
 }
