@@ -211,6 +211,23 @@ export const marketingEn = {
     orJoin: " · or ",
   },
   subscribers: {
+    /** The page drawn for Homer (round 13, D639). */
+    leadNone: "Nobody is on your list yet.",
+    leadNoneRest: " People join in three places; each one confirms by email, and every email you send has a link to leave.",
+    leadSome: { one: "{n} person wants your emails.", many: "{n} people want your emails." },
+    leadWaiting: { one: " {n} waits for their link.", many: " {n} wait for their link." },
+    waysTitle: "How people join",
+    formRow: "A sign-up form on your site",
+    formNone: "Not on any page yet",
+    formSome: { one: "On {n} page", many: "On {n} pages" },
+    formAdd: "Add to the front page",
+    formAddPages: "Add to a page",
+    checkoutRow: "A box at checkout",
+    checkoutSub: "Shown, unticked: buyers tick it themselves",
+    accountRow: "My account",
+    accountSub: "Customers switch emails on and off there",
+    inPlace: "In place",
+    offWithShop: "Not while the online shop is off",
     title: "Subscribers",
     description:
       "People who asked for your emails with news and offers, with the words they agreed to and when. They join from your sign-up forms, checkout and My account, and every email you send them will have a link to leave.",
@@ -514,6 +531,15 @@ export const marketingEn = {
     },
   },
   automations: {
+    /** The page drawn for Homer (round 13, D639). */
+    leadNone: "None is on yet.",
+    leadNoneRest: " Each goes by itself to people on your list, once; most shops start with {first}.",
+    leadSome: "{names} on.",
+    leadSomeRest: " Each goes by itself to people on your list, once; switching one on never writes about the past.",
+    isOne: "is",
+    areMany: "are",
+    and: "and",
+    startHere: "Start here",
     title: "Email automations",
     description:
       "Emails that go by themselves to the people who want your emails, once each. Switching one on never writes to people about what happened before.",
@@ -565,6 +591,17 @@ export const marketingEn = {
    * English text, with `{name}` parts carried over. A text not listed stays as the server wrote it.
    */
   sms: {
+    /** Before connecting, drawn for Homer (round 13, D639). */
+    leadNotSet: "Texts are not set up.",
+    leadNotSetRest: " Send offers by text to buyers who asked for them at checkout.",
+    getTitle: "What you get",
+    get: {
+      consent: { title: "Only to people who ticked the box at checkout", sub: "Every text ends with a link to stop them" },
+      daytime: { title: "Sent in the daytime where each reader lives", sub: "A text written at night waits until morning" },
+      cost: { title: "You pay per text, to 46elks", sub: "A Swedish SMS service; the account is yours, Kaizena Flow takes nothing" },
+    },
+    connectOpen: "Connect 46elks",
+    makeAccount: "Make a 46elks account",
     title: "Text messages",
     description: "Send offers by text message to the people who asked for them at checkout. Each text waits until daytime where its reader lives and ends with a link to stop them.",
     connectTitle: "Connect a 46elks account",
