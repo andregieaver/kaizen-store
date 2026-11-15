@@ -163,3 +163,4 @@ challenged by a skeptic, planned by a planner. Its last lines hold the arguments
 - CI on add82099: site-tools.int and store-builder-ai.int failed (mine: their aiFor mock could not reach aiAbilities' internal call). Fixed in 21c2fa83 (abilitiesOf(), mocks answer it). store-builder-ai "lets a draft go" fails locally on d2dcb5db too: local data. CI wait b6gxocjlw.
 - Holding further code pushes (0.22 on) until prod deploys again.
 - Step 0.22: 2 local commits (5e5fd7bd per-render customer/cart-count/stock, e268d899 one summary per render + no reads for Bonus/Referrals off) REVIEWED OK, HELD locally (money path) until prod deploys and 0.20/0.21 are checked. Rules cache dropped (cacheLife throws in int tests; follow-up: stub next/cache in the integration config).
+- Step 0.23 executor (Sonnet ace5f9c77fcd4542b) started on top of local 0.22; has a migration (cookie_scans indexes). Watching prod for a deploy off 4aceeee (task bbc6546uj).
