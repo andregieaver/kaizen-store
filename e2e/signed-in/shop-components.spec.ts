@@ -53,10 +53,9 @@ test("the basket's notes are offered only on a page chosen for the cart, checkou
     await page.goto(`/admin/${E2E_STORE}/pages/${held}`);
   } else {
     await page.goto(`/admin/${E2E_STORE}/pages`);
-    const card = page
-      .getByRole("heading", { name: "Tag pages", exact: true })
-      .locator("xpath=ancestor::*[.//button[normalize-space()='Start from a new page']][1]");
-    await card.getByRole("button", { name: "Start from a new page" }).click();
+    // The shop's own pages are changed in a small window (D615).
+    await page.getByRole("button", { name: "Change Tag pages", exact: true }).click();
+    await page.getByRole("dialog", { name: "Tag pages" }).getByRole("button", { name: "Start from a new page" }).click();
     await page.waitForURL(new RegExp(`/admin/${E2E_STORE}/pages/[0-9a-f-]{36}`));
   }
   await page.getByRole("tab", { name: "Components" }).click();
