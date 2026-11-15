@@ -100,6 +100,8 @@ test("sends one sweater, then the rest in a second parcel, and refuses a card th
   await page.getByRole("button", { name: "Send another parcel" }).click();
   // With nothing left, the card gives way to the parcels: the second says it sent the rest.
   await expect(page.getByText("Nothing of this order is left to send.")).toBeVisible();
+  // The history is folded under Notes and history (round 6, D620).
+  await page.locator("summary", { hasText: "Notes and history" }).click();
   await expect(page.getByText(/2 units, nothing left to send/)).toBeVisible();
   expect(await parcels()).toEqual({
     status: "fulfilled",
