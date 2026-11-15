@@ -76,7 +76,7 @@ describe("parseAnalyticsSettings", () => {
   it("turns what was typed into what is kept", () => {
     expect(parseAnalyticsSettings(typed, "NOK")).toEqual({
       ok: true,
-      value: { paymentFeeBps: 290, paymentFeeFixedMinor: 180, shippingCostMinor: 4900, fixedCostsMonthlyMinor: 1_200_000, ltvLifespanYears: 3 },
+      value: { paymentFeeBps: 290, paymentFeeFixedMinor: 180, shippingCostMinor: 4900, handlingCostMinor: 0, fixedCostsMonthlyMinor: 1_200_000, ltvLifespanYears: 3 },
     });
   });
 
@@ -120,19 +120,20 @@ describe("analyticsSettingsText and settingsEntered", () => {
       paymentFeePercent: "",
       paymentFeeFixed: "",
       shippingCost: "",
+      handlingCost: "",
       fixedCostsMonthly: "",
       ltvLifespanYears: 3,
     });
-    const kept = { paymentFeeBps: 290, paymentFeeFixedMinor: 180, shippingCostMinor: 4900, fixedCostsMonthlyMinor: 1_200_000, ltvLifespanYears: 4 };
+    const kept = { paymentFeeBps: 290, paymentFeeFixedMinor: 180, shippingCostMinor: 4900, handlingCostMinor: 2500, fixedCostsMonthlyMinor: 1_200_000, ltvLifespanYears: 4 };
     const text = analyticsSettingsText(kept, "NOK");
-    expect(text).toMatchObject({ paymentFeePercent: "2,9", paymentFeeFixed: "1,80", shippingCost: "49,00", fixedCostsMonthly: "12000,00" });
+    expect(text).toMatchObject({ paymentFeePercent: "2,9", paymentFeeFixed: "1,80", shippingCost: "49,00", handlingCost: "25,00", fixedCostsMonthly: "12000,00" });
     expect(parseAnalyticsSettings(text, "NOK")).toEqual({ ok: true, value: kept });
   });
 
   it("counts a store as having entered costs only when one assumption is above zero", () => {
     expect(settingsEntered({ ...ANALYTICS_DEFAULTS })).toBe(false);
     expect(settingsEntered({ ...ANALYTICS_DEFAULTS, ltvLifespanYears: 9 })).toBe(false);
-    for (const key of ["paymentFeeBps", "paymentFeeFixedMinor", "shippingCostMinor", "fixedCostsMonthlyMinor"] as const) {
+    for (const key of ["paymentFeeBps", "paymentFeeFixedMinor", "shippingCostMinor", "handlingCostMinor", "fixedCostsMonthlyMinor"] as const) {
       expect(settingsEntered({ ...ANALYTICS_DEFAULTS, [key]: 1 }), key).toBe(true);
     }
   });

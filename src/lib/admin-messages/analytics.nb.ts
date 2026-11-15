@@ -604,6 +604,8 @@ export const analyticsNb: AnalyticsMessages = {
       fixedHint: "Den faste delen av gebyret, hvis leverandøren tar en.",
       shipping: "Fraktkostnad per ordre",
       shippingHint: "Hva det koster deg å sende én ordre. Telles for ordrer med noe som skal sendes.",
+      handling: "Håndtering og pakking per ordre",
+      handlingHint: "Hva det koster deg å plukke og pakke én ordre: lagerets gebyr, eller esken og tiden. Telles for ordrer med noe som skal sendes.",
       fixedCosts: "Faste kostnader per måned",
       fixedCostsHint: "Husleie, lønn, programvare og alt annet som ikke avhenger av salget. Fordeles jevnt over dagene.",
       save: "Lagre anslagene",

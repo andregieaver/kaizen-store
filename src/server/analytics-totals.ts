@@ -219,6 +219,7 @@ type Bundle = {
   refunds: Row[];
   /** Disputes lost (D288), by the day they closed. */
   disputes: Row[];
+  returnLabels: Row[];
   platform: Row[];
   fees: Row[];
   /** Stripe's real fees (D290), per fee currency, with how many orders they are for. */
@@ -227,7 +228,7 @@ type Bundle = {
   spend: number;
 };
 
-const emptyBundle = (): Bundle => ({ orders: [], refunds: [], disputes: [], platform: [], fees: [], realFees: [], customers: [], spend: 0 });
+const emptyBundle = (): Bundle => ({ orders: [], refunds: [], disputes: [], returnLabels: [], platform: [], fees: [], realFees: [], customers: [], spend: 0 });
 
 /** The currencies the store can convert into its main currency, as a Postgres text array literal. */
 function convertibleCurrencies(store: Store): string {
@@ -518,6 +519,19 @@ async function loadBundles(
     group by 1, 2, 3
   `).then((rows) => checkedRows(MONEY_BY_BUCKET, rows));
 
+  // Return labels (D646, `docs/100-day-challenge.md` E1) by the day they were booked: each label's price (kept with VAT, in its order's currency)
+  // without the standard VAT rate of the order's country, as shipping takes; test labels and copied or hosts' orders never count.
+  const labelDay = dayOf(store, sql`rt.label_booked_at`);
+  const returnLabels = setBased(sql`
+    select (${bucketOf(grain, period, labelDay)})::text as bk, o.currency::text as currency, (o.currency = any(${known})) as converts, count(*) as n,
+      sum(round(rt.label_cost_minor::numeric / (1 + coalesce(commerce.vat_rate(o.market_code, 'standard', rt.label_booked_at), 0)))) as amount
+    from commerce.returns rt
+    join commerce.orders o on o.store_id = rt.store_id and o.id = rt.order_id
+    where rt.store_id = ${id}::uuid and rt.label_cost_minor is not null and not rt.label_test and rt.label_booked_at is not null
+      and ${inPeriod(store, sql`rt.label_booked_at`, period)} and o.copied_from is null and o.host_id is null
+    group by 1, 2, 3
+  `).then((rows) => checkedRows(MONEY_BY_BUCKET, rows));
+
   const spend = typedRows(
     z.object({ bk: col.text, amount: col.minor }),
     sql`
@@ -528,7 +542,7 @@ async function loadBundles(
     `,
   );
 
-  const [mainRows, refundRows, spendRows, firsts, disputeRows] = await Promise.all([main, refunds, spend, firstDays, disputes]);
+  const [mainRows, refundRows, spendRows, firsts, disputeRows, labelRows] = await Promise.all([main, refunds, spend, firstDays, disputes, returnLabels]);
   const bundles = new Map<string, Bundle>();
   const excluded = new Map<string, number>();
   const at = (key: string) => {
@@ -578,6 +592,8 @@ async function loadBundles(
     if (r.converts === true) at(String(r.bk)).disputes.push(r);
     else excluded.set(String(r.currency).trim(), (excluded.get(String(r.currency).trim()) ?? 0) + num(r, "n"));
   }
+  // A return label in a currency with no rate is left out of the costs only: it is no sale, so it is not counted among the orders left out.
+  for (const r of labelRows) if (r.converts === true) at(String(r.bk)).returnLabels.push(r);
   for (const r of spendRows) at(String(r.bk)).spend += num(r, "amount");
   return { bundles, excluded };
 }
@@ -590,10 +606,11 @@ async function loadBundles(
  * One bucket's `Totals`. Every row here is in a currency the store can convert (the queries leave the others out), so
  * `inMain()` leaves nothing out; costs are kept in the main currency already and are added as they are.
  */
-function fold(store: Store, settings: Pick<StoredAnalyticsSettings, "paymentFeeBps" | "paymentFeeFixedMinor" | "shippingCostMinor">, bundle: Bundle): Totals {
+function fold(store: Store, settings: Pick<StoredAnalyticsSettings, "paymentFeeBps" | "paymentFeeFixedMinor" | "shippingCostMinor" | "handlingCostMinor">, bundle: Bundle): Totals {
   const orders = inMain(store, bundle.orders.map((r) => ({ ...r, currency: String(r.currency) })), ["gross", "disc", "shipping", "vat", "revenue", "known_rev", "line_rev", "label_known"]).values;
   const refunds = inMain(store, bundle.refunds.map((r) => ({ ...r, currency: String(r.currency) })), ["amount"]).values;
   const disputes = inMain(store, bundle.disputes.map((r) => ({ ...r, currency: String(r.currency) })), ["amount"]).values;
+  const returnLabels = inMain(store, bundle.returnLabels.map((r) => ({ ...r, currency: String(r.currency) })), ["amount"]).values;
   const platform = inMain(store, bundle.platform.map((r) => ({ ...r, currency: String(r.currency) })), ["fee"]).values;
 
   let paymentFeesMinor = 0;
@@ -631,6 +648,9 @@ function fold(store: Store, settings: Pick<StoredAnalyticsSettings, "paymentFeeB
     returningCustomers: active - fresh,
     units: sum(bundle.orders, "units"),
     ...(disputes.amount !== 0 ? { lostDisputesMinor: disputes.amount } : {}),
+    ...(returnLabels.amount !== 0 ? { returnLabelsMinor: returnLabels.amount } : {}),
+    // Handling and packaging (D646): each paid order with something to ship, at the store's cost per order.
+    ...((settings.handlingCostMinor ?? 0) > 0 ? { handlingCostsMinor: sum(bundle.orders, "physical_orders") * (settings.handlingCostMinor ?? 0) } : {}),
     ...(realFeeOrders > 0 ? { realFeeOrders } : {}),
   };
 }

@@ -612,6 +612,8 @@ export const analyticsEn = {
       fixedHint: "The fixed part of the fee, if your provider charges one.",
       shipping: "Shipping cost per order",
       shippingHint: "What sending one order costs you. Counted for orders with something to ship.",
+      handling: "Handling and packaging per order",
+      handlingHint: "What picking and packing one order costs you: the warehouse's fee, or the box and the time. Counted for orders with something to ship.",
       fixedCosts: "Fixed costs per month",
       fixedCostsHint: "Rent, pay, software and anything else that does not depend on sales. Spread evenly over the days.",
       save: "Save estimates",

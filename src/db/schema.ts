@@ -13442,7 +13442,7 @@ export const analyticsSettings = commerce.table(
     /** What sending one order costs the store, per paid order with a physical line. */
     shippingCostMinor: bigint("shipping_cost_minor", { mode: "number" }).notNull().default(0),
     /**
-     * Handling and packaging per paid order with a physical line (`docs/100-day-challenge.md` E1, D641): what the warehouse charges to pick and pack
+     * Handling and packaging per paid order with a physical line (`docs/100-day-challenge.md` E1, D646): what the warehouse charges to pick and pack
      * an order, or the box and the time it takes; apart from the parcel's label.
      */
     handlingCostMinor: bigint("handling_cost_minor", { mode: "number" }).notNull().default(0),

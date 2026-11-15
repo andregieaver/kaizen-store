@@ -73,6 +73,32 @@ describe("one contribution profit (E1)", () => {
     const totals = (await periodTotals(store.member.store, customPeriod(day(-10), day(0)), settings)).totals;
     expect(totals.shippingCostsMinor).toBe(7400 + settings.shippingCostMinor);
   });
+
+  it("counts handling and packaging per order with something to ship, and a booked return label without VAT, in contribution (D646)", async () => {
+    const [order] = await db().execute<Row>(sql`select id, number from commerce.orders where store_id = ${store.storeId}::uuid order by placed_at limit 1`);
+    // A return label of 125 kr with VAT (Norway's 25 %): 100 kr without; a test label never counts.
+    await db().execute(sql`
+      insert into commerce.returns (store_id, order_id, kind, number, status, label_source, label_carrier_id, label_cost_minor, label_booked_at, label_test)
+      values (${store.storeId}::uuid, ${String(order.id)}::uuid, 'return', ${`${String(order.number)}-R1`}, 'requested', 'carrier', 'bring', 12500, now() - interval '1 day', false),
+             (${store.storeId}::uuid, ${String(order.id)}::uuid, 'return', ${`${String(order.number)}-R2`}, 'requested', 'carrier', 'bring', 9900, now() - interval '1 day', true)
+    `);
+    await db().execute(sql`
+      insert into commerce.analytics_settings (store_id, handling_cost_minor) values (${store.storeId}::uuid, 2500)
+      on conflict (store_id) do update set handling_cost_minor = excluded.handling_cost_minor
+    `);
+    const settings = await getAnalyticsSettings(store.storeId);
+    expect(settings.handlingCostMinor).toBe(2500);
+    const before = (await periodTotals(store.member.store, customPeriod(day(-10), day(0)), { ...settings, handlingCostMinor: 0 })).totals;
+    const totals = (await periodTotals(store.member.store, customPeriod(day(-10), day(0)), settings)).totals;
+    // Two paid orders with a mug to send: 2 × 25 kr.
+    expect(totals.handlingCostsMinor).toBe(5000);
+    expect(totals.returnLabelsMinor).toBe(10_000);
+    expect(before.handlingCostsMinor).toBeUndefined();
+    const { financeStatement } = await import("@/lib/analytics-finance");
+    const statement = financeStatement(totals, settings, 10);
+    expect(statement.lines.map((l) => l.key)).toEqual(expect.arrayContaining(["handlingCosts", "returnLabels"]));
+    expect(statement.reconciles).toBe(true);
+  });
 });
 
 describe("the scoreboard (E7)", () => {
