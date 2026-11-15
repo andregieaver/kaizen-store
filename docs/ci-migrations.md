@@ -68,6 +68,8 @@ A table the same file creates is empty, and anything goes there. `src/db/migrati
 `20261111172838_sms_campaign_index.sql` to this; `src/db/migrate-no-transaction.int.test.ts` runs the marker on a scratch database.
 It sits beside the other rule for a migration: add, never rename or drop in the same change.
 
+An index written by hand is checked against the table's other indexes by `src/db/index-duplicates.test.ts`; when it replaces a declared one, the declared line leaves `src/db/schema.ts` in the same change.
+
 A push to `main` takes one of two paths, chosen by reading production's ledger (the `pending` job runs
 `db-migrate.mjs --status` on the checked-out commit):
 
