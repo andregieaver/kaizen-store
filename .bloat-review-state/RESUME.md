@@ -153,3 +153,5 @@ challenged by a skeptic, planned by a planner. Its last lines hold the arguments
 - Deploy wait bjfehx1qn. Step 0.20 executor (Sonnet ab0f2c855e6874c78) started.
 - Step 0.20 pushed as afc6d749 (c0591d81 theme cards, fa18077d hosts parsed once, c7c97f8c storeSlugOf cached+tag store-id:{id}, staleTag in adoptRequestSandbox). rg count 27 -> 3. Deploy wait bhnrqvv59; then prod checks, CI, write-up (next D recheck; other session at D613). Needs prod later: daily count of `select slug ... where id` (about 7,180/day before) in step 0.2's reading, into docs/capacity.md.
 - Step 0.21 executor (Opus ab360734102c86b49) started, all 5 commits.
+- PROD STUCK on 4aceeee: the other session's migration 20261114235025_silly_namora.sql (D613) waits for all checks; CI red on agent-eval-replay since 5026d8ef (manager prompt db670ab851a2 vs recording b255bbea41ad): the other session must record the eval again. Told the user.
+- My 0.20 commit 1 broke e2e/theme-store:118,:146 (neighbours from shared cache miss newly published themes). Reverted in d2dcb5db (pushed from kz-fix). CI wait b1y57x2n0. Step 0.20 not yet deployed; write-up after deploy.
