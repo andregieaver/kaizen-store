@@ -8,13 +8,15 @@ import { NO_RULES } from "@/lib/checkout-rules";
 import { giftCardsPay } from "@/lib/gift-cards";
 import { venuePart } from "@/lib/pay-later";
 import { basketShipping, planPrice } from "@/lib/subscriptions";
+import { featureOn, type FeatureSource } from "@/lib/store-features";
 import { needsServiceRequest } from "@/lib/withdrawal";
+import type { Market } from "@/lib/markets";
 
 import { db } from "@/db/client";
 
 import { cartAffiliateOf, codeInPlay, friendState, welcomeFor } from "./affiliates";
-import { bonusProgram, cartBonusOf, creditState, planFor } from "./bonus";
-import { readCartId, type Cart, type CartLine, type Shop } from "./cart";
+import { bonusProgram, bonusProgramOff, cartBonusOf, creditState, planFor } from "./bonus";
+import { getCart, readCartId, type Cart, type CartLine, type Shop } from "./cart";
 import { memberDiscountFor } from "./customer-tiers";
 import { resolveDelivery } from "./delivery-options";
 import { checkoutRuleOutcome } from "./checkout-rules";
@@ -23,6 +25,8 @@ import { getCartCodes, previewCartCodes } from "./discounts";
 import { campaignsAndCodes } from "./discount-combinations";
 import { cartGiftCards } from "./gift-card-cart";
 import { getCheckoutInfo } from "./orders";
+import { perRequest } from "./request-memo";
+import type { Store } from "./stores";
 import { decideCustoms, loadCustomsFacts } from "./customs";
 import { cartTaxOf, decideTax, loadTaxFacts } from "./tax-treatment";
 
@@ -35,8 +39,11 @@ import { cartTaxOf, decideTax, loadTaxFacts } from "./tax-treatment";
 export async function cartSummary(
   shop: Shop,
   cart: Cart,
-  /** The buyer and the cart whose credits count, when the caller knows them; else the signed-in customer and the cookie's cart. */
-  who: { customerId?: string | null; cartId?: string | null } = {},
+  /**
+   * The buyer and the cart whose credits count, when the caller knows them; else the signed-in customer and the cookie's cart. With the store's
+   * `features`, Bonus off and Referrals off send no statement (bloat review step 0.22); without them everything is read.
+   */
+  who: { customerId?: string | null; cartId?: string | null; features?: FeatureSource } = {},
 ) {
   const { storeId, market } = shop;
   const payable = cart.lines.filter(
@@ -96,9 +103,12 @@ export async function cartSummary(
   const member = await memberDiscountFor(db(), storeId, customerId);
   // The friend's welcome discount (D131) comes after campaigns and the group's discount and before any code and the credits; only a
   // signed-in friend's first order, and never a host's.
-  const program = await bonusProgram(db(), storeId);
+  // A store whose Bonus feature is off has the program off (`commerce.bonus_program_on()`): nothing is asked of the database for it, and with
+  // Referrals off the friend is null (the welcome discount is off too, as `friendState()` says for a program that is not on).
+  const program = who.features && !featureOn(who.features, "bonus") ? bonusProgramOff(market) : await bonusProgram(db(), storeId);
   const sellerIsHost = payable.some((line) => line.hostId);
-  const friend = sellerIsHost ? null : await friendState(db(), storeId, customerId, await codeInPlay(db(), storeId, cartId), program);
+  const referralsOff = who.features !== undefined && !featureOn(who.features, "referrals");
+  const friend = sellerIsHost || referralsOff ? null : await friendState(db(), storeId, customerId, await codeInPlay(db(), storeId, cartId), program);
   /** The group's discount on each line after what campaigns took off it. */
   const memberOffAfter = (campaignOff: readonly number[]) =>
     payable.map((line, i) =>
@@ -374,4 +384,20 @@ export async function cartSummary(
     /** What Stripe is asked for: all but the part left for the venue and what gift cards pay, and the duties DDP collects. */
     dueNowMinor: total - balance - cardsPaid.paidMinor + customs.collectMinor,
   };
+}
+
+/**
+ * The cart and its summary, worked out once for a render (bloat review step 0.22): the cart page's pieces, the checkout's credits and its
+ * delivery choice all ask for it. It names no cart or buyer: `cartSummary()` then reads the cookie's cart and the signed-in customer, which
+ * is what the cart page, `checkout-section.tsx` (`readCartId()`) and `deliveryView()` (the same cart and `getCustomer()`'s id) all mean.
+ * The key is the store and the market, and the memo lives for one render. Server actions call `cartSummary()` themselves: they read after
+ * they write. The summary is null for an empty cart.
+ */
+export function requestCartSummary(store: Store, market: Market) {
+  return perRequest(`cart-summary:${store.id}:${market.slug}`, async () => {
+    const shop = { storeId: store.id, market };
+    const cart = await getCart(shop);
+    const summary = cart.lines.length === 0 ? null : await cartSummary(shop, cart, { features: store });
+    return { cart, summary };
+  });
 }

@@ -5,7 +5,36 @@ import type { CartBonus } from "@/lib/bonus";
 
 // The checkout's server reads are replaced by one open order; what is tested is how the credits are drawn (D130).
 vi.mock("server-only", () => ({}));
-vi.mock("../cart/bonus", () => ({ readCartBonus: async () => bonusNow }));
+// One render's memo, as in src/server/request-shared.test.ts: React's cache() does nothing outside a server render. Off, every call is read
+// again (what a bare test render does); the cases that hold a render to one summary turn `render.on` on.
+const render = vi.hoisted(() => ({ on: false, resets: [] as (() => void)[] }));
+vi.mock("react", async (original) => ({
+  ...(await original<typeof import("react")>()),
+  cache: <T>(make: () => T) => {
+    let made: T | undefined;
+    let has = false;
+    render.resets.push(() => {
+      has = false;
+      made = undefined;
+    });
+    return () => (render.on ? (has ? (made as T) : ((has = true), (made = make()))) : make());
+  },
+}));
+// The credits are the cart summary's now: ./bonus is never asked (bloat review step 0.22).
+const readCartBonus = vi.fn(async () => bonusNow);
+vi.mock("../cart/bonus", () => ({ readCartBonus: () => readCartBonus() }));
+// requestCartSummary() as the real one is shaped: one summary per render for a store and a market; `summaryWork` counts the times it is worked out.
+const summaryWork = vi.fn();
+vi.mock("@/server/cart-summary", async () => {
+  const { perRequest } = await import("@/server/request-memo");
+  return {
+    requestCartSummary: (store: { id: string }, market: { slug: string }) =>
+      perRequest(`cart-summary:${store.id}:${market.slug}`, async () => {
+        summaryWork();
+        return { cart: { lines: [{}] }, summary: bonusNow ? { bonus: bonusNow } : null };
+      }),
+  };
+});
 vi.mock("./actions", () => ({
   checkoutCreditsAction: async () => ({ status: "idle", message: "" }),
   checkoutCodeAction: async () => undefined,
@@ -39,7 +68,15 @@ vi.mock("@/components/checkout-form", () => ({
 }));
 vi.mock("@/components/line-thumbnail", () => ({ LineThumbnail: () => null }));
 const deliveryNow = vi.hoisted(() => ({ options: null as null | { postalCode: string | null; options: unknown[] } }));
-vi.mock("@/server/delivery-choice", () => ({ deliveryView: async () => deliveryNow.options }));
+// The real deliveryView() asks for the render's summary only when a delivery choice is on; the stand-in asks as that one does.
+const deliveryChoiceOn = vi.hoisted(() => ({ on: true }));
+vi.mock("@/server/delivery-choice", () => ({
+  deliveryView: async (_shop: unknown, _cartId: string, _label: string, known?: () => Promise<unknown>) => {
+    if (!deliveryChoiceOn.on) return null;
+    await known?.();
+    return deliveryNow.options;
+  },
+}));
 vi.mock("@/components/delivery-choice", () => ({ DeliveryChoice: () => "DELIVERY-CHOICE" }));
 
 import { stripeAppearance } from "@/lib/checkout-appearance";
@@ -53,7 +90,7 @@ import { Checkout, CheckoutCredits, CheckoutDelivery, CheckoutItems, CheckoutPay
 
 let bonusNow: CartBonus | null = null;
 const market = { slug: "ie", code: "IE", currency: "EUR", locale: "en-IE", lang: "en" } as Market;
-const store = { id: "s1", slug: "demo", name: "Demo", theme: parseStoreTheme(null), navigation: EMPTY_NAVIGATION, checkoutContact: { phone: "off", name: "off" } } as Store;
+const store = { id: "s1", slug: "demo", name: "Demo", features: ["shop", "bonus"], theme: parseStoreTheme(null), navigation: EMPTY_NAVIGATION, checkoutContact: { phone: "off", name: "off" } } as Store;
 
 const order = (over: Record<string, unknown> = {}) => ({
   id: "o1",
@@ -116,6 +153,10 @@ const words = (markup: string) =>
     .replace(/\s+/g, " ");
 
 beforeEach(() => {
+  vi.clearAllMocks();
+  render.on = false;
+  render.resets.forEach((reset) => reset());
+  deliveryChoiceOn.on = true;
   bonusNow = bonus();
   getOrder.mockResolvedValue(order({ bonus: { usedMinor: 1500, earnedMinor: 0, availableAt: null } }));
 });
@@ -204,6 +245,33 @@ describe("the checkout's credits piece", () => {
     expect(page).not.toContain("Use bonus credits");
     bonusNow = bonus();
     expect(words(renderToString(await Checkout({ store, market })))).toContain(t("en").bonus.useHeading);
+  });
+});
+
+describe("the checkout's reads of the cart summary (bloat review step 0.22)", () => {
+  const shopOnly = { ...store, features: ["shop"] } as Store;
+
+  it("reads no credits and works no summary out for a store without Bonus, and draws nothing for them", async () => {
+    deliveryChoiceOn.on = false;
+    expect(renderToString((await CheckoutCredits({ store: shopOnly, market })) ?? null)).toBe("");
+    const page = words(renderToString(await Checkout({ store: shopOnly, market })));
+    expect(page).not.toContain("Use bonus credits");
+    expect(readCartBonus).not.toHaveBeenCalled();
+    expect(summaryWork).not.toHaveBeenCalled();
+  });
+
+  it("works the summary out once for the credits and the delivery choice together, and not at all through ./bonus", async () => {
+    render.on = true;
+    deliveryNow.options = { postalCode: null, options: [{ id: "flat" }] };
+    getOrder.mockResolvedValue(order({ ships: true, shippingMinor: 9900 }));
+    expect(renderToString((await CheckoutCredits({ store, market })) ?? null)).toContain("<form");
+    expect(renderToString((await CheckoutDelivery({ store, market })) ?? null)).toContain("DELIVERY-CHOICE");
+    expect(summaryWork).toHaveBeenCalledTimes(1);
+    expect(readCartBonus).not.toHaveBeenCalled();
+    // The whole checkout of the next render asks once too.
+    render.resets.forEach((reset) => reset());
+    renderToString(await Checkout({ store, market }));
+    expect(summaryWork).toHaveBeenCalledTimes(2);
   });
 });
 
