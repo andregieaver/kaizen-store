@@ -151,3 +151,5 @@ challenged by a skeptic, planned by a planner. Its last lines hold the arguments
 - Step 0.19 executor running.
 - Step 0.19 PARTIAL pushed as 038e56e9 (commit 1 Products reads count not editor context; commit 4 Stores list 100/page). Commits 2 (Products paging) and 3 (Customers pick-then-aggregate) blocked: the other session's redesign (D597, D603) made Products a client catalogue over the whole list and rewrote listCustomers (show/sort/city). Needs a re-brief / coordination with the redesign: told the user. Row 0.19 stays In progress.
 - Deploy wait bjfehx1qn. Step 0.20 executor (Sonnet ab0f2c855e6874c78) started.
+- Step 0.20 pushed as afc6d749 (c0591d81 theme cards, fa18077d hosts parsed once, c7c97f8c storeSlugOf cached+tag store-id:{id}, staleTag in adoptRequestSandbox). rg count 27 -> 3. Deploy wait bhnrqvv59; then prod checks, CI, write-up (next D recheck; other session at D613). Needs prod later: daily count of `select slug ... where id` (about 7,180/day before) in step 0.2's reading, into docs/capacity.md.
+- Step 0.21 executor (Opus ab360734102c86b49) started, all 5 commits.
