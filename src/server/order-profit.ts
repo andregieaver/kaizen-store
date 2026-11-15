@@ -37,6 +37,7 @@ const ROW = z.object({
   lines: z.array(LINE),
   payments: z.array(PAYMENT),
   parcels: z.array(z.number().nullable()),
+  return_labels: z.array(z.number()),
   disputes: z.array(DISPUTE),
 });
 
@@ -53,6 +54,10 @@ function profitQuery(store: Store, where: SQL): SQL {
         from commerce.payments p where p.store_id = o.store_id and p.order_id = o.id and p.status = 'captured'), '[]'::jsonb) as payments,
       coalesce((select jsonb_agg(sh.label_cost_minor) from commerce.shipments sh
         where sh.store_id = o.store_id and sh.order_id = o.id and sh.method = 'parcel' and sh.undone_at is null), '[]'::jsonb) as parcels,
+      -- Its booked return labels (D646), without the standard VAT of its country as the Finance page counts them; test labels never.
+      coalesce((select jsonb_agg(round(rt.label_cost_minor::numeric / (1 + coalesce(commerce.vat_rate(o.market_code, 'standard', rt.label_booked_at), 0))))
+        from commerce.returns rt where rt.store_id = o.store_id and rt.order_id = o.id and rt.label_cost_minor is not null and not rt.label_test
+          and rt.label_booked_at is not null), '[]'::jsonb) as return_labels,
       coalesce((select jsonb_agg(jsonb_build_object('a', d.amount_minor, 'f', d.fee_minor, 'c', d.currency))
         from commerce.payment_disputes d where d.store_id = o.store_id and d.order_id = o.id and d.outcome = 'lost' and not d.test_mode), '[]'::jsonb) as disputes
     from commerce.orders o
@@ -71,6 +76,7 @@ function inputOf(row: z.infer<typeof ROW>): OrderProfitInput {
     payments: row.payments.map((p) => ({ provider: p.p, amountMinor: p.a, kaizenFeeMinor: p.k ?? 0, providerFeeMinor: p.f, feeCurrency: p.fc })),
     physical: row.physical,
     parcels: row.parcels,
+    returnLabels: row.return_labels,
     lostDisputes: row.disputes.map((d) => ({ amountMinor: d.a, feeMinor: d.f, feeCurrency: d.c })),
   };
 }

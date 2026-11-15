@@ -30,9 +30,11 @@ export type OrderProfitInput = {
   parcels: readonly (number | null)[];
   /** Disputes lost on the order: the amount with VAT, and the dispute fee in its currency when known. */
   lostDisputes: readonly { amountMinor: number; feeMinor: number | null; feeCurrency: string | null }[];
+  /** The order's booked return labels (D646): each one's price without VAT, in the order's currency. Absent means none. */
+  returnLabels?: readonly number[];
 };
 
-export type OrderProfitLineKey = "revenue" | "refunds" | "cogs" | "paymentFee" | "platformFee" | "shipping" | "disputes";
+export type OrderProfitLineKey = "revenue" | "refunds" | "cogs" | "paymentFee" | "platformFee" | "shipping" | "handling" | "returnLabels" | "disputes";
 
 export type OrderProfitLine = {
   key: OrderProfitLineKey;
@@ -63,7 +65,11 @@ export type OrderProfit = {
 const withoutVat = (amountMinor: number, totalMinor: number, taxMinor: number): number =>
   totalMinor > 0 ? Math.round((amountMinor * (totalMinor - taxMinor)) / totalMinor) : amountMinor;
 
-export function orderProfit(input: OrderProfitInput, settings: Pick<AnalyticsSettings, "paymentFeeBps" | "paymentFeeFixedMinor" | "shippingCostMinor">, main: { currency: string; rates: Rates }): OrderProfit {
+export function orderProfit(
+  input: OrderProfitInput,
+  settings: Pick<AnalyticsSettings, "paymentFeeBps" | "paymentFeeFixedMinor" | "shippingCostMinor" | "handlingCostMinor">,
+  main: { currency: string; rates: Rates },
+): OrderProfit {
   const currency = input.currency.trim();
   // A cost converted at the store's rates, unrounded to the currency's price step (that is for prices shoppers see).
   const convert = (minor: number, from: string): number | null => {
@@ -132,6 +138,14 @@ export function orderProfit(input: OrderProfitInput, settings: Pick<AnalyticsSet
     { key: "platformFee", amountMinor: platformFee === 0 ? 0 : -platformFee, estimated: false },
     { key: "shipping", amountMinor: shipping === null ? null : shipping === 0 ? 0 : -shipping, estimated: shippingEstimated },
   ];
+  // Handling and packaging (D646): the store's cost per order for one with something to send; the order's own return labels as booked.
+  if (input.physical && (settings.handlingCostMinor ?? 0) > 0) {
+    const handling = fromMain(settings.handlingCostMinor ?? 0);
+    if (handling === null) noRate = true;
+    lines.push({ key: "handling", amountMinor: handling === null ? null : -handling, estimated: true });
+  }
+  const returnLabels = (input.returnLabels ?? []).reduce((s, l) => s + l, 0);
+  if (returnLabels !== 0) lines.push({ key: "returnLabels", amountMinor: -returnLabels, estimated: false });
   if (disputes !== 0) lines.push({ key: "disputes", amountMinor: -disputes, estimated: false });
 
   const net = revenue - refunds;

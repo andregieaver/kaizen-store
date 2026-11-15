@@ -15,6 +15,7 @@ export const ANALYTICS_DEFAULTS = {
   paymentFeeBps: 0,
   paymentFeeFixedMinor: 0,
   shippingCostMinor: 0,
+  handlingCostMinor: 0,
   fixedCostsMonthlyMinor: 0,
   ltvLifespanYears: 3,
 } as const;
@@ -24,6 +25,8 @@ export type AnalyticsSettings = {
   paymentFeeBps: number;
   paymentFeeFixedMinor: number;
   shippingCostMinor: number;
+  /** Handling and packaging per paid order with a physical line (D646): picking, packing and the box, apart from the label; none is 0. */
+  handlingCostMinor?: number;
   fixedCostsMonthlyMinor: number;
   ltvLifespanYears: number;
 };
@@ -41,6 +44,8 @@ export const analyticsSettingsInput = z.object({
   paymentFeeFixed: typed.default(""),
   /** What sending one order costs. */
   shippingCost: typed.default(""),
+  /** Handling and packaging per order: what the warehouse charges, or the box and the time it takes. */
+  handlingCost: typed.default(""),
   /** Rent, pay and other fixed costs for a month. */
   fixedCostsMonthly: typed.default(""),
   /** Years a customer is expected to keep buying (1 to 10). */
@@ -97,6 +102,7 @@ export function parseAnalyticsSettings(raw: unknown, currency: string): Parsed<A
     paymentFeeBps: bps ?? 0,
     paymentFeeFixedMinor: money(input.paymentFeeFixed, "Fixed payment fee"),
     shippingCostMinor: money(input.shippingCost, "Shipping cost per order"),
+    handlingCostMinor: money(input.handlingCost, "Handling and packaging per order"),
     fixedCostsMonthlyMinor: money(input.fixedCostsMonthly, "Fixed costs per month"),
     ltvLifespanYears: input.ltvLifespanYears,
   };
@@ -110,6 +116,7 @@ export function analyticsSettingsText(settings: AnalyticsSettings, currency: str
     paymentFeePercent: formatPercentBps(settings.paymentFeeBps),
     paymentFeeFixed: amount(settings.paymentFeeFixedMinor),
     shippingCost: amount(settings.shippingCostMinor),
+    handlingCost: amount(settings.handlingCostMinor ?? 0),
     fixedCostsMonthly: amount(settings.fixedCostsMonthlyMinor),
     ltvLifespanYears: settings.ltvLifespanYears,
   };
@@ -121,6 +128,7 @@ export function settingsEntered(settings: AnalyticsSettings): boolean {
     settings.paymentFeeBps > 0 ||
     settings.paymentFeeFixedMinor > 0 ||
     settings.shippingCostMinor > 0 ||
+    (settings.handlingCostMinor ?? 0) > 0 ||
     settings.fixedCostsMonthlyMinor > 0
   );
 }

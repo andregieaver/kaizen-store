@@ -320,6 +320,8 @@ export const orderNb: OrderMessages = {
       paymentFee: "Betalingsgebyr",
       platformFee: "Kaizena Flows gebyr",
       shipping: "Frakt",
+      handling: "Håndtering og pakking",
+      returnLabels: "Returetiketter",
       disputes: "Tapt tvist",
     },
     estimatedMark: "anslått",

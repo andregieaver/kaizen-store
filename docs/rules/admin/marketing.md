@@ -30,7 +30,7 @@ CLAUDE.md keeps one line per rule pointing here; each rule is under that line as
 
 ## Profit per order and the briefing's one-press actions (D415, D416, `src/lib/order-profit.ts`, `src/lib/briefing-actions.ts`)
 
-- **Profit per order and the briefing's one-press actions (D415, D416, `src/lib/order-profit.ts`, `src/lib/briefing-actions.ts`)**: an order's profit is
+- **Profit per order and the briefing's one-press actions (D415, D416, `src/lib/order-profit.ts`, `src/lib/briefing-actions.ts`)**: handling and packaging (the owner's cost per order with something to send, `handlingCostMinor`) and return labels as booked (without the standard VAT of the order's country) are costs of an order on the Finance page and in its profit alike, in contribution (D646); an order's profit is
   only `orderProfit()` (pure, `src/lib/order-profit.ts`) over what `orderProfitFor()`/`periodOrderProfits()` read (`src/server/order-profit.ts`), by the
   Finance page's definitions for one order; a goods line without a cost makes it unknown, never a figure that leaves the cost out. A booked label's cost
   is written only by `recordLabelCost()`, once (the database's `shipments_guard()`), without VAT in the order's currency. The briefing's findings take

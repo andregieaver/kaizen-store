@@ -17,7 +17,8 @@ import { suggestedRegistrant } from "@/server/domain-registrant";
 import { registrationFacts, storeRegistrations } from "@/server/domain-registrations";
 import type { Membership } from "@/server/auth";
 import { domainsConfigured } from "@/server/vercel";
-import { ButtonLink, Card, PageHeader } from "@/components/admin/ui";
+import { ButtonLink, buttonClass, Card, CARD_CLASS, PageHeader } from "@/components/admin/ui";
+import { CopyLinkButton } from "@/components/copy-link-button";
 import { domainConnectKey } from "@/lib/env";
 import { siteUrl } from "@/lib/site";
 import { domainConnectFor, signedApplyUrl } from "@/server/domain-connect";
@@ -57,7 +58,35 @@ export default async function DomainsPage({ params, searchParams }: PageProps<"/
   const domain = storeDomain();
   const page = adminText(lang, "domains").page;
   if (!domain) {
-    return <PageHeader title={page.title} description={fillWords(page.notSetUp, { address: storeHref(store.slug, storeBase(store.slug)) })} />;
+    // Round 15 (D647): the address whole, to copy or open, and the own domain as a row that says it comes later.
+    const path = storeHref(store.slug, storeBase(store.slug));
+    const address = /^https?:/.test(path) ? path : new URL(path, siteUrl()).toString();
+    return (
+      <div className="flex flex-col gap-6">
+        <PageHeader title={page.title} meta={[page.lead]} description={page.leadRest} />
+        <section className={`flex flex-wrap items-center justify-between gap-4 p-6 ${CARD_CLASS}`}>
+          <label className="flex min-w-0 flex-1 flex-col gap-1">
+            <span className="text-caption text-ink-2">{page.addressLabel}</span>
+            <input id="store-address" readOnly value={address} className="w-full min-w-0 truncate bg-transparent text-title text-ink outline-none" />
+          </label>
+          <span className="flex flex-wrap items-center gap-2">
+            <CopyLinkButton link={address} labels={{ copy: page.copy, copied: page.copied }} inputId="store-address" className={buttonClass("secondary")} />
+            <ButtonLink kind="main" href={address} target="_blank" rel="noopener">
+              {page.view}
+            </ButtonLink>
+          </span>
+        </section>
+        <ul className={`px-6 ${CARD_CLASS}`}>
+          <li className="flex min-h-16 items-center justify-between gap-3 py-3">
+            <span className="flex min-w-0 flex-col">
+              <span className="text-body text-ink">{page.ownTitle}</span>
+              <span className="text-caption text-ink-2">{page.ownLater}</span>
+            </span>
+            <span className="shrink-0 text-caption text-muted">{page.ownSoon}</span>
+          </li>
+        </ul>
+      </div>
+    );
   }
   // Waiting domains are checked as the owner looks; a deployment that did not happen is asked for again.
   await checkWaitingDomains(store.id);

@@ -29,6 +29,17 @@ const order = (extra: Partial<OrderProfitInput> = {}): OrderProfitInput => ({
 const line = (p: ReturnType<typeof orderProfit>, key: string) => p.lines.find((l) => l.key === key);
 
 describe("profit per order", () => {
+  it("counts handling and packaging for an order with something to send, and its booked return labels (D646)", () => {
+    const base = orderProfit(order(), settings, main);
+    const p = orderProfit(order({ returnLabels: [8000] }), { ...settings, handlingCostMinor: 2500 }, main);
+    expect(line(p, "handling")).toEqual({ key: "handling", amountMinor: -2500, estimated: true });
+    expect(line(p, "returnLabels")).toEqual({ key: "returnLabels", amountMinor: -8000, estimated: false });
+    expect(p.profitMinor).toBe((base.profitMinor ?? 0) - 2500 - 8000);
+    // Nothing to send: no handling; no handling cost set: no line.
+    expect(line(orderProfit(order({ physical: false, parcels: [] }), { ...settings, handlingCostMinor: 2500 }, main), "handling")).toBeUndefined();
+    expect(line(base, "handling")).toBeUndefined();
+  });
+
   it("takes the cost of goods, Stripe's own fee, Kaizena Flow's fee and the label's own price off revenue without VAT", () => {
     const p = orderProfit(order(), settings, main);
     expect(p.netMinor).toBe(100_000);

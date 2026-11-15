@@ -6,14 +6,14 @@ import { z } from "zod";
 
 import type { FormState } from "@/components/admin/action-form";
 import { adminLangOf } from "@/lib/admin-lang";
-import { fillWords } from "@/lib/admin-fill";
+import { countWords, fillWords } from "@/lib/admin-fill";
 import type { LegalMessages } from "@/lib/admin-messages/legal.en";
 import { adminText } from "@/lib/admin-text";
 import { isLegalRole } from "@/lib/legal-roles";
 import { languageNames } from "@/lib/legal-admin-words";
 import { isStarterRole } from "@/lib/legal-starters";
 import { actionAdminLang } from "@/server/admin-request-lang";
-import { createLegalStarter, setLegalRole, setTermsMode } from "@/server/legal-starters";
+import { createLegalStarter, legalOverview, setLegalRole, setTermsMode } from "@/server/legal-starters";
 import { askForLegalPage, handBackLegalPage, runLegalWrites, setLegalAiPublish, stopLegalPage, turnOffLegalAi, turnOnLegalAi } from "@/server/legal-writer";
 import { checkOwnerRole } from "@/server/permissions";
 
@@ -42,6 +42,29 @@ export async function createStarterAction(storeSlug: string, kind: string): Prom
     status: "ok",
     messages: [fillWords(w.madeIn, { language: languageNames([result.language], lang), others, notice: result.translatedNotice ? w.englishNotice : "" })],
   };
+}
+
+/**
+ * Makes every starter still missing in one press (round 15, D647): one draft of each kind the store needs that has neither a page chosen nor
+ * a draft made. Each is a draft like any other; the first refusal stops the rest and says why.
+ */
+export async function createAllStartersAction(storeSlug: string): Promise<FormState> {
+  const member = await checkOwnerRole(storeSlug);
+  if (!member) return denied();
+  const w = adminText(adminLangOf(member.account.adminLocale), "legal");
+  const overview = await legalOverview(member);
+  const kinds = overview.roles.filter((r) => r.starter && r.needed && !r.page && !r.draft).map((r) => r.role).filter(isStarterRole);
+  let made = 0;
+  for (const kind of kinds) {
+    const result = await createLegalStarter(member, kind);
+    if (!result.ok) {
+      if (made > 0) refresh();
+      return refused(result.problems);
+    }
+    made++;
+  }
+  refresh();
+  return { status: "ok", messages: [countWords(made, w.pages.round.made)] };
 }
 
 /**

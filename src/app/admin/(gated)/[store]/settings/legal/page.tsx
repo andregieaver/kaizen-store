@@ -2,13 +2,14 @@ import type { Metadata } from "next";
 
 import { adminLangOf } from "@/lib/admin-lang";
 import { adminText } from "@/lib/admin-text";
-import { LegalPagesPanel } from "@/components/admin/legal-pages-panel";
+import { legalLead, LegalPagesPanel } from "@/components/admin/legal-pages-panel";
 import { legalOverview } from "@/server/legal-starters";
 import { legalAiSettings, legalWriterAvailability, legalWrites } from "@/server/legal-writer";
 import { requireOwnerRole } from "@/server/permissions";
 import { PageHeader } from "@/components/admin/ui";
 
 import {
+  createAllStartersAction,
   createStarterAction,
   handBackLegalPageAction,
   setLegalAiPublishAction,
@@ -44,7 +45,7 @@ export default async function LegalPagesPage({ params }: PageProps<"/admin/[stor
     <div className="flex flex-col gap-6">
       <PageHeader
         title={words.pages.title}
-        description={words.pages.description}
+        meta={[legalLead(overview, words)]}
       />
       <LegalPagesPanel
         overview={overview}
@@ -59,6 +60,7 @@ export default async function LegalPagesPage({ params }: PageProps<"/admin/[stor
         lang={lang}
         actions={{
           createStarter: createStarterAction.bind(null, slug),
+          createAll: createAllStartersAction.bind(null, slug),
           setRole: setLegalRoleAction.bind(null, slug),
           setTerms: setTermsModeAction.bind(null, slug),
           writeWithAi: writeWithAiAction.bind(null, slug),

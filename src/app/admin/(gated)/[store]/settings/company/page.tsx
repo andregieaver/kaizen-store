@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 
+import { FoldRow } from "@/components/admin/fold-row";
 import { ActionForm, SubmitButton } from "@/components/admin/action-form";
 import { AdminTextScope } from "@/components/admin/admin-text";
 import { AudienceFields } from "@/components/admin/audience-fields";
@@ -198,31 +199,6 @@ export default async function CompanyPage({ params }: PageProps<"/admin/[store]/
       </FoldOpenOnce>
     </div>
     </AdminTextScope>
-  );
-}
-
-/** One thing shoppers see, as a row with its words; Change (or Add) opens its form in place. Without an action the row only tells. */
-function FoldRow({ title, sub, action, children }: { title: string; sub: string; action: string | null; children: React.ReactNode }) {
-  const head = (
-    <span className="flex min-w-0 flex-col">
-      <span className="text-body text-ink">{title}</span>
-      <span className="text-caption text-ink-2">{sub}</span>
-    </span>
-  );
-  if (!action) return <li className="flex min-h-14 items-center py-3">{head}</li>;
-  return (
-    <li>
-      <details className="group">
-        <summary className="flex min-h-14 cursor-pointer list-none items-center justify-between gap-3 py-3 [&::-webkit-details-marker]:hidden">
-          {head}
-          <span className="shrink-0 text-sm font-medium text-ink underline underline-offset-2">
-            {action}
-            <span className="sr-only"> {title}</span>
-          </span>
-        </summary>
-        <div className="pb-5">{children}</div>
-      </details>
-    </li>
   );
 }
 

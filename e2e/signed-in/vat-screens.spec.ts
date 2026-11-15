@@ -75,6 +75,8 @@ test("an owner records the store's VAT registration, is refused a number that is
 
   // The tax screen: registered, with a Norwegian number, saved; a Swedish number is refused for a Norwegian store.
   await page.goto(`/admin/${STORE}/settings/tax`);
+  // Round 15 (D647): VAT registration is a row; Add opens its form in place.
+  await page.locator("summary", { hasText: "VAT registration" }).click();
   const vat = page.getByRole("region", { name: "VAT registration" });
   await vat.getByRole("checkbox", { name: /The store is registered for VAT/ }).check();
   await vat.getByLabel(/^VAT number/).fill("SE556677889901");

@@ -7,6 +7,21 @@ import type { TaxMessages } from "./tax.en";
  */
 export const taxNb: TaxMessages = {
   page: {
+    leadOff: "Prisene er inkl. mva.; butikken er ikke registrert for merverdiavgift.",
+    leadOn: "Prisene er inkl. mva.; butikken er registrert for merverdiavgift som {number}.",
+    leadOnNoNumber: "Prisene er inkl. mva.; butikken er registrert for merverdiavgift, men mangler nummer.",
+    leadRest: "Hvert salg belastes merverdiavgiften i landet varene går til. ",
+    rows: "Dine registreringer",
+    vatOff: "Ikke registrert · legg til mva-nummeret når virksomheten har et",
+    vatNoNumber: "Registrert · mva-nummeret mangler",
+    vatValid: "{number} · kontrollert gyldig",
+    vatNotValid: "{number} · ikke kontrollert gyldig ennå",
+    ossOff: "Ikke registrert",
+    ossOn: "{scheme} · {state}",
+    iossOff: "Bare for varer sendt fra utenfor EU · ikke satt opp",
+    iossOn: { one: "{number} · {n} marked", many: "{number} · {n} markeder" },
+    add: "Legg til",
+    change: "Endre",
     title: "Avgift",
     intro:
       "Prisene i butikken er inkl. mva., og hvert salg belastes merverdiavgiften i landet varene går til. Her registrerer butikken at den er registrert i Merverdiavgiftsregisteret, og eventuelt sin registrering i EUs OSS-ordning og EUs IOSS-ordning.",

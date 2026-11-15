@@ -7,6 +7,28 @@ import type { LegalMessages } from "./legal.en";
  */
 export const legalNb: LegalMessages = {
   pages: {
+    round: {
+      leadNoTerms: "Ingen av de juridiske sidene dine er valgt, så kassen viser ingen vilkår.",
+      leadNone: "Ingen av de juridiske sidene dine er valgt.",
+      leadSome: "{chosen} av dine {total} juridiske sider er valgt.",
+      leadAll: "Alle de juridiske sidene dine er valgt.",
+      leadRest: "Start fra utkast skrevet ut fra butikkens opplysninger; les og fyll dem inn før du publiserer.",
+      makeAll: { one: "Lag utkastet som mangler", many: "Lag alle {n} utkastene" },
+      makeAllText: "{names}, som utkast. Ingen advokat har kontrollert dem: les hver setning.",
+      makeAllButton: "Lag utkastene",
+      made: { one: "Ett utkast ble laget. Det er ikke publisert: åpne det under Sider, les det og fyll det inn.", many: "{n} utkast ble laget. De er ikke publisert: åpne hvert under Sider, les det og fyll det inn." },
+      missingLine: { one: "Én opplysning mangler i utkastene: {list}.", many: "{n} opplysninger mangler i utkastene: {list}." },
+      fillIn: "Fyll dem inn",
+      yours: "Dine juridiske sider",
+      noPage: "Ingen side ennå",
+      draftWaiting: "Et utkast venter: {title}",
+      choose: "Velg",
+      change: "Endre",
+      aiOff: "Av · den kan skrive og holde disse sidene ved like for deg",
+      aiCannot: "Ikke tilgjengelig for denne butikken",
+      atCheckout: "I kassen",
+      notNeededShort: "ikke nødvendig mens butikken er av",
+    },
     title: "Juridiske sider",
     description:
       "Tekstene en nettbutikk forventes å vise: salgsbetingelsene, hvordan den behandler personopplysninger, hvordan retur og levering fungerer, angreretten og hvem virksomheten er. Start fra et utkast, gjør det til ditt eget, publiser det og velg det her.",

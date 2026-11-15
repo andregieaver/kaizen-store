@@ -330,6 +330,8 @@ export const orderEn = {
       paymentFee: "Payment fee",
       platformFee: "Kaizena Flow's fee",
       shipping: "Sending",
+      handling: "Handling and packaging",
+      returnLabels: "Return labels",
       disputes: "Lost dispute",
     },
     estimatedMark: "estimated",
