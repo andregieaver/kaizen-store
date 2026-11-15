@@ -8214,7 +8214,7 @@ describe("a tick list at checkout (task 3)", () => {
       [store, label],
     );
     expect(sensitive).toBe(false);
-    await expect(db.query("update commerce.checkout_fields set kind = 'date' where id = $1", [id])).rejects.toThrow(/checkout_fields_kind/);
+    await expect(db.query("update commerce.checkout_fields set kind = 'time' where id = $1", [id])).rejects.toThrow(/checkout_fields_kind/);
     await db.query("delete from commerce.checkout_fields where id = $1", [id]);
   });
 });
