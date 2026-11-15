@@ -15,7 +15,9 @@ import { featureOn } from "@/lib/store-features";
 import { memberCan, requirePermission } from "@/server/permissions";
 import { getCompany, type StoreLocation } from "@/server/company";
 import { listCountries } from "@/server/stores";
-import { PageHeader } from "@/components/admin/ui";
+import { CARD_CLASS, PageHeader } from "@/components/admin/ui";
+import { countWords, fillWords } from "@/lib/admin-fill";
+import { ChevronDown } from "lucide-react";
 import type { SettingsMessages } from "@/lib/admin-messages/settings.en";
 
 import { saveAudienceAction, saveBusinessAction, saveOfficeAction } from "./actions";
@@ -47,122 +49,179 @@ export default async function CompanyPage({ params }: PageProps<"/admin/[store]/
   const all = adminText(lang, "settings");
   const w = all.company;
 
+  // What the law needs shown (D40): the legal name, the registered address and the country; the rest is the owner's choice.
+  const missing = (["legalName", "postalAddress", "country"] as const).filter((key) => !store.details[key]?.trim());
+  const businessForm = owner ? (
+    <ActionForm action={saveBusinessAction.bind(null, store.slug)} className="flex flex-col gap-4">
+      <BusinessDetailsFields name={store.name} details={store.details} countries={countries} fallbackEmail={member.account.email} w={adminText(lang, "setup").businessFields} />
+      <div>
+        <SubmitButton>{w.saveBusiness}</SubmitButton>
+      </div>
+    </ActionForm>
+  ) : (
+    <p className="text-sm text-muted">{w.onlyOwnerBusiness}</p>
+  );
+  const countryName = countries.find((c) => c.code === store.details.country)?.name ?? store.details.country;
+  const businessSummary = [store.details.legalName, store.details.organisationNumber, store.details.postalAddress?.replace(/\s*\n\s*/g, ", "), countryName]
+    .filter(Boolean)
+    .join(" · ");
+  const office = company.office;
+  const officeSummary = office
+    ? [`${office.street}, ${office.postalCode} ${office.city}`, office.hours ? weekSummary(office.hours.week, all.hours) : w.noHours].join(" · ")
+    : w.officeNone;
+
   return (
     <AdminTextScope texts={adminTexts(lang, ["settings"])}>
     <div className="flex flex-col gap-6">
-      <PageHeader title={w.title} description={<>{w.description}</>} />
-
-      <section aria-labelledby="business" className={card}>
-        <h2 id="business" className="mb-1 text-title text-ink">{w.business}</h2>
-        <p className="mb-4 text-sm text-muted">{w.businessText}</p>
-        {memberCan(member, "owner") ? (
-          <ActionForm action={saveBusinessAction.bind(null, store.slug)} className="flex flex-col gap-4">
-            <BusinessDetailsFields name={store.name} details={store.details} countries={countries} fallbackEmail={member.account.email} w={adminText(lang, "setup").businessFields} />
-            <div>
-              <SubmitButton>{w.saveBusiness}</SubmitButton>
-            </div>
-          </ActionForm>
-        ) : (
-          <p className="text-sm">
-            {store.details.legalName ?? store.name}
-            {store.details.organisationNumber && ` · ${store.details.organisationNumber}`}
-            <span className="block text-muted">{w.onlyOwnerBusiness}</span>
-          </p>
-        )}
-      </section>
-
-      <BusinessChangeSection
-        words={adminText(lang, "business")}
-        planned={planned}
-        applied={changes.filter((c) => c.status === "applied")}
-        checklist={facts ? businessChecklist(facts) : null}
-        legalPagesNamingOld={facts?.legalPagesNamingOld ?? 0}
-        series={series}
-        current={{ legalName: store.details.legalName || store.name, postalAddress: store.details.postalAddress || "" }}
-        links={{
-          bank: `/admin/account/work/s/${store.slug}/settings`,
-          payments: `/admin/${store.slug}/settings/payments`,
-          accounting: `/admin/${store.slug}/integrations`,
-          legal: `/admin/${store.slug}/settings/legal`,
-          plan: `/admin/${store.slug}/billing`,
-        }}
-        today={zonedDate(new Date().getTime(), store.timeZone)}
-        locale={ADMIN_LANG_FACTS[lang].locale}
-        actions={
-          owner
-            ? {
-                plan: planBusinessChangeAction.bind(null, store.slug),
-                cancel: cancelBusinessChangeAction.bind(null, store.slug),
-                tick: (step, done) => tickBusinessStepAction.bind(null, store.slug, step, done),
-              }
-            : null
-        }
+      <PageHeader
+        title={w.title}
+        meta={[
+          <span key="lead">
+            <span className="text-ink">{missing.length === 0 ? w.complete : countWords(missing.length, w.missing)}</span>
+            {missing.length === 0 ? w.completeRest : w.missingRest}
+          </span>,
+        ]}
       />
-      <section aria-labelledby="customers" className={card}>
-        <h2 id="customers" className="mb-1 text-title text-ink">{w.customers}</h2>
-        <p className="mb-4 text-sm text-muted">{w.customersText}</p>
-        {!featureOn(store, "business") ? (
-          // Sell to businesses is off (D178): the store sells to consumers, whatever was chosen here before (kept for when it is on again).
-          <FeatureOffNote storeSlug={store.slug} feature="business" owner={memberCan(member, "owner")} what={w.sellingToBusinesses} />
-        ) : memberCan(member, "owner") ? (
-          <ActionForm action={saveAudienceAction.bind(null, store.slug)} className="flex flex-col gap-4">
-            <AudienceFields audience={store.chosenAudience} businessPopup={store.businessPopup} />
-            <div>
-              <SubmitButton>{w.saveCustomers}</SubmitButton>
+
+      {missing.length > 0 && (
+        <section aria-labelledby="business" className={`${CARD_CLASS} px-6 py-5 ring-[1.5px] ring-warning-line`}>
+          <h2 id="business" className="mb-1 text-title text-ink">{w.fillIn}</h2>
+          <p className="mb-4 text-sm text-muted">{fillWords(w.missingList, { list: missing.map((key) => w.fields[key]).join(", ") })}</p>
+          {businessForm}
+        </section>
+      )}
+
+      <section aria-labelledby="seen" className={`${CARD_CLASS} px-6 py-3`}>
+        <h2 id="seen" className="mt-2 mb-1 text-title text-ink">{w.seen}</h2>
+        <ul className="divide-y divide-line">
+          <FoldRow
+            title={missing.length === 0 ? w.businessRow : w.contactRow}
+            sub={[missing.length === 0 ? businessSummary : store.name, store.details.contactEmail || member.account.email].filter(Boolean).join(" · ")}
+            action={missing.length === 0 ? w.change : null}
+          >
+            {businessForm}
+          </FoldRow>
+          <FoldRow title={w.office} sub={officeSummary} action={office ? w.change : w.add}>
+            <ActionForm action={saveOfficeAction.bind(null, store.slug)} className="flex flex-col gap-4">
+              <PlaceFields place={company.office} countries={countries} defaultCountry={homeCountry} what={w.theOffice} w={all} />
+              <div className="border-t border-line pt-4">
+                <h3 className="mb-3 text-body-strong text-ink">{w.officeHours}</h3>
+                <HoursEditor name="hours" initial={company.office?.hours ?? null} optional />
+              </div>
+              <div>
+                <SubmitButton>{w.saveOffice}</SubmitButton>
+              </div>
+            </ActionForm>
+          </FoldRow>
+          <li className="flex flex-col gap-2 py-3">
+            <div className="flex min-h-11 flex-wrap items-center justify-between gap-3">
+              <span className="flex flex-col">
+                <span className="text-body text-ink">{w.places}</span>
+                <span className="text-caption text-ink-2">{company.places.length === 0 ? w.placesNone : countWords(company.places.length, w.placesSome)}</span>
+              </span>
+              <span className="flex flex-wrap gap-2">
+                <Link href={`${base}/places/new?kind=shop`} className="inline-flex min-h-10 items-center rounded-pill border border-edge px-3 text-sm hover:bg-sunken">
+                  {w.addStore}
+                </Link>
+                <Link href={`${base}/places/new?kind=pickup`} className="inline-flex min-h-10 items-center rounded-pill border border-edge px-3 text-sm hover:bg-sunken">
+                  {w.addPickup}
+                </Link>
+              </span>
             </div>
-          </ActionForm>
-        ) : (
-          <p className="text-sm">
-            {w.audience.labels[store.audience]}
-            <span className="block text-muted">{w.onlyOwnerAudience}</span>
-          </p>
-        )}
+            {company.places.length > 0 && (
+              <ul className="divide-y divide-line">
+                {company.places.map((place) => (
+                  <PlaceRow key={place.id} place={place} href={`${base}/places/${place.id}`} w={all} />
+                ))}
+              </ul>
+            )}
+          </li>
+        </ul>
       </section>
 
-      <section aria-labelledby="office" className={card}>
-        <h2 id="office" className="mb-1 text-title text-ink">{w.office}</h2>
-        <p className="mb-4 text-sm text-muted">{w.officeText}</p>
-        <ActionForm action={saveOfficeAction.bind(null, store.slug)} className="flex flex-col gap-4">
-          <PlaceFields place={company.office} countries={countries} defaultCountry={homeCountry} what={w.theOffice} w={all} />
-          <div className="border-t border-line pt-4">
-            <h3 className="mb-3 text-body-strong text-ink">{w.officeHours}</h3>
-            <HoursEditor name="hours" initial={company.office?.hours ?? null} optional />
-          </div>
-          <div>
-            <SubmitButton>{w.saveOffice}</SubmitButton>
-          </div>
-        </ActionForm>
-      </section>
-
-      <section aria-labelledby="places" className={card}>
-        <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
-          <div>
-            <h2 id="places" className="text-title text-ink">{w.places}</h2>
-            <p className="text-sm text-muted">{w.placesText}</p>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            <Link href={`${base}/places/new?kind=shop`} className="min-h-10 rounded-pill border border-edge px-3 py-2 text-sm hover:bg-sunken">
-              {w.addStore}
-            </Link>
-            <Link href={`${base}/places/new?kind=pickup`} className="min-h-10 rounded-pill border border-edge px-3 py-2 text-sm hover:bg-sunken">
-              {w.addPickup}
-            </Link>
-          </div>
+      {/* Lisa's part (round 10, D633): selling to businesses and a change of business, one fold away; open while a change is planned. */}
+      <details open={planned !== null} className={`group ${CARD_CLASS}`}>
+        <summary className="flex min-h-12 cursor-pointer list-none items-center justify-between gap-3 px-6 py-3 text-body text-ink [&::-webkit-details-marker]:hidden">
+          {w.more}
+          <ChevronDown aria-hidden className="size-4 transition-transform group-open:rotate-180" />
+        </summary>
+        <div className="flex flex-col gap-6 px-6 pb-6">
+          <BusinessChangeSection
+            words={adminText(lang, "business")}
+            planned={planned}
+            applied={changes.filter((c) => c.status === "applied")}
+            checklist={facts ? businessChecklist(facts) : null}
+            legalPagesNamingOld={facts?.legalPagesNamingOld ?? 0}
+            series={series}
+            current={{ legalName: store.details.legalName || store.name, postalAddress: store.details.postalAddress || "" }}
+            links={{
+              bank: `/admin/account/work/s/${store.slug}/settings`,
+              payments: `/admin/${store.slug}/settings/payments`,
+              accounting: `/admin/${store.slug}/integrations`,
+              legal: `/admin/${store.slug}/settings/legal`,
+              plan: `/admin/${store.slug}/billing`,
+            }}
+            today={zonedDate(new Date().getTime(), store.timeZone)}
+            locale={ADMIN_LANG_FACTS[lang].locale}
+            actions={
+              owner
+                ? {
+                    plan: planBusinessChangeAction.bind(null, store.slug),
+                    cancel: cancelBusinessChangeAction.bind(null, store.slug),
+                    tick: (step, done) => tickBusinessStepAction.bind(null, store.slug, step, done),
+                  }
+                : null
+            }
+          />
+          <section aria-labelledby="customers" className={card}>
+            <h2 id="customers" className="mb-1 text-title text-ink">{w.customers}</h2>
+            <p className="mb-4 text-sm text-muted">{w.customersText}</p>
+            {!featureOn(store, "business") ? (
+              // Sell to businesses is off (D178): the store sells to consumers, whatever was chosen here before (kept for when it is on again).
+              <FeatureOffNote storeSlug={store.slug} feature="business" owner={owner} what={w.sellingToBusinesses} />
+            ) : owner ? (
+              <ActionForm action={saveAudienceAction.bind(null, store.slug)} className="flex flex-col gap-4">
+                <AudienceFields audience={store.chosenAudience} businessPopup={store.businessPopup} />
+                <div>
+                  <SubmitButton>{w.saveCustomers}</SubmitButton>
+                </div>
+              </ActionForm>
+            ) : (
+              <p className="text-sm">
+                {w.audience.labels[store.audience]}
+                <span className="block text-muted">{w.onlyOwnerAudience}</span>
+              </p>
+            )}
+          </section>
         </div>
-        {company.places.length === 0 ? (
-          <p className="rounded-md border border-dashed border-line p-6 text-center text-sm text-muted">
-            {w.noPlaces}
-          </p>
-        ) : (
-          <ul className="divide-y divide-line">
-            {company.places.map((place) => (
-              <PlaceRow key={place.id} place={place} href={`${base}/places/${place.id}`} w={all} />
-            ))}
-          </ul>
-        )}
-      </section>
+      </details>
     </div>
     </AdminTextScope>
+  );
+}
+
+/** One thing shoppers see, as a row with its words; Change (or Add) opens its form in place. Without an action the row only tells. */
+function FoldRow({ title, sub, action, children }: { title: string; sub: string; action: string | null; children: React.ReactNode }) {
+  const head = (
+    <span className="flex min-w-0 flex-col">
+      <span className="text-body text-ink">{title}</span>
+      <span className="text-caption text-ink-2">{sub}</span>
+    </span>
+  );
+  if (!action) return <li className="flex min-h-14 items-center py-3">{head}</li>;
+  return (
+    <li>
+      <details className="group">
+        <summary className="flex min-h-14 cursor-pointer list-none items-center justify-between gap-3 py-3 [&::-webkit-details-marker]:hidden">
+          {head}
+          <span className="shrink-0 text-sm font-medium text-ink underline underline-offset-2">
+            {action}
+            <span className="sr-only"> {title}</span>
+          </span>
+        </summary>
+        <div className="pb-5">{children}</div>
+      </details>
+    </li>
   );
 }
 

@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 
 import { requireFeature } from "@/components/admin/feature-off";
 import { AdminTextScope } from "@/components/admin/admin-text";
@@ -8,6 +7,7 @@ import { countWords, fillWords } from "@/lib/admin-fill";
 import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
 import { adminText, adminTexts } from "@/lib/admin-text";
 import { campaignStatus, describeCampaign } from "@/lib/campaigns";
+import { SALE_KEYS } from "@/lib/campaign-offers";
 import { mainCurrency } from "@/lib/markets";
 import { formatMoney } from "@/lib/money";
 import { requirePermission } from "@/server/permissions";
@@ -36,19 +36,29 @@ export default async function CampaignsPage({ params }: PageProps<"/admin/[store
   const money = (minor: number, marketCode: string) => formatMoney(minor, currencyOf(marketCode), locale);
   const when = new Intl.DateTimeFormat(locale, { dateStyle: "medium", timeStyle: "short", timeZone: "Europe/Oslo" });
   const base = `/admin/${store.slug}/campaigns`;
+  const running = campaigns.filter((c) => campaignStatus(c) === "active").length;
+  // Whole amounts in the main currency, as a person says them ("800 kr"), for the ready sales.
+  const big = (major: number) =>
+    new Intl.NumberFormat(locale, { style: "currency", currency: mainCurrency(store), maximumFractionDigits: 0, currencyDisplay: "narrowSymbol" }).format(major);
 
   return (
     <AdminTextScope texts={adminTexts(lang, ["discounts"])}>
     <div className="flex flex-col gap-6">
-      <div className="flex flex-wrap items-end justify-between gap-3">
-        <PageHeader title={w.title} description={w.description} />
-        <Link href={`${base}/new`} className="min-h-10 rounded-pill bg-brand px-4 py-2 text-sm font-medium text-brand-ink">
-          {w.newCampaign}
-        </Link>
-      </div>
-      {campaigns.length === 0 ? (
-        <p className={`p-8 text-center text-sm text-muted ${CARD_CLASS}`}>{w.empty}</p>
-      ) : (
+      <PageHeader
+        title={w.title}
+        meta={[
+          <span key="lead">
+            <span className="text-ink">{running === 0 ? w.leadNone : countWords(running, w.leadSome)}</span>
+            {w.leadRest}
+          </span>,
+        ]}
+        actions={
+          <ButtonLink kind="secondary" href={`${base}/new`}>
+            {w.writeOwn}
+          </ButtonLink>
+        }
+      />
+      {campaigns.length > 0 && (
         <Card compact>
           <List label={w.title}>
             {campaigns.map((c) => {
@@ -126,6 +136,33 @@ export default async function CampaignsPage({ params }: PageProps<"/admin/[store
           </List>
         </Card>
       )}
+      <section aria-labelledby="ready-sales" className="flex flex-col gap-3">
+        <h2 id="ready-sales" className="text-title text-ink">
+          {w.salesTitle}
+        </h2>
+        <ul className="grid grid-cols-[repeat(auto-fill,minmax(min(16rem,100%),1fr))] gap-3">
+          {SALE_KEYS.map((key, i) => {
+            const words = w.sales[key];
+            const fill = { amount: big(key === "gift" ? 1000 : 800), zero: big(0) };
+            return (
+              <li key={key} className={`flex flex-col gap-2 p-5 ${CARD_CLASS}`}>
+                <span aria-hidden className="text-2xl tracking-tight text-ink">{fillWords(words.big, fill)}</span>
+                <span className="text-body text-ink">{fillWords(words.title, fill)}</span>
+                <span className="text-caption text-ink-2">{fillWords(words.sub, fill)}</span>
+                <ButtonLink
+                  href={`${base}/new?sale=${key}`}
+                  kind={i === 0 && running === 0 ? "main" : "secondary"}
+                  size="dense"
+                  className="mt-auto self-start"
+                >
+                  {w.makeIt}
+                  <span className="sr-only"> {fillWords(words.title, fill)}</span>
+                </ButtonLink>
+              </li>
+            );
+          })}
+        </ul>
+      </section>
     </div>
     </AdminTextScope>
   );

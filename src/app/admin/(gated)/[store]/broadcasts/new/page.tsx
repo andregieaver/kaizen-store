@@ -7,7 +7,7 @@ import { Card, PageHeader } from "@/components/admin/ui";
 import { adminLangOf } from "@/lib/admin-lang";
 import { adminText, adminTexts } from "@/lib/admin-text";
 import { BROADCAST_TEMPLATE_KEYS } from "@/lib/broadcast-templates";
-import { listOwnTemplates, startingContent } from "@/server/broadcast-templates";
+import { listOwnTemplates, startingBroadcast } from "@/server/broadcast-templates";
 import { memberCan, requirePermission } from "@/server/permissions";
 import { uploadsEnabled } from "@/server/media";
 
@@ -36,7 +36,7 @@ export default async function NewBroadcastPage({ params, searchParams }: PagePro
   const [choices, own, content] = await Promise.all([
     broadcastChoices(store, lang),
     listOwnTemplates(store.id),
-    startingContent(store.id, store.localization.keptLocales, choice),
+    startingBroadcast(store, store.localization.keptLocales, choice),
   ]);
   // Start from (D368): the hand-written templates and the store's own; the editor opens with the one chosen, unsaved.
   const link = (key: string | null, label: string) => (

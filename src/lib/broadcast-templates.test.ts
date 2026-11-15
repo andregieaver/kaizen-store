@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { BROADCAST_TEMPLATE_KEYS, BROADCAST_TEMPLATES, isBroadcastTemplateKey, templateContent } from "./broadcast-templates";
+import { BROADCAST_TEMPLATE_KEYS, BROADCAST_TEMPLATES, isBroadcastTemplateKey, templateContent, withProducts } from "./broadcast-templates";
 import { broadcastContentSchema, sendProblems } from "./broadcasts";
 import { findClaims } from "./claims";
 
@@ -23,5 +23,20 @@ describe("broadcast templates", () => {
   it("knows its keys", () => {
     expect(BROADCAST_TEMPLATE_KEYS.every(isBroadcastTemplateKey)).toBe(true);
     expect([isBroadcastTemplateKey("x"), isBroadcastTemplateKey(1)]).toEqual([false, false]);
+  });
+});
+
+describe("withProducts", () => {
+  it("puts the products before the button in every language", () => {
+    const content = templateContent("new_products", ["nb-NO", "en"]);
+    const out = withProducts(content, [{ id: "00000000-0000-4000-8000-000000000001", handle: "lamp", title: "Lamp" }]);
+    for (const locale of ["nb-NO", "en"]) {
+      const types = out[locale]!.blocks.map((b) => b.type);
+      expect(types.indexOf("product")).toBe(types.indexOf("button") - 1);
+    }
+  });
+  it("leaves the words alone without products", () => {
+    const content = templateContent("new_products", ["en"]);
+    expect(withProducts(content, [])).toBe(content);
   });
 });

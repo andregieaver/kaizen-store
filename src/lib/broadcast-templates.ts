@@ -211,3 +211,19 @@ export function templateContent(key: BroadcastTemplateKey, locales: readonly str
 
 /** At most this many templates of its own a store keeps. */
 export const OWN_TEMPLATES_MAX = 50;
+
+/**
+ * The store's newest products put into a template's words (round 10, D633), after the words and before the button, in every language:
+ * "New in the shop" then starts with the products themselves, their pictures and prices drawn per recipient when the email is made.
+ */
+export function withProducts(content: BroadcastContent, products: readonly { id: string; handle: string; title: string }[]): BroadcastContent {
+  if (products.length === 0) return content;
+  const blocks = products.map((p) => ({ type: "product" as const, product: p.id, handle: p.handle, label: p.title.slice(0, 200) }));
+  return Object.fromEntries(
+    Object.entries(content).map(([locale, c]) => {
+      const button = c.blocks.findIndex((b) => b.type === "button");
+      const at = button < 0 ? c.blocks.length : button;
+      return [locale, { ...c, blocks: [...c.blocks.slice(0, at), ...blocks, ...c.blocks.slice(at)] }];
+    }),
+  );
+}

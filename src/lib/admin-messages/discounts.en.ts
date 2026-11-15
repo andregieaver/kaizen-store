@@ -139,6 +139,19 @@ export const discountsEn = {
     description:
       "Offers that need no code: a percentage or an amount off, buy more and pay for fewer (3 for 2), bigger discounts for buying more, free shipping, or a free product when the basket comes to an amount. They can be for the whole store, some products, or a category or tag, and start and stop by themselves.",
     newCampaign: "New campaign",
+    /** The page drawn for Homer (round 10, D633): a sentence, ready sales and Write your own. */
+    leadNone: "No sale is running.",
+    leadSome: { one: "{n} sale is running.", many: "{n} sales are running." },
+    leadRest: " Prices change by themselves, without a code; start from a sale most shops run.",
+    writeOwn: "Write your own",
+    salesTitle: "Ready sales",
+    makeIt: "Make it",
+    sales: {
+      three_for_two: { big: "3 for 2", title: "The cheapest of every three is free", sub: "On a category you choose, until you stop it.", name: "3 for 2" },
+      weekend: { big: "−20 %", title: "A weekend sale", sub: "On everything, Friday to Sunday night.", name: "Weekend sale" },
+      free_shipping: { big: "{zero}", title: "Free shipping over {amount}", sub: "Makes baskets a little bigger.", name: "Free shipping over {amount}" },
+      gift: { big: "+ gift", title: "A free product over {amount}", sub: "You choose the product; it goes in the basket by itself.", name: "A gift over {amount}" },
+    },
     empty: "No campaigns yet. Try 3 for 2 on a category, or a free product above a basket amount.",
     kinds: {
       percent: "Percentage off",

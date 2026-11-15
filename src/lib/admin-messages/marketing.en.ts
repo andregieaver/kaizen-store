@@ -253,6 +253,20 @@ export const marketingEn = {
     description:
       "Emails with news and offers to the people who asked for them: everyone on your list, or a segment. Each person gets it once, with a way to unsubscribe.",
     newBroadcast: "New broadcast",
+    /** The page drawn for Homer (round 10, D633): how many can get an email, and three emails to start from. */
+    leadSome: { one: "{n} person can get your emails.", many: "{n} people can get your emails." },
+    leadRest: " Start from one of these; you send a test to yourself before anyone else.",
+    leadNone: "Nobody is on your list yet.",
+    leadNoneRest: " People join with the sign-up at checkout and in your footer; you can write the first email meanwhile.",
+    whoIsOn: "Who is on the list",
+    writeOwn: "Write your own",
+    startsTitle: "Emails to start from",
+    startFromThis: "Start from this",
+    starts: {
+      new_products: { title: "New in the shop", sub: "Your three newest products, with their pictures and prices from the shop." },
+      offer: { title: "An offer for the list", sub: "Say what the offer is; add a running campaign and its terms and end come from the shop." },
+      thanks: { title: "A thank-you", sub: "A short note to the people who shop with you." },
+    },
     empty: "No broadcasts yet. Write one and send a test to yourself first.",
     list: "Broadcasts",
     segment: "Segment: {name}",
