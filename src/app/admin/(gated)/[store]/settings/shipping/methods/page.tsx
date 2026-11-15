@@ -60,15 +60,18 @@ export default async function ShippingMethodsPage({ params, searchParams }: Page
       {market && (
         <>
           <MarketTabs href={(code) => `${base}/methods?market=${code}`} markets={store.markets} current={market.code} label={all.countries} />
-          <MethodsListView
-            base={base}
-            market={{ code: market.code, name: market.name, currency: market.nativeCurrency }}
-            methods={methods}
-            canWrite={canWrite}
-            words={all.methods}
-            locale={locale}
-            move={(id, direction) => moveShippingAction.bind(null, store.slug, "methods", market.code, id, direction)}
-          />
+          {/* Empty, the sentence and the ways below say it all (round 11, D634); the list and its order come with the first method. */}
+          {methods.length > 0 && (
+            <MethodsListView
+              base={base}
+              market={{ code: market.code, name: market.name, currency: market.nativeCurrency }}
+              methods={methods}
+              canWrite={canWrite}
+              words={all.methods}
+              locale={locale}
+              move={(id, direction) => moveShippingAction.bind(null, store.slug, "methods", market.code, id, direction)}
+            />
+          )}
           {/* Ways most shops offer (round 11, D634): each opens Add a method filled in; collecting from you is the store's own pickup. */}
           {canWrite && (
             <section aria-labelledby="ways" className="flex flex-col gap-3">
