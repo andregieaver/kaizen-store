@@ -50,11 +50,24 @@ CLAUDE.md keeps one line per rule pointing here; each rule is under that line as
   `commerce.ai_usage`): every model call in `src/server/ai.ts` goes through
   `metered()`, which records it for the store its connection was made for:
   get connections with `aiFor(storeId, { feature, accountId })` and name what
-  the call is for (`AI_FEATURES`; a new feature is added there). A new kind of
+  the call is for (`AI_FEATURES`; a new feature is added there). A screen that only shows or hides an AI button, and calls no model,
+  asks `aiAbilities(storeId)` instead (flags, two model names and a number, kept 60 seconds per instance, never a key; forgotten on a
+  save of AI settings), and those settings refresh only their own site's tag (`aiTag(storeId)`, bloat review step 0.21). A new kind of
   call is wrapped in `metered()` with the provider's own token figures
   (`tokensOrEstimate()`). Reports: `/admin/platform/ai/usage` and
   `/admin/account/usage` (`UsageReport`); sums are worked out in
   `src/lib/ai-usage.ts`. Cost (D145, `src/lib/ai-cost.ts`, `src/server/ai-prices.ts`, `commerce.ai_model_prices`, `/admin/platform/ai/prices`): prices per model are data the platform's admin keeps, a call is priced by the price in force when it was made (`priceFor`, `costMicrosSql`, `unpricedSql` in `src/server/ai-price-sql.ts`, the one place SQL reads a price; `matchPrice()` and `callCost()` in code). D146: pictures, speech and live calls are priced too (`per_image`, `per_audio_minute`, `per_million_characters`, null = no price); a new kind of use gets its own unit price there, never a new SQL copy. Any new page that shows tokens or other usage shows `costWords()` beside it, and a model with no price shows as such ("No price", a "+" on totals), never as free. Never a price in code. The two assistant action files load `@/server/owner-assistant` with `import()` inside each action, after the permission check; they never import it at the top (bloat review step 0.5).
+
+  Public paths to a model (bloat review step 0.21, `src/server/public-model-paths.scan.test.ts`): code a visitor can make run (a page,
+  route, layout or server action under `src/app` outside the admin and the cron routes) calls a model only under a ceiling. The scan
+  walks imports (and `import()`) from every such entry and keeps one row per module that calls a model (`completeText`, `chatWithTools`,
+  `streamWithTools`, `embedTexts`, the picture, speech and test calls of `src/server/ai.ts`) and that an entry reaches: its `ceiling` in
+  words (a budget and its numbers, a monthly cap, signed-in owners only, a cron only) and the function that enforces it, found by text.
+  A new model call reachable from a public entry fails the scan until its row is written; a row no entry reaches any more fails too. A
+  search a visitor makes asks the model only on a search-cache miss and under `searchAiRoom()` (`src/server/search-budget.ts`); the
+  chat under `takeChatTurn()`; the docs' search and guide under `docs_search` and `docs_guide`, which refuse when the count fails. A
+  module reached only through a hub by import but never run for a visitor says so in its row and names its guard; a path a visitor can
+  reach with no ceiling is written `NONE (finding)`, never with an invented one.
 
 - **A turn and its page (PSI AGT-03, AGT-13)**: `assistantTurn()` runs the turn under `after()` with its own abort controller, so a page
   that closes or loses its connection does not stop it: it finishes, is kept, and shows when the conversation is opened again. Stop is
