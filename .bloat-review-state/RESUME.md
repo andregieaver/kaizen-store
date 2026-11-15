@@ -157,3 +157,5 @@ challenged by a skeptic, planned by a planner. Its last lines hold the arguments
 - My 0.20 commit 1 broke e2e/theme-store:118,:146 (neighbours from shared cache miss newly published themes). Reverted in d2dcb5db (pushed from kz-fix). CI wait b1y57x2n0. Step 0.20 not yet deployed; write-up after deploy.
 - 15 Nov: container restarted. Postgres restarted. 0.21 commits 1-3 rebased onto d2dcb5db (59c99846, e438b14d, 8a8dcd56); commit 4 WIP kept in tree (search-budget.ts etc.; chat-agent only passes visitor, no prompt change). New Opus executor a9a91a8a9b1437ae0 from $S/run/executor-0.21b.md.
 - Prod still on 4aceeee (eval recording blocks the D613 migration deploy). Step 0.20 write-up waits for its deploy.
+- Step 0.21 commits 1-4 + my fix pushed as 60fee47e (59c99846, e438b14d, 8a8dcd56, 452266da, cd3676b1 notes, 60fee47e fix: month's AI cost counts live any day the usage job did not measure for all stores; new int case fails without it). CI wait bdymkf6uk. Prod still blocked on the eval (other session).
+- Commit 5 executor (Opus a7d73ebef531de4cc) from $S/run/executor-0.21c.md: table keyed by model-calling module (about 23), not 137 entries.
