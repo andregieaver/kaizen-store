@@ -4,10 +4,12 @@ import { sql } from "drizzle-orm";
 import { z } from "zod";
 
 import { db } from "@/db/client";
-import { isBroadcastTemplateKey, OWN_TEMPLATES_MAX, templateContent } from "@/lib/broadcast-templates";
+import { isBroadcastTemplateKey, OWN_TEMPLATES_MAX, templateContent, withProducts } from "@/lib/broadcast-templates";
 import { broadcastContentSchema, type BroadcastContent } from "@/lib/broadcasts";
 
 import { audit } from "./auth";
+import { listGridProducts } from "./catalog";
+import type { Store } from "./stores";
 import { getBroadcast } from "./broadcasts";
 import { emailPictureProblem } from "./marketing-email";
 import { col, typedRows } from "./typed-rows";
@@ -76,4 +78,18 @@ export async function startingContent(storeId: string, locales: readonly string[
   if (!parsed.success) return {};
   const kept = new Set(locales);
   return Object.fromEntries(Object.entries(parsed.data).filter(([locale]) => kept.has(locale)));
+}
+
+/** The store's three newest products in its main market, for "New in the shop" (round 10, D633); none when it has no market. */
+export async function newestProducts(store: Pick<Store, "id" | "markets">): Promise<{ id: string; handle: string; title: string }[]> {
+  const market = store.markets[0];
+  if (!market) return [];
+  const products = await listGridProducts(store.id, market, { categoryIds: [], tagIds: [], sort: "newest", limit: 3 });
+  return products.map((p) => ({ id: p.id, handle: p.handle, title: p.title }));
+}
+
+/** Where a new broadcast starts: a template or an own one, and for new products the newest three already in it. */
+export async function startingBroadcast(store: Pick<Store, "id" | "markets">, locales: readonly string[], choice: string | null): Promise<BroadcastContent> {
+  const content = await startingContent(store.id, locales, choice);
+  return choice === "new_products" ? withProducts(content, await newestProducts(store)) : content;
 }

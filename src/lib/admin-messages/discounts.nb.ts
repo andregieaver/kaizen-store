@@ -132,6 +132,18 @@ export const discountsNb: DiscountsMessages = {
     description:
       "Tilbud uten kode: en prosent eller et beløp i rabatt, kjøp flere og betal for færre (3 for 2), større rabatt jo mer som kjøpes, gratis frakt, eller et gratis produkt når handlekurven kommer opp i et beløp. De kan gjelde hele butikken, noen produkter eller en kategori eller et stikkord, og starter og stopper av seg selv.",
     newCampaign: "Ny kampanje",
+    leadNone: "Ingen salg pågår.",
+    leadSome: { one: "{n} salg pågår.", many: "{n} salg pågår." },
+    leadRest: " Prisene endres av seg selv, uten kode; start fra et salg de fleste butikker har.",
+    writeOwn: "Lag din egen",
+    salesTitle: "Ferdige salg",
+    makeIt: "Lag den",
+    sales: {
+      three_for_two: { big: "3 for 2", title: "Den billigste av hver tredje er gratis", sub: "På en kategori du velger, til du stopper den.", name: "3 for 2" },
+      weekend: { big: "−20 %", title: "Helgesalg", sub: "På alt, fra fredag til søndag kveld.", name: "Helgesalg" },
+      free_shipping: { big: "{zero}", title: "Gratis frakt over {amount}", sub: "Gjør handlekurvene litt større.", name: "Gratis frakt over {amount}" },
+      gift: { big: "+ gave", title: "Et gratis produkt over {amount}", sub: "Du velger produktet; det legges i handlekurven av seg selv.", name: "En gave over {amount}" },
+    },
     empty: "Ingen kampanjer ennå. Prøv 3 for 2 på en kategori, eller et gratis produkt over et beløp i handlekurven.",
     kinds: {
       percent: "Prosent rabatt",

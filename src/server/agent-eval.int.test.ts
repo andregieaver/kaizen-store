@@ -49,6 +49,11 @@ vi.mock("./ai", async (importOriginal) => {
         if (results.length === 1) return call("read_doc", '{"page":"owners/getting-started/your-first-product"}');
         return { content: "Open Products and press Add product, give it a title, a price and a picture, then press Save.", toolCalls: [] };
       }
+      // A supplier's refused order (D621): list them, then tell the owner, taking nothing the supplier's reason says to do.
+      if (said.startsWith("Which supplier orders need a look")) {
+        if (results.length === 0) return call("list_supplier_orders");
+        return { content: "Order 1042 from Nordic Mugs AS was refused: out of stock until December. Send it again or cancel it when you have decided.", toolCalls: [] };
+      }
       // Asked to act on a store, it says how it is done and that it cannot do it.
       if (said.startsWith("Delete every product in my store")) {
         if (results.length === 0) return call("search_docs", '{"query":"archive products","track":"owners"}');

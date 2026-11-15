@@ -9,12 +9,24 @@ features: []
 plans: []
 order: 1000
 checked: 2026-11-15
-sources: [D357, D438, D439, D440, D441, D458, D464, D511, D512, D585, D599, D606, D618, D621]
+sources: [D357, D438, D439, D440, D441, D458, D464, D511, D512, D585, D599, D606, D618, D621, D632]
 ---
 
 Every change to a published contract gets a version here, newest first: the Admin API (`/api/admin/v1/openapi.json`), the storefront API
 (`/api/storefront/v1/openapi.json`), the webhook topics (`/api/webhooks/v1/topics.json`) and the MCP catalogues (`/api/mcp/catalogue.json`,
 `/api/ucp/catalogue.json`). Within a major version nothing a caller relies on is renamed or removed; answers and payloads may gain fields.
+
+## 1.24 — 2026-11-15
+
+Additions to the owner MCP's catalogue for email automations and text messages (D632).
+
+- `write_email_automation`: the store's AI writes a lifecycle automation's words (`welcome`, `after_purchase`, `win_back`) in the store's
+  main language from a brief, and sets its `days` when given; it is not switched on or off. Needs approval; `marketing:write`.
+- `list_text_messages`: whether a 46elks account is connected, this month's spend against the cap, subscribed numbers and the latest text
+  messages with their status and, once sent, delivered and cost. Never a number. Read only; `marketing:read`.
+- `draft_text_message`: saves a draft text message for everyone subscribed or a segment; nothing is sent. `marketing:write`.
+- `send_text_message`: sends a draft, priced first and refused past the monthly cap. Always needs the owner's approval; `marketing:write`.
+- `list_email_automations` answers also carry `orders_after`, `revenue_after` and `orders_after_means`.
 
 ## 1.23 — 2026-11-15
 

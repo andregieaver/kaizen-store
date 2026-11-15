@@ -20,7 +20,8 @@ describe("the tools a turn sends", () => {
   it("keeps every offered store tool and the manager's own under the limit providers take", () => {
     const choice = chooseTools(ALL, ALWAYS, {});
     expect(choice.names.length + ALWAYS).toBeLessThanOrEqual(TOOLS_PER_TURN);
-    expect(TOOLS_PER_TURN).toBeLessThan(128);
+    // The providers take at most 128 ("an array with maximum length 128"); every tool a caller adds is in `always` (D632).
+    expect(TOOLS_PER_TURN).toBeLessThanOrEqual(128);
     for (const name of CORE_TOOLS) expect(choice.names).toContain(name);
     const held = Object.values(choice.heldBack).reduce((n, h) => n + h!.held, 0);
     expect(choice.names.length + held).toBe(ALL.length);

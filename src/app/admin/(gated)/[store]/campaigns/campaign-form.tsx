@@ -10,6 +10,7 @@ import { listTerms } from "@/server/taxonomy";
 import type { Store } from "@/server/stores";
 
 import { saveCampaignAction } from "./actions";
+import { nextWeekend, SALES, type SaleKey } from "@/lib/campaign-offers";
 
 /** A new tiered campaign's steps, to change: 10 % from 2 items, 15 % from 4. */
 const NEW_TIERS: CampaignDraft["tiers"] = [
@@ -33,7 +34,18 @@ function osloLocal(iso: string | null): string {
 }
 
 /** The editor for a new campaign or an existing one, with the store's markets, products, categories and tags. */
-export async function CampaignForm({ store, campaign, orders = 0 }: { store: Store; campaign: Campaign | null; orders?: number }) {
+export async function CampaignForm({
+  store,
+  campaign,
+  orders = 0,
+  sale,
+}: {
+  store: Store;
+  campaign: Campaign | null;
+  orders?: number;
+  /** A ready sale from the Campaigns page (round 10, D633) and the name it is given, filling in a new campaign. */
+  sale?: { key: SaleKey; name: string } | null;
+}) {
   const locale = store.markets[0]?.locale ?? "nb-NO";
   const [products, terms, gifts, tiers, segments] = await Promise.all([
     listProductChoices(store.id, locale),
@@ -128,6 +140,7 @@ export async function CampaignForm({ store, campaign, orders = 0 }: { store: Sto
         startsAt: "",
         endsAt: "",
         active: true,
+        ...(sale ? saleDraft(sale, store) : {}),
       };
   return (
     <CampaignEditor
@@ -143,4 +156,22 @@ export async function CampaignForm({ store, campaign, orders = 0 }: { store: Sto
       back={`/admin/${store.slug}/campaigns`}
     />
   );
+}
+
+/** What a ready sale fills in: thresholds in the main currency's markets only, the products and the gift left for the owner. */
+function saleDraft(sale: { key: SaleKey; name: string }, store: Store): Partial<CampaignDraft> {
+  const shape = SALES[sale.key];
+  const main = mainCurrency(store);
+  return {
+    name: sale.name,
+    kind: shape.kind,
+    ...(shape.percent !== undefined && { percent: String(shape.percent) }),
+    ...(shape.thresholdMajor !== undefined && {
+      thresholds: Object.fromEntries(
+        store.markets.filter((m) => m.currency === main).map((m) => [m.code, formatPriceInput(shape.thresholdMajor! * 100, main)]),
+      ),
+    }),
+    ...(shape.some && { scope: "some" as const }),
+    ...(shape.weekend && nextWeekend()),
+  };
 }

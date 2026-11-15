@@ -37,6 +37,12 @@ import {
   preflightSendBroadcast,
   sendBroadcastTool,
   switchAutomationTool,
+  writeAutomationTool,
+  listTextMessagesTool,
+  draftTextMessageTool,
+  sendTextMessageTool,
+  preflightWriteAutomation,
+  preflightSendTextMessage,
   tagCustomerTool,
 } from "./marketing-tools";
 import { OwnerToolError } from "./owner-tool-error";
@@ -2282,6 +2288,9 @@ export async function preflightOwnerTool(ctx: OwnerToolContext, name: string, ra
     set_ad_budget: preflightSetAdBudget,
     // A purchase the wallet could not make a card for (not connected, paused, no limit, over it) is refused now (D599).
     request_purchase: preflightRequestPurchase,
+    // An automation's days outside its range, and a text message that reaches no one or passes the cap (D4).
+    write_email_automation: preflightWriteAutomation,
+    send_text_message: preflightSendTextMessage,
   };
   if (name in TEAM_AND_PLAN) {
     const input = readToolInput(OWNER_TOOLS_BY_NAME[name], raw);
@@ -2561,6 +2570,10 @@ const handlersOf = (): Record<OwnerToolName, Handler> => (handlers ??= {
   tag_customer: tagCustomerTool,
   list_email_automations: listAutomationsTool,
   switch_email_automation: switchAutomationTool,
+  write_email_automation: writeAutomationTool,
+  list_text_messages: listTextMessagesTool,
+  draft_text_message: draftTextMessageTool,
+  send_text_message: sendTextMessageTool,
   usage_and_limits: usageAndLimitsTool,
   list_domains: listDomainsTool,
   check_domain: checkDomainTool,

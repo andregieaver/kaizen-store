@@ -246,6 +246,19 @@ export const marketingNb: MarketingMessages = {
     description:
       "E-poster med nyheter og tilbud til dem som har bedt om dem: alle på listen din, eller et segment. Hver person får det én gang, med en måte å melde seg av på.",
     newBroadcast: "Nytt nyhetsbrev",
+    leadSome: { one: "{n} person kan få e-postene dine.", many: "{n} personer kan få e-postene dine." },
+    leadRest: " Start fra en av disse; du sender en test til deg selv før noen andre får den.",
+    leadNone: "Ingen står på listen din ennå.",
+    leadNoneRest: " Folk melder seg på i kassen og i bunnteksten; du kan skrive den første e-posten i mellomtiden.",
+    whoIsOn: "Hvem som står på listen",
+    writeOwn: "Lag din egen",
+    startsTitle: "E-poster å starte fra",
+    startFromThis: "Start fra denne",
+    starts: {
+      new_products: { title: "Nytt i butikken", sub: "De tre nyeste produktene dine, med bilder og priser fra butikken." },
+      offer: { title: "Et tilbud til listen", sub: "Si hva tilbudet er; legg til en kampanje som pågår, så kommer vilkårene og slutten fra butikken." },
+      thanks: { title: "En takk", sub: "En kort hilsen til dem som handler hos deg." },
+    },
     empty: "Ingen nyhetsbrev ennå. Skriv et, og send en test til deg selv først.",
     list: "Nyhetsbrev",
     segment: "Segment: {name}",
@@ -497,6 +510,7 @@ export const marketingNb: MarketingMessages = {
     description:
       "E-poster som går av seg selv til dem som vil ha e-postene dine, én gang hver. Å slå én på skriver aldri til noen om det som skjedde før.",
     sentLately: "Sendt {n} de siste 30 dagene.",
+    ordersAfter: { one: "Deretter {n} bestilling innen en uke, {amount}.", many: "Deretter {n} bestillinger innen en uke, {amount}." },
     edit: "Rediger",
     setUp: "Sett den opp",
     needsShop: "Den trenger nettbutikken, som er slått av.",

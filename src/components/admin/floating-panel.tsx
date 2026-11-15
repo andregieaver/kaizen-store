@@ -23,6 +23,10 @@ export function FloatingPanel(props: {
   children: ReactNode;
   footer?: ReactNode;
   wide?: boolean;
+  /** Above the title: where the part is (D631), each step opening its settings. */
+  trail?: ReactNode;
+  /** Beside Close: the part's menu of actions (D631). */
+  actions?: ReactNode;
 }) {
   // Made when it opens, so its place is worked out from the window as it is then, never on the server.
   return props.open ? <PlacedPanel {...props} /> : null;
@@ -34,6 +38,8 @@ function PlacedPanel({
   children,
   footer,
   wide = false,
+  trail,
+  actions,
 }: {
   open: boolean;
   onClose: () => void;
@@ -41,6 +47,8 @@ function PlacedPanel({
   children: ReactNode;
   footer?: ReactNode;
   wide?: boolean;
+  trail?: ReactNode;
+  actions?: ReactNode;
 }) {
   const ui = useAdminText("common").ui;
   const titleId = useId();
@@ -82,10 +90,14 @@ function PlacedPanel({
         {...movable.bar}
         className="flex cursor-move touch-none items-center justify-between gap-4 rounded-t-lg border-b border-line px-5 py-3 select-none"
       >
-        <h2 id={titleId} className="text-title text-ink">
-          {title}
-        </h2>
+        <div className="flex min-w-0 flex-col gap-0.5">
+          {trail}
+          <h2 id={titleId} className="text-title text-ink">
+            {title}
+          </h2>
+        </div>
         <div className="flex items-center gap-1">
+          {actions}
           <MoveButton movable={movable} />
           <button
             type="button"

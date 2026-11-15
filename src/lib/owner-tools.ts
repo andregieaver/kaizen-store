@@ -6,7 +6,7 @@ import { AFFILIATE_COOKIE_DAYS_MAX, AFFILIATE_FRIEND_PERCENT_MAX } from "./affil
 import { EMAIL_PROVIDERS, toolRecord } from "./domain-tools";
 import { BONUS_EXPIRY_MONTHS_MAX, BONUS_PENDING_DAYS_MAX, BONUS_REDEEM_PERCENT_MAX } from "./bonus";
 import { adjustmentPhrase } from "./bonus-admin";
-import { AUTOMATION_KINDS } from "./automation-kinds";
+import { AUTOMATION_KINDS, LIFECYCLE_KINDS } from "./automation-kinds";
 import { GOALS } from "./experiments";
 import { GIFT_CARD_NOTE_MAX } from "./gift-card-admin";
 import { contentApprovalSummary } from "./content-tools";
@@ -2181,6 +2181,43 @@ export const OWNER_TOOLS = [
     z.object({ kind: z.enum(AUTOMATION_KINDS), on: z.boolean() }),
     "send",
   ),
+  // Retention the AI writes (D4 of docs/100-day-challenge.md): an automation's words and days, and text messages.
+  tool(
+    "write_email_automation",
+    "Writes a lifecycle email automation's words (welcome, after a purchase, win-back) from a few words about what it should say, and sets its days if given: the store's AI writes the subject and words in the store's main language for the readers that automation reaches, may choose the store's own products and running campaigns to show (the email shows their pictures, prices and offers itself), and never writes a price, discount, stock or claim in its words (the claims filter checks). Other languages keep their own words. It is not switched on or off here (switch_email_automation); one that is on uses the new words from its next email. Needs the owner's approval.",
+    z.object({
+      kind: z.enum(LIFECYCLE_KINDS),
+      brief: z.string().trim().min(5).max(1000).describe("What the email should say, in the owner's words or the plan's."),
+      days: z
+        .number()
+        .int()
+        .min(0)
+        .max(730)
+        .optional()
+        .describe("The days: after joining for welcome (0 to 30), after delivery for after a purchase (1 to 90), without an order for win-back (30 to 730). Leave out to keep them."),
+    }),
+    "send",
+  ),
+  tool(
+    "list_text_messages",
+    "The store's text messages (SMS, through the owner's 46elks account): whether it is connected, what texts cost this month against the owner's monthly cap, how many numbers are subscribed, and the latest messages with their status, words and, once sent, how many were delivered and what they cost. Never the numbers. Read-only.",
+    z.object({ limit: limit(20, 10) }),
+  ),
+  tool(
+    "draft_text_message",
+    "Saves a draft text message in your words, for everyone subscribed to texts or a segment's subscribers. Keep it short (one message is 160 plain characters), say who it is from, and never write a price, discount, stock or claim the tools did not give you (the claims filter checks). Nothing is sent: it is sent with send_text_message.",
+    z.object({
+      name: z.string().trim().min(1).max(120).describe("The message's name in the admin, such as 'Autumn sale text'."),
+      text: z.string().trim().min(1).max(600).describe("The words of the text message."),
+      segment: z.string().trim().max(120).optional().describe("A segment's name or id from list_segments; leave out for everyone subscribed."),
+    }),
+  ),
+  tool(
+    "send_text_message",
+    "Sends a draft text message to the numbers it is for, each within its own country's waking hours. 46elks prices it first; it is refused when it reaches no one or would pass the owner's monthly cap. Each text costs money. Needs the owner's approval.",
+    z.object({ message: z.string().trim().min(1).max(120).describe("The text message's name or id, from list_text_messages.") }),
+    "send",
+  ),
 ] as const satisfies readonly OwnerTool[];
 
 export type OwnerToolName = (typeof OWNER_TOOLS)[number]["name"];
@@ -2265,6 +2302,10 @@ export function approvalSummary(name: string, input: Record<string, unknown>): s
       return `Issue a gift card of ${text("amount")}${input.currency ? ` ${text("currency").toUpperCase()}` : ""} and email it to ${text("to")} (${text("reason")}).`;
     case "switch_email_automation":
       return `${input.on ? "Switch on" : "Switch off"} the ${text("kind").replace(/_/g, " ")} email automation.`;
+    case "write_email_automation":
+      return `Have the store's AI write new words for the ${text("kind").replace(/_/g, " ")} email automation${input.days === undefined ? "" : `, sent after ${text("days")} days`}, about: "${text("brief").slice(0, 300)}"`;
+    case "send_text_message":
+      return `Send the text message "${text("message")}" to the numbers subscribed for it. Each text costs money, within your monthly cap.`;
     case "mark_order_sent":
       return `Mark order ${text("order")} as sent with ${text("carrier")}${text("tracking_number") ? `, tracking number ${text("tracking_number")}` : ""}${input.notify === false ? "" : ", and email the customer"}.`;
     case "send_draft_order":

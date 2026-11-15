@@ -62,7 +62,7 @@ import { drawTarget, motionSignature, type MotionPart } from "@/lib/motion-edit"
 import { PIECE_GROUPS, STORE_NOTE_KEYS, STORE_PART_KEYS, STORE_PARTS, notesForRoles, piecesOf, shopPartCopy, type ShopPart, type StoreNote } from "@/lib/store-parts";
 import { partDrawsWhenOff, partFeature, partFeatureOn } from "@/lib/part-features";
 import { requirementLabel } from "@/lib/feature-labels";
-import { type ColumnSpot, type DroppedColumns, columnsLostTo, copyBlock, copyColumn, copyRow, duplicateBlock, addColumn, duplicateColumn, duplicateRow, findBlock, findHolder, nestColumn, newColumnsBlock, htmlIds, insertBlock, insertColumn, insertColumnAt, insertRow, moveBlock, linesOf, locateColumn, moveColumnAt, moveRow, newBlock, newRow, removeBlock, removeColumn, removeRow, setLineLayout, setLineShares, clearLineShares, partOf, patchBlock, patchColumn, patchPart, patchRow, setSpacing, updateBlock, type BlockPatch, type Styled } from "@/lib/page-rows";
+import { type ColumnSpot, type DroppedColumns, columnsLostTo, copyBlock, copyColumn, copyRow, duplicateBlock, addColumn, duplicateColumn, duplicateRow, canDuplicateColumn, findBlock, findHolder, nestColumn, newColumnsBlock, htmlIds, insertBlock, insertColumn, insertColumnAt, insertRow, moveBlock, linesOf, locateColumn, moveColumnAt, moveRow, newBlock, newRow, removeBlock, removeColumn, removeRow, setLineLayout, setLineShares, clearLineShares, partOf, patchBlock, patchColumn, patchPart, patchRow, setSpacing, updateBlock, type BlockPatch, type Styled } from "@/lib/page-rows";
 import { blockTextFields, setBlockText } from "@/lib/page-translation";
 import { planCurrencies, type PlanChoice } from "@/lib/plan-offer";
 import type { FieldEntity, FieldGroup } from "@/lib/custom-fields";
@@ -96,7 +96,10 @@ import { Modal } from "./modal";
 import { RichTextEditor } from "./rich-text-editor";
 import { DisplayBadge, DisplayFields, DisplayLegend, ScheduleFields, showPatch, type DisplaySetup } from "./display-fields";
 import { displayLocked, factsOffered, type Show } from "@/lib/visibility";
-import { GeneralFoot, SpacingFields, ImageFields, SettingsTabs, BackgroundFields, ThemeRowWidths, ThemeSections, useStyleName, RowWidthChoices, RowFields, ColumnSizeFields, BackgroundAtSize, ColumnLinkFields, ShapeChoice, AdvancedFields, NumberField, FrameFields, HeadingFields, ButtonFields, ButtonStyleFields, GridPreview, ColumnsFields, ContentGridFields, GridStyleFields, field } from "./page-builder-fields";
+import { SpacingFields, ImageFields, ImageLinkFields, SettingsTabs, BackgroundFields, ThemeRowWidths, ThemeSections, useStyleName, RowWidthChoices, RowLayoutFields, RowColumnFields, RowContentMaxField, SectionStyleField, ColumnSizeFields, BackgroundAtSize, ColumnLinkFields, ShapeChoice, AnchorField, ClassesField, NewTabField, linkKindOf, NumberField, FrameFields, HeadingFields, ButtonFields, ButtonStyleFields, GridPreview, ColumnsFields, ContentGridFields, GridStyleFields, field } from "./page-builder-fields";
+import { DesignSizeStrip, Fold, Folds, PanelTrail, PartMenu, SettingsMemoryProvider, VisibilitySentence, frameWords, spacingWords, typographyWords, useCopiedStyle, type Crumb, type MenuItem } from "./settings-panel-parts";
+import { canPaste, copyStyle, hasOwnStyle, pasteStylePatch, styleKindOf, type StyleKind } from "@/lib/style-copy";
+import { BookmarkPlus, ClipboardPaste, Copy, Paintbrush, Trash2 } from "lucide-react";
 import { BlockIcon, Icon, LayoutPreview } from "./page-builder-icons";
 
 /**
@@ -273,7 +276,8 @@ type PlainPart = Exclude<SavedPart, { kind: "page" }>;
 
 /** What a dialog is open for. */
 type Dialog =
-  | { kind: "edit-block"; blockId: string }
+  /** `fresh`: just added, so it opens on Content to be filled whatever tab the last panel was on (D631). */
+  | { kind: "edit-block"; blockId: string; fresh?: true }
   | { kind: "edit-row"; rowId: string; columnId: string | null }
   | { kind: "delete"; what: string; run: () => void }
   | { kind: "save-as"; part: SavedPartDraft; back: Dialog | null }
@@ -941,7 +945,7 @@ export function PageBuilder({
       return insertRow(current, row, rowIndex ?? current.length);
     });
     // A new text block opens for writing straight away.
-    setDialog({ kind: "edit-block", blockId: block.id });
+    setDialog({ kind: "edit-block", blockId: block.id, fresh: true });
   };
 
   /**
@@ -3485,6 +3489,12 @@ function Dialogs({
   const blockWords = useAdminText("blocks");
   // Who sees a part (D179 phase 4): the facts the page offers and the store's choices.
   const displaySetup = useDisplaySetup(grid, pageType);
+  const pw = w.panel;
+  // The style last copied (D631), in this browser; what the part's menu last did, said in the footer of that part's panel.
+  const [copied, setCopied] = useCopiedStyle();
+  const [said, setSaid] = useState<{ text: string; dialog: Dialog | null } | null>(null);
+  const notice = said && said.dialog === dialog ? said.text : null;
+  const setNotice = (text: string) => setSaid({ text, dialog });
   if (translate) return <TranslateDialogs dialog={dialog} rows={rows} onRows={onRows} onClose={onClose} translate={translate} />;
   /** A change made in a field at the size edited (`setAt()`), to the part as it is when it lands. */
   const sizedPatch = (target: Styled, patch: Partial<PartBase>) =>
@@ -3499,22 +3509,6 @@ function Dialogs({
       {dw.done}
     </button>
   );
-  const saveAs = (part: SavedPartDraft) =>
-    // A component in an FAQ's answer (D208) is the FAQ's own: it is saved, and made global, with the FAQ.
-    part.kind === "block" && findBlock(rows, part.content.id)?.parent ? (
-      <span className="mr-auto" />
-    ) : (
-    <div className="mr-auto flex flex-wrap items-center gap-2">
-      <button
-        type="button"
-        onClick={() => open({ kind: "save-as", part, back: dialog })}
-        className="min-h-10 rounded-md border border-border px-4 text-sm"
-      >
-        {dw.saveAs}
-      </button>
-      <GlobalControls id={part.content.id} rows={rows} onRows={onRows} nameOf={(id) => parts.find((p) => p.id === id)?.name ?? w.frame.global} />
-    </div>
-    );
   const block = dialog?.kind === "edit-block" ? findBlock(rows, dialog.blockId)?.block : null;
   const editor = block ? editorFor(block, blockWords) : undefined;
   /** Opens a component in an FAQ's answer in its own settings (D208). */
@@ -3526,42 +3520,59 @@ function Dialogs({
   const layoutChoice = (row: PageRow) => (
     <RowLayoutChoice row={row} onLayout={(line, layout, dropped) => onRows((current) => setLineLayout(current, row.id, line, layout, newId, dropped))} />
   );
-  /** The id and classes of the row, column or block a dialog is for (D48). */
-  const advancedFields = (target: Styled) => {
+  /** Whether a part is a component in an FAQ's answer (D208): it does not move, shows to everyone and is saved with the FAQ. */
+  const inAnswer = (target: Styled) => target.kind === "block" && Boolean(findBlock(rows, target.id)?.parent);
+  /** A part's kind, for its tabs' memory and Copy style (D631). */
+  const kindOf = (target: Styled): StyleKind => styleKindOf(target, (partOf(rows, target) ?? {}) as { type?: string });
+  /** A kind of part as the menu names it, in lower case. */
+  const kindName = (kind: StyleKind): string =>
+    (kind === "row"
+      ? w.savedKinds.row.one
+      : kind === "column"
+        ? w.savedKinds.column.one
+        : ((w.blockNames as Record<string, string>)[kind.slice("block:".length)] ?? kind.slice("block:".length))
+    ).toLowerCase();
+  /** A column's width in words (D631): its share of its line, from the row's layout or its own share. */
+  const columnShareWords = (row: PageRow, column: PageColumn): string => {
+    if (column.width === 0) return pw.asWideAsContent;
+    const spot = locateColumn(row, column.id);
+    const line = spot ? linesOf(row)[spot.line] : undefined;
+    if (!spot || !line) return pw.widthFromRow;
+    const widths = line.columns.map((c, i) => (c.width !== undefined && c.width > 0 ? c.width : ROW_LAYOUTS[line.layout].widths[i] ?? 1));
+    const total = widths.reduce((sum, n) => sum + n, 0);
+    return fillWords(pw.shareOfRow, { n: Math.round((widths[spot.index] / total) * 100) });
+  };
+  /** A row's columns in detail while folded: side by side or stacked, and the space between. */
+  const rowColumnWords = (row: PageRow): string =>
+    [row.stack ? pw.summary.stacked : pw.summary.sideBySide, row.gap !== undefined && fillWords(pw.summary.apart, { n: row.gap })].filter(Boolean).join(" · ");
+  /**
+   * The Visibility tab (D631): one sentence that says who sees the part, on which screens and when; then those three questions
+   * (screens and who were under Advanced, the schedule at the foot of General); a row's popup last.
+   */
+  const visibilityTab = (target: Styled) => {
     const part = partOf(rows, target);
     if (!part) return null;
-    const others = new Set(
-      pageParts(rows).flatMap((p) => (p !== part && p.htmlId ? [p.htmlId.trim()] : [])),
-    );
     const block = target.kind === "block" ? (part as PageBlock) : null;
     const row = target.kind === "row" ? (part as PageRow) : null;
-    // A component in an FAQ's answer (D208) does not move and shows to everyone: no Animation, no Display.
-    const inAnswer = target.kind === "block" && Boolean(findBlock(rows, target.id)?.parent);
+    // A component in an FAQ's answer (D208) shows to everyone: no Display and no schedule.
+    const answer = inAnswer(target);
     return (
       <>
-        <AdvancedFields part={part} taken={others} onChange={(patch) => onRows((current) => patchPart(current, target, patch))} />
-        {/* Beaver's Animation (D179 phase 3): the entrance's delay and duration, in seconds. */}
-        {!inAnswer && <AnimationFields
-          part={target.kind === "block" ? { kind: "block", blockType: (part as PageBlock).type } : { kind: target.kind }}
-          motion={part.motion}
-          onChange={(motion) => onRows((current) => patchPart(current, target, { motion }))}
-        />}
-        {/* Beaver's Visibility (D179): by screen size, and who sees it (phase 4). A modal opens over any size, so it has Display only. */}
+        <VisibilitySentence visibility={part.visibility} popup={Boolean(row?.modal)} />
+        {/* A modal opens over any size, so it has Display only (D179). */}
         {row?.modal ? (
-          <fieldset className="flex flex-col gap-3 border-t border-border pt-4">
-            <legend className="float-left mb-1 w-full font-medium">{dw.visibility}</legend>
-            <DisplayFields
-              show={part.visibility?.show}
-              setup={displaySetup}
-              locked={displayLocked(part) ?? undefined}
-              onChange={(show) => plainPatch(target)(showPatch(part.visibility, show))}
-            />
-          </fieldset>
+          <DisplayFields
+            show={part.visibility?.show}
+            setup={displaySetup}
+            locked={displayLocked(part) ?? undefined}
+            onChange={(show) => plainPatch(target)(showPatch(part.visibility, show))}
+          />
         ) : (
           <VisibilityFields
+            bare
             part={part}
             onChange={plainPatch(target)}
-            display={inAnswer ? undefined : { setup: displaySetup, locked: displayLocked(part) ?? undefined }}
+            display={answer ? undefined : { setup: displaySetup, locked: displayLocked(part) ?? undefined }}
             locked={
               block?.type === "site" && block.part === "withdrawal"
                 ? dw.withdrawalEverySize
@@ -3571,24 +3582,47 @@ function Dialogs({
             }
           />
         )}
+        {!answer && displaySetup.facts.includes("date") && (
+          <ScheduleFields
+            key={`${target.kind}-${target.id}`}
+            show={part.visibility?.show}
+            kaizen={displaySetup.kaizen}
+            locked={displayLocked(part) ?? undefined}
+            onChange={(show) => plainPatch(target)(showPatch(part.visibility, show))}
+          />
+        )}
+        {row && (
+          <Folds>
+            <Fold id="popup" title={pw.folds.popup} summary={row.modal ? pw.summary.on : pw.summary.off} defaultOpen={Boolean(row.modal)}>
+              <ModalFields row={row} rows={rows} onChange={(patch) => onRows((current) => patchRow(current, row.id, patch))} />
+            </Fold>
+          </Folds>
+        )}
       </>
     );
   };
-  /** The entrance, hover and scroll effects of the row, column or block a dialog is for (D128). */
-  const motionFields = (target: Styled) => {
+  /** The Motion tab (D128, D631): its effects, then the entrance's timing (which was under Advanced, Animation). */
+  const motionTab = (target: Styled) => {
     const part = partOf(rows, target);
     if (!part) return null;
-    if (target.kind === "block" && findBlock(rows, target.id)?.parent) {
-      return <p className="text-sm text-muted">{dw.answerNoMotion}</p>;
-    }
+    if (inAnswer(target)) return <p className="text-sm text-muted">{dw.answerNoMotion}</p>;
     const kind: MotionPart =
       target.kind === "block" ? { kind: "block", blockType: (part as PageBlock).type } : { kind: target.kind };
+    const enter = part.motion?.enter;
+    const change = (motion: PartBase["motion"]) => onRows((current) => patchPart(current, target, { motion }));
     return (
-      <MotionFields
-        part={kind}
-        motion={part.motion}
-        onChange={(motion) => onRows((current) => patchPart(current, target, { motion }))}
-      />
+      <>
+        <MotionFields part={kind} motion={part.motion} onChange={change} />
+        <Folds>
+          <Fold
+            id="timing"
+            title={pw.folds.timing}
+            summary={!enter ? pw.summary.none : enter.delay ? fillWords(pw.summary.startsAfter, { s: Math.round(enter.delay / 100) / 10 }) : pw.summary.soon}
+          >
+            <AnimationFields part={kind} motion={part.motion} onChange={change} />
+          </Fold>
+        </Folds>
+      </>
     );
   };
   /** The border, rounded corners and shadow of the row, column or block a dialog is for (D49). */
@@ -3634,78 +3668,254 @@ function Dialogs({
     return <BackgroundAtSize key={size} part={part} size={size} onChange={(patch) => sizedPatch(target, patch)} onPatch={plainPatch(target)} />;
   };
 
-  /** The part a settings dialog is for, by the dialog: a component, a column of a row, or a row. */
-  const dialogTarget: Styled | null =
-    dialog?.kind === "edit-block"
-      ? { kind: "block", id: dialog.blockId }
-      : dialog?.kind === "edit-row"
-        ? dialog.columnId
-          ? { kind: "column", id: dialog.columnId }
-          : { kind: "row", id: dialog.rowId }
-        : null;
-  /** Its schedule at the foot of General (D432): every part that has Display, which a component in an FAQ's answer has not. */
-  const scheduleFoot = (() => {
-    if (!dialogTarget || !displaySetup.facts.includes("date")) return null;
-    const part = partOf(rows, dialogTarget);
-    if (!part || (dialogTarget.kind === "block" && findBlock(rows, dialogTarget.id)?.parent)) return null;
+  /** Content's last fold (D631): what it takes from a custom field (was the top of General) and its anchor (was Advanced). */
+  const contentAdvanced = (target: Styled, bind?: ReactNode, bound = false) => {
+    const part = partOf(rows, target);
+    if (!part) return null;
+    const taken = new Set(pageParts(rows).flatMap((p) => (p !== part && p.htmlId ? [p.htmlId.trim()] : [])));
+    const anchor = part.htmlId?.trim();
+    const summary = [bound && pw.summary.field, anchor && fillWords(pw.summary.anchor, { id: anchor })].filter(Boolean).join(" · ") || pw.summary.none;
     return (
-      <ScheduleFields
-        key={`${dialogTarget.kind}-${dialogTarget.id}`}
-        show={part.visibility?.show}
-        kaizen={displaySetup.kaizen}
-        locked={displayLocked(part) ?? undefined}
-        onChange={(show) => plainPatch(dialogTarget)(showPatch(part.visibility, show))}
-      />
+      <Fold id="advanced-content" title={pw.folds.advanced} summary={summary} quiet>
+        {bind}
+        <AnchorField part={part} taken={taken} onChange={plainPatch(target)} />
+      </Fold>
     );
-  })();
+  };
+  /**
+   * Design's folds, the same on every part and in this order (D631): its text (named for what it styles), spacing, border and
+   * shadow, and its classes last. Each says its value while closed.
+   */
+  const designFolds = (target: Styled, font?: string, textTitle?: string) => {
+    const part = partOf(rows, target);
+    if (!part) return null;
+    return (
+      <>
+        <Fold id="text" title={textTitle ?? pw.folds.text} summary={typographyWords(part.typography, pw)}>
+          {typographyFields(target, font)}
+        </Fold>
+        <Fold id="spacing" title={pw.folds.spacing} summary={spacingWords(spacingAt(part, size), pw)}>
+          {spacingFields(target)}
+        </Fold>
+        <Fold id="frame" title={pw.folds.frame} summary={frameWords(viewAt(part, size), pw, w.frameFields.borderStyles)}>
+          {frameFields(target)}
+        </Fold>
+        <Fold id="advanced-design" title={pw.folds.advanced} summary={part.className?.trim() || pw.summary.none} quiet>
+          <ClassesField part={part} onChange={plainPatch(target)} />
+        </Fold>
+      </>
+    );
+  };
+  /** Which tabs hold the part's own settings, for their dots. */
+  const dotsOf = (target: Styled) => {
+    const part = partOf(rows, target);
+    if (!part) return {};
+    return {
+      design: hasOwnStyle(kindOf(target), part),
+      motion: Boolean(part.motion && Object.keys(part.motion).length > 0),
+      visibility: Boolean(part.visibility?.hideAt?.length || part.visibility?.show !== undefined || (target.kind === "row" && (part as PageRow).modal)),
+    };
+  };
+  /**
+   * A part's four tabs (D631): its own content (or layout) with its folds and Advanced last; Design with the screen size at the
+   * top, its own look open and the shared folds under it; Motion; Visibility.
+   */
+  const partTabs = (
+    target: Styled,
+    tabs: {
+      content: ReactNode;
+      contentFolds?: ReactNode;
+      design?: ReactNode;
+      designFolds?: ReactNode;
+      /** What no font family means in its text. */
+      font?: string;
+      /** The text fold's name, for what it styles ("Button text"). */
+      textTitle?: string;
+      /** Take from field (D118), in Content's Advanced fold. */
+      bind?: ReactNode;
+      bound?: boolean;
+    },
+  ) => (
+    <SettingsTabs
+      key={`${target.kind}-${target.id}`}
+      kind={kindOf(target)}
+      layout={target.kind !== "block"}
+      start={dialog?.kind === "edit-block" && dialog.fresh && dialog.blockId === target.id ? "content" : undefined}
+      dots={dotsOf(target)}
+      content={
+        <>
+          {tabs.content}
+          <Folds>
+            {tabs.contentFolds}
+            {contentAdvanced(target, tabs.bind, tabs.bound)}
+          </Folds>
+        </>
+      }
+      design={
+        <>
+          <DesignSizeStrip />
+          {tabs.design}
+          <Folds>
+            {tabs.designFolds}
+            {designFolds(target, tabs.font, tabs.textTitle)}
+          </Folds>
+        </>
+      }
+      motion={motionTab(target)}
+      visibility={visibilityTab(target)}
+    />
+  );
+  /** The rows and columns a part is in, each opening its settings (D631). */
+  const holderTrail = (holderId: string): Crumb[] => {
+    const index = rows.findIndex((r) => r.id === holderId);
+    if (index >= 0) return [{ label: fillWords(pw.row, { n: index + 1 }), open: () => open({ kind: "edit-row", rowId: holderId, columnId: null }) }];
+    // A Columns component's columns (D294): the trail goes on through the component.
+    return [...blockTrail(holderId), { label: w.blockNames.columns, open: () => open({ kind: "edit-block", blockId: holderId }) }];
+  };
+  const columnTrail = (holderId: string, columnId: string): Crumb[] => {
+    const index = findHolder(rows, holderId)?.columns.findIndex((c) => c.id === columnId) ?? -1;
+    return [...holderTrail(holderId), { label: fillWords(pw.column, { n: index + 1 }), open: () => open({ kind: "edit-row", rowId: holderId, columnId }) }];
+  };
+  const blockTrail = (blockId: string): Crumb[] => {
+    const place = findBlock(rows, blockId);
+    if (!place) return [];
+    if (place.parent) {
+      const faq = findBlock(rows, place.parent.blockId)?.block;
+      return [...blockTrail(place.parent.blockId), ...(faq ? [{ label: (w.blockNames as Record<string, string>)[faq.type] ?? faq.type, open: () => editPart(faq.id) }] : [])];
+    }
+    return columnTrail(place.rowId, place.columnId);
+  };
+  const trailOf = (target: Styled): Crumb[] => {
+    if (target.kind === "block") return blockTrail(target.id);
+    if (target.kind === "column" && dialog?.kind === "edit-row") return holderTrail(dialog.rowId);
+    return [];
+  };
+  /** Delete in the part's menu: asked first when the part holds something, as its tools' delete is. */
+  const deleteItem = (target: Styled, holder: PageRow | null): MenuItem | null => {
+    const part = partOf(rows, target);
+    if (!part) return null;
+    const icon = <Trash2 aria-hidden className="size-4" />;
+    if (target.kind === "column") {
+      const column = part as PageColumn;
+      const only = (holder?.columns.length ?? 0) <= 1;
+      const remove = () => onRows((current) => removeColumn(current, column.id));
+      return {
+        label: pw.deleteColumn,
+        icon,
+        danger: true,
+        disabled: only,
+        title: only ? dw.onlyColumn : undefined,
+        onSelect: () => (column.blocks.some(blockHasContent) ? open({ kind: "delete", what: dw.thisColumnAndText, run: remove }) : (remove(), onClose())),
+      };
+    }
+    if (target.kind === "row") {
+      const row = part as PageRow;
+      const remove = () => onRows((current) => removeRow(current, row.id));
+      return {
+        label: pw.deleteRow,
+        icon,
+        danger: true,
+        onSelect: () => (row.columns.some((c) => c.blocks.some(blockHasContent)) ? open({ kind: "delete", what: pw.thisRow, run: remove }) : (remove(), onClose())),
+      };
+    }
+    const block = part as PageBlock;
+    const remove = () => onRows((current) => removeBlock(current, block.id));
+    return { label: pw.deleteComponent, icon, danger: true, onSelect: () => (blockHasContent(block) ? open({ kind: "delete", what: pw.thisComponent, run: remove }) : (remove(), onClose())) };
+  };
+  /**
+   * A settings panel's frame for a part (D631): the trail to its row and column, its menu (Copy and Paste style, Save as
+   * reusable, Duplicate, Delete) and a footer of Done alone, beside a global's controls and what the menu last did.
+   */
+  const chrome = (target: Styled, { save = true }: { save?: boolean } = {}) => {
+    const part = partOf(rows, target);
+    if (!part) return {};
+    const kind = kindOf(target);
+    const what = kindName(kind);
+    const answer = inAnswer(target);
+    const holder = target.kind === "column" && dialog?.kind === "edit-row" ? (findHolder(rows, dialog.rowId) ?? null) : null;
+    const draft: SavedPartDraft =
+      target.kind === "row" ? { kind: "row", content: part as PageRow } : target.kind === "column" ? { kind: "column", content: part as PageColumn } : { kind: "block", content: part as PageBlock };
+    const duplicate =
+      target.kind === "row"
+        ? () => onRows((current) => duplicateRow(current, target.id, newId))
+        : target.kind === "column"
+          ? canDuplicateColumn(rows, target.id)
+            ? () => onRows((current) => duplicateColumn(current, target.id, newId))
+            : null
+          : answer
+            ? null
+            : () => onRows((current) => duplicateBlock(current, target.id, newId));
+    const remove = deleteItem(target, holder);
+    const items: MenuItem[] = [
+      {
+        label: pw.copyStyle,
+        title: fillWords(pw.copyStyleHint, { what }),
+        icon: <Paintbrush aria-hidden className="size-4" />,
+        onSelect: () => {
+          setCopied(copyStyle(kind, part));
+          setNotice(fillWords(pw.styleCopied, { what }));
+        },
+      },
+      {
+        label: pw.pasteStyle,
+        icon: <ClipboardPaste aria-hidden className="size-4" />,
+        disabled: !canPaste(copied, kind),
+        title: !copied ? fillWords(pw.pasteNothing, { what }) : copied.kind !== kind ? fillWords(pw.pasteOther, { other: kindName(copied.kind) }) : fillWords(pw.pasteStyleHint, { what }),
+        onSelect: () => {
+          if (!canPaste(copied, kind)) return;
+          onRows((current) => {
+            const now = partOf(current, target);
+            return now ? patchPart(current, target, pasteStylePatch(now, copied) as Partial<PartBase>) : current;
+          });
+          setNotice(pw.stylePasted);
+        },
+      },
+      "line",
+      ...(save && !answer ? [{ label: pw.saveAs, icon: <BookmarkPlus aria-hidden className="size-4" />, onSelect: () => open({ kind: "save-as", part: draft, back: dialog }) }] : []),
+      ...(duplicate ? [{ label: pw.duplicate, icon: <Copy aria-hidden className="size-4" />, onSelect: duplicate }] : []),
+      ...(remove ? (["line", remove] as MenuItem[]) : []),
+    ];
+    return {
+      trail: (<PanelTrail crumbs={trailOf(target)} />),
+      actions: (<PartMenu items={items} />),
+      footer: (
+        <>
+          <div className="mr-auto flex min-w-0 flex-wrap items-center gap-2">
+            {!answer && <GlobalControls id={part.id} rows={rows} onRows={onRows} nameOf={(id) => parts.find((p) => p.id === id)?.name ?? w.frame.global} />}
+            <p aria-live="polite" className="text-xs text-muted">
+              {notice}
+            </p>
+          </div>
+          {done}
+        </>
+      ),
+    };
+  };
 
   return (
-    <GeneralFoot.Provider value={scheduleFoot}>
+    <SettingsMemoryProvider>
       <SettingsPanel
         open={block?.type === "richText"}
         onClose={onClose}
         title={dw.editRichText}
-        footer={
-          block && (
-            <>
-              {saveAs({ kind: "block", content: block })}
-              {done}
-            </>
-          )
-        }
+        {...(block ? chrome({ kind: "block", id: block.id }) : {})}
         wide
       >
         {block?.type === "richText" && (
-          <SettingsTabs
-            key={block.id}
-            general={
-              <div className="flex flex-col gap-5">
-                <BindFields
-                  blockType="richText"
-                  bind={block.bind}
-                  onChange={(bind) => onRows((current) => patchBlock<RichTextBlock>(current, block.id, { bind }))}
-                />
-                <RichTextEditor
-                  // A new block opens with nothing written; the editor starts from what is stored.
-                  key={block.id}
-                  value={block.doc}
-                  onChange={(doc) =>
-                    onRows((current) => updateBlock(current, block.id, (b) => (b.type === "richText" ? { ...b, doc } : b)))
-                  }
-                  label={dw.text}
-                />
-              </div>
-            }
-            style={
-              <>
-                {typographyFields({ kind: "block", id: block.id }, dw.fonts.body)}
-                {spacingFields({ kind: "block", id: block.id })}
-                {frameFields({ kind: "block", id: block.id })}
-              </>
-            }
-            motion={motionFields({ kind: "block", id: block.id })}
-            advanced={advancedFields({ kind: "block", id: block.id })}
-          />
+          partTabs({ kind: "block", id: block.id }, {
+            content: (
+              <RichTextEditor
+                // A new block opens with nothing written; the editor starts from what is stored.
+                key={block.id}
+                value={block.doc}
+                onChange={(doc) => onRows((current) => updateBlock(current, block.id, (b) => (b.type === "richText" ? { ...b, doc } : b)))}
+                label={dw.text}
+              />
+            ),
+            bind: (<BindFields blockType="richText" bind={block.bind} onChange={(bind) => onRows((current) => patchBlock<RichTextBlock>(current, block.id, { bind }))} />),
+            bound: Boolean(block.bind),
+            font: dw.fonts.body,
+          })
         )}
       </SettingsPanel>
 
@@ -3713,48 +3923,29 @@ function Dialogs({
         open={block?.type === "image"}
         onClose={onClose}
         title={w.blockNames.image}
-        footer={
-          block && (
-            <>
-              {saveAs({ kind: "block", content: block })}
-              {done}
-            </>
-          )
-        }
+        {...(block ? chrome({ kind: "block", id: block.id }) : {})}
         wide
       >
         {block?.type === "image" && (
-          <SettingsTabs
-            key={block.id}
-            general={
-              <div className="flex flex-col gap-5">
-                <BindFields
-                  blockType="image"
-                  bind={block.bind}
-                  onChange={(bind) => onRows((current) => patchBlock<ImageBlock>(current, block.id, { bind }))}
-                />
-                <ImageFields
-                  block={block}
-                  upload={upload}
-                  onChange={(next) => onRows((current) => updateBlock(current, block.id, () => next))}
-                />
-              </div>
-            }
-            style={
+          partTabs({ kind: "block", id: block.id }, {
+            content: (<ImageFields block={block} upload={upload} onChange={(next) => onRows((current) => updateBlock(current, block.id, () => next))} />),
+            contentFolds: (
+              <Fold id="link" title={pw.folds.link} summary={block.href?.trim() || pw.summary.none}>
+                <ImageLinkFields block={block} onChange={(next) => onRows((current) => updateBlock(current, block.id, () => next))} />
+              </Fold>
+            ),
+            bind: (<BindFields blockType="image" bind={block.bind} onChange={(bind) => onRows((current) => patchBlock<ImageBlock>(current, block.id, { bind }))} />),
+            bound: Boolean(block.bind),
+            design: (
               <>
-                <ShapeChoice
-                  value={block.shape}
-                  onChange={(shape) => onRows((current) => patchBlock<ImageBlock>(current, block.id, { shape }))}
-                />
+                <ShapeChoice value={block.shape} onChange={(shape) => onRows((current) => patchBlock<ImageBlock>(current, block.id, { shape }))} />
                 <ImageSizeFields block={block} onChange={(patch) => onRows((current) => patchBlock<ImageBlock>(current, block.id, patch))} />
-                {typographyFields({ kind: "block", id: block.id }, dw.fonts.body)}
-                {spacingFields({ kind: "block", id: block.id })}
-                {frameFields({ kind: "block", id: block.id })}
               </>
-            }
-            motion={motionFields({ kind: "block", id: block.id })}
-            advanced={advancedFields({ kind: "block", id: block.id })}
-          />
+            ),
+            // An image's only text is its caption (D631): the fold says so.
+            textTitle: fillWords(pw.folds.textOf, { what: w.image.caption }),
+            font: dw.fonts.body,
+          })
         )}
       </SettingsPanel>
 
@@ -3762,43 +3953,23 @@ function Dialogs({
         open={block?.type === "heading"}
         onClose={onClose}
         title={w.blockNames.heading}
-        footer={
-          block && (
-            <>
-              {saveAs({ kind: "block", content: block })}
-              {done}
-            </>
-          )
-        }
+        {...(block ? chrome({ kind: "block", id: block.id }) : {})}
         wide
       >
         {block?.type === "heading" && (
-          <SettingsTabs
-            key={block.id}
-            general={
-              <div className="flex flex-col gap-5">
-                <BindFields
-                  blockType="heading"
-                  bind={block.bind}
-                  onChange={(bind) => onRows((current) => patchBlock<HeadingBlock>(current, block.id, { bind }))}
-                />
-                <HeadingFields
-                  block={block}
-                  otherMainHeading={pageBlocks({ rows }).some((b) => b.id !== block.id && b.type === "heading" && b.level === 1)}
-                  onChange={(next) => onRows((current) => updateBlock(current, block.id, () => next))}
-                />
-              </div>
-            }
-            style={
-              <>
-                {typographyFields({ kind: "block", id: block.id }, dw.fonts.heading)}
-                {spacingFields({ kind: "block", id: block.id })}
-                {frameFields({ kind: "block", id: block.id })}
-              </>
-            }
-            motion={motionFields({ kind: "block", id: block.id })}
-            advanced={advancedFields({ kind: "block", id: block.id })}
-          />
+          partTabs({ kind: "block", id: block.id }, {
+            content: (
+              <HeadingFields
+                block={block}
+                otherMainHeading={pageBlocks({ rows }).some((b) => b.id !== block.id && b.type === "heading" && b.level === 1)}
+                onChange={(next) => onRows((current) => updateBlock(current, block.id, () => next))}
+              />
+            ),
+            bind: (<BindFields blockType="heading" bind={block.bind} onChange={(bind) => onRows((current) => patchBlock<HeadingBlock>(current, block.id, { bind }))} />),
+            bound: Boolean(block.bind),
+            textTitle: fillWords(pw.folds.textOf, { what: w.blockNames.heading }),
+            font: dw.fonts.heading,
+          })
         )}
       </SettingsPanel>
 
@@ -3806,44 +3977,35 @@ function Dialogs({
         open={block?.type === "button"}
         onClose={onClose}
         title={w.blockNames.button}
-        footer={
-          block && (
-            <>
-              {saveAs({ kind: "block", content: block })}
-              {done}
-            </>
-          )
-        }
+        {...(block ? chrome({ kind: "block", id: block.id }) : {})}
         wide
       >
         {block?.type === "button" && (
-          <SettingsTabs
-            key={block.id}
-            general={
-              <div className="flex flex-col gap-5">
-                <BindFields
-                  blockType="button"
-                  bind={block.bind}
-                  onChange={(bind) => onRows((current) => patchBlock<ButtonBlock>(current, block.id, { bind }))}
-                />
-                <ButtonFields block={block} onChange={(next) => onRows((current) => updateBlock(current, block.id, () => next))} />
-                <ModalPicker rows={rows} href={block.href} onPick={(href) => onRows((current) => patchBlock<ButtonBlock>(current, block.id, { href }))} />
-              </div>
-            }
-            style={
-              <>
-                <ButtonStyleFields
-                  block={block}
-                  onChange={(patch) => onRows((current) => patchBlock<ButtonBlock>(current, block.id, patch))}
-                />
-                {typographyFields({ kind: "block", id: block.id }, dw.fonts.body)}
-                {spacingFields({ kind: "block", id: block.id })}
-                {frameFields({ kind: "block", id: block.id })}
-              </>
-            }
-            motion={motionFields({ kind: "block", id: block.id })}
-            advanced={advancedFields({ kind: "block", id: block.id })}
-          />
+          partTabs({ kind: "block", id: block.id }, {
+            content: (
+              <ButtonFields
+                block={block}
+                popup={<ModalPicker rows={rows} href={block.href} onPick={(href) => onRows((current) => patchBlock<ButtonBlock>(current, block.id, { href }))} />}
+                onChange={(next) => onRows((current) => updateBlock(current, block.id, () => next))}
+              />
+            ),
+            contentFolds:
+              linkKindOf(block.href) === "address" ? (
+                <Fold id="open-in" title={pw.folds.openIn} summary={block.newTab ? pw.summary.newTab : pw.summary.sameTab}>
+                  <NewTabField checked={Boolean(block.newTab)} onChange={(newTab) => onRows((current) => patchBlock<ButtonBlock>(current, block.id, { newTab }))} />
+                </Fold>
+              ) : null,
+            bind: (<BindFields blockType="button" bind={block.bind} onChange={(bind) => onRows((current) => patchBlock<ButtonBlock>(current, block.id, { bind }))} />),
+            bound: Boolean(block.bind),
+            design: (<ButtonStyleFields hover={false} block={block} onChange={(patch) => onRows((current) => patchBlock<ButtonBlock>(current, block.id, patch))} />),
+            designFolds: (
+              <Fold id="button-hover" title={pw.folds.hover} summary={block.hover ? (blockWords.hover.buttons[block.hover]?.label ?? block.hover) : blockWords.hover.themeChoice}>
+                <ButtonHoverField value={block.hover} onChange={(hover) => onRows((current) => patchBlock<ButtonBlock>(current, block.id, { hover }))} />
+              </Fold>
+            ),
+            textTitle: fillWords(pw.folds.textOf, { what: w.blockNames.button }),
+            font: dw.fonts.body,
+          })
         )}
       </SettingsPanel>
 
@@ -3852,33 +4014,19 @@ function Dialogs({
         open={Boolean(editor)}
         onClose={onClose}
         title={editor?.title ?? ""}
-        footer={
-          block && (
-            <>
-              {saveAs({ kind: "block", content: block })}
-              {done}
-            </>
-          )
-        }
+        {...(block ? chrome({ kind: "block", id: block.id }) : {})}
         wide
       >
         {block && editor && (
-          <SettingsTabs
-            key={block.id}
-            general={<editor.General block={block} context={{ upload, startVideo, editPart }} onChange={(patch) => onRows((current) => patchBlock(current, block.id, patch))} />}
-            style={
-              <>
+          partTabs({ kind: "block", id: block.id }, {
+            content: (<editor.General block={block} context={{ upload, startVideo, editPart }} onChange={(patch) => onRows((current) => patchBlock(current, block.id, patch))} />),
+            design: (<>
                 {editor.Style && (
                   <editor.Style block={block} context={{ upload, startVideo, editPart }} onChange={(patch) => onRows((current) => patchBlock(current, block.id, patch))} />
                 )}
-                {typographyFields({ kind: "block", id: block.id }, editor.font?.fallback)}
-                {spacingFields({ kind: "block", id: block.id })}
-                {frameFields({ kind: "block", id: block.id })}
-              </>
-            }
-            motion={motionFields({ kind: "block", id: block.id })}
-            advanced={advancedFields({ kind: "block", id: block.id })}
-          />
+              </>),
+            font: editor.font?.fallback,
+          })
         )}
       </SettingsPanel>
 
@@ -3886,32 +4034,14 @@ function Dialogs({
         open={block?.type === "product"}
         onClose={onClose}
         title={block?.type === "product" ? w.productParts[block.part] : w.blockNames.product}
-        footer={
-          block && (
-            <>
-              {saveAs({ kind: "block", content: block })}
-              {done}
-            </>
-          )
-        }
+        {...(block ? chrome({ kind: "block", id: block.id }) : {})}
         wide
       >
         {block?.type === "product" && (
-          <SettingsTabs
-            key={block.id}
-            general={
-              <ProductFields block={block} onChange={(patch) => onRows((current) => patchBlock<ProductBlock>(current, block.id, patch))} />
-            }
-            style={
-              <>
-                {typographyFields({ kind: "block", id: block.id }, dw.fonts.site)}
-                {spacingFields({ kind: "block", id: block.id })}
-                {frameFields({ kind: "block", id: block.id })}
-              </>
-            }
-            motion={motionFields({ kind: "block", id: block.id })}
-            advanced={advancedFields({ kind: "block", id: block.id })}
-          />
+          partTabs({ kind: "block", id: block.id }, {
+            content: (<ProductFields block={block} onChange={(patch) => onRows((current) => patchBlock<ProductBlock>(current, block.id, patch))} />),
+            font: dw.fonts.site,
+          })
         )}
       </SettingsPanel>
 
@@ -3919,40 +4049,24 @@ function Dialogs({
         open={block?.type === "site"}
         onClose={onClose}
         title={block?.type === "site" ? w.siteParts[block.part] : w.blockNames.site}
-        footer={
-          block && (
-            <>
-              {saveAs({ kind: "block", content: block })}
-              {done}
-            </>
-          )
-        }
+        {...(block ? chrome({ kind: "block", id: block.id }) : {})}
         wide
       >
         {block?.type === "site" && (
-          <SettingsTabs
-            key={block.id}
-            general={
-              <SiteFields
+          partTabs({ kind: "block", id: block.id }, {
+            content: (<SiteFields
                 block={block}
                 context={{ upload, startVideo, menus: grid.menus, menusHref: grid.menusHref }}
                 onChange={(patch) => onRows((current) => patchBlock<SiteBlock>(current, block.id, patch))}
-              />
-            }
-            style={
-              <>
+              />),
+            design: (<>
                 {/* The phone menu button's place in its column (D573): left, centre or right on phones. */}
                 {block.part === "menuButton" && (
                   <TextAlignFields what={dw.position} value={block} onChange={(patch) => onRows((current) => patchBlock<SiteBlock>(current, block.id, patch))} />
                 )}
-                {typographyFields({ kind: "block", id: block.id }, dw.fonts.site)}
-                {spacingFields({ kind: "block", id: block.id })}
-                {frameFields({ kind: "block", id: block.id })}
-              </>
-            }
-            motion={motionFields({ kind: "block", id: block.id })}
-            advanced={advancedFields({ kind: "block", id: block.id })}
-          />
+              </>),
+            font: dw.fonts.site,
+          })
         )}
       </SettingsPanel>
 
@@ -3960,29 +4074,18 @@ function Dialogs({
         open={block?.type === "menu"}
         onClose={onClose}
         title={w.blockNames.menu}
-        footer={
-          block && (
-            <>
-              {saveAs({ kind: "block", content: block })}
-              {done}
-            </>
-          )
-        }
+        {...(block ? chrome({ kind: "block", id: block.id }) : {})}
         wide
       >
         {block?.type === "menu" && (
-          <SettingsTabs
-            key={block.id}
-            general={
-              <MenuFields
+          partTabs({ kind: "block", id: block.id }, {
+            content: (<MenuFields
                 block={block}
                 menus={grid.menus}
                 menusHref={grid.menusHref}
                 onChange={(patch) => onRows((current) => patchBlock<MenuBlock>(current, block.id, patch))}
-              />
-            }
-            style={
-              <>
+              />),
+            design: (<>
                 <TextAlignFields
                   what={dw.position}
                   value={block}
@@ -3992,14 +4095,9 @@ function Dialogs({
                   value={block.itemHover}
                   onChange={(itemHover) => onRows((current) => patchBlock<MenuBlock>(current, block.id, { itemHover }))}
                 />
-                {typographyFields({ kind: "block", id: block.id }, dw.fonts.site)}
-                {spacingFields({ kind: "block", id: block.id })}
-                {frameFields({ kind: "block", id: block.id })}
-              </>
-            }
-            motion={motionFields({ kind: "block", id: block.id })}
-            advanced={advancedFields({ kind: "block", id: block.id })}
-          />
+              </>),
+            font: dw.fonts.site,
+          })
         )}
       </SettingsPanel>
 
@@ -4007,22 +4105,13 @@ function Dialogs({
         open={block?.type === "themeStore"}
         onClose={onClose}
         title={block?.type === "themeStore" ? THEME_STORE_PART_COPY[block.part].name : w.blockNames.themeStore}
-        footer={block && done}
+        {...(block ? chrome({ kind: "block", id: block.id }, { save: false }) : {})}
       >
         {block?.type === "themeStore" && (
-          <SettingsTabs
-            key={block.id}
-            general={<ThemeStoreFields block={block} onChange={(patch) => onRows((current) => patchBlock<ThemeStoreBlock>(current, block.id, patch))} />}
-            style={
-              <>
-                {typographyFields({ kind: "block", id: block.id }, dw.fonts.site)}
-                {spacingFields({ kind: "block", id: block.id })}
-                {frameFields({ kind: "block", id: block.id })}
-              </>
-            }
-            motion={motionFields({ kind: "block", id: block.id })}
-            advanced={advancedFields({ kind: "block", id: block.id })}
-          />
+          partTabs({ kind: "block", id: block.id }, {
+            content: (<ThemeStoreFields block={block} onChange={(patch) => onRows((current) => patchBlock<ThemeStoreBlock>(current, block.id, patch))} />),
+            font: dw.fonts.site,
+          })
         )}
       </SettingsPanel>
 
@@ -4030,30 +4119,14 @@ function Dialogs({
         open={block?.type === "domainSearch"}
         onClose={onClose}
         title={w.blockNames.domainSearch}
-        footer={
-          block && (
-            <>
-              {saveAs({ kind: "block", content: block })}
-              {done}
-            </>
-          )
-        }
+        {...(block ? chrome({ kind: "block", id: block.id }) : {})}
         wide
       >
         {block?.type === "domainSearch" && (
-          <SettingsTabs
-            key={block.id}
-            general={<DomainSearchFields block={block} onChange={(patch) => onRows((current) => { return patchBlock<DomainSearchBlock>(current, block.id, patch); })} />}
-            style={
-              <>
-                {typographyFields({ kind: "block", id: block.id }, dw.fonts.site)}
-                {spacingFields({ kind: "block", id: block.id })}
-                {frameFields({ kind: "block", id: block.id })}
-              </>
-            }
-            motion={motionFields({ kind: "block", id: block.id })}
-            advanced={advancedFields({ kind: "block", id: block.id })}
-          />
+          partTabs({ kind: "block", id: block.id }, {
+            content: (<DomainSearchFields block={block} onChange={(patch) => onRows((current) => { return patchBlock<DomainSearchBlock>(current, block.id, patch); })} />),
+            font: dw.fonts.site,
+          })
         )}
       </SettingsPanel>
 
@@ -4061,36 +4134,18 @@ function Dialogs({
         open={block?.type === "plans"}
         onClose={onClose}
         title={w.blockNames.plans}
-        footer={
-          block && (
-            <>
-              {saveAs({ kind: "block", content: block })}
-              {done}
-            </>
-          )
-        }
+        {...(block ? chrome({ kind: "block", id: block.id }) : {})}
         wide
       >
         {block?.type === "plans" && (
-          <SettingsTabs
-            key={block.id}
-            general={
-              <PlansFields
+          partTabs({ kind: "block", id: block.id }, {
+            content: (<PlansFields
                 block={block}
                 plans={grid.plans ?? []}
                 onChange={(patch) => onRows((current) => patchBlock<PlansBlock>(current, block.id, patch))}
-              />
-            }
-            style={
-              <>
-                {typographyFields({ kind: "block", id: block.id }, dw.fonts.site)}
-                {spacingFields({ kind: "block", id: block.id })}
-                {frameFields({ kind: "block", id: block.id })}
-              </>
-            }
-            motion={motionFields({ kind: "block", id: block.id })}
-            advanced={advancedFields({ kind: "block", id: block.id })}
-          />
+              />),
+            font: dw.fonts.site,
+          })
         )}
       </SettingsPanel>
 
@@ -4098,37 +4153,19 @@ function Dialogs({
         open={block?.type === "search"}
         onClose={onClose}
         title={w.blockNames.search}
-        footer={
-          block && (
-            <>
-              {saveAs({ kind: "block", content: block })}
-              {done}
-            </>
-          )
-        }
+        {...(block ? chrome({ kind: "block", id: block.id }) : {})}
         wide
       >
         {block?.type === "search" && (
-          <SettingsTabs
-            key={block.id}
-            general={
-              <Check
+          partTabs({ kind: "block", id: block.id }, {
+            content: (<Check
                 label={dw.searchResults}
                 hint={dw.searchResultsHint}
                 checked={block.results !== false}
                 onChange={(results) => onRows((current) => patchBlock<SearchBlock>(current, block.id, { results: results ? undefined : false }))}
-              />
-            }
-            style={
-              <>
-                {typographyFields({ kind: "block", id: block.id }, dw.fonts.site)}
-                {spacingFields({ kind: "block", id: block.id })}
-                {frameFields({ kind: "block", id: block.id })}
-              </>
-            }
-            motion={motionFields({ kind: "block", id: block.id })}
-            advanced={advancedFields({ kind: "block", id: block.id })}
-          />
+              />),
+            font: dw.fonts.site,
+          })
         )}
       </SettingsPanel>
 
@@ -4136,21 +4173,12 @@ function Dialogs({
         open={block?.type === "storePart"}
         onClose={onClose}
         title={w.blockNames.storePart}
-        footer={
-          block && (
-            <>
-              {saveAs({ kind: "block", content: block })}
-              {done}
-            </>
-          )
-        }
+        {...(block ? chrome({ kind: "block", id: block.id }) : {})}
         wide
       >
         {block?.type === "storePart" && (
-          <SettingsTabs
-            key={block.id}
-            general={
-              <div className="flex flex-col gap-3">
+          partTabs({ kind: "block", id: block.id }, {
+            content: (<div className="flex flex-col gap-3">
                 <label className="flex flex-col gap-1 text-sm font-medium">
                   {dw.shows}
                   <select
@@ -4187,18 +4215,9 @@ function Dialogs({
                 <p className="text-sm text-muted">
                   {dw.shopPartWhere}
                 </p>
-              </div>
-            }
-            style={
-              <>
-                {typographyFields({ kind: "block", id: block.id }, dw.fonts.site)}
-                {spacingFields({ kind: "block", id: block.id })}
-                {frameFields({ kind: "block", id: block.id })}
-              </>
-            }
-            motion={motionFields({ kind: "block", id: block.id })}
-            advanced={advancedFields({ kind: "block", id: block.id })}
-          />
+              </div>),
+            font: dw.fonts.site,
+          })
         )}
       </SettingsPanel>
 
@@ -4206,41 +4225,25 @@ function Dialogs({
         open={block?.type === "contentGrid"}
         onClose={onClose}
         title={w.blockNames.contentGrid}
-        footer={
-          block && (
-            <>
-              {saveAs({ kind: "block", content: block })}
-              {done}
-            </>
-          )
-        }
+        {...(block ? chrome({ kind: "block", id: block.id }) : {})}
         wide
       >
         {block?.type === "contentGrid" && (
-          <SettingsTabs
-            key={block.id}
-            general={
-              <ContentGridFields
+          partTabs({ kind: "block", id: block.id }, {
+            content: (<ContentGridFields
                 block={block}
                 grid={grid}
                 upload={upload}
                 onChange={(patch) => onRows((current) => patchBlock<ContentGridBlock>(current, block.id, patch))}
-              />
-            }
-            style={
-              <>
+              />),
+            design: (<>
                 <GridStyleFields
                   block={block}
                   onChange={(patch) => onRows((current) => patchBlock<ContentGridBlock>(current, block.id, patch))}
                 />
-                {typographyFields({ kind: "block", id: block.id }, dw.fonts.body)}
-                {spacingFields({ kind: "block", id: block.id })}
-                {frameFields({ kind: "block", id: block.id })}
-              </>
-            }
-            motion={motionFields({ kind: "block", id: block.id })}
-            advanced={advancedFields({ kind: "block", id: block.id })}
-          />
+              </>),
+            font: dw.fonts.body,
+          })
         )}
       </SettingsPanel>
 
@@ -4248,118 +4251,118 @@ function Dialogs({
         open={Boolean(row)}
         onClose={onClose}
         title={column ? w.savedKinds.column.one : w.savedKinds.row.one}
-        footer={
-          row && (
-            <>
-              {saveAs(column ? { kind: "column", content: column } : { kind: "row", content: row })}
-              {column && (
-                // The column with everything in it, asked first when it holds text (as its tools' delete); a row keeps one column.
-                <button
-                  type="button"
-                  disabled={row.columns.length <= 1}
-                  title={row.columns.length <= 1 ? dw.onlyColumn : undefined}
-                  onClick={() => {
-                    const remove = () => onRows((current) => removeColumn(current, column.id));
-                    if (column.blocks.some(blockHasContent)) open({ kind: "delete", what: dw.thisColumnAndText, run: remove });
-                    else {
-                      remove();
-                      onClose();
-                    }
-                  }}
-                  className="min-h-10 rounded-md border border-border px-4 text-sm text-red-700 disabled:opacity-40 dark:text-red-400"
-                >
-                  {dw.deleteColumn}
-                </button>
-              )}
-              {done}
-            </>
-          )
-        }
+        {...(row ? chrome(column ? { kind: "column", id: column.id } : { kind: "row", id: row.id }) : {})}
         wide
       >
         {row && column && (
-          <SettingsTabs
-            key={column.id}
-            general={
+          partTabs({ kind: "column", id: column.id }, {
+            content: (
               <>
-                <ColumnLinkFields
-                  link={column.link}
-                  onChange={(link) => onRows((current) => patchColumn(current, column.id, { link }))}
-                />
-                <div className="flex flex-col gap-4 border-t border-border pt-4">
-                  <Check
-                    label={dw.inline}
-                    hint={dw.inlineHint}
-                    checked={Boolean(column.inline)}
-                    onChange={(inline) =>
-                      onRows((current) => patchColumn(current, column.id, inline ? { inline } : { inline: undefined, justify: undefined }))
-                    }
-                  />
-                  {column.inline && (
-                    <Choices
-                      legend={dw.whereTheySit}
-                      options={(Object.keys(COLUMN_JUSTIFY) as ColumnJustify[]).map((value) => ({ value, label: dw.justify[value] }))}
-                      value={column.justify ?? "start"}
-                      onChange={(justify) => onRows((current) => patchColumn(current, column.id, { justify: justify === "start" ? undefined : justify }))}
-                    />
-                  )}
+                {/* How wide it is, in words: a column's width is its row's layout, changed in the row (D631). */}
+                <div className="flex flex-col gap-2">
+                  <span className="text-sm font-medium">{pw.width}</span>
+                  <div className="flex flex-wrap items-center gap-3 rounded-lg bg-sunken p-3">
+                    <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+                      <span className="text-sm font-medium">{columnShareWords(row, column)}</span>
+                      <span className="text-xs text-muted">{pw.widthFromRow}</span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => open({ kind: "edit-row", rowId: row.id, columnId: null })}
+                      className="min-h-9 rounded-md border border-border bg-background px-3 text-sm"
+                    >
+                      {pw.changeInRow}
+                    </button>
+                  </div>
                 </div>
-                <ColumnSizeFields column={column} row={row} onChange={(patch) => onRows((current) => patchColumn(current, column.id, patch))} />
-                <fieldset className="flex flex-col gap-3 border-t border-border pt-4">
-                  <legend className="float-left mb-2 w-full text-sm font-medium">{dw.rowLayout}</legend>
-                  <p className="text-sm text-muted">{dw.columnWidthFromRow}</p>
-                  {layoutChoice(row)}
-                </fieldset>
-              </>
-            }
-            style={
-              <>
-                {backgroundFields(
-                  { kind: "column", id: column.id },
-                  <BackgroundFields
-                    value={column.background}
-                    upload={upload}
-                    // Columns are offered no video (only rows take one).
-                    onChange={(background) =>
-                      onRows((current) => patchColumn(current, column.id, { background: background?.type === "video" ? undefined : background }))
-                    }
-                    backdropBlur={column.backdropBlur}
-                    onBackdropBlur={(backdropBlur) => onRows((current) => patchColumn(current, column.id, { backdropBlur }))}
-                    target="column"
-                    motion={column.backgroundMotion}
-                    onMotion={(backgroundMotion) => onRows((current) => patchColumn(current, column.id, { backgroundMotion }))}
-                    backdrop={{
-                      layers: column.backgroundLayers,
-                      hue: column.backgroundHue,
-                      onBackdrop: (patch) => onRows((current) => patchColumn(current, column.id, patch)),
-                      onLayers: (backgroundLayers) => onRows((current) => patchColumn(current, column.id, { backgroundLayers })),
-                      onHue: (backgroundHue) => onRows((current) => patchColumn(current, column.id, { backgroundHue })),
-                    }}
-                    mark={<SizeMark part={column} field="background" label={dw.background} onPatch={plainPatch({ kind: "column", id: column.id })} />}
-                  />,
+                <Choices
+                  legend={pw.componentsIn}
+                  hint={column.inline ? dw.inlineHint : undefined}
+                  options={[
+                    { value: "stack", label: pw.oneUnder },
+                    { value: "inline", label: pw.sideBySide },
+                  ]}
+                  value={column.inline ? "inline" : "stack"}
+                  onChange={(next) =>
+                    onRows((current) => patchColumn(current, column.id, next === "inline" ? { inline: true } : { inline: undefined, justify: undefined }))
+                  }
+                />
+                {column.inline && (
+                  <Choices
+                    legend={dw.whereTheySit}
+                    options={(Object.keys(COLUMN_JUSTIFY) as ColumnJustify[]).map((value) => ({ value, label: dw.justify[value] }))}
+                    value={column.justify ?? "start"}
+                    onChange={(justify) => onRows((current) => patchColumn(current, column.id, { justify: justify === "start" ? undefined : justify }))}
+                  />
                 )}
-                {typographyFields({ kind: "column", id: column.id })}
-                {spacingFields({ kind: "column", id: column.id })}
-                {frameFields({ kind: "column", id: column.id })}
               </>
-            }
-            motion={motionFields({ kind: "column", id: column.id })}
-            advanced={advancedFields({ kind: "column", id: column.id })}
-          />
+            ),
+            contentFolds: (
+              <>
+                <Fold id="column-link" title={pw.folds.link} summary={column.link?.href.trim() || pw.summary.off}>
+                  <ColumnLinkFields link={column.link} onChange={(link) => onRows((current) => patchColumn(current, column.id, { link }))} />
+                </Fold>
+                <Fold
+                  id="width-order"
+                  title={pw.folds.widthOrder}
+                  summary={column.width !== undefined || column.order !== undefined ? pw.summary.own : pw.summary.fromLayout}
+                >
+                  <ColumnSizeFields column={column} row={row} onChange={(patch) => onRows((current) => patchColumn(current, column.id, patch))} />
+                </Fold>
+              </>
+            ),
+            design: backgroundFields(
+              { kind: "column", id: column.id },
+              <BackgroundFields
+                value={column.background}
+                upload={upload}
+                // Columns are offered no video (only rows take one).
+                onChange={(background) =>
+                  onRows((current) => patchColumn(current, column.id, { background: background?.type === "video" ? undefined : background }))
+                }
+                backdropBlur={column.backdropBlur}
+                onBackdropBlur={(backdropBlur) => onRows((current) => patchColumn(current, column.id, { backdropBlur }))}
+                target="column"
+                motion={column.backgroundMotion}
+                onMotion={(backgroundMotion) => onRows((current) => patchColumn(current, column.id, { backgroundMotion }))}
+                backdrop={{
+                  layers: column.backgroundLayers,
+                  hue: column.backgroundHue,
+                  onBackdrop: (patch) => onRows((current) => patchColumn(current, column.id, patch)),
+                  onLayers: (backgroundLayers) => onRows((current) => patchColumn(current, column.id, { backgroundLayers })),
+                  onHue: (backgroundHue) => onRows((current) => patchColumn(current, column.id, { backgroundHue })),
+                }}
+                mark={<SizeMark part={column} field="background" label={dw.background} onPatch={plainPatch({ kind: "column", id: column.id })} />}
+              />,
+            ),
+          })
         )}
         {row && !column && (
-          <SettingsTabs
-            key={row.id}
-            general={
+          partTabs({ kind: "row", id: row.id }, {
+            // Layout (D631): its columns, its width and its height; the rest folded. Choosing fewer columns asks what to do with what they hold.
+            content: (
               <>
-                <p className="text-sm text-muted">{dw.fewerColumns}</p>
-                {layoutChoice(row)}
-                <RowFields row={row} onChange={(patch) => onRows((current) => patchRow(current, row.id, patch))} />
-                <ModalFields row={row} rows={rows} onChange={(patch) => onRows((current) => patchRow(current, row.id, patch))} />
+                <div className="flex flex-col gap-2">
+                  <span className="text-sm font-medium">{w.row.columns}</span>
+                  {layoutChoice(row)}
+                </div>
+                <RowLayoutFields row={row} onChange={(patch) => onRows((current) => patchRow(current, row.id, patch))} />
               </>
-            }
-            style={
+            ),
+            contentFolds: (
               <>
+                <Fold id="row-columns" title={pw.folds.columns} summary={rowColumnWords(row)}>
+                  <RowColumnFields row={row} onChange={(patch) => onRows((current) => patchRow(current, row.id, patch))} />
+                </Fold>
+                <Fold id="row-max" title={pw.folds.maxWidth} summary={row.contentMax ? fillWords(pw.summary.px, { n: row.contentMax }) : pw.summary.themeDefault}>
+                  <RowContentMaxField row={row} onChange={(patch) => onRows((current) => patchRow(current, row.id, patch))} />
+                </Fold>
+              </>
+            ),
+            // A row's section style is a look (D631): first under Design, over its background.
+            design: (
+              <>
+                <SectionStyleField row={row} onChange={(patch) => onRows((current) => patchRow(current, row.id, patch))} />
                 {backgroundFields(
                   { kind: "row", id: row.id },
                   <BackgroundFields
@@ -4386,14 +4389,9 @@ function Dialogs({
                     mark={<SizeMark part={row} field="background" label={dw.background} onPatch={plainPatch({ kind: "row", id: row.id })} />}
                   />,
                 )}
-                {typographyFields({ kind: "row", id: row.id })}
-                {spacingFields({ kind: "row", id: row.id })}
-                {frameFields({ kind: "row", id: row.id })}
               </>
-            }
-            motion={motionFields({ kind: "row", id: row.id })}
-            advanced={advancedFields({ kind: "row", id: row.id })}
-          />
+            ),
+          })
         )}
       </SettingsPanel>
 
@@ -4468,7 +4466,7 @@ function Dialogs({
           upload={upload}
         />
       )}
-    </GeneralFoot.Provider>
+    </SettingsMemoryProvider>
   );
 }
 
@@ -5230,7 +5228,10 @@ function SavedPartDialog({
                       />
                     )}
                     {block.type === "image" ? (
-                      <ImageFields block={block} upload={upload} onChange={(next) => change((r) => updateBlock(r, block.id, () => next))} />
+                      <>
+                        <ImageFields block={block} upload={upload} onChange={(next) => change((r) => updateBlock(r, block.id, () => next))} />
+                        <ImageLinkFields block={block} onChange={(next) => change((r) => updateBlock(r, block.id, () => next))} />
+                      </>
                     ) : block.type === "heading" ? (
                       <HeadingFields block={block} onChange={(next) => change((r) => updateBlock(r, block.id, () => next))} />
                     ) : block.type === "contentGrid" || block.type === "product" || block.type === "site" ? (
