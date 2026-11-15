@@ -53,6 +53,7 @@ export type FieldView = {
   options?: ChecklistOption[];
   sensitive: boolean;
   bounds?: { min?: number; max?: number };
+  conditions?: RuleCondition[];
 };
 
 export type RuleInputView = { name: string; conditions: RuleCondition[]; effect: RuleEffect };
@@ -65,6 +66,7 @@ export type FieldInputView = {
   options?: { id?: string; label: Words; none?: boolean }[];
   sensitive?: boolean;
   bounds?: { min?: number; max?: number };
+  conditions?: RuleCondition[];
 };
 
 export type CheckoutRuleActions = {
@@ -165,6 +167,129 @@ function WordsField({ value, onChange, label, locales, max }: { value: Words; on
   );
 }
 
+/**
+ * Conditions that must all hold (D357): a checkout rule's, and a question's (task 4). Each names a country, the basket's value or weight,
+ * products, categories, tags or customer groups; none means always.
+ */
+function ConditionsEditor({
+  conditions,
+  onChange,
+  choices,
+  legend,
+  none,
+}: {
+  conditions: RuleCondition[];
+  onChange: (next: RuleCondition[]) => void;
+  choices: RuleChoices;
+  legend: string;
+  none: string;
+}) {
+  const w = useAdminText("shipping").checkoutRules;
+  const setConditions = onChange;
+  const setCondition = (i: number, next: RuleCondition) => setConditions(conditions.map((c, j) => (j === i ? next : c)));
+  const pools: Record<"product" | "category" | "tag" | "group", Choice[]> = {
+    product: choices.products,
+    category: choices.categories,
+    tag: choices.tags,
+    group: choices.groups,
+  };
+  return (
+    <fieldset className="flex flex-col gap-2">
+      <legend className="text-body-strong text-ink">{legend}</legend>
+      {conditions.length === 0 && <p className="text-sm text-muted">{none}</p>}
+      {conditions.map((c, i) => (
+        <div key={i} className="flex flex-wrap items-start gap-2 rounded-panel border border-line p-2">
+          <span className="min-h-10 content-center text-sm">{w.conditionKinds[c.kind]}</span>
+          {c.kind === "country" && (
+            <>
+              <select value={c.op} onChange={(e) => setCondition(i, { ...c, op: e.target.value as "is" | "is_not" })} className={FIELD}>
+                <option value="is">{w.ops.is}</option>
+                <option value="is_not">{w.ops.is_not}</option>
+              </select>
+              <Many choices={choices.countries} chosen={c.countries} onChange={(countries) => setCondition(i, { ...c, countries })} label={w.conditionKinds.country} />
+            </>
+          )}
+          {c.kind === "total" && (
+            <>
+              <select value={c.op} onChange={(e) => setCondition(i, { ...c, op: e.target.value as "at_least" | "below" })} className={FIELD}>
+                <option value="at_least">{w.ops.at_least}</option>
+                <option value="below">{w.ops.below}</option>
+              </select>
+              <input
+                type="number"
+                min={0}
+                step="0.01"
+                value={c.amountMinor / 100}
+                onChange={(e) => setCondition(i, { ...c, amountMinor: Math.max(0, Math.round(Number(e.target.value) * 100)) })}
+                className={`${FIELD} w-32`}
+                aria-label={w.conditionKinds.total}
+              />
+              <select value={c.currency} onChange={(e) => setCondition(i, { ...c, currency: e.target.value })} className={FIELD} aria-label={w.conditionKinds.total}>
+                {choices.currencies.map((cur) => (
+                  <option key={cur} value={cur}>
+                    {cur}
+                  </option>
+                ))}
+              </select>
+            </>
+          )}
+          {c.kind === "weight" && (
+            <>
+              <select value={c.op} onChange={(e) => setCondition(i, { ...c, op: e.target.value as "at_least" | "below" })} className={FIELD}>
+                <option value="at_least">{w.ops.at_least}</option>
+                <option value="below">{w.ops.below}</option>
+              </select>
+              <input
+                type="number"
+                min={0}
+                value={c.grams}
+                onChange={(e) => setCondition(i, { ...c, grams: Math.max(0, Math.round(Number(e.target.value))) })}
+                className={`${FIELD} w-32`}
+                aria-label={w.conditionKinds.weight}
+              />
+              <span className="min-h-10 content-center text-sm">{w.grams}</span>
+            </>
+          )}
+          {(c.kind === "product" || c.kind === "category" || c.kind === "tag" || c.kind === "group") && (
+            <>
+              <select
+                value={c.op}
+                onChange={(e) => setCondition(i, { ...c, op: e.target.value } as RuleCondition)}
+                className={FIELD}
+              >
+                {(c.kind === "group" ? (["is", "is_not"] as const) : (["has", "has_not"] as const)).map((op) => (
+                  <option key={op} value={op}>
+                    {w.ops[op]}
+                  </option>
+                ))}
+              </select>
+              <Many choices={pools[c.kind]} chosen={c.ids} onChange={(ids) => setCondition(i, { ...c, ids } as RuleCondition)} label={w.conditionKinds[c.kind]} />
+            </>
+          )}
+          <Button type="button" kind="quiet" onClick={() => setConditions(conditions.filter((_, j) => j !== i))}>
+            {w.remove}
+          </Button>
+        </div>
+      ))}
+      {conditions.length < 10 && (
+        <select
+          value=""
+          onChange={(e) => e.target.value && setConditions([...conditions, blankCondition(e.target.value as RuleCondition["kind"], choices)])}
+          className={`${FIELD} self-start`}
+          aria-label={w.addCondition}
+        >
+          <option value="">{w.addCondition}</option>
+          {CONDITION_KINDS.map((k) => (
+            <option key={k} value={k}>
+              {w.conditionKinds[k]}
+            </option>
+          ))}
+        </select>
+      )}
+    </fieldset>
+  );
+}
+
 /** Makes or changes a rule: when (all conditions), then (one effect). Saved off. */
 export function RuleEditor({
   start,
@@ -183,13 +308,6 @@ export function RuleEditor({
   const [name, setName] = useState(start?.name ?? "");
   const [conditions, setConditions] = useState<RuleCondition[]>(start?.conditions ?? []);
   const [effect, setEffect] = useState<RuleEffect>(start?.effect ?? blankEffect("hide_shipping"));
-  const setCondition = (i: number, next: RuleCondition) => setConditions(conditions.map((c, j) => (j === i ? next : c)));
-  const pools: Record<"product" | "category" | "tag" | "group", Choice[]> = {
-    product: choices.products,
-    category: choices.categories,
-    tag: choices.tags,
-    group: choices.groups,
-  };
 
   return (
     <form
@@ -210,99 +328,7 @@ export function RuleEditor({
         {w.name}
         <input value={name} onChange={(e) => setName(e.target.value)} maxLength={80} required className={FIELD} />
       </label>
-      <fieldset className="flex flex-col gap-2">
-        <legend className="text-body-strong text-ink">{w.when}</legend>
-        {conditions.length === 0 && <p className="text-sm text-muted">{w.always}</p>}
-        {conditions.map((c, i) => (
-          <div key={i} className="flex flex-wrap items-start gap-2 rounded-panel border border-line p-2">
-            <span className="min-h-10 content-center text-sm">{w.conditionKinds[c.kind]}</span>
-            {c.kind === "country" && (
-              <>
-                <select value={c.op} onChange={(e) => setCondition(i, { ...c, op: e.target.value as "is" | "is_not" })} className={FIELD}>
-                  <option value="is">{w.ops.is}</option>
-                  <option value="is_not">{w.ops.is_not}</option>
-                </select>
-                <Many choices={choices.countries} chosen={c.countries} onChange={(countries) => setCondition(i, { ...c, countries })} label={w.conditionKinds.country} />
-              </>
-            )}
-            {c.kind === "total" && (
-              <>
-                <select value={c.op} onChange={(e) => setCondition(i, { ...c, op: e.target.value as "at_least" | "below" })} className={FIELD}>
-                  <option value="at_least">{w.ops.at_least}</option>
-                  <option value="below">{w.ops.below}</option>
-                </select>
-                <input
-                  type="number"
-                  min={0}
-                  step="0.01"
-                  value={c.amountMinor / 100}
-                  onChange={(e) => setCondition(i, { ...c, amountMinor: Math.max(0, Math.round(Number(e.target.value) * 100)) })}
-                  className={`${FIELD} w-32`}
-                  aria-label={w.conditionKinds.total}
-                />
-                <select value={c.currency} onChange={(e) => setCondition(i, { ...c, currency: e.target.value })} className={FIELD} aria-label={w.conditionKinds.total}>
-                  {choices.currencies.map((cur) => (
-                    <option key={cur} value={cur}>
-                      {cur}
-                    </option>
-                  ))}
-                </select>
-              </>
-            )}
-            {c.kind === "weight" && (
-              <>
-                <select value={c.op} onChange={(e) => setCondition(i, { ...c, op: e.target.value as "at_least" | "below" })} className={FIELD}>
-                  <option value="at_least">{w.ops.at_least}</option>
-                  <option value="below">{w.ops.below}</option>
-                </select>
-                <input
-                  type="number"
-                  min={0}
-                  value={c.grams}
-                  onChange={(e) => setCondition(i, { ...c, grams: Math.max(0, Math.round(Number(e.target.value))) })}
-                  className={`${FIELD} w-32`}
-                  aria-label={w.conditionKinds.weight}
-                />
-                <span className="min-h-10 content-center text-sm">{w.grams}</span>
-              </>
-            )}
-            {(c.kind === "product" || c.kind === "category" || c.kind === "tag" || c.kind === "group") && (
-              <>
-                <select
-                  value={c.op}
-                  onChange={(e) => setCondition(i, { ...c, op: e.target.value } as RuleCondition)}
-                  className={FIELD}
-                >
-                  {(c.kind === "group" ? (["is", "is_not"] as const) : (["has", "has_not"] as const)).map((op) => (
-                    <option key={op} value={op}>
-                      {w.ops[op]}
-                    </option>
-                  ))}
-                </select>
-                <Many choices={pools[c.kind]} chosen={c.ids} onChange={(ids) => setCondition(i, { ...c, ids } as RuleCondition)} label={w.conditionKinds[c.kind]} />
-              </>
-            )}
-            <Button type="button" kind="quiet" onClick={() => setConditions(conditions.filter((_, j) => j !== i))}>
-              {w.remove}
-            </Button>
-          </div>
-        ))}
-        {conditions.length < 10 && (
-          <select
-            value=""
-            onChange={(e) => e.target.value && setConditions([...conditions, blankCondition(e.target.value as RuleCondition["kind"], choices)])}
-            className={`${FIELD} self-start`}
-            aria-label={w.addCondition}
-          >
-            <option value="">{w.addCondition}</option>
-            {CONDITION_KINDS.map((k) => (
-              <option key={k} value={k}>
-                {w.conditionKinds[k]}
-              </option>
-            ))}
-          </select>
-        )}
-      </fieldset>
+      <ConditionsEditor conditions={conditions} onChange={setConditions} choices={choices} legend={w.when} none={w.always} />
       <fieldset className="flex flex-col gap-2">
         <legend className="text-body-strong text-ink">{w.then}</legend>
         <select value={effect.kind} onChange={(e) => setEffect(blankEffect(e.target.value as RuleEffect["kind"]))} className={`${FIELD} self-start`} aria-label={w.then}>
@@ -513,12 +539,15 @@ export function RuleList({ rules, choices, canWrite, actions }: { rules: RuleVie
 
 function FieldEditor({
   start,
+  choices,
   locales,
   mainLocale,
   save,
   onDone,
 }: {
   start: FieldView | null;
+  /** What a question's conditions may name (task 4): the rule editor's own choices. */
+  choices: RuleChoices;
   locales: Choice[];
   mainLocale: string;
   save: CheckoutRuleActions["saveField"];
@@ -533,7 +562,9 @@ function FieldEditor({
   const [help, setHelp] = useState<Words>(start?.help ?? EMPTY_WORDS);
   // How wide the cart draws it (task 2): Lisa's step away, open from the start only when the question is already half width.
   const [width, setWidth] = useState<FieldWidth>(start?.width ?? "full");
-  const [customise, setCustomise] = useState(start?.width === "half");
+  // When it is asked (task 4): the checkout rules' conditions, under Customise with the width; open from the start when it has some.
+  const [conditions, setConditions] = useState<RuleCondition[]>(start?.conditions ?? []);
+  const [customise, setCustomise] = useState(start?.width === "half" || (start?.conditions?.length ?? 0) > 0);
   // A tick list's options and whether it asks the shopper's explicit consent (task 3).
   const [options, setOptions] = useState<{ id?: string; label: Words; none?: boolean }[]>(start?.options ?? []);
   const [sensitive, setSensitive] = useState(start?.sensitive ?? false);
@@ -559,7 +590,7 @@ function FieldEditor({
           const list = hasOptions(kind) ? { options: kept, sensitive } : { sensitive: false };
           const whole = (s: string) => (s.trim() === "" ? undefined : Number(s));
           const limits = hasBounds(kind) ? { bounds: { min: whole(bounds.min), max: whole(bounds.max) } } : {};
-          const saved = await save(start?.id ?? null, { kind, required, label, help: help.text.trim() ? help : null, width, ...list, ...limits });
+          const saved = await save(start?.id ?? null, { kind, required, label, help: help.text.trim() ? help : null, width, ...list, ...limits, conditions });
           if (saved.ok) {
             setProblems([]);
             onDone();
@@ -659,6 +690,12 @@ function FieldEditor({
           <p className="text-muted">{kind === "date" ? w.dateHint : w.numberHint}</p>
         </fieldset>
       )}
+      {customise && (
+        <div className="flex flex-col gap-1">
+          <ConditionsEditor conditions={conditions} onChange={setConditions} choices={choices} legend={w.askedWhen} none={w.askedAlways} />
+          <p className="text-sm text-muted">{w.askedWhenHint}</p>
+        </div>
+      )}
       {customise ? (
         <fieldset className="flex flex-col gap-2 text-sm">
           <legend className="mb-1 font-medium">{w.width}</legend>
@@ -704,12 +741,15 @@ function FieldEditor({
  */
 export function FieldList({
   fields,
+  choices,
   locales,
   mainLocale,
   canWrite,
   actions,
 }: {
   fields: FieldView[];
+  /** What a question's conditions may name (task 4). */
+  choices: RuleChoices;
   locales: Choice[];
   /** The store's main locale, for ready-made words (the allergen list). */
   mainLocale: string;
@@ -750,7 +790,7 @@ export function FieldList({
   const rows = shown.map((f, i) =>
     editing === f.id ? (
       <li key={f.id} className="py-3">
-        <FieldEditor start={f} locales={locales} mainLocale={mainLocale} save={actions.saveField} onDone={() => setEditing(null)} />
+        <FieldEditor start={f} choices={choices} locales={locales} mainLocale={mainLocale} save={actions.saveField} onDone={() => setEditing(null)} />
       </li>
     ) : (
       <FieldRowView
@@ -801,7 +841,7 @@ export function FieldList({
     <Card title={w.fields} description={w.fieldsHint} aside={canWrite && editing !== "new" ? <Button kind="strong" onClick={() => setEditing("new")}>{w.newField}</Button> : undefined}>
       {editing === "new" && (
         <div className="mb-4">
-          <FieldEditor start={null} locales={locales} mainLocale={mainLocale} save={actions.saveField} onDone={() => setEditing(null)} />
+          <FieldEditor start={null} choices={choices} locales={locales} mainLocale={mainLocale} save={actions.saveField} onDone={() => setEditing(null)} />
         </div>
       )}
       {shown.length === 0 ? (
@@ -859,7 +899,12 @@ function FieldRowView({ field, sortable, after, children }: { field: FieldView; 
       )}
       <RowLead
         title={field.label.text}
-        sub={[w.fieldKinds[field.kind], field.required ? w.required : w.optional, ...(field.width === "half" ? [w.widths.half] : [])].join(" · ")}
+        sub={[
+          w.fieldKinds[field.kind],
+          field.required ? w.required : w.optional,
+          ...(field.width === "half" ? [w.widths.half] : []),
+          ...((field.conditions?.length ?? 0) > 0 ? [w.someBaskets] : []),
+        ].join(" · ")}
       />
       <Chip signal={field.enabled ? "positive" : "neutral"} dot>
         {field.enabled ? w.on : w.off}

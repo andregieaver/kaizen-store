@@ -1,5 +1,5 @@
 {
- "version": "1.21",
+ "version": "1.22",
  "surface": [
   "admin DELETE /categories/{id}",
   "admin DELETE /categories/{id} -> data",
@@ -90,6 +90,14 @@
   "admin GET /checkout/fields -> data[].bounds",
   "admin GET /checkout/fields -> data[].bounds.max",
   "admin GET /checkout/fields -> data[].bounds.min",
+  "admin GET /checkout/fields -> data[].conditions",
+  "admin GET /checkout/fields -> data[].conditions[].amountMinor",
+  "admin GET /checkout/fields -> data[].conditions[].countries",
+  "admin GET /checkout/fields -> data[].conditions[].currency",
+  "admin GET /checkout/fields -> data[].conditions[].grams",
+  "admin GET /checkout/fields -> data[].conditions[].ids",
+  "admin GET /checkout/fields -> data[].conditions[].kind",
+  "admin GET /checkout/fields -> data[].conditions[].op",
   "admin GET /checkout/fields -> data[].enabled",
   "admin GET /checkout/fields -> data[].help",
   "admin GET /checkout/fields -> data[].help.byLocale",

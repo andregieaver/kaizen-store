@@ -61,7 +61,7 @@ describe("the AI manager's checkout questions", () => {
       [2, "Portkode", "text", false, true, "half"],
     ]);
     // The cart asks them in that order.
-    expect((await checkoutQuestionsFor(fx.storeId, "nb-NO", null)).fields.map((f) => f.label)).toEqual(["Ikke ring på", "Portkode"]);
+    expect((await checkoutQuestionsFor(fx.storeId, "nb-NO", null, { code: "NO", conversion: { factor: 1, step: 1 } })).fields.map((f) => f.label)).toEqual(["Ikke ring på", "Portkode"]);
 
     const audit = await db().execute<Row>(sql`
       select action, account_id from commerce.audit_log where store_id = ${fx.storeId}::uuid and action like 'shipping.checkout_field%' order by created_at

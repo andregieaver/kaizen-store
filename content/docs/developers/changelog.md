@@ -16,6 +16,14 @@ Every change to a published contract gets a version here, newest first: the Admi
 (`/api/storefront/v1/openapi.json`), the webhook topics (`/api/webhooks/v1/topics.json`) and the MCP catalogues (`/api/mcp/catalogue.json`,
 `/api/ucp/catalogue.json`). Within a major version nothing a caller relies on is renamed or removed; answers and payloads may gain fields.
 
+## 1.22 — 2026-11-15
+
+Checkout questions asked only for some baskets (D357, task 4).
+
+- `conditions` on a checkout field: the checkout rules' own conditions (country, basket value, weight, products, categories, tags,
+  customer groups). The question is asked only when every one holds for the basket; `[]` or none asks it always, and a change without
+  `conditions` keeps them.
+
 ## 1.21 — 2026-11-14
 
 More kinds of checkout question (D357, task 4).
