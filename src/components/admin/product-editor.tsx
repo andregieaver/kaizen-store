@@ -2427,7 +2427,7 @@ function DigitalSection({ storeSlug, product, update, uploads }: SectionProps & 
           const started = await startFileUploadAction(storeSlug, file.name);
           if (!started.ok) return setProblem(started.problem);
           const contentType = file.type || "application/octet-stream";
-          const { error } = await uploadToSignedUrl(started.bucket, started.path, started.token, file, { contentType });
+          const { error } = await uploadToSignedUrl(started.bucket, started.path, started.token, file, { contentType, cacheControl: "0" });
           if (error) return setProblem(fillWords(w.tooLarge, { name: file.name }));
           update((p) => ({
             ...p,

@@ -64,7 +64,7 @@ export function RedirectUpload({
         setProblems(redirectProblems([started.problem], w));
         return;
       }
-      const stored = await uploadToSignedUrl(started.bucket, started.path, started.token, file, { contentType: TYPES.includes(file.type) ? file.type : "text/csv" });
+      const stored = await uploadToSignedUrl(started.bucket, started.path, started.token, file, { contentType: TYPES.includes(file.type) ? file.type : "text/csv", cacheControl: "0" });
       if (stored.error) {
         setProblems([u.didNotArrive]);
         return;

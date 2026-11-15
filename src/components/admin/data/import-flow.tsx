@@ -61,7 +61,7 @@ export function ImportUpload({
         setProblems([started.problem]);
         return;
       }
-      const stored = await uploadToSignedUrl(started.bucket, started.path, started.token, file, { contentType: TYPES.includes(file.type) ? file.type : "text/csv" });
+      const stored = await uploadToSignedUrl(started.bucket, started.path, started.token, file, { contentType: TYPES.includes(file.type) ? file.type : "text/csv", cacheControl: "0" });
       if (stored.error) {
         setProblems([w.didNotArrive]);
         return;
