@@ -10,6 +10,7 @@ import { type PageType } from "@/lib/page-content";
 
 import { audit, type Account } from "./auth";
 import { getPageForEdit, savePage, type PageOwner, type PageResult } from "./pages";
+import { owned } from "./owned";
 
 /**
  * Duplicates a page, article, product layout, header or footer of the owner's (decision D126). The copy is a new DRAFT
@@ -55,7 +56,7 @@ export async function duplicatePage(
 /** Every address the owner's pages of this type use, live or draft. */
 async function addressesInUse(owner: PageOwner, type: PageType): Promise<Set<string>> {
   const rows = await db().execute<{ slug: string }>(sql`
-    select slug from commerce.pages where store_id is not distinct from ${owner}::uuid and type = ${type}
+    select slug from commerce.pages where ${owned(owner)} and type = ${type}
   `);
   return new Set(rows.map((row) => String(row.slug)));
 }

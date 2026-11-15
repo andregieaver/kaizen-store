@@ -58,6 +58,7 @@ import { marketIn } from "./shop";
 import { getStore, storeSlugOf, storeTag } from "./stores";
 import { OFFERED } from "./product-conditions";
 import { pagesTag } from "./pages";
+import { owned } from "./owned";
 
 type Row = Record<string, unknown>;
 type Runner = Pick<ReturnType<typeof db>, "execute">;
@@ -597,7 +598,7 @@ export async function keepOwnRelations(run: Runner, storeId: string | null, defs
   const known = async (table: "products" | "pages" | "terms", ids: Set<string>) => {
     if (ids.size === 0) return new Set<string>();
     const list = sql.join([...ids].map((id) => sql`${id}::uuid`), sql`, `);
-    const rows = await run.execute<Row>(sql`select id from ${sql.raw(`commerce.${table}`)} where store_id is not distinct from ${storeId}::uuid and id in (${list})`);
+    const rows = await run.execute<Row>(sql`select id from ${sql.raw(`commerce.${table}`)} where ${owned(storeId)} and id in (${list})`);
     return new Set(rows.map((r) => String(r.id)));
   };
   const own = { product: await known("products", wanted.product), page: await known("pages", wanted.page), term: await known("terms", wanted.term) };
@@ -608,7 +609,7 @@ export async function keepOwnRelations(run: Runner, storeId: string | null, defs
     const list = sql.join([...wanted.entry].map((id) => sql`${id}::uuid`), sql`, `);
     const rows = await run.execute<Row>(sql`
       select e.id, t.key from commerce.content_entries e join commerce.content_types t on t.id = e.type_id
-      where e.store_id is not distinct from ${storeId}::uuid and e.id in (${list})
+      where ${owned(storeId, sql`e.store_id`)} and e.id in (${list})
     `);
     for (const r of rows) entryTypes.set(String(r.id), String(r.key));
   }
@@ -993,7 +994,7 @@ async function resolveRelations(
       from commerce.products p
       left join commerce.product_translations tl on tl.product_id = p.id and tl.locale = ${locale}
       left join lateral (select title from commerce.product_translations where product_id = p.id order by locale limit 1) tf on true
-      where p.store_id is not distinct from ${storeId}::uuid and p.status = 'active' and ${OFFERED} and p.id in (${list(wanted.product)})
+      where ${owned(storeId, sql`p.store_id`)} and p.status = 'active' and ${OFFERED} and p.id in (${list(wanted.product)})
     `);
     for (const r of rows) found.product.set(String(r.id), { label: String(r.title), href: base(`/p/${String(r.handle)}`), image: r.image ? String(r.image) : null });
   }
@@ -1001,7 +1002,7 @@ async function resolveRelations(
     const rows = await run.execute<Row>(sql`
       select id, type, slug, coalesce(nullif(published ->> 'title', ''), slug) as title, published -> 'thumbnail' ->> 'url' as image
       from commerce.pages
-      where store_id is not distinct from ${storeId}::uuid and published_at is not null and type in ('page', 'article') and id in (${list(wanted.page)})
+      where ${owned(storeId)} and published_at is not null and type in ('page', 'article') and id in (${list(wanted.page)})
     `);
     for (const r of rows) {
       const path = r.type === "article" ? `/blog/${String(r.slug)}` : `/${String(r.slug)}`;
@@ -1010,7 +1011,7 @@ async function resolveRelations(
   }
   if (wanted.term.size > 0) {
     const rows = await run.execute<Row>(sql`
-      select id, kind, name, slug from commerce.terms where store_id is not distinct from ${storeId}::uuid and id in (${list(wanted.term)})
+      select id, kind, name, slug from commerce.terms where ${owned(storeId)} and id in (${list(wanted.term)})
     `);
     for (const r of rows) found.term.set(String(r.id), { label: String(r.name), href: base(`/${r.kind === "tag" ? "tag" : "category"}/${String(r.slug)}`) });
   }

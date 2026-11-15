@@ -42,6 +42,7 @@ import type { Store } from "./stores";
 import { siteTerms } from "./taxonomy";
 import { termTextFor } from "@/lib/term-texts";
 import { settingsOf } from "./support";
+import { owned } from "./owned";
 
 type Row = Record<string, unknown>;
 
@@ -69,8 +70,6 @@ export type ChatAgent = {
 };
 
 export const chatTag = (storeId: string | null) => (storeId ? `chat:${storeId}` : "chat:kaizen");
-
-const owned = (storeId: string | null) => (storeId ? sql`store_id = ${storeId}::uuid` : sql`store_id is null`);
 
 function toAgent(row: Row): ChatAgent {
   return {

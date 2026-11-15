@@ -16,6 +16,7 @@ import { siteUrl } from "@/lib/site";
 
 import { audit, type Account } from "./auth";
 import { siteCookies } from "./site-cookies";
+import { owned } from "./owned";
 
 /**
  * Cookie scans (D58): queued by an owner's Scan now or by the weekly
@@ -92,18 +93,27 @@ export async function claimScan(): Promise<{ id: string; storeId: string | null 
           where s.status = 'active' and not s.starter and (s.is_template or s.setup_completed_at is not null)
             and exists (select 1 from commerce.markets m where m.store_id = s.id and m.active)
         ), last as (
+          -- Each sub-select is written the way cookie_scans_site_done_idx and cookie_scans_site_created_idx serve it (step 0.23).
           select sites.store_id,
             (select max(c.finished_at) from commerce.cookie_scans c
-              where c.store_id is not distinct from sites.store_id and c.status = 'done') as done_at,
-            (select max(c.created_at) from commerce.cookie_scans c where c.store_id is not distinct from sites.store_id) as tried_at
+              where coalesce(c.store_id, ${NO_STORE}::uuid) = coalesce(sites.store_id, ${NO_STORE}::uuid) and c.status = 'done') as done_at,
+            (select max(c.created_at) from commerce.cookie_scans c
+              where coalesce(c.store_id, ${NO_STORE}::uuid) = coalesce(sites.store_id, ${NO_STORE}::uuid)) as tried_at,
+            (select count(*)::int from commerce.cookie_scans c
+              where coalesce(c.store_id, ${NO_STORE}::uuid) = coalesce(sites.store_id, ${NO_STORE}::uuid) and c.status = 'failed'
+                and c.created_at > coalesce(
+                  (select max(d.finished_at) from commerce.cookie_scans d
+                    where coalesce(d.store_id, ${NO_STORE}::uuid) = coalesce(sites.store_id, ${NO_STORE}::uuid) and d.status = 'done'),
+                  '-infinity')) as failures
           from sites
         )
         insert into commerce.cookie_scans (store_id, status, started_at)
         select store_id, 'running', now() from last
         where (done_at is null or done_at < now() - ${SCAN_EVERY}::interval)
-          -- A scan that failed is tried again after an hour, not every minute.
-          and (tried_at is null or tried_at < now() - ${RETRY_AFTER}::interval)
-        order by done_at nulls first, tried_at nulls first
+          -- A scan that failed is tried again after an hour, and after a day from the third failure in a row.
+          and (tried_at is null or tried_at < now() - (case when failures < 3 then ${RETRY_AFTER}::interval else interval '1 day' end))
+        -- The site tried longest ago goes first, so a failing site cannot hold the head.
+        order by tried_at nulls first, done_at nulls first
         limit 1
         on conflict (coalesce(store_id, ${NO_STORE}::uuid)) where status in ('queued', 'running') do nothing
         returning id, store_id
@@ -178,7 +188,7 @@ export async function listScans(storeId: string | null, limit = 5): Promise<Cook
     select c.*, coalesce(a.name, a.email) as requested_by_name
     from commerce.cookie_scans c
     left join commerce.accounts a on a.id = c.requested_by
-    where c.store_id is not distinct from ${storeId}::uuid
+    where ${owned(storeId, sql`c.store_id`)}
     order by c.created_at desc
     limit ${limit}
   `);
@@ -189,7 +199,7 @@ export async function listScans(storeId: string | null, limit = 5): Promise<Cook
 export async function latestFindings(storeId: string | null): Promise<CookieScan | null> {
   const [row] = await db().execute<Row>(sql`
     select c.*, null as requested_by_name from commerce.cookie_scans c
-    where c.store_id is not distinct from ${storeId}::uuid and c.status = 'done'
+    where ${owned(storeId, sql`c.store_id`)} and c.status = 'done'
     order by c.finished_at desc
     limit 1
   `);

@@ -7,6 +7,7 @@ import { readEntryContent, withoutEntry } from "@/lib/content-types";
 import type { FieldData, FieldDef, Values } from "@/lib/custom-fields";
 
 import { col, typedRows, type Executor } from "./typed-rows";
+import { owned } from "./owned";
 
 /**
  * Deleting an entry clears the references to it (D326, rule of the row `catalogue.metaobjects`): in the delete's transaction, every entry
@@ -39,7 +40,7 @@ export async function clearEntryRefs(tx: Executor, owner: string | null, ids: re
       select e.id, e.draft, e.published, t.fields
       from commerce.content_entries e
       join commerce.content_types t on t.id = e.type_id
-      where e.store_id is not distinct from ${owner}::uuid
+      where ${owned(owner, sql`e.store_id`)}
         and (e.draft::text like any(${patterns}) or coalesce(e.published::text, '') like any(${patterns}))
       for update of e
     `,

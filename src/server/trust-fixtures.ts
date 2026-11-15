@@ -8,6 +8,7 @@ import { db } from "@/db/client";
 
 import type { Account, Membership } from "./auth";
 import { getStore } from "./stores";
+import { owned } from "./owned";
 
 type Row = Record<string, unknown>;
 
@@ -58,7 +59,7 @@ export async function membershipOf(slug: string, account: Account, role: "owner"
 export async function auditRows(storeId: string | null, action?: string): Promise<Row[]> {
   return db().execute<Row>(sql`
     select id, account_id, store_id, action, details, area, target_type, target_id, changes, created_at from commerce.audit_log
-    where store_id is not distinct from ${storeId}::uuid ${action ? sql`and action = ${action}` : sql``} order by id
+    where ${owned(storeId)} ${action ? sql`and action = ${action}` : sql``} order by id
   `);
 }
 

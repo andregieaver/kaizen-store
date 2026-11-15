@@ -427,6 +427,8 @@ Each rule is in full under the same words in one file of `docs/rules/admin/` by 
   `as unknown as` rise anywhere, and when they fall until `node scripts/ratchet.mjs` lowers `src/server/ratchet.baseline.json` (code review 1.2).
   A write that picks a store's row by its id names the store too (`and store_id = …`, or the file's `owned()`); the same ratchet counts the
   writes that do not, per file, and only lets that number fall (code review 1.3).
+  A read of a store's or the platform's rows filters with `owned(storeId)` (`src/server/owned.ts`), never `store_id is not distinct from`: the
+  ratchet counts that wording per file and only lets it fall (bloat review step 0.23).
 - New server code logs through `log(level, event, fields, error)` (`src/server/log.ts`: one JSON line, ids and counts, never a
   person's data or a secret, D400: no `console.error` is left in `src/server` but `log.ts`). Every cron route has a `maxDuration` and runs
   inside `trackedRoute()`/`tracked()`, and the five-minute dispatcher runs each job through `runJobs()` (`src/server/cron-runs.ts`):

@@ -29,6 +29,7 @@ import { pagesTag } from "./pages";
 import { getOpenStore, storeSlugOf, storeTag } from "./stores";
 import { marketIn } from "./shop";
 import { col, typedRows } from "./typed-rows";
+import { owned } from "./owned";
 
 /**
  * Content entries on the site (wave 6 unit H2, D326): what a grid of a type's entries lists. Only published entries are read, by the
@@ -96,7 +97,7 @@ export async function gridEntries(
     z.object({ id: col.uuid, slug: col.text, published: z.unknown() }),
     sql`
       select e.id, e.slug, e.published from commerce.content_entries e
-      where e.store_id is not distinct from ${owner}::uuid and e.type_id = ${type.id}::uuid and e.published is not null
+      where ${owned(owner, sql`e.store_id`)} and e.type_id = ${type.id}::uuid and e.published is not null
       order by ${entryOrder(filter.sort, type, site.main)}
       limit ${Math.max(1, Math.min(48, filter.limit))}
     `,
@@ -144,7 +145,7 @@ export async function findEntryPage(owner: string | null, typeSlug: string, entr
     sql`
       select e.id, e.slug, e.published, e.published_at, e.first_published_at, e.type_id
       from commerce.content_entries e join commerce.content_types t on t.id = e.type_id
-      where e.store_id is not distinct from ${owner}::uuid and t.slug = ${typeSlug} and t.has_pages
+      where ${owned(owner, sql`e.store_id`)} and t.slug = ${typeSlug} and t.has_pages
         and e.slug = ${entrySlug} and e.published is not null
     `,
     readDb(),
@@ -156,7 +157,7 @@ export async function findEntryPage(owner: string | null, typeSlug: string, entr
   if (type.layoutId) {
     const [page] = await readDb().execute<Record<string, unknown>>(sql`
       select published from commerce.pages
-      where id = ${type.layoutId}::uuid and store_id is not distinct from ${owner}::uuid and type = 'entry_layout' and published_at is not null
+      where id = ${type.layoutId}::uuid and ${owned(owner)} and type = 'entry_layout' and published_at is not null
     `);
     layout = page ? parsePageContent(page.published) : null;
   }
@@ -186,7 +187,7 @@ export async function listIndexedEntries(owner: string | null, limit = 10_000): 
     sql`
       select t.slug as type_slug, e.slug, e.published_at
       from commerce.content_entries e join commerce.content_types t on t.id = e.type_id
-      where e.store_id is not distinct from ${owner}::uuid and t.has_pages and e.published is not null
+      where ${owned(owner, sql`e.store_id`)} and t.has_pages and e.published is not null
       order by e.first_published_at, e.id
       limit ${limit}
     `,

@@ -38,6 +38,7 @@ import type { ConversationRef, VisitorAction, VisitorMessage, VisitorMessageData
 import { avatarPictureUrl } from "@/lib/avatar";
 
 import type { Desk } from "./support-desk";
+import { owned } from "./owned";
 
 /** Kaizen's own desk keeps Norway's time (its company's). */
 export const KAIZEN_TIME_ZONE = "Europe/Oslo";
@@ -485,6 +486,7 @@ export async function endIdleConversations(now: Date = new Date(), limit = 500):
   const at = sql`${now.toISOString()}::timestamptz`;
   const rows = await db().execute<Row>(sql`
     select c.id from commerce.support_conversations c
+    -- Column to column: both sides may be null (the platform's rows); no parameter to branch on.
     left join commerce.support_settings s on s.store_id is not distinct from c.store_id
     where c.status = 'open' and c.anonymised_at is null and (
       (c.handler = 'ai' and c.last_message_at < ${at} - make_interval(mins => coalesce(s.end_after_minutes, ${END_AFTER_MINUTES.default})))
@@ -538,6 +540,7 @@ export async function anonymiseConversations(executor: Executor, ids: string[]):
 export async function transcriptsDue(now: Date, ruleCutoff: Date, limit: number): Promise<string[]> {
   const rows = await db().execute<Row>(sql`
     select c.id from commerce.support_conversations c
+    -- Column to column: both sides may be null (the platform's rows); no parameter to branch on.
     left join commerce.support_settings s on s.store_id is not distinct from c.store_id
     where c.status = 'ended' and c.anonymised_at is null
       and (c.ended_at < ${ruleCutoff.toISOString()}::timestamptz
@@ -814,7 +817,7 @@ export async function staffConversation(desk: Desk, conversationId: string, afte
     left join commerce.customers cu on cu.store_id = c.store_id and cu.id = c.customer_id
     left join commerce.accounts ra on ra.id = c.requester_id
     left join commerce.accounts a on a.id = c.assignee_id
-    left join commerce.support_settings ss on ss.store_id is not distinct from c.store_id
+    left join commerce.support_settings ss on ${owned(desk.storeId, sql`ss.store_id`)}
     where c.id = ${conversationId}::uuid and ${deskIs(desk, sql`c.store_id`)} and c.anonymised_at is null
   `);
   if (!c) return null;

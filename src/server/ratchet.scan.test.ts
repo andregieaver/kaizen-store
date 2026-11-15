@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { ANY_SUPPRESSED, ratchetCounts, UNKNOWN_CAST, unscopedWrites, UNTYPED_READ } from "../../scripts/lib/ratchet-count.mjs";
+import { ANY_SUPPRESSED, NOT_DISTINCT_STORE, ratchetCounts, UNKNOWN_CAST, unscopedWrites, UNTYPED_READ } from "../../scripts/lib/ratchet-count.mjs";
 import baseline from "./ratchet.baseline.json";
 
 /**
@@ -15,9 +15,11 @@ const now = ratchetCounts(process.cwd()) as {
   anySuppressed: number;
   untypedReads: Record<string, number>;
   byIdWrites: Record<string, number>;
+  notDistinctStore: Record<string, number>;
 };
 const recorded: Record<string, number> = baseline.untypedReads;
 const recordedWrites: Record<string, number> = baseline.byIdWrites;
+const recordedNotDistinct: Record<string, number> = baseline.notDistinctStore;
 
 describe("the ratchet (code review 1.2)", () => {
   it("adds no unchecked read: a file has no more than its baseline, and a file not in it has none", () => {
@@ -34,6 +36,13 @@ describe("the ratchet (code review 1.2)", () => {
     expect(raised).toEqual([]);
   });
 
+  it("adds no `store_id is not distinct from` (step 0.23): a store's rows are filtered with owned(), which an index serves", () => {
+    const raised = Object.entries(now.notDistinctStore)
+      .filter(([file, n]) => n > (recordedNotDistinct[file] ?? 0))
+      .map(([file, n]) => `${file}: ${n} uses of store_id is not distinct from, baseline ${recordedNotDistinct[file] ?? 0}. Filter with owned(storeId) (src/server/owned.ts); lower the baseline with node scripts/ratchet.mjs when a count falls.`);
+    expect(raised).toEqual([]);
+  });
+
   it("adds no cast through unknown and no switched-off any", () => {
     expect(now.unknownCasts, "as unknown as in src, tests aside").toBeLessThanOrEqual(baseline.unknownCasts);
     expect(now.anySuppressed, "eslint-disable of no-explicit-any in src, tests aside").toBeLessThanOrEqual(baseline.anySuppressed);
@@ -47,6 +56,9 @@ describe("the ratchet (code review 1.2)", () => {
       ...Object.entries(recordedWrites)
         .filter(([file, n]) => (now.byIdWrites[file] ?? 0) < n)
         .map(([file, n]) => `${file}: ${now.byIdWrites[file] ?? 0} writes by id without the store, baseline ${n}`),
+      ...Object.entries(recordedNotDistinct)
+        .filter(([file, n]) => (now.notDistinctStore[file] ?? 0) < n)
+        .map(([file, n]) => `${file}: ${now.notDistinctStore[file] ?? 0} uses of store_id is not distinct from, baseline ${n}`),
       ...(now.unknownCasts < baseline.unknownCasts ? [`as unknown as: ${now.unknownCasts}, baseline ${baseline.unknownCasts}`] : []),
       ...(now.anySuppressed < baseline.anySuppressed ? [`suppressed any: ${now.anySuppressed}, baseline ${baseline.anySuppressed}`] : []),
     ];
@@ -58,6 +70,8 @@ describe("the ratchet (code review 1.2)", () => {
     expect(n("await tx.execute<Row>(sql`select 1`); await db().execute<Array<Row>>(sql`x`)", UNTYPED_READ)).toBe(2);
     expect(n("await typedRows(ROW, sql`select 1`, tx); await tx.execute(sql`update x`)", UNTYPED_READ)).toBe(0);
     expect(n("const s = value as unknown as Store;", UNKNOWN_CAST)).toBe(1);
+    expect(n("where a.store_id is not distinct from ${x}::uuid and store_id\n  IS NOT DISTINCT FROM ${y}", NOT_DISTINCT_STORE)).toBe(2);
+    expect(n("where ${owned(storeId)} and p.account_id is not distinct from ${a}::uuid", NOT_DISTINCT_STORE)).toBe(0);
     expect(n("// eslint-disable-next-line @typescript-eslint/no-explicit-any", ANY_SUPPRESSED)).toBe(1);
     const tables = new Set(["media", "experiments"]);
     expect(unscopedWrites("sql`delete from commerce.media where id = ${id}::uuid`", tables)).toBe(1);

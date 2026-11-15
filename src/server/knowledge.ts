@@ -15,6 +15,7 @@ import { vectorLiteral } from "@/lib/vectors";
 import { AiError, aiFor, embedTexts, type AiConnection } from "./ai";
 import { audit, type Account } from "./auth";
 import { blogsNow } from "./blogs";
+import { owned } from "./owned";
 
 type Row = Record<string, unknown>;
 
@@ -25,9 +26,6 @@ type Row = Record<string, unknown>;
  * saved; pages when the five-minute cron finds them published anew. Vectors
  * follow in the cron, as products' do (D74).
  */
-
-const owned = (storeId: string | null, column = sql`store_id`) =>
-  storeId ? sql`${column} = ${storeId}::uuid` : sql`${column} is null`;
 
 // Documents ------------------------------------------------------------------
 

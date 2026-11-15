@@ -9,6 +9,8 @@ import path from "node:path";
 /** An unchecked read: `execute<…>(` on `db()`, a transaction or any other executor. */
 export const UNTYPED_READ = /\.execute<[^(]*>\(/g;
 export const UNKNOWN_CAST = /\bas unknown as\b/g;
+/** A store filter an index cannot serve (`store_id is not distinct from`, step 0.23): filter with `owned(storeId)` (`src/server/owned.ts`). */
+export const NOT_DISTINCT_STORE = /store_id\s+is\s+not\s+distinct\s+from/gi;
 export const ANY_SUPPRESSED = /eslint-disable(?:-next-line|-line)?[^\n]*no-explicit-any/g;
 
 /** Tests, and what only tests use, are not held to it. */
@@ -68,10 +70,11 @@ export function unscopedWrites(text, tables) {
   return n;
 }
 
-/** The counts as they stand: untyped reads and writes by id alone, by file (only files that have one), and the two totals. */
+/** The counts as they stand: untyped reads, writes by id alone and `store_id is not distinct from` uses, by file (only files that have one), and the two totals. */
 export function ratchetCounts(root) {
   const untypedReads = {};
   const byIdWrites = {};
+  const notDistinctStore = {};
   const tables = storeTables(root);
   let unknownCasts = 0;
   let anySuppressed = 0;
@@ -81,8 +84,10 @@ export function ratchetCounts(root) {
     if (reads > 0) untypedReads[file] = reads;
     const writes = unscopedWrites(text, tables);
     if (writes > 0) byIdWrites[file] = writes;
+    const notDistinct = count(text, NOT_DISTINCT_STORE);
+    if (notDistinct > 0) notDistinctStore[file] = notDistinct;
     unknownCasts += count(text, UNKNOWN_CAST);
     anySuppressed += count(text, ANY_SUPPRESSED);
   }
-  return { unknownCasts, anySuppressed, untypedReads, byIdWrites };
+  return { unknownCasts, anySuppressed, untypedReads, byIdWrites, notDistinctStore };
 }

@@ -16,6 +16,7 @@ import { log } from "./log";
 import { refreshTag } from "./refresh";
 import { encryptionKey } from "./encryption-key";
 import { col, typedRows } from "./typed-rows";
+import { owned } from "./owned";
 
 /**
  * The Instagram feed's connection (D560, pure parts in `src/lib/instagram.ts`): Kaizena Flow's Instagram app (`INSTAGRAM_APP_ID`,
@@ -137,8 +138,8 @@ export async function connectInstagram(accountId: string, storeId: string | null
 
 /** Disconnects the owner's account: the row and its token go; feeds then show nothing. Instagram's own app list is the owner's to tidy. */
 export async function disconnectInstagram(accountId: string, storeId: string | null): Promise<void> {
-  const owned = storeId ? sql`store_id = ${storeId}::uuid` : sql`store_id is null`;
-  const gone = await db().execute(sql`delete from commerce.instagram_accounts where ${owned} returning id`);
+  const mine = owned(storeId);
+  const gone = await db().execute(sql`delete from commerce.instagram_accounts where ${mine} returning id`);
   if (gone.length > 0) await audit(accountId, storeId, storeId ? "store.instagram_disconnected" : "platform.instagram_disconnected", {});
   refreshTag(instagramTag(storeId));
 }
@@ -147,10 +148,10 @@ export type InstagramStatus = { username: string; posts: number; fetchedAt: stri
 
 /** What the admin shows of the owner's connection; null when none. */
 export async function instagramStatus(storeId: string | null): Promise<InstagramStatus | null> {
-  const owned = storeId ? sql`store_id = ${storeId}::uuid` : sql`store_id is null`;
+  const mine = owned(storeId);
   const [row] = await typedRows(
     z.object({ username: col.text, posts: z.unknown(), fetched: col.timestampOrNull, problem: col.textOrNull }),
-    sql`select username, posts, posts_fetched_at as fetched, problem from commerce.instagram_accounts where ${owned}`,
+    sql`select username, posts, posts_fetched_at as fetched, problem from commerce.instagram_accounts where ${mine}`,
   );
   if (!row) return null;
   const posts = keptPosts(row.posts);
@@ -165,10 +166,10 @@ export async function instagramPosts(storeId: string | null): Promise<{ username
   "use cache";
   cacheLife("hours");
   cacheTag(instagramTag(storeId));
-  const owned = storeId ? sql`store_id = ${storeId}::uuid` : sql`store_id is null`;
+  const mine = owned(storeId);
   const [row] = await typedRows(
     z.object({ username: col.text, posts: z.unknown() }),
-    sql`select username, posts from commerce.instagram_accounts where ${owned}`,
+    sql`select username, posts from commerce.instagram_accounts where ${mine}`,
     readDb(),
   );
   return row ? { username: row.username, posts: keptPosts(row.posts) } : null;

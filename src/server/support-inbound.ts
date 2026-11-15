@@ -46,6 +46,7 @@ import { runSupportTurn } from "./support-turn";
 import type { SupportCustomer } from "./support-tools";
 import { autonomyFor } from "./autopilot-settings";
 import { col, typedRow, typedRows } from "./typed-rows";
+import { owned } from "./owned";
 import { z } from "zod";
 import { normaliseEmail } from "@/lib/email-address";
 
@@ -321,7 +322,7 @@ async function processOne(row: Row, deps: InboundDeps): Promise<Outcome> {
       count(*) filter (where from_address = ${from} and created_at > now() - interval '1 hour')::int as sender,
       count(*)::int as desk
     from commerce.support_inbound_emails
-    where store_id is not distinct from ${storeId}::uuid and routed and status = 'done' and created_at > now() - interval '1 day'
+    where ${owned(storeId)} and routed and status = 'done' and created_at > now() - interval '1 day'
   `);
   if (Number(counts?.sender ?? 0) >= INBOUND_PER_SENDER_HOUR) return refused("sender_limit");
   if (Number(counts?.desk ?? 0) >= INBOUND_PER_DESK_DAY) return refused("desk_limit");
@@ -369,7 +370,7 @@ async function existingThread(desk: Desk, conversationId: string, from: string):
     select c.id, c.status, c.ended_at, c.message_seq, lower(coalesce(cu.email, c.contact_email)) as address
     from commerce.support_conversations c
     left join commerce.customers cu on cu.store_id = c.store_id and cu.id = c.customer_id
-    where c.id = ${conversationId}::uuid and c.store_id is not distinct from ${desk.storeId}::uuid and c.anonymised_at is null and c.source <> 'admin'
+    where c.id = ${conversationId}::uuid and ${owned(desk.storeId, sql`c.store_id`)} and c.anonymised_at is null and c.source <> 'admin'
   `);
   if (!row || row.address !== from || Number(row.message_seq) >= CONVERSATION_MESSAGES_MAX) return null;
   if (row.status === "open") return conversationId;
@@ -464,7 +465,7 @@ export async function deskEmailAddress(desk: Desk, env: Record<string, string | 
   if (!domain) return null;
   const [row] = await db().execute<Row>(sql`
     update commerce.support_settings set email_key = coalesce(email_key, ${newKey()})
-    where store_id is not distinct from ${desk.storeId}::uuid
+    where ${owned(desk.storeId)}
     returning email_key
   `);
   const key = row?.email_key ? String(row.email_key) : null;
@@ -478,7 +479,7 @@ export async function deskEmailAddress(desk: Desk, env: Record<string, string | 
 export async function deskEmailsKeyRefused(desk: Desk): Promise<number> {
   const [row] = await db().execute<Row>(sql`
     select count(*)::int as n from commerce.support_inbound_emails
-    where store_id is not distinct from ${desk.storeId}::uuid and routed and status = 'failed' and reason = 'key_refused'
+    where ${owned(desk.storeId)} and routed and status = 'failed' and reason = 'key_refused'
   `);
   return Number(row?.n ?? 0);
 }

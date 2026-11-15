@@ -162,6 +162,13 @@
       "when": 1794744263055,
       "tag": "20261115120423_lethal_prism",
       "breakpoints": true
+    },
+    {
+      "idx": 23,
+      "version": "7",
+      "when": 1794745861952,
+      "tag": "20261115123101_cookie_scans_site_indexes",
+      "breakpoints": true
     }
   ]
 }

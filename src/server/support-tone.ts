@@ -8,6 +8,7 @@ import { TONE_CONTEXT, TONE_SYSTEM, crossedLine, parseTone, tonePrompt, toneFell
 import { AiError, aiFor, completeText } from "./ai";
 import { SupportError, deskSettings, transition, type DeskSettings } from "./support";
 import type { Desk } from "./support-desk";
+import { owned } from "./owned";
 
 type Row = Record<string, unknown>;
 
@@ -32,7 +33,7 @@ export async function scoreTone(desk: Desk, conversationId: string, seq: number)
   const lines = await db().execute<Row>(sql`
     select m.seq, m.author, m.body, m.tone from commerce.support_messages m
     join commerce.support_conversations c on c.id = m.conversation_id
-    where m.conversation_id = ${conversationId}::uuid and c.store_id is not distinct from ${desk.storeId}::uuid and c.anonymised_at is null
+    where m.conversation_id = ${conversationId}::uuid and ${owned(desk.storeId, sql`c.store_id`)} and c.anonymised_at is null
       and m.seq <= ${seq} and m.author in ('customer', 'ai', 'agent')
     order by m.seq desc limit ${TONE_CONTEXT + 1}
   `);
@@ -65,7 +66,7 @@ export async function updateConversationTone(desk: Desk, conversationId: string,
   const { tone, alerted, handOver } = await db().transaction(async (tx) => {
     const [conversation] = await tx.execute<Row>(sql`
       select status, handler from commerce.support_conversations
-      where id = ${conversationId}::uuid and store_id is not distinct from ${desk.storeId}::uuid for update
+      where id = ${conversationId}::uuid and ${owned(desk.storeId)} for update
     `);
     const scores = await tx.execute<Row>(sql`
       select tone from commerce.support_messages where conversation_id = ${conversationId}::uuid and author = 'customer' order by seq

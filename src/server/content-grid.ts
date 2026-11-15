@@ -29,6 +29,7 @@ import { storeBlogs } from "./blogs";
 import { pagesTag } from "./pages";
 import { getOpenStore, storeSlugOf, storeTag } from "./stores";
 import { currentTerms, termsTag } from "./taxonomy";
+import { owned } from "./owned";
 
 /**
  * The items a content grid (D51) shows, looked up for the site and for the
@@ -253,7 +254,7 @@ async function gridPages(
   if (type === "page" && filter.parent) {
     if (filter.parent === "@this") {
       const [own] = exclude
-        ? await readDb().execute<Row>(sql`select slug from commerce.pages where id = ${exclude}::uuid and store_id is not distinct from ${owner}::uuid`)
+        ? await readDb().execute<Row>(sql`select slug from commerce.pages where id = ${exclude}::uuid and ${owned(owner)}`)
         : [];
       if (!own) return { items: [], ...language };
       parent = String(own.slug);
@@ -262,7 +263,7 @@ async function gridPages(
   const rows = await readDb().execute<Row>(sql`
     select p.id, p.slug, p.published, coalesce(p.first_published_at, p.published_at) as first_published_at
     from commerce.pages p
-    where p.store_id is not distinct from ${owner}::uuid and p.type = ${type} and p.published_at is not null
+    where ${owned(owner, sql`p.store_id`)} and p.type = ${type} and p.published_at is not null
       and (${exclude}::uuid is null or p.id <> ${exclude}::uuid)
       and (${parent}::text is null or (
         left(p.slug, length(${parent}::text) + 1) = ${parent}::text || '/'
