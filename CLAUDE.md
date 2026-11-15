@@ -176,6 +176,7 @@ Each rule is in full under the same words in one file of `docs/rules/admin/` by 
 - The challenge's order and stock tools and order events (D621, `docs/100-day-challenge.md` C2 to C6, `src/server/supply-tools.ts`, `src/lib/purchase-budget.ts`)
 - The challenge's scoreboard (D623, `docs/100-day-challenge.md` E7, `src/lib/challenge-scoreboard.ts` pure, `src/server/challenge-scoreboard.ts`)
 - Challenge stores protected from deploys (D625, `docs/100-day-challenge.md` F5, `src/lib/challenge-pin.ts`, `src/server/challenge-pin.ts`, `src/server/challenge-smoke.ts`)
+- Watch and roll back the autopilot's changes (D628, `docs/100-day-challenge.md` F4, `src/lib/autopilot-watch.ts` pure, `src/server/autopilot-watch.ts`)
 - The AI wallet (D599, `docs/agent-spending.md` 5, `src/lib/card-wallet.ts`, `src/server/card-wallet.ts`, `src/server/agent-purchases.ts`)
 - Web research (D329, `docs/ai-autopilot.md` 13, `src/lib/web-search.ts`, `src/lib/web-page-text.ts`, `src/lib/research.ts`, `src/server/research.ts`)
 - Brand and look (D330, `docs/ai-autopilot.md` 14, `src/lib/brand.ts`, `src/lib/brand-design.ts`, `src/server/brand.ts`, `src/server/brand-tools.ts`)

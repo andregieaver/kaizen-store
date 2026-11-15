@@ -14,6 +14,7 @@ import { getAnalyticsSettings } from "./analytics-settings";
 import { periodFiguresWithVisits } from "./analytics-totals";
 import { sessionTotals } from "./analytics-traffic-data";
 import { autopilotCostThisMonth } from "./autopilot-settings";
+import { watchedChanges } from "./autopilot-watch";
 import { findChallengeStalls } from "./challenge-watch";
 import { interventionsOf, type Intervention } from "./interventions";
 import { log } from "./log";
@@ -56,6 +57,8 @@ export type ChallengeStore = {
   other: Intervention[];
   /** Null before Day 1, or when the store's figures could not be read. */
   ratios: ChallengeRatioFigures | null;
+  /** The autopilot's changes the watch found a clear fall after in the last 14 days (F4), newest first. */
+  rolledBack: { at: string; tool: string; words: string; undone: string[] }[];
 };
 
 const ROW = z.object({ id: col.uuid, slug: col.text, name: col.text, challenge: z.unknown(), paused: col.bool });
@@ -130,7 +133,7 @@ export async function challengeStores(now: Date = new Date()): Promise<Challenge
     rows.map(async (row): Promise<ChallengeStore | null> => {
       const challenge = readChallenge(row.challenge);
       if (!challenge) return null;
-      const [queues, ai, log_, ratios] = await Promise.all([
+      const [queues, ai, log_, ratios, watched] = await Promise.all([
         queuesOf(row.id),
         autopilotCostThisMonth(row.id),
         interventionsOf(row.id, new Date(`${challenge.startsOn}T00:00:00Z`), now),
@@ -138,6 +141,7 @@ export async function challengeStores(now: Date = new Date()): Promise<Challenge
           log("warn", "challenge.ratios_failed", { storeId: row.id }, error);
           return null;
         }),
+        watchedChanges(row.id, 14),
       ]);
       return {
         storeId: row.id,
@@ -153,6 +157,7 @@ export async function challengeStores(now: Date = new Date()): Promise<Challenge
         interventions: log_.counts,
         other: log_.other,
         ratios,
+        rolledBack: watched.filter((w) => w.verdict === "fall").map((w) => ({ at: w.at, tool: w.tool, words: w.words, undone: w.undone })),
       };
     }),
   );

@@ -273,6 +273,12 @@ export const consoleNb: ConsoleMessages = {
       adMoney: "Avtalte annonsepenger for hver butikk over de 100 dagene (butikkens valuta)",
     },
     openBoard: "Åpne resultattavlen",
+    watch: {
+      title: "Endringer rullet tilbake",
+      none: "Overvåkingen fant ikke noe tydelig fall etter noen av autopilotens endringer de siste 14 dagene.",
+      undone: "Angret: {what}.",
+      notUndone: "Ikke angret: noen har endret det siden, eller det lot seg ikke gjøre.",
+    },
     pin: {
       title: "Butikkens KI",
       notPinned: "Ikke låst ennå: den låses innen fem minutter etter at utfordringsmodus starter.",

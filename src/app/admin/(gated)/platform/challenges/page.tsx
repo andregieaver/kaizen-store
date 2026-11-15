@@ -126,6 +126,24 @@ function StoreCard({ s, w, lang, locale, canWrite }: { s: ChallengeStore; w: Con
           </section>
         </div>
 
+        <section aria-label={w.watch.title}>
+          <h3 className="mb-2 text-sm font-medium text-ink">{w.watch.title}</h3>
+          {s.rolledBack.length === 0 ? (
+            <p className="text-body text-ink-2">{w.watch.none}</p>
+          ) : (
+            <ul className="flex flex-col gap-2 text-sm text-ink-2">
+              {s.rolledBack.slice(0, 5).map((r) => (
+                <li key={`${r.at}:${r.tool}`}>
+                  <span className="tabular-nums">{r.at.slice(0, 16).replace("T", " ")}</span> · <span className="font-mono">{r.tool}</span> · {r.words}{" "}
+                  <span className={r.undone.length > 0 ? "text-ink" : "text-warning-text"}>
+                    {r.undone.length > 0 ? fillWords(w.watch.undone, { what: r.undone.join(", ") }) : w.watch.notUndone}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
+
         <section aria-label={w.pin.title}>
           <h3 className="mb-2 text-sm font-medium text-ink">{w.pin.title}</h3>
           {s.challenge.pinned ? (
