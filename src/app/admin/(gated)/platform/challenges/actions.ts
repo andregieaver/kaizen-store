@@ -8,6 +8,7 @@ import { fillWords } from "@/lib/admin-fill";
 import { adminText } from "@/lib/admin-text";
 import { parsePrice } from "@/lib/product-input";
 import { endChallenge, saveChallenge } from "@/server/autopilot-settings";
+import { pinChallenge } from "@/server/challenge-pin";
 import { removeOriginalPeriod, saveOriginalPeriod } from "@/server/challenge-scoreboard";
 import { storeIdBySlug } from "@/server/challenge-console";
 import { OwnerToolError } from "@/server/owner-tool-error";
@@ -55,7 +56,8 @@ export async function saveChallengeAction(_state: FormState, formData: FormData)
     const storeId = slug ? await storeIdBySlug(slug) : null;
     if (!storeId) return { status: "error", messages: [w.unknownStore], fields: { store: w.unknownStore } };
     try {
-      await saveChallenge({ account }, storeId, challengeInput(formData));
+      // What the store's AI runs on is pinned when the challenge is first set (F5); a change after that is logged by the watch.
+      await pinChallenge(storeId, await saveChallenge({ account }, storeId, challengeInput(formData)));
     } catch (error) {
       // The challenge's own refusals (a date in the wrong order, a budget out of range) are said as they are.
       if (error instanceof OwnerToolError) return answer(error.message);

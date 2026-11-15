@@ -91,6 +91,25 @@ export function smokePages(value) {
   return pages.length > 0 ? pages : ["/", "/s/demo/no"];
 }
 
+/**
+ * The challenge stores' pages production names (`/api/health/smoke`, `docs/100-day-challenge.md` F5): only full https:// addresses, at most
+ * 40; none when the answer is not that shape (an older deploy without the route, or no store in challenge mode).
+ */
+export function challengePagesFrom(body) {
+  const pages = body && typeof body === "object" && Array.isArray(body.pages) ? body.pages : [];
+  return pages.filter((page) => typeof page === "string" && page.startsWith("https://")).slice(0, 40);
+}
+
+/** Asks production for the challenge stores' pages; none when it cannot answer. */
+async function challengePages(url) {
+  try {
+    const response = await fetch(`${url}/api/health/smoke`, { headers: { "Cache-Control": "no-store" }, signal: AbortSignal.timeout(15_000) });
+    return response.ok ? challengePagesFrom(await response.json()) : [];
+  } catch {
+    return [];
+  }
+}
+
 /** The page requests whose status was not 200, as `GET address: status (expected 200)` lines; empty when all answered 200. */
 export function pageProblems(results) {
   return results.filter((r) => r.status !== 200).map((r) => `GET ${r.address}: ${r.status ?? "no answer"} (expected 200)`);
@@ -162,7 +181,10 @@ async function main() {
         process.exit(1);
       }
       console.log(`Each route for outsiders refuses a call without a token (${SMOKE_CHECKS.length}).`);
-      const pages = smokePages(process.env.SMOKE_PAGES);
+      // The challenge stores' own pages too (F5): a deploy that breaks a contestant's store fails here, as Kaizena Flow's own would.
+      const challenge = await challengePages(url);
+      if (challenge.length > 0) console.log(`Challenge stores' pages: ${challenge.length}.`);
+      const pages = [...smokePages(process.env.SMOKE_PAGES), ...challenge];
       let results = await pageResults(url, pages);
       if (pageProblems(results).length > 0) {
         await new Promise((resolve) => setTimeout(resolve, 60_000));

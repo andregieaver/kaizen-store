@@ -2,6 +2,7 @@ import { z } from "zod";
 
 import type { AutonomyArea, AutonomyLevel, AutonomySettings } from "./autopilot-autonomy";
 import { originalPeriodSchema } from "./challenge-original";
+import { pinnedSchema, versionLogEntry, versionsSchema } from "./challenge-pin";
 
 /**
  * Challenge mode (`docs/100-day-challenge.md` 4A1, 5): the 100-day challenge, where the autopilot runs a store alone and a person only
@@ -50,6 +51,11 @@ export const challengeSchema = z
     adMoney: z.number().min(0).max(1_000_000_000).nullable().default(null),
     /** The original store's signed P&L, period by period (`src/lib/challenge-scoreboard.ts`), typed by the platform team on the scoreboard. */
     original: z.array(originalPeriodSchema).max(24).default([]),
+    /** What the store's AI runs on, pinned when the challenge is set (F5, `src/lib/challenge-pin.ts`); null until then. */
+    pinned: pinnedSchema.nullable().default(null),
+    /** What the watch last saw it run on, and every change since the pin, logged as a platform fix. */
+    seen: versionsSchema.nullable().default(null),
+    versionLog: z.array(versionLogEntry).max(200).default([]),
   })
   .superRefine((c, ctx) => {
     if (c.startsOn > c.dayOne) ctx.addIssue({ code: "custom", path: ["startsOn"], message: "Challenge mode starts on or before Day 1." });

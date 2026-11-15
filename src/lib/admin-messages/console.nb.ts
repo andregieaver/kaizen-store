@@ -273,6 +273,15 @@ export const consoleNb: ConsoleMessages = {
       adMoney: "Avtalte annonsepenger for hver butikk over de 100 dagene (butikkens valuta)",
     },
     openBoard: "Åpne resultattavlen",
+    pin: {
+      title: "Butikkens KI",
+      notPinned: "Ikke låst ennå: den låses innen fem minutter etter at utfordringsmodus starter.",
+      pinned: "Låst {date}: {model}, verktøy {tools}.",
+      unchanged: "Uendret siden: ingen instruks, verktøy eller modell er endret.",
+      changed: "Endret siden, hver en plattformretting:",
+      more: "og {n} tidligere",
+      noModel: "ingen tekstmodell",
+    },
     board: {
       title: "Resultattavle: {store}",
       description: "Klonen mot originalen etter én definisjon: klonen slik plattformen teller den, originalen slik regnskapsføreren signerte den. En butikk vinner ved å ligge foran på to av de tre forholdstallene.",

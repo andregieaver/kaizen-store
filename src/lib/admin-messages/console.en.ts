@@ -280,6 +280,15 @@ export const consoleEn = {
       adMoney: "Ad money agreed for each store over the 100 days (store currency)",
     },
     openBoard: "Open the scoreboard",
+    pin: {
+      title: "The store's AI",
+      notPinned: "Not pinned yet: it is pinned within five minutes of challenge mode coming on.",
+      pinned: "Pinned on {date}: {model}, tools {tools}.",
+      unchanged: "Unchanged since: no prompt, tool or model has changed.",
+      changed: "Changed since, each a platform fix:",
+      more: "and {n} earlier",
+      noModel: "no text model",
+    },
     board: {
       title: "Scoreboard: {store}",
       description: "The clone against the original on one definition: the clone as the platform counts it, the original as its accountant signed it. A store wins by being ahead on two of the three ratios.",

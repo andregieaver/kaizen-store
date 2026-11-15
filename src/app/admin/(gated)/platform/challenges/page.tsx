@@ -126,6 +126,38 @@ function StoreCard({ s, w, lang, locale, canWrite }: { s: ChallengeStore; w: Con
           </section>
         </div>
 
+        <section aria-label={w.pin.title}>
+          <h3 className="mb-2 text-sm font-medium text-ink">{w.pin.title}</h3>
+          {s.challenge.pinned ? (
+            <>
+              <p className="text-body text-ink-2">
+                {fillWords(w.pin.pinned, {
+                  date: s.challenge.pinned.at.slice(0, 10),
+                  model: s.challenge.pinned.model ?? w.pin.noModel,
+                  tools: s.challenge.pinned.tools,
+                })}
+              </p>
+              {s.challenge.versionLog.length === 0 ? (
+                <p className="text-body text-ink-2">{w.pin.unchanged}</p>
+              ) : (
+                <>
+                  <p className="mt-1 text-body text-warning-text">{w.pin.changed}</p>
+                  <ul className="mt-1 flex flex-col gap-0.5 text-sm text-ink-2">
+                    {s.challenge.versionLog.slice(-5).map((entry) => (
+                      <li key={`${entry.at}:${entry.what}`}>
+                        <span className="tabular-nums">{entry.at.slice(0, 16).replace("T", " ")}</span> · {entry.what}
+                      </li>
+                    ))}
+                  </ul>
+                  {s.challenge.versionLog.length > 5 && <p className="text-caption text-muted">{fillWords(w.pin.more, { n: s.challenge.versionLog.length - 5 })}</p>}
+                </>
+              )}
+            </>
+          ) : (
+            <p className="text-body text-muted">{w.pin.notPinned}</p>
+          )}
+        </section>
+
         <section aria-label={w.ai}>
           <h3 className="mb-2 text-sm font-medium text-ink">{w.ai}</h3>
           <p className="text-body text-ink-2 tabular-nums">{fillWords(w.aiSpent, { spent: usd(s.ai.spentMicros), budget: usd(s.ai.budgetUsd * 1_000_000), share: formatPercent(share, 0) })}</p>
