@@ -1,0 +1,2 @@
+ALTER TABLE "commerce"."autopilot_events" DROP CONSTRAINT "autopilot_events_kind";--> statement-breakpoint
+ALTER TABLE "commerce"."autopilot_events" ADD CONSTRAINT "autopilot_events_kind" CHECK ("commerce"."autopilot_events"."kind" in ('support_waiting', 'test_ended', 'alert', 'order_unsent', 'delivery_problem', 'supplier_problem', 'order_held', 'dispute_opened', 'payments_failing'));
