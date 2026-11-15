@@ -2,7 +2,7 @@ import "server-only";
 
 import { sql } from "drizzle-orm";
 
-import { db, readDb } from "@/db/client";
+import { db, readDb, type Db } from "@/db/client";
 import { articlePath, blogOfArticle } from "@/lib/blogs";
 import { readEntryContent } from "@/lib/content-types";
 import type { FieldDef } from "@/lib/custom-fields";
@@ -166,10 +166,10 @@ export async function syncPageKnowledge(storeId: string | null): Promise<{ cut: 
   const locales = await siteLocales(storeId);
   const [pages, blogs] = await Promise.all([
     db().execute<Row>(sql`
-      select p.id, p.type, p.slug, p.published, p.published_at,
-        (select min(c.version) from commerce.knowledge_chunks c where c.page_id = p.id) as version,
-        (select min(c.path) from commerce.knowledge_chunks c where c.page_id = p.id) as path
+      select p.id, p.type, p.slug, p.published, p.published_at, p.published_at::text as stamp, k.path as path,
+        (k.page_id is null or k.published_at <> p.published_at or k.slug <> p.slug) as stale
       from commerce.pages p
+      left join commerce.knowledge_sources k on k.page_id = p.id
       where ${owned(storeId, sql`p.store_id`)} and p.type in ('page', 'article') and p.published_at is not null
     `),
     storeId ? blogsNow(storeId) : Promise.resolve([]),
@@ -178,16 +178,21 @@ export async function syncPageKnowledge(storeId: string | null): Promise<{ cut: 
   for (const page of pages) {
     const version = new Date(String(page.published_at)).toISOString();
     const content = parsePageContent(page.published);
-    if (!content) continue;
     const slug = String(page.slug);
+    const stamp = { publishedAt: String(page.stamp), slug, typeVersion: null };
+    if (!content) {
+      // A page that cannot be read is recorded once when it is published, and not again: its old passages stay as they are.
+      if (page.stale) await markSource(storeId, { page: String(page.id) }, `/${slug}`, stamp);
+      continue;
+    }
     const blog = page.type === "article" ? blogOfArticle(blogs, content) : null;
     const path = page.type === "article" ? (blog ? articlePath(blog, slug) : `/blog/${slug}`) : `/${slug}`;
-    if (page.version === version && (page.path === path || page.path === null)) continue;
+    if (!page.stale && page.path === path) continue;
     const passages = locales.map((locale) => {
       const localized = localizePage(content, locale);
       return { locale, title: localized.title, bodies: cutPassages(pageKnowledgeText(localized)) };
     });
-    await replacePassages(storeId, { page: String(page.id) }, path, version, passages);
+    await replacePassages(storeId, { page: String(page.id) }, path, version, passages, stamp);
     cut += 1;
   }
 
@@ -195,17 +200,19 @@ export async function syncPageKnowledge(storeId: string | null): Promise<{ cut: 
   // fields, title field and address are part of the version: a field made "Only staff" leaves the passages at once.
   const entries = await db().execute<Row>(sql`
     select e.id, e.slug, e.published, e.published_at, t.slug as type_slug, t.has_pages, t.fields, t.title_field,
-      md5(t.fields::text || t.title_field || t.slug || t.has_pages::text) as type_version,
-      (select min(c.version) from commerce.knowledge_chunks c where c.entry_id = e.id) as version
+      md5(t.fields::text || t.title_field || t.slug || t.has_pages::text) as type_version, e.published_at::text as stamp,
+      (k.entry_id is null or k.published_at <> e.published_at or k.slug <> e.slug
+        or k.type_version is distinct from md5(t.fields::text || t.title_field || t.slug || t.has_pages::text)) as stale
     from commerce.content_entries e join commerce.content_types t on t.id = e.type_id
+    left join commerce.knowledge_sources k on k.entry_id = e.id
     where ${owned(storeId, sql`e.store_id`)} and e.published_at is not null
   `);
   // A store's entries keep their words by its locales, its first the main one; Kaizena Flow's own by language (`en`, D326 H4).
   const main = storeId ? (locales[0] ?? "en-GB") : "en";
   const wordsIn = (locale: string) => (storeId ? locale : locale.split("-")[0]);
   for (const entry of entries) {
+    if (!entry.stale) continue;
     const version = `${new Date(String(entry.published_at)).toISOString()}|${String(entry.type_version)}`;
-    if (entry.version === version) continue;
     const type = { fields: (entry.fields ?? []) as FieldDef[], titleField: String(entry.title_field) };
     const data = readEntryContent(entry.published).data;
     const path = entry.has_pages ? `/${String(entry.type_slug)}/${String(entry.slug)}` : null;
@@ -213,7 +220,11 @@ export async function syncPageKnowledge(storeId: string | null): Promise<{ cut: 
       const { title, text } = entryKnowledgeText(type, data, wordsIn(locale), main);
       return { locale, title: title || String(entry.slug), bodies: cutPassages(text) };
     });
-    await replacePassages(storeId, { entry: String(entry.id) }, path, version, passages);
+    await replacePassages(storeId, { entry: String(entry.id) }, path, version, passages, {
+      publishedAt: String(entry.stamp),
+      slug: String(entry.slug),
+      typeVersion: String(entry.type_version),
+    });
     cut += 1;
   }
 
@@ -224,7 +235,33 @@ export async function syncPageKnowledge(storeId: string | null): Promise<{ cut: 
         or (c.entry_id is not null and not exists (select 1 from commerce.content_entries e where e.id = c.entry_id and e.published_at is not null)))
     returning c.id
   `);
+  await db().execute(sql`
+    delete from commerce.knowledge_sources k
+    where ${owned(storeId, sql`k.store_id`)}
+      and ((k.page_id is not null and not exists (select 1 from commerce.pages p where p.id = k.page_id and p.published_at is not null))
+        or (k.entry_id is not null and not exists (select 1 from commerce.content_entries e where e.id = k.entry_id and e.published_at is not null)))
+  `);
   return { cut, dropped: dropped.length };
+}
+
+type SourceStamp = { publishedAt: string; slug: string; typeVersion: string | null };
+type Executor = Pick<Db, "execute">;
+
+/** Records what a page or entry was cut from (also when it gave no passage), so the job can tell in SQL what changed. */
+async function markSource(
+  storeId: string | null,
+  source: { page: string } | { entry: string },
+  path: string | null,
+  stamp: SourceStamp,
+  executor: Executor = db(),
+): Promise<void> {
+  const values = sql`${storeId}::uuid, ${"page" in source ? source.page : source.entry}::uuid, ${stamp.publishedAt}::timestamptz, ${stamp.slug}, ${stamp.typeVersion}, ${path}`;
+  const set = sql`published_at = excluded.published_at, slug = excluded.slug, type_version = excluded.type_version, path = excluded.path, cut_at = now()`;
+  await executor.execute(
+    "page" in source
+      ? sql`insert into commerce.knowledge_sources (store_id, page_id, published_at, slug, type_version, path) values (${values}) on conflict (page_id) do update set ${set}`
+      : sql`insert into commerce.knowledge_sources (store_id, entry_id, published_at, slug, type_version, path) values (${values}) on conflict (entry_id) do update set ${set}`,
+  );
 }
 
 /** A page's or an entry's passages put in place of the ones it had, in one go. */
@@ -234,6 +271,7 @@ async function replacePassages(
   path: string | null,
   version: string,
   passages: { locale: string; title: string; bodies: string[] }[],
+  stamp: SourceStamp,
 ): Promise<void> {
   const page = "page" in source ? source.page : null;
   const entry = "entry" in source ? source.entry : null;
@@ -251,6 +289,7 @@ async function replacePassages(
         values ${sql.join(rows, sql`, `)}
       `);
     }
+    await markSource(storeId, source, path, stamp, tx);
   });
 }
 

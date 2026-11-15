@@ -3179,6 +3179,28 @@ describe("the chat agent (D81)", () => {
   });
 });
 
+describe("what the chat agent's knowledge was cut from (bloat review step 0.27)", () => {
+  it("knowledge_sources: one source each, gone with its page", async () => {
+    const source = (pageId: string | null, entryId: string | null) =>
+      db.query(
+        "insert into commerce.knowledge_sources (store_id, page_id, entry_id, published_at, slug) values ($1, $2, $3, now(), 'about')",
+        [store, pageId, entryId],
+      );
+    await expect(source(null, null)).rejects.toThrow(/knowledge_sources_source/);
+    const { id: pageId } = await one<{ id: string }>(
+      "insert into commerce.pages (store_id, slug, draft, published, published_at, type) values ($1, 'about-ks', '{}', '{}', now(), 'page') returning id",
+      [store],
+    );
+    await source(pageId, null);
+    await expect(source(pageId, null)).rejects.toThrow(/knowledge_sources_page_key/);
+    await db.query("delete from commerce.pages where id = $1", [pageId]);
+    expect((await one<{ n: number }>("select count(*)::int as n from commerce.knowledge_sources where page_id = $1", [pageId])).n).toBe(0);
+    expect(
+      (await one<{ on: boolean }>("select relrowsecurity as on from pg_class where oid = 'commerce.knowledge_sources'::regclass")).on,
+    ).toBe(true);
+  });
+});
+
 describe("search tests (D77)", () => {
   it("runs one test at a time, keeps each search's arm with its test, and a search's clicks with it", async () => {
     const { id } = await one<{ id: string }>("insert into commerce.search_experiments (keyword_share) values (0.5) returning id");

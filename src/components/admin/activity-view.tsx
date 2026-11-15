@@ -24,7 +24,9 @@ export function entrySentence(entry: ActivityEntry, words?: StaffMessages): stri
   const named = entry.target?.label?.trim();
   // An id is never shown to a person (round 14, D641): a target without a name is left out, "it" in a written sentence.
   if (!words || !sentence) return entry.target && !named ? actionLabel(entry.action) : entry.summary;
-  return fillWords(sentence, { label: named || words.activity.it });
+  // An account without a name in the entry is the person the sentence is about: their name, else "it".
+  const person = entry.target?.type === "account" ? (entry.name ?? entry.email) : null;
+  return fillWords(sentence, { label: named || person || words.activity.it });
 }
 
 const field = "min-h-10 rounded-md border border-line bg-card px-3 text-sm font-normal";

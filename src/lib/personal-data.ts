@@ -451,6 +451,7 @@ export const NOT_PERSONAL: Record<string, string> = {
   invoice_settings: "The store's invoice footer and a switch; `email_with_confirmation` is a boolean, not an address.",
   knowledge_chunks: "Pieces of the store's own knowledge documents, written for every shopper.",
   knowledge_documents: "The store's own knowledge documents.",
+  knowledge_sources: "Which published page or entry the chat agent's knowledge was cut from, and when: dates and addresses, no words.",
   marketing_spend: "The owner's note about an advertising cost.",
   menus: "A menu's name.",
   order_views: "A saved view of the order list (D173): a title, the list's filters and its columns, staff configuration. A saved search text sits in `params.q`: the screen says not to save a search for a person's name, and the audit entry never holds it.",
