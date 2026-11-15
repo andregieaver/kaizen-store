@@ -16,6 +16,9 @@ const REFUND_ACTIONS: ReadonlySet<string> = new Set(["order.refunded", "order.re
 /** Audit actions that are not a person working the store: their support work is counted from the messages, never twice. */
 const COUNTED_ELSEWHERE = /^support\./;
 
+/** Audit actions of the platform's own on a store (its approval, a plan, a closure), written by the platform whoever pressed. */
+const PLATFORM_ACTIONS = /^platform\./;
+
 /** A call the autopilot kept that a person decided: a refund, or anything else (which the challenge does not allow). */
 export const classOfDecision = (tool: string): InterventionClass => (REFUND_TOOLS.has(tool) ? "refund" : "other");
 
@@ -23,12 +26,12 @@ export const classOfDecision = (tool: string): InterventionClass => (REFUND_TOOL
 export const classOfReply = (escalated: boolean): InterventionClass => (escalated ? "escalation" : "other");
 
 /**
- * A person's audited action on the store: a platform admin's is a platform fix, a refund is a refund, support work is counted from the
+ * A person's audited action on the store: a platform admin's, or one of the platform's own (`platform.…`), is a platform fix, a refund is a refund, support work is counted from the
  * messages (null: not counted here), and the rest is an intervention.
  */
 export function classOfAction(action: string, byPlatformAdmin: boolean): InterventionClass | null {
   if (COUNTED_ELSEWHERE.test(action)) return null;
-  if (byPlatformAdmin) return "platform";
+  if (byPlatformAdmin || PLATFORM_ACTIONS.test(action)) return "platform";
   if (REFUND_ACTIONS.has(action)) return "refund";
   return "other";
 }

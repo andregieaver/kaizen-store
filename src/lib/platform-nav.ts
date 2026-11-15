@@ -87,6 +87,7 @@ export const SETTINGS_ITEMS: SectionItem[] = [
   item("/oauth", "AI assistants and apps", "The AI assistants and apps people connected through Kaizena Flow's sign-in, to verify or block.", "plug"),
   item("/apps", "App listings", "Apps that ask to be listed in the app directory, to approve or decline.", "puzzle"),
   item("/reports", "Illegal content notices", "Notices people sent about illegal content on stores, each decided with its reason (DSA).", "flag"),
+  item("/challenges", "100-day challenge", "Every store the autopilot runs alone for 100 days: what holds it up, what waits on its owner, its AI cost and the three ratios; setting and ending a challenge.", "target"),
   item("/capacity", "Usage and limits", "What every store used this month against its limits: storage, products, staff, visits, emails and AI.", "gauge"),
   item("/domains", "Domains", "Domains stores buy through Kaizena Flow: prices per currency, which stores may buy, registrations and purchases that need a look.", "link"),
   item("/ai/prices", "AI prices", "What each model costs per million tokens, per picture, per audio minute and per million characters, so the usage pages can show cost.", "coins"),
