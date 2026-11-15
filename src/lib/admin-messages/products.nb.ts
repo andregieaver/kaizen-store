@@ -51,6 +51,9 @@ export const productsNb: ProductsMessages = {
     noChange: "Du kan ikke endre butikkens innstillinger.",
   },
   catalogue: {
+    soldOutSentence: { one: "{n} er utsolgt.", many: "{n} er utsolgt." },
+    restSentence: " {active} til salgs, {draft} utkast.",
+    addProduct: "Legg til produkt",
     summary: "{n} produkter",
     attention: "{soldOut} utsolgt, {low} snart tomt",
     more: "Import, eksport, kategorier",

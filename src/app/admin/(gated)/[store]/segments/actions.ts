@@ -7,7 +7,7 @@ import { z } from "zod";
 import { adminLangOf } from "@/lib/admin-lang";
 import { adminText } from "@/lib/admin-text";
 import { marketingProblem } from "@/lib/marketing-words";
-import { segmentRulesSchema, type SegmentCount } from "@/lib/segments";
+import { SEGMENT_STARTERS, segmentRulesSchema, type SegmentCount } from "@/lib/segments";
 import { actionAdminLang } from "@/server/admin-request-lang";
 import { checkPermission, requirePermission } from "@/server/permissions";
 import { deleteSegment, evaluateSegment, saveSegment } from "@/server/segments";
@@ -48,4 +48,16 @@ export async function deleteSegmentAction(storeSlug: string, id: string): Promis
   if (deleted === "in_use") redirect(`/admin/${member.store.slug}/segments/${id}?inUse=1`);
   refresh();
   redirect(`/admin/${member.store.slug}/segments`);
+}
+
+/** Keeps one of the ready segments as the store's own (round 8, D625): named in the account's language, then opened. */
+export async function keepStarterAction(storeSlug: string, key: string): Promise<void> {
+  const member = await requirePermission(storeSlug, "marketing:write");
+  const starter = SEGMENT_STARTERS.find((s) => s.key === key);
+  if (!starter) return;
+  const words = adminText(adminLangOf(member.account.adminLocale), "marketing").segments.starters[key];
+  const result = await saveSegment(member.store.id, member.account.id, null, { name: words?.name ?? starter.name, rules: starter.rules });
+  if (!result.ok) redirect(`/admin/${member.store.slug}/segments/new`);
+  refresh();
+  redirect(`/admin/${member.store.slug}/segments/${result.id}`);
 }

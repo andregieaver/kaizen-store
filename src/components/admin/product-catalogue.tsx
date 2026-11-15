@@ -85,7 +85,11 @@ export function ProductCatalogue({
       return r.title.toLocaleLowerCase().includes(q) || (skus[r.id] ?? []).some((sku) => sku.toLocaleLowerCase().includes(q));
     });
   }, [rows, filter, query, skus]);
-  const page = matching.slice(0, shown);
+  // Round 8 (D625): in All, what costs sales comes first: sold out, then drafts, then the rest as listed.
+  const soldOutOf = (r: ProductRowView) => keepsStock(r) && r.stock <= 0 && r.status !== "archived";
+  const soldOutCount = rows.filter(soldOutOf).length;
+  const ordered = filter === "all" && !archived ? [...matching].sort((a, b) => Number(soldOutOf(b)) - Number(soldOutOf(a)) || Number(b.status === "draft") - Number(a.status === "draft")) : matching;
+  const page = ordered.slice(0, shown);
   const money = (minor: number, currency: string) => formatMoney(minor, currency, locale, { decimals: "hide_whole" });
   const chip = "inline-flex h-9 items-center gap-1.5 rounded-pill px-3.5 text-sm";
   const chips: { key: Filter; label: string; n: number; warn?: boolean }[] = [
@@ -96,6 +100,12 @@ export function ProductCatalogue({
   ];
   return (
     <div className="flex flex-col gap-5">
+      {!archived && soldOutCount > 0 && (
+        <p className="text-body text-ink-2">
+          <span className="text-ink">{countWords(soldOutCount, w.soldOutSentence)}</span>
+          {fillWords(w.restSentence, { active: counts.active, draft: counts.draft })}
+        </p>
+      )}
       <div className="flex flex-wrap items-center gap-3">
         <label className="flex h-11 min-w-0 flex-[1_1_16rem] items-center gap-2.5 rounded-pill bg-card px-4 ring-1 ring-edge sm:max-w-sm">
           <Search aria-hidden className="size-4 shrink-0 text-muted" />
@@ -112,7 +122,7 @@ export function ProductCatalogue({
           />
         </label>
         {!archived && (
-          <div role="group" aria-label={w.show} className="flex flex-wrap gap-1.5">
+          <div role="group" aria-label={w.show} className="flex flex-wrap gap-1.5 max-sm:-mx-4 max-sm:w-[calc(100%+2rem)] max-sm:flex-nowrap max-sm:overflow-x-auto max-sm:px-4">
             {chips
               .filter((c) => c.key === "all" || c.n > 0)
               .map((c) => (
@@ -124,14 +134,14 @@ export function ProductCatalogue({
                     setFilter(c.key);
                     setShown(PAGE);
                   }}
-                  className={`${chip} ${filter === c.key ? "bg-inverse text-inverse-ink" : c.warn ? "bg-warning-soft text-warning-text" : "bg-card text-ink-2 hover:text-ink"}`}
+                  className={`${chip} shrink-0 ${filter === c.key ? "bg-inverse text-inverse-ink" : c.warn ? "bg-warning-soft text-warning-text" : "bg-card text-ink-2 hover:text-ink"}`}
                 >
                   {c.label} <span className="tabular-nums opacity-80">{c.n}</span>
                 </button>
               ))}
           </div>
         )}
-        <div role="group" aria-label={w.view} className="ml-auto flex gap-0.5 rounded-pill bg-card p-[3px]">
+        <div role="group" aria-label={w.view} className="ml-auto flex gap-0.5 rounded-pill bg-card p-[3px] max-sm:hidden">
           <button type="button" aria-pressed={view === "grid"} aria-label={w.pictures} title={w.pictures} onClick={() => setView("grid")} className={`flex h-9 w-10 items-center justify-center rounded-pill ${view === "grid" ? "bg-inverse text-inverse-ink" : "text-ink-2"}`}>
             <LayoutGrid aria-hidden className="size-4" />
           </button>
@@ -146,26 +156,27 @@ export function ProductCatalogue({
       ) : view === "table" ? (
         <ProductsTable slug={slug} rows={page} archived={archived} priceHeader={priceHeader} locale={locale} bulk={bulk} />
       ) : (
-        <ul className="grid gap-4 [grid-template-columns:repeat(auto-fill,minmax(min(210px,100%),1fr))]">
+        // On a phone (round 8, D625) each product is a row: a small picture, the name, the price and one line of state with its action.
+        <ul className="grid gap-4 max-sm:gap-2 [grid-template-columns:repeat(auto-fill,minmax(min(210px,100%),1fr))]">
           {page.map((p) => {
             const soldOut = keepsStock(p) && p.stock <= 0 && p.status !== "archived";
             const low = keepsStock(p) && p.stock > 0 && p.stock <= LOW_STOCK_AT;
             return (
               <li key={p.id}>
-                <AdminLink href={`/admin/${slug}/products/${p.id}`} className="relative flex h-full flex-col overflow-hidden rounded-card bg-card hover:ring-1 hover:ring-edge dark:ring-1 dark:ring-line">
+                <AdminLink href={`/admin/${slug}/products/${p.id}`} className="relative flex h-full flex-col overflow-hidden rounded-card bg-card hover:ring-1 hover:ring-edge max-sm:flex-row max-sm:items-center max-sm:gap-3 max-sm:p-3 dark:ring-1 dark:ring-line">
                   {(soldOut || p.status === "draft") && (
-                    <span className={`absolute top-2.5 left-2.5 z-10 inline-flex h-6.5 items-center gap-1.5 rounded-pill px-2.5 text-caption ${soldOut ? "bg-warning-soft text-warning-text" : "bg-neutral-soft text-neutral-text"}`}>
+                    <span className={`absolute top-2.5 left-2.5 z-10 max-sm:hidden inline-flex h-6.5 items-center gap-1.5 rounded-pill px-2.5 text-caption ${soldOut ? "bg-warning-soft text-warning-text" : "bg-neutral-soft text-neutral-text"}`}>
                       {soldOut && <span aria-hidden className="size-1.5 rounded-pill bg-warning-solid" />}
                       {soldOut ? w.soldOut : w.draft}
                     </span>
                   )}
                   {p.image ? (
                     // eslint-disable-next-line @next/next/no-img-element -- the product's own picture, as stored.
-                    <img src={p.image} alt="" loading="lazy" className={`aspect-[4/3] w-full bg-sunken object-cover ${soldOut ? "opacity-55" : ""}`} />
+                    <img src={p.image} alt="" loading="lazy" className={`aspect-[4/3] w-full bg-sunken object-cover max-sm:size-12 max-sm:shrink-0 max-sm:rounded-md ${soldOut ? "opacity-55" : ""}`} />
                   ) : (
-                    <span className="flex aspect-[4/3] w-full items-center justify-center bg-sunken text-caption text-muted">{w.noPhoto}</span>
+                    <span className="flex aspect-[4/3] w-full items-center justify-center bg-sunken text-caption text-muted max-sm:size-12 max-sm:shrink-0 max-sm:rounded-md max-sm:text-[0]">{w.noPhoto}</span>
                   )}
-                  <span className="flex flex-1 flex-col gap-2 px-4 py-3.5">
+                  <span className="flex flex-1 flex-col gap-2 px-4 py-3.5 max-sm:min-w-0 max-sm:gap-0.5 max-sm:p-0">
                     <span className="flex items-start justify-between gap-3">
                       <span className="text-body-strong text-ink">{p.title}</span>
                       <span className="shrink-0 text-body text-ink tabular-nums">
@@ -182,12 +193,15 @@ export function ProductCatalogue({
                       <span className="text-caption text-ink-2">{w.digital}</span>
                     ) : soldOut ? (
                       <>
-                        <span className="text-caption text-muted">{w.cantBuy}</span>
+                        <span className="text-caption text-muted max-sm:text-danger-text">
+                          <span className="sm:hidden">{w.soldOut} · </span>
+                          {w.cantBuy}
+                        </span>
                         <span className="text-body text-brand-text">{w.restock} ›</span>
                       </>
                     ) : (
                       <span role="img" aria-label={low ? countWords(p.stock, w.left) : fillWords(w.inStock, { n: p.stock })} className="flex flex-col gap-1">
-                        <span className="relative block h-1.5 rounded-pill bg-sunken">
+                        <span className="relative block h-1.5 rounded-pill bg-sunken max-sm:hidden">
                           <span style={{ width: `${Math.min(100, Math.max(6, (p.stock / 50) * 100))}%` }} className={`absolute inset-y-0 left-0 rounded-pill ${low ? "bg-warning-solid" : "bg-ink"}`} />
                         </span>
                         <span className={`text-caption ${low ? "text-warning-text" : "text-ink-2"}`}>{low ? countWords(p.stock, w.left) : fillWords(w.inStock, { n: p.stock })}</span>
@@ -199,6 +213,12 @@ export function ProductCatalogue({
             );
           })}
         </ul>
+      )}
+      {/* On a phone the one green button is under the list, in the thumb's reach (round 8). */}
+      {bulk && !archived && (
+        <AdminLink href={`/admin/${slug}/products/new`} className="flex h-12 items-center justify-center rounded-pill bg-brand text-body-strong text-brand-ink sm:hidden">
+          + {w.addProduct}
+        </AdminLink>
       )}
       {matching.length > shown && (
         <button type="button" onClick={() => setShown((n) => n + PAGE)} className="self-center rounded-pill border border-edge bg-card px-5 py-2.5 text-body text-ink hover:bg-sunken">

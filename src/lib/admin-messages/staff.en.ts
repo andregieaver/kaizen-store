@@ -41,6 +41,12 @@ export const staffEn = {
     read_only: { name: "Read-only", description: "Can look at everything except billing and the team, and change nothing." },
   },
   team: {
+    /** The page drawn for Homer (round 8, D625): who works here in a sentence, people as rows, one invite. */
+    sentence: { people: { one: "{n} person works in {store}.", many: "{n} people work in {store}." }, none: " Nobody has two-step sign-in yet.", some: " {with} of {n} have two-step sign-in.", all: " Everyone has two-step sign-in." },
+    more: "More",
+    inviteButton: "Invite someone",
+    you: "(you)",
+    moreFor: "More for {name}",
     title: "Team",
     description:
       "People listed here can sign in with a link sent to their email, or with their password. Owners manage the team and the plan; everyone else works in the parts of the admin their role gives them.",
@@ -67,6 +73,8 @@ export const staffEn = {
     accessRemoved: "Access removed",
   },
   invite: {
+    limited: "For a limited time, as for an agency or a freelancer",
+    limitedHint: "access ends by itself",
     title: "Invite someone",
     staffNote: "Staff keep their access until you remove it.",
     email: "Email",
@@ -80,6 +88,8 @@ export const staffEn = {
     inviteCollaborator: "Invite collaborator",
   },
   twoStep: {
+    short: "Require two-step sign-in",
+    shortCount: "{with} of {n} have it. You need it yourself first.",
     title: "Two-step sign-in",
     count: { one: "{with} of {n} person on the team", many: "{with} of {n} people on the team" },
     has: { one: "has it.", many: "have it." },

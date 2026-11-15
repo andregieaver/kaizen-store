@@ -59,6 +59,14 @@ export const marketingEn = {
     whatItSays: "What it says",
   },
   segments: {
+    /** The list drawn for Homer (round 8, D625): ready segments on the page, each with how many it holds now. */
+    lead: "Groups of your customers, kept up to date by themselves.",
+    leadRest: " Start from one most shops use, or make your own.",
+    yours: "Your segments",
+    ready: "Ready to use",
+    keep: "Keep it",
+    peopleNow: { one: "person now", many: "people now" },
+    makeOwn: "Make your own",
     title: "Segments",
     description:
       "Groups of your customers and subscribers by what they did: how often and how lately they bought, how much, where, and whether they want your emails. A segment is counted every time you open it, so it is always up to date.",
