@@ -694,7 +694,7 @@ const publishedRow = z.object({
 const UUID = z.uuid();
 
 /**
- * One published page of an owner's by its id, as listPublishedPages() gives it (same tag and life, so a publish or delete refreshes
+ * One published page of an owner's by its id, as the list of published pages gives it (same tag and life, so a publish or delete refreshes
  * it), or null: a draft, another owner's page, another type, or a document its schema rejects.
  */
 export async function publishedPageById(owner: PageOwner, id: string, type: PageType = "page"): Promise<PublishedPage | null> {

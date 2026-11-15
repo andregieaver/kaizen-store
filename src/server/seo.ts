@@ -49,7 +49,7 @@ import { audit, type Account, type Membership } from "./auth";
 import { CATALOG_TAG, catalogTag, listProducts } from "./catalog";
 import { storeBlogs } from "./blogs";
 import { col, typedRows } from "./typed-rows";
-import { listPublishedPages, pagesTag } from "./pages";
+import { listPublishedPages, pagesTag, publishedPageIndex } from "./pages";
 import { pageInMarket } from "@/lib/page-markets";
 import { getPlatformPageRoles } from "./platform-roles";
 import type { SaveResult } from "./settings";
@@ -461,8 +461,8 @@ export async function siteRobots(): Promise<string> {
   const [platform, all, pages, articles] = await Promise.all([
     getPlatformSeo(),
     listPublicStores(),
-    listPublishedPages(site?.id ?? null),
-    listPublishedPages(site?.id ?? null, "article"),
+    publishedPageIndex(site?.id ?? null),
+    publishedPageIndex(site?.id ?? null, "article"),
   ]);
   const stores = all.filter((store) => !store.house);
   const parsed = parseRobotsRules(platform.robots, { sitemaps: true });
@@ -470,8 +470,8 @@ export async function siteRobots(): Promise<string> {
   addRules(groups, ["*"], PLATFORM_PRIVATE.map((path) => ({ allow: false, path })));
   // `$` ends the path, so closing /about leaves /about-us open; articles are under /blog (D57).
   const closed = [
-    ...pages.filter((page) => !page.content.aiAssistants).map((page) => ({ allow: false, path: `/${page.slug}$` })),
-    ...articles.filter((a) => !a.content.aiAssistants).map((a) => ({ allow: false, path: `/blog/${a.slug}$` })),
+    ...pages.filter((page) => !page.aiAssistants).map((page) => ({ allow: false, path: `/${page.slug}$` })),
+    ...articles.filter((a) => !a.aiAssistants).map((a) => ({ allow: false, path: `/blog/${a.slug}$` })),
   ];
   if (closed.length > 0) addRules(groups, [...AI_ASSISTANT_BOTS, ...AI_TRAINING_BOTS], closed);
   // Stores on their own hosts (P7) have their own robots.txt there.

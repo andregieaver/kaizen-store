@@ -6,7 +6,7 @@ import { PayRouteGuard } from "@/components/pay-route-guard";
 import type { LegalRole } from "@/lib/legal-roles";
 import { marketPath } from "@/lib/paths";
 import { changePageFor } from "@/server/order-edit-pay";
-import { listPublishedPages } from "@/server/pages";
+import { publishedPageIndex } from "@/server/pages";
 import { resolveShop } from "@/server/shop";
 
 import { ChangeView } from "./change-view";
@@ -57,7 +57,7 @@ async function legalHrefs(
   roles: LegalRole[],
 ): Promise<(string | null)[]> {
   if (!roles.some((role) => store.legalPages[role])) return roles.map(() => null);
-  const published = await listPublishedPages(store.id);
+  const published = await publishedPageIndex(store.id);
   return roles.map((role) => {
     const page = published.find((p) => p.id === store.legalPages[role]);
     return page ? marketPath(store.slug, marketSlug, `/${page.slug}`) : null;

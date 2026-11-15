@@ -144,6 +144,7 @@ CLAUDE.md keeps one line per rule pointing here; each rule is under that line as
   never the visitor; sign-ups are confirmed by email first unless switched
   off (`/api/forms/confirm`). Anything else that copies a page for another
   owner drops recipients (`withoutRecipients()`, `clone_page_content()`).
+- A published page is read by `publishedPageById()`, addresses and titles by `publishedPageIndex()`; `listPublishedPages()` is only for readers of every document (`pages-list.scan.test.ts`).
 
 ## Copying another website's page (D150, `docs/page-replicator.md`, `src/lib/replicate*.ts` pure, `src/server/replicate*.ts`, `ReplicatePanel` on…
 

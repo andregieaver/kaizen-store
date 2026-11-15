@@ -2,11 +2,11 @@ import "server-only";
 
 import { LEGAL_ROLES, legalRoleNeeded, type LegalRole } from "@/lib/legal-roles";
 import type { Market } from "@/lib/markets";
-import { localizePage } from "@/lib/page-translation";
+import { indexTitle } from "@/lib/page-translation";
 import { marketPath } from "@/lib/paths";
 import { featureOn } from "@/lib/store-features";
 
-import { listPublishedPages } from "./pages";
+import { publishedPageIndex } from "./pages";
 import type { Store } from "./stores";
 
 export type LegalLink = { role: LegalRole; title: string; href: string };
@@ -21,11 +21,11 @@ export async function legalLinksFor(store: Pick<Store, "id" | "slug" | "legalPag
   const shopOn = featureOn(store, "shop");
   const chosen = LEGAL_ROLES.filter((role) => store.legalPages[role] && legalRoleNeeded(role, shopOn, afterSaleOpen));
   if (chosen.length === 0) return [];
-  const published = await listPublishedPages(store.id);
+  const published = await publishedPageIndex(store.id);
   return chosen.flatMap((role) => {
     const page = published.find((p) => p.id === store.legalPages[role]);
     if (!page) return [];
-    const title = localizePage(page.content, market.locale).title.trim();
+    const title = indexTitle(page, market.locale).trim();
     return title ? [{ role, title, href: marketPath(store.slug, market.slug, `/${page.slug}`) }] : [];
   });
 }
