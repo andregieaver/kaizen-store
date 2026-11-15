@@ -45,6 +45,7 @@ and the data row by row. On 11 November 2026 both were the same.
 `DATABASE_URL=postgres://…/postgres node scripts/squash-migrations.mjs --through=<newest file>`, then again with `--write` once
 the check passes. It carries `baseline_4` forward and lists the squashed files with a Storage, scheduler or role step: fold any it
 lacks into it first. Push it alone, with no other migration: CI's `release` job records the four files, and the deploy follows.
+The run log's prune (`kaizen-cron-log-retention`, daily at 03:41, seven days) is scheduled by the migration `…_cron_run_log_retention.sql`; at the next squash fold it into the new baseline's scheduler block by hand.
 
 ### Migrations that keep the busiest tables writable (code review FD4, D569)
 

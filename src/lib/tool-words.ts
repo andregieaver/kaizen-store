@@ -37,6 +37,7 @@ export const TOOL_WORDS: Record<string, string> = {
   tag_customer: "Tagging the customer",
   list_email_automations: "Looking at email automations",
   switch_email_automation: "Preparing the switch",
+  tell_customer_about_order: "Preparing the customer's update",
   write_email_automation: "Writing the email",
   list_text_messages: "Reading the text messages",
   draft_text_message: "Saving the text message",

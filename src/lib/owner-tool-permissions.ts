@@ -303,6 +303,7 @@ export const TOOL_PERMISSIONS: Record<OwnerToolName, PermissionKey> = {
   create_field_group: "products:write",
   set_fields: "products:write",
   email_customer: "customers:write",
+  tell_customer_about_order: "orders:write",
   resend_order_email: "orders:write",
   set_stock: "products:write",
   set_backorder: "products:write",

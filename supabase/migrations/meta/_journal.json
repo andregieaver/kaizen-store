@@ -190,6 +190,13 @@
       "when": 1794761514073,
       "tag": "20261115165154_drop_duplicate_indexes",
       "breakpoints": true
+    },
+    {
+      "idx": 27,
+      "version": "7",
+      "when": 1794768757226,
+      "tag": "20261115185237_cron_run_log_retention",
+      "breakpoints": true
     }
   ]
 }

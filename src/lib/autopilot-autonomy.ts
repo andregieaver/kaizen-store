@@ -100,6 +100,8 @@ export const TOOL_AREAS: Readonly<Record<string, AutonomyArea>> = {
   approve_return: "messages",
   decline_return: "messages",
   email_customer: "messages",
+  // An update about an order in the store's fixed words (D635), counted with the other emails to customers.
+  tell_customer_about_order: "messages",
   resend_order_email: "messages",
   issue_work_invoice: "messages",
   propose_exchange: "messages",
@@ -174,7 +176,7 @@ export const NEVER_AUTOMATIC: ReadonlySet<string> = new Set([
 ]);
 
 /** Emails to one customer the autopilot may send itself, at most `customerEmailsPerWeek` in seven days (counted from the audit log). */
-export const CUSTOMER_EMAIL_TOOLS = ["email_customer", "reply_to_support"] as const;
+export const CUSTOMER_EMAIL_TOOLS = ["email_customer", "reply_to_support", "tell_customer_about_order"] as const;
 
 /** Gate categories that are never automatic, for a tool added later without an area. */
 const NEVER_CATEGORIES: ReadonlySet<GateCategory> = new Set(["access", "domain", "plan"]);

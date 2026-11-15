@@ -581,6 +581,8 @@ export const EMAIL_KINDS: Record<string, EmailClass> = {
   "company.approval_decided": "shopper",
   "order.parcel_out_for_delivery": "shopper",
   "order.parcel_delivered": "shopper",
+  // An update the store sends about an order (D635): a delay or a parcel in trouble, in the store's fixed words, to the order's own address.
+  "order.update": "shopper",
   "return.approved": "shopper",
   "return.declined": "shopper",
   "return.received": "shopper",

@@ -111,6 +111,7 @@ Check each of these before you push. Most of them are held by a test that fails 
     `NOT_PERSONAL`, and must stay so;
   - a retention rule if it grows: a `prune…()` in the daily cron (`src/app/api/cron/subscription-reminders/route.ts`)
     that never throws.
+    pg_cron's own run log (`cron.job_run_details`): seven days, by the pg_cron job `kaizen-cron-log-retention` (not the daily route: the app's role has no business in the cron schema). It holds no personal data, so `src/lib/retention.ts` has no rule for it.
 - **A new admin page** needs:
   - one nav item, in `src/lib/store-nav.ts`, `src/lib/owner-nav.ts` or `src/lib/platform-nav.ts`;
   - an `ADMIN_PAGES` entry (`src/lib/admin-map.ts`), with its Norwegian title in

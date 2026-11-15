@@ -58,6 +58,7 @@ import {
 } from "./experiment-tools";
 import { cancelBooking, listBookings } from "./bookings";
 import { cartReminderStats } from "./cart-reminders";
+import { preflightTellCustomer, tellCustomerTool } from "./order-updates";
 import { orderPrivacy } from "./privacy-pages";
 import { explainPrivacyRequestTool, listPrivacyRequestsTool } from "./privacy-tools";
 import { approveReturnTool, declineReturnTool, explainReturnTool, listReturnsTool, preflightReturnTool } from "./return-tools";
@@ -2290,6 +2291,8 @@ export async function preflightOwnerTool(ctx: OwnerToolContext, name: string, ra
     request_purchase: preflightRequestPurchase,
     // An automation's days outside its range, and a text message that reaches no one or passes the cap (D4).
     write_email_automation: preflightWriteAutomation,
+    // An update about an order its records do not bear out, or one the customer had already (D635).
+    tell_customer_about_order: preflightTellCustomer,
     send_text_message: preflightSendTextMessage,
   };
   if (name in TEAM_AND_PLAN) {
@@ -2619,6 +2622,7 @@ const handlersOf = (): Record<OwnerToolName, Handler> => (handlers ??= {
   restock_suggestions: restockSuggestions,
   list_integrations: listIntegrationsTool,
   email_customer: emailCustomerTool,
+  tell_customer_about_order: tellCustomerTool,
   resend_order_email: resendOrderEmailTool,
   set_stock: setStockTool,
   set_backorder: setBackorderTool,

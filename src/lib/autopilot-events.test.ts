@@ -43,6 +43,9 @@ describe("each event's tools", () => {
     expect(EVENT_TOOLS.order_held.filter((t) => OWNER_TOOLS_BY_NAME[t]?.gate)).toEqual([]);
     expect(EVENT_TOOLS.dispute_opened.filter((t) => OWNER_TOOLS_BY_NAME[t]?.gate)).toEqual([]);
     expect(EVENT_TOOLS.supplier_problem).toEqual(expect.arrayContaining(["list_supplier_orders", "answer_supplier_order", "cancel_order"]));
+    // A late order's or a parcel's customer hears only the store's fixed words (D635), never a word the model wrote.
+    for (const kind of ["order_unsent", "delivery_problem", "supplier_problem"] as const) expect(EVENT_TOOLS[kind]).toContain("tell_customer_about_order");
+    expect(EVENT_TOOLS.order_held).not.toContain("tell_customer_about_order");
   });
 
   it("come with lines that say nobody is reading along", () => {

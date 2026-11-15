@@ -617,6 +617,7 @@ export const assistantNb: AssistantMessages = {
     tag_customer: "Merker kunden",
     list_email_automations: "Ser på de automatiske e-postene",
     switch_email_automation: "Forbereder bryteren",
+    tell_customer_about_order: "Forbereder beskjeden til kunden",
     write_email_automation: "Skriver e-posten",
     list_text_messages: "Leser tekstmeldingene",
     draft_text_message: "Lagrer tekstmeldingen",
