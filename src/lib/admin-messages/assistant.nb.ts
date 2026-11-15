@@ -349,6 +349,7 @@ export const assistantNb: AssistantMessages = {
         order_held: "En ordre ble holdt tilbake",
         dispute_opened: "En betaling ble bestridt",
         payments_failing: "Betalinger feilet",
+        stockout_risk: "Et produkt kan bli utsolgt",
       },
       statuses: { pending: "Venter", running: "Jobber", done: "Ferdig", skipped: "Hoppet over", failed: "Mislyktes" },
     },

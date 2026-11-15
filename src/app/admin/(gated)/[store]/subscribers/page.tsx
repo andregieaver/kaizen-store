@@ -1,11 +1,13 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 
-import { Button, Card, CARD_CLASS, Chip, KpiTile, List, ListRow, PageHeader, RowFact, RowLead } from "@/components/admin/ui";
+import { Button, ButtonLink, Card, CARD_CLASS, Chip, KpiTile, List, ListRow, PageHeader, RowFact, RowLead } from "@/components/admin/ui";
 import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
 import { adminText } from "@/lib/admin-text";
 import { SUBSCRIBER_STATUSES, type SubscriberStatus } from "@/lib/marketing-consent";
-import { listSubscribers, subscriberCounts } from "@/server/marketing-subscribers";
+import { listSubscribers, newsletterFormPages, subscriberCounts } from "@/server/marketing-subscribers";
+import { countWords } from "@/lib/admin-fill";
+import { featureOn } from "@/lib/store-features";
 import { memberCan, requirePermission } from "@/server/permissions";
 
 export const metadata: Metadata = { title: "Subscribers" };
@@ -13,6 +15,8 @@ export const metadata: Metadata = { title: "Subscribers" };
 type Props = PageProps<"/admin/[store]/subscribers">;
 
 const SIGNAL: Record<SubscriberStatus, "positive" | "warning" | "neutral"> = { subscribed: "positive", pending: "warning", unsubscribed: "neutral" };
+
+const row = "flex min-h-16 flex-wrap items-center justify-between gap-3 py-3";
 
 const first = (value: string | string[] | undefined): string => (typeof value === "string" ? value : "");
 
@@ -28,7 +32,7 @@ export default async function SubscribersPage({ params, searchParams }: Props) {
   const status = (SUBSCRIBER_STATUSES as readonly string[]).includes(first(query.status)) ? (first(query.status) as SubscriberStatus) : null;
   const [at, id] = first(query.before).split("_");
   const before = at && id && !Number.isNaN(Date.parse(at)) && /^[0-9a-f-]{36}$/.test(id) ? { at, id } : null;
-  const [counts, page] = await Promise.all([subscriberCounts(store.id), listSubscribers(store.id, { query: q, status, before })]);
+  const [counts, page, formPages] = await Promise.all([subscriberCounts(store.id), listSubscribers(store.id, { query: q, status, before }), newsletterFormPages(store.id)]);
   const base = `/admin/${store.slug}/subscribers`;
   const lang = adminLangOf(member.account.adminLocale);
   const w = adminText(lang, "marketing");
@@ -47,12 +51,19 @@ export default async function SubscribersPage({ params, searchParams }: Props) {
   };
   const last = page.rows.at(-1);
   const total = counts.subscribed + counts.pending + counts.unsubscribed;
+  const shop = featureOn(store, "shop");
 
   return (
     <div className="flex flex-col gap-6">
+      {/* Round 13 (D639): the list in a sentence, how people join as rows, counters only when not zero. */}
       <PageHeader
         title={ws.title}
-        description={ws.description}
+        meta={[
+          <span key="lead">
+            <span className="text-ink">{counts.subscribed === 0 ? ws.leadNone : countWords(counts.subscribed, ws.leadSome, { n: n(counts.subscribed) })}</span>
+            {counts.subscribed === 0 && counts.pending === 0 ? ws.leadNoneRest : counts.pending > 0 ? countWords(counts.pending, ws.leadWaiting, { n: n(counts.pending) }) : ""}
+          </span>,
+        ]}
         actions={
           memberCan(member, "owner") && total > 0 ? (
             <form method="post" action={`${base}/export`}>
@@ -62,17 +73,50 @@ export default async function SubscribersPage({ params, searchParams }: Props) {
         }
       />
 
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-        <KpiTile label={w.segments.wantYourEmails} value={n(counts.subscribed)} href={filter({ status: "subscribed" })} />
-        <KpiTile label={ws.statuses.pending} value={n(counts.pending)} context={ws.waitingContext} href={filter({ status: "pending" })} />
-        <KpiTile label={ws.left} value={n(counts.unsubscribed)} href={filter({ status: "unsubscribed" })} />
-      </div>
+      {total > 0 && (
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+          {counts.subscribed > 0 && <KpiTile label={w.segments.wantYourEmails} value={n(counts.subscribed)} href={filter({ status: "subscribed" })} />}
+          {counts.pending > 0 && <KpiTile label={ws.statuses.pending} value={n(counts.pending)} context={ws.waitingContext} href={filter({ status: "pending" })} />}
+          {counts.unsubscribed > 0 && <KpiTile label={ws.left} value={n(counts.unsubscribed)} href={filter({ status: "unsubscribed" })} />}
+        </div>
+      )}
 
-      {total === 0 ? (
-        <p className={`p-8 text-center text-body text-muted ${CARD_CLASS}`}>
-          {ws.empty}
-        </p>
-      ) : (
+      <section aria-labelledby="ways" className={`px-6 py-3 ${CARD_CLASS}`}>
+        <h2 id="ways" className="mt-2 mb-1 text-title text-ink">{ws.waysTitle}</h2>
+        <ul className="divide-y divide-line">
+          <li className={row}>
+            <span className="flex min-w-0 flex-col">
+              <span className="text-body text-ink">{ws.formRow}</span>
+              <span className="text-caption text-ink-2">{formPages === 0 ? ws.formNone : countWords(formPages, ws.formSome)}</span>
+            </span>
+            {formPages === 0 ? (
+              memberCan(member, "website:write") && (
+                <ButtonLink kind={total === 0 ? "main" : "secondary"} href={store.frontPageId ? `/admin/${store.slug}/pages/${store.frontPageId}` : `/admin/${store.slug}/pages`}>
+                  {store.frontPageId ? ws.formAdd : ws.formAddPages}
+                </ButtonLink>
+              )
+            ) : (
+              <span className="text-caption text-positive-text">{ws.inPlace}</span>
+            )}
+          </li>
+          <li className={row}>
+            <span className="flex min-w-0 flex-col">
+              <span className="text-body text-ink">{ws.checkoutRow}</span>
+              <span className="text-caption text-ink-2">{shop ? ws.checkoutSub : ws.offWithShop}</span>
+            </span>
+            {shop && <span className="text-caption text-positive-text">{ws.inPlace}</span>}
+          </li>
+          <li className={row}>
+            <span className="flex min-w-0 flex-col">
+              <span className="text-body text-ink">{ws.accountRow}</span>
+              <span className="text-caption text-ink-2">{shop ? ws.accountSub : ws.offWithShop}</span>
+            </span>
+            {shop && <span className="text-caption text-positive-text">{ws.inPlace}</span>}
+          </li>
+        </ul>
+      </section>
+
+      {total > 0 && (
         <Card
           compact
           title={status ? ws.statuses[status] : ws.everyone}

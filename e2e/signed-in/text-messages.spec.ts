@@ -32,6 +32,9 @@ test.beforeAll(async () => {
 test("asks the owner to connect a 46elks account first", async ({ page: p }) => {
   await p.goto(page);
   await expect(p.getByRole("heading", { level: 1, name: "Text messages" })).toBeVisible();
+  // What texts give comes first; the fields are one press away (round 13, D639).
+  await expect(p.getByText("Only to people who ticked the box at checkout")).toBeVisible();
+  await p.getByText("Connect 46elks", { exact: true }).click();
   const form = p.getByRole("form", { name: "Connect a 46elks account" });
   await expect(form.getByLabel("API username")).toBeVisible();
   await expect(form.getByLabel("API password")).toHaveAttribute("type", "password");

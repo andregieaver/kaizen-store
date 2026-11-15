@@ -22,6 +22,8 @@ import {
   FAILED_PAYMENTS_SHARE,
   ORDER_EVENT_DAYS,
   ORDER_UNSENT_HOURS,
+  STOCKOUT_PER_CHECK,
+  stockoutCheckDue,
   TEST_ENDED_DAYS,
   type EventFacts,
   type EventKind,
@@ -37,6 +39,7 @@ import { startPlanByAutopilot, stopPlanIn, type PlanActor } from "./autopilot-pl
 import { principalOf } from "./autopilot-runner";
 import { aiBudgetSpent, autonomyFor } from "./autopilot-settings";
 import { log } from "./log";
+import { restockSuggestions } from "./owner-insights";
 import { holderOfPrincipal, keepForApproval, runTurn, type Principal, type TurnInput } from "./owner-assistant";
 import { refreshTag } from "./refresh";
 import { getStore } from "./stores";
@@ -66,6 +69,8 @@ export type EventDeps = {
   alerts?: typeof alertsForStore;
   /** No event is answered after this. */
   deadline?: number;
+  /** Check stock for risks in this run, whatever the hour (tests); by the clock unless given (`stockoutCheckDue()`). */
+  stockoutCheck?: boolean;
   now?: Date;
 };
 
@@ -81,6 +86,7 @@ const FACTS = z.discriminatedUnion("kind", [
   z.object({ kind: z.literal("order_held"), order: z.string(), orderId: z.string(), byRule: z.boolean() }),
   z.object({ kind: z.literal("dispute_opened"), order: z.string(), orderId: z.string(), dispute: z.string(), reason: z.string(), dueBy: z.string().nullable() }),
   z.object({ kind: z.literal("payments_failing"), window: z.string(), failed: z.number(), attempts: z.number() }),
+  z.object({ kind: z.literal("stockout_risk"), sku: z.string(), product: z.string(), lastsDays: z.number().nullable(), leadDays: z.number(), suggested: z.number() }),
 ]);
 
 /** The stores that react now: the switch on, not paused, the store open. */
@@ -119,7 +125,7 @@ export async function detectEvents(deps: EventDeps = {}): Promise<number> {
     on conflict (store_id, kind, ref) do nothing
     returning id
   `);
-  return waiting.length + tests.length + (await detectOrderEvents(now)) + (await detectAlerts(now, deps));
+  return waiting.length + tests.length + (await detectOrderEvents(now)) + (await detectAlerts(now, deps)) + (await detectStockoutRisks(now, deps));
 }
 
 /** The window failed payments are counted in, as its reference: the day and the hour it began (`FAILED_PAYMENTS_HOURS` long). */
@@ -223,6 +229,53 @@ async function detectOrderEvents(now: Date): Promise<number> {
   ];
   let found = 0;
   for (const query of queries) found += (await db().execute(query)).length;
+  return found;
+}
+
+/** A variant's open purchase orders: a draft, or ordered and not received in full. Stock on its way is not a risk the autopilot answers. */
+const OPEN_ORDER = (storeId: string, sku: string) => sql`
+  exists (
+    select 1 from commerce.purchase_order_lines l
+    join commerce.purchase_orders po on po.store_id = l.store_id and po.id = l.purchase_order_id
+    join commerce.product_variants v on v.store_id = l.store_id and v.id = l.variant_id
+    where l.store_id = ${storeId}::uuid and v.sku = ${sku} and po.status in ('draft', 'ordered') and l.received < l.quantity
+  )`;
+
+/**
+ * Products that may run out (`docs/100-day-challenge.md` C4): in the first minutes of every `STOCKOUT_CHECK_HOURS` hours, each reacting store's
+ * own reorder forecast (`restockSuggestions()`, the same the owner and the AI read), and each variant it says to order now with nothing on its
+ * way, at most `STOCKOUT_PER_CHECK` a store, kept once a week.
+ */
+async function detectStockoutRisks(now: Date, deps: EventDeps): Promise<number> {
+  if (!(deps.stockoutCheck ?? stockoutCheckDue(now))) return 0;
+  const stores = await typedRows(z.object({ store_id: col.uuid, slug: col.text }), sql`with reacting as (${REACTING}) select r.store_id, s.slug from reacting r join commerce.stores s on s.id = r.store_id`);
+  const today = now.toISOString().slice(0, 10);
+  let found = 0;
+  for (const row of stores) {
+    try {
+      const store = await getStore(row.slug);
+      if (!store || store.id !== row.store_id) continue;
+      const suggestions = await restockSuggestions({ store }, { days: 30, cover_days: 30, lead_days: 7 });
+      const urgent = suggestions.to_reorder.filter((v) => v.order_now && v.sku.trim() !== "");
+      let kept = 0;
+      for (const v of urgent) {
+        if (kept >= STOCKOUT_PER_CHECK) break;
+        const open = await typedRow(z.object({ open: col.bool }), sql`select ${OPEN_ORDER(store.id, v.sku)} as open`);
+        if (open?.open) continue;
+        const facts: EventFacts = { kind: "stockout_risk", sku: v.sku, product: v.product, lastsDays: v.lasts_days, leadDays: v.delivery_days ?? 7, suggested: v.suggested_order };
+        const inserted = await db().execute(sql`
+          insert into commerce.autopilot_events (store_id, kind, ref, facts)
+          values (${store.id}::uuid, 'stockout_risk', ${eventRef(facts, today)}, ${JSON.stringify(facts)}::jsonb)
+          on conflict (store_id, kind, ref) do nothing
+          returning id
+        `);
+        found += inserted.length;
+        kept++;
+      }
+    } catch (error) {
+      log("error", "autopilot.stockout_check_failed", { store: row.store_id }, error);
+    }
+  }
   return found;
 }
 
@@ -415,6 +468,10 @@ async function stillOpen(storeId: string, facts: EventFacts): Promise<string | n
   if (facts.kind === "dispute_opened") {
     const row = await typedRow(z.object({ status: col.text }), sql`select status from commerce.payment_disputes where id = ${facts.dispute}::uuid and store_id = ${storeId}::uuid`);
     return row?.status === "needs_response" || row?.status === "warning_needs_response" ? null : "The dispute was answered or closed before the autopilot looked.";
+  }
+  if (facts.kind === "stockout_risk") {
+    const row = await typedRow(z.object({ open: col.bool }), sql`select ${OPEN_ORDER(storeId, facts.sku)} as open`);
+    return row?.open ? "A purchase order for it was made before the autopilot looked." : null;
   }
   return null;
 }

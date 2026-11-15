@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { readAutonomy } from "./autopilot-autonomy";
-import { EVENT_KINDS, EVENT_LINES, EVENT_TOOLS, eventMessage, eventRef, isoWeek, type EventFacts } from "./autopilot-events";
+import { EVENT_KINDS, EVENT_LINES, EVENT_TOOLS, eventMessage, eventRef, isoWeek, stockoutCheckDue, type EventFacts } from "./autopilot-events";
 import { MANAGER_TOOLS_BY_NAME } from "./manager-tools";
 import { OWNER_TOOLS_BY_NAME } from "./owner-tools";
 
@@ -17,6 +17,7 @@ const supplier: EventFacts = { kind: "supplier_problem", order: "1044", orderId:
 const held: EventFacts = { kind: "order_held", order: "1045", orderId: "o4", byRule: true };
 const dispute: EventFacts = { kind: "dispute_opened", order: "1046", orderId: "o5", dispute: "d1", reason: "fraudulent", dueBy: "2026-11-30T23:59:00Z" };
 const failing: EventFacts = { kind: "payments_failing", window: "2026-11-15T12", failed: 7, attempts: 12 };
+const stockout: EventFacts = { kind: "stockout_risk", sku: "MUG-1", product: "White mug", lastsDays: 4.5, leadDays: 14, suggested: 120 };
 
 describe("the settings", () => {
   it("react to nothing until switched on, and wait 15 minutes for a person by default", () => {
@@ -70,6 +71,9 @@ describe("the turn's message", () => {
     expect(eventMessage(held)).toContain("by one of the store's order rules");
     expect(eventMessage(dispute)).toContain("due by 2026-11-30");
     expect(eventMessage(failing)).toContain("7 of 12 payments");
+    expect(eventMessage(stockout)).toContain('"White mug" (SKU MUG-1) may run out');
+    expect(eventMessage(stockout)).toContain("lasts 4.5 days, and new stock takes 14 days");
+    expect(eventMessage(stockout)).toContain("ordering 120 units");
   });
 
   it("makes an alert once a week and the others once", () => {
@@ -86,5 +90,17 @@ describe("the turn's message", () => {
     expect(eventRef(supplier, "2026-11-15")).toBe("so1:late");
     expect(eventRef(dispute, "2026-11-15")).toBe("d1");
     expect(eventRef(failing, "2026-11-15")).toBe("2026-11-15T12");
+  });
+});
+
+describe("the stock-out risk event (C4, D638)", () => {
+  it("is kept once a week per SKU, checked in the first minutes of every sixth hour, and orders only within the purchasing budget", () => {
+    expect(eventRef(stockout, "2026-11-16")).toBe("MUG-1:2026-W47");
+    expect(eventRef(stockout, "2026-11-22")).toBe("MUG-1:2026-W47");
+    expect(stockoutCheckDue(new Date("2026-11-15T06:03:00Z"))).toBe(true);
+    expect(stockoutCheckDue(new Date("2026-11-15T06:07:00Z"))).toBe(false);
+    expect(stockoutCheckDue(new Date("2026-11-15T07:01:00Z"))).toBe(false);
+    expect(EVENT_TOOLS.stockout_risk).toEqual(["restock_suggestions", "stock_levels", "list_purchase_orders", "create_purchase_order"]);
+    expect(EVENT_LINES.stockout_risk).toContain("Never work out a quantity of your own");
   });
 });

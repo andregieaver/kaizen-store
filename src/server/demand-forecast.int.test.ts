@@ -7,6 +7,7 @@ vi.mock("next/server", () => ({ connection: async () => {}, after: () => {} }));
 
 const { closeDb, db } = await import("@/db/client");
 const { demandForecasts } = await import("./demand-forecast");
+const { detectEvents } = await import("./autopilot-events");
 const { newStore, mainLocation } = await import("./inventory-test-support");
 
 type Row = Record<string, unknown>;
@@ -76,6 +77,8 @@ beforeAll(async () => {
 });
 
 afterAll(async () => {
+  await db().execute(sql`delete from commerce.autopilot_events where store_id = ${store.storeId}::uuid`);
+  await db().execute(sql`delete from commerce.autopilot_settings where store_id = ${store.storeId}::uuid`);
   await db().execute(sql`delete from commerce.campaigns where store_id = ${store.storeId}::uuid`);
   await closeDb();
 });
@@ -109,5 +112,39 @@ describe("the demand forecast's reads (C4)", () => {
       leadDays: 7,
     });
     expect(forecasts.get(String(other.id))).toMatchObject({ perDay: 0, suggested: 0, orderNow: false, lastsDays: null });
+  });
+});
+
+describe("the stock-out risk event (C4, D638)", () => {
+  it("keeps a variant the forecast says to order now once a week, and none while a purchase order is on its way", async () => {
+    await db().execute(sql`
+      insert into commerce.autopilot_settings (store_id, planning, updated_at) values (${store.storeId}::uuid, '{"reacts": true}'::jsonb, now())
+      on conflict (store_id) do update set planning = excluded.planning
+    `);
+    const risks = async () =>
+      (await db().execute<Row>(sql`select ref, facts from commerce.autopilot_events where store_id = ${store.storeId}::uuid and kind = 'stockout_risk'`)).map(
+        (r) => r.facts as Record<string, unknown>,
+      );
+    // Not at this hour by the clock, so nothing is checked.
+    await detectEvents({ stockoutCheck: false });
+    expect(await risks()).toEqual([]);
+    await detectEvents({ stockoutCheck: true });
+    const [mug] = (await risks()).filter((f) => f.sku === SKU);
+    expect(mug).toMatchObject({ kind: "stockout_risk", sku: SKU, leadDays: 14 });
+    expect(Number(mug.suggested)).toBeGreaterThan(0);
+    await detectEvents({ stockoutCheck: true });
+    expect((await risks()).filter((f) => f.sku === SKU)).toHaveLength(1);
+    // A purchase order on its way: the next week's check keeps nothing for it.
+    await db().execute(sql`delete from commerce.autopilot_events where store_id = ${store.storeId}::uuid and kind = 'stockout_risk'`);
+    const location = await mainLocation(store.storeId);
+    const [po] = await db().execute<Row>(sql`
+      insert into commerce.purchase_orders (store_id, supplier, currency, location_id) values (${store.storeId}::uuid, 'Nordic Mugs', 'NOK', ${location}::uuid) returning id
+    `);
+    await db().execute(sql`
+      insert into commerce.purchase_order_lines (store_id, purchase_order_id, variant_id, quantity, unit_cost_minor)
+      values (${store.storeId}::uuid, ${String(po.id)}::uuid, ${variant.id}::uuid, 100, 6000)
+    `);
+    await detectEvents({ stockoutCheck: true });
+    expect((await risks()).filter((f) => f.sku === SKU)).toEqual([]);
   });
 });

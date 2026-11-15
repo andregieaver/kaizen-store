@@ -107,7 +107,8 @@ describe("profit per order (D415)", () => {
 describe("the prepared reorder (D416)", () => {
   it("fills a purchase order from what is running out, with the cost price and the supplier last used", async () => {
     const mug = await variantOf(fx, "DEMO-MUG-WHITE");
-    // Two sold above and nothing left: 30 days to cover and 7 for delivery at that pace is three to order.
+    // Two sold above and nothing left: 30 days to cover and 7 for delivery at that pace is three to order, and the forecast (C4, D636) adds a
+    // safety stock for days as uneven as one sale in a month.
     await db().execute(sql`update commerce.inventory_levels set on_hand = 0 where store_id = ${fx.storeId}::uuid and variant_id = ${mug}::uuid`);
     await db().execute(sql`
       insert into commerce.purchase_orders (store_id, supplier, currency, location_id, created_by)
@@ -116,7 +117,9 @@ describe("the prepared reorder (D416)", () => {
     const draft = await reorderDraft(store);
     expect(draft.currency).toBe("NOK");
     expect(draft.supplier).toBe("Keramikk AS");
-    expect(draft.lines).toContainEqual(expect.objectContaining({ sku: "DEMO-MUG-WHITE", quantity: "3", unitCost: "50,00" }));
+    const line = draft.lines.find((l) => l.sku === "DEMO-MUG-WHITE");
+    expect(line).toMatchObject({ unitCost: "50,00" });
+    expect(Number(line?.quantity)).toBeGreaterThan(3);
     // Nothing was saved: the person presses Create.
     const [count] = await db().execute<Row>(sql`select count(*)::int as n from commerce.purchase_orders where store_id = ${fx.storeId}::uuid`);
     expect(Number(count.n)).toBe(1);

@@ -625,7 +625,7 @@ Each item of section 4 moves here when it is built, with its decision.
 | C5 Order events | Built: paid and not sent after 48 hours, a parcel in trouble, a supplier refused or late, an order held, a dispute to answer, failed payments piling up. Each leaves a note; none writes to the customer. | D621 |
 | D4 Retention the AI writes | Partly: the AI writes an automation's words and days (`write_email_automation`), drafts and sends text messages (`send_text_message` always asks), and every automation says the paid orders within a week of its emails. New flow kinds, several steps a flow and the cart reminders' steps need a migration and come next. Broadcasts within budget were A2. | D632 |
 | C Telling the customer | Built: a late order's or a parcel's customer gets one of four fixed updates in the store's own words and their language (`tell_customer_about_order`), checked against the records and sent once; the order events' turns use it within the customer emails a week. | D635 |
-| C4 Demand forecast | Partly: what to reorder is a forecast (recent weeks weigh more, the season from last year, a planned campaign by the product's own lift, the supplier's real delivery time, a safety stock), each adjustment named. The stock-out risk event needs a migration and comes next. | D636 |
+| C4 Demand forecast | Built: what to reorder is a forecast (recent weeks weigh more, the season from last year, a planned campaign by the product's own lift, the supplier's real delivery time, a safety stock), each adjustment named; a product it says to order now, with nothing on its way, is a stock-out risk event, and the autopilot orders from its known supplier within the purchasing budget. | D636, D638 |
 | C6 Cancel and risk tools | Partly: `cancel_order` (its refund waits in the refund queue). Releasing a hold stays a person's; capture timing is set by the owner before Day 1. | D621 |
 
 ### 15.1 Deployed (14 November 2026)
@@ -649,7 +649,6 @@ recording is committed. A push with a migration waits for every check, so merge 
 
 In order of the Day 1 minimum (8.1):
 
-- **C4 (rest):** a stock-out risk event the autopilot answers (a migration: a new event kind).
 - **B3:** staff requests carried out by code (address change, cancellation).
 - **E1 (rest) and E7 (rest):** return labels, handling and packaging in contribution; the original read from Shopify's API; the baseline frozen before Day 1.
 - **F4 (rest):** a page published rolled back through its versions; errors per hour.
