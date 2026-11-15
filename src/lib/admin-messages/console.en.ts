@@ -275,6 +275,8 @@ export const consoleEn = {
       discountPercent: "Deepest discount, %",
       adRaisePercent: "Largest ad budget raise, %",
       marginFloorPercent: "Lowest margin it may leave a product, %",
+      purchasePerOrder: "Stock it may buy in one purchase order (store currency)",
+      purchaseMonthly: "Stock it may buy a month (store currency)",
     },
     save: "Set the challenge",
     saved: "The challenge is set on {store}.",

@@ -32,6 +32,8 @@ export const REVIEW_READ_TOOLS = [
   "setup_progress",
   "analytics_overview",
   "profit_overview",
+  // The drop-ship suppliers' refused and late orders (C2): what holds the store's deliveries up.
+  "list_supplier_orders",
   "analytics_alerts",
   "explain_change",
   "report_catalogue",

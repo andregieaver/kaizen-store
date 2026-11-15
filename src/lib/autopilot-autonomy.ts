@@ -109,6 +109,10 @@ export const TOOL_AREAS: Readonly<Record<string, AutonomyArea>> = {
   block_affiliate: "money",
   // An ad budget in the owner's own ad account (D585): a raise also meets the account's monthly limit and the largest raise (`adProblem`).
   set_ad_budget: "money",
+  // Stock bought from a supplier (`docs/100-day-challenge.md` C3): also within the purchasing budget, per order and a month (`purchaseProblem`).
+  create_purchase_order: "money",
+  // A drop-ship supplier's order sent again or cancelled (C2): the parcel and the stock, as counting a delivery in is.
+  answer_supplier_order: "catalogue",
 };
 
 /**
@@ -137,6 +141,8 @@ export const NEVER_AUTOMATIC: ReadonlySet<string> = new Set([
   // A broadcast reaches the whole list at once and cannot be called back: a person always reads it first.
   "send_broadcast",
   "refund_order",
+  // Cancelling a paid order refunds it in the same step (C6): money back to a customer, so in the challenge it goes to the refund queue.
+  "cancel_order",
   "change_order",
   "process_exchange",
   "adjust_customer_credits",
@@ -196,8 +202,23 @@ export const autonomySettingsSchema = z.object({
        * (`src/lib/margin-floor.ts`, `docs/100-day-challenge.md` D5); null: no floor of its own.
        */
       marginFloorPercent: z.number().min(0).max(95).nullable().default(null),
+      /**
+       * The stock it may buy itself (`docs/100-day-challenge.md` C3), in the store's main currency: the most one purchase order may cost and what
+       * the month's purchase orders may add up to (`src/lib/purchase-budget.ts`); both null: every purchase order waits for a yes.
+       */
+      purchasePerOrder: z.number().min(0).max(100_000_000).nullable().default(null),
+      purchaseMonthly: z.number().min(0).max(1_000_000_000).nullable().default(null),
     })
-    .default({ aiMonthlyUsd: 5, discountPercent: 20, priceChangePercent: 10, customerEmailsPerWeek: 5, adRaisePercent: 20, marginFloorPercent: null }),
+    .default({
+      aiMonthlyUsd: 5,
+      discountPercent: 20,
+      priceChangePercent: 10,
+      customerEmailsPerWeek: 5,
+      adRaisePercent: 20,
+      marginFloorPercent: null,
+      purchasePerOrder: null,
+      purchaseMonthly: null,
+    }),
   /** Whether and how it keeps working toward the goals once a plan ends (D328, `docs/ai-autopilot.md` 12.1). */
   planning: z
     .object({
@@ -253,6 +274,8 @@ export type AutonomyFacts = {
   broadcastsThisWeek?: number | null;
   /** Answers to customers on the support desk it sent itself in the last 24 hours (challenge mode). */
   supportRepliesToday?: number | null;
+  /** A purchase order against the purchasing budget (`purchaseBudgetProblem()`): why it must ask, or null when it may. */
+  purchaseProblem?: string | null;
 };
 
 /**
@@ -295,6 +318,10 @@ export function autonomyDecision(settings: AutonomySettings, tool: string, gate:
   if (tool === "set_ad_budget") {
     if (facts.adProblem === undefined) return { run: false, why: "The ad account could not be read." };
     if (facts.adProblem !== null) return { run: false, why: facts.adProblem };
+  }
+  if (tool === "create_purchase_order") {
+    if (facts.purchaseProblem === undefined) return { run: false, why: "The purchase order could not be measured against the purchasing budget." };
+    if (facts.purchaseProblem !== null) return { run: false, why: facts.purchaseProblem };
   }
   // In challenge mode an answer on the support desk has a daily budget of its own: answering customers is the work, not marketing.
   if (challenge && tool === "reply_to_support") {

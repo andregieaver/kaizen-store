@@ -207,6 +207,9 @@ export const TOOL_PERMISSIONS: Record<OwnerToolName, PermissionKey> = {
   list_purchase_orders: "products:read",
   // The screens' own tools (AGT-01): each asks what its admin page and action ask.
   receive_purchase_order: "products:write",
+  create_purchase_order: "products:write",
+  list_supplier_orders: "products:read",
+  answer_supplier_order: "products:write",
   owed_to_customers: "analytics:read",
   list_report_schedules: "analytics:read",
   schedule_report: "analytics:write",
@@ -270,6 +273,7 @@ export const TOOL_PERMISSIONS: Record<OwnerToolName, PermissionKey> = {
   list_categories: "products:read",
   update_category: "products:write",
   refund_order: "orders:write",
+  cancel_order: "orders:write",
   approve_return: "orders:write",
   decline_return: "orders:write",
   create_discount: "marketing:write",

@@ -108,7 +108,7 @@ async function loadCartView(store: Store, market: Market, m: Messages) {
       }
     : null;
   // The store's own questions at checkout (D357), with what the cart holds of the answers.
-  const questions = await checkoutQuestionsFor(store.id, market.locale, await readCartId({ storeId: store.id, market }));
+  const questions = await checkoutQuestionsFor(store.id, market.locale, await readCartId({ storeId: store.id, market }), market, customer?.id ?? null);
   // A signed-in customer's saved addresses in the market's country (D304), offered where this page asks the address itself.
   const addressChoices = customer && (asksPayer || onTerms) ? choicesFor(await listAddresses(store.id, customer.id), market.code) : [];
   const companyNeeded = companyRequired(

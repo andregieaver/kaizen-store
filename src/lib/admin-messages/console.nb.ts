@@ -268,6 +268,8 @@ export const consoleNb: ConsoleMessages = {
       discountPercent: "Dypeste rabatt, %",
       adRaisePercent: "Største økning av annonsebudsjett, %",
       marginFloorPercent: "Laveste margin den kan gi et produkt, %",
+      purchasePerOrder: "Varer den kan kjøpe i én innkjøpsordre (butikkens valuta)",
+      purchaseMonthly: "Varer den kan kjøpe i måneden (butikkens valuta)",
     },
     save: "Sett utfordringen",
     saved: "Utfordringen er satt på {store}.",

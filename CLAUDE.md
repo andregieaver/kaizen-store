@@ -173,6 +173,7 @@ Each rule is in full under the same words in one file of `docs/rules/admin/` by 
 - Legal pages by AI (D311 unit L, `docs/ai-autopilot.md` 8; L1 sources, L2 writer and L3 upkeep built)
 - The autopilot (D309, D328, `docs/ai-autopilot.md` 7 and 12)
 - The 100-day challenge's console (D614, `docs/100-day-challenge.md` H2, `src/lib/challenge-console.ts` pure, `src/server/challenge-console.ts`)
+- The challenge's order and stock tools and order events (D621, `docs/100-day-challenge.md` C2 to C6, `src/server/supply-tools.ts`, `src/lib/purchase-budget.ts`)
 - The AI wallet (D599, `docs/agent-spending.md` 5, `src/lib/card-wallet.ts`, `src/server/card-wallet.ts`, `src/server/agent-purchases.ts`)
 - Web research (D329, `docs/ai-autopilot.md` 13, `src/lib/web-search.ts`, `src/lib/web-page-text.ts`, `src/lib/research.ts`, `src/server/research.ts`)
 - Brand and look (D330, `docs/ai-autopilot.md` 14, `src/lib/brand.ts`, `src/lib/brand-design.ts`, `src/server/brand.ts`, `src/server/brand-tools.ts`)
@@ -427,7 +428,7 @@ Each rule is in full under the same words in one file of `docs/rules/admin/` by 
   A write that picks a store's row by its id names the store too (`and store_id = …`, or the file's `owned()`); the same ratchet counts the
   writes that do not, per file, and only lets that number fall (code review 1.3).
   A read of a store's or the platform's rows filters with `owned(storeId)` (`src/server/owned.ts`), never `store_id is not distinct from`: the
-  ratchet counts that wording per file and only lets it fall (bloat review step 0.23).
+  ratchet counts that wording per file and only lets it fall (D622).
 - New server code logs through `log(level, event, fields, error)` (`src/server/log.ts`: one JSON line, ids and counts, never a
   person's data or a secret, D400: no `console.error` is left in `src/server` but `log.ts`). Every cron route has a `maxDuration` and runs
   inside `trackedRoute()`/`tracked()`, and the five-minute dispatcher runs each job through `runJobs()` (`src/server/cron-runs.ts`):

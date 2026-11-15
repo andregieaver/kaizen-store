@@ -271,6 +271,10 @@ export const apiCheckoutField = z.object({
     .object({ min: z.int().optional(), max: z.int().optional() })
     .optional()
     .describe("A number's lowest and highest value, or a date's earliest and latest day counted from the store's today."),
+  conditions: z
+    .array(conditionSchema)
+    .optional()
+    .describe("Asked only when every condition holds for the basket, the checkout rules' own conditions; none: always asked."),
 });
 
 const enabledOnly = z.strictObject({ enabled: z.boolean().describe("Switches it on or off; nothing else changes.") });

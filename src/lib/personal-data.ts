@@ -607,6 +607,8 @@ export const EMAIL_KINDS: Record<string, EmailClass> = {
   "stock.low": "staff",
   "supplier.problem": "staff",
   "supplier.late": "staff",
+  /** A purchase order to a supplier (`docs/100-day-challenge.md` C3): goods, units and costs for a business, never a person's details. */
+  "supplier.purchase_order": "staff",
   "experiment.guardrail": "staff",
   "integration.endpoint_off": "staff",
   /** A follow-up the AI manager was asked for ran (PSI AGT-04): the person's own task and a link, never the answer. */

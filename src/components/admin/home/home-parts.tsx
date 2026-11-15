@@ -50,10 +50,31 @@ export function DotChip({ tone, children }: { tone: "positive" | "warning" | "ne
 export function HomeColumns({ main, aside }: { main: ReactNode; aside: ReactNode }) {
   return (
     <div className="grid items-start gap-4 lg:grid-cols-[minmax(0,2fr)_minmax(18rem,1fr)]">
-      <div className="flex min-w-0 flex-col gap-4">{main}</div>
-      <aside className="flex min-w-0 flex-col gap-4">{aside}</aside>
+      {/* Below lg the two columns become one list (round 6, D620): each part says its place with `max-lg:order-*` (`HomeSlot`). */}
+      <div className="flex min-w-0 flex-col gap-4 max-lg:contents">{main}</div>
+      <aside className="flex min-w-0 flex-col gap-4 max-lg:contents">{aside}</aside>
     </div>
   );
+}
+
+const SLOT = {
+  1: "max-lg:order-1",
+  2: "max-lg:order-2",
+  3: "max-lg:order-3",
+  4: "max-lg:order-4",
+  5: "max-lg:order-5",
+  6: "max-lg:order-6",
+  7: "max-lg:order-7",
+  8: "max-lg:order-8",
+} as const;
+
+/**
+ * A part of Home with its place in the one list a phone or tablet shows (D620): the next job, the week, what needs you, setup, the
+ * AI manager, then the rest. `phone: false` leaves it out on a phone (it has a place of its own one press away). Draws nothing when the
+ * part is empty.
+ */
+export function HomeSlot({ at, phone = true, children }: { at: keyof typeof SLOT; phone?: boolean; children: ReactNode }) {
+  return <div className={`flex min-w-0 flex-col gap-4 empty:hidden ${SLOT[at]}${phone ? "" : " max-sm:hidden"}`}>{children}</div>;
 }
 
 /** "Next up": the one thing to do now, with the page's one green button and, optionally, a second way and a picture of what it is about. */
@@ -74,7 +95,7 @@ export function NextUp({
 }) {
   return (
     <section aria-labelledby="next-up" data-next-up className={`${CARD_CLASS} flex flex-col gap-5 p-6 sm:p-7`}>
-      <div className="flex flex-wrap items-start justify-between gap-4">
+      <div className="flex flex-wrap items-start justify-between gap-4 max-sm:contents">
         <div className="flex flex-col gap-1.5">
           <p className="text-eyebrow text-muted uppercase">{eyebrow}</p>
           <h2 id="next-up" className="text-metric text-ink">
@@ -82,15 +103,16 @@ export function NextUp({
           </h2>
           {text && <p className="text-body text-ink-2">{text}</p>}
         </div>
-        <div className="flex flex-wrap gap-2">
+        {/* On a phone (D620) the main button takes the width, in the thumb's reach, and the second way is a link under it. */}
+        <div className="flex flex-wrap gap-2 max-sm:order-last max-sm:w-full max-sm:flex-col-reverse">
           {second && (
-            <AdminLink href={second.href} prefetch={false} className="inline-flex h-11 items-center gap-2 rounded-pill border border-edge bg-card px-4 text-body text-ink hover:bg-sunken">
+            <AdminLink href={second.href} prefetch={false} className="inline-flex h-11 items-center gap-2 rounded-pill border border-edge bg-card px-4 text-body text-ink hover:bg-sunken max-sm:justify-center max-sm:border-0 max-sm:bg-transparent max-sm:underline">
               {second.print && <Printer aria-hidden className="size-4" />}
               {second.label}
             </AdminLink>
           )}
           {action && (
-            <AdminLink href={action.href} className="inline-flex h-11 items-center gap-2 rounded-pill bg-brand px-5 text-body-strong text-brand-ink hover:bg-brand-hover">
+            <AdminLink href={action.href} className="inline-flex h-11 items-center gap-2 rounded-pill bg-brand px-5 text-body-strong text-brand-ink hover:bg-brand-hover max-sm:h-12 max-sm:justify-center">
               {action.label}
               <ArrowRight aria-hidden className="size-4" />
             </AdminLink>
@@ -168,9 +190,9 @@ export function HomeCard({ title, link, children, compact = false }: { title: st
 }
 
 /** A list row that is a link: a picture or icon, two lines, and a word on the right. */
-export function LinkRow({ href, start, title, sub, end }: { href: string; start: ReactNode; title: ReactNode; sub?: ReactNode; end?: ReactNode }) {
+export function LinkRow({ href, start, title, sub, end, className }: { href: string; start: ReactNode; title: ReactNode; sub?: ReactNode; end?: ReactNode; className?: string }) {
   return (
-    <li className="border-t border-line first:border-t-0">
+    <li className={`border-t border-line first:border-t-0${className ? ` ${className}` : ""}`}>
       <AdminLink href={href} className="flex min-h-14 items-center gap-3 py-2.5 hover:[&_.row-title]:underline">
         {start}
         <span className="flex min-w-0 flex-1 flex-col">

@@ -267,6 +267,9 @@ export const assistantEn = {
       adRaiseHelp: "A larger raise always asks. What your ads may spend in a month is set on the Ads page.",
       marginFloor: "Lowest margin (%)",
       marginFloorHelp: "A price, discount or campaign that would leave any product a smaller margin, before VAT, asks first. Empty for no floor.",
+      purchasePerOrder: "Stock it may buy in one purchase order",
+      purchaseMonthly: "Stock it may buy a month",
+      purchaseHelp: "In your store's main currency, at cost. A purchase order over either asks first; both empty: every purchase order asks.",
       customerEmails: "Emails to customers a week",
       customerEmailsHelp: "Emails to one customer and answers in support it may send itself in seven days; past this they ask. 0: every one asks.",
       never: "Always asks, whatever you choose: who works in the store, your domains, a broadcast to your list, refunds and order changes, credits and gift cards, your plan with Kaizena Flow, features and opening the store.",
@@ -345,7 +348,17 @@ export const assistantEn = {
     events: {
       title: "What the autopilot reacted to",
       told: "Done, as you asked to be told:",
-      kinds: { support_waiting: "A customer waited for a person", test_ended: "An A/B test ended", alert: "An analytics alert" },
+      kinds: {
+        support_waiting: "A customer waited for a person",
+        test_ended: "An A/B test ended",
+        alert: "An analytics alert",
+        order_unsent: "A paid order was not sent",
+        delivery_problem: "A parcel ran into trouble",
+        supplier_problem: "A supplier refused or was late",
+        order_held: "An order was held",
+        dispute_opened: "A payment was disputed",
+        payments_failing: "Payments were failing",
+      },
       statuses: { pending: "Waiting", running: "Working", done: "Done", skipped: "Skipped", failed: "Failed" },
     },
     results: {

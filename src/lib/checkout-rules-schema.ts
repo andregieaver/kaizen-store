@@ -109,6 +109,12 @@ export const fieldInputSchema = z.object({
     })
     .optional()
     .describe("A number's lowest and highest value, or a date's earliest and latest day counted from today (0 to 730); each optional."),
+  // When it is asked (task 4): the checkout rules' conditions, all of them holding; left out, a change keeps them; [] asks it always.
+  conditions: z
+    .array(conditionSchema)
+    .max(RULE_CONDITIONS_MAX)
+    .optional()
+    .describe("Asked only when every condition holds for the basket (country, basket value, weight, products, categories, tags, customer groups); [] or none: always asked."),
 });
 
 /** A number's or a date's bounds' own rules: only those kinds have them, the lowest is not above the highest, and a date's days are 0 to 730. */
