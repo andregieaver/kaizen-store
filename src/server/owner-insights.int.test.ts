@@ -107,9 +107,15 @@ describe("the AI manager's analyses (D104)", () => {
     const performance = (await ownerTools.runOwnerTool(ctx(), "product_performance", { days: 30 })) as Answer;
     expect(performance.best_sellers[0]).toMatchObject({ units: 30, orders: 3, stock: 10 });
 
-    // 30 sold in 30 days, 10 left: 1 a day, lasting 10 days; 30 + 7 days need 37.
+    // 30 sold in 30 days in three orders, 10 left: about 1 a day (the recent weeks weigh more, C4), and three days of ten are uneven, so a
+    // safety stock comes on top of the 37 days' need, and the 10 left no longer cover the delivery time with it.
     const restock = (await ownerTools.runOwnerTool(ctx(), "restock_suggestions", { days: 30, cover_days: 30, lead_days: 7 })) as Answer;
-    expect(restock.to_reorder).toEqual([expect.objectContaining({ sku: variant.sku, in_stock: 10, per_day: 1, lasts_days: 10, suggested_order: 27, order_now: false })]);
+    expect(restock.to_reorder).toEqual([expect.objectContaining({ sku: variant.sku, in_stock: 10, sold_in_period: 30, order_now: true, safety_stock: expect.any(Number) })]);
+    const lamp = restock.to_reorder[0] as { per_day: number; safety_stock: number; suggested_order: number; lasts_days: number };
+    expect(lamp.per_day).toBeGreaterThanOrEqual(1);
+    expect(lamp.safety_stock).toBeGreaterThan(0);
+    expect(lamp.suggested_order).toBeGreaterThan(27 + lamp.safety_stock - 1);
+    expect(lamp.lasts_days).toBeCloseTo(10 / lamp.per_day, 0);
     const urgent = (await ownerTools.runOwnerTool(ctx(), "restock_suggestions", { days: 30, cover_days: 30, lead_days: 14 })) as Answer;
     expect(urgent.urgent).toBe(1);
 
