@@ -6,6 +6,7 @@ import { AdminTextScope } from "@/components/admin/admin-text";
 import { AudienceFields } from "@/components/admin/audience-fields";
 import { BusinessDetailsFields } from "@/components/admin/business-details-fields";
 import { FeatureOffNote } from "@/components/admin/feature-off";
+import { FoldOpenOnce } from "@/components/admin/fold-open-once";
 import { HoursEditor } from "@/components/admin/hours-editor";
 import { PlaceFields } from "@/components/admin/place-fields";
 import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
@@ -140,7 +141,7 @@ export default async function CompanyPage({ params }: PageProps<"/admin/[store]/
       </section>
 
       {/* Lisa's part (round 10, D633): selling to businesses and a change of business, one fold away; open while a change is planned. */}
-      <details open={planned !== null} className={`group ${CARD_CLASS}`}>
+      <FoldOpenOnce startOpen={planned !== null} className={`group ${CARD_CLASS}`}>
         <summary className="flex min-h-12 cursor-pointer list-none items-center justify-between gap-3 px-6 py-3 text-body text-ink [&::-webkit-details-marker]:hidden">
           {w.more}
           <ChevronDown aria-hidden className="size-4 transition-transform group-open:rotate-180" />
@@ -194,7 +195,7 @@ export default async function CompanyPage({ params }: PageProps<"/admin/[store]/
             )}
           </section>
         </div>
-      </details>
+      </FoldOpenOnce>
     </div>
     </AdminTextScope>
   );
