@@ -6,6 +6,7 @@ import { db } from "@/db/client";
 import { vectorLiteral } from "@/lib/vectors";
 
 import { AiError, completeText, embedTexts, type AiConnection } from "./ai";
+import { owned } from "./owned";
 import { UNTRUSTED_TEXT } from "@/lib/prompt-safety";
 
 type Row = Record<string, unknown>;
@@ -111,7 +112,7 @@ export async function keepMemory(input: {
   const [same] = await db().execute<Row>(sql`
     select id, importance from commerce.assistant_memories
     where account_id = ${input.accountId}::uuid and kind = ${input.kind}
-      and store_id is not distinct from ${input.storeId}::uuid
+      and ${owned(input.storeId)}
       and (lower(content) = lower(${content}) or extensions.similarity(content, ${content}) > 0.6)
     order by extensions.similarity(content, ${content}) desc limit 1
   `);

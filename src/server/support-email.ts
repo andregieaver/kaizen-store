@@ -24,6 +24,7 @@ import { log } from "./log";
 import { emailContext, emailFooter } from "./shopper-emails";
 import { newEmailToken } from "./support";
 import { systemDesk } from "./support-desk";
+import { owned } from "./owned";
 
 type Row = Record<string, unknown>;
 
@@ -96,6 +97,7 @@ export async function sendReplyEmails(now: Date = new Date(), limit = 100): Prom
   const rows = await db().execute<Row>(sql`
     select c.id, c.store_id, c.locale, c.market, c.email_sent_seq, c.source, c.reply_key, coalesce(cu.email, ra.email, c.contact_email) as address
     from commerce.support_conversations c
+    -- Column to column: both sides may be null (the platform's rows); no parameter to branch on.
     join commerce.support_settings s on s.store_id is not distinct from c.store_id
     left join commerce.customers cu on cu.store_id = c.store_id and cu.id = c.customer_id
     -- An account asking Kaizena Flow from the admin (step 11) is answered at its own address.
@@ -116,6 +118,7 @@ export async function sendReplyEmails(now: Date = new Date(), limit = 100): Prom
   const byEmail = await db().execute<Row>(sql`
     select c.id, c.store_id, c.locale, c.market, c.email_sent_seq, c.source, c.contact_email as address, c.reply_key, c.email_subject, c.email_message_id
     from commerce.support_conversations c
+    -- Column to column: both sides may be null (the platform's rows); no parameter to branch on.
     join commerce.support_settings s on s.store_id is not distinct from c.store_id
     where c.source in ('email', 'form') and c.anonymised_at is null and s.mode <> 'off' and c.contact_email is not null and c.email_count < ${EMAIL_CHANNEL_MAX}
       and (c.store_id is null or commerce.store_is_active(c.store_id))
@@ -264,6 +267,7 @@ export async function sendWaitingAlerts(now: Date = new Date(), limit = 100): Pr
     select c.id, c.store_id, c.queued_at, st.slug, st.name,
       floor(extract(epoch from (${at} - c.queued_at)) / 60)::int as minutes
     from commerce.support_conversations c
+    -- Column to column: both sides may be null (the platform's rows); no parameter to branch on.
     join commerce.support_settings s on s.store_id is not distinct from c.store_id
     left join commerce.stores st on st.id = c.store_id
     where c.status = 'open' and c.handler = 'queue' and c.anonymised_at is null and c.waiting_alert_at is null and s.mode <> 'off'
@@ -338,7 +342,7 @@ export async function sendWaitingAlerts(now: Date = new Date(), limit = 100): Pr
  * address), or Kaizen's platform admins.
  */
 async function deskPeopleAway(storeId: string | null): Promise<{ id: string; email: string; lang: AdminLang }[]> {
-  const online = sql`exists (select 1 from commerce.support_agents ag where ag.account_id = a.id and ag.store_id is not distinct from ${storeId}::uuid
+  const online = sql`exists (select 1 from commerce.support_agents ag where ag.account_id = a.id and ${owned(storeId, sql`ag.store_id`)}
     and ag.status = 'online' and ag.last_seen_at > now() - make_interval(secs => ${ONLINE_SECONDS}))`;
   if (!storeId) {
     const rows = await db().execute<Row>(sql`
@@ -379,6 +383,7 @@ export async function sendRequestDecisionEmail(conversationId: string, actionId:
         (c.visitor_seen_at is null or c.visitor_seen_at <= now() - make_interval(secs => ${REPLY_AFTER_SECONDS})) as away,
         a.status, a.summary, a.result ->> 'note' as note
       from commerce.support_conversations c
+      -- Column to column: both sides may be null (the platform's rows); no parameter to branch on.
       join commerce.support_settings s on s.store_id is not distinct from c.store_id
       join commerce.support_actions a on a.conversation_id = c.id and a.id = ${actionId}::uuid
       left join commerce.customers cu on cu.store_id = c.store_id and cu.id = c.customer_id

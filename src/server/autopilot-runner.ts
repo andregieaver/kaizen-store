@@ -23,6 +23,7 @@ import { gateNeeded, heldBy, OwnerToolError, preflightOwnerTool, runOwnerTool } 
 import { refreshTag } from "./refresh";
 import { col, typedRow, typedRows } from "./typed-rows";
 import { skipWhilePaused } from "./ai-pause";
+import { owned } from "./owned";
 
 /**
  * The autopilot's loop (D309, `docs/ai-autopilot.md` 7.3): from `/api/cron/autopilot` every minute, a few steps at a time and at most one per
@@ -72,6 +73,7 @@ export async function runAutopilot(deps: AutopilotDeps = {}): Promise<AutopilotR
       select distinct coalesce(st.store_id::text, 'platform') as store_key, st.store_id
       from commerce.assistant_plan_steps st
       join commerce.assistant_plans p on p.id = st.plan_id and p.status = 'running'
+      -- Column to column: both sides may be null (the platform's rows); no parameter to branch on.
       left join commerce.autopilot_settings a on a.store_id is not distinct from st.store_id
       where st.status = 'pending' and (st.not_before is null or st.not_before <= now()) and not coalesce(a.paused, false)
         and (st.store_id is null or commerce.store_is_active(st.store_id))
@@ -193,7 +195,7 @@ export async function resumeAfterBudget(): Promise<number> {
     if (settings.paused || (await aiBudgetProblem(store_id, settings))) continue;
     const rows = await db().execute(sql`
       update commerce.assistant_plans set status = 'running', pause_reason = null, paused_for = null
-      where status = 'paused' and paused_for = 'budget' and store_id is not distinct from ${store_id}::uuid
+      where status = 'paused' and paused_for = 'budget' and ${owned(store_id)}
       returning id
     `);
     resumed += rows.length;

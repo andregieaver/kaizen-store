@@ -34,6 +34,7 @@ import { holderOfPrincipal, keepForApproval, runTurn, type Principal, type TurnI
 import { refreshTag } from "./refresh";
 import { col, typedRow, typedRows } from "./typed-rows";
 import { skipWhilePaused } from "./ai-pause";
+import { owned } from "./owned";
 
 /**
  * The autopilot keeps going (D328, `docs/ai-autopilot.md` 12), the only writer of `commerce.autopilot_reviews`: from
@@ -83,6 +84,7 @@ export async function dueReviews(): Promise<Due[]> {
       )
       select g.id as goal_id, g.store_id, s.slug as store_slug, commerce.store_is_active(s.id) as store_active, g.created_by, c.conversation_id
       from commerce.assistant_goals g
+      -- Column to column: both sides may be null (the platform's rows); no parameter to branch on.
       join commerce.autopilot_settings a on a.store_id is not distinct from g.store_id
       left join commerce.stores s on s.id = g.store_id
       left join last l on l.goal_id = g.id
@@ -93,6 +95,7 @@ export async function dueReviews(): Promise<Due[]> {
         and not exists (select 1 from commerce.assistant_plans p where p.goal_id = g.id and p.status in ('draft', 'running', 'paused'))
         and not exists (select 1 from commerce.autopilot_reviews r where r.goal_id = g.id and r.status = 'running')
         and (
+          -- Column to column: both sides may be null (the platform's rows); no parameter to branch on.
           select count(*) from commerce.autopilot_reviews r where r.store_id is not distinct from g.store_id and r.created_at > now() - interval '1 day'
         ) < ${REVIEWS_PER_DAY}
         and (
@@ -266,7 +269,7 @@ async function reviewGoal(reviewId: string, due: Due, deps: ReviewDeps): Promise
   const week = await typedRow(
     z.object({ n: col.int }),
     sql`select count(*)::int as n from commerce.autopilot_reviews
-      where store_id is not distinct from ${due.store_id}::uuid and started and created_at > now() - interval '7 days'`,
+      where ${owned(due.store_id)} and started and created_at > now() - interval '7 days'`,
   );
   const decision = startDecision(settings, week?.n ?? 0);
   if (decision.start && (await startPlanByAutopilot(actor, plan.id, plan.version))) {

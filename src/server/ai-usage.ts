@@ -10,6 +10,7 @@ import { currentActor } from "./actor";
 import { costMicrosSql, priceFor, unpricedSql } from "./ai-price-sql";
 import { log } from "./log";
 import { col, typedRow } from "./typed-rows";
+import { owned as ownedStore } from "./owned";
 
 type Row = Record<string, unknown>;
 
@@ -96,7 +97,7 @@ export async function recordLiveSeconds(accountId: string, storeId: string | nul
     await db().execute(sql`
       update commerce.ai_usage set audio_seconds = ${clean}
       where kind = 'live' and session_ref = ${sessionRef} and actor_account_id = ${accountId}::uuid and audio_seconds = 0
-        and store_id is not distinct from ${storeId}::uuid
+        and ${ownedStore(storeId)}
     `);
   } catch (error) {
     log("error", "ai_usage.live_seconds_record_failed", {}, error);
