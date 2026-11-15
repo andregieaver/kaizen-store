@@ -510,6 +510,10 @@ export const shippingEn = {
     address: "Name and address",
     city: "Postal code and city",
     follows: "Changes as you choose.",
+    questions: "Your questions",
+    addQuestion: "Add a question",
+    editQuestion: "Edit {name}",
+    changeAsks: "Change what is asked",
     more: "Where each is asked",
   },
   customerAccounts: {
@@ -547,6 +551,7 @@ export const shippingEn = {
       rules: { one: ", and {n} rule changes what they see.", many: ", and {n} rules change what they see." },
     },
     examplesLabel: "Examples",
+    examplesStart: "Start from an example, or add your own:",
     examples: {
       klarna: "No Klarna under {amount}",
       heavy: "Stop orders over 30 kg",
