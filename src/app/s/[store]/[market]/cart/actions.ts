@@ -1,5 +1,6 @@
 "use server";
 
+import { looksLikeGiftCode } from "@/lib/gift-cards";
 import { refresh } from "next/cache";
 import { headers } from "next/headers";
 import { z } from "zod";
@@ -283,12 +284,13 @@ export async function vatNumberAction(
   return { outcome: result.ok ? result.outcome : result.problem };
 }
 
-export type CodeState = { tried: string | null; full?: boolean };
+/** What the one code field shows after a code was typed: the code tried, whether the cart is full, and why a gift card was not added. */
+export type CodeState = { tried: string | null; full?: boolean; problem?: string | null };
 
 /**
- * Puts a discount code on the cart (D31). Whether it applies is shown by
- * the cart page, which checks it against the basket every time, as checkout
- * will.
+ * Puts a discount code on the cart (D31), or a gift card when what was typed is shaped like one (`looksLikeGiftCode()`; one field for both,
+ * the owner's decision of 15 November 2026). Whether a code applies is shown by the cart page, which checks it against the basket every time,
+ * as checkout will; a gift card not added says why here. A card stays a payment, never a discount: only the field is shared.
  */
 export async function applyCodeAction(
   storeSlug: string,
@@ -299,6 +301,12 @@ export async function applyCodeAction(
   const shop = await resolveSellingShop(storeSlug, marketSlug);
   const code = String(form.get("code") ?? "").slice(0, 60);
   if (!shop || !code.trim()) return { tried: null };
+  if (looksLikeGiftCode(code)) {
+    const card = new FormData();
+    card.set("giftCard", code);
+    const { problem } = await applyGiftCardAction(storeSlug, marketSlug, { problem: null }, card);
+    return { tried: problem ? code : null, problem };
+  }
   // Added beside the codes already there (D299 E2); the cart page says which apply and why the others do not.
   const saved = await addCartCode({ storeId: shop.store.id, market: shop.market }, code);
   refresh();

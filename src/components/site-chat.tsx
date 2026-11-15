@@ -4,7 +4,7 @@ import { PLATFORM_LANG_FACTS, type PlatformLang } from "@/lib/platform-lang";
 import { marketPath } from "@/lib/paths";
 import { unitLabelsOf } from "@/lib/unit-price-text";
 import { chatWidgetFor, type ChatWidgetProfile } from "@/server/chat-agent";
-import { listPublishedPages } from "@/server/pages";
+import { publishedPageIndex } from "@/server/pages";
 import type { Shop } from "@/server/shop";
 import { PANEL_WIDTH } from "@/lib/support-widget-style";
 import type { FrameWidget } from "@/server/support-widgets";
@@ -110,7 +110,7 @@ export function chatLabels(lang: string, locale: string, profile: ChatWidgetProf
 async function privacyHref(store: Store, marketSlug: string): Promise<string | undefined> {
   const id = store.legalPages.privacy;
   if (!id) return undefined;
-  const published = (await listPublishedPages(store.id)).find((page) => page.id === id);
+  const published = (await publishedPageIndex(store.id)).find((page) => page.id === id);
   return published ? marketPath(store.slug, marketSlug, `/${published.slug}`) : undefined;
 }
 

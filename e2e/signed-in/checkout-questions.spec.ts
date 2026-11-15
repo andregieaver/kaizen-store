@@ -126,3 +126,14 @@ test("makes a dropdown with two options to choose one from, and the list names i
     await sql.end();
   }
 });
+
+test("opens a question from the checkout's preview, and a new one from its Add a question", async ({ page: p }) => {
+  await p.goto(page);
+  const preview = p.getByRole("complementary", { name: "What a shopper fills in" });
+  await preview.getByRole("link", { name: "Edit E2E size" }).click();
+  // The question's own editor opens in the list, with its words.
+  await expect(p.getByRole("textbox", { name: "Question", exact: true })).toHaveValue("E2E size");
+  await p.getByRole("button", { name: "Cancel" }).click();
+  await preview.getByRole("link", { name: "Add a question" }).click();
+  await expect(p.getByRole("textbox", { name: "Question", exact: true })).toHaveValue("");
+});

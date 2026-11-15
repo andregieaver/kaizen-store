@@ -597,6 +597,7 @@ function giftCardForm({ store, market, m, view }: Draw) {
       apply={applyGiftCardAction.bind(null, store.slug, market.slug)}
       remove={removeGiftCardAction.bind(null, store.slug, market.slug)}
       labels={{ field: m.giftCardPay.field, apply: m.giftCardPay.apply, applying: m.giftCardPay.applying, remove: m.giftCardPay.remove }}
+      field={false}
     />
   );
 }
@@ -611,7 +612,7 @@ function codeForm({ store, market, m, view }: Draw) {
       codes={(code?.codes ?? []).map((c) => ({ code: c.code, problem: c.ok ? null : codeProblemText(m, c, money) }))}
       full={m.codeProblems.codes_full}
       labels={{
-        code: m.discountCode,
+        code: m.codeOrCard,
         apply: m.applyCode,
         remove: m.removeCode,
         applying: m.savingChange,

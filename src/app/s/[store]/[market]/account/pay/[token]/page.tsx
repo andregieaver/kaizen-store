@@ -6,7 +6,7 @@ import { PayRouteGuard } from "@/components/pay-route-guard";
 import { marketPath } from "@/lib/paths";
 import { payPageFor } from "@/server/draft-pay";
 import { termsDisplayFor } from "@/server/checkout-terms";
-import { listPublishedPages } from "@/server/pages";
+import { publishedPageById } from "@/server/pages";
 import { resolveShop } from "@/server/shop";
 
 import { PayView } from "./pay-view";
@@ -52,6 +52,6 @@ async function Loaded({ params }: Pick<Props, "params">) {
 async function withdrawalPageHref(store: { id: string; slug: string; legalPages: Partial<Record<string, string>> }, marketSlug: string): Promise<string | null> {
   const id = store.legalPages.withdrawal_info;
   if (!id) return null;
-  const published = (await listPublishedPages(store.id)).find((page) => page.id === id);
+  const published = await publishedPageById(store.id, id);
   return published ? marketPath(store.slug, marketSlug, `/${published.slug}`) : null;
 }
