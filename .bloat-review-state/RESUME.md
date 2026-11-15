@@ -177,3 +177,5 @@ challenged by a skeptic, planned by a planner. Its last lines hold the arguments
 - Step 0.24 executor (Sonnet a2a017581859782f8) started from $S/run/executor-0.24.md.
 - Step 0.24: reviewed (by-id read equivalent; theme-store spec flaky locally on main too; themes-unified:46 fails 2/3 on main too). Rebased 530962c1..e477d391; checks task b7hhhogzo; then push. Shortfall: 9 blog entries keep the list (blogArticles(), 6.7 KB of 3.27 MB): follow-up = index with article categories.
 - Step 0.25: WAITING FOR OWNER'S GO. Sent $S/cron-log-before-prune.md (402,474 rows, 309,710 older than 7 days, 650 MB of 824 MB, all succeeded, no shop data). Do not run 0.25 until the owner says yes. Meanwhile go on to 0.26.
+- Step 0.24 pushed as f073fc1b (rebased). Deploy wait blzaibks1; then prod checks + write-up (next D: recheck, other session at D627).
+- Step 0.26 executor (Sonnet a5f000e2405d4bf2b) started: drop 13 duplicate indexes (two migrations: concurrent hot + transactional), new test.
