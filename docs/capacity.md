@@ -610,6 +610,12 @@ Status: built.
     conditions into one SQL fragment both use; never write them twice;
   - **month keys**: `monthFigure()` of this month's rows, plus today's live count for `marketing_emails`, and for
     `ai_cost_micros` read through a 60-second per-instance memo, because `aiFor()` is called often.
+  - Since bloat review step 0.21 the month's AI cost and marketing emails are the days measured after they ended plus a live part
+    from the day after the last such day (a row the job wrote while its day was still going, today's or one not measured again, and a
+    day the job did not measure whole for every store, are left to the live part); a model's first price measures this month's past
+    days again; `aiAbilities()` is kept 60 seconds. A visitor's search asks the model under `searchAiRoom()` (`search_ai`, `search_ai_hour`,
+    1,000,000 search tokens a store a month), and every public path to a model is listed with its ceiling in
+    `src/server/public-model-paths.scan.test.ts`.
 - `checkLimit(storeId, key, adding: number): Promise<{ ok: true } | { ok: false; key; limit: number; used: number }>`
   checks `used + adding > limit` for hard keys, and is always `ok` for soft ones.
 
