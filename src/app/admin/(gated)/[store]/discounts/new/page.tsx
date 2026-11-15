@@ -4,6 +4,7 @@ import { AdminTextScope } from "@/components/admin/admin-text";
 import { requireFeature } from "@/components/admin/feature-off";
 import { adminLangOf } from "@/lib/admin-lang";
 import { adminText, adminTexts } from "@/lib/admin-text";
+import { isOfferKey } from "@/lib/discount-offers";
 import { requirePermission } from "@/server/permissions";
 import { PageHeader } from "@/components/admin/ui";
 
@@ -11,7 +12,7 @@ import { DiscountForm } from "../discount-form";
 
 export const metadata: Metadata = { title: "New coupon" };
 
-export default async function NewDiscountPage({ params }: PageProps<"/admin/[store]/discounts/new">) {
+export default async function NewDiscountPage({ params, searchParams }: PageProps<"/admin/[store]/discounts/new">) {
   const gated = await requirePermission((await params).store, "marketing:read");
   // Part of the online shop (D178 step 5): hidden while it is off, the store being a website.
   const shopOff = requireFeature(gated, "shop");
@@ -19,11 +20,12 @@ export default async function NewDiscountPage({ params }: PageProps<"/admin/[sto
   const { store, account } = gated;
   const lang = adminLangOf(account.adminLocale);
   const w = adminText(lang, "discounts").codes;
+  const offer = (await searchParams).offer;
   return (
     <AdminTextScope texts={adminTexts(lang, ["discounts"])}>
       <div className="flex flex-col gap-6">
         <PageHeader back={{ href: `/admin/${store.slug}/discounts`, label: w.title }} title={w.newCode} />
-        <DiscountForm store={store} discount={null} />
+        <DiscountForm store={store} discount={null} offer={isOfferKey(offer) ? offer : null} />
       </div>
     </AdminTextScope>
   );

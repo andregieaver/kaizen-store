@@ -4932,8 +4932,6 @@ export const orders = commerce.table(
     index("orders_customer_idx").on(t.storeId, t.customerId),
     index("orders_cart_idx").on(t.storeId, t.cartId),
     index("orders_store_placed_idx").on(t.storeId, t.placedAt),
-    /** The retention job's scan: orders not yet anonymised, oldest first (D162). */
-    index("orders_retention_idx").on(t.storeId, t.placedAt).where(sql`${t.anonymisedAt} is null`),
     check(
       "orders_anonymised",
       sql`${t.anonymisedAt} is null or (${t.email} = '[removed]' and ${t.billingAddress} = '{}'::jsonb and ${t.shippingAddress} = '{}'::jsonb and ${t.companyName} is null and ${t.organisationNumber} is null and not ${t.isGift} and ${t.giftTo} is null and ${t.giftFrom} is null and ${t.giftMessage} is null and ${t.deliveryNote} is null)`,
@@ -5124,7 +5122,7 @@ export const orderLines = commerce.table(
     index("order_lines_selling_plan_idx").on(t.storeId, t.sellingPlanId),
     orderRef("order_lines_order_fk", t),
     variantRef("order_lines_variant_fk", t),
-    index("order_lines_order_idx").on(t.storeId, t.orderId),
+    // (store_id, order_id) is served by order_lines_analytics_idx, written in SQL because of its INCLUDE.
     index("order_lines_variant_idx").on(t.storeId, t.variantId),
     check("order_lines_quantity_positive", sql`${t.quantity} > 0`),
     check(
@@ -5841,7 +5839,6 @@ export const payoutLines = commerce.table(
     foreignKey({ name: "payout_lines_refund_fk", columns: [t.storeId, t.refundId], foreignColumns: [refunds.storeId, refunds.id] }),
     foreignKey({ name: "payout_lines_dispute_fk", columns: [t.storeId, t.disputeId], foreignColumns: [paymentDisputes.storeId, paymentDisputes.id] }),
     orderRef("payout_lines_order_fk", t),
-    index("payout_lines_payout_idx").on(t.storeId, t.payoutId),
     index("payout_lines_payment_idx")
       .on(t.storeId, t.paymentId)
       .where(sql`${t.paymentId} is not null`),
@@ -6603,7 +6600,6 @@ export const returnExchanges = commerce.table(
     index("return_exchanges_expiry_idx")
       .on(t.storeId, t.status, t.expiresAt)
       .where(sql`${t.status} in ('proposed', 'confirmed', 'processed')`),
-    index("return_exchanges_return_idx").on(t.storeId, t.returnId),
     index("return_exchanges_order_idx").on(t.storeId, t.orderId),
     index("return_exchanges_exchange_order_idx").on(t.storeId, t.exchangeOrderId),
     index("return_exchanges_refund_idx").on(t.storeId, t.refundId),
@@ -8372,7 +8368,6 @@ export const apiTokens = commerce.table(
   (t) => [
     unique("api_tokens_hash_key").on(t.tokenHash),
     unique("api_tokens_store_id_key").on(t.storeId, t.id),
-    index("api_tokens_store_idx").on(t.storeId),
     index("api_tokens_created_by_idx").on(t.createdBy),
     check("api_tokens_name", sql`char_length(${t.name}) between 1 and 80`),
     // D440: every scope at once fits (21 since wave 14 unit C4), with room for more.
@@ -8406,7 +8401,6 @@ export const apiUploads = commerce.table(
   },
   (t) => [
     unique("api_uploads_store_id_key").on(t.storeId, t.id),
-    index("api_uploads_store_idx").on(t.storeId),
     index("api_uploads_token_idx").on(t.tokenId),
     index("api_uploads_media_idx").on(t.mediaId),
     index("api_uploads_expires_idx").on(t.expiresAt),
@@ -8697,7 +8691,6 @@ export const webhookEndpoints = commerce.table(
   },
   (t) => [
     unique("webhook_endpoints_store_id_key").on(t.storeId, t.id),
-    index("webhook_endpoints_store_idx").on(t.storeId),
     index("webhook_endpoints_created_by_idx").on(t.createdBy),
     check("webhook_endpoints_name", sql`char_length(${t.name}) between 1 and 80`),
     check("webhook_endpoints_topics", sql`cardinality(${t.topics}) between 1 and 40`),
@@ -13608,7 +13601,6 @@ export const visits = commerce.table(
   },
   (t) => [
     unique("visits_day_visitor_key").on(t.storeId, t.day, t.visitor),
-    index("visits_store_day_idx").on(t.storeId, t.day),
     check("visits_visitor", sql`${t.visitor} ~ '^[0-9a-f]{24}$'`),
     check("visits_device", sql`${t.device} in ('mobile', 'tablet', 'desktop')`),
     check("visits_channel", sql`${t.channel} in (${channelList})`),
@@ -13662,7 +13654,6 @@ export const legalSnapshots = commerce.table(
   (t) => [
     unique("legal_snapshots_store_id_key").on(t.storeId, t.id),
     unique("legal_snapshots_text_key").on(t.storeId, t.role, t.locale, t.contentHash),
-    index("legal_snapshots_store_idx").on(t.storeId),
     check("legal_snapshots_role", sql`${t.role} in (${legalRoleList})`),
     check("legal_snapshots_hash", sql`${t.contentHash} ~ '^[0-9a-f]{64}$'`),
   ],
@@ -13787,7 +13778,6 @@ export const accountRecoveryCodes = commerce.table(
   },
   (t) => [
     unique("account_recovery_codes_hash_key").on(t.accountId, t.codeHash),
-    index("account_recovery_codes_account_idx").on(t.accountId),
     check("account_recovery_codes_hash", sql`${t.codeHash} ~ '^[0-9a-f]{64}$'`),
   ],
 );
@@ -15062,7 +15052,6 @@ export const orderEdits = commerce.table(
     index("order_edits_expiry_idx")
       .on(t.storeId, t.status, t.expiresAt)
       .where(sql`${t.status} = 'awaiting_payment'`),
-    index("order_edits_order_idx").on(t.storeId, t.orderId),
     index("order_edits_payment_idx").on(t.storeId, t.paymentId),
     index("order_edits_refund_idx").on(t.storeId, t.refundId),
     index("order_edits_made_by_idx").on(t.madeBy),
@@ -19637,7 +19626,6 @@ export const recurringCosts = commerce.table(
   },
   (t) => [
     unique("recurring_costs_store_id_key").on(t.storeId, t.id),
-    index("recurring_costs_store_idx").on(t.storeId),
     index("recurring_costs_created_by_idx").on(t.createdBy),
     check("recurring_costs_name", sql`char_length(trim(${t.name})) between 1 and 80`),
     check("recurring_costs_match_text", sql`char_length(trim(${t.matchText})) between 3 and 60`),

@@ -29,7 +29,7 @@ test.afterAll(async () => {
 test("opens a ready report, saves a changed one, downloads it and deletes it", async ({ page }) => {
   await page.goto(`/admin/${E2E_STORE}/analytics/reports`);
   await expect(page.getByRole("heading", { name: "Reports", level: 1 })).toBeVisible();
-  await page.getByRole("link", { name: "Sales by product", exact: true }).click();
+  await page.getByRole("link", { name: /^By product/ }).click();
   await expect(page.getByRole("heading", { name: "Sales by product", level: 1 })).toBeVisible();
   await expect(page.getByText(/Revenue, units sold, orders and gross profit by product/)).toBeVisible();
   await expect(page.locator("[data-report-table]")).toBeVisible();

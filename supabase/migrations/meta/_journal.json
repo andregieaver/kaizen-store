@@ -176,6 +176,20 @@
       "when": 1794748512021,
       "tag": "20261115131511_lucky_bloodstorm",
       "breakpoints": true
+    },
+    {
+      "idx": 25,
+      "version": "7",
+      "when": 1794761498277,
+      "tag": "20261115165138_drop_duplicate_hot_indexes",
+      "breakpoints": true
+    },
+    {
+      "idx": 26,
+      "version": "7",
+      "when": 1794761514073,
+      "tag": "20261115165154_drop_duplicate_indexes",
+      "breakpoints": true
     }
   ]
 }

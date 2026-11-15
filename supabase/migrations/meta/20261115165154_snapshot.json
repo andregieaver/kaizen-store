@@ -1,6 +1,6 @@
 {
-  "id": "fc83438a-ac24-4bec-8bc2-9a1d344cb089",
-  "prevId": "0a1c8f00-708e-4bbf-ba55-28a574087b0a",
+  "id": "12800b5c-1963-4b75-9940-fd27b6d3b995",
+  "prevId": "07cce34a-2994-4970-9664-2dce425187a2",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -1102,23 +1102,7 @@
           "notNull": false
         }
       },
-      "indexes": {
-        "account_recovery_codes_account_idx": {
-          "name": "account_recovery_codes_account_idx",
-          "columns": [
-            {
-              "expression": "account_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        }
-      },
+      "indexes": {},
       "foreignKeys": {
         "account_recovery_codes_account_id_accounts_id_fk": {
           "name": "account_recovery_codes_account_id_accounts_id_fk",
@@ -4713,21 +4697,6 @@
         }
       },
       "indexes": {
-        "api_tokens_store_idx": {
-          "name": "api_tokens_store_idx",
-          "columns": [
-            {
-              "expression": "store_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
         "api_tokens_created_by_idx": {
           "name": "api_tokens_created_by_idx",
           "columns": [
@@ -4873,21 +4842,6 @@
         }
       },
       "indexes": {
-        "api_uploads_store_idx": {
-          "name": "api_uploads_store_idx",
-          "columns": [
-            {
-              "expression": "store_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
         "api_uploads_token_idx": {
           "name": "api_uploads_token_idx",
           "columns": [
@@ -39883,23 +39837,7 @@
           "default": "now()"
         }
       },
-      "indexes": {
-        "legal_snapshots_store_idx": {
-          "name": "legal_snapshots_store_idx",
-          "columns": [
-            {
-              "expression": "store_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        }
-      },
+      "indexes": {},
       "foreignKeys": {
         "legal_snapshots_store_id_stores_id_fk": {
           "name": "legal_snapshots_store_id_stores_id_fk",
@@ -44999,27 +44937,6 @@
           "method": "btree",
           "with": {}
         },
-        "order_edits_order_idx": {
-          "name": "order_edits_order_idx",
-          "columns": [
-            {
-              "expression": "store_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "order_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
         "order_edits_payment_idx": {
           "name": "order_edits_payment_idx",
           "columns": [
@@ -45804,27 +45721,6 @@
             },
             {
               "expression": "selling_plan_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "order_lines_order_idx": {
-          "name": "order_lines_order_idx",
-          "columns": [
-            {
-              "expression": "store_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "order_id",
               "isExpression": false,
               "asc": true,
               "nulls": "last"
@@ -48242,28 +48138,6 @@
             }
           ],
           "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "orders_retention_idx": {
-          "name": "orders_retention_idx",
-          "columns": [
-            {
-              "expression": "store_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "placed_at",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "where": "\"commerce\".\"orders\".\"anonymised_at\" is null",
           "concurrently": false,
           "method": "btree",
           "with": {}
@@ -51792,27 +51666,6 @@
         }
       },
       "indexes": {
-        "payout_lines_payout_idx": {
-          "name": "payout_lines_payout_idx",
-          "columns": [
-            {
-              "expression": "store_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "payout_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
         "payout_lines_payment_idx": {
           "name": "payout_lines_payment_idx",
           "columns": [
@@ -62670,21 +62523,6 @@
         }
       },
       "indexes": {
-        "recurring_costs_store_idx": {
-          "name": "recurring_costs_store_idx",
-          "columns": [
-            {
-              "expression": "store_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
         "recurring_costs_created_by_idx": {
           "name": "recurring_costs_created_by_idx",
           "columns": [
@@ -65655,27 +65493,6 @@
           ],
           "isUnique": false,
           "where": "\"commerce\".\"return_exchanges\".\"status\" in ('proposed', 'confirmed', 'processed')",
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "return_exchanges_return_idx": {
-          "name": "return_exchanges_return_idx",
-          "columns": [
-            {
-              "expression": "store_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "return_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
           "concurrently": false,
           "method": "btree",
           "with": {}
@@ -88443,29 +88260,7 @@
           "notNull": false
         }
       },
-      "indexes": {
-        "visits_store_day_idx": {
-          "name": "visits_store_day_idx",
-          "columns": [
-            {
-              "expression": "store_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "day",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        }
-      },
+      "indexes": {},
       "foreignKeys": {
         "visits_store_id_stores_id_fk": {
           "name": "visits_store_id_stores_id_fk",
@@ -88621,21 +88416,6 @@
         }
       },
       "indexes": {
-        "webhook_endpoints_store_idx": {
-          "name": "webhook_endpoints_store_idx",
-          "columns": [
-            {
-              "expression": "store_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
         "webhook_endpoints_created_by_idx": {
           "name": "webhook_endpoints_created_by_idx",
           "columns": [
