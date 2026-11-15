@@ -17,6 +17,7 @@ import { pageInput, type PageContent, type PageType } from "@/lib/page-content";
 
 import { pageRulesProblem, payPageProblem } from "./page-rules";
 import { houseStoreId } from "./house-customers";
+import { owned } from "./owned";
 
 /**
  * Global rows, columns and components (D98) on the server: when a global
@@ -46,7 +47,7 @@ const KINDS: PartKind[] = ["block", "column", "row"];
 export async function lockSavedParts(tx: Tx, owner: Owner): Promise<StoredPart[]> {
   const rows = await tx.execute<Row>(sql`
     select id, kind, name, global, content, translations from commerce.saved_parts
-    where store_id is not distinct from ${owner}::uuid and kind <> 'page'
+    where ${owned(owner)} and kind <> 'page'
     order by created_at
     for update
   `);
@@ -137,7 +138,7 @@ export async function spreadGlobals(
     select p.id, p.type, p.draft, p.published,
       exists (select 1 from commerce.page_roles r where r.store_id = p.store_id and r.page_id = p.id and r.role = 'checkout') as checkout
     from commerce.pages p
-    where p.store_id is not distinct from ${owner}::uuid and (${anyOf})
+    where ${owned(owner, sql`p.store_id`)} and (${anyOf})
     for update
   `);
   const problems: string[] = [];
