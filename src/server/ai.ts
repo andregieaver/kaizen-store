@@ -28,6 +28,7 @@ import { recordUsage, type UsageContext } from "./ai-usage";
 import { audit } from "./auth";
 import { encryptionKey } from "./encryption-key";
 import { refreshTag } from "./refresh";
+import { owned } from "./owned";
 
 type Row = Record<string, unknown>;
 
@@ -140,9 +141,6 @@ function toSettings(row: Row): AiSettings {
     updatedAt: new Date(String(row.updated_at)).toISOString(),
   };
 }
-
-const owned = (storeId: string | null) =>
-  storeId ? sql`store_id = ${storeId}::uuid` : sql`store_id is null`;
 
 /** Kaizen's settings (null) or a store's own, as saved; null when none. */
 export async function getAiSettings(storeId: string | null): Promise<AiSettings | null> {

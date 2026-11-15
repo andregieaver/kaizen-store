@@ -19,6 +19,7 @@ import { audit } from "./auth";
 import { copyStoredFile, removeStoredFiles, storedVideo, uploadProductImage, type UploadResult } from "./media";
 import { storageRefusal } from "./limits";
 import { getStore } from "./stores";
+import { owned } from "./owned";
 
 type Row = Record<string, unknown>;
 
@@ -73,9 +74,6 @@ export type MediaItem = {
 export type MediaMadeBy = "person" | "ai_made" | "ai_edited";
 
 export type MediaOwner = { storeId: string | null; storeSlug: string | null };
-
-const owned = (storeId: string | null, column = sql`store_id`) =>
-  storeId ? sql`${column} = ${storeId}::uuid` : sql`${column} is null`;
 
 /** A file name as people gave it, safe to show and keep. */
 function cleanName(name: string, fallback: string): string {
