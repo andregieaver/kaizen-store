@@ -531,3 +531,68 @@ describe("articles (D57)", () => {
     });
   });
 });
+
+describe("one page and the index of the published pages (step 0.24)", () => {
+  let storeId: string;
+  let otherStoreId: string;
+
+  beforeAll(async () => {
+    const [row] = await db().execute<Row>(sql`insert into commerce.stores (slug, name) values (${`index-${run}`}, 'Index store') returning id`);
+    storeId = String(row.id);
+    const [other] = await db().execute<Row>(sql`insert into commerce.stores (slug, name) values (${`index-other-${run}`}, 'Other store') returning id`);
+    otherStoreId = String(other.id);
+  });
+
+  afterAll(async () => {
+    await db().execute(sql`delete from commerce.pages where store_id in (${storeId}::uuid, ${otherStoreId}::uuid)`);
+  });
+
+  /** Three published pages (the second translated, the third with no translations key in its JSON), and a draft. */
+  const seed = async (owner: string | null, tag: string) => {
+    const first = await saved(await pages.savePage(admin, owner, null, content(`one-${tag}-${run}`, { aiAssistants: true, searchEngines: false }), { publish: true }));
+    const second = await saved(await pages.savePage(admin, owner, null, content(`two-${tag}-${run}`, { aiAssistants: false, searchEngines: true }), { publish: true }));
+    const third = await saved(await pages.savePage(admin, owner, null, content(`three-${tag}-${run}`), { publish: true }));
+    const draft = await saved(await pages.savePage(admin, owner, null, content(`draft-${tag}-${run}`), { publish: false }));
+    await db().execute(sql`
+      update commerce.pages set published = jsonb_set(published, '{translations}', '{"nb-NO": {"title": "Om oss"}, "sv-SE": {"title": ""}}'::jsonb)
+      where id = ${second}::uuid
+    `);
+    await db().execute(sql`update commerce.pages set published = published - 'translations' where id = ${third}::uuid`);
+    return { first, second, third, draft };
+  };
+
+  const check = async (owner: string | null, tag: string, otherOwner: string | null) => {
+    const ids = await seed(owner, tag);
+    const ours = (p: { slug: string }) => p.slug.endsWith(`-${tag}-${run}`) && !p.slug.startsWith("draft");
+    const list = (await pages.listPublishedPages(owner)).filter(ours);
+    const index = (await pages.publishedPageIndex(owner)).filter(ours);
+    expect(list.map((p) => p.id)).toEqual([ids.first, ids.second, ids.third]);
+    expect(index.map((p) => [p.id, p.slug])).toEqual(list.map((p) => [p.id, p.slug]));
+    for (const entry of index) {
+      const page = list.find((p) => p.id === entry.id)!;
+      expect(entry.title).toBe(page.content.title);
+      expect(entry.aiAssistants).toBe(page.content.aiAssistants);
+      expect(entry.searchEngines).toBe(page.content.searchEngines);
+      expect(entry.blogId).toBe(page.content.blogId ?? null);
+      expect(entry.publishedAt).toBe(page.publishedAt);
+      expect(entry.firstPublishedAt).toBe(page.firstPublishedAt);
+      expect(entry).not.toHaveProperty("content");
+    }
+    expect(index.find((p) => p.id === ids.second)!.titles).toEqual({ "nb-NO": "Om oss" });
+    expect(index.find((p) => p.id === ids.third)!.titles).toEqual({});
+    for (const page of list) expect(await pages.publishedPageById(owner, page.id)).toEqual(page);
+    expect(await pages.publishedPageById(owner, ids.draft)).toBeNull();
+    expect(await pages.publishedPageById(otherOwner, ids.first)).toBeNull();
+    expect(await pages.publishedPageById(owner, ids.first, "article")).toBeNull();
+    expect(await pages.publishedPageById(owner, "not-a-uuid")).toBeNull();
+    expect((await pages.publishedPageIndex(owner)).map((p) => p.id)).not.toContain(ids.draft);
+  };
+
+  it("reads a store's one page and its index the way the list does", async () => {
+    await check(storeId, "store", otherStoreId);
+  });
+
+  it("does the same for Kaizena Flow's own pages (the null owner)", async () => {
+    await check(null, "own", storeId);
+  });
+});
