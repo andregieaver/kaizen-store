@@ -168,3 +168,5 @@ challenged by a skeptic, planned by a planner. Its last lines hold the arguments
 - 09:47 UTC 15 Nov: prod still 4aceeee after 4+ h. Scheduled check-in at 11:48 UTC (trig_017oumR2mhm8VvBuLm5rzK1z). No new steps started until the queue drains.
 - 11:50 UTC 15 Nov: PROD UNBLOCKED on f04a2126 (includes 0.20, 0.21). Checked; written up 4654749c (D616 0.20, D617 0.21). Other session now at D615.
 - Stack rebased: 0.22 = bfcc19a2, 83241e56; 0.23 = 918bef2c..e73abded. Checking 0.22 tip in kz-fix (task bo0xk81mk) then push 83241e56:main alone.
+- Step 0.22 pushed as 89f5459d (f4a3ce81, 89f5459d; on top of the other session's D618 migration, so it waits for all checks). Deploy wait bt5p4nxc1. Then: test order on demo store? (owner's hand check), prod checks, write-up.
+- Step 0.23 rebased; its migration REGENERATED as supabase/migrations/20261115123101_cookie_scans_site_indexes.sql (same two indexes; old 20261115061740 dropped since the other session's 20261115120423 came first). Local commits 2bc16c7c..0dcb944c. Checks task b4ow76fq0. Push after 0.22 checks out on prod.
