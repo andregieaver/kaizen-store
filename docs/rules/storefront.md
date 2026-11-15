@@ -37,6 +37,8 @@ changing it; a rule changes here, and its line in CLAUDE.md when its gist change
 - Stores and their markets come from the database (`getStore()`, cached per
   store; `resolveShop()` for URL params). Every catalogue, cart and settings
   query takes a store id; never query a store-owned table without it.
+  A store's address by its id is `storeSlugOf()` (`src/server/stores.ts`, cached
+  under `storeIdTag(id)`); never write the lookup by hand (`store-slug.scan.test.ts`).
 
 ## Interface text lives in `src/lib/i18n.ts` (each hand-written language in `src/lib/messages/{lang}.ts`, D212: a visitor's client component reads…
 
