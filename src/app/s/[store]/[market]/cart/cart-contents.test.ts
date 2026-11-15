@@ -6,6 +6,22 @@ import type { CartBonus } from "@/lib/bonus";
 
 // The cart's server reads are replaced by one cart and its summary; what is tested is how the credits are drawn (D130).
 vi.mock("server-only", () => ({}));
+// One render's memo, as in src/server/request-shared.test.ts: React's cache() does nothing outside a server render. Off, every call is read
+// again (what a bare test render does); a case that holds a whole render to one summary turns `render.on` on.
+const render = vi.hoisted(() => ({ on: false, resets: [] as (() => void)[] }));
+vi.mock("react", async (original) => ({
+  ...(await original<typeof import("react")>()),
+  cache: <T>(make: () => T) => {
+    let made: T | undefined;
+    let has = false;
+    render.resets.push(() => {
+      has = false;
+      made = undefined;
+    });
+    return () => (render.on ? (has ? (made as T) : ((has = true), (made = make()))) : make());
+  },
+}));
+// The bonus of the cart now comes with the summary: ./bonus is never asked (bloat review step 0.22).
 const readCartBonus = vi.fn();
 vi.mock("./bonus", () => ({ readCartBonus: (...a: unknown[]) => readCartBonus(...a) }));
 vi.mock("./actions", () => ({
@@ -14,12 +30,12 @@ vi.mock("./actions", () => ({
 }));
 const getBuyer = vi.fn();
 vi.mock("@/server/b2b", () => ({ getBuyer: (...a: unknown[]) => getBuyer(...a) }));
-const cartState = vi.hoisted(() => ({ company: null as unknown, measure: null as unknown, quantity: 1, status: "ok", backorder: null as unknown }));
+const cartState = vi.hoisted(() => ({ empty: false, company: null as unknown, measure: null as unknown, quantity: 1, status: "ok", backorder: null as unknown }));
 // The store's gift messages (wave 3, D173): whether the switch is on, and what the cart holds of a gift.
 const giftState = vi.hoisted(() => ({ enabled: false, gift: { isGift: false, to: null, from: null, message: null } as unknown }));
 vi.mock("@/server/cart", () => ({
   getCart: async () => ({
-    lines: [
+    lines: cartState.empty ? [] : [
       {
         variantId: "v1",
         audience: "both",
@@ -57,7 +73,19 @@ vi.mock("./cart-gift", () => ({
     createElement("div", { "data-gift-box-mock": "", "data-ticked": String(props.initial.isGift), "data-lang": props.lang }),
 }));
 const cartSummary = vi.fn();
-vi.mock("@/server/cart-summary", () => ({ cartSummary: (...a: unknown[]) => cartSummary(...a) }));
+// requestCartSummary() is the real one's shape on the same fixtures: the cart, and its summary unless the cart is empty, once per render.
+vi.mock("@/server/cart-summary", async () => {
+  const { perRequest } = await import("@/server/request-memo");
+  const { getCart } = await import("@/server/cart");
+  return {
+    cartSummary: (...a: unknown[]) => cartSummary(...a),
+    requestCartSummary: (store: { id: string }, market: { slug: string }) =>
+      perRequest(`cart-summary:${store.id}:${market.slug}`, async () => {
+        const cart = await getCart({ storeId: store.id, market } as never);
+        return { cart, summary: cart.lines.length === 0 ? null : await cartSummary({ storeId: store.id, market }, cart, { features: store }) };
+      }),
+  };
+});
 vi.mock("@/server/customers", () => ({ getCustomer: async () => null }));
 // What goes with the cart (D559) is drawn only while the store's recommendations are on; its own read is not this test's.
 vi.mock("@/server/recommend-settings", () => ({ getRecommendSettings: async () => ({ enabled: false }) }));
@@ -81,7 +109,7 @@ import { t } from "@/lib/i18n";
 import type { Market } from "@/lib/markets";
 import type { Store } from "@/server/stores";
 
-import { CartCheckout, CartContents, CartCredits, CartGift, CartSummary } from "./cart-contents";
+import { CartCheckout, CartContents, CartCredits, CartGift, CartLines, CartSummary } from "./cart-contents";
 
 const market = { slug: "ie", code: "IE", currency: "EUR", locale: "en-IE", lang: "en" } as Market;
 const store = { id: "s1", slug: "demo", audience: "both" } as Store;
@@ -142,6 +170,7 @@ const summary = (over: Record<string, unknown> = {}) => ({
   atVenueOnly: false,
   digital: false,
   customs: noCustoms,
+  bonus: bonus(),
   ...over,
 });
 const bonus = (over: Partial<CartBonus> = {}): CartBonus => ({
@@ -176,8 +205,10 @@ beforeEach(() => {
   giftState.enabled = false;
   giftState.gift = { isGift: false, to: null, from: null, message: null };
   quoteState.offered = false;
+  cartState.empty = false;
+  render.on = false;
+  render.resets.forEach((reset) => reset());
   cartSummary.mockResolvedValue(summary());
-  readCartBonus.mockResolvedValue(bonus());
 });
 
 describe("the cart's totals with bonus credits", () => {
@@ -206,12 +237,12 @@ describe("the cart's credits piece", () => {
     expect(markup).toContain("<form");
     expect(markup).toContain('value="15"');
     expect(words(markup)).toContain("You have €50.00 available; you can use up to €30.00 on this order.");
-    expect(readCartBonus).toHaveBeenCalledWith(store, market);
+    expect(readCartBonus).not.toHaveBeenCalled();
   });
 
   it("invites a guest to sign in, to the store's own sign-in", async () => {
-    readCartBonus.mockResolvedValue(
-      bonus({ signedIn: false, availableMinor: 0, maxUsableMinor: 0, usingMinor: 0, willEarnMinor: 0 }),
+    cartSummary.mockResolvedValue(
+      summary({ bonus: bonus({ signedIn: false, availableMinor: 0, maxUsableMinor: 0, usingMinor: 0, willEarnMinor: 0 }) }),
     );
     const markup = renderToString(await CartCredits({ store, market, m }));
     expect(words(markup)).toContain("Sign in to earn 5% back in bonus credits");
@@ -219,17 +250,34 @@ describe("the cart's credits piece", () => {
   });
 
   it("draws nothing in a store without the program, or for an empty cart", async () => {
-    readCartBonus.mockResolvedValue(bonus({ enabled: false }));
+    cartSummary.mockResolvedValue(summary({ bonus: bonus({ enabled: false }) }));
     expect(renderToString((await CartCredits({ store, market, m })) ?? null)).toBe("");
-    readCartBonus.mockResolvedValue(null);
+    cartState.empty = true;
     expect(renderToString((await CartCredits({ store, market, m })) ?? null)).toBe("");
   });
 
   it("is part of the whole cart page, and only where the store has the program", async () => {
     const markup = renderToString(await CartContents({ store, market, m }));
     expect(markup).toContain("Use bonus credits");
-    readCartBonus.mockResolvedValue(bonus({ enabled: false }));
+    cartSummary.mockResolvedValue(summary({ bonus: bonus({ enabled: false }) }));
     expect(renderToString(await CartContents({ store, market, m }))).not.toContain("Use bonus credits");
+    expect(readCartBonus).not.toHaveBeenCalled();
+  });
+
+  it("works the basket out once for a whole render of the cart's pieces, whichever pieces the page holds", async () => {
+    render.on = true;
+    await draw(CartSummary);
+    await CartLines({ store, market, m });
+    await CartCheckout({ store, market, m });
+    await CartCredits({ store, market, m });
+    expect(cartSummary).toHaveBeenCalledTimes(1);
+    // The summary is asked as a store's own: its features are what let Bonus and Referrals off send no statement.
+    expect(cartSummary).toHaveBeenCalledWith({ storeId: "s1", market }, expect.anything(), { features: store });
+    expect(readCartBonus).not.toHaveBeenCalled();
+    // The next render works it out again.
+    render.resets.forEach((reset) => reset());
+    await draw(CartSummary);
+    expect(cartSummary).toHaveBeenCalledTimes(2);
   });
 });
 
