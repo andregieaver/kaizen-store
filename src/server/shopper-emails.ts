@@ -1,6 +1,7 @@
 import "server-only";
 
 import { sql } from "drizzle-orm";
+import { z } from "zod";
 
 import { db } from "@/db/client";
 import { releaseDate } from "@/lib/stock-words";
@@ -32,6 +33,7 @@ import { lineUnitPriceText } from "@/lib/unit-price-text";
 import type { PlaceholderValues } from "@/lib/email-template";
 import { notificationOf } from "@/lib/notifications";
 import { dayWords } from "@/lib/payment-terms";
+import { orderUpdateWords, type OrderUpdate } from "@/lib/order-update-email";
 
 import { sendEmail, type OutgoingEmail, type SendOutcome } from "./email";
 import { documentBlocks, emailsCarryInvoice, recordDocumentDeliveries, type DocumentBlocks, type DocumentWant } from "./invoice-emails";
@@ -40,6 +42,7 @@ import { ensureUi } from "./ui-text-read";
 import { withdrawalInfoBlocks, withdrawBlocks } from "./withdraw-link";
 import { getOrder, type OrderBooking, type OrderView } from "./orders";
 import { knowStoreAddress, type Store } from "./stores";
+import { col, typedRow } from "./typed-rows";
 import { getSubscriptionForOrder, type SubscriptionChange, type SubscriptionView } from "./subscriptions";
 
 type Row = Record<string, unknown>;
@@ -663,6 +666,46 @@ export async function sendParcelEvent(storeId: string, orderId: string, shipment
       ...(link ? [{ type: "button" as const, text: text.trackParcel, url: link }] : []),
     ],
   }));
+}
+
+/**
+ * An update to a customer about their order (`docs/100-day-challenge.md` C, D635): the store's fixed words in the order's language (an order taking
+ * longer, a parcel not delivered, in trouble or on its way back) and, for a parcel, its tracking. Once per order and update (key
+ * `order-update:{order}:{update}`), kind `order.update`; the caller checks the facts first (`src/server/order-updates.ts`).
+ */
+export async function sendOrderUpdate(storeId: string, orderId: string, update: OrderUpdate, shipmentId: string | null): Promise<SendOutcome | null> {
+  const shipment = shipmentId
+    ? await typedRow(
+        z.object({ carrier: col.textOrNull, tracking_number: col.textOrNull, tracking_url: col.textOrNull }),
+        sql`
+          select carrier, tracking_number, tracking_url from commerce.shipments
+          where store_id = ${storeId}::uuid and id = ${shipmentId}::uuid and order_id = ${orderId}::uuid and undone_at is null
+        `,
+      )
+    : null;
+  const carrier = String(shipment?.carrier ?? "");
+  const number = String(shipment?.tracking_number ?? "");
+  const link = shipment?.tracking_url ? String(shipment.tracking_url) : null;
+  return orderNotice(
+    storeId,
+    orderId,
+    "order.update",
+    `order-update:${orderId}:${update}`,
+    ({ order, text, store }) => {
+      const words = orderUpdateWords(order.locale.split("-")[0], update);
+      return {
+        subject: words.subject(store.name, order.number),
+        heading: words.heading,
+        intro: words.intro(order.number),
+        extra: [
+          ...(number ? [{ type: "paragraph" as const, text: text.tracking(carrier, number) }] : []),
+          ...(link ? [{ type: "button" as const, text: text.trackParcel, url: link }] : []),
+        ],
+      };
+    },
+    undefined,
+    { action: true, templated: false },
+  );
 }
 
 export const sendParcelOutForDelivery = (storeId: string, orderId: string, shipmentId: string) => sendParcelEvent(storeId, orderId, shipmentId, "out");

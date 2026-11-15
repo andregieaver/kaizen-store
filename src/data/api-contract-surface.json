@@ -1,5 +1,5 @@
 {
- "version": "1.24",
+ "version": "1.25",
  "surface": [
   "admin DELETE /categories/{id}",
   "admin DELETE /categories/{id} -> data",
@@ -2681,6 +2681,10 @@
   "mcp tag_orders <- store (required)",
   "mcp tax_readiness",
   "mcp tax_readiness <- store (required)",
+  "mcp tell_customer_about_order",
+  "mcp tell_customer_about_order <- about (required)",
+  "mcp tell_customer_about_order <- order (required)",
+  "mcp tell_customer_about_order <- store (required)",
   "mcp try_theme",
   "mcp try_theme <- install (required)",
   "mcp try_theme <- store (required)",

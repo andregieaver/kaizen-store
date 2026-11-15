@@ -7,6 +7,7 @@ import { EMAIL_PROVIDERS, toolRecord } from "./domain-tools";
 import { BONUS_EXPIRY_MONTHS_MAX, BONUS_PENDING_DAYS_MAX, BONUS_REDEEM_PERCENT_MAX } from "./bonus";
 import { adjustmentPhrase } from "./bonus-admin";
 import { AUTOMATION_KINDS, LIFECYCLE_KINDS } from "./automation-kinds";
+import { ORDER_UPDATES, UPDATE_WORDS, type OrderUpdate } from "./order-update-email";
 import { GOALS } from "./experiments";
 import { GIFT_CARD_NOTE_MAX } from "./gift-card-admin";
 import { contentApprovalSummary } from "./content-tools";
@@ -1650,6 +1651,13 @@ export const OWNER_TOOLS = [
     }),
     "send",
   ),
+  // Telling a customer how their order stands (D635): the store's fixed words, sent only when its records say so.
+  tool(
+    "tell_customer_about_order",
+    "Tells an order's customer how it stands, in the store's own fixed words and their language (you write nothing): delayed (taking longer than planned; they will hear when it is on its way), parcel_attempted (the carrier could not deliver; how to choose a new time or a pickup point), parcel_problem (the carrier reports a problem; the store is looking into it) or parcel_returning (on its way back; the store will be in touch). Sent only when the store's records say so (a paid order with goods still to send and not held; a parcel whose tracking is in that state), and each once per order. It promises no date, refund or amount. Needs the owner's approval.",
+    z.object({ order: orderRef, about: z.enum(ORDER_UPDATES) }),
+    "send",
+  ),
   tool(
     "resend_order_email",
     "Sends a customer their order confirmation, or the latest shipping notice with its tracking, again. Needs the owner's approval.",
@@ -2495,6 +2503,8 @@ export function approvalSummary(name: string, input: Record<string, unknown>): s
       return input.version === "original" ? `End the A/B test "${text("experiment")}" and keep the original.` : `End the A/B test "${text("experiment")}" and make version ${text("version").toUpperCase()} the page, the part or the layout under test.`;
     case "email_customer":
       return `Email ${text("to")}: "${text("subject")}"\n\n${text("message")}`;
+    case "tell_customer_about_order":
+      return `Tell the customer of order ${text("order")}, in the store's own words, that ${UPDATE_WORDS[input.about as OrderUpdate] ?? "how it stands"}.`;
     case "resend_order_email":
       return `Send the ${input.which === "shipped" ? "shipping notice" : "order confirmation"} for order ${text("order")} to its customer again.`;
     case "cancel_order":

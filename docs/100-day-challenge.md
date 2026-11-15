@@ -624,6 +624,7 @@ Each item of section 4 moves here when it is built, with its decision.
 | C3 Purchase orders by the AI | Built: `create_purchase_order`, placed and emailed to a known supplier, within a purchasing budget per order and a month (the owner's, or the challenge's). | D621 |
 | C5 Order events | Built: paid and not sent after 48 hours, a parcel in trouble, a supplier refused or late, an order held, a dispute to answer, failed payments piling up. Each leaves a note; none writes to the customer. | D621 |
 | D4 Retention the AI writes | Partly: the AI writes an automation's words and days (`write_email_automation`), drafts and sends text messages (`send_text_message` always asks), and every automation says the paid orders within a week of its emails. New flow kinds, several steps a flow and the cart reminders' steps need a migration and come next. Broadcasts within budget were A2. | D632 |
+| C Telling the customer | Built: a late order's or a parcel's customer gets one of four fixed updates in the store's own words and their language (`tell_customer_about_order`), checked against the records and sent once; the order events' turns use it within the customer emails a week. | D635 |
 | C6 Cancel and risk tools | Partly: `cancel_order` (its refund waits in the refund queue). Releasing a hold stays a person's; capture timing is set by the owner before Day 1. | D621 |
 
 ### 15.1 Deployed (14 November 2026)
@@ -647,7 +648,7 @@ recording is committed. A push with a migration waits for every check, so merge 
 
 In order of the Day 1 minimum (8.1):
 
-- **C (rest):** telling a customer of a delay or a parcel's trouble (an event writes to nobody today: a plan or a code-sent email), C4's demand forecast.
+- **C4:** the demand forecast for reordering, and a stock-out risk event.
 - **B3:** staff requests carried out by code (address change, cancellation).
 - **E1 (rest) and E7 (rest):** return labels, handling and packaging in contribution; the original read from Shopify's API; the baseline frozen before Day 1.
 - **F4 (rest):** a page published rolled back through its versions; errors per hour.

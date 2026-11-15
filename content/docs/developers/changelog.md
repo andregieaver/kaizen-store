@@ -9,12 +9,20 @@ features: []
 plans: []
 order: 1000
 checked: 2026-11-15
-sources: [D357, D438, D439, D440, D441, D458, D464, D511, D512, D585, D599, D606, D618, D621, D632]
+sources: [D357, D438, D439, D440, D441, D458, D464, D511, D512, D585, D599, D606, D618, D621, D632, D635]
 ---
 
 Every change to a published contract gets a version here, newest first: the Admin API (`/api/admin/v1/openapi.json`), the storefront API
 (`/api/storefront/v1/openapi.json`), the webhook topics (`/api/webhooks/v1/topics.json`) and the MCP catalogues (`/api/mcp/catalogue.json`,
 `/api/ucp/catalogue.json`). Within a major version nothing a caller relies on is renamed or removed; answers and payloads may gain fields.
+
+## 1.25 — 2026-11-15
+
+An addition to the owner MCP's catalogue for orders (D635).
+
+- `tell_customer_about_order`: tells an order's customer, in the store's own fixed words and their language, that the order is `delayed`,
+  or that its parcel was not delivered (`parcel_attempted`), has a problem (`parcel_problem`) or is on its way back (`parcel_returning`).
+  Refused when the store's records do not bear it out, and sent once per order and update. Needs approval; `orders:write`.
 
 ## 1.24 — 2026-11-15
 
