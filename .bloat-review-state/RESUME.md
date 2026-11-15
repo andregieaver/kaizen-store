@@ -188,3 +188,4 @@ challenged by a skeptic, planned by a planner. Its last lines hold the arguments
 - Step 0.31 pushed as ff51407e (a6b37c71, 24931b22 rebased). Waits for a green run with the pending migrations (0.25, 0.26). After deploy (a day later): commerce.cron_jobs shows 7 daily.* at 86400, 2 hourly.* at 3600, 0 of the 9 retired dispatcher.* rows; no job late.
 - CI still red on every run: shipping-handover.spec.ts:95 (other session's D634 removed the "Add a method" link; deterministic) + flaky theme-switch:168 / variants-scale:86. Pending migrations (0.26 x2, 0.25) and code 0.31 wait. Told the user.
 - Step 0.32 executor (Sonnet) started from $S/run/executor-0.32.md.
+- Step 0.32: 3 local commits (beab4e75 image service off, f38e9228 upload lifetimes, adbf83a2 public files a day + small flags) reviewed OK; rebasing + checks (task b9o4my3uh) then push into the queue. CI still blocked by shipping-handover:95 (other session).
