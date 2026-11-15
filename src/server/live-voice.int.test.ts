@@ -40,7 +40,11 @@ beforeAll(async () => {
   member = { account: { id: String(account.id), email: String(account.email), name: "Kari", platformAdmin: false }, store: (await stores.getStore(`live-${run}`))!, role: "owner" };
 });
 
-afterEach(() => vi.unstubAllGlobals());
+afterEach(() => {
+  vi.unstubAllGlobals();
+  // What the AI can do is kept a minute per instance (bloat review 0.21): no case carries another's over.
+  ai.forgetAiAbilities();
+});
 
 afterAll(async () => {
   await db().execute(sql`delete from commerce.ai_providers where store_id = ${member.store!.id}::uuid`);

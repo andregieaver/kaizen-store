@@ -244,6 +244,65 @@ export async function aiRoomLeft(storeId: string): Promise<boolean> {
 }
 
 /**
+ * What a site's AI can do, for a screen that only shows or hides an AI button and calls no model: flags, the text model's and the
+ * embedding space's names and the similarity limit, never a key or an address. A store at its plan's AI allowance answers all false, as
+ * `aiFor()` gives it no connection. Code about to call a model asks `aiFor()` itself.
+ */
+export type AiAbilities = {
+  text: boolean;
+  sees: boolean;
+  pictures: boolean;
+  pictureEdit: boolean;
+  /** Speech to text (the AI manager's hands-free voice). */
+  hear: boolean;
+  /** Hear and speak: both voice models and a voice (`canSpeak()`, the AI manager). */
+  speak: boolean;
+  /** Text to speech: a speech model and a voice (the page studio reads this as its speak). */
+  speech: boolean;
+  live: boolean;
+  embeds: boolean;
+  source: "store" | "platform" | null;
+  textModel: string | null;
+  space: string | null;
+  minSimilarity: number | null;
+};
+
+/** Abilities are kept a minute per site and server instance, no longer than the limits' memo (`limits.ts`); a save forgets them all. */
+const ABILITIES_FRESH_MS = 60_000;
+const abilitiesMemo = new Map<string, { at: number; value: AiAbilities }>();
+
+/** What a site's AI can do (`AiAbilities`), kept a minute per instance: no statement to `commerce.ai_providers` while the memo is warm. */
+export async function aiAbilities(storeId: string | null): Promise<AiAbilities> {
+  const key = storeId ?? "kaizen";
+  const now = Date.now();
+  const kept = abilitiesMemo.get(key);
+  if (kept && now - kept.at < ABILITIES_FRESH_MS) return kept.value;
+  const c = await aiFor(storeId);
+  const value: AiAbilities = {
+    text: Boolean(c?.textModel),
+    sees: Boolean(seeing(c)),
+    pictures: Boolean(c?.image),
+    pictureEdit: Boolean(c?.image?.editModel),
+    hear: Boolean(c?.transcriptionModel),
+    speak: canSpeak(c),
+    speech: Boolean(c?.speechModel && c?.speechVoice),
+    live: Boolean(c?.textModel && c?.live),
+    embeds: Boolean(c?.space),
+    source: c?.source ?? null,
+    textModel: c?.textModel ?? null,
+    space: c?.space ?? null,
+    minSimilarity: c ? c.minSimilarity : null,
+  };
+  abilitiesMemo.set(key, { at: now, value });
+  return value;
+}
+
+/** Forgets every site's abilities: a save of the platform's provider changes every store that answers with it. Tests call it too. */
+export function forgetAiAbilities(): void {
+  abilitiesMemo.clear();
+}
+
+/**
  * The tag of cached reads that depend on which AI a site has (the chat widget, D81): one per store, `ai:kaizen` for Kaizena Flow's own.
  * `saveAiSettings()` and `removeAiSettings()` refresh the tag of the site they changed, and only that one: a store's save never expires
  * another store's pages. A read for a store that may answer with Kaizena Flow's provider carries the platform's tag too.
@@ -361,6 +420,7 @@ export async function saveAiSettings(accountId: string, storeId: string | null, 
     liveBaseUrl,
     newLiveKey: Boolean(liveEncrypted),
   });
+  forgetAiAbilities();
   refreshTag(aiTag(storeId));
   return { ok: true };
 }
@@ -369,6 +429,7 @@ export async function saveAiSettings(accountId: string, storeId: string | null, 
 export async function removeAiSettings(accountId: string, storeId: string | null): Promise<void> {
   const rows = await db().execute<Row>(sql`delete from commerce.ai_providers where ${owned(storeId)} returning provider`);
   if (rows.length > 0) await audit(accountId, storeId, storeId ? "ai.removed" : "ai.platform_removed", {});
+  forgetAiAbilities();
   refreshTag(aiTag(storeId));
 }
 

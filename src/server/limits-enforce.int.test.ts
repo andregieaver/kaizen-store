@@ -11,6 +11,7 @@ vi.mock("next/cache", () => ({ cacheLife: () => {}, cacheTag: () => {}, updateTa
 process.env.SETTINGS_ENCRYPTION_KEY ??= randomBytes(32).toString("base64");
 
 const { forgetLimitMemos, usageNow } = await import("./limits");
+const { forgetAiAbilities } = await import("./ai");
 const { makeStore, membershipOf } = await import("./trust-fixtures");
 const { getStore } = await import("./stores");
 
@@ -25,6 +26,7 @@ async function cap(key: string, room = 0): Promise<void> {
     insert into commerce.limit_overrides (store_id, key, value, reason) values (${store.id}::uuid, ${key}, ${used + room}, 'Test')
     on conflict (store_id, account_id, key) do update set value = excluded.value`);
   forgetLimitMemos();
+  forgetAiAbilities();
 }
 
 beforeAll(async () => {
@@ -34,6 +36,7 @@ beforeAll(async () => {
 beforeEach(async () => {
   await db().execute(sql`delete from commerce.limit_overrides where store_id = ${store.id}::uuid or account_id = ${store.account.id}::uuid`);
   forgetLimitMemos();
+  forgetAiAbilities();
 });
 
 afterAll(async () => {
@@ -100,6 +103,7 @@ describe("AI on Kaizena Flow's key", () => {
     const before = await ai.aiFor(store.id, { feature: "search" });
     await db().execute(sql`insert into commerce.limit_overrides (store_id, key, value, reason) values (${store.id}::uuid, 'ai_cost_month_micros', 0, 'Test')`);
     forgetLimitMemos();
+    forgetAiAbilities();
     if (before?.source === "platform") expect(await ai.aiFor(store.id, { feature: "search" })).toBeNull();
     expect(await ai.aiFor(null, { feature: "search" })).toEqual(before ? expect.objectContaining({ source: before.source }) : null);
   });

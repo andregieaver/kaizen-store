@@ -19,7 +19,7 @@ import { approvalSummary, OWNER_TOOLS_BY_NAME, readToolInput, toolDefinition, ty
 
 import { savedSkillsText } from "./assistant-saved-skills";
 import { noticeApproval } from "./assistant-notices";
-import { AiError, aiFor, aiRoomLeft, canSpeak, streamWithTools, type AiConnection, type ToolChatMessage, type ToolDefinition } from "./ai";
+import { AiError, aiAbilities, aiFor, aiRoomLeft, streamWithTools, type AiConnection, type ToolChatMessage, type ToolDefinition } from "./ai";
 import { learnFromTurn, memoriesFor, type Memory } from "./assistant-memory";
 import type { Account, Membership, Role } from "./auth";
 import { actingAs, currentActor } from "./actor";
@@ -200,13 +200,8 @@ export type AssistantEvent =
 export type AssistantAbilities = { text: boolean; hear: boolean; speak: boolean; live: boolean };
 
 export async function assistantAbilities(storeId: string | null): Promise<AssistantAbilities> {
-  const connection = await aiFor(storeId);
-  return {
-    text: Boolean(connection?.textModel),
-    hear: Boolean(connection?.transcriptionModel),
-    speak: canSpeak(connection),
-    live: Boolean(connection?.textModel && connection.live),
-  };
+  const a = await aiAbilities(storeId);
+  return { text: a.text, hear: a.hear, speak: a.speak, live: a.live };
 }
 
 // Conversations -------------------------------------------------------------------

@@ -43,7 +43,7 @@ import { cleanWords, priceWordSentence, wordsProblems } from "@/lib/price-words-
 import { bundleForEdit, componentProblems, computedBundlesHolding, onRequestInBundlesProblem, saveBundleComponents } from "./bundles";
 import { productSafety } from "./product-safety";
 import { profileChoices } from "./shipping-admin";
-import { aiFor } from "./ai";
+import { aiAbilities } from "./ai";
 import { productFacts, saveFieldData, variantFacts } from "./custom-fields";
 import { storedFileInfo, uploadsEnabled } from "./media";
 import { auditProductSave, productSnapshot } from "./product-audit";
@@ -194,7 +194,7 @@ export async function getEditorContext(store: Store): Promise<EditorContext> {
     places: places.map((row) => ({ id: String(row.id), name: String(row.name) })),
     hosts: hosts.map((row) => ({ id: String(row.id), name: String(row.name), vatRegistered: Boolean(row.vat_registered) })),
     layouts,
-    aiWriting: Boolean((await aiFor(store.id))?.textModel),
+    aiWriting: (await aiAbilities(store.id)).text,
     shippingProfiles: await profileChoices(store.id),
     ruledMarkets: (await marketPriceRules(store.id)).map((r) => r.market),
     priceWords: store.priceWords,

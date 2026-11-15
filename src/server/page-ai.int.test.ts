@@ -58,6 +58,8 @@ beforeAll(async () => {
 
 afterEach(() => {
   vi.unstubAllGlobals();
+  // What the AI can do is kept a minute per instance (bloat review 0.21): no case carries another's over.
+  ai.forgetAiAbilities();
 });
 
 afterAll(async () => {
