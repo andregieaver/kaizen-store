@@ -1,0 +1,2 @@
+CREATE INDEX "cookie_scans_site_created_idx" ON "commerce"."cookie_scans" USING btree (coalesce("store_id", '00000000-0000-0000-0000-000000000000'::uuid),"created_at" DESC NULLS LAST);--> statement-breakpoint
+CREATE INDEX "cookie_scans_site_done_idx" ON "commerce"."cookie_scans" USING btree (coalesce("store_id", '00000000-0000-0000-0000-000000000000'::uuid),"finished_at" DESC NULLS LAST) WHERE "commerce"."cookie_scans"."status" = 'done';

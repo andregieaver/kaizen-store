@@ -2781,6 +2781,16 @@ describe("cookie scans and notes (D58)", () => {
     await expect(db.query(note, [null, "cookie", "marketing"])).rejects.toThrow(/cookie_notes_item_idx/);
     await expect(db.query(note, [storeId, "sessionStorage", "tasty"])).rejects.toThrow(/cookie_notes_category/);
   });
+
+  it("have the two indexes the schedule's due check reads a site's newest scan and newest finished scan by (step 0.23)", async () => {
+    const { rows } = await db.query<{ indexname: string; indexdef: string }>(
+      "select indexname, indexdef from pg_indexes where schemaname = 'commerce' and tablename = 'cookie_scans'",
+    );
+    const names = rows.map((r) => r.indexname);
+    expect(names).toContain("cookie_scans_site_created_idx");
+    expect(names).toContain("cookie_scans_site_done_idx");
+    expect(rows.find((r) => r.indexname === "cookie_scans_site_done_idx")?.indexdef).toMatch(/WHERE.*status.*= 'done'/);
+  });
 });
 
 describe("fonts (D59)", () => {

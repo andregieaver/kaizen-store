@@ -1,6 +1,6 @@
 {
-  "id": "c691e852-6947-4d20-a9b4-45b553b79bf6",
-  "prevId": "4ff6efb6-4cce-4ee7-97a5-1d86bae16ed0",
+  "id": "0a1c8f00-708e-4bbf-ba55-28a574087b0a",
+  "prevId": "c691e852-6947-4d20-a9b4-45b553b79bf6",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -18222,6 +18222,49 @@
             }
           ],
           "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "cookie_scans_site_created_idx": {
+          "name": "cookie_scans_site_created_idx",
+          "columns": [
+            {
+              "expression": "coalesce(\"store_id\", '00000000-0000-0000-0000-000000000000'::uuid)",
+              "asc": true,
+              "isExpression": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "created_at",
+              "isExpression": false,
+              "asc": false,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "cookie_scans_site_done_idx": {
+          "name": "cookie_scans_site_done_idx",
+          "columns": [
+            {
+              "expression": "coalesce(\"store_id\", '00000000-0000-0000-0000-000000000000'::uuid)",
+              "asc": true,
+              "isExpression": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "finished_at",
+              "isExpression": false,
+              "asc": false,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "where": "\"commerce\".\"cookie_scans\".\"status\" = 'done'",
           "concurrently": false,
           "method": "btree",
           "with": {}
