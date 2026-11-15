@@ -48,7 +48,7 @@ the picture would no longer sit on its mask.
 picture cannot lose a little more each time. The library offers the rest (`compressPlan()` in `src/lib/media-compress.ts`:
 not a GIF, an SVG, or the logo and icon), one file from its details or all of them, the largest first.
 
-Pictures are kept for a year under their address by browsers and the CDN, so a smaller file never overwrites the original:
+Pictures, videos, 3D models and theme photographs are kept for a year under their address by browsers and the CDN, so a smaller file never overwrites the original:
 it is uploaded beside it (`src/server/media-compress.ts`), and in one transaction the library row and every place that can be
 edited move to the new address (`rewriteAddresses()`: products' pictures and variants, pages' drafts and published content,
 menus, saved parts, the chat agent, the site's navigation, sharing, theme and CSS, custom field values, categories' and tags'
@@ -57,6 +57,8 @@ site (products, sharing, the chat agent: an email or a preview already sent poin
 names it: terms a shopper accepted (their snapshot never changes), or, in Kaizen's library, a store template's or design
 profile's picture (written only by their own modules). A place that keeps a library
 file's address is added to `rewriteAddresses()` and `mediaUses()` together (`media-compress.int.test.ts`).
+
+Every upload names its lifetime (`src/lib/file-lifetimes.scan.test.ts`): a year for a path that is never written twice, `0` for a private file, five minutes only for the page replicator's previews, whose path is written again. A file already stored keeps the lifetime it was uploaded with.
 
 ## Tests
 

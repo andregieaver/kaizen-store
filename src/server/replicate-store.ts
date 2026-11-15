@@ -319,7 +319,7 @@ export const filePath = (storeId: string, jobId: string, name: string) => `${sto
 /** Keeps a picture of the job's work in Storage (public, under a name nobody can guess); its address and path. */
 export async function putFile(storeId: string, jobId: string, name: string, bytes: Uint8Array, contentType: string): Promise<{ url: string; path: string } | null> {
   const path = filePath(storeId, jobId, name);
-  const uploaded = await uploadBytes(BUCKET, path, bytes, contentType);
+  const uploaded = await uploadBytes(BUCKET, path, bytes, contentType, "short");
   return uploaded.ok ? { url: uploaded.url, path } : null;
 }
 

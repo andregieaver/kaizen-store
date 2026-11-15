@@ -5,6 +5,8 @@ import { fontFile } from "@/server/fonts";
 /**
  * A self-hosted font file (D59), named by a hash of the file Google sent, so it can be kept for good: a variable family's is later cut to
  * the weights it is installed in (`trimFontFiles()`), which draws the same, so a browser that kept the whole file is not wrong.
+ * s-maxage keeps the answer at the CDN (Vercel keeps a function's answer only when it names s-maxage), so a second visitor does not reach
+ * the function and the database.
  */
 export async function GET(_request: Request, { params }: RouteContext<"/api/fonts/files/[file]">) {
   await connection();
@@ -13,7 +15,7 @@ export async function GET(_request: Request, { params }: RouteContext<"/api/font
   return new Response(new Uint8Array(data), {
     headers: {
       "Content-Type": "font/woff2",
-      "Cache-Control": "public, max-age=31536000, immutable",
+      "Cache-Control": "public, max-age=31536000, s-maxage=31536000, immutable",
       "Access-Control-Allow-Origin": "*",
     },
   });

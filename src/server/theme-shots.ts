@@ -249,7 +249,7 @@ async function madeFiles(shot: ClaimedShot, origin: string, deps: ShotDeps): Pro
   };
 }
 
-const upload = (deps: ShotDeps) => deps.upload ?? ((path: string, bytes: Uint8Array, type: string) => uploadBytes("product-media", path, bytes, type));
+const upload = (deps: ShotDeps) => deps.upload ?? ((path: string, bytes: Uint8Array, type: string) => uploadBytes("product-media", path, bytes, type, "year"));
 const remove = (deps: ShotDeps) => deps.remove ?? ((paths: string[]) => removeStoredFiles("product-media", paths));
 
 /**

@@ -59,7 +59,7 @@ export function CustomerUpload({
     try {
       const started = await start(file.name);
       if (!started.ok) return setProblems([started.problem]);
-      const stored = await uploadToSignedUrl(started.bucket, started.path, started.token, file, { contentType: TYPES.includes(file.type) ? file.type : "text/csv" });
+      const stored = await uploadToSignedUrl(started.bucket, started.path, started.token, file, { contentType: TYPES.includes(file.type) ? file.type : "text/csv", cacheControl: "0" });
       if (stored.error) return setProblems([w.didNotArrive]);
       const registered = await register({ path: started.path, name: file.name });
       if (!registered.ok) return setProblems(registered.problems);

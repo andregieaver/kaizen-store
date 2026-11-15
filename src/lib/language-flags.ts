@@ -12,6 +12,9 @@ export const FLAG_COUNTRIES: readonly string[] = [
   "is", "it", "li", "lt", "lu", "lv", "mt", "nl", "no", "pl", "pt", "ro", "se", "si", "sk", "us",
 ];
 
+/** Flags with detailed arms are kept as 60 by 45 pixel pictures (three times their drawn size): as drawings they weighed 165 KB together (bloat review step 0.32). */
+export const RASTER_FLAGS: readonly string[] = ["es", "hr", "mt", "li", "pt", "cy"];
+
 /** The country a language's flag is, for a language written without a country (`en` alone): where most of its readers are. */
 const LANGUAGE_COUNTRY: Readonly<Record<string, string>> = {
   bg: "bg", cs: "cz", da: "dk", de: "de", el: "gr", en: "gb", es: "es", et: "ee", fi: "fi", fr: "fr", ga: "ie", hr: "hr", hu: "hu",
@@ -26,7 +29,7 @@ const LANGUAGE_COUNTRY: Readonly<Record<string, string>> = {
 export function flagOf(locale: string): string | null {
   const [lang = "", region] = locale.split("-");
   const country = region?.toLowerCase() ?? LANGUAGE_COUNTRY[lang.toLowerCase()];
-  return country && FLAG_COUNTRIES.includes(country) ? `/flags/${country}.svg` : null;
+  return country && FLAG_COUNTRIES.includes(country) ? `/flags/${country}.${RASTER_FLAGS.includes(country) ? "webp" : "svg"}` : null;
 }
 
 /** A language's short code as the switcher writes it: `EN`, `NB`. */

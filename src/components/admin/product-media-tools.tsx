@@ -217,7 +217,7 @@ function AddModel({ storeSlug, onAdd, onCancel, uploadPoster, w }: { storeSlug: 
       setBusy(false);
       return setProblem(started.problem);
     }
-    const stored = await uploadToSignedUrl(started.bucket, started.path, started.token, file, { contentType: MODEL_TYPE });
+    const stored = await uploadToSignedUrl(started.bucket, started.path, started.token, file, { contentType: MODEL_TYPE, cacheControl: "31536000" });
     setBusy(false);
     if (stored.error) return setProblem(fillWords(w.uploadFailed, { name: file.name }));
     onAdd({ kind: "model", source: null, mediaUrl: started.url, url: poster.url, thumbnailUrl: poster.thumbnailUrl, alt: "", alts: {} });

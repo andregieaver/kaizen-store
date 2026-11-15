@@ -1,7 +1,7 @@
 import type { NextConfig } from "next";
 import { PHASE_DEVELOPMENT_SERVER, PHASE_PRODUCTION_BUILD } from "next/constants";
 
-import { baseRouteHeaders, oauthRouteHeaders, payRouteHeaders } from "./src/lib/csp";
+import { baseRouteHeaders, oauthRouteHeaders, payRouteHeaders, PUBLIC_FILE_HEADERS } from "./src/lib/csp";
 import { storeDomain, storeHosts } from "./src/lib/paths";
 import { siteUrl } from "./src/lib/site";
 import { embedFrameHeaders } from "./src/lib/support-embed";
@@ -45,6 +45,8 @@ const nextConfig: NextConfig = {
   // for everyone; step 2.8 of docs/audits/bloat-review-2026-11 decides adoption by trial.
   partialPrefetching: false,
   poweredByHeader: false,
+  // Pictures are never resized on the server (D336, src/lib/picture-sizes.ts): every next/image is served as stored and /_next/image answers 404 (bloat review step 0.32).
+  images: { unoptimized: true },
   // On Vercel (`ON_VERCEL`) the type check is left to CI, whose `static` job runs
   // `pnpm typecheck` on every push and whose builds still check; everywhere else `next build` checks as ever.
   typescript: { ignoreBuildErrors: ON_VERCEL },
@@ -119,6 +121,8 @@ export default async function config(phase: string): Promise<NextConfig> {
       ...oauthRouteHeaders(),
       // The chat on an owner's own site (D582): its frame is framed by the page's host alone, which the frame's page checks is the site's.
       ...embedFrameHeaders(),
+      // Files in public/ with a fixed address are kept a day (`PUBLIC_FILE_HEADERS`).
+      ...PUBLIC_FILE_HEADERS,
     ],
     // Work moved to the owner's level (D123): its old store-level addresses go to the new ones.
     redirects: async () => [...LEGACY_WORK_REDIRECTS, ...LEGACY_THEME_REDIRECTS, ...themes.redirects, ...docs.redirects, ...routes.redirects],

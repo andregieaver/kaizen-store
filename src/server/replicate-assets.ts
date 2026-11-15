@@ -80,7 +80,7 @@ export async function saveVideo(owner: AssetOwner, url: string, referer: string)
   const extension = VIDEO_FILE_TYPES[type];
   if (!extension) return { ok: false, problem: "Only MP4 and WebM videos can be kept." };
   const path = `${owner.storeId}/${randomUUID()}.${extension}`;
-  const uploaded = await uploadBytes("page-videos", path, fetched.bytes, type);
+  const uploaded = await uploadBytes("page-videos", path, fetched.bytes, type, "year");
   if (!uploaded.ok) return { ok: false, problem: uploaded.problem };
   await registerVideo(owner, { url: uploaded.url, bucket: "page-videos", path }, { name: nameFrom(url, "video").replace(/\.webp$/, `.${extension}`), type, size: fetched.bytes.length });
   return { ok: true, url: uploaded.url };

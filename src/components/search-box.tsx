@@ -148,7 +148,7 @@ export function SearchBox({
             className="flex min-h-11 cursor-pointer items-center gap-3 px-3 py-2 text-sm aria-selected:bg-surface hover:bg-surface"
           >
             {s.image ? (
-              <Image src={s.image.url} alt="" width={36} height={36} className="size-9 rounded object-cover" />
+              <Image src={s.image.url} alt="" width={36} height={36} unoptimized className="size-9 rounded object-cover" />
             ) : (
               <span className="size-9 rounded bg-surface" aria-hidden="true" />
             )}
