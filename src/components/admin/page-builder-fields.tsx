@@ -7,8 +7,11 @@ import { rowWidthPatch } from "@/lib/theme-elements";
 import { sectionStyleChoices, sectionStyleLabel } from "@/lib/section-styles";
 import { MarkupInput } from "@/components/admin/markup-input";
 import { carouselAnywhere, carouselAt, clearAt, inheritedAt, setAt, sizeSource, stackAt, stackPatchAt, valueAt } from "@/lib/responsive";
-import { createContext, useContext, useEffect, useEffectEvent, useId, useState, type ReactNode } from "react";
+import { createContext, useContext, useEffect, useEffectEvent, useId, useRef, useState, type ReactNode } from "react";
+import { SETTINGS_TABS, type SettingsTab } from "@/lib/settings-memory";
+import { useRememberedScroll, useRememberedTab } from "./settings-panel-parts";
 import dynamic from "next/dynamic";
+import { Link2 } from "lucide-react";
 import { ContentGridView } from "@/components/content-grid";
 import { t } from "@/lib/i18n";
 import { PartBackground } from "@/components/page-parts";
@@ -22,6 +25,7 @@ import { backgroundMoves, switchBackground } from "@/lib/motion-edit";
 import type { BackgroundLayer } from "@/lib/background-layers";
 import type { BackdropPatch } from "@/lib/backdrops";
 import { partFeatureOn } from "@/lib/part-features";
+import { keyFromHash } from "@/lib/page-modal";
 import { linesOf, locateColumn, type BlockPatch, type ColumnPatch, type RowPatch } from "@/lib/page-rows";
 import type { GridData } from "@/lib/content-grid";
 import { tileEntity } from "@/lib/tile-fields";
@@ -64,55 +68,102 @@ export function SpacingFields({
   /** Margin and padding differ by screen size (D179): the part, for where each value comes from, and how to give one back. */
   sized?: { part: PartBase; onPatch: (patch: Partial<PartBase>) => void };
 }) {
-  const id = useId();
   const { size } = useSizeEdit();
   const fw = useAdminText("builder").fields;
-  const set = (kind: "margin" | "padding", side: (typeof SIDES)[number], text: string) => {
+  const sides = (kind: SpaceKind): Sides => ({ ...NO_SIDES, ...(value?.[kind] ?? defaults?.[kind]) });
+  // Linked, a number typed for one side is every side's; it starts linked where the four sides are already the same.
+  const [linked, setLinked] = useState<Record<SpaceKind, boolean>>(() => ({
+    margin: SIDES.every((side) => sides("margin")[side] === sides("margin").top),
+    padding: SIDES.every((side) => sides("padding")[side] === sides("padding").top),
+  }));
+  const set = (kind: SpaceKind, side: (typeof SIDES)[number], text: string) => {
     const number = Math.max(kind === "margin" ? -SPACING_MAX : 0, Math.min(SPACING_MAX, Math.round(Number(text) || 0)));
-    const sides = { ...NO_SIDES, ...(value?.[kind] ?? defaults?.[kind]), [side]: number };
-    const empty = SIDES.every((s) => sides[s] === 0);
+    const next4 = linked[kind] ? { top: number, right: number, bottom: number, left: number } : { ...sides(kind), [side]: number };
+    const empty = SIDES.every((s) => next4[s] === 0);
     const next: Spacing = { ...value };
     if (empty && !defaults?.[kind]) delete next[kind];
-    else next[kind] = sides;
+    else next[kind] = next4;
     onChange(next);
   };
+  const box = (kind: SpaceKind, inner: ReactNode) => (
+    <SpacingBox
+      kind={kind}
+      sides={sides(kind)}
+      linked={linked[kind]}
+      onLink={(on) => setLinked((current) => ({ ...current, [kind]: on }))}
+      onSide={(side, text) => set(kind, side, text)}
+      muted={sized ? inheritedClass(sizeSource(sized.part, size, kind), size) : ""}
+      mark={sized && <SizeMark part={sized.part} field={kind} label={fw[kind]} onPatch={sized.onPatch} />}
+    >
+      {inner}
+    </SpacingBox>
+  );
+  // The part in the middle, its space inside around it and its space outside around that: as the page draws them (D631).
+  return box("margin", box("padding", <span aria-hidden className="block min-h-8 w-full rounded bg-card/80" />));
+}
+
+type SpaceKind = "margin" | "padding";
+
+/** One ring of the spacing drawing: its name, a number for each side around what it holds, and the switch that links them. */
+function SpacingBox({
+  kind,
+  sides,
+  linked,
+  onLink,
+  onSide,
+  muted,
+  mark,
+  children,
+}: {
+  kind: SpaceKind;
+  sides: Sides;
+  linked: boolean;
+  onLink: (on: boolean) => void;
+  onSide: (side: (typeof SIDES)[number], text: string) => void;
+  muted: string;
+  mark: ReactNode;
+  children: ReactNode;
+}) {
+  const fw = useAdminText("builder").fields;
+  const pw = useAdminText("builder").panel;
+  const input = (side: (typeof SIDES)[number], place: string) => (
+    <input
+      type="number"
+      inputMode="numeric"
+      aria-label={`${kind === "margin" ? pw.outside : pw.inside}, ${fw.sides[side].toLowerCase()}`}
+      min={kind === "margin" ? -SPACING_MAX : 0}
+      max={SPACING_MAX}
+      step={4}
+      value={sides[side]}
+      onChange={(event) => onSide(side, event.target.value)}
+      className={`min-h-8 w-14 rounded-md border border-border bg-background px-1 text-center text-sm text-foreground ${place}`}
+    />
+  );
   return (
-    <div className="flex flex-col gap-4 border-t border-border pt-4">
-      {(["margin", "padding"] as const).map((kind) => (
-        <fieldset key={kind} className={`flex flex-col gap-2 ${sized ? inheritedClass(sizeSource(sized.part, size, kind), size) : ""}`}>
-          <legend className="text-sm font-medium">
-            {fw[kind]}{" "}
-            <span className="font-normal text-muted">({kind === "margin" ? fw.marginHint : fw.paddingHint})</span>
-            {sized && <SizeMark part={sized.part} field={kind} label={fw[kind]} onPatch={sized.onPatch} />}
-          </legend>
-          <div className="grid grid-cols-4 gap-2">
-            {SIDES.map((side) => (
-              <label key={side} htmlFor={`${id}-${kind}-${side}`} className="flex flex-col gap-1 text-xs text-muted">
-                {fw.sides[side]}
-                <input
-                  id={`${id}-${kind}-${side}`}
-                  type="number"
-                  inputMode="numeric"
-                  min={kind === "margin" ? -SPACING_MAX : 0}
-                  max={SPACING_MAX}
-                  step={4}
-                  value={value?.[kind]?.[side] ?? defaults?.[kind]?.[side] ?? 0}
-                  onChange={(event) => set(kind, side, event.target.value)}
-                  className="min-h-10 w-full rounded-md border border-border bg-background px-2 text-sm text-foreground"
-                />
-                <PixelRange
-                  value={value?.[kind]?.[side] ?? defaults?.[kind]?.[side] ?? 0}
-                  min={kind === "margin" ? -SPACING_MAX : 0}
-                  max={SPACING_MAX}
-                  step={2}
-                  label={fillWords(fw.sideSlider, { what: fw[kind], side: fw.sides[side].toLowerCase() })}
-                  onChange={(next) => set(kind, side, String(next))}
-                />
-              </label>
-            ))}
-          </div>
-        </fieldset>
-      ))}
+    <div
+      role="group"
+      aria-label={kind === "margin" ? pw.outside : pw.inside}
+      className={`grid grid-cols-[auto_minmax(0,1fr)_auto] items-center justify-items-center gap-1.5 rounded-lg p-2 ${kind === "margin" ? "border border-dashed border-edge" : "bg-sunken"} ${muted}`}
+    >
+      <span className="col-start-1 row-start-1 flex items-center gap-1 self-start justify-self-start text-xs text-muted">
+        {kind === "margin" ? pw.outside : pw.inside}
+        {mark}
+      </span>
+      {input("top", "col-start-2 row-start-1")}
+      <button
+        type="button"
+        aria-pressed={linked}
+        title={pw.sameEverySide}
+        onClick={() => onLink(!linked)}
+        className="col-start-3 row-start-1 flex min-h-7 items-center gap-1 self-start justify-self-end rounded px-1.5 text-xs text-muted hover:bg-card aria-pressed:text-ink"
+      >
+        <Link2 aria-hidden className="size-3.5" />
+        <span className="sr-only">{pw.sameEverySide}</span>
+      </button>
+      {input("left", "col-start-1 row-start-2")}
+      <div className="col-start-2 row-start-2 w-full">{children}</div>
+      {input("right", "col-start-3 row-start-2")}
+      {input("bottom", "col-start-2 row-start-3")}
     </div>
   );
 }
@@ -171,9 +222,25 @@ export function ImageFields({
           <span className="text-xs font-normal text-muted">{iw.decoration}</span>
         </label>
       )}
+      <label htmlFor={`${id}-caption`} className="flex flex-col gap-1 text-sm font-medium">
+        <span>
+          {iw.caption} <span className="font-normal text-muted">({iw.captionHint})</span>
+        </span>
+        <MarkupInput id={`${id}-caption`} label={iw.caption} value={block.caption} max={300} className="font-normal" onChange={(caption) => onChange({ ...block, caption })} />
+      </label>
+    </div>
+  );
+}
+
+/** Where a picture leads when pressed, and whether in a new tab: the image's *Link* fold (D631). */
+export function ImageLinkFields({ block, onChange }: { block: ImageBlock; onChange: (block: ImageBlock) => void }) {
+  const id = useId();
+  const iw = useAdminText("builder").image;
+  return (
+    <div className="flex flex-col gap-4">
       <div className="flex flex-col gap-1">
         <label htmlFor={`${id}-href`} className="text-sm font-medium">
-          {iw.link} <span className="font-normal text-muted">({iw.optional})</span>
+          {iw.link}
         </label>
         <input
           id={`${id}-href`}
@@ -201,69 +268,83 @@ export function ImageFields({
           onChange={(newTab) => onChange({ ...block, newTab: newTab || undefined })}
         />
       )}
-      <label htmlFor={`${id}-caption`} className="flex flex-col gap-1 text-sm font-medium">
-        <span>
-          {iw.caption} <span className="font-normal text-muted">({iw.captionHint})</span>
-        </span>
-        <MarkupInput id={`${id}-caption`} label={iw.caption} value={block.caption} max={300} className="font-normal" onChange={(caption) => onChange({ ...block, caption })} />
-      </label>
     </div>
   );
 }
 
 /**
- * What the builder adds at the foot of a settings dialog's General tab for the part the dialog is for: its schedule, *Show from*
- * and *Show until* (D432), in every row's, column's and component's settings without each dialog naming it.
+ * A settings panel's four tabs (D631, replacing D48's General, Style, Motion and Advanced): what it says (a row's or column's
+ * Layout), how it looks, how it moves, and who sees it, where and when. It opens on the tab the owner was last on and scrolls
+ * to where this kind of part's tab was left (`useRememberedScroll()`). A dot marks a tab holding the part's own settings.
  */
-export const GeneralFoot = createContext<ReactNode>(null);
-
-const SETTINGS_TABS = [{ key: "general" }, { key: "style" }, { key: "motion" }, { key: "advanced" }] as const;
-type SettingsTab = (typeof SETTINGS_TABS)[number]["key"];
-
-/** A settings dialog's four tabs (D48, D128): what it holds, how it looks, how it moves, and its id and classes. */
-export function SettingsTabs(panels: Record<SettingsTab, ReactNode>) {
-  const [tab, setTab] = useState<SettingsTab>("general");
-  const foot = useContext(GeneralFoot);
+export function SettingsTabs({
+  kind,
+  layout = false,
+  start,
+  dots = {},
+  content,
+  design,
+  motion,
+  visibility,
+}: {
+  /** The kind of part (`styleKindOf()`): where its tabs were scrolled is kept under it. */
+  kind: string;
+  /** A row or column: its first tab is Layout. */
+  layout?: boolean;
+  /** The tab to open on instead of the remembered one: a component just added opens on Content. */
+  start?: SettingsTab;
+  dots?: Partial<Record<SettingsTab, boolean>>;
+  content: ReactNode;
+  design: ReactNode;
+  motion: ReactNode;
+  visibility: ReactNode;
+}) {
+  const [tab, setTab] = useRememberedTab(start);
+  const root = useRef<HTMLDivElement>(null);
+  useRememberedScroll(kind, tab, root);
   const id = useId();
-  const fw = useAdminText("builder").fields;
+  const pw = useAdminText("builder").panel;
+  const panels: Record<SettingsTab, ReactNode> = { content, design, motion, visibility };
   const select = (index: number) => {
-    const next = SETTINGS_TABS[(index + SETTINGS_TABS.length) % SETTINGS_TABS.length].key;
+    const next = SETTINGS_TABS[(index + SETTINGS_TABS.length) % SETTINGS_TABS.length];
     setTab(next);
     document.getElementById(`${id}-${next}`)?.focus();
   };
   return (
-    <div className="flex flex-col gap-5">
-      <div role="tablist" aria-label={fw.settings} className="sticky -top-5 z-10 -mx-5 -mt-5 flex border-b border-border bg-background px-3">
+    <div ref={root} className="flex flex-col gap-5">
+      <div role="tablist" aria-label={useAdminText("builder").fields.settings} className="sticky -top-5 z-10 -mx-5 -mt-5 flex border-b border-border bg-background px-3">
         {SETTINGS_TABS.map((t, index) => (
           <button
-            key={t.key}
-            id={`${id}-${t.key}`}
+            key={t}
+            id={`${id}-${t}`}
             type="button"
             role="tab"
-            aria-selected={tab === t.key}
+            aria-selected={tab === t}
             aria-controls={`${id}-panel`}
-            tabIndex={tab === t.key ? 0 : -1}
-            onClick={() => setTab(t.key)}
+            tabIndex={tab === t ? 0 : -1}
+            onClick={() => setTab(t)}
             onKeyDown={(event) => {
               if (event.key === "ArrowRight") select(index + 1);
               if (event.key === "ArrowLeft") select(index - 1);
             }}
-            className="min-h-11 border-b-2 border-transparent px-3 text-sm font-medium text-muted aria-selected:border-foreground aria-selected:text-foreground"
+            className="flex min-h-11 flex-1 items-center justify-center gap-1.5 border-b-2 border-transparent px-2 text-sm font-medium text-muted aria-selected:border-foreground aria-selected:text-foreground"
           >
-            {fw.tabs[t.key]}
+            {t === "content" && layout ? pw.tabs.layout : pw.tabs[t]}
+            {dots[t] && (
+              <>
+                <span aria-hidden className="size-1.5 rounded-full bg-positive-solid" />
+                <span className="sr-only">, {pw.ownSettings}</span>
+              </>
+            )}
           </button>
         ))}
       </div>
       <div id={`${id}-panel`} role="tabpanel" aria-labelledby={`${id}-${tab}`} className="flex flex-col gap-5">
         {panels[tab]}
-        {tab === "general" && foot}
       </div>
     </div>
   );
 }
-
-
-
 
 // Backdrops, the hue and the layers (D534) are fetched when a background's settings are first opened: the builder's first scripts do not carry them.
 const BackdropPicker = dynamic(() => import("./backdrop-fields").then((m) => m.BackdropPicker), { ssr: false, loading: () => null });
@@ -593,7 +674,7 @@ export const ThemeSections = createContext<ThemeTabValue["sections"]>(undefined)
  * The theme's section style a row is drawn in (D242): None keeps the row on the site's elements; a style the theme does not have
  * draws as its Plain. The name is all the row keeps, so switching themes restyles it.
  */
-function SectionStyleField({ row, onChange }: { row: PageRow; onChange: (patch: RowPatch) => void }) {
+export function SectionStyleField({ row, onChange }: { row: PageRow; onChange: (patch: RowPatch) => void }) {
   const sections = useContext(ThemeSections);
   const id = useId();
   const choices = sectionStyleChoices(sections);
@@ -671,37 +752,56 @@ export function RowWidthChoices({
   );
 }
 
-/** A row's width and height, its columns at each screen size, and how they line up (D48, D179). */
-export function RowFields({ row, onChange }: { row: PageRow; onChange: (patch: RowPatch) => void }) {
+/** A row's Layout tab after its columns (D48, D179, D631): its width, and its height as one choice. */
+export function RowLayoutFields({ row, onChange }: { row: PageRow; onChange: (patch: RowPatch) => void }) {
   // What the row comes to: its own choice, else the theme's Row, else the content's width (D190).
   const theme = useContext(ThemeRowWidths);
   const width = row.width ?? theme.width ?? "content";
   const contentWidth = row.contentWidth ?? theme.contentWidth ?? "content";
+  const { size } = useSizeEdit();
   const rw = useAdminText("builder").row;
+  const pw = useAdminText("builder").panel;
+  const ownHeight = valueAt(row, "height", size) != null;
+  // *Set a height* chosen before a height is typed is kept here.
+  const [setting, setSetting] = useState(false);
+  const height: "fit" | "screen" | "set" = row.fullHeight ? "screen" : ownHeight || setting ? "set" : "fit";
   return (
-    <div className="flex flex-col gap-4 border-t border-border pt-4">
-      <SectionStyleField row={row} onChange={onChange} />
+    <div className="flex flex-col gap-5">
       <RowWidthChoices
         width={width}
         contentWidth={contentWidth}
         onWidth={(next) => onChange(rowWidthPatch(theme, { width: next }))}
         onContentWidth={(next) => onChange(rowWidthPatch(theme, { contentWidth: next }))}
       />
-      <ContentMaxField row={row} limited={width !== "full" || contentWidth !== "full"} onChange={onChange} />
-      <RowHeightField row={row} onChange={onChange} />
-      <Check
-        label={rw.fullHeight}
-        hint={rw.fullHeightHint}
-        checked={Boolean(row.fullHeight)}
-        onChange={(fullHeight) => onChange({ fullHeight })}
+      {/* One question for *As tall as the screen* and the height in per cent (D631). */}
+      <Choices
+        legend={rw.height}
+        options={[
+          { value: "fit", label: pw.heights.fit },
+          { value: "screen", label: pw.heights.screen },
+          { value: "set", label: pw.heights.set },
+        ]}
+        value={height}
+        onChange={(next) => {
+          setSetting(next === "set");
+          if (next === "screen") onChange({ fullHeight: true });
+          else if (next === "fit") onChange({ fullHeight: undefined, ...(size === "xl" ? { height: undefined } : setAt(row, size, { height: undefined })) });
+          else onChange({ fullHeight: undefined });
+        }}
       />
+      {height === "set" && <RowHeightField row={row} onChange={onChange} />}
+      {height === "screen" && <p className="-mt-3 text-xs text-muted">{rw.fullHeightHint}</p>}
+    </div>
+  );
+}
+
+/** A row's columns in detail (D631's *Columns in detail* fold): side by side or stacked, their order, the space between, their heights and where their content sits. */
+export function RowColumnFields({ row, onChange }: { row: PageRow; onChange: (patch: RowPatch) => void }) {
+  const rw = useAdminText("builder").row;
+  return (
+    <div className="flex flex-col gap-4">
       <RowSizeFields row={row} onChange={onChange} />
-      <Check
-        label={rw.equalHeight}
-        hint={rw.equalHeightHint}
-        checked={Boolean(row.equalHeight)}
-        onChange={(equalHeight) => onChange({ equalHeight })}
-      />
+      <Check label={rw.equalHeight} hint={rw.equalHeightHint} checked={Boolean(row.equalHeight)} onChange={(equalHeight) => onChange({ equalHeight })} />
       <Choices
         legend={rw.columnContent}
         options={[
@@ -714,6 +814,14 @@ export function RowFields({ row, onChange }: { row: PageRow; onChange: (patch: R
       />
     </div>
   );
+}
+
+/** A row's max content width, for its fold (D631): over the theme's, where the row keeps to a content width. */
+export function RowContentMaxField({ row, onChange }: { row: PageRow; onChange: (patch: RowPatch) => void }) {
+  const theme = useContext(ThemeRowWidths);
+  const width = row.width ?? theme.width ?? "content";
+  const contentWidth = row.contentWidth ?? theme.contentWidth ?? "content";
+  return <ContentMaxField row={row} limited={width !== "full" || contentWidth !== "full"} onChange={onChange} />;
 }
 
 /**
@@ -1083,69 +1191,67 @@ export function ShapeChoice({ value, onChange }: { value: ImageShape | undefined
   );
 }
 
-/** A part's own id and classes, for the site (D48). */
-export function AdvancedFields({
-  part,
-  taken,
-  onChange,
-}: {
-  part: PartBase;
-  /** The ids other parts of the page use. */
-  taken: Set<string>;
-  onChange: (patch: Partial<PartBase>) => void;
-}) {
+/**
+ * A part's anchor (its id, D48): a link to #that opens the page at it. In Content's Advanced fold (D631); `taken` are the ids
+ * the page's other parts use.
+ */
+export function AnchorField({ part, taken, onChange }: { part: PartBase; taken: Set<string>; onChange: (patch: Partial<PartBase>) => void }) {
   const id = useId();
   const aw = useAdminText("builder").advanced;
   const htmlId = part.htmlId?.trim() ?? "";
-  const idProblem = htmlId
-    ? (htmlIdProblem(htmlId) ?? (taken.has(htmlId) ? aw.idTaken : null))
-    : null;
-  const classProblem = classNameProblem(part.className ?? "");
+  const problem = htmlId ? (htmlIdProblem(htmlId) ?? (taken.has(htmlId) ? aw.idTaken : null)) : null;
   return (
-    <div className="flex flex-col gap-4">
-      <p className="text-sm text-muted">{aw.siteOnly}</p>
-      <div className="flex flex-col gap-1">
-        <label htmlFor={`${id}-id`} className="text-sm font-medium">
-          {aw.id}
-        </label>
+    <div className="flex flex-col gap-1">
+      <label htmlFor={id} className="text-sm font-medium">
+        {aw.id}
+      </label>
+      <div className="flex">
+        <span aria-hidden className="flex min-h-10 items-center rounded-l-md border border-r-0 border-border bg-sunken px-3 text-sm text-muted">
+          #
+        </span>
         <input
-          id={`${id}-id`}
+          id={id}
           value={part.htmlId ?? ""}
           maxLength={HTML_ID_MAX}
           spellCheck={false}
           autoCapitalize="off"
-          aria-invalid={Boolean(idProblem)}
-          aria-describedby={`${id}-id-hint`}
+          aria-invalid={Boolean(problem)}
+          aria-describedby={`${id}-hint`}
           onChange={(event) => onChange({ htmlId: event.target.value || undefined })}
-          className="min-h-10 rounded-md border border-border bg-background px-3 font-mono text-sm font-normal aria-invalid:border-red-700"
+          className="min-h-10 min-w-0 flex-1 rounded-r-md border border-border bg-background px-3 font-mono text-sm font-normal aria-invalid:border-red-700"
         />
-        <span id={`${id}-id-hint`} className={`text-xs font-normal ${idProblem ? "text-red-700 dark:text-red-400" : "text-muted"}`}>
-          {idProblem ??
-            (htmlId ? fillWords(aw.idLink, { id: htmlId }) : aw.idHint)}
-        </span>
       </div>
-      <div className="flex flex-col gap-1">
-        <label htmlFor={`${id}-classes`} className="text-sm font-medium">
-          {aw.classes}
-        </label>
-        <input
-          id={`${id}-classes`}
-          value={part.className ?? ""}
-          maxLength={400}
-          spellCheck={false}
-          autoCapitalize="off"
-          aria-invalid={Boolean(classProblem)}
-          aria-describedby={`${id}-classes-hint`}
-          onChange={(event) => onChange({ className: event.target.value || undefined })}
-          className="min-h-10 rounded-md border border-border bg-background px-3 font-mono text-sm font-normal aria-invalid:border-red-700"
-        />
-        <span
-          id={`${id}-classes-hint`}
-          className={`text-xs font-normal ${classProblem ? "text-red-700 dark:text-red-400" : "text-muted"}`}
-        >
-          {classProblem ?? aw.classesHint}
-        </span>
-      </div>
+      <span id={`${id}-hint`} className={`text-xs font-normal ${problem ? "text-red-700 dark:text-red-400" : "text-muted"}`}>
+        {problem ?? (htmlId ? fillWords(aw.idLink, { id: htmlId }) : aw.idHint)}
+      </span>
+    </div>
+  );
+}
+
+/** A part's own classes, for the site's styles (D48); in Design's Advanced fold (D631). */
+export function ClassesField({ part, onChange }: { part: PartBase; onChange: (patch: Partial<PartBase>) => void }) {
+  const id = useId();
+  const aw = useAdminText("builder").advanced;
+  const problem = classNameProblem(part.className ?? "");
+  return (
+    <div className="flex flex-col gap-1">
+      <label htmlFor={id} className="text-sm font-medium">
+        {aw.classes}
+      </label>
+      <input
+        id={id}
+        value={part.className ?? ""}
+        maxLength={400}
+        spellCheck={false}
+        autoCapitalize="off"
+        aria-invalid={Boolean(problem)}
+        aria-describedby={`${id}-hint`}
+        onChange={(event) => onChange({ className: event.target.value || undefined })}
+        className="min-h-10 rounded-md border border-border bg-background px-3 font-mono text-sm font-normal aria-invalid:border-red-700"
+      />
+      <span id={`${id}-hint`} className={`text-xs font-normal ${problem ? "text-red-700 dark:text-red-400" : "text-muted"}`}>
+        {problem ?? `${aw.classesHint} ${aw.siteOnly}`}
+      </span>
     </div>
   );
 }
@@ -1374,6 +1480,7 @@ export function HeadingFields({
   const id = useId();
   const words = useAdminText("builder");
   const hw = words.heading;
+  const [dual, setDual] = useState(() => isDualHeading(block));
   return (
     <div className="flex flex-col gap-4">
       <div className="flex flex-col gap-1">
@@ -1383,36 +1490,43 @@ export function HeadingFields({
         {/* Its words as they look, text styles and all (D393); no tag to type. */}
         <MarkupInput id={`${id}-text`} label={hw.heading} value={block.text} max={HEADING_MAX} className="text-base font-medium" onChange={(text) => onChange({ ...block, text })} />
       </div>
-      {/* A dual heading (D425): words after the first, each part with its own look (Style, Typography). */}
-      <div className="flex flex-col gap-1">
-        <label htmlFor={`${id}-second`} className="text-sm font-medium">
-          {hw.second}
-        </label>
-        <MarkupInput
-          id={`${id}-second`}
-          label={hw.second}
-          value={block.second ?? ""}
-          max={HEADING_MAX}
-          className="text-base font-medium"
-          onChange={(second) => onChange({ ...block, second: second || undefined })}
-        />
-        <p className="text-xs text-muted">
-          {hw.secondHint}
-        </p>
-      </div>
-      {isDualHeading(block) && <HeadingStackField block={block} onChange={onChange} />}
       <div className="flex flex-col gap-1">
         <Choices
           legend={hw.level}
-          hint={hw.levelHint}
           options={LEVELS.map((level) => ({ value: String(level), label: `H${level}` }))}
           value={String(block.level)}
           onChange={(level) => onChange({ ...block, level: Number(level) as HeadingLevel })}
         />
         <p className={`text-xs ${block.level === 1 && otherMainHeading ? "text-red-700 dark:text-red-400" : "text-muted"}`}>
-          {block.level === 1 ? (otherMainHeading ? hw.twoMain : hw.main) : hw.levels}
+          {block.level === 1 ? (otherMainHeading ? hw.twoMain : hw.main) : hw.levelHint}
         </p>
       </div>
+      {/* A dual heading (D425) behind a switch (D631): words after the first, each part with its own look (Design, Heading text). */}
+      <Check
+        label={hw.addSecond}
+        hint={hw.secondHint}
+        checked={dual}
+        onChange={(on) => {
+          setDual(on);
+          if (!on) onChange({ ...block, second: undefined, stack: undefined });
+        }}
+      />
+      {dual && (
+        <div className="flex flex-col gap-1">
+          <label htmlFor={`${id}-second`} className="text-sm font-medium">
+            {hw.second}
+          </label>
+          <MarkupInput
+            id={`${id}-second`}
+            label={hw.second}
+            value={block.second ?? ""}
+            max={HEADING_MAX}
+            className="text-base font-medium"
+            onChange={(second) => onChange({ ...block, second: second || undefined })}
+          />
+        </div>
+      )}
+      {dual && isDualHeading(block) && <HeadingStackField block={block} onChange={onChange} />}
     </div>
   );
 }
@@ -1434,13 +1548,37 @@ function HeadingStackField({ block, onChange }: { block: HeadingBlock; onChange:
   );
 }
 
-/** A button's text, address and whether it opens a new tab (D49). */
-export function ButtonFields({ block, onChange }: { block: ButtonBlock; onChange: (block: ButtonBlock) => void }) {
+/** What a button's address is, read from it: a page or web address, a popup on the page, an email or a phone number (D631). */
+export type LinkKind = "address" | "popup" | "email" | "phone";
+
+export const linkKindOf = (href: string): LinkKind | null => {
+  const value = href.trim();
+  if (!value) return null;
+  if (keyFromHash(value)) return "popup";
+  if (/^mailto:/i.test(value)) return "email";
+  if (/^tel:/i.test(value)) return "phone";
+  return "address";
+};
+
+/**
+ * A button's text and where it leads (D49): *Link to* asks what kind of place first, then shows the one field that fits it (D631),
+ * so the rules of an address never have to be read. `popup` is the page's popups to choose from (`ModalPicker`).
+ */
+export function ButtonFields({ block, popup, onChange }: { block: ButtonBlock; /** Absent where there is no page (a saved part): Popup is not offered. */ popup?: ReactNode; onChange: (block: ButtonBlock) => void }) {
   const id = useId();
   const w = useAdminText("builder");
   const bw = w.button;
+  const pw = w.panel;
   const href = block.href.trim();
+  // Chosen before anything is typed, the kind is kept here; once there is an address, the address says it.
+  const [chosen, setChosen] = useState<LinkKind>(() => linkKindOf(block.href) ?? "address");
+  const kind = linkKindOf(block.href) ?? chosen;
   const problem = href === "" ? bw.needsAddress : isLinkAddress(href) ? null : w.link.badAddress;
+  const plain = kind === "email" ? href.replace(/^mailto:/i, "") : kind === "phone" ? href.replace(/^tel:/i, "") : href;
+  const write = (next: LinkKind, text: string) => {
+    const value = text.trim() === "" ? "" : next === "email" ? `mailto:${text.trim()}` : next === "phone" ? `tel:${text.replace(/[\s()-]/g, "")}` : text;
+    onChange({ ...block, href: value, ...(next !== "address" && { newTab: undefined }) });
+  };
   return (
     <div className="flex flex-col gap-4">
       <div className="flex flex-col gap-1">
@@ -1449,45 +1587,66 @@ export function ButtonFields({ block, onChange }: { block: ButtonBlock; onChange
         </label>
         <MarkupInput id={`${id}-label`} label={bw.text} value={block.label} max={BUTTON_LABEL_MAX} placeholder={bw.placeholder} onChange={(label) => onChange({ ...block, label })} />
       </div>
-      <div className="flex flex-col gap-1">
-        <label htmlFor={`${id}-href`} className="text-sm font-medium">
-          {w.link.address}
-        </label>
-        <input
-          id={`${id}-href`}
-          value={block.href}
-          maxLength={2000}
-          spellCheck={false}
-          placeholder={w.link.placeholder}
-          aria-invalid={Boolean(problem && href)}
-          aria-describedby={`${id}-href-hint`}
-          onChange={(event) => onChange({ ...block, href: event.target.value })}
-          className="min-h-10 rounded-md border border-border bg-background px-3 text-sm aria-invalid:border-red-700"
-        />
-        <span
-          id={`${id}-href-hint`}
-          className={`text-xs ${problem && href ? "text-red-700 dark:text-red-400" : "text-muted"}`}
-        >
-          {problem ?? w.link.addressHint}
-        </span>
-      </div>
-      <Check
-        label={w.image.newTab}
-        hint={w.image.newTabHint}
-        checked={Boolean(block.newTab)}
-        onChange={(newTab) => onChange({ ...block, newTab: newTab || undefined })}
+      <Choices
+        legend={pw.linkTo}
+        options={(["address", "popup", "email", "phone"] as const).filter((value) => value !== "popup" || popup || kind === "popup").map((value) => ({ value, label: pw.linkKinds[value] }))}
+        value={kind}
+        onChange={(next) => {
+          setChosen(next);
+          // Another kind starts empty: an email address is no web address.
+          if (next !== kind) onChange({ ...block, href: "", newTab: undefined });
+        }}
       />
+      {kind === "popup" && popup ? (
+        popup
+      ) : (
+        <div className="flex flex-col gap-1">
+          <label htmlFor={`${id}-href`} className="text-sm font-medium">
+            {kind === "email" ? pw.emailAddress : kind === "phone" ? pw.phoneNumber : w.link.address}
+          </label>
+          <input
+            id={`${id}-href`}
+            type={kind === "email" ? "email" : kind === "phone" ? "tel" : "text"}
+            value={plain}
+            maxLength={2000}
+            spellCheck={false}
+            placeholder={kind === "email" ? pw.emailPlaceholder : kind === "phone" ? pw.phonePlaceholder : w.link.placeholder}
+            aria-invalid={Boolean(problem && href)}
+            aria-describedby={`${id}-href-hint`}
+            onChange={(event) => write(kind, event.target.value)}
+            className="min-h-10 rounded-md border border-border bg-background px-3 text-sm aria-invalid:border-red-700"
+          />
+          <span id={`${id}-href-hint`} className={`text-xs ${problem && href ? "text-red-700 dark:text-red-400" : "text-muted"}`}>
+            {problem ?? (kind === "address" ? w.link.addressHint : "")}
+          </span>
+        </div>
+      )}
     </div>
   );
 }
 
+/** Whether a link opens in a new tab, for the *Open in* fold (D631). */
+export function NewTabField({ checked, onChange }: { checked: boolean; onChange: (newTab: boolean | undefined) => void }) {
+  const w = useAdminText("builder");
+  return <Check label={w.image.newTab} hint={w.image.newTabHint} checked={checked} onChange={(on) => onChange(on || undefined)} />;
+}
+
 /** A button's look: kind, size, corners, width, place and colours (D49); its weight and font are its typography (D179). */
-export function ButtonStyleFields({ block, onChange }: { block: ButtonBlock; onChange: (patch: BlockPatch<ButtonBlock>) => void }) {
+export function ButtonStyleFields({
+  block,
+  onChange,
+  hover = true,
+}: {
+  block: ButtonBlock;
+  onChange: (patch: BlockPatch<ButtonBlock>) => void;
+  /** Off where the settings panel folds the hover effect on its own (D631). */
+  hover?: boolean;
+}) {
   const w = useAdminText("builder");
   return (
     <div className="flex flex-col gap-4">
       <ButtonLookFields look={block} onChange={onChange} />
-      <ButtonHoverField value={block.hover} onChange={(hover) => onChange({ hover })} />
+      {hover && <ButtonHoverField value={block.hover} onChange={(next) => onChange({ hover: next })} />}
       <Check
         label={w.button.fullWidth}
         hint={w.button.fullWidthHint}

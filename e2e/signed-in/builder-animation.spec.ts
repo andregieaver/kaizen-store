@@ -5,12 +5,12 @@ import { E2E_STORE, OWNER } from "./accounts";
 /**
  * The Animation component in the builder (D538): a component of its own beside Video, whose settings open as it is added
  * because it is nothing until it has its file; a picture's description and link come once it has one, and whether it goes
- * round is under Style. A header's logo part offers the same one button. This build has no storage, so both say that
+ * round is under Design. A header's logo part offers the same one button. This build has no storage, so both say that
  * uploads are off where the button would be.
  */
 test.use({ storageState: OWNER.state });
 
-test("an animation is added from the sidebar, opens to be filled, and says how it plays under Style", async ({ page }) => {
+test("an animation is added from the sidebar, opens to be filled, and says how it plays under Design", async ({ page }) => {
   await page.goto(`/admin/${E2E_STORE}/pages/new`);
   await page.getByRole("tab", { name: "Components" }).click();
   await page.getByRole("button", { name: "Add animation", exact: true }).press("Enter");
@@ -26,6 +26,6 @@ test("an animation is added from the sidebar, opens to be filled, and says how i
   await expect(panel.getByRole("textbox", { name: /^Description/ })).toHaveCount(0);
 
   // Lisa's: its width and place as a picture's, and whether it goes round.
-  await panel.getByRole("tab", { name: "Style" }).click();
+  await panel.getByRole("tab", { name: "Design" }).click();
   await expect(panel.getByRole("checkbox", { name: /^Play again and again/ })).not.toBeChecked();
 });

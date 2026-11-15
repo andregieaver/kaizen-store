@@ -336,6 +336,7 @@ Each rule is in full under the same words in one file of `docs/rules/admin/` by 
 - Product recommendations (D139, `docs/recommendations.md`, `src/lib/recommendations.ts` pure, `src/server/recommend.ts` engine,…
 - A/B tests of pages (D148, `docs/ab-testing.md`, `src/lib/experiments.ts`, `src/server/experiments.ts`, `experiment-admin.ts`,…
 - Responsive editing (D179, `docs/responsive-editing.md`, phases 1 to 4 built)
+- The settings panel (D631, `SettingsTabs` and `src/components/admin/settings-panel-parts.tsx`, `src/lib/settings-memory.ts`, `src/lib/settings-summary.ts`, `src/lib/style-copy.ts`)
 - Theme elements, content width and resizing (D182, `docs/theme-elements.md`)
 - The Theme tab and the site (D195)
 - Themes on every row, rows that meet, shadows, sidebars and the rail (D262)

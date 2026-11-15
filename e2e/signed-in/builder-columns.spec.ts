@@ -4,7 +4,8 @@ import { E2E_STORE, OWNER } from "./accounts";
 
 /**
  * Columns that hold something can go without being emptied first: a layout with fewer columns asks whether what they hold is
- * deleted with them or moved, and a column's settings can delete it. A column's tools never cover its component's, and a
+ * deleted with them or moved (in the row's settings, which a column's open with Change in row, D631), and a column's menu can
+ * delete it. A column's tools never cover its component's, and a
  * brands component's names can be turned off.
  */
 test.use({ storageState: OWNER.state, viewport: { width: 2400, height: 1000 } });
@@ -29,9 +30,21 @@ async function columnSettings(row: Locator, n: number) {
   await row.getByRole("button", { name: `Settings (column ${n})` }).click();
 }
 
+/** From a column's settings, its row's: where the layout is chosen (D631). */
+async function rowLayoutFrom(page: Page, row: Locator, n: number) {
+  await columnSettings(row, n);
+  await page.getByRole("button", { name: "Change in row" }).click();
+}
+
+/** A column's menu, opened. */
+async function columnMenu(page: Page, row: Locator, n: number) {
+  await columnSettings(row, n);
+  await page.getByRole("button", { name: "More actions" }).click();
+}
+
 test("a layout with fewer columns asks first, then deletes what the columns that go hold", async ({ page }) => {
   const row = await rowOfTexts(page, "3 columns");
-  await columnSettings(row, 1);
+  await rowLayoutFrom(page, row, 1);
   await page.getByRole("radio", { name: "1 column" }).click();
   // Nothing changes until it is answered.
   await expect(page.getByText("Columns 2 and 3 hold 2 components.")).toBeVisible();
@@ -51,7 +64,7 @@ test("a layout with fewer columns asks first, then deletes what the columns that
   await page.getByRole("button", { name: "Done" }).click();
   await row.locator('[data-builder-item="column"]').nth(2).getByRole("button", { name: /^Add rich text/ }).press("Enter");
   await page.getByRole("button", { name: "Done" }).click();
-  await columnSettings(row, 1);
+  await rowLayoutFrom(page, row, 1);
   await page.getByRole("radio", { name: "2 columns" }).click();
   await expect(page.getByText("Column 3 holds 1 component.")).toBeVisible();
   await page.getByRole("button", { name: "Move them to column 2" }).click();
@@ -59,14 +72,14 @@ test("a layout with fewer columns asks first, then deletes what the columns that
   await expect(row.locator('[data-builder-item="block"]')).toHaveCount(2);
 });
 
-test("a column's settings delete it with what it holds; a row keeps its last column", async ({ page }) => {
+test("a column's menu deletes it with what it holds; a row keeps its last column", async ({ page }) => {
   const row = await rowOfTexts(page, "2 columns");
-  await columnSettings(row, 2);
-  await page.getByRole("button", { name: "Delete column", exact: true }).click();
+  await columnMenu(page, row, 2);
+  await page.getByRole("menuitem", { name: "Delete column", exact: true }).click();
   await expect(row.locator('[data-builder-item="column"]')).toHaveCount(1);
   await expect(row.locator('[data-builder-item="block"]')).toHaveCount(1);
-  await columnSettings(row, 1);
-  await expect(page.getByRole("button", { name: "Delete column", exact: true })).toBeDisabled();
+  await columnMenu(page, row, 1);
+  await expect(page.getByRole("menuitem", { name: "Delete column", exact: true })).toBeDisabled();
 });
 
 test("a column's tools never cover its component's", async ({ page }) => {
@@ -91,7 +104,7 @@ test("a brands component's names can be turned off", async ({ page }) => {
   await row.locator('[data-builder-item="block"]').first().hover();
   await page.getByRole("tab", { name: "Components" }).click();
   await page.getByRole("button", { name: "Add brands", exact: true }).click();
-  await page.getByRole("tab", { name: "Style" }).click();
+  await page.getByRole("tab", { name: "Design" }).click();
   const names = page.getByRole("checkbox", { name: /^Show the names/ });
   await expect(names).toBeChecked();
   await names.uncheck();
