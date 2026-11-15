@@ -87,6 +87,7 @@ const FACTS = z.discriminatedUnion("kind", [
   z.object({ kind: z.literal("dispute_opened"), order: z.string(), orderId: z.string(), dispute: z.string(), reason: z.string(), dueBy: z.string().nullable() }),
   z.object({ kind: z.literal("payments_failing"), window: z.string(), failed: z.number(), attempts: z.number() }),
   z.object({ kind: z.literal("stockout_risk"), sku: z.string(), product: z.string(), lastsDays: z.number().nullable(), leadDays: z.number(), suggested: z.number() }),
+  z.object({ kind: z.literal("staff_request"), request: z.string(), ask: z.enum(["change_address", "cancel_order"]), order: z.string() }),
 ]);
 
 /** The stores that react now: the switch on, not paused, the store open. */
@@ -223,6 +224,27 @@ async function detectOrderEvents(now: Date): Promise<number> {
         jsonb_build_object('kind', 'payments_failing', 'window', ${paymentsWindow(now)}::text, 'failed', c.failed, 'attempts', c.attempts)
       from counted c
       where c.failed >= ${FAILED_PAYMENTS_MIN} and c.failed >= c.attempts * ${FAILED_PAYMENTS_SHARE}::numeric
+      on conflict (store_id, kind, ref) do nothing
+      returning id
+    `,
+    // A customer's request code may carry out (B3, D640): an address change (with the new address as fields) or a cancellation, asked on the
+    // store's chat by the order's own signed-in customer, the order paid, not held and nothing of it sent. Any other request stays a person's.
+    sql`
+      with reacting as (${REACTING})
+      insert into commerce.autopilot_events (store_id, kind, ref, facts)
+      select a.store_id, 'staff_request', a.id::text, jsonb_build_object('kind', 'staff_request', 'request', a.id, 'ask', a.kind, 'order', o.number)
+      from commerce.support_actions a
+      join reacting r on r.store_id = a.store_id
+      join commerce.support_conversations c on c.id = a.conversation_id and c.store_id = a.store_id
+      join commerce.orders o on o.store_id = a.store_id and o.number = a.args ->> 'orderNumber' and o.copied_from is null
+        and o.restricted_at is null and o.anonymised_at is null
+      where a.confirmer = 'staff' and a.status = 'proposed' and a.kind in ('change_address', 'cancel_order') and a.created_at > ${since}
+        and (a.kind <> 'change_address' or a.args ? 'address')
+        and c.source = 'site' and c.customer_id is not null
+        and (o.customer_id = c.customer_id
+          or exists (select 1 from commerce.customers cu where cu.store_id = c.store_id and cu.id = c.customer_id and lower(cu.email) = lower(o.email)))
+        and o.status in ('paid', 'authorized') and o.held_at is null
+        and not exists (select 1 from commerce.shipments sh where sh.store_id = o.store_id and sh.order_id = o.id and sh.undone_at is null)
       on conflict (store_id, kind, ref) do nothing
       returning id
     `,
@@ -468,6 +490,10 @@ async function stillOpen(storeId: string, facts: EventFacts): Promise<string | n
   if (facts.kind === "dispute_opened") {
     const row = await typedRow(z.object({ status: col.text }), sql`select status from commerce.payment_disputes where id = ${facts.dispute}::uuid and store_id = ${storeId}::uuid`);
     return row?.status === "needs_response" || row?.status === "warning_needs_response" ? null : "The dispute was answered or closed before the autopilot looked.";
+  }
+  if (facts.kind === "staff_request") {
+    const row = await typedRow(z.object({ status: col.text }), sql`select status from commerce.support_actions where id = ${facts.request}::uuid and store_id = ${storeId}::uuid`);
+    return row?.status === "proposed" ? null : "A person decided the request before the autopilot looked.";
   }
   if (facts.kind === "stockout_risk") {
     const row = await typedRow(z.object({ open: col.bool }), sql`select ${OPEN_ORDER(storeId, facts.sku)} as open`);

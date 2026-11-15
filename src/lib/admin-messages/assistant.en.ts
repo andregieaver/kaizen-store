@@ -359,6 +359,7 @@ export const assistantEn = {
         dispute_opened: "A payment was disputed",
         payments_failing: "Payments were failing",
         stockout_risk: "A product may run out",
+        staff_request: "A customer asked to change an order",
       },
       statuses: { pending: "Waiting", running: "Working", done: "Done", skipped: "Skipped", failed: "Failed" },
     },

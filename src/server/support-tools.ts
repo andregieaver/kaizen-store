@@ -154,7 +154,7 @@ export async function runTool(ctx: SupportToolContext, name: string, args: Recor
     case "check_code":
       return checkCode(ctx, String(args.code));
     case "request_staff_action": {
-      const kept = await requestStaffAction(ctx, String(args.kind), typeof args.number === "string" ? args.number : undefined, String(args.details));
+      const kept = await requestStaffAction(ctx, String(args.kind), typeof args.number === "string" ? args.number : undefined, String(args.details), args.address);
       return { result: json(kept.result), ...(kept.actionId ? { action: kept.actionId } : {}) };
     }
   }

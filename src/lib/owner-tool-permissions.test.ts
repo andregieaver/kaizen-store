@@ -15,7 +15,7 @@ const CHANGING = new Set([
   "save_search_synonym", "save_search_rule", "delete_search_merchandising", "set_market_price_rule", "save_producer_registration", "save_checkout_question", "moderate_blog_comment", "schedule_article", "schedule_site_change",
   "save_entry", "publish_entry", "unpublish_entry", "save_content_type",
   "tag_orders", "archive_orders", "create_draft_order", "send_draft_order", "set_draft_prices", "decline_quote", "set_price_display", "set_quote_requests", "set_feature",
-  "draft_broadcast", "send_broadcast", "tag_customer", "switch_email_automation", "write_email_automation", "tell_customer_about_order", "draft_text_message", "send_text_message", "issue_gift_card", "save_research_note", "compare_options", "set_brand", "design_look", "make_brand_marks",
+  "draft_broadcast", "send_broadcast", "tag_customer", "switch_email_automation", "write_email_automation", "tell_customer_about_order", "carry_out_address_change", "draft_text_message", "send_text_message", "issue_gift_card", "save_research_note", "compare_options", "set_brand", "design_look", "make_brand_marks",
   "add_support_note", "reply_to_support", "end_support_conversation",
   "invite_staff", "change_staff_role", "remove_staff", "change_plan", "end_plan", "change_order", "propose_exchange", "process_exchange", "log_time", "issue_work_invoice",
   "create_product", "update_product", "set_prices", "set_product_status", "write_product_texts", "update_category",

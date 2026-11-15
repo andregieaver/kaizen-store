@@ -1,5 +1,5 @@
 {
- "version": "1.25",
+ "version": "1.26",
  "surface": [
   "admin DELETE /categories/{id}",
   "admin DELETE /categories/{id} -> data",
@@ -1983,6 +1983,9 @@
   "mcp cancel_purchase",
   "mcp cancel_purchase <- purchase (required)",
   "mcp cancel_purchase <- store (required)",
+  "mcp carry_out_address_change",
+  "mcp carry_out_address_change <- request (required)",
+  "mcp carry_out_address_change <- store (required)",
   "mcp cart_reminder_stats",
   "mcp cart_reminder_stats <- store (required)",
   "mcp change_dns",
