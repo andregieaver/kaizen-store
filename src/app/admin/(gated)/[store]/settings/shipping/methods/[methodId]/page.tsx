@@ -12,6 +12,8 @@ import { adminText, adminTexts } from "@/lib/admin-text";
 import { AdminTextScope } from "@/components/admin/admin-text";
 import { fillWords } from "@/lib/admin-fill";
 import { METHODS_MAX } from "@/lib/shipping-limits";
+import { isWayKey, WAY_DAYS } from "@/lib/shipping-ways";
+import type { AdminLang } from "@/lib/admin-lang";
 import { memberCan, requirePermission } from "@/server/permissions";
 import { getShippingSetup } from "@/server/shipping-methods";
 
@@ -38,6 +40,10 @@ export default async function ShippingMethodPage({ params, searchParams }: PageP
   if (!market) notFound();
   const base = `/admin/${store.slug}/settings/shipping`;
   const canWrite = memberCan(gated, "settings:write");
+  // A ready way (round 11, D634): its name in the shop's language, since shoppers choose it at checkout, and its usual delivery time.
+  const way = isNew ? (await searchParams).way : undefined;
+  const shopLang: AdminLang = /^(nb|nn|no)\b/.test(store.markets[0]?.locale ?? "") ? "nb" : "en";
+  const start = isWayKey(way) ? { name: adminText(shopLang, "shipping").pages.ways[way].name, estimate: WAY_DAYS[way] } : null;
   const full = isNew && setup.methods.filter((m) => m.marketCode === market.code).length >= METHODS_MAX;
   return (
     <AdminTextScope texts={adminTexts(lang, ["shipping"])}>
@@ -58,6 +64,7 @@ export default async function ShippingMethodPage({ params, searchParams }: PageP
           method={method}
           canWrite={canWrite}
           save={saveMethodAction.bind(null, store.slug)}
+          start={start}
         />
       )}
       {method && canWrite && (
