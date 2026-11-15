@@ -9,10 +9,12 @@ import { AREAS } from "./permission-keys";
  */
 
 /**
- * Under the providers' 128, with room for a tool a caller adds (`ask_kaizen_life`, `load_tools`). 124 since 1 November 2026 (from 120): the
- * two largest areas asked together with the core tools (marketing and website, 93 store tools beside the manager's own 28) no longer fit.
+ * The providers' 128. Every tool a caller adds (the manager's own, `ask_kaizen_life`, the handoffs, an owner's app tools, `load_tools`) is
+ * counted in `always`, so a round never sends more. 124 since 1 November 2026 (from 120), 128 since 15 November 2026 (D632): the two largest
+ * areas asked together with the core tools (marketing and website, 99 store tools beside the manager's own 28) no longer fit. This is the
+ * ceiling: when they outgrow it again, an area is split rather than the budget raised.
  */
-export const TOOLS_PER_TURN = 124;
+export const TOOLS_PER_TURN = 128;
 
 export const LOAD_TOOLS = "load_tools";
 

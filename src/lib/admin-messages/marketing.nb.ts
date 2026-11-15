@@ -497,6 +497,7 @@ export const marketingNb: MarketingMessages = {
     description:
       "E-poster som går av seg selv til dem som vil ha e-postene dine, én gang hver. Å slå én på skriver aldri til noen om det som skjedde før.",
     sentLately: "Sendt {n} de siste 30 dagene.",
+    ordersAfter: { one: "Deretter {n} bestilling innen en uke, {amount}.", many: "Deretter {n} bestillinger innen en uke, {amount}." },
     edit: "Rediger",
     setUp: "Sett den opp",
     needsShop: "Den trenger nettbutikken, som er slått av.",

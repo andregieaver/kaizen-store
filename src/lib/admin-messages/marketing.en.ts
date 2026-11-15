@@ -504,6 +504,7 @@ export const marketingEn = {
     description:
       "Emails that go by themselves to the people who want your emails, once each. Switching one on never writes to people about what happened before.",
     sentLately: "Sent {n} in the last 30 days.",
+    ordersAfter: { one: "Then {n} order within a week, {amount}.", many: "Then {n} orders within a week, {amount}." },
     edit: "Edit",
     setUp: "Set it up",
     needsShop: "It needs the online shop, which is switched off.",

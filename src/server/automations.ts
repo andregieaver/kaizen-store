@@ -1,6 +1,7 @@
 import "server-only";
 
 import { sql } from "drizzle-orm";
+import { z } from "zod";
 
 import { db } from "@/db/client";
 import { roomLeft } from "@/lib/limits";
@@ -12,6 +13,7 @@ import {
   CATCH_UP_DAYS,
   DELAY_RANGES,
   LIFECYCLE_KINDS,
+  ORDER_AFTER_DAYS,
   SENDS_KEEP_DAYS,
   type AutomationKind,
   type LifecycleKind,
@@ -26,6 +28,7 @@ import { log } from "./log";
 import { emailPictureProblem, factsForEmail, marketingEmail } from "./marketing-email";
 import { storeById, type EmailStore } from "./shopper-emails";
 import { runBackInStock, type BackInStockResult } from "./stock-requests";
+import { col, typedRows } from "./typed-rows";
 
 type Row = Record<string, unknown>;
 
@@ -147,9 +150,53 @@ export async function sendTestAutomation(storeId: string, to: string, kind: Life
   return sendEmail({ storeId, kind: "marketing.automation.test", to, email: { ...email, subject: `[Test] ${email.subject}` }, fromName: store.name, replyTo: store.details.contactEmail ?? null });
 }
 
-/** How many each kind sent in the last 30 days (6.6), and how many back-in-stock requests wait, per store. */
-export async function automationStats(storeId: string): Promise<{ sent: Record<LifecycleKind, number>; waiting: number; topWaiting: { productId: string; title: string; waiting: number }[] }> {
-  const [sends, [waiting], top] = await Promise.all([
+/** What a kind's emails brought in the last 30 days: paid orders their readers placed within `ORDER_AFTER_DAYS`, per currency. */
+export type AutomationRevenue = { orders: number; minor: Record<string, number> };
+
+export type AutomationStats = {
+  sent: Record<LifecycleKind, number>;
+  revenue: Record<LifecycleKind, AutomationRevenue>;
+  waiting: number;
+  topWaiting: { productId: string; title: string; waiting: number }[];
+};
+
+/** A paid order as D152 counts it, still the person's (never restricted or anonymised), not cancelled. */
+const SOLD = sql`(${PAID} and o.status in ('paid', 'fulfilled', 'closed') and o.restricted_at is null and o.anonymised_at is null)`;
+
+const REVENUE_ROW = z.object({ kind: z.enum(LIFECYCLE_KINDS), currency: col.currency, orders: col.int, total: col.minor });
+
+/**
+ * Orders after an automation's email (D4 of `docs/100-day-challenge.md`): each paid order its reader's address placed within
+ * `ORDER_AFTER_DAYS` of an email sent in the last 30 days, counted once (for the latest email before it). An order the person would have
+ * placed anyway counts too: the figure says what followed, not what the email caused.
+ */
+async function automationRevenue(storeId: string): Promise<Record<LifecycleKind, AutomationRevenue>> {
+  const rows = await typedRows(
+    REVENUE_ROW,
+    sql`
+      select kind, currency, count(*)::int as orders, coalesce(sum(total_minor), 0)::bigint as total from (
+        select distinct on (o.id) s.kind, o.currency, o.total_minor
+        from commerce.automation_sends s
+        join commerce.marketing_subscribers m on m.store_id = s.store_id and m.id = s.subscriber_id
+        join commerce.orders o on o.store_id = s.store_id and lower(o.email) = lower(m.email)
+          and o.placed_at > s.created_at and o.placed_at <= s.created_at + make_interval(days => ${ORDER_AFTER_DAYS})
+        where s.store_id = ${storeId}::uuid and s.created_at > now() - interval '30 days' and s.outcome in ('sent', 'logged') and o.restricted_at is null and ${SOLD}
+        order by o.id, s.created_at desc
+      ) x
+      group by kind, currency
+    `,
+  );
+  const revenue = Object.fromEntries(LIFECYCLE_KINDS.map((k) => [k, { orders: 0, minor: {} }])) as Record<LifecycleKind, AutomationRevenue>;
+  for (const r of rows) {
+    revenue[r.kind].orders += r.orders;
+    revenue[r.kind].minor[r.currency] = r.total;
+  }
+  return revenue;
+}
+
+/** How many each kind sent in the last 30 days (6.6) and the orders after them, and how many back-in-stock requests wait, per store. */
+export async function automationStats(storeId: string): Promise<AutomationStats> {
+  const [sends, [waiting], top, revenue] = await Promise.all([
     db().execute<Row>(sql`
       select kind, count(*)::int as n from commerce.automation_sends
       where store_id = ${storeId}::uuid and created_at > now() - interval '30 days' and outcome in ('sent', 'logged')
@@ -164,11 +211,13 @@ export async function automationStats(storeId: string): Promise<{ sent: Record<L
       where r.store_id = ${storeId}::uuid and r.status = 'waiting'
       group by r.store_id, r.product_id order by n desc limit 5
     `),
+    automationRevenue(storeId),
   ]);
   const sent = Object.fromEntries(LIFECYCLE_KINDS.map((k) => [k, 0])) as Record<LifecycleKind, number>;
   for (const row of sends) sent[row.kind as LifecycleKind] = Number(row.n);
   return {
     sent,
+    revenue,
     waiting: Number(waiting?.n ?? 0),
     topWaiting: top.map((r) => ({ productId: String(r.product_id), title: String(r.title), waiting: Number(r.n) })),
   };
@@ -199,8 +248,6 @@ const inWindow = (moment: ReturnType<typeof sql>, enabledAt: string, delayDays: 
   and ${moment} <= ${now.toISOString()}::timestamptz - make_interval(days => ${delayDays})
   and ${moment} > ${now.toISOString()}::timestamptz - make_interval(days => ${delayDays + CATCH_UP_DAYS})
 )`;
-/** A paid order as D152 counts it, still the person's (never restricted or anonymised), not cancelled. */
-const SOLD = sql`(${PAID} and o.status in ('paid', 'fulfilled', 'closed') and o.restricted_at is null and o.anonymised_at is null)`;
 
 async function dueFor(storeId: string, kind: LifecycleKind, enabledAt: string, delayDays: number, now: Date): Promise<Due[]> {
   let rows: Row[];

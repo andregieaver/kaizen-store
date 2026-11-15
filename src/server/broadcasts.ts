@@ -762,7 +762,7 @@ export async function suggestBroadcast(
   accountId: string,
   brief: string,
   locale: string,
-  options: { segmentId?: string | null; complete?: typeof chatWithTools } = {},
+  options: { segmentId?: string | null; audience?: string; complete?: typeof chatWithTools } = {},
 ): Promise<SuggestResult> {
   const words = brief.trim().slice(0, 1000);
   if (words.length < 5) return { ok: false, problem: "Say in a few words what the email is about." };
@@ -772,7 +772,8 @@ export async function suggestBroadcast(
   // The brand guides the words (D330 F2b); its words to avoid are refused as claims are.
   const brand = await brandOf(store.id);
   const guide = brandGuide(brand);
-  const audience = await audienceWords(store, options.segmentId ?? null);
+  // An automation says who it goes to and when (D4); a broadcast, its segment.
+  const audience = options.audience ?? (await audienceWords(store, options.segmentId ?? null));
   const market = emailMarket(store, null, locale);
   const handed = { products: new Map<string, { handle: string; title: string }>(), campaigns: new Map<string, { name: string }>() };
   const runTool = async (name: string, raw: string): Promise<unknown> => {

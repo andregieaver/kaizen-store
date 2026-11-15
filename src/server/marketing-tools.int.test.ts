@@ -47,6 +47,7 @@ afterAll(async () => {
   // A scheduled broadcast goes back to a draft before it can be deleted (the database's rules).
   await db().execute(sql`update commerce.broadcasts set status = 'draft' where store_id = ${store.id}::uuid and status = 'scheduled'`);
   await db().execute(sql`delete from commerce.broadcasts where store_id = ${store.id}::uuid`);
+  await db().execute(sql`delete from commerce.sms_campaigns where store_id = ${store.id}::uuid`);
   await closeDb();
 });
 
@@ -92,6 +93,59 @@ describe("the marketing tools", () => {
     const automations = (await run("list_email_automations", {})) as { automations: { kind: string; on: boolean }[] };
     expect(automations.automations.map((a) => a.kind)).toEqual(["welcome", "after_purchase", "win_back", "back_in_stock"]);
     expect(automations.automations.every((a) => a.on === false)).toBe(true);
+  });
+
+  it("writes an automation's words and days with the store's writer, refusing days outside its range and claims (D4)", async () => {
+    const c = await ctx();
+    await expect(ownerTools.preflightOwnerTool(c, "write_email_automation", { kind: "welcome", brief: "Say hello", days: 60 })).rejects.toThrow(/from 0 to 30/);
+    model.reply = JSON.stringify({ subject: "Welcome to the shop", preview: "Glad you came", heading: "Hello", paragraphs: ["We roast coffee every week."], button: "" });
+    const done = (await run("write_email_automation", { kind: "welcome", brief: "Welcome them and tell them about our roastery", days: 2 })) as { done: string; subject: string };
+    expect(done.subject).toBe("Welcome to the shop");
+    expect(done.done).toContain("Sent 2 days after they join.");
+    expect(done.done).toContain("It is off");
+    const [row] = await db().execute<{ delay_days: number; content: Record<string, { subject: string }> }>(
+      sql`select delay_days, content from commerce.automations where store_id = ${store.id}::uuid and kind = 'welcome'`,
+    );
+    expect(row.delay_days).toBe(2);
+    expect(row.content[c.store.localization.locales[0]].subject).toBe("Welcome to the shop");
+    model.reply = JSON.stringify({ subject: "Last chance", preview: "", heading: "Only today", paragraphs: ["The best price ever."], button: "" });
+    await expect(run("write_email_automation", { kind: "welcome", brief: "A sale" })).rejects.toThrow(/claims/);
+  });
+
+  it("counts the paid orders a reader placed within a week of an automation's email (D4)", async () => {
+    const [sub] = await db().execute<{ id: string }>(sql`select id from commerce.marketing_subscribers where store_id = ${store.id}::uuid and email = 'reader@example.com'`);
+    await db().execute(sql`
+      insert into commerce.automation_sends (store_id, key, kind, subscriber_id, outcome, created_at)
+      values (${store.id}::uuid, ${`welcome:${sub.id}`}, 'welcome', ${sub.id}::uuid, 'sent', now() - interval '2 days')
+    `);
+    for (const [number, daysAgo] of [["A-1", 1], ["A-2", 10]] as const) {
+      const [o] = await db().execute<{ id: string }>(sql`
+        insert into commerce.orders (store_id, number, market_code, currency, locale, email, status, subtotal_minor, shipping_minor, discount_minor, tax_minor,
+          total_minor, billing_address, shipping_address, placed_at)
+        values (${store.id}::uuid, ${`${number}-${Date.now().toString(36)}`}, 'NO', 'NOK', 'nb-NO', 'Reader@example.com', 'paid', 45000, 0, 0, 9000, 45000, '{}'::jsonb, '{}'::jsonb,
+          now() - ${daysAgo} * interval '1 day')
+        returning id
+      `);
+      await db().execute(sql`
+        insert into commerce.payments (store_id, order_id, provider, provider_reference, provider_account, amount_minor, kaizen_fee_minor, currency, status)
+        values (${store.id}::uuid, ${o.id}::uuid, 'stripe', ${`pi_${number}_${o.id}`}, 'acct_auto', 45000, 0, 'NOK', 'captured')
+      `);
+    }
+    const listed = (await run("list_email_automations", {})) as { automations: { kind: string; orders_after?: number; revenue_after?: string[] }[] };
+    const welcome = listed.automations.find((a) => a.kind === "welcome")!;
+    // The order ten days ago came before the email; only the one a day ago follows it.
+    expect(welcome.orders_after).toBe(1);
+    expect(welcome.revenue_after).toEqual([expect.stringMatching(/^450,00\skr$/)]);
+  });
+
+  it("drafts a text message without claims and keeps no send while no 46elks account is connected (D4)", async () => {
+    const c = await ctx();
+    expect(await run("list_text_messages", {})).toMatchObject({ connected: false });
+    await expect(run("draft_text_message", { name: "Sale", text: "Only today: the best price ever!" })).rejects.toThrow(/claims/);
+    const made = (await run("draft_text_message", { name: "Roastery news", text: "New beans from our roastery are in. Come and taste them!" })) as { id: string; done: string };
+    expect(made.done).toContain("Nothing is sent");
+    await expect(ownerTools.preflightOwnerTool(c, "send_text_message", { message: "Roastery news" })).rejects.toThrow(/Connect a 46elks account/);
+    await expect(ownerTools.preflightOwnerTool(c, "send_text_message", { message: "Nothing" })).rejects.toThrow(/No text message "Nothing"/);
   });
 
   it("describes a segment kept for a yes by its rules, in the store's own money (D439)", async () => {

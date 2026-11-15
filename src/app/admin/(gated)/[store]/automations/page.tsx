@@ -8,6 +8,7 @@ import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
 import { adminText, adminTexts } from "@/lib/admin-text";
 import { LIFECYCLE_KINDS } from "@/lib/automations";
 import { automationDays } from "@/lib/marketing-words";
+import { formatMoney } from "@/lib/money";
 import { featureOn } from "@/lib/store-features";
 import { automationStats, getAutomations } from "@/server/automations";
 import { memberCan, requirePermission } from "@/server/permissions";
@@ -32,6 +33,10 @@ export default async function AutomationsPage({ params }: PageProps<"/admin/[sto
   const w = adminText(lang, "marketing");
   const wa = w.automations;
   const n = (v: number) => v.toLocaleString(ADMIN_LANG_FACTS[lang].locale);
+  const money = (minor: Record<string, number>) =>
+    Object.entries(minor)
+      .map(([currency, amount]) => formatMoney(amount, currency, ADMIN_LANG_FACTS[lang].locale))
+      .join(" + ");
 
   return (
     <div className="flex flex-col gap-6">
@@ -44,6 +49,7 @@ export default async function AutomationsPage({ params }: PageProps<"/admin/[sto
         {LIFECYCLE_KINDS.map((kind) => {
           const a = automations[kind];
           const words = wa.kinds[kind];
+          const after = stats.revenue[kind];
           return (
             <Card
               key={kind}
@@ -58,7 +64,8 @@ export default async function AutomationsPage({ params }: PageProps<"/admin/[sto
               <div className="flex flex-col gap-3">
                 <p className="text-body text-ink">{words.does}</p>
                 <p className="text-body text-ink-2">
-                  {automationDays(kind, a.delayDays ?? 0, wa)} {a.enabled ? fillWords(wa.sentLately, { n: n(stats.sent[kind]) }) : ""}
+                  {automationDays(kind, a.delayDays ?? 0, wa)} {a.enabled ? fillWords(wa.sentLately, { n: n(stats.sent[kind]) }) : ""}{" "}
+                  {after.orders > 0 ? countWords(after.orders, wa.ordersAfter, { n: n(after.orders), amount: money(after.minor) }) : ""}
                 </p>
                 <div className="flex flex-wrap items-start gap-2">
                   <ButtonLink href={`${base}/${kind}`} kind={a.saved ? "quiet" : "main"}>

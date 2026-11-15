@@ -14,6 +14,8 @@ export * from "./automation-kinds";
 export const CATCH_UP_DAYS = 7;
 /** Emails per kind per run (6.2). */
 export const AUTOMATION_BATCH = 200;
+/** An order this many days after an automation's email counts as following it (D4 of `docs/100-day-challenge.md`). */
+export const ORDER_AFTER_DAYS = 7;
 /** How long sends are kept (6.7): longer than any key needs. */
 export const SENDS_KEEP_DAYS = 90;
 

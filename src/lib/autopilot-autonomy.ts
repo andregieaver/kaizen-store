@@ -85,6 +85,8 @@ export const TOOL_AREAS: Readonly<Record<string, AutonomyArea>> = {
   set_bonus_program: "marketing",
   set_affiliate_program: "marketing",
   switch_email_automation: "marketing",
+  // An automation's words and days (D4), as switching it is.
+  write_email_automation: "marketing",
   // A loyalty reward switched on or off (AGT-01), as a discount is.
   switch_loyalty_reward: "marketing",
   // A loyalty reward made or changed (AGT-01), as a discount is made.
@@ -140,6 +142,8 @@ export const NEVER_AUTOMATIC: ReadonlySet<string> = new Set([
   "renew_domain",
   // A broadcast reaches the whole list at once and cannot be called back: a person always reads it first.
   "send_broadcast",
+  // A text message costs money for every number and cannot be called back (D4): a person always reads it first.
+  "send_text_message",
   "refund_order",
   // Cancelling a paid order refunds it in the same step (C6): money back to a customer, so in the challenge it goes to the refund queue.
   "cancel_order",

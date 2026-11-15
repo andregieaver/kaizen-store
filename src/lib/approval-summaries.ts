@@ -212,6 +212,8 @@ export function ownWordsSummary(name: string, input: Record<string, unknown>): s
       return supportSummary(name, input, null);
     case "draft_broadcast":
       return `Have the store's AI write a draft broadcast ${quoted(t("name"), 80)} for ${t("segment") ? `the segment ${quoted(t("segment"), 120)}` : "everyone on the list"}, about: ${quoted(t("brief", 400), 400)}. Nothing is sent.`;
+    case "draft_text_message":
+      return `Save a draft text message ${quoted(t("name"), 80)} for ${t("segment") ? `the segment ${quoted(t("segment"), 120)}` : "everyone subscribed to texts"}: ${quoted(t("text", 600), 600)}. Nothing is sent.`;
     case "log_time": {
       const minutes = numberOf(input, "minutes");
       return ended(

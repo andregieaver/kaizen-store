@@ -55,6 +55,7 @@ export const REVIEW_READ_TOOLS = [
   "list_discounts",
   "list_broadcasts",
   "list_email_automations",
+  "list_text_messages",
   "list_themes",
   "legal_pages_status",
   "list_features",
