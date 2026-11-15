@@ -1,5 +1,7 @@
 import "server-only";
 
+import { z } from "zod";
+
 import { sql } from "drizzle-orm";
 
 import { db } from "@/db/client";
@@ -8,6 +10,7 @@ import { toCsv } from "@/lib/dac7";
 import { AREAS, can, type Area } from "@/lib/permissions";
 
 import { audit, holderOf, type Membership } from "./auth";
+import { col, typedRows } from "./typed-rows";
 import { ACTORS, type Actor } from "./actor";
 
 type Row = Record<string, unknown>;
@@ -127,6 +130,19 @@ export async function listActivity(member: Membership, filters: ActivityFilters 
   `);
   const entries = rows.slice(0, size).map(entryOf);
   return { entries, next: rows.length > size ? entries[entries.length - 1].id : null };
+}
+
+/**
+ * The last seven days of what this viewer may see (round 14, D641): how many entries and by how many people, for the log's sentence.
+ */
+export async function activityWeek(member: Membership): Promise<{ entries: number; people: number }> {
+  const parts = conditions(member, {});
+  parts.push(sql`a.created_at > now() - interval '7 days'`);
+  const [row] = await typedRows(
+    z.object({ entries: col.int, people: col.int }),
+    sql`select count(*)::int as entries, count(distinct a.account_id)::int as people from commerce.audit_log a where ${where(parts)}`,
+  );
+  return row ?? { entries: 0, people: 0 };
 }
 
 /** The people the person filter offers: everyone who ever worked in the store or appears in its log, past members included. */

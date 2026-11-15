@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 
 import { countWords, fillWords } from "@/lib/admin-fill";
 import { type FeatureId, type FeatureRequirement } from "@/lib/store-features";
@@ -36,11 +37,15 @@ export function FeatureOffPanel({
       </h1>
       <p className="text-sm text-muted">{asleep && need ? fillWords(w.asleep, { label: w.labels[asleep], need: needWords(need, w) }) : w.hidden}</p>
       {owner ? (
-        <p>
-          <Link href={`/admin/${storeSlug}/settings/features`} className="inline-flex min-h-11 items-center rounded-pill bg-brand px-4 text-sm font-medium text-brand-ink">
-            {w.goTo}
-          </Link>
-        </p>
+        ids.length === 1 && !asleep ? (
+          <SwitchOn storeSlug={storeSlug} feature={ids[0]} />
+        ) : (
+          <p>
+            <Link href={`/admin/${storeSlug}/settings/features`} className="inline-flex min-h-11 items-center rounded-pill bg-brand px-4 text-sm font-medium text-brand-ink">
+              {w.goTo}
+            </Link>
+          </p>
+        )
       ) : (
         <p className="text-sm">{w.onlyOwner}</p>
       )}
@@ -64,5 +69,26 @@ export function FeatureOffLine({ storeSlug, feature, owner, what }: { storeSlug:
       )}
       .
     </p>
+  );
+}
+
+/**
+ * Switch it on, from the page the feature serves (round 14, D641): a plain form to the store's switch-on route, which comes back here with
+ * the feature on, or opens Features when it is refused (a need that is off). Features stays beside it.
+ */
+function SwitchOn({ storeSlug, feature }: { storeSlug: string; feature: FeatureId }) {
+  const w = useAdminText("common").features;
+  const path = usePathname();
+  return (
+    <form method="post" action={`/admin/${storeSlug}/settings/features/on`} className="flex flex-wrap gap-2">
+      <input type="hidden" name="feature" value={feature} />
+      <input type="hidden" name="back" value={path} />
+      <button type="submit" className="inline-flex min-h-11 items-center rounded-pill bg-brand px-4 text-sm font-medium text-brand-ink">
+        {w.switchOn}
+      </button>
+      <Link href={`/admin/${storeSlug}/settings/features`} className="inline-flex min-h-11 items-center rounded-pill border border-edge bg-card px-4 text-sm text-ink">
+        {w.goTo}
+      </Link>
+    </form>
   );
 }

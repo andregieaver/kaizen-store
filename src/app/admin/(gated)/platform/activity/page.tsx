@@ -31,6 +31,7 @@ export default async function PlatformActivityPage({ searchParams }: PageProps<"
     platformActivityFilters(),
   ]);
   const base = "/admin/platform/activity";
+  const drawnAt = new Date();
   return (
     <div className="flex flex-col gap-6">
       <PageHeader
@@ -39,6 +40,7 @@ export default async function PlatformActivityPage({ searchParams }: PageProps<"
       />
       <ActivityFilters action={base} values={values} people={choices.people} areas={["platform", "account"]} actions={choices.actions} zoneName="UTC" words={staffWords} />
       <ActivityList
+        now={drawnAt.getTime()}
         entries={page.entries}
         zone="UTC"
         words={staffWords}
