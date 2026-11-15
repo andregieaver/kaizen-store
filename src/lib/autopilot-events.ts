@@ -18,6 +18,8 @@ export const EVENT_KINDS = [
   "order_held",
   "dispute_opened",
   "payments_failing",
+  // Stock (C4, D638): a product the store's forecast says may run out before new stock can arrive.
+  "stockout_risk",
 ] as const;
 export type EventKind = (typeof EVENT_KINDS)[number];
 
@@ -34,6 +36,7 @@ export const EVENTS_PER_DAY: Readonly<Record<EventKind, number>> = {
   order_held: 12,
   dispute_opened: 12,
   payments_failing: 4,
+  stockout_risk: 12,
 };
 /** A pending event older than this is no longer worth a turn. */
 export const EVENT_STALE_HOURS = 24;
@@ -55,6 +58,13 @@ export const FAILED_PAYMENTS_MIN = 5;
 export const FAILED_PAYMENTS_SHARE = 0.3;
 /** The tracking phases that mean a parcel is in trouble. */
 export const DELIVERY_PROBLEM_PHASES = ["problem", "attempted", "returned_to_sender"] as const;
+/** A store's stock is forecast for risks in the first minutes of every this many hours (C4): the forecast reads a year of sales. */
+export const STOCKOUT_CHECK_HOURS = 6;
+/** Whether a run at this moment checks stock for risks: the first five minutes of every `STOCKOUT_CHECK_HOURS` hours (UTC). */
+export const stockoutCheckDue = (now: Date): boolean => now.getUTCHours() % STOCKOUT_CHECK_HOURS === 0 && now.getUTCMinutes() < 5;
+/** Variants whose risk one check keeps, the shortest-lasting first. */
+export const STOCKOUT_PER_CHECK = 5;
+
 /** The alerts that bring a turn: urgent and warning, never info or good news. */
 export const EVENT_ALERT_SEVERITIES = ["urgent", "warning"] as const;
 
@@ -88,6 +98,8 @@ export const EVENT_TOOLS: Readonly<Record<EventKind, readonly string[]>> = {
   order_held: ["get_order", "get_customer", "add_order_note"],
   dispute_opened: ["get_order", "get_customer", "add_order_note"],
   payments_failing: ["store_checkup", "store_overview", "analytics_overview", "list_orders"],
+  // A purchase order is placed only within the owner's purchasing budget (C3); outside it, it waits for their yes.
+  stockout_risk: ["restock_suggestions", "stock_levels", "list_purchase_orders", "create_purchase_order"],
 };
 
 /** What the model is told for each kind of event: nobody is there, what the event is for, and what it may never do. */
@@ -145,6 +157,13 @@ export const EVENT_LINES: Readonly<Record<EventKind, string>> = {
     "- Leave one note on the order with add_order_note: what was ordered, sent and delivered, from your tools, for the person who answers it before its deadline.",
     "- End with one plain sentence on it, without the customer's name or contact details: the owner reads it.",
   ].join("\n"),
+  stockout_risk: [
+    "You are working on your own now, as the store's autopilot: the store's forecast says a product may run out before new stock can arrive. Nobody is reading along.",
+    "- Read the figures with restock_suggestions: they are the store's forecast, worked out in code. Never work out a quantity of your own.",
+    "- If list_purchase_orders shows an order for it already on its way, order nothing more.",
+    "- Otherwise, if earlier purchase orders show who supplies it, order the suggested units from that supplier with create_purchase_order. It runs only within the owner's purchasing budget; outside it, it waits for their yes. If no supplier is known, order nothing and say so.",
+    "- End with one or two plain sentences on what you found and did: the owner reads them.",
+  ].join("\n"),
   payments_failing: [
     "You are working on your own now, as the store's autopilot: many payments have failed in the last hours. Nobody is reading along.",
     "- Look with read-only tools at what may be behind it: the store's checkup, its payment set-up and its recent orders. You cannot change anything in this turn. Facts only from your tools.",
@@ -164,6 +183,8 @@ export type SupplierEventFacts = OrderEventFacts & { supplierOrder: string; supp
 export type HeldEventFacts = OrderEventFacts & { byRule: boolean };
 export type DisputeEventFacts = OrderEventFacts & { dispute: string; reason: string; dueBy: string | null };
 export type PaymentsEventFacts = { window: string; failed: number; attempts: number };
+/** A variant at risk of running out (C4): the store's forecast's own figures. */
+export type StockoutEventFacts = { sku: string; product: string; lastsDays: number | null; leadDays: number; suggested: number };
 export type EventFacts =
   | ({ kind: "support_waiting" } & SupportEventFacts)
   | ({ kind: "test_ended" } & TestEventFacts)
@@ -173,7 +194,8 @@ export type EventFacts =
   | ({ kind: "supplier_problem" } & SupplierEventFacts)
   | ({ kind: "order_held" } & HeldEventFacts)
   | ({ kind: "dispute_opened" } & DisputeEventFacts)
-  | ({ kind: "payments_failing" } & PaymentsEventFacts);
+  | ({ kind: "payments_failing" } & PaymentsEventFacts)
+  | ({ kind: "stockout_risk" } & StockoutEventFacts);
 
 export type EventGoal = { id: string; title: string };
 
@@ -238,6 +260,12 @@ export function eventMessage(facts: EventFacts, goals: readonly EventGoal[] = []
         "",
         `Read it with get_order (${facts.order}) and leave one note on it with add_order_note for the person who answers it.`,
       ].join("\n");
+    case "stockout_risk":
+      return [
+        `Autopilot: ${JSON.stringify(clip(facts.product, 120))} (SKU ${clip(facts.sku, 64)}) may run out: at the store's forecast its stock lasts ${facts.lastsDays ?? 0} days, and new stock takes ${facts.leadDays} days to arrive. The store suggests ordering ${facts.suggested} units.`,
+        "",
+        "Read it with restock_suggestions, check list_purchase_orders, and order from its supplier with create_purchase_order if nothing is on its way.",
+      ].join("\n");
     case "payments_failing":
       return [
         `Autopilot: ${facts.failed} of ${facts.attempts} payments in the last ${FAILED_PAYMENTS_HOURS} hours failed.`,
@@ -273,6 +301,8 @@ export function eventRef(facts: EventFacts, today: string): string {
       return facts.dispute;
     case "payments_failing":
       return facts.window;
+    case "stockout_risk":
+      return `${facts.sku}:${isoWeek(today)}`;
   }
 }
 
