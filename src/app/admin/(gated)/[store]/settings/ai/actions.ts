@@ -1,6 +1,6 @@
 "use server";
 
-import { refresh, updateTag } from "next/cache";
+import { refresh } from "next/cache";
 
 import type { FormState } from "@/components/admin/action-form";
 import type { AiEvalResult, AiImageTestResult, AiTestResult, AiVisionCheckResult } from "@/components/admin/ai-provider-form";
@@ -10,7 +10,7 @@ import { adminText } from "@/lib/admin-text";
 import { aiFormValues } from "@/lib/ai-provider";
 import { ASSISTANT_KEEP, ASSISTANT_KEEP_MONTHS } from "@/lib/assistant-keep";
 import { actionAdminLang } from "@/server/admin-request-lang";
-import { AI_TAG, ownConnection, removeAiSettings, saveAiSettings, testAi } from "@/server/ai";
+import { ownConnection, removeAiSettings, saveAiSettings, testAi } from "@/server/ai";
 import { testPicture } from "@/server/ai-pictures";
 import { saveAssistantKeep } from "@/server/assistant-retention";
 import { checkVisionFor } from "@/server/ai-vision";
@@ -31,7 +31,6 @@ export async function saveStoreAiAction(storeSlug: string, _state: FormState, fo
   if (typeof owner === "string") return { status: "error", messages: [owner] };
   const result = await saveAiSettings(owner.account.id, owner.store.id, aiFormValues(formData));
   if (!result.ok) return { status: "error", messages: result.problems };
-  updateTag(AI_TAG);
   refresh();
   return { status: "ok", messages: [wordsOf(owner).saved] };
 }
@@ -47,7 +46,6 @@ export async function removeStoreAiAction(storeSlug: string): Promise<{ ok: true
   const owner = await asOwner(storeSlug);
   if (typeof owner === "string") return { ok: false, problems: [owner] };
   await removeAiSettings(owner.account.id, owner.store.id);
-  updateTag(AI_TAG);
   refresh();
   return { ok: true };
 }

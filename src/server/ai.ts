@@ -25,6 +25,7 @@ import { limitFor, usageNow } from "./limits";
 import { recordUsage, type UsageContext } from "./ai-usage";
 import { audit } from "./auth";
 import { encryptionKey } from "./encryption-key";
+import { refreshTag } from "./refresh";
 
 type Row = Record<string, unknown>;
 
@@ -242,8 +243,14 @@ export async function aiRoomLeft(storeId: string): Promise<boolean> {
   return (await usageNow(storeId, "ai_cost_month_micros")) < limit;
 }
 
-/** Cached reads that depend on which AI a site has (the chat widget, D81); saving or removing a provider updates them. */
-export const AI_TAG = "ai-providers";
+/**
+ * The tag of cached reads that depend on which AI a site has (the chat widget, D81): one per store, `ai:kaizen` for Kaizena Flow's own.
+ * `saveAiSettings()` and `removeAiSettings()` refresh the tag of the site they changed, and only that one: a store's save never expires
+ * another store's pages. A read for a store that may answer with Kaizena Flow's provider carries the platform's tag too.
+ */
+export const aiTag = (storeId: string | null) => `ai:${storeId ?? "kaizen"}`;
+/** The platform's own AI tag (`aiTag(null)`). */
+export const AI_TAG = aiTag(null);
 
 export type SaveResult = { ok: true } | { ok: false; problems: string[] };
 
@@ -354,6 +361,7 @@ export async function saveAiSettings(accountId: string, storeId: string | null, 
     liveBaseUrl,
     newLiveKey: Boolean(liveEncrypted),
   });
+  refreshTag(aiTag(storeId));
   return { ok: true };
 }
 
@@ -361,6 +369,7 @@ export async function saveAiSettings(accountId: string, storeId: string | null, 
 export async function removeAiSettings(accountId: string, storeId: string | null): Promise<void> {
   const rows = await db().execute<Row>(sql`delete from commerce.ai_providers where ${owned(storeId)} returning provider`);
   if (rows.length > 0) await audit(accountId, storeId, storeId ? "ai.removed" : "ai.platform_removed", {});
+  refreshTag(aiTag(storeId));
 }
 
 /** How many stores use their own provider, for Kaizen's page. */

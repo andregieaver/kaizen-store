@@ -22,7 +22,7 @@ import { CHIPS_MAX, type SupportCard, type SupportChip } from "@/lib/support-vis
 import { TRANSCRIPT_DAYS_OFF, type EscalationCategory, type SupportMode } from "@/lib/support-rules";
 import { z } from "zod";
 
-import { AI_TAG, AiError, aiFor, canSpeak, chatWithTools, streamWithTools, type AiConnection, type ToolChatMessage, type ToolDefinition } from "./ai";
+import { AiError, aiFor, aiTag, canSpeak, chatWithTools, streamWithTools, type AiConnection, type ToolChatMessage, type ToolDefinition } from "./ai";
 import { audit, type Account } from "./auth";
 import { brandOf } from "./brand";
 import { campaignNotices } from "./campaign-notices";
@@ -135,7 +135,8 @@ async function cachedDeskSettings(storeId: string | null) {
 export async function chatWidgetFor(storeId: string | null): Promise<ChatWidgetProfile | null> {
   "use cache";
   cacheLife("hours");
-  cacheTag(chatTag(storeId), AI_TAG);
+  // A store without a provider of its own answers with Kaizena Flow's, so its pages keep the platform's tag too.
+  cacheTag(chatTag(storeId), aiTag(storeId), aiTag(null));
   const [agent, connection, settings] = await Promise.all([getChatAgent(storeId), aiFor(storeId), cachedDeskSettings(storeId)]);
   const mode = settings?.mode ?? "off";
   const ai = agent !== null && Boolean(connection?.textModel) && mode !== "people" && (mode === "ai_first" || agent.enabled);
