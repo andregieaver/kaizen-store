@@ -618,6 +618,7 @@ Each item of section 4 moves here when it is built, with its decision.
 | H2 The challenge console | Built: Platform → Settings → 100-day challenge, each store's phase and day, stalls, what waits on the owner and how long, AI cost against budget, people's actions by class and the three ratios since Day 1; setting, changing and ending a challenge. | D614 |
 | E1 One contribution profit | Partly: Finance counts each parcel at its booked label price (the estimate only for the rest); revenue per visitor is measured. Return labels, handling and packaging per order, and the channel figures, still estimates. | D623 |
 | E7 The scoreboard | Built with the original's signed P&L: each challenge store's page, the clone over the same days with its AI and plan as costs, the three ratios, the leader and the 80 % ad-money rule. Reading the original from Shopify's API, and the frozen baseline, are not built. | D623 |
+| F4 Watch and roll back | Built: each undoable change judged hourly on conversion and add-to-cart against the same hours of four weeks, a clear fall undone (prices, codes, campaigns, the theme, ad budgets). Pages published and errors are not watched yet. | D628 |
 | F5 Protect the store from deploys | Built: the AI's versions pinned and every change logged on the challenge (the console shows it), the store's front page and cart in every deploy's smoke, and a rollback runbook. A test checkout in the smoke is not built. | D625 |
 | C2 Supplier orders as tools and events | Built: `list_supplier_orders`, `answer_supplier_order` (send again or cancel), and the `supplier_problem` event. | D621 |
 | C3 Purchase orders by the AI | Built: `create_purchase_order`, placed and emailed to a known supplier, within a purchasing budget per order and a month (the owner's, or the challenge's). | D621 |
@@ -648,6 +649,6 @@ In order of the Day 1 minimum (8.1):
 - **C (rest):** telling a customer of a delay or a parcel's trouble (an event writes to nobody today: a plan or a code-sent email), C4's demand forecast.
 - **B3:** staff requests carried out by code (address change, cancellation).
 - **E1 (rest) and E7 (rest):** return labels, handling and packaging in contribution; the original read from Shopify's API; the baseline frozen before Day 1.
-- **F4:** the hourly watch after each change, rolling back a clear fall.
+- **F4 (rest):** a page published rolled back through its versions; errors per hour.
 - **D1 and D4:** Meta campaigns of the AI's own, and retention flows it writes, during the first weeks of the run.
 

@@ -280,6 +280,12 @@ export const consoleEn = {
       adMoney: "Ad money agreed for each store over the 100 days (store currency)",
     },
     openBoard: "Open the scoreboard",
+    watch: {
+      title: "Changes rolled back",
+      none: "The watch found no clear fall after any of the autopilot's changes in the last 14 days.",
+      undone: "Undone: {what}.",
+      notUndone: "Not undone: someone changed it since, or it could not be.",
+    },
     pin: {
       title: "The store's AI",
       notPinned: "Not pinned yet: it is pinned within five minutes of challenge mode coming on.",
