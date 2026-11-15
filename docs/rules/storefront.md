@@ -180,7 +180,9 @@ changing it; a rule changes here, and its line in CLAUDE.md when its gist change
 - **Content types (wave 6 unit H, D326, `docs/wave-6-catalogue.md` Unit H)**: an owner's own kinds of content (`commerce.content_types`, a
   fixed `key`, a web name, fields from `FIELD_TYPES`, title, summary and picture fields, `has_pages`, an `entry_layout` page) and their
   entries (`commerce.content_entries`, a draft and a published `EntryContent`), a store's (Website → Content) or Kaizena Flow's own (`store_id`
-  null, `/admin/platform/content`, no money or file field); every query asks `store_id is not distinct from`. Types are written only by
+  null, `/admin/platform/content`, no money or file field); every query filters with `owned(storeId)` (`src/server/owned.ts`): the store's rows,
+  or the rows with no store for Kaizena Flow; never `is not distinct from`, which no index serves (`ratchet.scan.test.ts` counts it per file).
+  Types are written only by
   `src/server/content-types.ts` and entries only by `src/server/content-entries.ts`, values checked and drawn by the custom fields' own
   functions (`typeAsGroup()`); the screens are the shared views of `components/admin/content-views.tsx` given a `ContentSite`, and the editors' views are
   `content-type-views.tsx` and `content-entry-views.tsx`, so the lists do not load an editor. The field type
@@ -655,6 +657,7 @@ changing it; a rule changes here, and its line in CLAUDE.md when its gist change
   (`src/lib/cookie-scan.ts`, no database, tested in e2e against a small
   site) runs from `/api/cron/cookie-scan` via `cookie-scan-runner.ts`, the
   only module that loads Chromium; keep it out of other routes' imports.
+  A site is scanned weekly; a failed scan is tried again after an hour, and after a day from the third failure in a row.
   A store's own code (D61, `src/lib/custom-code.ts`, `stores.custom_code`)
   is added in the browser: necessary code at once, the rest by
   `ConsentManager` after consent. Pass it through `liveCustomCode()`, which

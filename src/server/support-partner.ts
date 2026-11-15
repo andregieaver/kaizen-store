@@ -18,6 +18,7 @@ import { getStore } from "./stores";
 import { addMessage, deskSettings, presence, SupportError } from "./support";
 import type { StaffDesk } from "./support-desk";
 import { adminPages, myStores, storeStatus } from "./support-kaizen";
+import { owned } from "./owned";
 
 type Row = Record<string, unknown>;
 
@@ -82,7 +83,7 @@ async function factsOf(staff: StaffDesk, conversationId: string): Promise<Conver
       c.locale, c.market, c.page_path, c.source, cu.name as customer_name, cu.email as customer_email
     from commerce.support_conversations c
     left join commerce.customers cu on cu.store_id = c.store_id and cu.id = c.customer_id
-    where c.id = ${conversationId}::uuid and c.store_id is not distinct from ${staff.desk.storeId}::uuid and c.anonymised_at is null
+    where c.id = ${conversationId}::uuid and ${owned(staff.desk.storeId, sql`c.store_id`)} and c.anonymised_at is null
   `);
   if (!row) return null;
   const text = (v: unknown) => (v === null || v === undefined || v === "" ? null : String(v));
@@ -110,7 +111,7 @@ async function factsOf(staff: StaffDesk, conversationId: string): Promise<Conver
 async function history(staff: StaffDesk, conversationId: string): Promise<{ author: string; body: string }[]> {
   const rows = await db().execute<Row>(sql`
     select author, body from commerce.support_messages
-    where conversation_id = ${conversationId}::uuid and store_id is not distinct from ${staff.desk.storeId}::uuid and author in ('customer', 'ai', 'agent')
+    where conversation_id = ${conversationId}::uuid and ${owned(staff.desk.storeId)} and author in ('customer', 'ai', 'agent')
     order by seq desc limit ${AI_HISTORY}
   `);
   return rows.reverse().map((r) => ({ author: String(r.author), body: String(r.body) }));
@@ -285,7 +286,7 @@ async function earlier(staff: StaffDesk, facts: ConversationFacts) {
   if (!who) return [];
   const rows = await db().execute<Row>(sql`
     select c.created_at, c.summary from commerce.support_conversations c
-    where c.store_id is not distinct from ${staff.desk.storeId}::uuid and ${who} and c.id <> ${facts.id}::uuid and c.anonymised_at is null
+    where ${owned(staff.desk.storeId, sql`c.store_id`)} and ${who} and c.id <> ${facts.id}::uuid and c.anonymised_at is null
     order by c.created_at desc limit 5
   `);
   return rows.map((r) => {

@@ -24,6 +24,7 @@ import { audit, type Account } from "./auth";
 import { refreshRedirects } from "./redirect-live";
 import { getStore, storeSlugOf } from "./stores";
 import type { RuleChoices, RuleCount } from "./term-rules";
+import { owned } from "./owned";
 
 /**
  * Categories and tags (D50): Kaizen's for its pages, and each store's for
@@ -57,7 +58,7 @@ const toTerm = (row: Row): Term => ({
 const TERM_COLUMNS = sql.raw("id, kind, parent_id, name, slug, requires_unit_price, seo, description, image_url, image_thumbnail_url, texts, rules");
 
 const scopeWhere = (scope: TermScope) =>
-  sql`store_id is not distinct from ${scope.storeId}::uuid and content_type = ${scope.contentType}`;
+  sql`${owned(scope.storeId)} and content_type = ${scope.contentType}`;
 
 /** Every category and tag of a scope, by name: for the admin. */
 export async function listTerms(scope: TermScope): Promise<Term[]> {

@@ -6,6 +6,8 @@ import { db } from "@/db/client";
 import { parsePageContent, type PageContent, type PageType } from "@/lib/page-content";
 import { VERSIONS_KEPT, type PageVersionItem, type VersionKind } from "@/lib/page-versions";
 
+import { owned } from "./owned";
+
 /**
  * A page's versions (D305): what was saved, published or changed on the site, kept so a person can look back and take an earlier version
  * into the page builder. A version is written in the same transaction as the save it records, only by `keepVersion()`, and never changed
@@ -50,7 +52,7 @@ export async function listVersions(owner: string | null, page: string, type: Pag
     from commerce.page_versions v
     join commerce.pages p on p.id = v.page_id
     left join commerce.accounts a on a.id = v.created_by
-    where v.page_id = ${page}::uuid and p.store_id is not distinct from ${owner}::uuid and p.type = ${type}
+    where v.page_id = ${page}::uuid and ${owned(owner, sql`p.store_id`)} and p.type = ${type}
     order by v.created_at desc, v.id desc
     limit ${VERSIONS_KEPT}
   `);
@@ -68,7 +70,7 @@ export async function readVersion(owner: string | null, page: string, type: Page
   const [row] = await db().execute<Row>(sql`
     select v.content from commerce.page_versions v
     join commerce.pages p on p.id = v.page_id
-    where v.id = ${version}::uuid and v.page_id = ${page}::uuid and p.store_id is not distinct from ${owner}::uuid and p.type = ${type}
+    where v.id = ${version}::uuid and v.page_id = ${page}::uuid and ${owned(owner, sql`p.store_id`)} and p.type = ${type}
   `);
   return row ? parsePageContent(row.content) : null;
 }

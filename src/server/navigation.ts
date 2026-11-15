@@ -11,6 +11,7 @@ import { audit, type Membership } from "./auth";
 import { refreshTag } from "./refresh";
 import type { SaveResult } from "./settings";
 import { storeTag } from "./stores";
+import { owned } from "./owned";
 
 type Row = Record<string, unknown>;
 
@@ -43,7 +44,7 @@ export async function ownMenus(storeId: string | null, ids: (string | null)[]): 
   if (wanted.length === 0) return new Set();
   const rows = await db().execute<Row>(sql`
     select id from commerce.menus
-    where store_id is not distinct from ${storeId}::uuid and id in (${sql.join(wanted.map((id) => sql`${id}::uuid`), sql`, `)})
+    where ${owned(storeId)} and id in (${sql.join(wanted.map((id) => sql`${id}::uuid`), sql`, `)})
   `);
   return new Set(rows.map((row) => String(row.id)));
 }

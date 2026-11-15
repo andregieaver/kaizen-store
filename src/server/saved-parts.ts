@@ -14,6 +14,7 @@ import { audit, type Account } from "./auth";
 import { GlobalsRefused, globalsIn, lockSavedParts, spreadGlobals, type StoredPart } from "./global-parts";
 import { ownerLanguages } from "./pages";
 import { NOT_OWNER, isStoreOwner } from "./templates";
+import { owned } from "./owned";
 
 /**
  * Saved rows, columns and components (D46) for the page builder's Saved
@@ -37,11 +38,11 @@ export async function listSavedParts(owner: Owner): Promise<SavedPart[]> {
     select sp.id, sp.kind, sp.name, sp.content, sp.updated_at, sp.global, sp.translations, sp.sharing,
       case when sp.global then (
         select count(*)::int from commerce.pages p
-        where p.store_id is not distinct from sp.store_id
+        where ${owned(owner, sql`p.store_id`)}
           and (p.draft::text like '%' || sp.id::text || '%' or coalesce(p.published::text, '') like '%' || sp.id::text || '%')
       ) else 0 end as uses
     from commerce.saved_parts sp
-    where sp.store_id is not distinct from ${owner}::uuid
+    where ${owned(owner, sql`sp.store_id`)}
     order by sp.kind, lower(sp.name), sp.created_at
   `);
   return rows.flatMap((row) => {
@@ -121,7 +122,7 @@ export async function createSavedPart(account: Account, owner: Owner, input: unk
     const parts = await lockSavedParts(tx, owner);
     // Whole page layouts (D127) are not among the locked parts (never global) but count toward the same limit.
     const [layouts] = await tx.execute<Row>(sql`
-      select count(*)::int as n from commerce.saved_parts where store_id is not distinct from ${owner}::uuid and kind = 'page'
+      select count(*)::int as n from commerce.saved_parts where ${owned(owner)} and kind = 'page'
     `);
     if (parts.length + Number(layouts.n) >= SAVED_PARTS_MAX) {
       return { ok: false, problems: [`At most ${SAVED_PARTS_MAX} saved parts. Delete some first.`] };
@@ -162,7 +163,7 @@ export async function updateSavedPart(account: Account, owner: Owner, id: string
     const parts = await lockSavedParts(tx, owner);
     const before = parts.find((p) => p.id === id && p.kind === kind);
     const [current] = await tx.execute<Row>(sql`
-      select sharing, kind from commerce.saved_parts where id = ${id}::uuid and store_id is not distinct from ${owner}::uuid for update
+      select sharing, kind from commerce.saved_parts where id = ${id}::uuid and ${owned(owner)} for update
     `);
     if (!current || current.kind !== kind || (kind !== "page" && !before)) {
       return { ok: false, problems: ["This saved part no longer exists."] };
@@ -175,7 +176,7 @@ export async function updateSavedPart(account: Account, owner: Owner, id: string
         update commerce.saved_parts
            set name = ${name}, content = ${JSON.stringify(plainLayout(parsed.data.content))}::jsonb, sharing = ${shared},
                updated_at = now(), updated_by = ${account.id}::uuid
-         where id = ${id}::uuid and store_id is not distinct from ${owner}::uuid
+         where id = ${id}::uuid and ${owned(owner)}
       `);
       return { ok: true, id, parts: [] };
     }
@@ -187,7 +188,7 @@ export async function updateSavedPart(account: Account, owner: Owner, id: string
       update commerce.saved_parts
          set name = ${name}, content = ${JSON.stringify(ready.content)}::jsonb, global = ${global}, sharing = ${shared},
              translations = ${JSON.stringify(ready.translations)}::jsonb, updated_at = now(), updated_by = ${account.id}::uuid
-       where id = ${id}::uuid and store_id is not distinct from ${owner}::uuid
+       where id = ${id}::uuid and ${owned(owner)}
     `);
     const after: StoredPart = { ...before!, name, global, ...ready };
     const changed = global && before!.global && !sameGlobal(parsed.data.kind, ready, before!);
@@ -224,13 +225,13 @@ export async function deleteSavedPart(account: Account, owner: Owner, id: string
     if (!part) {
       // A whole page layout (D127) is not global, so it is not among the locked parts.
       const [layout] = await tx.execute<Row>(sql`
-        delete from commerce.saved_parts where id = ${id}::uuid and store_id is not distinct from ${owner}::uuid and kind = 'page'
+        delete from commerce.saved_parts where id = ${id}::uuid and ${owned(owner)} and kind = 'page'
         returning name
       `);
       if (layout) name = layout.name;
       return { ok: true, id, parts: [] };
     }
-    await tx.execute(sql`delete from commerce.saved_parts where id = ${id}::uuid and store_id is not distinct from ${owner}::uuid`);
+    await tx.execute(sql`delete from commerce.saved_parts where id = ${id}::uuid and ${owned(owner)}`);
     name = part.name;
     if (part.global) {
       const spread = await spreadGlobals(tx, {

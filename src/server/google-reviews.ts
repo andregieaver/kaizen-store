@@ -18,6 +18,7 @@ import { decryptSecret, encryptSecret } from "@/lib/secret-box";
 
 import { audit } from "./auth";
 import { encryptionKey } from "./encryption-key";
+import { owned } from "./owned";
 
 type Row = Record<string, unknown>;
 
@@ -34,8 +35,6 @@ const API = "https://places.googleapis.com/v1";
 const TIMEOUT_MS = 8_000;
 
 export type GoogleSettings = { hint: string; place: GooglePlace | null };
-
-const owned = (storeId: string | null) => (storeId ? sql`store_id = ${storeId}::uuid` : sql`store_id is null`);
 
 /** The owner's saved key (as a hint) and business; null when none. */
 export async function getGoogleSettings(storeId: string | null): Promise<GoogleSettings | null> {

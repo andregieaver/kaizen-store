@@ -201,4 +201,71 @@ describe("cookie scans (D58)", () => {
       await db().execute(sql`update commerce.stores set custom_code = '{}'::jsonb where id = ${demoId}::uuid`);
     }
   });
+
+  // The schedule's pick (step 0.23): other sites are marked scanned just now, so only the sites a case names are due.
+  const otherSitesScanned = async (due: (string | null)[]) => {
+    await db().execute(sql`delete from commerce.cookie_scans`);
+    await db().execute(sql`
+      insert into commerce.cookie_scans (store_id, status, started_at, finished_at)
+      select s.id, 'done', now(), now() from commerce.stores s
+      where s.status = 'active' and not s.starter and (s.is_template or s.setup_completed_at is not null)
+        and exists (select 1 from commerce.markets m where m.store_id = s.id and m.active)
+        and s.id <> all(${`{${due.filter(Boolean).join(",")}}`}::uuid[])
+    `);
+    if (!due.includes(null)) await db().execute(sql`insert into commerce.cookie_scans (store_id, status, started_at, finished_at) values (null, 'done', now(), now())`);
+  };
+  const failedAgo = (store: string | null, hours: number[]) =>
+    db().execute(sql`
+      insert into commerce.cookie_scans (store_id, status, created_at, started_at, finished_at, error)
+      select ${store}::uuid, 'failed', now() - make_interval(hours => h), now() - make_interval(hours => h), now() - make_interval(hours => h), 'No browser here.'
+      from unnest(${`{${hours.join(",")}}`}::int[]) as h
+    `);
+  const failedMinutesAgo = (store: string | null, minutes: number) =>
+    db().execute(sql`
+      insert into commerce.cookie_scans (store_id, status, created_at, finished_at)
+      values (${store}::uuid, 'failed', now() - make_interval(mins => ${minutes}), now() - make_interval(mins => ${minutes}))
+    `);
+  const release = () => db().execute(sql`update commerce.cookie_scans set status = 'failed', finished_at = now() where status = 'running'`);
+
+  it("backs a failing site off: an hour after one failure, a day from the third in a row", async () => {
+    await otherSitesScanned([null]);
+    await failedAgo(null, [4, 3, 2]);
+    expect(await claimScan()).toBeNull();
+    await db().execute(sql`update commerce.cookie_scans set created_at = created_at - interval '21 hours' where store_id is null`);
+    expect(await claimScan()).toBeNull();
+    await db().execute(sql`update commerce.cookie_scans set created_at = created_at - interval '3 hours' where store_id is null`);
+    expect((await claimScan())?.storeId).toBeNull();
+    await release();
+
+    // One failure is tried again after an hour.
+    await otherSitesScanned([null]);
+    await failedMinutesAgo(null, 59);
+    expect(await claimScan()).toBeNull();
+    await db().execute(sql`update commerce.cookie_scans set created_at = now() - interval '61 minutes' where store_id is null`);
+    expect((await claimScan())?.storeId).toBeNull();
+    await release();
+
+    // A scan that finished ends the run of failures: the next failure is an hour's wait again.
+    await otherSitesScanned([null]);
+    await failedAgo(null, [200, 199, 198]);
+    await db().execute(sql`
+      insert into commerce.cookie_scans (store_id, status, created_at, finished_at) values (null, 'done', now() - interval '190 hours', now() - interval '190 hours')
+    `);
+    await failedMinutesAgo(null, 61);
+    expect((await claimScan())?.storeId).toBeNull();
+    await release();
+  });
+
+  it("does not let a failing site go before a healthy one that is due", async () => {
+    await otherSitesScanned([null, demoId]);
+    // Kaizena Flow failed 2 hours ago (never scanned); the demo store was last scanned, and last tried, 8 days ago.
+    await failedAgo(null, [2]);
+    await db().execute(sql`
+      insert into commerce.cookie_scans (store_id, status, created_at, finished_at)
+      values (${demoId}::uuid, 'done', now() - interval '8 days', now() - interval '8 days')
+    `);
+    expect((await claimScan())?.storeId).toBe(demoId);
+    expect((await claimScan())?.storeId).toBeNull();
+    await db().execute(sql`delete from commerce.cookie_scans`);
+  });
 });

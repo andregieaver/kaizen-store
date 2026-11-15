@@ -23,6 +23,7 @@ import type { SaveResult } from "./settings";
 import { clearEntryRefs } from "./content-refs";
 import { savePage } from "./pages";
 import { col, typedRow, typedRows, type Executor } from "./typed-rows";
+import { owned } from "./owned";
 
 /**
  * Content types (wave 6 unit H, D326): the only writer of `commerce.content_types`. An owner is a store, or Kaizena Flow's own site
@@ -77,7 +78,7 @@ const typeColumns = sql`
 export async function listContentTypes(owner: string | null, run: Executor = db()): Promise<ContentType[]> {
   const rows = await typedRows(
     TYPE_ROW,
-    sql`select ${typeColumns} from commerce.content_types t where t.store_id is not distinct from ${owner}::uuid order by t.position, lower(t.name), t.id`,
+    sql`select ${typeColumns} from commerce.content_types t where ${owned(owner, sql`t.store_id`)} order by t.position, lower(t.name), t.id`,
     run,
   );
   return rows.map(toType);
@@ -88,7 +89,7 @@ export async function getContentType(owner: string | null, id: string, run: Exec
   if (!z.uuid().safeParse(id).success) return null;
   const row = await typedRow(
     TYPE_ROW,
-    sql`select ${typeColumns} from commerce.content_types t where t.store_id is not distinct from ${owner}::uuid and t.id = ${id}::uuid`,
+    sql`select ${typeColumns} from commerce.content_types t where ${owned(owner, sql`t.store_id`)} and t.id = ${id}::uuid`,
     run,
   );
   return row ? toType(row) : null;
@@ -98,7 +99,7 @@ export async function getContentType(owner: string | null, id: string, run: Exec
 export async function contentTypeByKey(owner: string | null, key: string, run: Executor = db()): Promise<ContentType | null> {
   const row = await typedRow(
     TYPE_ROW,
-    sql`select ${typeColumns} from commerce.content_types t where t.store_id is not distinct from ${owner}::uuid and t.key = ${key}`,
+    sql`select ${typeColumns} from commerce.content_types t where ${owned(owner, sql`t.store_id`)} and t.key = ${key}`,
     run,
   );
   return row ? toType(row) : null;
@@ -135,7 +136,7 @@ export async function saveContentType(actor: ContentActor, raw: unknown): Promis
     const result = await db().transaction(async (tx): Promise<SaveResult & { id?: string }> => {
       if (input.id) {
         const [locked] = await tx.execute(
-          sql`select id from commerce.content_types where store_id is not distinct from ${actor.owner}::uuid and id = ${input.id}::uuid for update`,
+          sql`select id from commerce.content_types where ${owned(actor.owner)} and id = ${input.id}::uuid for update`,
         );
         const existing = locked ? await getContentType(actor.owner, input.id, tx) : null;
         if (!existing) return { ok: false, problems: ["That content type no longer exists."] };
@@ -160,7 +161,7 @@ export async function saveContentType(actor: ContentActor, raw: unknown): Promis
         insert into commerce.content_types (store_id, key, name, slug, fields, title_field, summary_field, picture_field, has_pages, position, updated_by)
         values (${actor.owner}::uuid, ${newTypeKey()}, ${input.name}, ${input.slug}, ${JSON.stringify(fields)}::jsonb, ${input.titleField},
           ${input.summaryField}, ${input.pictureField}, ${input.hasPages},
-          (select coalesce(max(position) + 1, 0) from commerce.content_types where store_id is not distinct from ${actor.owner}::uuid),
+          (select coalesce(max(position) + 1, 0) from commerce.content_types where ${owned(actor.owner)}),
           ${actor.accountId}::uuid)
         returning id
       `);
@@ -207,10 +208,10 @@ export async function deleteContentType(actor: ContentActor, id: string): Promis
     // Its entries go with it (the foreign key cascades), and every reference to them, as deleting each would.
     const gone = await typedRows(
       z.object({ id: col.uuid }),
-      sql`select id from commerce.content_entries where store_id is not distinct from ${actor.owner}::uuid and type_id = ${id}::uuid`,
+      sql`select id from commerce.content_entries where ${owned(actor.owner)} and type_id = ${id}::uuid`,
       tx,
     );
-    await tx.execute(sql`delete from commerce.content_types where store_id is not distinct from ${actor.owner}::uuid and id = ${id}::uuid`);
+    await tx.execute(sql`delete from commerce.content_types where ${owned(actor.owner)} and id = ${id}::uuid`);
     await clearEntryRefs(
       tx,
       actor.owner,
@@ -236,7 +237,7 @@ export async function designEntryLayout(account: Account, owner: string | null, 
   if (!saved.ok) return { ok: false, problems: "problems" in saved ? saved.problems : ["The entry page could not be made."] };
   await db().execute(sql`
     update commerce.content_types set layout_id = ${saved.id}::uuid, updated_by = ${account.id}::uuid
-    where store_id is not distinct from ${owner}::uuid and id = ${type.id}::uuid and layout_id is null
+    where ${owned(owner)} and id = ${type.id}::uuid and layout_id is null
   `);
   await audit(account.id, owner, "content.layout_made", { type: type.id, page: saved.id });
   return { ok: true, id: saved.id };
@@ -247,7 +248,7 @@ export async function typeOfLayout(owner: string | null, pageId: string): Promis
   if (!z.uuid().safeParse(pageId).success) return null;
   const row = await typedRow(
     TYPE_ROW,
-    sql`select ${typeColumns} from commerce.content_types t where t.store_id is not distinct from ${owner}::uuid and t.layout_id = ${pageId}::uuid`,
+    sql`select ${typeColumns} from commerce.content_types t where ${owned(owner, sql`t.store_id`)} and t.layout_id = ${pageId}::uuid`,
   );
   return row ? toType(row) : null;
 }
@@ -264,7 +265,7 @@ export async function orderContentTypes(actor: ContentActor, ids: string[]): Pro
     for (const [index, id] of valid.entries()) {
       await tx.execute(sql`
         update commerce.content_types set position = ${index}
-        where store_id is not distinct from ${actor.owner}::uuid and id = ${id}::uuid
+        where ${owned(actor.owner)} and id = ${id}::uuid
       `);
     }
   });

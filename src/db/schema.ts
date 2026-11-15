@@ -9716,6 +9716,11 @@ export const cookieScans = commerce.table(
   },
   (t) => [
     index("cookie_scans_store_created_idx").on(t.storeId, t.createdAt),
+    // The due check reads a site's newest scan and newest finished one by the same expression the unique index below uses (step 0.23).
+    index("cookie_scans_site_created_idx").on(sql`coalesce(${t.storeId}, '00000000-0000-0000-0000-000000000000'::uuid)`, t.createdAt.desc()),
+    index("cookie_scans_site_done_idx")
+      .on(sql`coalesce(${t.storeId}, '00000000-0000-0000-0000-000000000000'::uuid)`, t.finishedAt.desc())
+      .where(sql`${t.status} = 'done'`),
     index("cookie_scans_requested_by_idx").on(t.requestedBy),
     uniqueIndex("cookie_scans_one_active_idx")
       .on(sql`coalesce(${t.storeId}, '00000000-0000-0000-0000-000000000000'::uuid)`)

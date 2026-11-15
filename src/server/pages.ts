@@ -46,6 +46,7 @@ import { withoutItems } from "@/lib/menu-structure";
 import { normalisePath } from "@/lib/redirect-path";
 import { refreshRedirects } from "./redirect-live";
 import { redirectDeletedPage } from "./redirects";
+import { owned } from "./owned";
 
 /**
  * Pages built in the page builder (D42), Kaizen's own (`owner` null, served
@@ -67,7 +68,7 @@ export const PAGES_TAG = "platform-pages";
 /** The same for an owner: Kaizen's, or a store's. */
 export const pagesTag = (owner: PageOwner) => (owner === null ? PAGES_TAG : `pages:${owner}`);
 
-const ownedBy = (owner: PageOwner, type: PageType) => sql`store_id is not distinct from ${owner}::uuid and type = ${type}`;
+const ownedBy = (owner: PageOwner, type: PageType) => sql`${owned(owner)} and type = ${type}`;
 
 export type PageState = "draft" | "published" | "changed";
 
@@ -574,7 +575,7 @@ export async function deletePage(account: Account, owner: PageOwner, id: string,
     if (!row) return null;
     const slug = String(row.slug);
     const gone = { products: [], categories: [], tags: [], blogCategories: [], pages: type === "page" ? [slug] : [], articles: type === "article" ? [slug] : [] };
-    const menus = await tx.execute<Row>(sql`select id, items from commerce.menus where store_id is not distinct from ${owner}::uuid for update`);
+    const menus = await tx.execute<Row>(sql`select id, items from commerce.menus where ${owned(owner)} for update`);
     for (const menu of menus) {
       const items = Array.isArray(menu.items) ? (menu.items as { depth: number; link?: unknown }[]) : [];
       const left = withoutItems(
@@ -691,10 +692,10 @@ export async function findPublishedPage(
   const [row] = await readDb().execute<Row>(sql`
     select p.id, p.slug, p.published, p.published_at, p.first_published_at, p.slug <> ${slug} as moved
     from commerce.pages p
-    where p.store_id is not distinct from ${owner}::uuid and p.type = ${type} and p.published_at is not null
+    where ${owned(owner, sql`p.store_id`)} and p.type = ${type} and p.published_at is not null
       and (p.slug = ${slug} or p.id = (
         select r.page_id from commerce.page_redirects r
-        where r.store_id is not distinct from ${owner}::uuid and r.type = ${type} and r.slug = ${slug}
+        where ${owned(owner, sql`r.store_id`)} and r.type = ${type} and r.slug = ${slug}
       ))
     order by moved
     limit 1
@@ -725,12 +726,12 @@ export async function publishedPageNames(
   const rows = await readDb().execute<Row>(sql`
     select p.slug as address, p.slug, ${title} as title
     from commerce.pages p
-    where p.store_id is not distinct from ${owner}::uuid and p.type = ${type} and p.published_at is not null
+    where ${owned(owner, sql`p.store_id`)} and p.type = ${type} and p.published_at is not null
     union all
     select r.slug, p.slug, ${title}
     from commerce.page_redirects r
     join commerce.pages p on p.id = r.page_id and p.published_at is not null
-    where r.store_id is not distinct from ${owner}::uuid and r.type = ${type}
+    where ${owned(owner, sql`r.store_id`)} and r.type = ${type}
   `);
   return rows.map((row) => [String(row.address), { slug: String(row.slug), title: String(row.title ?? row.slug) }]);
 }

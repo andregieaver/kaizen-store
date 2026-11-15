@@ -28,6 +28,7 @@ import { recordUsage, type UsageContext } from "./ai-usage";
 import { audit } from "./auth";
 import { encryptionKey } from "./encryption-key";
 import { refreshTag } from "./refresh";
+import { owned } from "./owned";
 
 type Row = Record<string, unknown>;
 
@@ -140,9 +141,6 @@ function toSettings(row: Row): AiSettings {
     updatedAt: new Date(String(row.updated_at)).toISOString(),
   };
 }
-
-const owned = (storeId: string | null) =>
-  storeId ? sql`store_id = ${storeId}::uuid` : sql`store_id is null`;
 
 /** Kaizen's settings (null) or a store's own, as saved; null when none. */
 export async function getAiSettings(storeId: string | null): Promise<AiSettings | null> {
@@ -392,12 +390,12 @@ export async function saveAiSettings(accountId: string, storeId: string | null, 
       ${input.transcriptionModel}, ${input.speechModel}, ${input.speechVoice},
       ${input.imageModel}, ${input.imageProvider}, ${imageBaseUrl},
       -- A kept key is carried into the row itself: the row's checks see it before the update does.
-      case when ${input.imageProvider}::text is not null then coalesce(${imageEncrypted}::text, (select p.image_api_key_encrypted from commerce.ai_providers p where p.store_id is not distinct from ${storeId}::uuid)) end,
-      case when ${input.imageProvider}::text is not null then coalesce(${imageHint}::text, (select p.image_api_key_hint from commerce.ai_providers p where p.store_id is not distinct from ${storeId}::uuid)) end,
+      case when ${input.imageProvider}::text is not null then coalesce(${imageEncrypted}::text, (select p.image_api_key_encrypted from commerce.ai_providers p where ${owned(storeId, sql`p.store_id`)})) end,
+      case when ${input.imageProvider}::text is not null then coalesce(${imageHint}::text, (select p.image_api_key_hint from commerce.ai_providers p where ${owned(storeId, sql`p.store_id`)})) end,
       ${input.imageQuality}, ${input.imageEditModel},
       ${input.liveModel}, ${input.liveVoice}, ${input.liveProvider}, ${liveBaseUrl},
-      case when ${input.liveProvider}::text is not null then coalesce(${liveEncrypted}::text, (select p.live_api_key_encrypted from commerce.ai_providers p where p.store_id is not distinct from ${storeId}::uuid)) end,
-      case when ${input.liveProvider}::text is not null then coalesce(${liveHint}::text, (select p.live_api_key_hint from commerce.ai_providers p where p.store_id is not distinct from ${storeId}::uuid)) end,
+      case when ${input.liveProvider}::text is not null then coalesce(${liveEncrypted}::text, (select p.live_api_key_encrypted from commerce.ai_providers p where ${owned(storeId, sql`p.store_id`)})) end,
+      case when ${input.liveProvider}::text is not null then coalesce(${liveHint}::text, (select p.live_api_key_hint from commerce.ai_providers p where ${owned(storeId, sql`p.store_id`)})) end,
       ${input.minSimilarity}, ${input.embeddingEuOnly}, ${input.textEuOnly}, ${input.zeroDataRetention}, ${pgTextArray(input.fallbackModels)}::text[], ${input.enabled}, ${accountId}::uuid
     )
     on conflict (store_id) do update set

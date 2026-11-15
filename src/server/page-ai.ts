@@ -48,6 +48,7 @@ import { getGoogleSettings } from "./google-reviews";
 import { listPublishedPages, ownerLanguages, savePage } from "./pages";
 import { getStore } from "./stores";
 import { siteTerms } from "./taxonomy";
+import { owned } from "./owned";
 
 type Row = Record<string, unknown>;
 
@@ -329,7 +330,7 @@ export async function buildDraft(
   // The plan comes back from the browser: checked again as when it was made.
   const { plan, notes } = checkPlan(planned, facts, words);
   const written = await inTurns(plan.sections, WRITING_AT_ONCE, (_, index) => writeSection(connection, facts, brief, plan, index, words));
-  const taken = await db().execute<Row>(sql`select slug from commerce.pages where store_id is not distinct from ${owner.storeId}::uuid and type = 'page'`);
+  const taken = await db().execute<Row>(sql`select slug from commerce.pages where ${owned(owner.storeId)} and type = 'page'`);
   const built = buildPage(plan, written.map((w) => w.copy), facts, {
     newId: randomUUID,
     takenSlugs: taken.map((row) => String(row.slug)),
@@ -469,7 +470,7 @@ export async function fillPicture(owner: StudioOwner, pageId: string, raw: unkno
   const connection = await aiFor(owner.storeId, { feature: "page_studio", accountId: owner.account.id });
   if (!connection?.image) return { ok: false, problem: "Set up a picture model under AI settings to make pictures.", outcome: "final" };
   const [page] = await db().execute<Row>(sql`
-    select id from commerce.pages where id = ${pageId}::uuid and store_id is not distinct from ${owner.storeId}::uuid and type in ('page', 'article')
+    select id from commerce.pages where id = ${pageId}::uuid and ${owned(owner.storeId)} and type in ('page', 'article')
   `);
   if (!page) return { ok: false, problem: "The page is gone.", outcome: "gone" };
 
@@ -485,7 +486,7 @@ export async function fillPicture(owner: StudioOwner, pageId: string, raw: unkno
 
   const placed = await db().transaction(async (tx) => {
     const [row] = await tx.execute<Row>(sql`
-      select draft from commerce.pages where id = ${pageId}::uuid and store_id is not distinct from ${owner.storeId}::uuid for update
+      select draft from commerce.pages where id = ${pageId}::uuid and ${owned(owner.storeId)} for update
     `);
     const content = row ? pageInput.safeParse(row.draft) : null;
     if (!content?.success) return false;
