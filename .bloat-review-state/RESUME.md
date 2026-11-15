@@ -175,3 +175,5 @@ challenged by a skeptic, planned by a planner. Its last lines hold the arguments
 - Step 0.23 DONE: migration 20261115123101 applied by CI run 1305 (13:18 UTC), advisors INFO only, prod on 7715b054; write-up aec87520 (D622; other session at D621). CLAUDE.md now cites D622.
 - Queue drained. Next: 0.24. Later readings (a week on): 0.8 statements, 0.20 slug statement, 0.21 ai_providers reads, 0.22 statements per cart view, 0.23 cookie_scans seq scans.
 - Step 0.24 executor (Sonnet a2a017581859782f8) started from $S/run/executor-0.24.md.
+- Step 0.24: reviewed (by-id read equivalent; theme-store spec flaky locally on main too; themes-unified:46 fails 2/3 on main too). Rebased 530962c1..e477d391; checks task b7hhhogzo; then push. Shortfall: 9 blog entries keep the list (blogArticles(), 6.7 KB of 3.27 MB): follow-up = index with article categories.
+- Step 0.25: WAITING FOR OWNER'S GO. Sent $S/cron-log-before-prune.md (402,474 rows, 309,710 older than 7 days, 650 MB of 824 MB, all succeeded, no shop data). Do not run 0.25 until the owner says yes. Meanwhile go on to 0.26.
