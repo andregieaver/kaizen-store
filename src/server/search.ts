@@ -430,7 +430,7 @@ export async function logRedirectedSearch(shop: Shop, query: string): Promise<vo
 /** Days searches are kept: queries may hold personal data. */
 export const SEARCH_LOG_DAYS = 90;
 
-/** Forgets searches older than `SEARCH_LOG_DAYS`; from the five-minute cron. */
+/** Forgets searches older than `SEARCH_LOG_DAYS`; from the daily run. */
 export async function pruneSearchLog(): Promise<number> {
   const rows = await typedRows(
     z.object({ one: col.int }),

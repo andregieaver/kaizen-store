@@ -171,6 +171,20 @@ describe("events (D41)", () => {
     expect(await pending()).toEqual([]);
     expect(await integrations.getIntegration(storeId, "zapier")).toBeNull();
   });
+
+  it("old deliveries go with the daily prune, not with a delivery run", async () => {
+    const [made] = await db().execute<Row>(sql`
+      insert into commerce.integration_deliveries (store_id, provider, event, status, payload)
+      values (${storeId}::uuid, 'zapier', 'customer.created', 'delivered', '{}') returning id
+    `);
+    const id = String(made.id);
+    await db().execute(sql`update commerce.integration_deliveries set created_at = now() - interval '31 days' where id = ${id}::uuid`);
+    const present = async () => (await db().execute<Row>(sql`select 1 from commerce.integration_deliveries where id = ${id}::uuid`)).length;
+    await integrations.deliverDue();
+    expect(await present()).toBe(1);
+    expect(await integrations.pruneDeliveries()).toBeGreaterThanOrEqual(1);
+    expect(await present()).toBe(0);
+  });
 });
 
 describe("a test (D41)", () => {

@@ -185,7 +185,7 @@ export async function refreshDocsIndex(options: { rows?: DocsIndexRow[]; embed?:
   return { written, rows: rows.length, embedded, failed };
 }
 
-/** Reads older than 90 days and misses not seen for 180 forgotten (in the dispatcher). */
+/** Reads older than 90 days and misses not seen for 180 forgotten (in the daily run). */
 export async function pruneDocsCounts(): Promise<{ reads: number; misses: number }> {
   const reads = await db().execute(sql`delete from commerce.docs_reads where day < current_date - ${READ_DAYS}::int returning 1`);
   const misses = await db().execute(sql`delete from commerce.docs_search_misses where last_at < now() - interval '180 days' returning 1`);

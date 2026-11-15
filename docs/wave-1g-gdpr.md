@@ -292,7 +292,7 @@ a clock argument; never throws; returns counts) performs, in this order:
 | 11 | `consents` | 12 months | delete (the pg_cron job does it too where it exists; the job is idempotent) | existing (pg_cron) + new app step |
 | 12 | `privacy_request_contact` | 30 days after done `policy` | `subject_email = null` | new |
 | 13 | `privacy_requests` | 24 months after done `policy` | delete the row (the one deletion the table's guard allows) | new |
-| 14 | `search_queries` | 90 days (`SEARCH_LOG_DAYS`) | existing `pruneSearchLog()` | existing, five-minute cron |
+| 14 | `search_queries` | 90 days (`SEARCH_LOG_DAYS`) | existing `pruneSearchLog()` | existing, daily run (bloat review step 0.31) |
 | 15 | `visits` | 25 months (`RETENTION_MONTHS`) | existing `pruneVisits()` | existing, daily |
 | 16 | `audit_log` | 24 months (`AUDIT_RETENTION_MONTHS`) | existing `pruneAuditLog()` | existing, daily |
 | 17 | `form_submissions` 30 days, `integration_deliveries` 30 days, `abandoned_checkouts` 30 days, `recommendation_events` `EVENT_DAYS`, `ai_usage` `USAGE_KEEP_DAYS` | as coded | existing pruners | existing |

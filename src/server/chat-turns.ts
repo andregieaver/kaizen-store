@@ -47,7 +47,7 @@ export async function takeChatTurn(storeId: string | null, visitor: string, dail
   return "ok";
 }
 
-/** Forgets counts older than two days (the five-minute cron). */
+/** Forgets counts older than two days (the daily run). */
 export async function pruneChatUsage(): Promise<number> {
   const rows = await db().execute(sql`delete from commerce.chat_usage where "window" < now() - interval '2 days' returning 1`);
   return rows.length;

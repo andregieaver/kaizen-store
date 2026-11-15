@@ -69,7 +69,7 @@ export async function claimIdempotencyKey(tokenId: string, key: string, target: 
   return { kind: "replay", answer: { status: kept.status, body: kept.body } };
 }
 
-/** Deletes the answers kept longer than `IDEMPOTENCY_HOURS`. Returns how many went. */
+/** Deletes the answers kept longer than `IDEMPOTENCY_HOURS`, once an hour (so an answer is kept 24 to 25 hours). Returns how many went. */
 export async function pruneApiIdempotency(now: Date = new Date()): Promise<number> {
   const gone = await db().execute(sql`
     delete from commerce.api_idempotency_keys where created_at < ${now.toISOString()}::timestamptz - make_interval(hours => ${IDEMPOTENCY_HOURS}) returning key

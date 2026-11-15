@@ -104,7 +104,7 @@ commit as the fix.
 | 0.28 | Make picture, alt-text and product upkeep cost one statement when nothing changed | CR-4, DQ-3, DS-10, AI-13, AI-5, GAP-ai-s6 | M | review | 0.27 | Open | |
 | 0.29 | Let the listings' check record a try and read only reworded products | CR-15 | S | review | 0.28 | Open | |
 | 0.30 | Let the invoice job ask only stores it can issue for | CR-9, DS-3 | S | review |  | Open | |
-| 0.31 | Run prunes daily, not every five minutes or every minute | FT-3 | S | cheap |  | Open | |
+| 0.31 | Run prunes daily, not every five minutes or every minute | FT-3 | S | cheap |  | In progress Local, not yet pushed: the dispatcher's runJobs() block had 84 entries when the step was carried out (the brief said 78; the other session added six jobs, all nine prunes still there), now 75 (the scan test holds 75); 7 `daily.*` prunes tracked at 86400 in the daily route, 2 `hourly.*` (3600) in the dispatcher in the first five minutes of the hour; the four delivery and workflow-run deletes are now inside prune functions only (4 lines by the Done-when rg). Production checks (cron_jobs rows, retired names gone, platform home) wait for the deploy. |
 | 0.32 | Serve pictures as stored, and give every file with a fixed address a long lifetime | AS-4, AS-9, AS-12, AS-5, GAP-code-s3 | S | review |  | Open | |
 | 0.33 | Keep an 800 px copy of every picture | AS-11 | M | strong | 0.32 | Open | |
 | 0.34 | Give the admin's colour names a value on public pages | CS-7, CS-9, GAP-styles-s1 | S | review |  | Open | |

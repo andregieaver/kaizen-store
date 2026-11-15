@@ -74,7 +74,7 @@ export class CacheLate extends Error {
   }
 }
 
-/** Forgets answers older than `SEARCH_CACHE_DAYS`; from the five-minute cron. */
+/** Forgets answers older than `SEARCH_CACHE_DAYS`; from the daily run. */
 export async function pruneSearchCache(): Promise<number> {
   const rows = await db().execute<Row>(sql`
     delete from commerce.search_cache where created_at < now() - make_interval(days => ${SEARCH_CACHE_DAYS}) returning 1

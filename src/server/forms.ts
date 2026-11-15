@@ -386,7 +386,7 @@ export async function confirmSignup(token: string): Promise<{ location: string }
   return back("confirmed");
 }
 
-/** Forgets sends older than 30 days (the five-minute cron). */
+/** Forgets sends older than 30 days (the daily run, so a send is kept 30 to 31 days). */
 export async function pruneFormSubmissions(): Promise<number> {
   const rows = await db().execute<Row>(sql`delete from commerce.form_submissions where created_at < now() - interval '30 days' returning 1`);
   return rows.length;
