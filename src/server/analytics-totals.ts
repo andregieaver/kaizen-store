@@ -319,6 +319,8 @@ const BUCKET_ORDERS = z.object({
   line_rev: col.minor,
   known_rev: col.minor,
   physical_orders: col.minor,
+  label_known: col.minor,
+  label_estimated: col.minor,
 });
 const BUCKET_FEE = z.object({ bk: col.text, currency: col.currency, fee: col.minorOrNull });
 const MAIN_ROW = z.discriminatedUnion("kind", [
@@ -425,10 +427,19 @@ async function loadBundles(
         sum(line_rev) as line_rev, sum(line_rev - unknown_rev) as known_rev
       from pl group by bk, currency
     ),
+    -- Sending, as profit per order counts it (D415, \`docs/100-day-challenge.md\` E1): each parcel at its booked label's price (without VAT, in
+    -- the order's currency) where it was given, and the store's estimate for a parcel without one, or for an order sent in no parcel yet.
     by_phys as (
-      select bk, currency::text as currency, count(*) as physical_orders
+      select d.bk, d.currency::text as currency, count(*) as physical_orders,
+        coalesce(sum(p.known), 0) as label_known,
+        sum(case when p.parcels = 0 then 1 else p.unknown end) as label_estimated
       from (select distinct id, bk, currency from pl where physical) d
-      group by bk, currency
+      cross join lateral (
+        select count(*) as parcels, count(*) filter (where sh.label_cost_minor is null) as unknown, sum(sh.label_cost_minor) as known
+        from commerce.shipments sh
+        where sh.store_id = ${id}::uuid and sh.order_id = d.id and sh.method = 'parcel' and sh.undone_at is null
+      ) p
+      group by d.bk, d.currency
     ),
     orders_agg as (
       select o.bk, o.currency, o.orders, o.checkout_orders,
@@ -441,7 +452,9 @@ async function loadBundles(
         -- An order with no line at all has nothing to cost, like a line with no variant: it counts as known.
         coalesce(l.line_rev, 0) + o.lineless_rev as line_rev,
         coalesce(l.known_rev, 0) + o.lineless_rev as known_rev,
-        coalesce(ph.physical_orders, 0) as physical_orders
+        coalesce(ph.physical_orders, 0) as physical_orders,
+        coalesce(ph.label_known, 0) as label_known,
+        coalesce(ph.label_estimated, 0) as label_estimated
       from by_order o
       left join by_line l on l.bk = o.bk and l.currency = o.currency
       left join by_phys ph on ph.bk = o.bk and ph.currency = o.currency
@@ -578,7 +591,7 @@ async function loadBundles(
  * `inMain()` leaves nothing out; costs are kept in the main currency already and are added as they are.
  */
 function fold(store: Store, settings: Pick<StoredAnalyticsSettings, "paymentFeeBps" | "paymentFeeFixedMinor" | "shippingCostMinor">, bundle: Bundle): Totals {
-  const orders = inMain(store, bundle.orders.map((r) => ({ ...r, currency: String(r.currency) })), ["gross", "disc", "shipping", "vat", "revenue", "known_rev", "line_rev"]).values;
+  const orders = inMain(store, bundle.orders.map((r) => ({ ...r, currency: String(r.currency) })), ["gross", "disc", "shipping", "vat", "revenue", "known_rev", "line_rev", "label_known"]).values;
   const refunds = inMain(store, bundle.refunds.map((r) => ({ ...r, currency: String(r.currency) })), ["amount"]).values;
   const disputes = inMain(store, bundle.disputes.map((r) => ({ ...r, currency: String(r.currency) })), ["amount"]).values;
   const platform = inMain(store, bundle.platform.map((r) => ({ ...r, currency: String(r.currency) })), ["fee"]).values;
@@ -611,7 +624,7 @@ function fold(store: Store, settings: Pick<StoredAnalyticsSettings, "paymentFeeB
     lineRevenueMinor: orders.line_rev,
     paymentFeesMinor,
     platformFeesMinor: platform.fee,
-    shippingCostsMinor: shippingCostsFor(sum(bundle.orders, "physical_orders"), settings),
+    shippingCostsMinor: orders.label_known + shippingCostsFor(sum(bundle.orders, "label_estimated"), settings),
     marketingMinor: bundle.spend,
     sessions: null,
     newCustomers: fresh,
@@ -813,6 +826,17 @@ async function figuresOf(store: Store, settings: StoredAnalyticsSettings, period
     ? { ...(await totalsOf(store, settings, { ...period, from: visits.firstDay!, days: daysBetween(visits.firstDay!, period.to) }, first)).totals, sessions: visits.sessions }
     : totals;
   return { period, totals, derived: derive(totals, settings, period.days, visitTotals), visitsFrom: partial ? visits.firstDay : null, unconverted: base.unconverted, missingCurrencies: base.missingCurrencies, visits };
+}
+
+/**
+ * One period's figures with its visits joined in, as the overview reads them (`figuresOf()`): for the AI manager's `profit_overview` and the
+ * challenge's scoreboard, whose revenue per visitor needs the visits (`periodTotals()` leaves sessions null). The caller passes the traffic
+ * module's `sessionTotals()`, so this module still never reads the visit tables.
+ */
+export async function periodFiguresWithVisits(store: Store, period: AnalyticsPeriod, sessionsFor: SessionsFor, settings?: StoredAnalyticsSettings) {
+  const stored = settings ?? (await getAnalyticsSettings(store.id));
+  const f = await figuresOf(store, stored, period, sessionsFor, firstOrderDays(store, period.from));
+  return { totals: f.totals, derived: f.derived, visitsFrom: f.visitsFrom, unconverted: f.unconverted, missingCurrencies: f.missingCurrencies };
 }
 
 /** A bucket's totals with the visits of its days; sessions are unknown (null) where the bucket starts before the first counted day. */

@@ -2,7 +2,7 @@ import "server-only";
 
 import { formatPercent } from "@/lib/analytics-core";
 import { formatAmount } from "@/lib/analytics-format";
-import { derive, estimatedCogs } from "@/lib/analytics-kpi";
+import { estimatedCogs } from "@/lib/analytics-kpi";
 import { addDays, customPeriod, todayIn } from "@/lib/analytics-period";
 import { mainCurrency } from "@/lib/markets";
 import type { OwnerToolInput } from "@/lib/owner-tools";
@@ -10,7 +10,8 @@ import { marketingReturn } from "@/lib/profit-figures";
 
 import { forecastForStore } from "./analytics-insights";
 import { getAnalyticsSettings } from "./analytics-settings";
-import { periodTotals } from "./analytics-totals";
+import { periodFiguresWithVisits } from "./analytics-totals";
+import { sessionTotals } from "./analytics-traffic-data";
 import { OwnerToolError } from "./owner-tool-error";
 import type { Store } from "./stores";
 
@@ -18,7 +19,7 @@ import type { Store } from "./stores";
  * `profit_overview` (`docs/100-day-challenge.md` E3): what a period earned after what it cost, for the autopilot's reviews and the AI manager.
  * Net sales, each cost the analytics count (goods, payment and platform fees, shipping, marketing, lost disputes), contribution profit and
  * margin, profit per krone of marketing and revenue per visitor (two of the challenge's ratios), and the month's forecast. Every figure from
- * the analytics' own functions (`periodTotals()`, `derive()`, `forecastForStore()`), written out in code; a figure that cannot be known says
+ * the analytics' own functions (`periodFiguresWithVisits()`, with the visits joined in, and `forecastForStore()`), written out in code; a figure that cannot be known says
  * why, never 0. Read only.
  */
 
@@ -52,10 +53,10 @@ export async function profitOverviewTool({ store }: Ctx, input: OwnerToolInput<"
   const today = todayIn(now, store.timeZone);
   const { from, to, words } = periodOf(input, today);
   const settings = await getAnalyticsSettings(store.id);
-  const period = await periodTotals(store, customPeriod(from, to), settings);
-  const days = Math.round((Date.parse(to) - Date.parse(from)) / 86_400_000) + 1;
+  // With the visits joined in, as the overview reads them: revenue per visitor needs them.
+  const period = await periodFiguresWithVisits(store, customPeriod(from, to), (p) => sessionTotals(store, p), settings);
   const t = period.totals;
-  const d = derive(t, settings, days);
+  const d = period.derived;
   const currency = mainCurrency(store);
   const locale = store.markets[0]?.locale ?? "en";
   const money = (minor: number | null) => (minor === null ? null : formatAmount(Math.round(minor), currency, locale));

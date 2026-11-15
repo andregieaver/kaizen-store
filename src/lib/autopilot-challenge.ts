@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import type { AutonomyArea, AutonomyLevel, AutonomySettings } from "./autopilot-autonomy";
+import { originalPeriodSchema } from "./challenge-original";
 
 /**
  * Challenge mode (`docs/100-day-challenge.md` 4A1, 5): the 100-day challenge, where the autopilot runs a store alone and a person only
@@ -45,6 +46,10 @@ export const challengeSchema = z
      */
     purchasePerOrder: z.number().min(0).max(100_000_000).nullable().default(null),
     purchaseMonthly: z.number().min(0).max(1_000_000_000).nullable().default(null),
+    /** The ad money agreed for each store over the 100 days, in the clone's main currency (3.3: each spends at least 80 % of it); null: none agreed. */
+    adMoney: z.number().min(0).max(1_000_000_000).nullable().default(null),
+    /** The original store's signed P&L, period by period (`src/lib/challenge-scoreboard.ts`), typed by the platform team on the scoreboard. */
+    original: z.array(originalPeriodSchema).max(24).default([]),
   })
   .superRefine((c, ctx) => {
     if (c.startsOn > c.dayOne) ctx.addIssue({ code: "custom", path: ["startsOn"], message: "Challenge mode starts on or before Day 1." });

@@ -17,6 +17,7 @@ const BUDGETS = [
   ["supportRepliesPerDay", 200, "1"],
   ["purchasePerOrder", null, "1"],
   ["purchaseMonthly", null, "1"],
+  ["adMoney", null, "1"],
 ] as const;
 
 /**

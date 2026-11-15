@@ -79,7 +79,9 @@ export async function saveAutonomy(a: SettingsActor, input: unknown): Promise<Au
  */
 export async function saveChallenge(a: { account: Account }, storeId: string, input: unknown): Promise<Challenge> {
   if (!a.account.platformAdmin) throw new OwnerToolError("Only a platform admin sets the challenge on a store.");
-  const parsed = challengeSchema.safeParse(input);
+  // The original's signed periods (the scoreboard's, E7) are kept when the dates and budgets are changed without them.
+  const kept = input && typeof input === "object" && !("original" in input) ? ((await challengeFor(storeId))?.original ?? []) : undefined;
+  const parsed = challengeSchema.safeParse(kept ? { ...(input as object), original: kept } : input);
   if (!parsed.success) throw new OwnerToolError(`The challenge could not be read: ${parsed.error.issues.map((i) => i.message).join(" ")}`);
   const c = parsed.data;
   await db().execute(sql`

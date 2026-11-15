@@ -1318,6 +1318,9 @@ const PAGES: readonly AdminPage[] = [
     keywords: ["challenge", "100 days", "autopilot", "scoreboard", "interventions", "stalls", "ratios"],
     tasks: ["Set the challenge on a store", "See what holds a challenge store up", "See the challenge ratios", "End a store's challenge"],
   }),
+  platform("challenge", "/challenges/[storeId]", "Scoreboard", "Platform", "One challenge store's scoreboard: the clone against the original on one definition (net sales, contribution, marketing, visits and the three ratios with who is ahead), the 80 % ad-money rule, and the original's signed P&L periods with the form to add one.", {
+    keywords: ["scoreboard", "referee", "original", "p&l", "winner", "ratios"],
+  }),
   platform("capacity", "/capacity", "Usage and limits", "Platform", "What every store used this month against its limits (storage, products, staff, domains, visits, emails and AI), the database at a glance, and a CSV.", {
     keywords: ["usage", "limits", "quota", "storage", "bandwidth", "traffic", "capacity", "load", "database"],
     tasks: ["See every store's usage this month", "Find the stores closest to their limits", "Download the month as CSV"],

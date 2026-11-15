@@ -3,7 +3,6 @@ import "server-only";
 import { sql } from "drizzle-orm";
 import { z } from "zod";
 
-import { derive } from "@/lib/analytics-kpi";
 import { customPeriod } from "@/lib/analytics-period";
 import { readChallenge, utcDay, type Challenge } from "@/lib/autopilot-challenge";
 import { challengeRatios, phaseOf, scoredPeriod, shownDay, type ChallengePhase } from "@/lib/challenge-console";
@@ -12,7 +11,8 @@ import type { InterventionCounts } from "@/lib/interventions";
 import { mainCurrency } from "@/lib/markets";
 
 import { getAnalyticsSettings } from "./analytics-settings";
-import { periodTotals } from "./analytics-totals";
+import { periodFiguresWithVisits } from "./analytics-totals";
+import { sessionTotals } from "./analytics-traffic-data";
 import { autopilotCostThisMonth } from "./autopilot-settings";
 import { findChallengeStalls } from "./challenge-watch";
 import { interventionsOf, type Intervention } from "./interventions";
@@ -99,8 +99,10 @@ async function ratiosOf(slug: string, challenge: Challenge, today: string): Prom
   const store = await getStore(slug);
   if (!store) return null;
   const settings = await getAnalyticsSettings(store.id);
-  const totals = (await periodTotals(store, customPeriod(period.from, period.to), settings)).totals;
-  const d = derive(totals, settings, period.days);
+  // With the visits joined in (revenue per visitor needs them), as the overview and `profit_overview` read them.
+  const figures = await periodFiguresWithVisits(store, customPeriod(period.from, period.to), (p) => sessionTotals(store, p), settings);
+  const totals = figures.totals;
+  const d = figures.derived;
   const r = challengeRatios({ netRevenueMinor: d.netRevenue, contributionMinor: d.contributionProfit, marketingMinor: totals.marketingMinor, revenuePerVisitorMinor: d.revenuePerVisitor });
   return {
     from: period.from,

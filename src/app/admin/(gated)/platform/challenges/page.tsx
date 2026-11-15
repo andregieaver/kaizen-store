@@ -155,6 +155,9 @@ function StoreCard({ s, w, lang, locale, canWrite }: { s: ChallengeStore; w: Con
         </section>
 
         <div className="flex flex-wrap items-start gap-3">
+          <ButtonLink href={`/admin/platform/challenges/${s.storeId}`} kind="main">
+            {w.openBoard}
+          </ButtonLink>
           <ButtonLink href={`/admin/${s.slug}/assistant/autopilot`}>{w.openAutopilot}</ButtonLink>
           {canWrite && (
             <ActionForm action={endChallengeAction.bind(null, s.storeId)} successMessage={w.ended}>
