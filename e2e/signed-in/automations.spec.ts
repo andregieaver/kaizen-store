@@ -36,7 +36,8 @@ test("the welcome email is set up from its starting words, saved, tested and swi
   await page.goto(`/admin/${STORE}/automations`);
   await expect(page.getByRole("heading", { level: 1, name: "Email automations" })).toBeVisible();
   const welcome = page.getByRole("region", { name: "Welcome" });
-  await expect(welcome.getByText("Off")).toBeVisible();
+  // Off, and the one to start with (round 13, D639).
+  await expect(welcome.getByText("Start here")).toBeVisible();
   await welcome.getByRole("link", { name: "Set it up" }).click();
 
   await expect(page.getByRole("heading", { level: 1, name: "Welcome" })).toBeVisible();
