@@ -9,8 +9,20 @@ import { adBudgetAutopilotProblem } from "./ad-budget-tools";
 import type { Account } from "./auth";
 import { autopilotBroadcastsThisWeek, autopilotCustomerEmailsThisWeek, autopilotSupportRepliesToday } from "./autopilot-settings";
 import { liveCostsMoney } from "./design-tools";
+import { OwnerToolError } from "./owner-tool-error";
 import { marginAfterOffer, marginAfterPrices, priceChangePercent } from "./product-tools";
 import type { Store } from "./stores";
+import { purchaseAutopilotProblem } from "./supply-tools";
+
+/** A purchase order against the purchasing budget (C3): one that cannot be made at all asks too, with the reason in words. */
+async function purchaseProblemOf(store: Store, args: Record<string, unknown>, settings: AutonomySettings): Promise<string | null> {
+  try {
+    return await purchaseAutopilotProblem(store, args, settings.budgets);
+  } catch (error) {
+    if (error instanceof OwnerToolError) return error.message;
+    throw error;
+  }
+}
 
 /**
  * The autopilot's decision for one gated call (D309, `docs/ai-autopilot.md` 7.4): the facts the owner's budgets need read first (a price
@@ -48,6 +60,8 @@ export async function autopilotDecision(
           ? { costsMoney: await liveCostsMoney(p.store, p.account, args as MakeThemeLiveInput) }
           : tool === "set_ad_budget" && p.store
             ? { adProblem: await adBudgetAutopilotProblem(p.store, args, settings.budgets.adRaisePercent) }
+            : tool === "create_purchase_order" && p.store
+            ? { purchaseProblem: await purchaseProblemOf(p.store, args, settings) }
             : (CUSTOMER_EMAIL_TOOLS as readonly string[]).includes(tool)
             ? { customerEmailsThisWeek: p.store ? await autopilotCustomerEmailsThisWeek(p.store.id) : null }
             : {};

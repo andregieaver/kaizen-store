@@ -15,6 +15,8 @@ const BUDGETS = [
   ["adRaisePercent", 20, "1"],
   ["broadcastsPerWeek", 2, "1"],
   ["supportRepliesPerDay", 200, "1"],
+  ["purchasePerOrder", null, "1"],
+  ["purchaseMonthly", null, "1"],
 ] as const;
 
 /**
@@ -50,7 +52,7 @@ export function ChallengeForm({ w, store, current }: { w: ConsoleMessages["chall
           {BUDGETS.map(([key, fallback, step]) => (
             <label key={key} className="flex flex-col gap-1 text-sm">
               {f[key]}
-              <input name={key} type="number" min={0} step={step} defaultValue={current?.[key] ?? fallback} className={input} />
+              <input name={key} type="number" min={0} step={step} defaultValue={current?.[key] ?? fallback ?? ""} className={input} />
             </label>
           ))}
         </div>

@@ -480,6 +480,15 @@ function Settings({ overview, words: a, action }: { overview: AutopilotOverview;
             <input name="margin_floor" type="number" min={0} max={95} step="0.5" defaultValue={settings.budgets.marginFloorPercent ?? ""} className="min-h-10 max-w-40 rounded-lg border border-edge bg-card px-3 text-sm" />
             <span className="text-caption text-muted">{s.marginFloorHelp}</span>
           </label>
+          <label className="flex flex-col gap-1 text-sm">
+            {s.purchasePerOrder}
+            <input name="purchase_per_order" type="number" min={0} step="1" defaultValue={settings.budgets.purchasePerOrder ?? ""} className="min-h-10 max-w-40 rounded-lg border border-edge bg-card px-3 text-sm" />
+          </label>
+          <label className="flex flex-col gap-1 text-sm">
+            {s.purchaseMonthly}
+            <input name="purchase_monthly" type="number" min={0} step="1" defaultValue={settings.budgets.purchaseMonthly ?? ""} className="min-h-10 max-w-40 rounded-lg border border-edge bg-card px-3 text-sm" />
+            <span className="text-caption text-muted">{s.purchaseHelp}</span>
+          </label>
         </fieldset>
         </fieldset>
         <div>

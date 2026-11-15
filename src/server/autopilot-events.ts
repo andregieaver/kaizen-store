@@ -6,6 +6,7 @@ import { z } from "zod";
 import { db } from "@/db/client";
 import {
   ALERT_CHECK_HOURS,
+  DELIVERY_PROBLEM_PHASES,
   EVENT_ALERT_SEVERITIES,
   EVENT_CLAIM_MINUTES,
   EVENT_KEEP_DAYS,
@@ -16,6 +17,11 @@ import {
   EVENTS_PER_RUN,
   eventMessage,
   eventRef,
+  FAILED_PAYMENTS_HOURS,
+  FAILED_PAYMENTS_MIN,
+  FAILED_PAYMENTS_SHARE,
+  ORDER_EVENT_DAYS,
+  ORDER_UNSENT_HOURS,
   TEST_ENDED_DAYS,
   type EventFacts,
   type EventKind,
@@ -69,6 +75,12 @@ const FACTS = z.discriminatedUnion("kind", [
   z.object({ kind: z.literal("support_waiting"), conversation: z.string(), waitedMinutes: z.number(), handoffReason: z.string().nullable() }),
   z.object({ kind: z.literal("test_ended"), experiment: z.string(), name: z.string(), stopReason: z.enum(["guardrail", "planned_end"]), stoppedAt: z.string() }),
   z.object({ kind: z.literal("alert"), alert: z.string(), severity: z.string(), text: z.string(), evidence: z.array(z.string()) }),
+  z.object({ kind: z.literal("order_unsent"), order: z.string(), orderId: z.string(), hours: z.number() }),
+  z.object({ kind: z.literal("delivery_problem"), order: z.string(), orderId: z.string(), shipment: z.string(), phase: z.enum(DELIVERY_PROBLEM_PHASES) }),
+  z.object({ kind: z.literal("supplier_problem"), order: z.string(), orderId: z.string(), supplierOrder: z.string(), supplier: z.string(), state: z.enum(["problem", "late"]) }),
+  z.object({ kind: z.literal("order_held"), order: z.string(), orderId: z.string(), byRule: z.boolean() }),
+  z.object({ kind: z.literal("dispute_opened"), order: z.string(), orderId: z.string(), dispute: z.string(), reason: z.string(), dueBy: z.string().nullable() }),
+  z.object({ kind: z.literal("payments_failing"), window: z.string(), failed: z.number(), attempts: z.number() }),
 ]);
 
 /** The stores that react now: the switch on, not paused, the store open. */
@@ -107,7 +119,111 @@ export async function detectEvents(deps: EventDeps = {}): Promise<number> {
     on conflict (store_id, kind, ref) do nothing
     returning id
   `);
-  return waiting.length + tests.length + (await detectAlerts(now, deps));
+  return waiting.length + tests.length + (await detectOrderEvents(now)) + (await detectAlerts(now, deps));
+}
+
+/** The window failed payments are counted in, as its reference: the day and the hour it began (`FAILED_PAYMENTS_HOURS` long). */
+export const paymentsWindow = (now: Date): string => {
+  const hour = Math.floor(now.getUTCHours() / FAILED_PAYMENTS_HOURS) * FAILED_PAYMENTS_HOURS;
+  return `${now.toISOString().slice(0, 10)}T${String(hour).padStart(2, "0")}`;
+};
+
+/**
+ * Orders that need a look (`docs/100-day-challenge.md` C5), each kept once: a paid order with goods to send and no parcel after
+ * `ORDER_UNSENT_HOURS`; a parcel whose tracking is in trouble; a drop-ship supplier's order refused or late; an order held; a dispute that waits
+ * for an answer; and failed payments piling up in a window. Recent ones only (`ORDER_EVENT_DAYS`); copied orders never.
+ */
+async function detectOrderEvents(now: Date): Promise<number> {
+  const at = now.toISOString();
+  const since = sql`${at}::timestamptz - make_interval(days => ${ORDER_EVENT_DAYS})`;
+  const queries = [
+    sql`
+      with reacting as (${REACTING})
+      insert into commerce.autopilot_events (store_id, kind, ref, facts)
+      select o.store_id, 'order_unsent', o.id::text,
+        jsonb_build_object('kind', 'order_unsent', 'order', o.number, 'orderId', o.id, 'hours', floor(extract(epoch from (${at}::timestamptz - o.placed_at)) / 3600)::int)
+      from commerce.orders o
+      join reacting r on r.store_id = o.store_id
+      where o.status = 'paid' and o.held_at is null and o.copied_from is null
+        and o.placed_at < ${at}::timestamptz - make_interval(hours => ${ORDER_UNSENT_HOURS}) and o.placed_at > ${since}
+        and exists (select 1 from commerce.order_lines l where l.store_id = o.store_id and l.order_id = o.id and l.delivery = 'physical')
+        and not exists (select 1 from commerce.shipments sh where sh.store_id = o.store_id and sh.order_id = o.id and sh.undone_at is null)
+      on conflict (store_id, kind, ref) do nothing
+      returning id
+    `,
+    sql`
+      with reacting as (${REACTING})
+      insert into commerce.autopilot_events (store_id, kind, ref, facts)
+      select t.store_id, 'delivery_problem', t.shipment_id::text || ':' || t.phase,
+        jsonb_build_object('kind', 'delivery_problem', 'order', o.number, 'orderId', o.id, 'shipment', t.shipment_id, 'phase', t.phase)
+      from commerce.shipment_tracking t
+      join reacting r on r.store_id = t.store_id
+      join commerce.orders o on o.store_id = t.store_id and o.id = t.order_id
+      join commerce.shipments sh on sh.store_id = t.store_id and sh.id = t.shipment_id and sh.undone_at is null
+      where t.phase in ('problem', 'attempted', 'returned_to_sender') and t.checked_at > ${since} and o.copied_from is null
+      on conflict (store_id, kind, ref) do nothing
+      returning id
+    `,
+    sql`
+      with reacting as (${REACTING})
+      insert into commerce.autopilot_events (store_id, kind, ref, facts)
+      select so.store_id, 'supplier_problem', so.id::text || ':' || x.state,
+        jsonb_build_object('kind', 'supplier_problem', 'order', o.number, 'orderId', o.id, 'supplierOrder', so.id, 'supplier', s.name, 'state', x.state)
+      from commerce.supplier_orders so
+      join reacting r on r.store_id = so.store_id
+      join commerce.suppliers s on s.store_id = so.store_id and s.id = so.supplier_id
+      join commerce.orders o on o.store_id = so.store_id and o.id = so.order_id
+      cross join lateral (
+        select case when so.state = 'problem' then 'problem'
+                    when so.state = 'sent' and so.sent_at < ${at}::timestamptz - make_interval(days => (ceil(s.dispatch_days * 7 / 5.0) + 1)::int) then 'late' end as state
+      ) x
+      where x.state is not null and so.created_at > ${since}
+      on conflict (store_id, kind, ref) do nothing
+      returning id
+    `,
+    sql`
+      with reacting as (${REACTING})
+      insert into commerce.autopilot_events (store_id, kind, ref, facts)
+      select o.store_id, 'order_held', o.id::text,
+        jsonb_build_object('kind', 'order_held', 'order', o.number, 'orderId', o.id, 'byRule', o.held_by_rule is not null)
+      from commerce.orders o
+      join reacting r on r.store_id = o.store_id
+      where o.held_at is not null and o.held_at > ${since} and o.status in ('paid', 'authorized') and o.copied_from is null
+      on conflict (store_id, kind, ref) do nothing
+      returning id
+    `,
+    sql`
+      with reacting as (${REACTING})
+      insert into commerce.autopilot_events (store_id, kind, ref, facts)
+      select d.store_id, 'dispute_opened', d.id::text,
+        jsonb_build_object('kind', 'dispute_opened', 'order', o.number, 'orderId', o.id, 'dispute', d.id, 'reason', coalesce(d.reason, 'not given'), 'dueBy', d.evidence_due_by)
+      from commerce.payment_disputes d
+      join reacting r on r.store_id = d.store_id
+      join commerce.orders o on o.store_id = d.store_id and o.id = d.order_id
+      where d.status in ('needs_response', 'warning_needs_response') and not d.test_mode and d.opened_at > ${since}
+      on conflict (store_id, kind, ref) do nothing
+      returning id
+    `,
+    sql`
+      with reacting as (${REACTING}),
+      counted as (
+        select p.store_id, count(*) filter (where p.status = 'failed')::int as failed, count(*)::int as attempts
+        from commerce.payments p join reacting r on r.store_id = p.store_id
+        where p.created_at > ${at}::timestamptz - make_interval(hours => ${FAILED_PAYMENTS_HOURS})
+        group by p.store_id
+      )
+      insert into commerce.autopilot_events (store_id, kind, ref, facts)
+      select c.store_id, 'payments_failing', ${paymentsWindow(now)},
+        jsonb_build_object('kind', 'payments_failing', 'window', ${paymentsWindow(now)}::text, 'failed', c.failed, 'attempts', c.attempts)
+      from counted c
+      where c.failed >= ${FAILED_PAYMENTS_MIN} and c.failed >= c.attempts * ${FAILED_PAYMENTS_SHARE}::numeric
+      on conflict (store_id, kind, ref) do nothing
+      returning id
+    `,
+  ];
+  let found = 0;
+  for (const query of queries) found += (await db().execute(query)).length;
+  return found;
 }
 
 /** A few stores' alerts, each store at most once in `ALERT_CHECK_HOURS`: the check is claimed before the read, so a failure waits a day. */
@@ -276,6 +392,29 @@ async function stillOpen(storeId: string, facts: EventFacts): Promise<string | n
       sql`select status from commerce.experiments where id = ${facts.experiment}::uuid and store_id = ${storeId}::uuid`,
     );
     return row?.status === "stopped" ? null : "The test was decided before the autopilot looked.";
+  }
+  if (facts.kind === "order_unsent" || facts.kind === "order_held") {
+    const row = await typedRow(
+      z.object({ status: col.text, held: col.bool, sent: col.bool }),
+      sql`select o.status::text as status, o.held_at is not null as held,
+                 exists (select 1 from commerce.shipments sh where sh.store_id = o.store_id and sh.order_id = o.id and sh.undone_at is null) as sent
+          from commerce.orders o where o.id = ${facts.orderId}::uuid and o.store_id = ${storeId}::uuid`,
+    );
+    if (facts.kind === "order_held") return row?.held ? null : "The order was released before the autopilot looked.";
+    return row?.status === "paid" && !row.sent && !row.held ? null : "The order was sent, held or cancelled before the autopilot looked.";
+  }
+  if (facts.kind === "delivery_problem") {
+    const row = await typedRow(z.object({ phase: col.text }), sql`select phase from commerce.shipment_tracking where shipment_id = ${facts.shipment}::uuid and store_id = ${storeId}::uuid`);
+    return row?.phase === facts.phase ? null : "The parcel's tracking moved on before the autopilot looked.";
+  }
+  if (facts.kind === "supplier_problem") {
+    const row = await typedRow(z.object({ state: col.text }), sql`select state from commerce.supplier_orders where id = ${facts.supplierOrder}::uuid and store_id = ${storeId}::uuid`);
+    const open = facts.state === "problem" ? row?.state === "problem" : row?.state === "sent";
+    return open ? null : "The supplier's order was sent again, shipped or cancelled before the autopilot looked.";
+  }
+  if (facts.kind === "dispute_opened") {
+    const row = await typedRow(z.object({ status: col.text }), sql`select status from commerce.payment_disputes where id = ${facts.dispute}::uuid and store_id = ${storeId}::uuid`);
+    return row?.status === "needs_response" || row?.status === "warning_needs_response" ? null : "The dispute was answered or closed before the autopilot looked.";
   }
   return null;
 }

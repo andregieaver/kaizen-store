@@ -21,7 +21,17 @@ const answer = (message: string): FormState => ({ status: "error", messages: [me
 const write = (action: string) => ({ area: "settings" as const, action, answer });
 
 /** The challenge's budgets as the form sends them: a number each, or left out for the challenge's default. */
-const BUDGETS = ["broadcastsPerWeek", "supportRepliesPerDay", "aiMonthlyUsd", "priceChangePercent", "discountPercent", "adRaisePercent", "marginFloorPercent"] as const;
+const BUDGETS = [
+  "broadcastsPerWeek",
+  "supportRepliesPerDay",
+  "aiMonthlyUsd",
+  "priceChangePercent",
+  "discountPercent",
+  "adRaisePercent",
+  "marginFloorPercent",
+  "purchasePerOrder",
+  "purchaseMonthly",
+] as const;
 
 /** The challenge from the form: its three dates, and each budget given. */
 function challengeInput(formData: FormData): Record<string, unknown> {

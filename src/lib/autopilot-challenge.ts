@@ -39,6 +39,12 @@ export const challengeSchema = z
     adRaisePercent: z.number().int().min(0).max(1000).default(20),
     /** The lowest margin it may leave a product, in percent of the price without VAT (D5): the owner's, agreed before Day 1. */
     marginFloorPercent: z.number().min(0).max(95).default(10),
+    /**
+     * The stock it may buy itself (C3), in the store's main currency: per purchase order and a calendar month, agreed with the owner, who
+     * funds it; null: every purchase order waits for the owner's yes.
+     */
+    purchasePerOrder: z.number().min(0).max(100_000_000).nullable().default(null),
+    purchaseMonthly: z.number().min(0).max(1_000_000_000).nullable().default(null),
   })
   .superRefine((c, ctx) => {
     if (c.startsOn > c.dayOne) ctx.addIssue({ code: "custom", path: ["startsOn"], message: "Challenge mode starts on or before Day 1." });
@@ -124,6 +130,8 @@ export function withChallenge(settings: AutonomySettings, c: Challenge | null, t
       discountPercent: c.discountPercent,
       adRaisePercent: c.adRaisePercent,
       marginFloorPercent: c.marginFloorPercent,
+      purchasePerOrder: c.purchasePerOrder,
+      purchaseMonthly: c.purchaseMonthly,
     },
     challenge: {
       active: true,

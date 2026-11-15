@@ -231,17 +231,18 @@ import {
   setPriceListPricesTool,
   setWorkingHoursTool,
   switchLoyaltyRewardTool, saveLoyaltyRewardTool, setPriceListScopeTool, setPriceListBreaksTool, setPriceListRulesTool } from "./screen-tools";
+import { answerSupplierOrderTool, createPurchaseOrderTool, listSupplierOrdersTool, preflightSupplyTool, SUPPLY_CHECKED } from "./supply-tools";
 import { createTransferTool, listPurchaseOrdersTool, listTransfersTool, preflightStockTool, setBackorderTool, setStockTool, stockHistoryTool, stockLevelsTool } from "./stock-tools";
 import { pickupOrdersTool, shippingOverviewTool } from "./shipping-tools";
 import { notificationSettingsTool, orderRulesTool, parcelTrackingTool } from "./notification-tools";
 import { onHandActive } from "./stock-sql";
 import { taxProfileView } from "./tax-profile";
-import { addOrderNote, CARRIERS, getOrderAdmin, liveShipments, markSent, refundOrder, sendRefusalText } from "./order-admin";
+import { addOrderNote, cancelOrder, CARRIERS, getOrderAdmin, liveShipments, markSent, refundOrder, sendRefusalText } from "./order-admin";
 import { archiveOrdersTool, createDraftOrderTool, listDraftOrdersTool, listOrdersTool, preflightSendDraft, sendDraftOrderTool, tagOrdersTool } from "./order-ops-tools";
 import { listPages, pagesTag, unpublishPage } from "./pages";
 import { runningTestOf } from "./experiment-admin";
 import { availabilityOf, listAdminProducts, setArchived } from "./products";
-import { sendBookingCancelled, sendOrderConfirmation, sendRefunded, sendShipped, sendStoreMessage } from "./shopper-emails";
+import { sendBookingCancelled, sendCancelled, sendOrderConfirmation, sendRefunded, sendShipped, sendStoreMessage } from "./shopper-emails";
 import { storeTag, type Store } from "./stores";
 import { effectiveFeatures, featureOn } from "@/lib/store-features";
 import { listFeaturesTool, preflightFeatureTool, setFeatureTool } from "./feature-tools";
@@ -1326,6 +1327,35 @@ async function refundOrderTool(ctx: OwnerToolContext, { order, amount, reason, r
   return { done: `Refunded ${money(store, outcome.amountMinor, admin.currency)} on order ${admin.number}${back.length ? ", and put its items back in stock" : ""}.` };
 }
 
+/**
+ * Whether an order can be cancelled now, as `cancelOrder()` would judge it (`docs/100-day-challenge.md` C6): paid, nothing sent, no change
+ * waiting for the customer's payment. Refused in words before anything is kept for a yes.
+ */
+async function orderToCancel(store: Store, order: string) {
+  const orderId = await findOrderId(store, order);
+  const admin = await getOrderAdmin(store.id, orderId);
+  if (!admin) return fail(`No order ${order} in this store.`);
+  if (admin.status === "fulfilled") return fail(`Order ${admin.number} is already sent: refund it instead (refund_order), once the parcel comes back.`);
+  if (admin.status === "cancelled") return fail(`Order ${admin.number} is cancelled already.`);
+  if (admin.status !== "paid") return fail(`Order ${admin.number} is not paid, so there is nothing to cancel here: an unpaid order lapses by itself.`);
+  if (liveShipments(admin.shipments).length > 0) return fail(`Some of order ${admin.number} is already sent, so it cannot be cancelled: refund the units that were not sent instead (refund_order).`);
+  if (admin.fulfilment.editPending) return fail(`A change to order ${admin.number} waits for the customer's payment: it cannot be cancelled until that change is.`);
+  return { orderId, admin };
+}
+
+/** Cancels a paid order that is not sent with the order page's own `cancelOrder()`: what is left is refunded, the stock goes back, the customer is told. */
+async function cancelOrderTool(ctx: OwnerToolContext, { order, reason, notify }: OwnerToolInput<"cancel_order">) {
+  const { store } = ctx;
+  const { orderId, admin } = await orderToCancel(store, order);
+  const outcome = await cancelOrder(store.id, orderId, reason, ctx.account.id);
+  if (!outcome.ok) return fail(outcome.problem);
+  if (notify) await sendCancelled(store.id, orderId, outcome.amountMinor, { unpaid: outcome.unpaid });
+  ctx.invalidate(catalogTag(store.id));
+  return {
+    done: `Cancelled order ${admin.number}${outcome.amountMinor > 0 ? `, refunded ${money(store, outcome.amountMinor, admin.currency)}` : ""} and put its items back in stock${notify ? ", and emailed the customer" : ""}.`,
+  };
+}
+
 async function createDiscountTool(ctx: OwnerToolContext, input: OwnerToolInput<"create_discount">) {
   const result = await saveDiscount({ account: ctx.account, store: ctx.store, role: "owner" }, null, {
     code: input.code,
@@ -2149,6 +2179,19 @@ export async function preflightOwnerTool(ctx: OwnerToolContext, name: string, ra
     if (!input.ok) return fail(`The arguments could not be read: ${input.problem}`);
     return preflightStockTool(ctx, name, input.input as Record<string, unknown>);
   }
+  // A purchase order that could not be made, or a supplier order that is not open to the answer, is refused now, never kept for a yes (C2, C3).
+  if ((SUPPLY_CHECKED as readonly string[]).includes(name)) {
+    const input = readToolInput(OWNER_TOOLS_BY_NAME[name], raw);
+    if (!input.ok) return fail(`The arguments could not be read: ${input.problem}`);
+    return preflightSupplyTool(ctx, name as (typeof SUPPLY_CHECKED)[number], input.input as Record<string, unknown>);
+  }
+  // An order that cannot be cancelled now (sent, partly sent, unpaid, a change waiting) is refused now, never kept for a yes (C6).
+  if (name === "cancel_order") {
+    const input = readToolInput(OWNER_TOOLS_BY_NAME[name], raw);
+    if (!input.ok) return fail(`The arguments could not be read: ${input.problem}`);
+    await orderToCancel(ctx.store, (input.input as OwnerToolInput<"cancel_order">).order);
+    return;
+  }
   // A purchase order that cannot be received, a report, customer, creator, list or SKU that is not there, is refused now, never kept for a yes (AGT-01).
   if ((SCREEN_CHECKED as readonly string[]).includes(name)) {
     const tool = OWNER_TOOLS_BY_NAME[name];
@@ -2444,6 +2487,7 @@ const handlersOf = (): Record<OwnerToolName, Handler> => (handlers ??= {
   list_emails: listEmailsTool,
   subscription_boxes: subscriptionBoxes,
   refund_order: refundOrderTool,
+  cancel_order: cancelOrderTool,
   create_discount: createDiscountTool,
   set_discount_active: setDiscountActiveTool,
   create_campaign: createCampaignTool,
@@ -2570,6 +2614,9 @@ const handlersOf = (): Record<OwnerToolName, Handler> => (handlers ??= {
   list_transfers: listTransfersTool,
   list_purchase_orders: listPurchaseOrdersTool,
   receive_purchase_order: receivePurchaseOrderTool,
+  create_purchase_order: createPurchaseOrderTool,
+  list_supplier_orders: listSupplierOrdersTool,
+  answer_supplier_order: answerSupplierOrderTool,
   owed_to_customers: owedToCustomersTool,
   list_report_schedules: listReportSchedulesTool,
   schedule_report: scheduleReportTool,

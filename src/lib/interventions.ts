@@ -8,7 +8,7 @@ export const INTERVENTION_CLASSES = ["refund", "escalation", "platform", "other"
 export type InterventionClass = (typeof INTERVENTION_CLASSES)[number];
 
 /** Calls the challenge lets a person decide: money back to a customer (`docs/100-day-challenge.md` 4A2). */
-export const REFUND_TOOLS: ReadonlySet<string> = new Set(["refund_order", "adjust_customer_credits", "issue_gift_card", "process_exchange", "change_order"]);
+export const REFUND_TOOLS: ReadonlySet<string> = new Set(["refund_order", "cancel_order", "adjust_customer_credits", "issue_gift_card", "process_exchange", "change_order"]);
 
 /** Audit actions of a refund made by a person, on the order or the return. */
 const REFUND_ACTIONS: ReadonlySet<string> = new Set(["order.refunded", "order.refunded_outside", "order.edit_payment_refunded", "return.refunded", "return.refund_overridden", "gift_card.refund_credit"]);
