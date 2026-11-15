@@ -26,6 +26,13 @@ async function newStore(): Promise<string> {
 
 test("a shopper searches from the header, picks a suggestion, and finds results", async ({ page }) => {
   const slug = await newStore();
+  const art = testDb();
+  try {
+    await art`update commerce.product_media set url = '/demo/themes/orbit/stars.webp', thumbnail_url = '/demo/themes/orbit/stars.webp'
+      where product_id = (select id from commerce.products where store_id = (select id from commerce.stores where slug = ${slug}) and handle = 'demo-keramikkopp')`;
+  } finally {
+    await art.end();
+  }
   await page.goto(`/s/${slug}/no`);
   await page.getByRole("link", { name: "Søk" }).first().click();
   await expect(page).toHaveURL(new RegExp(`/s/${slug}/no/search$`));
@@ -36,6 +43,10 @@ test("a shopper searches from the header, picks a suggestion, and finds results"
   await box.fill("kera");
   const list = page.getByRole("listbox", { name: "Forslag" });
   await expect(list.getByRole("option", { name: /Keramikkopp/ })).toBeVisible();
+  // An uploaded picture is served as stored, never through /_next/image, which refuses the storage host (bloat review step 0.32).
+  const thumb = list.getByRole("option", { name: /Keramikkopp/ }).locator("img");
+  await expect(thumb).toHaveAttribute("src", "/demo/themes/orbit/stars.webp");
+  expect(await thumb.evaluate((img: HTMLImageElement) => img.complete && img.naturalWidth > 0)).toBe(true);
   await box.press("ArrowDown");
   await box.press("Enter");
   await expect(page).toHaveURL(new RegExp(`/s/${slug}/no/p/demo-keramikkopp$`));
@@ -46,6 +57,11 @@ test("a shopper searches from the header, picks a suggestion, and finds results"
   await page.goto(`/s/${slug}/no/search?q=kopp`);
   await expect(page.getByText(/\d+ treff for «kopp»/)).toBeVisible();
   await expect(page.getByRole("link", { name: /Keramikkopp/ }).first()).toBeVisible();
+});
+
+test("Next's image service is off", async ({ request }) => {
+  const answer = await request.get("/_next/image?url=%2Fdemo%2Fthemes%2Forbit%2Fstars.webp&w=64&q=75");
+  expect(answer.status()).toBe(404);
 });
 
 test("nothing found offers the categories, and the search is logged for the store", async ({ page }) => {

@@ -45,6 +45,8 @@ const nextConfig: NextConfig = {
   // for everyone; step 2.8 of docs/audits/bloat-review-2026-11 decides adoption by trial.
   partialPrefetching: false,
   poweredByHeader: false,
+  // Pictures are never resized on the server (D336, src/lib/picture-sizes.ts): every next/image is served as stored and /_next/image answers 404 (bloat review step 0.32).
+  images: { unoptimized: true },
   // On Vercel (`ON_VERCEL`) the type check is left to CI, whose `static` job runs
   // `pnpm typecheck` on every push and whose builds still check; everywhere else `next build` checks as ever.
   typescript: { ignoreBuildErrors: ON_VERCEL },

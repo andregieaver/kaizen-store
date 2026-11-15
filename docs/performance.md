@@ -80,6 +80,7 @@ with its processor slowed four times, and a computer.
   `(theme-preview)` groups, `admin`, `s/[store]/(chooser)`, `s/[store]/[market]`, `s/[store]/private/[market]`, `holding`,
   `passport/[id]`, `sms`, `supply` (and `embed`). `src/lib/cross-root-links.scan.test.ts` and `e2e/prefetch.spec.ts` hold both
   (bloat review step 0.12).
+- **Pictures are never resized on the server**: `images: { unoptimized: true }` in `next.config.ts`, so every `next/image` is served as stored and `/_next/image` does not exist (`src/lib/image-service.scan.test.ts`). A picture's sizes are the files kept for it (`src/lib/picture-sizes.ts`).
 - **Font stylesheets are kept for a year** (`immutable`); a change to how one is written raises `FONT_CSS_VERSION`, which is in
   every stylesheet's address.
 
