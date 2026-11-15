@@ -243,8 +243,13 @@ describe("the older readers count stock the way the owner's pages do", () => {
   it("restock_suggestions adds what is owed to what to order, counts a negative figure as nothing in stock, and says how many units are owed", async () => {
     const answer = await run("restock_suggestions", { days: 30, cover_days: 30, lead_days: 7 });
     const thermos = (answer.to_reorder as Answer[]).find((v) => v.sku === "DEMO-THERMOS")!;
-    // 3 sold in 30 days is 0.1 a day; 37 days to cover need 4; with 3 owed (on hand -3) 7 are to be ordered, and none is in stock.
-    expect(thermos).toMatchObject({ in_stock: 0, owed_to_customers: 3, sold_in_period: 3, suggested_order: 7, order_now: true, lasts_days: 0 });
+    // 3 sold in 30 days is about 0.1 a day; 37 days to cover need 4, and a safety stock for the uneven days (C4); with 3 owed (on hand -3)
+    // those come on top, and none is in stock.
+    expect(thermos).toMatchObject({ in_stock: 0, owed_to_customers: 3, sold_in_period: 3, order_now: true, lasts_days: 0 });
+    const safety = Number(thermos.safety_stock ?? 0);
+    expect(safety).toBeGreaterThan(0);
+    expect(thermos.suggested_order).toBeGreaterThanOrEqual(7 + safety);
+    expect(thermos.suggested_order).toBeLessThanOrEqual(8 + safety);
     expect(answer.owed_units).toBe(3);
     expect(answer.rule).toContain("units owed to customers are added");
   });

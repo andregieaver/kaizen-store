@@ -262,6 +262,11 @@ export const returnsEn = {
     none: "No label yet.",
   },
   queue: {
+    /** Round 12 (D637). */
+    nothingWaits: "Nothing is waiting for you.",
+    byHand: "Had one by email, letter or phone? Open the order and register it from there.",
+    findOrder: "Find the order",
+    rules: "Withdrawals and returns, the rules",
     title: "Returns",
     description:
       "Withdrawals are the customer's legal right to change their mind: you cannot refuse them, and the refund is due within 14 days of being told. Return requests are inside your own longer window, and you may approve or decline them.",

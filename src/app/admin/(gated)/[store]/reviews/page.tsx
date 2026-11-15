@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 import { ActionForm, SubmitButton } from "@/components/admin/action-form";
-import { Button, ButtonLink, Card, CARD_CLASS, Chip, KpiTile, PageHeader } from "@/components/admin/ui";
+import { Button, Card, CARD_CLASS, Chip, KpiTile, PageHeader } from "@/components/admin/ui";
 import { countWords, fillWords } from "@/lib/admin-fill";
 import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
 import { adminText } from "@/lib/admin-text";
@@ -13,6 +13,8 @@ import { requestsSent } from "@/server/review-requests";
 import { reviewSettings } from "@/server/reviews";
 import { memberCan, requirePermission } from "@/server/permissions";
 
+import { switchOnFromPageAction } from "../settings/features/actions";
+import { MoreMenu } from "@/components/admin/orders/order-folds";
 import { answerReviewAction, hideReviewAction, pictureHiddenAction, publishReviewAction, savePublishModeAction, saveRequestSettingsAction } from "./actions";
 
 export const metadata: Metadata = { title: "Reviews" };
@@ -20,6 +22,8 @@ export const metadata: Metadata = { title: "Reviews" };
 const STATUS_SIGNAL = { pending: "warning", published: "positive", hidden: "neutral" } as const;
 
 const first = (value: string | string[] | undefined): string => (typeof value === "string" ? value : "");
+const summaryRow = "flex min-h-14 cursor-pointer list-none items-center justify-between gap-3 py-3 [&::-webkit-details-marker]:hidden";
+const rowAction = "shrink-0 text-sm font-medium text-ink underline underline-offset-2";
 const stars = (n: number) => `${"★".repeat(n)}${"☆".repeat(5 - n)}`;
 
 /**
@@ -72,34 +76,60 @@ export default async function ReviewsPage({ params, searchParams }: PageProps<"/
   };
   const total = REVIEW_STATUSES.reduce((sum, s) => sum + counts[s], 0);
   const last = page.rows.at(-1);
+  const on = featureOn(store, "reviews");
+  const owner = memberCan(member, "owner");
 
   return (
     <div className="flex flex-col gap-6">
+      {/* Round 12 (D637): what waits in the sentence, Show reviews when they are off, zeros not shown, import and export under More. */}
       <PageHeader
         title={w.title}
-        description={w.description}
+        meta={[
+          <span key="lead">
+            <span className="text-ink">
+              {!on
+                ? w.leadOff
+                : total === 0
+                  ? w.leadNone
+                  : counts.pending > 0
+                    ? countWords(counts.pending, w.leadWaiting)
+                    : countWords(counts.published, w.leadPublished)}
+            </span>
+            {!on ? w.leadOffRest : total === 0 ? w.leadNoneRest : w.leadRest}
+          </span>,
+        ]}
+        actions={
+          <>
+            <MoreMenu label={w.more}>
+              {canChange && (
+                <Link href={`${base}/import`} className="inline-flex min-h-10 items-center rounded-pill px-4 text-sm font-medium hover:bg-sunken">
+                  {words.move.importLink}
+                </Link>
+              )}
+              <form method="post" action={`${base}/export`}>
+                <button type="submit" className="inline-flex min-h-10 w-full items-center rounded-pill px-4 text-sm font-medium hover:bg-sunken">
+                  {words.move.export}
+                </button>
+              </form>
+            </MoreMenu>
+            {!on && owner && (
+              <ActionForm action={switchOnFromPageAction.bind(null, store.slug, "reviews")}>
+                <SubmitButton>{w.showReviews}</SubmitButton>
+              </ActionForm>
+            )}
+          </>
+        }
       />
 
-      {!featureOn(store, "reviews") && (
-        <p className={`p-4 text-body text-ink-2 ${CARD_CLASS}`}>
-          {w.off}{" "}
-          <Link href={`/admin/${store.slug}/settings/features`} className="underline underline-offset-2">
-            {w.features}
-          </Link>
-        </p>
+      {total > 0 && (
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+          {counts.pending > 0 && <KpiTile label={w.waiting} value={counts.pending.toLocaleString(dateLocale)} href={link({ state: "pending" })} />}
+          {counts.published > 0 && <KpiTile label={w.published} value={counts.published.toLocaleString(dateLocale)} href={link({ state: "published" })} />}
+          {counts.hidden > 0 && <KpiTile label={w.hidden} value={counts.hidden.toLocaleString(dateLocale)} href={link({ state: "hidden" })} />}
+        </div>
       )}
 
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-        <KpiTile label={w.waiting} value={counts.pending.toLocaleString(dateLocale)} href={link({ state: "pending" })} />
-        <KpiTile label={w.published} value={counts.published.toLocaleString(dateLocale)} href={link({ state: "published" })} />
-        <KpiTile label={w.hidden} value={counts.hidden.toLocaleString(dateLocale)} href={link({ state: "hidden" })} />
-      </div>
-
-      {total === 0 ? (
-        <p className={`p-8 text-center text-body text-muted ${CARD_CLASS}`}>
-          {w.empty}
-        </p>
-      ) : (
+      {total > 0 && (
         <Card
           compact
           title={state ? (state === "pending" ? w.waiting : STATUS_WORDS[state]) : w.all}
@@ -262,75 +292,84 @@ export default async function ReviewsPage({ params, searchParams }: PageProps<"/
         </Card>
       )}
 
-      <Card title={w.checkingTitle} description={w.checkingDescription} compact>
-        {canChange ? (
-          <ActionForm action={savePublishModeAction.bind(null, store.slug)} className="flex flex-col gap-3">
-            <label className="flex items-start gap-2 text-body">
-              <input type="radio" name="publish" value="after_check" defaultChecked={settings.publish === "after_check"} className="mt-1" />
-              <span>
-                <span className="block text-ink">{w.checkFirst}</span>
-                <span className="block text-caption text-muted">{w.checkFirstHint}</span>
-              </span>
-            </label>
-            <label className="flex items-start gap-2 text-body">
-              <input type="radio" name="publish" value="at_once" defaultChecked={settings.publish === "at_once"} className="mt-1" />
-              <span>
-                <span className="block text-ink">{w.atOnce}</span>
-                <span className="block text-caption text-muted">{w.atOnceHint}</span>
-              </span>
-            </label>
-            <div>
-              <SubmitButton>{w.save}</SubmitButton>
-            </div>
-          </ActionForm>
-        ) : (
-          <p className="text-body text-ink">{settings.publish === "at_once" ? w.isAtOnce : w.isChecked}</p>
-        )}
-      </Card>
-
-      <Card title={w.requestsTitle} description={w.requestsDescription} compact>
-        {canChange ? (
-          <ActionForm action={saveRequestSettingsAction.bind(null, store.slug)} className="flex flex-col gap-3">
-            <label className="flex items-center gap-2 text-body text-ink">
-              <input type="checkbox" name="requests" defaultChecked={settings.requestsOn} />
-              {w.requestsOn}
-            </label>
-            <label className="flex flex-col gap-1 text-body">
-              <span className="text-ink">{w.requestDays}</span>
-              <input
-                type="number"
-                name="days"
-                min={REQUEST_DAYS_MIN}
-                max={REQUEST_DAYS_MAX}
-                defaultValue={settings.requestDays}
-                className="w-28 rounded-lg border border-line bg-card px-3 py-2"
-              />
-              <span className="text-caption text-muted">{fillWords(w.requestDaysHint, { min: REQUEST_DAYS_MIN, max: REQUEST_DAYS_MAX })}</span>
-            </label>
-            <div>
-              <SubmitButton>{w.save}</SubmitButton>
-            </div>
-          </ActionForm>
-        ) : (
-          <p className="text-body text-ink">{settings.requestsOn ? fillWords(w.requestsIsOn, { days: settings.requestDays }) : w.requestsIsOff}</p>
-        )}
-        {settings.requestsOn && <p className="mt-3 text-caption text-muted">{countWords(sent, w.requestsSent)}</p>}
-      </Card>
-
-      <Card title={words.move.title} description={words.move.description} compact>
-        <div className="flex flex-wrap items-center gap-3">
-          {canChange && (
-            <ButtonLink href={`${base}/import`} kind="secondary">
-              {words.move.importLink}
-            </ButtonLink>
-          )}
-          <form method="post" action={`${base}/export`}>
-            <Button type="submit" kind="secondary">
-              {words.move.export}
-            </Button>
-          </form>
-        </div>
-      </Card>
+      <section aria-labelledby="how" className={`px-6 py-3 ${CARD_CLASS}`}>
+        <h2 id="how" className="mt-2 mb-1 text-title text-ink">{w.howTitle}</h2>
+        <ul className="divide-y divide-line">
+          <li>
+            {canChange ? (
+              <details>
+                <summary className={summaryRow}>
+                  <span className="flex min-w-0 flex-col">
+                    <span className="text-body text-ink">{settings.publish === "at_once" ? w.isAtOnce : w.isChecked}</span>
+                    <span className="text-caption text-ink-2">{settings.publish === "at_once" ? w.atOnceHint : w.checkFirstHint}</span>
+                  </span>
+                  <span className={rowAction}>{w.change}</span>
+                </summary>
+                <ActionForm action={savePublishModeAction.bind(null, store.slug)} className="flex flex-col gap-3 pb-5">
+                  <label className="flex items-start gap-2 text-body">
+                    <input type="radio" name="publish" value="after_check" defaultChecked={settings.publish === "after_check"} className="mt-1" />
+                    <span>
+                      <span className="block text-ink">{w.checkFirst}</span>
+                      <span className="block text-caption text-muted">{w.checkFirstHint}</span>
+                    </span>
+                  </label>
+                  <label className="flex items-start gap-2 text-body">
+                    <input type="radio" name="publish" value="at_once" defaultChecked={settings.publish === "at_once"} className="mt-1" />
+                    <span>
+                      <span className="block text-ink">{w.atOnce}</span>
+                      <span className="block text-caption text-muted">{w.atOnceHint}</span>
+                    </span>
+                  </label>
+                  <div>
+                    <SubmitButton>{w.save}</SubmitButton>
+                  </div>
+                </ActionForm>
+              </details>
+            ) : (
+              <p className="flex min-h-14 items-center py-3 text-body text-ink">{settings.publish === "at_once" ? w.isAtOnce : w.isChecked}</p>
+            )}
+          </li>
+          <li>
+            {canChange ? (
+              <details>
+                <summary className={summaryRow}>
+                  <span className="flex min-w-0 flex-col">
+                    <span className="text-body text-ink">{settings.requestsOn ? fillWords(w.requestsIsOn, { days: settings.requestDays }) : w.requestsIsOff}</span>
+                    <span className="text-caption text-ink-2">{settings.requestsOn ? countWords(sent, w.requestsSent) : w.askHint}</span>
+                  </span>
+                  <span className={rowAction}>{settings.requestsOn ? w.change : w.askBuyers}</span>
+                </summary>
+                <ActionForm action={saveRequestSettingsAction.bind(null, store.slug)} className="flex flex-col gap-3 pb-5">
+                  <p className="text-caption text-muted">{w.requestsDescription}</p>
+                  <label className="flex items-center gap-2 text-body text-ink">
+                    <input type="checkbox" name="requests" defaultChecked={settings.requestsOn} />
+                    {w.requestsOn}
+                  </label>
+                  <label className="flex flex-col gap-1 text-body">
+                    <span className="text-ink">{w.requestDays}</span>
+                    <input
+                      type="number"
+                      name="days"
+                      min={REQUEST_DAYS_MIN}
+                      max={REQUEST_DAYS_MAX}
+                      defaultValue={settings.requestDays}
+                      className="w-28 rounded-lg border border-line bg-card px-3 py-2"
+                    />
+                    <span className="text-caption text-muted">{fillWords(w.requestDaysHint, { min: REQUEST_DAYS_MIN, max: REQUEST_DAYS_MAX })}</span>
+                  </label>
+                  <div>
+                    <SubmitButton>{w.save}</SubmitButton>
+                  </div>
+                </ActionForm>
+              </details>
+            ) : (
+              <p className="flex min-h-14 items-center py-3 text-body text-ink">
+                {settings.requestsOn ? fillWords(w.requestsIsOn, { days: settings.requestDays }) : w.requestsIsOff}
+              </p>
+            )}
+          </li>
+        </ul>
+      </section>
     </div>
   );
 }
