@@ -10934,6 +10934,32 @@ export const knowledgeDocuments = commerce.table(
 );
 
 /**
+ * What the chat agent's knowledge was last cut from (bloat review step 0.27): one row per published page, article or content
+ * entry that was cut, also when it gave no passage, so the five-minute job can tell in SQL what changed. Dates and addresses
+ * only, no words.
+ */
+export const knowledgeSources = commerce.table(
+  "knowledge_sources",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    storeId: uuid("store_id").references(() => stores.id, { onDelete: "cascade" }),
+    pageId: uuid("page_id").references(() => pages.id, { onDelete: "cascade" }),
+    entryId: uuid("entry_id").references(() => contentEntries.id, { onDelete: "cascade" }),
+    publishedAt: timestamp("published_at", { withTimezone: true }).notNull(),
+    slug: text("slug").notNull(),
+    typeVersion: text("type_version"),
+    path: text("path"),
+    cutAt: timestamp("cut_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    uniqueIndex("knowledge_sources_page_key").on(t.pageId),
+    uniqueIndex("knowledge_sources_entry_key").on(t.entryId),
+    index("knowledge_sources_store_idx").on(t.storeId),
+    check("knowledge_sources_source", sql`num_nonnulls(${t.pageId}, ${t.entryId}) = 1`),
+  ],
+);
+
+/**
  * What a store used, per UTC day and metric (D314, `docs/capacity.md` 3): gauges as measured that day, counters summed over it
  * (`USAGE_METRICS` in `src/lib/usage-metrics.ts`). `store_id` null is Kaizena Flow's own site. Written only by
  * `src/server/usage-meter.ts` and the traffic drain (`src/server/usage-traffic.ts`); kept 25 months. Counts and bytes only: no person,

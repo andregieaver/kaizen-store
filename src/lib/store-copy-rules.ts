@@ -163,6 +163,7 @@ export const COPY_RULES: Record<string, CopyRule> = {
     "What keyword search reads of fields; copied with the products and rebuilt when they are saved.",
   ),
   knowledge_chunks: derived("The chat agent's knowledge, cut from pages and documents again."),
+  knowledge_sources: derived("What the chat agent's knowledge was cut from: made again with the passages."),
   media: derived("The library: the media phase adds every file the copied content points at (copied within Storage)."),
   media_embeddings: derived("Search by meaning of pictures; made again from alt texts."),
   product_embeddings: derived("Search by meaning of products; made again by the new store's own AI."),

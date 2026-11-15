@@ -72,6 +72,7 @@ export const STORE_EXPORT_LEFT_OUT: Readonly<Record<string, LeftOutReason>> = {
   inventory_levels: "catalogue",
   inventory_locations: "catalogue",
   inventory_movements: "catalogue",
+  knowledge_sources: "record",
   legal_snapshots: "record",
   limit_overrides: "record",
   live_drills: "record",
