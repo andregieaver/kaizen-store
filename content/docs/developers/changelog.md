@@ -9,16 +9,16 @@ features: []
 plans: []
 order: 1000
 checked: 2026-11-15
-sources: [D357, D438, D439, D440, D441, D458, D464, D511, D512, D585, D599, D606, D618]
+sources: [D357, D438, D439, D440, D441, D458, D464, D511, D512, D585, D599, D606, D618, D620]
 ---
 
 Every change to a published contract gets a version here, newest first: the Admin API (`/api/admin/v1/openapi.json`), the storefront API
 (`/api/storefront/v1/openapi.json`), the webhook topics (`/api/webhooks/v1/topics.json`) and the MCP catalogues (`/api/mcp/catalogue.json`,
 `/api/ucp/catalogue.json`). Within a major version nothing a caller relies on is renamed or removed; answers and payloads may gain fields.
 
-## 1.22 — 2026-11-15
+## 1.23 — 2026-11-15
 
-Additions to the owner MCP's catalogue for orders and stock (D618).
+Additions to the owner MCP's catalogue for orders and stock (D620).
 
 - `cancel_order`: cancels a paid order that is not sent yet: what was paid is refunded, the items go back in stock and the customer may be
   emailed. An order sent, partly sent, unpaid or with a change waiting for payment is refused. Always needs the owner's approval;
@@ -28,6 +28,14 @@ Additions to the owner MCP's catalogue for orders and stock (D618).
 - `list_supplier_orders`: the drop-shipping suppliers' orders, refused and late ones first (`which`: `attention`, `open`, `all`), with a
   refused one's reason in the supplier's words. Read only; `products:read`.
 - `answer_supplier_order`: sends a supplier's order again or cancels it, by the customer's order number. Needs approval; `products:write`.
+
+## 1.22 — 2026-11-15
+
+Checkout questions asked only for some baskets (D357, task 4).
+
+- `conditions` on a checkout field: the checkout rules' own conditions (country, basket value, weight, products, categories, tags,
+  customer groups). The question is asked only when every one holds for the basket; `[]` or none asks it always, and a change without
+  `conditions` keeps them.
 
 ## 1.21 — 2026-11-14
 

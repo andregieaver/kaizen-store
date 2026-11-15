@@ -616,10 +616,10 @@ Each item of section 4 moves here when it is built, with its decision.
 | F1 A second AI provider | Built: up to three fallback text models through the AI Gateway. | D610 |
 | H1 The loop scales per store | Built: steps, reviews and events claimed one per store and run side by side. | D610 |
 | H2 The challenge console | Built: Platform → Settings → 100-day challenge, each store's phase and day, stalls, what waits on the owner and how long, AI cost against budget, people's actions by class and the three ratios since Day 1; setting, changing and ending a challenge. | D614 |
-| C2 Supplier orders as tools and events | Built: `list_supplier_orders`, `answer_supplier_order` (send again or cancel), and the `supplier_problem` event. | D618 |
-| C3 Purchase orders by the AI | Built: `create_purchase_order`, placed and emailed to a known supplier, within a purchasing budget per order and a month (the owner's, or the challenge's). | D618 |
-| C5 Order events | Built: paid and not sent after 48 hours, a parcel in trouble, a supplier refused or late, an order held, a dispute to answer, failed payments piling up. Each leaves a note; none writes to the customer. | D618 |
-| C6 Cancel and risk tools | Partly: `cancel_order` (its refund waits in the refund queue). Releasing a hold stays a person's; capture timing is set by the owner before Day 1. | D618 |
+| C2 Supplier orders as tools and events | Built: `list_supplier_orders`, `answer_supplier_order` (send again or cancel), and the `supplier_problem` event. | D620 |
+| C3 Purchase orders by the AI | Built: `create_purchase_order`, placed and emailed to a known supplier, within a purchasing budget per order and a month (the owner's, or the challenge's). | D620 |
+| C5 Order events | Built: paid and not sent after 48 hours, a parcel in trouble, a supplier refused or late, an order held, a dispute to answer, failed payments piling up. Each leaves a note; none writes to the customer. | D620 |
+| C6 Cancel and risk tools | Partly: `cancel_order` (its refund waits in the refund queue). Releasing a hold stays a person's; capture timing is set by the owner before Day 1. | D620 |
 
 ### 15.1 Deployed (14 November 2026)
 

@@ -47,7 +47,7 @@ import { decideTax, loadTaxFacts } from "./tax-treatment";
 import { refreshStaleCartCheck } from "./vat-checks";
 import { bookable, cartLinesFirst } from "./cart";
 import { checkoutPhoneRequired } from "./checkout-contact";
-import { checkoutRuleOutcome, listCheckoutFields } from "./checkout-rules";
+import { askedFields, checkoutRuleOutcome } from "./checkout-rules";
 import { STORE_AUDIENCE, offeredTo, plansOffered, LIST_PRICED } from "./product-conditions";
 import { ensureStorePaymentMethods, getCheckoutUi } from "./connect";
 import { memberDiscountFor } from "./customer-tiers";
@@ -564,7 +564,7 @@ export async function placeOrder(
     // The store's questions (D357): the answers kept on the cart, checked again against the fields as they are now.
     const asked = flatRateOnly
       ? { answers: [], missing: [] }
-      : cleanAnswers(await listCheckoutFields(tx, storeId, { onlyOn: true }), answersByField(cart.checkout_answers), {
+      : cleanAnswers(await askedFields(tx, storeId, cartId, market, { customerId, basketValueMinor }), answersByField(cart.checkout_answers), {
           today: todayInZone(String(cart.time_zone ?? "Europe/Oslo")),
           country: market.code,
         });

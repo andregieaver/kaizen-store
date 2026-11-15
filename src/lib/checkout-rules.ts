@@ -341,7 +341,19 @@ export type CheckoutField = {
   sensitive?: boolean;
   /** A number's or a date's lowest and highest answer (task 4). */
   bounds?: FieldBounds;
+  /** Asked only when every one holds for the basket, the checkout rules' own conditions (task 4); none: always asked. */
+  conditions?: RuleCondition[];
 };
+
+/**
+ * Whether a question is asked of this basket (task 4): one without conditions always; one with them only when every one holds
+ * (`conditionHolds()`, as a checkout rule), and never without a basket's facts to hold them against.
+ */
+export function fieldAsked(f: Pick<CheckoutField, "conditions">, facts: CheckoutFacts | null): boolean {
+  const conditions = f.conditions ?? [];
+  if (conditions.length === 0) return true;
+  return facts !== null && conditions.every((c) => conditionHolds(c, facts));
+}
 
 /**
  * How wide the cart draws a question (task 2): `full` (the default) or `half`. Two halves next to each other share a line, one alone takes its

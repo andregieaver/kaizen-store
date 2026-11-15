@@ -6,6 +6,7 @@ import {
   answerText,
   applyCheckoutRules,
   cleanAnswers,
+  fieldAsked,
   movedTo,
   pricedBy,
   rulesOnOffer,
@@ -374,5 +375,20 @@ describe("a number, a date, an email and a phone (task 4)", () => {
     expect(answer(tel, "912 34 567").answers[0]?.answer).toBe("+4791234567");
     expect(answer(tel, "+46 70 123 45 67").answers[0]?.answer).toBe("+46701234567");
     expect(answer(tel, "call me").missing).toEqual(["p"]);
+  });
+});
+
+describe("a question asked only for some baskets (task 4)", () => {
+  const facts: CheckoutFacts = { country: "NO", currency: "NOK", totalMinor: 50_000, weightGrams: 800, productIds: ["cake"], termIds: ["bakery"], tierIds: [] };
+
+  it("is asked always without conditions, and only when every condition holds with them", () => {
+    expect(fieldAsked({}, null)).toBe(true);
+    expect(fieldAsked({ conditions: [] }, facts)).toBe(true);
+    const cakeInNorway = { conditions: [{ kind: "product", op: "has", ids: ["cake"] }, { kind: "country", op: "is", countries: ["NO"] }] as CheckoutField["conditions"] };
+    expect(fieldAsked(cakeInNorway, facts)).toBe(true);
+    expect(fieldAsked(cakeInNorway, { ...facts, country: "SE" })).toBe(false);
+    expect(fieldAsked(cakeInNorway, { ...facts, productIds: ["mug"] })).toBe(false);
+    // Without a basket to hold them against, a question with conditions is not asked.
+    expect(fieldAsked(cakeInNorway, null)).toBe(false);
   });
 });

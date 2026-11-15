@@ -162,9 +162,11 @@ Step 2 built 14 November 2026 (D613): number, date, email and phone.
   again (a date chosen yesterday as tomorrow's earliest may be too early today).
 - [ ] `file`: probably not, since the cart is a pay route (D158) and an upload brings storage, scanning and size limits.
       Only build it if a real store asks.
-- [ ] **Conditional questions:** show a question only for some markets, delivery methods or baskets (a product,
-      category or tag), using the same conditions as checkout rules (`conditionHolds()`), so there is one condition
-      model and not two.
+- [x] **Conditional questions** (15 November 2026, D618): a question is asked only when every one of its conditions holds,
+      the checkout rules' own (`conditionHolds()`, one condition model): a country (a market), the basket's value or weight,
+      products, categories, tags or the buyer's customer groups. Not a delivery method: the questions are asked in the cart,
+      before a delivery is chosen. The cart, the answers kept from it and `placeOrder()` all ask `askedFields()`, so a question
+      not asked is never required, and one a changed basket now asks stops the order until it is answered.
 
 ## Common to all four
 

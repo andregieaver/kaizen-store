@@ -1,6 +1,6 @@
 {
-  "id": "0a1c8f00-708e-4bbf-ba55-28a574087b0a",
-  "prevId": "c691e852-6947-4d20-a9b4-45b553b79bf6",
+  "id": "fc83438a-ac24-4bec-8bc2-9a1d344cb089",
+  "prevId": "0a1c8f00-708e-4bbf-ba55-28a574087b0a",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -16090,6 +16090,12 @@
           "primaryKey": false,
           "notNull": false
         },
+        "conditions": {
+          "name": "conditions",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
         "created_at": {
           "name": "created_at",
           "type": "timestamp with time zone",
@@ -16164,6 +16170,10 @@
         "checkout_fields_bounds": {
           "name": "checkout_fields_bounds",
           "value": "\"commerce\".\"checkout_fields\".\"bounds\" is null or (\"commerce\".\"checkout_fields\".\"kind\" in ('number', 'date') and jsonb_typeof(\"commerce\".\"checkout_fields\".\"bounds\") = 'object')"
+        },
+        "checkout_fields_conditions": {
+          "name": "checkout_fields_conditions",
+          "value": "\"commerce\".\"checkout_fields\".\"conditions\" is null or (jsonb_typeof(\"commerce\".\"checkout_fields\".\"conditions\") = 'array' and jsonb_array_length(\"commerce\".\"checkout_fields\".\"conditions\") between 1 and 10)"
         },
         "checkout_fields_options": {
           "name": "checkout_fields_options",

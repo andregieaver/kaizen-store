@@ -8330,6 +8330,8 @@ export const checkoutFields = commerce.table(
     sensitive: boolean("sensitive").notNull().default(false),
     /** A number's lowest and highest value, or a date's earliest and latest day from the store's today (task 4): `{ min?, max? }`. */
     bounds: jsonb("bounds"),
+    /** Asked only when every condition holds for the basket, the checkout rules' own (task 4); null: always asked. */
+    conditions: jsonb("conditions"),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
   },
@@ -8338,6 +8340,7 @@ export const checkoutFields = commerce.table(
     index("checkout_fields_store_idx").on(t.storeId, t.position),
     check("checkout_fields_kind", sql`${t.kind} in ('text', 'textarea', 'checkbox', 'checklist', 'select', 'radio', 'number', 'date', 'email', 'phone')`),
     check("checkout_fields_bounds", sql`${t.bounds} is null or (${t.kind} in ('number', 'date') and jsonb_typeof(${t.bounds}) = 'object')`),
+    check("checkout_fields_conditions", sql`${t.conditions} is null or (jsonb_typeof(${t.conditions}) = 'array' and jsonb_array_length(${t.conditions}) between 1 and 10)`),
     check(
       "checkout_fields_options",
       sql`(${t.kind} in ('checklist', 'select', 'radio')) = (${t.options} is not null) and (${t.options} is null or (jsonb_typeof(${t.options}) = 'array' and jsonb_array_length(${t.options}) between 1 and 30))`,

@@ -29,7 +29,7 @@ import { recordExperimentCart } from "@/server/experiments";
 import { productOfVariant, recordRecommendedAdd } from "@/server/recommend-events";
 import { attributionOf } from "@/lib/recommendations";
 import { parseAttribution } from "@/lib/recommendations-schema";
-import { listCheckoutFields, setCartAnswers } from "@/server/checkout-rules";
+import { askedFields, setCartAnswers } from "@/server/checkout-rules";
 import { recordTermsForOrder } from "@/server/checkout-terms";
 import { startCheckout, type CheckoutConsent, type CheckoutProblem } from "@/server/checkout";
 import { resolveSellingShop } from "@/server/shop";
@@ -207,7 +207,8 @@ export async function checkoutAction(
   }
 
   // The store's questions (D357): kept on the cart as answered, so placing the order again (a code, a delivery) keeps them.
-  const fields = await listCheckoutFields(db(), shop.store.id, { onlyOn: true });
+  // Only the questions this basket is asked (task 4: a question's conditions); an answer to one not asked is not kept.
+  const fields = await askedFields(db(), shop.store.id, cartId, shop.market, { customerId: (await getCustomer(shop.store.id))?.id ?? null });
   if (fields.length > 0) {
     // A date is checked against the store's own today, a phone typed without its code against the basket's country (task 4).
     const asked = cleanAnswers(fields, answers, { today: todayInZone(shop.store.timeZone), country: shop.market.code });
