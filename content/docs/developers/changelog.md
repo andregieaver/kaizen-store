@@ -9,7 +9,7 @@ features: []
 plans: []
 order: 1000
 checked: 2026-11-15
-sources: [D357, D438, D439, D440, D441, D458, D464, D511, D512, D585, D599, D606, D618, D620]
+sources: [D357, D438, D439, D440, D441, D458, D464, D511, D512, D585, D599, D606, D618, D621]
 ---
 
 Every change to a published contract gets a version here, newest first: the Admin API (`/api/admin/v1/openapi.json`), the storefront API
@@ -18,7 +18,7 @@ Every change to a published contract gets a version here, newest first: the Admi
 
 ## 1.23 — 2026-11-15
 
-Additions to the owner MCP's catalogue for orders and stock (D620).
+Additions to the owner MCP's catalogue for orders and stock (D621).
 
 - `cancel_order`: cancels a paid order that is not sent yet: what was paid is refunded, the items go back in stock and the customer may be
   emailed. An order sent, partly sent, unpaid or with a change waiting for payment is refused. Always needs the owner's approval;

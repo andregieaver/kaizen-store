@@ -173,7 +173,7 @@ Each rule is in full under the same words in one file of `docs/rules/admin/` by 
 - Legal pages by AI (D311 unit L, `docs/ai-autopilot.md` 8; L1 sources, L2 writer and L3 upkeep built)
 - The autopilot (D309, D328, `docs/ai-autopilot.md` 7 and 12)
 - The 100-day challenge's console (D614, `docs/100-day-challenge.md` H2, `src/lib/challenge-console.ts` pure, `src/server/challenge-console.ts`)
-- The challenge's order and stock tools and order events (D620, `docs/100-day-challenge.md` C2 to C6, `src/server/supply-tools.ts`, `src/lib/purchase-budget.ts`)
+- The challenge's order and stock tools and order events (D621, `docs/100-day-challenge.md` C2 to C6, `src/server/supply-tools.ts`, `src/lib/purchase-budget.ts`)
 - The AI wallet (D599, `docs/agent-spending.md` 5, `src/lib/card-wallet.ts`, `src/server/card-wallet.ts`, `src/server/agent-purchases.ts`)
 - Web research (D329, `docs/ai-autopilot.md` 13, `src/lib/web-search.ts`, `src/lib/web-page-text.ts`, `src/lib/research.ts`, `src/server/research.ts`)
 - Brand and look (D330, `docs/ai-autopilot.md` 14, `src/lib/brand.ts`, `src/lib/brand-design.ts`, `src/server/brand.ts`, `src/server/brand-tools.ts`)
