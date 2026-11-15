@@ -189,3 +189,4 @@ challenged by a skeptic, planned by a planner. Its last lines hold the arguments
 - CI still red on every run: shipping-handover.spec.ts:95 (other session's D634 removed the "Add a method" link; deterministic) + flaky theme-switch:168 / variants-scale:86. Pending migrations (0.26 x2, 0.25) and code 0.31 wait. Told the user.
 - Step 0.32 executor (Sonnet) started from $S/run/executor-0.32.md.
 - Step 0.32: 3 local commits (beab4e75 image service off, f38e9228 upload lifetimes, adbf83a2 public files a day + small flags) reviewed OK; rebasing + checks (task b9o4my3uh) then push into the queue. CI still blocked by shipping-handover:95 (other session).
+- Step 0.32 pushed as 516cc1c8. Queue on main: 0.25, 0.26, 0.31, 0.32. Check-in scheduled in 90 min. Next local work: none started (0.27-0.30 need migrations; 0.33 needs 0.32 deployed; 0.34 no migration, no deps -> could start).
