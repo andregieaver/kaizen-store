@@ -36,6 +36,7 @@ const signup = await import("./self-signup");
 const limits = await import("./limits");
 const sandboxAi = await import("./sandbox-ai");
 const storefront = await import("./sandbox-storefront");
+const { storeSlugOf } = await import("./stores");
 const { EMAIL_KINDS } = await import("@/lib/personal-data");
 const { readUnlock, unlockCookieName } = await import("@/lib/unlock-pass");
 const { unlockSecret } = await import("./private-secret");
@@ -221,8 +222,13 @@ describe("keeping a sandbox (D457 S2)", () => {
     expect(token).toMatch(/^[A-Za-z0-9_-]{43}$/);
     const [held] = await db().execute<Row>(sql`select expires_at > now() + interval '47 hours' as held from commerce.sandboxes where id = ${id}::uuid`);
     expect(held.held).toBe(true);
+    // The sandbox's address as the cached lookup knows it, before the press and after: a kept sandbox is the one time an address changes.
+    const sandboxSlug = await storeSlugOf(opened!.store.id);
+    expect(sandboxSlug).toBeTruthy();
     const done = await signup.confirmSelfSignup(token);
     expect(done).toMatchObject({ ok: true });
+    expect(await storeSlugOf(opened!.store.id)).toBe(`kari-keramikk-${RUN}`);
+    expect(`kari-keramikk-${RUN}`).not.toBe(sandboxSlug);
     const [row] = await db().execute<Row>(sql`
       select s.id, s.slug, s.name, s.sandbox, s.private_mode, x.state, b.trial_ends_at is not null as trial,
              (select array_agg(a.email) from commerce.store_members m join commerce.accounts a on a.id = m.account_id where m.store_id = s.id) as members,

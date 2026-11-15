@@ -24,6 +24,7 @@ import { audit, type Account } from "./auth";
 import { log } from "./log";
 import { isSlugTaken, MAX_STORES_PER_OWNER } from "./platform";
 import { copyStoreMedia, tablesPointingAtOriginal, type MediaCopyDeps } from "./store-copy-media";
+import { storeSlugOf } from "./stores";
 
 type Row = Record<string, unknown>;
 
@@ -630,8 +631,8 @@ export async function runStoreCopy(id: string, deps: StoreCopyDeps = {}): Promis
             "Some pictures could not be separated from the original store, so the copy was stopped rather than share its files. Try the copy again, and tell Kaizena Flow if it happens again.",
           );
         }
-        const [store] = await db().execute<Row>(sql`select slug from commerce.stores where id = ${copy.newId}::uuid`);
-        await (deps.invalidate ?? invalidateCaches)(copy.newId, String(store?.slug ?? ""));
+        const slug = await storeSlugOf(copy.newId);
+        await (deps.invalidate ?? invalidateCaches)(copy.newId, slug ?? "");
         await save(copy, { phase: "done" });
       }
     }

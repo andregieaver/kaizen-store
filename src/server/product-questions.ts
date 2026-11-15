@@ -20,6 +20,7 @@ import { log } from "./log";
 import { lockedOut } from "./private-mode";
 import { emailFooter, storeById } from "./shopper-emails";
 import { resolveSellingShop } from "./shop";
+import { storeSlugOf } from "./stores";
 import { formToInbox } from "./support-forms";
 import { col, typedRow, typedRows } from "./typed-rows";
 
@@ -69,8 +70,8 @@ const PRODUCT_ROW = z.object({ title: col.text, handle: col.text });
 /** A shopper's question about a product: checked, counted, and put in the inbox (or emailed). Never throws past its own failure, which says so. */
 export async function askProductQuestion(request: ProductQuestionRequest, visitor: string): Promise<{ status: number; body: FormResponse }> {
   const v = t(request.lang);
-  const slug = await typedRow(z.object({ slug: col.text }), sql`select slug from commerce.stores where id = ${request.store}::uuid`);
-  const shop = slug ? await resolveSellingShop(slug.slug, request.market) : null;
+  const slug = await storeSlugOf(request.store);
+  const shop = slug ? await resolveSellingShop(slug, request.market) : null;
   if (!shop || (await lockedOut(shop.store))) return { status: 404, body: { ok: false, error: v.form.failed } };
   const { store, market } = shop;
   const block = await findProductPart(store.id, request.block);

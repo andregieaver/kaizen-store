@@ -26,7 +26,7 @@ import { tileLines } from "@/lib/tile-fields";
 
 import { contentTypeByKey, getContentType } from "./content-types";
 import { pagesTag } from "./pages";
-import { getOpenStore, storeTag } from "./stores";
+import { getOpenStore, storeSlugOf, storeTag } from "./stores";
 import { marketIn } from "./shop";
 import { col, typedRows } from "./typed-rows";
 
@@ -43,10 +43,10 @@ async function siteOf(owner: string | null, marketCode: string | null, lang: Pla
     const locale = pageLocaleOf(lang) ?? "en";
     return { main: "en", locale, lang: PLATFORM_LANG_FACTS[lang].messages, gridLocale: PLATFORM_LANG_FACTS[lang].locale, path: (p: string) => platformPath(lang, p) };
   }
-  const [row] = await readDb().execute<Record<string, unknown>>(sql`select slug from commerce.stores where id = ${owner}::uuid`);
-  if (!row) return null;
-  cacheTag(storeTag(String(row.slug)));
-  const store = await getOpenStore(String(row.slug));
+  const slug = await storeSlugOf(owner);
+  if (!slug) return null;
+  cacheTag(storeTag(slug));
+  const store = await getOpenStore(slug);
   const market = store && marketIn(store, marketCode);
   if (!store || !market) return null;
   return {

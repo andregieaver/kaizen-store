@@ -3,7 +3,7 @@ import "server-only";
 import { sql } from "drizzle-orm";
 import { cacheLife, cacheTag } from "next/cache";
 
-import { db, readDb } from "@/db/client";
+import { readDb } from "@/db/client";
 import { isAccountsMode, type AccountsMode } from "@/lib/customer-accounts";
 import { isContactMode, type CheckoutContactSettings } from "@/lib/checkout-contact";
 import { parseStoreAudience, type StoreAudience } from "@/lib/b2b";
@@ -180,6 +180,8 @@ export type Country = { code: string; name: string; currency: string; inEu: bool
 
 /** Revalidate after changing a store's name, status, markets or payment switch. */
 export const storeTag = (slug: string) => `store:${slug}`;
+/** The tag of a store's address by its id (`storeSlugOf()`); a kept sandbox is the one time an address changes, and it marks this stale. */
+export const storeIdTag = (storeId: string) => `store-id:${storeId}`;
 export const TEMPLATE_TAG = "template-store";
 
 import { refreshTag } from "./refresh";
@@ -192,8 +194,21 @@ type Row = Record<string, unknown>;
  * the write's transaction has committed, so the page drawn again reads the new row.
  */
 export async function refreshStoreById(storeId: string): Promise<void> {
-  const [row] = await db().execute<Row>(sql`select slug from commerce.stores where id = ${storeId}::uuid`);
-  if (row) refreshTag(storeTag(String(row.slug)));
+  const slug = await storeSlugOf(storeId);
+  if (slug) refreshTag(storeTag(slug));
+}
+
+/**
+ * A store's address by its id, for code that knows the store by id (menus, jobs, saves). Cached for days under `storeIdTag(id)`: an address
+ * changes only when a sandbox is kept, and `adoptRequestSandbox()` marks this tag stale then. Never write this lookup by hand
+ * (`store-slug.scan.test.ts`); the support reads that also ask `store_is_active()` stay live.
+ */
+export async function storeSlugOf(storeId: string): Promise<string | null> {
+  "use cache";
+  cacheLife("days");
+  cacheTag(storeIdTag(storeId));
+  const [row] = await readDb().execute<Row>(sql`select slug from commerce.stores where id = ${storeId}::uuid`);
+  return row ? String(row.slug) : null;
 }
 
 const text = (value: unknown): string | null =>

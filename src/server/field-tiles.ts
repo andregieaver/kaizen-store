@@ -19,7 +19,7 @@ import { TILE_FIELDS_MAX } from "@/lib/page-content";
 import { isTileFieldType, tileLines, type TileField } from "@/lib/tile-fields";
 
 import { activeFieldGroups, fieldsTag } from "./custom-fields";
-import { getStore } from "./stores";
+import { getStore, storeSlugOf } from "./stores";
 
 type Row = Record<string, unknown>;
 type Runner = Pick<ReturnType<typeof readDb>, "execute">;
@@ -172,9 +172,7 @@ export async function shownFieldsForItems(
   const run = readDb();
   const withTerms = asksAboutTerms(groups);
   const [store, facts, rows] = await Promise.all([
-    run
-      .execute<Row>(sql`select slug from commerce.stores where id = ${storeId}::uuid`)
-      .then(([row]) => (row ? getStore(String(row.slug)) : null)),
+    storeSlugOf(storeId).then((slug) => (slug ? getStore(slug) : null)),
     entity === "product"
       ? productFactsFor(run, storeId, items, withTerms)
       : pageFactsFor(run, storeId, items, withTerms),
