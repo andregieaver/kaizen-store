@@ -155,3 +155,5 @@ challenged by a skeptic, planned by a planner. Its last lines hold the arguments
 - Step 0.21 executor (Opus ab360734102c86b49) started, all 5 commits.
 - PROD STUCK on 4aceeee: the other session's migration 20261114235025_silly_namora.sql (D613) waits for all checks; CI red on agent-eval-replay since 5026d8ef (manager prompt db670ab851a2 vs recording b255bbea41ad): the other session must record the eval again. Told the user.
 - My 0.20 commit 1 broke e2e/theme-store:118,:146 (neighbours from shared cache miss newly published themes). Reverted in d2dcb5db (pushed from kz-fix). CI wait b1y57x2n0. Step 0.20 not yet deployed; write-up after deploy.
+- 15 Nov: container restarted. Postgres restarted. 0.21 commits 1-3 rebased onto d2dcb5db (59c99846, e438b14d, 8a8dcd56); commit 4 WIP kept in tree (search-budget.ts etc.; chat-agent only passes visitor, no prompt change). New Opus executor a9a91a8a9b1437ae0 from $S/run/executor-0.21b.md.
+- Prod still on 4aceeee (eval recording blocks the D613 migration deploy). Step 0.20 write-up waits for its deploy.
