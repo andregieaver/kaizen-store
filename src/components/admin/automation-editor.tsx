@@ -19,7 +19,10 @@ export function AutomationSwitch({
   on,
   label,
   toggle,
+  quiet = false,
 }: {
+  /** Not the page's main action (round 13, D639: another automation is the one to start with). */
+  quiet?: boolean;
   storeSlug: string;
   kind: string;
   on: boolean;
@@ -33,7 +36,7 @@ export function AutomationSwitch({
   return (
     <div className="flex flex-col items-start gap-2">
       <Button
-        kind={on ? "quiet" : "main"}
+        kind={on ? "quiet" : quiet ? "secondary" : "main"}
         disabled={busy}
         onClick={() =>
           start(async () => {

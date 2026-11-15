@@ -129,7 +129,7 @@ export default async function AutomationsPage({ params }: PageProps<"/admin/[sto
                     ))}
                   </ul>
                 )}
-                {mayWrite && <AutomationSwitch storeSlug={store.slug} kind="back_in_stock" on={stock.enabled} toggle={switchAutomationAction} />}
+                {mayWrite && <AutomationSwitch storeSlug={store.slug} kind="back_in_stock" on={stock.enabled} toggle={switchAutomationAction} quiet={startKind !== null} />}
               </>
             )}
           </div>
