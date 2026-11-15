@@ -86,6 +86,12 @@ export function DiscountCodeForm({
               {full}
             </p>
           )}
+          {/* A gift card typed here that was not added (one field for both), in the shopper's words. */}
+          {state.problem && (
+            <p role="alert" className="text-sm">
+              {state.problem}
+            </p>
+          )}
         </form>
       )}
     </div>

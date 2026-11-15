@@ -102,6 +102,8 @@ export const en = {
   problemDiscount: "The discount code can no longer be used. Check your cart and try again.",
   discountCode: "Discount code",
   haveCode: "Have a discount code?",
+  codeOrCard: "Discount code or gift card",
+  haveCodeOrCard: "Have a discount code or gift card?",
   applyCode: "Apply",
   removeCode: "Remove",
   discount: "Discount",
