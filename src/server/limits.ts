@@ -133,8 +133,9 @@ const MEASURED_ROW = z.object({ measured: col.minor, latest: col.text.nullable()
  * check sums a few days of calls, not the whole month's (bloat review step 0.21). A day's row counts only when it was measured after the
  * day ended: the usage job measures today too, and a day it measured while it was still going (today's row, or yesterday's before the
  * night's run, or one whose next run failed) is partial. The measured part ends at the last whole day before the first partial one,
- * and the live part (`live(from)`) counts every call from the next day to now, so a call is counted once: a day the job wrote no row
- * for (nothing used, or never measured) falls in the live part when it comes after the last whole day.
+ * and the live part (`live(from)`) counts every call from the next day to now, so a call is counted once. The measured part also ends
+ * before the first day the job did not measure whole for every store (`ran`): the job writes no row for a store that used nothing, so a
+ * missing row is read as nothing only on a day the job is known to have measured.
  */
 async function measuredPlusLive(storeId: string, metric: "ai_cost_micros" | "marketing_emails", now: Date, live: (from: Date) => Promise<number>): Promise<number> {
   const month = monthOf(now).start;
@@ -145,8 +146,22 @@ async function measuredPlusLive(storeId: string, metric: "ai_cost_micros" | "mar
         select day, value, updated_at >= ((day + 1)::timestamp at time zone 'UTC') as whole
         from commerce.store_usage_daily
         where store_id = ${storeId}::uuid and metric = ${metric} and day >= ${month}::date and day < ${utcDay(now)}::date
+      ), ran as (
+        -- Whether the usage job measured a day whole for every store: it writes the three counters of all stores in one transaction,
+        -- so one whole counter row of any store that day proves the run. A day without one (the job down, or nothing used anywhere)
+        -- ends the measured part, so a store's day that has no row because it was never measured is counted live, not lost.
+        select d.day, exists (
+          select 1 from commerce.store_usage_daily u
+          where u.day = d.day and u.metric in ('emails', 'marketing_emails', 'ai_cost_micros')
+            and u.updated_at >= ((d.day + 1)::timestamp at time zone 'UTC')
+        ) as ok
+        from (select generate_series(${month}::date, ${utcDay(now)}::date - 1, interval '1 day')::date as day) d
       ), l as (
-        select least((select max(day) from r where whole), (select min(day) - 1 from r where not whole)) as day
+        select least(
+          (select max(day) from r where whole),
+          (select min(day) - 1 from r where not whole),
+          (select min(day) - 1 from ran where not ok)
+        ) as day
       )
       select coalesce((select sum(r.value) from r, l where r.whole and r.day <= l.day), 0)::bigint as measured, (select day::text from l) as latest
     `,

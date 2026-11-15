@@ -182,5 +182,17 @@ describe("AI on Kaizena Flow's key", () => {
         expect(await monthNow()).toBe(expected);
       }
     });
+
+    it("counts a day the job never measured, between two it did (the reviewer's case)", async () => {
+      const { measureDay } = await import("./usage-meter");
+      for (const day of past) await measureDay(day, false);
+      if (past.length < 3) return;
+      // The job down that day and the next: no counter row of any store for the middle day, while the days on either side are whole.
+      // The store used AI that day, so a sum of the measured rows alone would lose it.
+      await db().execute(sql`
+        delete from commerce.store_usage_daily where day = ${past[1]}::date and metric in ('emails', 'marketing_emails', 'ai_cost_micros')
+      `);
+      expect(await monthNow()).toBe(await wholeMonth());
+    });
   });
 });
