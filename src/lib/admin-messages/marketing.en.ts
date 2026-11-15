@@ -59,7 +59,7 @@ export const marketingEn = {
     whatItSays: "What it says",
   },
   segments: {
-    /** The list drawn for Homer (round 8, D625): ready segments on the page, each with how many it holds now. */
+    /** The list drawn for Homer (round 8, D626): ready segments on the page, each with how many it holds now. */
     lead: "Groups of your customers, kept up to date by themselves.",
     leadRest: " Start from one most shops use, or make your own.",
     yours: "Your segments",

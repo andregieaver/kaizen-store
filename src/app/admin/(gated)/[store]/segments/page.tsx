@@ -77,7 +77,7 @@ export default async function SegmentsPage({ params }: PageProps<"/admin/[store]
           </List>
         </Card>
       )}
-      {/* Round 8 (D625): the ready segments not kept yet, each counted now, kept with one press. */}
+      {/* Round 8 (D626): the ready segments not kept yet, each counted now, kept with one press. */}
       {mayWrite && starters.length > 0 && (
         <section aria-labelledby="ready-segments" className="flex flex-col gap-3">
           <h2 id="ready-segments" className="text-title text-ink">

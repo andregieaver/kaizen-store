@@ -85,7 +85,7 @@ export function ProductCatalogue({
       return r.title.toLocaleLowerCase().includes(q) || (skus[r.id] ?? []).some((sku) => sku.toLocaleLowerCase().includes(q));
     });
   }, [rows, filter, query, skus]);
-  // Round 8 (D625): in All, what costs sales comes first: sold out, then drafts, then the rest as listed.
+  // Round 8 (D626): in All, what costs sales comes first: sold out, then drafts, then the rest as listed.
   const soldOutOf = (r: ProductRowView) => keepsStock(r) && r.stock <= 0 && r.status !== "archived";
   const soldOutCount = rows.filter(soldOutOf).length;
   const ordered = filter === "all" && !archived ? [...matching].sort((a, b) => Number(soldOutOf(b)) - Number(soldOutOf(a)) || Number(b.status === "draft") - Number(a.status === "draft")) : matching;
@@ -156,7 +156,7 @@ export function ProductCatalogue({
       ) : view === "table" ? (
         <ProductsTable slug={slug} rows={page} archived={archived} priceHeader={priceHeader} locale={locale} bulk={bulk} />
       ) : (
-        // On a phone (round 8, D625) each product is a row: a small picture, the name, the price and one line of state with its action.
+        // On a phone (round 8, D626) each product is a row: a small picture, the name, the price and one line of state with its action.
         <ul className="grid gap-4 max-sm:gap-2 [grid-template-columns:repeat(auto-fill,minmax(min(210px,100%),1fr))]">
           {page.map((p) => {
             const soldOut = keepsStock(p) && p.stock <= 0 && p.status !== "archived";

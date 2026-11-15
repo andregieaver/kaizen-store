@@ -1,6 +1,6 @@
 # The admin redesigned, round 8 (November 2026)
 
-Decision D625. Round 8 takes three pages that opened on a form: the Team page, a role dropdown and a Change role button on every person,
+Decision D626. Round 8 takes three pages that opened on a form: the Team page, a role dropdown and a Change role button on every person,
 two-step sign-in as a form and two invite cards that differ by one field; Segments, a paragraph and an empty box, with the six ready
 segments only after New segment; and the product list on a phone, ten products in 4,488 px of pictures with the sold-out ones spread
 among them. The proposals are on the owner's design canvas "Admin redesign, round 8"; the owner chose, 15 November 2026, to build them as

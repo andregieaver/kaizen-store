@@ -119,7 +119,7 @@ describe("the team", () => {
   it("invites staff and collaborators with the roles to choose from", () => {
     const out = html(createElement(InviteForms, { roles, actions: { staff: action, collaborator: action } }));
     expect(out).toContain("Invite someone");
-    // Round 8 (D625): the collaborator's invite is one fold away under the one invite.
+    // Round 8 (D626): the collaborator's invite is one fold away under the one invite.
     expect(out).toContain("For a limited time, as for an agency or a freelancer");
     expect(out).toContain("never an owner");
     expect(out).toContain('max="365"');

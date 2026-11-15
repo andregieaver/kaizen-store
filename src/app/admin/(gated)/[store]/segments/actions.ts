@@ -50,7 +50,7 @@ export async function deleteSegmentAction(storeSlug: string, id: string): Promis
   redirect(`/admin/${member.store.slug}/segments`);
 }
 
-/** Keeps one of the ready segments as the store's own (round 8, D625): named in the account's language, then opened. */
+/** Keeps one of the ready segments as the store's own (round 8, D626): named in the account's language, then opened. */
 export async function keepStarterAction(storeSlug: string, key: string): Promise<void> {
   const member = await requirePermission(storeSlug, "marketing:write");
   const starter = SEGMENT_STARTERS.find((s) => s.key === key);

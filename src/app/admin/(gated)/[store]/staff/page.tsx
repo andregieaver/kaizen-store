@@ -41,7 +41,7 @@ export default async function StaffPage({ params }: PageProps<"/admin/[store]/st
 
   return (
     <div className="flex flex-col gap-8">
-      {/* Round 8 (D625): who works here in a sentence; Roles and the activity log under More; Invite is the one button. */}
+      {/* Round 8 (D626): who works here in a sentence; Roles and the activity log under More; Invite is the one button. */}
       <div className="flex flex-wrap items-end justify-between gap-3">
         <PageHeader
           title={w.title}

@@ -41,7 +41,7 @@ export const staffEn = {
     read_only: { name: "Read-only", description: "Can look at everything except billing and the team, and change nothing." },
   },
   team: {
-    /** The page drawn for Homer (round 8, D625): who works here in a sentence, people as rows, one invite. */
+    /** The page drawn for Homer (round 8, D626): who works here in a sentence, people as rows, one invite. */
     sentence: { people: { one: "{n} person works in {store}.", many: "{n} people work in {store}." }, none: " Nobody has two-step sign-in yet.", some: " {with} of {n} have two-step sign-in.", all: " Everyone has two-step sign-in." },
     more: "More",
     inviteButton: "Invite someone",

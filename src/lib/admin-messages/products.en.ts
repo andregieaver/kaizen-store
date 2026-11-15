@@ -28,7 +28,7 @@ export const productsEn = {
   },
   /** Round 2 (D597): the catalogue as pictures, its search, its filters and what each card says about stock. */
   catalogue: {
-    /** On a phone and above the list (round 8, D625). */
+    /** On a phone and above the list (round 8, D626). */
     soldOutSentence: { one: "{n} is sold out.", many: "{n} are sold out." },
     restSentence: " {active} on sale, {draft} drafts.",
     addProduct: "Add product",

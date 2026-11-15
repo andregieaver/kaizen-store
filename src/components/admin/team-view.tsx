@@ -82,7 +82,7 @@ export function TeamList({
   const past = members.filter(ended);
   return (
     <div className="flex flex-col gap-4">
-      {/* Round 8 (D625): each person a row, their role and two-step in words; changing them is in the row's menu. */}
+      {/* Round 8 (D626): each person a row, their role and two-step in words; changing them is in the row's menu. */}
       <ul className="divide-y divide-line">
         {active.map((member) => (
           <li key={member.accountId} className="flex min-h-17 flex-wrap items-center gap-x-4 gap-y-2 py-3 text-sm">
@@ -180,7 +180,7 @@ export function InviteForms({
 }) {
   const w = (words ?? staffEn).invite;
   return (
-    // Round 8 (D625): one way to invite; a collaborator with an end date is the same invite, one fold away.
+    // Round 8 (D626): one way to invite; a collaborator with an end date is the same invite, one fold away.
     <Card title={w.title} compact className="scroll-mt-6">
       <div id="invite" className="flex flex-col gap-4">
         <ActionForm action={actions.staff} className="grid grid-cols-[minmax(0,1fr)] items-end gap-3 sm:grid-cols-[minmax(0,2fr)_minmax(0,1.4fr)_auto]">
@@ -248,7 +248,7 @@ export function TwoStepRequirement({
   words?: StaffMessages;
 }) {
   const w = (words ?? staffEn).twoStep;
-  // Round 8 (D625): one row, how many have it, and the switch with its Save; the rest of what it does in its title.
+  // Round 8 (D626): one row, how many have it, and the switch with its Save; the rest of what it does in its title.
   return (
     <section aria-labelledby="two-step" className={`flex flex-wrap items-center gap-x-6 gap-y-3 px-6 py-4 ${CARD_CLASS}`}>
       <span className="flex min-w-64 flex-1 flex-col gap-0.5" title={`${w.note} ${w.requireNote}`}>
