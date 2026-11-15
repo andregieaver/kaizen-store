@@ -174,3 +174,4 @@ challenged by a skeptic, planned by a planner. Its last lines hold the arguments
 - Step 0.23 pushed as 0dcb944c (migration 20261115123101_cookie_scans_site_indexes.sql; waits for all checks). Wait task bvzs2lp0f. After deploy: prod checks, Supabase advisors, record version 20261115123101 in D620 row (recheck number), replace "(bloat review step 0.23)" in CLAUDE.md with D620, set row Done.
 - Step 0.23 DONE: migration 20261115123101 applied by CI run 1305 (13:18 UTC), advisors INFO only, prod on 7715b054; write-up aec87520 (D622; other session at D621). CLAUDE.md now cites D622.
 - Queue drained. Next: 0.24. Later readings (a week on): 0.8 statements, 0.20 slug statement, 0.21 ai_providers reads, 0.22 statements per cart view, 0.23 cookie_scans seq scans.
+- Step 0.24 executor (Sonnet a2a017581859782f8) started from $S/run/executor-0.24.md.
