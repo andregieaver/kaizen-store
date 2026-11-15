@@ -7,6 +7,7 @@ import { entryTitle, readEntryContent } from "@/lib/content-types";
 import type { FieldDef, FieldImage } from "@/lib/custom-fields";
 
 import { col, typedRows, type Executor } from "./typed-rows";
+import { owned } from "./owned";
 
 /** What a reference to an entry draws as: its title, its page's address (empty for a type without pages) and its picture. */
 export type EntryTarget = { label: string; href: string; image: string | null };
@@ -40,7 +41,7 @@ export async function entryTargets(
     sql`
       select e.id, e.slug, e.published, t.slug as type_slug, t.has_pages, t.fields, t.title_field, t.picture_field
       from commerce.content_entries e join commerce.content_types t on t.id = e.type_id
-      where e.store_id is not distinct from ${owner}::uuid and e.published is not null
+      where ${owned(owner, sql`e.store_id`)} and e.published is not null
         and e.id in (${sql.join(
           ids.map((id) => sql`${id}::uuid`),
           sql`, `,
@@ -68,7 +69,7 @@ export async function entryLookups(run: Executor, owner: string | null, main: st
     sql`
       select e.id, e.slug, e.draft, t.key, t.fields, t.title_field
       from commerce.content_entries e join commerce.content_types t on t.id = e.type_id
-      where e.store_id is not distinct from ${owner}::uuid
+      where ${owned(owner, sql`e.store_id`)}
       order by t.position, e.position
       limit ${limit}
     `,

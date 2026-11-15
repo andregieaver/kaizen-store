@@ -6,6 +6,8 @@ import { z } from "zod";
 import { db } from "@/db/client";
 import { OPTIONAL_CATEGORIES } from "@/lib/cookie-consent";
 
+import { owned } from "./owned";
+
 type Row = Record<string, unknown>;
 
 /** What the consent widget sends when a visitor decides (D58). */
@@ -42,7 +44,7 @@ export async function listConsents(
 ): Promise<{ id: string; visitor: string; choices: Record<string, boolean>; version: string; createdAt: string }[]> {
   const rows = await db().execute<Row>(sql`
     select id, visitor, choices, version, created_at from commerce.consents
-    where store_id is not distinct from ${storeId}::uuid
+    where ${owned(storeId)}
     order by created_at desc
     limit ${limit}
   `);

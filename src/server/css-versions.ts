@@ -7,6 +7,7 @@ import type { db } from "@/db/client";
 import { CSS_VERSIONS_KEPT, type CssVersionItem } from "@/lib/css-versions";
 
 import { col, typedRow, typedRows } from "./typed-rows";
+import { owned } from "./owned";
 
 /**
  * Versions of a site's own CSS (wave 11 unit F, D385): the only writer of `commerce.css_versions`. Each save of the CSS panel
@@ -17,7 +18,7 @@ import { col, typedRow, typedRows } from "./typed-rows";
 
 type Tx = { execute: ReturnType<typeof db>["execute"] };
 
-const ownerIs = (owner: string | null) => sql`store_id is not distinct from ${owner}::uuid`;
+const ownerIs = (owner: string | null) => owned(owner);
 
 /** Keeps the site's CSS as a save left it, in the caller's transaction: nothing when it is the newest version already. */
 export async function keepCssVersion(tx: Tx, input: { owner: string | null; css: string; account: string | null }): Promise<void> {
@@ -45,7 +46,7 @@ export async function listCssVersions(owner: string | null): Promise<CssVersionI
     sql`
       select v.id, v.created_at, nullif(a.name, '') as by, char_length(v.css)::int as length
       from commerce.css_versions v left join commerce.accounts a on a.id = v.created_by
-      where v.store_id is not distinct from ${owner}::uuid
+      where ${owned(owner, sql`v.store_id`)}
       order by v.created_at desc, v.id desc
       limit ${CSS_VERSIONS_KEPT}
     `,

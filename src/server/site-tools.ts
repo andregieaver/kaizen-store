@@ -69,6 +69,7 @@ import { storeSlugOf, storeTag, type Store } from "./stores";
 import { chooseSiteLayout } from "./site-layouts";
 import { themeLayersFor } from "./theme-elements";
 import { aiFor } from "./ai";
+import { owned } from "./owned";
 
 type Row = Record<string, unknown>;
 
@@ -136,7 +137,7 @@ async function findPage(ctx: SiteToolContext, ref: string, type: PageType): Prom
   const byId = /^[0-9a-f-]{36}$/i.test(ref);
   const [row] = await db().execute<Row>(sql`
     select id from commerce.pages
-    where store_id is not distinct from ${owner}::uuid and type = ${type}
+    where ${owned(owner)} and type = ${type}
       and ${byId ? sql`id = ${ref}::uuid` : sql`slug = ${ref.replace(/^\/+|\/+$/g, "")}`}
   `);
   return row ? String(row.id) : fail(`No ${type === "article" ? "article" : "page"} "${ref}" on this site. Use list_pages to find it.`);
@@ -192,7 +193,7 @@ export async function listPageBuildsTool(ctx: SiteToolContext, { limit }: { limi
   const rows = await db().execute<Row>(sql`
     select j.id, j.status, j.problem, j.result, j.page_id, j.input ->> 'title' as title, j.created_at, p.type
     from commerce.page_ai_jobs j left join commerce.pages p on p.id = j.page_id
-    where j.kind = 'build' and j.store_id is not distinct from ${ownerOf(ctx)}::uuid
+    where j.kind = 'build' and ${owned(ownerOf(ctx), sql`j.store_id`)}
     order by j.created_at desc limit ${limit}
   `);
   return {
@@ -232,7 +233,7 @@ export async function buildPageTool(ctx: SiteToolContext, args: BuildPageArgs, d
   if (claims.length > 0) return fail(`Rewrite the brief without claims the site cannot back: ${claims.join(", ")}.`);
   const [waiting] = await db().execute<Row>(sql`
     select count(*)::int as n from commerce.page_ai_jobs
-    where kind = 'build' and status = 'waiting' and store_id is not distinct from ${ownerOf(ctx)}::uuid
+    where kind = 'build' and status = 'waiting' and ${owned(ownerOf(ctx))}
   `);
   if (Number(waiting?.n ?? 0) >= BUILDS_WAITING_MAX) {
     return fail(`${BUILDS_WAITING_MAX} pages are being built already. Ask again when one is done: list_page_builds says how far they are.`);
@@ -374,7 +375,7 @@ export async function studioPictureStates(owner: Pick<StudioOwner, "storeId">, p
     select j.input ->> 'key' as key, j.status, j.problem, j.result ->> 'url' as url, (j.claimed_until is not null and j.claimed_until > now()) as held
     from commerce.page_ai_jobs j join commerce.pages p on p.id = j.page_id
     where j.kind = 'picture' and j.page_id = ${pageId}::uuid
-      and j.store_id is not distinct from ${owner.storeId}::uuid and p.store_id is not distinct from ${owner.storeId}::uuid
+      and ${owned(owner.storeId, sql`j.store_id`)} and ${owned(owner.storeId, sql`p.store_id`)}
     order by j.created_at, j.id
   `);
   return rows.map((row) => {
@@ -437,7 +438,7 @@ export async function publishApprovalWords(ctx: SiteToolContext, args: Record<st
   const byId = /^[0-9a-f-]{36}$/i.test(ref);
   const [row] = await db().execute<Row>(sql`
     select draft ->> 'title' as title from commerce.pages
-    where store_id is not distinct from ${ownerOf(ctx)}::uuid and type = ${type} and ${byId ? sql`id = ${ref}::uuid` : sql`slug = ${ref}`}
+    where ${owned(ownerOf(ctx))} and type = ${type} and ${byId ? sql`id = ${ref}::uuid` : sql`slug = ${ref}`}
   `);
   return publishSummary(type, row?.title ? String(row.title) : null, ref);
 }
@@ -539,7 +540,7 @@ async function keep(job: ClaimedJob, outcome: Outcome): Promise<void> {
       `);
       if (kept.length === 0) {
         if (job.kind === "build" && outcome.pageId) {
-          await tx.execute(sql`delete from commerce.pages where id = ${outcome.pageId}::uuid and published_at is null and store_id is not distinct from ${job.storeId}::uuid`);
+          await tx.execute(sql`delete from commerce.pages where id = ${outcome.pageId}::uuid and published_at is null and ${owned(job.storeId)}`);
         }
         await tx.execute(sql`update commerce.page_ai_jobs set claimed_until = null where id = ${job.id}::uuid`);
         return;
@@ -684,7 +685,7 @@ export async function setPagePlaceTool(ctx: SiteToolContext, { place, page }: { 
 async function pageTitle(ctx: Pick<SiteToolContext, "store">, pageId: string): Promise<string | null> {
   const [row] = await db().execute<Row>(sql`
     select coalesce(nullif(published ->> 'title', ''), draft ->> 'title') as title from commerce.pages
-    where id = ${pageId}::uuid and store_id is not distinct from ${ownerOf(ctx)}::uuid
+    where id = ${pageId}::uuid and ${owned(ownerOf(ctx))}
   `);
   return row?.title ? String(row.title) : null;
 }
@@ -740,7 +741,7 @@ async function menuShown(ctx: Pick<SiteToolContext, "store">, menuId: string): P
     : sql`exists (select 1 from commerce.platform_settings s where ${menuId}::uuid in (s.header_menu_id, s.footer_menu_id))`;
   const [row] = await db().execute<Row>(sql`
     select ${standard}
-      or exists (select 1 from commerce.pages p where p.store_id is not distinct from ${ownerOf(ctx)}::uuid and p.published::text like ${`%"${menuId}"%`}) as shown
+      or exists (select 1 from commerce.pages p where ${owned(ownerOf(ctx), sql`p.store_id`)} and p.published::text like ${`%"${menuId}"%`}) as shown
   `);
   return Boolean(row?.shown);
 }
@@ -963,7 +964,7 @@ async function headerFooterPage(ctx: SiteToolContext, args: UseHeaderFooterArgs)
   if (!/^[0-9a-f-]{36}$/i.test(args.page)) return fail(`Give the ${args.kind}'s id, as draft_header_footer gave it, or standard.`);
   const [row] = await db().execute<Row>(sql`
     select id, coalesce(draft ->> 'title', published ->> 'title', '') as title from commerce.pages
-    where id = ${args.page}::uuid and type = ${args.kind} and store_id is not distinct from ${ownerOf(ctx)}::uuid
+    where id = ${args.page}::uuid and type = ${args.kind} and ${owned(ownerOf(ctx))}
   `);
   if (!row) return fail(`The site has no such ${args.kind}.`);
   return { id: String(row.id), title: String(row.title) };

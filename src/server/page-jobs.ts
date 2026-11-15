@@ -9,6 +9,7 @@ import type { WebsiteMessages } from "@/lib/admin-messages/website.en";
 
 import { audit } from "./auth";
 import { col, typedRow, typedRows } from "./typed-rows";
+import { owned } from "./owned";
 
 /**
  * The AI's page work as the Pages list shows it (PSI UX-01): the builds the AI manager or the autopilot started for a site
@@ -39,7 +40,7 @@ export async function runningPageJobs(storeId: string | null): Promise<RunningPa
     typedRows(BUILD_ROW, sql`
       select id, input ->> 'title' as title, claimed_until is not null and claimed_until > now() as running, created_at
       from commerce.page_ai_jobs
-      where kind = 'build' and status = 'waiting' and store_id is not distinct from ${storeId}::uuid
+      where kind = 'build' and status = 'waiting' and ${owned(storeId)}
       order by created_at, id
     `),
     typedRows(PICTURES_ROW, sql`
@@ -47,7 +48,7 @@ export async function runningPageJobs(storeId: string | null): Promise<RunningPa
         count(*) filter (where j.status = 'done')::int as made, count(*) filter (where j.status = 'waiting')::int as waiting,
         count(*) filter (where j.status in ('gone', 'failed'))::int as not_made
       from commerce.page_ai_jobs j join commerce.pages p on p.id = j.page_id
-      where j.kind = 'picture' and j.store_id is not distinct from ${storeId}::uuid and p.store_id is not distinct from ${storeId}::uuid
+      where j.kind = 'picture' and ${owned(storeId, sql`j.store_id`)} and ${owned(storeId, sql`p.store_id`)}
       group by j.page_id, p.draft ->> 'title', p.type
       having count(*) filter (where j.status = 'waiting') > 0
       order by min(j.created_at)
@@ -87,14 +88,14 @@ export async function stopPageBuild(storeId: string | null, build: string): Prom
     z.object({ title: col.textOrNull, running: col.bool }),
     sql`
       update commerce.page_ai_jobs set status = 'failed', problem = ${STOPPED}, updated_at = now()
-      where id = ${build}::uuid and kind = 'build' and status = 'waiting' and store_id is not distinct from ${storeId}::uuid
+      where id = ${build}::uuid and kind = 'build' and status = 'waiting' and ${owned(storeId)}
       returning input ->> 'title' as title, claimed_until is not null and claimed_until > now() as running
     `,
   );
   if (stopped) return { outcome: "stopped", title: stopped.title ?? "", running: stopped.running };
   const job = await typedRow(
     z.object({ status: col.text, page_id: col.textOrNull }),
-    sql`select status, page_id from commerce.page_ai_jobs where id = ${build}::uuid and kind = 'build' and store_id is not distinct from ${storeId}::uuid`,
+    sql`select status, page_id from commerce.page_ai_jobs where id = ${build}::uuid and kind = 'build' and ${owned(storeId)}`,
   );
   if (!job) return { outcome: "unknown" };
   return job.status === "done" && job.page_id ? { outcome: "built" } : { outcome: "ended" };
@@ -111,7 +112,7 @@ export async function stopPagePictures(storeId: string | null, pageId: string): 
     z.object({ id: col.uuid }),
     sql`
       update commerce.page_ai_jobs set status = 'failed', problem = ${STOPPED}, updated_at = now()
-      where kind = 'picture' and status = 'waiting' and page_id = ${pageId}::uuid and store_id is not distinct from ${storeId}::uuid
+      where kind = 'picture' and status = 'waiting' and page_id = ${pageId}::uuid and ${owned(storeId)}
       returning id
     `,
   );

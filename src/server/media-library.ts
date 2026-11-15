@@ -170,7 +170,7 @@ export async function forgetUnstoredVideo(owner: { storeId: string | null }, pat
   await db().execute(sql`
     delete from commerce.media
     where kind = 'video' and bucket = 'page-videos' and path = ${path}
-      and store_id is not distinct from ${owner.storeId}::uuid
+      and ${owned(owner.storeId)}
   `);
 }
 

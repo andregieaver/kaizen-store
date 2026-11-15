@@ -16,6 +16,7 @@ import { pagesTag } from "./pages";
 import { checkPageTypeAccess, checkPassPageTypeAccess } from "./permissions";
 import { refreshTagNow } from "./refresh";
 import { listTextStyles } from "./text-styles";
+import { owned } from "./owned";
 
 /**
  * Editing a page's words on the live site (D192): signed-in staff who may change the website press a heading or a text on the page
@@ -119,7 +120,7 @@ export async function applyPageText(input: {
   const outcome = await db().transaction(async (tx): Promise<{ ok: true; draftKept: boolean; slug: string; title: string; type: PageType } | PageTextFailure> => {
     const [row] = await tx.execute<Row>(sql`
       select slug, type, draft, published from commerce.pages
-      where id = ${page}::uuid and store_id is not distinct from ${owner}::uuid and type in ('page', 'article')
+      where id = ${page}::uuid and ${owned(owner)} and type in ('page', 'article')
       for update
     `);
     if (!row) return GONE;
