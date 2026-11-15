@@ -190,3 +190,6 @@ challenged by a skeptic, planned by a planner. Its last lines hold the arguments
 - Step 0.32 executor (Sonnet) started from $S/run/executor-0.32.md.
 - Step 0.32: 3 local commits (beab4e75 image service off, f38e9228 upload lifetimes, adbf83a2 public files a day + small flags) reviewed OK; rebasing + checks (task b9o4my3uh) then push into the queue. CI still blocked by shipping-handover:95 (other session).
 - Step 0.32 pushed as 516cc1c8. Queue on main: 0.25, 0.26, 0.31, 0.32. Check-in scheduled in 90 min. Next local work: none started (0.27-0.30 need migrations; 0.33 needs 0.32 deployed; 0.34 no migration, no deps -> could start).
+- 22:40 UTC 15 Nov: pipeline unblocked (other session fixed shipping test). 0.26 migrations by run 1330 (19:07), 0.25 by run 1346 (21:48) with 0.31+0.32 code. Prod checked: orders 32 indexes, cron log 442 rows/848 kB, DB 824->176 MB, retention job scheduled, hourly.* rows present, retired dispatcher rows 0, flags max-age=86400, font HIT, /_next/image 400. Advisors INFO only. Written up 188fe229 (D642-D645).
+- TODO 16 Nov after 07:00 UTC: check the 7 daily.* rows in commerce.cron_jobs and no job late (0.31).
+- Next: 0.27 (migrations, two pushes with a deploy between), 0.28, 0.29, 0.30, then 0.33.
