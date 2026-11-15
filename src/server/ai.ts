@@ -293,8 +293,14 @@ export async function aiAbilities(storeId: string | null): Promise<AiAbilities> 
   const now = Date.now();
   const kept = abilitiesMemo.get(key);
   if (kept && now - kept.at < ABILITIES_FRESH_MS) return kept.value;
-  const c = await aiFor(storeId);
-  const value: AiAbilities = {
+  const value = abilitiesOf(await aiFor(storeId));
+  abilitiesMemo.set(key, { at: now, value });
+  return value;
+}
+
+/** What a connection can do, as `aiAbilities()` answers it (pure; tests that fake `aiFor()` answer abilities with it too). */
+export function abilitiesOf(c: AiConnection | null): AiAbilities {
+  return {
     text: Boolean(c?.textModel),
     sees: Boolean(seeing(c)),
     pictures: Boolean(c?.image),
@@ -309,8 +315,6 @@ export async function aiAbilities(storeId: string | null): Promise<AiAbilities> 
     space: c?.space ?? null,
     minSimilarity: c ? c.minSimilarity : null,
   };
-  abilitiesMemo.set(key, { at: now, value });
-  return value;
 }
 
 /** Forgets every site's abilities: a save of the platform's provider changes every store that answers with it. Tests call it too. */
