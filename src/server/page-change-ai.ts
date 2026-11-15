@@ -7,7 +7,7 @@ import { PATTERNS, planSection } from "@/lib/page-ai";
 import { UNTRUSTED_TEXT } from "@/lib/prompt-safety";
 import { applyPageEdits, dryRunEdits, pageChange, pageOutline, type PageChange } from "@/lib/site-tools";
 
-import { AiError, aiFor, completeText, type AiConnection } from "./ai";
+import { AiError, aiAbilities, aiFor, completeText, type AiConnection } from "./ai";
 import { sectionForPage, siteFacts, type StudioOwner } from "./page-ai";
 
 /**
@@ -23,7 +23,7 @@ export const CHANGE_DESCRIPTION_MAX = 1000;
 
 /** Whether a site's AI can change pages by description (a text model), so the builder offers *Change with AI*. */
 export async function canChangePages(storeId: string | null): Promise<boolean> {
-  return Boolean((await aiFor(storeId))?.textModel);
+  return (await aiAbilities(storeId)).text;
 }
 const CONTENT_MAX = 600_000;
 /** New sections in one change: each is a model call of its own. */

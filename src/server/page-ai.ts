@@ -40,7 +40,7 @@ import {
 import { pageBlocks, pageInput, reservedPageSlugs, richTextPlain, type PageContent, type PageRow } from "@/lib/page-content";
 import { marketPath } from "@/lib/paths";
 
-import { AiError, aiFor, completeText, seeing, speakText, transcribeAudio, type AiConnection, type ChatMessage } from "./ai";
+import { AiError, aiAbilities, aiFor, completeText, speakText, transcribeAudio, type AiConnection, type ChatMessage } from "./ai";
 import { makePicture } from "./ai-pictures";
 import { audit, type Account } from "./auth";
 import { brandOf } from "./brand";
@@ -166,14 +166,14 @@ export async function siteFacts(owner: StudioOwner, connection: AiConnection | n
 
 /** What the studio can do on the site: talk (a text model), make pictures, and hear and speak. */
 export async function studioAbilities(storeId: string | null): Promise<{ text: boolean; sees: boolean; pictures: boolean; hear: boolean; speak: boolean }> {
-  const connection = await aiFor(storeId);
+  const a = await aiAbilities(storeId);
   return {
-    text: Boolean(connection?.textModel),
+    text: a.text,
     /** A model that looks at pictures is set up (D163): the page copier's AI needs it. */
-    sees: Boolean(seeing(connection)),
-    pictures: Boolean(connection?.image),
-    hear: Boolean(connection?.transcriptionModel),
-    speak: Boolean(connection?.speechModel && connection.speechVoice),
+    sees: a.sees,
+    pictures: a.pictures,
+    hear: a.hear,
+    speak: a.speech,
   };
 }
 

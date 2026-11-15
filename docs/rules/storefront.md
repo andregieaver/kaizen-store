@@ -392,7 +392,8 @@ changing it; a rule changes here, and its line in CLAUDE.md when its gist change
   (`commerce.chat_agents`, edited at `/admin/{store}/chat` and
   `/admin/platform/chat`), shown by `StoreChat`/`KaizenChat` in the layouts
   while on and the site's AI has a text model (`chatWidgetFor()`, tagged
-  `chatTag()` and `AI_TAG`). `runChat()` gives the model the rules
+  `chatTag(storeId)`, `aiTag(storeId)` and the platform's `aiTag(null)`, since a store without its own provider answers with
+  Kaizena Flow's; `saveAiSettings()` and `removeAiSettings()` refresh only the tag of the site they changed). `runChat()` gives the model the rules
   (`systemPrompt()`: only the site, facts only from tools; whatever the site's own pages, articles or knowledge
   base speak of is the site's, a comparison with another company included, and the model searches before it
   says it cannot help, D428) and the site's

@@ -2,6 +2,7 @@ import "server-only";
 
 import { sql } from "drizzle-orm";
 import { cacheLife, cacheTag } from "next/cache";
+import { headers } from "next/headers";
 
 import { db, readDb } from "@/db/client";
 import { cleanReply, embedTools, kaizenTools, returnFacts, SHOP_DESTINATIONS, SHOP_TOOLS, shownSoFar, storeTools, systemPrompt, type ChatAction, type ChatProduct, type ChatReply } from "@/lib/chat";
@@ -22,7 +23,7 @@ import { CHIPS_MAX, type SupportCard, type SupportChip } from "@/lib/support-vis
 import { TRANSCRIPT_DAYS_OFF, type EscalationCategory, type SupportMode } from "@/lib/support-rules";
 import { z } from "zod";
 
-import { AI_TAG, AiError, aiFor, canSpeak, chatWithTools, streamWithTools, type AiConnection, type ToolChatMessage, type ToolDefinition } from "./ai";
+import { AiError, aiFor, aiTag, canSpeak, chatWithTools, streamWithTools, type AiConnection, type ToolChatMessage, type ToolDefinition } from "./ai";
 import { audit, type Account } from "./auth";
 import { brandOf } from "./brand";
 import { campaignNotices } from "./campaign-notices";
@@ -33,6 +34,7 @@ import { publishedPageNames } from "./pages";
 import { getPlatformChrome } from "./platform-navigation";
 import { queryVector } from "./query-vector";
 import { recommendForChat } from "./recommend";
+import { budgetVisitor } from "./request-budget";
 import { searchProducts } from "./search";
 import { pickupFacts } from "./pickup-facts";
 import { getShippingFacts } from "./seo";
@@ -135,7 +137,8 @@ async function cachedDeskSettings(storeId: string | null) {
 export async function chatWidgetFor(storeId: string | null): Promise<ChatWidgetProfile | null> {
   "use cache";
   cacheLife("hours");
-  cacheTag(chatTag(storeId), AI_TAG);
+  // A store without a provider of its own answers with Kaizena Flow's, so its pages keep the platform's tag too.
+  cacheTag(chatTag(storeId), aiTag(storeId), aiTag(null));
   const [agent, connection, settings] = await Promise.all([getChatAgent(storeId), aiFor(storeId), cachedDeskSettings(storeId)]);
   const mode = settings?.mode ?? "off";
   const ai = agent !== null && Boolean(connection?.textModel) && mode !== "people" && (mode === "ai_first" || agent.enabled);
@@ -266,6 +269,19 @@ const json = (value: unknown) => JSON.stringify(value).slice(0, 6000);
 /** A site tool's answer: JSON for the model, and what the widget draws from it (a page opened, product cards, link chips, D583). */
 type ToolOutcome = { result: string; action?: ChatAction; products?: ChatProduct[]; chips?: SupportChip[] };
 
+/**
+ * The visitor behind a chat turn, for the search's ceiling on the AI (bloat review step 0.21): the same key the store's search page
+ * counts by (`budgetVisitor()`), so the two share a visitor's budget. The turn's own key for `takeChatTurn()` is made in the route and
+ * not handed down, so it is read from the request; outside one (an email turn's job, a test) the search counts as one anonymous visitor.
+ */
+async function searchVisitor(): Promise<string | null> {
+  try {
+    return budgetVisitor(await headers());
+  } catch {
+    return null;
+  }
+}
+
 /** The site pages a widget's search found, as chips under the answer (at most this many, the best first). */
 const PAGE_CHIPS = 2;
 
@@ -279,7 +295,8 @@ async function storeTool(site: Extract<ChatSite, { kind: "store" }>, name: strin
     case "search_products": {
       const query = text("query");
       if (!query) return { result: json({ error: "Say what to look for." }) };
-      const [found, notices] = await Promise.all([searchProducts({ storeId: store.id, market }, query, queryVector, null, 6), campaignNotices(store.id, market)]);
+      const vectorFor = (storeId: string, space: string, words: string, visitor: string | null) => queryVector(storeId, space, words, "search", visitor);
+      const [found, notices] = await Promise.all([searchProducts({ storeId: store.id, market }, query, vectorFor, null, 6, await searchVisitor()), campaignNotices(store.id, market)]);
       const offers = new Map(found.products.map((p) => [p.id, offersOn(site, notices, p.id, { gifts: false })] as const));
       const products = found.products.map((p) => card(site, p, p.priceVaries, offers.get(p.id)?.card));
       return {

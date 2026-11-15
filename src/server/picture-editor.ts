@@ -7,7 +7,7 @@ import { db } from "@/db/client";
 import { EDIT_ACTIONS, editedFileName, editPrompt, needsBrief } from "@/lib/picture-edit";
 import { BRIEF_MAX, BRIEF_MIN } from "@/lib/picture-direction";
 
-import { AiError, aiFor, editImage, type AiConnection } from "./ai";
+import { AiError, aiAbilities, aiFor, editImage, type AiConnection } from "./ai";
 import { checkedAlt, shrinkPicture } from "./ai-pictures";
 import { downloadStoredFile } from "./media";
 import { storePicture } from "./media-library";
@@ -42,7 +42,7 @@ export type EditedPicture =
 
 /** Whether a site's AI has a model that edits pictures, so the library offers *Edit with AI*. */
 export async function canEditPictures(storeId: string | null): Promise<boolean> {
-  return Boolean((await aiFor(storeId))?.image?.editModel);
+  return (await aiAbilities(storeId)).pictureEdit;
 }
 
 export async function editLibraryPicture(

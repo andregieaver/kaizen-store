@@ -1,11 +1,11 @@
 "use server";
 
-import { refresh, updateTag } from "next/cache";
+import { refresh } from "next/cache";
 
 import type { FormState } from "@/components/admin/action-form";
 import type { AiEvalResult, AiImageTestResult, AiTestResult, AiVisionCheckResult } from "@/components/admin/ai-provider-form";
 import { aiFormValues } from "@/lib/ai-provider";
-import { AI_TAG, AiError, ownConnection, removeAiSettings, saveAiSettings, testAi } from "@/server/ai";
+import { AiError, ownConnection, removeAiSettings, saveAiSettings, testAi } from "@/server/ai";
 import type { AgentEvalOutcome } from "@/components/admin/agent-eval-button";
 import { runAgentEval } from "@/server/agent-eval";
 import { testPicture } from "@/server/ai-pictures";
@@ -49,7 +49,6 @@ export async function savePlatformAiAction(_state: FormState, formData: FormData
   const account = await requirePlatformAdmin();
   const result = await saveAiSettings(account.id, null, aiFormValues(formData));
   if (!result.ok) return { status: "error", messages: result.problems };
-  updateTag(AI_TAG);
   refresh();
   return { status: "ok", messages: [wordsOf(account).saved] };
 }
@@ -63,7 +62,6 @@ export async function testPlatformAiAction(): Promise<AiTestResult> {
 export async function removePlatformAiAction(): Promise<{ ok: true } | { ok: false; problems: string[] }> {
   const account = await requirePlatformAdmin();
   await removeAiSettings(account.id, null);
-  updateTag(AI_TAG);
   refresh();
   return { ok: true };
 }

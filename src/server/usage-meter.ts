@@ -15,7 +15,7 @@ import { aiCostSql, domainsSql, emailsSql, productsSql, staffSql } from "./usage
  * here: they are added up by `usage-traffic.ts`.
  */
 
-const dayBounds = (day: string) => {
+export const dayBounds = (day: string) => {
   const from = new Date(`${day}T00:00:00Z`);
   return { from, to: new Date(from.getTime() + 24 * 60 * 60 * 1000) };
 };

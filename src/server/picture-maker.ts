@@ -16,7 +16,7 @@ import {
   type SiteLook,
 } from "@/lib/picture-direction";
 
-import { AiError, aiFor, type AiConnection } from "./ai";
+import { AiError, aiAbilities, aiFor, type AiConnection } from "./ai";
 import { checkedAlt, makePicture } from "./ai-pictures";
 import { getPlatformTheme } from "./platform-navigation";
 import { PLATFORM_DEFAULTS } from "./seo";
@@ -72,7 +72,7 @@ export async function siteLookOf(store: Store | null): Promise<SiteLook> {
 
 /** Whether a site's AI has a picture model, so the builder offers *Make with AI* (D283). */
 export async function canMakePictures(storeId: string | null): Promise<boolean> {
-  return Boolean((await aiFor(storeId))?.image);
+  return (await aiAbilities(storeId)).pictures;
 }
 
 /** Makes the picture asked for and keeps it in the site's library; a model or a description that fails says why, in words. */

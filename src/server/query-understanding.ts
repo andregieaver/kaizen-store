@@ -7,6 +7,7 @@ import { cleanFilters } from "@/lib/query-understanding-schema";
 import { expandQuery } from "@/lib/search-synonyms";
 
 import { AiError, aiFor, completeText, type AiConnection } from "./ai";
+import { searchAiRoom } from "./search-budget";
 import { cached, cacheKey } from "./search-cache";
 import { synonymsFor } from "./search-synonyms";
 import { siteTerms } from "./taxonomy";
@@ -62,6 +63,8 @@ export async function understandQuery(
   textModel: string,
   market: { locale: string; currency: string },
   query: string,
+  /** The visitor whose search this is, for the search's ceiling on the AI (`searchAiRoom()`); null counts as one anonymous visitor. */
+  visitor: string | null = null,
 ): Promise<SearchFilters> {
   const [terms, groups] = await Promise.all([siteTerms(storeId, "product"), synonymsFor(storeId, market.locale)]);
   const aliases = expandQuery(query, groups);
@@ -79,6 +82,8 @@ export async function understandQuery(
   // Only a search with alternatives has them in its key, so searches no synonym touches keep the answers already kept.
   const key = cacheKey(textModel, instructions.content, query, ...(aliases.length > 0 ? [aliases.join("\u001e")] : []));
   return cached(storeId, "filters", key, async () => {
+    // Only a search nobody made before reaches here: under the ceiling it asks the model, past it the search goes on by keyword.
+    if (!(await searchAiRoom(storeId, visitor))) throw new AiError("Search is over its AI budget.");
     const ai = await aiFor(storeId, { feature: "search" });
     if (!ai?.textModel || ai.textModel !== textModel) throw new AiError("The store's text model changed.");
     return understandWith(ai, query, context);

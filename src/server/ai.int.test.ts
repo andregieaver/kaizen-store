@@ -486,3 +486,80 @@ describe("a model that sees pictures (D163)", () => {
     await ai.removeAiSettings(accountId, storeId);
   });
 });
+
+describe("what a site's AI can do, for its buttons (bloat review 0.21)", () => {
+  const NONE = {
+    text: false,
+    sees: false,
+    pictures: false,
+    pictureEdit: false,
+    hear: false,
+    speak: false,
+    speech: false,
+    live: false,
+    embeds: false,
+    source: null,
+    textModel: null,
+    space: null,
+    minSimilarity: null,
+  };
+
+  it("answers flags and names only, from the store's own or the platform's, and nothing at the store's limit", async () => {
+    const { forgetLimitMemos } = await import("./limits");
+    await ai.removeAiSettings(accountId, storeId);
+    await ai.removeAiSettings(accountId, null);
+    expect(await ai.aiAbilities(storeId)).toEqual(NONE);
+
+    expect(await ai.saveAiSettings(accountId, null, form(kaizen))).toEqual({ ok: true });
+    const platform = await ai.aiAbilities(storeId);
+    expect(platform).toEqual({
+      ...NONE,
+      text: true,
+      sees: true,
+      embeds: true,
+      source: "platform",
+      textModel: "anthropic/claude-haiku-4.5",
+      space: "ai-gateway.vercel.sh/v1|mistral/mistral-embed",
+      minSimilarity: 0.8,
+    });
+    // Never a key or an address.
+    expect(JSON.stringify(platform)).not.toContain(kaizen.apiKey);
+    expect(JSON.stringify(platform)).not.toContain("https://");
+    expect((await ai.aiAbilities(null)).source).toBe("platform");
+
+    const voice = { provider: "openai", apiKey: "sk-own-4444", textModel: "gpt-5-mini", transcriptionModel: "whisper-1", speechModel: "tts-1", speechVoice: "alloy", minSimilarity: "0.5", enabled: true };
+    expect(await ai.saveAiSettings(accountId, storeId, form(voice))).toEqual({ ok: true });
+    const own = await ai.aiAbilities(storeId);
+    expect(own).toMatchObject({ source: "store", text: true, hear: true, speak: true, speech: true, embeds: false, textModel: "gpt-5-mini", space: null, minSimilarity: 0.5 });
+    expect(JSON.stringify(own)).not.toContain(voice.apiKey);
+    await ai.removeAiSettings(accountId, storeId);
+
+    // At its plan's AI allowance a store on Kaizena Flow's key has no AI, so no button; Kaizena Flow's own site keeps it.
+    await db().execute(sql`insert into commerce.limit_overrides (store_id, key, value, reason) values (${storeId}::uuid, 'ai_cost_month_micros', 0, 'Test')`);
+    try {
+      forgetLimitMemos();
+      ai.forgetAiAbilities();
+      expect(await ai.aiAbilities(storeId)).toEqual(NONE);
+      expect((await ai.aiAbilities(null)).text).toBe(true);
+    } finally {
+      await db().execute(sql`delete from commerce.limit_overrides where store_id = ${storeId}::uuid and key = 'ai_cost_month_micros'`);
+      forgetLimitMemos();
+      ai.forgetAiAbilities();
+    }
+  });
+
+  it("is kept a minute per instance, forgotten on a save", async () => {
+    ai.forgetAiAbilities();
+    expect((await ai.aiAbilities(storeId)).text).toBe(true);
+    await db().execute(sql`update commerce.ai_providers set enabled = false where store_id is null`);
+    // Still the kept answer: no statement was sent.
+    expect((await ai.aiAbilities(storeId)).text).toBe(true);
+    ai.forgetAiAbilities();
+    expect((await ai.aiAbilities(storeId)).text).toBe(false);
+    await db().execute(sql`update commerce.ai_providers set enabled = true where store_id is null`);
+    expect((await ai.aiAbilities(storeId)).text).toBe(false);
+    // A save forgets every site's answer.
+    expect(await ai.saveAiSettings(accountId, null, form({ ...kaizen, apiKey: "" }))).toEqual({ ok: true });
+    expect((await ai.aiAbilities(storeId)).text).toBe(true);
+  });
+});
