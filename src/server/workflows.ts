@@ -455,8 +455,13 @@ export async function runWorkflows(limit = 50, now = new Date()): Promise<{ runs
       log("error", "workflows.run_failed", { storeId: run.store_id, workflowId: run.workflow_id }, error);
     }
   }
-  await db().execute(sql`delete from commerce.workflow_runs where created_at < now() - interval '90 days'`);
   return { runs: claimed.length, matched: matchedCount };
+}
+
+/** Runs older than 90 days go (the daily run). Returns how many. */
+export async function pruneWorkflowRuns(): Promise<number> {
+  const rows = await db().execute(sql`delete from commerce.workflow_runs where created_at < now() - interval '90 days' returning 1`);
+  return rows.length;
 }
 
 export type WorkflowRun = { id: string; at: string; event: string; status: string; matched: boolean | null; actions: ActionOutcome[] };

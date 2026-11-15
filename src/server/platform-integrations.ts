@@ -480,10 +480,15 @@ export async function deliverPlatformDue(limit = 25): Promise<{ delivered: numbe
     else if (!outcome.final && RETRY_SECONDS[delivery.attempts] !== undefined && delivery.webhook_url_encrypted && delivery.enabled) counts.retrying++;
     else counts.failed++;
   }
-  await db().execute(sql`
-    delete from commerce.platform_integration_deliveries where created_at < now() - make_interval(days => ${PLATFORM_DELIVERY_KEEP_DAYS})
-  `);
   return counts;
+}
+
+/** Kaizena Flow's deliveries older than PLATFORM_DELIVERY_KEEP_DAYS go (the daily run; it was every minute until bloat review step 0.31). Returns how many. */
+export async function prunePlatformDeliveries(): Promise<number> {
+  const rows = await db().execute(sql`
+    delete from commerce.platform_integration_deliveries where created_at < now() - make_interval(days => ${PLATFORM_DELIVERY_KEEP_DAYS}) returning 1
+  `);
+  return rows.length;
 }
 
 /** Sends a test event now, and says how it went. */
