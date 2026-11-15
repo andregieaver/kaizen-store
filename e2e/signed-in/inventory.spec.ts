@@ -54,7 +54,7 @@ test("the Inventory page lists a variant's count, and a change is saved with its
   await row.getByRole("button", { name: /^One less / }).click();
   await count.fill("9");
   await expect(page.getByText(/12 → 9/)).toBeVisible();
-  await page.getByLabel("Why", { exact: true }).selectOption("count");
+  await page.getByRole("combobox", { name: /^Why/ }).selectOption("count");
   await page.getByRole("button", { name: "Save", exact: true }).click();
   await expect(page.getByRole("region", { name: "Result" }).getByRole("heading", { name: "1 figure saved" })).toBeVisible();
   await expect(list.getByRole("listitem").filter({ hasText: SKU }).first().getByRole("textbox", { name: / on the shelf$/ })).toHaveValue("9");
