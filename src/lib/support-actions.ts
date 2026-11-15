@@ -13,6 +13,20 @@ import { ACTION_MINUTES } from "./support-rules";
 const id = z.uuid();
 const orderNumber = z.string().trim().min(1).max(64);
 
+/**
+ * A new delivery address a customer asked for in support (`docs/100-day-challenge.md` B3, D640): the fields the order's own address has, as the
+ * customer wrote them. Code carries it out only for the order's signed-in customer, before anything is sent (`src/server/support-requests.ts`).
+ */
+export const requestAddress = z.object({
+  name: z.string().trim().min(1).max(200),
+  line1: z.string().trim().min(1).max(200),
+  line2: z.string().trim().max(200).optional(),
+  postalCode: z.string().trim().min(1).max(20),
+  city: z.string().trim().min(1).max(100),
+  phone: z.string().trim().max(40).optional(),
+});
+export type RequestAddress = z.infer<typeof requestAddress>;
+
 export const CUSTOMER_ACTIONS = {
   "booking.cancel": z.object({ bookingId: id }),
   "booking.move": z.object({ bookingId: id, startsAt: z.iso.datetime({ offset: true }) }),
@@ -35,7 +49,7 @@ export const CUSTOMER_ACTION_KINDS = Object.keys(CUSTOMER_ACTIONS) as CustomerAc
 export const STAFF_REQUESTS = {
   refund: z.object({ orderNumber }),
   cancel_order: z.object({ orderNumber }),
-  change_address: z.object({ orderNumber }),
+  change_address: z.object({ orderNumber, address: requestAddress.optional() }),
   exception: z.object({ orderNumber: orderNumber.optional() }),
   other: z.object({ orderNumber: orderNumber.optional() }),
 } as const;

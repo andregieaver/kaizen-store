@@ -1658,6 +1658,13 @@ export const OWNER_TOOLS = [
     z.object({ order: orderRef, about: z.enum(ORDER_UPDATES) }),
     "send",
   ),
+  // A customer's request carried out by code (B3, D640): only the order's signed-in customer's, before anything is sent.
+  tool(
+    "carry_out_address_change",
+    "Carries out a customer's support request to change an order's delivery address: the new address is the one the customer gave in the request, unchanged (you write none). Done only when the person asking is the order's own customer, signed in on the store's chat (never a visitor who typed an order number, never an email), and nothing of the order is sent or held; otherwise it is refused and a person answers the request. The request is then marked done and the customer told. Needs the owner's approval.",
+    z.object({ request: z.uuid().describe("The support request's id, from the staff_request event.") }),
+    "send",
+  ),
   tool(
     "resend_order_email",
     "Sends a customer their order confirmation, or the latest shipping notice with its tracking, again. Needs the owner's approval.",
@@ -2503,6 +2510,8 @@ export function approvalSummary(name: string, input: Record<string, unknown>): s
       return input.version === "original" ? `End the A/B test "${text("experiment")}" and keep the original.` : `End the A/B test "${text("experiment")}" and make version ${text("version").toUpperCase()} the page, the part or the layout under test.`;
     case "email_customer":
       return `Email ${text("to")}: "${text("subject")}"\n\n${text("message")}`;
+    case "carry_out_address_change":
+      return `Change an order's delivery address to the one the customer asked for in their support request (${text("request").slice(0, 8)}…), and tell them it is done.`;
     case "tell_customer_about_order":
       return `Tell the customer of order ${text("order")}, in the store's own words, that ${UPDATE_WORDS[input.about as OrderUpdate] ?? "how it stands"}.`;
     case "resend_order_email":

@@ -61,6 +61,9 @@ export default async function TextMessagesPage({ params }: PageProps<"/admin/[st
           <details className="group flex flex-col gap-4">
             <summary className="flex cursor-pointer list-none flex-wrap gap-2 [&::-webkit-details-marker]:hidden">
               <span className="inline-flex h-11 items-center rounded-pill bg-brand px-5 text-body-strong text-brand-ink group-open:hidden">{w.connectOpen}</span>
+              <a href="https://46elks.com" target="_blank" rel="noopener" className="inline-flex h-11 items-center rounded-pill border border-edge bg-card px-4 text-body text-ink hover:bg-sunken">
+                {w.makeAccount}
+              </a>
             </summary>
             <Card title={w.connectTitle}>
               <SmsConnectForm connect={connectSmsAction.bind(null, store.slug)} />
@@ -69,11 +72,7 @@ export default async function TextMessagesPage({ params }: PageProps<"/admin/[st
         ) : (
           <p className="text-body text-muted">{w.ownerOnly}</p>
         )}
-        <div>
-          <a href="https://46elks.com" target="_blank" rel="noopener" className="inline-flex h-11 items-center rounded-pill border border-edge bg-card px-4 text-body text-ink hover:bg-sunken">
-            {w.makeAccount}
-          </a>
-        </div>
+
       </div>
       </AdminTextScope>
     );

@@ -239,6 +239,10 @@ export const customersNb: CustomersMessages = {
     deleteButton: "Slett gruppe",
   },
   companies: {
+    leadNone: "Ingen bedrifter ennå.",
+    leadSome: { one: "{n} bedrift handler hos deg.", many: "{n} bedrifter handler hos deg." },
+    leadRest: " En bedrift handler som næringsdrivende: folkene deres deler én kundegruppe og én fakturaadresse.",
+    add: "Legg til en bedrift",
     title: "Bedrifter",
     description:
       "En bedrifts hovedkonto inviterer de ansatte med e-post fra Min konto i butikken. Alle i bedriften får gruppens rabatt, de ansatte den andelen du velger.",
@@ -298,6 +302,8 @@ export const customersNb: CustomersMessages = {
     deleteButton: "Slett bedrift",
   },
   fields: {
+    byHand: "Fyll ut for hånd i stedet",
+    more: "Flere innstillinger: de ansattes andel og flest kontoer",
     name: "Bedriftens navn",
     organisationNumber: "Organisasjonsnummer",
     organisationHint: "Valgfritt. Med det handler bedriftens kontoer som en bedrift, med nummeret fylt ut.",

@@ -102,6 +102,8 @@ export const TOOL_AREAS: Readonly<Record<string, AutonomyArea>> = {
   email_customer: "messages",
   // An update about an order in the store's fixed words (D635), counted with the other emails to customers.
   tell_customer_about_order: "messages",
+  // A verified customer's own address change, before anything is sent (D640): customer service, as an update to them is.
+  carry_out_address_change: "messages",
   resend_order_email: "messages",
   issue_work_invoice: "messages",
   propose_exchange: "messages",

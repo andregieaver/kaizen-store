@@ -3,7 +3,7 @@ import Link from "next/link";
 
 import { DealBoard, type BoardColumnView } from "@/components/admin/deals/deal-board";
 import { requireFeature } from "@/components/admin/feature-off";
-import { ButtonLink, PageHeader } from "@/components/admin/ui";
+import { ButtonLink, CARD_CLASS, PageHeader } from "@/components/admin/ui";
 import { countWords, fillWords } from "@/lib/admin-fill";
 import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
 import { adminText } from "@/lib/admin-text";
@@ -96,6 +96,8 @@ export default async function DealsPage({ params, searchParams }: PageProps<"/ad
     }),
   }));
   const canChange = memberCan(member, "customers:write");
+  const openDeals = deals.filter((d) => d.status === "open");
+  const openWorth = openDeals.reduce((sum, d) => sum + (d.value.minor ?? 0), 0);
   // The leads inbox (S4, D475) beside the board: people who asked for something and are not customers yet.
   const leads = await leadsOf(store.id);
   const showLeads = query.view === "leads";
@@ -106,12 +108,22 @@ export default async function DealsPage({ params, searchParams }: PageProps<"/ad
 
   return (
     <div className="flex flex-col gap-6">
+      {/* Round 14 (D641): what is open in a sentence; an empty board is one card to add the first deal, the stages shown on it. */}
       <PageHeader
         title={w.title}
-        description={w.description}
+        meta={[
+          <span key="lead">
+            <span className="text-ink">
+              {openDeals.length === 0
+                ? w.leadNone
+                : `${countWords(openDeals.length, w.leadOpen)}${openWorth > 0 ? fillWords(w.worth, { amount: money(openWorth) }) : ""}${w.leadOpenRest}`}
+            </span>
+            {openDeals.length === 0 ? w.leadNoneRest : ""}
+          </span>,
+        ]}
         actions={
           <div className="flex flex-wrap items-center gap-3">
-            {canChange && (
+            {canChange && deals.length > 0 && (
               <ButtonLink kind="main" href={`${base}/new?pipeline=${pipeline.id}`}>
                 {w.newDeal}
               </ButtonLink>
@@ -158,9 +170,29 @@ export default async function DealsPage({ params, searchParams }: PageProps<"/ad
           ))}
         </nav>
       )}
-      {deals.length === 0 && <p className="text-body text-ink-2">{w.board.empty}</p>}
-      <DealBoard columns={view} words={{ board: w.board, lost: w.lost, statuses: w.statuses }} place={placeDealAction.bind(null, store.slug)} canChange={canChange} />
-      <p className="text-sm text-muted">{w.board.closedNote}</p>
+      {deals.length === 0 ? (
+        <section aria-labelledby="first-deal" className={`flex flex-col items-start gap-3 px-6 py-7 ${CARD_CLASS}`}>
+          <h2 id="first-deal" className="text-title text-ink">{w.firstTitle}</h2>
+          <p className="text-body text-ink-2">{fillWords(w.firstText, { stage: view[0]?.title ?? "" })}</p>
+          <ol aria-label={w.stagesLabel} className="flex flex-wrap gap-1.5">
+            {view.map((column, i) => (
+              <li key={column.key} className={`rounded-pill px-2.5 py-1 text-caption ${i === 0 ? "bg-positive-soft text-positive-text" : "bg-sunken text-ink-2"}`}>
+                {column.title}
+              </li>
+            ))}
+          </ol>
+          {canChange && (
+            <ButtonLink kind="main" href={`${base}/new?pipeline=${pipeline.id}`}>
+              {w.newDeal}
+            </ButtonLink>
+          )}
+        </section>
+      ) : (
+        <>
+          <DealBoard columns={view} words={{ board: w.board, lost: w.lost, statuses: w.statuses }} place={placeDealAction.bind(null, store.slug)} canChange={canChange} />
+          <p className="text-sm text-muted">{w.board.closedNote}</p>
+        </>
+      )}
       {filing && <p className="text-sm text-muted">{fillWords(w.filing, { address: filing })}</p>}
         </>
       )}

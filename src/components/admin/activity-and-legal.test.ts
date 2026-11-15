@@ -53,7 +53,9 @@ describe("the activity log", () => {
     expect(out).toContain("Changed the price of Demo: Lampe");
     expect(out).toContain("Anna");
     expect(out).toContain("Products");
-    expect(out).toContain("3 Oct 2026, 10:30");
+    // By day (round 14, D641): the day once as a heading, each entry its time.
+    expect(out).toContain("3 October 2026");
+    expect(out).toContain("10:30");
     expect(out).toContain("1000 → 1200");
     // A field whose value is never recorded says only that it changed.
     expect(out).toMatch(/Note<\/dt><dd[^>]*>changed</);

@@ -247,6 +247,11 @@ export const customersEn = {
     deleteButton: "Delete group",
   },
   companies: {
+    /** Round 14 (D641). */
+    leadNone: "No companies yet.",
+    leadSome: { one: "{n} company buys from you.", many: "{n} companies buy from you." },
+    leadRest: " A company buys as a business: its people share one customer group and one invoice address.",
+    add: "Add a company",
     title: "Companies",
     description:
       "A company's main account invites its employees by email from My account in the store. Everyone in the company gets its group's discount, employees the share you set.",
@@ -307,6 +312,9 @@ export const customersEn = {
   },
   /** The company form (`CompanyFields`). */
   fields: {
+    /** Round 14 (D641): a new company in steps. */
+    byHand: "Fill in by hand instead",
+    more: "More settings: employees' share and the most accounts",
     name: "Company name",
     organisationNumber: "Organisation number",
     organisationHint: "Optional. With it, the company's accounts buy as a business with the number filled in.",

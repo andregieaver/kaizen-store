@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import { CUSTOMER_ACTION_KINDS, DETAILS_MAX, STAFF_REQUEST_KINDS } from "./support-actions";
+import { CUSTOMER_ACTION_KINDS, DETAILS_MAX, STAFF_REQUEST_KINDS, requestAddress } from "./support-actions";
 import { AI_REASON_MAX, ESCALATION_CATEGORIES } from "./support-rules";
 
 /**
@@ -86,11 +86,12 @@ export const SUPPORT_TOOLS = [
   ),
   supportTool(
     "request_staff_action",
-    "Ask a person at the store to decide something you may not do: a refund, cancelling a paid order, changing an address, an exception, or anything else.",
+    "Ask a person at the store to decide something you may not do: a refund, cancelling a paid order, changing an address, an exception, or anything else. For change_address, give the new delivery address in address, as the customer wrote it: the store may then change it at once for a signed-in customer's order that has not been sent.",
     z.object({
       kind: z.enum(STAFF_REQUEST_KINDS as [string, ...string[]]),
       number: orderNumber.optional(),
       details: z.string().trim().min(1).max(DETAILS_MAX).describe("For the staff: what the customer asks for and why, in their words."),
+      address: requestAddress.optional().describe("Only for change_address: the new delivery address, each part as the customer wrote it."),
     }),
   ),
 ] as const;

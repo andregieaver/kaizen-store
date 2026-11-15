@@ -147,6 +147,15 @@ export const staffEn = {
     roleDeleted: "Role deleted.",
   },
   activity: {
+    /** Round 14 (D641). */
+    leadWeek: "{entries} this week, by {people}.",
+    entriesN: { one: "{n} change", many: "{n} changes" },
+    peopleN: { one: "{n} person", many: "{n} people" },
+    leadNone: "Nothing changed this week.",
+    leadRest: " Every change is kept for 24 months and cannot be altered.",
+    moreFilters: "More filters and download",
+    today: "Today",
+    yesterday: "Yesterday",
     title: "Activity log",
     description:
       "What people changed in the store, and when: products, prices, pages, coupons, shipping, the team and the payment settings.",

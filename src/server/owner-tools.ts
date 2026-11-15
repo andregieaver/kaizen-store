@@ -59,6 +59,7 @@ import {
 import { cancelBooking, listBookings } from "./bookings";
 import { cartReminderStats } from "./cart-reminders";
 import { preflightTellCustomer, tellCustomerTool } from "./order-updates";
+import { carryOutAddressChangeTool, closeCancelRequests, preflightCarryOutAddressChange } from "./support-requests";
 import { orderPrivacy } from "./privacy-pages";
 import { explainPrivacyRequestTool, listPrivacyRequestsTool } from "./privacy-tools";
 import { approveReturnTool, declineReturnTool, explainReturnTool, listReturnsTool, preflightReturnTool } from "./return-tools";
@@ -1357,6 +1358,8 @@ async function cancelOrderTool(ctx: OwnerToolContext, { order, reason, notify }:
   const outcome = await cancelOrder(store.id, orderId, reason, ctx.account.id);
   if (!outcome.ok) return fail(outcome.problem);
   if (notify) await sendCancelled(store.id, orderId, outcome.amountMinor, { unpaid: outcome.unpaid });
+  // A customer who asked for it in support is told there too (B3, D640).
+  await closeCancelRequests(ctx.account, store, admin.number, ctx.holder);
   ctx.invalidate(catalogTag(store.id));
   return {
     done: `Cancelled order ${admin.number}${outcome.amountMinor > 0 ? `, refunded ${money(store, outcome.amountMinor, admin.currency)}` : ""} and put its items back in stock${notify ? ", and emailed the customer" : ""}.`,
@@ -2293,6 +2296,8 @@ export async function preflightOwnerTool(ctx: OwnerToolContext, name: string, ra
     write_email_automation: preflightWriteAutomation,
     // An update about an order its records do not bear out, or one the customer had already (D635).
     tell_customer_about_order: preflightTellCustomer,
+    // An address change the request does not bear out: not the order's signed-in customer, sent, held, or no full address (D640).
+    carry_out_address_change: preflightCarryOutAddressChange,
     send_text_message: preflightSendTextMessage,
   };
   if (name in TEAM_AND_PLAN) {
@@ -2623,6 +2628,7 @@ const handlersOf = (): Record<OwnerToolName, Handler> => (handlers ??= {
   list_integrations: listIntegrationsTool,
   email_customer: emailCustomerTool,
   tell_customer_about_order: tellCustomerTool,
+  carry_out_address_change: carryOutAddressChangeTool,
   resend_order_email: resendOrderEmailTool,
   set_stock: setStockTool,
   set_backorder: setBackorderTool,

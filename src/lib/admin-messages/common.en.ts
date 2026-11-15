@@ -61,6 +61,8 @@ export const commonEn = {
     asleep: "{label} needs {need}, which is switched off.",
     hidden: "This page is hidden while the feature is off. Nothing has been deleted: switch it on and everything is as it was.",
     goTo: "Go to Features",
+    /** One press from the page itself (round 14, D641). */
+    switchOn: "Switch it on",
     onlyOwner: "Only an owner can switch features on or off, under Settings → Features.",
     noteOff: "{label} is switched off, so this is hidden.",
     noteSwitch: "Switch it on under Features",

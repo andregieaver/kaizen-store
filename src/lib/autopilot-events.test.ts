@@ -17,6 +17,7 @@ const supplier: EventFacts = { kind: "supplier_problem", order: "1044", orderId:
 const held: EventFacts = { kind: "order_held", order: "1045", orderId: "o4", byRule: true };
 const dispute: EventFacts = { kind: "dispute_opened", order: "1046", orderId: "o5", dispute: "d1", reason: "fraudulent", dueBy: "2026-11-30T23:59:00Z" };
 const failing: EventFacts = { kind: "payments_failing", window: "2026-11-15T12", failed: 7, attempts: 12 };
+const request: EventFacts = { kind: "staff_request", request: "11111111-1111-4111-8111-111111111111", ask: "change_address", order: "1042" };
 const stockout: EventFacts = { kind: "stockout_risk", sku: "MUG-1", product: "White mug", lastsDays: 4.5, leadDays: 14, suggested: 120 };
 
 describe("the settings", () => {
@@ -102,5 +103,16 @@ describe("the stock-out risk event (C4, D638)", () => {
     expect(stockoutCheckDue(new Date("2026-11-15T07:01:00Z"))).toBe(false);
     expect(EVENT_TOOLS.stockout_risk).toEqual(["restock_suggestions", "stock_levels", "list_purchase_orders", "create_purchase_order"]);
     expect(EVENT_LINES.stockout_risk).toContain("Never work out a quantity of your own");
+  });
+});
+
+describe("the staff_request event (B3, D640)", () => {
+  it("names the request and the tool that carries it out, and is kept once per request", () => {
+    expect(eventMessage(request)).toContain("the customer of order 1042 asked in support to change its delivery address");
+    expect(eventMessage(request)).toContain("carry_out_address_change (11111111-1111-4111-8111-111111111111)");
+    expect(eventMessage({ ...request, ask: "cancel_order" } as EventFacts)).toContain("cancel it with cancel_order: it waits for the owner's yes");
+    expect(eventRef(request, "2026-11-16")).toBe("11111111-1111-4111-8111-111111111111");
+    expect(EVENT_TOOLS.staff_request).toEqual(["get_order", "get_support_conversation", "carry_out_address_change", "cancel_order", "add_order_note"]);
+    expect(EVENT_LINES.staff_request).toContain("Never write to the customer");
   });
 });

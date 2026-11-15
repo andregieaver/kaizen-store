@@ -13415,6 +13415,11 @@ export const analyticsSettings = commerce.table(
     paymentFeeFixedMinor: bigint("payment_fee_fixed_minor", { mode: "number" }).notNull().default(0),
     /** What sending one order costs the store, per paid order with a physical line. */
     shippingCostMinor: bigint("shipping_cost_minor", { mode: "number" }).notNull().default(0),
+    /**
+     * Handling and packaging per paid order with a physical line (`docs/100-day-challenge.md` E1, D641): what the warehouse charges to pick and pack
+     * an order, or the box and the time it takes; apart from the parcel's label.
+     */
+    handlingCostMinor: bigint("handling_cost_minor", { mode: "number" }).notNull().default(0),
     /** Rent, pay and other fixed costs for a month; taken pro rata by day. */
     fixedCostsMonthlyMinor: bigint("fixed_costs_monthly_minor", { mode: "number" }).notNull().default(0),
     /** Years a customer is expected to keep buying, for the predicted lifetime value. */
@@ -13424,6 +13429,7 @@ export const analyticsSettings = commerce.table(
   (t) => [
     check("analytics_settings_fee_bps", sql`${t.paymentFeeBps} between 0 and 10000`),
     check("analytics_settings_amounts", sql`${t.paymentFeeFixedMinor} >= 0 and ${t.shippingCostMinor} >= 0 and ${t.fixedCostsMonthlyMinor} >= 0`),
+    check("analytics_settings_handling", sql`${t.handlingCostMinor} >= 0`),
     check("analytics_settings_lifespan", sql`${t.ltvLifespanYears} between 1 and 10`),
   ],
 );
@@ -17605,7 +17611,7 @@ export const autopilotEvents = commerce.table(
     index("autopilot_events_account_idx").on(t.accountId),
     index("autopilot_events_conversation_idx").on(t.conversationId),
     index("autopilot_events_plan_idx").on(t.planId),
-    check("autopilot_events_kind", sql`${t.kind} in ('support_waiting', 'test_ended', 'alert', 'order_unsent', 'delivery_problem', 'supplier_problem', 'order_held', 'dispute_opened', 'payments_failing', 'stockout_risk')`),
+    check("autopilot_events_kind", sql`${t.kind} in ('support_waiting', 'test_ended', 'alert', 'order_unsent', 'delivery_problem', 'supplier_problem', 'order_held', 'dispute_opened', 'payments_failing', 'stockout_risk', 'staff_request')`),
     check("autopilot_events_status", sql`${t.status} in ('pending', 'running', 'done', 'skipped', 'failed')`),
     check("autopilot_events_ref", sql`length(${t.ref}) between 1 and 200`),
     check("autopilot_events_facts", sql`jsonb_typeof(${t.facts}) = 'object'`),
