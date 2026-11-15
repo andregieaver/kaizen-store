@@ -43,6 +43,18 @@ export const discountsNb: DiscountsMessages = {
     edit: "Rediger",
     usedBy: { one: "Brukt av {n} ordre", many: "Brukt av {n} ordrer" },
     ofAllowed: " av {limit} tillatt",
+    leadNone: "Ingen koder ennå.",
+    leadSome: { one: "{n} kode er i bruk.", many: "{n} koder er i bruk." },
+    leadRest: " Start fra et tilbud de fleste butikker gir; alt kan endres før det lagres.",
+    writeOwn: "Lag din egen",
+    offersTitle: "Ferdige tilbud",
+    makeIt: "Lag den",
+    offers: {
+      welcome: { title: "10 % på første ordre", sub: "For nye kunder, én gang hver." },
+      free_shipping: { title: "Gratis frakt", sub: "På alle ordrer, en helg eller en måned." },
+      newsletter: { title: "15 % for nyhetsbrevet", sub: "Send den i en utsendelse; slutter om to uker." },
+      thanks: { title: "{amount} i rabatt, som takk", sub: "For de beste kundene dine, over {least}." },
+    },
   },
   editor: {
     segmentOnly: "Personer i et segment",

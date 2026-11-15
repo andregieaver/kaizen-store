@@ -49,6 +49,19 @@ export const discountsEn = {
     edit: "Edit",
     usedBy: { one: "Used by {n} order", many: "Used by {n} orders" },
     ofAllowed: " of {limit} allowed",
+    /** The page drawn for Homer (round 9, D630): a sentence, ready offers and Write your own. */
+    leadNone: "No codes yet.",
+    leadSome: { one: "{n} code is live.", many: "{n} codes are live." },
+    leadRest: " Start from an offer most shops make; every part can be changed before it is saved.",
+    writeOwn: "Write your own",
+    offersTitle: "Ready offers",
+    makeIt: "Make it",
+    offers: {
+      welcome: { title: "10 % off a first order", sub: "For new customers, once each." },
+      free_shipping: { title: "Free shipping", sub: "On any order, for a weekend or a month." },
+      newsletter: { title: "15 % for your newsletter", sub: "Send it in a broadcast; ends in two weeks." },
+      thanks: { title: "{amount} off, as a thank-you", sub: "For your best customers, over {least}." },
+    },
   },
   editor: {
     segmentOnly: "People in a segment",

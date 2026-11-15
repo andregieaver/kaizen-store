@@ -28,6 +28,9 @@ export function PageCards({
   roles = {},
   schedules = {},
   duplicate,
+  label,
+  newLabel,
+  newSub,
 }: {
   pages: PageSummary[];
   adminBase: string;
@@ -37,13 +40,17 @@ export function PageCards({
   roles?: Record<string, PageRole>;
   schedules?: Record<string, ScheduleChip>;
   duplicate?: (id: string) => Promise<DuplicateResult>;
+  /** Another kind of page (the blog's articles, round 9): the list's name and the new card's words. */
+  label?: string;
+  newLabel?: string;
+  newSub?: string;
 }) {
   const w = useAdminText("website");
   const list = w.list;
   const c = w.storePages.cards;
   const date = new Intl.DateTimeFormat(ADMIN_LANG_FACTS[useAdminLang()].locale, { dateStyle: "medium", timeZone: "Europe/Oslo" });
   return (
-    <ul aria-label={c.label} className="grid grid-cols-[repeat(auto-fill,minmax(min(250px,100%),1fr))] gap-4">
+    <ul aria-label={label ?? c.label} className="grid grid-cols-[repeat(auto-fill,minmax(min(250px,100%),1fr))] gap-4">
       {pages.map((page) => {
         const title = page.title || list.untitled;
         const href = `${adminBase}/${page.id}`;
@@ -107,9 +114,9 @@ export function PageCards({
         >
           <span className="flex items-center gap-1.5">
             <Plus aria-hidden className="size-4" />
-            {w.storePages.types.page.new}
+            {newLabel ?? w.storePages.types.page.new}
           </span>
-          <span className="text-caption text-muted">{c.newSub}</span>
+          <span className="text-caption text-muted">{newSub ?? c.newSub}</span>
         </AdminLink>
       </li>
     </ul>

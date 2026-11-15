@@ -10,6 +10,7 @@ import { listSegments } from "@/server/segments";
 
 import { saveDiscountAction } from "./actions";
 import { featureOn } from "@/lib/store-features";
+import { endsAtLocal, OFFERS, type OfferKey } from "@/lib/discount-offers";
 
 /** `datetime-local` text for a time, in Norwegian time. */
 function osloLocal(iso: string | null): string {
@@ -26,7 +27,16 @@ function osloLocal(iso: string | null): string {
 }
 
 /** The editor for a new code or an existing one, with the store's markets and products. */
-export async function DiscountForm({ store, discount }: { store: Store; discount: (StoreDiscount & { used: number }) | null }) {
+export async function DiscountForm({
+  store,
+  discount,
+  offer,
+}: {
+  store: Store;
+  discount: (StoreDiscount & { used: number }) | null;
+  /** A ready offer from the Coupons page (round 9, D630) that fills in a new code. */
+  offer?: OfferKey | null;
+}) {
   const [products, terms, tiers, emails, segments] = await Promise.all([
     listProductChoices(store.id, store.markets[0]?.locale ?? "nb-NO"),
     listTerms({ storeId: store.id, contentType: "product" }),
@@ -81,6 +91,7 @@ export async function DiscountForm({ store, discount }: { store: Store; discount
         combinesWith: [],
         combinesWithCampaigns: true,
         segmentId: null,
+        ...(offer ? offerDraft(OFFERS[offer], store) : {}),
       };
   return (
     <DiscountEditor
@@ -96,4 +107,20 @@ export async function DiscountForm({ store, discount }: { store: Store; discount
       subscriptions={featureOn(store, "subscriptions")}
     />
   );
+}
+
+/** What a ready offer fills in: money in the main currency's markets only, the rest left for the owner. */
+function offerDraft(o: (typeof OFFERS)[OfferKey], store: Store): Partial<DiscountDraft> {
+  const main = mainCurrency(store);
+  const inMain = (major: number) =>
+    Object.fromEntries(store.markets.filter((m) => m.currency === main).map((m) => [m.code, formatPriceInput(major * 100, main)]));
+  return {
+    code: o.code,
+    kind: o.kind,
+    ...(o.percent !== undefined && { percent: String(o.percent) }),
+    ...(o.amountMajor !== undefined && { amounts: inMain(o.amountMajor) }),
+    ...(o.minSubtotalMajor !== undefined && { minSubtotals: inMain(o.minSubtotalMajor) }),
+    ...(o.oncePerCustomer && { oncePerCustomer: true }),
+    ...(o.endsInDays !== undefined && { endsAt: endsAtLocal(o.endsInDays) }),
+  };
 }

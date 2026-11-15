@@ -4,6 +4,17 @@ import type { BlogMessages } from "./blog.en";
 export const blogNb: BlogMessages = {
   noChange: "Du kan ikke endre bloggen.",
   links: { blogs: "Blogger", authors: "Forfattere", comments: "Kommentarer" },
+  list: {
+    live: { one: "{n} artikkel er publisert.", many: "{n} artikler er publisert." },
+    noneLive: "Ingen artikler er publisert ennå.",
+    newest: " Den nyeste, «{title}», kom ut {date}.",
+    firstSoon: " Skriv den første; den er et utkast til du publiserer den.",
+    waiting: { one: "{n} kommentar venter på at du leser den.", many: "{n} kommentarer venter på at du leser dem." },
+    read: "Les dem",
+    label: "Artiklene dine",
+    newSub: "et utkast til du publiserer den",
+    more: "Mer",
+  },
   comments: {
     off: { label: "Av", hint: "Ingen kommentarfelt, og ingen kommentarer vises." },
     moderated: { label: "Venter til du har lest dem", hint: "Kommentarer vises når du har godkjent dem. Det trygge valget." },

@@ -80,6 +80,9 @@ export async function StorePagesListView({ type, params, searchParams }: { type:
   const ownCount = ownRoles.filter((role) => store.pageRoles[role]).length + (store.productsPageId ? 1 : 0);
   const titleOf = (id: string | null) => (id ? (pages.find((p) => p.id === id)?.title || site.list.untitled) : null);
   const live = pages.filter((p) => p.state !== "draft").length;
+  const newest = type === "article"
+    ? pages.filter((p) => p.state !== "draft" && p.publishedAt).sort((a, b) => b.publishedAt!.localeCompare(a.publishedAt!))[0]
+    : undefined;
   const frontPage = type === "page" ? pages.find((p) => p.id === store.frontPageId && p.state !== "draft") : undefined;
   const schedules = isScheduledType(type) ? await scheduleChips(store.id, type, adminText(lang, "schedules").chips, (iso) => clock.format(new Date(iso))) : {};
   return (
@@ -110,6 +113,43 @@ export async function StorePagesListView({ type, params, searchParams }: { type:
             </Link>
           </div>
         </div>
+      ) : type === "article" ? (
+        // The blog drawn for Homer (round 9, D630): a sentence, New article, and categories, blogs and comments under More.
+        <div className="flex flex-wrap items-end justify-between gap-4">
+          <PageHeader
+            title={tw.list}
+            meta={[
+              <span key="live">
+                <span className="text-ink">{live === 0 ? blogWords.list.noneLive : countWords(live, blogWords.list.live)}</span>
+                {newest
+                  ? fillWords(blogWords.list.newest, {
+                      title: newest.title || site.list.untitled,
+                      date: new Intl.DateTimeFormat(ADMIN_LANG_FACTS[lang].locale, { day: "numeric", month: "long", timeZone: store.timeZone }).format(
+                        new Date(newest.publishedAt!),
+                      ),
+                    })
+                  : pages.length === 0 && blogWords.list.firstSoon}
+              </span>,
+            ]}
+          />
+          <div className="flex flex-wrap gap-2">
+            <MoreMenu label={blogWords.list.more}>
+              <Link href={`${base}/categories`} className="inline-flex min-h-10 items-center rounded-pill px-4 text-sm font-medium hover:bg-sunken">
+                {w.categories}
+              </Link>
+              <Link href={`${base}/blogs`} className="inline-flex min-h-10 items-center rounded-pill px-4 text-sm font-medium hover:bg-sunken">
+                {blogWords.links.blogs}
+              </Link>
+              <Link href={`${base}/comments`} className="inline-flex min-h-10 items-center gap-2 rounded-pill px-4 text-sm font-medium hover:bg-sunken">
+                {blogWords.links.comments}
+                {waitingComments > 0 && <CountBadge count={waitingComments} />}
+              </Link>
+            </MoreMenu>
+            <Link href={`${base}/new`} className="inline-flex h-11 items-center rounded-pill bg-brand px-5 text-body-strong text-brand-ink hover:bg-brand-hover">
+              {tw.new}
+            </Link>
+          </div>
+        </div>
       ) : (
         <div className="flex flex-wrap items-end justify-between gap-4">
           <PageHeader title={tw.list} description={tw.intro} />
@@ -118,18 +158,6 @@ export async function StorePagesListView({ type, params, searchParams }: { type:
               <Link href={`${base}/categories`} className="inline-flex min-h-10 items-center rounded-pill border border-edge px-4 text-sm font-medium">
                 {w.categories}
               </Link>
-            )}
-            {/* The store's blogs, their authors and the comments waiting (D341). */}
-            {type === "article" && (
-              <>
-                <Link href={`${base}/blogs`} className="inline-flex min-h-10 items-center rounded-pill border border-edge px-4 text-sm font-medium">
-                  {blogWords.links.blogs}
-                </Link>
-                <Link href={`${base}/comments`} className="inline-flex min-h-10 items-center gap-2 rounded-pill border border-edge px-4 text-sm font-medium">
-                  {blogWords.links.comments}
-                  {waitingComments > 0 && <CountBadge count={waitingComments} />}
-                </Link>
-              </>
             )}
             <Link
               href={`${base}/new`}
@@ -165,6 +193,27 @@ export async function StorePagesListView({ type, params, searchParams }: { type:
           schedules={schedules}
           duplicate={context.actions.duplicate}
         />
+      ) : type === "article" ? (
+        <>
+          {waitingComments > 0 && (
+            <p className={`flex flex-wrap items-center justify-between gap-3 px-5 py-3 text-body text-ink ${CARD_CLASS}`}>
+              {countWords(waitingComments, blogWords.list.waiting)}
+              <Link href={`${base}/comments`} className="text-sm font-medium text-ink underline underline-offset-2">
+                {blogWords.list.read}
+              </Link>
+            </p>
+          )}
+          <PageCards
+            pages={pages}
+            adminBase={base}
+            siteBase={context.siteBase}
+            schedules={schedules}
+            duplicate={context.actions.duplicate}
+            label={blogWords.list.label}
+            newLabel={tw.new}
+            newSub={blogWords.list.newSub}
+          />
+        </>
       ) : pages.length === 0 ? (
         <p className={`p-5 text-sm text-muted ${CARD_CLASS}`}>
           {tw.none}
