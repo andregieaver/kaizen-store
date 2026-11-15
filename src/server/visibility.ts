@@ -59,7 +59,7 @@ export async function visitorFacts(place: GridPlace, show: Show): Promise<Visito
   const shop = await perRequest(`visibility:shop:${place.owner}:${place.market ?? ""}`, () => shopOf(place.owner!, place.market));
   if (!shop) return { ...NOBODY, now, query };
   const { store, market } = shop;
-  const customer = await perRequest(`visibility:customer:${store.id}`, () => getCustomer(store.id));
+  const customer = await getCustomer(store.id);
   const wants = (facts: readonly Fact[]) => facts.some((fact) => needs.has(fact));
   const [member, buyer, cart] = await Promise.all([
     wants(CUSTOMER_FACTS) ? perRequest(`visibility:member:${store.id}`, () => memberFacts(store.id, customer?.id ?? null)) : null,
