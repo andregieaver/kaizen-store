@@ -1,6 +1,6 @@
 {
-  "id": "ff9b6a14-9b99-46b0-9e52-67de8bbc3a9d",
-  "prevId": "8f21f917-722f-4508-b09e-97f5c77a2987",
+  "id": "2b9f4251-330c-4a07-bf2f-b60b8162d44c",
+  "prevId": "ff9b6a14-9b99-46b0-9e52-67de8bbc3a9d",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -4219,6 +4219,13 @@
           "notNull": true,
           "default": 0
         },
+        "handling_cost_minor": {
+          "name": "handling_cost_minor",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
         "fixed_costs_monthly_minor": {
           "name": "fixed_costs_monthly_minor",
           "type": "bigint",
@@ -4269,6 +4276,10 @@
         "analytics_settings_amounts": {
           "name": "analytics_settings_amounts",
           "value": "\"commerce\".\"analytics_settings\".\"payment_fee_fixed_minor\" >= 0 and \"commerce\".\"analytics_settings\".\"shipping_cost_minor\" >= 0 and \"commerce\".\"analytics_settings\".\"fixed_costs_monthly_minor\" >= 0"
+        },
+        "analytics_settings_handling": {
+          "name": "analytics_settings_handling",
+          "value": "\"commerce\".\"analytics_settings\".\"handling_cost_minor\" >= 0"
         },
         "analytics_settings_lifespan": {
           "name": "analytics_settings_lifespan",

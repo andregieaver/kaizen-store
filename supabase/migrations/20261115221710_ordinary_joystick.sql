@@ -1,0 +1,2 @@
+ALTER TABLE "commerce"."analytics_settings" ADD COLUMN "handling_cost_minor" bigint DEFAULT 0 NOT NULL;--> statement-breakpoint
+ALTER TABLE "commerce"."analytics_settings" ADD CONSTRAINT "analytics_settings_handling" CHECK ("commerce"."analytics_settings"."handling_cost_minor" >= 0);

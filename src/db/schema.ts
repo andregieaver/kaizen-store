@@ -13415,6 +13415,11 @@ export const analyticsSettings = commerce.table(
     paymentFeeFixedMinor: bigint("payment_fee_fixed_minor", { mode: "number" }).notNull().default(0),
     /** What sending one order costs the store, per paid order with a physical line. */
     shippingCostMinor: bigint("shipping_cost_minor", { mode: "number" }).notNull().default(0),
+    /**
+     * Handling and packaging per paid order with a physical line (`docs/100-day-challenge.md` E1, D641): what the warehouse charges to pick and pack
+     * an order, or the box and the time it takes; apart from the parcel's label.
+     */
+    handlingCostMinor: bigint("handling_cost_minor", { mode: "number" }).notNull().default(0),
     /** Rent, pay and other fixed costs for a month; taken pro rata by day. */
     fixedCostsMonthlyMinor: bigint("fixed_costs_monthly_minor", { mode: "number" }).notNull().default(0),
     /** Years a customer is expected to keep buying, for the predicted lifetime value. */
@@ -13424,6 +13429,7 @@ export const analyticsSettings = commerce.table(
   (t) => [
     check("analytics_settings_fee_bps", sql`${t.paymentFeeBps} between 0 and 10000`),
     check("analytics_settings_amounts", sql`${t.paymentFeeFixedMinor} >= 0 and ${t.shippingCostMinor} >= 0 and ${t.fixedCostsMonthlyMinor} >= 0`),
+    check("analytics_settings_handling", sql`${t.handlingCostMinor} >= 0`),
     check("analytics_settings_lifespan", sql`${t.ltvLifespanYears} between 1 and 10`),
   ],
 );
