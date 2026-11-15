@@ -73,13 +73,20 @@ export async function saveAutonomy(a: SettingsActor, input: unknown): Promise<Au
   return s;
 }
 
+/** The challenge's records the console's form never sends: kept as they are when its dates and budgets change. */
+const KEPT_RECORDS = ["original", "pinned", "seen", "versionLog"] as const;
+
 /**
  * Sets the 100-day challenge on a store, or changes its dates and budgets (`docs/100-day-challenge.md`): a platform admin's alone, since the
  * store's owner is a contestant. Read by the schema first; audited with the figures.
  */
 export async function saveChallenge(a: { account: Account }, storeId: string, input: unknown): Promise<Challenge> {
   if (!a.account.platformAdmin) throw new OwnerToolError("Only a platform admin sets the challenge on a store.");
-  const parsed = challengeSchema.safeParse(input);
+  // The challenge's own records (the original's signed periods, E7; the pin and its log, F5) are kept when the dates and budgets are changed
+  // without them.
+  const current = input && typeof input === "object" ? await challengeFor(storeId) : null;
+  const kept = current ? Object.fromEntries(KEPT_RECORDS.filter((key) => !(key in (input as object))).map((key) => [key, current[key]])) : {};
+  const parsed = challengeSchema.safeParse(input && typeof input === "object" ? { ...(input as object), ...kept } : input);
   if (!parsed.success) throw new OwnerToolError(`The challenge could not be read: ${parsed.error.issues.map((i) => i.message).join(" ")}`);
   const c = parsed.data;
   await db().execute(sql`

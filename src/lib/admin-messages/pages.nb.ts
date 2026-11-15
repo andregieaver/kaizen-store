@@ -873,6 +873,7 @@ export const PAGES_NB: Record<string, { title: string; keywords: string[] }> = {
     title: "100-dagersutfordringen",
     keywords: ["utfordring", "100 dager", "autopilot", "resultattavle", "inngrep", "stopp", "forholdstall"],
   },
+  "platform:challenge": { title: "Resultattavle", keywords: ["resultattavle", "dommer", "originalen", "resultatregnskap", "vinner", "forholdstall"] },
   "platform:capacity": {
     title: "Bruk og grenser",
     keywords: ["bruk", "grenser", "kvote", "lagring", "båndbredde", "trafikk", "kapasitet", "last", "database"],

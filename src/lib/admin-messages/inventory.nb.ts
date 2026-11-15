@@ -4,6 +4,7 @@ import type { InventoryMessages } from "./inventory.en";
 export const inventoryNb: InventoryMessages = {
   noAccess: "Du har ikke tilgang til dette.",
   head: {
+    more: "Mer",
     nav: "Lager",
     tabs: { list: "Lager", history: "Historikk", locations: "Lagersteder", transfers: "Overføringer", purchase_orders: "Innkjøpsordrer", suppliers: "Leverandører", import: "Import", export: "Eksport" },
   },
@@ -77,6 +78,17 @@ export const inventoryNb: InventoryMessages = {
     owed: "Enheter solgt på restordre i betalte ordrer som ikke er sendt ennå: det butikken fortsatt må ta imot.",
   },
   list: {
+    sentence: {
+      out: { one: "{n} variant er utsolgt", many: "{n} varianter er utsolgt" },
+      low: { one: "{n} begynner å gå tom", many: "{n} begynner å gå tom" },
+      lowOnly: { one: "{n} variant begynner å gå tom", many: "{n} varianter begynner å gå tom" },
+      and: ", og ",
+      end: ".",
+      fine: "Ingenting er utsolgt eller i ferd med å gå tom.",
+      rest: " Endre et antall og lagre det med en grunn; hver endring tas vare på i historikken.",
+    },
+    chips: { all: "Alle", out: "Utsolgt", low: "Snart tom", backorder: "Restordre", negative: "Under null" },
+    find: "Finn et produkt eller en SKU",
     needsLook: "Det som trenger et blikk",
     counts: { low: "På eller under nivået for lavt lager", out: "Utsolgt", owed: "Enheter skyldt på restordre", negative: "Under null" },
     showThem: "Vis dem",
@@ -99,6 +111,12 @@ export const inventoryNb: InventoryMessages = {
     nextPage: "Neste 50 varianter",
   },
   table: {
+    onShelf: "{name} på hylla",
+    less: "Én mindre {name}",
+    moreOne: "Én til {name}",
+    changes: { one: "{n} endring", many: "{n} endringer" },
+    why: "Hvorfor",
+    saveBar: "Lagre",
     chosenHeading: "Endre de valgte variantene",
     chosen: { one: "{n} variant valgt", many: "{n} varianter valgt" },
     shipWithin: "Forventes sendt innen (dager)",

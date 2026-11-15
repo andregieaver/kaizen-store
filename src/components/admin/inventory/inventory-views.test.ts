@@ -122,7 +122,7 @@ describe("the Inventory list", () => {
     expect(out).not.toContain("Save changes");
     // One location: no disclosure of locations and no location filter.
     expect(out).not.toContain("Locations of Cup");
-    expect(out).not.toContain('id="inventory-location"');
+    expect(out).not.toContain('name="location"');
   });
 
   it("gives a store with several locations a disclosure with each location's own boxes, and none in the row", () => {
@@ -131,7 +131,7 @@ describe("the Inventory list", () => {
     expect(out).toContain("Set on hand to at Oslo, Cup, Red");
     expect(out).toContain("Set on hand to at Bergen, Cup, Red");
     expect(out).not.toContain("Set on hand to, Cup, Red");
-    expect(out).toContain('id="inventory-location"');
+    expect(out).toContain('name="location"');
     expect(out).toContain("All active locations");
   });
 
@@ -145,8 +145,8 @@ describe("the Inventory list", () => {
   it("marks what needs a look and counts it, with a link that sets the filter", () => {
     const counts = { variants: 3, low: 2, out: 1, owed: 5, negative: 1 };
     const out = html(createElement(InventoryView, { slug: "shop", page: page({ counts, rows: [row({ onHand: -2, available: -2, stockPolicy: "continue", backorderDays: 7, owed: 2 })] }), query, canWrite: false, tools }));
-    expect(out).toContain("At or below the low-stock level");
-    expect(out).toContain("Units owed on backorder");
+    // Round 7 (D624): a sentence, and chips that set the filter.
+    expect(out).toContain("1 variant is sold out, and 2 are running low.");
     expect(out).toContain('href="/admin/shop/inventory?status=low"');
     expect(out).toContain('href="/admin/shop/inventory?status=negative"');
     expect(out).toContain("Below zero");
@@ -183,7 +183,7 @@ describe("the Inventory list", () => {
   it("keeps what is typed in the search box and the chosen status in the filter", () => {
     const out = html(createElement(InventoryView, { slug: "shop", page: page({ applied: { search: "mug", locationId: null, status: "out" } }), query: { ...query, search: "mug", status: "out" }, canWrite: false, tools }));
     expect(out).toContain('value="mug"');
-    expect(out).toMatch(/<option value="out" selected/);
+    expect(out).toMatch(/aria-current="page"[^>]*>Sold out/);
   });
 
   it("writes a name from a customer's data as text, never as markup", () => {

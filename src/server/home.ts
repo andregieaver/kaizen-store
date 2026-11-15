@@ -135,6 +135,23 @@ export async function linePictures(storeId: string, orderId: string): Promise<Ma
   return new Map(rows.map((r) => [r.id, r.picture]));
 }
 
+const VARIANT_PICTURE_ROW = z.object({ id: col.text, picture: col.textOrNull });
+
+/** Each variant's picture, its own or its product's first (round 7, D624: the inventory list shows them). */
+export async function variantPictures(storeId: string, variantIds: string[]): Promise<Record<string, string | null>> {
+  if (variantIds.length === 0) return {};
+  const rows = await typedRows(VARIANT_PICTURE_ROW, sql`
+    select v.id::text as id, coalesce(v.image_thumbnail_url, v.image_url, m.picture) as picture
+    from commerce.product_variants v
+    left join lateral (
+      select coalesce(pm.thumbnail_url, pm.url) as picture from commerce.product_media pm
+      where pm.store_id = v.store_id and pm.product_id = v.product_id order by pm.position limit 1
+    ) m on true
+    where v.store_id = ${storeId}::uuid and v.id in (${sql.join(variantIds.map((id) => sql`${id}::uuid`), sql`, `)})
+  `);
+  return Object.fromEntries(rows.map((r) => [r.id, r.picture]));
+}
+
 const SEND_COUNT_ROW = z.object({ n: col.int, oldest: col.timestampOrNull, first: z.string().nullable() });
 
 /** How many orders wait to be sent, when the oldest was placed and which it is: the orders list's header and its default view (round 2, D597). */

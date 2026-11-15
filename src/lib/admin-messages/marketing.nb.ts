@@ -53,6 +53,13 @@ export const marketingNb: MarketingMessages = {
     whatItSays: "Hva den sier",
   },
   segments: {
+    lead: "Grupper av kundene dine, som holder seg oppdatert av seg selv.",
+    leadRest: " Start med en de fleste butikker bruker, eller lag din egen.",
+    yours: "Segmentene dine",
+    ready: "Klare til bruk",
+    keep: "Behold det",
+    peopleNow: { one: "person nå", many: "personer nå" },
+    makeOwn: "Lag ditt eget",
     title: "Segmenter",
     description:
       "Grupper av kundene og abonnentene dine etter hva de har gjort: hvor ofte og hvor nylig de kjøpte, hvor mye, hvor, og om de vil ha e-postene dine. Et segment telles hver gang du åpner det, så det er alltid oppdatert.",

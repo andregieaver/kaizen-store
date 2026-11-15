@@ -462,16 +462,50 @@ function DeleteAsk({ ask, pending, onDelete, onKeep }: { ask: string; pending: b
 }
 
 /** The rules in the order they are read, each with its switch, place and what kept it out lately. */
-export function RuleList({ rules, choices, canWrite, actions }: { rules: RuleView[]; choices: RuleChoices; canWrite: boolean; actions: CheckoutRuleActions }) {
+export function RuleList({
+  rules,
+  choices,
+  canWrite,
+  actions,
+  examples = [],
+}: {
+  rules: RuleView[];
+  choices: RuleChoices;
+  canWrite: boolean;
+  actions: CheckoutRuleActions;
+  /** Rules a shop really writes, offered while it has none (round 7, D624): each opens the editor filled in, saved off as any rule. */
+  examples?: { label: string; start: RuleInputView }[];
+}) {
   const w = useAdminText("shipping").checkoutRules;
   const [editing, setEditing] = useState<string | null>(null);
+  const [preset, setPreset] = useState<RuleInputView | null>(null);
   const [asking, setAsking] = useState<string | null>(null);
   const [pending, run] = useTransition();
   return (
-    <Card title={w.rules} aside={canWrite && editing !== "new" ? <Button kind="strong" onClick={() => setEditing("new")}>{w.newRule}</Button> : undefined}>
+    <Card
+      title={w.rules}
+      aside={
+        canWrite && editing !== "new" ? (
+          <Button kind={rules.length === 0 && examples.length > 0 ? "link" : "strong"} onClick={() => { setPreset(null); setEditing("new"); }}>
+            {w.newRule}
+          </Button>
+        ) : undefined
+      }
+    >
+      {canWrite && rules.length === 0 && editing !== "new" && examples.length > 0 && (
+        <ul aria-label={w.examplesLabel} className="mb-3 flex flex-wrap gap-2">
+          {examples.map((example) => (
+            <li key={example.label}>
+              <button type="button" onClick={() => { setPreset(example.start); setEditing("new"); }} className="inline-flex min-h-10 items-center rounded-pill border border-edge bg-card px-3.5 text-caption text-ink hover:bg-sunken">
+                {example.label}
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
       {editing === "new" && (
         <div className="mb-4 flex flex-col gap-2">
-          <RuleEditor start={null} choices={choices} save={actions.saveRule} onDone={() => setEditing(null)} />
+          <RuleEditor start={preset ? { ...preset, id: null } : null} choices={choices} save={actions.saveRule} onDone={() => { setEditing(null); setPreset(null); }} />
           <p className="text-sm text-muted">{w.savedOff}</p>
         </div>
       )}
@@ -590,7 +624,7 @@ function FieldEditor({
           const list = hasOptions(kind) ? { options: kept, sensitive } : { sensitive: false };
           const whole = (s: string) => (s.trim() === "" ? undefined : Number(s));
           const limits = hasBounds(kind) ? { bounds: { min: whole(bounds.min), max: whole(bounds.max) } } : {};
-          const saved = await save(start?.id ?? null, { kind, required, label, help: help.text.trim() ? help : null, width, ...list, ...limits, conditions });
+          const saved = await save(start?.id || null, { kind, required, label, help: help.text.trim() ? help : null, width, ...list, ...limits, conditions });
           if (saved.ok) {
             setProblems([]);
             onDone();
@@ -746,7 +780,10 @@ export function FieldList({
   mainLocale,
   canWrite,
   actions,
+  examples = [],
 }: {
+  /** Questions a shop really asks, offered while it asks none (round 7, D624): each opens the editor filled in. */
+  examples?: { label: string; start: FieldInputView }[];
   fields: FieldView[];
   /** What a question's conditions may name (task 4). */
   choices: RuleChoices;
@@ -757,6 +794,7 @@ export function FieldList({
   actions: CheckoutRuleActions;
 }) {
   const w = useAdminText("shipping").checkoutRules;
+  const [preset, setPreset] = useState<FieldInputView | null>(null);
   const [editing, setEditing] = useState<string | null>(null);
   const [asking, setAsking] = useState<string | null>(null);
   const [pending, run] = useTransition();
@@ -838,10 +876,40 @@ export function FieldList({
     ),
   );
   return (
-    <Card title={w.fields} description={w.fieldsHint} aside={canWrite && editing !== "new" ? <Button kind="strong" onClick={() => setEditing("new")}>{w.newField}</Button> : undefined}>
+    <Card
+      title={w.fields}
+      description={shown.length === 0 && examples.length > 0 && editing !== "new" ? undefined : w.fieldsHint}
+      aside={
+        canWrite && editing !== "new" ? (
+          <Button kind={shown.length === 0 && examples.length > 0 ? "link" : "strong"} onClick={() => { setPreset(null); setEditing("new"); }}>
+            {w.newField}
+          </Button>
+        ) : undefined
+      }
+    >
+      {canWrite && shown.length === 0 && editing !== "new" && examples.length > 0 && (
+        <ul aria-label={w.examplesLabel} className="mb-3 flex flex-wrap gap-2">
+          {examples.map((example) => (
+            <li key={example.label}>
+              <button type="button" onClick={() => { setPreset(example.start); setEditing("new"); }} className="inline-flex min-h-10 items-center rounded-pill border border-edge bg-card px-3.5 text-caption text-ink hover:bg-sunken">
+                {example.label}
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
       {editing === "new" && (
-        <div className="mb-4">
-          <FieldEditor start={null} choices={choices} locales={locales} mainLocale={mainLocale} save={actions.saveField} onDone={() => setEditing(null)} />
+        <div className="mb-4 flex flex-col gap-2">
+          {/* The rule on sensitive questions (GDPR article 9) is said where a question is written (round 7). */}
+          {examples.length > 0 && <p className="text-sm text-muted">{w.fieldsHint}</p>}
+          <FieldEditor
+            start={preset ? { id: "", enabled: true, sensitive: false, ...preset, options: undefined } : null}
+            choices={choices}
+            locales={locales}
+            mainLocale={mainLocale}
+            save={actions.saveField}
+            onDone={() => { setEditing(null); setPreset(null); }}
+          />
         </div>
       )}
       {shown.length === 0 ? (

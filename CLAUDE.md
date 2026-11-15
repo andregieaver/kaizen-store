@@ -15,7 +15,7 @@ phased build plan are in `docs/plan.md`; read it before architectural work.
   applies it, then deploys. Pushes
   of `*.md` and `docs/**` alone run nothing, except the docs portal's articles under `content/` (D442), which are
   checked and deployed like code. Each deploy then waits until `/api/health` reports the commit (D389,
-  `scripts/await-deploy.mjs`), then requests two pages (`SMOKE_PAGES`), and fails the job when the commit does not arrive or a page does not answer 200.
+  `scripts/await-deploy.mjs`), then requests two pages (`SMOKE_PAGES`) and every challenge store's front page and cart (`/api/health/smoke`, D625), and fails the job when the commit does not arrive or a page does not answer 200.
 - The owner loves to see frequent screenshots and graphics of what is built: send screenshots of new or changed
   screens (and a diagram where it explains how something works) as the work goes, not only at the end.
 
@@ -174,6 +174,8 @@ Each rule is in full under the same words in one file of `docs/rules/admin/` by 
 - The autopilot (D309, D328, `docs/ai-autopilot.md` 7 and 12)
 - The 100-day challenge's console (D614, `docs/100-day-challenge.md` H2, `src/lib/challenge-console.ts` pure, `src/server/challenge-console.ts`)
 - The challenge's order and stock tools and order events (D621, `docs/100-day-challenge.md` C2 to C6, `src/server/supply-tools.ts`, `src/lib/purchase-budget.ts`)
+- The challenge's scoreboard (D623, `docs/100-day-challenge.md` E7, `src/lib/challenge-scoreboard.ts` pure, `src/server/challenge-scoreboard.ts`)
+- Challenge stores protected from deploys (D625, `docs/100-day-challenge.md` F5, `src/lib/challenge-pin.ts`, `src/server/challenge-pin.ts`, `src/server/challenge-smoke.ts`)
 - The AI wallet (D599, `docs/agent-spending.md` 5, `src/lib/card-wallet.ts`, `src/server/card-wallet.ts`, `src/server/agent-purchases.ts`)
 - Web research (D329, `docs/ai-autopilot.md` 13, `src/lib/web-search.ts`, `src/lib/web-page-text.ts`, `src/lib/research.ts`, `src/server/research.ts`)
 - Brand and look (D330, `docs/ai-autopilot.md` 14, `src/lib/brand.ts`, `src/lib/brand-design.ts`, `src/server/brand.ts`, `src/server/brand-tools.ts`)

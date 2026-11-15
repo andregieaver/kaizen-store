@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { deployVerdict, pageLine, pageProblems, SMOKE_CHECKS, smokePages, smokeProblems } from "../../scripts/await-deploy.mjs";
+import { challengePagesFrom, deployVerdict, pageLine, pageProblems, SMOKE_CHECKS, smokePages, smokeProblems } from "../../scripts/await-deploy.mjs";
 
 /** CI's wait for production to run a pushed commit (D389): the commit itself, or a later deployment that includes it, is live. */
 describe("deployVerdict", () => {
@@ -37,6 +37,15 @@ describe("smokeProblems", () => {
 });
 
 /** After the routes, the job itself requests the pages a visitor would meet first, and each must answer 200. */
+describe("the challenge stores' pages (F5)", () => {
+  it("takes only full https addresses production names, and none from an answer of another shape", () => {
+    expect(challengePagesFrom({ pages: ["https://shop.example/s/clone", "/s/clone/cart", 4, "http://plain.example/"] })).toEqual(["https://shop.example/s/clone"]);
+    expect(challengePagesFrom({ status: "ok" })).toEqual([]);
+    expect(challengePagesFrom(null)).toEqual([]);
+    expect(challengePagesFrom({ pages: Array.from({ length: 50 }, (_, i) => `https://s.example/${i}`) })).toHaveLength(40);
+  });
+});
+
 describe("page checks", () => {
   const none = { vercel: null, next: null };
 

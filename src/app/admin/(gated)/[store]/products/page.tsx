@@ -57,7 +57,7 @@ export default async function ProductsPage({ params, searchParams }: Props) {
                 {w.categories}
               </Link>
             </MoreMenu>
-            <Link href={`/admin/${store.slug}/products/new`} className="inline-flex h-11 items-center rounded-pill bg-brand px-5 text-body-strong text-brand-ink hover:bg-brand-hover">
+            <Link href={`/admin/${store.slug}/products/new`} className="max-sm:hidden inline-flex h-11 items-center rounded-pill bg-brand px-5 text-body-strong text-brand-ink hover:bg-brand-hover">
               + {w.add}
             </Link>
           </>

@@ -616,6 +616,9 @@ Each item of section 4 moves here when it is built, with its decision.
 | F1 A second AI provider | Built: up to three fallback text models through the AI Gateway. | D610 |
 | H1 The loop scales per store | Built: steps, reviews and events claimed one per store and run side by side. | D610 |
 | H2 The challenge console | Built: Platform → Settings → 100-day challenge, each store's phase and day, stalls, what waits on the owner and how long, AI cost against budget, people's actions by class and the three ratios since Day 1; setting, changing and ending a challenge. | D614 |
+| E1 One contribution profit | Partly: Finance counts each parcel at its booked label price (the estimate only for the rest); revenue per visitor is measured. Return labels, handling and packaging per order, and the channel figures, still estimates. | D623 |
+| E7 The scoreboard | Built with the original's signed P&L: each challenge store's page, the clone over the same days with its AI and plan as costs, the three ratios, the leader and the 80 % ad-money rule. Reading the original from Shopify's API, and the frozen baseline, are not built. | D623 |
+| F5 Protect the store from deploys | Built: the AI's versions pinned and every change logged on the challenge (the console shows it), the store's front page and cart in every deploy's smoke, and a rollback runbook. A test checkout in the smoke is not built. | D625 |
 | C2 Supplier orders as tools and events | Built: `list_supplier_orders`, `answer_supplier_order` (send again or cancel), and the `supplier_problem` event. | D621 |
 | C3 Purchase orders by the AI | Built: `create_purchase_order`, placed and emailed to a known supplier, within a purchasing budget per order and a month (the owner's, or the challenge's). | D621 |
 | C5 Order events | Built: paid and not sent after 48 hours, a parcel in trouble, a supplier refused or late, an order held, a dispute to answer, failed payments piling up. Each leaves a note; none writes to the customer. | D621 |
@@ -644,7 +647,7 @@ In order of the Day 1 minimum (8.1):
 
 - **C (rest):** telling a customer of a delay or a parcel's trouble (an event writes to nobody today: a plan or a code-sent email), C4's demand forecast.
 - **B3:** staff requests carried out by code (address change, cancellation).
-- **E1 and E7:** one contribution profit (label costs in Finance), and the scoreboard with the original read from a signed monthly P&L.
-- **F4 and F5:** the hourly watch after each change, and the store protected from deploys (prompts pinned, smoke on its pages).
+- **E1 (rest) and E7 (rest):** return labels, handling and packaging in contribution; the original read from Shopify's API; the baseline frozen before Day 1.
+- **F4:** the hourly watch after each change, rolling back a clear fall.
 - **D1 and D4:** Meta campaigns of the AI's own, and retention flows it writes, during the first weeks of the run.
 

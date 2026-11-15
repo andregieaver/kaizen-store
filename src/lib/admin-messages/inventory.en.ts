@@ -14,6 +14,7 @@ import { POLICY_WORDS, REASON_WORDS } from "../inventory";
 export const inventoryEn = {
   noAccess: "You do not have access to this.",
   head: {
+    more: "More",
     nav: "Inventory",
     tabs: { list: "Inventory", history: "History", locations: "Locations", transfers: "Transfers", purchase_orders: "Purchase orders", suppliers: "Suppliers", import: "Import", export: "Export" },
   },
@@ -70,6 +71,18 @@ export const inventoryEn = {
   states: { ...STATE_WORDS },
   stateHelp: { ...STATE_HELP },
   list: {
+    /** The list drawn for Homer (round 7, D624): a sentence, chips and one count per variant. */
+    sentence: {
+      out: { one: "{n} variant is sold out", many: "{n} variants are sold out" },
+      low: { one: "{n} is running low", many: "{n} are running low" },
+      lowOnly: { one: "{n} variant is running low", many: "{n} variants are running low" },
+      and: ", and ",
+      end: ".",
+      fine: "Nothing is sold out or running low.",
+      rest: " Change a count and save it with a reason; every change is kept in the history.",
+    },
+    chips: { all: "All", out: "Sold out", low: "Running low", backorder: "On backorder", negative: "Below zero" },
+    find: "Find a product or SKU",
     needsLook: "What needs a look",
     counts: { low: "At or below the low-stock level", out: "Sold out", owed: "Units owed on backorder", negative: "Below zero" },
     showThem: "Show them",
@@ -92,6 +105,13 @@ export const inventoryEn = {
     nextPage: "Next 50 variants",
   },
   table: {
+    /** One count per variant (round 7, D624). */
+    onShelf: "{name} on the shelf",
+    less: "One less {name}",
+    moreOne: "One more {name}",
+    changes: { one: "{n} change", many: "{n} changes" },
+    why: "Why",
+    saveBar: "Save",
     chosenHeading: "Change the chosen variants",
     chosen: { one: "{n} variant chosen", many: "{n} variants chosen" },
     shipWithin: "Expected to ship within (days)",
