@@ -82,6 +82,36 @@ test("a crawler and a browser in a language the store does not have see the coun
   await context.close();
 });
 
+test("a store with flags off asks for no flag file (bloat review step 0.32)", async ({ browser }) => {
+  const plain = `lang-plain-${Date.now()}`;
+  const sql = testDb();
+  try {
+    const [access] = await sql`
+      insert into commerce.access_requests (email, name, store_name) values (${`${plain}@example.com`}, 'Siri', 'Siris Butikk') returning id`;
+    await sql`select commerce.approve_access_request(${access.id}, ${plain}, 'Siris Butikk', null)`;
+    await sql`
+      update commerce.stores
+      set setup_completed_at = now(), locales = array['nb-NO', 'en-GB', 'sv-SE'],
+          features = (select array_agg(distinct f) from unnest(features || array['languages']) f)
+      where slug = ${plain}`;
+  } finally {
+    await sql.end();
+  }
+  const context = await visitor(browser, "nb-NO");
+  const page = await context.newPage();
+  const asked: string[] = [];
+  page.on("request", (req) => asked.push(req.url()));
+  await page.goto(`/s/${plain}/no`);
+  await page.waitForTimeout(1000);
+  expect(asked.filter((address) => address.includes("/flags/"))).toEqual([]);
+  await context.close();
+});
+
+test("a public file with a fixed address is kept a day (bloat review step 0.32)", async ({ request }) => {
+  const answer = await request.get("/flags/no.svg");
+  expect(answer.headers()["cache-control"]).toContain("max-age=86400");
+});
+
 test("the switcher shows names on a computer, a list with flags on a phone, and its choice is remembered", async ({ browser }) => {
   const context = await visitor(browser, "en-GB");
   const page = await context.newPage();

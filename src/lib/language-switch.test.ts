@@ -1,11 +1,11 @@
 import { describe, expect, it } from "vitest";
 
 import { DEFAULT_BREAKPOINTS } from "./breakpoints";
-import { flagOf, FLAG_COUNTRIES, languageCode } from "./language-flags";
+import { flagOf, FLAG_COUNTRIES, languageCode, RASTER_FLAGS } from "./language-flags";
 import { sizesWhere, switcherAt } from "./language-switch";
 import { pageBlockSchema, type SiteBlock } from "./page-content";
 import { languageSwitchStyle, renderPartCss } from "./part-css";
-import { readdirSync } from "node:fs";
+import { readdirSync, statSync } from "node:fs";
 import { join } from "node:path";
 
 const block = (extra: Partial<SiteBlock> = {}): SiteBlock => ({ id: "ls1", type: "site", part: "languages", ...extra });
@@ -81,7 +81,19 @@ describe("a language's flag and code (D479)", () => {
   });
 
   it("has a file for every flag it names, and names every file it has", () => {
-    const files = readdirSync(join(process.cwd(), "public", "flags")).filter((file) => file.endsWith(".svg"));
-    expect(files.map((file) => file.replace(/\.svg$/, "")).sort()).toEqual([...FLAG_COUNTRIES].sort());
+    const files = readdirSync(join(process.cwd(), "public", "flags")).filter((file) => /\.(svg|webp)$/.test(file));
+    expect(files.map((file) => file.replace(/\.(svg|webp)$/, "")).sort()).toEqual([...FLAG_COUNTRIES].sort());
+  });
+
+  it("keeps the flags with detailed arms as small pictures, and the whole folder under 20 KB (bloat review step 0.32)", () => {
+    const folder = join(process.cwd(), "public", "flags");
+    const files = readdirSync(folder);
+    for (const country of RASTER_FLAGS) {
+      expect(files, country).toContain(`${country}.webp`);
+      expect(files, country).not.toContain(`${country}.svg`);
+    }
+    expect(flagOf("es")).toBe("/flags/es.webp");
+    expect(flagOf("hr")).toBe("/flags/hr.webp");
+    expect(files.reduce((sum, file) => sum + statSync(join(folder, file)).size, 0)).toBeLessThan(20000);
   });
 });

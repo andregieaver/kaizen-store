@@ -69,7 +69,7 @@ export function LanguageLinks({
   const flag = (item: LanguageLink) =>
     item.flag ? (
       // eslint-disable-next-line @next/next/no-img-element -- a flag of a few hundred bytes from the site's own files, drawn at 20 by 15 pixels
-      <img data-ls-flag="" src={item.flag} alt="" width={20} height={15} decoding="async" className="h-[15px] w-5 shrink-0 rounded-[2px] object-cover ring-1 ring-current/15" />
+      <img data-ls-flag="" src={item.flag} alt="" width={20} height={15} decoding="async" loading="lazy" className="h-[15px] w-5 shrink-0 rounded-[2px] object-cover ring-1 ring-current/15" />
     ) : null;
   // What the list and the menu's button show of a language: the stylesheet keeps the name, the code or neither at each size.
   const face = (item: LanguageLink) => (
