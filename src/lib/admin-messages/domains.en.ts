@@ -7,6 +7,15 @@ import type { Widen } from "./common.en";
 export const domainsEn = {
   /** The page's own title and introduction; `{address}` is the store's address on Kaizena Flow. */
   page: {
+    lead: "Your store is open at Kaizena Flow's address.",
+    leadRest: "Share it as it is; a domain of your own comes later.",
+    addressLabel: "Your store's address",
+    copy: "Copy",
+    copied: "Copied",
+    view: "View store",
+    ownTitle: "Your own domain",
+    ownLater: "Not available yet · you will be able to use an address like yourshop.com here",
+    ownSoon: "Coming",
     title: "Domains",
     description: "Where shoppers find your store: its address on Kaizena Flow, or a domain of your own.",
     notSetUp:

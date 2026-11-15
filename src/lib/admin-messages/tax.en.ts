@@ -8,6 +8,21 @@ import type { Widen } from "./common.en";
  */
 export const taxEn = {
   page: {
+    leadOff: "Prices include VAT; the store is not registered for VAT.",
+    leadOn: "Prices include VAT; the store is registered for VAT as {number}.",
+    leadOnNoNumber: "Prices include VAT; the store is registered for VAT, without a number yet.",
+    leadRest: "Each sale is charged the VAT of the country it goes to. ",
+    rows: "Your registrations",
+    vatOff: "Not registered · add the VAT number when the business has one",
+    vatNoNumber: "Registered · the VAT number is missing",
+    vatValid: "{number} · checked valid",
+    vatNotValid: "{number} · not checked valid yet",
+    ossOff: "Not registered",
+    ossOn: "{scheme} · {state}",
+    iossOff: "Only for goods sent from outside the EU · not set up",
+    iossOn: { one: "{number} · {n} market", many: "{number} · {n} markets" },
+    add: "Add",
+    change: "Change",
     title: "Tax",
     intro:
       "Prices in the store include VAT, and each sale is charged the VAT of the country it goes to. Here the store records its VAT registration and, where it has them, its OSS and IOSS registrations.",

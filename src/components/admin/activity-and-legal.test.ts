@@ -11,7 +11,7 @@ import type { LegalOverview } from "@/server/legal-starters";
 
 import { AccessibilityForm, factLines } from "./a11y-statement-form";
 import { ActivityFilters, ActivityList, valuesFromQuery } from "./activity-view";
-import { LegalPagesPanel } from "./legal-pages-panel";
+import { legalLead, LegalPagesPanel } from "./legal-pages-panel";
 import { PageIssuesPanel, PublishWithIssuesDialog } from "./page-issues-panel";
 
 const html = (element: Parameters<typeof renderToString>[0]) =>
@@ -178,6 +178,25 @@ describe("the legal pages", () => {
     expect(out).toMatch(/name="mode" value="link" checked=""|name="mode" checked="" value="link"/);
     expect(panel({ termsAtCheckout: "checkbox", roles: overview().roles.map((r) => ({ ...r, page: null })) })).toContain("No terms page is chosen");
     expect(panel({ termsAtCheckout: "off" })).not.toContain("No terms page is chosen");
+  });
+});
+
+describe("the legal pages as rows (round 15)", () => {
+  const entry = (role: LegalOverview["roles"][number]["role"], page: boolean) =>
+    ({ role, name: role, hint: "h", starter: true, page: page ? { id: role, title: role, slug: role } : null, draft: null, needed: true }) as LegalOverview["roles"][number];
+  const base: LegalOverview = { roles: [entry("terms", false), entry("privacy", false)], choosable: [], termsAtCheckout: "link", shopOn: true, missing: [] };
+
+  it("says how many are chosen, and that checkout shows no terms while none is", () => {
+    expect(legalLead(base)).toMatch(/^None of your legal pages is chosen, so checkout shows no terms\. Start from drafts/);
+    expect(legalLead({ ...base, roles: [entry("terms", true), entry("privacy", false)] })).toMatch(/^1 of your 2 legal pages are chosen\./);
+    expect(legalLead({ ...base, roles: [entry("terms", true), entry("privacy", true)] })).toBe("All your legal pages are chosen.");
+  });
+
+  it("offers every missing draft in one press, naming them", () => {
+    const out = html(createElement(LegalPagesPanel, { overview: base, storeSlug: "kaffe", actions: { createStarter: action as never, setRole: action as never, setTerms: action, createAll: action } }));
+    expect(out).toContain("Make all 2 drafts");
+    expect(out).toContain("Terms of sale, Privacy statement, as drafts.");
+    expect(out).toContain("Make the drafts");
   });
 });
 

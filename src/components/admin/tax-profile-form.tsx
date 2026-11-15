@@ -58,6 +58,7 @@ export function TaxProfileForm({
   countryName,
   canEdit,
   saveAction,
+  part,
 }: {
   profile: TaxProfile;
   /** The store's country (`stores.country`), or null. */
@@ -65,6 +66,11 @@ export function TaxProfileForm({
   countryName: string | null;
   canEdit: boolean;
   saveAction: (state: FormState, form: FormData) => Promise<FormState>;
+  /**
+   * One part only (round 15, D647): its fields in the row that opened it, the other parts' saved values sent along unseen so the one
+   * Save keeps them. Without it, every part shows, each in its card.
+   */
+  part?: TaxPart;
 }) {
   const all = useAdminText("tax");
   const w = all.form;
@@ -73,125 +79,124 @@ export function TaxProfileForm({
   const start = formOf(profile);
   const [scheme, setScheme] = useState<OssScheme>(start.ossScheme);
   const markets = new Set(start.iossMarkets);
-  return (
-    <ActionForm action={saveAction} successMessage={w.saved} className="flex flex-col gap-6">
-      <fieldset disabled={!canEdit} className="contents">
-        <section aria-labelledby="vat" className={card}>
-          <h2 id="vat" className="text-title text-ink">
-            {w.vatTitle}
-          </h2>
-          <label className="flex items-start gap-2 text-sm">
-            <input type="checkbox" name="vatRegistered" defaultChecked={start.vatRegistered} className="mt-0.5 size-4" />
+  const shows = (which: TaxPart) => !part || part === which;
+  const box = part ? "flex flex-col gap-4" : card;
+  const heading = (id: TaxPart, title: string) =>
+    part ? null : (
+      <h2 id={id} className="text-title text-ink">
+        {title}
+      </h2>
+    );
+
+  const vat = (
+    <section aria-labelledby={part ? undefined : "vat"} aria-label={part ? w.vatTitle : undefined} className={box}>
+      {heading("vat", w.vatTitle)}
+      <label className="flex items-start gap-2 text-sm">
+        <input type="checkbox" name="vatRegistered" defaultChecked={start.vatRegistered} className="mt-0.5 size-4" />
+        <span>
+          {w.registered}
+          <span className={`block ${hint}`}>{w.registeredHint}</span>
+        </span>
+      </label>
+      <label className={label}>
+        {w.vatNumber}{" "}
+        <span className={hint}>
+          {country === "NO" ? w.vatNumberNo : country ? fillWords(w.vatNumberStarts, { prefix: country === "GR" ? "EL" : country }) : w.vatNumberAny}
+        </span>
+        <input name="vatNumber" defaultValue={start.vatNumber} autoComplete="off" spellCheck={false} className={`${input} font-mono uppercase sm:max-w-sm`} />
+        <span className={hint}>{fillWords(w.vatNumberHint, { country: countryName ?? w.ownCountry })}</span>
+      </label>
+      <label className={label}>
+        {w.dispatch} <span className={hint}>{w.dispatchShape}</span>
+        <input name="dispatchCountry" defaultValue={start.dispatchCountry} placeholder={country ?? ""} maxLength={2} autoComplete="off" className={`${input} uppercase sm:w-24`} />
+        <span className={hint}>{fillWords(w.dispatchHint, { country: countryName ?? w.storeCountry })}</span>
+      </label>
+    </section>
+  );
+
+  const oss = (
+    <section aria-labelledby={part ? undefined : "oss"} aria-label={part ? w.ossTitle : undefined} className={box}>
+      {heading("oss", w.ossTitle)}
+      <p className="text-sm text-muted">{w.ossIntro}</p>
+      <fieldset className="flex flex-col gap-2 text-sm">
+        <legend className="mb-1 font-medium">{w.scheme}</legend>
+        {OSS_SCHEMES.map((option) => (
+          <label key={option} className="flex items-start gap-2">
+            <input type="radio" name="ossScheme" value={option} checked={scheme === option} onChange={() => setScheme(option)} className="mt-0.5 size-4" />
             <span>
-              {w.registered}
-              <span className={`block ${hint}`}>{w.registeredHint}</span>
+              {all.schemes[option].label}
+              <span className={`block ${hint}`}>{all.schemes[option].hint}</span>
             </span>
           </label>
+        ))}
+      </fieldset>
+      {scheme !== "none" && (
+        <div className="grid gap-4 sm:grid-cols-2">
           <label className={label}>
-            {w.vatNumber}{" "}
-            <span className={hint}>
-              {country === "NO" ? w.vatNumberNo : country ? fillWords(w.vatNumberStarts, { prefix: country === "GR" ? "EL" : country }) : w.vatNumberAny}
-            </span>
-            <input name="vatNumber" defaultValue={start.vatNumber} autoComplete="off" spellCheck={false} className={`${input} font-mono uppercase sm:max-w-sm`} />
-            <span className={hint}>{fillWords(w.vatNumberHint, { country: countryName ?? w.ownCountry })}</span>
-          </label>
-          <label className={label}>
-            {w.dispatch} <span className={hint}>{w.dispatchShape}</span>
-            <input
-              name="dispatchCountry"
-              defaultValue={start.dispatchCountry}
-              placeholder={country ?? ""}
-              maxLength={2}
-              autoComplete="off"
-              className={`${input} uppercase sm:w-24`}
-            />
-            <span className={hint}>{fillWords(w.dispatchHint, { country: countryName ?? w.storeCountry })}</span>
-          </label>
-        </section>
-
-        <section aria-labelledby="oss" className={card}>
-          <h2 id="oss" className="text-title text-ink">
-            {w.ossTitle}
-          </h2>
-          <p className="text-sm text-muted">{w.ossIntro}</p>
-          <fieldset className="flex flex-col gap-2 text-sm">
-            <legend className="mb-1 font-medium">{w.scheme}</legend>
-            {OSS_SCHEMES.map((option) => (
-              <label key={option} className="flex items-start gap-2">
-                <input
-                  type="radio"
-                  name="ossScheme"
-                  value={option}
-                  checked={scheme === option}
-                  onChange={() => setScheme(option)}
-                  className="mt-0.5 size-4"
-                />
-                <span>
-                  {all.schemes[option].label}
-                  <span className={`block ${hint}`}>{all.schemes[option].hint}</span>
-                </span>
-              </label>
-            ))}
-          </fieldset>
-          {scheme !== "none" && (
-            <div className="grid gap-4 sm:grid-cols-2">
-              <label className={label}>
-                {w.memberState}
-                <select name="ossMemberState" defaultValue={start.ossMemberState} className={input}>
-                  <option value="">{w.choose}</option>
-                  {EU_BY_NAME.map((c) => (
-                    <option key={c.code} value={c.code}>
-                      {c.name}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              {scheme === "non_union" && (
-                <label className={label}>
-                  {w.ossNumber} <span className={hint}>{w.ossNumberShape}</span>
-                  <input name="ossNumber" defaultValue={start.ossNumber} autoComplete="off" spellCheck={false} className={`${input} font-mono uppercase`} />
-                </label>
-              )}
-              <label className={label}>
-                {w.registeredOn} <span className={hint}>{w.dateShape}</span>
-                <input name="ossRegisteredOn" type="date" defaultValue={start.ossRegisteredOn} className={input} />
-              </label>
-            </div>
-          )}
-        </section>
-
-        <section aria-labelledby="ioss" className={card}>
-          <h2 id="ioss" className="text-title text-ink">
-            {w.iossTitle}
-          </h2>
-          <p className="text-sm text-muted">{w.iossIntro}</p>
-          <div className="grid gap-4 sm:grid-cols-2">
-            <label className={label}>
-              {w.iossNumber} <span className={hint}>{w.iossNumberShape}</span>
-              <input name="iossNumber" defaultValue={start.iossNumber} autoComplete="off" spellCheck={false} className={`${input} font-mono uppercase`} />
-            </label>
-            <label className={label}>
-              {w.intermediary}
-              <input name="iossIntermediary" defaultValue={start.iossIntermediary} maxLength={120} autoComplete="off" className={input} />
-            </label>
-            <label className={label}>
-              {w.registeredOn} <span className={hint}>{w.dateShape}</span>
-              <input name="iossRegisteredOn" type="date" defaultValue={start.iossRegisteredOn} className={input} />
-            </label>
-          </div>
-          <fieldset className="flex flex-col gap-2 text-sm">
-            <legend className="mb-1 font-medium">{w.iossMarkets}</legend>
-            <p className={hint}>{w.iossMarketsHint}</p>
-            <div className="grid grid-cols-2 gap-x-4 gap-y-1 sm:grid-cols-3 lg:grid-cols-4">
+            {w.memberState}
+            <select name="ossMemberState" defaultValue={start.ossMemberState} className={input}>
+              <option value="">{w.choose}</option>
               {EU_BY_NAME.map((c) => (
-                <label key={c.code} className="flex items-center gap-2">
-                  <input type="checkbox" name="iossMarkets" value={c.code} defaultChecked={markets.has(c.code)} className="size-4" />
+                <option key={c.code} value={c.code}>
                   {c.name}
-                </label>
+                </option>
               ))}
-            </div>
-          </fieldset>
-        </section>
+            </select>
+          </label>
+          {scheme === "non_union" && (
+            <label className={label}>
+              {w.ossNumber} <span className={hint}>{w.ossNumberShape}</span>
+              <input name="ossNumber" defaultValue={start.ossNumber} autoComplete="off" spellCheck={false} className={`${input} font-mono uppercase`} />
+            </label>
+          )}
+          <label className={label}>
+            {w.registeredOn} <span className={hint}>{w.dateShape}</span>
+            <input name="ossRegisteredOn" type="date" defaultValue={start.ossRegisteredOn} className={input} />
+          </label>
+        </div>
+      )}
+    </section>
+  );
+
+  const ioss = (
+    <section aria-labelledby={part ? undefined : "ioss"} aria-label={part ? w.iossTitle : undefined} className={box}>
+      {heading("ioss", w.iossTitle)}
+      <p className="text-sm text-muted">{w.iossIntro}</p>
+      <div className="grid gap-4 sm:grid-cols-2">
+        <label className={label}>
+          {w.iossNumber} <span className={hint}>{w.iossNumberShape}</span>
+          <input name="iossNumber" defaultValue={start.iossNumber} autoComplete="off" spellCheck={false} className={`${input} font-mono uppercase`} />
+        </label>
+        <label className={label}>
+          {w.intermediary}
+          <input name="iossIntermediary" defaultValue={start.iossIntermediary} maxLength={120} autoComplete="off" className={input} />
+        </label>
+        <label className={label}>
+          {w.registeredOn} <span className={hint}>{w.dateShape}</span>
+          <input name="iossRegisteredOn" type="date" defaultValue={start.iossRegisteredOn} className={input} />
+        </label>
+      </div>
+      <fieldset className="flex flex-col gap-2 text-sm">
+        <legend className="mb-1 font-medium">{w.iossMarkets}</legend>
+        <p className={hint}>{w.iossMarketsHint}</p>
+        <div className="grid grid-cols-2 gap-x-4 gap-y-1 sm:grid-cols-3 lg:grid-cols-4">
+          {EU_BY_NAME.map((c) => (
+            <label key={c.code} className="flex items-center gap-2">
+              <input type="checkbox" name="iossMarkets" value={c.code} defaultChecked={markets.has(c.code)} className="size-4" />
+              {c.name}
+            </label>
+          ))}
+        </div>
+      </fieldset>
+    </section>
+  );
+
+  return (
+    <ActionForm action={saveAction} successMessage={w.saved} className={part ? "flex flex-col gap-4" : "flex flex-col gap-6"}>
+      <fieldset disabled={!canEdit} className="contents">
+        {shows("vat") ? vat : <Kept values={{ vatRegistered: start.vatRegistered ? "on" : "", vatNumber: start.vatNumber, dispatchCountry: start.dispatchCountry }} />}
+        {shows("oss") ? oss : <Kept values={{ ossScheme: start.ossScheme, ossMemberState: start.ossMemberState, ossNumber: start.ossNumber, ossRegisteredOn: start.ossRegisteredOn }} />}
+        {shows("ioss") ? ioss : <Kept values={{ iossNumber: start.iossNumber, iossIntermediary: start.iossIntermediary, iossRegisteredOn: start.iossRegisteredOn, iossMarkets: start.iossMarkets }} />}
       </fieldset>
 
       {canEdit ? (
@@ -204,6 +209,20 @@ export function TaxProfileForm({
         </p>
       )}
     </ActionForm>
+  );
+}
+
+/** The three parts of the tax profile, each a row of the tax screen (round 15). */
+export type TaxPart = "vat" | "oss" | "ioss";
+
+/** The saved values of the parts not shown, sent with the one that is, so saving one part keeps the others as they are. */
+function Kept({ values }: { values: Record<string, string | readonly string[]> }) {
+  return (
+    <>
+      {Object.entries(values).flatMap(([name, value]) =>
+        (typeof value === "string" ? (value === "" ? [] : [value]) : value).map((one) => <input key={`${name}-${one}`} type="hidden" name={name} value={one} />),
+      )}
+    </>
   );
 }
 
@@ -313,17 +332,18 @@ export function ReadinessList({ lines }: { lines: ReadinessLine[] }) {
 /** The warnings for an accountant's eyes. Needs review: legal-adjacent. */
 export function TaxWarnings({ warnings }: { warnings?: readonly string[] }) {
   const w = useAdminText("tax").warnings;
+  // A fold since round 15 (D647): read once, with an accountant, not on every visit.
   return (
-    <section aria-labelledby="warnings" className={card}>
-      <h2 id="warnings" className="text-title text-ink">
-        {w.title}
-      </h2>
-      <p className="text-sm text-muted">{w.intro}</p>
-      <ul className="flex list-disc flex-col gap-2 pl-5 text-sm">
-        {(warnings ?? w.items).map((warning) => (
-          <li key={warning}>{warning}</li>
-        ))}
-      </ul>
-    </section>
+    <details className="group rounded-lg border border-line bg-card">
+      <summary className="flex min-h-12 cursor-pointer list-none items-center px-5 py-3 text-body text-ink [&::-webkit-details-marker]:hidden">{w.title}</summary>
+      <div className="flex flex-col gap-4 px-5 pb-5">
+        <p className="text-sm text-muted">{w.intro}</p>
+        <ul className="flex list-disc flex-col gap-2 pl-5 text-sm">
+          {(warnings ?? w.items).map((warning) => (
+            <li key={warning}>{warning}</li>
+          ))}
+        </ul>
+      </div>
+    </details>
   );
 }
