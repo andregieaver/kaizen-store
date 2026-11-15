@@ -816,7 +816,7 @@ export async function liftStoreCutoff(member: Membership, cutoffId: string): Pro
 
 /**
  * Codes and tokens past their end for a day are deleted, grants ended more than 90 days ago with them, and clients that registered
- * themselves and were never used in 30 days (the dispatcher).
+ * themselves and were never used in 30 days (the dispatcher, once an hour).
  */
 export async function pruneOAuthTokens(): Promise<number> {
   const tokens = await db().execute(sql`

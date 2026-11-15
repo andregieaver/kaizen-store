@@ -11,7 +11,6 @@ import { runBonusJobs } from "@/server/bonus";
 import { syncDueFeeds } from "@/server/calendar-sync";
 import { sendDueCartReminders } from "@/server/cart-reminders";
 import { catalogTag } from "@/server/catalog";
-import { pruneChatUsage } from "@/server/chat-agent";
 import { trimFontFiles } from "@/server/font-trim";
 import { endIdleConversations } from "@/server/support";
 import { endIdleGuideConversations } from "@/server/docs-guide-store";
@@ -43,14 +42,10 @@ import { keepStripeWebhooksCurrent } from "@/server/stripe-endpoints";
 import { runLiveDrills } from "@/server/live-drills";
 import { settleTrials } from "@/server/store-trial";
 import { sandboxJob } from "@/server/sandbox";
-import { pruneReplications } from "@/server/replicate-store";
 import { runReturnJobs } from "@/server/return-jobs";
-import { pruneFormSubmissions } from "@/server/forms";
-import { pruneRecommendEvents } from "@/server/recommend-events";
-import { pruneSearchCache } from "@/server/search-cache";
 import { refreshKnowledge } from "@/server/knowledge";
 import { crawlWidgetSites } from "@/server/site-crawl";
-import { pruneDocsCounts, refreshDocsIndex } from "@/server/docs-search";
+import { refreshDocsIndex } from "@/server/docs-search";
 import { refreshMediaEmbeddings } from "@/server/media-library";
 import { PAGES_TAG, pagesTag } from "@/server/pages";
 import { runSchedules } from "@/server/page-schedules";
@@ -61,7 +56,6 @@ import { chargeDomainPurchases, registerPaidDomains } from "@/server/domain-purc
 import { chargeDueThemePurchases } from "@/server/theme-prices";
 import { PLATFORM_NAVIGATION_TAG } from "@/server/platform-navigation";
 import { payHostCommissions } from "@/server/host-payments";
-import { pruneSearchLog } from "@/server/search";
 import { pruneApiIdempotency } from "@/server/api-idempotency";
 import { pruneOAuthTokens } from "@/server/oauth";
 import { runContentModeration } from "@/server/content-moderation";
@@ -101,11 +95,10 @@ const EVERY = 300;
  * Every five minutes, from Supabase's scheduler: the stores' cart reminders
  * and Kaizen's plan reminders that are due (D33), reminders before
  * appointments (D65), other calendars read in for rooms and items (D67),
- * stores' commissions on hosts' bookings not yet sent (D71), searches
- * older than 90 days and search answers older than 30 forgotten (Phase 2),
+ * stores' commissions on hosts' bookings not yet sent (D71),
  * products' vectors for search by meaning brought up to date (D74), and
  * the chat agents' knowledge cut anew from pages published since, with its
- * vectors, and their counts older than two days forgotten (D81); media
+ * vectors; media
  * libraries' vectors for search by meaning (D88); and alt texts written by
  * the sites' AI for new pictures (D89), whose pages and catalogues then
  * show them; and shoppers' weekly delivery lists whose cutoff has passed
@@ -116,9 +109,8 @@ const EVERY = 300;
  * never throws); and the bonus program's upkeep (D130, never throws): credits
  * past their expiry written off, a reminder to those whose credits expire
  * soon, and credits held by unpaid orders given back; and the referral program's emails (D131, never throws): the
- * customers whose friends' orders earned them credits are told, once per order; and recommendation events older than 90 days
- * forgotten (D139); and A/B tests' upkeep (D148, never throws): tests past their end stopped, guardrails looked at, old
- * carts' visitors forgotten; and copies of other websites' pages (D150) older than thirty days forgotten with their pictures; and withdrawals and returns (D153, never throws): a reminder to the store, once per return, when a refund is past its legal deadline, and the acknowledgement of a confirmed withdrawal tried again when the first email never got out; and invoices and credit notes (D159, never throws): refunds Stripe left pending asked of Stripe, invoices that waited for the seller's details issued, credit notes that waited for their invoice issued, and the stand-alone email for a document issued later than its payment or refund (no Chromium here: the PDFs are `/api/cron/document-pdfs`); and imports and exports (wave 2, D165, never throws): jobs nobody holds taken up where their cursor is (a dry run, an apply, an export), a few at a time within the time; and drop shipping's supplier orders (D551, never throws for one order): made for paid orders whose units were drawn at a supplier's location, then emailed to the supplier once the store's wait is over, a cancelled order's cancelled instead; and the low-stock notices (wave 3, D172, never throws): one email per store to its owners listing the variants that crossed the warning level they set since the last run (the history of stock is pruned daily, `runRetention()`); and the orders' upkeep (wave 3, D173, never throws): draft orders whose pay link ran out expired (their Stripe sessions closed first, an order paid in the last minute left alone, the unpaid order cancelled and its stock given back, its number kept so the sequence has no gap), and, for the open stores whose owner chose it, finished orders archived (up to 200 a store a run); and support (D216, never throws): conversations with the AI that went quiet for the desk's time ended; and notifications (wave 3, D238, never throw): tracked parcels' carriers asked (at most 60 parcels a run, 4 calls at once, 4 s each), their events kept, the out-for-delivery and delivered emails sent where switched on and a verified delivery recorded, and the staff summaries due at their hour sent; and installed themes that follow updates brought to their theme's latest version, a few a run (D245, never throws); and premium themes due to be paid invoiced through Kaizena Flow's billing (D286, never throws); and payments (D288, never throws): the method and risk of captured Stripe payments the reply did not read, and staff told once when a dispute's evidence is due within three days; and pages and articles scheduled to be published (D341, never throws), their drafts published in the name of who scheduled them while they still may; and the catalogue's VAT labels refreshed in the first minutes of a country's day when a rate begins or ends (D379, never throws); and, once a night, the interface text the machine-translated languages lack translated by the platform's AI as drafts to review (D436, at most 300 texts a language); and the docs' search index rewritten after a deploy that changed the docs or the contracts, with its vectors (D443); and the issued invoices and credit notes of stores connected to Tripletex booked there as vouchers, each once (D453, never throws); and the invoices and credit notes issued to businesses sent as e-invoices where the buyer receives them on the Peppol network (D463); and the person a call, meeting or task is for told on their devices when it is due, once (D468); and a change of the business behind a store taking effect on its day, the store then drawn again (D473); and the page builder's sandboxes past their time ended and what was in them deleted (D457); and self-hosted fonts' files cut to the weights their families are installed in, each once (D59, twenty a run); and Kaizena Flow's own owners and applicants kept as customers of its own store, with their tags and sign-up deals (D467); and connected Instagram accounts' tokens refreshed and their posts read again hourly (D560); and the tasks the assistants hand each other over the account link (docs/assistants-together.md): a task from Kaizen Life whose run never started run, Kaizen Life told what it has not heard, and a task handed to it that it never reported on given up.
+ * customers whose friends' orders earned them credits are told, once per order; and A/B tests' upkeep (D148, never throws): tests past their end stopped, guardrails looked at, old
+ * carts' visitors forgotten;; and withdrawals and returns (D153, never throws): a reminder to the store, once per return, when a refund is past its legal deadline, and the acknowledgement of a confirmed withdrawal tried again when the first email never got out; and invoices and credit notes (D159, never throws): refunds Stripe left pending asked of Stripe, invoices that waited for the seller's details issued, credit notes that waited for their invoice issued, and the stand-alone email for a document issued later than its payment or refund (no Chromium here: the PDFs are `/api/cron/document-pdfs`); and imports and exports (wave 2, D165, never throws): jobs nobody holds taken up where their cursor is (a dry run, an apply, an export), a few at a time within the time; and drop shipping's supplier orders (D551, never throws for one order): made for paid orders whose units were drawn at a supplier's location, then emailed to the supplier once the store's wait is over, a cancelled order's cancelled instead; and the low-stock notices (wave 3, D172, never throws): one email per store to its owners listing the variants that crossed the warning level they set since the last run (the history of stock is pruned daily, `runRetention()`); and the orders' upkeep (wave 3, D173, never throws): draft orders whose pay link ran out expired (their Stripe sessions closed first, an order paid in the last minute left alone, the unpaid order cancelled and its stock given back, its number kept so the sequence has no gap), and, for the open stores whose owner chose it, finished orders archived (up to 200 a store a run); and support (D216, never throws): conversations with the AI that went quiet for the desk's time ended; and notifications (wave 3, D238, never throw): tracked parcels' carriers asked (at most 60 parcels a run, 4 calls at once, 4 s each), their events kept, the out-for-delivery and delivered emails sent where switched on and a verified delivery recorded, and the staff summaries due at their hour sent; and installed themes that follow updates brought to their theme's latest version, a few a run (D245, never throws); and premium themes due to be paid invoiced through Kaizena Flow's billing (D286, never throws); and payments (D288, never throws): the method and risk of captured Stripe payments the reply did not read, and staff told once when a dispute's evidence is due within three days; and pages and articles scheduled to be published (D341, never throws), their drafts published in the name of who scheduled them while they still may; and the catalogue's VAT labels refreshed in the first minutes of a country's day when a rate begins or ends (D379, never throws); and, once a night, the interface text the machine-translated languages lack translated by the platform's AI as drafts to review (D436, at most 300 texts a language); and the docs' search index rewritten after a deploy that changed the docs or the contracts, with its vectors (D443); and the issued invoices and credit notes of stores connected to Tripletex booked there as vouchers, each once (D453, never throws); and the invoices and credit notes issued to businesses sent as e-invoices where the buyer receives them on the Peppol network (D463); and the person a call, meeting or task is for told on their devices when it is due, once (D468); and a change of the business behind a store taking effect on its day, the store then drawn again (D473); and the page builder's sandboxes past their time ended and what was in them deleted (D457); and self-hosted fonts' files cut to the weights their families are installed in, each once (D59, twenty a run); and Kaizena Flow's own owners and applicants kept as customers of its own store, with their tags and sign-up deals (D467); and connected Instagram accounts' tokens refreshed and their posts read again hourly (D560); and the tasks the assistants hand each other over the account link (docs/assistants-together.md): a task from Kaizen Life whose run never started run, Kaizen Life told what it has not heard, and a task handed to it that it never reported on given up. Old searches, search answers, form sends, chat counts, recommendation events, docs counts and page copies are pruned by the daily run (/api/cron/subscription-reminders), and the Admin API's kept answers and the authorization server's tokens here once an hour.
  */
 async function run(request: Request) {
   await connection();
@@ -137,30 +129,21 @@ async function dispatch() {
     bookings: () => sendDueBookingReminders(),
     calendars: () => syncDueFeeds(),
     commissions: () => payHostCommissions(),
-    searches: () => pruneSearchLog(),
-    // Admin API answers kept for an Idempotency-Key (PSI DATA-03), 24 hours.
-    apiIdempotency: () => pruneApiIdempotency(),
-    // The authorization server's codes and tokens past their end, and grants ended 90 days ago (D439).
-    oauthTokens: () => pruneOAuthTokens(),
     // An AI reads the notices still waiting and checks new and changed listings (D411 part 2); a person decides every one.
     contentModeration: () => runContentModeration(),
     // AI pictures made before their files were marked get IPTC's digital source type in their XMP (AI Act Art. 50(2)), ten a run.
     aiPictureMarks: () => markAiPictures(),
     embeddings: () => refreshEmbeddings(),
-    cache: () => pruneSearchCache(),
     knowledge: () => refreshKnowledge(),
     // Chat widgets' websites (D583): a few due sites listed, then a few dozen due pages read into the knowledge base, within two minutes.
     widgetSites: () => crawlWidgetSites(),
     // The docs' search index (D443): rewritten when this deployment's articles or contracts differ from the fingerprint stored, then rows
-    // given vectors by the platform's AI where it has an embedding model; reads older than 90 days and misses unseen for 180 forgotten.
+    // given vectors by the platform's AI where it has an embedding model; reads older than 90 days and misses unseen for 180 forgotten (the counts are pruned by the daily run).
     docsIndex: () => refreshDocsIndex(),
-    docsCounts: () => pruneDocsCounts(),
     // Kaizena Flow's own customers (D467): its owners and applicants kept as customers of its own store, with their tags and sign-up deals.
     houseCustomers: () => syncHouseCustomers(),
-    chat: () => pruneChatUsage(),
     media: () => refreshMediaEmbeddings(),
     altTexts: () => refreshAltTexts(),
-    forms: () => pruneFormSubmissions(),
     deliveries: () => prepareDueDeliveries(),
     recurring: () => prepareDueRecurringWork(),
     // Tripletex (D453): the issued invoices and credit notes of stores whose connection is on, booked as vouchers, within 40 seconds.
@@ -186,11 +169,9 @@ async function dispatch() {
     storeCopies: () => runStoreCopies(),
     bonus: () => runBonusJobs(),
     affiliates: () => runAffiliateJobs(),
-    recommendations: () => pruneRecommendEvents(),
     // Instagram feeds (D560, never throws): tokens refreshed before their 60 days run out, and each account's posts read again hourly.
     instagram: () => refreshInstagramFeeds(),
     experiments: () => runExperimentJobs(),
-    replications: () => pruneReplications(),
     returns: () => runReturnJobs(),
     invoices: () => invoiceJobs(),
     // A Shopify move due now starts, a running one goes on (D445 step 7a); before the imports it hands work to.
@@ -277,6 +258,10 @@ async function dispatch() {
     // at most 300 a language; the day is claimed and the run kept as `daily.ui-translations`.
     uiTranslations: () => runNightlyUiTranslations(),
   });
+  // Kept 24 hours, so pruned once an hour (the first five minutes of the hour), not every run (bloat review step 0.31).
+  const hourly = new Date().getUTCMinutes() < 5;
+  const apiIdempotency = hourly ? await tracked("hourly.api-idempotency", 3600, () => pruneApiIdempotency()) : null;
+  const oauthTokens = hourly ? await tracked("hourly.oauth-tokens", 3600, () => pruneOAuthTokens()) : null;
   for (const storeId of r.schedules?.stores ?? []) revalidateTag(pagesTag(storeId), "max");
   if ((r.status?.measured ?? 0) > 0) revalidateTag(STATUS_TAG, "max");
   for (const store of r.schedules?.themeStores ?? []) for (const tag of designTags(store)) revalidateTag(tag, "max");
@@ -299,6 +284,8 @@ async function dispatch() {
   return Response.json(
     {
       ...rest,
+      apiIdempotency,
+      oauthTokens,
       altTexts: altTexts?.written ?? null,
       schedules: schedules ? { published: schedules.published, failed: schedules.failed } : null,
       themeUpdates: { updated: themeUpdates.updated, refused: themeUpdates.refused },

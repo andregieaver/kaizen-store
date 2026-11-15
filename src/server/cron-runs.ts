@@ -101,6 +101,16 @@ export const kebab = (name: string) => name.replace(/[A-Z]/g, (c) => `-${c.toLow
 export const RETIRED_JOBS: readonly string[] = [
   // The DSA notices' senders are forgotten by the retention rule `content_report_senders` (runRetention) since 31 October 2026.
   "dispatcher.content-reports",
+  // Pruned daily or hourly since bloat review step 0.31 (daily.* and hourly.* rows).
+  "dispatcher.searches",
+  "dispatcher.cache",
+  "dispatcher.forms",
+  "dispatcher.chat",
+  "dispatcher.recommendations",
+  "dispatcher.docs-counts",
+  "dispatcher.replications",
+  "dispatcher.api-idempotency",
+  "dispatcher.oauth-tokens",
 ];
 
 export async function runJobs<J extends Record<string, () => Promise<unknown>>>(
