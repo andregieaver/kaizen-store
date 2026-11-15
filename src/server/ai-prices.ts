@@ -4,9 +4,11 @@ import { sql } from "drizzle-orm";
 
 import { db } from "@/db/client";
 import { parsePriceForm, type PriceInput } from "@/lib/ai-cost";
+import { monthOf, utcDay } from "@/lib/usage-metrics";
 
 import { priceFor, unpricedSql } from "./ai-price-sql";
 import { audit, type Account } from "./auth";
+import { measureDay } from "./usage-meter";
 
 type Row = Record<string, unknown>;
 
@@ -102,6 +104,12 @@ export async function setPrice(account: Account, form: { get(name: string): Form
     insert into commerce.ai_model_prices (provider, model, input_per_million, output_per_million, per_image, per_audio_minute, per_million_characters, per_thousand_searches, effective_from, note, created_by)
     values (${p.provider}, ${p.model}, ${p.inputPerMillion}, ${p.outputPerMillion}, ${p.perImage}, ${p.perAudioMinute}, ${p.perMillionCharacters}, ${p.perThousandSearches}, ${first ? sql`${BEGINNING}::timestamptz` : sql`now()`}, ${p.note}, ${account.id}::uuid)
   `);
+  // A first price counts from the beginning, so it prices this month's days already measured: they are measured again, oldest first, so
+  // the month's AI cost (`limits.ts`: the measured days plus a live part) sees it. A later price counts from now and changes no past day.
+  if (first) {
+    const now = new Date();
+    for (let day = monthOf(now).start; day < utcDay(now); day = utcDay(new Date(`${day}T00:00:00Z`), 1)) await measureDay(day, false);
+  }
   await audit(account.id, null, "platform.ai_price_set", { provider: p.provider, model: p.model, input: p.inputPerMillion, output: p.outputPerMillion, image: p.perImage, audio_minute: p.perAudioMinute, million_characters: p.perMillionCharacters, thousand_searches: p.perThousandSearches, first });
   return { ok: true, first };
 }

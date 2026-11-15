@@ -112,6 +112,32 @@ describe("what the AI costs (D145)", () => {
     expect(Number(audited.n)).toBe(2);
   });
 
+  // On the 1st of a month no past day of the month is measured (bloat review 0.21).
+  it.skipIf(new Date().getUTCDate() === 1)("measures this month's past days again when a model gets its first price, so the month's cost sees it", async () => {
+    const { measureDay, dayBounds } = await import("./usage-meter");
+    const { aiCostSql } = await import("./usage-sql");
+    const now = new Date();
+    const yesterday = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() - 1)).toISOString().slice(0, 10);
+    await db().execute(sql`
+      insert into commerce.ai_usage (created_at, store_id, source, provider, model, kind, feature, input_tokens, output_tokens)
+      values (${`${yesterday}T12:00:00Z`}::timestamptz, ${storeId}::uuid, 'platform', ${provider}, 'late-priced', 'text', 'other', 1000000, 1000000)
+    `);
+    await measureDay(yesterday, false);
+    const measured = async () => {
+      const [row] = await db().execute<Row>(sql`
+        select value from commerce.store_usage_daily where store_id = ${storeId}::uuid and metric = 'ai_cost_micros' and day = ${yesterday}::date
+      `);
+      return Number(row?.value ?? 0);
+    };
+    const before = await measured();
+    const form = (entries: Record<string, string>) => ({ get: (name: string) => entries[name] ?? null });
+    expect(await prices.setPrice(admin, form({ provider, model: "late-priced", input: "1", output: "2", note: "" }))).toEqual({ ok: true, first: true });
+    const { from, to } = dayBounds(yesterday);
+    const [priced] = await db().execute<Row>(aiCostSql(from, to, storeId));
+    expect(Number(priced.value)).toBeGreaterThan(before);
+    expect(await measured()).toBe(Number(priced.value));
+  });
+
   it("gives the AI manager the cost worked out here, and what a store's recommendations used this month", async () => {
     const summary = summarizeUsage(await mine());
     expect(summary.total.estimated_cost_usd).toBeGreaterThan(8);

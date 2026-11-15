@@ -1,13 +1,16 @@
 import "server-only";
 
 import { sql } from "drizzle-orm";
+import { z } from "zod";
 
 import { db } from "@/db/client";
 import { effectiveLimit, LIMIT_KEYS, LIMITS, type LimitKey, type LimitOrigin, type LimitSource, wouldPass } from "@/lib/limits";
 import { ON_PLAN_STATUSES } from "@/lib/plans";
 import { limitRefusal } from "@/lib/usage-format";
-import { monthFigure, monthOf, type UsageMetric } from "@/lib/usage-metrics";
+import { monthFigure, monthOf, utcDay, type UsageMetric } from "@/lib/usage-metrics";
 
+import { col, typedRow } from "./typed-rows";
+import { dayBounds } from "./usage-meter";
 import { aiCostSql, domainsSql, emailsSql, productsSql, staffSql } from "./usage-sql";
 
 /**
@@ -122,6 +125,38 @@ export async function ownedStoreCount(accountId: string): Promise<number> {
 /** AI cost this month per store, kept a minute per instance: `aiFor()` asks it often. */
 const aiMemo = new Map<string, { at: number; value: number }>();
 
+/** A month counter's measured days: their sum, and the last day they cover (null: none, the live count covers the whole month). */
+const MEASURED_ROW = z.object({ measured: col.minor, latest: col.text.nullable() });
+
+/**
+ * A month counter of a store (`ai_cost_micros`, `marketing_emails`) as the days `measureDay()` wrote plus a live count of the rest, so a
+ * check sums a few days of calls, not the whole month's (bloat review step 0.21). A day's row counts only when it was measured after the
+ * day ended: the usage job measures today too, and a day it measured while it was still going (today's row, or yesterday's before the
+ * night's run, or one whose next run failed) is partial. The measured part ends at the last whole day before the first partial one,
+ * and the live part (`live(from)`) counts every call from the next day to now, so a call is counted once: a day the job wrote no row
+ * for (nothing used, or never measured) falls in the live part when it comes after the last whole day.
+ */
+async function measuredPlusLive(storeId: string, metric: "ai_cost_micros" | "marketing_emails", now: Date, live: (from: Date) => Promise<number>): Promise<number> {
+  const month = monthOf(now).start;
+  const row = await typedRow(
+    MEASURED_ROW,
+    sql`
+      with r as (
+        select day, value, updated_at >= ((day + 1)::timestamp at time zone 'UTC') as whole
+        from commerce.store_usage_daily
+        where store_id = ${storeId}::uuid and metric = ${metric} and day >= ${month}::date and day < ${utcDay(now)}::date
+      ), l as (
+        select least((select max(day) from r where whole), (select min(day) - 1 from r where not whole)) as day
+      )
+      select coalesce((select sum(r.value) from r, l where r.whole and r.day <= l.day), 0)::bigint as measured, (select day::text from l) as latest
+    `,
+  );
+  const latest = row?.latest ?? null;
+  // The day after the last one measured whole; never before the month's first (a partial row on the 1st puts `latest` in the month before).
+  const from = latest && latest >= month ? dayBounds(latest).to : new Date(`${month}T00:00:00Z`);
+  return (row?.measured ?? 0) + (await live(from));
+}
+
 async function liveValue(storeId: string, metric: UsageMetric, now: Date): Promise<number> {
   const month = new Date(`${monthOf(now).start}T00:00:00Z`);
   const first = async (query: ReturnType<typeof productsSql>) => Number((await db().execute<Row>(query))[0]?.value ?? 0);
@@ -133,13 +168,13 @@ async function liveValue(storeId: string, metric: UsageMetric, now: Date): Promi
     case "custom_domains":
       return first(domainsSql(storeId));
     case "marketing_emails":
-      return first(emailsSql(month, now, true, storeId));
+      return measuredPlusLive(storeId, "marketing_emails", now, (from) => first(emailsSql(from, now, true, storeId)));
     case "emails":
       return first(emailsSql(month, now, false, storeId));
     case "ai_cost_micros": {
       const memo = aiMemo.get(storeId);
       if (memo && now.getTime() - memo.at < 60_000) return memo.value;
-      const value = await first(aiCostSql(month, now, storeId));
+      const value = await measuredPlusLive(storeId, "ai_cost_micros", now, (from) => first(aiCostSql(from, now, storeId)));
       aiMemo.set(storeId, { at: now.getTime(), value });
       return value;
     }
