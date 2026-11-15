@@ -249,6 +249,7 @@ listPublishedPages() (src/server/pages.ts) selects every published page of a sto
 - **Done when:** rg -c 'listPublishedPages(' over src without tests gives at most 14 lines (37 today), none picking a page by id or by address; and the reader of the build's .meta files that step 0.1 put in the repo counts 0 prerendered entries of the demo store whose resume data keeps the page list (45 of 261 today), and fails on a trial page that reads the whole list.
 - **Platform:** Kaizena Flow's own pages are read through the same two functions with a null owner, and src/server/platform-navigation.ts is one of the callers moved.
 - **To carry it out:** [steps/0.24.md](steps/0.24.md) (review)
+- **Done differently (15 Nov, local):** the three commits were made as the brief says. The meta reader's `withList` is 9, not 0: the nine blog routes (`/blog/*`, `/blogs/*` article, category and tag pages) still keep the list through `blogArticles()` in `src/server/blogs.ts` (line 114, read by `blogCategories()` in `blog/blog-listing.tsx` and by the feed), which the brief leaves on the list; those routes need an index that carries categories, so this is for the reviewer to decide.
 
 ## 0.25 Prune the scheduler's own log
 
