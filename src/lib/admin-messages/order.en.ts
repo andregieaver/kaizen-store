@@ -9,6 +9,15 @@ import type { Widen } from "./common.en";
  */
 export const orderEn = {
   page: {
+    /** The order in a sentence while it waits to be packed (round 6, D620). */
+    paidFor: "{name} paid {amount} {when} for {items}.",
+    packToday: " Pack them and send them today.",
+    theCustomer: "The customer",
+    unitCount: { one: "{n} item", many: "{n} items" },
+    itemsFold: "Items and totals",
+    notesAndHistory: "Notes and history",
+    eventCount: { one: "{n} event", many: "{n} events" },
+    returnsFold: "Returns and withdrawals",
     /** Round 1 (D595, step 4): the order's path, the header's menu and the fold for refunds and cancelling. */
     path: {
       label: "Where this order is",
@@ -287,6 +296,7 @@ export const orderEn = {
     printSlip: "Print gift slip",
   },
   tags: {
+    noneShort: "none",
     title: "Tags",
     none: "No tags.",
     remove: "Remove the tag {tag}",

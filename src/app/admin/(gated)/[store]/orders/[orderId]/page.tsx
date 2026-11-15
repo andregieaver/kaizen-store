@@ -34,7 +34,7 @@ import { carrierDeliveryBookAction } from "../carrier-delivery-actions";
 import { answerText } from "@/lib/checkout-rules";
 import { pickupPointLine } from "@/lib/delivery-options";
 import { formatWindow } from "@/lib/porterbuddy";
-import { CustomerBar, storeCustomerBar } from "@/components/admin/customer-bar";
+import { storeCustomerBar } from "@/components/admin/customer-bar";
 import { DocumentsCard } from "@/components/admin/invoices/documents-card";
 import { OrderReturnsCard } from "@/components/admin/returns/order-returns-card";
 import { OrderTermsCard } from "@/components/admin/order-terms-card";
@@ -45,6 +45,7 @@ import { bookingWhen } from "@/lib/booking-text";
 import { putBackWords, takenFromWords } from "@/lib/inventory-admin";
 import { percentText } from "@/lib/customer-tiers";
 import { t } from "@/lib/i18n";
+import { whenWords } from "@/lib/home";
 import { formatMoney, minorUnitDigits } from "@/lib/money";
 import { amountText } from "@/lib/field-money";
 import { archiveBlock } from "@/lib/order-archive";
@@ -287,6 +288,8 @@ export default async function OrderPage({ params }: PageProps<"/admin/[store]/or
           return steps.map((step) => (step.state === "current" ? { ...step, caption: w.path.here } : step));
         })()
       : null;
+  // Round 6 (D620): an order waiting to be packed says so in a sentence, who paid what and when.
+  const toPack = order.status === "paid" && order.ships && !order.copied && fulfilment.unitsToSend > 0 && fulfilment.state !== "partly_sent" && !awaitingEdit;
   const stateChips = (
     <>
       {order.status === "cancelled" ? (
@@ -306,7 +309,7 @@ export default async function OrderPage({ params }: PageProps<"/admin/[store]/or
           back={{ href: `/admin/${store.slug}/orders`, label: w.back }}
           status={stateChips}
           title={<>{fillWords(w.title, { number: order.number })}</>}
-          description={<>{cancelledAfterPayment ? w.cancelledRefunded : toCharge ? w.toCharge : order.awaitingBank ? w.awaitingBank : statuses[order.status]}{fulfilment.state === "partly_sent" && countWords(fulfilment.unitsToSend, w.partlySent)}{awaitingEdit && w.changeAwaiting}{order.edits.some((e) => e.status === "applied") && w.edited}{fillWords(w.placed, { when: when(order.placedAt), market: order.marketCode })}{order.archivedAt && w.archived}{order.copied && w.copied}{order.source === "draft" && (<>{" · "}{w.staffMade}{order.draft?.number && (<>{w.fromDraft}<Link href={`/admin/${store.slug}/orders/drafts/${order.draft.id}`} className="underline">{order.draft.number}</Link></>)}{order.madeBy?.email && fillWords(w.by, { email: order.madeBy.email })}</>)}{order.exchange && (<>{" · "}{w.exchangeFor}{" "}<Link href={`/admin/${store.slug}/returns/${order.exchange.returnId}`} className="underline">{order.exchange.returnNumber}</Link>{w.ofOrder}<Link href={`/admin/${store.slug}/orders/${order.exchange.originalOrderId}`} className="underline">#{order.exchange.originalOrderNumber}</Link></>)}{order.subscriptionId && (<>{" · "}<Link href={`/admin/${store.slug}/subscriptions/${order.subscriptionId}`} className="underline">{w.partOfSubscription}</Link></>)}</>}
+          description={<>{toPack ? (<><span className="text-ink">{fillWords(w.paidFor, { name: customer?.name || address.name || w.theCustomer, amount: formatMoney(order.totalMinor, order.currency, locale, { decimals: "hide_whole" }), when: whenWords(order.placedAt, new Date(), store.timeZone, adminText(lang, "home").today.when), items: countWords(order.lines.reduce((n, l) => n + l.quantity, 0), w.unitCount) })}</span>{w.packToday}</>) : (<>{cancelledAfterPayment ? w.cancelledRefunded : toCharge ? w.toCharge : order.awaitingBank ? w.awaitingBank : statuses[order.status]}{fulfilment.state === "partly_sent" && countWords(fulfilment.unitsToSend, w.partlySent)}{awaitingEdit && w.changeAwaiting}{order.edits.some((e) => e.status === "applied") && w.edited}{fillWords(w.placed, { when: when(order.placedAt), market: order.marketCode })}</>)}{order.archivedAt && w.archived}{order.copied && w.copied}{order.source === "draft" && (<>{" · "}{w.staffMade}{order.draft?.number && (<>{w.fromDraft}<Link href={`/admin/${store.slug}/orders/drafts/${order.draft.id}`} className="underline">{order.draft.number}</Link></>)}{order.madeBy?.email && fillWords(w.by, { email: order.madeBy.email })}</>)}{order.exchange && (<>{" · "}{w.exchangeFor}{" "}<Link href={`/admin/${store.slug}/returns/${order.exchange.returnId}`} className="underline">{order.exchange.returnNumber}</Link>{w.ofOrder}<Link href={`/admin/${store.slug}/orders/${order.exchange.originalOrderId}`} className="underline">#{order.exchange.originalOrderNumber}</Link></>)}{order.subscriptionId && (<>{" · "}<Link href={`/admin/${store.slug}/subscriptions/${order.subscriptionId}`} className="underline">{w.partOfSubscription}</Link></>)}</>}
         />
         {(paid || canWrite || memberCan(member, "owner")) && (
           <div className="flex flex-wrap items-start gap-2">
@@ -344,6 +347,17 @@ export default async function OrderPage({ params }: PageProps<"/admin/[store]/or
             )}
 
             {paid && order.email && <ResendButton {...ids} />}
+            {/* Holding is rare (round 6, D620): it lives in this menu until an order is held, then it says so at the top. */}
+            {!order.copied && !hold && (
+              <HoldPanel
+                hold={null}
+                base={`/admin/${store.slug}`}
+                when={when}
+                words={words.hold}
+                release={null}
+                holdAction={canWrite && order.status === "paid" && order.ships ? holdOrderAction.bind(null, store.slug, order.id) : null}
+              />
+            )}
             </MoreMenu>
           </div>
         )}
@@ -351,18 +365,15 @@ export default async function OrderPage({ params }: PageProps<"/admin/[store]/or
       <OrderPrivacyBanner privacy={privacy} />
       {pathSteps && <StepPath label={w.path.label} steps={pathSteps} />}
       {/* A fulfilment hold (D238): set by a rule or a person; nothing is sent or handed over until it is released. */}
-      {!order.copied && (
+      {!order.copied && hold && (
         <HoldPanel
           hold={hold}
           base={`/admin/${store.slug}`}
           when={when}
           words={words.hold}
           release={canWrite && hold ? releaseHoldAction.bind(null, store.slug, order.id) : null}
-          holdAction={canWrite && !hold && order.status === "paid" && order.ships ? holdOrderAction.bind(null, store.slug, order.id) : null}
+          holdAction={null}
         />
-      )}
-      {customer && (
-        <CustomerBar customer={storeCustomerBar(store.slug, customer, locale, adminText(lang, "customers").bar)} words={adminText(lang, "customers")} />
       )}
       {owedUnits > 0 && (
         <p role="status" className="rounded-md border border-line bg-sunken p-3 text-sm">
@@ -559,7 +570,7 @@ export default async function OrderPage({ params }: PageProps<"/admin/[store]/or
                 </p>
               ) : (
                 <SendParcelForm
-                  rows={parcelRows}
+                  rows={parcelRows.map((row) => ({ ...row, picture: pictures.get(row.lineId) ?? null }))}
                   basis={fulfilment.basis}
                   carriers={CARRIERS.map(({ id, name }) => ({ id, name: id === "other" ? w.carrierOther : name }))}
                   hasEmail={Boolean(order.email)}
@@ -572,7 +583,12 @@ export default async function OrderPage({ params }: PageProps<"/admin/[store]/or
             </section>
           )}
 
-          <section aria-labelledby="items" className={card}>
+          {/* While the parcel is packed above, the items and totals are folded (round 6, D620): the items are shown once. */}
+          <details open={!toPack || order.deliveryMethod !== "ship"} className={card}>
+            <summary className="cursor-pointer text-body text-ink">
+              {w.itemsFold} <span className="text-caption text-muted">{money(order.totalMinor)}</span>
+            </summary>
+          <section aria-labelledby="items" className="mt-4">
             <h2 id="items" className="mb-3 text-title text-ink">{w.items}</h2>
             <div className="overflow-x-auto">
               {/* On a phone the SKU goes under the product's name, so its quantity and total stay in view without scrolling sideways. */}
@@ -706,6 +722,7 @@ export default async function OrderPage({ params }: PageProps<"/admin/[store]/or
               </p>
             )}
           </section>
+          </details>
 
           {editability && (
             <OrderEditCard
@@ -856,6 +873,9 @@ export default async function OrderPage({ params }: PageProps<"/admin/[store]/or
           />
 
           {returns && !order.copied && (
+            <details className={card}>
+              <summary className="cursor-pointer text-body text-ink">{w.returnsFold}</summary>
+              <div className="mt-3">
             <OrderReturnsCard
               words={adminText(lang, "returns")}
               base={`/admin/${store.slug}`}
@@ -870,9 +890,16 @@ export default async function OrderPage({ params }: PageProps<"/admin/[store]/or
                 registerWithdrawal: registerWithdrawalAction.bind(null, store.slug, orderId),
               }}
             />
+              </div>
+            </details>
           )}
 
-          <section aria-labelledby="history" className={card}>
+          {/* Notes and history folded (round 6, D620). */}
+          <details className={card}>
+            <summary className="cursor-pointer text-body text-ink">
+              {w.notesAndHistory} <span className="text-caption text-muted">{countWords(history.length, w.eventCount)}</span>
+            </summary>
+            <section aria-labelledby="history" className="mt-4">
             <h2 id="history" className="mb-3 text-title text-ink">{w.history}</h2>
             {order.status !== "pending_payment" && (
               <div className="mb-4">
@@ -887,7 +914,8 @@ export default async function OrderPage({ params }: PageProps<"/admin/[store]/or
                 </li>
               ))}
             </ol>
-          </section>
+            </section>
+          </details>
 
           {/* What the shopper was shown about the terms when they ordered (wave 1, 1e): the record, and each text as it was. */}
           <Suspense fallback={null}>
@@ -898,26 +926,6 @@ export default async function OrderPage({ params }: PageProps<"/admin/[store]/or
         </div>
 
         <div className="flex flex-col gap-6">
-          {profit && (
-            <ProfitCard
-              profit={profit}
-              money={(minor) => formatMoney(minor, profit.currency, locale)}
-              percent={(share) => new Intl.NumberFormat(locale, { style: "percent", maximumFractionDigits: 0 }).format(share)}
-              words={words.profit}
-              costsHref={`/admin/${store.slug}/products`}
-              settingsHref={`/admin/${store.slug}/analytics/settings`}
-            />
-          )}
-          <PaymentCard
-            payments={paymentFacts.payments}
-            disputes={paymentFacts.disputes}
-            money={(minor, currency) => formatMoney(minor, currency, locale)}
-            due={(iso) => dueWords(new Date(iso), store.timeZone)}
-            evidenceHref={(disputeId) => `/admin/${store.slug}/orders/${order.id}/dispute/${disputeId}`}
-            words={words.payment}
-          />
-          <TagsCard tags={order.tags} suggestions={tagChoices.map((t) => t.label)} canWrite={canWrite} change={changeTagsAction.bind(null, store.slug, order.id)} />
-          {order.gift && <GiftCard gift={order.gift} slipHref={paid && order.ships && !order.copied ? `/admin/${store.slug}/orders/${order.id}/packing-slip` : null} words={words.gift} />}
           <section aria-labelledby="customer" className={`${card} text-sm`}>
             <h2 id="customer" className="mb-2 text-title text-ink">
               {customer ? (
@@ -928,6 +936,8 @@ export default async function OrderPage({ params }: PageProps<"/admin/[store]/or
                 w.customer
               )}
             </h2>
+            {/* The customer's facts here once (round 6, D620): the bar at the top is gone. */}
+            {customer && <p className="mb-1 text-muted">{storeCustomerBar(store.slug, customer, locale, adminText(lang, "customers").bar).facts.join(" · ")}</p>}
             {order.email ? (
               <a href={`mailto:${order.email}`} className="break-all underline">{order.email}</a>
             ) : (
@@ -1014,6 +1024,27 @@ export default async function OrderPage({ params }: PageProps<"/admin/[store]/or
               </details>
             )}
           </section>
+          <PaymentCard
+            payments={paymentFacts.payments}
+            disputes={paymentFacts.disputes}
+            money={(minor, currency) => formatMoney(minor, currency, locale)}
+            due={(iso) => dueWords(new Date(iso), store.timeZone)}
+            evidenceHref={(disputeId) => `/admin/${store.slug}/orders/${order.id}/dispute/${disputeId}`}
+            words={words.payment}
+          />
+          {profit && (
+            <ProfitCard
+              profit={profit}
+              money={(minor) => formatMoney(minor, profit.currency, locale)}
+              percent={(share) => new Intl.NumberFormat(locale, { style: "percent", maximumFractionDigits: 0 }).format(share)}
+              words={words.profit}
+              costsHref={`/admin/${store.slug}/products`}
+              settingsHref={`/admin/${store.slug}/analytics/settings`}
+            />
+          )}
+          {/* Tags folded (round 6, D620): open by themselves when the order has some. */}
+          <TagsCard folded tags={order.tags} suggestions={tagChoices.map((t) => t.label)} canWrite={canWrite} change={changeTagsAction.bind(null, store.slug, order.id)} />
+          {order.gift && <GiftCard gift={order.gift} slipHref={paid && order.ships && !order.copied ? `/admin/${store.slug}/orders/${order.id}/packing-slip` : null} words={words.gift} />}
           {order.digitalConsentAt && (
             <section aria-labelledby="downloads" className={`${card} text-sm`}>
               <h2 id="downloads" className="mb-2 text-title text-ink">{w.downloads}</h2>
