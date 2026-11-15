@@ -160,3 +160,5 @@ challenged by a skeptic, planned by a planner. Its last lines hold the arguments
 - Step 0.21 commits 1-4 + my fix pushed as 60fee47e (59c99846, e438b14d, 8a8dcd56, 452266da, cd3676b1 notes, 60fee47e fix: month's AI cost counts live any day the usage job did not measure for all stores; new int case fails without it). CI wait bdymkf6uk. Prod still blocked on the eval (other session).
 - Commit 5 executor (Opus a7d73ebef531de4cc) from $S/run/executor-0.21c.md: table keyed by model-calling module (about 23), not 137 entries.
 - 0.21 commit 5 pushed as add82099 (24-row module table, all ceilings real; weakest: recommendations with an owner's cap set to none). Write-up after deploy (blocked on eval).
+- CI on add82099: site-tools.int and store-builder-ai.int failed (mine: their aiFor mock could not reach aiAbilities' internal call). Fixed in 21c2fa83 (abilitiesOf(), mocks answer it). store-builder-ai "lets a draft go" fails locally on d2dcb5db too: local data. CI wait b6gxocjlw.
+- Holding further code pushes (0.22 on) until prod deploys again.
