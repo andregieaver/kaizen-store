@@ -193,3 +193,4 @@ challenged by a skeptic, planned by a planner. Its last lines hold the arguments
 - 22:40 UTC 15 Nov: pipeline unblocked (other session fixed shipping test). 0.26 migrations by run 1330 (19:07), 0.25 by run 1346 (21:48) with 0.31+0.32 code. Prod checked: orders 32 indexes, cron log 442 rows/848 kB, DB 824->176 MB, retention job scheduled, hourly.* rows present, retired dispatcher rows 0, flags max-age=86400, font HIT, /_next/image 400. Advisors INFO only. Written up 188fe229 (D642-D645).
 - TODO 16 Nov after 07:00 UTC: check the 7 daily.* rows in commerce.cron_jobs and no job late (0.31).
 - Next: 0.27 (migrations, two pushes with a deploy between), 0.28, 0.29, 0.30, then 0.33.
+- Step 0.27 commit 1 pushed as 02f27b4a (migrations 20261115224024_outgoing_spitfire.sql table + 20261115224037_knowledge_sources_fill.sql). Fill checked read-only on prod: 55 of 55 pages with passages get a row. Waiting for CI to apply + deploy; then commit 2 (executor) and write-up.
