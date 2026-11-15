@@ -23,6 +23,7 @@ import { storeAndMarket, type GridPlace } from "@/server/content-grid";
 import { understandQuery } from "@/server/query-understanding";
 import { queryVector } from "@/server/query-vector";
 import { getRecommendSettings } from "@/server/recommend-settings";
+import { budgetVisitor } from "@/server/request-budget";
 import { drawArm, runningExperiment } from "@/server/search-experiment";
 import { logRedirectedSearch, logSearch, searchProducts } from "@/server/search";
 import { LISTING_LIMIT, listingPageOf } from "@/server/listing";
@@ -89,7 +90,15 @@ async function Search({ place, results }: { place: GridPlace; results: boolean }
   const page = listingPageOf(asked.page);
   const limit = LISTING_LIMIT * page;
   const found = query
-    ? await searchProducts(where, query, keywordOnly ? null : queryVector, exact || keywordOnly ? null : understandQuery, limit)
+    ? await searchProducts(
+        where,
+        query,
+        keywordOnly ? null : (storeId, space, text, visitor) => queryVector(storeId, space, text, "search", visitor),
+        exact || keywordOnly ? null : understandQuery,
+        limit,
+        // The visitor, for the search's ceiling on the AI (bloat review step 0.21); the chat's search tool counts the same way.
+        budgetVisitor(await headers()),
+      )
     : null;
   const products = found?.products ?? [];
   // The search's id goes into its result links, so opening one is recorded against it.

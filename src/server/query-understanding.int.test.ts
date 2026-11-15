@@ -139,7 +139,7 @@ describe("query understanding (S3, D75)", () => {
     expect(vectorFor).not.toHaveBeenCalled();
 
     const found = await search.searchProducts(shop(), "xyzzy under 5 kr", vectorFor, understand);
-    expect(understand).toHaveBeenCalledWith(storeId, "mistral-small-latest", { locale: "nb-NO", currency: "NOK" }, "xyzzy under 5 kr");
+    expect(understand).toHaveBeenCalledWith(storeId, "mistral-small-latest", { locale: "nb-NO", currency: "NOK" }, "xyzzy under 5 kr", null);
     expect(found.filters).toEqual(only({ text: "xyzzy", maxPriceMinor: 500 }));
 
     // Exact words asked for: the page passes no `understand`.

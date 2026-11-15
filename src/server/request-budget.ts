@@ -97,6 +97,12 @@ export const BUDGETS = {
   // A sandbox's call to the platform's AI (D457 S3): beside its allowance in money, a count, since a model with no price set costs nothing
   // there. The visitor is the sandbox's id, the ceiling the whole site's; a failed count refuses, as the AI costs money.
   sandbox_ai: { window: "hour", visitor: 20, store: 600 },
+  // A search nobody made before asks the store's AI for its meaning and its filters (bloat review step 0.21, `searchAiRoom()`): a shopper
+  // types a few new searches a minute. Counted only on a cache miss, just before the model call; past it the search runs by keyword
+  // alone and is never refused, so a failed count allows (not in `FAIL_CLOSED`).
+  search_ai: { window: "minute", visitor: 20, store: 600 },
+  // The same calls over an hour: one visitor's steady stream of new searches, and the store's, beside the monthly tokens for search.
+  search_ai_hour: { window: "hour", visitor: 300, store: 3000 },
 } as const satisfies Record<string, { window: BudgetWindow; visitor: number; store: number }>;
 
 export type BudgetEndpoint = keyof typeof BUDGETS;

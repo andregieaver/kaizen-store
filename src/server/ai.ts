@@ -1,6 +1,8 @@
 import "server-only";
 
 import { sql } from "drizzle-orm";
+import { unstable_rethrow } from "next/navigation";
+import { connection } from "next/server";
 
 import { db, readDb } from "@/db/client";
 import {
@@ -271,8 +273,22 @@ export type AiAbilities = {
 const ABILITIES_FRESH_MS = 60_000;
 const abilitiesMemo = new Map<string, { at: number; value: AiAbilities }>();
 
+/**
+ * What a site's AI can do is of the request, never of a prerender: the connection's read used to make a page that asks it render per
+ * request, and a kept answer reads nothing, so a page's shell could otherwise be built with the abilities of the moment it was built.
+ * Outside a request (a script, a test, a cached function, a job after the response) there is nothing to wait for.
+ */
+async function requestOnly(): Promise<void> {
+  try {
+    await connection();
+  } catch (error) {
+    unstable_rethrow(error);
+  }
+}
+
 /** What a site's AI can do (`AiAbilities`), kept a minute per instance: no statement to `commerce.ai_providers` while the memo is warm. */
 export async function aiAbilities(storeId: string | null): Promise<AiAbilities> {
+  await requestOnly();
   const key = storeId ?? "kaizen";
   const now = Date.now();
   const kept = abilitiesMemo.get(key);
