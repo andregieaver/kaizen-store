@@ -30,7 +30,8 @@ export const productsEn = {
   catalogue: {
     /** On a phone and above the list (round 8, D626). */
     soldOutSentence: { one: "{n} is sold out.", many: "{n} are sold out." },
-    restSentence: " {active} on sale, {draft} drafts.",
+    restSentence: " {active} on sale, {drafts}.",
+    draftCount: { one: "{n} draft", many: "{n} drafts" },
     addProduct: "Add product",
     summary: "{n} products",
     attention: "{soldOut} sold out, {low} running low",

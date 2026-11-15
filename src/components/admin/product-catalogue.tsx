@@ -103,7 +103,7 @@ export function ProductCatalogue({
       {!archived && soldOutCount > 0 && (
         <p className="text-body text-ink-2">
           <span className="text-ink">{countWords(soldOutCount, w.soldOutSentence)}</span>
-          {fillWords(w.restSentence, { active: counts.active, draft: counts.draft })}
+          {fillWords(w.restSentence, { active: counts.active, drafts: countWords(counts.draft, w.draftCount) })}
         </p>
       )}
       <div className="flex flex-wrap items-center gap-3">
