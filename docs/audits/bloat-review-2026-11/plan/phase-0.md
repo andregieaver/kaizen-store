@@ -238,6 +238,7 @@ Postgres cannot answer store_id is not distinct from $1 from an index, so the ho
 - **Done when:** The ratchet's count of 'store_id is not distinct from' in src/server is at most 3 commented column-to-column lines (122 today); a unit test of owned() covers a store id and the null owner, and each moved file's integration tests pass unchanged; a plan test on a seeded table of 200 owners shows store_id in the Index Cond of the page list, the page by address, the page names and the modal statement, for a store and for a null owner; and in production seq_scan of commerce.cookie_scans grows by fewer than 1,000 a day (fewer than 10 once step 3.1 is in), with scheduled cookie scans a day at most a seventh of the sites plus 5.
 - **Platform:** The is-null branch of owned() is the platform's: its pages, terms and cookie scans are found by index too.
 - **To carry it out:** [steps/0.23.md](steps/0.23.md) (review)
+- **Done differently (15 Nov):** the ratchet counted 125 uses, not 124, because autopilot-runner.ts had gained one (line 196, now owned()); the plan test uses a random store id (no store row to clean up); publishedPageNames() is called as (owner, null, 'page'); css-versions.ts keeps its `ownerIs` name as a one-line wrapper of owned(); ai-usage.ts imports owned as ownedStore because its own `owned` takes an account id; support-widgets.ts has a seventh private copy of owned() that the brief does not name and is left; the Cookie consent rule had no schedule sentence, so one was added.
 
 ## 0.24 Read one page, not all of them
 
