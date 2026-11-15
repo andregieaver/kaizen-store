@@ -180,3 +180,4 @@ challenged by a skeptic, planned by a planner. Its last lines hold the arguments
 - Step 0.24 pushed as f073fc1b (rebased). Deploy wait blzaibks1; then prod checks + write-up (next D: recheck, other session at D627).
 - Step 0.26 executor (Sonnet a5f000e2405d4bf2b) started: drop 13 duplicate indexes (two migrations: concurrent hot + transactional), new test.
 - Step 0.24 DONE: prod f073fc1b checked, write-up 0bf6b04c (D629). Follow-up: an index carrying article categories for blogArticles().
+- Step 0.26 pushed as ca002b83 (5971f5dc rebased + docs): migrations 20261115165138_drop_duplicate_hot_indexes.sql (4 concurrent) and 20261115165154_drop_duplicate_indexes.sql (9). Verified each against prod pg_indexes. Wait task for deploy+CI. After: orders index count 32 in prod, advisors, versions in D-row (next D after D630), Done.
