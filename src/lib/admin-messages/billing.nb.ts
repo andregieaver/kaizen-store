@@ -3,6 +3,20 @@ import type { BillingMessages } from "./billing.en";
 /** Norwegian (bokmål), written by hand (D312 A8). Amounts are without VAT: «ekskl. mva.». */
 export const billingNb: BillingMessages = {
   page: {
+    sentence: {
+      onPlan: "{store} har {plan}",
+      renews: ", {price}, fornyes {date}.",
+      ends: ", avsluttes {date}.",
+      end: ".",
+      none: "{store} har ingen plan ennå.",
+      choose: " Velg en for å fortsette å selge; du kan bytte når som helst i måneden.",
+      trial: " Gratis å prøve til {date}; velg en plan for å fortsette å selge etter det.",
+    },
+    usageFold: "Bruk denne måneden",
+    usageFine: "alt innenfor planen din",
+    usageNear: { one: "{n} nær grensen", many: "{n} nær grensene" },
+    peaksFold: "Planlegger du et stort salg?",
+    peaksHint: "si fra til Kaizena Flow om datoene, så det er plass til alle",
     title: "Abonnement og faktura",
     description: "Hva {store} betaler Kaizena Flow. Hver butikk har sitt eget abonnement.",
     yourPlan: "Abonnementet ditt: {name}",

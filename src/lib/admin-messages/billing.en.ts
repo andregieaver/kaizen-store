@@ -7,6 +7,21 @@ import type { Widen } from "./common.en";
  */
 export const billingEn = {
   page: {
+    /** The page drawn for Homer (round 7, D624): a sentence on the plan, the plans first while there is none, the rest folded. */
+    sentence: {
+      onPlan: "{store} is on {plan}",
+      renews: ", {price}, renewing on {date}.",
+      ends: ", ending on {date}.",
+      end: ".",
+      none: "{store} has no plan yet.",
+      choose: " Choose one to keep selling; you can change it any month.",
+      trial: " Free to try until {date}; choose a plan to keep selling after that.",
+    },
+    usageFold: "Usage this month",
+    usageFine: "all within your plan",
+    usageNear: { one: "{n} near its limit", many: "{n} near their limits" },
+    peaksFold: "Planning a big sale?",
+    peaksHint: "tell Kaizena Flow the dates, so there is room for everyone",
     title: "Billing",
     description: "What {store} pays Kaizena Flow. Each store has its own plan.",
     yourPlan: "Your plan: {name}",

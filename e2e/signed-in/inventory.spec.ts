@@ -39,34 +39,29 @@ test.beforeAll(async () => {
   }
 });
 
-test("the Inventory page lists a variant's figures, and a change is reviewed, saved with its reason and kept in its history", async ({ page }) => {
+test("the Inventory page lists a variant's count, and a change is saved with its reason and kept in its history", async ({ page }) => {
   await page.goto(`/admin/${STORE}/inventory`);
   await expect(page.getByRole("heading", { level: 1, name: "Inventory" })).toBeVisible();
   await expect(page.getByRole("navigation", { name: "Inventory", exact: true }).getByRole("link", { name: "Inventory", exact: true })).toHaveAttribute("aria-current", "page");
 
-  const table = page.getByRole("table", { name: /^One row for each variant/ });
-  await expect(table).toBeVisible();
-  for (const column of ["Variant", "SKU", "On hand", "Committed", "Available", "Owed", "Low-stock level"]) {
-    await expect(table.getByRole("columnheader", { name: column, exact: true })).toBeVisible();
-  }
-  const row = table.getByRole("row").filter({ hasText: SKU }).first();
-  await expect(row).toContainText("12");
-
-  // A counted figure, reviewed before anything is saved.
-  await row.getByRole("textbox", { name: /^Set on hand to, / }).fill("9");
-  await page.getByRole("button", { name: /^Review changes/ }).click();
-  const review = page.getByRole("table", { name: "Changes that would be saved, before and after" });
-  await expect(review).toBeVisible();
-  const reviewed = review.getByRole("row").filter({ hasText: SKU });
-  await expect(reviewed).toContainText("12");
-  await expect(reviewed).toContainText("9");
-  await page.getByLabel("Reason", { exact: true }).selectOption("count");
-  await page.getByRole("button", { name: "Save changes (1)" }).click();
+  // The Basic view (round 7, D624): one row per variant, its count changed with − and + or typed, saved from one bar with a reason.
+  const list = page.getByRole("list", { name: /^One row for each variant/ });
+  await expect(list).toBeVisible();
+  const row = list.getByRole("listitem").filter({ hasText: SKU }).first();
+  const count = row.getByRole("textbox", { name: / on the shelf$/ });
+  await expect(count).toHaveValue("12");
+  await row.getByRole("button", { name: /^One less / }).click();
+  await row.getByRole("button", { name: /^One less / }).click();
+  await count.fill("9");
+  await expect(page.getByText(/12 → 9/)).toBeVisible();
+  await page.getByLabel("Why", { exact: true }).selectOption("count");
+  await page.getByRole("button", { name: "Save", exact: true }).click();
   await expect(page.getByRole("region", { name: "Result" }).getByRole("heading", { name: "1 figure saved" })).toBeVisible();
-  await expect(table.getByRole("row").filter({ hasText: SKU }).first()).toContainText("9");
+  await expect(list.getByRole("listitem").filter({ hasText: SKU }).first().getByRole("textbox", { name: / on the shelf$/ })).toHaveValue("9");
+  const table = list;
 
   // The variant's history: only its changes, newest first, the count on top.
-  await table.getByRole("row").filter({ hasText: SKU }).first().getByRole("link", { name: "History", exact: true }).click();
+  await table.getByRole("listitem").filter({ hasText: SKU }).first().getByRole("link", { name: "History", exact: true }).click();
   await expect(page).toHaveURL(new RegExp(`/admin/${STORE}/inventory/history\\?variant=[0-9a-f-]{36}$`));
   await expect(page.getByRole("heading", { level: 1, name: "Stock history" })).toBeVisible();
   await expect(page.getByText("Showing the changes of one variant.")).toBeVisible();

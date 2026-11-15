@@ -1,16 +1,16 @@
 import type { Metadata } from "next";
 
 import { AdminTextScope } from "@/components/admin/admin-text";
-import { FieldList, RuleList, type CheckoutRuleActions, type RuleChoices } from "@/components/admin/checkout-rules";
-import { ContactFieldsCard } from "@/components/admin/contact-fields-card";
-import { CustomerAccountsCard } from "@/components/admin/customer-accounts-card";
+import { CheckoutAsksCard } from "@/components/admin/checkout-asks-card";
+import { FieldList, RuleList, type CheckoutRuleActions, type FieldInputView, type RuleChoices, type RuleInputView } from "@/components/admin/checkout-rules";
 import { accountsMode } from "@/lib/customer-accounts";
 import { requireFeature } from "@/components/admin/feature-off";
 import { PageHeader } from "@/components/admin/ui";
 import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
-import { fillWords } from "@/lib/admin-fill";
+import { countWords, fillWords } from "@/lib/admin-fill";
+import { formatMoney } from "@/lib/money";
 import { adminText, adminTexts } from "@/lib/admin-text";
-import { FIELDS_MAX, RULES_MAX } from "@/lib/checkout-rules";
+import { FIELDS_MAX, RULES_MAX, type Words } from "@/lib/checkout-rules";
 import { languageName } from "@/lib/localization";
 import { SWITCHABLE_METHODS } from "@/lib/payment-methods";
 import { countryName } from "@/lib/vat-text";
@@ -43,6 +43,41 @@ export default async function CheckoutRulesPage({ params }: PageProps<"/admin/[s
     locales: store.localization.locales.slice(1).map((l) => ({ id: l, label: languageName(l) })),
   };
   const slug = store.slug;
+  const mode = accountsMode(store);
+  // Round 7 (D624): rules and questions a shop really writes, offered while it has none; each opens its editor filled in, saved off.
+  const x = w.examples;
+  const words = (text: string): Words => ({ text, byLocale: {} });
+  const currency = store.markets[0]?.currency ?? "EUR";
+  const firstOption = found.options[0];
+  const ruleExamples: { label: string; start: RuleInputView }[] = [
+    ...(SWITCHABLE_METHODS.some((m) => m.type === "klarna")
+      ? [
+          {
+            label: fillWords(x.klarna, { amount: formatMoney(20000, currency, facts.locale, { decimals: "hide_whole" }) }),
+            start: { name: fillWords(x.klarna, { amount: formatMoney(20000, currency, facts.locale, { decimals: "hide_whole" }) }), conditions: [{ kind: "total" as const, op: "below" as const, amountMinor: 20000, currency }], effect: { kind: "hide_payment_method" as const, methods: ["klarna"] } },
+          },
+        ]
+      : []),
+    ...(firstOption
+      ? [
+          {
+            label: fillWords(x.hideHeavy, { option: firstOption.label }),
+            start: { name: fillWords(x.hideHeavy, { option: firstOption.label }), conditions: [{ kind: "weight" as const, op: "at_least" as const, grams: 20000 }], effect: { kind: "hide_shipping" as const, options: [firstOption.id] } },
+          },
+        ]
+      : []),
+    { label: x.heavy, start: { name: x.heavy, conditions: [{ kind: "weight", op: "at_least", grams: 30000 }], effect: { kind: "refuse", message: words(x.heavyMessage) } } },
+    {
+      label: fillWords(x.rename, { option: (firstOption ?? choices.options[0]).label }),
+      start: { name: fillWords(x.rename, { option: (firstOption ?? choices.options[0]).label }), conditions: [], effect: { kind: "rename_shipping", option: (firstOption ?? choices.options[0]).id, label: words(x.renameTo) } },
+    },
+  ];
+  const fieldExamples: { label: string; start: FieldInputView }[] = [
+    { label: x.date, start: { kind: "date", required: false, label: words(x.dateLabel), help: null, width: "full", bounds: { min: 1 } } },
+    { label: x.note, start: { kind: "textarea", required: false, label: words(x.noteLabel), help: null, width: "full" } },
+    { label: x.gift, start: { kind: "textarea", required: false, label: words(x.giftLabel), help: null, width: "full" } },
+    { label: x.heard, start: { kind: "text", required: false, label: words(x.heardLabel), help: null, width: "full" } },
+  ];
   const actions: CheckoutRuleActions = {
     saveRule: saveRuleAction.bind(null, slug),
     switchRule: switchRuleAction.bind(null, slug),
@@ -57,10 +92,28 @@ export default async function CheckoutRulesPage({ params }: PageProps<"/admin/[s
   return (
     <AdminTextScope texts={adminTexts(lang, ["shipping"])}>
       <div className="flex flex-col gap-6">
-        <PageHeader title={w.title} description={<>{w.description}</>} />
-        <CustomerAccountsCard mode={accountsMode(store)} canWrite={canWrite} save={saveAccountsModeAction.bind(null, slug)} />
-        <ContactFieldsCard settings={store.checkoutContact} canWrite={canWrite} save={saveContactFieldsAction.bind(null, slug)} />
+        <PageHeader
+          title={w.title}
+          meta={[
+            <span key="sentence">
+              <span className="text-ink">
+                {w.sentence.lead}
+                {store.checkoutContact.phone === "required" && w.sentence.phone}
+              </span>
+              {w.sentence.accounts[mode]}
+              {rules.some((r) => r.enabled) ? countWords(rules.filter((r) => r.enabled).length, w.sentence.rules) : w.sentence.all}
+            </span>,
+          ]}
+        />
+        <CheckoutAsksCard
+          mode={mode}
+          contact={store.checkoutContact}
+          canWrite={canWrite}
+          saveMode={saveAccountsModeAction.bind(null, slug)}
+          saveContact={saveContactFieldsAction.bind(null, slug)}
+        />
         <RuleList
+          examples={ruleExamples}
           rules={rules.map((r) => ({ id: r.id, name: r.name, enabled: r.enabled, conditions: r.conditions, effect: r.effect, skips: r.skips.map((s) => ({ reason: s.reason, count: s.count, since: when(s.lastAt) })) }))}
           choices={choices}
           canWrite={canWrite}
@@ -85,6 +138,7 @@ export default async function CheckoutRulesPage({ params }: PageProps<"/admin/[s
           mainLocale={store.localization.locales[0] ?? "en"}
           canWrite={canWrite}
           actions={actions}
+          examples={fieldExamples}
         />
         <p className="text-sm text-muted">{fillWords(w.limits, { rules: String(RULES_MAX), fields: String(FIELDS_MAX) })}</p>
       </div>

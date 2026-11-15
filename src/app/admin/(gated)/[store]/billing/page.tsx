@@ -14,7 +14,7 @@ import { billingMode, completePlanCheckout, getStoreBilling, listPlans, type Pla
 import { listPlanCampaigns } from "@/server/platform-discounts";
 import { campaignFor, campaignRuns } from "@/lib/plan-campaigns";
 import { platformDiscountSummary } from "@/lib/discounts";
-import { Card, Chip, List, ListRow, PageHeader, RowActions, RowFact, RowLead } from "@/components/admin/ui";
+import { Card, CARD_CLASS, Chip, List, ListRow, PageHeader, RowActions, RowFact, RowLead } from "@/components/admin/ui";
 import { PURCHASE_STATUS_WORDS, priceText } from "@/lib/theme-prices";
 import { storeThemePurchases, type ThemePurchase } from "@/server/theme-prices";
 import { countWords, fillWords } from "@/lib/admin-fill";
@@ -128,10 +128,34 @@ export default async function BillingPage({ params, searchParams }: PageProps<"/
     />
   );
 
-  return (
-    <div className="flex flex-col gap-8">
-      <PageHeader title={w.title} description={fillWords(w.description, { store: store.name })} />
+  // Round 7 (D624): the plan in a sentence; while there is none, the plans come first and usage and the big sale are folded.
+  const sw = w.sentence;
+  const priceText =
+    onPlan && billing?.price
+      ? lang === "en"
+        ? priceLabel(billing.price.amountMinor, billing.price.currency, billing.price.interval)
+        : `${formatMoney(billing.price.amountMinor, billing.price.currency, moneyLocale)} / ${words.intervals[billing.price.interval]}`
+      : null;
+  const periodEnd = billing?.currentPeriodEnd ? new Date(billing.currentPeriodEnd).toLocaleDateString(locale, { day: "numeric", month: "long", year: "numeric", timeZone: "Europe/Oslo" }) : null;
+  const sentence = onPlan && billing?.planName ? (
+    <>
+      <span className="text-ink">{fillWords(sw.onPlan, { store: store.name, plan: billing.planName })}</span>
+      {periodEnd ? fillWords(billing.cancelAtPeriodEnd ? sw.ends : sw.renews, { price: priceText ?? "", date: periodEnd }) : sw.end}
+    </>
+  ) : (
+    <>
+      <span className="text-ink">{fillWords(sw.none, { store: store.name })}</span>
+      {trialEnd && trialEnd > new Date()
+        ? fillWords(sw.trial, { date: trialEnd.toLocaleDateString(locale, { day: "numeric", month: "long", timeZone: "Europe/Oslo" }) })
+        : offered.length > 0 && mode
+          ? sw.choose
+          : ""}
+    </>
+  );
+  const near = usage.filter((line) => line.state !== "ok").length;
+  const plansFirst = !onPlan && offered.length > 0 && Boolean(mode);
 
+  const planCard = (
       <Card title={<>{onPlan && billing?.planName ? fillWords(w.yourPlan, { name: billing.planName }) : w.noPlan}</>} className="text-sm" compact>
         <dl className="grid grid-cols-[auto_1fr] gap-x-6 gap-y-1">
           {onPlan && billing?.price && (
@@ -168,17 +192,13 @@ export default async function BillingPage({ params, searchParams }: PageProps<"/
         )}
         {mode === "test" && <p className="mt-3 text-muted">{w.testMode}</p>}
       </Card>
+  );
 
-      <Card title={cw.usage.title} description={cw.usage.description} compact>
-        <div className="grid gap-4">
-          <UsageLines lines={usage} words={cw} locale={locale} plansHref="#plans-heading" money={aiMoney} />
-          <UsageDays days={usageByDay} words={cw} locale={locale} money={aiMoney} />
-        </div>
-      </Card>
+  return (
+    <div className="flex flex-col gap-8">
+      <PageHeader title={w.title} meta={[<span key="plan">{sentence}</span>]} />
 
-      <Card title={cw.peaks.title} description={cw.peaks.description} compact>
-        <PeaksForm peaks={peaks} words={cw} add={addPeakAction.bind(null, store.slug)} remove={(id) => removePeakAction.bind(null, store.slug, id)} />
-      </Card>
+      {!plansFirst && planCard}
 
       {/* On a running plan a code applies at once; otherwise it goes with the plan chosen below (D38). */}
       {mode && onPlan && (isOwner || billing?.discount) && codeField}
@@ -243,6 +263,29 @@ export default async function BillingPage({ params, searchParams }: PageProps<"/
           <PlanFeatureTable matrix={matrix} planIds={offered.map((plan) => plan.id)} current={onPlan ? billing?.planId : null} />
         </section>
       )}
+
+      {plansFirst && planCard}
+
+      <details open={near > 0} className={`px-6 py-4 ${CARD_CLASS}`}>
+        <summary className="cursor-pointer text-body text-ink">
+          {w.usageFold} <span className="text-caption text-muted">{near > 0 ? countWords(near, w.usageNear) : w.usageFine}</span>
+        </summary>
+        <div className="mt-4 grid gap-4">
+          <p className="text-sm text-muted">{cw.usage.description}</p>
+          <UsageLines lines={usage} words={cw} locale={locale} plansHref="#plans-heading" money={aiMoney} />
+          <UsageDays days={usageByDay} words={cw} locale={locale} money={aiMoney} />
+        </div>
+      </details>
+
+      <details open={peaks.length > 0} className={`px-6 py-4 ${CARD_CLASS}`}>
+        <summary className="cursor-pointer text-body text-ink">
+          {w.peaksFold} <span className="text-caption text-muted">{w.peaksHint}</span>
+        </summary>
+        <div className="mt-4 flex flex-col gap-3">
+          <p className="text-sm text-muted">{cw.peaks.description}</p>
+          <PeaksForm peaks={peaks} words={cw} add={addPeakAction.bind(null, store.slug)} remove={(id) => removePeakAction.bind(null, store.slug, id)} />
+        </div>
+      </details>
 
       {themes.length > 0 && <ThemePurchases purchases={themes} words={words} lang={lang} />}
 

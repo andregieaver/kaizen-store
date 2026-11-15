@@ -4,6 +4,7 @@ import Link from "next/link";
 import { Fragment, useMemo, useState, useTransition } from "react";
 
 import { useAdminLang, useAdminText } from "@/components/admin/admin-text";
+import { useAdminView } from "@/components/admin/admin-view";
 import { card, field, hint, primary, secondary, tableShell, td, th } from "@/components/admin/data/ui";
 import { countWords, fillWords } from "@/lib/admin-fill";
 import { ADMIN_LANG_FACTS } from "@/lib/admin-lang";
@@ -52,7 +53,10 @@ export function InventoryTable({
   tools,
   historyBase,
   productBase,
+  pictures = {},
 }: {
+  /** Each variant's picture by id, for the Basic view (round 7, D624). */
+  pictures?: Record<string, string | null>;
   rows: InventoryRow[];
   locations: LocationView[];
   /** The location the list was filtered to (its figures, and the only one a row's boxes write to); null for every active location summed. */
@@ -161,11 +165,15 @@ export function InventoryTable({
   const levelOk = levelNumber === null || (typeof levelNumber === "number" && levelNumber >= 0 && levelNumber <= THRESHOLD_MAX);
 
   const editable = canWrite && mainLocation !== null;
+  // Round 7 (D624): the Basic view's one count per variant, wherever a row's figure is one location's.
+  const { view } = useAdminView();
+  const simple = view === "basic" && mainLocation !== null && !showLocations;
+  const changedKeys = new Set(review.map((r) => r.key));
   const columns = 9 + Number(canWrite) + (editable ? 2 : 0);
 
   return (
     <div className="flex flex-col gap-4" aria-busy={pending}>
-      {canWrite && selected.size > 0 && (
+      {canWrite && !simple && selected.size > 0 && (
         <section aria-label={w.chosenHeading} className={`${card} flex flex-col gap-3`}>
           <h2 className="text-title text-ink">
             {countWords(selected.size, w.chosen, { n: selected.size.toLocaleString(locale) })}
@@ -208,6 +216,71 @@ export function InventoryTable({
         </p>
       )}
 
+      {simple ? (
+        // Round 7 (D624), the Basic view: each variant with its picture, its state and one count, changed with − and + or typed.
+        <ul aria-label={w.caption} className={`flex flex-col px-5 ${card}`}>
+          {rows.map((row) => {
+            const states = rowStates(row);
+            const own = keyOf(row.variantId, mainLocation ?? "");
+            const typedHere = typed[own] ?? EMPTY_CELL;
+            const shown = typedHere.set !== "" ? typedHere.set : String(row.onHand);
+            const count = parseTyped(shown);
+            const step = (by: number) => type(own, { set: String(Math.max(0, (typeof count === "number" ? count : row.onHand) + by)) });
+            const name = `${row.title}${optionsText(row.options) ? `, ${optionsText(row.options)}` : ""}`;
+            const picture = pictures[row.variantId];
+            return (
+              <li key={row.variantId} className="flex min-h-19 flex-wrap items-center gap-x-4 gap-y-2 border-b border-line py-3 last:border-0">
+                {picture ? (
+                  // eslint-disable-next-line @next/next/no-img-element -- a small product picture
+                  <img src={picture} alt="" className="size-12 shrink-0 rounded-card object-cover" />
+                ) : (
+                  <span aria-hidden className="size-12 shrink-0 rounded-card bg-sunken" />
+                )}
+                <span className="flex min-w-0 flex-1 flex-col">
+                  <Link href={`${productBase}/${row.productId}`} className="truncate text-body text-ink underline-offset-2 hover:underline">
+                    {row.title}
+                    {optionsText(row.options) && <span className="text-muted"> {optionsText(row.options)}</span>}
+                  </Link>
+                  <span className="truncate text-caption text-muted">
+                    {row.sku} · {policyIn(row.stockPolicy, row.backorderDays, t)}
+                    {" · "}
+                    <Link href={`${historyBase}?variant=${row.variantId}`} className="underline-offset-2 hover:underline">
+                      {w.history}
+                    </Link>
+                  </span>
+                </span>
+                {states
+                  .filter((s) => s !== "owed")
+                  .slice(0, 1)
+                  .map((s) => (
+                    <span key={s} title={t.stateHelp[s]} className={`inline-flex h-6 items-center rounded-pill px-2.5 text-chip ${s === "out" || s === "negative" ? "bg-danger-soft text-danger-text" : "bg-warning-soft text-warning-text"}`}>
+                      {t.states[s]}
+                    </span>
+                  ))}
+                {canWrite ? (
+                  <span className="flex items-center gap-1.5">
+                    <button type="button" onClick={() => step(-1)} aria-label={fillWords(w.less, { name })} className="flex size-10 items-center justify-center rounded-pill border border-edge bg-card text-lg text-ink hover:bg-sunken">
+                      −
+                    </button>
+                    <input
+                      inputMode="numeric"
+                      value={shown}
+                      onChange={(e) => type(own, { set: e.target.value })}
+                      aria-label={fillWords(w.onShelf, { name })}
+                      className={`h-10 w-16 rounded-md border bg-card text-center text-body tabular-nums ${changedKeys.has(own) ? "border-2 border-brand" : "border-line"}`}
+                    />
+                    <button type="button" onClick={() => step(1)} aria-label={fillWords(w.moreOne, { name })} className="flex size-10 items-center justify-center rounded-pill border border-edge bg-card text-lg text-ink hover:bg-sunken">
+                      +
+                    </button>
+                  </span>
+                ) : (
+                  <span className="w-16 text-right text-body text-ink tabular-nums">{figureText(row.onHand)}</span>
+                )}
+              </li>
+            );
+          })}
+        </ul>
+      ) : (
       <div className={tableShell}>
         <table className="w-full text-sm">
           <caption className="sr-only">{w.caption}</caption>
@@ -415,8 +488,34 @@ export function InventoryTable({
           </tbody>
         </table>
       </div>
+      )}
 
-      {canWrite && (
+      {/* The Basic view saves from one bar (round 7): what changed, why, and Save; the review table stays in Advanced. */}
+      {simple && canWrite && review.length > 0 && (
+        <div className="sticky bottom-4 z-20 flex flex-wrap items-center gap-3 self-center rounded-pill bg-inverse py-2 pr-2 pl-5 text-inverse-ink shadow-[var(--shadow-float)]">
+          <span className="text-body">
+            {review.length === 1 && review[0].next !== null ? `${review[0].title}${review[0].options ? ` ${review[0].options}` : ""}: ${figureText(review[0].was)} → ${figureText(review[0].next)}` : countWords(review.length, w.changes)}
+          </span>
+          <label className="flex items-center gap-2 text-caption">
+            {w.why}
+            <select value={reason} onChange={(e) => setReason(reasonChoice(e.target.value))} className="h-9 rounded-pill border-0 bg-card px-3 text-caption text-ink">
+              {REASON_CHOICES.map((r) => (
+                <option key={r.id} value={r.id}>
+                  {t.reasonChoices[r.id].label}
+                </option>
+              ))}
+            </select>
+          </label>
+          <button type="button" disabled={pending} onClick={discard} className="h-10 rounded-pill px-3 text-body text-inverse-ink underline-offset-2 hover:underline">
+            {w.discard}
+          </button>
+          <button type="button" disabled={pending || sendableRows.length === 0} onClick={save} className="h-10 rounded-pill bg-brand px-5 text-body-strong text-brand-ink hover:bg-brand-hover disabled:opacity-60">
+            {pending ? w.saving : w.saveBar}
+          </button>
+        </div>
+      )}
+
+      {canWrite && !simple && (
         <>
           <p className={hint}>
             {fillWords(t.figureHint, { max: STOCK_MAX.toLocaleString(locale) })} {w.figuresHint}
@@ -435,7 +534,7 @@ export function InventoryTable({
         </>
       )}
 
-      {reviewing && review.length > 0 && (
+      {reviewing && !simple && review.length > 0 && (
         <section aria-label={w.reviewHeading} className={`${card} flex flex-col gap-3`}>
           <h2 className="text-title text-ink">{w.reviewHeading}</h2>
           <p className={hint}>{w.reviewHint}</p>
