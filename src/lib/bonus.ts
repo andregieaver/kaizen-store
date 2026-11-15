@@ -176,6 +176,22 @@ export type CartBonus = {
   pendingDays: number;
 };
 
+/** The credits as the cart and checkout show them while the program is off: nothing to use, nothing to earn. One shape for every 'off' (bloat review step 0.22). */
+export function cartBonusOff(signedIn: boolean): CartBonus {
+  return {
+    enabled: false,
+    signedIn,
+    availableMinor: 0,
+    pendingMinor: 0,
+    pendingAvailableAt: null,
+    maxUsableMinor: 0,
+    usingMinor: 0,
+    willEarnMinor: 0,
+    earnPercent: 0,
+    pendingDays: 0,
+  };
+}
+
 /** A customer's own credits on My account: balance and history in the market's currency. */
 export type ShopperBonus = {
   enabled: boolean;

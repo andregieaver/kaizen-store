@@ -155,6 +155,13 @@
       "when": 1794700225299,
       "tag": "20261114235025_silly_namora",
       "breakpoints": true
+    },
+    {
+      "idx": 22,
+      "version": "7",
+      "when": 1794744263055,
+      "tag": "20261115120423_lethal_prism",
+      "breakpoints": true
     }
   ]
 }

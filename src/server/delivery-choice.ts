@@ -17,10 +17,15 @@ export async function deliveryView(
   shop: { storeId: string; market: Market },
   cartId: string,
   flatLabel: string,
+  /**
+   * Asks for the summary of this cart and buyer when the render already works it out (`requestCartSummary()`); else it is worked out here.
+   * A function, so a store with no delivery choice on (which returns first) does not have the summary worked out for nothing.
+   */
+  known?: () => Promise<Awaited<ReturnType<typeof cartSummary>> | null>,
 ): Promise<DeliveryOptions | null> {
   if (!(await deliveryChoiceOn(shop.storeId, shop.market.code))) return null;
   const customerId = (await getCustomer(shop.storeId))?.id ?? null;
-  const summary = await cartSummary(shop, await getCart(shop), { cartId, customerId });
+  const summary = (await known?.()) ?? (await cartSummary(shop, await getCart(shop), { cartId, customerId }));
   if (!summary.ships || summary.plan) return null;
   return deliveryOptionsFor(shop, cartId, { label: flatLabel, rate: summary.checkout.shipping }, summary.shippingAt, customerId);
 }

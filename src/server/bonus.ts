@@ -5,7 +5,7 @@ import { randomUUID } from "node:crypto";
 import { sql } from "drizzle-orm";
 
 import { db } from "@/db/client";
-import { BONUS_DEFAULTS, BONUS_EXPIRY_REMINDER_DAYS, BONUS_HISTORY_LIMIT, convertCredits, earnAmount, minChargeMinor, planCredit, type BonusBalance, type BonusEntry, type BonusEntryKind, type BonusExpiryReminder, type BonusOverview, type BonusResult, type BonusSettings, type CartBonus, type CreditPlan, type ShopperBonus } from "@/lib/bonus";
+import { BONUS_DEFAULTS, BONUS_EXPIRY_REMINDER_DAYS, BONUS_HISTORY_LIMIT, cartBonusOff, convertCredits, earnAmount, minChargeMinor, planCredit, type BonusBalance, type BonusEntry, type BonusEntryKind, type BonusExpiryReminder, type BonusOverview, type BonusResult, type BonusSettings, type CartBonus, type CreditPlan, type ShopperBonus } from "@/lib/bonus";
 import { bonusSettingsInput } from "@/lib/bonus-schema";
 import { levelFor, nextLevel, readLevels } from "@/lib/bonus-levels";
 import type { Market } from "@/lib/markets";
@@ -86,6 +86,9 @@ export async function bonusProgram(runner: Runner, storeId: string): Promise<Bon
     on: featureOn && settings.enabled,
   };
 }
+
+/** The programme as cartSummary() sees it when the store's Bonus feature is off: no statement is sent (bloat review step 0.22). */
+export const bonusProgramOff = (market: Market): BonusProgram => ({ settings: { ...BONUS_DEFAULTS }, currency: market.currency, rates: new Map(), featureOn: false, on: false });
 
 /** The answer to a change of the program while its store feature is off (D178): the Bonus page is hidden then, and so is every change. */
 export const BONUS_FEATURE_OFF = "The bonus program is switched off under Settings, Features. Switch it on there first.";
@@ -399,20 +402,7 @@ export function cartBonusOf(
   earns: boolean,
 ): CartBonus {
   const settings = program.settings;
-  if (!program.on) {
-    return {
-      enabled: false,
-      signedIn,
-      availableMinor: 0,
-      pendingMinor: 0,
-      pendingAvailableAt: null,
-      maxUsableMinor: 0,
-      usingMinor: 0,
-      willEarnMinor: 0,
-      earnPercent: 0,
-      pendingDays: 0,
-    };
-  }
+  if (!program.on) return cartBonusOff(signedIn);
   return {
     enabled: true,
     signedIn,

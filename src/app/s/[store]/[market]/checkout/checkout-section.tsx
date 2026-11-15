@@ -16,8 +16,10 @@ import { LogoPicture } from "@/components/logo-picture";
 import { LineUnitPrice } from "@/components/price";
 import { VatNotes } from "@/components/vat-notes";
 import { offersAccountAtCheckout } from "@/lib/customer-accounts";
+import { cartBonusOff } from "@/lib/bonus";
 import { creditsNet } from "@/lib/bonus-shopper";
 import { discountNote } from "@/lib/customer-tiers";
+import { featureOn } from "@/lib/store-features";
 import { pickupPointLine } from "@/lib/delivery-options";
 import { deliveryRowLabel, withDeliveryWords } from "@/lib/delivery-words";
 import { formatWindow } from "@/lib/porterbuddy";
@@ -38,6 +40,7 @@ import { IMPORT_NOTICE_REASONS, vatRowsWhenMixed } from "@/lib/order-vat";
 import { marketPath } from "@/lib/paths";
 import { vatText } from "@/lib/vat-text";
 import { readCartId } from "@/server/cart";
+import { requestCartSummary } from "@/server/cart-summary";
 import { getOpenCheckout } from "@/server/checkout";
 import { termsDisplayFor } from "@/server/checkout-terms";
 import { cartRemindersOn, checkoutOptedOut } from "@/server/cart-reminders";
@@ -54,7 +57,6 @@ import { perRequest } from "@/server/request-memo";
 import { platformPublishableKey } from "@/server/stripe";
 import type { Store } from "@/server/stores";
 
-import { readCartBonus } from "../cart/bonus";
 import { checkoutCreditsAction, checkoutGiftCardAction, checkoutRemoveGiftCardAction } from "./actions";
 
 type CheckoutView = NonNullable<Awaited<ReturnType<typeof loadCheckoutView>>>;
@@ -71,7 +73,9 @@ async function loadCheckoutView(store: Store, market: Market) {
   const open = cartId ? await getOpenCheckout(store.id, cartId) : null;
   const order = open ? await getOrder(store.id, open.orderId) : null;
   if (!cartId || !open || !order) return null;
-  const bonus = await readCartBonus(store, market, cartId);
+  // The credits are the cart summary's (the render's one); a store without Bonus asks nothing, and the credits part draws nothing for 'off'
+  // (`creditsMode()` is 'off' when `enabled` is false, and `BonusCredits` then returns null).
+  const bonus = featureOn(store, "bonus") ? ((await requestCartSummary(store, market)).summary?.bonus ?? null) : cartBonusOff(false);
   // The gift cards the order is paid with (D300 F3), as the order holds them.
   const giftCards = await checkoutGiftCards(store.id, cartId, open.orderId, market.currency);
   return { m, base, cartId, open, order, bonus, giftCards, timeZone: store.timeZone };
@@ -463,7 +467,7 @@ async function deliveryBlock(store: Store, market: Market, view: CheckoutView) {
   const { m, cartId, open, order } = view;
   // Not while the checkout is over and starts again: there is no order to change.
   if (open.expired || open.changed || open.subscription) return null;
-  const found = await deliveryView({ storeId: store.id, market }, cartId, m.shipping);
+  const found = await deliveryView({ storeId: store.id, market }, cartId, m.shipping, async () => (await requestCartSummary(store, market)).summary);
   if (!found) return null;
   // A pickup place's ready time and today's hours as sentences (D237): the client component gets words, never functions.
   const options = withDeliveryWords(found, m, { locale: market.locale, timeZone: store.timeZone });

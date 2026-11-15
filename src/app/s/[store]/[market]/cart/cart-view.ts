@@ -17,7 +17,7 @@ import { getBuyer } from "@/server/b2b";
 import { getCart, getCartGift, readCartId } from "@/server/cart";
 import { checkoutQuestionsFor } from "@/server/checkout-rules";
 import { perRequest } from "@/server/request-memo";
-import { cartSummary } from "@/server/cart-summary";
+import { requestCartSummary } from "@/server/cart-summary";
 import { getCustomer } from "@/server/customers";
 import { buyerFacts } from "@/server/company-locations";
 import { termsForBasket } from "@/server/payment-terms";
@@ -27,7 +27,6 @@ import { dayWords, TERMS_DAYS } from "@/lib/payment-terms";
 import { featureOn } from "@/lib/store-features";
 import { accountsMode, signInRequired } from "@/lib/customer-accounts";
 import type { Store } from "@/server/stores";
-import { readCartBonus } from "./bonus";
 
 export type CartView = Awaited<ReturnType<typeof loadCartView>>;
 export type Filled = Extract<CartView, { empty: false }>;
@@ -38,16 +37,15 @@ export function cartView(store: Store, market: Market, m: Messages) {
 }
 
 async function loadCartView(store: Store, market: Market, m: Messages) {
-  const [cart, buyer] = await Promise.all([getCart({ storeId: store.id, market }), getBuyer(store)]);
+  // The cart and its summary are worked out once for the render, whichever pieces and the checkout ask (bloat review step 0.22).
+  const [{ cart, summary: known }, buyer] = await Promise.all([requestCartSummary(store, market), getBuyer(store)]);
   const home = marketPath(store.slug, market.slug);
   if (cart.lines.length === 0) return { empty: true as const, home };
-
-  const [summary, bonus, gift] = await Promise.all([
-    cartSummary({ storeId: store.id, market }, cart),
-    readCartBonus(store, market),
-    // The gift box (wave 3, D173): whether the store offers gift messages, and what the cart holds of one.
-    getCartGift({ storeId: store.id, market }),
-  ]);
+  const summary = known!;
+  // The credits are the summary's own (`cartSummary()` builds them with `cartBonusOf()`), so there is no second read of them.
+  const bonus = summary.bonus;
+  // The gift box (wave 3, D173): whether the store offers gift messages, and what the cart holds of one.
+  const gift = await getCartGift({ storeId: store.id, market });
   const { plan, checkout, renewal } = summary;
   // The VAT wording (D157): hand-written, so apart from the interface texts the AI translates.
   const vatWords = vatText(market.lang);
