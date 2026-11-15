@@ -189,6 +189,18 @@ export const customersNb: CustomersMessages = {
     void: "Annullert",
   },
   groups: {
+    leadNone: "Alle betaler samme pris.",
+    leadSome: { one: "{n} gruppe får bedre pris.", many: "{n} grupper får bedre pris." },
+    leadRest: " En gruppe gir kundene sine en fast rabatt på alt, uten kode.",
+    makeOwn: "Lag din egen",
+    readyTitle: "Grupper de fleste butikker har",
+    makeIt: "Lag den",
+    ready: {
+      wholesale: { name: "Grossist", sub: "Butikker og bedrifter som kjøper for å selge videre." },
+      staff: { name: "Ansatte", sub: "Dem som jobber for deg." },
+      regulars: { name: "Faste kunder", sub: "Kunder som kommer tilbake igjen og igjen." },
+      family: { name: "Venner og familie", sub: "Dem som står deg nær." },
+    },
     title: "Kundegrupper",
     descriptionBefore:
       "En fast prosent av alt en kunde i gruppen kjøper én gang (ikke abonnementer, oppstartsgebyrer eller frakt), trukket fra før en eventuell rabattkode. Legg kunder i en gruppe, eller gi en ",

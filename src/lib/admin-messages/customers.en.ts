@@ -196,6 +196,19 @@ export const customersEn = {
     void: "Void",
   },
   groups: {
+    /** The page drawn for Homer (round 11, D634): a sentence, groups most shops keep, and your own one fold away. */
+    leadNone: "Everyone pays the same price.",
+    leadSome: { one: "{n} group gets a better price.", many: "{n} groups get a better price." },
+    leadRest: " A group gives its customers a fixed discount on everything, without a code.",
+    makeOwn: "Make your own",
+    readyTitle: "Groups most shops keep",
+    makeIt: "Make it",
+    ready: {
+      wholesale: { name: "Wholesale", sub: "Shops and businesses that buy to sell on." },
+      staff: { name: "Staff", sub: "The people who work for you." },
+      regulars: { name: "Regulars", sub: "Customers who come back again and again." },
+      family: { name: "Friends and family", sub: "The people close to you." },
+    },
     title: "Customer groups",
     descriptionBefore:
       "A fixed percentage off everything a customer in the group buys once (not subscriptions, sign-up fees or shipping), taken off before any coupon. Put customers in a group, or give a ",

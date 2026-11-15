@@ -326,6 +326,17 @@ export const settingsNb: SettingsMessages = {
     short: { mon: "man.", tue: "tir.", wed: "ons.", thu: "tor.", fri: "fre.", sat: "lør.", sun: "søn." },
   },
   countries: {
+    leadOne: "Du selger i {country}, i {currency}.",
+    leadSeveral: { one: "Du selger i {n} land.", many: "Du selger i {n} land." },
+    leadRest: " Hvert land får sin egen adresse, sitt eget språk, sin egen valuta, egne priser og egen frakt.",
+    where: "Hvor du selger",
+    ownSub: "{currency} · ditt eget land: rapportene er i valutaen",
+    changeCountry: "Bytt land",
+    more: "Flere land",
+    moreKept: "Selg i {list} igjen også: prisene og innstillingene deres er tatt vare på",
+    moreNew: "Hvert med egen adresse, eget språk, egen valuta, egne priser og egen frakt",
+    sellInMore: "Selg i flere land",
+    moreOwner: "Bare en eier kan slå på salg i flere land.",
     title: "Land",
     description:
       "Hvert land får sin egen adresse for butikken, på sitt eget språk og i sin egen valuta, med egne priser og egen frakt. Et produkt vises i et land når det har en pris der.",

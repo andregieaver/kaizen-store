@@ -331,6 +331,18 @@ export const settingsEn = {
     short: { mon: "Mon", tue: "Tue", wed: "Wed", thu: "Thu", fri: "Fri", sat: "Sat", sun: "Sun" },
   },
   countries: {
+    /** The page drawn for Homer (round 11, D634): where the store sells in a sentence, each choice a row with Change. */
+    leadOne: "You sell in {country}, in {currency}.",
+    leadSeveral: { one: "You sell in {n} country.", many: "You sell in {n} countries." },
+    leadRest: " Each country gets its own address, language, currency, prices and shipping.",
+    where: "Where you sell",
+    ownSub: "{currency} · your own country: reports are in its currency",
+    changeCountry: "Change country",
+    more: "More countries",
+    moreKept: "Sell in {list} again too: their prices and settings are kept",
+    moreNew: "Each with its own address, language, currency, prices and shipping",
+    sellInMore: "Sell in more countries",
+    moreOwner: "Only an owner can switch on selling in more countries.",
     title: "Countries",
     description:
       "Each country gets its own storefront address, in its own language and currency, with its own prices and shipping. A product shows in a country once it has a price there.",
