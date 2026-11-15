@@ -23,6 +23,8 @@ export type ParcelRow = {
   /** Units sold on backorder that are still to send (D172), and the days the customer was told. */
   backordered: number;
   backorderDays: number | null;
+  /** The product's picture, so the parcel is packed by sight (round 6, D620); absent or null draws a quiet square. */
+  picture?: string | null;
 };
 
 const initial: OrderActionState = { ok: false, message: null };
@@ -92,6 +94,14 @@ export function SendParcelForm({
               {rows.map((row) => (
                 <tr key={row.lineId} className={`border-b border-line ${row.toSend === 0 ? "text-muted" : ""}`}>
                   <td className="py-2 pr-2">
+                    <span className="flex items-start gap-3">
+                    {row.picture ? (
+                      // eslint-disable-next-line @next/next/no-img-element -- a small product picture
+                      <img src={row.picture} alt="" className="size-11 shrink-0 rounded-card object-cover" />
+                    ) : (
+                      <span aria-hidden className="size-11 shrink-0 rounded-card bg-sunken" />
+                    )}
+                    <span className="min-w-0">
                     {row.title}
                     {row.sku && <span className="block font-mono text-xs text-muted">{row.sku}</span>}
                     {(row.closed ?? 0) > 0 && <span className="block text-xs text-muted">{fillWords(w.closedUnits, { n: row.closed ?? 0 })}</span>}
@@ -100,6 +110,8 @@ export function SendParcelForm({
                         {fillWords(w.onBackorder, { n: row.backordered, days: row.backorderDays ? countWords(row.backorderDays, w.within) : "" })}
                       </span>
                     )}
+                    </span>
+                    </span>
                   </td>
                   <td className="py-2 text-right tabular-nums">{row.ordered}</td>
                   <td className="hidden py-2 text-right tabular-nums sm:table-cell">{row.sent}</td>

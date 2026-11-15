@@ -12,7 +12,7 @@ import { DemoContentCard } from "@/components/admin/demo-content-card";
 import { HomeAnalyticsAlerts, HomeAnalyticsAlertsFallback } from "@/components/admin/analytics/home-alerts";
 import { StaffAlertsFailed } from "@/components/admin/notifications/staff-alerts-failed";
 import { AskCard } from "@/components/admin/home/ask-card";
-import { DotChip, HomeCard, HomeColumns, HomeHeader, Initials, LinkRow, MilestoneTrack, NextUp, Pictures, ProgressRing, WeekBars } from "@/components/admin/home/home-parts";
+import { DotChip, HomeCard, HomeColumns, HomeHeader, HomeSlot, Initials, LinkRow, MilestoneTrack, NextUp, Pictures, ProgressRing, WeekBars } from "@/components/admin/home/home-parts";
 import { AdminLink, Chip } from "@/components/admin/ui";
 import { CARD_CLASS } from "@/components/admin/ui/card";
 import { countWords, fillWords } from "@/lib/admin-fill";
@@ -156,7 +156,33 @@ export default async function AdminOverview({ params, searchParams }: Props) {
         action={{ href: `${base}/orders?show=to-send`, label: t.startPacking }}
         second={{ href: `${base}/orders/packing-slips?ids=${toSendIds.join(",")}`, label: t.packingSlips, print: true }}
       >
-        <ul className="grid gap-3 [grid-template-columns:repeat(auto-fit,minmax(min(130px,100%),1fr))]">
+        {/* On a phone (round 6, D620): the orders as rows, oldest first, two shown and the rest by name. */}
+        <ul className="flex flex-col sm:hidden">
+          {packPreviews.slice(0, 2).map((order) => {
+            const when = whenWords(order.placedAt, now, store.timeZone, t.when);
+            const waiting = when !== t.when.today;
+            return (
+              <li key={order.id} className="border-b border-line">
+                <AdminLink href={`${base}/orders/${order.id}`} className="flex min-h-14 items-center gap-3 py-1.5">
+                  <Pictures lines={order.lines} size={36} max={1} moreWord={(n) => fillWords(t.more, { n })} />
+                  <span className="flex min-w-0 flex-col">
+                    <span className="truncate text-body text-ink">{order.name ?? `#${order.number}`}</span>
+                    <span className={`text-caption ${waiting ? "text-warning-text" : "text-muted"}`}>
+                      {[fillWords(waiting ? t.waitingSince : t.placed, { when }), countWords(order.items, t.items)].join(" · ")}
+                    </span>
+                  </span>
+                </AdminLink>
+              </li>
+            );
+          })}
+          {packPreviews.length > 2 && (
+            <li className="flex min-h-10 items-center text-caption text-muted">
+              {fillWords(t.andOthers, { names: packPreviews.slice(2).map((o) => o.name ?? `#${o.number}`).join(", ") })}
+              {toSend > packPreviews.length ? ` ${fillWords(t.more, { n: toSend - packPreviews.length })}` : ""}
+            </li>
+          )}
+        </ul>
+        <ul className="hidden gap-3 sm:grid [grid-template-columns:repeat(auto-fit,minmax(min(130px,100%),1fr))]">
           {packPreviews.map((order) => {
             const when = whenWords(order.placedAt, now, store.timeZone, t.when);
             const waiting = when !== t.when.today;
@@ -216,8 +242,9 @@ export default async function AdminOverview({ params, searchParams }: Props) {
         <p className="text-body text-muted">{selling ? h.nothingShop : h.nothing}</p>
       ) : (
         <ul className="flex flex-col">
-          {restNeeds.slice(0, 6).map((item) => (
+          {restNeeds.slice(0, 6).map((item, i) => (
             <LinkRow
+              className={i >= 3 ? "max-sm:hidden" : undefined}
               key={`${item.href}-${item.text}`}
               href={item.href}
               start={
@@ -228,6 +255,25 @@ export default async function AdminOverview({ params, searchParams }: Props) {
             />
           ))}
         </ul>
+      )}
+      {/* On a phone (D620): three shown, the rest one press away. */}
+      {restNeeds.length > 3 && (
+        <details className="sm:hidden">
+          <summary className="flex min-h-11 cursor-pointer list-none items-center text-body text-ink-2 [&::-webkit-details-marker]:hidden">
+            {countWords(Math.min(restNeeds.length, 6) - 3, t.moreCount)}
+          </summary>
+          <ul className="flex flex-col">
+            {restNeeds.slice(3, 6).map((item) => (
+              <LinkRow
+                key={`${item.href}-${item.text}`}
+                href={item.href}
+                start={<span aria-hidden className={`size-2 shrink-0 rounded-pill ${item.urgent ? "bg-danger-solid" : "bg-warning-solid"}`} />}
+                title={<span className="whitespace-normal">{item.text}</span>}
+                end={<span className="shrink-0 text-body text-brand-text">{item.action} ›</span>}
+              />
+            ))}
+          </ul>
+        </details>
       )}
     </HomeCard>
   );
@@ -247,7 +293,8 @@ export default async function AdminOverview({ params, searchParams }: Props) {
           </div>
           <span className="text-caption text-muted">{fillWords(t.weekSub, { amount: show(priorTotal, week.currency) })}</span>
         </div>
-        <dl className="flex gap-8">
+        <p className="text-caption text-ink-2 sm:hidden">{countWords(weekOrders, t.weekOrders)}</p>
+        <dl className="flex gap-8 max-sm:hidden">
           <div className="flex flex-col gap-0.5">
             <dt className="text-caption text-muted">{t.orders}</dt>
             <dd className="text-metric text-ink">{weekOrders}</dd>
@@ -262,6 +309,7 @@ export default async function AdminOverview({ params, searchParams }: Props) {
           )}
         </dl>
       </div>
+      <div className="max-sm:hidden">
       <WeekBars
         heights={heights.days}
         priorHeights={heights.prior}
@@ -271,6 +319,20 @@ export default async function AdminOverview({ params, searchParams }: Props) {
         keys={{ now: t.thisWeekKey, before: t.lastWeekKey }}
         link={memberCan(current, "analytics:read") ? { href: `${base}/analytics`, label: t.openAnalytics } : undefined}
       />
+      </div>
+      {/* On a phone (D620): seven small bars beside the figure; the full chart is in Analytics. */}
+      <div className="flex items-end justify-between gap-3 sm:hidden">
+        <span aria-hidden className="flex h-11 items-end gap-1">
+          {heights.days.map((height, i) => (
+            <span key={i} style={{ height: `${Math.max(2, Math.round((height / 160) * 44))}px` }} className={`w-2 rounded-sm ${i === heights.days.length - 1 ? "bg-brand" : "bg-ink"}`} />
+          ))}
+        </span>
+        {memberCan(current, "analytics:read") && (
+          <AdminLink href={`${base}/analytics`} className="text-body text-brand-text hover:underline">
+            {t.openAnalytics} ›
+          </AdminLink>
+        )}
+      </div>
     </section>
   );
 
@@ -438,9 +500,10 @@ export default async function AdminOverview({ params, searchParams }: Props) {
       <HomeColumns
         main={
           <>
-            {firstWeek ? firstWeekPath : store.setupCompletedAt ? nextUp : null}
-            {firstWeek ? afterCards : weekCard}
+            <HomeSlot at={1}>{firstWeek ? firstWeekPath : store.setupCompletedAt ? nextUp : null}</HomeSlot>
+            <HomeSlot at={2}>{firstWeek ? afterCards : weekCard}</HomeSlot>
             {/* Today's calls, meetings and tasks (S3, D468), the viewer's or the team's: read after the page is shown. */}
+            <HomeSlot at={7}>
             {store.setupCompletedAt && featureOn(store, "sales") && memberCan(current, "customers:read") && (
               <Suspense fallback={null}>
                 <TodayCard
@@ -451,38 +514,46 @@ export default async function AdminOverview({ params, searchParams }: Props) {
                 />
               </Suspense>
             )}
-            {latestCard}
+            </HomeSlot>
+            <HomeSlot at={8} phone={false}>{latestCard}</HomeSlot>
             {/* What Analytics found: its own reports are read after the page is shown, and a failure leaves it out. */}
+            <HomeSlot at={4}>
             {store.setupCompletedAt && selling && memberCan(current, "analytics:read") && (
               <Suspense fallback={<HomeAnalyticsAlertsFallback />}>
                 <HomeAnalyticsAlerts store={store} base={base} now={now} lang={lang} ask={askedAlert((await searchParams).ask)} />
               </Suspense>
             )}
+            </HomeSlot>
             {/* The 14 days after a move from Shopify (D445 step 7c): the owner's card, read after the page is shown. */}
+            <HomeSlot at={7}>
             {store.setupCompletedAt && owner && (
               <Suspense fallback={null}>
                 <MoveWatchCard member={current} lang={lang} close={shopifyClosedAction.bind(null, store.slug)} />
               </Suspense>
             )}
+            </HomeSlot>
             {/* Staff alerts that gave up after their tries (D238): the owner's to look at, read after the page is shown. */}
+            <HomeSlot at={3}>
             {store.setupCompletedAt && selling && memberCan(current, "owner") && (
               <Suspense fallback={null}>
                 <StaffAlertsFailed storeId={store.id} href={`${base}/settings/notifications/staff`} words={adminText(lang, "notifications")} />
               </Suspense>
             )}
+            </HomeSlot>
           </>
         }
         aside={
           <>
-            {firstWeek ? firstWeekAside : setupCard}
-            {!firstWeek && needsCard}
-            {!firstWeek && askCard}
-            {!firstWeek && milestoneCard}
-            {demoCard}
+            <HomeSlot at={5}>{firstWeek ? firstWeekAside : setupCard}</HomeSlot>
+            <HomeSlot at={3}>{!firstWeek && needsCard}</HomeSlot>
+            <HomeSlot at={6}>{!firstWeek && askCard}</HomeSlot>
+            <HomeSlot at={8} phone={false}>{!firstWeek && milestoneCard}</HomeSlot>
+            <HomeSlot at={7}>{demoCard}</HomeSlot>
           </>
         }
       />
-      <div className="flex flex-col gap-4 border-t border-line pt-4">
+      {/* On a phone (D620) these have their places one press away: the Dream Factory under Website, the briefing under Settings, the view under More. */}
+      <div className="flex flex-col gap-4 border-t border-line pt-4 empty:hidden max-sm:hidden">
         {/* An open store is changed with the Dream Factory too (D527): the owner says what to change, and nothing goes live before their press. */}
         {store.setupCompletedAt && owner && !store.starter && !firstWeek && (
           <p className="text-body text-muted">

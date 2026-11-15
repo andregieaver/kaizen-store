@@ -3,6 +3,14 @@ import type { OrderMessages } from "./order.en";
 /** Én bestillings side på norsk bokmål (D312 A4), skrevet for hånd mot ordlisten (`src/lib/i18n-glossary.ts`). */
 export const orderNb: OrderMessages = {
   page: {
+    paidFor: "{name} betalte {amount} {when} for {items}.",
+    packToday: " Pakk dem og send dem i dag.",
+    theCustomer: "Kunden",
+    unitCount: { one: "{n} vare", many: "{n} varer" },
+    itemsFold: "Varer og summer",
+    notesAndHistory: "Notater og historikk",
+    eventCount: { one: "{n} hendelse", many: "{n} hendelser" },
+    returnsFold: "Returer og angrerett",
     path: {
       label: "Hvor bestillingen er",
       ordered: "Bestilt",
@@ -278,6 +286,7 @@ export const orderNb: OrderMessages = {
     printSlip: "Skriv ut gavelapp",
   },
   tags: {
+    noneShort: "ingen",
     title: "Stikkord",
     none: "Ingen stikkord.",
     remove: "Fjern stikkordet {tag}",

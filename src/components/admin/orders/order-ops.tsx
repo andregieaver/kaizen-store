@@ -5,7 +5,7 @@ import { useId, useState, useTransition } from "react";
 import type { ArchiveActionState, TagsActionState } from "@/app/admin/(gated)/[store]/orders/ops-actions";
 import { field, hint, primary, secondary } from "@/components/admin/data/ui";
 import { TAGS_PER_ORDER, TAG_MAX_LENGTH, type Tag } from "@/lib/order-tags";
-import { Card } from "@/components/admin/ui";
+import { Card, CARD_CLASS } from "@/components/admin/ui";
 import { useAdminText } from "@/components/admin/admin-text";
 import { fillWords } from "@/lib/admin-fill";
 
@@ -18,7 +18,10 @@ export function TagsCard({
   suggestions,
   canWrite,
   change,
+  folded = false,
 }: {
+  /** Folded on the order's page (round 6, D620): its title and "none" until opened, open by itself when there are tags. */
+  folded?: boolean;
   tags: Tag[];
   suggestions: string[];
   canWrite: boolean;
@@ -41,8 +44,8 @@ export function TagsCard({
     });
   };
 
-  return (
-    <Card title={w.title} className="flex flex-col gap-3 text-sm" compact>
+  const body = (
+    <>
       {tags.length === 0 ? (
         <p className="text-muted">{w.none}</p>
       ) : (
@@ -99,6 +102,21 @@ export function TagsCard({
           {message.text}
         </p>
       )}
+    </>
+  );
+  if (folded) {
+    return (
+      <details open={initial.length > 0} className={`${CARD_CLASS} p-5 text-sm`}>
+        <summary className="cursor-pointer text-body text-ink">
+          {w.title} {tags.length === 0 && <span className="text-muted">{w.noneShort}</span>}
+        </summary>
+        <div className="mt-3 flex flex-col gap-3">{body}</div>
+      </details>
+    );
+  }
+  return (
+    <Card title={w.title} className="flex flex-col gap-3 text-sm" compact>
+      {body}
     </Card>
   );
 }
