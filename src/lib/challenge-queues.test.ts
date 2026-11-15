@@ -29,6 +29,8 @@ describe("the intervention log (A5)", () => {
   it("reads an audited action: a platform fix, a refund by hand, support counted from its messages, the rest an intervention", () => {
     expect(classOfAction("store.theme_live", true)).toBe("platform");
     expect(classOfAction("return.refunded", false)).toBe("refund");
+    // The platform's own actions on a store (its approval) are platform fixes whoever pressed.
+    expect(classOfAction("platform.access_approved", false)).toBe("platform");
     expect(classOfAction("support.claimed", false)).toBeNull();
     expect(classOfAction("ai.challenge_paused", false)).toBe("other");
     expect(classOfAction("product.updated", false)).toBe("other");

@@ -129,12 +129,14 @@ export type AuditEntry = {
   createdAt: string;
 };
 
-export async function recentAudit(storeId: string, limit = 20): Promise<AuditEntry[]> {
+export async function recentAudit(storeId: string, limit = 20, prefixes: readonly string[] = []): Promise<AuditEntry[]> {
+  // Round 5 (D615): a page's own changes only (the Payments page asks for `payments.`, `stripe.` …), never the whole store's log.
+  const only = prefixes.length > 0 ? sql`and (${sql.join(prefixes.map((p) => sql`a.action like ${`${p}%`}`), sql` or `)})` : sql``;
   const rows = await db().execute<Row>(sql`
     select a.id, a.action, acc.email, a.details, a.created_at
     from commerce.audit_log a
     left join commerce.accounts acc on acc.id = a.account_id
-    where a.store_id = ${storeId}::uuid
+    where a.store_id = ${storeId}::uuid ${only}
     order by a.id desc
     limit ${limit}
   `);

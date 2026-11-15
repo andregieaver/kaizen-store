@@ -599,7 +599,7 @@ Each item of section 4 moves here when it is built, with its decision.
 
 | Item | State | Decision |
 |---|---|---|
-| A1 Challenge mode | Built: the dates and budgets, the preset, the lock with the pause audited as an intervention, a third failure and a question skipped. A screen to set it waits for H2; the dates are UTC. | D604 |
+| A1 Challenge mode | Built: the dates and budgets, the preset, the lock with the pause audited as an intervention, a third failure and a question skipped. Set, changed and ended on the challenge console (H2); the dates are UTC. | D604, D614 |
 | A2 Never automatic, re-sorted | Partly: broadcasts within a week's budget, support answers on a daily budget, money back to customers kept for the person. The money-free order change and price rules are still to do. | D604 |
 | F2 Limits for a business | Built: the AI budget from the challenge, the autopilot's turns apart from the owner's, events limited per kind, plans paused by the budget started again. | D604 |
 | D5 Margin floor | Built: prices, discounts and campaigns under the owner's lowest margin wait for a yes; the challenge's own floor is 10 % by default. | D605 |
@@ -610,16 +610,18 @@ Each item of section 4 moves here when it is built, with its decision.
 | B4 The waiting customer | Changed course: a fault is prevented and paged (A6), escalations stay the owner's. | D608 |
 | A3 The refund queue | Built: the owner sees and decides what the autopilot kept in anyone's name, pushed to their phone. | D608 |
 | A4 Escalations | Built: a category on every hand-over; faults are not escalations. | D608 |
-| A5 The intervention log | Built (no screen yet): refund, escalation, platform, other. | D608 |
+| A5 The intervention log | Built: refund, escalation, platform, other, shown per store on the challenge console (H2). | D608, D614 |
 | A6 The stall watch | Built: the platform team emailed of each stall once a day while it lasts. | D608 |
 | D2 Ad spend into the books | Built: Meta's daily spend per campaign, every six hours. | D609 |
 | F1 A second AI provider | Built: up to three fallback text models through the AI Gateway. | D610 |
 | H1 The loop scales per store | Built: steps, reviews and events claimed one per store and run side by side. | D610 |
+| H2 The challenge console | Built: Platform → Settings → 100-day challenge, each store's phase and day, stalls, what waits on the owner and how long, AI cost against budget, people's actions by class and the three ratios since Day 1; setting, changing and ending a challenge. | D614 |
 
 ### 15.1 Deployed (14 November 2026)
 
-Step 1 (the migration alone) went live with CI run 1288, step 2 (the code) with commit 1112efa. Left: the agents' eval run again on
-Platform → AI with these tools, and its recording committed. The steps as they were planned:
+Step 1 (the migration alone) went live with CI run 1288, step 2 (the code) with commit 1112efa. The agents' eval run with these tools
+(tools version `c1517c567640`) was recorded on 14 November and committed. A run on Platform → AI is played by the deployment the page was
+loaded from: reload the page after a deploy before running it, or the run checks the code from before. The steps as they were planned:
 
 #### How it was deployed
 
@@ -640,6 +642,5 @@ In order of the Day 1 minimum (8.1):
 - **B3:** staff requests carried out by code (address change, cancellation).
 - **E1 and E7:** one contribution profit (label costs in Finance), and the scoreboard with the original read from a signed monthly P&L.
 - **F4 and F5:** the hourly watch after each change, and the store protected from deploys (prompts pinned, smoke on its pages).
-- **H2:** the challenge console: setting a store's challenge, its stalls, its interventions, its ratios.
 - **D1 and D4:** Meta campaigns of the AI's own, and retention flows it writes, during the first weeks of the run.
 

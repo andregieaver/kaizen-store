@@ -1314,6 +1314,10 @@ const PAGES: readonly AdminPage[] = [
     keywords: ["DSA", "illegal", "notice", "takedown", "report", "abuse", "counterfeit", "moderation"],
     tasks: ["Decide a notice of illegal content", "See decided notices"],
   }),
+  platform("challenges", "/challenges", "100-day challenge", "Platform", "Every store the autopilot runs alone in the 100-day challenge: its phase and day, what holds it up, what waits on its owner and how long, its AI cost this month against the challenge's budget, what people did by class, and the three ratios since Day 1 (margin, profit per krone of marketing, revenue per visitor); setting, changing and ending a store's challenge.", {
+    keywords: ["challenge", "100 days", "autopilot", "scoreboard", "interventions", "stalls", "ratios"],
+    tasks: ["Set the challenge on a store", "See what holds a challenge store up", "See the challenge ratios", "End a store's challenge"],
+  }),
   platform("capacity", "/capacity", "Usage and limits", "Platform", "What every store used this month against its limits (storage, products, staff, domains, visits, emails and AI), the database at a glance, and a CSV.", {
     keywords: ["usage", "limits", "quota", "storage", "bandwidth", "traffic", "capacity", "load", "database"],
     tasks: ["See every store's usage this month", "Find the stores closest to their limits", "Download the month as CSV"],

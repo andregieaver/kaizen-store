@@ -418,6 +418,9 @@ export const NAV_NB: Record<string, string> = {
   "Kaizena Flow's default AI provider and models.": "Kaizena Flows standard KI-leverandør og modeller.",
   "AI usage": "KI-bruk",
   "AI manager notices": "Varsler fra KI-assistenten",
+  "100-day challenge": "100-dagersutfordringen",
+  "Every store the autopilot runs alone for 100 days: what holds it up, what waits on its owner, its AI cost and the three ratios; setting and ending a challenge.":
+    "Hver butikk autopiloten driver alene i 100 dager: hva som holder den igjen, hva som venter på eieren, KI-kostnaden og de tre forholdstallene; å sette og avslutte en utfordring.",
   "Usage and limits": "Bruk og grenser",
   "Status page": "Statusside",
   "Illegal content notices": "Meldinger om ulovlig innhold",

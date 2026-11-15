@@ -869,6 +869,10 @@ export const PAGES_NB: Record<string, { title: string; keywords: string[] }> = {
   "platform:oauth": { title: "AI-assistenter og apper", keywords: ["oauth", "klienter", "mcp", "ai-assistenter", "apper", "bekreft", "blokker", "autorisasjonsserver"] },
   "platform:reports": { title: "Meldinger om ulovlig innhold", keywords: ["dsa", "ulovlig", "melding", "fjerning", "anmeldelse", "misbruk", "forfalskning", "moderering"] },
   "platform:status": { title: "Statusside", keywords: ["status", "hendelse", "nedetid", "oppetid", "driftsavbrudd", "vedlikehold"] },
+  "platform:challenges": {
+    title: "100-dagersutfordringen",
+    keywords: ["utfordring", "100 dager", "autopilot", "resultattavle", "inngrep", "stopp", "forholdstall"],
+  },
   "platform:capacity": {
     title: "Bruk og grenser",
     keywords: ["bruk", "grenser", "kvote", "lagring", "båndbredde", "trafikk", "kapasitet", "last", "database"],

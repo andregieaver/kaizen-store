@@ -22,7 +22,9 @@ import { checkoutProviderOf, chosenCheckoutProviders, mollieAppOn, mollieConnect
 import { methodChoices, methodStates } from "@/server/payment-methods";
 import { walletDomains, walletHosts } from "@/server/express-checkout";
 import { getPaymentSettings, recentAudit } from "@/server/settings";
-import { Card, PageHeader } from "@/components/admin/ui";
+import { getSetupProgress } from "@/server/setup";
+import { Check } from "lucide-react";
+import { Card, CARD_CLASS, PageHeader } from "@/components/admin/ui";
 
 import {
   activateMollieMethodAction,
@@ -46,7 +48,14 @@ export default async function PaymentSettingsPage({
   const { account, store } = current;
   const lang = adminLangOf(account.adminLocale);
   const w = adminText(lang, "payments");
-  const [settings, audit, kaizenInvoices, choices] = await Promise.all([getPaymentSettings(store), recentAudit(store.id), kaizenInvoicingOn(store.id), methodChoices(store.id)]);
+  const [settings, audit, kaizenInvoices, choices, progress] = await Promise.all([
+    getPaymentSettings(store),
+    // Round 5 (D615): the payment changes only, never the whole store's log.
+    recentAudit(store.id, 20, ["payments.", "settings.payments", "stripe.", "wallets."]),
+    kaizenInvoicingOn(store.id),
+    methodChoices(store.id),
+    getSetupProgress(store),
+  ]);
   const isOwner = memberCan(current, "owner");
   const { accounts, stripe } = settings;
   const modes = settings.modes;
@@ -73,15 +82,64 @@ export default async function PaymentSettingsPage({
   const [mollie, mollieChosen] = mollieOn ? await Promise.all([mollieConnection(store.id), chosenCheckoutProviders(store.id)]) : [null, {}];
   const mollieMethods = mollie ? await mollieMethodStates(store.id, stripe.activeMode, mainCurrency(store)) : null;
 
+  // Round 5 (D615): where the store is, in a sentence, and the four steps to real money with the one it is on.
+  const liveOn = stripe.enabled && stripe.activeMode === "live" && readyModes.includes("live");
+  const testOn = stripe.enabled && stripe.activeMode === "test";
+  const state = modes.length === 0 ? "none" : liveOn ? "live" : testOn ? "test" : "off";
+  const liveReady = readyModes.includes("live");
+  type Step = { key: string; title: string; text: string; status: "done" | "needs" | "soon" | "later"; href?: string; button?: string };
+  const steps: Step[] = [
+    { key: "details", ...w.steps.details, status: progress.details ? "done" : "needs", href: `/admin/${store.slug}/settings/company` },
+    { key: "connect", title: w.steps.connect.title, text: modes.includes("live") ? w.steps.connect.text : w.steps.connect.soonText, status: liveReady ? "done" : modes.includes("live") ? "needs" : "soon" },
+    { key: "test", ...w.steps.test, status: liveOn || (testOn && testReady) ? "done" : "later" },
+    { key: "live", ...w.steps.live, status: liveOn ? "done" : "later" },
+  ];
+  // Only the first step not done is the one to press; the others say where they stand.
+  const pressHere = steps.find((step) => step.status === "needs")?.key ?? null;
+  const stepLook = { done: "bg-positive-soft", needs: "bg-warning-soft", soon: "bg-sunken", later: "bg-sunken" } as const;
+  const stepWord = (step: Step, i: number) => (step.status === "done" ? w.steps.done : step.status === "needs" ? w.steps.needsYou : step.status === "soon" ? w.steps.soon : i === steps.length - 1 ? w.steps.last : w.steps.then);
+
   return (
     <AdminTextScope texts={adminTexts(lang, ["payments"])}>
     <div className="flex flex-col gap-8">
       <PageHeader
         title={w.page.title}
-        description={<>{w.page.intro}</>}
+        meta={[
+          <span key="state">
+            <span className="text-ink">{w.state[state]}</span>
+            {w.state[`${state}More` as const]}
+          </span>,
+        ]}
       />
 
-      {modes.length === 0 && (
+      <section aria-labelledby="pay-steps" className={`flex flex-col gap-4 px-6 py-5.5 ${CARD_CLASS}`}>
+        <h2 id="pay-steps" className="text-title text-ink">
+          {w.steps.title}
+        </h2>
+        <ol className="grid grid-cols-[repeat(auto-fit,minmax(min(12.5rem,100%),1fr))] gap-3">
+          {steps.map((step, i) => (
+            <li key={step.key} className={`flex flex-col gap-2 rounded-panel p-4 ${stepLook[step.status]}`}>
+              <span className={`flex items-center gap-2 text-caption ${step.status === "done" ? "text-positive-text" : step.status === "needs" ? "text-warning-text" : "text-muted"}`}>
+                <span aria-hidden className={`flex size-5.5 items-center justify-center rounded-pill text-[12px] ${step.status === "done" ? "bg-brand text-brand-ink" : step.status === "needs" ? "bg-warning-solid text-ink" : "bg-line text-ink-2"}`}>
+                  {step.status === "done" ? <Check className="size-3.5" /> : i + 1}
+                </span>
+                {stepWord(step, i)}
+              </span>
+              <span className="text-body text-ink">{step.title}</span>
+              <span className="text-caption text-ink-2">{step.text}</span>
+              {step.key === pressHere && step.href && step.button && (
+                <Link href={step.href} className="mt-auto inline-flex h-9 items-center self-start rounded-pill bg-brand px-3.5 text-caption font-medium text-brand-ink">
+                  {step.button}
+                </Link>
+              )}
+            </li>
+          ))}
+        </ol>
+      </section>
+
+      {modes.length === 0 && <p className={`px-6 py-4 text-body text-ink-2 ${CARD_CLASS}`}>{w.waysSoon}</p>}
+
+      {modes.length === 0 && account.platformAdmin && (
         <div role="status">
           <Card title={w.page.unavailableTitle} className="text-sm" compact>
             {account.platformAdmin ? (
@@ -220,22 +278,26 @@ export default async function PaymentSettingsPage({
         words={w.mollie}
       />
 
-      <Card title={w.audit.title} compact>
+      <details className={`px-6 py-4 ${CARD_CLASS}`}>
+        <summary className="cursor-pointer text-body text-ink">
+          {w.audit.fold} <span className="text-caption text-muted">{w.audit.foldSub}</span>
+        </summary>
         {audit.length === 0 ? (
-          <p className="text-sm text-muted">{w.audit.none}</p>
+          <p className="mt-3 text-body text-muted">{w.audit.none}</p>
         ) : (
-          <ul className="flex flex-col gap-2 text-sm">
+          <ul className="mt-3 flex flex-col gap-2 text-body">
             {audit.map((entry) => (
-              <li key={entry.id}>
+              <li key={entry.id} className="flex flex-wrap gap-x-2">
+                <span className="text-ink">{entry.email ?? w.audit.system}</span>
+                <span className="text-ink-2">{w.audit.actions[entry.action] ?? entry.action}</span>
                 <time dateTime={entry.createdAt} className="text-muted">
-                  {entry.createdAt.slice(0, 16).replace("T", " ")} UTC
-                </time>{" "}
-                · {entry.email ?? w.audit.system} · <code>{entry.action}</code>
+                  · {new Date(entry.createdAt).toLocaleString(ADMIN_LANG_FACTS[lang].locale, { dateStyle: "medium", timeStyle: "short", timeZone: store.timeZone })}
+                </time>
               </li>
             ))}
           </ul>
         )}
-      </Card>
+      </details>
     </div>
     </AdminTextScope>
   );

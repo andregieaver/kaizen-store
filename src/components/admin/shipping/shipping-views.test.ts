@@ -12,7 +12,7 @@ import { MethodEditor } from "./method-editor";
 import { MethodsListView, ratesSummary } from "./methods-list";
 import { PickupView, type PickupPlace } from "./pickup-view";
 import { ProfilesView } from "./profiles-view";
-import { ShippingHubView, warningWords } from "./shipping-hub";
+import { deliverySentence, ShippingHubView, warningWords } from "./shipping-hub";
 import { MarketTabs, chosenMarket } from "./shipping-parts";
 import { ZonesView } from "./zones-view";
 
@@ -47,11 +47,16 @@ describe("the Shipping hub", () => {
     { code: "SE", name: "Sweden", currency: "SEK", methods: 1, activeMethods: 1, zones: 0, hasFlat: false },
   ];
 
-  it("shows the flat rate first, a card per part, and the warnings in words", () => {
+  it("shows the price first beside what a shopper sees, the ways to deliver, the fold, and the warnings in words", () => {
     const { text, html } = draw(
       h(ShippingHubView, {
         base: "/admin/s/settings/shipping",
         markets,
+        prices: [
+          { code: "NO", name: "Norway", price: "99 kr", free: false, freeFrom: "999 kr" },
+          { code: "SE", name: "Sweden", price: null, free: false, freeFrom: null },
+        ],
+        carriers: 1,
         profiles: 1,
         profiledProducts: 3,
         defaultWeightGrams: 500,
@@ -72,7 +77,13 @@ describe("the Shipping hub", () => {
     expect(text).toContain("Norway: no method has a rate for Rest of country");
     expect(text).toContain("Sweden: subscriptions and subscription boxes pay the flat rate, and none is set.");
     expect(text).toContain("4 variants have no weight and use the default weight in weight tiers.");
-    expect(text.indexOf("Flat rate per country")).toBeLessThan(text.indexOf("Methods"));
+    expect(text.indexOf("What delivery costs")).toBeLessThan(text.indexOf("More ways to deliver"));
+    expect(text).toContain("What a shopper in Norway sees");
+    expect(text).toContain("Delivery to your address 99 kr");
+    expect(text).toContain("Free from 999 kr");
+    expect(text).toContain("1 connected");
+    expect(text).toContain("For large or heavy catalogues");
+    expect(text).toContain("zones: 1 zone · profiles: 1 profile · weight per unit: 500 g");
     expect(text).toContain("FLAT FORM");
     expect(text).toContain("WEIGHT FORM");
     expect(text).toContain("1 method offered, 1 off");
@@ -101,8 +112,20 @@ describe("the Shipping hub", () => {
       }),
     );
     expect(text).not.toContain("Needs a look");
-    expect(text).toContain("No stores or pickup points yet.");
+    expect(text).toContain("No place yet");
+    expect(text).toContain("None connected");
+    expect(text).toContain("What a shopper sees");
+    expect(text).toContain("No delivery choice yet");
     expect(text).toContain("1 area on, of 2.");
+    expect(deliverySentence([{ code: "NO", name: "Norway", price: "99 kr", free: false, freeFrom: "999 kr" }])).toEqual({
+      lead: "Shoppers in Norway pay 99 kr for delivery",
+      rest: ", and nothing when they buy for 999 kr or more.",
+    });
+    expect(deliverySentence([{ code: "NO", name: "Norway", price: "0 kr", free: true, freeFrom: null }]).lead).toBe("Delivery is free for shoppers in Norway.");
+    expect(deliverySentence([]).lead).toBe("No delivery price yet");
+    expect(deliverySentence([{ code: "NO", name: "Norway", price: "99 kr", free: false, freeFrom: null }, { code: "SE", name: "Sweden", price: null, free: false, freeFrom: null }]).lead).toBe(
+      "Delivery is priced in 1 of 2 countries",
+    );
     expect(warningWords({ code: "default_weight_used", variants: 1 }, (c) => c)).toBe("1 variant has no weight and uses the default weight in weight tiers.");
   });
 });
