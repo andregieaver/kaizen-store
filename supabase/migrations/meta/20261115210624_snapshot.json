@@ -1,6 +1,6 @@
 {
-  "id": "8f21f917-722f-4508-b09e-97f5c77a2987",
-  "prevId": "c9318e98-b746-4866-b97b-757a4fb76cc2",
+  "id": "ff9b6a14-9b99-46b0-9e52-67de8bbc3a9d",
+  "prevId": "8f21f917-722f-4508-b09e-97f5c77a2987",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -8481,7 +8481,7 @@
       "checkConstraints": {
         "autopilot_events_kind": {
           "name": "autopilot_events_kind",
-          "value": "\"commerce\".\"autopilot_events\".\"kind\" in ('support_waiting', 'test_ended', 'alert', 'order_unsent', 'delivery_problem', 'supplier_problem', 'order_held', 'dispute_opened', 'payments_failing', 'stockout_risk')"
+          "value": "\"commerce\".\"autopilot_events\".\"kind\" in ('support_waiting', 'test_ended', 'alert', 'order_unsent', 'delivery_problem', 'supplier_problem', 'order_held', 'dispute_opened', 'payments_failing', 'stockout_risk', 'staff_request')"
         },
         "autopilot_events_status": {
           "name": "autopilot_events_status",

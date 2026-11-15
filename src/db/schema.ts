@@ -17605,7 +17605,7 @@ export const autopilotEvents = commerce.table(
     index("autopilot_events_account_idx").on(t.accountId),
     index("autopilot_events_conversation_idx").on(t.conversationId),
     index("autopilot_events_plan_idx").on(t.planId),
-    check("autopilot_events_kind", sql`${t.kind} in ('support_waiting', 'test_ended', 'alert', 'order_unsent', 'delivery_problem', 'supplier_problem', 'order_held', 'dispute_opened', 'payments_failing', 'stockout_risk')`),
+    check("autopilot_events_kind", sql`${t.kind} in ('support_waiting', 'test_ended', 'alert', 'order_unsent', 'delivery_problem', 'supplier_problem', 'order_held', 'dispute_opened', 'payments_failing', 'stockout_risk', 'staff_request')`),
     check("autopilot_events_status", sql`${t.status} in ('pending', 'running', 'done', 'skipped', 'failed')`),
     check("autopilot_events_ref", sql`length(${t.ref}) between 1 and 200`),
     check("autopilot_events_facts", sql`jsonb_typeof(${t.facts}) = 'object'`),
