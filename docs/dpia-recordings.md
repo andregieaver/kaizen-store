@@ -99,7 +99,7 @@ No id, address or user agent is kept; the totals cannot be traced back to a visi
 ### 3.4 Access and security (CNIL S2)
 
 - Recordings: the store's owner only (step 11; O4 as proposed). Every viewing is written to the activity log before the events are sent, and nothing is sent if it cannot be. Platform admins see counts only (Usage and limits); the DPA
-  says so for support conversations, and the owner adds the same for recordings (O3).
+  says so for support conversations, and, since 16 November 2026, says the same for recordings.
 - Private buckets reached only by the server with the secret key; files shown through short-lived signed addresses; RLS on every table.
 - The ingest checks the same site, the store's own page, robots, privacy signals, private mode, consent, the platform's hold, the plan's
   monthly limit, a day's slot and a request budget (fail closed), and stores the checked body, never the bytes as sent.
@@ -147,8 +147,8 @@ consultation with Datatilsynet (Art. 36) is needed only if a high risk remains a
 None of these is a decision. For the owner, with a lawyer:
 
 1. Answer Q3, Q6 and Q7 (`docs/heatmaps-and-recordings.md` section 12) before opening recordings to stores.
-2. Write the DPA's types of data ("interaction and recording data"), the sub-processor note and a sentence in Kaizena Flow's privacy
-   notice (O3); the plan does not edit `src/lib/platform-legal/*`.
+2. ~~Write the DPA's types of data, and a sentence in Kaizena Flow's privacy notice (O3).~~ Written 16 November 2026 at the
+   owner's request (`src/lib/platform-legal/en.ts`, `nb.ts`); a lawyer should still read them.
 3. Decide who may watch recordings (O4): owner only is proposed.
 4. Assess the player, built in step 11 (its sanitising and CSP).
 5. Each store that records needs its own assessment for its own pages; Kaizena Flow offers this document as the processor's help.
