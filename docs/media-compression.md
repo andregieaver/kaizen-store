@@ -57,6 +57,8 @@ site (products, sharing, the chat agent: an email or a preview already sent poin
 names it: terms a shopper accepted (their snapshot never changes), or, in Kaizen's library, a store template's or design
 profile's picture (written only by their own modules). A place that keeps a library
 file's address is added to `rewriteAddresses()` and `mediaUses()` together (`media-compress.int.test.ts`).
+The picture index reads where a picture is used again once a week (`embedMedia()`), so a new place shows in search by meaning
+within a week.
 
 Every upload names its lifetime (`src/lib/file-lifetimes.scan.test.ts`): a year for a path that is never written twice, `0` for a private file, five minutes only for the page replicator's previews, whose path is written again. A file already stored keeps the lifetime it was uploaded with.
 

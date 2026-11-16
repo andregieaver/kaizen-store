@@ -687,7 +687,9 @@ CLAUDE.md keeps one line per rule pointing here; each rule is under that line as
   when their upload starts; a new upload path does the same. Where a file is
   used is worked out on request by `mediaUses()`, so a new place that keeps a
   picture's address goes there too. Search is keyword plus meaning
-  (`media_embeddings`, SQL only, `embedMedia()` in the five-minute cron),
+  (`media_embeddings`, SQL only, `embedMedia()` from the five-minute cron for
+  sites `refreshMediaEmbeddings()` lists: a picture new or changed, or a vector
+  a week old, when where it is used is read again; every site once an hour),
   fused as the storefront's (a file's name is searched by name alone,
   `isFileNameQuery()`; vectors come from alt texts, never ids, D90); the
   address is read by `mediaQuery()`.
