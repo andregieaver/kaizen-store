@@ -96,9 +96,12 @@ test("draws only the rows on screen of 2,048 variants, filters them by a value a
   expect(drawn).toBeGreaterThan(0);
   expect(drawn).toBeLessThan(100);
 
-  // The last variant is drawn once the end of the list is on screen.
-  await table.evaluate((element) => element.scrollIntoView({ block: "end" }));
-  await expect(table.locator('tr[aria-rowindex="2049"]')).toBeVisible();
+  // The last variant is drawn once the end of the list is on screen. Rows not yet drawn are an estimate, so the end moves as the drawn
+  // ones are measured: scroll to the end again until it holds, as a person does.
+  await expect(async () => {
+    await table.evaluate((element) => element.scrollIntoView({ block: "end" }));
+    await expect(table.locator('tr[aria-rowindex="2049"]')).toBeVisible({ timeout: 1000 });
+  }).toPass({ timeout: 15_000 });
 
   // A filter by colour, then a price for the 128 shown.
   await page.getByRole("combobox", { name: "Farge", exact: true }).selectOption("Farge 3");
