@@ -3,13 +3,13 @@
  */
 
 /**
- * The emails to people on the list (welcome, after a purchase, win-back, and since D4 of `docs/100-day-challenge.md` cross-sell and
- * restock), and back in stock (to people who asked about a sold-out variant).
+ * The emails to people on the list (welcome, after a purchase, win-back, and since D4 of `docs/100-day-challenge.md` cross-sell,
+ * restock and browse abandonment), and back in stock (to people who asked about a sold-out variant).
  */
-export const AUTOMATION_KINDS = ["welcome", "after_purchase", "win_back", "cross_sell", "replenish", "back_in_stock"] as const;
+export const AUTOMATION_KINDS = ["welcome", "after_purchase", "win_back", "cross_sell", "replenish", "browse", "back_in_stock"] as const;
 export type AutomationKind = (typeof AUTOMATION_KINDS)[number];
 
-export const LIFECYCLE_KINDS = ["welcome", "after_purchase", "win_back", "cross_sell", "replenish"] as const;
+export const LIFECYCLE_KINDS = ["welcome", "after_purchase", "win_back", "cross_sell", "replenish", "browse"] as const;
 export type LifecycleKind = (typeof LIFECYCLE_KINDS)[number];
 
 /** Each lifecycle kind's days (6.1): the range and where it starts. */
@@ -19,13 +19,22 @@ export const DELAY_RANGES: Record<LifecycleKind, { min: number; max: number; sta
   win_back: { min: 30, max: 730, start: 90 },
   cross_sell: { min: 1, max: 90, start: 14 },
   replenish: { min: 7, max: 365, start: 30 },
+  // Products a signed-in subscriber looked at (D691): views are kept `PRODUCT_VIEW_DAYS` days, so the email goes within them.
+  browse: { min: 1, max: 5, start: 1 },
 };
 
 /**
  * The kinds whose email shows products chosen for each reader by code (D4): cross-sell what was bought with their order's products by other
- * customers, restock their order's products that customers buy again. Never chosen by a model.
+ * customers, restock their order's products that customers buy again, browse the products they looked at and did not buy (D691). Never
+ * chosen by a model.
  */
-export const PICK_KINDS = ["cross_sell", "replenish"] as const;
+export const PICK_KINDS = ["cross_sell", "replenish", "browse"] as const;
+
+/**
+ * How long a signed-in subscriber's product views are kept for browse abandonment (D691): only while they are signed in, subscribed and
+ * allowed marketing cookies; deleted after this many days.
+ */
+export const PRODUCT_VIEW_DAYS = 7;
 export type PickKind = (typeof PICK_KINDS)[number];
 export const isPickKind = (kind: string): kind is PickKind => (PICK_KINDS as readonly string[]).includes(kind);
 

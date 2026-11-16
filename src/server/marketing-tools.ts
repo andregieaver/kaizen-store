@@ -295,6 +295,8 @@ const AUTOMATION_AUDIENCE: Record<LifecycleKind, (days: number) => string> = {
   win_back: (d) => `It goes to customers on the shop's list who have not ordered for ${d} days. Invite them back warmly, without pressure.`,
   cross_sell: (d) =>
     `It goes to each customer on the shop's list ${d} days after their order was delivered. The shop shows each reader a few products that go with what they bought, under your words. You do not know what they bought or which products are shown, so never name either; never choose products yourself.`,
+  browse: (d) =>
+    `It goes to signed-in customers on the shop's list ${d} ${d === 1 ? "day" : "days"} after they last looked at products they did not buy. The shop shows those products under your words. You do not know which they are, so never name them; never choose products yourself, and never say you watched them.`,
   replenish: (d) =>
     `It goes to each customer on the shop's list ${d} days after their order was delivered, when the order had products people buy again. The shop shows those products under your words. You do not know which they are, so never name them; never choose products yourself.`,
 };

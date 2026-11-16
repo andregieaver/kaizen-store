@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Suspense } from "react";
 
 import { AbMarker } from "@/components/ab/ab-marker";
+import { BrowseTracker } from "@/components/browse-tracker";
 import { pageRoomClass } from "@/components/page-article";
 import { ProductJsonLdSection, ProductLayoutView, type ProductPageContext } from "@/components/product-parts";
 import { RecommendTracker } from "@/components/recommend-tracker";
@@ -142,6 +143,8 @@ export default async function ProductPage({ params }: Props) {
       {over && <HeaderOverlayMark />}
       {/* The tab remembers this product for the store's recommendations (D139). */}
       {recommendations.enabled && <RecommendTracker productId={product.id} />}
+      {/* A signed-in subscriber's view, for the store's browse email (D691): sent only with marketing consent, kept only by the server's rules. */}
+      <BrowseTracker storeId={store.id} store={store.slug} market={market.slug} productId={product.id} />
       <ProductLayoutView layout={layout} ctx={ctx} />
       {chosen?.test && (
         <AbMarker

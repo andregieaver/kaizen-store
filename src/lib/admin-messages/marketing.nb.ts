@@ -588,6 +588,13 @@ export const marketingNb: MarketingMessages = {
         now: "",
         days: { one: "Sendes {n} dag etter at bestillingen er levert.", many: "Sendes {n} dager etter at bestillingen er levert." },
       },
+      browse: {
+        title: "Fortsatt interessert?",
+        does: "Viser innloggede kunder på listen din produktene de så på uten å kjøpe. Bare for dem som tillot markedsføringscookies; det de så på, lagres i 7 dager.",
+        daysLabel: "Dager etter at de så",
+        now: "",
+        days: { one: "Sendes {n} dag etter at de sist så på.", many: "Sendes {n} dager etter at de sist så på." },
+      },
     },
     followUps: {
       title: "Oppfølginger",

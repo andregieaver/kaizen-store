@@ -159,6 +159,7 @@ export const DA: StarterText = {
     // D656: hand-written, for legal review.
     "privacy.purpose.heatmaps": "at se, som summer pr. side og dag, hvor besøgende, der tillader statistik, klikker, hvor langt de ruller, og hvor længe dele af en side er på skærmen (heatmaps; dit samtykke)",
     "privacy.purpose.recordings": "at optage besøg fra besøgende, der tillader optagelser, under et tilfældigt nummer for én browserfane og uden det, de skriver, for at finde det, der er svært at bruge; gemmes i 30 dage (dit samtykke)",
+    "privacy.purpose.browse": "at sende dig e-mail om produkter, du kiggede på uden at købe, kun mens du er logget ind, står på butikkens e-mailliste og tillader markedsføringscookies; det, du kiggede på, gemmes i 7 dage (dit samtykke)",
     "h.privacy.recipients": "Hvem der får oplysningerne",
     "privacy.recipients.1": "Vi deler kun personoplysninger med dem, der har brug for dem:",
     "privacy.recipient.platform": "platformen Kaizena Flow, som driver butikken og behandler oplysninger på vores vegne",

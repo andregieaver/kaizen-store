@@ -595,6 +595,13 @@ export const marketingEn = {
         now: "",
         days: { one: "Sent {n} day after the order is delivered.", many: "Sent {n} days after the order is delivered." },
       },
+      browse: {
+        title: "Still thinking about it?",
+        does: "Shows signed-in customers on your list the products they looked at and did not buy. Only for those who allowed marketing cookies; what they looked at is kept 7 days.",
+        daysLabel: "Days after they looked",
+        now: "",
+        days: { one: "Sent {n} day after they last looked.", many: "Sent {n} days after they last looked." },
+      },
     },
     /** An automation's follow-ups (D653): up to two more emails, each its days after the one before. */
     followUps: {

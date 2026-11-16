@@ -79,6 +79,12 @@ export const AUTOMATION_WORDS: Record<AutomationKind, { title: string; does: str
     daysLabel: "Days after delivery",
     days: (n) => `Sent ${n} ${n === 1 ? "day" : "days"} after the order is delivered.`,
   },
+  browse: {
+    title: "Still thinking about it?",
+    does: "Shows signed-in customers on your list the products they looked at and did not buy, only for those who allowed marketing cookies (D691).",
+    daysLabel: "Days after they looked",
+    days: (n) => `Sent ${n} ${n === 1 ? "day" : "days"} after they last looked.`,
+  },
   back_in_stock: {
     title: "Back in stock",
     does: "Lets shoppers ask to hear when a sold-out product is back, and emails them once when it is.",
