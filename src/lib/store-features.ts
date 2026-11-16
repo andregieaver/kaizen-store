@@ -52,8 +52,6 @@ export type StoreFeature = {
   needs: readonly FeatureId[];
   /** Where it is set up, after the store's admin address. */
   setupPath: string;
-  /** The module of `stores.modules` code from before D178 reads (kept in step by the database). */
-  legacyModule?: "bookings" | "deliveries";
 };
 
 export const STORE_FEATURES: readonly StoreFeature[] = [
@@ -84,7 +82,6 @@ export const STORE_FEATURES: readonly StoreFeature[] = [
     offWords: "Subscription boxes leave the admin, My account and product pages. Delivery days and past orders are kept.",
     needs: ["shop"],
     setupPath: "/deliveries",
-    legacyModule: "deliveries",
   },
   {
     id: "appointments",
@@ -94,7 +91,6 @@ export const STORE_FEATURES: readonly StoreFeature[] = [
     offWords: "Appointments can no longer be booked, and Staff and hours leaves the admin. Past bookings stay on their orders.",
     needs: ["shop"],
     setupPath: "/bookings/staff",
-    legacyModule: "bookings",
   },
   {
     id: "bookings",
@@ -104,7 +100,6 @@ export const STORE_FEATURES: readonly StoreFeature[] = [
     offWords: "Stays and rentals can no longer be booked, and Rooms and items, Stays and rentals and Hosts leave the admin. Past bookings stay on their orders.",
     needs: ["shop"],
     setupPath: "/bookings/units",
-    legacyModule: "bookings",
   },
   {
     id: "gift_cards",

@@ -174,8 +174,7 @@ describe("switching features (D178)", () => {
     expect((await getStore(store.slug))!).toMatchObject({ bookingsOn: false, deliveriesOn: false });
     expect(await features.setFeature(await owner(), "shop", true)).toMatchObject({ ok: true });
     expect((await kept()).modules).toEqual(["bookings", "deliveries"]);
-    // The old switch still works, and moves the features.
-    await bookings.setBookingsModule(await owner(), { enabled: false, timeZone: "Europe/Oslo", reminderHours: 24 });
+    expect(await features.setFeature(await owner(), "appointments", false, { confirmed: true })).toMatchObject({ ok: true });
     expect(await kept()).toEqual({ features: ["boxes", "shop"], modules: ["deliveries"] });
     expect(await features.setFeature(await owner(), "boxes", false, { confirmed: true })).toMatchObject({ ok: true });
     expect(await kept()).toEqual({ features: ["shop"], modules: [] });

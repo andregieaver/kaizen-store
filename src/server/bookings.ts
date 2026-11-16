@@ -27,7 +27,7 @@ export function storeTimeZones(): string[] {
   return Intl.supportedValuesOf("timeZone").filter((zone) => zone.startsWith("Europe/") || zone === "Atlantic/Reykjavik");
 }
 
-export const bookingsModuleInput = z.object({
+const bookingsModuleInput = z.object({
   enabled: z.boolean(),
   timeZone: z.string().refine((zone) => storeTimeZones().includes(zone), "Choose a time zone."),
   reminderHours: z.coerce.number().int().min(0, "Choose when reminders go.").max(168, "Reminders go at most a week before."),
@@ -35,30 +35,6 @@ export const bookingsModuleInput = z.object({
 
 /** When the reminder before an appointment can go, in hours (0: none). */
 export const REMINDER_HOURS = [0, 2, 12, 24, 48, 72] as const;
-
-/**
- * Switches appointments on or off, and says where the store's times are. Owners only. From before D178: the module it writes moves the
- * features `appointments` and `bookings` together (the database's `stores_features_sync()`); the Features page uses `setFeature()`.
- */
-export async function setBookingsModule(
-  { account, store }: Membership,
-  input: z.infer<typeof bookingsModuleInput>,
-): Promise<void> {
-  await db().execute(sql`
-    update commerce.stores set
-      modules = case when ${input.enabled}
-        then (select array_agg(distinct m) from unnest(modules || array['bookings']) m)
-        else array_remove(modules, 'bookings') end,
-      time_zone = ${input.timeZone},
-      booking_reminder_hours = ${input.reminderHours}
-    where id = ${store.id}::uuid
-  `);
-  await audit(account.id, store.id, input.enabled ? "bookings.enabled" : "bookings.disabled", {
-    timeZone: input.timeZone,
-    reminderHours: input.reminderHours,
-  });
-  refreshTag(storeTag(store.slug));
-}
 
 /** Where the store's times are and when reminders go (D65), without the switch: the features are switched on the Features page (D178). */
 export const bookingSettingsInput = bookingsModuleInput.omit({ enabled: true });

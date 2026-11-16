@@ -63,7 +63,7 @@ beforeAll(async () => {
   for (const row of await db().execute<Row>(sql`select id, sku from commerce.product_variants where store_id = ${storeId}::uuid`)) {
     variant[String(row.sku)] = String(row.id);
   }
-  await deliveries.setDeliveriesModule(member, true);
+  await db().execute(sql`update commerce.stores set features = features || array['boxes'] where id = ${storeId}::uuid`);
   const tomorrow = addDays(zonedDate(Date.now(), TZ), 1);
   await deliveries.saveSchedule(member, { id: null, marketCode: "NO", name: "Tomorrow", deliveryWeekday: isoWeekday(tomorrow), cutoffDays: 1, cutoffTime: "00:00", active: true });
   const scheduleId = (await deliveries.listSchedules(storeId))[0].id;

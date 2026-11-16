@@ -94,7 +94,7 @@ beforeAll(async () => {
   for (const row of await db().execute<Row>(sql`select id, sku from commerce.product_variants where store_id = ${storeId}::uuid`)) {
     variant[String(row.sku)] = String(row.id);
   }
-  await deliveries.setDeliveriesModule(member, true);
+  await db().execute(sql`update commerce.stores set features = features || array['boxes'] where id = ${storeId}::uuid`);
   // Deliveries tomorrow, cutoff today at midnight: today's round is being packed.
   const tomorrow = addDays(zonedDate(Date.now(), TZ), 1);
   expect(
