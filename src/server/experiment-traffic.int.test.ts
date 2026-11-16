@@ -15,7 +15,7 @@ vi.mock("next/cache", () => ({ cacheLife: () => {}, cacheTag: () => {}, updateTa
 const { experimentTraffic } = await import("./experiment-traffic");
 
 /**
- * A/B tests at the store's own traffic (D148 phase 13, D658), on a store of its own at noon on 20 October 2026: ten days of visits, five a
+ * A/B tests at the store's own traffic (D148 phase 13, D660), on a store of its own at noon on 20 October 2026: ten days of visits, five a
  * day beginning on the front page, two on /om-oss and three on a product page (two of which reach checkout), and 25 cookie choices of which 15
  * accepted statistics.
  */

@@ -238,7 +238,7 @@ function FunnelBars({ test, results, words, numberLocale }: { test: ExperimentIn
 }
 
 /**
- * What an A/B test found (D148, redrawn as a record in D657), in the order a store owner reads it: the verdict with how far the test is
+ * What an A/B test found (D148, redrawn as a record in D659), in the order a store owner reads it: the verdict with how far the test is
  * from an answer, how sure we are as a picture, what is different, how it developed and what visitors did; every figure and the method
  * behind "How we worked this out". The figures are worked out in code (`experimentResults()`, `experimentCard()`); nothing here judges.
  */
@@ -353,7 +353,7 @@ export function ExperimentResultsView({
         </Card>
       </div>
 
-      {/* Pictures of the figures only once there is an answer: before then they move with luck (no peeking, D657). */}
+      {/* Pictures of the figures only once there is an answer: before then they move with luck (no peeking, D659). */}
       {card.showFigures && (
         <div className="grid gap-6 lg:grid-cols-2">
           {goal.kind === "rate" ? <Trend test={test} results={results} words={words} numberLocale={numberLocale} /> : null}

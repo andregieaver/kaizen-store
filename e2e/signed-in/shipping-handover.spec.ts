@@ -130,7 +130,7 @@ test.describe("the owner", () => {
     await expect(handover.getByRole("heading", { name: "Pickup" })).toBeVisible();
     await expect(handover.getByText("Collect at The shop")).toBeVisible();
     // The form goes once the order is collected, so what the page then says is the answer.
-    await handover.getByRole("button", { name: "Collected" }).click();
+    await handover.getByRole("button", { name: "Collected today" }).click();
     await expect(handover.getByText(/^Collected on \d{4}-\d{2}-\d{2}\.$/)).toBeVisible();
 
     const local = await paidOrder("local");

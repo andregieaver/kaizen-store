@@ -1,7 +1,8 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 
-import { fillWords } from "@/lib/admin-fill";
+import { countWords, fillWords } from "@/lib/admin-fill";
+import { FoldRow } from "@/components/admin/fold-row";
 import { returnsEn, type ReturnsMessages } from "@/lib/admin-messages/returns.en";
 import { formatMoney } from "@/lib/money";
 import { formatPriceInput } from "@/lib/product-input";
@@ -175,7 +176,128 @@ export function ReturnDetailView({
 
       <div className="grid gap-6 md:grid-cols-[minmax(0,1fr)_20rem]">
         <div className="flex min-w-0 flex-col gap-6">
-          <Card id="statement" title={request ? d.statementWithdrawal : d.statementRequest}>
+
+
+          {can("approve") && (
+            <Card id="approve" title={d.approveTitle} hint={d.approveHint}>
+              <div className="flex flex-col gap-5">
+                <ApproveForm action={actions.approve} defaults={instructionsDefaults} />
+                {can("decline") && (
+                  <details className="border-t border-line pt-4">
+                    <summary className="cursor-pointer text-sm underline">{d.declineInstead}</summary>
+                    <div className="mt-3">
+                      <DeclineForm action={actions.decline} />
+                    </div>
+                  </details>
+                )}
+              </div>
+            </Card>
+          )}
+
+          {detail.nothingSent && !isEnded(detail.status) && (
+            <Card id="goods" title={d.nothingSentTitle}>
+              <p className="text-sm">{d.nothingSentText}</p>
+            </Card>
+          )}
+
+
+
+          {/* Round 18 (D657): the goods step is the next step, one press dated today; another day is a fold. */}
+          {!detail.nothingSent && (can("mark_in_transit") || can("mark_received")) && (
+            <section id="goods" aria-labelledby="next-step" className="flex flex-col gap-3 rounded-lg border border-line bg-card p-5">
+              <p className="text-eyebrow text-muted uppercase">{d.nextStep}</p>
+              <h2 id="next-step" className="text-title text-ink">
+                {d.waitingGoods}
+              </h2>
+              <p className="text-sm text-ink-2">
+                {detail.refund.recorded ? d.waitingGoodsSub : detail.settings.refundWhen === "received" ? d.holdHint : d.noWaitHint}
+              </p>
+              <div className="flex flex-col gap-2 sm:flex-row">
+                {can("mark_received") && <DayStepForm quick action={actions.markReceived} button={d.arrivedNow} help={d.arrivedHelp} today={today} successMessage={d.markedReceived} />}
+                {can("mark_in_transit") && <DayStepForm quick secondary action={actions.markInTransit} button={d.onWayNow} help={d.sentHelp} today={today} successMessage={d.markedOnWay} />}
+              </div>
+              <details className="text-sm">
+                <summary className="cursor-pointer font-medium text-ink underline underline-offset-2">{d.anotherDay}</summary>
+                <div className="mt-3 flex flex-col gap-5">
+                  {can("mark_in_transit") && (
+                    <div>
+                      <h3 className="mb-2 text-body-strong text-ink">{d.customerSent}</h3>
+                      <DayStepForm action={actions.markInTransit} button={d.markOnWay} help={d.sentHelp} today={today} successMessage={d.markedOnWay} />
+                    </div>
+                  )}
+                  {can("mark_received") && (
+                    <div className={can("mark_in_transit") ? "border-t border-line pt-4" : ""}>
+                      <h3 className="mb-2 text-body-strong text-ink">{d.arrived}</h3>
+                      <DayStepForm action={actions.markReceived} button={d.markReceived} help={d.arrivedHelp} today={today} successMessage={d.markedReceived} />
+                    </div>
+                  )}
+                </div>
+              </details>
+            </section>
+          )}
+
+          {inspecting && inspectLines.length > 0 && (
+            <Card id="inspect" title={detail.status === "inspected" ? d.changeInspection : d.inspectTitle} hint={d.inspectHint}>
+              <InspectForm action={actions.inspect} lines={inspectLines} currency={detail.currency} changing={detail.status === "inspected"} />
+            </Card>
+          )}
+
+          {can("refund") && preview && (
+            <Card
+              id="refund"
+              title={d.refundTitle}
+              hint={
+                detail.kind === "withdrawal"
+                  ? fillWords(d.refundLawHint, { deadline: detail.refundDeadline ? timeText(detail.refundDeadline, timeZone) : d.fourteenDays })
+                  : d.refundHint
+              }
+            >
+              <RefundPanel
+                action={actions.refund}
+                preview={preview}
+                recalculate={actions.recalculate}
+                currency={detail.currency}
+                locale={locale}
+                lines={refundLines}
+                whoPays={detail.whoPaysReturn}
+                kind={detail.kind}
+                bookedLabel={detail.label}
+              />
+            </Card>
+          )}
+
+          {refunded && (
+            <Card id="refunded" title={detail.outcome === "exchanged" ? d.credit : d.refundTitle}>
+              <dl className="flex flex-col gap-2 text-sm">
+                <Fact label={detail.outcome === "exchanged" ? d.creditUsed : d.refunded}>
+                  {money(detail.refund.amountMinor ?? 0)}
+                  {detail.refund.at && <span className="text-muted">{fillWords(d.on, { time: timeText(detail.refund.at, timeZone) })}</span>}
+                </Fact>
+                <Fact label={d.how}>{detail.outcome === "exchanged" ? d.howExchange : detail.refund.outside ? d.howOutside : d.howStripe}</Fact>
+                {detail.refund.computedMinor !== null && detail.refund.computedMinor !== detail.refund.amountMinor && (
+                  <Fact label={d.changedFrom}>
+                    {money(detail.refund.computedMinor)}
+                    {detail.refund.note && <span className="block text-muted">{detail.refund.note}</span>}
+                  </Fact>
+                )}
+                {detail.refund.returnShippingMinor > 0 && <Fact label={d.shippingTakenOff}>{money(detail.refund.returnShippingMinor)}</Fact>}
+              </dl>
+            </Card>
+          )}
+
+
+
+          {/* Round 18 (D657): everything about the return that is not its next step, as rows that open in place. */}
+          <section aria-label={d.rowsLabel} className="rounded-lg border border-line bg-card px-5">
+            <ul className="divide-y divide-line">
+              <FoldRow
+                title={request ? d.statementWithdrawal : d.requestRow}
+                sub={countWords(detail.lines.length, d.requestSub, { units: detail.lines.map((l) => `${l.title} (${l.quantity})`).join(", ") })}
+                action={d.view}
+                open={can("approve")}
+              >
+                <div className="flex flex-col gap-5">
+
             <dl className="flex flex-col gap-2 text-sm">
               {request ? (
                 <>
@@ -219,9 +341,10 @@ export function ReturnDetailView({
               )}
               {detail.outcome && <Fact label={d.outcome}>{outcomeLabel(detail.outcome, w)}</Fact>}
             </dl>
-          </Card>
+          
+                  <div>
+                    <h3 className="mb-2 text-body-strong text-ink">{d.goods}</h3>
 
-          <Card id="lines" title={d.goods}>
             <div className="overflow-x-auto">
               <table className="w-full min-w-[34rem] text-left text-sm">
                 <thead>
@@ -281,130 +404,41 @@ export function ReturnDetailView({
                   ))}
               </ul>
             )}
-          </Card>
-
-          {can("approve") && (
-            <Card id="approve" title={d.approveTitle} hint={d.approveHint}>
-              <div className="flex flex-col gap-5">
-                <ApproveForm action={actions.approve} defaults={instructionsDefaults} />
-                {can("decline") && (
-                  <details className="border-t border-line pt-4">
-                    <summary className="cursor-pointer text-sm underline">{d.declineInstead}</summary>
-                    <div className="mt-3">
-                      <DeclineForm action={actions.decline} />
-                    </div>
-                  </details>
-                )}
-              </div>
-            </Card>
-          )}
-
-          {detail.nothingSent && !isEnded(detail.status) && (
-            <Card id="goods" title={d.nothingSentTitle}>
-              <p className="text-sm">{d.nothingSentText}</p>
-            </Card>
-          )}
-
-          {!detail.nothingSent && (can("mark_in_transit") || can("mark_received")) && (
-            <Card
-              id="goods"
-              title={d.goodsTitle}
-              hint={
-                detail.refund.recorded
-                  ? undefined
-                  : detail.settings.refundWhen === "received"
-                    ? d.holdHint
-                    : d.noWaitHint
-              }
-            >
-              <div className="flex flex-col gap-5">
-                {can("mark_in_transit") && (
-                  <div>
-                    <h3 className="mb-2 text-body-strong text-ink">{d.customerSent}</h3>
-                    <DayStepForm action={actions.markInTransit} button={d.markOnWay} help={d.sentHelp} today={today} successMessage={d.markedOnWay} />
+          
                   </div>
-                )}
-                {can("mark_received") && (
-                  <div className={can("mark_in_transit") ? "border-t border-line pt-4" : ""}>
-                    <h3 className="mb-2 text-body-strong text-ink">{d.arrived}</h3>
-                    <DayStepForm action={actions.markReceived} button={d.markReceived} help={d.arrivedHelp} today={today} successMessage={d.markedReceived} />
-                  </div>
-                )}
-              </div>
-            </Card>
-          )}
+                </div>
+              </FoldRow>
+              {can("set_instructions") && !can("approve") && (
+                <FoldRow
+                  title={d.instructionsRow}
+                  sub={detail.instructions?.split("\n")[0] || detail.returnAddress?.name || d.instructionsNone}
+                  action={detail.instructions || detail.returnAddress ? d.change : d.write}
+                >
+                  <p className="mb-3 text-sm text-muted">{d.instructionsHint}</p>
 
-          {can("set_instructions") && !can("approve") && (
-            <Card id="instructions" title={d.instructionsTitle} hint={d.instructionsHint}>
               <InstructionsForm action={actions.instructions} defaults={instructionsDefaults} />
-            </Card>
-          )}
+            
+                </FoldRow>
+              )}
+              {labelCard && (
+                <FoldRow title={d.shippingRow} sub={d.shippingSub} action={d.change}>
+                  {labelCard}
+                </FoldRow>
+              )}
+              {exchangeCard && (
+                <FoldRow title={d.exchangeRow} sub={d.exchangeSub} action={d.open}>
+                  {exchangeCard}
+                </FoldRow>
+              )}
+              <FoldRow title={d.note} sub={detail.staffNote?.split("\n")[0] || d.noteNone} action={detail.staffNote ? d.change : d.add}>
 
-          {labelCard}
+            <NoteForm action={actions.note} note={detail.staffNote ?? ""} />
+          
+              </FoldRow>
+              {(can("close") || can("cancel")) && (
+                <FoldRow title={d.endTitle} sub={d.endSub} action={d.open} open={refunded}>
+                  {can("close") && <p className="mb-3 text-sm text-muted">{detail.kind === "withdrawal" ? d.endWithdrawal : d.endReturn}</p>}
 
-          {inspecting && inspectLines.length > 0 && (
-            <Card id="inspect" title={detail.status === "inspected" ? d.changeInspection : d.inspectTitle} hint={d.inspectHint}>
-              <InspectForm action={actions.inspect} lines={inspectLines} currency={detail.currency} changing={detail.status === "inspected"} />
-            </Card>
-          )}
-
-          {exchangeCard}
-
-          {can("refund") && preview && (
-            <Card
-              id="refund"
-              title={d.refundTitle}
-              hint={
-                detail.kind === "withdrawal"
-                  ? fillWords(d.refundLawHint, { deadline: detail.refundDeadline ? timeText(detail.refundDeadline, timeZone) : d.fourteenDays })
-                  : d.refundHint
-              }
-            >
-              <RefundPanel
-                action={actions.refund}
-                preview={preview}
-                recalculate={actions.recalculate}
-                currency={detail.currency}
-                locale={locale}
-                lines={refundLines}
-                whoPays={detail.whoPaysReturn}
-                kind={detail.kind}
-                bookedLabel={detail.label}
-              />
-            </Card>
-          )}
-
-          {refunded && (
-            <Card id="refunded" title={detail.outcome === "exchanged" ? d.credit : d.refundTitle}>
-              <dl className="flex flex-col gap-2 text-sm">
-                <Fact label={detail.outcome === "exchanged" ? d.creditUsed : d.refunded}>
-                  {money(detail.refund.amountMinor ?? 0)}
-                  {detail.refund.at && <span className="text-muted">{fillWords(d.on, { time: timeText(detail.refund.at, timeZone) })}</span>}
-                </Fact>
-                <Fact label={d.how}>{detail.outcome === "exchanged" ? d.howExchange : detail.refund.outside ? d.howOutside : d.howStripe}</Fact>
-                {detail.refund.computedMinor !== null && detail.refund.computedMinor !== detail.refund.amountMinor && (
-                  <Fact label={d.changedFrom}>
-                    {money(detail.refund.computedMinor)}
-                    {detail.refund.note && <span className="block text-muted">{detail.refund.note}</span>}
-                  </Fact>
-                )}
-                {detail.refund.returnShippingMinor > 0 && <Fact label={d.shippingTakenOff}>{money(detail.refund.returnShippingMinor)}</Fact>}
-              </dl>
-            </Card>
-          )}
-
-          {(can("close") || can("cancel")) && (
-            <Card
-              id="end"
-              title={d.endTitle}
-              hint={
-                can("close")
-                  ? detail.kind === "withdrawal"
-                    ? d.endWithdrawal
-                    : d.endReturn
-                  : undefined
-              }
-            >
               <div className="flex flex-col gap-4">
                 {can("close") && (
                   <details open={refunded}>
@@ -424,14 +458,11 @@ export function ReturnDetailView({
                   </details>
                 )}
               </div>
-            </Card>
-          )}
+            
+                </FoldRow>
+              )}
+              <FoldRow title={d.history} sub={detail.events.length === 0 ? d.historyNone : countWords(detail.events.length, d.historySome)} action={detail.events.length === 0 ? null : d.view}>
 
-          <Card id="note" title={d.note}>
-            <NoteForm action={actions.note} note={detail.staffNote ?? ""} />
-          </Card>
-
-          <Card id="history" title={d.history}>
             {detail.events.length === 0 ? (
               <p className="text-sm text-muted">{d.nothingYet}</p>
             ) : (
@@ -446,7 +477,10 @@ export function ReturnDetailView({
                 ))}
               </ol>
             )}
-          </Card>
+          
+              </FoldRow>
+            </ul>
+          </section>
         </div>
 
         <div className="flex flex-col gap-6">

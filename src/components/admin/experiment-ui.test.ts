@@ -68,7 +68,7 @@ const test = (over: Partial<ExperimentInfo> = {}): ExperimentInfo => ({
 
 const part = { kind: "block" as const, id: "heading-1", label: "Heading “Welcome” in row 1" };
 
-describe("making a test on one screen (D658)", () => {
+describe("making a test on one screen (D660)", () => {
   const create = async () => ({ ok: true as const, id: "x" });
   const pages = [
     { id: "22222222-2222-4222-8222-222222222222", slug: "om-oss", title: "Om oss", kind: "page" as const, buttons: [{ id: "b1", label: "Buy now" }] },
@@ -136,7 +136,7 @@ describe("a draft of a part test", () => {
   });
 });
 
-describe("a draft as a record (D658)", () => {
+describe("a draft as a record (D660)", () => {
   it("makes changing an unchanged version the next step, and keeps scheduling and deleting under More", () => {
     const unchanged = test({ variants: [test().variants[0], { ...test().variants[1], changed: false }] });
     const out = html(createElement(DraftActions, { store: "demo", test: unchanged, ready: false }));
@@ -168,7 +168,7 @@ describe("a draft as a record (D658)", () => {
   });
 });
 
-describe("a started test's header (D657)", () => {
+describe("a started test's header (D659)", () => {
   it("offers a scheduled test's start as the one main button, and taking it back under More", () => {
     const out = html(createElement(TestActions, { store: "demo", test: test({ status: "scheduled", scheduledStart: "2026-10-20T08:00:00.000Z" }), next: "start", best: null }));
     expect(out).toContain("Start now");
@@ -195,7 +195,7 @@ describe("a started test's header (D657)", () => {
   });
 });
 
-describe("what a started test found (D657)", () => {
+describe("what a started test found (D659)", () => {
   const rate = (key: string, visitors: number, conversions: number) => ({ key, name: key, visitors, conversions, money: null });
   const results = (figures: ReturnType<typeof rate>[], days: number) => {
     const verdict = verdictOf({ goal: "cart", figures, splitP: 0.6, days, minVisitors: 0, minDays: 14, currency: "NOK", locale: "nb-NO" });

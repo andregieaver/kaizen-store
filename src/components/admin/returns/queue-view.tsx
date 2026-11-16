@@ -1,6 +1,6 @@
 import Link from "next/link";
 
-import { Stat, StatGrid } from "@/components/admin/overview-parts";
+import { CHIP_ITEM, CHIP_STRIP } from "@/lib/chip-strip";
 import { formatMoney } from "@/lib/money";
 import { countWords, fillWords } from "@/lib/admin-fill";
 import { returnsEn, type ReturnsMessages } from "@/lib/admin-messages/returns.en";
@@ -42,28 +42,57 @@ export function ReturnsQueueView({
   const filtered = filter.status !== "open" || filter.kind !== "all" || filter.q !== "" || filter.overdue || exchange !== null;
   const pages = Math.max(1, Math.ceil(queue.total / queue.pageSize));
   const orders = base.replace(/\/returns$/, "/orders");
-  const stats = [
-    { label: q.open, value: counts.open, href: base },
-    { label: q.toApprove, value: counts.requested, href: queueHref(base, { status: "requested" }) },
-    { label: q.pastDeadline, value: counts.overdue, sub: q.lawGives, href: queueHref(base, { overdue: true }) },
-    { label: q.notSent, value: counts.acknowledgementPending, sub: q.sendAgainHint },
-  ].filter((stat) => stat.value > 0);
+  const plain = filter.kind === "all" && exchange === null && filter.q === "";
+  const chips: { label: string; n: number | null; href: string; on: boolean }[] = [
+    { label: q.open, n: counts.open, href: base, on: plain && filter.status === "open" && !filter.overdue },
+    { label: q.toApprove, n: counts.requested, href: queueHref(base, { status: "requested" }), on: plain && filter.status === "requested" && !filter.overdue },
+    { label: q.pastDeadline, n: counts.overdue, href: queueHref(base, { overdue: true }), on: plain && filter.overdue },
+    { label: q.all, n: null, href: queueHref(base, { status: "all" }), on: plain && filter.status === "all" && !filter.overdue },
+  ];
   const showFilters = filtered || counts.open > 0 || queue.total > 0;
   return (
     <div className="flex flex-col gap-6">
       {/* Round 12 (D637): what waits, in the header's sentence; the rules one fold away; zeros and filters only when there is something. */}
       <PageHeader title={q.title} meta={[<span key="lead" role="status" className="text-ink">{countsSentence(counts, w)}</span>]} />
 
-      {stats.length > 0 && (
-        <StatGrid>
-          {stats.map((stat) => (
-            <Stat key={stat.label} {...stat} />
+      {/* Round 18 (D657): chips with their counts, the search on one line, every other filter one fold away. */}
+      {showFilters && (
+        <nav aria-label={q.filterLabel} className={CHIP_STRIP}>
+          {chips.map((c) => (
+            <Link key={c.label} href={c.href} aria-current={c.on ? "page" : undefined} className={`${CHIP_ITEM} inline-flex min-h-9 items-center rounded-pill px-4 text-sm ${c.on ? "bg-inverse text-inverse-ink" : "border border-edge bg-card text-ink hover:bg-sunken"}`}>
+              {c.n === null ? c.label : fillWords(q.chip, { label: c.label, n: c.n })}
+            </Link>
           ))}
-        </StatGrid>
+          {counts.acknowledgementPending > 0 && (
+            <span className={`${CHIP_ITEM} inline-flex min-h-9 items-center rounded-pill bg-danger-soft px-4 text-sm text-danger-text`}>
+              {fillWords(q.chip, { label: q.notSent, n: counts.acknowledgementPending })}
+            </span>
+          )}
+        </nav>
       )}
 
       {showFilters && (
-        <form method="get" action={base} className="flex flex-wrap items-end gap-3" aria-label={q.filterLabel}>
+        <form method="get" action={base} role="search" className="flex items-center gap-2">
+          {filter.status !== "open" && <input type="hidden" name="status" value={filter.status} />}
+          {filter.kind !== "all" && <input type="hidden" name="kind" value={filter.kind} />}
+          {exchange && <input type="hidden" name="exchange" value={exchange} />}
+          {filter.overdue && <input type="hidden" name="overdue" value="1" />}
+          <label className="flex min-w-0 flex-1">
+            <span className="sr-only">{q.search}</span>
+            <input name="q" type="search" defaultValue={filter.q} placeholder={q.searchPlaceholder} maxLength={100} className="min-h-11 w-full rounded-pill border border-edge bg-card px-4 text-sm" />
+          </label>
+          {filtered && (
+            <Link href={base} className="flex min-h-10 shrink-0 items-center text-sm underline">
+              {q.clear}
+            </Link>
+          )}
+        </form>
+      )}
+
+      {showFilters && (
+        <details open={filter.kind !== "all" || exchange !== null || !["open", "requested", "all"].includes(filter.status)} className={`px-6 py-3 ${CARD_CLASS}`}>
+          <summary className="flex min-h-10 cursor-pointer items-center text-sm font-medium text-ink">{q.moreFilters}</summary>
+        <form method="get" action={base} className="mt-3 flex flex-wrap items-end gap-3">
           <label className="flex flex-col gap-1 text-sm font-medium">
             {q.status}
             <select name="status" defaultValue={filter.status} className={control}>
@@ -105,12 +134,8 @@ export function ReturnsQueueView({
           <button type="submit" className="min-h-10 rounded-pill bg-brand px-4 text-sm font-medium text-brand-ink">
             {q.filter}
           </button>
-          {filtered && (
-            <Link href={base} className="flex min-h-10 items-center text-sm underline">
-              {q.clear}
-            </Link>
-          )}
         </form>
+        </details>
       )}
 
       {queue.rows.length === 0 ? (

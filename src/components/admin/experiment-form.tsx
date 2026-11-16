@@ -38,7 +38,7 @@ const DAY = 86_400_000;
 const emptyTraffic: TrafficFacts = { counting: false, days: 0, consentShare: null, baselines: { orders: null, cart: null, checkout: null }, targets: {} };
 
 /**
- * Making an A/B test on one screen (D148, redrawn in D658): what the owner wants more of, each goal saying how soon it answers at the shop's
+ * Making an A/B test on one screen (D148, redrawn in D660): what the owner wants more of, each goal saying how soon it answers at the shop's
  * own traffic (`experimentTraffic()` counted on the server, worked out here with the results' arithmetic) and one recommended; where, with each
  * page's visitors a day and its last test; and how long, as a bar to a date. The name, the idea, who takes part, the change to look for and the
  * owner's own figures are under Customise, already filled in. The first version is a copy of the page made on saving, to change next.

@@ -253,7 +253,7 @@ Write to ${f.contactEmail}. You can change many of your details yourself under "
         {
           topic: "automated",
           heading: "10. Automated decisions",
-          body: `We make no decisions based solely on automated processing that have legal or similarly significant effects for you (Article 22). The AI features suggest; a person decides. This includes notices of illegal content and our checks of listings: an AI model reads each first and suggests, and a person at Kaizena Flow decides every one.`,
+          body: `We make no decisions based solely on automated processing that have legal or similarly significant effects for you (Article 22). The AI features suggest; a person decides. This includes notices of illegal content and our checks of listings: an AI model reads each first and suggests, and a person at Kaizena Flow decides every one. Messages to our support, in the chat or by email, may be answered by an AI on its own, without a person reading them first; its answers say they come from an AI, it decides nothing with such effects, and you can ask for a person at any time.`,
         },
         {
           topic: "security",

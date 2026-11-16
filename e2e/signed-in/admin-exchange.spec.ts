@@ -50,6 +50,9 @@ test.describe("the owner", () => {
     const { returnId, number } = await approvedReturn();
     await page.goto(`/admin/${E2E_STORE}/returns/${returnId}`);
     await expect(page.getByRole("heading", { level: 1, name: `Return ${number}` })).toBeVisible();
+    // Round 18 (D657): the exchange is a row of the return; its summary opens it.
+    const openExchange = () => page.locator("summary", { hasText: "Exchange instead of money" }).click();
+    await openExchange();
     const card = page.locator("section[aria-labelledby=exchange]");
     await expect(card.getByRole("heading", { name: "Exchange", exact: true })).toBeVisible();
     await expect(card.getByRole("heading", { name: "Propose an exchange" })).toBeVisible();
@@ -70,6 +73,7 @@ test.describe("the owner", () => {
     await expect(link).toHaveValue(/\/account\/exchange\/[A-Za-z0-9_-]{43}$/);
 
     await page.reload();
+    await openExchange();
     await expect(card.getByRole("heading", { name: /Proposal 1/ })).toBeVisible();
     await expect(card.getByText("Proposed", { exact: true })).toBeVisible();
     await expect(card.getByRole("button", { name: "Send again" })).toBeVisible();
@@ -94,6 +98,9 @@ test.describe("the read-only member", () => {
   test("sees the return's exchange card with nothing to press", async ({ page }) => {
     const { returnId } = await approvedReturn();
     await page.goto(`/admin/${E2E_STORE}/returns/${returnId}`);
+    // Round 18 (D657): the exchange is a row of the return; its summary opens it.
+    const openExchange = () => page.locator("summary", { hasText: "Exchange instead of money" }).click();
+    await openExchange();
     const card = page.locator("section[aria-labelledby=exchange]");
     await expect(card.getByRole("heading", { name: "Exchange", exact: true })).toBeVisible();
     await expect(card.getByText(/No exchange has been proposed/)).toBeVisible();

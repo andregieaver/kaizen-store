@@ -12,7 +12,7 @@ import type { Store } from "./stores";
 import { col, typedRow, typedRows } from "./typed-rows";
 
 /**
- * What a test of each target would have to work with (D148 phase 13, D658): the visits of the last 30 days (D152) that began on the
+ * What a test of each target would have to work with (D148 phase 13, D660): the visits of the last 30 days (D152) that began on the
  * target's page (a page, the front page, the All products page), or every visit (the header and footer are on every page), or the visits that
  * viewed a product (a product layout), or reached the cart or checkout (a working page's part); the share of cookie choices that accepted
  * statistics, since only they take part; and the store's own funnel rates, the goals' rates today. A page's visits are those that began on it,
