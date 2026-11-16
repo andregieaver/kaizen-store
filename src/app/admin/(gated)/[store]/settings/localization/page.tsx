@@ -315,8 +315,8 @@ export default async function LocalizationPage({ params }: PageProps<"/admin/[st
 /** A feature that is off, offered where it is missed (round 23): the owner switches it on here; anyone else is told who can. */
 function OfferMoreRow({ slug, feature, owner, title, sub, words: w }: { slug: string; feature: "languages" | "currencies"; owner: boolean; title: string; sub: string; words: LocalizationWords }) {
   return (
-    <li className="flex min-h-14 flex-wrap items-center justify-between gap-3 py-3">
-      <span className="flex min-w-0 flex-col">
+    <li className="flex min-h-14 items-center justify-between gap-3 py-3">
+      <span className="flex min-w-0 flex-1 flex-col">
         <span className="text-body text-ink">{title}</span>
         <span className="text-caption text-ink-2">{owner ? sub : w.ownerSwitches}</span>
       </span>
