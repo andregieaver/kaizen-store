@@ -66,7 +66,7 @@ const PLAIN_PAGES: readonly string[] = ["cart", "checkout", "search", "products"
  * Routes whose address holds a secret or an id, or that belong to one person: never a landing page, whatever follows. Most of
  * them are also reserved page slugs; this list is the belt to that braces, in case a route is added there first.
  */
-const PRIVATE_ROUTES: readonly string[] = [
+export const PRIVATE_ROUTES: readonly string[] = [
   "account",
   "order",
   "unsubscribe",
