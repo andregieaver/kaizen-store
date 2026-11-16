@@ -595,7 +595,7 @@ export const marketingEn = {
         days: { one: "Sent {n} day after the order is delivered.", many: "Sent {n} days after the order is delivered." },
       },
     },
-    /** An automation's follow-ups (D653): up to two more emails, each its days after the one before. */
+    /** An automation's follow-ups (D657): up to two more emails, each its days after the one before. */
     followUps: {
       title: "Follow-ups",
       none: "Only one email goes. A follow-up goes some days later to those who have not ordered since.",

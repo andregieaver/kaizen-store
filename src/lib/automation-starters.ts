@@ -111,7 +111,7 @@ export const AUTOMATION_STARTERS: Record<LifecycleKind, Record<"nb" | "sv" | "da
       url: "/products",
     },
   },
-  // The products are chosen for each reader by code and shown under the words (D653): the words never name them.
+  // The products are chosen for each reader by code and shown under the words (D657): the words never name them.
   cross_sell: {
     en: {
       subject: "Picked for you",

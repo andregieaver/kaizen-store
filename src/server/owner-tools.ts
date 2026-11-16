@@ -2284,7 +2284,7 @@ export async function preflightOwnerTool(ctx: OwnerToolContext, name: string, ra
     request_purchase: preflightRequestPurchase,
     // An automation's days outside its range, and a text message that reaches no one or passes the cap (D4).
     write_email_automation: preflightWriteAutomation,
-    // A cart reminder with claims or the brand's avoided words, at a time outside half an hour to 30 days, or for a code the store lacks (D653).
+    // A cart reminder with claims or the brand's avoided words, at a time outside half an hour to 30 days, or for a code the store lacks (D657).
     write_cart_reminder: preflightWriteCartReminder,
     // An update about an order its records do not bear out, or one the customer had already (D635).
     tell_customer_about_order: preflightTellCustomer,

@@ -16537,7 +16537,7 @@ export const automations = commerce.table(
 );
 
 /**
- * An automation's follow-ups (D4 of `docs/100-day-challenge.md`, D653): its second and third emails, each `delay_days` after the one before to
+ * An automation's follow-ups (D4 of `docs/100-day-challenge.md`, D657): its second and third emails, each `delay_days` after the one before to
  * the same person for the same moment, with its own words (a broadcast's shape). A paid order by the reader since the first email ends the
  * flow. Position 3 only with a 2 (`saveFollowUp()`). The store's own settings and words (`NOT_PERSONAL`). Written only by
  * `src/server/automations.ts`; goes with its automation.
@@ -16577,7 +16577,7 @@ export const automationSends = commerce.table(
     kind: text("kind").notNull(),
     subscriberId: uuid("subscriber_id").notNull(),
     orderId: uuid("order_id"),
-    /** Which of the automation's emails (D653): 1 its first, 2 and 3 its follow-ups (key `{first key}#{step}`). */
+    /** Which of the automation's emails (D657): 1 its first, 2 and 3 its follow-ups (key `{first key}#{step}`). */
     step: smallint("step").notNull().default(1),
     outcome: text("outcome"),
     createdAt: createdAt(),

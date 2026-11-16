@@ -2217,7 +2217,7 @@ export const OWNER_TOOLS = [
     }),
     "send",
   ),
-  // The cart reminders' steps (D4 of docs/100-day-challenge.md, D653): emails to shoppers who left a checkout after typing their email.
+  // The cart reminders' steps (D4 of docs/100-day-challenge.md, D657): emails to shoppers who left a checkout after typing their email.
   tool(
     "write_cart_reminder",
     "Writes one reminder about carts left at checkout in the store's main language, or adds one: its subject, heading, message and button, how long after the shopper typed their email it goes, whether it is on, and a discount code it offers. {store} in the words becomes the store's name and {code} the code. Words that make claims the store does not let AI make, or that the brand avoids, are refused. Other languages keep their words (a new reminder starts from the starter words there). Reminders go only while the cart reminders are on (switch_email_automation, cart_reminders). Needs the owner's approval.",

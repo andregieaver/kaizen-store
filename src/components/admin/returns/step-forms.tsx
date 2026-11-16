@@ -151,8 +151,34 @@ export function DeclineLineForm({ action, lineId }: { action: StepAction; lineId
 // ---------------------------------------------------------------------------
 
 /** The day the goods were sent or arrived: today unless another day is chosen (never in the future: the server holds it to now). */
-export function DayStepForm({ action, button, help, today, successMessage }: { action: StepAction; button: string; help: string; today: string; successMessage: string }) {
+export function DayStepForm({
+  action,
+  button,
+  help,
+  today,
+  successMessage,
+  quick = false,
+  secondary = false,
+}: {
+  action: StepAction;
+  button: string;
+  help: string;
+  today: string;
+  successMessage: string;
+  /** One press, dated today (round 18, D657): the day field waits in "Another day". */
+  quick?: boolean;
+  secondary?: boolean;
+}) {
   const f = useAdminText("returns").forms;
+  if (quick) {
+    return (
+      <ActionForm action={action} successMessage={successMessage} className="flex flex-col gap-2">
+        <SubmitButton variant={secondary ? "secondary" : "primary"} className="min-h-12 w-full justify-center">
+          {button}
+        </SubmitButton>
+      </ActionForm>
+    );
+  }
   return (
     <Form action={action} successMessage={successMessage}>
       <label className={label}>

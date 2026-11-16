@@ -15,7 +15,7 @@ const { storeById } = await import("./shopper-emails");
 type Row = Record<string, unknown>;
 
 /**
- * Flows of several emails and products chosen per reader (D4 of `docs/100-day-challenge.md`, D653): a cross-sell email shows what other orders
+ * Flows of several emails and products chosen per reader (D4 of `docs/100-day-challenge.md`, D657): a cross-sell email shows what other orders
  * had with the order's products and never what the reader bought, and goes not at all without any; a restock email goes only for an order with a
  * product customers buy again, and shows it; a follow-up goes its days after the email before, once, and not to a reader who ordered since the
  * first; a follow-up is added only after the first email is saved, at most two, and the third moves up when the second goes.

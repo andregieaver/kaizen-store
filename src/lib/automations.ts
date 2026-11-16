@@ -38,13 +38,13 @@ export function automationInput(kind: LifecycleKind) {
   });
 }
 
-/** A follow-up as the editor saves it (D653): its days after the email before and its words. */
+/** A follow-up as the editor saves it (D657): its days after the email before and its words. */
 export const followUpInput = z.object({
   delayDays: z.number().int().min(FOLLOW_UP_DAYS.min).max(FOLLOW_UP_DAYS.max),
   content: broadcastContentSchema,
 });
 
-/** Products shown to each reader of a cross-sell or restock email (D653), and how many are read to find them. */
+/** Products shown to each reader of a cross-sell or restock email (D657), and how many are read to find them. */
 export const PICKS_SHOWN = 3;
 
 /** What each kind is, in the staff's words (6.6): what the owner gets, then what the days mean. */
@@ -85,11 +85,11 @@ export const AUTOMATION_WORDS: Record<AutomationKind, { title: string; does: str
   },
 };
 
-/** A product chosen for one reader (D653): its id and address, as the email's product block takes them. */
+/** A product chosen for one reader (D657): its id and address, as the email's product block takes them. */
 export type ProductPick = { id: string; handle: string };
 
 /**
- * The words with one reader's products in them (D653): a product block for each pick, in every language, before the first button (else at
+ * The words with one reader's products in them (D657): a product block for each pick, in every language, before the first button (else at
  * the end). Code draws each product's title, picture and price in the reader's market when the email is made (`EmailFacts`); a product the
  * market no longer offers is left out there.
  */
@@ -105,5 +105,5 @@ export function withPicks(content: BroadcastContent, picks: readonly ProductPick
   );
 }
 
-/** A send's key for one of an automation's emails (D653): the first's key as it was, a follow-up's with `#{step}`. */
+/** A send's key for one of an automation's emails (D657): the first's key as it was, a follow-up's with `#{step}`. */
 export const stepKey = (firstKey: string, step: number): string => (step === 1 ? firstKey : `${firstKey}#${step}`);

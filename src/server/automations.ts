@@ -45,12 +45,12 @@ type Row = Record<string, unknown>;
 
 /**
  * Automations (wave 5 unit D, D298, `docs/wave-5-marketing.md` 6): the only writer of `commerce.automations`, `automation_steps` and
- * `automation_sends`. Lifecycle emails to addresses on the list that are `subscribed` (welcome, after a purchase, win-back, and since D653
- * cross-sell and restock, whose products code chooses for each reader), each once per person and trigger, with up to two follow-ups (D653),
+ * `automation_sends`. Lifecycle emails to addresses on the list that are `subscribed` (welcome, after a purchase, win-back, and since D657
+ * cross-sell and restock, whose products code chooses for each reader), each once per person and trigger, with up to two follow-ups (D657),
  * and the back-in-stock switch (`stock-requests.ts` keeps the requests). Only what happens after an automation was switched on starts an email.
  */
 
-/** A follow-up (D653): the automation's second or third email, its days after the one before. */
+/** A follow-up (D657): the automation's second or third email, its days after the one before. */
 export type FollowUp = { position: FollowUpPosition; delayDays: number; content: BroadcastContent };
 
 export type Automation = {
@@ -63,7 +63,7 @@ export type Automation = {
   content: BroadcastContent | null;
   /** It has a row: it was saved at least once. */
   saved: boolean;
-  /** Its follow-ups in order (D653); none for back in stock. */
+  /** Its follow-ups in order (D657); none for back in stock. */
   followUps: FollowUp[];
 };
 
@@ -97,7 +97,7 @@ function toAutomation(row: Row): Automation {
 
 const STEP_ROW = z.object({ kind: z.enum(LIFECYCLE_KINDS), position: z.union([z.literal(2), z.literal(3)]), delay_days: col.int, content: z.unknown() });
 
-/** The store's follow-ups by kind, in order (D653). */
+/** The store's follow-ups by kind, in order (D657). */
 async function followUpsOf(storeId: string): Promise<Map<LifecycleKind, FollowUp[]>> {
   const rows = await typedRows(
     STEP_ROW,
@@ -177,7 +177,7 @@ export async function switchAutomation(store: Pick<EmailStore, "id" | "localizat
 }
 
 /**
- * Saves a follow-up's days and words (D653, `marketing:write`): `position` null adds the next one (the second email, then the third), else
+ * Saves a follow-up's days and words (D657, `marketing:write`): `position` null adds the next one (the second email, then the third), else
  * changes that one. The automation must have been saved; one that is on takes only words it can send.
  */
 export async function saveFollowUp(
@@ -219,7 +219,7 @@ export async function saveFollowUp(
   return { ok: true, position: at };
 }
 
-/** Deletes a follow-up (D653, `marketing:write`); the third becomes the second when the second goes. */
+/** Deletes a follow-up (D657, `marketing:write`); the third becomes the second when the second goes. */
 export async function deleteFollowUp(store: Pick<EmailStore, "id">, accountId: string, kind: LifecycleKind, position: FollowUpPosition): Promise<AutomationResult> {
   const gone = await db().transaction(async (tx) => {
     const deleted = await tx.execute<Row>(sql`
@@ -235,7 +235,7 @@ export async function deleteFollowUp(store: Pick<EmailStore, "id">, accountId: s
   return { ok: true };
 }
 
-/** A test of a follow-up to the staff member's own address (D653); it counts nowhere. */
+/** A test of a follow-up to the staff member's own address (D657); it counts nowhere. */
 export async function sendTestFollowUp(storeId: string, to: string, kind: LifecycleKind, position: FollowUpPosition, locale: string): Promise<SendOutcome | "empty"> {
   const store = await storeById(storeId);
   if (!store) return "failed";
@@ -399,7 +399,7 @@ const inWindow = (moment: ReturnType<typeof sql>, enabledAt: string, delayDays: 
 )`;
 
 /**
- * A product customers buy again (D653, restock): one address placed at least two paid orders with it in the last two years. Checked per
+ * A product customers buy again (D657, restock): one address placed at least two paid orders with it in the last two years. Checked per
  * product of an order, the restock email's reason to go.
  */
 const rebought = (storeId: string, productId: ReturnType<typeof sql>) => sql`exists (
@@ -483,7 +483,7 @@ const DUE_ROW = z.object({
 });
 
 /**
- * A follow-up's due people (D653): the email before it went to them (sent or logged) at least its days ago, within the catch-up window and
+ * A follow-up's due people (D657): the email before it went to them (sent or logged) at least its days ago, within the catch-up window and
  * after the automation was switched on; they are still subscribed, and have placed no paid order since the flow's first email.
  */
 async function followUpsDue(flow: Flow, position: FollowUpPosition, delayDays: number, now: Date): Promise<Due[]> {
@@ -514,7 +514,7 @@ function fromDueRow(r: z.infer<typeof DUE_ROW>): Due {
 const PICK_ROW = z.object({ id: col.uuid, handle: z.string() });
 
 /**
- * The products one reader's cross-sell or restock email shows (D653), chosen by code, never by a model; each on sale and in stock now.
+ * The products one reader's cross-sell or restock email shows (D657), chosen by code, never by a model; each on sale and in stock now.
  * Cross-sell: what other paid orders of the last year had with the order's products, most often first, never what the address has bought.
  * Restock: the order's own products that customers buy again (`rebought`).
  */
@@ -596,7 +596,7 @@ export async function runAutomations(options: { only?: string; deadline?: number
       result.skipped++;
       return;
     }
-    // A cross-sell or restock email goes only with products for this reader (D653); without any, it never goes.
+    // A cross-sell or restock email goes only with products for this reader (D657); without any, it never goes.
     let words = content;
     if (isPickKind(flow.kind)) {
       const picks = due.orderId ? await picksFor(flow.storeId, flow.kind, due.orderId, due.email) : [];
