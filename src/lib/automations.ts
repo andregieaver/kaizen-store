@@ -1,7 +1,7 @@
 import { z } from "zod";
 
-import { DELAY_RANGES, type AutomationKind, type LifecycleKind } from "./automation-kinds";
-import { broadcastContentSchema } from "./broadcasts";
+import { DELAY_RANGES, FOLLOW_UP_DAYS, type AutomationKind, type LifecycleKind } from "./automation-kinds";
+import { broadcastContentSchema, type BroadcastContent } from "./broadcasts";
 
 export * from "./automation-kinds";
 
@@ -38,6 +38,15 @@ export function automationInput(kind: LifecycleKind) {
   });
 }
 
+/** A follow-up as the editor saves it (D653): its days after the email before and its words. */
+export const followUpInput = z.object({
+  delayDays: z.number().int().min(FOLLOW_UP_DAYS.min).max(FOLLOW_UP_DAYS.max),
+  content: broadcastContentSchema,
+});
+
+/** Products shown to each reader of a cross-sell or restock email (D653), and how many are read to find them. */
+export const PICKS_SHOWN = 3;
+
 /** What each kind is, in the staff's words (6.6): what the owner gets, then what the days mean. */
 export const AUTOMATION_WORDS: Record<AutomationKind, { title: string; does: string; days?: (n: number) => string; daysLabel?: string }> = {
   welcome: {
@@ -58,8 +67,43 @@ export const AUTOMATION_WORDS: Record<AutomationKind, { title: string; does: str
     daysLabel: "Days without an order",
     days: (n) => `Sent when ${n} days have passed since their last order.`,
   },
+  cross_sell: {
+    title: "Goes well with",
+    does: "Shows people on your list products that go well with what they bought, chosen for each from what other customers bought together.",
+    daysLabel: "Days after delivery",
+    days: (n) => `Sent ${n} ${n === 1 ? "day" : "days"} after the order is delivered.`,
+  },
+  replenish: {
+    title: "Time to restock",
+    does: "Reminds people on your list to order again the products customers buy more than once.",
+    daysLabel: "Days after delivery",
+    days: (n) => `Sent ${n} ${n === 1 ? "day" : "days"} after the order is delivered.`,
+  },
   back_in_stock: {
     title: "Back in stock",
     does: "Lets shoppers ask to hear when a sold-out product is back, and emails them once when it is.",
   },
 };
+
+/** A product chosen for one reader (D653): its id and address, as the email's product block takes them. */
+export type ProductPick = { id: string; handle: string };
+
+/**
+ * The words with one reader's products in them (D653): a product block for each pick, in every language, before the first button (else at
+ * the end). Code draws each product's title, picture and price in the reader's market when the email is made (`EmailFacts`); a product the
+ * market no longer offers is left out there.
+ */
+export function withPicks(content: BroadcastContent, picks: readonly ProductPick[]): BroadcastContent {
+  if (picks.length === 0) return content;
+  const blocks = picks.map((p) => ({ type: "product" as const, product: p.id, handle: p.handle, label: "" }));
+  return Object.fromEntries(
+    Object.entries(content).map(([locale, c]) => {
+      const at = c.blocks.findIndex((b) => b.type === "button");
+      const where = at === -1 ? c.blocks.length : at;
+      return [locale, { ...c, blocks: [...c.blocks.slice(0, where), ...blocks, ...c.blocks.slice(where)] }];
+    }),
+  );
+}
+
+/** A send's key for one of an automation's emails (D653): the first's key as it was, a follow-up's with `#{step}`. */
+export const stepKey = (firstKey: string, step: number): string => (step === 1 ? firstKey : `${firstKey}#${step}`);

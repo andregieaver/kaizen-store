@@ -6,7 +6,6 @@ import { AFFILIATE_COOKIE_DAYS_MAX, AFFILIATE_FRIEND_PERCENT_MAX } from "./affil
 import { EMAIL_PROVIDERS, toolRecord } from "./domain-tools";
 import { BONUS_EXPIRY_MONTHS_MAX, BONUS_PENDING_DAYS_MAX, BONUS_REDEEM_PERCENT_MAX } from "./bonus";
 import { adjustmentPhrase } from "./bonus-admin";
-import { AUTOMATION_KINDS, LIFECYCLE_KINDS } from "./automation-kinds";
 import { ORDER_UPDATES, UPDATE_WORDS, type OrderUpdate } from "./order-update-email";
 import { GOALS } from "./experiments";
 import { GIFT_CARD_NOTE_MAX } from "./gift-card-admin";
@@ -65,6 +64,10 @@ import { inputSummary, ownWordsSummary, plainText } from "./approval-summaries";
 import { draftStoreInput } from "./store-drafts";
 import { workflowInputSchema } from "./workflows";
 import { purchaseInput } from "./purchase-input";
+
+/** The automations the tools name (D298): cross-sell and restock (D653) join them when their tools do. */
+const AUTOMATION_KINDS = ["welcome", "after_purchase", "win_back", "back_in_stock"] as const;
+const LIFECYCLE_KINDS = ["welcome", "after_purchase", "win_back"] as const;
 
 /**
  * The owner assistant's tools (D94), modelled on Kaizen Life's MCP catalogue:

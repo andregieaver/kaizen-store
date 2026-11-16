@@ -1,14 +1,15 @@
 "use server";
 
 import { refresh } from "next/cache";
+import { redirect } from "next/navigation";
 import { z } from "zod";
 
 import { adminLangOf } from "@/lib/admin-lang";
 import { adminText } from "@/lib/admin-text";
-import { AUTOMATION_KINDS, LIFECYCLE_KINDS } from "@/lib/automations";
+import { AUTOMATION_KINDS, FOLLOW_UP_POSITIONS, LIFECYCLE_KINDS, type FollowUpPosition } from "@/lib/automations";
 import { marketingProblem } from "@/lib/marketing-words";
 import { actionAdminLang } from "@/server/admin-request-lang";
-import { saveAutomation, sendTestAutomation, switchAutomation } from "@/server/automations";
+import { deleteFollowUp, saveAutomation, saveFollowUp, sendTestAutomation, sendTestFollowUp, switchAutomation } from "@/server/automations";
 import { checkPermission } from "@/server/permissions";
 import { storeById } from "@/server/shopper-emails";
 
@@ -60,6 +61,55 @@ export async function testAutomationAction(storeSlug: string, kind: string, loca
   if (!lifecycle.success) return { ok: false, problem: who.w.unknownAutomation };
   if (!who.store.localization.keptLocales.includes(locale)) return { ok: false, problem: who.w.storeLanguage };
   const outcome = await sendTestAutomation(who.store.id, who.member.account.email, lifecycle.data, locale);
+  if (outcome === "empty") return { ok: false, problem: who.w.saveFirst };
+  if (outcome === "failed") return { ok: false, problem: who.w.testFailed };
+  return { ok: true, to: who.member.account.email };
+}
+
+/**
+ * A follow-up (D653) is named `{kind}` plus its position, as `{kind}:2`, or `{kind}:new` for one not yet saved, so the editor's save and test
+ * take it as they take a kind.
+ */
+function followUpOf(name: string): { kind: (typeof LIFECYCLE_KINDS)[number]; position: FollowUpPosition | null } | null {
+  const [kind, at] = name.split(":");
+  const lifecycle = z.enum(LIFECYCLE_KINDS).safeParse(kind);
+  if (!lifecycle.success) return null;
+  if (at === "new") return { kind: lifecycle.data, position: null };
+  const position = FOLLOW_UP_POSITIONS.find((p) => String(p) === at);
+  return position ? { kind: lifecycle.data, position } : null;
+}
+
+export async function saveFollowUpAction(storeSlug: string, name: string, input: unknown): Promise<Problem | { ok: true }> {
+  const who = await writer(storeSlug);
+  if (!who) return noAccess();
+  const followUp = followUpOf(name);
+  if (!followUp) return { ok: false, problem: who.w.unknownAutomation };
+  const result = await saveFollowUp(who.store, who.member.account.id, followUp.kind, followUp.position, input);
+  if (!result.ok) return said(result, who.w);
+  // A new one is kept: its page from now on, so a second save changes it rather than adding another.
+  if (followUp.position === null) redirect(`/admin/${who.member.store.slug}/automations/${followUp.kind}/follow-ups/${result.position}`);
+  refresh();
+  return { ok: true };
+}
+
+export async function deleteFollowUpAction(storeSlug: string, name: string): Promise<Problem | { ok: true }> {
+  const who = await writer(storeSlug);
+  if (!who) return noAccess();
+  const followUp = followUpOf(name);
+  if (!followUp?.position) return { ok: false, problem: who.w.unknownAutomation };
+  const result = await deleteFollowUp(who.store, who.member.account.id, followUp.kind, followUp.position);
+  if (!result.ok) return said(result, who.w);
+  redirect(`/admin/${who.member.store.slug}/automations/${followUp.kind}`);
+}
+
+export async function testFollowUpAction(storeSlug: string, name: string, locale: string): Promise<Problem | { ok: true; to: string }> {
+  const who = await writer(storeSlug);
+  if (!who) return noAccess();
+  const followUp = followUpOf(name);
+  if (!followUp) return { ok: false, problem: who.w.unknownAutomation };
+  if (!followUp.position) return { ok: false, problem: who.w.saveFirst };
+  if (!who.store.localization.keptLocales.includes(locale)) return { ok: false, problem: who.w.storeLanguage };
+  const outcome = await sendTestFollowUp(who.store.id, who.member.account.email, followUp.kind, followUp.position, locale);
   if (outcome === "empty") return { ok: false, problem: who.w.saveFirst };
   if (outcome === "failed") return { ok: false, problem: who.w.testFailed };
   return { ok: true, to: who.member.account.email };

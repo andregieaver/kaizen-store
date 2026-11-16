@@ -629,6 +629,7 @@ const PAGES: readonly AdminPage[] = [
     tasks: ["Show my products on Google Shopping", "Get a catalogue feed for Meta"],
   }),
   store("email-automation", "/automations/[kind]", "Email automation", "Sales", "One email automation: its days, its words per language, a test to yourself, and the switch."),
+  store("email-follow-up", "/automations/[kind]/follow-ups/[position]", "Follow-up email", "Sales", "An email automation's second or third email: its days after the one before, its words per language, a test to yourself, and delete."),
   store("text-message.new", "/text-messages/new", "New text message", "Sales", "Writes a new text message: its name, who gets it and its words, with what each reader gets and how many texts it takes."),
   store("text-message", "/text-messages/[campaignId]", "Text message", "Sales", "One text message: a draft priced by 46elks against the month's cap and sent; once started, how many wait for their readers' daytime, went, arrived, failed or were not sent, and what they cost."),
   store("broadcast.new", "/broadcasts/new", "New broadcast", "Sales", "Writes a new broadcast: its name, who it is for, and per language its subject and what it says."),

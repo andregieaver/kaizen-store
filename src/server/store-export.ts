@@ -85,6 +85,7 @@ export const STORE_EXPORT_TABLES = [
   "order_views",
   "workflows",
   "automations",
+  "automation_steps",
   "cart_reminder_steps",
   "broadcast_templates",
   "bonus_settings",
