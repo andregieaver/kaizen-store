@@ -13660,6 +13660,11 @@ export const visits = commerce.table(
     firstSeen: timestamp("first_seen", { withTimezone: true }).notNull().defaultNow(),
     lastSeen: timestamp("last_seen", { withTimezone: true }).notNull().defaultNow(),
     /**
+     * When a store page first failed to render for the visitor that day (`docs/100-day-challenge.md` F4, D662, `recordPageError()`): the
+     * autopilot's watch counts visitors who met an error per hour. Null: none.
+     */
+    errorAt: timestamp("error_at", { withTimezone: true }),
+    /**
      * The visitor's first visit in the last 30 days (D303 I3), only for one who allowed statistics cookies: its channel, source,
      * campaign and day, from the first-party `kaizen_touch_{store}` cookie (`recordTouch()`); null without consent.
      */

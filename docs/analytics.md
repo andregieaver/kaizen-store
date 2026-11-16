@@ -165,6 +165,11 @@ cannot be followed from one day to the next, and that adding to the cart lets th
   trusted. The check and the count are two statements, so a burst can overshoot a limit slightly.
 - Rows older than 25 months are deleted by the daily job.
 
+
+**Error pages (D663).** When a store page fails to render, the store's error page sends the store and the path to `/api/visit/error`, only where
+the visit beacon runs and the browser does not ask not to be tracked. `recordPageError()` checks it as a page view (robots, privacy signals, the
+store's own pages, counting on) and writes `visits.error_at` on the visitor's counted visit of the store's day, the first time only; it starts no
+visit, so an error never counts a visitor. The autopilot's watch (`docs/100-day-challenge.md` F4) counts visitors who met an error per hour.
 ## Speed (D336, wave 7 unit B, `docs/wave-7-storefront.md` B)
 
 How fast a store's pages are for the people who open them, measured in their browsers (field data), never a score from nothing.

@@ -1,6 +1,6 @@
 {
-  "id": "1b6f5aed-e885-428f-bca5-2c8f5d05bf64",
-  "prevId": "397c7678-a87f-499b-ac2a-2ec8c55de0e1",
+  "id": "4fb5fc23-3e5d-4657-b918-d8b32dcd4c06",
+  "prevId": "1b6f5aed-e885-428f-bca5-2c8f5d05bf64",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -88961,6 +88961,12 @@
           "primaryKey": false,
           "notNull": true,
           "default": "now()"
+        },
+        "error_at": {
+          "name": "error_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
         },
         "first_channel": {
           "name": "first_channel",

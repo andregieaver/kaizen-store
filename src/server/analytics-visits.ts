@@ -202,6 +202,40 @@ export async function recordVisit({ headers: h, body, now = new Date() }: { head
 }
 
 /**
+ * A store page that failed to render (`docs/100-day-challenge.md` F4, D663): the visitor's counted visit of the store's day gets the time of its
+ * first error (`visits.error_at`), for the autopilot's watch to count visitors who met one per hour. The same checks as a page view (robots,
+ * privacy signals, the store's own pages, counting on, a page of the store); it marks only a visit already counted, so it starts no row and
+ * an error never counts a visitor. Answers only whether a visit was marked.
+ */
+export async function recordPageError({ headers: h, body, now = new Date() }: { headers: Headers; body: unknown; now?: Date }): Promise<boolean> {
+  const parsed = visitBody.safeParse(body);
+  if (!parsed.success) return false;
+  const userAgent = h.get("user-agent");
+  if (isBot(userAgent) || wantsPrivacy(h)) return false;
+  const store = await getOpenStore(parsed.data.store);
+  if (!store?.visitCounting) return false;
+  const secret = visitSecret();
+  if (!secret) return false;
+  const own = fromStoresOwnPage({
+    origin: h.get("origin"),
+    referer: h.get("referer"),
+    requestHost: h.get("x-forwarded-host") ?? h.get("host"),
+    slug: store.slug,
+    ownHosts: storeOrigins(store.slug).map((origin) => new URL(origin).host),
+    storesOnPlatformHost: storeDomain() === null,
+  });
+  if (!own || !placeOfPath(parsed.data.path, store.slug, store.allMarkets.map((m) => m.code), store.address)) return false;
+  const day = storeDayKey(now, store.timeZone);
+  const visitor = visitorHash(store.id, addressOf(h), userAgent, day, secret);
+  const marked = await db().execute(sql`
+    update commerce.visits set error_at = ${now.toISOString()}::timestamptz
+    where store_id = ${store.id}::uuid and day = ${day}::date and visitor = ${visitor} and error_at is null
+    returning 1
+  `);
+  return marked.length > 0;
+}
+
+/**
  * The visitor's first visit in 30 days (D303 I3), sent by `TouchKeeper` only while they allow statistics cookies, kept on today's visit
  * of the same visitor (the same daily key `recordVisit()` makes) if it has none yet: classified as a visit's channel is, never an id. The
  * same checks as a page view (robots, privacy signals, the store's own pages, counting on). Answers only whether it was kept.

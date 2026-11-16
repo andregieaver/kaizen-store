@@ -3,6 +3,7 @@
 import { usePathname } from "next/navigation";
 import { useEffect, useSyncExternalStore } from "react";
 
+import { reportPageError } from "@/components/visit-beacon";
 import { browserText } from "@/lib/browser-text";
 
 /** The page's language, from the `<html lang>` the market's layout set (two letters); English while rendered on the server. */
@@ -26,6 +27,8 @@ export default function StorePageError({ error, retry }: { error: unknown; retry
   const digest = error instanceof Error && "digest" in error && typeof error.digest === "string" ? error.digest : null;
   useEffect(() => {
     console.error(error);
+    // The autopilot's watch counts visitors who met an error (F4, D663): the store and the path only, where the store counts visits.
+    reportPageError();
   }, [error]);
   return (
     <section className="mx-auto flex w-full max-w-(--content-width) flex-col items-start gap-4 px-4 py-16">

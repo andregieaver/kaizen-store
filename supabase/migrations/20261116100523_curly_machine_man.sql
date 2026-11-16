@@ -1,0 +1,1 @@
+ALTER TABLE "commerce"."visits" ADD COLUMN "error_at" timestamp with time zone;
