@@ -1,6 +1,7 @@
 import { Suspense, type ReactNode } from "react";
 
 import { blockFonts, blockHasContent, blockShowsUnbound, columnLines, columnsAsRow, partFonts, rowShows, type ColumnsBlock, type PageBlock, type PageColumn, type PageContent, type PageRow, type StorePartBlock, type ThemeStoreBlock } from "@/lib/page-content";
+import { phoneShare } from "@/lib/column-share";
 import { inlineMarkOf } from "@/lib/inline-edit";
 
 import { withoutBindings } from "@/lib/field-binding";
@@ -386,7 +387,7 @@ function RowMarkup({
                   <GoogleReviewsSection block={block} place={place} />
                 </Suspense>
               ) : (
-                <PageBlockView block={block} renderChildren={answerParts} eager={eager} />
+                <PageBlockView block={block} renderChildren={answerParts} eager={eager} share={outer ? undefined : phoneShare(holder, column)} />
               )}
             </div>
             </VisiblePart>

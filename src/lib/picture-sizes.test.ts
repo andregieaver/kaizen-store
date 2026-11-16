@@ -70,6 +70,13 @@ describe("which files a picture is loaded from", () => {
     expect(claim(390) * 3).toBeGreaterThan(480);
     expect(fixedSizes(640)).toBe("(min-width: 640px) 640px, 100vw");
   });
+
+  it("tells a picture in a column that stays beside others its share of the screen", () => {
+    expect(fixedSizes(600)).toBe("(min-width: 600px) 600px, 100vw");
+    expect(fixedSizes(600, 0.5)).toBe("(min-width: 1200px) 600px, 50vw");
+    expect(fixedSizes(600, 1)).toBe(fixedSizes(600));
+    expect(fixedSizes(600, 0)).toBe(fixedSizes(600));
+  });
 });
 
 describe("the markup", () => {
