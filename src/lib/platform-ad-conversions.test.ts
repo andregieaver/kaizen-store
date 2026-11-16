@@ -6,7 +6,7 @@ import { allowsMarketing, gclidOf, platformConversion, signupAdSignals } from ".
 
 const visitor = "0b7a0000-0000-4000-8000-000000000009";
 const consent = (marketing: boolean, version = "statistics+marketing") =>
-  encodeConsent({ visitor, version, choices: { preferences: false, statistics: true, marketing } });
+  encodeConsent({ visitor, version, choices: { preferences: false, statistics: true, marketing, recordings: false } });
 const cookies: Record<string, string> = {
   _fbp: "fb.1.1760000000000.123456",
   _fbc: "fb.1.1760000000000.IwAR0abcdefgh",

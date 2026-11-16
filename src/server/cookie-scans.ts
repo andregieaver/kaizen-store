@@ -153,7 +153,7 @@ export async function scanTarget(storeId: string | null): Promise<ScanTarget | n
     origin = storeSiteUrl(slug);
     within = (path) => path.startsWith(`${storeBase(slug)}/`);
   }
-  const { categories } = await siteCookies(storeId, tracking, code);
+  const { categories, extras } = await siteCookies(storeId, tracking, code);
   return {
     origin,
     starts,
@@ -163,7 +163,7 @@ export async function scanTarget(storeId: string | null): Promise<ScanTarget | n
         ? null
         : {
             name: consentCookieName(storeId),
-            value: encodeConsent({ visitor: randomUUID(), version: consentVersion(categories), choices: FULL_CONSENT }),
+            value: encodeConsent({ visitor: randomUUID(), version: consentVersion(categories, extras), choices: FULL_CONSENT }),
           },
     maxPages: 6,
   };

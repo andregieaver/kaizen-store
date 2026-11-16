@@ -156,6 +156,9 @@ export const SV: StarterText = {
     "privacy.purpose.security": "att hålla butiken säker och förebygga bedrägeri och missbruk (vårt berättigade intresse)",
     "privacy.purpose.marketing": "att skicka marknadsföring med e-post, bara om du har tackat ja till det (samtycke)",
     "privacy.purpose.visits": "att räkna besök i butiken utan cookies, för att se hur den används; vi sparar ingen IP-adress och ingen webbläsaridentifierare (vårt berättigade intresse)",
+    // D656: hand-written, for legal review.
+    "privacy.purpose.heatmaps": "att se, som summor per sida och dag, var besökare som tillåter statistik klickar, hur långt de scrollar och hur länge delar av en sida syns på skärmen (värmekartor; ditt samtycke)",
+    "privacy.purpose.recordings": "att spela in besök från besökare som tillåter inspelningar, under ett slumpat nummer för en webbläsarflik och utan det de skriver, för att hitta det som är svårt att använda; sparas i 30 dagar (ditt samtycke)",
     "h.privacy.recipients": "Vilka som får uppgifterna",
     "privacy.recipients.1": "Vi delar personuppgifter bara med dem som behöver dem:",
     "privacy.recipient.platform": "plattformen Kaizena Flow, som driver butiken och behandlar uppgifter för vår räkning",

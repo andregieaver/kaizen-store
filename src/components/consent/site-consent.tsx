@@ -1,4 +1,4 @@
-import type { OptionalCategory, TrackingSettings } from "@/lib/cookie-consent";
+import type { ConsentExtra, OptionalCategory, TrackingSettings } from "@/lib/cookie-consent";
 import { allowedCode, CODE_PLACES, type CustomCode } from "@/lib/custom-code";
 import { ConsentManager, StoreCustomCode } from "@/components/lazy/extras";
 import { t } from "@/lib/i18n";
@@ -6,9 +6,13 @@ import { siteCookies } from "@/server/site-cookies";
 
 import type { ConsentTexts } from "./consent-manager";
 
-/** The consent widget's words in a language (D58). */
-export function consentTexts(lang: string, locale: string, categories: OptionalCategory[]): ConsentTexts {
+/**
+ * The consent widget's words in a language (D58). While heatmaps run (the `heat` extra, D656) the statistics text names them; while the site
+ * asks about recordings, the banner's first screen carries a sentence about them of its own.
+ */
+export function consentTexts(lang: string, locale: string, categories: OptionalCategory[], extras: readonly ConsentExtra[] = []): ConsentTexts {
   const m = t(lang);
+  const heat = extras.includes("heat");
   const list = new Intl.ListFormat(locale, { type: "conjunction" }).format(
     categories.map((c) => m.consentCategories[c].name.toLowerCase()),
   );
@@ -22,7 +26,8 @@ export function consentTexts(lang: string, locale: string, categories: OptionalC
     settings: m.cookieSettings,
     alwaysOn: m.alwaysOn,
     cookiePage: m.cookies,
-    categories: m.consentCategories,
+    categories: heat ? { ...m.consentCategories, statistics: { ...m.consentCategories.statistics, text: m.consentStatisticsHeat } } : m.consentCategories,
+    recordingNotice: categories.includes("recordings") ? m.consentRecordingNotice : null,
   };
 }
 
@@ -49,7 +54,7 @@ export async function SiteConsent({
   locale: string;
   cookiePage: string;
 }) {
-  const { categories } = await siteCookies(storeId, tracking, code);
+  const { categories, extras } = await siteCookies(storeId, tracking, code);
   const necessary = Object.fromEntries(allowedCode(code, null).map((place) => [place, code[place]])) as CustomCode;
   const optional = Object.fromEntries(
     CODE_PLACES.filter((place) => code[place] && !(place in necessary)).map((place) => [place, code[place]]),
@@ -63,7 +68,8 @@ export async function SiteConsent({
           tracking={tracking}
           code={optional}
           categories={categories}
-          texts={consentTexts(lang, locale, categories)}
+          extras={extras}
+          texts={consentTexts(lang, locale, categories, extras)}
           cookiePage={cookiePage}
         />
       )}

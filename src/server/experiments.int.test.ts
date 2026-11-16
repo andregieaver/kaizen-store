@@ -52,7 +52,7 @@ let orderNumber = 0;
 /** A browser that has (or has not) accepted statistics, and holds the answers for the store's running tests. */
 function browser(opts: { statistics: boolean; versions?: Record<string, string>; visitor?: string }) {
   jar.clear();
-  if (opts.statistics) jar.set(consentCookieName(storeId), encodeConsent({ visitor: uuid(), version: "statistics", choices: { preferences: false, statistics: true, marketing: false } }));
+  if (opts.statistics) jar.set(consentCookieName(storeId), encodeConsent({ visitor: uuid(), version: "statistics", choices: { preferences: false, statistics: true, marketing: false, recordings: false } }));
   if (opts.versions) jar.set(dataCookieName(storeId), encodeAssignments({ visitor: opts.visitor ?? uuid(), versions: opts.versions }));
 }
 

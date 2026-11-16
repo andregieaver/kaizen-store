@@ -1,7 +1,7 @@
 import { ActionForm, SubmitButton, type FormState } from "@/components/admin/action-form";
 import { countWords, fillWords } from "@/lib/admin-fill";
 import { legalEn, type LegalMessages } from "@/lib/admin-messages/legal.en";
-import { CONSENT_CATEGORIES } from "@/lib/cookie-consent";
+import { CODE_CATEGORIES } from "@/lib/custom-code";
 import type { ReviewedItem } from "@/lib/cookie-scan";
 import type { CookieScan } from "@/server/cookie-scans";
 
@@ -56,7 +56,7 @@ function NoteForm({ item, action, words }: { item: ReviewedItem; action: Action;
             <option value="" disabled>
               {w.choose}
             </option>
-            {CONSENT_CATEGORIES.map((category) => (
+            {CODE_CATEGORIES.map((category) => (
               <option key={category} value={category}>
                 {words.cookies.categories[category]}
               </option>

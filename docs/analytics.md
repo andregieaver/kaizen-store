@@ -589,6 +589,12 @@ shows it to members who may read analytics (it shows cost prices and fees); the 
 sold, at most 5,000) with their average in the main currency, how many lost money and how many wait on cost prices, and the ten least
 profitable, each a link to its order.
 
+## Heatmaps and recordings (D656, planned in steps)
+
+Click, scroll and attention heatmaps, dead and rage clicks, and recordings of visits, built in steps from
+[`heatmaps-and-recordings.md`](heatmaps-and-recordings.md), whose section 3 holds every definition. Built so far (step 1): the switches
+(`stores.heatmaps`, `stores.recordings`, owner only, both off) and the consent they need. Nothing is collected yet.
+
 ## Not tracked (said on the pages)
 
 Refunds the payment provider cannot match to a payment here; returns made without Kaizen's withdrawal function or return request; subscription expansion, contraction and

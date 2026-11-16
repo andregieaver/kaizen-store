@@ -6,7 +6,7 @@ import { cacheLife, cacheTag } from "next/cache";
 
 import type { ListedCookie } from "@/components/consent/cookie-policy";
 import { db, readDb } from "@/db/client";
-import { OPTIONAL_CATEGORIES, STORE_ONLY_TOOLS, toolCategories, type OptionalCategory, type TrackingSettings } from "@/lib/cookie-consent";
+import { OPTIONAL_CATEGORIES, STORE_ONLY_TOOLS, toolCategories, type ConsentExtra, type OptionalCategory, type TrackingSettings } from "@/lib/cookie-consent";
 import { declaredCookies, type KnownCookie } from "@/lib/known-cookies";
 import { trackingSchema } from "@/lib/cookie-consent-schema";
 import { cookieNoteInput, parseScannedItems, reviewFindings, type CookieNote, type ScannedItem } from "@/lib/cookie-scan";
@@ -30,12 +30,17 @@ type Row = Record<string, unknown>;
 export const cookiesTag = (storeId: string | null) => `cookies:${storeId ?? "kaizen"}`;
 
 /** The features a store keeps on (D178), cached with the cookie list: a switch refreshes `cookiesTag` (`refreshFeatureTags()`). */
-async function storeFeatures(storeId: string): Promise<{ features: string[]; visitCounting: boolean }> {
+async function storeFeatures(storeId: string): Promise<{ features: string[]; visitCounting: boolean; heatmaps: boolean; recordings: boolean }> {
   "use cache";
   cacheLife("hours");
   cacheTag(cookiesTag(storeId));
-  const [row] = await readDb().execute<Row>(sql`select features, visit_counting from commerce.stores where id = ${storeId}::uuid`);
-  return { features: ((row?.features ?? []) as unknown[]).map(String), visitCounting: Boolean(row?.visit_counting) };
+  const [row] = await readDb().execute<Row>(sql`select features, visit_counting, heatmaps, recordings from commerce.stores where id = ${storeId}::uuid`);
+  return {
+    features: ((row?.features ?? []) as unknown[]).map(String),
+    visitCounting: Boolean(row?.visit_counting),
+    heatmaps: Boolean(row?.heatmaps),
+    recordings: Boolean(row?.recordings),
+  };
 }
 
 /** A site's latest finished scan and the owner's notes, cached until either changes. */
@@ -85,16 +90,16 @@ export async function siteCookies(
    * a necessary cookie (the store as read says so: `store.privateMode`).
    */
   options: { buyers?: boolean; colorMode?: boolean; privateStore?: boolean } = {},
-): Promise<{ cookies: ListedCookie[]; categories: OptionalCategory[] }> {
+): Promise<{ cookies: ListedCookie[]; categories: OptionalCategory[]; extras: ConsentExtra[] }> {
   const listed = new Map<string, ListedCookie>();
   // A cookie of a store feature that is off (D178) is not the site's while it is: left out, even when an earlier scan found it.
   const facts = storeId === null ? null : await storeFeatures(storeId);
   const features = facts?.features ?? null;
   const offFeature = (cookie: KnownCookie) => Boolean(cookie.feature && features && !featureOn(features, cookie.feature));
   const list = (cookie: KnownCookie) => {
-    const { name, provider, category, days, purpose } = cookie;
+    const { name, provider, category, days, purpose, storage } = cookie;
     if (offFeature(cookie)) return;
-    if (!listed.has(name)) listed.set(name, { name, provider, category, days, purpose });
+    if (!listed.has(name)) listed.set(name, { name, provider, category, days, purpose, ...(storage ? { kind: `${storage}Storage` as const } : {}) });
   };
   // The chat agent keeps its conversation in the tab while it is on (D81).
   const chat = (await getChatAgent(storeId))?.enabled ?? false;
@@ -114,8 +119,11 @@ export async function siteCookies(
   // languages on remembers a language a visitor chose in its switcher, for its front door (D479).
   const languages = storeId === null ? (await getPlatformLangs()).length > 1 : Boolean(features && featureOn(features, "languages"));
   // A store that counts visits and already asks about statistics keeps a visitor's first visit in 30 days once they allow it (D303 I3).
+  // Heatmaps run under statistics and recordings ask a purpose of their own (D656): the banner asks for them while they are on.
+  const heatmaps = Boolean(facts?.heatmaps);
+  const recordings = Boolean(facts?.recordings);
   const touch = Boolean(facts?.visitCounting) && (toolCategories(tracking).includes("statistics") || experiments);
-  declaredCookies(storeId === null ? "platform" : "store", tracking, { ...options, chat, modals, referrals: referral?.enabled ?? false, affiliate, recommendations, experiments, languages, touch })
+  declaredCookies(storeId === null ? "platform" : "store", tracking, { ...options, chat, modals, referrals: referral?.enabled ?? false, affiliate, recommendations, experiments, recordings, languages, touch })
     .map((cookie) => (cookie.referrals && referral ? { ...cookie, days: referral.cookieDays } : cookie))
     .map((cookie) => (cookie.affiliate && site ? { ...cookie, days: site.captureDays } : cookie))
     .forEach(list);
@@ -143,8 +151,11 @@ export async function siteCookies(
     ...toolCategories(tracking),
     ...codeCategories(code),
     ...cookies.flatMap((cookie) => (cookie.category === "necessary" ? [] : [cookie.category])),
+    ...(heatmaps ? (["statistics"] as const) : []),
   ]);
-  return { cookies, categories: OPTIONAL_CATEGORIES.filter((c) => used.has(c)) };
+  // The `heat` token makes visitors be asked again when heatmaps start, and only then: a store without them keeps its version as it was.
+  const extras: ConsentExtra[] = heatmaps ? ["heat"] : [];
+  return { cookies, categories: OPTIONAL_CATEGORIES.filter((c) => used.has(c)), extras };
 }
 
 /**

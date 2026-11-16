@@ -26,6 +26,8 @@ export function CookiePolicy({
   cookies,
   categories,
   visitCounting = false,
+  heatmaps = false,
+  recordings = false,
 }: {
   lang: string;
   cookies: ListedCookie[];
@@ -33,6 +35,9 @@ export function CookiePolicy({
   categories: OptionalCategory[];
   /** The store counts visits without cookies (D152): the page says so, plainly, though no cookie is involved. */
   visitCounting?: boolean;
+  /** The store's heatmaps and recordings are on (D656): the page says what each collects, and statistics names heatmaps. */
+  heatmaps?: boolean;
+  recordings?: boolean;
 }) {
   const m = t(lang);
   const shown = CONSENT_CATEGORIES.filter(
@@ -54,10 +59,12 @@ export function CookiePolicy({
           />
         )}
         {visitCounting && <p className="max-w-2xl">{m.visitCounting}</p>}
+        {heatmaps && <p className="max-w-2xl">{m.cookieHeatmaps}</p>}
+        {recordings && <p className="max-w-2xl">{m.cookieRecordings}</p>}
       </div>
       {shown.map((category) => {
         const list = cookies.filter((cookie) => cookie.category === category);
-        const info = m.consentCategories[category];
+        const info = heatmaps && category === "statistics" ? { ...m.consentCategories.statistics, text: m.consentStatisticsHeat } : m.consentCategories[category];
         return (
           <section key={category} aria-labelledby={`cookies-${category}`} className="flex flex-col gap-3">
             <h2 id={`cookies-${category}`} className="text-xl font-semibold">

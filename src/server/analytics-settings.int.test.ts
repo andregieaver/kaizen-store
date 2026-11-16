@@ -33,8 +33,11 @@ const {
   listTargets,
   saveAnalyticsSettings,
   saveTarget,
+  setHeatmaps,
+  setRecordings,
   setVisitCounting,
 } = await import("./analytics-settings");
+const { siteCookies } = await import("./site-cookies");
 const { getStore } = await import("./stores");
 
 const run = Date.now().toString(36);
@@ -338,5 +341,48 @@ describe("marketing spend", () => {
     expect(await deleteSpend(admin, "not-an-id")).toEqual({ ok: true, deleted: false });
     expect(await listSpend(storeId)).toHaveLength(3);
     expect((await audits("analytics.spend_delete"))[0].details).toMatchObject({ day: "2026-10-03", channel: "email", amountMinor: 9900 });
+  });
+});
+
+describe("heatmaps and recordings (D656)", () => {
+  const recordings = { enabled: true, share: 50, mask: "balanced" as const, confirmed: true };
+
+  it("switches heatmaps for the owner only, and makes the banner ask about statistics again", async () => {
+    expect(await siteCookies(storeId, {})).toMatchObject({ categories: [], extras: [] });
+    expect(await setHeatmaps(admin, true)).toEqual({ ok: false, problems: ["Only an owner can change this."] });
+    refreshed.length = 0;
+    expect(await setHeatmaps(owner, true)).toEqual({ ok: true, enabled: true });
+    expect(refreshed).toEqual(expect.arrayContaining([`store:analytics-${run}`, `cookies:${storeId}`]));
+    expect((await getStore(`analytics-${run}`))?.heatmaps).toBe(true);
+    expect(await siteCookies(storeId, {})).toMatchObject({ categories: ["statistics"], extras: ["heat"] });
+    expect(await audits("analytics.heatmaps")).toHaveLength(1);
+    await setHeatmaps(owner, false);
+    expect(await siteCookies(storeId, {})).toMatchObject({ categories: [], extras: [] });
+  });
+
+  it("refuses recordings without the confirmations, and outside Kaizena Flow's own store while they are held", async () => {
+    expect(await setRecordings(admin, recordings)).toEqual({ ok: false, problems: ["Only an owner can change this."] });
+    expect(await setRecordings(owner, { ...recordings, confirmed: false })).toEqual({ ok: false, problems: ["Confirm the three points before recordings start."] });
+    expect(await setRecordings(owner, { ...recordings, share: 30 })).toEqual({ ok: false, problems: ["Choose how many visits to record."] });
+    expect(await setRecordings(owner, recordings)).toEqual({ ok: false, problems: ["Recordings are not available yet."] });
+    // Switching them off and choosing the share needs no hold.
+    expect(await setRecordings(owner, { ...recordings, enabled: false, share: 25 })).toEqual({ ok: true, enabled: false });
+    expect((await getStore(`analytics-${run}`))?.recordingShare).toBe(25);
+  });
+
+  it("asks a purpose of its own and declares the recorder's items while a store records", async () => {
+    const house = { ...owner, store: { ...owner.store, house: true } as Store };
+    expect(await setRecordings(house, { ...recordings, mask: "strict" })).toEqual({ ok: true, enabled: true });
+    const [row] = await db().execute<Row>(sql`select recordings, recording_mask, recordings_confirmed_at from commerce.stores where id = ${storeId}::uuid`);
+    expect(row).toMatchObject({ recordings: true, recording_mask: "strict" });
+    expect(row.recordings_confirmed_at).not.toBeNull();
+    const cookies = await siteCookies(storeId, {});
+    expect(cookies.categories).toEqual(["recordings"]);
+    expect(cookies.cookies.filter((c) => c.category === "recordings").map((c) => [c.name, c.kind])).toEqual([
+      ["kaizen_replay_ids_…", "localStorage"],
+      ["kaizen_replay_…", "sessionStorage"],
+    ]);
+    await setRecordings(house, { ...recordings, enabled: false });
+    expect((await siteCookies(storeId, {})).categories).toEqual([]);
   });
 });
