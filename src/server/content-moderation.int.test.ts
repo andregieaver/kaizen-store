@@ -1,4 +1,5 @@
 import { sql } from "drizzle-orm";
+import pg from "pg";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 
 import { closeDb, db } from "@/db/client";
@@ -171,5 +172,102 @@ describe("Kaizena Flow's own check of listings (art. 7)", () => {
     await moderation.setScreening(admin, true);
     answer = () => '{"flag": false}';
     expect(await moderation.screenListings(50, { storeId: store.id })).toBe(1);
+  });
+
+  const tryOf = async (productId: string) =>
+    (await db().execute<Row>(sql`select tries, tried_at, flagged from commerce.content_screened where product_id = ${productId}::uuid`))[0];
+  const ageTry = (productId: string) =>
+    db().execute(sql`update commerce.content_screened set tried_at = now() - interval '25 hours' where product_id = ${productId}::uuid`);
+
+  it("does not ask again for a day about a listing whose answer cannot be read, and reads the others (bloat review 0.29)", async () => {
+    const odd = await product(`odd-${run}`, "Rar", "Uleselig.");
+    await product(`fine-${run}`, "Fin", "Grei.");
+    answer = (prompt) => (prompt.includes("Rar") ? "not json" : '{"flag": false}');
+    const five = { full: false };
+    expect(await moderation.screenListings(50, { storeId: store.id }, five)).toBe(1);
+    expect(await tryOf(odd)).toMatchObject({ tries: 1, flagged: false });
+    expect((await tryOf(odd)).tried_at).not.toBeNull();
+    // Asked again a day later, not on the next run.
+    let before = sent.length;
+    expect(await moderation.screenListings(50, { storeId: store.id }, five)).toBe(0);
+    expect(sent.length).toBe(before);
+    await ageTry(odd);
+    expect(await moderation.screenListings(50, { storeId: store.id }, five)).toBe(0);
+    expect(sent.length).toBe(before + 1);
+    expect((await tryOf(odd)).tries).toBe(2);
+    // A usable answer clears the try.
+    answer = () => '{"flag": false}';
+    await ageTry(odd);
+    expect(await moderation.screenListings(50, { storeId: store.id }, five)).toBe(1);
+    expect(await tryOf(odd)).toMatchObject({ tries: 0, tried_at: null });
+    // The hourly net does the same.
+    const odd2 = await product(`odd2-${run}`, "Rar to", "Uleselig igjen.");
+    answer = (prompt) => (prompt.includes("Rar to") ? "not json" : '{"flag": false}');
+    const full = { full: true };
+    expect(await moderation.screenListings(50, { storeId: store.id }, full)).toBe(0);
+    expect(await tryOf(odd2)).toMatchObject({ tries: 1 });
+    before = sent.length;
+    expect(await moderation.screenListings(50, { storeId: store.id }, full)).toBe(0);
+    expect(sent.length).toBe(before);
+    await ageTry(odd2);
+    expect(await moderation.screenListings(50, { storeId: store.id }, full)).toBe(0);
+    expect(sent.length).toBe(before + 1);
+    expect((await tryOf(odd2)).tries).toBe(2);
+  });
+
+  it("ends the run at the first provider error", async () => {
+    const ids = [await product(`err-a-${run}`, "Feil A", "a"), await product(`err-b-${run}`, "Feil B", "b"), await product(`err-c-${run}`, "Feil C", "c")];
+    const fileStub = globalThis.fetch;
+    const calls: string[] = [];
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: string | URL, init?: RequestInit) => {
+        if (!String(input).startsWith(API)) return realFetch(input, init);
+        calls.push(String(input));
+        return new Response("boom", { status: 500 });
+      }),
+    );
+    try {
+      expect(await moderation.screenListings(50, { storeId: store.id }, { full: false })).toBe(0);
+    } finally {
+      vi.stubGlobal("fetch", fileStub);
+    }
+    expect(calls).toHaveLength(1);
+    const rows = await db().execute<Row>(sql`select product_id, tries from commerce.content_screened where product_id in (${sql.join(ids.map((id) => sql`${id}::uuid`), sql`, `)})`);
+    expect(rows).toHaveLength(1);
+    expect(rows[0]).toMatchObject({ tries: 1 });
+    answer = () => '{"flag": false}';
+    expect(await moderation.screenListings(50, { storeId: store.id }, { full: false })).toBe(2);
+  });
+
+  it("reads no AI connection when there is nothing to check", async () => {
+    answer = () => '{"flag": false}';
+    // Every product of the store is read (the one the provider refused waits a day).
+    await db().execute(sql`update commerce.content_screened set tried_at = null, tries = 0 where store_id = ${store.id}::uuid`);
+    while ((await moderation.screenListings(50, { storeId: store.id }, { full: false })) > 0);
+    const spy = vi.spyOn(pg.Client.prototype, "query");
+    let texts: string[];
+    try {
+      expect(await moderation.screenListings(50, { storeId: store.id }, { full: false })).toBe(0);
+      texts = spy.mock.calls.map((c) => String(typeof c[0] === "string" ? c[0] : (c[0] as { text?: string })?.text ?? ""));
+    } finally {
+      spy.mockRestore();
+    }
+    expect(texts.length).toBeLessThanOrEqual(2);
+    expect(texts.filter((t) => t.includes("commerce.ai_providers"))).toEqual([]);
+  });
+
+  it("does not ask again when only another language's words changed", async () => {
+    const id = await product(`lang-${run}`, "Språk", "Ett språk.");
+    answer = () => '{"flag": false}';
+    expect(await moderation.screenListings(50, { storeId: store.id }, { full: false })).toBe(1);
+    const [first] = await db().execute<Row>(sql`select locale from commerce.product_translations where product_id = ${id}::uuid order by locale limit 1`);
+    expect(String(first.locale) < "sv-SE").toBe(true);
+    await db().execute(sql`
+      insert into commerce.product_translations (store_id, product_id, locale, title, description) values (${store.id}::uuid, ${id}::uuid, 'sv-SE', 'Språk', 'Ett annat språk.')
+    `);
+    const before = sent.length;
+    expect(await moderation.screenListings(50, { storeId: store.id }, { full: false })).toBe(0);
+    expect(sent.length).toBe(before);
   });
 });

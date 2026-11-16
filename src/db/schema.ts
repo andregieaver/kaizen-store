@@ -18511,6 +18511,7 @@ export const contentReports = commerce.table(
 /**
  * The listings Kaizena Flow's own check has read (D411 part 2, DSA art. 7: voluntary, never a general monitoring duty, art. 8): one row
  * per product with the hash of the words it read, so a product is read again only when its words change, never on a price or stock change.
+ * A try that gave no reading is kept too (tries, tried_at), with the hash, so it waits a day.
  */
 export const contentScreened = commerce.table(
   "content_screened",
@@ -18524,6 +18525,10 @@ export const contentScreened = commerce.table(
     contentHash: text("content_hash").notNull(),
     flagged: boolean("flagged").notNull().default(false),
     screenedAt: timestamp("screened_at", { withTimezone: true }).notNull().defaultNow(),
+    /** How many times in a row the model's answer for this wording could not be used (a provider error or an unreadable answer); 0 after a reading. */
+    tries: integer("tries").notNull().default(0),
+    /** When it was last tried without a reading; such a listing is asked again a day later, not on the next run (bloat review step 0.29). Null after a reading. */
+    triedAt: timestamp("tried_at", { withTimezone: true }),
   },
   (t) => [index("content_screened_store_idx").on(t.storeId)],
 );
