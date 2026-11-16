@@ -301,7 +301,7 @@ describe("the AI manager's A/B test tools (D148)", () => {
     const start = await keptAndApproved("start_experiment", { experiment: made.id });
     await assistant.decideApproval(member, start.queued.id, true, () => {});
     expect((await admin.getExperiment(member.store.id, made.id))!.status).toBe("running");
-    // What it taught (D672): a claim is refused before the yes; one plain line is in the yes and kept with the decision.
+    // What it taught (D673): a claim is refused before the yes; one plain line is in the yes and kept with the decision.
     await expect(ownerTools.preflightOwnerTool(ctx(), "apply_winner", { experiment: "Ny knapp", version: "original", learning: "The best price always wins" })).rejects.toThrow(/cannot stand behind/);
     const { queued } = await keptAndApproved("apply_winner", { experiment: "Ny knapp", version: "original", learning: "The calm text did not move orders" });
     expect(queued.summary).toContain("Stop the test, then end the A/B test");

@@ -267,7 +267,7 @@ CLAUDE.md keeps one line per rule pointing here; each rule is under that line as
 
 ## The installable admin and push (wave 9 unit H, D361, `src/lib/admin-sw.ts`, `src/lib/push.ts`, `src/server/push.ts`)
 
-- **The installable admin and push (wave 9 unit H, D361, `src/lib/admin-sw.ts`, `src/lib/push.ts`, `src/server/push.ts`)**: the service worker is
+- **The installable admin and push (wave 9 unit H, D361, `src/lib/admin-sw.ts`, `src/lib/push.ts`, `src/server/push.ts`)**: the service worker is Since D672 `sendPlatformPush()` pages the platform admins: each endpoint any of them turned on once, whichever store it was for, urgency high, only for what must reach a person at once (a challenge store's stall, with the day's first email in `sendChallengeStallAlerts()`); the outside heartbeat `/api/health/cron` answers 503 when a scheduled route is late (`cronHeartbeat()`), counts only.
   only `adminServiceWorker()` at `/admin/sw.js` (scoped to `/admin/`): it caches the offline page and the icon only, never a signed-in page or
   data, and opens only admin addresses on its own site. A device's push subscription is written only by `src/server/push.ts`, for a member with
   `orders:read`, on a push service's host (`isPushEndpoint()`; the server POSTs there); a push carries no customer's data. A new notification

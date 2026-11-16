@@ -43,3 +43,24 @@ export function jobsNeedingLook(rows: readonly CronJobRow[], now: Date = new Dat
       a.health !== b.health ? (a.health === "failing" ? -1 : 1) : (a.lastFinishedAt ?? "").localeCompare(b.lastFinishedAt ?? ""),
     );
 }
+
+/** What the outside heartbeat answers (F3, D672): whether the scheduler is alive, and how many jobs are late or failing. Counts only. */
+export type CronHeartbeat = { ok: boolean; routes: number; lateRoutes: number; lateJobs: number; failingJobs: number };
+
+/**
+ * The scheduler is alive while every scheduled route (`route.*`, what the scheduler calls) has finished a run within its allowance: a route
+ * gone quiet means nothing is calling the jobs. A dispatcher job that is late or failing is counted but does not stop the beat: it has its
+ * own email (`FAILING_AFTER`), and the scheduler that runs it is fine. No route kept at all is not alive either.
+ */
+export function cronHeartbeat(rows: readonly CronJobRow[], now: Date = new Date()): CronHeartbeat {
+  const routes = rows.filter((r) => r.job.startsWith("route."));
+  const health = rows.map((r) => ({ route: r.job.startsWith("route."), health: cronHealth(r, now) }));
+  const lateRoutes = health.filter((h) => h.route && h.health === "late").length;
+  return {
+    ok: routes.length > 0 && lateRoutes === 0,
+    routes: routes.length,
+    lateRoutes,
+    lateJobs: health.filter((h) => !h.route && h.health === "late").length,
+    failingJobs: health.filter((h) => h.health === "failing").length,
+  };
+}

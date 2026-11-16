@@ -468,7 +468,7 @@ notice kind).
   first, and waits for the owner's yes where they keep it), nothing on no clear difference; the same tools as `test_ended`. Its kind is added to
   `autopilot_events_kind` (migration `20261116110513_marvelous_warhawk`). The event's lines are not part of any eval fingerprint, so no new
   recording is needed for it.
-- **Step 3b, part 2 (D672):** `apply_winner` takes an optional `learning`, one sentence (3 to 280 characters) on what the test taught,
+- **Step 3b, part 2 (D673):** `apply_winner` takes an optional `learning`, one sentence (3 to 280 characters) on what the test taught,
   kept with the test through `saveLearning()` after the owner's yes, as the learning card on the test's page keeps it. The approval says it
   (*And keep what it taught: "…"*), the preflight refuses a learning with a claim the store's facts do not hold, and the skill's Deciding
   step asks for one. A separate `record_learning` tool was tried and dropped: the marketing and website tools together are at the 128

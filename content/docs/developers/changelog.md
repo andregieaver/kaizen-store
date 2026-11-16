@@ -9,7 +9,7 @@ features: []
 plans: []
 order: 1000
 checked: 2026-11-16
-sources: [D357, D438, D439, D440, D441, D458, D464, D511, D512, D585, D599, D606, D618, D621, D632, D635, D640, D653, D672]
+sources: [D357, D438, D439, D440, D441, D458, D464, D511, D512, D585, D599, D606, D618, D621, D632, D635, D640, D653, D673]
 ---
 
 Every change to a published contract gets a version here, newest first: the Admin API (`/api/admin/v1/openapi.json`), the storefront API
@@ -18,7 +18,7 @@ Every change to a published contract gets a version here, newest first: the Admi
 
 ## 1.28 — 2026-11-16
 
-An addition to the owner MCP's catalogue for A/B tests (D672).
+An addition to the owner MCP's catalogue for A/B tests (D673).
 
 - `apply_winner`: takes an optional `learning` (3 to 280 characters): one sentence on what the test taught, in the owner's words, kept
   with the test and shown on its page and in the list of what the store's tests taught. Its other fields and answer are as before; the

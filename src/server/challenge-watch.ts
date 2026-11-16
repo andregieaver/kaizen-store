@@ -14,11 +14,13 @@ import { siteUrl } from "@/lib/site";
 import { aiBudgetProblem, autonomyFor } from "./autopilot-settings";
 import { sendEmail } from "./email";
 import { log } from "./log";
+import { sendPlatformPush } from "./push";
 import { col, typedRows } from "./typed-rows";
 
 /**
  * The stall watch (`docs/100-day-challenge.md` A6): every challenge store's stalls (`STALL_KINDS`), found in SQL, and each told to the platform
- * team by email at once, once a day while it lasts (`stallKey()`). The dispatcher's job `challengeStalls`. Never throws.
+ * team by email at once, once a day while it lasts (`stallKey()`), and since F3 (D672) paged to their phones too, once with the day's first
+ * email. The dispatcher's job `challengeStalls`. Never throws.
  */
 
 const STORE = z.object({ id: col.uuid, slug: col.text, name: col.text, challenge: z.unknown(), paused: col.bool });
@@ -89,6 +91,8 @@ export async function sendChallengeStallAlerts(now: Date = new Date()): Promise<
     );
     const day = utcDay(now);
     for (const stall of stalls) {
+      // The day's first telling of this stall (an email not sent before under its key) also rings the team's phones (F3, D672).
+      let fresh = false;
       for (const admin of admins) {
         const lang = adminLangOf(admin.admin_locale);
         const words = STAFF_EMAILS_WORDS[lang];
@@ -116,6 +120,19 @@ export async function sendChallengeStallAlerts(now: Date = new Date()): Promise<
           idempotencyKey: `${stallKey(stall, day)}:${admin.id}`,
         });
         if (outcome === "sent" || outcome === "logged") sent++;
+        if (outcome !== "duplicate") fresh = true;
+      }
+      if (fresh) {
+        await sendPlatformPush((lang) => {
+          const w = STAFF_EMAILS_WORDS[lang];
+          const values = { store: stall.storeName, count: String(stall.count) };
+          return {
+            title: fillWords(w.push.stallTitle, values),
+            body: fillWords(w.challengeStall.kinds[stall.kind], values),
+            url: `${siteUrl()}/admin/${stall.storeSlug}/assistant/autopilot`,
+            tag: `stall-${stallKey(stall, day)}`.slice(0, 64),
+          };
+        }, `stall${stall.kind.replaceAll("_", "")}`.slice(0, 32));
       }
     }
   } catch (error) {

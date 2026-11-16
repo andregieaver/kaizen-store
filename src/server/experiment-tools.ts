@@ -437,7 +437,7 @@ export async function applyWinnerTool(ctx: Ctx, { experiment, version, learning 
   }
   const result = version === "original" ? await discardExperiment(account, store.id, test.id) : await applyVariant(account, store.id, test.id, version);
   if (!result.ok) return fail(result.problems.join(" "));
-  // What it taught (D672), kept with the decision in the same yes, as the admin's decide dialog keeps it.
+  // What it taught (D673), kept with the decision in the same yes, as the admin's decide dialog keeps it.
   const kept = learning ? await saveLearning(account, store.id, test.id, learning) : null;
   return {
     done: version === "original" ? `The A/B test "${test.name}" is over and the original stays.` : `Version ${version.toUpperCase()} is now ${test.part ? test.part.label : "the page"} (${targetLabel(test.page.kind, test.page.slug, test.page.title, test.page.role)}). The test is over.`,
