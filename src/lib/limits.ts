@@ -22,6 +22,8 @@ export const LIMITS = {
   ai_cost_month_micros: { metric: "ai_cost_micros", period: "month", enforce: "hard", scope: "store" },
   requests_month: { metric: "requests", period: "month", enforce: "soft", scope: "store" },
   egress_bytes_month: { metric: "egress_bytes", period: "month", enforce: "soft", scope: "store" },
+  /** Recordings of visits started this month (D656): past it the store stops recording, silently. */
+  recordings_month: { metric: "recordings", period: "month", enforce: "hard", scope: "store" },
   /** How many stores an owner may have; counted live, never metered. */
   stores_owned: { metric: null, period: "now", enforce: "hard", scope: "owner" },
 } as const satisfies Record<string, LimitDef>;

@@ -111,3 +111,25 @@ describe("owner limits", () => {
     expect(await limits.checkOwnerStores(store.owner)).toEqual({ ok: false, key: "stores_owned", limit: 1, used: 1 });
   });
 });
+
+describe("recordings of visits (D656)", () => {
+  it("counts the month's recordings live and refuses one past the limit", async () => {
+    limits.forgetLimitMemos();
+    const started = new Date();
+    for (let i = 0; i < 3; i++) {
+      await db().execute(sql`
+        insert into commerce.recordings (id, store_id, day, started_at, last_at, device, entry_page, mask)
+        values (gen_random_uuid(), ${store.id}::uuid, ${started.toISOString().slice(0, 10)}::date, ${started.toISOString()}::timestamptz, ${started.toISOString()}::timestamptz, 'mobile', '/no', 'balanced')`);
+    }
+    try {
+      const later = new Date(started.getTime() + 1000);
+      expect(await limits.usageNow(store.id, "recordings_month", later)).toBe(3);
+      await db().execute(sql`insert into commerce.limit_overrides (store_id, key, value, reason) values (${store.id}::uuid, 'recordings_month', 3, 'Test')`);
+      limits.forgetLimitMemos();
+      expect(await limits.checkLimit(store.id, "recordings_month", 1, later)).toMatchObject({ ok: false, key: "recordings_month", limit: 3, used: 3 });
+    } finally {
+      await db().execute(sql`delete from commerce.recordings where store_id = ${store.id}::uuid`);
+      await db().execute(sql`delete from commerce.limit_overrides where store_id = ${store.id}::uuid`);
+    }
+  });
+});

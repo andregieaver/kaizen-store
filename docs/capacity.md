@@ -49,6 +49,21 @@ These are decisions made while building. Where this file and the code disagree b
 - **The read replica (3.4)** is used by the analytics pages' data modules through `setBasedReplica()`; `replica-readers.scan.test.ts`
   lists them. Tax reports, inventory and `setBasedSnapshot()` stay on the primary.
 
+### Recordings of visits and heatmaps (D656, 16 November 2026)
+
+A metric and a limit of their own (`docs/heatmaps-and-recordings.md` 6.4 and 10): `recordings` counts the recordings a store started in a
+day, and `recordings_month` is a hard limit (past it the store stops recording, silently), seeded with the proposal Basic 1,000, Grow 5,000,
+Advanced 20,000, Plus 50,000; the house store, templates and starters are exempt. It is counted live from the month's start
+(`recordings_store_started_idx`), never through `measuredPlusLive()`. A day's backstop is `RECORDINGS_PER_STORE_DAY = 2_000` new
+recordings (`chat_usage` bucket `recordings`), and heat summaries `HEAT_BEACONS_PER_STORE_DAY = 50_000` (bucket `heat`). Request budgets:
+`rec` (20 a minute per visitor, 2,000 per store, fail closed) and `forget` (10 and 600). Recordings do not count toward `storage_bytes`.
+
+What it costs at 100,000 recordings a month of about 400 KB each: Vercel about 1 million segment calls (roughly $6); Supabase Storage about
+40 GB, inside Pro's 100 GB at 30 days' retention; Postgres, once recordings are sealed (step 10), one Storage object row (about 2.8 KB) and
+one `recordings` row (about 0.5 KB) each, about 330 MB at 100,000 kept for 30 days, against a 179 MB database on 16 November 2026, so the
+plan values are the real brake. Heat totals are about 250 bytes a row: a store with 200 pages viewed every day on three devices adds about
+60 MB a year.
+
 ### Waiting on the owner
 
 1. ~~The numbers per plan~~: decided 2026-10-23 (section 9, question 1), seeded by migration `20261023122903_capacity_plan_limits`.

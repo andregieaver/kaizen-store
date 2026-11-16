@@ -1965,6 +1965,12 @@ spec measures the test store's real front page for the picture's layout; with `H
 
 **Done when:** the tests pass, CI applies the migration, the advisors are clean, and the versions are recorded.
 
+*As built (16 Nov 2026):* the pure numbers and paths are in `src/lib/recording.ts` (`pathsOf()`, `segmentPath()`, `coarseTime()`,
+`coarseSize()`, `appendPages()`; `recorderOptions()` and `sessionFor()` come with the recorder in step 9). `deleteRecording()`,
+`recordingsOpenNow()` and `setRecordingsOpen()` are in `src/server/recordings-admin.ts`, apart from the ingest, so the beacon route loads
+no sign-in module. The platform switch is a card on Usage and limits (`#recordings`). The privacy register's purpose `recordings` rests on
+consent, so `personal-purposes.test.ts` now names two consent purposes, marketing and recordings.
+
 ### Step 9: The recorder in the storefront
 
 **Files:**

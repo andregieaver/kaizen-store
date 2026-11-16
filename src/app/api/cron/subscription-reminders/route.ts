@@ -1,4 +1,5 @@
 import { pruneMapShots } from "@/server/map-shots";
+import { pruneRecordings } from "@/server/recordings";
 import { pruneHeat } from "@/server/page-heat";
 import { pruneAdSignals } from "@/server/ad-conversions";
 import { prunePlatformAdSignals } from "@/server/platform-ad-conversions";
@@ -104,6 +105,8 @@ async function run(request: Request) {
     heat: await tracked("daily.heat", 86400, () => pruneHeat()),
     // Heatmaps' pictures nobody asked for in 90 days, rows and files (D656).
     mapShots: await tracked("daily.map-shots", 86400, () => pruneMapShots()),
+    // Recordings of visits after 30 days, with their files, every store's (D656); a minute at most, the rest the next day.
+    recordings: await tracked("daily.recordings", 86400, () => pruneRecordings(new Date(), Date.now() + 60_000)),
   };
   // Production's own statistics, one reading a day, kept 90 days (bloat review step 0.2). Its own job, so a failed reading shows on the platform home and the rest of the route goes on.
   const productionReading = await tracked("daily.production-reading", 86400, async () => ({ ...(await recordProductionReading()), pruned: await pruneProductionReadings() }));

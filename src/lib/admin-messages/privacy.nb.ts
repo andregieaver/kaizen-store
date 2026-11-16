@@ -348,6 +348,7 @@ export const privacyNb: PrivacyMessages = {
       content_report_senders: "Avsendere av meldinger om ulovlig innhold",
       carrier_labels: "Fraktetiketter tatt vare på fra et fraktselskap",
       sandboxes: "Sandkassene i sidebyggeren",
+      recordings: "Opptak av besøk",
     },
     bases: {
       read: "Lest i kilden",

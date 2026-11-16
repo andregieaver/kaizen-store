@@ -368,6 +368,14 @@ describe("heatmaps and recordings (D656)", () => {
     // Switching them off and choosing the share needs no hold.
     expect(await setRecordings(owner, { ...recordings, enabled: false, share: 25 })).toEqual({ ok: true, enabled: false });
     expect((await getStore(`analytics-${run}`))?.recordingShare).toBe(25);
+    // Once the platform opens recordings to every store (D656 step 8), an owner may switch them on.
+    await db().execute(sql`update commerce.platform_settings set recordings_open = true`);
+    try {
+      expect(await setRecordings(owner, recordings)).toEqual({ ok: true, enabled: true });
+      await setRecordings(owner, { ...recordings, enabled: false });
+    } finally {
+      await db().execute(sql`update commerce.platform_settings set recordings_open = false`);
+    }
   });
 
   it("asks a purpose of its own and declares the recorder's items while a store records", async () => {

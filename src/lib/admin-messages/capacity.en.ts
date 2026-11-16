@@ -17,6 +17,7 @@ export const capacityEn = {
     emails: "Emails",
     marketing_emails: "Marketing emails",
     ai_cost_micros: "AI",
+    recordings: "Recordings of visits",
   },
   limits: {
     storage_bytes: "Storage",
@@ -27,6 +28,7 @@ export const capacityEn = {
     ai_cost_month_micros: "AI on Kaizena Flow a month",
     requests_month: "Visits a month",
     egress_bytes_month: "Bandwidth a month",
+    recordings_month: "Recordings of visits a month",
     stores_owned: "Stores per owner",
   },
   units: { gb: "GB", count: "", money: "EUR" },
@@ -56,6 +58,7 @@ export const capacityEn = {
     ai_cost_month_micros: "This store has used the AI its plan includes this month.",
     requests_month: "",
     egress_bytes_month: "",
+    recordings_month: "This store has recorded the {limit} visits its plan includes this month. Recording starts again next month, or choose a plan with more.",
     stores_owned: "Your plan allows {limit} stores. Choose a plan with more to add another.",
   },
   owner: {
@@ -78,6 +81,17 @@ export const capacityEn = {
     connections: "{n} active connections",
     size: "{size} in all",
     drainOff: "The log drain is not connected, so visits are not measured.",
+  },
+  recordings: {
+    title: "Recordings of visits",
+    description: "Whether every store may record visits. While closed, only Kaizena Flow's own store records; each store's owner still switches them on for their store, and its plan's monthly limit applies.",
+    open: "Open to every store",
+    closed: "Kaizena Flow's own store only",
+    openIt: "Open to every store",
+    closeIt: "Close to other stores",
+    opened: "Recordings are open to every store.",
+    closedNow: "Recordings are closed to every store but Kaizena Flow's own.",
+    choose: "Choose open or closed.",
   },
   editor: {
     title: "Limits",

@@ -11,7 +11,7 @@ import { monthFigure, monthOf, utcDay, type UsageMetric } from "@/lib/usage-metr
 
 import { col, typedRow } from "./typed-rows";
 import { dayBounds } from "./usage-meter";
-import { aiCostSql, domainsSql, emailsSql, productsSql, staffSql } from "./usage-sql";
+import { aiCostSql, domainsSql, emailsSql, productsSql, recordingsSql, staffSql } from "./usage-sql";
 
 /**
  * A store's and an owner's limits (D314, `docs/capacity.md` 4, steps 2.3 and 2.4): the store's override that has not ended, else its
@@ -186,6 +186,9 @@ async function liveValue(storeId: string, metric: UsageMetric, now: Date): Promi
       return measuredPlusLive(storeId, "marketing_emails", now, (from) => first(emailsSql(from, now, true, storeId)));
     case "emails":
       return first(emailsSql(month, now, false, storeId));
+    case "recordings":
+      // Counted live from the month's start (recordings_store_started_idx), never through measuredPlusLive(): its days would count twice.
+      return first(recordingsSql(month, now, storeId));
     case "ai_cost_micros": {
       const memo = aiMemo.get(storeId);
       if (memo && now.getTime() - memo.at < 60_000) return memo.value;

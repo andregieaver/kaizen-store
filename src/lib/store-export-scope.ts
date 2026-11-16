@@ -145,6 +145,7 @@ export const STORE_EXPORT_LEFT_OUT: Readonly<Record<string, LeftOutReason>> = {
   page_heat_days: "record",
   click_cells: "record",
   page_map_shots: "record",
+  recordings: "record",
   speed_samples: "record",
   staff_alert_recipients: "people",
   stock_alerts: "catalogue",

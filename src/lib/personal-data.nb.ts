@@ -4,6 +4,8 @@
 const LAW = "beholdes fordi bokføringsreglene krever det til oppbevaringstiden er ute, og deretter erstattes feltene med personopplysninger med en markør; brukes ikke til noe annet.";
 const OWN = "Ikke en kundes opplysninger: dette er butikkens egne, en verts, en ansatts eller plattformens, som er en annen registrert (docs/wave-1g-gdpr.md avsnitt 7).";
 const PSEUDO = "Lagres under en tilfeldig ID for nettleseren eller fanen og kan ikke knyttes til en person; har sin egen oppbevaringstid.";
+const RECORDING =
+  "Et opptak av et besøk i én nettleserfane, under en tilfeldig ID med grove tidspunkter. Det inneholder ikke navn eller kontaktopplysninger, men kan knyttes til en person ut fra sammenhengen, og er derfor personopplysninger; det kan ikke finnes ut fra en person (personvernforordningen art. 11) og slettes etter 30 dager, eller med en gang av den besøkendes nettleser.";
 const KEEP_ORDER = "Ingen egne felt med personopplysninger; knyttes til en person bare gjennom bestillingen, og følger bestillingens begrensning og anonymisering.";
 const WORK = "Eierens eget regnskap (D122). ";
 
@@ -180,6 +182,8 @@ export const PERSONAL_DATA_REASONS_NB: Readonly<Record<string, string>> = {
   form_submissions: "Påmeldinger og meldinger sendt fra denne adressen slettes.",
   consents: "Samtykke til informasjonskapsler lagres under en tilfeldig nettleser-ID og kan ikke knyttes til en person; dette står i filens notIncluded.",
   visits: PSEUDO,
+  recordings: RECORDING,
+  "storage:recordings": RECORDING,
   product_views: "Antall visninger per produkt og dag; ingen person.",
   experiment_exposures: PSEUDO,
   experiment_events: PSEUDO,

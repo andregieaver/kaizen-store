@@ -32,6 +32,13 @@ export const domainsSql = (storeId?: string) => sql`
   where true ${only(sql`d.store_id`, storeId)}
   group by d.store_id`;
 
+/** Recordings of visits started in a time span (D656), by their coarse start. */
+export const recordingsSql = (from: Date, to: Date, storeId?: string) => sql`
+  select r.store_id, count(*)::bigint as value from commerce.recordings r
+  where r.started_at >= ${from.toISOString()}::timestamptz and r.started_at < ${to.toISOString()}::timestamptz
+    ${only(sql`r.store_id`, storeId)}
+  group by r.store_id`;
+
 /** Emails of a time span. Rows only logged (no email service) or failed never reached anyone and are not counted. */
 export const emailsSql = (from: Date, to: Date, marketing: boolean, storeId?: string) => sql`
   select e.store_id, count(*)::bigint as value from commerce.email_messages e
