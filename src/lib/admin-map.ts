@@ -804,7 +804,7 @@ const PAGES: readonly AdminPage[] = [
   store("analytics.subscriptions", "/analytics/subscriptions", "Subscription analytics", "Analytics", "Monthly recurring revenue and how it moves, churn, failed renewals and subscribers.", {
     keywords: ["mrr", "arr", "churn", "recurring"], feature: "subscriptions" }),
   store("analytics.traffic", "/analytics/traffic", "Traffic analytics", "Analytics", "Visits, the funnel from visit to purchase, devices, countries and cities, searches that found nothing, sales by weekday and hour, and at the bottom refunds and returns (return rate, reasons, most returned products, how fast refunds are made).", {
-    keywords: ["visitors", "sessions", "funnel", "device", "mobile", "geography", "search", "heatmap", "refunds", "return rate", "returns analytics", "return reasons"],
+    keywords: ["visitors", "sessions", "funnel", "device", "mobile", "geography", "search", "busiest hours", "refunds", "return rate", "returns analytics", "return reasons"],
   }),
   store("analytics.reports", "/analytics/reports", "Reports", "Analytics", "Reports an owner builds and saves from a fixed list of figures (revenue, gross sales, discounts, refunds, orders, units sold, average order value, customers, gross profit, VAT) cut by day, week, month or quarter, product, variant and SKU, category, tag, kind of product, country, currency, channel, device, discount code, payment method or new and returning customers, with filters, a comparison, a chart and a CSV; ten ready reports to start from.", {
     keywords: ["report", "custom report", "report builder", "saved report", "sales by product", "sales by variant", "sku", "sales by category", "sales by country", "sales by currency", "payment method", "shopifyql", "export"],
@@ -820,6 +820,10 @@ const PAGES: readonly AdminPage[] = [
   store("analytics.speed", "/analytics/speed", "Speed", "Analytics", "How fast the store's pages load for its visitors, measured in their browsers while visits are counted: Largest Contentful Paint, Interaction to Next Paint, Cumulative Layout Shift and Time to First Byte at the 75th percentile over 28 days, for the front page, product, category, list and other pages on phones and computers, rated as Google does, with what to fix and what cannot be measured.", {
     keywords: ["speed", "performance", "page speed", "core web vitals", "lcp", "inp", "cls", "ttfb", "slow", "lighthouse", "pagespeed"],
     tasks: ["See how fast the store's pages load", "Find out why a page is slow"],
+  }),
+  store("analytics.heatmaps", "/analytics/heatmaps", "Heatmaps", "Analytics", "Where visitors click, how far down they scroll and how long each part of a page is on screen, per page and device, from visitors who allowed statistics while heatmaps are on: the pages where visitors get stuck (dead and rage clicks), the most viewed pages, and each page's map drawn over a picture of it.", {
+    keywords: ["heatmap", "click map", "scroll map", "attention", "rage clicks", "dead clicks"],
+    tasks: ["See where visitors get stuck", "See how far down a page visitors scroll"],
   }),
   store("analytics.settings", "/analytics/settings", "Analytics settings", "Analytics", "Cost of goods, payment fee and shipping cost estimates, fixed costs, customer lifetime, monthly revenue targets, and whether visits are counted.", {
     needs: "owner",
@@ -1529,6 +1533,8 @@ export function matchPath(pathname: string): { page: AdminPage; params: Record<s
  * recorded again on Platform → AI. Empty but for that.
  */
 const NOT_YET_IN_PROMPT: ReadonlySet<string> = new Set([
+  // Heatmaps (D656) enter the AI manager's prompt with the next recorded eval run.
+  "store:analytics.heatmaps",
   "store:text-messages",
   "store:text-message.new",
 ]);

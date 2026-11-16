@@ -504,6 +504,10 @@ export const PAGES_NB: Record<string, { title: string; keywords: string[] }> = {
     title: "Hastighet",
     keywords: ["hastighet", "fart", "ytelse", "sidehastighet", "core web vitals", "treg", "lastetid"],
   },
+  "store:analytics.heatmaps": {
+    title: "Varmekart",
+    keywords: ["varmekart", "klikkart", "rullekart", "oppmerksomhet", "sinte klikk", "døde klikk"],
+  },
   "store:analytics.settings": {
     title: "Innstillinger for analyse",
     keywords: ["analyseinnstillinger", "varekost", "kostnader", "gebyrer", "mål", "besøkstelling"],

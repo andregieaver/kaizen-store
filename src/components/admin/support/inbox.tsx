@@ -80,7 +80,35 @@ export function Inbox({
   const [customerTyping, setCustomerTyping] = useState(false);
   const typingTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   // Sound and browser notifications, once the person turned them on (2.9): the browser asks first.
-  const [alerts, setAlerts] = useState(false);
+  // Kept in this browser (a per-person convenience, like the browser's own permission): a reload keeps the choice. The sound itself
+  // waits for the first press on the page, as browsers allow no sound before it.
+  const [alerts, setAlertsState] = useState(false);
+  const setAlerts = (on: boolean) => {
+    setAlertsState(on);
+    try {
+      window.localStorage.setItem(ALERTS_KEY, on ? "on" : "off");
+    } catch {
+      // Private windows and blocked storage: the choice lasts this visit only.
+    }
+  };
+  useEffect(() => {
+    let remembered: string | null = null;
+    try {
+      remembered = window.localStorage.getItem(ALERTS_KEY);
+    } catch {
+      remembered = null;
+    }
+    if (remembered !== "on") return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- read once from the browser after hydration, so the server's page matches
+    setAlertsState(true);
+    const unlock = () => unlockSound();
+    window.addEventListener("pointerdown", unlock, { once: true });
+    window.addEventListener("keydown", unlock, { once: true });
+    return () => {
+      window.removeEventListener("pointerdown", unlock);
+      window.removeEventListener("keydown", unlock);
+    };
+  }, []);
   const seen = useRef({
     waiting: initial.waiting,
     mineUnread: initial.mineUnread,
@@ -418,7 +446,7 @@ export function Inbox({
             <div
               role="tablist"
               aria-label={w.whichConversations}
-              className="flex min-w-0 flex-1 flex-wrap gap-1"
+              className="flex min-w-0 flex-1 gap-1 overflow-x-auto [scrollbar-width:none]"
             >
               {(Object.keys(TAB_WORDS) as InboxTab[]).map((key) => (
                 <button
@@ -631,15 +659,38 @@ export function Inbox({
   );
 }
 
+/** Where this browser keeps whether the person turned alerts on. */
+const ALERTS_KEY = "kaizen.support.alerts";
+
+/** One sound engine for the page, made at the first press (browsers allow no sound before one) and used for every tone after. */
+let soundEngine: AudioContext | null = null;
+
+function engine(): AudioContext | null {
+  if (soundEngine) return soundEngine;
+  const AudioContextClass =
+    window.AudioContext ??
+    (window as unknown as { webkitAudioContext?: typeof AudioContext })
+      .webkitAudioContext;
+  if (!AudioContextClass) return null;
+  soundEngine = new AudioContextClass();
+  return soundEngine;
+}
+
+/** Lets the page make sound from now on: called from a press, where browsers allow it. */
+function unlockSound() {
+  try {
+    void engine()?.resume();
+  } catch {
+    // No sound where the browser allows none.
+  }
+}
+
 /** A short tone, made in the browser (no file to load). */
 function chime() {
   try {
-    const AudioContextClass =
-      window.AudioContext ??
-      (window as unknown as { webkitAudioContext?: typeof AudioContext })
-        .webkitAudioContext;
-    if (!AudioContextClass) return;
-    const audio = new AudioContextClass();
+    const audio = engine();
+    if (!audio) return;
+    if (audio.state === "suspended") void audio.resume();
     const tone = audio.createOscillator();
     const gain = audio.createGain();
     tone.frequency.value = 880;
@@ -649,7 +700,6 @@ function chime() {
     tone.connect(gain).connect(audio.destination);
     tone.start();
     tone.stop(audio.currentTime + 0.45);
-    tone.onended = () => void audio.close();
   } catch {
     // No sound where the browser allows none.
   }

@@ -52,7 +52,8 @@ export async function workAttention(
              coalesce((select sum(p.amount_minor) from commerce.work_invoice_payments p
                         where p.store_id = i.store_id and p.invoice_id = i.id), 0)::bigint as paid_minor,
              coalesce((select sum(c.total_minor) from commerce.work_credit_notes c
-                        where c.store_id = i.store_id and c.invoice_id = i.id), 0)::bigint as credited_minor
+                        where c.store_id = i.store_id and c.invoice_id = i.id), 0)::bigint as credited_minor,
+             commerce.work_invoice_lost(i.store_id, i.id) as lost_minor
       from commerce.work_invoices i
       join commerce.stores s on s.id = i.store_id
       where i.store_id in (${idList(ids)})
@@ -89,6 +90,7 @@ export async function workAttention(
     totalMinor: Number(r.total_minor),
     paidMinor: Number(r.paid_minor),
     creditedMinor: Number(r.credited_minor),
+    lostMinor: Number(r.lost_minor),
     dueOn: r.due_on ? String(r.due_on) : null,
     paidOn: r.paid_on ? String(r.paid_on) : null,
     updatedOn: String(r.updated_on),
