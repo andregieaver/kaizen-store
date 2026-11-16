@@ -393,6 +393,8 @@ export type ExportInput = {
   automations?: { automation: string; sentAt: string | null }[];
   /** The person's back-in-stock requests (D298): the product, the status and when; absent is none. */
   stockRequests?: { product: string; status: string; askedAt: string | null; notifiedAt: string | null }[];
+  /** Products the person looked at while signed in, for the browse email (D691), with when. */
+  productViews?: { product: string; viewedAt: string }[];
   /** The person's numbers for marketing texts (D565): the number, its consent and history, and the texts sent to it; absent is none. */
   smsNumbers?: { phone: string; status: string; source: string; consentText: string; consentedAt: string; unsubscribedAt: string | null; unsubscribeSource: string | null; history: { kind: string; source: string; consentText: string | null; at: string }[]; texts: { text: string; sentAt: string | null }[] }[];
 };
@@ -777,7 +779,7 @@ export function countsOf(input: ExportInput): ExportCounts {
     support: (input.support ?? []).length,
     reviews: (input.reviews ?? []).length,
     comments: (input.comments ?? []).length,
-    marketing: (input.marketing ?? []).length + ((input.customerTags ?? []).length > 0 ? 1 : 0) + (input.customerNotes ?? []).length + (input.customerDeals ?? []).length + (input.customerActivities ?? []).length + (input.broadcasts ?? []).length + (input.automations ?? []).length + (input.stockRequests ?? []).length + (input.signupCodes ?? []).length + (input.smsNumbers ?? []).length,
+    marketing: (input.marketing ?? []).length + ((input.customerTags ?? []).length > 0 ? 1 : 0) + (input.customerNotes ?? []).length + (input.customerDeals ?? []).length + (input.customerActivities ?? []).length + (input.broadcasts ?? []).length + (input.automations ?? []).length + (input.stockRequests ?? []).length + (input.productViews ?? []).length + (input.signupCodes ?? []).length + (input.smsNumbers ?? []).length,
   };
 }
 
@@ -885,6 +887,7 @@ export function shapeExport(input: ExportInput): ExportFile {
       ...(input.automations ?? []).map((a) => ({ kind: "automation", automation: a.automation, sentAt: a.sentAt })),
       ...(input.signupCodes ?? []).map((c) => ({ kind: "signup_code", discount: c.discount, givenAt: c.givenAt })),
       ...(input.stockRequests ?? []).map((r) => ({ kind: "back_in_stock", product: r.product, status: r.status, askedAt: r.askedAt, notifiedAt: r.notifiedAt })),
+      ...(input.productViews ?? []).map((v) => ({ kind: "product_viewed", product: v.product, viewedAt: v.viewedAt })),
       ...(input.smsNumbers ?? []).map((n) => ({ kind: "sms", ...n })),
     ],
   };

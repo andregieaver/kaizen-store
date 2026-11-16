@@ -165,6 +165,8 @@ export const PERSONAL_DATA_REASONS_NB: Readonly<Record<string, string>> = {
     "Filene til bildene i en omtale (D301 G4) i den private lagringsbøtten: fjernes etter at omtalen er slettet (av forfatteren eller ved sletting av personens opplysninger), og ryddes daglig når en rad er borte.",
   review_requests:
     "At en e-post med forespørsel om omtale (D301 G3) ble sendt for en bestilling, og når, med hashen av lenken (selve e-posten ligger under e-poster i eksporten): slettes når kjøperens opplysninger slettes, og 400 dager etter at den ble laget.",
+  customer_product_views:
+    "Hvilke produkter en innlogget abonnent så på, for butikkens e-post om dem (D691): lagres bare med samtykke til markedsføring og markedsføringscookies, mens e-posten er på, i 7 dager; tas med i eksporten av markedsføringsdata og slettes ved sletting (og med kontoen).",
   stock_requests:
     "En forespørsel om å få beskjed én gang når en utsolgt variant er tilbake (D298): adressen, produktet og statusen, eksporteres med markedsføringsopplysningene og slettes når personens opplysninger slettes; ubekreftede slettes når lenken går ut, ventende etter 180 dager, sendte etter 30.",
   marketing_consent_events:

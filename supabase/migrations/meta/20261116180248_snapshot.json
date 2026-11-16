@@ -1,6 +1,6 @@
 {
-  "id": "a1a78a5b-27bd-41cb-9b67-08b8a319c7bc",
-  "prevId": "39a9a01d-372d-43a5-9cb5-9b853fddd511",
+  "id": "9f1487ad-a167-4483-ad21-43b6a9d50677",
+  "prevId": "a1a78a5b-27bd-41cb-9b67-08b8a319c7bc",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -7916,7 +7916,7 @@
       "checkConstraints": {
         "automation_sends_kind": {
           "name": "automation_sends_kind",
-          "value": "\"commerce\".\"automation_sends\".\"kind\" in ('welcome', 'after_purchase', 'win_back', 'cross_sell', 'replenish')"
+          "value": "\"commerce\".\"automation_sends\".\"kind\" in ('welcome', 'after_purchase', 'win_back', 'cross_sell', 'replenish', 'browse')"
         },
         "automation_sends_step": {
           "name": "automation_sends_step",
@@ -8062,7 +8062,7 @@
       "checkConstraints": {
         "automation_steps_kind": {
           "name": "automation_steps_kind",
-          "value": "\"commerce\".\"automation_steps\".\"kind\" in ('welcome', 'after_purchase', 'win_back', 'cross_sell', 'replenish')"
+          "value": "\"commerce\".\"automation_steps\".\"kind\" in ('welcome', 'after_purchase', 'win_back', 'cross_sell', 'replenish', 'browse')"
         },
         "automation_steps_position": {
           "name": "automation_steps_position",
@@ -8182,7 +8182,7 @@
       "checkConstraints": {
         "automations_kind": {
           "name": "automations_kind",
-          "value": "\"commerce\".\"automations\".\"kind\" in ('welcome', 'after_purchase', 'win_back', 'cross_sell', 'replenish', 'back_in_stock')"
+          "value": "\"commerce\".\"automations\".\"kind\" in ('welcome', 'after_purchase', 'win_back', 'cross_sell', 'replenish', 'browse', 'back_in_stock')"
         },
         "automations_enabled_at": {
           "name": "automations_enabled_at",
@@ -8194,7 +8194,7 @@
         },
         "automations_delay": {
           "name": "automations_delay",
-          "value": "case \"commerce\".\"automations\".\"kind\" when 'welcome' then \"commerce\".\"automations\".\"delay_days\" between 0 and 30 when 'after_purchase' then \"commerce\".\"automations\".\"delay_days\" between 1 and 90 when 'win_back' then \"commerce\".\"automations\".\"delay_days\" between 30 and 730 when 'cross_sell' then \"commerce\".\"automations\".\"delay_days\" between 1 and 90 when 'replenish' then \"commerce\".\"automations\".\"delay_days\" between 7 and 365 else \"commerce\".\"automations\".\"delay_days\" is null end"
+          "value": "case \"commerce\".\"automations\".\"kind\" when 'welcome' then \"commerce\".\"automations\".\"delay_days\" between 0 and 30 when 'after_purchase' then \"commerce\".\"automations\".\"delay_days\" between 1 and 90 when 'win_back' then \"commerce\".\"automations\".\"delay_days\" between 30 and 730 when 'cross_sell' then \"commerce\".\"automations\".\"delay_days\" between 1 and 90 when 'replenish' then \"commerce\".\"automations\".\"delay_days\" between 7 and 365 when 'browse' then \"commerce\".\"automations\".\"delay_days\" between 1 and 5 else \"commerce\".\"automations\".\"delay_days\" is null end"
         }
       },
       "isRLSEnabled": false
@@ -21316,6 +21316,119 @@
           "value": "char_length(\"commerce\".\"customer_notes\".\"body\") between 1 and 5000 and \"commerce\".\"customer_notes\".\"body\" = btrim(\"commerce\".\"customer_notes\".\"body\")"
         }
       },
+      "isRLSEnabled": false
+    },
+    "commerce.customer_product_views": {
+      "name": "customer_product_views",
+      "schema": "commerce",
+      "columns": {
+        "store_id": {
+          "name": "store_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "customer_id": {
+          "name": "customer_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "product_id": {
+          "name": "product_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "viewed_at": {
+          "name": "viewed_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "customer_product_views_viewed_idx": {
+          "name": "customer_product_views_viewed_idx",
+          "columns": [
+            {
+              "expression": "store_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "viewed_at",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "customer_product_views_product_idx": {
+          "name": "customer_product_views_product_idx",
+          "columns": [
+            {
+              "expression": "product_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "customer_product_views_customer_fk": {
+          "name": "customer_product_views_customer_fk",
+          "tableFrom": "customer_product_views",
+          "tableTo": "customers",
+          "schemaTo": "commerce",
+          "columnsFrom": [
+            "customer_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "customer_product_views_product_fk": {
+          "name": "customer_product_views_product_fk",
+          "tableFrom": "customer_product_views",
+          "tableTo": "products",
+          "schemaTo": "commerce",
+          "columnsFrom": [
+            "product_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "customer_product_views_store_id_customer_id_product_id_pk": {
+          "name": "customer_product_views_store_id_customer_id_product_id_pk",
+          "columns": [
+            "store_id",
+            "customer_id",
+            "product_id"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
       "isRLSEnabled": false
     },
     "commerce.customer_sessions": {

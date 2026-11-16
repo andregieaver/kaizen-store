@@ -16734,6 +16734,9 @@ export const broadcastLinkClicks = commerce.table(
  * was last switched on: only what happens after it starts an email. `content` is the email per language (a broadcast's shape), null exactly for
  * back in stock, whose words are Kaizena Flow's. The store's own settings and words (`NOT_PERSONAL`). Written only by `src/server/automations.ts`.
  */
+/** The lifecycle kinds the database takes, ahead of the code (D691: `browse` goes in first, alone, and the code follows). */
+const LIFECYCLE_KINDS_STORED = [...LIFECYCLE_KINDS, "browse"] as const;
+
 export const automations = commerce.table(
   "automations",
   {
@@ -16749,12 +16752,12 @@ export const automations = commerce.table(
   },
   (t) => [
     primaryKey({ columns: [t.storeId, t.kind] }),
-    check("automations_kind", sql`${t.kind} in (${sqlList(AUTOMATION_KINDS)})`),
+    check("automations_kind", sql`${t.kind} in (${sqlList([...LIFECYCLE_KINDS_STORED, "back_in_stock"])})`),
     check("automations_enabled_at", sql`not ${t.enabled} or ${t.enabledAt} is not null`),
     check("automations_content", sql`(${t.kind} = 'back_in_stock') = (${t.content} is null)`),
     check(
       "automations_delay",
-      sql`case ${t.kind} when 'welcome' then ${t.delayDays} between 0 and 30 when 'after_purchase' then ${t.delayDays} between 1 and 90 when 'win_back' then ${t.delayDays} between 30 and 730 when 'cross_sell' then ${t.delayDays} between 1 and 90 when 'replenish' then ${t.delayDays} between 7 and 365 else ${t.delayDays} is null end`,
+      sql`case ${t.kind} when 'welcome' then ${t.delayDays} between 0 and 30 when 'after_purchase' then ${t.delayDays} between 1 and 90 when 'win_back' then ${t.delayDays} between 30 and 730 when 'cross_sell' then ${t.delayDays} between 1 and 90 when 'replenish' then ${t.delayDays} between 7 and 365 when 'browse' then ${t.delayDays} between 1 and 5 else ${t.delayDays} is null end`,
     ),
   ],
 );
@@ -16781,7 +16784,7 @@ export const automationSteps = commerce.table(
     primaryKey({ columns: [t.storeId, t.kind, t.position] }),
     foreignKey({ name: "automation_steps_automation_fk", columns: [t.storeId, t.kind], foreignColumns: [automations.storeId, automations.kind] }).onDelete("cascade"),
     index("automation_steps_updated_by_idx").on(t.updatedBy),
-    check("automation_steps_kind", sql`${t.kind} in (${sqlList(LIFECYCLE_KINDS)})`),
+    check("automation_steps_kind", sql`${t.kind} in (${sqlList(LIFECYCLE_KINDS_STORED)})`),
     check("automation_steps_position", sql`${t.position} between 2 and 3`),
     check("automation_steps_delay", sql`${t.delayDays} between 1 and 60`),
   ],
@@ -16820,9 +16823,31 @@ export const automationSends = commerce.table(
     index("automation_sends_report_idx").on(t.storeId, t.kind, t.createdAt),
     index("automation_sends_subscriber_idx").on(t.storeId, t.subscriberId),
     index("automation_sends_order_idx").on(t.storeId, t.orderId),
-    check("automation_sends_kind", sql`${t.kind} in (${sqlList(LIFECYCLE_KINDS)})`),
+    check("automation_sends_kind", sql`${t.kind} in (${sqlList(LIFECYCLE_KINDS_STORED)})`),
     check("automation_sends_step", sql`${t.step} between 1 and 3`),
     check("automation_sends_outcome", sql`${t.outcome} is null or ${t.outcome} in (${sqlList(SEND_OUTCOMES)})`),
+  ],
+);
+
+/**
+ * What a signed-in subscriber looked at, for browse abandonment (D691, `docs/100-day-challenge.md` D4): one row per customer and product with
+ * the latest view, written by `recordProductView()` only while the customer is signed in, subscribed to the store's emails and allowed
+ * marketing cookies; deleted after `PRODUCT_VIEW_DAYS` days, and with the customer or the product. Personal data (what a person looked at).
+ */
+export const customerProductViews = commerce.table(
+  "customer_product_views",
+  {
+    storeId: storeId(),
+    customerId: uuid("customer_id").notNull(),
+    productId: uuid("product_id").notNull(),
+    viewedAt: timestamp("viewed_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    primaryKey({ columns: [t.storeId, t.customerId, t.productId] }),
+    foreignKey({ name: "customer_product_views_customer_fk", columns: [t.customerId], foreignColumns: [customers.id] }).onDelete("cascade"),
+    foreignKey({ name: "customer_product_views_product_fk", columns: [t.productId], foreignColumns: [products.id] }).onDelete("cascade"),
+    index("customer_product_views_viewed_idx").on(t.storeId, t.viewedAt),
+    index("customer_product_views_product_idx").on(t.productId),
   ],
 );
 

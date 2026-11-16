@@ -985,6 +985,22 @@ async function loadStockRequests(s: PrivacySubject): Promise<{ product: string; 
   return rows.map((r) => ({ product: strs(r.title), status: strs(r.status), askedAt: at(r.created_at), notifiedAt: at(r.notified_at) }));
 }
 
+/** The products the person looked at while signed in (D691), for the browse email: the product's name and when. */
+async function loadProductViews(s: PrivacySubject): Promise<{ product: string; viewedAt: string }[]> {
+  if (!s.customerId) return [];
+  const rows = await typedRows(
+    z.object({ viewed_at: col.timestamp, title: col.text }),
+    sql`
+      select v.viewed_at,
+        coalesce((select t.title from commerce.product_translations t where t.store_id = v.store_id and t.product_id = v.product_id order by t.locale limit 1), '') as title
+      from commerce.customer_product_views v
+      where v.store_id = ${s.storeId}::uuid and v.customer_id = ${s.customerId}::uuid
+      order by v.viewed_at
+    `,
+  );
+  return rows.map((r) => ({ product: r.title, viewedAt: r.viewed_at }));
+}
+
 /** The person's product reviews (D301): by their account or their addresses' buyer keys, with the product's name. */
 async function loadReviews(s: PrivacySubject): Promise<ReviewExportRow[]> {
   const rows = await db().execute<Row>(sql`
@@ -1136,7 +1152,7 @@ export async function gatherExport(s: PrivacySubject, language: string, now: Dat
     loadForms(s),
     loadCompany(s),
   ]);
-  const [consents, customFields, support, marketing, customerTags, customerNotes, customerDeals, customerActivities, broadcasts, automations, stockRequests, reviews, savedAddresses, signupCodes, comments, smsNumbers] = await Promise.all([
+  const [consents, customFields, support, marketing, customerTags, customerNotes, customerDeals, customerActivities, broadcasts, automations, stockRequests, reviews, savedAddresses, signupCodes, comments, smsNumbers, productViews] = await Promise.all([
     loadConsents(s, orders),
     loadCustomFields(s, orders, store.mainLocale),
     loadSupport(s),
@@ -1154,6 +1170,7 @@ export async function gatherExport(s: PrivacySubject, language: string, now: Dat
     // Comments on the store's articles (D341), by the person's proven addresses.
     commentsOf(s.storeId, s.addresses),
     loadSmsNumbers(s),
+    loadProductViews(s),
   ]);
   const today = now.toISOString().slice(0, 10);
   return {
@@ -1194,6 +1211,7 @@ export async function gatherExport(s: PrivacySubject, language: string, now: Dat
     broadcasts,
     automations,
     stockRequests,
+    productViews,
     smsNumbers,
     reviews,
     comments,
