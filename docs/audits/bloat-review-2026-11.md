@@ -118,7 +118,7 @@ commit as the fix.
 | 0.42 | Compare by job the two pairs of engines nobody compared | GAP-surface-2 | S | strong | 0.1 | Open | |
 | 0.43 | Hold CLAUDE.md's core from the first day, and open a home for this plan's own sentences | GAP-rules-s1 | S | cheap |  | Open | |
 | 0.44 | Give pictures in page content the 800 px copy | GAP-code-s4 | M | review | 0.33 | Open | |
-| 0.45 | Cap the dispatcher at four jobs at a time | GAP-database-s3 | S | cheap |  | Open | |
+| 0.45 | Cap the dispatcher at four jobs at a time | GAP-database-s3 | S | cheap |  | In progress | 16 Nov: local commit, not pushed. |
 | 0.46 | Make the themes, the content packs and the seed write today's page shape | GAP-page-model-s5 | S | cheap |  | Open | |
 
 **Phase 1: Budgets, so it stays removed**

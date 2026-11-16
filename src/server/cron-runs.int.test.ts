@@ -85,6 +85,58 @@ describe("the cron run ledger (PSI 2026-10-24, REL-06)", () => {
     quiet.mockRestore();
   });
 
+  it("runs at most four jobs at once and writes every row", async () => {
+    const p = `${prefix}-cap`;
+    let running = 0;
+    let peak = 0;
+    const job = async () => {
+      running++;
+      peak = Math.max(peak, running);
+      await new Promise((resolve) => setTimeout(resolve, 50));
+      running--;
+    };
+    const jobs = Object.fromEntries(Array.from({ length: 10 }, (_, i) => [`j${i}`, job]));
+    await runJobs(p, 300, jobs);
+    expect(peak).toBeLessThanOrEqual(4);
+    expect((await cronJobRows()).filter((r) => r.job.startsWith(`${p}.`))).toHaveLength(10);
+  });
+
+  it("a job that throws and a job that never returns leave the others' rows written", async () => {
+    const p = `${prefix}-hang`;
+    const quiet = vi.spyOn(console, "error").mockImplementation(() => {});
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const now = async () => 1;
+    const run = runJobs(
+      p,
+      300,
+      {
+        hangs: () => new Promise<never>(() => {}),
+        throws: async () => {
+          throw new Error("no");
+        },
+        a: now,
+        b: now,
+        c: now,
+        d: now,
+        e: now,
+      },
+      { lanes: 2, laneMs: 200 },
+    );
+    void run.catch(() => {});
+    const wanted = ["throws", "a", "b", "c", "d", "e"].map((n) => `${p}.${n}`);
+    let rows = (await cronJobRows()).filter((r) => r.job.startsWith(`${p}.`));
+    for (let waited = 0; waited < 5000 && !wanted.every((w) => rows.some((r) => r.job === w)); waited += 100) {
+      await new Promise((resolve) => setTimeout(resolve, 100));
+      rows = (await cronJobRows()).filter((r) => r.job.startsWith(`${p}.`));
+    }
+    for (const w of wanted) expect(rows.find((r) => r.job === w), w).toBeDefined();
+    expect(rows.find((r) => r.job === `${p}.throws`)!.lastError).toContain("no");
+    for (const n of ["a", "b", "c", "d", "e"]) expect(rows.find((r) => r.job === `${p}.${n}`)!.lastError).toBeNull();
+    expect(rows.find((r) => r.job === `${p}.hangs`)).toBeUndefined();
+    quiet.mockRestore();
+    warn.mockRestore();
+  });
+
   it("gives a once-a-day job's day to one run, in the job's own time zone, and the next day to the first run of it (D436)", async () => {
     const job = `${prefix}.daily`;
     // 23:30 UTC on 14 January is already the 15th in Oslo.

@@ -201,7 +201,9 @@ guess past a gate. The open questions are collected in section 9.
 - **Scheduled jobs.** Supabase's `pg_cron` calls routes under `src/app/api/cron/` with a bearer token checked by
   `cronAuthorised()` (`src/server/cron-auth.ts`). The daily job is `subscription-reminders` and the five-minute
   dispatcher is `cart-reminders`; new heavy work gets a route of its own. The theme-shots migration above shows how a
-  schedule is made.
+  schedule is made. `runJobs()` runs the dispatcher's jobs four at a time (`JOB_LANES`; the pool has five connections)
+  and a job that has run 60 s gives up its lane (`JOB_LANE_MS`, `src/lib/job-pool.ts`): it goes on and is recorded when
+  it ends.
 - **The database client.** `src/db/client.ts`: node-postgres through Supabase's transaction pooler, `max: 5` per
   instance. `readDb()` retries cached reads once. `setBased()` (analytics) runs heavy reads in a read-only transaction.
 - **Hosts and requests.**
