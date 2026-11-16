@@ -285,8 +285,9 @@ jobs:
   #
   #   no pending migration:  `pending` reads the ledger, runs the quick gate (lint, the type check and the money
   #                          tests, D526: minutes, in this same job so there is no second runner to wait for)
-  #                          and then asks for the deploy. A push that changes only tests is checked and not deployed. The full checks run beside it and report; they do
-  #                          not hold it back
+  #                          and then asks for the deploy (a push that changes only tests is checked and not
+  #                          deployed, scripts/deploy-needed.mjs). The full checks run beside it and report; they
+  #                          do not hold it back
   #   pending migration:     `release` waits for every check (static, integration, e2e, hosts, signed-in and
   #                          audit), applies the files, then deploys, so new code never meets the old schema
   #                          and a failed check or migration deploys nothing
