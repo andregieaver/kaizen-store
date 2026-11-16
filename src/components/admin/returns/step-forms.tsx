@@ -2,7 +2,8 @@
 
 import { useState, useTransition, type ReactNode } from "react";
 
-import { ActionForm, SubmitButton, submitClass, type FormState } from "@/components/admin/action-form";
+import { ActionForm, SubmitButton, type FormState } from "@/components/admin/action-form";
+import { submitClass } from "@/lib/submit-class";
 import { useAdminText } from "@/components/admin/admin-text";
 import { fillWords } from "@/lib/admin-fill";
 import type { RefundPreviewData } from "@/lib/return-admin";

@@ -1,4 +1,5 @@
-import { ActionForm, SubmitButton, submitClass, type FormState } from "@/components/admin/action-form";
+import { ActionForm, SubmitButton, type FormState } from "@/components/admin/action-form";
+import { submitClass } from "@/lib/submit-class";
 import type { LocalDelivery, PickupDelivery } from "@/lib/delivery-options";
 import { parseOpeningHours } from "@/lib/opening-hours-schema";
 import { weekSummary } from "@/lib/opening-hours";
