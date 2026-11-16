@@ -3,7 +3,7 @@ import "server-only";
 import { sql } from "drizzle-orm";
 import { z } from "zod";
 
-import { addArrays, type CellTotal, type MapLayout } from "@/lib/heat-read";
+import { addArrays, type CellTotal } from "@/lib/heat-read";
 import { BANDS, CELL_KEEP_DAYS, HEAT_DEVICES, REACH_BUCKETS, type HeatDevice } from "@/lib/page-heat";
 
 import { setBased } from "./analytics-totals";
@@ -225,16 +225,4 @@ export async function taggedTests(storeId: string, page: string): Promise<Tagged
     `),
   );
   return testsOfTags(rows);
-}
-
-/**
- * The layout measured with a page's picture (every visitor's), or null: for the AI manager's part names, read without asking for a new
- * picture and without the picture module, which pay routes must never reach (it renders the owner's code).
- */
-export async function mapLayoutOf(storeId: string, page: string, device: HeatDevice): Promise<MapLayout | null> {
-  const [row] = checkedRows(
-    z.object({ layout: z.unknown().nullable() }),
-    await setBased(sql`select layout from commerce.page_map_shots where ${owned(storeId)} and page = ${page} and device = ${device} and tag = '' and status = 'done'`),
-  );
-  return (row?.layout as MapLayout | null | undefined) ?? null;
 }

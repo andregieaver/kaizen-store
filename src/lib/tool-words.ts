@@ -175,8 +175,6 @@ export const TOOL_WORDS: Record<string, string> = {
   list_targets: "Reading your targets",
   set_target: "Setting a target",
   speed_report: "Looking at how fast the pages load",
-  page_behaviour: "Looking at how visitors use the pages",
-  version_behaviour: "Looking at how visitors behave in each version",
   list_data_jobs: "Looking at imports and exports",
   explain_import_problems: "Reading the import's findings",
   redirect_overview: "Looking at redirects and missing pages",

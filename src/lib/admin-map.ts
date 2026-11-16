@@ -1542,6 +1542,10 @@ export function matchPath(pathname: string): { page: AdminPage; params: Record<s
  * recorded again on Platform → AI. Empty but for that.
  */
 const NOT_YET_IN_PROMPT: ReadonlySet<string> = new Set([
+  // Heatmaps (D656) enter the AI manager's prompt with the next recorded eval run.
+  "store:analytics.heatmaps",
+  "store:analytics.recordings",
+  "store:analytics.recording",
   "store:text-messages",
   "store:text-message.new",
 ]);

@@ -86,7 +86,6 @@ import { activeFieldGroups, fieldsTag, getFieldData, listFieldGroups, pageFacts,
 import { listIntegrations, postToSlack } from "./integrations";
 import { ownedStores, usageRows } from "./ai-usage";
 import { analyticsAlertsTool, analyticsOverviewTool, explainChangeTool, speedReportTool } from "./analytics-tools";
-import { pageBehaviourTool, versionBehaviourTool } from "./heat-tools";
 import { profitOverviewTool } from "./profit-tools";
 import { reportCatalogueTool, runReportTool, saveReportTool } from "./report-tools";
 import { issueWorkInvoiceTool, listWorkAssignmentsTool, listWorkClientsTool, logTimeTool, preflightIssueWorkInvoice, workOverviewTool } from "./work-tools";
@@ -2538,8 +2537,6 @@ const handlersOf = (): Record<OwnerToolName, Handler> => (handlers ??= {
   list_targets: listTargetsTool,
   set_target: setTargetTool,
   speed_report: speedReportTool,
-  page_behaviour: pageBehaviourTool,
-  version_behaviour: versionBehaviourTool,
   support_overview: supportOverviewTool,
   list_support_conversations: listSupportConversationsTool,
   work_overview: workOverviewTool,
