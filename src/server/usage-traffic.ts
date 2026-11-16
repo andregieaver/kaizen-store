@@ -8,7 +8,7 @@ import { storeDomain } from "@/lib/paths";
 import { siteUrl } from "@/lib/site";
 import { docsHost } from "@/lib/docs-host";
 import { themesHost } from "@/lib/theme-host";
-import { slugInPath, type StoreKey, type TrafficTotal } from "@/lib/usage-drain";
+import { slugInPath, type StoreKey, type TrafficHour, type TrafficTotal } from "@/lib/usage-drain";
 
 /**
  * Where the drain's requests belong (D314, `docs/capacity.md` step 1.4), and adding them up. A host is a store's when it is on the store
@@ -65,6 +65,28 @@ export async function storeResolver(now = Date.now()): Promise<(host: string, pa
     }
     return undefined;
   };
+}
+
+/**
+ * Adds the hourly totals (F4, D669) to each store's hour, in one statement; a store gone since is skipped. Kept 35 days (`pruneUsageDaily()`),
+ * long enough for the watch's four weeks before.
+ */
+export async function addTrafficHours(hours: readonly TrafficHour[]): Promise<number> {
+  if (hours.length === 0) return 0;
+  const values = sql.join(
+    hours.map((h) => sql`(${h.storeId}::uuid, ${h.hour}::timestamptz, ${h.requests}::int, ${h.serverErrors}::int, ${h.estimated}::boolean)`),
+    sql`, `,
+  );
+  await db().execute(sql`
+    insert into commerce.store_traffic_hourly (store_id, hour, requests, server_errors, estimated)
+    select v.store_id, v.hour, v.requests, v.server_errors, v.estimated from (values ${values}) as v(store_id, hour, requests, server_errors, estimated)
+    where exists (select 1 from commerce.stores s where s.id = v.store_id)
+    on conflict (store_id, hour) do update
+      set requests = commerce.store_traffic_hourly.requests + excluded.requests,
+          server_errors = commerce.store_traffic_hourly.server_errors + excluded.server_errors,
+          estimated = commerce.store_traffic_hourly.estimated or excluded.estimated
+  `);
+  return hours.length;
 }
 
 /**

@@ -2,7 +2,15 @@
 
 Part of `docs/audits/bloat-review-2026-11.md`, on commit 0bd814c. Read by one reviewer, challenged by a second (who re-opened every citation, re-measured every number and applied the owner's note that the platform is not open yet) and planned by a third. A tick (✓) marks a finding the second reviewer confirmed or corrected; one the planner added has none. Each finding has a file of its own beside this one.
 
-**In short.** The words themselves are in good order: 2,003 storefront keys in four languages and 29,040 admin texts in two, none missing, and only 34 keys nothing reads (0.1%). The bloat is in how they are loaded. 802 of 830 server entries and the proxy evaluate all 134 admin catalogue files and all four storefront languages at each cold start (about 80 to 105 ms and 13 MB here, a tenth of the start); admin pages hand whole areas to the browser (the product editor hands 204 KB where its parts name at most 65 KB); and 97 of 111 visitor routes load about 25 KB of cookie purposes and admin words no shopper reads. The empty commerce.ui_translations table is what one expects before opening and is no finding; its loader is: it asks every minute per instance today, and as written every cold start will read each translated language whole, one after another (about 135 KB, 6 to 13 ms and 0.4 MB a language). Four fixes are small and safe now (TX-4, TX-5, TX-8, TX-11), and the two structural ones (TX-1, TX-2) are cheapest before opening and before a third admin language adds about 1.5 MB to every function.
+**In short.** The words themselves are in good order: 2,003 storefront keys in four languages and 29,040 admin texts in two, none
+missing, and only 34 keys nothing reads (0.1%). The bloat is in how they are loaded. 802 of 830 server entries and the proxy
+evaluate all 134 admin catalogue files and all four storefront languages at each cold start (about 80 to 105 ms and 13 MB here, a
+tenth of the start); admin pages hand whole areas to the browser (the product editor hands 204 KB where its parts name at most 65
+KB); and 97 of 111 visitor routes load about 25 KB of cookie purposes and admin words no shopper reads. The empty
+commerce.ui_translations table is what one expects before opening and is no finding; its loader is: it asks every minute per
+instance today, and as written every cold start will read each translated language whole, one after another (about 135 KB, 6 to 13
+ms and 0.4 MB a language). Four fixes are small and safe now (TX-4, TX-5, TX-8, TX-11), and the two structural ones (TX-1, TX-2)
+are cheapest before opening and before a third admin language adds about 1.5 MB to every function.
 
 ## Findings
 

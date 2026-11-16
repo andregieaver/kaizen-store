@@ -2,7 +2,14 @@
 
 Part of `docs/audits/bloat-review-2026-11.md`, on commit 0bd814c. Read by one reviewer, challenged by a second (who re-opened every citation, re-measured every number and applied the owner's note that the platform is not open yet) and planned by a third. A tick (✓) marks a finding the second reviewer confirmed or corrected; one the planner added has none. Each finding has a file of its own beside this one.
 
-**In short.** The dependency list is lean, and none of this dimension's case rests on what stores use today: 51 runtime packages, none without an importer, and every heavy browser library loads only on the press that needs it. The cost is in when server code loads: the page-view beacon takes about 1.0 s and 177 MB before its first answer where a lean route takes 0.22 s and 64 MB, and with three small import cuts (DP-10, DP-1, DP-3 step 1) its own code, bundled here, loads in 128-144 ms and 50 MB against 549-590 ms and 158 MB today. In the admin, Supabase's client and zod are 39% of the scripts a modern browser loads first on every screen (354 KB of 899 KB), the rich text editor (435 KB) is sent to 21 lists and detail pages, and every admin screen loads the AI manager's whole server side through two action files, a second door that the storefront review's cut does not close. Every P0 fix is a few lines in a few files, moves no data, and is cheapest now, before opening.
+**In short.** The dependency list is lean, and none of this dimension's case rests on what stores use today: 51 runtime packages,
+none without an importer, and every heavy browser library loads only on the press that needs it. The cost is in when server code
+loads: the page-view beacon takes about 1.0 s and 177 MB before its first answer where a lean route takes 0.22 s and 64 MB, and
+with three small import cuts (DP-10, DP-1, DP-3 step 1) its own code, bundled here, loads in 128-144 ms and 50 MB against 549-590
+ms and 158 MB today. In the admin, Supabase's client and zod are 39% of the scripts a modern browser loads first on every screen
+(354 KB of 899 KB), the rich text editor (435 KB) is sent to 21 lists and detail pages, and every admin screen loads the AI
+manager's whole server side through two action files, a second door that the storefront review's cut does not close. Every P0 fix
+is a few lines in a few files, moves no data, and is cheapest now, before opening.
 
 ## Findings
 
@@ -54,7 +61,11 @@ Part of `docs/audits/bloat-review-2026-11.md`, on commit 0bd814c. Read by one re
 - Shoppers get no third-party run-time library in their first scripts, held by two checks: src/lib/storefront-bundle.scan.test.ts and e2e/performance.spec.ts.
 - Tree-shaking works where it matters: no unused simple-icons icon is in any client or server chunk, zod's locales are in no chunk, zod is in exactly one client chunk (the admin's), and postgres.js and PGlite are in no server chunk.
 - lucide-react is imported by name in 24 files, never as a namespace.
-- Server-side single-purpose packages are loaded on demand, so their cost follows use: playwright-core and @sparticuz/chromium (browser.ts:11, :15; in 12 route traces only), mammoth and unpdf (knowledge.ts:70, :75; bill-reading.ts:54), subset-font and fontverter (font-trim.ts, the five-minute dispatcher only, 21-25 ms each), web-push (push.ts, reached by 7 routes). A store that does not use these features pays nothing per request. That no store has used them yet is not evidence of anything before opening and is not argued here.
+- Server-side single-purpose packages are loaded on demand, so their cost follows use: playwright-core and @sparticuz/chromium
+  (browser.ts:11, :15; in 12 route traces only), mammoth and unpdf (knowledge.ts:70, :75; bill-reading.ts:54), subset-font and
+  fontverter (font-trim.ts, the five-minute dispatcher only, 21-25 ms each), web-push (push.ts, reached by 7 routes). A store that
+  does not use these features pays nothing per request. That no store has used them yet is not evidence of anything before opening
+  and is not argued here.
 - drizzle-orm is used as a sql tag plus drizzle-kit's migration differ. That is a sound use; only the schema's presence at run time is waste (DP-1).
 - Two Postgres drivers have a recorded reason (client.ts:56-63, D37): pg is the run-time driver; postgres.js serves the build's host read (store-hosts-build.ts), the migration scripts and tests, and is in no function's chunks or trace.
 - pnpm-workspace.yaml: five overrides, each with its advisory and reason; one patch to Next (D423). CI runs pnpm audit --prod (ci.yml:75).

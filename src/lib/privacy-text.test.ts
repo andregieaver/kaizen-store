@@ -102,11 +102,13 @@ describe("the export's information block (GDPR Art. 15(1))", () => {
   it("lists what is not in the file, in every language, with a reason each", () => {
     for (const l of PRIVACY_LANGUAGES) {
       const list = notIncludedText(l);
-      expect(list).toHaveLength(7);
+      expect(list).toHaveLength(8);
       for (const n of list) expect([n.what.length > 5, n.why.length > 5]).toEqual([true, true]);
     }
     expect(notIncludedText("en").map((n) => n.what.toLowerCase()).join(" ")).toContain("cookie consent");
     expect(notIncludedText("en").map((n) => n.what.toLowerCase()).join(" ")).toContain("reviews");
+    // Recordings of visits (D656) are kept under a tab's random id and cannot be found from a person.
+    expect(notIncludedText("en").map((n) => n.what.toLowerCase()).join(" ")).toContain("recordings of visits");
   });
 
   it("gives a reason a kept record is kept, one sentence, with the day", () => {

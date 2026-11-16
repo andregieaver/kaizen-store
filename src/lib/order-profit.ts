@@ -32,9 +32,14 @@ export type OrderProfitInput = {
   lostDisputes: readonly { amountMinor: number; feeMinor: number | null; feeCurrency: string | null }[];
   /** The order's booked return labels (D646): each one's price without VAT, in the order's currency. Absent means none. */
   returnLabels?: readonly number[];
+  /**
+   * The replacement sent for a lost or returned parcel of the order (B3, D679): its goods at cost and its parcels' label costs in the order's currency
+   * (null: not known, the store's estimate). Absent means none.
+   */
+  replacement?: { lines: readonly { quantity: number; unitCostMinor: number | null }[]; parcels: readonly (number | null)[] };
 };
 
-export type OrderProfitLineKey = "revenue" | "refunds" | "cogs" | "paymentFee" | "platformFee" | "shipping" | "handling" | "returnLabels" | "disputes";
+export type OrderProfitLineKey = "revenue" | "refunds" | "cogs" | "paymentFee" | "platformFee" | "shipping" | "handling" | "returnLabels" | "replacement" | "disputes";
 
 export type OrderProfitLine = {
   key: OrderProfitLineKey;
@@ -86,8 +91,9 @@ export function orderProfit(
   // A refund is shared by the order's revenue, gift cards left out (they are no sale), as the Finance page shares it.
   const refunds = input.totalMinor > 0 ? Math.round((input.refundsMinor * Math.max(0, revenue)) / input.totalMinor) : input.refundsMinor;
 
-  const linesWithoutCost = input.lines.filter((l) => l.needsCost && l.unitCostMinor === null).length;
-  const cogs = linesWithoutCost > 0 ? null : input.lines.reduce((sum, l) => sum + (l.unitCostMinor ?? 0) * l.quantity, 0);
+  const linesWithoutCost =
+    input.lines.filter((l) => l.needsCost && l.unitCostMinor === null).length + (input.replacement?.lines.filter((l) => l.unitCostMinor === null).length ?? 0);
+  const cogs = input.lines.some((l) => l.needsCost && l.unitCostMinor === null) ? null : input.lines.reduce((sum, l) => sum + (l.unitCostMinor ?? 0) * l.quantity, 0);
 
   // Stripe's own fee when every captured Stripe payment has one in a currency the store converts (D290); else the estimate on the total less
   // what gift cards paid (they take no card fee), as the Finance page does.
@@ -146,6 +152,22 @@ export function orderProfit(
   }
   const returnLabels = (input.returnLabels ?? []).reduce((s, l) => s + l, 0);
   if (returnLabels !== 0) lines.push({ key: "returnLabels", amountMinor: -returnLabels, estimated: false });
+  // The goods sent again for a lost parcel (B3, D679): at cost, and each of its parcels as this order's are counted, at least one.
+  if (input.replacement) {
+    const goods = input.replacement.lines.some((l) => l.unitCostMinor === null) ? null : input.replacement.lines.reduce((s, l) => s + (l.unitCostMinor ?? 0) * l.quantity, 0);
+    const parcels = input.replacement.parcels.length > 0 ? input.replacement.parcels : [null];
+    const estimate = fromMain(settings.shippingCostMinor);
+    let sending: number | null = 0;
+    for (const cost of parcels) {
+      if (cost !== null) sending = sending === null ? null : sending + cost;
+      else if (estimate === null) {
+        noRate = true;
+        sending = null;
+      } else if (sending !== null) sending += estimate;
+    }
+    const total = goods === null || sending === null ? null : goods + sending;
+    lines.push({ key: "replacement", amountMinor: total === null ? null : -total, estimated: parcels.includes(null) });
+  }
   if (disputes !== 0) lines.push({ key: "disputes", amountMinor: -disputes, estimated: false });
 
   const net = revenue - refunds;

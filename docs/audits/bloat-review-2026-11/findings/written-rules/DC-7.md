@@ -5,7 +5,15 @@ The written rules and the agents' context (`README.md` beside this file), part o
 - **Kind:** oversize. **Priority:** P2. **Effort:** S. **Confidence:** medium. **Step:** 0.40.
 - **Second check:** corrected.
 - **Where:** `docs/audits/psi-2026-10-24.md:1`, `docs/audits/psi-2026-11-01.md:1`, `docs/wave-10-notes/d.md:1-5`, `docs/ab-testing-spike/README.md:3`, `docs/shopify-parity.md:5`, `docs/audits/bloat-review-2026-11/evidence`, `src/lib/rules-index.test.ts:45-49`
-- **Evidence:** ripgrep lists 225 files and 10,518,218 bytes under docs. Not living rules and cited by no code: the 5 dated PSI reports (542,790 bytes), wave-10-notes (30,059; draft decision rows that decisions.md now holds), the A/B spike (9,110) and the evidence folder of this review's first draft (189,540). Generated: shopify-parity.md (288,921 bytes, 270,980 between its markers). Together 22 files and 1,060,420 bytes, 10% of docs. A search for 'placeOrder' lists 47 files in docs. The wave and phase specs beside them are cited as the contract and are left alone. There is no .rgignore or .ignore. Tested in scratch folders with ripgrep and the Grep tool: an ignore file placed in the folder itself with bare names (docs/.rgignore, docs/audits/.rgignore) is applied from the root and from every subfolder, and naming the skipped file or folder as the search path still finds it; one root .rgignore with paths is not applied when the search starts in a subfolder (rg x docs showed the PSI report and the evidence folder).
+- **Evidence:** ripgrep lists 225 files and 10,518,218 bytes under docs. Not living rules and cited by no code: the 5 dated PSI
+  reports (542,790 bytes), wave-10-notes (30,059; draft decision rows that decisions.md now holds), the A/B spike (9,110) and the
+  evidence folder of this review's first draft (189,540). Generated: shopify-parity.md (288,921 bytes, 270,980 between its
+  markers). Together 22 files and 1,060,420 bytes, 10% of docs. A search for 'placeOrder' lists 47 files in docs. The wave and
+  phase specs beside them are cited as the contract and are left alone. There is no .rgignore or .ignore. Tested in scratch
+  folders with ripgrep and the Grep tool: an ignore file placed in the folder itself with bare names (docs/.rgignore,
+  docs/audits/.rgignore) is applied from the root and from every subfolder, and naming the skipped file or folder as the search
+  path still finds it; one root .rgignore with paths is not applied when the search starts in a subfolder (rg x docs showed the
+  PSI report and the evidence folder).
 - **Cost today:** Longer file lists and cut-off results that need a second, narrower search. No token total is claimed: the harness shows 250 lines of a search by default and a 2 KB preview of a long output. Paid by: An agent's session
 - **Saving:** 22 files and 1.06 MB (10% of docs) leave default searches. No token saving is claimed.
 - **Risk:** The filter is silent: an agent that searches docs for a phrase and finds nothing may conclude it is not written down; the core's line and the rule that a named path is searched are the guard. A glob does not lift the filter, only a named path does (tested). A person using ripgrep or an editor built on it gets the same filter.

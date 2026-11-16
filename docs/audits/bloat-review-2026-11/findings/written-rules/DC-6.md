@@ -5,7 +5,12 @@ The written rules and the agents' context (`README.md` beside this file), part o
 - **Kind:** oversize. **Priority:** P2. **Effort:** S. **Confidence:** high. **Step:** 0.41.
 - **Second check:** confirmed.
 - **Where:** `CLAUDE.md:444-448`, `docs/audits/code-review-2026-11.md:26-135`, `docs/audits/code-review-2026-11.md:31`, `docs/audits/code-review-2026-11.md:136-164`, `docs/audits/psi-followups.md:1-5`, `docs/audits/psi-followups.md:61`, `docs/audits/psi-followups.md:482`
-- **Evidence:** CLAUDE.md:446-448 says to read the Progress table before starting a fix from the code review. Of its 73 steps, 14 are Done, 4 In progress and 55 Open. The 18 rows with notes total 16,641 bytes (average 925, largest 1,615); 15 are over 500 characters, so a search for a step shows no text. The document's own rule (line 31) asks only for the date and the commit in Notes, and a change log (lines 136-164, 3,330 bytes) tells the same steps again. CLAUDE.md:444-445 says to tick an item in psi-followups.md when a change does it: that file is 60,043 bytes with 93 ticked items and 12 open ones (2,428 bytes) at lines 61, 116, 120, 126, 145, 253, 270, 276, 353, 446, 477 and 482. No test or script reads either file.
+- **Evidence:** CLAUDE.md:446-448 says to read the Progress table before starting a fix from the code review. Of its 73 steps, 14
+  are Done, 4 In progress and 55 Open. The 18 rows with notes total 16,641 bytes (average 925, largest 1,615); 15 are over 500
+  characters, so a search for a step shows no text. The document's own rule (line 31) asks only for the date and the commit in
+  Notes, and a change log (lines 136-164, 3,330 bytes) tells the same steps again. CLAUDE.md:444-445 says to tick an item in
+  psi-followups.md when a change does it: that file is 60,043 bytes with 93 ticked items and 12 open ones (2,428 bytes) at lines
+  61, 116, 120, 126, 145, 253, 270, 276, 353, 446, 477 and 482. No test or script reads either file.
 - **Cost today:** About 5,400 tokens per fix session today for the Progress table, about 17,000 when all 73 rows carry notes of the same size (estimates). To see whether a change does an open PSI item, an agent reads up to 60 KB (about 15,000 tokens, estimate) for 2.4 KB of open items. Only sessions that work from these lists pay. Paid by: An agent's session
 - **Saving:** About 4,000 tokens per fix session now and about 15,000 by the end of the plan (estimates). For the PSI list, about 3 KB to read instead of 60 KB when looking for open items.
 - **Risk:** Low. A note cut too far loses how a step was verified: step 2's check against the decision and the change log prevents it. Moving PSI items changes their line numbers; nothing cites them by line.

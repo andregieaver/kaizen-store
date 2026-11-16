@@ -2,15 +2,16 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 
 import { DraftActions, DraftPanel, LearningCard, TestActions } from "@/components/admin/experiment-controls";
+import { ExperimentFrames } from "@/components/admin/experiment-frames";
 import { ExperimentResultsView } from "@/components/admin/experiment-results-view";
 import { AdminTextScope } from "@/components/admin/admin-text";
 import { StepPath, type PathStep } from "@/components/admin/home/home-parts";
 import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
 import { fillWords } from "@/lib/admin-fill";
 import { adminText, adminTexts } from "@/lib/admin-text";
-import { experimentCard, type CardState, type ExperimentCard } from "@/lib/experiment-card";
+import { experimentCard, type ExperimentCard } from "@/lib/experiment-card";
+import { STATE_SIGNAL } from "@/lib/experiment-list";
 import { experimentProblems, experimentProblemText, partLabelText, targetLabelText, variantNameText } from "@/lib/experiment-words";
-import type { Signal } from "@/lib/admin-schemes";
 import type { ExperimentsMessages } from "@/lib/admin-messages/experiments.en";
 import { differenceLine } from "@/lib/version-difference-words";
 import { requirePermission } from "@/server/permissions";
@@ -20,16 +21,6 @@ import { experimentResults } from "@/server/experiment-results";
 import { Chip, PageHeader } from "@/components/admin/ui";
 
 export const metadata: Metadata = { title: "A/B test" };
-
-const STATE_SIGNAL: Record<CardState, Signal> = {
-  draft: "neutral",
-  scheduled: "insight",
-  learning: "warning",
-  answer: "positive",
-  broken: "danger",
-  applied: "positive",
-  discarded: "neutral",
-};
 
 /** The test's path (round 1's `StepPath`): made, started, learning, answer, decided, each with its caption. */
 function pathOf(test: ExperimentInfo, card: ExperimentCard, w: ExperimentsMessages, date: (iso: string) => string, readyAround: string | null): PathStep[] {
@@ -93,6 +84,12 @@ export default async function ExperimentPage({ params }: PageProps<"/admin/[stor
     variants: test.variants.map((v) => ({ ...v, name: variantNameText(v.name, w) })),
     scheduleProblem: test.scheduleProblem ? experimentProblemText(test.scheduleProblem, w) : test.scheduleProblem,
   };
+  // The original and each version as visitors are shown them (phase 16), drawn alone by the frame route; not once the test is decided,
+  // when the original is the winner and the versions are gone.
+  const frames =
+    test.status === "applied" || test.status === "discarded"
+      ? null
+      : shown.variants.map((v) => ({ key: v.key, name: v.name, src: `/admin/frame/${store.slug}/${v.pageId ?? test.page.id}` }));
   const seen = new Set<string>();
   const markets = store.markets.flatMap((m) => (seen.has(m.code) ? [] : (seen.add(m.code), [{ code: m.code.toLowerCase(), name: m.name }])));
   const target = targetLabelText(test.page.kind, test.page.slug, test.page.title, test.page.role, w);
@@ -143,6 +140,7 @@ export default async function ExperimentPage({ params }: PageProps<"/admin/[stor
           />
           <StepPath label={w.card.path.label} steps={steps} />
           <DraftPanel store={store.slug} test={shown} markets={markets} differences={changeWords} problems={problems} ready={left.length === 0} traffic={traffic} />
+          {frames && <ExperimentFrames versions={frames} />}
         </div>
       </AdminTextScope>
     );
@@ -191,6 +189,7 @@ export default async function ExperimentPage({ params }: PageProps<"/admin/[stor
             readyAround={readyAround}
           />
         )}
+        {frames && <ExperimentFrames versions={frames} />}
       </div>
     </AdminTextScope>
   );

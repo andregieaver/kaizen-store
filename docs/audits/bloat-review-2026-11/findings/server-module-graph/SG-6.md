@@ -5,7 +5,12 @@ The server code every route loads (`README.md` beside this file), part of `docs/
 - **Kind:** dead. **Priority:** P0. **Effort:** S. **Confidence:** high. **Step:** 0.4.
 - **Second check:** confirmed.
 - **Where:** `src/db/client.ts:11`, `src/db/client.ts:31`, `src/db/client.ts:78`, `drizzle.config.ts:7`, `src/server/store-export.scan.test.ts`
-- **Evidence:** client.ts imports * as schema (line 11) and passes it to drizzle() (line 78). Nothing reads through it: I searched src for db().query, db().select, .from(schema. and found none outside tests that call pg's own tx.query(); the server writes SQL through execute(). client.ts is the only non-test importer of the schema (one scan test imports it too); drizzle-kit reads the file from drizzle.config.ts:7, not from the client. In the server chunks the file is 598 KB and builds 481 table objects on import; it also pulls src/lib modules only it needs (/api/health: 321 -> 272 module paths without it). It sits in the proxy and instrumentation layers too, so one process can evaluate it more than once.
+- **Evidence:** client.ts imports * as schema (line 11) and passes it to drizzle() (line 78). Nothing reads through it: I searched
+  src for db().query, db().select, .from(schema. and found none outside tests that call pg's own tx.query(); the server writes SQL
+  through execute(). client.ts is the only non-test importer of the schema (one scan test imports it too); drizzle-kit reads the
+  file from drizzle.config.ts:7, not from the client. In the server chunks the file is 598 KB and builds 481 table objects on
+  import; it also pulls src/lib modules only it needs (/api/health: 321 -> 272 module paths without it). It sits in the proxy and
+  instrumentation layers too, so one process can evaluate it more than once.
 - **Cost today:** 56 ms of /api/health's 101 ms of module evaluation and 68 ms on /api/visit (per-factory profile, re-run by the skeptic); 598 KB parsed per layer per instance. Paid by: The server per cold instance of every function that touches the database (256 of 268 handlers, 560 of 562 pages, the proxy, instrumentation); the build's workers.
 - **Saving:** About 0.7 MB and 55 to 70 ms per layer per cold start on every database route (simulated: /api/health 1,125 -> 395 KB; /api/visit after SG-3 1,898 -> 1,173 KB; the proxy and a storefront page lose 0.6 to 0.7 MB each).
 - **Risk:** Low: three lines. The type check catches any use of the typed query API; db:check catches a change to what drizzle-kit reads.

@@ -88,6 +88,8 @@ const FACTS = z.discriminatedUnion("kind", [
   z.object({ kind: z.literal("payments_failing"), window: z.string(), failed: z.number(), attempts: z.number() }),
   z.object({ kind: z.literal("stockout_risk"), sku: z.string(), product: z.string(), lastsDays: z.number().nullable(), leadDays: z.number(), suggested: z.number() }),
   z.object({ kind: z.literal("staff_request"), request: z.string(), ask: z.enum(["change_address", "cancel_order"]), order: z.string() }),
+  z.object({ kind: z.literal("test_answered"), experiment: z.string(), name: z.string(), answeredAt: z.string() }),
+  z.object({ kind: z.literal("exchange_confirmed"), exchange: z.string(), return: z.string(), order: z.string() }),
 ]);
 
 /** The stores that react now: the switch on, not paused, the store open. */
@@ -126,7 +128,20 @@ export async function detectEvents(deps: EventDeps = {}): Promise<number> {
     on conflict (store_id, kind, ref) do nothing
     returning id
   `);
-  return waiting.length + tests.length + (await detectOrderEvents(now)) + (await detectAlerts(now, deps)) + (await detectStockoutRisks(now, deps));
+  // A running test's first answer (D670), kept once per test, within the days a stopped test is still an event.
+  const answered = await db().execute(sql`
+    with reacting as (${REACTING})
+    insert into commerce.autopilot_events (store_id, kind, ref, facts)
+    select e.store_id, 'test_answered', e.id::text,
+      jsonb_build_object('kind', 'test_answered', 'experiment', e.id, 'name', e.name, 'answeredAt', e.answered_at)
+    from commerce.experiments e
+    join reacting r on r.store_id = e.store_id
+    where e.status = 'running' and e.answered_at is not null
+      and e.answered_at > ${now.toISOString()}::timestamptz - make_interval(days => ${TEST_ENDED_DAYS})
+    on conflict (store_id, kind, ref) do nothing
+    returning id
+  `);
+  return waiting.length + tests.length + answered.length + (await detectOrderEvents(now)) + (await detectAlerts(now, deps)) + (await detectStockoutRisks(now, deps));
 }
 
 /** The window failed payments are counted in, as its reference: the day and the hour it began (`FAILED_PAYMENTS_HOURS` long). */
@@ -208,6 +223,19 @@ async function detectOrderEvents(now: Date): Promise<number> {
       join reacting r on r.store_id = d.store_id
       join commerce.orders o on o.store_id = d.store_id and o.id = d.order_id
       where d.status in ('needs_response', 'warning_needs_response') and not d.test_mode and d.opened_at > ${since}
+      on conflict (store_id, kind, ref) do nothing
+      returning id
+    `,
+    // A customer confirmed the exchange proposed for their return (B3, D675), still within its time.
+    sql`
+      with reacting as (${REACTING})
+      insert into commerce.autopilot_events (store_id, kind, ref, facts)
+      select x.store_id, 'exchange_confirmed', x.id::text, jsonb_build_object('kind', 'exchange_confirmed', 'exchange', x.id, 'return', r.number, 'order', o.number)
+      from commerce.return_exchanges x
+      join reacting re on re.store_id = x.store_id
+      join commerce.returns r on r.store_id = x.store_id and r.id = x.return_id
+      join commerce.orders o on o.store_id = x.store_id and o.id = x.order_id and o.restricted_at is null and o.anonymised_at is null
+      where x.status = 'confirmed' and x.confirmed_at > ${since} and (x.expires_at is null or x.expires_at > ${at}::timestamptz)
       on conflict (store_id, kind, ref) do nothing
       returning id
     `,
@@ -468,6 +496,13 @@ async function stillOpen(storeId: string, facts: EventFacts): Promise<string | n
     );
     return row?.status === "stopped" ? null : "The test was decided before the autopilot looked.";
   }
+  if (facts.kind === "test_answered") {
+    const row = await typedRow(
+      z.object({ status: col.text }),
+      sql`select status from commerce.experiments where id = ${facts.experiment}::uuid and store_id = ${storeId}::uuid`,
+    );
+    return row?.status === "running" || row?.status === "stopped" ? null : "The test was decided before the autopilot looked.";
+  }
   if (facts.kind === "order_unsent" || facts.kind === "order_held") {
     const row = await typedRow(
       z.object({ status: col.text, held: col.bool, sent: col.bool }),
@@ -494,6 +529,10 @@ async function stillOpen(storeId: string, facts: EventFacts): Promise<string | n
   if (facts.kind === "staff_request") {
     const row = await typedRow(z.object({ status: col.text }), sql`select status from commerce.support_actions where id = ${facts.request}::uuid and store_id = ${storeId}::uuid`);
     return row?.status === "proposed" ? null : "A person decided the request before the autopilot looked.";
+  }
+  if (facts.kind === "exchange_confirmed") {
+    const row = await typedRow(z.object({ status: col.text }), sql`select status from commerce.return_exchanges where id = ${facts.exchange}::uuid and store_id = ${storeId}::uuid`);
+    return row?.status === "confirmed" ? null : "The exchange was processed, cancelled or ran out before the autopilot looked.";
   }
   if (facts.kind === "stockout_risk") {
     const row = await typedRow(z.object({ open: col.bool }), sql`select ${OPEN_ORDER(storeId, facts.sku)} as open`);

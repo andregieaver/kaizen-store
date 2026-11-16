@@ -5,7 +5,11 @@ Scheduled and background work (`README.md` beside this file), part of `docs/audi
 - **Kind:** eager. **Priority:** P2. **Effort:** S. **Confidence:** high. **Step:** 3.3.
 - **Second check:** confirmed.
 - **Where:** `src/server/platform-books.ts:238-245`, `src/server/platform-payouts.ts:80-107`, `src/server/payouts.ts:184-189`, `src/server/invoice-issue.ts:119`, `src/server/subscriptions.ts:789-810`, `src/server/cron-runs.ts:81-91`
-- **Evidence:** runPlatformBooks() calls stripe.payouts.list for the last 40 days in every mode that has keys, on every dispatcher run, with no throttle, and upserts every payout it gets back each time. Payouts arrive at most daily. Stores' payouts, by contrast, are read once a day per store through payout_reads (payouts.ts:184-189). Separately, invoiceJobs() calls ensureSubscriptionEvents for test and live; it remembers the answer only in the instance's memory, so each cold instance asks Stripe for the webhook endpoint again.
+- **Evidence:** runPlatformBooks() calls stripe.payouts.list for the last 40 days in every mode that has keys, on every dispatcher
+  run, with no throttle, and upserts every payout it gets back each time. Payouts arrive at most daily. Stores' payouts, by
+  contrast, are read once a day per store through payout_reads (payouts.ts:184-189). Separately, invoiceJobs() calls
+  ensureSubscriptionEvents for test and live; it remembers the answer only in the instance's memory, so each cold instance asks
+  Stripe for the webhook endpoint again.
 - **Cost today:** 1 to 2 Stripe API calls per run: 288 to 576 a day, whatever happens. Once payouts exist, also one upsert per payout of the last 40 days per run. Up to 2 more Stripe calls per cold start (how often is not known). Paid by: The server per run, and Kaizena Flow's Stripe rate limit.
 - **Saving:** About 288 to 576 Stripe calls a day to 24 to 48 (hourly) or 1 to 2 (daily).
 - **Risk:** A payout is posted to the books up to an hour (or a day) later than now. It would be noticed on Platform, Books as a payout that appears late; nothing is lost.

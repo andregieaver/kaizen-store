@@ -183,7 +183,8 @@ export async function getOwnerOverview(stores: readonly WorkStore[], now = Date.
              coalesce((select sum(p.amount_minor) from commerce.work_invoice_payments p
                         where p.store_id = i.store_id and p.invoice_id = i.id), 0)::bigint as paid_minor,
              coalesce((select sum(n.total_minor) from commerce.work_credit_notes n
-                        where n.store_id = i.store_id and n.invoice_id = i.id), 0)::bigint as credited_minor
+                        where n.store_id = i.store_id and n.invoice_id = i.id), 0)::bigint as credited_minor,
+             commerce.work_invoice_lost(i.store_id, i.id) as lost_minor
       from commerce.work_invoices i
       join commerce.stores s on s.id = i.store_id
       join commerce.work_clients c on c.store_id = i.store_id and c.id = i.client_id
@@ -240,6 +241,7 @@ export async function getOwnerOverview(stores: readonly WorkStore[], now = Date.
       totalMinor: Number(r.total_minor),
       paidMinor: Number(r.paid_minor),
       creditedMinor: Number(r.credited_minor),
+      lostMinor: Number(r.lost_minor),
       dueOn: r.due_on ? String(r.due_on) : null,
       paidOn: r.paid_on ? String(r.paid_on) : null,
       updatedOn: String(r.updated_on),

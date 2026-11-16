@@ -2,7 +2,13 @@
 
 Part of `docs/audits/bloat-review-2026-11.md`, on commit 0bd814c. Read by one reviewer, challenged by a second (who re-opened every citation, re-measured every number and applied the owner's note that the platform is not open yet) and planned by a third. A tick (✓) marks a finding the second reviewer confirmed or corrected; one the planner added has none. Each finding has a file of its own beside this one.
 
-**In short.** These costs are paid per agent session and grow with every feature built, not with shoppers, so the owner's clarification changes none of them. Every session and every subagent loads 44 KB (about 11,000 tokens, estimate at 4 characters a token); 71% of it is a 295-line index of which a typical change needs 2 to 4 lines, and taking it out saves about 29.5 KB (about 7,400 tokens) each time. What a search can show matters more than what is loaded: the harness's search tool prints nothing for a line over 500 characters, and such lines hold 98% of decisions.md and 52% of the rules, while source code has almost none (0.3%). Nothing caps any of it (CLAUDE.md regrew 35% in 12 days), and one cost the report missed is real work: sessions running at once take the same decision number, so 5 of 24 merges in 35 hours renumbered one, twice across 64 and 77 files.
+**In short.** These costs are paid per agent session and grow with every feature built, not with shoppers, so the owner's
+clarification changes none of them. Every session and every subagent loads 44 KB (about 11,000 tokens, estimate at 4 characters a
+token); 71% of it is a 295-line index of which a typical change needs 2 to 4 lines, and taking it out saves about 29.5 KB (about
+7,400 tokens) each time. What a search can show matters more than what is loaded: the harness's search tool prints nothing for a
+line over 500 characters, and such lines hold 98% of decisions.md and 52% of the rules, while source code has almost none (0.3%).
+Nothing caps any of it (CLAUDE.md regrew 35% in 12 days), and one cost the report missed is real work: sessions running at once
+take the same decision number, so 5 of 24 merges in 35 hours renumbered one, twice across 64 and 77 files.
 
 ## Findings
 

@@ -1862,6 +1862,8 @@ export const platformSettings = commerce.table(
     saleFeeBps: integer("sale_fee_bps").notNull().default(0),
     /** Buying domains is open to every store (D315 decision 9: once moving away is built); until then only where `stores.domain_buying` is on. */
     domainsOpen: boolean("domains_open").notNull().default(false),
+    /** Recordings of visits (D656) are open to every store; until then only Kaizena Flow's own house store may record. */
+    recordingsOpen: boolean("recordings_open").notNull().default(false),
     /** Deals and pipelines (S2, D464) are offered to every store; until then only where `stores.sales_pilot` is on. */
     salesOpen: boolean("sales_open").notNull().default(false),
     /**
@@ -4849,6 +4851,12 @@ export const orders = commerce.table(
      * under the exchange context (`kaizen.exchange`) and frozen after (`orders_exchange_rules()`). A copy of the order (D129) never carries it.
      */
     exchangeId: uuid("exchange_id"),
+    /**
+     * The order a replacement was sent for (B3, D679, `docs/100-day-challenge.md` B3): set exactly when `source = 'replacement'`, a free order of the
+     * same goods for a parcel the carrier lost or sent back, written only by `sendReplacement()` through `insertOrder()`. At most one that is not
+     * cancelled per order (`orders_replacement_live_key`).
+     */
+    replacesOrderId: uuid("replaces_order_id"),
     createdAt: createdAt(),
   },
   // Annotated: an order names its exchange and an exchange names its orders, so the types would otherwise infer in a circle.
@@ -4872,6 +4880,16 @@ export const orders = commerce.table(
       .on(t.storeId, t.exchangeId)
       .where(sql`${t.exchangeId} is not null and ${t.status} <> 'cancelled'`),
     check("orders_source_exchange", sql`(${t.source} = 'exchange') = (${t.exchangeId} is not null)`),
+    foreignKey({
+      name: "orders_replaces_fk",
+      columns: [t.storeId, t.replacesOrderId],
+      foreignColumns: [t.storeId, t.id],
+    }).onDelete("restrict"),
+    /** One replacement that is not cancelled per order (B3, D679). */
+    uniqueIndex("orders_replacement_live_key")
+      .on(t.storeId, t.replacesOrderId)
+      .where(sql`${t.replacesOrderId} is not null and ${t.status} <> 'cancelled'`),
+    check("orders_source_replacement", sql`(${t.source} = 'replacement') = (${t.replacesOrderId} is not null)`),
     check("orders_delivered_source", sql`${t.deliveredSource} is null or (${t.deliveredAt} is not null and ${t.deliveredSource} in ('staff', 'handover', 'carrier'))`),
     check(
       "orders_held",
@@ -4897,11 +4915,11 @@ export const orders = commerce.table(
       .on(t.storeId, t.pickupLocationId)
       .where(sql`${t.pickupLocationId} is not null`),
     check("orders_archived_not_pending", sql`${t.archivedAt} is null or ${t.status} <> 'pending_payment'`),
-    check("orders_source", sql`${t.source} in ('checkout', 'draft', 'exchange')`),
-    /** A draft's order names its draft; a staff-made order (a draft's, or an exchange's, D239) names the staff member who made it. */
+    check("orders_source", sql`${t.source} in ('checkout', 'draft', 'exchange', 'replacement')`),
+    /** A draft's order names its draft; a staff-made order (a draft's, an exchange's, D239, or a replacement, D679) names the staff member who made it. */
     check(
       "orders_source_draft",
-      sql`(${t.source} = 'draft') = (${t.draftId} is not null) and (${t.source} in ('draft', 'exchange')) = (${t.madeBy} is not null)`,
+      sql`(${t.source} = 'draft') = (${t.draftId} is not null) and (${t.source} in ('draft', 'exchange', 'replacement')) = (${t.madeBy} is not null)`,
     ),
     check("orders_staff_discount", sql`${t.staffDiscountMinor} between 0 and ${t.discountMinor}`),
     check(
@@ -11018,6 +11036,30 @@ export const storeUsageDaily = commerce.table(
 );
 
 /**
+ * A store's requests and server errors per UTC hour (`docs/100-day-challenge.md` F4, D669), from Vercel's log drain beside the daily totals
+ * (`addTrafficHours()`), for the autopilot's watch to blame one change on a rise in server errors. Counts only, nothing of a visitor; kept
+ * 35 days (`pruneUsageDaily()`).
+ */
+export const storeTrafficHourly = commerce.table(
+  "store_traffic_hourly",
+  {
+    storeId: uuid("store_id")
+      .notNull()
+      .references(() => stores.id, { onDelete: "cascade" }),
+    hour: timestamp("hour", { withTimezone: true }).notNull(),
+    requests: integer("requests").notNull().default(0),
+    serverErrors: integer("server_errors").notNull().default(0),
+    /** Scaled up from a sample (a drain sampling rate below 1). */
+    estimated: boolean("estimated").notNull().default(false),
+  },
+  (t) => [
+    primaryKey({ columns: [t.storeId, t.hour] }),
+    index("store_traffic_hourly_hour_idx").on(t.hour),
+    check("store_traffic_hourly_counts", sql`${t.requests} >= 0 and ${t.serverErrors} >= 0 and ${t.serverErrors} <= ${t.requests}`),
+  ],
+);
+
+/**
  * A plan's limits (D314, `docs/capacity.md` 4): one row per plan and `LIMITS` key; `plan_id` null is the platform default. A row whose
  * value is null means unlimited; no row means the next source decides (`effectiveLimit()`). Edited on the platform's Plans page.
  */
@@ -13760,6 +13802,55 @@ export const clickCells = commerce.table(
     check("click_cells_tag", sql`${t.tag} = '' or ${t.tag} ~ '^[0-9a-f-]{36}:[a-d]$'`),
     check("click_cells_anchor", sql`char_length(${t.anchor}) between 1 and 60`),
     check("click_cells_cell", sql`${t.cx} between 0 and 9 and ${t.cy} between 0 and 9`),
+  ],
+);
+
+/**
+ * A recording of one browser tab's visit (D656, `docs/heatmaps-and-recordings.md` 6.4): under the random id the browser made, with
+ * coarse times (floored to 10 minutes) and sizes (rounded to 10 px), never a visitor, address or exact moment. Its segments are files in
+ * the private `recordings` bucket (`{storeId}/{id}/{seq}.gz`, or `all.gz` once sealed); the row says which exist. Deleted with its files
+ * after 30 days, or at once by the visitor's browser.
+ */
+export const recordings = commerce.table(
+  "recordings",
+  {
+    id: uuid("id").primaryKey(),
+    storeId: storeId().references(() => stores.id, { onDelete: "cascade" }),
+    day: date("day", { mode: "string" }).notNull(),
+    startedAt: timestamp("started_at", { withTimezone: true }).notNull(),
+    lastAt: timestamp("last_at", { withTimezone: true }).notNull(),
+    durationMs: integer("duration_ms").notNull().default(0),
+    device: text("device").notNull(),
+    width: smallint("width"),
+    height: smallint("height"),
+    entryPage: text("entry_page").notNull(),
+    pages: text("pages").array().notNull().default(sql`'{}'::text[]`),
+    clicks: integer("clicks").notNull().default(0),
+    deadClicks: integer("dead_clicks").notNull().default(0),
+    rageClicks: integer("rage_clicks").notNull().default(0),
+    tags: text("tags").array().notNull().default(sql`'{}'::text[]`),
+    mask: text("mask").notNull(),
+    seqs: smallint("seqs").array().notNull().default(sql`'{}'::smallint[]`),
+    segments: smallint("segments").notNull().default(0),
+    bytes: integer("bytes").notNull().default(0),
+    sealed: boolean("sealed").notNull().default(false),
+    sealTries: smallint("seal_tries").notNull().default(0),
+    viewedAt: timestamp("viewed_at", { withTimezone: true }),
+  },
+  (t) => [
+    index("recordings_store_started_idx").on(t.storeId, t.startedAt.desc()),
+    index("recordings_started_idx").on(t.startedAt),
+    index("recordings_unsealed_idx").on(t.lastAt).where(sql`not ${t.sealed}`),
+    check("recordings_duration", sql`${t.durationMs} between 0 and 3600000`),
+    check("recordings_device", sql`${t.device} in ('mobile', 'tablet', 'desktop')`),
+    check("recordings_entry_page", sql`char_length(${t.entryPage}) between 1 and 300`),
+    check("recordings_pages", sql`cardinality(${t.pages}) <= 50`),
+    check("recordings_tags", sql`cardinality(${t.tags}) <= 5`),
+    check("recordings_mask", sql`${t.mask} in ('balanced', 'strict')`),
+    check("recordings_seqs", sql`cardinality(${t.seqs}) <= 200`),
+    check("recordings_segments", sql`${t.segments} between 0 and 200`),
+    check("recordings_bytes", sql`${t.bytes} between 0 and 4194304`),
+    check("recordings_counts", sql`${t.clicks} >= 0 and ${t.deadClicks} >= 0 and ${t.rageClicks} >= 0`),
   ],
 );
 
@@ -17805,7 +17896,7 @@ export const autopilotEvents = commerce.table(
     index("autopilot_events_account_idx").on(t.accountId),
     index("autopilot_events_conversation_idx").on(t.conversationId),
     index("autopilot_events_plan_idx").on(t.planId),
-    check("autopilot_events_kind", sql`${t.kind} in ('support_waiting', 'test_ended', 'alert', 'order_unsent', 'delivery_problem', 'supplier_problem', 'order_held', 'dispute_opened', 'payments_failing', 'stockout_risk', 'staff_request')`),
+    check("autopilot_events_kind", sql`${t.kind} in ('support_waiting', 'test_ended', 'alert', 'order_unsent', 'delivery_problem', 'supplier_problem', 'order_held', 'dispute_opened', 'payments_failing', 'stockout_risk', 'staff_request', 'test_answered', 'exchange_confirmed')`),
     check("autopilot_events_status", sql`${t.status} in ('pending', 'running', 'done', 'skipped', 'failed')`),
     check("autopilot_events_ref", sql`length(${t.ref}) between 1 and 200`),
     check("autopilot_events_facts", sql`jsonb_typeof(${t.facts}) = 'object'`),

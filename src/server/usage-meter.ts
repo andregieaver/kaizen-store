@@ -6,7 +6,7 @@ import { db } from "@/db/client";
 import type { UsageMetric } from "@/lib/usage-metrics";
 
 import { log } from "./log";
-import { aiCostSql, domainsSql, emailsSql, productsSql, staffSql } from "./usage-sql";
+import { aiCostSql, domainsSql, emailsSql, productsSql, recordingsSql, staffSql } from "./usage-sql";
 
 /**
  * The daily measuring of D314 (`docs/capacity.md` 3, step 1.3): what every store (templates and demo stores too) and Kaizena Flow's own
@@ -43,6 +43,7 @@ function counters(day: string): SQL[] {
     write(day, "emails", emailsSql(from, to, false)),
     write(day, "marketing_emails", emailsSql(from, to, true)),
     write(day, "ai_cost_micros", aiCostSql(from, to)),
+    write(day, "recordings", recordingsSql(from, to)),
   ];
 }
 
@@ -66,12 +67,14 @@ export async function measureDay(day: string, gaugesToo: boolean): Promise<Measu
   });
 }
 
-/** Usage rows older than 25 months go (D314); never throws. */
+/** Usage rows older than 25 months go (D314), and hourly traffic older than 35 days (D669); never throws. */
 export async function pruneUsageDaily(now: Date = new Date()): Promise<number> {
   try {
     const cutoff = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - 25, 1)).toISOString().slice(0, 10);
     const rows = await db().execute(sql`with d as (delete from commerce.store_usage_daily where day < ${cutoff}::date returning 1) select count(*)::int as n from d`);
-    return Number(rows[0]?.n ?? 0);
+    // Each store's hours (F4, D669) go after 35 days: the watch reads four weeks back.
+    const hours = await db().execute(sql`with d as (delete from commerce.store_traffic_hourly where hour < ${now.toISOString()}::timestamptz - interval '35 days' returning 1) select count(*)::int as n from d`);
+    return Number(rows[0]?.n ?? 0) + Number(hours[0]?.n ?? 0);
   } catch (error) {
     log("error", "usage.prune_failed", {}, error);
     return 0;

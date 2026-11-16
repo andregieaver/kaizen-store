@@ -176,7 +176,13 @@ Never waiting, never refused: the payment. `complete_order_payment()` completes 
    are not translated by machine, section 8).
 9. **A shopper whose order has no invoice** (copied, host, test, switched off, waiting) sees no invoice section and no error.
 10. **No new cookie, no storage item, no third-party request** on any shopper page or route of this unit (`KNOWN_COOKIES` unchanged; the hosted page sets nothing).
-    **The hosted page draws none of the market layout's extras** (review fix): its address is the whole access to a buyer's document, and the consent banner's tracking tools and the owner's own code read `location.href`, so `isDocumentPath()` (`src/lib/pay-routes.ts`) puts `/account/documents/{token}` (and `/pdf`, on either shape of address) beside the pay routes in `isNoExtrasPath()`: `OffPayRoutes` draws no `MarketExtras` (no banner, tracking, owner code, chat, referral capture or popup) there, the page renders `PayRouteGuard` so it is entered by a full page load, and `PayDocumentWatcher` treats it as a route that no earlier script may have been loaded on. It is not a pay route (no card, no policy of its own). `placeOfPath()` already keeps no token (`(other)`).
+    **The hosted page draws none of the market layout's extras** (review fix): its address is the whole access to a buyer's
+    document, and the consent banner's tracking tools and the owner's own code read `location.href`, so `isDocumentPath()`
+    (`src/lib/pay-routes.ts`) puts `/account/documents/{token}` (and `/pdf`, on either shape of address) beside the pay routes in
+    `isNoExtrasPath()`: `OffPayRoutes` draws no `MarketExtras` (no banner, tracking, owner code, chat, referral capture or popup)
+    there, the page renders `PayRouteGuard` so it is entered by a full page load, and `PayDocumentWatcher` treats it as a route
+    that no earlier script may have been loaded on. It is not a pay route (no card, no policy of its own). `placeOfPath()` already
+    keeps no token (`(other)`).
 
 ### 2.3 Staff side (store)
 
@@ -234,7 +240,11 @@ A credit note is issued when a refund **succeeds** (4.6). Ten situations, each a
 10. A return **refunded outside Kaizen** (`refund_outside`, an order paid some other way): the credit note is issued from the return when staff record the refund, source
     `return_outside`, with the same working.
 
-**A refund of a payment that is not on the invoice** (review fix: a no-show fee charged afterwards, D65, refunded in Stripe's Dashboard) reverses no sale and gets **no** credit note: `commerce.payment_on_invoice()` says a payment is the invoice's when it was made no later than the invoice and no `booking.no_show` order event names it; for any other payment `make_credit_note()` writes the order event `credit_note.not_invoiced` (once, with the refund's id) and returns null, and the retry job, the Waiting tab and the checkup leave it alone.
+**A refund of a payment that is not on the invoice** (review fix: a no-show fee charged afterwards, D65, refunded in Stripe's
+Dashboard) reverses no sale and gets **no** credit note: `commerce.payment_on_invoice()` says a payment is the invoice's when it
+was made no later than the invoice and no `booking.no_show` order event names it; for any other payment `make_credit_note()`
+writes the order event `credit_note.not_invoiced` (once, with the refund's id) and returns null, and the retry job, the Waiting
+tab and the checkup leave it alone.
 
 A credit note is never issued above what the invoice left uncredited per rate. If a refund is larger than that (a refund of a no-show fee, which is a payment beyond the
 invoice, section 7), the credit note covers what is left and the rest is reported as `credit_note_short` on the Waiting tab and in `store_checkup`; the refund itself is never
@@ -260,7 +270,14 @@ present or future, that makes a refund succeed therefore gets a credit note with
 | P9. A restock-only call (amount 0) | `refundOrder()` | no refund row | none (nothing was refunded) |
 | P10. Test fixtures and direct SQL | `analytics-insights-fixture.ts`, tests | any | by the trigger; fixtures that do not want one use an order with no invoice |
 
-**Events out of order** (review fix): Stripe does not promise order, and Kaizen refuses the first `refund.created` of its own refunds on purpose, so a `pending` snapshot can arrive after the row is final. `applyStripeRefund()` therefore never moves a row to `pending` (the first state), and writes `refund.reversed_after_success` only when the event says `failed` and Stripe, asked with `refunds.retrieve()`, still says so (when it cannot be asked the event stands). **A staff retry** after Stripe accepted a refund whose row was not written: the idempotency key (`refundKey()`) counts only the refunds a person at Kaizen made (`isAdoptedRefund()` rows, written by the webhook, are not counted), so the retry replays the same Stripe refund, and `refundOrder()` claims the row the webhook wrote (`on conflict (store_id, provider_reference)`, setting reason, restock and `created_by`) instead of failing or refunding twice.
+**Events out of order** (review fix): Stripe does not promise order, and Kaizen refuses the first `refund.created` of its own
+refunds on purpose, so a `pending` snapshot can arrive after the row is final. `applyStripeRefund()` therefore never moves a row
+to `pending` (the first state), and writes `refund.reversed_after_success` only when the event says `failed` and Stripe, asked
+with `refunds.retrieve()`, still says so (when it cannot be asked the event stands). **A staff retry** after Stripe accepted a
+refund whose row was not written: the idempotency key (`refundKey()`) counts only the refunds a person at Kaizen made
+(`isAdoptedRefund()` rows, written by the webhook, are not counted), so the retry replays the same Stripe refund, and
+`refundOrder()` claims the row the webhook wrote (`on conflict (store_id, provider_reference)`, setting reason, restock and
+`created_by`) instead of failing or refunding twice.
 
 A status never goes back: a database rule (`refunds_succeeded_final`) refuses `succeeded` → anything else, so a note is never left standing for a refund that stopped existing. A
 Stripe report that a refund failed after it succeeded is written as the order event `refund.reversed_after_success` and shown in `store_checkup`; it changes no status (7).
@@ -292,8 +309,16 @@ Stripe report that a refund failed after it succeeded is written as the order ev
 - **Bookings.** An appointment, stay or rental line shows its date and time (or nights) from `bookings`; its supply date is the booking's date, not the payment day. A stay or rental's
   quantity on the invoice is the nights, days or hours (`booked_count`) at the unit price (the order line is one booking at its whole price, so the invoice shows quantity 1 and the
   nights in the description, as the order page does). **Paid partly at the venue** (D66): the invoice is for the whole total and shows two payment lines, "Paid online" and "To pay at the
-  **A booking left wholly for the venue** (review fix): nothing was paid, so the document asserts no payment. The snapshot keeps `order.paidOn` and `supplyDate` (the confirmation day) as data, but `OrderDocumentView` prints the *Paid online* date and the *Date of supply* only when a `paid_online` payment is in the snapshot's `payments`; otherwise the note under the totals is `supplyDateNoteVenue` ("booked services show their own dates") and the only payment line is "To pay at the venue". The last row of every invoice is a neutral *Total* (never "Total to pay": the sale is paid or its balance is the venue payment line).
-- **A seller not registered for VAT** (review fix; Denmark's momsloven 52 a, read, forbids stating VAT or that an amount includes it): `hidesVat()` in the view (`seller.vatRegistered` false or the `not_registered` statement) draws the lines, the credit rows and the totals without rate, VAT amount, VAT table, ex-VAT/incl.-VAT headings or VAT in the seller's currency (one amount per row and one total), with the not-registered sentence. The other countries' acts were not read: the review list (section 8, item 10) names it.
+  **A booking left wholly for the venue** (review fix): nothing was paid, so the document asserts no payment. The snapshot keeps
+  `order.paidOn` and `supplyDate` (the confirmation day) as data, but `OrderDocumentView` prints the *Paid online* date and
+  the *Date of supply* only when a `paid_online` payment is in the snapshot's `payments`; otherwise the note under the totals is
+  `supplyDateNoteVenue` ("booked services show their own dates") and the only payment line is "To pay at the venue". The last row
+  of every invoice is a neutral *Total* (never "Total to pay": the sale is paid or its balance is the venue payment line).
+- **A seller not registered for VAT** (review fix; Denmark's momsloven 52 a, read, forbids stating VAT or that an amount includes
+  it): `hidesVat()` in the view (`seller.vatRegistered` false or the `not_registered` statement) draws the lines, the credit rows
+  and the totals without rate, VAT amount, VAT table, ex-VAT/incl.-VAT headings or VAT in the seller's currency (one amount per
+  row and one total), with the not-registered sentence. The other countries' acts were not read: the review list (section 8,
+  item 10) names it.
   venue" with the balance; when staff mark the balance paid nothing changes on the invoice (no new document).
 - **Digital goods and fees.** Downloads and sign-up fees are lines like any other (`delivery = 'digital'`, sku `SIGNUP-FEE`); a gift line (campaign) is shown at its list price with its
   whole discount and nets to zero.
@@ -399,7 +424,11 @@ deferred: [{ lineId, title, grossMinor|null }],     // free-trial lines billed a
 notes: ['buyer_incomplete', 'unit_price_rounded', ...]
 ```
 
-A **credit note's** snapshot has the same seller, buyer, order, currency, language, and: `refersTo: { invoiceId, invoiceNumber, invoiceIssuedOn }`, `reason: { kind: 'refund'|'return', returnNumber|null }` (the document draws a fixed phrase in its language from `invoice-text.ts`, never the staff member's free text, which can hold personal remarks), `lines` of what is credited (a plain refund: one `refund` row per bucket with net, VAT and gross; for a return: the returned lines, one row per kind of working: *goods*, *deduction for diminished value*,
+A **credit note's** snapshot has the same seller, buyer, order, currency, language, and:
+`refersTo: { invoiceId, invoiceNumber, invoiceIssuedOn }`, `reason: { kind: 'refund'|'return', returnNumber|null }` (the document
+draws a fixed phrase in its language from `invoice-text.ts`, never the staff member's free text, which can hold personal remarks),
+`lines` of what is credited (a plain refund: one `refund` row per bucket with net, VAT and gross; for a return: the returned
+lines, one row per kind of working: *goods*, *deduction for diminished value*,
 *delivery given back*, *return shipping*, *adjustment*, each with its gross only, since the VAT is the buckets'; an *adjustment* row also shows what the working could not put where it belongs: a staff-raised amount, or a return shipping at a rate with nothing returned), `buckets`, `totals`, `vatHome` (converted with the invoice's rate), `source`, and the cumulative position `invoiceTotal / creditedBefore / creditedNow / leftOnInvoice`.
 
 **What unit 1c reads** (stable contract): the columns `invoices.net_minor/tax_minor/total_minor/currency/issued_on/vat_kind/vat_home_minor/fx_*`, `credit_notes` likewise plus `source`, `invoice_id` and `refund_id`, and from the
@@ -436,18 +465,42 @@ missing, so this patch and the others compose in either order) only to give the 
 
 The three migrations are `20261004125309_order_invoices.sql` (generated; with a guard that raises when the document tables hold rows), `20261004125337_order_invoices_rules.sql` and `20261004125343_order_invoices_audit.sql`. Differences from, or additions to, what is written above (this file is the contract; these lines are its amendments):
 
-1. **Functions come in two layers.** `commerce.make_order_invoice(store, order)` and `commerce.make_credit_note(store, refund, return)` do the work and raise on any problem (tests call them); `commerce.issue_order_invoice()` and `commerce.issue_credit_note()` wrap them in `BEGIN ... EXCEPTION WHEN OTHERS` and are what the payment, the triggers and the job call. A failure writes the order event `invoice.failed` or `credit_note.failed` (at most one an hour per order or refund, with `key` the refund or return id for credit notes) and returns null. `credit_note.short` (with `key`) is written once when a refund finds nothing left on the invoice or only part.
+1. **Functions come in two layers.** `commerce.make_order_invoice(store, order)` and
+   `commerce.make_credit_note(store, refund, return)` do the work and raise on any problem (tests call them);
+   `commerce.issue_order_invoice()` and `commerce.issue_credit_note()` wrap them in `BEGIN ... EXCEPTION WHEN OTHERS` and are what
+   the payment, the triggers and the job call. A failure writes the order event `invoice.failed` or `credit_note.failed` (at most
+   one an hour per order or refund, with `key` the refund or return id for credit notes) and returns null. `credit_note.short`
+   (with `key`) is written once when a refund finds nothing left on the invoice or only part.
 2. **`complete_order_payment()` is patched, not replaced**: the live definition is read with `pg_get_functiondef()` and one `PERFORM commerce.issue_order_invoice(...)` is put before the final `RETURN true` (the idiom of the returns migration), so a later patch to the function composes in either order. The same for `duplicate_store()` (copies `invoice_settings`) and `initialise_store()` (the `F-` and `K-` prefixes).
-3. **The queue is SQL**: `commerce.waiting_invoices(store)` returns the eligible orders without an invoice with `reason` (a waiting reason, or `invoice_failed` when nothing is in the way); `commerce.issue_waiting_invoices(store, limit)` issues them and then calls `commerce.issue_missing_credit_notes(store)`, which makes the notes of succeeded refunds (and outside returns) that have none, in the order the refunds were made. These two are what `issueWaitingInvoices()` and `issueMissingCreditNotes()` in `src/server/invoice-issue.ts` call.
-4. **Helpers** the server needs: `commerce.invoice_eligibility(order)`, `commerce.invoice_readiness(order)`, `commerce.fx_factor(store, from, to)`, `commerce.main_currency(store)`, `commerce.fx_as_of(store, a, b)`, `commerce.store_day(store, timestamptz)`, `commerce.document_audit(store)`, `commerce.set_sales_series(store, series, prefix, first)`, `commerce.expired_document_files(store, before)` (the stored PDFs `anonymiseDocuments()` removes after `commerce.anonymise_expired_documents(store, before)` has run), `commerce.new_document_token(prefix)`, `commerce.build_invoice_snapshot(order, issued_on, supply_date)` (the snapshot without its number).
+3. **The queue is SQL**: `commerce.waiting_invoices(store)` returns the eligible orders without an invoice with `reason` (a
+   waiting reason, or `invoice_failed` when nothing is in the way); `commerce.issue_waiting_invoices(store, limit)` issues them
+   and then calls `commerce.issue_missing_credit_notes(store)`, which makes the notes of succeeded refunds (and outside returns)
+   that have none, in the order the refunds were made. These two are what `issueWaitingInvoices()` and `issueMissingCreditNotes()`
+   in `src/server/invoice-issue.ts` call.
+4. **Helpers** the server needs: `commerce.invoice_eligibility(order)`, `commerce.invoice_readiness(order)`,
+   `commerce.fx_factor(store, from, to)`, `commerce.main_currency(store)`, `commerce.fx_as_of(store, a, b)`,
+   `commerce.store_day(store, timestamptz)`, `commerce.document_audit(store)`,
+   `commerce.set_sales_series(store, series, prefix, first)`, `commerce.expired_document_files(store, before)` (the stored PDFs
+   `anonymiseDocuments()` removes after `commerce.anonymise_expired_documents(store, before)` has run),
+   `commerce.new_document_token(prefix)`, `commerce.build_invoice_snapshot(order, issued_on, supply_date)` (the snapshot without
+   its number).
 5. **The seller's VAT number** is the order's frozen one when it has one, else the live profile's when the store is registered (a renewal has no treatment; an order placed before the store registered has no number in it). A registered store with no number waits (`seller_details`).
 6. **Buyer type** is `business` when `company_name` is not blank (`commerce.nz()`), and the company is then printed.
 7. **A line's net before discount** is `max(withoutVat(unit x quantity, rate), net)`, so a discount is never negative when the order's own VAT rounds differently by a minor unit; `ctid` order is the order of lines (an order line has no position column).
 8. **Credit note rows and allocation of a return** (4.6) are as `src/lib/credit-allocation.ts` says: a bucket cannot go below 0 or above what is left; the difference is shared again by `distribute()` over the buckets that have room (those with something returned first) and shown as `adjustment` rows.
 9. **`src/db/invoice-fixture.ts`** builds stores, orders (`placeOrder()`, as `placeOrder()` of the app writes them), payments, refunds and returns for the database tests; `src/db/invoice-parity.test.ts` holds `commerce.build_invoice_snapshot()` and `make_credit_note()` to `buildInvoiceSnapshot()` and `creditNoteSnapshot()` on 19 orders.
-10. **Two existing tests were changed** because the contract forbids what they did: `src/db/commerce.test.ts` "keeps order events and invoices append-only" and "refuses an invoice against another store's order" inserted a document row by hand (the first with the old `INV-` prefix); they now make the row with the issuing function's setting (`insertInvoice()`) and the second expects the issuing guard's `document.order` (a document for an order of another store) as well as the composite foreign key.
+10. **Two existing tests were changed** because the contract forbids what they did: `src/db/commerce.test.ts` "keeps order events
+    and invoices append-only" and "refuses an invoice against another store's order" inserted a document row by hand (the first
+    with the old `INV-` prefix); they now make the row with the issuing function's setting (`insertInvoice()`) and the second
+    expects the issuing guard's `document.order` (a document for an order of another store) as well as the composite foreign key.
 11. **The only `DROP`s** are the two `DROP TRIGGER` statements that replace `invoices_append_only` and `credit_notes_append_only`, outside any function (3.3 point 9); the migration also drops the plain indexes `invoices_order_idx` and `credit_notes_refund_idx`, which the new unique constraints on the same columns make redundant (`DROP INDEX`, outside any function; the tables are empty).
-12. **Review fixes (fourth migration `20261004152302_order_invoices_fixes.sql`, generated, with additions).** `payments.test_mode boolean not null default false` (schema column, `payments_venue_mode` BEFORE INSERT trigger: a venue payment takes the store's Stripe mode when it is made, so `invoice_eligibility()` reads a frozen mode and a store that goes live later never numbers a test order; existing venue payments take the store's current mode in the same file). In the rules migration, edited in place because it was not applied anywhere: `commerce.credit_vat_converted()` (4.5), `commerce.payment_on_invoice()` and the order event `credit_note.not_invoiced` in `make_credit_note()` (2.5), and `issue_missing_credit_notes()` leaving such refunds alone. No new `DELETE` or `DROP`.
+12. **Review fixes (fourth migration `20261004152302_order_invoices_fixes.sql`, generated, with additions).**
+    `payments.test_mode boolean not null default false` (schema column, `payments_venue_mode` BEFORE INSERT trigger: a venue
+    payment takes the store's Stripe mode when it is made, so `invoice_eligibility()` reads a frozen mode and a store that goes
+    live later never numbers a test order; existing venue payments take the store's current mode in the same file). In the rules
+    migration, edited in place because it was not applied anywhere: `commerce.credit_vat_converted()` (4.5),
+    `commerce.payment_on_invoice()` and the order event `credit_note.not_invoiced` in `make_credit_note()` (2.5), and
+    `issue_missing_credit_notes()` leaving such refunds alone. No new `DELETE` or `DROP`.
 
 ---
 
@@ -526,7 +579,11 @@ IOSS statement. A basket mixing a relieved line and a booking never reaches here
 `Σ over buckets of round_half_up(bucket.vatMinor × fxRate)`, so the document adds up, in `countries.currency` of the seller's country, with `fxRate` and `asOf` printed. The rate is the store's own rate table for the pair, derived from the store's euro-based
 `store_currencies` rates (`convertMinor`, D109), **as of the rate's date** (`stores.rates_updated_at`, or the owner's), with `fx_source = 'ecb_auto'` when the store keeps its rates from the ECB and `'owner'` otherwise (the readiness list warns that an owner's own rate
 needs the accountant; Directive Art. 91 and Skatteverket ask for the ECB or the national central bank's rate, and Norway's own rule for the rate is **not read**: *verify*). A credit note is converted **with the invoice's rate** (the reduction of the VAT
-on the same supply). As **the difference of cumulative conversions per bucket** (`creditVatConverted()`, SQL `commerce.credit_vat_converted()`: convert(VAT credited so far including this note) − convert(VAT credited before it)), so the credit notes of an invoice add up to the invoice's converted VAT whatever the split (review fix; converting each note's parts on their own drifted by a minor unit or two); the same for `vatMain`. Every invoice also carries `vatMain` in `mainCurrency(store)` from the same rate (usually the same number); it is what unit 1c adds up.
+on the same supply). As **the difference of cumulative conversions per bucket** (`creditVatConverted()`, SQL
+`commerce.credit_vat_converted()`: convert(VAT credited so far including this note) − convert(VAT credited before it)), so the
+credit notes of an invoice add up to the invoice's converted VAT whatever the split (review fix; converting each note's parts on
+their own drifted by a minor unit or two); the same for `vatMain`. Every invoice also carries `vatMain` in `mainCurrency(store)`
+from the same rate (usually the same number); it is what unit 1c adds up.
 
 ### 4.6 Credit notes: when, how much, how allocated
 
@@ -614,14 +671,46 @@ Areas: **foundation** (schema, migrations, database rules, pure libraries, their
 
 The table is the plan; these lines are what exists, and they amend it.
 
-1. **Files.** `invoice-emails.ts` holds the document block of the emails and the `document_deliveries` bookkeeping and imports neither the shopper emails nor Chromium (so `shopper-emails.ts` and `return-emails.ts` can import it). The stand-alone emails are in `invoice-notices.ts` (`sendInvoiceNotice()`, `sendCreditNoteNotice()`, `sendDocumentAgain()`, `sendPendingDocumentNotices()`), which imports the shopper emails. The stored file is read and written only by `invoice-storage.ts` (`documentStorage()`, `readPdf()`, `pdfPathOf()`), which has no Chromium either, so the webhook and the emails can reach a stored PDF; `invoice-pdf.ts` alone renders. `document-html.tsx` is the one module that imports `react-dom/server` and `OrderDocumentView` (the surface's component, `src/components/documents/order-document-view.tsx`, props `{ snapshot }`, drawn for an invoice's or a credit note's snapshot): `documentHtml(snapshot)` is the HTML page the renderer loads. `invoice-issue.ts` holds `issueWaitingInvoices()`, `issueMissingCreditNotes()`, `retryPdfLater()` and `invoiceJobs()`.
-2. **Who gets which email.** The confirmation and the shipped email carry the invoice (a link, and the PDF when it exists) unless the owner switched `email_with_confirmation` off; the refund email (staff) and the return's refund email carry the credit note of that refund or return. The stand-alone email goes for an invoice issued later than two minutes after its payment, and for a credit note that no earlier email carried when its refund was made by Stripe (`created_by is null`), completed later than two minutes after it was made, or already has an `order-refunded:{refund}` email that did not carry it (the credit note waited for its invoice); never for a refund staff made and chose not to tell the shopper about, and never sooner than two minutes after the note was issued, so the refund email has been sent and noted first. A refund that Stripe completes later is announced at once by `applyStripeRefund()` and again, idempotently, by the job.
-3. **Refunds Stripe reports** (`stripe-refunds.ts`, new): `applyStripeRefund()` handles `refund.created`, `refund.updated`, `refund.failed` and `charge.refund.updated`; a refund of Kaizen's own (`metadata.order_id`) whose row is not written yet is refused with `RefundNotRecordedYet` (the webhook answers 500 and Stripe sends it again) for two minutes, then recorded from the event; a payment is found by the refund's PaymentIntent (the payment's own reference, then the Checkout session, then a subscription's invoice). **`reconcilePendingRefunds()` is new**: the five-minute job asks Stripe for Kaizen's own refunds still `pending` (every run for ten minutes to two hours old, then once an hour), so a bank refund completes even when the webhook is not set up for refund events; a refund made in the Dashboard still needs the webhook (`refund.created`). `ensureSubscriptionEvents()` is now called by every `startCheckout()` and by the job (it adds `refund.*` to the platform endpoint without replacing it); `WEBHOOK_EVENTS` gained `refund.created`, `refund.updated`, `refund.failed`.
+1. **Files.** `invoice-emails.ts` holds the document block of the emails and the `document_deliveries` bookkeeping and imports
+   neither the shopper emails nor Chromium (so `shopper-emails.ts` and `return-emails.ts` can import it). The stand-alone emails
+   are in `invoice-notices.ts` (`sendInvoiceNotice()`, `sendCreditNoteNotice()`, `sendDocumentAgain()`,
+   `sendPendingDocumentNotices()`), which imports the shopper emails. The stored file is read and written only by
+   `invoice-storage.ts` (`documentStorage()`, `readPdf()`, `pdfPathOf()`), which has no Chromium either, so the webhook and the
+   emails can reach a stored PDF; `invoice-pdf.ts` alone renders. `document-html.tsx` is the one module that imports
+   `react-dom/server` and `OrderDocumentView` (the surface's component, `src/components/documents/order-document-view.tsx`, props
+   `{ snapshot }`, drawn for an invoice's or a credit note's snapshot): `documentHtml(snapshot)` is the HTML page the renderer
+   loads. `invoice-issue.ts` holds `issueWaitingInvoices()`, `issueMissingCreditNotes()`, `retryPdfLater()` and `invoiceJobs()`.
+2. **Who gets which email.** The confirmation and the shipped email carry the invoice (a link, and the PDF when it exists) unless
+   the owner switched `email_with_confirmation` off; the refund email (staff) and the return's refund email carry the credit note
+   of that refund or return. The stand-alone email goes for an invoice issued later than two minutes after its payment, and for a
+   credit note that no earlier email carried when its refund was made by Stripe (`created_by is null`), completed later than two
+   minutes after it was made, or already has an `order-refunded:{refund}` email that did not carry it (the credit note waited for
+   its invoice); never for a refund staff made and chose not to tell the shopper about, and never sooner than two minutes after
+   the note was issued, so the refund email has been sent and noted first. A refund that Stripe completes later is announced at
+   once by `applyStripeRefund()` and again, idempotently, by the job.
+3. **Refunds Stripe reports** (`stripe-refunds.ts`, new): `applyStripeRefund()` handles `refund.created`, `refund.updated`,
+   `refund.failed` and `charge.refund.updated`; a refund of Kaizen's own (`metadata.order_id`) whose row is not written yet is
+   refused with `RefundNotRecordedYet` (the webhook answers 500 and Stripe sends it again) for two minutes, then recorded from the
+   event; a payment is found by the refund's PaymentIntent (the payment's own reference, then the Checkout session, then a
+   subscription's invoice). **`reconcilePendingRefunds()` is new**: the five-minute job asks Stripe for Kaizen's own refunds still
+   `pending` (every run for ten minutes to two hours old, then once an hour), so a bank refund completes even when the webhook is
+   not set up for refund events; a refund made in the Dashboard still needs the webhook (`refund.created`).
+   `ensureSubscriptionEvents()` is now called by every `startCheckout()` and by the job (it adds `refund.*` to the platform
+   endpoint without replacing it); `WEBHOOK_EVENTS` gained `refund.created`, `refund.updated`, `refund.failed`.
 4. **The PDF.** `ensureDocumentPdf(store, kind, id, deps)` returns `{ ok, bytes, stored, fileName }` or `{ ok: false, reason: not_found | anonymised | busy | render_failed }`; `deps` (renderer, HTML, storage) are for tests. `pdfJob({ limit, storeId })` takes an optional store (the cron passes none). `retryDocumentPdf()` renders at once (the PDF routes); **`retryPdfLater()` only forgets the failures** (the Waiting tab's *Try again*, so the page's action never imports Chromium).
-5. **Reads.** `waitingCreditNotes()` also lists refunds that were credited in part (`state: 'short'`, the amount left uncredited), not only refunds with no note. `invoiceCounts()` and `invoiceCheckupFindings()` serve the Orders tab, Home and `store_checkup` (the finding list is added to `storeCheckup()` in `owner-tools.ts`; the codes are `invoice_numbers_broken`, `invoices_waiting`, `credit_note_missing`, `credit_note_short`, `refund_reversed_after_success`, `pdf_failing`). `findDocumentByToken(storeId, token)` takes the store (the route's own), so a token of another store is the same `null` as an unknown one.
+5. **Reads.** `waitingCreditNotes()` also lists refunds that were credited in part (`state: 'short'`, the amount left uncredited),
+   not only refunds with no note. `invoiceCounts()` and `invoiceCheckupFindings()` serve the Orders tab, Home and `store_checkup`
+   (the finding list is added to `storeCheckup()` in `owner-tools.ts`; the codes are `invoice_numbers_broken`, `invoices_waiting`,
+   `credit_note_missing`, `credit_note_short`, `refund_reversed_after_success`, `pdf_failing`).
+   `findDocumentByToken(storeId, token)` takes the store (the route's own), so a token of another store is the same `null` as an
+   unknown one.
 6. **`startCheckout()`** asks Stripe for the billing address (`billing_address_collection: 'required'`) for an order with a company and skips Stripe's `invoice_creation` while `kaizenInvoicingOn(store)`.
 7. **`returns.refund_working`** is written by `record()` in `refundReturn()` in the refund's own UPDATE (`deliveryMinor` is the delivery actually refunded, `adjustmentMinor` is `adjustmentOf()` of the rest), for the Stripe and the outside case.
-8. **Tests** of this area: `invoice-settings.int.test.ts`, `invoice-issue.int.test.ts`, `invoice-refunds.int.test.ts`, `invoice-returns.int.test.ts`, `invoice-documents.int.test.ts` (emails, PDF, CSV, retention), the invoice and credit-note scenarios added to `checkout-kinds.int.test.ts` (every kind, euro, campaigns, delivery) and `vat-engine.int.test.ts` (reverse charge, IOSS), `document-readers.test.ts` (who reads and writes documents, where Chromium is loaded), `stripe-refunds.test.ts`; the rows are built by `src/server/invoice-test-fixture.ts`.
+8. **Tests** of this area: `invoice-settings.int.test.ts`, `invoice-issue.int.test.ts`, `invoice-refunds.int.test.ts`,
+   `invoice-returns.int.test.ts`, `invoice-documents.int.test.ts` (emails, PDF, CSV, retention), the invoice and credit-note
+   scenarios added to `checkout-kinds.int.test.ts` (every kind, euro, campaigns, delivery) and `vat-engine.int.test.ts` (reverse
+   charge, IOSS), `document-readers.test.ts` (who reads and writes documents, where Chromium is loaded), `stripe-refunds.test.ts`;
+   the rows are built by `src/server/invoice-test-fixture.ts`.
 
 ### 5.3 Shopper
 
@@ -638,15 +727,35 @@ The table is the plan; these lines are what exists, and they amend it.
 
 #### 5.3.1 As built (shopper agent, 2026-10-04): where the shopper side differs from the table above
 
-1. **A piece as well as a block.** The order page's default is made of pieces (D117), so the documents block is also the piece `order_documents` ("Invoice and credit notes", `STORE_PIECES` in `src/lib/store-parts.ts`, `OrderDocuments` in `order-section.tsx`, a case in `StorePartSection`, a place after `order_totals` in the order starter in `src/lib/page-roles.ts`); `OrderDetails` (the standard page) draws it between the lines and the returns. The component is `OrderDocuments` in `src/components/documents/order-documents.tsx`, imported into the section as `DocumentLinks`. It takes plain props (`lang`, `locale`, `base`, `invoice`, `creditNotes`, `testOrder`), not the server's `OrderDocuments` type, so it imports nothing from `src/server/`.
+1. **A piece as well as a block.** The order page's default is made of pieces (D117), so the documents block is also the piece
+   `order_documents` ("Invoice and credit notes", `STORE_PIECES` in `src/lib/store-parts.ts`, `OrderDocuments` in
+   `order-section.tsx`, a case in `StorePartSection`, a place after `order_totals` in the order starter in
+   `src/lib/page-roles.ts`); `OrderDetails` (the standard page) draws it between the lines and the returns. The component is
+   `OrderDocuments` in `src/components/documents/order-documents.tsx`, imported into the section as `DocumentLinks`. It takes
+   plain props (`lang`, `locale`, `base`, `invoice`, `creditNotes`, `testOrder`), not the server's `OrderDocuments` type, so it
+   imports nothing from `src/server/`.
 2. **The test-order sentence is drawn in the market's language** from `invoice-text.ts` (`testOrder`), not from `getOrderDocuments().shopperNote`, which is English; the page passes `testOrder = no invoice and eligibility "test_mode"`.
 3. **`DocumentText.totalCredited`** ("Kreditert totalt", "Krediterat totalt", "Krediteret i alt", "Total credited") is added to `invoice-text.ts`: a credit note's last line must not read "Total to pay".
-4. **The hosted page's own print button** is `src/components/documents/document-print-button.tsx` (a client component, no cookie or storage): with `?print=1` (where the PDF route lands when the file could not be made) it opens the print dialog once and takes the parameter off the address. The hosted page, `OrderDocumentView` and the PDF route are as the table says; the view carries its own `<style>` (Work's `DOCUMENT_CSS` plus a few classes) so the print page and the hosted page need nothing else.
+4. **The hosted page's own print button** is `src/components/documents/document-print-button.tsx` (a client component, no cookie
+   or storage): with `?print=1` (where the PDF route lands when the file could not be made) it opens the print dialog once and
+   takes the parameter off the address. The hosted page, `OrderDocumentView` and the PDF route are as the table says; the view
+   carries its own `<style>` (Work's `DOCUMENT_CSS` plus a few classes) so the print page and the hosted page need nothing else.
 5. **Not drawn:** the buyer-incomplete note (the spec keeps it to the admin), the unit of a stay's or rental's count (the snapshot holds the count and the period, not the unit, so a booked line prints its start and end), and the invoice's `discounts` are informational only (listed under "Discounts given", never added).
-7. **`react-dom/server` cannot be bundled into a route** (found by `pnpm build`: "You're importing a component that imports react-dom/server", and the server layer's stub throws). `src/server/document-html.tsx` therefore loads it at run time with Node's `createRequire` and a computed name, and `next.config.ts` gives the three PDF routes `DOCUMENT_PDF_FILES` (Chromium's files plus `react-dom`, `react` and `scheduler` from pnpm's folders) in `outputFileTracingIncludes`. Proved with `next dev` and `e2e/invoices.spec.ts` (a real PDF whose text holds the number and the total); **not** proved in a production build here (the sandbox lacks `@axe-core/playwright`, so `pnpm build` stops at the type check of `e2e/a11y.ts`) nor on Vercel: the lead checks a preview deployment (9.7). If the trace misses the packages, the fallback is the hosted page itself loaded by Chromium (the route's origin, JavaScript off, the article isolated with `page.evaluate`).
+7. **`react-dom/server` cannot be bundled into a route** (found by `pnpm build`: "You're importing a component that imports
+   react-dom/server", and the server layer's stub throws). `src/server/document-html.tsx` therefore loads it at run time with
+   Node's `createRequire` and a computed name, and `next.config.ts` gives the three PDF routes `DOCUMENT_PDF_FILES` (Chromium's
+   files plus `react-dom`, `react` and `scheduler` from pnpm's folders) in `outputFileTracingIncludes`. Proved with `next dev` and
+   `e2e/invoices.spec.ts` (a real PDF whose text holds the number and the total); **not** proved in a production build here (the
+   sandbox lacks `@axe-core/playwright`, so `pnpm build` stops at the type check of `e2e/a11y.ts`) nor on Vercel: the lead checks
+   a preview deployment (9.7). If the trace misses the packages, the fallback is the hosted page itself loaded by Chromium (the
+   route's origin, JavaScript off, the article isolated with `page.evaluate`).
 8. **The hosted page streams**, so for an unknown token its status line is 200 with `noindex` and the not-found page (as Work's hosted invoice); the PDF route answers a real 404.
 
-6. **Tests of this area:** `order-document-view.test.ts` (every field of 4.3, text only, reverse charge, IOSS, VAT in the seller's currency, credit note, languages), `order-documents.test.ts`, `shopper-documents.test.ts` (no cookie, storage or request; no live data; noindex; one 404), the documents block in `order-section.test.ts`, `.../pdf/route.test.ts` (headers, 404s, the print redirect) and `e2e/invoices.spec.ts` (order page, hosted page, a real PDF whose text holds the number and the total, the print fallback landing, test mode).
+6. **Tests of this area:** `order-document-view.test.ts` (every field of 4.3, text only, reverse charge, IOSS, VAT in the seller's
+   currency, credit note, languages), `order-documents.test.ts`, `shopper-documents.test.ts` (no cookie, storage or request; no
+   live data; noindex; one 404), the documents block in `order-section.test.ts`, `.../pdf/route.test.ts` (headers, 404s, the print
+   redirect) and `e2e/invoices.spec.ts` (order page, hosted page, a real PDF whose text holds the number and the total, the print
+   fallback landing, test mode).
 
 ### 5.4 Admin
 
@@ -668,11 +777,26 @@ The table is the plan; these lines are what exists, and they amend it.
 
 #### 5.4.1 As built (admin agent, 2026-10-04): where the admin differs from the table above
 
-1. **The CSV export is a POST, not a GET.** `/admin/{store}/invoices/export` takes the form of the invoices page (`type`, `from`, `to`) and answers a file. The permission scan holds a GET route to the page's `read` key and a mutating route to `write`; the export holds personal data and writes `invoice.exported`, so it is `orders:write` and therefore a POST (`checkPermission(slug, "orders:write")`, then `sameSite()`, as the assistant's and the replicator's routes do). A refusal redirects back to the page with `?export=period` or `?export=too_many`, which the page turns into a fixed sentence (`exportProblemOf()`: never text from the address). A period with more than 20,000 documents is refused rather than given cut short, because an accountant must be able to trust that a file is whole.
+1. **The CSV export is a POST, not a GET.** `/admin/{store}/invoices/export` takes the form of the invoices page (`type`, `from`,
+   `to`) and answers a file. The permission scan holds a GET route to the page's `read` key and a mutating route to `write`; the
+   export holds personal data and writes `invoice.exported`, so it is `orders:write` and therefore a POST
+   (`checkPermission(slug, "orders:write")`, then `sameSite()`, as the assistant's and the replicator's routes do). A refusal
+   redirects back to the page with `?export=period` or `?export=too_many`, which the page turns into a fixed sentence
+   (`exportProblemOf()`: never text from the address). A period with more than 20,000 documents is refused rather than given cut
+   short, because an accountant must be able to trust that a file is whole.
 2. **The credit note's staff routes sit under `invoices/credit-notes/`**, so the `/admin/**/invoices/**/pdf` glob of `outputFileTracingIncludes` covers them: `/admin/{store}/invoices/credit-notes/{id}/pdf` and `.../print`. The invoice's are `/admin/{store}/invoices/{id}/pdf` and `.../print`.
 3. **The print pages are not listed in `ADMIN_PAGES`.** The map's test lists the `(gated)/[store]` pages only, and a print page lives in the `(print)` group (no admin chrome), as Work's do. Instead `permissions.scan.test.ts` now also scans `src/app/admin/(gated)/(print)/[store]/` (the constant `STORE_PRINT`), so a print page without the right guard fails there. `ADMIN_PAGES` has `invoices` (Orders) and `invoices.settings` (Settings, `needs: "owner"`).
 4. **Send again is in `invoices/actions.ts`, not `orders/actions.ts`**, with *Check again* and *Try again* (one file for the unit's admin actions; each `checkPermission(slug, "orders:write")`). The order page binds it per document.
-5. **Files.** `src/lib/invoice-admin.ts` (tabs, query parsing, hrefs, labels, sentences, the notes for an accountant), `src/components/admin/invoices/` (`invoices-view.tsx`, `documents-card.tsx`, `invoice-settings-form.tsx`, `waiting-actions.tsx`, `skeletons.tsx`), `src/app/admin/(gated)/[store]/invoices/` (`page.tsx`, `loading.tsx`, `actions.ts`, `export/route.ts`, `[invoiceId]/pdf/route.ts`, `credit-notes/[creditNoteId]/pdf/route.ts`), `src/app/admin/(gated)/[store]/settings/invoices/` (`page.tsx`, `loading.tsx`, `actions.ts`), `src/app/admin/(gated)/(print)/[store]/invoices/...` (two print pages), the *Documents* card on `orders/[orderId]/page.tsx`, and the Payments page, whose Stripe invoice option is shown disabled (and kept as it was, through a hidden field, because a disabled box is not submitted) while Kaizen invoicing is on. One read was added to the allowed module `src/server/invoices.ts`: `failingPdfs(storeId)` (documents whose PDF failed five times), because `document-readers.test.ts` lets only the listed modules name `commerce.invoices`.
+5. **Files.** `src/lib/invoice-admin.ts` (tabs, query parsing, hrefs, labels, sentences, the notes for an accountant),
+   `src/components/admin/invoices/` (`invoices-view.tsx`, `documents-card.tsx`, `invoice-settings-form.tsx`,
+   `waiting-actions.tsx`, `skeletons.tsx`), `src/app/admin/(gated)/[store]/invoices/` (`page.tsx`, `loading.tsx`, `actions.ts`,
+   `export/route.ts`, `[invoiceId]/pdf/route.ts`, `credit-notes/[creditNoteId]/pdf/route.ts`),
+   `src/app/admin/(gated)/[store]/settings/invoices/` (`page.tsx`, `loading.tsx`, `actions.ts`),
+   `src/app/admin/(gated)/(print)/[store]/invoices/...` (two print pages), the *Documents* card on `orders/[orderId]/page.tsx`,
+   and the Payments page, whose Stripe invoice option is shown disabled (and kept as it was, through a hidden field, because a
+   disabled box is not submitted) while Kaizen invoicing is on. One read was added to the allowed module `src/server/invoices.ts`:
+   `failingPdfs(storeId)` (documents whose PDF failed five times), because `document-readers.test.ts` lets only the listed modules
+   name `commerce.invoices`.
 6. **Not built here, by the spec's own split:** the store Home and control-center attention (`src/server/control-center.ts`, `src/lib/control-center.ts`, 5.5, the analytics-and-ai area) and the count in the Orders tab (the navigation has no badges). The invoices page itself shows the counts and the Waiting tab leads the person to what needs doing.
 7. **Existing test changed.** `admin-map.test.ts` asked for "invoice number prefix" to find Work's settings; the store's own invoicing settings now match those words too, so the question says "work invoice number prefix". The assertion (Work's page is found when Work is on) is unchanged.
 8. **Tests:** `src/lib/invoice-admin.test.ts`, `src/components/admin/invoices/*.test.ts` (renderToString), `src/server/invoice-admin.int.test.ts` (the actions, the CSV route, the PDF routes with an injected renderer outcome, the print pages and the settings, against the real guards and a stand-in for the sign-in: read-only member, Orders role, owner, another store's owner and nobody signed in), and the new cases in `admin-map.test.ts`.
@@ -692,7 +816,12 @@ The table is the plan; these lines are what exists, and they amend it.
 
 ### 5.6 The registries, once more, and who edits each
 
-`src/lib/audit.ts`, `src/lib/store-copy-rules.ts`: foundation. `src/lib/store-nav.ts`, `src/lib/admin-map.ts`, `permissions.scan.test.ts`'s `OWNER_ONLY_EXTRA`: admin. `src/lib/owner-tool-permissions.ts`, `src/lib/assistant-skills.ts`, `src/lib/owner-tools.ts`, `control-center`: analytics-and-ai. `src/server/email.ts`, `shopper-emails.ts`, `stripe*.ts`, `checkout.ts`, `returns.ts`, `next.config.ts`, the cron routes: server. `src/db/schema.ts` and the migrations: foundation. Shared with the other lane (`/home/user/kaizen-trust` is a separate directory and is not touched): none of these files is edited by this lane beyond the blocks above, each at a known anchor so a textual merge applies.
+`src/lib/audit.ts`, `src/lib/store-copy-rules.ts`: foundation. `src/lib/store-nav.ts`, `src/lib/admin-map.ts`,
+`permissions.scan.test.ts`'s `OWNER_ONLY_EXTRA`: admin. `src/lib/owner-tool-permissions.ts`, `src/lib/assistant-skills.ts`,
+`src/lib/owner-tools.ts`, `control-center`: analytics-and-ai. `src/server/email.ts`, `shopper-emails.ts`, `stripe*.ts`,
+`checkout.ts`, `returns.ts`, `next.config.ts`, the cron routes: server. `src/db/schema.ts` and the migrations: foundation. Shared
+with the other lane (`/home/user/kaizen-trust` is a separate directory and is not touched): none of these files is edited by this
+lane beyond the blocks above, each at a known anchor so a textual merge applies.
 
 ---
 
@@ -788,7 +917,15 @@ Every consumer-visible text of this unit is hand-written in nb, sv, da and en (`
 7. The **emails**: subject and body of `invoice.issued` and `credit_note.issued` and the document block in the confirmation, shipped and refund emails in four languages.
 8. The **admin's English warnings** (the invoicing settings page, the waiting reasons, the *not VAT-registered* explanation) are for an accountant's eyes and need review.
 9. That an invoice is **issued automatically for every consumer sale** and a **free-trial start** shows only what is due now.
-10. **Added by the review fixes.** (a) The document of a **seller not registered for VAT** is drawn with no VAT rate, VAT amount, VAT table, ex-VAT or incl.-VAT wording (`hidesVat()`): Denmark's momsloven 52 a was read; whether Norway, Sweden and Germany ask the same of such a seller was not. The words `unitPrice`, `discount` and `amount` (column heads without VAT) are new. (b) The **neutral total** label (*Totalt / Totalt / I alt / Total*) replaces "to pay" on every invoice, and the header's *paid online* label replaces *paid*. (c) `supplyDateNote` (the date of supply is the payment date) and the new `supplyDateNoteVenue` (a booking paid wholly at the venue: booked services show their own dates), and that such an invoice shows no payment date and no date of supply. (d) `creditCapped` ("the refund was more than was left on the invoice", printed on a consumer's credit note), which was missing from this list, and `testOrder` ("Test order: no invoice"). (e) That a refund of a payment that is not on the invoice (a no-show fee) is not credited at all.
+10. **Added by the review fixes.** (a) The document of a **seller not registered for VAT** is drawn with no VAT rate, VAT amount,
+    VAT table, ex-VAT or incl.-VAT wording (`hidesVat()`): Denmark's momsloven 52 a was read; whether Norway, Sweden and Germany
+    ask the same of such a seller was not. The words `unitPrice`, `discount` and `amount` (column heads without VAT) are new. (b)
+    The **neutral total** label (*Totalt / Totalt / I alt / Total*) replaces "to pay" on every invoice, and the header's *paid
+    online* label replaces *paid*. (c) `supplyDateNote` (the date of supply is the payment date) and the new `supplyDateNoteVenue`
+    (a booking paid wholly at the venue: booked services show their own dates), and that such an invoice shows no payment date and
+    no date of supply. (d) `creditCapped` ("the refund was more than was left on the invoice", printed on a consumer's credit
+    note), which was missing from this list, and `testOrder` ("Test order: no invoice"). (e) That a refund of a payment that is
+    not on the invoice (a no-show fee) is not credited at all.
 
 The invoice row and the credit note rows are not Full until a person has read these (`docs/parity/WAVES.md` step 4).
 
@@ -798,12 +935,25 @@ The invoice row and the credit note rows are not Full until a person has read th
 
 ### 9.1 Migrations expected
 
-**Four files** after the review fixes: the three below, then `20261004152302_order_invoices_fixes.sql` (generated: `payments.test_mode`, plus the venue-mode trigger and a one-statement backfill `UPDATE`, no `DELETE` or `DROP`; 3.8 point 12). None is applied anywhere yet. Two files, in order (timestamps after `20261004111101`): `{ts}_order_invoices.sql` (generated: columns, tables, constraints, indexes, drizzle-expressible parts) and `{ts}_order_invoices_rules.sql` (custom: everything of 5.1's second row). A **third**, `{ts}_order_invoices_audit.sql`, replaces `commerce.audit_area_of()` with the new prefixes: a new migration, never an edit of `20261003195109_staff_security_rules.sql`. The migrations are **additive**; nothing is dropped; the tables that gain `not null` columns are empty and the migration raises if they are not. Apply each to production (project `ybsozesfuxuitoacntfo`) once the tests pass, check the advisors, and record the versions in `docs/decisions.md` (Migration versions).
+**Four files** after the review fixes: the three below, then `20261004152302_order_invoices_fixes.sql` (generated:
+`payments.test_mode`, plus the venue-mode trigger and a one-statement backfill `UPDATE`, no `DELETE` or `DROP`; 3.8 point 12).
+None is applied anywhere yet. Two files, in order (timestamps after `20261004111101`): `{ts}_order_invoices.sql` (generated:
+columns, tables, constraints, indexes, drizzle-expressible parts) and `{ts}_order_invoices_rules.sql` (custom: everything of 5.1's
+second row). A **third**, `{ts}_order_invoices_audit.sql`, replaces `commerce.audit_area_of()` with the new prefixes: a new
+migration, never an edit of `20261003195109_staff_security_rules.sql`. The migrations are **additive**; nothing is dropped; the
+tables that gain `not null` columns are empty and the migration raises if they are not. Apply each to production (project
+`ybsozesfuxuitoacntfo`) once the tests pass, check the advisors, and record the versions in `docs/decisions.md` (Migration
+versions).
 `complete_order_payment()` is the most delicate statement: it is replaced whole (the latest definition is in `20260924163034_digital_products_rules.sql`; the foundation agent diffs against `pg_get_functiondef` of the running function before writing, since other migrations may have patched it), and the new call is inside a sub-block, so a bug in the invoice cannot stop a payment. Run the whole payment int suite before applying.
 
 ### 9.2 Statements the Supabase migration tool may cancel (the owner runs them in the SQL editor if so), and things only the lead can do
 
-- **No function in this unit contains `DELETE`, `TRUNCATE` or `DROP`**, by design (3.3 point 9, 3.6): the storage object of an anonymised document is removed by application code. `ownerStatements`: **none expected**. Statements the foundation agent should still check before applying: the `DROP TRIGGER invoices_append_only` and `DROP TRIGGER credit_notes_append_only` that replace the old guard (a `DROP` of a trigger **outside** a function is not what the tool cancels, but they are the unit's only `DROP`s: if the tool refuses them, the owner runs exactly those two statements in the SQL editor, then the rest of the file applies), and `DROP FUNCTION` for nothing (no function is dropped; replaced functions use `CREATE OR REPLACE`).
+- **No function in this unit contains `DELETE`, `TRUNCATE` or `DROP`**, by design (3.3 point 9, 3.6): the storage object of an
+  anonymised document is removed by application code. `ownerStatements`: **none expected**. Statements the foundation agent should
+  still check before applying: the `DROP TRIGGER invoices_append_only` and `DROP TRIGGER credit_notes_append_only` that replace
+  the old guard (a `DROP` of a trigger **outside** a function is not what the tool cancels, but they are the unit's only `DROP`s:
+  if the tool refuses them, the owner runs exactly those two statements in the SQL editor, then the rest of the file applies), and
+  `DROP FUNCTION` for nothing (no function is dropped; replaced functions use `CREATE OR REPLACE`).
 - **Stripe's webhook endpoint** must send `refund.created` and `refund.updated` for the platform's snapshot endpoint in each mode. The code adds them (5.2), but it can only do so when the platform key is configured; after deploy the lead checks the endpoint in Stripe's Dashboard (events list) in test and live. Until it does, refunds Stripe reports later or makes in the Dashboard are not seen, and the five-minute job's `issueMissingCreditNotes()` only covers what Kaizen recorded.
 - **The PDF job** `/api/cron/document-pdfs` is a new route: schedule it where the five-minute job is scheduled (the repository's `vercel.json` lists only the daily job; the five-minute one is called from outside). Without it nothing breaks: a PDF is made on first download.
 - **Chromium on Vercel** for the three routes: confirm in a preview deployment that a PDF is produced (the cookie scan's and the replicator's routes already prove the files are traced; the new globs are new).
@@ -811,7 +961,14 @@ The invoice row and the credit note rows are not Full until a person has read th
 
 ### 9.3 Advisors to check after applying
 
-Security: RLS enabled with no policy on the three new tables (as every commerce table); the new functions have `search_path` set (the linter's "mutable search path" must stay clean); the `documents` bucket is private; no new `SECURITY DEFINER` function without a reason (none planned: the functions run as the caller, which is the service role). Performance: foreign keys indexed (`credit_notes (store_id, return_id)`, `document_deliveries`, `document_pdf_state`), a partial index for the waiting query (`orders (store_id, placed_at) where copied_from is null and host_id is null`), the CSV export's range scan on `invoices (store_id, issued_on)` and `credit_notes (store_id, issued_on)`, the `invoices (public_token)` and `credit_notes (public_token)` unique indexes the hosted page uses. Run `analytics-perf`-style timing on a store with 50,000 invoices for the list and the CSV (a bounded read, paged), and on the waiting query.
+Security: RLS enabled with no policy on the three new tables (as every commerce table); the new functions have `search_path` set
+(the linter's "mutable search path" must stay clean); the `documents` bucket is private; no new `SECURITY DEFINER` function
+without a reason (none planned: the functions run as the caller, which is the service role). Performance: foreign keys indexed
+(`credit_notes (store_id, return_id)`, `document_deliveries`, `document_pdf_state`), a partial index for the waiting query
+(`orders (store_id, placed_at) where copied_from is null and host_id is null`), the CSV export's range scan on
+`invoices (store_id, issued_on)` and `credit_notes (store_id, issued_on)`, the `invoices (public_token)` and
+`credit_notes (public_token)` unique indexes the hosted page uses. Run `analytics-perf`-style timing on a store with 50,000
+invoices for the list and the CSV (a bounded read, paged), and on the waiting query.
 
 ### 9.4 Decision row (draft)
 
@@ -819,12 +976,40 @@ Security: RLS enabled with no policy on the three new tables (as every commerce 
 
 ### 9.5 CLAUDE.md bullet (draft)
 
-- Invoices and credit notes for shop orders (D159, `docs/wave-1b-invoices.md`): an invoice is issued **only** by `commerce.issue_order_invoice()` inside `commerce.complete_order_payment()` (a failure rolls back only itself and never stops the payment) and a credit note **only** by `commerce.issue_credit_note()`, which a deferred constraint trigger runs at commit for every refund that becomes `succeeded` (any path: `refundOrder()`, the Stripe `refund.*` webhook handler `applyStripeRefund()`, D153 returns) and for a return refunded outside; never write code that inserts into `invoices` or `credit_notes` (a scan test), numbers one another way, deletes or edits one (the database refuses; only a one-time `pdf_path` and `anonymise_expired_documents()` may change a row). Documents are the snapshot (`src/lib/invoice-snapshot.ts`, `buildInvoiceSnapshot()` is the oracle the SQL is held to by `invoice-parity.test.ts`), drawn only from it by `OrderDocumentView`; a credit note never exceeds the invoice per rate (`creditAllocation()`, `src/lib/credit-allocation.ts`). Copied (`C-…`), host, test-mode and invoicing-off orders get none; a store with incomplete details waits (`invoice_eligibility()`, `issueWaitingInvoices()`, the five-minute job). The VAT in the seller's currency is `vatHome` (`homeVatRequirement()`), converted with the invoice's rate on its credit notes; `vatMain` and `buckets[*]` are what unit 1c reads. A PDF is `renderToStaticMarkup()` of the same view loaded into Chromium with every request refused (`src/server/invoice-pdf.ts`; Chromium only there, the two PDF routes and `/api/cron/document-pdfs`, each in `outputFileTracingIncludes`), stored once in the private `documents` bucket, the print page the fallback; the hosted page is `/s/{store}/{market}/account/documents/{token}` (token `inv_`/`crn_`, no cookie, noindex). Admin: `/admin/{store}/invoices` (`orders:read`; CSV and *Check again* `orders:write`), `/admin/{store}/settings/invoices` (owner). A new refund path needs no call but must be listed in the enumeration of 2.6 and tested. All consumer wording is `src/lib/invoice-text.ts`: hand-written, flagged for review, never in `i18n.ts` or the AI catalogue.
+- Invoices and credit notes for shop orders (D159, `docs/wave-1b-invoices.md`): an invoice is issued **only** by
+  `commerce.issue_order_invoice()` inside `commerce.complete_order_payment()` (a failure rolls back only itself and never stops
+  the payment) and a credit note **only** by `commerce.issue_credit_note()`, which a deferred constraint trigger runs at commit
+  for every refund that becomes `succeeded` (any path: `refundOrder()`, the Stripe `refund.*` webhook handler
+  `applyStripeRefund()`, D153 returns) and for a return refunded outside; never write code that inserts into `invoices` or
+  `credit_notes` (a scan test), numbers one another way, deletes or edits one (the database refuses; only a one-time `pdf_path`
+  and `anonymise_expired_documents()` may change a row). Documents are the snapshot (`src/lib/invoice-snapshot.ts`,
+  `buildInvoiceSnapshot()` is the oracle the SQL is held to by `invoice-parity.test.ts`), drawn only from it by
+  `OrderDocumentView`; a credit note never exceeds the invoice per rate (`creditAllocation()`, `src/lib/credit-allocation.ts`).
+  Copied (`C-…`), host, test-mode and invoicing-off orders get none; a store with incomplete details waits
+  (`invoice_eligibility()`, `issueWaitingInvoices()`, the five-minute job). The VAT in the seller's currency is `vatHome`
+  (`homeVatRequirement()`), converted with the invoice's rate on its credit notes; `vatMain` and `buckets[*]` are what unit 1c
+  reads. A PDF is `renderToStaticMarkup()` of the same view loaded into Chromium with every request refused
+  (`src/server/invoice-pdf.ts`; Chromium only there, the two PDF routes and `/api/cron/document-pdfs`, each in
+  `outputFileTracingIncludes`), stored once in the private `documents` bucket, the print page the fallback; the hosted page is
+  `/s/{store}/{market}/account/documents/{token}` (token `inv_`/`crn_`, no cookie, noindex). Admin: `/admin/{store}/invoices`
+  (`orders:read`; CSV and *Check again* `orders:write`), `/admin/{store}/settings/invoices` (owner). A new refund path needs no
+  call but must be listed in the enumeration of 2.6 and tested. All consumer wording is `src/lib/invoice-text.ts`: hand-written,
+  flagged for review, never in `i18n.ts` or the AI catalogue.
 
 ### 9.6 Merge notes
 
-Shared files this unit edits and the other lane may too (`/home/user/kaizen-trust` is not touched by this run, and its work is already merged into this tree): `src/lib/audit.ts` (prefix entries), `src/lib/store-copy-rules.ts`, `src/lib/store-nav.ts`, `src/lib/admin-map.ts`, `src/lib/owner-tool-permissions.ts`, `src/lib/assistant-skills.ts`, `src/db/schema.ts`, `src/server/shopper-emails.ts`, `src/server/email.ts`, `src/server/stripe.ts`, `src/server/stripe-webhooks.ts`, `src/server/checkout.ts`, `src/server/returns.ts`, `next.config.ts`, `src/app/api/cron/cart-reminders/route.ts`, `docs/decisions.md`, `CLAUDE.md`, the migrations directory. Each is edited by one small block at a known anchor. Decision number **D159** is proposed; the lead renumbers at the merge. Unit 1c starts from section 3.4's contract; unit 1g from `anonymise_expired_documents()` and `invoice-retention.ts`.
+Shared files this unit edits and the other lane may too (`/home/user/kaizen-trust` is not touched by this run, and its work is
+already merged into this tree): `src/lib/audit.ts` (prefix entries), `src/lib/store-copy-rules.ts`, `src/lib/store-nav.ts`,
+`src/lib/admin-map.ts`, `src/lib/owner-tool-permissions.ts`, `src/lib/assistant-skills.ts`, `src/db/schema.ts`,
+`src/server/shopper-emails.ts`, `src/server/email.ts`, `src/server/stripe.ts`, `src/server/stripe-webhooks.ts`,
+`src/server/checkout.ts`, `src/server/returns.ts`, `next.config.ts`, `src/app/api/cron/cart-reminders/route.ts`,
+`docs/decisions.md`, `CLAUDE.md`, the migrations directory. Each is edited by one small block at a known anchor. Decision
+number **D159** is proposed; the lead renumbers at the merge. Unit 1c starts from section 3.4's contract; unit 1g from
+`anonymise_expired_documents()` and `invoice-retention.ts`.
 
 ### 9.7 Before pushing (the things CI cannot prove)
 
-Run a **real PDF** in a deployed preview and read it against section 4.3 with an accountant for one Norwegian, one Swedish, one Danish and one German order, including a euro order in a NOK store (the VAT in NOK), a reverse-charge order and a credit note of a return. Place a **test-mode** order and confirm it gets no invoice. Switch invoicing on in a live store only after the readiness list is clear and the accountant has read the wording; until then production has it off for stores with history (1.4 point 3).
+Run a **real PDF** in a deployed preview and read it against section 4.3 with an accountant for one Norwegian, one Swedish, one
+Danish and one German order, including a euro order in a NOK store (the VAT in NOK), a reverse-charge order and a credit note of a
+return. Place a **test-mode** order and confirm it gets no invoice. Switch invoicing on in a live store only after the readiness
+list is clear and the accountant has read the wording; until then production has it off for stores with history (1.4 point 3).

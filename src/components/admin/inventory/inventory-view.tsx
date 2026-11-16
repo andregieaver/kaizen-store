@@ -1,3 +1,4 @@
+import { CHIP_ITEM, CHIP_STRIP } from "@/lib/chip-strip";
 import Link from "next/link";
 
 import { field, hint } from "@/components/admin/data/ui";
@@ -66,7 +67,7 @@ export function InventoryView({
         {canWrite && w.sentence.rest}
       </p>
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <nav aria-label={w.show} className="flex flex-wrap gap-1.5">
+        <nav aria-label={w.show} className={`min-w-0 max-sm:basis-full ${CHIP_STRIP.replace("gap-2", "gap-1.5")}`}>
           {chips.map((c) => {
             const current = applied.status === c.status;
             return (
@@ -74,7 +75,7 @@ export function InventoryView({
                 key={c.status}
                 href={listHref(base, { status: c.status, location: applied.locationId, search: applied.search })}
                 aria-current={current ? "page" : undefined}
-                className={`inline-flex h-9 items-center gap-1.5 rounded-pill px-3.5 text-caption ${current ? "bg-inverse text-inverse-ink" : "border border-edge bg-card text-ink hover:bg-sunken"}`}
+                className={`${CHIP_ITEM} inline-flex h-9 items-center gap-1.5 rounded-pill px-3.5 text-caption ${current ? "bg-inverse text-inverse-ink" : "border border-edge bg-card text-ink hover:bg-sunken"}`}
               >
                 {w.chips[c.status]} {c.n !== null && <span className={current ? "" : "text-muted"}>{figureIn(c.n, locale)}</span>}
               </Link>

@@ -99,6 +99,11 @@ export type Totals = {
    * standard rate of the store's country taken off, as shipping is. Absent means none.
    */
   returnLabelsMinor?: number;
+  /**
+   * Lost parcels' replacements sent in the period (B3, D679, by the day made): their goods at cost and their parcels, as profit per order counts sending.
+   * No sale, so never among the orders or the cost of goods sold. Absent means none.
+   */
+  replacementsMinor?: number;
   /** Handling and packaging (D646): the paid orders with a physical line × `handlingCostMinor`. Absent means none set. */
   handlingCostsMinor?: number;
 };
@@ -255,7 +260,7 @@ function contributionOf(t: Totals, coverage: number | null): number | null {
   if (cogs === null) return null;
   return (
     t.revenueMinor - t.refundsMinor - cogs - t.paymentFeesMinor - t.platformFeesMinor - t.shippingCostsMinor - t.marketingMinor - (t.lostDisputesMinor ?? 0) -
-    (t.returnLabelsMinor ?? 0) - (t.handlingCostsMinor ?? 0)
+    (t.returnLabelsMinor ?? 0) - (t.replacementsMinor ?? 0) - (t.handlingCostsMinor ?? 0)
   );
 }
 

@@ -48,6 +48,9 @@ export const PLAN_WORDS_NB: Record<string, string> = {
   "Stripe Checkout on your own Stripe account.": "Stripe Checkout på din egen Stripe-konto.",
   // Storefront and catalogue.
   "Redirects and 404 report": "Omdirigeringer og 404-rapport",
+  "Recordings and heatmaps": "Opptak og varmekart",
+  "Heatmaps of where visitors click, how far they scroll and what they look at, page by page and per A/B version; recordings of visits, with private parts hidden, kept 30 days, for visitors who allow them.":
+    "Varmekart over hvor besøkende klikker, hvor langt de blar og hva de ser på, side for side og per A/B-versjon; opptak av besøk, med private deler skjult, lagret i 30 dager, for besøkende som tillater det.",
   "Redirects are made when a product, category or tag changes address, and added by hand or imported from a CSV file; a report of the addresses shoppers and search engines could not find, with a one-click redirect; up to 100,000 manual redirects.":
     "Omdirigeringer lages når et produkt, en kategori eller et stikkord bytter adresse, og legges til for hånd eller hentes inn fra en CSV-fil; en rapport over adressene kunder og søkemotorer ikke fant, med omdirigering med ett klikk; opptil 100 000 manuelle omdirigeringer.",
   "SEO title and description for categories and tags": "SEO-tittel og -beskrivelse for kategorier og stikkord",

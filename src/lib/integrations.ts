@@ -116,7 +116,9 @@ export type IntegrationEvent =
   | "subscription.renewed"
   | "subscription.payment_failed"
   | "gift_card.issued"
-  | "review.created";
+  | "review.created"
+  // D148 phase 15: an A/B test has an answer.
+  | "experiment.answered";
 
 export const EVENTS: { id: IntegrationEvent; label: string; hint: string }[] = [
   { id: "order.paid", label: "Order paid", hint: "A shopper paid, or a subscription renewed." },
@@ -148,6 +150,7 @@ export const EVENTS: { id: IntegrationEvent; label: string; hint: string }[] = [
   { id: "subscription.payment_failed", label: "Subscription payment failed", hint: "A subscription's renewal could not be charged: it waits for the subscriber's payment." },
   { id: "gift_card.issued", label: "Gift card issued", hint: "A gift card or store credit was issued: never its code." },
   { id: "review.created", label: "Review written", hint: "A buyer wrote a product review, waiting for the store's check or published at once." },
+  { id: "experiment.answered", label: "A/B test has an answer", hint: "A running A/B test has an answer for the first time: its verdict, the version that did best and each version's figures." },
   { id: "support.waiting", label: "Someone waiting in support", hint: "A customer has waited for a person in the support chat as long as the support settings say: how many wait now, and a link to the inbox. Never who they are or what they wrote." },
 ];
 

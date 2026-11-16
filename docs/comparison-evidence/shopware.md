@@ -3,27 +3,104 @@
 Only Shopware's own pages and Shopware Store listings. Quotes are as the fetch tool returned them (it summarises); re-check any quote the page will print, in a browser, on the day of publishing. Extension compatibility is as each listing stated on the day read. Shopware 6.7.16.0 came out on 2 Nov 2026. The clock passed midnight during the run, so later reads are dated 2026-11-05.
 The October file numbers its lines differently from T1–T27; the comparison below goes by topic, not number.
 
-T1 Invoices, credit notes and cancellation invoices: native. In the admin, Shopware makes invoices, credit notes, cancellation invoices and delivery notes from the order, numbered from number ranges ("By default, the next number from the respective number range is selected as the number"), and "Shopware supports electronic invoices in ZUGFeRD format starting from version 6.6.10.0"; "cancellation invoices, and credit notes can only be generated if a corresponding invoice has been created beforehand", and a credit note "is only created if there is a credit note item in the order". Source: https://docs.shopware.com/en/shopware-6-en/orders/overview (read 2026-11-04 by WebFetch). Same (gap-free numbering and an automatic credit note on refund are still not verified).
+T1 Invoices, credit notes and cancellation invoices: native. In the admin, Shopware makes invoices, credit notes, cancellation
+invoices and delivery notes from the order, numbered from number ranges ("By default, the next number from the respective number
+range is selected as the number"), and "Shopware supports electronic invoices in ZUGFeRD format starting from version 6.6.10.0";
+"cancellation invoices, and credit notes can only be generated if a corresponding invoice has been created beforehand", and a
+credit note "is only created if there is a credit note item in the order". Source:
+https://docs.shopware.com/en/shopware-6-en/orders/overview (read 2026-11-04 by WebFetch). Same (gap-free numbering and an
+automatic credit note on refund are still not verified).
 
-T2 30-day lowest price on a reduction (Omnibus): native (a manual field), plus an extension that works the price out: "Automatic calculation of the lowest price (according to §11 PAngV)" by Pixup Media GmbH (third party, compatible 6.0.0-DP1 – 6.7.16.0). Each product has a "cheapest price (last 30 days)" field that the merchant fills in by hand ("You must fill in this field if you want to advertise price reductions in your store in the EU"). Since 6.7.16.0 (2 Nov 2026), "If you've configured the lowest price in the last 30 days for a product, Shopware now calculates the percentage savings" from it, and when the price is not lower "Shopware no longer displays a corresponding discount". Keeping the price history and finding the lowest price automatically takes the extension, whose listing says "Shopware does not calculate this price automatically". Source: https://docs.shopware.com/en/shopware-6-en/catalogues/products , https://www.shopware.com/en/news/shopware-6-release-news-november-2026/ , https://store.shopware.com/en/pixup93076399460m/automatic-calculation-of-the-lowest-price-according-to-11-pangv.html (read 2026-11-04 by WebFetch). CHANGED since Oct: October said "regulation-price field, no history". The docs call it the cheapest-price-of-the-last-30-days field, and 6.7.16.0 (2 Nov 2026) now bases the shown saving on it. Working the price out automatically still takes an extension.
+T2 30-day lowest price on a reduction (Omnibus): native (a manual field), plus an extension that works the price out: "Automatic
+calculation of the lowest price (according to §11 PAngV)" by Pixup Media GmbH (third party, compatible 6.0.0-DP1 – 6.7.16.0). Each
+product has a "cheapest price (last 30 days)" field that the merchant fills in by hand ("You must fill in this field if you want
+to advertise price reductions in your store in the EU"). Since 6.7.16.0 (2 Nov 2026), "If you've configured the lowest price in
+the last 30 days for a product, Shopware now calculates the percentage savings" from it, and when the price is not lower "Shopware
+no longer displays a corresponding discount". Keeping the price history and finding the lowest price automatically takes the
+extension, whose listing says "Shopware does not calculate this price automatically". Source:
+https://docs.shopware.com/en/shopware-6-en/catalogues/products ,
+https://www.shopware.com/en/news/shopware-6-release-news-november-2026/ ,
+https://store.shopware.com/en/pixup93076399460m/automatic-calculation-of-the-lowest-price-according-to-11-pangv.html (read
+2026-11-04 by WebFetch). CHANGED since Oct: October said "regulation-price field, no history". The docs call it the
+cheapest-price-of-the-last-30-days field, and 6.7.16.0 (2 Nov 2026) now bases the shown saving on it. Working the price out
+automatically still takes an extension.
 
-T3 Withdrawal button for consumers, exclusions, digital-content waiver: native. Since 6.7.9.0 (April 2026, "backported to Shopware 6.6"), customers use an online withdrawal form behind a "Cancel contract" footer button and get an electronic confirmation of receipt. "The feature is part of the core system and is available for the Shopware Community Edition and higher plans". The legal check (deadline, eligible goods, exclusions) "must still be carried out manually by the merchant". I found no setting for product exclusions or a digital-content waiver: for digital content, Shopware only tells merchants to inform customers and keep the consent "legally valid and properly documented". Source: https://www.shopware.com/en/news/withdrawal-button-requirement-germany-2026/ , https://docs.shopware.com/en/shopware-en/settings/basic-information (read 2026-11-04 and 2026-11-05 by WebFetch). Same (I did not re-read the extra checkout checkbox for digital products that October mentioned).
+T3 Withdrawal button for consumers, exclusions, digital-content waiver: native. Since 6.7.9.0 (April 2026, "backported to Shopware
+6.6"), customers use an online withdrawal form behind a "Cancel contract" footer button and get an electronic confirmation of
+receipt. "The feature is part of the core system and is available for the Shopware Community Edition and higher plans". The legal
+check (deadline, eligible goods, exclusions) "must still be carried out manually by the merchant". I found no setting for product
+exclusions or a digital-content waiver: for digital content, Shopware only tells merchants to inform customers and keep the
+consent "legally valid and properly documented". Source:
+https://www.shopware.com/en/news/withdrawal-button-requirement-germany-2026/ ,
+https://docs.shopware.com/en/shopware-en/settings/basic-information (read 2026-11-04 and 2026-11-05 by WebFetch). Same (I did not
+re-read the extra checkout checkbox for digital products that October mentioned).
 
-T4 Product safety information (GPSR): native through custom fields (I found no dedicated GPSR fields); dedicated fields come with an extension, "GPSR Product Safety Regulation Professional" by ACRIS E-Commerce GmbH (third party, compatible 6.5.0.0 – 6.7.16.0). Shopware's own guidance (25 Nov 2024) is to keep the manufacturer and safety details in custom fields on the product or the "Manufacturer" entity and show them on the product page ("Custom fields can now seamlessly populate text blocks or entire CMS sections"). The extension adds fields for the manufacturer, the EU responsible person and warnings. Source: https://www.shopware.com/en/news/implementing-product-safety-regulation/ , https://store.shopware.com/en/acris50386951088m/gpsr-product-safety-regulation-professional.html (read 2026-11-04 by WebFetch). Same (the article names no version; October's "6.6.9.0" was not re-read).
+T4 Product safety information (GPSR): native through custom fields (I found no dedicated GPSR fields); dedicated fields come with
+an extension, "GPSR Product Safety Regulation Professional" by ACRIS E-Commerce GmbH (third party, compatible 6.5.0.0 – 6.7.16.0).
+Shopware's own guidance (25 Nov 2024) is to keep the manufacturer and safety details in custom fields on the product or the
+"Manufacturer" entity and show them on the product page ("Custom fields can now seamlessly populate text blocks or entire CMS
+sections"). The extension adds fields for the manufacturer, the EU responsible person and warnings. Source:
+https://www.shopware.com/en/news/implementing-product-safety-regulation/ ,
+https://store.shopware.com/en/acris50386951088m/gpsr-product-safety-regulation-professional.html (read 2026-11-04 by WebFetch).
+Same (the article names no version; October's "6.6.9.0" was not re-read).
 
-T5 EU VAT by destination, OSS and IOSS, EU VAT reports: native (tax rates per country), plus an extension for destination VAT on shown prices: "OSS (One Stop Shop) Plugin" by alphanauten GmbH & Co. KG (third party, compatible 6.4.0.0 – 6.7.16.0). OSS and IOSS reports are unverified. You set tax rules per country with a start date ("If you enter a date in Active from, the processed tax rate is applied from this date"), and Shopware's OSS FAQ says "The configuration of the tax is still done as usual via the tax module". The extension sets the VAT by the buyer's EU country and keeps either net or gross prices fixed. Neither Shopware page nor the listing mentions OSS or IOSS reports, or IOSS at all. Source: https://docs.shopware.com/en/shopware-6-en/settings/taxes , https://docs.shopware.com/en/shopware-6-en/tutorials-and-faq/one-stop-shop , https://store.shopware.com/en/alpha54560786849m/one-stop-shop-oss-plugin.html (read 2026-11-04 by WebFetch). Same.
+T5 EU VAT by destination, OSS and IOSS, EU VAT reports: native (tax rates per country), plus an extension for destination VAT on
+shown prices: "OSS (One Stop Shop) Plugin" by alphanauten GmbH & Co. KG (third party, compatible 6.4.0.0 – 6.7.16.0). OSS and IOSS
+reports are unverified. You set tax rules per country with a start date ("If you enter a date in Active from, the processed tax
+rate is applied from this date"), and Shopware's OSS FAQ says "The configuration of the tax is still done as usual via the tax
+module". The extension sets the VAT by the buyer's EU country and keeps either net or gross prices fixed. Neither Shopware page
+nor the listing mentions OSS or IOSS reports, or IOSS at all. Source: https://docs.shopware.com/en/shopware-6-en/settings/taxes ,
+https://docs.shopware.com/en/shopware-6-en/tutorials-and-faq/one-stop-shop ,
+https://store.shopware.com/en/alpha54560786849m/one-stop-shop-oss-plugin.html (read 2026-11-04 by WebFetch). Same.
 
-T6 Business buyer's VAT number checked (VIES), reverse charge: native for the format check and tax-free B2B sales; VIES needs an extension, "VATID Validation PRO for EU (B2B)" by LENZ eBusiness GmbH (third party, compatible 6.6.0.0 – 6.7.16.0). For each country you can make B2B orders tax-free ("the respective customer accounts must have a valid VAT ID") and add the "intra-Community supply" note to documents. The core checks only the number's format ("a check of the VAT ID format, this is possible for countries of the EU"), and the docs page does not mention VIES. The extension checks online: "Both the German API and the European API are used for validation". Source: https://docs.shopware.com/en/shopware-6-en/settings/countries , https://store.shopware.com/en/lenz698198643790m/vatid-validation-pro-for-eu-b2b.html (read 2026-11-04 by WebFetch). Same (October had the VIES extension from a search excerpt only; its listing is now read).
+T6 Business buyer's VAT number checked (VIES), reverse charge: native for the format check and tax-free B2B sales; VIES needs an
+extension, "VATID Validation PRO for EU (B2B)" by LENZ eBusiness GmbH (third party, compatible 6.6.0.0 – 6.7.16.0). For each
+country you can make B2B orders tax-free ("the respective customer accounts must have a valid VAT ID") and add the
+"intra-Community supply" note to documents. The core checks only the number's format ("a check of the VAT ID format, this is
+possible for countries of the EU"), and the docs page does not mention VIES. The extension checks online: "Both the German API and
+the European API are used for validation". Source: https://docs.shopware.com/en/shopware-6-en/settings/countries ,
+https://store.shopware.com/en/lenz698198643790m/vatid-validation-pro-for-eu-b2b.html (read 2026-11-04 by WebFetch). Same (October
+had the VIES extension from a search excerpt only; its listing is now read).
 
-T7 Appointments, stays and rentals: extension: "Rental Items for Shopware - Rent Products" by RHIEM Intermedia GmbH (third party, compatible 6.3.0.0 – 6.7.16.0). Renting products out by the day, overnight or hour takes this extension. I found no booking of appointments or stays in Shopware itself, and Webkul's booking extension says it is not compatible with the newest Shopware (search excerpt). Source: https://store.shopware.com/en/rhiem46892485882m/rental-items-rental-and-lending-articles.html (read 2026-11-04 by WebFetch). Same.
+T7 Appointments, stays and rentals: extension: "Rental Items for Shopware - Rent Products" by RHIEM Intermedia GmbH (third party,
+compatible 6.3.0.0 – 6.7.16.0). Renting products out by the day, overnight or hour takes this extension. I found no booking of
+appointments or stays in Shopware itself, and Webkul's booking extension says it is not compatible with the newest Shopware
+(search excerpt). Source: https://store.shopware.com/en/rhiem46892485882m/rental-items-rental-and-lending-articles.html (read
+2026-11-04 by WebFetch). Same.
 
-T8 Subscriptions: higher-edition (Beyond). Recurring orders exist since 6.5.4.0 and "It is available as a commercial feature from the Beyond plan and is part of the Shopware Commercial extension". Payment is limited: "For subscriptions, you can currently use the basic payment methods prepayment and invoice", plus PayPal (and cards through PayPal) with PayPal Vaulting. Source: https://docs.shopware.com/en/shopware-6-en/settings/shop/subscriptions , https://www.shopware.com/en/pricing/ (read 2026-11-04 by WebFetch). Same.
+T8 Subscriptions: higher-edition (Beyond). Recurring orders exist since 6.5.4.0 and "It is available as a commercial feature from
+the Beyond plan and is part of the Shopware Commercial extension". Payment is limited: "For subscriptions, you can currently use
+the basic payment methods prepayment and invoice", plus PayPal (and cards through PayPal) with PayPal Vaulting. Source:
+https://docs.shopware.com/en/shopware-6-en/settings/shop/subscriptions , https://www.shopware.com/en/pricing/ (read 2026-11-04 by
+WebFetch). Same.
 
-T9 Bundles: higher-edition (Evolve, from 6.7.9.0, through the Shopware Commercial extension). "It is available as a commercial feature from the Evolve plan". A bundle is "a product made up of several individual items", with fixed or flexible quantities and a percentage or fixed discount, and Shopware can combine matching products in the cart into the bundle. Third-party bundle extensions exist for other editions (for example "Bundle Products Plugin" by Diztech, search excerpt). Source: https://docs.shopware.com/en/shopware-6-en/shopware-services/bundles (read 2026-11-04 by WebFetch). Not in the October file (new topic). In search results this page's title reads "Insider Previews - Bundles", so it may still be a preview; check before saying "available".
+T9 Bundles: higher-edition (Evolve, from 6.7.9.0, through the Shopware Commercial extension). "It is available as a commercial
+feature from the Evolve plan". A bundle is "a product made up of several individual items", with fixed or flexible quantities and
+a percentage or fixed discount, and Shopware can combine matching products in the cart into the bundle. Third-party bundle
+extensions exist for other editions (for example "Bundle Products Plugin" by Diztech, search excerpt). Source:
+https://docs.shopware.com/en/shopware-6-en/shopware-services/bundles (read 2026-11-04 by WebFetch). Not in the October file (new
+topic). In search results this page's title reads "Insider Previews - Bundles", so it may still be a preview; check before saying
+"available".
 
-T10 B2B: company accounts, roles, quotes, price lists, payment terms: higher-edition (Evolve for the B2B Components; Beyond for customer-specific pricing). "The B2B Components are available to you as of the Shopware Evolve plan via the Shopware Commercial extension". They cover employee management with roles (6.5.6.0), quote management, quick order (6.5.4.0), shopping lists (6.6.3.0), budgets (6.7.4.0), order approval (6.5.8.0), sales agents, and individual pricing rules for organisation units ("From Shopware version 6.7.8.0, individual prices are available to you"). Prices agreed with each customer and fed from an ERP ("Customer-specific pricing") appear under Beyond only on the pricing page. I found no payment-terms setting on Shopware's pages. One extension, "Credit Limit For B2B and Pay By Invoice" by nuonic Digital (third party, compatible 6.4.19.0 – 6.7.16.0), adds credit limits for pay-by-invoice. Source: https://docs.shopware.com/en/shopware-6-en/commercial-features/b2b-components , https://www.shopware.com/en/pricing/ , https://store.shopware.com/en/nuoni52437279746m/credit-limit-for-b2b-and-pay-by-invoice.html (read 2026-11-04 and 2026-11-05 by WebFetch). CHANGED since Oct: October put customer-specific pricing in "Evolve and Beyond". Today the pricing page and the commercial-features page show it under Beyond only; Evolve has the narrower individual pricing rules. The tick marks were read through a summariser, so check them on the live pricing page.
+T10 B2B: company accounts, roles, quotes, price lists, payment terms: higher-edition (Evolve for the B2B Components; Beyond for
+customer-specific pricing). "The B2B Components are available to you as of the Shopware Evolve plan via the Shopware Commercial
+extension". They cover employee management with roles (6.5.6.0), quote management, quick order (6.5.4.0), shopping lists
+(6.6.3.0), budgets (6.7.4.0), order approval (6.5.8.0), sales agents, and individual pricing rules for organisation units ("From
+Shopware version 6.7.8.0, individual prices are available to you"). Prices agreed with each customer and fed from an ERP
+("Customer-specific pricing") appear under Beyond only on the pricing page. I found no payment-terms setting on Shopware's pages.
+One extension, "Credit Limit For B2B and Pay By Invoice" by nuonic Digital (third party, compatible 6.4.19.0 – 6.7.16.0), adds
+credit limits for pay-by-invoice. Source: https://docs.shopware.com/en/shopware-6-en/commercial-features/b2b-components ,
+https://www.shopware.com/en/pricing/ ,
+https://store.shopware.com/en/nuoni52437279746m/credit-limit-for-b2b-and-pay-by-invoice.html (read 2026-11-04 and 2026-11-05 by
+WebFetch). CHANGED since Oct: October put customer-specific pricing in "Evolve and Beyond". Today the pricing page and the
+commercial-features page show it under Beyond only; Evolve has the narrower individual pricing rules. The tick marks were read
+through a summariser, so check them on the live pricing page.
 
-T11 Multi-vendor marketplace: extension, but only for old versions: "Shopware Multi-Seller Marketplace" by Webkul Software Pvt. Ltd. (third party). Other sellers can sell in your shop with this extension, but its listing is compatible only with "6.0.0-DP1 - 6.5.6.1" and says "The extension is not compatible with the newest Shopware version". One search found no marketplace extension for 6.7. Source: https://store.shopware.com/en/webku48583427970m/shopware-multi-seller-marketplace.html (read 2026-11-04 by WebFetch). Same.
+T11 Multi-vendor marketplace: extension, but only for old versions: "Shopware Multi-Seller Marketplace" by Webkul Software Pvt.
+Ltd. (third party). Other sellers can sell in your shop with this extension, but its listing is compatible only with "6.0.0-DP1 -
+6.5.6.1" and says "The extension is not compatible with the newest Shopware version". One search found no marketplace extension
+for 6.7. Source: https://store.shopware.com/en/webku48583427970m/shopware-multi-seller-marketplace.html (read 2026-11-04 by
+WebFetch). Same.
 
 T12 Several storefronts from one installation (sales channels): native. The Community Edition includes "Unlimited sales channels". Each has its own languages, currencies, countries, payment and shipping methods, default customer group, theme and domains ("you can create several domains for your sales channel"). Source: https://docs.shopware.com/en/shopware-6-en/features/shopware-core , https://docs.shopware.com/en/shopware-6-en/settings/saleschannel (read 2026-11-04 by WebFetch). Same.
 
@@ -41,21 +118,75 @@ T18 Pre-orders: extension: "Preorder and Availability Manager Pro" by Barn Proje
 
 T19 Tiered and volume discounts (advanced pricing): native. In the product's Advanced pricing tab you set prices per quantity and per Rule Builder rule ("Scaled prices can be represented here via an individual allocation of quantities and prices"). Source: https://docs.shopware.com/en/shopware-6-en/catalogues/products (read 2026-11-04 by WebFetch). Same.
 
-T20 Email marketing, broadcasts and automations (Flow Builder): native for event emails through the Flow Builder; newsletter sending is not-possible-per-source in the core, with an extension: "CleverReach: Email Marketing for Shopware 6" by CleverReach (third party, compatible 6.6.0.0 – 6.7.16.0, includes abandoned-cart emails). The Flow Builder (Community Edition) sends emails, adds tags and makes documents when orders, customers or newsletter sign-ups change. But "Shopware does not have a built-in function to send newsletters", and "The time-delayed actions in the Flow Builder are available to you with the Shopware Beyond plan" (webhook actions "from the Evolve Plan onwards"). The Flow Builder page lists no abandoned-cart trigger. Source: https://docs.shopware.com/en/shopware-6-en/settings/Newsletter-configuration , https://docs.shopware.com/en/shopware-6-en/settings/flow-builder , https://store.shopware.com/en/crsw420887178437f/cleverreach-email-marketing-automation-for-shopware-6.html (read 2026-11-04 by WebFetch). CHANGED since Oct: no separate line in October, but its strengths line put Flow Builder at "Rise per commercial features page". Today the core features page and the pricing page list the Flow Builder in the Community Edition. Only sharing flows (Rise), webhook actions (Evolve) and delayed actions (Beyond) are paid.
+T20 Email marketing, broadcasts and automations (Flow Builder): native for event emails through the Flow Builder; newsletter
+sending is not-possible-per-source in the core, with an extension: "CleverReach: Email Marketing for Shopware 6" by CleverReach
+(third party, compatible 6.6.0.0 – 6.7.16.0, includes abandoned-cart emails). The Flow Builder (Community Edition) sends emails,
+adds tags and makes documents when orders, customers or newsletter sign-ups change. But "Shopware does not have a built-in
+function to send newsletters", and "The time-delayed actions in the Flow Builder are available to you with the Shopware Beyond
+plan" (webhook actions "from the Evolve Plan onwards"). The Flow Builder page lists no abandoned-cart trigger. Source:
+https://docs.shopware.com/en/shopware-6-en/settings/Newsletter-configuration ,
+https://docs.shopware.com/en/shopware-6-en/settings/flow-builder ,
+https://store.shopware.com/en/crsw420887178437f/cleverreach-email-marketing-automation-for-shopware-6.html (read 2026-11-04 by
+WebFetch). CHANGED since Oct: no separate line in October, but its strengths line put Flow Builder at "Rise per commercial
+features page". Today the core features page and the pricing page list the Flow Builder in the Community Edition. Only sharing
+flows (Rise), webhook actions (Evolve) and delayed actions (Beyond) are paid.
 
 T21 Scheduled report emails: extension: "Daily report mail to shop owner" by scope01 (third party, compatible 6.6.0.0 – 6.7.16.0). A daily email to the owner summing up sales, order statuses, new customers and errors comes from this extension. Source: https://store.shopware.com/en/scop498771391904m/daily-report-to-the-shop-owner-email.html (read 2026-11-04 by WebFetch). Same.
 
-T22 AI in the admin (Copilot, Shopware Intelligence): native, plus higher-edition (Rise) and an add-on. "Copilot is now available to all users – including those on our free Community Edition plan" (from 6.7.1.0), and "Agentic capabilities are available now in Shopware Intelligence+". Intelligence+ is a paid add-on bookable on any edition, the Community Edition included. The AI writing features (product descriptions, review summaries, image keywords and others) are marked for Rise, Evolve and Beyond. Shopware says "The infrastructure of Copilot is fully hosted in Europe", but does not name its other AI providers. The core features also list "an experimental Model Context Protocol (MCP) server", and 6.7.16.0 adds Copilot in Nexus, a now generally available tool for connecting Shopware to other systems. Source: https://www.shopware.com/en/products/shopware-intelligence/ , https://docs.shopware.com/en/shopware-6-en/shopware-services/shopware-intelligence-plus , https://docs.shopware.com/en/shopware-6-en/features/commercial , https://docs.shopware.com/en/shopware-6-en/features/shopware-core (read 2026-11-04 by WebFetch). CHANGED since Oct: additions only. The experimental MCP server in the core and Copilot in Nexus (6.7.16.0, 2 Nov 2026) are new to this reading; the edition split is the same as in October.
+T22 AI in the admin (Copilot, Shopware Intelligence): native, plus higher-edition (Rise) and an add-on. "Copilot is now available
+to all users – including those on our free Community Edition plan" (from 6.7.1.0), and "Agentic capabilities are available now in
+Shopware Intelligence+". Intelligence+ is a paid add-on bookable on any edition, the Community Edition included. The AI writing
+features (product descriptions, review summaries, image keywords and others) are marked for Rise, Evolve and Beyond. Shopware says
+"The infrastructure of Copilot is fully hosted in Europe", but does not name its other AI providers. The core features also list
+"an experimental Model Context Protocol (MCP) server", and 6.7.16.0 adds Copilot in Nexus, a now generally available tool for
+connecting Shopware to other systems. Source: https://www.shopware.com/en/products/shopware-intelligence/ ,
+https://docs.shopware.com/en/shopware-6-en/shopware-services/shopware-intelligence-plus ,
+https://docs.shopware.com/en/shopware-6-en/features/commercial , https://docs.shopware.com/en/shopware-6-en/features/shopware-core
+(read 2026-11-04 by WebFetch). CHANGED since Oct: additions only. The experimental MCP server in the core and Copilot in Nexus
+(6.7.16.0, 2 Nov 2026) are new to this reading; the edition split is the same as in October.
 
-T23 Vipps and MobilePay: extension: "Mollie: All-in-one payments plugin for Shopware 6" by Mollie (third party, compatible 6.4.5.0 – 6.7.15.1). The changelog for 4.23.0 (19 March 2026) says "New: Added Vipps as a payment method." and "New: Added MobilePay as a payment method." Source: https://store.shopware.com/en/molli20782621168f/mollie-payments-plugin-for-shopware-6.html (read 2026-11-04 by WebFetch). CHANGED since Oct: October cited WEXO's Vipps MobilePay plugin from GitHub, which is not a Shopware Store listing and does not count. The Store listing to cite is Mollie's. Its stated compatibility ends at 6.7.15.1, one release before 6.7.16.0.
+T23 Vipps and MobilePay: extension: "Mollie: All-in-one payments plugin for Shopware 6" by Mollie (third party, compatible 6.4.5.0
+– 6.7.15.1). The changelog for 4.23.0 (19 March 2026) says "New: Added Vipps as a payment method." and "New: Added MobilePay as a
+payment method." Source: https://store.shopware.com/en/molli20782621168f/mollie-payments-plugin-for-shopware-6.html (read
+2026-11-04 by WebFetch). CHANGED since Oct: October cited WEXO's Vipps MobilePay plugin from GitHub, which is not a Shopware Store
+listing and does not count. The Store listing to cite is Mollie's. Its stated compatibility ends at 6.7.15.1, one release before
+6.7.16.0.
 
-T24 Nordic carriers, labels and pickup points: unverified. Search excerpts show WEXO A/S listings "PostNord Paketshop Versand" (DK, NO and SE pickup points, compatible to 6.5.8.7) and "Bring Paketshop versand" (compatible to 6.5.8.10, last updated 13.05.2024). Both let the customer choose a pickup point at checkout, and I found no Bring, PostNord, Helthjem or Porterbuddy label extension. Source: https://store.shopware.com/wexo483201116611m/postnord-paketshop-versand.html , https://store.shopware.com/wexo889221425204m/bring-paketshop-versand.html (NOT READ: both returned 404 to WebFetch; by search excerpt only). Same in status (unverified), but the excerpts disagree with October's: October had Bring compatible to 6.6.6.1, last updated 18 Sep 2024.
+T24 Nordic carriers, labels and pickup points: unverified. Search excerpts show WEXO A/S listings "PostNord Paketshop Versand"
+(DK, NO and SE pickup points, compatible to 6.5.8.7) and "Bring Paketshop versand" (compatible to 6.5.8.10, last updated
+13.05.2024). Both let the customer choose a pickup point at checkout, and I found no Bring, PostNord, Helthjem or Porterbuddy
+label extension. Source: https://store.shopware.com/wexo483201116611m/postnord-paketshop-versand.html ,
+https://store.shopware.com/wexo889221425204m/bring-paketshop-versand.html (NOT READ: both returned 404 to WebFetch; by search
+excerpt only). Same in status (unverified), but the excerpts disagree with October's: October had Bring compatible to 6.6.6.1,
+last updated 18 Sep 2024.
 
-T25 Hosting and data: native (self-hosted Community Edition), with SaaS and PaaS offered by Shopware. In the Community Edition "You arrange hosting, implementation and maintenance". Shopware offers "SaaS, PaaS, or self-hosted – the choice is yours", and on SaaS "Plugins (including theme plugins) cannot run in Cloud" (only apps). Per the data processing agreement, SaaS runs on AWS "eu-central-1" in Frankfurt with Datadog Inc. (US company, location "Germany"). PaaS Native adds a Dublin disaster-recovery region ("No active processing of personal data takes place in this region under normal operating conditions") and Fastly ("worldwide"). The PaaS Light/Small/Medium/Large tiers list AWS ("EU, UK, US, CA, AU"), Google Cloud ("EU, UK, US"), Microsoft Azure, OVH and Platform.sh ("EU"). Source: https://www.shopware.com/en/privacy/dpa/ , https://www.shopware.com/en/pricing/ , https://www.shopware.com/en/products/hosting/ , https://developer.shopware.com/docs/guides/plugins/ (read 2026-11-04 and 2026-11-05 by WebFetch). CHANGED since Oct: the PaaS Light/Small/Medium/Large tiers and their non-EU processing locations were not in October's reading (new, or missed then). The pages read today do not say which editions can use SaaS or PaaS.
+T25 Hosting and data: native (self-hosted Community Edition), with SaaS and PaaS offered by Shopware. In the Community Edition
+"You arrange hosting, implementation and maintenance". Shopware offers "SaaS, PaaS, or self-hosted – the choice is yours", and on
+SaaS "Plugins (including theme plugins) cannot run in Cloud" (only apps). Per the data processing agreement, SaaS runs on AWS
+"eu-central-1" in Frankfurt with Datadog Inc. (US company, location "Germany"). PaaS Native adds a Dublin disaster-recovery region
+("No active processing of personal data takes place in this region under normal operating conditions") and Fastly ("worldwide").
+The PaaS Light/Small/Medium/Large tiers list AWS ("EU, UK, US, CA, AU"), Google Cloud ("EU, UK, US"), Microsoft Azure, OVH and
+Platform.sh ("EU"). Source: https://www.shopware.com/en/privacy/dpa/ , https://www.shopware.com/en/pricing/ ,
+https://www.shopware.com/en/products/hosting/ , https://developer.shopware.com/docs/guides/plugins/ (read 2026-11-04 and
+2026-11-05 by WebFetch). CHANGED since Oct: the PaaS Light/Small/Medium/Large tiers and their non-EU processing locations were not
+in October's reading (new, or missed then). The pages read today do not say which editions can use SaaS or PaaS.
 
-T26 Moving in from Shopify (official Migration Assistant): unverified. Shopware's own "Shopware Migration Assistant" (by shopware AG, compatible 6.6.0.0 – 6.7.16.0) connects to "a data source (e.g. Shopware 5 shop)". Its listing does not mention Shopify, and its 16.1.0 changelog says "Remove support for Magento 1.9". No Shopware page I read says a Shopify import is impossible, and the core has Import/Export (CSV profiles). Source: https://store.shopware.com/en/swag257162657297f/shopware-migration-assistant.html , https://developer.shopware.com/docs/products/extensions/migration-assistant/ (read 2026-11-05 by WebFetch). CHANGED since Oct: October listed "Shopware 5/6 and Magento". Today the listing names Shopware 5 only, with Magento 1.9 support removed (a separate Magento plugin may exist; not read).
+T26 Moving in from Shopify (official Migration Assistant): unverified. Shopware's own "Shopware Migration Assistant" (by shopware
+AG, compatible 6.6.0.0 – 6.7.16.0) connects to "a data source (e.g. Shopware 5 shop)". Its listing does not mention Shopify, and
+its 16.1.0 changelog says "Remove support for Magento 1.9". No Shopware page I read says a Shopify import is impossible, and the
+core has Import/Export (CSV profiles). Source: https://store.shopware.com/en/swag257162657297f/shopware-migration-assistant.html ,
+https://developer.shopware.com/docs/products/extensions/migration-assistant/ (read 2026-11-05 by WebFetch). CHANGED since Oct:
+October listed "Shopware 5/6 and Magento". Today the listing names Shopware 5 only, with Magento 1.9 support removed (a separate
+Magento plugin may exist; not read).
 
-T27 Open source and editions: native (Community Edition, MIT licence), with the paid editions Rise, Evolve and Beyond. "As of Shopware 6, the license conditions of MIT apply to the Community Edition and must be observed by Customer", and plan prices are "based on your gross merchandise value (GMV) and further individual factors". No transaction fee or revenue share is stated on the pricing page. Under the Fair Usage Policy (13 Mar 2025), businesses with "annual GMV exceeding €1 million" "must subscribe to Shopware Rise, Evolve, or Beyond to retain access to the Shopware Account and Shopware Store", with "no immediate restrictions", and it "does not impact the open-source license of the Community Edition". Source: https://www.shopware.com/en/gtc/ (section 22.1), https://www.shopware.com/en/news/fair-usage-policy-community-edition/ , https://www.shopware.com/en/pricing/ (read 2026-11-04 and 2026-11-05 by WebFetch). Same.
+T27 Open source and editions: native (Community Edition, MIT licence), with the paid editions Rise, Evolve and Beyond. "As of
+Shopware 6, the license conditions of MIT apply to the Community Edition and must be observed by Customer", and plan prices are
+"based on your gross merchandise value (GMV) and further individual factors". No transaction fee or revenue share is stated on the
+pricing page. Under the Fair Usage Policy (13 Mar 2025), businesses with "annual GMV exceeding €1 million" "must subscribe to
+Shopware Rise, Evolve, or Beyond to retain access to the Shopware Account and Shopware Store", with "no immediate restrictions",
+and it "does not impact the open-source license of the Community Edition". Source: https://www.shopware.com/en/gtc/ (section
+22.1), https://www.shopware.com/en/news/fair-usage-policy-community-edition/ , https://www.shopware.com/en/pricing/ (read
+2026-11-04 and 2026-11-05 by WebFetch). Same.
 
 ## Strengths (where Shopware is honestly the better fit)
 

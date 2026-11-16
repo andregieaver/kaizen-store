@@ -41,6 +41,7 @@ export type FinanceLineKey =
   | "shippingCosts"
   | "handlingCosts"
   | "returnLabels"
+  | "replacements"
   | "marketing"
   | "lostDisputes"
   | "contributionProfit"
@@ -191,6 +192,9 @@ export function financeStatement(totals: Totals, settings: AnalyticsSettings, da
   }
   const returnLabels = totals.returnLabelsMinor ?? 0;
   if (returnLabels !== 0) push("returnLabels", L.returnLabels, -returnLabels, { note: N.returnLabels });
+  // Lost parcels' goods sent again (B3, D679): shown when there are any.
+  const replacements = totals.replacementsMinor ?? 0;
+  if (replacements !== 0) push("replacements", L.replacements, -replacements, { note: N.replacements });
   const noSpend = orders > 0 && totals.marketingMinor === 0;
   push("marketing", L.marketing, -totals.marketingMinor, { missing: noSpend, note: noSpend ? N.marketingNone : N.marketing });
 
@@ -200,7 +204,7 @@ export function financeStatement(totals: Totals, settings: AnalyticsSettings, da
     push("lostDisputes", L.lostDisputes, -lostDisputes, { note: N.lostDisputes });
   }
   const contribution =
-    grossProfit === null ? null : grossProfit - totals.paymentFeesMinor - totals.platformFeesMinor - totals.shippingCostsMinor - handling - returnLabels - totals.marketingMinor - lostDisputes;
+    grossProfit === null ? null : grossProfit - totals.paymentFeesMinor - totals.platformFeesMinor - totals.shippingCostsMinor - handling - returnLabels - replacements - totals.marketingMinor - lostDisputes;
   push("contributionProfit", L.contributionProfit, contribution, {
     subtotal: true,
     estimated: true,

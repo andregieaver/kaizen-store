@@ -5,7 +5,11 @@ What every AI call carries (`README.md` beside this file), part of `docs/audits/
 - **Kind:** eager. **Priority:** P2. **Effort:** S. **Confidence:** high. **Step:** 2.36.
 - **Second check:** corrected.
 - **Where:** `src/server/owner-assistant.ts:646`, `src/server/owner-assistant.ts:226-238`, `src/server/owner-assistant.ts:663-683`, `src/server/assistant-memory.ts:85-94`, `src/server/assistant-memory.ts:185-207`
-- **Evidence:** To check that a conversation is the person's, runTurn() calls getConversation() (line 646), which selects every message and every approval of it with select * (lines 233-236; a message may hold 20,000 characters), then reads the last 20 again (663-669). memoriesFor() asks the provider for an embedding of the message on every turn, with a 5-second timeout (assistant-memory.ts:85-94, 201), even for a person with no memories or with fewer than the 8 that fit in the prompt. The embedding runs beside the other reads, so it delays the first model call only by what it takes beyond them.
+- **Evidence:** To check that a conversation is the person's, runTurn() calls getConversation() (line 646), which selects every
+  message and every approval of it with select * (lines 233-236; a message may hold 20,000 characters), then reads the last 20
+  again (663-669). memoriesFor() asks the provider for an embedding of the message on every turn, with a 5-second timeout
+  (assistant-memory.ts:85-94, 201), even for a person with no memories or with fewer than the 8 that fit in the prompt. The
+  embedding runs beside the other reads, so it delays the first model call only by what it takes beyond them.
 - **Cost today:** One embeddings call and one usage row a turn (a tiny price, but a network round trip the first word can wait for), and the whole conversation read once more on every turn of it. Time not measured. Small beside the model call itself. Paid by: The owner waiting for the answer, and the database; per turn, so it follows use.
 - **Saving:** One embeddings call a turn for a person with 8 or fewer memories, and a read that grows with the conversation becomes constant. Latency gain not measured; expect little.
 - **Risk:** Low. Ranking is unchanged for a person with more than 8 memories. If the 'used' count is not moved for the memories sent, the daily fading (fadeMemories()) would drop ones still in use: keep that update.

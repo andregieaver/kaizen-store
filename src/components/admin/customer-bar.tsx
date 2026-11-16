@@ -3,7 +3,7 @@ import Link from "next/link";
 import { Avatar } from "@/components/avatar";
 import { countWords, fillWords } from "@/lib/admin-fill";
 import { customersEn, type CustomersMessages } from "@/lib/admin-messages/customers.en";
-import { formatMoney } from "@/lib/money";
+import { formatMoney, minorUnitDigits } from "@/lib/money";
 import { avatarFor } from "@/server/avatars";
 import { CARD_CLASS, Chip } from "@/components/admin/ui";
 
@@ -29,9 +29,13 @@ export function accountLabel(account: CustomerBarData["account"], words: Custome
 }
 
 /** "NOK 1 249,00 + SEK 300,00". */
-export function moneyByCurrency(minor: Record<string, number>, locale: string): string {
+export function moneyByCurrency(minor: Record<string, number>, locale: string, options: { whole?: boolean } = {}): string {
   return Object.entries(minor)
-    .map(([currency, amount]) => formatMoney(Number(amount), currency, locale))
+    .map(([currency, amount]) => {
+      // A figure read at a glance (round 21) is rounded to whole units, so a phone's small box shows it all: the orders keep their øre.
+      const unit = 10 ** minorUnitDigits(currency);
+      return options.whole ? formatMoney(Math.round(Number(amount) / unit) * unit, currency, locale, { decimals: "hide_whole" }) : formatMoney(Number(amount), currency, locale);
+    })
     .join(" + ");
 }
 

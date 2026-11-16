@@ -2,7 +2,15 @@
 
 Part of `docs/audits/bloat-review-2026-11.md`, on commit 0bd814c. Read by one reviewer, challenged by a second (who re-opened every citation, re-measured every number and applied the owner's note that the platform is not open yet) and planned by a third. A tick (✓) marks a finding the second reviewer confirmed or corrected; one the planner added has none. Each finding has a file of its own beside this one.
 
-**In short.** A warm, cached storefront page is lean (a prerendered home page or a store's own page makes no database read of its own); the cost sits around the page and none of it depends on which features a store uses, so every store pays it once the platform opens. A product page asks the database about 18 times a view where only stock changes per view, the proxy in front of every page loads 1,311 modules (0.8 to 0.95 s and 168 MB cold on this machine) where its five reads need about 50 to 100, and every page load makes a second function call to learn the wishlist is empty and, with a product grid, a third (3 statements) for tile stock that is off by default. Cached pages are drawn again by the clock (1 hour for 71 of 85 cached reads, 15 minutes for the home page), by every deploy (up to 52 on 11 Nov) and by any one owner saving AI settings, which expires every store's pages (319 of the build's 1,316 prerendered entries carry that one tag). Nothing here removes or hides a feature: 16 fixes make cost follow use, five of them small and safe enough to do first, and before opening is the cheapest time for all of them.
+**In short.** A warm, cached storefront page is lean (a prerendered home page or a store's own page makes no database read of its
+own); the cost sits around the page and none of it depends on which features a store uses, so every store pays it once the
+platform opens. A product page asks the database about 18 times a view where only stock changes per view, the proxy in front of
+every page loads 1,311 modules (0.8 to 0.95 s and 168 MB cold on this machine) where its five reads need about 50 to 100, and
+every page load makes a second function call to learn the wishlist is empty and, with a product grid, a third (3 statements) for
+tile stock that is off by default. Cached pages are drawn again by the clock (1 hour for 71 of 85 cached reads, 15 minutes for the
+home page), by every deploy (up to 52 on 11 Nov) and by any one owner saving AI settings, which expires every store's pages (319
+of the build's 1,316 prerendered entries carry that one tag). Nothing here removes or hides a feature: 16 fixes make cost follow
+use, five of them small and safe enough to do first, and before opening is the cheapest time for all of them.
 
 ## Findings
 

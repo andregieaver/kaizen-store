@@ -217,7 +217,11 @@ Page `/admin/{store}/orders/export` (needs the **owner** role, section 5.4), lin
    and the VAT not charged (`vat_relief_minor`).
 5. **Special orders.** A **copied** order (`copied_from` set, number `C-…`) is history, not sales: it is left out unless included, and then every
    row carries `copied = true` and the number says `C-`. A **host's** order (`host_id` set) is included and carries `host_order = true` with the store's
-   commission in `commission`. An order **paid in Stripe's test mode** (the test `commerce.invoice_eligibility()` makes: a payment on the store's test account, or a venue payment made while the store was in test mode) is included, as analytics counts it, and carries `test_payment = true`: it is a try-out, not a sale, and has no invoice, so the VAT reports leave it out; the page says an accountant's file should not include `test_payment = true` rows. An order whose person was erased (`restricted_at` or `anonymised_at` set, D162) is exported **without any personal
+   commission in `commission`. An order **paid in Stripe's test mode** (the test `commerce.invoice_eligibility()` makes: a payment
+   on the store's test account, or a venue payment made while the store was in test mode) is included, as analytics counts it, and
+   carries `test_payment = true`: it is a try-out, not a sale, and has no invoice, so the VAT reports leave it out; the page says
+   an accountant's file should not include `test_payment = true` rows. An order whose person was erased (`restricted_at` or
+   `anonymised_at` set, D162) is exported **without any personal
    field** whatever the profile (email, names, phone, addresses, company and VAT number are `[removed]` or empty, country stays): the bookkeeping
    duty keeps the order, but a fresh file is not the place to copy a person's data again. An appointment, stay or rental order is exported like any
    order; its time is not in this file.
@@ -807,13 +811,37 @@ public policy) and the **performance advisors** (the foreign key indexes on `sto
 
 `D165` (the number is the next free one: `docs/decisions.md` ends at D163 and `CLAUDE.md` already cites D164 for the replicator's rows kept as pictures, which has no row; use the next free number):
 
-> **Data in and out: CSV for products, orders and customers, and bulk editing (wave 2, first run).** `docs/wave-2-data.md` is the contract. One job table (`commerce.data_jobs`) runs a product import (a dry run that lists every row's problem, then a resumable apply through `saveProduct()` and `commerce.set_price`, Kaizen and Shopify files, pictures fetched through `safeFetch()` into the media library, never a delete, never a handle change), a product export, an order export (one row per line, VAT split out, order and main currency, copied history marked, an erased person's order without personal fields), a customer export (consent is `not_recorded`: Kaizen has no consent record yet) and, in the products list, bulk actions and a grid with a preview and an undo (`bulk_edit_batches`). Large exports are jobs delivered by a signed link to the signed-in member, never emailed; files are private and deleted after 7 days or at erasure. Every analytics table has a CSV for the period and comparison on the page (a scan test holds it). All text goes through one formula-safe writer (`src/lib/csv.ts`), with Excel (Nordic) as a dialect. Rows: `catalogue.bulk-product-import-and-export-csv`, `catalogue.bulk-editing`, `orders.order-export-to-csv`, `analytics.export-reports-to-csv` full; `platform.product-customer-and-order-csv` partial (consent, wave 5).
+> **Data in and out: CSV for products, orders and customers, and bulk editing (wave 2, first run).** `docs/wave-2-data.md` is the
+contract. One job table (`commerce.data_jobs`) runs a product import (a dry run that lists every row's problem, then a resumable
+apply through `saveProduct()` and `commerce.set_price`, Kaizen and Shopify files, pictures fetched through `safeFetch()` into the
+media library, never a delete, never a handle change), a product export, an order export (one row per line, VAT split out, order
+and main currency, copied history marked, an erased person's order without personal fields), a customer export (consent is
+`not_recorded`: Kaizen has no consent record yet) and, in the products list, bulk actions and a grid with a preview and an undo
+(`bulk_edit_batches`). Large exports are jobs delivered by a signed link to the signed-in member, never emailed; files are private
+and deleted after 7 days or at erasure. Every analytics table has a CSV for the period and comparison on the page (a scan test
+holds it). All text goes through one formula-safe writer (`src/lib/csv.ts`), with Excel (Nordic) as a dialect. Rows:
+`catalogue.bulk-product-import-and-export-csv`, `catalogue.bulk-editing`, `orders.order-export-to-csv`,
+`analytics.export-reports-to-csv` full; `platform.product-customer-and-order-csv` partial (consent, wave 5).
 
 Migration versions go in `docs/decisions.md` (Migration versions) after CI applies them, as for D161.
 
 ### 9.4 CLAUDE.md bullet, draft (Admin section)
 
-> - **Data in and out (wave 2, D165, `docs/wave-2-data.md`)**: imports and exports are `commerce.data_jobs` (`src/server/data-jobs.ts`: claimed, resumable, run in ticks by `after()`, the open page and the five-minute cron; a job is a row, its files are in the private `imports` and `exports` buckets and are deleted after 7 days by `pruneDataJobs()`). Every CSV is written and read only by `src/lib/csv.ts` (`writeCsv()`: OWASP's formula characters escaped, `toCsv()` delegates; Excel (Nordic) is a dialect); never join cells by hand (`csv-writers.test.ts`). A product import goes only through `getProductForEdit()` and `saveProduct()` (so `commerce.set_price` and the editor's checks apply; `product-import-writers.test.ts`), never deletes, never changes a handle, never imports a compare-at price, never turns `Vendor` into a manufacturer or `Charge tax` into the exempt VAT category, and fetches pictures only through `safeFetch()`. A bulk action does the same and records before and after in `bulk_edit_items` for the undo; one audit entry per batch or job, never per product. Order and customer files are owner-only, minimal by default, mark copied (`C-`) and host orders, carry no personal field of an erased person's order, never a secret or token (canary tests), are never emailed, and an erasure deletes the ready ones; the customer file's `marketing_consent` is `not_recorded` until wave 5 records consent. Amounts are `decimalAmount()` of integers; main-currency columns are indicative and blank without a rate; a new money read needs a euro scenario in `checkout-kinds.int.test.ts`. Every analytics table is in `ANALYTICS_TABLES` with a CSV button (`analytics-export.test.ts` fails for a table with none); the figures come from the page's own loaders. New tables are `never` in `COPY_RULES`.
+> - **Data in and out (wave 2, D165, `docs/wave-2-data.md`)**: imports and exports are `commerce.data_jobs`
+(`src/server/data-jobs.ts`: claimed, resumable, run in ticks by `after()`, the open page and the five-minute cron; a job is a row,
+its files are in the private `imports` and `exports` buckets and are deleted after 7 days by `pruneDataJobs()`). Every CSV is
+written and read only by `src/lib/csv.ts` (`writeCsv()`: OWASP's formula characters escaped, `toCsv()` delegates; Excel (Nordic)
+is a dialect); never join cells by hand (`csv-writers.test.ts`). A product import goes only through `getProductForEdit()` and
+`saveProduct()` (so `commerce.set_price` and the editor's checks apply; `product-import-writers.test.ts`), never deletes, never
+changes a handle, never imports a compare-at price, never turns `Vendor` into a manufacturer or `Charge tax` into the exempt VAT
+category, and fetches pictures only through `safeFetch()`. A bulk action does the same and records before and after in
+`bulk_edit_items` for the undo; one audit entry per batch or job, never per product. Order and customer files are owner-only,
+minimal by default, mark copied (`C-`) and host orders, carry no personal field of an erased person's order, never a secret or
+token (canary tests), are never emailed, and an erasure deletes the ready ones; the customer file's `marketing_consent` is
+`not_recorded` until wave 5 records consent. Amounts are `decimalAmount()` of integers; main-currency columns are indicative and
+blank without a rate; a new money read needs a euro scenario in `checkout-kinds.int.test.ts`. Every analytics table is in
+`ANALYTICS_TABLES` with a CSV button (`analytics-export.test.ts` fails for a table with none); the figures come from the page's
+own loaders. New tables are `never` in `COPY_RULES`.
 
 ### 9.5 Other for the hand-over
 
@@ -860,13 +888,38 @@ Written by the admin step of the run (the pages and components of products, orde
 
 Written by the analytics-and-ai step of the run. Each point changes the spec above where they disagree.
 
-1. **The button is a form in a scope** (2.8). A page wraps what it draws in `<ExportScope base query owner canExport>` (`src/components/admin/analytics/export-scope.tsx`, the only client component of the area), and a table or chart with an `exportId` draws `<ExportButton>` inside it: a POST form to `/admin/{store}/analytics/export` carrying the table's id and the page's address parameters (`queryText()`: `period`, `compare`, `from`, `to`, `sort`, `dir`, `limit`, `status`, nothing else). Without a scope (a table drawn on its own, in a test) or for a member without `analytics:write` no button is drawn. A chart's button is under its data (the *Data table* disclosure), a table's beside it; a table with no rows and a chart with nothing to draw have none.
+1. **The button is a form in a scope** (2.8). A page wraps what it draws in `<ExportScope base query owner canExport>`
+   (`src/components/admin/analytics/export-scope.tsx`, the only client component of the area), and a table or chart with an
+   `exportId` draws `<ExportButton>` inside it: a POST form to `/admin/{store}/analytics/export` carrying the table's id and the
+   page's address parameters (`queryText()`: `period`, `compare`, `from`, `to`, `sort`, `dir`, `limit`, `status`, nothing else).
+   Without a scope (a table drawn on its own, in a test) or for a member without `analytics:write` no button is drawn. A chart's
+   button is under its data (the *Data table* disclosure), a table's beside it; a table with no rows and a chart with nothing to
+   draw have none.
 2. **Owner-only tables** (4.7, 6.4). Besides `analytics:write`, the **top customers** (`customers.top`: it lists names and emails, and the customer file is the owner's) and the **targets** (`settings.targets`: the owner-only settings page) need the owner role (`OWNER_ONLY_TABLES`); the button is not drawn for anyone else and the route answers 404. The spec asked only for `analytics:write`.
-3. **Registry corrections** (the foundation's list was read from the views' column definitions, not from the loaders): `products.table` compares only revenue and units (the loader has no previous orders, margin or refund rate: they were `previous` by mistake) and has `handle` where it had `sku` (the page lists products, not variants); `overview.channels` is the page's five columns (channel, revenue, orders, conversion, ROAS); the cohort tables have the columns the table has (`month_0`, `1`, `2`, `3`, `6`, `12`, not thirteen months); a chart series' first column is `bucket` (the bucket's first day, not `period`, which the `period_from` and `period_to` columns already name); `overview.factors` is a decimal in percent, not an amount; `finance.revenue_profit` compares only net revenue, as its chart does.
-4. **Same loaders, same rows, no totals** (2.8). `src/server/analytics-export.ts` calls the page's loaders with the page's arguments and shapes the rows the page draws with the views' own exported helpers (`sortProducts()`, `sortVariants()`, `countryRows()`, `bridgeRows()`, `bridgeBars()`, `factorRows()`, `trendMonths()` and so on), so the order, the labels and the figures are the page's. A footer or totals row of a table is not in the file (a column sums). A table is the whole of its rows: the products table has every product, not the page's first 50, and the inventory table every variant of the page's filter. The advertising-spend table is the one place the file has more than the page: the page lists the latest 25 entries, the file every entry of the chosen period (up to 1,000), from the same reader (`listSpend()`).
+3. **Registry corrections** (the foundation's list was read from the views' column definitions, not from the loaders):
+   `products.table` compares only revenue and units (the loader has no previous orders, margin or refund rate: they were
+   `previous` by mistake) and has `handle` where it had `sku` (the page lists products, not variants); `overview.channels` is the
+   page's five columns (channel, revenue, orders, conversion, ROAS); the cohort tables have the columns the table has (`month_0`,
+   `1`, `2`, `3`, `6`, `12`, not thirteen months); a chart series' first column is `bucket` (the bucket's first day, not `period`,
+   which the `period_from` and `period_to` columns already name); `overview.factors` is a decimal in percent, not an amount;
+   `finance.revenue_profit` compares only net revenue, as its chart does.
+4. **Same loaders, same rows, no totals** (2.8). `src/server/analytics-export.ts` calls the page's loaders with the page's
+   arguments and shapes the rows the page draws with the views' own exported helpers (`sortProducts()`, `sortVariants()`,
+   `countryRows()`, `bridgeRows()`, `bridgeBars()`, `factorRows()`, `trendMonths()` and so on), so the order, the labels and the
+   figures are the page's. A footer or totals row of a table is not in the file (a column sums). A table is the whole of its rows:
+   the products table has every product, not the page's first 50, and the inventory table every variant of the page's filter. The
+   advertising-spend table is the one place the file has more than the page: the page lists the latest 25 entries, the file every
+   entry of the chosen period (up to 1,000), from the same reader (`listSpend()`).
 5. **The days** (2.8): `period_from` and `period_to` are the first and the last day (inclusive), `previous_from` and `previous_to` likewise; a table with no period (the inventory today, the targets) says the day it was made in both. The file's name is the table's id and the two days.
 6. **The log entry** (5.2): `analytics.table_exported` with `table`, `from`, `to`, `compared`, `rows`, `leftOutOrders` and `leftOutCurrencies`, written before the file is handed back (no entry, no file). The entry holds no cell, no name and no amount.
-7. **The AI manager** (5.5): two read-only owner tools, `list_data_jobs` and `explain_import_problems` (`src/server/data-job-tools.ts`, `src/lib/data-job-help.ts`), both `products:read` (the first narrows the kinds to what the member may use: order and customer files are the owner's and are refused in words, never answered with an empty list), served by the store's MCP server like every owner tool, ungated. `explain_import_problems` groups the stored findings by code in code (`groupFindings()`), with what to do for each (`FIX_FOR`, typed over every finding code, so a new code is a compile error until it says what to do) and up to five handles; it never quotes a cell and gives no file name, path or link. There is no tool that starts, applies, cancels or downloads, and a test fails if one is added. The playbook is `import-products` (`src/lib/assistant-skills.ts`).
+7. **The AI manager** (5.5): two read-only owner tools, `list_data_jobs` and `explain_import_problems`
+   (`src/server/data-job-tools.ts`, `src/lib/data-job-help.ts`), both `products:read` (the first narrows the kinds to what the
+   member may use: order and customer files are the owner's and are refused in words, never answered with an empty list), served
+   by the store's MCP server like every owner tool, ungated. `explain_import_problems` groups the stored findings by code in code
+   (`groupFindings()`), with what to do for each (`FIX_FOR`, typed over every finding code, so a new code is a compile error until
+   it says what to do) and up to five handles; it never quotes a cell and gives no file name, path or link. There is no tool that
+   starts, applies, cancels or downloads, and a test fails if one is added. The playbook is `import-products`
+   (`src/lib/assistant-skills.ts`).
 8. **Plan rows** (5.5, 9.2): migration `*_data_plan_features.sql` adds the four rows in the new category **Data**, positions 501 to 504, described only and in no plan; no `DELETE` or `DROP`.
 9. **Not built:** a CSV for the VAT, OSS and IOSS tables (they keep D161's four files, listed in `NOT_EXPORTED`); a per-plan limit; a scheduled email of a table (wave 2, `analytics.scheduled-report-emails`).
 
@@ -874,8 +927,29 @@ Written by the analytics-and-ai step of the run. Each point changes the spec abo
 
 Written by the fix step. Each point changes the spec above where they disagree.
 
-1. **The last day of an order range** (2.3.1, 6.2). The range is from the first day's local midnight up to the local midnight AFTER the last day: the next day is added to the DATE and then made a moment in `stores.time_zone`. An interval added to a timestamp adds a flat 24 hours in the database session's zone (UTC) and was wrong on the two clock-change days (an order at 00:30 on 30 March was in 29 March's file, and one at 23:30 on 25 October was in no file). `countOrderExportRows()` shares the filter.
+1. **The last day of an order range** (2.3.1, 6.2). The range is from the first day's local midnight up to the local midnight
+   AFTER the last day: the next day is added to the DATE and then made a moment in `stores.time_zone`. An interval added to a
+   timestamp adds a flat 24 hours in the database session's zone (UTC) and was wrong on the two clock-change days (an order at
+   00:30 on 30 March was in 29 March's file, and one at 23:30 on 25 October was in no file). `countOrderExportRows()` shares the
+   filter.
 2. **Test-mode orders** (2.3.5, 4.2). The order file has a column `test_payment` (after `host_order`): true for an order paid in Stripe's test mode, by the same test as `commerce.invoice_eligibility()`. Such orders stay in the file (analytics' `PAID` counts them too, so the file still ties to Finance) and are marked, never silently left out.
-3. **No file is left in the bucket that no row names** (3.7, 8.3). A run writes a chunk or a part a moment before it records it. When the record cannot be saved (the job was cancelled, or an erasure took it) the run removes what it just stored; every removal of an export's files (a cancel, a failure, an erasure, the nightly retention) LISTS the job's folder `{store}/{job}/` (`DataStorage.list()`, `exportFolderFiles()`) instead of trusting the row's cursor, and the nightly job sweeps the exports bucket for the folder of a job that is purged or has no row (`sweepOrphanExports()`, at most 500 folders a night). An erasure stops the job first and removes the files after, so a run still writing fails its next save.
-4. **An erasure takes only the files that can hold the person** (3.7, 8.3, `storage:exports`). `removePersonalExports(storeId, deps, scope)` takes an `ExportScope` (when the person's customer record began, when their first order was placed, read BEFORE the rows change and kept in the request's `steps.exportScope` for a resumed run). An order file can hold them only through their orders and a customer file through their record or their orders, and only if it was finished after that; a stranger who opened an account and deleted it takes nothing. A queued job has read nothing and is left to run (its readers skip an erased person); a running one may have a batch with the person in the air and is cancelled. This changes 3.7's "queued or running jobs are cancelled": only a running one that can hold the person.
-5. **Stock is not written from a stale read** (2.2, 2.6). `saveProduct()` takes an optional `StockMode` (`{ loaded, relative? }`: the stock each existing variant had when the caller read it). A variant whose stock is unchanged is left alone (a sale paid since the read stays paid; the editor passes no mode and writes as before); a changed one is written as given, or, with `relative`, as the change applied to what is there now (`greatest(0, on_hand + (stock - loaded))`). The product import fetches pictures and makes categories FIRST and reads the store again and plans from that fresh state immediately before `saveProduct()` (before, the snapshot read before a fetch of seconds was written back); the bulk stock "adjust" action is relative.
+3. **No file is left in the bucket that no row names** (3.7, 8.3). A run writes a chunk or a part a moment before it records it.
+   When the record cannot be saved (the job was cancelled, or an erasure took it) the run removes what it just stored; every
+   removal of an export's files (a cancel, a failure, an erasure, the nightly retention) LISTS the job's folder `{store}/{job}/`
+   (`DataStorage.list()`, `exportFolderFiles()`) instead of trusting the row's cursor, and the nightly job sweeps the exports
+   bucket for the folder of a job that is purged or has no row (`sweepOrphanExports()`, at most 500 folders a night). An erasure
+   stops the job first and removes the files after, so a run still writing fails its next save.
+4. **An erasure takes only the files that can hold the person** (3.7, 8.3, `storage:exports`).
+   `removePersonalExports(storeId, deps, scope)` takes an `ExportScope` (when the person's customer record began, when their first
+   order was placed, read BEFORE the rows change and kept in the request's `steps.exportScope` for a resumed run). An order file
+   can hold them only through their orders and a customer file through their record or their orders, and only if it was finished
+   after that; a stranger who opened an account and deleted it takes nothing. A queued job has read nothing and is left to run
+   (its readers skip an erased person); a running one may have a batch with the person in the air and is cancelled. This changes
+   3.7's "queued or running jobs are cancelled": only a running one that can hold the person.
+5. **Stock is not written from a stale read** (2.2, 2.6). `saveProduct()` takes an optional `StockMode` (`{ loaded, relative? }`:
+   the stock each existing variant had when the caller read it). A variant whose stock is unchanged is left alone (a sale paid
+   since the read stays paid; the editor passes no mode and writes as before); a changed one is written as given, or, with
+   `relative`, as the change applied to what is there now (`greatest(0, on_hand + (stock - loaded))`). The product import fetches
+   pictures and makes categories FIRST and reads the store again and plans from that fresh state immediately before
+   `saveProduct()` (before, the snapshot read before a fetch of seconds was written back); the bulk stock "adjust" action is
+   relative.

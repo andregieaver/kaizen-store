@@ -2,25 +2,62 @@
 
 Quotes come from WebFetch, which hands back a model's reading of the page. Check any sentence the page will quote word for word on the live page before publishing. The October file numbers topics differently from T1-T27, so topics are matched by subject, not by number. "New" means the topic was not in the October file.
 
-T1 Legal invoices and credit notes for orders: native (printable invoices) + app (credit notes). BigCommerce has four editable invoice templates (email, merchant printable, customer printable, detailed merchant printable), and the detailed one is marked "Supported by UK, France, and Poland". The page says nothing about credit notes, sequential numbering, PDFs or VAT on invoices. For credit notes there is the third-party app Sufio Invoices: "Create other types of documents like pro forma invoices, credit notes and quotes." Source: https://docs.bigcommerce.com/docs/store-operations/orders/invoice-templates ; https://www.bigcommerce.com/apps/sufio-automatic-invoices/ (read 2026-11-04 by WebFetch). same
+T1 Legal invoices and credit notes for orders: native (printable invoices) + app (credit notes). BigCommerce has four editable
+invoice templates (email, merchant printable, customer printable, detailed merchant printable), and the detailed one is marked
+"Supported by UK, France, and Poland". The page says nothing about credit notes, sequential numbering, PDFs or VAT on invoices.
+For credit notes there is the third-party app Sufio Invoices: "Create other types of documents like pro forma invoices, credit
+notes and quotes." Source: https://docs.bigcommerce.com/docs/store-operations/orders/invoice-templates ;
+https://www.bigcommerce.com/apps/sufio-automatic-invoices/ (read 2026-11-04 by WebFetch). same
 
 T2 30-day lowest price shown on a reduction (Omnibus): app. A third-party app, Omnibus Pricing by Sniffie, will "Show the 30-day lowest price when products are discounted to comply with the EU Omnibus Directive". BigCommerce's own pages that I read show no built-in way to do this. Source: https://www.bigcommerce.com/apps/omnibus-pricing (read 2026-11-04 by WebFetch). same
 
-T3 Withdrawal function or button for consumers: not-possible-per-source (dated). BigCommerce's own blog post dated 01/07/2026 (1 July 2026, with no updated date) says "The company doesn't offer a native withdrawal function yet, so this is something to set up at the store level for now", and also "BigCommerce has no native solution yet, so act at the store level" and "We're actively exploring ways to make this more seamless for merchants and will share updates as that work progresses." The post names no app, and my search found no withdrawal-button app in the Marketplace. A Help Center community thread, "EU Consumer Protection Law Update: New mandatory withdrawal button" (15 June 2026, Apps & Integrations), would not render, so I could not read it. Source: https://www.bigcommerce.com/blog/eu-right-of-withdrawal-requirement/ and https://www.bigcommerce.co.uk/blog/eu-right-of-withdrawal-requirement/ (read 2026-11-04 by WebFetch); https://support.bigcommerce.com/s/topic/0TOUG0000007wk24AA/consumer-protection-law-update (NOT READ: Help Center page did not render, "CSS Error"). same (nothing newer found on BigCommerce's own pages)
+T3 Withdrawal function or button for consumers: not-possible-per-source (dated). BigCommerce's own blog post dated 01/07/2026 (1
+July 2026, with no updated date) says "The company doesn't offer a native withdrawal function yet, so this is something to set up
+at the store level for now", and also "BigCommerce has no native solution yet, so act at the store level" and "We're actively
+exploring ways to make this more seamless for merchants and will share updates as that work progresses." The post names no app,
+and my search found no withdrawal-button app in the Marketplace. A Help Center community thread, "EU Consumer Protection Law
+Update: New mandatory withdrawal button" (15 June 2026, Apps & Integrations), would not render, so I could not read it. Source:
+https://www.bigcommerce.com/blog/eu-right-of-withdrawal-requirement/ and
+https://www.bigcommerce.co.uk/blog/eu-right-of-withdrawal-requirement/ (read 2026-11-04 by WebFetch);
+https://support.bigcommerce.com/s/topic/0TOUG0000007wk24AA/consumer-protection-law-update (NOT READ: Help Center page did not
+render, "CSS Error"). same (nothing newer found on BigCommerce's own pages)
 
 T4 Product safety information (GPSR): unverified. I found no BigCommerce page about GPSR or about manufacturer and responsible-person details on products. The search turned up only merchants' own PDFs hosted on BigCommerce's CDN, and those do not count. Source: NOT READ: no BigCommerce page on the subject found (one site-restricted search, 2026-11-04). same
 
-T5 EU VAT by destination, OSS and IOSS, EU VAT reports: native (manual tax zones and rates) + app (automatic VAT). BigCommerce's tax overview says a merchant can use "a third-party tax service to help automate tax calculation and document submission". The page does not mention EU VAT, OSS, IOSS or VAT reports. The third-party Avalara app says it can "Calculate sales tax, VAT, and indirect taxes in real time on BigCommerce transactions" and "Streamline multistate tax returns and VAT reporting with Avalara Returns" (listing updated 23 Oct 2026), but it does not mention OSS or IOSS. Source: https://support.bigcommerce.com/articles/Public/Tax-Overview (last reviewed 11/13/2024) ; https://www.bigcommerce.com/apps/avalara-avatax/ (read 2026-11-04 by WebFetch). same (OSS/IOSS still unverified)
+T5 EU VAT by destination, OSS and IOSS, EU VAT reports: native (manual tax zones and rates) + app (automatic VAT). BigCommerce's
+tax overview says a merchant can use "a third-party tax service to help automate tax calculation and document submission". The
+page does not mention EU VAT, OSS, IOSS or VAT reports. The third-party Avalara app says it can "Calculate sales tax, VAT, and
+indirect taxes in real time on BigCommerce transactions" and "Streamline multistate tax returns and VAT reporting with Avalara
+Returns" (listing updated 23 Oct 2026), but it does not mention OSS or IOSS. Source:
+https://support.bigcommerce.com/articles/Public/Tax-Overview (last reviewed 11/13/2024) ;
+https://www.bigcommerce.com/apps/avalara-avatax/ (read 2026-11-04 by WebFetch). same (OSS/IOSS still unverified)
 
-T6 A business buyer's VAT number checked (VIES), reverse charge: app; native unverified. Checking a VAT number is offered by the third-party Sufio Invoices app ("Capture and validate VAT and GST numbers from your business customers" and "automatically set European business customers as tax exempt in your store"). BigCommerce's tax overview mentions only a "Tax Exempt Code field to identify tax-exempt customers" for automatic tax setups, and nothing on VIES or reverse charge. Source: https://www.bigcommerce.com/apps/sufio-automatic-invoices/ ; https://support.bigcommerce.com/articles/Public/Tax-Overview (read 2026-11-04 by WebFetch). CHANGED since Oct: October had validation unverified; it is now attributed to a named app (native still unverified)
+T6 A business buyer's VAT number checked (VIES), reverse charge: app; native unverified. Checking a VAT number is offered by the
+third-party Sufio Invoices app ("Capture and validate VAT and GST numbers from your business customers" and "automatically set
+European business customers as tax exempt in your store"). BigCommerce's tax overview mentions only a "Tax Exempt Code field to
+identify tax-exempt customers" for automatic tax setups, and nothing on VIES or reverse charge. Source:
+https://www.bigcommerce.com/apps/sufio-automatic-invoices/ ; https://support.bigcommerce.com/articles/Public/Tax-Overview (read
+2026-11-04 by WebFetch). CHANGED since Oct: October had validation unverified; it is now attributed to a named app (native still
+unverified)
 
-T7 Appointments, stays and rentals: app. The third-party app Waypoint Booking (support at waypointbooking.co.uk) can "Turn any product into a bookable service, rental, or event — paid through native BC checkout": customers "pick a time slot from your real availability", and for rentals they "select a date range". The listing does not mention stays or accommodation. Source: https://www.bigcommerce.com/apps/waypoint-booking/ ; https://www.bigcommerce.com/apps/categories/site-tools/booking-scheduling/ (read 2026-11-04 by WebFetch). CHANGED since Oct: was unverified (listings did not render); one app is now readable
+T7 Appointments, stays and rentals: app. The third-party app Waypoint Booking (support at waypointbooking.co.uk) can "Turn any
+product into a bookable service, rental, or event — paid through native BC checkout": customers "pick a time slot from your real
+availability", and for rentals they "select a date range". The listing does not mention stays or accommodation. Source:
+https://www.bigcommerce.com/apps/waypoint-booking/ ; https://www.bigcommerce.com/apps/categories/site-tools/booking-scheduling/
+(read 2026-11-04 by WebFetch). CHANGED since Oct: was unverified (listings did not render); one app is now readable
 
 T8 Subscriptions: app. BigCommerce's help article says "On BigCommerce, an app or specific payment gateway is required to add this functionality", and points to the "Recurring Billing & Subscriptions" category of the App Marketplace (one listing there is Ordergroove, third party). Source: https://support.bigcommerce.com/articles/en_US/Knowledge/Setting-up-Recurring-Billing (Last Review Date 10/2/2026; read 2026-11-04 by WebFetch). new (not in Oct)
 
 T9 Bundles: app; native unverified. Bundles come from third-party apps such as Bundlebees (support at bundlebees.app). BigCommerce's discounts article lists buy-X-get-Y offers but never uses the word "bundle". Source: https://www.bigcommerce.com/apps/bundlebees/ ; https://support.bigcommerce.com/articles/en_US/Knowledge/Possible-Discounts-Offer (read 2026-11-04 by WebFetch). new (not in Oct)
 
-T10 B2B: company accounts, price lists, payment terms: higher-plan (Performance; B2B Edition). BigCommerce's B2B Edition guide says "B2B Edition can be included with new Performance stores or activated in existing stores", without saying which plans can activate it. The B2B Edition page lists company hierarchies, quotes, and "purchase orders, credit cards, and net terms per account", but no plan. On the pricing page, Price Lists has a check only under Performance, and "Customer groups and segmentation" under Growth, Scale and Performance (not Core). Source: https://support.bigcommerce.com/articles/en_US/Knowledge/B2B-Edition-User-Guide ; https://www.bigcommerce.com/b2b-edition/ ; https://www.bigcommerce.com/pricing/ (read 2026-11-04 by WebFetch). CHANGED since Oct: October linked B2B Edition to "Enterprise"; BigCommerce's guide now says "Performance" (a search-engine copy of the same guide still said "Enterprise")
+T10 B2B: company accounts, price lists, payment terms: higher-plan (Performance; B2B Edition). BigCommerce's B2B Edition guide
+says "B2B Edition can be included with new Performance stores or activated in existing stores", without saying which plans can
+activate it. The B2B Edition page lists company hierarchies, quotes, and "purchase orders, credit cards, and net terms per
+account", but no plan. On the pricing page, Price Lists has a check only under Performance, and "Customer groups and segmentation"
+under Growth, Scale and Performance (not Core). Source:
+https://support.bigcommerce.com/articles/en_US/Knowledge/B2B-Edition-User-Guide ; https://www.bigcommerce.com/b2b-edition/ ;
+https://www.bigcommerce.com/pricing/ (read 2026-11-04 by WebFetch). CHANGED since Oct: October linked B2B Edition to "Enterprise";
+BigCommerce's guide now says "Performance" (a search-engine copy of the same guide still said "Enterprise")
 
 T11 Multi-vendor marketplace: app. The third-party app Multi Vendor Marketplace by Webkul "will allow you to connect with different eCommerce sellers to sell their products within your store". Source: https://www.bigcommerce.com/apps/multi-vendor-marketplace-by-webkul/ (read 2026-11-04 by WebFetch). same
 
@@ -34,25 +71,60 @@ T15 Wishlists: native. BigCommerce's developer docs say "Catalyst includes built
 
 T16 Product reviews: native, all plans. "Product ratings and reviews" has a check under Core, Growth, Scale and Performance on the pricing page. Source: https://www.bigcommerce.com/pricing/ (read 2026-11-04 by WebFetch). same
 
-T17 Back-in-stock emails: app. BigCommerce's help article says "there are no control panel features for notifying shoppers when a pre-order or out-of-stock product is available" and points to apps. One such app is the third-party Back in Stock Wizard ("Automatically email waiting customers when inventory returns"). Source: https://support.bigcommerce.com/articles/en_US/Knowledge/Product-Availability (Last Review Date 8/7/2026) ; https://www.bigcommerce.com/apps/back-in-stock-wizard/ (read 2026-11-04 by WebFetch). same
+T17 Back-in-stock emails: app. BigCommerce's help article says "there are no control panel features for notifying shoppers when a
+pre-order or out-of-stock product is available" and points to apps. One such app is the third-party Back in Stock Wizard
+("Automatically email waiting customers when inventory returns"). Source:
+https://support.bigcommerce.com/articles/en_US/Knowledge/Product-Availability (Last Review Date 8/7/2026) ;
+https://www.bigcommerce.com/apps/back-in-stock-wizard/ (read 2026-11-04 by WebFetch). same
 
 T18 Pre-orders: native. A product can be set to "This product is coming soon but I want to take pre-orders", with a release date, and can switch to normal sale on that date ("Remove pre-order status on this date"). Source: https://support.bigcommerce.com/articles/en_US/Knowledge/Product-Availability (read 2026-11-04 by WebFetch). same
 
 T19 Tiered and volume discounts (bulk pricing): native (plan not stated on the page). BigCommerce's bulk pricing will "Automatically apply pricing when a set number of products are purchased", as an amount off, a percentage off or a fixed price per item, in quantity tiers. Source: https://support.bigcommerce.com/articles/en_US/Knowledge/Possible-Discounts-Offer (last reviewed 4/8/2024; read 2026-11-04 by WebFetch). same
 
-T20 Email marketing, broadcasts and automations: higher-plan (abandoned-cart emails) + app (campaigns and flows). The built-in abandoned cart saver "automatically sends shoppers a customizable series of emails" on Growth, Scale and Performance, not Core. Campaigns and automated flows come from apps such as Klaviyo (third party: "Send hyper-personalized campaigns and automated flows"). Source: https://www.bigcommerce.com/pricing/ ; https://www.bigcommerce.com/apps/klaviyo/ (read 2026-11-04 by WebFetch). new (not in Oct)
+T20 Email marketing, broadcasts and automations: higher-plan (abandoned-cart emails) + app (campaigns and flows). The built-in
+abandoned cart saver "automatically sends shoppers a customizable series of emails" on Growth, Scale and Performance, not Core.
+Campaigns and automated flows come from apps such as Klaviyo (third party: "Send hyper-personalized campaigns and automated
+flows"). Source: https://www.bigcommerce.com/pricing/ ; https://www.bigcommerce.com/apps/klaviyo/ (read 2026-11-04 by WebFetch).
+new (not in Oct)
 
-T21 Scheduled report emails: app; native unverified. The third-party app Export Stash "automatically exports orders, products, customers, reviews, sales reports and product feeds to email" on a schedule the merchant sets. BigCommerce's own analytics article did not render, so whether the platform schedules reports itself is unsettled. Source: https://www.bigcommerce.com/apps/export-stash/ (read 2026-11-04 by WebFetch); https://support.bigcommerce.com/articles/Public/Ecommerce-Analytics (NOT READ: Help Center page did not render). CHANGED since Oct: was unverified; an app is now readable
+T21 Scheduled report emails: app; native unverified. The third-party app Export Stash "automatically exports orders, products,
+customers, reviews, sales reports and product feeds to email" on a schedule the merchant sets. BigCommerce's own analytics article
+did not render, so whether the platform schedules reports itself is unsettled. Source:
+https://www.bigcommerce.com/apps/export-stash/ (read 2026-11-04 by WebFetch);
+https://support.bigcommerce.com/articles/Public/Ecommerce-Analytics (NOT READ: Help Center page did not render). CHANGED since
+Oct: was unverified; an app is now readable
 
-T22 AI assistant in the control panel (BigCommerce Companion): native, included. "BigCommerce Companion is an AI-powered assistant built into the BigCommerce control panel". It "comes included with your BigCommerce store and is available during free trials and for paid subscriptions", and "Companion does not apply a change without your approval". It shows charts, finds its way around the admin, browses the catalogue and updates order statuses. Source: https://www.bigcommerce.com/product/companion/ (read 2026-11-04 by WebFetch). CHANGED since Oct (detail): the page today does not list issuing store credit as a capability; "Issue a store credit to this customer" appears only as an example prompt
+T22 AI assistant in the control panel (BigCommerce Companion): native, included. "BigCommerce Companion is an AI-powered assistant
+built into the BigCommerce control panel". It "comes included with your BigCommerce store and is available during free trials and
+for paid subscriptions", and "Companion does not apply a change without your approval". It shows charts, finds its way around the
+admin, browses the catalogue and updates order statuses. Source: https://www.bigcommerce.com/product/companion/ (read 2026-11-04
+by WebFetch). CHANGED since Oct (detail): the page today does not list issuing store credit as a capability; "Issue a store credit
+to this customer" appears only as an example prompt
 
-T23 Vipps and MobilePay: native through a gateway. Vipps works through Adyen only, and the page requires that "You must have NOK as an available transactional currency", "Optimized One-Page Checkout" and "an address in Norway at checkout". MobilePay works through Adyen or Stripe OCS, but "Shoppers must use a billing address in Denmark or Finland at checkout", and "Recurring or subscription payments are not supported". Source: https://support.bigcommerce.com/articles/Learning/Vipps ; https://support.bigcommerce.com/articles/en_US/Knowledge/MobilePay (read 2026-11-04 by WebFetch). same
+T23 Vipps and MobilePay: native through a gateway. Vipps works through Adyen only, and the page requires that "You must have NOK
+as an available transactional currency", "Optimized One-Page Checkout" and "an address in Norway at checkout". MobilePay works
+through Adyen or Stripe OCS, but "Shoppers must use a billing address in Denmark or Finland at checkout", and "Recurring or
+subscription payments are not supported". Source: https://support.bigcommerce.com/articles/Learning/Vipps ;
+https://support.bigcommerce.com/articles/en_US/Knowledge/MobilePay (read 2026-11-04 by WebFetch). same
 
-T24 Nordic carriers, labels and pickup points: app. The third-party app Multi Carrier Shipping Label by PluginHive lists PostNord, DHL Sweden and GLS among its label carriers, but does not mention pickup points. Webshipper (powered by nShift) says it can "display shipping rates, drop points, etc., in checkout", without naming carriers. I found no listing that names Bring or Posten. Source: https://www.bigcommerce.com/apps/multi-carrier-shipping-label-by-pluginhive/ ; https://www.bigcommerce.co.uk/apps/webshipper/ (read 2026-11-04 by WebFetch). CHANGED since Oct: was unverified; apps naming PostNord and checkout drop points are now readable (native Nordic carriers still unverified)
+T24 Nordic carriers, labels and pickup points: app. The third-party app Multi Carrier Shipping Label by PluginHive lists PostNord,
+DHL Sweden and GLS among its label carriers, but does not mention pickup points. Webshipper (powered by nShift) says it can
+"display shipping rates, drop points, etc., in checkout", without naming carriers. I found no listing that names Bring or Posten.
+Source: https://www.bigcommerce.com/apps/multi-carrier-shipping-label-by-pluginhive/ ;
+https://www.bigcommerce.co.uk/apps/webshipper/ (read 2026-11-04 by WebFetch). CHANGED since Oct: was unverified; apps naming
+PostNord and checkout drop points are now readable (native Nordic carriers still unverified)
 
-T25 Where data is kept (trust centre): unverified (location). The trust centre ("Welcome to Commerce.com's Trust Center"; the body says BigCommerce) states no hosting region or EU data residency. It lists "Level 1 PCI DSS Attestations of Compliance as both a Merchant and a Service Provider" (v4.0.0), ISO/IEC 27001:2022, 27017, 27018, 27701 and 22301, ISO/IEC 42001 and ISO 9001, SOC 1, 2 and 3, a GDPR badge and an EU-US DPF badge. Source: https://security.bigcommerce.com/ (read 2026-11-04 by WebFetch). CHANGED since Oct (detail): it now lists ISO 22301, 42001, 9001 and SOC 1/3, which October's note did not; still no data location
+T25 Where data is kept (trust centre): unverified (location). The trust centre ("Welcome to Commerce.com's Trust Center"; the body
+says BigCommerce) states no hosting region or EU data residency. It lists "Level 1 PCI DSS Attestations of Compliance as both a
+Merchant and a Service Provider" (v4.0.0), ISO/IEC 27001:2022, 27017, 27018, 27701 and 22301, ISO/IEC 42001 and ISO 9001, SOC 1, 2
+and 3, a GDPR badge and an EU-US DPF badge. Source: https://security.bigcommerce.com/ (read 2026-11-04 by WebFetch). CHANGED since
+Oct (detail): it now lists ISO 22301, 42001, 9001 and SOC 1/3, which October's note did not; still no data location
 
-T26 Moving in from Shopify (the free migration app): native, free. "Migrating to BigCommerce is free when using the Data Migration App, which covers up to 500,000 records", and it migrates "from Shopify, WooCommerce, Adobe Commerce (Formerly Magento), and other platforms", including orders. Source: https://www.bigcommerce.com/migration/ (read 2026-11-04 by WebFetch). CHANGED since Oct (detail): the page no longer mentions reviews or coupons; its FAQ also says free "as long as your catalog doesn't exceed 500,000 products" (products, not records)
+T26 Moving in from Shopify (the free migration app): native, free. "Migrating to BigCommerce is free when using the Data Migration
+App, which covers up to 500,000 records", and it migrates "from Shopify, WooCommerce, Adobe Commerce (Formerly Magento), and other
+platforms", including orders. Source: https://www.bigcommerce.com/migration/ (read 2026-11-04 by WebFetch). CHANGED since Oct
+(detail): the page no longer mentions reviews or coupons; its FAQ also says free "as long as your catalog doesn't exceed 500,000
+products" (products, not records)
 
 T27 Headless (Catalyst) and APIs: native. "We've built Catalyst with Next.js, React storefront components, and our GraphQL Storefront API"; it is described as "BigCommerce's composable, fully customizable headless ecommerce storefront framework" under the "MIT license". Source: https://docs.bigcommerce.com/developer/docs/storefront/catalyst/overview (read 2026-11-04 by WebFetch). same
 

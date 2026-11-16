@@ -224,6 +224,10 @@ export const ANALYTICS_TABLE_IDS: readonly string[] = REGISTRY.map((t) => t.id);
  */
 export const NOT_EXPORTED: Readonly<Record<string, string>> = Object.freeze({
   "live.countries": "Live figures are now, read again every 10 seconds, and kept nowhere: there is no period for a file (D347).",
+  "heatmaps.pages": "Heatmaps' page list is read beside each page's map; no file of it yet (D656).",
+  "heatmaps.parts": "The parts clicked most belong to one page's map, on one device; no file of them yet (D656).",
+  "heatmaps.scroll": "How far people got belongs to one page's map, on one device; no file of it yet (D656).",
+  "heatmaps.look": "Where people look most belongs to one page's map, on one device; no file of it yet (D656).",
   "sales.forecast": "The sales report's forecast is of the deals open now, read from Sales → Deals; no file of it yet (D520).",
   "sales.stages": "From stage to stage is worked out from the deals' moves for the period; no file of it yet (D520).",
   "sales.people": "Won and lost by person is worked out from the deals for the period; no file of it yet (D520).",

@@ -1,6 +1,12 @@
 # Grade A for: Styles
 
-Part of `docs/audits/bloat-review-2026-11.md`. **Today: C.** The steward's C stands. The base is sound: hand-written CSS has almost no dead weight, a built page carries under 5 KB of inline style, the admin's own CSS is a file apart, and style generation and fonts are cached. But the one render-blocking sheet every shopper loads is 28% the admin's (183,124 bytes raw / 25,832 Brotli, re-measured on the build's file; 129,745 / 19,762 when the site's entry is compiled alone), a fixed sheet is copied once per row and a third time per document, and not one test or figure holds the sheet's size, its sources or the style text. It is not a D, because no page carries far more than its job needs, and not a B, because no budget exists. The main button of /status and /report has no fill (seen again in the built HTML and CSS): a fault, not waste, so it does not make an E.
+Part of `docs/audits/bloat-review-2026-11.md`. **Today: C.** The steward's C stands. The base is sound: hand-written CSS has
+almost no dead weight, a built page carries under 5 KB of inline style, the admin's own CSS is a file apart, and style generation
+and fonts are cached. But the one render-blocking sheet every shopper loads is 28% the admin's (183,124 bytes raw / 25,832 Brotli,
+re-measured on the build's file; 129,745 / 19,762 when the site's entry is compiled alone), a fixed sheet is copied once per row
+and a third time per document, and not one test or figure holds the sheet's size, its sources or the style text. It is not a D,
+because no page carries far more than its job needs, and not a B, because no budget exists. The main button of /status and /report
+has no fill (seen again in the built HTML and CSS): a fault, not waste, so it does not make an E.
 
 **The bar, in a sentence.** A shopper's browser loads one stylesheet of at most 135 KB (20.6 KB compressed) with nothing in it that only the admin uses, a store's document carries each style sheet twice and no more, and every colour a public page reads has a value. A test fails, or a figure on the platform's own screen shows it, when any of this slips.
 
@@ -25,7 +31,31 @@ After phase 0: C. After phase 1: C. After phase 2: A. After all phases: A.
 
 **Can the steps reach an A?** Yes, at the end of phase 2. The values were already reached; the holds are now in the steps' own done-whens. Step 2.49 is built only if step 1.23's reading, taken now, says under half of published store pages use motion; otherwise motion.css stays as a stated tolerance. Step 1.23 asks you whether the 50,000-character limit on an owner's own CSS is per sheet or on the sum, and either answer reaches the bar.
 
-**The challenger on the bar.** KEPT, after checking the floor. The stylesheet bar of 135,000 bytes raw / 20,600 Brotli: I parsed the compiled site sheet. Tailwind's fixed layers are 13.0 KB, hand-written site CSS 28.4 KB, motion.css 18.7 KB and utilities 69.6 KB, and the largest utility rules are ordinary ones (two @media blocks, backdrop-blur, transition, the rings). There is no fat to ask for inside a one-sheet design. Also kept: 0 outside files that can rename the sheet; 2 copies of a sheet per document (Kaizena Flow's front page, which draws its layout once, already shows 2, so that is the framework's floor for an inline sheet); 0 colours without a value; 0 admin fetches from public pages; and the admin's 208,000. The admin cannot load 'its own classes plus the site's sheet': two Tailwind sheets on one document put the same class in both, and the later sheet's plain class then beats the earlier sheet's md: class. So the admin's entry must read what the canvas draws, and 49 KB raw of storefront CSS on plain admin screens is a fair tolerance. TIGHTENED. (1) The tolerance is now a measure of its own with failing lines. After the split a shopper of a launch-theme store still gets about 5 KB Brotli, a quarter of the sheet, that the page cannot use: motion.css 3.4 KB (measured by removing it from the compiled sheet) and 1.5 KB of classes only Kaizena Flow's pages or the on-site editor name. That is as much as the admin's share the split removes (5.6 KB). I accept it as the stated tolerance because it is about 1% of a first visit's bytes, but only held: step 1.23's script must fail above the line, not merely run. (2) motion.css is tolerated on a condition with numbers, and the step that follows is written now. (3) Brotli is held in the spec beside raw bytes. (4) The launch-theme store's measure gets numbers: at most 3 render-blocking stylesheets, and at most 35 KB raw of style text on Orbit's home (about 62 KB today, about 31 KB after steps 2.2 and 2.3, computed with the real functions). (5) The owners' style text is marked per store above 20 KB, not read as a median only: one store at the cap puts 300 KB of CSS into every document. (6) The colour bar says light and dark, and that a test holds it; the plan's step proves two buttons once. LOOSENED. The raw line for platform-only and editor-only classes goes from 15 KB to 17 KB. Two honest counts differ on which pages are the platform's: the steward's 13.8 KB and mine 16.2 KB (rules removed from the compiled sheet). Both give 1.5 to 1.6 KB Brotli, so the Brotli line of 2.0 KB is the one that binds, and the script must fix one definition by root layout. MERGED. The prefetch of /admin is now part of the admin's measure. NOT USED. Chromium's CSS coverage: it reports about 127 KB of the sheet as used on every page, the admin's sign-in included, so it cannot be a measure here. AMENDED BY THE PANEL'S CRITIC, so that one thing has one number in every area: 2: motion.css in every store's stylesheet: judged now, by step 1.23's reading of the six launch themes and the team's 60 stores: under half, and it loads only where a page uses it before the plan ends, with the first measure at 116,500 raw and 17,400 Brotli.
+**The challenger on the bar.** KEPT, after checking the floor. The stylesheet bar of 135,000 bytes raw / 20,600 Brotli: I parsed
+the compiled site sheet. Tailwind's fixed layers are 13.0 KB, hand-written site CSS 28.4 KB, motion.css 18.7 KB and utilities 69.6
+KB, and the largest utility rules are ordinary ones (two @media blocks, backdrop-blur, transition, the rings). There is no fat to
+ask for inside a one-sheet design. Also kept: 0 outside files that can rename the sheet; 2 copies of a sheet per document (Kaizena
+Flow's front page, which draws its layout once, already shows 2, so that is the framework's floor for an inline sheet); 0 colours
+without a value; 0 admin fetches from public pages; and the admin's 208,000. The admin cannot load 'its own classes plus the
+site's sheet': two Tailwind sheets on one document put the same class in both, and the later sheet's plain class then beats the
+earlier sheet's md: class. So the admin's entry must read what the canvas draws, and 49 KB raw of storefront CSS on plain admin
+screens is a fair tolerance. TIGHTENED. (1) The tolerance is now a measure of its own with failing lines. After the split a
+shopper of a launch-theme store still gets about 5 KB Brotli, a quarter of the sheet, that the page cannot use: motion.css 3.4 KB
+(measured by removing it from the compiled sheet) and 1.5 KB of classes only Kaizena Flow's pages or the on-site editor name. That
+is as much as the admin's share the split removes (5.6 KB). I accept it as the stated tolerance because it is about 1% of a first
+visit's bytes, but only held: step 1.23's script must fail above the line, not merely run. (2) motion.css is tolerated on a
+condition with numbers, and the step that follows is written now. (3) Brotli is held in the spec beside raw bytes. (4) The
+launch-theme store's measure gets numbers: at most 3 render-blocking stylesheets, and at most 35 KB raw of style text on Orbit's
+home (about 62 KB today, about 31 KB after steps 2.2 and 2.3, computed with the real functions). (5) The owners' style text is
+marked per store above 20 KB, not read as a median only: one store at the cap puts 300 KB of CSS into every document. (6) The
+colour bar says light and dark, and that a test holds it; the plan's step proves two buttons once. LOOSENED. The raw line for
+platform-only and editor-only classes goes from 15 KB to 17 KB. Two honest counts differ on which pages are the platform's: the
+steward's 13.8 KB and mine 16.2 KB (rules removed from the compiled sheet). Both give 1.5 to 1.6 KB Brotli, so the Brotli line of
+2.0 KB is the one that binds, and the script must fix one definition by root layout. MERGED. The prefetch of /admin is now part of
+the admin's measure. NOT USED. Chromium's CSS coverage: it reports about 127 KB of the sheet as used on every page, the admin's
+sign-in included, so it cannot be a measure here. AMENDED BY THE PANEL'S CRITIC, so that one thing has one number in every area:
+2: motion.css in every store's stylesheet: judged now, by step 1.23's reading of the six launch themes and the team's 60 stores:
+under half, and it loads only where a page uses it before the plan ends, with the first measure at 116,500 raw and 17,400 Brotli.
 
 ## What the challenger found missing, and how it was settled
 

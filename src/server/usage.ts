@@ -32,6 +32,7 @@ export const OWNER_LINES: readonly { metric: UsageMetric; key: LimitKey }[] = [
   { metric: "egress_bytes", key: "egress_bytes_month" },
   { metric: "marketing_emails", key: "marketing_emails_month" },
   { metric: "ai_cost_micros", key: "ai_cost_month_micros" },
+  { metric: "recordings", key: "recordings_month" },
 ];
 
 /** Which counter metrics anything wrote this month, for a store (traffic needs the drain: a store with no row is not measured). */

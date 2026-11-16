@@ -5,7 +5,12 @@ What an owner's browser loads in the admin (`README.md` beside this file), part 
 - **Kind:** oversize. **Priority:** P1. **Effort:** S. **Confidence:** high. **Step:** 0.11.
 - **Second check:** confirmed.
 - **Where:** `src/components/admin/ai-manager.tsx:9`, `src/components/admin/ai-manager.tsx:11`, `src/components/admin/ai-manager.tsx:13`, `src/components/admin/ai-manager.tsx:328`, `src/components/admin/ai-manager.tsx:392`, `src/lib/manager-tools.ts:3`, `src/lib/manager-tools.ts:318`, `src/components/admin/ai-manager-launcher.tsx:32`, `src/components/admin/ai-skills.tsx:7`, `src/lib/saved-skills.ts:6`, `src/app/admin/(gated)/[store]/assistant/actions.ts:28`
-- **Evidence:** Chunk 00rxgygh1f--7.js is 496,206 bytes raw / 143,978 gzip. ai-manager.tsx imports one table, TOOL_WORDS (about 13,900 bytes of source, manager-tools.ts lines 318-621), from manager-tools.ts (36 KB), which imports owner-tools.ts (208 KB) and through it the product, site and setup tools; it imports matchPath from admin-map.ts (172 KB) and PAGES_NB (61 KB) to name the current page in one suggested question (lines 392-394). My closure of the chat: 209 files, 2,943,188 bytes of source; without those three imports 39 files, 302,869 bytes. What is left is led by assistant-skills.ts (62,620 bytes), reached because ai-skills.tsx takes three length limits from saved-skills.ts, which imports the built-in skills.
+- **Evidence:** Chunk 00rxgygh1f--7.js is 496,206 bytes raw / 143,978 gzip. ai-manager.tsx imports one table, TOOL_WORDS (about
+  13,900 bytes of source, manager-tools.ts lines 318-621), from manager-tools.ts (36 KB), which imports owner-tools.ts (208 KB)
+  and through it the product, site and setup tools; it imports matchPath from admin-map.ts (172 KB) and PAGES_NB (61 KB) to name
+  the current page in one suggested question (lines 392-394). My closure of the chat: 209 files, 2,943,188 bytes of source;
+  without those three imports 39 files, 302,869 bytes. What is left is led by assistant-skills.ts (62,620 bytes), reached because
+  ai-skills.tsx takes three length limits from saved-skills.ts, which imports the built-in skills.
 - **Cost today:** 496 KB raw / 144 KB gzip the first time the panel opens, again after each deploy that changes a tool's description or a page's name, and in the first load of the two assistant screens (2,056,681 and 2,064,667 bytes). Paid by: An owner's browser, when the AI manager is opened. The cost follows use; the chunk is about five times larger than the chat needs.
 - **Saving:** Estimate from source sizes: about 400 KB raw / 115 KB gzip of the 496 KB chunk, and the same off the two assistant screens.
 - **Risk:** Low. The first suggestion now waits for one small call per page while the panel shows its suggestions; it must still follow a navigation made with the panel open. It would show in the ai-manager-panel spec.
@@ -14,7 +19,11 @@ What an owner's browser loads in the admin (`README.md` beside this file), part 
 ## The fix
 
 1. Create src/lib/tool-words.ts with TOOL_WORDS moved as it is (manager-tools.ts lines 317-621; it imports nothing). manager-tools.ts adds `export { TOOL_WORDS } from "./tool-words";` so the 30 test files that import it from ./manager-tools keep working. src/components/admin/ai-manager.tsx line 11 imports it from "@/lib/tool-words".
-2. The page's name from the server: add pageHere(pathname): Promise<string | null> to AiManagerActions (ai-manager.tsx lines 27-35). Write pageHereAction in src/app/admin/(gated)/[store]/assistant/actions.ts and platform/assistant/actions.ts with the guard their start action uses: matchPath(pathname), the rule now at ai-manager.tsx lines 392-393 (not the assistant's own page; the page's area is the place's or "account"), and the title from PAGES_NB for a Norwegian account, else the page's own. Bind it where the other actions are bound: [store]/layout.tsx lines 119-127, platform/layout.tsx, and the two assistant pages.
+2. The page's name from the server: add pageHere(pathname): Promise<string | null> to AiManagerActions (ai-manager.tsx lines
+   27-35). Write pageHereAction in src/app/admin/(gated)/[store]/assistant/actions.ts and platform/assistant/actions.ts with the
+   guard their start action uses: matchPath(pathname), the rule now at ai-manager.tsx lines 392-393 (not the assistant's own page;
+   the page's area is the place's or "account"), and the title from PAGES_NB for a Norwegian account, else the page's own. Bind it
+   where the other actions are bound: [store]/layout.tsx lines 119-127, platform/layout.tsx, and the two assistant pages.
 3. ai-manager.tsx: remove the imports at lines 9 and 13. Keep the name in state; ask for it in an effect on the path, only while the suggested questions are shown (an empty conversation), and build the first suggestion from it. Until the answer arrives the usual suggestions show without it.
 4. Move SKILL_TITLE_MAX, SKILL_WHEN_MAX and SKILL_STEPS_MAX to a small module of their own (re-exported from saved-skills.ts) and import them from there in ai-skills.tsx line 7, so the skills form stops pulling assistant-skills.ts.
 

@@ -3,25 +3,84 @@
 Read on wix.com, support.wix.com and wix.com/app-market only. WebFetch summarises; quotes below are the words it returned as exact. No prices.
 Note: the October file's numbers match T1-T4 only (its 5 is DAC7, 8 is multi-vendor = T11, 19 is Vipps = T23, and so on). Topics were matched by subject, not by number.
 
-T1 Legal invoices and credit notes for store orders: native (invoices); not-possible-per-source for credit notes (feature request page: "Currently, it's not possible to create a negative balance invoice when crediting a customer account"). Wix makes an invoice for each paid order (automatically once you switch it on, "turned off by default", or by hand), but "If you issue a partial or complete refund on a store order, the invoice doesn't update to reflect the refund amount", and for credit notes Wix only suggests "you can issue a refund through Wix Payments"; neither page mentions EU invoice rules, numbering or PDF. Source: https://support.wix.com/en/article/wix-stores-creating-invoices-for-store-orders (read 2026-11-04 by WebFetch); https://support.wix.com/en/article/wix-invoices-request-creating-a-negative-balance-invoice-for-refundedreturned-products-or-services (read 2026-11-04 by WebFetch). CHANGED since Oct (our reading, not Wix): credit notes are now settled by Wix's own feature request page (Oct: "NOT verified"); October's note that the start number cannot be lowered was not on the invoices page as fetched today, so do not state it.
+T1 Legal invoices and credit notes for store orders: native (invoices); not-possible-per-source for credit notes (feature request
+page: "Currently, it's not possible to create a negative balance invoice when crediting a customer account"). Wix makes an invoice
+for each paid order (automatically once you switch it on, "turned off by default", or by hand), but "If you issue a partial or
+complete refund on a store order, the invoice doesn't update to reflect the refund amount", and for credit notes Wix only suggests
+"you can issue a refund through Wix Payments"; neither page mentions EU invoice rules, numbering or PDF. Source:
+https://support.wix.com/en/article/wix-stores-creating-invoices-for-store-orders (read 2026-11-04 by WebFetch);
+https://support.wix.com/en/article/wix-invoices-request-creating-a-negative-balance-invoice-for-refundedreturned-products-or-services
+(read 2026-11-04 by WebFetch). CHANGED since Oct (our reading, not Wix): credit notes are now settled by Wix's own feature request
+page (Oct: "NOT verified"); October's note that the start number cannot be lowered was not on the invoices page as fetched today,
+so do not state it.
 
-T2 30-day lowest price on a reduction (Omnibus): not-possible-per-source natively (feature request page: "Currently, it's not possible to automatically display a product's lowest price over the last 30 days"); app: "Omnibus 30-Day Lowest Price" by Rulekeep (third party). Wix does not show the lowest price of the last 30 days by itself; a third-party app records price changes and shows that reference under the reduced price. Source: https://support.wix.com/en/article/wix-stores-request-displaying-a-products-lowest-price-over-30-days (read 2026-11-04 by WebFetch); https://www.wix.com/app-market/rulekeep-omnibus-30-day-lowest-price (read 2026-11-04 by WebFetch). same (still an open request: "We are collecting votes for this issue").
+T2 30-day lowest price on a reduction (Omnibus): not-possible-per-source natively (feature request page: "Currently, it's not
+possible to automatically display a product's lowest price over the last 30 days"); app: "Omnibus 30-Day Lowest Price" by Rulekeep
+(third party). Wix does not show the lowest price of the last 30 days by itself; a third-party app records price changes and shows
+that reference under the reduced price. Source:
+https://support.wix.com/en/article/wix-stores-request-displaying-a-products-lowest-price-over-30-days (read 2026-11-04 by
+WebFetch); https://www.wix.com/app-market/rulekeep-omnibus-30-day-lowest-price (read 2026-11-04 by WebFetch). same (still an open
+request: "We are collecting votes for this issue").
 
-T3 Withdrawal function for consumers (from 19 June 2026), exclusions, digital-content waiver: app: "EU Withdrawal Button" by LionRoar (third party); Wix's own help centre describes a do-it-yourself form, not a built-in function. Wix's help centre says "As of June 19, 2026, merchants selling in the EU are required to display an order cancellation button on retail sites" and tells the owner to build it from a new page, a form and a button ("You can add an order cancellation option to your site by adding a button that links to a form"); it says nothing about exclusions or the digital-content waiver, so those stay unverified. Source: https://support.wix.com/en/article/displaying-an-order-cancelation-button-on-your-site (read 2026-11-04 by WebFetch); https://www.wix.com/app-market/armaisdiaz-eu-withdrawal-button-1 (read 2026-11-04 by WebFetch); https://support.wix.com/en/article/wix-stores-impact-of-eu-directive-concerning-online-businesses (NOT READ: 404 again, as in October). CHANGED since Oct: was unverified; Wix's own page on the 2026 rule is now found (form you build yourself, plus the line "customers should immediately receive an electronic confirmation that their request was received"), and a third-party app exists.
+T3 Withdrawal function for consumers (from 19 June 2026), exclusions, digital-content waiver: app: "EU Withdrawal Button" by
+LionRoar (third party); Wix's own help centre describes a do-it-yourself form, not a built-in function. Wix's help centre says "As
+of June 19, 2026, merchants selling in the EU are required to display an order cancellation button on retail sites" and tells the
+owner to build it from a new page, a form and a button ("You can add an order cancellation option to your site by adding a button
+that links to a form"); it says nothing about exclusions or the digital-content waiver, so those stay unverified. Source:
+https://support.wix.com/en/article/displaying-an-order-cancelation-button-on-your-site (read 2026-11-04 by WebFetch);
+https://www.wix.com/app-market/armaisdiaz-eu-withdrawal-button-1 (read 2026-11-04 by WebFetch);
+https://support.wix.com/en/article/wix-stores-impact-of-eu-directive-concerning-online-businesses (NOT READ: 404 again, as in
+October). CHANGED since Oct: was unverified; Wix's own page on the 2026 rule is now found (form you build yourself, plus the line
+"customers should immediately receive an electronic confirmation that their request was received"), and a third-party app exists.
 
 T4 Product safety information (GPSR): app: "GPSR EU Product Safety" by LionRoar (third party). A third-party app adds manufacturer details, an EU responsible person, product identifiers and safety warnings to product pages and flags products with missing details. Source: https://www.wix.com/app-market/e15ec2a7-774b-4b5d-8317-5ff9ce8cd838 (read 2026-11-04 by WebFetch); one search of support.wix.com for GPSR found no Wix page on it (by search excerpt), which does not show Wix lacks a way. same.
 
-T5 EU VAT by destination, OSS and IOSS, EU VAT reports: native for tax by location (rates you enter, or automatic rates through Avalara on a Premium plan: "Avalara is available for use in sites that have upgraded to a Premium plan"); app for OSS and IOSS: "EAS EU & UK Compliance" by EAS (third party). Wix charges tax by the buyer's location with rates you keep yourself ("If the rate changes, it's up to you to update it") or that Avalara keeps up to date, and it has a Tax Summary report showing "each item's tax rate, total before tax and after tax", but its tax setup, Avalara and report pages do not mention VAT, OSS or IOSS by name; OSS and IOSS registration, reporting and filing come from the third-party app. Source: https://support.wix.com/en/article/wix-stores-setting-up-tax-9768352 (read 2026-11-04 by WebFetch); https://support.wix.com/en/article/setting-up-automatic-tax-calculation (read 2026-11-04 by WebFetch); https://support.wix.com/en/article/wix-analytics-about-your-accounting-reports (read 2026-11-04 by WebFetch); https://www.wix.com/app-market/eas-eu-uk-compliance (read 2026-11-04 by WebFetch). same (adds the Tax Summary report; the Avalara page does say "By default, Avalara assumes that you sell more than €10,000.").
+T5 EU VAT by destination, OSS and IOSS, EU VAT reports: native for tax by location (rates you enter, or automatic rates through
+Avalara on a Premium plan: "Avalara is available for use in sites that have upgraded to a Premium plan"); app for OSS and IOSS:
+"EAS EU & UK Compliance" by EAS (third party). Wix charges tax by the buyer's location with rates you keep yourself ("If the rate
+changes, it's up to you to update it") or that Avalara keeps up to date, and it has a Tax Summary report showing "each item's tax
+rate, total before tax and after tax", but its tax setup, Avalara and report pages do not mention VAT, OSS or IOSS by name; OSS
+and IOSS registration, reporting and filing come from the third-party app. Source:
+https://support.wix.com/en/article/wix-stores-setting-up-tax-9768352 (read 2026-11-04 by WebFetch);
+https://support.wix.com/en/article/setting-up-automatic-tax-calculation (read 2026-11-04 by WebFetch);
+https://support.wix.com/en/article/wix-analytics-about-your-accounting-reports (read 2026-11-04 by WebFetch);
+https://www.wix.com/app-market/eas-eu-uk-compliance (read 2026-11-04 by WebFetch). same (adds the Tax Summary report; the Avalara
+page does say "By default, Avalara assumes that you sell more than €10,000.").
 
-T6 Business buyer's VAT number checked (VIES), reverse charge: app: "Exemptify" by daxanema (third party; "Verified by Wix"; listing shows Wix Stores and "Premium Site Required"). The app checks an EU VAT number against VIES at checkout and applies or removes the exemption for reverse charge, and Wix's help centre points owners to it, warning that a plain custom checkout field for a tax ID is not checked ("Note that the number will not be validated"). Source: https://support.wix.com/en/article/sales-tax-request-validating-vat-id-during-checkout (read 2026-11-04 by WebFetch); https://www.wix.com/app-market/exemptify (read 2026-11-04 by WebFetch). CHANGED since Oct: Wix's own request page now reads "Great News! We've released this feature!", the release being the third-party Exemptify app (Oct cited only the listing); the page says it is "not yet available in the Wix Harmony Editor".
+T6 Business buyer's VAT number checked (VIES), reverse charge: app: "Exemptify" by daxanema (third party; "Verified by Wix";
+listing shows Wix Stores and "Premium Site Required"). The app checks an EU VAT number against VIES at checkout and applies or
+removes the exemption for reverse charge, and Wix's help centre points owners to it, warning that a plain custom checkout field
+for a tax ID is not checked ("Note that the number will not be validated"). Source:
+https://support.wix.com/en/article/sales-tax-request-validating-vat-id-during-checkout (read 2026-11-04 by WebFetch);
+https://www.wix.com/app-market/exemptify (read 2026-11-04 by WebFetch). CHANGED since Oct: Wix's own request page now reads "Great
+News! We've released this feature!", the release being the third-party Exemptify app (Oct cited only the listing); the page says
+it is "not yet available in the Wix Harmony Editor".
 
-T7 Appointments, stays and rentals (Wix Bookings, Wix Hotels): native (Wix Bookings and Wix Hotels, Wix's own). Wix Bookings handles one-to-one sessions, group classes and multi-session courses with online payment and lets you "Manage rooms and equipment as bookable resources", and Wix Hotels is for "a B&B, apartment, boutique hotel or vacation rental"; neither page names a plan requirement. Source: https://www.wix.com/booking (read 2026-11-04 by WebFetch); https://support.wix.com/en/article/about-wix-hotels (read 2026-11-04 by WebFetch). same (the help centre still separates "the original Wix Hotels app" from "the new Wix Hotels by HotelRunner"; it does not say the original is retired or that either is in beta).
+T7 Appointments, stays and rentals (Wix Bookings, Wix Hotels): native (Wix Bookings and Wix Hotels, Wix's own). Wix Bookings
+handles one-to-one sessions, group classes and multi-session courses with online payment and lets you "Manage rooms and equipment
+as bookable resources", and Wix Hotels is for "a B&B, apartment, boutique hotel or vacation rental"; neither page names a plan
+requirement. Source: https://www.wix.com/booking (read 2026-11-04 by WebFetch);
+https://support.wix.com/en/article/about-wix-hotels (read 2026-11-04 by WebFetch). same (the help centre still separates "the
+original Wix Hotels app" from "the new Wix Hotels by HotelRunner"; it does not say the original is retired or that either is in
+beta).
 
 T8 Subscriptions in Wix Stores: native. A shop can sell a physical product only by subscription or let the buyer choose, as long as it connects a payment method that supports recurring payments, but "Product subscriptions cannot be created for digital products"; no plan requirement is stated. Source: https://support.wix.com/en/article/selling-product-subscriptions-in-wix-stores (read 2026-11-04 by WebFetch). New topic (not in the October file).
 
-T9 Bundles: app for bundles that take stock from each item: "Product Bundles" by Purple Bear (third party; Wix's page also names "Bundles, by Multiorders Solutions"). Without an app a bundle is one product with its own stock, because Wix's feature request page says "It's not currently possible to integrate the inventory so that when you have 10 straws in stock and you sell a bundle, the straw inventory goes to 9" and adds "It's now possible to sell fixed bundles and track inventory using third-party apps"; mix-and-match bundles work natively with an automatic discount on a category. Source: https://support.wix.com/en/article/wix-stores-request-ability-to-sell-products-bundled-together (read 2026-11-04 by WebFetch; the full straw sentence by search excerpt); https://support.wix.com/en/article/wix-stores-selling-mix-and-match-product-bundles (by search excerpt). New topic (October named Bundles by Multiorders only under volume discounts).
+T9 Bundles: app for bundles that take stock from each item: "Product Bundles" by Purple Bear (third party; Wix's page also names
+"Bundles, by Multiorders Solutions"). Without an app a bundle is one product with its own stock, because Wix's feature request
+page says "It's not currently possible to integrate the inventory so that when you have 10 straws in stock and you sell a bundle,
+the straw inventory goes to 9" and adds "It's now possible to sell fixed bundles and track inventory using third-party apps";
+mix-and-match bundles work natively with an automatic discount on a category. Source:
+https://support.wix.com/en/article/wix-stores-request-ability-to-sell-products-bundled-together (read 2026-11-04 by WebFetch; the
+full straw sentence by search excerpt); https://support.wix.com/en/article/wix-stores-selling-mix-and-match-product-bundles (by
+search excerpt). New topic (October named Bundles by Multiorders only under volume discounts).
 
-T10 B2B: company accounts, price lists, payment terms: app: "SparkLayer B2B & Wholesale" (third party). Wix's help centre sends wholesale sellers to SparkLayer, which adds customer groups with their own prices and payment methods such as Pay on Account and Pay by Invoice ("SparkLayer brings powerful B2B functionality to your Wix store"); the page describes no B2B features of Wix's own, which is not the same as saying there are none. Source: https://support.wix.com/en/article/wix-stores-selling-wholesale-with-sparklayer (read 2026-11-04 by WebFetch); https://www.wix.com/app-market/sparklayer-b2b-wholesale (by search excerpt). New topic (not in the October file).
+T10 B2B: company accounts, price lists, payment terms: app: "SparkLayer B2B & Wholesale" (third party). Wix's help centre sends
+wholesale sellers to SparkLayer, which adds customer groups with their own prices and payment methods such as Pay on Account and
+Pay by Invoice ("SparkLayer brings powerful B2B functionality to your Wix store"); the page describes no B2B features of Wix's
+own, which is not the same as saying there are none. Source:
+https://support.wix.com/en/article/wix-stores-selling-wholesale-with-sparklayer (read 2026-11-04 by WebFetch);
+https://www.wix.com/app-market/sparklayer-b2b-wholesale (by search excerpt). New topic (not in the October file).
 
 T11 Multi-vendor marketplace: app: "Multi Vendor Marketplace" by Webkul (third party). The app lets other sellers list products and manage orders in their own dashboards, with commissions the owner sets and "automated PayPal payouts". Source: https://www.wix.com/app-market/multi-vendor-marketplace (read 2026-11-04 by WebFetch). same.
 
@@ -33,29 +92,74 @@ T14 Refer-a-friend: higher-plan ("Wix Editor: A Business or higher plan"; "Wix S
 
 T15 Wishlists: native. The owner turns on "Add Wishlist" in the product page settings, and shoppers find their saved products on a My Wishlist page in the Members Area; the page names no plan and says nothing about sharing a wishlist. Source: https://support.wix.com/en/article/wix-stores-adding-and-setting-up-a-wishlist (read 2026-11-04 by WebFetch). same (October's note on shareable wishlists came from a search excerpt and was not re-read: do not state it).
 
-T16 Product reviews: native (Wix Reviews app, made by Wix). Wix Reviews asks buyers for a review by email automatically ("an automation that sends customers an email requesting a review is automatically enabled"), lets the owner moderate, and takes photos and videos; the help page does not mention verified-buyer badges. Source: https://support.wix.com/en/article/wix-stores-adding-and-setting-up-wix-reviews (read 2026-11-04 by WebFetch); https://www.wix.com/app-market/reviews (by search excerpt: "made for Wix, by Wix"). same.
+T16 Product reviews: native (Wix Reviews app, made by Wix). Wix Reviews asks buyers for a review by email automatically ("an
+automation that sends customers an email requesting a review is automatically enabled"), lets the owner moderate, and takes photos
+and videos; the help page does not mention verified-buyer badges. Source:
+https://support.wix.com/en/article/wix-stores-adding-and-setting-up-wix-reviews (read 2026-11-04 by WebFetch);
+https://www.wix.com/app-market/reviews (by search excerpt: "made for Wix, by Wix"). same.
 
 T17 Back-in-stock emails: native. When a product is out of stock "The "Add to Cart" button changes to "Notify When Available"", and once the owner turns on automated notifications customers get an email when it is back; no plan is named. Source: https://support.wix.com/en/article/wix-stores-notifying-customers-when-products-are-back-in-stock (read 2026-11-04 by WebFetch). same.
 
 T18 Pre-orders: native. A pre-order button appears when a physical product is out of stock, customers "pay the full amount in advance" ("It's not possible to collect partial payment at checkout"), it is not available for digital products or subscriptions, and with Wix Payments "products should be delivered after no more than 12 months". Source: https://support.wix.com/en/article/wix-stores-setting-up-pre-orders (read 2026-11-04 by WebFetch). same.
 
-T19 Tiered and volume discounts: not-possible-per-source (feature request page: "it's not possible to create volume discounts that automatically reduce the price", a fragment as the fetch returned it); app: Bundles by Multiorders Solutions (third party; the page: "You can also use a third-party app, such as Bundles by Multiorders Solutions, to set up quantity-based discounts."). Wix sets "a single price for each product or variant", and its native workaround is an automatic discount that starts at a minimum quantity. Source: https://support.wix.com/en/article/wix-stores-request-quantity-based-price-discounts (read 2026-11-04 by WebFetch). same (still "We are collecting votes for this issue").
+T19 Tiered and volume discounts: not-possible-per-source (feature request page: "it's not possible to create volume discounts that
+automatically reduce the price", a fragment as the fetch returned it); app: Bundles by Multiorders Solutions (third party; the
+page: "You can also use a third-party app, such as Bundles by Multiorders Solutions, to set up quantity-based discounts."). Wix
+sets "a single price for each product or variant", and its native workaround is an automatic discount that starts at a minimum
+quantity. Source: https://support.wix.com/en/article/wix-stores-request-quantity-based-price-discounts (read 2026-11-04 by
+WebFetch). same (still "We are collecting votes for this issue").
 
-T20 Email marketing, broadcasts and automations: native (Wix Email Marketing and Wix Automations; scheduling a campaign needs an upgraded Email Marketing plan: "Make sure to upgrade your plan if you would like to use this feature"). Owners send email campaigns and build automations such as welcome emails and abandoned-cart reminders with IF/ELSE steps from the dashboard ("available from your site's dashboard, with no pre-requirements"), and campaign emails count against a monthly sending limit. Source: https://support.wix.com/en/article/wix-automations-about-the-new-automations-builder (read 2026-11-04 by WebFetch); https://support.wix.com/en/article/email-marketing-sending-your-email-campaign (read 2026-11-04 by WebFetch). New topic (not in the October file).
+T20 Email marketing, broadcasts and automations: native (Wix Email Marketing and Wix Automations; scheduling a campaign needs an
+upgraded Email Marketing plan: "Make sure to upgrade your plan if you would like to use this feature"). Owners send email
+campaigns and build automations such as welcome emails and abandoned-cart reminders with IF/ELSE steps from the dashboard
+("available from your site's dashboard, with no pre-requirements"), and campaign emails count against a monthly sending limit.
+Source: https://support.wix.com/en/article/wix-automations-about-the-new-automations-builder (read 2026-11-04 by WebFetch);
+https://support.wix.com/en/article/email-marketing-sending-your-email-campaign (read 2026-11-04 by WebFetch). New topic (not in
+the October file).
 
 T21 Scheduled report emails: native. Wix Analytics emails a report on the frequency, day and hour you choose, as "a CSV attachment and in a table view", and the Traffic and Sales overviews come Monthly, Weekly or Daily; no plan is named for this. Source: https://support.wix.com/en/article/scheduling-wix-analytics-report-emails (read 2026-11-04 by WebFetch). same.
 
-T22 AI assistant in the dashboard (Aria and AI agents; credits): native ("Some agents use AI credits, while others are free."). Aria, "your AI partner for building and managing your Wix site", can "answer questions, complete tasks, assist with analytics", and Wix also offers Kleo (marketing), Alfred ("your AI Phone Agent, answers calls for your business 24/7") and a Design Agent; the page names no plan and does not say which agents use credits. Source: https://support.wix.com/en/article/ai-tools-about-wixs-ai-agents (read 2026-11-04 by WebFetch). CHANGED since Oct: the page now names Aria, Kleo, Alfred and the Design Agent; "Juno" and "Omni" (in October's strengths) do not appear on it.
+T22 AI assistant in the dashboard (Aria and AI agents; credits): native ("Some agents use AI credits, while others are free.").
+Aria, "your AI partner for building and managing your Wix site", can "answer questions, complete tasks, assist with analytics",
+and Wix also offers Kleo (marketing), Alfred ("your AI Phone Agent, answers calls for your business 24/7") and a Design Agent; the
+page names no plan and does not say which agents use credits. Source:
+https://support.wix.com/en/article/ai-tools-about-wixs-ai-agents (read 2026-11-04 by WebFetch). CHANGED since Oct: the page now
+names Aria, Kleo, Alfred and the Design Agent; "Juno" and "Omni" (in October's strengths) do not appear on it.
 
-T23 Vipps and MobilePay: native for Vipps (Norway, NOK only: "Accept payments from your customers in Norway using Vipps as a payment provider"); not-possible-per-source for MobilePay (feature request page: "Currently, Wix does not offer MobilePay as a payment provider."). A Norwegian shop can connect its own Vipps merchant account, but the Vipps page says nothing about MobilePay, Denmark or Finland, and for MobilePay Wix only suggests a manual payment method arranged offline. Source: https://support.wix.com/en/article/connecting-vipps-as-a-payment-provider (read 2026-11-04 by WebFetch); https://support.wix.com/en/article/request-connecting-mobilepay-as-a-payment-provider (read 2026-11-04 by WebFetch). same.
+T23 Vipps and MobilePay: native for Vipps (Norway, NOK only: "Accept payments from your customers in Norway using Vipps as a
+payment provider"); not-possible-per-source for MobilePay (feature request page: "Currently, Wix does not offer MobilePay as a
+payment provider."). A Norwegian shop can connect its own Vipps merchant account, but the Vipps page says nothing about MobilePay,
+Denmark or Finland, and for MobilePay Wix only suggests a manual payment method arranged offline. Source:
+https://support.wix.com/en/article/connecting-vipps-as-a-payment-provider (read 2026-11-04 by WebFetch);
+https://support.wix.com/en/article/request-connecting-mobilepay-as-a-payment-provider (read 2026-11-04 by WebFetch). same.
 
-T24 Nordic carriers: labels and pickup points: app: "Posten Bring Shipping" by Glimm Tech (third party), and "PostNord" by Glimm Tech (third party). The Bring app shows live rates and the nearest pickup points at checkout and, on the app's own Premium Plus plan, can "Book parcels and print Bring labels from the order", while the PostNord app shows rates for Sweden, Denmark and Norway (Finland too in its description) and lists MyPack Collect, but its listing mentions no labels or booking. Source: https://www.wix.com/app-market/bring-posten-shipping-rates (read 2026-11-04 by WebFetch); https://www.wix.com/app-market/postnord (read 2026-11-04 by WebFetch). same.
+T24 Nordic carriers: labels and pickup points: app: "Posten Bring Shipping" by Glimm Tech (third party), and "PostNord" by Glimm
+Tech (third party). The Bring app shows live rates and the nearest pickup points at checkout and, on the app's own Premium Plus
+plan, can "Book parcels and print Bring labels from the order", while the PostNord app shows rates for Sweden, Denmark and Norway
+(Finland too in its description) and lists MyPack Collect, but its listing mentions no labels or booking. Source:
+https://www.wix.com/app-market/bring-posten-shipping-rates (read 2026-11-04 by WebFetch); https://www.wix.com/app-market/postnord
+(read 2026-11-04 by WebFetch). same.
 
-T25 Where customer data is kept (Wix Trust Center): unverified for an EU-only choice. Wix's Trust Center says "Wix stores information in our data centers which are located in the United States of America, Ireland," that "personal information may be processed in other countries if necessary", and that transfers outside the EU use the Standard Contractual Clauses; it does not say whether a shop can keep its data in the EU only. Source: https://www.wix.com/trust-center/faq (read 2026-11-04 by WebFetch). same (it also says "Wix follows Payment Card Industry Data Security Standards (PCI DSS)"; ISO 27018 appears only in a link, so do not quote it from this page).
+T25 Where customer data is kept (Wix Trust Center): unverified for an EU-only choice. Wix's Trust Center says "Wix stores
+information in our data centers which are located in the United States of America, Ireland," that "personal information may be
+processed in other countries if necessary", and that transfers outside the EU use the Standard Contractual Clauses; it does not
+say whether a shop can keep its data in the EU only. Source: https://www.wix.com/trust-center/faq (read 2026-11-04 by WebFetch).
+same (it also says "Wix follows Payment Card Industry Data Security Standards (PCI DSS)"; ISO 27018 appears only in a link, so do
+not quote it from this page).
 
-T26 Moving in from Shopify (product import): not-possible-per-source for an automatic import (feature request page: "Currently, there is no way to automatically import products from other eCommerce platforms (e.g. Shopify)."); app: Cart2Cart (third party). Owners export a CSV from Shopify and import it (only the first 10K rows and up to 15 MB, and "Importing files containing digital products is currently not supported") or use the Cart2Cart app. Source: https://support.wix.com/en/article/wix-stores-request-automatic-tool-to-import-products-from-other-ecommerce-platforms (read 2026-11-04 by WebFetch); https://support.wix.com/en/article/wix-stores-importing-products-from-another-ecommerce-platform (read 2026-11-04 by WebFetch). same (adds Wix's own feature request page).
+T26 Moving in from Shopify (product import): not-possible-per-source for an automatic import (feature request page: "Currently,
+there is no way to automatically import products from other eCommerce platforms (e.g. Shopify)."); app: Cart2Cart (third party).
+Owners export a CSV from Shopify and import it (only the first 10K rows and up to 15 MB, and "Importing files containing digital
+products is currently not supported") or use the Cart2Cart app. Source:
+https://support.wix.com/en/article/wix-stores-request-automatic-tool-to-import-products-from-other-ecommerce-platforms (read
+2026-11-04 by WebFetch); https://support.wix.com/en/article/wix-stores-importing-products-from-another-ecommerce-platform (read
+2026-11-04 by WebFetch). same (adds Wix's own feature request page).
 
-T27 Point of sale (Wix POS): native, in three countries only ("Wix POS Register is currently available in the US, Canada and UK."). In those countries Wix POS Register is a till and card reader whose sales "automatically synchronizes with your online Wix store", with payments through Wix Payments; the page names no EU or Nordic country. Source: https://support.wix.com/en/article/wix-pos-register-about-wix-pos-for-your-brick-and-mortar-business (read 2026-11-04 by WebFetch). New topic (not in the October file).
+T27 Point of sale (Wix POS): native, in three countries only ("Wix POS Register is currently available in the US, Canada and
+UK."). In those countries Wix POS Register is a till and card reader whose sales "automatically synchronizes with your online Wix
+store", with payments through Wix Payments; the page names no EU or Nordic country. Source:
+https://support.wix.com/en/article/wix-pos-register-about-wix-pos-for-your-brick-and-mortar-business (read 2026-11-04 by
+WebFetch). New topic (not in the October file).
 
 ## Strengths
 

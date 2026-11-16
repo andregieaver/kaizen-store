@@ -1898,6 +1898,12 @@ The version chips come in step 12.
 
 **Send the owner screenshots** of the hub and of each view (phone and computer), plus `docs/heatmaps-and-recordings.svg`.
 
+*As built (16 Nov 2026):* a part is labelled by where it sits ("A part 50 % down the page"), a card by its number and a landmark by
+its name; labels from the page's own content (`describePart()`) are a follow-up. The traffic page's landing rows do not link to a map
+yet: their paths are not checked to be page keys. The map's period is its own (7, 30, 90, 365 days), the hub's the period picker's. Bars
+fixed to the screen are hidden in the picture and sticky ones left in place (they sat in the middle of a full-length picture). The signed-in
+spec measures the test store's real front page for the picture's layout; with `HEATMAP_SHOTS` set it keeps screenshots.
+
 ### Step 8: Recordings: tables, limits, the platform hold and the ingest route
 
 **Goal.** The server can take recordings. No browser sends any yet.
@@ -1959,6 +1965,12 @@ The version chips come in step 12.
 
 **Done when:** the tests pass, CI applies the migration, the advisors are clean, and the versions are recorded.
 
+*As built (16 Nov 2026):* the pure numbers and paths are in `src/lib/recording.ts` (`pathsOf()`, `segmentPath()`, `coarseTime()`,
+`coarseSize()`, `appendPages()`; `recorderOptions()` and `sessionFor()` come with the recorder in step 9). `deleteRecording()`,
+`recordingsOpenNow()` and `setRecordingsOpen()` are in `src/server/recordings-admin.ts`, apart from the ingest, so the beacon route loads
+no sign-in module. The platform switch is a card on Usage and limits (`#recordings`). The privacy register's purpose `recordings` rests on
+consent, so `personal-purposes.test.ts` now names two consent purposes, marketing and recordings.
+
 ### Step 9: The recorder in the storefront
 
 **Files:**
@@ -1995,6 +2007,14 @@ The version chips come in step 12.
 
 **Done when:** the e2e passes locally before the push, and in CI after it. Owners still cannot switch recordings on: the switch is
 step 11, and the platform hold is closed.
+
+*As built (16 Nov 2026):* rrweb is 2.2.0, the newest release out two weeks on 16 November (2.2.1 and 2.2.2 are newer); `@rrweb/record`
+asks for `^2.2.0` of its siblings, so `pnpm-workspace.yaml` holds `rrweb`, `@rrweb/types`, `@rrweb/utils` and the rest to 2.2.0. Masked
+text becomes three dots whatever its length (`maskTextFn`), so a run of stars never tells a length. `noteClicks()` adds `kz-click` events and
+the segment's counts from the click watch, which now runs for heatmaps or recordings. `e2e/recordings.spec.ts` covers no consent, staff,
+a first segment (seq 0, a full snapshot, relative times), typing masked (an input event recorded, no typed text, no run of stars), a search
+page never recorded, no query in a Meta address, one id per tab, and a withdrawal (one forget with the tab's id, no segment after). The
+account page round trip and the cart drawer's pause are not in the e2e yet.
 
 ### Step 10: Sealing recordings, and the DPIA draft
 

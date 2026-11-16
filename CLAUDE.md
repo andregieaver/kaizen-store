@@ -2,8 +2,8 @@
 
 # Kaizena Flow
 
-Kaizena Flow (formerly Kaizen Store; the code keeps `kaizen` in its names) is an AI-native online store selling EU-wide, built from scratch. The research and
-phased build plan are in `docs/plan.md`; read it before architectural work.
+Kaizena Flow (formerly Kaizen Store; the code keeps `kaizen` in its names) is an AI-native online store selling EU-wide, built from scratch. How it is
+built is in `docs/platform.md`: read it before architectural work (`docs/plan.md` is older research: open a cited section only).
 
 ## Workflow
 
@@ -125,7 +125,7 @@ Each rule is in full in `docs/rules/storefront.md` under the same words; read it
 - AI product texts (D76, `src/lib/product-writing.ts`, `src/server/product-writer.ts`, `AiWriter`)
 - The chat agent (D81, `src/lib/chat.ts`, `src/server/chat-agent.ts`, `src/server/knowledge.ts`, `ChatWidget`)
 - Support (D216, `docs/support.md`, built in steps; §11 says what each step found)
-- Chat widgets on the owner's own websites (D582, D583, `docs/support-embed.md`, `src/lib/support-embed.ts`, `src/lib/support-widget-style.ts`, `src/server/support-widgets.ts`, `src/server/site-crawl.ts`, `public/embed/chat.js`)
+- Chat widgets on the owner's own websites (D582, D583, `docs/support-embed.md`, `src/lib/support-embed.ts`, `src/lib/support-widget-style.ts`, `src/server/support-widgets.ts`…
 - Prices are shown with `<Price>`, which adds the VAT label and shows the 30-day reference only for a genuine reduction
 - Choosing in the storefront (D82) uses `Dropdown` (`src/components/dropdown.tsx`, a themed select-only combobox with pictures), never a native…
 - The template store's product pages are prerendered at build time, so their content is plain HTML; stock and add-to-cart stream in and need JavaScript
@@ -317,7 +317,7 @@ Each rule is in full under the same words in one file of `docs/rules/admin/` by 
 - Signature themes (D267, D269, D281, D287, `docs/signature-themes.md`; Orbit, Atelier, Arcade, Botanica, Kinetic, Meridian)
 - Kaizen Life (D95, `src/server/kaizen-life.ts`; the account link and Work summary D511, `docs/life-work-summary.md`; the assistants together D517, D519 and D521, `docs/assistants-together.md`)
 - Templates (D125, `src/lib/templates.ts`, `src/lib/template-content.ts`, `src/server/templates.ts`, `TemplatesTab`/`TemplatesModal`)
-- Page layouts and preview (D127, `src/lib/page-layout.ts`, `src/lib/page-layout-apply.ts`, `previewTemplate()`, `TemplatesPreview`,…
+- Page layouts and preview (D127, `src/lib/page-layout.ts`, `src/lib/page-layout-apply.ts`, `previewTemplate()`, `TemplatePreviewDialog`,…
 - Motion (D128, `src/lib/motion.ts`, `src/lib/motion-attrs.ts`, `src/lib/motion-runtime.ts`, `src/app/motion.css`, `src/lib/motion-plan.ts`,…
 - Duplicating a store (D129, `docs/store-copy.md`, `src/lib/store-copy.ts`, `src/lib/store-copy-rules.ts`, `src/server/store-copy.ts`,…
 - The bonus program (D130, `docs/bonus.md`, `src/lib/bonus.ts`, `src/server/bonus.ts`, SQL `commerce.bonus_*`)
@@ -455,8 +455,7 @@ Each rule is in full under the same words in one file of `docs/rules/admin/` by 
   (`ChatWidgetProfile.aiUse`), so a new AI use of a customer's messages is said there too.
 - A new page for Kaizena Flow's own site (kaizenaflow.com) is built from `docs/site-design.md`: the owner's theme, palette, classes
   and row recipes, read from production. Save it as a draft for the owner to publish, and correct that file when the site's look changes.
-- Deferred work from the PSI audit is tracked in `docs/audits/psi-followups.md`: tick
-  an item there when a change does it.
-- The code review of November 2026 is a working plan in `docs/audits/code-review-2026-11.md`: its Progress table lists every
-  step (phases 0 to 4) with its status. Read that table before starting a fix from it, and in the same change set the step to
-  Done with the date and commit, correct a finding the code no longer matches, and add a line to its change log.
+- Working plans: `docs/audits/psi-followups.md` (Open section), `docs/audits/code-review-2026-11.md` and
+ `docs/audits/bloat-review-2026-11.md`. Find a step's row by id; in the same change set it to Done with date and commit.
+- Claim a decision's number with `node scripts/claim-decision.mjs "title"` before citing it, never from the file.
+- Searches skip dated reports, evidence folders and `supabase/archive`: name the path to search one.

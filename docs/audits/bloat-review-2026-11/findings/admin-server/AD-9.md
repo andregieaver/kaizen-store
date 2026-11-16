@@ -4,9 +4,26 @@ What the server does for an admin navigation (`README.md` beside this file), par
 
 - **Kind:** eager. **Priority:** P0. **Effort:** S. **Confidence:** high. **Step:** 0.17.
 - **Second check:** corrected.
-- **Where:** `src/components/admin/refresh-while.tsx:7-13`, `src/components/admin/analytics/live-refresh.tsx:10-26`, `src/components/admin/cookie-scan.tsx:137`, `src/components/admin/domains-panel.tsx:175`, `src/components/admin/page-jobs-panel.tsx:53`, `src/components/admin/legal-pages-panel.tsx:145`, `src/app/admin/(gated)/[store]/dream-factory/page.tsx:116`, `src/app/admin/(gated)/[store]/dream-factory/rework.tsx:39`, `src/app/admin/(gated)/[store]/dream-factory/rework.tsx:135`, `src/app/admin/(gated)/platform/ai/dream/[runId]/page.tsx:55`, `src/components/admin/pack-pictures.tsx:126-133`, `src/components/admin/ai-notices.tsx:29-53`, `src/app/admin/(gated)/(owner)/account/notices/feed/route.ts:17-35`, `src/server/assistant-notices.ts:146-173`, `src/components/admin/store-drafts.tsx:39-45`
-- **Evidence:** RefreshWhile calls router.refresh() every 5 s (cookie scan), 6 s (Dream Factory, four places), 10 s (page jobs, legal writing), 15 s (pack pictures, its own copy) or 20 s (domains), and does not stop when the tab is hidden; LiveRefresh, 20 lines away, does. A refresh re-fetches dynamic data in shared layouts too, so each tick pays the whole shell of AD-1, AD-4 and AD-5 plus the page. The Dream Factory run is where a new store's owner lands first ([store]/page.tsx:43-46), so this is the first screen most new owners will watch. Separately, the AI manager's button asks the notices feed every 60 s in every owner's tab while it is shown: the route reads the account, looks up the store by slug, runs the list query with limit 1 and throws it away, then counts.
-- **Cost today:** During a Dream Factory run: 10 full shell-and-page renders a minute per watching tab, hidden or not, each with the 100 to 125 ms menu build until AD-1. Always: 60 requests an hour per visible owner tab, 4 statements each, one thrown away, plus an Auth call for a session without two-step (AD-3). Estimate at 1,000 owners with a tab in view: 1,000 requests and 4,000 statements a minute for a badge. Paid by: The server per request and the database; the owner's browser re-parsing the shell each tick.
+- **Where:** `src/components/admin/refresh-while.tsx:7-13`, `src/components/admin/analytics/live-refresh.tsx:10-26`,
+  `src/components/admin/cookie-scan.tsx:137`, `src/components/admin/domains-panel.tsx:175`,
+  `src/components/admin/page-jobs-panel.tsx:53`, `src/components/admin/legal-pages-panel.tsx:145`,
+  `src/app/admin/(gated)/[store]/dream-factory/page.tsx:116`, `src/app/admin/(gated)/[store]/dream-factory/rework.tsx:39`,
+  `src/app/admin/(gated)/[store]/dream-factory/rework.tsx:135`, `src/app/admin/(gated)/platform/ai/dream/[runId]/page.tsx:55`,
+  `src/components/admin/pack-pictures.tsx:126-133`, `src/components/admin/ai-notices.tsx:29-53`,
+  `src/app/admin/(gated)/(owner)/account/notices/feed/route.ts:17-35`, `src/server/assistant-notices.ts:146-173`,
+  `src/components/admin/store-drafts.tsx:39-45`
+- **Evidence:** RefreshWhile calls router.refresh() every 5 s (cookie scan), 6 s (Dream Factory, four places), 10 s (page jobs,
+  legal writing), 15 s (pack pictures, its own copy) or 20 s (domains), and does not stop when the tab is hidden; LiveRefresh, 20
+  lines away, does. A refresh re-fetches dynamic data in shared layouts too, so each tick pays the whole shell of AD-1, AD-4 and
+  AD-5 plus the page. The Dream Factory run is where a new store's owner lands first ([store]/page.tsx:43-46), so this is the
+  first screen most new owners will watch. Separately, the AI manager's button asks the notices feed every 60 s in every owner's
+  tab while it is shown: the route reads the account, looks up the store by slug, runs the list query with limit 1 and throws it
+  away, then counts.
+- **Cost today:** During a Dream Factory run: 10 full shell-and-page renders a minute per watching tab, hidden or not, each with
+  the 100 to 125 ms menu build until AD-1. Always: 60 requests an hour per visible owner tab, 4 statements each, one thrown away,
+  plus an Auth call for a session without two-step (AD-3). Estimate at 1,000 owners with a tab in view: 1,000 requests and 4,000
+  statements a minute for a badge. Paid by: The server per request and the database; the owner's browser re-parsing the shell each
+  tick.
 - **Saving:** Estimate: a hidden tab stops costing anything; a progress tick drops from the whole route to 2 or 3 statements once it asks the job; the notice poll from 4 statements to 2.
 - **Risk:** Low. A progress view must still redraw once when the job ends, and once when a hidden tab is shown again (LiveRefresh's 'back' handler does this). Noticed by a run's page not reaching its finished state without a reload: there is no spec for it today, so add the case named under tests.
 

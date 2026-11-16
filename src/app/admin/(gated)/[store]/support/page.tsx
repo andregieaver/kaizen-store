@@ -9,6 +9,7 @@ import { requirePermission } from "@/server/permissions";
 import { presence } from "@/server/support";
 import { memberDesk } from "@/server/support-desk";
 import { openingInbox } from "@/server/support-inbox";
+import { storeBase, storeHref } from "@/lib/paths";
 
 import {
   supportActAction,
@@ -45,6 +46,7 @@ export default async function SupportInboxPage({
     canWrite: staff.canWrite,
     presence: staff.canWrite ? mine.status : null,
     partnerOn: staff.canWrite ? mine.partner : null,
+    shopUrl: storeHref(slug, storeBase(slug)),
     actions: {
       heartbeat: supportHeartbeatAction.bind(null, slug),
       presence: staff.canWrite ? supportPresenceAction.bind(null, slug) : null,

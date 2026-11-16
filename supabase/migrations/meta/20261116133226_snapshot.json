@@ -1,6 +1,6 @@
 {
-  "id": "698ddb44-422b-49d6-a06b-66c0b57083fb",
-  "prevId": "271e754c-5240-4335-a123-1da82aae1744",
+  "id": "2da998ed-915c-42b3-bc62-347786a74756",
+  "prevId": "4817f89e-69c0-424e-ba8d-06dd2855bbc0",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -8649,7 +8649,7 @@
       "checkConstraints": {
         "autopilot_events_kind": {
           "name": "autopilot_events_kind",
-          "value": "\"commerce\".\"autopilot_events\".\"kind\" in ('support_waiting', 'test_ended', 'alert', 'order_unsent', 'delivery_problem', 'supplier_problem', 'order_held', 'dispute_opened', 'payments_failing', 'stockout_risk', 'staff_request')"
+          "value": "\"commerce\".\"autopilot_events\".\"kind\" in ('support_waiting', 'test_ended', 'alert', 'order_unsent', 'delivery_problem', 'supplier_problem', 'order_held', 'dispute_opened', 'payments_failing', 'stockout_risk', 'staff_request', 'test_answered', 'exchange_confirmed')"
         },
         "autopilot_events_status": {
           "name": "autopilot_events_status",
@@ -40722,7 +40722,7 @@
         },
         "limit_overrides_known": {
           "name": "limit_overrides_known",
-          "value": "\"commerce\".\"limit_overrides\".\"key\" in ('storage_bytes', 'products', 'staff_seats', 'custom_domains', 'marketing_emails_month', 'ai_cost_month_micros', 'requests_month', 'egress_bytes_month', 'stores_owned')"
+          "value": "\"commerce\".\"limit_overrides\".\"key\" in ('storage_bytes', 'products', 'staff_seats', 'custom_domains', 'marketing_emails_month', 'ai_cost_month_micros', 'requests_month', 'egress_bytes_month', 'recordings_month', 'stores_owned')"
         }
       },
       "isRLSEnabled": false
@@ -48199,6 +48199,12 @@
           "primaryKey": false,
           "notNull": false
         },
+        "replaces_order_id": {
+          "name": "replaces_order_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
         "created_at": {
           "name": "created_at",
           "type": "timestamp with time zone",
@@ -48266,6 +48272,28 @@
           "with": {},
           "method": "btree",
           "where": "\"commerce\".\"orders\".\"exchange_id\" is not null and \"commerce\".\"orders\".\"status\" <> 'cancelled'",
+          "concurrently": false
+        },
+        "orders_replacement_live_key": {
+          "name": "orders_replacement_live_key",
+          "columns": [
+            {
+              "expression": "store_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "replaces_order_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "with": {},
+          "method": "btree",
+          "where": "\"commerce\".\"orders\".\"replaces_order_id\" is not null and \"commerce\".\"orders\".\"status\" <> 'cancelled'",
           "concurrently": false
         },
         "orders_held_by_idx": {
@@ -48742,6 +48770,22 @@
           "onUpdate": "no action",
           "onDelete": "restrict"
         },
+        "orders_replaces_fk": {
+          "name": "orders_replaces_fk",
+          "tableFrom": "orders",
+          "columnsFrom": [
+            "store_id",
+            "replaces_order_id"
+          ],
+          "tableTo": "orders",
+          "schemaTo": "commerce",
+          "columnsTo": [
+            "store_id",
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "restrict"
+        },
         "orders_vat_check_fk": {
           "name": "orders_vat_check_fk",
           "tableFrom": "orders",
@@ -48872,6 +48916,10 @@
           "name": "orders_source_exchange",
           "value": "(\"commerce\".\"orders\".\"source\" = 'exchange') = (\"commerce\".\"orders\".\"exchange_id\" is not null)"
         },
+        "orders_source_replacement": {
+          "name": "orders_source_replacement",
+          "value": "(\"commerce\".\"orders\".\"source\" = 'replacement') = (\"commerce\".\"orders\".\"replaces_order_id\" is not null)"
+        },
         "orders_delivered_source": {
           "name": "orders_delivered_source",
           "value": "\"commerce\".\"orders\".\"delivered_source\" is null or (\"commerce\".\"orders\".\"delivered_at\" is not null and \"commerce\".\"orders\".\"delivered_source\" in ('staff', 'handover', 'carrier'))"
@@ -48910,11 +48958,11 @@
         },
         "orders_source": {
           "name": "orders_source",
-          "value": "\"commerce\".\"orders\".\"source\" in ('checkout', 'draft', 'exchange')"
+          "value": "\"commerce\".\"orders\".\"source\" in ('checkout', 'draft', 'exchange', 'replacement')"
         },
         "orders_source_draft": {
           "name": "orders_source_draft",
-          "value": "(\"commerce\".\"orders\".\"source\" = 'draft') = (\"commerce\".\"orders\".\"draft_id\" is not null) and (\"commerce\".\"orders\".\"source\" in ('draft', 'exchange')) = (\"commerce\".\"orders\".\"made_by\" is not null)"
+          "value": "(\"commerce\".\"orders\".\"source\" = 'draft') = (\"commerce\".\"orders\".\"draft_id\" is not null) and (\"commerce\".\"orders\".\"source\" in ('draft', 'exchange', 'replacement')) = (\"commerce\".\"orders\".\"made_by\" is not null)"
         },
         "orders_staff_discount": {
           "name": "orders_staff_discount",
@@ -53479,7 +53527,7 @@
         },
         "plan_limits_known": {
           "name": "plan_limits_known",
-          "value": "\"commerce\".\"plan_limits\".\"key\" in ('storage_bytes', 'products', 'staff_seats', 'custom_domains', 'marketing_emails_month', 'ai_cost_month_micros', 'requests_month', 'egress_bytes_month', 'stores_owned')"
+          "value": "\"commerce\".\"plan_limits\".\"key\" in ('storage_bytes', 'products', 'staff_seats', 'custom_domains', 'marketing_emails_month', 'ai_cost_month_micros', 'requests_month', 'egress_bytes_month', 'recordings_month', 'stores_owned')"
         }
       },
       "isRLSEnabled": false
@@ -55674,6 +55722,13 @@
         },
         "domains_open": {
           "name": "domains_open",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "recordings_open": {
+          "name": "recordings_open",
           "type": "boolean",
           "primaryKey": false,
           "notNull": true,
@@ -63267,6 +63322,271 @@
       },
       "isRLSEnabled": false
     },
+    "commerce.recordings": {
+      "name": "recordings",
+      "schema": "commerce",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "store_id": {
+          "name": "store_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "day": {
+          "name": "day",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "started_at": {
+          "name": "started_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "last_at": {
+          "name": "last_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "duration_ms": {
+          "name": "duration_ms",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "device": {
+          "name": "device",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "width": {
+          "name": "width",
+          "type": "smallint",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "height": {
+          "name": "height",
+          "type": "smallint",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "entry_page": {
+          "name": "entry_page",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "pages": {
+          "name": "pages",
+          "type": "text[]",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'{}'::text[]"
+        },
+        "clicks": {
+          "name": "clicks",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "dead_clicks": {
+          "name": "dead_clicks",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "rage_clicks": {
+          "name": "rage_clicks",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "tags": {
+          "name": "tags",
+          "type": "text[]",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'{}'::text[]"
+        },
+        "mask": {
+          "name": "mask",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "seqs": {
+          "name": "seqs",
+          "type": "smallint[]",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'{}'::smallint[]"
+        },
+        "segments": {
+          "name": "segments",
+          "type": "smallint",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "bytes": {
+          "name": "bytes",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "sealed": {
+          "name": "sealed",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "seal_tries": {
+          "name": "seal_tries",
+          "type": "smallint",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "viewed_at": {
+          "name": "viewed_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {
+        "recordings_store_started_idx": {
+          "name": "recordings_store_started_idx",
+          "columns": [
+            {
+              "expression": "store_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "started_at",
+              "isExpression": false,
+              "asc": false,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "with": {},
+          "method": "btree",
+          "concurrently": false
+        },
+        "recordings_started_idx": {
+          "name": "recordings_started_idx",
+          "columns": [
+            {
+              "expression": "started_at",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "with": {},
+          "method": "btree",
+          "concurrently": false
+        },
+        "recordings_unsealed_idx": {
+          "name": "recordings_unsealed_idx",
+          "columns": [
+            {
+              "expression": "last_at",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "with": {},
+          "method": "btree",
+          "where": "not \"commerce\".\"recordings\".\"sealed\"",
+          "concurrently": false
+        }
+      },
+      "foreignKeys": {
+        "recordings_store_id_stores_id_fk": {
+          "name": "recordings_store_id_stores_id_fk",
+          "tableFrom": "recordings",
+          "columnsFrom": [
+            "store_id"
+          ],
+          "tableTo": "stores",
+          "schemaTo": "commerce",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "cascade"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "recordings_duration": {
+          "name": "recordings_duration",
+          "value": "\"commerce\".\"recordings\".\"duration_ms\" between 0 and 3600000"
+        },
+        "recordings_device": {
+          "name": "recordings_device",
+          "value": "\"commerce\".\"recordings\".\"device\" in ('mobile', 'tablet', 'desktop')"
+        },
+        "recordings_entry_page": {
+          "name": "recordings_entry_page",
+          "value": "char_length(\"commerce\".\"recordings\".\"entry_page\") between 1 and 300"
+        },
+        "recordings_pages": {
+          "name": "recordings_pages",
+          "value": "cardinality(\"commerce\".\"recordings\".\"pages\") <= 50"
+        },
+        "recordings_tags": {
+          "name": "recordings_tags",
+          "value": "cardinality(\"commerce\".\"recordings\".\"tags\") <= 5"
+        },
+        "recordings_mask": {
+          "name": "recordings_mask",
+          "value": "\"commerce\".\"recordings\".\"mask\" in ('balanced', 'strict')"
+        },
+        "recordings_seqs": {
+          "name": "recordings_seqs",
+          "value": "cardinality(\"commerce\".\"recordings\".\"seqs\") <= 200"
+        },
+        "recordings_segments": {
+          "name": "recordings_segments",
+          "value": "\"commerce\".\"recordings\".\"segments\" between 0 and 200"
+        },
+        "recordings_bytes": {
+          "name": "recordings_bytes",
+          "value": "\"commerce\".\"recordings\".\"bytes\" between 0 and 4194304"
+        },
+        "recordings_counts": {
+          "name": "recordings_counts",
+          "value": "\"commerce\".\"recordings\".\"clicks\" >= 0 and \"commerce\".\"recordings\".\"dead_clicks\" >= 0 and \"commerce\".\"recordings\".\"rage_clicks\" >= 0"
+        }
+      },
+      "isRLSEnabled": false
+    },
     "commerce.recurring_costs": {
       "name": "recurring_costs",
       "schema": "commerce",
@@ -65886,7 +66206,7 @@
       "checkConstraints": {
         "retention_rules_kind": {
           "name": "retention_rules_kind",
-          "value": "\"commerce\".\"retention_rules\".\"kind\" in ('bookkeeping', 'host_bookkeeping', 'unpaid_orders', 'email_bodies', 'security_emails', 'carts', 'delivery_quotes', 'customer_codes', 'customer_sessions', 'webhook_payloads', 'consents', 'privacy_request_contact', 'privacy_requests', 'search_queries', 'visits', 'audit_log', 'form_submissions', 'integration_deliveries', 'abandoned_checkouts', 'recommendation_events', 'ai_usage', 'support_transcripts', 'support_records', 'blog_comments', 'assistant_conversations', 'access_requests', 'unconfirmed_signups', 'content_report_senders', 'carrier_labels', 'sandboxes')"
+          "value": "\"commerce\".\"retention_rules\".\"kind\" in ('bookkeeping', 'host_bookkeeping', 'unpaid_orders', 'email_bodies', 'security_emails', 'carts', 'delivery_quotes', 'customer_codes', 'customer_sessions', 'webhook_payloads', 'consents', 'privacy_request_contact', 'privacy_requests', 'search_queries', 'visits', 'audit_log', 'form_submissions', 'integration_deliveries', 'abandoned_checkouts', 'recommendation_events', 'ai_usage', 'support_transcripts', 'support_records', 'blog_comments', 'assistant_conversations', 'access_requests', 'unconfirmed_signups', 'content_report_senders', 'carrier_labels', 'sandboxes', 'recordings')"
         },
         "retention_rules_value": {
           "name": "retention_rules_value",
@@ -79646,6 +79966,96 @@
       },
       "isRLSEnabled": false
     },
+    "commerce.store_traffic_hourly": {
+      "name": "store_traffic_hourly",
+      "schema": "commerce",
+      "columns": {
+        "store_id": {
+          "name": "store_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "hour": {
+          "name": "hour",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "requests": {
+          "name": "requests",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "server_errors": {
+          "name": "server_errors",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "estimated": {
+          "name": "estimated",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        }
+      },
+      "indexes": {
+        "store_traffic_hourly_hour_idx": {
+          "name": "store_traffic_hourly_hour_idx",
+          "columns": [
+            {
+              "expression": "hour",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "with": {},
+          "method": "btree",
+          "concurrently": false
+        }
+      },
+      "foreignKeys": {
+        "store_traffic_hourly_store_id_stores_id_fk": {
+          "name": "store_traffic_hourly_store_id_stores_id_fk",
+          "tableFrom": "store_traffic_hourly",
+          "columnsFrom": [
+            "store_id"
+          ],
+          "tableTo": "stores",
+          "schemaTo": "commerce",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "cascade"
+        }
+      },
+      "compositePrimaryKeys": {
+        "store_traffic_hourly_store_id_hour_pk": {
+          "name": "store_traffic_hourly_store_id_hour_pk",
+          "columns": [
+            "store_id",
+            "hour"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "store_traffic_hourly_counts": {
+          "name": "store_traffic_hourly_counts",
+          "value": "\"commerce\".\"store_traffic_hourly\".\"requests\" >= 0 and \"commerce\".\"store_traffic_hourly\".\"server_errors\" >= 0 and \"commerce\".\"store_traffic_hourly\".\"server_errors\" <= \"commerce\".\"store_traffic_hourly\".\"requests\""
+        }
+      },
+      "isRLSEnabled": false
+    },
     "commerce.store_usage_daily": {
       "name": "store_usage_daily",
       "schema": "commerce",
@@ -79760,7 +80170,7 @@
         },
         "store_usage_daily_metric": {
           "name": "store_usage_daily_metric",
-          "value": "\"commerce\".\"store_usage_daily\".\"metric\" in ('storage_bytes', 'products', 'staff_seats', 'custom_domains', 'requests', 'egress_bytes', 'server_errors', 'emails', 'marketing_emails', 'ai_cost_micros')"
+          "value": "\"commerce\".\"store_usage_daily\".\"metric\" in ('storage_bytes', 'products', 'staff_seats', 'custom_domains', 'requests', 'egress_bytes', 'server_errors', 'emails', 'marketing_emails', 'ai_cost_micros', 'recordings')"
         }
       },
       "isRLSEnabled": false
@@ -94607,7 +95017,7 @@
         },
         "workflows_trigger": {
           "name": "workflows_trigger",
-          "value": "\"commerce\".\"workflows\".\"trigger\" in ('order.paid', 'order.sent', 'order.cancelled', 'order.refunded', 'customer.created', 'subscription.started', 'subscription.cancelled', 'return.requested', 'withdrawal.received', 'product.created', 'product.updated', 'stock.low', 'discount.created', 'inventory.updated', 'product.archived', 'order.created', 'order.updated', 'fulfilment.created', 'fulfilment.updated', 'refund.created', 'return.updated', 'quote.requested', 'draft.sent', 'customer.updated', 'customer.erased', 'subscription.renewed', 'subscription.payment_failed', 'gift_card.issued', 'review.created', 'support.waiting', 'schedule')"
+          "value": "\"commerce\".\"workflows\".\"trigger\" in ('order.paid', 'order.sent', 'order.cancelled', 'order.refunded', 'customer.created', 'subscription.started', 'subscription.cancelled', 'return.requested', 'withdrawal.received', 'product.created', 'product.updated', 'stock.low', 'discount.created', 'inventory.updated', 'product.archived', 'order.created', 'order.updated', 'fulfilment.created', 'fulfilment.updated', 'refund.created', 'return.updated', 'quote.requested', 'draft.sent', 'customer.updated', 'customer.erased', 'subscription.renewed', 'subscription.payment_failed', 'gift_card.issued', 'review.created', 'experiment.answered', 'support.waiting', 'schedule')"
         },
         "workflows_on_when_tested": {
           "name": "workflows_on_when_tested",

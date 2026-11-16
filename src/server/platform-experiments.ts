@@ -4,6 +4,7 @@ import { sql } from "drizzle-orm";
 
 import { db } from "@/db/client";
 import { targetKindOf } from "@/lib/ab-site";
+import { experimentCard, type ExperimentCard } from "@/lib/experiment-card";
 import { type Goal, type ExperimentStatus } from "@/lib/experiments";
 import { attentionOrder, flagsOf, overviewOf, type Flag, type Overview } from "@/lib/platform-experiments";
 
@@ -39,6 +40,8 @@ export type PlatformTest = {
   scheduleProblem: string | null;
   /** The verdict's sentence, for a running test. */
   headline: string | null;
+  /** The test as its store's owner reads it (`experimentCard()`, phase 15): the stage chip and how far along, the same as the store's list. */
+  card: Pick<ExperimentCard, "state" | "progress">;
   flags: Flag[];
 };
 
@@ -57,7 +60,7 @@ const date = (value: unknown) => (value ? new Date(String(value)) : null);
 export async function platformExperiments(everything = false, now = new Date()): Promise<PlatformExperiments> {
   const rows = await db().execute<Row>(sql`
     select e.id, e.store_id, e.name, e.status, e.primary_goal, e.started_at, e.stopped_at, e.planned_end, e.scheduled_start, e.created_at,
-           e.stop_reason, e.applied_variant, e.schedule_problem, e.target_part,
+           e.stop_reason, e.applied_variant, e.schedule_problem, e.target_part, e.min_days, e.min_visitors,
            s.slug as store_slug, s.name as store_name, p.slug as page_slug, p.type as page_type, p.draft->>'title' as page_title,
            commerce.page_place(e.store_id, e.target_page_id) as page_role,
            (select count(*)::int from commerce.experiment_variants v where v.experiment_id = e.id) as versions,
@@ -101,13 +104,14 @@ export async function platformExperiments(everything = false, now = new Date()):
       appliedVariant: row.applied_variant ? String(row.applied_variant) : null,
       scheduleProblem: row.schedule_problem ? String(row.schedule_problem) : null,
       headline: null,
+      card: experimentCard({ status, goal: row.primary_goal as Goal, minDays: Number(row.min_days), minVisitors: Number(row.min_visitors), results: null, now }),
       flags: [],
     };
     tests.push(test);
     if (status === "running") running.push({ test, row });
   }
 
-  const results = new Map<string, { verdict: string; headline: string; harmed: string | null; split: PlatformTest["split"] }>();
+  const results = new Map<string, { verdict: string; headline: string; harmed: string | null; split: PlatformTest["split"]; card: PlatformTest["card"] }>();
   for (let i = 0; i < running.length; i += BATCH) {
     await Promise.all(
       running.slice(i, i + BATCH).map(async ({ test, row }) => {
@@ -115,7 +119,8 @@ export async function platformExperiments(everything = false, now = new Date()):
           const [store, info] = await Promise.all([getStore(String(row.store_slug)), getExperiment(test.storeId, test.id)]);
           if (!store || !info) return;
           const r = await experimentResults(store, info, now);
-          results.set(test.id, { verdict: r.verdict.kind, headline: r.verdict.headline, harmed: r.harmed, split: r.figures.map((f) => ({ key: f.key, visitors: f.visitors })) });
+          const card = experimentCard({ status: info.status, goal: info.goal, minDays: info.minDays, minVisitors: info.minVisitors, results: r, now });
+          results.set(test.id, { verdict: r.verdict.kind, headline: r.verdict.headline, harmed: r.harmed, split: r.figures.map((f) => ({ key: f.key, visitors: f.visitors })), card });
         } catch (error) {
           log("error", "experiments.platform_results_read_failed", { experimentId: test.id }, error);
         }
@@ -127,6 +132,7 @@ export async function platformExperiments(everything = false, now = new Date()):
     const found = results.get(test.id);
     test.headline = found?.headline ?? null;
     test.split = found?.split ?? null;
+    if (found) test.card = found.card;
     test.flags = flagsOf(
       {
         status: test.status,

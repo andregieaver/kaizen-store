@@ -1,8 +1,18 @@
 # Grade A for: What the server loads and asks
 
-Part of `docs/audits/bloat-review-2026-11.md`. **Today: D.** D stands, on the verified numbers. 559 of 562 pages, 181 of 268 route handlers and the proxy each load the same 10 to 12 MB of server code whatever their job (0.84 to 1.3 s to start cold on the review machine, against 0.16 to 0.24 s for the health check), every instance spends about 0.3 s in a start hook and 0.09 s reading a 10.4 MB list before its first request, and a product view sends about 18 statements where one answer changes. The one server-side check, the first byte of two warm pages, sees none of it. It is not an E, because nothing hurts a person before opening, and not a C, because the sound parts (82 of 85 cached reads tagged, a warm cached page that asks nothing, well-made admin lists) do not change what every function carries.
+Part of `docs/audits/bloat-review-2026-11.md`. **Today: D.** D stands, on the verified numbers. 559 of 562 pages, 181 of 268 route
+handlers and the proxy each load the same 10 to 12 MB of server code whatever their job (0.84 to 1.3 s to start cold on the review
+machine, against 0.16 to 0.24 s for the health check), every instance spends about 0.3 s in a start hook and 0.09 s reading a 10.4
+MB list before its first request, and a product view sends about 18 statements where one answer changes. The one server-side
+check, the first byte of two warm pages, sees none of it. It is not an E, because nothing hurts a person before opening, and not a
+C, because the sound parts (82 of 85 cached reads tagged, a warm cached page that asks nothing, well-made admin lists) do not
+change what every function carries.
 
-**The bar, in a sentence.** A function loads what its own job needs and little more: about 1 MB for a beacon and for the proxy, 4 to 5 MB for a store page, and a small, counted start for every instance. A page view asks the database only for what changes per view (stock on a product page, nothing on a home page), an admin screen shows its first content after one or two waves of reads, a cached page is drawn again only when something it shows has changed, and a test or a production figure holds each of these numbers.
+**The bar, in a sentence.** A function loads what its own job needs and little more: about 1 MB for a beacon and for the proxy, 4
+to 5 MB for a store page, and a small, counted start for every instance. A page view asks the database only for what changes per
+view (stock on a product page, nothing on a home page), an admin screen shows its first content after one or two waves of reads, a
+cached page is drawn again only when something it shows has changed, and a test or a production figure holds each of these
+numbers.
 
 ## The measures
 
@@ -25,7 +35,34 @@ After phase 0: C. After phase 1: C. After phase 2: B. After all phases: A.
 
 **Can the steps reach an A?** Yes, with one answer. Step 2.35 waits for your yes that a store's own domain is looked up when the request arrives; if decision P8 stays, this area stops at a B. Three steps carry what was missing: the order writer comes off pages that only show products (new step 2.47), tag refreshes are counted in production (new step 1.25), and the manifest is cut without a condition (step 2.24). For step 3.19 either answer reaches the bar once it is written down.
 
-**The challenger on the bar.** Kept, after checking the floors. A lean route is 0.4 MB once the unused schema is out (/api/health is 1,155 KB, of which src/db is 599), and the simulated beacon ends at 0.96 MB, so 1.0 MB and 500 modules is a true bar. The store home's 4.0 MB stands (simulated 3.5 MB; Next's own code is 0.78 MB of it by m/chunks.md, not the 0.5 the steward wrote). The admin's 6.5 MB, the start hook's 60 files, the admin's statement counts, the cache lives and the zero rules per store domain stand. Tightened: (1) The proxy, 1.2 MB to 1.0 MB. It makes six small reads in front of every page, its simulated end is 0.8 MB, and it has no reason to be heavier than a beacon that writes. (2) A product view, 3 statements to 2. Stock is one statement (variantStockOf in src/server/catalog.ts); the steward's third was room for a minute poll that step 0.8 removes. One more only for a store with producer schemes, one more with price breaks. (3) 'A storefront page' was checked on the home alone, which step 2.4 turns into a static file. The pages that keep a function per view now have their own lines: product page, listing and search 4.6 MB and 1,700 modules; cart, checkout and account 5.0 MB and 1,800. On the review's own simulation they end at 1,930 to 1,996 module paths after every planned cut, against the home's 1,389. (4) All five beacons are named in the check; the steward's bar listed five and the plan checks one. (5) Admin prefetch at rest, 4 to 0: step 0.13's own check is already 0. (6) The orders list gets a number (9 or fewer in 2 waves) in place of '2 fewer than today'. (7) Requests through the proxy per page load get a target, 7, where the steward gave only today's 13 to 44. Loosened: (1) 'No admin text' on a store page becomes 'no registry and at most 16 catalogue files, about 0.15 MB': emails and alerts sent from shoppers' routes need their words, and that is step 2.25's own end figure. (2) 'Shown on Platform' for the routing-rule count is dropped; a build that fails above 1,600 of 2,048 holds it better. (3) Search stays at 10: its floor was never measured, so I did not invent one. Added: cold-load time against the health check for the proxy, a store page and an admin page, not only the beacon; production targets by kind of entry for step 1.16, which named one; at most 2 statements at an instance's start; a cold page that reads the same rows for 10 and for 500 products (the steward's first gap, now in the bar); no statement sent twice on the cart and checkout; and no scheduled job that refreshes a store's tag when nothing changed. Not measurable as written: (a) the beacon's 'within 100 ms of /api/health' needs the review's cold-load scripts, which step 0.1 does not move into the repo and step 1.8 does not run; (b) the manifest's load 'in production' cannot be timed from the start hook, because the step is inside Next; (c) statements were counted as commits (20 commits for 18 statements, idle floor 1), which cannot hold a bar of 2; (d) the route budget holds one sample route per kind, so a heavy product page passes behind a light home. Each is a shortfall below. AMENDED BY THE PANEL'S CRITIC, so that one thing has one number in every area: 1: admin words a shopper's function loads: the proxy and every beacon reach 0 catalogue files; the storefront layout at most 8 files and 0.21 MB of source. 1: pages that keep a function per view: 4.8 MB and 1,800 modules, and none of checkout.ts, stripe.ts, ledger.ts, staff-alerts.ts or billing.ts.
+**The challenger on the bar.** Kept, after checking the floors. A lean route is 0.4 MB once the unused schema is out (/api/health
+is 1,155 KB, of which src/db is 599), and the simulated beacon ends at 0.96 MB, so 1.0 MB and 500 modules is a true bar. The store
+home's 4.0 MB stands (simulated 3.5 MB; Next's own code is 0.78 MB of it by m/chunks.md, not the 0.5 the steward wrote). The
+admin's 6.5 MB, the start hook's 60 files, the admin's statement counts, the cache lives and the zero rules per store domain
+stand. Tightened: (1) The proxy, 1.2 MB to 1.0 MB. It makes six small reads in front of every page, its simulated end is 0.8 MB,
+and it has no reason to be heavier than a beacon that writes. (2) A product view, 3 statements to 2. Stock is one statement
+(variantStockOf in src/server/catalog.ts); the steward's third was room for a minute poll that step 0.8 removes. One more only for
+a store with producer schemes, one more with price breaks. (3) 'A storefront page' was checked on the home alone, which step 2.4
+turns into a static file. The pages that keep a function per view now have their own lines: product page, listing and search 4.6
+MB and 1,700 modules; cart, checkout and account 5.0 MB and 1,800. On the review's own simulation they end at 1,930 to 1,996
+module paths after every planned cut, against the home's 1,389. (4) All five beacons are named in the check; the steward's bar
+listed five and the plan checks one. (5) Admin prefetch at rest, 4 to 0: step 0.13's own check is already 0. (6) The orders list
+gets a number (9 or fewer in 2 waves) in place of '2 fewer than today'. (7) Requests through the proxy per page load get a target,
+7, where the steward gave only today's 13 to 44. Loosened: (1) 'No admin text' on a store page becomes 'no registry and at most 16
+catalogue files, about 0.15 MB': emails and alerts sent from shoppers' routes need their words, and that is step 2.25's own end
+figure. (2) 'Shown on Platform' for the routing-rule count is dropped; a build that fails above 1,600 of 2,048 holds it better.
+(3) Search stays at 10: its floor was never measured, so I did not invent one. Added: cold-load time against the health check for
+the proxy, a store page and an admin page, not only the beacon; production targets by kind of entry for step 1.16, which named
+one; at most 2 statements at an instance's start; a cold page that reads the same rows for 10 and for 500 products (the steward's
+first gap, now in the bar); no statement sent twice on the cart and checkout; and no scheduled job that refreshes a store's tag
+when nothing changed. Not measurable as written: (a) the beacon's 'within 100 ms of /api/health' needs the review's cold-load
+scripts, which step 0.1 does not move into the repo and step 1.8 does not run; (b) the manifest's load 'in production' cannot be
+timed from the start hook, because the step is inside Next; (c) statements were counted as commits (20 commits for 18 statements,
+idle floor 1), which cannot hold a bar of 2; (d) the route budget holds one sample route per kind, so a heavy product page passes
+behind a light home. Each is a shortfall below. AMENDED BY THE PANEL'S CRITIC, so that one thing has one number in every area: 1:
+admin words a shopper's function loads: the proxy and every beacon reach 0 catalogue files; the storefront layout at most 8 files
+and 0.21 MB of source. 1: pages that keep a function per view: 4.8 MB and 1,800 modules, and none of checkout.ts, stripe.ts,
+ledger.ts, staff-alerts.ts or billing.ts.
 
 ## What the challenger found missing, and how it was settled
 

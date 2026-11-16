@@ -2,7 +2,15 @@
 
 Part of `docs/audits/bloat-review-2026-11.md`, on commit 0bd814c. Read by one reviewer, challenged by a second (who re-opened every citation, re-measured every number and applied the owner's note that the platform is not open yet) and planned by a third. A tick (✓) marks a finding the second reviewer confirmed or corrected; one the planner added has none. Each finding has a file of its own beside this one.
 
-**In short.** The caching code is sound, not bloated: 85 cached reads in 49 files, 82 tagged, tags per store, and Kaizena Flow's own site and docs truly static. What is left is rendering that runs per request for little, and it grows with shoppers and stores, not with any unused feature: every store page view runs a render function, and on home, built and blog pages its only job is two cart badges and a country hint (97,919 of the demo home's 138,523 bytes); one Add to cart redraws the whole page and re-fetches 15 links (193 KB, measured); Bing, Google's shop and ads crawlers and every link preview get a full render even of the 508 static pages; and links prefetch pages nobody opens (11 to 50 requests a store page, 23 to 46 an admin screen). 16 findings stand (13 from the verified report, 3 added by this pass), 1 was refuted. Do first: the two prefetch cuts, the AI tag, the page-list split and a build check that holds what is static (nothing holds it today); the structural ones (cart count in the browser, deploys that skip superseded pushes, crawlers served from the cache) are cheapest before opening.
+**In short.** The caching code is sound, not bloated: 85 cached reads in 49 files, 82 tagged, tags per store, and Kaizena Flow's
+own site and docs truly static. What is left is rendering that runs per request for little, and it grows with shoppers and stores,
+not with any unused feature: every store page view runs a render function, and on home, built and blog pages its only job is two
+cart badges and a country hint (97,919 of the demo home's 138,523 bytes); one Add to cart redraws the whole page and re-fetches 15
+links (193 KB, measured); Bing, Google's shop and ads crawlers and every link preview get a full render even of the 508 static
+pages; and links prefetch pages nobody opens (11 to 50 requests a store page, 23 to 46 an admin screen). 16 findings stand (13
+from the verified report, 3 added by this pass), 1 was refuted. Do first: the two prefetch cuts, the AI tag, the page-list split
+and a build check that holds what is static (nothing holds it today); the structural ones (cart count in the browser, deploys that
+skip superseded pushes, crawlers served from the cache) are cheapest before opening.
 
 ## Findings
 
@@ -53,11 +61,20 @@ These were in the first reading and did not hold. They are in no step.
 
 ## Well made, and should stay
 
-- Tag discipline: 82 of 85 cached reads carry a tag, almost all per store (store:, pages:, catalog:, terms:, fields:, cookies:, chat:, experiments:, recommend:, campaigns:). The global catalog tag is refreshed only by VAT changes (src/server/vat-admin.ts). That one product save refreshes the whole store's catalogue is already step 3.10 (FF3, Open) of docs/audits/code-review-2026-11.md, so it is not repeated as a finding. A page publish likewise refreshes the whole store's pages (34 refresh sites of pagesTag): the same shape, bounded by one store, and CA-3's per-page read is the first step toward a per-page tag.
+- Tag discipline: 82 of 85 cached reads carry a tag, almost all per store (store:, pages:, catalog:, terms:, fields:, cookies:,
+  chat:, experiments:, recommend:, campaigns:). The global catalog tag is refreshed only by VAT changes (src/server/vat-admin.ts).
+  That one product save refreshes the whole store's catalogue is already step 3.10 (FF3, Open) of
+  docs/audits/code-review-2026-11.md, so it is not repeated as a finding. A page publish likewise refreshes the whole store's
+  pages (34 refresh sites of pagesTag): the same shape, bounded by one store, and CA-3's per-page read is the first step toward a
+  per-page tag.
 - Kaizena Flow's own site and the docs are truly static for people: /, /blog, /sign-up and 462 docs routes are compute static in the manifest and answer s-maxage=3600 with stale-while-revalidate (re-measured with curl: / and /docs are cache HITs). Crawlers on Next's list are the exception (CA-15).
 - The store layout awaits params above any Suspense (src/app/s/[store]/[market]/layout.tsx:105). Next's ISR guide (incremental-static-regeneration-cache-components.md) says this is what creates a kept page per address while Partial Prefetching is off. Correct for the current setting.
 - refreshTag() (src/server/refresh.ts:10-16) uses updateTag in an action and falls back to revalidateTag(tag, 'max') elsewhere, as Next's docs describe. The dispatcher refreshes page, theme and catalogue tags only for the stores whose schedules, themes or alt texts changed (src/app/api/cron/cart-reminders/route.ts:262-278).
-- The proxy does not read the database on every request: a store's facts and the house-store switch are remembered 10 s per instance (src/server/redirect-resolve.ts:203-211, src/server/house-switch.ts:30-41). It does run for every matched request, 13 to 44 per store page load today, most of them prefetches (metric above), so CA-4 and SC-1 cut its runs too. On Kaizena Flow's own host it reads the switch before it looks at the path, also for docs pages that never need it (src/proxy.ts:66-72); a three-line reorder, worth doing when the proxy is next touched.
+- The proxy does not read the database on every request: a store's facts and the house-store switch are remembered 10 s per
+  instance (src/server/redirect-resolve.ts:203-211, src/server/house-switch.ts:30-41). It does run for every matched request, 13
+  to 44 per store page load today, most of them prefetches (metric above), so CA-4 and SC-1 cut its runs too. On Kaizena Flow's
+  own host it reads the switch before it looks at the path, also for docs pages that never need it (src/proxy.ts:66-72); a
+  three-line reorder, worth doing when the proxy is next touched.
 - Arguments of cached functions are ids, slugs and the small Market object. The longest cache key on the demo home is 352 characters (re-measured). No whole Store object is passed into a cached function.
 - Stock, the tiles' facts (/api/shop/tiles), the wishlist and recommendations answer no-store by written rule (D172, D557). Right: they are per visitor or change by the minute.
 - HTTP caching is well set where it was thought about: product feeds (s-maxage=900), font files (one year, immutable), the fonts catalogue, the site's sitemap and llms.txt (one hour), share pictures (a day in browsers and at the CDN, a week stale: src/lib/share-card.tsx:29), the storefront API's cacheable reads (public, max-age=60: src/server/storefront-route.ts:23).

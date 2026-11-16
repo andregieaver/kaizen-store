@@ -9,6 +9,8 @@ const BEACONS = [
   "src/app/api/visit/speed/route.ts",
   "src/app/api/visit/speed/own/route.ts",
   "src/app/api/signals/heat/route.ts",
+  "src/app/api/signals/rec/route.ts",
+  "src/app/api/signals/forget/route.ts",
   "src/app/api/recommendations/events/route.ts",
 ];
 

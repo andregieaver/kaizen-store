@@ -49,12 +49,27 @@ These are decisions made while building. Where this file and the code disagree b
 - **The read replica (3.4)** is used by the analytics pages' data modules through `setBasedReplica()`; `replica-readers.scan.test.ts`
   lists them. Tax reports, inventory and `setBasedSnapshot()` stay on the primary.
 
+### Recordings of visits and heatmaps (D656, 16 November 2026)
+
+A metric and a limit of their own (`docs/heatmaps-and-recordings.md` 6.4 and 10): `recordings` counts the recordings a store started in a
+day, and `recordings_month` is a hard limit (past it the store stops recording, silently), seeded with the proposal Basic 1,000, Grow 5,000,
+Advanced 20,000, Plus 50,000; the house store, templates and starters are exempt. It is counted live from the month's start
+(`recordings_store_started_idx`), never through `measuredPlusLive()`. A day's backstop is `RECORDINGS_PER_STORE_DAY = 2_000` new
+recordings (`chat_usage` bucket `recordings`), and heat summaries `HEAT_BEACONS_PER_STORE_DAY = 50_000` (bucket `heat`). Request budgets:
+`rec` (20 a minute per visitor, 2,000 per store, fail closed) and `forget` (10 and 600). Recordings do not count toward `storage_bytes`.
+
+What it costs at 100,000 recordings a month of about 400 KB each: Vercel about 1 million segment calls (roughly $6); Supabase Storage about
+40 GB, inside Pro's 100 GB at 30 days' retention; Postgres, once recordings are sealed (step 10), one Storage object row (about 2.8 KB) and
+one `recordings` row (about 0.5 KB) each, about 330 MB at 100,000 kept for 30 days, against a 179 MB database on 16 November 2026, so the
+plan values are the real brake. Heat totals are about 250 bytes a row: a store with 200 pages viewed every day on three devices adds about
+60 MB a year.
+
 ### Waiting on the owner
 
 1. ~~The numbers per plan~~: decided 2026-10-23 (section 9, question 1), seeded by migration `20261023122903_capacity_plan_limits`.
    Overage (question 2): decided, only the offer of a bigger plan; nothing to build.
-2. Creating the Vercel log drain (step 1.4, settings below) and setting `USAGE_DRAIN_SECRET` (and `USAGE_DRAIN_SAMPLE_RATE` if
-   sampling) in Vercel's production environment.
+2. ~~Creating the Vercel log drain (step 1.4, settings below) and setting `USAGE_DRAIN_SECRET` (and `USAGE_DRAIN_SAMPLE_RATE` if
+   sampling) in Vercel's production environment.~~ Done 16 November 2026.
 3. Statement timeouts (3.1), the firewall (3.3), a read replica and `READ_DATABASE_URL` (3.4), the checkout queue (4.2), service levels
    and the status page (4.4), and confirming point-in-time recovery (4.5).
 4. Accepting, changing or rejecting `docs/cells.md` (5.0).
@@ -201,7 +216,9 @@ guess past a gate. The open questions are collected in section 9.
 - **Scheduled jobs.** Supabase's `pg_cron` calls routes under `src/app/api/cron/` with a bearer token checked by
   `cronAuthorised()` (`src/server/cron-auth.ts`). The daily job is `subscription-reminders` and the five-minute
   dispatcher is `cart-reminders`; new heavy work gets a route of its own. The theme-shots migration above shows how a
-  schedule is made.
+  schedule is made. `runJobs()` runs the dispatcher's jobs four at a time (`JOB_LANES`; the pool has five connections)
+  and a job that has run 60 s gives up its lane (`JOB_LANE_MS`, `src/lib/job-pool.ts`): it goes on and is recorded when
+  it ends.
 - **The database client.** `src/db/client.ts`: node-postgres through Supabase's transaction pooler, `max: 5` per
   instance. `readDb()` retries cached reads once. `setBased()` (analytics) runs heavy reads in a read-only transaction.
 - **Hosts and requests.**
@@ -362,8 +379,9 @@ Tests:
 
 ### Step 1.4: traffic from Vercel's log drain
 
-Status: built; the drain itself is not created yet. **Owner gate**: a Vercel log drain has a cost per GB and needs the team's plan to
-allow it (section 9, question 3).
+Status: built, and the drain created by the owner on 16 November 2026 (Production; Functions, Edge Functions, Static Files and Rewrites;
+100 %; no path filter); its first count arrived at 10:34 UTC. Since D669 each batch also adds to the store's hour
+(`store_traffic_hourly`, `trafficHours()`/`addTrafficHours()`, kept 35 days) for the autopilot's watch (`docs/100-day-challenge.md` F4).
 
 **What the spike found (2026-10-23, vercel.com/docs/drains/reference/logs and vercel.com/docs/drains/security):**
 

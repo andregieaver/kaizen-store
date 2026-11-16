@@ -21,6 +21,7 @@ import { parseCsv, recordsOf } from "@/lib/csv";
 import { mainCurrency } from "@/lib/markets";
 
 import { audit, type Membership } from "./auth";
+import { recordingsOpenNow } from "./recordings-admin";
 import { cookiesTag } from "./site-cookies";
 import { storeTag } from "./stores";
 import { col, typedRow, typedRows } from "./typed-rows";
@@ -168,8 +169,8 @@ export async function setRecordings({ account, store, role }: Membership, input:
   if (!(RECORDING_SHARES as readonly number[]).includes(input.share)) return refuse("Choose how many visits to record.");
   if (input.mask !== "balanced" && input.mask !== "strict") return refuse("Choose what recordings hide.");
   if (input.enabled && !input.confirmed) return refuse("Confirm the three points before recordings start.");
-  // The platform-wide hold (`platform_settings.recordings_open`) arrives with the recordings themselves; until then only the house store.
-  if (input.enabled && !store.house) return refuse("Recordings are not available yet.");
+  // The platform's hold (D656): until `platform_settings.recordings_open` is on, only Kaizena Flow's own house store records.
+  if (input.enabled && !store.house && !(await recordingsOpenNow())) return refuse("Recordings are not available yet.");
   await db().execute(sql`
     update commerce.stores set recordings = ${input.enabled}, recording_share = ${input.share}, recording_mask = ${input.mask},
       recordings_confirmed_at = case when ${input.enabled} then coalesce(recordings_confirmed_at, now()) else recordings_confirmed_at end

@@ -12,8 +12,9 @@ The code still says `kaizen` (packages, cookies, the database schema's functions
 1. Read [`CLAUDE.md`](CLAUDE.md): the workflow, the stack, the commands and one line per rule. Each line points at the full
    rule in [`docs/rules/storefront.md`](docs/rules/storefront.md) or [`docs/rules/admin/`](docs/rules/admin/README.md): read the
    rule before changing that part.
-2. Skim [`docs/plan.md`](docs/plan.md) (why it is built this way) and [`docs/platform.md`](docs/platform.md) (stores,
-   members, plans: how one deployment serves many stores).
+2. Read [`docs/platform.md`](docs/platform.md) (stores, members, plans: how one deployment serves many stores).
+   [`docs/plan.md`](docs/plan.md) is the research behind the first build, written before the platform was
+   multi-tenant: open the section a doc cites, not the whole.
 3. Look up a decision by its number in [`docs/decisions.md`](docs/decisions.md) (`D16`, `D240`, …). Code comments cite them.
 4. This Next.js has breaking changes from the one you may know: read the guide in `node_modules/next/dist/docs/` before
    writing Next code ([`AGENTS.md`](AGENTS.md)).

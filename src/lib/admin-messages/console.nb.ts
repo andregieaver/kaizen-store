@@ -270,6 +270,7 @@ export const consoleNb: ConsoleMessages = {
       marginFloorPercent: "Laveste margin den kan gi et produkt, %",
       purchasePerOrder: "Varer den kan kjøpe i én innkjøpsordre (butikkens valuta)",
       purchaseMonthly: "Varer den kan kjøpe i måneden (butikkens valuta)",
+      replacementMax: "Mest en erstatning for en tapt pakke kan være verdt (butikkens valuta)",
       adMoney: "Avtalte annonsepenger for hver butikk over de 100 dagene (butikkens valuta)",
     },
     openBoard: "Åpne resultattavlen",

@@ -119,6 +119,11 @@ export const supportNb: SupportMessages = {
     },
   },
   inbox: {
+    alertsOffStrip: "Varsler er av: en kunde som ber om et menneske, gir ingen lyd.",
+    turnOn: "Slå på",
+    quietTitle: "Helt stille",
+    quietText: "Kunder skriver i chatten i hjørnet av nettstedet. Assistenten svarer først; når noen ber om et menneske, vises de her.",
+    seeChat: "Se chatten som en kunde",
     title: "Innboks",
     leadWaiting: { one: "{n} person venter på deg", many: "{n} personer venter på deg" },
     leadLongest: ", den lengste i {time}.",

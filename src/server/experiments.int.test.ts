@@ -36,6 +36,7 @@ const engine = await import("./experiments");
 const emails = await import("./experiment-emails");
 const stores = await import("./stores");
 const pages = await import("./pages");
+const listing = await import("./experiment-list");
 
 const run = Date.now().toString(36);
 let storeId: string;
@@ -393,9 +394,16 @@ describe("ending a test (D148)", () => {
       select ${storeId}::uuid, ${id}::uuid, 'answer-' || v.variant || '-' || n, v.variant, 'cart'
       from (values ('a'::text, 218), ('b'::text, 279)) v(variant, total), generate_series(1, v.total) n
     `);
+    // The owner's endpoint that listens for it (phase 15): one delivery, queued with the mark.
+    const [endpoint] = await db().execute<Row>(sql`
+      insert into commerce.webhook_endpoints (store_id, name, url_encrypted, hint, secret_encrypted, topics)
+      values (${storeId}::uuid, 'Answers', 'x', 'example.com', 'x', '{experiment.answered}'::text[]) returning id
+    `);
     const hour = new Date(Math.ceil(Date.now() / 3_600_000) * 3_600_000 + 120_000);
     const first = await jobs.runExperimentJobs(hour);
     expect(first.answered).toBe(1);
+    const deliveries = () => db().execute<Row>(sql`select event, subject_id from commerce.integration_deliveries where endpoint_id = ${String(endpoint.id)}::uuid`);
+    expect(await deliveries()).toEqual([{ event: "experiment.answered", subject_id: id }]);
     const test = (await admin.getExperiment(storeId, id))!;
     expect(test.status).toBe("running");
     expect(test.answeredAt).not.toBeNull();
@@ -409,6 +417,8 @@ describe("ending a test (D148)", () => {
     expect(notices[0]).toMatchObject({ href: `/admin/${store.slug}/experiments/${id}`, facts: { test: test.name } });
     // The next hour says nothing more.
     expect((await jobs.runExperimentJobs(new Date(hour.getTime() + 3_600_000))).answered).toBe(0);
+    expect(await deliveries()).toHaveLength(1);
+    await db().execute(sql`update commerce.webhook_endpoints set enabled = false where id = ${String(endpoint.id)}::uuid`);
     expect(await db().execute<Row>(sql`select 1 from commerce.email_messages where kind = 'experiment.answered' and idempotency_key like ${`experiment.answered:${id}:%`}`)).toHaveLength(1);
 
     // What it taught: not before it has run, at most 280 characters, kept once decided, cleared by an empty line.
@@ -425,6 +435,43 @@ describe("ending a test (D148)", () => {
     expect(await admin.saveLearning(account, storeId, draft.id, "Too soon")).toMatchObject({ ok: false });
     await admin.deleteDraft(account, storeId, draft.id);
   }, 60_000);
+
+  it("groups the list by what each test asks of the owner, and leaves a page already in a test out of the ideas (phase 15)", async () => {
+    const running = await runningTest("cart");
+    const front = (await admin.testablePages(storeId)).find((p) => p.role === "front")!;
+    const draft = await admin.createExperiment(account, storeId, { name: "Front draft", pageId: front.id, goal: "cart" });
+    if (!draft.ok) throw new Error(draft.problems.join(" "));
+    const { experimentsEn } = await import("@/lib/admin-messages/experiments.en");
+    const { tests, ideas } = await listing.experimentList(store, { words: experimentsEn, numberLocale: "en-GB" });
+    // Just started, with nobody counted yet: still learning.
+    expect(tests.find((t) => t.id === running)).toMatchObject({ group: "learning", card: { state: "learning" } });
+    expect(tests.find((t) => t.id === draft.id)).toMatchObject({ group: "planned", card: { state: "draft" } });
+    const ideaPages = ideas.map((i) => i.targetId);
+    expect(ideaPages).not.toContain(front.id);
+    expect(ideaPages).not.toContain(aboutId);
+    expect(ideas.length).toBeLessThanOrEqual(3);
+    expect((await admin.deleteDraft(account, storeId, draft.id)).ok).toBe(true);
+  });
+
+  it("draws a test's pages for the side-by-side frames: the original as live, a version as its draft until it starts (phase 16)", async () => {
+    const made = await admin.createExperiment(account, storeId, { name: "Frames", pageId: aboutId, goal: "cart" });
+    if (!made.ok) throw new Error(made.problems.join(" "));
+    const version = (await admin.getExperiment(storeId, made.id))!.variants.find((v) => v.key === "b")!.pageId!;
+    // The version's draft says one thing and its published copy another: a draft test shows the draft, a started one what visitors see.
+    await db().execute(sql`update commerce.pages set draft = jsonb_set(draft, '{title}', '"Draft words"') where id = ${version}::uuid`);
+    expect(await admin.testFrame(storeId, version)).toMatchObject({ type: "page", title: "Draft words" });
+    const original = await admin.testFrame(storeId, aboutId);
+    expect(original?.type).toBe("page");
+    expect(original?.publishedAt).not.toBeNull();
+    // A page in none of the store's tests, and another store's look at this one, draw nothing.
+    const [other] = await db().execute<Row>(sql`select id from commerce.pages where store_id = ${storeId}::uuid and type = 'page' and slug <> 'om-oss' and id <> ${aboutId}::uuid limit 1`);
+    expect(await admin.testFrame(storeId, String(other.id))).toBeNull();
+    expect(await admin.testFrame(uuid(), version)).toBeNull();
+    await changeVariant(made.id, "b");
+    expect((await admin.startExperiment(account, storeId, made.id)).ok).toBe(true);
+    expect((await admin.testFrame(storeId, version))?.title).not.toBe("Draft words");
+    await endAll();
+  });
 
   it("says which running test holds a page, as the original or as a version, until it stops", async () => {
     const id = await runningTest();

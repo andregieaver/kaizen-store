@@ -1756,10 +1756,11 @@ export const OWNER_TOOLS = [
   ),
   tool(
     "apply_winner",
-    "Ends an A/B test by choosing: a version replaces the page (or the part, header, footer or layout) at once, with the address kept, or `original` keeps what is there. A running test is stopped first. Only after the owner has seen the results (explain_results); never choose a version the verdict does not support unless they say so. Needs the owner's approval.",
+    "Ends an A/B test by choosing: a version replaces the page (or the part, header, footer or layout) at once, with the address kept, or `original` keeps what is there. A running test is stopped first. Only after the owner has seen the results (explain_results); never choose a version the verdict does not support unless they say so. With `learning`, also keeps what the test taught in one line, shown in the store's list of what its tests taught and given back when suggesting the next test: write it from the verdict and the owner's words, no figure the tools did not give and no prices, stock, urgency or 'best' claims (they are checked). Needs the owner's approval.",
     z.object({
       experiment: z.string().trim().min(1).max(200).describe("The test's name or id, from list_experiments."),
       version: z.enum(["b", "c", "d", "original"]).describe("The version to use, or `original` to keep what is there."),
+      learning: z.string().trim().min(3).max(280).optional().describe("What the test taught, in one plain line (optional), such as: Short, concrete headings beat slogans."),
     }),
     "public",
   ),
@@ -2043,6 +2044,12 @@ export const OWNER_TOOLS = [
     "send",
   ),
   tool(
+    "send_replacement",
+    "Sends the goods of an order's parcel again for nothing when its tracking says the parcel is lost or on its way back (B3): a new order at 0 of the same goods to the same address, with no invoice and no VAT, at most once per order. The stock is drawn; the goods' cost counts as a cost. Needs the owner's approval.",
+    z.object({ order: orderRef }),
+    "spend",
+  ),
+  tool(
     "process_exchange",
     "Processes an exchange the customer confirmed: makes the new order and moves the money (the credit pays, any rest is refunded, or the customer is emailed a link to pay the difference). Needs the owner's approval.",
     z.object({ return: returnRef }),
@@ -2319,6 +2326,8 @@ export function approvalSummary(name: string, input: Record<string, unknown>): s
       return "Start the plan as you saw it.";
     case "resume_autopilot_plan":
       return "Resume the plan.";
+    case "send_replacement":
+      return `Send the goods of order ${text("order")}'s lost or returned parcel again, as a new order at 0.`;
     case "process_exchange":
       return `Process the confirmed exchange for return ${text("return")}: make the new order and move the money.`;
     case "invite_staff":
@@ -2534,7 +2543,7 @@ export function approvalSummary(name: string, input: Record<string, unknown>): s
     case "stop_experiment":
       return `Stop the A/B test "${text("experiment")}": everyone sees the original again.`;
     case "apply_winner":
-      return input.version === "original" ? `End the A/B test "${text("experiment")}" and keep the original.` : `End the A/B test "${text("experiment")}" and make version ${text("version").toUpperCase()} the page, the part or the layout under test.`;
+      return `${input.version === "original" ? `End the A/B test "${text("experiment")}" and keep the original.` : `End the A/B test "${text("experiment")}" and make version ${text("version").toUpperCase()} the page, the part or the layout under test.`}${input.learning ? ` Keep what it taught: "${text("learning")}"` : ""}`;
     case "email_customer":
       return `Email ${text("to")}: "${text("subject")}"\n\n${text("message")}`;
     case "carry_out_address_change":

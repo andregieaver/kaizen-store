@@ -2,7 +2,15 @@
 
 Part of `docs/audits/bloat-review-2026-11.md`, on commit 0bd814c. Read by one reviewer, challenged by a second (who re-opened every citation, re-measured every number and applied the owner's note that the platform is not open yet) and planned by a third. A tick (✓) marks a finding the second reviewer confirmed or corrected; one the planner added has none. Each finding has a file of its own beside this one.
 
-**In short.** The tests are not the bloat: 325,579 lines of tests against 768,202 of source, no snapshots, and the browser suite does not repeat the unit tests (37 of 781 end-to-end tests use no page). The waste is in how the checks run, and it is paid per push whoever uses the platform: one push type-checks the same commit five times (183 s each here, 70% of the build) and builds it four times; every unit test file first loads 1.9 MB of admin English in a fresh worker (a 187-file sample takes 90 s today and 27 s without both); lint re-reads about 6,200 files on one thread (about 3 minutes, 1 s with a cache); and 229 server modules form one import cycle that 12 import lines close. Four small changes (TC-1, TC-3, TC-5, TC-12) remove about 9 runner-minutes of repeated type checks, about a quarter of the unit run and about 3 minutes of lint per push without checking any less. Before opening is the cheap time for the two with risk: cutting the cycle (TC-2) and changing the rule for what runs before a push (TC-6, the owner's call).
+**In short.** The tests are not the bloat: 325,579 lines of tests against 768,202 of source, no snapshots, and the browser suite
+does not repeat the unit tests (37 of 781 end-to-end tests use no page). The waste is in how the checks run, and it is paid per
+push whoever uses the platform: one push type-checks the same commit five times (183 s each here, 70% of the build) and builds it
+four times; every unit test file first loads 1.9 MB of admin English in a fresh worker (a 187-file sample takes 90 s today and 27
+s without both); lint re-reads about 6,200 files on one thread (about 3 minutes, 1 s with a cache); and 229 server modules form
+one import cycle that 12 import lines close. Four small changes (TC-1, TC-3, TC-5, TC-12) remove about 9 runner-minutes of
+repeated type checks, about a quarter of the unit run and about 3 minutes of lint per push without checking any less. Before
+opening is the cheap time for the two with risk: cutting the cycle (TC-2) and changing the rule for what runs before a push (TC-6,
+the owner's call).
 
 ## Findings
 

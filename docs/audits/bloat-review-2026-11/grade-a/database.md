@@ -1,6 +1,11 @@
 # Grade A for: The database
 
-Part of `docs/audits/bloat-review-2026-11.md`. **Today: C.** C stands, made of two halves. The shape is close to a B: one small pool, statement and lock limits, queues claimed with skip locked, triggers gated by column, migration safety and the typed-read ratchet held by tests. The asking side is close to a D: every cold page fetches all of a store's pages to find one, 122 store filters defeat their index (about 15 million rows scanned a day), 75% of transactions change nothing, pg_cron's log is 77% of the database, and nothing counts a statement or a row. It is not an E: the listed app statements cost about 30 s of database time a day, and nobody is hurt yet.
+Part of `docs/audits/bloat-review-2026-11.md`. **Today: C.** C stands, made of two halves. The shape is close to a B: one small
+pool, statement and lock limits, queues claimed with skip locked, triggers gated by column, migration safety and the typed-read
+ratchet held by tests. The asking side is close to a D: every cold page fetches all of a store's pages to find one, 122 store
+filters defeat their index (about 15 million rows scanned a day), 75% of transactions change nothing, pg_cron's log is 77% of the
+database, and nothing counts a statement or a row. It is not an E: the listed app statements cost about 30 s of database time a
+day, and nobody is hurt yet.
 
 **The bar, in a sentence.** A read or a scheduled run costs what the asking store holds and what has changed, never what the whole platform holds. No statement fetches a document it does not draw, asks twice, writes nothing or runs slow, and a test or a daily production reading holds each of these numbers.
 
@@ -25,7 +30,28 @@ After phase 0: C. After phase 1: B. After phase 2: B. After all phases: A.
 
 **Can the steps reach an A?** Yes. Step 3.5 needs any period from you for guest carts, webhook events and old page versions, and step 1.18 must at least hold the hot tables' indexes and triggers. The dispatcher is capped at four jobs before opening (new step 0.45), a placed order gets its ceilings (new step 2.48), and the reads that grow with the catalogue moved from the last phase to step 2.19. The production flags of step 1.13 are read in step 4.5.
 
-**The challenger on the bar.** Kept: a cold frame in at most 5 statements, 0 duplicate indexes with held counts, 0 chunk files with the schema, four jobs at a time, and the idle targets for the knowledge and picture jobs. Tightened: (1) the whole-table rule starts at 500 rows, not 1,000. At 1,000 production judges six tables today and none of the catalogue; product_variants (841 rows) is scanned about 3,000 times a day, about 200 whole reads in rows, and would pass unseen. (2) The 1-against-20-stores test covers the shopper's and the owner's reads and a placed order, not only the frame and scheduled work: it is the one property a multi-tenant database must hold. (3) A store with chat and pictures on and nothing changed adds 0 statements, not 2: step 0.28's own check already says so. (4) listPublishedPages falls to 8 lines after step 2.17; 14 is what step 0.24 reaches, not the floor. (5) The run log is under 20 MB once the scheduler runs one tick a minute. (6) Kaizena Flow's own frame has the same 5 as a store's. (7) A placed order gets a ceiling, not only a count. Loosened: (1) the run log's first target goes back to 80 MB. The plan's 60 MB cannot hold: 8 days of 13,252 rows at about 0.6 KB is 58 to 64 MB before dead rows, so a working prune would fail its check. (2) 'No leftover schema' leaves the bar: 34 dead tables with 96 rows cost no request, run or build, and the step needs the owner's yes. The step stays; the grade does not wait for it. (3) 'The same rows for 1 and 20 stores' gets a stated tolerance for the tick, 10 store rows per added store, because a job over all stores rightly reads each store's row. Added: a measure for slow statements (none over 5 ms at more than 10 calls a day), which the bar lacked and eight statements fail today; no statement asked twice in one run; a budget for the every-minute SQL tick; a written class for every table, so a new table that grows by time is caught. Not measurable as written, now repaired: the row comparison must run with sequential scans switched off, or every read of a one-row-per-store table fails it (Postgres scans small tables by choice); 'under 100 empty transactions a day' had no query, so the test now holds 'an idle run opens no transaction'; 'none of the 25 most-called fetches a constant' cannot be judged before traffic, because on an idle platform the top 25 are always cold-frame and scheduler reads, so it became counts a test can make. Two tests the steward named (a schema-import scan and a schema budget) are created by no step of the woven plan: the second moved into step 1.18, the first is a shortfall. AMENDED BY THE PANEL'S CRITIC, so that one thing has one number in every area: 2: whole documents: 14 after step 0.24 and at most 3 after step 2.17. 5: the slow list: at most 1,350 a day.
+**The challenger on the bar.** Kept: a cold frame in at most 5 statements, 0 duplicate indexes with held counts, 0 chunk files
+with the schema, four jobs at a time, and the idle targets for the knowledge and picture jobs. Tightened: (1) the whole-table rule
+starts at 500 rows, not 1,000. At 1,000 production judges six tables today and none of the catalogue; product_variants (841 rows)
+is scanned about 3,000 times a day, about 200 whole reads in rows, and would pass unseen. (2) The 1-against-20-stores test covers
+the shopper's and the owner's reads and a placed order, not only the frame and scheduled work: it is the one property a
+multi-tenant database must hold. (3) A store with chat and pictures on and nothing changed adds 0 statements, not 2: step 0.28's
+own check already says so. (4) listPublishedPages falls to 8 lines after step 2.17; 14 is what step 0.24 reaches, not the floor.
+(5) The run log is under 20 MB once the scheduler runs one tick a minute. (6) Kaizena Flow's own frame has the same 5 as a
+store's. (7) A placed order gets a ceiling, not only a count. Loosened: (1) the run log's first target goes back to 80 MB. The
+plan's 60 MB cannot hold: 8 days of 13,252 rows at about 0.6 KB is 58 to 64 MB before dead rows, so a working prune would fail its
+check. (2) 'No leftover schema' leaves the bar: 34 dead tables with 96 rows cost no request, run or build, and the step needs the
+owner's yes. The step stays; the grade does not wait for it. (3) 'The same rows for 1 and 20 stores' gets a stated tolerance for
+the tick, 10 store rows per added store, because a job over all stores rightly reads each store's row. Added: a measure for slow
+statements (none over 5 ms at more than 10 calls a day), which the bar lacked and eight statements fail today; no statement asked
+twice in one run; a budget for the every-minute SQL tick; a written class for every table, so a new table that grows by time is
+caught. Not measurable as written, now repaired: the row comparison must run with sequential scans switched off, or every read of
+a one-row-per-store table fails it (Postgres scans small tables by choice); 'under 100 empty transactions a day' had no query, so
+the test now holds 'an idle run opens no transaction'; 'none of the 25 most-called fetches a constant' cannot be judged before
+traffic, because on an idle platform the top 25 are always cold-frame and scheduler reads, so it became counts a test can make.
+Two tests the steward named (a schema-import scan and a schema budget) are created by no step of the woven plan: the second moved
+into step 1.18, the first is a shortfall. AMENDED BY THE PANEL'S CRITIC, so that one thing has one number in every area: 2: whole
+documents: 14 after step 0.24 and at most 3 after step 2.17. 5: the slow list: at most 1,350 a day.
 
 ## What the challenger found missing, and how it was settled
 

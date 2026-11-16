@@ -2,7 +2,16 @@
 
 Part of `docs/audits/bloat-review-2026-11.md`, on commit 0bd814c. Read by one reviewer, challenged by a second (who re-opened every citation, re-measured every number and applied the owner's note that the platform is not open yet) and planned by a third. A tick (✓) marks a finding the second reviewer confirmed or corrected; one the planner added has none. Each finding has a file of its own beside this one.
 
-**In short.** Styles are one of the leaner areas, and no finding here rests on a feature being unused. Every page of every surface loads one stylesheet of 183 KB (25.8 KB Brotli); compiling the proposed split with the project's own Tailwind gives shoppers a sheet of 130 KB (19.8 KB Brotli: 28% less raw, 22% less on the wire), leaves the admin's as it is, needs no more scan memory than today (204-212 MB against 221-223 MB), and stops admin-only and test-only edits from renaming the shoppers' file. The rest is copies: a launch theme's home page carries an estimated 45 to 71 KB of style text, of which 10.6 to 17.6 KB is one fixed breakpoint sheet repeated per row and 6.6 to 9.5 KB a second copy of the layout's sheets. The completeness check added one thing the report missed and the split depends on: the admin's form, print and editing parts are drawn on public pages with colour roles that have no value there, so the main button on Kaizena Flow's status and illegal-content report pages has no fill (seen in the built HTML); before opening is the cheap time to fix both, with no shopper's cache to disturb and a missed class found by the team.
+**In short.** Styles are one of the leaner areas, and no finding here rests on a feature being unused. Every page of every surface
+loads one stylesheet of 183 KB (25.8 KB Brotli); compiling the proposed split with the project's own Tailwind gives shoppers a
+sheet of 130 KB (19.8 KB Brotli: 28% less raw, 22% less on the wire), leaves the admin's as it is, needs no more scan memory than
+today (204-212 MB against 221-223 MB), and stops admin-only and test-only edits from renaming the shoppers' file. The rest is
+copies: a launch theme's home page carries an estimated 45 to 71 KB of style text, of which 10.6 to 17.6 KB is one fixed
+breakpoint sheet repeated per row and 6.6 to 9.5 KB a second copy of the layout's sheets. The completeness check added one thing
+the report missed and the split depends on: the admin's form, print and editing parts are drawn on public pages with colour roles
+that have no value there, so the main button on Kaizena Flow's status and illegal-content report pages has no fill (seen in the
+built HTML); before opening is the cheap time to fix both, with no shopper's cache to disturb and a missed class found by the
+team.
 
 ## Findings
 

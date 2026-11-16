@@ -29,6 +29,8 @@ export const USAGE_METRICS = {
   marketing_emails: { kind: "counter", unit: "count", source: "email" },
   /** The AI used on Kaizena Flow's key (never a store's own key). */
   ai_cost_micros: { kind: "counter", unit: "micros", source: "ai" },
+  /** Recordings of visits started (D656). */
+  recordings: { kind: "counter", unit: "count", source: "database" },
 } as const satisfies Record<string, { kind: MetricKind; unit: MetricUnit; source: MetricSource }>;
 
 export type UsageMetric = keyof typeof USAGE_METRICS;

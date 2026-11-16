@@ -2,7 +2,16 @@
 
 Part of `docs/audits/bloat-review-2026-11.md`, on commit 0bd814c. Read by one reviewer, challenged by a second (who re-opened every citation, re-measured every number and applied the owner's note that the platform is not open yet) and planned by a third. A tick (✓) marks a finding the second reviewer confirmed or corrected; one the planner added has none. Each finding has a file of its own beside this one.
 
-**In short.** One import cycle of 229 server modules makes 559 of 562 pages, 181 of 268 route handlers and the proxy load the same 11 MB of server code: re-measured in this pass, such an entry needs 0.84 to 1.09 s and 71 to 83 MB to start where a route outside the cycle needs 0.16 s and 14 MB, and a start hook adds 0.33 s before any request. None of this rests on a feature being unused; every store pays it after each deploy (90 commits to main on 11 November), on scale-out and after idle, and it grows at opening as many quiet stores meet cold instances. Thirteen findings stand (eleven verified, two added) and seven of them are import changes with no data moved: on the import graph they take the visit beacon from 1,306 source files to about 100, the proxy from 1,309 to about 95 and a storefront page from about 1,420 to about 600, where the page renderer is the floor. Added by this pass: every store's own domain is compiled into each deployment (4 to 8 routing rules a store against Vercel's 2,048 a deployment, of which this app's own dynamic routes already take 685, and a full redeploy per domain change), and the list of those domains is parsed again for every link a page draws.
+**In short.** One import cycle of 229 server modules makes 559 of 562 pages, 181 of 268 route handlers and the proxy load the same
+11 MB of server code: re-measured in this pass, such an entry needs 0.84 to 1.09 s and 71 to 83 MB to start where a route outside
+the cycle needs 0.16 s and 14 MB, and a start hook adds 0.33 s before any request. None of this rests on a feature being unused;
+every store pays it after each deploy (90 commits to main on 11 November), on scale-out and after idle, and it grows at opening as
+many quiet stores meet cold instances. Thirteen findings stand (eleven verified, two added) and seven of them are import changes
+with no data moved: on the import graph they take the visit beacon from 1,306 source files to about 100, the proxy from 1,309 to
+about 95 and a storefront page from about 1,420 to about 600, where the page renderer is the floor. Added by this pass: every
+store's own domain is compiled into each deployment (4 to 8 routing rules a store against Vercel's 2,048 a deployment, of which
+this app's own dynamic routes already take 685, and a full redeploy per domain change), and the list of those domains is parsed
+again for every link a page draws.
 
 ## Findings
 

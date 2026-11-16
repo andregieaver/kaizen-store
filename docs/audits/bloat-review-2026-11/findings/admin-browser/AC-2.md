@@ -4,8 +4,23 @@ What an owner's browser loads in the admin (`README.md` beside this file), part 
 
 - **Kind:** eager. **Priority:** P0. **Effort:** S. **Confidence:** high. **Step:** 0.10.
 - **Second check:** corrected.
-- **Where:** `src/app/admin/(gated)/[store]/pages/editor-views.tsx:7`, `src/app/admin/(gated)/[store]/pages/editor-views.tsx:277`, `src/app/admin/(gated)/[store]/pages/[pageId]/preview/page.tsx:3`, `src/app/admin/(gated)/[store]/pages/views.tsx:9`, `src/app/admin/(gated)/[store]/pages/views.tsx:229`, `src/app/admin/(gated)/platform/pages/editor-views.tsx:231`, `src/app/admin/(gated)/platform/pages/views.tsx:8`, `src/app/admin/try/[sandbox]/editor.tsx:31`, `src/app/admin/try/[sandbox]/[kind]/[pageId]/preview/page.tsx:11`, `src/components/admin/content-views.tsx:6`, `src/components/admin/content-views.tsx:8`, `src/components/admin/pages-table.tsx:5`, `src/lib/page-roles.ts:1`, `src/lib/permission-guards.ts:45`, `docs/rules/admin/website.md:111`
-- **Evidence:** route-bundle-stats.json: the 13 draft previews (7 of a store, 5 of the platform, 1 of the sandbox) are 3,220,818 to 3,303,372 bytes, the same as the editor. A store's and the platform's preview view sit in editor-views.tsx beside PageEditor and DualPageEditor; the sandbox's preview imports two small helpers (isPageId, sandboxAndKind) from editor.tsx, which imports both editors. The 13 lists and category screens of pages, articles, headers, footers and product layouts are 2,002,798 or 2,007,577 because views.tsx imports TermsManager for the categories view; the 12 content screens are 1,953,143 or 1,961,129 because content-views.tsx imports ContentTypeEditor and EntryEditor for all five views. A plain list (Products) is 1,167,291. My closures: a page list 192 files, 137 without terms.tsx, 94 once pages-table.tsx stops importing ROLE_COPY from page-roles.ts (which imports the 197 KB page-content.ts); Products is 90. A preview 444 files, 213 without the two editors. A content list 157 files, 85 without its two editors. Another preview that draws the same PageDrawing without the editors (a template's) is 1,182,218 today.
+- **Where:** `src/app/admin/(gated)/[store]/pages/editor-views.tsx:7`, `src/app/admin/(gated)/[store]/pages/editor-views.tsx:277`,
+  `src/app/admin/(gated)/[store]/pages/[pageId]/preview/page.tsx:3`, `src/app/admin/(gated)/[store]/pages/views.tsx:9`,
+  `src/app/admin/(gated)/[store]/pages/views.tsx:229`, `src/app/admin/(gated)/platform/pages/editor-views.tsx:231`,
+  `src/app/admin/(gated)/platform/pages/views.tsx:8`, `src/app/admin/try/[sandbox]/editor.tsx:31`,
+  `src/app/admin/try/[sandbox]/[kind]/[pageId]/preview/page.tsx:11`, `src/components/admin/content-views.tsx:6`,
+  `src/components/admin/content-views.tsx:8`, `src/components/admin/pages-table.tsx:5`, `src/lib/page-roles.ts:1`,
+  `src/lib/permission-guards.ts:45`, `docs/rules/admin/website.md:111`
+- **Evidence:** route-bundle-stats.json: the 13 draft previews (7 of a store, 5 of the platform, 1 of the sandbox) are 3,220,818
+  to 3,303,372 bytes, the same as the editor. A store's and the platform's preview view sit in editor-views.tsx beside PageEditor
+  and DualPageEditor; the sandbox's preview imports two small helpers (isPageId, sandboxAndKind) from editor.tsx, which imports
+  both editors. The 13 lists and category screens of pages, articles, headers, footers and product layouts are 2,002,798 or
+  2,007,577 because views.tsx imports TermsManager for the categories view; the 12 content screens are 1,953,143 or 1,961,129
+  because content-views.tsx imports ContentTypeEditor and EntryEditor for all five views. A plain list (Products) is 1,167,291. My
+  closures: a page list 192 files, 137 without terms.tsx, 94 once pages-table.tsx stops importing ROLE_COPY from page-roles.ts
+  (which imports the 197 KB page-content.ts); Products is 90. A preview 444 files, 213 without the two editors. A content list 157
+  files, 85 without its two editors. Another preview that draws the same PageDrawing without the editors (a template's) is
+  1,182,218 today.
 - **Cost today:** About 1.7 to 2.1 MB raw too much on each draft preview, and about 0.8 MB raw (about 0.25 MB gzip) on each of 17 list screens. Paid by: An owner's browser: every press of Preview in the builder and every visit to a list of pages, articles, headers, footers or content.
 - **Saving:** Estimate from closures and a like route: previews from 3.3 MB to about 1.2 to 1.6 MB raw; content lists from 1.95 to about 1.15 MB; page lists from 2.0 MB to about 1.35 MB, or about 1.17 MB (the Products list's size) with the pages-table import fixed. Before AC-1; each about 0.46 MB lower with it.
 - **Risk:** Low: files move and nothing they do changes. What could break is a wrong import path or a guard entry left pointing at the old file, which the type check and permissions.scan.test.ts catch.
@@ -13,7 +28,11 @@ What an owner's browser loads in the admin (`README.md` beside this file), part 
 
 ## The fix
 
-1. Store previews: create src/app/admin/(gated)/[store]/pages/preview-views.tsx and move StorePreviewPageView there (editor-views.tsx lines 276-329) with only the imports it uses (Link, notFound, z, requireFeature, PAGE_TYPE_COPY, adminLangOf, adminText, requirePageTypeAccess, testOfVersionPage, getPageForEdit, stagedCopy, storePagesBase, PageDrawing). It must not import editor-views.tsx. Point the 7 store preview pages at it: pages, articles, headers, footers, product-layouts, content/layouts and experiments/variants, each .../[pageId]/preview/page.tsx.
+1. Store previews: create src/app/admin/(gated)/[store]/pages/preview-views.tsx and move StorePreviewPageView there
+   (editor-views.tsx lines 276-329) with only the imports it uses (Link, notFound, z, requireFeature, PAGE_TYPE_COPY, adminLangOf,
+   adminText, requirePageTypeAccess, testOfVersionPage, getPageForEdit, stagedCopy, storePagesBase, PageDrawing). It must not
+   import editor-views.tsx. Point the 7 store preview pages at it: pages, articles, headers, footers, product-layouts,
+   content/layouts and experiments/variants, each .../[pageId]/preview/page.tsx.
 2. Platform previews: the same for PreviewPageView (src/app/admin/(gated)/platform/pages/editor-views.tsx line 231) into platform/pages/preview-views.tsx; point the 5 platform preview pages at it (pages, articles, headers, footers, themes/pages).
 3. Sandbox preview: move sandboxAndKind and isPageId (src/app/admin/try/[sandbox]/editor.tsx lines 31 and 40) into a new src/app/admin/try/[sandbox]/params.ts; editor.tsx imports them from there; [kind]/[pageId]/preview/page.tsx line 11 imports from params.ts, never from editor.tsx.
 4. Categories: create pages/terms-views.tsx beside views.tsx with StorePageTermsView (views.tsx line 229 on) and the TermsManager import (line 9), and remove that import from views.tsx. Point pages/categories/page.tsx and articles/categories/page.tsx at it. The same for the platform's PageTermsView (platform/pages/views.tsx lines 8 and 152).

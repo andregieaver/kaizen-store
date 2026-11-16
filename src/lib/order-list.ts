@@ -39,7 +39,7 @@ export type ShipFilter = (typeof SHIP_FILTERS)[number];
 export const STATUS_FILTERS = ["paid", "fulfilled", "cancelled", "closed"] as const;
 export type StatusFilter = (typeof STATUS_FILTERS)[number];
 
-export const SOURCE_FILTERS = ["checkout", "draft", "exchange", "copied"] as const;
+export const SOURCE_FILTERS = ["checkout", "draft", "exchange", "replacement", "copied"] as const;
 export type SourceFilter = (typeof SOURCE_FILTERS)[number];
 
 export const RANGE_FILTERS = ["7d", "30d", "90d", "this_month", "last_month"] as const;
@@ -402,7 +402,7 @@ export function expandShow(params: OrderListParams): OrderListParams {
  */
 export function excludesCopied(params: OrderListParams): boolean {
   const p = expandShow(params);
-  return p.pay.length > 0 || p.ship.length > 0 || p.status.length > 0 || p.source === "checkout" || p.source === "draft" || p.source === "exchange";
+  return p.pay.length > 0 || p.ship.length > 0 || p.status.length > 0 || p.source === "checkout" || p.source === "draft" || p.source === "exchange" || p.source === "replacement";
 }
 
 /** Unfinished checkouts: the payment filter `unpaid` (pending payment, and cancelled orders that were never paid). */
@@ -457,7 +457,7 @@ export const RANGE_LABELS: Record<RangeFilter, string> = {
   last_month: "last month",
 };
 
-export const SOURCE_LABELS: Record<SourceFilter, string> = { checkout: "Checkout", draft: "Staff-made", exchange: "Exchange", copied: "Copied history" };
+export const SOURCE_LABELS: Record<SourceFilter, string> = { checkout: "Checkout", draft: "Staff-made", exchange: "Exchange", replacement: "Replacement", copied: "Copied history" };
 
 // ---------------------------------------------------------------------------------------------------------------------
 // Dates: the store's own days

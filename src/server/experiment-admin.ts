@@ -258,6 +258,37 @@ export async function testOfVersionPage(storeId: string, pageId: string): Promis
   return test && version ? { id: test.id, name: test.name, status: test.status, key: version.key, pageId: test.page.id, targetType: test.page.type, part: test.part?.label ?? null } : null;
 }
 
+/**
+ * A page of one of the store's tests as a side-by-side frame draws it (phase 16, `docs/ab-testing-usability.md` step 2b): the tested page
+ * (the original) as it is live, or a version as its draft while the test is a draft and as published once it has started, which is what
+ * visitors are shown. A version is drawn as the kind of page it stands in for. Null for a page that is in none of the store's tests.
+ */
+export async function testFrame(storeId: string, pageId: string): Promise<{ type: PageType; content: PageContent; publishedAt: string | null; title: string } | null> {
+  const row = await typedRow(
+    z.object({ type: col.text, draft: z.unknown(), published: z.unknown(), published_at: col.timestamp.nullable(), status: col.text, target_type: col.text, original: z.boolean() }),
+    sql`
+      select p.type, p.draft, p.published, p.published_at, e.status, t.type as target_type, (e.target_page_id = p.id) as original
+      from commerce.pages p
+      join commerce.experiments e on e.store_id = p.store_id
+        and (e.target_page_id = p.id or exists (select 1 from commerce.experiment_variants v where v.experiment_id = e.id and v.page_id = p.id))
+      join commerce.pages t on t.id = e.target_page_id
+      where p.id = ${pageId}::uuid and p.store_id = ${storeId}::uuid
+      order by e.created_at desc
+      limit 1
+    `,
+  );
+  if (!row) return null;
+  const drawDraft = !row.original && row.status === "draft";
+  const content = parsePageContent(drawDraft ? row.draft : (row.published ?? row.draft));
+  if (!content) return null;
+  return {
+    type: (row.original ? row.type : row.target_type) as PageType,
+    content,
+    publishedAt: row.published_at,
+    title: content.title ?? "",
+  };
+}
+
 export type TestableTarget = {
   id: string;
   slug: string;
@@ -648,7 +679,13 @@ export async function saveLearning(account: Account, storeId: string, id: string
 export async function markAnswered(storeId: string, id: string): Promise<boolean> {
   const rows = await typedRows(
     z.object({ id: col.uuid }),
-    sql`update commerce.experiments set answered_at = now() where id = ${id}::uuid and store_id = ${storeId}::uuid and answered_at is null and status = 'running' returning id`,
+    // The owner's endpoints, apps and workflows hear it in the same statement (phase 15, `experiment.answered`): once, with the mark.
+    sql`
+      with marked as (
+        update commerce.experiments set answered_at = now() where id = ${id}::uuid and store_id = ${storeId}::uuid and answered_at is null and status = 'running' returning id, store_id
+      )
+      select m.id, commerce.queue_integration_event(m.store_id, 'experiment.answered', m.id) from marked m
+    `,
   );
   return rows.length === 1;
 }

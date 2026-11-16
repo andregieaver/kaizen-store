@@ -24,3 +24,6 @@ The written rules and the agents' context (`README.md` beside this file), part o
 - No test reads the workflow file.
 
 **Notes:** P3 because it has no running cost: the workflow is not in use. Change it on the day a wave is next run.
+
+**Made:** its three edits were made on 16 November 2026 by bloat review step 0.41, by the plan's choice, not on the day a wave is
+next run.

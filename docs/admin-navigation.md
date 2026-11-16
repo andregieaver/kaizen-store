@@ -158,7 +158,11 @@ shows its sections' names on screens 1280 px and wider until the person narrows 
 
 ## What the admin fetches ahead
 
-The rail, the store menu, the store switcher and account menu, back links, buttons that are links and the rows of a list are `AdminLink` (`src/components/admin/ui/link.tsx`, on `PolicyLink`): a link's page is fetched when the pointer, a touch or the keyboard focus reaches it, never because it is in view. View store and links to files are never fetched. A press by touch or keyboard shows the pending bar (`LinkPending`) for one round trip before the skeleton. `e2e/signed-in/prefetch.spec.ts` holds eight screens (bloat review step 0.13).
+The rail, the store menu, the store switcher and account menu, back links, buttons that are links and the rows of a list are
+`AdminLink` (`src/components/admin/ui/link.tsx`, on `PolicyLink`): a link's page is fetched when the pointer, a touch or the
+keyboard focus reaches it, never because it is in view. View store and links to files are never fetched. A press by touch or
+keyboard shows the pending bar (`LinkPending`) for one round trip before the skeleton. `e2e/signed-in/prefetch.spec.ts` holds
+eight screens (bloat review step 0.13).
 
 ## Rules for changes
 

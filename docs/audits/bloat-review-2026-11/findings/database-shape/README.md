@@ -2,7 +2,16 @@
 
 Part of `docs/audits/bloat-review-2026-11.md`, on commit 0bd814c. Read by one reviewer, challenged by a second (who re-opened every citation, re-measured every number and applied the owner's note that the platform is not open yet) and planned by a third. A tick (✓) marks a finding the second reviewer confirmed or corrected; one the planner added has none. Each finding has a file of its own beside this one.
 
-**In short.** The database's shape is sound for a platform about to open: dead objects are rare (1 table, 5 columns, 34 leftover tables), triggers are gated by column and nearly every log has a retention rule; that 245 of 486 tables have held no row says only that the doors are still closed, and nothing is retired for it. What is worth fixing before opening is where cost does not follow use or grows with stores: pg_cron's run log is 564 MB of the 731 MB database and nothing prunes it, every cold start evaluates a 1 MB schema file that no query uses (115 to 135 ms and 9 to 12 MB measured), 122 store filters are written so the store index cannot serve them, and page lists read whole documents (4.2 ms a call against 0.8 ms from a plain column, measured in a local Postgres 18). All 14 verified findings now have ordered steps, the tests and rules that hold them and one check; one was added: indexes are declared in two places and nothing compares them, which is how two of the three duplicates on orders and order_lines arrived. Do first DS-8 (the scheduler's log), DS-1 (the schema import), DS-7 (the store filter) and DS-15 with DS-9 (the duplicate-index test and the 13 drops); DS-6 (the platform kept twice) and DS-13's retention periods wait for the owner.
+**In short.** The database's shape is sound for a platform about to open: dead objects are rare (1 table, 5 columns, 34 leftover
+tables), triggers are gated by column and nearly every log has a retention rule; that 245 of 486 tables have held no row says only
+that the doors are still closed, and nothing is retired for it. What is worth fixing before opening is where cost does not follow
+use or grows with stores: pg_cron's run log is 564 MB of the 731 MB database and nothing prunes it, every cold start evaluates a 1
+MB schema file that no query uses (115 to 135 ms and 9 to 12 MB measured), 122 store filters are written so the store index cannot
+serve them, and page lists read whole documents (4.2 ms a call against 0.8 ms from a plain column, measured in a local Postgres
+18). All 14 verified findings now have ordered steps, the tests and rules that hold them and one check; one was added: indexes are
+declared in two places and nothing compares them, which is how two of the three duplicates on orders and order_lines arrived. Do
+first DS-8 (the scheduler's log), DS-1 (the schema import), DS-7 (the store filter) and DS-15 with DS-9 (the duplicate-index test
+and the 13 drops); DS-6 (the platform kept twice) and DS-13's retention periods wait for the owner.
 
 ## Findings
 

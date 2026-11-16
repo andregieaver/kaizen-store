@@ -4,13 +4,38 @@ Only woocommerce.com (including its developer blog, developer.woocommerce.com) a
 
 T1 Legal invoices and credit notes for orders: extension (third party, free, with credit notes in a paid add-on). The free "PDF Invoices & Packing Slips for WooCommerce" by WP Overnight (300,000+ active installs) "automatically adds a PDF or XML invoice (e-invoicing)" with "Sequential invoice numbers"; credit notes are, in its own words, "a feature of our Professional extension". Source: https://wordpress.org/plugins/woocommerce-pdf-invoices-packing-slips/ (read 2026-11-04 by WebFetch). same
 
-T2 30-day lowest price shown on a reduction (Omnibus): extension (third party, free). The free "Omnibus — show the lowest price" plugin by iworks (Marcin Pietrzak), 10,000+ active installs, tested up to WordPress 7.1.4, works with WooCommerce and shows the prior lowest price for a reduction. Source: https://wordpress.org/plugins/omnibus/ (read 2026-11-04 by WebFetch). same status; the plugin cited in October (Product Price History Tracker, Wize WP, 40+ installs) now carries wordpress.org's warning that it "hasn't been tested with the latest 3 major releases of WordPress", so cite the iworks plugin instead.
+T2 30-day lowest price shown on a reduction (Omnibus): extension (third party, free). The free "Omnibus — show the lowest price"
+plugin by iworks (Marcin Pietrzak), 10,000+ active installs, tested up to WordPress 7.1.4, works with WooCommerce and shows the
+prior lowest price for a reduction. Source: https://wordpress.org/plugins/omnibus/ (read 2026-11-04 by WebFetch). same status; the
+plugin cited in October (Product Price History Tracker, Wize WP, 40+ installs) now carries wordpress.org's warning that it "hasn't
+been tested with the latest 3 major releases of WordPress", so cite the iworks plugin instead.
 
-T3 Withdrawal function for consumers, exclusions, digital-content waiver: native for the withdrawal form; extension for exclusions; unverified for the digital-content waiver. Since WooCommerce 11.1 (released 1 September 2026) a store can switch on a built-in Order Withdrawal form: "Disabled by default, stores that need to conform to EU guidelines can enable the order withdrawal form for their customers"; it is switched on under WooCommerce > Settings > Advanced > Features, works for guests, and "Submitting a withdrawal request does not change the order status, cancel the order, or issue a refund"; WooCommerce says it "may help your store meet these requirements, but it does not guarantee compliance". Excluding products (by type, category or product) needs an extension such as the free WebToffee EU Order Withdrawal Button (1,000+ installs; automatic refunds in its premium version); neither page mentions a waiver for digital content. Source: https://developer.woocommerce.com/2026/09/03/wc-11-1-release-notes/ ; https://developer.woocommerce.com/2026/08/27/order-withdrawal-woocommerce-11-1/ ; https://wordpress.org/plugins/wt-eu-withdrawal-button/ (all read 2026-11-04 by WebFetch). CHANGED since Oct: a withdrawal form is now in WooCommerce core (11.1), off by default; October had it as extension only.
+T3 Withdrawal function for consumers, exclusions, digital-content waiver: native for the withdrawal form; extension for
+exclusions; unverified for the digital-content waiver. Since WooCommerce 11.1 (released 1 September 2026) a store can switch on a
+built-in Order Withdrawal form: "Disabled by default, stores that need to conform to EU guidelines can enable the order withdrawal
+form for their customers"; it is switched on under WooCommerce > Settings > Advanced > Features, works for guests, and "Submitting
+a withdrawal request does not change the order status, cancel the order, or issue a refund"; WooCommerce says it "may help your
+store meet these requirements, but it does not guarantee compliance". Excluding products (by type, category or product) needs an
+extension such as the free WebToffee EU Order Withdrawal Button (1,000+ installs; automatic refunds in its premium version);
+neither page mentions a waiver for digital content. Source: https://developer.woocommerce.com/2026/09/03/wc-11-1-release-notes/ ;
+https://developer.woocommerce.com/2026/08/27/order-withdrawal-woocommerce-11-1/ ;
+https://wordpress.org/plugins/wt-eu-withdrawal-button/ (all read 2026-11-04 by WebFetch). CHANGED since Oct: a withdrawal form is
+now in WooCommerce core (11.1), off by default; October had it as extension only.
 
-T4 Product safety information (GPSR): extension (third party, free). The free "Germanized for WooCommerce" by vendidero (70,000+ installs) says it can "Add manufacturer information and safety documents to your products" and its 3.18.0 changelog says "New: Compliance with new GPSR regulation". Source: https://wordpress.org/plugins/woocommerce-germanized/ (read 2026-11-04 by WebFetch). same status; October's source (Primevo GPSR, https://wordpress.org/plugins/?p=369141, still free) shows "Fewer than 10" active installs, so Germanized is the better citation.
+T4 Product safety information (GPSR): extension (third party, free). The free "Germanized for WooCommerce" by vendidero (70,000+
+installs) says it can "Add manufacturer information and safety documents to your products" and its 3.18.0 changelog says "New:
+Compliance with new GPSR regulation". Source: https://wordpress.org/plugins/woocommerce-germanized/ (read 2026-11-04 by WebFetch).
+same status; October's source (Primevo GPSR, https://wordpress.org/plugins/?p=369141, still free) shows "Fewer than 10" active
+installs, so Germanized is the better citation.
 
-T5 EU VAT by destination, OSS and IOSS, EU VAT reports: native for destination rates; extension for OSS and IOSS reports. In core you type each country's rate into tax tables and choose "Customer shipping address (default)" or "Customer billing address" as the basis, with tax reports under WooCommerce > Analytics > Taxes; an OSS report needs an extension such as the free "European VAT Compliance Assistant for WooCommerce" (Team Updraft), which shows "all the information needed to make a OSS/MOSS/IOSS (one-stop shop) VAT report"; for non-EU sellers' IOSS there is the third-party paid "IOSS EU VAT for WooCommerce" (Óscar Gare). Source: https://woocommerce.com/document/setting-up-taxes-in-woocommerce/ ; https://wordpress.org/plugins/woocommerce-eu-vat-compliance/ ; https://woocommerce.com/products/ioss-eu-vat-for-woocommerce/ (all read 2026-11-04 by WebFetch). CHANGED since Oct: OSS reports were unverified in October; now read on wordpress.org.
+T5 EU VAT by destination, OSS and IOSS, EU VAT reports: native for destination rates; extension for OSS and IOSS reports. In core
+you type each country's rate into tax tables and choose "Customer shipping address (default)" or "Customer billing address" as the
+basis, with tax reports under WooCommerce > Analytics > Taxes; an OSS report needs an extension such as the free "European VAT
+Compliance Assistant for WooCommerce" (Team Updraft), which shows "all the information needed to make a OSS/MOSS/IOSS (one-stop
+shop) VAT report"; for non-EU sellers' IOSS there is the third-party paid "IOSS EU VAT for WooCommerce" (Óscar Gare). Source:
+https://woocommerce.com/document/setting-up-taxes-in-woocommerce/ ; https://wordpress.org/plugins/woocommerce-eu-vat-compliance/ ;
+https://woocommerce.com/products/ioss-eu-vat-for-woocommerce/ (all read 2026-11-04 by WebFetch). CHANGED since Oct: OSS reports
+were unverified in October; now read on wordpress.org.
 
 T6 A business buyer's VAT number checked (VIES), reverse charge: extension (by WooCommerce itself, paid). "EU VAT Number for WooCommerce" (by Woo): "Validation runs against the European Commission's VIES (VAT Information Exchange System)", it can "apply the VAT exemption automatically at checkout", and adds an "EC Sales List" and an "EU VAT by State report". Source: https://woocommerce.com/products/eu-vat-number/ (read 2026-11-04 by WebFetch). same
 
@@ -24,11 +49,23 @@ T10 B2B: company accounts, price lists, payment terms: extension (third party, p
 
 T11 Multi-vendor marketplace: extension (third party, free core with a paid Pro). "Dokan" by Dokan, Inc. (Dokan Lite free, 30,000+ installs; many features marked "(Pro)") calls itself "the easiest and fastest way to launch a multivendor marketplace on WordPress". Source: https://wordpress.org/plugins/dokan-lite/ (read 2026-11-04 by WebFetch). same
 
-T12 Several stores under one owner: native (through WordPress Multisite, or separate installations). WooCommerce's own article says "With Multisite, 1 WordPress installation runs several separate websites", that "Multisite doesn't automatically sync inventory levels" (it names the "Store and Products Sync for WooCommerce" extension for that), that "Each Multisite store needs its own WooPayments account", and advises: "Check Multisite compatibility and whether each tool works across the whole network or only on individual websites." Source: https://woocommerce.com/posts/woocommerce-multiple-stores/ (read 2026-11-04 by WebFetch, twice). CHANGED since Oct: the caveats in October's line ("not all plugins work", "a vulnerability in one store can affect others") are not on the page today (none of "vulnerability", "vulnerable", "compromise", "breach", "hacked" appears); the page now says a network "shares infrastructure, so one update, security patch, or settings change benefits every store" and that the team must plan for "security, and server resources across the network as a whole".
+T12 Several stores under one owner: native (through WordPress Multisite, or separate installations). WooCommerce's own article
+says "With Multisite, 1 WordPress installation runs several separate websites", that "Multisite doesn't automatically sync
+inventory levels" (it names the "Store and Products Sync for WooCommerce" extension for that), that "Each Multisite store needs
+its own WooPayments account", and advises: "Check Multisite compatibility and whether each tool works across the whole network or
+only on individual websites." Source: https://woocommerce.com/posts/woocommerce-multiple-stores/ (read 2026-11-04 by WebFetch,
+twice). CHANGED since Oct: the caveats in October's line ("not all plugins work", "a vulnerability in one store can affect
+others") are not on the page today (none of "vulnerability", "vulnerable", "compromise", "breach", "hacked" appears); the page now
+says a network "shares infrastructure, so one update, security patch, or settings change benefits every store" and that the team
+must plan for "security, and server resources across the network as a whole".
 
 T13 Loyalty: extension (by WooCommerce itself, paid). "WooCommerce Points and Rewards" (by Woo): "Reward your customers for purchases and other actions with points which can be redeemed for discounts." Source: https://woocommerce.com/products/woocommerce-points-and-rewards/ (read 2026-11-04 by WebFetch). same
 
-T14 Refer-a-friend: extension (by WooCommerce itself, paid; needs AutomateWoo, also paid). "AutomateWoo - Refer A Friend add-on" (by Woo): the "advocate can share a unique coupon, giving the friend a discount and the advocate store credit for each successful referral"; "AutomateWoo Refer A Friend requires AutomateWoo to be installed and active on your store." Source: https://woocommerce.com/products/automatewoo-refer-a-friend/ (read 2026-11-04 by WebFetch). CHANGED since Oct: unverified in October; now read.
+T14 Refer-a-friend: extension (by WooCommerce itself, paid; needs AutomateWoo, also paid). "AutomateWoo - Refer A Friend add-on"
+(by Woo): the "advocate can share a unique coupon, giving the friend a discount and the advocate store credit for each successful
+referral"; "AutomateWoo Refer A Friend requires AutomateWoo to be installed and active on your store." Source:
+https://woocommerce.com/products/automatewoo-refer-a-friend/ (read 2026-11-04 by WebFetch). CHANGED since Oct: unverified in
+October; now read.
 
 T15 Wishlists: extension (third party, paid). "Wishlists for WooCommerce" by Element Stark lets customers and guests save products to "public, shared, or private lists" and "Share a list by link, by email, or to social." Source: https://woocommerce.com/products/woocommerce-wishlists/ (read 2026-11-04 by WebFetch). CHANGED since Oct: unverified in October; now read.
 
@@ -40,19 +77,60 @@ T18 Pre-orders: extension (by WooCommerce itself, paid). "WooCommerce Pre-Orders
 
 T19 Tiered and volume discounts: extension (third party, paid). "Dynamic Pricing for WooCommerce" by Element Stark offers "Quantity discounts, tiered pricing, BOGO offers, wholesale and role-based pricing." Source: https://woocommerce.com/products/dynamic-pricing/ (read 2026-11-04 by WebFetch). same (the developer, Element Stark, is now named).
 
-T20 Email marketing, broadcasts and automations: extension (by WooCommerce itself: MailPoet with a free plan and paid plans; AutomateWoo paid). The woocommerce.com listing "MailPoet – Newsletters, Email Marketing, and Automation" is "by Woo" and sends newsletters, abandoned-cart and post-purchase emails; "AutomateWoo" (by Woo) is "Powerful marketing automation for WooCommerce" (abandoned cart, win-back, follow-ups, SMS through Twilio) but says it is not "a full email design and broadcast newsletter platform". Source: https://woocommerce.com/products/mailpoet/ ; https://woocommerce.com/products/automatewoo/ ; https://wordpress.org/plugins/mailpoet/ (all read 2026-11-04 by WebFetch). new topic, no October reading.
+T20 Email marketing, broadcasts and automations: extension (by WooCommerce itself: MailPoet with a free plan and paid plans;
+AutomateWoo paid). The woocommerce.com listing "MailPoet – Newsletters, Email Marketing, and Automation" is "by Woo" and sends
+newsletters, abandoned-cart and post-purchase emails; "AutomateWoo" (by Woo) is "Powerful marketing automation for WooCommerce"
+(abandoned cart, win-back, follow-ups, SMS through Twilio) but says it is not "a full email design and broadcast newsletter
+platform". Source: https://woocommerce.com/products/mailpoet/ ; https://woocommerce.com/products/automatewoo/ ;
+https://wordpress.org/plugins/mailpoet/ (all read 2026-11-04 by WebFetch). new topic, no October reading.
 
 T21 Scheduled report emails: extension (third party, paid). "Sales Report Email for WooCommerce" by Kestrel sends sales reports by email on a daily, weekly or monthly schedule: "Get automated sales reports sent straight to your inbox." Source: https://woocommerce.com/products/woocommerce-sales-report-email/ (read 2026-11-04 by WebFetch). CHANGED since Oct: unverified in October; now read.
 
-T22 AI assistant in the admin: extension (by WooCommerce itself, private beta, free during the beta). "WooCommerce AI" (by Woo, latest version 0.9.0) is a chat assistant in the dashboard for orders, products, customers, coupons and analytics; "WooCommerce AI is currently in private beta" and "This extension is currently only available to stores in the U.S., not hosted on WordPress.com and has English as the primary store language." Source: https://woocommerce.com/products/woocommerce-ai/ (read 2026-11-04 by WebFetch, twice). CHANGED since Oct: version 0.9.0 (was 0.7.0) and the page now also excludes stores hosted on WordPress.com; still private beta, U.S. and English only.
+T22 AI assistant in the admin: extension (by WooCommerce itself, private beta, free during the beta). "WooCommerce AI" (by Woo,
+latest version 0.9.0) is a chat assistant in the dashboard for orders, products, customers, coupons and analytics; "WooCommerce AI
+is currently in private beta" and "This extension is currently only available to stores in the U.S., not hosted on WordPress.com
+and has English as the primary store language." Source: https://woocommerce.com/products/woocommerce-ai/ (read 2026-11-04 by
+WebFetch, twice). CHANGED since Oct: version 0.9.0 (was 0.7.0) and the page now also excludes stores hosted on WordPress.com;
+still private beta, U.S. and English only.
 
-T23 Vipps and MobilePay: extension (third party, free, the official plugin). "Pay with Vipps and MobilePay for WooCommerce" by WP Hosting AS, "Official Vipps MobilePay payment plugin for WooCommerce" (5,000+ installs, updated 3 November 2026): "Vipps is currently only available in Norway (93 % user adoption in 2022) and Sweden" and "MobilePay is currently only available in Denmark and Finland"; recurring payments need WooCommerce Subscriptions. Source: https://wordpress.org/plugins/woo-vipps/ (read 2026-11-04 by WebFetch, twice). same
+T23 Vipps and MobilePay: extension (third party, free, the official plugin). "Pay with Vipps and MobilePay for WooCommerce" by WP
+Hosting AS, "Official Vipps MobilePay payment plugin for WooCommerce" (5,000+ installs, updated 3 November 2026): "Vipps is
+currently only available in Norway (93 % user adoption in 2022) and Sweden" and "MobilePay is currently only available in Denmark
+and Finland"; recurring payments need WooCommerce Subscriptions. Source: https://wordpress.org/plugins/woo-vipps/ (read 2026-11-04
+by WebFetch, twice). same
 
-T24 Nordic carriers: labels and pickup points: extension (one per carrier or a multi-carrier plugin; all third party). Bring: the free "Posten Bring Checkout" by Posten Bring AS itself (needs a Mybring account) offers "pickup point and home delivery", "parcel locker options" and "direct label printing from the administration pages" (Norway, Sweden, Denmark; Finland in its changelog). PostNord: the paid "PH PostNord Shipping with Print Label for WooCommerce" by PluginHive offers service points at checkout and labels for Sweden, Denmark, Finland and Norway, but "The PostNord Shipping API does not support live shipping-rate calculation." Helthjem and Porterbuddy: "Freight Integration for Woocommerce to Profrakt and Logistra by WildRobot" (Robin Pedersen, 200+ installs; free download, a 14-day trial is mentioned, and whether a paid Profrakt or Logistra account is needed is not stated) lists "Bring, Postnord, HeltHjem, DHL etc." among "85 transporters", says "Support for Instabox and Porterbuddy" in its changelog, and offers pickup points and label printing. Source: https://wordpress.org/plugins/posten-bring-checkout/ ; https://woocommerce.com/products/ph-postnord-shipping-with-print-label/ ; https://wordpress.org/plugins/logistra-woocommerce-integrasjon-fra-wildrobot-app/ (all read 2026-11-04 by WebFetch). CHANGED since Oct: PostNord labels and Helthjem and Porterbuddy were not settled in October (Porterbuddy unverified); all four carriers now have a listing read today.
+T24 Nordic carriers: labels and pickup points: extension (one per carrier or a multi-carrier plugin; all third party). Bring: the
+free "Posten Bring Checkout" by Posten Bring AS itself (needs a Mybring account) offers "pickup point and home delivery", "parcel
+locker options" and "direct label printing from the administration pages" (Norway, Sweden, Denmark; Finland in its changelog).
+PostNord: the paid "PH PostNord Shipping with Print Label for WooCommerce" by PluginHive offers service points at checkout and
+labels for Sweden, Denmark, Finland and Norway, but "The PostNord Shipping API does not support live shipping-rate calculation."
+Helthjem and Porterbuddy: "Freight Integration for Woocommerce to Profrakt and Logistra by WildRobot" (Robin Pedersen, 200+
+installs; free download, a 14-day trial is mentioned, and whether a paid Profrakt or Logistra account is needed is not stated)
+lists "Bring, Postnord, HeltHjem, DHL etc." among "85 transporters", says "Support for Instabox and Porterbuddy" in its changelog,
+and offers pickup points and label printing. Source: https://wordpress.org/plugins/posten-bring-checkout/ ;
+https://woocommerce.com/products/ph-postnord-shipping-with-print-label/ ;
+https://wordpress.org/plugins/logistra-woocommerce-integrasjon-fra-wildrobot-app/ (all read 2026-11-04 by WebFetch). CHANGED since
+Oct: PostNord labels and Helthjem and Porterbuddy were not settled in October (Porterbuddy unverified); all four carriers now have
+a listing read today.
 
-T25 Hosting and data: who hosts, who updates and secures it: native (self-hosted by design: the owner picks the host and does the upkeep). WooCommerce's own article says "You install the software on the hosting provider or server of your choosing" and "routine maintenance and decisions are in the hands of the store owner", which "includes things like updates, maintenance, backups, and ecommerce security practices"; the wordpress.org listing says "your data belongs to you" and you can "take your site to any platform you choose". Where the data sits (EU or not) depends on the host chosen; no WooCommerce page read today says where. Source: https://woocommerce.com/posts/open-source-ecommerce/ ; https://wordpress.org/plugins/woocommerce/ ; https://woocommerce.com/pricing/ (all read 2026-11-04 by WebFetch). CHANGED since Oct: the pricing page no longer contains "retain complete ownership of their store's content and data" (it now says "Hosting: Choose your provider" and "Customizations that stay yours."); who updates and secures the store, unverified in October, is now read on WooCommerce's post dated 3 February 2026.
+T25 Hosting and data: who hosts, who updates and secures it: native (self-hosted by design: the owner picks the host and does the
+upkeep). WooCommerce's own article says "You install the software on the hosting provider or server of your choosing" and "routine
+maintenance and decisions are in the hands of the store owner", which "includes things like updates, maintenance, backups, and
+ecommerce security practices"; the wordpress.org listing says "your data belongs to you" and you can "take your site to any
+platform you choose". Where the data sits (EU or not) depends on the host chosen; no WooCommerce page read today says where.
+Source: https://woocommerce.com/posts/open-source-ecommerce/ ; https://wordpress.org/plugins/woocommerce/ ;
+https://woocommerce.com/pricing/ (all read 2026-11-04 by WebFetch). CHANGED since Oct: the pricing page no longer contains "retain
+complete ownership of their store's content and data" (it now says "Hosting: Choose your provider" and "Customizations that stay
+yours."); who updates and secures the store, unverified in October, is now read on WooCommerce's post dated 3 February 2026.
 
-T26 Moving in from Shopify: native for products by CSV; extension for a full migration (third party, paid). WooCommerce's own guide says to export products from Shopify (Products > Export) and "import it into WordPress using the built-in importer under WooCommerce > Products > Import", calls that method "best for smaller (or less complex) stores", and recommends "the official Migrate & Import Shopify to WooCommerce extension" (by FmeAddons, products, orders, customers, coupons, pages and blogs); "Pro Shopify Migrator for WooCommerce" by RiseX is still listed and moves products, customers with their orders, and SEO titles. Source: https://woocommerce.com/posts/migrate-from-shopify-to-woocommerce/ ; https://woocommerce.com/products/pro-shopify-migrator/ (both read 2026-11-04 by WebFetch). same (WooCommerce's own guide now also read; it names the FmeAddons extension).
+T26 Moving in from Shopify: native for products by CSV; extension for a full migration (third party, paid). WooCommerce's own
+guide says to export products from Shopify (Products > Export) and "import it into WordPress using the built-in importer under
+WooCommerce > Products > Import", calls that method "best for smaller (or less complex) stores", and recommends "the official
+Migrate & Import Shopify to WooCommerce extension" (by FmeAddons, products, orders, customers, coupons, pages and blogs); "Pro
+Shopify Migrator for WooCommerce" by RiseX is still listed and moves products, customers with their orders, and SEO titles.
+Source: https://woocommerce.com/posts/migrate-from-shopify-to-woocommerce/ ;
+https://woocommerce.com/products/pro-shopify-migrator/ (both read 2026-11-04 by WebFetch). same (WooCommerce's own guide now also
+read; it names the FmeAddons extension).
 
 ## Strengths
 
@@ -66,7 +144,11 @@ T26 Moving in from Shopify: native for products by CSV; extension for a full mig
 ## Cautions
 
 - Say "needs an extension", never "lacks", "missing" or "not available". No topic above is not-possible-per-source: no WooCommerce page read today says any of these cannot be done.
-- Do not say WooCommerce has no withdrawal function: a form is in core since 11.1 (released 1 September 2026), off by default. Do not say the core form handles exclusions, a digital-content waiver or refunds: WooCommerce's post does not address exclusions or waivers, says a request does not "issue a refund", and says it "does not guarantee compliance". The digital-content waiver is unverified on every page read; leave it out. WooCommerce's post says "within 14 days of placing it"; do not restate that as the legal withdrawal period.
+- Do not say WooCommerce has no withdrawal function: a form is in core since 11.1 (released 1 September 2026), off by default. Do
+  not say the core form handles exclusions, a digital-content waiver or refunds: WooCommerce's post does not address exclusions or
+  waivers, says a request does not "issue a refund", and says it "does not guarantee compliance". The digital-content waiver is
+  unverified on every page read; leave it out. WooCommerce's post says "within 14 days of placing it"; do not restate that as the
+  legal withdrawal period.
 - WooCommerce AI: quote the beta sentence ("currently only available to stores in the U.S., not hosted on WordPress.com and has English as the primary store language"); the same page's Countries field says "Worldwide", so do not cite that field. Call it a private beta, not a released product, and do not predict when it reaches Europe ("We don't have a general availability date yet").
 - Multisite: do not repeat October's "a vulnerability in one store can affect others" or "not all plugins work"; neither is on WooCommerce's page today.
 - Do not quote "retain complete ownership of their store's content and data": it is no longer on the pricing page. Use "your data belongs to you" (wordpress.org listing). Do not say where WooCommerce data is hosted; it depends on the host chosen, and how much upkeep the host takes on varies.

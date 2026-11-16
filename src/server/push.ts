@@ -15,7 +15,7 @@ import { siteUrl } from "@/lib/site";
 import { passMembership, type Membership } from "./auth";
 import { log } from "./log";
 import { memberCan } from "./permissions";
-import { col, typedRow } from "./typed-rows";
+import { col, typedRow, typedRows } from "./typed-rows";
 import { z } from "zod";
 
 type Row = Record<string, unknown>;
@@ -284,6 +284,62 @@ async function pushToStore(
     }
   } catch (error) {
     log("error", "push.send_failed", { storeId }, error);
+  }
+  return sent;
+}
+
+/**
+ * Pages the platform's admins (`docs/100-day-challenge.md` F3, D672): one notification to each device any of them turned on, whichever store
+ * it was turned on for (a device is one phone however many stores it follows: each endpoint once), in each admin's language. For what must
+ * reach a person at once, beside its email: a challenge store's stall. As the store's pushes: never throws, removes a device gone.
+ */
+export async function sendPlatformPush(
+  payloadFor: (lang: AdminLang) => { title: string; body: string; url: string; tag: string },
+  topic: string,
+  send: Sender = realSender,
+): Promise<number> {
+  const keys = (() => {
+    try {
+      return vapidEnv();
+    } catch {
+      return null;
+    }
+  })();
+  if (!keys) return 0;
+  let sent = 0;
+  try {
+    const devices = await typedRows(
+      z.object({ endpoint: col.text, p256dh: col.text, auth: col.text, failures: col.int, admin_locale: col.textOrNull }),
+      sql`
+        select distinct on (p.endpoint) p.endpoint, p.p256dh, p.auth, p.failures, a.admin_locale
+        from commerce.push_subscriptions p join commerce.accounts a on a.id = p.account_id
+        where a.platform_admin and a.disabled_at is null
+        order by p.endpoint, p.last_sent_at desc nulls last
+      `,
+    );
+    for (const device of devices) {
+      const payload = payloadFor(adminLangOf(device.admin_locale));
+      try {
+        await send(
+          { endpoint: String(device.endpoint), keys: { p256dh: String(device.p256dh), auth: String(device.auth) } },
+          JSON.stringify(payload),
+          { vapidDetails: keys, TTL: TTL_SECONDS, timeout: 5000, urgency: "high", topic },
+        );
+        await db().execute(sql`update commerce.push_subscriptions set failures = 0, last_sent_at = now() where endpoint = ${String(device.endpoint)}`);
+        sent++;
+      } catch (error) {
+        const status = (error as { statusCode?: number }).statusCode;
+        if (status === 404 || status === 410 || Number(device.failures) + 1 >= FAILURES_MAX) {
+          await db().execute(sql`delete from commerce.push_subscriptions where endpoint = ${String(device.endpoint)}`);
+          log("info", "push.removed", { platform: true, status: status ?? 0 });
+        } else {
+          await db().execute(sql`update commerce.push_subscriptions set failures = failures + 1 where endpoint = ${String(device.endpoint)}`);
+          log("warn", "push.failed", { platform: true, status: status ?? 0 });
+        }
+      }
+    }
+  } catch (error) {
+    log("error", "push.platform_failed", {}, error);
   }
   return sent;
 }

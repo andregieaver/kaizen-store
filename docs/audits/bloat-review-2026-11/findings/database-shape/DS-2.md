@@ -5,8 +5,17 @@ The database's shape (`README.md` beside this file), part of `docs/audits/bloat-
 - **Kind:** eager. **Priority:** P2. **Effort:** S. **Confidence:** medium. **Step:** 0.8.
 - **Second check:** corrected.
 - **Where:** `src/instrumentation.ts:6-9`, `src/server/ui-text.ts:19-31`, `src/server/ui-text.ts:57-71`, `src/server/ui-text.ts:106-115`, `src/server/ui-text.ts:207-218`, `src/server/ui-text.ts:314-319`, `docs/decisions.md:122`
-- **Evidence:** register() awaits startUi() (instrumentation.ts:6-9), which runs `select lang, count(*), max(updated_at) from commerce.ui_translations group by lang` before the instance takes requests, then loads each changed language with its own query, one after the other (ui-text.ts:64-71). A timer repeats the group-by every 60 s in each warm instance (:31, :110-112). Production: 278,393 calls in 78 days, the second most-called statement; it is not in the top-time list, so its total is under 17.5 s while the table is empty. The design is deliberate (D111): t() is synchronous and pages never wait on the database for text. Only three statements write the table, all in ui-text.ts (lines 211, 305, 315).
-- **Cost today:** Today: one small query before the first request of each instance and about 3,570 polls a day. After opening the poll counts every row of every machine-translated language (about 100 KB of English text per language by the size of src/lib/messages/en*.ts) in every warm instance every minute, and a cold start reads the languages one by one. Estimate: 20 languages and 20 warm instances give about 29,000 polls a day over 34,000 rows each. Paid by: The first request on every cold instance; the database
+- **Evidence:** register() awaits startUi() (instrumentation.ts:6-9), which runs
+  `select lang, count(*), max(updated_at) from commerce.ui_translations group by lang` before the instance takes requests, then
+  loads each changed language with its own query, one after the other (ui-text.ts:64-71). A timer repeats the group-by every 60 s
+  in each warm instance (:31, :110-112). Production: 278,393 calls in 78 days, the second most-called statement; it is not in the
+  top-time list, so its total is under 17.5 s while the table is empty. The design is deliberate (D111): t() is synchronous and
+  pages never wait on the database for text. Only three statements write the table, all in ui-text.ts (lines 211, 305, 315).
+- **Cost today:** Today: one small query before the first request of each instance and about 3,570 polls a day. After opening the
+  poll counts every row of every machine-translated language (about 100 KB of English text per language by the size of
+  src/lib/messages/en*.ts) in every warm instance every minute, and a cold start reads the languages one by one. Estimate: 20
+  languages and 20 warm instances give about 29,000 polls a day over 34,000 rows each. Paid by: The first request on every cold
+  instance; the database
 - **Saving:** Estimate: the group-by runs only after an edit; the poll becomes a one-row read ten times rarer (about 357 a day at today's instance count). A few milliseconds at most per cold start today; more once languages are translated, because they load in one read.
 - **Risk:** Low. An edit to a machine-translated text reaches other instances within ten minutes instead of one; cached pages already lag by hours. What could break: a writer that skips the stamp; the scan test holds it.
 

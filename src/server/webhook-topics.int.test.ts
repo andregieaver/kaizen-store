@@ -140,6 +140,20 @@ beforeAll(async () => {
     returning id
   `);
   subjects.installation = String(installation.id);
+  // D148 phase 15: a running A/B test of a page (experiment.answered), its version B given one more row so it differs and may start.
+  const admin = await import("./experiment-admin");
+  const page = (await admin.testablePages(store.storeId)).find((p) => p.kind === "page" || p.kind === "role")!;
+  const account = { id: store.accountId, email: `topics-${run}@example.com`, name: "Topics", platformAdmin: false };
+  const made = await admin.createExperiment(account, store.storeId, { name: "Topics test", pageId: page.id, goal: "cart" });
+  if (!made.ok) throw new Error(made.problems.join(" "));
+  const versionPage = (await admin.getExperiment(store.storeId, made.id))!.variants.find((v) => v.key === "b")!.pageId!;
+  const [version] = await db().execute<Row>(sql`select published from commerce.pages where id = ${versionPage}::uuid`);
+  const content = version.published as { rows: { id: string }[] };
+  const changed = JSON.stringify({ ...content, rows: [...content.rows, { ...content.rows[0], id: randomUUID() }] });
+  await db().execute(sql`update commerce.pages set draft = ${changed}::jsonb, published = ${changed}::jsonb where id = ${versionPage}::uuid`);
+  const started = await admin.startExperiment(account, store.storeId, made.id);
+  if (!started.ok) throw new Error(started.problems.join(" "));
+  subjects.experiment = made.id;
 }, 180_000);
 
 afterAll(async () => {

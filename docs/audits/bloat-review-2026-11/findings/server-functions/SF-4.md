@@ -5,7 +5,13 @@ Server functions: size, cold start, per-request overhead (`README.md` beside thi
 - **Kind:** eager. **Priority:** P0. **Effort:** S. **Confidence:** high. **Step:** 0.4.
 - **Second check:** confirmed.
 - **Where:** `src/app/api/visit/route.ts:3`, `src/server/chat-route.ts:7-12`, `src/server/chat-route.ts:34-38`, `src/lib/same-site.ts:6-14`, `src/app/admin/(gated)/[store]/customers/[customerId]/export/route.test.ts:9`
-- **Evidence:** The beacon needs analytics-visits.ts (144 files on my graph). It also imports sameSite from src/server/chat-route.ts, which only re-exports it from src/lib/same-site.ts (a pure function of nine lines) and itself imports the chat agent, the AI client, the shop and support, and through them the cycle. 60 non-test files import chat-route.ts: 39 take only sameSite, 16 only fail and sameSite (counted from the import clauses). Re-measured: /api/visit loads 118 chunks (10.91 MB) and starts in 933 to 945 ms with 77.6 MB of heap and sharp's native binary; its trace is 449 files and 47.3 MB. Ten handlers enter the cycle through this one import: /api/visit, /api/visit/touch, /api/visit/speed, /api/visit/speed/own, /api/docs/feedback and five admin export routes.
+- **Evidence:** The beacon needs analytics-visits.ts (144 files on my graph). It also imports sameSite from
+  src/server/chat-route.ts, which only re-exports it from src/lib/same-site.ts (a pure function of nine lines) and itself imports
+  the chat agent, the AI client, the shop and support, and through them the cycle. 60 non-test files import chat-route.ts: 39 take
+  only sameSite, 16 only fail and sameSite (counted from the import clauses). Re-measured: /api/visit loads 118 chunks (10.91 MB)
+  and starts in 933 to 945 ms with 77.6 MB of heap and sharp's native binary; its trace is 449 files and 47.3 MB. Ten handlers
+  enter the cycle through this one import: /api/visit, /api/visit/touch, /api/visit/speed, /api/visit/speed/own,
+  /api/docs/feedback and five admin export routes.
 - **Cost today:** About 0.7 s and 55 MB more than needed on each cold beacon instance. Paid by: The server per cold start; the shopper's browser holds the beacon request open for it. The beacon is sent once per page view by every store that counts visits, so it will be among the most-called functions after opening.
 - **Saving:** Estimate: the beacon reaches 145 files instead of 1,306 and starts in about 0.25 s with 22 to 25 MB, by /api/ab/assign's measured 240 ms and 22.2 MB at 113 files. With SF-6 and SF-9 step 3 it reaches 99 files.
 - **Risk:** Low: the function is unchanged, only its import path. A missed importer fails the type check, since the export is gone.

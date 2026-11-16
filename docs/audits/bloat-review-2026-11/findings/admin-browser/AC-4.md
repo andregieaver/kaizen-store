@@ -4,8 +4,21 @@ What an owner's browser loads in the admin (`README.md` beside this file), part 
 
 - **Kind:** oversize. **Priority:** P1. **Effort:** M. **Confidence:** high. **Step:** 2.27.
 - **Second check:** corrected.
-- **Where:** `src/app/admin/(gated)/layout.tsx:45`, `src/app/admin/(gated)/[store]/layout.tsx:114`, `src/app/admin/(gated)/platform/layout.tsx:83`, `src/lib/admin-text.ts:308`, `src/app/admin/(gated)/[store]/products/[productId]/page.tsx:45`, `src/app/admin/(gated)/[store]/page.tsx:117`, `src/app/admin/(gated)/[store]/pages/editor-views.tsx:30`, `src/components/admin/admin-text.tsx:41`, `src/components/admin/admin-text-later.ts:44`, `src/components/admin/ai-manager-launcher.tsx:74`, `src/components/admin/store-drafts.tsx:28`
-- **Evidence:** Sized by importing the catalogue files: every store screen is handed common 6,498 + setup 6,895 + shell 6,905 + assistant 13,683 = 34.0 KB of words. rg finds no useAdminText("setup") or useHandedText("setup") in src. The launcher and the notices read launcher (272) and notices (1,025) of assistant; 6,422 of it is the autopilot's words and the rest is the chat's, which loads only when the panel opens. The home hands home (23,695) and its one client reader takes home.drafts (1,219). The product editor hands builder (74,940) and website (47,127); its client closure reads builder.richText, builder.textStyles and builder.responsive, and website.pictureMaker (1,260) and website.picker. The pages list hands website and schedules (views.tsx line 81): its flight data has one row of 52,866 characters for them, and the list's client parts read website.list (1,805), pageJobs (954) and demoHomes (732) and nothing of schedules. The verified report measured the text at 36 to 85% of each page's flight data on 14 pages and 54 to 74% of the compressed document on four of them. The script budget does not count any of it.
+- **Where:** `src/app/admin/(gated)/layout.tsx:45`, `src/app/admin/(gated)/[store]/layout.tsx:114`,
+  `src/app/admin/(gated)/platform/layout.tsx:83`, `src/lib/admin-text.ts:308`,
+  `src/app/admin/(gated)/[store]/products/[productId]/page.tsx:45`, `src/app/admin/(gated)/[store]/page.tsx:117`,
+  `src/app/admin/(gated)/[store]/pages/editor-views.tsx:30`, `src/components/admin/admin-text.tsx:41`,
+  `src/components/admin/admin-text-later.ts:44`, `src/components/admin/ai-manager-launcher.tsx:74`,
+  `src/components/admin/store-drafts.tsx:28`
+- **Evidence:** Sized by importing the catalogue files: every store screen is handed common 6,498 + setup 6,895 + shell 6,905 +
+  assistant 13,683 = 34.0 KB of words. rg finds no useAdminText("setup") or useHandedText("setup") in src. The launcher and the
+  notices read launcher (272) and notices (1,025) of assistant; 6,422 of it is the autopilot's words and the rest is the chat's,
+  which loads only when the panel opens. The home hands home (23,695) and its one client reader takes home.drafts (1,219). The
+  product editor hands builder (74,940) and website (47,127); its client closure reads builder.richText, builder.textStyles and
+  builder.responsive, and website.pictureMaker (1,260) and website.picker. The pages list hands website and schedules (views.tsx
+  line 81): its flight data has one row of 52,866 characters for them, and the list's client parts read website.list (1,805),
+  pageJobs (954) and demoHomes (732) and nothing of schedules. The verified report measured the text at 36 to 85% of each page's
+  flight data on 14 pages and 54 to 74% of the compressed document on four of them. The script budget does not count any of it.
 - **Cost today:** About 22 KB raw (about 8 KB compressed) of unread text in every store screen's document; at least 77 KB and likely about 160 KB raw on the product editor; about 58 KB on the pages list. The layout's part is sent on a full load and on every refresh after a save; a page's own areas on every navigation to it. Paid by: An owner's browser on every full load, every refresh after a save and every navigation to a page with its own areas; the server, which serialises it per request.
 - **Saving:** Estimate from the measured slices: every store screen 22 KB raw less (about 8 KB compressed); the home's HTML from 166 KB to about 134 KB; the pages list from 279 KB to about 220 KB; the product editor from 426 KB to about 270 to 350 KB. On the wire about a third of those figures.
 - **Risk:** Medium. A part that reads an area not handed falls back to fetched English, which the fallbacks spec fails on; a part that reads a branch outside its pick does not compile. The chat's words now arrive with start(): if the chat were drawn before them it would fall back to English, so the launcher must wait for both. It would show as English in a Norwegian account's panel.
@@ -14,10 +27,24 @@ What an owner's browser loads in the admin (`README.md` beside this file), part 
 ## The fix
 
 1. src/app/admin/(gated)/layout.tsx line 45: hand ["common", "shell"]; drop "setup" (no client part reads it; the setup screens pass their words as props).
-2. Add derived areas in src/lib/admin-text.ts without moving any string between files: each is a pick of an existing catalogue in both languages, with its own type in AdminAreaMessages and its entry in CATALOGUES. assistantBar = what ai-manager-launcher.tsx and ai-notices.tsx read of assistant (launcher, notices, name); homeDrafts = home.drafts; builderText = builder.richText, textStyles and responsive; websitePick = website.pictureMaker and picker; websiteList = website.list, pageJobs and demoHomes (all the page lists' client parts read of website: 3.5 KB of 47.1). Add the same picks to the loaders in src/components/admin/admin-text-later.ts (from the same English file), so the fallback and src/test/admin-english.ts keep working.
-3. Readers: ai-manager-launcher.tsx line 74 and ai-notices.tsx lines 58, 70 and 82 read assistantBar; store-drafts.tsx line 28 reads homeDrafts; rich-text-editor.tsx, text-styles.tsx and responsive-edit.tsx read builderText where they read those three branches; picture-maker.tsx, media-picker.tsx and product-editor.tsx (pictureMaker) read websitePick; pages-table.tsx, site-layouts.tsx, duplicate-button.tsx (list), page-jobs-panel.tsx (pageJobs) and demo-home-pages.tsx and demo-home-take.tsx (demoHomes) read websiteList. TypeScript then refuses a read of a branch the pick does not hold.
+2. Add derived areas in src/lib/admin-text.ts without moving any string between files: each is a pick of an existing catalogue in
+   both languages, with its own type in AdminAreaMessages and its entry in CATALOGUES. assistantBar = what ai-manager-launcher.tsx
+   and ai-notices.tsx read of assistant (launcher, notices, name); homeDrafts = home.drafts; builderText = builder.richText,
+   textStyles and responsive; websitePick = website.pictureMaker and picker; websiteList = website.list, pageJobs and demoHomes
+   (all the page lists' client parts read of website: 3.5 KB of 47.1). Add the same picks to the loaders in
+   src/components/admin/admin-text-later.ts (from the same English file), so the fallback and src/test/admin-english.ts keep
+   working.
+3. Readers: ai-manager-launcher.tsx line 74 and ai-notices.tsx lines 58, 70 and 82 read assistantBar; store-drafts.tsx line 28
+   reads homeDrafts; rich-text-editor.tsx, text-styles.tsx and responsive-edit.tsx read builderText where they read those three
+   branches; picture-maker.tsx, media-picker.tsx and product-editor.tsx (pictureMaker) read websitePick; pages-table.tsx,
+   site-layouts.tsx, duplicate-button.tsx (list), page-jobs-panel.tsx (pageJobs) and demo-home-pages.tsx and demo-home-take.tsx
+   (demoHomes) read websiteList. TypeScript then refuses a read of a branch the pick does not hold.
 4. Handing: [store]/layout.tsx line 114 and platform/layout.tsx line 83 hand assistantBar. The chat gets the whole assistant area when it opens: startAssistantAction and startPlatformAssistantAction (the assistant's actions.ts files, line 28 of each) also return texts: adminTexts(lang, ["assistant"]), and the launcher draws the chat inside <AdminTextScope texts={ready.texts}> only once both the chat's script and ready have arrived. The two assistant pages keep handing assistant.
-5. products/[productId]/page.tsx line 45 and products/new hand ["product", "products", "fields", "builderText", "websitePick"]. The builder's EDITOR_AREAS (pages/editor-views.tsx line 30, and the platform's and the sandbox's lists) add builderText and websitePick beside builder and website. [store]/page.tsx line 117 hands homeDrafts once AC-9 has taken demo-content-card.tsx off home.en. The page lists (pages/views.tsx line 81 and the platform's twin) hand ["websiteList"] in place of ["website", "schedules"]: no client module of the list reads schedules, and after AC-2 none reads another branch of website.
+5. products/[productId]/page.tsx line 45 and products/new hand ["product", "products", "fields", "builderText", "websitePick"].
+   The builder's EDITOR_AREAS (pages/editor-views.tsx line 30, and the platform's and the sandbox's lists) add builderText and
+   websitePick beside builder and website. [store]/page.tsx line 117 hands homeDrafts once AC-9 has taken demo-content-card.tsx
+   off home.en. The page lists (pages/views.tsx line 81 and the platform's twin) hand ["websiteList"] in place of ["website",
+   "schedules"]: no client module of the list reads schedules, and after AC-2 none reads another branch of website.
 6. Add a document budget beside the script budget in e2e/signed-in/admin-scripts.spec.ts: the HTML's length for the 7 screens, from today's figure plus 4%, lowered with this change.
 
 **Done when:** The signed-in suite passes with admin-text-fallbacks.spec.ts; the store home's document is at or under 140,000 characters (165,942 today) and the product editor's at or under 350,000 (about 426,000 today), measured by the new document budget; no admin document carries a "setup" object in its flight data.

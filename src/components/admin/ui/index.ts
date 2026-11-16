@@ -2,7 +2,7 @@
 export { Button, ButtonLink, buttonClass, BUTTON_KINDS, BUTTON_SIZES, type ButtonKind, type ButtonSize } from "./button";
 export { Chip, TrendChip, CountBadge, chipClass, dotClass } from "./chip";
 export { Card, KpiTile, CARD_CLASS } from "./card";
-export { ShareBar, ScoreBar, fillWidth } from "./bars";
+export { MiniBar, ShareBar, ScoreBar, fillWidth } from "./bars";
 export { InsightPanel } from "./insight";
 export { List, ListRow, RowActions, RowAmount, RowDate, RowFact, RowId, RowLead, RowText } from "./list";
 export { PageHeader } from "./page-header";

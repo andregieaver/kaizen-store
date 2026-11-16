@@ -4,8 +4,20 @@ Caching and rendering (`README.md` beside this file), part of `docs/audits/bloat
 
 - **Kind:** no check. **Priority:** P2. **Effort:** S. **Confidence:** medium. **Step:** 0.14.
 - **Second check:** corrected.
-- **Where:** `next.config.ts:42`, `evidence/build.log:5`, `src/app/s/[store]/[market]/layout.tsx:105`, `node_modules/next/dist/docs/01-app/03-api-reference/05-config/01-next-config-js/partialPrefetching.md:45`, `node_modules/next/dist/docs/01-app/02-guides/incremental-static-regeneration-cache-components.md:27`, `node_modules/next/dist/docs/01-app/02-guides/adopting-partial-prefetching.md:312`, `node_modules/next/dist/docs/01-app/03-api-reference/03-file-conventions/02-route-segment-config/prefetch.md`
-- **Evidence:** Read in this pass. Next's doc: unset behaves like false and logs a warning; both features will be on everywhere in the next major and the option removed. The build log prints the warning (lines 5-11). For this app, off means three things. 1) Each link on screen is prefetched by itself: 11 to 50 requests per store page and 23 to 46 per admin screen. 2) A first visit to a page not built ahead waits for the whole render: 137 dynamic patterns have no fallback, 115 of them store routes; the ISR guide says that with Partial Prefetching such a visit gets the shell at once. 3) A forced move later. No link sets prefetch={true} (rg: 0), so there is no legacy full prefetch to migrate. But the store's root layout awaits params above any Suspense (layout.tsx:105), because <html lang> and the theme come from them, and the guide says a params read outside Suspense ties the shared shell to one URL. Adoption can go segment by segment with export const prefetch = 'partial' (adopting-partial-prefetching.md:312-350).
+- **Where:** `next.config.ts:42`, `evidence/build.log:5`, `src/app/s/[store]/[market]/layout.tsx:105`,
+  `node_modules/next/dist/docs/01-app/03-api-reference/05-config/01-next-config-js/partialPrefetching.md:45`,
+  `node_modules/next/dist/docs/01-app/02-guides/incremental-static-regeneration-cache-components.md:27`,
+  `node_modules/next/dist/docs/01-app/02-guides/adopting-partial-prefetching.md:312`,
+  `node_modules/next/dist/docs/01-app/03-api-reference/03-file-conventions/02-route-segment-config/prefetch.md`
+- **Evidence:** Read in this pass. Next's doc: unset behaves like false and logs a warning; both features will be on everywhere in
+  the next major and the option removed. The build log prints the warning (lines 5-11). For this app, off means three things. 1)
+  Each link on screen is prefetched by itself: 11 to 50 requests per store page and 23 to 46 per admin screen. 2) A first visit to
+  a page not built ahead waits for the whole render: 137 dynamic patterns have no fallback, 115 of them store routes; the ISR
+  guide says that with Partial Prefetching such a visit gets the shell at once. 3) A forced move later. No link sets
+  prefetch={true} (rg: 0), so there is no legacy full prefetch to migrate. But the store's root layout awaits params above any
+  Suspense (layout.tsx:105), because <html lang> and the theme come from them, and the guide says a params read outside Suspense
+  ties the shared shell to one URL. Adoption can go segment by segment with export const prefetch = 'partial'
+  (adopting-partial-prefetching.md:312-350).
 - **Cost today:** Today: the warning, the prefetch volume of CA-4 and CA-5, and blocking first visits. Later: a migration under time pressure at the next major. Paid by: Shoppers and owners (requests); an agent's session later.
 - **Saving:** None from writing the value. With adoption, links to the same route share one shell and a store page not built ahead can answer with a shell at once (Next's docs); not measured on this app.
 - **Risk:** Step 1 has none. Adoption changes what a click shows first and meets the router patch (D423). The admin's shells read cookies, so each still needs a server run per route; the sure cut there is CA-5. The storefront's adoption is L and is a separate step.

@@ -5,9 +5,9 @@ CODE-05). CLAUDE.md keeps one line per rule under **Admin**; the rule is in full
 Read the rule of the part you change before changing it; a rule changes in its file, and its line in CLAUDE.md when its gist changes.
 `src/lib/rules-index.test.ts` fails when a line in CLAUDE.md has no heading here, or a heading here has no line in CLAUDE.md.
 
-- [`platform.md`](platform.md): The admin's frame, accounts, security and the platform (35 rules)
-- [`ai.md`](ai.md): The AI manager, the autopilot and AI that builds (23 rules)
-- [`commerce.md`](commerce.md): Orders, payments, tax, shipping and selling (50 rules)
-- [`marketing.md`](marketing.md): Customers, marketing and analytics (26 rules)
-- [`website.md`](website.md): The website, the builder, themes and the docs portal (77 rules)
-- [`integrations.md`](integrations.md): Data in and out, APIs and integrations (30 rules)
+- [`platform.md`](platform.md): The admin's frame, accounts, security and the platform
+- [`ai.md`](ai.md): The AI manager, the autopilot and AI that builds
+- [`commerce.md`](commerce.md): Orders, payments, tax, shipping and selling
+- [`marketing.md`](marketing.md): Customers, marketing and analytics
+- [`website.md`](website.md): The website, the builder, themes and the docs portal
+- [`integrations.md`](integrations.md): Data in and out, APIs and integrations

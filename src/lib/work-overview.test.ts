@@ -18,6 +18,7 @@ const invoice = (o: Partial<OverviewInvoice> & Pick<OverviewInvoice, "id" | "sta
   totalMinor: 0,
   paidMinor: 0,
   creditedMinor: 0,
+  lostMinor: 0,
   dueOn: null,
   paidOn: null,
   updatedOn: TODAY,
@@ -106,6 +107,18 @@ describe("receivables", () => {
   it("never counts an overpaid invoice as owing", () => {
     expect(outstandingMinor({ totalMinor: 100, paidMinor: 150, creditedMinor: 0 })).toBe(0);
     expect(outstandingMinor({ totalMinor: 100, paidMinor: 30, creditedMinor: 20 })).toBe(50);
+  });
+
+  it("leaves out what was written off as lost on an invoice that is still open (D500)", () => {
+    expect(outstandingMinor({ totalMinor: 1_000, paidMinor: 300, creditedMinor: 0, lostMinor: 200 })).toBe(500);
+    expect(outstandingMinor({ totalMinor: 1_000, paidMinor: 300, creditedMinor: 0, lostMinor: 700 })).toBe(0);
+    const o = overview({
+      invoices: [invoice({ id: "part-lost", status: "sent", totalMinor: 1_000, paidMinor: 300, lostMinor: 200, dueOn: "2026-09-01" })],
+    });
+    const nok = o.currencies.find((c) => c.currency === "NOK");
+    expect(nok?.receivables.outstandingMinor).toBe(500);
+    expect(nok?.receivables.overdue.minor).toBe(500);
+    expect(o.overdueInvoices[0]?.outstandingMinor).toBe(500);
   });
 
   it("counts paid invoices by the month they were paid in", () => {

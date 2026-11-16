@@ -2,7 +2,13 @@
 
 Part of `docs/audits/bloat-review-2026-11.md`, on commit 0bd814c. Read by one reviewer, challenged by a second (who re-opened every citation, re-measured every number and applied the owner's note that the platform is not open yet) and planned by a third. A tick (✓) marks a finding the second reviewer confirmed or corrected; one the planner added has none. Each finding has a file of its own beside this one.
 
-**In short.** There is little dead code: about 2,700 lines of 772,000 (0.35%), thin over some 400 files and dropped by the build, and none of it is a feature waiting for opening: it is code with no caller. The one run-time price is the 19,614-line schema that every cold start evaluates for a query builder nobody calls (150 to 190 ms and about 18 MB, measured here): three lines to change, the same fix as DS-1 and DP-1. The planner's own check added one cost the report missed: a unit test replays all 789 archived migrations on every run (6.2 s and about 630 MB, measured). The plan is a guard first (the review's scan as an exact-list ratchet, about 9 s a run), then deletion in tiers: 721 lines nothing uses, about 230 in three dead files, and about 1,700 that only a test keeps alive.
+**In short.** There is little dead code: about 2,700 lines of 772,000 (0.35%), thin over some 400 files and dropped by the build,
+and none of it is a feature waiting for opening: it is code with no caller. The one run-time price is the 19,614-line schema that
+every cold start evaluates for a query builder nobody calls (150 to 190 ms and about 18 MB, measured here): three lines to change,
+the same fix as DS-1 and DP-1. The planner's own check added one cost the report missed: a unit test replays all 789 archived
+migrations on every run (6.2 s and about 630 MB, measured). The plan is a guard first (the review's scan as an exact-list ratchet,
+about 9 s a run), then deletion in tiers: 721 lines nothing uses, about 230 in three dead files, and about 1,700 that only a test
+keeps alive.
 
 ## Findings
 

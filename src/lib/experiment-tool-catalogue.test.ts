@@ -56,6 +56,9 @@ describe("the A/B test tools in the owner assistant's catalogue (D148)", () => {
     expect(read("apply_winner", { experiment: "x", version: "original" })).toMatchObject({ ok: true });
     expect(read("apply_winner", { experiment: "x", version: "a" })).toMatchObject({ ok: false });
     expect(read("apply_winner", { experiment: "x" })).toMatchObject({ ok: false });
+    // What it taught (D673), optional: one line of at most 280 characters.
+    expect(read("apply_winner", { experiment: "x", version: "b", learning: "Short headings win" })).toMatchObject({ ok: true });
+    expect(read("apply_winner", { experiment: "x", version: "b", learning: "x".repeat(281) })).toMatchObject({ ok: false });
     expect(read("suggest_experiments", { visitors_per_day: 200, current_rate_percent: 3 })).toMatchObject({ ok: true, input: { change_percent: 20 } });
     expect(read("suggest_experiments", { current_rate_percent: 100 })).toMatchObject({ ok: false });
   });

@@ -86,3 +86,44 @@ describe("push to staff devices (D361)", () => {
     expect(n).toBe(0);
   });
 });
+
+describe("paging the platform's admins (F3, D672)", () => {
+  it("rings each device of a platform admin once, whatever stores it follows, and nobody else's", async () => {
+    const phone = device(7);
+    await db().execute(sql`
+      insert into commerce.push_subscriptions (account_id, store_id, endpoint, p256dh, auth, device)
+      values (${store.accountId}::uuid, ${store.storeId}::uuid, ${phone.endpoint}, ${phone.keys.p256dh}, ${phone.keys.auth}, ${phone.device})
+    `);
+    // Not an admin yet: nothing rings.
+    const none: string[] = [];
+    await push.sendPlatformPush(() => ({ title: "t", body: "b", url: "https://kaizenaflow.com/admin", tag: "x" }), "stall", async (sub) => {
+      none.push(sub.endpoint);
+      return { statusCode: 201 };
+    });
+    expect(none).not.toContain(phone.endpoint);
+    const [was] = await db().execute<Row>(sql`select disabled_at from commerce.accounts where id = ${store.accountId}::uuid`);
+    await db().execute(sql`update commerce.accounts set platform_admin = true, disabled_at = null where id = ${store.accountId}::uuid`);
+    // The same phone also followed a second store: still one ring.
+    await db().execute(sql`
+      insert into commerce.push_subscriptions (account_id, store_id, endpoint, p256dh, auth, device)
+      select account_id, (select id from commerce.stores where id <> ${store.storeId}::uuid limit 1), endpoint, p256dh, auth, device
+      from commerce.push_subscriptions where endpoint = ${phone.endpoint}
+      on conflict do nothing
+    `);
+    const sent: { endpoint: string; payload: Record<string, unknown>; urgency: unknown }[] = [];
+    const count = await push.sendPlatformPush(
+      (lang) => ({ title: lang === "nb" ? "Utfordringsbutikken trenger et blikk" : "needs a look", body: "b", url: "https://kaizenaflow.com/admin", tag: "stall-x" }),
+      "stall",
+      async (sub, payload, options) => {
+        sent.push({ endpoint: sub.endpoint, payload: JSON.parse(payload), urgency: (options as { urgency?: unknown }).urgency });
+        return { statusCode: 201 };
+      },
+    );
+    const mine = sent.filter((s) => s.endpoint === phone.endpoint);
+    expect(mine).toHaveLength(1);
+    expect(count).toBeGreaterThanOrEqual(1);
+    expect(mine[0]).toMatchObject({ payload: { title: "Utfordringsbutikken trenger et blikk", tag: "stall-x" }, urgency: "high" });
+    await db().execute(sql`update commerce.accounts set platform_admin = false, disabled_at = ${was.disabled_at ? new Date(String(was.disabled_at)).toISOString() : null}::timestamptz where id = ${store.accountId}::uuid`);
+  });
+});
+

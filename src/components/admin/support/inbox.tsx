@@ -1,6 +1,6 @@
 "use client";
 
-import { ChevronDown, Search } from "lucide-react";
+import { ChevronDown, MessageSquare, Search } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { countWords, fillWords } from "@/lib/admin-fill";
@@ -80,7 +80,38 @@ export function Inbox({
   const [customerTyping, setCustomerTyping] = useState(false);
   const typingTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   // Sound and browser notifications, once the person turned them on (2.9): the browser asks first.
-  const [alerts, setAlerts] = useState(false);
+  // Kept in this browser (a per-person convenience, like the browser's own permission): a reload keeps the choice. The sound itself
+  // waits for the first press on the page, as browsers allow no sound before it.
+  const [alerts, setAlertsState] = useState(false);
+  // Whether the browser's choice has been read: the strip that says alerts are off waits for it, so it never flashes (round 21).
+  const [alertsKnown, setAlertsKnown] = useState(false);
+  const setAlerts = (on: boolean) => {
+    setAlertsState(on);
+    try {
+      window.localStorage.setItem(ALERTS_KEY, on ? "on" : "off");
+    } catch {
+      // Private windows and blocked storage: the choice lasts this visit only.
+    }
+  };
+  useEffect(() => {
+    let remembered: string | null = null;
+    try {
+      remembered = window.localStorage.getItem(ALERTS_KEY);
+    } catch {
+      remembered = null;
+    }
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- read once from the browser after hydration, so the server's page matches
+    setAlertsKnown(true);
+    if (remembered !== "on") return;
+    setAlertsState(true);
+    const unlock = () => unlockSound();
+    window.addEventListener("pointerdown", unlock, { once: true });
+    window.addEventListener("keydown", unlock, { once: true });
+    return () => {
+      window.removeEventListener("pointerdown", unlock);
+      window.removeEventListener("keydown", unlock);
+    };
+  }, []);
   const seen = useRef({
     waiting: initial.waiting,
     mineUnread: initial.mineUnread,
@@ -328,7 +359,7 @@ export function Inbox({
       className={`flex h-[calc(100dvh-7rem)] min-h-[28rem] flex-col overflow-hidden ${CARD_CLASS}`}
     >
       {/* Round 4 (D612): who waits, in a sentence, and one menu for being reachable (presence, alerts, the AI partner). */}
-      <div className="flex flex-wrap items-center gap-x-4 gap-y-2 border-b border-line px-4 py-3">
+      <div className="flex items-center gap-x-4 gap-y-2 border-b border-line px-4 py-3 sm:flex-wrap">
         <div className="flex min-w-0 flex-col">
           <h1 className="text-title text-ink">{w.title}</h1>
           <p className="text-body text-ink-2" role="status">
@@ -349,10 +380,11 @@ export function Inbox({
               <>
                 <span aria-hidden className={`size-2 rounded-pill ${presence === "online" ? "bg-insight-solid" : "bg-neutral-solid"}`} />
                 {presence === "online" ? w.available : w.away}
-                {" · "}
+                <span className="max-sm:hidden">{" · "}</span>
               </>
             )}
-            {alerts ? w.alertsShort.on : w.alertsShort.off}
+            {/* On a phone the pill says only where you are (round 21): alerts off is the strip below. */}
+            <span className={context.presence !== null ? "max-sm:hidden" : ""}>{alerts ? w.alertsShort.on : w.alertsShort.off}</span>
             <ChevronDown aria-hidden className="size-4" />
           </summary>
           <div className="absolute right-0 z-30 mt-2 flex w-72 max-w-[calc(100vw-2rem)] flex-col gap-3 rounded-panel border border-line bg-card p-4 shadow-[var(--shadow-float)]">
@@ -408,6 +440,19 @@ export function Inbox({
           </div>
         </details>
       </div>
+      {/* Round 21 (D681): with alerts off nobody hears a shopper, so it is said, with the one press that changes it. */}
+      {alertsKnown && !alerts && (
+        <div className="flex items-center gap-3 border-b border-line bg-warning-soft px-4 py-2.5">
+          <p className="min-w-0 flex-1 text-body text-ink">{w.alertsOffStrip}</p>
+          <button
+            type="button"
+            onClick={() => void turnOnAlerts()}
+            className="inline-flex h-9 shrink-0 items-center rounded-pill bg-inverse px-4 text-body text-inverse-ink"
+          >
+            {w.turnOn}
+          </button>
+        </div>
+      )}
       <div className="grid min-h-0 flex-1 lg:grid-cols-[22rem_1fr_18rem]">
         <section
           className={`${showing ? "hidden lg:flex" : "flex"} min-h-0 flex-col border-line lg:border-r`}
@@ -418,7 +463,7 @@ export function Inbox({
             <div
               role="tablist"
               aria-label={w.whichConversations}
-              className="flex min-w-0 flex-1 flex-wrap gap-1"
+              className="flex min-w-0 flex-1 gap-1 overflow-x-auto [scrollbar-width:none]"
             >
               {(Object.keys(TAB_WORDS) as InboxTab[]).map((key) => (
                 <button
@@ -501,15 +546,29 @@ export function Inbox({
             )}
           </div>
           <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
-            <ConversationList
-              rows={rows}
-              selected={open?.id ?? null}
-              now={now}
-              onOpen={(row) =>
-                openConversation({ id: row.id, store: row.store?.slug ?? null })
-              }
-              empty={t.empty[tab]}
-            />
+            {rows.length === 0 && tab !== "ended" && !(query || tone || topic || store) ? (
+              // Round 21 (D681): an empty inbox says how shoppers reach you and what happens when they do.
+              <div className="flex flex-col items-center gap-2 px-6 py-10 text-center">
+                <MessageSquare aria-hidden className="size-10 text-brand-text" strokeWidth={1.5} />
+                <p className="text-body-strong text-ink">{w.quietTitle}</p>
+                <p className="max-w-xs text-body text-ink-2">{t.empty[tab]} {w.quietText}</p>
+                {context.shopUrl && (
+                  <a href={context.shopUrl} target="_blank" rel="noreferrer" className="text-body font-medium text-brand-text underline underline-offset-2">
+                    {w.seeChat}
+                  </a>
+                )}
+              </div>
+            ) : (
+              <ConversationList
+                rows={rows}
+                selected={open?.id ?? null}
+                now={now}
+                onOpen={(row) =>
+                  openConversation({ id: row.id, store: row.store?.slug ?? null })
+                }
+                empty={t.empty[tab]}
+              />
+            )}
           </div>
         </section>
         <section
@@ -631,15 +690,38 @@ export function Inbox({
   );
 }
 
+/** Where this browser keeps whether the person turned alerts on. */
+const ALERTS_KEY = "kaizen.support.alerts";
+
+/** One sound engine for the page, made at the first press (browsers allow no sound before one) and used for every tone after. */
+let soundEngine: AudioContext | null = null;
+
+function engine(): AudioContext | null {
+  if (soundEngine) return soundEngine;
+  const AudioContextClass =
+    window.AudioContext ??
+    (window as unknown as { webkitAudioContext?: typeof AudioContext })
+      .webkitAudioContext;
+  if (!AudioContextClass) return null;
+  soundEngine = new AudioContextClass();
+  return soundEngine;
+}
+
+/** Lets the page make sound from now on: called from a press, where browsers allow it. */
+function unlockSound() {
+  try {
+    void engine()?.resume();
+  } catch {
+    // No sound where the browser allows none.
+  }
+}
+
 /** A short tone, made in the browser (no file to load). */
 function chime() {
   try {
-    const AudioContextClass =
-      window.AudioContext ??
-      (window as unknown as { webkitAudioContext?: typeof AudioContext })
-        .webkitAudioContext;
-    if (!AudioContextClass) return;
-    const audio = new AudioContextClass();
+    const audio = engine();
+    if (!audio) return;
+    if (audio.state === "suspended") void audio.resume();
     const tone = audio.createOscillator();
     const gain = audio.createGain();
     tone.frequency.value = 880;
@@ -649,7 +731,6 @@ function chime() {
     tone.connect(gain).connect(audio.destination);
     tone.start();
     tone.stop(audio.currentTime + 0.45);
-    tone.onended = () => void audio.close();
   } catch {
     // No sound where the browser allows none.
   }

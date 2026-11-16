@@ -19,6 +19,8 @@ export type SupportDeskContext = {
   presence: "online" | "away" | null;
   /** Their own *Partner on / off* when the inbox opened (step 8); null when they may not answer. */
   partnerOn: boolean | null;
+  /** Where shoppers meet the chat (the storefront, or Kaizena Flow's own site), linked from an empty inbox (round 21); left out where there is none. */
+  shopUrl?: string | null;
   actions: {
     heartbeat: () => Promise<{ ok: boolean }>;
     presence: ((status: "online" | "away") => Promise<{ ok: boolean }>) | null;

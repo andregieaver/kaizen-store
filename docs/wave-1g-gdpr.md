@@ -460,7 +460,13 @@ Run on the schema at the date of this spec (192 tables in `commerce`) the detect
 3. Every `export` section exists in `EXPORT_SECTIONS` and every section has at least one entry feeding it; every entry with `subject: "shopper"` and a `link` has an `erasure` other than `none`; `restrict` and `keep` carry a `reason`, a `restrict` names an `until` kind that is seeded in `retention_rules`.
 4. Every table with a `store_id` has a `COPY_RULES` entry (existing test) and the register shows the same group in its `reason` for shopper tables that are `never` (a consistency check of words, not of data).
 5. `EMAIL_KINDS`: a source scan of the `kind:` passed to `sendEmail()` (like `permissions.scan.test.ts`) fails for a kind that is not classified; `evidence` kinds are exactly `return.acknowledgement`.
-6. **Restricted orders are not matched to a person** (`restricted-orders.scan.test.ts`): every `src/server` module that matches orders by `lower(o.email)`, `lower(email)` on orders, or `customer_id` must contain `restricted_at` in that query or appear in an allow-list with a reason. First allow-list: `withdrawals.ts` (the contract right, 2.7); `return-facts.ts`, `checkout.ts` (the buyer's own order at placement); the server agent walks `customers.ts`, `customer-admin.ts`, `cart-reminders.ts`, `recommend.ts`, `analytics-customers-data.ts`, `analytics-totals.ts`, `analytics-refunds-data.ts`, `owner-insights.ts`, `owner-tools.ts`, `manager-tools.ts`, `bonus-emails.ts`, `affiliate-emails.ts`, `companies.ts`, `campaigns.ts`, `discounts.ts`, `standing-orders.ts` (the files the grep of this spec found), and adds the guard or the allow-list entry.
+6. **Restricted orders are not matched to a person** (`restricted-orders.scan.test.ts`): every `src/server` module that matches
+   orders by `lower(o.email)`, `lower(email)` on orders, or `customer_id` must contain `restricted_at` in that query or appear in
+   an allow-list with a reason. First allow-list: `withdrawals.ts` (the contract right, 2.7); `return-facts.ts`, `checkout.ts`
+   (the buyer's own order at placement); the server agent walks `customers.ts`, `customer-admin.ts`, `cart-reminders.ts`,
+   `recommend.ts`, `analytics-customers-data.ts`, `analytics-totals.ts`, `analytics-refunds-data.ts`, `owner-insights.ts`,
+   `owner-tools.ts`, `manager-tools.ts`, `bonus-emails.ts`, `affiliate-emails.ts`, `companies.ts`, `campaigns.ts`, `discounts.ts`,
+   `standing-orders.ts` (the files the grep of this spec found), and adds the guard or the allow-list entry.
 
 ### 3.6 Purposes and legal bases (PSI REG-01, added 31 October 2026)
 
@@ -603,7 +609,11 @@ Row `international.gdpr-data-export-and-erasure`. Its four criteria (kept as wri
 
 G5 and G9. In addition **G12**: **the register is complete and teeth-bearing**: the detectors, the fake-table failure, the export section coverage, the email-kind scan, and the request rules (clock, extension to at most three months, refusal needs a reason, an erasure's `subject_email` is null once done, an erased subject's request never keeps the email) — `personal-data.test.ts`, `src/db/privacy.test.ts`, `privacy-request.test.ts`, `privacy-requests.int.test.ts`.
 
-**Also checked** (not new criteria): a platform admin can change a retention period only through `set_retention_rule()` (history kept, the floor enforced) and only a platform admin can mark a rule reviewed (`retention-admin.int.test.ts`, `e2e/privacy.spec.ts` for the page); `e2e/a11y.spec.ts` covers any new **signed-out** page (none is added: the shopper pages are behind sign-in, so the shopper and admin pages are checked by hand and by `renderToString` tests, the existing statement for signed-in pages); `pnpm parity:check`.
+**Also checked** (not new criteria): a platform admin can change a retention period only through `set_retention_rule()` (history
+kept, the floor enforced) and only a platform admin can mark a rule reviewed (`retention-admin.int.test.ts`, `e2e/privacy.spec.ts`
+for the page); `e2e/a11y.spec.ts` covers any new **signed-out** page (none is added: the shopper pages are behind sign-in, so the
+shopper and admin pages are checked by hand and by `renderToString` tests, the existing statement for signed-in pages);
+`pnpm parity:check`.
 
 **Criteria changes** (proposed; the rows are not edited by this run):
 
@@ -701,7 +711,23 @@ retention steps run through `(store_id, ...)` indexes in batches: add `orders_re
 
 ### 9.6 Draft of the CLAUDE.md bullet
 
-- **Personal data (D162, `docs/wave-1g-gdpr.md`)**: every table that can hold a person's data is in `PERSONAL_DATA` (`src/lib/personal-data.ts`) with how it links to them, the export section that carries it and what erasure does (`delete`, `anonymise`, `restrict`, `keep`), or in `NOT_PERSONAL` with a reason; a test (`src/db/privacy.test.ts`) fails for a table with `customer_id`, `email`, `phone`, `address` or `name` columns, a foreign key to a shopper anchor, or a free-text or payload column that is in neither, and a new kind of `sendEmail()` must be in `EMAIL_KINDS`. A new table of shopper data therefore needs: a register entry, an export section in `shapeExport()`/`exportCustomerData()`, an erasure step in `eraseSubject()`, a retention rule if it grows, and a `COPY_RULES` decision. The export (`src/server/privacy-export.ts`) is one JSON file by `store_id`, never emailed, with amounts in the order's own currency; staff need `customers:write`, the shopper a fresh sign-in (`customer_sessions.verified_at`, 10 minutes); both are audit-logged with ids and counts and **never an email or a name**. Erasure (`src/server/privacy-erasure.ts`) never deletes an order (D141): a sale is **restricted** (`orders.restricted_at`, `customer_id` null) and anonymised by `commerce.anonymise_order()` when the seller's country's period ends (`commerce.retention_rules`, read only through `retentionRule()`; written only by `set_retention_rule()`); every query that matches orders to a person by email adds `restricted_at is null` (`restricted-orders.scan.test.ts`), and `sendEmail()` refuses an email for a restricted or anonymised order. The anonymising SQL functions contain no `DELETE`; deletions are application code (`runRetention()` in the daily cron, `src/server/retention.ts`). The one-month request clock is `privacyDeadline()`; the consumer wording is `src/lib/privacy-text.ts` (hand-written nb, sv, da, en, needs legal review, never in `i18n.ts`). An audit entry for any of this never holds personal data.
+- **Personal data (D162, `docs/wave-1g-gdpr.md`)**: every table that can hold a person's data is in `PERSONAL_DATA`
+  (`src/lib/personal-data.ts`) with how it links to them, the export section that carries it and what erasure does (`delete`,
+  `anonymise`, `restrict`, `keep`), or in `NOT_PERSONAL` with a reason; a test (`src/db/privacy.test.ts`) fails for a table with
+  `customer_id`, `email`, `phone`, `address` or `name` columns, a foreign key to a shopper anchor, or a free-text or payload
+  column that is in neither, and a new kind of `sendEmail()` must be in `EMAIL_KINDS`. A new table of shopper data therefore
+  needs: a register entry, an export section in `shapeExport()`/`exportCustomerData()`, an erasure step in `eraseSubject()`, a
+  retention rule if it grows, and a `COPY_RULES` decision. The export (`src/server/privacy-export.ts`) is one JSON file by
+  `store_id`, never emailed, with amounts in the order's own currency; staff need `customers:write`, the shopper a fresh sign-in
+  (`customer_sessions.verified_at`, 10 minutes); both are audit-logged with ids and counts and **never an email or a name**.
+  Erasure (`src/server/privacy-erasure.ts`) never deletes an order (D141): a sale is **restricted** (`orders.restricted_at`,
+  `customer_id` null) and anonymised by `commerce.anonymise_order()` when the seller's country's period ends
+  (`commerce.retention_rules`, read only through `retentionRule()`; written only by `set_retention_rule()`); every query that
+  matches orders to a person by email adds `restricted_at is null` (`restricted-orders.scan.test.ts`), and `sendEmail()` refuses
+  an email for a restricted or anonymised order. The anonymising SQL functions contain no `DELETE`; deletions are application code
+  (`runRetention()` in the daily cron, `src/server/retention.ts`). The one-month request clock is `privacyDeadline()`; the
+  consumer wording is `src/lib/privacy-text.ts` (hand-written nb, sv, da, en, needs legal review, never in `i18n.ts`). An audit
+  entry for any of this never holds personal data.
 
 ### 9.7 Risks
 
@@ -723,7 +749,13 @@ The foundation built sections 3 and 5.1 (schema, three migrations, the pure libr
 4. **`anonymise_expired_orders(p_store, p_today, p_limit)`** refuses a day *after* the store's own today (not a day that is not today): a fixed clock in a test is a past day with the data backdated; `anonymise_order(..., 'retention')` always judges by the real store day. The candidate scan is bounded by `orders_retention_idx (store_id, placed_at) where anonymised_at is null` and by the year of the shortest possible period.
 5. **`retention_rules` unique indexes** use `coalesce(country, '__')` (the generator mangles the `'--'` of 3.1). `commerce.verify_retention_rule(id, account)` was added (the review: once, audit `retention.rule_verified`, as `verify_vat_rate()`); `retention_rules_guard` allows only `valid_to` (once) and the review to change.
 6. **`privacy_requests`**: `received_at`, `due_at`, kind and channel never change, not only for a finished row; the database fills `due_at` (received + one month) when the application leaves it out; the state check uses `coalesce(...)` so a missing outcome cannot pass; an extension cannot be set at insert.
-7. **The register** (`src/lib/personal-data.ts`) has an optional `also: ExportSection[]` on an entry (a table that feeds more than one section, such as `orders`: orders, addresses, consents), a `registerProblems()` that the PGlite test and the pure test share, and entries for tables the detectors do not match but that hold shopper data (`field_values`, `bonus_allocations`, `refunds`, `shipments`, `search_clicks` and the pseudonymous logs). `EMAIL_KINDS` also lists the six kinds of this unit (`privacy.erased`, `privacy.extended`, `privacy.refused`, `privacy.owners_notice`, `privacy.due`, `privacy.overdue`); `cart_reminder.test` is `staff`; `company.invite` is `security` (an invitation); a prefix table covers `subscription.*`, `security.*` and `booking.staff_*`.
+7. **The register** (`src/lib/personal-data.ts`) has an optional `also: ExportSection[]` on an entry (a table that feeds more than
+   one section, such as `orders`: orders, addresses, consents), a `registerProblems()` that the PGlite test and the pure test
+   share, and entries for tables the detectors do not match but that hold shopper data (`field_values`, `bonus_allocations`,
+   `refunds`, `shipments`, `search_clicks` and the pseudonymous logs). `EMAIL_KINDS` also lists the six kinds of this unit
+   (`privacy.erased`, `privacy.extended`, `privacy.refused`, `privacy.owners_notice`, `privacy.due`, `privacy.overdue`);
+   `cart_reminder.test` is `staff`; `company.invite` is `security` (an invitation); a prefix table covers `subscription.*`,
+   `security.*` and `booking.staff_*`.
 8. **The export's shape** is `src/lib/privacy-export.ts`: every field is written by name (a whitelist) and `findExcluded()` scans for the keys that must never appear; `returns`, `wishlists`, `carts` and `company` are objects with named lists, the other sections lists; `counts` is one number per section (composite sections summed) and `countsOf()` is what the tests round-trip.
 9. **Test harness**: `src/db/vat.test.ts` ("the tax migrations on a database that has data") now applies the migrations *before* the tax ones, then the data, then the tax ones, then the migrations *after* them, as production lived it; it used to apply every other migration first, which a migration that patches what the tax migrations made (the privacy rules) cannot survive. Its assertions are unchanged.
 10. **Constants held equal by a source scan**: `SEARCH_LOG_DAYS`, `USAGE_KEEP_DAYS` and `KEEP_DAYS` (integrations) are `server-only` modules, so `retention.test.ts` reads their value from the source text; the lib-side constants (`RETENTION_MONTHS`, `AUDIT_RETENTION_MONTHS`, `EVENT_DAYS`) are imported.
@@ -735,18 +767,39 @@ The foundation built sections 3 and 5.1 (schema, three migrations, the pure libr
 
 The server built section 5.2 and the test files of section 6 that belong to it. Where it differs, the code is right and this list says how:
 
-1. **`sendEmail()` suppression** is logged as a row with status `failed` and the error `suppressed: the order or its person was erased` (address and subject `[removed]`, no bodies), and the call returns the new outcome `"suppressed"`: the `email_status` enum has no `suppressed` and an `ADD VALUE` needs its own migration, so none was added. The row keeps the idempotency key, so a retried webhook asks no more. The evidence kinds (`return.acknowledgement`) and every `privacy.*` kind are never suppressed. `logAddress: false` stores `[removed]` for address and subject.
+1. **`sendEmail()` suppression** is logged as a row with status `failed` and the error
+   `suppressed: the order or its person was erased` (address and subject `[removed]`, no bodies), and the call returns the new
+   outcome `"suppressed"`: the `email_status` enum has no `suppressed` and an `ADD VALUE` needs its own migration, so none was
+   added. The row keeps the idempotency key, so a retried webhook asks no more. The evidence kinds (`return.acknowledgement`) and
+   every `privacy.*` kind are never suppressed. `logAddress: false` stores `[removed]` for address and subject.
 2. **Restricted orders are not in the export** (2.2 says a restricted order carries `restrictedSince` and `keptUntil`): a restricted order is cut loose from the person (`customer_id` null) and "used for nothing" (2.4), and `resolveSubject()` leaves it out for staff and shopper alike, so the file's `restrictedSince`/`keptUntil` are always null for the orders it holds. What the person asked about after an erasure is answered by the file saying none.
 3. **One module resolves the person**: `src/server/privacy-subject.ts` (`resolveSubject()`, `subjectOf()`, `privacyStore()`), re-exported where the spec names it. The shopper's resolution matches orders by email **only when the account's email is proven** (`email_verified_at`), as `claimOrders()` does; staff match by email always.
-4. **Shopper entry points** are in `src/server/privacy-shopper.ts` (`shopperPrivacyState`, `shopperExport`, `shopperErasurePlan`, `shopperErase`); the step-up is in `customers.ts` (`startFreshSignIn`, `confirmFreshWithCode`, `confirmFreshWithPassword`, `isSessionFresh`, `sessionVerifiedAt`) and `startSession(storeId, customerId, { verified })` takes `verified: false` for a session that was not proven just now (the one-time sign-in after checkout, which the shopper agent must pass). The staff side is `src/server/privacy-admin.ts` (`privacyCard`, `erasurePreview`, `staffExport`, `staffErase` with the typed confirmation).
+4. **Shopper entry points** are in `src/server/privacy-shopper.ts` (`shopperPrivacyState`, `shopperExport`, `shopperErasurePlan`,
+   `shopperErase`); the step-up is in `customers.ts` (`startFreshSignIn`, `confirmFreshWithCode`, `confirmFreshWithPassword`,
+   `isSessionFresh`, `sessionVerifiedAt`) and `startSession(storeId, customerId, { verified })` takes `verified: false` for a
+   session that was not proven just now (the one-time sign-in after checkout, which the shopper agent must pass). The staff side
+   is `src/server/privacy-admin.ts` (`privacyCard`, `erasurePreview`, `staffExport`, `staffErase` with the typed confirmation).
 5. **`deleteCustomer()`** is now a call to `eraseSubject()` with the shopper as actor; it throws the plain message when Stripe did not answer.
 6. **A request is completed only by the run that completes it** (`update ... where status = 'open' returning`), so two runs at once write one audit entry, one confirmation and one owners' notice.
 7. **`resumeErasures()`** also retries a profile picture that would not go on an *answered* request (`steps.files = 'left'`), as 2.4 step 4 says ("retried by the daily job"); it never resumes a request whose run did not start.
-8. **Retention**: `runRetention(now, { steps, batch })` (the injection is for tests); the orders step takes at most two batches per store per run (a large backlog spreads over days: 5,000 orders took 15 seconds), and `commerce.anonymise_expired_orders()` was changed in its (unapplied) migration to read the candidates in order into a set and ask the due-day function of only as many as the batch holds, with a candidate bound from the store's shortest own period (a store with 15,000 old orders cost 8.5 seconds a day before). Documents use the store's `bookkeeping` cutoff for every order including a host's (the 1b function takes one cutoff); a host's order keeps its longer period.
-9. **Analytics identity**: `CUSTOMER_KEY` (`analytics-sql.ts`) gives a restricted or anonymised order the key `order:{id}` (its own anonymous customer; revenue, VAT and refunds unchanged), `HAS_CUSTOMER` counts it, `analytics-totals.ts`'s two key reads follow, and the two guest lookups of `analytics-customers-data.ts` and `analytics-refunds-data.ts` leave restricted orders out. An `order:` key has no account or name, so the top-customers list drops it. This is the analytics agent's 5.5 work in its smallest form; that agent extends the tests.
+8. **Retention**: `runRetention(now, { steps, batch })` (the injection is for tests); the orders step takes at most two batches
+   per store per run (a large backlog spreads over days: 5,000 orders took 15 seconds), and `commerce.anonymise_expired_orders()`
+   was changed in its (unapplied) migration to read the candidates in order into a set and ask the due-day function of only as
+   many as the batch holds, with a candidate bound from the store's shortest own period (a store with 15,000 old orders cost 8.5
+   seconds a day before). Documents use the store's `bookkeeping` cutoff for every order including a host's (the 1b function takes
+   one cutoff); a host's order keeps its longer period.
+9. **Analytics identity**: `CUSTOMER_KEY` (`analytics-sql.ts`) gives a restricted or anonymised order the key `order:{id}` (its
+   own anonymous customer; revenue, VAT and refunds unchanged), `HAS_CUSTOMER` counts it, `analytics-totals.ts`'s two key reads
+   follow, and the two guest lookups of `analytics-customers-data.ts` and `analytics-refunds-data.ts` leave restricted orders out.
+   An `order:` key has no account or name, so the top-customers list drops it. This is the analytics agent's 5.5 work in its
+   smallest form; that agent extends the tests.
 10. **Readers guarded** with `restricted_at is null and anonymised_at is null`: `customers.ts` (`claimOrders`, `linkOrderToCustomer`, `emailHistory`), `customer-admin.ts` (the list, the detail, the summary, `findCustomer`), `cart-reminders.ts`, `recommend.ts`, `owner-tools.ts` (`email_customer`), `owner-insights.ts`, the booking reminders in `shopper-emails.ts`; `withdrawals.ts` is the one allowed exception (2.7). `restricted-orders.scan.test.ts` holds this.
 11. **Existing scan tests updated** with a reason each: `document-readers.test.ts` (the export and the erasure preview read invoices), `field-values-readers.test.ts` (the erasure and the retention schedule delete staff-entered order values; a `PRIVACY` list), and `privacy-erasure.ts` asks `expires_at` of the staff members it warns about (`store-members-expiry.test.ts`).
-12. **Tests**: `privacy-export`, `privacy-erasure`, `privacy-shopper`, `privacy-requests`, `privacy-admin` and `retention` `.int.test.ts`; `restricted-orders.scan`, `retention-readers`, `privacy-audit.scan` and the cron route's source test; the euro scenario is inside `checkout-kinds.int.test.ts`'s euro scenarios (each kind of product: export in euro, erasure leaves the sale as it was). The fixture is `src/server/privacy-fixture.ts` (a person with one of every kind of data; `ageOrder()` makes a sale old).
+12. **Tests**: `privacy-export`, `privacy-erasure`, `privacy-shopper`, `privacy-requests`, `privacy-admin` and `retention`
+    `.int.test.ts`; `restricted-orders.scan`, `retention-readers`, `privacy-audit.scan` and the cron route's source test; the euro
+    scenario is inside `checkout-kinds.int.test.ts`'s euro scenarios (each kind of product: export in euro, erasure leaves the
+    sale as it was). The fixture is `src/server/privacy-fixture.ts` (a person with one of every kind of data; `ageOrder()` makes a
+    sale old).
 
 ---
 
@@ -763,9 +816,31 @@ The admin built section 5.4 (`src/app/admin/(gated)/[store]/privacy/…`, `custo
 
 ## 13. Review fixes: where the code differs from the text above (written with the review fixes, 2026-10-04)
 
-1. **The shopper's own file and deletion act on addresses the shopper has proved, nothing else** (`resolveSubject(..., { channel: "shopper" })`, `privacy-subject.ts`). `addresses` is the account's own email when `email_verified_at` is set, otherwise empty; the emails typed on an order (Stripe's form, a venue booking) and an unproven account's registration address prove nothing. Every read and delete keyed by an address (email log and bodies, form sign-ups, abandoned checkouts, opt-outs, sign-in codes, company invitations) therefore finds nothing for an unproven account, which is shown and erases only what is linked to the account itself (its orders, subscriptions, carts, lists). Staff, who answer for the person's identity, keep the wide match (the account's email and the emails of the person's orders and subscriptions). Orders matched by email for the shopper still need a proven account (unchanged).
-2. **An order still waiting for payment is cancelled, not anonymised and left open** (`eraseSubject()`). Outside the database transaction `closeOpenCheckouts()` expires the open Stripe Checkout session of each such order (`closeSession()` of `checkout.ts`, as `startCheckout()` does); a session paid in the meantime completes its order (`completeOrderPayment()`), which erasure then restricts as the sale it is, and a payment the shopper finished that has not arrived stops the erasure before anything changes (`problem: "stripe"`, retried). Inside the transaction each remaining `pending_payment` order goes through `commerce.cancel_unpaid_order()` (stock released), its pending payment is marked `cancelled`, a subscription that never started is `expired`, and only then `anonymise_order()` runs. A payment that still arrives (a race with Stripe) finds a cancelled order, which `complete_order_payment()` completes without the person's data, because `saveCustomer()` and staff's `updateOrderContact()` leave an order with `anonymised_at` alone (the check `orders_anonymised` would otherwise refuse the write and the webhook would fail for ever). The staff plan says so (`alsoHappens.ordersCancelled`; `openOrders` counts only paid orders, which continue restricted) and `EraseCounts` has `ordersCancelled`.
-3. **Free text staff typed is personal data too**: `refunds.reason` and the `reason` and `note` keys of `order_events.data` (a cancellation's or refund's reason, a note) are in the export and are removed when the order is anonymised: `anonymise_order()` replaces a refund's reason with `[removed]` (the two reasons the Stripe webhook writes are system text and stay, because `refundKey()` reads them) and removes the two keys from the order's events. `forbid_change()` (the shared append-only trigger) is patched in the same migration to let `order_events` change in exactly that one way and only inside the anonymising path (`commerce.anonymising = 'on'`); every other change and every delete is refused as before.
+1. **The shopper's own file and deletion act on addresses the shopper has proved, nothing else**
+   (`resolveSubject(..., { channel: "shopper" })`, `privacy-subject.ts`). `addresses` is the account's own email when
+   `email_verified_at` is set, otherwise empty; the emails typed on an order (Stripe's form, a venue booking) and an unproven
+   account's registration address prove nothing. Every read and delete keyed by an address (email log and bodies, form sign-ups,
+   abandoned checkouts, opt-outs, sign-in codes, company invitations) therefore finds nothing for an unproven account, which is
+   shown and erases only what is linked to the account itself (its orders, subscriptions, carts, lists). Staff, who answer for the
+   person's identity, keep the wide match (the account's email and the emails of the person's orders and subscriptions). Orders
+   matched by email for the shopper still need a proven account (unchanged).
+2. **An order still waiting for payment is cancelled, not anonymised and left open** (`eraseSubject()`). Outside the database
+   transaction `closeOpenCheckouts()` expires the open Stripe Checkout session of each such order (`closeSession()` of
+   `checkout.ts`, as `startCheckout()` does); a session paid in the meantime completes its order (`completeOrderPayment()`), which
+   erasure then restricts as the sale it is, and a payment the shopper finished that has not arrived stops the erasure before
+   anything changes (`problem: "stripe"`, retried). Inside the transaction each remaining `pending_payment` order goes through
+   `commerce.cancel_unpaid_order()` (stock released), its pending payment is marked `cancelled`, a subscription that never started
+   is `expired`, and only then `anonymise_order()` runs. A payment that still arrives (a race with Stripe) finds a cancelled
+   order, which `complete_order_payment()` completes without the person's data, because `saveCustomer()` and staff's
+   `updateOrderContact()` leave an order with `anonymised_at` alone (the check `orders_anonymised` would otherwise refuse the
+   write and the webhook would fail for ever). The staff plan says so (`alsoHappens.ordersCancelled`; `openOrders` counts only
+   paid orders, which continue restricted) and `EraseCounts` has `ordersCancelled`.
+3. **Free text staff typed is personal data too**: `refunds.reason` and the `reason` and `note` keys of `order_events.data` (a
+   cancellation's or refund's reason, a note) are in the export and are removed when the order is anonymised: `anonymise_order()`
+   replaces a refund's reason with `[removed]` (the two reasons the Stripe webhook writes are system text and stay, because
+   `refundKey()` reads them) and removes the two keys from the order's events. `forbid_change()` (the shared append-only trigger)
+   is patched in the same migration to let `order_events` change in exactly that one way and only inside the anonymising path
+   (`commerce.anonymising = 'on'`); every other change and every delete is refused as before.
 4. **The shopper's download is limited**: five files per account per hour (`EXPORTS_PER_HOUR`, `takeExportSlot()` in `privacy-shopper.ts`, a keyed hash of the account in `chat_usage`, kept two days). The sixth gets `problem: "busy"` (the page says so in nb, sv, da, en: `tooMany`) and nothing is read or logged for it.
 5. **The register's detector A** also matches `*_name` columns (except `NOT_A_PERSON_NAME`, now `file_name`), `postal_code`, `postcode`, `zip`, `zip_code` and birth-date columns; the PGlite test has a `*_name`-only table, a postal-code-only table and a `file_name` table.
 6. **Texts**: the Norwegian texts name `bokføringsloven` (not `regnskapsloven`) as the ground for keeping orders; a Danish or Swedish store viewed in nb still names the Norwegian act (the text is chosen by language, not by the seller's country: left for the legal review). The staff clock sentence no longer states that a weekend or holiday never moves the month: it says what the system counts and sends the rule (Regulation 1182/71, unread) to a lawyer. Both stay on the legal-review list.
@@ -774,4 +849,9 @@ The admin built section 5.4 (`src/app/admin/(gated)/[store]/privacy/…`, `custo
 
 ### Merge note: OSS and IOSS stores (D161 and D162)
 
-The records of a store that uses the OSS or IOSS schemes are kept ten years (D161). `runRetention()`'s documents step honours that (`SCHEME_RETENTION_YEARS`, a store with `store_tax_profile.oss_scheme <> 'none'` or an IOSS number). The orders step, `commerce.anonymise_expired_orders()`, still uses the seller country's period (NO 5, SE 7, DK 5, DE 8 years), so an order's name, address and email of such a store go sooner than its documents' personal data. Whether the scheme's record duty reaches the buyer's personal data on the order is a question for the accountant; if it does, the scheme period moves into `order_anonymisable_on()` (a new migration).
+The records of a store that uses the OSS or IOSS schemes are kept ten years (D161). `runRetention()`'s documents step honours that
+(`SCHEME_RETENTION_YEARS`, a store with `store_tax_profile.oss_scheme <> 'none'` or an IOSS number). The orders step,
+`commerce.anonymise_expired_orders()`, still uses the seller country's period (NO 5, SE 7, DK 5, DE 8 years), so an order's name,
+address and email of such a store go sooner than its documents' personal data. Whether the scheme's record duty reaches the
+buyer's personal data on the order is a question for the accountant; if it does, the scheme period moves into
+`order_anonymisable_on()` (a new migration).

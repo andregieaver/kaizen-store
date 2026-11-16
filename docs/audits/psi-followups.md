@@ -2,7 +2,81 @@
 
 What came of the [PSI audit of 2026-10-24](psi-2026-10-24.md), kept in one place so nothing deferred is lost. The rule agreed with the
 owner: during development, do what protects the running system or gets dearer with every commit; leave paperwork and operational
-maturity for the run-up to launch. Point IDs are the audit's.
+maturity for the run-up to launch. Point IDs are the audit's. Open items are under **Open**.
+
+## Open
+
+A new deferred item goes here and moves to its dated section when it is ticked.
+
+- [ ] **AGT-14** Replay stored manager turns with thumbs as labels. Labels since 30 October 2026: Platform → AI counts the owners' thumbs per AI manager prompt version (`managerRatingsByVersion()`, counts only, never a conversation's words), beside the eval runs, so a new version is compared with
+      the last by the people who use it; replaying rated turns against a new prompt remains. Done (D391): the prompts are versioned (`promptVersions()`, kept with
+      every AI manager and chat answer and eval run) and the evals run in CI against a recorded model (`agent-eval-replay.int.test.ts`
+      replays `src/data/agent-eval-recording.json`, a run downloaded from Platform → AI; the gate is live once the first recording is kept).
+- [ ] **REL-04** Run the first drill. Point-in-time recovery is off by the owner's decision (25 October 2026: daily backups, RPO up to
+      24 hours, revisit at launch); `docs/runbooks/restore.md` has the targets (RTO 1 hour proposed), the copy's scheduled jobs as the
+      first step, the replay of Stripe, Mollie, carriers and emails, and `scripts/restore-check.mjs` for the checks. Still to do: the drill
+      itself (lifts the audit's only gating cap) and a daily copy of `product-media`, `documents` and `digital-files` to a second EU bucket.
+- [ ] **REG-06, REG-07, REG-08** Sign the pending DPAs, move the platform's AI to the EU path, an AI Act note; tell customers about tone
+      scoring. Written as drafts for the owner's and a lawyer's review (28 October 2026): the threat model (`docs/security.md`, SEC-01),
+      the breach runbook (`docs/runbooks/breach.md`) and the DPIA for the AI features (`docs/dpia-ai.md`), whose findings are still open:
+      a shopper's erasure does not reach the AI manager's conversations. Done in code (D391): those conversations are kept 12 months after
+      each message or the owner's own period, and the chat tells customers when their tone is read and conversations summarised, the
+      support settings page telling the owner.
+- [ ] **REG-02** Legal review of the platform's terms, privacy notice and DPA. Published 30 October 2026 (D408, after the PSI re-score
+      found none of them on production): written from the business details (all filled in, no placeholders) in English and Norwegian by
+      the `platform_legal_pages` drill, and linked from the theme footer beside Cookies. A person's review is what is left.
+- [ ] **ACC-09, UX-12** A recorded manual screen-reader pass of checkout, the builder and the inbox; WebKit in the storefront e2e.
+      WebKit since 30 October 2026: CI's e2e job runs the store's pages, search, the cookie notice, withdrawal, the cart, the
+      shopper's account and the All products page in Safari's engine too (`webkit` project, `WEBKIT_SPECS` in `playwright.config.ts`,
+      32 tests), through HTTPS (`e2e/fixtures/https-proxy.mjs`, a certificate made for the run): a production build sets its cookies
+      `Secure`, which WebKit refuses on `http://localhost`. The screen-reader pass remains a person's.
+- [ ] **SEC-05, SEC-07 (4)** Enforced nonce CSP on `/admin`, then the storefront; `frame-ancestors` on storefront and platform pages; HSTS
+      `includeSubDomains` once every subdomain is confirmed HTTPS.
+      `frame-ancestors` done 30 October 2026: every path sends `frame-ancestors 'self'` (and the theme store's host when it has one,
+      `baseRouteHeaders()`); the pay routes keep `'none'`. Not done, and why: Next's guide (`content-security-policy.md`) says a nonce needs
+      every page dynamically rendered and that partial prerendering, which `cacheComponents` gives the admin's shells, is incompatible
+      with it; the alternative it names, SRI hashes, is experimental. Enforcing it means giving up the admin's prerendered shells or
+      trying SRI on a preview first: a decision, not a quick fix. HSTS `includeSubDomains` waits for the owner to confirm every subdomain
+      of `kaizenaflow.com` serves HTTPS.
+      Looked at again 1 November 2026, against a production build: SRI cannot take `'unsafe-inline'` away either. An admin shell carries
+      three inline scripts (the admin's own bootstrap, React's `$RT` line and Turbopack's chunk list, which differs per route), and every
+      streamed part adds inline scripts whose content differs per request (the page's data, `self.__next_f.push`, and React's `$RC`
+      calls); SRI puts hashes only on scripts loaded from files, and no hash can name a per-request script. So the choice is a nonce with
+      the admin rendered per request (losing its prerendered shells), or keeping `'unsafe-inline'`. Enforcing only the origins (the pay
+      routes' form) has a cost found the same day: the HTML component (D91) draws the owner's HTML in a `srcdoc` frame, which inherits the
+      page's policy, so a widget with a script from elsewhere would stop working in the builder's canvas and the admin's previews (the
+      live site keeps it, being Report-Only). Doing that first needs the frame served from an address of its own. Both are the owner's to
+      choose.
+- [ ] **AST-09, AST-01, AGT-14 (6)** An eval that measures the model: payloads the filter does not catch, several runs per model, a model
+      save gated on a pass, the replay failing on a changed model or tool description.
+      Tool descriptions done 30 October 2026: every recording carries `toolsVersion()` (a hash of each tool's name, description and
+      parameters, `src/server/agent-eval.ts`), and CI's replay fails when the tools changed since it was recorded. The recording in the
+      repository predates it and is not held to it; the next run on Platform → AI carries it. Left: new payloads, several runs per
+      model and the gate on a model save, which need live runs.
+- [ ] **REL-09, REL-02, DATA-03 (7)** Event-arrival checks, the `webhooks` drill on a schedule, an outside probe.
+      Code's part done 30 October 2026: the status page's Payments probe, every five minutes, now also fails on a Stripe endpoint that
+      sends somewhere other than this site (the `webhooks` drill's check, so it runs on the probe's schedule) and on silence: two or
+      more payments taken in six hours with no Stripe event received in them (`stripeSilent()`, `src/lib/status.ts`). Two failed checks
+      email the platform admins, as before. Left, the owner's: an outside probe (an EU uptime monitor on `/api/health` and `/status`),
+      since the status page is checked from inside its own functions. Since 16 November 2026 (D672, `docs/100-day-challenge.md` F3) the
+      probe has an address of its own for the scheduler: `/api/health/cron` answers 503 when a scheduled route has gone quiet; the
+      monitor itself is still the owner's to set up.
+- [ ] **REG-02** The platform's notice and terms name the AI reading DSA notices and screening listings; sign-up links and records them.
+      Sign-up's part done 31 October 2026: a sentence under the button links the terms and the privacy notice (en, nb), and a request sent
+      from the form keeps `terms_accepted_at` and `terms_version` (the published terms page's time of publishing; migration
+      `access_requests_terms`, `access-emails.int.test.ts`). The text written 2 November 2026 (fe0a7763: terms section 7, the privacy notice's purposes, retention and automated decisions, and `/report`; published when an admin presses *Write the legal pages* with overwrite). Left: the owner's review
+      of that text.
+- [ ] **REG-11 (C2PA)** Content Credentials on AI pictures need a signing certificate from a trust-list issuer, which only the owner can
+      buy and hold; the pictures already carry the IPTC `trainedAlgorithmicMedia` mark and `made_by` in the library (D349). Left to the
+      owner.
+- [ ] **REL-06** The seven cron routes that work after answering, recorded in the job ledger as the Dream Factory's is.
+- [ ] **PERF-01** The admin's p75 LCP (3.93 s): cut the shared scripts, the English fallback first. The English fallback is out (10 November
+      2026, D540): each area's English is fetched only where a page did not hand it down, which a signed-in test now fails on; every admin
+      screen's first scripts about 1.1 MB smaller (home 2.46 to 1.28 MB, the builder 4.39 to 3.34 MB). Left: read the admin's p75 again
+      from the speed beacon once a month of loads is in, and tick this when it is under 2.5 s.
+      13 November 2026 (bloat review step 0.9): the Supabase client, zod, the builder's English and sign-in's English left the
+      signed-in frame; home 1.28 to 0.78 MB, the builder 3.34 to 3.14 MB, `/admin/[store]` 1,194,862 to 682,999 bytes in the build's
+      statistics (`docs/performance.md`). Still open: the p75 from the beacon.
 
 ## Decided
 
@@ -58,9 +132,6 @@ maturity for the run-up to launch. Point IDs are the audit's.
       builds, pictures and page looks run as whoever asked, so the autopilot's monthly budget counts everything it causes; a call no price
       covers stops it while it has a limit; broadcasts are never automatic and emails to customers at most `customerEmailsPerWeek`
       (default 5) a week; AI answers by email are marked as the AI's; D334.
-- [ ] **AGT-14** Replay stored manager turns with thumbs as labels. Labels since 30 October 2026: Platform → AI counts the owners' thumbs per AI manager prompt version (`managerRatingsByVersion()`, counts only, never a conversation's words), beside the eval runs, so a new version is compared with the last by the people who use it; replaying rated turns against a new prompt remains. Done (D391): the prompts are versioned (`promptVersions()`, kept with
-      every AI manager and chat answer and eval run) and the evals run in CI against a recorded model (`agent-eval-replay.int.test.ts`
-      replays `src/data/agent-eval-recording.json`, a run downloaded from Platform → AI; the gate is live once the first recording is kept).
 - [x] **AGT-04, AGT-11** The AI manager can start an A/B test at a time (`start_experiment` with `at`) and keep follow-ups
       (`follow_up`, daily or weekly too, which also covers a weekly "what needs a look"); D318.
 - [x] **AGT-04** Turns started by events: the order rule action *Ask the AI manager* queues a follow-up for the paid order in the name of
@@ -113,19 +184,6 @@ maturity for the run-up to launch. Point IDs are the audit's.
 
 ## Leave for the launch run-up
 
-- [ ] **REL-04** Run the first drill. Point-in-time recovery is off by the owner's decision (25 October 2026: daily backups, RPO up to
-      24 hours, revisit at launch); `docs/runbooks/restore.md` has the targets (RTO 1 hour proposed), the copy's scheduled jobs as the
-      first step, the replay of Stripe, Mollie, carriers and emails, and `scripts/restore-check.mjs` for the checks. Still to do: the drill
-      itself (lifts the audit's only gating cap) and a daily copy of `product-media`, `documents` and `digital-files` to a second EU bucket.
-- [ ] **REG-06, REG-07, REG-08** Sign the pending DPAs, move the platform's AI to the EU path, an AI Act note; tell customers about tone
-      scoring. Written as drafts for the owner's and a lawyer's review (28 October 2026): the threat model (`docs/security.md`, SEC-01),
-      the breach runbook (`docs/runbooks/breach.md`) and the DPIA for the AI features (`docs/dpia-ai.md`), whose findings are still open:
-      a shopper's erasure does not reach the AI manager's conversations. Done in code (D391): those conversations are kept 12 months after
-      each message or the owner's own period, and the chat tells customers when their tone is read and conversations summarised, the
-      support settings page telling the owner.
-- [ ] **REG-02** Legal review of the platform's terms, privacy notice and DPA. Published 30 October 2026 (D408, after the PSI re-score
-      found none of them on production): written from the business details (all filled in, no placeholders) in English and Norwegian by
-      the `platform_legal_pages` drill, and linked from the theme footer beside Cookies. A person's review is what is left.
 - [x] **REG-03, DATA-05** Owner and staff account erasure; a whole-store export. Built 28 October 2026 (D377): Your account → *Delete
       your account* (`eraseOwnAccount()` in `src/server/account-erasure.ts`: the account made anonymous in place, its memberships, the AI
       manager's conversations, memories, notices, skills and follow-ups, devices, recovery codes and staff emails gone, its applications
@@ -134,15 +192,27 @@ maturity for the run-up to launch. Point IDs are the audit's.
       the website, look and settings as one JSON file, never a secret or a person, the owner's), beside the CSV files.
 - [x] **REL-09, PERF-01, PERF-02, PERF-11** Status page and SLOs; real-user vitals; a Dublin-side measurement of `/admin`; per-route
       bundle budgets. Real-user vitals of Kaizena Flow's own site and the admin are measured (D390, Platform → Usage and limits); the
-      status page is D360; its SLOs since 30 October 2026 (each part's objective over 30 days from the same checks, `SLO_TARGETS` and `sloOf()` in `src/lib/status.ts`: 99.9 % for stores, sign-in and payments, 99.5 % for email and background work, shown with the minutes of failed checks still allowed); per-route budgets since 30 October 2026 (`e2e/performance.spec.ts` `FIRST_SCRIPTS_BUDGETS`: the product page, Kaizena Flow's front page, sign-up, status, sign-in and forgot password, beside the front page's), set after measuring them found the signed-out pages loading the admin's whole English text (2.0 to 2.1 MB of first scripts, now 0.71 to 0.84 MB): `ActionForm`, `PasswordField` and the sign-in panels read their words through `admin-text-context.tsx` (`useCommonText()`, `useSignInText()`), whose provider carries no catalogue. A Dublin-side measurement of `/admin` since 30 October 2026: the status checks' website probe also fetches `/admin/sign-in` from the functions' region (Dublin) to its last byte and keeps the time in `status_checks.duration_ms` (never a reason to call the website down); Platform → Usage and limits shows the median and slowest 5 % over 7 days (`adminFromDublin()`).
+      status page is D360; its SLOs since 30 October 2026 (each part's objective over 30 days from the same checks, `SLO_TARGETS`
+      and `sloOf()` in `src/lib/status.ts`: 99.9 % for stores, sign-in and payments, 99.5 % for email and background work, shown
+      with the minutes of failed checks still allowed); per-route budgets since 30 October 2026 (`e2e/performance.spec.ts`
+      `FIRST_SCRIPTS_BUDGETS`: the product page, Kaizena Flow's front page, sign-up, status, sign-in and forgot password, beside
+      the front page's), set after measuring them found the signed-out pages loading the admin's whole English text (2.0 to 2.1 MB
+      of first scripts, now 0.71 to 0.84 MB): `ActionForm`, `PasswordField` and the sign-in panels read their words through
+      `admin-text-context.tsx` (`useCommonText()`, `useSignInText()`), whose provider carries no catalogue. A Dublin-side
+      measurement of `/admin` since 30 October 2026: the status checks' website probe also fetches `/admin/sign-in` from the
+      functions' region (Dublin) to its last byte and keeps the time in `status_checks.duration_ms` (never a reason to call the
+      website down); Platform → Usage and limits shows the median and slowest 5 % over 7 days (`adminFromDublin()`).
 - [x] **SEC-02** Leaked-password protection is on (Supabase Auth, the owner, 25 October 2026), and the admin's password sign-in has
       its own limit per email: 10 wrong tries in 15 minutes stop it for that address, counted alike for every address under a keyed
       hash (`src/server/sign-in-limit.ts`); a sign-in link still works.
 - [x] **SEC-05, SEC-10, SEC-11** Nonce-based CSP on admin and storefront (Report-Only first); budgets on `/api/consent` and
-      `/api/ab/*`; logging failed sign-ins and permission denials. Done (D389): a site-wide `Content-Security-Policy-Report-Only` (`siteReportOnlyCsp()`, without a nonce, which the prerendered pages cannot carry) reporting to `/api/csp-report`, counted as `csp.violation` log lines with the directive, the blocked origin and the area only; `takeBudget()` on `/api/consent` (`consent`) and `/api/ab/assign` (`ab`); `admin_sign_in.failed`, `admin_sign_in.locked`, `admin_sign_in.two_step_failed` and `auth.permission_refused` log lines with ids only. Enforcing it waits for what the reports show.
+      `/api/ab/*`; logging failed sign-ins and permission denials. Done (D389): a site-wide `Content-Security-Policy-Report-Only`
+      (`siteReportOnlyCsp()`, without a nonce, which the prerendered pages cannot carry) reporting to `/api/csp-report`, counted
+      as `csp.violation` log lines with the directive, the blocked origin and the area only; `takeBudget()` on `/api/consent`
+      (`consent`) and `/api/ab/assign` (`ab`); `admin_sign_in.failed`, `admin_sign_in.locked`, `admin_sign_in.two_step_failed` and
+      `auth.permission_refused` log lines with ids only. Enforcing it waits for what the reports show.
 - [x] **SEC (advisor)** `public.rls_auto_enable()`: EXECUTE revoked from PUBLIC, `anon` and `authenticated` (migration
       `revoke_rls_auto_enable`; the event trigger still fires, tested).
-- [ ] **ACC-09, UX-12** A recorded manual screen-reader pass of checkout, the builder and the inbox; WebKit in the storefront e2e. WebKit since 30 October 2026: CI's e2e job runs the store's pages, search, the cookie notice, withdrawal, the cart, the shopper's account and the All products page in Safari's engine too (`webkit` project, `WEBKIT_SPECS` in `playwright.config.ts`, 32 tests), through HTTPS (`e2e/fixtures/https-proxy.mjs`, a certificate made for the run): a production build sets its cookies `Secure`, which WebKit refuses on `http://localhost`. The screen-reader pass remains a person's.
 
 ## From the re-score of 2026-10-30
 
@@ -250,35 +320,6 @@ stay in the standing document's *What comes next*.
 - [x] **SEC-06 (3)** Secret-box key id, a rotation runbook, a gift-card hash key of its own. Done 30 October 2026 (D410): `v2.<kid>.…`,
       `SETTINGS_ENCRYPTION_KEY_PREVIOUS` read during a rotation, `reencryptSecrets()` in the dispatcher, `GIFT_CARD_HASH_KEY` and
       `RECOVERY_CODE_HASH_KEY` (`scripts/hash-keys.mjs`), `docs/runbooks/key-rotation.md`. The owner's part: set the two hash keys once.
-- [ ] **SEC-05, SEC-07 (4)** Enforced nonce CSP on `/admin`, then the storefront; `frame-ancestors` on storefront and platform pages; HSTS
-      `includeSubDomains` once every subdomain is confirmed HTTPS.
-      `frame-ancestors` done 30 October 2026: every path sends `frame-ancestors 'self'` (and the theme store's host when it has one,
-      `baseRouteHeaders()`); the pay routes keep `'none'`. Not done, and why: Next's guide (`content-security-policy.md`) says a nonce needs
-      every page dynamically rendered and that partial prerendering, which `cacheComponents` gives the admin's shells, is incompatible
-      with it; the alternative it names, SRI hashes, is experimental. Enforcing it means giving up the admin's prerendered shells or
-      trying SRI on a preview first: a decision, not a quick fix. HSTS `includeSubDomains` waits for the owner to confirm every subdomain
-      of `kaizenaflow.com` serves HTTPS.
-      Looked at again 1 November 2026, against a production build: SRI cannot take `'unsafe-inline'` away either. An admin shell carries
-      three inline scripts (the admin's own bootstrap, React's `$RT` line and Turbopack's chunk list, which differs per route), and every
-      streamed part adds inline scripts whose content differs per request (the page's data, `self.__next_f.push`, and React's `$RC`
-      calls); SRI puts hashes only on scripts loaded from files, and no hash can name a per-request script. So the choice is a nonce with
-      the admin rendered per request (losing its prerendered shells), or keeping `'unsafe-inline'`. Enforcing only the origins (the pay
-      routes' form) has a cost found the same day: the HTML component (D91) draws the owner's HTML in a `srcdoc` frame, which inherits the
-      page's policy, so a widget with a script from elsewhere would stop working in the builder's canvas and the admin's previews (the
-      live site keeps it, being Report-Only). Doing that first needs the frame served from an address of its own. Both are the owner's to
-      choose.
-- [ ] **AST-09, AST-01, AGT-14 (6)** An eval that measures the model: payloads the filter does not catch, several runs per model, a model
-      save gated on a pass, the replay failing on a changed model or tool description.
-      Tool descriptions done 30 October 2026: every recording carries `toolsVersion()` (a hash of each tool's name, description and
-      parameters, `src/server/agent-eval.ts`), and CI's replay fails when the tools changed since it was recorded. The recording in the
-      repository predates it and is not held to it; the next run on Platform → AI carries it. Left: new payloads, several runs per
-      model and the gate on a model save, which need live runs.
-- [ ] **REL-09, REL-02, DATA-03 (7)** Event-arrival checks, the `webhooks` drill on a schedule, an outside probe.
-      Code's part done 30 October 2026: the status page's Payments probe, every five minutes, now also fails on a Stripe endpoint that
-      sends somewhere other than this site (the `webhooks` drill's check, so it runs on the probe's schedule) and on silence: two or
-      more payments taken in six hours with no Stripe event received in them (`stripeSilent()`, `src/lib/status.ts`). Two failed checks
-      email the platform admins, as before. Left, the owner's: an outside probe (an EU uptime monitor on `/api/health` and `/status`),
-      since the status page is checked from inside its own functions.
 - [x] **CODE-03 (8)** The HUF money test that fails outside CI. Done 30 October 2026: it was the runtime, not the test. ICU 77 (Node
       22.22) shows HUF with two decimals where CI's showed none, so a price looked different by server; `formatMoney()` fixes whole forints
       (`DISPLAY_DIGITS`). The same data made DAC7's `decimalAmount()` print HUF's hundredths as forints on the older runtime, and the price
@@ -350,10 +391,6 @@ The re-score ([psi-2026-10-31.md](psi-2026-10-31.md)) put the overall at 78.3 (8
       (`aiCheckDue()`), objective 95 %, alerting platform admins after two failed checks as every part does (1 November 2026).
 - [x] **AST-09, AGT-14** Record the eval again on Platform → AI so the replay's tool check is in force; add cases for DSA notices and
       the Dream Factory brief. Done: recorded 2 November 2026 on Platform → AI's model (gpt-4.1-mini, 17 of 17, run `9a725030`) after the filter took out lines addressed to a reviewer or a "system override" and the brief stopped guessing the business's country (683e9a13); the recording carries `tools` and is `src/data/agent-eval-recording.json`.
-- [ ] **REG-02** The platform's notice and terms name the AI reading DSA notices and screening listings; sign-up links and records them.
-      Sign-up's part done 31 October 2026: a sentence under the button links the terms and the privacy notice (en, nb), and a request sent
-      from the form keeps `terms_accepted_at` and `terms_version` (the published terms page's time of publishing; migration
-      `access_requests_terms`, `access-emails.int.test.ts`). The text written 2 November 2026 (fe0a7763: terms section 7, the privacy notice's purposes, retention and automated decisions, and `/report`; published when an admin presses *Write the legal pages* with overwrite). Left: the owner's review of that text.
 - [x] **PERF-01** The admin's real p75 from signed-in routes. Done 31 October 2026 (`docs/performance.md`, *The admin as people use
       it*): from the admin's own speed beacon, 52 signed-in loads: LCP 3.93 s, INP 136 ms, CLS 0.026, TTFB 321 ms at p75; LCP is the one
       over Google's "good", and the editors and settings screens are where. First-scripts budgets for seven signed-in screens done the same
@@ -443,9 +480,6 @@ The re-score ([psi-2026-10-31.md](psi-2026-10-31.md)) put the overall at 78.3 (8
 - [x] **CODE-06** `page-builder.tsx` split, with no change in behaviour: its settings fields into `page-builder-fields.tsx` (about
       2,000 lines) and its icons into `page-builder-icons.tsx`; the builder goes from 8,681 lines to about 6,030. `product-editor.tsx`
       remains.
-- [ ] **REG-11 (C2PA)** Content Credentials on AI pictures need a signing certificate from a trust-list issuer, which only the owner can
-      buy and hold; the pictures already carry the IPTC `trainedAlgorithmicMedia` mark and `made_by` in the library (D349). Left to the
-      owner.
 
 ## From the re-score of 2026-11-01
 
@@ -474,16 +508,8 @@ The re-score ([psi-2026-11-01.md](psi-2026-11-01.md)) put the overall at 80.0 (8
       quietly, with no receipt, no admin email and no AI reading at once (`budgetRoom()` says which budget was passed;
       `submitContentReport(…, { quiet })`); the platform admins get one email that hour (`platform.content_report_flood`), and the
       dispatcher's `contentModeration` job reads the quiet ones a few at a time (`content-reports.int.test.ts`).
-- [ ] **REL-06** The seven cron routes that work after answering, recorded in the job ledger as the Dream Factory's is.
 - [x] **SEC-08, CODE-01** The six red Dependabot pull requests (TypeScript 6 and opentype.js 2 break the build). Done 2 November 2026:
       the grouped minor and patch updates (Next.js 16.4.3, React 19.3.1, axe-core 4.14), motion 14, unpdf 2 and the Actions update merged
       green; opentype.js 2 (named exports, no default: `font-outlines.ts` imports `parse` and `Font`) and TypeScript 6 (two `??` whose right
       side could never be reached) upgraded on main; Vercel no longer builds Dependabot's branches (the preview has no database).
-- [ ] **PERF-01** The admin's p75 LCP (3.93 s): cut the shared scripts, the English fallback first. The English fallback is out (10 November
-      2026, D540): each area's English is fetched only where a page did not hand it down, which a signed-in test now fails on; every admin
-      screen's first scripts about 1.1 MB smaller (home 2.46 to 1.28 MB, the builder 4.39 to 3.34 MB). Left: read the admin's p75 again
-      from the speed beacon once a month of loads is in, and tick this when it is under 2.5 s.
-      13 November 2026 (bloat review step 0.9): the Supabase client, zod, the builder's English and sign-in's English left the
-      signed-in frame; home 1.28 to 0.78 MB, the builder 3.34 to 3.14 MB, `/admin/[store]` 1,194,862 to 682,999 bytes in the build's
-      statistics (`docs/performance.md`). Still open: the p75 from the beacon.
 - [x] **AST-09, AGT-14** Record the eval again with DSA and Dream Factory cases, its recording carrying `tools`. Done: recorded 2 November 2026 on Platform → AI's model (gpt-4.1-mini, 17 of 17, run `9a725030`) after the filter took out lines addressed to a reviewer or a "system override" and the brief stopped guessing the business's country (683e9a13); the recording carries `tools` and is `src/data/agent-eval-recording.json`.

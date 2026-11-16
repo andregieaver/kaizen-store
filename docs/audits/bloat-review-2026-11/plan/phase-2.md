@@ -1,33 +1,66 @@
 # Phase 2: Load on demand
 
-Part of `docs/audits/bloat-review-2026-11.md`: its Progress table says where each step stands. **Goal:** The structural half: each page, function, document and AI call loads what it uses, when it uses it. Before opening is the cheapest time for it, and phase 1's budgets show each step as a number that falls. Order where it matters: 2.2 before 2.3, 2.4 before 2.5, 2.14 before 2.15, 2.16 before 2.17 and 2.18, 2.20 before 2.35, 2.36 before 2.37, 2.27 and 2.29 before 2.30, 1.21 before 2.11, 2.11 before 2.49, 2.25 and 2.26 before 2.50, and 2.9 and 2.22 before 2.47. Step 2.1 is first because it only waits for the owner's yes. **A person will notice:** A store page arrives as a static file with nothing in it twice. A product view asks the database for stock and nothing else. A publish redraws one page, not the whole store. Admin screens hand the browser only the words they show, and the builder paints before its editors load. The AI manager answers on a third of the tokens. With the owner's yes, an agent session starts with a quarter of today's standing rules.
+Part of `docs/audits/bloat-review-2026-11.md`: its Progress table says where each step stands. **Goal:** The structural half: each
+page, function, document and AI call loads what it uses, when it uses it. Before opening is the cheapest time for it, and phase
+1's budgets show each step as a number that falls. Order where it matters: 2.2 before 2.3, 2.4 before 2.5, 2.14 before 2.15, 2.16
+before 2.17 and 2.18, 2.20 before 2.35, 2.36 before 2.37, 2.27 and 2.29 before 2.30, 1.21 before 2.11, 2.11 before 2.49, 2.25 and
+2.26 before 2.50, and 2.9 and 2.22 before 2.47. Step 2.1 is first because it only waits for the owner's yes. **A person will
+notice:** A store page arrives as a static file with nothing in it twice. A product view asks the database for stock and nothing
+else. A publish redraws one page, not the whole store. Admin screens hand the browser only the words they show, and the builder
+paints before its editors load. The AI manager answers on a third of the tokens. With the owner's yes, an agent session starts
+with a quarter of today's standing rules.
 
 Each step names the findings it closes; a finding's own file has the evidence, the fix in detail, and the tests and rules that change with it.
 
 ## 2.1 Leave a map in CLAUDE.md, and bring the always-loaded core under 10.5 KB
 
-Every session and subagent loads CLAUDE.md's 295-line feature index (43,361 bytes in all), of which a change needs two to four lines. Replace it with a map of the seven rule files and a three-line look-up, and change src/lib/rules-index.test.ts so it no longer asks for a line per rule: that takes the file under 15 KB. Then move the database, e2e, typed-row and AI-eval how-to into .claude/rules files loaded by path, where a fresh session and a subagent are shown to receive them; otherwise they sit in docs/rules as rules read on demand. Every sentence that guards an action taken without opening a file stays in the core. The docs budget of step 1.1 then holds 10,500 bytes and 160 lines as a hard ceiling. The owner has said yes to both halves. It is the largest saving per agent session in the plan. The commit message lists each block that left CLAUDE.md and the file that now holds it, so the owner can read what changed in his instruction file.
+Every session and subagent loads CLAUDE.md's 295-line feature index (43,361 bytes in all), of which a change needs two to four
+lines. Replace it with a map of the seven rule files and a three-line look-up, and change src/lib/rules-index.test.ts so it no
+longer asks for a line per rule: that takes the file under 15 KB. Then move the database, e2e, typed-row and AI-eval how-to into
+.claude/rules files loaded by path, where a fresh session and a subagent are shown to receive them; otherwise they sit in
+docs/rules as rules read on demand. Every sentence that guards an action taken without opening a file stays in the core. The docs
+budget of step 1.1 then holds 10,500 bytes and 160 lines as a hard ceiling. The owner has said yes to both halves. It is the
+largest saving per agent session in the plan. The commit message lists each block that left CLAUDE.md and the file that now holds
+it, so the owner can read what changed in his instruction file.
 
 - **Closes:** [DC-1](../findings/written-rules/DC-1.md)
 - **Effort:** M. **Areas it moves:** The written rules.
 - **Done when:** wc -c -l CLAUDE.md prints under 10,500 bytes and 160 lines (43,361 and 448 today) with every never-sentence still in it, src/lib/rules-index.test.ts passes, a fresh session that opens src/db/client.ts can quote the database rule's first sentence, and the proof of path loading is also run in a subagent, or the text stays in docs/rules.
 - **Platform:** The rules cover stores and platform alike, and the map names the file that holds the platform's rules.
-- **Decided (the owner, 12 November: the recommended way):** Yes to both halves. The 295-line feature index leaves CLAUDE.md for a map of the seven rule files and a three-line look-up, and the database, e2e, typed-row and AI-eval how-to load only when their folders are opened; the critic says the rules area needs both for an A. Every never-sentence stays in the file. *Asked:* CLAUDE.md is your instruction file. First: may its 295-line feature index go, leaving a map of the seven rule files and a three-line look-up (44 KB to under 15 KB per session)? Second, and it can be declined on its own: may the database, e2e, typed-row and AI-eval how-to load only when those folders are opened (to under 10.5 KB)? Without the first yes the rules area cannot reach a B; without the second it stops short of an A, at the 15 KB ceiling.
+- **Decided (the owner, 12 November: the recommended way):** Yes to both halves. The 295-line feature index leaves CLAUDE.md for a
+  map of the seven rule files and a three-line look-up, and the database, e2e, typed-row and AI-eval how-to load only when their
+  folders are opened; the critic says the rules area needs both for an A. Every never-sentence stays in the file. *Asked:*
+  CLAUDE.md is your instruction file. First: may its 295-line feature index go, leaving a map of the seven rule files and a
+  three-line look-up (44 KB to under 15 KB per session)? Second, and it can be declined on its own: may the database, e2e,
+  typed-row and AI-eval how-to load only when those folders are opened (to under 10.5 KB)? Without the first yes the rules area
+  cannot reach a B; without the second it stops short of an A, at the 15 KB ceiling.
 - **To carry it out:** [steps/2.1.md](steps/2.1.md) (review)
 
 ## 2.2 Send the store's layout once
 
-The cart drawer's slot (@drawer) sits on the storefront's root layout, so every storefront document renders and ships the whole layout twice, with the store's 404 page inside: 35 rows and about 26 KB a document, and the theme's sheet three times. Move the slot off the root layout and read the cart count once per render. On a screen 768 px or wider the cart link then opens the cart page directly: no drawer rendered and thrown away, and no prefetch of it. This restructures the storefront's routes: the cart specs and the phone's drawer are the things to watch.
+The cart drawer's slot (@drawer) sits on the storefront's root layout, so every storefront document renders and ships the whole
+layout twice, with the store's 404 page inside: 35 rows and about 26 KB a document, and the theme's sheet three times. Move the
+slot off the root layout and read the cart count once per render. On a screen 768 px or wider the cart link then opens the cart
+page directly: no drawer rendered and thrown away, and no prefetch of it. This restructures the storefront's routes: the cart
+specs and the phone's drawer are the things to watch.
 
 - **Closes:** [SC-8](../findings/storefront-browser/SC-8.md), [PL-2](../findings/page-payload/PL-2.md), [PM-1](../findings/page-builder-model/PM-1.md), [CS-5](../findings/styles/CS-5.md), [SC-7](../findings/storefront-browser/SC-7.md), [PF-7](../findings/prefetching/PF-7.md), GAP-page-model-s6
 - **Effort:** M. **Areas it moves:** What a shopper's browser gets; The page builder's model and a built page; Styles.
-- **Done when:** The served /s/demo/no document opens one html element in its inline payload (two today), holds under 2,000 bytes of duplicate rows (26,534 today) and is under 112,000 bytes raw (138,523); /s/demo/no/om-oss is at most 82,000 bytes (110,415), lowered to 80,000 by step 2.3; and at 1280 px a press on the cart link makes one document request and no router request for /cart, with 0 router requests for the cart before the press; the html-element and duplicate-row assertions run on every budgeted document; all held in e2e/performance.spec.ts and e2e/cart.spec.ts.
+- **Done when:** The served /s/demo/no document opens one html element in its inline payload (two today), holds under 2,000 bytes
+  of duplicate rows (26,534 today) and is under 112,000 bytes raw (138,523); /s/demo/no/om-oss is at most 82,000 bytes (110,415),
+  lowered to 80,000 by step 2.3; and at 1280 px a press on the cart link makes one document request and no router request for
+  /cart, with 0 router requests for the cart before the press; the html-element and duplicate-row assertions run on every budgeted
+  document; all held in e2e/performance.spec.ts and e2e/cart.spec.ts.
 - **Platform:** Kaizena Flow's own store pages carry the same layout and lose the same second copy; / and /admin already send one.
 - **To carry it out:** [steps/2.2.md](steps/2.2.md) (review)
 
 ## 2.3 Draw each fixed style sheet once per document
 
-The 1,760-byte breakpoint sheet is drawn again with every row: 6 times on a three-row page, 9 to 13 on a launch theme's home. Take it out of each row's styles (src/components/part-styles.tsx) and let the layout draw it once. An admin preview that draws site rows draws its own through PreviewBreakpoints, held by a scan rule. Then draw one part sheet for all of a page's rows, with the theme layers read once per article. With step 2.2 in, each sheet is in a document twice, whatever the number of rows: once in the HTML and once in the payload.
+The 1,760-byte breakpoint sheet is drawn again with every row: 6 times on a three-row page, 9 to 13 on a launch theme's home. Take
+it out of each row's styles (src/components/part-styles.tsx) and let the layout draw it once. An admin preview that draws site
+rows draws its own through PreviewBreakpoints, held by a scan rule. Then draw one part sheet for all of a page's rows, with the
+theme layers read once per article. With step 2.2 in, each sheet is in a document twice, whatever the number of rows: once in the
+HTML and once in the payload.
 
 - **Closes:** [CS-4](../findings/styles/CS-4.md), [PM-7](../findings/page-builder-model/PM-7.md)
 - **Effort:** S. **Areas it moves:** Styles; The page builder's model and a built page.
@@ -47,7 +80,12 @@ Every prerendered store page is 'resuming': a render function runs on each view 
 
 ## 2.5 Give crawlers on Next's bot list the cached page
 
-Bing, Google's shop and ads crawlers and every link preview get a full render of every page, static ones included, because Next streams nothing to user agents on its bot list. Once step 2.4 makes pages whole static files and step 1.11 holds the title in the head, narrow htmlLimitedBots in next.config.ts to the link-preview fetchers, which never run scripts. A new no-script test reads the home, a product, a category and an article as Bingbot and finds the title, description, canonical, price and JSON-LD. After the deploy, check one product page in Bing Webmaster Tools and Google's Rich Results Test. After opening, count page runs by these user agents in Vercel's logs and write the share into docs/performance.md.
+Bing, Google's shop and ads crawlers and every link preview get a full render of every page, static ones included, because Next
+streams nothing to user agents on its bot list. Once step 2.4 makes pages whole static files and step 1.11 holds the title in the
+head, narrow htmlLimitedBots in next.config.ts to the link-preview fetchers, which never run scripts. A new no-script test reads
+the home, a product, a category and an article as Bingbot and finds the title, description, canonical, price and JSON-LD. After
+the deploy, check one product page in Bing Webmaster Tools and Google's Rich Results Test. After opening, count page runs by these
+user agents in Vercel's logs and write the share into docs/performance.md.
 
 - **Closes:** [CA-15](../findings/caching/CA-15.md)
 - **Effort:** S. **Areas it moves:** What the server loads and asks.
@@ -57,11 +95,19 @@ Bing, Google's shop and ads crawlers and every link preview get a full render of
 
 ## 2.6 Route every link through one wrapper with a stated policy
 
-947 links have no stated policy, and 400 files import next/link directly. PolicyLink (policy sight, intent or never; step 0.13 made its first form) makes header tools, the bottom bar, footers, menus and closed sub-menus fetch on intent. State the policy per group in docs/performance.md. A ratchet count, directLinks, only lets direct next/link imports fall, and a new file that imports it fails. The ratchet waits for this step because a new file needs the wrapper to import. The first Add to cart then asks again for at most 10 links, not 32.
+947 links have no stated policy, and 400 files import next/link directly. PolicyLink (policy sight, intent or never; step 0.13
+made its first form) makes header tools, the bottom bar, footers, menus and closed sub-menus fetch on intent. State the policy per
+group in docs/performance.md. A ratchet count, directLinks, only lets direct next/link imports fall, and a new file that imports
+it fails. The ratchet waits for this step because a new file needs the wrapper to import. The first Add to cart then asks again
+for at most 10 links, not 32.
 
 - **Closes:** [PF-3](../findings/prefetching/PF-3.md), [PF-8](../findings/prefetching/PF-8.md), [PF-12](../findings/prefetching/PF-12.md), [PF-10](../findings/prefetching/PF-10.md)
 - **Effort:** M. **Areas it moves:** What a shopper's browser gets; What an owner's browser gets.
-- **Done when:** e2e/prefetch.spec.ts passes with at most 6 router prefetch requests on the phone home, a product page, a content page and the cart, at the top and read to the footer (47 on the home today), at most 10 after the first add to cart (32), and pnpm test fails for a new file that imports next/link directly. It also holds the home at 1280 px at 8 router requests or fewer, and 0 for a sub-link before its top link is hovered. Once the admin's in-page links go through the policy link, e2e/signed-in/prefetch.spec.ts counts 0 router prefetches at rest on all eight admin screens of step 0.13.
+- **Done when:** e2e/prefetch.spec.ts passes with at most 6 router prefetch requests on the phone home, a product page, a content
+  page and the cart, at the top and read to the footer (47 on the home today), at most 10 after the first add to cart (32), and
+  pnpm test fails for a new file that imports next/link directly. It also holds the home at 1280 px at 8 router requests or fewer,
+  and 0 for a sub-link before its top link is hovered. Once the admin's in-page links go through the policy link,
+  e2e/signed-in/prefetch.spec.ts counts 0 router prefetches at rest on all eight admin screens of step 0.13.
 - **Platform:** The platform admin and Kaizena Flow's site use the same wrappers.
 - **To carry it out:** [steps/2.6.md](steps/2.6.md) (review)
 
@@ -77,13 +123,23 @@ A press on a built page's product tile, button or picture is a plain anchor: a w
 
 ## 2.8 Bound what a real listing fetches ahead, and decide partial prefetching by trial
 
-A real listing prefetches every product tile and up to six swatch links under each: about 96 requests for 48 products, and the test stores are too small to show it. Seed a 48-product category and bound it at 20 router requests read to the end, with swatches on intent. Run the partial-prefetching trial on the product page, the seeded listing, the store home and the admin's orders page, and write its table into docs/performance.md and the decision into docs/decisions.md: the first screen of tiles is fetched on sight and the rest on touch, unless the trial shows that one shared shell for all links to a route does clearly better; then the shell replaces it. The next major Next release forces the choice.
+A real listing prefetches every product tile and up to six swatch links under each: about 96 requests for 48 products, and the
+test stores are too small to show it. Seed a 48-product category and bound it at 20 router requests read to the end, with swatches
+on intent. Run the partial-prefetching trial on the product page, the seeded listing, the store home and the admin's orders page,
+and write its table into docs/performance.md and the decision into docs/decisions.md: the first screen of tiles is fetched on
+sight and the rest on touch, unless the trial shows that one shared shell for all links to a route does clearly better; then the
+shell replaces it. The next major Next release forces the choice.
 
 - **Closes:** [PF-13](../findings/prefetching/PF-13.md), [PL-5](../findings/page-payload/PL-5.md), [PF-9](../findings/prefetching/PF-9.md)
 - **Effort:** M. **Areas it moves:** What a shopper's browser gets; What an owner's browser gets.
 - **Done when:** e2e/prefetch.spec.ts holds the seeded 48-product category read to the end on a phone at no more than 20 router requests, and docs/performance.md holds the trial's before-and-after table with the decision recorded in docs/decisions.md.
 - **Platform:** The trial's fourth page is an admin page, so the choice is made for /admin/platform's lists too.
-- **Decided (the owner, 12 November: the recommended way):** Yes. On a full listing only the first screen of product tiles is fetched ahead on sight and the rest when touched, and on a computer the main menu's links wait for the pointer (step 2.6 sets that policy); the critic says the shopper's browser needs this for an A. The trial decides whether one shared product shell replaces the rule; without a clear gain the first-screen rule stands, since it needs no router setting. *Asked:* On a full listing, may only the first screen of product tiles be fetched ahead on sight, and the rest when touched (or all through one shared product shell)? A yes lets the shopper's browser reach an A.
+- **Decided (the owner, 12 November: the recommended way):** Yes. On a full listing only the first screen of product tiles is
+  fetched ahead on sight and the rest when touched, and on a computer the main menu's links wait for the pointer (step 2.6 sets
+  that policy); the critic says the shopper's browser needs this for an A. The trial decides whether one shared product shell
+  replaces the rule; without a clear gain the first-screen rule stands, since it needs no router setting. *Asked:* On a full
+  listing, may only the first screen of product tiles be fetched ahead on sight, and the rest when touched (or all through one
+  shared product shell)? A yes lets the shopper's browser reach an A.
 - **To carry it out:** [steps/2.8.md](steps/2.8.md) (review)
 
 ## 2.9 Let each working route load its own parts
@@ -108,13 +164,29 @@ A store page with a recommending grid downloads 650 KB more once recommendations
 
 ## 2.11 Give the storefront a stylesheet of its own
 
-One 183 KB sheet serves stores, the site, the docs and the admin: 28% of it styles only the admin, and 3,480 of the 5,931 files Tailwind reads can rename it though no public page draws them. Make two Tailwind entries: the site's reads the site's code and the 11 admin parts a public page imports, each named on a line of its own. The audiences script of step 1.23 then shows at most 15 KB raw of classes no store page can draw. Measure the build's peak before and after. Do it after step 1.21: the build has 0.8 GB of room and was killed once, a second Tailwind entry adds about 150 MB, and the way back (keep one sheet) would leave three styles measures short for good. A Tailwind class typed in a part's Advanced tab is not promised on the live site: the docs portal's article on the Advanced tab says that only classes styled by the owner's own CSS are promised, and the site's sheet keeps no list of utility names.
+One 183 KB sheet serves stores, the site, the docs and the admin: 28% of it styles only the admin, and 3,480 of the 5,931 files
+Tailwind reads can rename it though no public page draws them. Make two Tailwind entries: the site's reads the site's code and the
+11 admin parts a public page imports, each named on a line of its own. The audiences script of step 1.23 then shows at most 15 KB
+raw of classes no store page can draw. Measure the build's peak before and after. Do it after step 1.21: the build has 0.8 GB of
+room and was killed once, a second Tailwind entry adds about 150 MB, and the way back (keep one sheet) would leave three styles
+measures short for good. A Tailwind class typed in a part's Advanced tab is not promised on the live site: the docs portal's
+article on the Advanced tab says that only classes styled by the owner's own CSS are promised, and the site's sheet keeps no list
+of utility names.
 
 - **Closes:** [SC-5](../findings/storefront-browser/SC-5.md), [CS-1](../findings/styles/CS-1.md), [BN-12](../findings/client-bundles/BN-12.md), GAP-styles-s5
 - **Effort:** M. **Areas it moves:** Styles; What a shopper's browser gets; What an owner's browser gets.
-- **Done when:** The stylesheet that /s/demo/no links is at most 135,000 bytes raw and 20,600 Brotli (183,124 and 25,832 today) and the admin's two sheets at most 208,000 raw (204,207), with the budgets of step 1.3 lowered to them; src/lib/stylesheet-sources.scan.test.ts fails both ways, for a line no public page reaches and for an admin part a public page imports that has no line; stylesheet-audiences.mjs exits non-zero when a class only admin files name is in the site's sheet; and the build's peak before and after is in docs/build-memory.md (no more than about 150 MB higher). An article under content/docs carries the sentence on classes typed in the Advanced tab.
+- **Done when:** The stylesheet that /s/demo/no links is at most 135,000 bytes raw and 20,600 Brotli (183,124 and 25,832 today)
+  and the admin's two sheets at most 208,000 raw (204,207), with the budgets of step 1.3 lowered to them;
+  src/lib/stylesheet-sources.scan.test.ts fails both ways, for a line no public page reaches and for an admin part a public page
+  imports that has no line; stylesheet-audiences.mjs exits non-zero when a class only admin files name is in the site's sheet; and
+  the build's peak before and after is in docs/build-memory.md (no more than about 150 MB higher). An article under content/docs
+  carries the sentence on classes typed in the Advanced tab.
 - **Platform:** Kaizena Flow's public site and docs get the site's sheet; the admin, /admin/platform included, keeps its own two.
-- **Decided (the owner, 12 November: the recommended way):** The docs say it, and the site's sheet keeps no list of utility names. Only classes styled by the owner's own CSS are promised on the live site; a fixed list would add bytes to every store page for a few owners who type classes. *Asked:* After the split, a Tailwind class typed in a part's Advanced tab can show on the builder's canvas and not on the live site. Is it enough to say in the docs that only classes styled by the owner's own CSS are promised, or should the site's sheet keep a short fixed list of utility names owners may type?
+- **Decided (the owner, 12 November: the recommended way):** The docs say it, and the site's sheet keeps no list of utility names.
+  Only classes styled by the owner's own CSS are promised on the live site; a fixed list would add bytes to every store page for a
+  few owners who type classes. *Asked:* After the split, a Tailwind class typed in a part's Advanced tab can show on the builder's
+  canvas and not on the live site. Is it enough to say in the docs that only classes styled by the owner's own CSS are promised,
+  or should the site's sheet keep a short fixed list of utility names owners may type?
 - **To carry it out:** [steps/2.11.md](steps/2.11.md) (review)
 
 ## 2.12 Draw a listing's grid once and read its list once
@@ -139,11 +211,20 @@ An anonymous view of a prerendered product sends about 18 statements. One answer
 
 ## 2.14 Let a publish make only its own page stale
 
-One tag, pages:{store}, covers all of a store's pages, and 55 places refresh it: one publish makes all 261 built pages of the demo render again. Add page:{id} for reads of one page's document, so a change to a page's body makes that page's entries stale. A change other pages show (a title, an address, a header, a footer) stays store-wide. Cache a product layout once per store, not once per product. The alt-text job refreshes a store's tags once when its queue is empty, then only the pages that hold the picture.
+One tag, pages:{store}, covers all of a store's pages, and 55 places refresh it: one publish makes all 261 built pages of the demo
+render again. Add page:{id} for reads of one page's document, so a change to a page's body makes that page's entries stale. A
+change other pages show (a title, an address, a header, a footer) stays store-wide. Cache a product layout once per store, not
+once per product. The alt-text job refreshes a store's tags once when its queue is empty, then only the pages that hold the
+picture.
 
 - **Closes:** [PM-15](../findings/page-builder-model/PM-15.md), [PM-16](../findings/page-builder-model/PM-16.md), GAP-page-model-2, GAP-page-model-s3
 - **Effort:** M. **Areas it moves:** The page builder's model and a built page; What the server loads and asks.
-- **Done when:** An e2e in the signed-in suite publishes a change to the body of /om-oss: the home page and a product page then answer x-nextjs-cache: HIT, /om-oss shows the new words, and a title change reaches the home page's menu. The nine places that publish a body refresh the store-wide tag only for scope 'site', each held by a unit test. A unit test fails when the page index or a card's facts gains a field that listFacts() lacks. A unit test of the alt-text route sees at most one store-wide refresh across 10 runs (10 today). src/server/product-layouts.int.test.ts counts one read of a layout's document for two products. And the .meta reader of step 1.11 prints the tag of /om-oss's page on 3 of 261 entries.
+- **Done when:** An e2e in the signed-in suite publishes a change to the body of /om-oss: the home page and a product page then
+  answer x-nextjs-cache: HIT, /om-oss shows the new words, and a title change reaches the home page's menu. The nine places that
+  publish a body refresh the store-wide tag only for scope 'site', each held by a unit test. A unit test fails when the page index
+  or a card's facts gains a field that listFacts() lacks. A unit test of the alt-text route sees at most one store-wide refresh
+  across 10 runs (10 today). src/server/product-layouts.int.test.ts counts one read of a layout's document for two products. And
+  the .meta reader of step 1.11 prints the tag of /om-oss's page on 3 of 261 entries.
 - **Platform:** The platform's pages take page:{id} with a null owner.
 - **To carry it out:** [steps/2.14.md](steps/2.14.md) (strong)
 
@@ -169,11 +250,20 @@ A page's title, its titles by language and its remembered-modal flag live only i
 
 ## 2.17 Let page lists, pickers and grids open no document
 
-The admin's page lists, pickers and AI tools read two whole documents a page (the draft and the published copy) at 16 call sites. A grid of pages or articles reads whole documents to draw its cards. listPages() reads list fields from the columns of step 2.16 and pages at 100. A grid selects its cards' facts in SQL and fetches a document only for a row with neither an excerpt nor a description. The last readers of whole lists move too: Kaizena Flow's two static-params functions, the admin's search picker and the ten lines in src/server/seo.ts read the page index of step 0.24, and the feed reads the card facts for its newest 50 with the limit in SQL. The page lists among the six lists with no limit (code review, from step 4.4) get their limit here.
+The admin's page lists, pickers and AI tools read two whole documents a page (the draft and the published copy) at 16 call sites.
+A grid of pages or articles reads whole documents to draw its cards. listPages() reads list fields from the columns of step 2.16
+and pages at 100. A grid selects its cards' facts in SQL and fetches a document only for a row with neither an excerpt nor a
+description. The last readers of whole lists move too: Kaizena Flow's two static-params functions, the admin's search picker and
+the ten lines in src/server/seo.ts read the page index of step 0.24, and the feed reads the card facts for its newest 50 with the
+limit in SQL. The page lists among the six lists with no limit (code review, from step 4.4) get their limit here.
 
 - **Closes:** [AD-14](../findings/admin-server/AD-14.md), [PM-5](../findings/page-builder-model/PM-5.md), GAP-page-model-1, GAP-page-model-s1
 - **Effort:** M. **Areas it moves:** What the server loads and asks; The page builder's model and a built page; The database.
-- **Done when:** 'select id, slug, draft, published' is in src/server/pages.ts only inside getPageForEdit(), and an integration test draws a 24-article grid whose articles have excerpts and reads no published document; listPublishedPages is named on at most 3 lines (37 today); src/server/ratchet.baseline.json names every statement that selects draft or published for more than one row, each with its reason; and an int test on a store of 30 pages and 60 articles counts at most 3 page documents for a cold home, a built page and a product page, none for the blog's listing and at most 50 rows for the feed.
+- **Done when:** 'select id, slug, draft, published' is in src/server/pages.ts only inside getPageForEdit(), and an integration
+  test draws a 24-article grid whose articles have excerpts and reads no published document; listPublishedPages is named on at
+  most 3 lines (37 today); src/server/ratchet.baseline.json names every statement that selects draft or published for more than
+  one row, each with its reason; and an int test on a store of 30 pages and 60 articles counts at most 3 page documents for a cold
+  home, a built page and a product page, none for the blog's listing and at most 50 rows for the feed.
 - **Platform:** /admin/platform/pages and Kaizena Flow's blog grid read the columns too.
 - **To carry it out:** [steps/2.17.md](steps/2.17.md) (strong)
 
@@ -189,11 +279,23 @@ A cold frame asks about 20 statements, some one after another and one per option
 
 ## 2.19 Read nothing that grows with the catalogue, and read the cart and checkout in one wave
 
-No finding covers the catalogue's reads or a cart with lines and the checkout, so the plan brings code review steps 3.8 to 3.10 in with numbers. The front page's JSON-LD comes from a small cached read of handles, never the product summaries. Product metadata takes its market codes from getProduct(). A product has a tag of its own and lists share a lists tag, so saving one product refreshes those two and not the store's. The cart's and the checkout's independent reads start in one wave after the shopper is known. Two parts come here from step 4.4, because they grow with a store. The catalogue's listing calls a VAT function and an alt-text function once per product row, so a listing of 2,000 products scans commerce.countries 2,000 times: ask each VAT rate once and join the alt text. And the lists with no limit that are not page lists (those are step 2.17's) get a limit, an aggregate or a time bound.
+No finding covers the catalogue's reads or a cart with lines and the checkout, so the plan brings code review steps 3.8 to 3.10 in
+with numbers. The front page's JSON-LD comes from a small cached read of handles, never the product summaries. Product metadata
+takes its market codes from getProduct(). A product has a tag of its own and lists share a lists tag, so saving one product
+refreshes those two and not the store's. The cart's and the checkout's independent reads start in one wave after the shopper is
+known. Two parts come here from step 4.4, because they grow with a store. The catalogue's listing calls a VAT function and an
+alt-text function once per product row, so a listing of 2,000 products scans commerce.countries 2,000 times: ask each VAT rate
+once and join the alt text. And the lists with no limit that are not page lists (those are step 2.17's) get a limit, an aggregate
+or a time bound.
 
 - **Closes:** GAP-server-1, GAP-server-s7, [DQ-14](../findings/queries/DQ-14.md), [DQ-16](../findings/queries/DQ-16.md)
 - **Effort:** M. **Areas it moves:** What the server loads and asks; The database.
-- **Done when:** scripts/server-budget.mjs holds a cart with three lines and the checkout at the count left after these cuts, in at most two waves, and fails when one request sends the same statement with the same values twice: a trial second call of cartSummary() fails it. A cold home and product page of the 500-product store read no more rows than those of a 10-product store. A unit test shows saving one product refreshing its own tag and the lists tag only. On a database seeded with 2,000 products one listProducts() raises the scans of commerce.countries by at most 10 (at least 2,000 today), and src/server/list-limits.scan.test.ts finds a limit, an aggregate or a time bound on each of the six lists.
+- **Done when:** scripts/server-budget.mjs holds a cart with three lines and the checkout at the count left after these cuts, in
+  at most two waves, and fails when one request sends the same statement with the same values twice: a trial second call of
+  cartSummary() fails it. A cold home and product page of the 500-product store read no more rows than those of a 10-product
+  store. A unit test shows saving one product refreshing its own tag and the lists tag only. On a database seeded with 2,000
+  products one listProducts() raises the scans of commerce.countries by at most 10 (at least 2,000 today), and
+  src/server/list-limits.scan.test.ts finds a limit, an aggregate or a time bound on each of the six lists.
 - **Platform:** Kaizena Flow's store has plans, not a catalogue of goods; its front page reads through the same loaders.
 - **To carry it out:** [steps/2.19.md](steps/2.19.md) (strong)
 
@@ -239,7 +341,11 @@ The 13 MB product taxonomy is traced into every function, the health check inclu
 
 ## 2.24 Shrink the server-reference manifest
 
-Every cold function reads a 10.4 MB list of 81,027 server references before its first request: 80 to 91 ms on the review's machine. The cuts of phase 0 take about a seventh. Production cannot time a step that runs inside Next, so the step has no condition: scripts/route-budget.mjs (step 1.8) times Next's own loader on the built manifest in a fresh process and prints entries per route. Tag names get a leaf module that writers import, and the cached readers listed by more than 500 routes move to reader files that no writer imports, first the ones the admin shell reaches. Report the per-route cost to Next. Effort is M to L.
+Every cold function reads a 10.4 MB list of 81,027 server references before its first request: 80 to 91 ms on the review's
+machine. The cuts of phase 0 take about a seventh. Production cannot time a step that runs inside Next, so the step has no
+condition: scripts/route-budget.mjs (step 1.8) times Next's own loader on the built manifest in a fresh process and prints entries
+per route. Tag names get a leaf module that writers import, and the cached readers listed by more than 500 routes move to reader
+files that no writer imports, first the ones the admin shell reaches. Report the per-route cost to Next. Effort is M to L.
 
 - **Closes:** GAP-server-s4
 - **Effort:** L. **Areas it moves:** What the server loads and asks.
@@ -249,7 +355,12 @@ Every cold function reads a 10.4 MB list of 81,027 server references before its 
 
 ## 2.25 Load the admin's words by area on admin routes too
 
-Every admin page and action loads all 67 areas in both languages: 3.46 MB of catalogue source, where its code names a median of 15. Give every area its module and move the admin's adminText() calls by codemod (561 to 688 files), until src/lib/admin-text.ts holds no table of every area. Where a function took English words as a default, the words become a required argument. The 218 modules that import a catalogue file directly, for a constant or a fallback, are step 2.50's: this step's done-when is set at what its own codemod reaches. No third admin language is planned for the first half year, so this step and step 2.50 stay in phase 2; both land before any third language is added.
+Every admin page and action loads all 67 areas in both languages: 3.46 MB of catalogue source, where its code names a median
+of 15. Give every area its module and move the admin's adminText() calls by codemod (561 to 688 files), until
+src/lib/admin-text.ts holds no table of every area. Where a function took English words as a default, the words become a required
+argument. The 218 modules that import a catalogue file directly, for a constant or a fallback, are step 2.50's: this step's
+done-when is set at what its own codemod reaches. No third admin language is planned for the first half year, so this step and
+step 2.50 stay in phase 2; both land before any third language is added.
 
 - **Closes:** [SG-4](../findings/server-module-graph/SG-4.md)
 - **Effort:** L. **Areas it moves:** What the server loads and asks; Interface text.
@@ -270,11 +381,22 @@ Every admin page and action loads all 67 areas in both languages: 3.46 MB of cat
 
 ## 2.27 Hand each admin page only the words its parts read
 
-Admin documents hand whole areas of words to the browser: the product editor is handed 238 KB and reads about 79 KB, and every screen carries 34 KB of shell words and reads 12. Hand down typed cuts of the big areas, and the assistant's button apart from its chat. Then work down the words baseline of step 1.28, which lists all 188 sites: every site that hands over 50 KB, until it hands at most 1.25 times the groups its parts name. 'Read' here means named, counted from source in both languages; a share read at load could only be met by fetching a panel's words when it opens, which loses a press. The stewards' findings stop at the measured pages; the work-down over all 24 large sites is the added part an A needs.
+Admin documents hand whole areas of words to the browser: the product editor is handed 238 KB and reads about 79 KB, and every
+screen carries 34 KB of shell words and reads 12. Hand down typed cuts of the big areas, and the assistant's button apart from its
+chat. Then work down the words baseline of step 1.28, which lists all 188 sites: every site that hands over 50 KB, until it hands
+at most 1.25 times the groups its parts name. 'Read' here means named, counted from source in both languages; a share read at load
+could only be met by fetching a panel's words when it opens, which loses a press. The stewards' findings stop at the measured
+pages; the work-down over all 24 large sites is the added part an A needs.
 
 - **Closes:** [AC-4](../findings/admin-browser/AC-4.md), [PL-1](../findings/page-payload/PL-1.md), [TX-2](../findings/interface-text/TX-2.md), [PM-10](../findings/page-builder-model/PM-10.md), GAP-text-1
 - **Effort:** L. **Areas it moves:** What an owner's browser gets; Interface text; The page builder's model and a built page; What a shopper's browser gets.
-- **Done when:** In the words baseline of step 1.28 the five budgeted screens are handed at most 1.1 times the groups their parts name, no site that hands over 50 KB hands more than 1.25 times, no site hands an area that none of its parts names, and the list of parts that take a whole area holds only the builder's two. The browser's record of step 1.5 stays as a cross-check that may only rise. Shared words are at or under 15.5 KB in English and 16 KB in Norwegian (34.0 and 45.3 today); the store home's document is at most 140,000 characters (165,942), the product editor's under 290,000 bytes (426,497) and the builder's under 480,000 (585,943) with a texts object of at most 205,000 (276,922), which step 2.30 lowers to 445,000 and 130,000; and e2e/signed-in/admin-text-fallbacks.spec.ts reports no fallback.
+- **Done when:** In the words baseline of step 1.28 the five budgeted screens are handed at most 1.1 times the groups their parts
+  name, no site that hands over 50 KB hands more than 1.25 times, no site hands an area that none of its parts names, and the list
+  of parts that take a whole area holds only the builder's two. The browser's record of step 1.5 stays as a cross-check that may
+  only rise. Shared words are at or under 15.5 KB in English and 16 KB in Norwegian (34.0 and 45.3 today); the store home's
+  document is at most 140,000 characters (165,942), the product editor's under 290,000 bytes (426,497) and the builder's under
+  480,000 (585,943) with a texts object of at most 205,000 (276,922), which step 2.30 lowers to 445,000 and 130,000; and
+  e2e/signed-in/admin-text-fallbacks.spec.ts reports no fallback.
 - **Platform:** The platform admin's screens are in the words baseline, and its shell hands down the same cut words in both languages.
 - **To carry it out:** [steps/2.27.md](steps/2.27.md) (strong)
 
@@ -300,7 +422,13 @@ The page builder loads 3.3 MB of script before its first paint, the rich text ed
 
 ## 2.30 Load the builder's dialogs and each block's field form when they are opened
 
-The stewards' items stop at about 2.2 MB for the builder. The bar for an A is 1,800,000 bytes and no finding carries the last step, so the plan adds it. This is code review step 3.4 with a number, after its steps 3.1 and 3.2: next/dynamic for the template, saved-layout, translation, theme, dual-frame and find-and-replace dialogs, and one field module per block type that brings its own words. The words that travel with a dialog (150 to 200 KB) then leave the editor's document too. Before work starts, the step holds the cut simulation's table (the script is in the repo since step 0.1), summing to at least 310,000 bytes: the settings panel loaded when a part is first selected, the custom-fields form, the terms manager and the brand icon list. If the table sums to less, the builder's own split (code review step 3.1) joins the step.
+The stewards' items stop at about 2.2 MB for the builder. The bar for an A is 1,800,000 bytes and no finding carries the last
+step, so the plan adds it. This is code review step 3.4 with a number, after its steps 3.1 and 3.2: next/dynamic for the template,
+saved-layout, translation, theme, dual-frame and find-and-replace dialogs, and one field module per block type that brings its own
+words. The words that travel with a dialog (150 to 200 KB) then leave the editor's document too. Before work starts, the step
+holds the cut simulation's table (the script is in the repo since step 0.1), summing to at least 310,000 bytes: the settings panel
+loaded when a part is first selected, the custom-fields form, the terms manager and the brand icon list. If the table sums to
+less, the builder's own split (code review step 3.1) joins the step.
 
 - **Closes:** GAP-owner-browser-1, GAP-owner-browser-s2
 - **Effort:** L. **Areas it moves:** What an owner's browser gets; The page builder's model and a built page.
@@ -310,7 +438,11 @@ The stewards' items stop at about 2.2 MB for the builder. The bar for an A is 1,
 
 ## 2.31 Keep the session without the whole Supabase client
 
-After step 0.9 Supabase's client still loads on every admin screen once it is idle (259 KB). The stewards' items leave an idle store home near 930,000 bytes against a bar of 800,000, so the plan adds this step. Try two ways and keep one: the auth client alone with the same cookie storage (about 117 KB), or a small refresh route called before the token expires (0 KB; it changes the rule in docs/platform.md and how two tabs share a refresh token). Uploads keep importing the full client on the press. The by-idle budget of step 1.5 shows the result.
+After step 0.9 Supabase's client still loads on every admin screen once it is idle (259 KB). The stewards' items leave an idle
+store home near 930,000 bytes against a bar of 800,000, so the plan adds this step. Try two ways and keep one: the auth client
+alone with the same cookie storage (about 117 KB), or a small refresh route called before the token expires (0 KB; it changes the
+rule in docs/platform.md and how two tabs share a refresh token). Uploads keep importing the full client on the press. The by-idle
+budget of step 1.5 shows the result.
 
 - **Closes:** GAP-owner-browser-2
 - **Effort:** M. **Areas it moves:** What an owner's browser gets.
@@ -346,38 +478,81 @@ Every open admin tab asks for AI manager notices once a minute: 60 requests an h
 - **Effort:** S. **Areas it moves:** What an owner's browser gets; AI calls; What a shopper's browser gets; What the server loads and asks.
 - **Done when:** A case with a clock in e2e/signed-in/ai-manager-panel.spec.ts sees at most 2 requests to /admin/account/notices/feed in ten minutes from an untouched tab (10 today) and at most 6 in an hour (60).
 - **Platform:** The platform admin's badge is the same component.
-- **Decided (the owner, 12 November: the recommended way):** Yes. The badge in a tab nobody touches may be up to ten minutes late; it shows at once on the next click and stays at one minute while an approval waits. The critic says the owner's browser needs this for an A. *Asked:* May the notice badge in a tab nobody touches be up to ten minutes late (60 requests an hour become 6)? It shows at once on the next click, and stays at one minute while an approval waits. With a no the owner's browser's measure stays short of its bar: 60 requests an hour from each untouched tab grows with owners and is not a small tolerance.
+- **Decided (the owner, 12 November: the recommended way):** Yes. The badge in a tab nobody touches may be up to ten minutes late;
+  it shows at once on the next click and stays at one minute while an approval waits. The critic says the owner's browser needs
+  this for an A. *Asked:* May the notice badge in a tab nobody touches be up to ten minutes late (60 requests an hour become 6)?
+  It shows at once on the next click, and stays at one minute while an approval waits. With a no the owner's browser's measure
+  stays short of its bar: 60 requests an hour from each untouched tab grows with owners and is not a small tolerance.
 - **To carry it out:** [steps/2.34.md](steps/2.34.md) (cheap)
 
 ## 2.35 Answer a store's own domain without a deployment
 
-Every store domain is compiled into each deployment: 4 to 8 routing rules per domain against Vercel's cap of 2,048, of which the app's own routes take about 705, and a full production deploy per domain change. That is a ceiling near 270 stores with a domain; step 1.8 prints the count on every build. After step 2.20, look the host up when the request arrives and keep the answer in the proxy's short memory, so .next/routes-manifest.json is the same with 0 or 300 domains. It replaces decision P8 for own domains and is every store's front door: a mistake takes stores off the air where today it is caught at build. Land it in two pushes: first the lookup beside the compiled rules, then the rules' removal once CI's hosts job and a day in production show the lookup answering every active domain.
+Every store domain is compiled into each deployment: 4 to 8 routing rules per domain against Vercel's cap of 2,048, of which the
+app's own routes take about 705, and a full production deploy per domain change. That is a ceiling near 270 stores with a domain;
+step 1.8 prints the count on every build. After step 2.20, look the host up when the request arrives and keep the answer in the
+proxy's short memory, so .next/routes-manifest.json is the same with 0 or 300 domains. It replaces decision P8 for own domains and
+is every store's front door: a mistake takes stores off the air where today it is caught at build. Land it in two pushes: first
+the lookup beside the compiled rules, then the rules' removal once CI's hosts job and a day in production show the lookup
+answering every active domain.
 
 - **Closes:** [SF-13](../findings/server-functions/SF-13.md)
 - **Effort:** L. **Areas it moves:** What the server loads and asks.
 - **Done when:** In CI's hosts job a domain activated after the build serves its store's front page, and .next/routes-manifest.json holds the same number of redirects and rewrites whether the database has 0 or 300 active store domains.
 - **Platform:** kaizenaflow.com and the docs host stay compiled routes of the app.
-- **Decided (the owner, 12 November: the recommended way):** Yes. A store's own domain is looked up when the request arrives, in place of decision P8's compiled routing rules; the critic says the server area needs it for an A, and it lifts the ceiling of about 270 domains. It lands in two pushes so the compiled rules stay until the lookup is seen to answer. *Asked:* May a store's own domain be resolved at request time, replacing decision P8's compiled routing rules? If P8 stays, the ceiling still needs an answer before about 250 stores have a domain, and the server area stops at a B.
+- **Decided (the owner, 12 November: the recommended way):** Yes. A store's own domain is looked up when the request arrives, in
+  place of decision P8's compiled routing rules; the critic says the server area needs it for an A, and it lifts the ceiling of
+  about 270 domains. It lands in two pushes so the compiled rules stay until the lookup is seen to answer. *Asked:* May a store's
+  own domain be resolved at request time, replacing decision P8's compiled routing rules? If P8 stays, the ceiling still needs an
+  answer before about 250 stores have a domain, and the server area stops at a B.
 - **To carry it out:** [steps/2.35.md](steps/2.35.md) (strong)
 
 ## 2.36 Send the AI manager a lean default round
 
-Every AI manager call sends 124 tool definitions and a prompt that lists every playbook and the admin map: 161,661 characters whatever the question, up to 11 times a turn. This is code review step 3.18 with numbers: send the core tools, the page's group and the group a router picks from the question, with the rest one load_tools call away. The 17 plan, reminder and saved-skill tools are not carried on every round: they load when the talk turns to them or the store has a plan, goal or reminder alive. The groups are made here and once, taken from the admin map's sections: every area whose tools outside the core are over 12,000 characters has groups, orders included, and the router returns the group of the best-matching page from its first version, never a whole area. Also: list playbooks by feature; make no embedding request before the first model call for a person's few memories. Set the turn's ceiling again from the lean round in the same change: TURN_TOKENS_MAX at most 250,000 (400,000 today). A website's prompt loses at least 2,500 characters and an autopilot step's prompt loses the admin map. If this step and step 2.37 land together, one eval recording covers both. The eval cases of step 1.19 show whether the model still finds its tools.
+Every AI manager call sends 124 tool definitions and a prompt that lists every playbook and the admin map: 161,661 characters
+whatever the question, up to 11 times a turn. This is code review step 3.18 with numbers: send the core tools, the page's group
+and the group a router picks from the question, with the rest one load_tools call away. The 17 plan, reminder and saved-skill
+tools are not carried on every round: they load when the talk turns to them or the store has a plan, goal or reminder alive. The
+groups are made here and once, taken from the admin map's sections: every area whose tools outside the core are over 12,000
+characters has groups, orders included, and the router returns the group of the best-matching page from its first version, never a
+whole area. Also: list playbooks by feature; make no embedding request before the first model call for a person's few memories.
+Set the turn's ceiling again from the lean round in the same change: TURN_TOKENS_MAX at most 250,000 (400,000 today). A website's
+prompt loses at least 2,500 characters and an autopilot step's prompt loses the admin map. If this step and step 2.37 land
+together, one eval recording covers both. The eval cases of step 1.19 show whether the model still finds its tools.
 
 - **Closes:** [AI-1](../findings/ai-calls/AI-1.md), [AI-9](../findings/ai-calls/AI-9.md), [AI-11](../findings/ai-calls/AI-11.md), [FT-4](../findings/features/FT-4.md), [AI-6](../findings/ai-calls/AI-6.md), GAP-ai-s1, GAP-ai-2
 - **Effort:** M. **Areas it moves:** AI calls; The product's surface.
-- **Done when:** src/server/ai-round.scan.test.ts draws no first round over 56,000 characters for any of the 20 questions on any page drawn, and the round with no page and no question at 34,000 or fewer once the 17 plan, reminder and skill tools load on demand (161,661 today), for a shop-only store and for one with every feature on. src/lib/tool-router.test.ts finds the needed group for at least 11 of the 18 questions that need one. A lean eval case that needs a tool in another group of the page's own area passes in the committed recording, and agent-eval-replay.int.test.ts passes on it. A case in src/lib/tool-budget.test.ts shows chooseTools() sending at most 12 store tools when no area is asked; a turn of a person with 3 memories makes 0 embedding requests; TURN_TOKENS_MAX is at most 250,000; and the decision that the 17 tools load on demand is a row in docs/decisions.md.
+- **Done when:** src/server/ai-round.scan.test.ts draws no first round over 56,000 characters for any of the 20 questions on any
+  page drawn, and the round with no page and no question at 34,000 or fewer once the 17 plan, reminder and skill tools load on
+  demand (161,661 today), for a shop-only store and for one with every feature on. src/lib/tool-router.test.ts finds the needed
+  group for at least 11 of the 18 questions that need one. A lean eval case that needs a tool in another group of the page's own
+  area passes in the committed recording, and agent-eval-replay.int.test.ts passes on it. A case in src/lib/tool-budget.test.ts
+  shows chooseTools() sending at most 12 store tools when no area is asked; a turn of a person with 3 memories makes 0 embedding
+  requests; TURN_TOKENS_MAX is at most 250,000; and the decision that the 17 tools load on demand is a row in docs/decisions.md.
 - **Platform:** The platform's assistant runs the same loop, and its 39 tools get the same core-and-area cut.
-- **Decided (the owner, 12 November: the recommended way):** The AI manager offers its core tools, the page's group and the group the router picks from the question; the rest is one load_tools call away. Its 17 plan, reminder and saved-skill tools load when the talk turns to them or the store has a plan, goal or reminder alive; the critic says only this is an A for the AI area and the surface. *Asked:* What should the AI manager offer unprompted (question 8 of the code review)? In particular: always carry its 17 plan, reminder and saved-skill tools at about 3,800 tokens a round, or load them when the talk turns to them or the store has a plan, goal or reminder alive (a round with no page then falls to about 33,000 characters)? Only loading them on demand is an A: kept on every round, the AI area and the surface stop at a B on this measure, with the 15,400 characters named.
+- **Decided (the owner, 12 November: the recommended way):** The AI manager offers its core tools, the page's group and the group
+  the router picks from the question; the rest is one load_tools call away. Its 17 plan, reminder and saved-skill tools load when
+  the talk turns to them or the store has a plan, goal or reminder alive; the critic says only this is an A for the AI area and
+  the surface. *Asked:* What should the AI manager offer unprompted (question 8 of the code review)? In particular: always carry
+  its 17 plan, reminder and saved-skill tools at about 3,800 tokens a round, or load them when the talk turns to them or the store
+  has a plan, goal or reminder alive (a round with no page then falls to about 33,000 characters)? Only loading them on demand is
+  an A: kept on every round, the AI area and the surface stop at a B on this measure, with the 15,400 characters named.
 - **To carry it out:** [steps/2.36.md](steps/2.36.md) (strong)
 
 ## 2.37 Slim the tool schemas, so no first round is over 56,000 characters
 
-After the lean round of step 2.36 a first round still carries schema text the model does not need. Drop maxLength, minLength and pattern from the schemas the model sees (5,562 characters in a lean orders round; bounds take 4,006 to 7,654 a round), cut a long tool result so that it is still valid JSON, and split update_product. The page groups that this step first held are made in step 2.36, so the router returns a group from its first version. The scan of step 1.19 already draws every working area's largest page and the planners' 20 questions.
+After the lean round of step 2.36 a first round still carries schema text the model does not need. Drop maxLength, minLength and
+pattern from the schemas the model sees (5,562 characters in a lean orders round; bounds take 4,006 to 7,654 a round), cut a long
+tool result so that it is still valid JSON, and split update_product. The page groups that this step first held are made in step
+2.36, so the router returns a group from its first version. The scan of step 1.19 already draws every working area's largest page
+and the planners' 20 questions.
 
 - **Closes:** [AI-8](../findings/ai-calls/AI-8.md)
 - **Effort:** M. **Areas it moves:** AI calls; The product's surface.
-- **Done when:** src/server/ai-round.scan.test.ts shows no first round over 56,000 characters for any of the 20 questions on any admin page and none over 34,000 with no page and no question, no maxLength, minLength or pattern key in the round's tools and no tool over 2,500 characters outside a named list that only shrinks; the lean eval cases pass in a new recording; and Platform, AI shows a median AI manager call of 15,000 input tokens or fewer, a 90th percentile of 25,000 or fewer and a median turn of 45,000 or fewer over a week of the team's use.
+- **Done when:** src/server/ai-round.scan.test.ts shows no first round over 56,000 characters for any of the 20 questions on any
+  admin page and none over 34,000 with no page and no question, no maxLength, minLength or pattern key in the round's tools and no
+  tool over 2,500 characters outside a named list that only shrinks; the lean eval cases pass in a new recording; and Platform, AI
+  shows a median AI manager call of 15,000 input tokens or fewer, a 90th percentile of 25,000 or fewer and a median turn of 45,000
+  or fewer over a week of the team's use.
 - **Platform:** The platform's tools are grouped by the platform admin's sections in the same map.
 - **To carry it out:** [steps/2.37.md](steps/2.37.md) (strong)
 
@@ -393,7 +568,12 @@ No request asks for prompt caching, and a store is charged the full price either
 
 ## 2.39 Give small jobs a quick model
 
-One text model does every job. Move the 8 named small jobs to a quick model (code review step 3.20): the memory pass, tone, the support summary, recommendation order, search understanding, the listing check, category suggestion and highlight words. Each provider gets a default quick model, every completeText call site says main or quick, and the memory pass gets a feature name of its own. Run the agents' eval on the new model, as the conventions ask. Only 3 of the 8 jobs have fixed cases: each of the other 5 gets at least 5. A job moves to the quick model only when its cases pass on it; otherwise the tier list names it as kept on main, with the failing case.
+One text model does every job. Move the 8 named small jobs to a quick model (code review step 3.20): the memory pass, tone, the
+support summary, recommendation order, search understanding, the listing check, category suggestion and highlight words. Each
+provider gets a default quick model, every completeText call site says main or quick, and the memory pass gets a feature name of
+its own. Run the agents' eval on the new model, as the conventions ask. Only 3 of the 8 jobs have fixed cases: each of the other 5
+gets at least 5. A job moves to the quick model only when its cases pass on it; otherwise the tier list names it as kept on main,
+with the failing case.
 
 - **Closes:** [AI-7](../findings/ai-calls/AI-7.md), GAP-ai-s4
 - **Effort:** M. **Areas it moves:** AI calls.
@@ -403,7 +583,11 @@ One text model does every job. Move the 8 named small jobs to a quick model (cod
 
 ## 2.40 Keep one file per decision, with a generated index
 
-docs/decisions.md is one 1.33 MB file: 548 lines hold 97.8% of it in lines the search tool cannot show, and a row runs to 18 KB. Split it into docs/decisions/D{n}.md with a generated index of 564 rows that each start with the id and stay under 200 characters, every other line under 500. src/lib/decisions.scan.test.ts holds that no decisions file is over 200 KB; the docs budget of step 1.1 already fails an id that appears twice. The frozen Migration versions list moves to a file of its own. After the split a claimed number is a new file, so two sessions cannot conflict in one table.
+docs/decisions.md is one 1.33 MB file: 548 lines hold 97.8% of it in lines the search tool cannot show, and a row runs to 18 KB.
+Split it into docs/decisions/D{n}.md with a generated index of 564 rows that each start with the id and stay under 200 characters,
+every other line under 500. src/lib/decisions.scan.test.ts holds that no decisions file is over 200 KB; the docs budget of step
+1.1 already fails an id that appears twice. The frozen Migration versions list moves to a file of its own. After the split a
+claimed number is a new file, so two sessions cannot conflict in one table.
 
 - **Closes:** [DC-2](../findings/written-rules/DC-2.md), [AS-8](../findings/files/AS-8.md)
 - **Effort:** M. **Areas it moves:** The written rules; The code itself.
@@ -413,7 +597,12 @@ docs/decisions.md is one 1.33 MB file: 548 lines hold 97.8% of it in lines the s
 
 ## 2.41 Retire the frozen Migration versions list and the order to add to it
 
-CLAUDE.md tells every session to record a migration's version in a list that has been frozen since 4 October, so 205 of 564 decision rows carry release notes. The ledger supabase_migrations.kaizen_files already records what was applied and when. Replace the instruction in CLAUDE.md, docs/ci-migrations.md, docs/capacity.md and README.md, and head the list's own file, made in step 2.40, with one line: frozen, the ledger is the record. The advisor check after each migration stays. A clean check is not written down; a new advisor finding is written as a line in docs/audits/psi-followups.md with the migration's file name, and CLAUDE.md's sentence says so.
+CLAUDE.md tells every session to record a migration's version in a list that has been frozen since 4 October, so 205 of 564
+decision rows carry release notes. The ledger supabase_migrations.kaizen_files already records what was applied and when. Replace
+the instruction in CLAUDE.md, docs/ci-migrations.md, docs/capacity.md and README.md, and head the list's own file, made in step
+2.40, with one line: frozen, the ledger is the record. The advisor check after each migration stays. A clean check is not written
+down; a new advisor finding is written as a line in docs/audits/psi-followups.md with the migration's file name, and CLAUDE.md's
+sentence says so.
 
 - **Closes:** [DC-10](../findings/written-rules/DC-10.md)
 - **Effort:** S. **Areas it moves:** The written rules.
@@ -434,18 +623,40 @@ The type check is one 8,003-file program: about 3 minutes and a 7 GB heap limit,
 
 ## 2.43 Add a related test run for the push
 
-The pre-push rule costs an agent session 11 to 12 minutes of machine time before each push. Add pnpm test:changed, which runs the tests a change can reach, with every directory-reading test named *.scan.test.ts so it always runs. Before a push a session runs lint, the type check and pnpm test:changed. The deploy gate runs the same related tests for the push's commits after its three steps, and the whole unit suite keeps running beside the deploy and reports, as today. CLAUDE.md's Workflow sentence is changed to say so. pnpm check runs that rule through the recorder of step 1.20. pnpm check lints only the files changed against origin/main when no lint cache exists, and the whole tree when eslint.config.mjs or pnpm-lock.yaml changed, so a session's first push runs no cold lint of unchanged files.
+The pre-push rule costs an agent session 11 to 12 minutes of machine time before each push. Add pnpm test:changed, which runs the
+tests a change can reach, with every directory-reading test named *.scan.test.ts so it always runs. Before a push a session runs
+lint, the type check and pnpm test:changed. The deploy gate runs the same related tests for the push's commits after its three
+steps, and the whole unit suite keeps running beside the deploy and reports, as today. CLAUDE.md's Workflow sentence is changed to
+say so. pnpm check runs that rule through the recorder of step 1.20. pnpm check lints only the files changed against origin/main
+when no lint cache exists, and the whole tree when eslint.config.mjs or pnpm-lock.yaml changed, so a session's first push runs no
+cold lint of unchanged files.
 
 - **Closes:** [TC-6](../findings/tests-ci-build/TC-6.md), GAP-build-s4
 - **Effort:** S. **Areas it moves:** Tests, CI and the build.
-- **Done when:** pnpm test:changed after a one-line change in src/lib runs fewer than 250 files (1,215 in a full run). In a fresh clone with no caches, pnpm check after a one-line change in src/lib takes 5 min 30 s or less if the native compiler passed its trial in step 2.42; otherwise the recorder shows that only the cold type check is over its line, which is the stated tolerance (about 3 minutes, so about 7 min 30 s). A second run takes 2 minutes or less. The gate with the related tests has a median of 3 min 10 s or less in scripts/ci-budgets.json (90 s plus at most 100 s for the related run), and a trial push with a failing unit test the change reaches deploys nothing. CLAUDE.md states the rule and the decision is a row.
+- **Done when:** pnpm test:changed after a one-line change in src/lib runs fewer than 250 files (1,215 in a full run). In a fresh
+  clone with no caches, pnpm check after a one-line change in src/lib takes 5 min 30 s or less if the native compiler passed its
+  trial in step 2.42; otherwise the recorder shows that only the cold type check is over its line, which is the stated tolerance
+  (about 3 minutes, so about 7 min 30 s). A second run takes 2 minutes or less. The gate with the related tests has a median of 3
+  min 10 s or less in scripts/ci-budgets.json (90 s plus at most 100 s for the related run), and a trial push with a failing unit
+  test the change reaches deploys nothing. CLAUDE.md states the rule and the decision is a row.
 - **Platform:** One gate for stores and platform.
-- **Decided (the owner, 12 November: the recommended way):** The way the panel suggests in the build's card. Before a push a session runs lint, the type check and the tests the change can reach (about 2 minutes); the deploy gate runs the same related tests after its three steps (about 2.5 to 3 minutes in all), and the whole unit suite keeps running beside the deploy and reports, as today. It is the cheapest to run, the gate checks more than today's six money files, and going back is one sentence in CLAUDE.md and one line in ci.yml. *Asked:* What must run before a push? A: everything, as today (about 5 minutes after these fixes; 11 to 12 now). B: lint, the type check and the tests the change touches, with the whole unit suite in the deploy gate, so each deploy waits about 3.5 minutes more (the planner's advice). C: as B before the push with the gate unchanged, so a failing unit test outside the six money files can be live until someone reads the red run.
+- **Decided (the owner, 12 November: the recommended way):** The way the panel suggests in the build's card. Before a push a
+  session runs lint, the type check and the tests the change can reach (about 2 minutes); the deploy gate runs the same related
+  tests after its three steps (about 2.5 to 3 minutes in all), and the whole unit suite keeps running beside the deploy and
+  reports, as today. It is the cheapest to run, the gate checks more than today's six money files, and going back is one sentence
+  in CLAUDE.md and one line in ci.yml. *Asked:* What must run before a push? A: everything, as today (about 5 minutes after these
+  fixes; 11 to 12 now). B: lint, the type check and the tests the change touches, with the whole unit suite in the deploy gate, so
+  each deploy waits about 3.5 minutes more (the planner's advice). C: as B before the push with the gate unchanged, so a failing
+  unit test outside the six money files can be live until someone reads the red run.
 - **To carry it out:** [steps/2.43.md](steps/2.43.md) (review)
 
 ## 2.44 Show by trial whether component and database tests need a fresh worker
 
-After step 0.39, three quarters of the unit run is 281 component and database files that no finding examined: 0.74 s and 3.0 s a file. Run two trials in the Vitest config of that step. One: the components project with isolate off, three runs, one of them shuffled; keep it if every file passes and the 22-file sample falls from 16.3 s to 10 s or less. Two: split one database file's time into worker start, PGlite start, template load and tests; if PGlite's start is over 0.5 s a file, try the db project with isolate off. Then lower the unit run's ceiling to the result.
+After step 0.39, three quarters of the unit run is 281 component and database files that no finding examined: 0.74 s and 3.0 s a
+file. Run two trials in the Vitest config of that step. One: the components project with isolate off, three runs, one of them
+shuffled; keep it if every file passes and the 22-file sample falls from 16.3 s to 10 s or less. Two: split one database file's
+time into worker start, PGlite start, template load and tests; if PGlite's start is over 0.5 s a file, try the db project with
+isolate off. Then lower the unit run's ceiling to the result.
 
 - **Closes:** GAP-build-3
 - **Effort:** S. **Areas it moves:** Tests, CI and the build.
@@ -455,7 +666,13 @@ After step 0.39, three quarters of the unit run is 281 component and database fi
 
 ## 2.45 Cut what the largest paint waits for on a themed page
 
-No themed store page has been shown at 90 on a slow phone: kaizenaflow.com scored 83 to 88 with its largest paint at 3.7 to 4.3 s, and 90 needs roughly 3.3 to 3.5 s. The plan's other cuts take about 26 KB compressed off some 400 KB that the largest paint waits for. When step 1.14 has a week of figures, block the fonts, the scripts and the stylesheet in turn on the launch-theme store's home, product page and listing in production, and write the largest paint each time into docs/performance.md. Then cut what the table names until the line holds. The evidence so far points at fonts (without them the same page scored 93): preload only the family the first screen draws, cut each family's file to the letters the store's languages use, and keep the cart drawer's prefetch out of the first three seconds.
+No themed store page has been shown at 90 on a slow phone: kaizenaflow.com scored 83 to 88 with its largest paint at 3.7 to 4.3 s,
+and 90 needs roughly 3.3 to 3.5 s. The plan's other cuts take about 26 KB compressed off some 400 KB that the largest paint waits
+for. When step 1.14 has a week of figures, block the fonts, the scripts and the stylesheet in turn on the launch-theme store's
+home, product page and listing in production, and write the largest paint each time into docs/performance.md. Then cut what the
+table names until the line holds. The evidence so far points at fonts (without them the same page scored 93): preload only the
+family the first screen draws, cut each family's file to the letters the store's languages use, and keep the cart drawer's
+prefetch out of the first three seconds.
 
 - **Closes:** GAP-shopper-browser-s1
 - **Effort:** M. **Areas it moves:** What a shopper's browser gets.
@@ -465,7 +682,12 @@ No themed store page has been shown at 90 on a slow phone: kaizenaflow.com score
 
 ## 2.46 Keep schemas apart from the helpers beside them, so zod loads only where a screen runs one
 
-After step 0.9 zod (116,870 bytes) is still on about 144 admin routes, though only 4 of 332 admin client files call a schema. It arrives because a helper or a constant shares a file with a schema: 145 files under src/lib import zod, and admin components import 67 of them directly. Where a client part takes only a helper or a constant, move the schema into a file of its own beside it. Start with the product editor, which carries about 290 KB this way, then src/lib/custom-fields.ts (23 importers) and product-input.ts (18), then theme.ts, motion.ts, visibility.ts, colour.ts and typography.ts. The import walk of step 1.4 then lets zod be reached only from a named list of client modules, each with the schema it runs. Do it after step 1.4. Effort is M to L.
+After step 0.9 zod (116,870 bytes) is still on about 144 admin routes, though only 4 of 332 admin client files call a schema. It
+arrives because a helper or a constant shares a file with a schema: 145 files under src/lib import zod, and admin components
+import 67 of them directly. Where a client part takes only a helper or a constant, move the schema into a file of its own beside
+it. Start with the product editor, which carries about 290 KB this way, then src/lib/custom-fields.ts (23 importers) and
+product-input.ts (18), then theme.ts, motion.ts, visibility.ts, colour.ts and typography.ts. The import walk of step 1.4 then lets
+zod be reached only from a named list of client modules, each with the schema it runs. Do it after step 1.4. Effort is M to L.
 
 - **Closes:** GAP-owner-browser-s1
 - **Effort:** L. **Areas it moves:** What an owner's browser gets.
@@ -475,17 +697,34 @@ After step 0.9 zod (116,870 bytes) is still on about 144 admin routes, though on
 
 ## 2.47 Take the order writer off pages that only show products
 
-After every other cut the product page still reaches about 1,930 modules, and a listing, the search, the cart and the checkout about 1,995. The cause: src/app/s/[store]/[market]/cart/actions.ts imports startCheckout and startExpress at its top, so every page with an Add to cart button loads the order writer, and with it draft orders, emails, staff alerts, billing and the books. Load checkout.ts, the alert and email senders and the Stripe SDK inside the action that uses them, split src/server/express-checkout.ts into its facts and the press, and let step 2.9's per-route sections serve the server side too. Do it after steps 2.9 and 2.22, one file's edges per commit, with a test order placed after each deploy: the cuts are on order and payment paths. The product page, a category, the search, the cart and the checkout become entries of the graph test and of scripts/route-budget.mjs.
+After every other cut the product page still reaches about 1,930 modules, and a listing, the search, the cart and the checkout
+about 1,995. The cause: src/app/s/[store]/[market]/cart/actions.ts imports startCheckout and startExpress at its top, so every
+page with an Add to cart button loads the order writer, and with it draft orders, emails, staff alerts, billing and the books.
+Load checkout.ts, the alert and email senders and the Stripe SDK inside the action that uses them, split
+src/server/express-checkout.ts into its facts and the press, and let step 2.9's per-route sections serve the server side too. Do
+it after steps 2.9 and 2.22, one file's edges per commit, with a test order placed after each deploy: the cuts are on order and
+payment paths. The product page, a category, the search, the cart and the checkout become entries of the graph test and of
+scripts/route-budget.mjs.
 
 - **Closes:** GAP-server-s1
 - **Effort:** L. **Areas it moves:** What the server loads and asks.
-- **Done when:** src/server/route-load.graph.test.ts shows the product page, a category and the search reaching none of src/server/checkout.ts, stripe.ts, ledger.ts, staff-alerts.ts or billing.ts; a next analyze export shows those three at or under 1,800 modules and 4.8 MB, and the cart, the checkout and the account at or under 1,800 and 5.0 MB (2,516 to 2,546 modules and 12.3 MB today); each is an entry of the graph test and of scripts/route-budget.mjs; and the checkout, express checkout and quote specs pass.
+- **Done when:** src/server/route-load.graph.test.ts shows the product page, a category and the search reaching none of
+  src/server/checkout.ts, stripe.ts, ledger.ts, staff-alerts.ts or billing.ts; a next analyze export shows those three at or under
+  1,800 modules and 4.8 MB, and the cart, the checkout and the account at or under 1,800 and 5.0 MB (2,516 to 2,546 modules and
+  12.3 MB today); each is an entry of the graph test and of scripts/route-budget.mjs; and the checkout, express checkout and quote
+  specs pass.
 - **Platform:** Kaizena Flow's own store runs on the same routes (D484), so its product pages lose the same imports.
 - **To carry it out:** [steps/2.47.md](steps/2.47.md) (strong)
 
 ## 2.48 Give a placed order a ceiling, and stage placeOrder where the first figures are over it
 
-Step 1.12 counts what one placed order writes, but the count has no ceiling and nobody has judged it. Read that step's figures and the per-trigger times, and write four ceilings into docs/performance.md and the write budget: the same statements with 10 and with 2,000 earlier orders in the store, at most 3 more for each added line, triggers under a fifth of the order's database time, and a counted visit at most 3 statements and 2 rows. A fifth line is the surface's: the optional features' triggers together take under 2 ms of a shop-only store's paid order, or the slowest get a first-line test of the store's switch. Where a figure is over, do code review step 3.7 for that part: multi-row inserts for lines and holds, and a trigger that probes a switched-off feature folded into one gate. Do it after step 1.12.
+Step 1.12 counts what one placed order writes, but the count has no ceiling and nobody has judged it. Read that step's figures and
+the per-trigger times, and write four ceilings into docs/performance.md and the write budget: the same statements with 10 and with
+2,000 earlier orders in the store, at most 3 more for each added line, triggers under a fifth of the order's database time, and a
+counted visit at most 3 statements and 2 rows. A fifth line is the surface's: the optional features' triggers together take under
+2 ms of a shop-only store's paid order, or the slowest get a first-line test of the store's switch. Where a figure is over, do
+code review step 3.7 for that part: multi-row inserts for lines and holds, and a trigger that probes a switched-off feature folded
+into one gate. Do it after step 1.12.
 
 - **Closes:** GAP-database-s7, GAP-surface-s5
 - **Effort:** M. **Areas it moves:** The database; The product's surface; What the server loads and asks.
@@ -495,7 +734,13 @@ Step 1.12 counts what one placed order writes, but the count has no ceiling and 
 
 ## 2.49 Load motion.css where a page uses it
 
-src/app/motion.css is 18.7 KB raw and 3.4 KB Brotli, a sixth of the site's sheet, and no launch theme uses it, so every store pays for it at opening. The reading that decides is step 1.23's, taken now on the six launch themes and the team's 60 stores, not one taken a quarter after opening. If under half of published store pages need the sheet, build it: a prebuild step writes motion.css under a hashed name, MotionSupport (src/components/motion-support.tsx) links it when the page, header or footer needs it, the site's entry drops the import and the admin's keeps it, and a test ties every [data-fx-*] selector to a code path that sets the flag. If half or more need it, the step is not built and the sheet stays as the stated tolerance, with that figure written beside it. Do it after step 2.11.
+src/app/motion.css is 18.7 KB raw and 3.4 KB Brotli, a sixth of the site's sheet, and no launch theme uses it, so every store pays
+for it at opening. The reading that decides is step 1.23's, taken now on the six launch themes and the team's 60 stores, not one
+taken a quarter after opening. If under half of published store pages need the sheet, build it: a prebuild step writes motion.css
+under a hashed name, MotionSupport (src/components/motion-support.tsx) links it when the page, header or footer needs it, the
+site's entry drops the import and the admin's keeps it, and a test ties every [data-fx-*] selector to a code path that sets the
+flag. If half or more need it, the step is not built and the sheet stays as the stated tolerance, with that figure written beside
+it. Do it after step 2.11.
 
 - **Closes:** GAP-styles-s4, [CS-2](../findings/styles/CS-2.md)
 - **Effort:** M. **Areas it moves:** Styles; What a shopper's browser gets.
@@ -505,10 +750,19 @@ src/app/motion.css is 18.7 KB raw and 3.4 KB Brotli, a sixth of the site's sheet
 
 ## 2.50 Let a catalogue file be imported by its area module only, and import no code
 
-After step 2.25's codemod, 218 modules still import a file of src/lib/admin-messages directly (68 outside the admin folders, 150 inside), for English constants and fallbacks such as words ?? experimentsEn. With those left, a median admin page reaches 30 areas and 1.31 MB against 18 and 0.9 MB, a store page 21 files against 8, and the visit beacon 2 against 0. Each of the 218 takes its words as an argument or reads the area's module, and an English constant that server code, the AI manager or a test reads moves to a small label module beside its readers. The 36 value imports inside 14 catalogue files go in the same step. Do it after steps 2.25 and 2.26.
+After step 2.25's codemod, 218 modules still import a file of src/lib/admin-messages directly (68 outside the admin folders, 150
+inside), for English constants and fallbacks such as words ?? experimentsEn. With those left, a median admin page reaches 30 areas
+and 1.31 MB against 18 and 0.9 MB, a store page 21 files against 8, and the visit beacon 2 against 0. Each of the 218 takes its
+words as an argument or reads the area's module, and an English constant that server code, the AI manager or a test reads moves to
+a small label module beside its readers. The 36 value imports inside 14 catalogue files go in the same step. Do it after steps
+2.25 and 2.26.
 
 - **Closes:** GAP-text-s1
 - **Effort:** M. **Areas it moves:** Interface text; What the server loads and asks.
-- **Done when:** admin-text-reach.scan.test.ts lists no importer of src/lib/admin-messages but the area modules, the common words' context file and tests (218 today); the proxy and every beacon reach 0 catalogue files and the storefront layout at most 8 files and 0.21 MB; a median admin page reaches at most 18 areas and 0.9 MB and none over 28 areas and 1.66 MB; a next analyze export shows /admin/[store]/orders at or under 6.5 MB of server code (12,068 KB today); and the walk of src/lib/admin-messages/imports.scan.test.ts from every catalogue file reaches no zod, no component and no file of src/server.
+- **Done when:** admin-text-reach.scan.test.ts lists no importer of src/lib/admin-messages but the area modules, the common words'
+  context file and tests (218 today); the proxy and every beacon reach 0 catalogue files and the storefront layout at most 8 files
+  and 0.21 MB; a median admin page reaches at most 18 areas and 0.9 MB and none over 28 areas and 1.66 MB; a next analyze export
+  shows /admin/[store]/orders at or under 6.5 MB of server code (12,068 KB today); and the walk of
+  src/lib/admin-messages/imports.scan.test.ts from every catalogue file reaches no zod, no component and no file of src/server.
 - **Platform:** The platform admin's pages and Kaizena Flow's own site read the same catalogues, so their entries are in the same scan and fall with the stores'.
 - **To carry it out:** [steps/2.50.md](steps/2.50.md) (strong)

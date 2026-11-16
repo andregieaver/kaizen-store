@@ -2,7 +2,13 @@
 
 Part of `docs/audits/bloat-review-2026-11.md`, on commit 0bd814c. Read by one reviewer, challenged by a second (who re-opened every citation, re-measured every number and applied the owner's note that the platform is not open yet) and planned by a third. A tick (✓) marks a finding the second reviewer confirmed or corrected; one the planner added has none. Each finding has a file of its own beside this one.
 
-**In short.** The page model itself is lean: a stored page is about 340 bytes a block and a two-block page's own markup is 1.6 KB. The waste is in how pages are read, cached and wrapped: every storefront document carries the layout twice (27 KB), 45 of the demo store's 261 built entries keep a copy of every page of the store to find one page or one title, and all 261 carry one cache tag, so publishing one page makes the whole store's site render again. The owner filter `is not distinct from` cannot use an index (60,000 rows read to return 27 on a test table) and a five-minute job re-reads every published page of every site with chat on. None of this rests on a feature being unused: each cost grows with stores, pages or products, and each is cheapest to change before opening.
+**In short.** The page model itself is lean: a stored page is about 340 bytes a block and a two-block page's own markup is 1.6 KB.
+The waste is in how pages are read, cached and wrapped: every storefront document carries the layout twice (27 KB), 45 of the demo
+store's 261 built entries keep a copy of every page of the store to find one page or one title, and all 261 carry one cache tag,
+so publishing one page makes the whole store's site render again. The owner filter `is not distinct from` cannot use an index
+(60,000 rows read to return 27 on a test table) and a five-minute job re-reads every published page of every site with chat on.
+None of this rests on a feature being unused: each cost grows with stores, pages or products, and each is cheapest to change
+before opening.
 
 ## Findings
 

@@ -19,6 +19,7 @@ const dispute: EventFacts = { kind: "dispute_opened", order: "1046", orderId: "o
 const failing: EventFacts = { kind: "payments_failing", window: "2026-11-15T12", failed: 7, attempts: 12 };
 const request: EventFacts = { kind: "staff_request", request: "11111111-1111-4111-8111-111111111111", ask: "change_address", order: "1042" };
 const stockout: EventFacts = { kind: "stockout_risk", sku: "MUG-1", product: "White mug", lastsDays: 4.5, leadDays: 14, suggested: 120 };
+const answered: EventFacts = { kind: "test_answered", experiment: "x2", name: "Shorter hero", answeredAt: "2026-11-16T10:00:00Z" };
 
 describe("the settings", () => {
   it("react to nothing until switched on, and wait 15 minutes for a person by default", () => {
@@ -40,6 +41,8 @@ describe("each event's tools", () => {
     }
     expect(EVENT_TOOLS.support_waiting).toContain("add_support_note");
     expect(EVENT_TOOLS.test_ended).toContain("apply_winner");
+    // A test with an answer (D670): the same tools as one that ended, the decision still the owner's where they keep it.
+    expect(EVENT_TOOLS.test_answered).toEqual(EVENT_TOOLS.test_ended);
     expect(EVENT_TOOLS.alert).toContain("make_autopilot_plan");
     // A held order and a dispute are a person's: the turn reads and leaves a note, and changes nothing else.
     expect(EVENT_TOOLS.order_held.filter((t) => OWNER_TOOLS_BY_NAME[t]?.gate)).toEqual([]);
@@ -114,5 +117,16 @@ describe("the staff_request event (B3, D640)", () => {
     expect(eventRef(request, "2026-11-16")).toBe("11111111-1111-4111-8111-111111111111");
     expect(EVENT_TOOLS.staff_request).toEqual(["get_order", "get_support_conversation", "carry_out_address_change", "cancel_order", "add_order_note"]);
     expect(EVENT_LINES.staff_request).toContain("Never write to the customer");
+  });
+});
+
+describe("a test that has an answer (D670)", () => {
+  it("is one event per test, says the test still runs, and repeats the verdict rule of a test that ended", () => {
+    expect(eventRef(answered, "2026-11-16")).toBe("x2");
+    const message = eventMessage(answered);
+    expect(message).toContain('"Shorter hero" (id x2) has an answer since 2026-11-16; it is still running');
+    expect(message).toContain("explain_results (x2)");
+    expect(EVENT_LINES.test_answered).toContain("never make one of your own");
+    expect(EVENT_LINES.test_answered).toContain("If there is no clear difference, choose nothing");
   });
 });

@@ -28,6 +28,7 @@ export const TOOL_PERMISSIONS: Record<OwnerToolName, PermissionKey> = {
   preview_exchange: "orders:read",
   propose_exchange: "orders:write",
   process_exchange: "orders:write",
+  send_replacement: "orders:write",
   // The team and the plan (PSI AGT-01): the Staff and Billing pages are the owner's (`requireOwnerRole`), so are their tools.
   list_staff: "owner",
   invite_staff: "owner",

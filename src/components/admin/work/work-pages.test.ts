@@ -51,6 +51,7 @@ const invoice = (o: Partial<OverviewInvoice>): OverviewInvoice => ({
   totalMinor: 250_000,
   paidMinor: 0,
   creditedMinor: 0,
+  lostMinor: 0,
   dueOn: "2026-09-01",
   paidOn: null,
   updatedOn: TODAY,

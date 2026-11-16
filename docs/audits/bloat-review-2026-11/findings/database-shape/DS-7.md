@@ -5,7 +5,13 @@ The database's shape (`README.md` beside this file), part of `docs/audits/bloat-
 - **Kind:** oversize. **Priority:** P0. **Effort:** M. **Confidence:** high. **Step:** 0.23.
 - **Second check:** confirmed.
 - **Where:** `src/server/pages.ts:71`, `src/server/pages.ts:694`, `src/server/pages.ts:728`, `src/server/page-modals.ts:23`, `src/server/site-cookies.ts:46`, `src/server/cookie-scans.ts:97`, `src/server/taxonomy.ts:60`, `src/server/page-versions.ts:53`, `src/server/media-library.ts:77`, `supabase/migrations/20261111172842_baseline_4_roles_and_supabase.sql:106-112`, `docs/rules/storefront.md:179`
-- **Evidence:** 122 uses in 40 files (my rg, tests left out). Postgres does not answer IS NOT DISTINCT FROM from a btree index; the verified check ran EXPLAIN ANALYZE in a local Postgres 18.6 on 50,000 rows of the pages shape: a sequential scan (3.5 ms) against an index scan for `=` (0.46 ms) and for `is null`. Production agrees: pages had 199,789 sequential scans reading 203 M rows although (store_id, type, slug) exists; cookie_scans 1,101,927 scans and 962 M rows; terms 183,724. The every-minute cookie-scan claim runs two such subqueries for each site (49,338 calls, 192 s). Other files already write the indexable form through a private owned() helper (media-library.ts:77). The written rule at docs/rules/storefront.md:179 asks for today's wording.
+- **Evidence:** 122 uses in 40 files (my rg, tests left out). Postgres does not answer IS NOT DISTINCT FROM from a btree index;
+  the verified check ran EXPLAIN ANALYZE in a local Postgres 18.6 on 50,000 rows of the pages shape: a sequential scan (3.5 ms)
+  against an index scan for `=` (0.46 ms) and for `is null`. Production agrees: pages had 199,789 sequential scans reading 203 M
+  rows although (store_id, type, slug) exists; cookie_scans 1,101,927 scans and 962 M rows; terms 183,724. The every-minute
+  cookie-scan claim runs two such subqueries for each site (49,338 calls, 192 s). Other files already write the indexable form
+  through a private owned() helper (media-library.ts:77). The written rule at docs/rules/storefront.md:179 asks for today's
+  wording.
 - **Cost today:** About 1.2 billion rows read by scan in 78 days. Small in time today. It grows with stores times rows per table, and the cookie-scan claim grows with stores squared: every site's subquery scans every site's scans, every minute. Paid by: The database
 - **Saving:** Estimate: the sequential scans on pages, cookie_scans, terms and menus become index reads; a few seconds of database time a day now, and at scale the difference between an index probe and a full scan on each cache fill and each minute.
 - **Risk:** Low. Only where clauses change. What could break: a call that passed null and now needs the `is null` branch; the int tests that run the platform's rows catch it.

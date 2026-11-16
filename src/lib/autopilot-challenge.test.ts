@@ -67,6 +67,20 @@ describe("the settings in force", () => {
 describe("decisions in challenge mode", () => {
   const on = withChallenge(DEFAULT_AUTONOMY, challenge, "2027-01-10");
 
+  it("processes a confirmed exchange that gives nothing back, keeps one that refunds, and never outside the challenge (B3, D675)", () => {
+    expect(autonomyDecision(on, "process_exchange", "spend", { exchangeRefundMinor: 0 })).toMatchObject({ run: true, area: "messages" });
+    expect(autonomyDecision(on, "process_exchange", "spend", { exchangeRefundMinor: 2000 })).toEqual({ run: false, why: "The exchange gives money back to the customer, which waits for you." });
+    expect(autonomyDecision(on, "process_exchange", "spend", {})).toMatchObject({ run: false });
+    expect(autonomyDecision(DEFAULT_AUTONOMY, "process_exchange", "spend", { exchangeRefundMinor: 0 })).toEqual({ run: false, why: "This always waits for your yes." });
+  });
+
+  it("sends a lost parcel's goods again itself within the cap, keeps one past it, and never outside the challenge (B3, D679)", () => {
+    expect(autonomyDecision(on, "send_replacement", "spend", { replacementProblem: null })).toEqual({ run: true, tell: false, area: "money" });
+    expect(autonomyDecision(on, "send_replacement", "spend", { replacementProblem: "Too much." })).toEqual({ run: false, why: "Too much." });
+    expect(autonomyDecision(on, "send_replacement", "spend", {})).toMatchObject({ run: false });
+    expect(autonomyDecision(DEFAULT_AUTONOMY, "send_replacement", "spend", { replacementProblem: null })).toEqual({ run: false, why: "This always waits for your yes." });
+  });
+
   it("sends a broadcast itself within the week's budget, and asks past it", () => {
     expect(autonomyDecision(on, "send_broadcast", "send", { broadcastsThisWeek: 1 })).toEqual({ run: true, tell: false, area: "marketing" });
     expect(autonomyDecision(on, "send_broadcast", "send", { broadcastsThisWeek: 2 })).toMatchObject({ run: false });

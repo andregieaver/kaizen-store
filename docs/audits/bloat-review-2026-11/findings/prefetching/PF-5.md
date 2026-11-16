@@ -4,8 +4,21 @@ Prefetching: what the router asks for unasked (`README.md` beside this file), pa
 
 - **Kind:** eager. **Priority:** P1. **Effort:** S. **Confidence:** high. **Step:** 0.13.
 - **Second check:** corrected.
-- **Where:** `src/components/admin/store-admin-nav.tsx:94,131,148-162,195`, `src/components/admin/admin-rail.tsx:47,88`, `src/components/admin/admin-menus.tsx:126,137,146,154,164,169,172,233`, `src/components/admin/admin-frame.tsx:163,250`, `src/components/admin/refresh-while.tsx:7-13`, `src/components/admin/analytics/live-refresh.tsx:10-25`, `node_modules/next/dist/client/components/router-reducer/reducers/server-action-reducer.js:213-229`, `node_modules/next/dist/client/components/links.js:285-306`, `docs/audits/code-review-2026-11.md:51,414`, `e2e/signed-in/admin-text-fallbacks.spec.ts:82-102`
-- **Evidence:** Planner's run on the admin home, signed in as the test owner at 1440x900: 28 router requests for 13 links, 171 KB decoded, 98 KB on the wire: 2 for each of the 12 store-admin links of the rail (a route tree and a page answer of 8.9 to 11.5 KB that holds the loading skeleton), 2 for /admin and 4 for the View store link (local only). The skeptic's measures stand: the Products and Customers answers differ in the segment's name, the title and one script address; a router.refresh() throws the segment cache away and re-asks for every link in view, 25 prefetch requests and 78 to 116 KB on the wire on the product list; there are 103 router.refresh() call sites in 56 files (re-counted here). RefreshWhile polls only while a job runs and the Live page every 10 s, so the standing rate is about 25 requests per 10 s on the Live page. A save whose action revalidates evicts the whole prefetch cache the same way (server-action-reducer.js:228-229); the planner measured that mechanism on the storefront (PF-12). One frame serves the store, owner and platform levels (admin-frame.tsx), so one change covers all three.
+- **Where:** `src/components/admin/store-admin-nav.tsx:94,131,148-162,195`, `src/components/admin/admin-rail.tsx:47,88`,
+  `src/components/admin/admin-menus.tsx:126,137,146,154,164,169,172,233`, `src/components/admin/admin-frame.tsx:163,250`,
+  `src/components/admin/refresh-while.tsx:7-13`, `src/components/admin/analytics/live-refresh.tsx:10-25`,
+  `node_modules/next/dist/client/components/router-reducer/reducers/server-action-reducer.js:213-229`,
+  `node_modules/next/dist/client/components/links.js:285-306`, `docs/audits/code-review-2026-11.md:51,414`,
+  `e2e/signed-in/admin-text-fallbacks.spec.ts:82-102`
+- **Evidence:** Planner's run on the admin home, signed in as the test owner at 1440x900: 28 router requests for 13 links, 171 KB
+  decoded, 98 KB on the wire: 2 for each of the 12 store-admin links of the rail (a route tree and a page answer of 8.9 to 11.5 KB
+  that holds the loading skeleton), 2 for /admin and 4 for the View store link (local only). The skeptic's measures stand: the
+  Products and Customers answers differ in the segment's name, the title and one script address; a router.refresh() throws the
+  segment cache away and re-asks for every link in view, 25 prefetch requests and 78 to 116 KB on the wire on the product list;
+  there are 103 router.refresh() call sites in 56 files (re-counted here). RefreshWhile polls only while a job runs and the Live
+  page every 10 s, so the standing rate is about 25 requests per 10 s on the Live page. A save whose action revalidates evicts the
+  whole prefetch cache the same way (server-action-reducer.js:228-229); the planner measured that mechanism on the storefront
+  (PF-12). One frame serves the store, owner and platform levels (admin-frame.tsx), so one change covers all three.
 - **Cost today:** Per admin load 24 to 38 requests and 110 to 225 KB decoded; about 25 more per refresh or save; about 150 a minute while the Live page is open (the skeptic's estimate from the measured refresh). The answers are prerendered shells outside the proxy, so the server's share is small. Paid by: The owner's browser and connection; the CDN. It grows with owners and with how often they save.
 - **Saving:** Measured: 24 requests and about 110 KB decoded per load of the admin home (28 and 171 KB with the two local extras); about 25 requests per refresh, save and Live tick.
 - **Risk:** Low to medium. A touch or keyboard press shows the pending bar for one round trip before the skeleton where today the skeleton is already held; that is the FS1 trade named above, and the pending-bar spec says if the bar is lost. A dropped prop (aria-current, role=menuitem) would show in the nav unit tests and the a11y spec.

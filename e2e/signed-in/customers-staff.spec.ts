@@ -23,6 +23,8 @@ test.describe("the owner", () => {
     await expect(page.getByRole("heading", { level: 1, name: "Add a customer" })).toBeVisible();
     await page.getByLabel("Email", { exact: true }).fill(EMAIL);
     await page.getByLabel("Name", { exact: true }).fill("Stella Staff");
+    // Round 20 (D671): the address waits behind its own row.
+    await page.locator("summary", { hasText: "Address" }).click();
     await page.getByLabel("Street address").fill("Storgata 1");
     await page.getByLabel("Postal code").fill("0155");
     await page.getByLabel("City").fill("Oslo");

@@ -2,7 +2,15 @@
 
 Part of `docs/audits/bloat-review-2026-11.md`, on commit 0bd814c. Read by one reviewer, challenged by a second (who re-opened every citation, re-measured every number and applied the owner's note that the platform is not open yet) and planned by a third. A tick (✓) marks a finding the second reviewer confirmed or corrected; one the planner added has none. Each finding has a file of its own beside this one.
 
-**In short.** The admin's browser load is moderately bloated, and the worst of it is cheap to fix before opening: a plain screen loads 1.15 MB of script (median of 449 routes), of which 481 KB is Supabase's client, zod and the builder's English, brought in by three stray imports. 26 screens load an editor they never draw, an order screen carries 0.69 MB for custom fields the store may not have, one Work screen ships a 1.7 MB chunk of text, and the builder loads 3.3 MB at once. Four small fixes (AC-1, AC-2, AC-3, AC-7) and two checks (AC-10, AC-11) take a plain screen to about 0.72 MB and keep the leaks from coming back; the builder, the text handed down in each page (36 to 85% of its data) and link prefetching (23 to 46 background requests a screen) need more care. Two things the report missed are added: the notice badge costs four database statements per open tab per minute whatever the store uses (AC-13), and the Products list sends every product to the browser at about 0.9 KB each (AC-14, already code review step 1.13, open); no finding judges a feature by its use, and every cost is per screen view, so it starts the day owners arrive.
+**In short.** The admin's browser load is moderately bloated, and the worst of it is cheap to fix before opening: a plain screen
+loads 1.15 MB of script (median of 449 routes), of which 481 KB is Supabase's client, zod and the builder's English, brought in by
+three stray imports. 26 screens load an editor they never draw, an order screen carries 0.69 MB for custom fields the store may
+not have, one Work screen ships a 1.7 MB chunk of text, and the builder loads 3.3 MB at once. Four small fixes (AC-1, AC-2, AC-3,
+AC-7) and two checks (AC-10, AC-11) take a plain screen to about 0.72 MB and keep the leaks from coming back; the builder, the
+text handed down in each page (36 to 85% of its data) and link prefetching (23 to 46 background requests a screen) need more care.
+Two things the report missed are added: the notice badge costs four database statements per open tab per minute whatever the store
+uses (AC-13), and the Products list sends every product to the browser at about 0.9 KB each (AC-14, already code review step 1.13,
+open); no finding judges a feature by its use, and every cost is per screen view, so it starts the day owners arrive.
 
 ## Findings
 

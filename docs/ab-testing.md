@@ -1,7 +1,15 @@
 # A/B testing
 
 Design for an A/B testing tool that platform admins and store owners use to find out whether a change to a page earns
-its place. Status: **phases 1 to 14 built** (14: news when a test has an answer, what it would mean, and what it taught, D662) (13: the shop's own traffic, one-screen setup and the draft as a record, D660) (12: the test's page as a record, D659, [`ab-testing-usability.md`](ab-testing-usability.md)) (11: the form-sent goal) (10: the front page and the All products page) (9: modals and working pages) (4: the AI manager's tools; 5: the platform's view; 6: the guardrail email; 7: search and recommendations on the engine; 8: the platform assistant's tools) (D148): the engine, tests of whole store pages and of a part of one (a row, column or component chosen in the builder), scheduled starts, and tests of a store's header, footer and product layouts; see "What phase 1 built", "What phase 2 built" and "What phase 3 built" below. The AI manager's tools are phase 4 ("What phase 4 built"). Modals and working pages are phase 9; the platform's own pages are later. It builds on [`measurement.md`](measurement.md), whose principles
+its place. Status: **phases 1 to 14 built** (14: news when a test has an answer, what it would mean, and what it taught, D662)
+(13: the shop's own traffic, one-screen setup and the draft as a record, D660) (12: the test's page as a record, D659,
+[`ab-testing-usability.md`](ab-testing-usability.md)) (11: the form-sent goal) (10: the front page and the All products page) (9:
+modals and working pages) (4: the AI manager's tools; 5: the platform's view; 6: the guardrail email; 7: search and
+recommendations on the engine; 8: the platform assistant's tools) (D148): the engine, tests of whole store pages and of a part of
+one (a row, column or component chosen in the builder), scheduled starts, and tests of a store's header, footer and product
+layouts; see "What phase 1 built", "What phase 2 built" and "What phase 3 built" below. The AI manager's tools are phase 4 ("What
+phase 4 built"). Modals and working pages are phase 9; the platform's own pages are later. It builds on
+[`measurement.md`](measurement.md), whose principles
 it keeps, and on what already exists: the page builder, `src/lib/experiment-stats.ts`, the search test (D77) and the
 recommendations test (D139/D140).
 
@@ -463,8 +471,66 @@ notice kind).
   (optional), or later on a decided test's page (`LearningCard`, `saveLearning()`, audited without the words). The list shows them under
   *What your tests taught you*; `list_experiments`, `explain_results` and `suggest_experiments` (`what_earlier_tests_taught`, and with each
   candidate's earlier tests) return them as the owner's words, as they return the test's idea.
-- **Kept for step 3b:** the autopilot's `test_answered` event and the gated `record_learning` tool. Both change what the agents are offered
-  (an event's turn lines, a tool's definition), so they wait for one eval run on Platform → AI with their recording.
+- **Step 3b, part 1 (D670):** the autopilot's `test_answered` event. A store that lets its autopilot react (D331) gets one headless turn per
+  test the first time it has an answer, while it still runs: `explain_results`, then `apply_winner` as the verdict supports (it stops the test
+  first, and waits for the owner's yes where they keep it), nothing on no clear difference; the same tools as `test_ended`. Its kind is added to
+  `autopilot_events_kind` (migration `20261116110513_marvelous_warhawk`). The event's lines are not part of any eval fingerprint, so no new
+  recording is needed for it.
+- **Step 3b, part 2 (D673):** `apply_winner` takes an optional `learning`, one sentence (3 to 280 characters) on what the test taught,
+  kept with the test through `saveLearning()` after the owner's yes, as the learning card on the test's page keeps it. The approval says it
+  (*And keep what it taught: "…"*), the preflight refuses a learning with a claim the store's facts do not hold, and the skill's Deciding
+  step asks for one. A separate `record_learning` tool was tried and dropped: the marketing and website tools together are at the 128
+  tools a turn can carry. The parameter changes the tools' fingerprint, so it shipped alone without a migration, then the eval run on
+  Platform → AI and its recording committed.
+
+## What phase 15 built: the list, ideas and the platform (D677)
+
+Step 4 of `docs/ab-testing-usability.md`, in parts. **Part 4a (D677, no migration, no tool change):**
+
+- **The list grouped** (`src/lib/experiment-list.ts` pure, `src/server/experiment-list.ts`): each test with its card (`experimentCard()`;
+  only a started test that is not decided counts results) and a group by what it asks of the owner: *Needs your decision* (a running test
+  with an answer or a broken split, and every stopped test), *Still learning*, *Drafts and planned*, *Decided*. One sentence on top says first
+  what waits (`listLead()`: *One test has an answer: choose what to keep.*, else how many are learning and when the first is likely ready).
+  Each row has the stage chip of the test's page (`STATE_SIGNAL`, now shared) and, while learning, a short bar with *Day 6 of 14*.
+- **Ideas to test** (`testIdeas()`), in code without a model call: the testable pages most visitors could take part on (visits a day times
+  the share who accept statistics, as `suggest_experiments` counts), each with one change named for what the owner sees (other words on its
+  first button, another first heading, the pictures and buy button in another order, a simpler menu) and how soon it would answer
+  (`findableChange()`); a page already in a test, a footer and a working page are left out. Three at most, each opening the new-test form
+  on that page.
+- **Marketing** (round 4, D612): *Running now* lists each running test with its stage chip, so a test with an answer is seen there too; the
+  lead's count of what brings people back leaves tests out.
+- **The platform's view** (`/admin/platform/experiments`): each test carries the same card (`PlatformTest.card`), so its chip and
+  progress bar say what the store's list says.
+
+**Part 4b (D678, one migration, no tool change):**
+
+- **`experiment.answered`**, a webhook topic (`EVENTS`, subject `experiment` in `WEBHOOK_SUBJECTS`, area marketing for apps): queued by
+  `markAnswered()` in the statement that marks the test answered, so it goes once, to the owner's endpoints, apps and workflows. Its data is
+  built when the delivery is (`experimentData()` in `src/server/integrations.ts`): the verdict, the better version, the verdict's sentence,
+  the days and each version's figures, and the learning once written. Workflows can test `experiment.verdict`, `experiment.best`,
+  `experiment.goal` and `experiment.name`; adding the trigger is the migration (`workflows_trigger`).
+- **The Admin API** reads the card: `GET /experiments` and `GET /experiments/{id}` (`reports:read`, the maker's `marketing:read`), the
+  stage, next step and progress always, the comparisons and the impact only once there is an answer, as on the page. Contract 1.29.
+- **A CSV** of the list (`POST /admin/{store}/experiments/export`, `src/lib/experiment-csv.ts`): a row per version with its stage and
+  visitors, and who did the goal, the rate and the change with its likely range only once the test has an answer.
+
+**Part 4c (D680, no migration, no tool change):** the AI manager's eyes on the versions. A version of a test of a page is a page of type
+`variant` with no address; `look_at_page` now takes one by its id (`findLookPage()`, `PAGE_VERSION`: a version whose test's target is a page,
+of this store) and the look draws its draft as a page (`lookDraft()`), with the checker's and the claims filter's findings. `explain_results`
+answers `to_see_each_version`: each version's page id (the original's is the page itself). A version of a header, footer or product layout
+is not a page and is not looked at. The plan named a `look_at_versions` tool: the tools a turn carries are at 128, and a page id in an answer
+changes no tool's description, so no eval run was needed.
+
+## What phase 16 built: the original and a version side by side (D684)
+
+Step 2b of `docs/ab-testing-usability.md`, no migration. **The frame route** (`/admin/frame/{store}/{pageId}`, outside the admin's frame,
+so a frame holds only the page): signed in with `marketing:read`, it draws one page of one of the store's tests alone (`testFrame()` in
+`experiment-admin.ts`; a page in none of the store's tests is a 404): the original as it is live, a version as visitors are shown it once
+the test has started and its draft while the test is a draft, drawn as the kind of page it stands in for (a header's version as a header).
+The site's `frame-ancestors 'self'` lets only Kaizena Flow frame it. **The frames** (`ExperimentFrames`): the original on the left and a
+version on the right, each drawn at a computer's (1280) or a phone's (390) width and scaled to its half, 520 pixels tall with the page
+scrolling inside; with several versions one is chosen at a time. They sit under the draft panel on a draft and under the results on a
+scheduled, running or stopped test; a decided test has none, as the original is then the winner.
 
 
 

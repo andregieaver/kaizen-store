@@ -7,7 +7,7 @@ import { settle } from "./page-look-shoot";
 /**
  * Photographs a store page for its heatmap (D656, `docs/heatmaps-and-recordings.md` 9.2): the page opened as a visitor who refused every
  * optional cookie (so the banner stays closed and no tool loads), with the A/B version's cookies when a version is asked for, settled as
- * page looks are, measured (`measureAnchors()`), and photographed full length up to `MAP_LENGTH_MAX`. The chat's launcher and private parts
+ * page looks are, with bars fixed to the screen hidden and sticky parts left in place, measured (`measureAnchors()`), and photographed full length up to `MAP_LENGTH_MAX`. The chat's launcher and private parts
  * are hidden. Free of server-only modules: a browser test runs it; the job calls it inside `looking()` with a browser of its own.
  */
 
@@ -39,6 +39,15 @@ export async function shootMap(browser: Browser, url: string, viewport: MapViewp
     await page.waitForLoadState("networkidle", { timeout: IDLE_MS }).catch(() => {});
     await page.addStyleTag({ content: "[data-chat-launcher], [data-kz-private] { visibility: hidden !important }" });
     await settle(page);
+    // Bars fixed to the screen would sit in the middle of a full-length picture, and a sticky header would cover what it scrolls over:
+    // fixed ones are hidden, sticky ones stay where they are in the page, before anything is measured.
+    await page.evaluate(() => {
+      for (const element of Array.from(document.querySelectorAll<HTMLElement>("body *"))) {
+        const position = getComputedStyle(element).position;
+        if (position === "fixed") element.style.setProperty("visibility", "hidden", "important");
+        else if (position === "sticky") element.style.setProperty("position", "static", "important");
+      }
+    });
     const layout = await page.evaluate(measureAnchors);
     const height = Math.max(viewport.height, Math.min(layout.h, MAP_LENGTH_MAX));
     const picture = await page.screenshot({ type: "jpeg", quality: 70, fullPage: true, clip: { x: 0, y: 0, width: viewport.width, height } });

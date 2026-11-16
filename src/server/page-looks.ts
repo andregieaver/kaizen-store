@@ -83,13 +83,23 @@ const fail = (message: string): never => {
 const COUNT = z.object({ n: col.int });
 const ID = z.object({ id: col.uuid });
 
-/** The store's own page or article, by id or address; refused for another store's or a page of another kind. */
+/**
+ * A version of an A/B test of a page (D148 phase 15): drawn and looked at as a page, by its id only (it has no address). A version of a
+ * header, footer or product layout is not a page, so it is not looked at here.
+ */
+const PAGE_VERSION = sql`exists (
+  select 1 from commerce.experiment_variants v join commerce.experiments e on e.id = v.experiment_id join commerce.pages t on t.id = e.target_page_id
+  where v.page_id = p.id and t.type = 'page'
+)`;
+
+/** The store's own page or article, by id or address (or a page test's version, by id); refused for another store's or a page of another kind. */
 export async function findLookPage(store: Store, ref: string, type: Extract<PageType, "page" | "article">): Promise<string> {
   const byId = /^[0-9a-f-]{36}$/i.test(ref);
   const row = await typedRow(
     ID,
-    sql`select id from commerce.pages where store_id = ${store.id}::uuid and type = ${type}
-      and ${byId ? sql`id = ${ref}::uuid` : sql`slug = ${ref.replace(/^\/+|\/+$/g, "")}`}`,
+    sql`select p.id from commerce.pages p where p.store_id = ${store.id}::uuid
+      and ${byId && type === "page" ? sql`(p.type = 'page' or (p.type = 'variant' and ${PAGE_VERSION}))` : sql`p.type = ${type}`}
+      and ${byId ? sql`p.id = ${ref}::uuid` : sql`p.slug = ${ref.replace(/^\/+|\/+$/g, "")}`}`,
   );
   return row?.id ?? fail(`No ${type === "article" ? "article" : "page"} "${ref}" in this store. Use list_pages to find it.`);
 }
@@ -213,9 +223,9 @@ export async function lookDraft(pageId: string, token: string | undefined): Prom
   const row = await typedRow(
     z.object({ slug: col.text, type: col.text, draft: z.unknown() }),
     sql`select s.slug, p.type, p.draft from commerce.pages p join commerce.stores s on s.id = p.store_id
-      where p.id = ${pageId}::uuid and p.type in ('page', 'article')`,
+      where p.id = ${pageId}::uuid and (p.type in ('page', 'article') or (p.type = 'variant' and ${PAGE_VERSION}))`,
   );
-  return row ? { storeSlug: row.slug, type: row.type as "page" | "article", draft: row.draft } : null;
+  return row ? { storeSlug: row.slug, type: row.type === "article" ? "article" : "page", draft: row.draft } : null;
 }
 
 // Running a look ------------------------------------------------------------------------------------------------------------------------
@@ -346,7 +356,7 @@ async function assessWithModel(store: { id: string }, accountId: string | null, 
 /** What the checker and the claims filter find in a page's draft, as blocking findings. */
 async function draftFindings(store: Store, pageId: string): Promise<Finding[]> {
   const type = (await typedRow(z.object({ type: col.text }), sql`select type from commerce.pages where id = ${pageId}::uuid`))?.type;
-  const page = type === "page" || type === "article" ? await getPageForEdit(store.id, pageId, type) : null;
+  const page = type === "page" || type === "article" || type === "variant" ? await getPageForEdit(store.id, pageId, type) : null;
   if (!page) return [];
   const out: Finding[] = [];
   for (const issue of blockingIssues(pageIssues(page.draft, { theme: { sets: themeSetsOf(store.theme.settings) }, siteCss: store.customCss })).slice(0, 5)) {

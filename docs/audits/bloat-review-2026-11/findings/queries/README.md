@@ -2,7 +2,15 @@
 
 Part of `docs/audits/bloat-review-2026-11.md`, on commit 0bd814c. Read by one reviewer, challenged by a second (who re-opened every citation, re-measured every number and applied the owner's note that the platform is not open yet) and planned by a third. A tick (✓) marks a finding the second reviewer confirmed or corrected; one the planner added has none. Each finding has a file of its own beside this one.
 
-**In short.** All 14 verified findings stand, none argues from a feature being unused, and each now has ordered steps, the tests and rules that hold it, and one check; two were added. Today's cost is small (the listed app statements total about 39 minutes of database time in 78 days) because production holds only the team's demo stores, so what counts before opening is shape: one read fetches every published page whole to find one page (79,778 calls, 781 s), 122 store filters are written so the store index cannot serve them, the five-minute dispatcher starts 78 jobs on 5 connections, and 91,200 of 216,877 transactions deleted nothing. The two additions grow with orders and catalogue size: five document jobs find their due work each tick by re-checking every store's orders of 120 days and every invoice ever issued, and the catalogue listing calls a VAT function per product row (11.3 µs a row measured, against 0.1 µs when each rate is asked once). Do first: the statement counter (DQ-11), the store filter (DQ-8), the slug lookup (DQ-9), the knowledge job (DQ-6), the AI month sum (DQ-4) and the page index (DQ-2).
+**In short.** All 14 verified findings stand, none argues from a feature being unused, and each now has ordered steps, the tests
+and rules that hold it, and one check; two were added. Today's cost is small (the listed app statements total about 39 minutes of
+database time in 78 days) because production holds only the team's demo stores, so what counts before opening is shape: one read
+fetches every published page whole to find one page (79,778 calls, 781 s), 122 store filters are written so the store index cannot
+serve them, the five-minute dispatcher starts 78 jobs on 5 connections, and 91,200 of 216,877 transactions deleted nothing. The
+two additions grow with orders and catalogue size: five document jobs find their due work each tick by re-checking every store's
+orders of 120 days and every invoice ever issued, and the catalogue listing calls a VAT function per product row (11.3 µs a row
+measured, against 0.1 µs when each rate is asked once). Do first: the statement counter (DQ-11), the store filter (DQ-8), the slug
+lookup (DQ-9), the knowledge job (DQ-6), the AI month sum (DQ-4) and the page index (DQ-2).
 
 ## Findings
 

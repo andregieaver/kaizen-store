@@ -4,8 +4,19 @@ Interface text (`README.md` beside this file), part of `docs/audits/bloat-review
 
 - **Kind:** eager. **Priority:** P1. **Effort:** M. **Confidence:** high. **Step:** 2.29.
 - **Second check:** corrected.
-- **Where:** `src/components/admin/block-fields.tsx:21`, `src/components/admin/block-fields.tsx:2684`, `src/components/admin/modal-preview.tsx:18`, `src/components/admin/modal-preview.tsx:34`, `src/components/admin/drafts/draft-summary.tsx:3`, `src/components/admin/drafts/draft-summary.tsx:35`, `src/components/admin/page-builder-fields.tsx:13`, `src/components/admin/page-builder-fields.tsx:1537`, `src/components/content-grid.tsx:9`, `src/components/content-grid.tsx:63`, `src/lib/i18n.ts:9-17`, `.next/diagnostics/route-bundle-stats.json`
-- **Evidence:** Five modules in the admin's client graph import t from lib/i18n, which imports every language whole: block-fields.tsx (the form group, line 2684), modal-preview.tsx (the modal group, line 34), draft-summary.tsx (unitPrice.bases, line 35), and page-builder-fields.tsx (line 1537) with content-grid.tsx (line 63), which draw the grid preview with t(data.lang) and pass the whole Messages on to Price and the campaign badge. My client graph finds 21 admin client entries that reach lib/i18n and none outside the admin. In the build, chunk 1u2592k6jkhim.js (314,914 characters) holds a sentence of the Swedish main file and is in the first-load chunks of 40 admin routes. On the measured page builder the two chunks with all four languages are 318,693 + 49,242 bytes raw, 103,098 + 15,315 gzip, 77% executed (verified report).
+- **Where:** `src/components/admin/block-fields.tsx:21`, `src/components/admin/block-fields.tsx:2684`,
+  `src/components/admin/modal-preview.tsx:18`, `src/components/admin/modal-preview.tsx:34`,
+  `src/components/admin/drafts/draft-summary.tsx:3`, `src/components/admin/drafts/draft-summary.tsx:35`,
+  `src/components/admin/page-builder-fields.tsx:13`, `src/components/admin/page-builder-fields.tsx:1537`,
+  `src/components/content-grid.tsx:9`, `src/components/content-grid.tsx:63`, `src/lib/i18n.ts:9-17`,
+  `.next/diagnostics/route-bundle-stats.json`
+- **Evidence:** Five modules in the admin's client graph import t from lib/i18n, which imports every language whole:
+  block-fields.tsx (the form group, line 2684), modal-preview.tsx (the modal group, line 34), draft-summary.tsx (unitPrice.bases,
+  line 35), and page-builder-fields.tsx (line 1537) with content-grid.tsx (line 63), which draw the grid preview with t(data.lang)
+  and pass the whole Messages on to Price and the campaign badge. My client graph finds 21 admin client entries that reach
+  lib/i18n and none outside the admin. In the build, chunk 1u2592k6jkhim.js (314,914 characters) holds a sentence of the Swedish
+  main file and is in the first-load chunks of 40 admin routes. On the measured page builder the two chunks with all four
+  languages are 318,693 + 49,242 bytes raw, 103,098 + 15,315 gzip, 77% executed (verified report).
 - **Cost today:** About 368 KB raw / 118 KB gzip of first scripts on 40 admin routes (the page, header, footer and layout editors and the draft-order editor): about a tenth of what the page builder transfers. Paid by: An owner's browser when a page, header, footer or draft order is opened.
 - **Saving:** Draft-order editor: about 368 KB raw / 118 KB gzip (from the import graph; that page was not measured). Page editors: about three of the four languages off the first load, roughly 275 KB raw / 88 KB gzip (estimate); the fourth comes after load when a preview first needs the page's language.
 - **Risk:** The grid preview waits for its language's module on first draw; a preview in another language than the page's needs that module too. An AI-translated language has no module and previews in English, as today. A unit test that cannot wait must be given the module beforehand.

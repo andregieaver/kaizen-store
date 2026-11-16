@@ -222,6 +222,37 @@ export const WEBHOOK_SUBJECTS = {
     updated_at: when.describe("When its stock last moved."),
     admin_url: adminUrl,
   }),
+  // An A/B test with an answer (D148 phase 15): the store's own verdict and figures, as its page shows them.
+  experiment: z.object({
+    id,
+    name: z.string(),
+    goal: z.enum(["orders", "revenue", "cart", "checkout", "click", "form"]).describe("What the test counts: paid orders, revenue per visitor, adding to the cart, reaching checkout, a click or a form sent."),
+    target: z.object({
+      kind: z.enum(["page", "layout", "header", "footer", "role"]).describe("A page, a product layout, the header, the footer, or a page with a place of its own (the front page, the cart, …)."),
+      title: z.string(),
+      address: z.string().nullable().describe("A page's address on the site, such as /about; null for a page with a place of its own, a header, footer or product layout."),
+      part: z.string().nullable().describe("The row or component tested, when only a part of the page was."),
+    }),
+    status: z.enum(["running", "stopped", "applied", "discarded"]).describe("Where the test is when the event is sent: still running, stopped, a version applied, or the original kept."),
+    verdict: z.enum(["better", "worse", "even", "broken", "early", "few"]).describe("better: a version did clearly better; worse: the original did; even: no clear difference; broken: the visitors were not divided as planned; early or few: no answer (yet), which an answered test only shows when it was built again later."),
+    best: z.string().nullable().describe("For better: the version that did clearly better (b, c, …); null otherwise."),
+    headline: z.string().describe("The verdict in one sentence, in English."),
+    days: z.int().describe("Days the test has run."),
+    versions: z.array(
+      z.object({
+        key: z.string().describe("a is the original."),
+        name: z.string(),
+        visitors: z.int().describe("Visitors counted in the version: only those who accepted statistics cookies."),
+        conversions: z.int().nullable().describe("Visitors who did the goal; null for revenue per visitor."),
+        rate: z.number().nullable().describe("conversions / visitors as a share (0.112 is 11.2 %); null for revenue per visitor."),
+        revenue_per_visitor: amount.nullable().describe("Revenue per visitor without VAT, in the store's main currency; null for the other goals."),
+      }),
+    ),
+    currency: z.string(),
+    answered_at: when.nullable(),
+    learning: z.string().nullable().describe("What the owner wrote the test taught, once they have."),
+    admin_url: adminUrl,
+  }),
   // An app's installation on the store (D441 D2): what app.uninstalled and store.erase_requested are about.
   installation: z.object({
     id: id.describe("The installation's id, as the app was given it when it was installed (the grant)."),
@@ -266,6 +297,7 @@ const SUBJECT_OF: Record<IntegrationEvent | AppEvent, WebhookSubjectName> = {
   "subscription.payment_failed": "subscription",
   "gift_card.issued": "gift_card",
   "review.created": "review",
+  "experiment.answered": "experiment",
   "app.uninstalled": "installation",
   "store.erase_requested": "installation",
 };
@@ -291,6 +323,7 @@ export const SUBJECT_READ_AREA: Partial<Record<WebhookSubjectName, string>> = {
   discount: "marketing",
   gift_card: "marketing",
   review: "marketing",
+  experiment: "marketing",
 };
 
 /**

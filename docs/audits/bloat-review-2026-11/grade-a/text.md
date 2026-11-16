@@ -1,6 +1,12 @@
 # Grade A for: Interface text
 
-Part of `docs/audits/bloat-review-2026-11.md`. **Today: C.** The words are in excellent order: every language is complete and held by the compiler, 34 of 31,359 keys are dead, and a shopper's document carries 7 to 32 texts. How they load is not: 135 of the 136 admin catalogue files (3.52 MB) sit behind the proxy, the visit beacon and every store page, admin documents hand two to three times the words their parts name, and 423 of 449 admin routes and 97 of 111 visitor routes carry text for someone else in their first scripts. Two of the eight ways words can leak have a test. That is a sound base with real waste, mostly unheld: a C and not a D, because the shopper's side is lean and the admin's English fallback was taken out of its scripts on 10 November and is held (D540).
+Part of `docs/audits/bloat-review-2026-11.md`. **Today: C.** The words are in excellent order: every language is complete and held
+by the compiler, 34 of 31,359 keys are dead, and a shopper's document carries 7 to 32 texts. How they load is not: 135 of the 136
+admin catalogue files (3.52 MB) sit behind the proxy, the visit beacon and every store page, admin documents hand two to three
+times the words their parts name, and 423 of 449 admin routes and 97 of 111 visitor routes carry text for someone else in their
+first scripts. Two of the eight ways words can leak have a test. That is a sound base with real waste, mostly unheld: a C and not
+a D, because the shopper's side is lean and the admin's English fallback was taken out of its scripts on 10 November and is held
+(D540).
 
 **The bar, in a sentence.** A shopper's function and scripts carry no admin words, an admin screen is handed the words its parts name and its function loads only the areas it names, a save sends no words again, and a translated language costs what it uses. Each of these is a number that a test fails on, for an English and a Norwegian owner.
 
@@ -25,7 +31,23 @@ After phase 0: C. After phase 1: C. After phase 2: B. After all phases: A.
 
 **Can the steps reach an A?** Yes, and no answer of yours must be a yes. Three steps were added: the 218 modules that import a catalogue file directly (2.50), a count of handed against named words at all 188 hand-down sites (1.28), and a store page's scripts held by name (1.27). If a third admin language is wanted in the first half year, steps 2.25 and 2.50 move before opening.
 
-**The challenger on the bar.** I re-ran the import walk and the route search, and changed four measures. TIGHTENED: (1) Admin words outside the admin. The steward allowed 16 files (0.55 MB) behind the proxy, the beacon and the store layout, saying staff mail needs them. Only 4 of the 16 serve a checkout's mail. Eight more (reports, work, screens, custom reports: 0.35 MB) arrive through the AI manager's tools, and the plan's own server steps cut that chain. The last four (customers, sign-in) stay as a stated tolerance. The bar is now one number per entry: proxy 0, beacons 0, store layout 8 files and 0.21 MB. (2) First scripts are counted on all 560 routes. Cookie purposes also ride on 96 admin routes (193 in all, not 97). Sign-in English is on 456 routes, where 2 draw a part that reads it; the steward tolerated it as if it sat on the sign-in screens only. (3) Shared words go to 15.5 and 16 KB: the cuts leave 14.8 and 15.3 KB by my count. (4) Catalogue files that reach zod are 5 by the walk, not 2. LOOSENED: (a) The median admin function goes from 0.75 MB to 0.9 MB and 18 areas. My walk gives 0.78 MB as the floor when no module imports a catalogue directly, and label readers will name a few areas more. (b) 'Words read' becomes 'words the screen's parts name', counted from the source. A share read at load, as step 2.27 has it (90% on the builder), can only be met by loading a panel's words when it opens. That costs a lost press, the fault D540 fixed. ADDED: a structural rule that makes the server numbers reachable and simple to hold (a catalogue file has one importer, its area module; 218 others today); words sent again with a save, as a measure of its own (step 2.28 already serves it); and a ceiling for each stated tolerance, so a fifth storefront language or an eighth translated one is seen. KEPT: the cost of a translated language, the document budgets, zero dead keys, and eight of eight guards in English and Norwegian. AMENDED BY THE PANEL'S CRITIC, so that one thing has one number in every area: 3: the builder's document: at most 445,000 with at most 130,000 of words, after step 2.30.
+**The challenger on the bar.** I re-ran the import walk and the route search, and changed four measures. TIGHTENED: (1) Admin
+words outside the admin. The steward allowed 16 files (0.55 MB) behind the proxy, the beacon and the store layout, saying staff
+mail needs them. Only 4 of the 16 serve a checkout's mail. Eight more (reports, work, screens, custom reports: 0.35 MB) arrive
+through the AI manager's tools, and the plan's own server steps cut that chain. The last four (customers, sign-in) stay as a
+stated tolerance. The bar is now one number per entry: proxy 0, beacons 0, store layout 8 files and 0.21 MB. (2) First scripts are
+counted on all 560 routes. Cookie purposes also ride on 96 admin routes (193 in all, not 97). Sign-in English is on 456 routes,
+where 2 draw a part that reads it; the steward tolerated it as if it sat on the sign-in screens only. (3) Shared words go to 15.5
+and 16 KB: the cuts leave 14.8 and 15.3 KB by my count. (4) Catalogue files that reach zod are 5 by the walk, not 2. LOOSENED: (a)
+The median admin function goes from 0.75 MB to 0.9 MB and 18 areas. My walk gives 0.78 MB as the floor when no module imports a
+catalogue directly, and label readers will name a few areas more. (b) 'Words read' becomes 'words the screen's parts name',
+counted from the source. A share read at load, as step 2.27 has it (90% on the builder), can only be met by loading a panel's
+words when it opens. That costs a lost press, the fault D540 fixed. ADDED: a structural rule that makes the server numbers
+reachable and simple to hold (a catalogue file has one importer, its area module; 218 others today); words sent again with a save,
+as a measure of its own (step 2.28 already serves it); and a ceiling for each stated tolerance, so a fifth storefront language or
+an eighth translated one is seen. KEPT: the cost of a translated language, the document budgets, zero dead keys, and eight of
+eight guards in English and Norwegian. AMENDED BY THE PANEL'S CRITIC, so that one thing has one number in every area: 3: the
+builder's document: at most 445,000 with at most 130,000 of words, after step 2.30.
 
 ## What the challenger found missing, and how it was settled
 

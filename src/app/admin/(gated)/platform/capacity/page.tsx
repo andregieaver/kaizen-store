@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 
+import { ActionForm, SubmitButton } from "@/components/admin/action-form";
 import { OwnSpeedView } from "@/components/admin/own-speed-view";
 import { ButtonLink, Card, PageHeader } from "@/components/admin/ui";
 import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
@@ -9,13 +10,16 @@ import { adminText } from "@/lib/admin-text";
 import { formatUsage } from "@/lib/usage-format";
 import { USAGE_METRIC_IDS, type UsageMetric } from "@/lib/usage-metrics";
 import { shiftMonth, usageMonth } from "@/lib/usage-month";
-import { requirePlatformReader } from "@/server/auth";
+import { platformCan, requirePlatformReader } from "@/server/auth";
+import { recordingsOpenNow } from "@/server/recordings-admin";
 import { upcomingPeaks } from "@/server/capacity-events";
 import { databaseGlance, drainConnected, platformUsage } from "@/server/usage";
 import { cronJobRows } from "@/server/cron-runs";
 import { ownSpeedReport } from "@/server/own-speed";
 import { adminFromDublin } from "@/server/status";
 import { cronHealth } from "@/lib/cron-health";
+
+import { recordingsOpenAction } from "./actions";
 
 export const metadata: Metadata = { title: "Usage and limits" };
 
@@ -33,7 +37,7 @@ export default async function PlatformCapacityPage({ searchParams }: PageProps<"
   const lang = adminLangOf(admin.adminLocale);
   const locale = ADMIN_LANG_FACTS[lang].locale;
   const w = adminText(lang, "capacity");
-  const [rows, glance, drain, peaks, jobs, platformSpeed, adminSpeed, dublin] = await Promise.all([
+  const [rows, glance, drain, peaks, jobs, platformSpeed, adminSpeed, dublin, recordingsOpen] = await Promise.all([
     platformUsage(month),
     databaseGlance(),
     drainConnected(),
@@ -42,6 +46,7 @@ export default async function PlatformCapacityPage({ searchParams }: PageProps<"
     ownSpeedReport("platform"),
     ownSpeedReport("admin"),
     adminFromDublin(),
+    recordingsOpenNow(),
   ]);
   const now = new Date();
   const ordered = sort ? [...rows].sort((a, b) => (b.values[sort] ?? 0) - (a.values[sort] ?? 0)) : rows;
@@ -60,6 +65,21 @@ export default async function PlatformCapacityPage({ searchParams }: PageProps<"
         </p>
         {!drain && <p className="mt-2 text-body text-muted">{w.platform.drainOff}</p>}
       </Card>
+      {/* Recordings of visits (D656): the platform's hold, open to every store or Kaizena Flow's own only. */}
+      <div id="recordings">
+        <Card title={w.recordings.title} description={w.recordings.description} compact>
+          <p className="text-body text-ink-2">{recordingsOpen ? w.recordings.open : w.recordings.closed}</p>
+          {platformCan(admin, "settings", "write") ? (
+            <ActionForm action={recordingsOpenAction} className="mt-3 flex flex-col gap-2">
+              <div>
+                <SubmitButton name="open" value={recordingsOpen ? "off" : "on"} variant="secondary">
+                  {recordingsOpen ? w.recordings.closeIt : w.recordings.openIt}
+                </SubmitButton>
+              </div>
+            </ActionForm>
+          ) : null}
+        </Card>
+      </div>
       {/* Scheduled jobs (PSI 2026-10-24, REL-06): the platform home links here when one is late or failing. */}
       <div id="jobs">
         <Card title={w.jobs.title} description={w.jobs.description} compact>

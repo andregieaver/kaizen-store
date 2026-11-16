@@ -368,5 +368,5 @@ export const staffEmailsNb: StaffEmailsMessages = {
     after: "Utfordringens regler tillater en person bare refusjoner og eskalert kundeservice: alt annet må gå uten. Én e-post hver dag så lenge dette varer.",
     button: "Åpne butikkens autopilot",
   },
-  push: { newOrderTitle: "Ny ordre {number}", newOrderBody: "{total} · {store}", quoteTitle: "Tilbud etterspurt {number}", quoteBody: "{store}", activityTitle: "Nå: {title}", activityBody: "{store}", decisionTitle: "Venter på ditt ja", decisionBody: "{summary} · {store}" },
+  push: { newOrderTitle: "Ny ordre {number}", newOrderBody: "{total} · {store}", quoteTitle: "Tilbud etterspurt {number}", quoteBody: "{store}", activityTitle: "Nå: {title}", activityBody: "{store}", decisionTitle: "Venter på ditt ja", decisionBody: "{summary} · {store}", stallTitle: "Utfordringsbutikken {store} trenger et blikk" },
 };

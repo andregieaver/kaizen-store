@@ -352,6 +352,7 @@ export const assistantEn = {
       kinds: {
         support_waiting: "A customer waited for a person",
         test_ended: "An A/B test ended",
+        test_answered: "An A/B test had an answer",
         alert: "An analytics alert",
         order_unsent: "A paid order was not sent",
         delivery_problem: "A parcel ran into trouble",
@@ -361,6 +362,7 @@ export const assistantEn = {
         payments_failing: "Payments were failing",
         stockout_risk: "A product may run out",
         staff_request: "A customer asked to change an order",
+        exchange_confirmed: "A customer confirmed an exchange",
       },
       statuses: { pending: "Waiting", running: "Working", done: "Done", skipped: "Skipped", failed: "Failed" },
     },

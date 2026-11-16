@@ -343,6 +343,7 @@ export const assistantNb: AssistantMessages = {
       kinds: {
         support_waiting: "En kunde ventet på et menneske",
         test_ended: "En A/B-test ble avsluttet",
+        test_answered: "En A/B-test fikk et svar",
         alert: "Et analysevarsel",
         order_unsent: "En betalt ordre ble ikke sendt",
         delivery_problem: "En pakke fikk problemer",
@@ -352,6 +353,7 @@ export const assistantNb: AssistantMessages = {
         payments_failing: "Betalinger feilet",
         stockout_risk: "Et produkt kan bli utsolgt",
         staff_request: "En kunde ba om å endre en bestilling",
+        exchange_confirmed: "En kunde bekreftet et bytte",
       },
       statuses: { pending: "Venter", running: "Jobber", done: "Ferdig", skipped: "Hoppet over", failed: "Mislyktes" },
     },
@@ -392,6 +394,7 @@ export const assistantNb: AssistantMessages = {
     preview_exchange: "Regner ut byttet",
     propose_exchange: "Forbereder byttet",
     process_exchange: "Forbereder gjennomføringen av byttet",
+    send_replacement: "Forbereder å sende varene på nytt",
     list_staff: "Ser på teamet",
     invite_staff: "Forbereder invitasjonen",
     change_staff_role: "Forbereder rolleendringen",

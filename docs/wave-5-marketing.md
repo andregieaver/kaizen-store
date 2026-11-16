@@ -307,7 +307,11 @@ starters per language (`AUTOMATION_STARTERS`, `src/lib/automation-starters.ts`, 
 translated), which the owner edits before saving. The database: `enabled` needs `enabled_at`, `delay_days` within its kind's range, `content` null
 exactly for `back_in_stock`. Switching and saving are `marketing:write`; audit `marketing_automation.saved`, `marketing_automation.switched` (area `marketing`).
 
-Since D653 (`docs/100-day-challenge.md` D4) two more kinds, `cross_sell` (1 to 90 days after delivery, default 14) and `replenish` (7 to 365, default 30), show each reader products code chose for them (`picksFor()`, at most three, on sale and in stock); and every lifecycle kind may have up to two follow-ups in `commerce.automation_steps` (positions 2 and 3, 1 to 60 days after the email before), which stop when the reader places a paid order. Audit `marketing_automation.follow_up_saved` and `marketing_automation.follow_up_deleted`.
+Since D653 (`docs/100-day-challenge.md` D4) two more kinds, `cross_sell` (1 to 90 days after delivery, default 14) and `replenish`
+(7 to 365, default 30), show each reader products code chose for them (`picksFor()`, at most three, on sale and in stock); and
+every lifecycle kind may have up to two follow-ups in `commerce.automation_steps` (positions 2 and 3, 1 to 60 days after the email
+before), which stop when the reader places a paid order. Audit `marketing_automation.follow_up_saved` and
+`marketing_automation.follow_up_deleted`.
 
 ### 6.2 Who gets which, once
 

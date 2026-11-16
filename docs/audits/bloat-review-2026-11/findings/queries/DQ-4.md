@@ -5,7 +5,13 @@ How data is asked for (`README.md` beside this file), part of `docs/audits/bloat
 - **Kind:** eager. **Priority:** P0. **Effort:** S. **Confidence:** high. **Step:** 0.21.
 - **Second check:** confirmed.
 - **Where:** `src/server/ai.ts:207-239`, `src/server/limits.ts:121-153`, `src/server/usage-sql.ts:36-57`, `src/server/ai-price-sql.ts:16-36`, `src/server/usage-meter.ts:40-48`, `docs/capacity.md:606-612`
-- **Evidence:** aiFor() is named on 92 lines in 65 files (my rg). For a store on the platform's key whose plan has a limit it calls aiRoomLeft(), which sums every ai_usage row of the month with a lateral price lookup per row and a euro conversion per day (usage-sql.ts:48-57, which I opened). The one-minute memo (limits.ts:122, 139-144) lives in one function instance and ticks are five minutes apart, so it helps only within one run. The daily totals already exist: usage-meter.ts:45 writes ai_cost_micros per store and day. docs/capacity.md:610-612 describes month keys as the month's daily rows plus today's live count; the code sums the whole month live instead, though storage_bytes at limits.ts:145-153 already does it the described way. Production: 6,782 calls at 37 ms and 1,732 at 57 ms, about 352 s, the third most expensive app statement, on 19,104 rows.
+- **Evidence:** aiFor() is named on 92 lines in 65 files (my rg). For a store on the platform's key whose plan has a limit it
+  calls aiRoomLeft(), which sums every ai_usage row of the month with a lateral price lookup per row and a euro conversion per day
+  (usage-sql.ts:48-57, which I opened). The one-minute memo (limits.ts:122, 139-144) lives in one function instance and ticks are
+  five minutes apart, so it helps only within one run. The daily totals already exist: usage-meter.ts:45 writes ai_cost_micros per
+  store and day. docs/capacity.md:610-612 describes month keys as the month's daily rows plus today's live count; the code sums
+  the whole month live instead, though storage_bytes at limits.ts:145-153 already does it the described way. Production: 6,782
+  calls at 37 ms and 1,732 at 57 ms, about 352 s, the third most expensive app statement, on 19,104 rows.
 - **Cost today:** About 352 s in 78 days; 37 to 57 ms in front of AI features and of each job that asks per store. It grows with a store's usage through the month and with the number of stores the five-minute jobs ask for. Paid by: The database; a shopper or owner waiting for an AI answer; each five-minute job that asks per store.
 - **Saving:** Estimate: about 90% of the 352 s (one day's rows instead of a month's), and the cost stops growing through the month.
 - **Risk:** A day counted twice or missed at the boundary would move a store's limit: the two new test cases hold it. Past days are as good as the nightly measure; a price added later is covered by step 3. A wrong figure would show on Usage and limits and as a store refused AI early.

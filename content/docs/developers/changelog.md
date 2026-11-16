@@ -9,12 +9,40 @@ features: []
 plans: []
 order: 1000
 checked: 2026-11-16
-sources: [D357, D438, D439, D440, D441, D458, D464, D511, D512, D585, D599, D606, D618, D621, D632, D635, D640, D653]
+sources: [D357, D438, D439, D440, D441, D458, D464, D511, D512, D585, D599, D606, D618, D621, D632, D635, D640, D653, D673, D678, D679]
 ---
 
 Every change to a published contract gets a version here, newest first: the Admin API (`/api/admin/v1/openapi.json`), the storefront API
 (`/api/storefront/v1/openapi.json`), the webhook topics (`/api/webhooks/v1/topics.json`) and the MCP catalogues (`/api/mcp/catalogue.json`,
 `/api/ucp/catalogue.json`). Within a major version nothing a caller relies on is renamed or removed; answers and payloads may gain fields.
+
+## 1.30 — 2026-11-16
+
+An addition to the owner MCP's catalogue for lost parcels (D679).
+
+- `send_replacement` (new, `order`): sends the goods of an order's parcel again when its tracking says the parcel is in trouble or on its
+  way back, as a new order at 0 to the same address (no payment, no invoice, no VAT), at most once per order. Needs approval;
+  `orders:write`.
+
+## 1.29 — 2026-11-16
+
+A/B tests in the Admin API and a webhook topic for their answers (D678).
+
+- `GET /experiments` and `GET /experiments/{id}` (`reports:read`; the token's maker must be able to read Marketing): each A/B test as its
+  page reads it: its stage (`draft`, `scheduled`, `learning`, `answer`, `broken`, `applied`, `discarded`), the next step, how far along it
+  is and when it is likely ready, and, only once it has an answer, each version against the original with its likely range and what everyone
+  seeing the better version would mean a week. Nothing is written.
+- `experiment.answered`: sent once, the first time a running test has an answer, to owners' endpoints, apps whose installation reads
+  marketing, and workflows. Its data is `experiment`: the verdict (`better`, `worse`, `even`, …), the better version, the verdict's sentence,
+  the days it has run and each version's visitors and figures, with what the owner wrote it taught once they have.
+
+## 1.28 — 2026-11-16
+
+An addition to the owner MCP's catalogue for A/B tests (D673).
+
+- `apply_winner`: takes an optional `learning` (3 to 280 characters): one sentence on what the test taught, in the owner's words, kept
+  with the test and shown on its page and in the list of what the store's tests taught. Its other fields and answer are as before; the
+  answer also says `learned` when a learning was kept.
 
 ## 1.27 — 2026-11-16
 

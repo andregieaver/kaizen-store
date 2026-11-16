@@ -5,10 +5,26 @@ What every AI call carries (`README.md` beside this file), part of `docs/audits/
 - **Kind:** eager. **Priority:** P1. **Effort:** M. **Confidence:** medium. **Step:** 2.38.
 - **Second check:** corrected.
 - **Where:** `src/server/owner-assistant.ts:409-415`, `src/server/owner-assistant.ts:743-750`, `src/server/owner-assistant.ts:751-768`, `src/server/ai.ts:676-702`, `src/lib/ai-usage.ts:92-101`, `src/server/ai-usage.ts:66-85`, `src/server/ai-price-sql.ts:16-36`, `docs/audits/code-review-2026-11.md:249`
-- **Evidence:** The request body carries no cache marker (0 lines in src for cache_control and five related names; rg run here). readTokens() reads only prompt_tokens and completion_tokens (ai-usage.ts:92-101), commerce.ai_usage has no column for cached tokens and commerce.ai_model_prices no price for them, so even when a provider discounts a repeated prefix the store's allowance is charged in full and nobody can see whether caching works. Inside one turn the prefix is already stable: the system prompt is built once (owner-assistant.ts:751-768) and the tool list changes only when load_tools runs, which re-sorts it in table order so new tools land in the middle (line 740 filters the table; line 746 puts new areas first). Across turns the prompt's second line carries the time to the minute (line 409, 415), 182 characters in, ahead of about 14,500 characters that do not change. The minute cannot simply go: follow_up takes its time as 'YYYY-MM-DD HH:MM in the time zone of your instructions' (src/lib/manager-tools.ts:96).
-- **Cost today:** Unknown, and that is the finding. On providers that cache by prefix on their own, rounds 2 and later of a turn may already be discounted on Kaizena Flow's bill; the code cannot tell, and the store's allowance is counted at the full price regardless, so a store reaches its monthly AI limit sooner than its real cost. Across turns of one conversation, and after any load_tools call, the changed minute or tool order defeats a prefix cache from that point on. Paid by: The store's AI allowance on every round; Kaizena Flow's provider bill wherever a cache needs a marker or the prefix moves.
+- **Evidence:** The request body carries no cache marker (0 lines in src for cache_control and five related names; rg run here).
+  readTokens() reads only prompt_tokens and completion_tokens (ai-usage.ts:92-101), commerce.ai_usage has no column for cached
+  tokens and commerce.ai_model_prices no price for them, so even when a provider discounts a repeated prefix the store's allowance
+  is charged in full and nobody can see whether caching works. Inside one turn the prefix is already stable: the system prompt is
+  built once (owner-assistant.ts:751-768) and the tool list changes only when load_tools runs, which re-sorts it in table order so
+  new tools land in the middle (line 740 filters the table; line 746 puts new areas first). Across turns the prompt's second line
+  carries the time to the minute (line 409, 415), 182 characters in, ahead of about 14,500 characters that do not change. The
+  minute cannot simply go: follow_up takes its time as 'YYYY-MM-DD HH:MM in the time zone of your instructions'
+  (src/lib/manager-tools.ts:96).
+- **Cost today:** Unknown, and that is the finding. On providers that cache by prefix on their own, rounds 2 and later of a turn
+  may already be discounted on Kaizena Flow's bill; the code cannot tell, and the store's allowance is counted at the full price
+  regardless, so a store reaches its monthly AI limit sooner than its real cost. Across turns of one conversation, and after any
+  load_tools call, the changed minute or tool order defeats a prefix cache from that point on. Paid by: The store's AI allowance
+  on every round; Kaizena Flow's provider bill wherever a cache needs a marker or the prefix moves.
 - **Saving:** Not measured. After AI-1 the stable start of a round is about 33,000 characters of fixed tools and nearly all of the 14,800-character prompt; from the second round of a turn the whole request up to the newest tool result can be served from a cache where the provider offers one. The store-side saving (allowance counted at the cached price) is certain wherever the provider reports cached tokens and a cached price is set.
-- **Risk:** Cached-token fields differ by provider: a wrong reading would undercount a store's cost, so read only documented names and keep cached at or below input. Pricing cached tokens changes the cost shown on the usage pages; the SQL and callCost() must change together or their test fails. Moving the time to the end is a new prompt version: if the model reads the time less reliably there, follow-ups get wrong times, so add an eval case that asks for a reminder 'tomorrow at 9' and checks the `at` it sends. The migration must go in a push before the prompt change, or the deploy waits on a replay that cannot pass yet.
+- **Risk:** Cached-token fields differ by provider: a wrong reading would undercount a store's cost, so read only documented names
+  and keep cached at or below input. Pricing cached tokens changes the cost shown on the usage pages; the SQL and callCost() must
+  change together or their test fails. Moving the time to the end is a new prompt version: if the model reads the time less
+  reliably there, follow-ups get wrong times, so add an eval case that asks for a reminder 'tomorrow at 9' and checks the `at` it
+  sends. The migration must go in a push before the prompt change, or the deploy waits on a replay that cannot pass yet.
 - **Already tracked:** Yes: code review step 3.18 (FA1), Open; its 'done when' needs the provider's cached tokens. Reading, storing and pricing cached tokens is not written there.
 
 ## The fix
@@ -17,7 +33,11 @@ What every AI call carries (`README.md` beside this file), part of `docs/audits/
 2. src/lib/ai-usage.ts: readTokens() also returns `cachedInputTokens`, read defensively from the names the providers' API references give for cached prompt tokens (check each provider's reference when building; an absent or odd value is 0, and never more than the input tokens). Add the field to UsageAmounts, NO_USAGE, UsageRow and the sums. src/server/ai.ts tokensOrEstimate() passes it on; src/server/ai-usage.ts recordUsage() (lines 66-85) writes it.
 3. Price it in the one place SQL reads a price and its twin in code: src/server/ai-price-sql.ts costMicrosSql becomes (input minus cached) x input price plus cached x coalesce(cached price, input price); src/lib/ai-cost.ts callCost() the same. The prices form at /admin/platform/ai/prices gets the optional field. A store's allowance (aiCostSql in src/server/usage-sql.ts, and DQ-4's daily rows) then counts cached tokens at their price.
 4. Show it: on Platform, AI usage (UsageReport) add the cached share of input tokens per feature; the round log of AI-10 carries cached tokens per round.
-5. Then the order, in the same change as AI-1 (one eval run). Tools: the fixed ones first, appended ones after, load_tools last (AI-1's fourth step). Prompt, managerPrompt() in src/server/owner-assistant.ts:390-499: move the sentence with the date and time out of the second line to the very end of the prompt, after 'What you know about them', as 'It is now ... in the store's time zone (...)'; keep the minute there. Everything before it then changes only with the store, the person's role, the page, waiting approvals and memories.
+5. Then the order, in the same change as AI-1 (one eval run). Tools: the fixed ones first, appended ones after, load_tools last
+   (AI-1's fourth step). Prompt, managerPrompt() in src/server/owner-assistant.ts:390-499: move the sentence with the date and
+   time out of the second line to the very end of the prompt, after 'What you know about them', as 'It is now ... in the store's
+   time zone (...)'; keep the minute there. Everything before it then changes only with the store, the person's role, the page,
+   waiting approvals and memories.
 6. Only if the measured cached share stays at zero on rounds after the first for a model family the platform uses: add what that provider documents for marking a cacheable prefix, in streamWithToolsOnce() (src/server/ai.ts:679-702) behind a flag in the provider's facts in src/lib/ai-provider.ts (the code review names this for Anthropic models through the gateway). Do not send a marker to a provider that does not document one.
 7. docs/rules/admin/ai.md (AI usage and Cost, D106, D145): say that cached input tokens are stored and priced; code review step 3.18's notes.
 

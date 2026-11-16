@@ -36,6 +36,7 @@ export default async function PlatformSupportPage() {
     canWrite: true,
     presence: mine.status,
     partnerOn: mine.partner,
+    shopUrl: "/",
     actions: {
       heartbeat: kaizenSupportHeartbeatAction,
       presence: kaizenSupportPresenceAction,

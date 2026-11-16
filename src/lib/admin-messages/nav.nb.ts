@@ -139,6 +139,9 @@ export const NAV_NB: Record<string, string> = {
   "Who is in the store right now, carts and checkouts in progress, and today's orders so far.":
     "Hvem som er i butikken nå, handlekurver og kasser som er i gang, og dagens ordrer så langt.",
   Speed: "Hastighet",
+  Heatmaps: "Varmekart",
+  "Where visitors click, how far they scroll and what they look at, and where they get stuck.":
+    "Hvor besøkende klikker, hvor langt de blar og hva de ser på, og hvor de står fast.",
   "How fast your pages load for your visitors, measured in their browsers, and what to fix.":
     "Hvor raskt sidene lastes for de besøkende, målt i nettleserne deres, og hva du kan rette.",
   "Analytics settings": "Innstillinger for analyse",

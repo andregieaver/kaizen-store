@@ -12,6 +12,7 @@ export const experimentsEn = {
     description:
       "Try two versions of a page, a row or component of it, your header or footer, or a product layout on real visitors and keep the one that works better. Half of the visitors see it as it is, the other half a version you change; Kaizena Flow counts who adds to the cart and who buys, and tells you in plain words when there is a winner. Only visitors who have accepted statistics cookies take part; everyone else sees the page as it is.",
     newTest: "New test",
+    download: "Download as CSV",
     taught: "What your tests taught you",
     empty: "No tests yet. Pick a page, say what you want more of, and change one thing: a heading, a picture, a button.",
     versions: "{n} versions",
@@ -19,6 +20,32 @@ export const experimentsEn = {
     starts: "Starts {date}",
     notStarted: "Not started",
     visitors: { one: "{n} visitor", many: "{n} visitors" },
+    lead: {
+      decide: { one: "One test has an answer: choose what to keep.", many: "{n} tests have an answer: choose what to keep." },
+      learning: { one: "One test is still learning.", many: "{n} tests are still learning." },
+      learningAround: { one: "One test is still learning, likely ready around {date}.", many: "{n} tests are still learning; the first is likely ready around {date}." },
+      planned: { one: "One test is ready to start.", many: "{n} tests are ready to start." },
+      done: "No test is running. Start one from an idea below.",
+    },
+    groups: { decide: "Needs your decision", learning: "Still learning", planned: "Drafts and planned", done: "Decided" },
+    readyAround: "Ready around {date}",
+    dayOf: "Day {days} of {min}",
+    progress: "How far along",
+    ideas: {
+      title: "Ideas to test",
+      intro: "Where most of your visitors could take part, and one thing to change there. Nothing starts until you say so.",
+      change: {
+        button: "Try other words on “{button}”",
+        heading: "Try another first heading",
+        layout: "Try the pictures and the buy button in another order",
+        header: "Try a simpler menu",
+      },
+      perDay: { one: "{n} visitor a day could take part", many: "{n} visitors a day could take part" },
+      answer: { one: "an answer in about {n} week for a change of {change} or more", many: "an answer in about {n} weeks for a change of {change} or more" },
+      tooFew: "too few visitors for an answer within six weeks",
+      notCounted: "How long it takes is shown once visits are counted.",
+      start: "Start from this",
+    },
   },
   status: { draft: "Draft", scheduled: "Scheduled", running: "Running", stopped: "Stopped", applied: "Winner applied", discarded: "Discarded" },
   goals: {
@@ -164,6 +191,16 @@ export const experimentsEn = {
     make: "Make version B",
   },
   /** A draft's page as a record (D660): its next step in the header, a checklist, what each version changes, and its settings under Customise. */
+  /** The original and a version side by side (phase 16). */
+  frames: {
+    title: "Side by side",
+    intro: "The original and a version as visitors are shown them, without your header and footer. Scroll inside each to see more.",
+    which: "Version to compare",
+    width: "Screen",
+    computer: "Computer",
+    phone: "Phone",
+    frameTitle: "{name} as visitors see it",
+  },
   draftCard: {
     change: "Change {name}",
     start: "Start the test",

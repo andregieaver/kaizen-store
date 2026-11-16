@@ -34,6 +34,8 @@ reproduced before they are reported) then **Fix** (each finding with a regressio
 updated, then a second agent tries to show each raised row is still short, then `pnpm parity:write` once that script
 exists).
 
+A spec is at most 30,000 characters; each later agent reads its sections 1 to 5 and the part for its own area.
+
 The run **stops after the Spec** and returns `{ stopped: true, reason }` when the spec finds an owner decision
 (plan section 5, bucket C) or a missing agreement that blocks the work. Decide, then start again (the spec file stays; the new run's Spec agent
 reads and updates it).
@@ -72,8 +74,9 @@ The result holds every agent's report (`spec`, `found`, `server`, `surfaces`, `g
    Keep the agents' `ownerStatements` only for what is not a migration. After the deploy, check the security and
    performance advisors and fix what the migration caused. Migrations stay additive (the old code runs against the
    new schema until the deploy ends).
-3. **Record.** Add the decision row (D154 onward) and the migration versions to `docs/decisions.md`; add the CLAUDE.md
-   bullet (drafts are in the `rerate` report); update the plan comparison (D132) and the AI manager's tools and skills
+3. **Record.** Claim the decision's number first (`node scripts/claim-decision.mjs "title"`), then write its row (D154 onward)
+   and the migration versions to `docs/decisions.md`; add the rule under its heading in `docs/rules` and its one index line in
+   CLAUDE.md (drafts are in the `rerate` report); update the plan comparison (D132) and the AI manager's tools and skills
    when the wave added a feature that belongs there.
 4. **Legal texts.** List every consumer legal text the wave added (spec section "Needs human legal review") in the
    hand-over. They are hand-written and unreviewed; a row that rests on them is not Full until a person has read them.

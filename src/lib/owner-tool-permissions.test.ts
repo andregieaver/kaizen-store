@@ -17,7 +17,7 @@ const CHANGING = new Set([
   "tag_orders", "archive_orders", "create_draft_order", "send_draft_order", "set_draft_prices", "decline_quote", "set_price_display", "set_quote_requests", "set_feature",
   "draft_broadcast", "send_broadcast", "tag_customer", "switch_email_automation", "write_email_automation", "write_cart_reminder", "tell_customer_about_order", "carry_out_address_change", "draft_text_message", "send_text_message", "issue_gift_card", "save_research_note", "compare_options", "set_brand", "design_look", "make_brand_marks",
   "add_support_note", "reply_to_support", "end_support_conversation",
-  "invite_staff", "change_staff_role", "remove_staff", "change_plan", "end_plan", "change_order", "propose_exchange", "process_exchange", "log_time", "issue_work_invoice",
+  "invite_staff", "change_staff_role", "remove_staff", "change_plan", "end_plan", "change_order", "propose_exchange", "process_exchange", "send_replacement", "log_time", "issue_work_invoice",
   "create_product", "update_product", "set_prices", "set_product_status", "write_product_texts", "update_category",
   "build_page", "cancel_page_build", "edit_page", "publish_page", "set_page_place", "save_menu", "set_header_footer",
   "set_store_details", "set_countries", "set_languages", "set_currencies", "set_flat_shipping", "save_shipping_method", "open_store",

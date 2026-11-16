@@ -48,6 +48,11 @@ export const challengeSchema = z
      */
     purchasePerOrder: z.number().min(0).max(100_000_000).nullable().default(null),
     purchaseMonthly: z.number().min(0).max(1_000_000_000).nullable().default(null),
+    /**
+     * The most the goods of one lost parcel's replacement may be worth for it to send them itself (B3, D679), in the store's main currency, with VAT
+     * as the customer paid; null: every replacement waits for the owner's yes. Outside the challenge a replacement always waits.
+     */
+    replacementMax: z.number().min(0).max(100_000_000).nullable().default(null),
     /** The ad money agreed for each store over the 100 days, in the clone's main currency (3.3: each spends at least 80 % of it); null: none agreed. */
     adMoney: z.number().min(0).max(1_000_000_000).nullable().default(null),
     /** The original store's signed P&L, period by period (`src/lib/challenge-scoreboard.ts`), typed by the platform team on the scoreboard. */
@@ -81,6 +86,8 @@ export type ChallengeState = {
   day: number;
   broadcastsPerWeek: number;
   supportRepliesPerDay: number;
+  /** The most a replacement's goods may be worth, in the main currency's major units (B3, D679); null: every one waits. */
+  replacementMax: number | null;
 };
 
 /** A stored challenge, read safely: anything unreadable is no challenge. */
@@ -154,6 +161,7 @@ export function withChallenge(settings: AutonomySettings, c: Challenge | null, t
       day: challengeDay(c, today),
       broadcastsPerWeek: c.broadcastsPerWeek,
       supportRepliesPerDay: c.supportRepliesPerDay,
+      replacementMax: c.replacementMax,
     },
   };
 }

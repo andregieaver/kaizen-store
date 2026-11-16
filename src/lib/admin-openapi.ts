@@ -93,6 +93,7 @@ const TAGS = [
   { name: "Menus", description: "The store's menus (D85), read." },
   { name: "Settings", description: "The store's settings, read." },
   { name: "Reports", description: "Saved reports (D345), run on the data as it is now." },
+  { name: "A/B tests", description: "The store's A/B tests (D148), each as its page reads it: worked out by the store, read-only." },
   { name: "Webhook endpoints", description: "The owner's own endpoints (D354) and their deliveries, with `webhooks:write`." },
   { name: "Bulk jobs", description: "The product file of the Data page (D165): exported, and imported with a dry run first." },
   { name: "Inventory", description: "Stock per variant and location, adjusted or counted as the Inventory page does." },

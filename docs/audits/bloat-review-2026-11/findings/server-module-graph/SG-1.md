@@ -4,11 +4,43 @@ The server code every route loads (`README.md` beside this file), part of `docs/
 
 - **Kind:** eager. **Priority:** P0. **Effort:** S. **Confidence:** high. **Step:** 0.6.
 - **Second check:** corrected.
-- **Where:** `src/server/customers.ts:17`, `src/server/customers.ts:499-502`, `src/server/privacy-erasure.ts:17-36`, `src/server/retention.ts:19-36`, `src/server/follow-ups.ts:14`, `src/server/manager-tools.ts:50`, `src/server/owner-tool-error.ts:2`, `src/server/visibility.ts:17`, `src/server/customer-admin.ts:25`, `src/server/store-features.ts:35`, `src/server/store-features.ts:52`, `src/server/store-closure.ts:87-110`, `src/server/orders.ts:22`, `src/server/orders.ts:503`, `src/server/seo.ts:48`, `scripts/await-deploy.mjs:12-14`
-- **Evidence:** 229 files of src/server form one import cycle (712 edges; Tarjan on the build's own module graph, reproduced by the skeptic and matched by the tests-ci plan's source-level count). The build compiles it once per layer (route handlers, pages, proxy). It reaches 1,934 modules and 10.3 MB. 181 of 268 handlers and 559 of 562 pages reach it. I traced the entry chains again on the graph: a storefront page enters through pages.ts -> visibility.ts -> customers.ts; /api/shop/tiles through chat-route.ts -> chat-agent.ts -> recommend.ts -> customers.ts; /api/cron/page-jobs through site-tools.ts -> pages.ts -> visibility.ts -> customers.ts; from customers.ts all go privacy-erasure.ts -> retention.ts -> order-rules.ts -> follow-ups.ts -> owner-tools.ts. The upward edges are small. customers.ts:17 imports the GDPR erasure job for one call in deleteCustomer (line 500). visibility.ts:17 takes one SQL fragment, bought, from customer-admin.ts:25. store-features.ts:35 calls storeObligations once (line 52), a plain count that lives in store-closure.ts:87-110 beside the code that closes a store. follow-ups.ts:14 and manager-tools.ts:50 import OwnerToolError from owner-tools.ts although it is defined in the leaf owner-tool-error.ts. I re-ran the simulation: on the storefront home page three cuts do all the work (2,498 -> 2,044 -> 2,040 -> 1,843 module paths; 11.3 -> 7.7 MB); the other proposed cuts change nothing there but shrink other routes (seo.ts -> theme-store.ts takes 90 modules and sharp off /api/shop/tiles). With every cut of this plan in the graph (this finding, SG-3, SG-4 step a, SG-6, SG-15, SG-17, SG-18) the median handler goes from 2,015 to 725 module paths, the median storefront page from 2,500 to 1,637, handlers over 1,500 from 181 to 29 (the 29 are the AI manager's and the MCP's routes, support's, two personal-data export routes, the Admin API and four cron routes, which use what they load).
-- **Cost today:** 0.9 to 1.3 s and 97 MB of heap (222 MB RSS) to load a fat route cold on this machine, against 0.16 to 0.24 s and 26 MB for /api/health (the skeptic's re-measurement, fresh process per run). About 0.3 s of it is running module bodies; the rest is compiling, which a bytecode cache on the host would shorten (not checked). 10 to 12 MB of server chunks per route. Paid by: The server per cold instance: the first shopper or owner after each deploy (every push to main deploys), each scale-up and each idle period. It is the same whatever a store uses, so it grows with traffic and instances once stores open. Also the build's page-data workers.
-- **Saving:** Simulated on the build's graph (whole edges removed; an estimate). Storefront home: 2,498 module paths and 11.3 MB -> 1,843 and 7.7 MB with the three edits. /api/shop/tiles: 2,018 and 10.4 MB -> 1,168 and 6.3 MB with edits 1 to 7, and -> 733 paths and 2.3 MB with every cut of this plan. /api/cron/page-jobs: 2,016 -> 727 paths, 10.4 -> 2.4 MB with every cut of this plan. Handlers that reach the AI tools: 181 -> 28. Cold load of a storefront page from about 1.1 s to an estimated 0.6 to 0.7 s with the three edits alone (calibrated on measured routes of similar size; a figure for this machine, not Vercel).
-- **Risk:** A lazily imported module fails at its first call, not at start: keep the calls awaited; the integration tests above cover them. A lazy import changes the order modules load in, which is what D440 was (a route that answered 500 only on Vercel): the deploy's smoke checks and the pages named in the steps show it. Lazy imports cut cold-start work, not the function's package: what sits behind import() is still traced. Before opening, a route broken this way disturbs no shopper, so this is the cheap moment.
+- **Where:** `src/server/customers.ts:17`, `src/server/customers.ts:499-502`, `src/server/privacy-erasure.ts:17-36`,
+  `src/server/retention.ts:19-36`, `src/server/follow-ups.ts:14`, `src/server/manager-tools.ts:50`,
+  `src/server/owner-tool-error.ts:2`, `src/server/visibility.ts:17`, `src/server/customer-admin.ts:25`,
+  `src/server/store-features.ts:35`, `src/server/store-features.ts:52`, `src/server/store-closure.ts:87-110`,
+  `src/server/orders.ts:22`, `src/server/orders.ts:503`, `src/server/seo.ts:48`, `scripts/await-deploy.mjs:12-14`
+- **Evidence:** 229 files of src/server form one import cycle (712 edges; Tarjan on the build's own module graph, reproduced by
+  the skeptic and matched by the tests-ci plan's source-level count). The build compiles it once per layer (route handlers, pages,
+  proxy). It reaches 1,934 modules and 10.3 MB. 181 of 268 handlers and 559 of 562 pages reach it. I traced the entry chains again
+  on the graph: a storefront page enters through pages.ts -> visibility.ts -> customers.ts; /api/shop/tiles through
+  chat-route.ts -> chat-agent.ts -> recommend.ts -> customers.ts; /api/cron/page-jobs through site-tools.ts -> pages.ts ->
+  visibility.ts -> customers.ts; from customers.ts all go privacy-erasure.ts -> retention.ts -> order-rules.ts -> follow-ups.ts ->
+  owner-tools.ts. The upward edges are small. customers.ts:17 imports the GDPR erasure job for one call in deleteCustomer (line
+  500). visibility.ts:17 takes one SQL fragment, bought, from customer-admin.ts:25. store-features.ts:35 calls storeObligations
+  once (line 52), a plain count that lives in store-closure.ts:87-110 beside the code that closes a store. follow-ups.ts:14 and
+  manager-tools.ts:50 import OwnerToolError from owner-tools.ts although it is defined in the leaf owner-tool-error.ts. I re-ran
+  the simulation: on the storefront home page three cuts do all the work (2,498 -> 2,044 -> 2,040 -> 1,843 module paths; 11.3 ->
+  7.7 MB); the other proposed cuts change nothing there but shrink other routes (seo.ts -> theme-store.ts takes 90 modules and
+  sharp off /api/shop/tiles). With every cut of this plan in the graph (this finding, SG-3, SG-4 step a, SG-6, SG-15, SG-17,
+  SG-18) the median handler goes from 2,015 to 725 module paths, the median storefront page from 2,500 to 1,637, handlers over
+  1,500 from 181 to 29 (the 29 are the AI manager's and the MCP's routes, support's, two personal-data export routes, the Admin
+  API and four cron routes, which use what they load).
+- **Cost today:** 0.9 to 1.3 s and 97 MB of heap (222 MB RSS) to load a fat route cold on this machine, against 0.16 to 0.24 s and
+  26 MB for /api/health (the skeptic's re-measurement, fresh process per run). About 0.3 s of it is running module bodies; the
+  rest is compiling, which a bytecode cache on the host would shorten (not checked). 10 to 12 MB of server chunks per route. Paid
+  by: The server per cold instance: the first shopper or owner after each deploy (every push to main deploys), each scale-up and
+  each idle period. It is the same whatever a store uses, so it grows with traffic and instances once stores open. Also the
+  build's page-data workers.
+- **Saving:** Simulated on the build's graph (whole edges removed; an estimate). Storefront home: 2,498 module paths and 11.3
+  MB -> 1,843 and 7.7 MB with the three edits. /api/shop/tiles: 2,018 and 10.4 MB -> 1,168 and 6.3 MB with edits 1 to 7, and ->
+  733 paths and 2.3 MB with every cut of this plan. /api/cron/page-jobs: 2,016 -> 727 paths, 10.4 -> 2.4 MB with every cut of this
+  plan. Handlers that reach the AI tools: 181 -> 28. Cold load of a storefront page from about 1.1 s to an estimated 0.6 to 0.7 s
+  with the three edits alone (calibrated on measured routes of similar size; a figure for this machine, not Vercel).
+- **Risk:** A lazily imported module fails at its first call, not at start: keep the calls awaited; the integration tests above
+  cover them. A lazy import changes the order modules load in, which is what D440 was (a route that answered 500 only on Vercel):
+  the deploy's smoke checks and the pages named in the steps show it. Lazy imports cut cold-start work, not the function's
+  package: what sits behind import() is still traced. Before opening, a route broken this way disturbs no shopper, so this is the
+  cheap moment.
 - **Already tracked:** Partly. Code review step 3.13 Domain folders (FV4, FH6) and step 4.1 Lint rules (FH7, FH8), both Open, say nothing stops one feature importing another's internals; its line 532 says circular imports were only spot-checked. The cycle, its run-time cost and the cut list are new. Also planned in this review as tests-ci TC-2 (the ratchet and a 12-line cut list) and storefront-data SD-1 step 3.
 
 ## The fix

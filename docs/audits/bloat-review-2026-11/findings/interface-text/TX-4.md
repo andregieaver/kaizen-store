@@ -5,7 +5,12 @@ Interface text (`README.md` beside this file), part of `docs/audits/bloat-review
 - **Kind:** eager. **Priority:** P0. **Effort:** S. **Confidence:** high. **Step:** 0.9.
 - **Second check:** confirmed.
 - **Where:** `src/components/admin/shortcut-sheet.tsx:19`, `src/components/admin/admin-frame.tsx:95`, `src/components/admin/responsive-edit.tsx:20`, `src/components/admin/responsive-edit.tsx:100`, `src/components/admin/responsive-edit.tsx:306`, `src/components/admin/typography-fields.tsx:276`, `src/components/admin/responsive-edit.test.ts:103`, `src/components/admin/admin-catalogues.scan.test.ts:31`, `docs/audits/psi-followups.md:482`, `.next/diagnostics/route-bundle-stats.json`
-- **Evidence:** The admin frame draws the shortcut sheet, which imports typingIn from responsive-edit.tsx (shortcut-sheet.tsx:19). That file imports builderEn by value (line 20) only as the default of sizeNote(source, size, words = builderEn) at line 100. All 4 call sites outside tests pass words (responsive-edit.tsx:138 and 152, typography-fields.tsx:276 and 290); one test calls it without (responsive-edit.test.ts:103). In the build, chunk 0pmozty218j-z.js holds the builder's English and nothing else: 71,360 characters, 23,880 bytes gzip. I found it in the first-load chunks of 423 of the 449 admin routes in route-bundle-stats.json; the 26 without it are sign-in, print and preview pages.
+- **Evidence:** The admin frame draws the shortcut sheet, which imports typingIn from responsive-edit.tsx (shortcut-sheet.tsx:19).
+  That file imports builderEn by value (line 20) only as the default of sizeNote(source, size, words = builderEn) at line 100. All
+  4 call sites outside tests pass words (responsive-edit.tsx:138 and 152, typography-fields.tsx:276 and 290); one test calls it
+  without (responsive-edit.test.ts:103). In the build, chunk 0pmozty218j-z.js holds the builder's English and nothing else: 71,360
+  characters, 23,880 bytes gzip. I found it in the first-load chunks of 423 of the 449 admin routes in route-bundle-stats.json;
+  the 26 without it are sign-in, print and preview pages.
 - **Cost today:** 71 KB minified (24 KB gzip) downloaded once per deploy and run on every signed-in screen: about 6% of the 1.19 MB of first scripts of the orders list. Paid by: An owner's and a platform admin's browser.
 - **Saving:** 71 KB minified / 24 KB gzip off the first scripts of 423 admin routes (measured). The page editors still load the builder's English through templates-helpers.ts until AC-9.
 - **Risk:** None found: every caller already passes its words, and a caller that did not would fail to compile.

@@ -1155,7 +1155,7 @@ export const da: Messages = {
     popular: "Mest populær",
     includes: "Det er inkluderet",
     /** What a plan includes of its limits (D314): the amount, then the limit's name ("10 GB storage", "Unlimited products"). */
-    limitNames: { storage_bytes: "lagerplads", products: "produkter", staff_seats: "medarbejdere", custom_domains: "egne domæner", marketing_emails_month: "markedsføringsmails om måneden", ai_cost_month_micros: "AI om måneden", requests_month: "besøg om måneden", egress_bytes_month: "båndbredde om måneden", stores_owned: "butikker" },
+    limitNames: { storage_bytes: "lagerplads", products: "produkter", staff_seats: "medarbejdere", custom_domains: "egne domæner", marketing_emails_month: "markedsføringsmails om måneden", ai_cost_month_micros: "AI om måneden", requests_month: "besøg om måneden", egress_bytes_month: "båndbredde om måneden", recordings_month: "optagelser af besøg om måneden", stores_owned: "butikker" },
     limitNamesOne: { products: "produkt", staff_seats: "medarbejder", custom_domains: "eget domæne", stores_owned: "butik" },
     unlimited: "Ubegrænset",
     unlimitedCounted: "Ubegrænset antal",

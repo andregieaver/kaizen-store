@@ -27,13 +27,17 @@ What held the memory, measured without the cap:
 ## What changed
 
 - `next.config.ts` sets three things on Vercel only (`ON_VERCEL`):
-  - no type check: CI's `static` job runs `pnpm typecheck` on every push, and CI's builds still check;
+  - no type check: CI's `static` job and the quick gate run `pnpm typecheck` on every push. Since 16 November 2026 (bloat review step 0.38) CI's three browser builds skip it too (`SKIP_BUILD_TYPECHECK=1`): one push checked the same commit five times, 183 s each;
   - no Turbopack build cache;
   - one worker.
 - `pnpm build` is `scripts/next-build.mjs`: `next build` with a 7 GB heap everywhere except Vercel.
 - `src/app/globals.css` points Tailwind at the code under `src`: without `src/data`, tests (`*.test.ts`, `*.test.tsx`, `src/test`), the interface texts (`src/lib/messages`, `src/lib/admin-messages`) and `src/db`, and without any SQL.
   - The CSS lost 37 selectors, all of them words in docs, e2e selectors or numbers in the taxonomy's JSON. No class the app uses was lost.
-  - Narrowed on 16 November 2026 (bloat review step 0.35). Measured on 12 November 2026: the SQL and the message files added no class, and the tests added ten that nothing draws (order-1038, order-1042, col-1, row-1, row-2, m-1, sepia, block-1, md:mr-0, lg:ml-auto). D378 put the SQL in on purpose, in case seeded content carried a class: the baseline files hold no class attribute, a seeded page's classes are the themes' own names, and content made in production never passes through a build, so it could never rely on the scan. Tailwind reads about 3,984 files, not 5,931.
+  - Narrowed on 16 November 2026 (bloat review step 0.35). Measured on 12 November 2026: the SQL and the message files added no
+    class, and the tests added ten that nothing draws (order-1038, order-1042, col-1, row-1, row-2, m-1, sepia, block-1, md:mr-0,
+    lg:ml-auto). D378 put the SQL in on purpose, in case seeded content carried a class: the baseline files hold no class
+    attribute, a seeded page's classes are the themes' own names, and content made in production never passes through a build, so
+    it could never rely on the scan. Tailwind reads about 3,984 files, not 5,931.
 
 ## Watch
 

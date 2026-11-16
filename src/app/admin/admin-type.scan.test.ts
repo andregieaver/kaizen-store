@@ -7,14 +7,14 @@ import { describe, expect, it } from "vitest";
  * The admin's pages in the style's type and shapes (docs/admin-style.md 5.1, 5.6, section 8): hierarchy is size and colour, never
  * weight, so no 600 or 700; a page's title is the display size; the main action is a pill. Where a store's own look or a printed
  * document is drawn (the builder's stand-ins, the theme editor's preview, previews of a store's pages, packing slips, the print
- * routes), the weights are theirs and are left alone. Colours are the scheme's roles (D223): no older token name and no fixed palette
+ * routes, and an A/B test's page in its side-by-side frame), the weights are theirs and are left alone. Colours are the scheme's roles (D223): no older token name and no fixed palette
  * colour, except where a colour is someone else's on purpose (the builder's resize handles, carriers' marks, the search engine's
  * preview).
  */
 
 const ROOT = join(__dirname, "../../..");
 const DIRS = ["src/app/admin", "src/components/admin"];
-const THEIRS = ["(print)", "packing-slip", "document-page", "pages/drawing.tsx", "account/themes/[presetId]/preview", "replica/", "account/look/", "account/share/", "install-preview-view.tsx", "page-builder.tsx", "page-builder-fields.tsx", "page-builder-icons.tsx", "theme-editor.tsx", "try/templates/"];
+const THEIRS = ["(print)", "packing-slip", "document-page", "pages/drawing.tsx", "account/themes/[presetId]/preview", "replica/", "account/look/", "account/share/", "admin/frame/", "install-preview-view.tsx", "page-builder.tsx", "page-builder-fields.tsx", "page-builder-icons.tsx", "theme-editor.tsx", "try/templates/"];
 
 function files(dir: string): string[] {
   return readdirSync(dir).flatMap((name) => {

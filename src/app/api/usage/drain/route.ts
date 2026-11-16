@@ -1,8 +1,8 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
 
 import { usageDrainEnv } from "@/lib/env";
-import { parseDrainBody, trafficTotals } from "@/lib/usage-drain";
-import { addTraffic, storeResolver } from "@/server/usage-traffic";
+import { parseDrainBody, trafficHours, trafficTotals } from "@/lib/usage-drain";
+import { addTraffic, addTrafficHours, storeResolver } from "@/server/usage-traffic";
 
 /** The signature Vercel sends: the body's HMAC-SHA1 with the drain's secret, in hex (vercel.com/docs/drains/security). */
 function signedBy(body: string, given: string | null, secret: string): boolean {
@@ -13,7 +13,8 @@ function signedBy(body: string, given: string | null, secret: string): boolean {
 }
 
 /**
- * Vercel's log drain (D314, `docs/capacity.md` step 1.4): requests and server errors per store and day, nothing of the visitor. Off (404)
+ * Vercel's log drain (D314, `docs/capacity.md` step 1.4): requests and server errors per store and day, and per store and hour (D669),
+ * nothing of the visitor. Off (404)
  * without `USAGE_DRAIN_SECRET`; a body that is not signed with it is refused.
  */
 export async function POST(request: Request) {
@@ -24,8 +25,12 @@ export async function POST(request: Request) {
     return Response.json({ code: "invalid_signature" }, { status: 403 });
   }
   try {
-    const { totals, unknownHosts } = trafficTotals(parseDrainBody(body), await storeResolver(), drain.sampleRate);
+    const entries = parseDrainBody(body);
+    const storeOf = await storeResolver();
+    const { totals, unknownHosts } = trafficTotals(entries, storeOf, drain.sampleRate);
     const written = await addTraffic(totals);
+    // Each store's hour too (F4, D669): the autopilot's watch judges a change on server errors by the hour.
+    await addTrafficHours(trafficHours(entries, storeOf, drain.sampleRate));
     return Response.json({ written, unknownHosts }, { headers: { "Cache-Control": "no-store" } });
   } catch (error) {
     console.error("[usage] drain", error instanceof Error ? error.message : "failed");

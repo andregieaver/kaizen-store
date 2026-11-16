@@ -193,6 +193,8 @@ describe("the AI manager's A/B test tools (D148)", () => {
       test: { status: "Draft", tests: expect.stringContaining("/om-oss") },
       results: expect.stringContaining("has not started"),
       what_is_left: [expect.stringContaining("start_experiment")],
+      // Each version's page, for look_at_page (phase 15): the original is the page itself.
+      to_see_each_version: { versions: [{ page: aboutId }, { page: expect.not.stringMatching(aboutId) }] },
     });
   });
 
@@ -301,11 +303,14 @@ describe("the AI manager's A/B test tools (D148)", () => {
     const start = await keptAndApproved("start_experiment", { experiment: made.id });
     await assistant.decideApproval(member, start.queued.id, true, () => {});
     expect((await admin.getExperiment(member.store.id, made.id))!.status).toBe("running");
-    const { queued } = await keptAndApproved("apply_winner", { experiment: "Ny knapp", version: "original" });
+    // What it taught (D673): a claim is refused before the yes; one plain line is in the yes and kept with the decision.
+    await expect(ownerTools.preflightOwnerTool(ctx(), "apply_winner", { experiment: "Ny knapp", version: "original", learning: "The best price always wins" })).rejects.toThrow(/cannot stand behind/);
+    const { queued } = await keptAndApproved("apply_winner", { experiment: "Ny knapp", version: "original", learning: "The calm text did not move orders" });
     expect(queued.summary).toContain("Stop the test, then end the A/B test");
     expect(queued.summary).toContain("keep the original");
+    expect(queued.summary).toContain('keep what it taught: "The calm text did not move orders"');
     await assistant.decideApproval(member, queued.id, true, () => {});
-    expect((await admin.getExperiment(member.store.id, made.id))!.status).toBe("discarded");
+    expect((await admin.getExperiment(member.store.id, made.id))!).toMatchObject({ status: "discarded", learning: "The calm text did not move orders" });
     expect(await headingOf(aboutId)).toBe("Velkommen til en rolig butikk");
   });
 

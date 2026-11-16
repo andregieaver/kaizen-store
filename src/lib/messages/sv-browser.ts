@@ -2,6 +2,8 @@
 import type { BrowserMessages } from "./en-browser";
 
 export const svBrowser: BrowserMessages = {
+/** The Cookies page's button that deletes this browser's recordings of visits on the shop (D656). */
+recordings: { delete: "Radera mina inspelningar", deleted: "Inspelningarna som den här webbläsaren gjorde i den här butiken är raderade." },
 pageError: {
   title: "Den här sidan kunde inte visas",
   body: "Något gick fel hos oss. Försök igen om en stund.",

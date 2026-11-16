@@ -25,6 +25,8 @@ export type OverviewInvoice = {
   paidMinor: number;
   /** Credit notes issued against it. */
   creditedMinor: number;
+  /** What of it was written off as lost (D500), net of losses taken back; a wholly lost invoice has status `lost` and is not read. */
+  lostMinor: number;
   /** Null for a draft. */
   dueOn: Day | null;
   /** The day the invoice became paid, in the store's time zone. */
@@ -105,9 +107,13 @@ export type WorkOverview = {
   attention: AttentionItem[];
 };
 
-/** What is still owed on an issued invoice: total less payments and credit notes, never below zero. */
-export const outstandingMinor = (i: Pick<OverviewInvoice, "totalMinor" | "paidMinor" | "creditedMinor">): number =>
-  Math.max(0, i.totalMinor - i.paidMinor - i.creditedMinor);
+/**
+ * What is still owed on an issued invoice: total less payments, credit notes and what was written off as lost, never below zero, as
+ * `commerce.work_invoice_amounts` counts it.
+ */
+export const outstandingMinor = (
+  i: Pick<OverviewInvoice, "totalMinor" | "paidMinor" | "creditedMinor"> & { lostMinor?: number },
+): number => Math.max(0, i.totalMinor - i.paidMinor - i.creditedMinor - (i.lostMinor ?? 0));
 
 const pick = (n: number, words: { one: string; many: string }, values: Record<string, string | number> = {}) =>
   fillWords(n === 1 ? words.one : words.many, { count: n, ...values });

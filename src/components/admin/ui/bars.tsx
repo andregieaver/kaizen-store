@@ -47,3 +47,8 @@ export function ScoreBar({ label, points, share, signal }: { label: ReactNode; p
     </div>
   );
 }
+
+/** A short bar beside a written figure in a list row ("Day 6 of 14"); the figure says it, the bar repeats it. */
+export function MiniBar({ share, signal }: { share: number; signal: Signal }) {
+  return <Track share={share} signal={signal} className="w-24" />;
+}

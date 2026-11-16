@@ -111,14 +111,14 @@ commit as the fix.
 | 0.35 | Point Tailwind at code only | AS-7, CS-6 | S | cheap | 0.34 | Done | 16 Nov: Done (e0faba3d; D667). Live at 3819f6bc; the built CSS lost 11 class names (2,329 to 2,318: the ten expected and `shrink`, a word in test names only), none appeared. |
 | 0.36 | Delete what nothing uses | DD-3, DD-8, TX-11, DP-8, GAP-code-s1 | M | strong |  | Open | |
 | 0.37 | Remove the old admin redirects and the bookings and deliveries twin switch | DD-11 | M | review | 0.36 | Open | |
-| 0.38 | Run each check once in CI | TC-1, TC-12, GAP-build-s5, TC-14 | S | review |  | Open | |
+| 0.38 | Run each check once in CI | TC-1, TC-12, GAP-build-s5, TC-14 | S | review |  | Done | 16 Nov: Done (6a78de64, 46673cc1, 30256940, 5336001d; D682). CI: browser builds 1 to 0 type checks, schema check in shard 1 only, lint 9 s from its cache. Live at 9b939d91. The tests-only skip waits for a tests-only push. |
 | 0.39 | Let a test load only what it uses | TC-3, TC-13, DD-13, DD-10 | M | review | 0.38 | Open | |
-| 0.40 | Wrap the long lines of the rules and every living doc, and keep history out of searches | DC-4, DC-7, DC-13, GAP-rules-2 | S | cheap | 0.1, 0.43 | Open | |
-| 0.41 | Make the rules say what is so, and claim a decision's number on main before citing it | DC-5, DC-8, DC-6, DC-12, GAP-rules-s3, DC-9 | M | review | 0.43, 0.40, 0.1 | Open | |
-| 0.42 | Compare by job the two pairs of engines nobody compared | GAP-surface-2 | S | strong | 0.1 | Open | |
-| 0.43 | Hold CLAUDE.md's core from the first day, and open a home for this plan's own sentences | GAP-rules-s1 | S | cheap |  | Open | |
+| 0.40 | Wrap the long lines of the rules and every living doc, and keep history out of searches | DC-4, DC-7, DC-13, GAP-rules-2 | S | cheap | 0.1, 0.43 | Done | 16 Nov: Done (430fd72c, 5d94f8b9, 49d1dea9; D676). 585 docs wrapped, no word changed; 0 prose lines over 500 that can be wrapped; 27 one-code-span lines and 715 table rows left. rg --files: docs 927 to 905, supabase 841 to 51. |
+| 0.41 | Make the rules say what is so, and claim a decision's number on main before citing it | DC-5, DC-8, DC-6, DC-12, GAP-rules-s3, DC-9 | M | review | 0.43, 0.40, 0.1 | Done | 16 Nov (8d661fde, 9245a436; D683): 0 stale names, 0 long rows, one decisions table; the claim ran no CI. |
+| 0.42 | Compare by job the two pairs of engines nobody compared | GAP-surface-2 | S | strong | 0.1 | Done | 16 Nov: Done (6b903353), counted on b6b4c1f2. FT-16 and FT-17 tolerated: 0 shared 10-line windows each; 16 and 5 shared modules. |
+| 0.43 | Hold CLAUDE.md's core from the first day, and open a home for this plan's own sentences | GAP-rules-s1 | S | cheap |  | Done | 16 Nov: Done (D668). Baseline 13,252 bytes outside the index (the owner's word: 12,555 in the brief, four sentences added since); the one index line over 200 characters shortened. |
 | 0.44 | Give pictures in page content the 800 px copy | GAP-code-s4 | M | review | 0.33 | Open | |
-| 0.45 | Cap the dispatcher at four jobs at a time | GAP-database-s3 | S | cheap |  | Open | |
+| 0.45 | Cap the dispatcher at four jobs at a time | GAP-database-s3 | S | cheap |  | Done | 16 Nov: Done (ecc6f773; D674). Live at 59a188d3: the 12:00 round ran 80 jobs in 3.7 s (about 1.3 s before), longest 2.4 s, no error. The query for connection timeouts runs on 17 Nov. |
 | 0.46 | Make the themes, the content packs and the seed write today's page shape | GAP-page-model-s5 | S | cheap |  | Open | |
 
 **Phase 1: Budgets, so it stays removed**
@@ -301,6 +301,12 @@ Change log:
 - 16 Nov 2026: step 0.33 Done (c67823c3, D665): every new picture keeps an 800 px copy, stored, copied, compressed, marked and deleted with it; product tiles and the gallery offer it, and a grid tile's `sizes` says its real width.
 - 16 Nov 2026: step 0.34 Done (8a5e02cb, D666): shop and site files use the site's colour names, and the admin's colour roles follow the site's colours outside the admin, so the button on /status and /report is filled.
 - 16 Nov 2026: step 0.35 Done (e0faba3d, D667): Tailwind reads the code under src only, not tests, interface texts, the schema folder or SQL.
+- 16 Nov 2026: step 0.43 Done (D668): CLAUDE.md's bytes outside its Storefront and Admin index are held at 13,252 and only fall, an index line is at most 200 characters, and docs/rules/budgets.md is the home for sentences about budgets and checks.
+- 16 Nov 2026: step 0.42 Done: order invoices beside Work invoices (FT-16) and orders on payment terms beside Work's unpaid invoices (FT-17) compared by job; both tolerated, with their shared parts and numbers, so no phase-3 fold step.
+- 16 Nov 2026: step 0.45 Done (ecc6f773, D674): the five-minute dispatcher runs four jobs at a time on its pool of five connections, and a job past 60 s gives its lane to the next while it goes on and is recorded when it ends.
+- 16 Nov 2026: step 0.40 Done (49d1dea9, D676): the long lines of docs/rules and every living doc are wrapped at 130 characters by a script that proves no word changed, and three .rgignore files keep dated reports, review evidence, archived migrations and Drizzle's snapshot out of default searches.
+- 16 Nov 2026: step 0.38 Done (5336001d, D682): CI type-checks the program in its two jobs that run it and not in the three browser builds, checks the schema in one shard, keeps lint's cache, and a push that changes only tests is checked but not deployed.
+- 16 Nov 2026: step 0.41 Done (8d661fde, D683): the rules cite code that exists, trackers keep one-line rows with the open PSI items first, every decision sits in one table, and a decision's number is claimed on main with scripts/claim-decision.mjs before it is cited.
 - 15 Nov 2026: step 0.20 made locally, not yet pushed or Done: a store's address by its id is one cached helper, `storeSlugOf()` under `storeIdTag(id)`, marked stale when a sandbox is kept; 23 hand-written reads in 17 files replaced (3 lines hold the statement, 27 before); a theme's neighbours read the cached cards; the hosts list is parsed once per instance.
 
 ## 1. The headline
@@ -487,7 +493,7 @@ change with it and its check. Open the files of the step you are doing, not the 
 
 ### What an A lives with
 
-13 findings are true and not worth fixing. This is the tolerance the bars allow, stated:
+15 findings are true and not worth fixing. This is the tolerance the bars allow, stated:
 
 - **CP-10.** Eleven hand-written claim-with-a-lease statements, about 130 lines in all. Each has another table, join and retry column: an idiom, not a copy. Tolerance: the 11 are held as a count by the copy baseline of step 1.17 and may not rise.
 - **DP-3.** The Stripe and Supabase SDKs load with 97% of routes: 18 to 28 ms and about 1 MB of heap on a lean route, nothing a person sees. Step 2.22 takes Stripe off the read of a store, the graph test of step 1.8 shows the edges that are left, and they are cut when stores.ts or stripe.ts is next changed.
@@ -502,6 +508,12 @@ change with it and its check. Open the files of the step you are doing, not the 
 - **FT-1.** 53 of 110 store links and 133 of 254 AI tools stand behind no switch. That is fine: a switch changes what an owner sees, not what a store costs. Links hide in Basic, a round is capped whatever is switched, and jobs are set-based. Where a feature does cost an idle store the fix is at the read (step 0.22), and the surface budget of step 1.18 asks each new feature for its idle cost. No second tier of switches.
 - **FT-9.** Campaigns (7 kinds) and discount codes (3 kinds) are two mechanisms with a shared edge, not one job built twice: about 100 to 200 lines of parallel helpers, in code that decides money. Fold the helpers into one small module when pricing code is next opened. The one Discounts page is already code review step 2.4.
 - **TX-10.** A deliberate, written design (D312 A6 and A8): the server answers in English because the AI manager and the tests read it, and about 300 refusals are matched back to their Norwegian. It costs 16.7 KB of source kept twice and no measurable time. The one real mismatch, the product.media pair, is settled in step 0.36. Add the coverage test when a validator is next changed.
+- **FT-16.** Order invoices (17 files, 3,734 lines, 3 tables) and Work invoices (13 files, 7,160 lines, 7 tables) are two engines
+  for two kinds of legal document: an order's frozen copy issued by its payment, and a hand-written invoice with drafts, payments
+  and losses. They share 0 10-line windows and 16 modules: one number function in four series, the e-invoice sender and
+  `einvoice_sends`, the books' loader. Tolerance: no second sender, number function or loader; share the half-up division when
+  either file is next opened.
+- **FT-17.** Orders on payment terms (737 lines, 1 table) and Work's money owed (347 lines, 2 tables) are two debts: 0 shared windows, 5 shared modules, and one ledger, bank matcher, mailer and control center for both. Tolerance: one overdue comparison on each side and one reminder job (Work's reminder is the owner's press); a write-off for terms, when built, posts as Work's does (D500).
 
 ## 5. The plan
 
@@ -517,23 +529,57 @@ file, 3.15 lean tables, 3.18 and 3.20 the AI manager's rounds): do it once, ther
 
 ### Phase 0: Before the doors open
 
-**Goal:** Remove what costs something on every request, cold start, scheduled run or agent session, with small and safe changes, and make the changes that are cheapest while no real store, order or picture exists. No step here waits for the owner's answer or for a later phase. Steps 0.1, 0.2, 0.3 and 0.43 go first; 0.43 comes before 0.6, 0.9 and 0.38, 0.23 before 0.24, 0.9 before 0.11, 0.28 before 0.29, and 0.33 before 0.44. Otherwise no step waits for another. **A person will notice:** Almost nothing on a screen changes, apart from two faults a shopper would have met on day one (empty search thumbnails, and a button with no fill on the status and report pages) and admin lists that show 100 rows at a time. Cold pages answer sooner, an admin screen loads about half the script, a store page stops asking the server for a wishlist and stock nobody has, and the database falls from 731 MB to about 230 MB. 46 steps (26 S, 20 M, 0 L), in full in `bloat-review-2026-11/plan/phase-0.md`.
+**Goal:** Remove what costs something on every request, cold start, scheduled run or agent session, with small and safe changes,
+and make the changes that are cheapest while no real store, order or picture exists. No step here waits for the owner's answer or
+for a later phase. Steps 0.1, 0.2, 0.3 and 0.43 go first; 0.43 comes before 0.6, 0.9 and 0.38, 0.23 before 0.24, 0.9 before 0.11,
+0.28 before 0.29, and 0.33 before 0.44. Otherwise no step waits for another. **A person will notice:** Almost nothing on a screen
+changes, apart from two faults a shopper would have met on day one (empty search thumbnails, and a button with no fill on the
+status and report pages) and admin lists that show 100 rows at a time. Cold pages answer sooner, an admin screen loads about half
+the script, a store page stops asking the server for a wishlist and stock nobody has, and the database falls from 731 MB to about
+230 MB. 46 steps (26 S, 20 M, 0 L), in full in `bloat-review-2026-11/plan/phase-0.md`.
 
 ### Phase 1: Budgets, so it stays removed
 
-**Goal:** Turn every measure of this plan into a number that a test or a production figure holds and only lets fall. Every step here says which measures it holds. Each budget starts at the figure phase 0 leaves, with its tolerance stated, and each later step lowers its own. No step here waits for a later phase. Step 1.1 goes first, and 1.9 before the steps that count statements (1.10, 1.11, 1.12 and 1.25). Steps 1.6, 1.7 and 1.14 start here and are judged against their bars after phase 2. **A person will notice:** A change that makes a page, a function, a scheduled run, an AI call, a build or the standing rules heavier fails a check that names the number and says what to do. Platform, Usage and limits shows cold starts, the day's costliest statements and the admin's speed, and a stopped scheduler sends an email. 29 steps (8 S, 21 M, 0 L), in full in `bloat-review-2026-11/plan/phase-1.md`.
+**Goal:** Turn every measure of this plan into a number that a test or a production figure holds and only lets fall. Every step
+here says which measures it holds. Each budget starts at the figure phase 0 leaves, with its tolerance stated, and each later step
+lowers its own. No step here waits for a later phase. Step 1.1 goes first, and 1.9 before the steps that count statements (1.10,
+1.11, 1.12 and 1.25). Steps 1.6, 1.7 and 1.14 start here and are judged against their bars after phase 2. **A person will
+notice:** A change that makes a page, a function, a scheduled run, an AI call, a build or the standing rules heavier fails a check
+that names the number and says what to do. Platform, Usage and limits shows cold starts, the day's costliest statements and the
+admin's speed, and a stopped scheduler sends an email. 29 steps (8 S, 21 M, 0 L), in full in
+`bloat-review-2026-11/plan/phase-1.md`.
 
 ### Phase 2: Load on demand
 
-**Goal:** The structural half: each page, function, document and AI call loads what it uses, when it uses it. Before opening is the cheapest time for it, and phase 1's budgets show each step as a number that falls. Order where it matters: 2.2 before 2.3, 2.4 before 2.5, 2.14 before 2.15, 2.16 before 2.17 and 2.18, 2.20 before 2.35, 2.36 before 2.37, 2.27 and 2.29 before 2.30, 1.21 before 2.11, 2.11 before 2.49, 2.25 and 2.26 before 2.50, and 2.9 and 2.22 before 2.47. Step 2.1 is first because it only waits for the owner's yes. **A person will notice:** A store page arrives as a static file with nothing in it twice. A product view asks the database for stock and nothing else. A publish redraws one page, not the whole store. Admin screens hand the browser only the words they show, and the builder paints before its editors load. The AI manager answers on a third of the tokens. With the owner's yes, an agent session starts with a quarter of today's standing rules. 50 steps (7 S, 35 M, 8 L), in full in `bloat-review-2026-11/plan/phase-2.md`.
+**Goal:** The structural half: each page, function, document and AI call loads what it uses, when it uses it. Before opening is
+the cheapest time for it, and phase 1's budgets show each step as a number that falls. Order where it matters: 2.2 before 2.3, 2.4
+before 2.5, 2.14 before 2.15, 2.16 before 2.17 and 2.18, 2.20 before 2.35, 2.36 before 2.37, 2.27 and 2.29 before 2.30, 1.21
+before 2.11, 2.11 before 2.49, 2.25 and 2.26 before 2.50, and 2.9 and 2.22 before 2.47. Step 2.1 is first because it only waits
+for the owner's yes. **A person will notice:** A store page arrives as a static file with nothing in it twice. A product view asks
+the database for stock and nothing else. A publish redraws one page, not the whole store. Admin screens hand the browser only the
+words they show, and the builder paints before its editors load. The AI manager answers on a third of the tokens. With the owner's
+yes, an agent session starts with a quarter of today's standing rules. 50 steps (7 S, 35 M, 8 L), in full in
+`bloat-review-2026-11/plan/phase-2.md`.
 
 ### Phase 3: One of each
 
-**Goal:** Keep one of each thing that was built twice, and add the gates that make cost follow use: scheduled work runs when something waits, at the pace its work changes. Nothing is retired because it is unused. Each fold is of a true duplicate, and before opening no data needs moving. Nine of these steps wait for the owner's answer. The scheduler's steps 3.1 to 3.4 and 3.6 do not, and go in that order. **A person will notice:** On a quiet day the scheduler makes at most 1,350 function calls, not 13,250, and the platform home shows every scheduled function with a row of its own. With the owner's yes there is one place to edit Kaizena Flow's site, one engine for what happens when an order is paid, and one deploy for a burst of pushes. There is one import flow. 24 steps (11 S, 10 M, 3 L), in full in `bloat-review-2026-11/plan/phase-3.md`.
+**Goal:** Keep one of each thing that was built twice, and add the gates that make cost follow use: scheduled work runs when
+something waits, at the pace its work changes. Nothing is retired because it is unused. Each fold is of a true duplicate, and
+before opening no data needs moving. Nine of these steps wait for the owner's answer. The scheduler's steps 3.1 to 3.4 and 3.6 do
+not, and go in that order. **A person will notice:** On a quiet day the scheduler makes at most 1,350 function calls, not 13,250,
+and the platform home shows every scheduled function with a row of its own. With the owner's yes there is one place to edit
+Kaizena Flow's site, one engine for what happens when an order is paid, and one deploy for a burst of pushes. There is one import
+flow. 24 steps (11 S, 10 M, 3 L), in full in `bloat-review-2026-11/plan/phase-3.md`.
 
 ### Phase 4: Tidy
 
-**Goal:** Smaller things. The twins, the exports only a test keeps alive, the 23 guard wrappers and the last heavy reads are work of their own and end before step 4.5; class constants, hand-made tables, mocks and tree walkers go when their area is next touched, under a per-file ratchet. The ratchets of phase 1 hold every count until then, so nothing here can grow while it waits, and the last small findings close. The last step reads every measure against its bar: the plan is done when every area is an A, not when its steps are ticked. **A person will notice:** Little. Admin forms and tables come from one kit, the last small twins are folded, tests share their scaffolding, and three more screens read less. A table shows each area's measures against its bar. 7 steps (2 S, 4 M, 1 L), in full in `bloat-review-2026-11/plan/phase-4.md`.
+**Goal:** Smaller things. The twins, the exports only a test keeps alive, the 23 guard wrappers and the last heavy reads are work
+of their own and end before step 4.5; class constants, hand-made tables, mocks and tree walkers go when their area is next
+touched, under a per-file ratchet. The ratchets of phase 1 hold every count until then, so nothing here can grow while it waits,
+and the last small findings close. The last step reads every measure against its bar: the plan is done when every area is an A,
+not when its steps are ticked. **A person will notice:** Little. Admin forms and tables come from one kit, the last small twins
+are folded, tests share their scaffolding, and three more screens read less. A table shows each area's measures against its bar. 7
+steps (2 S, 4 M, 1 L), in full in `bloat-review-2026-11/plan/phase-4.md`.
 
 
 ## 6. The owner's decisions, and what was not measured
@@ -541,35 +587,137 @@ file, 3.15 lean tables, 3.18 and 3.20 the AI manager's rounds): do it once, ther
 **Decisions.** The owner answered on 12 November: the recommended way for every question, and never a paid machine or service (so step 1.29 builds in CI if step 1.21's free switches are not enough; Vercel's larger build machine is ruled out). Each answer is written into its step; `bloat-review-2026-11/plan/decisions.md` has them in one table, with how to undo each. The ones without a step are product choices the reviewers met: none is waste.
 
 1. **Step 1.1, Give every budget one home, and hold the written rules first.** Should this plan get lines of its own in CLAUDE.md, as the code review has? Proposed: no. One shared line names the trackers, and each tracker keeps its rules at its own top. **Decided:** No. This plan gets no lines of its own in CLAUDE.md: one shared line names the trackers and each tracker keeps its rules at its own top, as the step proposed.
-2. **Step 1.18, Hold the surface: fourteen counts, the hot tables' indexes and triggers, and a new store's rows.** May a test refuse a new table, trigger, scheduled job, navigation link or AI tool until its decision row states what it costs a store that does not use it? **Decided:** Yes. The test refuses a new table, trigger, scheduled job, navigation link or AI tool until its decision row has an 'Idle cost:' line; the critic says the database and the surface need at least this hold for an A. A refusal is lifted by writing the line, so nothing is blocked for long.
-3. **Step 1.21, Give the production build room with the free switches, and fail a run before it runs out.** Only if the two free source-map switches, measured first in step 1.20, do not bring the build's peak to 6.0 GB or less: pay for Vercel's 16 GB build machine, or build in CI and deploy the prebuilt output? Without room by one of the three ways the build area stops at a B. **Decided:** The paid build machine is ruled out for good: no paid machine, plan or add-on is ever used for the build. The two free source-map switches are measured first (step 1.20); if the peak is still above 6.0 GB, the production build is made in CI and deployed prebuilt (vercel build, then vercel deploy --prebuilt), which costs nothing and makes the deployed build the one CI made. Effort stays M if the switches are enough and is about a day more if the build moves to CI.
-4. **Step 1.23, Count what is in the stylesheet, and read the style text owners write.** An owner's own CSS is limited to 50,000 characters for each of three sheets (the store's, the header's, the footer's), and all three go into every document. Should the limit be per sheet, as today, or on the sum? Either answer reaches the bar once it is written down. **Decided:** Per sheet, as today: 50,000 characters for each of the store's, the header's and the footer's sheet. It needs no code, and the step's 20 KB line per store already watches the sum.
-5. **Step 1.29, Only if the free switches are not enough: build in CI and deploy the prebuilt output.** Only if the two free source-map switches, measured first in step 1.20, do not bring the build's peak to 6.0 GB or less: pay for Vercel's 16 GB build machine, or build in CI and deploy the prebuilt output? Without room by one of the three ways the build area stops at a B. **Decided:** The paid build machine is ruled out for good: no paid machine, plan or add-on is ever used for the build. The two free source-map switches are measured first (step 1.20); if the peak is still above 6.0 GB, the production build is made in CI and deployed prebuilt (vercel build, then vercel deploy --prebuilt), which costs nothing and makes the deployed build the one CI made. Effort stays M if the switches are enough and is about a day more if the build moves to CI.
-6. **Step 2.1, Leave a map in CLAUDE.md, and bring the always-loaded core under 10.5 KB.** CLAUDE.md is your instruction file. First: may its 295-line feature index go, leaving a map of the seven rule files and a three-line look-up (44 KB to under 15 KB per session)? Second, and it can be declined on its own: may the database, e2e, typed-row and AI-eval how-to load only when those folders are opened (to under 10.5 KB)? Without the first yes the rules area cannot reach a B; without the second it stops short of an A, at the 15 KB ceiling. **Decided:** Yes to both halves. The 295-line feature index leaves CLAUDE.md for a map of the seven rule files and a three-line look-up, and the database, e2e, typed-row and AI-eval how-to load only when their folders are opened; the critic says the rules area needs both for an A. Every never-sentence stays in the file.
-7. **Step 2.8, Bound what a real listing fetches ahead, and decide partial prefetching by trial.** On a full listing, may only the first screen of product tiles be fetched ahead on sight, and the rest when touched (or all through one shared product shell)? A yes lets the shopper's browser reach an A. **Decided:** Yes. On a full listing only the first screen of product tiles is fetched ahead on sight and the rest when touched, and on a computer the main menu's links wait for the pointer (step 2.6 sets that policy); the critic says the shopper's browser needs this for an A. The trial decides whether one shared product shell replaces the rule; without a clear gain the first-screen rule stands, since it needs no router setting.
-8. **Step 2.11, Give the storefront a stylesheet of its own.** After the split, a Tailwind class typed in a part's Advanced tab can show on the builder's canvas and not on the live site. Is it enough to say in the docs that only classes styled by the owner's own CSS are promised, or should the site's sheet keep a short fixed list of utility names owners may type? **Decided:** The docs say it, and the site's sheet keeps no list of utility names. Only classes styled by the owner's own CSS are promised on the live site; a fixed list would add bytes to every store page for a few owners who type classes.
+2. **Step 1.18, Hold the surface: fourteen counts, the hot tables' indexes and triggers, and a new store's rows.** May a test
+   refuse a new table, trigger, scheduled job, navigation link or AI tool until its decision row states what it costs a store that
+   does not use it? **Decided:** Yes. The test refuses a new table, trigger, scheduled job, navigation link or AI tool until its
+   decision row has an 'Idle cost:' line; the critic says the database and the surface need at least this hold for an A. A refusal
+   is lifted by writing the line, so nothing is blocked for long.
+3. **Step 1.21, Give the production build room with the free switches, and fail a run before it runs out.** Only if the two free
+   source-map switches, measured first in step 1.20, do not bring the build's peak to 6.0 GB or less: pay for Vercel's 16 GB build
+   machine, or build in CI and deploy the prebuilt output? Without room by one of the three ways the build area stops at a
+   B. **Decided:** The paid build machine is ruled out for good: no paid machine, plan or add-on is ever used for the build. The
+   two free source-map switches are measured first (step 1.20); if the peak is still above 6.0 GB, the production build is made in
+   CI and deployed prebuilt (vercel build, then vercel deploy --prebuilt), which costs nothing and makes the deployed build the
+   one CI made. Effort stays M if the switches are enough and is about a day more if the build moves to CI.
+4. **Step 1.23, Count what is in the stylesheet, and read the style text owners write.** An owner's own CSS is limited to 50,000
+   characters for each of three sheets (the store's, the header's, the footer's), and all three go into every document. Should the
+   limit be per sheet, as today, or on the sum? Either answer reaches the bar once it is written down. **Decided:** Per sheet, as
+   today: 50,000 characters for each of the store's, the header's and the footer's sheet. It needs no code, and the step's 20 KB
+   line per store already watches the sum.
+5. **Step 1.29, Only if the free switches are not enough: build in CI and deploy the prebuilt output.** Only if the two free
+   source-map switches, measured first in step 1.20, do not bring the build's peak to 6.0 GB or less: pay for Vercel's 16 GB build
+   machine, or build in CI and deploy the prebuilt output? Without room by one of the three ways the build area stops at a
+   B. **Decided:** The paid build machine is ruled out for good: no paid machine, plan or add-on is ever used for the build. The
+   two free source-map switches are measured first (step 1.20); if the peak is still above 6.0 GB, the production build is made in
+   CI and deployed prebuilt (vercel build, then vercel deploy --prebuilt), which costs nothing and makes the deployed build the
+   one CI made. Effort stays M if the switches are enough and is about a day more if the build moves to CI.
+6. **Step 2.1, Leave a map in CLAUDE.md, and bring the always-loaded core under 10.5 KB.** CLAUDE.md is your instruction file.
+   First: may its 295-line feature index go, leaving a map of the seven rule files and a three-line look-up (44 KB to under 15 KB
+   per session)? Second, and it can be declined on its own: may the database, e2e, typed-row and AI-eval how-to load only when
+   those folders are opened (to under 10.5 KB)? Without the first yes the rules area cannot reach a B; without the second it stops
+   short of an A, at the 15 KB ceiling. **Decided:** Yes to both halves. The 295-line feature index leaves CLAUDE.md for a map of
+   the seven rule files and a three-line look-up, and the database, e2e, typed-row and AI-eval how-to load only when their folders
+   are opened; the critic says the rules area needs both for an A. Every never-sentence stays in the file.
+7. **Step 2.8, Bound what a real listing fetches ahead, and decide partial prefetching by trial.** On a full listing, may only the
+   first screen of product tiles be fetched ahead on sight, and the rest when touched (or all through one shared product shell)? A
+   yes lets the shopper's browser reach an A. **Decided:** Yes. On a full listing only the first screen of product tiles is
+   fetched ahead on sight and the rest when touched, and on a computer the main menu's links wait for the pointer (step 2.6 sets
+   that policy); the critic says the shopper's browser needs this for an A. The trial decides whether one shared product shell
+   replaces the rule; without a clear gain the first-screen rule stands, since it needs no router setting.
+8. **Step 2.11, Give the storefront a stylesheet of its own.** After the split, a Tailwind class typed in a part's Advanced tab
+   can show on the builder's canvas and not on the live site. Is it enough to say in the docs that only classes styled by the
+   owner's own CSS are promised, or should the site's sheet keep a short fixed list of utility names owners may type? **Decided:**
+   The docs say it, and the site's sheet keeps no list of utility names. Only classes styled by the owner's own CSS are promised
+   on the live site; a fixed list would add bytes to every store page for a few owners who type classes.
 9. **Step 2.25, Load the admin's words by area on admin routes too.** Is a third language for the admin (Swedish or Danish) wanted in the first half year? If yes, this step and step 2.50 move before opening: until they are done each language adds about 1.5 MB to every function. **Decided:** No third admin language is planned for the first half year, so this step and step 2.50 stay in phase 2. If one is wanted sooner, both steps land before the language is added.
-10. **Step 2.34, Let an untouched tab ask for notices less often.** May the notice badge in a tab nobody touches be up to ten minutes late (60 requests an hour become 6)? It shows at once on the next click, and stays at one minute while an approval waits. With a no the owner's browser's measure stays short of its bar: 60 requests an hour from each untouched tab grows with owners and is not a small tolerance. **Decided:** Yes. The badge in a tab nobody touches may be up to ten minutes late; it shows at once on the next click and stays at one minute while an approval waits. The critic says the owner's browser needs this for an A.
-11. **Step 2.35, Answer a store's own domain without a deployment.** May a store's own domain be resolved at request time, replacing decision P8's compiled routing rules? If P8 stays, the ceiling still needs an answer before about 250 stores have a domain, and the server area stops at a B. **Decided:** Yes. A store's own domain is looked up when the request arrives, in place of decision P8's compiled routing rules; the critic says the server area needs it for an A, and it lifts the ceiling of about 270 domains. It lands in two pushes so the compiled rules stay until the lookup is seen to answer.
-12. **Step 2.36, Send the AI manager a lean default round.** What should the AI manager offer unprompted (question 8 of the code review)? In particular: always carry its 17 plan, reminder and saved-skill tools at about 3,800 tokens a round, or load them when the talk turns to them or the store has a plan, goal or reminder alive (a round with no page then falls to about 33,000 characters)? Only loading them on demand is an A: kept on every round, the AI area and the surface stop at a B on this measure, with the 15,400 characters named. **Decided:** The AI manager offers its core tools, the page's group and the group the router picks from the question; the rest is one load_tools call away. Its 17 plan, reminder and saved-skill tools load when the talk turns to them or the store has a plan, goal or reminder alive; the critic says only this is an A for the AI area and the surface.
+10. **Step 2.34, Let an untouched tab ask for notices less often.** May the notice badge in a tab nobody touches be up to ten
+    minutes late (60 requests an hour become 6)? It shows at once on the next click, and stays at one minute while an approval
+    waits. With a no the owner's browser's measure stays short of its bar: 60 requests an hour from each untouched tab grows with
+    owners and is not a small tolerance. **Decided:** Yes. The badge in a tab nobody touches may be up to ten minutes late; it
+    shows at once on the next click and stays at one minute while an approval waits. The critic says the owner's browser needs
+    this for an A.
+11. **Step 2.35, Answer a store's own domain without a deployment.** May a store's own domain be resolved at request time,
+    replacing decision P8's compiled routing rules? If P8 stays, the ceiling still needs an answer before about 250 stores have a
+    domain, and the server area stops at a B. **Decided:** Yes. A store's own domain is looked up when the request arrives, in
+    place of decision P8's compiled routing rules; the critic says the server area needs it for an A, and it lifts the ceiling of
+    about 270 domains. It lands in two pushes so the compiled rules stay until the lookup is seen to answer.
+12. **Step 2.36, Send the AI manager a lean default round.** What should the AI manager offer unprompted (question 8 of the code
+    review)? In particular: always carry its 17 plan, reminder and saved-skill tools at about 3,800 tokens a round, or load them
+    when the talk turns to them or the store has a plan, goal or reminder alive (a round with no page then falls to about 33,000
+    characters)? Only loading them on demand is an A: kept on every round, the AI area and the surface stop at a B on this
+    measure, with the 15,400 characters named. **Decided:** The AI manager offers its core tools, the page's group and the group
+    the router picks from the question; the rest is one load_tools call away. Its 17 plan, reminder and saved-skill tools load
+    when the talk turns to them or the store has a plan, goal or reminder alive; the critic says only this is an A for the AI area
+    and the surface.
 13. **Step 2.41, Retire the frozen Migration versions list and the order to add to it.** After a migration, should 'advisors checked, nothing new' still be written down, and where? The check itself stays either way; today 205 of 564 decision rows carry the note. **Decided:** A clean advisor check is not written down any more. Only a new advisor finding is written, as a line in docs/audits/psi-followups.md with the migration's file name; the check itself stays after every migration.
-14. **Step 2.43, Add a related test run for the push.** What must run before a push? A: everything, as today (about 5 minutes after these fixes; 11 to 12 now). B: lint, the type check and the tests the change touches, with the whole unit suite in the deploy gate, so each deploy waits about 3.5 minutes more (the planner's advice). C: as B before the push with the gate unchanged, so a failing unit test outside the six money files can be live until someone reads the red run. **Decided:** The way the panel suggests in the build's card. Before a push a session runs lint, the type check and the tests the change can reach (about 2 minutes); the deploy gate runs the same related tests after its three steps (about 2.5 to 3 minutes in all), and the whole unit suite keeps running beside the deploy and reports, as today. It is the cheapest to run, the gate checks more than today's six money files, and going back is one sentence in CLAUDE.md and one line in ci.yml.
-15. **Step 3.5, Give every table that grows by time a delete rule.** How long are guest carts, processed webhook events and old page versions kept (the code review's question 6)? The privacy text states the same periods. **Decided:** The periods the repo already states are used. A guest cart is deleted 90 days after it ended (an open cart: after its expiry), unless an order points at it, and a processed webhook event 90 days after it was processed: src/lib/retention.ts:180 and :184 and docs/wave-1g-gdpr.md:287 and :291 state those periods, and today the rows are only emptied at that age. A page keeps all 50 versions for 90 days and then its newest 10, the finding's rule, because an unbounded history would in time need a larger database.
+14. **Step 2.43, Add a related test run for the push.** What must run before a push? A: everything, as today (about 5 minutes
+    after these fixes; 11 to 12 now). B: lint, the type check and the tests the change touches, with the whole unit suite in the
+    deploy gate, so each deploy waits about 3.5 minutes more (the planner's advice). C: as B before the push with the gate
+    unchanged, so a failing unit test outside the six money files can be live until someone reads the red run. **Decided:** The
+    way the panel suggests in the build's card. Before a push a session runs lint, the type check and the tests the change can
+    reach (about 2 minutes); the deploy gate runs the same related tests after its three steps (about 2.5 to 3 minutes in all),
+    and the whole unit suite keeps running beside the deploy and reports, as today. It is the cheapest to run, the gate checks
+    more than today's six money files, and going back is one sentence in CLAUDE.md and one line in ci.yml.
+15. **Step 3.5, Give every table that grows by time a delete rule.** How long are guest carts, processed webhook events and old
+    page versions kept (the code review's question 6)? The privacy text states the same periods. **Decided:** The periods the repo
+    already states are used. A guest cart is deleted 90 days after it ended (an open cart: after its expiry), unless an order
+    points at it, and a processed webhook event 90 days after it was processed: src/lib/retention.ts:180 and :184 and
+    docs/wave-1g-gdpr.md:287 and :291 state those periods, and today the rows are only emptied at that age. A page keeps all 50
+    versions for 90 days and then its newest 10, the finding's rule, because an unbounded history would in time need a larger
+    database.
 16. **Step 3.7, Call the PDF route when a document waits.** Should invoice PDFs be made ahead by the scheduled job, so that 'Try again' is true (recommended), or made on the first download, with the route nothing calls and its 102 MB function removed? **Decided:** Made ahead by the scheduled job, as recommended: the tick calls the PDF route when a document waits, so 'Try again' is true. The route and its function stay.
-17. **Step 3.8, Drop the duplicate idempotency table and the leftover schema, after a verified dump.** May the commerce_legacy schema, kept since 24 September as a renamed copy of the single-store tables, be dropped after a last dump? And may commerce.idempotency_keys go, now that the api_idempotency_keys tables of D441 do its job? Neither moves a grade. **Decided:** Yes to both. The commerce_legacy schema is dropped after a last dump that is verified and shown to the owner, and commerce.idempotency_keys goes because the api_idempotency_keys tables of D441 do its job. Neither moves a grade; the dump is the way back.
-18. **Step 3.9, Keep one kaizenaflow.com.** Is the switch of 7 November final, so that the old no-store site and its twin tables can be removed before opening (or kept as a fallback for some weeks, as the parity plan first said)? And one desk for support and chat (parity plan step 6), or two? **Decided:** Yes, the switch of 7 November is final: the old no-store site and its twin tables are removed before opening, which the critic says the code area needs for an A and which is cheapest while nobody outside is disturbed. Support stays two desks, as it runs today: the site's visitors on the store's desk and owners on the platform's; joining them is the parity plan's step 6 and no part of this plan.
-19. **Step 3.10, Run the platform's workflows, own endpoints and integration deliveries on the stores' engine with a scope.** First the choice listed with the owner's choices (FT-10): keep the platform's four engines as twins on shared code, which is this step, or serve Kaizena Flow's events through its own store's engines once the site is one (then the twins are removed with step 3.9 and this step is dropped)? If twins: may the parity rule in CLAUDE.md say that where the platform's version does the same job on its own rows, it uses the store's module with a scope, not a copy? Separate tables stay. **Decided:** Twins on shared code: the platform keeps its four engines and their tables, and this step is built (the finding says to keep them unless one engine is wanted, and it is the smaller change). Yes, CLAUDE.md's parity rule gets the sentence: where the platform's version does the same job on its own rows, it uses the store's module with a scope, not a copy.
+17. **Step 3.8, Drop the duplicate idempotency table and the leftover schema, after a verified dump.** May the commerce_legacy
+    schema, kept since 24 September as a renamed copy of the single-store tables, be dropped after a last dump? And may
+    commerce.idempotency_keys go, now that the api_idempotency_keys tables of D441 do its job? Neither moves a grade. **Decided:**
+    Yes to both. The commerce_legacy schema is dropped after a last dump that is verified and shown to the owner, and
+    commerce.idempotency_keys goes because the api_idempotency_keys tables of D441 do its job. Neither moves a grade; the dump is
+    the way back.
+18. **Step 3.9, Keep one kaizenaflow.com.** Is the switch of 7 November final, so that the old no-store site and its twin tables
+    can be removed before opening (or kept as a fallback for some weeks, as the parity plan first said)? And one desk for support
+    and chat (parity plan step 6), or two? **Decided:** Yes, the switch of 7 November is final: the old no-store site and its twin
+    tables are removed before opening, which the critic says the code area needs for an A and which is cheapest while nobody
+    outside is disturbed. Support stays two desks, as it runs today: the site's visitors on the store's desk and owners on the
+    platform's; joining them is the parity plan's step 6 and no part of this plan.
+19. **Step 3.10, Run the platform's workflows, own endpoints and integration deliveries on the stores' engine with a scope.**
+    First the choice listed with the owner's choices (FT-10): keep the platform's four engines as twins on shared code, which is
+    this step, or serve Kaizena Flow's events through its own store's engines once the site is one (then the twins are removed
+    with step 3.9 and this step is dropped)? If twins: may the parity rule in CLAUDE.md say that where the platform's version does
+    the same job on its own rows, it uses the store's module with a scope, not a copy? Separate tables stay. **Decided:** Twins on
+    shared code: the platform keeps its four engines and their tables, and this step is built (the finding says to keep them
+    unless one engine is wanted, and it is the smaller change). Yes, CLAUDE.md's parity rule gets the sentence: where the
+    platform's version does the same job on its own rows, it uses the store's module with a scope, not a copy.
 20. **Step 3.11, Fold order rules into Workflows.** May order rules fold into Workflows, so one engine decides what happens when an order is paid? **Decided:** Yes. Order rules fold into Workflows, so one engine decides what happens when an order is paid, as the surface's card proposes. It is cheapest now, while no owner has a rule to convert.
 21. **Step 3.12, Save an own look in one place: the theme library.** May an owner's own look be saved only in the theme library, not also as a saved theme in the editor? **Decided:** Yes. An owner's own look is saved only in the theme library; the saved list leaves the theme editor. One place to look, and the old table stays one release as the way back.
-22. **Step 3.19, Let a burst of pushes share one deploy.** Once stores are open, may a CI run skip its deploy when a newer commit is already on main, so a burst of pushes shares one deploy? It changes D5's 'at once' by a few minutes. **Decided:** Yes. A CI run on the no-migration path skips its deploy when a newer commit is already on main, so a burst of pushes shares one deploy; a run that applied a migration always deploys. It keeps stores' cached pages through a burst, and a repository variable turns it off.
-23. **Step 3.20, Show how long due work waits, and say so when it is too long.** How long may work that a person watches wait before the admins are told (an AI page build, a look at a page, the Dream Factory)? The step assumes 3 minutes, and 20 for the other queues; any stated figure reaches the bar. **Decided:** 3 minutes for work a person watches (an AI page build, a look at a page, the Dream Factory) and 20 minutes for the other queues, as the step and the scheduled card assume. Both are constants in one file, so another figure is a one-line change.
+22. **Step 3.19, Let a burst of pushes share one deploy.** Once stores are open, may a CI run skip its deploy when a newer commit
+    is already on main, so a burst of pushes shares one deploy? It changes D5's 'at once' by a few minutes. **Decided:** Yes. A CI
+    run on the no-migration path skips its deploy when a newer commit is already on main, so a burst of pushes shares one deploy;
+    a run that applied a migration always deploys. It keeps stores' cached pages through a burst, and a repository variable turns
+    it off.
+23. **Step 3.20, Show how long due work waits, and say so when it is too long.** How long may work that a person watches wait
+    before the admins are told (an AI page build, a look at a page, the Dream Factory)? The step assumes 3 minutes, and 20 for the
+    other queues; any stated figure reaches the bar. **Decided:** 3 minutes for work a person watches (an AI page build, a look at
+    a page, the Dream Factory) and 20 minutes for the other queues, as the step and the scheduled card assume. Both are constants
+    in one file, so another figure is a one-line change.
 24. Should a logged time entry's hours be editable in Work (the server side is built and tested; an afternoon's work), or is delete and log again the intended way (then about 130 lines go)? Either way two invoice actions no screen uses are deleted. (DD-5) **Decided:** Editable. A logged time entry's hours can be corrected in Work: the server side is built and tested and the finding recommends it. The two invoice actions no screen uses are deleted. New step 4.6 carries it.
 25. Should live drills get a Run drills button on the platform's store page, or stay a console tool asked for by SQL, with the rule saying so? (DD-6) **Decided:** Leave as built: live drills stay a console tool asked for by SQL, and the rule says so. No button and no new AI tool. New step 4.7 corrects the three texts.
-26. A new shop shows 29 links in Basic and 94 in Advanced, 35 of them under Settings. Is that what Lisa should meet, or should the moves already planned (code review step 2.4: about 85 links, 20 under Settings) be made before opening? It changes reading time, not running cost; the surface budget of step 1.18 holds whichever number you choose. (FT-7) **Decided:** Leave as built in this plan: a new shop keeps 29 links in Basic and 94 in Advanced. The moves to about 85 links stay code review step 2.4, on that plan's own schedule; the surface budget of step 1.18 holds today's numbers and is lowered when step 2.4 lands. No step here.
-27. The platform has its own copy of four store engines (workflows, integrations, own endpoints, the read-only API: about 2,100 lines and 8 tables), built on the parity rule. Keep them as twins on shared code (step 3.10), or serve Kaizena Flow's events through its own store's engines once the site is one (step 3.9)? The idle cost is a few polls a minute either way. (FT-10) **Decided:** Keep the four engines as twins on shared code, which is step 3.10. Nothing is served through the store's engines; the idle cost is a few polls a minute either way and the twins are the smaller change.
+26. A new shop shows 29 links in Basic and 94 in Advanced, 35 of them under Settings. Is that what Lisa should meet, or should the
+    moves already planned (code review step 2.4: about 85 links, 20 under Settings) be made before opening? It changes reading
+    time, not running cost; the surface budget of step 1.18 holds whichever number you choose. (FT-7) **Decided:** Leave as built
+    in this plan: a new shop keeps 29 links in Basic and 94 in Advanced. The moves to about 85 links stay code review step 2.4, on
+    that plan's own schedule; the surface budget of step 1.18 holds today's numbers and is lowered when step 2.4 lands. No step
+    here.
+27. The platform has its own copy of four store engines (workflows, integrations, own endpoints, the read-only API: about 2,100
+    lines and 8 tables), built on the parity rule. Keep them as twins on shared code (step 3.10), or serve Kaizena Flow's events
+    through its own store's engines once the site is one (step 3.9)? The idle cost is a few polls a minute either way.
+    (FT-10) **Decided:** Keep the four engines as twins on shared code, which is step 3.10. Nothing is served through the store's
+    engines; the idle cost is a few polls a minute either way and the twins are the smaller change.
 28. Creators earn money commission (1,411 lines, 5 tables); referrals pay in bonus credits. Keep creators as a programme of their own, as built, or make a creator a kind of referrer who is paid in money? No running cost either way. (FT-13) **Decided:** Leave as built: creators stay a programme of their own, paid in money, beside referrals paid in credits. No running cost, and a merge would mix two kinds of bookkeeping. No step.
 29. Do you read the parity report's detail tables on GitHub? If not, docs/shopify-parity.md can keep its five summary blocks (under 30 KB; 289 KB today) and pnpm parity prints the rest. If you do, it stays as it is and only leaves default searches (step 0.40). (DC-11) **Decided:** Leave as built: docs/shopify-parity.md keeps its detail tables, so they can still be read on GitHub, and it only leaves default searches (step 0.40). No other work.
-30. Should the builder's palette show each of these near-twins as one entry, with the second as a switch: FAQ and accordion, button and dual button, email form and newsletter? Yes or no per pair. Nothing stored changes either way, and no visitor, request or build pays for the second entry. (PM-13) **Decided:** No for all three pairs: FAQ and accordion, button and dual button, email form and newsletter stay separate entries in the palette, as built. Nobody pays for the second entry, and other builders show them apart too. No step.
+30. Should the builder's palette show each of these near-twins as one entry, with the second as a switch: FAQ and accordion,
+    button and dual button, email form and newsletter? Yes or no per pair. Nothing stored changes either way, and no visitor,
+    request or build pays for the second entry. (PM-13) **Decided:** No for all three pairs: FAQ and accordion, button and dual
+    button, email form and newsletter stay separate entries in the palette, as built. Nobody pays for the second entry, and other
+    builders show them apart too. No step.
 
 **Not measured.** Real cold-start times, function invocations and cost on Vercel; real visitors' speed; the admin on a slow
 connection; a store on a launch theme with fonts; a checkout with a payment form open. The plan has steps that measure the last

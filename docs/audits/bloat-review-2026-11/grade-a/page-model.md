@@ -1,6 +1,11 @@
 # Grade A for: The page builder's model and a built page
 
-Part of `docs/audits/bloat-review-2026-11.md`. **Today: C.** The base is sound and partly held: a stored page is 340 bytes a block, blocks and rows are capped, interactive parts load where drawn, and one script budget exists. But every storefront document carries the layout twice (27,070 bytes, 27 to 39% of its payload: I re-ran the script on four captures), one publish makes all 261 built pages of a store stale, 45 built entries keep every page of the store, the owner filter reads 59,973 rows to return 27, and no budget sees a document. It is not a D because the reads are cached and tagged and the second layout is about 1 KB on the wire; it is not a B because none of the large causes is gone.
+Part of `docs/audits/bloat-review-2026-11.md`. **Today: C.** The base is sound and partly held: a stored page is 340 bytes a
+block, blocks and rows are capped, interactive parts load where drawn, and one script budget exists. But every storefront document
+carries the layout twice (27,070 bytes, 27 to 39% of its payload: I re-ran the script on four captures), one publish makes all 261
+built pages of a store stale, 45 built entries keep every page of the store, the owner filter reads 59,973 rows to return 27, and
+no budget sees a document. It is not a D because the reads are cached and tagged and the second layout is about 1 KB on the wire;
+it is not a B because none of the large causes is gone.
 
 **The bar, in a sentence.** A built page is sent once and read once: one layout, each part once in the HTML and once in React's payload, only the documents it draws and only the scripts of the parts on it. A publish redraws that page alone, every owner's read stays inside that owner's rows, and tests on pages shaped like real stores' hold each figure.
 
@@ -25,7 +30,31 @@ After phase 0: C. After phase 1: C. After phase 2: B. After all phases: A.
 
 **Can the steps reach an A?** Yes, and no answer of yours stands in the way. Two steps were added: the themes, packs and seed write today's page shape before opening (0.46), and a store page's first scripts are held by name (1.27). The rest was proof: the done-whens of steps 2.14 and 2.17 and eight others now check the bar's own numbers.
 
-**The challenger on the bar.** Kept: one layout per document; an index scan of 27 rows for 27; the page reader at 130 source files (I re-ran the walk: the three imports a reader needs reach 104, so 130 is tight, and the planner's 400 would be a B); Orbit's home at 11,100 bytes stored; the product page's entry at 297,000; the editor's words at 130,000. Tightened in seven places. (1) /om-oss at most 80,000 bytes, not 85,000: the copy is 30,688 bytes as written into the document, so the sum is 79,819, and about 78,000 with each sheet drawn once. (2) The whole-list read on at most 3 lines, not 14. I read the four callers the findings would leave: Kaizena Flow's two static-params functions keep slugs, the admin's search page keeps a slug and a title (search/page.tsx:147), and the feed reads every article of a blog to print 50. None draws every body. (3) Every statement that selects the document of several pages is named with its reason. A rough scan finds about 20 in 17 files; the findings name 5. (4) A body-only publish is proved by its effect (other pages stay cache hits), not by one stubbed call. The steward's count of places that refresh the store-wide tag is dropped as a measure: the fix keeps those places for a changed title, so the count cannot fall. (5) The steward's tolerance, 'a missed fact is stale for at most an hour', is false once step 2.15 gives tagged reads a week; the bar now says which reads keep the hour. (6) A recommending grid loads at most 140,000 bytes after its answer, not 335,000: 335,000 is the figure with zod and the page model still in. And parts are held by name, because 3% of a store page's first scripts is 18,000 to 21,000 bytes, more than the cart's forms (18,876) that slipped in on 10 November. (7) The renderer is in the bar, not only the reader: page-article.tsx reaches 1,396 source files, and still 1,392 with pages.ts taken away, so a lean page-reads.ts alone changes nothing a page render loads. Also added: the owner filter is tested for Kaizena Flow's own rows (store_id is null), the editor's words must be 90% read, and measures 1 and 5 must hold on a themed store, where no figure exists today. Loosened in two places. '0 bytes reachable only through a not-found copy' becomes 'under 2,000 bytes of identical rows': the router keeps the store's 404 words (919 bytes today). 'Each stylesheet once per document' becomes twice, once in the HTML and once in React's payload: that is the framework's floor, and the breakpoint sheet differs per store, so it cannot move to the shared stylesheet. Not measurable as written: '0 built entries keep the page list' and '3 of 261' rest on a scratch script no step puts in the repo; '3 documents on a cold render' has no test that counts documents; '0 parts outside the keep-list' has no check, because the keep-list is prose. The parse time has a bench and no held test: accepted, since measure 2 holds how many documents are parsed. AMENDED BY THE PANEL'S CRITIC, so that one thing has one number in every area: 8: interface text in the editor's document: at most 1.1 times the groups the editor's parts name at first paint, by the same scan; 130,000 bytes inline stays.
+**The challenger on the bar.** Kept: one layout per document; an index scan of 27 rows for 27; the page reader at 130 source files
+(I re-ran the walk: the three imports a reader needs reach 104, so 130 is tight, and the planner's 400 would be a B); Orbit's home
+at 11,100 bytes stored; the product page's entry at 297,000; the editor's words at 130,000. Tightened in seven places. (1) /om-oss
+at most 80,000 bytes, not 85,000: the copy is 30,688 bytes as written into the document, so the sum is 79,819, and about 78,000
+with each sheet drawn once. (2) The whole-list read on at most 3 lines, not 14. I read the four callers the findings would leave:
+Kaizena Flow's two static-params functions keep slugs, the admin's search page keeps a slug and a title (search/page.tsx:147), and
+the feed reads every article of a blog to print 50. None draws every body. (3) Every statement that selects the document of
+several pages is named with its reason. A rough scan finds about 20 in 17 files; the findings name 5. (4) A body-only publish is
+proved by its effect (other pages stay cache hits), not by one stubbed call. The steward's count of places that refresh the
+store-wide tag is dropped as a measure: the fix keeps those places for a changed title, so the count cannot fall. (5) The
+steward's tolerance, 'a missed fact is stale for at most an hour', is false once step 2.15 gives tagged reads a week; the bar now
+says which reads keep the hour. (6) A recommending grid loads at most 140,000 bytes after its answer, not 335,000: 335,000 is the
+figure with zod and the page model still in. And parts are held by name, because 3% of a store page's first scripts is 18,000 to
+21,000 bytes, more than the cart's forms (18,876) that slipped in on 10 November. (7) The renderer is in the bar, not only the
+reader: page-article.tsx reaches 1,396 source files, and still 1,392 with pages.ts taken away, so a lean page-reads.ts alone
+changes nothing a page render loads. Also added: the owner filter is tested for Kaizena Flow's own rows (store_id is null), the
+editor's words must be 90% read, and measures 1 and 5 must hold on a themed store, where no figure exists today. Loosened in two
+places. '0 bytes reachable only through a not-found copy' becomes 'under 2,000 bytes of identical rows': the router keeps the
+store's 404 words (919 bytes today). 'Each stylesheet once per document' becomes twice, once in the HTML and once in React's
+payload: that is the framework's floor, and the breakpoint sheet differs per store, so it cannot move to the shared stylesheet.
+Not measurable as written: '0 built entries keep the page list' and '3 of 261' rest on a scratch script no step puts in the repo;
+'3 documents on a cold render' has no test that counts documents; '0 parts outside the keep-list' has no check, because the
+keep-list is prose. The parse time has a bench and no held test: accepted, since measure 2 holds how many documents are parsed.
+AMENDED BY THE PANEL'S CRITIC, so that one thing has one number in every area: 8: interface text in the editor's document: at most
+1.1 times the groups the editor's parts name at first paint, by the same scan; 130,000 bytes inline stays.
 
 ## What the challenger found missing, and how it was settled
 

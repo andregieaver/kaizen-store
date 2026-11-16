@@ -4,8 +4,19 @@ Copied code (`README.md` beside this file), part of `docs/audits/bloat-review-20
 
 - **Kind:** duplicate. **Priority:** P1. **Effort:** L. **Confidence:** medium. **Step:** 4.1.
 - **Second check:** corrected.
-- **Where:** `src/components/admin/ui/index.ts:1-9`, `src/components/admin/ui/card.tsx:13`, `src/components/admin/data/ui.ts:1-12`, `src/app/admin/(gated)/[store]/settings/legal/loading.tsx:3-21`, `src/app/admin/(gated)/[store]/settings/orders/loading.tsx:3-21`, `src/app/admin/(gated)/[store]/loading.tsx:3`, `src/app/admin/(gated)/[store]/analytics/customers/loading.tsx:4`, `src/components/admin/inventory/history-view.tsx:104`, `src/components/admin/bulk-result.tsx:98`, `docs/audits/code-review-2026-11.md:69`, `docs/audits/code-review-2026-11.md:250`, `docs/audits/code-review-2026-11.md:434`
-- **Evidence:** My count: 284 top-level input, field, control, card, label and hint class constants in 171 admin files (the second check counted 376 with th, td, primary and secondary and files outside the admin; input alone has 15 spellings, field 20). The kit (ui/index.ts) exports Button, Chip, Card, bars, List, PageHeader and FocusFrame: no input, select, table or skeleton. data/ui.ts already shares field, label, hint, a table shell, th and td, for the data pages only. The admin holds 154 hand-written tables in 116 files; near-copy families 5 and 27 are that markup in 10 and 5 places. Loading: 85 loading.tsx, 1,157 lines; 38 are five-line re-exports; 39 are drawn by hand in 33 distinct bodies; 27 declare the same `const block`; the same ten lines open 14 of them, another ten open 8 (the analytics ones) and another eleven open 5 (activity and automation).
+- **Where:** `src/components/admin/ui/index.ts:1-9`, `src/components/admin/ui/card.tsx:13`,
+  `src/components/admin/data/ui.ts:1-12`, `src/app/admin/(gated)/[store]/settings/legal/loading.tsx:3-21`,
+  `src/app/admin/(gated)/[store]/settings/orders/loading.tsx:3-21`, `src/app/admin/(gated)/[store]/loading.tsx:3`,
+  `src/app/admin/(gated)/[store]/analytics/customers/loading.tsx:4`, `src/components/admin/inventory/history-view.tsx:104`,
+  `src/components/admin/bulk-result.tsx:98`, `docs/audits/code-review-2026-11.md:69`, `docs/audits/code-review-2026-11.md:250`,
+  `docs/audits/code-review-2026-11.md:434`
+- **Evidence:** My count: 284 top-level input, field, control, card, label and hint class constants in 171 admin files (the second
+  check counted 376 with th, td, primary and secondary and files outside the admin; input alone has 15 spellings, field 20). The
+  kit (ui/index.ts) exports Button, Chip, Card, bars, List, PageHeader and FocusFrame: no input, select, table or skeleton.
+  data/ui.ts already shares field, label, hint, a table shell, th and td, for the data pages only. The admin holds 154
+  hand-written tables in 116 files; near-copy families 5 and 27 are that markup in 10 and 5 places. Loading: 85 loading.tsx, 1,157
+  lines; 38 are five-line re-exports; 39 are drawn by hand in 33 distinct bodies; 27 declare the same `const block`; the same ten
+  lines open 14 of them, another ten open 8 (the analytics ones) and another eleven open 5 (activity and automation).
 - **Cost today:** About 380 one-line declarations with 11 to 20 spellings of one control; 10 to 15 lines of shell and head per table; about 250 lines of repeated skeleton head. The cost is an uneven admin and a copy-the-neighbour habit, not bytes: Tailwind emits each utility once however many files spell it. Paid by: Owners (controls that look and behave slightly differently per screen) and agents (a new screen copies a neighbour's constants). The build pays almost nothing.
 - **Saving:** About 900 to 1,100 lines (estimate: about 380 declarations, about 5 lines from each of some 100 tables, about 250 from skeleton heads). The gain that matters is one look per control.
 - **Risk:** Visible changes across the admin. A wrong spacing or a lost focus ring shows in the signed-in suite's screenshots and in the a11y spec; do it area by area so one push changes one area.
