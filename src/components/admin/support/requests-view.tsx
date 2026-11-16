@@ -12,10 +12,6 @@ import {
 } from "@/lib/admin-messages/support.en";
 import type { RequestRow } from "@/server/support-actions";
 
-/** A staff request's kind, as staff read it. */
-export const REQUEST_KIND_WORDS: Record<RequestRow["kind"], string> =
-  supportEn.requests.kinds;
-
 /**
  * The desk's staff requests (D216, `docs/support.md` 2.4, step 10): what the AI passed to a person, with the conversation, the order and
  * the customer. A person does the work in the store's own screens (the order page), then marks it **Done** or **Declines** it, with an

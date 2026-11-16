@@ -44,30 +44,6 @@ export function consentColumn(status: SubscriberStatus | null | undefined): Cons
 /** An unsubscribe token: 32 random bytes, base64url (43 characters), as the cart reminders' are kept short enough for their route. */
 export const TOKEN_PATTERN = /^[A-Za-z0-9_-]{43}$/;
 
-/** Staff words for the list. */
-export const STATUS_WORDS: Record<SubscriberStatus, string> = {
-  pending: "Waiting for their link",
-  subscribed: "Subscribed",
-  unsubscribed: "Unsubscribed",
-};
-
-export const SOURCE_WORDS: Record<SubscribeSource, string> = {
-  form: "A form on the site",
-  checkout: "Checkout",
-  account: "My account",
-  shopify: "Moved from Shopify, with Shopify's record of their consent",
-  woocommerce: "Moved from WooCommerce, with MailPoet's record of their consent",
-};
-
-export const UNSUBSCRIBE_WORDS: Record<UnsubscribeSource, string> = {
-  link: "The email's link",
-  one_click: "Their mail app's unsubscribe button",
-  account: "My account",
-  staff: "Staff, for them",
-  complaint: "Marked as spam",
-  bounce: "The address does not exist",
-};
-
 /** The columns of the subscriber export, in order. */
 export const SUBSCRIBER_CSV_COLUMNS = [
   "email",

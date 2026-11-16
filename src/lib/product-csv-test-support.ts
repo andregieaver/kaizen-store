@@ -3,7 +3,7 @@
  * The shapes are what `getEditorContext()`, `getProductForEdit()` and `emptyProduct()` give (`src/server/products.ts`).
  */
 import type { FieldDef } from "./custom-fields";
-import { productProblems, type ProductInput, type PublishContext } from "./product-input";
+import { type ProductInput, type PublishContext } from "./product-input";
 import type { Term } from "./taxonomy";
 import type { ProductCsvContext, StoredProduct } from "./product-csv";
 import type { PlanEnv, StoreSnapshot } from "./product-import";
@@ -171,4 +171,3 @@ export function snapshotOf(products: StoredProduct[]): StoreSnapshot {
   return { products: new Map(products.map((p) => [p.handle, p])), skuOwners, variantOwners };
 }
 
-export const noProblems = (ctx: ProductCsvContext, input: ProductInput) => productProblems(input, publishContext(ctx));

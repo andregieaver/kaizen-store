@@ -65,4 +65,3 @@ export const deskSettingsInput = z.object({
   formMessages: z.enum(FORM_MESSAGES, "Choose where your contact forms' messages go.").optional(),
 });
 
-export type DeskSettingsInput = z.infer<typeof deskSettingsInput>;

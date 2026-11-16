@@ -144,7 +144,6 @@ export const ALERT_KEYS = {
 
 export const SUMMARY_KINDS = ["off", "daily", "weekly"] as const;
 export type SummaryKind = (typeof SUMMARY_KINDS)[number];
-export const SUMMARY_DEFAULTS = { summary: "off" as SummaryKind, weekday: 1, hour: 8 };
 /** ISO weekdays, Monday 1. */
 export const WEEKDAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"] as const;
 

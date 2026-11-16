@@ -1,14 +1,10 @@
 import { ActionForm, SubmitButton, type FormState } from "@/components/admin/action-form";
 import { Chip } from "@/components/admin/ui";
-import type { TrackingPhase } from "@/lib/tracking-phases";
 import type { ParcelTracking } from "@/server/shipment-tracking";
 import { orderEn, type OrderMessages } from "@/lib/admin-messages/order.en";
 import { countWords, fillWords } from "@/lib/admin-fill";
 
 type FormAction = (state: FormState, form: FormData) => Promise<FormState>;
-
-/** Staff's words for a phase in English (the AI manager's tools read them too); the page reads the account's language from the `order` catalogue. */
-export const PHASE_WORDS: Record<TrackingPhase, string> = orderEn.tracking.phases;
 
 const SHOWN = 5;
 

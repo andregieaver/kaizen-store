@@ -1,6 +1,6 @@
 import { cache } from "react";
 
-import { ADMIN_LANG_FACTS, type AdminLang } from "./admin-lang";
+import { type AdminLang } from "./admin-lang";
 import { SCREENS_WORDS } from "./admin-words/screens";
 import { WORK_WORDS } from "./admin-words/work";
 
@@ -29,10 +29,6 @@ export function readinessText(problem: { code: string; message: string; values?:
   if (current().lang === "en") return problem.message;
   const template = (workScreens().workReadiness.problems as Record<string, string | undefined>)[problem.code];
   return template ? template.replace(/\{(\w+)\}/g, (whole, name: string) => problem.values?.[name] ?? whole) : problem.message;
-}
-
-export function workLocale(): string {
-  return ADMIN_LANG_FACTS[current().lang].locale;
 }
 
 type Words = string | readonly Words[] | { readonly [key: string]: Words };

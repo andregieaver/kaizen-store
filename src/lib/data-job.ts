@@ -488,10 +488,6 @@ export function summariseCounts(items: readonly ItemSummary[]): JobCounts {
 /** `onShop`: products the apply would publish, archive, bring back or change on the site (D440), which an import of drafts only refuses. */
 export type DryRunCounts = { toCreate: number; toUpdate: number; unchanged: number; withProblems: number; onShop: number };
 
-/** The step an apply continues from: the product index in the plan (items are written in the plan's order, one per product). */
-export type ImportCursor = { next: number };
-export const startCursor = (): ImportCursor => ({ next: 0 });
-
 /** Progress as a whole percent, never above 99 until the job is done. */
 export function progressPercent(done: number | null, total: number | null, status: JobStatus): number {
   if (status === "done") return 100;

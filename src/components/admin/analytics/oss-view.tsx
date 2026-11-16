@@ -58,11 +58,6 @@ export type OssViewProps = {
   words?: TaxReportsMessages;
 };
 
-/** What the page says under every goods table: the dispatch state's own VAT number is the owner's to enter, nothing here holds it. */
-export const DISPATCH_NOTE = taxReportsEn.oss.dispatchNote;
-
-export const PART_LABEL: Record<ReturnPart, string> = taxReportsEn.oss.parts;
-
 const PART_ORDER: ReturnPart[] = ["2a", "2b", "2d", "NU", "IOSS"];
 
 const field = "min-h-10 w-full rounded-md border border-line bg-card px-3 text-sm";

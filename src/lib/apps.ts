@@ -241,9 +241,3 @@ export function readAppForm(fields: AppForm): { ok: true; app: AppInput } | { ok
   };
 }
 
-/** An app's client id as made: `kfapp_` and 22 characters of base64url (16 bytes), never a URL (so it is never taken for a metadata document). */
-export const APP_CLIENT_ID = /^kfapp_[A-Za-z0-9_-]{22}$/;
-/** An app's client secret as shown once: `kfas_` and 43 characters of base64url (32 bytes). */
-export const APP_SECRET = /^kfas_[A-Za-z0-9_-]{43}$/;
-/** An app's events secret as shown once: `kfws_` and 43 characters of base64url. */
-export const APP_WEBHOOK_SECRET = /^kfws_[A-Za-z0-9_-]{43}$/;

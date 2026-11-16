@@ -31,9 +31,6 @@ export const DHL_SERVICES: { id: string; name: string; needsPickupPoint: boolean
   { id: "economy", name: "DHL Economy Select", needsPickupPoint: false, maxWeightGrams: 70_000, codes: ["H", "W"] },
 ];
 
-/** The store's service a DHL product code belongs to; null for one not offered (documents, 9:00, 10:30). */
-export const dhlServiceOf = (productCode: string) => DHL_SERVICES.find((s) => s.codes.includes(productCode)) ?? null;
-
 /** Every service of the store's a DHL product code prices (Express and Express to a ServicePoint share theirs). */
 export const dhlServicesOf = (productCode: string) => DHL_SERVICES.filter((s) => s.codes.includes(productCode));
 

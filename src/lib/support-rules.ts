@@ -21,15 +21,6 @@ export type ConversationStatus = (typeof STATUSES)[number];
 export const AUTHORS = ["customer", "ai", "agent", "system", "note", "partner"] as const;
 export type MessageAuthor = (typeof AUTHORS)[number];
 
-/** The authors a customer may see (their feed, emails and export). */
-export const CUSTOMER_VISIBLE: readonly MessageAuthor[] = ["customer", "ai", "agent", "system"];
-
-export const SOURCES = ["site", "admin"] as const;
-export type ConversationSource = (typeof SOURCES)[number];
-
-export const HANDOFF_REASONS = ["customer", "ai", "tone", "no_ai", "limit"] as const;
-export type HandoffReason = (typeof HANDOFF_REASONS)[number];
-
 /**
  * Why a conversation is a person's to answer (`docs/100-day-challenge.md` A4): the cases the challenge lets reach a person. The AI names one
  * when it hands over (`handoff_to_human`'s category); a customer pressing *Talk to a person* is `asked_for_person`, a tone under the line is
@@ -45,12 +36,6 @@ export function escalationOf(handoffReason: string | null, escalation: string | 
   if (handoffReason === "ai") return (ESCALATION_CATEGORIES as readonly string[]).includes(escalation ?? "") ? (escalation as EscalationCategory) : "could_not_help";
   return null;
 }
-
-export const ENDED_BY = ["customer", "agent", "timeout", "system"] as const;
-export type EndedBy = (typeof ENDED_BY)[number];
-
-export const SUMMARY_STATUSES = ["none", "pending", "done", "failed", "skipped"] as const;
-export type SummaryStatus = (typeof SUMMARY_STATUSES)[number];
 
 /** The longest each author's message may be. A system line has no words of its own (its `kind` is drawn by each side). */
 export const MESSAGE_MAX: Record<MessageAuthor, number> = {
@@ -95,14 +80,11 @@ export const CONTACT_CHANGES_MAX = 3;
 export const RATING_COMMENT_MAX = 500;
 export const CONTACT_NAME_MAX = 120;
 export const CONTACT_EMAIL_MAX = 254;
-export const PAGE_PATH_MAX = 300;
 export const AI_REASON_MAX = 200;
 
 /** Desk settings' bounds and defaults (3.1). */
 export const END_AFTER_MINUTES = { min: 10, max: 240, default: 30 } as const;
 export const NOTIFY_AFTER_MINUTES = { min: 1, max: 60, default: 5 } as const;
-export const TONE_ALERT_DEFAULT = -40;
-export const TONE_HANDOFF_DEFAULT = -60;
 export const TRANSCRIPT_DAYS = [30, 60, 90] as const;
 export const TRANSCRIPT_DAYS_DEFAULT = 90;
 /** A desk whose support is off keeps a transcript this long after the conversation ends (S2). */
@@ -111,8 +93,6 @@ export const TRANSCRIPT_DAYS_OFF = 1;
 export const TRANSCRIPT_DAYS_SENSITIVE = 30;
 /** Anonymised conversations (counts and closed fields only) are deleted after this long. */
 export const RECORD_MONTHS = 24;
-export const MAX_CHATS = { min: 1, max: 20, default: 5 } as const;
-export const DISPLAY_NAME_MAX = 40;
 
 export const SUMMARY_TRIES = 3;
 /** A report's rate or median is shown only from this many cases. */

@@ -23,7 +23,6 @@ export const STARTING_CONTENT_HREF = `${THEMES_ADMIN}#starting-content`;
 /** The theme store's own pages (D285): edited here, never among Kaizena Flow's other pages; the card listing them on Themes. */
 export const THEME_STORE_PAGES = `${THEMES_ADMIN}/pages`;
 export const themeStorePageHref = (pageId: string): string => `${THEME_STORE_PAGES}/${pageId}`;
-export const THEME_STORE_PAGES_HREF = `${THEMES_ADMIN}#theme-store-pages`;
 
 /**
  * The addresses themes, design profiles and store templates had before D273 and where they went, as Next's `redirects`

@@ -78,14 +78,6 @@ export function captureAmountProblem(amountMinor: number, authorisedMinor: numbe
   return Number.isInteger(amountMinor) && amountMinor > 0 && amountMinor <= authorisedMinor ? null : "amount";
 }
 
-export const CAPTURE_PROBLEM_WORDS: Record<CaptureProblem, string> = {
-  not_authorized: "This order has no payment waiting to be captured.",
-  amount: "Capture an amount above zero and at most what the card holds.",
-  expired: "The hold on the card has ended. The order was cancelled and its stock released.",
-  stripe: "Stripe could not capture the payment. Nothing was charged; try again, or cancel the order.",
-  copied: "A copied order is history: it is never charged.",
-};
-
 /** An order's history lines for a held card and its capture (`order.authorized`, `payment.captured`); null for any other event. */
 export function captureEventText(type: string, data: Record<string, unknown>, money: (minor: number) => string): string | null {
   if (type === "order.authorized") return data.mode === "when_sent" ? "Card held: charged when the order is sent" : "Card held: charged when you capture it";

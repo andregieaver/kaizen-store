@@ -1,4 +1,4 @@
-import { CSS_MAX, allowedCssUrl, cssProblem } from "./custom-css";
+import { CSS_MAX, allowedCssUrl } from "./custom-css";
 
 /**
  * The look of a copied page, kept as data (D150): one rule per part (a row, column or block, by its id) and per place
@@ -89,8 +89,6 @@ const PROPS: Record<string, "length" | "color" | "number" | "keyword" | "text" |
   bottom: "length",
   left: "length",
 };
-
-export const COPY_PROPERTIES = Object.keys(PROPS);
 
 const KEYWORD = /^[a-z][a-z-]{0,40}$/;
 const LENGTH = /^(?:-?\d+(?:\.\d+)?(?:px|%|em|rem|vw|vh|svh|ch)?|auto|normal|none|0|calc\([\d\s.+\-*/%a-z()]{1,60}\)|min\([\d\s.,%a-z()]{1,60}\)|max\([\d\s.,%a-z()]{1,60}\)|clamp\([\d\s.,%a-z()]{1,80}\))$/i;
@@ -275,5 +273,3 @@ export function renderStyles(model: StyleModel, shared: string): { css: string; 
   return { css: shared.slice(0, CSS_MAX), trimmed: "The page was larger than a page's CSS may be, so its sizes were left out.", level: 4 };
 }
 
-/** Whether rendered CSS may be saved (the same check the page applies). */
-export const stylesProblem = (css: string): string | null => cssProblem(css);

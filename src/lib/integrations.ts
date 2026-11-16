@@ -174,8 +174,6 @@ export const APP_EVENTS: { id: AppEvent; label: string; hint: string }[] = [
   },
 ];
 export const isAppEvent = (value: string): value is AppEvent => APP_EVENTS.some((e) => e.id === value);
-/** How long after an app is removed `store.erase_requested` is sent. */
-export const APP_ERASE_AFTER_HOURS = 48;
 
 /** The events of D354 go to an owner's own endpoints only: Zapier, Make and Slack get the events they always had. */
 const ENDPOINT_ONLY: ReadonlySet<IntegrationEvent> = new Set([

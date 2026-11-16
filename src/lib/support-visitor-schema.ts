@@ -33,7 +33,6 @@ export type TurnInput = z.infer<typeof turnInput>;
 export const spokenTurnInput = turnInput.omit({ message: true });
 
 export const feedInput = z.object({ conversation: conversationRef, after });
-export type FeedInput = z.infer<typeof feedInput>;
 
 /** Ending takes the same as the feed: the answer is what came after the tab's last message. */
 export const endInput = feedInput;

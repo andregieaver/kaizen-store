@@ -129,4 +129,3 @@ export const BLOCK_WORDS = {
   document_missing: "The document could not be read. Contact support.",
 } as const;
 
-export type BlockWords = Record<keyof typeof BLOCK_WORDS, string>;

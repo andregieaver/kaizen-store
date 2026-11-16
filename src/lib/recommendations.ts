@@ -90,8 +90,6 @@ export function cleanSignals(raw: unknown): Signals {
   return { views: ids, searches: words };
 }
 
-export const hasSignals = (signals: Signals) => signals.views.length > 0 || signals.searches.length > 0;
-
 /** Which ranking a tab gets: a stable share (by its id) gets the plain one, so the two can be compared. */
 export function armFor(session: string, holdoutPercent: number): "ai" | "baseline" {
   if (holdoutPercent <= 0) return "ai";

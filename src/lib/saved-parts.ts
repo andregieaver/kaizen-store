@@ -126,8 +126,6 @@ export const savedPartInput = z
     }
   });
 
-export type SavedPartInput = z.infer<typeof savedPartInput>;
-
 /** A stored part, or null if it cannot be read (then it is not offered). */
 export function parseSavedPart(row: {
   id: string;

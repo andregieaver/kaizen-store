@@ -63,7 +63,6 @@ export const orderRuleInput = z.object({
   conditions: z.array(ruleConditionInput).max(RULE_LIMITS.conditions, `A rule has at most ${RULE_LIMITS.conditions} conditions.`),
   actions: z.array(ruleActionInput).min(1, "Add an action.").max(RULE_LIMITS.actions, `A rule has at most ${RULE_LIMITS.actions} actions.`),
 });
-export type OrderRuleInput = z.infer<typeof orderRuleInput>;
 
 /** The rule's ids in the order the list shows them (*Move up*, *Move down*, dragging). */
 export const ruleOrderInput = z.array(z.uuid()).max(RULE_LIMITS.rules);

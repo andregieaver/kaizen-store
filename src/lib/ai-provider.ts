@@ -332,8 +332,6 @@ export const aiProviderInput = z
     }
   });
 
-export type AiProviderInput = z.infer<typeof aiProviderInput>;
-
 /** Reads the settings form into what `aiProviderInput` checks. */
 export function aiFormValues(formData: FormData) {
   return {

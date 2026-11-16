@@ -18,7 +18,7 @@ import { storeTag } from "./stores";
 type Row = Record<string, unknown>;
 
 // The wizard's steps follow the store's features (D178 step 6): `src/lib/setup-steps.ts`.
-export { isSetupStep, SETUP_STEPS, setupStepsFor, type SetupStepId } from "@/lib/setup-steps";
+export { isSetupStep, setupStepsFor, type SetupStepId } from "@/lib/setup-steps";
 
 /**
  * The audit action written when the owner answers the wizard's question "What will you sell?" (D178 step 6). The answers themselves are the

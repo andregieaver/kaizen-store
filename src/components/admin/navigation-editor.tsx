@@ -31,17 +31,6 @@ export type NavigationCopy = {
   view: string;
 };
 
-export const STORE_COPY: NavigationCopy = {
-  logo: "Shown in the header instead of the store's name, up to 40 pixels high. A wide PNG with a transparent background works best. Without a logo, the header shows the name.",
-  logoDark:
-    "Optional: a light version of the logo, shown instead where the background is dark, such as a black header or dark mode in your theme (under Design). Without it, the logo above is shown everywhere.",
-  header:
-    "Across the top on computers, and in the slide-out menu on phones. The cart, My account and the country choice are always there, so they need no link in it.",
-  footer: "At the bottom of every page, beside your business details, which the law requires and Kaizena Flow always shows.",
-  saved: "Saved. Your store shows it now.",
-  view: "View the store",
-};
-
 const input = "min-h-10 w-full rounded-md border border-line bg-card px-3 text-sm font-normal";
 const label = "flex flex-col gap-1 text-sm font-medium";
 const card = "flex flex-col gap-4 rounded-lg border border-line bg-card p-5";

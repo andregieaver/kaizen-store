@@ -18,7 +18,6 @@ export const WHERE = {
   grid: " > :last-child > :first-child",
   inside: " > :last-child",
 } as const;
-export type Where = keyof typeof WHERE;
 
 export const PATCHES_MAX = 40;
 
@@ -29,7 +28,6 @@ const changeSchema = z.object({
   set: z.record(z.string().max(40), z.union([z.string().max(300), z.number()])).refine((set) => Object.keys(set).length <= 12, "at most twelve properties"),
   why: z.string().max(200).default(""),
 });
-export type PatchChange = z.infer<typeof changeSchema>;
 
 const planSchema = z.object({
   summary: z.string().max(600).default(""),

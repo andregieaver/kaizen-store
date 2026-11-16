@@ -17,7 +17,6 @@ export const SUPPLIER_PROBLEM_MAX = 500;
 
 /** The carriers a supplier chooses from on its page (ids of `CARRIERS` in `src/server/order-admin.ts`); `other` takes a tracking link. */
 export const SUPPLIER_CARRIERS = ["posten", "bring", "postnord", "dhl", "dhl_paket", "ups", "instabox", "other"] as const;
-export type SupplierCarrier = (typeof SUPPLIER_CARRIERS)[number];
 
 export type SoldAtSupplier = { variantId: string; units: number };
 export type OrderLineForSupplier = { id: string; variantId: string | null; quantity: number };

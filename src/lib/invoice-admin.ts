@@ -14,8 +14,6 @@ const lookup = (table: Record<string, string>, key: string): string | undefined 
 export const INVOICE_TABS = ["invoices", "credit-notes", "waiting"] as const;
 export type InvoiceTab = (typeof INVOICE_TABS)[number];
 
-export const TAB_LABELS: Record<InvoiceTab, string> = EN.labels.tabs;
-
 /** Documents on a page of the lists (the server's own page size). */
 export const DOCUMENTS_PER_PAGE = 50;
 
@@ -86,12 +84,8 @@ export function documentPrintHref(base: string, type: "invoice" | "credit_note",
   return type === "invoice" ? `${base}/invoices/${id}/print` : `${base}/invoices/credit-notes/${id}/print`;
 }
 
-/** What the order's VAT treatment is called in the lists. */
-export const VAT_KIND_LABELS: Record<string, string> = EN.labels.vatKind;
 export const vatKindLabel = (kind: string | null, w: InvoicesMessages = EN): string => (kind ? (lookup(w.labels.vatKind, kind) ?? kind) : "–");
 
-/** Where a credit note came from. */
-export const SOURCE_LABELS: Record<string, string> = EN.labels.source;
 export const sourceLabel = (source: string | null, w: InvoicesMessages = EN): string => (source ? (lookup(w.labels.source, source) ?? source) : "–");
 
 /** A country code as its name in a language (English unless given), or the code when the runtime does not know it. */
@@ -141,9 +135,6 @@ export function dayLabel(day: string | null, w: InvoicesMessages = EN): string {
   const [year, month, date] = day.slice(0, 10).split("-").map(Number);
   return fillWords(w.labels.day, { date, month: w.labels.months[month - 1], year });
 }
-
-/** The seller's details an invoice needs, as the readiness list names them. */
-export const SELLER_FIELD_LABELS: Record<string, string> = EN.labels.sellerFields;
 
 /** A seller's field in words, or its key when it has none. */
 export const sellerFieldLabel = (field: string, w: InvoicesMessages = EN): string => lookup(w.labels.sellerFields, field) ?? field;

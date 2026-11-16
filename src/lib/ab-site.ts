@@ -30,7 +30,6 @@ export const isWorkingRole = (value: unknown): value is WorkingRole => (WORKING_
  * served like a working page's, from the route, but unlike one they hold no shop component: a version may be the whole page or a part of it.
  */
 export const OWN_PLACES = ["front", "products"] as const;
-export type OwnPlace = (typeof OWN_PLACES)[number];
 
 /** Every place a test can be served from its own route: the working pages (by a part only) and the front and All products pages. */
 export const TESTED_PLACES = [...WORKING_ROLES, ...OWN_PLACES] as const;

@@ -1,7 +1,4 @@
-import Link from "next/link";
-
 import type { WorkStore } from "@/lib/work-owner";
-import { WORK_ROOT } from "@/lib/work-paths";
 
 import { control } from "./work-parts";
 import { workText } from "@/lib/work-text";
@@ -46,12 +43,3 @@ export function CurrencyNote() {
   );
 }
 
-/** A link to the settings page, where Work is switched on for a store. */
-export function SettingsLink({ children }: { children?: string }) {
-  const tw = workText().ownerCommon;
-  return (
-    <Link href={`${WORK_ROOT}/settings`} className="underline">
-      {children ?? tw.workSettingsLink}
-    </Link>
-  );
-}

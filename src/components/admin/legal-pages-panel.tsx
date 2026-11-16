@@ -29,9 +29,6 @@ export type LegalAiState = {
 
 const field = "min-h-10 rounded-md border border-line bg-card px-3 text-sm font-normal";
 
-/** The notice every starter carries, in the owner's words: written by hand, not checked by a lawyer, never advice. */
-export const LEGAL_STARTER_NOTICE = legalEn.pages.notice;
-
 /** A detail `missingFacts()` names, in the admin's words: its English is matched to the catalogue's key, and one not known is shown as written. */
 function missingWord(text: string, words: LegalMessages): string {
   const key = (Object.keys(legalEn.pages.missing) as (keyof LegalMessages["pages"]["missing"])[]).find((k) => legalEn.pages.missing[k] === text);

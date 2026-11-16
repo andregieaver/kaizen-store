@@ -42,7 +42,7 @@ import { addTag, removeTag } from "./segments";
 import { sendShipped } from "./shopper-emails";
 import { col, typedRows } from "./typed-rows";
 
-export { ApiError, decodeCursor, encodeCursor, type ApiAnswer } from "./admin-api-kit";
+export { ApiError, type ApiAnswer } from "./admin-api-kit";
 
 /**
  * The Admin API's handlers (wave 9 unit B, D355): each route reads the store's own data or changes it only through the function its screen

@@ -28,9 +28,6 @@ export const kindFilters = (words: TemplateWords = EN): readonly { value: KindFi
 ];
 export const KIND_FILTERS = kindFilters();
 
-/** How a source is named in a sentence ("No templates activated from …"). */
-export const SOURCE_PHRASES: Record<TemplateSource, string> = EN.sourcePhrases;
-
 export type TemplateGroup = { kind: SavedPartKind; label: string; items: TemplateItem[] };
 
 /** Page layouts, then rows, columns and components, each in the order given; a kind with nothing in it is left out. */

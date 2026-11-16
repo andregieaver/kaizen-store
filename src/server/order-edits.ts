@@ -1013,9 +1013,6 @@ export async function sendOrderEdit(storeId: string, orderId: string, raw: unkno
   return { ok: true, editId, label, expiresAt: expiresAt.toISOString(), link, emailed };
 }
 
-/** *Create a link to share*: as `sendOrderEdit()` without the email. */
-export const shareOrderEditLink = (storeId: string, orderId: string, raw: unknown, actor: OrderActor) => sendOrderEdit(storeId, orderId, raw, actor, { email: false });
-
 export type ResendEditResult = { ok: true; link: string; emailed: string | null; expiresAt: string } | { ok: false; problem: "not_found" | "not_waiting" | "limit" | "processing" | "paid" };
 
 /**

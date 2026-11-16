@@ -10,11 +10,10 @@ export const SENDCLOUD_API = "https://panel.sendcloud.sc/api/v3";
 const SENDCLOUD_HOST = "panel.sendcloud.sc";
 
 /**
- * The only labels the store's *test* environment will make (from step 2): Sendcloud's free test label, an unstamped letter that
- * nothing ships and nobody pays for, and its return counterpart.
+ * The only label the store's *test* environment will make (from step 2): Sendcloud's free test label, an unstamped letter that
+ * nothing ships and nobody pays for.
  */
 export const SENDCLOUD_TEST_OPTION = "sendcloud:letter";
-export const SENDCLOUD_TEST_RETURN_OPTION = "sendcloud:letterreturn";
 
 /** The `Authorization` header for a shop's keys. */
 export const sendcloudAuthorization = (publicKey: string, secretKey: string): string =>

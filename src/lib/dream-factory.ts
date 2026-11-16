@@ -178,9 +178,6 @@ export function runStatusOf(steps: DreamSteps | AllSteps, kind: DreamKind = "bui
 export const PROMPT_MIN = 20;
 export const PROMPT_MAX = 2000;
 
-export const BUSINESS_FIELDS = ["legalName", "organisationNumber", "postalAddress", "contactEmail", "country"] as const;
-export type BusinessField = (typeof BUSINESS_FIELDS)[number];
-
 const text = (max: number) => z.string().trim().max(max).catch("");
 
 /** What the run works from: the model's reading of the owner's words, then checked here. */

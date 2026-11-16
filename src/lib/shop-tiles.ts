@@ -23,7 +23,6 @@ export const DEFAULT_PRODUCT_SETTINGS: ProductSettings = { tileStock: false, til
 
 /** A grid's own choice for one of the two: absent follows the store. */
 export type TileChoice = "show" | "hide";
-export const TILE_CHOICES: readonly TileChoice[] = ["show", "hide"];
 export const isTileChoice = (value: unknown): value is TileChoice => value === "show" || value === "hide";
 
 /** A grid's overrides (`ContentGridBlock.shopTiles`). */

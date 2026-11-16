@@ -163,8 +163,6 @@ export const NOTIFICATIONS: readonly NotificationDef[] = [
   }),
 ];
 
-export type NotificationId = (typeof NOTIFICATIONS)[number]["id"];
-
 export const NOTIFICATION_IDS: readonly string[] = NOTIFICATIONS.map((n) => n.id);
 /** Required: always sent, never stored off. */
 export const REQUIRED_NOTIFICATIONS: readonly string[] = NOTIFICATIONS.filter((n) => n.required).map((n) => n.id);
@@ -180,7 +178,6 @@ const BY_ID = new Map(NOTIFICATIONS.map((n) => [n.id, n]));
 export const isNotificationId = (value: unknown): value is string => typeof value === "string" && BY_ID.has(value);
 export const notificationOf = (id: string): NotificationDef | null => BY_ID.get(id) ?? null;
 export const isRequiredNotification = (id: string): boolean => BY_ID.get(id)?.required ?? false;
-export const isEditableNotification = (id: string): boolean => BY_ID.get(id)?.editable ?? false;
 
 /**
  * Whether a notification is on, from what the store saved (`undefined`: nothing saved, `null`: the read failed). A required one is always on; a

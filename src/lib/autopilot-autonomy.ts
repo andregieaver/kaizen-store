@@ -439,8 +439,6 @@ export const AREA_WORDS: Record<AutonomyArea, string> = {
   money: "Money",
 };
 
-export const LEVEL_WORDS: Record<AutonomyLevel, string> = { ask: "Ask me first", tell: "Do it and tell me", auto: "Just do it" };
-
 /** The share of the autopilot's monthly AI budget at which its owners are told it is close (PSI AST-07). */
 export const BUDGET_NEAR_SHARE = 0.8;
 

@@ -46,15 +46,6 @@ export function termsState(input: { dueOn: string; today: string; paid: boolean;
   return "due";
 }
 
-/** The staff words of a state, for chips and lists. */
-export const TERMS_STATE_LABELS: Record<TermsState, string> = {
-  due: "Due",
-  due_soon: "Due soon",
-  overdue: "Overdue",
-  paid: "Paid",
-  cancelled: "Cancelled",
-};
-
 /** The company's side, as the server read it for the signed-in customer. */
 export type TermsCompany = {
   /** The customer's role in it: only an owner or an employee buys for it. */
@@ -106,14 +97,3 @@ export function termsOffer(input: {
   return { ok: true, terms: company.terms, dueOn: termsDueOn(input.today, company.terms), roomMinor };
 }
 
-/** The staff sentence for a refusal, on the order list's help and the AI manager's answers. */
-export const TERMS_REFUSAL_WORDS: Record<TermsRefusal, string> = {
-  not_business: "The store does not sell to businesses.",
-  no_company: "The customer is not signed in as a member of a company.",
-  inactive: "The company is switched off.",
-  no_terms: "The company has no payment terms.",
-  basket: "Only goods are sold on terms: not bookings, subscriptions, deposits, weekly boxes or hosts' listings.",
-  nothing_to_pay: "There is nothing to pay.",
-  limit: "The order would take the company past its credit limit.",
-  no_rate: "An amount could not be converted to the credit limit's currency, so the limit cannot be checked.",
-};

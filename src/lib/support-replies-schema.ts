@@ -25,4 +25,3 @@ export const replyInput = z.object({
     .regex(SHORTCUT, "A shortcut is lower-case letters, digits and dashes, starting with a letter or a digit."),
   locale: z.preprocess(blankToNull, z.string().regex(/^[a-z]{2,3}(?:-[A-Z]{2})?$/, "Choose a language.").nullable()).default(null),
 });
-export type ReplyInput = z.infer<typeof replyInput>;

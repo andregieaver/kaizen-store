@@ -1,7 +1,7 @@
 "use client";
 
 import { Eye, Laptop, Monitor, Smartphone, Tablet, X, type LucideIcon } from "lucide-react";
-import { createContext, useCallback, useContext, useId, useState, type ReactNode } from "react";
+import { createContext, useCallback, useContext, useId, useState } from "react";
 
 import {
   SIZES,
@@ -153,16 +153,6 @@ export function SizeMark({
           </span>
         ))}
     </span>
-  );
-}
-
-/** A field's own heading with its size mark, for fields that have none of their own (a number, a slider). */
-export function SizeHeading({ children, mark }: { children: ReactNode; mark: ReactNode }) {
-  return (
-    <div className="flex flex-wrap items-center gap-1 text-sm font-medium">
-      {children}
-      {mark}
-    </div>
   );
 }
 

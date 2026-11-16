@@ -127,7 +127,6 @@ export const termInput = z
     }
     return { ...term, slug, parentId: term.kind === "tag" ? null : term.parentId };
   });
-export type TermInput = z.infer<typeof termInput>;
 
 /** The ids an item is in, as stored with it: unique, and at most `ITEM_TERMS_MAX` of each. */
 export const termIdsSchema = z.object({

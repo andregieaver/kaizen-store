@@ -102,5 +102,3 @@ export const allowedWhenNotOpen = (key: PermissionKey): boolean => WHEN_NOT_OPEN
 /** Whether a page of a store that is not open is offered in its navigation: the same keys, by the page's own key. */
 export const keyAllowedWhenNotOpen = (key: PermissionKey | null): boolean => key === null || allowedWhenNotOpen(key);
 
-/** The words for a status, as the owner and the platform read them. */
-export const STATUS_WORDS: Record<StoreStatus, string> = { active: "Open", suspended: "Suspended", closed: "Closed" };

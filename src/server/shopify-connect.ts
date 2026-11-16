@@ -336,8 +336,6 @@ export async function disconnectShopify(member: Membership, deps: ShopifyDeps = 
 // Shopify's webhooks
 // ---------------------------------------------------------------------------
 
-export const SHOPIFY_WEBHOOK_TOPICS = ["app/uninstalled", "shop/redact", "customers/redact", "customers/data_request"] as const;
-
 /**
  * A webhook from Shopify to `/api/shopify/webhooks` (answers the HTTP status): 401 without Shopify's HMAC over the raw body, as Shopify
  * requires. `app/uninstalled` disconnects every store connected to the shop; `shop/redact` (48 hours after) deletes their rows;

@@ -44,8 +44,6 @@ export const RETENTION_KINDS = [
 ] as const;
 export type RetentionKind = (typeof RETENTION_KINDS)[number];
 
-export const isRetentionKind = (value: unknown): value is RetentionKind => (RETENTION_KINDS as readonly unknown[]).includes(value);
-
 /** The kinds whose period comes from bookkeeping law and counts from the end of the calendar year (the rest are policy). */
 export const BOOKKEEPING_KINDS = ["bookkeeping", "host_bookkeeping"] as const satisfies readonly RetentionKind[];
 export const isBookkeepingKind = (kind: RetentionKind): boolean => (BOOKKEEPING_KINDS as readonly string[]).includes(kind);
@@ -334,5 +332,3 @@ export function ruleProblem(kind: RetentionKind, p: Period): RuleProblem | null 
   return null;
 }
 
-/** The kinds a platform admin may add a country-specific row for (bookkeeping law differs by country; the rest are one policy). */
-export const COUNTRY_KINDS: readonly RetentionKind[] = BOOKKEEPING_KINDS;

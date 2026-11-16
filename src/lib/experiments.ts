@@ -153,9 +153,6 @@ export function decodeAssignments(value: string | undefined | null): Assignments
   return { visitor: match[1], versions };
 }
 
-/** The marker an A/B page carries for the browser, to compare with the cookie: `{experiment}.{variant}`. */
-export const pageMarker = (experimentId: string, variant: string) => `${experimentId}.${variant}`;
-
 // ---------------------------------------------------------------------------
 // Checking a test
 // ---------------------------------------------------------------------------

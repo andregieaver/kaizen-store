@@ -234,11 +234,6 @@ export function overlayMessages<T>(namespace: Namespace, english: T, texts: Read
   return build(english, []) as T;
 }
 
-/** The English message with `key`'s arguments applied to its template: what a translation is compared with. */
-export function englishTemplate(entries: readonly CatalogEntry[], key: string): string | undefined {
-  return entries.find((e) => e.key === key)?.source;
-}
-
 /** Runs a function-valued message from a template the way the storefront does, for tests and previews. */
 export function runTemplate(key: string, template: string, args: unknown[], locale: string): string {
   const chosen = CHOOSING[key];

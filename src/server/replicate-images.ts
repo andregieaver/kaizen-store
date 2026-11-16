@@ -75,9 +75,6 @@ export async function pairImage(original: Buffer, copy: Buffer, region: { y: num
     .toBuffer();
 }
 
-/** The most a picture sent to the model is, in pixels of its long side. */
-export const MODEL_IMAGE_SIDE = 1600;
-
 /** The page cut into stretches of at most `height` pixels, each as a JPEG of `width`, for the model to read the original from; at most `max` of them. */
 export async function slices(png: Buffer, width: number, height: number, max: number): Promise<Buffer[]> {
   const sharp = await loadSharp();

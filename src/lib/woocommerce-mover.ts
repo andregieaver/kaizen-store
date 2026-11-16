@@ -16,10 +16,6 @@ import type { GiftCardLine } from "./shopify-settings";
 export const MOVER_NAMESPACE = "kaizena-mover/v1";
 export const MOVER_ROUTES = ["plugins", "redirects", "seo", "seo_terms", "subscribers", "gift_cards", "content", "menus"] as const;
 export type MoverRoute = (typeof MOVER_ROUTES)[number];
-/** How far apart Kaizena Flow's clock and the site's may be, in seconds. */
-export const MOVER_SKEW_SECONDS = 300;
-/** How many rows a page of the plugin's answers holds. */
-export const MOVER_PAGE_SIZE = 500;
 
 /** RFC 3986 percent-encoding, as PHP's `rawurlencode()`. */
 const raw = (text: string): string => encodeURIComponent(text).replace(/[!'()*]/g, (c) => `%${c.charCodeAt(0).toString(16).toUpperCase()}`);
@@ -129,9 +125,6 @@ export const KNOWN_PLUGINS: Record<string, "read" | "here" | "none"> = {
   "yith-woocommerce-wishlist": "none",
   "elementor": "none",
 };
-
-/** A redirect from one of the redirect plugins (Redirection, Yoast SEO Premium, Rank Math): an address on the site to where it leads. */
-export type MoverRedirect = { from: string; to: string };
 
 /**
  * A page of redirects as the redirect import's lines (`redirectsFile()`): a path on the site (with its query when it has one) to a path or a

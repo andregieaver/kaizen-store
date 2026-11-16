@@ -17,14 +17,7 @@ import {
   AssignmentInvoicesPanel,
   BillUnbilledPanel,
   ClientInvoicesPanel,
-  type AssignmentInvoicesPanelProps,
-  type BillUnbilledPanelProps,
-  type ClientInvoicesPanelProps,
 } from "./invoice-panels";
-
-export type ClientInvoicesSlotProps = ClientInvoicesPanelProps;
-export type AssignmentInvoicesSlotProps = AssignmentInvoicesPanelProps;
-export type BillUnbilledTimeSlotProps = BillUnbilledPanelProps;
 
 export const ClientInvoicesSlot = ClientInvoicesPanel;
 export const AssignmentInvoicesSlot = AssignmentInvoicesPanel;

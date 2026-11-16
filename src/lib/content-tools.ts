@@ -3,16 +3,6 @@
  * from its arguments. The server puts the entry's or type's own name in where it can (`contentApprovalWords()`).
  */
 
-export const CONTENT_TOOLS = [
-  "list_content_types",
-  "list_entries",
-  "get_entry",
-  "save_entry",
-  "publish_entry",
-  "unpublish_entry",
-  "save_content_type",
-] as const;
-
 /** What a kept content change will do, from its arguments; `title` is the entry's or type's own name when the server knows it. */
 export function contentApprovalSummary(name: string, input: Record<string, unknown>, title?: string): string {
   const text = (key: string) => String(input[key] ?? "");

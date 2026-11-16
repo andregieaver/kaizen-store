@@ -14,18 +14,6 @@ export const FIKEN_SALE_VAT_TYPES = ["HIGH", "MEDIUM", "LOW", "RAW_FISH", "NONE"
 
 export type FikenVatType = (typeof FIKEN_SALE_VAT_TYPES)[number];
 
-export const VAT_TYPE_CODES: Record<FikenVatType, string> = {
-  HIGH: "3",
-  MEDIUM: "31",
-  LOW: "33",
-  RAW_FISH: "32",
-  NONE: "7",
-  EXEMPT: "5",
-  EXEMPT_IMPORT_EXPORT: "52",
-  OUTSIDE: "6",
-  EXEMPT_REVERSE: "51",
-};
-
 /** Where each bucket goes by default: Fiken's standard chart (3000 taxable sales, 3100 exempt, 3200 outside the VAT area, 2900 other short-term debt). */
 export const DEFAULT_FIKEN_BOOKING: Record<BookingKey, { account: string; vatType: FikenVatType }> = {
   standard_25: { account: "3000", vatType: "HIGH" },
@@ -41,8 +29,6 @@ export const DEFAULT_FIKEN_BOOKING: Record<BookingKey, { account: string; vatTyp
 const accountCode = z.string().trim().regex(/^\d{4}$/);
 
 export const fikenBookingSchema = z.object({ account: accountCode, vatType: z.enum(FIKEN_SALE_VAT_TYPES) });
-
-export type FikenBooking = z.infer<typeof fikenBookingSchema>;
 
 export const fikenSettingsSchema = z.object({
   version: z.literal(1),

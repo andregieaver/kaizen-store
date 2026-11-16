@@ -36,7 +36,6 @@ import { catalogTag } from "./catalog";
 import {
   IMPORTS_BUCKET,
   assetsOf,
-  failJob,
   finishJob,
   getJob,
   importPathPattern,
@@ -639,6 +638,4 @@ export async function runImportApply(job: DataJob, deps: DataDeps, until: number
   return "done";
 }
 
-/** A job that could not go on: failed with a plain reason, never a quoted cell. */
-export const stopImport = failJob;
 export { releaseJob };

@@ -133,12 +133,6 @@ export function inLanguage<T extends ThemeStoreCard & { description?: string }>(
 export const OWN_SLOTS = ["share", "devices", "collage", "closeup"] as const;
 export type OwnSlot = (typeof OWN_SLOTS)[number];
 export type OwnPictures = Partial<Record<OwnSlot, string>>;
-export const OWN_SLOT_NAMES: Record<OwnSlot, string> = {
-  share: "Share image",
-  devices: "Highlight: on a computer and two phones",
-  collage: "Highlight: the page, section by section",
-  closeup: "Highlight: the product page up close",
-};
 
 /** A listing's own pictures: known slots with a picture's address only. */
 export function readOwnPictures(value: unknown): OwnPictures {

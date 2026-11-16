@@ -82,8 +82,6 @@ export { formatTimes };
 
 export const noSales = (f: PeriodFigures) => f.totals.orders === 0 && f.totals.revenueMinor === 0 && f.totals.refundsMinor === 0;
 
-export const plural = (n: number, one: string, many: string) => (n === 1 ? one : many);
-
 /** What the first screen's parts ask of the cost coverage: whether there are sales, how much of them has a known cost, and whether too little does to show profit. */
 export function moneySignals(data: Pick<OverviewHead, "current" | "costCoverage">): { sales: boolean; coverage: number | null; costsMissing: boolean } {
   const sales = !noSales(data.current);

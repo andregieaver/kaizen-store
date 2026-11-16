@@ -48,10 +48,6 @@ export type Unit = {
 
 /** A text's key across all units, for one request to the model. */
 export const globalKey = (unitId: string, key: string) => `${unitId}|${key}`;
-export const splitKey = (key: string): { unitId: string; key: string } => {
-  const i = key.indexOf("|");
-  return { unitId: key.slice(0, i), key: key.slice(i + 1) };
-};
 
 /** Every item of the units, keyed by unit and key, for the model. */
 export const unitItems = (units: readonly Unit[]): TranslateItem[] =>

@@ -208,7 +208,6 @@ export const adjustRow = z
     was: z.number().int().min(-STOCK_MAX).max(STOCK_MAX),
   })
   .refine((r) => r.mode !== "set" || (r.value >= 0 && r.value <= STOCK_MAX), { message: ADJUST_PROBLEM_WORDS.negative, path: ["value"] });
-export type AdjustRow = z.infer<typeof adjustRow>;
 
 /** The whole save: a reason for it, an optional note, and up to 500 rows (no row twice). */
 export const adjustInput = z
@@ -221,8 +220,6 @@ export const adjustInput = z
     message: "A figure is changed twice in one save.",
     path: ["rows"],
   });
-export type AdjustInput = z.infer<typeof adjustInput>;
-export type AdjustInputValue = z.input<typeof adjustInput>;
 
 /** What each row of a save came to. `conflict`: the stored figure was not the one the row was loaded with. */
 export type AdjustOutcome = "written" | "unchanged" | "conflict" | "refused" | "failed";
@@ -233,7 +230,6 @@ export type AdjustOutcome = "written" | "unchanged" | "conflict" | "refused" | "
 
 export const STOCK_POLICIES = ["deny", "continue"] as const;
 export type StockPolicy = (typeof STOCK_POLICIES)[number];
-export const isStockPolicy = (value: unknown): value is StockPolicy => value === "deny" || value === "continue";
 
 export const POLICY_WORDS: Record<StockPolicy, string> = { deny: "Stop selling at zero", continue: "Keep selling" };
 export const policyWords = (policy: StockPolicy, days: number | null): string =>
@@ -288,7 +284,6 @@ export const bulkPolicyInput = z
     ]),
   })
   .refine((v) => new Set(v.variantIds).size === v.variantIds.length, { message: "A variant is chosen twice.", path: ["variantIds"] });
-export type BulkPolicyInput = z.infer<typeof bulkPolicyInput>;
 
 // ---------------------------------------------------------------------------
 // Locations (spec 2.3)
@@ -302,7 +297,6 @@ export const locationInput = z.object({
     .toUpperCase()
     .regex(/^[A-Z]{2}$/, "Choose a country."),
 });
-export type LocationInput = z.infer<typeof locationInput>;
 
 /** The rank key: `priority`, then `created_at`, then `id` (spec 1.3). Every reader of "the first location" uses this order. */
 export type Rankable = { id: string; priority: number; createdAt: string | number | Date };

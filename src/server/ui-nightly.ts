@@ -25,9 +25,6 @@ import { generateChunk, planGeneration, uiConnection } from "./ui-text";
  * account). The day is claimed in the ledger (`claimDay()`) and the run kept as `daily.ui-translations`.
  */
 
-/** The night's run in `commerce.cron_jobs` (the dispatcher's own five-minute row is `dispatcher.ui-translations`). */
-export const UI_NIGHT_JOB = "daily.ui-translations";
-
 /** Why a run translated nothing: before the night's hour, already run today, AI that acts on its own paused, no kept-up language, no AI, nothing missing. */
 export type NightSkip = "not_yet" | "done_today" | "paused" | "no_language" | "no_ai" | "nothing_missing";
 

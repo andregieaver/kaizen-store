@@ -32,8 +32,6 @@ const vatCode = z.string().trim().regex(/^\d{1,3}$/);
 
 export const bookingSchema = z.object({ account: accountNumber, vatCode });
 
-export type Booking = z.infer<typeof bookingSchema>;
-
 export const tripletexSettingsSchema = z.object({
   version: z.literal(1),
   /** What is sent: Work's invoices and credit notes, the shop's, or both. */

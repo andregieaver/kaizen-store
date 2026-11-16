@@ -16,8 +16,6 @@ export const LEGAL_WITHDRAWAL_DAYS = 14;
 export const LEGAL_REFUND_DAYS = 14;
 /** Goods are sent back within this many days of the declaration (Art. 14(1)). */
 export const LEGAL_SEND_BACK_DAYS = 14;
-/** A pending withdrawal request lapses after this many hours unconfirmed. */
-export const REQUEST_LIFETIME_HOURS = 24;
 export const MAX_REASON_NOTE = 500;
 
 /** Why a shopper withdraws or returns: optional, never asked first, never a reason to refuse a withdrawal. */
@@ -35,8 +33,6 @@ export const RETURN_REASONS = [
 export type ReturnReason = (typeof RETURN_REASONS)[number];
 export const isReturnReason = (value: unknown): value is ReturnReason =>
   typeof value === "string" && (RETURN_REASONS as readonly string[]).includes(value);
-/** The message under `m.returns.reasons.{key}` for a reason (the texts are in `i18n.ts`). */
-export const reasonKey = (reason: ReturnReason): ReturnReason => reason;
 
 // ---------------------------------------------------------------------------
 // Settings

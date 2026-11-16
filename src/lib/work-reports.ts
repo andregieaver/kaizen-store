@@ -144,10 +144,6 @@ export function reportQuery(
   return `?${q.toString()}`;
 }
 
-/** The period in words for a heading: "1 Sep - 30 Sep 2026" is the caller's; this is the plain "2026-09-01 to 2026-09-30". */
-export const periodText = (period: Pick<ReportPeriod, "from" | "to">): string =>
-  period.from === period.to ? period.from : `${period.from} to ${period.to}`;
-
 // --- Sharing an amount --------------------------------------------------------
 
 /**

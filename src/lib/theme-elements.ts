@@ -18,7 +18,7 @@ import {
 import { spacingAt, valueAt } from "./responsive";
 import { siteFontFamilies } from "./fonts";
 import { type SiteFonts } from "./fonts-schema";
-import { TYPOGRAPHY_KEYS, typographyAt, typographyFamilies, typographyValueAt, type Typography, type TypographyGroups, type TypographyKey, type TypographyOverride } from "./typography";
+import { TYPOGRAPHY_KEYS, typographyAt, typographyFamilies, typographyValueAt, type TypographyGroups, type TypographyKey, type TypographyOverride } from "./typography";
 import { z } from "zod";
 import { SECTION_STYLE_NAME, SECTION_STYLES_MAX, sectionElements, type SectionStyles } from "./section-styles";
 
@@ -339,12 +339,6 @@ export function layerElement(top: ThemeElement, under: ThemeElement | undefined)
   } as ThemeElement;
 }
 
-/** Blocks drawn on their own (a listing's grid): the theme's elements apply to them too. */
-export function themedBlocks(blocks: PageBlock[], elements: ThemeElements | undefined): PageBlock[] {
-  if (!hasThemeElements(elements)) return blocks;
-  return blocks.map((block) => mapChildBlocks(themedBlock(block, elements, []), (child) => themedBlock(child, elements, [])));
-}
-
 // ---------------------------------------------------------------------------
 // The builder's editors
 // ---------------------------------------------------------------------------
@@ -386,9 +380,6 @@ export function rowWidthPatch(
   if (change.contentWidth !== undefined) patch.contentWidth = change.contentWidth === (theme.contentWidth ?? "content") ? undefined : change.contentWidth;
   return patch;
 }
-
-/** The typography of an element at a size, as the rules write it. */
-export const elementText = (element: ThemeElement, size: Size): Typography => typographyAt(element, "text", size) as Typography;
 
 /** Every family a theme names: its heading and body fonts, and the elements' own. */
 export function themeFontFamilies(settings: { fonts: SiteFonts; elements?: ThemeElements }): string[] {

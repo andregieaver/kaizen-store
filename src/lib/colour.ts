@@ -9,8 +9,6 @@ import { z } from "zod";
 
 export const HEX6 = /^#[0-9a-fA-F]{6}$/;
 
-/** A colour as stored: `#rrggbb`. */
-export const hexColour = z.string().regex(HEX6, "A colour is written as # and six hex digits, like #1f2937.");
 /** An opacity as stored: 0 (invisible) to 100 (solid). */
 export const opacityValue = z
   .number()

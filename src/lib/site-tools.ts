@@ -4,7 +4,6 @@ import { findClaims } from "./claims";
 import { LEGAL_ROLES, LEGAL_ROLE_COPY, isLegalRole } from "./legal-roles";
 import { LABEL_MAX, MENU_MAX_DEPTH, MENU_MAX_ITEMS, MENU_NAME_MAX, menuLinkSchema, platformMenuLinkSchema, type AnyMenuLink, type MegaMenu, type MenuPicture } from "./navigation";
 import { PLATFORM_ROLE_COPY, SPECIAL_ROLES, type SpecialRole } from "./platform-roles";
-import { PAGE_JOB_STATUSES } from "./page-jobs";
 import { PATTERNS, pageBrief, type PageBrief, type PatternKey } from "./page-ai";
 import { ROWS_MAX, pageBlocks, richTextPlain, type PageContent, type PageRow, type PageText } from "./page-content";
 import { FIND_MAX, replaceInPage } from "./page-find-replace";
@@ -108,8 +107,6 @@ export const publishPageInput = z.object({ page: pageRef, type: pageType });
 
 export const pageBuildsInput = z.object({ limit: z.number().int().min(1).max(20).default(5).describe("How many at most (1–20).") });
 export const cancelPageBuildInput = z.object({ build: z.uuid().describe("The build's id, from build_page or list_page_builds.") });
-
-export type PageJobStatusName = (typeof PAGE_JOB_STATUSES)[number];
 
 // ---------------------------------------------------------------------------
 // Reading a page for the model

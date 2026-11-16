@@ -8,7 +8,6 @@ export type PageJobKind = (typeof PAGE_JOB_KINDS)[number];
 
 /** `waiting` to be done; `done`; `gone` when its page (or a picture's place in it) is no longer there; `failed` after its last try. */
 export const PAGE_JOB_STATUSES = ["waiting", "done", "gone", "failed"] as const;
-export type PageJobStatus = (typeof PAGE_JOB_STATUSES)[number];
 
 /** Tries before a job is given up, with its last problem kept for the owner. */
 export const PAGE_JOB_TRIES = 3;

@@ -26,7 +26,6 @@ export type WorkEmailFrame = {
 };
 
 export const MESSAGE_MAX = 2000;
-export const WORK_EMAIL_KINDS = ["work.invoice", "work.credit_note", "work.reminder"] as const;
 
 /** The path of the hosted page, inside a market's address (`marketPath()` puts the rest in front). */
 export const hostedInvoicePath = (token: string, creditNoteId?: string | null): string =>

@@ -54,7 +54,6 @@ import { creatorExport } from "./creators";
 import { notifyOwners } from "./privacy-notices";
 import { privacyStore, resolveSubject, type PrivacySubject, type SubjectRef } from "./privacy-subject";
 
-export { subjectOf } from "./privacy-subject";
 import { retentionRules } from "./retention";
 import { textList, uuidList } from "./sql-arrays";
 import { col, typedRows } from "./typed-rows";

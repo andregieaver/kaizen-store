@@ -41,7 +41,6 @@ export const exchangeBuilderInput = z.object({
   shipping: exchangeShippingInput,
   deliveryAddress: exchangeAddressInput,
 });
-export type ExchangeBuilderInput = z.infer<typeof exchangeBuilderInput>;
 
 /** Staff record a customer's agreement given another way (voluntary returns only): how, the store day, a note kept only in the history event. */
 export const exchangeAgreementInput = z.object({
@@ -49,7 +48,6 @@ export const exchangeAgreementInput = z.object({
   day: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
   note: z.string().trim().max(EXCHANGE_AGREEMENT_NOTE_MAX).optional().nullable(),
 });
-export type ExchangeAgreementInput = z.infer<typeof exchangeAgreementInput>;
 
 /** The customer's wish, as the server reads it: the browser's own check, so the two can never disagree. */
 export const exchangeWishInput = z.object({ note: z.string() }).transform((value, ctx) => {

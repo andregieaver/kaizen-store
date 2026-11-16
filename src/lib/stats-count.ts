@@ -6,7 +6,6 @@
 
 export const STAT_ITEMS_MAX = 8;
 export const STAT_DURATION_DEFAULT = 2;
-export const STAT_VALUE_MAX = 1e12;
 
 /** How far along a count is, 0 to 1, eased out (fast, then slowing to the figure). */
 export function easeOut(progress: number): number {

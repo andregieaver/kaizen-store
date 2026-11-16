@@ -9,9 +9,6 @@ export type PaymentProviderId = (typeof PAYMENT_PROVIDERS)[number];
 
 export const isPaymentProvider = (value: unknown): value is PaymentProviderId => (PAYMENT_PROVIDERS as readonly unknown[]).includes(value);
 
-/** The provider's name as staff read it. */
-export const PROVIDER_NAMES: Record<PaymentProviderId, string> = { stripe: "Stripe", mollie: "Mollie" };
-
 /**
  * Where a payment stands, in words every provider's answer comes to:
  * - `open`: the shopper has not finished; nothing to do.

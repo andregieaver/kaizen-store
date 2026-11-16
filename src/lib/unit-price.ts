@@ -59,9 +59,6 @@ const FAMILY_DEFAULT: Record<Family, Base> = { mass: "kg", volume: "l", length: 
 export const isUnit = (value: unknown): value is Unit => typeof value === "string" && (UNITS as readonly string[]).includes(value);
 export const isBase = (value: unknown): value is Base => typeof value === "string" && (BASES as readonly string[]).includes(value);
 
-export const unitFamily = (unit: Unit): Family => FAMILY[unit];
-export const baseFamily = (base: Base): Family => BASE_FAMILY[base];
-
 /** The comparison base a unit takes when the owner chose none: 1 kg, 1 l, 1 m, 1 m², 1 piece. */
 export const defaultBase = (unit: Unit): Base => FAMILY_DEFAULT[FAMILY[unit]];
 

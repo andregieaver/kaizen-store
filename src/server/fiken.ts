@@ -4,7 +4,7 @@ import { sql } from "drizzle-orm";
 import { z } from "zod";
 
 import { db } from "@/db/client";
-import { BOOKING_KEYS, norwegianOrgNumber, type BookingKey } from "@/lib/accounting-docs";
+import { BOOKING_KEYS, norwegianOrgNumber } from "@/lib/accounting-docs";
 import { todayIn } from "@/lib/analytics-period";
 import { accessDue, codeChallenge, fikenAuthorizeUrl, isFikenSlug, openFikenState, randomToken, sealFikenState } from "@/lib/fiken";
 import { type FikenFailure } from "@/lib/fiken-errors";
@@ -539,5 +539,3 @@ export async function fikenAttention(storeId: string): Promise<{ tokenRefused: b
   return { tokenRefused: row.state === "auth_failed", waiting: row.waiting };
 }
 
-/** The buckets a store needs, for the page (re-read from the documents of the last year). */
-export const fikenNeededKeys = (storeId: string): Promise<BookingKey[]> => neededKeys(storeId);

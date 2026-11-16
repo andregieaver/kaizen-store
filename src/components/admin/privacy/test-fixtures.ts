@@ -21,8 +21,6 @@ export const plain = (html: string) =>
 
 export const BAD = /\bNaN\b|Infinity|undefined|\[object|\bnull\b/;
 
-export const NOW = new Date("2026-10-04T10:00:00Z");
-
 export const request = (over: Partial<RequestView> = {}): RequestView => ({
   id: "11111111-1111-4111-8111-111111111111",
   kind: "erasure",

@@ -13,7 +13,6 @@ import {
   FIELD_WIDTHS,
   REFUSAL_MAX,
   RULE_CONDITIONS_MAX,
-  type CheckoutRule,
   type DeliveryPrice,
   type RuleCondition,
   type RuleEffect,
@@ -69,8 +68,6 @@ export const ruleInputSchema = z.object({
   conditions: z.array(conditionSchema).max(RULE_CONDITIONS_MAX).default([]),
   effect: effectSchema,
 });
-
-export type RuleInput = Omit<CheckoutRule, "id">;
 
 const checklistOption = z.object({
   id: z

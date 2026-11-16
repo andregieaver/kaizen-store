@@ -516,8 +516,6 @@ export type HeadingLevel = 1 | 2 | 3 | 4 | 5 | 6;
 /** How large a heading looked, apart from its level, before the Typography panel (D49; folded into it on read, D179). */
 export const HEADING_SIZES = { sm: "Small", md: "Medium", lg: "Large", xl: "Extra large", "2xl": "Huge" } as const;
 export type HeadingSize = keyof typeof HEADING_SIZES;
-/** The size a heading has unless one is chosen. */
-export const HEADING_DEFAULT_SIZE: Record<HeadingLevel, HeadingSize> = { 1: "xl", 2: "lg", 3: "md", 4: "sm", 5: "sm", 6: "sm" };
 export const FONT_WEIGHTS = { normal: "Normal", medium: "Medium", semibold: "Semibold", bold: "Bold" } as const;
 export type FontWeight = keyof typeof FONT_WEIGHTS;
 export const HEADING_MAX = 300;

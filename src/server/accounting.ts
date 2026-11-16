@@ -10,8 +10,6 @@ import { getTripletexConnection, tripletexAttention } from "./tripletex";
 
 export type AccountingSystem = "tripletex" | "fiken";
 
-export const ACCOUNTING_NAMES: Record<AccountingSystem, string> = { tripletex: "Tripletex", fiken: "Fiken" };
-
 /** The system the store is connected to, or null. */
 export async function accountingSystem(storeId: string): Promise<AccountingSystem | null> {
   const [fiken, tripletex] = await Promise.all([getFikenConnection(storeId), getTripletexConnection(storeId)]);

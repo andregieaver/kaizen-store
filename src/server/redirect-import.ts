@@ -16,7 +16,6 @@ import { duplicateRows, parseRedirectOptions, planRedirectLines, redirectItemOf,
 import { audit, type Membership } from "./auth";
 import {
   IMPORTS_BUCKET,
-  failJob,
   finishJob,
   getJob,
   importPathPattern,
@@ -355,9 +354,6 @@ export async function runRedirectApply(job: DataJob, deps: DataDeps, until: numb
   );
   return "done";
 }
-
-/** A job that could not go on: failed with a plain reason, never a quoted cell. */
-export const stopRedirectImport = failJob;
 
 // ---------------------------------------------------------------------------
 // The problems as a file

@@ -21,8 +21,6 @@ export const NOTIFICATION_TOOLS = ["notification_settings", "order_rules", "parc
 
 /** At most this many of a parcel's events are given to the model (newest first); the order page shows them all. */
 export const TOOL_EVENTS_MAX = 5;
-/** The log's runs given by default, and at most. */
-export const RULE_RUNS_DEFAULT = 10;
 export const RULE_RUNS_MAX = 50;
 
 // ---------------------------------------------------------------------------

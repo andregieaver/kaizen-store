@@ -9,7 +9,6 @@ import { readToolInput, type OwnerTool } from "./owner-tools";
  */
 
 export const STEP_KINDS = ["tool", "task", "question", "wait"] as const;
-export type StepKind = (typeof STEP_KINDS)[number];
 
 export const CHECK_KINDS = ["none", "product", "page", "setup_step", "store_open", "count"] as const;
 export type CheckKind = (typeof CHECK_KINDS)[number];
@@ -100,7 +99,6 @@ export const planInput = z.object({
   goal: z.uuid().optional().describe("The goal it serves, by its id from list_goals."),
   steps: z.array(stepInput).min(1).max(STEPS_MAX),
 });
-export type PlanInput = z.infer<typeof planInput>;
 
 export type PlanContext = {
   scope: "store" | "platform";

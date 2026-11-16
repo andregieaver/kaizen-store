@@ -59,11 +59,9 @@ export const withdrawalStart = z.object({
   lines: declaredLines,
   orderKey: optionalText(200),
 });
-export type WithdrawalStart = z.infer<typeof withdrawalStart>;
 
 /** Step 2: the confirmation of exactly what the first step declared. Nothing is a withdrawal until this is sent. */
 export const withdrawalConfirm = z.object({ requestId: uuid });
-export type WithdrawalConfirm = z.infer<typeof withdrawalConfirm>;
 
 /** A return request inside the store's own window (kind `return`): a reason from the list and an optional note. */
 export const returnRequest = z.object({
@@ -79,7 +77,6 @@ export const returnRequest = z.object({
   note: optionalText(MAX_REASON_NOTE),
   orderKey: optionalText(200),
 });
-export type ReturnRequest = z.infer<typeof returnRequest>;
 
 // --- Staff -------------------------------------------------------------------
 
@@ -111,7 +108,6 @@ export const returnAddress = z.object({
 
 /** How the consumer told the store, for a withdrawal made outside the withdrawal function (Art. 11: any unequivocal statement counts). */
 export const WITHDRAWAL_CHANNELS = ["email", "phone", "letter", "in_person", "other"] as const;
-export type WithdrawalChannel = (typeof WITHDRAWAL_CHANNELS)[number];
 
 /**
  * Staff register a withdrawal the consumer made outside the function (an email, a letter, a call, a typo in the function):
@@ -153,7 +149,6 @@ export const registerWithdrawal = z
       .transform((value) => value || null),
   })
   .refine((v) => !v.late || v.lateReason !== null, { message: "Say why the period is longer than the records show.", path: ["lateReason"] });
-export type RegisterWithdrawal = z.infer<typeof registerWithdrawal>;
 
 /** Approve a voluntary return (a withdrawal return starts approved): instructions, address and a label address. */
 export const approveReturn = z.object({
@@ -163,14 +158,12 @@ export const approveReturn = z.object({
   returnAddress: returnAddress.nullish().transform((v) => v ?? null),
   note: optionalText(1000),
 });
-export type ApproveReturn = z.infer<typeof approveReturn>;
 
 /** Decline a voluntary return, with the reason the shopper is emailed. */
 export const declineReturn = z.object({
   returnId: uuid,
   reason: z.string().trim().min(1, "Say why the return is declined.").max(1000, "Keep the reason under 1000 characters."),
 });
-export type DeclineReturn = z.infer<typeof declineReturn>;
 
 /**
  * Decline one line of a return: a line the law excludes from the right of withdrawal (the only line of a withdrawal
@@ -181,7 +174,6 @@ export const declineReturnLine = z.object({
   lineId: uuid,
   reason: z.string().trim().min(1, "Say why the line is declined.").max(500, "Keep the reason under 500 characters."),
 });
-export type DeclineReturnLine = z.infer<typeof declineReturnLine>;
 
 /** Instructions, address and label for a return that is approved (they can be changed until it is received). */
 export const returnInstructions = z.object({
@@ -190,14 +182,12 @@ export const returnInstructions = z.object({
   labelUrl: optionalHttps,
   returnAddress: returnAddress.nullish().transform((v) => v ?? null),
 });
-export type ReturnInstructions = z.infer<typeof returnInstructions>;
 
 /** Mark the goods in transit (the shopper's proof of sending, or staff's) or received; `on` is the day, the store's. */
 export const returnStep = z.object({
   returnId: uuid,
   on: z.iso.date("Use a date.").nullish().transform((v) => v ?? null),
 });
-export type ReturnStep = z.infer<typeof returnStep>;
 
 export const RETURN_CONDITIONS = ["as_new", "opened", "used", "damaged"] as const;
 export type ReturnCondition = (typeof RETURN_CONDITIONS)[number];
@@ -226,7 +216,6 @@ export const inspectReturn = z.object({
     )
     .min(1, "Inspect at least one line."),
 });
-export type InspectReturn = z.infer<typeof inspectReturn>;
 
 /**
  * Refund: the amount (from `refundFor()`, or adjusted with a reason), what the shopper is charged for return shipping,
@@ -240,7 +229,6 @@ export const refundReturn = z.object({
   /** Units that go back in stock; `locationId` (wave 3, D172) puts them at one active stock location instead of where they were taken from. */
   restock: z.array(z.object({ lineId: uuid, quantity: z.number().int().min(0).max(10_000), locationId: uuid.nullish() })).default([]),
 });
-export type RefundReturn = z.infer<typeof refundReturn>;
 
 export const closeReturn = z.object({ returnId: uuid, note: optionalText(1000) });
 export const cancelReturn = z.object({ returnId: uuid, note: optionalText(1000) });

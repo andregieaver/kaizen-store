@@ -54,25 +54,6 @@ export type FieldNeed = (typeof FIELD_NEEDS)[number];
 export type QuoteFields = { name: FieldNeed; phone: FieldNeed; company: FieldNeed; note: FieldNeed };
 export const DEFAULT_QUOTE_FIELDS: QuoteFields = { name: "required", phone: "optional", company: "optional", note: "optional" };
 
-/** What the browser sends to `/api/quotes`. `lines` are the product's (from its page); the cart's are read by the server from the cart itself. */
-export type QuoteRequestBody = {
-  store: string;
-  market: string;
-  from: "product" | "cart";
-  lines: { variantId: string; quantity: number }[];
-  name: string;
-  email: string;
-  phone: string;
-  company: string;
-  note: string;
-  /** A field people never see: only robots fill it in. */
-  website: string;
-  /** Milliseconds from showing the form to sending it. */
-  elapsed: number;
-  /** The product layout's part that sent it (its field settings), when not the buy part's own form. */
-  block: string | null;
-};
-
 export type QuoteField = "name" | "email" | "phone" | "company" | "note" | "lines";
 export type QuoteProblem = "required" | "invalid" | "too_long" | "too_many_lines";
 export type QuoteProblems = Partial<Record<QuoteField, QuoteProblem>>;

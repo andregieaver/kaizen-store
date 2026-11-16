@@ -1,7 +1,6 @@
 import {
   COPY_IDS_MAX,
   COPY_NAME_MAX,
-  storeCopyInput,
   type CopyChoices,
   type CopySelection,
   type StoreCopyInput,
@@ -35,20 +34,8 @@ export type WizardState = {
   picked: Record<CopyKind, string[]>;
 };
 
-/** What is never copied, in plain words (the contract in `store-copy.ts`). */
-export const NEVER_COPIED: readonly string[] = EN.neverCopied;
-
 /** How many rows a checklist draws before "Show more": long lists stay light. */
 export const LIST_STEP = 100;
-
-export const KIND_WORDS: Record<
-  CopyKind,
-  { one: string; many: string; title: string }
-> = {
-  pages: { one: "page", many: "pages", title: "Pages" },
-  products: { one: "product", many: "products", title: "Products" },
-  posts: { one: "post", many: "posts", title: "Posts" },
-};
 
 const count = (
   n: number,
@@ -167,10 +154,6 @@ export function filterRows<T>(
     return words.every((word) => haystack.includes(word));
   });
 }
-
-/** What a page's or post's state is called. */
-export const STATE_LABELS: Record<"draft" | "published" | "changed", string> =
-  EN.states;
 
 /** A product's status in plain words ("active" is Active). */
 export const statusLabel = (
@@ -339,6 +322,3 @@ export function buildInput(source: string, state: WizardState): StoreCopyInput {
   };
 }
 
-/** Whether the server's own check accepts this (a last look before sending). */
-export const inputIsValid = (input: StoreCopyInput): boolean =>
-  storeCopyInput.safeParse(input).success;

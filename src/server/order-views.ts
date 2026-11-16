@@ -3,7 +3,6 @@ import "server-only";
 import { sql } from "drizzle-orm";
 
 import { db } from "@/db/client";
-import { VIEWS_MAX } from "@/lib/order-limits";
 import { ORDER_AUDIT_ACTIONS } from "@/lib/order-ops-events";
 import { normaliseViewTitle, viewRecordOf, type OrderColumn, type OrderListParams, ORDER_COLUMNS } from "@/lib/order-list";
 
@@ -34,15 +33,6 @@ export type StoredOrderView = {
 };
 
 export type ViewProblem = "title_empty" | "title_too_long" | "title_taken" | "limit" | "not_found";
-
-/** What staff read for each refusal. */
-export const VIEW_PROBLEM_TEXT: Record<ViewProblem, string> = {
-  title_empty: "Give the view a name.",
-  title_too_long: "A view's name is at most 40 characters.",
-  title_taken: "A view with that name already exists.",
-  limit: `A store has at most ${VIEWS_MAX} saved views. Delete one first.`,
-  not_found: "That view no longer exists.",
-};
 
 export type ViewResult = { ok: true; view: StoredOrderView } | { ok: false; problem: ViewProblem };
 

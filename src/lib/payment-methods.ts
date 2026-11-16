@@ -36,8 +36,6 @@ export const PAYMENT_METHODS: readonly MethodInfo[] = [
   { type: "sepa_debit", capability: "sepa_debit_payments", label: "SEPA Direct Debit", where: "Euro countries", delayed: true },
 ];
 
-export const METHOD_TYPES = PAYMENT_METHODS.map((m) => m.type);
-
 /** The capabilities asked for on every store's account (D23 and D291), cards first. */
 export const PAYMENT_CAPABILITIES = PAYMENT_METHODS.map((m) => m.capability);
 

@@ -35,8 +35,6 @@ const ACTIONS = {
   manufacturer: "Set the manufacturer",
 };
 
-export const ACTION_WORDS: Record<string, string> = ACTIONS;
-
 /**
  * Every word this module gives a person, in English (D312 A5): the admin's `products` catalogue carries them in each language, and each
  * function takes them as its last argument, English unless given.

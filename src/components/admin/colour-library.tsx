@@ -255,4 +255,3 @@ export const textGradientOf = (saved: SavedGradient): TextGradient => ({
   angle: saved.angle ?? TEXT_GRADIENT_ANGLE_DEFAULT,
 });
 
-export { swatch as gradientSwatch };

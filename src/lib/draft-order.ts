@@ -19,7 +19,6 @@
  *
  * A custom price is not a discount: the line's `unitPriceMinor` is what is charged, `listPriceMinor` is information.
  */
-import { vatIncluded } from "./checkout";
 import { basketShipping } from "./subscriptions";
 import {
   DRAFT_DISCOUNT_LABEL_MAX,
@@ -421,9 +420,6 @@ export function draftProblems(draft: {
   if (draft.customItems && !draft.business) out.push(problemOf("custom_consumer"));
   return out;
 }
-
-/** The VAT inside a shipping price, for a screen that shows it (the same rounding as everywhere). */
-export const shippingVat = (shippingMinor: number, rate: number): number => vatIncluded(shippingMinor, rate);
 
 /** The label a draft's staff discount shows when staff leave it blank. */
 export const DEFAULT_DISCOUNT_LABEL = "Discount";

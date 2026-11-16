@@ -28,17 +28,6 @@ export const redirectsTag = (storeId: string): string => `redirects:${storeId}`;
 
 export const isAutomatic = (kind: RedirectKind): boolean => kind !== "manual";
 
-/** The kinds as the manager's list names them: the pages' and articles' own (`page_redirects`, read only) included. */
-export const KIND_WORDS: Record<RedirectKind | "page" | "article", string> = {
-  manual: "Manual",
-  product: "Product",
-  category: "Category",
-  tag: "Tag",
-  entry: "Content entry",
-  page: "Page",
-  article: "Article",
-};
-
 /** A redirect as the server reads it from the table. */
 export type RedirectRow = {
   id: string;
