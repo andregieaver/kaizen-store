@@ -88,8 +88,8 @@
   <text x="842" y="232" font-size="13" fill="#4d5450">Kept 13 months (clicks 90 days)</text>
 
   <rect x="820" y="262" width="340" height="68" rx="12" fill="#ffffff" stroke="#c9ccc6"/>
-  <text x="842" y="290" font-size="14" font-weight="600" fill="#141a17" font-family="ui-monospace, Menlo, Consolas, monospace">experiment_events</text>
-  <text x="842" y="314" font-size="13" fill="#141a17">Rage and dead clicks per A/B version</text>
+  <text x="842" y="290" font-size="14" font-weight="600" fill="#141a17">The same totals per A/B version</text>
+  <text x="842" y="314" font-size="13" fill="#141a17">Tagged rows, checked against the cookie</text>
 
   <rect x="820" y="348" width="340" height="118" rx="12" fill="#ffffff" stroke="#c9ccc6"/>
   <text x="842" y="376" font-size="14" font-weight="600" fill="#141a17" font-family="ui-monospace, Menlo, Consolas, monospace">recordings · bucket "recordings"</text>
