@@ -17,7 +17,8 @@ import { analyticsContext } from "@/server/analytics-context";
 import { analyticsCaptions } from "@/server/analytics-say";
 import { mapShotPicture, requestMapShot } from "@/server/map-shots";
 import { memberCan } from "@/server/permissions";
-import { heatPages, pageDevices, pageHeat } from "@/server/page-heat-read";
+import { heatPages, pageDevices, pageHeat, taggedTests } from "@/server/page-heat-read";
+import { variantNameText } from "@/lib/experiment-words";
 
 import { takeNewPictureAction } from "./actions";
 
@@ -69,22 +70,28 @@ export default async function HeatmapsPage({ params, searchParams }: PageProps<"
   if (view === "click" && days > 90) days = 90;
   const today = todayIn(ctx.now, store.timeZone);
   const period = { from: addDays(today, 1 - days), to: addDays(today, 1) };
-  const devices = await pageDevices(store.id, page, period);
+  // One A/B version's totals and picture (D656 step 12): the chips offer the tests with totals on this page.
+  const tests = await taggedTests(store.id, page);
+  const askedTag = one(query.tag) ?? "";
+  const tag = tests.some((t) => t.versions.some((v) => `${t.id}:${v.key}` === askedTag)) ? askedTag : "";
+  const experimentWords = adminText(ctx.lang, "experiments");
+  const versions = tests.flatMap((t) => t.versions.map((v) => ({ tag: `${t.id}:${v.key}`, label: `${t.name}: ${variantNameText(v.name, experimentWords)}` })));
+  const devices = await pageDevices(store.id, page, period, tag);
   const askedDevice = one(query.device);
   const device: HeatDevice = (HEAT_DEVICES as readonly string[]).includes(askedDevice ?? "")
     ? (askedDevice as HeatDevice)
     : HEAT_DEVICES.reduce((best, d) => (devices[d] > devices[best] ? d : best), "mobile" as HeatDevice);
-  const heat = await pageHeat(store.id, { page, device, from: period.from, to: period.to });
+  const heat = await pageHeat(store.id, { page, device, tag, from: period.from, to: period.to });
 
   // The picture is asked for only once the page has enough views to draw.
   let shot: MapShotView = { status: "none", picture: null, width: null, height: null, layout: null, problem: null, shotAt: null };
   if (heat.views >= MIN_MAP_VIEWS) {
-    const row = await requestMapShot(store.id, page, device, "");
+    const row = await requestMapShot(store.id, page, device, tag);
     shot = { ...row, picture: await mapShotPicture(store.id, row) };
   }
   const mayAsk = memberCan(ctx, "analytics:write");
   const newPicture = mayAsk ? (
-    <ActionForm action={takeNewPictureAction.bind(null, store.slug, page, device, "")} className="flex flex-col gap-2">
+    <ActionForm action={takeNewPictureAction.bind(null, store.slug, page, device, tag)} className="flex flex-col gap-2">
       <div>
         <SubmitButton variant="secondary">{words.map.newPicture}</SubmitButton>
       </div>
@@ -109,6 +116,8 @@ export default async function HeatmapsPage({ params, searchParams }: PageProps<"
         words={words}
         locale={ctx.locale}
         watchHref={ctx.owner ? recordingsOfPage(ctx.base, page) : undefined}
+        tag={tag}
+        versions={versions}
       />
     </>,
   );

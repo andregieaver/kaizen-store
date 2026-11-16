@@ -29,6 +29,8 @@ export const recordingsNb: RecordingsMessages = {
   filterFrom: "Fra",
   filterTo: "Til",
   filterVersion: "A/B-versjon",
+  versionLabel: "Versjon i A/B-test",
+  everyone: "Alle besøkende",
   apply: "Vis",
   devices: { mobile: "Mobil", tablet: "Nettbrett", desktop: "Datamaskin" },
   player: {

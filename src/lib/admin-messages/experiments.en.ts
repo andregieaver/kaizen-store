@@ -300,6 +300,18 @@ export const experimentsEn = {
   },
   results: {
     harmed: "Version {key} is clearly selling less than the original.",
+    behaviour: {
+      title: "How visitors behaved",
+      lead: "From heatmaps: what visitors who allow statistics did on the pages of each version.",
+      views: "Page views",
+      reachedHalf: "Reached half the page",
+      rage: "Page views with rage clicks",
+      dead: "Page views with dead clicks",
+      heatmap: "Heatmap",
+      recordings: "Recordings",
+      tooFew: "Too few page views yet",
+      frustrated: "{name} gets clearly more rage or dead clicks than the original. Its recordings show why. The test keeps running.",
+    },
     unconverted: {
       one: "{n} order was in a currency without a rate, so they count as orders but not in the revenue.",
       many: "{n} orders were in a currency without a rate, so they count as orders but not in the revenue.",

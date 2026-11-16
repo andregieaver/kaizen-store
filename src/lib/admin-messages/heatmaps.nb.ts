@@ -56,6 +56,8 @@ export const heatmapsNb: HeatmapsMessages = {
     days: "{n} dager",
     viewLabel: "Hva kartet viser",
     deviceLabel: "Enhet",
+    versionLabel: "Versjon i A/B-test",
+    everyone: "Alle besøkende",
     periodLabel: "Periode",
     taking: "Tar et bilde av siden. Det tar et minutt eller to.",
     failed: "Bildet kunne ikke tas: {problem}",

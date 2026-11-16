@@ -15,6 +15,7 @@ import { sanitizeEvents } from "@/lib/replay-sanitize";
 import { audit } from "./auth";
 import { log } from "./log";
 import { owned } from "./owned";
+import { testsOfTags, type TaggedTest } from "./page-heat-read";
 import { filesOf, type RecordingDeps } from "./recordings";
 import { col, typedRow, typedRows } from "./typed-rows";
 
@@ -192,4 +193,23 @@ export async function serveRecordingEvents(
   await db().execute(sql`update commerce.recordings set viewed_at = now() where id = ${id}::uuid and store_id = ${member.store.id}::uuid and viewed_at is null`);
   const events = await recordingEvents(member.store, row, deps);
   return { status: 200, body: new Uint8Array(gzipSync(JSON.stringify(events))) };
+}
+
+/** The tests the kept recordings were tagged with (the version chips on the list, D656 step 12), newest first, with their versions' names. */
+export async function recordingTests(storeId: string): Promise<TaggedTest[]> {
+  const rows = await typedRows(
+    z.object({ id: col.uuid, name: col.text, version: col.text, version_name: col.text.nullable() }),
+    sql`
+      with tags as (
+        select distinct split_part(t, ':', 1) as id, split_part(t, ':', 2) as version
+        from commerce.recordings, unnest(tags) as t where ${owned(storeId)}
+      )
+      select e.id, e.name, t.version, v.name as version_name
+      from tags t
+      join commerce.experiments e on e.id::text = t.id and e.store_id = ${storeId}::uuid
+      left join commerce.experiment_variants v on v.experiment_id = e.id and v.key = t.version
+      order by e.created_at desc, e.id, t.version
+    `,
+  );
+  return testsOfTags(rows);
 }

@@ -621,7 +621,8 @@ store with heatmaps on, so no store sends anything until its owner switches them
 Analytics → Settings; step 6, the pictures the heatmaps are drawn over (`src/server/map-shots.ts`); step 7, the screens under
 Analytics → Heatmaps (the hub, and a page's map in three views); step 8, recordings on the server (no store records yet: the
 platform's hold is closed); step 9, the recorder in the storefront; step 10, sealing; step 11, Analytics → Recordings (the list and
-the player, the owner's alone; every viewing in the activity log) and the Recordings switch on Analytics → Settings.
+the player, the owner's alone; every viewing in the activity log) and the Recordings switch on Analytics → Settings. Step 12: behaviour per version on an A/B test's page, a flag when a version meets clearly more rage or dead
+clicks, and version chips on a page's heatmap and on the recordings list.
 
 The figures, as built in code (constants in `src/lib/page-heat.ts` and `src/lib/click-signals.ts`, tested against the plan):
 

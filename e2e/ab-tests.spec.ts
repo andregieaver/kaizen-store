@@ -134,3 +134,44 @@ test("stopping the test sends everyone back to the page as it is", async ({ page
     }, { timeout: 60_000 })
     .toBe("Original");
 });
+
+test.describe("heatmaps per version (D656 step 12)", () => {
+  // Headless Chromium counts as a robot; a visitor's browser does not.
+  test.use({ userAgent: "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36" });
+
+  test("an enrolled visitor's page view is added to the version's own totals", async ({ page, context }) => {
+    const t = await runningTest();
+    const sql = testDb();
+    try {
+      await sql`update commerce.stores set heatmaps = true where id = ${t.storeId}`;
+    } finally {
+      await sql.end();
+    }
+    const visitor = await enrol(context, t, "b");
+    // Heatmaps ask again: the consent names them.
+    await context.addCookies([{ name: `consent_${t.storeId}`, value: `1.${visitor}.statistics+heat.010`, domain: "localhost", path: "/" }]);
+    await page.goto(t.address);
+    await expect(page.getByRole("heading", { level: 1 })).toHaveText("Versjon B");
+    await page.waitForLoadState("networkidle");
+    await page.waitForTimeout(2500);
+    await page.mouse.wheel(0, 300);
+    await page.mouse.click(20, 300);
+    await page.waitForTimeout(1500);
+    await page.evaluate(() => {
+      Object.defineProperty(document, "visibilityState", { get: () => "hidden", configurable: true });
+      document.dispatchEvent(new Event("visibilitychange"));
+    });
+    const tagged = async () => {
+      const db = testDb();
+      try {
+        return (await db`select tag, views from commerce.page_heat_days where store_id = ${t.storeId} order by tag`).map((r) => ({ tag: r.tag, views: Number(r.views) }));
+      } finally {
+        await db.end();
+      }
+    };
+    await expect.poll(tagged, { timeout: 15_000 }).toEqual([
+      { tag: "", views: 1 },
+      { tag: `${t.experiment}:b`, views: 1 },
+    ]);
+  });
+});

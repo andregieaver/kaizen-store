@@ -57,6 +57,8 @@ export const heatmapsEn = {
     days: "{n} days",
     viewLabel: "What the map shows",
     deviceLabel: "Device",
+    versionLabel: "A/B test version",
+    everyone: "Every visitor",
     periodLabel: "Period",
     taking: "Taking a picture of this page. It takes a minute or two.",
     failed: "The picture could not be taken: {problem}",

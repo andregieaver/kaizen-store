@@ -87,6 +87,25 @@ describe("the platform's view of every store's tests (D148, phase 5)", () => {
     await admin.stopExperiment(account, storeId, id);
   });
 
+  it("flags a version whose page views clearly meet more rage or dead clicks, from the tagged heatmap totals (D656 step 12)", async () => {
+    const id = await startedTest("Busier header");
+    const day = new Date().toISOString().slice(0, 10);
+    const totals = (version: string, views: number, rage: number) => sql`
+      insert into commerce.page_heat_days (store_id, day, page, device, tag, views, reach, fold_sum, attention_ms, att_height_sum, clicks, dead_clicks, rage_clicks, dead_views, rage_views, frustrated_views)
+      values (${storeId}::uuid, ${day}::date, '/no/om-oss', 'mobile', ${`${id}:${version}`}, ${views}, array_fill(0, array[21]), 0, array_fill(0::bigint, array[20]), 0, 0, 0, ${rage}, 0, ${rage}, ${rage})`;
+    // Many page views, more rage on B, but below the line: no flag.
+    await db().execute(totals("a", 2500, 50));
+    await db().execute(totals("b", 2500, 60));
+    expect((await ours()).find((t) => t.id === id)?.flags.map((f) => f.kind)).not.toContain("frustrated");
+    await db().execute(sql`update commerce.page_heat_days set rage_views = 200, frustrated_views = 200 where store_id = ${storeId}::uuid and tag = ${`${id}:b`}`);
+    const flagged = (await ours()).find((t) => t.id === id)!;
+    expect(flagged.flags).toContainEqual({ kind: "frustrated", words: "Version B gets clearly more rage or dead clicks." });
+    // It is a flag, never a stop.
+    expect(flagged.status).toBe("running");
+    await db().execute(sql`delete from commerce.page_heat_days where store_id = ${storeId}::uuid`);
+    await admin.stopExperiment(account, storeId, id);
+  });
+
   it("lists a stopped test waiting for a decision, a guardrail stop at once, and leaves the decided and the drafts out unless asked", async () => {
     const stopped = await startedTest("Stopped by the guardrail");
     await admin.stopExperiment(null, storeId, stopped, "guardrail");

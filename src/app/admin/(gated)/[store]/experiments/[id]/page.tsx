@@ -15,6 +15,11 @@ import { experimentProblems, experimentProblemText, partLabelText, targetLabelTe
 import type { ExperimentsMessages } from "@/lib/admin-messages/experiments.en";
 import { differenceLine } from "@/lib/version-difference-words";
 import { requirePermission } from "@/server/permissions";
+import { holderOf } from "@/server/auth";
+import { canOpenPath } from "@/lib/permissions";
+import { FLAG_VERSION_VIEWS } from "@/lib/page-heat";
+import { frustratedVersion } from "@/lib/heat-read";
+import { versionBehaviour } from "@/server/page-heat-read";
 import { getExperiment, startProblemsOf, versionDifferences, type ExperimentInfo } from "@/server/experiment-admin";
 import { experimentTraffic } from "@/server/experiment-traffic";
 import { experimentResults } from "@/server/experiment-results";
@@ -57,7 +62,8 @@ function pathOf(test: ExperimentInfo, card: ExperimentCard, w: ExperimentsMessag
 /** One A/B test (D148, a record since D659): set up while it is a draft; once started, its stage, path, answer and the one next step. */
 export default async function ExperimentPage({ params }: PageProps<"/admin/[store]/experiments/[id]">) {
   const { store: slug, id } = await params;
-  const { store, account } = await requirePermission(slug, "marketing:read");
+  const member = await requirePermission(slug, "marketing:read");
+  const { store, account } = member;
   const lang = adminLangOf(account.adminLocale);
   const w = adminText(lang, "experiments");
   const locale = ADMIN_LANG_FACTS[lang].locale;
@@ -69,9 +75,21 @@ export default async function ExperimentPage({ params }: PageProps<"/admin/[stor
   const goal = w.goals[test.goal];
   const now = new Date();
   const started = test.status !== "draft" && test.status !== "scheduled";
-  const [results, differences] = started
-    ? await Promise.all([experimentResults(store, test, now, { words: w, numberLocale: locale }), versionDifferences(store.id, test)])
-    : [null, {}];
+  const [results, differences, behaviourRows] = started
+    ? await Promise.all([experimentResults(store, test, now, { words: w, numberLocale: locale }), versionDifferences(store.id, test), versionBehaviour(store.id, test.id)])
+    : [null, {}, []];
+  // Behaviour per version from the heatmaps (D656 step 12): shown while heatmaps are on, or once the test has tagged totals.
+  const holder = holderOf(member);
+  const behaviour =
+    started && (store.heatmaps || behaviourRows.length > 0)
+      ? {
+          rows: behaviourRows,
+          frustrated: frustratedVersion(behaviourRows.map((r) => ({ version: r.version, views: r.views, rageViews: r.rageViews, deadViews: r.deadViews })), FLAG_VERSION_VIEWS),
+          storeBase: `/admin/${store.slug}`,
+          heatmaps: canOpenPath(holder, "/analytics/heatmaps"),
+          recordings: canOpenPath(holder, "/analytics/recordings"),
+        }
+      : null;
   const card = experimentCard({ status: test.status, goal: test.goal, minDays: test.minDays, minVisitors: test.minVisitors, results, now });
   const readyAround = card.progress.readyAround ? date(`${card.progress.readyAround}T12:00:00Z`) : null;
   const builder = adminText(lang, "builder");
@@ -187,6 +205,7 @@ export default async function ExperimentPage({ params }: PageProps<"/admin/[stor
             words={w}
             numberLocale={locale}
             readyAround={readyAround}
+            behaviour={behaviour}
           />
         )}
         {frames && <ExperimentFrames versions={frames} />}

@@ -30,6 +30,8 @@ export const recordingsEn = {
   filterFrom: "From",
   filterTo: "To",
   filterVersion: "A/B version",
+  versionLabel: "A/B test version",
+  everyone: "Every visitor",
   apply: "Show",
   devices: { mobile: "Phone", tablet: "Tablet", desktop: "Computer" },
   player: {

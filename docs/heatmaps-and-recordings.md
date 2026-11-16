@@ -2178,6 +2178,14 @@ There are no new tables and no per-visitor rows: behaviour per version comes fro
 **Done when:** a running test on a test store shows behaviour per version, and a version's heatmap draws on that version's own picture.
 **Send the owner a screenshot** of the behaviour section.
 
+*As built (16 Nov 2026):* `frustratedVersion(rows, minViews)` takes the minimum as an argument (the callers pass `FLAG_VERSION_VIEWS`),
+and the threshold test uses 2,000 against 2,000 page views (1,999 is below the minimum, so never a flag). The warning is drawn above the
+details (it is the one thing Homer needs), the behaviour table inside them, after the funnel. `versionBehaviour()` also gives each
+version's most viewed page, which the *Heatmap* link opens. The chips' names are the test's name and the version's (`taggedTests()`,
+`recordingTests()`, both through `testsOfTags()`); a tag that names no test of the store offers no chip, and the heatmap page accepts only a
+tag its chips offer. The platform's advice puts the line first for a running test. The e2e of the owner's screen is
+`e2e/signed-in/ab-behaviour.spec.ts`.
+
 ### Step 13: Words for the law, and the docs
 
 **Files.**

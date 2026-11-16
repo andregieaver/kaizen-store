@@ -8,7 +8,8 @@ import { adminText, adminTexts } from "@/lib/admin-text";
 import { formatCount } from "@/lib/analytics-core";
 import { HEAT_DEVICES, type HeatDevice } from "@/lib/page-heat";
 import { analyticsContext } from "@/server/analytics-context";
-import { listRecordings, recordingCounts, type RecordingFilters } from "@/server/recordings-read";
+import { listRecordings, recordingCounts, recordingTests, type RecordingFilters } from "@/server/recordings-read";
+import { variantNameText } from "@/lib/experiment-words";
 import { recordingsOpenNow } from "@/server/recordings-admin";
 
 export const metadata: Metadata = { title: "Recordings" };
@@ -41,7 +42,14 @@ export default async function RecordingsPage({ params, searchParams }: PageProps
     sort: one(query.sort) === "newest" ? "newest" : "frustrated",
   };
   const p = Math.max(0, Math.min(100, Number(one(query.p)) || 0));
-  const [{ rows, more }, counts, open] = await Promise.all([listRecordings(store.id, filters, p), recordingCounts(store.id, filters), recordingsOpenNow()]);
+  const [{ rows, more }, counts, open, tests] = await Promise.all([
+    listRecordings(store.id, filters, p),
+    recordingCounts(store.id, filters),
+    recordingsOpenNow(),
+    recordingTests(store.id),
+  ]);
+  const experimentWords = adminText(ctx.lang, "experiments");
+  const versions = tests.flatMap((t) => t.versions.map((v) => ({ tag: `${t.id}:${v.key}`, label: `${t.name}: ${variantNameText(v.name, experimentWords)}` })));
   return (
     <AdminTextScope texts={adminTexts(ctx.lang, ["analytics"])}>
       <div className="flex flex-col gap-8">
@@ -67,6 +75,7 @@ export default async function RecordingsPage({ params, searchParams }: PageProps
           locale={ctx.locale}
           now={ctx.now}
           words={words}
+          versions={versions}
         />
       </div>
     </AdminTextScope>

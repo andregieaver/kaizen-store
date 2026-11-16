@@ -291,6 +291,18 @@ export const experimentsNb: ExperimentsMessages = {
   },
   results: {
     harmed: "Versjon {key} selger tydelig mindre enn originalen.",
+    behaviour: {
+      title: "Slik oppførte besøkende seg",
+      lead: "Fra varmekart: hva besøkende som tillater statistikk gjorde på sidene i hver versjon.",
+      views: "Sidevisninger",
+      reachedHalf: "Kom halvveis ned på siden",
+      rage: "Sidevisninger med sinte klikk",
+      dead: "Sidevisninger med døde klikk",
+      heatmap: "Varmekart",
+      recordings: "Opptak",
+      tooFew: "For få sidevisninger ennå",
+      frustrated: "{name} får tydelig flere sinte eller døde klikk enn originalen. Opptakene viser hvorfor. Testen fortsetter.",
+    },
     unconverted: {
       one: "{n} bestilling var i en valuta uten kurs, så den telles som bestilling, men ikke i omsetningen.",
       many: "{n} bestillinger var i en valuta uten kurs, så de telles som bestillinger, men ikke i omsetningen.",

@@ -28,6 +28,8 @@ export type RecordingsListProps = {
   locale: string;
   now: Date;
   words: RecordingsMessages;
+  /** The A/B versions the kept recordings were tagged with, as chips (D656 step 12); none without a test. */
+  versions?: { tag: string; label: string }[];
 };
 
 const chip = (active: boolean) => `inline-flex h-9 items-center gap-1.5 rounded-panel border px-3 text-sm ${active ? "border-brand bg-sunken font-medium" : "border-line"}`;
@@ -113,6 +115,21 @@ export function RecordingsList(props: RecordingsListProps) {
         </Link>
       </div>
 
+      {props.versions && props.versions.length > 0 ? (
+        <nav aria-label={w.versionLabel} className="flex flex-wrap gap-2">
+          {[{ tag: "", label: w.everyone }, ...props.versions].map((v) => (
+            <Link
+              key={v.tag || "all"}
+              href={recordingsHref(base, filters, { tag: v.tag || undefined, p: 0 })}
+              aria-current={(filters.tag ?? "") === v.tag ? "true" : undefined}
+              className={chip((filters.tag ?? "") === v.tag)}
+            >
+              {v.label}
+            </Link>
+          ))}
+        </nav>
+      ) : null}
+
       {rows.length === 0 ? (
         <p className="text-sm text-muted">{w.empty}</p>
       ) : (
@@ -131,7 +148,7 @@ export function RecordingsList(props: RecordingsListProps) {
                     </p>
                     <p className="break-all text-sm text-muted">
                       {entryName(r.entryPage, w)}
-                      {r.tags.length > 0 ? ` · ${r.tags.map((t) => t.slice(-1).toUpperCase()).join(", ")}` : ""}
+                      {r.tags.length > 0 ? ` · ${r.tags.map((t) => props.versions?.find((v) => v.tag === t)?.label ?? t.slice(-1).toUpperCase()).join(", ")}` : ""}
                     </p>
                     {r.rageClicks > 0 || r.deadClicks > 0 ? (
                       <p className="mt-1 flex flex-wrap gap-1.5 text-xs">

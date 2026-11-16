@@ -70,3 +70,32 @@ export function projectCells(cells: readonly CellTotal[], layout: MapLayout): { 
   }
   return { points, missing };
 }
+
+export type VersionTotals = { version: string; views: number; rageViews: number; deadViews: number };
+
+/** The z beyond which a version's rise in rage or dead clicks is called clear (two-sided p < 0.001). */
+export const FRUSTRATED_Z = 3.29;
+
+/** A two-proportion z of `x2 / n2` against `x1 / n1`, pooled; 0 when there is nothing to compare. */
+export function proportionZ(x1: number, n1: number, x2: number, n2: number): number {
+  if (n1 <= 0 || n2 <= 0) return 0;
+  const pooled = (x1 + x2) / (n1 + n2);
+  const spread = Math.sqrt(pooled * (1 - pooled) * (1 / n1 + 1 / n2));
+  return spread > 0 ? (x2 / n2 - x1 / n1) / spread : 0;
+}
+
+/**
+ * The A/B flag (D656 step 12): the first version other than the original (`a`) whose page views clearly meet more rage clicks or more dead
+ * clicks than the original's, both with at least `minViews` page views. Fewer is never a flag, and the flag never stops a test.
+ */
+export function frustratedVersion(rows: readonly VersionTotals[], minViews: number): string | null {
+  const original = rows.find((r) => r.version === "a");
+  if (!original || original.views < minViews) return null;
+  for (const row of [...rows].sort((x, y) => x.version.localeCompare(y.version))) {
+    if (row.version === "a" || row.views < minViews) continue;
+    const rage = proportionZ(original.rageViews, original.views, row.rageViews, row.views);
+    const dead = proportionZ(original.deadViews, original.views, row.deadViews, row.views);
+    if (rage >= FRUSTRATED_Z || dead >= FRUSTRATED_Z) return row.version;
+  }
+  return null;
+}

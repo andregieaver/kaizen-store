@@ -29,7 +29,7 @@ import { experimentCard } from "@/lib/experiment-card";
 import { verdictOf } from "@/lib/experiment-results";
 
 import { DraftActions, DraftPanel, LearningCard, TestActions } from "./experiment-controls";
-import { ExperimentResultsView } from "./experiment-results-view";
+import { ExperimentResultsView, type BehaviourProps } from "./experiment-results-view";
 import { ExperimentForm } from "./experiment-form";
 
 /** What a person reads before any script runs. */
@@ -222,11 +222,11 @@ describe("what a started test found (D659)", () => {
     }));
     return { figures, funnel, revenue: { a: { sum: 0, plain: 0 }, b: { sum: 0, plain: 0 } }, currency: "NOK", unconverted: 0, daily, weekly: [], splitP: 0.6, days, verdict, harmed: null };
   };
-  const view = (figures: ReturnType<typeof rate>[], days: number) => {
+  const view = (figures: ReturnType<typeof rate>[], days: number, behaviour: BehaviourProps | null = null) => {
     const r = results(figures, days);
     const t = test({ status: "running", goal: "cart", startedAt: "2026-11-01T10:00:00.000Z" });
     const card = experimentCard({ status: "running", goal: "cart", minDays: 14, minVisitors: 0, results: r, now: new Date("2026-11-16T12:00:00Z") });
-    return html(createElement(ExperimentResultsView, { test: t, results: r, card, base: "/admin/demo/experiments", locale: "nb-NO", differences: { b: ["Heading: “Welcome” became “New this week”"] }, readyAround: "27 Nov 2026" }));
+    return html(createElement(ExperimentResultsView, { test: t, results: r, card, base: "/admin/demo/experiments", locale: "nb-NO", differences: { b: ["Heading: “Welcome” became “New this week”"] }, readyAround: "27 Nov 2026", behaviour }));
   };
 
   it("draws the answer: the range above no change, the progress reached and what B changed", () => {
@@ -259,6 +259,48 @@ describe("what a started test found (D659)", () => {
     expect(out).toContain("Likely ready around 27 Nov 2026");
     expect(out).toContain("Not enough yet");
     expect(out).not.toContain("data-impact");
+  });
+
+  describe("how visitors behaved in each version (D656 step 12)", () => {
+    const behaviourRow = (version: string, views: number, rage: number, dead: number) => ({
+      version, views, reachedHalf: 0.62, rageShare: rage / views, deadShare: dead / views, rageViews: rage, deadViews: dead, topPage: "/no/sale",
+    });
+    const behaviour = (over: Partial<BehaviourProps> = {}): BehaviourProps => ({
+      rows: [behaviourRow("a", 2400, 48, 120), behaviourRow("b", 60, 9, 3)],
+      frustrated: null,
+      storeBase: "/admin/demo",
+      heatmaps: true,
+      recordings: true,
+      ...over,
+    });
+    const figures = () => [rate("a", 2400, 218), rate("b", 2380, 279)];
+
+    it("draws a row per version, says too few below the minimum, and links to each version's heatmap and recordings", () => {
+      const out = view(figures(), 16, behaviour());
+      expect(out).toContain('id="ab-behaviour"');
+      expect(out).toContain("How visitors behaved");
+      expect(out).toMatch(/data-version="a"[\s\S]*?2 %[\s\S]*?5 %/);
+      expect(out).toMatch(/data-version="b"[\s\S]*?Too few page views yet/);
+      const tagOf = (key: string) => encodeURIComponent(`${test().id}:${key}`);
+      expect(out.replace(/&amp;/g, "&")).toContain(`/admin/demo/analytics/heatmaps?page=%2Fno%2Fsale&tag=${tagOf("a")}`);
+      expect(out).toContain(`/admin/demo/analytics/recordings?tag=${tagOf("b")}`);
+      expect(out).not.toContain("data-frustrated");
+    });
+
+    it("hides the links a member cannot open, and draws nothing without behaviour", () => {
+      const out = view(figures(), 16, behaviour({ heatmaps: false, recordings: false }));
+      expect(out).toContain("How visitors behaved");
+      expect(out).not.toContain("/analytics/heatmaps?");
+      expect(out).not.toContain("/analytics/recordings?");
+      expect(view(figures(), 16)).not.toContain("ab-behaviour");
+    });
+
+    it("warns, above the details, when a version meets clearly more rage or dead clicks", () => {
+      const out = view(figures(), 16, behaviour({ frustrated: "b" }));
+      expect(out).toContain("data-frustrated");
+      expect(out).toMatch(/Version B gets clearly more rage or dead clicks than the original/);
+      expect(out.indexOf("data-frustrated")).toBeLessThan(out.indexOf("How we worked this out"));
+    });
   });
 
   it("asks a decided test what it taught, with what was written before (D662)", () => {
