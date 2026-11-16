@@ -74,7 +74,7 @@ export async function saveAutonomy(a: SettingsActor, input: unknown): Promise<Au
 }
 
 /** The challenge's records the console's form never sends: kept as they are when its dates and budgets change. */
-const KEPT_RECORDS = ["original", "pinned", "seen", "versionLog"] as const;
+const KEPT_RECORDS = ["original", "pinned", "seen", "versionLog", "baseline"] as const;
 
 /**
  * Sets the 100-day challenge on a store, or changes its dates and budgets (`docs/100-day-challenge.md`): a platform admin's alone, since the

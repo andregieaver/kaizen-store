@@ -11,7 +11,7 @@ const { periodTotals } = await import("./analytics-totals");
 const { getAnalyticsSettings } = await import("./analytics-settings");
 const { customPeriod } = await import("@/lib/analytics-period");
 const { challengeFor, saveChallenge } = await import("./autopilot-settings");
-const { removeOriginalPeriod, saveOriginalPeriod, scoreboardOf } = await import("./challenge-scoreboard");
+const { freezeBaseline, removeOriginalPeriod, saveOriginalPeriod, scoreboardOf } = await import("./challenge-scoreboard");
 const { makeAccount } = await import("./trust-fixtures");
 const { newStore } = await import("./inventory-test-support");
 
@@ -146,5 +146,35 @@ describe("the scoreboard (E7)", () => {
     const s = await scoreboardOf(store.storeId);
     expect(s?.original).toBeNull();
     expect(s?.notes).toEqual(expect.arrayContaining([expect.stringContaining("is in EUR and the clone counts in NOK")]));
+  });
+});
+
+describe("the baseline (E7, D648)", () => {
+  it("is frozen by a platform admin before Day 1, kept when the dates change, and counted with in place of later changes", async () => {
+    await db().execute(sql`
+      insert into commerce.analytics_settings (store_id, shipping_cost_minor, handling_cost_minor) values (${store.storeId}::uuid, 6900, 2500)
+      on conflict (store_id) do update set shipping_cost_minor = 6900, handling_cost_minor = 2500
+    `);
+    await saveChallenge({ account: admin }, store.storeId, { startsOn: day(1), dayOne: day(3), endsOn: day(90), adMoney: 1000 });
+    await expect(freezeBaseline({ account: store.member.account }, store.storeId)).rejects.toThrow("platform admin");
+    const frozen = await freezeBaseline({ account: admin }, store.storeId);
+    expect(frozen).toMatchObject({ currency: "NOK", adMoney: 1000, costs: { shippingCostMinor: 6900, handlingCostMinor: 2500 } });
+    expect(frozen.variantsWithCost + frozen.variantsWithoutCost).toBeGreaterThan(0);
+
+    // Day 1 moves into the past (the dates change, the baseline is kept); the store then changes its estimates, a cost price and the ad money.
+    await saveChallenge({ account: admin }, store.storeId, { startsOn: day(-10), dayOne: day(-10), endsOn: day(89), adMoney: 5000 });
+    expect((await challengeFor(store.storeId))?.baseline?.costFingerprint).toBe(frozen.costFingerprint);
+    await db().execute(sql`update commerce.analytics_settings set shipping_cost_minor = 100 where store_id = ${store.storeId}::uuid`);
+    await db().execute(sql`update commerce.product_variants set cost_minor = coalesce(cost_minor, 0) + 1 where store_id = ${store.storeId}::uuid and sku = ${SKU}`);
+    const s = await scoreboardOf(store.storeId);
+    expect(s?.agreedAdMinor).toBe(100_000);
+    expect(s?.notes).toEqual(
+      expect.arrayContaining([
+        expect.stringContaining("changed the shipping cost per order"),
+        expect.stringContaining("agreed ad money was changed"),
+        expect.stringContaining("Cost prices of the clone's goods were changed"),
+      ]),
+    );
+    await expect(freezeBaseline({ account: admin }, store.storeId)).rejects.toThrow("before Day 1");
   });
 });

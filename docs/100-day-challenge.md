@@ -618,7 +618,7 @@ Each item of section 4 moves here when it is built, with its decision.
 | H1 The loop scales per store | Built: steps, reviews and events claimed one per store and run side by side. | D610 |
 | H2 The challenge console | Built: Platform → Settings → 100-day challenge, each store's phase and day, stalls, what waits on the owner and how long, AI cost against budget, people's actions by class and the three ratios since Day 1; setting, changing and ending a challenge. | D614 |
 | E1 One contribution profit | Built: Finance and each order's profit count every parcel at its booked label price (the estimate only for the rest), return labels as booked, and handling and packaging per order from the owner's cost per order (the warehouse's fee, C1); revenue per visitor is measured. The channel figures stay estimates. | D623, D646 |
-| E7 The scoreboard | Built with the original's signed P&L: each challenge store's page, the clone over the same days with its AI and plan as costs, the three ratios, the leader and the 80 % ad-money rule. Reading the original from Shopify's API, and the frozen baseline, are not built. | D623 |
+| E7 The scoreboard | Built with the original's signed P&L: each challenge store's page, the clone over the same days with its AI and plan as costs, the three ratios, the leader and the 80 % ad-money rule. The baseline is frozen on it before Day 1 (the clone's cost estimates, the agreed ad money and a fingerprint of its goods' cost prices), and the scoreboard counts with it and names any later change. Reading the original from Shopify's API is not built. | D623, D648 |
 | F4 Watch and roll back | Built: each undoable change judged hourly on conversion and add-to-cart against the same hours of four weeks, a clear fall undone (prices, codes, campaigns, the theme, ad budgets). Pages published and errors are not watched yet. | D628 |
 | F5 Protect the store from deploys | Built: the AI's versions pinned and every change logged on the challenge (the console shows it), the store's front page and cart in every deploy's smoke, and a rollback runbook. A test checkout in the smoke is not built. | D625 |
 | C2 Supplier orders as tools and events | Built: `list_supplier_orders`, `answer_supplier_order` (send again or cancel), and the `supplier_problem` event. | D621 |
@@ -651,7 +651,7 @@ recording is committed. A push with a migration waits for every check, so merge 
 In order of the Day 1 minimum (8.1):
 
 - **B3 (rest):** resending and exchanges carried out by code, and requests by email once the sender can be checked.
-- **E7 (rest):** the original read from Shopify's API; the baseline frozen before Day 1.
+- **E7 (rest):** the original read from Shopify's API (once Shopify approves `read_all_orders`).
 - **F4 (rest):** a page published rolled back through its versions; errors per hour.
 - **D4 (rest):** browse abandonment, cross-sell after a purchase and replenishment as flows of several steps (a migration), and the cart reminders' steps as tools.
 - **D1:** Meta campaigns of the AI's own, during the first weeks of the run.

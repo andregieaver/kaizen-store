@@ -297,6 +297,16 @@ export const consoleEn = {
     },
     board: {
       title: "Scoreboard: {store}",
+      baseline: {
+        title: "Baseline",
+        notFrozen: "Not frozen yet. Freeze it before Day 1: the clone's cost estimates, the agreed ad money and its goods' cost prices are then locked for the score.",
+        frozen: "Frozen on {when}: payment fee {fee}, shipping {shipping} and handling {handling} per order, ad money {ad}, {withCost} variants with a cost ({withoutCost} without).",
+        closed: "The challenge has begun: the baseline can no longer be frozen.",
+        freeze: "Freeze the baseline",
+        freezeAgain: "Freeze it again",
+        frozenNow: "The baseline is frozen.",
+        none: "none",
+      },
       description: "The clone against the original on one definition: the clone as the platform counts it, the original as its accountant signed it. A store wins by being ahead on two of the three ratios.",
       back: "All challenges",
       clone: "The clone",

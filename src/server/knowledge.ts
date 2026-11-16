@@ -1,6 +1,7 @@
 import "server-only";
 
 import { sql } from "drizzle-orm";
+import { z } from "zod";
 
 import { db, readDb, type Db } from "@/db/client";
 import { articlePath, blogOfArticle } from "@/lib/blogs";
@@ -16,14 +17,33 @@ import { AiError, aiFor, embedTexts, type AiConnection } from "./ai";
 import { audit, type Account } from "./auth";
 import { blogsNow } from "./blogs";
 import { owned } from "./owned";
+import { uuidList } from "./sql-arrays";
+import { col, typedRows } from "./typed-rows";
 
 type Row = Record<string, unknown>;
+
+// What the knowledge job reads of pages and entries (bloat review 0.27): first only dates and addresses, then a document only to cut it.
+const PAGE_SOURCE_ROW = z.object({ id: col.uuid, type: col.text, slug: col.text, blog_id: col.textOrNull, path: col.textOrNull, stale: col.bool });
+const PAGE_DOCUMENT_ROW = z.object({ id: col.uuid, slug: col.text, published: z.unknown(), stamp: col.text });
+const ENTRY_SOURCE_ROW = z.object({ id: col.uuid, stale: col.bool });
+const ENTRY_DOCUMENT_ROW = z.object({
+  id: col.uuid,
+  slug: col.text,
+  published: z.unknown(),
+  stamp: col.text,
+  type_slug: col.text,
+  has_pages: col.bool,
+  fields: z.unknown(),
+  title_field: col.text,
+  type_version: col.text,
+});
 
 /**
  * The chat agent's knowledge (D81): a site's published pages and articles
  * and its knowledge base, cut into passages (`knowledge_chunks`), found by
  * keyword and, with the site's AI (D73), by meaning. Documents are cut when
- * saved; pages when the five-minute cron finds them published anew. Vectors
+ * saved; pages when the five-minute cron finds them published anew, by comparing commerce.knowledge_sources in SQL; once an hour
+ * every site with chat on is gone through whole. Vectors
  * follow in the cron, as products' do (D74).
  */
 
@@ -163,69 +183,93 @@ async function siteLocales(storeId: string | null): Promise<string[]> {
  * blog's address (D341). Headers, footers and product layouts are not the site's words; an entry's fields for staff only are not either.
  */
 export async function syncPageKnowledge(storeId: string | null): Promise<{ cut: number; dropped: number }> {
-  const locales = await siteLocales(storeId);
-  const [pages, blogs] = await Promise.all([
-    db().execute<Row>(sql`
-      select p.id, p.type, p.slug, p.published, p.published_at, p.published_at::text as stamp, k.path as path,
-        (k.page_id is null or k.published_at <> p.published_at or k.slug <> p.slug) as stale
-      from commerce.pages p
-      left join commerce.knowledge_sources k on k.page_id = p.id
-      where ${owned(storeId, sql`p.store_id`)} and p.type in ('page', 'article') and p.published_at is not null
-    `),
-    storeId ? blogsNow(storeId) : Promise.resolve([]),
-  ]);
+  // Which pages must be cut is worked out in SQL from `knowledge_sources`; a document is fetched only for those (bloat review 0.27).
+  let cached: string[] | undefined;
+  const locales = async () => (cached ??= await siteLocales(storeId));
+  const pages = await typedRows(PAGE_SOURCE_ROW, sql`
+    select p.id, p.type, p.slug, p.published ->> 'blogId' as blog_id, k.path as path,
+      (k.page_id is null or k.published_at <> p.published_at or k.slug <> p.slug) as stale
+    from commerce.pages p
+    left join commerce.knowledge_sources k on k.page_id = p.id
+    where ${owned(storeId, sql`p.store_id`)} and p.type in ('page', 'article') and p.published_at is not null
+  `);
+  const blogs = storeId && pages.some((page) => page.type === "article") ? await blogsNow(storeId) : [];
   let cut = 0;
+  const paths = new Map<string, string>();
+  const toCut: string[] = [];
   for (const page of pages) {
-    const version = new Date(String(page.published_at)).toISOString();
-    const content = parsePageContent(page.published);
     const slug = String(page.slug);
-    const stamp = { publishedAt: String(page.stamp), slug, typeVersion: null };
-    if (!content) {
-      // A page that cannot be read is recorded once when it is published, and not again: its old passages stay as they are.
-      if (page.stale) await markSource(storeId, { page: String(page.id) }, `/${slug}`, stamp);
-      continue;
-    }
-    const blog = page.type === "article" ? blogOfArticle(blogs, content) : null;
+    const blog = page.type === "article" ? blogOfArticle(blogs, { blogId: page.blog_id ?? undefined }) : null;
     const path = page.type === "article" ? (blog ? articlePath(blog, slug) : `/blog/${slug}`) : `/${slug}`;
-    if (!page.stale && page.path === path) continue;
-    const passages = locales.map((locale) => {
-      const localized = localizePage(content, locale);
-      return { locale, title: localized.title, bodies: cutPassages(pageKnowledgeText(localized)) };
-    });
-    await replacePassages(storeId, { page: String(page.id) }, path, version, passages, stamp);
-    cut += 1;
+    paths.set(String(page.id), path);
+    if (page.stale || page.path !== path) toCut.push(String(page.id));
+  }
+  if (toCut.length > 0) {
+    const documents = await typedRows(PAGE_DOCUMENT_ROW, sql`
+      select id, slug, published, published_at::text as stamp from commerce.pages
+      where id = any(${uuidList(toCut)}) and published_at is not null
+    `);
+    const stale = new Set(pages.filter((page) => page.stale).map((page) => String(page.id)));
+    for (const page of documents) {
+      const id = String(page.id);
+      const slug = String(page.slug);
+      const stamp = { publishedAt: String(page.stamp), slug, typeVersion: null };
+      const content = parsePageContent(page.published);
+      if (!content) {
+        // A page that cannot be read is recorded once when it is published, and not again: its old passages stay as they are.
+        if (stale.has(id)) await markSource(storeId, { page: id }, `/${slug}`, stamp);
+        continue;
+      }
+      const version = new Date(String(page.stamp)).toISOString();
+      const siteLocalesNow = await locales();
+      const passages = siteLocalesNow.map((locale) => {
+        const localized = localizePage(content, locale);
+        return { locale, title: localized.title, bodies: cutPassages(pageKnowledgeText(localized)) };
+      });
+      await replacePassages(storeId, { page: id }, paths.get(id) ?? `/${slug}`, version, passages, stamp);
+      cut += 1;
+    }
   }
 
   // Content entries (D326): each published one with its type's fields, at its page's address where its type has pages. The type's
-  // fields, title field and address are part of the version: a field made "Only staff" leaves the passages at once.
-  const entries = await db().execute<Row>(sql`
-    select e.id, e.slug, e.published, e.published_at, t.slug as type_slug, t.has_pages, t.fields, t.title_field,
-      md5(t.fields::text || t.title_field || t.slug || t.has_pages::text) as type_version, e.published_at::text as stamp,
+  // fields, title field and address are part of the version: a field made "Only staff" leaves the passages at once. The first read
+  // carries no fields and no document; only a stale entry is read whole.
+  const entryRows = await typedRows(ENTRY_SOURCE_ROW, sql`
+    select e.id,
       (k.entry_id is null or k.published_at <> e.published_at or k.slug <> e.slug
         or k.type_version is distinct from md5(t.fields::text || t.title_field || t.slug || t.has_pages::text)) as stale
     from commerce.content_entries e join commerce.content_types t on t.id = e.type_id
     left join commerce.knowledge_sources k on k.entry_id = e.id
     where ${owned(storeId, sql`e.store_id`)} and e.published_at is not null
   `);
-  // A store's entries keep their words by its locales, its first the main one; Kaizena Flow's own by language (`en`, D326 H4).
-  const main = storeId ? (locales[0] ?? "en-GB") : "en";
-  const wordsIn = (locale: string) => (storeId ? locale : locale.split("-")[0]);
-  for (const entry of entries) {
-    if (!entry.stale) continue;
-    const version = `${new Date(String(entry.published_at)).toISOString()}|${String(entry.type_version)}`;
-    const type = { fields: (entry.fields ?? []) as FieldDef[], titleField: String(entry.title_field) };
-    const data = readEntryContent(entry.published).data;
-    const path = entry.has_pages ? `/${String(entry.type_slug)}/${String(entry.slug)}` : null;
-    const passages = locales.map((locale) => {
-      const { title, text } = entryKnowledgeText(type, data, wordsIn(locale), main);
-      return { locale, title: title || String(entry.slug), bodies: cutPassages(text) };
-    });
-    await replacePassages(storeId, { entry: String(entry.id) }, path, version, passages, {
-      publishedAt: String(entry.stamp),
-      slug: String(entry.slug),
-      typeVersion: String(entry.type_version),
-    });
-    cut += 1;
+  const staleEntries = entryRows.filter((row) => row.stale).map((row) => String(row.id));
+  if (staleEntries.length > 0) {
+    const entries = await typedRows(ENTRY_DOCUMENT_ROW, sql`
+      select e.id, e.slug, e.published, e.published_at, e.published_at::text as stamp, t.slug as type_slug, t.has_pages, t.fields, t.title_field,
+        md5(t.fields::text || t.title_field || t.slug || t.has_pages::text) as type_version
+      from commerce.content_entries e join commerce.content_types t on t.id = e.type_id
+      where ${owned(storeId, sql`e.store_id`)} and e.published_at is not null and e.id = any(${uuidList(staleEntries)})
+    `);
+    const siteLocalesNow = await locales();
+    // A store's entries keep their words by its locales, its first the main one; Kaizena Flow's own by language (`en`, D326 H4).
+    const main = storeId ? (siteLocalesNow[0] ?? "en-GB") : "en";
+    const wordsIn = (locale: string) => (storeId ? locale : locale.split("-")[0]);
+    for (const entry of entries) {
+      const version = `${new Date(String(entry.stamp)).toISOString()}|${String(entry.type_version)}`;
+      const type = { fields: (entry.fields ?? []) as FieldDef[], titleField: String(entry.title_field) };
+      const data = readEntryContent(entry.published).data;
+      const path = entry.has_pages ? `/${String(entry.type_slug)}/${String(entry.slug)}` : null;
+      const passages = siteLocalesNow.map((locale) => {
+        const { title, text } = entryKnowledgeText(type, data, wordsIn(locale), main);
+        return { locale, title: title || String(entry.slug), bodies: cutPassages(text) };
+      });
+      await replacePassages(storeId, { entry: String(entry.id) }, path, version, passages, {
+        publishedAt: String(entry.stamp),
+        slug: String(entry.slug),
+        typeVersion: String(entry.type_version),
+      });
+      cut += 1;
+    }
   }
 
   const dropped = await db().execute<Row>(sql`
@@ -330,13 +374,52 @@ export async function embedKnowledge(storeId: string | null, connection: AiConne
   return { embedded, failed: null };
 }
 
-/** The cron's share: for every site with its chat agent on, pages cut anew and passages given vectors. */
-export async function refreshKnowledge(): Promise<{ sites: number; cut: number; embedded: number }> {
-  const agents = await db().execute<Row>(sql`select store_id from commerce.chat_agents where enabled and (store_id is null or commerce.store_is_active(store_id))`);
+/**
+ * The sites whose knowledge has something to do, in one statement: a published page or entry not yet cut (or cut from another
+ * publishing, address or type), a source whose page is no longer published, or a passage still waiting for a vector that is less than
+ * an hour old. Null is Kaizena Flow's own site.
+ */
+async function sitesWithWork(): Promise<(string | null)[]> {
+  const rows = await typedRows(z.object({ store_id: col.uuid.nullable() }), sql`
+    select a.store_id from commerce.chat_agents a
+    where a.enabled and (a.store_id is null or commerce.store_is_active(a.store_id)) and (
+      exists (select 1 from commerce.pages p left join commerce.knowledge_sources k on k.page_id = p.id
+        where (p.store_id = a.store_id or (a.store_id is null and p.store_id is null)) and p.type in ('page', 'article')
+          and p.published_at is not null and (k.page_id is null or k.published_at <> p.published_at or k.slug <> p.slug))
+      or exists (select 1 from commerce.content_entries e join commerce.content_types t on t.id = e.type_id
+        left join commerce.knowledge_sources k on k.entry_id = e.id
+        where (e.store_id = a.store_id or (a.store_id is null and e.store_id is null)) and e.published_at is not null
+          and (k.entry_id is null or k.published_at <> e.published_at or k.slug <> e.slug
+            or k.type_version is distinct from md5(t.fields::text || t.title_field || t.slug || t.has_pages::text)))
+      or exists (select 1 from commerce.knowledge_sources k
+        where (k.store_id = a.store_id or (a.store_id is null and k.store_id is null))
+          and ((k.page_id is not null and not exists (select 1 from commerce.pages p where p.id = k.page_id and p.published_at is not null))
+            or (k.entry_id is not null and not exists (select 1 from commerce.content_entries e where e.id = k.entry_id and e.published_at is not null))))
+      or exists (select 1 from commerce.knowledge_chunks c
+        where (c.store_id = a.store_id or (a.store_id is null and c.store_id is null)) and c.space is null and c.created_at > now() - interval '1 hour')
+    )
+  `);
+  return rows.map((row) => row.store_id);
+}
+
+/**
+ * The cron's share: for every site with something to do, pages cut anew and passages given vectors. In the first five minutes of each
+ * hour every site with its chat agent on is gone through whole: the net that finds a blog whose address changed, a changed AI model
+ * and passages that waited more than an hour for a vector.
+ */
+export async function refreshKnowledge(options: { now?: Date; full?: boolean } = {}): Promise<{ sites: number; cut: number; embedded: number }> {
+  const now = options.now ?? new Date();
+  const full = options.full ?? now.getUTCMinutes() < 5;
+  let sites: (string | null)[];
+  if (full) {
+    const agents = await db().execute<Row>(sql`select store_id from commerce.chat_agents where enabled and (store_id is null or commerce.store_is_active(store_id))`);
+    sites = agents.map((agent) => (agent.store_id ? String(agent.store_id) : null));
+  } else {
+    sites = await sitesWithWork();
+  }
   let cut = 0;
   let embedded = 0;
-  for (const agent of agents) {
-    const storeId = agent.store_id ? String(agent.store_id) : null;
+  for (const storeId of sites) {
     try {
       cut += (await syncPageKnowledge(storeId)).cut;
       const connection = await aiFor(storeId, { feature: "knowledge" });
@@ -345,7 +428,7 @@ export async function refreshKnowledge(): Promise<{ sites: number; cut: number; 
       console.warn(`[knowledge] refresh failed for ${storeId ?? "Kaizena Flow"}: ${error instanceof Error ? error.message : String(error)}`);
     }
   }
-  return { sites: agents.length, cut, embedded };
+  return { sites: sites.length, cut, embedded };
 }
 
 /** A site's knowledge brought up to date now (after its agent or a document is saved), as the cron would. */
