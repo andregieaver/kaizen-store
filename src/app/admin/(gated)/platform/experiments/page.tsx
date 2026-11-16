@@ -2,7 +2,9 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { connection } from "next/server";
 
+import type { TargetKind } from "@/lib/ab-site";
 import { STATE_SIGNAL } from "@/lib/experiment-list";
+import { targetLabelText } from "@/lib/experiment-words";
 import { GOAL_WORDS } from "@/lib/experiments";
 import { daysBetween } from "@/lib/platform-experiments";
 import { requirePlatformReader } from "@/server/auth";
@@ -28,7 +30,6 @@ export default async function PlatformExperimentsPage({ searchParams }: PageProp
   const w = adminText(lang, "platformTools").experiments;
   const ex = adminText(lang, "experiments");
   const date = new Intl.DateTimeFormat(locale, { dateStyle: "medium", timeZone: "Europe/Oslo" });
-  const kindName = (type: string) => (ex.kinds as Record<string, { name: string }>)[type]?.name ?? ex.kinds.page.name;
   const { show } = await searchParams;
   const everything = show === "all";
   const [{ tests, overview, truncated }, own] = await Promise.all([platformExperiments(everything), platformUnitTests()]);
@@ -82,8 +83,8 @@ export default async function PlatformExperimentsPage({ searchParams }: PageProp
                         {t.store.name}
                       </Link>
                       {" · "}
-                      {kindName(t.target.type)}
-                      {t.target.type === "page" ? ` /${t.target.slug}` : ""} · {fillWords(w.versions, { n: t.versions })} · {ex.goals[t.goal]?.label ?? GOAL_WORDS[t.goal].label}
+                      {/* Named as the store's own list names it: the address, the place (All products page), or the kind and its title. */}
+                      {targetLabelText(t.target.type as TargetKind, t.target.slug, t.target.title, t.target.role, ex)} · {fillWords(w.versions, { n: t.versions })} · {ex.goals[t.goal]?.label ?? GOAL_WORDS[t.goal].label}
                       {t.headline && <span className="block text-ink-2">{t.headline}</span>}
                       {t.flags.map((f) => (
                         <span key={f.kind} className="block text-danger-text">

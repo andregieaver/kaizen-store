@@ -83,13 +83,13 @@ export function ExperimentFrames({ versions }: { versions: readonly FrameVersion
   return (
     <section aria-labelledby="ab-frames" className="flex flex-col gap-4" data-frames>
       <div className="flex flex-wrap items-end justify-between gap-3">
-        <div className="flex flex-col gap-1">
+        <div className="flex min-w-0 flex-1 basis-80 flex-col gap-1">
           <h2 id="ab-frames" className="text-title text-ink">
             {w.title}
           </h2>
           <p className="max-w-[75ch] text-body text-ink-2">{w.intro}</p>
         </div>
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex shrink-0 flex-wrap items-center gap-2">
           {others.length > 1 && (
             <div role="group" aria-label={w.which} className="flex items-center gap-0.5 rounded-pill border border-edge p-0.5">
               {others.map((v) => (
