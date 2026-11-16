@@ -1898,6 +1898,12 @@ The version chips come in step 12.
 
 **Send the owner screenshots** of the hub and of each view (phone and computer), plus `docs/heatmaps-and-recordings.svg`.
 
+*As built (16 Nov 2026):* a part is labelled by where it sits ("A part 50 % down the page"), a card by its number and a landmark by
+its name; labels from the page's own content (`describePart()`) are a follow-up. The traffic page's landing rows do not link to a map
+yet: their paths are not checked to be page keys. The map's period is its own (7, 30, 90, 365 days), the hub's the period picker's. Bars
+fixed to the screen are hidden in the picture and sticky ones left in place (they sat in the middle of a full-length picture). The signed-in
+spec measures the test store's real front page for the picture's layout; with `HEATMAP_SHOTS` set it keeps screenshots.
+
 ### Step 8: Recordings: tables, limits, the platform hold and the ingest route
 
 **Goal.** The server can take recordings. No browser sends any yet.
