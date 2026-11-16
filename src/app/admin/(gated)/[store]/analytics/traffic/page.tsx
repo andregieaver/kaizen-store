@@ -5,6 +5,7 @@ import { ExportScope } from "@/components/admin/analytics/export-scope";
 import { RefundsView } from "@/components/admin/analytics/refunds-view";
 import { ReturnsView } from "@/components/admin/analytics/returns-view";
 import { TrafficView } from "@/components/admin/analytics/traffic-view";
+import { ActionForm, SubmitButton } from "@/components/admin/action-form";
 import { AdminTextScope } from "@/components/admin/admin-text";
 import { adminText, adminTexts } from "@/lib/admin-text";
 import { queryText } from "@/lib/analytics-export";
@@ -17,6 +18,9 @@ import { returnsReport } from "@/server/analytics-returns-data";
 import { searchReport } from "@/server/analytics-search-data";
 import { timeReport } from "@/server/analytics-time-data";
 import { trafficReport } from "@/server/analytics-traffic-data";
+import { submitClass } from "@/lib/submit-class";
+
+import { setVisitCountingAction } from "../settings/actions";
 
 export const metadata: Metadata = { title: "Traffic analytics" };
 
@@ -44,6 +48,14 @@ export default async function AnalyticsTrafficPage({ params, searchParams }: Pag
   const w = adminText(ctx.lang, "reports");
   const finance = adminText(ctx.lang, "finance");
   const say = analyticsSay(ctx.lang, ctx.locale);
+  // Round 26 (D699): an owner switches counting on from the page itself; anyone else gets the link to the settings.
+  const turnOn = ctx.owner && !traffic.counting ? (
+    <ActionForm action={setVisitCountingAction.bind(null, store.slug)} successMessage={adminText(ctx.lang, "analytics").settings.visits.nowOn}>
+      <SubmitButton name="enabled" value="on" className={`${submitClass()} h-11 w-full sm:w-auto`}>
+        {w.traffic.turnOn}
+      </SubmitButton>
+    </ActionForm>
+  ) : undefined;
 
   return (
     <AdminTextScope texts={adminTexts(ctx.lang, ["reports", "analytics", "finance"])}>
@@ -55,7 +67,7 @@ export default async function AnalyticsTrafficPage({ params, searchParams }: Pag
           title={w.pages.traffic.title}
           description={w.pages.traffic.description}
         />
-        <TrafficView base={ctx.base} currency={currency} locale={locale} timeZone={store.timeZone} traffic={traffic} geo={geo} search={search} time={time} words={w.traffic} say={say} />
+        <TrafficView base={ctx.base} currency={currency} locale={locale} timeZone={store.timeZone} traffic={traffic} geo={geo} search={search} time={time} words={w.traffic} say={say} turnOn={turnOn} />
         <RefundsView currency={currency} locale={locale} report={refunds} marketNames={Object.fromEntries(store.allMarkets.map((m) => [m.code, m.name]))} words={finance} say={say} />
         <ReturnsView currency={currency} locale={locale} report={returns} queueHref={`${ctx.base}/returns?overdue=1`} words={finance} say={say} reasonLabels={adminText(ctx.lang, "returns").labels.reason} />
       </div>

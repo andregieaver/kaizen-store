@@ -343,6 +343,11 @@ export const reportsNb: ReportsMessages = {
     noneYetText: "Tellingen er på, men ingen besøk har kommet ennå. Besøk vises her fra den første dagen de telles. ",
     noneInPeriodText: "Besøk er telt siden {day}, og ingen faller i denne perioden. ",
     turnOn: "Slå på telling av besøk",
+    offCardTitle: "Se hvor de besøkende kommer fra",
+    offCardText: "Slå på telling av besøk for å se veien til et kjøp, enhetene, landingssidene og konverteringen. Ingen informasjonskapsler, ikke noe samtykkebanner; den teller fra dagen du slår den på.",
+    offCardMore: "Til da venter trakten, enhetene og landingssidene på den. ",
+    fromOrders: "Fra ordrene dine",
+    fromOrdersRows: { paid: "Betalte ordrer", countries: "Land som kjøper", when: "Når kundene kjøper", search: "Hva kundene søker etter", refunds: "Refusjoner og returer" },
     help: {
       visits: "Et besøk er én besøkende én dag. Å komme tilbake samme dag telles ikke to ganger, og besøkende som har reservert seg, telles ikke.",
       conversion: "Konvertering: betalte ordrer delt på besøk. 2 % betyr at 2 av hver 100 besøk endte med et kjøp.",

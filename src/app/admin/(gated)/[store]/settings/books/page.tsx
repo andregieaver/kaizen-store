@@ -4,6 +4,7 @@ import Link from "next/link";
 import { ActionForm, SubmitButton } from "@/components/admin/action-form";
 import { field } from "@/components/admin/data/ui";
 import { Card, Chip, PageHeader } from "@/components/admin/ui";
+import { PhoneRow, PhoneRows } from "@/components/admin/phone-row";
 import { countWords, fillWords } from "@/lib/admin-fill";
 import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
 import { adminText } from "@/lib/admin-text";
@@ -219,10 +220,84 @@ export default async function BooksPage({ params, searchParams }: PageProps<"/ad
     />
   );
 
-  return (
-    <div className="flex flex-col gap-6">
-      <PageHeader title={w.title} description={w.intro} />
+  const comparedCard = compared && (
+        <Card
+          title={w.compare.title}
+          description={w.compare.text}
+          aside={compared.differ + compared.missing > 0 ? <Chip signal="warning">{compared.differ + compared.missing}</Chip> : undefined}
+        >
+          {compared.agree + compared.differ + compared.missing === 0 ? (
+            <p className="text-sm text-muted">{w.compare.none}</p>
+          ) : (
+            <div className="flex flex-col gap-2 text-sm">
+              <p>
+                {[
+                  countWords(compared.agree, w.compare.agree, { n: compared.agree }),
+                  compared.differ > 0 ? countWords(compared.differ, w.compare.differ, { n: compared.differ }) : null,
+                  compared.missing > 0 ? countWords(compared.missing, w.compare.missing, { n: compared.missing }) : null,
+                ]
+                  .filter(Boolean)
+                  .join(", ")}
+                .
+              </p>
+              {compared.items.length === 0 ? (
+                <p className="font-medium">{w.compare.all}</p>
+              ) : (
+                <ul className="flex flex-col divide-y divide-line">
+                  {compared.items.slice(0, 20).map((item) => (
+                    <li key={`${item.kind}:${item.id}`} className="py-2">
+                      <p className="font-medium">{item.text || (w.waiting.kinds[item.kind] ?? item.kind)}</p>
+                      {item.state === "missing" ? (
+                        <p className="text-muted">{w.compare.gone}</p>
+                      ) : (
+                        <ul className="text-muted">
+                          {item.differences.map((d) => (
+                            <li key={String(d.account)}>
+                              {fillWords(w.compare.line, { account: d.account === "vat" ? w.compare.vat : String(d.account), ours: signed(d.ours), theirs: signed(d.theirs) })}
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          )}
+        </Card>
+  );
 
+  // Round 26 (D699): on a phone each card is a row saying where it stands, what waits for the owner first.
+  const ph = w.phone;
+  const row = { change: ph.change, done: ph.done, flat: true } as const;
+  const firstWaiting = bank.bankOnly[0];
+  const phoneLead = book.lockedThrough
+    ? fillWords(ph.leadLocked, { day: day(book.openedOn), currency: book.currency, locked: day(book.lockedThrough) })
+    : fillWords(ph.lead, { day: day(book.openedOn), currency: book.currency });
+  const groupTitle = "px-0.5 pt-2 text-sm text-muted sm:hidden";
+
+  return (
+    <div className="flex flex-col gap-6 max-sm:gap-3">
+      <PageHeader
+        title={w.title}
+        description={
+          <>
+            <span className="max-sm:hidden">{w.intro}</span>
+            <span className="sm:hidden">{phoneLead}</span>
+          </>
+        }
+      />
+
+      {bank.waiting > 0 && firstWaiting && (
+        <div className="flex items-center gap-3 rounded-panel bg-(--signal-warning-soft,#fbf0d9) px-4 py-3 sm:hidden">
+          <p className="min-w-0 flex-1 text-sm">{countWords(bank.waiting, ph.strip, { text: firstWaiting.text || firstWaiting.counterparty || "", day: day(firstWaiting.day) })}</p>
+          <a href="#bank" className="inline-flex h-9 shrink-0 items-center rounded-pill bg-ink px-4 text-sm text-canvas">
+            {ph.postIt}
+          </a>
+        </div>
+      )}
+
+      <div className="max-sm:hidden">
       <Card title={fillWords(w.facts.title, { name: book.legalName })}>
         <ul className="flex flex-col gap-1 text-sm">
           {book.organisationNumber && <li>{fillWords(w.facts.number, { number: book.organisationNumber })}</li>}
@@ -230,17 +305,26 @@ export default async function BooksPage({ params, searchParams }: PageProps<"/ad
           <li className="text-muted">{book.lockedThrough ? fillWords(w.facts.locked, { day: day(book.lockedThrough) }) : w.facts.open}</li>
         </ul>
       </Card>
+      </div>
 
-      {yearEndDue && yearEndCard}
+      <PhoneRows>
+      {yearEndDue && (
+        <PhoneRow title={fillWords(w.yearEnd.title, { year: String(closingYear) })} {...row}>
+          {yearEndCard}
+        </PhoneRow>
+      )}
 
       {offerOpening && (
+        <PhoneRow title={w.opening.title} {...row}>
         <Card title={w.opening.title} description={w.opening.lead}>
           <ActionForm action={openingFromTripletexAction.bind(null, store.slug)} className="flex flex-col items-start gap-3">
             <SubmitButton>{w.opening.button}</SubmitButton>
           </ActionForm>
         </Card>
+        </PhoneRow>
       )}
 
+      <PhoneRow id="bank" title={w.bank.title} sub={bank.statements > 0 ? countWords(bank.lines, ph.bankSub, { matched: bank.lines - bank.waiting }) : ph.noStatement} {...row}>
       <Card title={w.bank.title} description={w.bank.lead} aside={bank.statements > 0 ? <Chip signal={bank.waiting === 0 ? "positive" : "warning"}>{`${bank.lines - bank.waiting}/${bank.lines}`}</Chip> : undefined}>
         <div className="flex flex-col gap-4 text-sm">
           {bank.statements > 0 && bank.fromDay && bank.toDay && (
@@ -443,8 +527,10 @@ export default async function BooksPage({ params, searchParams }: PageProps<"/ad
           )}
         </div>
       </Card>
+      </PhoneRow>
 
       {/* The bills to pay (B3, D492): posted as they come, waiting until the bank shows them paid. */}
+      <PhoneRow title={w.bills.title} sub={bills.length > 0 ? countWords(bills.length, ph.billsSub) : ph.noneWaiting} {...row}>
       <Card
         title={w.bills.title}
         description={w.bills.lead}
@@ -496,8 +582,10 @@ export default async function BooksPage({ params, searchParams }: PageProps<"/ad
           )}
         </div>
       </Card>
+      </PhoneRow>
 
       {/* Receipts by email (D504): the books address, and what waits in the inbox. */}
+      <PhoneRow title={w.inbox.title} sub={inbox.length > 0 ? countWords(inbox.length, ph.inboxSub) : ph.noneWaiting} {...row}>
       <BooksInboxCard
         storeSlug={store.slug}
         address={booksAddress}
@@ -507,8 +595,10 @@ export default async function BooksPage({ params, searchParams }: PageProps<"/ad
         day={day}
         dismiss={dismissInboxAction.bind(null, store.slug)}
       />
+      </PhoneRow>
 
       {/* Subscriptions (D503): what is paid again and again, its charges known in the bank. */}
+      <PhoneRow title={w.recurring.title} sub={recurring.rows.length > 0 ? countWords(recurring.rows.length, ph.recurringSub) : ph.noneYet} {...row}>
       <RecurringCostsCard
         view={recurring}
         owner={keeper}
@@ -520,8 +610,10 @@ export default async function BooksPage({ params, searchParams }: PageProps<"/ad
         save={saveRecurringCostAction.bind(null, store.slug)}
         press={recurringPressAction.bind(null, store.slug)}
       />
+      </PhoneRow>
 
       {/* Budget and forecast (D505): this year's budget against what the books hold, and where the year is heading. */}
+      <PhoneRow title={fillWords(w.budget.title, { year: String(budgetYear) })} {...row}>
       <BudgetCard
         year={budgetYear}
         view={budget}
@@ -533,9 +625,11 @@ export default async function BooksPage({ params, searchParams }: PageProps<"/ad
         money={amount}
         save={saveBudgetAction.bind(null, store.slug)}
       />
+      </PhoneRow>
 
       {/* The threshold watch (D514): the turnover over twelve months, the law's thresholds and the owner's own. */}
       {watch && (
+        <PhoneRow title={w.watch.title} {...row}>
         <TurnoverWatchCard
           turnoverMinor={watch.turnoverMinor}
           currency={watch.currency}
@@ -548,11 +642,17 @@ export default async function BooksPage({ params, searchParams }: PageProps<"/ad
           add={addThresholdAction.bind(null, store.slug)}
           remove={removeThresholdAction.bind(null, store.slug)}
         />
+        </PhoneRow>
       )}
 
-      {!yearEndDue && yearEndCard}
+      {!yearEndDue && (
+        <PhoneRow title={fillWords(w.yearEnd.title, { year: String(closingYear) })} {...row}>
+          {yearEndCard}
+        </PhoneRow>
+      )}
 
       {waiting.length > 0 && (
+        <PhoneRow title={w.waiting.title} sub={countWords(waiting.length, ph.waitingSub)} {...row}>
         <Card title={w.waiting.title} aside={<Chip signal="warning">{waiting.length}</Chip>}>
           <p className="mb-2 text-sm">{countWords(waiting.length, w.waiting.count, { n: waiting.length })}</p>
           <ul className="flex flex-col divide-y divide-line text-sm">
@@ -566,8 +666,13 @@ export default async function BooksPage({ params, searchParams }: PageProps<"/ad
             ))}
           </ul>
         </Card>
+        </PhoneRow>
       )}
+      </PhoneRows>
 
+      <h2 className={groupTitle}>{ph.reports}</h2>
+      <PhoneRows>
+      <PhoneRow title={w.trial.title} sub={fillWords(ph.days, { from: day(from), to: day(to) })} {...row}>
       <Card title={w.trial.title}>
         <form className="mb-4 flex flex-wrap items-end gap-3" method="get">
           <label className="flex flex-col gap-1 text-sm font-medium">
@@ -629,7 +734,9 @@ export default async function BooksPage({ params, searchParams }: PageProps<"/ad
           </p>
         )}
       </Card>
+      </PhoneRow>
 
+      <PhoneRow title={w.pl.title} sub={amount(pl.beforeTax)} {...row}>
       <Card title={w.pl.title} description={w.pl.lead}>
         {pl.groups.length === 0 ? (
           <p className="text-sm text-muted">{w.pl.empty}</p>
@@ -647,7 +754,9 @@ export default async function BooksPage({ params, searchParams }: PageProps<"/ad
           </div>
         )}
       </Card>
+      </PhoneRow>
 
+      <PhoneRow title={w.balance.title} sub={fillWords(ph.onDay, { day: day(to) })} {...row}>
       <Card title={w.balance.title} description={fillWords(w.balance.lead, { day: day(to) })}>
         {bs.groups.length === 0 && bs.unallocated === 0 ? (
           <p className="text-sm text-muted">{w.balance.empty}</p>
@@ -672,7 +781,9 @@ export default async function BooksPage({ params, searchParams }: PageProps<"/ad
           </p>
         )}
       </Card>
+      </PhoneRow>
 
+      <PhoneRow title={w.vat.title} sub={fillWords(ph.vatSub, { amount: amount(vatToPay) })} {...row}>
       <Card
         title={w.vat.title}
         description={w.vat.lead}
@@ -724,7 +835,9 @@ export default async function BooksPage({ params, searchParams }: PageProps<"/ad
           </div>
         )}
       </Card>
+      </PhoneRow>
 
+      <PhoneRow title={w.saft.title} sub={organisationNumber ? ph.saftReady : <span className="text-(--signal-warning-text,#8a5a00)">{ph.saftNeeds}</span>} {...row}>
       <Card title={w.saft.title} description={w.saft.lead}>
         {organisationNumber ? (
           <ul className="flex flex-wrap gap-x-6 gap-y-2 text-sm">
@@ -770,7 +883,17 @@ export default async function BooksPage({ params, searchParams }: PageProps<"/ad
           </div>
         </details>
       </Card>
+      </PhoneRow>
+      {compared && (
+        <PhoneRow title={w.compare.title} sub={compared.differ + compared.missing > 0 ? countWords(compared.differ + compared.missing, ph.differSub) : ph.agrees} {...row}>
+          {comparedCard}
+        </PhoneRow>
+      )}
+      </PhoneRows>
 
+      <h2 className={groupTitle}>{ph.entries}</h2>
+      <PhoneRows>
+      <PhoneRow title={w.journal.title} sub={journal[0] ? fillWords(ph.newest, { name: journal[0].name, text: journal[0].text }) : ph.noEntries} {...row}>
       <Card title={w.journal.title} description={w.journal.lead}>
         {journal.length === 0 ? (
           <p className="text-sm text-muted">{w.journal.empty}</p>
@@ -795,8 +918,8 @@ export default async function BooksPage({ params, searchParams }: PageProps<"/ad
                   {/* The same columns in every entry, so the amounts line up down the journal. */}
                   <colgroup>
                     <col />
-                    <col className="w-32" />
-                    <col className="w-32" />
+                    <col className="w-24 sm:w-32" />
+                    <col className="w-24 sm:w-32" />
                   </colgroup>
                   <thead className="sr-only">
                     <tr>
@@ -808,7 +931,7 @@ export default async function BooksPage({ params, searchParams }: PageProps<"/ad
                   <tbody>
                     {e.lines.map((l, i) => (
                       <tr key={i} className="text-muted">
-                        <td className="truncate py-0.5 pr-3">
+                        <td className="py-0.5 pr-3 break-words sm:truncate">
                           <span className="tabular-nums">{l.account}</span> {l.name}
                           {l.vatCode && <span className="ml-2 text-xs">({w.hand.vat} {l.vatCode})</span>}
                         </td>
@@ -834,55 +957,10 @@ export default async function BooksPage({ params, searchParams }: PageProps<"/ad
           </ul>
         )}
       </Card>
-
-      {compared && (
-        <Card
-          title={w.compare.title}
-          description={w.compare.text}
-          aside={compared.differ + compared.missing > 0 ? <Chip signal="warning">{compared.differ + compared.missing}</Chip> : undefined}
-        >
-          {compared.agree + compared.differ + compared.missing === 0 ? (
-            <p className="text-sm text-muted">{w.compare.none}</p>
-          ) : (
-            <div className="flex flex-col gap-2 text-sm">
-              <p>
-                {[
-                  countWords(compared.agree, w.compare.agree, { n: compared.agree }),
-                  compared.differ > 0 ? countWords(compared.differ, w.compare.differ, { n: compared.differ }) : null,
-                  compared.missing > 0 ? countWords(compared.missing, w.compare.missing, { n: compared.missing }) : null,
-                ]
-                  .filter(Boolean)
-                  .join(", ")}
-                .
-              </p>
-              {compared.items.length === 0 ? (
-                <p className="font-medium">{w.compare.all}</p>
-              ) : (
-                <ul className="flex flex-col divide-y divide-line">
-                  {compared.items.slice(0, 20).map((item) => (
-                    <li key={`${item.kind}:${item.id}`} className="py-2">
-                      <p className="font-medium">{item.text || (w.waiting.kinds[item.kind] ?? item.kind)}</p>
-                      {item.state === "missing" ? (
-                        <p className="text-muted">{w.compare.gone}</p>
-                      ) : (
-                        <ul className="text-muted">
-                          {item.differences.map((d) => (
-                            <li key={String(d.account)}>
-                              {fillWords(w.compare.line, { account: d.account === "vat" ? w.compare.vat : String(d.account), ours: signed(d.ours), theirs: signed(d.theirs) })}
-                            </li>
-                          ))}
-                        </ul>
-                      )}
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </div>
-          )}
-        </Card>
-      )}
+      </PhoneRow>
 
       {keeper && (
+        <PhoneRow title={w.hand.title} {...row}>
         <Card title={w.hand.title} description={w.hand.lead}>
           <details>
             <summary className="w-fit cursor-pointer rounded-full border border-edge bg-card px-4 py-2 text-sm hover:bg-sunken">{w.hand.open}</summary>
@@ -956,9 +1034,11 @@ export default async function BooksPage({ params, searchParams }: PageProps<"/ad
             </ActionForm>
           </details>
         </Card>
+        </PhoneRow>
       )}
 
       {keeper && (
+        <PhoneRow title={w.lock.title} sub={book.lockedThrough ? fillWords(ph.lockedThrough, { day: day(book.lockedThrough) }) : ph.lockOpen} {...row}>
         <Card title={w.lock.title} description={w.lock.text}>
           <ActionForm action={lockBooksAction.bind(null, store.slug)} className="flex flex-wrap items-end gap-3">
             <label className="flex flex-col gap-1 text-sm font-medium">
@@ -969,9 +1049,11 @@ export default async function BooksPage({ params, searchParams }: PageProps<"/ad
           </ActionForm>
           {book.lockHeld && owner && <p className="mt-3 text-sm text-ink-2">{w.lock.heldNote}</p>}
         </Card>
+        </PhoneRow>
       )}
 
       {owner && (
+        <PhoneRow title={w.earlier.title} {...row}>
         <Card title={w.earlier.title} description={fillWords(w.earlier.text, { day: day(book.openedOn) })}>
           <ActionForm action={openBooksEarlierAction.bind(null, store.slug)} className="flex flex-wrap items-end gap-3">
             <label className="flex flex-col gap-1 text-sm font-medium">
@@ -981,7 +1063,9 @@ export default async function BooksPage({ params, searchParams }: PageProps<"/ad
             <SubmitButton variant="secondary">{w.earlier.button}</SubmitButton>
           </ActionForm>
         </Card>
+        </PhoneRow>
       )}
+      </PhoneRows>
     </div>
   );
 }

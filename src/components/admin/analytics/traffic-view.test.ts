@@ -401,22 +401,25 @@ describe("funnelCards", () => {
 describe("TrafficView, visit counting off and nothing sold", () => {
   const out = text(emptyProps());
 
-  it("asks the owner to turn visit counting on, with a link, and says what it does", () => {
-    expect(out).toContain("Turn on visit counting to see where visitors come from");
+  it("asks the owner to turn visit counting on in one card, with a button, and says what it does (round 26, D699)", () => {
+    expect(out).toContain("See where visitors come from");
     expect(out).toContain("/admin/shop/analytics/settings#visits");
-    expect(out).toContain("no cookies");
-    expect(out).toContain("only counts from the day you switch it on");
+    expect(out).toContain("No cookies, no consent banner");
+    expect(out).toContain("it counts from the day you switch it on");
+    expect(out).toContain(">Turn on visit counting<");
+    expect(out.match(/>Turn on visit counting</g)).toHaveLength(1);
   });
 
   it("does not say the same thing twice", () => {
     expect(out).not.toContain("Visit counting is off, so visits, the funnel");
   });
 
-  it("has no funnel, no device table, no landing table, and says why", () => {
+  it("leaves out the funnel, devices and landing pages while counting is off, rather than each saying so (round 26, D699)", () => {
     expect(out).not.toContain("Visits, product views, carts, checkouts and purchases");
-    expect(out).toContain("There is no funnel to show yet. Visit counting is off.");
-    expect(out).toContain("There are no devices to compare yet.");
-    expect(out).toContain("There are no landing pages to show yet.");
+    expect(out).not.toContain("There is no funnel to show yet.");
+    expect(out).not.toContain("There are no devices to compare yet.");
+    expect(out).not.toContain("There are no landing pages to show yet.");
+    expect(out).toContain("the funnel, devices and landing pages wait for it");
   });
 
   it("is calm everywhere else: empty states, no NaN, no zero percent", () => {
@@ -471,8 +474,9 @@ describe("TrafficView, visit counting off but orders and searches exist", () => 
     expect(out).toContain("Friday is your best day of the week");
   });
 
-  it("says the orders came from orders when there is no funnel", () => {
-    expect(out).toContain("Your store did make 90 paid orders in this period. That comes from your orders, not from visits.");
+  it("lists what comes from orders, with the paid orders counted (round 26, D699)", () => {
+    expect(out).toContain('aria-label="From your orders"');
+    expect(out).toMatch(/Paid orders<\/span><span[^>]*>90 /);
   });
 
   it("shows visits per country as a dash with the reason", () => {

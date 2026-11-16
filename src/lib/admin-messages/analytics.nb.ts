@@ -49,6 +49,7 @@ export const analyticsNb: AnalyticsMessages = {
     comparison: "Sammenligning",
     compareWith: "Sammenlign med",
     update: "Oppdater",
+    otherDates: "Andre datoer",
   },
   delta: {
     up: "Opp",

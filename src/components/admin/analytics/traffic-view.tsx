@@ -1,4 +1,5 @@
 import Link from "next/link";
+import type { ReactNode } from "react";
 
 import { bandHours, WEEKDAY_LABELS } from "@/lib/analytics-heatmap";
 import { formatCount, formatPercent, NO_FIGURE } from "@/lib/analytics-core";
@@ -20,6 +21,7 @@ import { CARD_CLASS } from "@/components/admin/ui";
 import { countWords, fillWords } from "@/lib/admin-fill";
 import { reportsEn, type ReportsMessages } from "@/lib/admin-messages/reports.en";
 import { asWritten, type Say } from "@/lib/analytics-notes";
+import { submitClass } from "@/lib/submit-class";
 
 /** The words of this view (D312 A9), English unless given. */
 export type TrafficWords = ReportsMessages["traffic"];
@@ -55,6 +57,8 @@ export type TrafficViewProps = {
   words?: TrafficWords;
   /** The report's notes in the account's language (`sayIn()`); as written unless given. */
   say?: Say;
+  /** Round 26 (D699): the button that switches visit counting on (an owner's form), for the one card shown while it is off; a link to the settings without it. */
+  turnOn?: ReactNode;
 };
 
 // ---------------------------------------------------------------------------
@@ -232,6 +236,62 @@ export function timeWords(time: TimeReport, money: (minor: number | null | undef
 const COUNTING_NOTE = /^(Visit counting is off|No visit has been counted yet)/;
 /** The funnel's own sentence about a step that was cut down: the funnel draws it beside the step, so it is not said twice. */
 const CUT_STEP_NOTE = / is more than .*, so it is shown as /;
+
+/**
+ * Round 26 (D699): while visit counting is off, one card says what it would show, with a wide button, in place of the funnel, devices and
+ * landing pages each saying again that there is nothing yet. The settings stay one link away for the details.
+ */
+function CountingOffCard({ base, w, turnOn }: { base: string; w: TrafficWords; turnOn?: ReactNode }) {
+  return (
+    <section aria-labelledby="counting-off" className={`flex max-w-3xl flex-col gap-3 p-4 ${CARD_CLASS}`}>
+      <h2 id="counting-off" className="text-body-strong text-ink">
+        {w.offCardTitle}
+      </h2>
+      <p className="text-sm text-muted">
+        {w.offCardText} {w.offCardMore}
+        <Link href={`${base}/analytics/settings#visits`} className={linkClass}>
+          {w.openSettings}
+        </Link>
+      </p>
+      {turnOn ?? (
+        <Link href={`${base}/analytics/settings#visits`} className={`${submitClass()} inline-flex h-11 items-center justify-center max-sm:w-full sm:self-start`}>
+          {w.turnOn}
+        </Link>
+      )}
+    </section>
+  );
+}
+
+/** Round 26 (D699): on a phone, what the page shows from orders as one card of rows that jump to their section. */
+function FromOrders({ base, geo, traffic, time, w }: { base: string; geo: GeoReport; traffic: TrafficReport; time: TimeReport; w: TrafficWords }) {
+  const top = countryRows(geo, traffic, w).find((r) => (r.orders ?? 0) > 0)?.name;
+  const r = w.fromOrdersRows;
+  const rows: { href: string; label: string; value?: string }[] = [
+    { href: `${base}/orders`, label: r.paid, value: formatCount(time.totals.orders) },
+    { href: "#geography", label: r.countries, value: top },
+    { href: "#when", label: r.when },
+    { href: "#search", label: r.search },
+    { href: "#refunds", label: r.refunds },
+  ];
+  return (
+    <nav aria-label={w.fromOrders} className="flex flex-col gap-2 sm:hidden">
+      <h2 className="px-0.5 text-sm text-muted">{w.fromOrders}</h2>
+      <ul className={`px-4 ${CARD_CLASS}`}>
+        {rows.map((row) => (
+          <li key={row.href} className="border-b border-line last:border-b-0">
+            <a href={row.href} className="flex min-h-12 items-center justify-between gap-3 text-body text-ink">
+              <span>{row.label}</span>
+              <span className="text-sm text-muted">
+                {row.value ? `${row.value} ` : ""}
+                <span aria-hidden>›</span>
+              </span>
+            </a>
+          </li>
+        ))}
+      </ul>
+    </nav>
+  );
+}
 
 function CountingState({ base, traffic, w }: { base: string; traffic: TrafficReport; w: TrafficWords }) {
   if (traffic.sessions !== null) return null;
@@ -748,22 +808,26 @@ export function TrafficView(props: TrafficViewProps) {
   const money = safeMoney(currency, locale);
   const notes = traffic.notes.filter((n) => n.length > 0 && !CUT_STEP_NOTE.test(n) && !(traffic.sessions === null && COUNTING_NOTE.test(n)));
   const unknown = traffic.byDevice.find((r) => r.key === "unknown");
+  // Round 26 (D699): counting off is one card, and what needs visits waits for it; counting on (or on with nothing yet) is as before.
+  const off = !traffic.counting;
 
   return (
     <>
-      <nav aria-label={w.questionsLabel} className="max-w-3xl rounded-panel bg-sunken px-4 py-3 text-sm">
+      {off ? <CountingOffCard base={base} w={w} turnOn={props.turnOn} /> : null}
+      <FromOrders base={base} geo={geo} traffic={traffic} time={time} w={w} />
+      <nav aria-label={w.questionsLabel} className="max-w-3xl rounded-panel bg-sunken px-4 py-3 text-sm max-sm:hidden">
         <p className="font-medium">{w.questionsTitle}</p>
         <ol aria-label={w.questionsList} className="mt-1 list-decimal space-y-0.5 pl-5">
           {QUESTION_IDS.map((id) => (
             <li key={id}>
-              <a href={`#${id}`} className={linkClass}>
+              <a href={off && id === "funnel" ? "#counting-off" : `#${id}`} className={linkClass}>
                 {w.questions[id]}
               </a>
             </li>
           ))}
         </ol>
       </nav>
-      <CountingState base={base} traffic={traffic} w={w} />
+      {off ? null : <CountingState base={base} traffic={traffic} w={w} />}
       {notes.length > 0 ? (
         <div className="space-y-2">
           {notes.map((n) => (
@@ -771,13 +835,13 @@ export function TrafficView(props: TrafficViewProps) {
           ))}
         </div>
       ) : null}
-      <FunnelSection base={base} traffic={traffic} orders={time.totals.orders} w={w} />
-      <DevicesSection base={base} traffic={traffic} money={money} w={w} />
+      {off ? null : <FunnelSection base={base} traffic={traffic} orders={time.totals.orders} w={w} />}
+      {off ? null : <DevicesSection base={base} traffic={traffic} money={money} w={w} />}
       {unknown && unknown.orders > 0 ? (
         <p className="-mt-4 max-w-prose text-xs text-muted">{countWords(unknown.orders, w.unknownOrders, { n: formatCount(unknown.orders), amount: money(unknown.revenueMinor) })}</p>
       ) : null}
       <GeographySection base={base} geo={geo} traffic={traffic} money={money} w={w} />
-      <LandingSection base={base} traffic={traffic} money={money} w={w} />
+      {off ? null : <LandingSection base={base} traffic={traffic} money={money} w={w} />}
       <SearchSection base={base} search={search} timeZone={timeZone} money={money} w={w} />
       <WhenSection time={time} timeZone={timeZone} money={money} w={w} />
     </>
