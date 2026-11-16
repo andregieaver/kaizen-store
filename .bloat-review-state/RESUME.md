@@ -198,3 +198,4 @@ challenged by a skeptic, planned by a planner. Its last lines hold the arguments
 - Step 0.27 DONE: commit 2 deployed 98374fe1 (00:05 UTC 16 Nov); job idle after 23:40; write-up 58974b22 (D649). Left: unreadable article re-fetched each run (rare).
 - Next: 0.28 (depends 0.27: done; migrations 3 files add-only), 0.29, 0.30, 0.33...
 - Step 0.28 executor (Sonnet a9a3ffa43cebe4226) started: 4 commits, 3 add-only migrations (media.alt_tries, product_translations.text_changed_at + trigger).
+- Step 0.28 pushed as 6de0a11d (55500e88, d9d7712e, 80c2230e, 6de0a11d; migrations 20261116001432_media_alt_tries, 20261116004359_product_text_changed, 20261116004405_product_text_changed_rules). Watching CI; re-run once if only flaky signed-in tests fail.
