@@ -51,6 +51,8 @@ describe("who reads a variant's content", () => {
       "src/server/orders.ts",
       "src/server/product-audit.ts",
       "src/server/products.ts",
+      // A lost parcel's replacement (D679) copies the sold line's content onto its own line, as an exchange does.
+      "src/server/replacements.ts",
       "src/server/standing-orders.ts",
       "src/server/subscriptions.ts",
       "src/server/unit-price-gaps.ts",
@@ -72,6 +74,7 @@ describe("who reads a variant's content", () => {
       "src/server/orders.ts",
       "src/server/product-audit.ts",
       "src/server/products.ts",
+      "src/server/replacements.ts",
       "src/server/standing-orders.ts",
       "src/server/subscriptions.ts",
     ]);

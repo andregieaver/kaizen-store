@@ -457,7 +457,8 @@ export const RANGE_LABELS: Record<RangeFilter, string> = {
   last_month: "last month",
 };
 
-export const SOURCE_LABELS: Record<SourceFilter, string> = { checkout: "Checkout", draft: "Staff-made", exchange: "Exchange", copied: "Copied history" };
+/** Each source a list shows; `replacement` (D679) is shown before it is a filter. */
+export const SOURCE_LABELS: Record<SourceFilter | "replacement", string> = { checkout: "Checkout", draft: "Staff-made", exchange: "Exchange", replacement: "Replacement", copied: "Copied history" };
 
 // ---------------------------------------------------------------------------------------------------------------------
 // Dates: the store's own days

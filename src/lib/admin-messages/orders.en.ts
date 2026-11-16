@@ -158,6 +158,7 @@ export const ordersEn = {
       staffMade: "Staff-made",
       staffMadeNumber: "Staff-made {number}",
       exchange: "Exchange",
+      replacement: "Replacement",
       waiting: "Waiting for stock",
       preorderFrom: "Pre-order, ships from {date}",
       editPending: "Change awaiting payment",

@@ -379,6 +379,7 @@ function OrderRow({
         {row.gift && <span className={badge}>{g.gift}</span>}
         {row.source === "draft" && <span className={badge}>{row.draftNumber ? fillWords(g.staffMadeNumber, { number: row.draftNumber }) : g.staffMade}</span>}
         {row.source === "exchange" && <span className={badge}>{g.exchange}</span>}
+        {row.source === "replacement" && <span className={badge}>{g.replacement}</span>}
         {row.preorderFrom ? (
           <span className={badge}>{fillWords(g.preorderFrom, { date: releaseDate(row.preorderFrom, locale) })}</span>
         ) : (
@@ -478,7 +479,7 @@ function OrderRow({
           )}
         </td>
       )}
-      {col("source") && <td className={`${td} hidden sm:table-cell`}>{row.copied ? sources.copied : row.source === "draft" ? sources.draft : row.source === "exchange" ? sources.exchange : sources.checkout}</td>}
+      {col("source") && <td className={`${td} hidden sm:table-cell`}>{row.copied ? sources.copied : row.source === "draft" ? sources.draft : row.source === "exchange" ? sources.exchange : row.source === "replacement" ? sources.replacement : sources.checkout}</td>}
       {col("total") && <td className={`${td} text-right tabular-nums`}>{row.totalText}</td>}
     </tr>
   );

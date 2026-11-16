@@ -514,7 +514,7 @@ Step 4 of `docs/ab-testing-usability.md`, in parts. **Part 4a (D677, no migratio
 - **A CSV** of the list (`POST /admin/{store}/experiments/export`, `src/lib/experiment-csv.ts`): a row per version with its stage and
   visitors, and who did the goal, the rate and the change with its likely range only once the test has an answer.
 
-**Part 4c (D679, no migration, no tool change):** the AI manager's eyes on the versions. A version of a test of a page is a page of type
+**Part 4c (D680, no migration, no tool change):** the AI manager's eyes on the versions. A version of a test of a page is a page of type
 `variant` with no address; `look_at_page` now takes one by its id (`findLookPage()`, `PAGE_VERSION`: a version whose test's target is a page,
 of this store) and the look draws its draft as a page (`lookDraft()`), with the checker's and the claims filter's findings. `explain_results`
 answers `to_see_each_version`: each version's page id (the original's is the page itself). A version of a header, footer or product layout

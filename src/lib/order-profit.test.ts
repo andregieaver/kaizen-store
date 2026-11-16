@@ -29,6 +29,16 @@ const order = (extra: Partial<OrderProfitInput> = {}): OrderProfitInput => ({
 const line = (p: ReturnType<typeof orderProfit>, key: string) => p.lines.find((l) => l.key === key);
 
 describe("profit per order", () => {
+  it("counts a lost parcel's goods sent again at cost, with its parcel, and waits on a cost not known (B3, D679)", () => {
+    const base = orderProfit(order(), settings, main);
+    const p = orderProfit(order({ replacement: { lines: [{ quantity: 2, unitCostMinor: 6000 }], parcels: [9000] } }), settings, main);
+    expect(line(p, "replacement")).toEqual({ key: "replacement", amountMinor: -21000, estimated: false });
+    expect(p.profitMinor).toBe((base.profitMinor ?? 0) - 21000);
+    const unknown = orderProfit(order({ replacement: { lines: [{ quantity: 1, unitCostMinor: null }], parcels: [] } }), settings, main);
+    expect(unknown.profitMinor).toBeNull();
+    expect(line(unknown, "cogs")?.amountMinor).not.toBeNull();
+  });
+
   it("counts handling and packaging for an order with something to send, and its booked return labels (D646)", () => {
     const base = orderProfit(order(), settings, main);
     const p = orderProfit(order({ returnLabels: [8000] }), { ...settings, handlingCostMinor: 2500 }, main);

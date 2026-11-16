@@ -25,7 +25,7 @@ const HOLD_ROW = z.object({ variant_id: col.uuid, location_id: col.uuid, held: c
  * The one place an order is written and numbered (D141, wave 3 run 2, D173, `docs/wave-3-orders.md` 4.5). `insertOrder()` takes the next number from the
  * store's gap-free series (`commerce.next_document_number(store, 'order')`) in the SAME transaction that inserts the order, so a number is used only by an order
  * that exists; a transaction that rolls back gives the number back. Four callers use it: `placeOrder()` (a cart), the subscription renewal, `placeDraftOrder()`
- * (a draft order sent or paid outside Kaizen) and `processExchange()` (an exchange's order, D239); `insertHistoryOrder()` writes an order history from
+ * (a draft order sent or paid outside Kaizen), `processExchange()` (an exchange's order, D239) and `sendReplacement()` (a lost parcel's replacement, D679); `insertHistoryOrder()` writes an order history from
  * another shop as copied orders (`C-…`, D384), outside the series. A unit test (`src/lib/order-numbers.test.ts`) fails for any other file that inserts into `commerce.orders` or numbers an
  * order. Orders are never deleted or renumbered (a cancelled one keeps its number): the sequence has no gap.
  *
@@ -97,6 +97,11 @@ export type OrderInsert = {
    * only by `processExchange()` under the exchange's context (`kaizen.exchange`; the database refuses it otherwise). Never together with `draft`.
    */
   exchange?: { id: string; madeBy: string } | null;
+  /**
+   * A replacement for a lost or returned parcel (B3, D679): source `replacement`, the order it replaces and the staff member (or the owner the autopilot acts
+   * for) who sent it. Written only by `sendReplacement()`. Never together with `draft` or `exchange`.
+   */
+  replacement?: { of: string; madeBy: string } | null;
   staffDiscountMinor?: number;
   staffDiscountLabel?: string | null;
   /** A company's purchase (D321 C.2): the location, the PO number and whether it waits for approval; kept as placed by the database. */
@@ -146,7 +151,7 @@ export async function insertOrder(tx: Db, input: OrderInsert): Promise<{ orderId
       is_gift, gift_to, gift_from, gift_message, source, draft_id, made_by, staff_discount_minor, staff_discount_label,
       delivery_method, pickup_location_id, delivery_note, exchange_id, entered_codes, campaign_shipping,
       company_location_id, po_number, approval, duties_minor, customs, checkout_answers, rule_hidden_methods, checkout_rules_applied,
-      service_request_at
+      service_request_at, replaces_order_id
     ) values (
       ${input.storeId}::uuid, ${number}, ${input.marketCode}, ${input.currency}, ${input.locale},
       ${input.cartId ?? null}::uuid, ${input.email ?? ""}, 'pending_payment',
@@ -162,7 +167,8 @@ export async function insertOrder(tx: Db, input: OrderInsert): Promise<{ orderId
       ${input.vatTreatment === null || input.vatTreatment === undefined ? null : JSON.stringify(input.vatTreatment)}::jsonb,
       ${input.vatCheckId ?? null}::uuid, ${input.subscriptionId ?? null}::uuid,
       ${gift !== null}, ${gift?.to ?? null}, ${gift?.from ?? null}, ${gift?.message ?? null},
-      ${input.draft ? "draft" : input.exchange ? "exchange" : "checkout"}, ${input.draft?.id ?? null}::uuid, ${input.draft?.madeBy ?? input.exchange?.madeBy ?? null}::uuid,
+      ${input.draft ? "draft" : input.exchange ? "exchange" : input.replacement ? "replacement" : "checkout"}, ${input.draft?.id ?? null}::uuid,
+      ${input.draft?.madeBy ?? input.exchange?.madeBy ?? input.replacement?.madeBy ?? null}::uuid,
       ${input.staffDiscountMinor ?? 0}, ${input.staffDiscountLabel ?? null},
       ${input.deliveryMethod ?? "ship"}, ${input.deliveryMethod === "pickup" ? (input.pickupLocationId ?? null) : null}::uuid,
       ${input.deliveryMethod === "local" ? (input.deliveryNote ?? null) : null}, ${input.exchange?.id ?? null}::uuid,
@@ -172,7 +178,7 @@ export async function insertOrder(tx: Db, input: OrderInsert): Promise<{ orderId
       ${input.dutiesMinor ?? 0}, ${input.customs === null || input.customs === undefined ? null : JSON.stringify(input.customs)}::jsonb,
       ${input.checkoutAnswers ? JSON.stringify(input.checkoutAnswers) : null}::jsonb, (select coalesce(array_agg(m), '{}') from jsonb_array_elements_text(${JSON.stringify(input.ruleHiddenMethods ?? [])}::jsonb) m),
       (select coalesce(array_agg(r::uuid), '{}') from jsonb_array_elements_text(${JSON.stringify(input.checkoutRulesApplied ?? [])}::jsonb) r),
-      ${input.serviceRequestAt === "now" ? sql`now()` : sql`null`}
+      ${input.serviceRequestAt === "now" ? sql`now()` : sql`null`}, ${input.replacement?.of ?? null}::uuid
     )
     returning id
   `,
