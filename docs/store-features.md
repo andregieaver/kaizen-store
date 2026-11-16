@@ -14,13 +14,17 @@ This document is the contract; it is built in six steps (section 7).
 | `boxes` | Subscription boxes | Selling | `shop` | module `deliveries` (D102) |
 | `appointments` | Appointments | Selling | `shop` | module `bookings` (D65) |
 | `bookings` | Stays and rentals (and hosts) | Selling | `shop` | module `bookings` (D67, D71) |
+| `gift_cards` | Gift cards | Selling | `shop` | new (D300) |
 | `countries` | Several countries | Countries and languages | — | always on (markets) |
 | `languages` | Several languages | Countries and languages | — | always on (D109) |
 | `currencies` | Several currencies | Countries and languages | `shop` | always on (D109) |
 | `business` | Sell to businesses | Customers | `shop` | `stores.audience` (D63, D108) |
 | `bonus` | Bonus program | Customers | `shop` | `bonus_settings.enabled` (D130) |
 | `referrals` | Referral program | Customers | `shop`, `bonus` | `affiliate_settings.enabled` (D131) |
+| `reviews` | Product reviews | Customers | `shop` | new (D301) |
 | `sales` | Deals | Customers | — | new (D464): offered to a pilot store (`stores.sales_pilot`) or to all (`platform_settings.sales_open`) |
+
+The list in code is the truth: `FEATURE_IDS` in `src/lib/store-features.ts` (14 ids); this table describes them.
 
 The registry is `src/lib/store-features.ts` (`STORE_FEATURES`: id, group, label, one line of words, what switching off
 takes away, needs, where it is set up, the legacy module). The database repeats the needs in

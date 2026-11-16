@@ -206,7 +206,7 @@ CLAUDE.md keeps one line per rule pointing here; each rule is under that line as
   `scripts/replicate-calibrate.ts`) builds a grid of custom items only when every word and link of every card fits an item
   (otherwise columns, with the reason via `drop()`), keeps every item word a measured word (property-tested), reads script sliders
   from geometry with class names as hints only, drops clones, bounds the autoplay watch in time, tries a grid scoring under 60 %
-  as columns in the same pass (`weakGrids()`, `revertGrids()`), and says plainly in the report what it did and could not do. A
+  as columns in the same pass (`weakGrids()`, `columnsBeatGrid()`), and says plainly in the report what it did and could not do. A
   grid's tile is measured as a column of parts (`pictureFrameOf()`, `flowAt()`: the picture's panel, each part's `order` and the
   space above it, a badge by its corner), a grid is judged against columns only from the first pass on, and calibration measures
   stacked columns each from its own top. The calibration script launches Chromium and fetches pictures outside the app's routes
@@ -613,10 +613,10 @@ CLAUDE.md keeps one line per rule pointing here; each rule is under that line as
   copied), with `previewStore: null` (`templatePreviewPath(null, id)`, drawn in Kaizen's theme) and the builder's `own` mode (no
   sources, switches or sharing).
 
-## Page layouts and preview (D127, `src/lib/page-layout.ts`, `src/lib/page-layout-apply.ts`, `previewTemplate()`, `TemplatesPreview`,…
+## Page layouts and preview (D127, `src/lib/page-layout.ts`, `src/lib/page-layout-apply.ts`, `previewTemplate()`, `TemplatePreviewDialog`,…
 
 - Page layouts and preview (D127, `src/lib/page-layout.ts`, `src/lib/page-layout-apply.ts`, `previewTemplate()`,
-  `TemplatesPreview`, `SaveTemplateDialog`): a whole page's rows and CSS are a saved part of kind `page` (`PageLayout`, only for
+  `TemplatePreviewDialog`, `SaveTemplateDialog`): a whole page's rows and CSS are a saved part of kind `page` (`PageLayout`, only for
   pages of its own `pageType`, never global), shared, switched on and moderated like the other templates; a new kind of saved-part
   content goes through `sanitizeTemplate()`/`mapTemplateMedia()` for every row it holds. Using one is `applyPageLayout()` (replace
   or add, never past the row and block caps). Every template can be previewed before it is switched on or used:
@@ -1296,7 +1296,7 @@ CLAUDE.md keeps one line per rule pointing here; each rule is under that line as
 - Modals (D121, `src/lib/page-modal.ts`, `src/components/page-modal.tsx`, `ModalFields`): a row with `modal` set (`RowModal`: key,
   triggers, frequency, look) is not in the page's flow; `PageRowView` draws it through `ModalRow` in a native `<dialog>`
   (`PageModal`), so pages, articles, headers and footers (site-wide), product layouts and Kaizen's pages all get it. Its content
-  is an ordinary row; its Design tab is the panel's (`rowBox(row, mode, true)`, `modalPanelStyle()`). Anything counting rows for
+  is an ordinary row; its Design tab is the panel's (`rowBox(row, mode, true)`, `modalPanelClass()`). Anything counting rows for
   the page's flow uses `flowRows()` (`pageRoomClass`, `headerOverlays`, main heading); a new such count does too. Its dialog id
   `modal-{key}` is a page id (`htmlIds()`, `repeatedHtmlId()`), and `copyRow()` gives a copy a fresh key. Triggers are delegated
   listeners (one click listener on `document`, `hashchange`, timers, `mouseout`), never inline handlers; the timer and exit intent

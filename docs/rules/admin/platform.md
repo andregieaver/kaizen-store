@@ -354,9 +354,9 @@ CLAUDE.md keeps one line per rule pointing here; each rule is under that line as
 
 - **Store features (D178, `docs/store-features.md`, `src/lib/store-features.ts`, `src/server/store-features.ts`,
   `/admin/{store}/settings/features`)**: a master switch for the online shop (`shop`; off, the store is a website) and a switch
-  per feature (`subscriptions`, `boxes`, `appointments`, `bookings`, `countries`, `languages`, `currencies`, `business`, `bonus`,
-  `referrals`). `stores.features` holds what the owner keeps on; what is *on* is only `featureOn(store, id)` (kept, with
-  everything in its `needs`; SQL `commerce.feature_on()`), so a feature's switch is remembered while the shop is off; never test
+  per feature (the ids are `FEATURE_IDS` in `src/lib/store-features.ts`). `stores.features` holds what the owner keeps on; what is
+  *on* is only `featureOn(store, id)` (kept, with everything in its `needs`; SQL `commerce.feature_on()`), so a feature's switch is
+  remembered while the shop is off; never test
   `store.features.includes()` for "on". `store.bookingsOn`/`deliveriesOn` are derived from it, and `stores.modules`'
   `bookings`/`deliveries` follow it by trigger (`stores_features_sync()`, both ways) for older code. Only owners switch, through
   `setFeature()` (needs enforced, `featureBlockers()` refuse where customers would be hit, `featureWarnings()` need `confirmed`,

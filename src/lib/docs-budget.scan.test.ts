@@ -1,8 +1,10 @@
-import { readFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import os from "node:os";
 import path from "node:path";
 
 import { describe, expect, it } from "vitest";
 
+import { staleRuleNames } from "../../scripts/lib/rule-names.mjs";
 import baseline from "./docs-budget.baseline.json";
 
 /**
@@ -75,5 +77,25 @@ describe("CLAUDE.md's core is held at its size (bloat review step 0.43)", () => 
     const planted = text.replace("\n\n## Admin\n", "\n- A new rule (D999, `src/lib/new-rule.ts`)\n\n## Admin\n");
     expect(planted).not.toBe(text);
     expect(outsideIndex(planted)).toBe(outsideIndex(text));
+  });
+});
+
+describe("the rules cite code that exists (bloat review step 0.41)", () => {
+  it("the rules cite only functions and components that exist", () => {
+    expect(staleRuleNames(process.cwd()), "A rule cites a name the code no longer has: read the code and correct the rule.").toEqual([]);
+  });
+
+  it("finds a name the code does not have, and skips folders that are missing", () => {
+    const tmp = mkdtempSync(path.join(os.tmpdir(), "names-"));
+    try {
+      writeFileSync(path.join(tmp, "CLAUDE.md"), "x");
+      mkdirSync(path.join(tmp, "docs", "rules", "admin"), { recursive: true });
+      writeFileSync(path.join(tmp, "docs", "rules", "storefront.md"), "Drawn by `NoSuchPartView`, see `noSuchHelper()` and `realHelper()`.");
+      mkdirSync(path.join(tmp, "src"));
+      writeFileSync(path.join(tmp, "src", "x.ts"), "export function realHelper() {}");
+      expect(staleRuleNames(tmp)).toEqual(["docs/rules/storefront.md: NoSuchPartView", "docs/rules/storefront.md: noSuchHelper()"]);
+    } finally {
+      rmSync(tmp, { recursive: true, force: true });
+    }
   });
 });
