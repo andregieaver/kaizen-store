@@ -7,6 +7,8 @@ import { isAuditArea } from "@/lib/audit";
 import { can } from "@/lib/permissions";
 import { activityActions, activityPeople, activityWeek, listActivity, readableAreas } from "@/server/activity";
 import Link from "next/link";
+
+import { SelectNav } from "@/components/admin/select-nav";
 import { countWords, fillWords } from "@/lib/admin-fill";
 import { CARD_CLASS } from "@/components/admin/ui";
 import { holderOf } from "@/server/auth";
@@ -65,7 +67,24 @@ export default async function ActivityPage({ params, searchParams }: PageProps<"
           </span>,
         ]}
       />
-      <nav aria-label={w.person} className={CHIP_STRIP}>
+      {/* Round 29 (D702): on a phone who and where are one choice each; the chips from the small breakpoint up. */}
+      <div className="grid grid-cols-2 gap-2 sm:hidden">
+        <SelectNav
+          label={w.person}
+          options={[
+            { label: w.everyone, href: chip({ person: "" }), current: !values.person },
+            ...chosenFirst(people.filter((p) => p.current), (p) => values.person === p.accountId).map((p) => ({ label: p.label, href: chip({ person: p.accountId }), current: values.person === p.accountId })),
+          ]}
+        />
+        <SelectNav
+          label={w.area}
+          options={[
+            { label: w.allAreas, href: chip({ area: "" }), current: !values.area },
+            ...areas.map((a) => ({ label: words.areas[a], href: chip({ area: a }), current: values.area === a })),
+          ]}
+        />
+      </div>
+      <nav aria-label={w.person} className={`${CHIP_STRIP} max-sm:hidden`}>
         <Link href={chip({ person: "" })} aria-current={!values.person ? "page" : undefined} className={chipClass(!values.person)}>
           {w.everyone}
         </Link>
@@ -76,7 +95,7 @@ export default async function ActivityPage({ params, searchParams }: PageProps<"
             </Link>
           ))}
       </nav>
-      <nav aria-label={w.area} className={CHIP_STRIP}>
+      <nav aria-label={w.area} className={`${CHIP_STRIP} max-sm:hidden`}>
         <Link href={chip({ area: "" })} aria-current={!values.area ? "page" : undefined} className={chipClass(!values.area)}>
           {w.allAreas}
         </Link>

@@ -3,6 +3,7 @@
 import { useId, useState, useTransition } from "react";
 
 import { ActionForm, SubmitButton, type FormState } from "@/components/admin/action-form";
+import { PhoneRow, PhoneRows } from "@/components/admin/phone-row";
 import { AI_PROVIDERS, DEFAULT_MIN_SIMILARITY, IMAGE_QUALITIES, providerInfo, type AiProviderId, type ImageQuality } from "@/lib/ai-provider";
 import type { VisionCheck } from "@/lib/ai-vision";
 import { fillWords } from "@/lib/admin-fill";
@@ -75,6 +76,13 @@ export function AiProviderForm({
   const liveInfo = providerInfo(liveProvider || provider);
   const keptLiveKey = settings?.liveProvider && settings.liveProvider === liveProvider ? settings.liveApiKeyHint : null;
   const liveSaved = settings && (settings.liveProvider ?? "") === liveProvider;
+  // Round 29 (D702): on a phone each part after the provider and key is a row saying what is set; hidden fields still send.
+  const p = useAdminText("settings").ai.phone;
+  const row = { change: p.change, done: p.done } as const;
+  const off = p.off;
+  const models = [settings?.embeddingModel, settings?.textModel].filter(Boolean).join(" · ");
+  const voice = [settings?.transcriptionModel, settings?.speechModel].filter(Boolean).join(" · ");
+  const where = [settings?.textEuOnly ?? true ? p.textEu : null, settings?.zeroDataRetention ?? true ? p.nothingKept : null].filter(Boolean).join(" · ");
 
   return (
     <ActionForm action={action} className="flex flex-col gap-5">
@@ -139,6 +147,9 @@ export function AiProviderForm({
         </p>
       </div>
 
+      <PhoneRows className="max-sm:border max-sm:border-line">
+      <PhoneRow title={p.models} sub={models || p.defaults} {...row}>
+      <div className="flex flex-col gap-5">
       <div className="grid gap-5 sm:grid-cols-2">
         <ModelField
           key={`embedding-${provider}`}
@@ -168,7 +179,10 @@ export function AiProviderForm({
         defaultValue={saved ? (saved.visionModel ?? "") : ""}
         check={checkVision ?? null}
       />
+      </div>
+      </PhoneRow>
 
+      <PhoneRow title={p.voice} sub={voice || p.voiceOff} {...row}>
       <fieldset className="flex flex-col gap-3">
         <legend className="mb-1 text-sm font-medium">{w.voice}</legend>
         <p className="text-sm text-muted">{w.voiceText}</p>
@@ -203,6 +217,9 @@ export function AiProviderForm({
         </div>
       </fieldset>
 
+      </PhoneRow>
+
+      <PhoneRow title={w.pictures} sub={settings?.imageModel || off} {...row}>
       <fieldset className="flex flex-col gap-3">
         <legend className="mb-1 text-sm font-medium">{w.pictures}</legend>
         <p className="text-sm text-muted">{w.picturesText}</p>
@@ -292,6 +309,9 @@ export function AiProviderForm({
         </div>
       </fieldset>
 
+      </PhoneRow>
+
+      <PhoneRow title={w.live} sub={settings?.liveModel || off} {...row}>
       <fieldset className="flex flex-col gap-3">
         <legend className="mb-1 text-sm font-medium">{w.live}</legend>
         <p className="text-sm text-muted">{w.liveText}</p>
@@ -369,6 +389,10 @@ export function AiProviderForm({
         )}
       </fieldset>
 
+      </PhoneRow>
+
+      <PhoneRow title={p.where} sub={where || p.anywhere} {...row}>
+      <div className="flex flex-col gap-5">
       {/* Hidden rather than left out for other providers, so switching back keeps them. */}
       <fieldset hidden={!info.gateway} className="flex flex-col gap-2">
         <legend className="mb-1 text-sm font-medium">{w.where}</legend>
@@ -419,6 +443,9 @@ export function AiProviderForm({
           {w.similarityHint}
         </p>
       </div>
+      </div>
+      </PhoneRow>
+      </PhoneRows>
 
       <label className="flex items-center gap-2 text-sm font-medium">
         <input type="checkbox" name="enabled" defaultChecked={settings?.enabled ?? true} className="size-4" />

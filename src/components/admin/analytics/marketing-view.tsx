@@ -22,6 +22,7 @@ import { DataTable, type Column, type DeltaView } from "./data-table";
 import { KpiCard, type KpiCardProps } from "./kpi-card";
 import { moneyWriter } from "./overview-view";
 import { AnalyticsSection, ChartCard, Note } from "./section";
+import { PhoneRow } from "@/components/admin/phone-row";
 
 /**
  * The Marketing page's body above the spend form (D152, docs/analytics.md): what it costs to win a customer and whether the channels pay
@@ -493,9 +494,13 @@ export function MarketingView(props: MarketingViewProps) {
   const cards = headlineCards(props);
   const notes = marketingNotes(report, money, w, props.say);
   const hasSpend = report.spend.totalMinor > 0;
+  // Round 29 (D702): on a phone each section is a row with its answer (the page puts them in one card).
+  const p = w.phone;
+  const row = { change: p.open, done: p.close, flat: true } as const;
 
   return (
     <>
+      <PhoneRow opens="headline" title={w.headlineTitle} sub={hasSpend ? p.costsSub : p.waitsForSpend} {...row}>
       <AnalyticsSection
         id="headline"
         title={w.headlineTitle}
@@ -525,7 +530,10 @@ export function MarketingView(props: MarketingViewProps) {
           </div>
         ) : null}
       </AnalyticsSection>
-      <ChannelsSection base={base} currency={currency} locale={locale} report={report} words={w} channelWords={props.channelWords} />
+      </PhoneRow>
+      <PhoneRow opens="channels" title={w.channelsTitle} sub={report.counting ? p.channelsSub : p.waitsForCounting} {...row}>
+        <ChannelsSection base={base} currency={currency} locale={locale} report={report} words={w} channelWords={props.channelWords} />
+      </PhoneRow>
     </>
   );
 }

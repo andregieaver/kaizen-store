@@ -197,8 +197,11 @@ export function ActivityList({
             {day.entries.map((entry) => {
               const lines = entry.changes ? Object.entries(entry.changes).map(([key, change]) => changeLine(key, change, values)) : [];
               return (
-                <li key={entry.id} className="flex gap-3 py-3 text-sm">
-                  <Avatar avatar={avatarFor({ email: entry.email ?? "", name: entry.name, avatarPath: entry.avatarPath })} size={32} />
+                <li key={entry.id} className="flex gap-3 py-3 text-sm max-sm:py-2">
+                  {/* Round 29 (D702): on a phone one line of what and one of who, where and when; the face waits for wider screens. */}
+                  <span className="shrink-0 max-sm:hidden">
+                    <Avatar avatar={avatarFor({ email: entry.email ?? "", name: entry.name, avatarPath: entry.avatarPath })} size={32} />
+                  </span>
                   <div className="min-w-0 flex-1">
                     <p className="font-medium break-words">{entrySentence(entry, words)}</p>
                     <p className="text-muted">
@@ -206,8 +209,8 @@ export function ActivityList({
                       {entry.actedBy !== "person" && ` ${w.actedBy[entry.actedBy]}`} · {areaName(entry.area, words)} · <time dateTime={entry.at}>{time(entry.at, zone, locale)}</time>
                     </p>
                     {lines.length > 0 && (
-                      <details className="mt-2">
-                        <summary className="cursor-pointer text-muted">{w.details}</summary>
+                      <details className="mt-2 max-sm:mt-0.5">
+                        <summary className="cursor-pointer text-muted max-sm:text-xs">{w.details}</summary>
                         <dl className="mt-2 grid gap-x-4 gap-y-1 sm:grid-cols-[max-content_1fr]">
                           {lines.map((line) => (
                             <div key={line.label} className="contents">

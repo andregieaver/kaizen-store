@@ -572,6 +572,27 @@ export const reportsEn = {
   } as Record<string, string>,
   /** The Marketing page above the spend form (`MarketingView`). */
   marketing: {
+    /** Round 29 (D702): the page on a phone. */
+    phone: {
+      open: "Open",
+      close: "Close",
+      costsSub: "CAC, ROAS and more",
+      waitsForSpend: "CAC, ROAS and more · waits for ad spend",
+      channelsSub: "What each channel earned",
+      waitsForCounting: "Waits for visit counting",
+      needsTitle: "What a customer costs needs two things",
+      spendNone: "Your ad spend · none entered",
+      spendIn: "Your ad spend · entered",
+      addSpend: "Add spend",
+      countingOff: "Visit counting · off",
+      countingOn: "Visit counting · on",
+      turnOn: "Turn on",
+      campaignsSub: "Make a campaign link",
+      spendTitle: "Ad spend",
+      spendEntries: { one: "{n} entry", many: "{n} entries" },
+      spendNoneSub: "None entered · add or import",
+      discountsSub: "{n} of {all} orders had a discount",
+    },
     adUnits: { NOK: "krone", DKK: "krone", SEK: "krona", EUR: "euro", GBP: "pound", USD: "dollar", CHF: "franc", PLN: "zloty", ISK: "krona", CZK: "koruna" } as Record<string, string>,
     merWords: "every sale divided by every ad {unit}",
     countingOff: "Visit counting is off, so orders cannot be matched to the channel they came from.",
