@@ -686,6 +686,7 @@ this file wins.
 | D684 | **A/B tests made plain, step 2b: the original and a version side by side (`docs/ab-testing.md` phase 16; 16 November 2026, `src/app/admin/frame/[store]/[pageId]/page.tsx`, `src/components/admin/experiment-frames.tsx`).** A signed-in route outside the admin's frame draws one page of one of the store's tests alone (`testFrame()`: the original as live, a version as visitors are shown it, its draft while the test is a draft; `marketing:read`; any other page a 404), in the page's light look; the test's page shows the original and a version in two frames scaled to half the width each, at a computer's or a phone's width (a phone's first on a narrow screen), under the draft panel or the results, and none once decided. The site's `frame-ancestors 'self'` already lets the admin frame its own pages. No migration, no tool change. | 2026-11-16 | The owner: "start on step 2b" (16 November 2026). |
 | D685 | **A customer's request by email carried out once they confirm it from the order's address (100-day B3)** (claimed 2026-11-16, text follows) | 2026-11-16 | |
 | D686 | **A/B tests: a version's changes saved but not published are asked to be published** (claimed 2026-11-16, text follows) | 2026-11-16 | |
+| D687 | **Admin redesign round 22: a new coupon, notifications and gift cards on a phone** (claimed 2026-11-16, text follows) | 2026-11-16 | |
 
 ### Selling from Norway to Sweden and Denmark
 
