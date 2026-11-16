@@ -323,6 +323,17 @@ describe("processing makes a numbered order and holds stock only then (6.1 crite
     expect(credit).toBeLessThanOrEqual(34_900);
     const { exchange } = await proposedAndConfirmed(store, returnId, await builder(store, [["DEMO-THERMOS", 1, credit]]));
     expect(exchange.outcome.kind).toBe("even");
+    // The autopilot (B3, D675): the confirmed exchange is an event for a store that reacts, and gives nothing back, so the gate lets it run.
+    const { detectEvents } = await import("./autopilot-events");
+    const { exchangeRefundOf } = await import("./exchange-tools");
+    await db().execute(sql`insert into commerce.autopilot_settings (store_id, planning, updated_at) values (${store.storeId}::uuid, '{"reacts": true}'::jsonb, now()) on conflict (store_id) do update set planning = excluded.planning`);
+    await detectEvents({ stockoutCheck: false });
+    const [event] = await db().execute<Row>(sql`select facts from commerce.autopilot_events where store_id = ${store.storeId}::uuid and kind = 'exchange_confirmed'`);
+    expect(event?.facts).toMatchObject({ kind: "exchange_confirmed", exchange: exchange.id });
+    const shop = (await getStore(store.slug))!;
+    const retNumber = String((event.facts as { return: string }).return);
+    expect(await exchangeRefundOf(shop, retNumber)).toBe(0);
+    await db().execute(sql`delete from commerce.autopilot_settings where store_id = ${store.storeId}::uuid`);
     fake.refunds.length = 0;
     const processed = await x.processExchange(store.storeId, staffActor(store.accountId), exchange.id);
     expect(processed).toMatchObject({ ok: true, state: "settled" });

@@ -353,6 +353,7 @@ export const assistantNb: AssistantMessages = {
         payments_failing: "Betalinger feilet",
         stockout_risk: "Et produkt kan bli utsolgt",
         staff_request: "En kunde ba om å endre en bestilling",
+        exchange_confirmed: "En kunde bekreftet et bytte",
       },
       statuses: { pending: "Venter", running: "Jobber", done: "Ferdig", skipped: "Hoppet over", failed: "Mislyktes" },
     },

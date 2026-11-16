@@ -3,7 +3,7 @@ import "server-only";
 import { sql } from "drizzle-orm";
 
 import { db } from "@/db/client";
-import { exchangeProblemText, type ExchangeProblem } from "@/lib/exchange";
+import { exchangeOutcome, exchangeProblemText, type ExchangeProblem } from "@/lib/exchange";
 import { formatMoney } from "@/lib/money";
 
 import type { Account } from "./auth";
@@ -124,6 +124,22 @@ export async function proposeExchangeTool(ctx: Ctx, input: ProposeInput) {
       : `The exchange for return ${ret.number} is kept, but the email could not be sent: resend it from the return's page.`,
     link: `/admin/${ctx.store.slug}/returns/${ret.id}`,
   };
+}
+
+/**
+ * What a confirmed exchange would give back to the customer (B3, D675), for the autopilot's gate: the refund of `exchangeOutcome()` on the
+ * credit and total as confirmed (processing checks the credit again); 0 when the replacements cost as much or more. Null when the return has
+ * no confirmed exchange or cannot be found.
+ */
+export async function exchangeRefundOf(store: Store, ref: string): Promise<number | null> {
+  try {
+    const ret = await returnOf(store, ref);
+    const exchange = await openExchangeOf(store.id, ret.id);
+    if (!exchange || exchange.status !== "confirmed") return null;
+    return exchangeOutcome(exchange.creditMinor, exchange.totalMinor).refundMinor;
+  } catch {
+    return null;
+  }
 }
 
 /** The return's exchange the customer confirmed, or a refusal saying where it stands. */

@@ -362,6 +362,7 @@ export const assistantEn = {
         payments_failing: "Payments were failing",
         stockout_risk: "A product may run out",
         staff_request: "A customer asked to change an order",
+        exchange_confirmed: "A customer confirmed an exchange",
       },
       statuses: { pending: "Waiting", running: "Working", done: "Done", skipped: "Skipped", failed: "Failed" },
     },
