@@ -38,6 +38,21 @@ describe("which files a picture is loaded from", () => {
     expect(pictureSources({ url: large, small, width: 400 })).toEqual({ src: large });
   });
 
+  it("offers the middle copy between the two when the picture has one and is wider than it", () => {
+    expect(pictureSources({ url: "big.webp", small: "s.webp", medium: "m.webp", width: 1600 })).toEqual({
+      src: "big.webp",
+      srcSet: "s.webp 480w, m.webp 800w, big.webp 1600w",
+    });
+    // No wider than the middle copy: the two files, as before.
+    expect(pictureSources({ url: "big.webp", small: "s.webp", medium: "m.webp", width: 700 })).toEqual({ src: "big.webp", srcSet: "s.webp 480w, big.webp 700w" });
+    // Without one, or with the picture itself as the middle copy: today's two-file string.
+    expect(pictureSources({ url: large, small, medium: null, width: 1200 })).toEqual({ src: large, srcSet: `${small} 480w, ${large} 1200w` });
+    expect(pictureSources({ url: large, small, medium: large, width: 1200 })).toEqual({ src: large, srcSet: `${small} 480w, ${large} 1200w` });
+    // Without a small copy it is the one file, whatever the middle copy.
+    expect(pictureSources({ url: large, medium: "m.webp", width: 1600 })).toEqual({ src: large });
+    expect(pictureSources({ url: large, small: null, medium: "m.webp" })).toEqual({ src: large });
+  });
+
   it("says how wide a grid's tile is at each screen size, leaving out what repeats", () => {
     expect(gridSizes({ xl: 4, md: 4, sm: 2 })).toBe("(min-width: 768px) 25vw, 50vw");
     expect(gridSizes({ xl: 4, lg: 3, md: 2, sm: 1 })).toBe("(min-width: 1280px) 25vw, (min-width: 1024px) 33vw, (min-width: 768px) 50vw, 100vw");

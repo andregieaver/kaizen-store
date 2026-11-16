@@ -9415,10 +9415,17 @@ export const media = commerce.table(
     kind: text("kind").notNull(),
     url: text("url").notNull(),
     thumbnailUrl: text("thumbnail_url"),
+    /**
+     * Its 800 px copy (bloat review step 0.33), made where the 480 px one is, for a picture wider than 800 px; null for one stored
+     * before, which is offered as its two files.
+     */
+    mediumUrl: text("medium_url"),
     /** The Storage bucket and paths, to delete the files with the item. */
     bucket: text("bucket").notNull(),
     path: text("path").notNull(),
     thumbnailPath: text("thumbnail_path"),
+    /** The 800 px copy's path in the bucket, removed with the item. */
+    mediumPath: text("medium_path"),
     fileName: text("file_name").notNull(),
     contentType: text("content_type").notNull(),
     sizeBytes: bigint("size_bytes", { mode: "number" }).notNull().default(0),
