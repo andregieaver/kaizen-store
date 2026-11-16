@@ -222,3 +222,9 @@ challenged by a skeptic, planned by a planner. Its last lines hold the arguments
 - Running: 0.36 (Opus, /home/user/kaizen-store, 5 local commits), 0.39 (Sonnet, /home/user/kz-b).
 - Next: 0.37 (after 0.36), 0.44 (build), 0.46 (build), 0.19 blocked.
 - Tomorrow 17 Nov: query cron_jobs for 'timeout exceeded when trying to connect' (0.45).
+
+## 16 Nov 19:30 UTC — phase 0 done but 0.19
+- Done today and written up: 0.30 (D664) 0.33 (D665) 0.34 (D666) 0.35 (D667) 0.43 (D668) 0.45 (D674) 0.40 (D676) 0.42 0.38 (D682) 0.41 (D683) 0.36 (D689) 0.39 (D690) 0.37 (D696) 0.44 (D697) 0.46 (D698). Work write-off fix 96b07e51.
+- Open: 0.19 commits 2–3 (blocked by the other session's Products/customers rewrite: needs a new brief).
+- Scheduled: 17 Nov 10:07 UTC day-after check for 0.45 (trig_01VQNkTk9E662mkjfKDJebJc).
+- Owner's: invoices drill (0.30); upload >1600 px photo (0.33; media_with_800 was 0 on 16 Nov); unwired.md (0.36); VAT registration stored twice (FT-16).
