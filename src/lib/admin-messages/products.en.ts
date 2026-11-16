@@ -375,6 +375,7 @@ export const productsEn = {
     importLink: "import products",
   },
   categoriesPage: {
+    lead: "How shoppers find your products in menus and filters.",
     back: "Products",
     title: "Categories and tags",
     description:

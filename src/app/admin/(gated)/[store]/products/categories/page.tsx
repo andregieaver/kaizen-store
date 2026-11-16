@@ -54,7 +54,7 @@ export default async function ProductTermsPage({ params }: PageProps<"/admin/[st
   return (
     <AdminTextScope texts={adminTexts(lang, ["products", "fields", "builder"])}>
       <div className="flex flex-col gap-6">
-        <PageHeader back={{ href: `/admin/${store.slug}/products`, label: w.back }} title={w.title} description={w.description} />
+        <PageHeader back={{ href: `/admin/${store.slug}/products`, label: w.back }} title={w.title} description={<><span className="sm:hidden">{w.lead}</span><span className="max-sm:hidden">{w.description}</span></>} />
         <TermsManager
           initial={terms}
           usedBy={w.usedBy}

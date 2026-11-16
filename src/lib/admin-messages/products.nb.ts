@@ -400,6 +400,7 @@ export const productsNb: ProductsMessages = {
     importLink: "importer produkter",
   },
   categoriesPage: {
+    lead: "Slik finner kundene produktene dine i menyer og filtre.",
     back: "Produkter",
     title: "Kategorier og stikkord",
     description:
