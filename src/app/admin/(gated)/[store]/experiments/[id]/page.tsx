@@ -107,7 +107,7 @@ export default async function ExperimentPage({ params }: PageProps<"/admin/[stor
   const frames =
     test.status === "applied" || test.status === "discarded"
       ? null
-      : shown.variants.map((v) => ({ key: v.key, name: v.name, src: `/admin/frame/${store.slug}/${v.pageId ?? test.page.id}` }));
+      : shown.variants.map((v) => ({ key: v.key, name: v.name, src: `/admin/frame/${store.slug}/${v.pageId ?? test.page.id}`, draft: test.status === "draft" && v.unpublished }));
   const seen = new Set<string>();
   const markets = store.markets.flatMap((m) => (seen.has(m.code) ? [] : (seen.add(m.code), [{ code: m.code.toLowerCase(), name: m.name }])));
   const target = targetLabelText(test.page.kind, test.page.slug, test.page.title, test.page.role, w);

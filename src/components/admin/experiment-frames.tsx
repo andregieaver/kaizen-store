@@ -20,10 +20,11 @@ const subscribeNarrow = (change: () => void) => {
 };
 const isNarrow = () => window.matchMedia(NARROW).matches;
 
-export type FrameVersion = { key: string; name: string; src: string };
+/** `draft`: the frame shows changes saved in the builder and not published yet, which visitors would not be shown. */
+export type FrameVersion = { key: string; name: string; src: string; draft?: boolean };
 
 /** One page in a frame, drawn at the chosen width and scaled down to fit its half. */
-function ScaledFrame({ version, width, label }: { version: FrameVersion; width: Width; label: string }) {
+function ScaledFrame({ version, width, label, draftLabel }: { version: FrameVersion; width: Width; label: string; draftLabel: string }) {
   const box = useRef<HTMLDivElement>(null);
   const [room, setRoom] = useState(0);
   useEffect(() => {
@@ -37,7 +38,10 @@ function ScaledFrame({ version, width, label }: { version: FrameVersion; width: 
   const scale = room > 0 ? Math.min(1, room / drawn) : 1;
   return (
     <figure className="flex min-w-0 flex-col gap-2">
-      <figcaption className="text-body-strong text-ink">{version.name}</figcaption>
+      <figcaption className="flex flex-wrap items-baseline gap-x-2 text-body-strong text-ink">
+        {version.name}
+        {version.draft && <span className="text-caption text-warning-text">{draftLabel}</span>}
+      </figcaption>
       <div ref={box} className="overflow-hidden rounded-card border border-edge bg-card" style={{ height: SHOWN_HEIGHT }}>
         {room > 0 && (
           <iframe
@@ -82,7 +86,7 @@ export function ExperimentFrames({ versions }: { versions: readonly FrameVersion
   );
   return (
     <section aria-labelledby="ab-frames" className="flex flex-col gap-4" data-frames>
-      <div className="flex flex-wrap items-end justify-between gap-3">
+      <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="flex min-w-0 flex-1 basis-80 flex-col gap-1">
           <h2 id="ab-frames" className="text-title text-ink">
             {w.title}
@@ -112,8 +116,8 @@ export function ExperimentFrames({ versions }: { versions: readonly FrameVersion
         </div>
       </div>
       <div className="grid grid-cols-2 gap-3 sm:gap-4">
-        <ScaledFrame key={`a-${width}`} version={original} width={width} label={w.frameTitle} />
-        <ScaledFrame key={`${version.key}-${width}`} version={version} width={width} label={w.frameTitle} />
+        <ScaledFrame key={`a-${width}`} version={original} width={width} label={w.frameTitle} draftLabel={w.draft} />
+        <ScaledFrame key={`${version.key}-${width}`} version={version} width={width} label={w.frameTitle} draftLabel={w.draft} />
       </div>
     </section>
   );

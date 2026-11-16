@@ -191,6 +191,7 @@ export const experimentsNb: ExperimentsMessages = {
     computer: "Datamaskin",
     phone: "Mobil",
     frameTitle: "{name} slik de besøkende ser den",
+    draft: "Utkast: ikke publisert ennå, så de besøkende ville ikke sett dette",
   },
   draftCard: {
     change: "Endre {name}",

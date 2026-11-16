@@ -200,6 +200,7 @@ export const experimentsEn = {
     computer: "Computer",
     phone: "Phone",
     frameTitle: "{name} as visitors see it",
+    draft: "Draft: not published yet, so visitors would not see this",
   },
   draftCard: {
     change: "Change {name}",

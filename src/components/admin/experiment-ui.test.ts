@@ -309,3 +309,23 @@ describe("what a started test found (D659)", () => {
     expect(out).toContain('value="Short headings win"');
   });
 });
+
+describe("the original and a version side by side (phase 16)", () => {
+  it("names each frame, and marks a version shown from its unpublished draft", async () => {
+    const { ExperimentFrames } = await import("./experiment-frames");
+    const out = html(
+      createElement(ExperimentFrames, {
+        versions: [
+          { key: "a", name: "Original", src: "/admin/frame/demo/a" },
+          { key: "b", name: "Version B", src: "/admin/frame/demo/b", draft: true },
+        ],
+      }),
+    );
+    expect(out).toContain("Side by side");
+    expect(out).toContain("Original");
+    expect(out).toContain("Draft: not published yet, so visitors would not see this");
+    expect(out.match(/Draft: not published yet/g)).toHaveLength(1);
+    const published = html(createElement(ExperimentFrames, { versions: [{ key: "a", name: "Original", src: "/a" }, { key: "b", name: "Version B", src: "/b" }] }));
+    expect(published).not.toContain("Draft: not published yet");
+  });
+});
