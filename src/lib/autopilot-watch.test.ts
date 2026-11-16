@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { baselineWindows, isRevertible, reading, verdictWords, watchVerdict } from "./autopilot-watch";
+import { baselineWindows, errorReading, isRevertible, reading, verdictWords, watchVerdict } from "./autopilot-watch";
 
 describe("watch and roll back (F4)", () => {
   it("knows which changes can be undone", () => {
@@ -25,6 +25,21 @@ describe("watch and roll back (F4)", () => {
     expect(watchVerdict({ visitors: 200, carts: 2, orders: 20 }, { visitors: 400, carts: 60, orders: 40 })).toMatchObject({ kind: "fall", signal: "addToCart" });
     // 8 % against 10 %: within chance, fine.
     expect(watchVerdict({ visitors: 200, carts: 28, orders: 16 }, { visitors: 400, carts: 60, orders: 40 })).toMatchObject({ kind: "fine" });
+  });
+
+  it("calls a rise in visitors meeting an error clear only far above chance and with a few of them, even from none (D663)", () => {
+    const before = { visitors: 400, carts: 60, orders: 40, errors: 0 };
+    // 8 of 200 met an error, none in the weeks before: clear.
+    expect(watchVerdict({ visitors: 200, carts: 30, orders: 20, errors: 8 }, before)).toMatchObject({ kind: "fall", signal: "errors" });
+    // 2 of 200: too few to blame the change.
+    expect(watchVerdict({ visitors: 200, carts: 30, orders: 20, errors: 2 }, before)).toMatchObject({ kind: "fine" });
+    // 8 of 200 against 16 of 400 before: the same share, fine.
+    expect(watchVerdict({ visitors: 200, carts: 30, orders: 20, errors: 8 }, { ...before, errors: 16 })).toMatchObject({ kind: "fine" });
+    // No error counts at all (an older caller): the two signals only.
+    expect(watchVerdict({ visitors: 200, carts: 30, orders: 20 }, { visitors: 400, carts: 60, orders: 40 })).not.toHaveProperty("errors");
+    const r = errorReading(0, 200, 0, 400)!;
+    expect(r.expected).toBeCloseTo(0.5 / 401, 6);
+    expect(verdictWords(watchVerdict({ visitors: 200, carts: 30, orders: 20, errors: 8 }, before))).toMatch(/^A clear rise in visitors meeting an error: .*visitors meeting an error 4 % against 0.1 % expected\.$/);
   });
 
   it("says nothing on too little traffic", () => {

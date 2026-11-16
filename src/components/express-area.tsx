@@ -76,7 +76,7 @@ export function ExpressArea({
   };
 
   return (
-    <section aria-label={labels.title} data-express className="flex w-full flex-col gap-2">
+    <section aria-label={labels.title} data-express data-kz-private="" className="flex w-full flex-col gap-2">
       {phase === "ready" && state?.ok && Panel ? (
         <Panel store={store} market={market} start={state} labels={labels} terms={terms} look={look} />
       ) : (

@@ -43,21 +43,23 @@ export type UploadResult =
   | { ok: true; url: string; thumbnailUrl: string }
   | { ok: false; problem: string };
 
-/** Where an uploaded picture lies in Storage, for the media library (D88). */
-export type StoredImage = { bucket: string; path: string; thumbnailPath: string };
+/** Where an uploaded picture lies in Storage, for the media library (D88); `mediumPath` its 800 px copy's (bloat review step 0.33), when it has one. */
+export type StoredImage = { bucket: string; path: string; thumbnailPath: string; mediumPath: string | null };
 
 /**
  * Stores a product picture and its thumbnail (both already shrunk by the
- * browser) in the store's folder of the public bucket.
+ * browser), and its 800 px copy when given (bloat review step 0.33), in the
+ * store's folder of the public bucket.
  */
 export async function uploadProductImage(
   storeId: string,
   image: File,
   thumbnail: File,
-): Promise<UploadResult | { ok: true; url: string; thumbnailUrl: string; stored: StoredImage }> {
+  medium?: File | null,
+): Promise<UploadResult | { ok: true; url: string; thumbnailUrl: string; mediumUrl: string | null; stored: StoredImage }> {
   const secret = secretKey();
   if ("problem" in secret) return { ok: false, problem: secret.problem };
-  for (const file of [image, thumbnail]) {
+  for (const file of medium ? [image, thumbnail, medium] : [image, thumbnail]) {
     if (!TYPES.has(file.type)) return { ok: false, problem: "Use a JPEG, PNG, WebP or AVIF picture." };
     if (file.size === 0 || file.size > MAX_BYTES) {
       return { ok: false, problem: "That picture is too large. Use one under 4 MB." };
@@ -73,6 +75,7 @@ export async function uploadProductImage(
   const paths = {
     image: `${storeId}/${name}.${extension(image)}`,
     thumbnail: `${storeId}/${name}-480.${extension(thumbnail)}`,
+    medium: medium ? `${storeId}/${name}-800.${extension(medium)}` : null,
   };
   const storage = supabase.storage.from(BUCKET);
   const options = (file: File) => ({
@@ -80,19 +83,21 @@ export async function uploadProductImage(
     cacheControl: "31536000",
     upsert: false,
   });
-  const [big, small] = await Promise.all([
+  const [big, small, middle] = await Promise.all([
     storage.upload(paths.image, image, options(image)),
     storage.upload(paths.thumbnail, thumbnail, options(thumbnail)),
+    medium && paths.medium ? storage.upload(paths.medium, medium, options(medium)) : Promise.resolve({ error: null }),
   ]);
-  if (big.error || small.error) {
-    log("error", "media.picture_upload_failed", {}, big.error ?? small.error);
+  if (big.error || small.error || middle.error) {
+    log("error", "media.picture_upload_failed", {}, big.error ?? small.error ?? middle.error);
     return { ok: false, problem: "The picture could not be uploaded. Try again." };
   }
   return {
     ok: true,
     url: storage.getPublicUrl(paths.image).data.publicUrl,
     thumbnailUrl: storage.getPublicUrl(paths.thumbnail).data.publicUrl,
-    stored: { bucket: BUCKET, path: paths.image, thumbnailPath: paths.thumbnail },
+    mediumUrl: paths.medium ? storage.getPublicUrl(paths.medium).data.publicUrl : null,
+    stored: { bucket: BUCKET, path: paths.image, thumbnailPath: paths.thumbnail, mediumPath: paths.medium },
   };
 }
 

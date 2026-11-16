@@ -124,6 +124,72 @@ test("a first row's background picture loads at once, a later row's lazily, and 
   await expect(later).toHaveAttribute("src", small);
 });
 
+test("a product tile takes the 800 px copy on a 3x phone, and no tile or gallery picture is fetched more than 1.5 times too wide (bloat review 0.33)", async ({ browser }) => {
+  test.setTimeout(120_000);
+  // A store of its own, nothing of it cached yet: its products' first pictures are three real files of 480, 800 and 1,600 px, as an
+  // upload leaves a picture wider than 800 px, with this run's own addresses (the media library keeps one row per address).
+  const { slug, id } = await testStore("tre-filer");
+  const run = Date.now().toString(36);
+  const file = (width: number) => `${base}/demo/e2e/tile-${width}.webp?run=${run}`;
+  const sql = testDb();
+  try {
+    await sql`
+      update commerce.product_media pm set url = ${file(1600)}, thumbnail_url = ${file(480)}
+      where pm.store_id = ${id} and pm.position = (select min(o.position) from commerce.product_media o where o.product_id = pm.product_id)`;
+    await sql`
+      insert into commerce.media (store_id, kind, url, thumbnail_url, medium_url, bucket, path, file_name, content_type, width, height)
+      values (${id}, 'image', ${file(1600)}, ${file(480)}, ${file(800)}, 'product-media', ${`${id}/tile.webp`}, 'tile.webp', 'image/webp', 1600, 800)`;
+  } finally {
+    await sql.end();
+  }
+
+  const FILES = [480, 800, 1600];
+  /** Which file the browser took, and whether it is at most 1.5 times what the box needs, or the smallest file that covers it. */
+  const fetched = async (img: import("@playwright/test").Locator) => {
+    await expect.poll(() => img.evaluate((el) => (el as HTMLImageElement).currentSrc), { timeout: 15_000 }).toMatch(/tile-\d+\.webp/);
+    const { src, box, ratio } = await img.evaluate((el) => ({
+      src: (el as HTMLImageElement).currentSrc,
+      box: el.getBoundingClientRect().width,
+      ratio: window.devicePixelRatio,
+    }));
+    const fileWidth = Number(src.match(/tile-(\d+)\.webp/)?.[1]);
+    const needed = Math.ceil(box * ratio);
+    const smallestEnough = FILES.find((width) => width >= needed) ?? FILES[FILES.length - 1];
+    return { src, fileWidth, needed, fits: fileWidth <= 1.5 * needed || fileWidth === smallestEnough };
+  };
+
+  for (const device of [
+    { width: 390, height: 844, scale: 2, tile: 480 },
+    { width: 390, height: 844, scale: 3, tile: 800 },
+    { width: 360, height: 800, scale: 3, tile: 480 },
+  ]) {
+    // The screen as a phone's, the size of its viewport: left at the project's desktop screen (1920 px), Chromium's preload of the first
+    // tile reads its `sizes` against that screen and fetches the 1,600 px file, which no phone does.
+    const size = { width: device.width, height: device.height };
+    const context = await browser.newContext({ viewport: size, screen: size, deviceScaleFactor: device.scale, isMobile: true, hasTouch: true });
+    const page = await context.newPage();
+    try {
+      await page.goto(`/s/${slug}/products`);
+      const card = page.locator("li.product-card").filter({ has: page.locator("img.product-card-image") }).first();
+      const tile = card.locator("img.product-card-image");
+      await expect(tile).toHaveAttribute("srcset", `${file(480)} 480w, ${file(800)} 800w, ${file(1600)} 1600w`);
+      const onTile = await fetched(tile);
+      const at = `${device.width} px at ${device.scale}x`;
+      if (device.tile) expect(onTile.src, `tile ${at}: ${JSON.stringify(onTile)}`).toMatch(new RegExp(`tile-${device.tile}\\.webp`));
+      expect(onTile.fits, `tile ${at}: ${JSON.stringify(onTile)}`).toBe(true);
+
+      // The product page's main gallery picture, from the same three files.
+      const href = await card.locator("h2 a").getAttribute("href");
+      await page.goto(href!);
+      const main = page.locator('[aria-roledescription="slide"] img').first();
+      const onGallery = await fetched(main);
+      expect(onGallery.fits, `gallery ${at}: ${JSON.stringify(onGallery)}`).toBe(true);
+    } finally {
+      await context.close();
+    }
+  }
+});
+
 /**
  * The demo store's front page and a product page as a phone loads them (D336): the bytes sent over the wire, the largest picture and
  * the time to the page's first byte, each under its budget. Bytes are as transferred (compressed), counted from every response the

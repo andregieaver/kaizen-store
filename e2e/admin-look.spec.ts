@@ -85,5 +85,9 @@ test("the bar along the top is there, and reduced motion stills the admin's anim
 test("the storefront keeps its own look: no admin attribute, no admin colours", async ({ page }) => {
   await page.goto("/");
   await expect(page.locator("html")).not.toHaveAttribute("data-admin", /.*/);
-  expect((await computed(page, "html", "--brand")).trim()).toBe("");
+  // The admin's colour roles follow the site's own colours outside the admin (bloat review step 0.34): the brand role is the site's
+  // accent, never an admin scheme's colour.
+  const accent = (await computed(page, "html", "--accent")).trim();
+  expect(accent).not.toBe("");
+  expect((await computed(page, "html", "--brand")).trim()).toBe(accent);
 });

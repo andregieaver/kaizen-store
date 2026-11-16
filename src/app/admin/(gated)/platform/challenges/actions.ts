@@ -120,7 +120,7 @@ export async function removeOriginalAction(storeId: string, from: string): Promi
   });
 }
 
-/** Freezes the challenge's baseline before Day 1 (E7, D650): the clone's cost estimates, the agreed ad money and its goods' cost prices. */
+/** Freezes the challenge's baseline before Day 1 (E7, D648): the clone's cost estimates, the agreed ad money and its goods' cost prices. */
 export async function freezeBaselineAction(storeId: string): Promise<FormState> {
   return platformAction(write("challenge.baseline_freeze"), async (account, lang) => {
     const w = adminText(lang, "console").challenges.board;

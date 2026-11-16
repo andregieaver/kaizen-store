@@ -126,7 +126,7 @@ export function AppointmentPicker({
             : null;
 
   return (
-    <div className="flex flex-col gap-4" data-appointment-picker>
+    <div className="flex flex-col gap-4" data-appointment-picker data-kz-private="">
       {variants.length > 1 && (
         <fieldset className="flex flex-col gap-2">
           <legend className="mb-2 font-medium">{labels.option}</legend>

@@ -586,7 +586,7 @@ function Form({
                   autoComplete="tel"
                   maxLength={32}
                   aria-describedby={`${id}-sms-hint`}
-                  className="min-h-11 max-w-xs rounded-md border border-line bg-card px-3"
+                  className="min-h-11 max-w-xs rounded-md border border-border bg-background px-3"
                 />
                 <p id={`${id}-sms-hint`} className="text-sm text-muted">
                   {sms.labels.hint}

@@ -102,9 +102,9 @@ default, `src/lib/retention.ts` `support_transcripts`; with support off, a day a
 **Measures.** The visitor is told it is an AI (`labels.aiAssistant` in `src/components/chat-widget.tsx`; the person's name after a
 hand-over; email answers marked as the AI's, `aiLabel`/`aiNote` in `src/lib/support-email-text.ts`); answers pass `cleanReply()`
 (plain text, no addresses, no claims); links are buttons made by code; actions run only on the customer's own Confirm
-(`src/server/support-actions.ts`), refunds, cancellations and exceptions go to a person; turns are counted before any model call
+(`src/server/support-actions.ts`), refunds, cancellations and exceptions go to a person (in challenge mode a signed-in customer's own address change before anything is sent is carried out by code, D640, and a cancellation goes to the refund queue); turns are counted before any model call
 (`takeTurn()`); a person can be asked for at any time (`handoff_to_human`). The store privacy starter tells shoppers about the
-assistant and the provider (`privacy.automated.chat` in `src/lib/legal-starters/en.ts`). Tests: `src/lib/chat.test.ts`,
+assistant and the provider (`privacy.automated.chat` in `src/lib/legal-starters/en.ts`) and, while the desk works AI first, that a message in the chat or by email may be answered and a confirmed request carried out by the AI on its own before a person reads it (`privacy.automated.answers`, D658); Kaizena Flow's own notice says it of its desk (section 10). Tests: `src/lib/chat.test.ts`,
 `src/server/chat.int.test.ts`, `src/server/support-tools.int.test.ts`, `support-actions.int.test.ts`, `support-inbound.int.test.ts`,
 `e2e/chat.spec.ts`, `e2e/support.spec.ts`.
 
@@ -199,7 +199,7 @@ Owner and staff accounts cannot yet be erased (PSI REG-03).
 **Measures.** Every tool is checked against the person's role and the store's features (`requireToolPermission()`, `mayUseTool()`);
 emailing, publishing, spending and access changes are kept for the person's yes (`keepForApproval()`), the autopilot runs a gated call
 only within the owner's levels and budgets and never one marked never automatic (`autopilotDecision()`, `NEVER_AUTOMATIC`), emails to
-one customer are capped a week; a custom app's non-read tools wait for a yes and its answer is text only, as data; AI text for
+one customer are capped a week; in challenge mode (D604) the autopilot runs a store on its own within budgets the platform team set (broadcasts a week, answers to customers a day, stock purchases, a margin floor on prices), its answers to customers labelled as the AI's, money back to customers and escalations kept for a person (D608), and each change watched and undone after a clear fall (D628, D651); a custom app's non-read tools wait for a yes and its answer is text only, as data; AI text for
 customers passes `findClaims()`. Tests: `src/server/owner-assistant.int.test.ts`, `src/lib/owner-tool-permissions.test.ts`,
 `src/lib/autopilot-autonomy.test.ts`, `src/server/ai-manager.int.test.ts`, `src/server/custom-apps.int.test.ts`.
 

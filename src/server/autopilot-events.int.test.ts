@@ -159,7 +159,8 @@ describe("reacting to events", () => {
     if (!made.ok) throw new Error(made.problems.join(" "));
     const variant = (await admin.getExperiment(store.id, made.id))!.variants.find((v) => v.key === "b")!.pageId!;
     const [content] = await db().execute<Row>(sql`select published from commerce.pages where id = ${variant}::uuid`);
-    const changed = JSON.stringify({ ...(content.published as object), title: "Bigger photos (b)" });
+    // A change a visitor sees (D660): a version counts as changed by what it draws, not by its title.
+    const changed = JSON.stringify({ ...(content.published as object), title: "Bigger photos (b)" }).replace('"text":"', '"text":"Bigger photos: ');
     await db().execute(sql`update commerce.pages set draft = ${changed}::jsonb, published = ${changed}::jsonb where id = ${variant}::uuid`);
     const started = await admin.startExperiment(store.account, store.id, made.id);
     if (!started.ok) throw new Error(started.problems.join(" "));

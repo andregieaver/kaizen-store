@@ -12,8 +12,8 @@ import { releaseDate } from "@/lib/stock-words";
 import type { Market } from "@/lib/markets";
 import type { ProductSummary } from "@/server/catalog";
 
-/** A card's width in the listing (`ProductListing`: two columns, four from Medium). */
-const CARD_SIZES = gridSizes({ xl: 4, md: 4, sm: 2 });
+/** A card's width in the listing (`ProductListing`: two columns, four from Medium, 24 px apart, `gap-6`). */
+const CARD_SIZES = gridSizes({ xl: 4, md: 4, sm: 2 }, { gaps: { xl: 24 } });
 
 export function ProductCard({
   product,
@@ -57,6 +57,7 @@ export function ProductCard({
         <SizedPicture
           url={product.image.large ?? product.image.url}
           small={product.image.large ? product.image.url : null}
+          medium={product.image.medium}
           sourceWidth={product.image.width}
           sizes={CARD_SIZES}
           alt={product.image.alt}
@@ -106,8 +107,8 @@ export function GroupSwatches({ group, base, m }: { group: NonNullable<ProductSu
             title={item.value}
             className={
               item.swatch
-                ? "block size-5 rounded-full border border-line focus-visible:outline-2"
-                : "block rounded-full border border-line px-2 text-xs leading-5 focus-visible:outline-2"
+                ? "block size-5 rounded-full border border-border focus-visible:outline-2"
+                : "block rounded-full border border-border px-2 text-xs leading-5 focus-visible:outline-2"
             }
             style={item.swatch ? { backgroundColor: item.swatch } : undefined}
           >

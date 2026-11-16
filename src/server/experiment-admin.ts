@@ -1,6 +1,7 @@
 import "server-only";
 
 import { sql } from "drizzle-orm";
+import { z } from "zod";
 import { revalidateTag, updateTag } from "next/cache";
 
 import { db } from "@/db/client";
@@ -9,6 +10,7 @@ import { applyPart, buttonsWithin, describePart, findPart, formsWithin, partChan
 import { isLegalRole } from "@/lib/legal-roles";
 import { parsePageContent, type PageContent, type PageType } from "@/lib/page-content";
 import { cleanTranslations } from "@/lib/page-translation";
+import { compareVersions, type PageDifference } from "@/lib/version-compare";
 import {
   BLOCK_CHOICE,
   evenSplit,
@@ -27,6 +29,7 @@ import {
 } from "@/lib/experiments";
 
 import { audit, type Account } from "./auth";
+import { col, typedRow, typedRows } from "./typed-rows";
 import { experimentsTag, forgetRunning, variantSlug } from "./experiments";
 import { ownerLanguages, pagesTag, savePage } from "./pages";
 
@@ -82,6 +85,10 @@ export type ExperimentInfo = {
   stoppedAt: string | null;
   stopReason: string | null;
   appliedVariant: string | null;
+  /** When the test first had an answer and its owners were told (D662). */
+  answeredAt: string | null;
+  /** What it taught, in the owner's words (D662). */
+  learning: string | null;
   createdAt: string;
   scheduledStart: string | null;
   scheduleProblem: string | null;
@@ -128,6 +135,8 @@ const infoOf = (row: Row, variants: VariantInfo[]): ExperimentInfo => ({
   stoppedAt: iso(row.stopped_at),
   stopReason: row.stop_reason ? String(row.stop_reason) : null,
   appliedVariant: row.applied_variant ? String(row.applied_variant) : null,
+  answeredAt: row.answered_at ? new Date(String(row.answered_at)).toISOString() : null,
+  learning: row.learning ? String(row.learning) : null,
   createdAt: iso(row.created_at)!,
   scheduledStart: iso(row.scheduled_start),
   scheduleProblem: row.schedule_problem ? String(row.schedule_problem) : null,
@@ -154,8 +163,12 @@ async function asSaved(storeId: string, content: PageContent | null): Promise<Pa
   return cleaned.ok ? cleaned.content : content;
 }
 
-/** The rows of a page's content that a visitor sees, to tell whether a version still equals the original. */
-const sameRows = (a: unknown, b: unknown) => JSON.stringify((a as { rows?: unknown })?.rows ?? null) === JSON.stringify((b as { rows?: unknown })?.rows ?? null);
+/**
+ * The rows of a page's content that a visitor sees, to tell whether a version still equals the original. Both are read as pages are drawn
+ * (`parsePageContent()`): saving a copy writes an older setting in today's shape (a grid's columns per screen, D660), so the stored JSON of
+ * an untouched copy can differ from the original's while nothing a visitor sees does.
+ */
+const sameRows = (a: unknown, b: unknown) => JSON.stringify(parsePageContent(a)?.rows ?? null) === JSON.stringify(parsePageContent(b)?.rows ?? null);
 
 async function variantsOf(storeId: string, experimentId: string, originalPublished: unknown, part: { id: string; kind: PartKind } | null): Promise<VariantInfo[]> {
   const rows = await db().execute<Row>(sql`
@@ -173,6 +186,31 @@ async function variantsOf(storeId: string, experimentId: string, originalPublish
     changed: r.key === "a" ? false : !sameRows(r.published ?? r.draft, originalPublished),
     scope: scopeOf(r, original, part),
   }));
+}
+
+/**
+ * What each version changes against the original (D659, "What is different" on the test's page and `explain_results`), from
+ * `compareVersions()`: the original as published (cleaned as a saved version is, so a copy shows no difference), each version as published,
+ * or its draft while it has never been. Keyed by the version's letter; the original has none.
+ */
+const VERSION_CONTENT_ROW = z.object({ key: col.text, draft: z.unknown(), published: z.unknown() });
+
+export async function versionDifferences(storeId: string, test: Pick<ExperimentInfo, "id" | "page">): Promise<Record<string, PageDifference[]>> {
+  const page = await typedRow(z.object({ published: z.unknown() }), sql`select p.published from commerce.pages p where p.id = ${test.page.id}::uuid and p.store_id = ${storeId}::uuid`);
+  const original = await asSaved(storeId, parsePageContent(page?.published));
+  if (!original) return {};
+  const rows = await typedRows(VERSION_CONTENT_ROW, sql`
+    select v.key, p.draft, p.published
+    from commerce.experiment_variants v join commerce.pages p on p.id = v.page_id and p.store_id = v.store_id
+    where v.experiment_id = ${test.id}::uuid and v.store_id = ${storeId}::uuid and v.key <> 'a' order by v.key
+  `);
+  const out: Record<string, PageDifference[]> = {};
+  for (const r of rows) {
+    const version = parsePageContent(r.published ?? r.draft);
+    // A version's own title and address differ by design (it is a page of its own): only what a visitor sees is listed.
+    if (version) out[r.key] = compareVersions(original, version).filter((d) => !(d.kind === "field" && (d.field === "title" || d.field === "slug" || d.field === "seo" || d.field === "search")));
+  }
+  return out;
 }
 
 /** A part test's check of one version against the original; null for the original and for a test of the whole page. */
@@ -587,8 +625,36 @@ export async function stopExperiment(account: Account | null, storeId: string, i
   return { ok: true };
 }
 
+/** The longest learning kept (D662), in characters. */
+export const LEARNING_MAX = 280;
+
 /**
- * Makes a version the page: its content replaces the original's (the original's address kept), published at once, and the
+ * Keeps what a test taught, in the owner's words (D662): one line, written when it is decided or later on its page; empty clears it.
+ * Only a test that has started can have taught something. Audited without the words.
+ */
+export async function saveLearning(account: Account, storeId: string, id: string, text: string): Promise<Outcome> {
+  const test = await getExperiment(storeId, id);
+  if (!test) return { ok: false, problems: ["This test no longer exists."] };
+  if (test.status === "draft" || test.status === "scheduled") return { ok: false, problems: ["A test teaches something once it has run."] };
+  const learning = text.replace(/\s+/g, " ").trim();
+  if (learning.length > LEARNING_MAX) return { ok: false, problems: [`Keep what it taught to ${LEARNING_MAX} characters.`] };
+  await db().execute(sql`update commerce.experiments set learning = ${learning || null}, updated_by = ${account.id}::uuid, updated_at = now() where id = ${id}::uuid and store_id = ${storeId}::uuid`);
+  refreshTag(experimentsTag(storeId));
+  await audit(account.id, storeId, "experiment.learning", { experiment: id, cleared: learning === "" });
+  return { ok: true };
+}
+
+/** Marks a running test as answered, once (D662): true only for the call that marked it, so its owners are told once. */
+export async function markAnswered(storeId: string, id: string): Promise<boolean> {
+  const rows = await typedRows(
+    z.object({ id: col.uuid }),
+    sql`update commerce.experiments set answered_at = now() where id = ${id}::uuid and store_id = ${storeId}::uuid and answered_at is null and status = 'running' returning id`,
+  );
+  return rows.length === 1;
+}
+
+/**
+ * Makes a version the page: its content replaces the original's (the original's address and title kept), published at once, and the
  * test ends as applied. One change, audited; visitors see the winner everywhere from the next page view.
  */
 export async function applyVariant(account: Account, storeId: string, id: string, key: string): Promise<Outcome> {
@@ -616,7 +682,8 @@ export async function applyVariant(account: Account, storeId: string, id: string
         where id = ${test.page.id}::uuid and store_id = ${storeId}::uuid and type = ${test.page.type}
       `);
     } else {
-      const next = JSON.stringify({ ...content, slug: test.page.slug });
+      // The page keeps its own address and title: a version's title ("… (B)") names it in the admin, never on the site (D659).
+      const next = JSON.stringify({ ...content, slug: test.page.slug, title: test.page.title });
       await tx.execute(sql`
         update commerce.pages set draft = ${next}::jsonb, published = ${next}::jsonb, published_at = now(), updated_at = now(), updated_by = ${account.id}::uuid
         where id = ${test.page.id}::uuid and store_id = ${storeId}::uuid and type = ${test.page.type}

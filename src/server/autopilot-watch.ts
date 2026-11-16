@@ -31,14 +31,14 @@ import { col, typedRow, typedRows } from "./typed-rows";
 const CHANGE = z.object({ id: col.text, store_id: col.uuid, slug: col.text, account_id: col.uuid.nullable(), action: col.text, args: z.unknown(), created_at: col.timestamp });
 type Change = z.infer<typeof CHANGE>;
 
-/** Visitors (by first seen), carts with goods (by created) and paid orders (by placed) in the store over the windows, together. */
+/** Visitors (by first seen), carts with goods (by created), paid orders (by placed) and visitors meeting an error (D663) over the windows, together. */
 async function countsIn(storeId: string, windows: readonly { from: Date; to: Date }[]): Promise<Counts> {
   const ranges = sql.join(
     windows.map((w) => sql`(${w.from.toISOString()}::timestamptz, ${w.to.toISOString()}::timestamptz)`),
     sql`, `,
   );
   const row = await typedRow(
-    z.object({ visitors: col.int, carts: col.int, orders: col.int }),
+    z.object({ visitors: col.int, carts: col.int, orders: col.int, errors: col.int }),
     sql`
       with w(a, b) as (values ${ranges})
       select
@@ -46,10 +46,12 @@ async function countsIn(storeId: string, windows: readonly { from: Date; to: Dat
         (select count(*) from commerce.carts c, w where c.store_id = ${storeId}::uuid and c.created_at >= w.a and c.created_at < w.b
            and exists (select 1 from commerce.cart_lines l where l.store_id = c.store_id and l.cart_id = c.id))::int as carts,
         (select count(*) from commerce.orders o, w where o.store_id = ${storeId}::uuid and o.placed_at >= w.a and o.placed_at < w.b and o.copied_from is null
-           and exists (select 1 from commerce.payments p where p.store_id = o.store_id and p.order_id = o.id and p.status = 'captured'))::int as orders
+           and exists (select 1 from commerce.payments p where p.store_id = o.store_id and p.order_id = o.id and p.status = 'captured'))::int as orders,
+        -- Visitors who met an error page (D663), by when they first did.
+        (select count(*) from commerce.visits v, w where v.store_id = ${storeId}::uuid and v.error_at >= w.a and v.error_at < w.b)::int as errors
     `,
   );
-  return row ?? { visitors: 0, carts: 0, orders: 0 };
+  return row ?? { visitors: 0, carts: 0, orders: 0, errors: 0 };
 }
 
 /** The entries the change's own tool wrote just before its `store.assistant.*` row (the handler runs first): same store, account and actor. */

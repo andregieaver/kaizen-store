@@ -1,4 +1,4 @@
-import { compressPicture, extensionOf } from "@/lib/image-compress";
+import { compressPicture, extensionOf, mediumCopy } from "@/lib/image-compress";
 import { compressPlan, COMPRESS_WORTH } from "@/lib/media-compress";
 import { uploadToSignedUrl } from "@/lib/supabase/signed-upload";
 import { compressVideo } from "@/lib/video-compress";
@@ -43,9 +43,12 @@ export async function compressLibraryFile(
     try {
       const [image, thumbnail] = await Promise.all([compressPicture(original, 1600, { avif: plan.avif }), compressPicture(original, 480)]);
       if (image.blob.size > before * COMPRESS_WORTH) return { ok: false, problem: ALREADY };
+      // Its 800 px copy (bloat review step 0.33), for a compressed picture wider than that.
+      const medium = await mediumCopy(original, image);
       const data = new FormData();
       data.set("image", new File([image.blob], `picture.${extensionOf(image.type)}`, { type: image.type }));
       data.set("thumbnail", new File([thumbnail.blob], `picture-480.${extensionOf(thumbnail.type)}`, { type: thumbnail.type }));
+      if (medium) data.set("medium", new File([medium.blob], `picture-800.${extensionOf(medium.type)}`, { type: medium.type }));
       return await actions.picture(item.id, data);
     } catch {
       return { ok: false, problem: "This browser could not read the picture to compress it." };

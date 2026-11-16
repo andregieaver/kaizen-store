@@ -34,6 +34,7 @@ export const assistantEn = {
       life_handoff: "Kaizen Life did: {task}",
       life_handoff_waiting: "Kaizen Life waits for your yes: {task}",
       life_handoff_failed: "Kaizen Life could not finish: {task}",
+      test_answered: "Your A/B test {test} has an answer",
     },
     menu: "AI manager notices",
     pageTitle: "AI manager notices",

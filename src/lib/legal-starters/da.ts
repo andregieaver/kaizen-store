@@ -156,6 +156,9 @@ export const DA: StarterText = {
     "privacy.purpose.security": "at holde butikken sikker og forebygge svindel og misbrug (vores legitime interesse)",
     "privacy.purpose.marketing": "at sende dig markedsføring på e-mail, kun hvis du har sagt ja til det (samtykke)",
     "privacy.purpose.visits": "at tælle besøg i butikken uden cookies, for at se, hvordan den bruges; vi gemmer ingen IP-adresse og ingen browseridentifikator (vores legitime interesse)",
+    // D656: hand-written, for legal review.
+    "privacy.purpose.heatmaps": "at se, som summer pr. side og dag, hvor besøgende, der tillader statistik, klikker, hvor langt de ruller, og hvor længe dele af en side er på skærmen (heatmaps; dit samtykke)",
+    "privacy.purpose.recordings": "at optage besøg fra besøgende, der tillader optagelser, under et tilfældigt nummer for én browserfane og uden det, de skriver, for at finde det, der er svært at bruge; gemmes i 30 dage (dit samtykke)",
     "h.privacy.recipients": "Hvem der får oplysningerne",
     "privacy.recipients.1": "Vi deler kun personoplysninger med dem, der har brug for dem:",
     "privacy.recipient.platform": "platformen Kaizena Flow, som driver butikken og behandler oplysninger på vores vegne",
@@ -190,6 +193,7 @@ export const DA: StarterText = {
     "h.privacy.automated_decisions": "Automatiske afgørelser",
     "privacy.automated.1": "Vi træffer ikke afgørelser om dig, der udelukkende bygger på automatisk behandling, og som har retsvirkning eller tilsvarende betydelig indvirkning på dig.",
     "privacy.automated.chat": "Butikken har en chatassistent, der bruger kunstig intelligens til at besvare spørgsmål ud fra butikkens egne oplysninger. Det, du skriver til den, sendes til den AI-leverandør, butikken bruger ({check}). Skriv ikke følsomme personoplysninger til den.",
+    "privacy.automated.answers": "Når du skriver til butikkens kundeservice, i chatten eller på e-mail, kan en AI svare på egen hånd, uden at et menneske læser din besked først. Den svarer ud fra butikkens egne oplysninger og, når den kan se, at en bestilling er din, om den bestilling, og den kan udføre en anmodning, som du bekræfter, for eksempel en ny leveringsadresse, før noget er sendt. Svarene oplyser, at de kommer fra en AI. Refusioner og undtagelser afgøres af et menneske, og du kan til enhver tid bede om at tale med et menneske.",
     "privacy.automated.tone": "Når du skriver til butikkens kundeservice, læser en AI tonen i dine beskeder, så en person kan træde til tidligere, hvis noget er gået galt. Den træffer ingen afgørelser om dig på egen hånd, og vurderingen gemmes ikke på din konto.",
     "privacy.automated.summaries": "Når en samtale med butikkens kundeservice slutter, skriver en AI et kort resumé af den til butikkens personale. Resuméet gemmes med samtalen og slettes sammen med den.",
     "h.privacy.cookies_link": "Cookies",

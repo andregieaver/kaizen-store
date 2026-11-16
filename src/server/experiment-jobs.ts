@@ -5,8 +5,8 @@ import { sql } from "drizzle-orm";
 import { db } from "@/db/client";
 import { overdue } from "@/lib/experiments";
 
-import { getExperiment, startExperiment, stopExperiment, unscheduleExperiment } from "./experiment-admin";
-import { notifyGuardrailStop } from "./experiment-emails";
+import { getExperiment, markAnswered, startExperiment, stopExperiment, unscheduleExperiment } from "./experiment-admin";
+import { notifyAnswered, notifyGuardrailStop } from "./experiment-emails";
 import { experimentResults } from "./experiment-results";
 import { pruneExperimentData } from "./experiments";
 import { log } from "./log";
@@ -19,12 +19,13 @@ type Row = Record<string, unknown>;
  * (checked again as at any start: one that no longer can goes back to a draft with the reason, for its owner to read);
  * a test past its planned end and a week
  * of grace, or ninety days, is stopped; once an hour every running test's guardrail is looked at, and a version that
- * clearly lowers orders stops the test and the store's owners are emailed; old carts' visitors are forgotten.
+ * clearly lowers orders stops the test and the store's owners are emailed, and a test that has an answer for the first time tells them so (D662); old carts' visitors are forgotten.
  */
-export async function runExperimentJobs(now = new Date()): Promise<{ started: number; stopped: number; checked: number; pruned: number }> {
+export async function runExperimentJobs(now = new Date()): Promise<{ started: number; stopped: number; checked: number; answered: number; pruned: number }> {
   let started = 0;
   let stopped = 0;
   let checked = 0;
+  let answered = 0;
   try {
     const due = await db().execute<Row>(sql`
       select id, store_id from commerce.experiments where status = 'scheduled' and commerce.store_is_active(store_id) and scheduled_start <= ${now.toISOString()}::timestamptz order by scheduled_start
@@ -65,6 +66,12 @@ export async function runExperimentJobs(now = new Date()): Promise<{ started: nu
           stopped += 1;
           // The owners are told after the stop has happened: a failure to send never undoes it.
           await notifyGuardrailStop(store, test, results);
+        } else if (!test.answeredAt && (results.verdict.kind === "better" || results.verdict.kind === "worse" || results.verdict.kind === "even")) {
+          // The first time it has an answer (D662): marked once, then its owners are told; a failure to tell never unmarks it.
+          if (await markAnswered(storeId, id)) {
+            answered += 1;
+            await notifyAnswered(store, test, results);
+          }
         }
       } catch (error) {
         log("error", "experiments.check_failed", { experimentId: id }, error);
@@ -79,5 +86,5 @@ export async function runExperimentJobs(now = new Date()): Promise<{ started: nu
   } catch (error) {
     log("error", "experiments.prune_failed", {}, error);
   }
-  return { started, stopped, checked, pruned };
+  return { started, stopped, checked, answered, pruned };
 }

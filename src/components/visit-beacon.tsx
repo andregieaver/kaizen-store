@@ -3,7 +3,35 @@
 import { usePathname } from "next/navigation";
 import { useEffect, useRef } from "react";
 
-import { beaconBody, optedOut, shouldSend, VISIT_ENDPOINT, type Debounce } from "@/lib/visit-beacon";
+import { beaconBody, optedOut, PAGE_ERROR_ENDPOINT, shouldSend, VISIT_ENDPOINT, type Debounce } from "@/lib/visit-beacon";
+
+/** The store whose visit beacon runs on this page, for the error page to name (it gets no props); null where visits are not counted. */
+let beaconStore: string | null = null;
+
+function privacyOptOut(): boolean {
+  const nav = navigator as Navigator & { globalPrivacyControl?: boolean; msDoNotTrack?: string };
+  return optedOut({
+    globalPrivacyControl: nav.globalPrivacyControl,
+    doNotTrack: nav.doNotTrack,
+    windowDoNotTrack: (window as Window & { doNotTrack?: string }).doNotTrack,
+    msDoNotTrack: nav.msDoNotTrack,
+  });
+}
+
+/**
+ * Says a store page failed to render (F4, D663), once per page: the store and the path, as a page view's body, so the server marks the
+ * visitor's counted visit of the day with the time of its first error. Nothing where the store does not count visits or the browser asks not
+ * to be tracked; never worth an error itself.
+ */
+export function reportPageError(): void {
+  try {
+    if (!beaconStore || privacyOptOut() || typeof navigator.sendBeacon !== "function") return;
+    const body = beaconBody({ store: beaconStore, path: window.location.pathname, search: "", referrer: "", ownHost: window.location.host, first: false });
+    if (body) navigator.sendBeacon(PAGE_ERROR_ENDPOINT, new Blob([body], { type: "text/plain" }));
+  } catch {
+    // Saying so is never worth an error on the error page.
+  }
+}
 
 /**
  * Counts a page view without a cookie or any storage (D152, docs/analytics.md, "Visit counting"). It draws nothing. When a
@@ -18,17 +46,16 @@ export function VisitBeacon({ store }: { store: string }) {
   const last = useRef<Debounce>(null);
 
   useEffect(() => {
+    beaconStore = store;
+    return () => {
+      if (beaconStore === store) beaconStore = null;
+    };
+  }, [store]);
+
+  useEffect(() => {
     try {
       const nav = navigator as Navigator & { globalPrivacyControl?: boolean; msDoNotTrack?: string };
-      if (
-        optedOut({
-          globalPrivacyControl: nav.globalPrivacyControl,
-          doNotTrack: nav.doNotTrack,
-          windowDoNotTrack: (window as Window & { doNotTrack?: string }).doNotTrack,
-          msDoNotTrack: nav.msDoNotTrack,
-        })
-      )
-        return;
+      if (privacyOptOut()) return;
       // The address as the browser has it: what the router calls the path can be an internal one behind a host's rewrite.
       const path = window.location.pathname;
       const now = Date.now();

@@ -62,7 +62,7 @@ export function BackInStock({
 
   if (state.kind === "done") {
     return (
-      <div className="flex flex-wrap items-center gap-3" data-back-in-stock>
+      <div className="flex flex-wrap items-center gap-3" data-back-in-stock data-kz-private="">
         <p role="status" className="text-sm">
           {state.text}
         </p>
@@ -77,6 +77,7 @@ export function BackInStock({
   return (
     <form
       data-back-in-stock
+      data-kz-private=""
       // The page's own check speaks the shopper's language; the browser's would not match it.
       noValidate
       className="flex flex-col gap-2"

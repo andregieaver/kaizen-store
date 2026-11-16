@@ -83,6 +83,12 @@ export type Store = {
   returnPolicy: ReturnPolicyFacts;
   /** Cookieless visit counting for the analytics is on (D152); off until the owner switches it on. */
   visitCounting: boolean;
+  /** Heatmaps and recordings of visits (D656, `docs/heatmaps-and-recordings.md`): each off until the owner switches it on. */
+  heatmaps: boolean;
+  recordings: boolean;
+  /** The share of tabs recorded, in percent (10, 25, 50 or 100), and how much is masked in recordings. */
+  recordingShare: number;
+  recordingMask: "balanced" | "strict";
   /**
    * Private mode is on (D339, `src/server/private-mode.ts`): visitors without the unlock pass see the landing page. Never for a store template
    * or demo store, whatever its column says. `privatePassword`: a password lets visitors in (the hash itself never leaves the server module).
@@ -253,7 +259,7 @@ async function readStore(slug: string): Promise<Store | null> {
       s.id, s.slug, s.name, s.status, s.closed_at, s.is_template, s.starter, s.sandbox, s.house, s.setup_completed_at,
       (s.house and coalesce((select p.site_from_store from commerce.platform_settings p), false)) as on_site,
       s.legal_name, s.organisation_number, s.contact_email, s.postal_address, s.country, s.seo, s.navigation, s.header_menu_id, s.footer_menu_id, s.front_page_id, s.products_page_id, s.tracking, s.custom_code, s.custom_css, s.theme,
-      s.terms_at_checkout, s.customer_accounts, s.checkout_phone, s.checkout_name, s.audience, s.business_popup, s.open_cart_on_add, s.visit_counting, s.private_mode, s.shopping_agents, s.private_password is not null as private_password, s.modules, s.features, s.time_zone, s.booking_reminder_hours,
+      s.terms_at_checkout, s.customer_accounts, s.checkout_phone, s.checkout_name, s.audience, s.business_popup, s.open_cart_on_add, s.visit_counting, s.heatmaps, s.recordings, s.recording_share, s.recording_mask, s.private_mode, s.shopping_agents, s.private_password is not null as private_password, s.modules, s.features, s.time_zone, s.booking_reminder_hours,
       s.price_decimals, s.price_words, s.quantity_picker,
       s.locales, s.rates_auto, s.rates_updated_at, s.language_rule, s.currency_follows_language, s.language_currencies,
       (
@@ -334,6 +340,10 @@ async function readStore(slug: string): Promise<Store | null> {
     quantityPicker: isQuantityPicker(row.quantity_picker) ? row.quantity_picker : "buttons",
     returnPolicy: returnPolicyOf(row.return_policy),
     visitCounting: Boolean(row.visit_counting),
+    heatmaps: Boolean(row.heatmaps),
+    recordings: Boolean(row.recordings),
+    recordingShare: Number(row.recording_share ?? 50),
+    recordingMask: row.recording_mask === "strict" ? "strict" : "balanced",
     privateMode: Boolean(row.private_mode) && !row.is_template && !row.starter,
     shoppingAgents: Boolean(row.shopping_agents) && !row.is_template && !row.starter && !row.sandbox,
     privatePassword: Boolean(row.private_password),

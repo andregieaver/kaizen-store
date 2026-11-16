@@ -1349,8 +1349,8 @@ function GroupChooser({ group, base, m }: { group: NonNullable<ProductDetail["gr
               title={item.value}
               className={
                 item.swatch
-                  ? `block size-9 rounded-full border-2 ${item.current ? "border-foreground" : "border-line"} focus-visible:outline-2`
-                  : `block min-h-9 rounded-full border px-4 leading-8 ${item.current ? "border-foreground font-medium" : "border-line"} focus-visible:outline-2`
+                  ? `block size-9 rounded-full border-2 ${item.current ? "border-foreground" : "border-border"} focus-visible:outline-2`
+                  : `block min-h-9 rounded-full border px-4 leading-8 ${item.current ? "border-foreground font-medium" : "border-border"} focus-visible:outline-2`
               }
               style={item.swatch ? { backgroundColor: item.swatch, boxShadow: "inset 0 0 0 2px var(--background)" } : undefined}
             >

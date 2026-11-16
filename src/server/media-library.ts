@@ -97,13 +97,16 @@ export async function uploadToLibrary(
 ): Promise<UploadResult> {
   const image = data.get("image");
   const thumbnail = data.get("thumbnail");
+  // Its 800 px copy (bloat review step 0.33), sent for a picture wider than that; anything but a file is none.
+  const medium = data.get("medium");
   if (!(image instanceof File) || !(thumbnail instanceof File)) return { ok: false, problem: "Choose a picture to upload." };
   // A person's upload counts against the store's storage (D314); the platform's own copies do not come through here.
-  const full = await storageRefusal(owner.storeId, image.size + thumbnail.size);
+  const full = await storageRefusal(owner.storeId, image.size + thumbnail.size + (medium instanceof File ? medium.size : 0));
   if (full) return { ok: false, problem: full };
   const given = data.get("name");
   return storePicture(owner, image, thumbnail, {
     fileName: cleanName(typeof given === "string" ? given : "", image.name || "picture"),
+    medium: medium instanceof File ? medium : null,
     // The browser measured it as it compressed it (D213); it only says so, and a wrong word costs a file one Compress less.
     compressed: data.get("compressed") === "1",
   });
@@ -113,25 +116,34 @@ export async function uploadToLibrary(
  * Stores a picture and its small copy in the site's folder and keeps it in
  * the library: an upload's, or one the site's AI made (D92), which comes
  * with its alt text in the main language, marked as the AI's (the alt-text
- * run adds the other languages).
+ * run adds the other languages). `details.medium` is its 800 px copy, for a
+ * picture wider than that (bloat review step 0.33).
  */
 export async function storePicture(
   owner: { storeId: string | null; accountId: string },
   image: File,
   thumbnail: File,
-  details: { fileName: string; alt?: string; compressed?: boolean; madeBy?: MediaMadeBy; editedFrom?: string | null; aiMarked?: boolean },
+  details: {
+    fileName: string;
+    alt?: string;
+    compressed?: boolean;
+    madeBy?: MediaMadeBy;
+    editedFrom?: string | null;
+    aiMarked?: boolean;
+    medium?: File | null;
+  },
 ): Promise<UploadResult & { id?: string }> {
-  const uploaded = await uploadProductImage(owner.storeId ?? "platform", image, thumbnail);
+  const uploaded = await uploadProductImage(owner.storeId ?? "platform", image, thumbnail, details.medium ?? null);
   if (!uploaded.ok || !("stored" in uploaded)) return uploaded;
   const size = imageSize(new Uint8Array(await image.slice(0, 64 * 1024).arrayBuffer()));
   const alt = details.alt?.trim().slice(0, ALT_MAX) || null;
   const [row] = await db().execute<Row>(sql`
     insert into commerce.media (
-      store_id, kind, url, thumbnail_url, bucket, path, thumbnail_path, file_name, content_type, size_bytes, width, height, created_by,
-      alt, alt_source, alt_written_at, compressed_at, made_by, edited_from, ai_marked_at
+      store_id, kind, url, thumbnail_url, medium_url, bucket, path, thumbnail_path, medium_path, file_name, content_type, size_bytes, width,
+      height, created_by, alt, alt_source, alt_written_at, compressed_at, made_by, edited_from, ai_marked_at
     ) values (
-      ${owner.storeId}::uuid, 'image', ${uploaded.url}, ${uploaded.thumbnailUrl}, ${uploaded.stored.bucket}, ${uploaded.stored.path},
-      ${uploaded.stored.thumbnailPath}, ${cleanName(details.fileName, "picture")},
+      ${owner.storeId}::uuid, 'image', ${uploaded.url}, ${uploaded.thumbnailUrl}, ${uploaded.mediumUrl ?? null}, ${uploaded.stored.bucket},
+      ${uploaded.stored.path}, ${uploaded.stored.thumbnailPath}, ${uploaded.stored.mediumPath ?? null}, ${cleanName(details.fileName, "picture")},
       ${image.type}, ${image.size}, ${size?.width ?? null}, ${size?.height ?? null}, ${owner.accountId}::uuid,
       ${alt ?? ""}, ${alt ? "ai" : null}, ${alt ? sql`now()` : null}, ${details.compressed ? sql`now()` : null},
       ${details.madeBy ?? "person"}, ${details.madeBy === "ai_edited" ? (details.editedFrom ?? null) : null}::uuid,
@@ -199,6 +211,8 @@ export type LibraryFile = {
   bucket: string;
   path: string;
   thumbnailPath: string | null;
+  /** Its 800 px copy's path (bloat review step 0.33), copied with it; null for a file without one. */
+  mediumPath: string | null;
   fileName: string;
   contentType: string;
   sizeBytes: number;
@@ -217,7 +231,7 @@ export async function libraryFilesByUrl(storeId: string | null, urls: string[]):
   if (urls.length === 0) return found;
   const list = sql.join(urls.map((url) => sql`${url}`), sql`, `);
   const rows = await db().execute<Row>(sql`
-    select id, kind, url, thumbnail_url, bucket, path, thumbnail_path, file_name, content_type, size_bytes, width, height, made_by
+    select id, kind, url, thumbnail_url, bucket, path, thumbnail_path, medium_path, file_name, content_type, size_bytes, width, height, made_by
     from commerce.media
     where ${owned(storeId)} and (url in (${list}) or thumbnail_url in (${list}))
   `);
@@ -230,6 +244,7 @@ export async function libraryFilesByUrl(storeId: string | null, urls: string[]):
       bucket: String(row.bucket),
       path: String(row.path),
       thumbnailPath: row.thumbnail_path === null ? null : String(row.thumbnail_path),
+      mediumPath: row.medium_path === null || row.medium_path === undefined ? null : String(row.medium_path),
       fileName: String(row.file_name),
       contentType: String(row.content_type),
       sizeBytes: Number(row.size_bytes),
@@ -266,12 +281,21 @@ export async function copyToLibrary(
     const thumbnailUrl = await copyFile(file.bucket, file.thumbnailPath, thumbnailPath);
     if (thumbnailUrl) thumbnail = { url: thumbnailUrl, path: thumbnailPath };
   }
+  // Its 800 px copy (bloat review step 0.33), into the new owner's folder too: never an address of the other owner's file.
+  let medium: { url: string; path: string } | null = null;
+  if (file.mediumPath) {
+    const mediumPath = `${folder}/${name}-800${extension(file.mediumPath)}`;
+    const mediumUrl = await copyFile(file.bucket, file.mediumPath, mediumPath);
+    if (mediumUrl) medium = { url: mediumUrl, path: mediumPath };
+  }
   await db().execute(sql`
     insert into commerce.media (
-      store_id, kind, url, thumbnail_url, bucket, path, thumbnail_path, file_name, content_type, size_bytes, width, height, created_by, made_by
+      store_id, kind, url, thumbnail_url, medium_url, bucket, path, thumbnail_path, medium_path, file_name, content_type, size_bytes, width,
+      height, created_by, made_by
     ) values (
-      ${target.storeId}::uuid, ${file.kind}, ${url}, ${thumbnail?.url ?? null}, ${file.bucket}, ${path}, ${thumbnail?.path ?? null},
-      ${file.fileName}, ${file.contentType}, ${file.sizeBytes}, ${file.width}, ${file.height}, ${target.accountId}::uuid, ${file.madeBy ?? "person"}
+      ${target.storeId}::uuid, ${file.kind}, ${url}, ${thumbnail?.url ?? null}, ${medium?.url ?? null}, ${file.bucket}, ${path},
+      ${thumbnail?.path ?? null}, ${medium?.path ?? null}, ${file.fileName}, ${file.contentType}, ${file.sizeBytes}, ${file.width},
+      ${file.height}, ${target.accountId}::uuid, ${file.madeBy ?? "person"}
     )
     on conflict (url) do nothing
   `);
@@ -711,10 +735,10 @@ export async function measureMedia(owner: MediaOwner, id: string, width: number,
  */
 export async function deleteMedia(owner: MediaOwner, accountId: string, id: string): Promise<{ ok: true } | { ok: false; problem: string }> {
   const [row] = await db().execute<Row>(sql`
-    select bucket, path, thumbnail_path, file_name from commerce.media where id = ${id}::uuid and ${owned(owner.storeId)}
+    select bucket, path, thumbnail_path, medium_path, file_name from commerce.media where id = ${id}::uuid and ${owned(owner.storeId)}
   `);
   if (!row) return { ok: false, problem: "That file is no longer in the library." };
-  const paths = [String(row.path), ...(row.thumbnail_path ? [String(row.thumbnail_path)] : [])];
+  const paths = [String(row.path), ...(row.thumbnail_path ? [String(row.thumbnail_path)] : []), ...(row.medium_path ? [String(row.medium_path)] : [])];
   if (!(await removeStoredFiles(String(row.bucket), paths))) {
     return { ok: false, problem: "The file could not be removed from storage. Try again." };
   }
@@ -738,14 +762,18 @@ export async function deleteMediaMany(owner: MediaOwner, accountId: string, ids:
   const wanted = [...new Set(ids)].slice(0, MEDIA_DELETE_MAX);
   if (wanted.length === 0) return { deleted: 0, kept: 0 };
   const rows = await db().execute<Row>(sql`
-    select id, bucket, path, thumbnail_path, file_name from commerce.media
+    select id, bucket, path, thumbnail_path, medium_path, file_name from commerce.media
     where id in (${sql.join(wanted.map((id) => sql`${id}::uuid`), sql`, `)}) and ${owned(owner.storeId)}
   `);
   const byBucket = new Map<string, Row[]>();
   for (const row of rows) byBucket.set(String(row.bucket), [...(byBucket.get(String(row.bucket)) ?? []), row]);
   const removed: string[] = [];
   for (const [bucket, group] of byBucket) {
-    const paths = group.flatMap((row) => [String(row.path), ...(row.thumbnail_path ? [String(row.thumbnail_path)] : [])]);
+    const paths = group.flatMap((row) => [
+      String(row.path),
+      ...(row.thumbnail_path ? [String(row.thumbnail_path)] : []),
+      ...(row.medium_path ? [String(row.medium_path)] : []),
+    ]);
     if (await removeStoredFiles(bucket, paths)) removed.push(...group.map((row) => String(row.id)));
   }
   if (removed.length > 0) {

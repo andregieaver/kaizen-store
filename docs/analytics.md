@@ -165,6 +165,11 @@ cannot be followed from one day to the next, and that adding to the cart lets th
   trusted. The check and the count are two statements, so a burst can overshoot a limit slightly.
 - Rows older than 25 months are deleted by the daily job.
 
+
+**Error pages (D663).** When a store page fails to render, the store's error page sends the store and the path to `/api/visit/error`, only where
+the visit beacon runs and the browser does not ask not to be tracked. `recordPageError()` checks it as a page view (robots, privacy signals, the
+store's own pages, counting on) and writes `visits.error_at` on the visitor's counted visit of the store's day, the first time only; it starts no
+visit, so an error never counts a visitor. The autopilot's watch (`docs/100-day-challenge.md` F4) counts visitors who met an error per hour.
 ## Speed (D336, wave 7 unit B, `docs/wave-7-storefront.md` B)
 
 How fast a store's pages are for the people who open them, measured in their browsers (field data), never a score from nothing.
@@ -588,6 +593,24 @@ Profit is the sum; the margin is profit over sales less refunds. **Before ads an
 shows it to members who may read analytics (it shows cost prices and fees); the Finance page lists the period's orders (by the day they were
 sold, at most 5,000) with their average in the main currency, how many lost money and how many wait on cost prices, and the ten least
 profitable, each a link to its order.
+
+## Heatmaps and recordings (D656, planned in steps)
+
+Click, scroll and attention heatmaps, dead and rage clicks, and recordings of visits, built in steps from
+[`heatmaps-and-recordings.md`](heatmaps-and-recordings.md), whose section 3 holds every definition. Built so far (step 1): the switches
+(`stores.heatmaps`, `stores.recordings`, owner only, both off) and the consent they need; step 2, the pure detectors; step 3, the tables and `/api/signals/heat`; step 4, the storefront's collector (`SiteSignals`, loaded once the browser is idle and only for a store with heatmaps on, so no store sends anything until its owner switches them on); step 5, that switch, under Heatmaps on Analytics → Settings; step 6, the pictures the heatmaps are drawn over (`src/server/map-shots.ts`), which no screen asks for yet.
+
+The figures, as built in code (constants in `src/lib/page-heat.ts` and `src/lib/click-signals.ts`, tested against the plan):
+
+| Figure | Definition |
+|---|---|
+| Page view | A load, soft navigation or back/forward restore to an allowed page (`signalPlace()`, mirroring `placeOfPath()` + `speedKind()`), until the next page or `pagehide`; under 1 s visible is never sent. |
+| Dead click | A candidate click (not a field, label, media or frame; not the same element again within 1 s) with no counted mutation from its pointerdown to 2.5 s after, no scroll within 300 ms, no text selected within 100 ms, no focus move or leaving within 1 s, no address change within 2.5 s. |
+| Rage click | Three clicks each within 1 s of the last and 30 px of the first or on the same element, not on text fields; counted once, on the third, at the first click's place. |
+| Scroll reach | The deepest point seen over the tallest the page was, in 5 % buckets; 100 % for a page no taller than the window. |
+| Fold | The window's share of the page at the first look; averaged per page view. |
+| Attention | Ms per 50 px strip on screen in two 250 ms ticks running, while visible and with input in the last 15 s; sent as 20 bands of the first 20,000 px (each band the mean of its strips, at most 120 s a view). |
+| Frustration | Page views with a dead or rage click, over page views. |
 
 ## Not tracked (said on the pages)
 

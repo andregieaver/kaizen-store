@@ -9,6 +9,11 @@
 
 /** The endpoint, same-site. */
 export const VISIT_ENDPOINT = "/api/visit";
+/**
+ * Where a store page that failed to render says so (`docs/100-day-challenge.md` F4, D663): the same body's store and path, nothing else, so the
+ * autopilot's watch can count visitors who met an error per hour. Sent only where the visit beacon runs (the store counts visits).
+ */
+export const PAGE_ERROR_ENDPOINT = "/api/visit/error";
 
 /** Longest body the server takes. The beacon stays well under it. */
 export const MAX_BODY_BYTES = 1000;

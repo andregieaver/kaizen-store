@@ -1,7 +1,7 @@
 # A/B testing
 
 Design for an A/B testing tool that platform admins and store owners use to find out whether a change to a page earns
-its place. Status: **phases 1 to 11 built** (11: the form-sent goal) (10: the front page and the All products page) (9: modals and working pages) (4: the AI manager's tools; 5: the platform's view; 6: the guardrail email; 7: search and recommendations on the engine; 8: the platform assistant's tools) (D148): the engine, tests of whole store pages and of a part of one (a row, column or component chosen in the builder), scheduled starts, and tests of a store's header, footer and product layouts; see "What phase 1 built", "What phase 2 built" and "What phase 3 built" below. The AI manager's tools are phase 4 ("What phase 4 built"). Modals and working pages are phase 9; the platform's own pages are later. It builds on [`measurement.md`](measurement.md), whose principles
+its place. Status: **phases 1 to 14 built** (14: news when a test has an answer, what it would mean, and what it taught, D662) (13: the shop's own traffic, one-screen setup and the draft as a record, D660) (12: the test's page as a record, D659, [`ab-testing-usability.md`](ab-testing-usability.md)) (11: the form-sent goal) (10: the front page and the All products page) (9: modals and working pages) (4: the AI manager's tools; 5: the platform's view; 6: the guardrail email; 7: search and recommendations on the engine; 8: the platform assistant's tools) (D148): the engine, tests of whole store pages and of a part of one (a row, column or component chosen in the builder), scheduled starts, and tests of a store's header, footer and product layouts; see "What phase 1 built", "What phase 2 built" and "What phase 3 built" below. The AI manager's tools are phase 4 ("What phase 4 built"). Modals and working pages are phase 9; the platform's own pages are later. It builds on [`measurement.md`](measurement.md), whose principles
 it keeps, and on what already exists: the page builder, `src/lib/experiment-stats.ts`, the search test (D77) and the
 recommendations test (D139/D140).
 
@@ -383,7 +383,90 @@ sign-up sent by visitors in each version, the cases that are not counted, the dr
 Not done: the checks that were open before, and a goal for a form on a page other than the one under test (a form in the footer, say, is not on
 the list unless it is in the part).
 
-## Principles (kept from `measurement.md`)
+## What phase 12 built: the test's page as a record (D659)
+
+Step 1 of [`ab-testing-usability.md`](ab-testing-usability.md), drawn in the admin redesign's record pattern (round 1, D595: the order page).
+A started test's page answers *Is it working? When will I know? What should I do?* before anything else.
+
+- **`experimentCard()`** (`src/lib/experiment-card.ts`, pure and tested): the stage a person sees (`draft`, `scheduled`, `learning`,
+  `answer`, `broken`, `applied`, `discarded`: `running` told apart by whether the verdict has an answer), the one next step, progress
+  (days and the smallest version's visitors against the minimums, and the day both are likely reached at the pace so far), and each
+  version's change with its **likely range at the verdict's own level** (the stricter one with several versions). A range across "no
+  change" is therefore exactly a verdict of no clear difference: the page can no longer say "No clear difference" above "96 % chance it is
+  better", as it did (the table showed the one-sided chance; the verdict needs the two-sided 95 % range). The chance is kept for the
+  details and the AI, written "more than 99 %" rather than rounded to 100.
+- **The page** (`/admin/{store}/experiments/{id}` once started): the header carries the stage as a chip, what is tested and the goal,
+  and the one green button its stage asks for (*Start now* for a scheduled test, *Use Version B* for a winner, *Keep the original* when the
+  answer or a broken split says so; none while it is still learning), with the rest under *More* (the other versions, stop, rename).
+  Deciding asks first and stops a running test in the same press (`decideExperimentAction`, as the AI manager's `apply_winner` does), so a
+  clear winner no longer needs *Stop*, then *Decide*. Under it the test's path (`StepPath`: made, started, learning with *Day 3 of 14*,
+  answer with *Around 27 Nov*, decided), the verdict with two progress bars, *How sure are we?* (a dot on a bar per version against a
+  dashed no-change line), *What is different* (each version's changes in words, `versionDifferences()` through `compareVersions()`, D358,
+  said by `differenceLine()`, now shared with the versions dialogs), *How it developed* (with axes and the shortest run marked) and *What
+  visitors did* (bars per 100). Every table, week by week, the split as a bar and the method are behind *How we worked this out*
+  (`FoldOnHash`).
+- **No peeking.** While it is too early nothing points a direction: no change or range is drawn, the two pictures of figures wait for an
+  answer, and the verdict's early sentence no longer says "B got 12 % fewer …" (`verdictOf()`, which the AI manager reads too). The
+  counts stay one fold away for whoever wants them.
+- **The AI manager's `explain_results`** (and the platform's `explain_ab_test`, which returns it) adds `stage`, `progress` (with
+  `likely_ready_around`), each version's `likely_between`, `what_each_version_changed` and `by_day` (only once there is an answer), and
+  says plainly that no figure is given before the minimum. The tool's description is unchanged, so the agents' eval recording stands.
+- **A fix on the way:** applying a winner of a whole page copied the version's admin name ("Om oss (B)") onto the live page's title. The
+  page now keeps its own title as it keeps its address (`applyVariant()`, test in `experiments.int.test.ts`).
+
+## What phase 13 built: no numbers to guess, and a calmer start (D660)
+
+Step 2 of [`ab-testing-usability.md`](ab-testing-usability.md).
+
+- **The shop's own traffic** (`experimentTraffic()`, `src/server/experiment-traffic.ts`; the arithmetic pure in `src/lib/experiment-traffic.ts`):
+  for each testable target, its visits a day over the last 30 days (D152): those that began on a page (`landing_path`, so a page sees at
+  least that many and an estimate errs long), every visit for the header and footer, visits that viewed a product for a product layout, and
+  the cart's and checkout's visits for a working page's part. Times the share of cookie choices in 90 days that accepted statistics (only
+  they take part; null with fewer than 20 choices). The goals' rates today are the store's own funnel (`funnelCounts()` of the analytics,
+  now exported): orders, adding to the cart, reaching checkout. A click or a form has no rate the store counts, and nothing is guessed: the
+  owner's own figures stay one fold away. While a store does not count visits, nothing but the cookie share is known.
+- **The new test on one screen** (`ExperimentForm`): *What do you want more of?* as three goal cards (more goals behind one link), each
+  saying how soon it answers at the shop's traffic and one marked *Recommended* (`recommendedGoal()`: orders when they answer within six
+  weeks, else the counted goal that answers soonest); *Where?* with each page's visitors a day who could take part, busiest first and
+  chosen, and its last test (*Never tested*, *Version B won*, *Original kept*); *How long will it take?* as a bar from today past the shortest
+  run to the answer, with the likely date. When the change looked for is too subtle for the traffic, it names the smallest change it could
+  find within six weeks and offers it in one press (`findableChange()`: *Look for 50 %*). Name, idea, share, the change, devices, countries
+  and the owner's own figures are under *Customise*. The main button is *Make version B*.
+- **The draft as a record**: the header's one green button is the next step, *Change Version B* (to the builder) while the version is still
+  the original, then *Start the test*; scheduling, another version and deleting are under *More*, deleting asking first. The path (made,
+  change it, start, learning, answer), *Ready to start?* as ticks (the version differs, the page is published, what the test counts) with
+  anything else the start checks found under them, each version with what it changes in words, and the settings under *Customise* with how
+  long the test takes at the shop's traffic.
+- **The AI manager's `suggest_experiments`** gives each candidate its `traffic` (visitors a day who could take part, and the days to see a
+  20 % change for each counted goal, worked out by the store), and says to repeat those figures and never work one out; without figures it
+  says to ask the owner, as before. The *ab-test* playbook's step says the same. The tool's description is unchanged.
+- **A fix on the way:** a copy of the template's front page counted as *changed* the moment it was made, so an unchanged version could be
+  started: saving a copy writes an older grid setting (columns per screen) in today's shape. Whether a version differs is now read from the
+  pages as they are drawn (`parsePageContent()`), as *What is different* already was (`experiments.int.test.ts`).
+- **Not done here:** the original and B drawn side by side. The admin's previews are pages inside the admin's frame; a frame of their own
+  is step 2b in the plan.
+
+## What phase 14 built: news, and a memory (D662)
+
+Step 3 of [`ab-testing-usability.md`](ab-testing-usability.md). Migration `20261116091542_grey_daredevil` (two nullable columns and a
+notice kind).
+
+- **The day there is an answer.** The hourly check in `runExperimentJobs()` already works out every running test's results for its guardrail;
+  the first time a verdict is *better*, *worse* or *even*, `markAnswered()` sets `experiments.answered_at` (once: `where answered_at is null`)
+  and `notifyAnswered()` tells the store's owners and whoever made the test: an AI manager notice (kind `test_answered`, D350, "Your A/B test
+  … has an answer") and one email each (`experiment.answered`, `answeredEmail()` in `src/lib/experiment-emails.ts`) in their own admin
+  language, with the verdict as the test's page words it. The test keeps running until someone decides; nothing is applied by itself.
+- **If everyone saw it.** For a rate goal whose verdict found a better version, `experimentCard().impact` works out how many more visitors a
+  week would do the thing (the week's counted visitors times the difference, and the same for the ends of its likely range), shown under the
+  verdict and returned by `explain_results` as `if_everyone_saw_it`.
+- **What it taught.** `experiments.learning`, one line of at most 280 characters in the owner's words: written in the decide dialog
+  (optional), or later on a decided test's page (`LearningCard`, `saveLearning()`, audited without the words). The list shows them under
+  *What your tests taught you*; `list_experiments`, `explain_results` and `suggest_experiments` (`what_earlier_tests_taught`, and with each
+  candidate's earlier tests) return them as the owner's words, as they return the test's idea.
+- **Kept for step 3b:** the autopilot's `test_answered` event and the gated `record_learning` tool. Both change what the agents are offered
+  (an event's turn lines, a tool's definition), so they wait for one eval run on Platform → AI with their recording.
+
+
 
 - Randomise who is eligible, then compare everyone assigned; never compare people who used a thing with those who did
   not.

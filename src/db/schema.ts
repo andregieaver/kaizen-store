@@ -794,6 +794,19 @@ export const stores = commerce.table(
      */
     visitCounting: boolean("visit_counting").notNull().default(false),
     /**
+     * Heatmaps (D656, `docs/heatmaps-and-recordings.md`): click, scroll and attention totals and dead and rage clicks from visitors who
+     * allowed statistics. Off until the owner switches it on (`setHeatmaps()`); never copied with a store.
+     */
+    heatmaps: boolean("heatmaps").notNull().default(false),
+    /** Recordings of visits (D656): only from visitors who allowed recordings, and only while the platform has opened them. Owner only. */
+    recordings: boolean("recordings").notNull().default(false),
+    /** The share of tabs recorded while recordings are on, in percent: 10, 25, 50 or 100. */
+    recordingShare: smallint("recording_share").notNull().default(50),
+    /** `balanced` masks what visitors type and text people wrote; `strict` masks all text. */
+    recordingMask: text("recording_mask").notNull().default("balanced"),
+    /** When the owner confirmed the store is not aimed at children, sells nothing sensitive, and its privacy policy says visits are recorded. */
+    recordingsConfirmedAt: timestamp("recordings_confirmed_at", { withTimezone: true }),
+    /**
      * Private mode (D339, `src/server/private-mode.ts`, its only writer): visitors without the unlock pass see the landing page (the page
      * role `private`). On for a new store until it opens (decision 5); a store template or demo store is never private, whatever this says.
      */
@@ -867,6 +880,8 @@ export const stores = commerce.table(
   },
   (t) => [
     check("stores_audience", sql`${t.audience} in ('consumers', 'businesses', 'both')`),
+    check("stores_recording_share", sql`${t.recordingShare} in (10, 25, 50, 100)`),
+    check("stores_recording_mask", sql`${t.recordingMask} in ('balanced', 'strict')`),
     check("stores_terms_at_checkout", sql`${t.termsAtCheckout} in ('link', 'checkbox', 'off')`),
     check("stores_customer_accounts", sql`${t.customerAccounts} in ('optional', 'required', 'off')`),
     check("stores_checkout_phone", sql`${t.checkoutPhone} in ('off', 'optional', 'required')`),
@@ -9415,10 +9430,17 @@ export const media = commerce.table(
     kind: text("kind").notNull(),
     url: text("url").notNull(),
     thumbnailUrl: text("thumbnail_url"),
+    /**
+     * Its 800 px copy (bloat review step 0.33), made where the 480 px one is, for a picture wider than 800 px; null for one stored
+     * before, which is offered as its two files.
+     */
+    mediumUrl: text("medium_url"),
     /** The Storage bucket and paths, to delete the files with the item. */
     bucket: text("bucket").notNull(),
     path: text("path").notNull(),
     thumbnailPath: text("thumbnail_path"),
+    /** The 800 px copy's path in the bucket, removed with the item. */
+    mediumPath: text("medium_path"),
     fileName: text("file_name").notNull(),
     contentType: text("content_type").notNull(),
     sizeBytes: bigint("size_bytes", { mode: "number" }).notNull().default(0),
@@ -13311,6 +13333,10 @@ export const experiments = commerce.table(
     /** Why a test stopped: `person`, `guardrail` or `planned_end`. */
     stopReason: text("stop_reason"),
     appliedVariant: text("applied_variant"),
+    /** When the test first had an answer (D148 phase 14, D662): the verdict turned better, worse or even, and the owners were told once. */
+    answeredAt: timestamp("answered_at", { withTimezone: true }),
+    /** What the test taught, in one line the owner wrote on deciding (D662), shown in the list and read by the AI manager. */
+    learning: text("learning"),
     createdBy: uuid("created_by").references(() => accounts.id),
     updatedBy: uuid("updated_by").references(() => accounts.id),
     createdAt: createdAt(),
@@ -13334,6 +13360,7 @@ export const experiments = commerce.table(
     check("experiments_name", sql`length(${t.name}) between 1 and 120 and length(${t.hypothesis}) <= 500`),
     check("experiments_traffic", sql`${t.trafficShare} > 0 and ${t.trafficShare} <= 1`),
     check("experiments_minimums", sql`${t.minVisitors} >= 0 and ${t.minDays} between 1 and 90`),
+    check("experiments_learning", sql`${t.learning} is null or length(${t.learning}) between 1 and 280`),
     check("experiments_stop_reason", sql`${t.stopReason} is null or ${t.stopReason} in ('person', 'guardrail', 'planned_end')`),
     check("experiments_applied", sql`(${t.appliedVariant} is not null) = (${t.status} = 'applied')`),
   ],
@@ -13633,6 +13660,11 @@ export const visits = commerce.table(
     firstSeen: timestamp("first_seen", { withTimezone: true }).notNull().defaultNow(),
     lastSeen: timestamp("last_seen", { withTimezone: true }).notNull().defaultNow(),
     /**
+     * When a store page first failed to render for the visitor that day (`docs/100-day-challenge.md` F4, D662, `recordPageError()`): the
+     * autopilot's watch counts visitors who met an error per hour. Null: none.
+     */
+    errorAt: timestamp("error_at", { withTimezone: true }),
+    /**
      * The visitor's first visit in the last 30 days (D303 I3), only for one who allowed statistics cookies: its channel, source,
      * campaign and day, from the first-party `kaizen_touch_{store}` cookie (`recordTouch()`); null without consent.
      */
@@ -13666,6 +13698,101 @@ export const productViews = commerce.table(
     primaryKey({ columns: [t.storeId, t.day, t.productId] }),
     productRef("product_views_product_fk", t),
     check("product_views_views", sql`${t.views} >= 0`),
+  ],
+);
+
+/**
+ * Heatmaps' daily totals per page (D656, `docs/heatmaps-and-recordings.md` 6.2), written only by `recordHeat()` (`src/server/page-heat.ts`)
+ * from summaries of visitors who allowed statistics: page views, the reach histogram (21 buckets of 5 %), folds, attention per band (20),
+ * clicks and dead and rage clicks. `tag` '' holds every visitor; `{experiment}:{version}` that version's visitors as well. No visitor is
+ * kept; rows go after 13 months (`HEAT_KEEP_DAYS`). Never copied with a store.
+ */
+export const pageHeatDays = commerce.table(
+  "page_heat_days",
+  {
+    storeId: storeId().references(() => stores.id, { onDelete: "cascade" }),
+    day: date("day", { mode: "string" }).notNull(),
+    page: text("page").notNull(),
+    device: text("device").notNull(),
+    tag: text("tag").notNull().default(""),
+    views: integer("views").notNull().default(0),
+    reach: integer("reach").array().notNull(),
+    foldSum: bigint("fold_sum", { mode: "number" }).notNull().default(0),
+    attentionMs: bigint("attention_ms", { mode: "number" }).array().notNull(),
+    attHeightSum: bigint("att_height_sum", { mode: "number" }).notNull().default(0),
+    clicks: integer("clicks").notNull().default(0),
+    deadClicks: integer("dead_clicks").notNull().default(0),
+    rageClicks: integer("rage_clicks").notNull().default(0),
+    deadViews: integer("dead_views").notNull().default(0),
+    rageViews: integer("rage_views").notNull().default(0),
+    frustratedViews: integer("frustrated_views").notNull().default(0),
+  },
+  (t) => [
+    primaryKey({ columns: [t.storeId, t.day, t.page, t.device, t.tag] }),
+    check("page_heat_days_page", sql`char_length(${t.page}) between 1 and 300`),
+    check("page_heat_days_device", sql`${t.device} in ('mobile', 'tablet', 'desktop')`),
+    check("page_heat_days_tag", sql`${t.tag} = '' or ${t.tag} ~ '^[0-9a-f-]{36}:[a-d]$'`),
+    check("page_heat_days_arrays", sql`cardinality(${t.reach}) = 21 and cardinality(${t.attentionMs}) = 20`),
+    check("page_heat_days_counts", sql`${t.views} >= 0 and ${t.clicks} >= 0 and ${t.deadClicks} >= 0 and ${t.rageClicks} >= 0`),
+  ],
+);
+
+/** Clicks per part of a page and cell of its box, per day (D656, 6.2): written with `page_heat_days`, kept 90 days (`CELL_KEEP_DAYS`). */
+export const clickCells = commerce.table(
+  "click_cells",
+  {
+    storeId: storeId().references(() => stores.id, { onDelete: "cascade" }),
+    day: date("day", { mode: "string" }).notNull(),
+    page: text("page").notNull(),
+    device: text("device").notNull(),
+    tag: text("tag").notNull().default(""),
+    anchor: text("anchor").notNull(),
+    cx: smallint("cx").notNull(),
+    cy: smallint("cy").notNull(),
+    clicks: integer("clicks").notNull().default(0),
+    dead: integer("dead").notNull().default(0),
+    rage: integer("rage").notNull().default(0),
+  },
+  (t) => [
+    primaryKey({ columns: [t.storeId, t.day, t.page, t.device, t.tag, t.anchor, t.cx, t.cy] }),
+    check("click_cells_page", sql`char_length(${t.page}) between 1 and 300`),
+    check("click_cells_device", sql`${t.device} in ('mobile', 'tablet', 'desktop')`),
+    check("click_cells_tag", sql`${t.tag} = '' or ${t.tag} ~ '^[0-9a-f-]{36}:[a-d]$'`),
+    check("click_cells_anchor", sql`char_length(${t.anchor}) between 1 and 60`),
+    check("click_cells_cell", sql`${t.cx} between 0 and 9 and ${t.cy} between 0 and 9`),
+  ],
+);
+
+/**
+ * The picture under a page's heatmap (D656, `docs/heatmaps-and-recordings.md` 6.3 and 9): one per page shape, device and A/B version, a
+ * robot's photograph of the public page (`page-maps/{storeId}/{id}.jpg`) with where each anchor sits on it. Asked for when the heatmap
+ * opens, taken by the page looks' route, claimed one at a time.
+ */
+export const pageMapShots = commerce.table(
+  "page_map_shots",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    storeId: storeId().references(() => stores.id, { onDelete: "cascade" }),
+    page: text("page").notNull(),
+    device: text("device").notNull(),
+    tag: text("tag").notNull().default(""),
+    status: text("status").notNull().default("waiting"),
+    requestedAt: timestamp("requested_at", { withTimezone: true }).notNull().defaultNow(),
+    claimedUntil: timestamp("claimed_until", { withTimezone: true }),
+    shotAt: timestamp("shot_at", { withTimezone: true }),
+    width: integer("width"),
+    height: integer("height"),
+    layout: jsonb("layout"),
+    problem: text("problem"),
+  },
+  (t) => [
+    unique("page_map_shots_key").on(t.storeId, t.page, t.device, t.tag),
+    index("page_map_shots_queue_idx").on(t.requestedAt).where(sql`${t.status} in ('waiting', 'taking')`),
+    check("page_map_shots_page", sql`char_length(${t.page}) between 1 and 300`),
+    check("page_map_shots_device", sql`${t.device} in ('mobile', 'tablet', 'desktop')`),
+    check("page_map_shots_tag", sql`${t.tag} = '' or ${t.tag} ~ '^[0-9a-f-]{36}:[a-d]$'`),
+    check("page_map_shots_status", sql`${t.status} in ('waiting', 'taking', 'done', 'failed')`),
+    check("page_map_shots_problem", sql`char_length(${t.problem}) <= 200`),
   ],
 );
 
@@ -17341,7 +17468,7 @@ export const assistantNotices = commerce.table(
     index("assistant_notices_created_idx").on(t.createdAt),
     check(
       "assistant_notices_kind",
-      sql`${t.kind} in ('page_built', 'follow_up', 'plan_question', 'plan_done', 'approval_waiting', 'report_ready', 'life_handoff')`,
+      sql`${t.kind} in ('page_built', 'follow_up', 'plan_question', 'plan_done', 'approval_waiting', 'report_ready', 'life_handoff', 'test_answered')`,
     ),
     check("assistant_notices_ref", sql`length(${t.ref}) between 1 and 200`),
     check("assistant_notices_href", sql`${t.href} like '/admin/%' and length(${t.href}) <= 300`),

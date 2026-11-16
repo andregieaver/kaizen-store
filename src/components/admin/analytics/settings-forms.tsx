@@ -6,7 +6,8 @@ import { addMonths, startOfMonth } from "@/lib/analytics-period";
 import { formatCount, formatPercent, safeRatio } from "@/lib/analytics-core";
 import { formatAmount } from "@/lib/analytics-format";
 import { fillWords } from "@/lib/admin-fill";
-import { analyticsDateLocale } from "@/lib/analytics-lang";
+import { adminText } from "@/lib/admin-text";
+import { analyticsDateLocale, analyticsLang } from "@/lib/analytics-lang";
 import { analyticsWords, countText } from "@/lib/analytics-words";
 import {
   analyticsSettingsText,
@@ -38,6 +39,7 @@ export type SettingsActions = {
   savePeriodTarget?: FormAction;
   deletePeriodTarget?: FormAction;
   setVisitCounting: FormAction;
+  setHeatmaps?: FormAction;
   backfillCosts: FormAction;
 };
 
@@ -56,6 +58,8 @@ export type AnalyticsSettingsViewProps = {
   /** Targets of every kind that have not ended (D348); the month net-sales ones are listed above, under the month's form. */
   periodTargets?: readonly StoredPeriodTarget[];
   visitCounting: boolean;
+  /** Heatmaps on (D656); left out where the page does not offer them. */
+  heatmaps?: boolean;
   /** Null for a member who may look but not change. */
   actions: SettingsActions | null;
 };
@@ -570,6 +574,57 @@ function VisitsSection({ summary, visitCounting, actions }: Pick<AnalyticsSettin
 }
 
 // ---------------------------------------------------------------------------
+// 6. Heatmaps (D656)
+// ---------------------------------------------------------------------------
+
+export function SignalsSection({ heatmaps, action }: { heatmaps: boolean; action: FormAction | null }) {
+  const w = adminText(analyticsLang(), "heatmaps");
+  return (
+    <AnalyticsSection id="signals" title={w.title} description={w.description}>
+      <div className={card}>
+        <div className="flex flex-wrap items-center gap-3">
+          <StatusPill tone={heatmaps ? "good" : "neutral"}>{heatmaps ? w.on : w.off}</StatusPill>
+          <p className="text-sm">{heatmaps ? w.stateOn : w.stateOff}</p>
+        </div>
+
+        <div className="grid gap-4 md:grid-cols-2">
+          <div className="flex flex-col gap-1.5">
+            <h3 className="text-body-strong text-ink">{w.whatTitle}</h3>
+            <ul className="list-disc space-y-1 pl-5 text-sm text-muted">
+              {w.what.map((line) => (
+                <li key={line}>{line}</li>
+              ))}
+            </ul>
+          </div>
+          <div className="flex flex-col gap-1.5">
+            <h3 className="text-body-strong text-ink">{w.notTitle}</h3>
+            <ul className="list-disc space-y-1 pl-5 text-sm text-muted">
+              {w.not.map((line) => (
+                <li key={line}>{line}</li>
+              ))}
+            </ul>
+          </div>
+        </div>
+
+        <Note title={w.askAgainTitle}>
+          {w.askAgain} {w.keep}
+        </Note>
+
+        {action ? (
+          <ActionForm action={action} className="flex flex-col gap-3">
+            <div>
+              <SubmitButton name="enabled" value={heatmaps ? "off" : "on"} variant={heatmaps ? "secondary" : "primary"}>
+                {heatmaps ? w.turnOff : w.turnOn}
+              </SubmitButton>
+            </div>
+          </ActionForm>
+        ) : null}
+      </div>
+    </AnalyticsSection>
+  );
+}
+
+// ---------------------------------------------------------------------------
 // The view
 // ---------------------------------------------------------------------------
 
@@ -599,6 +654,7 @@ export function AnalyticsSettingsView(props: AnalyticsSettingsViewProps) {
       <TargetsSection currency={currency} locale={locale} today={today} targets={targets} actions={actions} />
       <PeriodTargetsSection currency={currency} locale={locale} today={today} periodTargets={props.periodTargets} actions={actions} />
       <VisitsSection summary={summary} visitCounting={visitCounting} actions={actions} />
+      {props.heatmaps !== undefined && <SignalsSection heatmaps={props.heatmaps} action={actions?.setHeatmaps ?? null} />}
     </div>
   );
 }

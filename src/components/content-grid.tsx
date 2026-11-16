@@ -13,6 +13,7 @@ import { contentSides, frameStyle, gridImageShape, type ContentGridBlock, type S
 import { gridListStyle } from "@/lib/part-css";
 import { gridSizes } from "@/lib/picture-sizes";
 import { carouselAnywhere, valueAt } from "@/lib/responsive";
+import type { Size } from "@/lib/breakpoints";
 import { releaseDate } from "@/lib/stock-words";
 
 import type { TileAsk } from "@/lib/shop-tiles";
@@ -97,7 +98,12 @@ export function ContentGridView({
   // Its columns and gap by screen size are custom properties its rules set (`gridListStyle()`, drawn with the row's or the listing's).
   const listStyle = gridListStyle(block);
   // How wide a tile is at each screen size, so its picture is fetched at that size (D336).
-  const sizes = gridSizes({ xl: valueAt(block, "columns", "xl") ?? block.columns, lg: valueAt(block, "columns", "lg"), md: valueAt(block, "columns", "md"), sm: valueAt(block, "columns", "sm") });
+  // Its gaps are what its rules set (`gridListStyle()`), so a tile's claim leaves them out (bloat review step 0.33).
+  const gapAt = (size: Size) => valueAt(block, "gap", size) ?? block.gap;
+  const sizes = gridSizes(
+    { xl: valueAt(block, "columns", "xl") ?? block.columns, lg: valueAt(block, "columns", "lg"), md: valueAt(block, "columns", "md"), sm: valueAt(block, "columns", "sm") },
+    { gaps: { xl: gapAt("xl"), lg: gapAt("lg"), md: gapAt("md"), sm: gapAt("sm") } },
+  );
   const list = (
     <ul
       data-carousel-track={carousel ? "" : undefined}
@@ -203,7 +209,7 @@ export function ContentGridView({
                     href={g.href}
                     aria-label={`${item.group!.option}: ${g.value}`}
                     title={g.value}
-                    className={g.swatch ? "block size-5 rounded-full border border-line focus-visible:outline-2" : "block rounded-full border border-line px-2 text-xs leading-5 focus-visible:outline-2"}
+                    className={g.swatch ? "block size-5 rounded-full border border-border focus-visible:outline-2" : "block rounded-full border border-border px-2 text-xs leading-5 focus-visible:outline-2"}
                     style={g.swatch ? { backgroundColor: g.swatch } : undefined}
                   >
                     {g.swatch ? null : g.value}
@@ -343,6 +349,7 @@ function TilePicture({
     <SizedPicture
       url={image.large ?? image.url}
       small={image.large ? image.url : null}
+      medium={image.medium}
       sourceWidth={image.largeWidth}
       sizes={sizes}
       alt={alt}

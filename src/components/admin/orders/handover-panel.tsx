@@ -1,4 +1,5 @@
 import { ActionForm, SubmitButton, type FormState } from "@/components/admin/action-form";
+import { submitClass } from "@/lib/submit-class";
 import type { LocalDelivery, PickupDelivery } from "@/lib/delivery-options";
 import { parseOpeningHours } from "@/lib/opening-hours-schema";
 import { weekSummary } from "@/lib/opening-hours";
@@ -98,35 +99,46 @@ export function PickupPanel({
           <p className="text-muted">{w.wasCollected}</p>
         )
       ) : (
-        <div className="flex flex-col gap-4">
-          {!readyAt ? (
+        // Round 18 (D657): one step at a time, as one press: Ready for pickup, then Collected today; another day is a fold.
+        <div className="flex flex-col gap-3">
+          {!readyAt && (
             <ActionForm action={ready} className="flex flex-col gap-2">
               <input type="hidden" name="seen" value={state.basis} />
               <StockConfirm units={state.waitingUnits} w={w} />
+              <SubmitButton className={`${submitClass("primary")} min-h-12 w-full sm:w-auto sm:min-w-56`}>{w.ready}</SubmitButton>
               <p className="text-muted">{w.readyEmail}</p>
+            </ActionForm>
+          )}
+          <ActionForm action={collected} className="flex flex-col gap-2">
+            <input type="hidden" name="seen" value={state.basis} />
+            <input type="hidden" name="on" value={today} />
+            {readyAt && <StockConfirm units={state.waitingUnits} w={w} />}
+            <SubmitButton className={`${submitClass(readyAt ? "primary" : "secondary")} min-h-12 w-full font-medium sm:w-auto sm:min-w-56`}>
+              {w.collectedToday}
+            </SubmitButton>
+          </ActionForm>
+          <details>
+            <summary className="cursor-pointer font-medium text-ink underline underline-offset-2">{w.anotherDay}</summary>
+            <ActionForm action={collected} className="mt-3 flex flex-col gap-2">
+              <input type="hidden" name="seen" value={state.basis} />
+              <StockConfirm units={state.waitingUnits} w={w} />
+              <label className="flex flex-col gap-1">
+                {w.collectedOnLabel}
+                <input type="date" name="on" defaultValue={today} max={today} className="min-h-10 max-w-48 rounded-md border border-line bg-card px-3" />
+              </label>
+              <p className="text-muted">{w.collectedText}</p>
               <div>
-                <SubmitButton>{w.ready}</SubmitButton>
+                <SubmitButton variant="secondary">{w.collected}</SubmitButton>
               </div>
             </ActionForm>
-          ) : (
-            <ActionForm action={ready} className="flex flex-wrap items-center gap-3">
+          </details>
+          {readyAt && (
+            <ActionForm action={ready} className="flex flex-wrap items-center gap-3 border-t border-line pt-3">
               <input type="hidden" name="resend" value="1" />
               <SubmitButton variant="secondary">{w.sendAgain}</SubmitButton>
               <span className="text-muted">{w.onlyIfFailed}</span>
             </ActionForm>
           )}
-          <ActionForm action={collected} className="flex flex-col gap-2 border-t border-line pt-4">
-            <input type="hidden" name="seen" value={state.basis} />
-            <StockConfirm units={state.waitingUnits} w={w} />
-            <label className="flex flex-col gap-1">
-              {w.collectedOnLabel}
-              <input type="date" name="on" defaultValue={today} max={today} className="min-h-10 max-w-48 rounded-md border border-line bg-card px-3" />
-            </label>
-            <p className="text-muted">{w.collectedText}</p>
-            <div>
-              <SubmitButton variant="secondary">{w.collected}</SubmitButton>
-            </div>
-          </ActionForm>
         </div>
       )}
     </div>

@@ -149,7 +149,7 @@ describe("the scoreboard (E7)", () => {
   });
 });
 
-describe("the baseline (E7, D650)", () => {
+describe("the baseline (E7, D648)", () => {
   it("is frozen by a platform admin before Day 1, kept when the dates change, and counted with in place of later changes", async () => {
     await db().execute(sql`
       insert into commerce.analytics_settings (store_id, shipping_cost_minor, handling_cost_minor) values (${store.storeId}::uuid, 6900, 2500)

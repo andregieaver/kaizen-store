@@ -30,6 +30,7 @@ export const assistantNb: AssistantMessages = {
       life_handoff: "Kaizen Life gjorde: {task}",
       life_handoff_waiting: "Kaizen Life venter på ditt ja: {task}",
       life_handoff_failed: "Kaizen Life fikk ikke gjort: {task}",
+      test_answered: "A/B-testen din {test} har et svar",
     },
     menu: "Varsler fra KI-assistenten",
     pageTitle: "Varsler fra KI-assistenten",

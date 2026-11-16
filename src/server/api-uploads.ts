@@ -108,14 +108,19 @@ export async function keepUpload(
   } catch {
     return release({ ok: false, code: "invalid", problem: "The picture could not be read." });
   }
-  const full = await storageRefusal(owner.storeId, shrunk.image.byteLength + shrunk.thumbnail.byteLength);
+  const full = await storageRefusal(owner.storeId, shrunk.image.byteLength + shrunk.thumbnail.byteLength + (shrunk.medium?.byteLength ?? 0));
   if (full) return release({ ok: false, code: "invalid", problem: full });
   const base = (input.fileName?.trim() || "picture").replace(/\.[A-Za-z0-9]{1,5}$/, "");
   const stored = await storePicture(
     { storeId: owner.storeId, accountId: owner.accountId },
     new File([new Uint8Array(shrunk.image)], `${base}.webp`, { type: "image/webp" }),
     new File([new Uint8Array(shrunk.thumbnail)], `${base}-480.webp`, { type: "image/webp" }),
-    { fileName: `${base}.webp`, compressed: true },
+    {
+      fileName: `${base}.webp`,
+      compressed: true,
+      // Its 800 px copy (bloat review step 0.33), made by shrinkPicture() for a picture wider than that.
+      medium: shrunk.medium ? new File([new Uint8Array(shrunk.medium)], `${base}-800.webp`, { type: "image/webp" }) : null,
+    },
   );
   if (!stored.ok) return release({ ok: false, code: "invalid", problem: stored.problem });
   if (!stored.id) return release({ ok: false, code: "failed", problem: "The picture was stored but could not be kept in the library." });

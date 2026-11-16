@@ -84,7 +84,7 @@ export function GiftCardBuy({
   const inputClass = "min-h-11 w-full rounded-md border border-border bg-background px-3 text-base";
 
   return (
-    <form action={action} onSubmit={keepFocus} className="flex flex-col gap-4">
+    <form action={action} onSubmit={keepFocus} data-kz-private="" className="flex flex-col gap-4">
       <input type="hidden" name="store" value={store} />
       <input type="hidden" name="market" value={market} />
       <input type="hidden" name="variantId" value={variantId} />

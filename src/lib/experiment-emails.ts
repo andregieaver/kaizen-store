@@ -83,3 +83,33 @@ export function guardrailEmail(
     ],
   };
 }
+
+/** What the "has an answer" email says (D662): the verdict as the test's page words it, in the reader's language. */
+export type AnsweredFacts = {
+  storeName: string;
+  testName: string;
+  target: string;
+  /** The verdict's headline and detail (`verdictOf()`), already in the reader's language. */
+  headline: string;
+  detail: string;
+  days: number;
+  url: string;
+};
+
+/** The email to a test's owners the first time it has an answer (D662): what it found, and that deciding is theirs. */
+export function answeredEmail(facts: AnsweredFacts, words: StaffEmailsMessages = staffEmailsEn, lang: AdminLang = "en"): EmailContent {
+  const w = words.answered;
+  return {
+    subject: fillWords(w.subject, { test: facts.testName }),
+    preview: fillWords(w.preview, { headline: facts.headline }),
+    lang: ADMIN_LANG_FACTS[lang].tag,
+    footer: [facts.storeName, words.footer],
+    blocks: [
+      { type: "heading", text: w.heading },
+      { type: "paragraph", text: fillWords(w.intro, { test: facts.testName, target: facts.target, store: facts.storeName, days: countWords(facts.days, w.days) }) },
+      { type: "paragraph", text: `${facts.headline} ${facts.detail}` },
+      { type: "paragraph", text: w.decide },
+      { type: "button", text: w.button, url: facts.url },
+    ],
+  };
+}

@@ -116,7 +116,9 @@ export async function compressPictureAction(storeSlug: string, mediaId: string, 
   const thumbnail = formData.get("thumbnail");
   if (!id.safeParse(mediaId).success || !(image instanceof File) || !(thumbnail instanceof File)) return { ok: false, problem: (await said()).compressAgain };
   const owner = { storeId: held.store.id, storeSlug: held.store.slug };
-  const outcome = await replacePicture(owner, held.account.id, mediaId, image, thumbnail);
+  // Its 800 px copy, sent for a picture wider than that (bloat review step 0.33).
+  const medium = formData.get("medium");
+  const outcome = await replacePicture(owner, held.account.id, mediaId, image, thumbnail, medium instanceof File ? medium : null);
   if (outcome.ok) addressesMoved(held.store);
   return outcome;
 }

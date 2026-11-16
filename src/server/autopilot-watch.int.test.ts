@@ -21,6 +21,7 @@ type Row = Record<string, unknown>;
 let busy: Awaited<ReturnType<typeof newStore>>;
 let quiet: Awaited<ReturnType<typeof newStore>>;
 let blind: Awaited<ReturnType<typeof newStore>>;
+let broken: Awaited<ReturnType<typeof newStore>>;
 const SKU = "DEMO-MUG-WHITE";
 
 /** `n` visitors first seen in the hour that starts `hoursAgo` hours ago. */
@@ -80,7 +81,8 @@ beforeAll(async () => {
   busy = await newStore("watch-busy");
   quiet = await newStore("watch-quiet");
   blind = await newStore("watch-blind");
-  for (const s of [busy, quiet, blind]) await db().execute(sql`update commerce.stores set status = 'active', visit_counting = ${s !== blind} where id = ${s.storeId}::uuid`);
+  broken = await newStore("watch-broken");
+  for (const s of [busy, quiet, blind, broken]) await db().execute(sql`update commerce.stores set status = 'active', visit_counting = ${s !== blind} where id = ${s.storeId}::uuid`);
   // The busy store: in the same eight hours of each of the four weeks before, 100 visitors and 10 orders; since the change, 200 visitors and none.
   for (let week = 1; week <= 4; week++) {
     for (let h = 1; h <= 8; h++) await visitors(busy.storeId, week * 168 + h, h <= 4 ? 13 : 12);
@@ -95,6 +97,24 @@ beforeAll(async () => {
     { action: "product.price_changed", target: String(v.product_id), details: { sku: SKU, market: "NO", currency: "NOK" }, changes: { priceMinor: { from: 19900, to: 29900 } } },
   ]);
   await change(quiet, "create_discount", { code: "QUIET10", percent: 10 }, 49);
+  // The broken store (D663): it sells as before since the change (25 visitors and 2 orders an hour as in the weeks before), but 12 of the 200
+  // visitors since met an error page, and none in the weeks before.
+  for (let week = 1; week <= 4; week++) {
+    for (let h = 1; h <= 8; h++) await visitors(broken.storeId, week * 168 + h, 25);
+    await orders(broken.storeId, week * 168 + 4, 16);
+  }
+  for (let h = 1; h <= 8; h++) await visitors(broken.storeId, h, 25);
+  await orders(broken.storeId, 4, 16);
+  await db().execute(sql`
+    update commerce.visits set error_at = first_seen + interval '1 minute'
+    where id in (select id from commerce.visits where store_id = ${broken.storeId}::uuid and first_seen > now() - interval '8 hours' order by first_seen limit 12)
+  `);
+  const [bv] = await db().execute<Row>(sql`select v.id, v.product_id from commerce.product_variants v where v.store_id = ${broken.storeId}::uuid and v.sku = ${SKU}`);
+  await db().execute(sql`select commerce.set_price(${String(bv.id)}::uuid, 'NO', 19900)`);
+  await db().execute(sql`select commerce.set_price(${String(bv.id)}::uuid, 'NO', 24900)`);
+  await change(broken, "set_prices", { product: "mug", changes: [{ sku: SKU, prices: { NO: "249" } }] }, 8.5, [
+    { action: "product.price_changed", target: String(bv.product_id), details: { sku: SKU, market: "NO", currency: "NOK" }, changes: { priceMinor: { from: 19900, to: 24900 } } },
+  ]);
   await change(blind, "create_campaign", { name: "Blind sale" }, 7);
 });
 
@@ -113,6 +133,14 @@ describe("watch and roll back (F4)", () => {
     // Judged once: the next hour finds nothing new on these stores.
     await watchAutopilotChanges({ everyRun: true });
     expect(await watchedChanges(busy.storeId)).toHaveLength(1);
+  });
+
+  it("undoes a change after which visitors meet error pages, though sales hold (D663)", async () => {
+    await watchAutopilotChanges({ everyRun: true });
+    const [verdict] = await watchedChanges(broken.storeId);
+    expect(verdict).toMatchObject({ tool: "set_prices", verdict: "fall", undone: [`${SKU} in NO back to its price before`] });
+    expect(verdict.words).toContain("A clear rise in visitors meeting an error");
+    expect(await priceNow(broken.storeId)).toBe(19900);
   });
 
   it("leaves a price someone changed since alone", async () => {

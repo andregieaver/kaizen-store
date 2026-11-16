@@ -156,6 +156,9 @@ export const NB: StarterText = {
     "privacy.purpose.security": "å holde butikken sikker og forhindre svindel og misbruk (vår berettigede interesse)",
     "privacy.purpose.marketing": "å sende deg markedsføring på e-post, bare hvis du har sagt ja til det (samtykke)",
     "privacy.purpose.visits": "å telle besøk i butikken uten informasjonskapsler, for å se hvordan den brukes; vi lagrer ingen IP-adresse og ingen nettleseridentifikator (vår berettigede interesse)",
+    // D656: hand-written, for legal review.
+    "privacy.purpose.heatmaps": "å se, som summer per side og dag, hvor besøkende som tillater statistikk klikker, hvor langt de ruller og hvor lenge deler av en side er på skjermen (varmekart; ditt samtykke)",
+    "privacy.purpose.recordings": "å ta opp besøk fra besøkende som tillater opptak, under et tilfeldig nummer for én nettleserfane og uten det de skriver, for å finne det som er vanskelig å bruke; lagres i 30 dager (ditt samtykke)",
     "h.privacy.recipients": "Hvem som får opplysningene",
     "privacy.recipients.1": "Vi deler personopplysninger bare med dem som trenger dem:",
     "privacy.recipient.platform": "plattformen Kaizena Flow, som driver butikken og behandler opplysninger på våre vegne",
@@ -190,6 +193,7 @@ export const NB: StarterText = {
     "h.privacy.automated_decisions": "Automatiserte avgjørelser",
     "privacy.automated.1": "Vi tar ikke avgjørelser om deg som utelukkende bygger på automatisert behandling, og som har rettslige eller tilsvarende betydelige følger for deg.",
     "privacy.automated.chat": "Butikken har en chatassistent som bruker kunstig intelligens til å svare på spørsmål ut fra butikkens egen informasjon. Det du skriver til den, sendes til AI-leverandøren butikken bruker ({check}). Ikke skriv sensitive personopplysninger til den.",
+    "privacy.automated.answers": "Når du skriver til butikkens kundeservice, i chatten eller på e-post, kan en KI svare på egen hånd, uten at et menneske leser meldingen din først. Den svarer ut fra butikkens egen informasjon og, når den kan se at en bestilling er din, om den bestillingen, og den kan utføre en forespørsel du bekrefter, for eksempel en ny leveringsadresse før noe er sendt. Svarene sier at de kommer fra en KI. Refusjoner og unntak avgjøres av et menneske, og du kan når som helst be om å få snakke med et menneske.",
     "privacy.automated.tone": "Når du skriver til butikkens kundeservice, leser en KI tonen i meldingene dine, slik at en person kan komme inn tidligere hvis noe har gått galt. Den avgjør ingenting om deg på egen hånd, og vurderingen lagres ikke på kontoen din.",
     "privacy.automated.summaries": "Når en samtale med butikkens kundeservice avsluttes, skriver en KI et kort sammendrag av den for butikkens ansatte. Sammendraget lagres med samtalen og slettes sammen med den.",
     "h.privacy.cookies_link": "Informasjonskapsler",

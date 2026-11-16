@@ -24,6 +24,7 @@ import {
 } from "@/lib/content-packs";
 import { PACK_DESIGNS } from "@/lib/pack-designs";
 import { SLOT_BRIEF_MAX } from "@/lib/picture-direction";
+import { MEDIUM_COPY_WIDTH } from "@/lib/picture-sizes";
 import type { MenuEntry } from "@/lib/navigation";
 import { DEFAULT_APPOINTMENT, GENERAL_TAX_CODE, formatPriceInput, type ProductInput } from "@/lib/product-input";
 import { siteUrl } from "@/lib/site";
@@ -118,12 +119,21 @@ async function storeArtPicture(owner: { storeId: string; accountId: string }, ar
     bytes = Buffer.from(await response.arrayBuffer());
   }
   const thumbnail = await sharp(bytes).resize({ width: 480, withoutEnlargement: true }).webp({ quality: 78 }).toBuffer();
+  // Its 800 px copy (bloat review step 0.33), for art wider than that.
+  const width = (await sharp(bytes).metadata()).width ?? 0;
+  const medium =
+    width > MEDIUM_COPY_WIDTH ? await sharp(bytes).resize({ width: MEDIUM_COPY_WIDTH, withoutEnlargement: true }).webp({ quality: 80 }).toBuffer() : null;
   const name = path.basename(art.url);
   const stored = await storePicture(
     owner,
     new File([new Uint8Array(bytes)], name, { type: "image/webp" }),
     new File([new Uint8Array(thumbnail)], name.replace(/\.webp$/, "-480.webp"), { type: "image/webp" }),
-    { fileName: name, alt: art.alt, compressed: true },
+    {
+      fileName: name,
+      alt: art.alt,
+      compressed: true,
+      medium: medium ? new File([new Uint8Array(medium)], name.replace(/\.webp$/, "-800.webp"), { type: "image/webp" }) : null,
+    },
   );
   if (!stored.ok) throw new Error(`${art.url} could not be stored: ${stored.problem}`);
   return { url: stored.url, thumbnailUrl: stored.thumbnailUrl, width: art.width, height: art.height, alt: art.alt };

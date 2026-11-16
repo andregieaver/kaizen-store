@@ -156,6 +156,9 @@ export const SV: StarterText = {
     "privacy.purpose.security": "att hålla butiken säker och förebygga bedrägeri och missbruk (vårt berättigade intresse)",
     "privacy.purpose.marketing": "att skicka marknadsföring med e-post, bara om du har tackat ja till det (samtycke)",
     "privacy.purpose.visits": "att räkna besök i butiken utan cookies, för att se hur den används; vi sparar ingen IP-adress och ingen webbläsaridentifierare (vårt berättigade intresse)",
+    // D656: hand-written, for legal review.
+    "privacy.purpose.heatmaps": "att se, som summor per sida och dag, var besökare som tillåter statistik klickar, hur långt de scrollar och hur länge delar av en sida syns på skärmen (värmekartor; ditt samtycke)",
+    "privacy.purpose.recordings": "att spela in besök från besökare som tillåter inspelningar, under ett slumpat nummer för en webbläsarflik och utan det de skriver, för att hitta det som är svårt att använda; sparas i 30 dagar (ditt samtycke)",
     "h.privacy.recipients": "Vilka som får uppgifterna",
     "privacy.recipients.1": "Vi delar personuppgifter bara med dem som behöver dem:",
     "privacy.recipient.platform": "plattformen Kaizena Flow, som driver butiken och behandlar uppgifter för vår räkning",
@@ -190,6 +193,7 @@ export const SV: StarterText = {
     "h.privacy.automated_decisions": "Automatiserade beslut",
     "privacy.automated.1": "Vi fattar inga beslut om dig som enbart grundar sig på automatiserad behandling och som har rättsliga följder eller liknande betydande verkningar för dig.",
     "privacy.automated.chat": "Butiken har en chattassistent som använder artificiell intelligens för att svara på frågor utifrån butikens egen information. Det du skriver till den skickas till den AI-leverantör som butiken använder ({check}). Skriv inte känsliga personuppgifter till den.",
+    "privacy.automated.answers": "När du skriver till butikens kundtjänst, i chatten eller via e-post, kan en AI svara på egen hand, utan att en människa läser ditt meddelande först. Den svarar utifrån butikens egen information och, när den kan se att en beställning är din, om den beställningen, och den kan utföra en begäran som du bekräftar, till exempel en ny leveransadress innan något har skickats. Svaren anger att de kommer från en AI. Återbetalningar och undantag avgörs av en människa, och du kan när som helst be att få tala med en människa.",
     "privacy.automated.tone": "När du skriver till butikens kundtjänst läser en AI tonen i dina meddelanden, så att en person kan kliva in tidigare om något har gått fel. Den fattar inga beslut om dig på egen hand, och bedömningen sparas inte på ditt konto.",
     "privacy.automated.summaries": "När ett samtal med butikens kundtjänst avslutas skriver en AI en kort sammanfattning av det åt butikens personal. Sammanfattningen sparas med samtalet och raderas tillsammans med det.",
     "h.privacy.cookies_link": "Cookies",

@@ -14,7 +14,8 @@ const OPEN_MS = 30_000;
 const IDLE_MS = 8000;
 const PICTURES_MS = 6000;
 
-async function settle(page: Page): Promise<void> {
+/** Makes lazy pictures eager, scrolls through the page and waits for its fonts and pictures (also used by heatmaps' pictures, D656). */
+export async function settle(page: Page): Promise<void> {
   await page.evaluate(async () => {
     for (const image of Array.from(document.querySelectorAll("img[loading=lazy]"))) (image as HTMLImageElement).loading = "eager";
     const step = Math.max(200, Math.round(window.innerHeight * 0.8));

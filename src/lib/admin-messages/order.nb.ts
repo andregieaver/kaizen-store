@@ -532,6 +532,8 @@ export const orderNb: OrderMessages = {
     checkNow: "Sjekk nå",
   },
   handover: {
+    collectedToday: "Hentet i dag",
+    anotherDay: "En annen dag",
     notify: "Ingen tid lovet: kunden venter på e-posten.",
     readyHours: { one: "Vanligvis klar om {n} time.", many: "Vanligvis klar om {n} timer." },
     readyDays: { one: "Vanligvis klar om {n} dag.", many: "Vanligvis klar om {n} dager." },

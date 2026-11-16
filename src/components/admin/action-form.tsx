@@ -1,5 +1,6 @@
 "use client";
 
+import { submitClass } from "@/lib/submit-class";
 import {
   createContext,
   startTransition,
@@ -148,12 +149,7 @@ export function SubmitButton({
       value={value}
       formNoValidate={skipValidation || undefined}
       disabled={disabled || pending}
-      className={
-        className ??
-        (variant === "primary"
-          ? "min-h-10 rounded-pill bg-brand px-4 text-sm font-medium text-brand-ink disabled:opacity-40"
-          : "min-h-10 rounded-pill border border-edge bg-card px-4 text-sm disabled:opacity-40")
-      }
+      className={className ?? submitClass(variant)}
     >
       {pending ? working : children}
     </button>

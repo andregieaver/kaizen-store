@@ -317,6 +317,14 @@ The existing chart roles (`--chart-1…6`, `--chart-seq-*`, `--chart-good/bad/wa
 | `--shadow-float` | `0 12px 32px -8px rgb(16 22 20 / 0.18), 0 2px 6px rgb(16 22 20 / 0.06)` | `0 12px 32px -8px rgb(0 0 0 / 0.6)` | Menus, popovers, the AI manager's panel, toasts |
 | `--shadow-modal` | `0 24px 64px -12px rgb(16 22 20 / 0.28)` | `0 24px 64px -12px rgb(0 0 0 / 0.7)` | Dialogs |
 
+**Outside the admin.** A few admin parts are drawn on public pages (ActionForm, the print button, the on-site editor's toolbar
+and fields). There the roles they read follow the site's own colours through one block in `src/app/globals.css`
+(`:where(html:not([data-admin]))`, specificity 0 so an owner's own `:root` variables win): card and canvas the background,
+sunken the surface, line and edge the border, ink the foreground, ink-2 the muted text, inverse the foreground with inverse-ink
+the background, brand the accent with brand-ink its foreground, and two fixed signal colours with dark values. A new admin part
+reused outside the admin needs every role it names in that block; `src/lib/stylesheet-sources.scan.test.ts` says which is
+missing. Shop and site code never writes a role.
+
 ---
 
 ## 5. Type, shape, spacing and components

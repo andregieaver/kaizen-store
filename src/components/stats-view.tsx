@@ -51,6 +51,7 @@ export function StatsView({ items, columns, duration }: { items: StatShown[]; co
   return (
     <ul
       ref={ref}
+      data-kz-ambient=""
       className="grid grid-cols-[repeat(var(--cols),minmax(0,1fr))] gap-6 [--cols:min(2,var(--stat-cols))] md:[--cols:var(--stat-cols)]"
       style={{ "--stat-cols": columns } as CSSProperties}
       data-stats=""

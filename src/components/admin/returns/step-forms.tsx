@@ -3,6 +3,7 @@
 import { useState, useTransition, type ReactNode } from "react";
 
 import { ActionForm, SubmitButton, type FormState } from "@/components/admin/action-form";
+import { submitClass } from "@/lib/submit-class";
 import { useAdminText } from "@/components/admin/admin-text";
 import { fillWords } from "@/lib/admin-fill";
 import type { RefundPreviewData } from "@/lib/return-admin";
@@ -151,8 +152,34 @@ export function DeclineLineForm({ action, lineId }: { action: StepAction; lineId
 // ---------------------------------------------------------------------------
 
 /** The day the goods were sent or arrived: today unless another day is chosen (never in the future: the server holds it to now). */
-export function DayStepForm({ action, button, help, today, successMessage }: { action: StepAction; button: string; help: string; today: string; successMessage: string }) {
+export function DayStepForm({
+  action,
+  button,
+  help,
+  today,
+  successMessage,
+  quick = false,
+  secondary = false,
+}: {
+  action: StepAction;
+  button: string;
+  help: string;
+  today: string;
+  successMessage: string;
+  /** One press, dated today (round 18, D657): the day field waits in "Another day". */
+  quick?: boolean;
+  secondary?: boolean;
+}) {
   const f = useAdminText("returns").forms;
+  if (quick) {
+    return (
+      <ActionForm action={action} successMessage={successMessage} className="flex flex-col gap-2">
+        <SubmitButton className={`${submitClass(secondary ? "secondary" : "primary")} min-h-12 w-full font-medium sm:min-w-56`}>
+          {button}
+        </SubmitButton>
+      </ActionForm>
+    );
+  }
   return (
     <Form action={action} successMessage={successMessage}>
       <label className={label}>

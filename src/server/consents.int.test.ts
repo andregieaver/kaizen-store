@@ -47,6 +47,18 @@ describe("cookie consent (D58)", () => {
     const log = await listConsents(storeId);
     expect(log).toHaveLength(1);
     expect(log[0]).toMatchObject({ visitor, version: "statistics", choices });
+    expect(log[0].choices).toEqual(choices);
+  });
+
+  it("keeps recordings only where the site asked about them; one without the key (an older page) is kept above (D656)", async () => {
+    const other = crypto.randomUUID();
+    expect(await recordConsent({ storeId, visitor: other, version: "statistics+recordings", choices: { preferences: false, statistics: true, marketing: false, recordings: true } })).toBe(true);
+    const newer = (await listConsents(storeId)).find((c) => c.visitor === other);
+    expect(newer?.choices).toMatchObject({ recordings: true });
+    // A site that does not ask about recordings keeps the three choices it always had, whatever the page sends.
+    const third = crypto.randomUUID();
+    expect(await recordConsent({ storeId, visitor: third, version: "marketing", choices: { preferences: false, statistics: false, marketing: true, recordings: false } })).toBe(true);
+    expect((await listConsents(storeId)).find((c) => c.visitor === third)?.choices).toEqual({ preferences: false, statistics: false, marketing: true });
   });
 
   it("saves a site's tools, which decide what visitors are asked and what the cookie page lists", async () => {

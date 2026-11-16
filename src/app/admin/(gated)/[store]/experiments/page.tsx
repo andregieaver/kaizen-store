@@ -70,6 +70,27 @@ export default async function ExperimentsPage({ params }: PageProps<"/admin/[sto
           </List>
         </Card>
       )}
+      {tests.some((t) => t.learning) && (
+        <Card title={w.list.taught} compact>
+          <List label={w.list.taught}>
+            {tests
+              .filter((t) => t.learning)
+              .map((t) => (
+                <ListRow key={t.id} href={`${base}/${t.id}`}>
+                  <RowLead
+                    title={t.learning}
+                    sub={
+                      <>
+                        {t.name} · {w.status[t.status]}
+                        {t.status === "applied" && t.appliedVariant ? `: ${t.appliedVariant.toUpperCase()}` : ""}
+                      </>
+                    }
+                  />
+                </ListRow>
+              ))}
+          </List>
+        </Card>
+      )}
     </div>
   );
 }

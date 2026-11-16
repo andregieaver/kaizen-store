@@ -169,8 +169,8 @@ export const legalNb: LegalMessages = {
       "Butikken teller besøk uten informasjonskapsler, og ingenting settes eller lagres i kundens nettleser, så den viser ikke noe samtykkebanner. Et besøk er én linje med landet, typen enhet, kanalen, den første siden og hvor mange sider som ble sett, under en ID laget med en nøkkel som endres hver dag, så det kan ikke følges fra én dag til den neste. Ingen IP-adresse eller nettleseropplysninger lagres, og besøkende som sender Global Privacy Control eller Do Not Track, telles ikke. Når en kunde legger noe i handlekurven samme dag, knyttes besøket til handlekurven (og dermed til bestillingen som lages fra den), og slik får et salg kanalen sin. Siden om informasjonskapsler sier alt dette, på hvert av språkene dine.",
     visitsOffText:
       "Telling av besøk er av. Når du slår det på under innstillinger for analyse, teller butikken besøk uten informasjonskapsler (én linje per besøkende per dag under en ID som endres hver dag, uten IP-adresse eller nettleseropplysninger; et besøk knyttes til en handlekurv når noe legges i den, så et salg får kanalen sin), og siden om informasjonskapsler sier det.",
-    categories: { necessary: "Nødvendige", preferences: "Preferanser", statistics: "Statistikk", marketing: "Markedsføring" },
-    categoriesLower: { necessary: "nødvendige", preferences: "preferanser", statistics: "statistikk", marketing: "markedsføring" },
+    categories: { necessary: "Nødvendige", preferences: "Preferanser", statistics: "Statistikk", marketing: "Markedsføring", recordings: "Opptak av besøk" },
+    categoriesLower: { necessary: "nødvendige", preferences: "preferanser", statistics: "statistikk", marketing: "markedsføring", recordings: "opptak av besøk" },
     and: " og ",
     tools: {
       title: "Verktøy for analyse og markedsføring",

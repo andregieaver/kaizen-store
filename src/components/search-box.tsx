@@ -131,6 +131,7 @@ export function SearchBox({
         id={listId}
         role="listbox"
         aria-label={labels.suggestions}
+        data-kz-private=""
         hidden={!shown}
         className="absolute top-full left-0 z-20 mt-1 w-full overflow-hidden rounded-lg border border-border bg-background shadow-lg"
       >

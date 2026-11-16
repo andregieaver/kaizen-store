@@ -40,6 +40,17 @@ export const staffEmailsEn = {
       "Not you, or not wanted? Unlink it under Your account → Connected apps and assistants, or in Kaizen Life's settings. Once unlinked, the two are never linked again by themselves.",
     button: "Connected apps and assistants",
   },
+  /** An A/B test has an answer (D662): the verdict worked out in code, in the reader's language, and a way to decide. */
+  answered: {
+    subject: 'Your A/B test "{test}" has an answer',
+    preview: "{headline} Open the test to decide.",
+    heading: "Your A/B test has an answer",
+    intro: 'The test "{test}" of {target} in {store} has run for {days}, with enough visitors to say something.',
+    decide:
+      "Open the test to use the winner or keep the original. It keeps running until you decide, and Kaizena Flow does not change your page by itself.",
+    days: { one: "{n} day", many: "{n} days" },
+    button: "Open the test",
+  },
   guardrail: {
     days: { one: "{n} day", many: "{n} days" },
     figures:

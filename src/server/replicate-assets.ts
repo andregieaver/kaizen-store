@@ -54,7 +54,9 @@ export async function keepPicture(owner: AssetOwner, bytes: Uint8Array, name: st
   }
   const image = new File([new Uint8Array(shrunk.image)], name, { type: "image/webp" });
   const thumbnail = new File([new Uint8Array(shrunk.thumbnail)], name.replace(/\.webp$/, "-480.webp"), { type: "image/webp" });
-  const stored = await storePicture(owner, image, thumbnail, { fileName: name, alt });
+  // Its 800 px copy (bloat review step 0.33), made by shrinkPicture() for a picture wider than that.
+  const medium = shrunk.medium ? new File([new Uint8Array(shrunk.medium)], name.replace(/\.webp$/, "-800.webp"), { type: "image/webp" }) : null;
+  const stored = await storePicture(owner, image, thumbnail, { fileName: name, alt, medium });
   if (!stored.ok) return { ok: false, problem: stored.problem };
   return { ok: true, picture: { url: stored.url, width: shrunk.width, height: shrunk.height } };
 }

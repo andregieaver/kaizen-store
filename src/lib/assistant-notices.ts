@@ -3,7 +3,7 @@
  * and the account's page share the kinds and their words' keys.
  */
 
-export const NOTICE_KINDS = ["page_built", "follow_up", "plan_question", "plan_done", "approval_waiting", "report_ready", "life_handoff"] as const;
+export const NOTICE_KINDS = ["page_built", "follow_up", "plan_question", "plan_done", "approval_waiting", "report_ready", "life_handoff", "test_answered"] as const;
 export type NoticeKind = (typeof NOTICE_KINDS)[number];
 
 /** How long a notice is kept, read or not. */

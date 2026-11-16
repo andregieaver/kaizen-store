@@ -35,7 +35,7 @@ export function VatNumberField({
   const noteId = `${id}-note`;
   const problemId = `${id}-problem`;
   return (
-    <div className="flex flex-col gap-1" data-vat-number-field>
+    <div className="flex flex-col gap-1" data-vat-number-field data-kz-private="">
       <label htmlFor={id} className="flex flex-col gap-1">
         {labels.label}
         <span className="text-muted">{labels.help}</span>

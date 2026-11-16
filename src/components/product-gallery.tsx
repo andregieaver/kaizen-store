@@ -18,6 +18,8 @@ const GALLERY_SIZES = "(min-width: 768px) 50vw, 100vw";
 type GalleryImage = {
   url: string;
   thumbnailUrl: string;
+  /** Its 800 px copy, when the library has one (bloat review step 0.33). */
+  medium?: string;
   alt: string;
   kind?: "image" | "video" | "model";
   source?: "upload" | "youtube" | "vimeo" | null;
@@ -163,10 +165,12 @@ export function ProductGallery({
               ) : image.kind === "model" && image.mediaUrl ? (
                 <GalleryModel item={image} title={title} labels={labels.media} />
               ) : (
-                // The library's small copy beside it by width (D336): a phone fetches the small one.
+                // The library's copies beside it by width (D336, bloat review step 0.33): a phone at 1x or 2x fetches the 800 px copy
+                // when the picture has one; the 1,600 px file on a 3x phone, whose screen needs over 1,100 pixels.
                 <SizedPicture
                   url={image.url}
                   small={image.thumbnailUrl}
+                  medium={image.medium}
                   sizes={GALLERY_SIZES}
                   alt={image.alt || (i === 0 ? title : "")}
                   width={600}
@@ -245,6 +249,7 @@ function Arrow({
       onClick={onClick}
       disabled={disabled}
       aria-label={label}
+      data-kz-no-rage=""
       className={`absolute top-1/2 hidden size-11 -translate-y-1/2 items-center justify-center rounded-full bg-background/90 text-foreground shadow-md transition hover:bg-background disabled:pointer-events-none disabled:opacity-0 kzb-md-flex ${
         direction === "previous" ? "left-3" : "right-3"
       }`}

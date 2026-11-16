@@ -20,6 +20,7 @@ import {
   saveAnalyticsSettingsAction,
   savePeriodTargetAction,
   saveTargetAction,
+  setHeatmapsAction,
   setVisitCountingAction,
 } from "./actions";
 
@@ -58,6 +59,7 @@ export default async function AnalyticsSettingsPage({ params }: PageProps<"/admi
           targets={targets}
           periodTargets={periodTargets}
           visitCounting={store.visitCounting}
+          heatmaps={store.heatmaps}
           actions={
             owner
               ? {
@@ -67,6 +69,7 @@ export default async function AnalyticsSettingsPage({ params }: PageProps<"/admi
                   savePeriodTarget: savePeriodTargetAction.bind(null, store.slug),
                   deletePeriodTarget: deletePeriodTargetAction.bind(null, store.slug),
                   setVisitCounting: setVisitCountingAction.bind(null, store.slug),
+                  setHeatmaps: setHeatmapsAction.bind(null, store.slug),
                   backfillCosts: backfillCostsAction.bind(null, store.slug),
                 }
               : null

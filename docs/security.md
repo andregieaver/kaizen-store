@@ -50,7 +50,7 @@ the public publishable key would try.
 | Every `commerce` table has row-level security on and no policy, so the Data API is deny-all | migrations | `src/db/commerce.test.ts` (describe "row-level security", every migration applied to PGlite) |
 | No grants on `commerce` to `anon`/`authenticated`; `commerce` not among the exposed schemas | migrations; Supabase dashboard | **No test.** Checked by hand on a migrated local database in the audit (24 October) and its re-score (28 October); production's grants and the dashboard's exposed-schemas setting were not checked |
 | `public.rls_auto_enable()` EXECUTE revoked from the API roles | `supabase/migrations/20261024213329_revoke_rls_auto_enable.sql` | **no test found** in `src` (`docs/audits/psi-followups.md` says it was tested when made) |
-| Public buckets, where anyone with a file's address can fetch it: `product-media`, `product-models`, `page-videos`, `field-files` and `avatars` (people's profile pictures); `documents`, `exports`, `imports`, `digital-files`, `review-pictures` are private and served by the server | bucket migrations (`supabase/migrations/*_bucket*.sql`, `*_rules.sql`) | the routes' own int tests (e.g. `src/server/review-pictures.int.test.ts`); no single test lists the buckets |
+| Public buckets, where anyone with a file's address can fetch it: `product-media`, `product-models`, `page-videos`, `field-files` and `avatars` (people's profile pictures); `documents`, `exports`, `imports`, `digital-files`, `review-pictures` and `page-maps` (heatmaps' pictures of public pages, D656, shown through ten-minute signed addresses) are private and served by the server | bucket migrations (`supabase/migrations/*_bucket*.sql`, `*_rules.sql`) | the routes' own int tests (e.g. `src/server/review-pictures.int.test.ts`); no single test lists the buckets |
 
 ### 2.2 Other stores (tenancy)
 
@@ -241,6 +241,7 @@ on to the consent page `/admin/oauth/authorize` (the admin's gate, never framed)
 | `/api/unsubscribe` | a person leaving a list | the email's own token |
 | `/api/usage` | Vercel's usage drain | the drain's secret, compared in constant time (2.8) |
 | `/api/visit` | a visitor's browser (counted visits, speed, D152, D336) | `sameSite()`; counts only, no person |
+| `/api/signals` | a visitor's browser after consent (heatmaps, D656) | `sameSite()`, the store's own page, consent read again, a day's cap; `heat`: totals per page and day, no person |
 | `/api/webhooks` | anyone building a webhook receiver (D438) | none: `v1/topics.json` is the public catalogue of topics, payload shapes and signature steps, generated from code, no store's data |
 | `/api/wordpress` | the WordPress plugin (D169) | the plugin's token for its store (`asPlugin()`, 2.9) |
 

@@ -637,6 +637,7 @@ export function ChatWidget({ site, signInHref, locale, agent, deskName, privacyH
         <section
           id={panelId}
           data-chat-panel=""
+          data-kz-private=""
           role="dialog"
           aria-label={who}
           onKeyDown={(event) => {
@@ -880,6 +881,7 @@ export function ChatWidget({ site, signInHref, locale, agent, deskName, privacyH
           aria-expanded={false}
           aria-label={`${labels.open}: ${who}`}
           data-chat-launcher=""
+          data-kz-private=""
           // In a frame (D582) the widget places its button itself, from its side and offsets: there is no bottom bar of the store's.
           style={embedded ? { [embedded.side]: embedded.offsetX, bottom: embedded.offsetY } : undefined}
           className={`fixed z-[55] flex items-center gap-2 rounded-full bg-foreground p-1 text-background shadow-lg ${

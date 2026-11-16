@@ -160,6 +160,9 @@ export const EN: StarterText = {
     "privacy.purpose.security": "to keep the store secure and prevent fraud and misuse (our legitimate interest)",
     "privacy.purpose.marketing": "to send you marketing by email, only if you have agreed to it (consent)",
     "privacy.purpose.visits": "to count visits to the store without cookies, to see how it is used; we keep no IP address and no user agent (our legitimate interest)",
+    // D656: hand-written, for legal review.
+    "privacy.purpose.heatmaps": "to see, as totals per page and day, where visitors who allow statistics click, how far they scroll and how long parts of a page are on screen (heatmaps; your consent)",
+    "privacy.purpose.recordings": "to record visits of visitors who allow recordings, under a random number for one browser tab and without what they type, to find what is hard to use; kept 30 days (your consent)",
     "h.privacy.recipients": "Who receives your data",
     "privacy.recipients.1": "We share personal data only with those who need it:",
     "privacy.recipient.platform": "the Kaizena Flow platform, which runs the store and processes data on our behalf",
@@ -194,6 +197,7 @@ export const EN: StarterText = {
     "h.privacy.automated_decisions": "Automated decisions",
     "privacy.automated.1": "We do not make decisions about you that are based only on automated processing and that have legal or similarly significant effects on you.",
     "privacy.automated.chat": "The store has a chat assistant that uses artificial intelligence to answer questions from the store's own information. What you write to it is sent to the AI provider the store uses ({check}). Do not write sensitive personal data to it.",
+    "privacy.automated.answers": "When you write to the store's customer service, in the chat or by email, an AI may answer on its own, without a person reading your message first. It answers from the store's own information and, when it can tell an order is yours, about that order, and it can carry out a request you confirm, such as a new delivery address before anything is sent. Its answers say they come from an AI. Refunds and exceptions are decided by a person, and you can ask for a person at any time.",
     "privacy.automated.tone": "When you write to the store's customer service, an AI reads the tone of your messages so that a person can step in sooner when something has gone wrong. It decides nothing about you on its own, and the score is not kept with your account.",
     "privacy.automated.summaries": "When a conversation with the store's customer service ends, an AI writes a short summary of it for the store's staff. The summary is kept with the conversation and deleted with it.",
     "h.privacy.cookies_link": "Cookies",

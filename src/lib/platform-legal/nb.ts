@@ -252,7 +252,7 @@ Skriv til ${f.contactEmail}. Mange av opplysningene dine kan du endre selv under
         {
           topic: "automated",
           heading: "10. Automatiserte avgjørelser",
-          body: `Vi treffer ingen avgjørelser utelukkende basert på automatisert behandling som har rettsvirkning eller på tilsvarende måte i betydelig grad påvirker deg (artikkel 22). KI-funksjonene foreslår; et menneske bestemmer. Det gjelder også meldinger om ulovlig innhold og sjekkene våre av annonser: en KI-modell leser hver først og foreslår, og en person hos Kaizena Flow avgjør hver eneste en.`,
+          body: `Vi treffer ingen avgjørelser utelukkende basert på automatisert behandling som har rettsvirkning eller på tilsvarende måte i betydelig grad påvirker deg (artikkel 22). KI-funksjonene foreslår; et menneske bestemmer. Det gjelder også meldinger om ulovlig innhold og sjekkene våre av annonser: en KI-modell leser hver først og foreslår, og en person hos Kaizena Flow avgjør hver eneste en. Meldinger til kundestøtten vår, i chatten eller på e-post, kan bli besvart av en KI på egen hånd, uten at et menneske leser dem først; svarene sier at de kommer fra en KI, den treffer ingen slike avgjørelser, og du kan når som helst be om å få snakke med et menneske.`,
         },
         {
           topic: "security",

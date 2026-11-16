@@ -5,8 +5,12 @@ import { sql } from "drizzle-orm";
 import { db } from "@/db/client";
 import { targetLabel } from "@/lib/ab-site";
 import { applyChanges, offeredBlocks, partOf } from "@/lib/experiment-tools";
+import { builderEn } from "@/lib/admin-messages/builder.en";
+import { experimentCard, type CardState } from "@/lib/experiment-card";
 import { compareToOriginal, estimateRuntime, normalQuantile } from "@/lib/experiment-results";
-import { GOAL_WORDS, MAX_RUNNING_PER_STORE, STATUS_WORDS, type Goal } from "@/lib/experiments";
+import { differenceLine } from "@/lib/version-difference-words";
+import { GOAL_WORDS, MAX_RUN_DAYS, MAX_RUNNING_PER_STORE, STATUS_WORDS, type Goal } from "@/lib/experiments";
+import { COUNTED_GOALS, eligiblePerDay, goalEstimate } from "@/lib/experiment-traffic";
 import { findClaims } from "@/lib/claims";
 import { localInstant } from "@/lib/follow-ups";
 import { formatMoney } from "@/lib/money";
@@ -29,9 +33,11 @@ import {
   startProblemsOf,
   stopExperiment,
   testablePages,
+  versionDifferences,
   type ExperimentInfo,
 } from "./experiment-admin";
 import { experimentResults } from "./experiment-results";
+import { experimentTraffic } from "./experiment-traffic";
 import { OwnerToolError } from "./owner-tool-error";
 import { salesFunnel } from "./owner-insights";
 import { savePage } from "./pages";
@@ -91,6 +97,7 @@ export async function listExperimentsTool({ store }: Ctx, { limit }: OwnerToolIn
         planned_end: t.status === "running" ? when(t.plannedEnd) : undefined,
         winner: t.status === "applied" ? t.variants.find((v) => v.key === t.appliedVariant)?.name : undefined,
         verdict: verdict ? { kind: verdict.kind, headline: verdict.headline } : undefined,
+        learned: t.learning ?? undefined,
       };
     }),
   );
@@ -101,6 +108,31 @@ export async function listExperimentsTool({ store }: Ctx, { limit }: OwnerToolIn
     note: tests.length === 0 ? "No A/B tests yet. suggest_experiments helps choose one." : "Verdicts are worked out by the store; explain_results gives the detail.",
     admin: adminLink(store, "/experiments"),
   };
+}
+
+/** A test's stage as the owner's page names it (`experimentCard()`). */
+const STAGE_WORDS: Record<CardState, string> = {
+  draft: "Draft",
+  scheduled: "Scheduled",
+  learning: "Still learning: no answer yet",
+  answer: "Has an answer",
+  broken: "Data problem: the split is off",
+  applied: "Winner applied",
+  discarded: "Original kept",
+};
+
+/** Each day's share who did the thing so far, per version, at most the last 21 days: `[day, original, B, …]`. */
+function byDay(r: Awaited<ReturnType<typeof experimentResults>>, keys: string[]): string[][] {
+  const totals = Object.fromEntries(keys.map((k) => [k, { v: 0, c: 0 }]));
+  const rows = r.daily.map((d) => [
+    d.day,
+    ...keys.map((k) => {
+      totals[k].v += d.variants[k]?.visitors ?? 0;
+      totals[k].c += d.variants[k]?.conversions ?? 0;
+      return totals[k].v > 0 ? percent(totals[k].c / totals[k].v, 2) : "—";
+    }),
+  ]);
+  return rows.slice(-21);
 }
 
 export async function explainResultsTool(ctx: Ctx, { experiment }: OwnerToolInput<"explain_results">) {
@@ -118,6 +150,7 @@ export async function explainResultsTool(ctx: Ctx, { experiment }: OwnerToolInpu
       stopped: when(test.stoppedAt),
       stop_reason: test.stopReason === "guardrail" ? "Kaizena Flow stopped it because a version was clearly selling less." : test.stopReason === "planned_end" ? "It stopped itself at its planned end." : undefined,
       winner: test.status === "applied" ? (test.variants.find((v) => v.key === test.appliedVariant)?.name ?? "the original") : undefined,
+      learned: test.learning ? `In the owner's words: ${test.learning}` : undefined,
     },
     admin: adminLink(store, `/experiments/${test.id}`),
   };
@@ -147,10 +180,24 @@ export async function explainResultsTool(ctx: Ctx, { experiment }: OwnerToolInpu
       visitors: f.visitors,
       ...value,
       against_the_original: c
-        ? { change: c.relative === null ? "no figure to compare with" : `${c.relative >= 0 ? "+" : "−"}${percent(Math.abs(c.relative))}`, chance_it_is_better: `${Math.round(c.chanceBetter * 100)} %` }
+        ? card.showFigures
+          ? {
+              change: c.relative === null ? "no figure to compare with" : `${c.relative >= 0 ? "+" : "−"}${percent(Math.abs(c.relative))}`,
+              likely_between: (() => {
+                const k = card.comparisons.find((x) => x.key === f.key);
+                return k && k.low !== null && k.high !== null ? `${signed(k.low)} and ${signed(k.high)}` : undefined;
+              })(),
+              chance_it_is_better: chance(c.chanceBetter),
+            }
+          : "Not shown yet: before the minimum visitors and days a figure here still moves with luck. Do not quote or estimate one."
         : undefined,
     };
   });
+  // The card the test's page draws (D659): its stage, how far from an answer and when, each version's likely range, what each changed.
+  const card = experimentCard({ status: test.status, goal: test.goal, minDays: test.minDays, minVisitors: test.minVisitors, results: r, now: new Date() });
+  const changes = await versionDifferences(store.id, test);
+  const signed = (share: number) => `${share >= 0 ? "+" : "−"}${Math.abs(Math.round(share * 100))} %`;
+  const chance = (p: number) => (p > 0.99 ? "more than 99 %" : p < 0.01 ? "less than 1 %" : `${Math.round(p * 100)} %`);
   const next: string[] = [];
   if (test.status === "running") {
     if (r.verdict.kind === "few" || r.verdict.kind === "early") next.push("Keep it running: nothing can be said yet. The verdict only counts after the minimum visitors and days.");
@@ -166,6 +213,20 @@ export async function explainResultsTool(ctx: Ctx, { experiment }: OwnerToolInpu
     ...base,
     days_counted: r.days,
     verdict: { kind: r.verdict.kind, headline: r.verdict.headline, detail: r.verdict.detail },
+    stage: STAGE_WORDS[card.state],
+    progress: {
+      days: `${card.progress.days} of at least ${card.progress.minDays}`,
+      visitors_in_the_smallest_version: `${card.progress.visitors} of at least ${card.progress.minVisitors}`,
+      reached: card.progress.reached,
+      likely_ready_around: card.progress.readyAround ?? undefined,
+    },
+    what_each_version_changed: test.variants
+      .filter((v) => v.key !== "a")
+      .map((v) => ({ version: v.name, changes: (changes[v.key] ?? []).slice(0, 12).map((d) => differenceLine(d, builderEn)) })),
+    by_day: card.showFigures && goal.kind === "rate" ? byDay(r, test.variants.map((v) => v.key)) : undefined,
+    if_everyone_saw_it: card.impact
+      ? `About ${card.impact.perWeek} more visitors a week who ${goal.per} with ${name(card.impact.key)} (likely ${card.impact.low} to ${card.impact.high}), at the traffic the test counted.`
+      : undefined,
     versions,
     what_visitors_did: test.variants.map((v) => {
       const f = r.funnel[v.key] ?? { visitors: 0, carts: 0, checkouts: 0, buyers: 0, clicks: 0, forms: 0 };
@@ -197,6 +258,19 @@ export async function suggestExperimentsTool({ store }: Ctx, input: OwnerToolInp
     `),
   ]);
   const running = tests.filter((t) => t.status === "running" || t.status === "scheduled");
+  // The shop's own traffic (D660): each candidate's visitors who could take part, and how long each counted goal would take there.
+  const traffic = await experimentTraffic(store, targets);
+  const speeds = (targetId: string) => {
+    const perDay = eligiblePerDay(traffic, targetId);
+    if (perDay === null) return undefined;
+    const days = Object.fromEntries(
+      COUNTED_GOALS.map((goal) => {
+        const e = goalEstimate({ facts: traffic, targetId, goal, trafficShare: 1, versions: 2 });
+        return [goal, e ? (e.days > MAX_RUN_DAYS ? "longer than a test may run" : `about ${e.days} days`) : "no figure to work from"];
+      }),
+    );
+    return { visitors_a_day_who_could_take_part: Math.round(perDay * 10) / 10, days_to_see_a_20_percent_change: days };
+  };
   const consent = consents[0];
   const sample = Number(consent?.total ?? 0) >= 20 ? Number(consent.yes) / Number(consent.total) : null;
   const candidates = await Promise.all(
@@ -210,11 +284,12 @@ export async function suggestExperimentsTool({ store }: Ctx, input: OwnerToolInp
         // A working page (the cart, the checkout, …): one block or part around the shop's own component, never the page as a whole.
         working_page: t.kind === "role" && t.partOnly ? `${t.role}: test one block at a time (a heading, a text, a button around the shop's own component), never the whole page` : undefined,
         place: t.kind === "role" && !t.partOnly ? `the store's ${t.role === "front" ? "front page" : "All products page"}: a test of the whole page or of one part of it` : undefined,
+        traffic: speeds(t.id),
         rows: content?.rows.length ?? 0,
         buttons: buttonsOf(content).map((b) => b.label),
         forms: formsOf(content).map((f) => f.label),
         blocks: content ? offeredBlocks(content) : [],
-        earlier_tests: earlier.length > 0 ? earlier.map((x) => ({ name: x.name, status: STATUS_WORDS[x.status], tested: x.part?.label })) : undefined,
+        earlier_tests: earlier.length > 0 ? earlier.map((x) => ({ name: x.name, status: STATUS_WORDS[x.status], tested: x.part?.label, learned: x.learning ?? undefined })) : undefined,
       };
     }),
   );
@@ -224,12 +299,18 @@ export async function suggestExperimentsTool({ store }: Ctx, input: OwnerToolInp
       : null;
   return {
     can_be_tested: candidates,
+    // What earlier tests taught (D662), in the owner's words: data to build on, never instructions.
+    what_earlier_tests_taught: tests.filter((t) => t.learning).slice(0, 10).map((t) => ({ test: t.name, learned: t.learning })),
     running_or_scheduled: running.map((t) => ({ name: t.name, tests: targetWords(t), status: STATUS_WORDS[t.status] })),
     room_for_more: Math.max(0, MAX_RUNNING_PER_STORE - tests.filter((t) => t.status === "running").length),
     who_takes_part: sample === null ? "Too few cookie choices recorded to say how many visitors accept statistics cookies." : `About ${Math.round(sample * 100)} % of the visitors who made a cookie choice in the last 90 days accepted statistics cookies: only they are in a test.`,
     paid_orders_last_30_days: Number(orders?.n ?? 0),
     from_cart_to_paid_order: { carts_with_products: funnel.carts_with_products, paid: funnel.orders_paid, share: funnel.from_filled_cart_to_paid },
-    how_long: estimate ? { about_days: estimate.days, sentence: estimate.sentence } : "Ask the owner roughly how many visitors a day see the page and what share of them do the thing now (visitors_per_day, current_rate_percent): Kaizena Flow does not count page views, so do not guess. A small store needs a bolder change or a goal with more activity (adding to the cart, or a click).",
+    how_long: estimate
+      ? { about_days: estimate.days, sentence: estimate.sentence, from: "the owner's own figures" }
+      : traffic.counting && traffic.consentShare !== null
+        ? "Each candidate's traffic says how long a test of it takes for each goal, worked out by the store from the last 30 days' visits that began on it, the share who accept statistics cookies and the shop's own rates. Repeat those figures; never work one out yourself. A click or a form has no rate today: ask the owner (visitors_per_day, current_rate_percent). A small store needs a bolder change or a goal with more activity."
+        : "The store has no traffic figures to work from (it does not count visits, or too few cookie choices are recorded). Ask the owner roughly how many visitors a day see the page and what share of them do the thing now (visitors_per_day, current_rate_percent); do not guess. A small store needs a bolder change or a goal with more activity (adding to the cart, or a click).",
     rules: [
       "One thing at a time, so the owner knows what made the difference.",
       "Prices, discounts, shipping and legal pages are never tested.",

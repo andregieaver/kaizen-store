@@ -167,7 +167,7 @@ export function MarkupBar({
     }),
   });
   const style = (state.spanClass ?? "").split(/\s+/).map(slugOfClass).find(Boolean) ?? null;
-  const tool = "flex min-h-9 min-w-9 items-center justify-center rounded px-2 text-sm hover:bg-sunken aria-pressed:bg-inverse aria-pressed:text-inverse-ink";
+  const tool = "flex min-h-9 min-w-9 items-center justify-center rounded px-2 text-sm hover:bg-surface aria-pressed:bg-foreground aria-pressed:text-background";
   return (
     <FloatingBar anchor={anchor} barRef={barRef}>
       <div role="toolbar" aria-label={fillWords(w.toolbar, { label })} className="flex items-center gap-0.5 p-1">

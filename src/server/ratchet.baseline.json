@@ -134,7 +134,6 @@
     "src/server/exchange-pay.ts": 9,
     "src/server/exchange-tools.ts": 2,
     "src/server/experiment-admin.ts": 14,
-    "src/server/experiment-emails.ts": 1,
     "src/server/experiment-jobs.ts": 2,
     "src/server/experiment-results.ts": 5,
     "src/server/experiment-tools.ts": 2,

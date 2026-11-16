@@ -98,7 +98,9 @@ export async function compressPlatformPictureAction(mediaId: string, formData: F
   const image = formData.get("image");
   const thumbnail = formData.get("thumbnail");
   if (!id.safeParse(mediaId).success || !(image instanceof File) || !(thumbnail instanceof File)) return { ok: false, problem: (await platformActionWords()).compressAgain };
-  const outcome = await replacePicture(KAIZEN, admin.id, mediaId, image, thumbnail);
+  // Its 800 px copy, sent for a picture wider than that (bloat review step 0.33).
+  const medium = formData.get("medium");
+  const outcome = await replacePicture(KAIZEN, admin.id, mediaId, image, thumbnail, medium instanceof File ? medium : null);
   if (outcome.ok) addressesMoved();
   return outcome;
 }

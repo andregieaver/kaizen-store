@@ -175,7 +175,7 @@ function shapeOf(role: StarterRole, f: LegalFacts, h: Helpers): Shape[] {
           topic: "purposes_basis",
           blocks: [
             p("privacy.purposes.1"),
-            ul(item("privacy.purpose.orders"), item("privacy.purpose.accounting"), item("privacy.purpose.service"), item("privacy.purpose.security"), item("privacy.purpose.marketing"), f.visitCounting && item("privacy.purpose.visits")),
+            ul(item("privacy.purpose.orders"), item("privacy.purpose.accounting"), item("privacy.purpose.service"), item("privacy.purpose.security"), item("privacy.purpose.marketing"), f.visitCounting && item("privacy.purpose.visits"), f.heatmaps && item("privacy.purpose.heatmaps"), f.sessionRecordings && item("privacy.purpose.recordings")),
           ],
         },
         {
@@ -212,6 +212,8 @@ function shapeOf(role: StarterRole, f: LegalFacts, h: Helpers): Shape[] {
             p("privacy.automated.1"),
             ...(f.chatAgent ? [p("privacy.automated.chat", { check: h.add("aiProvider") })] : []),
             // What an AI does with support messages besides answering, said only while it is on (PSI REG-08).
+            // Customer service answered by an AI on its own, while the desk works AI first (F7 of `docs/100-day-challenge.md`).
+            ...(f.aiAnswers ? [p("privacy.automated.answers")] : []),
             ...(f.aiTone ? [p("privacy.automated.tone")] : []),
             ...(f.aiSummaries ? [p("privacy.automated.summaries")] : []),
           ],

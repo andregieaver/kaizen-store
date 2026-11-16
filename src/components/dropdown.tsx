@@ -203,6 +203,7 @@ export function Dropdown({
         id={`${id}-list`}
         role="listbox"
         aria-labelledby={`${id}-label`}
+        data-kz-no-rage=""
         tabIndex={-1}
         hidden={!open}
         className={`absolute right-0 left-0 z-40 max-h-[min(22rem,60dvh)] overflow-y-auto rounded-lg border border-border bg-background p-1 text-foreground shadow-xl ${

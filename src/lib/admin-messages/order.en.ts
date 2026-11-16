@@ -542,6 +542,8 @@ export const orderEn = {
     checkNow: "Check now",
   },
   handover: {
+    collectedToday: "Collected today",
+    anotherDay: "Another day",
     notify: "No time promised: the customer waits for the email.",
     readyHours: { one: "Usually ready in {n} hour.", many: "Usually ready in {n} hours." },
     readyDays: { one: "Usually ready in {n} day.", many: "Usually ready in {n} days." },

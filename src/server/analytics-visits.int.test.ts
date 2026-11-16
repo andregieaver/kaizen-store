@@ -18,7 +18,7 @@ vi.mock("next/headers", () => ({
 }));
 vi.mock("next/server", async (importOriginal) => ({ ...(await importOriginal<typeof import("next/server")>()), connection: async () => {} }));
 
-const { recordVisit, recordTouch, attachVisitToCart, pruneVisits, visitKeyOf } = await import("./analytics-visits");
+const { recordVisit, recordTouch, recordPageError, attachVisitToCart, pruneVisits, visitKeyOf } = await import("./analytics-visits");
 const { logSearch } = await import("./search");
 const { NEW_VISITS_PER_ADDRESS_WINDOW, NEW_VISITS_PER_STORE_DAY } = await import("@/lib/visit-record");
 const { POST } = await import("@/app/api/visit/route");
@@ -152,6 +152,25 @@ describe("recording a page view", () => {
     const [row] = await visits();
     expect(row.page_views).toBe(3);
     expect(new Date(String(row.checkout_at)).getTime()).toBe(EVENING.getTime() + 60_000);
+  });
+
+  it("marks the visitor's counted visit with its first error page, starts no visit for one, and drops what a page view drops (F4, D663)", async () => {
+    // No visit counted yet: an error starts nothing.
+    expect(await recordPageError({ headers: asRequest(), body: view(page()), now: EVENING })).toBe(false);
+    expect(await visits()).toHaveLength(0);
+    await recordVisit({ headers: asRequest(), body: view(page()), now: EVENING });
+    expect(await recordPageError({ headers: asRequest({ "sec-gpc": "1" }), body: view(page()), now: EVENING })).toBe(false);
+    expect(await recordPageError({ headers: asRequest({}, "Googlebot/2.1"), body: view(page()), now: EVENING })).toBe(false);
+    expect(await recordPageError({ headers: asRequest({ origin: "https://elsewhere.example", referer: "https://elsewhere.example/" }), body: view(page()), now: EVENING })).toBe(false);
+    expect(await recordPageError({ headers: asRequest(), body: view(page("/p/x")), now: new Date(EVENING.getTime() + 60_000) })).toBe(true);
+    // The first error's time is kept; a second marks nothing.
+    expect(await recordPageError({ headers: asRequest(), body: view(page()), now: new Date(EVENING.getTime() + 120_000) })).toBe(false);
+    const [row] = await visits();
+    expect(new Date(String(row.error_at)).getTime()).toBe(EVENING.getTime() + 60_000);
+    expect(row.page_views).toBe(1);
+    // Another visitor's error leaves this row alone, and counting off marks nothing.
+    await setCounting(false);
+    expect(await recordPageError({ headers: asRequest({}, DESKTOP), body: view(page()), now: EVENING })).toBe(false);
   });
 
   it("makes another row for another visitor and for the same one on another day, and the two cannot be linked", async () => {

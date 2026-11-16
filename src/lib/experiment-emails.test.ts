@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest";
 
 import { renderEmail } from "./email-layout";
-import { guardrailEmail, orderRate, type GuardrailFacts } from "./experiment-emails";
+import { answeredEmail, guardrailEmail, orderRate, type GuardrailFacts } from "./experiment-emails";
+import { staffEmailsNb } from "./admin-messages/staff-emails.nb";
 
 const facts: GuardrailFacts = {
   storeName: "Fjord Goods",
@@ -46,5 +47,32 @@ describe("guardrailEmail", () => {
     const html = renderEmail(guardrailEmail({ ...facts, days: 1, testName: "<b>x</b>" }));
     expect(html.text).toContain("had run for 1 day when");
     expect(html.html).not.toContain("<b>x</b>");
+  });
+});
+
+describe("answeredEmail (D662)", () => {
+  const facts = {
+    storeName: "Fjord Goods",
+    testName: "Shorter hero",
+    target: "Front page: Forside",
+    headline: "B is better than the original.",
+    detail: "B got 29 % more visitors who added to the cart than the original (9.08 % to 11.7 %).",
+    days: 16,
+    url: "https://kaizenaflow.com/admin/fjord/experiments/abc",
+  };
+
+  it("says the test has an answer, gives the store's own verdict, and leaves deciding to the owner", () => {
+    const email = renderEmail(answeredEmail(facts));
+    expect(email.subject).toBe('Your A/B test "Shorter hero" has an answer');
+    expect(email.text).toContain("has run for 16 days");
+    expect(email.text).toContain("B is better than the original. B got 29 % more visitors");
+    expect(email.text).toContain("does not change your page by itself");
+    expect(email.text).toContain(facts.url);
+  });
+
+  it("is written in the reader's language", () => {
+    const email = renderEmail(answeredEmail({ ...facts, days: 1 }, staffEmailsNb, "nb"));
+    expect(email.subject).toBe("A/B-testen din «Shorter hero» har et svar");
+    expect(email.text).toContain("har gått i 1 dag");
   });
 });

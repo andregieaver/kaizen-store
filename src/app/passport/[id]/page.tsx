@@ -28,7 +28,7 @@ export default async function PassportPage({ params }: Props) {
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <section className="flex flex-col gap-1 border-t border-line pt-4">
+    <section className="flex flex-col gap-1 border-t border-border pt-4">
       <h2 className="text-lg font-medium">{title}</h2>
       {children}
     </section>
@@ -134,7 +134,7 @@ function Body({ p }: { p: PublicPassport }) {
       <Section title={w.seller}>
         <p className="whitespace-pre-line">{[p.storeName, p.storeAddress].filter(Boolean).join("\n")}</p>
       </Section>
-      <footer className="flex flex-col gap-1 border-t border-line pt-4 text-sm text-muted">
+      <footer className="flex flex-col gap-1 border-t border-border pt-4 text-sm text-muted">
         <p>
           {w.updated}: {new Date(p.updatedAt).toISOString().slice(0, 10)}
         </p>

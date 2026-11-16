@@ -52,7 +52,7 @@ let orderNumber = 0;
 /** A browser that has (or has not) accepted statistics, and holds the answers for the store's running tests. */
 function browser(opts: { statistics: boolean; versions?: Record<string, string>; visitor?: string }) {
   jar.clear();
-  if (opts.statistics) jar.set(consentCookieName(storeId), encodeConsent({ visitor: uuid(), version: "statistics", choices: { preferences: false, statistics: true, marketing: false } }));
+  if (opts.statistics) jar.set(consentCookieName(storeId), encodeConsent({ visitor: uuid(), version: "statistics", choices: { preferences: false, statistics: true, marketing: false, recordings: false } }));
   if (opts.versions) jar.set(dataCookieName(storeId), encodeAssignments({ visitor: opts.visitor ?? uuid(), versions: opts.versions }));
 }
 
@@ -367,12 +367,64 @@ describe("ending a test (D148)", () => {
     expect(headingOf(after)).toContain("(new)");
     expect(rowsBefore).not.toContain("(new)");
     expect(after && "page" in after ? after.page.slug : "").toBe("om-oss");
+    // The page keeps its own title, not the version's admin name "… (B)" (D659).
+    const titleOf = (found: typeof before) => (found && "page" in found ? found.page.content.title : "");
+    expect(titleOf(after)).toBe(titleOf(before));
+    expect(titleOf(after)).not.toContain("(B)");
     expect((await admin.getExperiment(storeId, id))!).toMatchObject({ status: "applied", appliedVariant: "b" });
     const [audited] = await db().execute<Row>(sql`select count(*)::int as n from commerce.audit_log where store_id = ${storeId}::uuid and action in ('experiment.started', 'experiment.stopped', 'experiment.applied')`);
     expect(Number(audited.n)).toBeGreaterThanOrEqual(3);
     // The test is history: it cannot be deleted or restarted.
     expect(await admin.deleteDraft(account, storeId, id)).toMatchObject({ ok: false });
   });
+
+  it("tells the owners once, by notice and email, the first time a test has an answer, and keeps what it taught (D662)", async () => {
+    await endAll();
+    const id = await runningTest("cart");
+    await db().execute(sql`update commerce.experiments set started_at = now() - interval '16 days' where id = ${id}::uuid`);
+    // 2,400 and 2,380 visitors; 218 and 279 added to the cart: B is better.
+    await db().execute(sql`
+      insert into commerce.experiment_exposures (store_id, experiment_id, visitor, variant, first_seen)
+      select ${storeId}::uuid, ${id}::uuid, 'answer-' || v.variant || '-' || n, v.variant, now() - interval '15 days'
+      from (values ('a'::text, 2400), ('b'::text, 2380)) v(variant, total), generate_series(1, v.total) n
+    `);
+    await db().execute(sql`
+      insert into commerce.experiment_events (store_id, experiment_id, visitor, variant, goal)
+      select ${storeId}::uuid, ${id}::uuid, 'answer-' || v.variant || '-' || n, v.variant, 'cart'
+      from (values ('a'::text, 218), ('b'::text, 279)) v(variant, total), generate_series(1, v.total) n
+    `);
+    const hour = new Date(Math.ceil(Date.now() / 3_600_000) * 3_600_000 + 120_000);
+    const first = await jobs.runExperimentJobs(hour);
+    expect(first.answered).toBe(1);
+    const test = (await admin.getExperiment(storeId, id))!;
+    expect(test.status).toBe("running");
+    expect(test.answeredAt).not.toBeNull();
+    const mails = await db().execute<Row>(sql`select subject, text from commerce.email_messages where store_id = ${storeId}::uuid and kind = 'experiment.answered' and idempotency_key like ${`experiment.answered:${id}:%`}`);
+    expect(mails).toHaveLength(1);
+    expect(String(mails[0].subject)).toContain("has an answer");
+    expect(String(mails[0].text)).toContain("B is better than the original.");
+    expect(String(mails[0].text)).toContain(`/admin/${store.slug}/experiments/${id}`);
+    const notices = await db().execute<Row>(sql`select kind, href, facts from commerce.assistant_notices where store_id = ${storeId}::uuid and kind = 'test_answered' and ref = ${id}`);
+    expect(notices).toHaveLength(1);
+    expect(notices[0]).toMatchObject({ href: `/admin/${store.slug}/experiments/${id}`, facts: { test: test.name } });
+    // The next hour says nothing more.
+    expect((await jobs.runExperimentJobs(new Date(hour.getTime() + 3_600_000))).answered).toBe(0);
+    expect(await db().execute<Row>(sql`select 1 from commerce.email_messages where kind = 'experiment.answered' and idempotency_key like ${`experiment.answered:${id}:%`}`)).toHaveLength(1);
+
+    // What it taught: not before it has run, at most 280 characters, kept once decided, cleared by an empty line.
+    expect(await admin.saveLearning(account, storeId, id, "x".repeat(281))).toMatchObject({ ok: false });
+    expect(await admin.stopExperiment(account, storeId, id)).toMatchObject({ ok: true });
+    expect(await admin.applyVariant(account, storeId, id, "b")).toEqual({ ok: true });
+    expect(await admin.saveLearning(account, storeId, id, "  Short,   concrete headings beat slogans ")).toEqual({ ok: true });
+    expect((await admin.getExperiment(storeId, id))!.learning).toBe("Short, concrete headings beat slogans");
+    expect((await admin.listExperiments(storeId)).find((t) => t.id === id)!.learning).toBe("Short, concrete headings beat slogans");
+    expect(await admin.saveLearning(account, storeId, id, "")).toEqual({ ok: true });
+    expect((await admin.getExperiment(storeId, id))!.learning).toBeNull();
+    const draft = await admin.createExperiment(account, storeId, { name: "Not run", pageId: aboutId, goal: "orders" });
+    if (!draft.ok) throw new Error(draft.problems.join(" "));
+    expect(await admin.saveLearning(account, storeId, draft.id, "Too soon")).toMatchObject({ ok: false });
+    await admin.deleteDraft(account, storeId, draft.id);
+  }, 60_000);
 
   it("says which running test holds a page, as the original or as a version, until it stops", async () => {
     const id = await runningTest();
@@ -862,6 +914,9 @@ describe("tests of the front page and the All products page (D148, phase 10)", (
     const made = await admin.createExperiment(account, storeId, { name: "Front page headline", pageId: frontId, goal: "orders" });
     if (!made.ok) throw new Error(made.problems.join(" "));
     expect((await admin.getExperiment(storeId, made.id))!.page).toMatchObject({ kind: "role", role: "front" });
+    // An untouched copy is not a change (D660): the template's front page has a grid whose columns the copy stores in today's shape.
+    expect((await admin.getExperiment(storeId, made.id))!.variants.find((v) => v.key === "b")).toMatchObject({ changed: false });
+    expect(await admin.startProblemsOf(storeId, made.id)).toEqual([expect.stringContaining("still the same as the original")]);
     await changeVariant(made.id, "b");
     expect(await admin.startExperiment(account, storeId, made.id)).toEqual({ ok: true });
     engine.forgetRunning(storeId);
