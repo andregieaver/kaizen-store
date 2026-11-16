@@ -1,6 +1,6 @@
 {
-  "id": "52906751-1953-44b1-a725-45c3d95d3899",
-  "prevId": "5dad9c75-ece1-45d9-b3c6-c2b274232bde",
+  "id": "0791095f-70d2-47df-8c2f-7f06e9144ed4",
+  "prevId": "52906751-1953-44b1-a725-45c3d95d3899",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -40719,7 +40719,7 @@
         },
         "live_drills_kinds": {
           "name": "live_drills_kinds",
-          "value": "cardinality(\"commerce\".\"live_drills\".\"kinds\") between 1 and 10"
+          "value": "cardinality(\"commerce\".\"live_drills\".\"kinds\") between 1 and 20"
         }
       },
       "isRLSEnabled": false

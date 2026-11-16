@@ -124,6 +124,9 @@ export async function saveStoreDetails(
       .map(([key]) => key),
   });
   refreshTag(storeTag(store.slug));
+  // An invoice that waited for these details is issued by the save itself (docs/wave-1b-invoices.md 2.7), not by the next run of the job; never throws. Twenty at once, the job takes the rest. Imported here so the setup pages do not load the invoice job's modules.
+  const { issueWaitingInvoices } = await import("./invoice-issue");
+  await issueWaitingInvoices(store.id, 20);
   return { ok: true };
 }
 

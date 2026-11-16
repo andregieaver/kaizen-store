@@ -18401,7 +18401,7 @@ export const liveDrills = commerce.table(
   },
   (t) => [
     check("live_drills_status", sql`${t.status} in ('requested', 'running', 'done')`),
-    check("live_drills_kinds", sql`cardinality(${t.kinds}) between 1 and 10`),
+    check("live_drills_kinds", sql`cardinality(${t.kinds}) between 1 and 20`),
     index("live_drills_store_idx").on(t.storeId, t.requestedAt),
     index("live_drills_requested_by_idx").on(t.requestedBy),
   ],

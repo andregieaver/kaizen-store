@@ -158,6 +158,9 @@ export async function saveTaxProfile(membership: Membership, form: TaxProfileFor
   }
   const changed = (Object.keys(v) as (keyof typeof v)[]).filter((key) => JSON.stringify(v[key]) !== JSON.stringify(before[key]));
   if (changed.length > 0) await audit(account.id, store.id, "store.tax_profile_updated", { fields: changed, numberChanged });
+  // An invoice that waited for these details is issued by the save itself (docs/wave-1b-invoices.md 2.7), not by the next run of the job; never throws. Twenty at once, the job takes the rest. Imported here so the setup pages do not load the invoice job's modules.
+  const { issueWaitingInvoices } = await import("./invoice-issue");
+  await issueWaitingInvoices(store.id, 20);
   return { ok: true, profile: await getTaxProfile(store.id) };
 }
 
