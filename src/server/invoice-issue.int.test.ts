@@ -1,4 +1,5 @@
 import { sql } from "drizzle-orm";
+import pg from "pg";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 
 import { closeDb, db } from "@/db/client";
@@ -30,6 +31,21 @@ beforeAll(async () => {
   store = await fx.makeStore("iss");
   other = await fx.makeStore("iss-other");
 });
+
+/** The statements the database is sent while `run` runs (each goes through `pg`'s `Client.query`), with their values. */
+async function sent<T>(run: () => Promise<T>): Promise<{ text: string; values: unknown[] }[]> {
+  const spy = vi.spyOn(pg.Client.prototype, "query");
+  try {
+    await run();
+    return spy.mock.calls.map(([a, b]) =>
+      typeof a === "string"
+        ? { text: a, values: (b as unknown[]) ?? [] }
+        : { text: String((a as { text: string }).text), values: (a as { values?: unknown[] }).values ?? (b as unknown[]) ?? [] },
+    );
+  } finally {
+    spy.mockRestore();
+  }
+}
 
 afterAll(async () => {
   await closeDb();
@@ -176,6 +192,7 @@ describe("an order that cannot be invoiced yet waits, and is issued when the cau
     expect((await inv.invoiceCheckupFindings(wait.storeId)).map((f) => f.code)).toEqual(["invoices_waiting"]);
     // The job does nothing while the cause is there.
     expect(await issue.issueWaitingInvoices(wait.storeId)).toBe(0);
+    expect(await issue.storesWithDocumentWork(1000)).not.toContain(wait.storeId);
 
     await db().execute(sql`update commerce.stores set legal_name = 'Wait AS', organisation_number = '923456789', postal_address = 'Gata 1', country = 'NO' where id = ${wait.storeId}::uuid`);
     expect(await issue.storesWithDocumentWork()).toContain(wait.storeId);
@@ -190,6 +207,7 @@ describe("an order that cannot be invoiced yet waits, and is issued when the cau
     const noProfile = await fx.makeStore("iss-prof", { registered: null });
     const order = await fx.paidOrder(noProfile, [["DEMO-MUG-WHITE", 1]]);
     expect((await inv.waitingInvoices(noProfile.storeId))[0]).toMatchObject({ reason: "tax_profile_missing", fixAt: "/settings/tax" });
+    expect(await issue.storesWithDocumentWork(1000)).not.toContain(noProfile.storeId);
     await db().execute(sql`insert into commerce.store_tax_profile (store_id, vat_registered) values (${noProfile.storeId}::uuid, false)`);
     // Not registered, yet the order charged VAT (unit 1a charges the destination's): an invoice may not state VAT, so it waits.
     expect((await inv.waitingInvoices(noProfile.storeId))[0]).toMatchObject({ reason: "vat_charged_not_registered" });
@@ -305,4 +323,42 @@ describe("the five-minute job", () => {
     const invoice = (await fx.invoiceOf(own.storeId, order.orderId))!;
     expect(invoice.issuedOn).toBe(today());
   });
+
+  it("a store whose orders wait for the seller's details is not picked, and does not keep an issuable store out (bloat review 0.30)", async () => {
+    const q1 = await fx.makeStore("iss-q1", { sellerDetails: false });
+    const q2 = await fx.makeStore("iss-q2", { sellerDetails: false });
+    const q3 = await fx.makeStore("iss-q3", { sellerDetails: false });
+    await fx.paidOrder(q1, [["DEMO-MUG-WHITE", 1]]);
+    await fx.paidOrder(q2, [["DEMO-MUG-WHITE", 1]]);
+    await fx.paidOrder(q3, [["DEMO-MUG-WHITE", 1]]);
+    for (const [q, name] of [[q1, "Q1 AS"], [q2, "Q2 AS"]] as const) {
+      await db().execute(sql`update commerce.stores set legal_name = ${name}, organisation_number = '923456789', postal_address = 'Gata 1', country = 'NO' where id = ${q.storeId}::uuid`);
+    }
+    const list = await issue.storesWithDocumentWork(1000);
+    expect(list).toContain(q1.storeId);
+    expect(list).toContain(q2.storeId);
+    expect(list).not.toContain(q3.storeId);
+    // The store that waited longest comes first.
+    expect(list.indexOf(q1.storeId)).toBeLessThan(list.indexOf(q2.storeId));
+  });
+
+  it("the job issues the invoices and calls the credit notes once", async () => {
+    const q1 = await fx.makeStore("iss-j1", { sellerDetails: false });
+    const q2 = await fx.makeStore("iss-j2", { sellerDetails: false });
+    const q3 = await fx.makeStore("iss-j3", { sellerDetails: false });
+    const o1 = await fx.paidOrder(q1, [["DEMO-MUG-WHITE", 1]]);
+    const o2 = await fx.paidOrder(q2, [["DEMO-MUG-WHITE", 1]]);
+    const o3 = await fx.paidOrder(q3, [["DEMO-MUG-WHITE", 1]]);
+    for (const [q, name] of [[q1, "J1 AS"], [q2, "J2 AS"]] as const) {
+      await db().execute(sql`update commerce.stores set legal_name = ${name}, organisation_number = '923456789', postal_address = 'Gata 1', country = 'NO' where id = ${q.storeId}::uuid`);
+    }
+    const statements = await sent(() => issue.invoiceJobs());
+    expect(statements.some((s) => s.text.includes("issue_missing_credit_notes"))).toBe(false);
+    expect(await fx.invoiceOf(q1.storeId, o1.orderId)).not.toBeNull();
+    expect(await fx.invoiceOf(q2.storeId, o2.orderId)).not.toBeNull();
+    expect(await fx.invoiceOf(q3.storeId, o3.orderId)).toBeNull();
+    const asked = statements.filter((s) => s.text.includes("issue_waiting_invoices"));
+    expect(asked.length).toBeGreaterThanOrEqual(2);
+    expect(asked.some((s) => s.values.map(String).includes(q3.storeId))).toBe(false);
+  }, 120_000);
 });

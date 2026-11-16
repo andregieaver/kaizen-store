@@ -28,15 +28,20 @@ const STORES_PER_RUN = 50;
 /** The job only looks for waiting orders paid in this many days; the owner's *Check again* has no such limit. */
 const LOOKBACK_DAYS = 120;
 
-/** Issues the store's waiting invoices (up to `limit`), then the credit notes that waited for them. Returns the invoices issued. */
-export async function issueWaitingInvoices(storeId: string, limit = PER_STORE): Promise<number> {
+/** Issues the store's waiting invoices (up to `limit`); null when the call failed. */
+async function issueWaiting(storeId: string, limit: number): Promise<number | null> {
   try {
     const [row] = await db().execute<Row>(sql`select commerce.issue_waiting_invoices(${storeId}::uuid, ${limit}) as issued`);
     return Number(row?.issued ?? 0);
   } catch (error) {
     log("error", "invoices.waiting_issue_failed", {}, error);
-    return 0;
+    return null;
   }
+}
+
+/** Issues the store's waiting invoices (up to `limit`), then the credit notes that waited for them. Returns the invoices issued. */
+export async function issueWaitingInvoices(storeId: string, limit = PER_STORE): Promise<number> {
+  return (await issueWaiting(storeId, limit)) ?? 0;
 }
 
 /** Issues the credit notes of succeeded refunds (and of returns refunded outside) that have none. Returns how many. */
@@ -65,36 +70,43 @@ export async function retryPdfLater(storeId: string, kind: DocumentKind, documen
 }
 
 /**
- * The stores with something to do: a paid order of the last days that has no invoice (invoicing on, not copied, not a host's), or a
- * succeeded refund with no credit note whose order has an invoice.
+ * The stores with something to do: a paid order of the last days that has no invoice and can be issued one now (invoicing on, not copied,
+ * not a host's, eligible and ready), or a succeeded refund with no credit note whose order has an invoice; the stores whose work is oldest first.
  */
 export async function storesWithDocumentWork(limit = STORES_PER_RUN): Promise<string[]> {
   const rows = await db().execute<Row>(sql`
     select store_id from (
-      select o.store_id from commerce.orders o
-      left join commerce.invoice_settings cfg on cfg.store_id = o.store_id
-      where o.copied_from is null and o.host_id is null and coalesce(cfg.enabled, true)
-        and o.placed_at > now() - make_interval(days => ${LOOKBACK_DAYS})
-        and not exists (select 1 from commerce.invoices i where i.store_id = o.store_id and i.order_id = o.id)
-        and exists (select 1 from commerce.order_events e where e.store_id = o.store_id and e.order_id = o.id and e.type = 'order.paid'
-                      and (cfg.enabled_from is null or e.created_at >= cfg.enabled_from))
-      union
-      select rf.store_id from commerce.refunds rf
+      select o.store_id, o.placed_at as at from (
+        select o2.id, o2.store_id, o2.placed_at from commerce.orders o2
+        left join commerce.invoice_settings cfg on cfg.store_id = o2.store_id
+        where o2.copied_from is null and o2.host_id is null and coalesce(cfg.enabled, true)
+          and o2.placed_at > now() - make_interval(days => ${LOOKBACK_DAYS})
+          and not exists (select 1 from commerce.invoices i where i.store_id = o2.store_id and i.order_id = o2.id)
+          and exists (select 1 from commerce.order_events e where e.store_id = o2.store_id and e.order_id = o2.id and e.type = 'order.paid'
+                        and (cfg.enabled_from is null or e.created_at >= cfg.enabled_from))
+        offset 0 -- a fence: the two functions below run only for orders that pass the cheap tests above
+      ) o
+      -- The same two tests commerce.waiting_invoices() makes before issue_waiting_invoices() issues (reason invoice_failed): a store whose orders wait for its seller details or tax profile is not asked every five minutes (bloat review step 0.30). Keep them the same as that function.
+      where commerce.invoice_eligibility(o.id) = 'ok' and commerce.invoice_readiness(o.id) = 'ready'
+      union all
+      select rf.store_id, rf.created_at as at from commerce.refunds rf
       join commerce.payments p on p.store_id = rf.store_id and p.id = rf.payment_id
       join commerce.invoices i on i.store_id = rf.store_id and i.order_id = p.order_id
       where rf.status = 'succeeded'
         and not exists (select 1 from commerce.credit_notes c where c.store_id = rf.store_id and c.refund_id = rf.id)
         and not exists (select 1 from commerce.order_events e where e.store_id = rf.store_id and e.order_id = p.order_id and e.type in ('credit_note.short', 'credit_note.not_invoiced', 'credit_note.covered_by_edit', 'credit_note.covered_by_exchange') and e.data ->> 'key' = rf.id::text)
-      union
+      union all
       -- An order change whose documents wait (D174): issued by issue_waiting_invoices() after the order own invoice.
-      select e.store_id from commerce.order_edits e where e.status = 'applied' and e.documents = 'waiting'
-      union
-      select rt.store_id from commerce.returns rt
+      select e.store_id, coalesce(e.applied_at, e.created_at) as at from commerce.order_edits e where e.status = 'applied' and e.documents = 'waiting'
+      union all
+      select rt.store_id, rt.created_at as at from commerce.returns rt
       join commerce.invoices i on i.store_id = rt.store_id and i.order_id = rt.order_id
       where rt.refund_outside and rt.refund_id is null and coalesce(rt.refund_minor, 0) > 0
         and not exists (select 1 from commerce.credit_notes c where c.store_id = rt.store_id and c.return_id = rt.id and c.source = 'return_outside')
         and not exists (select 1 from commerce.order_events e where e.store_id = rt.store_id and e.order_id = rt.order_id and e.type in ('credit_note.short', 'credit_note.not_invoiced') and e.data ->> 'key' = rt.id::text)
     ) x
+    group by store_id
+    order by min(at), store_id
     limit ${limit}
   `);
   return rows.map((r) => String(r.store_id));
@@ -121,8 +133,10 @@ export async function invoiceJobs(): Promise<InvoiceJobsResult> {
     const stores = await storesWithDocumentWork();
     result.stores = stores.length;
     for (const storeId of stores) {
-      result.invoices += await issueWaitingInvoices(storeId);
-      await issueMissingCreditNotes(storeId);
+      const issued = await issueWaiting(storeId, PER_STORE);
+      // commerce.issue_waiting_invoices() ends by issuing the missing credit notes itself; the second call is only for a store whose invoices failed, so its credit notes do not wait on them.
+      if (issued === null) await issueMissingCreditNotes(storeId);
+      else result.invoices += issued;
     }
     result.notices = await sendPendingDocumentNotices();
   } catch (error) {
