@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 /**
- * The challenge's baseline (`docs/100-day-challenge.md` 3.3 and E7, D648): what the score rests on, frozen by the platform team before Day 1 so
+ * The challenge's baseline (`docs/100-day-challenge.md` 3.3 and E7, D650): what the score rests on, frozen by the platform team before Day 1 so
  * nothing either side changes later moves it. The clone's own cost estimates the score counts with (payment fee, shipping and handling per
  * order: E1), the ad money agreed for each store, and the agreed cost prices of the clone's goods (a fingerprint of every variant's cost, so a
  * change is seen without keeping a copy of the catalogue). The scoreboard counts with the frozen estimates and ad money, and names any

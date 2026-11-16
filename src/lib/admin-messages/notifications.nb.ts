@@ -479,6 +479,8 @@ export const notificationsNb: NotificationsMessages = {
     },
   },
   log: {
+    today: "I dag",
+    yesterday: "I går",
     title: "E-poster til kunder",
     back: "E-poster til kunder",
     none: "Ingen e-poster ennå.",

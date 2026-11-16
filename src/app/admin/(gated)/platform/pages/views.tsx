@@ -14,11 +14,12 @@ import { runningPageJobs } from "@/server/page-jobs";
 import { getPlatformPageRoles } from "@/server/platform-roles";
 import { siteLayoutChoice } from "@/server/site-layouts";
 import { CARD_CLASS, PageHeader } from "@/components/admin/ui";
-import { PlatformLegalCard } from "@/components/admin/platform-legal-card";
+import { PlatformLegalCard, platformLegalLead } from "@/components/admin/platform-legal-card";
 import { adminLangOf } from "@/lib/admin-lang";
 import { platformLegalOverview } from "@/server/platform-legal";
 import { AdminTextScope } from "@/components/admin/admin-text";
-import { adminTexts } from "@/lib/admin-text";
+import { adminText, adminTexts } from "@/lib/admin-text";
+import { countWords, fillWords } from "@/lib/admin-fill";
 import { platformSiteWords } from "@/server/platform-site-words";
 
 import {
@@ -64,21 +65,33 @@ export async function PagesListView({ type, searchParams }: { type: PageType; se
   return (
     <AdminTextScope texts={adminTexts(lang, ["website", "platformSite"])}>
       <div className="flex flex-wrap items-end justify-between gap-4">
-        <PageHeader title={<>{tw.list}</>} description={<>{tw.intro}</>} />
+        <PageHeader
+          title={<>{tw.list}</>}
+          meta={[
+            legal &&
+              fillWords(w.pages.leadJoin, {
+                pages: pages.length === 0 ? w.pages.leadNoPages : countWords(pages.length, w.pages.leadPages),
+                legal: platformLegalLead(legal, adminText(lang, "platformLegal")),
+              }),
+          ]}
+          description={<>{tw.intro}</>}
+        />
         <div className="flex flex-wrap gap-3">
           {!LAYOUT_TYPES.includes(type) && (
             <Link href={`${base}/categories`} className="flex min-h-11 items-center rounded-pill border border-edge px-5 font-medium">
               {w.pages.categories}
             </Link>
           )}
-          {type === "page" && (
+          {type === "page" && pages.length > 0 && (
             <Link href={`${base}/ai`} className="flex min-h-11 items-center rounded-pill border border-edge px-5 font-medium">
               {w.pages.createAi}
             </Link>
           )}
-          <Link href={`${base}/new`} className="flex min-h-11 items-center rounded-pill bg-brand px-5 font-medium text-brand-ink">
-            {tw.new}
-          </Link>
+          {!(type === "page" && pages.length === 0) && (
+            <Link href={`${base}/new`} className="flex min-h-11 items-center rounded-pill bg-brand px-5 font-medium text-brand-ink">
+              {tw.new}
+            </Link>
+          )}
         </div>
       </div>
 
@@ -93,7 +106,24 @@ export async function PagesListView({ type, searchParams }: { type: PageType; se
         <PageJobsPanel jobs={await runningPageJobs(null)} pagesBase="/admin/platform/pages" articlesBase="/admin/platform/articles" stop={stopPlatformPageJobAction} />
       )}
 
-      {pages.length === 0 ? (
+      {pages.length === 0 && type === "page" ? (
+        <section aria-labelledby="first-page" className={`flex flex-wrap items-center justify-between gap-4 p-6 ${CARD_CLASS}`}>
+          <span className="flex max-w-xl flex-col gap-1">
+            <h2 id="first-page" className="text-title text-ink">
+              {w.pages.firstPage}
+            </h2>
+            <span className="text-caption text-ink-2">{w.pages.firstPageSub}</span>
+          </span>
+          <span className="flex flex-wrap gap-3">
+            <Link href={`${base}/ai`} className="flex min-h-11 items-center rounded-pill border border-edge px-5 font-medium">
+              {w.pages.createAi}
+            </Link>
+            <Link href={`${base}/new`} className="flex min-h-11 items-center rounded-pill bg-brand px-5 font-medium text-brand-ink">
+              {tw.new}
+            </Link>
+          </span>
+        </section>
+      ) : pages.length === 0 ? (
         <p className={`p-5 text-sm text-muted ${CARD_CLASS}`}>
           {tw.none}
         </p>
@@ -117,6 +147,7 @@ export async function PagesListView({ type, searchParams }: { type: PageType; se
             </h2>
             <p className="max-w-2xl text-sm text-muted">{w.pages.specialNote}</p>
           </div>
+          <ul className={`divide-y divide-line px-6 ${CARD_CLASS}`}>
           {SPECIAL_ROLES.map((role) => (
             <PagePlaceForm
               key={role}
@@ -129,6 +160,7 @@ export async function PagesListView({ type, searchParams }: { type: PageType; se
               start={createPlatformRolePageAction.bind(null, role) as never}
             />
           ))}
+          </ul>
         </section>
       )}
       {(type === "header" || type === "footer") && (

@@ -2,6 +2,7 @@ import Link from "next/link";
 
 import { fillWords } from "@/lib/admin-fill";
 import { notificationsEn, type NotificationsMessages } from "@/lib/admin-messages/notifications.en";
+import { emailDays } from "@/lib/email-log";
 import type { EmailLogRow } from "@/server/email";
 
 /** A list of emails as sent, newest first, each opening to what it said. */
@@ -11,6 +12,7 @@ export function EmailLog({
   showStore = false,
   locale = "nb-NO",
   words = notificationsEn,
+  now,
 }: {
   emails: EmailLogRow[];
   base: string;
@@ -18,14 +20,17 @@ export function EmailLog({
   locale?: string;
   /** The admin's words in the account's language; English unless given. */
   words?: NotificationsMessages;
+  /** Group the emails by day, Today and Yesterday counted from this time (round 16, D650); a flat list without it. */
+  now?: number;
 }) {
   const w = words.log;
   if (emails.length === 0) return <p className="text-sm text-muted">{w.none}</p>;
   const when = (iso: string) =>
     new Date(iso).toLocaleString(locale, { dateStyle: "medium", timeStyle: "short", timeZone: "Europe/Oslo" });
-  return (
+  const time = (iso: string) => new Date(iso).toLocaleTimeString(locale, { timeStyle: "short", timeZone: "Europe/Oslo" });
+  const list = (rows: EmailLogRow[]) => (
     <ul className="flex flex-col divide-y divide-line text-sm">
-      {emails.map((email) => (
+      {rows.map((email) => (
         <li key={email.id} className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 py-2">
           <span className="min-w-0">
             <Link href={`${base}/${email.id}`} className="underline-offset-2 hover:underline">
@@ -37,7 +42,7 @@ export function EmailLog({
             </span>
           </span>
           <span className="text-xs text-muted">
-            <time dateTime={email.createdAt}>{when(email.createdAt)}</time> ·{" "}
+            <time dateTime={email.createdAt}>{now === undefined ? when(email.createdAt) : time(email.createdAt)}</time> ·{" "}
             <span className={["failed", "bounced", "complained"].includes(email.status) ? "text-danger-text" : undefined}>
               {w.statuses[email.status]}
             </span>
@@ -45,6 +50,17 @@ export function EmailLog({
         </li>
       ))}
     </ul>
+  );
+  if (now === undefined) return list(emails);
+  return (
+    <div className="flex flex-col gap-4">
+      {emailDays(emails, now, w, locale).map((day) => (
+        <section key={day.label} className="flex flex-col gap-1">
+          <h3 className="text-eyebrow text-muted uppercase">{day.label}</h3>
+          {list(day.rows)}
+        </section>
+      ))}
+    </div>
   );
 }
 

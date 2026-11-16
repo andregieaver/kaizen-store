@@ -11,6 +11,12 @@ export const platformLegalNb: PlatformLegalMessages = {
   businessLink: "Opplysninger om virksomheten",
   overwrite: "Skriv over denne siden på nytt",
   write: "Skriv de juridiske sidene",
+  legalNone: "de juridiske sidene er ikke skrevet",
+  legalSome: "{n} av de {total} juridiske sidene er publisert",
+  legalAll: "de juridiske sidene er publisert",
+  missingLine: { one: "Én forretningsopplysning mangler i de juridiske sidene: {list}.", many: "{n} forretningsopplysninger mangler i de juridiske sidene: {list}." },
+  fillIn: "Fyll dem inn",
+  writeHint: "Alle tre, på engelsk og norsk, publisert med en gang.",
   outcomes: { made: "laget og publisert", written: "skrevet og publisert", kept: "beholdt som den er", failed: "kunne ikke skrives" },
   done: "Juridiske sider: {list}.",
 };

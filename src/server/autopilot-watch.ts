@@ -13,6 +13,7 @@ import { changeAdBudget } from "./ad-accounts";
 import { audit, type Account, type Membership } from "./auth";
 import { setCampaignActive } from "./campaigns";
 import { log } from "./log";
+import { savePage, unpublishPage } from "./pages";
 import { setPricesTool } from "./product-tools";
 import { refreshTag } from "./refresh";
 import { currentStore, type Store } from "./stores";
@@ -112,6 +113,48 @@ async function undoPrices(c: Change, store: Store): Promise<string[]> {
   return undone;
 }
 
+const PAGE_VERSION = z.object({ id: col.uuid, content: z.unknown(), same_as_live: col.bool, live_is_draft: col.bool });
+
+/**
+ * A page the change published, put back as it was (F4, D651): the published version before it published again through the page builder's own
+ * save, or the page taken off the site when it had never been live. Only while what is live and the draft are both still what the change
+ * published (`same_as_live`, `live_is_draft`): a page someone published or edited since stays as they left it.
+ */
+async function undoPage(c: Change, store: Store): Promise<string[]> {
+  if (!c.account_id) return [];
+  const type = text(c.args, "type") === "article" ? "article" : "page";
+  const pageId = (await entriesBefore(c, `store.${type}_published`))[0]?.target_id;
+  if (!pageId) return [];
+  // Published again by anyone after the change: what is live is no longer the change's.
+  const later = await typedRow(
+    z.object({ n: col.int }),
+    sql`
+      select count(*)::int as n from commerce.audit_log
+      where store_id = ${c.store_id}::uuid and action in (${`store.${type}_published`}, ${`store.${type}_unpublished`}) and target_id = ${pageId}
+        and created_at > ${c.created_at}::timestamptz + interval '1 minute'
+    `,
+  );
+  if ((later?.n ?? 0) > 0) return [];
+  // The page's two newest published versions, each with whether it is what is live, and whether the draft is still what is live.
+  const versions = await typedRows(
+    PAGE_VERSION,
+    sql`
+      select v.id, v.content, (p.published is not null and md5(v.content::text) = md5(p.published::text)) as same_as_live,
+        (p.published is not null and md5(p.draft::text) = md5(p.published::text)) as live_is_draft
+      from commerce.page_versions v join commerce.pages p on p.id = v.page_id and p.store_id = v.store_id
+      where v.store_id = ${c.store_id}::uuid and v.page_id = ${pageId}::uuid and v.kind = 'published'
+      order by v.created_at desc, v.id desc limit 2
+    `,
+  );
+  const [made, before] = versions;
+  if (!made?.same_as_live || !made.live_is_draft) return [];
+  const account = accountOf(c.account_id);
+  if (!before) return (await unpublishPage(account, store.id, pageId, type)) ? [`the ${type} it published taken off the site again`] : [];
+  // The fonts of a version that was live before are installed already.
+  const saved = await savePage(account, store.id, pageId, before.content, { publish: true, type, fonts: async () => ({ ok: true }) });
+  return saved.ok ? [`the ${type} back to the version that was live before`] : [];
+}
+
 const text = (args: unknown, key: string): string | null => {
   const v = args && typeof args === "object" ? (args as Record<string, unknown>)[key] : undefined;
   return typeof v === "string" && v.trim() ? v.trim() : null;
@@ -126,6 +169,8 @@ async function undo(c: Change, tool: RevertibleTool, store: Store): Promise<stri
   switch (tool) {
     case "set_prices":
       return undoPrices(c, store);
+    case "publish_page":
+      return undoPage(c, store);
     case "create_discount":
     case "set_discount_active": {
       const code = text(c.args, "code");

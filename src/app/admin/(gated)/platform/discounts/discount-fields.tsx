@@ -1,4 +1,5 @@
 import type { PlatformDiscount } from "@/lib/discounts";
+import type { PlanOfferDraft } from "@/lib/plan-offers";
 import { formatPriceInput } from "@/lib/product-input";
 import { countWords, fillWords } from "@/lib/admin-fill";
 import { platformEn, type PlatformMessages } from "@/lib/admin-messages/platform.en";
@@ -23,6 +24,7 @@ export function PlatformDiscountFields({
   w = platformEn.discountFields,
   campaign = Boolean(discount?.campaign),
   plans = [],
+  draft,
 }: {
   discount: PlatformDiscount | null;
   currencies: string[];
@@ -30,13 +32,15 @@ export function PlatformDiscountFields({
   campaign?: boolean;
   /** The plans a campaign may name. */
   plans?: { id: string; name: string }[];
+  /** A ready offer's starting values for a new one (round 16, D650). */
+  draft?: PlanOfferDraft | null;
 }) {
   return (
     <div className="grid gap-4 sm:grid-cols-2">
       {campaign ? (
         <label className={label}>
           {w.campaignName}
-          <input name="campaignName" required maxLength={60} defaultValue={discount?.campaign?.name} className={control} />
+          <input name="campaignName" required maxLength={60} defaultValue={discount?.campaign?.name ?? draft?.name} className={control} />
           {discount && <input type="hidden" name="code" value={discount.code} />}
           <span className="text-xs font-normal text-muted">{w.campaignNameHint}</span>
         </label>
@@ -48,7 +52,7 @@ export function PlatformDiscountFields({
             required
             maxLength={40}
             autoCapitalize="characters"
-            defaultValue={discount?.code}
+            defaultValue={discount?.code ?? draft?.code}
             className={`${control} font-mono uppercase`}
           />
           <span className="text-xs font-normal text-muted">{w.codeHint}</span>
@@ -68,7 +72,7 @@ export function PlatformDiscountFields({
           type="number"
           min={1}
           max={100}
-          defaultValue={discount?.kind === "percent" ? discount.percent : 20}
+          defaultValue={discount?.kind === "percent" ? discount.percent : (draft?.percent ?? 20)}
           className={control}
         />
       </label>
@@ -93,7 +97,7 @@ export function PlatformDiscountFields({
       </fieldset>
       <label className={label}>
         {w.howLong}
-        <select name="duration" defaultValue={discount?.duration ?? "repeating"} className={control}>
+        <select name="duration" defaultValue={discount?.duration ?? draft?.duration ?? "repeating"} className={control}>
           <option value="once">{w.once}</option>
           <option value="repeating">{w.repeating}</option>
           <option value="forever">{w.forever}</option>
@@ -101,17 +105,17 @@ export function PlatformDiscountFields({
       </label>
       <label className={label}>
         {w.months}
-        <input name="durationMonths" type="number" min={1} max={36} defaultValue={discount?.durationMonths ?? 3} className={control} />
+        <input name="durationMonths" type="number" min={1} max={36} defaultValue={discount?.durationMonths ?? draft?.durationMonths ?? 3} className={control} />
       </label>
       {campaign && (
         <label className={label}>
           {w.starts}
-          <input name="startsAt" type="date" required defaultValue={discount?.campaign ? osloDate(discount.campaign.startsAt) : ""} className={control} />
+          <input name="startsAt" type="date" required defaultValue={discount?.campaign ? osloDate(discount.campaign.startsAt) : (draft?.startsAt ?? "")} className={control} />
         </label>
       )}
       <label className={label}>
         {campaign ? w.ends : w.expires}
-        <input name="expiresAt" type="date" required={campaign} defaultValue={discount?.expiresAt ? osloDate(discount.expiresAt) : ""} className={control} />
+        <input name="expiresAt" type="date" required={campaign} defaultValue={discount?.expiresAt ? osloDate(discount.expiresAt) : (draft?.expiresAt ?? "")} className={control} />
       </label>
       {campaign ? (
         plans.length > 0 && (
