@@ -595,6 +595,10 @@ const PAGES: readonly AdminPage[] = [
     tasks: ["Link an order, quote or assignment to a deal", "Reopen a deal"],
     feature: "sales",
   }),
+  store("deal.contract", "/deals/[dealId]/contracts/[contractId]", "Contract", "Sales", "One contract on a deal (D695): a draft's words and who signs, beside how it will look filled in from the deal; a sent one's signers and its PDF.", {
+    tasks: ["Change a contract's words", "Choose who signs a contract"],
+    feature: "sales",
+  }),
   store("deals.pipelines", "/deals/pipelines", "Pipelines", "Sales", "The store's pipelines and their stages: names, order, the chance a deal in each closes, and the stage sent quotes belong in.", {
     keywords: ["pipelines", "stages", "probability", "sales process"],
     feature: "sales",

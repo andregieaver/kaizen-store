@@ -117,6 +117,16 @@ with no quote linked is left out rather than stopping the send. Erasure removes 
 4. Deals' contract stage and win, the timeline, webhooks, the AI manager's tools.
 5. Level 2: an EU identity broker for BankID and its neighbours.
 
+*Step 2, the admin (16 November 2026), first part:* a deal's page has a Contracts card (its contracts and their state, and
+*New contract* while the deal is open), and each contract its page (`/admin/{store}/deals/{deal}/contracts/{id}`): a draft's title, words
+and signers in `ContractEditor` (Homer changes words in place; Lisa adds, moves and removes blocks, leaves out an optional clause, picks
+the store's signer from the team and adds the customer's), beside the preview filled in from the deal now with what still stops it, kept in
+view on a wide screen; a sent one's signers, its PDF (`…/pdf`, read from storage, no Chromium), a new version and a cancel. The deal's
+history and its won line say a contract moved or won it. Words in English and Norwegian (`deals.*.ts`, `contracts`; «kontrakt» in
+Norwegian, as a deal there is «avtale»). Actions through `storeAction()` (`contract-actions.ts`). `e2e/signed-in/contracts.spec.ts`.
+*Left for step 2's second part:* the store's templates page for Lisa (a template's words and how long it may be signed). The Send button
+comes with the signing page (step 3), so nothing in the admin sends a contract nobody can sign.
+
 ## 8. The owner's answers (16 November 2026)
 
 - **Level 2 after level 1 is in use**: step 5 waits until stores have sent contracts at level 1.
