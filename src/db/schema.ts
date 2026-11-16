@@ -821,11 +821,11 @@ export const stores = commerce.table(
      * `src/server/shopping-agent-settings.ts`. Never copied with a store.
      */
     shoppingAgents: boolean("shopping_agents").notNull().default(false),
-    /** Modules the store has switched on (D65): `bookings` for appointments, `deliveries` (D102), `work` (D122). */
+    /** Modules the store has switched on: only `work` (D122). Bookings and subscription boxes are features (bloat review step 0.37). */
     modules: text("modules").array().notNull().default(sql`'{}'::text[]`),
     /**
      * The features the owner keeps switched on (D178, `src/lib/store-features.ts`, `docs/store-features.md`): `shop` is the master switch, and a
-     * feature is on only with everything it needs (`commerce.feature_on()`). `modules`' `bookings` and `deliveries` follow it (a trigger).
+     * feature is on only with everything it needs (`commerce.feature_on()`). The features alone say what is on; a trigger only keeps the list distinct and sorted.
      */
     features: text("features").array().notNull().default(sql`'{shop}'::text[]`),
     /** Where the store's times are, e.g. appointments' (D65): an IANA time zone. */
@@ -887,7 +887,7 @@ export const stores = commerce.table(
     check("stores_checkout_phone", sql`${t.checkoutPhone} in ('off', 'optional', 'required')`),
     check("stores_checkout_name", sql`${t.checkoutName} in ('off', 'optional', 'required')`),
     check("stores_assistant_keep_months", sql`${t.assistantKeepMonths} is null or ${t.assistantKeepMonths} between 1 and 60`),
-    check("stores_modules", sql`${t.modules} <@ array['bookings', 'deliveries', 'work']::text[]`),
+    check("stores_modules", sql`${t.modules} <@ array['work']::text[]`),
     check(
       "stores_features",
       sql`${t.features} <@ array['shop', 'subscriptions', 'boxes', 'appointments', 'bookings', 'countries', 'languages', 'currencies', 'business', 'bonus', 'referrals', 'gift_cards', 'reviews', 'sales']::text[]`,

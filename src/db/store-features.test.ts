@@ -7,7 +7,7 @@ import { createTestDatabase } from "./testing";
 
 /**
  * Store features (D178, docs/store-features.md): what the database holds. `feature_needs()` is the registry's needs, `feature_on()` the
- * effective rule; `stores.modules`' bookings and deliveries follow the features both ways (`stores_features_sync()`); a store made from the
+ * effective rule; `stores.modules` holds only work and the features do not move it (bloat review step 0.37); a store made from the
  * template starts with the shop alone, a store template's copy and a duplicate keep the source's features.
  */
 let db: PGlite;
@@ -35,8 +35,8 @@ const setFeatures = (id: string, features: string[]) => db.query("update commerc
 beforeAll(async () => {
   db = await createTestDatabase();
   ({ id: owner } = await one<{ id: string }>("insert into commerce.accounts (email) values ('owner-features@example.com') returning id"));
-  template = await createStore("tpl-features", ["bookings"]);
-  await db.query("update commerce.stores set is_template = true where id = $1", [template]);
+  template = await createStore("tpl-features");
+  await db.query("update commerce.stores set is_template = true, features = array['appointments', 'bookings', 'shop'] where id = $1", [template]);
 });
 
 afterAll(async () => {
@@ -67,39 +67,30 @@ describe("the features' rules in the database (D178)", () => {
     expect((await one<{ on: boolean }>("select commerce.feature_on($1, 'shop') as on", [crypto.randomUUID()])).on).toBe(false);
   });
 
-  it("starts a new store with the shop, and gives one inserted with a module its features", async () => {
+  it("starts a new store with the shop alone, and a store inserted with a module has no features from it", async () => {
     const plain = await createStore("features-plain");
     expect(await state(plain)).toEqual({ features: ["shop"], modules: [] });
-    const booked = await createStore("features-booked", ["bookings", "deliveries", "work"]);
-    expect(await state(booked)).toEqual({ features: ["appointments", "bookings", "boxes", "shop"], modules: ["bookings", "deliveries", "work"] });
+    const worker = await createStore("features-worker", ["work"]);
+    expect(await state(worker)).toEqual({ features: ["shop"], modules: ["work"] });
   });
 
-  it("keeps the modules in step with what is on, the shop's switch included, and leaves work alone", async () => {
-    const store = await createStore("features-mirror", ["work"]);
-    await setFeatures(store, ["shop", "appointments"]);
-    expect(await state(store)).toEqual({ features: ["appointments", "shop"], modules: ["work", "bookings"] });
-    await setFeatures(store, ["shop", "appointments", "boxes"]);
-    expect((await state(store)).modules).toEqual(["work", "bookings", "deliveries"]);
-    // The shop off: everything that needs it sleeps, its own switch kept.
+  it("keeps the features each once and in order", async () => {
+    const store = await createStore("features-sorted");
+    await setFeatures(store, ["shop", "boxes", "appointments", "boxes"]);
+    expect((await state(store)).features).toEqual(["appointments", "boxes", "shop"]);
+  });
+
+  it("modules holds only work, and the features do not move it", async () => {
+    const store = await createStore("features-modules", ["work"]);
+    await setFeatures(store, ["shop", "appointments", "bookings", "boxes"]);
+    expect(await state(store)).toEqual({ features: ["appointments", "bookings", "boxes", "shop"], modules: ["work"] });
+    // The shop off puts everything that needs it to sleep; modules is untouched.
     await setFeatures(store, ["appointments", "boxes"]);
     expect(await state(store)).toEqual({ features: ["appointments", "boxes"], modules: ["work"] });
-    await setFeatures(store, ["appointments", "boxes", "shop"]);
-    expect((await state(store)).modules).toEqual(["work", "bookings", "deliveries"]);
-    await setFeatures(store, ["shop", "bookings"]);
-    expect((await state(store)).modules).toEqual(["work", "bookings"]);
-  });
-
-  it("moves the features when code from before D178 writes a module", async () => {
-    const store = await createStore("features-legacy");
-    await db.query("update commerce.stores set modules = array['bookings'] where id = $1", [store]);
-    expect(await state(store)).toEqual({ features: ["appointments", "bookings", "shop"], modules: ["bookings"] });
-    await db.query("update commerce.stores set modules = modules || array['deliveries'] where id = $1", [store]);
-    expect((await state(store)).features).toEqual(["appointments", "bookings", "boxes", "shop"]);
-    await db.query("update commerce.stores set modules = array_remove(modules, 'bookings') where id = $1", [store]);
-    expect(await state(store)).toEqual({ features: ["boxes", "shop"], modules: ["deliveries"] });
-    // Work's switch moves nothing.
-    await db.query("update commerce.stores set modules = modules || array['work'] where id = $1", [store]);
-    expect(await state(store)).toEqual({ features: ["boxes", "shop"], modules: ["deliveries", "work"] });
+    await expect(db.query("update commerce.stores set modules = array['bookings'] where id = $1", [store])).rejects.toThrow(/stores_modules/);
+    await expect(db.query("update commerce.stores set modules = array['deliveries'] where id = $1", [store])).rejects.toThrow(/stores_modules/);
+    await db.query("update commerce.stores set modules = array['work'] where id = $1", [store]);
+    expect(await state(store)).toEqual({ features: ["appointments", "boxes"], modules: ["work"] });
   });
 });
 
@@ -115,7 +106,7 @@ describe("new stores and copies (D178)", () => {
     await db.query("update commerce.stores set starter = true where id = $1", [starter]);
     await setFeatures(starter, ["shop", "appointments", "bonus", "languages"]);
     const { id } = await one<{ id: string }>("select commerce.clone_store($1, 'features-from-starter', 'Siri', $2) as id", [starter, owner]);
-    expect(await state(id)).toEqual({ features: ["appointments", "bonus", "languages", "shop"], modules: ["bookings"] });
+    expect(await state(id)).toEqual({ features: ["appointments", "bonus", "languages", "shop"], modules: [] });
   });
 
   it("keeps the original's features in a duplicate, a sleeping switch included", async () => {

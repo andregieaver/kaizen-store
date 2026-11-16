@@ -1,6 +1,6 @@
 {
-  "id": "eb123477-879b-470f-bf2f-4b2bc2ffd4c6",
-  "prevId": "2da998ed-915c-42b3-bc62-347786a74756",
+  "id": "a1a78a5b-27bd-41cb-9b67-08b8a319c7bc",
+  "prevId": "39a9a01d-372d-43a5-9cb5-9b853fddd511",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -81094,7 +81094,7 @@
         },
         "stores_modules": {
           "name": "stores_modules",
-          "value": "\"commerce\".\"stores\".\"modules\" <@ array['bookings', 'deliveries', 'work']::text[]"
+          "value": "\"commerce\".\"stores\".\"modules\" <@ array['work']::text[]"
         },
         "stores_features": {
           "name": "stores_features",

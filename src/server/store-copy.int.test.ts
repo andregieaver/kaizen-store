@@ -155,8 +155,8 @@ beforeAll(async () => {
   admin = await account("admin", true);
   slug = `cs-src-${run}`;
   const [store] = await rows(sql`
-    insert into commerce.stores (slug, name, legal_name, organisation_number, modules, setup_completed_at, custom_css, created_by, navigation, locales, tracking, custom_code)
-    values (${slug}, 'Original', 'Karis AS', '999888777', '{bookings,work}', now(), '', ${owner.id}::uuid, '{}', '{en-IE,nb-NO}', '{"ga4":"G-ORIGINAL1"}', '{"necessary":[{"name":"x"}]}') returning id
+    insert into commerce.stores (slug, name, legal_name, organisation_number, modules, features, setup_completed_at, custom_css, created_by, navigation, locales, tracking, custom_code)
+    values (${slug}, 'Original', 'Karis AS', '999888777', '{work}', '{shop,appointments,bookings}', now(), '', ${owner.id}::uuid, '{}', '{en-IE,nb-NO}', '{"ga4":"G-ORIGINAL1"}', '{"necessary":[{"name":"x"}]}') returning id
   `);
   S = String(store.id);
   const member = (who: Account, role: string) =>
@@ -442,7 +442,7 @@ describe("starting a copy", () => {
       setup_completed_at: null,
       is_template: false,
     });
-    expect(store.modules).toEqual(["bookings"]);
+    expect(store.modules).toEqual([]);
     // The original's analytics ids and own code stay with the original's site.
     expect(store.tracking).toEqual({});
     expect(store.custom_code).toEqual({});

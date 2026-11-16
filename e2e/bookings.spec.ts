@@ -18,7 +18,7 @@ async function storeWithAppointment(payment: "now" | "deposit" | "venue" = "now"
       values (${`${slug}@example.com`}, 'Kari', 'Karis Massasje') returning id`;
     const [{ id: storeId }] = await sql`
       select commerce.approve_access_request(${request.id}, ${slug}, 'Karis Massasje', null) as id`;
-    await sql`update commerce.stores set modules = '{bookings}', time_zone = 'Europe/Oslo' where id = ${storeId}`;
+    await sql`update commerce.stores set features = features || array['appointments', 'bookings'], time_zone = 'Europe/Oslo' where id = ${storeId}`;
     const [staff] = await sql`
       insert into commerce.booking_resources (store_id, name, hours)
       values (${storeId}, 'Kari', ${sql.json({ week, exceptions: [] })}) returning id`;

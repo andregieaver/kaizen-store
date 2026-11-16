@@ -24,7 +24,7 @@ test("a shopper keeps a subscription box list", async ({ page }) => {
       insert into commerce.access_requests (email, name, store_name) values (${`owner-${email}`}, 'Test', 'Ukeskassen') returning id`;
     const [store] = await sql`select commerce.approve_access_request(${request.id}, ${slug}, 'Ukeskassen', null) as id`;
     storeId = String(store.id);
-    await sql`update commerce.stores set modules = array['deliveries'] where id = ${storeId}`;
+    await sql`update commerce.stores set features = features || array['boxes'] where id = ${storeId}`;
     // Deliveries tomorrow, the cutoff today at midnight: today's round is being packed.
     await sql`
       insert into commerce.delivery_schedules (store_id, market_code, currency, name, delivery_weekday, cutoff_days, cutoff_time)

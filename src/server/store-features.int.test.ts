@@ -163,19 +163,20 @@ describe("switching features (D178)", () => {
     expect(await features.setFeature(await owner(), "languages", false, { confirmed: true })).toMatchObject({ ok: true });
   });
 
-  it("keeps the modules of code from before D178 in step: on with the shop, asleep without it", async () => {
+  it("the features alone say what is on: on with the shop, asleep without it", async () => {
     expect(await features.setFeature(await owner(), "appointments", true)).toMatchObject({ ok: true });
-    expect(await kept()).toMatchObject({ modules: ["bookings"] });
+    expect(await kept()).toMatchObject({ modules: [] });
     expect((await getStore(store.slug))!.bookingsOn).toBe(true);
     expect(await features.setFeature(await owner(), "boxes", true)).toMatchObject({ ok: true });
-    expect((await kept()).modules).toEqual(["bookings", "deliveries"]);
+    expect((await getStore(store.slug))!).toMatchObject({ bookingsOn: true, deliveriesOn: true });
     expect(await features.setFeature(await owner(), "shop", false, { confirmed: true })).toMatchObject({ ok: true });
     expect(await kept()).toEqual({ features: ["appointments", "boxes"], modules: [] });
     expect((await getStore(store.slug))!).toMatchObject({ bookingsOn: false, deliveriesOn: false });
     expect(await features.setFeature(await owner(), "shop", true)).toMatchObject({ ok: true });
-    expect((await kept()).modules).toEqual(["bookings", "deliveries"]);
+    expect((await getStore(store.slug))!).toMatchObject({ bookingsOn: true, deliveriesOn: true });
     expect(await features.setFeature(await owner(), "appointments", false, { confirmed: true })).toMatchObject({ ok: true });
-    expect(await kept()).toEqual({ features: ["boxes", "shop"], modules: ["deliveries"] });
+    expect(await kept()).toEqual({ features: ["boxes", "shop"], modules: [] });
+    expect((await getStore(store.slug))!).toMatchObject({ bookingsOn: false, deliveriesOn: true });
     expect(await features.setFeature(await owner(), "boxes", false, { confirmed: true })).toMatchObject({ ok: true });
     expect(await kept()).toEqual({ features: ["shop"], modules: [] });
   });
