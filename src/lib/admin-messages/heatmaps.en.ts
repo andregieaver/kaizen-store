@@ -48,6 +48,7 @@ export const heatmapsEn = {
     collecting: "Collecting. A page's map appears after {n} page views.",
     noneStuck: "No page has enough views yet to say where visitors get stuck.",
     frontPage: "Front page",
+    watch: "Watch recordings",
   },
   map: {
     back: "Heatmaps",

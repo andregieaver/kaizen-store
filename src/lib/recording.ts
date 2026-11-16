@@ -156,3 +156,22 @@ export function recorderOptions(mask: "balanced" | "strict", isTouch: boolean) {
     sampling: { mousemove: isTouch ? 150 : 50, scroll: 150, media: 800, input: "last" as const },
   };
 }
+
+// ---------------------------------------------------------------------------
+// The player's timeline (step 11)
+// ---------------------------------------------------------------------------
+
+export type TimelineMark = { at: number; kind: "page" | "dead" | "rage" | "click"; path?: string };
+
+/** The player's marks: each page (`kz-page`) and each dead or rage click (`kz-click`), by time from the start, in order. */
+export function timelineMarks(events: readonly unknown[]): TimelineMark[] {
+  const marks: TimelineMark[] = [];
+  for (const raw of events) {
+    const event = raw as { type?: unknown; timestamp?: unknown; data?: { tag?: unknown; payload?: Record<string, unknown> } };
+    if (event.type !== 5 || typeof event.timestamp !== "number" || !event.data) continue;
+    const payload = event.data.payload ?? {};
+    if (event.data.tag === "kz-page" && typeof payload.path === "string") marks.push({ at: event.timestamp, kind: "page", path: payload.path });
+    if (event.data.tag === "kz-click") marks.push({ at: event.timestamp, kind: payload.rage === true ? "rage" : payload.dead === true ? "dead" : "click" });
+  }
+  return marks.sort((a, b) => a.at - b.at);
+}

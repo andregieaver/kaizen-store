@@ -1,7 +1,7 @@
 import type { NextConfig } from "next";
 import { PHASE_DEVELOPMENT_SERVER, PHASE_PRODUCTION_BUILD } from "next/constants";
 
-import { baseRouteHeaders, oauthRouteHeaders, payRouteHeaders, PUBLIC_FILE_HEADERS } from "./src/lib/csp";
+import { baseRouteHeaders, oauthRouteHeaders, payRouteHeaders, PUBLIC_FILE_HEADERS, replayRouteHeaders } from "./src/lib/csp";
 import { storeDomain, storeHosts } from "./src/lib/paths";
 import { siteUrl } from "./src/lib/site";
 import { embedFrameHeaders } from "./src/lib/support-embed";
@@ -118,6 +118,8 @@ export default async function config(phase: string): Promise<NextConfig> {
     // cart, checkout and order of every store, on both shapes of address (wave 1, 1e, docs/pci.md): later entries win where both match.
     headers: async () => [
       ...baseRouteHeaders(themesOrigin(), { supabaseUrl: process.env.NEXT_PUBLIC_SUPABASE_URL }),
+      // The recording player (D656): what a replayed page may load, enforced; it repeats the admin's frame-ancestors, which it replaces.
+      ...replayRouteHeaders(themesOrigin(), { supabaseUrl: process.env.NEXT_PUBLIC_SUPABASE_URL }),
       ...payRouteHeaders({ supabaseUrl: process.env.NEXT_PUBLIC_SUPABASE_URL, vercel: Boolean(process.env.VERCEL) }),
       // The consent screens are framed by nobody (D439).
       ...oauthRouteHeaders(),

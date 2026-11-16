@@ -825,6 +825,15 @@ const PAGES: readonly AdminPage[] = [
     keywords: ["heatmap", "click map", "scroll map", "attention", "rage clicks", "dead clicks"],
     tasks: ["See where visitors get stuck", "See how far down a page visitors scroll"],
   }),
+  store("analytics.recordings", "/analytics/recordings", "Recordings", "Analytics", "Recordings of visits to the store's pages, for visitors who allow them, while the owner has them on: the most frustrated first (rage and dead clicks) or the newest, by device, page, period and A/B version, kept 30 days. The owner's alone.", {
+    needs: "owner",
+    keywords: ["session replay", "recordings", "replay", "watch visits", "screen recording"],
+    tasks: ["Watch how visitors use a page", "See visits where visitors got stuck"],
+  }),
+  store("analytics.recording", "/analytics/recordings/[id]", "Recording", "Analytics", "One recording of a visit, played back with its pages and frustrated clicks on a timeline; it can be deleted. The owner's alone.", {
+    needs: "owner",
+    keywords: ["watch recording"],
+  }),
   store("analytics.settings", "/analytics/settings", "Analytics settings", "Analytics", "Cost of goods, payment fee and shipping cost estimates, fixed costs, customer lifetime, monthly revenue targets, and whether visits are counted.", {
     needs: "owner",
     keywords: ["cost", "cogs", "fees", "target", "goal", "visit counting"],
@@ -1535,6 +1544,8 @@ export function matchPath(pathname: string): { page: AdminPage; params: Record<s
 const NOT_YET_IN_PROMPT: ReadonlySet<string> = new Set([
   // Heatmaps (D656) enter the AI manager's prompt with the next recorded eval run.
   "store:analytics.heatmaps",
+  "store:analytics.recordings",
+  "store:analytics.recording",
   "store:text-messages",
   "store:text-message.new",
 ]);

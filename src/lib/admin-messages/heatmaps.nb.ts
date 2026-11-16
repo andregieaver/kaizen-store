@@ -47,6 +47,7 @@ export const heatmapsNb: HeatmapsMessages = {
     collecting: "Samler inn. Kartet for en side vises etter {n} sidevisninger.",
     noneStuck: "Ingen side har nok visninger ennå til å si hvor besøkende står fast.",
     frontPage: "Forsiden",
+    watch: "Se opptak",
   },
   map: {
     back: "Varmekart",

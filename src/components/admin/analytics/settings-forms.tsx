@@ -40,6 +40,7 @@ export type SettingsActions = {
   deletePeriodTarget?: FormAction;
   setVisitCounting: FormAction;
   setHeatmaps?: FormAction;
+  setRecordings?: FormAction;
   backfillCosts: FormAction;
 };
 
@@ -60,6 +61,8 @@ export type AnalyticsSettingsViewProps = {
   visitCounting: boolean;
   /** Heatmaps on (D656); left out where the page does not offer them. */
   heatmaps?: boolean;
+  /** Recordings of visits (D656 step 11): whether on, the share recorded, what they hide, and whether the store may switch them on. */
+  recordings?: { on: boolean; share: number; mask: "balanced" | "strict"; available: boolean; privacyHref: string };
   /** Null for a member who may look but not change. */
   actions: SettingsActions | null;
 };
@@ -625,6 +628,83 @@ export function SignalsSection({ heatmaps, action }: { heatmaps: boolean; action
 }
 
 // ---------------------------------------------------------------------------
+// 7. Recordings (D656 step 11)
+// ---------------------------------------------------------------------------
+
+export const RECORDING_SHARE_CHOICES = [10, 25, 50, 100] as const;
+
+export function RecordingsSection({ recordings, action }: { recordings: NonNullable<AnalyticsSettingsViewProps["recordings"]>; action: FormAction | null }) {
+  const w = adminText(analyticsLang(), "recordings").settings;
+  const { on, share, mask, available, privacyHref } = recordings;
+  return (
+    <AnalyticsSection id="recordings" title={w.title} description={w.description}>
+      <div className={card}>
+        <div className="flex flex-wrap items-center gap-3">
+          <StatusPill tone={on ? "good" : "neutral"}>{on ? w.on : w.off}</StatusPill>
+          <p className="text-sm">{on ? fillWords(w.stateOn, { share }) : available ? w.stateOff : adminText(analyticsLang(), "recordings").notAvailable}</p>
+        </div>
+        <p className="text-sm text-muted">{w.kept}</p>
+        {action && (available || on) ? (
+          <ActionForm action={action} className="flex flex-col gap-4">
+            {!on ? (
+              <fieldset className="flex flex-col gap-2">
+                <legend className="text-body-strong text-ink">{w.confirmTitle}</legend>
+                <label className="flex items-start gap-2 text-sm">
+                  <input type="checkbox" name="children" value="yes" className="mt-1" /> {w.children}
+                </label>
+                <label className="flex items-start gap-2 text-sm">
+                  <input type="checkbox" name="sensitive" value="yes" className="mt-1" /> {w.sensitive}
+                </label>
+                <label className="flex items-start gap-2 text-sm">
+                  <input type="checkbox" name="policy" value="yes" className="mt-1" />
+                  <span>
+                    {w.policy} ·{" "}
+                    <Link href={privacyHref} className="underline">
+                      {w.policyLink}
+                    </Link>
+                  </span>
+                </label>
+              </fieldset>
+            ) : null}
+            <fieldset className="flex flex-col gap-2">
+              <legend className="text-body-strong text-ink">{w.share}</legend>
+              <div className="flex flex-wrap gap-2">
+                {RECORDING_SHARE_CHOICES.map((s) => (
+                  <label key={s} className="inline-flex h-9 items-center gap-1.5 rounded-panel border border-line px-3 text-sm has-[:checked]:border-brand has-[:checked]:bg-sunken">
+                    <input type="radio" name="share" value={s} defaultChecked={s === share} className="sr-only" />
+                    {s} %
+                  </label>
+                ))}
+              </div>
+            </fieldset>
+            <details className="text-sm">
+              <summary className="cursor-pointer">{w.privacyFold}</summary>
+              <label className="mt-2 flex items-start gap-2">
+                <input type="checkbox" name="strict" value="yes" defaultChecked={mask === "strict"} className="mt-1" />
+                <span>
+                  {w.hideAll}
+                  <span className="block text-muted">{w.hideAllHint}</span>
+                </span>
+              </label>
+            </details>
+            <div className="flex flex-wrap gap-2">
+              <SubmitButton name="enabled" value="on" variant={on ? "secondary" : "primary"}>
+                {on ? w.save : w.turnOn}
+              </SubmitButton>
+              {on ? (
+                <SubmitButton name="enabled" value="off" variant="secondary">
+                  {w.turnOff}
+                </SubmitButton>
+              ) : null}
+            </div>
+          </ActionForm>
+        ) : null}
+      </div>
+    </AnalyticsSection>
+  );
+}
+
+// ---------------------------------------------------------------------------
 // The view
 // ---------------------------------------------------------------------------
 
@@ -655,6 +735,7 @@ export function AnalyticsSettingsView(props: AnalyticsSettingsViewProps) {
       <PeriodTargetsSection currency={currency} locale={locale} today={today} periodTargets={props.periodTargets} actions={actions} />
       <VisitsSection summary={summary} visitCounting={visitCounting} actions={actions} />
       {props.heatmaps !== undefined && <SignalsSection heatmaps={props.heatmaps} action={actions?.setHeatmaps ?? null} />}
+      {props.recordings ? <RecordingsSection recordings={props.recordings} action={actions?.setRecordings ?? null} /> : null}
     </div>
   );
 }

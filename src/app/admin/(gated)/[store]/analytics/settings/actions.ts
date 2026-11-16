@@ -19,6 +19,7 @@ import {
   savePeriodTarget,
   saveTarget,
   setHeatmaps,
+  setRecordings,
   setVisitCounting,
 } from "@/server/analytics-settings";
 import { adminText } from "@/lib/admin-text";
@@ -131,6 +132,24 @@ export async function setHeatmapsAction(storeSlug: string, _state: FormState, fo
     if (!result.ok) return failed(result.problems);
     refresh();
     return { status: "ok", messages: [result.enabled ? h.nowOn : h.nowOff] };
+  });
+}
+
+/**
+ * Switches recordings of visits on or off, with the share and what they hide (D656 step 11): on needs the three confirmations the first
+ * time; while the platform holds recordings back, only Kaizena Flow's own store may switch them on (`setRecordings()`).
+ */
+export async function setRecordingsAction(storeSlug: string, _state: FormState, form: FormData): Promise<FormState> {
+  return storeAction({ store: storeSlug, key: "owner", action: "analytics.recordings", answer: (message) => failed([message]) }, async (member, lang) => {
+    const w = adminText(lang, "recordings");
+    const enabled = form.get("enabled") === "on";
+    const confirmed = member.store.recordings || ["children", "sensitive", "policy"].every((k) => form.get(k) === "yes");
+    if (enabled && !confirmed) return failed([w.settings.confirmAll]);
+    const share = Number(form.get("share") ?? member.store.recordingShare);
+    const result = await setRecordings(member, { enabled, share, mask: form.get("strict") === "yes" ? "strict" : "balanced", confirmed });
+    if (!result.ok) return failed(result.problems.map((p) => (p === "Recordings are not available yet." ? w.notAvailable : p)));
+    refresh();
+    return { status: "ok", messages: [enabled ? (member.store.recordings ? w.settings.saved : w.settings.nowOn) : w.settings.nowOff] };
   });
 }
 

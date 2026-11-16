@@ -508,6 +508,14 @@ export const PAGES_NB: Record<string, { title: string; keywords: string[] }> = {
     title: "Varmekart",
     keywords: ["varmekart", "klikkart", "rullekart", "oppmerksomhet", "sinte klikk", "døde klikk"],
   },
+  "store:analytics.recordings": {
+    title: "Opptak",
+    keywords: ["opptak", "øktopptak", "se besøk", "skjermopptak"],
+  },
+  "store:analytics.recording": {
+    title: "Opptak av et besøk",
+    keywords: ["se opptak"],
+  },
   "store:analytics.settings": {
     title: "Innstillinger for analyse",
     keywords: ["analyseinnstillinger", "varekost", "kostnader", "gebyrer", "mål", "besøkstelling"],

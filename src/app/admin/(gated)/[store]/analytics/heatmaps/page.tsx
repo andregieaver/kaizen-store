@@ -4,7 +4,7 @@ import { ActionForm, SubmitButton } from "@/components/admin/action-form";
 import { AdminTextScope } from "@/components/admin/admin-text";
 import { AnalyticsHeader } from "@/components/admin/analytics/analytics-header";
 import { ExportScope } from "@/components/admin/analytics/export-scope";
-import { HeatmapsHub, MAP_DAYS, MAP_VIEWS, PageMapView, pageName, type MapDays, type MapShotView, type MapView } from "@/components/admin/analytics/heatmaps-view";
+import { HeatmapsHub, MAP_DAYS, MAP_VIEWS, PageMapView, pageName, recordingsOfPage, type MapDays, type MapShotView, type MapView } from "@/components/admin/analytics/heatmaps-view";
 import { RefreshWhile } from "@/components/admin/refresh-while";
 import { PageHeader } from "@/components/admin/ui/page-header";
 import { fillWords } from "@/lib/admin-fill";
@@ -108,6 +108,7 @@ export default async function HeatmapsPage({ params, searchParams }: PageProps<"
         refresher={<RefreshWhile seconds={20} />}
         words={words}
         locale={ctx.locale}
+        watchHref={ctx.owner ? recordingsOfPage(ctx.base, page) : undefined}
       />
     </>,
   );

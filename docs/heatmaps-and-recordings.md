@@ -2124,6 +2124,15 @@ yet built (step 11).
 watches the recording in production. **Send the owner screenshots** of the list, the player (a phone and a computer recording) and the
 settings row.
 
+*As built (16 Nov 2026):* the events route asks `checkPermission(slug, "owner")` and answers 404 itself (a route handler, so no
+`notFound()`); the audit, the first viewing and the gzip are `serveRecordingEvents()` in `recordings-read.ts`, whose `log` is injectable,
+and the failed-audit case is an integration test there. The player's policy is `replayRouteHeaders()` in `src/lib/csp.ts`, spread after the
+base headers in `next.config.ts` for `/admin/:store/analytics/recordings/:id`. The timeline's marks are the recorder's own custom events
+(`kz-page`, `kz-click`; `timelineMarks()` in `recording.ts`). The list's versions show as their letter. The share is radio buttons in
+the row (one press each), the confirmations are asked only while the store does not record yet, and *Watch recordings* on the heatmaps
+hub and map opens the list on that page with rage clicks. The e2e feeds a small hand-drawn page to the player (`RECORDING_EVENTS` may
+name a real events file for screenshots).
+
 ### Step 12: Tying it to A/B tests
 
 There are no new tables and no per-visitor rows: behaviour per version comes from the tagged totals.

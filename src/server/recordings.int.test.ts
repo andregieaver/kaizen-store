@@ -20,6 +20,7 @@ const { recordSegment, forgetRecordings, pruneRecordings, forgetRecordingMemos, 
 const { mintUnlock } = await import("./private-mode");
 const { forgetLimitMemos } = await import("./limits");
 const { unlockCookieName } = await import("@/lib/unlock-pass");
+const { serveRecordingEvents } = await import("./recordings-read");
 
 /**
  * Recordings of visits on the server (D656, `docs/heatmaps-and-recordings.md` step 8): what keeps a segment, what stops a tab recording,
@@ -361,5 +362,50 @@ describe("sealing (D656 step 10)", () => {
     } finally {
       spy.mockRestore();
     }
+  });
+});
+
+describe("the player's events (D656 step 11)", () => {
+  let accountId: string;
+  beforeAll(async () => {
+    // The sanitiser keeps public-storage pictures from the project's own address.
+    process.env.NEXT_PUBLIC_SUPABASE_URL ??= "https://project.supabase.co";
+    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ??= "sb_publishable_test";
+    const [account] = await db().execute<Row>(sql`insert into commerce.accounts (email, name) values (${`${slug}-owner@example.com`}, 'Owner') returning id`);
+    accountId = String(account.id);
+  });
+  const member = () => ({ account: { id: accountId }, store: { id: storeId, slug } });
+  const viewed = async (id: string) => db().execute<Row>(sql`select id from commerce.audit_log where store_id = ${storeId}::uuid and action = 'analytics.recording_viewed' and target_id = ${id}`);
+
+  it("sends nothing and notes nothing when the viewing cannot be logged", async () => {
+    const files = memoryFiles();
+    const id = uuid();
+    expect(await send(id, 0, segment(), files)).toBe(204);
+    const failing = async () => {
+      throw new Error("audit down");
+    };
+    expect(await serveRecordingEvents(member(), id, { files, log: failing })).toEqual({ status: 503 });
+    expect((await recording(id)).viewed_at).toBeNull();
+  });
+
+  it("logs the viewing first, notes it on the row, and sends the events gzipped", async () => {
+    const files = memoryFiles();
+    const id = uuid();
+    expect(await send(id, 0, segment(), files)).toBe(204);
+    const answer = await serveRecordingEvents(member(), id, { files });
+    expect(answer.status).toBe(200);
+    const events = JSON.parse(gunzipSync((answer as { body: Uint8Array }).body).toString("utf8")) as { type: number }[];
+    expect(events.map((e) => e.type)).toEqual([4, 2, 3]);
+    expect(await viewed(id)).toHaveLength(1);
+    expect((await recording(id)).viewed_at).not.toBeNull();
+  });
+
+  it("answers 404 for another store's recording, and logs nothing", async () => {
+    const files = memoryFiles();
+    const id = uuid();
+    expect(await send(id, 0, segment(), files)).toBe(204);
+    const other = { account: { id: accountId }, store: { id: uuid(), slug: "other" } };
+    expect(await serveRecordingEvents(other, id, { files })).toEqual({ status: 404 });
+    expect(await viewed(id)).toHaveLength(0);
   });
 });

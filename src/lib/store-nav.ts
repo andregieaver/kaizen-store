@@ -219,6 +219,7 @@ export const STORE_SECTIONS: StoreSection[] = [
           item("/analytics/traffic", "Traffic", "Visits, the way from visit to purchase, devices, countries, searches and the busiest hours.", { icon: "pointer" }),
           item("/analytics/speed", "Speed", "How fast your pages load for your visitors, measured in their browsers, and what to fix.", { icon: "gauge" }),
           item("/analytics/heatmaps", "Heatmaps", "Where visitors click, how far they scroll and what they look at, and where they get stuck.", { icon: "flame" }),
+          item("/analytics/recordings", "Recordings", "Watch visits to your pages, for visitors who allow it, to see where they get stuck.", { icon: "video" }),
           item("/analytics/settings", "Analytics settings", "Costs, fees and targets that turn sales into profit, and whether visits are counted.", { icon: "sliders" }),
         ],
       },

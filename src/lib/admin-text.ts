@@ -78,6 +78,8 @@ import { backdropsNb } from "./admin-messages/backdrops.nb";
 import { animationEn, type AnimationMessages } from "./admin-messages/animation.en";
 import { heatmapsEn, type HeatmapsMessages } from "./admin-messages/heatmaps.en";
 import { heatmapsNb } from "./admin-messages/heatmaps.nb";
+import { recordingsEn, type RecordingsMessages } from "./admin-messages/recordings.en";
+import { recordingsNb } from "./admin-messages/recordings.nb";
 import { animationNb } from "./admin-messages/animation.nb";
 import { notificationsEn, type NotificationsMessages } from "./admin-messages/notifications.en";
 import { notificationsNb } from "./admin-messages/notifications.nb";
@@ -179,6 +181,7 @@ export type AdminAreaMessages = {
   backdrops: BackdropsMessages;
   animation: AnimationMessages;
   heatmaps: HeatmapsMessages;
+  recordings: RecordingsMessages;
   notifications: NotificationsMessages;
   legal: LegalMessages;
   staff: StaffMessages;
@@ -220,7 +223,7 @@ export type AdminArea = keyof AdminAreaMessages;
  * (`useAdminText()` in `admin-text.tsx`) leaves them out, so they are not in every admin screen's first scripts (PSI PERF-01,
  * `admin-catalogues.scan.test.ts`), and a client part cannot ask for one.
  */
-export const SERVER_AREAS = ["carriers", "sandbox", "fiken", "deals", "screens", "storeParts", "backdrops", "animation", "console", "business", "books", "heatmaps"] as const;
+export const SERVER_AREAS = ["carriers", "sandbox", "fiken", "deals", "screens", "storeParts", "backdrops", "animation", "console", "business", "books", "heatmaps", "recordings"] as const;
 
 /** An area a client part may read with `useAdminText()`. */
 export type ClientArea = Exclude<AdminArea, (typeof SERVER_AREAS)[number]>;
@@ -270,6 +273,7 @@ const CATALOGUES: { [A in AdminArea]: Record<AdminLang, AdminAreaMessages[A]> } 
   backdrops: { en: backdropsEn, nb: backdropsNb },
   animation: { en: animationEn, nb: animationNb },
   heatmaps: { en: heatmapsEn, nb: heatmapsNb },
+  recordings: { en: recordingsEn, nb: recordingsNb },
   notifications: { en: notificationsEn, nb: notificationsNb },
   legal: { en: legalEn, nb: legalNb },
   staff: { en: staffEn, nb: staffNb },

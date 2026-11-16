@@ -98,12 +98,12 @@ No id, address or user agent is kept; the totals cannot be traced back to a visi
 
 ### 3.4 Access and security (CNIL S2)
 
-- Recordings: the store's owner only (step 11, not yet built; Q4 and O4). Platform admins see counts only (Usage and limits); the DPA
+- Recordings: the store's owner only (step 11; O4 as proposed). Every viewing is written to the activity log before the events are sent, and nothing is sent if it cannot be. Platform admins see counts only (Usage and limits); the DPA
   says so for support conversations, and the owner adds the same for recordings (O3).
 - Private buckets reached only by the server with the secret key; files shown through short-lived signed addresses; RLS on every table.
 - The ingest checks the same site, the store's own page, robots, privacy signals, private mode, consent, the platform's hold, the plan's
   monthly limit, a day's slot and a request budget (fail closed), and stores the checked body, never the bytes as sent.
-- **Not yet built (step 11):** the player's sanitising of recorded HTML and its enforced Content Security Policy.
+- The player (step 11): the server sanitises the recorded events before sending them (`src/lib/replay-sanitize.ts`: event handlers, `srcdoc` and every URL but the admin's own asset paths, the project's public storage and picture data go, in attributes and CSS alike); the replay's frame has no scripts; the player's page sends an enforced Content Security Policy of its own (`replayRouteHeaders()`).
 
 ### 3.5 Retention and deletion
 
@@ -120,7 +120,7 @@ No id, address or user agent is kept; the totals cannot be traced back to a visi
 | A recording tied to a person by time or context | Medium | Relative event times, floored and rounded facts, no ids joined, no IP | Low; context in a recording (for example a name shown on a page) could still identify; masking and the page list limit this |
 | Special-category data on sensitive stores (health, sexual wellness, religion, politics; CJEU C-252/21, C-21/23) | Medium for those stores | The owner confirms the store sells nothing sensitive and is not aimed at children before recording starts (Q6) | Depends on the owner's confirmation |
 | Children (Datatilsynet strongly advises against tracking on services for children) | Medium for those stores | The same confirmation | Depends on the owner's confirmation |
-| Hostile HTML in a forged recording reaching the owner's browser | Medium | Same-site, own-page and consent checks, budgets, owner-only access; the player's sanitising and CSP (step 11) | To be assessed when step 11 is built |
+| Hostile HTML in a forged recording reaching the owner's browser | Medium | Same-site, own-page and consent checks, budgets, owner-only access; the player's sanitising, a frame without scripts and an enforced CSP (step 11) | Low; [[Add: a person's review of `replay-sanitize.ts` and its tests]] |
 | Recording before the law is settled | — | `platform_settings.recordings_open` stays off until O3, Q3, Q6 and Q7 are answered; only Kaizena Flow's own site may record meanwhile | — |
 | Kaizena Flow using stores' recordings for itself | Low | Never built; the DPA says so (O3) | Low |
 
@@ -150,7 +150,7 @@ None of these is a decision. For the owner, with a lawyer:
 2. Write the DPA's types of data ("interaction and recording data"), the sub-processor note and a sentence in Kaizena Flow's privacy
    notice (O3); the plan does not edit `src/lib/platform-legal/*`.
 3. Decide who may watch recordings (O4): owner only is proposed.
-4. Assess the player once step 11 is built (its sanitising and CSP).
+4. Assess the player, built in step 11 (its sanitising and CSP).
 5. Each store that records needs its own assessment for its own pages; Kaizena Flow offers this document as the processor's help.
 
 ---
