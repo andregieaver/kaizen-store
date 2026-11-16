@@ -9,7 +9,8 @@ import { describe, expect, it } from "vitest";
  * own only under html[data-admin]:
  *  1. Shop and site files (everything outside src/app/admin and src/components/admin that no admin import reaches) write the site's
  *     colour names (`border-border`, `bg-background`), never a role.
- *  2. An admin part that a public page imports (ActionForm, the print button, the on-site editor's fields) reads only roles that the
+ *  2. An admin part that a public page imports (ActionForm, the print button, the on-site editor's fields), or a module outside the
+ *     shop and site files that holds its classes (src/lib/submit-class.ts), reads only roles that the
  *     block `:where(html:not([data-admin]))` in globals.css gives a value, and a role fixed to a literal colour has a dark value too.
  * A third rule keeps that block at specificity 0, so an owner's own `:root { --brand: ... }` still wins over it.
  */
@@ -85,8 +86,12 @@ function imports(file: string): string[] {
 const everyFile = [...sourceFiles("src/app"), ...sourceFiles("src/components")];
 const shopAndSite = everyFile.filter((f) => !isAdmin(f));
 
-/** The admin files a public page draws: a breadth-first walk of value imports from every non-admin file, going on through admin files. */
-function reachedAdminFiles(): Set<string> {
+/**
+ * The files outside shop and site code that a public page draws: a breadth-first walk of value imports from every non-admin file,
+ * going on through admin files. Admin parts, and the modules beside them that hold their classes (src/lib/submit-class.ts, ActionForm's
+ * button look, moved out for server components by D657), so a class moved out of the admin folders is still held by rule 2.
+ */
+function reachedFiles(): Set<string> {
   const seen = new Set<string>(shopAndSite);
   const queue = [...shopAndSite];
   while (queue.length > 0) {
@@ -97,9 +102,10 @@ function reachedAdminFiles(): Set<string> {
       }
     }
   }
-  return new Set([...seen].filter(isAdmin));
+  const own = new Set(shopAndSite);
+  return new Set([...seen].filter((file) => !own.has(file)));
 }
-const reached = reachedAdminFiles();
+const reached = reachedFiles();
 
 /** Files of `reached` that read a role the block does not give a value, for the roles in `have`. */
 function unmappedReaders(have: Set<string>): string[] {
@@ -125,6 +131,8 @@ describe("the colour roles outside the admin", () => {
     expect(reached).toContain("src/components/admin/text-styles.tsx");
     // Drawn on the hosted invoice by src/components/work/hosted-invoice.tsx.
     expect(reached).toContain("src/components/admin/work/print-button.tsx");
+    // SubmitButton's look, a plain module since D657.
+    expect(reached).toContain("src/lib/submit-class.ts");
   });
 
   it("rule 1: shop and site files speak the site's colour names, never an admin role", () => {
@@ -144,7 +152,7 @@ describe("the colour roles outside the admin", () => {
 
   it("rule 2 would notice a role without a value", () => {
     const without = new Set([...mapped].filter((role) => role !== "brand"));
-    expect(unmappedReaders(without).some((line) => line.startsWith("src/components/admin/action-form.tsx"))).toBe(true);
+    expect(unmappedReaders(without).some((line) => line.startsWith("src/lib/submit-class.ts"))).toBe(true);
   });
 
   it("rule 3: the block is at specificity 0, so an owner's :root variables of the same names win", () => {
