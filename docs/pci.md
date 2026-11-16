@@ -119,7 +119,10 @@ page: a wallet's card stays in the wallet (Apple Pay's and Google Pay's sheets a
 loaded only after a press (the express area) or once the price is on the screen (Klarna's line), never in the page's first scripts. The cart
 draws the same elements under the pay routes' policy. The client secret of the order's session reaches only the browser that owns the cart,
 as on the checkout page. The SAQ A question is still the company's: an assessor may ask whether a page with other scripts may hold a wallet's
-button; the elements can be taken off the product page by removing `ExpressArea` and `KlarnaMessage` from `VariantPurchase`.
+button; the elements can be taken off the product page by removing `ExpressArea` and `KlarnaMessage` from `VariantPurchase`. Recordings of visits
+(D656) never reach a pay route (`SiteSignals` is drawn inside `OffPayRoutes` and listed in `FORBIDDEN_ON_PAY_ROUTES`); on a product page
+the recorder runs only for a visitor who allowed recordings, blocks the express area (`data-kz-private`, so it replays as an empty box) and
+masks every field to nothing.
 
 **A store on Mollie (D292) adds no origin to the policy.** The cart's action hands back the address of Mollie's own hosted page and the
 browser leaves with a full navigation; the shopper types nothing about a card on Kaizena Flow's pages (their name, email and address only,

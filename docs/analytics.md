@@ -611,18 +611,35 @@ shows it to members who may read analytics (it shows cost prices and fees); the 
 sold, at most 5,000) with their average in the main currency, how many lost money and how many wait on cost prices, and the ten least
 profitable, each a link to its order.
 
-## Heatmaps and recordings (D656, planned in steps)
+## Heatmaps and recordings (D656)
 
-Click, scroll and attention heatmaps, dead and rage clicks, and recordings of visits, built in steps from
-[`heatmaps-and-recordings.md`](heatmaps-and-recordings.md), whose section 3 holds every definition. Built so far (step 1): the switches
-(`stores.heatmaps`, `stores.recordings`, owner only, both off) and the consent they need; step 2, the pure detectors; step 3, the
-tables and `/api/signals/heat`; step 4, the storefront's collector (`SiteSignals`, loaded once the browser is idle and only for a
-store with heatmaps on, so no store sends anything until its owner switches them on); step 5, that switch, under Heatmaps on
-Analytics → Settings; step 6, the pictures the heatmaps are drawn over (`src/server/map-shots.ts`); step 7, the screens under
-Analytics → Heatmaps (the hub, and a page's map in three views); step 8, recordings on the server (no store records yet: the
-platform's hold is closed); step 9, the recorder in the storefront; step 10, sealing; step 11, Analytics → Recordings (the list and
-the player, the owner's alone; every viewing in the activity log) and the Recordings switch on Analytics → Settings. Step 12: behaviour per version on an A/B test's page, a flag when a version meets clearly more rage or dead
-clicks, and version chips on a page's heatmap and on the recordings list.
+Click, scroll and attention heatmaps, dead and rage clicks, and recordings of visits, planned in
+[`heatmaps-and-recordings.md`](heatmaps-and-recordings.md) (section 3 holds every definition; section 13 says what each step built).
+Both are off for every store until its owner switches them on under Analytics → Settings; recordings also wait for the platform's hold
+(`platform_settings.recordings_open`), which only Kaizena Flow's own store passes until the owner opens it.
+
+**What the owner sees.**
+
+- **Analytics → Heatmaps** (`analytics:read`): the pages where visitors get stuck (page views with a dead or rage click, from 30 page
+  views), the most viewed pages, and a page's map on a phone, tablet or computer over 7 to 365 days: clicks (all, dead, rage), how far
+  people scroll with the 75, 50 and 25 % lines and the fold, or where people look, each over a robot's picture of the page and beside
+  its table. With an A/B test running on the page, version chips show one version's totals on that version's own picture.
+- **Analytics → Recordings** (the owner only): the list, most frustrated first or newest, with chips, rows by day, coarse times and
+  watched rows dimmed; a recording's player (1 to 8×, the quiet parts skipped, a timeline and a list of the pages and frustrated
+  clicks). Every viewing is in the activity log; deleting one is a confirmed step.
+- **On an A/B test's page:** *How visitors behaved* per version (page views, reached half the page, page views with rage and dead
+  clicks), links to each version's heatmap and recordings, and a warning when a version meets clearly more rage or dead clicks than the
+  original (`frustratedVersion()`); it never stops a test.
+
+**What is measured.** Per page view, only for a visitor who allowed statistics (heatmaps, asked again when they start) or recordings
+(a category of its own): scroll reach, attention, clicks by part of the page, dead and rage clicks, the A/B versions the visitor's
+cookie confirms; for a sampled tab with consent to recordings, the page as drawn and the visitor's clicks, taps, scrolling and pointer.
+
+**What is not.** No visitor id, address, IP address or user agent is kept with heatmaps (daily totals only); a recording's id is a
+random one per tab, joined to nothing. Never what anyone types (masked to nothing, not even its length), passwords, payment data, the
+chat, the cart drawer, forms, search suggestions or text people wrote; never the cart, checkout, order, account, search or admin pages,
+pay routes or any address with a query; never staff on their own store, visitors with Global Privacy Control or Do Not Track, or
+robots. Heatmap totals are kept 13 months (cells 90 days), recordings 30 days; neither is copied with a store or exported.
 
 The figures, as built in code (constants in `src/lib/page-heat.ts` and `src/lib/click-signals.ts`, tested against the plan):
 

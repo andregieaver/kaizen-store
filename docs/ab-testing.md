@@ -548,6 +548,18 @@ published, and the start waits until they are, as visitors are shown a version's
 - Money is minor units plus a currency, never added across currencies.
 - No names, emails or free text in anything an experiment records.
 
+## What the behaviour section adds (D656 step 12)
+
+A started test's page also says how visitors behaved in each version, from the heatmaps' daily totals tagged `{experiment}:{version}`
+(only for a visitor who allowed statistics with heatmaps named, and only the versions their cookie confirms; never a visitor):
+*How visitors behaved* (`#ab-behaviour`, inside *How we worked this out*, after the funnel) gives each version's page views, the share
+that reached half the page and the shares of page views with rage and with dead clicks, summed over every page the test touched, with
+*Too few page views yet* below 100; *Heatmap* and *Recordings* open that version's, for a member who may open them. When a version's page
+views clearly meet more rage or dead clicks than the original's (`frustratedVersion()` in `src/lib/heat-read.ts`: a two-proportion z of
+at least 3.29, both versions from 2,000 page views), a line above the details names it. It is a warning, never a stop: only the order
+guardrail stops a test. The platform's view flags it (`frustrated`) and the platform assistant's advice says so. Nothing is shown while
+the store has neither heatmaps on nor tagged totals. `docs/heatmaps-and-recordings.md` step 12.
+
 ## What a test is made of
 
 | Concept | Meaning |

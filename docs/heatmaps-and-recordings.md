@@ -1,4 +1,4 @@
-# Heatmaps and recordings (decision D656, planned)
+# Heatmaps and recordings (decision D656; steps 1 to 13 built, step 14 next)
 
 A built-in alternative to Microsoft Clarity and Hotjar, for store owners and for Kaizena Flow's own site. It covers:
 
@@ -2217,6 +2217,11 @@ tag its chips offer. The platform's advice puts the line first for a running tes
   (`data-kz-private`), and is never on pay routes.
 
 **Done when:** the docs say what was built, and `brand.scan.test.ts` and `rules-index.test.ts` pass.
+
+*As built (16 Nov 2026):* the two rules are named for what each covers ("Heatmaps and recordings: what the storefront sends (D656, …)" and
+"Heatmaps and recordings: the owner's screens (D656, …)"), since one heading may match only one CLAUDE.md line per section; the A/B note
+is its own section after phase 16 of `ab-testing.md` (phase 11 is no longer the last). In production, `site_from_store` is on and the
+house store `kaizenaflow` has heatmaps on and recordings off; `recordings_open` is off. The owner's four tasks are in the decision row.
 
 ### Step 14: The AI manager's tools (last)
 

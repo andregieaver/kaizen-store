@@ -82,6 +82,8 @@ Attacker: anyone on the internet, including a shopper of the store.
 | A private store's pass is HMAC-signed with a derived key, compared in constant time, bound to the store's own host | `src/lib/unlock-pass.ts`, `src/server/private-mode.ts` (`lockedOut()`) | `src/lib/unlock-pass.test.ts`, `src/server/private-mode.int.test.ts`, `e2e/private-mode.spec.ts` |
 | Everything a visitor or a person points the server at is fetched through the address guard: public addresses only, the checked address connected to, each redirect checked, size and time limited | `safeFetch()` and `hostProblem()` (`src/server/replicate-fetch.ts`), `parseReplicaUrl()`/`isBlockedAddress()` (`src/lib/replicate-url.ts`) | `src/server/replicate-fetch.test.ts`, `src/lib/replicate-url.test.ts` |
 | `X-Content-Type-Options: nosniff` on every response | `SITE_HEADERS` (`src/lib/csp.ts`) | `src/lib/next-config-headers.test.ts` |
+| Recorded pages are never drawn as live HTML in the owner's browser: anyone can post a recording, so the server sanitises its events before the player gets them (event handlers, `srcdoc` and every URL but the admin's own asset paths, the project's public storage and picture data go, in attributes and CSS alike), the replay's frame keeps rrweb's sandbox without `allow-scripts`, and the player's page sends an enforced policy of its own; every viewing is audited first, and nothing is sent if it cannot be (D656) | `sanitizeEvents()` (`src/lib/replay-sanitize.ts`), `replayRouteHeaders()` (`src/lib/csp.ts`), `serveRecordingEvents()` (`src/server/recordings-read.ts`) | `src/lib/replay-sanitize.test.ts`, `src/lib/csp.test.ts`, `src/server/recordings.int.test.ts`, `e2e/signed-in/recordings.spec.ts` |
+| Heatmaps and recordings take only what consent allows: the routes read consent again, check the same site and the store's own page, refuse robots, privacy signals and refused pages, keep the checked body (never the bytes as sent) and run within budgets that fail closed (D656) | `recordHeat()` (`src/server/page-heat.ts`), `recordSegment()` (`src/server/recordings.ts`) | `src/server/page-heat.int.test.ts`, `src/server/recordings.int.test.ts`, `e2e/heatmaps.spec.ts`, `e2e/recordings.spec.ts` |
 
 ### 2.4 Store staff, by role, and the owner
 
@@ -241,7 +243,7 @@ on to the consent page `/admin/oauth/authorize` (the admin's gate, never framed)
 | `/api/unsubscribe` | a person leaving a list | the email's own token |
 | `/api/usage` | Vercel's usage drain | the drain's secret, compared in constant time (2.8) |
 | `/api/visit` | a visitor's browser (counted visits, speed, D152, D336) | `sameSite()`; counts only, no person |
-| `/api/signals` | a visitor's browser after consent (heatmaps, D656) | `sameSite()`, the store's own page, consent read again, a day's cap; `heat`: totals per page and day, no person |
+| `/api/signals` | a visitor's browser after consent (heatmaps and recordings, D656) | `sameSite()`, the store's own page, consent read again, a day's cap; `heat`: totals per page and day, no person; `rec`: a recording's segment, also the platform's hold, the plan's monthly limit and a budget that fails closed; `forget`: deletes the recordings a browser names, no consent needed |
 | `/api/webhooks` | anyone building a webhook receiver (D438) | none: `v1/topics.json` is the public catalogue of topics, payload shapes and signature steps, generated from code, no store's data |
 | `/api/wordpress` | the WordPress plugin (D169) | the plugin's token for its store (`asPlugin()`, 2.9) |
 

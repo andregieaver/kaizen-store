@@ -29,6 +29,21 @@ CLAUDE.md keeps one line per rule pointing here; each rule is under that line as
   minimum volumes; the AI manager's `analytics_overview`, `explain_change` and `analytics_alerts` repeat them and never make a
   number.
 
+
+## Heatmaps and recordings: the owner's screens (D656, `docs/heatmaps-and-recordings.md`, `src/server/page-heat-read.ts`, `src/server/recordings-read.ts`, `src/lib/replay-sanitize.ts`)
+
+- Analytics → Heatmaps (`analytics:read`) reads `src/server/page-heat-read.ts` (every visitor's rows unless a version is chosen, so
+  nothing is counted twice) over pictures taken by `runMapShots()` as a robot that refused every optional cookie; a new picture is
+  `analytics:write`. Arithmetic is code (`src/lib/heat-read.ts`), and a figure below its minimum volume is left out, never guessed.
+- Recordings are the owner's alone (the literal `owner` key; O4). The events route writes `analytics.recording_viewed` to the activity
+  log before it sends anything, and sends nothing (503) if it cannot; the events go through `sanitizeEvents()` first; the player keeps
+  rrweb's sandbox (never `allow-scripts`, never `UNSAFE_replayCanvas`) under its page's own enforced policy (`replayRouteHeaders()`).
+  Platform admins see counts only (Usage and limits, where the owner role holds `recordings_open`) and never watch a store's recordings;
+  Kaizena Flow never uses them for itself.
+- The switches are on Analytics → Settings, through `storeAction()` with the `owner` key: recordings start only after three
+  confirmations (not aimed at children, nothing sensitive sold, the privacy policy says so), with a share of tabs and *Hide all text*.
+  The four tables are left out of the export and of a store's copy. A/B behaviour comes from tagged totals (`versionBehaviour()`); the
+  `frustratedVersion()` flag warns, never stops. The DPIA draft is `docs/dpia-recordings.md`; review it when what is recorded changes.
 ## Reports (wave 8 unit A, D345, `docs/wave-8-analytics-ai.md` 3, `docs/analytics.md` Reports)
 
 - **Reports (wave 8 unit A, D345, `docs/wave-8-analytics-ai.md` 3, `docs/analytics.md` Reports)**: Analytics → Reports is a closed
