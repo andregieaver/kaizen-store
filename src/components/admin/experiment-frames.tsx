@@ -1,7 +1,7 @@
 "use client";
 
 import { Monitor, Smartphone } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 
 import { useAdminText } from "@/components/admin/admin-text";
 import { fillWords } from "@/lib/admin-fill";
@@ -11,6 +11,14 @@ const WIDTHS = { computer: 1280, phone: 390 } as const;
 type Width = keyof typeof WIDTHS;
 /** How tall each frame is on the screen; the page scrolls inside it. */
 const SHOWN_HEIGHT = 520;
+
+const NARROW = "(max-width: 640px)";
+const subscribeNarrow = (change: () => void) => {
+  const query = window.matchMedia(NARROW);
+  query.addEventListener("change", change);
+  return () => query.removeEventListener("change", change);
+};
+const isNarrow = () => window.matchMedia(NARROW).matches;
 
 export type FrameVersion = { key: string; name: string; src: string };
 
@@ -55,7 +63,10 @@ export function ExperimentFrames({ versions }: { versions: readonly FrameVersion
   const original = versions.find((v) => v.key === "a");
   const others = versions.filter((v) => v.key !== "a");
   const [shown, setShown] = useState(others[0]?.key ?? "");
-  const [width, setWidth] = useState<Width>("computer");
+  const [chosen, setWidth] = useState<Width | null>(null);
+  // On a narrow screen a computer's width scaled into half of it cannot be read: until one is chosen, a phone's.
+  const narrow = useSyncExternalStore(subscribeNarrow, isNarrow, () => false);
+  const width: Width = chosen ?? (narrow ? "phone" : "computer");
   const version = others.find((v) => v.key === shown) ?? others[0];
   if (!original || !version) return null;
   const widthOption = (value: Width, Icon: typeof Monitor, label: string) => (

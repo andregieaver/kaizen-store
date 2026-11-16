@@ -194,7 +194,7 @@ export const experimentsEn = {
   /** The original and a version side by side (phase 16). */
   frames: {
     title: "Side by side",
-    intro: "The original and a version as visitors are shown them. Scroll inside each to see more.",
+    intro: "The original and a version as visitors are shown them, without your header and footer. Scroll inside each to see more.",
     which: "Version to compare",
     width: "Screen",
     computer: "Computer",

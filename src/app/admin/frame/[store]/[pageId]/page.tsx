@@ -32,6 +32,8 @@ async function TestFrame({ params }: Pick<PageProps<"/admin/frame/[store]/[pageI
   if (!frame) notFound();
   return (
     <div data-test-frame="" className="min-h-screen bg-card">
+      {/* The page in its own light look, as a visitor first meets it: never the admin's dark colours chosen for the admin. */}
+      <script dangerouslySetInnerHTML={{ __html: 'document.documentElement.setAttribute("data-color-mode","light")' }} />
       <PageDrawing themed store={store} type={frame.type} id={pageId} content={frame.content} publishedAt={frame.publishedAt} />
     </div>
   );

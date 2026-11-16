@@ -185,7 +185,7 @@ export const experimentsNb: ExperimentsMessages = {
   },
   frames: {
     title: "Side om side",
-    intro: "Originalen og en versjon slik de besøkende får se dem. Rull inni hver av dem for å se mer.",
+    intro: "Originalen og en versjon slik de besøkende får se dem, uten toppen og bunnen av nettstedet. Rull inni hver av dem for å se mer.",
     which: "Versjon å sammenligne",
     width: "Skjerm",
     computer: "Datamaskin",
