@@ -453,6 +453,26 @@ describe("ending a test (D148)", () => {
     expect((await admin.deleteDraft(account, storeId, draft.id)).ok).toBe(true);
   });
 
+  it("draws a test's pages for the side-by-side frames: the original as live, a version as its draft until it starts (phase 16)", async () => {
+    const made = await admin.createExperiment(account, storeId, { name: "Frames", pageId: aboutId, goal: "cart" });
+    if (!made.ok) throw new Error(made.problems.join(" "));
+    const version = (await admin.getExperiment(storeId, made.id))!.variants.find((v) => v.key === "b")!.pageId!;
+    // The version's draft says one thing and its published copy another: a draft test shows the draft, a started one what visitors see.
+    await db().execute(sql`update commerce.pages set draft = jsonb_set(draft, '{title}', '"Draft words"') where id = ${version}::uuid`);
+    expect(await admin.testFrame(storeId, version)).toMatchObject({ type: "page", title: "Draft words" });
+    const original = await admin.testFrame(storeId, aboutId);
+    expect(original?.type).toBe("page");
+    expect(original?.publishedAt).not.toBeNull();
+    // A page in none of the store's tests, and another store's look at this one, draw nothing.
+    const [other] = await db().execute<Row>(sql`select id from commerce.pages where store_id = ${storeId}::uuid and type = 'page' and slug <> 'om-oss' and id <> ${aboutId}::uuid limit 1`);
+    expect(await admin.testFrame(storeId, String(other.id))).toBeNull();
+    expect(await admin.testFrame(uuid(), version)).toBeNull();
+    await changeVariant(made.id, "b");
+    expect((await admin.startExperiment(account, storeId, made.id)).ok).toBe(true);
+    expect((await admin.testFrame(storeId, version))?.title).not.toBe("Draft words");
+    await endAll();
+  });
+
   it("says which running test holds a page, as the original or as a version, until it stops", async () => {
     const id = await runningTest();
     const test = (await admin.getExperiment(storeId, id))!;

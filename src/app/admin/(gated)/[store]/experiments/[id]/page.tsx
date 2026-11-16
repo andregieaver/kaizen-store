@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 
 import { DraftActions, DraftPanel, LearningCard, TestActions } from "@/components/admin/experiment-controls";
+import { ExperimentFrames } from "@/components/admin/experiment-frames";
 import { ExperimentResultsView } from "@/components/admin/experiment-results-view";
 import { AdminTextScope } from "@/components/admin/admin-text";
 import { StepPath, type PathStep } from "@/components/admin/home/home-parts";
@@ -83,6 +84,12 @@ export default async function ExperimentPage({ params }: PageProps<"/admin/[stor
     variants: test.variants.map((v) => ({ ...v, name: variantNameText(v.name, w) })),
     scheduleProblem: test.scheduleProblem ? experimentProblemText(test.scheduleProblem, w) : test.scheduleProblem,
   };
+  // The original and each version as visitors are shown them (phase 16), drawn alone by the frame route; not once the test is decided,
+  // when the original is the winner and the versions are gone.
+  const frames =
+    test.status === "applied" || test.status === "discarded"
+      ? null
+      : shown.variants.map((v) => ({ key: v.key, name: v.name, src: `/admin/frame/${store.slug}/${v.pageId ?? test.page.id}` }));
   const seen = new Set<string>();
   const markets = store.markets.flatMap((m) => (seen.has(m.code) ? [] : (seen.add(m.code), [{ code: m.code.toLowerCase(), name: m.name }])));
   const target = targetLabelText(test.page.kind, test.page.slug, test.page.title, test.page.role, w);
@@ -133,6 +140,7 @@ export default async function ExperimentPage({ params }: PageProps<"/admin/[stor
           />
           <StepPath label={w.card.path.label} steps={steps} />
           <DraftPanel store={store.slug} test={shown} markets={markets} differences={changeWords} problems={problems} ready={left.length === 0} traffic={traffic} />
+          {frames && <ExperimentFrames versions={frames} />}
         </div>
       </AdminTextScope>
     );
@@ -181,6 +189,7 @@ export default async function ExperimentPage({ params }: PageProps<"/admin/[stor
             readyAround={readyAround}
           />
         )}
+        {frames && <ExperimentFrames versions={frames} />}
       </div>
     </AdminTextScope>
   );

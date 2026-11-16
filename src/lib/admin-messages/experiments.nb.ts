@@ -183,6 +183,15 @@ export const experimentsNb: ExperimentsMessages = {
     ownFigures: "Dine egne tall",
     make: "Lag versjon B",
   },
+  frames: {
+    title: "Side om side",
+    intro: "Originalen og en versjon slik de besøkende får se dem. Rull inni hver av dem for å se mer.",
+    which: "Versjon å sammenligne",
+    width: "Skjerm",
+    computer: "Datamaskin",
+    phone: "Mobil",
+    frameTitle: "{name} slik de besøkende ser den",
+  },
   draftCard: {
     change: "Endre {name}",
     start: "Start testen",

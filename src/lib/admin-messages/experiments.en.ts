@@ -191,6 +191,16 @@ export const experimentsEn = {
     make: "Make version B",
   },
   /** A draft's page as a record (D660): its next step in the header, a checklist, what each version changes, and its settings under Customise. */
+  /** The original and a version side by side (phase 16). */
+  frames: {
+    title: "Side by side",
+    intro: "The original and a version as visitors are shown them. Scroll inside each to see more.",
+    which: "Version to compare",
+    width: "Screen",
+    computer: "Computer",
+    phone: "Phone",
+    frameTitle: "{name} as visitors see it",
+  },
   draftCard: {
     change: "Change {name}",
     start: "Start the test",
