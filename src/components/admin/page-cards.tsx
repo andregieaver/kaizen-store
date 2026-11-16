@@ -97,11 +97,13 @@ export function PageCards({
                 </AdminLink>
                 {place && <Chip signal="insight">{place}</Chip>}
               </span>
-              <span className="flex flex-wrap items-center justify-between gap-2">
-                <Chip signal={page.state === "draft" ? "neutral" : page.state === "changed" ? "warning" : "positive"} dot>
-                  {list.states[page.state]}
-                </Chip>
-                <span className="flex items-center gap-1">
+              <span className="flex flex-wrap items-center justify-between gap-2 max-sm:flex-nowrap">
+                <span className="min-w-0 max-sm:truncate">
+                  <Chip signal={page.state === "draft" ? "neutral" : page.state === "changed" ? "warning" : "positive"} dot>
+                    {list.states[page.state]}
+                  </Chip>
+                </span>
+                <span className="flex shrink-0 items-center gap-1">
                   <span className="text-caption text-muted">{date.format(new Date(page.updatedAt))}</span>
                   <details className="relative">
                     <summary
