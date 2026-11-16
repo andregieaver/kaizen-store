@@ -1,0 +1,133 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="910" viewBox="0 0 1200 910" font-family="Inter, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif">
+  <title>Heatmaps and recordings: how the data moves (D652, planned)</title>
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M0 0 L10 5 L0 10 z" fill="#1f6b3a"/>
+    </marker>
+    <marker id="arrow-grey" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M0 0 L10 5 L0 10 z" fill="#6b716d"/>
+    </marker>
+  </defs>
+  <rect width="1200" height="910" fill="#f4f4ef"/>
+
+  <text x="40" y="50" font-size="24" font-weight="700" fill="#141a17">Heatmaps and recordings: how the data moves</text>
+  <text x="40" y="78" font-size="14" fill="#4d5450">Nothing runs before consent. Heatmaps keep daily totals with no visitor id; recordings are owner-only and kept 30 days.</text>
+
+  <!-- Column headings -->
+  <text x="40" y="122" font-size="15" font-weight="700" fill="#1f6b3a">VISITOR'S BROWSER · a store page</text>
+  <text x="470" y="122" font-size="15" font-weight="700" fill="#1f6b3a">KAIZENA FLOW · Vercel, Dublin</text>
+  <text x="820" y="122" font-size="15" font-weight="700" fill="#1f6b3a">SUPABASE · Ireland</text>
+
+  <!-- Column 1: browser -->
+  <rect x="40" y="138" width="380" height="118" rx="14" fill="#ffffff" stroke="#c9ccc6"/>
+  <text x="62" y="168" font-size="17" font-weight="700" fill="#141a17">The consent banner</text>
+  <text x="62" y="194" font-size="14" fill="#141a17">Statistics → heatmaps (everyone asked again)</text>
+  <text x="62" y="216" font-size="14" fill="#141a17">Recordings of your visit → recordings</text>
+  <text x="62" y="238" font-size="14" fill="#4d5450">Global Privacy Control or Do Not Track → nothing</text>
+
+  <path d="M230 258 L230 282" stroke="#6b716d" stroke-width="2" fill="none" marker-end="url(#arrow-grey)"/>
+
+  <rect x="40" y="288" width="380" height="248" rx="14" fill="#ffffff" stroke="#c9ccc6"/>
+  <text x="62" y="318" font-size="17" font-weight="700" fill="#141a17">SiteSignals</text>
+  <text x="62" y="340" font-size="13" fill="#4d5450">Loaded when the browser is idle, never on pay routes</text>
+  <rect x="62" y="356" width="336" height="36" rx="8" fill="#eef4ee"/>
+  <text x="76" y="379" font-size="14" fill="#141a17"><tspan font-weight="600">Click watch</tspan>: dead clicks and rage clicks</text>
+  <rect x="62" y="400" width="336" height="52" rx="8" fill="#eef4ee"/>
+  <text x="76" y="422" font-size="14" fill="#141a17"><tspan font-weight="600">Heat collector</tspan>: how far people scroll,</text>
+  <text x="76" y="442" font-size="14" fill="#141a17">where they look, clicks by part of the page</text>
+  <rect x="62" y="460" width="336" height="52" rx="8" fill="#eef4ee"/>
+  <text x="76" y="482" font-size="14" fill="#141a17"><tspan font-weight="600">Recorder</tspan> (rrweb): sampled tabs only,</text>
+  <text x="76" y="502" font-size="14" fill="#141a17">inputs masked, forms and chat blocked</text>
+
+  <rect x="40" y="552" width="380" height="58" rx="12" fill="#ffffff" stroke="#c9ccc6" stroke-dasharray="5 4"/>
+  <text x="62" y="577" font-size="14" fill="#141a17"><tspan font-weight="600">AbMarker</tspan> (A/B tests, D148) says which</text>
+  <text x="62" y="597" font-size="14" fill="#141a17">version the visitor was really shown</text>
+  <path d="M230 552 L230 538" stroke="#6b716d" stroke-width="2" fill="none" marker-end="url(#arrow-grey)"/>
+
+  <!-- Arrows browser → routes -->
+  <path d="M420 422 C 445 422, 445 186, 468 186" stroke="#1f6b3a" stroke-width="2.5" fill="none" marker-end="url(#arrow)"/>
+  <path d="M420 482 C 448 482, 448 280, 468 280" stroke="#1f6b3a" stroke-width="2.5" fill="none" marker-end="url(#arrow)"/>
+  <path d="M420 250 C 446 250, 446 372, 468 372" stroke="#6b716d" stroke-width="2" stroke-dasharray="6 5" fill="none" marker-end="url(#arrow-grey)"/>
+
+  <!-- Column 2: routes -->
+  <rect x="470" y="150" width="300" height="74" rx="12" fill="#ffffff" stroke="#c9ccc6"/>
+  <text x="490" y="178" font-size="15" font-weight="600" fill="#141a17" font-family="ui-monospace, Menlo, Consolas, monospace">/api/signals/heat</text>
+  <text x="490" y="202" font-size="13" fill="#4d5450">One summary per page view, at most 8 KB</text>
+
+  <rect x="470" y="244" width="300" height="74" rx="12" fill="#ffffff" stroke="#c9ccc6"/>
+  <text x="490" y="272" font-size="15" font-weight="600" fill="#141a17" font-family="ui-monospace, Menlo, Consolas, monospace">/api/signals/rec</text>
+  <text x="490" y="296" font-size="13" fill="#4d5450">Gzip segments of a recording, every 30 s</text>
+
+  <rect x="470" y="338" width="300" height="74" rx="12" fill="#ffffff" stroke="#c9ccc6"/>
+  <text x="490" y="366" font-size="15" font-weight="600" fill="#141a17" font-family="ui-monospace, Menlo, Consolas, monospace">/api/signals/forget</text>
+  <text x="490" y="390" font-size="13" fill="#4d5450">Withdrawal deletes that browser's recordings</text>
+
+  <rect x="470" y="428" width="300" height="108" rx="12" fill="#eef4ee"/>
+  <text x="490" y="452" font-size="13" font-weight="600" fill="#1f6b3a">Checked on every request</text>
+  <text x="490" y="474" font-size="13" fill="#141a17">Same site and the store's own page; consent</text>
+  <text x="490" y="494" font-size="13" fill="#141a17">read again; switch on; not a robot; the page</text>
+  <text x="490" y="514" font-size="13" fill="#141a17">allowed; A/B version checked against cookie</text>
+
+  <rect x="470" y="552" width="300" height="88" rx="12" fill="#ffffff" stroke="#c9ccc6"/>
+  <text x="490" y="580" font-size="15" font-weight="600" fill="#141a17">Page-looks job, every minute</text>
+  <text x="490" y="602" font-size="13" fill="#4d5450">Chromium takes the page's picture at 390,</text>
+  <text x="490" y="622" font-size="13" fill="#4d5450">820 and 1440 px and measures its parts</text>
+
+  <!-- Arrows routes → tables -->
+  <path d="M770 180 L818 180" stroke="#1f6b3a" stroke-width="2.5" fill="none" marker-end="url(#arrow)"/>
+  <path d="M770 200 C 795 200, 795 296, 818 296" stroke="#1f6b3a" stroke-width="2" fill="none" marker-end="url(#arrow)"/>
+  <path d="M770 280 C 795 280, 795 392, 818 392" stroke="#1f6b3a" stroke-width="2.5" fill="none" marker-end="url(#arrow)"/>
+  <path d="M770 375 C 790 375, 790 410, 818 410" stroke="#6b716d" stroke-width="2" stroke-dasharray="6 5" fill="none" marker-end="url(#arrow-grey)"/>
+  <path d="M770 596 L818 596" stroke="#1f6b3a" stroke-width="2.5" fill="none" marker-end="url(#arrow)"/>
+
+  <!-- Column 3: storage -->
+  <rect x="820" y="140" width="340" height="104" rx="12" fill="#ffffff" stroke="#c9ccc6"/>
+  <text x="842" y="168" font-size="14" font-weight="600" fill="#141a17" font-family="ui-monospace, Menlo, Consolas, monospace">page_heat_days · click_cells</text>
+  <text x="842" y="192" font-size="13" fill="#141a17">Daily totals per page, device and version</text>
+  <text x="842" y="212" font-size="13" fill="#141a17">No visitor id: not personal data</text>
+  <text x="842" y="232" font-size="13" fill="#4d5450">Kept 13 months (clicks 90 days)</text>
+
+  <rect x="820" y="262" width="340" height="68" rx="12" fill="#ffffff" stroke="#c9ccc6"/>
+  <text x="842" y="290" font-size="14" font-weight="600" fill="#141a17" font-family="ui-monospace, Menlo, Consolas, monospace">experiment_events</text>
+  <text x="842" y="314" font-size="13" fill="#141a17">Rage and dead clicks per A/B version</text>
+
+  <rect x="820" y="348" width="340" height="118" rx="12" fill="#ffffff" stroke="#c9ccc6"/>
+  <text x="842" y="376" font-size="14" font-weight="600" fill="#141a17" font-family="ui-monospace, Menlo, Consolas, monospace">recordings · bucket "recordings"</text>
+  <text x="842" y="400" font-size="13" fill="#141a17">A random id per tab, never joined to a person</text>
+  <text x="842" y="420" font-size="13" fill="#141a17">Only the owner can watch; each view audited</text>
+  <text x="842" y="440" font-size="13" fill="#141a17">Sealed into one file; deleted after 30 days</text>
+
+  <rect x="820" y="552" width="340" height="88" rx="12" fill="#ffffff" stroke="#c9ccc6"/>
+  <text x="842" y="580" font-size="14" font-weight="600" fill="#141a17" font-family="ui-monospace, Menlo, Consolas, monospace">page_map_shots · "page-maps"</text>
+  <text x="842" y="604" font-size="13" fill="#141a17">The pictures under the heatmaps,</text>
+  <text x="842" y="624" font-size="13" fill="#141a17">with the box of every part of the page</text>
+
+  <!-- Admin row -->
+  <text x="40" y="690" font-size="15" font-weight="700" fill="#1f6b3a">IN THE ADMIN · what the owner sees</text>
+
+  <rect x="40" y="700" width="360" height="120" rx="14" fill="#ffffff" stroke="#c9ccc6"/>
+  <text x="62" y="730" font-size="16" font-weight="700" fill="#141a17">Heatmaps</text>
+  <text x="62" y="754" font-size="13" fill="#141a17">Where visitors get stuck, then a page's picture</text>
+  <text x="62" y="774" font-size="13" fill="#141a17">with clicks, scroll depth or attention over it</text>
+  <text x="62" y="798" font-size="13" fill="#4d5450">Phone · Tablet · Computer · A/B versions</text>
+
+  <rect x="420" y="700" width="360" height="120" rx="14" fill="#ffffff" stroke="#c9ccc6"/>
+  <text x="442" y="730" font-size="16" font-weight="700" fill="#141a17">Recordings (owner only)</text>
+  <text x="442" y="754" font-size="13" fill="#141a17">Grouped by day, most frustrated first; a player</text>
+  <text x="442" y="774" font-size="13" fill="#141a17">that skips quiet parts and marks rage clicks</text>
+  <text x="442" y="798" font-size="13" fill="#4d5450">Events sanitised, drawn in a frame with no scripts</text>
+
+  <rect x="800" y="700" width="360" height="120" rx="14" fill="#ffffff" stroke="#c9ccc6"/>
+  <text x="822" y="730" font-size="16" font-weight="700" fill="#141a17">A/B test results</text>
+  <text x="822" y="754" font-size="13" fill="#141a17">Behaviour per version: half-page reach,</text>
+  <text x="822" y="774" font-size="13" fill="#141a17">rage and dead clicks, links to its heatmap</text>
+  <text x="822" y="798" font-size="13" fill="#4d5450">A clearly worse version is flagged, never stopped</text>
+
+  <path d="M990 644 L990 696" stroke="#1f6b3a" stroke-width="2" fill="none" marker-end="url(#arrow)"/>
+  <path d="M990 664 L360 664 L360 696" stroke="#1f6b3a" stroke-width="2" fill="none" marker-end="url(#arrow)"/>
+  <path d="M600 664 L600 696" stroke="#1f6b3a" stroke-width="2" fill="none" marker-end="url(#arrow)"/>
+
+  <!-- Never strip -->
+  <rect x="40" y="840" width="1120" height="46" rx="10" fill="#fbe9e5"/>
+  <text x="62" y="869" font-size="14" fill="#a3321f"><tspan font-weight="700">Never collected:</tspan> cart · checkout · order and account pages · links with tokens · the chat · anything typed · owners and staff · the admin</text>
+</svg>
