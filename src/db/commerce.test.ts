@@ -1216,13 +1216,18 @@ describe("product words' change marker (bloat review step 0.28)", () => {
     // Nor can a writer move it by hand: the trigger keeps the old value when the words are the same.
     await db.query("update commerce.product_translations set seo_title = 'y', text_changed_at = now() - interval '1 hour' where product_id = $1", [productId]);
     expect(await read()).toBe(first);
-    // A change of the title, the description or the safety text does.
+    // A change of the title, the description or the safety text does. Each waits a few milliseconds first, so the clock has moved
+    // past the mark before (two updates within one millisecond would read as the same time).
+    const tick = () => new Promise((resolve) => setTimeout(resolve, 5));
+    await tick();
     await db.query("update commerce.product_translations set title = title || ' 2' where product_id = $1", [productId]);
     const second = await read();
     expect(new Date(second).getTime()).toBeGreaterThan(new Date(first).getTime());
+    await tick();
     await db.query("update commerce.product_translations set description = 'New words' where product_id = $1", [productId]);
     const third = await read();
     expect(new Date(third).getTime()).toBeGreaterThan(new Date(second).getTime());
+    await tick();
     await db.query("update commerce.product_translations set safety_information = 'Keep dry' where product_id = $1", [productId]);
     expect(new Date(await read()).getTime()).toBeGreaterThan(new Date(third).getTime());
 
