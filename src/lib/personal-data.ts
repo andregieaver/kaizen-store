@@ -337,6 +337,7 @@ export const NOT_PERSONAL: Record<string, string> = {
   live_drills: "A run of a store's money paths in Stripe's test mode (D406): the kinds asked, who asked (an admin's account) and each outcome with order numbers and amounts; no shopper.",
   page_heat_days: "Heatmaps' totals per page, day, device and A/B version (D656): page views, how far they scrolled in 5 % steps, folds, time on screen per band and click counts; no address beyond the page's shape, no visitor, IP address or user agent.",
   click_cells: "Click counts per part of a page and cell of its box, per day, device and A/B version (D656); no visitor, IP address or user agent.",
+  page_map_shots: "A robot's picture of a public store page under its heatmap, and where each part sits on it (D656); taken as a visitor who refused every optional cookie.",
   speed_samples: "How fast one page load was (D336): the store day, the page's kind (front page, product, category, list, page), phone or computer and four timings; no address, visitor, IP address or user agent.",
   own_speed_samples: "How fast one page load of Kaizena Flow's own site or of the admin was (D390): the site, the UTC day, the page's kind, phone or computer and four timings; no address, person, account, IP address or user agent.",
   platform_readings: "One day's reading of Postgres's statistics (bloat review step 0.2): table and schema names with row counts, sizes and scan counters, and the texts of the costliest statements with their values already replaced by $1, $2 by Postgres. No person, store or account.",

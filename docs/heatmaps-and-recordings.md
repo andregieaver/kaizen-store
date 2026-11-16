@@ -1833,6 +1833,12 @@ the browser. The view test is `src/components/admin/analytics/signals-section.te
 **Done when:** the tests pass. The production check moves to step 7, because no screen asks for a shot before then. Never point a local
 build at production storage.
 
+*As built (16 Nov 2026):* the address, the screen and the cookies are pure in `src/lib/map-shot-url.ts` (`pageOfKey()`, `mapViewport()`,
+`mapCookies()`, tested in `map-shot-url.test.ts`); `mapShotTarget()` in `map-shots.ts` adds the store's markets, its running tests and its
+consent version. A shot whose test has ended fails with "The test has ended, so this version is no longer shown." `mapShotPicture()` gives
+the signed address. The default header is not built from parts, so it is measured as `@header`, the anchor its clicks are kept against
+(`e2e/map-measure.spec.ts`).
+
 ### Step 7: The heatmaps screens
 
 **Files:**

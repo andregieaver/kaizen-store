@@ -13763,6 +13763,39 @@ export const clickCells = commerce.table(
   ],
 );
 
+/**
+ * The picture under a page's heatmap (D656, `docs/heatmaps-and-recordings.md` 6.3 and 9): one per page shape, device and A/B version, a
+ * robot's photograph of the public page (`page-maps/{storeId}/{id}.jpg`) with where each anchor sits on it. Asked for when the heatmap
+ * opens, taken by the page looks' route, claimed one at a time.
+ */
+export const pageMapShots = commerce.table(
+  "page_map_shots",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    storeId: storeId().references(() => stores.id, { onDelete: "cascade" }),
+    page: text("page").notNull(),
+    device: text("device").notNull(),
+    tag: text("tag").notNull().default(""),
+    status: text("status").notNull().default("waiting"),
+    requestedAt: timestamp("requested_at", { withTimezone: true }).notNull().defaultNow(),
+    claimedUntil: timestamp("claimed_until", { withTimezone: true }),
+    shotAt: timestamp("shot_at", { withTimezone: true }),
+    width: integer("width"),
+    height: integer("height"),
+    layout: jsonb("layout"),
+    problem: text("problem"),
+  },
+  (t) => [
+    unique("page_map_shots_key").on(t.storeId, t.page, t.device, t.tag),
+    index("page_map_shots_queue_idx").on(t.requestedAt).where(sql`${t.status} in ('waiting', 'taking')`),
+    check("page_map_shots_page", sql`char_length(${t.page}) between 1 and 300`),
+    check("page_map_shots_device", sql`${t.device} in ('mobile', 'tablet', 'desktop')`),
+    check("page_map_shots_tag", sql`${t.tag} = '' or ${t.tag} ~ '^[0-9a-f-]{36}:[a-d]$'`),
+    check("page_map_shots_status", sql`${t.status} in ('waiting', 'taking', 'done', 'failed')`),
+    check("page_map_shots_problem", sql`char_length(${t.problem}) <= 200`),
+  ],
+);
+
 // ---------------------------------------------------------------------------
 // Legal pages, terms at checkout and accessibility (wave 1, 1e: docs/wave-1-trust.md)
 // ---------------------------------------------------------------------------

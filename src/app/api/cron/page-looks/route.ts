@@ -2,7 +2,8 @@ import { after, connection } from "next/server";
 
 import { cronAuthorised } from "@/server/cron-auth";
 import { trackedRoute } from "@/server/cron-runs";
-import { browserLookPhotographer } from "@/server/page-look-runner";
+import { MAP_SHOT_MS, runMapShots } from "@/server/map-shots";
+import { browserLookPhotographer, browserMapPhotographer } from "@/server/page-look-runner";
 import { runLook, runPageLooks } from "@/server/page-looks";
 
 /** A look opens Chromium once per width, which takes a while on a cold function. */
@@ -14,7 +15,7 @@ const RUN_MS = 150_000;
 /**
  * Looks at pages (D310, `docs/ai-autopilot.md` 9.2). Asked by the server itself with one look's id (`triggerLook()`), it takes that look
  * and answers when it is done, so a person's turn gets the findings at once; every minute, from Supabase's scheduler, it takes the looks
- * still waiting after its answer. The browser opens the page's draft at the address the request came to.
+ * still waiting after its answer, then heatmaps' pictures (D656). The browser opens the page's draft at the address the request came to.
  */
 async function run(request: Request) {
   await connection();
@@ -26,9 +27,13 @@ async function run(request: Request) {
     const taken = await runLook(body.id, deps);
     return Response.json({ taken }, { headers: { "Cache-Control": "no-store" } });
   }
-  const deadline = Date.now() + RUN_MS;
+  const started = Date.now();
+  const deadline = started + RUN_MS;
   after(async () => {
     await runPageLooks(deadline, deps);
+    // Heatmaps' pictures (D656) after the looks: a look already running can end late, so never past 270 s of the 300.
+    const until = Math.min(started + 270_000, Math.max(Date.now() + 60_000, started + 120_000));
+    if (until - Date.now() >= MAP_SHOT_MS) await runMapShots(until, { photograph: browserMapPhotographer });
   });
   return Response.json({ started: true }, { headers: { "Cache-Control": "no-store" } });
 }
