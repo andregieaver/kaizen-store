@@ -16,8 +16,8 @@ type Row = Record<string, unknown>;
  * title, categories and tags, and description, and kept in
  * `product_embeddings` with the model's `space` and a hash of what was
  * embedded. A translation is embedded again only when that hash changes:
- * its text, its terms or the model. The five-minute cron keeps every store
- * current; saving a product does its store at once.
+ * its text, its terms or the model. Saving a product embeds its store at once (the editor, the translator, a bulk edit, an
+ * import, a store copy, the AI manager and a content pack); once an hour the cron goes through every store as the net.
  */
 
 /** Texts per request to the provider. */
@@ -107,7 +107,12 @@ export async function refreshStoreEmbeddings(storeId: string, limit = PER_RUN): 
 }
 
 /** The cron's share: every store on Kaizen's AI, then each store with its own. */
-export async function refreshEmbeddings(): Promise<{ embedded: number; failed: number }> {
+export async function refreshEmbeddings(options: { now?: Date; full?: boolean } = {}): Promise<{ embedded: number; failed: number }> {
+  // Once an hour (bloat review step 0.28): every saver embeds its store at once, so this scan is the net for a renamed category or
+  // tag, a product whose status changed and a changed model. A minute guard until step 3.3 gives jobs a cadence, as
+  // measureAutopilotEffects() has; a dispatch that starts after minute 4 skips that hour and the next hour catches up.
+  const now = options.now ?? new Date();
+  if (!(options.full ?? now.getUTCMinutes() < 5)) return { embedded: 0, failed: 0 };
   let embedded = 0;
   let failed = 0;
   const count = (run: EmbedRun) => {

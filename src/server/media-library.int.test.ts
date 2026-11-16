@@ -154,6 +154,29 @@ describe("the media library (D88)", () => {
     expect(names((await library.listMedia(owner(), mediaQuery({ q: "hjelm" }))).items)).toEqual(["sykkel_i_skogen.webp"]);
   });
 
+  it("a second run with nothing changed lists no site and writes no vector row (bloat review 0.28)", async () => {
+    fakeModel();
+    await library.refreshMediaEmbeddings({ full: true });
+    // Only the gate is under test: nothing is new or changed, and every vector is fresh.
+    await db().execute(sql`update commerce.media set updated_at = now() - interval '2 hours' where store_id = ${storeId}::uuid and updated_at > now() - interval '1 hour'`);
+    await db().execute(sql`update commerce.media_embeddings set updated_at = now() where store_id = ${storeId}::uuid`);
+    const state = async () => {
+      const [row] = await db().execute<Row>(sql`
+        select coalesce(sum(xmin::text::bigint), 0) as mark, count(*)::int as n from commerce.media_embeddings where store_id = ${storeId}::uuid
+      `);
+      return { mark: String(row.mark), n: Number(row.n) };
+    };
+    const before = await state();
+    fakeModel();
+    await library.refreshMediaEmbeddings({ full: false });
+    expect(await state()).toEqual(before);
+    expect(requests).toBe(0);
+
+    // A picture that changed lists its site again.
+    await db().execute(sql`update commerce.media set updated_at = now() where id = ${mug.id}::uuid`);
+    expect((await library.refreshMediaEmbeddings({ full: false })).sites).toBeGreaterThanOrEqual(1);
+  });
+
   it("says everywhere a file is used: products, pages, menus, the logo", async () => {
     const [product] = await db().execute<Row>(sql`
       select p.id, (select title from commerce.product_translations t where t.product_id = p.id order by t.locale limit 1) as title

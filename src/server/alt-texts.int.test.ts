@@ -262,4 +262,59 @@ describe("alt texts written by the store's AI (D89)", () => {
     const norwegian = await catalog.getProduct(storeId, toMarket({ code: "NO", currency: "NOK", defaultLocale: "nb-NO" }), "demo-keramikkopp");
     expect(norwegian?.images.map((image) => image.alt)).toEqual(["En hvit kopp på et trebord", "En grønn bordlampe"]);
   });
+
+  const triesOf = async (id: string) => {
+    const [row] = await db().execute<Row>(sql`select alt_tries from commerce.media where id = ${id}::uuid`);
+    return Number(row.alt_tries);
+  };
+  const listed = async (full = false) => (await altTexts.sitesDueForAltText(full)).some((row) => row.store_id === storeId);
+
+  it("does not list a site whose pictures all have texts (bloat review 0.28)", async () => {
+    // Every picture of the store either has a text or was tried today.
+    await db().execute(sql`
+      update commerce.media set alt_tried_at = now() where store_id = ${storeId}::uuid and kind = 'image' and alt_source is null
+    `);
+    expect(await listed()).toBe(false);
+    // The hourly pass still looks at a site whose AI texts may lack a language added since.
+    await db().execute(sql`update commerce.media set alt_translations = alt_translations - 'en', alt_tried_at = null where id = ${kopp.id}::uuid`);
+    expect(await listed(true)).toBe(true);
+    expect(await listed()).toBe(false);
+    // A picture without a text that was not tried today lists the site at once.
+    await db().execute(sql`update commerce.media set alt_tried_at = now() - interval '2 days' where id = ${borte.id}::uuid`);
+    expect(await listed()).toBe(true);
+    await db().execute(sql`update commerce.media set alt_tried_at = now() where id = ${borte.id}::uuid`);
+    expect(await listed()).toBe(false);
+  });
+
+  it("leaves a picture alone after five failed tries, until a person asks", async () => {
+    const stuck = await addPicture("kopp-3");
+    await db().execute(sql`update commerce.media set alt_tries = 5 where id = ${stuck.id}::uuid`);
+    expect(await listed()).toBe(false);
+    expect(await listed(true)).toBe(true);
+    // The job's run does not pick it.
+    fakeAi();
+    await altTexts.writeAltTexts(owner(), { since: new Date(), job: true });
+    expect(asked.some((ask) => JSON.stringify(ask).includes("File name: kopp-3"))).toBe(false);
+    expect((await altOf(stuck.id)).source).toBeNull();
+    // A person's run (no job option) tries it, and a success clears the count.
+    await altTexts.writeAltTexts(owner(), { since: new Date() });
+    expect(asked.some((ask) => JSON.stringify(ask).includes("File name: kopp-3"))).toBe(true);
+    expect((await altOf(stuck.id)).source).toBe("ai");
+    expect(await triesOf(stuck.id)).toBe(0);
+  });
+
+  it("counts a failed try and clears the count on success", async () => {
+    const fresh = await addPicture("kopp-4");
+    fakeAi();
+    blind = true;
+    try {
+      expect((await altTexts.writeAltText(owner(), fresh.id)).ok).toBe(false);
+    } finally {
+      blind = false;
+    }
+    expect(await triesOf(fresh.id)).toBe(1);
+    fakeAi();
+    expect((await altTexts.writeAltText(owner(), fresh.id)).ok).toBe(true);
+    expect(await triesOf(fresh.id)).toBe(0);
+  });
 });

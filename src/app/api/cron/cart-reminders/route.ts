@@ -133,6 +133,7 @@ async function dispatch() {
     contentModeration: () => runContentModeration(),
     // AI pictures made before their files were marked get IPTC's digital source type in their XMP (AI Act Art. 50(2)), ten a run.
     aiPictureMarks: () => markAiPictures(),
+    // Hourly inside (the first five minutes of the hour); the other runs return at once.
     embeddings: () => refreshEmbeddings(),
     knowledge: () => refreshKnowledge(),
     // Chat widgets' websites (D583): a few due sites listed, then a few dozen due pages read into the knowledge base, within two minutes.

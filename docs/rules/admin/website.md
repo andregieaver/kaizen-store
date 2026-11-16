@@ -687,7 +687,9 @@ CLAUDE.md keeps one line per rule pointing here; each rule is under that line as
   when their upload starts; a new upload path does the same. Where a file is
   used is worked out on request by `mediaUses()`, so a new place that keeps a
   picture's address goes there too. Search is keyword plus meaning
-  (`media_embeddings`, SQL only, `embedMedia()` in the five-minute cron),
+  (`media_embeddings`, SQL only, `embedMedia()` from the five-minute cron for
+  sites `refreshMediaEmbeddings()` lists: a picture new or changed, or a vector
+  a week old, when where it is used is read again; every site once an hour),
   fused as the storefront's (a file's name is searched by name alone,
   `isFileNameQuery()`; vectors come from alt texts, never ids, D90); the
   address is read by `mediaQuery()`.
@@ -698,7 +700,10 @@ CLAUDE.md keeps one line per rule pointing here; each rule is under that line as
   over staff's). The AI sees the picture's small copy (`imagePart()`) and
   what uses it, and its texts pass `parseAltTexts()` (claims filter, colours
   allowed); the library runs it on one or all pictures, the five-minute
-  cron on new ones. The site shows them where a picture has no alt text of
+  cron on new ones (`sitesDueForAltText()` lists a site only while a picture
+  without a text is due; a language added since is filled by the hourly pass;
+  after five failures in a row, `media.alt_tries`, only a person's run tries a
+  picture again). The site shows them where a picture has no alt text of
   its own: SQL reads of product and variant pictures through
   `commerce.media_alt(url, locale)`, page loaders through `withPageAlts()`;
   a new place that draws a library picture does the same, and changes call

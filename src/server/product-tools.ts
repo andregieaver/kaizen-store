@@ -44,6 +44,7 @@ import { aiFor, AiError, type AiConnection } from "./ai";
 import { productSafety } from "./product-safety";
 import type { Account } from "./auth";
 import { catalogTag } from "./catalog";
+import { refreshStoreEmbeddings } from "./embeddings";
 import { libraryFilesByUrl } from "./media-library";
 import { OwnerToolError } from "./owner-tool-error";
 import { makeSitePicture } from "./picture-maker";
@@ -226,6 +227,8 @@ async function save(ctx: Ctx, editor: EditorContext, productId: string | null, i
   const saved = await saveProduct(ctx.store, editor, productId, input, undefined, undefined, { id: ctx.account.id }, stockMode);
   if (!saved.ok) return fail(saved.problems.join(" "));
   ctx.invalidate(catalogTag(ctx.store.id));
+  // Search by meaning knows the product at once, as after the editor's save; the hourly scan is only the net.
+  await refreshStoreEmbeddings(ctx.store.id).catch(() => undefined);
   return saved.productId;
 }
 
