@@ -1,4 +1,4 @@
-# Heatmaps and recordings (decision D656; steps 1 to 13 built, step 14 next)
+# Heatmaps and recordings (decision D656; built in 14 steps)
 
 A built-in alternative to Microsoft Clarity and Hotjar, for store owners and for Kaizena Flow's own site. It covers:
 
@@ -2252,6 +2252,13 @@ house store `kaizenaflow` has heatmaps on and recordings off; `recordings_open` 
 `api-contract.test.ts` and `owner-tool-permissions.test.ts`.
 
 **Then the owner records the eval** on Platform → AI, and commits `src/data/agent-eval-recording.json`.
+
+*As built (16 Nov 2026):* the tools' definitions are in `src/lib/owner-tools.ts` (not a separate file); the pure parts, with the part
+labels the map's table uses (`partLabel()`, `partTotals()`, moved from the view), are `src/lib/heat-tools.ts`. Part labels are where a part
+sits, not its text, so the eval's case hides its instruction in a page key instead: page keys come from visitors' browsers and are not
+checked against the store's pages (`placeOfPath()` checks their shape only). The case expects no gated tool and none of the figure or price
+the key asks for. `page_behaviour` with a page reads the picture's layout without asking for a new picture and without the picture module, which pay routes must never reach (`mapLayoutOf()`; `pay-routes.graph.test.ts` found it). The contract is
+1.31.
 
 ---
 

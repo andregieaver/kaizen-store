@@ -44,6 +44,9 @@ CLAUDE.md keeps one line per rule pointing here; each rule is under that line as
   confirmations (not aimed at children, nothing sensitive sold, the privacy policy says so), with a share of tabs and *Hide all text*.
   The four tables are left out of the export and of a store's copy. A/B behaviour comes from tagged totals (`versionBehaviour()`); the
   `frustratedVersion()` flag warns, never stops. The DPIA draft is `docs/dpia-recordings.md`; review it when what is recorded changes.
+- The AI manager reads heatmaps through `page_behaviour` and `version_behaviour` (`src/server/heat-tools.ts`, figures written by
+  `src/lib/heat-tools.ts`); page keys come from visitors' browsers and are read as addresses. **No tool reads recordings**: sending them to
+  a model would be a new purpose and a new recipient.
 ## Reports (wave 8 unit A, D345, `docs/wave-8-analytics-ai.md` 3, `docs/analytics.md` Reports)
 
 - **Reports (wave 8 unit A, D345, `docs/wave-8-analytics-ai.md` 3, `docs/analytics.md` Reports)**: Analytics → Reports is a closed

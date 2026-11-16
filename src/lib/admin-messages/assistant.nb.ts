@@ -511,6 +511,8 @@ export const assistantNb: AssistantMessages = {
     list_targets: "Leser målene dine",
     set_target: "Setter et mål",
     speed_report: "Ser på hvor raskt sidene lastes",
+    page_behaviour: "Ser på hvordan besøkende bruker sidene",
+    version_behaviour: "Ser på hvordan besøkende oppfører seg i hver versjon",
     list_data_jobs: "Ser på importer og eksporter",
     explain_import_problems: "Leser importens funn",
     redirect_overview: "Ser på videresendinger og manglende sider",
