@@ -36,3 +36,5 @@ push (`src/lib/ci-once.scan.test.ts`).
 
 `pnpm lint` keeps a cache in node_modules/.cache/eslint (delete the folder to lint from nothing); CI restores it in `static` and
 `pending`. It stays right only while no lint rule reads more than one file (`src/lib/ci-once.scan.test.ts`).
+
+A push of tests alone (`*.test.ts`, `e2e/**`, `src/test/**`) is checked but not deployed (`scripts/deploy-needed.mjs`).
