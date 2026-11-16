@@ -115,7 +115,7 @@ commit as the fix.
 | 0.39 | Let a test load only what it uses | TC-3, TC-13, DD-13, DD-10 | M | review | 0.38 | Open | |
 | 0.40 | Wrap the long lines of the rules and every living doc, and keep history out of searches | DC-4, DC-7, DC-13, GAP-rules-2 | S | cheap | 0.1, 0.43 | Open | |
 | 0.41 | Make the rules say what is so, and claim a decision's number on main before citing it | DC-5, DC-8, DC-6, DC-12, GAP-rules-s3, DC-9 | M | review | 0.43, 0.40, 0.1 | Open | |
-| 0.42 | Compare by job the two pairs of engines nobody compared | GAP-surface-2 | S | strong | 0.1 | Open | |
+| 0.42 | Compare by job the two pairs of engines nobody compared | GAP-surface-2 | S | strong | 0.1 | Done | 16 Nov: Done (6b903353), counted on b6b4c1f2. FT-16 and FT-17 tolerated: 0 shared 10-line windows each; 16 and 5 shared modules. |
 | 0.43 | Hold CLAUDE.md's core from the first day, and open a home for this plan's own sentences | GAP-rules-s1 | S | cheap |  | Done | 16 Nov: Done (D668). Baseline 13,252 bytes outside the index (the owner's word: 12,555 in the brief, four sentences added since); the one index line over 200 characters shortened. |
 | 0.44 | Give pictures in page content the 800 px copy | GAP-code-s4 | M | review | 0.33 | Open | |
 | 0.45 | Cap the dispatcher at four jobs at a time | GAP-database-s3 | S | cheap |  | In progress | 16 Nov: local commit, not pushed. |
@@ -302,6 +302,7 @@ Change log:
 - 16 Nov 2026: step 0.34 Done (8a5e02cb, D666): shop and site files use the site's colour names, and the admin's colour roles follow the site's colours outside the admin, so the button on /status and /report is filled.
 - 16 Nov 2026: step 0.35 Done (e0faba3d, D667): Tailwind reads the code under src only, not tests, interface texts, the schema folder or SQL.
 - 16 Nov 2026: step 0.43 Done (D668): CLAUDE.md's bytes outside its Storefront and Admin index are held at 13,252 and only fall, an index line is at most 200 characters, and docs/rules/budgets.md is the home for sentences about budgets and checks.
+- 16 Nov 2026: step 0.42 Done: order invoices beside Work invoices (FT-16) and orders on payment terms beside Work's unpaid invoices (FT-17) compared by job; both tolerated, with their shared parts and numbers, so no phase-3 fold step.
 - 15 Nov 2026: step 0.20 made locally, not yet pushed or Done: a store's address by its id is one cached helper, `storeSlugOf()` under `storeIdTag(id)`, marked stale when a sandbox is kept; 23 hand-written reads in 17 files replaced (3 lines hold the statement, 27 before); a theme's neighbours read the cached cards; the hosts list is parsed once per instance.
 
 ## 1. The headline
@@ -488,7 +489,7 @@ change with it and its check. Open the files of the step you are doing, not the 
 
 ### What an A lives with
 
-13 findings are true and not worth fixing. This is the tolerance the bars allow, stated:
+15 findings are true and not worth fixing. This is the tolerance the bars allow, stated:
 
 - **CP-10.** Eleven hand-written claim-with-a-lease statements, about 130 lines in all. Each has another table, join and retry column: an idiom, not a copy. Tolerance: the 11 are held as a count by the copy baseline of step 1.17 and may not rise.
 - **DP-3.** The Stripe and Supabase SDKs load with 97% of routes: 18 to 28 ms and about 1 MB of heap on a lean route, nothing a person sees. Step 2.22 takes Stripe off the read of a store, the graph test of step 1.8 shows the edges that are left, and they are cut when stores.ts or stripe.ts is next changed.
@@ -503,6 +504,8 @@ change with it and its check. Open the files of the step you are doing, not the 
 - **FT-1.** 53 of 110 store links and 133 of 254 AI tools stand behind no switch. That is fine: a switch changes what an owner sees, not what a store costs. Links hide in Basic, a round is capped whatever is switched, and jobs are set-based. Where a feature does cost an idle store the fix is at the read (step 0.22), and the surface budget of step 1.18 asks each new feature for its idle cost. No second tier of switches.
 - **FT-9.** Campaigns (7 kinds) and discount codes (3 kinds) are two mechanisms with a shared edge, not one job built twice: about 100 to 200 lines of parallel helpers, in code that decides money. Fold the helpers into one small module when pricing code is next opened. The one Discounts page is already code review step 2.4.
 - **TX-10.** A deliberate, written design (D312 A6 and A8): the server answers in English because the AI manager and the tests read it, and about 300 refusals are matched back to their Norwegian. It costs 16.7 KB of source kept twice and no measurable time. The one real mismatch, the product.media pair, is settled in step 0.36. Add the coverage test when a validator is next changed.
+- **FT-16.** Order invoices (17 files, 3,734 lines, 3 tables) and Work invoices (13 files, 7,160 lines, 7 tables) are two engines for two kinds of legal document: an order's frozen copy issued by its payment, and a hand-written invoice with drafts, payments and losses. They share 0 10-line windows and 16 modules: one number function in four series, the e-invoice sender and `einvoice_sends`, the books' loader. Tolerance: no second sender, number function or loader; share the half-up division when either file is next opened.
+- **FT-17.** Orders on payment terms (737 lines, 1 table) and Work's money owed (347 lines, 2 tables) are two debts: 0 shared windows, 5 shared modules, and one ledger, bank matcher, mailer and control center for both. Tolerance: one overdue comparison on each side and one reminder job (Work's reminder is the owner's press); a write-off for terms, when built, posts as Work's does (D500).
 
 ## 5. The plan
 
