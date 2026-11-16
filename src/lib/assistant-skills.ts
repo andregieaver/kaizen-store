@@ -462,7 +462,7 @@ export const ASSISTANT_SKILLS: readonly AssistantSkill[] = [
       "Write the new words with them and call draft_experiment (block ids come from suggest_experiments). The words must not promise prices, stock, urgency or 'best'; they are checked. A draft shows nothing to visitors: tell them to look at version B in the admin (open_admin_page, experiments) before starting.",
       "Start with start_experiment, which needs their approval. It runs at least 14 days before it says anything, so tell them not to stop it early because a number looks good.",
       "Running: list_experiments, then explain_results in their words and language. Repeat the verdict the tool gives and its reasons; never call a winner it does not, and say too early when it says so.",
-      "Deciding: apply_winner with the version, or `original` to keep what is there (it stops a running test first). Prices, discounts, shipping and legal pages are never tested.",
+      "Deciding: apply_winner with the version, or `original` to keep what is there (it stops a running test first). Offer to keep what it taught in one line with it (`learning`), written from the verdict and their words. Prices, discounts, shipping and legal pages are never tested.",
     ],
   },
   {

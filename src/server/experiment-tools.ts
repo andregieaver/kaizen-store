@@ -33,6 +33,7 @@ import {
   startProblemsOf,
   stopExperiment,
   testablePages,
+  saveLearning,
   versionDifferences,
   type ExperimentInfo,
 } from "./experiment-admin";
@@ -427,7 +428,7 @@ export async function stopExperimentTool(ctx: Ctx, { experiment }: OwnerToolInpu
   return { done: `The A/B test "${test.name}" is stopped: everyone sees the original again. Choose a version or keep the original with apply_winner.`, admin: adminLink(ctx.store, `/experiments/${test.id}`) };
 }
 
-export async function applyWinnerTool(ctx: Ctx, { experiment, version }: OwnerToolInput<"apply_winner">) {
+export async function applyWinnerTool(ctx: Ctx, { experiment, version, learning }: OwnerToolInput<"apply_winner">) {
   const { store, account } = ctx;
   const test = await findTest(store, experiment);
   if (test.status === "running") {
@@ -436,8 +437,11 @@ export async function applyWinnerTool(ctx: Ctx, { experiment, version }: OwnerTo
   }
   const result = version === "original" ? await discardExperiment(account, store.id, test.id) : await applyVariant(account, store.id, test.id, version);
   if (!result.ok) return fail(result.problems.join(" "));
+  // What it taught (D672), kept with the decision in the same yes, as the admin's decide dialog keeps it.
+  const kept = learning ? await saveLearning(account, store.id, test.id, learning) : null;
   return {
     done: version === "original" ? `The A/B test "${test.name}" is over and the original stays.` : `Version ${version.toUpperCase()} is now ${test.part ? test.part.label : "the page"} (${targetLabel(test.page.kind, test.page.slug, test.page.title, test.page.role)}). The test is over.`,
+    learned: kept ? (kept.ok ? `Kept what it taught: ${learning}` : `What it taught was not kept: ${kept.problems.join(" ")}`) : undefined,
     admin: adminLink(store, `/experiments/${test.id}`),
   };
 }
@@ -466,6 +470,8 @@ export async function preflightExperimentTool(ctx: Ctx, name: string, input: Rec
   }
   if (test.status !== "running" && test.status !== "stopped") return fail(`"${test.name}" is ${STATUS_WORDS[test.status].toLowerCase()}: only a running or stopped test can be decided.`);
   if (input.version !== "original" && !test.variants.some((v) => v.key === input.version && v.pageId)) return fail(`"${test.name}" has no version ${String(input.version).toUpperCase()}.`);
+  const claims = typeof input.learning === "string" ? claimsIn(input.learning) : [];
+  if (claims.length > 0) return fail(`Leave out of what it taught what the store cannot stand behind: ${claims.join(", ")}.`);
 }
 
 /** What the owner is asked to say yes to, written from the test itself (not the model's words). */
@@ -488,7 +494,10 @@ export async function experimentApprovalSummary(store: Store, tool: string, args
   const version = String(args.version);
   const chosen = test.variants.find((v) => v.key === version);
   const stopFirst = test.status === "running" ? "Stop the test, then " : "";
-  return version === "original"
-    ? `${stopFirst}end the A/B test ${what} and keep the original.`
-    : `${stopFirst}make ${chosen?.name ?? `version ${version.toUpperCase()}`} ${test.part ? `replace ${test.part.label}` : "the page"} for good in the A/B test ${what}: it goes live at once, the address stays.`;
+  const taught = typeof args.learning === "string" && args.learning.trim() ? ` And keep what it taught: "${args.learning.trim()}"` : "";
+  return `${
+    version === "original"
+      ? `${stopFirst}end the A/B test ${what} and keep the original.`
+      : `${stopFirst}make ${chosen?.name ?? `version ${version.toUpperCase()}`} ${test.part ? `replace ${test.part.label}` : "the page"} for good in the A/B test ${what}: it goes live at once, the address stays.`
+  }${taught}`;
 }
