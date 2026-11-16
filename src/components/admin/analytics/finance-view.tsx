@@ -16,6 +16,7 @@ import { arrowOf, StatusPill } from "./data-table";
 import { ExportButton } from "./export-scope";
 import { KpiCard, type KpiCardProps } from "./kpi-card";
 import { AnalyticsSection, ChartCard, Note } from "./section";
+import { PhoneRow, PhoneRows } from "@/components/admin/phone-row";
 import { CARD_CLASS } from "@/components/admin/ui";
 
 /**
@@ -517,8 +518,45 @@ export function FinanceView({ base, currency, locale, isOwner, current, comparis
   };
   const overTime = fillWords(x.overTime, { per });
 
+  // Round 28 (D701): on a phone the answer, one strip for missing costs, three figures, and the rest as rows.
+  const p = words.phone;
+  const row = { change: p.open, done: p.close, flat: true } as const;
+  const answer = profitLines(current, money, words, n)[0];
+  const grossSales = amountOf(s, "grossSales");
+  const figures: { label: string; value: string }[] = sales
+    ? [
+        { label: k.net, value: netAmount === null ? NO_FIGURE : money(netAmount) },
+        { label: k.vat, value: t.orders > 0 ? money(t.vatMinor) : NO_FIGURE },
+        { label: k.refunds, value: money(t.refundsMinor) },
+      ]
+    : [];
+
   return (
-    <div className="flex flex-col gap-8">
+    <div className="flex flex-col gap-8 max-sm:gap-4">
+      <section aria-label={x.leftTitle} className="flex flex-col gap-1 rounded-panel bg-card p-4 sm:hidden">
+        <p className="text-body-strong text-ink">{answer}</p>
+      </section>
+      {(costsMissing || partialCoverage) && (
+        <div className="flex items-center gap-3 rounded-panel bg-warning-soft px-4 py-3 sm:hidden">
+          <p className="min-w-0 flex-1 text-sm">
+            {costsMissing ? p.needsCosts : p.someCosts}
+            {missingOptions !== null && missingOptions > 0 ? ` ${countWords(missingOptions, p.withoutCost, { n: formatCount(missingOptions) })}` : ""}
+          </p>
+          <Link href={productsHref} className="inline-flex h-9 shrink-0 items-center rounded-pill bg-ink px-4 text-sm text-canvas">
+            {p.addCosts}
+          </Link>
+        </div>
+      )}
+      {figures.length > 0 && (
+        <dl className="rounded-panel bg-card px-4 sm:hidden">
+          {figures.map((f) => (
+            <div key={f.label} className="flex min-h-11 items-center justify-between gap-3 border-b border-line last:border-b-0">
+              <dt className="text-body text-ink">{f.label}</dt>
+              <dd className="text-body tabular-nums text-ink">{f.value}</dd>
+            </div>
+          ))}
+        </dl>
+      )}
       {notes.length > 0 ? (
         <div className="space-y-2">
           {notes.map((note, i) => (
@@ -528,8 +566,9 @@ export function FinanceView({ base, currency, locale, isOwner, current, comparis
           ))}
         </div>
       ) : null}
-      {coverageNote}
+      <div className="max-sm:hidden">{coverageNote}</div>
 
+      <div className="max-sm:hidden">
       <AnalyticsSection id="finance-left" title={x.leftTitle} description={fillWords(x.leftDescription, { period: current.label, currency })}>
         <div className="space-y-1 rounded-panel bg-sunken p-4 text-sm">
           {profitLines(current, money, words, n).map((line, i) => (
@@ -546,14 +585,19 @@ export function FinanceView({ base, currency, locale, isOwner, current, comparis
           </div>
         ) : null}
       </AnalyticsSection>
+      </div>
 
+      <PhoneRows>
       {sales ? (
         <>
+          <PhoneRow opens="finance-bridge" title={x.bridgeTitle} sub={grossSales === null ? undefined : fillWords(p.bridgeSub, { amount: money(grossSales) })} {...row}>
           <AnalyticsSection id="finance-bridge" title={x.bridgeTitle} description={x.bridgeDescription}>
             <BridgeTable current={current} comparison={comparison} money={money} w={v.table} n={n} />
             <p className="text-xs text-muted">{x.bridgeNote}</p>
           </AnalyticsSection>
+          </PhoneRow>
 
+          <PhoneRow opens="finance-where" title={x.whereTitle} sub={overTime} {...row}>
           <AnalyticsSection id="finance-where" title={x.whereTitle} description={x.whereDescription}>
             <div className="grid gap-4 lg:grid-cols-2">
               <ChartCard title={x.flowTitle} description={x.flowDescription}>
@@ -564,16 +608,20 @@ export function FinanceView({ base, currency, locale, isOwner, current, comparis
               </ChartCard>
             </div>
           </AnalyticsSection>
+          </PhoneRow>
 
+          <div className="max-sm:hidden">
           <AnalyticsSection id="finance-vat-refunds" title={x.vatTitle} description={x.vatDescription}>
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
               <KpiCard {...vatCard} />
               <KpiCard {...refundCard} />
             </div>
           </AnalyticsSection>
+          </div>
         </>
       ) : null}
 
+      <PhoneRow opens="finance-method" title={x.methodTitle} {...row}>
       <AnalyticsSection id="finance-method" title={x.methodTitle}>
         <details className="rounded-panel border border-line bg-card p-4 text-sm">
           <summary className="cursor-pointer font-medium">{x.methodSummary}</summary>
@@ -587,6 +635,8 @@ export function FinanceView({ base, currency, locale, isOwner, current, comparis
           </dl>
         </details>
       </AnalyticsSection>
+      </PhoneRow>
+      </PhoneRows>
 
       <p className="text-xs text-muted">{fillWords(x.footer, { currency })}</p>
     </div>

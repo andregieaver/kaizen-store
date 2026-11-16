@@ -163,6 +163,8 @@ export const websiteEn = {
     createAi: "Create with AI",
     /** The pages list as cards (D615): the sentence, the cards and the shop's own pages, each changed in a small window. */
     cards: {
+      find: "Find a page",
+      noneFound: "No page matches.",
       live: { one: "{n} page is live.", many: "{n} pages are live." },
       noneLive: "No page is live yet.",
       opensOn: " Your shop opens on {page}.",

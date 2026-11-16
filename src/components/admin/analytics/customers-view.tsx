@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { fillWords } from "@/lib/admin-fill";
+import { countWords, fillWords } from "@/lib/admin-fill";
 import { reportsEn } from "@/lib/admin-messages/reports.en";
 import type { ReportsMessages } from "@/lib/admin-messages/reports.en";
 import type { ReactNode } from "react";
@@ -15,6 +15,7 @@ import { CohortTable, type CohortRow as CohortTableRow } from "./charts";
 import { DataTable, ShareBar, type Column } from "./data-table";
 import { KpiCard, type KpiCardProps } from "./kpi-card";
 import { AnalyticsSection, ChartCard, Note } from "./section";
+import { PhoneRow, PhoneRows } from "@/components/admin/phone-row";
 import { CARD_CLASS } from "@/components/admin/ui";
 
 /**
@@ -405,10 +406,35 @@ export function CustomersView({
     { key: "last", label: w.colLast, align: "right", cell: (c) => lastOrderText(c.lastOrderAt, timeZone) },
   ];
 
+  // ---- round 28 (D701): on a phone, three answers in one card, then each question a row with its answer ----
+  const p = w.phone;
+  const row = { change: p.open, done: p.close, flat: true } as const;
+  const firstRate = report.repeatRates.find((r) => r.rate !== null) ?? null;
+  const shortestDays = report.repeatRates[0]?.days ?? 30;
+  const phoneTop = report.topCustomers.slice(0, 3);
+  const answers: { value: string; label: string }[] = [
+    {
+      value: formatCount(periodCustomers),
+      label: nvr.returningCustomers === 0 ? p.allNew : fillWords(p.returning, { n: formatCount(nvr.returningCustomers) }),
+    },
+    { value: frequency.perCustomer !== null ? decimal(frequency.perCustomer) : NO_FIGURE, label: p.ordersAYear },
+    { value: historic.revenueMinor !== null ? money(historic.revenueMinor) : NO_FIGURE, label: p.spentEach },
+  ];
+
   return (
-    <div className="flex flex-col gap-8">
+    <div className="flex flex-col gap-8 max-sm:gap-4">
       {noteBlock}
 
+      <section aria-label={w.glanceTitle} className="grid grid-cols-3 gap-2 rounded-panel bg-card p-4 sm:hidden">
+        {answers.map((a) => (
+          <p key={a.label} className="flex min-w-0 flex-col gap-0.5">
+            <span className="truncate text-lg font-medium tabular-nums text-ink">{a.value}</span>
+            <span className="text-caption text-ink-2">{a.label}</span>
+          </p>
+        ))}
+      </section>
+
+      <div className="max-sm:hidden">
       <AnalyticsSection id="cust-glance" title={w.glanceTitle} description={w.glanceDescription}>
         <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
           <KpiCard {...returningCard} />
@@ -416,7 +442,10 @@ export function CustomersView({
           <KpiCard {...predictedCard} />
         </div>
       </AnalyticsSection>
+      </div>
 
+      <PhoneRows>
+      <PhoneRow opens="cust-new-returning" title={w.nvrTitle} sub={fillWords(p.nvrSub, { new: formatCount(nvr.newCustomers), returning: formatCount(nvr.returningCustomers) })} {...row}>
       <AnalyticsSection
         id="cust-new-returning"
         title={w.nvrTitle}
@@ -458,7 +487,14 @@ export function CustomersView({
           <div className="rounded-panel border border-dashed border-line px-4 py-6 text-center text-sm text-muted">{w.nvrEmpty}</div>
         )}
       </AnalyticsSection>
+      </PhoneRow>
 
+      <PhoneRow
+        opens="cust-repeat"
+        title={w.repeatTitle}
+        sub={firstRate && firstRate.rate !== null ? fillWords(p.repeatSub, { rate: formatPercent(firstRate.rate, 1), days: String(firstRate.days) }) : fillWords(p.tooSoon, { days: String(shortestDays) })}
+        {...row}
+      >
       <AnalyticsSection
         id="cust-repeat"
         title={w.repeatTitle}
@@ -471,7 +507,14 @@ export function CustomersView({
           <KpiCard {...frequencyCard} />
         </div>
       </AnalyticsSection>
+      </PhoneRow>
 
+      <PhoneRow
+        opens="cust-value"
+        title={w.valueTitle}
+        sub={ltv.predicted.minor !== null ? fillWords(p.worthSub, { money: money(ltv.predicted.minor), years: String(ltv.inputs.lifespanYears) }) : p.notYet}
+        {...row}
+      >
       <AnalyticsSection
         id="cust-value"
         title={w.valueTitle}
@@ -510,7 +553,14 @@ export function CustomersView({
           {partialContribution ? <p>{fillWords(w.partialProfit, { known: formatCount(ltv.inputs.contributionCustomers), all: formatCount(historic.customers) })}</p> : null}
         </div>
       </AnalyticsSection>
+      </PhoneRow>
 
+      <PhoneRow
+        opens="cust-groups"
+        title={w.groupsTitle}
+        sub={segments.enough ? fillWords(p.groupsSub, { n: formatCount(segmentCards.filter((g) => g.customers > 0).length) }) : fillWords(p.groupsFew, { min: formatCount(segments.minCustomers), have: formatCount(segments.customers) })}
+        {...row}
+      >
       <AnalyticsSection
         id="cust-groups"
         title={w.groupsTitle}
@@ -561,7 +611,9 @@ export function CustomersView({
           </Note>
         )}
       </AnalyticsSection>
+      </PhoneRow>
 
+      <PhoneRow opens="cust-cohorts" title={w.cohortsTitle} sub={countWords(cohorts.rows.length, p.cohortsSub, { n: formatCount(cohorts.rows.length) })} {...row}>
       <AnalyticsSection
         id="cust-cohorts"
         title={w.cohortsTitle}
@@ -585,7 +637,27 @@ export function CustomersView({
         </ChartCard>
         {smallCohorts ? <p className="text-xs text-muted">{fillWords(w.smallCohorts, { n: String(MIN_COHORT_SIZE) })}</p> : null}
       </AnalyticsSection>
+      </PhoneRow>
+      </PhoneRows>
 
+      {/* The top customers on a phone: the first three by name, then all of them in the table. */}
+      {phoneTop.length > 0 && (
+        <div className="flex flex-col gap-2 sm:hidden">
+          <h2 className="px-0.5 text-sm text-muted">{w.topTitle}</h2>
+          <ul className="rounded-panel bg-card px-4">
+            {phoneTop.map((c) => (
+              <li key={c.key} className="border-b border-line">
+                <Link href={`${base}/customers/${encodeURIComponent(c.customerId)}`} className="flex min-h-11 items-center justify-between gap-3 text-body text-ink">
+                  <span className="min-w-0 truncate">{c.name ?? c.email}</span>
+                  <span className="shrink-0 text-sm tabular-nums text-ink-2">{`${money(c.revenueMinor)} · ${formatCount(c.orders)}`}</span>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+      <PhoneRows>
+      <PhoneRow opens="cust-top" title={countWords(report.topCustomers.length, p.allTop, { n: formatCount(report.topCustomers.length) })} {...row}>
       <AnalyticsSection id="cust-top" title={w.topTitle} description={w.topDescription}>
         <DataTable
           caption={w.topCaption}
@@ -597,6 +669,8 @@ export function CustomersView({
           exportLeftOut={leftOut}
         />
       </AnalyticsSection>
+      </PhoneRow>
+      </PhoneRows>
 
       <Note title={w.countedTitle}>
         {fillWords(w.counted, { currency: report.currency })}

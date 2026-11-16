@@ -1,6 +1,7 @@
 "use client";
 
 import { MoreHorizontal, Plus } from "lucide-react";
+import { useState } from "react";
 
 import type { PageSummary } from "@/server/pages";
 import type { DuplicateResult } from "@/lib/page-duplicate";
@@ -49,24 +50,47 @@ export function PageCards({
   const list = w.list;
   const c = w.storePages.cards;
   const date = new Intl.DateTimeFormat(ADMIN_LANG_FACTS[useAdminLang()].locale, { dateStyle: "medium", timeZone: "Europe/Oslo" });
+  // Round 28 (D701): on a phone the pages are one card of lines, with a search once there are more than a screen of them.
+  const [query, setQuery] = useState("");
+  const needle = query.trim().toLowerCase();
+  const shown = needle ? pages.filter((page) => `${page.title} ${page.slug}`.toLowerCase().includes(needle)) : pages;
   return (
-    <ul aria-label={label ?? c.label} className="grid grid-cols-[repeat(auto-fill,minmax(min(250px,100%),1fr))] gap-4">
-      {pages.map((page) => {
+    <div className="flex flex-col gap-3">
+    {pages.length > 8 && (
+      <label className="sm:hidden">
+        <span className="sr-only">{c.find}</span>
+        <input
+          type="search"
+          value={query}
+          onChange={(event) => setQuery(event.target.value)}
+          placeholder={c.find}
+          className="min-h-11 w-full rounded-pill border border-line bg-card px-4 text-body"
+        />
+      </label>
+    )}
+    <ul
+      aria-label={label ?? c.label}
+      className="grid grid-cols-[repeat(auto-fill,minmax(min(250px,100%),1fr))] gap-4 max-sm:gap-0 max-sm:overflow-hidden max-sm:rounded-card max-sm:bg-card"
+    >
+      {shown.map((page) => {
         const title = page.title || list.untitled;
         const href = `${adminBase}/${page.id}`;
         const place = page.id === frontPageId ? w.storePages.front.title : page.id === productsPageId ? w.storePages.front.all : roles[page.id] ? list.roles[roles[page.id]] : null;
         const address = page.id === frontPageId ? "" : page.id === productsPageId ? "/products" : `/${page.slug}`;
         return (
-          <li key={page.id} className={`flex flex-col overflow-hidden ${CARD_CLASS}`}>
-            <AdminLink href={href} tabIndex={-1} aria-hidden className="block aspect-[16/10] overflow-hidden bg-sunken">
+          <li
+            key={page.id}
+            className={`flex flex-col overflow-hidden ${CARD_CLASS} max-sm:flex-row max-sm:items-center max-sm:gap-3 max-sm:rounded-none max-sm:border-b max-sm:border-line max-sm:pl-3 max-sm:last:border-b-0`}
+          >
+            <AdminLink href={href} tabIndex={-1} aria-hidden className="block aspect-[16/10] overflow-hidden bg-sunken max-sm:aspect-square max-sm:size-11 max-sm:shrink-0 max-sm:rounded-md">
               {page.thumbnail ? (
                 // eslint-disable-next-line @next/next/no-img-element -- a page's own picture, small
                 <img src={page.thumbnail} alt="" className="size-full object-cover object-top" />
               ) : (
-                <span className="flex size-full items-center justify-center px-4 text-center text-2xl tracking-tight text-muted">{title}</span>
+                <span className="flex size-full items-center justify-center px-4 text-center text-2xl tracking-tight text-muted max-sm:hidden">{title}</span>
               )}
             </AdminLink>
-            <div className="flex flex-1 flex-col gap-1.5 px-4 py-3.5">
+            <div className="flex min-w-0 flex-1 flex-col gap-1.5 px-4 py-3.5 max-sm:gap-1 max-sm:py-2.5 max-sm:pl-0 max-sm:pr-2">
               <span className="flex items-center justify-between gap-2">
                 <AdminLink href={href} className="min-w-0 truncate text-body text-ink underline-offset-2 hover:underline">
                   {title}
@@ -107,7 +131,7 @@ export function PageCards({
           </li>
         );
       })}
-      <li>
+      <li className="max-sm:hidden">
         <AdminLink
           href={`${adminBase}/new`}
           className="flex h-full min-h-56 flex-col items-center justify-center gap-1.5 rounded-card border-[1.5px] border-dashed border-edge text-body text-ink-2 hover:bg-card"
@@ -120,5 +144,7 @@ export function PageCards({
         </AdminLink>
       </li>
     </ul>
+    {needle && shown.length === 0 && <p className="text-sm text-muted sm:hidden">{c.noneFound}</p>}
+    </div>
   );
 }

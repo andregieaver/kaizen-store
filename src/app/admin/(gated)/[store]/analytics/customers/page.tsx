@@ -41,7 +41,7 @@ export default async function AnalyticsCustomersPage({ params, searchParams }: P
           ctx={ctx}
           path="/analytics/customers"
           title={w.pages.customers.title}
-          description={w.pages.customers.description}
+          description={<span className="max-sm:hidden">{w.pages.customers.description}</span>}
         />
         <CustomersView base={ctx.base} locale={locale} timeZone={store.timeZone} isOwner={ctx.owner} report={report} bonusOn={featureOn(store, "bonus")} seesPeople={memberCan(ctx, "customers:read") && memberCan(ctx, "marketing:read")} words={w.customers} say={say} />
       </div>

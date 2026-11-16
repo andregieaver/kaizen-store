@@ -228,7 +228,8 @@ describe("a normal store", () => {
 
   it("has no page heading of its own (the header has it) and a heading for every section", () => {
     expect(markup).not.toContain("<h1");
-    expect(markup.match(/<h2/g)?.length).toBe(7);
+    // Seven sections, and the phone's own heading over the first top customers (round 28, D701).
+    expect(markup.match(/<h2/g)?.length).toBe(8);
     expect(markup.match(/aria-labelledby="cust-[a-z-]+"/g)?.length).toBe(7);
   });
 

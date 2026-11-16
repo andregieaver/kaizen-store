@@ -18,6 +18,24 @@ export const reportsEn = {
     marketing: { title: "Marketing", description: "What it costs to win a customer, which channels pay back, and how much of your business depends on discounts." },
   },
   customers: {
+    /** Round 28 (D701): the page on a phone. */
+    phone: {
+      open: "Open",
+      close: "Close",
+      allNew: "customers, all new",
+      returning: "customers, {n} returning",
+      ordersAYear: "orders each a year",
+      spentEach: "spent each so far",
+      nvrSub: "{new} new · {returning} returning",
+      repeatSub: "{rate} within {days} days",
+      tooSoon: "Too soon: nobody has been here {days} days",
+      worthSub: "{money} over {years} years, predicted",
+      notYet: "Not enough orders yet",
+      groupsSub: "{n} groups",
+      groupsFew: "From {min} customers · {have} so far",
+      cohortsSub: { one: "{n} month of customers so far", many: "{n} months of customers" },
+      allTop: { one: "All {n} customer", many: "All {n} customers" },
+    },
     segments: {
       VIP: { name: "VIP", meaning: "Bought recently, buy often and have spent the most.", action: "Thank them. Give them early access to new products or a small gift; there is no need to discount for them." },
       Loyal: { name: "Loyal", meaning: "Buy often and have ordered lately.", action: "Keep them happy: ask for a review, or reward them with bonus credit." },

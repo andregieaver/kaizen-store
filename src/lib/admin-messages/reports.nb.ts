@@ -12,6 +12,23 @@ export const reportsNb: ReportsMessages = {
     marketing: { title: "Markedsføring", description: "Hva det koster å vinne en kunde, hvilke kanaler som lønner seg, og hvor mye av virksomheten som avhenger av rabatter." },
   },
   customers: {
+    phone: {
+      open: "Åpne",
+      close: "Lukk",
+      allNew: "kunder, alle nye",
+      returning: "kunder, {n} tilbakevendende",
+      ordersAYear: "ordrer hver i året",
+      spentEach: "brukt hver så langt",
+      nvrSub: "{new} nye · {returning} tilbakevendende",
+      repeatSub: "{rate} innen {days} dager",
+      tooSoon: "For tidlig: ingen har vært kunde i {days} dager",
+      worthSub: "{money} over {years} år, anslått",
+      notYet: "Ikke nok ordrer ennå",
+      groupsSub: "{n} grupper",
+      groupsFew: "Fra {min} kunder · {have} så langt",
+      cohortsSub: { one: "{n} måned med kunder så langt", many: "{n} måneder med kunder" },
+      allTop: { one: "Alle {n} kunde", many: "Alle {n} kunder" },
+    },
     segments: {
       VIP: { name: "VIP", meaning: "Har kjøpt nylig, kjøper ofte og har handlet for mest.", action: "Takk dem. Gi dem tidlig tilgang til nye produkter eller en liten gave; de trenger ingen rabatt." },
       Loyal: { name: "Lojale", meaning: "Kjøper ofte og har bestilt nylig.", action: "Hold dem fornøyde: be om en anmeldelse, eller belønn dem med bonuspoeng." },

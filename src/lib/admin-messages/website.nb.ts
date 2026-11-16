@@ -151,6 +151,8 @@ export const websiteNb: WebsiteMessages = {
     categories: "Kategorier og stikkord",
     createAi: "Lag med KI",
     cards: {
+      find: "Finn en side",
+      noneFound: "Ingen side passer.",
       live: { one: "{n} side er publisert.", many: "{n} sider er publisert." },
       noneLive: "Ingen side er publisert ennå.",
       opensOn: " Butikken åpner på {page}.",
