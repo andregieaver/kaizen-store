@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { allowanceSeconds, cronHealth, jobsNeedingLook, type CronJobRow } from "./cron-health";
+import { allowanceSeconds, cronHealth, cronHeartbeat, jobsNeedingLook, type CronJobRow } from "./cron-health";
 
 const now = new Date("2026-10-24T12:00:00Z");
 const ago = (seconds: number) => new Date(now.getTime() - seconds * 1000).toISOString();
@@ -47,5 +47,18 @@ describe("cron job health", () => {
       ["late-b", "late"],
       ["late-a", "late"],
     ]);
+  });
+});
+
+describe("the outside heartbeat (F3, D672)", () => {
+  it("beats while every scheduled route keeps running, whatever a dispatcher job does, and not with no route at all", () => {
+    const routes = [row({ job: "route.cart-reminders", everySeconds: 300 }), row({ job: "route.autopilot", everySeconds: 60 })];
+    expect(cronHeartbeat(routes, now)).toEqual({ ok: true, routes: 2, lateRoutes: 0, lateJobs: 0, failingJobs: 0 });
+    // A dispatcher job late and another failing: counted, still alive.
+    const jobs = [...routes, row({ job: "dispatcher.carts", lastFinishedAt: ago(3600) }), row({ job: "dispatcher.plans", failures: 3 })];
+    expect(cronHeartbeat(jobs, now)).toMatchObject({ ok: true, lateJobs: 1, failingJobs: 1 });
+    // The dispatcher's route quiet for twenty minutes: the scheduler is down.
+    expect(cronHeartbeat([row({ job: "route.cart-reminders", everySeconds: 300, lastFinishedAt: ago(1200) }), routes[1]], now)).toMatchObject({ ok: false, lateRoutes: 1 });
+    expect(cronHeartbeat([], now)).toMatchObject({ ok: false, routes: 0 });
   });
 });

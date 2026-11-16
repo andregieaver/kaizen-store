@@ -379,7 +379,7 @@ export const staffEmailsEn = {
     button: "Open the store's autopilot",
   },
   /** A push notification of a new order (D361): its number and total only. */
-  push: { newOrderTitle: "New order {number}", newOrderBody: "{total} · {store}", quoteTitle: "Quote requested {number}", quoteBody: "{store}", activityTitle: "Due now: {title}", activityBody: "{store}", decisionTitle: "Waiting for your yes", decisionBody: "{summary} · {store}" },
+  push: { newOrderTitle: "New order {number}", newOrderBody: "{total} · {store}", quoteTitle: "Quote requested {number}", quoteBody: "{store}", activityTitle: "Due now: {title}", activityBody: "{store}", decisionTitle: "Waiting for your yes", decisionBody: "{summary} · {store}", stallTitle: "Challenge store {store} needs a look" },
 };
 
 export type StaffEmailsMessages = Widen<typeof staffEmailsEn>;

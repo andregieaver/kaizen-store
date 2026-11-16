@@ -278,7 +278,9 @@ stay in the standing document's *What comes next*.
       sends somewhere other than this site (the `webhooks` drill's check, so it runs on the probe's schedule) and on silence: two or
       more payments taken in six hours with no Stripe event received in them (`stripeSilent()`, `src/lib/status.ts`). Two failed checks
       email the platform admins, as before. Left, the owner's: an outside probe (an EU uptime monitor on `/api/health` and `/status`),
-      since the status page is checked from inside its own functions.
+      since the status page is checked from inside its own functions. Since 16 November 2026 (D672, `docs/100-day-challenge.md` F3) the
+      probe has an address of its own for the scheduler: `/api/health/cron` answers 503 when a scheduled route has gone quiet; the
+      monitor itself is still the owner's to set up.
 - [x] **CODE-03 (8)** The HUF money test that fails outside CI. Done 30 October 2026: it was the runtime, not the test. ICU 77 (Node
       22.22) shows HUF with two decimals where CI's showed none, so a price looked different by server; `formatMoney()` fixes whole forints
       (`DISPLAY_DIGITS`). The same data made DAC7's `decimalAmount()` print HUF's hundredths as forints on the older runtime, and the price
