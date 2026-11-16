@@ -34,6 +34,8 @@ reproduced before they are reported) then **Fix** (each finding with a regressio
 updated, then a second agent tries to show each raised row is still short, then `pnpm parity:write` once that script
 exists).
 
+A spec is at most 30,000 characters; each later agent reads its sections 1 to 5 and the part for its own area.
+
 The run **stops after the Spec** and returns `{ stopped: true, reason }` when the spec finds an owner decision
 (plan section 5, bucket C) or a missing agreement that blocks the work. Decide, then start again (the spec file stays; the new run's Spec agent
 reads and updates it).
