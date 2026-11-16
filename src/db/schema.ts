@@ -1862,6 +1862,8 @@ export const platformSettings = commerce.table(
     saleFeeBps: integer("sale_fee_bps").notNull().default(0),
     /** Buying domains is open to every store (D315 decision 9: once moving away is built); until then only where `stores.domain_buying` is on. */
     domainsOpen: boolean("domains_open").notNull().default(false),
+    /** Recordings of visits (D656) are open to every store; until then only Kaizena Flow's own house store may record. */
+    recordingsOpen: boolean("recordings_open").notNull().default(false),
     /** Deals and pipelines (S2, D464) are offered to every store; until then only where `stores.sales_pilot` is on. */
     salesOpen: boolean("sales_open").notNull().default(false),
     /**
@@ -13784,6 +13786,55 @@ export const clickCells = commerce.table(
     check("click_cells_tag", sql`${t.tag} = '' or ${t.tag} ~ '^[0-9a-f-]{36}:[a-d]$'`),
     check("click_cells_anchor", sql`char_length(${t.anchor}) between 1 and 60`),
     check("click_cells_cell", sql`${t.cx} between 0 and 9 and ${t.cy} between 0 and 9`),
+  ],
+);
+
+/**
+ * A recording of one browser tab's visit (D656, `docs/heatmaps-and-recordings.md` 6.4): under the random id the browser made, with
+ * coarse times (floored to 10 minutes) and sizes (rounded to 10 px), never a visitor, address or exact moment. Its segments are files in
+ * the private `recordings` bucket (`{storeId}/{id}/{seq}.gz`, or `all.gz` once sealed); the row says which exist. Deleted with its files
+ * after 30 days, or at once by the visitor's browser.
+ */
+export const recordings = commerce.table(
+  "recordings",
+  {
+    id: uuid("id").primaryKey(),
+    storeId: storeId().references(() => stores.id, { onDelete: "cascade" }),
+    day: date("day", { mode: "string" }).notNull(),
+    startedAt: timestamp("started_at", { withTimezone: true }).notNull(),
+    lastAt: timestamp("last_at", { withTimezone: true }).notNull(),
+    durationMs: integer("duration_ms").notNull().default(0),
+    device: text("device").notNull(),
+    width: smallint("width"),
+    height: smallint("height"),
+    entryPage: text("entry_page").notNull(),
+    pages: text("pages").array().notNull().default(sql`'{}'::text[]`),
+    clicks: integer("clicks").notNull().default(0),
+    deadClicks: integer("dead_clicks").notNull().default(0),
+    rageClicks: integer("rage_clicks").notNull().default(0),
+    tags: text("tags").array().notNull().default(sql`'{}'::text[]`),
+    mask: text("mask").notNull(),
+    seqs: smallint("seqs").array().notNull().default(sql`'{}'::smallint[]`),
+    segments: smallint("segments").notNull().default(0),
+    bytes: integer("bytes").notNull().default(0),
+    sealed: boolean("sealed").notNull().default(false),
+    sealTries: smallint("seal_tries").notNull().default(0),
+    viewedAt: timestamp("viewed_at", { withTimezone: true }),
+  },
+  (t) => [
+    index("recordings_store_started_idx").on(t.storeId, t.startedAt.desc()),
+    index("recordings_started_idx").on(t.startedAt),
+    index("recordings_unsealed_idx").on(t.lastAt).where(sql`not ${t.sealed}`),
+    check("recordings_duration", sql`${t.durationMs} between 0 and 3600000`),
+    check("recordings_device", sql`${t.device} in ('mobile', 'tablet', 'desktop')`),
+    check("recordings_entry_page", sql`char_length(${t.entryPage}) between 1 and 300`),
+    check("recordings_pages", sql`cardinality(${t.pages}) <= 50`),
+    check("recordings_tags", sql`cardinality(${t.tags}) <= 5`),
+    check("recordings_mask", sql`${t.mask} in ('balanced', 'strict')`),
+    check("recordings_seqs", sql`cardinality(${t.seqs}) <= 200`),
+    check("recordings_segments", sql`${t.segments} between 0 and 200`),
+    check("recordings_bytes", sql`${t.bytes} between 0 and 4194304`),
+    check("recordings_counts", sql`${t.clicks} >= 0 and ${t.deadClicks} >= 0 and ${t.rageClicks} >= 0`),
   ],
 );
 

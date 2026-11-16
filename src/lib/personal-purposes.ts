@@ -107,6 +107,13 @@ export const PURPOSES = {
     controller: "store",
     review: true,
   },
+  recordings: {
+    what: "Watching recordings of visits to see where shoppers struggle, for visitors who allowed it.",
+    basis: "a",
+    why: "A recording reads what a visitor does on the page, so the store's cookie notice asks for consent first (ePrivacy Directive Art. 5(3), EDPB guidelines 2/2023, the CNIL's recommendation on session replay); withdrawing it deletes the browser's recordings.",
+    controller: "store",
+    review: true,
+  },
   security: {
     what: "Keeping sign-ins, payments and the service safe: codes, sessions, retries and the record of who did what.",
     basis: "f",
@@ -256,6 +263,8 @@ export const PURPOSE_OF: Readonly<Record<string, PurposeKey>> = {
   form_submissions: "support",
   consents: "consent_records",
   visits: "analytics",
+  recordings: "recordings",
+  "storage:recordings": "recordings",
   product_views: "analytics",
   experiment_exposures: "analytics",
   experiment_events: "analytics",

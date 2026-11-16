@@ -6,7 +6,7 @@
     "dev": "next dev",
     "build": "node scripts/next-build.mjs",
     "start": "next start",
-    "lint": "eslint --max-warnings 0",
+    "lint": "eslint --max-warnings 0 --cache --cache-strategy content --cache-location node_modules/.cache/eslint/",
     "typecheck": "next typegen && tsc --noEmit",
     "test": "vitest run",
     "test:smoke": "vitest run src/lib/money.test.ts src/lib/cart.test.ts src/lib/checkout.test.ts src/lib/discounts.test.ts src/lib/vat.test.ts src/lib/vat-treatment.test.ts",

@@ -315,6 +315,7 @@ export const privacyEn = {
       content_report_senders: "Senders of notices of illegal content",
       carrier_labels: "Shipping labels kept from a carrier",
       sandboxes: "The page builder's sandboxes",
+      recordings: "Recordings of visits",
     },
     bases: {
       read: "Read at the source",

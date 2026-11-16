@@ -52,6 +52,13 @@ jobs:
           node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+      # Lint's cache (src/lib/ci-once.scan.test.ts): results are kept by each file's content, so a fresh checkout reuses them.
+      - uses: actions/cache@v4
+        with:
+          path: node_modules/.cache/eslint
+          key: eslint-${{ hashFiles('pnpm-lock.yaml', 'eslint.config.mjs') }}-${{ github.sha }}
+          restore-keys: |
+            eslint-${{ hashFiles('pnpm-lock.yaml', 'eslint.config.mjs') }}-
       - run: pnpm lint
       - run: pnpm typecheck
       - run: pnpm test
@@ -106,7 +113,9 @@ jobs:
           node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+      # It reads only the repository, so one shard is enough.
       - name: Migrations match the schema
+        if: matrix.shard == 1
         run: pnpm db:check
       - name: Create the database with the demo catalogue
         run: node scripts/db-setup.mjs --seed
@@ -139,6 +148,8 @@ jobs:
       DATABASE_URL: postgres://postgres:postgres@postgres:5432/postgres
       # The runner's clock zone, which the tests have always run in (the image was built with another as a build argument).
       TZ: UTC
+      # The build skips its own type check: `static` and the quick gate check the same project (src/lib/ci-once.scan.test.ts).
+      SKIP_BUILD_TYPECHECK: "1"
     steps:
       - uses: actions/checkout@v7
       - uses: pnpm/action-setup@v6
@@ -198,6 +209,8 @@ jobs:
       NEXT_PUBLIC_THEMES_HOST: themes.localhost:3000
       # The docs on their own host (D442), likewise a name under the store domain that must never be taken for a store's.
       NEXT_PUBLIC_DOCS_HOST: docs.localhost:3000
+      # The build skips its own type check: `static` and the quick gate check the same project (src/lib/ci-once.scan.test.ts).
+      SKIP_BUILD_TYPECHECK: "1"
     steps:
       - uses: actions/checkout@v7
       - uses: pnpm/action-setup@v6
@@ -241,6 +254,8 @@ jobs:
       NEXT_PUBLIC_SUPABASE_URL: http://127.0.0.1:3912
       NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: e2e-publishable-key
       E2E_SIGNED_IN: "1"
+      # The build skips its own type check: `static` and the quick gate check the same project (src/lib/ci-once.scan.test.ts).
+      SKIP_BUILD_TYPECHECK: "1"
     steps:
       - uses: actions/checkout@v7
       - uses: pnpm/action-setup@v6
@@ -270,8 +285,9 @@ jobs:
   #
   #   no pending migration:  `pending` reads the ledger, runs the quick gate (lint, the type check and the money
   #                          tests, D526: minutes, in this same job so there is no second runner to wait for)
-  #                          and then asks for the deploy. The full checks run beside it and report; they do
-  #                          not hold it back
+  #                          and then asks for the deploy (a push that changes only tests is checked and not
+  #                          deployed, scripts/deploy-needed.mjs). The full checks run beside it and report; they
+  #                          do not hold it back
   #   pending migration:     `release` waits for every check (static, integration, e2e, hosts, signed-in and
   #                          audit), applies the files, then deploys, so new code never meets the old schema
   #                          and a failed check or migration deploys nothing
@@ -292,6 +308,13 @@ jobs:
           node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+      # Lint's cache (src/lib/ci-once.scan.test.ts): results are kept by each file's content, so a fresh checkout reuses them.
+      - uses: actions/cache@v4
+        with:
+          path: node_modules/.cache/eslint
+          key: eslint-${{ hashFiles('pnpm-lock.yaml', 'eslint.config.mjs') }}-${{ github.sha }}
+          restore-keys: |
+            eslint-${{ hashFiles('pnpm-lock.yaml', 'eslint.config.mjs') }}-
       - name: Which migrations has production not had?
         id: status
         run: node scripts/db-migrate.mjs --status
@@ -319,8 +342,16 @@ jobs:
           git fetch --depth=1 origin main
           git checkout FETCH_HEAD -- supabase/migrations
           node scripts/db-migrate.mjs --status
-      - name: No migration to apply and the quick gate passed, so ask Vercel to deploy the head of main now
+      # A push that changes only tests cannot change the deployed app: it is checked above and not deployed (bloat review
+      # step 0.38). Decided against what production runs, so a tests-only push after a failed deploy still deploys.
+      - name: Does this push change what is deployed?
+        id: changed
         if: steps.status.outputs.pending == 'false' && vars.DEPLOY_VIA_CI == 'true' && steps.head.outputs.pending == 'false'
+        env:
+          PRODUCTION_URL: ${{ vars.PRODUCTION_URL || 'https://kaizenaflow.com' }}
+        run: node scripts/deploy-needed.mjs
+      - name: No migration to apply and the quick gate passed, so ask Vercel to deploy the head of main now
+        if: steps.status.outputs.pending == 'false' && vars.DEPLOY_VIA_CI == 'true' && steps.head.outputs.pending == 'false' && steps.changed.outputs.deploy != 'false'
         env:
           VERCEL_DEPLOY_HOOK_URL: ${{ secrets.VERCEL_DEPLOY_HOOK_URL }}
         run: |
@@ -329,7 +360,7 @@ jobs:
           curl --fail --silent --show-error --max-time 30 --retry 6 --retry-max-time 300 -X POST "$VERCEL_DEPLOY_HOOK_URL"
           echo
       - name: Wait until production runs this commit
-        if: steps.status.outputs.pending == 'false' && vars.DEPLOY_VIA_CI == 'true' && steps.head.outputs.pending == 'false'
+        if: steps.status.outputs.pending == 'false' && vars.DEPLOY_VIA_CI == 'true' && steps.head.outputs.pending == 'false' && steps.changed.outputs.deploy != 'false'
         env:
           PRODUCTION_URL: ${{ vars.PRODUCTION_URL || 'https://kaizenaflow.com' }}
           SMOKE_PAGES: ${{ vars.SMOKE_PAGES || '/,/s/demo/no' }}

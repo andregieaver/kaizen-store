@@ -27,7 +27,7 @@ What held the memory, measured without the cap:
 ## What changed
 
 - `next.config.ts` sets three things on Vercel only (`ON_VERCEL`):
-  - no type check: CI's `static` job runs `pnpm typecheck` on every push, and CI's builds still check;
+  - no type check: CI's `static` job and the quick gate run `pnpm typecheck` on every push. Since 16 November 2026 (bloat review step 0.38) CI's three browser builds skip it too (`SKIP_BUILD_TYPECHECK=1`): one push checked the same commit five times, 183 s each;
   - no Turbopack build cache;
   - one worker.
 - `pnpm build` is `scripts/next-build.mjs`: `next build` with a 7 GB heap everywhere except Vercel.

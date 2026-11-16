@@ -136,6 +136,15 @@ check (D378), so this is the only type check between a push and production. A fa
 production stays on the commit it has. The full checks (`static`, `integration`, `e2e`, `hosts`, `signed-in`) still run beside
 the deploy and report after it. A push with a migration waits for every one of them, `hosts` and `signed-in` included.
 
+**A push of tests alone is not deployed (bloat review step 0.38).** After the gate and the head check, `pending` runs
+`scripts/deploy-needed.mjs`, which reads the commit production reports at `/api/health`, lists the files that differ between it
+and the pushed commit, and decides `deploy=false` only when there is at least one and every one is a test: `*.test.ts(x)`,
+`*.spec.ts`, `e2e/`, `e2e-live/`, `test/` or `src/test/` (Vitest's setup files, which no deployed module imports). Scripts, the
+workflow, `package.json`, configs, `supabase/` and `content/` are never tests. Any doubt means deploy: production's commit unknown,
+the files not listable, or the same commit. The deploy and the wait steps are then skipped, and the next code push deploys the
+tests-only commit with it. Because it compares with what production runs, a tests-only push after a failed deploy still deploys.
+A push with a migration always deploys through `release`, which this does not touch.
+
 **The head is checked before every deploy (D530).** The hook builds the head of `main`, which may be newer than the commit whose
 run calls it. Just before the call, `pending` and `release` fetch the head and read the ledger against its migration files; a
 head with a migration production has not had is not deployed by this run, and waits for its own run's `release`.

@@ -111,7 +111,7 @@ commit as the fix.
 | 0.35 | Point Tailwind at code only | AS-7, CS-6 | S | cheap | 0.34 | Done | 16 Nov: Done (e0faba3d; D667). Live at 3819f6bc; the built CSS lost 11 class names (2,329 to 2,318: the ten expected and `shrink`, a word in test names only), none appeared. |
 | 0.36 | Delete what nothing uses | DD-3, DD-8, TX-11, DP-8, GAP-code-s1 | M | strong |  | Open | |
 | 0.37 | Remove the old admin redirects and the bookings and deliveries twin switch | DD-11 | M | review | 0.36 | Open | |
-| 0.38 | Run each check once in CI | TC-1, TC-12, GAP-build-s5, TC-14 | S | review |  | Open | |
+| 0.38 | Run each check once in CI | TC-1, TC-12, GAP-build-s5, TC-14 | S | review |  | In progress | 16 Nov, local: browser builds skip their type check; schema check in shard 1; lint cache (second run 2.4 s, first 4 min 8 s, cache 2.6 MB); `scripts/deploy-needed.mjs` (tests-only push not deployed). Done after the deploy and the trial push. |
 | 0.39 | Let a test load only what it uses | TC-3, TC-13, DD-13, DD-10 | M | review | 0.38 | Open | |
 | 0.40 | Wrap the long lines of the rules and every living doc, and keep history out of searches | DC-4, DC-7, DC-13, GAP-rules-2 | S | cheap | 0.1, 0.43 | Done | 16 Nov: Done (430fd72c, 5d94f8b9, 49d1dea9; D676). 585 docs wrapped, no word changed; 0 prose lines over 500 that can be wrapped; 27 one-code-span lines and 715 table rows left. rg --files: docs 927 to 905, supabase 841 to 51. |
 | 0.41 | Make the rules say what is so, and claim a decision's number on main before citing it | DC-5, DC-8, DC-6, DC-12, GAP-rules-s3, DC-9 | M | review | 0.43, 0.40, 0.1 | Open | |

@@ -82,6 +82,8 @@ const entry = (
 const LAW = "Kept because bookkeeping law requires it until the retention period ends, then the personal fields are replaced by a marker; used for nothing else.";
 const OWN = "Not a shopper's data: this is the store's own, a host's, a staff member's or the platform's, which is a different subject (docs/wave-1g-gdpr.md section 7).";
 const PSEUDO = "Kept under a random browser or tab id and cannot be tied to a person; it has its own retention.";
+/** Recordings of visits (D656): pseudonymous, never found from a person, deleted after 30 days or by the visitor's own browser. */
+const RECORDING = "A recording of one browser tab's visit, under a random id with coarse times. It holds no name or contact detail, but could be linked to a person by its context, so it is personal data; it cannot be found from a person (GDPR Art. 11) and is deleted after 30 days, or at once by the visitor's browser.";
 const KEEP_ORDER = "No personal field of its own; it is linked to a person only through the order, and follows the order's restriction and anonymisation.";
 
 export const PERSONAL_DATA: PersonalEntry[] = [
@@ -203,6 +205,8 @@ export const PERSONAL_DATA: PersonalEntry[] = [
   entry("form_submissions", "shopper", via("email", "email", "visitor"), ["email", "visitor", "payload"], "forms", "delete", "Sign-ups and messages sent by this address are deleted.", { also: ["consents"], until: "form_submissions" }),
   entry("consents", "pseudonymous", via("visitor", "visitor"), ["visitor", "choices"], null, "none", "Cookie consent is kept under a random browser id and cannot be tied to a person; said in the file's notIncluded.", { until: "consents" }),
   entry("visits", "pseudonymous", via("visitor", "visitor"), ["visitor"], null, "none", PSEUDO, { until: "visits" }),
+  entry("recordings", "pseudonymous", none, ["entry_page", "pages", "width", "height", "tags"], null, "none", RECORDING, { until: "recordings" }),
+  entry("storage:recordings", "pseudonymous", none, ["files"], null, "none", RECORDING, { until: "recordings" }),
   entry("product_views", "pseudonymous", via("none"), [], null, "none", "Counts of views per product and day; no person.", { until: "visits" }),
   entry("experiment_exposures", "pseudonymous", via("visitor", "visitor"), ["visitor"], null, "none", PSEUDO),
   entry("experiment_events", "pseudonymous", via("visitor", "visitor"), ["visitor"], null, "none", PSEUDO),

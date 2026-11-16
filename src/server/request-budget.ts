@@ -103,6 +103,10 @@ export const BUDGETS = {
   search_ai: { window: "minute", visitor: 20, store: 600 },
   // The same calls over an hour: one visitor's steady stream of new searches, and the store's, beside the monthly tokens for search.
   search_ai_hour: { window: "hour", visitor: 300, store: 3000 },
+  // A recording's segments (D656): one tab sends a few a minute; a failed count refuses (`FAIL_CLOSED`), since each is a stored file.
+  rec: { window: "minute", visitor: 20, store: 2000 },
+  // A visitor's browser asking for its recordings to be deleted (D656): rare, and never refused for want of consent.
+  forget: { window: "minute", visitor: 10, store: 600 },
 } as const satisfies Record<string, { window: BudgetWindow; visitor: number; store: number }>;
 
 export type BudgetEndpoint = keyof typeof BUDGETS;
@@ -113,7 +117,7 @@ export type BudgetEndpoint = keyof typeof BUDGETS;
  * unmetered (D443: each search may embed its words; D444: each message to the guide asks its text model), nor the sandbox a way to copy
  * stores or call the AI unmetered (D457).
  */
-export const FAIL_CLOSED: ReadonlySet<BudgetEndpoint> = new Set<BudgetEndpoint>(["unlock", "report", "oauth_register", "oauth_fetch", "docs_search", "docs_guide", "sandbox", "sandbox_ai"]);
+export const FAIL_CLOSED: ReadonlySet<BudgetEndpoint> = new Set<BudgetEndpoint>(["unlock", "report", "oauth_register", "oauth_fetch", "docs_search", "docs_guide", "sandbox", "sandbox_ai", "rec"]);
 
 /** The bucket names of an endpoint, for the store and a visitor. */
 export function budgetBuckets(endpoint: BudgetEndpoint, visitor: string): { store: string; visitor: string } {

@@ -27,3 +27,14 @@ A review's evidence tables go in a folder named evidence, or stay out of the rep
 A prose line of Markdown under docs is at most 500 characters: node scripts/wrap-docs.mjs wraps, and node scripts/wrap-docs.mjs
 --check counts. Table rows over 500 characters are left and may only fall (715 in 99 files on 16 November 2026).
 There are 0 prose lines over 500 that can be wrapped; 27 unbreakable lines (one code span) are left as they are.
+
+## Each check runs once in CI (step 0.38)
+
+On Vercel the build skips the type check and runs with one worker and no Turbopack cache, to fit its 8 GB machine (D378,
+`docs/build-memory.md`); CI's browser jobs skip it too (`SKIP_BUILD_TYPECHECK`), since `static` and the quick gate check every
+push (`src/lib/ci-once.scan.test.ts`).
+
+`pnpm lint` keeps a cache in node_modules/.cache/eslint (delete the folder to lint from nothing); CI restores it in `static` and
+`pending`. It stays right only while no lint rule reads more than one file (`src/lib/ci-once.scan.test.ts`).
+
+A push of tests alone (`*.test.ts`, `e2e/**`, `src/test/**`) is checked but not deployed (`scripts/deploy-needed.mjs`).

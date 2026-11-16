@@ -1,6 +1,6 @@
 {
-  "id": "adfc47c8-a027-4a72-b57b-246872b14a88",
-  "prevId": "de01ba97-657e-4c00-acda-1ff4a723a2d7",
+  "id": "f8847602-682b-4cc8-bbb6-c962570f5b3e",
+  "prevId": "bd691a57-ae0e-4da0-8796-8f02ef2659c3",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -40722,7 +40722,7 @@
         },
         "limit_overrides_known": {
           "name": "limit_overrides_known",
-          "value": "\"commerce\".\"limit_overrides\".\"key\" in ('storage_bytes', 'products', 'staff_seats', 'custom_domains', 'marketing_emails_month', 'ai_cost_month_micros', 'requests_month', 'egress_bytes_month', 'stores_owned')"
+          "value": "\"commerce\".\"limit_overrides\".\"key\" in ('storage_bytes', 'products', 'staff_seats', 'custom_domains', 'marketing_emails_month', 'ai_cost_month_micros', 'requests_month', 'egress_bytes_month', 'recordings_month', 'stores_owned')"
         }
       },
       "isRLSEnabled": false
@@ -53479,7 +53479,7 @@
         },
         "plan_limits_known": {
           "name": "plan_limits_known",
-          "value": "\"commerce\".\"plan_limits\".\"key\" in ('storage_bytes', 'products', 'staff_seats', 'custom_domains', 'marketing_emails_month', 'ai_cost_month_micros', 'requests_month', 'egress_bytes_month', 'stores_owned')"
+          "value": "\"commerce\".\"plan_limits\".\"key\" in ('storage_bytes', 'products', 'staff_seats', 'custom_domains', 'marketing_emails_month', 'ai_cost_month_micros', 'requests_month', 'egress_bytes_month', 'recordings_month', 'stores_owned')"
         }
       },
       "isRLSEnabled": false
@@ -55674,6 +55674,13 @@
         },
         "domains_open": {
           "name": "domains_open",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "recordings_open": {
+          "name": "recordings_open",
           "type": "boolean",
           "primaryKey": false,
           "notNull": true,
@@ -63267,6 +63274,271 @@
       },
       "isRLSEnabled": false
     },
+    "commerce.recordings": {
+      "name": "recordings",
+      "schema": "commerce",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "store_id": {
+          "name": "store_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "day": {
+          "name": "day",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "started_at": {
+          "name": "started_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "last_at": {
+          "name": "last_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "duration_ms": {
+          "name": "duration_ms",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "device": {
+          "name": "device",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "width": {
+          "name": "width",
+          "type": "smallint",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "height": {
+          "name": "height",
+          "type": "smallint",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "entry_page": {
+          "name": "entry_page",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "pages": {
+          "name": "pages",
+          "type": "text[]",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'{}'::text[]"
+        },
+        "clicks": {
+          "name": "clicks",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "dead_clicks": {
+          "name": "dead_clicks",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "rage_clicks": {
+          "name": "rage_clicks",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "tags": {
+          "name": "tags",
+          "type": "text[]",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'{}'::text[]"
+        },
+        "mask": {
+          "name": "mask",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "seqs": {
+          "name": "seqs",
+          "type": "smallint[]",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'{}'::smallint[]"
+        },
+        "segments": {
+          "name": "segments",
+          "type": "smallint",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "bytes": {
+          "name": "bytes",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "sealed": {
+          "name": "sealed",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "seal_tries": {
+          "name": "seal_tries",
+          "type": "smallint",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "viewed_at": {
+          "name": "viewed_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {
+        "recordings_store_started_idx": {
+          "name": "recordings_store_started_idx",
+          "columns": [
+            {
+              "expression": "store_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "started_at",
+              "isExpression": false,
+              "asc": false,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "recordings_started_idx": {
+          "name": "recordings_started_idx",
+          "columns": [
+            {
+              "expression": "started_at",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "recordings_unsealed_idx": {
+          "name": "recordings_unsealed_idx",
+          "columns": [
+            {
+              "expression": "last_at",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "where": "not \"commerce\".\"recordings\".\"sealed\"",
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "recordings_store_id_stores_id_fk": {
+          "name": "recordings_store_id_stores_id_fk",
+          "tableFrom": "recordings",
+          "tableTo": "stores",
+          "schemaTo": "commerce",
+          "columnsFrom": [
+            "store_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "recordings_duration": {
+          "name": "recordings_duration",
+          "value": "\"commerce\".\"recordings\".\"duration_ms\" between 0 and 3600000"
+        },
+        "recordings_device": {
+          "name": "recordings_device",
+          "value": "\"commerce\".\"recordings\".\"device\" in ('mobile', 'tablet', 'desktop')"
+        },
+        "recordings_entry_page": {
+          "name": "recordings_entry_page",
+          "value": "char_length(\"commerce\".\"recordings\".\"entry_page\") between 1 and 300"
+        },
+        "recordings_pages": {
+          "name": "recordings_pages",
+          "value": "cardinality(\"commerce\".\"recordings\".\"pages\") <= 50"
+        },
+        "recordings_tags": {
+          "name": "recordings_tags",
+          "value": "cardinality(\"commerce\".\"recordings\".\"tags\") <= 5"
+        },
+        "recordings_mask": {
+          "name": "recordings_mask",
+          "value": "\"commerce\".\"recordings\".\"mask\" in ('balanced', 'strict')"
+        },
+        "recordings_seqs": {
+          "name": "recordings_seqs",
+          "value": "cardinality(\"commerce\".\"recordings\".\"seqs\") <= 200"
+        },
+        "recordings_segments": {
+          "name": "recordings_segments",
+          "value": "\"commerce\".\"recordings\".\"segments\" between 0 and 200"
+        },
+        "recordings_bytes": {
+          "name": "recordings_bytes",
+          "value": "\"commerce\".\"recordings\".\"bytes\" between 0 and 4194304"
+        },
+        "recordings_counts": {
+          "name": "recordings_counts",
+          "value": "\"commerce\".\"recordings\".\"clicks\" >= 0 and \"commerce\".\"recordings\".\"dead_clicks\" >= 0 and \"commerce\".\"recordings\".\"rage_clicks\" >= 0"
+        }
+      },
+      "isRLSEnabled": false
+    },
     "commerce.recurring_costs": {
       "name": "recurring_costs",
       "schema": "commerce",
@@ -65886,7 +66158,7 @@
       "checkConstraints": {
         "retention_rules_kind": {
           "name": "retention_rules_kind",
-          "value": "\"commerce\".\"retention_rules\".\"kind\" in ('bookkeeping', 'host_bookkeeping', 'unpaid_orders', 'email_bodies', 'security_emails', 'carts', 'delivery_quotes', 'customer_codes', 'customer_sessions', 'webhook_payloads', 'consents', 'privacy_request_contact', 'privacy_requests', 'search_queries', 'visits', 'audit_log', 'form_submissions', 'integration_deliveries', 'abandoned_checkouts', 'recommendation_events', 'ai_usage', 'support_transcripts', 'support_records', 'blog_comments', 'assistant_conversations', 'access_requests', 'unconfirmed_signups', 'content_report_senders', 'carrier_labels', 'sandboxes')"
+          "value": "\"commerce\".\"retention_rules\".\"kind\" in ('bookkeeping', 'host_bookkeeping', 'unpaid_orders', 'email_bodies', 'security_emails', 'carts', 'delivery_quotes', 'customer_codes', 'customer_sessions', 'webhook_payloads', 'consents', 'privacy_request_contact', 'privacy_requests', 'search_queries', 'visits', 'audit_log', 'form_submissions', 'integration_deliveries', 'abandoned_checkouts', 'recommendation_events', 'ai_usage', 'support_transcripts', 'support_records', 'blog_comments', 'assistant_conversations', 'access_requests', 'unconfirmed_signups', 'content_report_senders', 'carrier_labels', 'sandboxes', 'recordings')"
         },
         "retention_rules_value": {
           "name": "retention_rules_value",
@@ -79850,7 +80122,7 @@
         },
         "store_usage_daily_metric": {
           "name": "store_usage_daily_metric",
-          "value": "\"commerce\".\"store_usage_daily\".\"metric\" in ('storage_bytes', 'products', 'staff_seats', 'custom_domains', 'requests', 'egress_bytes', 'server_errors', 'emails', 'marketing_emails', 'ai_cost_micros')"
+          "value": "\"commerce\".\"store_usage_daily\".\"metric\" in ('storage_bytes', 'products', 'staff_seats', 'custom_domains', 'requests', 'egress_bytes', 'server_errors', 'emails', 'marketing_emails', 'ai_cost_micros', 'recordings')"
         }
       },
       "isRLSEnabled": false

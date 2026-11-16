@@ -13,6 +13,7 @@ export const capacityNb: CapacityMessages = {
     emails: "E-poster",
     marketing_emails: "Markedsførings-e-poster",
     ai_cost_micros: "KI",
+    recordings: "Opptak av besøk",
   },
   limits: {
     storage_bytes: "Lagring",
@@ -23,6 +24,7 @@ export const capacityNb: CapacityMessages = {
     ai_cost_month_micros: "KI fra Kaizena Flow i måneden",
     requests_month: "Besøk i måneden",
     egress_bytes_month: "Båndbredde i måneden",
+    recordings_month: "Opptak av besøk i måneden",
     stores_owned: "Butikker per eier",
   },
   units: { gb: "GB", count: "", money: "EUR" },
@@ -52,6 +54,7 @@ export const capacityNb: CapacityMessages = {
     ai_cost_month_micros: "Butikken har brukt den KI-en abonnementet inkluderer denne måneden.",
     requests_month: "",
     egress_bytes_month: "",
+    recordings_month: "Butikken har tatt opp de {limit} besøkene abonnementet gir denne måneden. Opptak starter igjen neste måned, eller velg et abonnement med mer.",
     stores_owned: "Abonnementet ditt tillater {limit} butikker. Velg et abonnement med mer for å legge til en til.",
   },
   owner: {
@@ -74,6 +77,17 @@ export const capacityNb: CapacityMessages = {
     connections: "{n} aktive tilkoblinger",
     size: "{size} totalt",
     drainOff: "Loggstrømmen er ikke koblet til, så besøk måles ikke.",
+  },
+  recordings: {
+    title: "Opptak av besøk",
+    description: "Om alle butikker kan ta opp besøk. Så lenge det er stengt, tar bare Kaizena Flows egen butikk opp; hver butikkeier slår dem fortsatt på for sin butikk, og abonnementets månedsgrense gjelder.",
+    open: "Åpent for alle butikker",
+    closed: "Bare Kaizena Flows egen butikk",
+    openIt: "Åpne for alle butikker",
+    closeIt: "Steng for andre butikker",
+    opened: "Opptak er åpent for alle butikker.",
+    closedNow: "Opptak er stengt for alle butikker unntatt Kaizena Flows egen.",
+    choose: "Velg åpent eller stengt.",
   },
   editor: {
     title: "Grenser",

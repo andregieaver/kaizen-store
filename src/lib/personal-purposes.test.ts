@@ -5,7 +5,8 @@ import { BASIS_TEXT, PURPOSE_OF, PURPOSES, processingRecord, type PurposeKey } f
 
 /**
  * The record of processing (PSI REG-01, GDPR Art. 30(1)(b)): every entry of the personal-data register says what it is processed for, and
- * so on what basis; every purpose is used; consent is the basis only for marketing, and a legal obligation names its law.
+ * so on what basis; every purpose is used; consent is the basis only for marketing and recordings of visits (D656), and a legal obligation
+ * names its law.
  */
 describe("purposes and bases of the personal-data register (PSI REG-01)", () => {
   it("gives every register entry a purpose", () => {
@@ -20,7 +21,7 @@ describe("purposes and bases of the personal-data register (PSI REG-01)", () => 
   });
 
   it("rests on consent only where the law asks for it, and names the law of every obligation", () => {
-    expect(Object.entries(PURPOSES).filter(([, p]) => p.basis === "a").map(([k]) => k)).toEqual(["marketing"]);
+    expect(Object.entries(PURPOSES).filter(([, p]) => p.basis === "a").map(([k]) => k)).toEqual(["marketing", "recordings"]);
     for (const p of Object.values(PURPOSES).filter((p) => p.basis === "c")) expect(p.why).toMatch(/§|Art\.|Directive|Regulation|law/);
   });
 
