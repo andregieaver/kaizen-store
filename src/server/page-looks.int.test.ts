@@ -150,6 +150,27 @@ describe("a look at a page's draft", () => {
   });
 });
 
+describe("a look at an A/B test's version (D148 phase 15)", () => {
+  it("photographs a page test's version by its id, as a page, and never another store's", async () => {
+    const admin = await import("./experiment-admin");
+    const content = { ...newPageContent(), title: "Looks tested", slug: "looks-tested", rows: [] };
+    const saved = await savePage(store.member.account, store.storeId, null, content, { publish: true, type: "page", fonts: async () => ({ ok: true }) });
+    if (!saved.ok) throw new Error(saved.problems.join(" "));
+    const made = await admin.createExperiment(store.member.account, store.storeId, { name: "Looks", pageId: saved.id, goal: "cart" });
+    if (!made.ok) throw new Error(made.problems.join(" "));
+    const version = (await admin.getExperiment(store.storeId, made.id))!.variants.find((v) => v.key === "b")!.pageId!;
+    expect(await looks.findLookPage(store.member.store, version, "page")).toBe(version);
+    // It has no address of its own, so it is found by its id only, and never as an article or by another store.
+    await expect(looks.findLookPage(store.member.store, version, "article")).rejects.toThrow(/No article/);
+    await expect(looks.findLookPage(other.member.store, version, "page")).rejects.toThrow(/No page/);
+    shotsAt.length = 0;
+    const answer = await looks.lookAtPageTool(ctxOf(store), { page: version, type: "page" }, runNow(modelSays([])));
+    expect(answer).toMatchObject({ status: "fine: nothing that blocks" });
+    const url = new URL(shotsAt[0].split(" ")[1]);
+    expect(await looks.lookDraft(version, url.searchParams.get("t") ?? undefined)).toMatchObject({ storeSlug: store.member.store.slug, type: "page" });
+  });
+});
+
 describe("a look at the store", () => {
   it("photographs its home, a product page and the cart at their live addresses", async () => {
     shotsAt.length = 0;

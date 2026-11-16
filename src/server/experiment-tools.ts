@@ -153,6 +153,14 @@ export async function explainResultsTool(ctx: Ctx, { experiment }: OwnerToolInpu
       winner: test.status === "applied" ? (test.variants.find((v) => v.key === test.appliedVariant)?.name ?? "the original") : undefined,
       learned: test.learning ? `In the owner's words: ${test.learning}` : undefined,
     },
+    // Eyes on the versions (phase 15, D310's look): a test of a page lets look_at_page photograph each version by its page id.
+    to_see_each_version:
+      test.page.type === "page"
+        ? {
+            how: "look_at_page with the page id below photographs that version on a phone and a computer and says what blocks, as for any page. It looks at the version's draft, which is what the builder shows; the original's draft can differ from what is live. A look changes nothing.",
+            versions: test.variants.map((v) => ({ version: v.name, page: v.pageId ?? test.page.id })),
+          }
+        : undefined,
     admin: adminLink(store, `/experiments/${test.id}`),
   };
   if (test.status === "draft" || test.status === "scheduled") {

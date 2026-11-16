@@ -193,6 +193,8 @@ describe("the AI manager's A/B test tools (D148)", () => {
       test: { status: "Draft", tests: expect.stringContaining("/om-oss") },
       results: expect.stringContaining("has not started"),
       what_is_left: [expect.stringContaining("start_experiment")],
+      // Each version's page, for look_at_page (phase 15): the original is the page itself.
+      to_see_each_version: { versions: [{ page: aboutId }, { page: expect.not.stringMatching(aboutId) }] },
     });
   });
 
