@@ -5,7 +5,10 @@ import { sql } from "drizzle-orm";
 import { db } from "@/db/client";
 import { targetLabel } from "@/lib/ab-site";
 import { applyChanges, offeredBlocks, partOf } from "@/lib/experiment-tools";
+import { builderEn } from "@/lib/admin-messages/builder.en";
+import { experimentCard, type CardState } from "@/lib/experiment-card";
 import { compareToOriginal, estimateRuntime, normalQuantile } from "@/lib/experiment-results";
+import { differenceLine } from "@/lib/version-difference-words";
 import { GOAL_WORDS, MAX_RUNNING_PER_STORE, STATUS_WORDS, type Goal } from "@/lib/experiments";
 import { findClaims } from "@/lib/claims";
 import { localInstant } from "@/lib/follow-ups";
@@ -29,6 +32,7 @@ import {
   startProblemsOf,
   stopExperiment,
   testablePages,
+  versionDifferences,
   type ExperimentInfo,
 } from "./experiment-admin";
 import { experimentResults } from "./experiment-results";
@@ -103,6 +107,31 @@ export async function listExperimentsTool({ store }: Ctx, { limit }: OwnerToolIn
   };
 }
 
+/** A test's stage as the owner's page names it (`experimentCard()`). */
+const STAGE_WORDS: Record<CardState, string> = {
+  draft: "Draft",
+  scheduled: "Scheduled",
+  learning: "Still learning: no answer yet",
+  answer: "Has an answer",
+  broken: "Data problem: the split is off",
+  applied: "Winner applied",
+  discarded: "Original kept",
+};
+
+/** Each day's share who did the thing so far, per version, at most the last 21 days: `[day, original, B, …]`. */
+function byDay(r: Awaited<ReturnType<typeof experimentResults>>, keys: string[]): string[][] {
+  const totals = Object.fromEntries(keys.map((k) => [k, { v: 0, c: 0 }]));
+  const rows = r.daily.map((d) => [
+    d.day,
+    ...keys.map((k) => {
+      totals[k].v += d.variants[k]?.visitors ?? 0;
+      totals[k].c += d.variants[k]?.conversions ?? 0;
+      return totals[k].v > 0 ? percent(totals[k].c / totals[k].v, 2) : "—";
+    }),
+  ]);
+  return rows.slice(-21);
+}
+
 export async function explainResultsTool(ctx: Ctx, { experiment }: OwnerToolInput<"explain_results">) {
   const { store } = ctx;
   const test = await findTest(store, experiment);
@@ -147,10 +176,24 @@ export async function explainResultsTool(ctx: Ctx, { experiment }: OwnerToolInpu
       visitors: f.visitors,
       ...value,
       against_the_original: c
-        ? { change: c.relative === null ? "no figure to compare with" : `${c.relative >= 0 ? "+" : "−"}${percent(Math.abs(c.relative))}`, chance_it_is_better: `${Math.round(c.chanceBetter * 100)} %` }
+        ? card.showFigures
+          ? {
+              change: c.relative === null ? "no figure to compare with" : `${c.relative >= 0 ? "+" : "−"}${percent(Math.abs(c.relative))}`,
+              likely_between: (() => {
+                const k = card.comparisons.find((x) => x.key === f.key);
+                return k && k.low !== null && k.high !== null ? `${signed(k.low)} and ${signed(k.high)}` : undefined;
+              })(),
+              chance_it_is_better: chance(c.chanceBetter),
+            }
+          : "Not shown yet: before the minimum visitors and days a figure here still moves with luck. Do not quote or estimate one."
         : undefined,
     };
   });
+  // The card the test's page draws (D650): its stage, how far from an answer and when, each version's likely range, what each changed.
+  const card = experimentCard({ status: test.status, goal: test.goal, minDays: test.minDays, minVisitors: test.minVisitors, results: r, now: new Date() });
+  const changes = await versionDifferences(store.id, test);
+  const signed = (share: number) => `${share >= 0 ? "+" : "−"}${Math.abs(Math.round(share * 100))} %`;
+  const chance = (p: number) => (p > 0.99 ? "more than 99 %" : p < 0.01 ? "less than 1 %" : `${Math.round(p * 100)} %`);
   const next: string[] = [];
   if (test.status === "running") {
     if (r.verdict.kind === "few" || r.verdict.kind === "early") next.push("Keep it running: nothing can be said yet. The verdict only counts after the minimum visitors and days.");
@@ -166,6 +209,17 @@ export async function explainResultsTool(ctx: Ctx, { experiment }: OwnerToolInpu
     ...base,
     days_counted: r.days,
     verdict: { kind: r.verdict.kind, headline: r.verdict.headline, detail: r.verdict.detail },
+    stage: STAGE_WORDS[card.state],
+    progress: {
+      days: `${card.progress.days} of at least ${card.progress.minDays}`,
+      visitors_in_the_smallest_version: `${card.progress.visitors} of at least ${card.progress.minVisitors}`,
+      reached: card.progress.reached,
+      likely_ready_around: card.progress.readyAround ?? undefined,
+    },
+    what_each_version_changed: test.variants
+      .filter((v) => v.key !== "a")
+      .map((v) => ({ version: v.name, changes: (changes[v.key] ?? []).slice(0, 12).map((d) => differenceLine(d, builderEn)) })),
+    by_day: card.showFigures && goal.kind === "rate" ? byDay(r, test.variants.map((v) => v.key)) : undefined,
     versions,
     what_visitors_did: test.variants.map((v) => {
       const f = r.funnel[v.key] ?? { visitors: 0, carts: 0, checkouts: 0, buyers: 0, clicks: 0, forms: 0 };

@@ -11,6 +11,7 @@ import {
   createExperiment,
   deleteDraft,
   discardExperiment,
+  getExperiment,
   removeVariant,
   renameExperiment,
   scheduleExperiment,
@@ -166,6 +167,25 @@ export async function discardExperimentAction(storeSlug: string, id: string): Pr
   if (!isId(id)) return unknown;
   const result = await discardExperiment(member.account, member.store.id, id);
   if (result.ok) refresh();
+  return result;
+}
+
+/**
+ * Decides a test from its page (D650): a version becomes the page, or `original` keeps it. A running test is stopped first, as the AI
+ * manager's `apply_winner` does, so a clear winner is one press (and a yes) away instead of Stop, then Decide.
+ */
+export async function decideExperimentAction(storeSlug: string, id: string, choice: string): Promise<Outcome> {
+  const member = await checkPermission(storeSlug, "marketing:write");
+  if (!member) return { ok: false, problems: [NO_ACCESS] };
+  if (!isId(id) || !/^(original|[b-d])$/.test(choice)) return unknown;
+  const test = await getExperiment(member.store.id, id);
+  if (!test) return unknown;
+  if (test.status === "running") {
+    const stopped = await stopExperiment(member.account, member.store.id, id, "person");
+    if (!stopped.ok) return stopped;
+  }
+  const result = choice === "original" ? await discardExperiment(member.account, member.store.id, id) : await applyVariant(member.account, member.store.id, id, choice);
+  refresh();
   return result;
 }
 

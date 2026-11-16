@@ -1,6 +1,7 @@
 import "server-only";
 
 import { sql } from "drizzle-orm";
+import { z } from "zod";
 import { revalidateTag, updateTag } from "next/cache";
 
 import { db } from "@/db/client";
@@ -9,6 +10,7 @@ import { applyPart, buttonsWithin, describePart, findPart, formsWithin, partChan
 import { isLegalRole } from "@/lib/legal-roles";
 import { parsePageContent, type PageContent, type PageType } from "@/lib/page-content";
 import { cleanTranslations } from "@/lib/page-translation";
+import { compareVersions, type PageDifference } from "@/lib/version-compare";
 import {
   BLOCK_CHOICE,
   evenSplit,
@@ -27,6 +29,7 @@ import {
 } from "@/lib/experiments";
 
 import { audit, type Account } from "./auth";
+import { col, typedRow, typedRows } from "./typed-rows";
 import { experimentsTag, forgetRunning, variantSlug } from "./experiments";
 import { ownerLanguages, pagesTag, savePage } from "./pages";
 
@@ -173,6 +176,31 @@ async function variantsOf(storeId: string, experimentId: string, originalPublish
     changed: r.key === "a" ? false : !sameRows(r.published ?? r.draft, originalPublished),
     scope: scopeOf(r, original, part),
   }));
+}
+
+/**
+ * What each version changes against the original (D650, "What is different" on the test's page and `explain_results`), from
+ * `compareVersions()`: the original as published (cleaned as a saved version is, so a copy shows no difference), each version as published,
+ * or its draft while it has never been. Keyed by the version's letter; the original has none.
+ */
+const VERSION_CONTENT_ROW = z.object({ key: col.text, draft: z.unknown(), published: z.unknown() });
+
+export async function versionDifferences(storeId: string, test: Pick<ExperimentInfo, "id" | "page">): Promise<Record<string, PageDifference[]>> {
+  const page = await typedRow(z.object({ published: z.unknown() }), sql`select p.published from commerce.pages p where p.id = ${test.page.id}::uuid and p.store_id = ${storeId}::uuid`);
+  const original = await asSaved(storeId, parsePageContent(page?.published));
+  if (!original) return {};
+  const rows = await typedRows(VERSION_CONTENT_ROW, sql`
+    select v.key, p.draft, p.published
+    from commerce.experiment_variants v join commerce.pages p on p.id = v.page_id and p.store_id = v.store_id
+    where v.experiment_id = ${test.id}::uuid and v.store_id = ${storeId}::uuid and v.key <> 'a' order by v.key
+  `);
+  const out: Record<string, PageDifference[]> = {};
+  for (const r of rows) {
+    const version = parsePageContent(r.published ?? r.draft);
+    // A version's own title and address differ by design (it is a page of its own): only what a visitor sees is listed.
+    if (version) out[r.key] = compareVersions(original, version).filter((d) => !(d.kind === "field" && (d.field === "title" || d.field === "slug" || d.field === "seo" || d.field === "search")));
+  }
+  return out;
 }
 
 /** A part test's check of one version against the original; null for the original and for a test of the whole page. */
@@ -588,7 +616,7 @@ export async function stopExperiment(account: Account | null, storeId: string, i
 }
 
 /**
- * Makes a version the page: its content replaces the original's (the original's address kept), published at once, and the
+ * Makes a version the page: its content replaces the original's (the original's address and title kept), published at once, and the
  * test ends as applied. One change, audited; visitors see the winner everywhere from the next page view.
  */
 export async function applyVariant(account: Account, storeId: string, id: string, key: string): Promise<Outcome> {
@@ -616,7 +644,8 @@ export async function applyVariant(account: Account, storeId: string, id: string
         where id = ${test.page.id}::uuid and store_id = ${storeId}::uuid and type = ${test.page.type}
       `);
     } else {
-      const next = JSON.stringify({ ...content, slug: test.page.slug });
+      // The page keeps its own address and title: a version's title ("… (B)") names it in the admin, never on the site (D650).
+      const next = JSON.stringify({ ...content, slug: test.page.slug, title: test.page.title });
       await tx.execute(sql`
         update commerce.pages set draft = ${next}::jsonb, published = ${next}::jsonb, published_at = now(), updated_at = now(), updated_by = ${account.id}::uuid
         where id = ${test.page.id}::uuid and store_id = ${storeId}::uuid and type = ${test.page.type}

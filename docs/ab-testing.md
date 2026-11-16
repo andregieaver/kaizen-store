@@ -1,7 +1,7 @@
 # A/B testing
 
 Design for an A/B testing tool that platform admins and store owners use to find out whether a change to a page earns
-its place. Status: **phases 1 to 11 built** (11: the form-sent goal) (10: the front page and the All products page) (9: modals and working pages) (4: the AI manager's tools; 5: the platform's view; 6: the guardrail email; 7: search and recommendations on the engine; 8: the platform assistant's tools) (D148): the engine, tests of whole store pages and of a part of one (a row, column or component chosen in the builder), scheduled starts, and tests of a store's header, footer and product layouts; see "What phase 1 built", "What phase 2 built" and "What phase 3 built" below. The AI manager's tools are phase 4 ("What phase 4 built"). Modals and working pages are phase 9; the platform's own pages are later. It builds on [`measurement.md`](measurement.md), whose principles
+its place. Status: **phases 1 to 12 built** (12: the test's page as a record, D652, [`ab-testing-usability.md`](ab-testing-usability.md)) (11: the form-sent goal) (10: the front page and the All products page) (9: modals and working pages) (4: the AI manager's tools; 5: the platform's view; 6: the guardrail email; 7: search and recommendations on the engine; 8: the platform assistant's tools) (D148): the engine, tests of whole store pages and of a part of one (a row, column or component chosen in the builder), scheduled starts, and tests of a store's header, footer and product layouts; see "What phase 1 built", "What phase 2 built" and "What phase 3 built" below. The AI manager's tools are phase 4 ("What phase 4 built"). Modals and working pages are phase 9; the platform's own pages are later. It builds on [`measurement.md`](measurement.md), whose principles
 it keeps, and on what already exists: the page builder, `src/lib/experiment-stats.ts`, the search test (D77) and the
 recommendations test (D139/D140).
 
@@ -382,6 +382,37 @@ sign-up sent by visitors in each version, the cases that are not counted, the dr
 
 Not done: the checks that were open before, and a goal for a form on a page other than the one under test (a form in the footer, say, is not on
 the list unless it is in the part).
+
+## What phase 12 built: the test's page as a record (D652)
+
+Step 1 of [`ab-testing-usability.md`](ab-testing-usability.md), drawn in the admin redesign's record pattern (round 1, D595: the order page).
+A started test's page answers *Is it working? When will I know? What should I do?* before anything else.
+
+- **`experimentCard()`** (`src/lib/experiment-card.ts`, pure and tested): the stage a person sees (`draft`, `scheduled`, `learning`,
+  `answer`, `broken`, `applied`, `discarded`: `running` told apart by whether the verdict has an answer), the one next step, progress
+  (days and the smallest version's visitors against the minimums, and the day both are likely reached at the pace so far), and each
+  version's change with its **likely range at the verdict's own level** (the stricter one with several versions). A range across "no
+  change" is therefore exactly a verdict of no clear difference: the page can no longer say "No clear difference" above "96 % chance it is
+  better", as it did (the table showed the one-sided chance; the verdict needs the two-sided 95 % range). The chance is kept for the
+  details and the AI, written "more than 99 %" rather than rounded to 100.
+- **The page** (`/admin/{store}/experiments/{id}` once started): the header carries the stage as a chip, what is tested and the goal,
+  and the one green button its stage asks for (*Start now* for a scheduled test, *Use Version B* for a winner, *Keep the original* when the
+  answer or a broken split says so; none while it is still learning), with the rest under *More* (the other versions, stop, rename).
+  Deciding asks first and stops a running test in the same press (`decideExperimentAction`, as the AI manager's `apply_winner` does), so a
+  clear winner no longer needs *Stop*, then *Decide*. Under it the test's path (`StepPath`: made, started, learning with *Day 3 of 14*,
+  answer with *Around 27 Nov*, decided), the verdict with two progress bars, *How sure are we?* (a dot on a bar per version against a
+  dashed no-change line), *What is different* (each version's changes in words, `versionDifferences()` through `compareVersions()`, D358,
+  said by `differenceLine()`, now shared with the versions dialogs), *How it developed* (with axes and the shortest run marked) and *What
+  visitors did* (bars per 100). Every table, week by week, the split as a bar and the method are behind *How we worked this out*
+  (`FoldOnHash`).
+- **No peeking.** While it is too early nothing points a direction: no change or range is drawn, the two pictures of figures wait for an
+  answer, and the verdict's early sentence no longer says "B got 12 % fewer …" (`verdictOf()`, which the AI manager reads too). The
+  counts stay one fold away for whoever wants them.
+- **The AI manager's `explain_results`** (and the platform's `explain_ab_test`, which returns it) adds `stage`, `progress` (with
+  `likely_ready_around`), each version's `likely_between`, `what_each_version_changed` and `by_day` (only once there is an answer), and
+  says plainly that no figure is given before the minimum. The tool's description is unchanged, so the agents' eval recording stands.
+- **A fix on the way:** applying a winner of a whole page copied the version's admin name ("Om oss (B)") onto the live page's title. The
+  page now keeps its own title as it keeps its address (`applyVariant()`, test in `experiments.int.test.ts`).
 
 ## Principles (kept from `measurement.md`)
 

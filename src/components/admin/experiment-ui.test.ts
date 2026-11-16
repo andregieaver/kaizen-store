@@ -9,6 +9,7 @@ vi.mock("@/app/admin/(gated)/[store]/experiments/actions", () => {
   return {
     addVariantAction: ok,
     applyVariantAction: ok,
+    decideExperimentAction: ok,
     deleteDraftAction: ok,
     discardExperimentAction: ok,
     removeVariantAction: ok,
@@ -23,7 +24,11 @@ vi.mock("@/app/admin/(gated)/[store]/experiments/actions", () => {
 
 import type { ExperimentInfo } from "@/server/experiment-admin";
 
-import { DraftPanel, RunPanel } from "./experiment-controls";
+import { experimentCard } from "@/lib/experiment-card";
+import { verdictOf } from "@/lib/experiment-results";
+
+import { DraftPanel, TestActions } from "./experiment-controls";
+import { ExperimentResultsView } from "./experiment-results-view";
 import { ExperimentForm } from "./experiment-form";
 
 /** What a person reads before any script runs. */
@@ -103,19 +108,75 @@ describe("a draft of a part test", () => {
   });
 });
 
-describe("a test that has been scheduled, stopped or applied", () => {
-  it("shows when a scheduled test starts, and that it can be started or taken back", () => {
-    const out = html(createElement(RunPanel, { store: "demo", test: test({ status: "scheduled", scheduledStart: "2026-10-20T08:00:00.000Z" }) }));
-    expect(out).toContain("Starts 20 Oct 2026");
+describe("a started test's header (D650)", () => {
+  it("offers a scheduled test's start as the one main button, and taking it back under More", () => {
+    const out = html(createElement(TestActions, { store: "demo", test: test({ status: "scheduled", scheduledStart: "2026-10-20T08:00:00.000Z" }), next: "start", best: null }));
     expect(out).toContain("Start now");
     expect(out).toContain("Back to a draft");
+    expect(out.match(/\bbg-brand(?![-\w])/g)?.length ?? 0).toBe(1);
   });
 
-  it("says a part winner replaces the part only", () => {
-    const out = html(createElement(RunPanel, { store: "demo", test: test({ status: "stopped", part }) }));
-    expect(out).toContain("replaces Heading “Welcome” in row 1 in the page at once, and nothing else");
+  it("offers the winner while the test still runs, with stopping and keeping the original under More", () => {
+    const out = html(createElement(TestActions, { store: "demo", test: test({ status: "running" }), next: "use", best: "b" }));
     expect(out).toContain("Use Version B");
-    const whole = html(createElement(RunPanel, { store: "demo", test: test({ status: "stopped" }) }));
-    expect(whole).toContain("replaces the page&#x27;s content at once".replace("&#x27;", "'"));
+    expect(out).toContain("Keep the original");
+    expect(out).toContain("Stop the test");
+    expect(out).toContain("Rename");
+  });
+
+  it("asks for no decision while it is still learning: there is no main button", () => {
+    const out = html(createElement(TestActions, { store: "demo", test: test({ status: "running" }), next: "wait", best: null }));
+    expect(out).not.toMatch(/\bbg-brand(?![-\w])/);
+    expect(out).toContain("Stop the test");
+  });
+
+  it("offers nothing once the test is decided", () => {
+    expect(html(createElement(TestActions, { store: "demo", test: test({ status: "applied", appliedVariant: "b" }), next: "done", best: null }))).toBe("");
+  });
+});
+
+describe("what a started test found (D650)", () => {
+  const rate = (key: string, visitors: number, conversions: number) => ({ key, name: key, visitors, conversions, money: null });
+  const results = (figures: ReturnType<typeof rate>[], days: number) => {
+    const verdict = verdictOf({ goal: "cart", figures, splitP: 0.6, days, minVisitors: 0, minDays: 14, currency: "NOK", locale: "nb-NO" });
+    const funnel = Object.fromEntries(figures.map((f) => [f.key, { visitors: f.visitors, carts: f.conversions, checkouts: Math.round(f.conversions / 2), buyers: 0, clicks: 0, forms: 0 }]));
+    const daily = Array.from({ length: days }, (_, i) => ({
+      day: `2026-11-${String(i + 1).padStart(2, "0")}`,
+      variants: Object.fromEntries(figures.map((f) => [f.key, { visitors: Math.round(f.visitors / days), conversions: Math.round(f.conversions / days) }])),
+    }));
+    return { figures, funnel, revenue: { a: { sum: 0, plain: 0 }, b: { sum: 0, plain: 0 } }, currency: "NOK", unconverted: 0, daily, weekly: [], splitP: 0.6, days, verdict, harmed: null };
+  };
+  const view = (figures: ReturnType<typeof rate>[], days: number) => {
+    const r = results(figures, days);
+    const t = test({ status: "running", goal: "cart", startedAt: "2026-11-01T10:00:00.000Z" });
+    const card = experimentCard({ status: "running", goal: "cart", minDays: 14, minVisitors: 0, results: r, now: new Date("2026-11-16T12:00:00Z") });
+    return html(createElement(ExperimentResultsView, { test: t, results: r, card, base: "/admin/demo/experiments", locale: "nb-NO", differences: { b: ["Heading: “Welcome” became “New this week”"] }, readyAround: "27 Nov 2026" }));
+  };
+
+  it("draws the answer: the range above no change, the progress reached and what B changed", () => {
+    const out = view([rate("a", 2400, 218), rate("b", 2380, 279)], 16);
+    expect(out).toContain("B is better than the original.");
+    expect(out).toContain("data-range-chart");
+    expect(out).toMatch(/Version B \+29 %/);
+    expect(out).toMatch(/likely \+\d+ % to \+\d+ %/);
+    expect(out).toContain("16 of 14");
+    expect(out).toContain("Both are reached");
+    expect(out).toContain("Heading: “Welcome” became “New this week”");
+    expect(out).toContain("How we worked this out");
+    expect(out).not.toContain("chance it is better");
+  });
+
+  it("shows no change or range while it is too early, and says when it is likely ready", () => {
+    const out = view([rate("a", 152, 14), rate("b", 148, 12)], 3);
+    expect(out).toContain("Too early to say.");
+    expect(out).not.toMatch(/Version B [+−]\d+ %/);
+    expect(out).not.toMatch(/likely [+−]/);
+    expect(out).toContain("The pictures are drawn once there is an answer");
+    expect(out).toContain("Nothing can be said yet");
+    expect(out).not.toContain("data-trend-chart");
+    expect(out).not.toContain("data-funnel-bars");
+    expect(out).not.toMatch(/\d+ % fewer|\d+ % more/);
+    expect(out).toContain("Likely ready around 27 Nov 2026");
+    expect(out).toContain("Not enough yet");
   });
 });

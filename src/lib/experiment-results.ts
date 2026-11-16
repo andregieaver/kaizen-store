@@ -247,7 +247,8 @@ export function verdictOf(input: VerdictInput): Verdict {
       kind: fewest < floor ? "few" : "early",
       best: null,
       headline: w.early,
-      detail: fillWords(w.earlyDetail, { start: leading ? fillWords(w.earlyStart, { describe: describe(leading) }) : "", need, basis }),
+      // No direction before the minimum (D650): a figure from the first days moves with luck and invites stopping early.
+      detail: fillWords(w.earlyDetail, { need, basis }),
     };
   }
   if (!leading) return { kind: "few", best: null, headline: w.noResults, detail: basis };

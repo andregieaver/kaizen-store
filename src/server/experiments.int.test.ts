@@ -367,6 +367,10 @@ describe("ending a test (D148)", () => {
     expect(headingOf(after)).toContain("(new)");
     expect(rowsBefore).not.toContain("(new)");
     expect(after && "page" in after ? after.page.slug : "").toBe("om-oss");
+    // The page keeps its own title, not the version's admin name "… (B)" (D650).
+    const titleOf = (found: typeof before) => (found && "page" in found ? found.page.content.title : "");
+    expect(titleOf(after)).toBe(titleOf(before));
+    expect(titleOf(after)).not.toContain("(B)");
     expect((await admin.getExperiment(storeId, id))!).toMatchObject({ status: "applied", appliedVariant: "b" });
     const [audited] = await db().execute<Row>(sql`select count(*)::int as n from commerce.audit_log where store_id = ${storeId}::uuid and action in ('experiment.started', 'experiment.stopped', 'experiment.applied')`);
     expect(Number(audited.n)).toBeGreaterThanOrEqual(3);

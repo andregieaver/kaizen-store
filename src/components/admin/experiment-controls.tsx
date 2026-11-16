@@ -6,9 +6,8 @@ import { useState, useTransition } from "react";
 
 import {
   addVariantAction,
-  applyVariantAction,
   deleteDraftAction,
-  discardExperimentAction,
+  decideExperimentAction,
   removeVariantAction,
   renameExperimentAction,
   scheduleExperimentAction,
@@ -17,15 +16,17 @@ import {
   unscheduleExperimentAction,
   updateDraftAction,
 } from "@/app/admin/(gated)/[store]/experiments/actions";
-import { ADMIN_LANG_FACTS } from "@/lib/admin-lang";
 import { fillWords } from "@/lib/admin-fill";
 import { experimentProblems } from "@/lib/experiment-words";
 import { DEVICES, MAX_VARIANTS, type Device } from "@/lib/experiments";
 import type { ExperimentInfo } from "@/server/experiment-admin";
 import { Button, Card, CARD_CLASS } from "@/components/admin/ui";
+import type { NextStep } from "@/lib/experiment-card";
+
+import { MoreMenu } from "./orders/order-folds";
 
 import { PAGE_TYPE_COPY } from "./page-type-copy";
-import { useAdminLang, useAdminText } from "./admin-text";
+import { useAdminText } from "./admin-text";
 import { RuntimeEstimate } from "./runtime-estimate";
 
 type Outcome = { ok: true } | { ok: false; problems: string[] };
@@ -276,130 +277,109 @@ export function DraftPanel({ store, test, markets }: { store: string; test: Expe
   );
 }
 
-/** What can be done to a test that has started: stop it, choose a winner or keep the original, and rename it. */
-export function RunPanel({ store, test }: { store: string; test: ExperimentInfo }) {
+/**
+ * What can be done to a test that has started, in its header (D650, the record of round 1): the one green button its stage asks for
+ * (start a scheduled test, use the winner, keep the original), the rest behind More (rename, stop, the other choices), and a question
+ * before anything changes. Deciding a running test stops it first (`decideExperimentAction`).
+ */
+export function TestActions({ store, test, next, best }: { store: string; test: ExperimentInfo; next: NextStep; best: string | null }) {
   const { pending, problems, run } = useRun();
   const w = useAdminText("experiments");
-  const r = w.run;
-  const locale = ADMIN_LANG_FACTS[useAdminLang()].locale;
-  const [confirm, setConfirm] = useState<string | null>(null);
+  const a = w.card.actions;
+  const [ask, setAsk] = useState<string | null>(null);
   const [name, setName] = useState(test.name);
-  const [renaming, setRenaming] = useState(false);
-
+  if (test.status === "applied" || test.status === "discarded") return null;
+  const versions = test.variants.filter((v) => v.key !== "a");
+  const nameOf = (key: string) => versions.find((v) => v.key === key)?.name ?? key.toUpperCase();
+  const running = test.status === "running";
+  const deciding = test.status === "running" || test.status === "stopped";
+  // The main choice: a scheduled test's start, the winner, or the original when the answer (or a broken split) says keep it; none while it learns.
+  const main = test.status === "scheduled" ? "start" : next === "use" && best ? best : deciding && (next === "keep_original" || next === "start_again") ? "original" : null;
+  const question =
+    ask === "stop"
+      ? a.stopAsk
+      : ask === "original"
+        ? a.keepAsk
+        : ask
+          ? test.part
+            ? fillWords(a.usePart, { part: test.part.label, name: nameOf(ask) })
+            : fillWords(a.usePage, { name: nameOf(ask) })
+          : null;
+  const yes = ask === "stop" ? a.yesStop : ask === "original" ? a.yesKeep : ask ? fillWords(a.yesUse, { name: nameOf(ask) }) : "";
+  const confirm = () => {
+    if (!ask) return;
+    if (ask === "stop") run(() => stopExperimentAction(store, test.id), () => setAsk(null));
+    else if (ask === "rename") run(() => renameExperimentAction(store, test.id, { name }), () => setAsk(null));
+    else run(() => decideExperimentAction(store, test.id, ask), () => setAsk(null));
+  };
   return (
-    <div className="flex flex-col gap-4">
-      <Problems problems={problems} />
-      {test.status === "scheduled" && test.scheduledStart && (
-        <Card
-          title={<>{fillWords(r.starts, { date: new Date(test.scheduledStart).toLocaleString(locale, { dateStyle: "medium", timeStyle: "short" }) })}</>}
-          description={r.scheduledText}
-          className="flex flex-col gap-3"
-          compact
-        >
-          <div className="flex flex-wrap gap-3">
-            <button type="button" disabled={pending} onClick={() => run(() => startExperimentAction(store, test.id))} className={primary}>
-              {r.startNow}
-            </button>
-            <button type="button" disabled={pending} onClick={() => run(() => unscheduleExperimentAction(store, test.id))} className={button}>
-              {r.backToDraft}
-            </button>
-          </div>
-        </Card>
-      )}
-      {test.status === "running" && (
-        <Card
-          title={r.running}
-          description={
-            <>
-              {r.runningText}
-              {test.plannedEnd && fillWords(r.plannedEnd, { date: new Date(test.plannedEnd).toLocaleDateString(locale, { dateStyle: "medium", timeZone: "Europe/Oslo" }) })}
-            </>
-          }
-          className="flex flex-col gap-3"
-          compact
-        >
-          {confirm === "stop" ? (
-            <div className="flex flex-wrap items-center gap-3 text-sm">
-              {r.stopAsk}
-              <button type="button" disabled={pending} onClick={() => run(() => stopExperimentAction(store, test.id), () => setConfirm(null))} className="min-h-10 rounded-pill bg-danger-soft px-4 text-danger-text disabled:opacity-50">
-                {r.stop}
-              </button>
-              <button type="button" onClick={() => setConfirm(null)} className="underline">
-                {r.keepRunning}
-              </button>
-            </div>
-          ) : (
-            <div>
-              <button type="button" onClick={() => setConfirm("stop")} className={button}>
-                {r.stop}
-              </button>
-            </div>
+    <div className="flex w-full flex-col items-stretch gap-3 sm:w-auto sm:items-end">
+      <div className="flex flex-wrap items-center gap-2">
+        {main === "start" && (
+          <Button kind="main" size="header" disabled={pending} onClick={() => run(() => startExperimentAction(store, test.id))}>
+            {a.startNow}
+          </Button>
+        )}
+        {main && main !== "start" && (
+          <Button kind="main" size="header" disabled={pending} onClick={() => setAsk(main)}>
+            {main === "original" ? a.keepOriginal : fillWords(a.use, { name: nameOf(main) })}
+          </Button>
+        )}
+        <MoreMenu label={a.more}>
+          {test.status === "scheduled" && (
+            <Button kind="quiet" disabled={pending} onClick={() => run(() => unscheduleExperimentAction(store, test.id))}>
+              {a.backToDraft}
+            </Button>
           )}
-        </Card>
-      )}
-      {test.status === "stopped" && (
-        <Card
-          title={r.decide}
-          description={
-            <>
-              {r.decideText} {test.part ? fillWords(r.decidePart, { part: test.part.label }) : r.decidePage}
-              {test.stopReason === "guardrail" && r.guardrail}
-              {test.stopReason === "planned_end" && r.plannedStop}
-            </>
-          }
-          className="flex flex-col gap-3"
-          compact
-        >
-          <div className="flex flex-wrap gap-3">
-            {test.variants
-              .filter((v) => v.key !== "a")
-              .map((v) =>
-                confirm === `apply-${v.key}` ? (
-                  <span key={v.key} className="flex flex-wrap items-center gap-2 text-sm">
-                    {test.part ? fillWords(r.replacePart, { part: test.part.label, name: v.name }) : fillWords(r.replacePage, { name: v.name })}
-                    <button type="button" disabled={pending} onClick={() => run(() => applyVariantAction(store, test.id, v.key), () => setConfirm(null))} className="min-h-10 rounded-pill bg-brand px-4 text-brand-ink disabled:opacity-50">
-                      {fillWords(r.yesUse, { name: v.name })}
-                    </button>
-                    <button type="button" onClick={() => setConfirm(null)} className="underline">
-                      {r.cancel}
-                    </button>
-                  </span>
-                ) : (
-                  <button key={v.key} type="button" onClick={() => setConfirm(`apply-${v.key}`)} className={primary}>
-                    {fillWords(r.use, { name: v.name })}
-                  </button>
-                ),
-              )}
-            <button type="button" disabled={pending} onClick={() => run(() => discardExperimentAction(store, test.id))} className={button}>
-              {r.keepOriginal}
-            </button>
-          </div>
-        </Card>
-      )}
-      {(test.status === "applied" || test.status === "discarded") && (
-        <p className={`p-4 text-sm ${CARD_CLASS}`}>
-          {test.status === "applied"
-            ? fillWords(r.applied, { name: test.variants.find((v) => v.key === test.appliedVariant)?.name ?? r.aVersion })
-            : r.discarded}{" "}
-          {r.finished}
-        </p>
-      )}
-      {test.status !== "applied" && test.status !== "discarded" && (
-        <div className="flex flex-wrap items-center gap-3 text-sm">
-          {renaming ? (
-            <>
-              <input value={name} onChange={(e) => setName(e.target.value)} maxLength={120} aria-label={r.name} className={`${input} max-w-xs`} />
-              <button type="button" disabled={pending} onClick={() => run(() => renameExperimentAction(store, test.id, { name }), () => setRenaming(false))} className={button}>
-                {r.saveName}
-              </button>
-            </>
-          ) : (
-            <button type="button" onClick={() => setRenaming(true)} className="underline">
-              {r.rename}
-            </button>
+          {deciding &&
+            versions
+              .filter((v) => v.key !== main)
+              .map((v) => (
+                <Button key={v.key} kind="quiet" onClick={() => setAsk(v.key)}>
+                  {main && main !== "original" ? fillWords(a.useOther, { name: v.name }) : fillWords(a.use, { name: v.name })}
+                </Button>
+              ))}
+          {deciding && main !== "original" && (
+            <Button kind="quiet" onClick={() => setAsk("original")}>
+              {a.keepOriginal}
+            </Button>
           )}
+          {running && (
+            <Button kind="quiet" onClick={() => setAsk("stop")}>
+              {a.stop}
+            </Button>
+          )}
+          <Button kind="quiet" onClick={() => setAsk("rename")}>
+            {a.rename}
+          </Button>
+        </MoreMenu>
+      </div>
+      {ask === "rename" ? (
+        <div className={`flex flex-wrap items-center gap-2 p-3 ${CARD_CLASS}`}>
+          <input value={name} onChange={(e) => setName(e.target.value)} maxLength={120} aria-label={a.name} className={`${input} max-w-xs`} />
+          <Button kind="secondary" disabled={pending} onClick={confirm}>
+            {a.saveName}
+          </Button>
+          <Button kind="quiet" onClick={() => setAsk(null)}>
+            {a.cancel}
+          </Button>
         </div>
+      ) : (
+        question && (
+          <div role="alertdialog" aria-label={question} className={`flex max-w-md flex-col gap-3 p-4 text-body ${CARD_CLASS}`}>
+            <p>{question}</p>
+            <div className="flex flex-wrap gap-2">
+              <Button kind={ask === "stop" ? "danger" : "main"} disabled={pending} onClick={confirm}>
+                {yes}
+              </Button>
+              <Button kind="quiet" onClick={() => setAsk(null)}>
+                {a.cancel}
+              </Button>
+            </div>
+          </div>
+        )
       )}
+      <Problems problems={problems} />
     </div>
   );
 }

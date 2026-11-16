@@ -232,6 +232,7 @@ describe("the AI manager's A/B test tools (D148)", () => {
       what_next: string[];
       never: string;
       how_it_is_counted: string;
+      by_day?: unknown;
     };
     expect(explained.verdict.kind).toBe("few");
     expect(explained.versions.map((v) => v.version)).toEqual(["Original", "Version B"]);
@@ -239,6 +240,13 @@ describe("the AI manager's A/B test tools (D148)", () => {
     expect(explained.what_next[0]).toMatch(/Keep it running/);
     expect(explained.never).toMatch(/Do not call a winner/);
     expect(explained.how_it_is_counted).toMatch(/accepted statistics cookies/);
+    // The facts the test's page draws (D650): its stage, how far from an answer, what B changed, and no figure while it is too early.
+    expect(explained).toMatchObject({
+      stage: "Still learning: no answer yet",
+      progress: { days: "0 of at least 14", visitors_in_the_smallest_version: "0 of at least 200", reached: false },
+      what_each_version_changed: [{ version: "Version B", changes: [expect.stringContaining("Velkommen til en rolig butikk")] }],
+    });
+    expect(explained.by_day).toBeUndefined();
     await expect(ownerTools.runOwnerTool(ctx(), "explain_results", { experiment: "nobody" })).rejects.toThrow(/No A\/B test "nobody"/);
   });
 
