@@ -1364,9 +1364,10 @@ localization, menus, SEO) call `t()` from `src/lib/i18n.ts`. Therefore:
   gets `workOn` (`src/server/stores.ts`, like `bookingsOn`, `deliveriesOn`);
   `setWorkModule()` + `saveWorkModuleAction` + a card on the Features page
   (owner only), audit `work.enabled/disabled`.
-* **WP1a did the data level only:** `Store.workOn` (`src/server/stores.ts`),
-  `MODULES` / `StoreModule` (`src/lib/store-modules.ts`) and the widened
-  `stores_modules` check. **WP5 must wire:** the Features card and
+* **WP1a did the data level only:** `Store.workOn` (`src/server/stores.ts`)
+  and the widened `stores_modules` check, which holds the names a store can
+  have (bookings, deliveries, work; the file that copied it as `MODULES` was
+  deleted in bloat review step 0.36). **WP5 must wire:** the Features card and
   `setWorkModule()` (same `array_agg(distinct m) ... array_remove` update as
   `src/server/bookings.ts`), the store admin layout tab and group,
   `PageNeeds` (`src/lib/admin-map.ts`: add `"work"`) with its use in

@@ -41,8 +41,6 @@ export const workEn = {
     stopsRunning: "Stops the running timer and logs its time",
   },
   off: {
-    comingSoon: "Coming in the next step.",
-    backToWork: "Back to Work",
     isOff: "Work is off for this store, so this page is hidden from the menu.",
     switchOn: "Switch it on in Work settings",
     titles: {

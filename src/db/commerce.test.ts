@@ -6,7 +6,6 @@ import { minorUnitDigits } from "@/lib/money";
 import { COPY_RULES } from "@/lib/store-copy-rules";
 import { RESERVED_STORE_PAGE_SLUGS } from "@/lib/page-content";
 import { RESERVED_STORE_SLUGS } from "@/lib/paths";
-import { MODULES } from "@/lib/store-modules";
 
 import { createTestDatabase } from "./testing";
 import { readMigration } from "./migration-files";
@@ -3901,7 +3900,7 @@ describe("work: clients, time and invoices (D122)", () => {
   it("is a module a store can switch on, and only the listed ones", async () => {
     const { storeId } = await workStore();
     await db.query("update commerce.stores set modules = array['bookings', 'work'] where id = $1", [storeId]);
-    for (const name of MODULES) {
+    for (const name of ["bookings", "deliveries", "work"]) {
       await db.query("update commerce.stores set modules = array[$2]::text[] where id = $1", [storeId, name]);
     }
     await expect(db.query("update commerce.stores set modules = array['work', 'payroll'] where id = $1", [storeId])).rejects.toThrow(/stores_modules/);

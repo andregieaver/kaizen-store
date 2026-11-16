@@ -802,10 +802,10 @@ CLAUDE.md keeps one line per rule pointing here; each rule is under that line as
 - **Editing words where they are (D191, D192, D193)**: a heading and a rich text are edited in place on the builder's canvas by
   pressing them once (a double press, or the wrench, still opens the settings, which ends the in-place editing: `actions.open()`).
   `inlineKindOf()` (`src/lib/inline-edit.ts`) says which blocks: the two whose words are their own (never one bound to a custom
-  field, never while translating). `InlineHeadingEditor` (`src/components/inline-edit/heading-editor.tsx`) is the heading's own
-  element, at its level and in its classes, made editable (`plaintext-only`): its text is the stored text with its inline markup
-  as typed, one line (Enter ends it, a paste is plain text, `cleanHeadingText()` holds it to `HEADING_MAX`), Escape puts back what
-  it was. `InlineRichEditor` is the panel's own Tiptap editor (`RICH_TEXT_EXTENSIONS`, so the same marks and nodes, checked again
+  field, never while translating). `InlineMarkupEditor` (`src/components/inline-edit/markup-editor.tsx`) is the heading's own
+  element, at its level and in its classes, edited where it stands: one line (Enter ends it, a paste is plain text,
+  `cleanHeadingText()` holds it to `HEADING_MAX`), Escape puts back what it was. `InlineRichEditor` is the panel's own Tiptap
+  editor (`RICH_TEXT_EXTENSIONS`, so the same marks and nodes, checked again
   on the server) drawn in the `rich-text` class the site draws rich text in, with `RichTextToolbar` floating over it
   (`FloatingBar`: fixed on the screen in a portal, outside what clips the row; `barPosition()`), ending when the focus leaves the
   text and its bar. Both are uncontrolled after they start (React never writes the words again) and report each change through
@@ -814,7 +814,7 @@ CLAUDE.md keeps one line per rule pointing here; each rule is under that line as
   signed-in staff who may change the website edit the same two kinds of component without the builder: `PageEditLink` offers *Edit
   text* beside *Edit page* (only to the signed-in on the host that has the session, never on a working page (`route`), in a page
   shown in another language than the store's main one, or on a preview), and turning it on lazy-loads `SiteTextEditor`
-  (`src/components/inline-edit/site-editor.tsx`: the same `InlineHeadingEditor` and `InlineRichEditor` with `endOnBlur` off and a
+  (`src/components/inline-edit/site-editor.tsx`: the same `InlineMarkupEditor` and `InlineRichEditor` with `endOnBlur` off and a
   Save/Cancel bar), so visitors never fetch the editor. `PageArticle`, given `editable` (only the pages and articles that draw
   `PageEditLink` beside them pass it, as `StorePageArticle` and `ArticleView` do; a header, a footer, a product's layout and a 404
   page do not), marks the page (`data-kz-page`) and each heading or text of the page's own (`data-kz-edit`, `data-kz-block`, from
