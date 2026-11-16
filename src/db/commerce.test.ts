@@ -2409,7 +2409,7 @@ describe("AI usage (D106)", () => {
 describe("weekly deliveries (D102)", () => {
   it("keep schedules, one open list per customer, a card before a list is on, and each delivery day once", async () => {
     const shop = await createStore("weekly-test", ["NO"]);
-    await db.query("update commerce.stores set modules = array['deliveries'] where id = $1", [shop]);
+    await db.query("update commerce.stores set features = features || array['boxes'] where id = $1", [shop]);
     await expect(db.query("update commerce.stores set modules = array['groceries'] where id = $1", [shop])).rejects.toThrow(/stores_modules/);
     const schedule = (values: string) =>
       db.query(
@@ -3898,10 +3898,11 @@ describe("work: clients, time and invoices (D122)", () => {
 
   it("is a module a store can switch on, and only the listed ones", async () => {
     const { storeId } = await workStore();
-    await db.query("update commerce.stores set modules = array['bookings', 'work'] where id = $1", [storeId]);
-    for (const name of ["bookings", "deliveries", "work"]) {
+    await db.query("update commerce.stores set modules = array['work'] where id = $1", [storeId]);
+    for (const name of ["work"]) {
       await db.query("update commerce.stores set modules = array[$2]::text[] where id = $1", [storeId, name]);
     }
+    await expect(db.query("update commerce.stores set modules = array['bookings'] where id = $1", [storeId])).rejects.toThrow(/stores_modules/);
     await expect(db.query("update commerce.stores set modules = array['work', 'payroll'] where id = $1", [storeId])).rejects.toThrow(/stores_modules/);
   });
 
@@ -5211,7 +5212,7 @@ describe("duplicating a store (D129)", () => {
     helper = await createAccount("copier-staff@example.com");
     src = await createStore("copy-source", ["DE", "NO"]);
     await db.query(
-      `update commerce.stores set legal_name = 'Karis AS', organisation_number = '999888777', modules = '{bookings,work}',
+      `update commerce.stores set legal_name = 'Karis AS', organisation_number = '999888777', modules = '{work}', features = features || array['appointments', 'bookings'],
          custom_css = 'a { color: red }', setup_completed_at = now(), locales = '{en-IE,nb-NO}', status = 'active'
        where id = $1`,
       [src],
@@ -5384,7 +5385,7 @@ describe("duplicating a store (D129)", () => {
       created_by: owner,
     });
     // The Work module is the owner's own bookkeeping; it is not switched on.
-    expect(store.modules).toEqual(["bookings"]);
+    expect(store.modules).toEqual([]);
     // Only the person copying owns it.
     expect(await rows("select account_id, role from commerce.store_members where store_id = $1", [copy])).toEqual([
       { account_id: owner, role: "owner" },

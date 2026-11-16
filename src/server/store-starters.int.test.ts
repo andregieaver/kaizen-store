@@ -144,7 +144,7 @@ describe("setting the template up, then publishing it", () => {
     // The admin sets the store up as a spa: bookings on, its own time zone, business buyers too, a tick for the terms, a therapist
     // with opening hours, a draft of its terms as the terms page, gift messages, a customer group, a second currency.
     await db().execute(sql`
-      update commerce.stores set modules = array['bookings'], time_zone = 'Europe/Stockholm', audience = 'both', terms_at_checkout = 'checkbox',
+      update commerce.stores set features = features || array['appointments', 'bookings'], time_zone = 'Europe/Stockholm', audience = 'both', terms_at_checkout = 'checkbox',
         custom_css = '.spa { color: teal; }', tracking = '{"googleAnalytics": "G-SPA"}'::jsonb, legal_name = 'Spa template AS'
       where id = ${spa.storeId}::uuid
     `);
@@ -204,7 +204,7 @@ describe("setting the template up, then publishing it", () => {
       from commerce.stores s where s.slug = ${`myspa-${run}`}
     `);
     expect(store).toMatchObject({
-      modules: ["bookings"],
+      modules: [],
       time_zone: "Europe/Stockholm",
       audience: "both",
       terms_at_checkout: "checkbox",
@@ -265,7 +265,7 @@ describe("sign-up with a demo store", () => {
 
     expect(await approveAccessRequest(admin, String(siri.id), `siri-${run}`, "Siri Spa", "https://example.com")).toMatchObject({ ok: true });
     const made = await one(sql`select made_from_starter, modules from commerce.stores where slug = ${`siri-${run}`}`);
-    expect(made).toMatchObject({ made_from_starter: spa.id, modules: ["bookings"] });
+    expect(made).toMatchObject({ made_from_starter: spa.id, modules: [] });
   });
 
   it("refuses an unpublished template the admin chooses, and gives a request whose template was unpublished since the Standard store (D177)", async () => {

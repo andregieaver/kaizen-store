@@ -5,6 +5,7 @@ import { ExchangeSettingsForm } from "@/components/admin/returns/exchange-settin
 import { ReturnSettingsForm } from "@/components/admin/returns/settings-form";
 import { adminLangOf } from "@/lib/admin-lang";
 import { adminText } from "@/lib/admin-text";
+import { fillWords } from "@/lib/admin-fill";
 import { carrierInfo } from "@/lib/shipping-carriers";
 import { languageName } from "@/lib/localization";
 import { featureOn } from "@/lib/store-features";
@@ -44,7 +45,7 @@ export default async function ReturnSettingsPage({ params }: PageProps<"/admin/[
     <div className="flex flex-col gap-6">
       <PageHeader
         title={words.settings.title}
-        description={words.settings.description}
+        description={fillWords(words.settings.lead, { days: settings.windowDays, who: settings.whoPaysReturn === "shopper" ? words.settings.subCustomerPays : words.settings.subStorePays, when: settings.refundWhen === "received" ? words.settings.subRefundBack : words.settings.subRefundAsked })}
       />
       <ReturnSettingsForm
         settings={settings}

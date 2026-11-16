@@ -1,6 +1,8 @@
 import type { FormState } from "@/components/admin/action-form";
 import { ActionForm, SubmitButton } from "@/components/admin/action-form";
 import { fillWords } from "@/lib/admin-fill";
+import { FoldRow } from "@/components/admin/fold-row";
+import { submitClass } from "@/lib/submit-class";
 import { returnsEn, type ReturnsMessages } from "@/lib/admin-messages/returns.en";
 import type { InstructionTranslations } from "@/lib/return-instructions";
 import { MAX_INSTRUCTIONS, MAX_TRANSIT_DAYS, MAX_WINDOW_DAYS, MIN_WINDOW_DAYS, type ReturnSettings } from "@/lib/withdrawal";
@@ -8,7 +10,6 @@ import { MAX_INSTRUCTIONS, MAX_TRANSIT_DAYS, MAX_WINDOW_DAYS, MIN_WINDOW_DAYS, t
 const input = "min-h-10 w-full rounded-md border border-line bg-card px-3 text-sm disabled:opacity-60";
 const label = "flex flex-col gap-1 text-sm font-medium";
 const hint = "font-normal text-muted";
-const card = "flex flex-col gap-4 rounded-lg border border-line bg-card p-5";
 
 export type SettingsLanguage = { locale: string; name: string };
 
@@ -46,10 +47,11 @@ export function ReturnSettingsForm({
   return (
     <ActionForm action={action} successMessage={t.saved} className="flex flex-col gap-6">
       <fieldset disabled={!canEdit} className="contents">
-        <section aria-labelledby="window" className={card}>
-          <h2 id="window" className="text-title text-ink">
-            {t.window}
-          </h2>
+        <ul className="divide-y divide-line rounded-lg border border-line bg-card px-5">
+        <FoldRow title={t.window} sub={fillWords(t.subWindow, { days: settings.windowDays })} action={canEdit ? t.change : null}>
+          <div className="flex flex-col gap-3">
+          {/* The law the defaults follow, said where the window is set (round 24; it was the page's lead). */}
+          <p className="text-sm text-muted">{t.description}</p>
           <p className="text-sm text-muted">{fillWords(t.windowText, { min: MIN_WINDOW_DAYS })}</p>
           <div className="grid gap-4 sm:grid-cols-2">
             <label className={label}>
@@ -62,12 +64,11 @@ export function ReturnSettingsForm({
               <span className={hint}>{fillWords(t.transitHint, { min: MIN_WINDOW_DAYS })}</span>
             </label>
           </div>
-        </section>
+          </div>
+        </FoldRow>
 
-        <section aria-labelledby="money" className={card}>
-          <h2 id="money" className="text-title text-ink">
-            {t.money}
-          </h2>
+        <FoldRow title={t.money} sub={`${settings.whoPaysReturn === "shopper" ? t.subCustomerPays : t.subStorePays}; ${settings.refundWhen === "received" ? t.subRefundBack : t.subRefundAsked}`} action={canEdit ? t.change : null}>
+          <div className="flex flex-col gap-3">
           <fieldset className="flex flex-col gap-2 text-sm">
             <legend className="mb-1 font-medium">{t.returnShipping}</legend>
             <label className="flex items-start gap-2">
@@ -90,12 +91,11 @@ export function ReturnSettingsForm({
               <span>{t.whenRequest}</span>
             </label>
           </fieldset>
-        </section>
+          </div>
+        </FoldRow>
 
-        <section aria-labelledby="scope" className={card}>
-          <h2 id="scope" className="text-title text-ink">
-            {t.scope}
-          </h2>
+        <FoldRow title={t.scope} sub={settings.acceptExcluded ? t.subMore : t.subLaw} action={canEdit ? t.change : null}>
+          <div className="flex flex-col gap-3">
           <label className="flex items-start gap-2 text-sm">
             <input type="checkbox" name="acceptExcluded" defaultChecked={settings.acceptExcluded} className="mt-0.5 size-4" />
             <span>{t.acceptExcluded}</span>
@@ -109,12 +109,11 @@ export function ReturnSettingsForm({
             // Kept as it is while Sell to businesses is off (D178).
             settings.b2bReturns && <input type="hidden" name="b2bReturns" value="on" />
           )}
-        </section>
+          </div>
+        </FoldRow>
 
-        <section aria-labelledby="address" className={card}>
-          <h2 id="address" className="text-title text-ink">
-            {t.address}
-          </h2>
+        <FoldRow title={t.address} sub={address?.street ? [address.street, address.city].filter(Boolean).join(", ") : t.subStoreAddress} action={canEdit ? t.change : null}>
+          <div className="flex flex-col gap-3">
           <p className="text-sm text-muted">{t.addressText}</p>
           <div className="grid gap-3 sm:grid-cols-2">
             <label className={label}>
@@ -138,12 +137,11 @@ export function ReturnSettingsForm({
               <input name="addressCountry" defaultValue={address?.country ?? ""} maxLength={2} autoComplete="off" className={`${input} uppercase sm:w-24`} />
             </label>
           </div>
-        </section>
+          </div>
+        </FoldRow>
 
-        <section aria-labelledby="instructions" className={card}>
-          <h2 id="instructions" className="text-title text-ink">
-            {t.instructions}
-          </h2>
+        <FoldRow title={t.instructions} sub={settings.instructions.trim() ? t.subWritten : t.subNone} action={canEdit ? t.change : null}>
+          <div className="flex flex-col gap-3">
           <p className="text-sm text-muted">{t.instructionsText}</p>
           <label className={label}>
             {main.name} <span className={hint}>{t.mainLanguage}</span>
@@ -166,12 +164,15 @@ export function ReturnSettingsForm({
               ))}
             </div>
           )}
-        </section>
+          </div>
+        </FoldRow>
+        </ul>
       </fieldset>
 
       {canEdit ? (
+        // Round 24 (D692): one Save right under the rows, wide on a phone.
         <div>
-          <SubmitButton>{t.save}</SubmitButton>
+          <SubmitButton className={`${submitClass("primary")} min-h-12 w-full font-medium sm:w-auto sm:min-w-56`}>{t.save}</SubmitButton>
         </div>
       ) : (
         <p role="note" className="text-sm text-muted">

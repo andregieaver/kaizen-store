@@ -140,7 +140,7 @@ describe("what a new store is copied from", () => {
   it("brings a starter's set-up, its drafts with their places, and never its own people", async () => {
     const spa = await createStarter("spa-source", true);
     await db.query(
-      `update commerce.stores set modules = array['bookings'], time_zone = 'Europe/Stockholm', audience = 'both', terms_at_checkout = 'checkbox',
+      `update commerce.stores set features = features || array['appointments', 'bookings'], time_zone = 'Europe/Stockholm', audience = 'both', terms_at_checkout = 'checkbox',
          open_cart_on_add = true, custom_css = '.a{}', tracking = '{"x": 1}', legal_name = 'Template AS',
          price_decimals = 'hide_whole', price_words = '{"nb-NO": {"prefix": "Kun", "suffix": ""}}', quantity_picker = 'hidden' where id = $1`,
       [spa.store],
@@ -166,7 +166,7 @@ describe("what a new store is copied from", () => {
       [made],
     );
     expect(store).toEqual({
-      modules: ["bookings"],
+      modules: [],
       time_zone: "Europe/Stockholm",
       audience: "both",
       terms_at_checkout: "checkbox",

@@ -58,7 +58,7 @@ beforeAll(async () => {
   `);
   storeId = String(store.id);
   shop = { storeId, market: no };
-  await db().execute(sql`update commerce.stores set modules = '{bookings}', time_zone = 'Europe/Oslo' where id = ${storeId}::uuid`);
+  await db().execute(sql`update commerce.stores set features = features || array['appointments', 'bookings'], time_zone = 'Europe/Oslo' where id = ${storeId}::uuid`);
   const staff = await db().execute<Row>(sql`
     insert into commerce.booking_resources (store_id, name, hours, position)
     values (${storeId}::uuid, 'Kari', ${JSON.stringify(everyDay)}::jsonb, 0),
