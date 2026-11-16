@@ -34,17 +34,17 @@ export function OrderSettingsForm({
       <fieldset disabled={!canEdit} className="contents">
         <ul className="divide-y divide-line rounded-lg border border-line bg-card px-5">
         <FoldRow title={w.giftTitle} sub={settings.giftMessages ? w.subOn : w.subOff} action={w.change}>
-          <div className="flex flex-col gap-3">
+          <section aria-label={w.giftTitle} className="flex flex-col gap-3">
           <label className="flex items-start gap-2 text-sm">
             <input type="checkbox" name="giftMessages" defaultChecked={settings.giftMessages} className="mt-0.5 size-4" />
             <span>{w.gift}</span>
           </label>
           <p className={hint}>{fillWords(w.giftHint, { name: GIFT_NAME_MAX, message: GIFT_MESSAGE_MAX })}</p>
-          </div>
+          </section>
         </FoldRow>
 
         <FoldRow title={w.archiveTitle} sub={settings.autoArchiveDays === null ? w.subOff : fillWords(w.subArchive, { days: settings.autoArchiveDays })} action={w.change}>
-          <div className="flex flex-col gap-3">
+          <section aria-label={w.archiveTitle} className="flex flex-col gap-3">
           <label className="flex items-start gap-2 text-sm">
             <input type="checkbox" name="autoArchive" defaultChecked={settings.autoArchiveDays !== null} className="mt-0.5 size-4" />
             <span>{w.archive}</span>
@@ -63,22 +63,22 @@ export function OrderSettingsForm({
             />
           </label>
           <p className={hint}>{fillWords(w.archiveHint, { min: AUTO_ARCHIVE_MIN_DAYS })}</p>
-          </div>
+          </section>
         </FoldRow>
 
         <FoldRow title={w.draftsTitle} sub={fillWords(w.subDraft, { days: settings.draftValidDays })} action={w.change}>
-          <div className="flex flex-col gap-3">
+          <section aria-label={w.draftsTitle} className="flex flex-col gap-3">
           <label className="flex flex-col gap-1 text-sm font-medium">
             {w.draftDays}{" "}
             <span className="font-normal text-muted">{fillWords(w.range, { min: DRAFT_VALID_DAYS_MIN, max: DRAFT_VALID_DAYS_MAX })}</span>
             <input name="draftValidDays" type="number" inputMode="numeric" min={DRAFT_VALID_DAYS_MIN} max={DRAFT_VALID_DAYS_MAX} defaultValue={settings.draftValidDays} required className={input} />
           </label>
           <p className={hint}>{w.draftHint}</p>
-          </div>
+          </section>
         </FoldRow>
 
         <FoldRow title={w.quotesTitle} sub={w.quotes[settings.quoteRequests].label} action={w.change}>
-          <div className="flex flex-col gap-3">
+          <section aria-label={w.quotesTitle} className="flex flex-col gap-3">
           <fieldset className="flex flex-col gap-2">
             <legend className="sr-only">{w.quotesLegend}</legend>
             {QUOTE_MODES.map((value) => (
@@ -92,11 +92,11 @@ export function OrderSettingsForm({
             ))}
           </fieldset>
           <p className={hint}>{w.quotesHint}</p>
-          </div>
+          </section>
         </FoldRow>
 
         <FoldRow title={w.outsideTitle} sub={settings.staffMarkPaid ? w.outsideOn : w.subOwnerOnly} action={w.change}>
-          <div className="flex flex-col gap-3">
+          <section aria-label={w.outsideTitle} className="flex flex-col gap-3">
           {isOwner ? (
             <>
               <input type="hidden" name="staffMarkPaidShown" value="1" />
@@ -110,11 +110,11 @@ export function OrderSettingsForm({
           )}
           <p className={hint}>{w.outsideHint}</p>
           {isOwner ? null : <p className={hint}>{w.ownerChoice}</p>}
-          </div>
+          </section>
         </FoldRow>
 
         <FoldRow title={w.captureTitle} sub={w.capture[settings.capture].label} action={w.change}>
-          <div className="flex flex-col gap-3">
+          <section aria-label={w.captureTitle} className="flex flex-col gap-3">
           {isOwner ? (
             <fieldset className="flex flex-col gap-2">
               <legend className="sr-only">{w.captureLegend}</legend>
@@ -134,7 +134,7 @@ export function OrderSettingsForm({
           )}
           <p className={hint}>{fillWords(w.captureHint, { days: DEFAULT_HOLD_DAYS })}</p>
           {isOwner ? null : <p className={hint}>{w.ownerChoice}</p>}
-          </div>
+          </section>
         </FoldRow>
         </ul>
 

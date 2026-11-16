@@ -59,12 +59,15 @@ test.beforeAll(async () => {
 
 test("the owner chooses when the card is charged, and the choice is kept", async ({ page }) => {
   await page.goto(`/admin/${STORE}/settings/orders`);
+  // Each setting is a row that opens in place (round 24, D692).
+  await page.locator("summary").filter({ hasText: "Take payment" }).click();
   const section = page.getByRole("region", { name: "Take payment" });
   await expect(section.getByRole("radio", { name: /When the order is placed/ })).toBeChecked();
   await section.getByRole("radio", { name: /When you capture it/ }).check();
   await page.getByRole("button", { name: "Save" }).click();
   await expect(page.getByRole("status").filter({ hasText: "Saved." })).toBeVisible();
   await page.reload();
+  await page.locator("summary").filter({ hasText: "Take payment" }).click();
   await expect(page.getByRole("region", { name: "Take payment" }).getByRole("radio", { name: /When you capture it/ })).toBeChecked();
 });
 
