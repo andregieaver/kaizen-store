@@ -117,7 +117,10 @@ export type OrderAdmin = Omit<OrderView, "lines"> & {
   /** Archived (D173): a visibility state only. */
   archivedAt: string | null;
   /** `draft` for a staff-made order (D173), with the draft it came from and who sent or paid it. */
-  source: "checkout" | "draft" | "exchange";
+  source: "checkout" | "draft" | "exchange" | "replacement";
+  /** A replacement (B3, D679): the order whose lost or returned parcel it sends again; and, on that order, the replacement sent for it. */
+  replaces: { id: string; number: string } | null;
+  replacedBy: { id: string; number: string } | null;
   /** An exchange's order (D239): the exchange, its return and the original order it replaces goods of. */
   exchange: { id: string; returnId: string; returnNumber: string; originalOrderId: string; originalOrderNumber: string } | null;
   draft: { id: string; number: string | null } | null;
@@ -198,8 +201,11 @@ export async function getOrderAdmin(storeId: string, orderId: string): Promise<O
     getOrderTags(storeId, orderId),
     db().execute<Row>(sql`
       select o.archived_at, o.source, o.draft_id, d.number as draft_number, o.made_by, a.email as made_by_email,
-        x.id as exchange_id, x.return_id as exchange_return_id, xr.number as exchange_return_number, x.order_id as exchange_original_id, xo.number as exchange_original_number
+        x.id as exchange_id, x.return_id as exchange_return_id, xr.number as exchange_return_number, x.order_id as exchange_original_id, xo.number as exchange_original_number,
+        ro.id as replaces_id, ro.number as replaces_number, rb.id as replaced_by_id, rb.number as replaced_by_number
       from commerce.orders o
+      left join commerce.orders ro on ro.store_id = o.store_id and ro.id = o.replaces_order_id
+      left join commerce.orders rb on rb.store_id = o.store_id and rb.replaces_order_id = o.id and rb.status <> 'cancelled'
       left join commerce.draft_orders d on d.store_id = o.store_id and d.id = o.draft_id
       left join commerce.accounts a on a.id = o.made_by
       left join commerce.return_exchanges x on x.store_id = o.store_id and x.id = o.exchange_id
@@ -273,7 +279,9 @@ export async function getOrderAdmin(storeId: string, orderId: string): Promise<O
       : null,
     tags,
     archivedAt: origin?.archived_at ? new Date(String(origin.archived_at)).toISOString() : null,
-    source: origin?.source === "draft" ? "draft" : origin?.source === "exchange" ? "exchange" : "checkout",
+    source: origin?.source === "draft" ? "draft" : origin?.source === "exchange" ? "exchange" : origin?.source === "replacement" ? "replacement" : "checkout",
+    replaces: origin?.replaces_id ? { id: String(origin.replaces_id), number: String(origin.replaces_number) } : null,
+    replacedBy: origin?.replaced_by_id ? { id: String(origin.replaced_by_id), number: String(origin.replaced_by_number) } : null,
     exchange: origin?.exchange_id
       ? {
           id: String(origin.exchange_id),

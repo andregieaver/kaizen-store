@@ -607,7 +607,7 @@ Each item of section 4 moves here when it is built, with its decision.
 | E3 The review sees money | Partly: `profit_overview` (contribution, margin, profit per krone of marketing, per visitor, the month's forecast) in the review's and events' tools; the budget and the campaigns report still have no tool. | D606 |
 | B1 Email answers about the sender's own orders | Built: a desk switch, on by itself in the challenge. | D607 |
 | B2 Forms to the AI | Not yet. | |
-| B3 Staff requests carried out by code | Partly: an address change or a cancellation asked on the store's chat by the order's own signed-in customer, before anything is sent, is a `staff_request` event; code changes the address to the one the customer gave (`carry_out_address_change`), and a cancellation goes through `cancel_order` (the refund queue), each closing the request. Exchanges since D675: a customer confirming the exchange proposed for their return is an `exchange_confirmed` event, and in challenge mode the autopilot processes it itself when it gives nothing back to the customer (even, or the customer pays the difference by link); one that refunds waits in the refund queue. Resending goods for a lost parcel, and requests by email, stay a person's. | D640, D675 |
+| B3 Staff requests carried out by code | Partly: an address change or a cancellation asked on the store's chat by the order's own signed-in customer, before anything is sent, is a `staff_request` event; code changes the address to the one the customer gave (`carry_out_address_change`), and a cancellation goes through `cancel_order` (the refund queue), each closing the request. Exchanges since D675: a customer confirming the exchange proposed for their return is an `exchange_confirmed` event, and in challenge mode the autopilot processes it itself when it gives nothing back to the customer (even, or the customer pays the difference by link); one that refunds waits in the refund queue. Lost parcels since D679: when a parcel's tracking says it is in trouble or on its way back, its goods are sent again with `send_replacement`, a new order at 0 (`source = 'replacement'`, once per order) whose stock is drawn, with no invoice and no VAT; in challenge mode by itself when the goods are worth no more than the challenge's cap (`replacementMax`, none by default: every one waits), else on the owner's yes. Finance counts the goods at cost and their parcels as *Lost parcels sent again*. Requests by email stay a person's. | D640, D675, D679 |
 | B4 The waiting customer | Changed course: a fault is prevented and paged (A6), escalations stay the owner's. | D608 |
 | A3 The refund queue | Built: the owner sees and decides what the autopilot kept in anyone's name, pushed to their phone. | D608 |
 | A4 Escalations | Built: a category on every hand-over; faults are not escalations. | D608 |
@@ -652,7 +652,7 @@ recording is committed. A push with a migration waits for every check, so merge 
 
 In order of the Day 1 minimum (8.1):
 
-- **B3 (rest):** resending goods for a lost parcel, and requests by email once the sender can be checked.
+- **B3 (rest):** requests by email once the sender can be checked. (Resending goods for a lost parcel is built, D679.)
 - **E7 (rest):** the original read from Shopify's API (once Shopify approves `read_all_orders`).
 - **D4 (rest):** browse abandonment, after its own privacy decision.
 - **D1:** Meta campaigns of the AI's own, during the first weeks of the run.

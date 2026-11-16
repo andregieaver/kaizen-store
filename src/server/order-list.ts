@@ -144,7 +144,7 @@ function toItem(row: Row, tags: ReadonlyMap<string, { key: string; label: string
     held: Boolean(row.held),
     risk: row.risk === "highest" || row.risk === "elevated" ? row.risk : null,
     disputed: Boolean(row.disputed),
-    source: row.source === "draft" ? "draft" : row.source === "exchange" ? "exchange" : "checkout",
+    source: row.source === "draft" ? "draft" : row.source === "exchange" ? "exchange" : row.source === "replacement" ? "replacement" : "checkout",
     draftNumber: row.draft_number ? String(row.draft_number) : null,
     gift: Boolean(row.is_gift),
     erased,

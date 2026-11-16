@@ -38,6 +38,7 @@ const ROW = z.object({
   payments: z.array(PAYMENT),
   parcels: z.array(z.number().nullable()),
   return_labels: z.array(z.number()),
+  replacement: z.object({ lines: z.array(z.object({ q: z.number(), c: z.number().nullable() })), parcels: z.array(z.number().nullable()) }).nullable(),
   disputes: z.array(DISPUTE),
 });
 
@@ -58,6 +59,11 @@ function profitQuery(store: Store, where: SQL): SQL {
       coalesce((select jsonb_agg(round(rt.label_cost_minor::numeric / (1 + coalesce(commerce.vat_rate(o.market_code, 'standard', rt.label_booked_at), 0))))
         from commerce.returns rt where rt.store_id = o.store_id and rt.order_id = o.id and rt.label_cost_minor is not null and not rt.label_test
           and rt.label_booked_at is not null), '[]'::jsonb) as return_labels,
+      -- The replacement sent for a lost or returned parcel (B3, D679): its goods at cost and its parcels.
+      (select jsonb_build_object(
+          'lines', coalesce((select jsonb_agg(jsonb_build_object('q', rl.quantity, 'c', rl.unit_cost_minor)) from commerce.order_lines rl where rl.store_id = ro.store_id and rl.order_id = ro.id), '[]'::jsonb),
+          'parcels', coalesce((select jsonb_agg(rs.label_cost_minor) from commerce.shipments rs where rs.store_id = ro.store_id and rs.order_id = ro.id and rs.method = 'parcel' and rs.undone_at is null), '[]'::jsonb))
+        from commerce.orders ro where ro.store_id = o.store_id and ro.replaces_order_id = o.id and ro.status in ('paid', 'fulfilled', 'closed') limit 1) as replacement,
       coalesce((select jsonb_agg(jsonb_build_object('a', d.amount_minor, 'f', d.fee_minor, 'c', d.currency))
         from commerce.payment_disputes d where d.store_id = o.store_id and d.order_id = o.id and d.outcome = 'lost' and not d.test_mode), '[]'::jsonb) as disputes
     from commerce.orders o
@@ -77,6 +83,7 @@ function inputOf(row: z.infer<typeof ROW>): OrderProfitInput {
     physical: row.physical,
     parcels: row.parcels,
     returnLabels: row.return_labels,
+    ...(row.replacement ? { replacement: { lines: row.replacement.lines.map((l) => ({ quantity: l.q, unitCostMinor: l.c })), parcels: row.replacement.parcels } } : {}),
     lostDisputes: row.disputes.map((d) => ({ amountMinor: d.a, feeMinor: d.f, feeCurrency: d.c })),
   };
 }

@@ -66,9 +66,9 @@ describe("duplicate indexes", () => {
     expect(names.length).toBeGreaterThan(0);
   });
 
-  it("orders has 32 indexes", async () => {
+  it("orders has 33 indexes", async () => {
     const { rows } = await db.query<{ n: number }>("select count(*)::int as n from pg_indexes where schemaname = 'commerce' and tablename = 'orders'");
-    expect(rows[0]?.n).toBe(32);
+    expect(rows[0]?.n).toBe(33);
   });
 
   it("would notice", async () => {

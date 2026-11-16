@@ -4851,6 +4851,12 @@ export const orders = commerce.table(
      * under the exchange context (`kaizen.exchange`) and frozen after (`orders_exchange_rules()`). A copy of the order (D129) never carries it.
      */
     exchangeId: uuid("exchange_id"),
+    /**
+     * The order a replacement was sent for (B3, D679, `docs/100-day-challenge.md` B3): set exactly when `source = 'replacement'`, a free order of the
+     * same goods for a parcel the carrier lost or sent back, written only by `sendReplacement()` through `insertOrder()`. At most one that is not
+     * cancelled per order (`orders_replacement_live_key`).
+     */
+    replacesOrderId: uuid("replaces_order_id"),
     createdAt: createdAt(),
   },
   // Annotated: an order names its exchange and an exchange names its orders, so the types would otherwise infer in a circle.
@@ -4874,6 +4880,16 @@ export const orders = commerce.table(
       .on(t.storeId, t.exchangeId)
       .where(sql`${t.exchangeId} is not null and ${t.status} <> 'cancelled'`),
     check("orders_source_exchange", sql`(${t.source} = 'exchange') = (${t.exchangeId} is not null)`),
+    foreignKey({
+      name: "orders_replaces_fk",
+      columns: [t.storeId, t.replacesOrderId],
+      foreignColumns: [t.storeId, t.id],
+    }).onDelete("restrict"),
+    /** One replacement that is not cancelled per order (B3, D679). */
+    uniqueIndex("orders_replacement_live_key")
+      .on(t.storeId, t.replacesOrderId)
+      .where(sql`${t.replacesOrderId} is not null and ${t.status} <> 'cancelled'`),
+    check("orders_source_replacement", sql`(${t.source} = 'replacement') = (${t.replacesOrderId} is not null)`),
     check("orders_delivered_source", sql`${t.deliveredSource} is null or (${t.deliveredAt} is not null and ${t.deliveredSource} in ('staff', 'handover', 'carrier'))`),
     check(
       "orders_held",
@@ -4899,11 +4915,11 @@ export const orders = commerce.table(
       .on(t.storeId, t.pickupLocationId)
       .where(sql`${t.pickupLocationId} is not null`),
     check("orders_archived_not_pending", sql`${t.archivedAt} is null or ${t.status} <> 'pending_payment'`),
-    check("orders_source", sql`${t.source} in ('checkout', 'draft', 'exchange')`),
-    /** A draft's order names its draft; a staff-made order (a draft's, or an exchange's, D239) names the staff member who made it. */
+    check("orders_source", sql`${t.source} in ('checkout', 'draft', 'exchange', 'replacement')`),
+    /** A draft's order names its draft; a staff-made order (a draft's, an exchange's, D239, or a replacement, D679) names the staff member who made it. */
     check(
       "orders_source_draft",
-      sql`(${t.source} = 'draft') = (${t.draftId} is not null) and (${t.source} in ('draft', 'exchange')) = (${t.madeBy} is not null)`,
+      sql`(${t.source} = 'draft') = (${t.draftId} is not null) and (${t.source} in ('draft', 'exchange', 'replacement')) = (${t.madeBy} is not null)`,
     ),
     check("orders_staff_discount", sql`${t.staffDiscountMinor} between 0 and ${t.discountMinor}`),
     check(

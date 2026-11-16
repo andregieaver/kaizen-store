@@ -220,6 +220,8 @@ type Bundle = {
   /** Disputes lost (D288), by the day they closed. */
   disputes: Row[];
   returnLabels: Row[];
+  /** Lost parcels' replacements (B3, D679), by the day they were made: their goods at cost and their parcels. */
+  replacements: Row[];
   platform: Row[];
   fees: Row[];
   /** Stripe's real fees (D290), per fee currency, with how many orders they are for. */
@@ -228,7 +230,7 @@ type Bundle = {
   spend: number;
 };
 
-const emptyBundle = (): Bundle => ({ orders: [], refunds: [], disputes: [], returnLabels: [], platform: [], fees: [], realFees: [], customers: [], spend: 0 });
+const emptyBundle = (): Bundle => ({ orders: [], refunds: [], disputes: [], returnLabels: [], replacements: [], platform: [], fees: [], realFees: [], customers: [], spend: 0 });
 
 /** The currencies the store can convert into its main currency, as a Postgres text array literal. */
 function convertibleCurrencies(store: Store): string {
@@ -299,6 +301,7 @@ async function firstOrderDays(store: Store, from: string): Promise<FirstDays> {
 
 /** A refund's or a lost dispute's sum per bucket and currency (CODE-02): whether the store converts the currency, how many, how much without VAT. */
 const MONEY_BY_BUCKET = z.object({ bk: col.text, currency: col.currency, converts: col.bool, n: col.minor, amount: col.minorOrNull });
+const REPLACEMENT_BY_BUCKET = z.object({ bk: col.text, currency: col.currency, converts: col.bool, n: col.minor, cogs: col.minor, label_known: col.minor, label_estimated: col.minor });
 
 /**
  * The main read's rows (CODE-02), each a kind and a JSON object, per bucket and currency: the paid orders' sums in minor units of the
@@ -532,6 +535,24 @@ async function loadBundles(
     group by 1, 2, 3
   `).then((rows) => checkedRows(MONEY_BY_BUCKET, rows));
 
+  // Lost parcels' replacements (B3, D679) by the day they were made: no sale (no payment, total 0), so not among the orders; their goods at the cost
+  // frozen on their lines, each parcel at its label's price and one without, or none sent yet, at the store's estimate, as profit per order counts sending.
+  const replacementDay = dayOf(store, sql`o.placed_at`);
+  const replacements = setBased(sql`
+    select (${bucketOf(grain, period, replacementDay)})::text as bk, o.currency::text as currency, (o.currency = any(${known})) as converts, count(*) as n,
+      coalesce(sum(g.cogs), 0) as cogs, coalesce(sum(p.known), 0) as label_known, sum(case when p.parcels = 0 then 1 else p.unknown end) as label_estimated
+    from commerce.orders o
+    cross join lateral (
+      select coalesce(sum(coalesce(ol.unit_cost_minor, 0) * ol.quantity), 0) as cogs from commerce.order_lines ol where ol.store_id = o.store_id and ol.order_id = o.id
+    ) g
+    cross join lateral (
+      select count(*) as parcels, count(*) filter (where sh.label_cost_minor is null) as unknown, coalesce(sum(sh.label_cost_minor), 0) as known
+      from commerce.shipments sh where sh.store_id = o.store_id and sh.order_id = o.id and sh.method = 'parcel' and sh.undone_at is null
+    ) p
+    where o.store_id = ${id}::uuid and o.source = 'replacement' and o.status in ('paid', 'fulfilled', 'closed') and ${inPeriod(store, sql`o.placed_at`, period)}
+    group by 1, 2, 3
+  `).then((rows) => checkedRows(REPLACEMENT_BY_BUCKET, rows));
+
   const spend = typedRows(
     z.object({ bk: col.text, amount: col.minor }),
     sql`
@@ -542,7 +563,7 @@ async function loadBundles(
     `,
   );
 
-  const [mainRows, refundRows, spendRows, firsts, disputeRows, labelRows] = await Promise.all([main, refunds, spend, firstDays, disputes, returnLabels]);
+  const [mainRows, refundRows, spendRows, firsts, disputeRows, labelRows, replacementRows] = await Promise.all([main, refunds, spend, firstDays, disputes, returnLabels, replacements]);
   const bundles = new Map<string, Bundle>();
   const excluded = new Map<string, number>();
   const at = (key: string) => {
@@ -594,6 +615,8 @@ async function loadBundles(
   }
   // A return label in a currency with no rate is left out of the costs only: it is no sale, so it is not counted among the orders left out.
   for (const r of labelRows) if (r.converts === true) at(String(r.bk)).returnLabels.push(r);
+  // So is a replacement (B3, D679): its cost is left out only where its parcels' currency has no rate.
+  for (const r of replacementRows) if (r.converts === true) at(String(r.bk)).replacements.push(r);
   for (const r of spendRows) at(String(r.bk)).spend += num(r, "amount");
   return { bundles, excluded };
 }
@@ -612,6 +635,12 @@ function fold(store: Store, settings: Pick<StoredAnalyticsSettings, "paymentFeeB
   const disputes = inMain(store, bundle.disputes.map((r) => ({ ...r, currency: String(r.currency) })), ["amount"]).values;
   const returnLabels = inMain(store, bundle.returnLabels.map((r) => ({ ...r, currency: String(r.currency) })), ["amount"]).values;
   const platform = inMain(store, bundle.platform.map((r) => ({ ...r, currency: String(r.currency) })), ["fee"]).values;
+  // A replacement's goods at cost are in the main currency (as the orders' cost of goods is); its labels in the order's.
+  const replacementLabels = inMain(store, bundle.replacements.map((r) => ({ ...r, currency: String(r.currency) })), ["label_known"]).values;
+  const replacementsMinor =
+    bundle.replacements.length === 0
+      ? 0
+      : bundle.replacements.reduce((s, r) => s + num(r, "cogs"), 0) + replacementLabels.label_known + shippingCostsFor(bundle.replacements.reduce((s, r) => s + num(r, "label_estimated"), 0), settings);
 
   let paymentFeesMinor = 0;
   for (const r of bundle.fees) {
@@ -649,6 +678,7 @@ function fold(store: Store, settings: Pick<StoredAnalyticsSettings, "paymentFeeB
     units: sum(bundle.orders, "units"),
     ...(disputes.amount !== 0 ? { lostDisputesMinor: disputes.amount } : {}),
     ...(returnLabels.amount !== 0 ? { returnLabelsMinor: returnLabels.amount } : {}),
+    ...(replacementsMinor !== 0 ? { replacementsMinor } : {}),
     // Handling and packaging (D646): each paid order with something to ship, at the store's cost per order.
     ...((settings.handlingCostMinor ?? 0) > 0 ? { handlingCostsMinor: sum(bundle.orders, "physical_orders") * (settings.handlingCostMinor ?? 0) } : {}),
     ...(realFeeOrders > 0 ? { realFeeOrders } : {}),

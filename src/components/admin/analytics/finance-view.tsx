@@ -118,9 +118,9 @@ export const plainLabel = (label: string) => label.replace(/ \((estimated|estima
 /** The bars of "Where net revenue went", in order: a line of the statement and its label (the CSV repeats them). */
 /** Lines a statement has only when they happened (D288's lost disputes): left out of *Where net revenue went* when absent. */
 export const shownWhere = (s: FinanceStatement, key: FinanceLineKey): boolean =>
-  (key !== "lostDisputes" && key !== "handlingCosts" && key !== "returnLabels") || lineOf(s, key) !== undefined;
+  (key !== "lostDisputes" && key !== "handlingCosts" && key !== "returnLabels" && key !== "replacements") || lineOf(s, key) !== undefined;
 
-const WHERE_KEYS = ["netRevenue", "cogs", "paymentFees", "platformFees", "shippingCosts", "handlingCosts", "returnLabels", "marketing", "lostDisputes", "fixedCosts", "operatingProfit"] as const;
+const WHERE_KEYS = ["netRevenue", "cogs", "paymentFees", "platformFees", "shippingCosts", "handlingCosts", "returnLabels", "replacements", "marketing", "lostDisputes", "fixedCosts", "operatingProfit"] as const;
 
 /** The bars with their labels in the admin's language; English unless given. */
 export const whereItWent = (w: FinanceMessages["view"]["where"] = financeEn.view.where): readonly (readonly [FinanceLineKey, string])[] => WHERE_KEYS.map((key) => [key, w[key]] as const);
