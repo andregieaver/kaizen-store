@@ -127,7 +127,7 @@ describe("watch and roll back (F4)", () => {
   });
 });
 
-describe("a page the autopilot published (F4, D651)", () => {
+describe("a page the autopilot published (F4, D652)", () => {
   const page = (slug: string, text: string) => ({
     ...newPageContent(),
     title: "Autumn",

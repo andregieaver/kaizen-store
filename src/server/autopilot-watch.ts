@@ -116,7 +116,7 @@ async function undoPrices(c: Change, store: Store): Promise<string[]> {
 const PAGE_VERSION = z.object({ id: col.uuid, content: z.unknown(), same_as_live: col.bool, live_is_draft: col.bool });
 
 /**
- * A page the change published, put back as it was (F4, D651): the published version before it published again through the page builder's own
+ * A page the change published, put back as it was (F4, D652): the published version before it published again through the page builder's own
  * save, or the page taken off the site when it had never been live. Only while what is live and the draft are both still what the change
  * published (`same_as_live`, `live_is_draft`): a page someone published or edited since stays as they left it.
  */
