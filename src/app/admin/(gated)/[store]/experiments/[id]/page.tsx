@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 
-import { DraftActions, DraftPanel, TestActions } from "@/components/admin/experiment-controls";
+import { DraftActions, DraftPanel, LearningCard, TestActions } from "@/components/admin/experiment-controls";
 import { ExperimentResultsView } from "@/components/admin/experiment-results-view";
 import { AdminTextScope } from "@/components/admin/admin-text";
 import { StepPath, type PathStep } from "@/components/admin/home/home-parts";
@@ -172,6 +172,7 @@ export default async function ExperimentPage({ params }: PageProps<"/admin/[stor
           actions={<TestActions store={store.slug} test={shown} next={card.next} best={card.best} />}
         />
         <StepPath label={w.card.path.label} steps={pathOf(test, card, w, date, readyAround)} />
+        {(test.status === "applied" || test.status === "discarded") && <LearningCard store={store.slug} test={shown} />}
         {test.status === "scheduled" && (
           <p className="max-w-[75ch] text-body text-ink-2">
             {w.run.scheduledText}

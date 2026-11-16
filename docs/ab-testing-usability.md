@@ -2,7 +2,7 @@
 
 A review of the A/B tests (D148, [`ab-testing.md`](ab-testing.md)) for people who have never run one, and for the AI that helps
 them. The page with the findings, screenshots of the screens as they were and mockups: https://claude.ai/artifact/Ep8Vp5BbKEs7QMpECrZqfs.
-Steps 1 and 2 are built (phases 12 and 13 of D148, D659 and D660); step 2b and steps 3 and 4 are the plan.
+Steps 1 to 3 are built (phases 12 to 14 of D148, D659, D660 and D662); steps 2b, 3b and 4 are the plan.
 
 The engine is sound and stays as it is: rules fixed before results, no verdict before the minimum, the split check, the guardrail,
 the words written in code (`verdictOf()`), approval for start, stop and apply. What the person saw was the problem: three tables, an
@@ -39,8 +39,8 @@ test an **editor** with *Customise* folded (like the product, D595 step 5).
 | 5 | The versions were never shown. | Steps 1 and 2: what is different in words; step 2b: side by side |
 | 6 | The estimate asked the owner to type visitors a day and a rate; visits (D152), cookie choices and the funnel exist. | Fixed in step 2 |
 | 7 | Eight decisions before anything is visible, and the draft page asked them again. | Fixed in step 2 |
-| 8 | Nobody hears when there is an answer. | Step 3 |
-| 9 | A decided test leaves nothing behind. | Step 3 |
+| 8 | Nobody hears when there is an answer. | Fixed in step 3 (notice and email); step 3b: the autopilot |
+| 9 | A decided test leaves nothing behind. | Fixed in step 3 (learnings, what it would mean) |
 | 10 | The AI saw fewer facts than the screen. | Fixed in step 1 (`explain_results`) |
 | 11 | Found while building: applying a whole-page winner renamed the live page "… (B)". | Fixed in step 1 |
 | 12 | Found while building: an untouched copy of the template's front page counted as changed, so it could be started. | Fixed in step 2 |
@@ -53,10 +53,10 @@ test an **editor** with *Customise* folded (like the product, D595 step 5).
    be found within six weeks and offers it in one press.
    2b. **The original and B side by side (no migration).** A preview route outside the admin's frame (`/admin/frame/{store}/…`, signed in,
    the same access checks), drawn in two scaled frames on the draft page and under *What is different* on a started test.
-3. **News and a memory (phase 14, one migration).** `experiments.answered_at` and `experiments.learning` (nullable). A `verdict_reached`
-   event raised once by `runExperimentJobs()`: an AI manager notice (D350), an email to the owners, an autopilot event (D309) and an owner
-   webhook event (D354). *If everyone saw it* computed from the range and the counted traffic. Learnings written on deciding (280
-   characters, claims filter), a gated `record_learning` tool, and earlier learnings returned by suggest and explain.
+3. **News and a memory (phase 14, D662, built 16 November 2026).** See `ab-testing.md`, "What phase 14 built".
+   3b. **The AI side of news and memory (no migration; one eval run).** The autopilot's `test_answered` event (its kind added to
+   `autopilot_events_kind`, its turn's lines and tools as `test_ended`'s), a gated `record_learning` tool, and an owner webhook event. Each
+   changes what the agents are offered, so they ship together with a new run of the agents' eval on Platform → AI and its recording.
 4. **The list, ideas and eyes (phase 15, no migration).** The list with a lead sentence (*One test has an answer.*) and rows grouped
    (needs your decision, still learning, ideas, what your tests taught you), each with its stage chip and a progress bar or sparkline; the
    Marketing page (D612) shows a test with an answer among *what runs now*. "Ideas to test" built in code from suggest's facts, without a

@@ -7,6 +7,7 @@ export const experimentsNb: ExperimentsMessages = {
     description:
       "Prøv to versjoner av en side, en rad eller komponent på den, toppen eller bunnen av nettstedet, eller en produktmal på ekte besøkende, og behold den som virker best. Halvparten av de besøkende ser den som den er, den andre halvparten en versjon du endrer; Kaizena Flow teller hvem som legger i handlekurven og hvem som kjøper, og sier med enkle ord når det er en vinner. Bare besøkende som har godtatt informasjonskapsler for statistikk, er med; alle andre ser siden som den er.",
     newTest: "Ny test",
+    taught: "Hva testene dine har lært deg",
     empty: "Ingen tester ennå. Velg en side, si hva du vil ha mer av, og endre én ting: en overskrift, et bilde, en knapp.",
     versions: "{n} versjoner",
     started: "Startet {date}",
@@ -370,6 +371,20 @@ export const experimentsNb: ExperimentsMessages = {
       day: "dag {n}",
     },
     funnel: { title: "Hva de besøkende gjorde", sub: "Av hver 100 som så den", label: "Hva de besøkende gjorde, av hver 100 som så hver versjon" },
+    impact: {
+      title: "Hvis alle så {name}",
+      text: "Omtrent {n} flere besøkende i uken som {per} (trolig mellom {low} og {high}), med trafikken denne testen telte. Regnet ut av butikken fra tallene over, aldri av KI-en.",
+    },
+    learning: {
+      title: "Hva lærte denne testen deg?",
+      hint: "Én linje til neste gang. KI-assistenten leser den når den foreslår neste test.",
+      placeholder: "Korte, konkrete overskrifter slår slagord",
+      label: "Hva den lærte",
+      optional: "Hva lærte den deg? (valgfritt)",
+      save: "Lagre",
+      saved: "Lagret.",
+      taught: "Lært: {text}",
+    },
     details: {
       summary: "Slik regnet vi",
       hint: "Alle tallene, uke for uke, hvordan de besøkende ble fordelt, og metoden",

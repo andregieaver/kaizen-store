@@ -1,7 +1,7 @@
 # A/B testing
 
 Design for an A/B testing tool that platform admins and store owners use to find out whether a change to a page earns
-its place. Status: **phases 1 to 13 built** (13: the shop's own traffic, one-screen setup and the draft as a record, D660) (12: the test's page as a record, D659, [`ab-testing-usability.md`](ab-testing-usability.md)) (11: the form-sent goal) (10: the front page and the All products page) (9: modals and working pages) (4: the AI manager's tools; 5: the platform's view; 6: the guardrail email; 7: search and recommendations on the engine; 8: the platform assistant's tools) (D148): the engine, tests of whole store pages and of a part of one (a row, column or component chosen in the builder), scheduled starts, and tests of a store's header, footer and product layouts; see "What phase 1 built", "What phase 2 built" and "What phase 3 built" below. The AI manager's tools are phase 4 ("What phase 4 built"). Modals and working pages are phase 9; the platform's own pages are later. It builds on [`measurement.md`](measurement.md), whose principles
+its place. Status: **phases 1 to 14 built** (14: news when a test has an answer, what it would mean, and what it taught, D662) (13: the shop's own traffic, one-screen setup and the draft as a record, D660) (12: the test's page as a record, D659, [`ab-testing-usability.md`](ab-testing-usability.md)) (11: the form-sent goal) (10: the front page and the All products page) (9: modals and working pages) (4: the AI manager's tools; 5: the platform's view; 6: the guardrail email; 7: search and recommendations on the engine; 8: the platform assistant's tools) (D148): the engine, tests of whole store pages and of a part of one (a row, column or component chosen in the builder), scheduled starts, and tests of a store's header, footer and product layouts; see "What phase 1 built", "What phase 2 built" and "What phase 3 built" below. The AI manager's tools are phase 4 ("What phase 4 built"). Modals and working pages are phase 9; the platform's own pages are later. It builds on [`measurement.md`](measurement.md), whose principles
 it keeps, and on what already exists: the page builder, `src/lib/experiment-stats.ts`, the search test (D77) and the
 recommendations test (D139/D140).
 
@@ -446,7 +446,27 @@ Step 2 of [`ab-testing-usability.md`](ab-testing-usability.md).
 - **Not done here:** the original and B drawn side by side. The admin's previews are pages inside the admin's frame; a frame of their own
   is step 2b in the plan.
 
-## Principles (kept from `measurement.md`)
+## What phase 14 built: news, and a memory (D662)
+
+Step 3 of [`ab-testing-usability.md`](ab-testing-usability.md). Migration `20261116091542_grey_daredevil` (two nullable columns and a
+notice kind).
+
+- **The day there is an answer.** The hourly check in `runExperimentJobs()` already works out every running test's results for its guardrail;
+  the first time a verdict is *better*, *worse* or *even*, `markAnswered()` sets `experiments.answered_at` (once: `where answered_at is null`)
+  and `notifyAnswered()` tells the store's owners and whoever made the test: an AI manager notice (kind `test_answered`, D350, "Your A/B test
+  … has an answer") and one email each (`experiment.answered`, `answeredEmail()` in `src/lib/experiment-emails.ts`) in their own admin
+  language, with the verdict as the test's page words it. The test keeps running until someone decides; nothing is applied by itself.
+- **If everyone saw it.** For a rate goal whose verdict found a better version, `experimentCard().impact` works out how many more visitors a
+  week would do the thing (the week's counted visitors times the difference, and the same for the ends of its likely range), shown under the
+  verdict and returned by `explain_results` as `if_everyone_saw_it`.
+- **What it taught.** `experiments.learning`, one line of at most 280 characters in the owner's words: written in the decide dialog
+  (optional), or later on a decided test's page (`LearningCard`, `saveLearning()`, audited without the words). The list shows them under
+  *What your tests taught you*; `list_experiments`, `explain_results` and `suggest_experiments` (`what_earlier_tests_taught`, and with each
+  candidate's earlier tests) return them as the owner's words, as they return the test's idea.
+- **Kept for step 3b:** the autopilot's `test_answered` event and the gated `record_learning` tool. Both change what the agents are offered
+  (an event's turn lines, a tool's definition), so they wait for one eval run on Platform → AI with their recording.
+
+
 
 - Randomise who is eligible, then compare everyone assigned; never compare people who used a thing with those who did
   not.

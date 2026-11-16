@@ -10,6 +10,7 @@ vi.mock("@/app/admin/(gated)/[store]/experiments/actions", () => {
     addVariantAction: ok,
     applyVariantAction: ok,
     decideExperimentAction: ok,
+    saveLearningAction: ok,
     deleteDraftAction: ok,
     discardExperimentAction: ok,
     removeVariantAction: ok,
@@ -27,7 +28,7 @@ import type { ExperimentInfo } from "@/server/experiment-admin";
 import { experimentCard } from "@/lib/experiment-card";
 import { verdictOf } from "@/lib/experiment-results";
 
-import { DraftActions, DraftPanel, TestActions } from "./experiment-controls";
+import { DraftActions, DraftPanel, LearningCard, TestActions } from "./experiment-controls";
 import { ExperimentResultsView } from "./experiment-results-view";
 import { ExperimentForm } from "./experiment-form";
 
@@ -54,6 +55,8 @@ const test = (over: Partial<ExperimentInfo> = {}): ExperimentInfo => ({
   stoppedAt: null,
   stopReason: null,
   appliedVariant: null,
+  answeredAt: null,
+  learning: null,
   createdAt: "2026-10-01T10:00:00.000Z",
   scheduledStart: null,
   scheduleProblem: null,
@@ -224,6 +227,10 @@ describe("what a started test found (D659)", () => {
     expect(out).toContain("Heading: “Welcome” became “New this week”");
     expect(out).toContain("How we worked this out");
     expect(out).not.toContain("chance it is better");
+    // If everyone saw B (D662): worked out by the store, with its likely range.
+    expect(out).toContain("data-impact");
+    expect(out).toMatch(/If everyone saw Version B/);
+    expect(out).toMatch(/About \d+ more visitors a week who added to the cart \(likely between \d+ and \d+\)/);
   });
 
   it("shows no change or range while it is too early, and says when it is likely ready", () => {
@@ -238,5 +245,12 @@ describe("what a started test found (D659)", () => {
     expect(out).not.toMatch(/\d+ % fewer|\d+ % more/);
     expect(out).toContain("Likely ready around 27 Nov 2026");
     expect(out).toContain("Not enough yet");
+    expect(out).not.toContain("data-impact");
+  });
+
+  it("asks a decided test what it taught, with what was written before (D662)", () => {
+    const out = html(createElement(LearningCard, { store: "demo", test: test({ status: "applied", appliedVariant: "b", learning: "Short headings win" }) }));
+    expect(out).toContain("What did this test teach?");
+    expect(out).toContain('value="Short headings win"');
   });
 });

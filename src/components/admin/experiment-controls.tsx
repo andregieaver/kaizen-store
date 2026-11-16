@@ -9,6 +9,7 @@ import {
   addVariantAction,
   deleteDraftAction,
   decideExperimentAction,
+  saveLearningAction,
   removeVariantAction,
   renameExperimentAction,
   scheduleExperimentAction,
@@ -395,6 +396,7 @@ export function TestActions({ store, test, next, best }: { store: string; test: 
   const a = w.card.actions;
   const [ask, setAsk] = useState<string | null>(null);
   const [name, setName] = useState(test.name);
+  const [learning, setLearning] = useState(test.learning ?? "");
   if (test.status === "applied" || test.status === "discarded") return null;
   const versions = test.variants.filter((v) => v.key !== "a");
   const nameOf = (key: string) => versions.find((v) => v.key === key)?.name ?? key.toUpperCase();
@@ -417,7 +419,7 @@ export function TestActions({ store, test, next, best }: { store: string; test: 
     if (!ask) return;
     if (ask === "stop") run(() => stopExperimentAction(store, test.id), () => setAsk(null));
     else if (ask === "rename") run(() => renameExperimentAction(store, test.id, { name }), () => setAsk(null));
-    else run(() => decideExperimentAction(store, test.id, ask), () => setAsk(null));
+    else run(() => decideExperimentAction(store, test.id, ask, learning), () => setAsk(null));
   };
   return (
     <div className="flex w-full flex-col items-stretch gap-3 sm:w-auto sm:items-end">
@@ -475,6 +477,12 @@ export function TestActions({ store, test, next, best }: { store: string; test: 
         question && (
           <div role="alertdialog" aria-label={question} className={`flex max-w-md flex-col gap-3 p-4 text-body ${CARD_CLASS}`}>
             <p>{question}</p>
+            {ask !== "stop" && (
+              <label className="flex flex-col gap-1 text-sm font-medium">
+                {w.card.learning.optional}
+                <input value={learning} onChange={(e) => setLearning(e.target.value)} maxLength={280} placeholder={w.card.learning.placeholder} className={input} />
+              </label>
+            )}
             <div className="flex flex-wrap gap-2">
               <Button kind={ask === "stop" ? "danger" : "main"} disabled={pending} onClick={confirm}>
                 {yes}
@@ -488,5 +496,31 @@ export function TestActions({ store, test, next, best }: { store: string; test: 
       )}
       <Problems problems={problems} />
     </div>
+  );
+}
+
+/**
+ * What a decided test taught, in the owner's words (D662): one line, saved with the test, shown in the list's "What your tests taught you"
+ * and read by the AI manager when it suggests the next test.
+ */
+export function LearningCard({ store, test }: { store: string; test: ExperimentInfo }) {
+  const { pending, problems, run } = useRun();
+  const w = useAdminText("experiments").card.learning;
+  const [text, setText] = useState(test.learning ?? "");
+  const [saved, setSaved] = useState(false);
+  return (
+    <Card title={w.title} description={w.hint} className="flex flex-col gap-3" compact>
+      <div className="flex flex-wrap items-end gap-2" data-learning>
+        <label className="flex min-w-0 flex-1 flex-col gap-1 text-sm font-medium">
+          <span className="sr-only">{w.label}</span>
+          <input value={text} onChange={(e) => (setText(e.target.value), setSaved(false))} maxLength={280} placeholder={w.placeholder} className={input} />
+        </label>
+        <Button kind="secondary" disabled={pending} onClick={() => run(() => saveLearningAction(store, test.id, text), () => setSaved(true))}>
+          {w.save}
+        </Button>
+        {saved && <span role="status" className="text-sm text-muted">{w.saved}</span>}
+      </div>
+      <Problems problems={problems} />
+    </Card>
   );
 }

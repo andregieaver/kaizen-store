@@ -14,6 +14,7 @@ import {
   getExperiment,
   removeVariant,
   renameExperiment,
+  saveLearning,
   scheduleExperiment,
   startExperiment,
   stopExperiment,
@@ -174,7 +175,7 @@ export async function discardExperimentAction(storeSlug: string, id: string): Pr
  * Decides a test from its page (D659): a version becomes the page, or `original` keeps it. A running test is stopped first, as the AI
  * manager's `apply_winner` does, so a clear winner is one press (and a yes) away instead of Stop, then Decide.
  */
-export async function decideExperimentAction(storeSlug: string, id: string, choice: string): Promise<Outcome> {
+export async function decideExperimentAction(storeSlug: string, id: string, choice: string, learning = ""): Promise<Outcome> {
   const member = await checkPermission(storeSlug, "marketing:write");
   if (!member) return { ok: false, problems: [NO_ACCESS] };
   if (!isId(id) || !/^(original|[b-d])$/.test(choice)) return unknown;
@@ -185,7 +186,19 @@ export async function decideExperimentAction(storeSlug: string, id: string, choi
     if (!stopped.ok) return stopped;
   }
   const result = choice === "original" ? await discardExperiment(member.account, member.store.id, id) : await applyVariant(member.account, member.store.id, id, choice);
+  // What it taught (D662), kept with the decision when the owner wrote a line.
+  if (result.ok && typeof learning === "string" && learning.trim()) await saveLearning(member.account, member.store.id, id, learning.slice(0, 400));
   refresh();
+  return result;
+}
+
+/** Keeps what a test taught, in the owner's words (D662). */
+export async function saveLearningAction(storeSlug: string, id: string, learning: string): Promise<Outcome> {
+  const member = await checkPermission(storeSlug, "marketing:write");
+  if (!member) return { ok: false, problems: [NO_ACCESS] };
+  if (!isId(id) || typeof learning !== "string") return unknown;
+  const result = await saveLearning(member.account, member.store.id, id, learning.slice(0, 400));
+  if (result.ok) refresh();
   return result;
 }
 

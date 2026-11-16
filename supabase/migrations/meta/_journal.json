@@ -302,6 +302,13 @@
       "when": 1794818146275,
       "tag": "20261116083546_page_heat_functions",
       "breakpoints": true
+    },
+    {
+      "idx": 43,
+      "version": "7",
+      "when": 1794820542910,
+      "tag": "20261116091542_grey_daredevil",
+      "breakpoints": true
     }
   ]
 }

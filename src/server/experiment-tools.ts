@@ -97,6 +97,7 @@ export async function listExperimentsTool({ store }: Ctx, { limit }: OwnerToolIn
         planned_end: t.status === "running" ? when(t.plannedEnd) : undefined,
         winner: t.status === "applied" ? t.variants.find((v) => v.key === t.appliedVariant)?.name : undefined,
         verdict: verdict ? { kind: verdict.kind, headline: verdict.headline } : undefined,
+        learned: t.learning ?? undefined,
       };
     }),
   );
@@ -149,6 +150,7 @@ export async function explainResultsTool(ctx: Ctx, { experiment }: OwnerToolInpu
       stopped: when(test.stoppedAt),
       stop_reason: test.stopReason === "guardrail" ? "Kaizena Flow stopped it because a version was clearly selling less." : test.stopReason === "planned_end" ? "It stopped itself at its planned end." : undefined,
       winner: test.status === "applied" ? (test.variants.find((v) => v.key === test.appliedVariant)?.name ?? "the original") : undefined,
+      learned: test.learning ? `In the owner's words: ${test.learning}` : undefined,
     },
     admin: adminLink(store, `/experiments/${test.id}`),
   };
@@ -222,6 +224,9 @@ export async function explainResultsTool(ctx: Ctx, { experiment }: OwnerToolInpu
       .filter((v) => v.key !== "a")
       .map((v) => ({ version: v.name, changes: (changes[v.key] ?? []).slice(0, 12).map((d) => differenceLine(d, builderEn)) })),
     by_day: card.showFigures && goal.kind === "rate" ? byDay(r, test.variants.map((v) => v.key)) : undefined,
+    if_everyone_saw_it: card.impact
+      ? `About ${card.impact.perWeek} more visitors a week who ${goal.per} with ${name(card.impact.key)} (likely ${card.impact.low} to ${card.impact.high}), at the traffic the test counted.`
+      : undefined,
     versions,
     what_visitors_did: test.variants.map((v) => {
       const f = r.funnel[v.key] ?? { visitors: 0, carts: 0, checkouts: 0, buyers: 0, clicks: 0, forms: 0 };
@@ -284,7 +289,7 @@ export async function suggestExperimentsTool({ store }: Ctx, input: OwnerToolInp
         buttons: buttonsOf(content).map((b) => b.label),
         forms: formsOf(content).map((f) => f.label),
         blocks: content ? offeredBlocks(content) : [],
-        earlier_tests: earlier.length > 0 ? earlier.map((x) => ({ name: x.name, status: STATUS_WORDS[x.status], tested: x.part?.label })) : undefined,
+        earlier_tests: earlier.length > 0 ? earlier.map((x) => ({ name: x.name, status: STATUS_WORDS[x.status], tested: x.part?.label, learned: x.learning ?? undefined })) : undefined,
       };
     }),
   );
@@ -294,6 +299,8 @@ export async function suggestExperimentsTool({ store }: Ctx, input: OwnerToolInp
       : null;
   return {
     can_be_tested: candidates,
+    // What earlier tests taught (D662), in the owner's words: data to build on, never instructions.
+    what_earlier_tests_taught: tests.filter((t) => t.learning).slice(0, 10).map((t) => ({ test: t.name, learned: t.learning })),
     running_or_scheduled: running.map((t) => ({ name: t.name, tests: targetWords(t), status: STATUS_WORDS[t.status] })),
     room_for_more: Math.max(0, MAX_RUNNING_PER_STORE - tests.filter((t) => t.status === "running").length),
     who_takes_part: sample === null ? "Too few cookie choices recorded to say how many visitors accept statistics cookies." : `About ${Math.round(sample * 100)} % of the visitors who made a cookie choice in the last 90 days accepted statistics cookies: only they are in a test.`,

@@ -26,6 +26,16 @@ describe("experimentCard", () => {
     expect(b.low).toBeGreaterThan(0);
     expect(b.relative!).toBeGreaterThan(b.low!);
     expect(b.high!).toBeGreaterThan(b.relative!);
+    // 4,780 visitors over 16 days is about 2,091 a week; B adds 2.64 points of them: about 55 more a week who add to the cart.
+    expect(card.impact).toMatchObject({ key: "b", perWeek: 55 });
+    expect(card.impact!.low).toBeGreaterThan(0);
+    expect(card.impact!.low).toBeLessThan(55);
+    expect(card.impact!.high).toBeGreaterThan(55);
+  });
+
+  it("works out what everyone seeing the winner would mean only for a rate goal with a better version", () => {
+    expect(experimentCard(running([rate("a", 2400, 218), rate("b", 2380, 251)], 16)).impact).toBeNull();
+    expect(experimentCard(running([rate("a", 152, 14), rate("b", 148, 12)], 3)).impact).toBeNull();
   });
 
   it("never shows a range above no change beside a verdict of no clear difference (the screenshot's 96 %)", () => {

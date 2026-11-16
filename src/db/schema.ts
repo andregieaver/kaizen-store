@@ -13333,6 +13333,10 @@ export const experiments = commerce.table(
     /** Why a test stopped: `person`, `guardrail` or `planned_end`. */
     stopReason: text("stop_reason"),
     appliedVariant: text("applied_variant"),
+    /** When the test first had an answer (D148 phase 14, D662): the verdict turned better, worse or even, and the owners were told once. */
+    answeredAt: timestamp("answered_at", { withTimezone: true }),
+    /** What the test taught, in one line the owner wrote on deciding (D662), shown in the list and read by the AI manager. */
+    learning: text("learning"),
     createdBy: uuid("created_by").references(() => accounts.id),
     updatedBy: uuid("updated_by").references(() => accounts.id),
     createdAt: createdAt(),
@@ -13356,6 +13360,7 @@ export const experiments = commerce.table(
     check("experiments_name", sql`length(${t.name}) between 1 and 120 and length(${t.hypothesis}) <= 500`),
     check("experiments_traffic", sql`${t.trafficShare} > 0 and ${t.trafficShare} <= 1`),
     check("experiments_minimums", sql`${t.minVisitors} >= 0 and ${t.minDays} between 1 and 90`),
+    check("experiments_learning", sql`${t.learning} is null or length(${t.learning}) between 1 and 280`),
     check("experiments_stop_reason", sql`${t.stopReason} is null or ${t.stopReason} in ('person', 'guardrail', 'planned_end')`),
     check("experiments_applied", sql`(${t.appliedVariant} is not null) = (${t.status} = 'applied')`),
   ],
@@ -17425,7 +17430,7 @@ export const assistantNotices = commerce.table(
     index("assistant_notices_created_idx").on(t.createdAt),
     check(
       "assistant_notices_kind",
-      sql`${t.kind} in ('page_built', 'follow_up', 'plan_question', 'plan_done', 'approval_waiting', 'report_ready', 'life_handoff')`,
+      sql`${t.kind} in ('page_built', 'follow_up', 'plan_question', 'plan_done', 'approval_waiting', 'report_ready', 'life_handoff', 'test_answered')`,
     ),
     check("assistant_notices_ref", sql`length(${t.ref}) between 1 and 200`),
     check("assistant_notices_href", sql`${t.href} like '/admin/%' and length(${t.href}) <= 300`),

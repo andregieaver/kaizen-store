@@ -37,6 +37,16 @@ export const staffEmailsNb: StaffEmailsMessages = {
       "Ikke deg, eller ikke ønsket? Fjern koblingen under Din konto → Tilkoblede apper og assistenter, eller i innstillingene i Kaizen Life. Når koblingen er fjernet, kobles de aldri sammen igjen av seg selv.",
     button: "Tilkoblede apper og assistenter",
   },
+  answered: {
+    subject: "A/B-testen din «{test}» har et svar",
+    preview: "{headline} Åpne testen for å bestemme.",
+    heading: "A/B-testen din har et svar",
+    intro: "Testen «{test}» av {target} i {store} har gått i {days}, med nok besøkende til å si noe.",
+    decide:
+      "Åpne testen for å bruke vinneren eller beholde originalen. Den fortsetter til du bestemmer deg, og Kaizena Flow endrer ikke siden din av seg selv.",
+    days: { one: "{n} dag", many: "{n} dager" },
+    button: "Åpne testen",
+  },
   guardrail: {
     days: { one: "{n} dag", many: "{n} dager" },
     figures:

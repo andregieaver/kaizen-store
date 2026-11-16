@@ -85,6 +85,10 @@ export type ExperimentInfo = {
   stoppedAt: string | null;
   stopReason: string | null;
   appliedVariant: string | null;
+  /** When the test first had an answer and its owners were told (D662). */
+  answeredAt: string | null;
+  /** What it taught, in the owner's words (D662). */
+  learning: string | null;
   createdAt: string;
   scheduledStart: string | null;
   scheduleProblem: string | null;
@@ -131,6 +135,8 @@ const infoOf = (row: Row, variants: VariantInfo[]): ExperimentInfo => ({
   stoppedAt: iso(row.stopped_at),
   stopReason: row.stop_reason ? String(row.stop_reason) : null,
   appliedVariant: row.applied_variant ? String(row.applied_variant) : null,
+  answeredAt: row.answered_at ? new Date(String(row.answered_at)).toISOString() : null,
+  learning: row.learning ? String(row.learning) : null,
   createdAt: iso(row.created_at)!,
   scheduledStart: iso(row.scheduled_start),
   scheduleProblem: row.schedule_problem ? String(row.schedule_problem) : null,
@@ -617,6 +623,34 @@ export async function stopExperiment(account: Account | null, storeId: string, i
   refreshTag(experimentsTag(storeId));
   await audit(account?.id ?? null, storeId, "experiment.stopped", { experiment: id, reason });
   return { ok: true };
+}
+
+/** The longest learning kept (D662), in characters. */
+export const LEARNING_MAX = 280;
+
+/**
+ * Keeps what a test taught, in the owner's words (D662): one line, written when it is decided or later on its page; empty clears it.
+ * Only a test that has started can have taught something. Audited without the words.
+ */
+export async function saveLearning(account: Account, storeId: string, id: string, text: string): Promise<Outcome> {
+  const test = await getExperiment(storeId, id);
+  if (!test) return { ok: false, problems: ["This test no longer exists."] };
+  if (test.status === "draft" || test.status === "scheduled") return { ok: false, problems: ["A test teaches something once it has run."] };
+  const learning = text.replace(/\s+/g, " ").trim();
+  if (learning.length > LEARNING_MAX) return { ok: false, problems: [`Keep what it taught to ${LEARNING_MAX} characters.`] };
+  await db().execute(sql`update commerce.experiments set learning = ${learning || null}, updated_by = ${account.id}::uuid, updated_at = now() where id = ${id}::uuid and store_id = ${storeId}::uuid`);
+  refreshTag(experimentsTag(storeId));
+  await audit(account.id, storeId, "experiment.learning", { experiment: id, cleared: learning === "" });
+  return { ok: true };
+}
+
+/** Marks a running test as answered, once (D662): true only for the call that marked it, so its owners are told once. */
+export async function markAnswered(storeId: string, id: string): Promise<boolean> {
+  const rows = await typedRows(
+    z.object({ id: col.uuid }),
+    sql`update commerce.experiments set answered_at = now() where id = ${id}::uuid and store_id = ${storeId}::uuid and answered_at is null and status = 'running' returning id`,
+  );
+  return rows.length === 1;
 }
 
 /**

@@ -317,6 +317,17 @@ export function ExperimentResultsView({
         {results.unconverted > 0 && <p className="text-caption text-muted">{countWords(results.unconverted, r.unconverted)}</p>}
       </section>
 
+      {card.impact && (
+        <section aria-labelledby="ab-impact" className="flex flex-col gap-1 rounded-card bg-insight-soft p-5" data-impact>
+          <h2 id="ab-impact" className="text-body-strong text-insight-text">
+            {fillWords(c.impact.title, { name: nameOf(test, card.impact.key) })}
+          </h2>
+          <p className="max-w-[75ch] text-body text-insight-text">
+            {fillWords(c.impact.text, { n: num(card.impact.perWeek), per: goal.per, low: num(card.impact.low), high: num(card.impact.high) })}
+          </p>
+        </section>
+      )}
+
       <div className="grid gap-6 lg:grid-cols-2">
         <RangeChart test={test} card={card} words={words} numberLocale={numberLocale} />
         <Card title={c.different.title} className="flex flex-col gap-4" compact>

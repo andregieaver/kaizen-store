@@ -52,6 +52,11 @@ export type ExperimentCard = {
   comparisons: CardComparison[];
   /** Whether figures may be shown beside the verdict: only once it has an answer (no peeking while too early, nothing on a broken split). */
   showFigures: boolean;
+  /**
+   * If everyone saw the winner (D662): how many more visitors a week would do the thing, at the traffic the test counted, with its likely
+   * range; only for a rate goal whose verdict found a better version.
+   */
+  impact: { key: string; perWeek: number; low: number; high: number } | null;
 };
 
 export type CardInput = {
@@ -136,6 +141,17 @@ export function experimentCard(input: CardInput): ExperimentCard {
               ? "use"
               : "keep_original"
             : "done";
+  const winner = verdict === "better" && kind === "rate" ? comparisons.find((c) => c.key === results?.verdict.best) : undefined;
+  const visitorsPerWeek = days > 0 ? (figures.reduce((sum, f) => sum + f.visitors, 0) / days) * 7 : 0;
+  const impact =
+    winner && winner.low !== null && winner.high !== null && visitorsPerWeek > 0
+      ? {
+          key: winner.key,
+          perWeek: Math.round(visitorsPerWeek * (winner.version - winner.original)),
+          low: Math.max(0, Math.round(visitorsPerWeek * winner.original * winner.low)),
+          high: Math.round(visitorsPerWeek * winner.original * winner.high),
+        }
+      : null;
   return {
     state,
     next,
@@ -143,5 +159,6 @@ export function experimentCard(input: CardInput): ExperimentCard {
     progress: { days, minDays: input.minDays, visitors: fewest, minVisitors, share, reached, readyAround },
     comparisons,
     showFigures: verdict === "better" || verdict === "worse" || verdict === "even",
+    impact,
   };
 }

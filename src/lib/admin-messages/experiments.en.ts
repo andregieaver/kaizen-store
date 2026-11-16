@@ -12,6 +12,7 @@ export const experimentsEn = {
     description:
       "Try two versions of a page, a row or component of it, your header or footer, or a product layout on real visitors and keep the one that works better. Half of the visitors see it as it is, the other half a version you change; Kaizena Flow counts who adds to the cart and who buys, and tells you in plain words when there is a winner. Only visitors who have accepted statistics cookies take part; everyone else sees the page as it is.",
     newTest: "New test",
+    taught: "What your tests taught you",
     empty: "No tests yet. Pick a page, say what you want more of, and change one thing: a heading, a picture, a button.",
     versions: "{n} versions",
     started: "Started {date}",
@@ -409,6 +410,20 @@ export const experimentsEn = {
       day: "day {n}",
     },
     funnel: { title: "What visitors did", sub: "Of every 100 who saw it", label: "What visitors did, of every 100 who saw each version" },
+    impact: {
+      title: "If everyone saw {name}",
+      text: "About {n} more visitors a week who {per} (likely between {low} and {high}), at the traffic this test counted. Worked out by the store from the figures above, never by the AI.",
+    },
+    learning: {
+      title: "What did this test teach?",
+      hint: "One line for next time. Your AI manager reads it when it suggests the next test.",
+      placeholder: "Short, concrete headings beat slogans",
+      label: "What it taught",
+      optional: "What did it teach? (optional)",
+      save: "Save",
+      saved: "Saved.",
+      taught: "Learned: {text}",
+    },
     details: {
       summary: "How we worked this out",
       hint: "Every figure, week by week, how visitors were divided, and the method",
