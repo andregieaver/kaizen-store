@@ -1,6 +1,6 @@
 {
-  "id": "de01ba97-657e-4c00-acda-1ff4a723a2d7",
-  "prevId": "cb2a586e-aa5f-41ad-b6e8-c24fbc9b886f",
+  "id": "adfc47c8-a027-4a72-b57b-246872b14a88",
+  "prevId": "de01ba97-657e-4c00-acda-1ff4a723a2d7",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -94697,7 +94697,7 @@
         },
         "workflows_trigger": {
           "name": "workflows_trigger",
-          "value": "\"commerce\".\"workflows\".\"trigger\" in ('order.paid', 'order.sent', 'order.cancelled', 'order.refunded', 'customer.created', 'subscription.started', 'subscription.cancelled', 'return.requested', 'withdrawal.received', 'product.created', 'product.updated', 'stock.low', 'discount.created', 'inventory.updated', 'product.archived', 'order.created', 'order.updated', 'fulfilment.created', 'fulfilment.updated', 'refund.created', 'return.updated', 'quote.requested', 'draft.sent', 'customer.updated', 'customer.erased', 'subscription.renewed', 'subscription.payment_failed', 'gift_card.issued', 'review.created', 'support.waiting', 'schedule')"
+          "value": "\"commerce\".\"workflows\".\"trigger\" in ('order.paid', 'order.sent', 'order.cancelled', 'order.refunded', 'customer.created', 'subscription.started', 'subscription.cancelled', 'return.requested', 'withdrawal.received', 'product.created', 'product.updated', 'stock.low', 'discount.created', 'inventory.updated', 'product.archived', 'order.created', 'order.updated', 'fulfilment.created', 'fulfilment.updated', 'refund.created', 'return.updated', 'quote.requested', 'draft.sent', 'customer.updated', 'customer.erased', 'subscription.renewed', 'subscription.payment_failed', 'gift_card.issued', 'review.created', 'experiment.answered', 'support.waiting', 'schedule')"
         },
         "workflows_on_when_tested": {
           "name": "workflows_on_when_tested",

@@ -1034,6 +1034,26 @@ describe("content, the store and operations (D440 C4)", () => {
     expect((await call("GET", "settings", full)).status).toBe(403);
   });
 
+  it("reads the store's A/B tests as their pages do, figures only once there is an answer (phase 15)", async () => {
+    const admin = await import("./experiment-admin");
+    const page = (await admin.testablePages(store.storeId)).find((p) => p.kind === "page")!;
+    const owner = { id: store.accountId, email: `api-ab-${run}@example.com`, name: "API", platformAdmin: false };
+    const made = await admin.createExperiment(owner, store.storeId, { name: `API test ${run}`, pageId: page.id, goal: "cart" });
+    if (!made.ok) throw new Error(made.problems.join(" "));
+    const listed = await call("GET", "experiments", editor);
+    expect(listed.status, JSON.stringify(listed.body)).toBe(200);
+    const mine = listed.body.data.find((t: Answer) => t.id === made.id);
+    expect(mine).toMatchObject({ name: `API test ${run}`, status: "draft", stage: "draft", next: "start", goal: "cart", comparisons: [], impact: null });
+    expect(mine.versions.map((v: Answer) => v.key)).toEqual(["a", "b"]);
+    expect((await call("GET", `experiments/${made.id}`, editor)).body.data).toMatchObject({ id: made.id, stage: "draft", target: { kind: "page", slug: page.slug } });
+    expect((await call("GET", "experiments/00000000-0000-4000-8000-000000000000", editor)).status).toBe(404);
+    // reports:read is the scope; a token without it is told which it needs.
+    const refused = await call("GET", "experiments", full);
+    expect(refused.status).toBe(403);
+    expect(refused.body.error.message).toContain("reports:read");
+    expect((await admin.deleteDraft(owner, store.storeId, made.id)).ok).toBe(true);
+  });
+
   it("adds, changes, lists and removes the owner's webhook endpoints, the secret answered once, and sends a delivery again", async () => {
     const key = { "idempotency-key": `hook-${run}` };
     const made = await call("POST", "webhooks", editor, { name: "Warehouse", url: "https://hooks.example.com/kaizena", topics: ["order.created", "inventory.updated"] }, key);

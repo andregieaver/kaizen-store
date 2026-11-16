@@ -382,6 +382,10 @@ async function buildSubject(store: { id: string; slug: string; name: string }, e
     const review = await reviewData(store.id, store.slug, subjectId);
     return review && { review };
   }
+  if (event === "experiment.answered") {
+    const experiment = await experimentData(store.slug, subjectId);
+    return experiment && { experiment };
+  }
   if (event === "quote.requested" || event === "draft.sent") {
     const draft = await draftData(store.id, store.slug, subjectId);
     return draft && { draft };
@@ -732,6 +736,53 @@ async function reviewData(storeId: string, storeSlug: string, reviewId: string):
     locale: String(row.locale),
     created_at: new Date(String(row.created_at)).toISOString(),
     admin_url: `${siteUrl()}/admin/${storeSlug}/reviews`,
+  };
+}
+
+/**
+ * An A/B test as its page shows it (D148 phase 15, `experiment.answered`): the store's own verdict and each version's figures, worked out
+ * when the delivery is built. A draft or scheduled test has none, so it is never sent.
+ */
+async function experimentData(storeSlug: string, experimentId: string): Promise<WebhookSubject<"experiment"> | null> {
+  const [{ getStore }, { getExperiment }, { experimentResults }, { targetLabelText }] = await Promise.all([
+    import("./stores"),
+    import("./experiment-admin"),
+    import("./experiment-results"),
+    import("@/lib/experiment-words"),
+  ]);
+  const store = await getStore(storeSlug);
+  const test = store && (await getExperiment(store.id, experimentId));
+  if (!store || !test || test.status === "draft" || test.status === "scheduled") return null;
+  const results = await experimentResults(store, test, new Date());
+  const unit = 10 ** minorUnitDigits(results.currency);
+  const rate = test.goal !== "revenue";
+  return {
+    id: test.id,
+    name: test.name,
+    goal: test.goal,
+    target: {
+      kind: test.page.kind,
+      title: test.page.title,
+      address: test.page.kind === "page" ? targetLabelText("page", test.page.slug, test.page.title, null) : null,
+      part: test.part?.label ?? null,
+    },
+    status: test.status,
+    verdict: results.verdict.kind,
+    best: results.verdict.best,
+    headline: results.verdict.headline,
+    days: results.days,
+    versions: results.figures.map((f) => ({
+      key: f.key,
+      name: test.variants.find((v) => v.key === f.key)?.name ?? f.name,
+      visitors: f.visitors,
+      conversions: rate ? f.conversions : null,
+      rate: rate ? (f.visitors > 0 ? f.conversions / f.visitors : 0) : null,
+      revenue_per_visitor: rate ? null : f.visitors > 0 && f.money ? Math.round(f.money.sum / f.visitors) / unit : 0,
+    })),
+    currency: results.currency,
+    answered_at: test.answeredAt ? new Date(test.answeredAt).toISOString() : null,
+    learning: test.learning,
+    admin_url: `${siteUrl()}/admin/${storeSlug}/experiments/${test.id}`,
   };
 }
 

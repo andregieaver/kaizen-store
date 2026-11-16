@@ -502,6 +502,18 @@ Step 4 of `docs/ab-testing-usability.md`, in parts. **Part 4a (D677, no migratio
 - **The platform's view** (`/admin/platform/experiments`): each test carries the same card (`PlatformTest.card`), so its chip and
   progress bar say what the store's list says.
 
+**Part 4b (D678, one migration, no tool change):**
+
+- **`experiment.answered`**, a webhook topic (`EVENTS`, subject `experiment` in `WEBHOOK_SUBJECTS`, area marketing for apps): queued by
+  `markAnswered()` in the statement that marks the test answered, so it goes once, to the owner's endpoints, apps and workflows. Its data is
+  built when the delivery is (`experimentData()` in `src/server/integrations.ts`): the verdict, the better version, the verdict's sentence,
+  the days and each version's figures, and the learning once written. Workflows can test `experiment.verdict`, `experiment.best`,
+  `experiment.goal` and `experiment.name`; adding the trigger is the migration (`workflows_trigger`).
+- **The Admin API** reads the card: `GET /experiments` and `GET /experiments/{id}` (`reports:read`, the maker's `marketing:read`), the
+  stage, next step and progress always, the comparisons and the impact only once there is an answer, as on the page. Contract 1.29.
+- **A CSV** of the list (`POST /admin/{store}/experiments/export`, `src/lib/experiment-csv.ts`): a row per version with its stage and
+  visitors, and who did the goal, the rate and the change with its likely range only once the test has an answer.
+
 
 
 - Randomise who is eligible, then compare everyone assigned; never compare people who used a thing with those who did

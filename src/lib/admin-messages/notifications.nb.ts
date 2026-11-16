@@ -657,6 +657,7 @@ export const notificationsNb: NotificationsMessages = {
       "subscription.payment_failed": { label: "Abonnementsbetaling feilet", hint: "Fornyelsen av et abonnement kunne ikke belastes: den venter på abonnentens betaling." },
       "gift_card.issued": { label: "Gavekort utstedt", hint: "Et gavekort eller en tilgodelapp ble utstedt: aldri koden." },
       "review.created": { label: "Anmeldelse skrevet", hint: "En kjøper skrev en produktanmeldelse, som venter på butikkens kontroll eller ble publisert med en gang." },
+      "experiment.answered": { label: "A/B-test har et svar", hint: "En A/B-test som pågår har et svar for første gang: dommen, versjonen som gjorde det best og tallene for hver versjon." },
       "support.waiting": {
         label: "Noen venter i kundeservice",
         hint: "En kunde har ventet på en person i kundeservicechatten så lenge innstillingene for kundeservice sier: hvor mange som venter nå, og en lenke til innboksen. Aldri hvem de er eller hva de skrev.",

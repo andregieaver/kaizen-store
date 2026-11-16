@@ -121,6 +121,50 @@ export const apiReportRun = z.object({
   period: z.unknown().describe("The period it covers, as the report builder states it."),
 });
 
+// A/B tests (D148 phase 15) ------------------------------------------------------------------------------
+
+/** One A/B test as its page reads it (`experimentCard()`): the stage, how far along, the one next step and, once it has an answer, each version against the original. */
+export const apiExperiment = z.object({
+  id,
+  name: z.string(),
+  status: z.enum(["draft", "scheduled", "running", "stopped", "applied", "discarded"]),
+  stage: z.enum(["draft", "scheduled", "learning", "answer", "broken", "applied", "discarded"]).describe("As the test's page shows it: a running test is learning until it has an answer, or broken when the visitors are not divided as planned."),
+  next: z.enum(["start", "wait", "use", "keep_original", "start_again", "done"]).describe("The one next step the page offers."),
+  best: z.string().nullable().describe("For next = use: the version to use."),
+  goal: z.enum(["orders", "revenue", "cart", "checkout", "click", "form"]),
+  target: z.object({ kind: z.enum(["page", "layout", "header", "footer", "role"]), title: z.string(), slug: z.string(), part: z.string().nullable() }),
+  versions: z.array(z.object({ key: z.string().describe("a is the original."), name: z.string(), share: z.number() })),
+  progress: z.object({
+    days: z.int(),
+    min_days: z.int(),
+    visitors: z.int().describe("Visitors of the version with the fewest."),
+    min_visitors: z.int(),
+    share: z.number().describe("How far along, 0 to 1: the lesser of days and visitors."),
+    reached: z.boolean(),
+    ready_around: z.string().nullable().describe("The day (YYYY-MM-DD) it is likely ready at today's pace; null when reached or nothing to go on."),
+  }),
+  comparisons: z
+    .array(
+      z.object({
+        key: z.string(),
+        original: z.number().describe("The original's rate (a share) or revenue per visitor (minor units)."),
+        version: z.number(),
+        relative: z.number().nullable().describe("The change as a share of the original."),
+        low: z.number().nullable().describe("The likely range's low end, at the verdict's level."),
+        high: z.number().nullable(),
+        side: z.enum(["better", "worse", "unsure"]).describe("Where the range lies: wholly above no change, wholly below, or across it."),
+      }),
+    )
+    .describe("Only once the test has an answer: empty while it is too early, so no one reads a peek as a result."),
+  impact: z.object({ key: z.string(), per_week: z.int(), low: z.int(), high: z.int() }).nullable().describe("If everyone saw the better version: how many more visitors a week would do the thing, with its likely range."),
+  learning: z.string().nullable().describe("What the owner wrote the test taught."),
+  started_at: when.nullable(),
+  stopped_at: when.nullable(),
+  answered_at: when.nullable(),
+  applied_version: z.string().nullable(),
+  created_at: when,
+});
+
 // Webhook endpoints (D354) -------------------------------------------------------------------------------
 
 const topic = z.enum(EVENTS.map((e) => e.id) as [IntegrationEvent, ...IntegrationEvent[]]);
@@ -443,6 +487,34 @@ export const CONTENT_API = [
     response: one(apiReportRun),
     status: 200,
     errors: ["not_found", "conflict"],
+  }),
+  // A/B tests (D148 phase 15)
+  op({
+    name: "experiments.list",
+    method: "GET",
+    path: "/experiments",
+    scope: "reports:read",
+    permission: "marketing:read",
+    tag: "A/B tests",
+    summary: "List A/B tests",
+    description: "The store's A/B tests, newest first, each as its page reads it: the stage, how far along, the next step and, once it has an answer, each version against the original. Worked out by the store; nothing is written.",
+    response: all(apiExperiment),
+    status: 200,
+    errors: [],
+  }),
+  op({
+    name: "experiments.get",
+    method: "GET",
+    path: "/experiments/{id}",
+    scope: "reports:read",
+    permission: "marketing:read",
+    tag: "A/B tests",
+    summary: "Get an A/B test",
+    description: "One A/B test as its page reads it.",
+    params: byId,
+    response: one(apiExperiment),
+    status: 200,
+    errors: ["not_found"],
   }),
   // Webhook endpoints (D354)
   op({

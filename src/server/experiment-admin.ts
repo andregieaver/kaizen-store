@@ -648,7 +648,13 @@ export async function saveLearning(account: Account, storeId: string, id: string
 export async function markAnswered(storeId: string, id: string): Promise<boolean> {
   const rows = await typedRows(
     z.object({ id: col.uuid }),
-    sql`update commerce.experiments set answered_at = now() where id = ${id}::uuid and store_id = ${storeId}::uuid and answered_at is null and status = 'running' returning id`,
+    // The owner's endpoints, apps and workflows hear it in the same statement (phase 15, `experiment.answered`): once, with the mark.
+    sql`
+      with marked as (
+        update commerce.experiments set answered_at = now() where id = ${id}::uuid and store_id = ${storeId}::uuid and answered_at is null and status = 'running' returning id, store_id
+      )
+      select m.id, commerce.queue_integration_event(m.store_id, 'experiment.answered', m.id) from marked m
+    `,
   );
   return rows.length === 1;
 }

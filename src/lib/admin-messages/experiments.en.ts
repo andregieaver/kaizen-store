@@ -12,6 +12,7 @@ export const experimentsEn = {
     description:
       "Try two versions of a page, a row or component of it, your header or footer, or a product layout on real visitors and keep the one that works better. Half of the visitors see it as it is, the other half a version you change; Kaizena Flow counts who adds to the cart and who buys, and tells you in plain words when there is a winner. Only visitors who have accepted statistics cookies take part; everyone else sees the page as it is.",
     newTest: "New test",
+    download: "Download as CSV",
     taught: "What your tests taught you",
     empty: "No tests yet. Pick a page, say what you want more of, and change one thing: a heading, a picture, a button.",
     versions: "{n} versions",

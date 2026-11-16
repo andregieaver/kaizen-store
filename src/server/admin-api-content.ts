@@ -33,6 +33,11 @@ import {
 import { listStoreMenus } from "./menus";
 import { getPageForEdit, listPages, savePage } from "./pages";
 import { readPriceDisplay } from "./price-display";
+import { experimentsEn } from "@/lib/admin-messages/experiments.en";
+import { experimentCard } from "@/lib/experiment-card";
+import { getExperiment, type ExperimentInfo } from "./experiment-admin";
+import { listedTests } from "./experiment-list";
+import { experimentResults } from "./experiment-results";
 import { runReport } from "./report-query";
 import { getSavedReport, listSavedReports } from "./saved-reports";
 import { col, typedRows } from "./typed-rows";
@@ -141,6 +146,38 @@ async function entryById(storeId: string, id: string) {
 // ---------------------------------------------------------------------------
 // Webhook endpoints
 // ---------------------------------------------------------------------------
+
+/** One A/B test as the API answers it: its card (`experimentCard()`), figures only once it has an answer. */
+function experimentOut(t: ExperimentInfo, card: ReturnType<typeof experimentCard>): AdminAnswer<"experiments.get">["data"] {
+  return {
+    id: t.id,
+    name: t.name,
+    status: t.status,
+    stage: card.state,
+    next: card.next,
+    best: card.best,
+    goal: t.goal,
+    target: { kind: t.page.kind, title: t.page.title, slug: t.page.slug, part: t.part?.label ?? null },
+    versions: t.variants.map((v) => ({ key: v.key, name: v.name, share: v.share })),
+    progress: {
+      days: card.progress.days,
+      min_days: card.progress.minDays,
+      visitors: card.progress.visitors,
+      min_visitors: card.progress.minVisitors,
+      share: card.progress.share,
+      reached: card.progress.reached,
+      ready_around: card.progress.readyAround,
+    },
+    comparisons: card.showFigures ? card.comparisons.map((c) => ({ key: c.key, original: c.original, version: c.version, relative: c.relative, low: c.low, high: c.high, side: c.side })) : [],
+    impact: card.impact && { key: card.impact.key, per_week: card.impact.perWeek, low: card.impact.low, high: card.impact.high },
+    learning: t.learning,
+    started_at: t.startedAt,
+    stopped_at: t.stoppedAt,
+    answered_at: t.answeredAt,
+    applied_version: t.appliedVariant,
+    created_at: t.createdAt,
+  };
+}
 
 async function endpointById(storeId: string, id: string): Promise<AdminAnswer<"webhooks.update">["data"]> {
   const found = (await listEndpoints(storeId)).find((e) => e.id === id) ?? fail("not_found", "No such endpoint in this store.");
@@ -383,6 +420,17 @@ export async function answerContent(caller: ApiCaller, route: ContentRoute, requ
           period: r.period,
         },
       });
+    }
+    case "experiments.list": {
+      const tests = await listedTests(store, { words: experimentsEn, numberLocale: "en-GB" });
+      return ok(route.name, { data: tests.map((t) => experimentOut(t, t.card)) });
+    }
+    case "experiments.get": {
+      const test = (await getExperiment(storeId, route.id)) ?? fail("not_found", "No such A/B test in this store.");
+      const now = new Date();
+      const results = test.status === "running" || test.status === "stopped" ? await experimentResults(store, test, now) : null;
+      const card = experimentCard({ status: test.status, goal: test.goal, minDays: test.minDays, minVisitors: test.minVisitors, results, now });
+      return ok(route.name, { data: experimentOut(test, card) });
     }
     case "webhooks.list": {
       const endpoints = await listEndpoints(storeId);

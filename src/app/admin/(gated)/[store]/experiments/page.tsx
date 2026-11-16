@@ -77,9 +77,18 @@ export default async function ExperimentsPage({ params }: PageProps<"/admin/[sto
     <div className="flex flex-col gap-6">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <PageHeader title={w.list.title} description={<>{w.list.description}</>} />
-        <Link href={`${base}/new`} className="inline-flex min-h-10 items-center rounded-pill bg-brand px-4 text-sm font-medium text-brand-ink">
-          {w.list.newTest}
-        </Link>
+        <div className="flex flex-wrap items-center gap-2">
+          {tests.length > 0 && (
+            <form method="post" action={`${base}/export`}>
+              <button type="submit" className="inline-flex min-h-10 items-center rounded-pill border border-edge bg-card px-4 text-sm text-ink hover:bg-sunken">
+                {w.list.download}
+              </button>
+            </form>
+          )}
+          <Link href={`${base}/new`} className="inline-flex min-h-10 items-center rounded-pill bg-brand px-4 text-sm font-medium text-brand-ink">
+            {w.list.newTest}
+          </Link>
+        </div>
       </div>
       {lead && (
         <p className="text-title text-ink" data-lead>

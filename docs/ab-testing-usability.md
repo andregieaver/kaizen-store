@@ -2,7 +2,7 @@
 
 A review of the A/B tests (D148, [`ab-testing.md`](ab-testing.md)) for people who have never run one, and for the AI that helps
 them. The page with the findings, screenshots of the screens as they were and mockups: https://claude.ai/artifact/Ep8Vp5BbKEs7QMpECrZqfs.
-Steps 1 to 3 are built (phases 12 to 14 of D148, D659, D660 and D662); step 3b is built (D670, D673); step 4 is being built (4a: D677); step 2b is the plan.
+Steps 1 to 3 are built (phases 12 to 14 of D148, D659, D660 and D662); step 3b is built (D670, D673); step 4 is being built (4a: D677, 4b: D678); step 2b is the plan.
 
 The engine is sound and stays as it is: rules fixed before results, no verdict before the minimum, the split check, the guardrail,
 the words written in code (`verdictOf()`), approval for start, stop and apply. What the person saw was the problem: three tables, an
@@ -59,7 +59,7 @@ test an **editor** with *Customise* folded (like the product, D595 step 5).
    its recording. The owner webhook event moved to step 4: it needs an `experiment` subject in the platform's event model (Admin API, apps,
    the docs portal).
 4. **The list, ideas and eyes (phase 15, no migration).** Part 4a built (D677): the list grouped with its lead sentence, ideas to test,
-   tests on Marketing and the platform's chips. Part 4b: the webhook event, CSV and the Admin API read. Part 4c: `look_at_versions`. An owner webhook event `experiment.answered` (an `experiment` subject in the event model). The list with a lead sentence (*One test has an answer.*) and rows grouped
+   tests on Marketing and the platform's chips. Part 4b built (D678): the webhook event, CSV and the Admin API read. Part 4c: `look_at_versions`. An owner webhook event `experiment.answered` (an `experiment` subject in the event model). The list with a lead sentence (*One test has an answer.*) and rows grouped
    (needs your decision, still learning, ideas, what your tests taught you), each with its stage chip and a progress bar or sparkline; the
    Marketing page (D612) shows a test with an answer among *what runs now*. "Ideas to test" built in code from suggest's facts, without a
    model call; `look_at_versions` through page-look (D310); CSV and an Admin API read of the card. The platform's view

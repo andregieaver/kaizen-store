@@ -394,9 +394,16 @@ describe("ending a test (D148)", () => {
       select ${storeId}::uuid, ${id}::uuid, 'answer-' || v.variant || '-' || n, v.variant, 'cart'
       from (values ('a'::text, 218), ('b'::text, 279)) v(variant, total), generate_series(1, v.total) n
     `);
+    // The owner's endpoint that listens for it (phase 15): one delivery, queued with the mark.
+    const [endpoint] = await db().execute<Row>(sql`
+      insert into commerce.webhook_endpoints (store_id, name, url_encrypted, hint, secret_encrypted, topics)
+      values (${storeId}::uuid, 'Answers', 'x', 'example.com', 'x', '{experiment.answered}'::text[]) returning id
+    `);
     const hour = new Date(Math.ceil(Date.now() / 3_600_000) * 3_600_000 + 120_000);
     const first = await jobs.runExperimentJobs(hour);
     expect(first.answered).toBe(1);
+    const deliveries = () => db().execute<Row>(sql`select event, subject_id from commerce.integration_deliveries where endpoint_id = ${String(endpoint.id)}::uuid`);
+    expect(await deliveries()).toEqual([{ event: "experiment.answered", subject_id: id }]);
     const test = (await admin.getExperiment(storeId, id))!;
     expect(test.status).toBe("running");
     expect(test.answeredAt).not.toBeNull();
@@ -410,6 +417,8 @@ describe("ending a test (D148)", () => {
     expect(notices[0]).toMatchObject({ href: `/admin/${store.slug}/experiments/${id}`, facts: { test: test.name } });
     // The next hour says nothing more.
     expect((await jobs.runExperimentJobs(new Date(hour.getTime() + 3_600_000))).answered).toBe(0);
+    expect(await deliveries()).toHaveLength(1);
+    await db().execute(sql`update commerce.webhook_endpoints set enabled = false where id = ${String(endpoint.id)}::uuid`);
     expect(await db().execute<Row>(sql`select 1 from commerce.email_messages where kind = 'experiment.answered' and idempotency_key like ${`experiment.answered:${id}:%`}`)).toHaveLength(1);
 
     // What it taught: not before it has run, at most 280 characters, kept once decided, cleared by an empty line.

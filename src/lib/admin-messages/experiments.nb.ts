@@ -7,6 +7,7 @@ export const experimentsNb: ExperimentsMessages = {
     description:
       "Prøv to versjoner av en side, en rad eller komponent på den, toppen eller bunnen av nettstedet, eller en produktmal på ekte besøkende, og behold den som virker best. Halvparten av de besøkende ser den som den er, den andre halvparten en versjon du endrer; Kaizena Flow teller hvem som legger i handlekurven og hvem som kjøper, og sier med enkle ord når det er en vinner. Bare besøkende som har godtatt informasjonskapsler for statistikk, er med; alle andre ser siden som den er.",
     newTest: "Ny test",
+    download: "Last ned som CSV",
     taught: "Hva testene dine har lært deg",
     empty: "Ingen tester ennå. Velg en side, si hva du vil ha mer av, og endre én ting: en overskrift, et bilde, en knapp.",
     versions: "{n} versjoner",

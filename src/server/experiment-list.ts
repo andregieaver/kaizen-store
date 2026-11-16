@@ -2,6 +2,7 @@ import "server-only";
 
 import type { ExperimentsMessages } from "@/lib/admin-messages/experiments.en";
 import { experimentCard, type ExperimentCard } from "@/lib/experiment-card";
+import type { VariantFigures } from "@/lib/experiment-results";
 import { groupOf, testIdeas, type ListGroup, type TestIdea } from "@/lib/experiment-list";
 import type { Store } from "./stores";
 
@@ -9,7 +10,7 @@ import { buttonsOf, listExperiments, publishedContentOf, testablePages, type Exp
 import { experimentResults } from "./experiment-results";
 import { experimentTraffic } from "./experiment-traffic";
 
-export type ListedTest = ExperimentInfo & { exposed: number; card: ExperimentCard; group: ListGroup };
+export type ListedTest = ExperimentInfo & { exposed: number; card: ExperimentCard; group: ListGroup; figures: VariantFigures[] | null };
 
 /** How many testable targets the ideas look at, as `suggest_experiments` does. */
 const IDEA_TARGETS = 24;
@@ -21,7 +22,7 @@ export async function listedTests(store: Store, say: { words: ExperimentsMessage
     tests.map(async (t): Promise<ListedTest> => {
       const results = t.status === "running" || t.status === "stopped" ? await experimentResults(store, t, now, say) : null;
       const card = experimentCard({ status: t.status, goal: t.goal, minDays: t.minDays, minVisitors: t.minVisitors, results, now });
-      return { ...t, card, group: groupOf(t.status, card) };
+      return { ...t, card, group: groupOf(t.status, card), figures: results?.figures ?? null };
     }),
   );
 }
