@@ -582,7 +582,7 @@ export function DualFrame({
           role="group"
           aria-label={w.dual.frame}
           data-dual-page=""
-          className="grid items-start gap-6 lg:h-(--builder-h) lg:grid-cols-(--builder-cols) lg:items-stretch lg:gap-x-0"
+          className="grid items-start gap-6 max-lg:grid-cols-[minmax(0,1fr)] lg:h-(--builder-h) lg:grid-cols-(--builder-cols) lg:items-stretch lg:gap-x-0"
           style={
             {
               "--builder-cols": bare
@@ -1584,7 +1584,7 @@ export function PageBuilder({
     ) : (
         <div
           ref={columnsRef}
-          className="grid items-start gap-6 lg:h-(--builder-h) lg:grid-cols-(--builder-cols) lg:items-stretch lg:gap-x-0"
+          className="grid items-start gap-6 max-lg:grid-cols-[minmax(0,1fr)] lg:h-(--builder-h) lg:grid-cols-(--builder-cols) lg:items-stretch lg:gap-x-0"
           style={{ "--builder-cols": railTemplate({ folded: leftFolded, width: leftWidth }, { folded: rightFolded, width: rightWidth }) } as CSSProperties}
         >
           {leftPanel}

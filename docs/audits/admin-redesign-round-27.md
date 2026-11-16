@@ -48,6 +48,7 @@ Round 26's `PhoneRow` gains two things:
   4. *Page settings* as rows
 
   The settings panel joins the builder's column (`max-sm:contents`) so that its title card can come first and its settings after the page.
+  Below 1024 px the builder's column is held to the screen's width (`minmax(0,1fr)`), so a wide part never pushes the page sideways.
 - **The parts** wait behind *+ Add a part*. They open under the page and close with *Hide the parts*. Tapping a part's + adds it to the
   page.
 - **The rows say what is chosen:**
@@ -76,7 +77,8 @@ Round 26's `PhoneRow` gains two things:
     - Heatmaps (*Off*, with *Turn on*)
     - Recordings (*Not available yet*)
 - **Inside each row** is the section as before, with its paragraph and its lists of what is and is not counted.
-- **The box of questions** this page answers waits for wider screens.
+- **The box of questions** this page answers waits for wider screens. The page's line on a phone is *What turns sales figures into
+  profit.*
 - **Old links still work:** `…/analytics/settings#visits` (from Traffic) opens the Visit counting row.
 
 ## Also
@@ -92,7 +94,7 @@ Round 26's `PhoneRow` gains two things:
   - *Where it sits* is not a row of its own. The parent page stays with the title and address, and categories and tags are their own
     row.
   - Excerpt is a row of its own.
-- **Analytics settings:** a row with a switch shows both *Turn on* and *Change*. Change opens the explanation.
+- **Analytics settings:** a row with a switch shows only *Turn on*. Pressing the row's name still opens the explanation.
 
 ## Tests
 

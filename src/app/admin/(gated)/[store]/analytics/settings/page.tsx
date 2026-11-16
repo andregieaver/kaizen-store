@@ -48,7 +48,12 @@ export default async function AnalyticsSettingsPage({ params }: PageProps<"/admi
           ctx={ctx}
           path="/analytics/settings"
           title={w.title}
-          description={w.description}
+          description={
+            <>
+              <span className="max-sm:hidden">{w.description}</span>
+              <span className="sm:hidden">{w.phone.lead}</span>
+            </>
+          }
           picker={false}
         />
         <AnalyticsSettingsView

@@ -55,7 +55,8 @@ export function PhoneRow({
             <span className="text-body text-ink">{title}</span>
             {sub ? <span className="text-caption text-ink-2">{sub}</span> : null}
           </span>
-          <span className="shrink-0 text-sm font-medium text-ink underline underline-offset-2">{open ? done : change}</span>
+          {/* A row with its own press (Turn on) keeps only that; the row still opens its explanation. */}
+          <span className={`shrink-0 text-sm font-medium text-ink underline underline-offset-2 ${action && !open ? "sr-only" : ""}`}>{open ? done : change}</span>
         </button>
         {action && !open ? <div className="shrink-0">{action}</div> : null}
       </div>
