@@ -197,3 +197,4 @@ challenged by a skeptic, planned by a planner. Its last lines hold the arguments
 - 0.27 commit 1 DEPLOYED: run 1352 (after re-running its flaky signed-in job) applied 20261115224024_outgoing_spitfire + 20261115224037_knowledge_sources_fill at 23:33 UTC; prod knowledge_sources 55 rows, RLS on; prod on 9696056e. Commit 2 asked of executor ad77b64895666fbc7.
 - Step 0.27 DONE: commit 2 deployed 98374fe1 (00:05 UTC 16 Nov); job idle after 23:40; write-up 58974b22 (D649). Left: unreadable article re-fetched each run (rare).
 - Next: 0.28 (depends 0.27: done; migrations 3 files add-only), 0.29, 0.30, 0.33...
+- Step 0.28 executor (Sonnet a9a3ffa43cebe4226) started: 4 commits, 3 add-only migrations (media.alt_tries, product_translations.text_changed_at + trigger).
