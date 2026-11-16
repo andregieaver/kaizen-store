@@ -40,4 +40,4 @@ checkout of goods.
 
 ## Tests
 
-`e2e/signed-in/checkout-questions.spec.ts` (Add a question, the preview's links at desktop width) needs no change.
+`e2e/signed-in/checkout-questions.spec.ts` (Add a question, the preview's links at desktop width) needs no change; it and `admin-view.spec.ts` ran green on the local build.
