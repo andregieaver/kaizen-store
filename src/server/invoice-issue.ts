@@ -1,12 +1,14 @@
 import "server-only";
 
-import { sql } from "drizzle-orm";
+import { sql, type SQL } from "drizzle-orm";
+import { z } from "zod";
 
 import { db } from "@/db/client";
 import type { DocumentKind } from "@/lib/document-token";
 
 import { sendPendingDocumentNotices } from "./invoice-notices";
 import { log } from "./log";
+import { col, typedRow } from "./typed-rows";
 import { reconcilePendingRefunds } from "./stripe-refunds";
 import { ensureSubscriptionEvents } from "./subscriptions";
 
@@ -37,6 +39,21 @@ async function issueWaiting(storeId: string, limit: number): Promise<number | nu
     log("error", "invoices.waiting_issue_failed", {}, error);
     return null;
   }
+}
+
+/**
+ * For the invoices live drill (D406, `invoicesDrill()` in live-drills.ts): of the orders `where` picks (alias `o`), how many there are and
+ * how many have their order's invoice. Here, not in the drill, because the readers of commerce.invoices are held to a list
+ * (`document-readers.test.ts`).
+ */
+export async function ordersWithInvoice(where: SQL): Promise<{ orders: number; invoiced: number }> {
+  const row = await typedRow(
+    z.object({ orders: col.int, invoiced: col.int }),
+    sql`select count(*)::int as orders,
+          count(*) filter (where exists (select 1 from commerce.invoices i where i.store_id = o.store_id and i.order_id = o.id and i.kind = 'order'))::int as invoiced
+        from commerce.orders o where ${where}`,
+  );
+  return row ?? { orders: 0, invoiced: 0 };
 }
 
 /** Issues the store's waiting invoices (up to `limit`), then the credit notes that waited for them. Returns the invoices issued. */

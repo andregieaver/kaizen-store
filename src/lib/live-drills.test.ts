@@ -8,6 +8,10 @@ describe("live drills (D406)", () => {
   it("runs the kinds asked once each, in the run's own order", () => {
     expect(drillPlan(["manager_pilot", "webhooks", "nonsense", "webhooks"])).toEqual(["webhooks", "manager_pilot"]);
   });
+
+  it("knows the invoices drill and keeps it in the list's order", () => {
+    expect(drillPlan(["invoices", "database_door"])).toEqual(["database_door", "invoices"]);
+  });
 });
 
 describe("the AI manager's pilot (consolidation 5)", () => {

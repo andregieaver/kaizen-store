@@ -1,0 +1,2 @@
+ALTER TABLE "commerce"."live_drills" DROP CONSTRAINT "live_drills_kinds";--> statement-breakpoint
+ALTER TABLE "commerce"."live_drills" ADD CONSTRAINT "live_drills_kinds" CHECK (cardinality("commerce"."live_drills"."kinds") between 1 and 20);

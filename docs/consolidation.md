@@ -51,6 +51,10 @@ Staff actions (a refund by staff, marking sent, capture later, order changes, ex
 refunds for a person's yes, so neither the agent nor the platform could run them. Live drills (D406) are the platform's own way: a platform admin (or the
 platform's AI) asks for a store's drills, and the five-minute dispatcher runs them through the screens' own functions on that store's test payments only.
 
+### The invoices drill (bloat review step 0.30)
+
+The `invoices` drill reads that each paid test order of the last day has its invoice (asking the job to issue the waiting ones first); one run of it in production before opening is the proof that an invoice is issued end to end (none had been issued there on 12 November 2026). It has not been run yet.
+
 ### The first live drills (29 October 2026, 23:30 UTC)
 
 Requested for the dev store and run by the five-minute dispatcher (D406) in 37 seconds, on its test payments only:
