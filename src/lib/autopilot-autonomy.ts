@@ -87,6 +87,8 @@ export const TOOL_AREAS: Readonly<Record<string, AutonomyArea>> = {
   switch_email_automation: "marketing",
   // An automation's words and days (D4), as switching it is.
   write_email_automation: "marketing",
+  // A cart reminder written (D653), as an automation is.
+  write_cart_reminder: "marketing",
   // A loyalty reward switched on or off (AGT-01), as a discount is.
   switch_loyalty_reward: "marketing",
   // A loyalty reward made or changed (AGT-01), as a discount is made.

@@ -622,6 +622,7 @@ export const assistantNb: AssistantMessages = {
     tell_customer_about_order: "Forbereder beskjeden til kunden",
     carry_out_address_change: "Endrer leveringsadressen",
     write_email_automation: "Skriver e-posten",
+    write_cart_reminder: "Forbereder påminnelsen",
     list_text_messages: "Leser tekstmeldingene",
     draft_text_message: "Lagrer tekstmeldingen",
     send_text_message: "Forbereder tekstmeldingen",

@@ -6,6 +6,7 @@ import { AFFILIATE_COOKIE_DAYS_MAX, AFFILIATE_FRIEND_PERCENT_MAX } from "./affil
 import { EMAIL_PROVIDERS, toolRecord } from "./domain-tools";
 import { BONUS_EXPIRY_MONTHS_MAX, BONUS_PENDING_DAYS_MAX, BONUS_REDEEM_PERCENT_MAX } from "./bonus";
 import { adjustmentPhrase } from "./bonus-admin";
+import { AUTOMATION_KINDS, LIFECYCLE_KINDS } from "./automation-kinds";
 import { ORDER_UPDATES, UPDATE_WORDS, type OrderUpdate } from "./order-update-email";
 import { GOALS } from "./experiments";
 import { GIFT_CARD_NOTE_MAX } from "./gift-card-admin";
@@ -65,9 +66,6 @@ import { draftStoreInput } from "./store-drafts";
 import { workflowInputSchema } from "./workflows";
 import { purchaseInput } from "./purchase-input";
 
-/** The automations the tools name (D298): cross-sell and restock (D653) join them when their tools do. */
-const AUTOMATION_KINDS = ["welcome", "after_purchase", "win_back", "back_in_stock"] as const;
-const LIFECYCLE_KINDS = ["welcome", "after_purchase", "win_back"] as const;
 
 /**
  * The owner assistant's tools (D94), modelled on Kaizen Life's MCP catalogue:
@@ -1160,7 +1158,7 @@ export const OWNER_TOOLS = [
   ),
   tool(
     "cart_reminder_stats",
-    "The last 30 days of cart reminders: checkouts left with an email, reminded, and bought after a reminder, with the amount won back.",
+    "The store's reminders about carts left at checkout: whether they are on, each reminder in order (its id, how long after the shopper typed their email it goes, whether it is on, its discount code and its subject in the main language), and the last 30 days: checkouts left with an email, reminded, and bought after a reminder, with the amount won back.",
     z.object({}),
   ),
   tool(
@@ -2195,14 +2193,14 @@ export const OWNER_TOOLS = [
   ),
   tool(
     "switch_email_automation",
-    "Switches an email automation on or off. On, it writes to people on the list from now on (never to the past beyond its catch-up days), with its saved words or the starter words. Needs the owner's approval.",
-    z.object({ kind: z.enum(AUTOMATION_KINDS), on: z.boolean() }),
+    "Switches an email automation on or off. On, it writes to people on the list from now on (never to the past beyond its catch-up days), with its saved words or the starter words. cart_reminders are the reminders about carts left at checkout: on, checkout keeps a shopper's email with their cart and says so, and the reminders go at their times (the first time, the store gets three starter reminders). Needs the owner's approval.",
+    z.object({ kind: z.enum([...AUTOMATION_KINDS, "cart_reminders"]), on: z.boolean() }),
     "send",
   ),
   // Retention the AI writes (D4 of docs/100-day-challenge.md): an automation's words and days, and text messages.
   tool(
     "write_email_automation",
-    "Writes a lifecycle email automation's words (welcome, after a purchase, win-back) from a few words about what it should say, and sets its days if given: the store's AI writes the subject and words in the store's main language for the readers that automation reaches, may choose the store's own products and running campaigns to show (the email shows their pictures, prices and offers itself), and never writes a price, discount, stock or claim in its words (the claims filter checks). Other languages keep their own words. It is not switched on or off here (switch_email_automation); one that is on uses the new words from its next email. Needs the owner's approval.",
+    "Writes a lifecycle email automation's words (welcome, after a purchase, win-back, goes well with, time to restock) from a few words about what it should say, and sets its days if given: the store's AI writes the subject and words in the store's main language for the readers that automation reaches, may choose the store's own products and running campaigns to show (the email shows their pictures, prices and offers itself), and never writes a price, discount, stock or claim in its words (the claims filter checks). Goes well with (cross_sell) and time to restock (replenish) show each reader products the shop chooses for them itself, under the words: the words never name products. With step 2 or 3 it writes a follow-up instead, the automation's second or third email, sent its days after the email before only to readers who have not ordered since the first; a follow-up that does not exist yet is added (3 needs a 2), after the first email was saved. Other languages keep their own words. It is not switched on or off here (switch_email_automation); one that is on uses the new words from its next email. Needs the owner's approval.",
     z.object({
       kind: z.enum(LIFECYCLE_KINDS),
       brief: z.string().trim().min(5).max(1000).describe("What the email should say, in the owner's words or the plan's."),
@@ -2212,7 +2210,26 @@ export const OWNER_TOOLS = [
         .min(0)
         .max(730)
         .optional()
-        .describe("The days: after joining for welcome (0 to 30), after delivery for after a purchase (1 to 90), without an order for win-back (30 to 730). Leave out to keep them."),
+        .describe(
+          "The days: after joining for welcome (0 to 30), after delivery for after a purchase and goes well with (1 to 90) and time to restock (7 to 365), without an order for win-back (30 to 730); for a follow-up, after the email before (1 to 60). Leave out to keep them (a new follow-up starts at 3).",
+        ),
+      step: z.number().int().min(1).max(3).optional().describe("Which of the automation's emails: 1 the first (the default), 2 or 3 a follow-up."),
+    }),
+    "send",
+  ),
+  // The cart reminders' steps (D4 of docs/100-day-challenge.md, D653): emails to shoppers who left a checkout after typing their email.
+  tool(
+    "write_cart_reminder",
+    "Writes one reminder about carts left at checkout in the store's main language, or adds one: its subject, heading, message and button, how long after the shopper typed their email it goes, whether it is on, and a discount code it offers. {store} in the words becomes the store's name and {code} the code. Words that make claims the store does not let AI make, or that the brand avoids, are refused. Other languages keep their words (a new reminder starts from the starter words there). Reminders go only while the cart reminders are on (switch_email_automation, cart_reminders). Needs the owner's approval.",
+    z.object({
+      reminder: z.uuid().optional().describe("The reminder's id from cart_reminder_stats; leave out to add one."),
+      after_hours: z.number().min(0.5).max(720).optional().describe("Hours after the shopper typed their email (0.5 to 720). Needed for a new reminder."),
+      subject: z.string().trim().min(1).max(150),
+      heading: z.string().trim().min(1).max(150),
+      body: z.string().trim().min(1).max(3000).describe("The message, in plain words."),
+      button: z.string().trim().min(1).max(60),
+      on: z.boolean().optional().describe("Whether this reminder goes; leave out to keep it (a new one is on)."),
+      discount_code: z.string().trim().max(60).optional().describe("The code of one of the store's discount codes to offer, as list_discounts names it; an empty text takes the code away; leave out to keep it."),
     }),
     "send",
   ),
@@ -2319,9 +2336,16 @@ export function approvalSummary(name: string, input: Record<string, unknown>): s
     case "issue_gift_card":
       return `Issue a gift card of ${text("amount")}${input.currency ? ` ${text("currency").toUpperCase()}` : ""} and email it to ${text("to")} (${text("reason")}).`;
     case "switch_email_automation":
-      return `${input.on ? "Switch on" : "Switch off"} the ${text("kind").replace(/_/g, " ")} email automation.`;
-    case "write_email_automation":
-      return `Have the store's AI write new words for the ${text("kind").replace(/_/g, " ")} email automation${input.days === undefined ? "" : `, sent after ${text("days")} days`}, about: "${text("brief").slice(0, 300)}"`;
+      return input.kind === "cart_reminders"
+        ? `${input.on ? "Switch on" : "Switch off"} the reminders about carts left at checkout.`
+        : `${input.on ? "Switch on" : "Switch off"} the ${text("kind").replace(/_/g, " ")} email automation.`;
+    case "write_email_automation": {
+      const which = input.step === 2 ? "the second email of " : input.step === 3 ? "the third email of " : "";
+      return `Have the store's AI write new words for ${which}the ${text("kind").replace(/_/g, " ")} email automation${input.days === undefined ? "" : `, sent after ${text("days")} days`}, about: "${text("brief").slice(0, 300)}"`;
+    }
+    case "write_cart_reminder":
+      return `${input.reminder ? "Change a" : "Add a"} cart reminder${input.after_hours === undefined ? "" : `, sent ${text("after_hours")} hours after checkout`}: "${text("subject")}" (${text("heading")}): "${text("body").slice(0, 300)}"${input.discount_code ? `, offering the code ${text("discount_code")}` : ""}${input.on === false ? ", switched off" : ""}.`;
+
     case "send_text_message":
       return `Send the text message "${text("message")}" to the numbers subscribed for it. Each text costs money, within your monthly cap.`;
     case "mark_order_sent":
