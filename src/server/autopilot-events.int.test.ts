@@ -174,7 +174,7 @@ describe("reacting to events", () => {
     expect(await eventsOf(other.id)).toHaveLength(0);
   });
 
-  it("gives a running test that has an answer the test's tools once, and lets it go once the test is decided (D664)", async () => {
+  it("gives a running test that has an answer the test's tools once, and lets it go once the test is decided (D668)", async () => {
     const [page] = await db().execute<Row>(sql`select id from commerce.pages where store_id = ${store.id}::uuid and type = 'page' and published is not null limit 1`);
     const made = await admin.createExperiment(store.account, store.id, { name: "Shorter hero", pageId: String(page.id), goal: "cart" });
     if (!made.ok) throw new Error(made.problems.join(" "));

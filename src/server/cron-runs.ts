@@ -5,6 +5,7 @@ import { z } from "zod";
 
 import { db } from "@/db/client";
 import { FAILING_AFTER, type CronJobRow } from "@/lib/cron-health";
+import { pooled } from "@/lib/job-pool";
 
 import { cronAuthorised } from "./cron-auth";
 import { log } from "./log";
@@ -93,7 +94,6 @@ export async function claimDay(job: string, day: string, timeZone: string, now: 
 /** A job's key as the ledger keeps it: `storeCopies` → `store-copies` (the table takes lower case only). */
 export const kebab = (name: string) => name.replace(/[A-Z]/g, (c) => `-${c.toLowerCase()}`);
 
-/** Runs a dispatcher's jobs side by side, each tracked as `{prefix}.{name}` in kebab case; each answer is the job's, or null when it threw. */
 /**
  * Jobs that no longer run (their work moved elsewhere): their rows are deleted on each dispatcher run, so a retired job never reads as late
  * on the platform home or `/status`. Add a job's full name here when it is taken out of a `runJobs()` list.
@@ -113,10 +113,23 @@ export const RETIRED_JOBS: readonly string[] = [
   "dispatcher.oauth-tokens",
 ];
 
+/**
+ * How many dispatcher jobs run at once: one fewer than the pool's five connections (`src/db/client.ts`), so a job that needs a second
+ * connection, the ledger's write or a page render still finds one.
+ */
+export const JOB_LANES = 4;
+/** How long a job holds its lane before the next job takes it (the job goes on, and is recorded when it ends). */
+export const JOB_LANE_MS = 60_000;
+
+/**
+ * Runs a dispatcher's jobs four at a time (`JOB_LANES`), each tracked as `{prefix}.{name}` in kebab case; each answer is the job's, or
+ * null when it threw. A job that has run for `JOB_LANE_MS` gives its lane to the next and is still recorded when it ends.
+ */
 export async function runJobs<J extends Record<string, () => Promise<unknown>>>(
   prefix: string,
   everySeconds: number,
   jobs: J,
+  options: { lanes?: number; laneMs?: number } = {},
 ): Promise<{ [K in keyof J]: Awaited<ReturnType<J[K]>> | null }> {
   const names = Object.keys(jobs) as (keyof J & string)[];
   if (RETIRED_JOBS.length > 0) {
@@ -124,7 +137,14 @@ export async function runJobs<J extends Record<string, () => Promise<unknown>>>(
       .execute(sql`delete from commerce.cron_jobs where job = any(${textList(RETIRED_JOBS)})`)
       .catch((error: unknown) => log("warn", "cron.retire_failed", {}, error));
   }
-  const results = await Promise.all(names.map((name) => tracked(`${prefix}.${kebab(name)}`, everySeconds, jobs[name])));
+  const results = await pooled(
+    names.map((name) => () => tracked(`${prefix}.${kebab(name)}`, everySeconds, jobs[name])),
+    {
+      lanes: options.lanes ?? JOB_LANES,
+      laneMs: options.laneMs ?? JOB_LANE_MS,
+      onLaneGivenUp: (i) => log("warn", "cron.lane_given_up", { job: `${prefix}.${kebab(names[i])}`, afterMs: options.laneMs ?? JOB_LANE_MS }),
+    },
+  );
   return Object.fromEntries(names.map((name, i) => [name, results[i]])) as { [K in keyof J]: Awaited<ReturnType<J[K]>> | null };
 }
 

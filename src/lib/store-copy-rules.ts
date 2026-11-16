@@ -408,6 +408,7 @@ export const COPY_RULES: Record<string, CopyRule> = {
   live_drills: never("Drills run on the original's test payments (D406); a copy is drilled on its own."),
   page_heat_days: never("Heatmaps' daily totals of the original's visitors (D656); a copy counts its own."),
   click_cells: never("Clicks per part of the original's pages (D656); a copy counts its own."),
+  page_map_shots: never("Pictures of the original's pages under its heatmaps (D656); a copy's are taken of its own pages."),
   speed_samples: never("How fast the original's pages loaded for its visitors (D336); a copy measures its own."),
   search_queries: never("A log of the original's searches."),
   shipments: never("Copied orders have no shipments."),

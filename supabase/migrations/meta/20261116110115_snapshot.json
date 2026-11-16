@@ -1,6 +1,6 @@
 {
-  "id": "3b91698e-f804-4a7c-9957-5096739dad81",
-  "prevId": "4fb5fc23-3e5d-4657-b918-d8b32dcd4c06",
+  "id": "c0e2e974-ecbf-4786-915b-91f4a9d0c263",
+  "prevId": "698ddb44-422b-49d6-a06b-66c0b57083fb",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -49756,6 +49756,165 @@
         "page_looks_problem": {
           "name": "page_looks_problem",
           "value": "\"commerce\".\"page_looks\".\"problem\" is null or length(\"commerce\".\"page_looks\".\"problem\") <= 500"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "commerce.page_map_shots": {
+      "name": "page_map_shots",
+      "schema": "commerce",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "store_id": {
+          "name": "store_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "page": {
+          "name": "page",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "device": {
+          "name": "device",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "tag": {
+          "name": "tag",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "''"
+        },
+        "status": {
+          "name": "status",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'waiting'"
+        },
+        "requested_at": {
+          "name": "requested_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "claimed_until": {
+          "name": "claimed_until",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "shot_at": {
+          "name": "shot_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "width": {
+          "name": "width",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "height": {
+          "name": "height",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "layout": {
+          "name": "layout",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "problem": {
+          "name": "problem",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {
+        "page_map_shots_queue_idx": {
+          "name": "page_map_shots_queue_idx",
+          "columns": [
+            {
+              "expression": "requested_at",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "where": "\"commerce\".\"page_map_shots\".\"status\" in ('waiting', 'taking')",
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "page_map_shots_store_id_stores_id_fk": {
+          "name": "page_map_shots_store_id_stores_id_fk",
+          "tableFrom": "page_map_shots",
+          "tableTo": "stores",
+          "schemaTo": "commerce",
+          "columnsFrom": [
+            "store_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "page_map_shots_key": {
+          "name": "page_map_shots_key",
+          "nullsNotDistinct": false,
+          "columns": [
+            "store_id",
+            "page",
+            "device",
+            "tag"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {
+        "page_map_shots_page": {
+          "name": "page_map_shots_page",
+          "value": "char_length(\"commerce\".\"page_map_shots\".\"page\") between 1 and 300"
+        },
+        "page_map_shots_device": {
+          "name": "page_map_shots_device",
+          "value": "\"commerce\".\"page_map_shots\".\"device\" in ('mobile', 'tablet', 'desktop')"
+        },
+        "page_map_shots_tag": {
+          "name": "page_map_shots_tag",
+          "value": "\"commerce\".\"page_map_shots\".\"tag\" = '' or \"commerce\".\"page_map_shots\".\"tag\" ~ '^[0-9a-f-]{36}:[a-d]$'"
+        },
+        "page_map_shots_status": {
+          "name": "page_map_shots_status",
+          "value": "\"commerce\".\"page_map_shots\".\"status\" in ('waiting', 'taking', 'done', 'failed')"
+        },
+        "page_map_shots_problem": {
+          "name": "page_map_shots_problem",
+          "value": "char_length(\"commerce\".\"page_map_shots\".\"problem\") <= 200"
         }
       },
       "isRLSEnabled": false
