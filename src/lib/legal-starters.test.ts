@@ -585,7 +585,9 @@ describe("heatmaps and recordings in the legal facts (D657)", () => {
     const off = assembleLegalFacts(input({ store: { ...input().store, heatmaps: false, recordings: false } }));
     expect("heatmaps" in off).toBe(false);
     expect("sessionRecordings" in off).toBe(false);
-    const { heatmaps: _h, recordings: _r, ...before } = input().store;
+    const before = { ...input().store };
+    delete before.heatmaps;
+    delete before.recordings;
     expect(off).toEqual(assembleLegalFacts(input({ store: before })));
     expect(FULL).toMatchObject({ heatmaps: true, sessionRecordings: true });
   });
