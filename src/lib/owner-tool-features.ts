@@ -90,6 +90,7 @@ export const TOOL_FEATURES: Partial<Record<OwnerToolName, FeatureRequirement>> =
   list_customers: "shop",
   get_customer: "shop",
   cart_reminder_stats: "shop",
+  write_cart_reminder: "shop",
   wishlist_insights: "shop",
   list_emails: "shop",
   customer_insights: "shop",

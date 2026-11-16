@@ -1,5 +1,5 @@
 {
- "version": "1.26",
+ "version": "1.27",
  "surface": [
   "admin DELETE /categories/{id}",
   "admin DELETE /categories/{id} -> data",
@@ -2728,6 +2728,12 @@
   "mcp work_overview",
   "mcp work_overview <- store (required)",
   "mcp work_summary",
+  "mcp write_cart_reminder",
+  "mcp write_cart_reminder <- body (required)",
+  "mcp write_cart_reminder <- button (required)",
+  "mcp write_cart_reminder <- heading (required)",
+  "mcp write_cart_reminder <- store (required)",
+  "mcp write_cart_reminder <- subject (required)",
   "mcp write_email_automation",
   "mcp write_email_automation <- brief (required)",
   "mcp write_email_automation <- kind (required)",
