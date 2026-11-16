@@ -72,6 +72,17 @@ export const COOKIE_PATTERNS = [
     category: "statistics",
   },
   {
+    // The recorder's tab session and the ids a browser can delete (D656); only in a store that records visits.
+    name: "kaizen_replay_ids_…",
+    pattern: /^kaizen_replay_ids_[0-9a-f-]{36}$/,
+    category: "recordings",
+  },
+  {
+    name: "kaizen_replay_…",
+    pattern: /^kaizen_replay_[0-9a-f-]{36}$/,
+    category: "recordings",
+  },
+  {
     name: "kaizen_modal_…",
     pattern: /^kaizen_modal_[a-z0-9-]+$/,
     category: "preferences",

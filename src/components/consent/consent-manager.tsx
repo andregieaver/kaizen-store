@@ -15,6 +15,7 @@ import {
   decodeConsent,
   encodeConsent,
   type ConsentChoices,
+  type ConsentExtra,
   type OptionalCategory,
   type TrackingSettings,
 } from "@/lib/cookie-consent";
@@ -37,6 +38,8 @@ export type ConsentTexts = {
   alwaysOn: string;
   cookiePage: string;
   categories: Record<"necessary" | OptionalCategory, { name: string; text: string }>;
+  /** The short sentence about recordings on the banner's first screen, while the site asks about them (D656); null otherwise. */
+  recordingNotice: string | null;
 };
 
 /** Opens the choices from anywhere on the page: the cookie page's and the footer's buttons. */
@@ -56,6 +59,8 @@ type Props = {
   code?: CustomCode;
   /** The optional categories the site uses: its tools', and what its cookie scan found. */
   categories: OptionalCategory[];
+  /** What the site's categories cover beyond their names (D656: `heat` while heatmaps run): part of the version, so a change asks again. */
+  extras?: ConsentExtra[];
   texts: ConsentTexts;
   /** The site's cookie page. */
   cookiePage: string;
@@ -250,8 +255,8 @@ function newVisitor(): string {
  * Accepting and rejecting are equally easy, and the choices can be opened
  * again at any time from the cookie page or the footer.
  */
-export function ConsentManager({ storeId, tracking, code = {}, categories, texts, cookiePage }: Props) {
-  const version = consentVersion(categories);
+export function ConsentManager({ storeId, tracking, code = {}, categories, extras = [], texts, cookiePage }: Props) {
+  const version = consentVersion(categories, extras);
   const name = consentCookieName(storeId);
   // Hidden once the visitor decides here; before that, shown when there is no current choice.
   const [decided, setDecided] = useState(false);
@@ -381,6 +386,7 @@ export function ConsentManager({ storeId, tracking, code = {}, categories, texts
               {texts.cookiePage}
             </a>
           </p>
+          {texts.recordingNotice && <p>{texts.recordingNotice}</p>}
           {/* Rejecting is as easy as accepting: the same look, side by side. */}
           <div className="flex flex-wrap gap-2">
             <button type="button" onClick={() => decide(NO_CONSENT)} className={`${button} button-primary`}>

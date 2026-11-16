@@ -810,7 +810,13 @@ export const nb: Messages = {
     preferences: { name: "Preferanser", text: "Husker valg du gjør, som språk og visning." },
     statistics: { name: "Statistikk", text: "Teller besøk og viser hvordan nettstedet brukes, så vi kan gjøre det bedre." },
     marketing: { name: "Markedsføring", text: "Viser og måler annonser, også på andre nettsteder." },
+    recordings: { name: "Opptak av besøket ditt", text: "Tar opp butikkens sider slik du så dem, klikk, trykk, rulling og pekerbevegelser, hvilken testversjon du så og omtrent når, slik at butikken kan se hva som er vanskelig å bruke. Ikke på handlekurven, kassen, kontoen eller ordresidene; aldri det du skriver. Lagres i 30 dager." },
   },
+  // D656, docs/heatmaps-and-recordings.md: hand-written, for legal review before recordings open to stores.
+  consentStatisticsHeat: "Teller besøk og viser hvordan nettstedet brukes, også summer av hvor besøkende klikker, hvor langt de ruller og hvor lenge deler av en side er på skjermen (varmekart), også per testversjon, så vi kan gjøre det bedre.",
+  consentRecordingNotice: "Denne butikken kan ta opp besøkene dine på sidene sine (hva siden viser, klikk, trykk, rulling og pekerbevegelser) for å finne det som er vanskelig å bruke. Det du skriver, tas aldri opp.",
+  cookieHeatmaps: "Varmekart: så lenge du tillater statistikk, sender nettleseren din hvilke deler av en side du klikker på, hvor langt du ruller og hvor lenge deler av siden er på skjermen, og hvilken testversjon du så. Bare summer per side og dag lagres, uten noe nummer som identifiserer deg.",
+  cookieRecordings: "Opptak: så lenge du tillater opptak, tar butikken opp det som skjer på sidene i denne fanen: siden slik den ble vist, klikk, trykk, rulling og pekerbevegelser, skjermstørrelsen og testversjonen du så. Alt du skriver, chatten, handlekurven, kassen og kontoen din er utelatt. Et tilfeldig nummer for denne fanen holder opptaket sammen; det kobles aldri til hvem du er. Butikken er ansvarlig for opptakene; Kaizena Flow lagrer dem for butikken, i Irland, i 30 dager. Du kan trekke samtykket når som helst under innstillingene for informasjonskapsler, og slette opptakene denne nettleseren laget nedenfor.",
   cookiePageIntro:
     "Informasjonskapsler (cookies) er små tekstfiler som lagres i nettleseren din. Her ser du hvilke dette nettstedet bruker, hvem som setter dem, hva de brukes til og hvor lenge de varer.",
   onlyNecessary: "Nettstedet bruker bare informasjonskapsler som er nødvendige for at det skal virke. Slike krever ikke samtykke.",

@@ -6,7 +6,7 @@ import { consentCookieName, encodeConsent } from "./cookie-consent";
 
 const STORE = "0f8fad5b-d9cb-469f-a165-70867728950e";
 const consent = (marketing: boolean) =>
-  `${consentCookieName(STORE)}=${encodeConsent({ visitor: "11111111-1111-4111-8111-111111111111", version: "marketing", choices: { preferences: false, statistics: false, marketing } })}`;
+  `${consentCookieName(STORE)}=${encodeConsent({ visitor: "11111111-1111-4111-8111-111111111111", version: "marketing", choices: { preferences: false, statistics: false, marketing, recordings: false } })}`;
 
 describe("the welcome discount", () => {
   it("is a percentage of the goods, rounded down, at most the owner's cap", () => {

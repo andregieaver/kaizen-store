@@ -838,7 +838,13 @@ export const en = {
     preferences: { name: "Preferences", text: "Remember choices you make, such as language and display." },
     statistics: { name: "Statistics", text: "Count visits and show how the site is used, so we can improve it." },
     marketing: { name: "Marketing", text: "Show and measure ads, also on other sites." },
+    recordings: { name: "Recordings of your visit", text: "Records the shop's pages as you saw them, your clicks, taps, scrolling and pointer movement, which test version you saw and roughly when, so the shop can see what is hard to use. Not on the cart, checkout, account or order pages; never what you type. Kept 30 days." },
   },
+  // D656, docs/heatmaps-and-recordings.md: hand-written, for legal review before recordings open to stores.
+  consentStatisticsHeat: "Count visits and show how the site is used, including totals of where visitors click, how far they scroll and how long parts of a page are on screen (heatmaps), also per test version, so we can improve it.",
+  consentRecordingNotice: "This shop can record your visits to its pages (what the page shows, your clicks, taps, scrolling and pointer movement) to find what is hard to use. What you type is never recorded.",
+  cookieHeatmaps: "Heatmaps: while you allow statistics, your browser sends which parts of a page you click, how far you scroll and how long parts of the page are on your screen, and which test version you saw. Only totals per page and day are kept, with no number that identifies you.",
+  cookieRecordings: "Recordings: while you allow recordings, the shop records what happens on its pages in this tab: the page as it was shown, your clicks, taps, scrolling and pointer movement, your screen size and the test version you saw. Everything you type, the chat, the cart, the checkout and your account are left out. A random number for this tab ties the recording together; it is never joined to who you are. The shop is responsible for the recordings; Kaizena Flow keeps them for it, in Ireland, for 30 days. You can withdraw at any time under Cookie settings, and delete the recordings this browser made below.",
   cookiePageIntro:
     "Cookies are small text files stored in your browser. Here you can see which ones this site uses, who sets them, what they are for and how long they last.",
   onlyNecessary: "This site uses only cookies it needs to work. Those do not need consent.",

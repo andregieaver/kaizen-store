@@ -156,6 +156,9 @@ export const NB: StarterText = {
     "privacy.purpose.security": "å holde butikken sikker og forhindre svindel og misbruk (vår berettigede interesse)",
     "privacy.purpose.marketing": "å sende deg markedsføring på e-post, bare hvis du har sagt ja til det (samtykke)",
     "privacy.purpose.visits": "å telle besøk i butikken uten informasjonskapsler, for å se hvordan den brukes; vi lagrer ingen IP-adresse og ingen nettleseridentifikator (vår berettigede interesse)",
+    // D656: hand-written, for legal review.
+    "privacy.purpose.heatmaps": "å se, som summer per side og dag, hvor besøkende som tillater statistikk klikker, hvor langt de ruller og hvor lenge deler av en side er på skjermen (varmekart; ditt samtykke)",
+    "privacy.purpose.recordings": "å ta opp besøk fra besøkende som tillater opptak, under et tilfeldig nummer for én nettleserfane og uten det de skriver, for å finne det som er vanskelig å bruke; lagres i 30 dager (ditt samtykke)",
     "h.privacy.recipients": "Hvem som får opplysningene",
     "privacy.recipients.1": "Vi deler personopplysninger bare med dem som trenger dem:",
     "privacy.recipient.platform": "plattformen Kaizena Flow, som driver butikken og behandler opplysninger på våre vegne",

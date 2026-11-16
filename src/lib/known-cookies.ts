@@ -42,6 +42,10 @@ export type KnownCookie = {
   recommendations?: boolean;
   /** Set only in stores with a running A/B test (D148). */
   experiments?: boolean;
+  /** Only in a store that records visits (D656): the recorder's items. */
+  recordings?: boolean;
+  /** Kept in the browser's storage, not as a cookie: a scan matches it among items of that kind (D656). */
+  storage?: "local" | "session";
   /** Only in a store that counts visits and asks about statistics (D303 I3). */
   touch?: boolean;
   /** Only while the store is private (D339): its unlock pass. */
@@ -229,6 +233,34 @@ const DETAILS: Record<KnownCookieName, Omit<KnownCookie, "name" | "pattern" | "c
       nb: "Husker hvilken versjon av en side butikken prøver ut på deg (en A/B-test), med et tilfeldig tall som bare hører til denne butikken, slik at du ser samme versjon hver gang og butikken kan lære hva som fungerer best; kobles aldri til hvem du er.",
       sv: "Kommer ihåg vilken version av en sida butiken testar på dig (ett A/B-test), med ett slumptal som bara hör till den här butiken, så att du ser samma version varje gång och butiken kan lära sig vad som fungerar bäst; kopplas aldrig till vem du är.",
       da: "Husker, hvilken version af en side butikken afprøver på dig (en A/B-test), med et tilfældigt tal, der kun hører til denne butik, så du ser den samme version hver gang, og butikken kan lære, hvad der virker bedst; knyttes aldrig til, hvem du er.",
+    },
+  },
+  "kaizen_replay_…": {
+    // In the tab's session storage, only in a store that records visits and once a visitor allowed recordings (D656).
+    provider: "Kaizena Flow",
+    days: null,
+    on: "store",
+    recordings: true,
+    storage: "session",
+    purpose: {
+      en: "A random number for this tab that ties a recording of your visit together; gone when you close the tab, never joined to who you are.",
+      nb: "Et tilfeldig nummer for denne fanen som holder et opptak av besøket ditt sammen; forsvinner når du lukker fanen og kobles aldri til hvem du er.",
+      sv: "Ett slumpat nummer för den här fliken som håller ihop en inspelning av ditt besök; försvinner när du stänger fliken och kopplas aldrig till vem du är.",
+      da: "Et tilfældigt nummer for denne fane, der holder en optagelse af dit besøg sammen; forsvinder, når du lukker fanen, og knyttes aldrig til, hvem du er.",
+    },
+  },
+  "kaizen_replay_ids_…": {
+    // In local storage, only in a store that records visits and once a visitor allowed recordings (D656).
+    provider: "Kaizena Flow",
+    days: 31,
+    on: "store",
+    recordings: true,
+    storage: "local",
+    purpose: {
+      en: "The numbers of the recordings this browser made in the last 31 days, so you can delete them; never sent anywhere else.",
+      nb: "Numrene på opptakene denne nettleseren har laget de siste 31 dagene, slik at du kan slette dem; sendes aldri noe annet sted.",
+      sv: "Numren på inspelningarna som den här webbläsaren har gjort de senaste 31 dagarna, så att du kan radera dem; skickas aldrig någon annanstans.",
+      da: "Numrene på de optagelser, denne browser har lavet de seneste 31 dage, så du kan slette dem; sendes aldrig andre steder hen.",
     },
   },
   "kaizen_modal_…": {
@@ -581,10 +613,11 @@ export function declaredCookies(
     affiliate = false,
     recommendations = false,
     experiments = false,
+    recordings = false,
     languages = false,
     touch = false,
     privateStore = false,
-  }: { buyers?: boolean; chat?: boolean; colorMode?: boolean; modals?: boolean; referrals?: boolean; affiliate?: boolean; recommendations?: boolean; experiments?: boolean; languages?: boolean; touch?: boolean; privateStore?: boolean } = {},
+  }: { buyers?: boolean; chat?: boolean; colorMode?: boolean; modals?: boolean; referrals?: boolean; affiliate?: boolean; recommendations?: boolean; experiments?: boolean; recordings?: boolean; languages?: boolean; touch?: boolean; privateStore?: boolean } = {},
 ): KnownCookie[] {
   return KNOWN_COOKIES.filter(
     (cookie) =>
@@ -596,6 +629,7 @@ export function declaredCookies(
       (!cookie.affiliate || affiliate) &&
       (!cookie.recommendations || recommendations) &&
       (!cookie.experiments || experiments) &&
+      (!cookie.recordings || recordings) &&
       !cookie.staff &&
       (!cookie.referrals || referrals) &&
       (!cookie.languages || languages) &&

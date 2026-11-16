@@ -1,8 +1,8 @@
 import Link from "next/link";
 
 import { ActionForm, SubmitButton, type FormState } from "@/components/admin/action-form";
-import { toolCategories, type TrackingSettings } from "@/lib/cookie-consent";
-import { CODE_MAX_LENGTH, CODE_PLACES, codeCategories, type CustomCode } from "@/lib/custom-code";
+import { toolCategories, type OptionalCategory, type TrackingSettings } from "@/lib/cookie-consent";
+import { CODE_CATEGORIES, CODE_MAX_LENGTH, CODE_PLACES, codeCategories, type CustomCode } from "@/lib/custom-code";
 import { fillWords } from "@/lib/admin-fill";
 import { legalEn, type LegalMessages } from "@/lib/admin-messages/legal.en";
 
@@ -12,7 +12,7 @@ const hint = "text-xs font-normal text-muted";
 const card = "flex flex-col gap-4 rounded-lg border border-line bg-card p-5";
 
 /** Categories as they read inside a sentence, joined with the language's "and". */
-const categoryList = (categories: readonly ("preferences" | "statistics" | "marketing")[], words: LegalMessages) =>
+const categoryList = (categories: readonly OptionalCategory[], words: LegalMessages) =>
   categories.map((c) => words.cookies.categoriesLower[c]).join(words.cookies.and);
 
 /**
@@ -96,8 +96,6 @@ export function TrackingForm({
     </section>
   );
 }
-
-const CODE_CATEGORIES = ["necessary", "preferences", "statistics", "marketing"] as const;
 
 /**
  * A store's own code (D61) for its pages' head and the start and end of
