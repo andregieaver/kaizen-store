@@ -475,6 +475,25 @@ notice kind).
   tools a turn can carry. The parameter changes the tools' fingerprint, so it shipped alone without a migration, then the eval run on
   Platform → AI and its recording committed.
 
+## What phase 15 built: the list, ideas and the platform (D677)
+
+Step 4 of `docs/ab-testing-usability.md`, in parts. **Part 4a (D677, no migration, no tool change):**
+
+- **The list grouped** (`src/lib/experiment-list.ts` pure, `src/server/experiment-list.ts`): each test with its card (`experimentCard()`;
+  only a started test that is not decided counts results) and a group by what it asks of the owner: *Needs your decision* (a running test
+  with an answer or a broken split, and every stopped test), *Still learning*, *Drafts and planned*, *Decided*. One sentence on top says first
+  what waits (`listLead()`: *One test has an answer: choose what to keep.*, else how many are learning and when the first is likely ready).
+  Each row has the stage chip of the test's page (`STATE_SIGNAL`, now shared) and, while learning, a short bar with *Day 6 of 14*.
+- **Ideas to test** (`testIdeas()`), in code without a model call: the testable pages most visitors could take part on (visits a day times
+  the share who accept statistics, as `suggest_experiments` counts), each with one change named for what the owner sees (other words on its
+  first button, another first heading, the pictures and buy button in another order, a simpler menu) and how soon it would answer
+  (`findableChange()`); a page already in a test, a footer and a working page are left out. Three at most, each opening the new-test form
+  on that page.
+- **Marketing** (round 4, D612): *Running now* lists each running test with its stage chip, so a test with an answer is seen there too; the
+  lead's count of what brings people back leaves tests out.
+- **The platform's view** (`/admin/platform/experiments`): each test carries the same card (`PlatformTest.card`), so its chip and
+  progress bar say what the store's list says.
+
 
 
 - Randomise who is eligible, then compare everyone assigned; never compare people who used a thing with those who did
