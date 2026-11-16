@@ -51,6 +51,9 @@ import { blockAffiliateAction } from "../../affiliates/actions";
 import { setCustomerGroupAction } from "../../customer-groups/actions";
 import { addCustomerTagAction, addGuestAction, addNoteAction, adjustBonusAction, deleteNoteAction, removeCustomerTagAction, saveCustomerFieldsAction, updateCustomerAction } from "./actions";
 
+/** How many orders a customer's page shows on a phone before *All orders* (round 20). */
+const PHONE_ORDERS = 5;
+
 export const metadata: Metadata = { title: "Customer" };
 
 const card = "rounded-lg border border-line bg-card p-5";
@@ -212,7 +215,8 @@ export default async function CustomerPage({ params, searchParams }: PageProps<"
 
       {privacy && <PrivacyBanner base={base} data={privacy} />}
 
-      <div className={`grid grid-cols-2 gap-3 ${subscriptionsOn ? "md:grid-cols-4" : "md:grid-cols-3"}`}>
+      {/* Round 20 (D671): on a phone the figures share one row, small. */}
+      <div className={`grid grid-cols-3 gap-2 sm:gap-3 ${subscriptionsOn ? "md:grid-cols-4" : "md:grid-cols-3"}`}>
         {[
           [words.figures.orders, String(customer.orders)],
           [words.figures.spent, spent || "–"],
@@ -220,9 +224,9 @@ export default async function CustomerPage({ params, searchParams }: PageProps<"
           // Subscriptions (D178): the figure and the list are there while the feature is on (off, none can be running).
           ...(subscriptionsOn ? [[words.figures.subscriptions, String(customer.liveSubscriptions)]] : []),
         ].map(([label, value]) => (
-          <div key={label} className={`flex flex-col gap-1 p-4 ${CARD_CLASS}`}>
-            <span className="text-sm text-muted">{label}</span>
-            <span className="text-[26px] tracking-tight tabular-nums">{value}</span>
+          <div key={label} className={`flex min-w-0 flex-col gap-1 px-3 py-2.5 sm:p-4 ${CARD_CLASS}`}>
+            <span className="truncate text-[11px] text-muted sm:text-sm">{label}</span>
+            <span className="truncate text-[17px] tracking-tight tabular-nums sm:text-[26px]">{value}</span>
           </div>
         ))}
       </div>
@@ -234,14 +238,21 @@ export default async function CustomerPage({ params, searchParams }: PageProps<"
             {customer.orderList.length === 0 ? (
               <p className="text-sm text-muted">{words.noOrders}</p>
             ) : (
-              <ol aria-label={words.orders} className="flex flex-col gap-5">
-                {customer.orderList.map((order) => {
+              <>
+              {/* Round 20 (D671): on a phone each order is one line with a small picture, the newest five, then all of them on Orders. */}
+              <ol aria-label={words.orders} className="flex flex-col gap-5 max-sm:gap-3">
+                {customer.orderList.map((order, index) => {
                   const lines = linesOf.get(order.id) ?? [];
                   return (
-                    <li key={order.id} className="flex gap-3.5">
+                    <li key={order.id} className={`flex gap-3.5 ${index >= PHONE_ORDERS ? "max-sm:hidden" : ""}`}>
                       <span aria-hidden className={`mt-1.5 size-2.5 shrink-0 rounded-pill ${order.status === "paid" ? "bg-warning-solid" : order.status === "cancelled" ? "bg-line" : "bg-insight-solid"}`} />
                       <div className="flex min-w-0 flex-1 flex-col gap-2.5">
                         <div className="flex flex-wrap items-baseline gap-x-4 gap-y-1">
+                          {lines.length > 0 && (
+                            <span className="self-center sm:hidden">
+                              <Pictures lines={lines.map(({ title, picture }) => ({ title, picture }))} size={32} max={1} moreWord={(n) => `+${n}`} />
+                            </span>
+                          )}
                           <AdminLink href={`${base}/orders/${order.id}`} className="text-body text-ink underline-offset-2 hover:underline">
                             #{order.number}
                           </AdminLink>
@@ -258,7 +269,9 @@ export default async function CustomerPage({ params, searchParams }: PageProps<"
                           <span className="ml-auto text-body tabular-nums">{formatMoney(order.totalMinor, order.currency, locale)}</span>
                         </div>
                         {lines.length > 0 ? (
-                          <Pictures lines={lines.map(({ title, picture }) => ({ title, picture }))} size={72} max={5} moreWord={(n) => `+${n}`} />
+                          <span className="max-sm:hidden">
+                            <Pictures lines={lines.map(({ title, picture }) => ({ title, picture }))} size={72} max={5} moreWord={(n) => `+${n}`} />
+                          </span>
                         ) : (
                           <span className="text-caption text-muted">{countWords(order.items, words.items)}</span>
                         )}
@@ -267,6 +280,12 @@ export default async function CustomerPage({ params, searchParams }: PageProps<"
                   );
                 })}
               </ol>
+              {customer.orderList.length > PHONE_ORDERS && (
+                <AdminLink href={`${base}/orders?q=${encodeURIComponent(customer.email)}`} className="mt-3 inline-flex min-h-10 items-center text-sm font-medium text-ink underline underline-offset-2 sm:hidden">
+                  {fillWords(words.allOrders, { n: customer.orders })}
+                </AdminLink>
+              )}
+              </>
             )}
           </section>
 

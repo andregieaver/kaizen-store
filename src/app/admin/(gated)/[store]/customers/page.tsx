@@ -118,35 +118,36 @@ export default async function CustomersPage({ params, searchParams }: PageProps<
       />
 
       {counts.people > 0 && (
-        <section aria-label={words.figures.fresh} className="grid gap-3 sm:grid-cols-3">
-          <div className={`flex flex-col gap-1.5 px-5 py-4 ${CARD_CLASS}`}>
-            <span className="text-caption text-muted">{words.figures.fresh}</span>
-            <span className="text-[26px] tracking-tight">{counts.fresh}</span>
+        // Round 20 (D671): on a phone the three figures share one row, small, so the people are on the first screen.
+        <section aria-label={words.figures.fresh} className="grid grid-cols-3 gap-2 sm:gap-3">
+          <div className={`flex min-w-0 flex-col gap-1 px-3 py-2.5 sm:gap-1.5 sm:px-5 sm:py-4 ${CARD_CLASS}`}>
+            <span className="truncate text-[11px] text-muted sm:text-caption">{words.figures.fresh}</span>
+            <span className="text-[17px] tracking-tight sm:text-[26px]">{counts.fresh}</span>
           </div>
-          <div className={`flex flex-col gap-1.5 px-5 py-4 ${CARD_CLASS}`}>
-            <span className="text-caption text-muted">{words.figures.back}</span>
-            <span className="text-[26px] tracking-tight">
-              {counts.back} <span className="text-caption tracking-normal text-muted">{fillWords(words.figures.backOf, { n: counts.people })}</span>
+          <div className={`flex min-w-0 flex-col gap-1 px-3 py-2.5 sm:gap-1.5 sm:px-5 sm:py-4 ${CARD_CLASS}`}>
+            <span className="truncate text-[11px] text-muted sm:text-caption">{words.figures.back}</span>
+            <span className="text-[17px] tracking-tight sm:text-[26px]">
+              {counts.back} <span className="text-[11px] tracking-normal text-muted sm:text-caption">{fillWords(words.figures.backOf, { n: counts.people })}</span>
             </span>
-            {counts.back === 0 && <span className="text-caption text-muted">{words.figures.backHint}</span>}
+            {counts.back === 0 && <span className="hidden text-caption text-muted sm:block">{words.figures.backHint}</span>}
           </div>
           {counts.averageSpentMinor !== null && (
-            <div className={`flex flex-col gap-1.5 px-5 py-4 ${CARD_CLASS}`}>
-              <span className="text-caption text-muted">{words.figures.average}</span>
-              <span className="text-[26px] tracking-tight tabular-nums">{money(counts.averageSpentMinor)}</span>
+            <div className={`flex min-w-0 flex-col gap-1 px-3 py-2.5 sm:gap-1.5 sm:px-5 sm:py-4 ${CARD_CLASS}`}>
+              <span className="truncate text-[11px] text-muted sm:text-caption">{words.figures.average}</span>
+              <span className="truncate text-[17px] tracking-tight tabular-nums sm:text-[26px]">{money(counts.averageSpentMinor)}</span>
             </div>
           )}
         </section>
       )}
 
       <div className="flex flex-wrap items-center gap-2.5">
-        <nav aria-label={words.views.label} className="inline-flex gap-1 rounded-pill bg-card p-1">
+        <nav aria-label={words.views.label} className="inline-flex max-w-full gap-1 overflow-x-auto rounded-pill bg-card p-1 [scrollbar-width:none]">
           {views.map((view) => (
             <AdminLink
               key={view.label}
               href={hrefWith({ show: view.show })}
               aria-current={view.show === show ? "page" : undefined}
-              className="inline-flex h-9 items-center rounded-pill px-3.5 text-body text-ink-2 hover:text-ink aria-[current=page]:bg-ink aria-[current=page]:text-card"
+              className="inline-flex h-9 shrink-0 items-center whitespace-nowrap rounded-pill px-3.5 text-body text-ink-2 hover:text-ink aria-[current=page]:bg-ink aria-[current=page]:text-card"
             >
               {view.label} · {view.count}
             </AdminLink>
@@ -229,6 +230,8 @@ export default async function CustomersPage({ params, searchParams }: PageProps<
             noOrder: words.noOrder,
             subscribed: words.subscribed,
             tickAll: words.tickAll,
+            select: words.select,
+            selectDone: words.selectDone,
             tickOne: words.tickOne,
             ticked: words.ticked,
             untick: words.untick,
