@@ -286,6 +286,7 @@ export const COPY_RULES: Record<string, CopyRule> = {
   support_inbound_emails: never("Emails received for support (D332) are the original store's customers'."),
   chat_usage: never("Rate-limit counters."),
   store_usage_daily: derived("Measured again by the new store's own jobs (D314)."),
+  store_traffic_hourly: derived("Counted again from the new store's own traffic (D669)."),
   limit_overrides: never("A platform admin's decision for this store only (D314)."),
   capacity_events: never("The original's own busy times (D314)."),
   checkout_accounts: never("Passwords chosen at checkout."),

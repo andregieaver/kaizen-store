@@ -42,6 +42,17 @@ describe("watch and roll back (F4)", () => {
     expect(verdictWords(watchVerdict({ visitors: 200, carts: 30, orders: 20, errors: 8 }, before))).toMatch(/^A clear rise in visitors meeting an error: .*visitors meeting an error 4 % against 0.1 % expected\.$/);
   });
 
+  it("calls a rise in server errors per request clear only with enough of them and only where the drain counted both sides (D669)", () => {
+    const before = { visitors: 400, carts: 60, orders: 40, requests: 40_000, serverErrors: 40 };
+    // 0.1 % of requests failed before; 1 % since, 50 of 5000: clear.
+    expect(watchVerdict({ visitors: 200, carts: 30, orders: 20, requests: 5000, serverErrors: 50 }, before)).toMatchObject({ kind: "fall", signal: "serverErrors" });
+    // 1 % but only 6 errors: too few.
+    expect(watchVerdict({ visitors: 200, carts: 30, orders: 20, requests: 600, serverErrors: 6 }, before)).toMatchObject({ kind: "fine" });
+    // No drain counts since the change: no reading at all.
+    expect(watchVerdict({ visitors: 200, carts: 30, orders: 20, requests: 0, serverErrors: 0 }, before)).not.toHaveProperty("serverErrors");
+    expect(verdictWords(watchVerdict({ visitors: 200, carts: 30, orders: 20, requests: 5000, serverErrors: 50 }, before))).toMatch(/^A clear rise in server errors: .*server errors per request 1 % against 0.1 % expected\.$/);
+  });
+
   it("says nothing on too little traffic", () => {
     expect(watchVerdict({ visitors: 40, carts: 0, orders: 0 }, { visitors: 400, carts: 60, orders: 40 })).toEqual({ kind: "too_little", visitorsAfter: 40, visitorsBefore: 400 });
     expect(watchVerdict({ visitors: 400, carts: 0, orders: 0 }, { visitors: 100, carts: 10, orders: 10 })).toMatchObject({ kind: "too_little" });

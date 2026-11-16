@@ -38,7 +38,7 @@ async function countsIn(storeId: string, windows: readonly { from: Date; to: Dat
     sql`, `,
   );
   const row = await typedRow(
-    z.object({ visitors: col.int, carts: col.int, orders: col.int, errors: col.int }),
+    z.object({ visitors: col.int, carts: col.int, orders: col.int, errors: col.int, requests: col.int, server_errors: col.int }),
     sql`
       with w(a, b) as (values ${ranges})
       select
@@ -48,10 +48,15 @@ async function countsIn(storeId: string, windows: readonly { from: Date; to: Dat
         (select count(*) from commerce.orders o, w where o.store_id = ${storeId}::uuid and o.placed_at >= w.a and o.placed_at < w.b and o.copied_from is null
            and exists (select 1 from commerce.payments p where p.store_id = o.store_id and p.order_id = o.id and p.status = 'captured'))::int as orders,
         -- Visitors who met an error page (D663), by when they first did.
-        (select count(*) from commerce.visits v, w where v.store_id = ${storeId}::uuid and v.error_at >= w.a and v.error_at < w.b)::int as errors
+        (select count(*) from commerce.visits v, w where v.store_id = ${storeId}::uuid and v.error_at >= w.a and v.error_at < w.b)::int as errors,
+        -- The store's requests and server errors by the hour from the log drain (D669): whole hours within the windows.
+        (select coalesce(sum(t.requests), 0) from commerce.store_traffic_hourly t, w where t.store_id = ${storeId}::uuid and t.hour >= w.a and t.hour < w.b)::int as requests,
+        (select coalesce(sum(t.server_errors), 0) from commerce.store_traffic_hourly t, w where t.store_id = ${storeId}::uuid and t.hour >= w.a and t.hour < w.b)::int as server_errors
     `,
   );
-  return row ?? { visitors: 0, carts: 0, orders: 0, errors: 0 };
+  return row
+    ? { visitors: row.visitors, carts: row.carts, orders: row.orders, errors: row.errors, requests: row.requests, serverErrors: row.server_errors }
+    : { visitors: 0, carts: 0, orders: 0, errors: 0, requests: 0, serverErrors: 0 };
 }
 
 /** The entries the change's own tool wrote just before its `store.assistant.*` row (the handler runs first): same store, account and actor. */

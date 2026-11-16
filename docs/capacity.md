@@ -53,8 +53,8 @@ These are decisions made while building. Where this file and the code disagree b
 
 1. ~~The numbers per plan~~: decided 2026-10-23 (section 9, question 1), seeded by migration `20261023122903_capacity_plan_limits`.
    Overage (question 2): decided, only the offer of a bigger plan; nothing to build.
-2. Creating the Vercel log drain (step 1.4, settings below) and setting `USAGE_DRAIN_SECRET` (and `USAGE_DRAIN_SAMPLE_RATE` if
-   sampling) in Vercel's production environment.
+2. ~~Creating the Vercel log drain (step 1.4, settings below) and setting `USAGE_DRAIN_SECRET` (and `USAGE_DRAIN_SAMPLE_RATE` if
+   sampling) in Vercel's production environment.~~ Done 16 November 2026.
 3. Statement timeouts (3.1), the firewall (3.3), a read replica and `READ_DATABASE_URL` (3.4), the checkout queue (4.2), service levels
    and the status page (4.4), and confirming point-in-time recovery (4.5).
 4. Accepting, changing or rejecting `docs/cells.md` (5.0).
@@ -364,8 +364,9 @@ Tests:
 
 ### Step 1.4: traffic from Vercel's log drain
 
-Status: built; the drain itself is not created yet. **Owner gate**: a Vercel log drain has a cost per GB and needs the team's plan to
-allow it (section 9, question 3).
+Status: built, and the drain created by the owner on 16 November 2026 (Production; Functions, Edge Functions, Static Files and Rewrites;
+100 %; no path filter); its first count arrived at 10:34 UTC. Since D669 each batch also adds to the store's hour
+(`store_traffic_hourly`, `trafficHours()`/`addTrafficHours()`, kept 35 days) for the autopilot's watch (`docs/100-day-challenge.md` F4).
 
 **What the spike found (2026-10-23, vercel.com/docs/drains/reference/logs and vercel.com/docs/drains/security):**
 

@@ -361,6 +361,7 @@ export const NOT_PERSONAL: Record<string, string> = {
   dns_zones: "A domain whose DNS Kaizena Flow keeps (D315, D317): its name, state and what it shows while no store uses it; no person.",
   dns_changes: "DNS records changed (D315): record types, names and values of the store's own zone, and who changed them (a staff account id).",
   store_usage_daily: "What a store used per day (D314): counts and bytes per metric; no person, address, path or query.",
+  store_traffic_hourly: "A store's requests and server errors per hour (D669): counts only; no person, address, path or query.",
   plan_limits: "A plan's limits (D314): numbers per limit; the account id is the platform admin who changed it.",
   limit_overrides: "A platform admin's limit for a store or an owner account (D314), with a business reason; never a shopper.",
   capacity_events: "A store's busy times it told Kaizena Flow about (D314): dates, how busy and a short note about the sale.",

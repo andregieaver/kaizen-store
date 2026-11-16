@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { parseDrainBody, slugInPath, trafficTotals } from "./usage-drain";
+import { parseDrainBody, slugInPath, trafficHours, trafficTotals } from "./usage-drain";
 
 const entry = (over: Record<string, unknown> = {}, proxy: Record<string, unknown> = {}) => ({
   id: `id-${Math.random()}`,
@@ -60,6 +60,27 @@ describe("trafficTotals", () => {
     const late = Date.UTC(2026, 9, 23, 23, 59);
     const entries = parseDrainBody(JSON.stringify([entry({ requestId: "a" }, { timestamp: late }), entry({ requestId: "b" }, { timestamp: late + 2 * 60_000 })]));
     expect(trafficTotals(entries, stores).totals.map((t) => t.day)).toEqual(["2026-10-23", "2026-10-24"]);
+  });
+});
+
+describe("trafficHours (D669)", () => {
+  it("counts each store's requests and 5xx per UTC hour, once a request, and leaves out Kaizena Flow's own and unknown hosts", () => {
+    const ten = Date.UTC(2026, 9, 23, 10, 5);
+    const entries = parseDrainBody(
+      JSON.stringify([
+        entry({ requestId: "a" }, { timestamp: ten }),
+        entry({ requestId: "a" }, { timestamp: ten }),
+        entry({ requestId: "b" }, { timestamp: ten + 50 * 60_000, statusCode: 500 }),
+        entry({ requestId: "c" }, { timestamp: ten + 60 * 60_000 }),
+        entry({ requestId: "d" }, { host: "kaizenaflow.com", path: "/themes" }),
+        entry({ requestId: "e" }, { host: "unknown.example" }),
+      ]),
+    );
+    expect(trafficHours(entries, stores)).toEqual([
+      { storeId: "store-1", hour: "2026-10-23T10:00:00.000Z", requests: 2, serverErrors: 1, estimated: false },
+      { storeId: "store-1", hour: "2026-10-23T11:00:00.000Z", requests: 1, serverErrors: 0, estimated: false },
+    ]);
+    expect(trafficHours(entries, stores, 0.5)[0]).toMatchObject({ requests: 4, serverErrors: 2, estimated: true });
   });
 });
 

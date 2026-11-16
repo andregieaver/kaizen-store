@@ -159,6 +159,7 @@ export const STORE_EXPORT_LEFT_OUT: Readonly<Record<string, LeftOutReason>> = {
   store_members: "people",
   store_starters: "platform",
   store_usage_daily: "record",
+  store_traffic_hourly: "record",
   storefront_tokens: "secret",
   stripe_accounts: "secret",
   support_agents: "people",
