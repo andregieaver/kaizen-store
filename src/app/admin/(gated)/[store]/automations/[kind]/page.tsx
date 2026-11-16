@@ -3,10 +3,11 @@ import { notFound } from "next/navigation";
 
 import { AdminTextScope } from "@/components/admin/admin-text";
 import { AutomationEditor, AutomationSwitch } from "@/components/admin/automation-editor";
-import { Card, Chip, PageHeader } from "@/components/admin/ui";
+import { ButtonLink, Card, Chip, PageHeader } from "@/components/admin/ui";
+import { countWords } from "@/lib/admin-fill";
 import { adminLangOf } from "@/lib/admin-lang";
 import { adminText, adminTexts } from "@/lib/admin-text";
-import { DELAY_RANGES, isLifecycle } from "@/lib/automations";
+import { DELAY_RANGES, FOLLOW_UP_POSITIONS, isLifecycle, isPickKind } from "@/lib/automations";
 import { automationDays } from "@/lib/marketing-words";
 import { getAutomation } from "@/server/automations";
 import { uploadsEnabled } from "@/server/media";
@@ -29,6 +30,7 @@ export default async function AutomationPage({ params }: PageProps<"/admin/[stor
   const w = adminText(lang, "marketing");
   const wa = w.automations;
   const words = wa.kinds[kind];
+  const wf = wa.followUps;
   const base = `/admin/${store.slug}/automations`;
   const mayWrite = memberCan(member, "marketing:write");
   const choices = mayWrite ? await broadcastChoices(store, lang) : null;
@@ -43,7 +45,7 @@ export default async function AutomationPage({ params }: PageProps<"/admin/[stor
             {automation.enabled ? w.common.on : w.common.off}
           </Chip>
         }
-        description={`${words.does} ${automationDays(kind, automation.delayDays ?? 0, wa)}`}
+        description={`${words.does} ${automationDays(kind, automation.delayDays ?? 0, wa)}${isPickKind(kind) ? ` ${wf.picks}` : ""}`}
         actions={
           mayWrite && automation.saved ? <AutomationSwitch storeSlug={store.slug} kind={kind} on={automation.enabled} toggle={switchAutomationAction} /> : undefined
         }
@@ -67,6 +69,37 @@ export default async function AutomationPage({ params }: PageProps<"/admin/[stor
         </Card>
       ) : (
         <p className="text-body text-muted">{wa.mayNotChange}</p>
+      )}
+      {/* D653: the flow's further emails, one step away from the first; each its days after the one before. */}
+      {automation.saved && (
+        <Card title={wf.title} description={automation.followUps.length === 0 ? wf.none : wf.stops} compact>
+          <div className="flex flex-col gap-3">
+            {automation.followUps.length > 0 && (
+              <ul className="flex flex-col divide-y divide-line">
+                {automation.followUps.map((f) => (
+                  <li key={f.position} className="flex flex-wrap items-center justify-between gap-3 py-2">
+                    <span className="flex flex-col">
+                      <span className="text-body text-ink">
+                        {f.position === 2 ? wf.second : wf.third}: {f.content[store.localization.locales[0]]?.subject || "…"}
+                      </span>
+                      <span className="text-body text-ink-2">{countWords(f.delayDays, wf.after, { n: String(f.delayDays) })}</span>
+                    </span>
+                    <ButtonLink href={`${base}/${kind}/follow-ups/${f.position}`} kind="quiet">
+                      {wf.edit}
+                    </ButtonLink>
+                  </li>
+                ))}
+              </ul>
+            )}
+            {mayWrite && automation.followUps.length < FOLLOW_UP_POSITIONS.length && (
+              <div>
+                <ButtonLink href={`${base}/${kind}/follow-ups/new`} kind="secondary">
+                  {wf.add}
+                </ButtonLink>
+              </div>
+            )}
+          </div>
+        </Card>
       )}
     </div>
     </AdminTextScope>

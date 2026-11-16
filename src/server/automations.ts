@@ -12,11 +12,21 @@ import {
   automationInput,
   CATCH_UP_DAYS,
   DELAY_RANGES,
+  FOLLOW_UP_DAYS,
+  FOLLOW_UP_POSITIONS,
+  followUpInput,
+  isPickKind,
   LIFECYCLE_KINDS,
   ORDER_AFTER_DAYS,
+  PICKS_SHOWN,
   SENDS_KEEP_DAYS,
+  stepKey,
+  withPicks,
   type AutomationKind,
+  type FollowUpPosition,
   type LifecycleKind,
+  type ProductPick,
+  type PickKind,
 } from "@/lib/automations";
 import { broadcastContentSchema, sendProblems, type BroadcastContent } from "@/lib/broadcasts";
 
@@ -27,16 +37,21 @@ import { sendEmail, type SendOutcome } from "./email";
 import { log } from "./log";
 import { emailPictureProblem, factsForEmail, marketingEmail } from "./marketing-email";
 import { storeById, type EmailStore } from "./shopper-emails";
+import { inStockNow, OFFERED } from "./product-conditions";
 import { runBackInStock, type BackInStockResult } from "./stock-requests";
 import { col, typedRows } from "./typed-rows";
 
 type Row = Record<string, unknown>;
 
 /**
- * Automations (wave 5 unit D, D298, `docs/wave-5-marketing.md` 6): the only writer of `commerce.automations` and `automation_sends`. Three
- * lifecycle emails to addresses on the list that are `subscribed` (welcome, after a purchase, win-back), each once per person and trigger, and the
- * back-in-stock switch (`stock-requests.ts` keeps the requests). Only what happens after an automation was switched on starts an email.
+ * Automations (wave 5 unit D, D298, `docs/wave-5-marketing.md` 6): the only writer of `commerce.automations`, `automation_steps` and
+ * `automation_sends`. Lifecycle emails to addresses on the list that are `subscribed` (welcome, after a purchase, win-back, and since D653
+ * cross-sell and restock, whose products code chooses for each reader), each once per person and trigger, with up to two follow-ups (D653),
+ * and the back-in-stock switch (`stock-requests.ts` keeps the requests). Only what happens after an automation was switched on starts an email.
  */
+
+/** A follow-up (D653): the automation's second or third email, its days after the one before. */
+export type FollowUp = { position: FollowUpPosition; delayDays: number; content: BroadcastContent };
 
 export type Automation = {
   kind: AutomationKind;
@@ -48,6 +63,8 @@ export type Automation = {
   content: BroadcastContent | null;
   /** It has a row: it was saved at least once. */
   saved: boolean;
+  /** Its follow-ups in order (D653); none for back in stock. */
+  followUps: FollowUp[];
 };
 
 const iso = (value: unknown) => (value ? new Date(String(value)).toISOString() : null);
@@ -61,6 +78,7 @@ function unsaved(kind: AutomationKind, store: Pick<EmailStore, "localization">):
     delayDays: lifecycle ? DELAY_RANGES[kind].start : null,
     content: lifecycle ? starterContent(kind, store.localization.locales) : null,
     saved: false,
+    followUps: [],
   };
 }
 
@@ -73,13 +91,33 @@ function toAutomation(row: Row): Automation {
     delayDays: row.delay_days === null ? null : Number(row.delay_days),
     content: content === null ? null : content.success ? content.data : {},
     saved: true,
+    followUps: [],
   };
+}
+
+const STEP_ROW = z.object({ kind: z.enum(LIFECYCLE_KINDS), position: z.union([z.literal(2), z.literal(3)]), delay_days: col.int, content: z.unknown() });
+
+/** The store's follow-ups by kind, in order (D653). */
+async function followUpsOf(storeId: string): Promise<Map<LifecycleKind, FollowUp[]>> {
+  const rows = await typedRows(
+    STEP_ROW,
+    sql`select kind, position, delay_days, content from commerce.automation_steps where store_id = ${storeId}::uuid order by kind, position`,
+  );
+  const out = new Map<LifecycleKind, FollowUp[]>();
+  for (const r of rows) {
+    const content = broadcastContentSchema.safeParse(r.content);
+    out.set(r.kind, [...(out.get(r.kind) ?? []), { position: r.position, delayDays: r.delay_days, content: content.success ? content.data : {} }]);
+  }
+  return out;
 }
 
 /** Every kind, saved or as it starts. */
 export async function getAutomations(store: Pick<EmailStore, "id" | "localization">): Promise<Record<AutomationKind, Automation>> {
-  const rows = await db().execute<Row>(sql`select kind, enabled, enabled_at, delay_days, content from commerce.automations where store_id = ${store.id}::uuid`);
-  const saved = new Map(rows.map((r) => [String(r.kind), toAutomation(r)]));
+  const [rows, followUps] = await Promise.all([
+    db().execute<Row>(sql`select kind, enabled, enabled_at, delay_days, content from commerce.automations where store_id = ${store.id}::uuid`),
+    followUpsOf(store.id),
+  ]);
+  const saved = new Map(rows.map((r) => [String(r.kind), { ...toAutomation(r), followUps: followUps.get(r.kind as LifecycleKind) ?? [] }]));
   return Object.fromEntries(AUTOMATION_KINDS.map((kind) => [kind, saved.get(kind) ?? unsaved(kind, store)])) as Record<AutomationKind, Automation>;
 }
 
@@ -138,16 +176,86 @@ export async function switchAutomation(store: Pick<EmailStore, "id" | "localizat
   return { ok: true };
 }
 
+/**
+ * Saves a follow-up's days and words (D653, `marketing:write`): `position` null adds the next one (the second email, then the third), else
+ * changes that one. The automation must have been saved; one that is on takes only words it can send.
+ */
+export async function saveFollowUp(
+  store: Pick<EmailStore, "id" | "localization">,
+  accountId: string,
+  kind: LifecycleKind,
+  position: FollowUpPosition | null,
+  input: unknown,
+): Promise<AutomationResult & { position?: FollowUpPosition }> {
+  const parsed = followUpInput.safeParse(input);
+  if (!parsed.success) {
+    const issue = parsed.error.issues[0];
+    if (issue?.path[0] === "delayDays") return { ok: false, problem: `The days must be a whole number from ${FOLLOW_UP_DAYS.min} to ${FOLLOW_UP_DAYS.max}.` };
+    return { ok: false, problem: issue?.message ?? "Something is not filled in." };
+  }
+  const kept = new Set(store.localization.keptLocales);
+  const content = Object.fromEntries(Object.entries(parsed.data.content).filter(([locale]) => kept.has(locale)));
+  const picture = await emailPictureProblem(store.id, content);
+  if (picture) return { ok: false, problem: picture };
+  const current = await getAutomation(store, kind);
+  if (!current.saved) return { ok: false, problem: "Save the first email before adding a follow-up." };
+  const at = position ?? FOLLOW_UP_POSITIONS[current.followUps.length];
+  if (at === undefined) return { ok: false, problem: "An automation has at most three emails: the first and two follow-ups." };
+  if (position !== null && !current.followUps.some((f) => f.position === position)) return { ok: false, problem: "That follow-up no longer exists." };
+  const problems = sendProblems(content, store.localization.locales[0]);
+  if (current.enabled && problems.length > 0) return { ok: false, problem: `It is on, so it needs words it can send: ${problems[0]}` };
+  const written = position === null
+    ? await db().execute<Row>(sql`
+        insert into commerce.automation_steps (store_id, kind, position, delay_days, content, updated_by)
+        values (${store.id}::uuid, ${kind}, ${at}, ${parsed.data.delayDays}, ${JSON.stringify(content)}::jsonb, ${accountId}::uuid)
+        on conflict do nothing returning position
+      `)
+    : await db().execute<Row>(sql`
+        update commerce.automation_steps set delay_days = ${parsed.data.delayDays}, content = ${JSON.stringify(content)}::jsonb, updated_by = ${accountId}::uuid, updated_at = now()
+        where store_id = ${store.id}::uuid and kind = ${kind} and position = ${at} returning position
+      `);
+  if (written.length === 0) return { ok: false, problem: "Someone else changed the follow-ups just now. Open the automation again." };
+  await audit(accountId, store.id, "marketing_automation.follow_up_saved", { kind, position: at, delayDays: parsed.data.delayDays }, { target: { type: "automation", id: kind } });
+  return { ok: true, position: at };
+}
+
+/** Deletes a follow-up (D653, `marketing:write`); the third becomes the second when the second goes. */
+export async function deleteFollowUp(store: Pick<EmailStore, "id">, accountId: string, kind: LifecycleKind, position: FollowUpPosition): Promise<AutomationResult> {
+  const gone = await db().transaction(async (tx) => {
+    const deleted = await tx.execute<Row>(sql`
+      delete from commerce.automation_steps where store_id = ${store.id}::uuid and kind = ${kind} and position = ${position} returning position
+    `);
+    if (deleted.length > 0 && position === 2) {
+      await tx.execute(sql`update commerce.automation_steps set position = 2 where store_id = ${store.id}::uuid and kind = ${kind} and position = 3`);
+    }
+    return deleted.length > 0;
+  });
+  if (!gone) return { ok: false, problem: "That follow-up no longer exists." };
+  await audit(accountId, store.id, "marketing_automation.follow_up_deleted", { kind, position }, { target: { type: "automation", id: kind } });
+  return { ok: true };
+}
+
+/** A test of a follow-up to the staff member's own address (D653); it counts nowhere. */
+export async function sendTestFollowUp(storeId: string, to: string, kind: LifecycleKind, position: FollowUpPosition, locale: string): Promise<SendOutcome | "empty"> {
+  const store = await storeById(storeId);
+  if (!store) return "failed";
+  const followUp = (await getAutomation(store, kind)).followUps.find((f) => f.position === position);
+  return testEmail(store, to, followUp?.content[locale], locale);
+}
+
+async function testEmail(store: EmailStore, to: string, content: BroadcastContent[string] | undefined, locale: string): Promise<SendOutcome | "empty"> {
+  if (!content?.subject || content.blocks.length === 0) return "empty";
+  const email = marketingEmail({ store, content: { [locale]: content }, locale, marketCode: null, token: null, facts: await factsForEmail(store, { [locale]: content }, locale, null) });
+  if (!email) return "empty";
+  return sendEmail({ storeId: store.id, kind: "marketing.automation.test", to, email: { ...email, subject: `[Test] ${email.subject}` }, fromName: store.name, replyTo: store.details.contactEmail ?? null });
+}
+
 /** A test to the staff member's own address, in a language they choose; it counts nowhere. */
 export async function sendTestAutomation(storeId: string, to: string, kind: LifecycleKind, locale: string): Promise<SendOutcome | "empty"> {
   const store = await storeById(storeId);
   if (!store) return "failed";
   const automation = await getAutomation(store, kind);
-  const content = automation.content?.[locale];
-  if (!content?.subject || content.blocks.length === 0) return "empty";
-  const email = marketingEmail({ store, content: { [locale]: content }, locale, marketCode: null, token: null, facts: await factsForEmail(store, { [locale]: content }, locale, null) });
-  if (!email) return "empty";
-  return sendEmail({ storeId, kind: "marketing.automation.test", to, email: { ...email, subject: `[Test] ${email.subject}` }, fromName: store.name, replyTo: store.details.contactEmail ?? null });
+  return testEmail(store, to, automation.content?.[locale], locale);
 }
 
 /** What a kind's emails brought in the last 30 days: paid orders their readers placed within `ORDER_AFTER_DAYS`, per currency. */
@@ -227,18 +335,59 @@ export async function automationStats(storeId: string): Promise<AutomationStats>
 // The runner (6.2)
 // ---------------------------------------------------------------------------
 
-type Due = { key: string; subscriberId: string; email: string; locale: string; marketCode: string | null; token: string; orderId: string | null };
+type Due = {
+  /** The key of the flow's first email; a follow-up's own key is `stepKey(firstKey, step)`. */
+  firstKey: string;
+  subscriberId: string;
+  email: string;
+  locale: string;
+  marketCode: string | null;
+  token: string;
+  orderId: string | null;
+};
 
-/** The stores with a lifecycle automation on, open and real (never a store template). */
-async function enabledLifecycles(only?: string): Promise<{ storeId: string; kind: LifecycleKind; delayDays: number; enabledAt: string; content: unknown }[]> {
-  const rows = await db().execute<Row>(sql`
-    select a.store_id, a.kind, a.delay_days, a.enabled_at, a.content
-    from commerce.automations a join commerce.stores s on s.id = a.store_id
-    where a.enabled and a.kind <> 'back_in_stock' and commerce.store_is_active(a.store_id) and not (s.is_template or s.starter)
-      and (${only ?? null}::uuid is null or a.store_id = ${only ?? null}::uuid)
-    order by a.store_id, a.kind
-  `);
-  return rows.map((r) => ({ storeId: String(r.store_id), kind: r.kind as LifecycleKind, delayDays: Number(r.delay_days), enabledAt: String(r.enabled_at), content: r.content }));
+type Flow = {
+  storeId: string;
+  kind: LifecycleKind;
+  delayDays: number;
+  enabledAt: string;
+  content: unknown;
+  steps: { position: FollowUpPosition; delayDays: number; content: unknown }[];
+};
+
+const FLOW_ROW = z.object({
+  store_id: col.uuid,
+  kind: z.enum(LIFECYCLE_KINDS),
+  delay_days: col.int,
+  enabled_at: col.timestamp,
+  content: z.unknown(),
+  steps: z.array(z.object({ position: z.union([z.literal(2), z.literal(3)]), delay_days: z.number().int(), content: z.unknown() })),
+});
+
+/** The stores with a lifecycle automation on, open and real (never a store template), each with its follow-ups in order. */
+async function enabledLifecycles(only?: string): Promise<Flow[]> {
+  const rows = await typedRows(
+    FLOW_ROW,
+    sql`
+      select a.store_id, a.kind, a.delay_days, a.enabled_at, a.content,
+        coalesce((
+          select jsonb_agg(jsonb_build_object('position', st.position, 'delay_days', st.delay_days, 'content', st.content) order by st.position)
+          from commerce.automation_steps st where st.store_id = a.store_id and st.kind = a.kind
+        ), '[]'::jsonb) as steps
+      from commerce.automations a join commerce.stores s on s.id = a.store_id
+      where a.enabled and a.kind <> 'back_in_stock' and commerce.store_is_active(a.store_id) and not (s.is_template or s.starter)
+        and (${only ?? null}::uuid is null or a.store_id = ${only ?? null}::uuid)
+      order by a.store_id, a.kind
+    `,
+  );
+  return rows.map((r) => ({
+    storeId: r.store_id,
+    kind: r.kind,
+    delayDays: r.delay_days,
+    enabledAt: r.enabled_at,
+    content: r.content,
+    steps: r.steps.map((st) => ({ position: st.position, delayDays: st.delay_days, content: st.content })),
+  }));
 }
 
 const SUBSCRIBER_COLUMNS = sql`m.id as subscriber_id, m.email, m.locale, m.market_code, m.token`;
@@ -249,30 +398,63 @@ const inWindow = (moment: ReturnType<typeof sql>, enabledAt: string, delayDays: 
   and ${moment} > ${now.toISOString()}::timestamptz - make_interval(days => ${delayDays + CATCH_UP_DAYS})
 )`;
 
+/**
+ * A product customers buy again (D653, restock): one address placed at least two paid orders with it in the last two years. Checked per
+ * product of an order, the restock email's reason to go.
+ */
+const rebought = (storeId: string, productId: ReturnType<typeof sql>) => sql`exists (
+  select 1 from commerce.order_lines rl
+  join commerce.product_variants rv on rv.id = rl.variant_id
+  join commerce.orders o on o.store_id = rl.store_id and o.id = rl.order_id
+  where rl.store_id = ${storeId}::uuid and rv.product_id = ${productId} and not rl.gift
+    and o.placed_at > now() - interval '2 years' and ${SOLD}
+  group by lower(o.email) having count(distinct o.id) >= 2
+)`;
+
+/** A delivered order that starts an after-a-purchase, cross-sell or restock email: its key is `{kind}:{order}`. */
+type DeliveredKind = Extract<LifecycleKind, "after_purchase" | PickKind>;
+
+async function deliveredDue(storeId: string, which: DeliveredKind, enabledAt: string, delayDays: number, now: Date): Promise<Due[]> {
+  const kind: string = which;
+  const needs =
+    kind === "replenish"
+      ? sql`and exists (
+          select 1 from commerce.order_lines l join commerce.product_variants v on v.id = l.variant_id
+          where l.store_id = o.store_id and l.order_id = o.id and not l.gift and ${rebought(storeId, sql`v.product_id`)}
+        )`
+      : sql``;
+  const rows = await typedRows(
+    DUE_ROW,
+    sql`
+    select ${SUBSCRIBER_COLUMNS}, o.id as order_id, ${kind} || ':' || o.id as key
+    from commerce.orders o
+    join commerce.marketing_subscribers m on m.store_id = o.store_id and lower(m.email) = lower(o.email) and m.status = 'subscribed'
+    where o.store_id = ${storeId}::uuid and ${SOLD} and o.delivered_at is not null and ${inWindow(sql`o.delivered_at`, enabledAt, delayDays, now)}
+      ${needs}
+      and not exists (select 1 from commerce.automation_sends x where x.store_id = o.store_id and x.key = ${kind} || ':' || o.id)
+    order by o.delivered_at limit ${AUTOMATION_BATCH}
+  `,
+  );
+  return rows.map(fromDueRow);
+}
+
 async function dueFor(storeId: string, kind: LifecycleKind, enabledAt: string, delayDays: number, now: Date): Promise<Due[]> {
-  let rows: Row[];
+  let rows: z.infer<typeof DUE_ROW>[];
   if (kind === "welcome") {
     const moment = sql`coalesce(m.confirmed_at, m.consented_at)`;
-    rows = await db().execute<Row>(sql`
+    rows = await typedRows(DUE_ROW, sql`
       select ${SUBSCRIBER_COLUMNS}, null::uuid as order_id, 'welcome:' || m.id as key
       from commerce.marketing_subscribers m
       where m.store_id = ${storeId}::uuid and m.status = 'subscribed' and ${inWindow(moment, enabledAt, delayDays, now)}
         and not exists (select 1 from commerce.automation_sends x where x.store_id = m.store_id and x.key = 'welcome:' || m.id)
       order by ${moment} limit ${AUTOMATION_BATCH}
     `);
-  } else if (kind === "after_purchase") {
-    rows = await db().execute<Row>(sql`
-      select ${SUBSCRIBER_COLUMNS}, o.id as order_id, 'after_purchase:' || o.id as key
-      from commerce.orders o
-      join commerce.marketing_subscribers m on m.store_id = o.store_id and lower(m.email) = lower(o.email) and m.status = 'subscribed'
-      where o.store_id = ${storeId}::uuid and ${SOLD} and o.delivered_at is not null and ${inWindow(sql`o.delivered_at`, enabledAt, delayDays, now)}
-        and not exists (select 1 from commerce.automation_sends x where x.store_id = o.store_id and x.key = 'after_purchase:' || o.id)
-      order by o.delivered_at limit ${AUTOMATION_BATCH}
-    `);
+  } else if (kind === "after_purchase" || isPickKind(kind)) {
+    return deliveredDue(storeId, kind, enabledAt, delayDays, now);
   } else {
     // An address's latest paid order whose lapse (its time plus the days) falls in the window; a later paid order by the address means no lapse.
     const lapse = sql`(l.placed_at + make_interval(days => ${delayDays}))`;
-    rows = await db().execute<Row>(sql`
+    rows = await typedRows(DUE_ROW, sql`
       select distinct on (m.id) ${SUBSCRIBER_COLUMNS}, l.id as order_id, 'win_back:' || m.id || ':' || l.id as key
       from commerce.orders l
       join commerce.marketing_subscribers m on m.store_id = l.store_id and lower(m.email) = lower(l.email) and m.status = 'subscribed'
@@ -287,75 +469,183 @@ async function dueFor(storeId: string, kind: LifecycleKind, enabledAt: string, d
       limit ${AUTOMATION_BATCH}
     `);
   }
-  return rows.map((r) => ({
-    key: String(r.key),
-    subscriberId: String(r.subscriber_id),
-    email: String(r.email),
-    locale: String(r.locale),
-    marketCode: r.market_code ? String(r.market_code) : null,
-    token: String(r.token),
-    orderId: r.order_id ? String(r.order_id) : null,
-  }));
+  return rows.map(fromDueRow);
+}
+
+const DUE_ROW = z.object({
+  key: z.string(),
+  subscriber_id: col.uuid,
+  email: z.string(),
+  locale: z.string(),
+  market_code: z.string().nullable(),
+  token: z.string(),
+  order_id: col.uuid.nullable(),
+});
+
+/**
+ * A follow-up's due people (D653): the email before it went to them (sent or logged) at least its days ago, within the catch-up window and
+ * after the automation was switched on; they are still subscribed, and have placed no paid order since the flow's first email.
+ */
+async function followUpsDue(flow: Flow, position: FollowUpPosition, delayDays: number, now: Date): Promise<Due[]> {
+  const rows = await typedRows(
+    DUE_ROW,
+    sql`
+      select f.key, ${SUBSCRIBER_COLUMNS}, s.order_id
+      from commerce.automation_sends s
+      join commerce.automation_sends f on f.store_id = s.store_id and f.key = split_part(s.key, '#', 1)
+      join commerce.marketing_subscribers m on m.store_id = s.store_id and m.id = s.subscriber_id and m.status = 'subscribed'
+      where s.store_id = ${flow.storeId}::uuid and s.kind = ${flow.kind} and s.step = ${position - 1} and s.outcome in ('sent', 'logged')
+        and ${inWindow(sql`s.created_at`, flow.enabledAt, delayDays, now)}
+        and not exists (
+          select 1 from commerce.orders o
+          where o.store_id = s.store_id and lower(o.email) = lower(m.email) and o.restricted_at is null and o.placed_at > f.created_at and ${SOLD}
+        )
+        and not exists (select 1 from commerce.automation_sends x where x.store_id = s.store_id and x.key = f.key || '#' || ${position})
+      order by s.created_at limit ${AUTOMATION_BATCH}
+    `,
+  );
+  return rows.map(fromDueRow);
+}
+
+function fromDueRow(r: z.infer<typeof DUE_ROW>): Due {
+  return { firstKey: r.key, subscriberId: r.subscriber_id, email: r.email, locale: r.locale, marketCode: r.market_code, token: r.token, orderId: r.order_id };
+}
+
+const PICK_ROW = z.object({ id: col.uuid, handle: z.string() });
+
+/**
+ * The products one reader's cross-sell or restock email shows (D653), chosen by code, never by a model; each on sale and in stock now.
+ * Cross-sell: what other paid orders of the last year had with the order's products, most often first, never what the address has bought.
+ * Restock: the order's own products that customers buy again (`rebought`).
+ */
+export async function picksFor(storeId: string, kind: PickKind, orderId: string, email: string): Promise<ProductPick[]> {
+  const sellable = sql`p.status = 'active' and ${OFFERED} and ${inStockNow()}`;
+  const ordered = sql`(select v.product_id from commerce.order_lines l join commerce.product_variants v on v.id = l.variant_id
+    where l.store_id = ${storeId}::uuid and l.order_id = ${orderId}::uuid and not l.gift)`;
+  if (kind === "replenish") {
+    return typedRows(
+      PICK_ROW,
+      sql`
+        select p.id, p.handle from commerce.products p
+        where p.store_id = ${storeId}::uuid and p.id in ${ordered} and ${sellable} and ${rebought(storeId, sql`p.id`)}
+        order by p.id limit ${PICKS_SHOWN}
+      `,
+    );
+  }
+  return typedRows(
+    PICK_ROW,
+    sql`
+      select p.id, p.handle from (
+        select v2.product_id, count(distinct o.id) as together
+        from commerce.order_lines l1
+        join commerce.product_variants v1 on v1.id = l1.variant_id and v1.product_id in ${ordered}
+        join commerce.orders o on o.store_id = l1.store_id and o.id = l1.order_id and o.id <> ${orderId}::uuid
+          and o.placed_at > now() - interval '1 year' and ${SOLD}
+        join commerce.order_lines l2 on l2.store_id = o.store_id and l2.order_id = o.id and not l2.gift
+        join commerce.product_variants v2 on v2.id = l2.variant_id and v2.product_id not in ${ordered}
+        where l1.store_id = ${storeId}::uuid
+        group by v2.product_id
+      ) t
+      join commerce.products p on p.store_id = ${storeId}::uuid and p.id = t.product_id
+      where ${sellable}
+        and not exists (
+          select 1 from commerce.orders o join commerce.order_lines l on l.store_id = o.store_id and l.order_id = o.id
+          join commerce.product_variants v on v.id = l.variant_id
+          where o.store_id = ${storeId}::uuid and lower(o.email) = lower(${email}) and o.restricted_at is null and v.product_id = p.id and ${SOLD}
+        )
+      order by t.together desc, p.id limit ${PICKS_SHOWN}
+    `,
+  );
 }
 
 export type AutomationRunResult = { sent: number; failed: number; skipped: number; backInStock: BackInStockResult };
 
-/** One run (the every-minute marketing job and tests): each enabled lifecycle automation's due people, then back in stock. Never throws. */
+/**
+ * One run (the every-minute marketing job and tests): each enabled lifecycle automation's due people for its first email, then for each
+ * follow-up in order, then back in stock. Never throws.
+ */
 export async function runAutomations(options: { only?: string; deadline?: number; now?: Date } = {}): Promise<AutomationRunResult> {
   const result: AutomationRunResult = { sent: 0, failed: 0, skipped: 0, backInStock: { sent: 0, failed: 0 } };
   const now = options.now ?? new Date();
   const late = () => options.deadline !== undefined && Date.now() > options.deadline;
+  const stores = new Map<string, EmailStore | null>();
+  const rooms = new Map<string, number>();
+
+  const outcomeOf = (storeId: string, key: string, outcome: SendOutcome | "suppressed") =>
+    db().execute(sql`update commerce.automation_sends set outcome = ${outcome} where store_id = ${storeId}::uuid and key = ${key}`);
+
+  /** One email to one person: the row first (a key is never sent twice, even by two runs at once), the plan's room, the reader's products, then the send. */
+  async function sendOne(flow: Flow, store: EmailStore, content: BroadcastContent, step: number, due: Due): Promise<void> {
+    const key = stepKey(due.firstKey, step);
+    const [claimed] = await db().execute<Row>(sql`
+      insert into commerce.automation_sends (store_id, key, kind, subscriber_id, order_id, step)
+      values (${flow.storeId}::uuid, ${key}, ${flow.kind}, ${due.subscriberId}::uuid, ${due.orderId}::uuid, ${step})
+      on conflict do nothing returning key
+    `);
+    if (!claimed) {
+      result.skipped++;
+      return;
+    }
+    // The marketing emails the store's plan allows this month (D314): one that would pass it is not sent, and never later either.
+    if (!rooms.has(flow.storeId)) {
+      const allowed = await limitFor(flow.storeId, "marketing_emails_month");
+      rooms.set(flow.storeId, allowed === null ? Infinity : roomLeft(await usageNow(flow.storeId, "marketing_emails_month", now), allowed));
+    }
+    if ((rooms.get(flow.storeId) ?? 0) < 1) {
+      await outcomeOf(flow.storeId, key, "suppressed");
+      result.skipped++;
+      return;
+    }
+    // A cross-sell or restock email goes only with products for this reader (D653); without any, it never goes.
+    let words = content;
+    if (isPickKind(flow.kind)) {
+      const picks = due.orderId ? await picksFor(flow.storeId, flow.kind, due.orderId, due.email) : [];
+      if (picks.length === 0) {
+        await outcomeOf(flow.storeId, key, "suppressed");
+        result.skipped++;
+        return;
+      }
+      words = withPicks(content, picks);
+    }
+    rooms.set(flow.storeId, (rooms.get(flow.storeId) ?? 0) - 1);
+    const facts = await factsForEmail(store, words, due.locale, due.marketCode);
+    const email = marketingEmail({ store, content: words, locale: due.locale, marketCode: due.marketCode, token: due.token, facts });
+    const outcome: SendOutcome = email
+      ? await sendEmail({
+          storeId: flow.storeId,
+          kind: "marketing.automation",
+          to: due.email,
+          email,
+          fromName: store.name,
+          replyTo: store.details.contactEmail ?? null,
+          idempotencyKey: `automation:${flow.storeId}:${key}`,
+          headers: email.headers,
+        })
+      : "failed";
+    const kept = outcome === "duplicate" ? "sent" : outcome;
+    await outcomeOf(flow.storeId, key, kept);
+    if (kept === "sent" || kept === "logged") result.sent++;
+    else result.failed++;
+  }
+
   try {
-    const stores = new Map<string, EmailStore | null>();
-    const rooms = new Map<string, number>();
-    for (const automation of await enabledLifecycles(options.only)) {
+    for (const flow of await enabledLifecycles(options.only)) {
       if (late()) break;
-      const content = broadcastContentSchema.safeParse(automation.content);
-      if (!content.success) continue;
-      if (!stores.has(automation.storeId)) stores.set(automation.storeId, await storeById(automation.storeId));
-      const store = stores.get(automation.storeId);
+      if (!stores.has(flow.storeId)) stores.set(flow.storeId, await storeById(flow.storeId));
+      const store = stores.get(flow.storeId);
       if (!store) continue;
-      for (const due of await dueFor(automation.storeId, automation.kind, automation.enabledAt, automation.delayDays, now)) {
+      const emails = [
+        { step: 1, content: flow.content, due: () => dueFor(flow.storeId, flow.kind, flow.enabledAt, flow.delayDays, now) },
+        ...flow.steps.map((st) => ({ step: st.position as number, content: st.content, due: () => followUpsDue(flow, st.position, st.delayDays, now) })),
+      ];
+      for (const e of emails) {
         if (late()) break;
-        // The row first: a key is never sent twice, even by two runs at once.
-        const [claimed] = await db().execute<Row>(sql`
-          insert into commerce.automation_sends (store_id, key, kind, subscriber_id, order_id)
-          values (${automation.storeId}::uuid, ${due.key}, ${automation.kind}, ${due.subscriberId}::uuid, ${due.orderId}::uuid)
-          on conflict do nothing returning key
-        `);
-        if (!claimed) {
-          result.skipped++;
-          continue;
+        const content = broadcastContentSchema.safeParse(e.content);
+        if (!content.success) continue;
+        for (const due of await e.due()) {
+          if (late()) break;
+          await sendOne(flow, store, content.data, e.step, due);
         }
-        // The marketing emails the store's plan allows this month (D314): one that would pass it is not sent, and never later either.
-        if (!rooms.has(automation.storeId)) {
-          const allowed = await limitFor(automation.storeId, "marketing_emails_month");
-          rooms.set(automation.storeId, allowed === null ? Infinity : roomLeft(await usageNow(automation.storeId, "marketing_emails_month", now), allowed));
-        }
-        if ((rooms.get(automation.storeId) ?? 0) < 1) {
-          await db().execute(sql`update commerce.automation_sends set outcome = 'suppressed' where store_id = ${automation.storeId}::uuid and key = ${due.key}`);
-          result.skipped++;
-          continue;
-        }
-        rooms.set(automation.storeId, (rooms.get(automation.storeId) ?? 0) - 1);
-        const facts = await factsForEmail(store, content.data, due.locale, due.marketCode);
-        const email = marketingEmail({ store, content: content.data, locale: due.locale, marketCode: due.marketCode, token: due.token, facts });
-        const outcome: SendOutcome = email
-          ? await sendEmail({
-              storeId: automation.storeId,
-              kind: "marketing.automation",
-              to: due.email,
-              email,
-              fromName: store.name,
-              replyTo: store.details.contactEmail ?? null,
-              idempotencyKey: `automation:${automation.storeId}:${due.key}`,
-              headers: email.headers,
-            })
-          : "failed";
-        const kept = outcome === "duplicate" ? "sent" : outcome;
-        await db().execute(sql`update commerce.automation_sends set outcome = ${kept} where store_id = ${automation.storeId}::uuid and key = ${due.key}`);
-        if (kept === "sent" || kept === "logged") result.sent++;
-        else result.failed++;
       }
     }
     if (!late()) result.backInStock = await runBackInStock({ only: options.only, deadline: options.deadline });

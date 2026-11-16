@@ -10,6 +10,7 @@ import { listPlans, planCurrencies } from "@/server/billing";
 import { campaignRuns } from "@/lib/plan-campaigns";
 import { isPlanOfferKey, PLAN_OFFER_KEYS, planOfferDraft } from "@/lib/plan-offers";
 import Link from "next/link";
+import { CHIP_STRIP } from "@/lib/chip-strip";
 import { listPlatformDiscounts } from "@/server/platform-discounts";
 import { platformModes } from "@/server/stripe";
 
@@ -76,17 +77,20 @@ export default async function PlatformDiscountsPage({ searchParams }: PageProps<
         <h2 id="offers" className="text-title text-ink">
           {w.offersTitle}
         </h2>
-        <ul className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        {/* On a phone the offers are a strip to swipe, each card the tap (round 17, D652); wider, a grid as before. */}
+        <ul className={`snap-x snap-mandatory scroll-px-4 sm:scroll-px-0 ${CHIP_STRIP.replace("gap-2", "gap-3")} sm:grid sm:grid-cols-2 xl:grid-cols-4`}>
           {PLAN_OFFER_KEYS.map((key) => (
-            <li key={key} className={`flex flex-col gap-2 p-5 ${CARD_CLASS}`}>
-              <span className="text-body-strong text-ink">{w.offers[key].title}</span>
-              <span className="flex-1 text-caption text-ink-2">{w.offers[key].sub}</span>
+            <li key={key} className="w-56 shrink-0 snap-start sm:w-auto">
               <Link
                 href={`/admin/platform/discounts?offer=${key}#${key === "weekend" ? "write-campaign" : "write-code"}`}
                 scroll={false}
-                className="mt-1 inline-flex min-h-10 items-center self-start rounded-pill border border-edge px-4 text-sm font-medium text-ink hover:bg-sunken"
+                className={`flex h-full flex-col gap-2 p-5 hover:bg-sunken ${CARD_CLASS}`}
               >
-                {key === "weekend" ? w.makeThisCampaign : w.makeThisCode}
+                <span className="text-body-strong text-ink">{w.offers[key].title}</span>
+                <span className="flex-1 text-caption text-ink-2">{w.offers[key].sub}</span>
+                <span className="mt-1 inline-flex min-h-10 items-center self-start rounded-pill border border-edge px-4 text-sm font-medium text-ink">
+                  {key === "weekend" ? w.makeThisCampaign : w.makeThisCode}
+                </span>
               </Link>
             </li>
           ))}

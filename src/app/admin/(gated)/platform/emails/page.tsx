@@ -9,6 +9,7 @@ import { Card, CARD_CLASS, PageHeader } from "@/components/admin/ui";
 import { countWords, fillWords } from "@/lib/admin-fill";
 import { EMAIL_SHOWS, emailCounts, emailsShown, emailWeek, isEmailShow } from "@/lib/email-log";
 import Link from "next/link";
+import { CHIP_ITEM, CHIP_STRIP } from "@/lib/chip-strip";
 import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
 import { adminText } from "@/lib/admin-text";
 
@@ -73,13 +74,13 @@ export default async function PlatformEmailsPage({ searchParams }: PageProps<"/a
           <div className="px-6 pb-5">{steps}</div>
         </details>
       )}
-      <nav aria-label={w.showsLabel} className="flex flex-wrap gap-2">
+      <nav aria-label={w.showsLabel} className={CHIP_STRIP}>
         {EMAIL_SHOWS.map((key) => (
           <Link
             key={key}
             href={key === "all" ? "/admin/platform/emails" : `/admin/platform/emails?show=${key}`}
             aria-current={show === key ? "page" : undefined}
-            className={`inline-flex min-h-9 items-center rounded-pill px-4 text-sm ${show === key ? "bg-inverse text-inverse-ink" : "border border-edge text-ink hover:bg-sunken"}`}
+            className={`${CHIP_ITEM} inline-flex min-h-9 items-center rounded-pill px-4 text-sm ${show === key ? "bg-inverse text-inverse-ink" : "border border-edge text-ink hover:bg-sunken"}`}
           >
             {fillWords(w.shows[key], { n: counts[key] })}
           </Link>
@@ -89,7 +90,7 @@ export default async function PlatformEmailsPage({ searchParams }: PageProps<"/a
         {emailsShown(emails, show).length === 0 && show !== "all" ? (
           <p className="text-sm text-muted">{w.noneShown}</p>
         ) : (
-          <EmailLog emails={emailsShown(emails, show)} base="/admin/platform/emails" showStore locale={ADMIN_LANG_FACTS[lang].locale} words={adminText(lang, "notifications")} now={drawnAt.getTime()} />
+          <EmailLog emails={emailsShown(emails, show)} base="/admin/platform/emails" showStore locale={ADMIN_LANG_FACTS[lang].locale} words={adminText(lang, "notifications")} now={drawnAt.getTime()} quietUnsent={!settings} />
         )}
       </Card>
     </div>

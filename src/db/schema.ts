@@ -92,7 +92,7 @@ import { STAFF_ALERT_EVENTS } from "../lib/staff-alerts";
 import { CONSENT_EVENT_KINDS, SUBSCRIBE_SOURCES, SUBSCRIBER_STATUSES, UNSUBSCRIBE_SOURCES } from "../lib/marketing-consent";
 import { PAYMENT_TERMS } from "../lib/payment-terms";
 import { BROADCAST_AUDIENCES, BROADCAST_STATUSES, RECIPIENT_STATUSES } from "../lib/broadcast-status";
-import { AUTOMATION_KINDS, SEND_OUTCOMES, STOCK_REQUEST_STATUSES } from "../lib/automation-kinds";
+import { AUTOMATION_KINDS, LIFECYCLE_KINDS, SEND_OUTCOMES, STOCK_REQUEST_STATUSES } from "../lib/automation-kinds";
 import {
   HIDE_REASONS,
   PUBLISH_MODES,
@@ -16524,8 +16524,36 @@ export const automations = commerce.table(
     check("automations_content", sql`(${t.kind} = 'back_in_stock') = (${t.content} is null)`),
     check(
       "automations_delay",
-      sql`case ${t.kind} when 'welcome' then ${t.delayDays} between 0 and 30 when 'after_purchase' then ${t.delayDays} between 1 and 90 when 'win_back' then ${t.delayDays} between 30 and 730 else ${t.delayDays} is null end`,
+      sql`case ${t.kind} when 'welcome' then ${t.delayDays} between 0 and 30 when 'after_purchase' then ${t.delayDays} between 1 and 90 when 'win_back' then ${t.delayDays} between 30 and 730 when 'cross_sell' then ${t.delayDays} between 1 and 90 when 'replenish' then ${t.delayDays} between 7 and 365 else ${t.delayDays} is null end`,
     ),
+  ],
+);
+
+/**
+ * An automation's follow-ups (D4 of `docs/100-day-challenge.md`, D653): its second and third emails, each `delay_days` after the one before to
+ * the same person for the same moment, with its own words (a broadcast's shape). A paid order by the reader since the first email ends the
+ * flow. Position 3 only with a 2 (`saveFollowUp()`). The store's own settings and words (`NOT_PERSONAL`). Written only by
+ * `src/server/automations.ts`; goes with its automation.
+ */
+export const automationSteps = commerce.table(
+  "automation_steps",
+  {
+    storeId: storeId().references(() => stores.id),
+    kind: text("kind").notNull(),
+    position: smallint("position").notNull(),
+    delayDays: integer("delay_days").notNull(),
+    content: jsonb("content").notNull(),
+    updatedBy: uuid("updated_by").references(() => accounts.id),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [
+    primaryKey({ columns: [t.storeId, t.kind, t.position] }),
+    foreignKey({ name: "automation_steps_automation_fk", columns: [t.storeId, t.kind], foreignColumns: [automations.storeId, automations.kind] }).onDelete("cascade"),
+    index("automation_steps_updated_by_idx").on(t.updatedBy),
+    check("automation_steps_kind", sql`${t.kind} in (${sqlList(LIFECYCLE_KINDS)})`),
+    check("automation_steps_position", sql`${t.position} between 2 and 3`),
+    check("automation_steps_delay", sql`${t.delayDays} between 1 and 60`),
   ],
 );
 
@@ -16542,6 +16570,8 @@ export const automationSends = commerce.table(
     kind: text("kind").notNull(),
     subscriberId: uuid("subscriber_id").notNull(),
     orderId: uuid("order_id"),
+    /** Which of the automation's emails (D653): 1 its first, 2 and 3 its follow-ups (key `{first key}#{step}`). */
+    step: smallint("step").notNull().default(1),
     outcome: text("outcome"),
     createdAt: createdAt(),
   },
@@ -16560,7 +16590,8 @@ export const automationSends = commerce.table(
     index("automation_sends_report_idx").on(t.storeId, t.kind, t.createdAt),
     index("automation_sends_subscriber_idx").on(t.storeId, t.subscriberId),
     index("automation_sends_order_idx").on(t.storeId, t.orderId),
-    check("automation_sends_kind", sql`${t.kind} in ('welcome', 'after_purchase', 'win_back')`),
+    check("automation_sends_kind", sql`${t.kind} in (${sqlList(LIFECYCLE_KINDS)})`),
+    check("automation_sends_step", sql`${t.step} between 1 and 3`),
     check("automation_sends_outcome", sql`${t.outcome} is null or ${t.outcome} in (${sqlList(SEND_OUTCOMES)})`),
   ],
 );
@@ -18480,6 +18511,7 @@ export const contentReports = commerce.table(
 /**
  * The listings Kaizena Flow's own check has read (D411 part 2, DSA art. 7: voluntary, never a general monitoring duty, art. 8): one row
  * per product with the hash of the words it read, so a product is read again only when its words change, never on a price or stock change.
+ * A try that gave no reading is kept too (tries, tried_at), with the hash, so it waits a day.
  */
 export const contentScreened = commerce.table(
   "content_screened",
@@ -18493,6 +18525,10 @@ export const contentScreened = commerce.table(
     contentHash: text("content_hash").notNull(),
     flagged: boolean("flagged").notNull().default(false),
     screenedAt: timestamp("screened_at", { withTimezone: true }).notNull().defaultNow(),
+    /** How many times in a row the model's answer for this wording could not be used (a provider error or an unreadable answer); 0 after a reading. */
+    tries: integer("tries").notNull().default(0),
+    /** When it was last tried without a reading; such a listing is asked again a day later, not on the next run (bloat review step 0.29). Null after a reading. */
+    triedAt: timestamp("tried_at", { withTimezone: true }),
   },
   (t) => [index("content_screened_store_idx").on(t.storeId)],
 );

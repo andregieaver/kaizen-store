@@ -34,7 +34,10 @@ import { col, typedRow, typedRows } from "./typed-rows";
  * the reading and decides each notice, and nothing is hidden by it. Without a model nothing changes: notices wait for a person as before.
  */
 
-/** Notices read in one dispatcher run, and listings checked in one run: a cost cap of about 2,900 listings a day at most. */
+/**
+ * Notices read in one dispatcher run, and listings checked in one run: a cost cap of about 2,900 listings a day at most (a listing whose
+ * answer could not be used counts once a day).
+ */
 export const TRIAGE_BATCH = 10;
 export const SCREEN_BATCH = 10;
 
@@ -189,50 +192,115 @@ const CANDIDATE = z.object({
   store_slug: col.text,
   handle: col.text,
   hash: col.text,
+  known: col.textOrNull,
+  tried: col.bool,
   title: col.text,
   description: col.text,
   safety: col.text,
 });
 
+type Candidate = z.infer<typeof CANDIDATE>;
+
 /**
- * Kaizena Flow's own check of listings (art. 7): active products of live stores whose words are new or changed since they were last
- * read, up to `SCREEN_BATCH`; each read once per wording (`content_screened`). A clear sign files a flag for a person in the notices'
- * queue, at most one open flag per product. Returns how many were read.
+ * A try that gave no reading (a provider error or an answer that cannot be used): the wording's hash is kept with `tries` and `tried_at`,
+ * so the listing is asked again a day later, not on the next run. It never touches `flagged`: a listing already flagged stays so.
  */
-export async function screenListings(limit = SCREEN_BATCH, only: { storeId?: string } = {}): Promise<number> {
+async function recordTry(item: Candidate): Promise<void> {
+  await db().execute(sql`
+    insert into commerce.content_screened (product_id, store_id, content_hash, flagged, screened_at, tries, tried_at)
+    values (${item.product_id}::uuid, ${item.store_id}::uuid, ${item.hash}, false, now(), 1, now())
+    on conflict (product_id) do update set content_hash = excluded.content_hash, screened_at = now(),
+      tries = commerce.content_screened.tries + 1, tried_at = now()
+  `);
+}
+
+/**
+ * Kaizena Flow's own check of listings (art. 7): active products of live stores never read, or whose words changed since the last
+ * reading (`product_translations.text_changed_at`), or tried without a reading more than a day ago, up to `SCREEN_BATCH`; once an hour
+ * the whole platform is compared by hash as the net. Each wording is read once (`content_screened`). A clear sign files a flag for a
+ * person in the notices' queue, at most one open flag per product. A provider error ends the run. Returns how many were read.
+ */
+export async function screenListings(
+  limit = SCREEN_BATCH,
+  only: { storeId?: string } = {},
+  options: { now?: Date; full?: boolean } = {},
+): Promise<number> {
   if (!(await screeningOn())) return 0;
-  const connection = await platformAi();
-  if (!connection?.textModel) return 0;
+  // The hourly net compares every product's words by hash; the dispatcher is called every five minutes from outside, so an hour in which
+  // no call falls in minutes 0 to 4 skips that hour's net: accepted, because the marker finds every edit and the net only catches a
+  // deleted first-language row.
+  const full = options.full ?? (options.now ?? new Date()).getUTCMinutes() < 5;
+  const scope = only.storeId ? sql`and p.store_id = ${only.storeId}::uuid` : sql``;
   const candidates = await typedRows(
     CANDIDATE,
-    sql`
-      with words as (
-        select distinct on (t.product_id) t.product_id, t.title, t.description, t.safety_information as safety
-        from commerce.product_translations t order by t.product_id, t.locale
-      )
-      select p.id as product_id, p.store_id, s.slug as store_slug, p.handle, w.title, w.description, w.safety,
-        md5(w.title || E'\\n' || w.description || E'\\n' || w.safety) as hash
-      from commerce.products p
-      join commerce.stores s on s.id = p.store_id and not s.starter and not s.sandbox and s.closed_at is null
-      join words w on w.product_id = p.id
-      left join commerce.content_screened c on c.product_id = p.id
-      where p.status = 'active' ${only.storeId ? sql`and p.store_id = ${only.storeId}::uuid` : sql``}
-        and (c.product_id is null or c.content_hash <> md5(w.title || E'\\n' || w.description || E'\\n' || w.safety))
-      order by c.screened_at nulls first, p.id
-      limit ${limit}
-    `,
+    full
+      ? sql`
+          with words as (
+            select distinct on (t.product_id) t.product_id, t.title, t.description, t.safety_information as safety
+            from commerce.product_translations t order by t.product_id, t.locale
+          )
+          select p.id as product_id, p.store_id, s.slug as store_slug, p.handle, w.title, w.description, w.safety,
+            md5(w.title || E'\\n' || w.description || E'\\n' || w.safety) as hash,
+            c.content_hash as known, c.tried_at is not null as tried
+          from commerce.products p
+          join commerce.stores s on s.id = p.store_id and not s.starter and not s.sandbox and s.closed_at is null
+          join words w on w.product_id = p.id
+          left join commerce.content_screened c on c.product_id = p.id
+          where p.status = 'active' ${scope}
+            and (c.product_id is null or c.content_hash <> md5(w.title || E'\\n' || w.description || E'\\n' || w.safety)
+              or (c.tried_at is not null and c.tried_at < now() - interval '1 day'))
+          order by c.screened_at nulls first, p.id
+          limit ${limit}
+        `
+      : sql`
+          select p.id as product_id, p.store_id, s.slug as store_slug, p.handle, w.title, w.description, w.safety,
+            md5(w.title || E'\\n' || w.description || E'\\n' || w.safety) as hash,
+            c.content_hash as known, c.tried_at is not null as tried
+          from commerce.products p
+          join commerce.stores s on s.id = p.store_id and not s.starter and not s.sandbox and s.closed_at is null
+          left join commerce.content_screened c on c.product_id = p.id
+          cross join lateral (
+            select t.title, t.description, t.safety_information as safety
+            from commerce.product_translations t where t.product_id = p.id order by t.locale limit 1
+          ) w
+          where p.status = 'active' ${scope}
+            and (c.product_id is null
+              or exists (select 1 from commerce.product_translations t where t.product_id = p.id and t.text_changed_at > c.screened_at)
+              or (c.tried_at is not null and c.tried_at < now() - interval '1 day'))
+          order by c.screened_at nulls first, p.id
+          limit ${limit}
+        `,
   );
+  // Nothing to check: no AI connection is read.
+  if (candidates.length === 0) return 0;
+  const connection = await platformAi();
+  if (!connection?.textModel) return 0;
   let read = 0;
   for (const item of candidates) {
+    // Another language's words changed, the words that are read did not: no model call.
+    if (item.known === item.hash && !item.tried) {
+      await db().execute(sql`update commerce.content_screened set screened_at = now() where product_id = ${item.product_id}::uuid`);
+      continue;
+    }
     const answer = await ask(connection, SCREENING_SYSTEM, screeningPrompt({ title: item.title, description: item.description, safety: item.safety }));
-    const result = answer === null ? null : parseScreening(answer);
-    // An unreadable answer leaves the product to be read again next time.
-    if (!result) continue;
+    if (answer === null) {
+      // The provider failed: the rest would fail the same way, as triageWaitingReports() stops at no_ai. This listing waits a day, so one
+      // the provider always refuses cannot hold the queue.
+      await recordTry(item);
+      break;
+    }
+    const result = parseScreening(answer);
+    if (!result) {
+      // An unusable answer is a try: the listing is asked again a day later.
+      await recordTry(item);
+      continue;
+    }
     read += 1;
     await db().execute(sql`
       insert into commerce.content_screened (product_id, store_id, content_hash, flagged, screened_at)
       values (${item.product_id}::uuid, ${item.store_id}::uuid, ${item.hash}, ${result.flag}, now())
-      on conflict (product_id) do update set content_hash = excluded.content_hash, flagged = excluded.flagged, screened_at = now()
+      on conflict (product_id) do update set content_hash = excluded.content_hash, flagged = excluded.flagged, screened_at = now(),
+        tries = 0, tried_at = null
     `);
     if (!result.flag) continue;
     const open = await typedRow(
@@ -259,9 +327,9 @@ export async function screenListings(limit = SCREEN_BATCH, only: { storeId?: str
 }
 
 /** The dispatcher's job: notices without a reading first, then the listings' check. */
-export async function runContentModeration(): Promise<{ read: number; screened: number }> {
+export async function runContentModeration(options: { full?: boolean; now?: Date } = {}): Promise<{ read: number; screened: number }> {
   const read = await triageWaitingReports();
-  const screened = await screenListings();
+  const screened = await screenListings(SCREEN_BATCH, {}, options);
   return { read, screened };
 }
 

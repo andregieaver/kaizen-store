@@ -17,6 +17,7 @@ const knowledge = await import("./knowledge");
 const library = await import("./media-library");
 const altTexts = await import("./alt-texts");
 const embeddings = await import("./embeddings");
+const moderation = await import("./content-moderation");
 
 const run = Date.now().toString(36);
 const aboutUs = new Map<number, string>();
@@ -73,19 +74,25 @@ async function settle() {
   await db().execute(sql`update commerce.media set updated_at = now() - interval '2 hours' where updated_at > now() - interval '1 hour'`);
   await db().execute(sql`update commerce.media_embeddings set updated_at = now()`);
   await db().execute(sql`update commerce.media set alt_tried_at = now() where kind = 'image' and alt_source is null`);
+  await db().execute(sql`
+    insert into commerce.content_screened (product_id, store_id, content_hash)
+    select p.id, p.store_id, 'settled' from commerce.products p where p.status = 'active'
+    on conflict (product_id) do update set screened_at = now(), tried_at = null
+  `);
   vi.mocked(fetch).mockClear();
 }
 
-/** The four AI upkeep jobs' five-minute run, in the dispatcher's order, and the statements it sent. */
+/** The five AI upkeep jobs' five-minute run, in the dispatcher's order, and the statements it sent. */
 const idleRun = () =>
   counted(async () => {
     await knowledge.refreshKnowledge({ full: false });
     await library.refreshMediaEmbeddings({ full: false });
     await altTexts.refreshAltTexts(4, 5, { full: false });
     await embeddings.refreshEmbeddings({ full: false });
+    await moderation.runContentModeration({ full: false });
   });
 
-// The listings' check joins this run in step 0.29. The counter is this file's own until step 1.9 gives the database client one.
+// The listings' check is the fifth job of this run (step 0.29). The counter is this file's own until step 1.9 gives the database client one.
 describe("an idle run of the AI upkeep jobs (bloat review 0.28)", () => {
   let idleStatements = -1;
 

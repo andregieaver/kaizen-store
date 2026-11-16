@@ -1,3 +1,4 @@
+import { CHIP_ITEM, CHIP_STRIP, chosenFirst } from "@/lib/chip-strip";
 import type { Metadata } from "next";
 
 import { ActivityFilters, ActivityList, valuesFromQuery } from "@/components/admin/activity-view";
@@ -45,7 +46,7 @@ export default async function ActivityPage({ params, searchParams }: PageProps<"
 
   const chip = (next: { person?: string; area?: string }) =>
     `${base}${activityQuery({ person: next.person ?? values.person, area: next.area ?? values.area, action: values.action, from: values.from, to: values.to })}`;
-  const chipClass = (on: boolean) => `rounded-pill border px-3 py-1.5 text-sm ${on ? "border-ink bg-ink text-inverse-ink" : "border-line bg-card text-ink"}`;
+  const chipClass = (on: boolean) => `${CHIP_ITEM} rounded-pill border px-3 py-1.5 text-sm ${on ? "border-ink bg-ink text-inverse-ink" : "border-line bg-card text-ink"}`;
 
   const drawnAt = new Date();
   return (
@@ -64,24 +65,22 @@ export default async function ActivityPage({ params, searchParams }: PageProps<"
           </span>,
         ]}
       />
-      <nav aria-label={w.person} className="flex flex-wrap gap-2">
+      <nav aria-label={w.person} className={CHIP_STRIP}>
         <Link href={chip({ person: "" })} aria-current={!values.person ? "page" : undefined} className={chipClass(!values.person)}>
           {w.everyone}
         </Link>
-        {people
-          .filter((p) => p.current)
-          .slice(0, 8)
+        {chosenFirst(people.filter((p) => p.current).slice(0, 8), (p) => values.person === p.accountId)
           .map((p) => (
             <Link key={p.accountId} href={chip({ person: p.accountId })} aria-current={values.person === p.accountId ? "page" : undefined} className={chipClass(values.person === p.accountId)}>
               {p.label}
             </Link>
           ))}
       </nav>
-      <nav aria-label={w.area} className="flex flex-wrap gap-2">
+      <nav aria-label={w.area} className={CHIP_STRIP}>
         <Link href={chip({ area: "" })} aria-current={!values.area ? "page" : undefined} className={chipClass(!values.area)}>
           {w.allAreas}
         </Link>
-        {areas.map((a) => (
+        {chosenFirst(areas, (a) => values.area === a).map((a) => (
           <Link key={a} href={chip({ area: a })} aria-current={values.area === a ? "page" : undefined} className={chipClass(values.area === a)}>
             {words.areas[a]}
           </Link>

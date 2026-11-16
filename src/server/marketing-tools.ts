@@ -277,6 +277,10 @@ const AUTOMATION_AUDIENCE: Record<LifecycleKind, (days: number) => string> = {
   after_purchase: (d) =>
     `It goes to each customer on the shop's list ${d} days after their order was delivered. Thank them; you may show products that go well with what the shop sells. You do not know what they bought, so never name it.`,
   win_back: (d) => `It goes to customers on the shop's list who have not ordered for ${d} days. Invite them back warmly, without pressure.`,
+  cross_sell: (d) =>
+    `It goes to each customer on the shop's list ${d} days after their order was delivered. The shop shows each reader a few products that go with what they bought, under your words. You do not know what they bought or which products are shown, so never name either; never choose products yourself.`,
+  replenish: (d) =>
+    `It goes to each customer on the shop's list ${d} days after their order was delivered, when the order had products people buy again. The shop shows those products under your words. You do not know which they are, so never name them; never choose products yourself.`,
 };
 
 /** An automation's days: those asked for, else its own, refused outside its kind's range. */

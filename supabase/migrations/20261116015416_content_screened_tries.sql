@@ -1,0 +1,2 @@
+ALTER TABLE "commerce"."content_screened" ADD COLUMN "tries" integer DEFAULT 0 NOT NULL;--> statement-breakpoint
+ALTER TABLE "commerce"."content_screened" ADD COLUMN "tried_at" timestamp with time zone;

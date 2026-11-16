@@ -347,6 +347,7 @@ export const PAGES_NB: Record<string, { title: string; keywords: string[] }> = {
     keywords: ["produktfeed", "google shopping", "merchant center", "meta-katalog", "facebook-butikk", "instagram shopping", "tiktok-katalog", "pinterest-katalog", "xml-feed", "csv-feed"],
   },
   "store:email-automation": { title: "E-postautomatisering", keywords: ["e-postautomatisering", "automatisering", "test-e-post", "slå på"] },
+  "store:email-follow-up": { title: "Oppfølgings-e-post", keywords: ["oppfølging", "oppfølgings-e-post", "andre e-post", "tredje e-post"] },
   "store:text-message.new": { title: "Ny SMS", keywords: ["ny sms", "skriv sms", "sms-utsendelse"] },
   "store:text-message": { title: "SMS-utsendelse", keywords: ["sms-utsendelse", "sms", "send", "pris"] },
   "store:broadcast.new": { title: "Ny utsendelse", keywords: ["ny utsendelse", "nytt nyhetsbrev", "skriv e-post", "utsendelse"] },
