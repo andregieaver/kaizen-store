@@ -33,3 +33,6 @@ There are 0 prose lines over 500 that can be wrapped; 27 unbreakable lines (one 
 On Vercel the build skips the type check and runs with one worker and no Turbopack cache, to fit its 8 GB machine (D378,
 `docs/build-memory.md`); CI's browser jobs skip it too (`SKIP_BUILD_TYPECHECK`), since `static` and the quick gate check every
 push (`src/lib/ci-once.scan.test.ts`).
+
+`pnpm lint` keeps a cache in node_modules/.cache/eslint (delete the folder to lint from nothing); CI restores it in `static` and
+`pending`. It stays right only while no lint rule reads more than one file (`src/lib/ci-once.scan.test.ts`).

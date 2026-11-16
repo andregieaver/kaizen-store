@@ -49,6 +49,29 @@ describe("CI runs each check once", () => {
     expect(step).toContain("if: matrix.shard == 1");
   });
 
+  it("lints with a cache that keeps results by content", () => {
+    const lint = (JSON.parse(read("package.json")) as { scripts: Record<string, string> }).scripts.lint;
+    expect(lint).toContain("--cache");
+    expect(lint).toContain("--cache-strategy content");
+    expect(lint).toContain("--cache-location node_modules/.cache/eslint/");
+  });
+
+  it("restores the cache in both lint jobs", () => {
+    const jobs = jobsRunning(ci, /run: pnpm lint\b/);
+    expect(jobs.map((job) => job.name).sort()).toEqual(["pending", "static"]);
+    for (const job of jobs) {
+      expect(job.text, job.name).toContain("actions/cache@");
+      expect(job.text, job.name).toContain("path: node_modules/.cache/eslint");
+    }
+  });
+
+  it("keeps lint to rules that read one file, which a per-file cache stays right for", () => {
+    const config = read("eslint.config.mjs");
+    const message = "a type-aware or cross-file rule makes a per-file cache wrong: run such a rule in a second, uncached eslint call";
+    expect(config, message).not.toMatch(/parserOptions[\s\S]{0,200}\bproject\b/);
+    expect(config, message).not.toContain("import/no-cycle");
+  });
+
   it("would notice a build without the variable", () => {
     expect(buildsWithoutSkip("jobs:\n  a:\n    steps:\n      - run: pnpm build\n")).toEqual(["a"]);
   });

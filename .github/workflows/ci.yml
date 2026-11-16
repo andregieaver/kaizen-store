@@ -52,6 +52,13 @@ jobs:
           node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+      # Lint's cache (src/lib/ci-once.scan.test.ts): results are kept by each file's content, so a fresh checkout reuses them.
+      - uses: actions/cache@v4
+        with:
+          path: node_modules/.cache/eslint
+          key: eslint-${{ hashFiles('pnpm-lock.yaml', 'eslint.config.mjs') }}-${{ github.sha }}
+          restore-keys: |
+            eslint-${{ hashFiles('pnpm-lock.yaml', 'eslint.config.mjs') }}-
       - run: pnpm lint
       - run: pnpm typecheck
       - run: pnpm test
@@ -300,6 +307,13 @@ jobs:
           node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+      # Lint's cache (src/lib/ci-once.scan.test.ts): results are kept by each file's content, so a fresh checkout reuses them.
+      - uses: actions/cache@v4
+        with:
+          path: node_modules/.cache/eslint
+          key: eslint-${{ hashFiles('pnpm-lock.yaml', 'eslint.config.mjs') }}-${{ github.sha }}
+          restore-keys: |
+            eslint-${{ hashFiles('pnpm-lock.yaml', 'eslint.config.mjs') }}-
       - name: Which migrations has production not had?
         id: status
         run: node scripts/db-migrate.mjs --status
