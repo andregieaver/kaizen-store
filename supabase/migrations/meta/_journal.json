@@ -253,6 +253,13 @@
       "when": 1794789845158,
       "tag": "20261116004405_product_text_changed_rules",
       "breakpoints": true
+    },
+    {
+      "idx": 36,
+      "version": "7",
+      "when": 1794792885324,
+      "tag": "20261116013445_cold_lorna_dane",
+      "breakpoints": true
     }
   ]
 }

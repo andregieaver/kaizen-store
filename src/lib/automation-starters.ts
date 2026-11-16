@@ -111,6 +111,75 @@ export const AUTOMATION_STARTERS: Record<LifecycleKind, Record<"nb" | "sv" | "da
       url: "/products",
     },
   },
+  // The products are chosen for each reader by code and shown under the words (D653): the words never name them.
+  cross_sell: {
+    en: {
+      subject: "Picked for you",
+      preview: "A few things that go well with your order.",
+      heading: "Goes well with your order",
+      text: "Other customers often choose these together with what you bought. Have a look if one of them suits you.",
+      button: "See more products",
+      url: "/products",
+    },
+    nb: {
+      subject: "Valgt ut for deg",
+      preview: "Noen ting som passer godt med bestillingen din.",
+      heading: "Passer godt med bestillingen din",
+      text: "Andre kunder velger ofte disse sammen med det du kjøpte. Ta en titt om noe passer for deg.",
+      button: "Se flere produkter",
+      url: "/products",
+    },
+    sv: {
+      subject: "Utvalt för dig",
+      preview: "Några saker som passar bra med din beställning.",
+      heading: "Passar bra med din beställning",
+      text: "Andra kunder väljer ofta de här tillsammans med det du köpte. Ta en titt om något passar dig.",
+      button: "Se fler produkter",
+      url: "/products",
+    },
+    da: {
+      subject: "Udvalgt til dig",
+      preview: "Et par ting, der passer godt til din bestilling.",
+      heading: "Passer godt til din bestilling",
+      text: "Andre kunder vælger ofte disse sammen med det, du købte. Tag et kig, hvis noget passer til dig.",
+      button: "Se flere produkter",
+      url: "/products",
+    },
+  },
+  replenish: {
+    en: {
+      subject: "Time to restock?",
+      preview: "If you are running low, it is easy to order again.",
+      heading: "Running low?",
+      text: "It has been a while since your order. If you are running low, you can order the same again here.",
+      button: "Visit the store",
+      url: "/",
+    },
+    nb: {
+      subject: "På tide å fylle på?",
+      preview: "Begynner du å gå tom, er det enkelt å bestille igjen.",
+      heading: "Begynner du å gå tom?",
+      text: "Det er en stund siden bestillingen din. Begynner du å gå tom, kan du bestille det samme igjen her.",
+      button: "Besøk butikken",
+      url: "/",
+    },
+    sv: {
+      subject: "Dags att fylla på?",
+      preview: "Börjar det ta slut är det enkelt att beställa igen.",
+      heading: "Börjar det ta slut?",
+      text: "Det var ett tag sedan din beställning. Börjar det ta slut kan du beställa samma sak igen här.",
+      button: "Besök butiken",
+      url: "/",
+    },
+    da: {
+      subject: "Tid til at fylde op?",
+      preview: "Er du ved at løbe tør, er det nemt at bestille igen.",
+      heading: "Ved at løbe tør?",
+      text: "Det er et stykke tid siden din bestilling. Er du ved at løbe tør, kan du bestille det samme igen her.",
+      button: "Besøg butikken",
+      url: "/",
+    },
+  },
 };
 
 function asContent(s: Starter): LanguageContent {

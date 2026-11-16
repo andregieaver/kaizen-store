@@ -13,6 +13,7 @@ export function EmailLog({
   locale = "nb-NO",
   words = notificationsEn,
   now,
+  quietUnsent = false,
 }: {
   emails: EmailLogRow[];
   base: string;
@@ -22,30 +23,42 @@ export function EmailLog({
   words?: NotificationsMessages;
   /** Group the emails by day, Today and Yesterday counted from this time (round 16, D650); a flat list without it. */
   now?: number;
+  /** While email is not set up, a row leaves out "Not sent": the page's sentence says it once (round 17, D652). Failures still show. */
+  quietUnsent?: boolean;
 }) {
   const w = words.log;
   if (emails.length === 0) return <p className="text-sm text-muted">{w.none}</p>;
   const when = (iso: string) =>
     new Date(iso).toLocaleString(locale, { dateStyle: "medium", timeStyle: "short", timeZone: "Europe/Oslo" });
+  const quiet = (status: EmailLogRow["status"]) => quietUnsent && status === "logged";
   const time = (iso: string) => new Date(iso).toLocaleTimeString(locale, { timeStyle: "short", timeZone: "Europe/Oslo" });
   const list = (rows: EmailLogRow[]) => (
     <ul className="flex flex-col divide-y divide-line text-sm">
       {rows.map((email) => (
         <li key={email.id} className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 py-2">
-          <span className="min-w-0">
-            <Link href={`${base}/${email.id}`} className="underline-offset-2 hover:underline">
+          <span className="min-w-0 max-w-full">
+            <Link href={`${base}/${email.id}`} className="block truncate underline-offset-2 hover:underline sm:whitespace-normal">
               {email.subject}
             </Link>
             <span className="block text-xs text-muted">
-              {fillWords(w.to, { to: email.to })}
-              {showStore && email.storeName && ` · ${email.storeName}`}
+              {/* On a phone the address waits for the email itself (round 17): one line of when and where. */}
+              <span className="hidden sm:inline">{fillWords(w.to, { to: email.to })}</span>
+              {showStore && email.storeName && <span className="hidden sm:inline">{` · ${email.storeName}`}</span>}
+              <span className="sm:hidden">
+                {[now === undefined ? when(email.createdAt) : time(email.createdAt), showStore ? email.storeName : null, quiet(email.status) ? null : w.statuses[email.status]]
+                  .filter(Boolean)
+                  .join(" · ")}
+              </span>
             </span>
           </span>
-          <span className="text-xs text-muted">
-            <time dateTime={email.createdAt}>{now === undefined ? when(email.createdAt) : time(email.createdAt)}</time> ·{" "}
-            <span className={["failed", "bounced", "complained"].includes(email.status) ? "text-danger-text" : undefined}>
-              {w.statuses[email.status]}
-            </span>
+          <span className="hidden text-xs text-muted sm:inline">
+            <time dateTime={email.createdAt}>{now === undefined ? when(email.createdAt) : time(email.createdAt)}</time>
+            {!quiet(email.status) && (
+              <>
+                {" · "}
+                <span className={["failed", "bounced", "complained"].includes(email.status) ? "text-danger-text" : undefined}>{w.statuses[email.status]}</span>
+              </>
+            )}
           </span>
         </li>
       ))}
