@@ -521,6 +521,17 @@ answers `to_see_each_version`: each version's page id (the original's is the pag
 is not a page and is not looked at. The plan named a `look_at_versions` tool: the tools a turn carries are at 128, and a page id in an answer
 changes no tool's description, so no eval run was needed.
 
+## What phase 16 built: the original and a version side by side (D682)
+
+Step 2b of `docs/ab-testing-usability.md`, no migration. **The frame route** (`/admin/frame/{store}/{pageId}`, outside the admin's frame,
+so a frame holds only the page): signed in with `marketing:read`, it draws one page of one of the store's tests alone (`testFrame()` in
+`experiment-admin.ts`; a page in none of the store's tests is a 404): the original as it is live, a version as visitors are shown it once
+the test has started and its draft while the test is a draft, drawn as the kind of page it stands in for (a header's version as a header).
+The site's `frame-ancestors 'self'` lets only Kaizena Flow frame it. **The frames** (`ExperimentFrames`): the original on the left and a
+version on the right, each drawn at a computer's (1280) or a phone's (390) width and scaled to its half, 520 pixels tall with the page
+scrolling inside; with several versions one is chosen at a time. They sit under the draft panel on a draft and under the results on a
+scheduled, running or stopped test; a decided test has none, as the original is then the winner.
+
 
 
 - Randomise who is eligible, then compare everyone assigned; never compare people who used a thing with those who did

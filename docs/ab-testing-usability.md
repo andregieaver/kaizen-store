@@ -2,7 +2,7 @@
 
 A review of the A/B tests (D148, [`ab-testing.md`](ab-testing.md)) for people who have never run one, and for the AI that helps
 them. The page with the findings, screenshots of the screens as they were and mockups: https://claude.ai/artifact/Ep8Vp5BbKEs7QMpECrZqfs.
-Steps 1 to 3 are built (phases 12 to 14 of D148, D659, D660 and D662); step 3b is built (D670, D673); step 4 is built (D677, D678, D680); step 2b is the plan.
+Steps 1 to 3 are built (phases 12 to 14 of D148, D659, D660 and D662); step 3b is built (D670, D673); step 4 is built (D677, D678, D680); step 2b is built (D682). Every step of the plan is built.
 
 The engine is sound and stays as it is: rules fixed before results, no verdict before the minimum, the split check, the guardrail,
 the words written in code (`verdictOf()`), approval for start, stop and apply. What the person saw was the problem: three tables, an
@@ -36,7 +36,7 @@ test an **editor** with *Customise* folded (like the product, D595 step 5).
 | 2 | No progress bar and no date, only a sentence. | Fixed in step 1 |
 | 3 | The one chart had no axes and swung hard in the first days. | Fixed in step 1 |
 | 4 | Uncertainty was a number, never a shape. | Fixed in step 1 |
-| 5 | The versions were never shown. | Steps 1 and 2: what is different in words; step 2b: side by side |
+| 5 | The versions were never shown. | Fixed: what is different in words (steps 1 and 2), side by side (step 2b) |
 | 6 | The estimate asked the owner to type visitors a day and a rate; visits (D152), cookie choices and the funnel exist. | Fixed in step 2 |
 | 7 | Eight decisions before anything is visible, and the draft page asked them again. | Fixed in step 2 |
 | 8 | Nobody hears when there is an answer. | Fixed in step 3 (notice and email); step 3b: the autopilot |
@@ -51,7 +51,7 @@ test an **editor** with *Customise* folded (like the product, D595 step 5).
 2. **No numbers to guess, and a calmer start (phase 13, D660, built 16 November 2026).** See `ab-testing.md`, "What phase 13 built". Small
    shops meet the honest answer often (a 20 % change takes months at 70 visitors a day), so the form names the smallest change that could
    be found within six weeks and offers it in one press.
-   2b. **The original and B side by side (no migration).** A preview route outside the admin's frame (`/admin/frame/{store}/…`, signed in,
+   2b. **The original and B side by side (no migration).** Built (D682, phase 16 of `ab-testing.md`). A preview route outside the admin's frame (`/admin/frame/{store}/…`, signed in,
    the same access checks), drawn in two scaled frames on the draft page and under *What is different* on a started test.
 3. **News and a memory (phase 14, D662, built 16 November 2026).** See `ab-testing.md`, "What phase 14 built".
    3b. **The AI side of news and memory.** Part 1 built (D670): the autopilot's `test_answered` event. Part 2 built (D673): an optional
