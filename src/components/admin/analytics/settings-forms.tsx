@@ -5,7 +5,9 @@ import { ActionForm, SubmitButton, type FormState } from "@/components/admin/act
 import { addMonths, startOfMonth } from "@/lib/analytics-period";
 import { formatCount, formatPercent, safeRatio } from "@/lib/analytics-core";
 import { formatAmount } from "@/lib/analytics-format";
-import { fillWords } from "@/lib/admin-fill";
+import { countWords, fillWords } from "@/lib/admin-fill";
+import { submitClass } from "@/lib/submit-class";
+import { PhoneRow, PhoneRows } from "@/components/admin/phone-row";
 import { adminText } from "@/lib/admin-text";
 import { analyticsDateLocale, analyticsLang } from "@/lib/analytics-lang";
 import { analyticsWords, countText } from "@/lib/analytics-words";
@@ -714,9 +716,24 @@ const ANSWERS = ["costs", "targets", "visits"] as const;
 export function AnalyticsSettingsView(props: AnalyticsSettingsViewProps) {
   const { base, currency, locale, today, settings, summary, targets, visitCounting, actions } = props;
   const w = analyticsWords().settings;
+  const p = w.phone;
+  const row = { change: p.change, done: p.done, flat: true } as const;
+  const group = "px-0.5 text-sm text-muted sm:hidden";
+  const costsShort = summary.activeVariants > 0 && summary.variantsWithCost < summary.activeVariants;
+  const feesSet = settings.paymentFeeBps > 0 || settings.paymentFeeFixedMinor > 0 || settings.shippingCostMinor > 0 || (settings.handlingCostMinor ?? 0) > 0 || settings.fixedCostsMonthlyMinor > 0;
+  const thisMonth = targets.find((t) => t.month.slice(0, 7) === today.slice(0, 7));
+  const others = otherTargets(props.periodTargets ?? []).length;
+  // A switch that is off, pressed from its row: the same action as the button inside.
+  const turnOn = (action: FormAction) => (
+    <ActionForm action={action}>
+      <SubmitButton name="enabled" value="on" className={`${submitClass()} min-h-9`}>
+        {p.turnOn}
+      </SubmitButton>
+    </ActionForm>
+  );
   return (
     <div className="flex flex-col gap-8">
-      <nav aria-label={w.onThisPage}>
+      <nav aria-label={w.onThisPage} className="max-sm:hidden">
         <p className="text-sm font-medium">{w.answersLead}</p>
         <ul className="mt-1 list-disc space-y-0.5 pl-5 text-sm">
           {ANSWERS.map((a) => (
@@ -728,14 +745,44 @@ export function AnalyticsSettingsView(props: AnalyticsSettingsViewProps) {
           ))}
         </ul>
       </nav>
-      <CostsSection base={base} currency={currency} summary={summary} actions={actions} />
-      <FeesSection currency={currency} locale={locale} settings={settings} actions={actions} />
-      <LifetimeSection settings={settings} actions={actions} />
-      <TargetsSection currency={currency} locale={locale} today={today} targets={targets} actions={actions} />
-      <PeriodTargetsSection currency={currency} locale={locale} today={today} periodTargets={props.periodTargets} actions={actions} />
-      <VisitsSection summary={summary} visitCounting={visitCounting} actions={actions} />
-      {props.heatmaps !== undefined && <SignalsSection heatmaps={props.heatmaps} action={actions?.setHeatmaps ?? null} />}
-      {props.recordings ? <RecordingsSection recordings={props.recordings} action={actions?.setRecordings ?? null} /> : null}
+      {/* Round 27 (D700): on a phone each setting is a row saying where it stands, in three groups; a switch that is off is on its row. */}
+      <h2 className={group}>{p.profit}</h2>
+      <PhoneRows className="max-sm:-mt-6">
+        <PhoneRow opens="costs" title={w.costs.title} sub={<span className={costsShort ? "text-warning-text" : undefined}>{fillWords(p.costsSub, { with: formatCount(summary.variantsWithCost), all: formatCount(summary.activeVariants) })}</span>} {...row}>
+          <CostsSection base={base} currency={currency} summary={summary} actions={actions} />
+        </PhoneRow>
+        <PhoneRow opens="fees" title={w.fees.title} sub={feesSet ? p.feesSet : p.feesSub} {...row}>
+          <FeesSection currency={currency} locale={locale} settings={settings} actions={actions} />
+        </PhoneRow>
+        <PhoneRow opens="lifetime" title={w.lifetime.title} sub={countWords(settings.ltvLifespanYears, p.years, { n: formatCount(settings.ltvLifespanYears) })} {...row}>
+          <LifetimeSection settings={settings} actions={actions} />
+        </PhoneRow>
+      </PhoneRows>
+      <h2 className={group}>{p.targetsGroup}</h2>
+      <PhoneRows className="max-sm:-mt-6">
+        <PhoneRow opens="targets" title={fillWords(p.monthTarget, { month: monthLabel(`${today.slice(0, 7)}-01`) })} sub={thisMonth ? formatAmount(thisMonth.revenueTargetMinor, currency, locale) : p.noTarget} {...row}>
+          <TargetsSection currency={currency} locale={locale} today={today} targets={targets} actions={actions} />
+        </PhoneRow>
+        <PhoneRow opens="targets-more" title={w.targets.kinds} sub={others > 0 ? countWords(others, p.otherSub, { n: formatCount(others) }) : p.none} {...row}>
+          <PeriodTargetsSection currency={currency} locale={locale} today={today} periodTargets={props.periodTargets} actions={actions} />
+        </PhoneRow>
+      </PhoneRows>
+      <h2 className={group}>{p.measured}</h2>
+      <PhoneRows className="max-sm:-mt-6">
+        <PhoneRow opens="visits" title={w.visits.title} sub={visitCounting ? p.on : p.offNoCookies} action={!visitCounting && actions ? turnOn(actions.setVisitCounting) : undefined} {...row}>
+          <VisitsSection summary={summary} visitCounting={visitCounting} actions={actions} />
+        </PhoneRow>
+        {props.heatmaps !== undefined && (
+          <PhoneRow opens="signals" title={adminText(analyticsLang(), "heatmaps").title} sub={props.heatmaps ? p.on : p.off} action={!props.heatmaps && actions?.setHeatmaps ? turnOn(actions.setHeatmaps) : undefined} {...row}>
+            <SignalsSection heatmaps={props.heatmaps} action={actions?.setHeatmaps ?? null} />
+          </PhoneRow>
+        )}
+        {props.recordings ? (
+          <PhoneRow opens="recordings" title={adminText(analyticsLang(), "recordings").settings.title} sub={props.recordings.on ? p.on : props.recordings.available ? p.off : p.notAvailable} {...row}>
+            <RecordingsSection recordings={props.recordings} action={actions?.setRecordings ?? null} />
+          </PhoneRow>
+        ) : null}
+      </PhoneRows>
     </div>
   );
 }

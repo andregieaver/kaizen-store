@@ -289,7 +289,7 @@ export default async function BooksPage({ params, searchParams }: PageProps<"/ad
       />
 
       {bank.waiting > 0 && firstWaiting && (
-        <div className="flex items-center gap-3 rounded-panel bg-(--signal-warning-soft,#fbf0d9) px-4 py-3 sm:hidden">
+        <div className="flex items-center gap-3 rounded-panel bg-warning-soft px-4 py-3 sm:hidden">
           <p className="min-w-0 flex-1 text-sm">{countWords(bank.waiting, ph.strip, { text: firstWaiting.text || firstWaiting.counterparty || "", day: day(firstWaiting.day) })}</p>
           <a href="#bank" className="inline-flex h-9 shrink-0 items-center rounded-pill bg-ink px-4 text-sm text-canvas">
             {ph.postIt}
@@ -837,7 +837,7 @@ export default async function BooksPage({ params, searchParams }: PageProps<"/ad
       </Card>
       </PhoneRow>
 
-      <PhoneRow title={w.saft.title} sub={organisationNumber ? ph.saftReady : <span className="text-(--signal-warning-text,#8a5a00)">{ph.saftNeeds}</span>} {...row}>
+      <PhoneRow title={w.saft.title} sub={organisationNumber ? ph.saftReady : <span className="text-warning-text">{ph.saftNeeds}</span>} {...row}>
       <Card title={w.saft.title} description={w.saft.lead}>
         {organisationNumber ? (
           <ul className="flex flex-wrap gap-x-6 gap-y-2 text-sm">

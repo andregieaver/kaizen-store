@@ -8,6 +8,8 @@ import { useEffect, useRef, useState, type ReactNode } from "react";
  */
 export function PhoneRow({
   id,
+  opens,
+  action,
   title,
   sub,
   change,
@@ -26,29 +28,37 @@ export function PhoneRow({
   flat?: boolean;
   /** The row's anchor: a link to `#id` (a strip's Post it) opens it and brings it into view. */
   id?: string;
+  /** Another anchor that opens it too: the id of a section inside, which older links name (round 27, D700). */
+  opens?: string;
+  /** One press on the row itself on a phone, beside Change (a switch that is off: Turn on). */
+  action?: ReactNode;
 }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
   useEffect(() => {
-    if (!id) return;
+    if (!id && !opens) return;
     const follow = () => {
-      if (window.location.hash !== `#${id}`) return;
+      const hash = window.location.hash;
+      if (hash !== `#${id}` && hash !== `#${opens}`) return;
       setOpen(true);
       requestAnimationFrame(() => ref.current?.scrollIntoView({ block: "start" }));
     };
     follow();
     window.addEventListener("hashchange", follow);
     return () => window.removeEventListener("hashchange", follow);
-  }, [id]);
+  }, [id, opens]);
   return (
     <div ref={ref} id={id} className={`scroll-mt-20 max-sm:bg-card max-sm:px-4 ${last ? "" : "max-sm:border-b max-sm:border-line"}`}>
-      <button type="button" aria-expanded={open} onClick={() => setOpen((shown) => !shown)} className="flex min-h-14 w-full items-center justify-between gap-3 py-2 text-left sm:hidden">
-        <span className="flex min-w-0 flex-col gap-0.5">
-          <span className="text-body text-ink">{title}</span>
-          {sub ? <span className="text-caption text-ink-2">{sub}</span> : null}
-        </span>
-        <span className="shrink-0 text-sm font-medium text-ink underline underline-offset-2">{open ? done : change}</span>
-      </button>
+      <div className="flex items-center gap-3 sm:hidden">
+        <button type="button" aria-expanded={open} onClick={() => setOpen((shown) => !shown)} className="flex min-h-14 min-w-0 flex-1 items-center justify-between gap-3 py-2 text-left">
+          <span className="flex min-w-0 flex-col gap-0.5">
+            <span className="text-body text-ink">{title}</span>
+            {sub ? <span className="text-caption text-ink-2">{sub}</span> : null}
+          </span>
+          <span className="shrink-0 text-sm font-medium text-ink underline underline-offset-2">{open ? done : change}</span>
+        </button>
+        {action && !open ? <div className="shrink-0">{action}</div> : null}
+      </div>
       <div className={`${open ? "max-sm:pb-4" : "max-sm:hidden"} ${flat ? "max-sm:*:rounded-none max-sm:*:border-0 max-sm:*:bg-transparent max-sm:*:p-0 max-sm:*:shadow-none" : ""}`}>{children}</div>
     </div>
   );

@@ -828,6 +828,9 @@ export function PageBuilder({
   const [layoutUse, setLayoutUse] = useState<PendingLayout | null>(null);
   // The sidebars can be folded away; each is kept per browser.
   const [leftFolded, setLeftFolded] = useFolded("left");
+  // Round 27 (D700): on a phone the parts wait behind Add a part, under the page.
+  const [partsOpen, setPartsOpen] = useState(false);
+  const pw = w.phone;
   const [rightFolded, setRightFolded] = useFolded("right");
   // How wide each open sidebar was dragged to (D262); null is its usual share.
   const [leftWidth, setLeftWidth] = useRailWidth("left");
@@ -1344,7 +1347,7 @@ export function PageBuilder({
   // The sidebars' ids: a dual page's frame measures its own (D412).
   const ids = dualOn && hub ? hub.panelId : panelId;
   const leftPanel = (
-        <>
+        <div className={partsOpen ? "contents max-sm:[&>*]:order-1" : "contents max-sm:[&>*]:hidden"}>
           {leftFolded && <Rail side="left" label={fw.leftLabel} controls={`${ids}-left`} onOpen={() => setLeftFolded(false)} />}
           {translate ? (
             <TranslateNote
@@ -1400,7 +1403,7 @@ export function PageBuilder({
             blocksFull={blocksFull}
           />
           )}
-        </>
+        </div>
   );
   // One document on both canvases (D424): a heading or text is edited where it stands on the canvas it was pressed on only.
   const canvasActions = (side: DualSide): Actions =>
@@ -1471,7 +1474,7 @@ export function PageBuilder({
             />
           )}
           {!translate && (
-            <div className="flex flex-wrap items-start gap-3">
+            <div className="flex flex-wrap items-start gap-3 max-sm:hidden">
               <div className="min-w-0 flex-1">
                 <MotionPreviewToggle
                   on={motionOn}
@@ -1508,6 +1511,17 @@ export function PageBuilder({
             canvasActions("left"),
             // Where a store can browse templates, an empty page starts from a page layout (D127).
             templates && !translate ? () => setBrowsing({ kind: "page" }) : null,
+          )}
+          {!translate && (
+            <button
+              type="button"
+              aria-expanded={partsOpen}
+              aria-controls={`${ids}-left`}
+              onClick={() => setPartsOpen((open) => !open)}
+              className="flex min-h-11 items-center justify-center rounded-pill bg-ink px-4 text-sm font-medium text-canvas sm:hidden"
+            >
+              {partsOpen ? pw.hideParts : pw.addPart}
+            </button>
           )}
           </div>
   );
@@ -1548,8 +1562,11 @@ export function PageBuilder({
             <Rail side="right" label={fw.rightLabel} controls={`${ids}-right`} onOpen={() => setRightFolded(false)} className="order-first lg:order-none" />
           )}
           {/* On phones the title and settings come first. */}
-          <div id={`${ids}-right`} hidden={rightFolded} className={`order-first flex min-w-0 flex-col gap-6 lg:order-none lg:pb-6 ${STANDALONE}`}>
-            <RailHeader side="right" label={fw.rightLabel} controls={`${ids}-right`} onFold={() => setRightFolded(true)} />
+          {/* Round 27 (D700): on a phone its parts join the builder's column (`contents`): the title first, the page, then the settings. */}
+          <div id={`${ids}-right`} hidden={rightFolded} className={`order-first flex min-w-0 flex-col gap-6 max-sm:contents lg:order-none lg:pb-6 ${STANDALONE}`}>
+            <div className="max-sm:hidden">
+              <RailHeader side="right" label={fw.rightLabel} controls={`${ids}-right`} onFold={() => setRightFolded(true)} />
+            </div>
             {aside}
           </div>
         </>

@@ -239,6 +239,24 @@ export const builderEn = {
     drag: "Drag to make the {label} wider or narrower. Double-click for the usual width.",
   },
   /** The builder's frame: what screen readers are told while dragging, the two sidebars' names. */
+  /** Round 27 (D700): the builder on a phone. */
+  phone: {
+    addPart: "+ Add a part",
+    hideParts: "Hide the parts",
+    pageSettings: "Page settings",
+    change: "Change",
+    done: "Done",
+    noTerms: "No categories or tags",
+    termsCount: { one: "{n} chosen", many: "{n} chosen" },
+    noPicture: "None",
+    pictureSet: "Chosen",
+    everyone: "Everyone, search engines and AI",
+    someOff: "Some readers kept out",
+    fromText: "From the title and text",
+    ownWords: "Your own words",
+    noExcerpt: "From the search description",
+    excerptSet: "Your own",
+  },
   frame: {
     leftLabel: "building blocks",
     rightLabel: "settings",

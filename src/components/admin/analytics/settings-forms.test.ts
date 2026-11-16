@@ -248,7 +248,9 @@ describe("the view without actions (read-only)", () => {
     expect(out).not.toContain("<form");
     expect(out).not.toContain("<input");
     expect(out).not.toContain("<select");
-    expect(out).not.toContain("<button");
+    // The only buttons are the phone's rows opening their part (round 27, D700): none submits or changes anything.
+    expect(out).not.toContain('type="submit"');
+    expect((out.match(/<button/g) ?? []).length).toBe((out.match(/<button type="button" aria-expanded/g) ?? []).length);
     expect(out).not.toContain("Yes, apply costs");
     expect(out).toContain("2.90 %");
     expect(out).toContain("4 years");
