@@ -281,7 +281,72 @@ export function InventoryTable({
           })}
         </ul>
       ) : (
-      <div className={tableShell}>
+      <>
+      {/* Round 19 (D661): on a phone each variant is a card (its figures in words, − and + to count), not a table wider than the screen. */}
+      <ul aria-label={w.caption} className={`flex flex-col px-4 sm:hidden ${card}`}>
+        {rows.map((row) => {
+          const name = `${row.title}${optionsText(row.options) ? `, ${optionsText(row.options)}` : ""}`;
+          const counter = (key: string, onHand: number, label: string) => {
+            const typedHere = typed[key] ?? EMPTY_CELL;
+            const shown = typedHere.set !== "" ? typedHere.set : String(onHand);
+            const count = parseTyped(shown);
+            const step = (by: number) => type(key, { set: String(Math.max(0, (typeof count === "number" ? count : onHand) + by)) });
+            return canWrite ? (
+              <span className="flex shrink-0 items-center gap-1.5">
+                <button type="button" onClick={() => step(-1)} aria-label={fillWords(w.less, { name: label })} className="flex size-10 items-center justify-center rounded-pill border border-edge bg-card text-lg text-ink">
+                  −
+                </button>
+                <input
+                  inputMode="numeric"
+                  value={shown}
+                  onChange={(e) => type(key, { set: e.target.value })}
+                  aria-label={fillWords(w.onShelf, { name: label })}
+                  className={`h-10 w-14 rounded-md border bg-card text-center text-body tabular-nums ${changedKeys.has(key) ? "border-2 border-brand" : "border-line"}`}
+                />
+                <button type="button" onClick={() => step(1)} aria-label={fillWords(w.moreOne, { name: label })} className="flex size-10 items-center justify-center rounded-pill border border-edge bg-card text-lg text-ink">
+                  +
+                </button>
+              </span>
+            ) : (
+              <span className="shrink-0 text-body text-ink tabular-nums">{figureText(onHand)}</span>
+            );
+          };
+          const own = mainLocation ? keyOf(row.variantId, mainLocation) : null;
+          return (
+            <li key={row.variantId} className="flex flex-col gap-2 border-b border-line py-3 last:border-0">
+              <div className="flex items-center justify-between gap-3">
+                <span className="flex min-w-0 flex-col">
+                  <Link href={`${productBase}/${row.productId}`} className="text-body text-ink underline-offset-2 hover:underline">
+                    {name}
+                  </Link>
+                  <span className="truncate font-mono text-xs text-muted">{row.sku}</span>
+                  <span className="text-caption text-ink-2">
+                    {figureText(row.committed)} {w.committed.toLowerCase()} · {figureText(row.available)} {w.available.toLowerCase()}
+                  </span>
+                </span>
+                {own ? counter(own, row.onHand, name) : <span className="shrink-0 text-body text-ink tabular-nums">{figureText(row.onHand)}</span>}
+              </div>
+              {!own && row.locations.length > 0 && (
+                <details>
+                  <summary className="cursor-pointer text-caption text-ink-2">{fillWords(w.locationsOf, { name, n: row.locations.length })}</summary>
+                  <ul className="mt-2 flex flex-col gap-2">
+                    {row.locations.map((l) => (
+                      <li key={l.locationId} className="flex items-center justify-between gap-3">
+                        <span className="text-caption text-ink">
+                          {l.name}
+                          {!l.active && <span className="text-muted">{w.inactive}</span>}
+                        </span>
+                        {counter(keyOf(row.variantId, l.locationId), l.onHand, `${name}, ${l.name}`)}
+                      </li>
+                    ))}
+                  </ul>
+                </details>
+              )}
+            </li>
+          );
+        })}
+      </ul>
+      <div className={`${tableShell} max-sm:hidden`}>
         <table className="w-full text-sm">
           <caption className="sr-only">{w.caption}</caption>
           <thead>
@@ -488,6 +553,7 @@ export function InventoryTable({
           </tbody>
         </table>
       </div>
+      </>
       )}
 
       {/* The Basic view saves from one bar (round 7): what changed, why, and Save; the review table stays in Advanced. */}
@@ -520,7 +586,8 @@ export function InventoryTable({
           <p className={hint}>
             {fillWords(t.figureHint, { max: STOCK_MAX.toLocaleString(locale) })} {w.figuresHint}
           </p>
-          <div className="flex flex-wrap items-center gap-3">
+          {/* On a phone the review stays at the bottom of the screen while there is something to review (round 19). */}
+          <div className={`flex flex-wrap items-center gap-3 ${review.length > 0 ? "max-sm:sticky max-sm:bottom-20 max-sm:z-20 max-sm:rounded-pill max-sm:bg-inverse max-sm:p-2 max-sm:shadow-[var(--shadow-float)]" : ""}`}>
             <button type="button" disabled={pending || review.length === 0} onClick={() => setReviewing(true)} className={primary}>
               {w.review}
               {review.length > 0 ? ` (${review.length})` : ""}

@@ -1170,6 +1170,25 @@ function variantsFor(
 
 type PictureUpload = (file: File) => Promise<{ url: string; thumbnailUrl: string } | { problem: string }>;
 
+/**
+ * On a phone, one setting as a row saying what is true, its fields opening under it (round 19, D661); from 640 px the fields show as before.
+ */
+function PhoneFold({ title, sub, change, done, children }: { title: string; sub: string; change: string; done: string; children: React.ReactNode }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <>
+      <button type="button" aria-expanded={open} onClick={() => setOpen((shown) => !shown)} className="flex min-h-14 w-full items-center justify-between gap-3 border-b border-line text-left sm:hidden">
+        <span className="flex min-w-0 flex-col">
+          <span className="text-body text-ink">{title}</span>
+          <span className="text-caption text-ink-2">{sub}</span>
+        </span>
+        <span className="shrink-0 text-sm font-medium text-ink underline underline-offset-2">{open ? done : change}</span>
+      </button>
+      <div className={open ? "max-sm:pt-3" : "max-sm:hidden"}>{children}</div>
+    </>
+  );
+}
+
 function VariantsSection({
   storeSlug,
   product,
@@ -1241,6 +1260,7 @@ function VariantsSection({
 
       {/* Price on request (D431): goods bought once only; the prices below stay, as staff's guide on a quote. */}
       {product.kind === "goods" && product.plans.length === 0 && !product.subscriptionOnly && (
+        <PhoneFold title={w.variants.priceOnRequest} sub={product.priceOnRequest ? w.variants.priceOnRequestOn : w.variants.priceOnRequestOff} change={w.variants.phoneChange} done={w.variants.phoneDone}>
         <label className="mb-4 flex items-start gap-2 text-sm">
           <input
             type="checkbox"
@@ -1253,9 +1273,17 @@ function VariantsSection({
             <span className="text-muted">{w.variants.priceOnRequestHint}</span>
           </span>
         </label>
+        </PhoneFold>
       )}
 
-      <fieldset className="mb-4 flex flex-col gap-2 text-sm" hidden={service}>
+      {!service && (
+      <PhoneFold
+        title={w.variants.delivered}
+        sub={mixed ? w.variants.deliveredMixed : product.delivery === "digital" ? w.variants.digital : w.variants.physical}
+        change={w.variants.phoneChange}
+        done={w.variants.phoneDone}
+      >
+      <fieldset className="mb-4 flex flex-col gap-2 text-sm">
         <legend className="mb-1 font-medium">{w.variants.delivered}</legend>
         <div className="flex flex-wrap gap-2">
           {(
@@ -1300,7 +1328,15 @@ function VariantsSection({
           </label>
         )}
       </fieldset>
+      </PhoneFold>
+      )}
 
+      <PhoneFold
+        title={w.variants.optionsRow}
+        sub={optionsOn && product.options.length > 0 ? product.options.map((o) => `${o.name}: ${o.values.join(", ")}`).join(" · ") : w.variants.optionsNone}
+        change={w.variants.phoneChange}
+        done={w.variants.phoneDone}
+      >
       <label className="mb-4 flex items-center gap-2 text-sm">
         <input
           type="checkbox"
@@ -1381,6 +1417,7 @@ function VariantsSection({
           )}
         </fieldset>
       )}
+      </PhoneFold>
 
       {product.variants.length > 1 && (
         <VariantGridTools
@@ -1512,6 +1549,8 @@ function VariantsSection({
           onChange={(shippingProfileId) => update((p) => ({ ...p, shippingProfileId }))}
         />
       )}
+      <details className="mt-3 text-sm">
+        <summary className="cursor-pointer font-medium text-ink underline underline-offset-2">{w.variants.howItWorks}</summary>
       {context.activeLocations > 1 && !allDigital && (
         <p className="mt-3 text-sm text-muted">
           {w.variants.locationsBefore}{" "}
@@ -1529,6 +1568,7 @@ function VariantsSection({
             : ""}
         {w.variants.pricesNote}
       </p>
+      </details>
     </section>
   );
 }
@@ -1775,6 +1815,11 @@ function VariantRow({
   const digital = variant.delivery !== "physical";
   // Round 4 (D612): on a phone the option's rarer settings open on its own button.
   const [more, setMore] = useState(false);
+  // Round 19 (D661): on a phone a variant is one row (its stock and price) until Change opens its fields.
+  const [open, setOpen] = useState(false);
+  const shut = open ? "" : "max-sm:hidden";
+  const firstPrice = markets[0] ? variant.prices[markets[0].code] : "";
+  const summary = [showStock ? (digital ? r.notNeeded : fillWords(r.inStock, { n: variant.stock })) : null, firstPrice ? `${firstPrice} ${markets[0]?.currency ?? ""}`.trim() : null].filter(Boolean).join(" · ");
   const columns = 3 + Number(showDelivery) + Number(showPeriod) + Number(showStock) + markets.length;
   return (
     <>
@@ -1788,10 +1833,17 @@ function VariantRow({
               upload={upload}
               onChange={(image) => onChange({ image })}
             />
-            {name}
+            <span className="flex min-w-0 flex-1 flex-col">
+              {name}
+              <span className="text-caption text-ink-2 sm:hidden">{summary}</span>
+            </span>
+            <button type="button" aria-expanded={open} onClick={() => setOpen((shown) => !shown)} className="min-h-10 shrink-0 text-sm font-medium text-ink underline underline-offset-2 sm:hidden">
+              {open ? r.done : r.change}
+              <span className="sr-only"> {name}</span>
+            </button>
           </span>
         </th>
-        <td className="py-2 pr-3 max-sm:order-5 max-sm:col-span-2 max-sm:p-0">
+        <td className={`py-2 pr-3 max-sm:order-5 max-sm:col-span-2 max-sm:p-0 ${shut}`}>
           <span className="mb-1 block text-caption text-muted sm:hidden">{w.variants.sku}</span>
           <input
             value={variant.sku}
@@ -1802,7 +1854,7 @@ function VariantRow({
           />
         </td>
         {showDelivery && (
-          <td className="py-2 pr-3 max-sm:order-6 max-sm:col-span-2 max-sm:p-0">
+          <td className={`py-2 pr-3 max-sm:order-6 max-sm:col-span-2 max-sm:p-0 ${shut}`}>
             <select
               value={variant.delivery}
               onChange={(e) => onChange({ delivery: e.target.value as Delivery })}
@@ -1815,7 +1867,7 @@ function VariantRow({
           </td>
         )}
         {showPeriod && (
-          <td className="py-2 pr-3 max-sm:order-6 max-sm:col-span-2 max-sm:p-0">
+          <td className={`py-2 pr-3 max-sm:order-6 max-sm:col-span-2 max-sm:p-0 ${shut}`}>
             <select
               value={variant.rentalPeriod}
               onChange={(e) => onChange({ rentalPeriod: e.target.value as VariantInput["rentalPeriod"] })}
@@ -1829,7 +1881,8 @@ function VariantRow({
           </td>
         )}
         {showStock && (
-          <td className="py-2 pr-3 max-sm:order-2 max-sm:p-0">
+          <td className={`py-2 pr-3 max-sm:order-2 max-sm:p-0 ${shut}`}>
+            <span className="mb-1 block text-caption text-muted sm:hidden">{r.inStockLabel}</span>
             {digital ? (
               <span className="inline-flex min-h-9 items-center text-muted">{r.notNeeded}</span>
             ) : stockHref ? (
@@ -1864,7 +1917,7 @@ function VariantRow({
           </td>
         )}
         {markets.map((market) => (
-          <td key={market.code} className="py-2 pr-3 max-sm:order-4 max-sm:col-span-2 max-sm:p-0">
+          <td key={market.code} className={`py-2 pr-3 max-sm:order-4 max-sm:col-span-2 max-sm:p-0 ${shut}`}>
             <span className="mb-1 block text-caption text-muted sm:hidden">{market.name}</span>
             <input
               inputMode="decimal"
@@ -1881,17 +1934,20 @@ function VariantRow({
             <VatLine typed={variant.prices[market.code] ?? ""} market={market} category={vatCategory} netPrices={netPrices} words={r} />
           </td>
         ))}
-        <td className="py-2 max-sm:order-3 max-sm:self-center max-sm:p-0">
-          <input
-            type="checkbox"
-            checked={variant.active}
-            onChange={(e) => onChange({ active: e.target.checked })}
-            aria-label={fillWords(r.forSale, { name })}
-            className="size-4"
-          />
+        <td className={`py-2 max-sm:order-3 max-sm:self-end max-sm:p-0 ${shut}`}>
+          <label className="flex items-center gap-2 max-sm:min-h-10">
+            <span className="text-caption text-ink-2 sm:hidden">{r.soldLabel}</span>
+            <input
+              type="checkbox"
+              checked={variant.active}
+              onChange={(e) => onChange({ active: e.target.checked })}
+              aria-label={fillWords(r.forSale, { name })}
+              className="size-4"
+            />
+          </label>
         </td>
       </tr>
-      <tr className="border-b border-line max-sm:block max-sm:border-0">
+      <tr className={`border-b border-line max-sm:block max-sm:border-0 ${shut}`}>
         <td colSpan={columns} className="pb-3 max-sm:block max-sm:pt-2 max-sm:pb-0">
           {/* Round 4 (D612): on a phone an option's rarer settings are one press away, behind its own button. */}
           <button type="button" onClick={() => setMore((shown) => !shown)} aria-expanded={more} className="mb-1 flex min-h-10 w-full items-center justify-between rounded-md text-left text-caption text-ink-2 sm:hidden">

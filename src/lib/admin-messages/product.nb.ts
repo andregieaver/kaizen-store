@@ -157,6 +157,14 @@ export const productNb: ProductMessages = {
     uploadFailed: "{name} kunne ikke lastes opp. Prøv igjen.",
   },
   variants: {
+    phoneChange: "Endre",
+    phoneDone: "Ferdig",
+    priceOnRequestOn: "På: kunden spør om pris",
+    priceOnRequestOff: "Av: prisene vises",
+    optionsRow: "Valg",
+    optionsNone: "Ingen: én variant",
+    deliveredMixed: "Ulikt for hver variant",
+    howItWorks: "Slik virker priser og lager",
     priceOnRequest: "Pris på forespørsel",
     priceOnRequestHint:
       "Kundene ser «Pris på forespørsel» i stedet for en pris, og trykker Be om tilbud i stedet for Legg i handlekurv. Prisene under beholdes som en rettesnor når du priser et tilbud; de vises aldri.",
@@ -225,6 +233,11 @@ export const productNb: ProductMessages = {
     nothing: "Fyll ut minst ett felt.",
   },
   row: {
+    inStock: "{n} på lager",
+    inStockLabel: "På lager",
+    soldLabel: "Selges i butikken",
+    change: "Endre",
+    done: "Ferdig",
     moreFor: "Mer for {name}",
     skuFor: "Varenummer for {name}",
     deliveryFor: "Levering for {name}",
