@@ -19,6 +19,9 @@ export type SettingsHubWords = { find: string; findPlaceholder: string; progress
  * what it holds), a strip of how far the essentials are with the next fix as the page's one green button, and every other setting listed
  * by name rather than hidden. A search filters every card and name at once. Drawn by a store's Settings and by Kaizena Flow's own.
  */
+/** On a phone, the group's list is the card (round 23); from 640 px each tile is its own. */
+const PHONE_CARD = "max-sm:rounded-card max-sm:bg-card max-sm:dark:border max-sm:dark:border-line";
+
 export function SettingsHub({
   title,
   lead,
@@ -80,13 +83,14 @@ export function SettingsHub({
 
       {shownGroups.map((group) => (
         <section key={group.heading || "all"} aria-label={group.heading || title} className="flex flex-col gap-2.5">
-          {group.heading && <h2 className="text-title text-ink">{group.heading}</h2>}
-          <ul className="grid gap-3 [grid-template-columns:repeat(auto-fit,minmax(min(260px,100%),1fr))]">
+          {group.heading && <h2 className="text-title text-ink max-sm:px-1 max-sm:text-body-strong max-sm:text-ink-2">{group.heading}</h2>}
+          {/* Round 23 (D688): on a phone a group is one card of rows, not a card each; from 640 px the tiles are as before. */}
+          <ul className={`grid gap-3 [grid-template-columns:repeat(auto-fit,minmax(min(260px,100%),1fr))] max-sm:gap-0 max-sm:divide-y max-sm:divide-line max-sm:px-4 ${PHONE_CARD}`}>
             {group.items.map((card) => {
               const warn = card.state?.tone === "warning";
               return (
                 <li key={card.href}>
-                  <AdminLink href={card.href} className={`${CARD_CLASS} flex h-full items-center gap-3.5 p-4.5 hover:ring-1 hover:ring-edge ${warn ? "ring-1 ring-warning-line" : ""}`}>
+                  <AdminLink href={card.href} className={`sm:rounded-card sm:bg-card sm:dark:border sm:dark:border-line forced-colors:border flex h-full items-center gap-3.5 p-4.5 max-sm:min-h-16 max-sm:px-0 max-sm:py-3 sm:hover:ring-1 sm:hover:ring-edge ${warn ? "sm:ring-1 sm:ring-warning-line" : ""}`}>
                     <span className={`flex size-10 shrink-0 items-center justify-center rounded-pill ${warn ? "bg-warning-soft text-warning-text" : "bg-sunken text-ink-2"}`}>
                       {card.icon && <NavIcon name={card.icon} className="size-[18px]" />}
                     </span>

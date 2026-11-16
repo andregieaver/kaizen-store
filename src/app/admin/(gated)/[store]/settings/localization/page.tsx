@@ -4,7 +4,7 @@ import { ActionForm, SubmitButton } from "@/components/admin/action-form";
 import { fillWords } from "@/lib/admin-fill";
 import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
 import { adminText } from "@/lib/admin-text";
-import { FeatureOffNote } from "@/components/admin/feature-off";
+import { FoldRow } from "@/components/admin/fold-row";
 import { ROUND_STEPS } from "@/lib/currency";
 import { currencyName, languageName, languageOptions } from "@/lib/localization";
 import { fullCatalog, isBuiltIn } from "@/lib/ui-catalog-all";
@@ -19,6 +19,7 @@ import type { Store } from "@/server/stores";
 
 import { LANGUAGE_RULES, OWN_CURRENCY, regionCurrency } from "@/lib/language-rule";
 
+import { switchOnFromPageAction } from "../features/actions";
 import { fetchRatesAction, saveCurrenciesAction, saveLanguagesAction, saveStoreLanguageAction, saveVisitorLanguageAction } from "./actions";
 
 export const metadata: Metadata = { title: "Languages and currencies" };
@@ -61,13 +62,19 @@ export default async function LocalizationPage({ params }: PageProps<"/admin/[st
 
   return (
     <div className="flex flex-col gap-10">
-      <PageHeader title={w.title} description={<Example text={w.description} code="/no-en-eur" />} />
+      {/* Round 23 (D688): what shoppers get in one line; how it all works is folded at the end. */}
+      <PageHeader title={w.title} description={fillWords(w.lead, { language: languageName(main), currencies: [...new Set(markets.map((m) => m.currency))].join(", ") })} />
 
       <section className="flex flex-col gap-4" aria-labelledby="languages">
         <h2 id="languages" className="text-title text-ink">{w.languages}</h2>
-        <p className="text-sm text-muted">{w.languagesText}</p>
+        {languagesOn && <p className="text-sm text-muted">{w.languagesText}</p>}
         {!languagesOn ? (
-          <>
+          <ul className="divide-y divide-line rounded-lg border border-line bg-card px-5">
+            <FoldRow
+              title={w.languageRow}
+              sub={[languageName(main), ...markets.filter((m) => m.ownLocale !== main).map((m) => `${m.name}: ${languageName(m.ownLocale)}`)].join(" · ")}
+              action={owner ? w.change : null}
+            >
             <ActionForm action={saveStoreLanguageAction.bind(null, store.slug)} className="flex flex-col gap-4">
               <div className="flex flex-col gap-1">
                 <label htmlFor="main-language" className="text-sm font-medium">{w.mainLanguage}</label>
@@ -95,8 +102,9 @@ export default async function LocalizationPage({ params }: PageProps<"/admin/[st
               </ul>
               {owner && <div><SubmitButton>{w.saveLanguage}</SubmitButton></div>}
             </ActionForm>
-            <FeatureOffNote storeSlug={store.slug} feature="languages" owner={owner} what={w.moreLanguages} />
-          </>
+            </FoldRow>
+            <OfferMoreRow slug={store.slug} feature="languages" owner={owner} title={w.moreLanguagesRow} sub={w.moreLanguagesSub} words={w} />
+          </ul>
         ) : (
         <ActionForm action={saveLanguagesAction.bind(null, store.slug)} className="flex flex-col gap-4">
           <table className="w-full rounded-panel border border-line bg-card text-left text-sm">
@@ -198,9 +206,18 @@ export default async function LocalizationPage({ params }: PageProps<"/admin/[st
 
       <section className="flex flex-col gap-4" aria-labelledby="currencies">
         <h2 id="currencies" className="text-title text-ink">{w.currencies}</h2>
-        <p className="text-sm text-muted">{w.currenciesText}</p>
+        {currenciesOn && <p className="text-sm text-muted">{w.currenciesText}</p>}
         {!currenciesOn ? (
-          <FeatureOffNote storeSlug={store.slug} feature="currencies" owner={owner} what={w.moreCurrencies} />
+          <ul className="divide-y divide-line rounded-lg border border-line bg-card px-5">
+            <li className="flex min-h-14 items-center justify-between gap-3 py-3">
+              <span className="flex min-w-0 flex-col">
+                <span className="text-body text-ink">{w.countryCurrencyRow}</span>
+                <span className="text-caption text-ink-2">{markets.map((m) => `${m.name}: ${m.currency}`).join(" · ")}</span>
+              </span>
+              <a href={`/admin/${store.slug}/settings/countries`} className="shrink-0 text-sm font-medium text-ink underline underline-offset-2">{w.countriesLink}</a>
+            </li>
+            <OfferMoreRow slug={store.slug} feature="currencies" owner={owner} title={w.moreCurrenciesRow} sub={w.moreCurrenciesSub} words={w} />
+          </ul>
         ) : (
         <>
         <ActionForm action={saveCurrenciesAction.bind(null, store.slug)} className="flex flex-col gap-4">
@@ -279,9 +296,39 @@ export default async function LocalizationPage({ params }: PageProps<"/admin/[st
         </>
         )}
       </section>
+
+      <details className="rounded-lg border border-line bg-card px-5">
+        <summary className="flex min-h-14 cursor-pointer list-none items-center justify-between gap-3 py-3 text-body text-ink [&::-webkit-details-marker]:hidden">
+          {w.howTitle}
+          <span className="text-sm font-medium underline underline-offset-2">{w.read}</span>
+        </summary>
+        <div className="flex flex-col gap-3 pb-5 text-body text-ink-2">
+          <p><Example text={w.description} code="/no-en-eur" /></p>
+          <p>{w.languagesText}</p>
+          <p>{w.currenciesText}</p>
+        </div>
+      </details>
     </div>
   );
 }
+
+/** A feature that is off, offered where it is missed (round 23): the owner switches it on here; anyone else is told who can. */
+function OfferMoreRow({ slug, feature, owner, title, sub, words: w }: { slug: string; feature: "languages" | "currencies"; owner: boolean; title: string; sub: string; words: LocalizationWords }) {
+  return (
+    <li className="flex min-h-14 flex-wrap items-center justify-between gap-3 py-3">
+      <span className="flex min-w-0 flex-col">
+        <span className="text-body text-ink">{title}</span>
+        <span className="text-caption text-ink-2">{owner ? sub : w.ownerSwitches}</span>
+      </span>
+      {owner && (
+        <ActionForm action={switchOnFromPageAction.bind(null, slug, feature)} className="shrink-0">
+          <SubmitButton variant="secondary">{w.offerMore}</SubmitButton>
+        </ActionForm>
+      )}
+    </li>
+  );
+}
+
 
 type LocalizationWords = SettingsMessages["localization"];
 

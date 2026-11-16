@@ -19,6 +19,7 @@ import { getCompany, type StoreLocation } from "@/server/company";
 import { listCountries } from "@/server/stores";
 import { CARD_CLASS, PageHeader } from "@/components/admin/ui";
 import { countWords, fillWords } from "@/lib/admin-fill";
+import { submitClass } from "@/lib/submit-class";
 import { ChevronDown } from "lucide-react";
 import type { SettingsMessages } from "@/lib/admin-messages/settings.en";
 
@@ -63,6 +64,15 @@ export default async function CompanyPage({ params }: PageProps<"/admin/[store]/
   ) : (
     <p className="text-sm text-muted">{w.onlyOwnerBusiness}</p>
   );
+  // Round 23 (D688): the card of what is missing asks only for it; the store name and contact are a row with Change.
+  const missingForm = owner ? (
+    <ActionForm action={saveBusinessAction.bind(null, store.slug)} className="flex flex-col gap-4">
+      <BusinessDetailsFields only={missing} name={store.name} details={store.details} countries={countries} fallbackEmail={member.account.email} w={adminText(lang, "setup").businessFields} />
+      <SubmitButton className={`${submitClass("primary")} min-h-12 w-full font-medium sm:w-auto sm:min-w-56`}>{w.saveBusiness}</SubmitButton>
+    </ActionForm>
+  ) : (
+    <p className="text-sm text-muted">{w.onlyOwnerBusiness}</p>
+  );
   const countryName = countries.find((c) => c.code === store.details.country)?.name ?? store.details.country;
   const businessSummary = [store.details.legalName, store.details.organisationNumber, store.details.postalAddress?.replace(/\s*\n\s*/g, ", "), countryName]
     .filter(Boolean)
@@ -86,20 +96,20 @@ export default async function CompanyPage({ params }: PageProps<"/admin/[store]/
       />
 
       {missing.length > 0 && (
-        <section aria-labelledby="business" className={`${CARD_CLASS} px-6 py-5 ring-[1.5px] ring-warning-line`}>
+        <section aria-labelledby="business" className={`${CARD_CLASS} px-5 py-5 ring-[1.5px] ring-warning-line sm:px-6`}>
           <h2 id="business" className="mb-1 text-title text-ink">{w.fillIn}</h2>
           <p className="mb-4 text-sm text-muted">{fillWords(w.missingList, { list: missing.map((key) => w.fields[key]).join(", ") })}</p>
-          {businessForm}
+          {missingForm}
         </section>
       )}
 
-      <section aria-labelledby="seen" className={`${CARD_CLASS} px-6 py-3`}>
+      <section aria-labelledby="seen" className={`${CARD_CLASS} px-5 py-3 sm:px-6`}>
         <h2 id="seen" className="mt-2 mb-1 text-title text-ink">{w.seen}</h2>
         <ul className="divide-y divide-line">
           <FoldRow
             title={missing.length === 0 ? w.businessRow : w.contactRow}
             sub={[missing.length === 0 ? businessSummary : store.name, store.details.contactEmail || member.account.email].filter(Boolean).join(" · ")}
-            action={missing.length === 0 ? w.change : null}
+            action={owner ? w.change : null}
           >
             {businessForm}
           </FoldRow>
