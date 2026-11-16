@@ -1,18 +1,5 @@
 {
   "v": 1,
-  "model": "gpt-4.1-mini",
-  "tools": "2356af061504",
-  "prompts": {
-    "chat": "2fa82c3c9155",
-    "dream": "bc5ce9e3dc68",
-    "guide": "ccd088fd94f7",
-    "legal": "28b70a7e4169",
-    "rework": "aa7fb73789a2",
-    "manager": "db670ab851a2",
-    "moderation": "ba7f9f4a2579"
-  },
-  "provider": "openai",
-  "recordedAt": "2026-11-16T08:22:37.346Z",
   "cases": [
     {
       "id": "chat-product-text",
@@ -609,5 +596,18 @@
         }
       ]
     }
-  ]
+  ],
+  "model": "gpt-4.1-mini",
+  "tools": "2356af061504",
+  "prompts": {
+    "chat": "2fa82c3c9155",
+    "dream": "bc5ce9e3dc68",
+    "guide": "ccd088fd94f7",
+    "legal": "28b70a7e4169",
+    "rework": "aa7fb73789a2",
+    "manager": "db670ab851a2",
+    "moderation": "ba7f9f4a2579"
+  },
+  "provider": "openai",
+  "recordedAt": "2026-11-16T08:22:37.346Z"
 }
