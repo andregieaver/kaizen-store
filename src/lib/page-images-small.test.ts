@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import type { PageContent, PageRow } from "./page-content";
+import { newPageContent, pageInput, type PageContent, type PageRow } from "./page-content";
 import { backgroundImageUrls, backgroundSources, withSmallCopies } from "./page-images";
 
 /** Background pictures' small copies (the library's 480 px one), for phones and blurred pictures. */
@@ -71,5 +71,57 @@ describe("background pictures' small copies", () => {
     // No small copy, or a picture no larger than one: as it is.
     expect(backgroundSources(big, 6)).toEqual({ src: big.url });
     expect(backgroundSources({ ...image, width: 400 }, 0)).toEqual({ src: big.url });
+  });
+
+  const imageBlock = { id: "i1", type: "image", image: { ...big, alt: "" } } as never;
+  const withImage = () => page([row({ columns: [{ id: "c1", blocks: [imageBlock] }] })]);
+  const imageOf = (content: PageContent) => (content.rows[0].columns[0].blocks[0] as unknown as { image: { small?: string; medium?: string } }).image;
+
+  it("fills the 800 px copy on a row's background and on a picture component, and leaves it out where the library has none", () => {
+    const small = (url: string) => url.replace(".webp", "-480.webp");
+    const medium = (url: string) => url.replace(".webp", "-800.webp");
+    const filled = withSmallCopies(page([row()]), small, medium);
+    const r = filled.rows[0];
+    expect(r.background?.type === "image" && r.background.image.medium).toBe("https://x.test/a-800.webp");
+    const block = withSmallCopies(withImage(), small, medium);
+    expect(imageOf(block)).toMatchObject({ small: "https://x.test/a-480.webp", medium: "https://x.test/a-800.webp" });
+    const noMedium = withSmallCopies(withImage(), small);
+    expect(imageOf(noMedium).small).toBe("https://x.test/a-480.webp");
+    expect(imageOf(noMedium).medium).toBeUndefined();
+    const none = withImage();
+    expect(withSmallCopies(none, () => undefined, () => undefined)).toBe(none);
+  });
+
+  it("fills a Before and after's two pictures, and a medium alone still changes the page", () => {
+    const pictureOf = (name: string) => ({ ...big, url: `https://x.test/${name}.webp`, alt: "" });
+    const ba = { id: "b1", type: "beforeAfter", before: pictureOf("before"), after: pictureOf("after") } as never;
+    const content = page([row({ columns: [{ id: "c1", blocks: [ba] }] })]);
+    const filled = withSmallCopies(content, (url) => url.replace(".webp", "-480.webp"), (url) => url.replace(".webp", "-800.webp"));
+    const got = filled.rows[0].columns[0].blocks[0] as unknown as { before: { small?: string; medium?: string }; after: { medium?: string } };
+    expect(got.before).toMatchObject({ small: "https://x.test/before-480.webp", medium: "https://x.test/before-800.webp" });
+    expect(got.after.medium).toBe("https://x.test/after-800.webp");
+    const only = withSmallCopies(withImage(), () => undefined, (url) => url.replace(".webp", "-800.webp"));
+    expect(only).not.toBe(withImage());
+    expect(imageOf(only)).toMatchObject({ medium: "https://x.test/a-800.webp" });
+    expect(imageOf(only).small).toBeUndefined();
+  });
+
+  it("offers a sharp background's 800 px copy between the other two, only when it is wider than that", () => {
+    const image = { ...big, small: "s.webp", medium: "m.webp" };
+    expect(backgroundSources(image, 0).srcSet).toBe("s.webp 480w, m.webp 800w, https://x.test/a.webp 1600w");
+    expect(backgroundSources(image, 6)).toEqual({ src: "s.webp" });
+    expect(backgroundSources({ ...image, width: 700 }, 0).srcSet).toBe("s.webp 480w, https://x.test/a.webp 700w");
+  });
+
+  it("never saves the small or the middle copy", () => {
+    const content = {
+      ...newPageContent(),
+      title: "Copies",
+      slug: "copies",
+      rows: [{ id: "r1", type: "row", layout: "1", columns: [{ id: "c1", blocks: [{ id: "i1", type: "image", image: { ...big, alt: "x", small: "s.webp", medium: "m.webp" } }] }] }],
+    };
+    const json = JSON.stringify(pageInput.parse(content));
+    expect(json).not.toContain('"medium"');
+    expect(json).not.toContain('"small"');
   });
 });

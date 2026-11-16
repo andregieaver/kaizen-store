@@ -194,6 +194,7 @@ export function PageBlockView({
         <SizedPicture
           url={picture.url}
           small={picture.small}
+          medium={picture.medium}
           sourceWidth={picture.width}
           sizes={fixedSizes(size.width)}
           alt={picture.alt}
@@ -230,6 +231,7 @@ export function PageBlockView({
         <SizedPicture
           url={block.image.url}
           small={block.image.small}
+          medium={block.image.medium}
           sourceWidth={block.image.width}
           sizes={fixedSizes(size.width)}
           alt={block.image.alt}

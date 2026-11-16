@@ -313,8 +313,11 @@ export type Background =
   | { type: "color"; color: Color; opacity?: number }
   | {
       type: "image";
-      /** `small`: the library's 480 px copy, set when the page is read for the site (`withSmallCopies()`), never saved. */
-      image: { url: string; width: number; height: number; small?: string };
+      /**
+       * `small`: the library's 480 px copy, set when the page is read for the site (`withSmallCopies()`), never saved.
+       * `medium`: the library's 800 px copy, set the same way, never saved.
+       */
+      image: { url: string; width: number; height: number; small?: string; medium?: string };
       /** A colour laid over the picture, `opacity` 0–100, so text on it can be read. */
       overlay: { color: Color; opacity: number } | null;
       /** How soft the picture is drawn, in pixels (up to `BLUR_MAX`); none when left out. */
@@ -411,8 +414,11 @@ export type RichTextBlock = PartBase & Bindable & { id: string; type: "richText"
 export type ImageBlock = PartBase & Bindable & {
   id: string;
   type: "image";
-  /** `small`: the library's 480 px copy, set when the page is read for the site (`withSmallCopies()`, D336), never saved. */
-  image: { url: string; width: number; height: number; alt: string; small?: string } | null;
+  /**
+   * `small`: the library's 480 px copy, set when the page is read for the site (`withSmallCopies()`, D336), never saved.
+   * `medium`: the library's 800 px copy, set the same way, never saved.
+   */
+  image: { url: string; width: number; height: number; alt: string; small?: string; medium?: string } | null;
   caption: string;
   /** Where the picture leads when pressed (a web address, a page like /about, #anchor, mailto: or tel:); none for a plain picture. */
   href?: string;
@@ -425,7 +431,7 @@ export type ImageBlock = PartBase & Bindable & {
 };
 
 /** A picture a component shows, as an image block's: uploaded and shrunk in the browser, its description for screen readers. */
-export type BlockPicture = { url: string; width: number; height: number; alt: string; small?: string };
+export type BlockPicture = { url: string; width: number; height: number; alt: string; small?: string; medium?: string };
 /** Where a Before and after's slider starts unless set: the middle. */
 export const BEFORE_AFTER_START = 50;
 export const BEFORE_AFTER_LABEL_MAX = 40;

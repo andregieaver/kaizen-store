@@ -22,34 +22,36 @@ export async function libraryAlts(urls: string[]): Promise<Map<string, LibraryAl
  * when it was uploaded), so a page can offer a phone the small one (`withSmallCopies()`). A picture the library does not hold
  * has neither, and is drawn as it is.
  */
-async function libraryFacts(urls: string[]): Promise<{ alts: Map<string, LibraryAlt>; small: Map<string, string> }> {
+async function libraryFacts(urls: string[]): Promise<{ alts: Map<string, LibraryAlt>; small: Map<string, string>; medium: Map<string, string> }> {
   const wanted = [...new Set(urls.filter(Boolean))];
   const alts = new Map<string, LibraryAlt>();
   const small = new Map<string, string>();
-  if (wanted.length === 0) return { alts, small };
+  const medium = new Map<string, string>();
+  if (wanted.length === 0) return { alts, small, medium };
   const list = sql.join(wanted.map((url) => sql`${url}`), sql`, `);
   const rows = await readDb().execute<Row>(sql`
-    select url, thumbnail_url, alt, alt_translations from commerce.media
+    select url, thumbnail_url, medium_url, alt, alt_translations from commerce.media
     where (url in (${list}) or thumbnail_url in (${list}))
-      and (alt <> '' or alt_translations <> '{}'::jsonb or thumbnail_url is not null)
+      and (alt <> '' or alt_translations <> '{}'::jsonb or thumbnail_url is not null or medium_url is not null)
   `);
   for (const row of rows) {
     if (row.thumbnail_url) small.set(String(row.url), String(row.thumbnail_url));
+    if (row.medium_url) medium.set(String(row.url), String(row.medium_url));
     const translations = (row.alt_translations ?? {}) as Record<string, string>;
     if (!row.alt && Object.keys(translations).length === 0) continue;
     const alt = { alt: String(row.alt ?? ""), translations };
     alts.set(String(row.url), alt);
     if (row.thumbnail_url) alts.set(String(row.thumbnail_url), alt);
   }
-  return { alts, small };
+  return { alts, small, medium };
 }
 
 /**
  * Pages' contents with the library's alt texts where their pictures have none (`withLibraryAlts()`) and their background pictures'
- * small copies (`withSmallCopies()`), in one query.
+ * small and 800 px copies (`withSmallCopies()`), in one query.
  */
 export async function withPageAlts<T extends { content: PageContent }>(pages: T[]): Promise<T[]> {
-  const { alts, small } = await libraryFacts(pages.flatMap((page) => [...pageImageUrls(page.content), ...backgroundImageUrls(page.content)]));
-  if (alts.size === 0 && small.size === 0) return pages;
-  return pages.map((page) => ({ ...page, content: withSmallCopies(withLibraryAlts(page.content, (url) => alts.get(url)), (url) => small.get(url)) }));
+  const { alts, small, medium } = await libraryFacts(pages.flatMap((page) => [...pageImageUrls(page.content), ...backgroundImageUrls(page.content)]));
+  if (alts.size === 0 && small.size === 0 && medium.size === 0) return pages;
+  return pages.map((page) => ({ ...page, content: withSmallCopies(withLibraryAlts(page.content, (url) => alts.get(url)), (url) => small.get(url), (url) => medium.get(url)) }));
 }
