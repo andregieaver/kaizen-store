@@ -532,6 +532,9 @@ version on the right, each drawn at a computer's (1280) or a phone's (390) width
 scrolling inside; with several versions one is chosen at a time. They sit under the draft panel on a draft and under the results on a
 scheduled, running or stopped test; a decided test has none, as the original is then the winner.
 
+A version's changes saved in the builder and not published (D686) are said as such: the checklist and the main button ask for them to be
+published, and the start waits until they are, as visitors are shown a version's published copy.
+
 
 
 - Randomise who is eligible, then compare everyone assigned; never compare people who used a thing with those who did
