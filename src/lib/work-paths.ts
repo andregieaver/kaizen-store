@@ -11,16 +11,3 @@ export const WORK_ROOT = "/admin/account/work";
 export function workBase(storeSlug: string): string {
   return `${WORK_ROOT}/s/${storeSlug}`;
 }
-
-/**
- * Work's old store-level addresses (D122) and where they went (D123), as Next's
- * `redirects` (`next.config.ts`). The first segment must not be `account` or
- * `platform`, or `/admin/account/work` would match `/admin/:store/work` and
- * redirect to itself. A redirect names no data: the page it lands on checks
- * that the person is a member of the store (`requirePermission()`).
- */
-export const LEGACY_WORK_REDIRECTS: readonly { source: string; destination: string; permanent: false }[] = [
-  { source: "/admin/:store((?!account/|platform/)[^/]+)/settings/work", destination: `${WORK_ROOT}/s/:store/settings`, permanent: false },
-  { source: "/admin/:store((?!account/|platform/)[^/]+)/work", destination: `${WORK_ROOT}/s/:store`, permanent: false },
-  { source: "/admin/:store((?!account/|platform/)[^/]+)/work/:path+", destination: `${WORK_ROOT}/s/:store/:path+`, permanent: false },
-];

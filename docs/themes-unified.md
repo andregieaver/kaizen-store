@@ -49,10 +49,10 @@ Nobody chooses the content apart from the look. The server works it out from the
   archive, restore, delete while unused, open its admin, preview it, and the features a new store starts with.
 * **Website → Design** (`/admin/platform/site-design`, `SITE_DESIGN`): Kaizena Flow's own site's installed themes, as D251 to D253 built
   them.
-* The old addresses redirect (`LEGACY_THEME_REDIRECTS` in `src/lib/theme-admin-paths.ts`, used by `next.config.ts`):
-  `/admin/platform/design-profiles/**` and `/admin/platform/store-templates` to the Themes page, a store template's page to its demo
-  store's page, and `/admin/account/design-profiles/{id}/preview` to `/admin/account/themes/{id}/preview`. An id of one of Kaizena
-  Flow's installs at a theme's address (the site's old page) goes on to Design (`designPage()`).
+* The old addresses of design profiles and store templates (`/admin/platform/design-profiles/**`, `/admin/platform/store-templates`,
+  `/admin/account/design-profiles/{id}/preview`) redirected to the Themes page until the redirects were removed on 16 November 2026
+  (bloat review step 0.37). An id of one of Kaizena Flow's installs at a theme's address (the site's old page) goes on to Design
+  (`designPage()`).
 
 ## 4. Words
 

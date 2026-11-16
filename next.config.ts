@@ -5,8 +5,6 @@ import { baseRouteHeaders, oauthRouteHeaders, payRouteHeaders, PUBLIC_FILE_HEADE
 import { storeDomain, storeHosts } from "./src/lib/paths";
 import { siteUrl } from "./src/lib/site";
 import { embedFrameHeaders } from "./src/lib/support-embed";
-import { LEGACY_THEME_REDIRECTS } from "./src/lib/theme-admin-paths";
-import { LEGACY_WORK_REDIRECTS } from "./src/lib/work-paths";
 import { storeHostRoutes } from "./src/lib/store-hosts";
 import { themeHostRoutes, themesHost, themesOrigin } from "./src/lib/theme-host";
 import { docsHost, docsHostRoutes } from "./src/lib/docs-host";
@@ -128,8 +126,7 @@ export default async function config(phase: string): Promise<NextConfig> {
       // Files in public/ with a fixed address are kept a day (`PUBLIC_FILE_HEADERS`).
       ...PUBLIC_FILE_HEADERS,
     ],
-    // Work moved to the owner's level (D123): its old store-level addresses go to the new ones.
-    redirects: async () => [...LEGACY_WORK_REDIRECTS, ...LEGACY_THEME_REDIRECTS, ...themes.redirects, ...docs.redirects, ...routes.redirects],
+    redirects: async () => [...themes.redirects, ...docs.redirects, ...routes.redirects],
     rewrites: async () => ({ beforeFiles: [...themes.rewrites, ...docs.rewrites, ...routes.rewrites], afterFiles: [], fallback: [] }),
   };
 }

@@ -43,14 +43,7 @@ test.afterAll(async () => {
   await source.putAway();
 });
 
-test("the old pages land on the Themes page, which holds the starting content, and the menus name themes only", async ({ page }) => {
-  for (const old of ["/admin/platform/store-templates", "/admin/platform/design-profiles"]) {
-    await page.goto(old);
-    await expect(page, old).toHaveURL(/\/admin\/platform\/themes$/);
-  }
-  await page.goto(`/admin/platform/design-profiles/${presetId}`);
-  await expect(page).toHaveURL(new RegExp(`/admin/platform/themes/${presetId}$`));
-
+test("the Themes page holds the starting content, and the menus name themes only", async ({ page }) => {
   await page.goto("/admin/platform/themes");
   await expect(page.getByRole("heading", { level: 1, name: "Themes" })).toBeVisible();
   const starting = page.getByRole("region", { name: "Starting content" });

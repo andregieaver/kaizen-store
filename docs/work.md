@@ -2238,11 +2238,9 @@ is still the source of truth for the switch. Only the screens moved, and the per
   lock. In the browser `useWorkTimer({ showStore, accountId, serverTimer })` starts, stops and discards against the
   timer's own store (`TimerTarget` and `ClientTimer` carry `storeSlug`/`storeName`), and the bar names the store when the
   person has Work on in more than one. Estimate warnings work across stores unchanged.
-* **Old addresses.** `LEGACY_WORK_REDIRECTS` (`work-paths.ts`, added to `redirects` in `next.config.ts`; temporary,
-  307): `/admin/{store}/work`, `/admin/{store}/work/{path}` and `/admin/{store}/settings/work` lead to
-  `/admin/account/work/s/{store}[/{path}]` (the query string is kept). The first segment excludes `account` and `platform`
-  so `/admin/account/work` does not match `/admin/:store/work` and loop. A redirect names nothing of the store: the target
-  page checks membership. Tested in `work-paths.test.ts` (with Next's own path matcher) and `e2e/work.spec.ts`.
+* **Old addresses.** Work's old store-level addresses (`/admin/{store}/work…` and `/admin/{store}/settings/work`) redirected to the
+  new ones until they were removed on 16 November 2026 (bloat review step 0.37), before the platform opened, while only the team held
+  an old address.
 * **Tests.** PGlite: `commerce.test.ts` (one timer per person and store, across stores with the entry logged to the first
   store, the unique index, the clean-up of timers from before); `work-time.int.test.ts` (a timer started in another store
   stops and logs the first, `getRunningTimer(account)` names the store, a left store hides it); `work-paths.test.ts`;

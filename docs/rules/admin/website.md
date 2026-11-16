@@ -277,7 +277,7 @@ CLAUDE.md keeps one line per rule pointing here; each rule is under that line as
   sign-up, *Create a store* and approving a request send a theme choice only. The platform's admin is one Themes page, a rail
   section of its own beneath Website since D285 (`THEMES_ADMIN`: the themes, the *Starting content* card with set-up, pictures and
   Publish, a theme's Content tab, a demo store's page at `demoStoreHref()`), and Kaizena Flow's own site's installed themes are
-  Website → Design (`SITE_DESIGN`); old addresses redirect (`LEGACY_THEME_REDIRECTS`). Build these links with that module, never
+  Website → Design (`SITE_DESIGN`); the old addresses no longer redirect (removed in bloat review step 0.37). Build these links with that module, never
   by hand; no store template is made from the admin any more.
 
 ## Store templates (D175, D177, `docs/store-templates.md`, `src/lib/store-starters.ts`, `src/server/store-starters.ts`,…
