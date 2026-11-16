@@ -5,7 +5,11 @@ Files that ship or are stored (`README.md` beside this file), part of `docs/audi
 - **Kind:** oversize. **Priority:** P3. **Effort:** S. **Confidence:** medium. **Step:** tolerated.
 - **Second check:** confirmed.
 - **Where:** `next.config.ts:23`, `src/server/document-html.tsx:18`, `src/server/document-readers.test.ts:1`, `node_modules/.pnpm/react-dom@19.3.1_react@19.3.1/node_modules/react-dom/server.node.js`
-- **Evidence:** DOCUMENT_PDF_FILES traces react-dom/** whole (next.config.ts:23). Re-run: four traces carry it, 8.07 MB each; the trace of /api/cron/document-pdfs is 106.8 MB. document-html.tsx loads react-dom/server through Node at run time (lines 18-22). In production server.node.js requires react-dom-server-legacy.node.production.js (0.26 MB) and react-dom-server.node.production.js (0.30 MB); both require react and react-dom, whose index.js requires cjs/react-dom.production.js (7 KB). The rest of the folder is development, profiling, browser, edge and bun builds.
+- **Evidence:** DOCUMENT_PDF_FILES traces react-dom/** whole (next.config.ts:23). Re-run: four traces carry it, 8.07 MB each; the
+  trace of /api/cron/document-pdfs is 106.8 MB. document-html.tsx loads react-dom/server through Node at run time (lines 18-22).
+  In production server.node.js requires react-dom-server-legacy.node.production.js (0.26 MB) and
+  react-dom-server.node.production.js (0.30 MB); both require react and react-dom, whose index.js requires
+  cjs/react-dom.production.js (7 KB). The rest of the folder is development, profiling, browser, edge and bun builds.
 - **Cost today:** About 7.5 MB on each of four traces of 106.8 to 139.8 MB. No effect on anything a person feels was measured. Paid by: The server (the size of the PDF functions).
 - **Saving:** About 7.5 MB per PDF trace (estimate from file sizes), 5 to 7% of those traces.
 - **Risk:** A missed file breaks invoice PDFs in production only, and no local test can see it.

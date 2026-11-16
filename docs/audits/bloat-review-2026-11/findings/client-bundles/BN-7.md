@@ -4,8 +4,19 @@ The built client bundles, by page (`README.md` beside this file), part of `docs/
 
 - **Kind:** eager. **Priority:** P0. **Effort:** S. **Confidence:** high. **Step:** 0.11.
 - **Second check:** confirmed.
-- **Where:** `src/components/admin/work/invoice-readiness.tsx:8`, `src/components/admin/work/invoice-readiness.tsx:26`, `src/components/admin/work/invoice-totals.tsx:5`, `src/components/admin/work/invoice-totals.tsx:28`, `src/lib/work-text.ts:1`, `src/lib/work-text.ts:4`, `src/lib/work-text.ts:11`, `src/components/admin/work/invoice-draft-editor.tsx:43`, `src/components/admin/work/invoice-draft-editor.tsx:44`, `src/components/admin/work/invoice-issue-dialog.tsx:12`, `src/app/admin/(gated)/(owner)/account/work/layout.tsx:22`
-- **Evidence:** /admin/account/work/s/[store]/invoices/[invoiceId] has 4,274,839 bytes of first scripts, the largest of 560 routes; the invoices list beside it has 1,262,262. Its 16 extra chunk files are 3,016,959 bytes; one of them, 3fqt1dd2f0p1k.js, is 1,704,595 bytes (526,861 gzip), is in no other route and holds the word 'Lagre' 548 times: the Norwegian catalogues. ReadinessList and InvoiceTotalsView have no 'use client' line and read their words through lib/work-text.ts (lines 8 and 5), which imports lib/admin-text.ts, a module with 134 catalogue imports (every area, two languages). Two client components import them (invoice-draft-editor.tsx:43 to 44, invoice-issue-dialog.tsx:12), so all of it becomes browser code. work-text.ts keeps the language in React's cache() (line 11), which holds per request on the server only, so in the browser these two parts read English whatever the account's language (read from the code, not run).
+- **Where:** `src/components/admin/work/invoice-readiness.tsx:8`, `src/components/admin/work/invoice-readiness.tsx:26`,
+  `src/components/admin/work/invoice-totals.tsx:5`, `src/components/admin/work/invoice-totals.tsx:28`, `src/lib/work-text.ts:1`,
+  `src/lib/work-text.ts:4`, `src/lib/work-text.ts:11`, `src/components/admin/work/invoice-draft-editor.tsx:43`,
+  `src/components/admin/work/invoice-draft-editor.tsx:44`, `src/components/admin/work/invoice-issue-dialog.tsx:12`,
+  `src/app/admin/(gated)/(owner)/account/work/layout.tsx:22`
+- **Evidence:** /admin/account/work/s/[store]/invoices/[invoiceId] has 4,274,839 bytes of first scripts, the largest of 560
+  routes; the invoices list beside it has 1,262,262. Its 16 extra chunk files are 3,016,959 bytes; one of them, 3fqt1dd2f0p1k.js,
+  is 1,704,595 bytes (526,861 gzip), is in no other route and holds the word 'Lagre' 548 times: the Norwegian catalogues.
+  ReadinessList and InvoiceTotalsView have no 'use client' line and read their words through lib/work-text.ts (lines 8 and 5),
+  which imports lib/admin-text.ts, a module with 134 catalogue imports (every area, two languages). Two client components import
+  them (invoice-draft-editor.tsx:43 to 44, invoice-issue-dialog.tsx:12), so all of it becomes browser code. work-text.ts keeps the
+  language in React's cache() (line 11), which holds per request on the server only, so in the browser these two parts read
+  English whatever the account's language (read from the code, not run).
 - **Cost today:** About 2.9 MB raw more than its sibling screens on each first open of a Work invoice draft; the 1.7 MB chunk alone is 527 KB gzip. Paid by: An owner or accountant using Work's invoices; and the build, which compiles the catalogues a second time for the client.
 - **Saving:** About 2.9 MB raw on that route, to about 1.4 MB, the level of its sibling screens (estimate from the route's 16 extra chunks, 3,016,959 bytes, less the editor's own code).
 - **Risk:** Low. It also corrects the language those two parts show to a Norwegian account. A missed word shows as an empty label on the draft's readiness list, which the Work spec opens.

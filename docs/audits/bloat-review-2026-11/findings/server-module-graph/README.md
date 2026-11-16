@@ -2,7 +2,16 @@
 
 Part of `docs/audits/bloat-review-2026-11.md`, on commit 0bd814c. Read by one reviewer, challenged by a second (who re-opened every citation, re-measured every number and applied the owner's note that the platform is not open yet) and planned by a third. A tick (✓) marks a finding the second reviewer confirmed or corrected; one the planner added has none. Each finding has a file of its own beside this one.
 
-**In short.** One import cycle of 229 files in src/server makes 181 of 268 route handlers, 559 of 562 pages and the proxy each load about 10 MB of server code (the AI manager's tools, the admin's whole text in two languages, the schema, Stripe, sharp): a fat route takes 0.9 to 1.3 s and 97 MB of heap to load cold on this machine against 0.16 to 0.24 s and 26 MB for /api/health, and every instance first pays 0.27 to 0.30 s for a start hook and about 0.09 s to read a 10.4 MB list of server references. None of it depends on what a store uses, so it grows with stores, traffic and the deploy on every push once the platform opens. The cure is a few dozen small import changes, not removed features: one import path takes the visit beacon from 10.4 to 1.9 MB (0.96 MB with the schema and Stripe cuts), the rest take a storefront page from 11.3 to about 3.5 MB, the proxy from 9.2 to 2.4 MB (0.8 MB with its readers split) and 2.2 MB off 384 admin pages (all simulated on the build's own module graph). A scan test and a byte budget must land with them or the next convenient import undoes the work; before opening is the cheapest time, with no live traffic and every cut checkable on the next build.
+**In short.** One import cycle of 229 files in src/server makes 181 of 268 route handlers, 559 of 562 pages and the proxy each
+load about 10 MB of server code (the AI manager's tools, the admin's whole text in two languages, the schema, Stripe, sharp): a
+fat route takes 0.9 to 1.3 s and 97 MB of heap to load cold on this machine against 0.16 to 0.24 s and 26 MB for /api/health, and
+every instance first pays 0.27 to 0.30 s for a start hook and about 0.09 s to read a 10.4 MB list of server references. None of it
+depends on what a store uses, so it grows with stores, traffic and the deploy on every push once the platform opens. The cure is a
+few dozen small import changes, not removed features: one import path takes the visit beacon from 10.4 to 1.9 MB (0.96 MB with the
+schema and Stripe cuts), the rest take a storefront page from 11.3 to about 3.5 MB, the proxy from 9.2 to 2.4 MB (0.8 MB with its
+readers split) and 2.2 MB off 384 admin pages (all simulated on the build's own module graph). A scan test and a byte budget must
+land with them or the next convenient import undoes the work; before opening is the cheapest time, with no live traffic and every
+cut checkable on the next build.
 
 ## Findings
 

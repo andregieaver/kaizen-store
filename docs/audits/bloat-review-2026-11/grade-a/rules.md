@@ -1,6 +1,17 @@
 # Grade A for: The written rules
 
-Part of `docs/audits/bloat-review-2026-11.md`. **Today: D.** D, moved from C by the panel's critic so that the thirteen grades compare. Every session and every subagent loads four times what it needs (44 KB against 11 KB), a search cannot show 52% of the rules or 98% of the decisions, no size is held, and the one test in the area makes the file grow (35% in 12 days). That is the D sentence: every run carries far more than its job needs and nothing holds it. The card kept a C because rules load on demand and a test holds that. The three D areas have sound parts too (the server's tagged caches, the scheduler's ledger), and by ratio this area carries more than the owner's browser, which is a D at 1.8 times. What the card wrote for its C: C, in its lower half. The base is designed and sound: the rules in full sit under 295 unique headings that are read on demand, a test keeps them out of the always-loaded file, 5 of 3,145 cited code names are stale, and no doc reaches a deploy or a CI run. But every session and subagent loads 44 KB where about 10 KB will do, the search tool cannot show 52% of the rules or 98% of the decisions (I repeated the test: a 520-character line comes back as '[Omitted long matching line]'), 5 of 24 merges renumbered a decision, and no size is held while one test adds a line per rule (35% growth in 12 days). It is not a D because the load-on-demand mechanism exists and a test holds it, which the D areas lack; it is not a B because no budget exists and the largest cause is untouched.
+Part of `docs/audits/bloat-review-2026-11.md`. **Today: D.** D, moved from C by the panel's critic so that the thirteen grades
+compare. Every session and every subagent loads four times what it needs (44 KB against 11 KB), a search cannot show 52% of the
+rules or 98% of the decisions, no size is held, and the one test in the area makes the file grow (35% in 12 days). That is the D
+sentence: every run carries far more than its job needs and nothing holds it. The card kept a C because rules load on demand and a
+test holds that. The three D areas have sound parts too (the server's tagged caches, the scheduler's ledger), and by ratio this
+area carries more than the owner's browser, which is a D at 1.8 times. What the card wrote for its C: C, in its lower half. The
+base is designed and sound: the rules in full sit under 295 unique headings that are read on demand, a test keeps them out of the
+always-loaded file, 5 of 3,145 cited code names are stale, and no doc reaches a deploy or a CI run. But every session and subagent
+loads 44 KB where about 10 KB will do, the search tool cannot show 52% of the rules or 98% of the decisions (I repeated the test:
+a 520-character line comes back as '[Omitted long matching line]'), 5 of 24 merges renumbered a decision, and no size is held
+while one test adds a line per rule (35% growth in 12 days). It is not a D because the load-on-demand mechanism exists and a test
+holds it, which the D areas lack; it is not a B because no budget exists and the largest cause is untouched.
 
 **The bar, in a sentence.** A session starts with at most 11 KB of standing rules, finds any rule, decision or tracker row with one search that shows its text, and is never told to read more than 20 KB before it starts. A check on every push, docs-only ones too, holds each size, and a sample of real sessions shows a code change takes in at most 25 KB of rules and docs.
 
@@ -23,9 +34,29 @@ After phase 0: C. After phase 1: C. After phase 2: B. After all phases: A.
 
 **Steps that take it there:** 0.1, 0.40, 0.41, 0.43, 1.1, 1.24, 2.1, 2.40, 2.41, 4.5.
 
-**Can the steps reach an A?** Yes, with two answers. Step 2.1 waits for both halves of your yes: the 295-line feature index out of CLAUDE.md, and the database, e2e, typed-row and AI-eval how-to loaded only when their folders are opened. With the first yes alone the area stops at a B, near 15 KB a session. CLAUDE.md's core is held from the first day by the new step 0.43, and the measured figure (25 KB of rules and docs per code change) is read from the first 20 sessions after steps 2.1 and 2.40, in step 4.5.
+**Can the steps reach an A?** Yes, with two answers. Step 2.1 waits for both halves of your yes: the 295-line feature index out of
+CLAUDE.md, and the database, e2e, typed-row and AI-eval how-to loaded only when their folders are opened. With the first yes alone
+the area stops at a B, near 15 KB a session. CLAUDE.md's core is held from the first day by the new step 0.43, and the measured
+figure (25 KB of rules and docs per code change) is read from the first 20 sessions after steps 2.1 and 2.40, in step 4.5.
 
-**The challenger on the bar.** Kept: the 10,500-byte ceiling for CLAUDE.md. I summed the floor from the file itself: about 7.6 KB of today's 12.6 KB core must stay (workflow, stack, commands, the never-sentences, Homer and Lisa, the platform rule), plus 1.3 KB of map, 0.8 KB of look-ups and 0.2 KB of pointers, about 9.9 KB. The bar is 6% above that, and a strict reviewer would not ask for less: a tighter ceiling would push out a sentence that guards an action. Also kept: no line over 500 characters, the 4,000-byte cap on a new rule or decision, the ignore files, 0 stale names, 0 renumbering merges, 20 KB for a standing read, 25 KB per code change. Tightened in five places. (1) The load counts what loads, not one file: CLAUDE.md, whatever it imports with @, and any rule file without a paths list. One import line can load 160 KB while CLAUDE.md's own size stands still. The same test holds the ten never-sentences in, so a hard ceiling cannot squeeze one out. (2) Each rule file's list of headings is at most 10,000 bytes (8,301 today, website.md with 84 rules). Once the index leaves CLAUDE.md, that list is the index, and nothing held it. (3) The name check covers paths, functions, components, constants and SQL names. 'A name followed by a bracket' would miss two of today's five (CustomFieldsView, TemplatesPreview). (4) Merges also count hand-resolved conflicts in the decisions index (6 of 24 today), and after the split a renumbering is counted as a renamed file, not by words in a merge subject. (5) No instruction tells a session to read a whole tracker. This plan has 134 steps, so its table could reach 40 KB at 300 characters a row, twice the 20 KB bar. Loosened in two places, both stated. docs/site-design.md is 35.9 KB and is the input for a new page of Kaizena Flow's own site: it is a named exception to the 20 KB rule. The file-list tool does not read ignore files (I tested it), so the bar on history is for content searches. Not measurable as written: the sample of 20 sessions. A cloud session's transcript lives in its own container, and this machine holds exactly one. A step must give the figure a source. The steward's checks on tools I could repeat all held: the search tool honours a per-folder ignore file and still finds a named folder.
+**The challenger on the bar.** Kept: the 10,500-byte ceiling for CLAUDE.md. I summed the floor from the file itself: about 7.6 KB
+of today's 12.6 KB core must stay (workflow, stack, commands, the never-sentences, Homer and Lisa, the platform rule), plus 1.3 KB
+of map, 0.8 KB of look-ups and 0.2 KB of pointers, about 9.9 KB. The bar is 6% above that, and a strict reviewer would not ask for
+less: a tighter ceiling would push out a sentence that guards an action. Also kept: no line over 500 characters, the 4,000-byte
+cap on a new rule or decision, the ignore files, 0 stale names, 0 renumbering merges, 20 KB for a standing read, 25 KB per code
+change. Tightened in five places. (1) The load counts what loads, not one file: CLAUDE.md, whatever it imports with @, and any
+rule file without a paths list. One import line can load 160 KB while CLAUDE.md's own size stands still. The same test holds the
+ten never-sentences in, so a hard ceiling cannot squeeze one out. (2) Each rule file's list of headings is at most 10,000 bytes
+(8,301 today, website.md with 84 rules). Once the index leaves CLAUDE.md, that list is the index, and nothing held it. (3) The
+name check covers paths, functions, components, constants and SQL names. 'A name followed by a bracket' would miss two of today's
+five (CustomFieldsView, TemplatesPreview). (4) Merges also count hand-resolved conflicts in the decisions index (6 of 24 today),
+and after the split a renumbering is counted as a renamed file, not by words in a merge subject. (5) No instruction tells a
+session to read a whole tracker. This plan has 134 steps, so its table could reach 40 KB at 300 characters a row, twice the 20 KB
+bar. Loosened in two places, both stated. docs/site-design.md is 35.9 KB and is the input for a new page of Kaizena Flow's own
+site: it is a named exception to the 20 KB rule. The file-list tool does not read ignore files (I tested it), so the bar on
+history is for content searches. Not measurable as written: the sample of 20 sessions. A cloud session's transcript lives in its
+own container, and this machine holds exactly one. A step must give the figure a source. The steward's checks on tools I could
+repeat all held: the search tool honours a per-folder ignore file and still finds a named folder.
 
 ## What the challenger found missing, and how it was settled
 

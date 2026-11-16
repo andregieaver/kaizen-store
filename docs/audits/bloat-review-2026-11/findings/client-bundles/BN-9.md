@@ -4,8 +4,21 @@ The built client bundles, by page (`README.md` beside this file), part of `docs/
 
 - **Kind:** eager. **Priority:** P1. **Effort:** M. **Confidence:** medium. **Step:** 2.9.
 - **Second check:** confirmed.
-- **Where:** `src/components/role-page.tsx:6`, `src/components/role-page.tsx:55`, `src/components/store-part-section.tsx:3`, `src/components/store-part-section.tsx:65`, `src/components/store-part-section.tsx:97`, `src/app/s/[store]/[market]/term-listing.tsx:124`, `src/app/s/[store]/[market]/search/page.tsx:42`, `src/components/product-parts.tsx:1`, `src/components/shop-notes.tsx:1`, `src/app/s/[store]/[market]/cart/cart-contents.tsx:9`, `src/app/s/[store]/[market]/cart/cart-contents.tsx:67`, `src/lib/store-parts.ts:341`, `src/lib/pay-routes.graph.test.ts:114`, `docs/performance.md:103`
-- **Evidence:** Twelve storefront routes have 785,613 to 785,994 bytes of first scripts against 683,529 to 696,168 for 42 others: account, cart, category, tag, search, checkout, cookies, deliveries, order, subscription, wishlist and the product page. Two causes, both read in the code. (1) RolePage imports StorePartSection (role-page.tsx:6), whose one switch imports every working page's sections (store-part-section.tsx:3 to 47) and draws nothing unless the part belongs to the route (line 65). So a category page has 19 client roots a store's home does not, and search, which passes no route at all (search/page.tsx:42), still loads the set. (2) The product page does not use RolePage: product-parts.tsx line 1 imports the basket notes from shop-notes.tsx, whose line 1 imports cartView from cart/cart-contents.tsx, the module that also imports the checkout button, the quantity control, the discount and gift card forms and the gift box (lines 9 to 61). Simulated on the built chunks: a category page without the roots it cannot draw is 73 to 94 KB lighter (the skeptic); the product page without the cart's five forms is 22,259 bytes lighter.
+- **Where:** `src/components/role-page.tsx:6`, `src/components/role-page.tsx:55`, `src/components/store-part-section.tsx:3`,
+  `src/components/store-part-section.tsx:65`, `src/components/store-part-section.tsx:97`,
+  `src/app/s/[store]/[market]/term-listing.tsx:124`, `src/app/s/[store]/[market]/search/page.tsx:42`,
+  `src/components/product-parts.tsx:1`, `src/components/shop-notes.tsx:1`, `src/app/s/[store]/[market]/cart/cart-contents.tsx:9`,
+  `src/app/s/[store]/[market]/cart/cart-contents.tsx:67`, `src/lib/store-parts.ts:341`, `src/lib/pay-routes.graph.test.ts:114`,
+  `docs/performance.md:103`
+- **Evidence:** Twelve storefront routes have 785,613 to 785,994 bytes of first scripts against 683,529 to 696,168 for 42 others:
+  account, cart, category, tag, search, checkout, cookies, deliveries, order, subscription, wishlist and the product page. Two
+  causes, both read in the code. (1) RolePage imports StorePartSection (role-page.tsx:6), whose one switch imports every working
+  page's sections (store-part-section.tsx:3 to 47) and draws nothing unless the part belongs to the route (line 65). So a category
+  page has 19 client roots a store's home does not, and search, which passes no route at all (search/page.tsx:42), still loads the
+  set. (2) The product page does not use RolePage: product-parts.tsx line 1 imports the basket notes from shop-notes.tsx, whose
+  line 1 imports cartView from cart/cart-contents.tsx, the module that also imports the checkout button, the quantity control, the
+  discount and gift card forms and the gift box (lines 9 to 61). Simulated on the built chunks: a category page without the roots
+  it cannot draw is 73 to 94 KB lighter (the skeptic); the product page without the cart's five forms is 22,259 bytes lighter.
 - **Cost today:** About 96 KB raw (30 KB gzip) more than a store's home on each first view of a category, tag, search or wishlist page, and 22 KB raw on every product page. Paid by: A shopper's browser on listing and product pages, on the first visit to each store (each store's host has its own cache).
 - **Saving:** Simulated on the real chunks: 22 KB raw on every product page from step 1; 73 to 94 KB raw (up to 30 KB gzip) on category, tag and search pages from steps 2 to 5; less on the cart, checkout, account, order, wishlist and cookies pages, which keep their own part. For a shopper who goes on to the cart the bytes come later.
 - **Risk:** Low for step 1 (a file move). Low to medium for steps 2 to 5: a part left out of a route's file draws nothing on an owner's built working page; the new scan test and e2e/page-roles.spec.ts catch it. An import cycle between term-listing.tsx and its parts file shows at the type check; split the wrapper from the listing if so.
@@ -13,7 +26,11 @@ The built client bundles, by page (`README.md` beside this file), part of `docs/
 
 ## The fix
 
-1. New server file src/app/s/[store]/[market]/cart/cart-view.ts starting with import 'server-only'. Move cartView(), loadCartView() and the types CartView and Filled there from cart-contents.tsx (line 63 on) with the imports they use and no component. cart-contents.tsx imports them from './cart-view'; the perRequest key stays 'cart:{storeId}:{market}', so the cart's pieces and the notes still share one read. src/components/shop-notes.tsx line 1 imports cartView from the new file. This alone takes the cart's forms off the product page.
+1. New server file src/app/s/[store]/[market]/cart/cart-view.ts starting with import 'server-only'. Move cartView(),
+   loadCartView() and the types CartView and Filled there from cart-contents.tsx (line 63 on) with the imports they use and no
+   component. cart-contents.tsx imports them from './cart-view'; the perRequest key stays 'cart:{storeId}:{market}', so the cart's
+   pieces and the notes still share one read. src/components/shop-notes.tsx line 1 imports cartView from the new file. This alone
+   takes the cart's forms off the product page.
 2. New server file src/components/store-part-frame.tsx with no section imports: storePartDrawer(draw) returns a StorePartDrawer (the type in page-article.tsx) that keeps today's checks in today's order (place.route, drawsOn(block.part, route.part), place.owner, the Suspense with the same fallback, storeAndMarket(), requirementMet(store, shopPartFeature(part)) or shopPartAfterSale(part)) and then calls draw({ part, store, market, route, query, m, holdsTerms, holdsGift }).
 3. One small server module beside each working route's page, each a switch holding only its own cases from store-part-section.tsx lines 97 to 185: cart (cart, the cart_ pieces, cart_upsell, the two notes), checkout (checkout, its pieces, cart_upsell, the two notes), order, account (account, sign_in), wishlist, subscription, deliveries, cookies, private, and one beside term-listing.tsx (category, tag, the two notes).
 4. src/components/role-page.tsx: remove the import at line 6; take a prop storePart and hand it on at line 55. Each of the eleven callers passes its own drawer; search/page.tsx passes none.
@@ -31,4 +48,8 @@ The built client bundles, by page (`README.md` beside this file), part of `docs/
 - Rule docs/performance.md lines 38 to 51: what a visitor presses at once stays in the page's first scripts. Kept: each form stays in its own route's scripts; nothing here is loaded lazily.
 - e2e/performance.spec.ts line 41: the product page's budget falls; add a category page to the budgets (BN-11).
 
-**Notes:** Extended by this pass: the report named the listing routes; the product page is the twelfth route with the same bytes and reaches the cart's forms by a different import, which step 1 cuts. Step 1 is P0 on its own and a prerequisite of the rest (the category and tag pages draw the basket notes). Not proposed: lazy stand-ins for the booking pickers and the gift card form on plain products (about 19 KB); they are what a shopper presses at once, the reason behind the written rule. Before opening is the cheap time: no owner has built working pages to re-test.
+**Notes:** Extended by this pass: the report named the listing routes; the product page is the twelfth route with the same bytes
+and reaches the cart's forms by a different import, which step 1 cuts. Step 1 is P0 on its own and a prerequisite of the rest (the
+category and tag pages draw the basket notes). Not proposed: lazy stand-ins for the booking pickers and the gift card form on
+plain products (about 19 KB); they are what a shopper presses at once, the reason behind the written rule. Before opening is the
+cheap time: no owner has built working pages to re-test.

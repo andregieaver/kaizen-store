@@ -2,7 +2,13 @@
 
 > **Where the build differs from this plan (updated 23 September 2026).** The Supabase project was created in **eu-west-1 (Ireland)**, not eu-central-1, so Vercel functions are pinned to **`dub1` (Dublin)** instead of `fra1` to sit next to the database. Both are in the EU. The skeleton is a single Next.js app rather than a Turborepo monorepo; split it into packages when a second deployable (for example the MCP server) needs to share domain code.
 
-**Bottom line:** A high-converting, AI-native EU store in September 2026 is mostly a well-built conventional store, with AI added only where it is grounded in live data. The best evidence for conversion is still about the basics: showing the full cost early, guest checkout, fast pages, the shopper's own language, pickup points, and above all local payment methods. In Stripe's randomised holdback tests, adding iDEAL lifted conversion 39% and adding BLIK lifted it 46%. The AI features with the lowest risk and widest reach are hybrid search and content generated offline, because both return only real products. A conversational assistant is worth building, but every public "chat users convert 2–4x more" figure compares self-selected users with non-users. It should launch behind a randomised holdout and has to earn its place.
+**Bottom line:** A high-converting, AI-native EU store in September 2026 is mostly a well-built conventional store, with AI added
+only where it is grounded in live data. The best evidence for conversion is still about the basics: showing the full cost early,
+guest checkout, fast pages, the shopper's own language, pickup points, and above all local payment methods. In Stripe's randomised
+holdback tests, adding iDEAL lifted conversion 39% and adding BLIK lifted it 46%. The AI features with the lowest risk and widest
+reach are hybrid search and content generated offline, because both return only real products. A conversational assistant is worth
+building, but every public "chat users convert 2–4x more" figure compares self-selected users with non-users. It should launch
+behind a randomised holdout and has to earn its place.
 
 The agent protocols (ACP, UCP, Stripe's Agentic Commerce Suite) can be implemented directly today. As of September 2026, though, every in-assistant checkout programme found is US-only or gated. When Walmart ran checkout inside ChatGPT, it converted at about a third of the rate of click-outs. For an EU merchant the right move now is product feeds, a read-only MCP server and a checkout model shaped like UCP, not in-chat checkout.
 
@@ -14,13 +20,27 @@ The recommended stack is:
 
 The commerce core should be built lean. Whether to borrow Medusa modules for promotions, returns and order edits is an explicit decision in Phase 0.
 
-EU law now shapes the data model directly. The withdrawal button has applied since 19 June 2026 and AI Act Art. 50 chatbot disclosure since 2 August 2026. The ban on generic green claims applies from 27 September 2026, and the Omnibus 30-day price rule, the GPSR listing fields and the European Accessibility Act already apply. The biggest undecided input is where the seller is established and where it ships from. That choice decides the whole VAT and customs architecture, including a €3-per-item customs duty on non-EU parcels that has applied since 1 July 2026.
+EU law now shapes the data model directly. The withdrawal button has applied since 19 June 2026 and AI Act Art. 50 chatbot
+disclosure since 2 August 2026. The ban on generic green claims applies from 27 September 2026, and the Omnibus 30-day price rule,
+the GPSR listing fields and the European Accessibility Act already apply. The biggest undecided input is where the seller is
+established and where it ships from. That choice decides the whole VAT and customs architecture, including a €3-per-item customs
+duty on non-EU parcels that has applied since 1 July 2026.
 
 *Evidence labels used in this report: **[IND]** independent measurement, academic study or court ruling. **[RCT-VEN]** a randomised test run by a vendor. **[RET]** retailer self-report. **[VEN]** vendor claim or platform aggregate. **[SEC]** secondary or aggregator source that could not be verified. **[LEGAL]** a researcher's reading of EU legal text, to be checked by counsel. **[EST]** an engineering or statistical estimate from the research notes, not a measurement.*
 
 ## Conversion is won by five unglamorous levers that AI cannot replace
 
-The baseline is sobering. Contentsquare's 2026 panel covers 99 billion sessions across more than 6,000 sites. In it, returning visitors convert at **2.9%** and new visitors at **1.7%**. Mobile carries **69.9% of traffic**, yet desktop converts **74% better** [VEN, largest panel] ([Contentsquare](https://contentsquare.com/guides/digital-experience-benchmark/conversions/)). Baymard's meta-average cart abandonment rate is **70.22%** across 50 studies. Its survey ranks the fixable causes as extra costs (40%), slow delivery (20%), distrust of the site with card details (19%), forced account creation (18%) and an overlong checkout (17%) ([Baymard](https://baymard.com/lists/cart-abandonment-rate)). The survey is US-only, but the causes line up with EU evidence. Baymard's checkout benchmark covers leading US and EU sites. It finds **62%** don't make guest checkout prominent, **48%** show a delivery speed but not a date, and **94%** lack adaptive error messages ([Baymard Checkout UX](https://baymard.com/blog/current-state-of-checkout-ux)). Baymard's often-quoted **35% "recoverable" lift** from better checkout design comes from a vendor that sells the research. It assumes a jump from current practice straight to best practice, so treat it as a ceiling rather than a forecast.
+The baseline is sobering. Contentsquare's 2026 panel covers 99 billion sessions across more than 6,000 sites. In it, returning
+visitors convert at **2.9%** and new visitors at **1.7%**. Mobile carries **69.9% of traffic**, yet desktop converts **74%
+better** [VEN, largest panel] ([Contentsquare](https://contentsquare.com/guides/digital-experience-benchmark/conversions/)).
+Baymard's meta-average cart abandonment rate is **70.22%** across 50 studies. Its survey ranks the fixable causes as extra costs
+(40%), slow delivery (20%), distrust of the site with card details (19%), forced account creation (18%) and an overlong checkout
+(17%) ([Baymard](https://baymard.com/lists/cart-abandonment-rate)). The survey is US-only, but the causes line up with EU
+evidence. Baymard's checkout benchmark covers leading US and EU sites. It finds **62%** don't make guest checkout
+prominent, **48%** show a delivery speed but not a date, and **94%** lack adaptive error messages ([Baymard Checkout
+UX](https://baymard.com/blog/current-state-of-checkout-ux)). Baymard's often-quoted **35% "recoverable" lift** from better
+checkout design comes from a vendor that sells the research. It assumes a jump from current practice straight to best practice, so
+treat it as a ceiling rather than a forecast.
 
 Payments are the EU-specific lever with the best evidence. Stripe ran holdback experiments across more than 50 methods. Showing at least one relevant method beyond cards raised conversion by **7.4%** and revenue by **12%** on average. Individual results were **iDEAL +39%**, **BLIK +46%**, **Apple Pay +22.3%** and **SEPA Direct Debit +12%** [RCT-VEN] ([Stripe](https://stripe.com/blog/testing-the-conversion-impact-of-50-plus-global-payment-methods)). The European payment mix is fragmented:
 - **Euro area overall:** cards are only **48%** of online payments ([ECB SPACE 2024](https://www.ecb.europa.eu/stats/ecb_surveys/space/html/ecb.space2024~19d46f0f17.en.html)).
@@ -33,7 +53,11 @@ Payments are the EU-specific lever with the best evidence. Stripe ran holdback e
 Four other levers complete the baseline:
 - **Speed.** Deloitte's Google-commissioned study found a **0.1 s** mobile speed gain went with **+8.4%** retail conversion. It is observational and sponsor-funded ([web.dev](https://web.dev/case-studies/milliseconds-make-millions)), so plan for low single-digit gains. The Core Web Vitals "good" thresholds (LCP ≤ 2.5 s, INP ≤ 200 ms, CLS ≤ 0.1 at the 75th percentile) are the right exit criteria ([web.dev](https://web.dev/articles/vitals)).
 - **Language.** CSA Research surveyed 8,709 consumers in 29 countries. 76% prefer product information in their own language, and 40% never buy from sites in other languages. The survey is from 2020 ([CSA Research](https://csa-research.com/l/media/Consumers-Prefer-their-Own-Language)).
-- **Delivery options.** 77% of Polish online shoppers chose lockers as their primary delivery in 2025. Out-of-home delivery takes 58% of B2C parcels in the Nordics and 49% in Benelux ([Cross-Border Magazine](https://cross-border-magazine.com/parcel-lockers-in-europe-2025/); [ShippyPro](https://www.shippypro.com/blog/en/out-of-home-delivery-market-study)). About 60% of cross-border shoppers name returns as their biggest barrier [SEC] ([nShift](https://nshift.com/blog/cross-border-ecommerce-post-checkout-experience)).
+- **Delivery options.** 77% of Polish online shoppers chose lockers as their primary delivery in 2025. Out-of-home delivery takes
+  58% of B2C parcels in the Nordics and 49% in Benelux ([Cross-Border
+  Magazine](https://cross-border-magazine.com/parcel-lockers-in-europe-2025/);
+  [ShippyPro](https://www.shippypro.com/blog/en/out-of-home-delivery-market-study)). About 60% of cross-border shoppers name
+  returns as their biggest barrier [SEC] ([nShift](https://nshift.com/blog/cross-border-ecommerce-post-checkout-experience)).
 - **Reviews.** Spiegel's finding is old (2017) but still the best available. Five reviews gave **+270%** purchase likelihood over none, and purchase likelihood peaks at 4.0–4.7 stars ([Spiegel Research Center](https://spiegel.medill.northwestern.edu/how-online-reviews-influence-sales/)).
 
 Retention flows add durable revenue. Klaviyo's abandoned-cart flows average a 3.33% placed-order rate [VEN] ([Klaviyo](https://www.klaviyo.com/blog/abandoned-cart-benchmarks)). A later secondary figure of 2.68% conflicts with this, but both show the flow is worth building early.
@@ -70,13 +94,21 @@ The assistant evidence is loud but weak:
 | Assisted visitors convert at 9.84% vs 2.47% ([Alhena](https://alhena.ai/blog/psychology-ai-shopping-conversational-commerce/)); 12.3% vs 3.1% ([HelloRep](https://www.hellorep.ai/blog/the-future-of-ai-in-ecommerce-40-statistics-on-conversational-ai-agents-for-2025)) | [VEN] | Pure selection bias: people who open a chat are already high-intent. |
 | Anthropic "Claude Commerce Agents" (2 Sep 2026): carts up to 35% larger, ~60% higher completion ([Claude blog](https://claude.com/blog/claude-for-commerce-agents)) | [VEN] | Vendor claim with no published method. |
 
-Two more facts shrink expectations. Typical chat-widget engagement is **about 1% of visitors**, and around 6% with proactive prompts [VEN] ([Alhena](https://alhena.ai/blog/smart-nudges-proactive-ai-engagement-ecommerce/)). NN/g's usability work found that chat forces users into costly rounds of re-prompting [IND, 2023] ([Experientia summary](https://blog.experientia.com/nielsen-norman-group-on-the-user-experience-of-chatbots/)). Together these argue for putting AI into surfaces shoppers already use: the search bar, "ask about this product" on the product detail page (PDP), and guided finders. A floating widget alone is not enough.
+Two more facts shrink expectations. Typical chat-widget engagement is **about 1% of visitors**, and around 6% with proactive
+prompts [VEN] ([Alhena](https://alhena.ai/blog/smart-nudges-proactive-ai-engagement-ecommerce/)). NN/g's usability work found that
+chat forces users into costly rounds of re-prompting [IND, 2023] ([Experientia
+summary](https://blog.experientia.com/nielsen-norman-group-on-the-user-experience-of-chatbots/)). Together these argue for putting
+AI into surfaces shoppers already use: the search bar, "ask about this product" on the product detail page (PDP), and guided
+finders. A floating widget alone is not enough.
 
 The failure modes are well evidenced and independent:
 - **Capability.** ShoppingBench found GPT-4.1 succeeds on **under 50%** of realistic multi-constraint shopping tasks ([arXiv 2508.04266](https://arxiv.org/html/2508.04266v1)).
 - **Manipulation.** Microsoft's Magentic Marketplace showed agents are manipulable by prompt injection and fake social proof. They show a 10–30x first-proposal bias, and their quality degrades as they are shown more results ([arXiv 2510.25779](https://arxiv.org/abs/2510.25779)).
 - **Liability.** *Moffatt v Air Canada* (2024) held the business liable for its chatbot's misstatements and rejected the argument that the bot was a separate entity. It is a persuasive precedent only, from a Canadian tribunal ([ABA](https://www.americanbar.org/groups/business_law/resources/business-law-today/2024-february/bc-tribunal-confirms-companies-remain-liable-information-provided-ai-chatbot/)).
-- **Automation backlash.** Klarna reversed its heavy service automation after quality complaints ([CX Dive](https://www.customerexperiencedive.com/news/klarna-reinvests-human-talent-customer-service-AI-chatbot/747586/)). Gartner's August 2026 survey found **87%** of customers demand access to a human [IND survey] ([Gartner](https://www.gartner.com/en/newsroom/press-releases/2026-08-04-gartner-survey-finds-87-percent-of-customers-say-companies-using-genai-for-customer-service-must-provide-access-to-a-human-agent0)).
+- **Automation backlash.** Klarna reversed its heavy service automation after quality complaints ([CX
+  Dive](https://www.customerexperiencedive.com/news/klarna-reinvests-human-talent-customer-service-AI-chatbot/747586/)). Gartner's
+  August 2026 survey found **87%** of customers demand access to a human [IND survey]
+  ([Gartner](https://www.gartner.com/en/newsroom/press-releases/2026-08-04-gartner-survey-finds-87-percent-of-customers-say-companies-using-genai-for-customer-service-must-provide-access-to-a-human-agent0)).
 
 The earlier WordPress plugin work established grounding patterns that carry over unchanged to a from-scratch build:
 - **Only cite what a tool returned.** The model may only reference product IDs and URLs that a tool call returned. Everything else is discarded, and answers flagged ungrounded become a refusal.
@@ -91,7 +123,16 @@ Every policy statement (withdrawal rights, the two-year legal guarantee, returns
 - **LLM06 (excessive agency):** tools are read-only by default, and add-to-cart takes only `variantId` and `qty`, then re-prices on the server.
 - **LLM10 (unbounded consumption):** rate limits, a step cap and per-conversation token budgets.
 
-**Offline AI content is the safest early win**, even though no conversion data exists for it. This covers attribute extraction and normalisation, translation, FAQ blocks, and review summaries drawn only from verified purchases. Amazon uses the same verified-purchase restriction as an anti-manipulation control ([GeekWire](https://www.geekwire.com/2023/amazon-rolls-out-ai-generated-summaries-of-customer-reviews/)). The content is human-approved, adds no runtime cost or latency, and cleans the product data that search, feeds and the assistant all depend on. For post-purchase questions, commercial per-resolution pricing gives a cost ceiling for a self-built bot: Intercom Fin charges $0.99 per resolution [VEN] ([Fin](https://fin.ai/learn/ai-customer-service-agent-pricing-comparison)). Virtual try-on has only vendor evidence, such as "+94% conversion" ([StyTrix](https://www.stytrix.com/blog/ai-virtual-try-on-reshaping-fashion-ecommerce-2026)). It should wait for the category decision and then be bought from a vendor, not built.
+**Offline AI content is the safest early win**, even though no conversion data exists for it. This covers attribute extraction and
+normalisation, translation, FAQ blocks, and review summaries drawn only from verified purchases. Amazon uses the same
+verified-purchase restriction as an anti-manipulation control
+([GeekWire](https://www.geekwire.com/2023/amazon-rolls-out-ai-generated-summaries-of-customer-reviews/)). The content is
+human-approved, adds no runtime cost or latency, and cleans the product data that search, feeds and the assistant all depend on.
+For post-purchase questions, commercial per-resolution pricing gives a cost ceiling for a self-built bot: Intercom Fin charges
+$0.99 per resolution [VEN] ([Fin](https://fin.ai/learn/ai-customer-service-agent-pricing-comparison)). Virtual try-on has only
+vendor evidence, such as "+94% conversion"
+([StyTrix](https://www.stytrix.com/blog/ai-virtual-try-on-reshaping-fashion-ecommerce-2026)). It should wait for the category
+decision and then be bought from a vendor, not built.
 
 ## Agent protocols are open to implement, but their EU distribution is still closed
 
@@ -107,9 +148,28 @@ The agent layer splits into specifications, which any merchant can implement, an
 | **Klarna Agentic Product Protocol** | Open discovery feed: 100M+ products across 12 markets ([Klarna docs](https://docs.klarna.com/acquirer/klarna/other-products/klarna-search/klarna-agentic-product-protocol/)). | A candidate channel if Klarna is offered; onboarding terms unverified. |
 | **Visa Trusted Agent Protocol (TAP) / Mastercard Agent Pay / Web Bot Auth** | Visa went live with agentic transactions with 30+ European issuers on 2 Jul 2026 ([Visa](https://www.visa.co.uk/about-visa/newsroom/press-releases.3457328.html)). All schemes converge on RFC 9421 signatures ([Visa TAP](https://github.com/visa/trusted-agent-protocol); [Cloudflare](https://blog.cloudflare.com/secure-agentic-commerce/)). Vercel verifies Web Bot Auth at the edge and exposes verified-bot identity through BotID ([Vercel](https://vercel.com/changelog/vercels-bot-verification-now-supports-web-bot-auth); [BotID](https://vercel.com/docs/botid/verified-bots)). | Little code needed. Don't CAPTCHA signed agents; allow verified bots on cart and checkout. |
 
-**Two numbers show why in-chat checkout is premature.** Walmart's EVP said ChatGPT in-chat checkout converted at about **one-third** the rate of click-outs to Walmart.com [SEC] ([Stellagent](https://stellagent.ai/insights/openai-shopping-agent-strategy-pivot)). Meanwhile, AI-referred visits that land on the merchant's own site converted **60% better** than other traffic in US retail in July 2026 [IND panel, US] ([Digital Commerce 360 on Adobe](https://www.digitalcommerce360.com/2026/08/19/adobe-ai-referral-traffic-data-july-2026/)). That conflicts with Contentsquare's global panel, where AI-referred traffic converts at **1.3%** against 2.8% for paid search ([Contentsquare](https://contentsquare.com/guides/digital-experience-benchmark/conversions/)). The populations and definitions differ, and no EU retail AI-referral conversion benchmark exists. Volume is small either way. ChatGPT referrals were **0.32% of all website traffic** in May 2026, growing 42.7% month-on-month in the EU ([SE Ranking](https://seranking.com/blog/chatgpt-referral-traffic-may-2026/)).
+**Two numbers show why in-chat checkout is premature.** Walmart's EVP said ChatGPT in-chat checkout converted at
+about **one-third** the rate of click-outs to Walmart.com [SEC]
+([Stellagent](https://stellagent.ai/insights/openai-shopping-agent-strategy-pivot)). Meanwhile, AI-referred visits that land on
+the merchant's own site converted **60% better** than other traffic in US retail in July 2026 [IND panel, US] ([Digital Commerce
+360 on Adobe](https://www.digitalcommerce360.com/2026/08/19/adobe-ai-referral-traffic-data-july-2026/)). That conflicts with
+Contentsquare's global panel, where AI-referred traffic converts at **1.3%** against 2.8% for paid search
+([Contentsquare](https://contentsquare.com/guides/digital-experience-benchmark/conversions/)). The populations and definitions
+differ, and no EU retail AI-referral conversion benchmark exists. Volume is small either way. ChatGPT referrals were **0.32% of
+all website traffic** in May 2026, growing 42.7% month-on-month in the EU ([SE
+Ranking](https://seranking.com/blog/chatgpt-referral-traffic-may-2026/)).
 
-Discoverability now runs mainly through feeds. Tracked ChatGPT product picks using feed retrieval reportedly rose to about 65% by September 2026 [SEC] ([Relevant Audience on Profound](https://www.relevantaudience.com/ecommerce-marketing/chatgpt-shopping-product-feeds-profound-research/)). A controlled Ahrefs test found **adding schema produced no significant AI-citation uplift** ([Ahrefs](https://ahrefs.com/blog/schema-ai-citations)). Schema is still needed for Google rich results and Merchant Center. Crawler policy should explicitly allow the search and user-triggered fetchers: OAI-SearchBot, ChatGPT-User, Claude-SearchBot, Claude-User, PerplexityBot, Perplexity-User, Googlebot and Bingbot. Blocking training tokens such as GPTBot, ClaudeBot or Google-Extended is a business choice with no documented effect on AI search inclusion ([OpenAI crawlers](https://developers.openai.com/api/docs/bots); [Google](https://developers.google.com/crawling/docs/crawlers-fetchers/google-common-crawlers)). Prices must be server-rendered, because user-triggered fetchers read raw HTML.
+Discoverability now runs mainly through feeds. Tracked ChatGPT product picks using feed retrieval reportedly rose to about 65% by
+September 2026 [SEC] ([Relevant Audience on
+Profound](https://www.relevantaudience.com/ecommerce-marketing/chatgpt-shopping-product-feeds-profound-research/)). A controlled
+Ahrefs test found **adding schema produced no significant AI-citation uplift**
+([Ahrefs](https://ahrefs.com/blog/schema-ai-citations)). Schema is still needed for Google rich results and Merchant Center.
+Crawler policy should explicitly allow the search and user-triggered fetchers: OAI-SearchBot, ChatGPT-User, Claude-SearchBot,
+Claude-User, PerplexityBot, Perplexity-User, Googlebot and Bingbot. Blocking training tokens such as GPTBot, ClaudeBot or
+Google-Extended is a business choice with no documented effect on AI search inclusion ([OpenAI
+crawlers](https://developers.openai.com/api/docs/bots);
+[Google](https://developers.google.com/crawling/docs/crawlers-fetchers/google-common-crawlers)). Prices must be server-rendered,
+because user-triggered fetchers read raw HTML.
 
 ## A lean TypeScript stack, pinned to Frankfurt, with the costly parts integrated
 
@@ -161,7 +221,12 @@ Carts, catalogue, checkout orchestration and the AI layer are comparatively chea
 | Claude Haiku 4.5 ([Claude pricing](https://platform.claude.com/docs/en/about-claude/pricing)) | $0.028 | $280 |
 | GPT-6 Sol / Claude Sonnet 5 | $0.05–0.06 | $560 |
 
-The Gemini figure is unreliable: an aggregator quotes Vertex EU pricing for Gemini 3.8 Flash at $1.65 / $8.25 per 1M tokens, which **conflicts** with the Developer API promotional price and must be verified ([Requesty](https://www.requesty.ai/models/vertex/gemini-3.8-flash-eu)). Even premium models cost pennies per session. Fluid compute's Active CPU pricing doesn't bill the time spent waiting on the LLM ([Vercel](https://vercel.com/blog/introducing-active-cpu-pricing-for-fluid-compute)). Model choice should therefore follow tool-calling accuracy and latency in your own evals.
+The Gemini figure is unreliable: an aggregator quotes Vertex EU pricing for Gemini 3.8 Flash at $1.65 / $8.25 per 1M tokens,
+which **conflicts** with the Developer API promotional price and must be verified
+([Requesty](https://www.requesty.ai/models/vertex/gemini-3.8-flash-eu)). Even premium models cost pennies per session. Fluid
+compute's Active CPU pricing doesn't bill the time spent waiting on the LLM
+([Vercel](https://vercel.com/blog/introducing-active-cpu-pricing-for-fluid-compute)). Model choice should therefore follow
+tool-calling accuracy and latency in your own evals.
 
 ### EU data residency is a per-vendor design, not a checkbox
 
@@ -181,7 +246,11 @@ A single rule makes this manageable: keep a vendor residency register from Phase
 
 ## Where the seller is established decides the tax architecture
 
-**VAT depends on establishment and ship-from location more than on anything in the code.** The build must price, tax and report per destination country from day one. EU B2C price rules require the final VAT-inclusive price and unit prices [LEGAL] ([Price Indication Directive](https://eur-lex.europa.eu/eli/dir/1998/6/oj/eng)). A single EUR price with "VAT calculated at checkout" therefore doesn't comply. The store must resolve the customer's country before rendering a price. In Next.js that means caching product-page shells per market (root params) rather than globally.
+**VAT depends on establishment and ship-from location more than on anything in the code.** The build must price, tax and report
+per destination country from day one. EU B2C price rules require the final VAT-inclusive price and unit prices [LEGAL] ([Price
+Indication Directive](https://eur-lex.europa.eu/eli/dir/1998/6/oj/eng)). A single EUR price with "VAT calculated at checkout"
+therefore doesn't comply. The store must resolve the customer's country before rendering a price. In Next.js that means caching
+product-page shells per market (root params) rather than globally.
 
 Country detection may only *suggest* a locale. The Geo-blocking Regulation forbids forced redirects and discrimination between cards issued in different member states [LEGAL] ([Reg. 2018/302](https://eur-lex.europa.eu/eli/reg/2018/302/oj/eng)). The pricing engine should support two modes. In gross-price-fixed mode one gross price holds across the eurozone and margin absorbs VAT rates of 17–27%. In net-price-fixed mode the gross price varies by country.
 
@@ -255,7 +324,13 @@ Dilution makes this harder still. If 8% of visitors engage and engagers get a ge
 - pre-register Bayesian or sequential decision rules in GrowthBook
 - or accept a looser α and say so explicitly
 
-Consent determines who can be measured. Server-side, cookieless assignment avoids the ePrivacy consent requirement, although a GDPR lawful basis is still needed ([Convert](https://www.convert.com/blog/privacy/analytics-and-a-b-testing-cookies-only-after-consent-in-europe/)). The practical design assigns variants on the server, keyed to a logged-in ID or an identifier the store already needs, evaluated in server code rather than middleware. **Whether reusing the cart or session token for experiment assignment counts as "strictly necessary" is a legal question for counsel.** If the answer is no, experiments cover only consenting visitors, and consent rates in each country shrink the samples above.
+Consent determines who can be measured. Server-side, cookieless assignment avoids the ePrivacy consent requirement, although a
+GDPR lawful basis is still needed
+([Convert](https://www.convert.com/blog/privacy/analytics-and-a-b-testing-cookies-only-after-consent-in-europe/)). The practical
+design assigns variants on the server, keyed to a logged-in ID or an identifier the store already needs, evaluated in server code
+rather than middleware. **Whether reusing the cart or session token for experiment assignment counts as "strictly necessary" is a
+legal question for counsel.** If the answer is no, experiments cover only consenting visitors, and consent rates in each country
+shrink the samples above.
 
 AI quality needs its own evaluation layer ([Hamel Husain evals FAQ](https://hamel.dev/blog/posts/evals-faq/)):
 - **Build from real failures.** Start with error analysis of real traces, then encode recurring failures as binary pass/fail checks.
@@ -364,7 +439,11 @@ The research changes the usual framing of an "AI-native" store. The AI features 
 - per-country compliant pricing
 - a checkout model shaped like the emerging agent protocols
 
-Built this way, the same domain services serve the storefront, hybrid search, the assistant, the feeds and the MCP server. That lets the store switch on agent checkout as a mapping exercise rather than a rebuild once EU distribution opens. The assistant is then an experiment with a known cost of pennies per session and an unknown benefit, and a randomised holdout, not vendor dashboards, decides whether it stays. The binding constraints are not model quality. They are traffic for statistical power, national payment coverage, the tax consequences of establishment, and EU consumer law that now reaches into the database schema.
+Built this way, the same domain services serve the storefront, hybrid search, the assistant, the feeds and the MCP server. That
+lets the store switch on agent checkout as a mapping exercise rather than a rebuild once EU distribution opens. The assistant is
+then an experiment with a known cost of pennies per session and an unknown benefit, and a randomised holdout, not vendor
+dashboards, decides whether it stays. The binding constraints are not model quality. They are traffic for statistical power,
+national payment coverage, the tax consequences of establishment, and EU consumer law that now reaches into the database schema.
 
 | Open decision | Options | What it changes | Needed by |
 |---|---|---|---|

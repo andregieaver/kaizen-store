@@ -62,7 +62,11 @@ The owner's page is made to be watched, not only waited on. While a run goes it 
   editor), the pages with their state (building, built, live) and a link to each, the legal pages and the first goals.
 - **When ready:** *Your store is ready*, with *See your store*, *Edit the front page* and *See the products*.
 
-Once the website is published the sketch gives way to the real front page, drawn in the store's live theme as the site draws it (D422), which is what the owner looks at and changes at the end of stage 1. On a phone it comes first, then the timeline. A test run (a drill's, whose store belongs to the test address) is watched the same way from Platform → AI: its line in the scorecard opens `/admin/platform/ai/dream/{run}`, read only, with no links into the store's admin and none of the owner's buttons; a real owner's run is not shown there (`testDreamRun()`). Everything shown is read from the store's own rows made since the run began
+Once the website is published the sketch gives way to the real front page, drawn in the store's live theme as the site draws it
+(D422), which is what the owner looks at and changes at the end of stage 1. On a phone it comes first, then the timeline. A test
+run (a drill's, whose store belongs to the test address) is watched the same way from Platform → AI: its line in the scorecard
+opens `/admin/platform/ai/dream/{run}`, read only, with no links into the store's admin and none of the owner's buttons; a real
+owner's run is not shown there (`testDreamRun()`). Everything shown is read from the store's own rows made since the run began
 (`src/server/dream-showcase.ts`); every sentence is the code's own words, so nothing on the page is a model's account of what it did.
 
 ## The workflow

@@ -1,6 +1,11 @@
 # Grade A for: The product's surface
 
-Part of `docs/audits/bloat-review-2026-11.md`. **Today: C.** The base is sound and part of it is held: one switch registry kept in step with the navigation and the AI tools by tests, a new store starts with the shop alone and 8 rows of its own, and almost every scheduled job is one statement for the whole platform. But a store pays per view for features it does not use in six known places (the cart works the basket out twice), an AI manager round carries 161,661 characters whatever is switched on, three jobs have two engines, and 1 of 14 surface counts has a budget. Real waste on a sound base, most of it not held: a C. Not a D, because each cost is small in itself and only the cart multiplies one.
+Part of `docs/audits/bloat-review-2026-11.md`. **Today: C.** The base is sound and part of it is held: one switch registry kept in
+step with the navigation and the AI tools by tests, a new store starts with the shop alone and 8 rows of its own, and almost every
+scheduled job is one statement for the whole platform. But a store pays per view for features it does not use in six known places
+(the cart works the basket out twice), an AI manager round carries 161,661 characters whatever is switched on, three jobs have two
+engines, and 1 of 14 surface counts has a budget. Real waste on a sound base, most of it not held: a C. Not a D, because each cost
+is small in itself and only the cart multiplies one.
 
 **The bar, in a sentence.** A store that uses only the shop sends no statement, makes no call, gets no scheduled work and carries no AI tool for a feature it has off, from the front page to a paid order, and a test walks that road and fails on the next one. Every count of the product's size is held, and nothing is built twice unless the owner chose it in writing.
 
@@ -24,7 +29,31 @@ After phase 0: C. After phase 1: C. After phase 2: B. After all phases: A.
 
 **Can the steps reach an A?** Yes, with the same answer as the AI area: the 17 tools load on demand (step 2.36). Step 1.18 must at least hold the fourteen counts, and for steps 3.10, 3.11 and 3.12 either answer reaches the bar once it is written down. No new work was needed here beyond the placed order's ceilings (new step 2.48, shared with the database): three done-whens were tightened and seven steps joined the ladder.
 
-**The challenger on the bar.** The steward's grade and six measures stand; I changed how four are stated and added one. TIGHTENED. (1) The cart: 'about 10' was an estimate from reading, so the bar is now a number, at most 12 statements for a guest's filled cart, set by the first counted run and only falling; checkout is in the bar too (at most one sum per view, none for a credits panel the store never draws), because the steward's target named the cart page only. (2) The places: the unit is now the round trip, not the table name. The steward's rule ('no statement names a table of a switched-off feature') needs a list of tables per switch that no step makes, cannot see features without a switch (checkout rules, gift messages, search rules: 53 of 110 links have none), and would fail the folded reads that steps 2.18 and 2.32 build on purpose. The bar is an exact list of tables per page that may only shrink, plus a count per page, with search and the owner's Home in the walk. I count 6 places, not 5: the wishlist call on every store page (12 of 12 in m/routes.md) is the same fault and step 0.15 closes it. (3) The counts: tables are 486, not 481. I counted 486 CREATE TABLE in the baseline migration and 481 in src/db/schema.ts; five vector tables are made in custom migrations, so a budget that reads schema.ts would not see the next one. The idle-cost line gains 'per cold start', and the budget must also fail when a count falls and the baseline is not lowered. (4) The AI round: 50,000 and 70,000 characters, the AI area's stricter bar, not 52,000 and 80,000; one area cannot pass what another fails. LOOSENED. '0 statements for a switched-off feature' keeps one stated exception: the gift cards on a cart (1 statement), because cards already sold stay usable with the switch off. A probe of an unused feature's table inside a statement that runs anyway is allowed and listed; forbidding it would cost more code than it saves time. ADDED. Measure 7, what a new store and a paid order write for features that are off: the steward had it as a tolerance without a number. KEPT. 14 counts held, no engine built twice that nobody chose, the idle tick equal for 1 and 20 stores. NOT ADDED: what a feature adds to a cold start and to the build. Those are real, but the server and build areas hold them (steps 1.8, 1.20, 1.21). MEASURABLE? None of the checks exists today: the repo has no statement counter, no surface budget and no server budget. Each is made by a named step (1.9, 1.10, 1.12, 1.18, 1.19). The cart's and the triggers' figures are lower bounds from reading; nothing has been run against a database. AMENDED BY THE PANEL'S CRITIC, so that one thing has one number in every area: 6: what an AI manager round carries: The AI card's numbers: 34,000 with no page and no question, 56,000 for any first round with the question drawn; 12 store tools when no area is asked; the cached share read over ai_manager and analytics_question. 2: places where a store pays per view: a product at most 2 (3 with producer schemes, 4 with price breaks), a search at most 10. tolerance on scheduled work: 0: the same statements for 1 store and for 20 with every feature on.
+**The challenger on the bar.** The steward's grade and six measures stand; I changed how four are stated and added one. TIGHTENED.
+(1) The cart: 'about 10' was an estimate from reading, so the bar is now a number, at most 12 statements for a guest's filled
+cart, set by the first counted run and only falling; checkout is in the bar too (at most one sum per view, none for a credits
+panel the store never draws), because the steward's target named the cart page only. (2) The places: the unit is now the round
+trip, not the table name. The steward's rule ('no statement names a table of a switched-off feature') needs a list of tables per
+switch that no step makes, cannot see features without a switch (checkout rules, gift messages, search rules: 53 of 110 links have
+none), and would fail the folded reads that steps 2.18 and 2.32 build on purpose. The bar is an exact list of tables per page that
+may only shrink, plus a count per page, with search and the owner's Home in the walk. I count 6 places, not 5: the wishlist call
+on every store page (12 of 12 in m/routes.md) is the same fault and step 0.15 closes it. (3) The counts: tables are 486, not 481.
+I counted 486 CREATE TABLE in the baseline migration and 481 in src/db/schema.ts; five vector tables are made in custom
+migrations, so a budget that reads schema.ts would not see the next one. The idle-cost line gains 'per cold start', and the budget
+must also fail when a count falls and the baseline is not lowered. (4) The AI round: 50,000 and 70,000 characters, the AI area's
+stricter bar, not 52,000 and 80,000; one area cannot pass what another fails. LOOSENED. '0 statements for a switched-off feature'
+keeps one stated exception: the gift cards on a cart (1 statement), because cards already sold stay usable with the switch off. A
+probe of an unused feature's table inside a statement that runs anyway is allowed and listed; forbidding it would cost more code
+than it saves time. ADDED. Measure 7, what a new store and a paid order write for features that are off: the steward had it as a
+tolerance without a number. KEPT. 14 counts held, no engine built twice that nobody chose, the idle tick equal for 1 and 20
+stores. NOT ADDED: what a feature adds to a cold start and to the build. Those are real, but the server and build areas hold them
+(steps 1.8, 1.20, 1.21). MEASURABLE? None of the checks exists today: the repo has no statement counter, no surface budget and no
+server budget. Each is made by a named step (1.9, 1.10, 1.12, 1.18, 1.19). The cart's and the triggers' figures are lower bounds
+from reading; nothing has been run against a database. AMENDED BY THE PANEL'S CRITIC, so that one thing has one number in every
+area: 6: what an AI manager round carries: The AI card's numbers: 34,000 with no page and no question, 56,000 for any first round
+with the question drawn; 12 store tools when no area is asked; the cached share read over ai_manager and analytics_question. 2:
+places where a store pays per view: a product at most 2 (3 with producer schemes, 4 with price breaks), a search at most 10.
+tolerance on scheduled work: 0: the same statements for 1 store and for 20 with every feature on.
 
 ## What the challenger found missing, and how it was settled
 

@@ -5,7 +5,12 @@ Copied code (`README.md` beside this file), part of `docs/audits/bloat-review-20
 - **Kind:** duplicate. **Priority:** P2. **Effort:** S. **Confidence:** high. **Step:** 3.15.
 - **Second check:** corrected.
 - **Where:** `src/server/redirect-tools.ts:31-33`, `src/server/owner-tool-error.ts:1-2`, `src/server/customer-import.ts:104-107`, `src/server/privacy-erasure.ts:366`, `src/lib/experiments.ts:127`, `src/lib/admin-api.ts:116`, `src/server/exchanges.ts:394`, `src/server/work-time.ts:57`, `src/app/admin/(gated)/[store]/settings/shipping/actions.ts:39`, `src/server/owner-tools.ts:369`
-- **Evidence:** helpers.mjs (second check): 84 helpers are declared with identical text in three or more files (412 declarations, 576 lines beyond one copy); 169 more in exactly two files (377 lines). My counts today: `const fail = (message: string): never` in 43 server files, each of which already imports OwnerToolError from owner-tool-error.ts (two lines long, exports only the class); isUuid declared 23 times in 23 files in three spellings; isUniqueViolation exported once (privacy-erasure.ts:366) and declared 9 times in 9 files; adminLink 19 times (13 identical); mainLocale 10 times (8 identical). Most of the repeated helpers are one line long.
+- **Evidence:** helpers.mjs (second check): 84 helpers are declared with identical text in three or more files (412 declarations,
+  576 lines beyond one copy); 169 more in exactly two files (377 lines). My counts today: `const fail = (message: string): never`
+  in 43 server files, each of which already imports OwnerToolError from owner-tool-error.ts (two lines long, exports only the
+  class); isUuid declared 23 times in 23 files in three spellings; isUniqueViolation exported once (privacy-erasure.ts:366) and
+  declared 9 times in 9 files; adminLink 19 times (13 identical); mainLocale 10 times (8 identical). Most of the repeated helpers
+  are one line long.
 - **Cost today:** 953 lines gross beyond one copy each, but most are one-liners; the real cost is three spellings of 'is this a uuid' and of 'is this a unique violation'. Paid by: An agent's session and correctness where two spellings disagree; the build hardly at all.
 - **Saving:** About 300 to 500 lines net (estimate): 126 from fail, about 30 from isUniqueViolation, the rest from multi-line helpers; 953 is the gross bound before the import lines that replace the copies.
 - **Risk:** Low: the bodies are identical. Where isUuid's spellings differ (a regex against z.uuid()), a value one accepted and the other refused would change; pick the regex and run the tests of the files that used zod's.

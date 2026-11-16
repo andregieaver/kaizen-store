@@ -5,7 +5,12 @@ Server functions: size, cold start, per-request overhead (`README.md` beside thi
 - **Kind:** eager. **Priority:** P0. **Effort:** S. **Confidence:** high. **Step:** 0.4.
 - **Second check:** confirmed.
 - **Where:** `src/db/client.ts:11`, `src/db/client.ts:31`, `src/db/client.ts:78`, `src/db/schema.ts (19,614 lines, 481 tables)`, `drizzle.config.ts:7`, `docs/audits/code-review-2026-11.md:116`, `docs/audits/code-review-2026-11.md:268`, `docs/audits/code-review-2026-11.md:484`
-- **Evidence:** src/db/client.ts is the only non-test importer of schema.ts (searched) and passes it to drizzle(); drizzle-kit reads the file by path for migrations. No code calls the query builder or a relational query (searched for db().select, insert, update, delete and .query.*.find*: none). Built, six files under .next/server hold the table definitions (rg -l -F '.table("theme_schedules"' .next/server -g '*.js' counts 6). The verified report timed the module: 600 KB of JS, 75 to 114 ms to evaluate and 7.32 MB of heap, evaluated twice per instance (once in the start hook's chunk, once in the route's); not re-run. On my graph the schema also brings 47 src/lib files into every importer of the client (client.ts reaches 49 files; 2 without it).
+- **Evidence:** src/db/client.ts is the only non-test importer of schema.ts (searched) and passes it to drizzle(); drizzle-kit
+  reads the file by path for migrations. No code calls the query builder or a relational query (searched for db().select, insert,
+  update, delete and .query.*.find*: none). Built, six files under .next/server hold the table definitions (rg -l -F
+  '.table("theme_schedules"' .next/server -g '*.js' counts 6). The verified report timed the module: 600 KB of JS, 75 to 114 ms to
+  evaluate and 7.32 MB of heap, evaluated twice per instance (once in the start hook's chunk, once in the route's); not re-run. On
+  my graph the schema also brings 47 src/lib files into every importer of the client (client.ts reaches 49 files; 2 without it).
 - **Cost today:** 75 to 114 ms and 7.3 MB per copy per cold start, and 0.6 MB of JS in every function that touches the database. Paid by: Every cold start; the server's memory.
 - **Saving:** Measured by the verified report: about 75 to 114 ms and 7.3 MB per copy per cold start; /api/health's own start (159 to 163 ms) falls by about half. It also removes 47 src/lib files from the reach of every database route.
 - **Risk:** Low: nothing reads db().query and no module but client.ts can name a table object. It would be noticed by the type check at once.

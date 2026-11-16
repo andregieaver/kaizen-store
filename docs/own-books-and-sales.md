@@ -194,7 +194,13 @@ For the pilot it runs beside Tripletex: a daily comparison, per account and peri
 client we have (`GET /ledger/posting` [docs, Tripletex's spec]); a difference is a line in *Needs you* with both sides. Opening balances
 for a store moving off Tripletex or Fiken are read from their APIs at the switch; from anywhere else, a SAF-T import [U].
 
-*Pilot exit:* three consecutive months where our ledger and Tripletex agree to the øre on every account Kaizena Flow posts to. *Built (D478): the journal, its chart and its rules; the store's documents, Work's payments, the shop's payments and refunds and Stripe's payouts with their fees posted as they happen (in another currency at their own rates, with exchange differences); Settings → Books with what waits, the trial balance, the profit and loss, the balance sheet, VAT by code and term, the journal and entries by hand (the opening balance among them); and the daily comparison with Tripletex, document by document. Still to come: gift cards and store credit spent, disputes, money in another currency, opening balances read from Tripletex or Fiken, and a difference as a line in Needs you.*
+*Pilot exit:* three consecutive months where our ledger and Tripletex agree to the øre on every account Kaizena Flow posts
+to. *Built (D478): the journal, its chart and its rules; the store's documents, Work's payments, the shop's payments and refunds
+and Stripe's payouts with their fees posted as they happen (in another currency at their own rates, with exchange differences);
+Settings → Books with what waits, the trial balance, the profit and loss, the balance sheet, VAT by code and term, the journal and
+entries by hand (the opening balance among them); and the daily comparison with Tripletex, document by document. Still to come:
+gift cards and store credit spent, disputes, money in another currency, opening balances read from Tripletex or Fiken, and a
+difference as a line in Needs you.*
 
 **B3. Purchases.** (Step 1 built, D490: a purchase on the bank's statement posted with its receipt as the voucher; step 2, D491: a photo of the receipt read by the model into the form; step 3, D492: suppliers' invoices posted as they come and paid from the bank's statement; step 4, D493: a bill's PDF or photo read by the model into the form.) Supplier invoices in by Peppol (B1's connection), by email to a per-store address (D332's inbound), or uploaded or
 photographed; an EHF's amounts are the document's, a PDF's are read by the model (D163) into a draft a person approves. A supplier
@@ -231,7 +237,12 @@ through the provider) later.
 Not a reason to change banks: the platform must read DNB for other owners whatever Human Web does, and the pilot is the place to find
 out how well it can.
 
-**B5. Reports to the authorities, and the year.** (Step 1 built, D496: each term's return computed from the ledger as Skatteetaten's form asks, due day, the return as Skatteetaten's XML validated against its schema, and the comparison with Tripletex code by code and with Tripletex's status of the term; filing waits for the sign-in with Skatteetaten. Step 2 built, D497: the SAF-T Financial file of a year, validated against Skatteetaten's schemas v1.30 and v1.40, each account under a code of the business statement by our own mapping, the customers and suppliers named on their lines.) The VAT return through Skatteetaten's API (built from B2, validated by their
+**B5. Reports to the authorities, and the year.** (Step 1 built, D496: each term's return computed from the ledger as
+Skatteetaten's form asks, due day, the return as Skatteetaten's XML validated against its schema, and the comparison with
+Tripletex code by code and with Tripletex's status of the term; filing waits for the sign-in with Skatteetaten. Step 2 built,
+D497: the SAF-T Financial file of a year, validated against Skatteetaten's schemas v1.30 and v1.40, each account under a code of
+the business statement by our own mapping, the customers and suppliers named on their lines.) The VAT return through
+Skatteetaten's API (built from B2, validated by their
 validation API, signed in by the person with ID-porten in 2026's way, a *systembruker* when Skatteetaten offers it); a corrected return
 when one is needed (a new complete return). SAF-T Financial export. Year-end: closing entries, simple depreciation, accruals, the figures
 for the annual accounts and the business's tax return [U: what can be submitted by API for an AS, what is filed by hand from our

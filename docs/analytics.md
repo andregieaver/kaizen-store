@@ -296,11 +296,23 @@ visits the person's carts were made in.
 
 The definitions of **Staff-made order**, **Custom item**, **Custom price** and **Drafts waiting for payment** are in the table above. Where they are implemented, once each:
 
-- `FROM_CHECKOUT` and `STAFF_MADE` (`src/server/analytics-sql.ts`) are the one pair of fragments that tell a shopper's order from a staff-made one. `Totals.checkoutOrders` (`analytics-totals.ts`, read by `derive()` for the conversion rate), `SeriesPoint.checkoutOrders` and `DailyPoint.checkoutOrders` (the alerts' conversion window) carry it; every other figure still reads all paid orders. The Traffic page's device, market and landing tables take `FROM_CHECKOUT` orders and name the staff-made ones apart (`TrafficReport.staffOrders`, one note); the channel table has the row `STAFF_CHANNEL` (`analytics-traffic.ts`: no sessions, no conversion, no spend, left out of the blended conversion, the CAC rule and the diagnosis's channel split).
+- `FROM_CHECKOUT` and `STAFF_MADE` (`src/server/analytics-sql.ts`) are the one pair of fragments that tell a shopper's order from
+  a staff-made one. `Totals.checkoutOrders` (`analytics-totals.ts`, read by `derive()` for the conversion rate),
+  `SeriesPoint.checkoutOrders` and `DailyPoint.checkoutOrders` (the alerts' conversion window) carry it; every other figure still
+  reads all paid orders. The Traffic page's device, market and landing tables take `FROM_CHECKOUT` orders and name the staff-made
+  ones apart (`TrafficReport.staffOrders`, one note); the channel table has the row `STAFF_CHANNEL` (`analytics-traffic.ts`: no
+  sessions, no conversion, no spend, left out of the blended conversion, the CAC rule and the diagnosis's channel split).
 - A custom item's cost is not known: the four places that decide a line's cost is known (`analytics-totals.ts`, `analytics-traffic-data.ts`, `analytics-products-data.ts`, `analytics-customers-data.ts`) read `(variant is not null or custom) and unit cost is null` as unknown. The Products page's row **Custom items** (`CUSTOM_ID`, `isNoProduct()`) is in the table's revenue, in no ranking and the pareto, with no views.
 - The Marketing page's discount breakdown has **Staff discounts** (`DiscountKind` `staff`, from `order_lines.staff_discount_minor`), a row only for a store that gave one; the code kind is what is left after it, as after every named kind.
 - Order files (`order-csv.ts`, `order-export.ts`) gain `tags`, `archived`, `source` (`checkout`, `draft` or `copied`) and `gift_order` in both profiles and `gift_to`, `gift_from`, `gift_message` in the Full profile only (a third party's name and words: personal), none of it for an erased person's order (`[removed]`), formula characters escaped by `writeCsv()`. They follow the amounts, so the line columns and the payment reference still end the lines layout.
-- The AI manager's order tools (`src/lib/order-ops-tools.ts`, `src/server/order-ops-tools.ts`) read and write only through the Orders page's own functions: `list_orders` is `resolveOrderList()` and `listOrdersPage()` (search, filters, keyset paging), `tag_orders` and `archive_orders` are `runBulk()` (up to 25 orders, per order, each refusal in the page's words), `list_draft_orders` is `listDrafts()`, `create_draft_order` is `createDraft()` and `saveDraft()` (a draft only, priced by `previewDraft()`, amounts through `formatMoney`), `send_draft_order` is `sendDraft()` behind the `send` gate (checked again by `preflightSendDraft()`, described from the draft by `draftApprovalSummary()`). No tool records a payment, takes money outside Kaizen or deletes a draft, and `refund_order` refuses an order paid outside Kaizen. The tools never give the model a gift message, and show tags and names only of orders whose person was not erased.
+- The AI manager's order tools (`src/lib/order-ops-tools.ts`, `src/server/order-ops-tools.ts`) read and write only through the
+  Orders page's own functions: `list_orders` is `resolveOrderList()` and `listOrdersPage()` (search, filters, keyset paging),
+  `tag_orders` and `archive_orders` are `runBulk()` (up to 25 orders, per order, each refusal in the page's words),
+  `list_draft_orders` is `listDrafts()`, `create_draft_order` is `createDraft()` and `saveDraft()` (a draft only, priced by
+  `previewDraft()`, amounts through `formatMoney`), `send_draft_order` is `sendDraft()` behind the `send` gate (checked again by
+  `preflightSendDraft()`, described from the draft by `draftApprovalSummary()`). No tool records a payment, takes money outside
+  Kaizen or deletes a draft, and `refund_order` refuses an order paid outside Kaizen. The tools never give the model a gift
+  message, and show tags and names only of orders whose person was not erased.
 
 ## Several codes on one order (D299 E2, wave 5)
 
@@ -443,7 +455,11 @@ are the shopper's own choice (and never asked first for a withdrawal): they desc
 
 The definitions of **Exchange order**, **Transfer** and **Exchanged return** are in the tables above; `docs/wave-3-exchanges.md` 5.5 is the contract. Where they are implemented, once each:
 
-- `EXCHANGE_ORDER` (`src/server/analytics-sql.ts`, `o.source = 'exchange'`) beside `FROM_CHECKOUT` and `STAFF_MADE`: `FROM_CHECKOUT` already leaves the exchange order out of every conversion, funnel and visit table; the Traffic page names them apart (`exchangeOrders`); the channel table's row is `EXCHANGE_CHANNEL` (`src/lib/analytics-traffic.ts`, label *Exchanges*, `isNotAChannel()`), also for a customer whose first order was one (it cannot normally be, since the original came first), and the blended conversion leaves it out as it does the staff-made row.
+- `EXCHANGE_ORDER` (`src/server/analytics-sql.ts`, `o.source = 'exchange'`) beside `FROM_CHECKOUT` and `STAFF_MADE`:
+  `FROM_CHECKOUT` already leaves the exchange order out of every conversion, funnel and visit table; the Traffic page names them
+  apart (`exchangeOrders`); the channel table's row is `EXCHANGE_CHANNEL` (`src/lib/analytics-traffic.ts`, label *Exchanges*,
+  `isNotAChannel()`), also for a customer whose first order was one (it cannot normally be, since the original came first), and
+  the blended conversion leaves it out as it does the staff-made row.
 - `PAID` is unchanged: the exchange payment is a captured payment. `NOT_EDIT_REFUND` is unchanged: a transfer is a refund.
 - The Returns section (`returnsReport()`): `exchanged` per kind (`ReturnKindRow.exchanged`), `exchanges` (`{ returns, share: Figure, keptMinor, tracked }`, the share through `exchangeShare()` in `src/lib/analytics-returns.ts`), the card *Exchanged*, and the column *Exchanged* of the kinds table and its file.
 - The AI manager repeats the queue, not these figures: `list_returns` and `explain_return` say an exchange's state and amounts, `get_order` says when an order is an exchange (`src/server/return-tools.ts`, `src/server/owner-tools.ts`).
@@ -598,7 +614,11 @@ profitable, each a link to its order.
 
 Click, scroll and attention heatmaps, dead and rage clicks, and recordings of visits, built in steps from
 [`heatmaps-and-recordings.md`](heatmaps-and-recordings.md), whose section 3 holds every definition. Built so far (step 1): the switches
-(`stores.heatmaps`, `stores.recordings`, owner only, both off) and the consent they need; step 2, the pure detectors; step 3, the tables and `/api/signals/heat`; step 4, the storefront's collector (`SiteSignals`, loaded once the browser is idle and only for a store with heatmaps on, so no store sends anything until its owner switches them on); step 5, that switch, under Heatmaps on Analytics → Settings; step 6, the pictures the heatmaps are drawn over (`src/server/map-shots.ts`); step 7, the screens under Analytics → Heatmaps (the hub, and a page's map in three views).
+(`stores.heatmaps`, `stores.recordings`, owner only, both off) and the consent they need; step 2, the pure detectors; step 3, the
+tables and `/api/signals/heat`; step 4, the storefront's collector (`SiteSignals`, loaded once the browser is idle and only for a
+store with heatmaps on, so no store sends anything until its owner switches them on); step 5, that switch, under Heatmaps on
+Analytics → Settings; step 6, the pictures the heatmaps are drawn over (`src/server/map-shots.ts`); step 7, the screens under
+Analytics → Heatmaps (the hub, and a page's map in three views).
 
 The figures, as built in code (constants in `src/lib/page-heat.ts` and `src/lib/click-signals.ts`, tested against the plan):
 

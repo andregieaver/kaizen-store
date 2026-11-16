@@ -5,7 +5,12 @@ The product's surface (`README.md` beside this file), part of `docs/audits/bloat
 - **Kind:** oversize. **Priority:** P2. **Effort:** M. **Confidence:** high. **Step:** your choice. **The owner's choice.**
 - **Second check:** corrected.
 - **Where:** `src/lib/store-nav.ts:58`, `src/lib/admin-view.ts:14`, `src/lib/store-nav.test.ts:245`, `src/components/admin/section-hub-cards.tsx:27`, `docs/admin-navigation.md:148`, `docs/audits/admin-usability-2026-11.md:197`, `docs/audits/code-review-2026-11.md:84`, `src/lib/platform-nav.ts:68`
-- **Evidence:** Parsed from store-nav.ts (re-run by me): 110 links, 42 marked for Basic. With only the shop on: 29 in Basic, every account's default (admin-view.ts:14), and 94 in Advanced (Marketing 13, Analytics 13, Website 13, Settings 35). The two hub pages follow the view as the sidebar does (section-hub-cards.tsx:27). Settings has 50 page files. The doc still says 104 and 40 (admin-navigation.md:148). The cap test covers Basic only (store-nav.test.ts:245-253); the total has no ceiling. The platform has 52 links, 27 under Settings, and no Basic view. I looked for screens nothing links to and found none: each of the 288 admin screens with a fixed address is named outside its own folder, and 2 of 560 pages only redirect.
+- **Evidence:** Parsed from store-nav.ts (re-run by me): 110 links, 42 marked for Basic. With only the shop on: 29 in Basic, every
+  account's default (admin-view.ts:14), and 94 in Advanced (Marketing 13, Analytics 13, Website 13, Settings 35). The two hub
+  pages follow the view as the sidebar does (section-hub-cards.tsx:27). Settings has 50 page files. The doc still says 104 and 40
+  (admin-navigation.md:148). The cap test covers Basic only (store-nav.test.ts:245-253); the total has no ceiling. The platform
+  has 52 links, 27 under Settings, and no Basic view. I looked for screens nothing links to and found none: each of the 288 admin
+  screens with a fixed address is named outside its own folder, and 2 of 560 pages only redirect.
 - **Cost today:** Reading time for an owner in Advanced, and for the platform's operator, on every visit. No shopper cost. The admin's shell carries the whole menu on each response, which the admin-data dimension measures. Paid by: An owner's admin in Advanced view, and the platform operator's
 - **Saving:** Estimate from the planned moves: Advanced for a new shop from 94 to about 85 links, Settings from 35 to about 20. No running-cost saving.
 - **Risk:** Moves need redirects and ADMIN_PAGES entries kept, or the AI manager and old links open a 404; admin-map.test.ts walks the routes and would show a missing entry.

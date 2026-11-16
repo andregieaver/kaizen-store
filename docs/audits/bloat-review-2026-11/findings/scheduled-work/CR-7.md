@@ -5,7 +5,11 @@ Scheduled and background work (`README.md` beside this file), part of `docs/audi
 - **Kind:** eager. **Priority:** P2. **Effort:** S. **Confidence:** high. **Step:** 3.1.
 - **Second check:** corrected.
 - **Where:** `src/app/api/cron/theme-shots/route.ts:21-35`, `src/server/theme-shots.ts:56-64`, `src/server/theme-shots.ts:92-95`, `src/server/theme-shots.ts:112-145`, `src/server/theme-shots.ts:164-187`, `src/server/theme-shots.ts:330-341`, `src/server/theme-shots.ts:419-422`, `src/server/design-presets.ts:825`, `src/server/design-presets.ts:2368`, `src/server/store-starters.ts:326`, `docs/theme-showcase-phase-2.md:66-72`
-- **Evidence:** runThemeShots() starts each minute with queueThemeShots(): it reads every published theme with its whole snapshot JSON (35,101 calls, 101 s, 348,763 rows, about ten themes a call), the themes' contents, the showcase stores and every theme_shots row (88,341 sequential scans), then one update, a claim under an advisory lock and a prune read: about 8 statements a minute. What is wanted changes only when a platform admin publishes a theme, a version or a demo store, and those three paths already call askForThemeShots() (design-presets.ts:825 and 2368, store-starters.ts:326).
+- **Evidence:** runThemeShots() starts each minute with queueThemeShots(): it reads every published theme with its whole snapshot
+  JSON (35,101 calls, 101 s, 348,763 rows, about ten themes a call), the themes' contents, the showcase stores and every
+  theme_shots row (88,341 sequential scans), then one update, a claim under an advisory lock and a prune read: about 8 statements
+  a minute. What is wanted changes only when a platform admin publishes a theme, a version or a demo store, and those three paths
+  already call askForThemeShots() (design-presets.ts:825 and 2368, store-starters.ts:326).
 - **Cost today:** About 11,500 statements a day and every published theme's snapshot read 1,440 times a day. A fixed floor: themes are the platform's, so it does not grow with stores. Paid by: The database and the server, every minute.
 - **Saving:** About 8 statements a minute to 0 or 1 while idle (about 11,500 a day); the snapshot read falls from 1,440 to at most 96 a day.
 - **Risk:** A publish path that forgets to ask leaves a theme without new photographs for up to 15 minutes, until the sweep. It would be seen on Platform, Themes as pictures that appear late.

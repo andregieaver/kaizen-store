@@ -4,8 +4,18 @@ The built client bundles, by page (`README.md` beside this file), part of `docs/
 
 - **Kind:** oversize. **Priority:** P1. **Effort:** M. **Confidence:** high. **Step:** 2.29.
 - **Second check:** confirmed.
-- **Where:** `src/lib/i18n.ts:9`, `src/lib/i18n.ts:17`, `src/components/admin/page-builder-fields.tsx:13`, `src/components/admin/page-builder-fields.tsx:1537`, `src/components/admin/block-fields.tsx:21`, `src/components/admin/block-fields.tsx:2684`, `src/components/admin/modal-preview.tsx:18`, `src/components/admin/modal-preview.tsx:34`, `src/components/content-grid.tsx:9`, `src/components/content-grid.tsx:63`, `src/components/admin/drafts/draft-summary.tsx:3`, `src/components/admin/drafts/draft-summary.tsx:35`
-- **Evidence:** Chunk 1u2592k6jkhim.js (318,693 bytes, 102,965 gzip) is lib/i18n with messages nb, sv, da and en merged, in the first-load list of 40 routes: the builder's 39 and the draft order editor. Five client call sites read it through t(lang), one language at a time and a few keys each: the grid's preview (page-builder-fields.tsx:1537, then ContentGridView, which calls t() itself at content-grid.tsx:63), a form's usual words (block-fields.tsx:2684, plain strings), a modal's two words (modal-preview.tsx:34) and the unit price bases of a draft order (draft-summary.tsx:35). A second module with the four languages' returns texts (32,258 bytes) rides with it. The four source files are 383,069 bytes and hold 345 functions in English alone, so a whole language cannot cross from the server as a prop.
+- **Where:** `src/lib/i18n.ts:9`, `src/lib/i18n.ts:17`, `src/components/admin/page-builder-fields.tsx:13`,
+  `src/components/admin/page-builder-fields.tsx:1537`, `src/components/admin/block-fields.tsx:21`,
+  `src/components/admin/block-fields.tsx:2684`, `src/components/admin/modal-preview.tsx:18`,
+  `src/components/admin/modal-preview.tsx:34`, `src/components/content-grid.tsx:9`, `src/components/content-grid.tsx:63`,
+  `src/components/admin/drafts/draft-summary.tsx:3`, `src/components/admin/drafts/draft-summary.tsx:35`
+- **Evidence:** Chunk 1u2592k6jkhim.js (318,693 bytes, 102,965 gzip) is lib/i18n with messages nb, sv, da and en merged, in the
+  first-load list of 40 routes: the builder's 39 and the draft order editor. Five client call sites read it through t(lang), one
+  language at a time and a few keys each: the grid's preview (page-builder-fields.tsx:1537, then ContentGridView, which calls t()
+  itself at content-grid.tsx:63), a form's usual words (block-fields.tsx:2684, plain strings), a modal's two words
+  (modal-preview.tsx:34) and the unit price bases of a draft order (draft-summary.tsx:35). A second module with the four
+  languages' returns texts (32,258 bytes) rides with it. The four source files are 383,069 bytes and hold 345 functions in English
+  alone, so a whole language cannot cross from the server as a prop.
 - **Cost today:** 343 KB raw (about 110 KB gzip) on each load of the builder and 368 KB on the draft order editor, of which one language (about 68 KB) can be read at a time. Paid by: An owner's browser each time a page, header, footer, article or layout is opened in the builder, and on each draft order.
 - **Saving:** Simulated on the real chunks: 343 KB off the builder's first scripts (3,186 to 2,591 KB together with BN-1) and 368 KB off the draft order editor. One language, about 68 to 80 KB, comes back after load when a preview first needs it (estimate from the source sizes).
 - **Risk:** Medium. A preview inside the builder must find every key it draws in each language of the store; one missed shows English or an empty placeholder until the language arrives. It would show in the builder specs and by eye in a Norwegian store.

@@ -11,6 +11,7 @@ import { autopilotBroadcastsThisWeek, autopilotCustomerEmailsThisWeek, autopilot
 import { liveCostsMoney } from "./design-tools";
 import { OwnerToolError } from "./owner-tool-error";
 import { marginAfterOffer, marginAfterPrices, priceChangePercent } from "./product-tools";
+import { exchangeRefundOf } from "./exchange-tools";
 import type { Store } from "./stores";
 import { purchaseAutopilotProblem } from "./supply-tools";
 
@@ -41,6 +42,10 @@ export async function autopilotDecision(
     const facts =
       tool === "send_broadcast" ? { broadcastsThisWeek: await autopilotBroadcastsThisWeek(p.store.id) } : { supportRepliesToday: await autopilotSupportRepliesToday(p.store.id) };
     return autonomyDecision(settings, tool, gate, facts);
+  }
+  // A confirmed exchange in challenge mode (B3, D675): processed by itself only when it gives nothing back to the customer.
+  if (settings.challenge && p.store && tool === "process_exchange") {
+    return autonomyDecision(settings, tool, gate, { exchangeRefundMinor: await exchangeRefundOf(p.store, String(args.return ?? "")) });
   }
   // The margin floor (D5) is read only where the owner, or the challenge, set one: it costs a read of the catalogue.
   const floor = settings.budgets.marginFloorPercent !== null;

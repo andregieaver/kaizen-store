@@ -2,7 +2,16 @@
 
 Part of `docs/audits/bloat-review-2026-11.md`, on commit 0bd814c. Read by one reviewer, challenged by a second (who re-opened every citation, re-measured every number and applied the owner's note that the platform is not open yet) and planned by a third. A tick (✓) marks a finding the second reviewer confirmed or corrected; one the planner added has none. Each finding has a file of its own beside this one.
 
-**In short.** On the wire a storefront document is light (13.7 to 21.3 thousand bytes gzipped); only the admin's two editors are heavy (108 and 136 thousand), and about 70% of that is message catalogues, of which the product editor's parts read a third (239 KB handed, 79 KB read). The waste is in what repeats and in what follows a load: the store's layout is rendered and sent twice for a 404 nobody sees (29.7 thousand bytes raw per document, and again inside the 79 KB every Add to cart sends back), a visitor who does nothing causes 11 to 50 prefetches and one or two uncached server calls per storefront view (the wishlist, the tiles, and on a search page a suggestion call nobody typed for), and Kaizena Flow's own pages pull about 141 KB of admin sign-in files. Fourteen findings, none refuted and none resting on 'unused so far': each is a duplicate or an idle cost per view, per press or per open tab, which is what grows when stores open. Seven are small and safe and go first (budgets, two prefetch props, the wishlist marker, the tiles' switches, the search call, the notice count); the two that restructure (the cart drawer's slot out of the root layout, the admin's words by cut) are cheapest before opening.
+**In short.** On the wire a storefront document is light (13.7 to 21.3 thousand bytes gzipped); only the admin's two editors are
+heavy (108 and 136 thousand), and about 70% of that is message catalogues, of which the product editor's parts read a third (239
+KB handed, 79 KB read). The waste is in what repeats and in what follows a load: the store's layout is rendered and sent twice for
+a 404 nobody sees (29.7 thousand bytes raw per document, and again inside the 79 KB every Add to cart sends back), a visitor who
+does nothing causes 11 to 50 prefetches and one or two uncached server calls per storefront view (the wishlist, the tiles, and on
+a search page a suggestion call nobody typed for), and Kaizena Flow's own pages pull about 141 KB of admin sign-in files. Fourteen
+findings, none refuted and none resting on 'unused so far': each is a duplicate or an idle cost per view, per press or per open
+tab, which is what grows when stores open. Seven are small and safe and go first (budgets, two prefetch props, the wishlist
+marker, the tiles' switches, the search call, the notice count); the two that restructure (the cart drawer's slot out of the root
+layout, the admin's words by cut) are cheapest before opening.
 
 ## Findings
 

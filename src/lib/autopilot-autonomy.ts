@@ -284,6 +284,8 @@ export type AutonomyFacts = {
   broadcastsThisWeek?: number | null;
   /** Answers to customers on the support desk it sent itself in the last 24 hours (challenge mode). */
   supportRepliesToday?: number | null;
+  /** What processing a confirmed exchange gives back to the customer, in minor units (B3, D675); null when it could not be read. */
+  exchangeRefundMinor?: number | null;
   /** A purchase order against the purchasing budget (`purchaseBudgetProblem()`): why it must ask, or null when it may. */
   purchaseProblem?: string | null;
 };
@@ -308,6 +310,13 @@ export function autonomyDecision(settings: AutonomySettings, tool: string, gate:
       return { run: false, why: `It has sent ${facts.broadcastsThisWeek} broadcasts itself in seven days, the challenge's limit is ${challenge.broadcastsPerWeek}.` };
     }
     return { run: true, tell: levelOf(settings, CHALLENGE_AUTOMATIC.send_broadcast) === "tell", area: CHALLENGE_AUTOMATIC.send_broadcast };
+  }
+  // In challenge mode an exchange's goods move by themselves (`docs/100-day-challenge.md` 4A2, B3, D675): a confirmed exchange that gives nothing
+  // back to the customer (even, or the customer pays the difference by link) is processed; one that refunds is money back and waits.
+  if (challenge && tool === "process_exchange") {
+    if (facts.exchangeRefundMinor === undefined || facts.exchangeRefundMinor === null) return { run: false, why: "The exchange's refund could not be read." };
+    if (facts.exchangeRefundMinor > 0) return { run: false, why: "The exchange gives money back to the customer, which waits for you." };
+    return { run: true, tell: levelOf(settings, "messages") === "tell", area: "messages" };
   }
   if (NEVER_AUTOMATIC.has(tool) || NEVER_CATEGORIES.has(gate)) return { run: false, why: "This always waits for your yes." };
   const area = TOOL_AREAS[tool];

@@ -9,8 +9,17 @@ Asked for by the owner, after Beaver Builder's global settings, row and column d
    - **Max content width** (`ThemeSettings.layout.maxWidth`, pixels): over the Narrow, Normal and Wide choice in Design. It is the `--content-width` the rows, header, footer and store layout read.
    - **Body background**: the palette's background of the light and the dark colour set (`light.background`, `dark.background`), the same colours Design edits.
 2. **A row's own max content width** (`PageRow.contentMax`, pixels, per screen size in `at.contentMax`; `null` at a size gives the theme's back): in the row's settings, General tab.
-3. **Resizing on the canvas**: a row's two side edges change its content width (both edges move, the content stays in the middle; steps of 8 px, Shift for free; double-click or Delete gives the theme's width back). The edges between side-by-side columns change how the row's width is shared (`PartSizeSettings.width`, the column share, now 0 to 100 instead of 0 to 12; a drag gives every column a share of 100, at least 5 each, double-click or Delete gives the layout's shares back). Both write at the screen size being edited (D179), and work with the arrow keys. Choosing another row layout drops shares set by hand.
-4. **A floating settings panel** (`FloatingPanel`, `src/components/admin/floating-panel.tsx`): the row, column and component settings are no longer a centred modal dialog. They open in a panel that is moved by its title bar (or its move button and the arrow keys) and resized from any edge or corner; the canvas behind stays in use (pressing another part opens its settings in the panel); its place and size are kept in the browser (`localStorage`, `kaizen-builder-settings-panel`), kept inside the window, and fall back to the default place when storage is blocked. Pickers opened from it (fonts, media) are still modal dialogs over it. Other dialogs (save as, delete, translate) stay modal.
+3. **Resizing on the canvas**: a row's two side edges change its content width (both edges move, the content stays in the middle;
+   steps of 8 px, Shift for free; double-click or Delete gives the theme's width back). The edges between side-by-side columns
+   change how the row's width is shared (`PartSizeSettings.width`, the column share, now 0 to 100 instead of 0 to 12; a drag gives
+   every column a share of 100, at least 5 each, double-click or Delete gives the layout's shares back). Both write at the screen
+   size being edited (D179), and work with the arrow keys. Choosing another row layout drops shares set by hand.
+4. **A floating settings panel** (`FloatingPanel`, `src/components/admin/floating-panel.tsx`): the row, column and component
+   settings are no longer a centred modal dialog. They open in a panel that is moved by its title bar (or its move button and the
+   arrow keys) and resized from any edge or corner; the canvas behind stays in use (pressing another part opens its settings in
+   the panel); its place and size are kept in the browser (`localStorage`, `kaizen-builder-settings-panel`), kept inside the
+   window, and fall back to the default place when storage is blocked. Pickers opened from it (fonts, media) are still modal
+   dialogs over it. Other dialogs (save as, delete, translate) stay modal.
 
 ## How the theme meets a page
 
@@ -34,7 +43,12 @@ The theme is laid *under* the parts before they are drawn (`themedRows()`), neve
 
 ## Saved colours and gradients, text gradients, gradient overlay, pixel sliders (D183)
 
-- **Saved colours and gradients** (`ThemeSettings.library`, `src/lib/colour-library.ts`, `ColourLibraryProvider` in `src/components/admin/colour-library.tsx`): named, up to 40 colours and 20 gradients per store, kept on the theme by `saveLibraryAction` (anyone who may edit pages; nothing else of the theme is touched). Every `ColorField` (text, background, border, overlay, shadow colours) shows them under the theme's swatches with a *Save colour…* button; a gradient editor (a background's, and a text's) shows saved gradients with *Save gradient…*. **Using one is a copy**: the value is written into the part, so editing or deleting a saved one never changes a page. Not offered on Kaizen's own pages (no theme).
+- **Saved colours and gradients** (`ThemeSettings.library`, `src/lib/colour-library.ts`, `ColourLibraryProvider` in
+  `src/components/admin/colour-library.tsx`): named, up to 40 colours and 20 gradients per store, kept on the theme by
+  `saveLibraryAction` (anyone who may edit pages; nothing else of the theme is touched). Every `ColorField` (text, background,
+  border, overlay, shadow colours) shows them under the theme's swatches with a *Save colour…* button; a gradient editor (a
+  background's, and a text's) shows saved gradients with *Save gradient…*. **Using one is a copy**: the value is written into the
+  part, so editing or deleting a saved one never changes a page. Not offered on Kaizen's own pages (no theme).
 - **Text gradient** (`Typography.gradient`: two to four colours and an angle, per kind of text, per screen size, `null` at a size takes it away): drawn by `typographyDecl()` as `background-image` clipped to the text with a transparent fill, over the text colour; the element fits its words (`width: fit-content`, placed by the text's alignment) so the colours run across the words, not the column.
 - **A gradient background's opacity and overlay** (`GradientBackground.opacity` 0–99, solid unless set; `overlay` colour and opacity as a picture's): the gradient layer is see-through by its opacity, the overlay is a layer over it (`GradientLayer`).
 - **Pixel sliders** (`PixelRange`): every pixel field of the builder has a slider with the value over its thumb, beside the number field, which still takes any value in the field's own limits.
@@ -45,7 +59,13 @@ The theme is laid *under* the parts before they are drawn (`themedRows()`), neve
 - **On the builder's canvas** (D214) a fixed background is drawn as an ordinary one, filling its row: the canvas's page is a container (its screen sizes are container queries), which a fixed layer takes as its window, so the layer would lie at the top of the whole canvas and the row's frame would cut it away.
 - **Position** (`PageRow.backgroundAlign`, `top`, `middle` or `bottom`, middle unset): which part of a fixed picture or video the row's window shows, as `object-top`/`object-bottom` on the media. The choice is shown only while the background is fixed.
 - **Row height** (`PageRow.height`, per cent of the screen's height, per size in `at.height`): at least that tall (`min-height: Nvh`), taller if the content is. With a fixed background it is the window: a row of 60 shows 60 % of the screen's height of a background that fills the screen.
-- **Fixed footer** (`PageContent.footerReveal`, footers only, the footer page's *Reveal on scroll* box): the footer is `sticky; bottom: 0; z-index: 0` under the page (`main` is `relative z-10` with the page's background), so the end of the page lifts off it as the page scrolls. `FooterRevealGuard` (`src/components/footer-reveal.tsx`) marks `<html data-footer-reveal>` only while the page above the footer is at least a screen tall and the footer fits the screen; `.footer-reveal` is pinned only then (CSS in globals.css), so a short page shows the footer where it always is. On phones it stops above the bottom bar (`bottom: 4rem + safe area`, the body's own padding). A page that is not a builder page (its `main` is narrower than the window) shows the footer at its sides.
+- **Fixed footer** (`PageContent.footerReveal`, footers only, the footer page's *Reveal on scroll* box): the footer is
+  `sticky; bottom: 0; z-index: 0` under the page (`main` is `relative z-10` with the page's background), so the end of the page
+  lifts off it as the page scrolls. `FooterRevealGuard` (`src/components/footer-reveal.tsx`) marks `<html data-footer-reveal>`
+  only while the page above the footer is at least a screen tall and the footer fits the screen; `.footer-reveal` is pinned only
+  then (CSS in globals.css), so a short page shows the footer where it always is. On phones it stops above the bottom bar
+  (`bottom: 4rem + safe area`, the body's own padding). A page that is not a builder page (its `main` is narrower than the window)
+  shows the footer at its sides.
 - **A component dropped outside every column** (on a row's edge, between rows, on an empty page or below the last row) gets a one-column row of its own (`dropRow()` in the builder's `onDragEnd`); the same for a saved component.
 - **A grid of pages under one** (`source.parent`, a page's address or `@this` for the page the grid is on): only the pages nested directly under it; `gridPages()` reads them by address prefix. A named parent is dropped when a grid moves to another store (`ownProducts()`).
 - **A content grid's cards** (`block.tile`: background, text colour, padding, content padding, border, radius, shadow): `color` also sets `--color-muted` inside the card; `contentPadding` (one number or each side) puts everything under the picture in one box (`data-tile-body`) with that padding, so the picture can reach the card's edge.
@@ -54,10 +74,27 @@ The theme is laid *under* the parts before they are drawn (`themedRows()`), neve
 
 ## Lines of columns in a row (D187)
 
-- **The model** (`PageRow.moreLines`, `columnLines()` and `rowLayouts()` in `src/lib/page-content.ts`): a row holds its columns in one line or several, one under another, as Beaver Builder's column groups do. `layout` is the first line's layout and `moreLines` the layouts of the lines under it (at most six lines of six columns, `ROW_LINES_MAX`, `LINE_COLUMNS_MAX`); `columns` stays one flat list, line after line, and the last line takes what the layouts before it leave, so `pageInput` only has to check that the count adds up. A row of one line has no `moreLines` and is stored, drawn and styled exactly as before.
-- **Edits** are pure functions in `src/lib/page-rows.ts`, each on one line and leaving the others as they were: `moveColumnAt()` (a spot is `{ rowId, line, index }` among a line's columns or `{ rowId, newLine }` for a line of its own), `insertColumnAt()`, `addColumn()`, `setLineLayout()`, `setLineShares()` and `clearLineShares()`, `removeColumn()`, `duplicateColumn()`. A line that gains or loses a column shares its width evenly again (`equalLayout()`, and any share set by hand at any screen size is taken back, as in Beaver Builder); a reorder inside a line keeps its shares; a line left without a column goes, and a row left without any goes; a line of six takes no more and a row of six lines no other (the edit then changes nothing).
+- **The model** (`PageRow.moreLines`, `columnLines()` and `rowLayouts()` in `src/lib/page-content.ts`): a row holds its columns in
+  one line or several, one under another, as Beaver Builder's column groups do. `layout` is the first line's layout and
+  `moreLines` the layouts of the lines under it (at most six lines of six columns, `ROW_LINES_MAX`, `LINE_COLUMNS_MAX`); `columns`
+  stays one flat list, line after line, and the last line takes what the layouts before it leave, so `pageInput` only has to check
+  that the count adds up. A row of one line has no `moreLines` and is stored, drawn and styled exactly as before.
+- **Edits** are pure functions in `src/lib/page-rows.ts`, each on one line and leaving the others as they were: `moveColumnAt()`
+  (a spot is `{ rowId, line, index }` among a line's columns or `{ rowId, newLine }` for a line of its own), `insertColumnAt()`,
+  `addColumn()`, `setLineLayout()`, `setLineShares()` and `clearLineShares()`, `removeColumn()`, `duplicateColumn()`. A line that
+  gains or loses a column shares its width evenly again (`equalLayout()`, and any share set by hand at any screen size is taken
+  back, as in Beaver Builder); a reorder inside a line keeps its shares; a line left without a column goes, and a row left without
+  any goes; a line of six takes no more and a row of six lines no other (the edit then changes nothing).
 - **Drawing** (`rowGridStyle()` in `src/lib/part-css.ts`, `RowMarkup`, the canvas's `RowItem`, the modal preview's `PreviewRow`): a row of several lines is a flex column of boxes, one per line, each its own grid (or stack, where the row stacks at a screen size, the last line first where it stacks in reverse); the column order rules are per line. So the phone stacks every column in order.
-- **In the builder**: a column dragged by its handle is dropped among the columns of any line (a drop in its own line reorders; elsewhere both lines share their width evenly again) or on a *New line* strip above the first line, between two lines or under the last (`NewLineZone`, drawn only while a column is dragged, over the room around the lines so nothing shifts). The sidebar's Rows tab has a *Column* tile, dragged in the same way or pressed (it is added beside the column last pointed at). A drop on the row outside its columns (in the gap between two, before the first, after the last, under a short one) goes in at the place the pointer is at (D189: `columnSlotAt()` in `src/lib/column-slot.ts` on the columns' measured boxes, the line it is in and the columns before it), with the same blue indicator on the column it goes before; it used to go last. A row with several lines has a layout choice and share fields per line (`RowLayoutChoice`, `ColumnSizeFields`), and the resize edges are per line (`ColumnDividers`).
+- **In the builder**: a column dragged by its handle is dropped among the columns of any line (a drop in its own line reorders;
+  elsewhere both lines share their width evenly again) or on a *New line* strip above the first line, between two lines or under
+  the last (`NewLineZone`, drawn only while a column is dragged, over the room around the lines so nothing shifts). The sidebar's
+  Rows tab has a *Column* tile, dragged in the same way or pressed (it is added beside the column last pointed at). A drop on the
+  row outside its columns (in the gap between two, before the first, after the last, under a short one) goes in at the place the
+  pointer is at (D189: `columnSlotAt()` in `src/lib/column-slot.ts` on the columns' measured boxes, the line it is in and the
+  columns before it), with the same blue indicator on the column it goes before; it used to go last. A row with several lines has
+  a layout choice and share fields per line (`RowLayoutChoice`, `ColumnSizeFields`), and the resize edges are per line
+  (`ColumnDividers`).
 - **Limits**: a new line is made by dragging with a pointer (the keyboard moves a column among the columns of the lines there are, but cannot aim at a *New line* strip; a keyboard way is not built); stacking and reversing are the row's, not a line's; a component cannot be dropped on a line of its own (it still makes a one-column row of its own outside every column, D184); the page replicator and the AI page studio make rows of one line.
 
 ## The theme's Row: width (D190)

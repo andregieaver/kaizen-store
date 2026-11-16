@@ -4,8 +4,19 @@ What an owner's browser loads in the admin (`README.md` beside this file), part 
 
 - **Kind:** oversize. **Priority:** P1. **Effort:** M. **Confidence:** high. **Step:** 2.29.
 - **Second check:** corrected.
-- **Where:** `src/components/admin/block-fields.tsx:21`, `src/components/admin/block-fields.tsx:2684`, `src/components/admin/modal-preview.tsx:18`, `src/components/admin/modal-preview.tsx:34`, `src/components/admin/page-builder-fields.tsx:13`, `src/components/admin/page-builder-fields.tsx:1537`, `src/components/content-grid.tsx:9`, `src/components/content-grid.tsx:63`, `src/components/admin/drafts/draft-summary.tsx:3`, `src/components/admin/drafts/draft-summary.tsx:35`, `src/lib/i18n.ts:9`, `src/lib/storefront-bundle.scan.test.ts:14`
-- **Evidence:** Chunk 1u2592k6jkhim.js (318,693 bytes raw / 103,098 gzip) holds messages/da, nb, sv and en and is in the first load of 40 admin routes: the 39 builder routes and the draft order editor. Any import of lib/i18n brings all four (i18n.ts lines 9-12). In the builder's client closure four modules import it as a value: block-fields.tsx (the form's usual words, one of them a function), modal-preview.tsx (two strings), page-builder-fields.tsx line 1537 (the grid preview, with the function listing.count) and the shared content-grid.tsx line 63, which hands the whole object on to Price and CampaignBadge. Cutting those four edges removes 21 files and 472 KB of source from the builder's closure; the browser texts (messages/*-browser.ts) stay through lib/browser-text.ts. The draft order editor reads one branch of plain strings (unitPrice.bases, messages/en.ts line 712). The storefront's scan test forbids lib/i18n in a visitor's scripts and leaves the admin out.
+- **Where:** `src/components/admin/block-fields.tsx:21`, `src/components/admin/block-fields.tsx:2684`,
+  `src/components/admin/modal-preview.tsx:18`, `src/components/admin/modal-preview.tsx:34`,
+  `src/components/admin/page-builder-fields.tsx:13`, `src/components/admin/page-builder-fields.tsx:1537`,
+  `src/components/content-grid.tsx:9`, `src/components/content-grid.tsx:63`, `src/components/admin/drafts/draft-summary.tsx:3`,
+  `src/components/admin/drafts/draft-summary.tsx:35`, `src/lib/i18n.ts:9`, `src/lib/storefront-bundle.scan.test.ts:14`
+- **Evidence:** Chunk 1u2592k6jkhim.js (318,693 bytes raw / 103,098 gzip) holds messages/da, nb, sv and en and is in the first
+  load of 40 admin routes: the 39 builder routes and the draft order editor. Any import of lib/i18n brings all four (i18n.ts lines
+  9-12). In the builder's client closure four modules import it as a value: block-fields.tsx (the form's usual words, one of them
+  a function), modal-preview.tsx (two strings), page-builder-fields.tsx line 1537 (the grid preview, with the function
+  listing.count) and the shared content-grid.tsx line 63, which hands the whole object on to Price and CampaignBadge. Cutting
+  those four edges removes 21 files and 472 KB of source from the builder's closure; the browser texts (messages/*-browser.ts)
+  stay through lib/browser-text.ts. The draft order editor reads one branch of plain strings (unitPrice.bases, messages/en.ts line
+  712). The storefront's scan test forbids lib/i18n in a visitor's scripts and leaves the admin out.
 - **Cost today:** About 350 KB raw / about 113 KB gzip on 40 routes (the chunk and a 49,242-byte chunk of returns texts on 39). Paid by: An owner's browser in the builder and on a draft order.
 - **Saving:** Estimate: about 350 KB raw / 113 KB gzip off the first load of the 39 builder routes and about 319 KB off the draft order editor; about 80 to 90 KB of it comes back after load in the builder when a preview first needs the store's language.
 - **Risk:** Low to medium. content-grid.tsx is drawn by the storefront too: its wrapper keeps the same props, so only the admin's call changes. A grid preview shows its waiting note a moment longer on first draw. A store in a language translated by AI sees English in the builder's preview, as it does today in the browser (the registry of such languages is the server's). It would show in the builder specs and shop-components.spec.ts.

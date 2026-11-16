@@ -24,6 +24,8 @@ export const EVENT_KINDS = [
   "staff_request",
   // A/B tests (D148 phase 14b, D670): a running test has an answer for the first time; the owners were told (D662).
   "test_answered",
+  // Exchanges (B3, D675): a customer confirmed the exchange the store proposed for their return.
+  "exchange_confirmed",
 ] as const;
 export type EventKind = (typeof EVENT_KINDS)[number];
 
@@ -43,6 +45,7 @@ export const EVENTS_PER_DAY: Readonly<Record<EventKind, number>> = {
   stockout_risk: 12,
   staff_request: 24,
   test_answered: 12,
+  exchange_confirmed: 24,
 };
 /** A pending event older than this is no longer worth a turn. */
 export const EVENT_STALE_HOURS = 24;
@@ -110,6 +113,8 @@ export const EVENT_TOOLS: Readonly<Record<EventKind, readonly string[]>> = {
   stockout_risk: ["restock_suggestions", "stock_levels", "list_purchase_orders", "create_purchase_order"],
   // A request is carried out by code from the customer's own words kept as fields (D640); a cancellation refunds, so it waits for the owner.
   staff_request: ["get_order", "get_support_conversation", "carry_out_address_change", "cancel_order", "add_order_note"],
+  // A confirmed exchange is processed (B3, D675): in challenge mode by itself when it gives nothing back, else on the owner's yes.
+  exchange_confirmed: ["get_order", "process_exchange", "add_order_note"],
 };
 
 /** What the model is told for each kind of event: nobody is there, what the event is for, and what it may never do. */
@@ -189,6 +194,12 @@ export const EVENT_LINES: Readonly<Record<EventKind, string>> = {
     "- If a tool refuses, do nothing more: leave one note on the order with add_order_note for the person who answers the request. Never write to the customer: they are told when the request is done.",
     "- End with one plain sentence on what you did, without the customer's name, address or contact details: the owner reads it.",
   ].join("\n"),
+  exchange_confirmed: [
+    "You are working on your own now, as the store's autopilot: a customer confirmed the exchange the store proposed for their return. Nobody is reading along.",
+    "- Read the order with get_order, then process the exchange with process_exchange and the return's number. It makes the new order and moves the money; where it gives money back to the customer it waits for the owner's yes; say so.",
+    "- If it refuses, do nothing more: leave one note on the order with add_order_note for the person who looks at the return. Never write to the customer: the store tells them.",
+    "- End with one plain sentence on what you did, without the customer's name, address or contact details: the owner reads it.",
+  ].join("\n"),
   payments_failing: [
     "You are working on your own now, as the store's autopilot: many payments have failed in the last hours. Nobody is reading along.",
     "- Look with read-only tools at what may be behind it: the store's checkup, its payment set-up and its recent orders. You cannot change anything in this turn. Facts only from your tools.",
@@ -212,6 +223,8 @@ export type DisputeEventFacts = OrderEventFacts & { dispute: string; reason: str
 export type PaymentsEventFacts = { window: string; failed: number; attempts: number };
 /** A customer's request to staff that code may carry out (B3): the request, what it asks for and its order's number. */
 export type StaffRequestEventFacts = { request: string; ask: "change_address" | "cancel_order"; order: string };
+/** An exchange a customer confirmed (B3, D675): the exchange, its return's number and the order's. */
+export type ExchangeEventFacts = { exchange: string; return: string; order: string };
 /** A variant at risk of running out (C4): the store's forecast's own figures. */
 export type StockoutEventFacts = { sku: string; product: string; lastsDays: number | null; leadDays: number; suggested: number };
 export type EventFacts =
@@ -226,7 +239,8 @@ export type EventFacts =
   | ({ kind: "payments_failing" } & PaymentsEventFacts)
   | ({ kind: "stockout_risk" } & StockoutEventFacts)
   | ({ kind: "staff_request" } & StaffRequestEventFacts)
-  | ({ kind: "test_answered" } & AnsweredEventFacts);
+  | ({ kind: "test_answered" } & AnsweredEventFacts)
+  | ({ kind: "exchange_confirmed" } & ExchangeEventFacts);
 
 export type EventGoal = { id: string; title: string };
 
@@ -311,6 +325,12 @@ export function eventMessage(facts: EventFacts, goals: readonly EventGoal[] = []
           ? `Read it with get_order (${clip(facts.order, 64)}), then carry it out with carry_out_address_change (${facts.request}).`
           : `Read it with get_order (${clip(facts.order, 64)}), then cancel it with cancel_order: it waits for the owner's yes.`,
       ].join("\n");
+    case "exchange_confirmed":
+      return [
+        `Autopilot: the customer of order ${clip(facts.order, 64)} confirmed the exchange for return ${clip(facts.return, 64)}.`,
+        "",
+        `Read it with get_order (${clip(facts.order, 64)}), then process it with process_exchange (${clip(facts.return, 64)}).`,
+      ].join("\n");
     case "payments_failing":
       return [
         `Autopilot: ${facts.failed} of ${facts.attempts} payments in the last ${FAILED_PAYMENTS_HOURS} hours failed.`,
@@ -351,6 +371,8 @@ export function eventRef(facts: EventFacts, today: string): string {
       return `${facts.sku}:${isoWeek(today)}`;
     case "staff_request":
       return facts.request;
+    case "exchange_confirmed":
+      return facts.exchange;
   }
 }
 

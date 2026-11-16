@@ -5,7 +5,11 @@ The product's surface (`README.md` beside this file), part of `docs/audits/bloat
 - **Kind:** eager. **Priority:** P1. **Effort:** M. **Confidence:** high. **Step:** 2.36.
 - **Second check:** corrected.
 - **Where:** `src/lib/tool-budget.ts:15`, `src/lib/tool-budget.ts:67`, `src/server/owner-assistant.ts:716`, `src/server/owner-assistant.ts:733`, `src/server/offered-tools.ts:16`, `src/lib/owner-tool-features.ts:13`, `docs/audits/code-review-2026-11.md:120`, `docs/audits/code-review-2026-11.md:488`
-- **Evidence:** OWNER_TOOLS holds 254 tools; 121 have a feature, 101 of them 'shop'; a shop-only store is offered 234 (my re-run of the counting script), beside the manager's own 26. chooseTools() sends everything when it fits and otherwise cuts a round to TOOLS_PER_TURN = 124 (tool-budget.ts:15, 67-96; called at owner-assistant.ts:733 with the manager's tools as 'always'). With more feature gates a shop-only store would still be offered more than the 98 store tools a round has room for, so the round still sends 124. The skeptic measured the descriptions at 101,537 characters, mean 400.
+- **Evidence:** OWNER_TOOLS holds 254 tools; 121 have a feature, 101 of them 'shop'; a shop-only store is offered 234 (my re-run
+  of the counting script), beside the manager's own 26. chooseTools() sends everything when it fits and otherwise cuts a round to
+  TOOLS_PER_TURN = 124 (tool-budget.ts:15, 67-96; called at owner-assistant.ts:733 with the manager's tools as 'always'). With
+  more feature gates a shop-only store would still be offered more than the 98 store tools a round has room for, so the round
+  still sends 124. The skeptic measured the descriptions at 101,537 characters, mean 400.
 - **Cost today:** Estimate at 4 characters a token: 124 definitions of mean 400 characters are about 12,000 tokens of descriptions a round before their schemas, sent again each round of a turn. Paid whatever features the store uses. Paid by: An agent's session (the owner's AI allowance, the platform's AI bill)
 - **Saving:** From feature gating alone: nothing. From step 3.18 (estimate): 124 to about 66 definitions a round, near 5,800 tokens of descriptions a round, plus schemas and what the cache saves.
 - **Risk:** A model that lacks a tool must ask for its area first, one more round for the rare question; the eval shows whether it does. A changed prompt or tool list needs a new eval run and recording.

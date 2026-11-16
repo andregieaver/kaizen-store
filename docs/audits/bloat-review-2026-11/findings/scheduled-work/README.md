@@ -2,7 +2,16 @@
 
 Part of `docs/audits/bloat-review-2026-11.md`, on commit 0bd814c. Read by one reviewer, challenged by a second (who re-opened every citation, re-measured every number and applied the owner's note that the platform is not open yet) and planned by a third. A tick (✓) marks a finding the second reviewer confirmed or corrected; one the planner added has none. Each finding has a file of its own beside this one.
 
-**In short.** Scheduled work is a fixed floor today, not a load: Supabase calls the app 13,250 times a day and those calls send about 170,000 statements, nearly all finding nothing because the platform is not open, so no feature here should be retired for being unused. The one measured waste is pg_cron's own run log, never pruned: 564 MB, 77% of the 731 MB database, fixed by one small migration (CR-5). What matters at opening is work that grows with stores, pages, products or orders on every run whether or not anything changed: chat knowledge, media, alt texts and product vectors (CR-4), the listings' check that hashes every product on the platform and asks the AI again about unreadable ones every five minutes (CR-15), automations and ad conversions each minute (CR-3), the cookie scan's due check (CR-6), waiting invoices (CR-9) and the accounting loops (CR-16). Calling the six queue routes only when a row waits (CR-1), giving about 30 of the 83 five-minute jobs an hourly or daily cadence with one ledger write a run (CR-2) and holding both with a registry and a scan test (CR-14) keep the floor from growing back; before opening is the cheapest time for all of it.
+**In short.** Scheduled work is a fixed floor today, not a load: Supabase calls the app 13,250 times a day and those calls send
+about 170,000 statements, nearly all finding nothing because the platform is not open, so no feature here should be retired for
+being unused. The one measured waste is pg_cron's own run log, never pruned: 564 MB, 77% of the 731 MB database, fixed by one
+small migration (CR-5). What matters at opening is work that grows with stores, pages, products or orders on every run whether or
+not anything changed: chat knowledge, media, alt texts and product vectors (CR-4), the listings' check that hashes every product
+on the platform and asks the AI again about unreadable ones every five minutes (CR-15), automations and ad conversions each minute
+(CR-3), the cookie scan's due check (CR-6), waiting invoices (CR-9) and the accounting loops (CR-16). Calling the six queue routes
+only when a row waits (CR-1), giving about 30 of the 83 five-minute jobs an hourly or daily cadence with one ledger write a run
+(CR-2) and holding both with a registry and a scan test (CR-14) keep the floor from growing back; before opening is the cheapest
+time for all of it.
 
 ## Findings
 

@@ -5,10 +5,22 @@ Prefetching: what the router asks for unasked (`README.md` beside this file), pa
 - **Kind:** eager. **Priority:** P1. **Effort:** S. **Confidence:** high. **Step:** 2.6.
 - **Second check:** corrected.
 - **Where:** `src/components/store-layout.tsx:128,267,273,281,400,406,443,498,511,564,577`, `src/components/site-parts.tsx:156,163,170,224`, `src/components/platform-layout.tsx:79,223,230,264`, `src/components/cart-link.tsx:53,64`, `src/components/menu-view.tsx:77-105`, `src/components/menu-section.tsx:39,56`, `src/proxy.ts:54-60`, `node_modules/next/dist/docs/01-app/02-guides/prefetching.md:121-156,208-224`, `node_modules/next/dist/client/components/links.js:134-165,236-249`
-- **Evidence:** Each link costs a route-tree request plus one per segment not yet held. Planner's runs on the demo store: a phone at the top of the home page, 11 router requests for 4 links (search 3, wishlist 3, cart 3, account 2); at the top of a product page, 12 (40.3 KB on the wire: the home page behind the logo and the bottom bar is the largest, 3 requests and 29.6 KB decoded); at 1440x900, 17 for 7 links. Read to the footer on a phone: cookies 2, withdraw 2, the footer menu's four links 8. The skeptic's addition stands: the answers name script chunks the router then loads (3 chunks, 24 KB on the wire at the top; 10 chunks, 87 KB read to the footer), and 10 of 18 routes answered STALE, each a background render. Every full load starts again from nothing. Next's own guide gives the pattern for links that should wait for intent (prefetching.md:121-156): prefetch={active ? null : false}, switched on by the pointer. A link with prefetch={false} is not prefetched on hover either (links.js:134-165, 236-249), which is why the wrapper must flip the prop. The 'checkout, 50 requests' of the first report was a checkout that bounces to the cart; no pay step was measured.
+- **Evidence:** Each link costs a route-tree request plus one per segment not yet held. Planner's runs on the demo store: a phone
+  at the top of the home page, 11 router requests for 4 links (search 3, wishlist 3, cart 3, account 2); at the top of a product
+  page, 12 (40.3 KB on the wire: the home page behind the logo and the bottom bar is the largest, 3 requests and 29.6 KB decoded);
+  at 1440x900, 17 for 7 links. Read to the footer on a phone: cookies 2, withdraw 2, the footer menu's four links 8. The skeptic's
+  addition stands: the answers name script chunks the router then loads (3 chunks, 24 KB on the wire at the top; 10 chunks, 87 KB
+  read to the footer), and 10 of 18 routes answered STALE, each a background render. Every full load starts again from nothing.
+  Next's own guide gives the pattern for links that should wait for intent (prefetching.md:121-156): prefetch={active ? null :
+  false}, switched on by the pointer. A link with prefetch={false} is not prefetched on hover either (links.js:134-165, 236-249),
+  which is why the wrapper must flip the prop. The 'checkout, 50 requests' of the first report was a checkout that bounces to the
+  cart; no pay step was measured.
 - **Cost today:** Per full page load on a phone: 11 to 12 router requests and 3 script chunks at the top (about 55 KB on the wire here); 23 router requests with the footer (other views left to PF-2). One proxy run each; on a quiet store a render per route when cold and one per hour or quarter hour when stale. Paid by: The shopper's browser; the proxy and the server per request. It grows with page views across all stores, whatever features they use.
 - **Saving:** By subtraction from measured counts: phone home 11 to 3 router requests and 3 to 2 script chunks at the top; with PF-2, 47 to 3 router requests and 10 to 2 chunks read to the footer; product page 12 to 3 at the top. At desktop width the top goes from 17 to 8 while the three menu links keep viewport prefetch (5 with PF-7).
-- **Risk:** Low to medium. A tap gives about 100 ms of warning, so a press on search, account or wishlist may wait for one cached answer where today the page is already held: noticed as a slower first paint of those pages on a phone, not as a failure. Moving the main menu's top links to intent as well is a speed trade to decide with a measurement, not waste, so they stay on view. A wrapper that dropped a prop (scroll, replace, aria-current, hrefLang) would show in the menu, language and navigation specs.
+- **Risk:** Low to medium. A tap gives about 100 ms of warning, so a press on search, account or wishlist may wait for one cached
+  answer where today the page is already held: noticed as a slower first paint of those pages on a phone, not as a failure. Moving
+  the main menu's top links to intent as well is a speed trade to decide with a measurement, not waste, so they stay on view. A
+  wrapper that dropped a prop (scroll, replace, aria-current, hrefLang) would show in the menu, language and navigation specs.
 
 ## The fix
 

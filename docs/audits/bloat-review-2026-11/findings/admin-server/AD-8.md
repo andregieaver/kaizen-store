@@ -5,7 +5,12 @@ What the server does for an admin navigation (`README.md` beside this file), par
 - **Kind:** duplicate. **Priority:** P2. **Effort:** M. **Confidence:** high. **Step:** 2.32.
 - **Second check:** corrected.
 - **Where:** `src/server/auth.ts:271-287`, `src/server/auth.ts:328-340`, `src/server/support-desk.ts:130-139`, `src/server/books-clients.ts:32-41`, `src/server/control-center.ts:61-75`, `src/app/admin/(gated)/(owner)/layout.tsx:30-38`, `src/app/admin/(gated)/(owner)/stores/page.tsx:32`
-- **Evidence:** listStores(), ownerDesks(), booksMemberships() and controlCenter()'s first statement each join store_members to stores (three also to store_roles) for the same account with slightly different columns and filters. The owner layout awaits them one after another (stores, desks, domains for a non-owner, books clients, support count: 4 or 5 sequential awaits), and the owner's Stores page calls listStores() directly instead of the cached storesOf(), so the layout's read is repeated. In a store, the member row and the stores list are read on every hard load, and the control center reads the same membership a third time on Home.
+- **Evidence:** listStores(), ownerDesks(), booksMemberships() and controlCenter()'s first statement each join store_members to
+  stores (three also to store_roles) for the same account with slightly different columns and filters. The owner layout awaits
+  them one after another (stores, desks, domains for a non-owner, books clients, support count: 4 or 5 sequential awaits), and the
+  owner's Stores page calls listStores() directly instead of the cached storesOf(), so the layout's read is repeated. In a store,
+  the member row and the stores list are read on every hard load, and the control center reads the same membership a third time on
+  Home.
 - **Cost today:** 2 near-identical statements per store hard load, 3 on the store Home, 4 on the owner's home, and 4 or 5 sequential waits before the owner level's frame paints. Paid by: The database and the server per request; the owner on each hard load of /admin.
 - **Saving:** Estimate: 2 to 3 statements and 2 to 3 sequential waits per owner-level hard load; 1 statement on the Stores page for certain.
 - **Risk:** Medium-low. Each caller filters differently, so the shared read must carry the fields and each caller keeps its own filter; a starter or closed store appearing in the level switcher would be the visible fault, and the three int tests above are the checks.

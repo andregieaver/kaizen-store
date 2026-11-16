@@ -5,7 +5,14 @@ Styles (`README.md` beside this file), part of `docs/audits/bloat-review-2026-11
 - **Kind:** dead. **Priority:** P2. **Effort:** S. **Confidence:** high. **Step:** 0.35.
 - **Second check:** confirmed.
 - **Where:** `src/app/globals.css:1`, `src/app/globals.css:7`, `src/app/globals.css:9`, `docs/build-memory.md:34`, `docs/decisions.md:719`
-- **Evidence:** globals.css:6-9 points Tailwind at all of src except src/data, and at supabase/migrations/*.sql. The planner compiled the sheet with and without the noise, with the project's own Tailwind: leaving out **/*.test.ts, **/*.test.tsx, src/test, src/lib/messages, src/lib/admin-messages, src/db and the SQL takes the scan from 5,931 files and 71,891 candidates to 3,984 files and 45,347, and the sheet from 1,750 classes to 1,740. The 10 lost are words in tests: order-1038, order-1042, col-1, row-1, row-2, m-1, sepia, block-1, md:mr-0, lg:ml-auto (436 B). The four migration files (4.0 MB) hold no class attribute (the verified report's regex; the planner's rg for className finds none). The SQL line dates from D378 (docs/decisions.md:719), a caution when the scan was first scoped; CLAUDE.md's own rule says the @source lines point at code, never at data. No test pins the lines.
+- **Evidence:** globals.css:6-9 points Tailwind at all of src except src/data, and at supabase/migrations/*.sql. The planner
+  compiled the sheet with and without the noise, with the project's own Tailwind: leaving out **/*.test.ts, **/*.test.tsx,
+  src/test, src/lib/messages, src/lib/admin-messages, src/db and the SQL takes the scan from 5,931 files and 71,891 candidates to
+  3,984 files and 45,347, and the sheet from 1,750 classes to 1,740. The 10 lost are words in tests: order-1038, order-1042,
+  col-1, row-1, row-2, m-1, sepia, block-1, md:mr-0, lg:ml-auto (436 B). The four migration files (4.0 MB) hold no class attribute
+  (the verified report's regex; the planner's rg for className finds none). The SQL line dates from D378 (docs/decisions.md:719),
+  a caution when the scan was first scoped; CLAUDE.md's own rule says the @source lines point at code, never at data. No test pins
+  the lines.
 - **Cost today:** 436 B of CSS, about 0.2 s of scan and about 55 MB of the Tailwind step's memory (221-223 MB against 160-169 MB, fresh process each). The real cost is coupling: a word in a test can add a class and rename the production stylesheet (part of the 6 admin-or-test-only commits of CS-3). Paid by: The build, slightly; a shopper's browser when a test-only change renames the sheet.
 - **Saving:** 436 B of CSS, about 0.2 s and about 55 MB in the build's Tailwind step (measured); tests and texts can no longer rename the production stylesheet.
 - **Risk:** Low. A class that only a message file or a migration names would be lost; today there is none (step 5 checks). Noticed as a missing style in e2e or by eye.

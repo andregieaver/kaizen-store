@@ -118,7 +118,16 @@ category where one is known, else the standard rate. A basket may hold several r
   - **could not be checked now:** "The VAT number could not be checked right now. VAT is charged. Try again in a moment." (never "exempt", never blocks the sale);
   - **the buyer's own country is the seller's:** nothing is offered; VAT is charged (domestic sale).
 - Changing the market, the basket (a booking or a subscription is added), the company, or the 24 hours passing re-evaluates all of this on the next read: the cart summary and `placeOrder()` ask the same function.
-- Checking is rate limited by what has been done, taken **before** VIES is asked and atomically (one upsert-and-count per bucket in `commerce.chat_usage`, the whole clock hour, so parallel requests cannot all pass; *review finding, built*): at most 10 live requests per cart, 20 per client (a keyed hash of the address for the day, never the address: `viesClientKey()`; skipped when there is no address or no server secret), and 60 per store for the shoppers together; a cart that already holds a valid answer and asks again (a stale one before checkout) may use a reserve of 30 more. The store owner's own *Check now* has a pool of 20 an hour of its own, so shoppers cannot use up the owner's. Repeating the same number within 24 hours is a cache hit and costs nothing. Over a limit the answer is the *could not be checked now* one and nothing is asked or logged. Honest limits: whole-hour windows allow a burst of twice a limit across the turn of an hour, and a visitor with many addresses can still spend the store's shoppers' 60 (they then see "could not be checked", VAT is charged, never a block); this bounds the harm, it does not make it impossible.
+- Checking is rate limited by what has been done, taken **before** VIES is asked and atomically (one upsert-and-count per bucket
+  in `commerce.chat_usage`, the whole clock hour, so parallel requests cannot all pass; *review finding, built*): at most 10 live
+  requests per cart, 20 per client (a keyed hash of the address for the day, never the address: `viesClientKey()`; skipped when
+  there is no address or no server secret), and 60 per store for the shoppers together; a cart that already holds a valid answer
+  and asks again (a stale one before checkout) may use a reserve of 30 more. The store owner's own *Check now* has a pool of 20 an
+  hour of its own, so shoppers cannot use up the owner's. Repeating the same number within 24 hours is a cache hit and costs
+  nothing. Over a limit the answer is the *could not be checked now* one and nothing is asked or logged. Honest limits: whole-hour
+  windows allow a burst of twice a limit across the turn of an hour, and a visitor with many addresses can still spend the store's
+  shoppers' 60 (they then see "could not be checked", VAT is charged, never a block); this bounds the harm, it does not make it
+  impossible.
 
 **Checkout and payment.** `startCheckout()` refreshes an expired check outside the transaction (a VIES call is never made while an order is being placed), `placeOrder()` reads the cart's check and freezes the treatment on the order. With reverse charge the order's lines carry
 tax 0, the order total is the net amount, and **Stripe is sent the order's own amounts**: each line as quantity 1 at its net amount due now (title prefixed with the quantity as the part-payment path already does), no coupon (the
@@ -205,39 +214,97 @@ All new tables live in `commerce` (private schema), have row-level security enab
 
 - The check `vat_rates_category` (only `accommodation`) is dropped; `vat_rates_rate` (0 <= rate < 1) stays; add `valid_to is null or valid_to > valid_from`; `source` 8 to 400 characters (a URL or a named act); `category <> 'exempt'`.
 - **No overlaps** and append-only history, enforced by trigger (not by an exclusion constraint: `btree_gist` is not loaded by the PGlite test database): inserting a row whose period overlaps another row of the same (country, category) raises; an `UPDATE` may change only `valid_to` (from null to a date after `valid_from`, once), `verified_by`, `verified_at`, `note`; a `DELETE` raises. A mistake is corrected by ending the period and adding a new one with a note.
-- **`commerce.set_vat_rate(p_country char(2), p_category text, p_rate numeric, p_valid_from date, p_source text, p_checked_on date, p_note text, p_account uuid)`** is the only writer used by the application: it closes the open period of that key at `p_valid_from` (only when `p_valid_from` is after its start), inserts the new row, and writes the `audit_log` row `vat.rate_set` in the same transaction. It refuses a `valid_from` that is not after the start of the latest period, a rate for `exempt`, and an unknown category or country. Like prices through `commerce.set_price`.
-- **`commerce.vat_rate(p_country char(2), p_category text, p_at timestamptz)`** (stable, `search_path = ''`; *built: no default for `p_at`, because a default would make the two-argument call ambiguous with the old function*) is the only reader of a product's rate. The local date is `(p_at at time zone coalesce(countries.time_zone, 'UTC'))::date`. Order of precedence: category `exempt` gives 0; the row of (country, category) whose period contains that date; for any category but `standard`, the `standard` row containing the date; `countries.standard_vat_rate`; 0. The existing two-argument function stays, so every current caller keeps working and nothing is dropped. *Built: it carries its own copy of the body with `now()`, not a call to the three-argument function (a SQL function with a fixed `search_path` is not inlined and one calling another measured twenty times slower per call, which the catalogue pays per product); a PGlite test holds the two to the same answer for every country and category.*
+- **`commerce.set_vat_rate(p_country char(2), p_category text, p_rate numeric, p_valid_from date, p_source text, p_checked_on date, p_note text, p_account uuid)`**
+  is the only writer used by the application: it closes the open period of that key at `p_valid_from` (only when `p_valid_from` is
+  after its start), inserts the new row, and writes the `audit_log` row `vat.rate_set` in the same transaction. It refuses a
+  `valid_from` that is not after the start of the latest period, a rate for `exempt`, and an unknown category or country. Like
+  prices through `commerce.set_price`.
+- **`commerce.vat_rate(p_country char(2), p_category text, p_at timestamptz)`** (stable, `search_path = ''`; *built: no default
+  for `p_at`, because a default would make the two-argument call ambiguous with the old function*) is the only reader of a
+  product's rate. The local date is `(p_at at time zone coalesce(countries.time_zone, 'UTC'))::date`. Order of precedence:
+  category `exempt` gives 0; the row of (country, category) whose period contains that date; for any category but `standard`, the
+  `standard` row containing the date; `countries.standard_vat_rate`; 0. The existing two-argument function stays, so every current
+  caller keeps working and nothing is dropped. *Built: it carries its own copy of the body with `now()`, not a call to the
+  three-argument function (a SQL function with a fixed `search_path` is not inlined and one calling another measured twenty times
+  slower per call, which the catalogue pays per product); a PGlite test holds the two to the same answer for every country and
+  category.*
 - `countries.time_zone text` (IANA, seeded for every country in the table; a country with several uses its capital's) is new; `countries.standard_vat_rate` stays as the cache and fallback, kept equal to the `standard` row valid today by `set_vat_rate()` for the standard category and by `commerce.sync_standard_vat_rates()` (*built as a SQL function with no DELETE or DROP, which the daily cron calls; the spec said an application job*), so a future-dated change takes effect on its day.
 - **Seed** (migration `..._tax_engine_rules.sql`, `source` and `checked_on` on every row, `verified_*` null everywhere, `valid_from = '2026-01-01'`, the date the seeded figures describe; Kaizen has no order before September 2026, so earlier history is not loaded):
   - `standard` for every country in `countries` (EU 27 and Norway), equal to `countries.standard_vat_rate` as of the seed (Finland 0.2550, Estonia 0.24, Romania 0.21, Slovakia 0.23 included: the existing seed already carries them), source the Commission's TEDB. *Built: the source reads "Kaizen's table of September 2026 (migration 20260924072554); to check against the Commission's TEDB" and `checked_on` is 2026-09-24, because TEDB was not read and a row must not claim a check that was not made.*
   - `accommodation`: the three rows that exist (NO 0.12, SE 0.12, DE 0.07) keep their rates, gaining source and date (Norway: Skatteetaten, read 2026-10-03, which names accommodation at 12 %).
-  - The six new reduced-rate categories: **only rows the agent can source** from the TEDB or the country's tax authority at the time it builds, each with the exact URL and date read. Known from this spec's reading and to be confirmed the same way: Norway `food` 0.15, `culture_events` 0.12 (cinema, sporting events, amusement parks), `books` and `periodicals` 0.00 (exemption rule of the VAT Act: read as a zero rate, flagged), Denmark has no reduced rate (so no rows: the standard rate applies, which the coverage page shows), Germany `food`, `books`, `periodicals` 0.07, Sweden `food` 0.12 and `books`, `periodicals` 0.06, Finland `food` 0.14 and `books`, `periodicals`, `culture_events` 0.10 (all four from the secondary table, to be confirmed against TEDB before they are verified).
+  - The six new reduced-rate categories: **only rows the agent can source** from the TEDB or the country's tax authority at the
+    time it builds, each with the exact URL and date read. Known from this spec's reading and to be confirmed the same way: Norway
+    `food` 0.15, `culture_events` 0.12 (cinema, sporting events, amusement parks), `books` and `periodicals` 0.00 (exemption rule
+    of the VAT Act: read as a zero rate, flagged), Denmark has no reduced rate (so no rows: the standard rate applies, which the
+    coverage page shows), Germany `food`, `books`, `periodicals` 0.07, Sweden `food` 0.12 and `books`, `periodicals` 0.06, Finland
+    `food` 0.14 and `books`, `periodicals`, `culture_events` 0.10 (all four from the secondary table, to be confirmed against TEDB
+    before they are verified).
     A count of seeded rows per category is printed by the migration's test so a reviewer sees the coverage; a missing row is the honest answer, a guessed row is not.
-    *Built (read 2026-10-03; WebFetch returned summaries of the pages, so every figure is unverified): Norway `food` 0.15 and `culture_events` 0.12 (Skatteetaten page, read), `books` and `periodicals` 0.00 (the exemption, flagged as not stated on the page); Sweden `food` 0.12 until 2026-04-01 and **0.06 from 2026-04-01** (the Skatteverket page names the cut: the spec's 0.12 was out of date), `books` and `periodicals` 0.06; Finland `food` 0.135 (not 0.14: the Vero page names 13.5 % from 1 January 2026) and `periodicals` 0.10; Germany `food`, `books`, `periodicals` 0.07 (the act's page answered 503 twice, so these rows say they come from Kaizen's earlier table). Not seeded because no source could be read or the sources disagreed: Finland `books`, `medicines`, `culture_events`; Sweden `culture_events` (museums 12 %, performing arts 6 %: one category cannot hold both); Germany `culture_events`; `medicines` and `children_goods` everywhere; Denmark has no reduced rate.*
+    *Built (read 2026-10-03; WebFetch returned summaries of the pages, so every figure is unverified): Norway `food` 0.15 and
+    `culture_events` 0.12 (Skatteetaten page, read), `books` and `periodicals` 0.00 (the exemption, flagged as not stated on the
+    page); Sweden `food` 0.12 until 2026-04-01 and **0.06 from 2026-04-01** (the Skatteverket page names the cut: the spec's 0.12
+    was out of date), `books` and `periodicals` 0.06; Finland `food` 0.135 (not 0.14: the Vero page names 13.5 % from 1
+    January 2026) and `periodicals` 0.10; Germany `food`, `books`, `periodicals` 0.07 (the act's page answered 503 twice, so these
+    rows say they come from Kaizen's earlier table). Not seeded because no source could be read or the sources disagreed: Finland
+    `books`, `medicines`, `culture_events`; Sweden `culture_events` (museums 12 %, performing arts 6 %: one category cannot hold
+    both); Germany `culture_events`; `medicines` and `children_goods` everywhere; Denmark has no reduced rate.*
 - A test fails if a seeded row has no source, no `checked_on`, a `verified_at`, a `valid_from` after today, or a rate not between 0 and 0.30.
 
 ### 3.3 Shipping VAT rule
 
-`commerce.shipping_vat_rules (country_code char(2) pk fk, rule text not null default 'standard' check in ('standard','follows_goods','highest'), source text not null default '', checked_on date null, verified_by uuid null, verified_at timestamptz null, note text not null default '', updated_at)`. Seeded: `standard` for every country. A function `commerce.shipping_vat_rule(p_country)` returns the rule **only when `verified_at` is not null**, else `'standard'` (so an unverified row can never change what is charged). Changes go through a platform action that audit-logs `vat.shipping_rule_set`.
+`commerce.shipping_vat_rules (country_code char(2) pk fk, rule text not null default 'standard' check in ('standard','follows_goods','highest'), source text not null default '', checked_on date null, verified_by uuid null, verified_at timestamptz null, note text not null default '', updated_at)`.
+Seeded: `standard` for every country. A function `commerce.shipping_vat_rule(p_country)` returns the rule **only when
+`verified_at` is not null**, else `'standard'` (so an unverified row can never change what is charged). Changes go through a
+platform action that audit-logs `vat.shipping_rule_set`.
 
 ### 3.4 Store tax profile
 
 `commerce.store_tax_profile (store_id uuid pk fk stores, vat_registered boolean not null default false, vat_number text null, vat_number_check_id uuid null, vat_number_checked_at timestamptz null, vat_number_valid boolean null, dispatch_country char(2) null (*built: no foreign key, only `^[A-Z]{2}$`, because `countries` holds the EU and Norway only and a store sending from China or the UK must be able to say so*), oss_scheme text not null default 'none' check in ('none','union','non_union'), oss_member_state char(2) null fk countries, oss_number text null, oss_registered_on date null, ioss_number text null, ioss_intermediary text null, ioss_markets text[] not null default '{}', ioss_registered_on date null, updated_at, updated_by uuid null fk accounts)`.
 
-- Checks: `vat_number` normalised form `^[A-Z]{2}[0-9A-Z+*.]{2,12}$`; `ioss_number ~ '^IM[0-9]{10}$'` (python-stdnum, *verify*); `oss_number ~ '^EU[0-9]{9}$'` when the scheme is `non_union` (*verify*); `oss_scheme = 'union'` requires `oss_member_state`; `ioss_markets` entries are two-letter codes of countries with `in_eu` each once (checked by trigger, as arrays cannot carry a foreign key); *built also: a stored check must be the seller's check of this very number with its result copied (trigger), and no check, result or time without a number (check constraint)*; the Union scheme has no number of its own (registration is under the national VAT number, *verify against the Commission's OSS guidelines*).
+- Checks: `vat_number` normalised form `^[A-Z]{2}[0-9A-Z+*.]{2,12}$`; `ioss_number ~ '^IM[0-9]{10}$'` (python-stdnum, *verify*);
+  `oss_number ~ '^EU[0-9]{9}$'` when the scheme is `non_union` (*verify*); `oss_scheme = 'union'` requires `oss_member_state`;
+  `ioss_markets` entries are two-letter codes of countries with `in_eu` each once (checked by trigger, as arrays cannot carry a
+  foreign key); *built also: a stored check must be the seller's check of this very number with its result copied (trigger), and
+  no check, result or time without a number (check constraint)*; the Union scheme has no number of its own (registration is under
+  the national VAT number, *verify against the Commission's OSS guidelines*).
 - The seller's VAT number's prefix must equal the store's country (`stores.country`; `EL` for `GR`): a number from another state is refused in 1a, said on the screen. A store outside the EU (Norway) may hold a Norwegian number (nine digits + `MVA`, validated by `organisationNumber()` and the register lookup) which is shown on documents and never used for reverse charge.
 - `vat_number_valid` and `vat_number_checked_at` are copies of the latest seller check (`vat_checks` row `vat_number_check_id`); saving a different number clears all three.
-- A row is created on first save; absence means all defaults. `COPY_RULES`: **`settings`**, note "Registration facts; a copy keeps the choices but not the numbers". `duplicate_store()` copies `vat_registered`, `oss_scheme`, `oss_member_state`, `dispatch_country`, `ioss_markets` and blanks `vat_number*`, `oss_number`, `oss_registered_on`, `ioss_number`, `ioss_intermediary`, `ioss_registered_on` (a number belongs to one legal entity; reverse charge stays off in the copy until its owner checks its own number). `clone_store()` copies nothing (the template has no registration: the row is created lazily).
+- A row is created on first save; absence means all defaults. `COPY_RULES`: **`settings`**, note "Registration facts; a copy keeps
+  the choices but not the numbers". `duplicate_store()` copies `vat_registered`, `oss_scheme`, `oss_member_state`,
+  `dispatch_country`, `ioss_markets` and blanks `vat_number*`, `oss_number`, `oss_registered_on`, `ioss_number`,
+  `ioss_intermediary`, `ioss_registered_on` (a number belongs to one legal entity; reverse charge stays off in the copy until its
+  owner checks its own number). `clone_store()` copies nothing (the template has no registration: the row is created lazily).
 
 ### 3.5 Carts, orders, lines, and the check log
 
 - `carts`: `vat_number text null`, `vat_check_id uuid null` (fk `(store_id, vat_check_id)` to `vat_checks`). Cleared when the company is cleared. Never copied (carts are `never`).
-- `orders`: `vat_kind text not null default 'standard' check in ('standard','reverse_charge','ioss')`, `vat_relief_minor bigint not null default 0 check (>= 0)`, `shipping_tax_rate numeric(6,4) null`, `vat_treatment jsonb null`, `vat_check_id uuid null` (fk, `on delete restrict`). Checks: `vat_relief_minor between 0 and discount_minor`; `vat_kind = 'reverse_charge'` implies `tax_minor = 0 and vat_relief_minor > 0`; any other kind implies `vat_relief_minor = 0`. **`orders.shipping_tax_rate`** records the rate the shipping was charged at (today `OrderView.shippingVatRate` is re-read from the country's current rate, which is wrong after a rate change); backfilled for existing orders from `countries.standard_vat_rate` of their market (what was charged).
+- `orders`: `vat_kind text not null default 'standard' check in ('standard','reverse_charge','ioss')`,
+  `vat_relief_minor bigint not null default 0 check (>= 0)`, `shipping_tax_rate numeric(6,4) null`, `vat_treatment jsonb null`,
+  `vat_check_id uuid null` (fk, `on delete restrict`). Checks: `vat_relief_minor between 0 and discount_minor`;
+  `vat_kind = 'reverse_charge'` implies `tax_minor = 0 and vat_relief_minor > 0`; any other kind implies
+  `vat_relief_minor = 0`. **`orders.shipping_tax_rate`** records the rate the shipping was charged at (today
+  `OrderView.shippingVatRate` is re-read from the country's current rate, which is wrong after a rate change); backfilled for
+  existing orders from `countries.standard_vat_rate` of their market (what was charged).
 - `order_lines`: `vat_relief_minor bigint not null default 0` (included in `discount_minor`; check `between 0 and discount_minor`). `tax_rate` keeps the rate that **would** have applied on a reverse-charge line (so relief per rate can be reported), with `tax_minor` 0.
-- `orders.vat_treatment` shape (frozen at placement): `{ kind, reason, sellerVatNumber, sellerCountry, buyerVatNumber, buyerCountry, vies: { status: 'valid'|'invalid'|'unavailable'|'not_checked', checkedAt, requestIdentifier, registeredName, registeredAddress }, iossNumber, consignmentEur, shippingRule }`. Registered name and address are VIES's, kept for staff and never shown to shoppers. Fields are null where not applicable; `sellerVatNumber` is recorded on every order of a registered store (the invoice in 1b reads it from here, never from the live profile).
-- `commerce.vat_checks (id uuid pk, store_id uuid fk, purpose text check in ('buyer','seller'), cart_id uuid null, number text not null (normalised, with prefix), country_prefix text not null, status text check in ('valid','invalid','unavailable'), source text check in ('vies','brreg'), name text null, address text null, request_identifier text null, error text null, requested_at timestamptz default now())`. Indexes: `(store_id, number, requested_at desc)` for the 24-hour cache, `(store_id, cart_id, requested_at)` for the rate limit. Immutable: a trigger refuses `UPDATE`; `DELETE` only by the retention job (the foreign keys from `orders`, `carts` and the profile refuse deleting a row they use).
+- `orders.vat_treatment` shape (frozen at placement):
+  `{ kind, reason, sellerVatNumber, sellerCountry, buyerVatNumber, buyerCountry, vies: { status: 'valid'|'invalid'|'unavailable'|'not_checked', checkedAt, requestIdentifier, registeredName, registeredAddress }, iossNumber, consignmentEur, shippingRule }`.
+  Registered name and address are VIES's, kept for staff and never shown to shoppers. Fields are null where not applicable;
+  `sellerVatNumber` is recorded on every order of a registered store (the invoice in 1b reads it from here, never from the live
+  profile).
+-
+  `commerce.vat_checks (id uuid pk, store_id uuid fk, purpose text check in ('buyer','seller'), cart_id uuid null, number text not null (normalised, with prefix), country_prefix text not null, status text check in ('valid','invalid','unavailable'), source text check in ('vies','brreg'), name text null, address text null, request_identifier text null, error text null, requested_at timestamptz default now())`.
+  Indexes: `(store_id, number, requested_at desc)` for the 24-hour cache, `(store_id, cart_id, requested_at)` for the rate limit.
+  Immutable: a trigger refuses `UPDATE`; `DELETE` only by the retention job (the foreign keys from `orders`, `carts` and the
+  profile refuse deleting a row they use).
 - A trigger on `orders` refuses changing `vat_kind`, `vat_relief_minor`, `vat_treatment`, `shipping_tax_rate` or `vat_check_id` once the status is not `pending_payment`.
-- Retention (*review finding, built*): `pruneVatChecks()` first makes a cart that expired more than 30 days ago (or is converted and untouched for 30 days) let go of its `vat_number` and `vat_check_id` (nothing deletes carts, so without this the number and VIES's name and address for it would live for ever), then deletes the checks older than 30 days that no order, cart or profile points at (the foreign key would refuse otherwise); a buyer's number and VIES's answer therefore live at most 30 days past the end of their cart unless an order rests on them. Original rule: a `vat_checks` row used by no order, cart or profile is deleted after **30 days** by `pruneVatChecks()` (application code, in the five-minute cron's daily branch, never SQL); rows an order uses live as long as the order (unit 1g's retention rules). The registered name and address are personal data only for sole traders; they are in the 1g register (`PERSONAL_DATA`) when that exists.
+- Retention (*review finding, built*): `pruneVatChecks()` first makes a cart that expired more than 30 days ago (or is converted
+  and untouched for 30 days) let go of its `vat_number` and `vat_check_id` (nothing deletes carts, so without this the number and
+  VIES's name and address for it would live for ever), then deletes the checks older than 30 days that no order, cart or profile
+  points at (the foreign key would refuse otherwise); a buyer's number and VIES's answer therefore live at most 30 days past the
+  end of their cart unless an order rests on them. Original rule: a `vat_checks` row used by no order, cart or profile is deleted
+  after **30 days** by `pruneVatChecks()` (application code, in the five-minute cron's daily branch, never SQL); rows an order
+  uses live as long as the order (unit 1g's retention rules). The registered name and address are personal data only for sole
+  traders; they are in the 1g register (`PERSONAL_DATA`) when that exists.
 
 ### 3.6 What the database itself enforces
 
@@ -252,7 +319,15 @@ Every function sets `search_path = ''`. No function contains `DELETE`, `TRUNCATE
 | `vat_checks` | `never` | an audit log of this store's checks |
 | `vat_categories`, `vat_rates`, `shipping_vat_rules` | (no `store_id`, outside the audit) | platform reference data |
 
-`duplicate_store()` and `clone_store()` are patched with the `pg_get_functiondef` idiom of `20261002215352_returns_rules.sql` (one statement inserted before the last `RETURN`, idempotent by a `position(...)` check, raising loudly if the anchor is not found), so this patch and the trust lane's compose in either order. `copy_orders()` is patched the same way if it lists columns explicitly (3.5, copied orders row). `COPY_RULES` entries are added in `src/lib/store-copy-rules.ts`. Privacy: a buyer's VAT number and VIES name and address are visible to the store's staff with order access, to the shopper on their own order, in their own email, in the store's own Stripe invoice fields; never in analytics exports, integration events (they carry the treatment kind and the VAT amount only), the chat agent, search, feeds, sitemap, structured data, `llms.txt`, recommendations or the AI manager's order tools. A source-scan test (`vat-readers.test.ts`, like `field-values-readers.test.ts`) lists the modules allowed to read `carts.vat_number`, `vat_checks` and `orders.vat_treatment` and fails if another does.
+`duplicate_store()` and `clone_store()` are patched with the `pg_get_functiondef` idiom of `20261002215352_returns_rules.sql` (one
+statement inserted before the last `RETURN`, idempotent by a `position(...)` check, raising loudly if the anchor is not found), so
+this patch and the trust lane's compose in either order. `copy_orders()` is patched the same way if it lists columns explicitly
+(3.5, copied orders row). `COPY_RULES` entries are added in `src/lib/store-copy-rules.ts`. Privacy: a buyer's VAT number and VIES
+name and address are visible to the store's staff with order access, to the shopper on their own order, in their own email, in the
+store's own Stripe invoice fields; never in analytics exports, integration events (they carry the treatment kind and the VAT
+amount only), the chat agent, search, feeds, sitemap, structured data, `llms.txt`, recommendations or the AI manager's order
+tools. A source-scan test (`vat-readers.test.ts`, like `field-values-readers.test.ts`) lists the modules allowed to read
+`carts.vat_number`, `vat_checks` and `orders.vat_treatment` and fails if another does.
 
 ---
 
@@ -262,32 +337,91 @@ Every rule sits in one pure function (`src/lib/vat-treatment.ts` and its neighbo
 
 ### 4.1 Which VAT an order carries: `vatTreatment()`
 
-Input (all plain data, no I/O): `seller { country, inEu, registered, numberValid, number, dispatchCountry, dispatchInEu }`, `buyer { kind: 'private'|'business', vat: { state: 'none'|'valid'|'invalid'|'unavailable'|'stale', number, prefixCountry } }`, `delivery { country, inEu }`, `basket { hasService, hasSubscription, hasGoodsOrDigital, hasPhysical, hostOrder, taxedAmountPositive }` (`hasGoodsOrDigital`: a line that is not a booking, what reverse charge needs; `hasPhysical`: at least one line is shipped, what IOSS, the dispatch rule and the import notice look at), `ioss { number, markets }`, `consignmentEur: number | null` (null when the currency has no rate; *built as `consignmentEurMinor`, euro cents, so the 150.00 / 150.01 boundary is integer arithmetic, rounded up so a value on the border is never taken to be inside*). Output: `{ kind: 'standard'|'reverse_charge'|'ioss', reverseCharge: boolean, reason, notes[] }` where `reason` is one code from a closed list, each with a plain sentence for staff and one for the shopper.
+Input (all plain data, no I/O): `seller { country, inEu, registered, numberValid, number, dispatchCountry, dispatchInEu }`,
+`buyer { kind: 'private'|'business', vat: { state: 'none'|'valid'|'invalid'|'unavailable'|'stale', number, prefixCountry } }`,
+`delivery { country, inEu }`,
+`basket { hasService, hasSubscription, hasGoodsOrDigital, hasPhysical, hostOrder, taxedAmountPositive }` (`hasGoodsOrDigital`: a
+line that is not a booking, what reverse charge needs; `hasPhysical`: at least one line is shipped, what IOSS, the dispatch rule
+and the import notice look at), `ioss { number, markets }`, `consignmentEur: number | null` (null when the currency has no
+rate; *built as `consignmentEurMinor`, euro cents, so the 150.00 / 150.01 boundary is integer arithmetic, rounded up so a value on
+the border is never taken to be inside*). Output:
+`{ kind: 'standard'|'reverse_charge'|'ioss', reverseCharge: boolean, reason, notes[] }` where `reason` is one code from a closed
+list, each with a plain sentence for staff and one for the shopper.
 
 Rules, evaluated in this order; the first that applies decides:
 
 1. **Host order** (`hostOrder`): `standard`, reason `host_order`. The seller is the host (D71).
-2. **Private buyer.** Destination country's VAT, as today. If the store has an IOSS number, the delivery country is an EU country listed in `ioss.markets`, goods are dispatched from outside the EU, the basket has shipped goods and no booking or subscription (**a download is not a consignment: only the physical lines count for eligibility, for the consignment's value and for the import notice; a basket of downloads alone is `consumer`**), and `consignmentEur <= 150`: `ioss` (reason `ioss`); with `consignmentEur > 150`: `standard`, reason `ioss_over_limit` (the buyer may pay import VAT at the border: said to staff, and the import notice shown to the shopper); with no euro rate: `standard`, reason `ioss_no_rate`. Otherwise `standard`, reason `consumer`. *Source:* Commission OSS page (Import scheme: consignments of an intrinsic value not exceeding 150 EUR; most non-EU businesses need an intermediary, Norway-established ones can register directly: verify), read 2026-10-03; Shopify's tax reference, read 2026-10-03. The value is the shipped goods after discounts, without VAT and without separately charged shipping, in euro at the store's rate; whether that is the legal *intrinsic value* is **not read (Reg. 282/2011 and the customs code): needs review**. An order is one consignment (stated).
+2. **Private buyer.** Destination country's VAT, as today. If the store has an IOSS number, the delivery country is an EU country
+   listed in `ioss.markets`, goods are dispatched from outside the EU, the basket has shipped goods and no booking or subscription
+   (**a download is not a consignment: only the physical lines count for eligibility, for the consignment's value and for the
+   import notice; a basket of downloads alone is `consumer`**), and `consignmentEur <= 150`: `ioss` (reason `ioss`); with
+   `consignmentEur > 150`: `standard`, reason `ioss_over_limit` (the buyer may pay import VAT at the border: said to staff, and
+   the import notice shown to the shopper); with no euro rate: `standard`, reason `ioss_no_rate`. Otherwise `standard`, reason
+   `consumer`. *Source:* Commission OSS page (Import scheme: consignments of an intrinsic value not exceeding 150 EUR; most non-EU
+   businesses need an intermediary, Norway-established ones can register directly: verify), read 2026-10-03; Shopify's tax
+   reference, read 2026-10-03. The value is the shipped goods after discounts, without VAT and without separately charged
+   shipping, in euro at the store's rate; whether that is the legal *intrinsic value* is **not read (Reg. 282/2011 and the customs
+   code): needs review**. An order is one consignment (stated).
 3. **Business buyer without a valid, current, other-country number** keeps `standard`: reason `no_buyer_vat_number`, `number_invalid`, `number_unavailable`, `number_stale`, `number_not_eu`, `number_other_country` (the number's country differs from the delivery country), `own_number` (equals the seller's), or `same_country` (the delivery country is the seller's country).
 4. **Seller conditions.** The seller must be established in an EU member state (`seller.inEu`), registered (`registered` and a number), and the number checked valid (`numberValid`). Otherwise `standard`, reasons `seller_not_eu`, `seller_not_registered`, `seller_number_unverified`.
 5. **Basket conditions.** Only goods and downloads can be relieved. A booking (appointment, stay, rental: their place of supply follows the property, the event or the place of performance, not the buyer) or a subscription (the VAT number is not kept for renewals) makes the whole order `standard`, reasons `has_service`, `has_subscription`.
-   **5b. Where the goods are sent from** (review finding, built): when the basket has shipped goods, an intra-Community supply needs the goods to go from one member state to another (Directive 2006/112/EC Art. 138(1), read 2026-10-03). Goods sent from outside the EU (`seller.dispatchInEu` false: the owner's "goods are sent from" fact, defaulting to the store's country) are an import, and goods sent from the buyer's own country (`dispatchCountry` equals the delivery country) are a domestic sale there: both `standard`, reasons `dispatch_outside_eu` and `dispatch_domestic`, and the VAT number field is not offered. Downloads are not sent, so a basket of downloads alone does not look at it. The tax screen's reverse-charge line says it needs goods sent from an EU country. If every line's VAT would be zero (exempt goods) the order is `standard` with reason `nothing_taxable` (no "reverse charge" is written on an order that carries no VAT).
-6. **Reverse charge.** Seller EU-established, registered with a valid number, goods (if any are shipped) sent from an EU country other than the delivery country; buyer a business with a valid number (checked within 24 hours) in an EU member state other than the seller's; delivery country equals the buyer's number's country; basket goods or downloads only: `reverse_charge`. The VAT is not charged; the buyer accounts for it. *Sources:* goods shipped to a business in another member state identified for VAT there are an exempt intra-Community supply (Directive 2006/112/EC Art. 138(1)), with the buyer's identification number a condition (Directive 2018/1910, secondary source, *verify*); downloads to a business buyer are supplied where the buyer is established (the general B2B rule, Art. 44 and 196, **not read**: *verify*); the invoice must carry both numbers and the words "Reverse charge" (Art. 226 points 3, 4 and 11a, read 2026-10-03). VIES confirms registration only; it does not say the goods are exempt, and the owner remains responsible (said on the tax screen).
+   **5b. Where the goods are sent from** (review finding, built): when the basket has shipped goods, an intra-Community supply
+   needs the goods to go from one member state to another (Directive 2006/112/EC Art. 138(1), read 2026-10-03). Goods sent from
+   outside the EU (`seller.dispatchInEu` false: the owner's "goods are sent from" fact, defaulting to the store's country) are an
+   import, and goods sent from the buyer's own country (`dispatchCountry` equals the delivery country) are a domestic sale there:
+   both `standard`, reasons `dispatch_outside_eu` and `dispatch_domestic`, and the VAT number field is not offered. Downloads are
+   not sent, so a basket of downloads alone does not look at it. The tax screen's reverse-charge line says it needs goods sent
+   from an EU country. If every line's VAT would be zero (exempt goods) the order is `standard` with reason `nothing_taxable` (no
+   "reverse charge" is written on an order that carries no VAT).
+6. **Reverse charge.** Seller EU-established, registered with a valid number, goods (if any are shipped) sent from an EU country
+   other than the delivery country; buyer a business with a valid number (checked within 24 hours) in an EU member state other
+   than the seller's; delivery country equals the buyer's number's country; basket goods or downloads only: `reverse_charge`. The
+   VAT is not charged; the buyer accounts for it. *Sources:* goods shipped to a business in another member state identified for
+   VAT there are an exempt intra-Community supply (Directive 2006/112/EC Art. 138(1)), with the buyer's identification number a
+   condition (Directive 2018/1910, secondary source, *verify*); downloads to a business buyer are supplied where the buyer is
+   established (the general B2B rule, Art. 44 and 196, **not read**: *verify*); the invoice must carry both numbers and the words
+   "Reverse charge" (Art. 226 points 3, 4 and 11a, read 2026-10-03). VIES confirms registration only; it does not say the goods
+   are exempt, and the owner remains responsible (said on the tax screen).
 
-Consequences stated once so nobody guesses: **Kaizen charges the buyer's country VAT on consumer sales** (as today; right for an OSS-registered EU seller and for IOSS; the profile screen says a store not registered for OSS or in that country should ask its accountant, and that neither the 10,000 EUR threshold nor the origin-country rule is applied: this is a risk accepted in the wave's defaults); a Norwegian store charges the destination country's VAT, never reverse charge; services never get reverse charge in 1a; Northern Ireland and the UK are not EU for this purpose. Norway's own scheme for foreign sellers (VOEC) and the EU's flat customs duty on low-value parcels (Shopify's page says from 1 July 2026) are not built.
+Consequences stated once so nobody guesses: **Kaizen charges the buyer's country VAT on consumer sales** (as today; right for an
+OSS-registered EU seller and for IOSS; the profile screen says a store not registered for OSS or in that country should ask its
+accountant, and that neither the 10,000 EUR threshold nor the origin-country rule is applied: this is a risk accepted in the
+wave's defaults); a Norwegian store charges the destination country's VAT, never reverse charge; services never get reverse charge
+in 1a; Northern Ireland and the UK are not EU for this purpose. Norway's own scheme for foreign sellers (VOEC) and the EU's flat
+customs duty on low-value parcels (Shopify's page says from 1 July 2026) are not built.
 
 ### 4.2 Amounts, rounding, shipping VAT
 
 - All VAT arithmetic is on the **shown** amounts in the order's currency, integer minor units, with the existing `vatIncluded(amount, rate) = round(amount * rate / (1 + rate))` (`src/lib/checkout.ts`) and `withoutVat()` (`src/lib/b2b.ts`). Nothing new rounds.
-- Per line: `tax_i = vatIncluded(total_i, rate_i)` where `total_i` is after campaigns, group discount, welcome discount, code and credits. **Reverse charge:** `relief_i = tax_i`, `total_i := total_i - relief_i`, `tax_i := 0`, `discount_i += relief_i`, `vat_relief_minor_i = relief_i`. Shipping: `relief_ship = vatIncluded(shipping - shipping discount, shipping_rate)`; `orders.discount_minor += sum(relief_i) + relief_ship`; `orders.vat_relief_minor = sum(relief_i) + relief_ship`; `orders.tax_minor = 0`; `orders.total_minor = subtotal + shipping - discount_minor`. Therefore a reverse-charge total equals the ordinary total minus the ordinary tax, to the minor unit.
-- **Shipping rate** (`src/lib/shipping-vat.ts`, `shippingRate(rule, goodsRates, standard)`): `standard` is the destination country's standard rate (as today, everywhere by default); `follows_goods` is the common rate when every taxable goods line has the same rate, else the standard rate; `highest` is the highest rate among the goods lines (never below zero). A rule other than `standard` is applied only for a country where a person has verified it (3.3). The rate chosen is stored as `orders.shipping_tax_rate` and used for the shipping's tax. The principle that ancillary charges such as transport follow the supply they belong to (Directive Art. 78(a) and the case law on ancillary supplies) is **from memory, not read: verify**; each state's practice differs, which is why the default is `standard` until a person verifies a country.
+- Per line: `tax_i = vatIncluded(total_i, rate_i)` where `total_i` is after campaigns, group discount, welcome discount, code and
+  credits. **Reverse charge:** `relief_i = tax_i`, `total_i := total_i - relief_i`, `tax_i := 0`, `discount_i += relief_i`,
+  `vat_relief_minor_i = relief_i`. Shipping: `relief_ship = vatIncluded(shipping - shipping discount, shipping_rate)`;
+  `orders.discount_minor += sum(relief_i) + relief_ship`; `orders.vat_relief_minor = sum(relief_i) + relief_ship`;
+  `orders.tax_minor = 0`; `orders.total_minor = subtotal + shipping - discount_minor`. Therefore a reverse-charge total equals the
+  ordinary total minus the ordinary tax, to the minor unit.
+- **Shipping rate** (`src/lib/shipping-vat.ts`, `shippingRate(rule, goodsRates, standard)`): `standard` is the destination
+  country's standard rate (as today, everywhere by default); `follows_goods` is the common rate when every taxable goods line has
+  the same rate, else the standard rate; `highest` is the highest rate among the goods lines (never below zero). A rule other than
+  `standard` is applied only for a country where a person has verified it (3.3). The rate chosen is stored as
+  `orders.shipping_tax_rate` and used for the shipping's tax. The principle that ancillary charges such as transport follow the
+  supply they belong to (Directive Art. 78(a) and the case law on ancillary supplies) is **from memory, not read: verify**; each
+  state's practice differs, which is why the default is `standard` until a person verifies a country.
 - **Rate in force**: the rate at placement, `now()` read in the destination country's time zone; `valid_from` is the first day of the new rate. A rate stored on an order line never changes afterwards.
 - IOSS conversion to euro uses the store's own rate (`store_currencies`, units per 1 EUR, `convertMinor`); a currency with no rate gives no marking (`ioss_no_rate`), counted in the store checkup, never a guess.
 
 ### 4.3 The VIES check
 
-- Endpoint `https://ec.europa.eu/taxation_customs/vies/rest-api/check-vat-number`, `POST`, JSON body `{ countryCode, vatNumber, requesterMemberStateCode, requesterNumber }` (the last two when the store has a number that was checked valid, so the answer carries a `requestIdentifier`, the consultation number the seller can keep as proof; swagger read 2026-10-03). The **host and path are constants** in `src/lib/vies.ts`; no address or part of one ever comes from a person. Only the normalised country code (from a closed list of the 27 prefixes, Greece `EL`) and the number's characters (`[0-9A-Za-z+*.]{2,12}`) enter the body.
-- `fetch` is injectable (`checkVatNumber(input, { fetch })`, default the platform's), `cache: 'no-store'`, **4 s timeout** (`AbortSignal.timeout`), one retry on timeout, network error or 5xx, none on a definite answer, response read as text up to 16 KB and parsed defensively. Any answer that is not HTTP 200 with a boolean `valid` is `unavailable` with a short error code; the response's `name` and `address` of `---` mean *not disclosed* and are stored as null. The VIES site's own error codes are not in the swagger file; they are not relied on.
+- Endpoint `https://ec.europa.eu/taxation_customs/vies/rest-api/check-vat-number`, `POST`, JSON body
+  `{ countryCode, vatNumber, requesterMemberStateCode, requesterNumber }` (the last two when the store has a number that was
+  checked valid, so the answer carries a `requestIdentifier`, the consultation number the seller can keep as proof; swagger read
+  2026-10-03). The **host and path are constants** in `src/lib/vies.ts`; no address or part of one ever comes from a person. Only
+  the normalised country code (from a closed list of the 27 prefixes, Greece `EL`) and the number's characters
+  (`[0-9A-Za-z+*.]{2,12}`) enter the body.
+- `fetch` is injectable (`checkVatNumber(input, { fetch })`, default the platform's), `cache: 'no-store'`, **4 s timeout**
+  (`AbortSignal.timeout`), one retry on timeout, network error or 5xx, none on a definite answer, response read as text up to 16
+  KB and parsed defensively. Any answer that is not HTTP 200 with a boolean `valid` is `unavailable` with a short error code; the
+  response's `name` and `address` of `---` mean *not disclosed* and are stored as null. The VIES site's own error codes are not in
+  the swagger file; they are not relied on.
 - A test-only base address (`VIES_TEST_URL`) is honoured only when `VIES_ALLOW_TEST_URL=1` and `VERCEL` is unset (the `allowPrivate()` pattern of `replicate-fetch.ts`); on Vercel it is ignored, so production has exactly one host.
 - 24-hour cache per store and number (`vat_checks`); live requests are rate limited (2.1). A Norwegian seller number is checked against Brønnøysundregistrene through `lookupCompany()` (`vatRegistered`), a different host with its own fixed constant.
 - Shape check before any call (`normaliseVatNumber(country, input)`): strip spaces, dots, dashes, the prefix; upper-case; the per-country patterns are a table in `src/lib/vat-number.ts`, each sourced from the Commission's VIES page or python-stdnum by the agent that writes it, with the loose shape `^[0-9A-Z+*.]{2,12}$` as the fallback for a country whose pattern it could not confirm. The authority is VIES; a shape check never rejects what VIES might accept beyond obvious typos.
@@ -306,12 +440,23 @@ Areas do not share files except through the registries in 5.2.
 
 **Foundation** (schema, migrations, pure libraries, database tests)
 - `supabase/migrations/<ts>_tax_engine.sql` (generated by `pnpm db:generate` from `src/db/schema.ts`: the new tables, the widened `vat_rates`, the FK on `products`, new columns) and `<ts>_tax_engine_rules.sql` (custom, `pnpm exec drizzle-kit generate --custom --name tax_engine_rules`: functions, triggers, seeds, the `duplicate_store()`/`clone_store()`/`copy_orders()` patches, the plan-feature row, `countries.time_zone` seed). `src/db/schema.ts`.
-- Pure: `src/lib/vat.ts` (categories become data: `BUILT_IN_VAT_CATEGORIES`, `VatCategoryRow`, rate labels), `src/lib/vat-treatment.ts` (`vatTreatment()`, reason codes and their sentences), `src/lib/vat-relief.ts` (`reliefFor()`: per-line and shipping relief, the one place the arithmetic of 4.2 lives, used by cart and order), `src/lib/shipping-vat.ts`, `src/lib/vat-number.ts`, `src/lib/vies.ts` (constants, request building, response parsing, status mapping), `src/lib/ioss.ts` (`consignmentEur()`, eligibility, number format), `src/lib/tax-profile.ts` (profile type, `profileProblems()`, `readiness()`).
+- Pure: `src/lib/vat.ts` (categories become data: `BUILT_IN_VAT_CATEGORIES`, `VatCategoryRow`, rate labels),
+  `src/lib/vat-treatment.ts` (`vatTreatment()`, reason codes and their sentences), `src/lib/vat-relief.ts` (`reliefFor()`:
+  per-line and shipping relief, the one place the arithmetic of 4.2 lives, used by cart and order), `src/lib/shipping-vat.ts`,
+  `src/lib/vat-number.ts`, `src/lib/vies.ts` (constants, request building, response parsing, status mapping), `src/lib/ioss.ts`
+  (`consignmentEur()`, eligibility, number format), `src/lib/tax-profile.ts` (profile type, `profileProblems()`, `readiness()`).
 - Tests: `src/lib/vat-treatment.test.ts`, `vat-relief.test.ts`, `shipping-vat.test.ts`, `vat-number.test.ts`, `vies.test.ts`, `ioss.test.ts`, `tax-profile.test.ts`, `vat.test.ts` (extended), `src/db/vat.test.ts` (PGlite).
 
 **Server**
 - `src/server/vies.ts` (the call), `vat-checks.ts` (cache, log, rate limit, `pruneVatChecks()`), `tax-profile.ts` (read, save, *Check now*, readiness), `vat-categories.ts` (cached read, `'use cache'`, tag `vat`), `vat-admin.ts` (platform: categories, `setVatRate()`, verify, shipping rules, coverage), `tax-treatment.ts` (loads the facts for a cart or an order and calls the pure function: **the one function `cartSummary()` and `placeOrder()` both use**).
-- Edits: `checkout.ts` (rate at date, treatment, relief, Stripe lines, order columns, `PlacedOrder` gains `vatKind`, `vatReliefMinor`, `shippingReliefMinor`), `cart-summary.ts` (same inputs, same outputs: `vat`, `reverseCharge`, `reliefMinor`, `treatment`), `cart.ts` (`setCartVatNumber()`, `Cart.company` gains the number and the check), `orders.ts` (`OrderView.vatTreatment`, `vatKind`, `vatReliefMinor`, `shippingVatRate` from `orders.shipping_tax_rate`; `discountMinor` excludes the relief), `subscriptions.ts` (renewal rate at date, shipping rule), `standing-orders.ts` and `delivery-options.ts` (shipping rule instead of reading `standard_vat_rate`), `products.ts` (editor's rate hints through `vat_rate()`), `integrations.ts` (treatment kind only), `store-copy.ts` (nothing: SQL does it), the cron route (`pruneVatChecks()`, `syncStandardRates()`).
+- Edits: `checkout.ts` (rate at date, treatment, relief, Stripe lines, order columns, `PlacedOrder` gains `vatKind`,
+  `vatReliefMinor`, `shippingReliefMinor`), `cart-summary.ts` (same inputs, same outputs: `vat`, `reverseCharge`, `reliefMinor`,
+  `treatment`), `cart.ts` (`setCartVatNumber()`, `Cart.company` gains the number and the check), `orders.ts`
+  (`OrderView.vatTreatment`, `vatKind`, `vatReliefMinor`, `shippingVatRate` from `orders.shipping_tax_rate`; `discountMinor`
+  excludes the relief), `subscriptions.ts` (renewal rate at date, shipping rule), `standing-orders.ts` and `delivery-options.ts`
+  (shipping rule instead of reading `standard_vat_rate`), `products.ts` (editor's rate hints through `vat_rate()`),
+  `integrations.ts` (treatment kind only), `store-copy.ts` (nothing: SQL does it), the cron route (`pruneVatChecks()`,
+  `syncStandardRates()`).
 - Actions: `src/app/s/[store]/[market]/cart/actions.ts` (`vatNumberAction`), `src/app/admin/(gated)/[store]/settings/tax/actions.ts`, `src/app/admin/platform/vat/actions.ts`.
 - Tests: `src/server/vies.test.ts` (injected fetch), `vat-engine.int.test.ts`, `tax-profile.int.test.ts`, `vat-admin.int.test.ts`, additions to `checkout-kinds.int.test.ts`, `src/lib/vat-readers.test.ts` (source scans).
 
@@ -324,7 +469,11 @@ Areas do not share files except through the registries in 5.2.
 - Tests: render tests for each screen with `renderToString`, `admin-css.test.ts` scoping unaffected (admin tokens only, no fixed colours).
 
 **Analytics and AI**
-- `src/server/analytics-sql.ts` and `analytics-totals.ts` (the shipping split reads `vat_relief_minor`: for a reverse-charge order shipping income is `shipping - shipping discount - shipping relief`, because the order's `tax_minor` is 0; revenue without VAT stays `total_minor - tax_minor`), `docs/analytics.md` (definition: VAT charged versus VAT relieved), `finance-view.tsx` label, `src/server/owner-tools.ts` + `src/lib/owner-tools.ts` (`get_tax_profile`, `tax_readiness`: read only), `src/lib/assistant-skills.ts` (a playbook "VAT and reverse charge"), the plan comparison row (D132), `store_checkup`.
+- `src/server/analytics-sql.ts` and `analytics-totals.ts` (the shipping split reads `vat_relief_minor`: for a reverse-charge order
+  shipping income is `shipping - shipping discount - shipping relief`, because the order's `tax_minor` is 0; revenue without VAT
+  stays `total_minor - tax_minor`), `docs/analytics.md` (definition: VAT charged versus VAT relieved), `finance-view.tsx` label,
+  `src/server/owner-tools.ts` + `src/lib/owner-tools.ts` (`get_tax_profile`, `tax_readiness`: read only),
+  `src/lib/assistant-skills.ts` (a playbook "VAT and reverse charge"), the plan comparison row (D132), `store_checkup`.
 - Tests: `analytics-totals.int.test.ts` (a reverse-charge order), `owner-tools` tests, the skill's test.
 
 ### 5.2 Registries to extend (one small edit each; the lead merges)
@@ -378,7 +527,14 @@ Also: the check constraint replaced by the foreign key without losing old produc
 | The invoice and order email say "reverse charge" with both numbers | order page and email render tests (nb, sv, da, en) hold the words and both numbers; Stripe invoice custom fields (fake client); **Kaizen's own invoice: unit 1b** | 1a (page, email); 1b (invoice) |
 | Exemption never applies to consumers or to the seller's own country | matrix and INT: private buyer with a number typed (ignored), `same_country`, `own_number`, non-EU seller (Norwegian store), seller number unchecked, a basket with a booking, a subscription, a host's listing, a number of another country than the market, a non-EU buyer number; each charges VAT with its reason. | 1a |
 
-Also: no VAT number appears in anything public (`vat-readers.test.ts`: allowed readers listed; render tests of public routes contain no number; integration payload test); VIES unavailable at the shopper's *Check* (injected) shows the "could not be checked" message; rate limit (11th live request per cart per hour answers `unavailable`, cache hits do not count); the VAT field is not drawn for a private buyer, a booking basket, the seller's own market. **E2E** (`e2e/vat-reverse-charge.spec.ts`): in a test store (seller SE, registered, number checked valid by the stub) a business adds goods in the DE market, enters a number, the stub VIES (a local server named by `VIES_TEST_URL`, `VIES_ALLOW_TEST_URL=1`, started by the spec's global setup) says valid, the cart shows *Reverse charge* and the net total; the stub then answers 503 and the same flow charges VAT and still reaches the payment form.
+Also: no VAT number appears in anything public (`vat-readers.test.ts`: allowed readers listed; render tests of public routes
+contain no number; integration payload test); VIES unavailable at the shopper's *Check* (injected) shows the "could not be
+checked" message; rate limit (11th live request per cart per hour answers `unavailable`, cache hits do not count); the VAT field
+is not drawn for a private buyer, a booking basket, the seller's own market. **E2E** (`e2e/vat-reverse-charge.spec.ts`): in a test
+store (seller SE, registered, number checked valid by the stub) a business adds goods in the DE market, enters a number, the stub
+VIES (a local server named by `VIES_TEST_URL`, `VIES_ALLOW_TEST_URL=1`, started by the spec's global setup) says valid, the cart
+shows *Reverse charge* and the net total; the stub then answers 503 and the same flow charges VAT and still reaches the payment
+form.
 **Rating reached by 1a: partial** (the Kaizen invoice is 1b); Full after 1b.
 
 ### 6.3 `checkout.oss-and-ioss-support` and `international.ioss` (bucket B)
@@ -441,16 +597,31 @@ Consumer-facing and legal-adjacent texts this unit adds, each hand-written in nb
 
 ### 9.1 Migrations expected
 
-Two files after the foundation agent runs `pnpm db:generate` and `drizzle-kit generate --custom`: `<ts>_tax_engine.sql` (DDL: `vat_categories`, `vat_rates` widening with its primary key replaced, `shipping_vat_rules`, `store_tax_profile`, `vat_checks`, new columns on `countries`, `carts`, `orders`, `order_lines`, the foreign key on `products`; drops of the constraints `vat_rates_category`, `products_vat_category` and the old `vat_rates` primary key) and `<ts>_tax_engine_rules.sql` (functions `set_vat_rate`, `vat_rate` (3 args) with its 2-arg wrapper, `shipping_vat_rule`, the triggers, RLS enable, the seeds, the `pg_get_functiondef` patches of `clone_store`, `duplicate_store` and, if needed, `copy_orders`, the plan-feature row). Apply to production (`ybsozesfuxuitoacntfo`) after the tests pass, record both versions in `docs/decisions.md` (Migration versions).
+Two files after the foundation agent runs `pnpm db:generate` and `drizzle-kit generate --custom`: `<ts>_tax_engine.sql` (DDL:
+`vat_categories`, `vat_rates` widening with its primary key replaced, `shipping_vat_rules`, `store_tax_profile`, `vat_checks`, new
+columns on `countries`, `carts`, `orders`, `order_lines`, the foreign key on `products`; drops of the constraints
+`vat_rates_category`, `products_vat_category` and the old `vat_rates` primary key) and `<ts>_tax_engine_rules.sql` (functions
+`set_vat_rate`, `vat_rate` (3 args) with its 2-arg wrapper, `shipping_vat_rule`, the triggers, RLS enable, the seeds, the
+`pg_get_functiondef` patches of `clone_store`, `duplicate_store` and, if needed, `copy_orders`, the plan-feature row). Apply to
+production (`ybsozesfuxuitoacntfo`) after the tests pass, record both versions in `docs/decisions.md` (Migration versions).
 `clone_store()` and `duplicate_store()` are patched by this unit and by the trust lane: apply the lanes' migrations in the order merged; each patch is idempotent and fails loudly if its anchor line moved.
 
 ### 9.2 Statements the Supabase migration tool may cancel (the owner runs them in the SQL editor if so)
 
-The design contains **no `DELETE`, `TRUNCATE` or `DROP` inside a function**: pruning (`pruneVatChecks()`) and the daily `syncStandardRates()` are application code; the category, rate and check triggers only `RAISE`. The migration does contain top-level `ALTER TABLE ... DROP CONSTRAINT` statements (the old `vat_rates_category` check, the old primary key of `vat_rates`, `products_vat_category`) and a backfill `UPDATE` of `orders.shipping_tax_rate`; if the tool cancels any of these, list it for the owner, with the exact statement, and do not report the wave shipped until it has run. The `EXECUTE v_new` in the `DO` blocks of the function patches follows the existing, applied precedent.
+The design contains **no `DELETE`, `TRUNCATE` or `DROP` inside a function**: pruning (`pruneVatChecks()`) and the daily
+`syncStandardRates()` are application code; the category, rate and check triggers only `RAISE`. The migration does contain
+top-level `ALTER TABLE ... DROP CONSTRAINT` statements (the old `vat_rates_category` check, the old primary key of `vat_rates`,
+`products_vat_category`) and a backfill `UPDATE` of `orders.shipping_tax_rate`; if the tool cancels any of these, list it for the
+owner, with the exact statement, and do not report the wave shipped until it has run. The `EXECUTE v_new` in the `DO` blocks of
+the function patches follows the existing, applied precedent.
 
 ### 9.3 Advisors to check after applying
 
-Security: RLS enabled on the four new tables (no policies, as the others); `search_path` set on every new function; no new exposed view. Performance: an index for every new foreign key (`vat_checks`: `store_id`, `(store_id, number, requested_at)`, `(store_id, cart_id, requested_at)`; `orders.vat_check_id`; `carts.vat_check_id`; `store_tax_profile.updated_by`; `vat_rates.verified_by`, `created_by`; `vat_categories.updated_by`), and the primary-key change on `vat_rates` not leaving a duplicate index.
+Security: RLS enabled on the four new tables (no policies, as the others); `search_path` set on every new function; no new exposed
+view. Performance: an index for every new foreign key (`vat_checks`: `store_id`, `(store_id, number, requested_at)`,
+`(store_id, cart_id, requested_at)`; `orders.vat_check_id`; `carts.vat_check_id`; `store_tax_profile.updated_by`;
+`vat_rates.verified_by`, `created_by`; `vat_categories.updated_by`), and the primary-key change on `vat_rates` not leaving a
+duplicate index.
 
 ### 9.4 Decision row (draft)
 
@@ -458,11 +629,29 @@ Security: RLS enabled on the four new tables (no policies, as the others); `sear
 
 ### 9.5 CLAUDE.md bullet (draft)
 
-- VAT and the tax profile (D157, `docs/wave-1a-tax.md`): a product's rate is only `commerce.vat_rate(country, category, at)` (`vat_rates` has history and is written only by `set_vat_rate()`; a missing row is the standard rate; never read `countries.standard_vat_rate` or `vat_rates` elsewhere, `vat-readers.test.ts` holds it), categories are `commerce.vat_categories` (platform admins at `/admin/platform/vat`), shipping takes the standard rate unless a verified `shipping_vat_rules` entry says otherwise (`src/lib/shipping-vat.ts`). A store's registration is `store_tax_profile` (`/admin/{store}/settings/tax`, owners; numbers never copied). Which VAT an order carries is only `vatTreatment()` (`src/lib/vat-treatment.ts`: `standard`, `reverse_charge`, `ioss`, each with a reason code), loaded by `tax-treatment.ts` for both `cartSummary()` and `placeOrder()`, which must agree (`checkout-kinds.int.test.ts`, euro view). Reverse charge needs an EU-established, registered seller with a number checked valid, a business buyer with a valid VIES number (`src/server/vies.ts`: constant host, injectable fetch, 4 s, one retry, kept in `vat_checks`; never called while an order is placed; failure never blocks and never exempts) for another member state that is the delivery country, goods or downloads only; the VAT not charged is `orders.vat_relief_minor`, inside `discount_minor` (`OrderView.discountMinor` excludes it), and `placeOrder()` sends Stripe the net lines. A buyer's VAT number and VIES answer are on the cart, the order and the shopper's own pages and email only. Copied and host orders carry no treatment. A new place that adds up VAT reads `orders.shipping_tax_rate` and `vat_relief_minor`, never recomputes a rate.
+- VAT and the tax profile (D157, `docs/wave-1a-tax.md`): a product's rate is only `commerce.vat_rate(country, category, at)`
+  (`vat_rates` has history and is written only by `set_vat_rate()`; a missing row is the standard rate; never read
+  `countries.standard_vat_rate` or `vat_rates` elsewhere, `vat-readers.test.ts` holds it), categories are
+  `commerce.vat_categories` (platform admins at `/admin/platform/vat`), shipping takes the standard rate unless a verified
+  `shipping_vat_rules` entry says otherwise (`src/lib/shipping-vat.ts`). A store's registration is `store_tax_profile`
+  (`/admin/{store}/settings/tax`, owners; numbers never copied). Which VAT an order carries is only `vatTreatment()`
+  (`src/lib/vat-treatment.ts`: `standard`, `reverse_charge`, `ioss`, each with a reason code), loaded by `tax-treatment.ts` for
+  both `cartSummary()` and `placeOrder()`, which must agree (`checkout-kinds.int.test.ts`, euro view). Reverse charge needs an
+  EU-established, registered seller with a number checked valid, a business buyer with a valid VIES number (`src/server/vies.ts`:
+  constant host, injectable fetch, 4 s, one retry, kept in `vat_checks`; never called while an order is placed; failure never
+  blocks and never exempts) for another member state that is the delivery country, goods or downloads only; the VAT not charged is
+  `orders.vat_relief_minor`, inside `discount_minor` (`OrderView.discountMinor` excludes it), and `placeOrder()` sends Stripe the
+  net lines. A buyer's VAT number and VIES answer are on the cart, the order and the shopper's own pages and email only. Copied
+  and host orders carry no treatment. A new place that adds up VAT reads `orders.shipping_tax_rate` and `vat_relief_minor`, never
+  recomputes a rate.
 
 ### 9.6 Merge notes
 
-Shared files this unit edits and the other lane may too: `src/lib/i18n.ts`, `src/lib/email-text.ts`, `src/lib/store-nav.ts`, `src/lib/platform-nav.ts`, `src/lib/admin-map.ts`, `src/lib/store-copy-rules.ts`, `src/db/schema.ts`, `docs/decisions.md`, `CLAUDE.md`, the migrations directory (timestamps differ), `src/server/auth.ts` consumers. Edit each registry with one small block at a known anchor so a textual merge applies. Decision numbers: this spec proposes **D157** (D156 is the wave spec); the trust lane takes the next ones; the lead renumbers at the merge.
+Shared files this unit edits and the other lane may too: `src/lib/i18n.ts`, `src/lib/email-text.ts`, `src/lib/store-nav.ts`,
+`src/lib/platform-nav.ts`, `src/lib/admin-map.ts`, `src/lib/store-copy-rules.ts`, `src/db/schema.ts`, `docs/decisions.md`,
+`CLAUDE.md`, the migrations directory (timestamps differ), `src/server/auth.ts` consumers. Edit each registry with one small block
+at a known anchor so a textual merge applies. Decision numbers: this spec proposes **D157** (D156 is the wave spec); the trust
+lane takes the next ones; the lead renumbers at the merge.
 
 ---
 
@@ -484,7 +673,12 @@ What the server step built, where it differs from sections 3 to 5 (this section 
 
 ### 10.2 Order of the calculation (the same in the cart and in `placeOrder()`)
 
-Campaigns, group discount, welcome discount, code, credits (all as before) → each line's total with VAT → `decideTax()` → with reverse charge each line's relief is `vatIncluded(total, rate)` (so the total is the ordinary total minus the ordinary VAT) and is added to the line's discount, the shipping's relief to the order's discount → `order.discount_minor` = all of it, `vat_relief_minor` = lines' and shipping's relief. Gifts (a campaign's free products) are left out of the decision and the shipping rule's goods. Credits are used at their VAT-inclusive value (the spec's open question stays open); what an order earns is counted on the lines' net totals, as the database counts it (`cartSummary()` agrees).
+Campaigns, group discount, welcome discount, code, credits (all as before) → each line's total with VAT → `decideTax()` → with
+reverse charge each line's relief is `vatIncluded(total, rate)` (so the total is the ordinary total minus the ordinary VAT) and is
+added to the line's discount, the shipping's relief to the order's discount → `order.discount_minor` = all of it,
+`vat_relief_minor` = lines' and shipping's relief. Gifts (a campaign's free products) are left out of the decision and the
+shipping rule's goods. Credits are used at their VAT-inclusive value (the spec's open question stays open); what an order earns is
+counted on the lines' net totals, as the database counts it (`cartSummary()` agrees).
 
 - `PlacedOrder` gains `vatKind`, `vatReliefMinor`, `shippingReliefMinor`, `treatment`; `taxMinor` is 0 for reverse charge. `orders.vat_check_id` is the cart's check (business buyers only); `orders.vat_treatment` is null for a host's order.
 - `cartSummary()` gains `tax` (`CartTax`: `kind`, `reason`, `reverseCharge`, `notes`, `importNotice`, `reliefMinor`, `shippingRate`, the buyer's typed number and its state, the seller's number, `field`: whether the VAT number field is offered or why not), `reliefMinor`, `reliefLine(i)`. `total` is net of the relief; `discountMinor` leaves it out, as it leaves out credits.
@@ -494,7 +688,17 @@ Campaigns, group discount, welcome discount, code, credits (all as before) → e
 
 ### 10.3 What else reads the new columns
 
-`OrderView` (`orders.ts`): `vatKind`, `vatReliefMinor`, `shippingReliefMinor`, `vat` (what a **shopper** may see: reason, both numbers, the IOSS number, the VIES verdict and time, never VIES's name or address), lines' `vatReliefMinor`; `shippingVatRate` is `orders.shipping_tax_rate` (the country's rate on the day it was placed for an order without one); `discountMinor` leaves the relief out. Staff read the whole treatment with `getOrderTreatment(storeId, orderId)`. Integrations' order payload adds `vat_kind` and `vat_relief` and counts the relief in `discount`; the AI manager's `get_order` adds `vat_treatment` (kind and relief only). Analytics (`analytics-totals.ts`, `analytics-products-data.ts`, `analytics-discounts-data.ts`, `discounts.ts`) take `vat_relief_minor` out of every discount figure and subtract the shipping's relief from shipping income, and read the shipping's VAT rate from the order (`docs/analytics.md`). Subscription renewals take each line's rate on the renewal date and the shipping rule's rate (`orders.shipping_tax_rate` set). The product editor's context (`EditorContext`) has `vatCategories` and, per market, `vatRates` for every category and `vatRows` (a row of its own, else the standard rate by fallback); `saveProduct()` refuses an unknown category and a switched-off one the product does not already have.
+`OrderView` (`orders.ts`): `vatKind`, `vatReliefMinor`, `shippingReliefMinor`, `vat` (what a **shopper** may see: reason, both
+numbers, the IOSS number, the VIES verdict and time, never VIES's name or address), lines' `vatReliefMinor`; `shippingVatRate` is
+`orders.shipping_tax_rate` (the country's rate on the day it was placed for an order without one); `discountMinor` leaves the
+relief out. Staff read the whole treatment with `getOrderTreatment(storeId, orderId)`. Integrations' order payload adds `vat_kind`
+and `vat_relief` and counts the relief in `discount`; the AI manager's `get_order` adds `vat_treatment` (kind and relief only).
+Analytics (`analytics-totals.ts`, `analytics-products-data.ts`, `analytics-discounts-data.ts`, `discounts.ts`) take
+`vat_relief_minor` out of every discount figure and subtract the shipping's relief from shipping income, and read the shipping's
+VAT rate from the order (`docs/analytics.md`). Subscription renewals take each line's rate on the renewal date and the shipping
+rule's rate (`orders.shipping_tax_rate` set). The product editor's context (`EditorContext`) has `vatCategories` and, per market,
+`vatRates` for every category and `vatRows` (a row of its own, else the standard rate by fallback); `saveProduct()` refuses an
+unknown category and a switched-off one the product does not already have.
 
 Emails: `src/lib/email-text.ts` has the VAT wording apart from `text` (so the AI catalogue never sees it): `vatEmailText()`, `orderVatReliefRows()`, `orderVatParagraph()`, `refundVatNote()`; the order confirmation shows the relief row before the total and the statement with both numbers (reverse charge) or the IOSS statement; the refund email says the refund is without VAT. nb, sv, da, en by hand, every other language English; `// legal: needs review`.
 
@@ -502,9 +706,17 @@ AI manager (read only): `get_tax_profile`, `tax_readiness`; `store_checkup` repo
 
 ### 10.4 Left to the surface step
 
-The VAT number field (`vatNumberAction` is ready), the cart/checkout/order/account pages' rows and words (`i18n.ts`: `m.vatNumber`, `m.reverseCharge`, `m.ioss`, `m.importNote`, with `HAND_WRITTEN_ONLY` for the legal ones), the tax settings page and its form, the order page's treatment panel, the platform VAT pages, the product editor's category select, the registries (`store-nav`, `platform-nav`, `admin-map`), the plan comparison text if wanted, the assistant skill. `refreshTag`-style helpers: `vat-admin.ts` refreshes `CATALOG_TAG` only.
+The VAT number field (`vatNumberAction` is ready), the cart/checkout/order/account pages' rows and words (`i18n.ts`:
+`m.vatNumber`, `m.reverseCharge`, `m.ioss`, `m.importNote`, with `HAND_WRITTEN_ONLY` for the legal ones), the tax settings page
+and its form, the order page's treatment panel, the platform VAT pages, the product editor's category select, the registries
+(`store-nav`, `platform-nav`, `admin-map`), the plan comparison text if wanted, the assistant skill. `refreshTag`-style helpers:
+`vat-admin.ts` refreshes `CATALOG_TAG` only.
 
-**Known red until the admin surface lands:** the two action files sit in the folders of pages that do not exist yet (`src/app/admin/(gated)/[store]/settings/tax/` and `src/app/admin/(gated)/platform/vat/`), so `src/lib/store-nav.test.ts` ("settings/tax is in a sidebar") and `src/lib/platform-nav.test.ts` ("vat is in 0 sections") fail until the admin surface adds the nav items, the `ADMIN_PAGES` entries and the `page.tsx` files (5.2). Both are expected and say exactly what is missing; nothing else in `pnpm test` fails.
+**Known red until the admin surface lands:** the two action files sit in the folders of pages that do not exist yet
+(`src/app/admin/(gated)/[store]/settings/tax/` and `src/app/admin/(gated)/platform/vat/`), so `src/lib/store-nav.test.ts`
+("settings/tax is in a sidebar") and `src/lib/platform-nav.test.ts` ("vat is in 0 sections") fail until the admin surface adds the
+nav items, the `ADMIN_PAGES` entries and the `page.tsx` files (5.2). Both are expected and say exactly what is missing; nothing
+else in `pnpm test` fails.
 
 ---
 
@@ -521,7 +733,12 @@ What the admin step built, where it differs from sections 2.2, 2.3 and 5, and wh
 | Attention | `src/server/tax-attention.ts` (`taxAttention(storeIds)`, one query) feeds `StoreFigures.tax`; `attentionFor()` shows an owner (never staff) *the tax settings need a look* with `checkupFindings()`'s words. Not urgent. |
 | AI manager | the playbook `vat-and-reverse-charge` in `assistant-skills.ts` (it names the read-only tools `tax_readiness` and `get_tax_profile` and the pages `tax` and `order`). |
 
-Deviations: the per-country *Shipping VAT rule* is a form plus a table of the countries that have a rule of their own, not a select on every row; only a platform admin can set it, and a rule saved without the verified tick is shown as a draft that is not applied. Platform VAT pages are not cached (they call `connection()` like the other platform pages). No new cookie or storage item; nothing is added to the store translation worklist (the admin is English only). The two pages list their warnings in English for an accountant's eyes (`TAX_WARNINGS`, the platform page's intro, the shipping rule's help): they are in section 8.6 and need review.
+Deviations: the per-country *Shipping VAT rule* is a form plus a table of the countries that have a rule of their own, not a
+select on every row; only a platform admin can set it, and a rule saved without the verified tick is shown as a draft that is not
+applied. Platform VAT pages are not cached (they call `connection()` like the other platform pages). No new cookie or storage
+item; nothing is added to the store translation worklist (the admin is English only). The two pages list their warnings in English
+for an accountant's eyes (`TAX_WARNINGS`, the platform page's intro, the shipping rule's help): they are in section 8.6 and need
+review.
 
 Not done: a render test of the two `page.tsx` files themselves (the views are tested with `renderToString`; the pages are thin), and no e2e of the admin screens (needs a signed-in session; the walking tests `store-nav`, `platform-nav` and `admin-map` hold their registration).
 
@@ -539,22 +756,51 @@ What the shopper step built, where it differs from sections 2.1, 5.1 and 5.3 (th
 | Order page and My account's order | The relief row before the total, the VAT row (reverse-charge words, or one row per rate when there is more than one rate), the reverse-charge statement with both numbers, or the IOSS statement with the store's IOSS number, or the import notice. | `order/[orderId]/order-section.tsx`, `account/orders/[orderId]/page.tsx`, `src/components/order-vat.tsx` |
 | Emails | Built by the server step (`vatEmailText()` and friends); not touched. | |
 
-The check: pressing *Check number* (or Enter in the field, which never starts the checkout) calls `vatNumberAction()`, which keeps the company typed beside it and asks the server; the page refreshes and the sentence under the field is what the server worked out for the number on the cart (`vatNumberMessage()`, by the decision's reason). **Pressing pay with a number typed and not checked checks it first**, so a number is never left out by mistake; VIES being down is not a problem there (VAT is charged and the sale goes on), only a number that cannot be asked about (too short, no country, characters) stops it, with the sentence saying so and how to go on (clear the field). The number lives in the cart row: the component sets no cookie and uses no storage (a source-scan test holds it), so `KNOWN_COOKIES` has no entry.
+The check: pressing *Check number* (or Enter in the field, which never starts the checkout) calls `vatNumberAction()`, which keeps
+the company typed beside it and asks the server; the page refreshes and the sentence under the field is what the server worked out
+for the number on the cart (`vatNumberMessage()`, by the decision's reason). **Pressing pay with a number typed and not checked
+checks it first**, so a number is never left out by mistake; VIES being down is not a problem there (VAT is charged and the sale
+goes on), only a number that cannot be asked about (too short, no country, characters) stops it, with the sentence saying so and
+how to go on (clear the field). The number lives in the cart row: the component sets no cookie and uses no storage (a source-scan
+test holds it), so `KNOWN_COOKIES` has no entry.
 
 ### 12.2 Deviations from sections 2.1, 5.1, 5.3
 
-1. **The wording is `src/lib/vat-text.ts`, not `i18n.ts`.** The server step already put the order's VAT statements apart from the AI catalogue (`vatEmailText()` in `email-text.ts`); the shopper pages use the same module for the statements (reverse charge, both numbers' labels, IOSS, import notice, the relief row) and add what only the pages need (the field's label and help, the outcome sentences, the problems, the two basket lines, "of which VAT 25 %", the VAT row for reverse charge). nb, sv, da and en are by hand; every other language shows English. Because nothing of it is in `i18n.ts`, `ui-catalog.ts` needs no `HAND_WRITTEN_ONLY` set and `ui-catalog.test.ts` has nothing to add: the AI catalogue cannot see it. Every string is flagged `// legal: needs review` through the module's header (section 8 lists it).
+1. **The wording is `src/lib/vat-text.ts`, not `i18n.ts`.** The server step already put the order's VAT statements apart from the
+   AI catalogue (`vatEmailText()` in `email-text.ts`); the shopper pages use the same module for the statements (reverse charge,
+   both numbers' labels, IOSS, import notice, the relief row) and add what only the pages need (the field's label and help, the
+   outcome sentences, the problems, the two basket lines, "of which VAT 25 %", the VAT row for reverse charge). nb, sv, da and en
+   are by hand; every other language shows English. Because nothing of it is in `i18n.ts`, `ui-catalog.ts` needs no
+   `HAND_WRITTEN_ONLY` set and `ui-catalog.test.ts` has nothing to add: the AI catalogue cannot see it. Every string is flagged
+   `// legal: needs review` through the module's header (section 8 lists it).
 2. **One additive server edit:** `tax-treatment.ts` gets `vatFieldFor(facts, basket, asBusiness = facts.business)` and `CartTax.fieldIfBusiness`, because the first time a business sees the cart it has no company on it yet (so `field` says `private`) and the cart must still decide whether to draw the field. `field` is unchanged. `orders.ts` adds `taxMinor` to an order's lines (`order_lines.tax_minor`) for the per-rate rows.
-3. **VAT per rate on the order page** is `src/lib/order-vat.ts`: the lines' own `tax_minor` grouped by rate, the rest of the order's VAT being the shipping's at `shippingVatRate`; nothing is recomputed, so the rows add up to the order's VAT. Listed only when there is more than one rate; a reverse-charge order lists none. The import notice on the order and checkout pages is read from the reason (`ioss_over_limit`, `ioss_no_rate`), so a store with no IOSS number and goods from outside the EU shows the notice on the cart only (the order does not keep that fact).
+3. **VAT per rate on the order page** is `src/lib/order-vat.ts`: the lines' own `tax_minor` grouped by rate, the rest of the
+   order's VAT being the shipping's at `shippingVatRate`; nothing is recomputed, so the rows add up to the order's VAT. Listed
+   only when there is more than one rate; a reverse-charge order lists none. The import notice on the order and checkout pages is
+   read from the reason (`ioss_over_limit`, `ioss_no_rate`), so a store with no IOSS number and goods from outside the EU shows
+   the notice on the cart only (the order does not keep that fact).
 4. **The e2e does not press Checkout** (section 12.4).
 
 ### 12.3 Tests
 
-`src/lib/vat-text.test.ts` (every string in nb, sv, da, en; same keys everywhere; English fallback; each outcome sentence says VAT is charged and never "exempt" unless reverse charge applies; every action outcome has a text or is not a problem), `src/lib/order-vat.test.ts`, `src/components/vat-number-field.test.ts` (labelled input, live region and alert, Enter does not submit, no cookie or storage in the four components, the notes), additions to `cart-contents.test.ts` (reverse charge for a business and for a shopper who sees VAT, nb and da words, the field's offer in every case and each outcome's sentence), `checkout-section.test.ts` and `order-section.test.ts` (reverse charge with both numbers in nb, sv, da, en; IOSS; the import notice; VAT per rate). Fixtures of the three existing section tests gained the new `OrderView`/`cartSummary()` fields.
+`src/lib/vat-text.test.ts` (every string in nb, sv, da, en; same keys everywhere; English fallback; each outcome sentence says VAT
+is charged and never "exempt" unless reverse charge applies; every action outcome has a text or is not a problem),
+`src/lib/order-vat.test.ts`, `src/components/vat-number-field.test.ts` (labelled input, live region and alert, Enter does not
+submit, no cookie or storage in the four components, the notes), additions to `cart-contents.test.ts` (reverse charge for a
+business and for a shopper who sees VAT, nb and da words, the field's offer in every case and each outcome's sentence),
+`checkout-section.test.ts` and `order-section.test.ts` (reverse charge with both numbers in nb, sv, da, en; IOSS; the import
+notice; VAT per rate). Fixtures of the three existing section tests gained the new `OrderView`/`cartSummary()` fields.
 
 ### 12.4 The end-to-end test
 
-`e2e/vat-reverse-charge.spec.ts` with a stand-in VIES (`e2e/fixtures/vies-stub.mjs`, started by `playwright.config.ts` as a second web server on port 3911, and the app started with `VIES_TEST_URL` and `VIES_ALLOW_TEST_URL=1`): a Swedish store (registered, number checked valid, payments on through a live account so no Stripe keys are needed) sells to a Danish business: valid takes the VAT off the cart in Danish with both numbers; an invalid answer charges it again; 503 charges VAT, says it could not be checked, and leaves the *Til kassen* button enabled; the field is absent in the seller's own country; a mistyped number is told, not sent; Enter checks and does not leave the cart. **It stops before pressing Checkout:** a test database has no Stripe, so "reaches the payment form" is held by `vat-engine.int.test.ts` (VIES failing, the order placed, Stripe's lines at `dueNowMinor`) and not by a browser. A server already running without the stub's address (`reuseExistingServer`) would ask the real VIES: restart it.
+`e2e/vat-reverse-charge.spec.ts` with a stand-in VIES (`e2e/fixtures/vies-stub.mjs`, started by `playwright.config.ts` as a second
+web server on port 3911, and the app started with `VIES_TEST_URL` and `VIES_ALLOW_TEST_URL=1`): a Swedish store (registered,
+number checked valid, payments on through a live account so no Stripe keys are needed) sells to a Danish business: valid takes the
+VAT off the cart in Danish with both numbers; an invalid answer charges it again; 503 charges VAT, says it could not be checked,
+and leaves the *Til kassen* button enabled; the field is absent in the seller's own country; a mistyped number is told, not sent;
+Enter checks and does not leave the cart. **It stops before pressing Checkout:** a test database has no Stripe, so "reaches the
+payment form" is held by `vat-engine.int.test.ts` (VIES failing, the order placed, Stripe's lines at `dueNowMinor`) and not by a
+browser. A server already running without the stub's address (`reuseExistingServer`) would ask the real VIES: restart it.
 
 ---
 

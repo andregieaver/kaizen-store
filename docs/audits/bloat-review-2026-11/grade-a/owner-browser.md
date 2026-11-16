@@ -1,8 +1,18 @@
 # Grade A for: What an owner's browser gets
 
-Part of `docs/audits/bloat-review-2026-11.md`. **Today: D.** D, at the top of the band; I recomputed the figures from the build's own stats and they hold. Every one of the 432 signed-in screens loads about 1.15 MB of script where about 0.65 MB will do, 27 screens load an editor or a catalogue they never draw (up to 4.27 MB), every screen makes 23 to 46 requests nobody asked for, and a product editor's document is two thirds unread words; budgets watch 9 of 449 routes, about 4% above figures that already hold the waste, and none of the worst four. It is not an E, because nobody is hurt yet and most of the fix is import lines; it is not a C, because the state after phase 0 is what C describes (a sound base, real waste, some of it held) and today is plainly a grade worse.
+Part of `docs/audits/bloat-review-2026-11.md`. **Today: D.** D, at the top of the band; I recomputed the figures from the build's
+own stats and they hold. Every one of the 432 signed-in screens loads about 1.15 MB of script where about 0.65 MB will do, 27
+screens load an editor or a catalogue they never draw (up to 4.27 MB), every screen makes 23 to 46 requests nobody asked for, and
+a product editor's document is two thirds unread words; budgets watch 9 of 449 routes, about 4% above figures that already hold
+the waste, and none of the worst four. It is not an E, because nobody is hurt yet and most of the fix is import lines; it is not a
+C, because the state after phase 0 is what C describes (a sound base, real waste, some of it held) and today is plainly a grade
+worse.
 
-**The bar, in a sentence.** A plain admin screen starts with at most 650 KB of script (447 KB of it is React and Next), a product's editor with at most 1.1 MB and the page builder with at most 1.8 MB; nothing is downloaded for a part the screen does not draw, a screen is handed at most 1.1 times the words its parts name, and a screen nobody touches asks the server for nothing but a notice count every ten minutes. Every route sits under a budget that only falls, and owners' real page loads paint within 2.5 seconds.
+**The bar, in a sentence.** A plain admin screen starts with at most 650 KB of script (447 KB of it is React and Next), a
+product's editor with at most 1.1 MB and the page builder with at most 1.8 MB; nothing is downloaded for a part the screen does
+not draw, a screen is handed at most 1.1 times the words its parts name, and a screen nobody touches asks the server for nothing
+but a notice count every ten minutes. Every route sits under a budget that only falls, and owners' real page loads paint within
+2.5 seconds.
 
 ## The measures
 
@@ -25,7 +35,28 @@ After phase 0: C. After phase 1: C. After phase 2: B. After all phases: A.
 
 **Can the steps reach an A?** Yes, with one answer. Step 2.34 waits for your yes that the notice badge in a tab nobody touches may be up to ten minutes late; with a no the measure stays short of its bar. The builder's 1.8 MB rests on a table of cuts that step 2.30 must draw up before it starts (if it sums to under 310,000 bytes, the builder's own split joins the step), and the 28 days of real admin loads are read in step 4.5.
 
-**The challenger on the bar.** The floor first. React and Next are 447,102 bytes on all 560 routes, as the steward says (seven files, summed here). The frame is not 64 KB. I re-ran the cut simulation on the built chunks: a signed-in screen that is the frame alone (the account's Billing) lands at about 616,000 bytes, so the frame is about 169 KB. The 64 KB is only what leaves when one part is dropped. So 650,000 is the frame plus 34 KB of a screen's own code, not plus 140 KB. It is tighter than the steward believed and I keep it: about 200 KB gzip, of which 134 KB is the framework. Kept as well: 800,000 by idle on the home, the builder at 1,800,000 (about 1.6 MB by modules plus 12%; I could not check that floor closer than 100 KB either way), 0 prefetches at rest, 6 notice requests an hour, 100 rows a list, and Google's good line in production. Tightened in five places. (1) zod. 'At most 160 routes, on a list that may only shrink' is a B by the steward's own rule. Only 4 of 332 admin client files call a schema, and my re-run leaves zod on 118 screens outside the builder, brought by a helper that shares a file with a schema: 117 to 150 KB each. New bar: at most 60 routes, each named with the schema it runs. (2) A product's editor gets its own line, 1,100,000. Its only ceiling was 1,300,000, set where the cuts happen to land (about 1.26 MB), and about 290 KB of that is zod and the page model, which the screen's own code does not run. (3) The builder's document: 445,000, not 480,000. Step 2.30's own figure for its texts gives 439,000. (4) Requests at rest are held on eight screens, not on the home alone. The pages list (46) and settings (44) are today's worst. (5) By idle, the builder gets a number, 2,500,000. Step 2.29 moves 435 KB to after first paint and nothing counted it. Added: the words in Norwegian (45.3 KB shared today, against 34.0 in English), what a save sends back, a frame-alone figure, and a time figure in the lab until production has 100 loads a kind. Loosened: nothing. Not measurable as written: the steward's request budgets on orders, a product's editor and the builder have no step that creates them, and the production figure needs loads that do not exist before opening. AMENDED BY THE PANEL'S CRITIC, so that one thing has one number in every area: 5: words a screen is handed: handed against named, counted from source in both languages: at most 1.1 times the groups a screen's parts name on the five budgeted screens and at most 1.25 times at every site that hands over 50 KB; the browser's record stays as a cross-check that may only rise; shared words at most 15.5 KB and 16 KB. 4: sign-in English (shortfall 4): only the routes that draw a part that reads it: 2 today, each named. 6: the notice poll: 6 an hour; with a no the measure is short.
+**The challenger on the bar.** The floor first. React and Next are 447,102 bytes on all 560 routes, as the steward says (seven
+files, summed here). The frame is not 64 KB. I re-ran the cut simulation on the built chunks: a signed-in screen that is the frame
+alone (the account's Billing) lands at about 616,000 bytes, so the frame is about 169 KB. The 64 KB is only what leaves when one
+part is dropped. So 650,000 is the frame plus 34 KB of a screen's own code, not plus 140 KB. It is tighter than the steward
+believed and I keep it: about 200 KB gzip, of which 134 KB is the framework. Kept as well: 800,000 by idle on the home, the
+builder at 1,800,000 (about 1.6 MB by modules plus 12%; I could not check that floor closer than 100 KB either way), 0 prefetches
+at rest, 6 notice requests an hour, 100 rows a list, and Google's good line in production. Tightened in five places. (1) zod. 'At
+most 160 routes, on a list that may only shrink' is a B by the steward's own rule. Only 4 of 332 admin client files call a schema,
+and my re-run leaves zod on 118 screens outside the builder, brought by a helper that shares a file with a schema: 117 to 150 KB
+each. New bar: at most 60 routes, each named with the schema it runs. (2) A product's editor gets its own line, 1,100,000. Its
+only ceiling was 1,300,000, set where the cuts happen to land (about 1.26 MB), and about 290 KB of that is zod and the page model,
+which the screen's own code does not run. (3) The builder's document: 445,000, not 480,000. Step 2.30's own figure for its texts
+gives 439,000. (4) Requests at rest are held on eight screens, not on the home alone. The pages list (46) and settings (44) are
+today's worst. (5) By idle, the builder gets a number, 2,500,000. Step 2.29 moves 435 KB to after first paint and nothing counted
+it. Added: the words in Norwegian (45.3 KB shared today, against 34.0 in English), what a save sends back, a frame-alone figure,
+and a time figure in the lab until production has 100 loads a kind. Loosened: nothing. Not measurable as written: the steward's
+request budgets on orders, a product's editor and the builder have no step that creates them, and the production figure needs
+loads that do not exist before opening. AMENDED BY THE PANEL'S CRITIC, so that one thing has one number in every area: 5: words a
+screen is handed: handed against named, counted from source in both languages: at most 1.1 times the groups a screen's parts name
+on the five budgeted screens and at most 1.25 times at every site that hands over 50 KB; the browser's record stays as a
+cross-check that may only rise; shared words at most 15.5 KB and 16 KB. 4: sign-in English (shortfall 4): only the routes that
+draw a part that reads it: 2 today, each named. 6: the notice poll: 6 an hour; with a no the measure is short.
 
 ## What the challenger found missing, and how it was settled
 

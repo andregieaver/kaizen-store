@@ -5,7 +5,13 @@ Interface text (`README.md` beside this file), part of `docs/audits/bloat-review
 - **Kind:** no check. **Priority:** P1. **Effort:** M. **Confidence:** high. **Step:** 1.4.
 - **Second check:** confirmed.
 - **Where:** `src/components/admin/admin-catalogues.scan.test.ts:45-55`, `src/components/admin/templates-helpers.ts:1`, `src/lib/store-features.ts:14`, `src/lib/admin-messages/notifications.en.ts:1-9`, `src/lib/admin-messages/orders.en.ts:2-8`, `src/lib/storefront-bundle.scan.test.ts:16`, `e2e/signed-in/admin-scripts.spec.ts:36-46`, `docs/performance.md:190-198`, `.github/workflows/ci.yml:35`
-- **Evidence:** Scripts have budgets per admin screen; the documents the words are handed in have none. The ratchet for catalogues in client code reads only files that say 'use client' and import a catalogue directly (admin-catalogues.scan.test.ts:45-55), so it does not see templates-helpers.ts, store-features.ts or the lib modules that import a catalogue by value (68 outside the admin by my count). Nothing keeps the registry out of code outside the admin (TX-1). 14 catalogue files import code; notifications.en.ts bundled alone is 524 KB minified, of which 47 KB is its own text and 454 KB is zod (verified report). Nothing looks for keys no code names. The comment at ci.yml:35 names the catalogues as the reason for the 7 GB heap; measured alone they take about 125 MB.
+- **Evidence:** Scripts have budgets per admin screen; the documents the words are handed in have none. The ratchet for catalogues
+  in client code reads only files that say 'use client' and import a catalogue directly (admin-catalogues.scan.test.ts:45-55), so
+  it does not see templates-helpers.ts, store-features.ts or the lib modules that import a catalogue by value (68 outside the
+  admin by my count). Nothing keeps the registry out of code outside the admin (TX-1). 14 catalogue files import code;
+  notifications.en.ts bundled alone is 524 KB minified, of which 47 KB is its own text and 454 KB is zod (verified report).
+  Nothing looks for keys no code names. The comment at ci.yml:35 names the catalogues as the reason for the 7 GB heap; measured
+  alone they take about 125 MB.
 - **Cost today:** No running cost of its own. It is how 3.6 MB of text reached 802 route entries and over half of two documents without a test going red. Paid by: Everyone who pays for TX-1, TX-2, TX-4, TX-5, TX-7 and TX-8 again later.
 - **Saving:** Keeps the savings of the findings above; no bytes by itself.
 - **Risk:** Low. Each list needs a first baseline that only falls. The dead-key scan without its table list would flag live entries, as TX-11 shows; with it, a key that is live only through a string built at run time must be added to the list by hand.

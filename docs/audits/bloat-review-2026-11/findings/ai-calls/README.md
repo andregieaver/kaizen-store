@@ -2,7 +2,14 @@
 
 Part of `docs/audits/bloat-review-2026-11.md`, on commit 0bd814c. Read by one reviewer, challenged by a second (who re-opened every citation, re-measured every number and applied the owner's note that the platform is not open yet) and planned by a third. A tick (✓) marks a finding the second reviewer confirmed or corrected; one the planner added has none. Each finding has a file of its own beside this one.
 
-**In short.** The shopper chat is lean (about 5,000 characters of prompt and tools a call); the AI manager is the heavy part: about 161,700 characters a call (roughly 40,400 tokens, an estimate at 4 characters a token), 91% of it 124 tool definitions that do not depend on the question, on up to 11 calls a turn. A lean default drawn with the app's own functions is 48,600 characters on Home and 77,000 on an orders page; it is already step 3.18 of the code review, still Open, and the eval meant to guard it does not test whether the model finds a tool (9 manager cases, none uses load_tools), so that check comes first. Around the AI, screens, polls and five-minute jobs fetch the AI connection and walk every site before knowing there is work (237,563 connection reads against 19,104 AI calls): small today, rising with every store, clearest in the alt-text job. The one quick, safe win is in the browser: the chat's script is 496 KB, of which about 370 KB is the model's tool catalogue and admin map.
+**In short.** The shopper chat is lean (about 5,000 characters of prompt and tools a call); the AI manager is the heavy part:
+about 161,700 characters a call (roughly 40,400 tokens, an estimate at 4 characters a token), 91% of it 124 tool definitions that
+do not depend on the question, on up to 11 calls a turn. A lean default drawn with the app's own functions is 48,600 characters on
+Home and 77,000 on an orders page; it is already step 3.18 of the code review, still Open, and the eval meant to guard it does not
+test whether the model finds a tool (9 manager cases, none uses load_tools), so that check comes first. Around the AI, screens,
+polls and five-minute jobs fetch the AI connection and walk every site before knowing there is work (237,563 connection reads
+against 19,104 AI calls): small today, rising with every store, clearest in the alt-text job. The one quick, safe win is in the
+browser: the chat's script is 496 KB, of which about 370 KB is the model's tool catalogue and admin map.
 
 ## Findings
 

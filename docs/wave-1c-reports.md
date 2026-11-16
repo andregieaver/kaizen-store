@@ -85,7 +85,11 @@ None changes what the unit delivers except points 1 and 3, which the lead confir
    carried" (the order's frozen rate buckets, built once by `commerce.build_invoice_snapshot()`), no second grouping of order lines that could drift from the
    invoice, and a report whose every figure can be tied to a numbered document.
 2. **Which dates.** An invoice is dated by its `supply_date` (the payment day in the store's time zone, the tax point of 1b 4.2: for goods, downloads and fees
-   the day the payment was accepted. The basis is Directive Art. 63 (VAT becomes chargeable when goods are delivered or services performed) with Art. 65 (a payment received on account before then makes VAT chargeable on the amount received), *verify*; Art. 66a, "payment accepted", covers only a deemed supplier under Art. 14a (a marketplace or platform) and is **not** the basis for a store's own sales; an order paid in one period and supplied in a later one is dated by the payment under Art. 65 only for the amount received); a credit note by its
+   the day the payment was accepted. The basis is Directive Art. 63 (VAT becomes chargeable when goods are delivered or services
+   performed) with Art. 65 (a payment received on account before then makes VAT chargeable on the amount received), *verify*; Art.
+   66a, "payment accepted", covers only a deemed supplier under Art. 14a (a marketplace or platform) and is **not** the basis for
+   a store's own sales; an order paid in one period and supplied in a later one is dated by the payment under Art. 65 only for the
+   amount received); a credit note by its
    `issued_on`. Finance dates an order by `placed_at`; the difference is a named line of the reconciliation (4.7), not an error.
 3. **`vatMain` is not used for euro.** The brief says amounts are converted "only through the stored vatMain/vatHome figures". That holds for the **VAT
    report in the store's main currency**: each bucket is converted with the `fxRate` stored on its document (`snapshot.vatMain.fxRate`, the store's own rate on
@@ -189,11 +193,23 @@ pending). The main-currency bridge adds one named line, *Exchange-rate differenc
 - **Drift.** When a period was exported before and its figures are now different (a waiting invoice issued with a supply date in it, a credit note, a corrected rate), the view says *"Changed since you exported this on {date}: VAT {+/-}{amount}. If you have already filed it, the difference belongs in your next return as a correction."* The comparison is the totals recorded at the last export; it is advice, never a block.
 - An **incomplete** return is never exported as complete: if any group in the OSS or IOSS return has no euro rate (4.5) the *Return data* export is refused with the reason and the currency and date, and the *Conversion detail* export (which shows the gap) is allowed. The VAT export is never refused for a missing main-currency rate: it is written per document currency and leaves the main-currency columns empty and flagged (4.8).
 
-**Euro rates.** A card on the OSS and IOSS views lists the currencies of the period, each with the ECB rate, its date and where it came from. A missing rate shows *Fetch from the ECB* and *Enter a rate*. Both are the **owner's** (`requireOwnerRole`, an `OWNER_ONLY_EXTRA` entry in the permission scan with its reason): fetching asks the ECB for that day only; entering needs a reason of at least 10 characters, is audit-logged (`analytics.tax_rate_override_set` with currency, date, old and new value) and is shown wherever the rate is used as *"owner's rate: {reason}"*. An override never changes a document.
+**Euro rates.** A card on the OSS and IOSS views lists the currencies of the period, each with the ECB rate, its date and where it
+came from. A missing rate shows *Fetch from the ECB* and *Enter a rate*. Both are the **owner's** (`requireOwnerRole`, an
+`OWNER_ONLY_EXTRA` entry in the permission scan with its reason): fetching asks the ECB for that day only; entering needs a reason
+of at least 10 characters, is audit-logged (`analytics.tax_rate_override_set` with currency, date, old and new value) and is shown
+wherever the rate is used as *"owner's rate: {reason}"*. An override never changes a document.
 
-**What needs you.** (analytics-and-ai area) The owner's overview and the store's Home add one "not urgent" attention item when the store has an OSS registration (`oss_scheme = 'union'` or `'non_union'`) or an IOSS number without an intermediary, a return period has ended, its deadline is within 14 days or has passed, and no *Return data* export is logged for that period in filing mode: *"Your OSS data for Q3 2026 has not been exported; it is due 31 October."* It never says a return is late for certain (Kaizen does not know what was filed).
+**What needs you.** (analytics-and-ai area) The owner's overview and the store's Home add one "not urgent" attention item when the
+store has an OSS registration (`oss_scheme = 'union'` or `'non_union'`) or an IOSS number without an intermediary, a return period
+has ended, its deadline is within 14 days or has passed, and no *Return data* export is logged for that period in filing
+mode: *"Your OSS data for Q3 2026 has not been exported; it is due 31 October."* It never says a return is late for certain
+(Kaizen does not know what was filed).
 
-**The AI manager** (read only, ungated, analytics-and-ai area): `vat_report` (VAT by country and rate for a period) and `oss_return_data` (a quarter or, with `scheme: "ioss"`, a month, in a mode) repeat the functions the page uses, with amounts written by `formatMoney`, and never make a number or a file. Both are served to Kaizen Life's assistant like every owner tool (D96). A playbook `vat-oss-ioss-reports` is added to `ASSISTANT_SKILLS` and the existing `vat-and-reverse-charge` playbook gets one line pointing to the new page.
+**The AI manager** (read only, ungated, analytics-and-ai area): `vat_report` (VAT by country and rate for a period) and
+`oss_return_data` (a quarter or, with `scheme: "ioss"`, a month, in a mode) repeat the functions the page uses, with amounts
+written by `formatMoney`, and never make a number or a file. Both are served to Kaizen Life's assistant like every owner tool
+(D96). A playbook `vat-oss-ioss-reports` is added to `ASSISTANT_SKILLS` and the existing `vat-and-reverse-charge` playbook gets
+one line pointing to the new page.
 
 ### 2.3 Platform side
 
@@ -260,13 +276,24 @@ Money is integer minor units plus an ISO code; rates are `numeric`.
 ### 3.1 Reference data: the ECB's rates (platform-wide, no `store_id`)
 
 `commerce.ecb_reference_rates (rate_date date not null, currency char(3) not null, rate numeric(18,6) not null check (rate > 0), source text not null default 'ecb' check (source in ('ecb')), fetched_at timestamptz not null default now(), primary key (rate_date, currency))`.
-Units of the currency per 1 EUR, as the ECB publishes them (up to five decimals today, GBP 0.85463). **Append-only**: a trigger refuses an `UPDATE` and a `DELETE` (it raises; it contains no `DELETE`), because a stored rate is part of what a filed return rested on. A day already stored is never replaced: the writer inserts `on conflict do nothing`, and a difference between a stored and a re-fetched value is logged by the job (`ecb.rate_differs`), never applied. The euro itself has no row (rate 1).
+Units of the currency per 1 EUR, as the ECB publishes them (up to five decimals today, GBP 0.85463). **Append-only**: a trigger
+refuses an `UPDATE` and a `DELETE` (it raises; it contains no `DELETE`), because a stored rate is part of what a filed return
+rested on. A day already stored is never replaced: the writer inserts `on conflict do nothing`, and a difference between a stored
+and a re-fetched value is logged by the job (`ecb.rate_differs`), never applied. The euro itself has no row (rate 1).
 It has no `store_id`, so it is outside `COPY_RULES`, like `vat_rates`. Kept for ever (about 30 currencies by 250 days by year; no personal data).
 
 ### 3.2 Per-store tables
 
-- **`commerce.tax_rate_overrides (store_id, currency char(3), rate_date date, rate numeric(18,6) check (rate > 0), reason text not null check (length(btrim(reason)) between 10 and 300), set_by uuid not null fk accounts, set_at timestamptz not null default now(), primary key (store_id, currency, rate_date))`.** The owner's rate for a currency on a day, used instead of the ECB's for that store only. `rate_date` must be a quarter's or a month's last day or a day in the ECB table's reach (no check beyond a plausible window: not in the future, not before 2021-07-01). A change writes the audit entry with the old and new rate (the audit log is the history); the row is an upsert. `COPY_RULES`: **`never`** ("An owner's rate for a filed period belongs to that store's own returns").
-- **`commerce.tax_report_exports (id uuid pk, store_id fk, report text check in ('vat','oss','oss_detail','ioss','ioss_detail','reconciliation'), scheme text null check in ('union','non_union','ioss'), period_key text not null ('2026-Q3', '2026-09' or '2026-09-01..2026-09-30'), mode text null check in ('books','filing'), rows integer not null, totals jsonb not null, exported_by uuid not null fk accounts, exported_at timestamptz not null default now())`.** `totals` holds only aggregate numbers: `{ currency, vatMinor, taxableMinor, documents, creditNotes, incomplete }`: no buyer, no document number. Append-only (a trigger refuses `UPDATE` and `DELETE`). Index `(store_id, report, period_key, exported_at desc)`. `COPY_RULES`: **`never`** ("A log of the original's exports"). Kept for ever (a handful of rows a year; no personal data).
+- **`commerce.tax_rate_overrides (store_id, currency char(3), rate_date date, rate numeric(18,6) check (rate > 0), reason text not null check (length(btrim(reason)) between 10 and 300), set_by uuid not null fk accounts, set_at timestamptz not null default now(), primary key (store_id, currency, rate_date))`.**
+  The owner's rate for a currency on a day, used instead of the ECB's for that store only. `rate_date` must be a quarter's or a
+  month's last day or a day in the ECB table's reach (no check beyond a plausible window: not in the future, not before
+  2021-07-01). A change writes the audit entry with the old and new rate (the audit log is the history); the row is an upsert.
+  `COPY_RULES`: **`never`** ("An owner's rate for a filed period belongs to that store's own returns").
+- **`commerce.tax_report_exports (id uuid pk, store_id fk, report text check in ('vat','oss','oss_detail','ioss','ioss_detail','reconciliation'), scheme text null check in ('union','non_union','ioss'), period_key text not null ('2026-Q3', '2026-09' or '2026-09-01..2026-09-30'), mode text null check in ('books','filing'), rows integer not null, totals jsonb not null, exported_by uuid not null fk accounts, exported_at timestamptz not null default now())`.**
+  `totals` holds only aggregate numbers: `{ currency, vatMinor, taxableMinor, documents, creditNotes, incomplete }`: no buyer, no
+  document number. Append-only (a trigger refuses `UPDATE` and `DELETE`). Index
+  `(store_id, report, period_key, exported_at desc)`. `COPY_RULES`: **`never`** ("A log of the original's exports"). Kept for ever
+  (a handful of rows a year; no personal data).
 - **No other table.** Reports are computed on read from the 1b and 1a tables.
 
 ### 3.3 Existing tables read, and one frozen fact added
@@ -300,11 +327,23 @@ It has no `store_id`, so it is outside `COPY_RULES`, like `vat_rates`. Kept for 
 | `net_minor`, `vat_minor`, `gross_minor` | sums of the buckets, in the document currency; a credit note's amounts are positive and `doc_kind` says they reduce |
 | `net_main_minor`, `vat_main_minor`, `gross_main_minor` | the same sums in the main currency, **each bucket converted on its own** with the document's stored rate (`commerce.convert_with`, the snapshot's own conversion), so the converted VAT of an invoice equals its stored `vatMain.vatMinor` exactly; null when `fx_state` is `missing`. **Added at build:** converting a sum of many documents at once could not honour that equality. |
 
-Rows are a few hundred per quarter even for a large store (days by countries by rates). The function filters `store_id` first and joins `orders` on `(store_id, order_id)`. Copied and host orders have no document, so none appears; the function does not need to test for them, and a database test proves it. The server calls it through `setBased()` (`src/server/analytics-totals.ts`: a read-only transaction with no nested loops), so a store with no planner statistics cannot explode (`tax-reports-perf.int.test.ts`).
+Rows are a few hundred per quarter even for a large store (days by countries by rates). The function filters `store_id` first and
+joins `orders` on `(store_id, order_id)`. Copied and host orders have no document, so none appears; the function does not need to
+test for them, and a database test proves it. The server calls it through `setBased()` (`src/server/analytics-totals.ts`: a
+read-only transaction with no nested loops), so a store with no planner statistics cannot explode
+(`tax-reports-perf.int.test.ts`).
 
 ### 3.5 What is private
 
-The reports hold no buyer name, address, email, company, organisation number or VAT number, and no document number in an aggregate. Only the function above opens snapshots, and it names only the paths of 3.3. Held by tests: (a) the function's source (`pg_get_functiondef`) contains none of `name`, `company`, `address`, `email`, `vatNumber`, `organisationNumber`, `deliveryPlace`; (b) the TypeScript modules of this unit contain no `snapshot` path outside the list, and none of them is under `src/app/s/` (no shopper route reads them); (c) `document-readers.test.ts` lists exactly one new reader, `src/server/tax-reconciliation.ts` (it reads `invoices.order_id`, `supply_date`, `tax_minor`, `currency` only), and the other new modules call the function and name neither table; (d) none of the report, sitemap, `llms.txt`, feeds, search, chat agent, recommendations or integration payloads imports a tax-report module. The exports and tool answers hold only the aggregate columns of 4.8. The ECB and override tables hold no personal data.
+The reports hold no buyer name, address, email, company, organisation number or VAT number, and no document number in an
+aggregate. Only the function above opens snapshots, and it names only the paths of 3.3. Held by tests: (a) the function's source
+(`pg_get_functiondef`) contains none of `name`, `company`, `address`, `email`, `vatNumber`, `organisationNumber`, `deliveryPlace`;
+(b) the TypeScript modules of this unit contain no `snapshot` path outside the list, and none of them is under `src/app/s/` (no
+shopper route reads them); (c) `document-readers.test.ts` lists exactly one new reader, `src/server/tax-reconciliation.ts` (it
+reads `invoices.order_id`, `supply_date`, `tax_minor`, `currency` only), and the other new modules call the function and name
+neither table; (d) none of the report, sitemap, `llms.txt`, feeds, search, chat agent, recommendations or integration payloads
+imports a tax-report module. The exports and tool answers hold only the aggregate columns of 4.8. The ECB and override tables hold
+no personal data.
 
 ### 3.6 Copy, retention, privacy summary
 
@@ -364,9 +403,20 @@ Pure, one function, a closed list of results, a test matrix. Input: the order-le
 | 11 | no physical goods, seller established in the EU, market in the EU and different | Union scheme | `2a` (electronic services supplied from the MSI to a consumer in another Member State) |
 | 12 | no physical goods, seller not established in the EU, market in the EU | non-Union scheme | `NU` (guide: the non-Union scheme covers services supplied to non-taxable persons in the EU) |
 
-Notes, each a flag in the result and a count on the page: `fee` lines follow the order (an accessory supply takes the treatment of the principal one: *verify*); an order with both goods and downloads is classed by its goods (`mixed_goods_download`, the download is carried with them, *verify*); `dispatch_assumed` when the dispatch country came from the live profile; `seller_assumed` when the seller's country and member state came from the live settings because the order froze none. A credit note takes the class of its invoice's order, so a refund can never land in a different return than the sale. A **rate kind** is `standard` when the bucket's rate equals `standard_rate` on the tax date, else `reduced` (the guide's boxes know a standard and a reduced rate; how a Member State wants a *zero* rate declared is not read: it is shown as `reduced`, *verify*). Every fact falls into exactly one place (a partition test: Σ over places = Σ over all documents, per currency).
+Notes, each a flag in the result and a count on the page: `fee` lines follow the order (an accessory supply takes the treatment of
+the principal one: *verify*); an order with both goods and downloads is classed by its goods (`mixed_goods_download`, the download
+is carried with them, *verify*); `dispatch_assumed` when the dispatch country came from the live profile; `seller_assumed` when
+the seller's country and member state came from the live settings because the order froze none. A credit note takes the class of
+its invoice's order, so a refund can never land in a different return than the sale. A **rate kind** is `standard` when the
+bucket's rate equals `standard_rate` on the tax date, else `reduced` (the guide's boxes know a standard and a reduced rate; how a
+Member State wants a *zero* rate declared is not read: it is shown as `reduced`, *verify*). Every fact falls into exactly one
+place (a partition test: Σ over places = Σ over all documents, per currency).
 
-**Registration fit** (`registrationNotes()`, pure): a warning, never a block, when the classes found do not match the profile: sales that fit the Union scheme while `oss_scheme = 'none'`; services in the non-Union class while the profile says `union` (or goods while it says `non_union`, a scheme for services only); IOSS sales with no IOSS number; IOSS markets in the profile that no sale touched is *not* a warning. The country of an EU-established store is **never** a Member State of consumption in the Union scheme for services (guide Part 1: such supplies are domestic), which is rule 10.
+**Registration fit** (`registrationNotes()`, pure): a warning, never a block, when the classes found do not match the profile:
+sales that fit the Union scheme while `oss_scheme = 'none'`; services in the non-Union class while the profile says `union` (or
+goods while it says `non_union`, a scheme for services only); IOSS sales with no IOSS number; IOSS markets in the profile that no
+sale touched is *not* a warning. The country of an EU-established store is **never** a Member State of consumption in the Union
+scheme for services (guide Part 1: such supplies are domestic), which is rule 10.
 
 The first column of the VAT table (*Reported in*) shows `place` and `part`; so the by-rate table and the returns can never disagree about where a sale belongs.
 
@@ -375,14 +425,31 @@ The first column of the VAT table (*Reported in*) shows `place` and `part`; so t
 - OSS (Union and non-Union): the calendar quarter, `Q1` 1 January to 31 March, and so on; return and payment due by the end of the month after: **30 April, 31 July, 31 October, 31 January** (guide Part 2 point 2, read). The deadline does not move for weekends or holidays (guide). A return may not be submitted before the period ends (guide): the view shows an open quarter as "in progress".
 - IOSS: the calendar month; due by the end of the following month (guide, read).
 - Period keys: `2026-Q3`, `2026-09`. `lastDay(period)` is the day before `to`. Store days throughout; a document's tax date is already a store day, so no time zone arithmetic is done on documents.
-- Chargeable event: a store's own sales are dated by the payment day, the invoice's `supply_date` (1b 4.2), because a payment received on account makes VAT chargeable on the amount received (Directive Art. 65, with Art. 63 for the delivery or performance, *verify*). Art. 66a ("when the payment has been accepted") is the rule for a deemed supplier under Art. 14a only and is not relied on. An order paid in one period and supplied in a later one is dated by the payment only for the amount received: the accountant reads this. A booking's own date is not used (such orders are not in a return).
+- Chargeable event: a store's own sales are dated by the payment day, the invoice's `supply_date` (1b 4.2), because a payment
+  received on account makes VAT chargeable on the amount received (Directive Art. 65, with Art. 63 for the delivery or
+  performance, *verify*). Art. 66a ("when the payment has been accepted") is the rule for a deemed supplier under Art. 14a only
+  and is not relied on. An order paid in one period and supplied in a later one is dated by the payment only for the amount
+  received: the accountant reads this. A booking's own date is not used (such orders are not in a return).
 
 ### 4.5 Conversion to euro (`src/lib/ecb-history.ts`, `src/lib/oss-return.ts`)
 
 - The return is in **euro** (guide Q15; Skatteverket read). A Member State of identification that is outside the euro area may require its national currency (guide): the view says "your Member State may require {currency}: ask" for a store whose MSI's currency is not the euro, and does not convert to it (section 7).
 - **The rate** for a currency is the ECB's reference rate of the period's **last day**, or, if none was published that day, **of the next day of publication** (Directive Art. 369h as read; guide Q15). `ecbRateFor(rates, currency, day)` returns `{ rate, date }` or `null` when that day is not yet published or the currency is not published. An owner's override for `(store, currency, lastDay)` wins and is labelled. A document in euro is not converted.
-- **Where rates come from:** `commerce.ecb_reference_rates`, filled by the daily job from `eurofxref-hist-90d.xml` and, on demand for an older period, from the ECB data portal's single-series CSV for the needed days (`https://data-api.ecb.europa.eu/service/data/EXR/D.{CCY}.EUR.SP00.A?startPeriod={d}&endPeriod={d+7}&format=csvdata`; any answer that is not HTTP 200 with the expected columns is "unavailable") or, failing that, from `eurofxref-hist.xml` (8.2 MB: accepted up to 16 MB, only the wanted days parsed). The hosts and paths are **constants** in `src/lib/ecb-history.ts`; no part comes from a person or from stored data; the fetch is injectable, `cache: "no-store"`, 10 s timeout, the answer read as text with a size cap. Nothing is converted at today's rate: a period whose rate is not stored is incomplete, not estimated.
-- **Arithmetic** (`toEuroMinor(amountMinor, rate)`, BigInt, no floats): `eur = round_half_up(amount / rate)` in minor units (every currency has two decimals, `src/lib/money.ts`), the rate read as a decimal string with at most six decimals; the amount's sign is kept and the rounding is applied to the absolute value, so a credit is the exact negative of the same invoice amount. **Conversion is done once per group**: the unit of conversion is `(period, part, Member State of consumption, rate, document currency)`; taxable amount and VAT are each summed in the document currency first and converted once. Rounding therefore does not accumulate per document; the price is that the euro VAT can differ from `taxable x rate` by a few cents. The conversion detail file and the page show both so an accountant can see it. *Whether a Member State tolerates this is not read: needs review.*
+- **Where rates come from:** `commerce.ecb_reference_rates`, filled by the daily job from `eurofxref-hist-90d.xml` and, on demand
+  for an older period, from the ECB data portal's single-series CSV for the needed days
+  (`https://data-api.ecb.europa.eu/service/data/EXR/D.{CCY}.EUR.SP00.A?startPeriod={d}&endPeriod={d+7}&format=csvdata`; any answer
+  that is not HTTP 200 with the expected columns is "unavailable") or, failing that, from `eurofxref-hist.xml` (8.2 MB: accepted
+  up to 16 MB, only the wanted days parsed). The hosts and paths are **constants** in `src/lib/ecb-history.ts`; no part comes from
+  a person or from stored data; the fetch is injectable, `cache: "no-store"`, 10 s timeout, the answer read as text with a size
+  cap. Nothing is converted at today's rate: a period whose rate is not stored is incomplete, not estimated.
+- **Arithmetic** (`toEuroMinor(amountMinor, rate)`, BigInt, no floats): `eur = round_half_up(amount / rate)` in minor units (every
+  currency has two decimals, `src/lib/money.ts`), the rate read as a decimal string with at most six decimals; the amount's sign
+  is kept and the rounding is applied to the absolute value, so a credit is the exact negative of the same invoice
+  amount. **Conversion is done once per group**: the unit of conversion is
+  `(period, part, Member State of consumption, rate, document currency)`; taxable amount and VAT are each summed in the document
+  currency first and converted once. Rounding therefore does not accumulate per document; the price is that the euro VAT can
+  differ from `taxable x rate` by a few cents. The conversion detail file and the page show both so an accountant can see
+  it. *Whether a Member State tolerates this is not read: needs review.*
 - **Corrections are converted at the rate of the period they correct** (4.6), once per `(period corrected, part, Member State, rate, document currency)` group (the conversion detail file shows each; the Part 3 line of the return sums them per period corrected and Member State), so the corrected period's total in euro is what that period's return would have shown had the credit existed. *Not read; needs review.*
 
 ### 4.6 Books and filing: credit notes and corrections (`src/lib/oss-return.ts`)
@@ -390,7 +457,15 @@ The first column of the VAT table (*Reported in*) shows `place` and `part`; so t
 Both modes are a function of the same groups and rates; they differ only in where a credit note goes.
 
 - **Books** (the Finance rule): a credit note is a negative line in the period of its own tax date. Part 2 can be negative; there is no Part 3.
-- **Filing** (the law as read): a credit note whose tax date is in the **same period as its invoice's tax date** reduces Part 2 of that period; a credit note in a **later** period is a **Part 3 correction** of the invoice's period: rows `(period corrected, Member State of consumption, VAT amount)`, converted at the corrected period's rate (guide Part 2 Q4 and Q12; Q11: made in a subsequent return, within three years). A Part 2 group is never negative in filing mode because a credit never exceeds its invoice per rate (the database holds it, 1b 3.3). The balance per Member State (Part 4) is its Part 2 VAT plus its Part 3 corrections and may be negative; **the total due (Part 5) is the sum of the positive balances only** (guide: a negative balance is never set off against another Member State's). The three-year limit for corrections (guide Q11) is shown beside a correction older than three years ("after three years the correction is made with the Member State of consumption directly, not through the OSS").
+- **Filing** (the law as read): a credit note whose tax date is in the **same period as its invoice's tax date** reduces Part 2 of
+  that period; a credit note in a **later** period is a **Part 3 correction** of the invoice's period: rows
+  `(period corrected, Member State of consumption, VAT amount)`, converted at the corrected period's rate (guide Part 2 Q4 and
+  Q12; Q11: made in a subsequent return, within three years). A Part 2 group is never negative in filing mode because a credit
+  never exceeds its invoice per rate (the database holds it, 1b 3.3). The balance per Member State (Part 4) is its Part 2 VAT plus
+  its Part 3 corrections and may be negative; **the total due (Part 5) is the sum of the positive balances only** (guide: a
+  negative balance is never set off against another Member State's). The three-year limit for corrections (guide Q11) is shown
+  beside a correction older than three years ("after three years the correction is made with the Member State of consumption
+  directly, not through the OSS").
 - A credit note issued in the **same** quarter as its invoice is netted even when the owner has already filed that quarter; the drift line (2.2.2) is how the owner learns it.
 - The sum over all periods of Part 2 plus Part 3 equals the sum of the invoices less the credit notes, per document currency (a property test in a one-currency store).
 
@@ -418,10 +493,28 @@ Per document currency `c` and period `P`, in integer minor units (no conversion)
 
 All use `toCsv()` and `decimalAmount()` (`src/lib/dac7.ts`: decimals with a point, formula-safe), UTF-8, CRLF, one header row, **no totals row** (an accountant sums; a total row mixed into data is a spreadsheet hazard). Credit amounts are negative. File names: `vat-{store}-{from}_{to}.csv`, `oss-{store}-{period}-{mode}.csv`, `oss-detail-...`, `ioss-...`, `reconciliation-...`.
 
-1. **VAT by country and rate** (`vat`): `period_from,period_to,country,vat_rate_percent,basis,reported_in,currency,invoices,orders,net,vat,gross,credit_notes,credit_net,credit_vat,credit_gross,net_after_credits,vat_after_credits,gross_after_credits,currency_main,net_after_credits_main,vat_after_credits_main,main_converted`. One row per `(country, rate, basis, document currency, place reported in)` (refined at build: the place is part of the key, so `reported_in` is exact); `period_to` is the last day included; the main-currency columns are empty and `main_converted = false` when no stored rate exists; `reported_in` is the place and part of 4.3 as text.
-2. **Return data** (`oss`, `ioss`): `scheme,tax_period,part,member_state_of_consumption,dispatch_member_state,vat_rate_percent,rate_kind,taxable_amount_eur,vat_amount_eur,correction_period,mode,registration,currency`. `dispatch_member_state` (**added after review**: Directive Art. 369g(2) asks for the totals per Member State of dispatch of goods) is set on `2b` rows (the Member State of identification) and `2d` rows (another Member State) and blank on services, Part 3, 4 and 5 and IOSS; two dispatch states for the same Member State of consumption and rate are two rows. The VAT or tax number the dispatch Member State allocated is **not** held by Kaizen: the owner enters it on the return (the page says so). Part 2 rows (`part` = `2a`, `2b`, `2d`, `NU`, `IOSS`) carry a rate and both amounts; **Part 3** rows (`part` = `3`) carry `correction_period` and only `vat_amount_eur` (the guide's Part 3 has no taxable amount), one row per `(period corrected, Member State)` summed over rates and currencies; **Part 4** rows (`4`) the balance per Member State; **Part 5** (`5`) one row with the total due. `registration` is `union`, `non_union`, `ioss` or `none`; `currency` is always `EUR`. Refused when a group has no rate (2.2.2).
+1. **VAT by country and rate** (`vat`):
+   `period_from,period_to,country,vat_rate_percent,basis,reported_in,currency,invoices,orders,net,vat,gross,credit_notes,credit_net,credit_vat,credit_gross,net_after_credits,vat_after_credits,gross_after_credits,currency_main,net_after_credits_main,vat_after_credits_main,main_converted`.
+   One row per `(country, rate, basis, document currency, place reported in)` (refined at build: the place is part of the key, so
+   `reported_in` is exact); `period_to` is the last day included; the main-currency columns are empty and `main_converted = false`
+   when no stored rate exists; `reported_in` is the place and part of 4.3 as text.
+2. **Return data** (`oss`, `ioss`):
+   `scheme,tax_period,part,member_state_of_consumption,dispatch_member_state,vat_rate_percent,rate_kind,taxable_amount_eur,vat_amount_eur,correction_period,mode,registration,currency`.
+   `dispatch_member_state` (**added after review**: Directive Art. 369g(2) asks for the totals per Member State of dispatch of
+   goods) is set on `2b` rows (the Member State of identification) and `2d` rows (another Member State) and blank on services,
+   Part 3, 4 and 5 and IOSS; two dispatch states for the same Member State of consumption and rate are two rows. The VAT or tax
+   number the dispatch Member State allocated is **not** held by Kaizen: the owner enters it on the return (the page says so).
+   Part 2 rows (`part` = `2a`, `2b`, `2d`, `NU`, `IOSS`) carry a rate and both amounts; **Part 3** rows (`part` = `3`) carry
+   `correction_period` and only `vat_amount_eur` (the guide's Part 3 has no taxable amount), one row per
+   `(period corrected, Member State)` summed over rates and currencies; **Part 4** rows (`4`) the balance per Member State; **Part
+   5** (`5`) one row with the total due. `registration` is `union`, `non_union`, `ioss` or `none`; `currency` is always `EUR`.
+   Refused when a group has no rate (2.2.2).
 3. **Conversion detail** (`oss_detail`, `ioss_detail`): `tax_period,part,member_state_of_consumption,dispatch_member_state,vat_rate_percent,rate_kind,original_currency,taxable_amount_original,vat_amount_original,conversion_rate,rate_date,rate_source,taxable_amount_eur,vat_amount_eur,invoices,credit_notes,correction_period`. One row per conversion group, so the records of the return (Reg. 282/2011 Art. 63c: currency, rate, amounts) are reproducible; `rate_source` is `ecb` or `owner: {reason}`.
-4. **Reconciliation** (`reconciliation`): `period_from,period_to,currency,cause,direction,orders,vat_original`. One row per cause, including `finance` and `report`. `vat_original` is always positive; `direction` (**added after review**) is `1` for a cause that is added to Finance's figure on the way to the report's (`timing_in`, `not_captured`), `-1` for one taken away (the others) and blank on `finance` and `report`, so `finance + Σ(direction × vat_original) = report` can be checked in a spreadsheet for each currency.
+4. **Reconciliation** (`reconciliation`): `period_from,period_to,currency,cause,direction,orders,vat_original`. One row per cause,
+   including `finance` and `report`. `vat_original` is always positive; `direction` (**added after review**) is `1` for a cause
+   that is added to Finance's figure on the way to the report's (`timing_in`, `not_captured`), `-1` for one taken away (the
+   others) and blank on `finance` and `report`, so `finance + Σ(direction × vat_original) = report` can be checked in a
+   spreadsheet for each currency.
 
 The layouts are the interface to an accountant's spreadsheet: a change to a header is a change to this section first.
 
@@ -484,7 +577,19 @@ Areas: **foundation** (schema, migration, database function, pure libraries and 
 | `src/lib/permissions.scan.test.ts` | **registry**: `OWNER_ONLY_EXTRA` entry for `actions.ts` above |
 | tests | `tax-view.test.ts`, `oss-view.test.ts` (`renderToString`: a data table behind the chart, the always-visible "not a tax return" line, the off and incomplete states, owners-only forms, read-only members), `src/server/tax-report-admin.int.test.ts` (the route and the actions against the real guards and a stand-in for the sign-in: read-only member, analytics role, owner, another store's owner, nobody signed in) |
 
-**Refined at build (admin).** Files added beside the table: `src/lib/tax-admin.ts` (pure: the address's `view`, `quarter`, `month`, `mode`, the period options, `taxHref()`, the export form's parser `parseExportForm()` and the fixed export sentences), `src/components/admin/analytics/tax-parts.tsx` (the always-visible statement, the view tabs, the POST export button). Deviations, all deliberate: (a) the VAT view's chart is the admin's `HorizontalBars` (VAT after credits per country, a ranked list that carries its figures) with a *Data behind the chart* table under it, not a stacked bar chart; (b) amounts on this page are written in English with a decimal point whatever the store's first market speaks, so the screen reads like the CSV; (c) the VAT view's period picker has no comparison control and its preset links name their period (`PeriodPicker` and `AnalyticsHeader` gained `showCompare` and `explicitPeriod`, additive), the default is the last month; (d) the export route takes `from` and `last` (the last day included) or a quarter or month key and the mode, redirects with `?export=period|incomplete|forbidden|failed` and a 404 for a member without `analytics:write`; (e) not built: the "your Member State may require {currency}" line of 4.5 (the view has no data for a Member State's currency) and a list of earlier exports (only the last export's date and the drift line); (f) the owner's rate forms sit in each row of the *Euro rates* table (fetch when the rate is missing, enter or change at any time), not in a separate card.
+**Refined at build (admin).** Files added beside the table: `src/lib/tax-admin.ts` (pure: the address's `view`, `quarter`,
+`month`, `mode`, the period options, `taxHref()`, the export form's parser `parseExportForm()` and the fixed export sentences),
+`src/components/admin/analytics/tax-parts.tsx` (the always-visible statement, the view tabs, the POST export button). Deviations,
+all deliberate: (a) the VAT view's chart is the admin's `HorizontalBars` (VAT after credits per country, a ranked list that
+carries its figures) with a *Data behind the chart* table under it, not a stacked bar chart; (b) amounts on this page are written
+in English with a decimal point whatever the store's first market speaks, so the screen reads like the CSV; (c) the VAT view's
+period picker has no comparison control and its preset links name their period (`PeriodPicker` and `AnalyticsHeader` gained
+`showCompare` and `explicitPeriod`, additive), the default is the last month; (d) the export route takes `from` and `last` (the
+last day included) or a quarter or month key and the mode, redirects with `?export=period|incomplete|forbidden|failed` and a 404
+for a member without `analytics:write`; (e) not built: the "your Member State may require {currency}" line of 4.5 (the view has no
+data for a Member State's currency) and a list of earlier exports (only the last export's date and the drift line); (f) the
+owner's rate forms sit in each row of the *Euro rates* table (fetch when the rate is missing, enter or change at any time), not in
+a separate card.
 
 ### 5.4 Analytics and AI
 
@@ -501,13 +606,23 @@ Areas: **foundation** (schema, migration, database function, pure libraries and 
 
 ### 5.5 Registries, once more, and what is deliberately untouched
 
-`store-copy-rules.ts`: foundation. `store-nav.ts`, `admin-map.ts`, `permissions.scan.test.ts`: admin. `owner-tool-permissions.ts`, `assistant-skills.ts`, control center: analytics-and-ai. `cart-reminders/route.ts`, `tax-treatment.ts`, `document-readers.test.ts`: server. **Unchanged, deliberately:** `i18n.ts`, `email-text.ts`, `ui-catalog.ts` (admin is English only, no shopper text), `KNOWN_COOKIES` (nothing set or stored), `store-translate.ts`, the sitemap, structured data, `llms.txt`, feeds, integration events, `next.config.ts` (no Chromium: the reports render in the admin and the CSV is text).
+`store-copy-rules.ts`: foundation. `store-nav.ts`, `admin-map.ts`, `permissions.scan.test.ts`: admin. `owner-tool-permissions.ts`,
+`assistant-skills.ts`, control center: analytics-and-ai. `cart-reminders/route.ts`, `tax-treatment.ts`,
+`document-readers.test.ts`: server. **Unchanged, deliberately:** `i18n.ts`, `email-text.ts`, `ui-catalog.ts` (admin is English
+only, no shopper text), `KNOWN_COOKIES` (nothing set or stored), `store-translate.ts`, the sitemap, structured data, `llms.txt`,
+feeds, integration events, `next.config.ts` (no Chromium: the reports render in the admin and the CSV is text).
 
 ---
 
 ## 6. Acceptance criteria, row by row, mapped to tests
 
-Test kinds: **unit** (`pnpm test`, pure), **PGlite** (`src/db/tax-reports.test.ts`, applies every migration as `commerce.test.ts` does, fixtures from `src/db/invoice-fixture.ts`), **int** (`pnpm test:int` on a fresh database after `scripts/db-setup.mjs --seed`, fake Stripe through the existing `vi.mock("./stripe")` pattern, an injected fetch for the ECB), **render** (`renderToString`). **There is no Playwright test**: the pages are behind the admin sign-in and the project's e2e has no signed-in session (as in 1a and 1b); the pages are held by render tests and the route and actions by `tax-report-admin.int.test.ts`. That is a stated gap (6.5). A new money read has a euro scenario in `checkout-kinds.int.test.ts` (section 6.1, criterion 4).
+Test kinds: **unit** (`pnpm test`, pure), **PGlite** (`src/db/tax-reports.test.ts`, applies every migration as `commerce.test.ts`
+does, fixtures from `src/db/invoice-fixture.ts`), **int** (`pnpm test:int` on a fresh database after
+`scripts/db-setup.mjs --seed`, fake Stripe through the existing `vi.mock("./stripe")` pattern, an injected fetch for the
+ECB), **render** (`renderToString`). **There is no Playwright test**: the pages are behind the admin sign-in and the project's e2e
+has no signed-in session (as in 1a and 1b); the pages are held by render tests and the route and actions by
+`tax-report-admin.int.test.ts`. That is a stated gap (6.5). A new money read has a euro scenario in `checkout-kinds.int.test.ts`
+(section 6.1, criterion 4).
 
 ### 6.1 `analytics.tax-and-vat-reports-by-rate-and-jurisdiction`
 
@@ -545,14 +660,24 @@ Test kinds: **unit** (`pnpm test`, pure), **PGlite** (`src/db/tax-reports.test.t
 - **Permissions.** `permissions.scan.test.ts` (the page by `analyticsContext`, the export route `analytics:write` and mutating, the actions `owner` and in `OWNER_ONLY_EXTRA`), `store-nav.test.ts` and `admin-map.test.ts` fail if the page is not registered, `owner-tool-permissions.test.ts` fails for a tool with no key, `audit.test.ts` for an action with no area (`analytics.` prefixes the new actions: area `analytics`, no new migration of `audit_area_of()`).
 - **Privacy.** `src/db/tax-reports.test.ts` (the function's definition) and `src/server/tax-reports.scan.test.ts` (the modules' sources, who imports them, 3.5), `document-readers.test.ts` (exactly one new reader), no tax-report module imported by a shopper route, the sitemap, feeds, the chat agent or an integration (a scan like the existing ones), no cookie or storage in the new components.
 - **Database.** PGlite: the ECB and export tables refuse `UPDATE` and `DELETE`; the function is `STABLE` with `search_path` set and contains no `DELETE`, `TRUNCATE` or `DROP`; the plan-feature row exists once.
-- **Perf.** `tax-reports-perf.int.test.ts`: 5,000 documents (4,000 invoices and 1,000 credit notes, cloned from real ones by set-based SQL under the replica role, as `analytics-perf.int.test.ts` seeds, never analysed) in one store, each of the VAT view's function, the OSS view and the reconciliation in under 2 seconds with `setBased()`. **Found at build:** the function took 1.2 s for those 5,000 documents because the planner folded the one-row `main` CTE into every place it was read and called `commerce.main_currency()` once per document and place; `MATERIALIZED` (and one `jsonb_to_record` per snapshot instead of repeated `->`) brought it to 0.2 s. Without `setBased()` (nested loops and JIT on) the same function took 16 s on a store with no statistics, which is why every read goes through it (`tax-reports.scan.test.ts` holds that the function has one caller).
+- **Perf.** `tax-reports-perf.int.test.ts`: 5,000 documents (4,000 invoices and 1,000 credit notes, cloned from real ones by
+  set-based SQL under the replica role, as `analytics-perf.int.test.ts` seeds, never analysed) in one store, each of the VAT
+  view's function, the OSS view and the reconciliation in under 2 seconds with `setBased()`. **Found at build:** the function took
+  1.2 s for those 5,000 documents because the planner folded the one-row `main` CTE into every place it was read and called
+  `commerce.main_currency()` once per document and place; `MATERIALIZED` (and one `jsonb_to_record` per snapshot instead of
+  repeated `->`) brought it to 0.2 s. Without `setBased()` (nested loops and JIT on) the same function took 16 s on a store with
+  no statistics, which is why every read goes through it (`tax-reports.scan.test.ts` holds that the function has one caller).
 - **Rates and fetch.** `ecb-rates.test.ts`: the daily job inserts only absent rows, never replaces a stored rate (a differing value is logged), a failing fetch changes nothing and never throws, only the constant hosts are requested (a request to any other is a test failure), the on-demand fetch writes the one needed day, an override needs a 10-character reason and an owner.
 - **Retention.** `invoice-retention.test.ts`: a store with an OSS registration or an IOSS number gets at least 10 years; one without keeps its country's rule; the 5-year floor is unchanged.
 - **Frozen dispatch.** `vat-treatment.test.ts` and `vat-engine.int.test.ts`: `placeOrder()` writes `vat_treatment.dispatchCountry`; the parser accepts an older order without it; a later change of the profile's dispatch country never reclassifies a placed order (the report's class is the same before and after).
 
 ### 6.5 Criteria changes proposed (no row is edited here)
 
-1. **`analytics...` criterion 1, "reconciling to the Finance VAT total".** Equality of two differently dated figures is not a property a store can have: Finance dates by `placed_at`, a document by its tax date, test-mode orders are in Finance and never invoiced, and an order without an invoice is in Finance only. Proposed wording: "the report's VAT charged is tied to Finance's VAT total and to Σ `tax_minor` of the paid orders by a bridge in which every difference is named and counted, exact in every currency; copied and host orders appear in no line". It is testable as written in 6.1.
+1. **`analytics...` criterion 1, "reconciling to the Finance VAT total".** Equality of two differently dated figures is not a
+   property a store can have: Finance dates by `placed_at`, a document by its tax date, test-mode orders are in Finance and never
+   invoiced, and an order without an invoice is in Finance only. Proposed wording: "the report's VAT charged is tied to Finance's
+   VAT total and to Σ `tax_minor` of the paid orders by a bridge in which every difference is named and counted, exact in every
+   currency; copied and host orders appear in no line". It is testable as written in 6.1.
 2. **`analytics...` criterion 2, "in euro at a stated rate"**: the stated rate is the ECB's reference rate of the period's last day (or the next publication day) per currency, shown with its date, or the owner's override with its reason. Not the stored `vatMain` rate (1.4 point 3): the brief's "only through the stored vatMain/vatHome figures" holds for the main-currency VAT report and cannot hold for the return's euro, which the law fixes to the period's last day.
 3. **`analytics...` criterion 3, "refunds and later credit notes reduce the period they are made in"**: true of the *books* mode. The OSS and IOSS *filing* mode follows the law (guide Q11 and Q12): a credit note of a later period is a Part 3 correction made in the period it is issued and referring to the period of the sale. Both are tested; the criterion is met by the first and the second is the stricter reading for a return.
 4. **`checkout.oss-and-ioss-support` criterion 4, "a refund reduces the period's VAT in the report"**: a refund reduces it **through its credit note**. A refund of an order with no invoice (invoicing off, waiting, test mode) has no credit note and is not in the report; the informational refunds line of 2.2.1 shows the difference.
@@ -605,7 +730,12 @@ The analytics row is not held back by section 8 under the spec's recommendation 
 
 ### 9.1 Migrations expected
 
-**Two files**, timestamps after `20261004152302`: `{ts}_tax_reports.sql` (generated by `pnpm db:generate`: `ecb_reference_rates`, `tax_rate_overrides`, `tax_report_exports`, the index `invoices_supply_idx`) and `{ts}_tax_reports_rules.sql` (custom, `pnpm exec drizzle-kit generate --custom --name tax_reports_rules`: the three append-only triggers, `commerce.tax_document_groups()`, the plan-feature row). **Additive**; nothing is dropped; no existing function is replaced (the dispatch fact is a JSON field written by application code). **Do not apply to production in this run**: the lead applies them after the tests pass, checks the advisors and records the versions in `docs/decisions.md` (Migration versions).
+**Two files**, timestamps after `20261004152302`: `{ts}_tax_reports.sql` (generated by `pnpm db:generate`: `ecb_reference_rates`,
+`tax_rate_overrides`, `tax_report_exports`, the index `invoices_supply_idx`) and `{ts}_tax_reports_rules.sql` (custom,
+`pnpm exec drizzle-kit generate --custom --name tax_reports_rules`: the three append-only triggers,
+`commerce.tax_document_groups()`, the plan-feature row). **Additive**; nothing is dropped; no existing function is replaced (the
+dispatch fact is a JSON field written by application code). **Do not apply to production in this run**: the lead applies them
+after the tests pass, checks the advisors and records the versions in `docs/decisions.md` (Migration versions).
 
 ### 9.2 Statements the Supabase migration tool may cancel (the owner runs them in the SQL editor if so)
 
@@ -617,7 +747,11 @@ Security: RLS enabled with no policy on the three new tables; `search_path` set 
 
 ### 9.4 Before pushing (the things CI cannot prove)
 
-Read the OSS view of a real or realistic store with its accountant: one EU store (DE and DK orders, a refund in the next quarter), one Norwegian store with an IOSS number (the default Kaizen shape: Norway dispatching to EU consumers, D1), one store in several currencies. Check section 8 item 1 against what the accountant says goes where. Confirm the ECB job ran once in production (a row for the previous working day) and that the quarter's last-day rate is stored before the first OSS deadline (31 October 2026 for Q3). Confirm no other route imports a tax-report module.
+Read the OSS view of a real or realistic store with its accountant: one EU store (DE and DK orders, a refund in the next quarter),
+one Norwegian store with an IOSS number (the default Kaizen shape: Norway dispatching to EU consumers, D1), one store in several
+currencies. Check section 8 item 1 against what the accountant says goes where. Confirm the ECB job ran once in production (a row
+for the previous working day) and that the quarter's last-day rate is stored before the first OSS deadline (31 October 2026 for
+Q3). Confirm no other route imports a tax-report module.
 
 ### 9.5 Decision row (draft)
 
@@ -625,8 +759,30 @@ Read the OSS view of a real or realistic store with its accountant: one EU store
 
 ### 9.6 CLAUDE.md bullet (draft)
 
-- VAT, OSS and IOSS reports (D161, `docs/wave-1c-reports.md`): `/admin/{store}/analytics/tax` (`?view=vat|oss|ioss`; `analytics:read`, exports POST `analytics:write`, ECB rate fetch and override owner-only). Reports read **documents only** (invoices by `supply_date`, credit notes by `issued_on`) through the one function `commerce.tax_document_groups()`, which opens a snapshot for its buckets, line kinds and buyer type and nothing personal; the delivery country is `orders.market_code`, never the snapshot. Never recompute a sale's VAT from orders for a report: an order with no document is counted and shown on the reconciliation by cause (`invoicing_off`, `waiting`, `test_mode`, ...), not added. Where a sale is reported is only `classify()` (`src/lib/tax-classes.ts`: Union 2a/2b/2d, non-Union, IOSS, or a named reason it is in no return); `placeOrder()` freezes `vat_treatment.dispatchCountry` for it. The VAT table converts to the main currency with each document's stored `vatMain.fxRate`; the OSS and IOSS euro figures convert from the document's own currency at the ECB rate of the period's last day (or the next publication day) kept in `commerce.ecb_reference_rates` (append-only, the daily job fills it) or an owner's override with a reason (`tax_rate_overrides`), once per `(period, part, Member State, rate, currency)` group with `toEuroMinor()` (BigInt), never at today's rate; a missing rate marks the return incomplete and refuses its CSV. *Books* mode counts a credit note in its own period; *filing* mode nets it within the quarter of its sale and makes it a Part 3 correction of that quarter otherwise (a negative Part 4 balance is not counted in Part 5). The reconciliation (`src/lib/tax-reconciliation.ts`) is exact per currency and ties to `periodTotals().totals.vatMinor`; a bridge that does not balance says so. CSV layouts are `src/lib/tax-csv.ts`, formula-safe, no totals row; every export is logged in `tax_report_exports` and a changed period shows drift. The reports are never a filing: say so on every page and file. A new place a sale can be reported is a row in `classify()`'s table with a test; a new figure is defined in `docs/analytics.md` first.
+- VAT, OSS and IOSS reports (D161, `docs/wave-1c-reports.md`): `/admin/{store}/analytics/tax` (`?view=vat|oss|ioss`;
+  `analytics:read`, exports POST `analytics:write`, ECB rate fetch and override owner-only). Reports read **documents only**
+  (invoices by `supply_date`, credit notes by `issued_on`) through the one function `commerce.tax_document_groups()`, which opens
+  a snapshot for its buckets, line kinds and buyer type and nothing personal; the delivery country is `orders.market_code`, never
+  the snapshot. Never recompute a sale's VAT from orders for a report: an order with no document is counted and shown on the
+  reconciliation by cause (`invoicing_off`, `waiting`, `test_mode`, ...), not added. Where a sale is reported is only `classify()`
+  (`src/lib/tax-classes.ts`: Union 2a/2b/2d, non-Union, IOSS, or a named reason it is in no return); `placeOrder()` freezes
+  `vat_treatment.dispatchCountry` for it. The VAT table converts to the main currency with each document's stored
+  `vatMain.fxRate`; the OSS and IOSS euro figures convert from the document's own currency at the ECB rate of the period's last
+  day (or the next publication day) kept in `commerce.ecb_reference_rates` (append-only, the daily job fills it) or an owner's
+  override with a reason (`tax_rate_overrides`), once per `(period, part, Member State, rate, currency)` group with
+  `toEuroMinor()` (BigInt), never at today's rate; a missing rate marks the return incomplete and refuses its CSV. *Books* mode
+  counts a credit note in its own period; *filing* mode nets it within the quarter of its sale and makes it a Part 3 correction of
+  that quarter otherwise (a negative Part 4 balance is not counted in Part 5). The reconciliation
+  (`src/lib/tax-reconciliation.ts`) is exact per currency and ties to `periodTotals().totals.vatMinor`; a bridge that does not
+  balance says so. CSV layouts are `src/lib/tax-csv.ts`, formula-safe, no totals row; every export is logged in
+  `tax_report_exports` and a changed period shows drift. The reports are never a filing: say so on every page and file. A new
+  place a sale can be reported is a row in `classify()`'s table with a test; a new figure is defined in `docs/analytics.md` first.
 
 ### 9.7 Merge notes
 
-Shared files this unit edits (no other lane runs): `src/lib/store-nav.ts`, `src/lib/admin-map.ts`, `src/lib/store-copy-rules.ts`, `src/lib/permissions.scan.test.ts`, `src/lib/owner-tools.ts`, `src/lib/owner-tool-permissions.ts`, `src/lib/assistant-skills.ts`, `src/lib/control-center.ts`, `src/server/control-center.ts`, `src/server/document-readers.test.ts`, `src/lib/vat-treatment.ts`, `src/server/tax-treatment.ts`, `src/lib/invoice-retention.ts`, `src/db/schema.ts`, `src/app/api/cron/cart-reminders/route.ts`, `docs/analytics.md`, `docs/decisions.md`, `CLAUDE.md`, the migrations directory. Each is edited by one small block at a known anchor. The decision number **D161** is proposed; the lead renumbers at the merge.
+Shared files this unit edits (no other lane runs): `src/lib/store-nav.ts`, `src/lib/admin-map.ts`, `src/lib/store-copy-rules.ts`,
+`src/lib/permissions.scan.test.ts`, `src/lib/owner-tools.ts`, `src/lib/owner-tool-permissions.ts`, `src/lib/assistant-skills.ts`,
+`src/lib/control-center.ts`, `src/server/control-center.ts`, `src/server/document-readers.test.ts`, `src/lib/vat-treatment.ts`,
+`src/server/tax-treatment.ts`, `src/lib/invoice-retention.ts`, `src/db/schema.ts`, `src/app/api/cron/cart-reminders/route.ts`,
+`docs/analytics.md`, `docs/decisions.md`, `CLAUDE.md`, the migrations directory. Each is edited by one small block at a known
+anchor. The decision number **D161** is proposed; the lead renumbers at the merge.

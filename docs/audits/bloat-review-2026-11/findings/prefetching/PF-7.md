@@ -5,7 +5,12 @@ Prefetching: what the router asks for unasked (`README.md` beside this file), pa
 - **Kind:** eager. **Priority:** P1. **Effort:** S. **Confidence:** high. **Step:** 2.2.
 - **Second check:** corrected.
 - **Where:** `src/components/cart-link.tsx:51-72`, `src/components/cart-drawer.tsx:10,43-50`, `src/app/s/[store]/[market]/@drawer/(.)cart/page.tsx:19-43`, `docs/decisions.md:75`, `docs/pci.md:108-113`, `src/components/pay-route-guard.tsx:57-65`
-- **Evidence:** The cart link's prefetch is 3 requests at any width (planner's run at 1440x900: the route tree 686 B, the children slot's default 845 B, the drawer page 5.9 KB decoded), and per the skeptic the drawer page names 2 script chunks that are then loaded (14.3 KB on the wire). From 768 px the drawer reloads the address as soon as it mounts (cart-drawer.tsx:44-47; D64 says so). The skeptic's press at 1440 px: one router navigation (the server renders the drawer), then a document load of the cart page (17.4 KB), then the page's prefetches again. Entering a pay route is meant to be a full page load (docs/pci.md:108-113), so at this width the plain navigation is also the rule.
+- **Evidence:** The cart link's prefetch is 3 requests at any width (planner's run at 1440x900: the route tree 686 B, the children
+  slot's default 845 B, the drawer page 5.9 KB decoded), and per the skeptic the drawer page names 2 script chunks that are then
+  loaded (14.3 KB on the wire). From 768 px the drawer reloads the address as soon as it mounts (cart-drawer.tsx:44-47; D64 says
+  so). The skeptic's press at 1440 px: one router navigation (the server renders the drawer), then a document load of the cart
+  page (17.4 KB), then the page's prefetches again. Entering a pay route is meant to be a full page load (docs/pci.md:108-113), so
+  at this width the plain navigation is also the rule.
 - **Cost today:** Per full page view at 768 px or wider: 3 router requests (7.2 KB decoded) and 2 script chunks (14.3 KB on the wire), never used. Per cart open there: one server render of the drawer thrown away, then the full cart page. Paid by: Desktop and tablet shoppers' browsers; the proxy per request; the server per cart open.
 - **Saving:** Measured by the skeptic: 5 requests per full page view at desktop width (3 router, 2 scripts; about 25 KB on the wire here) and one drawer render per cart open.
 - **Risk:** Low. A tablet turned from portrait to landscape swaps the element once; the cart count badge is a child and survives. D64's behaviour on phones is untouched. A regression would show in cart.spec.ts at either width.

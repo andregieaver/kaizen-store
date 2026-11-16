@@ -286,7 +286,11 @@ stored: a stored derived amount could disagree with the line).
    and after insert on `product_terms` (taking a product out of a category can only make it less required, so there is no check on delete; changed in the foundation step), resolving the product and raising at commit:
    - `unit_price.not_applicable`: a variant of a product whose `kind <> 'goods'`, or whose `delivery <> 'physical'`, has a measure (a digital or booking variant cannot be measured);
    - `unit_price.measure_required` (with the SKUs in the detail): the product is `active`, `unit_price_required()` is true, and an **active, physical** goods variant has no measure.
-   It is skipped while a store is being copied (`commerce.unit_price_copying` = `on`, set transaction-locally by `clone_store()` and `duplicate_store()`; added in the foundation step), so a grandfathered product is copied as it was and a copy never fails for the source's gaps; the `not_applicable` check is never skipped. It does **not** fire for a category being marked afterwards (that updates `terms`, which has no trigger here): existing active products are grandfathered and reported, never silently refused or hidden.
+   It is skipped while a store is being copied (`commerce.unit_price_copying` = `on`, set transaction-locally by `clone_store()`
+   and `duplicate_store()`; added in the foundation step), so a grandfathered product is copied as it was and a copy never fails
+   for the source's gaps; the `not_applicable` check is never skipped. It does **not** fire for a category being marked afterwards
+   (that updates `terms`, which has no trigger here): existing active products are grandfathered and reported, never silently
+   refused or hidden.
 4. **`order_lines_measure_frozen`** (before update): the three `measure_*` columns of an order line cannot change after insert, by anyone, so a snapshot is as immutable as the line's price (an update that sets them to
    their present values is allowed, since `subscriptions.ts` updates other columns of the line).
 5. `placeOrder()` is not given a new refusal and no function of `complete_order_payment()`, the invoices or the refunds reads the columns.
@@ -407,7 +411,12 @@ and **every other country (including those not in the table) is `smallBaseAllowe
 2. The base is decided by the **market's country**, not the language or currency shown (D109): `no-en-eur` is Norway.
 3. The effective base is what is shown, what the order line snapshots, and what JSON-LD's `valueReference` says (JSON-LD is per market page).
 4. The editor's note and the choices it offers (2.2) read this table (`smallBaseNote()`, `compareChoices()`): 100 g and 100 ml are offered only while a market of the store may show them.
-5. Every entry is closed (changed in the 1d fix step after review: Norway and Sweden had been left open as "unread", and their rules, once read, name no 100 g or 100 ml). A row is opened only by a person who has read a source that allows it, and the test then says which. The mechanism (owner's preference, per-market effective base, snapshot on the order line, JSON-LD `valueReference`) is kept and tested by opening a country for the length of a test (`allowSmallBase()` in `src/lib/unit-price-test-support.ts`). The table could become platform data like `vat_rates` (section 7); it is code now because nothing about it changes weekly.
+5. Every entry is closed (changed in the 1d fix step after review: Norway and Sweden had been left open as "unread", and their
+   rules, once read, name no 100 g or 100 ml). A row is opened only by a person who has read a source that allows it, and the test
+   then says which. The mechanism (owner's preference, per-market effective base, snapshot on the order line, JSON-LD
+   `valueReference`) is kept and tested by opening a country for the length of a test (`allowSmallBase()` in
+   `src/lib/unit-price-test-support.ts`). The table could become platform data like `vat_rates` (section 7); it is code now
+   because nothing about it changes weekly.
 
 Exemptions (Germany's under 10 g or 10 ml, Sweden's 50 g or 50 ml) are **not** applied by the system: showing a unit price where none is required is not a breach, and the owner decides whether to give a small product a measure.
 
@@ -499,7 +508,13 @@ Areas do not share files except through the registries listed in 5.6. Foundation
 | `src/server/seo.ts` | none: `llms.txt` lists no prices today, so there is nothing to add the unit text to (server step) |
 | `src/server/unit-price.int.test.ts`, `src/server/checkout-kinds.int.test.ts` | 6.2 |
 
-Server step notes (the contract above, as built): `shownMeasureFromColumns()` (a variant's columns and a market's country into a `ShownMeasure`) and `snapshotMeasureFromColumns()` (an order line's frozen columns, the base never worked out again) are the only readers of the columns, listed by `unit-price-readers.test.ts`. A free-trial subscription line has `unit_price_minor` 0 on its first order, so the order page shows no unit price for it (the cart shows the plan's price; 2.1): nothing is computed from 0. `Term.requiresUnitPrice` and `termInput.requiresUnitPrice` (optional: left out means unchanged on an update, off on a new category) carry the category mark through the existing term actions, which already refresh the catalogue and terms tags; `src/server/unit-price-gaps.ts` has `categoryMarks()`, `productsNeedingMeasure()`, `categoryGaps()` and `variantUnitPrices()`.
+Server step notes (the contract above, as built): `shownMeasureFromColumns()` (a variant's columns and a market's country into a
+`ShownMeasure`) and `snapshotMeasureFromColumns()` (an order line's frozen columns, the base never worked out again) are the only
+readers of the columns, listed by `unit-price-readers.test.ts`. A free-trial subscription line has `unit_price_minor` 0 on its
+first order, so the order page shows no unit price for it (the cart shows the plan's price; 2.1): nothing is computed from 0.
+`Term.requiresUnitPrice` and `termInput.requiresUnitPrice` (optional: left out means unchanged on an update, off on a new
+category) carry the category mark through the existing term actions, which already refresh the catalogue and terms tags;
+`src/server/unit-price-gaps.ts` has `categoryMarks()`, `productsNeedingMeasure()`, `categoryGaps()` and `variantUnitPrices()`.
 
 ### 5.3 Shopper
 
@@ -516,7 +531,17 @@ Server step notes (the contract above, as built): `shownMeasureFromColumns()` (a
 | `src/components/chat-widget.tsx` | the card's unit line |
 | `src/components/product-card.tsx` | **unchanged** (it draws `<Price>`) |
 
-Shopper step notes (as built): the line is `UnitLine` (a price block: from `price.measure`, the VAT display of `unitPriceShown()`, `for-private`/`for-business` spans for stores selling to both) and `LineUnitPrice` (a cart, checkout, order, My account or list line: the caller passes one unit's price as the line shows it, netted with `withoutVat()` for a business buyer in the cart and at checkout, gross on the order page), both in `src/components/price.tsx`, each drawing the figure for the eye (`aria-hidden`) and the sentence for a screen reader (`sr-only`) and marked `data-unit-price`. A client component is given the words as plain data (`UnitLabels`, `unitLabelsOf(m)`, `unitPriceWords()`: the spoken sentence keeps `{amount}` and `{base}`), so `PlanPrice`, the chat widget's card (`ChatLabels.unit`) and the subscription form (`ContentsLine.unit`, written by `lineUnitWords()`) need no function across the server boundary. `Price` draws the unit line last, apart from the reference line. Surfaces done: the price part, the variants' price block and the purchase option, listing cards and grids (through `Price`), the cart and slide-out cart, checkout items, order page, My account's order, the subscription page, the weekly list, the chat card and the JSON-LD (`priceSpecification`). Not done in the e2e: checkout (no Stripe session to open the page with; its render test holds it).
+Shopper step notes (as built): the line is `UnitLine` (a price block: from `price.measure`, the VAT display of `unitPriceShown()`,
+`for-private`/`for-business` spans for stores selling to both) and `LineUnitPrice` (a cart, checkout, order, My account or list
+line: the caller passes one unit's price as the line shows it, netted with `withoutVat()` for a business buyer in the cart and at
+checkout, gross on the order page), both in `src/components/price.tsx`, each drawing the figure for the eye (`aria-hidden`) and
+the sentence for a screen reader (`sr-only`) and marked `data-unit-price`. A client component is given the words as plain data
+(`UnitLabels`, `unitLabelsOf(m)`, `unitPriceWords()`: the spoken sentence keeps `{amount}` and `{base}`), so `PlanPrice`, the chat
+widget's card (`ChatLabels.unit`) and the subscription form (`ContentsLine.unit`, written by `lineUnitWords()`) need no function
+across the server boundary. `Price` draws the unit line last, apart from the reference line. Surfaces done: the price part, the
+variants' price block and the purchase option, listing cards and grids (through `Price`), the cart and slide-out cart, checkout
+items, order page, My account's order, the subscription page, the weekly list, the chat card and the JSON-LD
+(`priceSpecification`). Not done in the e2e: checkout (no Stripe session to open the page with; its render test holds it).
 
 ### 5.4 Admin
 
@@ -529,7 +554,21 @@ Shopper step notes (as built): the line is `UnitLine` (a price block: from `pric
 
 No new admin page: nothing joins `store-nav.ts` and `ADMIN_PAGES` gets no new key.
 
-Admin step notes (as built): the pure words and rules of the editor are `src/lib/unit-price-editor.ts` (`contentPreviews()`, `contentState()`, `categoryChain()`, `compareChoices()`, `withoutContentWhereNotGoods()`), the client parts `src/components/admin/unit-price-fields.tsx` (`ContentFields`, `SoldByMeasureField`) and the products page's `unit-price-gaps-view.tsx` (`NeedsContentNotice`, `NeedsContentList`); the pack total and the typed-content reader are `packTotal()` and `typedMeasure()` at the end of `unit-price.ts`, so no admin file reads the content columns or parses an amount (the scan test's allowlist is unchanged). Deviations from 2.2: (1) the preview line is `Unit price in {market} ({currency}): ...` per market that has a typed price and `Not shown in {market}: {reason}` per market where it cannot be shown (the literal "Not shown: no price yet." only when no market has a price); a business-only store's typed price is turned into the kept price with VAT first, as saving does, and shown without VAT; a store selling to both shows both. (2) A draft is told what it will need once published ("Before you publish this product:", from `contentState().pending`), an active product what stops the save now; the save itself is the server's. (3) A variant that stops being shipped goods (kind or delivery changed) loses its content at once in the editor, with a notice for a change of kind only (the server would refuse it otherwise). (4) An empty content is sent as none. (5) Store Home and the control center show nothing for unit prices (the spec names none): the products page's notice and the categories screen's counts are the places. (6) The categories screen sends `requiresUnitPrice` only on a store's product categories (`TermsManager`'s `unitPrice` prop); pages' and articles' categories never see the mark.
+Admin step notes (as built): the pure words and rules of the editor are `src/lib/unit-price-editor.ts` (`contentPreviews()`,
+`contentState()`, `categoryChain()`, `compareChoices()`, `withoutContentWhereNotGoods()`), the client parts
+`src/components/admin/unit-price-fields.tsx` (`ContentFields`, `SoldByMeasureField`) and the products page's
+`unit-price-gaps-view.tsx` (`NeedsContentNotice`, `NeedsContentList`); the pack total and the typed-content reader are
+`packTotal()` and `typedMeasure()` at the end of `unit-price.ts`, so no admin file reads the content columns or parses an amount
+(the scan test's allowlist is unchanged). Deviations from 2.2: (1) the preview line is `Unit price in {market} ({currency}): ...`
+per market that has a typed price and `Not shown in {market}: {reason}` per market where it cannot be shown (the literal "Not
+shown: no price yet." only when no market has a price); a business-only store's typed price is turned into the kept price with VAT
+first, as saving does, and shown without VAT; a store selling to both shows both. (2) A draft is told what it will need once
+published ("Before you publish this product:", from `contentState().pending`), an active product what stops the save now; the save
+itself is the server's. (3) A variant that stops being shipped goods (kind or delivery changed) loses its content at once in the
+editor, with a notice for a change of kind only (the server would refuse it otherwise). (4) An empty content is sent as none. (5)
+Store Home and the control center show nothing for unit prices (the spec names none): the products page's notice and the
+categories screen's counts are the places. (6) The categories screen sends `requiresUnitPrice` only on a store's product
+categories (`TermsManager`'s `unitPrice` prop); pages' and articles' categories never see the mark.
 
 ### 5.5 Analytics and AI
 
@@ -598,11 +637,26 @@ The PGlite test needs `createTestDatabase()` (all migrations) and a store from t
 
 ### 6.5 Criteria changes proposed (no row is edited)
 
-1. **Criterion 4, JSON-LD property names.** *Row says:* "Unit price appears in the product's JSON-LD (unitPricingMeasure and unitPricingBaseMeasure)". *Found:* those are attributes of Google Merchant Center's product feed, not schema.org properties (schema.org's `UnitPriceSpecification` page lists neither; read 2026-10-04), and the structured-data form Google documents for a unit price is an `Offer.priceSpecification` of type `UnitPriceSpecification` with `referenceQuantity` and `valueReference` (1.3, 4.4). *Proposed text:* "The product's JSON-LD offer carries a `priceSpecification` of type `UnitPriceSpecification` with `price`, `priceCurrency` and a `referenceQuantity` whose `valueReference` is the base measure, as Google's merchant listing documentation shows. The Merchant Center feed attributes `unit_pricing_measure` and `unit_pricing_base_measure` are produced by the feed row of wave 5 from the same data."
-2. **Criterion 4, "refused when the measure is missing for a category the owner marked".** *Found:* "refused" has to mean *refused when saving an active product*, not a shop that stops selling existing products, and the owner needs a way to mark a product too (the outline's `sold_by_measure`). *Proposed text:* "A product the owner marked as sold by measure, or that is in a product category the owner marked as needing a unit price, cannot be saved active while an active physical variant has no measure; a draft can, an existing active product is reported rather than hidden, and the database refuses the same state."
+1. **Criterion 4, JSON-LD property names.** *Row says:* "Unit price appears in the product's JSON-LD (unitPricingMeasure and
+   unitPricingBaseMeasure)". *Found:* those are attributes of Google Merchant Center's product feed, not schema.org properties
+   (schema.org's `UnitPriceSpecification` page lists neither; read 2026-10-04), and the structured-data form Google documents for
+   a unit price is an `Offer.priceSpecification` of type `UnitPriceSpecification` with `referenceQuantity` and `valueReference`
+   (1.3, 4.4). *Proposed text:* "The product's JSON-LD offer carries a `priceSpecification` of type `UnitPriceSpecification` with
+   `price`, `priceCurrency` and a `referenceQuantity` whose `valueReference` is the base measure, as Google's merchant listing
+   documentation shows. The Merchant Center feed attributes `unit_pricing_measure` and `unit_pricing_base_measure` are produced by
+   the feed row of wave 5 from the same data."
+2. **Criterion 4, "refused when the measure is missing for a category the owner marked".** *Found:* "refused" has to mean *refused
+   when saving an active product*, not a shop that stops selling existing products, and the owner needs a way to mark a product
+   too (the outline's `sold_by_measure`). *Proposed text:* "A product the owner marked as sold by measure, or that is in a product
+   category the owner marked as needing a unit price, cannot be saved active while an active physical variant has no measure; a
+   draft can, an existing active product is reported rather than hidden, and the database refuses the same state."
 3. **Criterion 3, "the 30-day reference is not misused for it".** *Found:* a negative with no observable. *Proposed text:* "A reduced price shows the unit price of the price charged; the unit price is never computed from, struck through against, or shown beside the 30-day reference price."
 4. **Criterion 1, the unit list.** *Found:* the outline adds `cl`, and the reference choice is per market (DE, NO and SE refuse 100 g and 100 ml for packaged goods; Denmark unread, closed). *Proposed text:* "... (g, kg, ml, cl, l, cm, m, m2, piece) and a reference quantity (default 1 kg, 1 l, 1 m, 1 m2, 1 piece; 100 g or 100 ml only where a market's rule allows it: no country does today, so none)."
-5. **Criterion 2.** *Found:* "checkout" is the page of the pending order, "order confirmation" is the order page and the confirmation email, "listing cards" show the cheapest variant's. *Proposed text:* "... the product page, listing cards (for the variant the card's price shows), cart, checkout, order page and order emails show..." and "the unit price shown equals the one computed from the charged price" in criterion 5 is defined as **the order line's unit price** (the listed price per unit; basket-level discounts are separate rows), so it is testable.
+5. **Criterion 2.** *Found:* "checkout" is the page of the pending order, "order confirmation" is the order page and the
+   confirmation email, "listing cards" show the cheapest variant's. *Proposed text:* "... the product page, listing cards (for the
+   variant the card's price shows), cart, checkout, order page and order emails show..." and "the unit price shown equals the one
+   computed from the charged price" in criterion 5 is defined as **the order line's unit price** (the listed price per unit;
+   basket-level discounts are separate rows), so it is testable.
 
 None weakens a criterion; 2, 3 and 5 make the existing ones testable, and 1 and 4 follow the sources.
 
@@ -654,14 +708,23 @@ Two new files (3.8). Neither is applied to production by the run. With CI migrat
 
 ### 9.2 Statements the Supabase migration tool may cancel (the owner runs them in the SQL editor if so), and things only the lead can do
 
-- **None are expected to contain `DELETE`, `DROP` or `TRUNCATE` inside a function body**: `unit_price_required()` and `check_unit_price()` read only; the freeze trigger raises; the three patched functions are replaced with `CREATE OR REPLACE` text produced by `pg_get_functiondef` + `replace`, so **the bodies of `clone_store()`, `duplicate_store()` and `copy_orders()` already contain deletes** (they did for 1a and 1b) and the tool-based path cancelled those parts: the 1a precedent applied the file in parts. If the lead applies by hand rather than by CI, split the three patch blocks into their own parts and check each took (`select position('measure_amount' in pg_get_functiondef(...))`).
+- **None are expected to contain `DELETE`, `DROP` or `TRUNCATE` inside a function body**: `unit_price_required()` and
+  `check_unit_price()` read only; the freeze trigger raises; the three patched functions are replaced with `CREATE OR REPLACE`
+  text produced by `pg_get_functiondef` + `replace`, so **the bodies of `clone_store()`, `duplicate_store()` and `copy_orders()`
+  already contain deletes** (they did for 1a and 1b) and the tool-based path cancelled those parts: the 1a precedent applied the
+  file in parts. If the lead applies by hand rather than by CI, split the three patch blocks into their own parts and check each
+  took (`select position('measure_amount' in pg_get_functiondef(...))`).
 - No `DROP TRIGGER` is needed: nothing existing is replaced.
 - The plan feature row is an `INSERT ... WHERE NOT EXISTS`.
 - The `anchors` of the three patches (the column lists of the variant, product and term inserts) must match production's present definition (`pg_get_functiondef` there, not only the repository's: the repository's last definitions are in `20261002143638_analytics_rules.sql` and the patches of `20261003193902_tax_engine_rules.sql`, `20261004125337_order_invoices_rules.sql`); a patch that finds no anchor raises, which fails the file, as intended.
 
 ### 9.3 Advisors to check after applying
 
-Security: the new functions are in the private `commerce` schema, `SET search_path = ''`, not granted to `anon`/`authenticated` (as the 1b helpers); no new table, so no RLS question. Performance: `unit_price_required()` is used by one deferred trigger on saves and by the staff report only; if the report is slow on a store with very many products, an index on `product_terms (store_id, product_id)` already exists for the recursive step (verify) and `terms (store_id, requires_unit_price) where requires_unit_price` (a partial index, small) may be added.
+Security: the new functions are in the private `commerce` schema, `SET search_path = ''`, not granted to `anon`/`authenticated`
+(as the 1b helpers); no new table, so no RLS question. Performance: `unit_price_required()` is used by one deferred trigger on
+saves and by the staff report only; if the report is slow on a store with very many products, an index on
+`product_terms (store_id, product_id)` already exists for the recursive step (verify) and
+`terms (store_id, requires_unit_price) where requires_unit_price` (a partial index, small) may be added.
 
 ### 9.4 Decision row (draft)
 

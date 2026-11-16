@@ -5,18 +5,53 @@ What every AI call carries (`README.md` beside this file), part of `docs/audits/
 - **Kind:** eager. **Priority:** P1. **Effort:** M. **Confidence:** high. **Step:** 2.36. **The owner's choice.**
 - **Second check:** confirmed.
 - **Where:** `src/lib/tool-budget.ts:15`, `src/lib/tool-budget.ts:70-96`, `src/server/owner-assistant.ts:716-750`, `src/server/owner-assistant.ts:793`, `src/server/ai.ts:693-702`, `src/server/agent-eval.ts:146-153`, `docs/audits/code-review-2026-11.md:120`, `docs/audits/code-review-2026-11.md:549`
-- **Evidence:** chooseTools() fills the budget to the provider's cap: core tools, tools used before, the page's area, then every other area in a fixed order (tool-budget.ts:84-88). Run on a shop-only store it offers 234 store tools and sends 97 plus the manager's 26 and load_tools: 146,889 characters. The system prompt is 14,772. A round is about 161,700 characters, 91% tools. streamWithTools() gets the list on every round but a forced last one (owner-assistant.ts:793). I ran the skeptic's bundle again here and the numbers hold. My own draw of a lean choice (core, used, asked for, the page's area, no fill) gives 33,810 characters of tools on Home, 62,242 on an orders page, 65,146 on marketing, 81,807 on website, 86,581 on products and 88,609 on a settings page: the page's area can itself be large (settings 55 tools, website 41, marketing 32 to 40, products 28 to 30 with two tools of 11,000 characters each).
-- **Cost today:** About 40,400 input tokens a call (estimate at 4 characters a token; JSON tokenises worse, so a floor), up to 11 calls a turn; about 121,000 tokens for a turn with two tool rounds, about 3 cents at the seeded gpt-5-mini price before any provider cache discount, more on a larger model. It also uses up a store's monthly AI allowance at the full price. This cost follows use, so it is small today; it is the AI cost that grows fastest once many owners use the manager (an illustration, not a forecast: 1,000 stores x 10 turns a day x 3 calls is about 1.2 billion input tokens a day). Paid by: The server per AI manager call: Kaizena Flow's provider bill for stores on its key, the store's monthly AI allowance (or its own key), and the owner waiting for the answer.
-- **Saving:** Estimate from measured sizes, shop-only store. A round falls from about 161,700 characters to 48,600 on Home (minus 70%), 77,000 on orders (minus 52%), 79,900 on marketing (minus 51%), 96,600 on website (minus 40%), 101,400 on products (minus 37%), 103,400 on settings (minus 36%). When the model must first call load_tools, a turn costs one more round: the skeptic's arithmetic for a 3-call turn that becomes 4 calls is minus 36%; on my 20-question sample the tool characters over a turn fall 41% with the one-page router (the extra round for 7 of 18 questions) and 45% without it (the extra round for all 18).
-- **Risk:** The model may miss a tool it would have seen, or say it cannot do something instead of loading the area: noticed by AI-14's cases, by the count of load_tools calls and of 'no tool' answers in the round log of AI-10, and by thumbs-down on answers. One more round trip for questions outside the core and the page (a second or two for the owner). A tool list that changes with the page breaks a provider's prefix cache from the first changed tool, which is why the fixed tools go first. On a settings, products or website page the saving is a third, not two thirds, until those areas are split or their big tools slimmed (AI-8).
+- **Evidence:** chooseTools() fills the budget to the provider's cap: core tools, tools used before, the page's area, then every
+  other area in a fixed order (tool-budget.ts:84-88). Run on a shop-only store it offers 234 store tools and sends 97 plus the
+  manager's 26 and load_tools: 146,889 characters. The system prompt is 14,772. A round is about 161,700 characters, 91% tools.
+  streamWithTools() gets the list on every round but a forced last one (owner-assistant.ts:793). I ran the skeptic's bundle again
+  here and the numbers hold. My own draw of a lean choice (core, used, asked for, the page's area, no fill) gives 33,810
+  characters of tools on Home, 62,242 on an orders page, 65,146 on marketing, 81,807 on website, 86,581 on products and 88,609 on
+  a settings page: the page's area can itself be large (settings 55 tools, website 41, marketing 32 to 40, products 28 to 30 with
+  two tools of 11,000 characters each).
+- **Cost today:** About 40,400 input tokens a call (estimate at 4 characters a token; JSON tokenises worse, so a floor), up to 11
+  calls a turn; about 121,000 tokens for a turn with two tool rounds, about 3 cents at the seeded gpt-5-mini price before any
+  provider cache discount, more on a larger model. It also uses up a store's monthly AI allowance at the full price. This cost
+  follows use, so it is small today; it is the AI cost that grows fastest once many owners use the manager (an illustration, not a
+  forecast: 1,000 stores x 10 turns a day x 3 calls is about 1.2 billion input tokens a day). Paid by: The server per AI manager
+  call: Kaizena Flow's provider bill for stores on its key, the store's monthly AI allowance (or its own key), and the owner
+  waiting for the answer.
+- **Saving:** Estimate from measured sizes, shop-only store. A round falls from about 161,700 characters to 48,600 on Home (minus
+  70%), 77,000 on orders (minus 52%), 79,900 on marketing (minus 51%), 96,600 on website (minus 40%), 101,400 on products (minus
+  37%), 103,400 on settings (minus 36%). When the model must first call load_tools, a turn costs one more round: the skeptic's
+  arithmetic for a 3-call turn that becomes 4 calls is minus 36%; on my 20-question sample the tool characters over a turn fall
+  41% with the one-page router (the extra round for 7 of 18 questions) and 45% without it (the extra round for all 18).
+- **Risk:** The model may miss a tool it would have seen, or say it cannot do something instead of loading the area: noticed by
+  AI-14's cases, by the count of load_tools calls and of 'no tool' answers in the round log of AI-10, and by thumbs-down on
+  answers. One more round trip for questions outside the core and the page (a second or two for the owner). A tool list that
+  changes with the page breaks a provider's prefix cache from the first changed tool, which is why the fixed tools go first. On a
+  settings, products or website page the saving is a third, not two thirds, until those areas are split or their big tools slimmed
+  (AI-8).
 - **Already tracked:** Yes: code review step 3.18 'Cheaper, faster AI rounds' (FA1, FA9), status Open; owner question 8 there asks about a default of about 40 tools. The lean set here is 39 tools on Home.
 
 ## The fix
 
 1. First: AI-14 (cases in the eval that make the model find a tool) and AI-10 steps 1 and 2 (the measure of a default round and its baseline). Without them this change has no check and no number.
-2. src/lib/tool-budget.ts, chooseTools(): add `fill?: boolean` and `routed?: readonly ToolArea[]` to its context. With fill false (the new default): drop the early return at line 77 and the loop over every area at line 88. Pick in this order, cut at the budget as now: CORE_TOOLS, the areas in `wanted`, the names in `used`, `pageArea`, the areas in `routed`. Return `names` in pick order (line 95 returns table order today). Keep TOOLS_PER_TURN = 124: D333's reason, providers refuse more than 128, still holds. The held-back count per area (lines 89-94) is unchanged.
-3. New pure file src/lib/tool-router.ts: `routedAreas(message, flags)` returns the area of the one best-matching store page: `findPages("store", message, flags, 1)` (src/lib/admin-map.ts:1429-1458, which already matches English and Norwegian words, the two admin languages) then `areaOfPath("/" + page.path)` (src/lib/permissions.ts:102); an empty list for an account page or no match. One page, not two or three: on my 20-question sample two pages' areas cost 25% more tool characters a turn for two more hits.
-4. src/server/owner-assistant.ts, runTurn() lines 716-750: `const routed = store ? routedAreas(text, ctx.flags) : []`; call chooseTools with `{ used, wanted, pageArea, routed, fill: !store }` (a platform admin's 39 tools still all go: they fit). Keep one list `sent` for the turn: a name once sent keeps its place, new names are appended, so load_tools only adds at the end. Change `wanted.unshift` at line 746 to `push`. Build a round's tools as: the manager's own (fixed order), the store tools in `sent` order, the owner's app tools, then load_tools last (its description changes when areas load). This order is what AI-3 needs.
+2. src/lib/tool-budget.ts, chooseTools(): add `fill?: boolean` and `routed?: readonly ToolArea[]` to its context. With fill false
+   (the new default): drop the early return at line 77 and the loop over every area at line 88. Pick in this order, cut at the
+   budget as now: CORE_TOOLS, the areas in `wanted`, the names in `used`, `pageArea`, the areas in `routed`. Return `names` in
+   pick order (line 95 returns table order today). Keep TOOLS_PER_TURN = 124: D333's reason, providers refuse more than 128, still
+   holds. The held-back count per area (lines 89-94) is unchanged.
+3. New pure file src/lib/tool-router.ts: `routedAreas(message, flags)` returns the area of the one best-matching store page:
+   `findPages("store", message, flags, 1)` (src/lib/admin-map.ts:1429-1458, which already matches English and Norwegian words, the
+   two admin languages) then `areaOfPath("/" + page.path)` (src/lib/permissions.ts:102); an empty list for an account page or no
+   match. One page, not two or three: on my 20-question sample two pages' areas cost 25% more tool characters a turn for two more
+   hits.
+4. src/server/owner-assistant.ts, runTurn() lines 716-750: `const routed = store ? routedAreas(text, ctx.flags) : []`; call
+   chooseTools with `{ used, wanted, pageArea, routed, fill: !store }` (a platform admin's 39 tools still all go: they fit). Keep
+   one list `sent` for the turn: a name once sent keeps its place, new names are appended, so load_tools only adds at the end.
+   Change `wanted.unshift` at line 746 to `push`. Build a round's tools as: the manager's own (fixed order), the store tools in
+   `sent` order, the owner's app tools, then load_tools last (its description changes when areas load). This order is what AI-3
+   needs.
 5. src/lib/tool-budget.ts, loadToolsDefinition(): after each held-back area add three to six words on what it holds, from a new `AREA_HINTS` record (settings: shipping, tax, payments, domains, features, languages; marketing: discounts, emails, segments, campaigns; website: pages, menus, themes, look; and so on), so the model can choose an area for 'free shipping over 500 kr'.
 6. src/server/owner-assistant.ts, managerPrompt() line 439: keep 'If a tool refuses or fails, say what it said.' and replace the rest with: when you lack a tool for what is asked, load its area with load_tools first; only if no area has one, say so and open or name the admin page that can.
 7. src/server/agent-eval.ts: managerTools() (lines 146-153) keeps loading the areas of the tools a case names, without the fill, and does not preload for cases marked `lean` (AI-14). toolsVersion() (lines 78-81) also hashes CORE_TOOLS, the load_tools definition drawn for a fixed held-back set, and a new constant TOOL_CHOICE_VERSION from tool-budget.ts, so an old recording cannot stand for a new default set.

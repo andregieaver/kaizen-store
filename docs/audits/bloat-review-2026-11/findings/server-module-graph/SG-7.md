@@ -5,7 +5,13 @@ The server code every route loads (`README.md` beside this file), part of `docs/
 - **Kind:** eager. **Priority:** P1. **Effort:** S. **Confidence:** high. **Step:** 0.5.
 - **Second check:** corrected.
 - **Where:** `src/server/theme-highlights.ts:3`, `src/server/theme-shot-files.ts:3`, `src/server/product-import.ts:6`, `src/server/brand-marks.ts:3`, `src/server/ai-pictures.ts:3`, `src/server/replicate-images.ts:3`, `src/server/seo.ts:48`, `src/components/page-article.tsx:35`
-- **Evidence:** 12 server modules write import sharp from "sharp" at the top (counted again: ai-vision, content-packs, page-looks, picture-editor, ai-picture-marks, theme-highlights, product-import, replicate-images, replicate, ai-pictures, theme-shot-files, brand-marks); none loads it lazily. All are admin, AI or cron picture work. 181 handlers and 559 pages reach it, and its files (libvips 17.8 MiB, the addon and wrapper 1.0 MiB) are in each of those functions' traces; /api/health's trace has none. With the other cuts of this plan in the graph, 58 of 59 storefront pages still reach it through one chain, page-article.tsx -> theme-store-section.tsx -> theme-store.ts -> theme-shots.ts -> theme-highlights.ts (SG-17), and 428 admin pages through the store layout -> store-starters.ts -> theme-shots.ts.
+- **Evidence:** 12 server modules write import sharp from "sharp" at the top (counted again: ai-vision, content-packs, page-looks,
+  picture-editor, ai-picture-marks, theme-highlights, product-import, replicate-images, replicate, ai-pictures, theme-shot-files,
+  brand-marks); none loads it lazily. All are admin, AI or cron picture work. 181 handlers and 559 pages reach it, and its files
+  (libvips 17.8 MiB, the addon and wrapper 1.0 MiB) are in each of those functions' traces; /api/health's trace has none. With the
+  other cuts of this plan in the graph, 58 of 59 storefront pages still reach it through one chain, page-article.tsx ->
+  theme-store-section.tsx -> theme-store.ts -> theme-shots.ts -> theme-highlights.ts (SG-17), and 428 admin pages through the
+  store layout -> store-starters.ts -> theme-shots.ts.
 - **Cost today:** 44 to 54 ms and 26 to 29 MB of RSS per cold instance (the skeptic's re-measurement: import('sharp') in a fresh process, 3 runs, warm disk); 18.9 MiB in the function package. Paid by: The server per cold instance of nearly every route; function package size at deploy.
 - **Saving:** About 50 ms and about 28 MB of RSS per cold instance of every route that reaches it today. The package does not shrink from this: a module behind import() is still traced (unpdf's lazy chunks are in /api/visit's nft.json), so the 18.9 MiB leaves only the routes that lose every path to a picture module, such as the ten of SG-3.
 - **Risk:** Low. The functions are already async. A function that forgets the await fails its test at once (sharp would be a promise).

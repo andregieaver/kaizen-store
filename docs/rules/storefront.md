@@ -328,7 +328,11 @@ changing it; a rule changes here, and its line in CLAUDE.md when its gist change
   `reviewSubmission()` makes a draft theme (`createDesign()`'s `look` origin, or `writeDesignLook()` for an update), `approveSubmission()` publishes
   only through `publishDesign()`, `rejectSubmission()` needs a reason the author reads. A theme from outside is free (`theme_prices_author_free()`),
   names its author on its page with the stores using it (`themeStorePage()`), and a new install waits for the owner's Update (`follows_updates`
-  off by default, decision 4); a new way to bring a theme in goes through the same module. A submission may carry the store's published pages (D388, `src/server/submission-content.ts`: `pagesToSubmit()` copies them as a template when sent, never a page chosen for a place; the review's `makeSubmittedContent()` places them in a store template of their own; `adoptSubmittedContent()` makes it the theme's content only on approval), so a new kind of thing a submission sends is copied by `sanitizeTemplate()` there and never carries products, customers, recipients or secrets.
+  off by default, decision 4); a new way to bring a theme in goes through the same module. A submission may carry the store's
+  published pages (D388, `src/server/submission-content.ts`: `pagesToSubmit()` copies them as a template when sent, never a page
+  chosen for a place; the review's `makeSubmittedContent()` places them in a store template of their own;
+  `adoptSubmittedContent()` makes it the theme's content only on approval), so a new kind of thing a submission sends is copied by
+  `sanitizeTemplate()` there and never carries products, customers, recipients or secrets.
 
 ## By the clock, and links to share (wave 7 unit F, D340, `docs/wave-7-storefront.md` F as built)
 
@@ -366,7 +370,13 @@ changing it; a rule changes here, and its line in CLAUDE.md when its gist change
 
 ## A model that sees pictures (D163, `src/lib/ai-vision.ts`, `src/server/ai-vision.ts`, `ai_providers.vision_model`, the *Model that sees pictures*…
 
-- A model that sees pictures (D163, `src/lib/ai-vision.ts`, `src/server/ai-vision.ts`, `ai_providers.vision_model`, the *Model that sees pictures* field of both AI settings pages): anything that sends a picture to a model calls `seeing(connection)` first (the vision model, else the text model, else null: do not send a picture then) and never `connection.textModel` directly, so searches can stay on a quick text model; a model's name is never assumed to see, only *Check that it sees pictures* (`checkVisionFor()`, a random two-band picture and a colour question, one in twelve guesses right) shows it, and `visionModels` in `AI_PROVIDERS` only suggests. A new feature that sends pictures says so in its failure text and links to `/settings/ai#vision`.
+- A model that sees pictures (D163, `src/lib/ai-vision.ts`, `src/server/ai-vision.ts`, `ai_providers.vision_model`, the *Model
+  that sees pictures* field of both AI settings pages): anything that sends a picture to a model calls `seeing(connection)` first
+  (the vision model, else the text model, else null: do not send a picture then) and never `connection.textModel` directly, so
+  searches can stay on a quick text model; a model's name is never assumed to see, only *Check that it sees pictures*
+  (`checkVisionFor()`, a random two-band picture and a colour question, one in twelve guesses right) shows it, and `visionModels`
+  in `AI_PROVIDERS` only suggests. A new feature that sends pictures says so in its failure text and links to
+  `/settings/ai#vision`.
 
 ## AI providers (D73, `src/server/ai.ts`, `src/lib/ai-provider.ts`)
 
@@ -563,7 +573,12 @@ changing it; a rule changes here, and its line in CLAUDE.md when its gist change
   from that conversation's own address. A conversation by email (source `email`) is never tied to a customer by the address; the AI
   answers it only with the AI first, through `runSupportTurn(..., { email: true })` (no tool that needs a signed-in customer or a
   button, `NOT_BY_EMAIL`), and its answers go back by `sendReplyEmails()` as a reply in the thread, each marked as the AI's (`aiLabel`, `aiNote`, D334).
-  Contact forms (D382, `src/server/support-forms.ts`): a store's email form's message is a conversation of source `form` through `formToInbox()` while the desk is on and its `form_messages` is not `email` (the recipients emailed too unless it is `inbox`); it is people only (the database starts it in the queue, never lets it go to the AI and skips its summary), so no model ever reads its words: a new AI helper on a conversation (tone, brief, partner, translation, a manager tool) leaves `source = 'form'` out. Its answers go back as a conversation by email's do, and a customer with its address is shown, never tied (`addressCustomer`).
+  Contact forms (D382, `src/server/support-forms.ts`): a store's email form's message is a conversation of source `form` through
+  `formToInbox()` while the desk is on and its `form_messages` is not `email` (the recipients emailed too unless it is `inbox`);
+  it is people only (the database starts it in the queue, never lets it go to the AI and skips its summary), so no model ever
+  reads its words: a new AI helper on a conversation (tone, brief, partner, translation, a manager tool) leaves `source = 'form'`
+  out. Its answers go back as a conversation by email's do, and a customer with its address is shown, never tied
+  (`addressCustomer`).
   A product question (D431, a product layout's question part, `src/server/product-questions.ts`) takes the same path with the product's
   title, chosen variant and address as its first answer; its fields and copy addresses come from the published layout only.
 

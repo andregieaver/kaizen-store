@@ -2,7 +2,14 @@
 
 Part of `docs/audits/bloat-review-2026-11.md`, on commit 0bd814c. Read by one reviewer, challenged by a second (who re-opened every citation, re-measured every number and applied the owner's note that the platform is not open yet) and planned by a third. A tick (✓) marks a finding the second reviewer confirmed or corrected; one the planner added has none. Each finding has a file of its own beside this one.
 
-**In short.** The surface is large (560 pages, 110 store links, 254 AI manager tools, 83 five-minute jobs, 481 tables) but it is built with care: a new shop's default Basic view has 29 links, no admin screen is orphaned, and a feature a store does not use costs it close to nothing in the navigation, an AI round or scheduled work. One place breaks that and is cheap to fix before shoppers arrive: the cart page works out the whole basket twice per view (at least 14 statements too many), and every basket spends 5 statements learning that bonus, referrals and checkout rules are not in use. Two true duplicates are worth removing while there is no real data to move: order rules beside Workflows (about 1,900 lines) and the platform site's old copy (2,150 to 4,300 lines, already step 7 of its plan). The rest is the owner's product choice or already tracked; what is missing is a check that makes each new feature state what it costs a store that does not use it.
+**In short.** The surface is large (560 pages, 110 store links, 254 AI manager tools, 83 five-minute jobs, 481 tables) but it is
+built with care: a new shop's default Basic view has 29 links, no admin screen is orphaned, and a feature a store does not use
+costs it close to nothing in the navigation, an AI round or scheduled work. One place breaks that and is cheap to fix before
+shoppers arrive: the cart page works out the whole basket twice per view (at least 14 statements too many), and every basket
+spends 5 statements learning that bonus, referrals and checkout rules are not in use. Two true duplicates are worth removing while
+there is no real data to move: order rules beside Workflows (about 1,900 lines) and the platform site's old copy (2,150 to 4,300
+lines, already step 7 of its plan). The rest is the owner's product choice or already tracked; what is missing is a check that
+makes each new feature state what it costs a store that does not use it.
 
 ## Findings
 
@@ -61,7 +68,11 @@ These were in the first reading and did not hold. They are in no step.
 - Order rules are loaded on demand: the store-events runner imports ./order-rules only when an order.paid event is processed (src/server/staff-alerts.ts:944).
 - Plan features only describe plans; they are not a second gating system (src/lib/plan-features.ts).
 - One event intake feeds Zapier, Make, Slack, owners' endpoints and workflows (commerce.queue_integration_event()).
-- Reuse where it could have been copied: email automations take the broadcast's content schema (src/lib/automations.ts:4), SMS marketing takes its audience from segments (src/server/sms.ts:35), the leads inbox reads leads where they are and keeps only decisions (the comment on lead_decisions in src/db/schema.ts), Work's clients link to customers and companies and reuse the shop's e-invoice parts, and the Dream Factory's code steps are D351's draft and publish and D311's legal writer (docs/decisions.md:749).
+- Reuse where it could have been copied: email automations take the broadcast's content schema (src/lib/automations.ts:4), SMS
+  marketing takes its audience from segments (src/server/sms.ts:35), the leads inbox reads leads where they are and keeps only
+  decisions (the comment on lead_decisions in src/db/schema.ts), Work's clients link to customers and companies and reuse the
+  shop's e-invoice parts, and the Dream Factory's code steps are D351's draft and publish and D311's legal writer
+  (docs/decisions.md:749).
 - The AI manager caps a round at 124 tools and loads the rest on request (src/lib/tool-budget.ts:15, 67-96).
 - The developer platform (Admin API, OAuth server, MCP, storefront API, UCP) costs nothing until it is called; whether its doors are open on opening day is a product and security choice (was FT-6).
 - Fiken and Tripletex are kept on purpose as the bridge to the own books (docs/own-books-and-sales.md:45); their shared client is code review step 3.12 (was FT-11).

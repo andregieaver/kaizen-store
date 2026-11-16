@@ -5,7 +5,13 @@ Caching and rendering (`README.md` beside this file), part of `docs/audits/bloat
 - **Kind:** eager. **Priority:** P0. **Effort:** S. **Confidence:** high. **Step:** 0.12.
 - **Second check:** confirmed.
 - **Where:** `src/components/view-menu.tsx:56`, `src/components/view-menu.tsx:62`, `src/components/store-layout.tsx:214`, `src/components/store-layout.tsx:531`, `src/components/language-links.tsx:84`, `evidence/routes.json`
-- **Evidence:** Opened view-menu.tsx:50-76 in this pass: ViewMenu draws each language and currency as a next/link to that view's front page, but its click handler cancels the link and pushes the page the shopper is on. So the router prefetches a page the click does not open, except from the front page itself. Regrouped routes.json in this pass, demo's empty cart page at phone size: 42 prefetch requests, 625,516 bytes decoded, 184,408 on the wire; 18 of the requests, 509,776 decoded and 104,635 on the wire, are the six views' front pages (no-sv, no-da, no-en, no-sek, no-dkk, no-eur). Those views are not built ahead, so each first prefetch renders that front page on the server, and every one of the 18 also passes the proxy (44 matched requests on that page load). LanguageLinks uses a plain <a> (language-links.tsx:84) and does not prefetch.
+- **Evidence:** Opened view-menu.tsx:50-76 in this pass: ViewMenu draws each language and currency as a next/link to that view's
+  front page, but its click handler cancels the link and pushes the page the shopper is on. So the router prefetches a page the
+  click does not open, except from the front page itself. Regrouped routes.json in this pass, demo's empty cart page at phone
+  size: 42 prefetch requests, 625,516 bytes decoded, 184,408 on the wire; 18 of the requests, 509,776 decoded and 104,635 on the
+  wire, are the six views' front pages (no-sv, no-da, no-en, no-sek, no-dkk, no-eur). Those views are not built ahead, so each
+  first prefetch renders that front page on the server, and every one of the 18 also passes the proxy (44 matched requests on that
+  page load). LanguageLinks uses a plain <a> (language-links.tsx:84) and does not prefetch.
 - **Cost today:** For a store with several languages or currencies on: up to about 510 KB decoded (105 KB on the wire) and 18 requests per page load where the footer's list is on screen, each a proxy run, plus up to six page renders on a cold cache. Paid by: The shopper's browser (phone data); the server per request.
 - **Saving:** Measured on the cart page: 18 of 42 prefetch requests, 57% of the wire bytes (104,635 of 184,408) and 81% of the decoded bytes (509,776 of 625,516); 18 fewer proxy runs per such page load.
 - **Risk:** None seen: the click already moves with router.push to another address. From a front page the chosen view then loads on the click instead of ahead of it. Noticed by the two e2e specs above.

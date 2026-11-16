@@ -2,7 +2,14 @@
 
 Part of `docs/audits/bloat-review-2026-11.md`, on commit 0bd814c. Read by one reviewer, challenged by a second (who re-opened every citation, re-measured every number and applied the owner's note that the platform is not open yet) and planned by a third. A tick (✓) marks a finding the second reviewer confirmed or corrected; one the planner added has none. Each finding has a file of its own beside this one.
 
-**In short.** All 12 findings of the audit stand (8 confirmed, 4 corrected) and this pass added three; none argues for removing, hiding or merging a feature, and none rests on a table being empty. The admin's lists, streaming and cache tags are well made: the waste is in the shell and the home screens, and it is paid per owner tab and per save, so it grows with stores and owners, not with data. Three numbers tell it: building the store menu costs 125 ms of blocking CPU on every shell render (220 permission lookups; 0.1 ms once memoised), the shell is rendered again after every save and at least 39 save sites render the whole route twice because the browser asks again, and a store Home view runs 29 to 46 statements before its first content. Before opening is the cheap time: do the menu memo (AD-1), the double redraws (AD-13), the hidden-tab polls (AD-9), the products list's unused reads (AD-7) and a statement counter so this cannot grow unseen again (AD-12) first.
+**In short.** All 12 findings of the audit stand (8 confirmed, 4 corrected) and this pass added three; none argues for removing,
+hiding or merging a feature, and none rests on a table being empty. The admin's lists, streaming and cache tags are well made: the
+waste is in the shell and the home screens, and it is paid per owner tab and per save, so it grows with stores and owners, not
+with data. Three numbers tell it: building the store menu costs 125 ms of blocking CPU on every shell render (220 permission
+lookups; 0.1 ms once memoised), the shell is rendered again after every save and at least 39 save sites render the whole route
+twice because the browser asks again, and a store Home view runs 29 to 46 statements before its first content. Before opening is
+the cheap time: do the menu memo (AD-1), the double redraws (AD-13), the hidden-tab polls (AD-9), the products list's unused reads
+(AD-7) and a statement counter so this cannot grow unseen again (AD-12) first.
 
 ## Findings
 

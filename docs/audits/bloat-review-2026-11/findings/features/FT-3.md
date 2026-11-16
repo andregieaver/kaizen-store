@@ -4,11 +4,28 @@ The product's surface (`README.md` beside this file), part of `docs/audits/bloat
 
 - **Kind:** eager. **Priority:** P2. **Effort:** S. **Confidence:** high. **Step:** 0.31.
 - **Second check:** corrected.
-- **Where:** `src/app/api/cron/cart-reminders/route.ts:128`, `src/app/api/cron/subscription-reminders/route.ts:79`, `src/server/cron-runs.ts:101`, `src/server/cron-runs.ts:117`, `src/server/search.ts:431`, `src/server/search-cache.ts:78`, `src/server/forms.ts:389`, `src/server/chat-turns.ts:51`, `src/server/recommend-events.ts:59`, `src/server/docs-search.ts:189`, `src/server/replicate-store.ts:332`, `src/server/api-idempotency.ts:73`, `src/server/oauth.ts:821`, `src/server/workflows.ts:458`, `src/server/platform-workflows.ts:374`, `src/server/autopilot-effects.ts:44`, `evidence/prod-db-stats.md:134`
-- **Evidence:** The dispatcher starts 78 jobs together and 5 after (counted in the route). Almost every job is one 'is anything due' statement for the whole platform, so cost follows what is due, and jobs of switched features test the switch in SQL (I checked bonus, referrals, cart reminders and subscription boxes). What is eager is small and exact. Nine jobs only delete rows older than 1 to 180 days: searches, cache, forms, chat, recommendations, docsCounts, replications, apiIdempotency, oauthTokens. I read each: 14 statements between them (1, 1, 1, 1, 2, 2, 1, 2, 3) plus 9 writes to commerce.cron_jobs, 23 statements a run, 288 runs a day. Added by the planner: the two workflow runners, which run every minute, each end with a delete of run logs older than 90 days (workflows.ts:458, platform-workflows.ts:374): 2,880 deletes a day. The daily route already holds some twenty prunes of the same kind (subscription-reminders/route.ts:79), and the code has both slower patterns: claimDay() (cron-runs.ts:81) and the once-an-hour minute test (autopilot-effects.ts:44).
+- **Where:** `src/app/api/cron/cart-reminders/route.ts:128`, `src/app/api/cron/subscription-reminders/route.ts:79`,
+  `src/server/cron-runs.ts:101`, `src/server/cron-runs.ts:117`, `src/server/search.ts:431`, `src/server/search-cache.ts:78`,
+  `src/server/forms.ts:389`, `src/server/chat-turns.ts:51`, `src/server/recommend-events.ts:59`, `src/server/docs-search.ts:189`,
+  `src/server/replicate-store.ts:332`, `src/server/api-idempotency.ts:73`, `src/server/oauth.ts:821`,
+  `src/server/workflows.ts:458`, `src/server/platform-workflows.ts:374`, `src/server/autopilot-effects.ts:44`,
+  `evidence/prod-db-stats.md:134`
+- **Evidence:** The dispatcher starts 78 jobs together and 5 after (counted in the route). Almost every job is one 'is anything
+  due' statement for the whole platform, so cost follows what is due, and jobs of switched features test the switch in SQL (I
+  checked bonus, referrals, cart reminders and subscription boxes). What is eager is small and exact. Nine jobs only delete rows
+  older than 1 to 180 days: searches, cache, forms, chat, recommendations, docsCounts, replications, apiIdempotency, oauthTokens.
+  I read each: 14 statements between them (1, 1, 1, 1, 2, 2, 1, 2, 3) plus 9 writes to commerce.cron_jobs, 23 statements a run,
+  288 runs a day. Added by the planner: the two workflow runners, which run every minute, each end with a delete of run logs older
+  than 90 days (workflows.ts:458, platform-workflows.ts:374): 2,880 deletes a day. The daily route already holds some twenty
+  prunes of the same kind (subscription-reminders/route.ts:79), and the code has both slower patterns: claimDay()
+  (cron-runs.ts:81) and the once-an-hour minute test (autopilot-effects.ts:44).
 - **Cost today:** About 6,600 statements a day for the nine jobs (23 x 288) and 2,880 for the two run-log deletes, whatever the number of stores; 2,592 of the day's 23,904 job runs. A fixed cost that rises with each feature's own prune, not with stores. Paid by: The database, and one function run every five minutes and one every minute
 - **Saving:** By count from the code: about 2,500 job runs and 6,400 statements a day from the nine jobs, and about 2,900 statements a day from the two run-log deletes. No visible change in function time.
-- **Risk:** A pruned table grows for up to a day (or an hour) longer before it is cut; none of the nine is read for correctness within that time (the search cache replaces a row on conflict, chat_usage is read by its window). Form submissions are kept 30 days by the prune; daily pruning makes that at most 31, as the daily retention job already does for other data. A slipped run (one that starts after minute 5) skips an hourly prune for an hour. A job left out of the ledger would not be noticed when it stops: step 1's tracked() names prevent that.
+- **Risk:** A pruned table grows for up to a day (or an hour) longer before it is cut; none of the nine is read for correctness
+  within that time (the search cache replaces a row on conflict, chat_usage is read by its window). Form submissions are kept 30
+  days by the prune; daily pruning makes that at most 31, as the daily retention job already does for other data. A slipped run
+  (one that starts after minute 5) skips an hourly prune for an hour. A job left out of the ledger would not be noticed when it
+  stops: step 1's tracked() names prevent that.
 
 ## The fix
 

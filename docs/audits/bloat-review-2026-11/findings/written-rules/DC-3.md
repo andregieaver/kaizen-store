@@ -5,7 +5,12 @@ The written rules and the agents' context (`README.md` beside this file), part o
 - **Kind:** no check. **Priority:** P0. **Effort:** S. **Confidence:** high. **Step:** 1.1.
 - **Second check:** corrected.
 - **Where:** `src/lib/rules-index.test.ts:28-43`, `docs/consolidation.md:12-13`, `docs/audits/code-review-2026-11.md:291`, `CLAUDE.md:133-399`, `src/server/ratchet.scan.test.ts:1-58`, `scripts/ratchet.mjs:1-42`, `.github/workflows/ci.yml:10-14`
-- **Evidence:** CLAUDE.md was cut from 382 KB to 32 KB on 30 October (consolidation.md:12-13), was 39.5 KB on 9 November (code review FH5) and is 43,361 bytes now: +35% in 12 days. docs/rules went from 374 KB to 566 KB in the same time. decisions.md gained 34 rows in the clone's 35 hours. rules-index.test.ts:30 and :38 fail when a rule heading has no line in CLAUDE.md, so each new rule adds an always-loaded line. A ratchet exists for code (src/server/ratchet.scan.test.ts with src/server/ratchet.baseline.json and scripts/ratchet.mjs); none exists for docs. CI runs nothing on a push of Markdown alone (ci.yml:10-14), and a run of ci.yml ends in a deploy, so a docs check cannot simply be added to its paths.
+- **Evidence:** CLAUDE.md was cut from 382 KB to 32 KB on 30 October (consolidation.md:12-13), was 39.5 KB on 9 November (code
+  review FH5) and is 43,361 bytes now: +35% in 12 days. docs/rules went from 374 KB to 566 KB in the same time. decisions.md
+  gained 34 rows in the clone's 35 hours. rules-index.test.ts:30 and :38 fail when a rule heading has no line in CLAUDE.md, so
+  each new rule adds an always-loaded line. A ratchet exists for code (src/server/ratchet.scan.test.ts with
+  src/server/ratchet.baseline.json and scripts/ratchet.mjs); none exists for docs. CI runs nothing on a push of Markdown alone
+  (ci.yml:10-14), and a run of ci.yml ends in a deploy, so a docs check cannot simply be added to its paths.
 - **Cost today:** About 0.95 KB a day added to what every session loads (about 240 tokens a day, average since 30 October); about 16 KB a day in docs/rules. It follows the number of features built, not the task in hand. Paid by: An agent's session, every later one
 - **Saving:** Stops the regrowth measured above and keeps the savings of DC-1, DC-2 and DC-4 from being spent again. No token figure is claimed.
 - **Risk:** A hard cap can push agents to write cryptic text: the baseline, the plain error and the --raise switch avoid that. The unit test runs in CI only with a push that carries code; the small workflow covers Markdown-only pushes, and it reports, it does not block. If the workflow were added to ci.yml's paths instead, every rules edit would deploy production.

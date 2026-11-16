@@ -5,8 +5,18 @@ Code nothing uses (`README.md` beside this file), part of `docs/audits/bloat-rev
 - **Kind:** eager. **Priority:** P0. **Effort:** S. **Confidence:** high. **Step:** 0.4.
 - **Second check:** confirmed.
 - **Where:** `src/db/client.ts:11`, `src/db/client.ts:31`, `src/db/client.ts:78`, `src/db/schema.ts:19`, `drizzle.config.ts:7`, `docs/audits/code-review-2026-11.md:116`, `docs/audits/code-review-2026-11.md:268`
-- **Evidence:** src/db/client.ts imports the whole schema as a value (line 11), uses it as a type (line 31) and hands it to drizzle (line 78). Nothing else imports it at run time: rg over src, scripts and e2e finds client.ts, one scan test (src/server/store-export.scan.test.ts:4) and drizzle.config.ts. No code uses the query builder: rg for db().select, .insert, .query and for $inferSelect or InferSelectModel finds nothing outside src/db; every query is raw SQL through execute. The skeptic timed the module three times on an esbuild bundle: 117 to 149 ms to evaluate and 16 MB of heap; drizzle's init with the schema 32 to 36 ms and 2.3 MB, against 0.03 to 0.04 ms without. In the finished build 6 server chunk files hold the schema (the planner re-ran rg -l -F orders_store_placed_idx over .next/server: 6).
-- **Cost today:** 150 to 190 ms and about 18 MB on each cold start of a function that touches the database (measured on this machine on the schema alone; DS-1 and DP-1 measured 60 to 135 ms on whole routes; an estimate for Vercel either way), and about 0.8 MB of JavaScript in each of 6 server chunks (measured). Paid by: The server on every cold start, so the first shopper or owner to reach a fresh instance. Today that is mostly scheduled jobs and the team. It grows with stores, traffic spikes and deploys: more instances, more cold starts.
+- **Evidence:** src/db/client.ts imports the whole schema as a value (line 11), uses it as a type (line 31) and hands it to
+  drizzle (line 78). Nothing else imports it at run time: rg over src, scripts and e2e finds client.ts, one scan test
+  (src/server/store-export.scan.test.ts:4) and drizzle.config.ts. No code uses the query builder: rg for db().select, .insert,
+  .query and for $inferSelect or InferSelectModel finds nothing outside src/db; every query is raw SQL through execute. The
+  skeptic timed the module three times on an esbuild bundle: 117 to 149 ms to evaluate and 16 MB of heap; drizzle's init with the
+  schema 32 to 36 ms and 2.3 MB, against 0.03 to 0.04 ms without. In the finished build 6 server chunk files hold the schema (the
+  planner re-ran rg -l -F orders_store_placed_idx over .next/server: 6).
+- **Cost today:** 150 to 190 ms and about 18 MB on each cold start of a function that touches the database (measured on this
+  machine on the schema alone; DS-1 and DP-1 measured 60 to 135 ms on whole routes; an estimate for Vercel either way), and about
+  0.8 MB of JavaScript in each of 6 server chunks (measured). Paid by: The server on every cold start, so the first shopper or
+  owner to reach a fresh instance. Today that is mostly scheduled jobs and the team. It grows with stores, traffic spikes and
+  deploys: more instances, more cold starts.
 - **Saving:** 150 to 190 ms and about 18 MB per cold start by the skeptic's measure of the schema alone (60 to 135 ms by DS-1's and DP-1's whole-route measures; an estimate for Vercel), and about 0.8 MB off each of 6 server chunks (measured).
 - **Risk:** Low. What could break: a type somewhere that leaned on the schema generic; pnpm typecheck shows it before the push (Vercel's build skips the type check, so the local run and CI's quick gate are the proof). A change to schema.ts that no longer matches the migrations would still be caught by pnpm db:check.
 - **Already tracked:** Code review step 3.14 Split schema.ts (finding FD5): Open. The same three lines are planned as DS-1 (db-schema) and DP-1 (deps) and found again as SG-6 and TC-5: one change, done once.

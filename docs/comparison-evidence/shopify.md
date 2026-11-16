@@ -3,33 +3,126 @@
 Read on 2026-11-04 and 2026-11-05: the session's date changed partway through, and each line gives the day its page was read. The October rows are in docs/parity/rows/*.json (read 2–3 Oct 2026).
 WebFetch passes each page through a summarising model, so text in quotation marks is that model's quotation of the page. Before a quoted sentence goes on the comparison page, open the page and check it word for word.
 
-T1 Legal invoices and credit notes for orders: native for VAT invoices (needs Shopify Tax; only for orders shipped to the EU or UK); app for credit notes (Sufio, by a third party). Shopify can make a VAT invoice for an order going to the EU or UK, and the customer finds it on the order status page. Shopify says "They aren't automatically emailed to customers", and "Currently, VAT invoices can't be regenerated after order changes": after a change the merchant downloads the invoice and adjusts it by hand. "Automatic VAT invoices aren't currently supported for orders shipping to Portugal". The comparison table lists "Generate and display VAT invoices" for Shopify Tax only. No Shopify page read describes a credit note for a refund. Sufio's listing says "refunds are handled with separate credit notes". Shopify's own free Order Printer app (by Shopify) prints invoices, packing slips and pick lists from templates and says nothing on legal compliance. Source: https://help.shopify.com/en/manual/taxes/shopify-tax/vat-invoices ; https://help.shopify.com/en/manual/taxes/shopify-tax/shopify-tax-eu ; https://help.shopify.com/en/manual/taxes/shopify-tax/choose-tax-service (read 2026-11-05 by WebFetch) ; https://apps.shopify.com/shopify-order-printer ; https://apps.shopify.com/sufio (read 2026-11-04 by WebFetch). CHANGED since Oct: the October rows put invoices on Order Printer or an app only, but Shopify has its own VAT invoices with Shopify Tax. The page shows no launch date, so this corrects the October reading and may not be new. October's claim that Order Printer "does not support credit notes, gift receipts or draft orders" is on no Shopify page read today. The row international.legal-invoices-and-credit-notes-for-orders cited sufio.com/blog, which is not an allowed source.
+T1 Legal invoices and credit notes for orders: native for VAT invoices (needs Shopify Tax; only for orders shipped to the EU or
+UK); app for credit notes (Sufio, by a third party). Shopify can make a VAT invoice for an order going to the EU or UK, and the
+customer finds it on the order status page. Shopify says "They aren't automatically emailed to customers", and "Currently, VAT
+invoices can't be regenerated after order changes": after a change the merchant downloads the invoice and adjusts it by hand.
+"Automatic VAT invoices aren't currently supported for orders shipping to Portugal". The comparison table lists "Generate and
+display VAT invoices" for Shopify Tax only. No Shopify page read describes a credit note for a refund. Sufio's listing says
+"refunds are handled with separate credit notes". Shopify's own free Order Printer app (by Shopify) prints invoices, packing slips
+and pick lists from templates and says nothing on legal compliance. Source:
+https://help.shopify.com/en/manual/taxes/shopify-tax/vat-invoices ;
+https://help.shopify.com/en/manual/taxes/shopify-tax/shopify-tax-eu ;
+https://help.shopify.com/en/manual/taxes/shopify-tax/choose-tax-service (read 2026-11-05 by WebFetch) ;
+https://apps.shopify.com/shopify-order-printer ; https://apps.shopify.com/sufio (read 2026-11-04 by WebFetch). CHANGED since Oct:
+the October rows put invoices on Order Printer or an app only, but Shopify has its own VAT invoices with Shopify Tax. The page
+shows no launch date, so this corrects the October reading and may not be new. October's claim that Order Printer "does not
+support credit notes, gift receipts or draft orders" is on no Shopify page read today. The row
+international.legal-invoices-and-credit-notes-for-orders cited sufio.com/blog, which is not an allowed source.
 
-T2 30-day lowest price on a reduction (Omnibus): app (Complimus: Omnibus & EU Rules, by a third party). Shopify does not track the 30-day lowest price. Its own help page tells the merchant to type that price into the Compare-at price field by hand: "In the Compare-at price field, enter the product's lowest price within the last 30 days or more", and "The product details in your Shopify admin have only two fields for product price: the price, and compare-at price". The app saves each price daily and shows the lowest of the last 30 days. Source: https://help.shopify.com/en/manual/compliance/legal/pricing-indication-directive (read 2026-11-04 by WebFetch) ; https://apps.shopify.com/omnibus-price (read 2026-11-04 by WebFetch). Same (the row should also cite Shopify's own page).
+T2 30-day lowest price on a reduction (Omnibus): app (Complimus: Omnibus & EU Rules, by a third party). Shopify does not track the
+30-day lowest price. Its own help page tells the merchant to type that price into the Compare-at price field by hand: "In the
+Compare-at price field, enter the product's lowest price within the last 30 days or more", and "The product details in your
+Shopify admin have only two fields for product price: the price, and compare-at price". The app saves each price daily and shows
+the lowest of the last 30 days. Source: https://help.shopify.com/en/manual/compliance/legal/pricing-indication-directive (read
+2026-11-04 by WebFetch) ; https://apps.shopify.com/omnibus-price (read 2026-11-04 by WebFetch). Same (the row should also cite
+Shopify's own page).
 
-T3 Withdrawal function (button, exclusions, digital waiver): native in part. Since 18 June 2026 a customer can ask to cancel an order, as well as return it, through self-serve in their customer account. Shopify says merchants "can use Shopify's return and cancellation rules to help meet the electronic withdrawal function requirement". On a dedicated withdrawal button the status is unverified: no Shopify page read describes a clearly labelled withdrawal button or link, or whether a guest can use it without signing in. Apps add a storefront withdrawal form, for example EU Withdrawal Form (herrlich media GmbH, a third party). The changelog adds: "This enables merchants selling in the EU to offer a withdrawal policy". The per-market self-serve switch applies "if your store is on the Advanced or Plus plan", and market-specific rules are early access. Managed Markets orders get compliant policies automatically. Source: https://help.shopify.com/en/manual/compliance/legal/eu-right-of-withdrawal ; https://changelog.shopify.com/posts/self-serve-returns-now-support-cancellations ; https://help.shopify.com/en/manual/fulfillment/managing-orders/returns/return-rules (read 2026-11-04 by WebFetch) ; https://apps.shopify.com/eu-cancellation-button (read 2026-11-05 by WebFetch). Same tier. The 18 June 2026 cancellation changelog post is not in the October text.
+T3 Withdrawal function (button, exclusions, digital waiver): native in part. Since 18 June 2026 a customer can ask to cancel an
+order, as well as return it, through self-serve in their customer account. Shopify says merchants "can use Shopify's return and
+cancellation rules to help meet the electronic withdrawal function requirement". On a dedicated withdrawal button the status is
+unverified: no Shopify page read describes a clearly labelled withdrawal button or link, or whether a guest can use it without
+signing in. Apps add a storefront withdrawal form, for example EU Withdrawal Form (herrlich media GmbH, a third party). The
+changelog adds: "This enables merchants selling in the EU to offer a withdrawal policy". The per-market self-serve switch applies
+"if your store is on the Advanced or Plus plan", and market-specific rules are early access. Managed Markets orders get compliant
+policies automatically. Source: https://help.shopify.com/en/manual/compliance/legal/eu-right-of-withdrawal ;
+https://changelog.shopify.com/posts/self-serve-returns-now-support-cancellations ;
+https://help.shopify.com/en/manual/fulfillment/managing-orders/returns/return-rules (read 2026-11-04 by WebFetch) ;
+https://apps.shopify.com/eu-cancellation-button (read 2026-11-05 by WebFetch). Same tier. The 18 June 2026 cancellation changelog
+post is not in the October text.
 
-T3b Withdrawal exclusions and digital-content waiver: native for exclusions; unverified for the digital waiver. A merchant can mark products or collections as final sale so they cannot be returned or cancelled: "You can choose which products or collections aren't eligible for returns or cancellations as final sale items". Shopify's withdrawal page describes the legal exemption for digital content ("where the customer agreed to begin the download or stream and acknowledged that they lose their withdrawal right"). No Shopify page read offers a checkout consent or waiver step for it. Source: https://help.shopify.com/en/manual/fulfillment/managing-orders/returns/return-rules ; https://help.shopify.com/en/manual/compliance/legal/eu-right-of-withdrawal (read 2026-11-04 by WebFetch). CHANGED since Oct, as a correction: October said "App" and that Shopify's withdrawal page says nothing about exclusions or a digital waiver. Today that page lists exclusions (made to order, personalised, sealed hygiene goods, digital content), and return rules exclude final-sale items natively.
+T3b Withdrawal exclusions and digital-content waiver: native for exclusions; unverified for the digital waiver. A merchant can
+mark products or collections as final sale so they cannot be returned or cancelled: "You can choose which products or collections
+aren't eligible for returns or cancellations as final sale items". Shopify's withdrawal page describes the legal exemption for
+digital content ("where the customer agreed to begin the download or stream and acknowledged that they lose their withdrawal
+right"). No Shopify page read offers a checkout consent or waiver step for it. Source:
+https://help.shopify.com/en/manual/fulfillment/managing-orders/returns/return-rules ;
+https://help.shopify.com/en/manual/compliance/legal/eu-right-of-withdrawal (read 2026-11-04 by WebFetch). CHANGED since Oct, as a
+correction: October said "App" and that Shopify's withdrawal page says nothing about exclusions or a digital waiver. Today that
+page lists exclusions (made to order, personalised, sealed hygiene goods, digital content), and return rules exclude final-sale
+items natively.
 
-T4 Product safety information (GPSR): native in part (the merchant stores and shows the information); app for the EU Responsible Person service. Shopify says to put legally required warnings in the Disclosures product metafield and manufacturer details in the description or a metafield. It does not provide an EU Responsible Person: "Although Shopify does not currently offer such services directly". The page points to "third-party compliance tools" on the App Store without naming one. Source: https://help.shopify.com/en/manual/international/gpsr (read 2026-11-04 by WebFetch); https://apps.shopify.com/gpsrkit (NOT READ: HTTP 404). CHANGED since Oct: the listing the row cites (apps.shopify.com/gpsrkit) is gone (404), and the tier moves from app to native in part, through metafields. App Store search shows others, such as GPSR Compliance Manager (apps.shopify.com/gpsr-compliance-manager), but that listing was not opened.
+T4 Product safety information (GPSR): native in part (the merchant stores and shows the information); app for the EU Responsible
+Person service. Shopify says to put legally required warnings in the Disclosures product metafield and manufacturer details in the
+description or a metafield. It does not provide an EU Responsible Person: "Although Shopify does not currently offer such services
+directly". The page points to "third-party compliance tools" on the App Store without naming one. Source:
+https://help.shopify.com/en/manual/international/gpsr (read 2026-11-04 by WebFetch); https://apps.shopify.com/gpsrkit (NOT READ:
+HTTP 404). CHANGED since Oct: the listing the row cites (apps.shopify.com/gpsrkit) is gone (404), and the tier moves from app to
+native in part, through metafields. App Store search shows others, such as GPSR Compliance Manager
+(apps.shopify.com/gpsr-compliance-manager), but that listing was not opened.
 
-T5a EU VAT by destination, OSS and IOSS: native; Shopify does not file the return. A merchant enters their OSS registration, or uses IOSS for consignments up to EUR 150, and Shopify charges VAT by the customer's country. The merchant files: "You file a single monthly VAT return through the IOSS portal". Limits quoted: "OSS registrations don't apply when the selected fulfillment location is outside the EU"; "you can't use both OSS and IOSS in Shopify simultaneously"; "Basic Tax is available in the European Union only if your store was set up to collect tax there before May 13, 2026" (otherwise Shopify Tax or manual tax settings). Source: https://help.shopify.com/en/manual/taxes/eu/eu-tax-reference (read 2026-11-04 by WebFetch) ; https://help.shopify.com/en/manual/taxes/shopify-tax/shopify-tax-eu (read 2026-11-05 by WebFetch). CHANGED since Oct, as a refinement: the October text said "OSS needs Shopify Tax or Basic Tax". Basic Tax in the EU is now only for stores set up before 13 May 2026, and OSS and IOSS cannot both be used. That date predates October, so this corrects the reading rather than reporting a new change.
+T5a EU VAT by destination, OSS and IOSS: native; Shopify does not file the return. A merchant enters their OSS registration, or
+uses IOSS for consignments up to EUR 150, and Shopify charges VAT by the customer's country. The merchant files: "You file a
+single monthly VAT return through the IOSS portal". Limits quoted: "OSS registrations don't apply when the selected fulfillment
+location is outside the EU"; "you can't use both OSS and IOSS in Shopify simultaneously"; "Basic Tax is available in the European
+Union only if your store was set up to collect tax there before May 13, 2026" (otherwise Shopify Tax or manual tax settings).
+Source: https://help.shopify.com/en/manual/taxes/eu/eu-tax-reference (read 2026-11-04 by WebFetch) ;
+https://help.shopify.com/en/manual/taxes/shopify-tax/shopify-tax-eu (read 2026-11-05 by WebFetch). CHANGED since Oct, as a
+refinement: the October text said "OSS needs Shopify Tax or Basic Tax". Basic Tax in the EU is now only for stores set up before
+13 May 2026, and OSS and IOSS cannot both be used. That date predates October, so this corrects the reading rather than reporting
+a new change.
 
-T5b EU VAT reports: native for VAT collected by country and rate; unverified for an OSS or IOSS return report. The Taxes finance report lists tax collected by "Tax country", "Tax region", "Tax name" and "Tax rate". No Shopify page read describes a report shaped as an OSS or IOSS return. Source: https://help.shopify.com/en/manual/reports-and-analytics/shopify-reports/report-types/default-reports/finances-report (read 2026-11-05 by WebFetch) ; https://help.shopify.com/en/manual/taxes/tax-reports (read 2026-11-04 by WebFetch: it lists US, Canada, Taxes, Total sales by order and Managed Markets (Canada, UK) reports and does not mention the EU). CHANGED since Oct, as a correction: October said Shopify has no EU VAT-by-country-and-rate report, but the Taxes finance report breaks tax down by country and rate.
+T5b EU VAT reports: native for VAT collected by country and rate; unverified for an OSS or IOSS return report. The Taxes finance
+report lists tax collected by "Tax country", "Tax region", "Tax name" and "Tax rate". No Shopify page read describes a report
+shaped as an OSS or IOSS return. Source:
+https://help.shopify.com/en/manual/reports-and-analytics/shopify-reports/report-types/default-reports/finances-report (read
+2026-11-05 by WebFetch) ; https://help.shopify.com/en/manual/taxes/tax-reports (read 2026-11-04 by WebFetch: it lists US, Canada,
+Taxes, Total sales by order and Managed Markets (Canada, UK) reports and does not mention the EU). CHANGED since Oct, as a
+correction: October said Shopify has no EU VAT-by-country-and-rate report, but the Taxes finance report breaks tax down by country
+and rate.
 
-T6 Business buyer's VAT number checked at checkout, reverse charge: native, with conditions. Checkout checks a company VAT number (through VIES) and removes VAT for EU-to-EU sales between countries and for EU-to-UK sales. It needs Shopify Tax in the EU or UK, an active EU fulfilment location, and the Company VAT number field switched on. It works for guest checkout and Shop Pay, but "VAT validation isn't currently available for B2B-specific checkouts". Other limits: "VAT validation in checkout is available only for stores that use Shopify Tax"; "An active fulfillment location in the European Union is required". Source: https://help.shopify.com/en/manual/taxes/shopify-tax/vat-validate ; https://changelog.shopify.com/posts/vat-number-validation-available-in-checkout (25 Feb 2026) (read 2026-11-04 by WebFetch). CHANGED since Oct, an addition: the October text did not say the check is unavailable in B2B (company account) checkouts.
+T6 Business buyer's VAT number checked at checkout, reverse charge: native, with conditions. Checkout checks a company VAT number
+(through VIES) and removes VAT for EU-to-EU sales between countries and for EU-to-UK sales. It needs Shopify Tax in the EU or UK,
+an active EU fulfilment location, and the Company VAT number field switched on. It works for guest checkout and Shop Pay, but "VAT
+validation isn't currently available for B2B-specific checkouts". Other limits: "VAT validation in checkout is available only for
+stores that use Shopify Tax"; "An active fulfillment location in the European Union is required". Source:
+https://help.shopify.com/en/manual/taxes/shopify-tax/vat-validate ;
+https://changelog.shopify.com/posts/vat-number-validation-available-in-checkout (25 Feb 2026) (read 2026-11-04 by WebFetch).
+CHANGED since Oct, an addition: the October text did not say the check is unavailable in B2B (company account) checkouts.
 
 T7 Appointments, stays and rentals: app (Appointo, by Sidepanda Services LLP, a third party, Built for Shopify). Bookings for appointments, classes, rentals and multi-day stays need an app. No Shopify page read describes built-in booking. Source: https://apps.shopify.com/appointo (read 2026-11-04 by WebFetch). Same.
 
-T8 Subscriptions: app (Shopify Subscriptions, by Shopify, free). A merchant sells subscriptions by installing Shopify's own free app: "Install Shopify Subscriptions from the Shopify App Store". It offers weekly, monthly or yearly auto-billing, discounts and a customer self-service portal, and works in POS. Source: https://help.shopify.com/en/manual/products/purchase-options/shopify-subscriptions ; https://apps.shopify.com/shopify-subscriptions (read 2026-11-04 by WebFetch). CHANGED since Oct, a label correction: October said "Native" and cited the developer API (shopify.dev). The merchant-facing route is Shopify's own free app, not something already in the admin.
+T8 Subscriptions: app (Shopify Subscriptions, by Shopify, free). A merchant sells subscriptions by installing Shopify's own free
+app: "Install Shopify Subscriptions from the Shopify App Store". It offers weekly, monthly or yearly auto-billing, discounts and a
+customer self-service portal, and works in POS. Source:
+https://help.shopify.com/en/manual/products/purchase-options/shopify-subscriptions ;
+https://apps.shopify.com/shopify-subscriptions (read 2026-11-04 by WebFetch). CHANGED since Oct, a label correction: October said
+"Native" and cited the developer API (shopify.dev). The merchant-facing route is Shopify's own free app, not something already in
+the admin.
 
-T9 Bundles: app (Shopify Bundles, by Shopify, free, every plan). Shopify's own free Bundles app makes fixed bundles and multipacks: "a free first-party bundles app" that "is available on all Shopify plans". Limits: fixed bundles take up to 30 components and dynamic bundles up to 150. Bundles cannot carry purchase options (subscriptions, pre-orders), and a bundle's price does not follow its parts' prices. Source: https://help.shopify.com/en/manual/products/bundles/shopify-bundles (read 2026-11-04 by WebFetch). Same.
+T9 Bundles: app (Shopify Bundles, by Shopify, free, every plan). Shopify's own free Bundles app makes fixed bundles and
+multipacks: "a free first-party bundles app" that "is available on all Shopify plans". Limits: fixed bundles take up to 30
+components and dynamic bundles up to 150. Bundles cannot carry purchase options (subscriptions, pre-orders), and a bundle's price
+does not follow its parts' prices. Source: https://help.shopify.com/en/manual/products/bundles/shopify-bundles (read 2026-11-04 by
+WebFetch). Same.
 
-T10 B2B company accounts, price lists and payment terms: native on Basic, Grow, Advanced and Plus; some parts on Plus only. Every plan except Starter and Retail can sell to companies, with net payment terms, quantity rules and quantity price breaks. Basic, Grow and Advanced allow "up to 3 active catalog assignments across active B2B markets", and "The 3-assignment limit doesn't apply on the Shopify Plus plan". Plus only: "Deposit requirements, partial payments, and payment requests per fulfillment are available only on the Shopify Plus plan", and "Direct catalog assignment isn't available on the Basic, Grow, or Advanced plans". Source: https://help.shopify.com/en/manual/b2b/getting-started/plan-features (read 2026-11-04 by WebFetch). Same (adds: no B2B on Starter or Retail).
+T10 B2B company accounts, price lists and payment terms: native on Basic, Grow, Advanced and Plus; some parts on Plus only. Every
+plan except Starter and Retail can sell to companies, with net payment terms, quantity rules and quantity price breaks. Basic,
+Grow and Advanced allow "up to 3 active catalog assignments across active B2B markets", and "The 3-assignment limit doesn't apply
+on the Shopify Plus plan". Plus only: "Deposit requirements, partial payments, and payment requests per fulfillment are available
+only on the Shopify Plus plan", and "Direct catalog assignment isn't available on the Basic, Grow, or Advanced plans". Source:
+https://help.shopify.com/en/manual/b2b/getting-started/plan-features (read 2026-11-04 by WebFetch). Same (adds: no B2B on Starter
+or Retail).
 
 T11 Multi-vendor marketplace: app (Webkul MultiVendor Marketplace, by Webkul Software Pvt Ltd, a third party). Shopify's own guide, published 20 Nov 2024, says "While Shopify doesn't have built-in multi-vendor functionality" and points to apps. Webkul's app adds seller dashboards, commissions and payouts. Source: https://www.shopify.com/blog/multi-vendor-ecommerce-platform ; https://apps.shopify.com/multi-vendor-marketplace (read 2026-11-04 by WebFetch). Same.
 
-T12 Several stores under one owner: native (any plan; Plus adds more). An owner with two or more stores on any plan can group them into one organization: "You must have at least two stores to group and create an organization" and "All stores within an organization must have the same billing currency". There is "no specific limit on the number of stores you can group". Plus organizations use expansion stores and add "Multi-store analytics across your organization", store copy and "Centralized billing under a single contract". Source: https://help.shopify.com/en/manual/your-account/manage-orgs-and-stores/manage-orgs/group-store (read 2026-11-04 by WebFetch) ; https://help.shopify.com/en/manual/shopify-plus/organization-admin (read 2026-11-04 by WebFetch). CHANGED since Oct, as a correction: October said Plus only. Grouping stores into an organization is open to non-Plus plans.
+T12 Several stores under one owner: native (any plan; Plus adds more). An owner with two or more stores on any plan can group them
+into one organization: "You must have at least two stores to group and create an organization" and "All stores within an
+organization must have the same billing currency". There is "no specific limit on the number of stores you can group". Plus
+organizations use expansion stores and add "Multi-store analytics across your organization", store copy and "Centralized billing
+under a single contract". Source: https://help.shopify.com/en/manual/your-account/manage-orgs-and-stores/manage-orgs/group-store
+(read 2026-11-04 by WebFetch) ; https://help.shopify.com/en/manual/shopify-plus/organization-admin (read 2026-11-04 by WebFetch).
+CHANGED since Oct, as a correction: October said Plus only. Grouping stores into an organization is open to non-Plus plans.
 
 T13 Loyalty: app (Smile: Loyalty Program Rewards, by Smile.io, a third party, Built for Shopify). Points, VIP tiers and rewards come from apps. No Shopify page read describes a built-in points programme. Smile's listing says redemption at checkout needs Shopify Plus. Source: https://apps.shopify.com/smile-io (read 2026-11-04 by WebFetch). Same.
 
@@ -41,27 +134,75 @@ T16 Product reviews: app (Judge.me Product Reviews, by Judge.me, a third party, 
 
 T17 Back-in-stock emails: app (Amp Back in Stock & Preorder +, by HEL SG PTE LTD, a third party, Built for Shopify). An app emails, texts or pushes shoppers when a product is back. App Store search shows a Shopify Flow template that sends the email through Shopify Messaging, but the restock trigger still comes from such an app. Source: https://apps.shopify.com/back-in-stock (read 2026-11-04 by WebFetch); Flow and Messaging context from a help.shopify.com search (by search excerpt). Same.
 
-T18 Pre-orders: app (for example Amp Back in Stock & Preorder +, a third party). Shopify says "you need to install a pre-order app from the Shopify App Store", and "Pre-orders are currently only available to merchants using Shopify Payments or Paypal Express". Without an app, a product can only be set to "Continue selling when out of stock". Source: https://help.shopify.com/en/manual/products/purchase-options/pre-orders (read 2026-11-04 by WebFetch) ; https://shopify.dev/docs/storefronts/themes/pricing-payments/preorder-tbyb (read 2026-11-04 by WebFetch); the out-of-stock setting is from a help.shopify.com search (by search excerpt). Same.
+T18 Pre-orders: app (for example Amp Back in Stock & Preorder +, a third party). Shopify says "you need to install a pre-order app
+from the Shopify App Store", and "Pre-orders are currently only available to merchants using Shopify Payments or Paypal Express".
+Without an app, a product can only be set to "Continue selling when out of stock". Source:
+https://help.shopify.com/en/manual/products/purchase-options/pre-orders (read 2026-11-04 by WebFetch) ;
+https://shopify.dev/docs/storefronts/themes/pricing-payments/preorder-tbyb (read 2026-11-04 by WebFetch); the out-of-stock setting
+is from a help.shopify.com search (by search excerpt). Same.
 
-T19 Tiered and volume discounts: app (discount apps from the App Store, or Checkout Blocks, by Shopify, on Plus). Shopify's built-in discounts are amount off, buy X get Y and free shipping. For "tiered discounts, multi-logic step discounts, or custom eligibility requirements" Shopify points to discount apps, or to Checkout Blocks on Plus ("If your store is on the Shopify Plus plan, then consider using Checkout Blocks"). For B2B buyers, quantity price breaks are built in on every B2B plan (T10). Source: https://help.shopify.com/en/manual/discounts/discount-types (read 2026-11-04 by WebFetch); the Checkout Blocks listing was not opened. Same.
+T19 Tiered and volume discounts: app (discount apps from the App Store, or Checkout Blocks, by Shopify, on Plus). Shopify's
+built-in discounts are amount off, buy X get Y and free shipping. For "tiered discounts, multi-logic step discounts, or custom
+eligibility requirements" Shopify points to discount apps, or to Checkout Blocks on Plus ("If your store is on the Shopify Plus
+plan, then consider using Checkout Blocks"). For B2B buyers, quantity price breaks are built in on every B2B plan (T10). Source:
+https://help.shopify.com/en/manual/discounts/discount-types (read 2026-11-04 by WebFetch); the Checkout Blocks listing was not
+opened. Same.
 
-T20 Email marketing, broadcasts and automations: app (Shopify Messaging, by Shopify, free to install). Shopify's own Messaging app sends email, SMS and WhatsApp campaigns to segments, with automations such as welcome, abandoned checkout or cart, browse abandonment and win-back. "Your first 10,000 emails each month are free." Automations go only to subscribed customers, except the abandoned-checkout email. Source: https://apps.shopify.com/shopify-email (shows "Shopify Messaging") ; https://help.shopify.com/en/manual/promoting-marketing/create-marketing/shopify-messaging/marketing-automations (read 2026-11-04 by WebFetch). Same. The name is now Shopify Messaging; SMS, WhatsApp and Campaign Autopilot appear, and the October text did not name them.
+T20 Email marketing, broadcasts and automations: app (Shopify Messaging, by Shopify, free to install). Shopify's own Messaging app
+sends email, SMS and WhatsApp campaigns to segments, with automations such as welcome, abandoned checkout or cart, browse
+abandonment and win-back. "Your first 10,000 emails each month are free." Automations go only to subscribed customers, except the
+abandoned-checkout email. Source: https://apps.shopify.com/shopify-email (shows "Shopify Messaging") ;
+https://help.shopify.com/en/manual/promoting-marketing/create-marketing/shopify-messaging/marketing-automations (read 2026-11-04
+by WebFetch). Same. The name is now Shopify Messaging; SMS, WhatsApp and Campaign Autopilot appear, and the October text did not
+name them.
 
-T21 Scheduled report emails: native in part (a fixed weekly summary); app for scheduling chosen reports (BR - Better Reports, by Better Reports Technologies, a third party). Shopify can email staff a weekly store summary with "total sales, orders, sessions, and conversion rate", switched on in Settings > Notifications > Staff notifications. Emailing a chosen report on a schedule needs an app: "Scheduled reports are automatically sent via email or to Google Sheets". Source: https://changelog.shopify.com/posts/receive-weekly-order-summary-in-your-inbox (3 Nov 2025) ; https://apps.shopify.com/betterreports (read 2026-11-04 by WebFetch). CHANGED since Oct, as a correction: October said Shopify has no native scheduled report email. A fixed weekly summary email has existed since 3 Nov 2025.
+T21 Scheduled report emails: native in part (a fixed weekly summary); app for scheduling chosen reports (BR - Better Reports, by
+Better Reports Technologies, a third party). Shopify can email staff a weekly store summary with "total sales, orders, sessions,
+and conversion rate", switched on in Settings > Notifications > Staff notifications. Emailing a chosen report on a schedule needs
+an app: "Scheduled reports are automatically sent via email or to Google Sheets". Source:
+https://changelog.shopify.com/posts/receive-weekly-order-summary-in-your-inbox (3 Nov 2025) ;
+https://apps.shopify.com/betterreports (read 2026-11-04 by WebFetch). CHANGED since Oct, as a correction: October said Shopify has
+no native scheduled report email. A fixed weekly summary email has existed since 3 Nov 2025.
 
-T22 AI assistant in the admin (Sidekick): native (included in every plan; features vary by plan). Sidekick works from any admin page or the Shopify app, by text, voice or screen sharing. It edits orders, writes product texts, makes images, builds Flow workflows and custom apps, and runs code on store data. Longer tasks continue in the background, and it "presents changes for your review before applying them". shopify.com says "Sidekick is included with your Shopify plan" and "Features and usage limits vary by plan", and the help page adds "In some stores, Sidekick can't run code". Source: https://help.shopify.com/en/manual/shopify-admin/productivity-tools/sidekick ; https://www.shopify.com/sidekick (read 2026-11-04 by WebFetch). Same.
+T22 AI assistant in the admin (Sidekick): native (included in every plan; features vary by plan). Sidekick works from any admin
+page or the Shopify app, by text, voice or screen sharing. It edits orders, writes product texts, makes images, builds Flow
+workflows and custom apps, and runs code on store data. Longer tasks continue in the background, and it "presents changes for your
+review before applying them". shopify.com says "Sidekick is included with your Shopify plan" and "Features and usage limits vary
+by plan", and the help page adds "In some stores, Sidekick can't run code". Source:
+https://help.shopify.com/en/manual/shopify-admin/productivity-tools/sidekick ; https://www.shopify.com/sidekick (read 2026-11-04
+by WebFetch). Same.
 
-T23a Vipps: app (Nexi Checkout Vipps, by Nexi Checkout, a third party, for Norway). Vipps is not among Shopify Payments' local payment methods; an app adds it, and with this one "Once a customer selects Vipps, it becomes the only payment method shown at checkout". The same search shows Vipps MobilePay AS's own Shopify apps are for branding and login, not payment. Source: https://help.shopify.com/en/manual/payments/shopify-payments/local-payment-methods ; https://apps.shopify.com/nexi-checkout-vipps (read 2026-11-04 by WebFetch). Same tier. October cited the vendor's own developer site; use the App Store listing.
+T23a Vipps: app (Nexi Checkout Vipps, by Nexi Checkout, a third party, for Norway). Vipps is not among Shopify Payments' local
+payment methods; an app adds it, and with this one "Once a customer selects Vipps, it becomes the only payment method shown at
+checkout". The same search shows Vipps MobilePay AS's own Shopify apps are for branding and login, not payment. Source:
+https://help.shopify.com/en/manual/payments/shopify-payments/local-payment-methods ; https://apps.shopify.com/nexi-checkout-vipps
+(read 2026-11-04 by WebFetch). Same tier. October cited the vendor's own developer site; use the App Store listing.
 
 T23b MobilePay: native (a local method of Shopify Payments). "MobilePay is available to customers in Denmark or Finland." The page does not say in which countries a merchant may offer it. Source: https://help.shopify.com/en/manual/payments/shopify-payments/local-payment-methods (read 2026-11-04 by WebFetch). Same.
 
 T24a Shipping labels in the Nordics: native in ten countries, not in the Nordics. Shopify sells labels from the admin for stores shipping from the US, Canada, Australia, the UK, France, Germany, Italy, the Netherlands, Poland and Spain. Norway, Sweden, Denmark and Finland are not listed. Source: https://help.shopify.com/en/manual/fulfillment/fulfilling-orders/shipping-labels/buying-labels/buying-labels (read 2026-11-04 by WebFetch). Same.
 
-T24b Pickup points in the Nordics: native only in France, Italy, Spain and the UK; app in the Nordics (Posten Bring Checkout, by Posten Bring AS, a third party). Shopify's built-in pickup points are "only available to stores in France, Italy, Spain, and the UK" (Chronopost, Evri, Colissimo, Correos, Mondial Relay, Poste Italiane, Royal Mail). On Plus, a custom app can add other carriers through the Pickup Point Delivery Option Generator API. In Norway, Sweden and Denmark an app such as Posten Bring Checkout adds pickup points and labels, and its listing says "Works on all Shopify plans; live shipping rates at checkout require 'Advanced', 'Plus' or 'Grow' with CCS enabled". Source: https://help.shopify.com/en/manual/fulfillment/setup/delivery-methods/pickup-points (read 2026-11-04 by WebFetch) ; https://apps.shopify.com/posten-bring-checkout (read 2026-11-05 by WebFetch). Same.
+T24b Pickup points in the Nordics: native only in France, Italy, Spain and the UK; app in the Nordics (Posten Bring Checkout, by
+Posten Bring AS, a third party). Shopify's built-in pickup points are "only available to stores in France, Italy, Spain, and the
+UK" (Chronopost, Evri, Colissimo, Correos, Mondial Relay, Poste Italiane, Royal Mail). On Plus, a custom app can add other
+carriers through the Pickup Point Delivery Option Generator API. In Norway, Sweden and Denmark an app such as Posten Bring
+Checkout adds pickup points and labels, and its listing says "Works on all Shopify plans; live shipping rates at checkout require
+'Advanced', 'Plus' or 'Grow' with CCS enabled". Source:
+https://help.shopify.com/en/manual/fulfillment/setup/delivery-methods/pickup-points (read 2026-11-04 by WebFetch) ;
+https://apps.shopify.com/posten-bring-checkout (read 2026-11-05 by WebFetch). Same.
 
-T26 Moving in from another platform: app (Shopify Store Migration, by Shopify, free). Shopify's own free app brings in products and customers from Square, WooCommerce, Etsy, Wix, Amazon, eBay, Clover and Lightspeed R/X. Order history needs a third-party app: Shopify's WooCommerce guide says orders can't be imported by CSV and names apps such as Matrixify and Cart2Cart. The listing warns "some platforms don't export all data or use compatible formats, so small edits in Shopify may be required". Source: https://apps.shopify.com/store-migration (read 2026-11-05 by WebFetch) ; https://help.shopify.com/en/manual/migrating-to-shopify/migrating-from-woocommerce (by search excerpt). Same. October's list of what is not imported came from a shopify.com blog post; the listing itself lists no exclusions.
+T26 Moving in from another platform: app (Shopify Store Migration, by Shopify, free). Shopify's own free app brings in products
+and customers from Square, WooCommerce, Etsy, Wix, Amazon, eBay, Clover and Lightspeed R/X. Order history needs a third-party app:
+Shopify's WooCommerce guide says orders can't be imported by CSV and names apps such as Matrixify and Cart2Cart. The listing warns
+"some platforms don't export all data or use compatible formats, so small edits in Shopify may be required". Source:
+https://apps.shopify.com/store-migration (read 2026-11-05 by WebFetch) ;
+https://help.shopify.com/en/manual/migrating-to-shopify/migrating-from-woocommerce (by search excerpt). Same. October's list of
+what is not imported came from a shopify.com blog post; the listing itself lists no exclusions.
 
-T27 Point of sale: native. Every plan includes "Casual in-person selling" with limited staff and returns at the original location. POS Pro adds unlimited staff, roles, returns at any location, inventory counts, purchase orders and retail reports. POS Pro costs "$89 USD/month billed yearly for each location", as shown on the US English page. Source: https://www.shopify.com/pos/pricing (read 2026-11-05 by WebFetch; it served ?country=us&lang=en). Same price. Add "billed yearly"; an EU-currency price was not read.
+T27 Point of sale: native. Every plan includes "Casual in-person selling" with limited staff and returns at the original location.
+POS Pro adds unlimited staff, roles, returns at any location, inventory counts, purchase orders and retail reports. POS Pro costs
+"$89 USD/month billed yearly for each location", as shown on the US English page. Source: https://www.shopify.com/pos/pricing
+(read 2026-11-05 by WebFetch; it served ?country=us&lang=en). Same price. Add "billed yearly"; an EU-currency price was not read.
 
 T28 App ecosystem size: native. The App Store says "With over 16,000 apps" and "Each app goes through a 100-checkpoint review before it hits the Shopify App Store". Source: https://apps.shopify.com (read 2026-11-05 by WebFetch). Same.
 

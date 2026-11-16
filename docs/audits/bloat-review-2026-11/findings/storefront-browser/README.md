@@ -2,7 +2,16 @@
 
 Part of `docs/audits/bloat-review-2026-11.md`, on commit 0bd814c. Read by one reviewer, challenged by a second (who re-opened every citation, re-measured every number and applied the owner's note that the platform is not open yet) and planned by a third. A tick (✓) marks a finding the second reviewer confirmed or corrected; one the planner added has none. Each finding has a file of its own beside this one.
 
-**In short.** A shopper's first page is mostly well kept, and nothing here argues for removing a feature: a cold home page sends 680 KB of scripts (213 KB gzip), 63 % of it React and Next, with no third-party script and no font file. What is left is cost that does not follow use and that grows with page views once stores open. On a default store every document load makes two extra function calls (a wishlist read that is nearly always empty and, on pages with a product grid, a stock read for tiles that show nothing), carries about 48 KB raw / 16 KB gzip of admin words, catalogues and one unused library in its first scripts, and sends the store's layout twice (25 KB) with the store's 404 page inside. Eleven working routes share one 54-module bundle (30 KB gzip more than a built page), stores with several languages prefetch 70 to 105 KB of views a press never opens, and a store in an AI-translated language would send its whole interface text, about 100 KB, in every page. Thirteen findings: six are small and safe (P0); the two that move route files (per-route bundles, the drawer's slot) are cheapest before opening; the budgets that should have caught the growth have about 150 KB of room and cover two storefront routes.
+**In short.** A shopper's first page is mostly well kept, and nothing here argues for removing a feature: a cold home page sends
+680 KB of scripts (213 KB gzip), 63 % of it React and Next, with no third-party script and no font file. What is left is cost that
+does not follow use and that grows with page views once stores open. On a default store every document load makes two extra
+function calls (a wishlist read that is nearly always empty and, on pages with a product grid, a stock read for tiles that show
+nothing), carries about 48 KB raw / 16 KB gzip of admin words, catalogues and one unused library in its first scripts, and sends
+the store's layout twice (25 KB) with the store's 404 page inside. Eleven working routes share one 54-module bundle (30 KB gzip
+more than a built page), stores with several languages prefetch 70 to 105 KB of views a press never opens, and a store in an
+AI-translated language would send its whole interface text, about 100 KB, in every page. Thirteen findings: six are small and safe
+(P0); the two that move route files (per-route bundles, the drawer's slot) are cheapest before opening; the budgets that should
+have caught the growth have about 150 KB of room and cover two storefront routes.
 
 ## Findings
 
