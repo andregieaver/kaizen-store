@@ -41,12 +41,6 @@ export async function siteStore(): Promise<string | null> {
   );
 }
 
-/** Whether Kaizena Flow's site is served from its store now, past this instance's memory: for the admin's writers of the platform's own site. */
-export async function siteFromStoreNow(): Promise<boolean> {
-  const row = await typedRow(z.object({ on: col.bool }), sql`select site_from_store as on from commerce.platform_settings`);
-  return row?.on ?? false;
-}
-
 export type SiteSwitch = {
   on: boolean;
   /** When it was last switched, and by whom (a name or an email), or null. */

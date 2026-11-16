@@ -7,7 +7,7 @@ import { db } from "@/db/client";
 import { scanSite } from "@/lib/cookie-scan";
 
 import { launchBrowser } from "./browser";
-import { claimScan, scanTarget } from "./cookie-scans";
+import { scanTarget } from "./cookie-scans";
 
 /** Runs a claimed scan to the end, recording what it found or why it failed. */
 export async function runScan(
@@ -37,10 +37,3 @@ export async function runScan(
   }
 }
 
-/** The scheduler's turn: the next scan, if any is due. */
-export async function runNextScan(launch?: () => Promise<Browser>): Promise<{ scanned: string | null }> {
-  const scan = await claimScan();
-  if (!scan) return { scanned: null };
-  await runScan(scan, launch);
-  return { scanned: scan.id };
-}

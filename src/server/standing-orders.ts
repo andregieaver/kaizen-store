@@ -1131,26 +1131,6 @@ export async function listStandingOrders(storeId: string): Promise<ListAdminRow[
   }));
 }
 
-/** A customer's lists are forgotten with their account; deliveries' orders stay, as any order. */
-export async function forgetStandingOrders(storeId: string, customerId: string): Promise<void> {
-  const lists = await db().execute<Row>(sql`
-    select id, stripe_account, mode, payment_method from commerce.standing_orders
-    where store_id = ${storeId}::uuid and customer_id = ${customerId}::uuid
-  `);
-  for (const list of lists) {
-    const stripe = list.mode ? platformStripe(list.mode as PaymentModeName) : null;
-    if (stripe && list.payment_method && list.stripe_account) {
-      try {
-        await stripe.paymentMethods.detach(String(list.payment_method), {}, { stripeAccount: String(list.stripe_account) });
-      } catch {
-        // Gone already.
-      }
-    }
-    await db().execute(sql`delete from commerce.standing_deliveries where store_id = ${storeId}::uuid and standing_order_id = ${String(list.id)}::uuid`);
-    await db().execute(sql`delete from commerce.standing_orders where store_id = ${storeId}::uuid and id = ${String(list.id)}::uuid`);
-  }
-}
-
 /** The delivery order a pay-link session was for, if it is this customer's (D102). */
 export async function deliveryOrderForSession(storeId: string, customerId: string, sessionId: string): Promise<string | null> {
   const [row] = await db().execute<Row>(sql`

@@ -464,13 +464,6 @@ export async function redirectCountsOf(storeId: string): Promise<RedirectCounts>
   return out;
 }
 
-/** One redirect of the store (any kind), for the edit form; null for another store's or none. `website:read`. */
-export async function getRedirect(member: Membership, id: string): Promise<{ id: string; kind: RedirectKind; source: string; target: string | null } | null> {
-  if (!memberCan(member, READ) || !/^[0-9a-f-]{36}$/i.test(String(id))) return null;
-  const [row] = await db().execute<Row>(sql`select id, kind, source, target from commerce.redirects where store_id = ${member.store.id}::uuid and id = ${id}::uuid`);
-  return row ? { id: String(row.id), kind: String(row.kind) as RedirectKind, source: String(row.source), target: row.target ? String(row.target) : null } : null;
-}
-
 /** Everything the export needs of a store's redirects, a page at a time by source (a cursor): `automatic` adds the product, category and tag ones. */
 export async function redirectsForExport(storeId: string, o: { automatic: boolean; after: string | null; limit: number }): Promise<{ rows: { kind: RedirectKind; source: string; target: string | null; createdAt: Date; hits: number; lastHitAt: Date | null }[]; last: string | null; more: boolean }> {
   const rows = await db().execute<Row>(sql`

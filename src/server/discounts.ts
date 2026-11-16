@@ -8,7 +8,6 @@ import { db } from "@/db/client";
 import { writeCsv } from "@/lib/csv";
 import { codeAllowed, codeRuleFor, type CodeRule } from "@/lib/discount-combinations";
 import {
-  applyDiscount,
   CODE_CLASSES,
   CODE_ITEMS_MAX,
   CODES_MAX,
@@ -408,25 +407,6 @@ export async function findUsableDiscount(
     customer: customerId ? { id: customerId, tierIds, segmentIds } : null,
   });
   return problem ? { ok: false, problem } : { ok: true, discount, item };
-}
-
-/**
- * What a code takes off a basket (D31, D299 E1): `applyDiscount()` with the basket's products the code's categories and tags reach (a
- * category reaches the ones under it), read here as campaigns read them. The cart, the checkout's code check and `placeOrder()` all apply a
- * code through this, so they agree.
- */
-export async function applyCode(
-  runner: Runner,
-  storeId: string,
-  discount: StoreDiscount,
-  basket: { marketCode: string; lines: DiscountLine[]; shippingMinor: number },
-): Promise<ReturnType<typeof applyDiscount>> {
-  let reached: Set<string> | undefined;
-  if (discount.termIds.length > 0) {
-    const terms = await termsOfProducts(runner, storeId, [...new Set(basket.lines.map((l) => l.productId))]);
-    reached = new Set([...terms].filter(([, termIds]) => termIds.some((t) => discount.termIds.includes(t))).map(([productId]) => productId));
-  }
-  return applyDiscount(discount, { ...basket, reached });
 }
 
 /** The codes on the shopper's cart (D299 E2), in the order typed: the first, then the rest. */

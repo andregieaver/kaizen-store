@@ -191,27 +191,28 @@ CLAUDE.md keeps one line per rule pointing here; each rule is under that line as
 - **Discounts in depth (wave 5 unit E, D299, `docs/wave-5-marketing.md` 7, `src/lib/discounts.ts`, `src/server/discounts.ts`)**: a
   code reaches products, categories and tags only through `reaches()` (terms by `termsOfProducts()`), its minimum number of items
   and who may use it (groups, named customers) only through `applyDiscount()`/`availability()`, used by `cartSummary()` and
-  `placeOrder()` alike (`applyCode()`); a new condition gets a case in both and a scenario in `checkout-kinds.int.test.ts`.
-  Single-use codes are `discount_code_items`, made only by `generateCodes()` and found only by `findUsableDiscount()` (an item is
-  used once, counted under its row lock); a code's text is the store's once across codes and generated codes (the database refuses
-  another). Several codes on one order (E2): which of a cart's codes apply is only `stackCodes()` through `stackForBasket()` (each
-  code's class by `codeClass()`, combinations by `combines()` from `combines_with`; the cart holds five, `carts.discount_code`
-  then `more_codes`, changed only by `addCartCode()`/`removeCartCode()`/`setCartCode()`); an order keeps its codes in
-  `order_discount_codes` (written by `insertOrder()`, never changed) beside the joined text in `discount_code`, so a new reader of
-  a code's uses counts both. Campaigns in depth (E3): an amount off (`amounts` per country, `splitAmount()`), free shipping and
-  tiers (`tier_basis`, `tiers`, `tierPercent()`) are kinds in `applyCampaigns()`; free shipping is the order's
-  (`orders.campaign_shipping`, inside `campaign_discount_minor`, taken before codes, never with a subscription), so a reader of a
-  campaign's uses counts it beside the lines' parts (`ordersOf()`); amounts reach the cart through `shownIn()`; how far the next
-  step is is only `nextSteps()` (never a promise where another campaign holds the lines); a new kind is a case in `priceOff()` or
-  after the gifts, `describeCampaign()`, `noticeText()`, the editor, the checks and a scenario in `checkout-kinds.int.test.ts`. A
-  tier gives a percentage or an amount off per market (`tierGive`, a step's `off`, only `tierReward()`; an amount spread over the
-  lines reached, D392). Buy X get Y (E4, kind `bxgy`) is only `bxgyOff()` (the buy set is the reach, the get set `get_*` or the
-  same; dearest counted, cheapest given, never both, `uses_per_order`); a check that can meet a null is wrapped in
-  `coalesce(…, false)`. Campaigns and codes (D367): whether a campaign combines with codes (`campaigns.combines_with_codes`) and a
-  code with campaigns (`discount_codes.combines_with_campaigns`), both on by default; where they do not, only
-  `campaignsAndCodes()` (`src/server/discount-combinations.ts`) chooses whichever saves the shopper more, for `cartSummary()` and
-  `placeOrder()` alike, and the cart says which was left out (`with_campaigns`, `campaignsLeftOut`); a new discount that competes
-  with them is weighed there.
+  `placeOrder()` alike (`previewCartCodes()` and `stackForBasket()`); a new condition gets a case in both and a scenario in
+  `checkout-kinds.int.test.ts`. Single-use codes are `discount_code_items`, made only by `generateCodes()` and found only by
+  `findUsableDiscount()` (an item is used once, counted under its row lock); a code's text is the store's once across codes and
+  generated codes (the database refuses another). Several codes on one order (E2): which of a cart's codes apply is only
+  `stackCodes()` through `stackForBasket()` (each code's class by `codeClass()`, combinations by `combines()` from
+  `combines_with`; the cart holds five, `carts.discount_code` then `more_codes`, changed only by
+  `addCartCode()`/`removeCartCode()`/`setCartCode()`); an order keeps its codes in `order_discount_codes` (written by
+  `insertOrder()`, never changed) beside the joined text in `discount_code`, so a new reader of a code's uses counts both.
+  Campaigns in depth (E3): an amount off (`amounts` per country, `splitAmount()`), free shipping and tiers (`tier_basis`, `tiers`,
+  `tierPercent()`) are kinds in `applyCampaigns()`; free shipping is the order's (`orders.campaign_shipping`, inside
+  `campaign_discount_minor`, taken before codes, never with a subscription), so a reader of a campaign's uses counts it beside the
+  lines' parts (`ordersOf()`); amounts reach the cart through `shownIn()`; how far the next step is is only `nextSteps()` (never a
+  promise where another campaign holds the lines); a new kind is a case in `priceOff()` or after the gifts, `describeCampaign()`,
+  `noticeText()`, the editor, the checks and a scenario in `checkout-kinds.int.test.ts`. A tier gives a percentage or an amount
+  off per market (`tierGive`, a step's `off`, only `tierReward()`; an amount spread over the lines reached, D392). Buy X get Y
+  (E4, kind `bxgy`) is only `bxgyOff()` (the buy set is the reach, the get set `get_*` or the same; dearest counted, cheapest
+  given, never both, `uses_per_order`); a check that can meet a null is wrapped in `coalesce(…, false)`. Campaigns and codes
+  (D367): whether a campaign combines with codes (`campaigns.combines_with_codes`) and a code with campaigns
+  (`discount_codes.combines_with_campaigns`), both on by default; where they do not, only `campaignsAndCodes()`
+  (`src/server/discount-combinations.ts`) chooses whichever saves the shopper more, for `cartSummary()` and `placeOrder()` alike,
+  and the cart says which was left out (`with_campaigns`, `campaignsLeftOut`); a new discount that competes with them is weighed
+  there.
 
 ## Product reviews (wave 5 unit G, D301, `docs/wave-5-marketing.md` 9, built in steps; G1 writing, G2 checking and showing)
 

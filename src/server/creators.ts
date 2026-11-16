@@ -416,12 +416,3 @@ export async function forgetCreator(tx: Executor, storeId: string, customerId: s
   return rows.length;
 }
 
-/** Whether a customer is a creator of the store (a merge of two customers refuses to move one, D366). */
-export async function isCreator(tx: Executor, storeId: string, customerId: string): Promise<boolean> {
-  const row = await typedRow(
-    z.object({ yes: col.bool }),
-    sql`select exists (select 1 from commerce.creators where store_id = ${storeId}::uuid and customer_id = ${customerId}::uuid) as yes`,
-    tx,
-  );
-  return row?.yes ?? false;
-}

@@ -458,7 +458,3 @@ export async function exportFolderFiles(storage: DataStorage, storeId: string, j
   return entries === null ? null : entries.filter((e) => !e.isFolder).map((e) => `${folder}/${e.name}`);
 }
 
-/** The job's row the member's request is about, from the store's own query only. Used for a cheap "is this job mine" check. */
-export async function jobBelongs(storeId: string, id: string): Promise<boolean> {
-  return (await getJob(storeId, id)) !== null;
-}

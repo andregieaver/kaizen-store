@@ -176,11 +176,6 @@ export async function matchOrder(storeId: string, who: ShopperWho): Promise<{ id
   return { id: String(row.id), proof: row.by_key ? "key" : row.by_customer ? "customer" : "email" };
 }
 
-/** The id of the order the shopper means, or null (see `matchOrder()`). */
-export async function findOrderFor(storeId: string, who: ShopperWho): Promise<string | null> {
-  return (await matchOrder(storeId, who))?.id ?? null;
-}
-
 /**
  * Whether the visitor may see this order's returns: it is the signed-in customer's own, or they hold the order page's key.
  * For the order page and My account, which already know the order.

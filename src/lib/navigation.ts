@@ -330,9 +330,6 @@ export function linkExists(link: MenuLink | PlatformMenuLink, names: MenuNames):
 // Kaizen's own header and footer (D42)
 // ---------------------------------------------------------------------------
 
-/** Where a link in Kaizen's own menus can go. */
-export const PLATFORM_LINK_KINDS = ["home", "page", "category", "tag", "blog", "article", "blogCategory", "signUp", "signIn", "url"] as const;
-
 export type PlatformMenuLink =
   | { kind: "home" }
   | { kind: "signUp" }

@@ -825,22 +825,6 @@ export async function setDeliveryPostalCode(
   return done.length > 0 ? { ok: true, postalCode } : { ok: false, problem: "gone" };
 }
 
-/** The note for the driver (local delivery only): cleaned like a gift message (`cleanShopperText()`), at most `NOTE_MAX` characters and 8 lines. */
-export async function setDeliveryNote(
-  shop: { storeId: string },
-  cartId: string,
-  typed: unknown,
-): Promise<{ ok: true } | { ok: false; problem: "too_long" | "not_local" }> {
-  const cleaned = cleanShopperText(typed, { maxChars: NOTE_MAX, maxLines: 8 });
-  if (!cleaned.ok) return { ok: false, problem: "too_long" };
-  const done = await db().execute<Row>(sql`
-    update commerce.carts set delivery_note = ${cleaned.value}, updated_at = now()
-    where store_id = ${shop.storeId}::uuid and id = ${cartId}::uuid and status = 'open' and (local_area_id is not null or ${cleaned.value}::text is null)
-    returning id
-  `);
-  return done.length > 0 ? { ok: true } : { ok: false, problem: "not_local" };
-}
-
 export type ChooseResult = { ok: true } | { ok: false; problem: "gone" | "pickup_point" | "postal_code" | "note" };
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
