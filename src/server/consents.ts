@@ -4,7 +4,7 @@ import { sql } from "drizzle-orm";
 import { z } from "zod";
 
 import { db } from "@/db/client";
-import { OPTIONAL_CATEGORIES } from "@/lib/cookie-consent";
+import { OPTIONAL_CATEGORIES, versionHas } from "@/lib/cookie-consent";
 
 import { owned } from "./owned";
 
@@ -15,13 +15,13 @@ export const consentRecord = z.object({
   storeId: z.uuid().nullable(),
   visitor: z.uuid(),
   version: z.string().regex(/^[a-z+]{0,60}$/),
-  // `recordings` (D656) defaults to false, so a choice sent by a page from before it existed is still kept as proof.
+  // `recordings` (D656) may be missing, so a choice sent by a page from before it existed is still kept as proof.
   choices: z.object({
     ...(Object.fromEntries(OPTIONAL_CATEGORIES.filter((c) => c !== "recordings").map((c) => [c, z.boolean()])) as Record<
       Exclude<(typeof OPTIONAL_CATEGORIES)[number], "recordings">,
       z.ZodBoolean
     >),
-    recordings: z.boolean().default(false),
+    recordings: z.boolean().optional(),
   }),
 });
 
@@ -34,7 +34,10 @@ export const consentRecord = z.object({
 export async function recordConsent(input: unknown): Promise<boolean> {
   const parsed = consentRecord.safeParse(input);
   if (!parsed.success) return false;
-  const { storeId, visitor, version, choices } = parsed.data;
+  const { storeId, visitor, version, choices: sent } = parsed.data;
+  // Recordings are part of the proof only where the site asked about them (D656): every other record keeps the three it always had.
+  const { recordings, ...asked } = sent;
+  const choices = versionHas(version, "recordings") ? { ...asked, recordings: recordings ?? false } : asked;
   const rows = await db().execute<Row>(sql`
     insert into commerce.consents (store_id, visitor, choices, version)
     select ${storeId}::uuid, ${visitor}::uuid, ${JSON.stringify(choices)}::jsonb, ${version}
