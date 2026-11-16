@@ -2,8 +2,10 @@ import { Suspense } from "react";
 
 import { BuyerQuestion } from "@/components/buyer";
 import { SiteConsent } from "@/components/consent/site-consent";
+import { SiteSignals } from "@/components/lazy/site-signals";
 import { StoreAffiliate } from "@/components/store-affiliate";
 import { KaizenChat, StoreChat } from "@/components/site-chat";
+import { breakpointsOf } from "@/lib/breakpoints";
 import { liveCustomCode } from "@/lib/custom-code";
 import { t } from "@/lib/i18n";
 import type { Market } from "@/lib/markets";
@@ -12,7 +14,7 @@ import type { Store } from "@/server/stores";
 
 /**
  * What the store's pages carry that other sites' code can come in through (wave 1, 1e, `docs/wave-1-trust.md` 2.5, `docs/pci.md`): the
- * store's AI assistant, a friend's referral capture, the business popup, and the consent banner with the tracking tools and the owner's
+ * store's AI assistant, a friend's referral capture, the business popup, heatmaps' measuring (D656), and the consent banner with the tracking tools and the owner's
  * own code it loads. The market layout draws them inside `OffPayRoutes`, which draws nothing on the cart, checkout and order, where a
  * shopper types a card; this file is the only place that imports them, and a test (`pay-routes.graph.test.ts`) holds that.
  */
@@ -41,6 +43,15 @@ export function MarketExtras({ store, market }: { store: Store; market: Market }
           cookiePage={marketPath(store.slug, market.slug, "/cookies")}
         />
       </Suspense>
+      {/* Heatmaps (D656): measured in the browser for a visitor who allowed them, only while the owner has them on. */}
+      {(store.heatmaps || store.recordings) && (
+        <Suspense fallback={null}>
+          <SiteSignals
+            store={{ id: store.id, slug: store.slug, heatmaps: store.heatmaps, recordings: store.recordings, share: store.recordingShare, mask: store.recordingMask }}
+            breakpoints={breakpointsOf(store.theme.settings)}
+          />
+        </Suspense>
+      )}
     </>
   );
 }

@@ -65,6 +65,10 @@ export const FORBIDDEN_ON_PAY_ROUTES: readonly string[] = [
   "components/store-affiliate",
   "components/affiliate-capture",
   "components/buyer",
+  // Heatmaps (D656): they read the page and send what visitors do on it.
+  "components/signals/site-signals",
+  "components/signals/heat-collector",
+  "components/signals/click-watch",
 ];
 
 /** The file name, relative to `src/`, without its extension, as `FORBIDDEN_ON_PAY_ROUTES` names it. */
