@@ -71,7 +71,7 @@ const FULL = assembleLegalFacts(input());
 const VARIANTS: Record<string, LegalFacts> = {
   full: FULL,
   // An AI reads the tone of support messages and summarises them (PSI REG-08).
-  supportAi: assembleLegalFacts(input({ supportAi: { tone: true, summaries: true } })),
+  supportAi: assembleLegalFacts(input({ supportAi: { tone: true, summaries: true, answers: true } })),
   // An appointment with a deposit and a no-show fee (PSI REG-12).
   noShow: assembleLegalFacts(input({ noShowFee: true })),
   empty: assembleLegalFacts(
@@ -274,6 +274,19 @@ describe("what a starter holds", () => {
     expect(privacy({ ...FULL, aiTone: true, aiSummaries: true }, "nb")).toMatch(/leser en KI tonen.*skriver en KI et kort sammendrag/);
     expect(assembleLegalFacts(input({ supportAi: { tone: true, summaries: false } }))).toMatchObject({ aiTone: true, aiSummaries: false });
     expect(assembleLegalFacts(input())).toMatchObject({ aiTone: false, aiSummaries: false });
+  });
+
+  it("says customer service is answered by an AI on its own only while the desk works AI first (F7, D656)", () => {
+    const privacy = (facts: LegalFacts, lang: "en" | "nb" | "sv" | "da" = "en") => JSON.stringify(legalStarterSections("privacy", lang, facts));
+    expect(privacy(FULL)).not.toContain("an AI may answer on its own");
+    const answers = { ...FULL, aiAnswers: true };
+    expect(privacy(answers)).toContain("an AI may answer on its own, without a person reading your message first");
+    expect(privacy(answers)).toContain("you can ask for a person at any time");
+    expect(privacy(answers, "nb")).toContain("kan en KI svare på egen hånd");
+    expect(privacy(answers, "sv")).toContain("kan en AI svara på egen hand");
+    expect(privacy(answers, "da")).toContain("kan en AI svare på egen hånd");
+    expect(assembleLegalFacts(input({ supportAi: { tone: false, summaries: false, answers: true } }))).toMatchObject({ aiAnswers: true });
+    expect(assembleLegalFacts(input())).toMatchObject({ aiAnswers: false });
   });
 
   it("says a no-show can cost a fee only where an appointment takes a deposit and has one (PSI REG-12)", () => {

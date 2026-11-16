@@ -59,6 +59,11 @@ export type LegalFacts = {
   aiTone: boolean;
   /** An AI summarises customers' support conversations when they end (D216 step 7), while support is on. */
   aiSummaries: boolean;
+  /**
+   * An AI answers customer service on its own (`docs/100-day-challenge.md` F7): the desk works AI first, so a message in the chat or by email
+   * may be answered, and a confirmed request carried out, before a person reads it.
+   */
+  aiAnswers: boolean;
   audience: LegalAudience;
   /** Addresses on the site the texts link to, where the store has them; left out otherwise. */
   links: { withdraw?: string; cookies?: string };
@@ -104,7 +109,7 @@ export type LegalFactsInput = {
   returnSettings: ReturnSettings | null;
   chatOn: boolean;
   /** What an AI does with customers' support messages besides answering (PSI REG-08); neither when left out. */
-  supportAi?: { tone: boolean; summaries: boolean };
+  supportAi?: { tone: boolean; summaries: boolean; answers?: boolean };
   /** An active appointment takes a deposit and has a no-show fee; none when left out. */
   noShowFee?: boolean;
   links?: { withdraw?: string; cookies?: string };
@@ -173,6 +178,7 @@ export function assembleLegalFacts(input: LegalFactsInput): LegalFacts {
     chatAgent: input.chatOn,
     aiTone: input.supportAi?.tone ?? false,
     aiSummaries: input.supportAi?.summaries ?? false,
+    aiAnswers: input.supportAi?.answers ?? false,
     audience: store.audience,
     links: input.links ?? {},
   };
