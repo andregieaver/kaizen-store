@@ -215,3 +215,10 @@ challenged by a skeptic, planned by a planner. Its last lines hold the arguments
 - 0.45 then 0.43 executor (Sonnet, ae664823bae6a3bce) in worktree /home/user/kz-b (branch bloat-b).
 - Write-ups from /home/user/kz-fix (detached). Next: 0.38 (needs build, after 0.36), 0.37 after 0.36, 0.39 after 0.38, 0.42 strong, 0.40, 0.41, 0.44 (after 0.33), 0.46.
 - Owner checks: 0.30 invoices drill run in production; 0.33 upload a >1600px picture and see medium_url.
+
+## 16 Nov 14:40 UTC
+- Done today: 0.30, 0.33, 0.34, 0.35 (D664–667), 0.43 (D668), 0.45 (D674), 0.40 (D676), 0.42 (no D), 0.38 (D682), 0.41 (D683). Work write-off fix 96b07e51.
+- D-numbers now via `node scripts/claim-decision.mjs "title"` (pushes a stub; then replace the stub's text).
+- Running: 0.36 (Opus, /home/user/kaizen-store, 5 local commits), 0.39 (Sonnet, /home/user/kz-b).
+- Next: 0.37 (after 0.36), 0.44 (build), 0.46 (build), 0.19 blocked.
+- Tomorrow 17 Nov: query cron_jobs for 'timeout exceeded when trying to connect' (0.45).
