@@ -289,6 +289,7 @@ export const TOOL_WORDS: Record<string, string> = {
   block_affiliate: "Preparing the change",
   list_ad_budgets: "Looking at the ad budgets",
   set_ad_budget: "Preparing the budget change",
+  copy_ad: "Preparing a copy of the ad",
   wallet_status: "Looking at the AI wallet",
   request_purchase: "Preparing the purchase",
   list_purchases: "Looking at the purchases",

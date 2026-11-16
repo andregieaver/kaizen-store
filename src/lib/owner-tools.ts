@@ -2126,8 +2126,10 @@ export const OWNER_TOOLS = [
   // Ad budgets in the owner's own Meta ad account (D585): Meta bills the owner; these read and move budgets inside it, never pay.
   tool(
     "list_ad_budgets",
-    "The store's Meta ad account, when the owner connected it (Marketing, Ads, Ad budgets): what it spent this month, about where the month ends at today's budgets, the monthly limit the owner lets the AI keep to, and each campaign's or ad set's budget (its id, name, on or paused, daily or lifetime budget, and what its campaign spent this month). Amounts are worked out by the store in the account's currency; never add them up yourself. Read-only.",
-    z.object({}),
+    "The store's Meta ad account, when the owner connected it (Marketing, Ads, Ad budgets): what it spent this month, about where the month ends at today's budgets, the monthly limit the owner lets the AI keep to, and each campaign's or ad set's budget (its id, name, on or paused, daily or lifetime budget, and what its campaign spent this month). With results, also each campaign's results for that period as Meta attributes them: spend, impressions, clicks, purchases, their value and the return on spend. Amounts are worked out by the store in the account's currency; never add them up yourself. Read-only.",
+    z.object({
+      results: z.enum(["last_7d", "last_30d", "this_month"]).optional().describe("Add each campaign's results for the last 7 days, the last 30 days or this month. Leave out for the budgets alone."),
+    }),
   ),
   tool(
     "set_ad_budget",
@@ -2139,6 +2141,13 @@ export const OWNER_TOOLS = [
         on: z.boolean().optional().describe("true to switch it on, false to pause it. Leave out to keep it as it is."),
       })
       .refine((v) => v.daily !== undefined || v.on !== undefined, "Give a new daily budget, on, or both."),
+    "spend",
+  ),
+  // Paused copies to test a variation (D694, D1 of the 100-day challenge); results are list_ad_budgets' own.
+  tool(
+    "copy_ad",
+    "Makes a paused copy of one of the Meta ad account's campaigns (with its ad sets and ads) or ad sets (with its ads), to test a variation. The copy spends nothing until its budget is switched on with set_ad_budget, within the owner's limit. Give the id from list_ad_budgets. Needs the owner's approval.",
+    z.object({ id: z.string().trim().regex(/^\d{1,20}$/, "Give the campaign's or ad set's id.").describe("The campaign's or ad set's id.") }),
     "spend",
   ),
   // The AI wallet (D599): single-use cards in the owner's own Airwallex account, one per purchase the owner approves; the owner pays with it.
@@ -2330,6 +2339,8 @@ export function approvalSummary(name: string, input: Record<string, unknown>): s
     // The wallet's own figures and cardholder are put in by the server (`previewPurchase()`); these words name the purchase as given.
     case "request_purchase":
       return `Make a single-use card for "${text("what")}" from ${text("merchant")}, up to ${text("amount")} in the wallet's currency, open for 48 hours. You pay with it in your Airwallex app.`;
+    case "copy_ad":
+      return `Make a paused copy of the campaign or ad set ${text("id")} in your Meta ad account. It spends nothing until it is switched on.`;
     case "set_ad_budget":
       return `Change the ad budget ${text("budget")} in your Meta ad account:${input.daily ? ` a daily budget of ${text("daily")} in the account's currency` : ""}${input.daily && input.on !== undefined ? ", and" : ""}${input.on === undefined ? "" : input.on ? " switch it on" : " pause it"}. Meta bills you as before.`;
     case "issue_work_invoice":

@@ -1,5 +1,5 @@
 {
- "version": "1.32",
+ "version": "1.33",
  "surface": [
   "admin DELETE /categories/{id}",
   "admin DELETE /categories/{id} -> data",
@@ -2111,6 +2111,9 @@
   "mcp connect_domain",
   "mcp connect_domain <- domain (required)",
   "mcp connect_domain <- store (required)",
+  "mcp copy_ad",
+  "mcp copy_ad <- id (required)",
+  "mcp copy_ad <- store (required)",
   "mcp count_segment",
   "mcp count_segment <- rules (required)",
   "mcp count_segment <- rules.conditions (required)",

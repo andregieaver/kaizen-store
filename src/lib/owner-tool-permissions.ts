@@ -298,6 +298,7 @@ export const TOOL_PERMISSIONS: Record<OwnerToolName, PermissionKey> = {
   // The ad account's figures are marketing's; moving its money is the owner's, as connecting it is (D585).
   list_ad_budgets: "marketing:read",
   set_ad_budget: "owner",
+  copy_ad: "owner",
   // The AI wallet is the owner's own money (D599): only the owner's assistant reads or uses it.
   wallet_status: "owner",
   request_purchase: "owner",

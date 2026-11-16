@@ -9,12 +9,21 @@ features: []
 plans: []
 order: 1000
 checked: 2026-11-16
-sources: [D357, D438, D439, D440, D441, D458, D464, D511, D512, D585, D599, D606, D618, D621, D632, D635, D640, D653, D656, D673, D678, D679, D691]
+sources: [D357, D438, D439, D440, D441, D458, D464, D511, D512, D585, D599, D606, D618, D621, D632, D635, D640, D653, D656, D673, D678, D679, D691, D694]
 ---
 
 Every change to a published contract gets a version here, newest first: the Admin API (`/api/admin/v1/openapi.json`), the storefront API
 (`/api/storefront/v1/openapi.json`), the webhook topics (`/api/webhooks/v1/topics.json`) and the MCP catalogues (`/api/mcp/catalogue.json`,
 `/api/ucp/catalogue.json`). Within a major version nothing a caller relies on is renamed or removed; answers and payloads may gain fields.
+
+## 1.33 — 2026-11-16
+
+Additions to the owner MCP's catalogue for the store's Meta ad account (D694).
+
+- `list_ad_budgets`: takes an optional `results` (`last_7d`, `last_30d` or `this_month`) and then also answers each campaign's spend,
+  impressions, clicks, purchases, their value and the return on spend for it, as Meta attributes them (`results`). Read-only.
+- `copy_ad` (new, `id`): a paused copy of a campaign (with its ad sets and ads) or an ad set (with its ads). It spends nothing until its
+  budget is switched on with `set_ad_budget`. Needs approval; owner only.
 
 ## 1.32 — 2026-11-16
 

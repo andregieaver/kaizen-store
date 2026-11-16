@@ -124,6 +124,7 @@ const PREFIXES: Record<string, AuditArea> = {
   "marketing.ad_account_": "marketing",
   "marketing.ad_limit_": "marketing",
   "marketing.ad_budget_": "marketing",
+  "marketing.ad_copied": "marketing",
   "marketing.feed_": "marketing",
   // Creators (D386): the programme's settings, a decision, a creator's own rate and a payout recorded; ids and amounts, never a name.
   "creator.": "marketing",

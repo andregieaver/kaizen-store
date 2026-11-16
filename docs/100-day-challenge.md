@@ -613,6 +613,7 @@ Each item of section 4 moves here when it is built, with its decision.
 | A4 Escalations | Built: a category on every hand-over; faults are not escalations. | D608 |
 | A5 The intervention log | Built: refund, escalation, platform, other, shown per store on the challenge console (H2). | D608, D614 |
 | A6 The stall watch | Built: the platform team emailed of each stall once a day while it lasts. | D608 |
+| D1 Ad campaigns | Partly: the AI reads each Meta campaign's results (spend, clicks, purchases, their value and the return on spend, `list_ad_budgets` with `results`) and makes paused copies of a campaign or ad set to test a variation (`copy_ad`); switching one on stays `set_ad_budget`'s, under the owner's limit. Catalogue campaigns from the product feed, audiences, creatives and Google Ads are still to do. | D694 |
 | D2 Ad spend into the books | Built: Meta's daily spend per campaign, every six hours. | D609 |
 | F1 A second AI provider | Built: up to three fallback text models through the AI Gateway. | D610 |
 | H1 The loop scales per store | Built: steps, reviews and events claimed one per store and run side by side. | D610 |
@@ -653,5 +654,5 @@ recording is committed. A push with a migration waits for every check, so merge 
 In order of the Day 1 minimum (8.1):
 
 - **E7 (rest):** the original read from Shopify's API (once Shopify approves `read_all_orders`).
-- **D1:** Meta campaigns of the AI's own, during the first weeks of the run.
+- **D1 (rest):** catalogue campaigns from the product feed (once the owner's catalogue, page and pixel are connected in Meta), audiences from consented segments, creatives, then Google Ads. (Results per campaign and paused copies are built, D694.)
 

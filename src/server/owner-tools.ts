@@ -199,7 +199,7 @@ import {
   overviewRows as affiliateOverviewRows,
   rulesSummary as affiliateRulesSummary,
 } from "@/lib/affiliate-admin";
-import { listAdBudgetsTool, preflightSetAdBudget, setAdBudgetTool } from "./ad-budget-tools";
+import { listAdBudgetsTool, preflightSetAdBudget, setAdBudgetTool, copyAdTool, preflightCopyAd } from "./ad-budget-tools";
 import { cancelPurchaseTool, listPurchasesTool, preflightRequestPurchase, requestPurchaseTool, walletStatusTool } from "./purchase-tools";
 import { affiliateOverview, affiliateTag, customerAffiliate, getAffiliateSettings, saveAffiliateSettings, setAffiliateBlocked } from "./affiliates";
 import { cookiesTag } from "./site-cookies";
@@ -2286,6 +2286,7 @@ export async function preflightOwnerTool(ctx: OwnerToolContext, name: string, ra
     issue_work_invoice: preflightIssueWorkInvoice,
     // An ad budget change Meta would refuse, or that changes nothing, is refused now (D585).
     set_ad_budget: preflightSetAdBudget,
+    copy_ad: preflightCopyAd,
     // A purchase the wallet could not make a card for (not connected, paused, no limit, over it) is refused now (D599).
     request_purchase: preflightRequestPurchase,
     // An automation's days outside its range, and a text message that reaches no one or passes the cap (D4).
@@ -2520,6 +2521,7 @@ const handlersOf = (): Record<OwnerToolName, Handler> => (handlers ??= {
   block_affiliate: blockAffiliateTool,
   list_ad_budgets: listAdBudgetsTool,
   set_ad_budget: setAdBudgetTool,
+  copy_ad: copyAdTool,
   wallet_status: walletStatusTool,
   request_purchase: requestPurchaseTool,
   list_purchases: listPurchasesTool,

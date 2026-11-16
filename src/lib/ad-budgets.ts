@@ -229,3 +229,78 @@ export function dailySpendRows(data: z.output<typeof metaDailySpendSchema>["data
   }
   return [...out.values()];
 }
+
+// ---------------------------------------------------------------------------------------------------------------------
+// Results per campaign (D1 of `docs/100-day-challenge.md`, D694)
+// ---------------------------------------------------------------------------------------------------------------------
+
+/** The periods the results are read for, in Meta's own preset names (in the account's time zone). */
+export const AD_RESULT_PERIODS = ["last_7d", "last_30d", "this_month"] as const;
+export type AdResultPeriod = (typeof AD_RESULT_PERIODS)[number];
+
+const metaAction = z.object({ action_type: z.string().max(120), value: z.string().max(40) });
+export const metaResultsSchema = z.object({
+  data: z.array(
+    z.object({
+      campaign_id: digits,
+      campaign_name: z.string().max(400).default(""),
+      spend: z.string().optional(),
+      impressions: z.string().optional(),
+      clicks: z.string().optional(),
+      actions: z.array(metaAction).optional(),
+      action_values: z.array(metaAction).optional(),
+    }),
+  ),
+});
+
+/**
+ * Meta counts one purchase under several names at once (all channels, the pixel's, the website's): the first of these the answer holds is
+ * taken, never their sum, so a purchase is counted once.
+ */
+export const PURCHASE_ACTIONS = ["omni_purchase", "purchase", "offsite_conversion.fb_pixel_purchase"] as const;
+
+/** One campaign's results in a period, as Meta attributes them (its own attribution window, not the store's orders). */
+export type CampaignResult = {
+  id: string;
+  name: string;
+  spentMinor: number;
+  impressions: number;
+  clicks: number;
+  purchases: number;
+  /** What the purchases Meta attributes were worth, in the account's currency. */
+  valueMinor: number;
+  /** Value over spend; null with no spend. */
+  roas: number | null;
+};
+
+const count = (text: string | undefined): number | null => {
+  if (text === undefined || text === "") return 0;
+  const n = Number(text);
+  return Number.isFinite(n) && n >= 0 && n < 1e12 ? Math.round(n) : null;
+};
+
+const purchaseOf = (list: readonly z.output<typeof metaAction>[] | undefined): string | undefined => {
+  for (const name of PURCHASE_ACTIONS) {
+    const found = list?.find((a) => a.action_type === name);
+    if (found) return found.value;
+  }
+  return undefined;
+};
+
+/** Meta's campaign rows as results, most spent first; null when a figure cannot be read (never a guess). */
+export function campaignResults(rows: z.output<typeof metaResultsSchema>["data"], currency: string): CampaignResult[] | null {
+  const out: CampaignResult[] = [];
+  for (const row of rows) {
+    const spent = spendMinor(row.spend, currency);
+    const value = spendMinor(purchaseOf(row.action_values), currency);
+    const impressions = count(row.impressions);
+    const clicks = count(row.clicks);
+    const purchases = count(purchaseOf(row.actions));
+    if (spent === null || value === null || impressions === null || clicks === null || purchases === null) return null;
+    out.push({ id: row.campaign_id, name: row.campaign_name, spentMinor: spent, impressions, clicks, purchases, valueMinor: value, roas: spent > 0 ? value / spent : null });
+  }
+  return out.sort((a, b) => b.spentMinor - a.spentMinor || a.id.localeCompare(b.id));
+}
+
+/** Meta's answer to a copy: the new campaign's or ad set's id. */
+export const metaCopySchema = z.union([z.object({ copied_campaign_id: digits }), z.object({ copied_adset_id: digits })]);

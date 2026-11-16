@@ -458,6 +458,13 @@ export const marketingEn = {
       inCampaign: "Ad set in {campaign}",
       spentShort: "{amount} this month",
       noBudgets: "No campaign or ad set with a budget yet.",
+      /** What each campaign brought in the last 7 days, as Meta attributes it (D694). */
+      results: "What the ads brought, last 7 days",
+      resultsNone: "No campaign spent anything in the last 7 days.",
+      resultsRow: "{purchases} purchases worth {value}",
+      roas: "{roas}x return",
+      noRoas: "no spend",
+      resultsNote: "As Meta counts purchases, in its own attribution window: not the store's own orders.",
       manage: "Open in Ads Manager",
       connection: "Connection",
       tokenSaved: "Token saved ({hint}). Paste a new one to replace it.",

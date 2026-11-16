@@ -583,6 +583,7 @@ export const assistantNb: AssistantMessages = {
     block_affiliate: "Forbereder endringen",
     list_ad_budgets: "Ser på annonsebudsjettene",
     set_ad_budget: "Forbereder budsjettendringen",
+    copy_ad: "Forbereder en kopi av annonsen",
     wallet_status: "Ser på AI-lommeboken",
     request_purchase: "Forbereder kjøpet",
     list_purchases: "Ser på kjøpene",

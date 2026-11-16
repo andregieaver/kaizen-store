@@ -135,3 +135,18 @@ describe("the autopilot's rule for a budget change", () => {
     expect(adChangeWords(set, { ...set, on: true, dailyMinor: 6_000 }, "NOK").replace(/\u00a0/g, " ")).toBe('Set the daily budget of the ad set "Norway" from NOK 50.00 to NOK 60.00 and switch it on.');
   });
 });
+
+describe("campaign results (D694)", () => {
+  it("counts a purchase once whatever names Meta gives it, works out the return, and refuses a figure it cannot read", async () => {
+    const { campaignResults } = await import("./ad-budgets");
+    const rows = [
+      { campaign_id: "1", campaign_name: "A", spend: "10.00", impressions: "100", clicks: "5", actions: [{ action_type: "purchase", value: "2" }, { action_type: "offsite_conversion.fb_pixel_purchase", value: "2" }], action_values: [{ action_type: "purchase", value: "50.00" }] },
+      { campaign_id: "2", campaign_name: "B", spend: "0", impressions: "0", clicks: "0" },
+    ];
+    expect(campaignResults(rows, "NOK")).toEqual([
+      { id: "1", name: "A", spentMinor: 1000, impressions: 100, clicks: 5, purchases: 2, valueMinor: 5000, roas: 5 },
+      { id: "2", name: "B", spentMinor: 0, impressions: 0, clicks: 0, purchases: 0, valueMinor: 0, roas: null },
+    ]);
+    expect(campaignResults([{ campaign_id: "3", campaign_name: "C", spend: "lots" }], "NOK")).toBeNull();
+  });
+});
