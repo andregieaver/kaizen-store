@@ -2,8 +2,8 @@
 
 # Kaizena Flow
 
-Kaizena Flow (formerly Kaizen Store; the code keeps `kaizen` in its names) is an AI-native online store selling EU-wide, built from scratch. The research and
-phased build plan are in `docs/plan.md`; read it before architectural work.
+Kaizena Flow (formerly Kaizen Store; the code keeps `kaizen` in its names) is an AI-native online store selling EU-wide, built from scratch. How it is
+built is in `docs/platform.md`: read it before architectural work (`docs/plan.md` is older research: open a cited section only).
 
 ## Workflow
 
@@ -455,8 +455,7 @@ Each rule is in full under the same words in one file of `docs/rules/admin/` by 
   (`ChatWidgetProfile.aiUse`), so a new AI use of a customer's messages is said there too.
 - A new page for Kaizena Flow's own site (kaizenaflow.com) is built from `docs/site-design.md`: the owner's theme, palette, classes
   and row recipes, read from production. Save it as a draft for the owner to publish, and correct that file when the site's look changes.
-- Deferred work from the PSI audit is tracked in `docs/audits/psi-followups.md`: tick
-  an item there when a change does it.
-- The code review of November 2026 is a working plan in `docs/audits/code-review-2026-11.md`: its Progress table lists every
-  step (phases 0 to 4) with its status. Read that table before starting a fix from it, and in the same change set the step to
-  Done with the date and commit, correct a finding the code no longer matches, and add a line to its change log.
+- Working plans: `docs/audits/psi-followups.md` (Open section), `docs/audits/code-review-2026-11.md` and
+ `docs/audits/bloat-review-2026-11.md`. Find a step's row by id; in the same change set it to Done with date and commit.
+- Claim a decision's number with `node scripts/claim-decision.mjs "title"` before citing it, never from the file.
+- Searches skip dated reports, evidence folders and `supabase/archive`: name the path to search one.

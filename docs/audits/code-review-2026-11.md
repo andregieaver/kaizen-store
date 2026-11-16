@@ -28,10 +28,14 @@ Short forms in paths: `S/` is `src/app/admin/(gated)/[store]/`, `P/` is `src/app
 This report is a working document: the plan below is the list of work, and this table says where each step stands. Keep it true as the work goes, in the same commit as the fix.
 
 - **Status** is one of: Open, In progress, Done, Dropped (with the reason in Notes).
-- When a step is done, set Done and put the date and the commit in Notes. Check the step's "done when" before ticking it.
+- When a step is done, set Done and put the date, the commit and the decision's id in Notes: at most 200 characters. What was
+  found goes in the decision and in one paragraph under **Notes on the steps** below. Check the step's "done when" before ticking
+  it.
 - If a finding proves wrong or the code has moved on, say so in Notes and correct the finding's row; do not delete it.
 - New findings met on the way get the next free ID in their series and a step in the plan, then a row here.
-- The grades in the headline's scorecard started at C, C and D on 9 November 2026. When verified fixes raise one, change it in the scorecard, note the old grade and the date beside it, and show the owner the new table (the owner, 9 November 2026). Raise a grade only for fixes seen working in production.
+- The grades in the headline's scorecard started at C, C and D on 9 November 2026. When verified fixes raise one, change it in the
+  scorecard, note the old grade and the date beside it, and show the owner the new table (the owner, 9 November 2026). Raise a
+  grade only for fixes seen working in production.
 - Add a line to the change log at the foot of this section for each session that changes the table.
 
 
@@ -40,28 +44,28 @@ This report is a working document: the plan below is the list of work, and this 
 | Step | What | Closes | Effort | Status | Notes |
 |---|---|---|---|---|---|
 | 0.1 | Hold a release for every suite | FH2 | S | Done | 9 Nov 2026, D526: `hosts` and `signed-in` are in `release`'s `needs` and `if`. The "done when" (a red `signed-in` run holds a migration push) follows from GitHub's `needs`; not yet seen on a real red run. |
-| 0.2 | Put a cheap gate before the fast deploy, and go back by itself | FH1 | M | In progress | 9 Nov 2026, D526: the gate is built (lint, type check and `pnpm test:smoke` in the `pending` job before the deploy hook). Seen working on CI run 1160 (commit 15eb8ec): lint, type check and smoke tests took 5 min 11 s, then the deploy went out and `/api/health` reported the commit. Still open: going back by itself when a full check fails after a deploy. It needs a Vercel token as a repository secret and a check that production still runs the failing commit. |
-| 0.3 | Drop the old snapshots | FD1, FH3 | S | Done | 10 Nov 2026, D532: 774 snapshots deleted (1.1 GB to 2.7 MB in the working tree); `pnpm db:check` passes and a new migration generates from the one left. `pnpm db:generate` prunes; a scan test fails at more than five; `.vercelignore` added. Git's history still holds the old files, so an existing clone is not lighter until it is cloned again. |
-| 0.4 | Build the test database once | FD2 | S | Done | 10 Nov 2026, D532: a Vitest global setup applies the migrations once and keeps the database; each test file loads a copy. The unit run went from 7 min 35 s to 5 min 34 s here. CI builds the kept database once per run (nothing is cached between runs). |
-| 0.5 | Log every failed payment webhook | FV2 | M | Done | 9 Nov 2026: a failed store webhook writes `stripe.webhook_failed` (store, event, type) in `handleStripeEvent`, and Kaizena Flow's own plan-billing webhook writes `stripe.platform_webhook_failed`; `stripe-webhook-log.scan.test.ts` fails on a new silent 500 in a Stripe route. 10 Nov 2026: the platform home lists Stripe events of the last 7 days that failed and are still not done (`failedWebhookEvents()`), and the four silent catches in `stripe-refunds.ts` log (a failed read of pending refunds is an error, not "nothing to check"). 10 Nov 2026: the six silent failures in `payment-capture.ts` (a capture, a void, reading the hold, the capture-due alert) and the account refresh in `connect.ts` log at warn. Left as they are, on purpose: catches whose silence is the answer (`requestIp()` outside a request, a payment domain already registered, payment facts read after a capture). The scan test covers the Stripe routes, not every catch in these files. Not yet seen on a real failure in production. |
-| 0.6 | Claim a webhook event before working on it | FV6 | S | Done | 10 Nov 2026, D529: built. `commerce.claim_webhook_event()` records and claims in one statement; the handler gives the claim up when it fails. Five cases tested against the migrations. The step's "done when" is `stripe-webhook-claim.int.test.ts`: one event delivered twelve times at once on a real Postgres is claimed once (written after the release; a Postgres was on this machine all along). Released 10 Nov 2026 11:00 UTC (CI run 1176) after an incident: the code was live for about an hour before its migration (D530), and the first function was wrong (replaced by `webhook_claim_exact`). In production the function and the column exist; no event arrived meanwhile, so none failed. Advisors: nothing new about either (the standing INFO that the table has RLS and no policy, as every private table). Not yet seen on a real event. |
-| 0.7 | Make two money writes all-or-nothing | FV7, FV11 | S | Done | 10 Nov 2026: built. `confirmAtVenue()` and `confirmOnTerms()` write the contact, the payment row and the completion in one transaction each. 11 Nov 2026: the tests the step asked for. A completion refused after the writes (a trigger refuses the order's move on) leaves a venue booking pending with no venue payment and the shopper's details unwritten (`checkout-kinds.int.test.ts`, D379) and an order on terms with no terms payment (`payment-terms.int.test.ts`); each fails with its transaction taken out. Two `assignPlan()` calls at once start one Stripe subscription (`billing.int.test.ts`), and fail without the lock. Writing it found more: the lock was taken after `prepare()`, so two calls each made the store a Stripe account. The lock (`oneAtATime()`, by the store's address) now covers `prepare()`, and the owner's `choosePlan()` too. The idempotency key is unchanged (see above). Done in the commit that adds these tests (FV7, FV11). |
-| 0.8 | Give the AI manager's turn a deadline and a cost ceiling | FA2, FA5 | M | In progress | 10 Nov 2026, D539: built. `nextRound()` (`src/lib/turn-budget.ts`) gives each turn 240 s, the last 45 s a round without tools; 400,000 tokens a turn; the store's month of AI looked at again between rounds; US$25 a day per platform admin (`platformManagerCostToday()`). A stopped turn saves a plain message with its tool trail. The done-when's tests pass on a real database: a slow fake connection ends in a saved answer with its trail, a provider that stops answering is cut at the round's time with what ran saved, a turn over the ceiling stops with a plain message, and a platform admin past the day's cost is refused. The autopilot's steps pass their own shorter limits. Live 10 Nov 2026 (commit 4e4e345, `/api/health` on it); not yet seen on a real turn that meets a limit. |
-| 0.9 | Let shoppers reach every product | FF1 | M | Done | 10 Nov 2026: built for category, tag and *All products* listings. `listingPage()` returns the first `page` pages and the full count; the listing says "48 of 65 products" and offers *Show more products* as a plain link (`?page=2`, up to 20 pages, 960 products), in en, nb, sv and da. The test found a second cap: `listGridProducts()` cut any list at 48 by itself (now `GRID_PRODUCTS_MAX`). The page builder's product grid, which draws a store's listing pages (`FilterableGrid`), is paged the same way in steps of its own number; past its first page it reads in the listing's order, which may differ from the grid's own. Seen in a browser on a local build with 64 products: "48 av 64 produkter", *Vis flere produkter*, then all 64. `listing.int.test.ts` builds a store of 60 or more products and checks the count, the order and that nothing repeats. Live 10 Nov 2026 (CI run green, production on the commit). Search results are paged too: the search is asked for `page` times 48, and *Show more* is offered while it fills that (a search ranks at most about 150 candidates, so it has no total to show); not seen in a browser. 11 Nov 2026: the theme store's list has no cap to page (`loadCards()` reads every published theme and the list draws them all), so the platform needs nothing here. The done-when is met: the 60-product test, and *Show more products* is a plain link that works without scripts. On 10 Nov no store in production had more than 10 active products, so paging has not been seen there; the demo store's *All products* reads "9 produkter". |
-| 0.10 | Show that a click worked | FS1 | S | In progress | 10 Nov 2026: one `loading.tsx` at `S/` and one at `P/`, drawn on the server (its words are the only script). The signed-in suite (209 tests) passes on a local build made as CI's. The Products page went 9 bytes over its script budget, which is now Home's and Orders' (2,470,000); Home itself has about 550 bytes of room left, so the admin's first load needs trimming before much else is added. 11 Nov 2026 (D540): the pending bar built: `LinkPending` (`useLinkStatus`) on the sidebar, the section's links, the tabs and the rail, a thin bar at the link's foot, always drawn and only shown; held by `e2e/signed-in/admin-text-fallbacks.spec.ts`, which holds the next page back and sees it. The room it needed came with PSI PERF-01: the admin's English fetched per area, every screen's first scripts about 1.1 MB smaller (Home 1.28 MB, budget 1.34). Live 11 Nov 2026 (production on d8b90fa; the sign-in page loads with no errors and no fallback). The signed-in screens are not yet seen in production: the admin needs the owner signed in. 13 Nov 2026 (bloat review step 0.9): the Supabase client, zod, the builder's English and sign-in's English left the signed-in frame; Home's first scripts 0.78 MB (budget 0.81), Products 0.74 (0.78), Orders 0.76 (0.80), so the room is there again. 14 Nov 2026: the skeleton is now fetched on hover, touch or focus (AdminLink, bloat review step 0.13); the pending bar answers a touch or keyboard press for one round trip first. |
-| 0.11 | Group Marketing, Analytics and Website | FN5 | S | In progress | 10 Nov 2026: Marketing is Discounts, Email, Channels, Loyalty, On the site; Analytics is Overview, Money, Customers and products, The site; Website is Content, Look, Structure. No address moves; the headings have Norwegian words. `permissions.baseline.json` is unchanged; one line of `store-nav.test.ts` changed: a website without the shop opens Marketing on Broadcasts, where it opened on A/B tests. Seen in a browser on a local build; the signed-in suite passes (one unrelated test timed out under load and passed alone). The Analytics group is named Money (open question 3). Not yet seen in production. |
+| 0.2 | Put a cheap gate before the fast deploy, and go back by itself | FH1 | M | In progress | 9 Nov 2026, D526; see Notes below |
+| 0.3 | Drop the old snapshots | FD1, FH3 | S | Done | 10 Nov 2026, D532; see Notes below |
+| 0.4 | Build the test database once | FD2 | S | Done | 10 Nov 2026, D532; see Notes below |
+| 0.5 | Log every failed payment webhook | FV2 | M | Done | 9 Nov 2026, 10 Nov 2026; see Notes below |
+| 0.6 | Claim a webhook event before working on it | FV6 | S | Done | 10 Nov 2026, D529, D530; see Notes below |
+| 0.7 | Make two money writes all-or-nothing | FV7, FV11 | S | Done | 10 Nov 2026, 11 Nov 2026, D379; see Notes below |
+| 0.8 | Give the AI manager's turn a deadline and a cost ceiling | FA2, FA5 | M | In progress | 10 Nov 2026, D539; see Notes below |
+| 0.9 | Let shoppers reach every product | FF1 | M | Done | 10 Nov 2026, 11 Nov 2026; see Notes below |
+| 0.10 | Show that a click worked | FS1 | S | In progress | 10 Nov 2026, 11 Nov 2026, 13 Nov 2026, 14 Nov 2026, D540; see Notes below |
+| 0.11 | Group Marketing, Analytics and Website | FN5 | S | In progress | 10 Nov 2026; see Notes below |
 
 **Phase 1: Foundations**
 
 | Step | What | Closes | Effort | Status | Notes |
 |---|---|---|---|---|---|
-| 1.1 | Type the money reads | FV1, FF9 | M | Done | 11 Nov 2026: every read in the twelve files FV1 names (checkout, order-insert, order-edits, returns, exchanges, draft-orders, stripe-refunds, billing, catalog, cart, listing, search; about 230 reads) goes through `typedRows()`/`typedRow()`: each money column `col.minor`/`col.minorOrNull`, each code `col.currency`. Small rows describe every column; the wide rows passed on as `Row` (a cart line with its product and plan, `select *` of an order, a return, a draft, an exchange) describe their id, money and currency columns and keep the rest as read (`looseObject`), which step 1.2's ratchet can tighten. A write that returns no row now throws instead of reading `undefined`. `money-reads.scan.test.ts` fails on an `execute<` in any of them. Checked by the type check, lint, the unit tests and the whole integration suite (4,931 passing; the two failures were not this change, see the change log). |
-| 1.2 | Ratchet the rest | FD6, FH11 | S (burn-down L) | Done | 11 Nov 2026: `src/server/ratchet.scan.test.ts` holds `src` (tests and test support aside) to `src/server/ratchet.baseline.json`: unchecked reads (`execute<…>(`) per file, 3,131 in 453 files after step 1.1, and `as unknown as` (122) and switched-off `no-explicit-any` (0) in total. A rise fails, a new file starts at none, and a fall fails too until the baseline is lowered with `node scripts/ratchet.mjs` (which refuses to raise a number), so the room is never spent again. Counting shared by both in `scripts/lib/ratchet-count.mjs`. The burn-down goes on as files are touched. FD6's "about 50 suppressed any" no longer matches the code: there are none (the matches were the word in comments). |
-| 1.3 | Carry the store in every write | FV5 | M | Done | 11 Nov 2026: the ratchet of step 1.2 also counts, per file, the writes that pick a store's row by its id alone (`update`/`delete` of a table with a `store_id`, whose `where` names an id and not the store or `owned()`; `unscopedWrites()` in `scripts/lib/ratchet-count.mjs`, the tables read from `schema.ts`): 321 in 100 files are the allow-list, which may only shrink, and a new one fails `ratchet.scan.test.ts`. The writes FV5 named now name the store: the media library's delete, saved parts' two updates and delete, the experiment cleared when its version B failed, and the five form-submission updates. `cancelUnpaidOrder(storeId, …)` and `completeOrderPayment(storeId, …)` act only on an order of that store (through `orders where store_id = …`), and every one of their 34 callers passes the order's own store; the two jobs that did not read it (`releaseHeldCredits()`, `expireApprovals()`) now do. FV5 counted 237: the scan counts more, as it also takes `id in (…)` and aliases (`e.id`). Checked by the type check, the scan tests and the integration suites of the touched areas (879 tests). |
-| 1.4 | One wrapper for server actions | FV9 | M | Done | 11 Nov 2026: `storeAction({ store, key, action, answer }, handler)` and its platform twin `platformAction({ area, access, action, answer }, handler)` (`src/server/store-action.ts`, listed in `DELEGATED_GUARDS`): the key is checked once (a member without it gets *You do not have access to this.* in their language, never a 404), the handler runs in the person's language, and anything it throws that nobody planned for is logged once (`action.failed`, the action's name and the store, never the error's words in the form) and answered with a plain line; `redirect()`, `notFound()` and `refresh()` pass through (`unstable_rethrow`). `answer(message, kind)` builds each action's own result shape, refused or failed. Every action of orders (11), returns (15) and books (19) runs through it; their helpers take the member instead of guarding again. The done-when's test: an approval that throws answers *That did not go through…* in the form with one `action.failed` line and changes nothing (`returns-actions.int.test.ts`, which fails with the catch taken out); the wrapper's own tests in `store-action.test.ts`. Other `actions.ts` files move onto it when touched (`docs/rules/admin/platform.md`). |
-| 1.5 | Bound every query and webhook route | FD9 | S | Done | 11 Nov 2026: the app reaches the database as the `postgres` role through Supavisor's transaction mode, which drops a connection's own start-up settings, so the limits are the role's: migration `20261111151548_statement_timeouts` sets `statement_timeout = 15s` and `lock_timeout = 5s` on it, on Supabase only (where `supabase_admin` exists), so developers' and CI's databases stay unbounded. FD9 no longer matched in part: Supabase had already given the role `idle_in_transaction_session_timeout = 30s` and `transaction_timeout = 60s`. A job that needs longer raises its own limit for one transaction with `longerTimeout()` (`src/db/client.ts`, `set local`, at most 55 s under the 60 s transaction cap); the migration runner already sets its own per file. Production's slowest statement by the role over its recorded history was 6.6 s (a schema query of Supabase's tools), so nothing the app or the nightly jobs run comes near the limit. The five payment webhook routes (Stripe's store, Connect, Connect accounts and billing, Mollie) have `maxDuration = 60`, and `cron-routes.scan.test.ts` requires one on every route under `api/stripe`, `api/mollie` and in a `webhook(s)` folder. The done-when's check on a database with the migration's branch taken: `select pg_sleep(20)` was cancelled at 15 s, and one that raised its limit ran through. Live 11 Nov 2026 17:23 UTC (D567): in production the role carries both limits and `select pg_sleep(20)` is cancelled. |
-| 1.6 | Safe indexes on hot tables | FD4 | M | Done | 11 Nov 2026 (D569): a migration whose first line is `-- kaizen:no-transaction` runs statement by statement outside a transaction (`scripts/db-migrate.mjs`, and the same split in `db-setup.mjs`, `db-template.mjs` and the tests' PGlite, `statementsOf()` in `scripts/lib/migrations.mjs`), its ledger row after the last; a failed concurrent build's invalid index is dropped again, so the file runs again once fixed. `migration-safety.scan.test.ts` fails a plain `create index`, or a foreign key or check added without `not valid`, on orders, order_lines, visits, products, product_variants, customers, carts and cart_lines in any migration after `20261111172838` (unless the file makes the table), a `concurrently` in an unmarked file, and a `not valid` constraint never validated; run over the old files it finds 185 such statements. `migrate-no-transaction.int.test.ts` builds an index concurrently on a scratch database, sees the unmarked file refused and a failing unique build leave no ledger row and no index. The rule is in `docs/ci-migrations.md`. No real index was needed: in production every foreign key on these tables is indexed, and the largest is 700 kB. |
-| 1.7 | Squash to a baseline | FD3 | M | Done | 11 Nov 2026 (D572): the 789 files up to `20261111172838_sms_campaign_index` are four (`…39_baseline_1_schema`, `…40_baseline_2_data`, `…41_baseline_3_rules` from `pg_dump`, and `…42_baseline_4_roles_and_supabase` kept by hand), each marked `-- kaizen:baseline-through=…`; `scripts/db-migrate.mjs` records them without running them where the ledger has the cut; in production CI's `release` job does so. `scripts/squash-migrations.mjs` checks before it writes: a database from the files and one from the baseline give the same `pg_dump`, the schema line by line (63 checks differ only in parentheses Postgres regroups) and the data row by row. The old files are in `supabase/archive/20261111172838/`; the tests that read one (`commerce.test.ts`'s two, the plan-features tests, the VAT replay and others) go through `src/db/migration-files.ts`. `pnpm db:check` passes. A fresh database with the demo catalogue takes about five seconds. |
+| 1.1 | Type the money reads | FV1, FF9 | M | Done | 11 Nov 2026; see Notes below |
+| 1.2 | Ratchet the rest | FD6, FH11 | S (burn-down L) | Done | 11 Nov 2026; see Notes below |
+| 1.3 | Carry the store in every write | FV5 | M | Done | 11 Nov 2026; see Notes below |
+| 1.4 | One wrapper for server actions | FV9 | M | Done | 11 Nov 2026; see Notes below |
+| 1.5 | Bound every query and webhook route | FD9 | S | Done | 11 Nov 2026, D567; see Notes below |
+| 1.6 | Safe indexes on hot tables | FD4 | M | Done | 11 Nov 2026, D569; see Notes below |
+| 1.7 | Squash to a baseline | FD3 | M | Done | 11 Nov 2026, D572; see Notes below |
 | 1.8 | Give the build room, and deploy what was checked | FH10 | M | Open | CI's browser builds no longer type-check (bloat step 0.38, 16 Nov 2026, commit 1 of that step); the type check stays in static and the gate. |
 | 1.9 | Test what gets owners paid | FH9 | M | Open | |
 | 1.10 | Make the written rules cheap to read | FH4, FH5 | M | Open | |
@@ -170,6 +174,159 @@ This report is a working document: the plan below is the list of work, and this 
 - 14 November 2026: bloat review step 0.13: the skeleton is now fetched on hover, touch or focus (`AdminLink`); the pending bar answers a touch or keyboard press for one round trip first (step 0.10's row, status unchanged).
 - 14 November 2026: bloat step 0.19: the platform's Stores list reads and shows 100 a page with a count (the Stores part of 2.10); 1.13 and 2.10 stay Open (the shared ListSearch and Pager are not built). The Products list's notice no longer reads the whole editor context. The customers aggregate is not yet bounded: round 3 of the redesign rewrote that statement.
 - 15 November 2026: bloat step 0.26: 13 duplicate indexes dropped (orders 34 to 32; four concurrently on orders, order_lines and visits), and `src/db/index-duplicates.test.ts` fails on the next one. Step 3.15 stays Open.
+- 16 November 2026: notes moved out of the table into Notes on the steps; a row is at most 300 characters (bloat review step 0.41).
+
+**Notes on the steps**
+
+**Step 0.2.** 9 Nov 2026, D526: the gate is built (lint, type check and `pnpm test:smoke` in the `pending` job before the deploy
+hook). Seen working on CI run 1160 (commit 15eb8ec): lint, type check and smoke tests took 5 min 11 s, then the deploy went out
+and `/api/health` reported the commit. Still open: going back by itself when a full check fails after a deploy. It needs a Vercel
+token as a repository secret and a check that production still runs the failing commit.
+
+**Step 0.3.** 10 Nov 2026, D532: 774 snapshots deleted (1.1 GB to 2.7 MB in the working tree); `pnpm db:check` passes and a new
+migration generates from the one left. `pnpm db:generate` prunes; a scan test fails at more than five; `.vercelignore` added.
+Git's history still holds the old files, so an existing clone is not lighter until it is cloned again.
+
+**Step 0.4.** 10 Nov 2026, D532: a Vitest global setup applies the migrations once and keeps the database; each test file loads a
+copy. The unit run went from 7 min 35 s to 5 min 34 s here. CI builds the kept database once per run (nothing is cached between
+runs).
+
+**Step 0.5.** 9 Nov 2026: a failed store webhook writes `stripe.webhook_failed` (store, event, type) in `handleStripeEvent`, and
+Kaizena Flow's own plan-billing webhook writes `stripe.platform_webhook_failed`; `stripe-webhook-log.scan.test.ts` fails on a new
+silent 500 in a Stripe route. 10 Nov 2026: the platform home lists Stripe events of the last 7 days that failed and are still not
+done (`failedWebhookEvents()`), and the four silent catches in `stripe-refunds.ts` log (a failed read of pending refunds is an
+error, not "nothing to check"). 10 Nov 2026: the six silent failures in `payment-capture.ts` (a capture, a void, reading the hold,
+the capture-due alert) and the account refresh in `connect.ts` log at warn. Left as they are, on purpose: catches whose silence is
+the answer (`requestIp()` outside a request, a payment domain already registered, payment facts read after a capture). The scan
+test covers the Stripe routes, not every catch in these files. Not yet seen on a real failure in production.
+
+**Step 0.6.** 10 Nov 2026, D529: built. `commerce.claim_webhook_event()` records and claims in one statement; the handler gives
+the claim up when it fails. Five cases tested against the migrations. The step's "done when" is
+`stripe-webhook-claim.int.test.ts`: one event delivered twelve times at once on a real Postgres is claimed once (written after the
+release; a Postgres was on this machine all along). Released 10 Nov 2026 11:00 UTC (CI run 1176) after an incident: the code was
+live for about an hour before its migration (D530), and the first function was wrong (replaced by `webhook_claim_exact`). In
+production the function and the column exist; no event arrived meanwhile, so none failed. Advisors: nothing new about either (the
+standing INFO that the table has RLS and no policy, as every private table). Not yet seen on a real event.
+
+**Step 0.7.** 10 Nov 2026: built. `confirmAtVenue()` and `confirmOnTerms()` write the contact, the payment row and the completion
+in one transaction each. 11 Nov 2026: the tests the step asked for. A completion refused after the writes (a trigger refuses the
+order's move on) leaves a venue booking pending with no venue payment and the shopper's details unwritten
+(`checkout-kinds.int.test.ts`, D379) and an order on terms with no terms payment (`payment-terms.int.test.ts`); each fails with
+its transaction taken out. Two `assignPlan()` calls at once start one Stripe subscription (`billing.int.test.ts`), and fail
+without the lock. Writing it found more: the lock was taken after `prepare()`, so two calls each made the store a Stripe account.
+The lock (`oneAtATime()`, by the store's address) now covers `prepare()`, and the owner's `choosePlan()` too. The idempotency key
+is unchanged (see above). Done in the commit that adds these tests (FV7, FV11).
+
+**Step 0.8.** 10 Nov 2026, D539: built. `nextRound()` (`src/lib/turn-budget.ts`) gives each turn 240 s, the last 45 s a round
+without tools; 400,000 tokens a turn; the store's month of AI looked at again between rounds; US$25 a day per platform admin
+(`platformManagerCostToday()`). A stopped turn saves a plain message with its tool trail. The done-when's tests pass on a real
+database: a slow fake connection ends in a saved answer with its trail, a provider that stops answering is cut at the round's time
+with what ran saved, a turn over the ceiling stops with a plain message, and a platform admin past the day's cost is refused. The
+autopilot's steps pass their own shorter limits. Live 10 Nov 2026 (commit 4e4e345, `/api/health` on it); not yet seen on a real
+turn that meets a limit.
+
+**Step 0.9.** 10 Nov 2026: built for category, tag and *All products* listings. `listingPage()` returns the first `page` pages and
+the full count; the listing says "48 of 65 products" and offers *Show more products* as a plain link (`?page=2`, up to 20 pages,
+960 products), in en, nb, sv and da. The test found a second cap: `listGridProducts()` cut any list at 48 by itself (now
+`GRID_PRODUCTS_MAX`). The page builder's product grid, which draws a store's listing pages (`FilterableGrid`), is paged the same
+way in steps of its own number; past its first page it reads in the listing's order, which may differ from the grid's own. Seen in
+a browser on a local build with 64 products: "48 av 64 produkter", *Vis flere produkter*, then all 64. `listing.int.test.ts`
+builds a store of 60 or more products and checks the count, the order and that nothing repeats. Live 10 Nov 2026 (CI run green,
+production on the commit). Search results are paged too: the search is asked for `page` times 48, and *Show more* is offered while
+it fills that (a search ranks at most about 150 candidates, so it has no total to show); not seen in a browser. 11 Nov 2026: the
+theme store's list has no cap to page (`loadCards()` reads every published theme and the list draws them all), so the platform
+needs nothing here. The done-when is met: the 60-product test, and *Show more products* is a plain link that works without
+scripts. On 10 Nov no store in production had more than 10 active products, so paging has not been seen there; the demo
+store's *All products* reads "9 produkter".
+
+**Step 0.10.** 10 Nov 2026: one `loading.tsx` at `S/` and one at `P/`, drawn on the server (its words are the only script). The
+signed-in suite (209 tests) passes on a local build made as CI's. The Products page went 9 bytes over its script budget, which is
+now Home's and Orders' (2,470,000); Home itself has about 550 bytes of room left, so the admin's first load needs trimming before
+much else is added. 11 Nov 2026 (D540): the pending bar built: `LinkPending` (`useLinkStatus`) on the sidebar, the section's
+links, the tabs and the rail, a thin bar at the link's foot, always drawn and only shown; held by
+`e2e/signed-in/admin-text-fallbacks.spec.ts`, which holds the next page back and sees it. The room it needed came with PSI
+PERF-01: the admin's English fetched per area, every screen's first scripts about 1.1 MB smaller (Home 1.28 MB, budget 1.34). Live
+11 Nov 2026 (production on d8b90fa; the sign-in page loads with no errors and no fallback). The signed-in screens are not yet seen
+in production: the admin needs the owner signed in. 13 Nov 2026 (bloat review step 0.9): the Supabase client, zod, the builder's
+English and sign-in's English left the signed-in frame; Home's first scripts 0.78 MB (budget 0.81), Products 0.74 (0.78), Orders
+0.76 (0.80), so the room is there again. 14 Nov 2026: the skeleton is now fetched on hover, touch or focus (AdminLink, bloat
+review step 0.13); the pending bar answers a touch or keyboard press for one round trip first.
+
+**Step 0.11.** 10 Nov 2026: Marketing is Discounts, Email, Channels, Loyalty, On the site; Analytics is Overview, Money, Customers
+and products, The site; Website is Content, Look, Structure. No address moves; the headings have Norwegian words.
+`permissions.baseline.json` is unchanged; one line of `store-nav.test.ts` changed: a website without the shop opens Marketing on
+Broadcasts, where it opened on A/B tests. Seen in a browser on a local build; the signed-in suite passes (one unrelated test timed
+out under load and passed alone). The Analytics group is named Money (open question 3). Not yet seen in production.
+
+**Step 1.1.** 11 Nov 2026: every read in the twelve files FV1 names (checkout, order-insert, order-edits, returns, exchanges,
+draft-orders, stripe-refunds, billing, catalog, cart, listing, search; about 230 reads) goes through `typedRows()`/`typedRow()`:
+each money column `col.minor`/`col.minorOrNull`, each code `col.currency`. Small rows describe every column; the wide rows passed
+on as `Row` (a cart line with its product and plan, `select *` of an order, a return, a draft, an exchange) describe their id,
+money and currency columns and keep the rest as read (`looseObject`), which step 1.2's ratchet can tighten. A write that returns
+no row now throws instead of reading `undefined`. `money-reads.scan.test.ts` fails on an `execute<` in any of them. Checked by the
+type check, lint, the unit tests and the whole integration suite (4,931 passing; the two failures were not this change, see the
+change log).
+
+**Step 1.2.** 11 Nov 2026: `src/server/ratchet.scan.test.ts` holds `src` (tests and test support aside) to
+`src/server/ratchet.baseline.json`: unchecked reads (`execute<…>(`) per file, 3,131 in 453 files after step 1.1, and
+`as unknown as` (122) and switched-off `no-explicit-any` (0) in total. A rise fails, a new file starts at none, and a fall fails
+too until the baseline is lowered with `node scripts/ratchet.mjs` (which refuses to raise a number), so the room is never spent
+again. Counting shared by both in `scripts/lib/ratchet-count.mjs`. The burn-down goes on as files are touched. FD6's "about 50
+suppressed any" no longer matches the code: there are none (the matches were the word in comments).
+
+**Step 1.3.** 11 Nov 2026: the ratchet of step 1.2 also counts, per file, the writes that pick a store's row by its id alone
+(`update`/`delete` of a table with a `store_id`, whose `where` names an id and not the store or `owned()`; `unscopedWrites()` in
+`scripts/lib/ratchet-count.mjs`, the tables read from `schema.ts`): 321 in 100 files are the allow-list, which may only shrink,
+and a new one fails `ratchet.scan.test.ts`. The writes FV5 named now name the store: the media library's delete, saved parts' two
+updates and delete, the experiment cleared when its version B failed, and the five form-submission updates.
+`cancelUnpaidOrder(storeId, …)` and `completeOrderPayment(storeId, …)` act only on an order of that store (through
+`orders where store_id = …`), and every one of their 34 callers passes the order's own store; the two jobs that did not read it
+(`releaseHeldCredits()`, `expireApprovals()`) now do. FV5 counted 237: the scan counts more, as it also takes `id in (…)` and
+aliases (`e.id`). Checked by the type check, the scan tests and the integration suites of the touched areas (879 tests).
+
+**Step 1.4.** 11 Nov 2026: `storeAction({ store, key, action, answer }, handler)` and its platform twin
+`platformAction({ area, access, action, answer }, handler)` (`src/server/store-action.ts`, listed in `DELEGATED_GUARDS`): the key
+is checked once (a member without it gets *You do not have access to this.* in their language, never a 404), the handler runs in
+the person's language, and anything it throws that nobody planned for is logged once (`action.failed`, the action's name and the
+store, never the error's words in the form) and answered with a plain line; `redirect()`, `notFound()` and `refresh()` pass
+through (`unstable_rethrow`). `answer(message, kind)` builds each action's own result shape, refused or failed. Every action of
+orders (11), returns (15) and books (19) runs through it; their helpers take the member instead of guarding again. The done-when's
+test: an approval that throws answers *That did not go through…* in the form with one `action.failed` line and changes nothing
+(`returns-actions.int.test.ts`, which fails with the catch taken out); the wrapper's own tests in `store-action.test.ts`. Other
+`actions.ts` files move onto it when touched (`docs/rules/admin/platform.md`).
+
+**Step 1.5.** 11 Nov 2026: the app reaches the database as the `postgres` role through Supavisor's transaction mode, which drops a
+connection's own start-up settings, so the limits are the role's: migration `20261111151548_statement_timeouts` sets
+`statement_timeout = 15s` and `lock_timeout = 5s` on it, on Supabase only (where `supabase_admin` exists), so developers' and CI's
+databases stay unbounded. FD9 no longer matched in part: Supabase had already given the role
+`idle_in_transaction_session_timeout = 30s` and `transaction_timeout = 60s`. A job that needs longer raises its own limit for one
+transaction with `longerTimeout()` (`src/db/client.ts`, `set local`, at most 55 s under the 60 s transaction cap); the migration
+runner already sets its own per file. Production's slowest statement by the role over its recorded history was 6.6 s (a schema
+query of Supabase's tools), so nothing the app or the nightly jobs run comes near the limit. The five payment webhook routes
+(Stripe's store, Connect, Connect accounts and billing, Mollie) have `maxDuration = 60`, and `cron-routes.scan.test.ts` requires
+one on every route under `api/stripe`, `api/mollie` and in a `webhook(s)` folder. The done-when's check on a database with the
+migration's branch taken: `select pg_sleep(20)` was cancelled at 15 s, and one that raised its limit ran through. Live 11 Nov 2026
+17:23 UTC (D567): in production the role carries both limits and `select pg_sleep(20)` is cancelled.
+
+**Step 1.6.** 11 Nov 2026 (D569): a migration whose first line is `-- kaizen:no-transaction` runs statement by statement outside a
+transaction (`scripts/db-migrate.mjs`, and the same split in `db-setup.mjs`, `db-template.mjs` and the tests' PGlite,
+`statementsOf()` in `scripts/lib/migrations.mjs`), its ledger row after the last; a failed concurrent build's invalid index is
+dropped again, so the file runs again once fixed. `migration-safety.scan.test.ts` fails a plain `create index`, or a foreign key
+or check added without `not valid`, on orders, order_lines, visits, products, product_variants, customers, carts and cart_lines in
+any migration after `20261111172838` (unless the file makes the table), a `concurrently` in an unmarked file, and a `not valid`
+constraint never validated; run over the old files it finds 185 such statements. `migrate-no-transaction.int.test.ts` builds an
+index concurrently on a scratch database, sees the unmarked file refused and a failing unique build leave no ledger row and no
+index. The rule is in `docs/ci-migrations.md`. No real index was needed: in production every foreign key on these tables is
+indexed, and the largest is 700 kB.
+
+**Step 1.7.** 11 Nov 2026 (D572): the 789 files up to `20261111172838_sms_campaign_index` are four (`…39_baseline_1_schema`,
+`…40_baseline_2_data`, `…41_baseline_3_rules` from `pg_dump`, and `…42_baseline_4_roles_and_supabase` kept by hand), each marked
+`-- kaizen:baseline-through=…`; `scripts/db-migrate.mjs` records them without running them where the ledger has the cut; in
+production CI's `release` job does so. `scripts/squash-migrations.mjs` checks before it writes: a database from the files and one
+from the baseline give the same `pg_dump`, the schema line by line (63 checks differ only in parentheses Postgres regroups) and
+the data row by row. The old files are in `supabase/archive/20261111172838/`; the tests that read one (`commerce.test.ts`'s two,
+the plan-features tests, the VAT replay and others) go through `src/db/migration-files.ts`. `pnpm db:check` passes. A fresh
+database with the demo catalogue takes about five seconds.
 
 ## 1. The headline
 
