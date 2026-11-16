@@ -4,8 +4,10 @@ import { createRequire } from "node:module";
 
 import type { renderToStaticMarkup as RenderToStaticMarkup } from "react-dom/server";
 
+import { CONTRACT_CSS, ContractDocumentView } from "@/components/documents/contract-document-view";
 import { OrderDocumentView } from "@/components/documents/order-document-view";
 import { DOCUMENT_CSS } from "@/components/work/invoice-document";
+import type { ContractSnapshot } from "@/lib/contract-fields";
 import type { CreditNoteSnapshot } from "@/lib/credit-allocation";
 import type { OrderInvoiceSnapshot } from "@/lib/invoice-snapshot";
 
@@ -31,4 +33,10 @@ const escapeHtml = (value: string) => value.replace(/[&<>"']/g, (c) => ({ "&": "
 export function documentHtml(snapshot: OrderInvoiceSnapshot | CreditNoteSnapshot): string {
   const body = renderer()(<OrderDocumentView snapshot={snapshot} />);
   return `<!doctype html><html lang="${escapeHtml(snapshot.language)}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="robots" content="noindex"><title>${escapeHtml(snapshot.number)}</title><style>${DOCUMENT_CSS}</style></head><body>${body}</body></html>`;
+}
+
+/** A contract as one HTML page for its PDF (D695): `ContractDocumentView` from the snapshot alone, in the same closed shell as a document's. */
+export function contractHtml(snapshot: ContractSnapshot): string {
+  const body = renderer()(<ContractDocumentView snapshot={snapshot} />);
+  return `<!doctype html><html lang="${escapeHtml(snapshot.language)}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="robots" content="noindex"><title>${escapeHtml(snapshot.title)}</title><style>${CONTRACT_CSS}</style></head><body>${body}</body></html>`;
 }

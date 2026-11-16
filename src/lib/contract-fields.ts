@@ -112,10 +112,26 @@ export type FilledBlock =
   | { type: "quote_lines"; lines: QuoteLineFact[]; total: string }
   | { type: "signatures" };
 
-/** What is frozen when a contract is sent (`contracts.snapshot`). */
-export type ContractSnapshot = { version: 1; title: string; language: string; blocks: FilledBlock[] };
+/** Who signs, in their order, as the contract names them: the signature boxes. */
+export type SnapshotSigner = { role: "store" | "customer" | "other"; name: string };
 
-export type FillProblem = { kind: "missing_field"; key: ContractField } | { kind: "no_quote" } | { kind: "no_signatures" } | { kind: "empty" };
+/** What is frozen when a contract is sent (`contracts.snapshot`): the filled blocks, who the parties are, and who signs. */
+export type ContractSnapshot = {
+  version: 1;
+  title: string;
+  language: string;
+  /** The store's business as the contract names it, and the customer's side (the company, else the person). */
+  parties: { store: { name: string; orgNumber: string | null; address: string | null }; customer: { name: string; orgNumber: string | null; address: string | null } };
+  blocks: FilledBlock[];
+  signers: SnapshotSigner[];
+};
+
+export type FillProblem =
+  | { kind: "missing_field"; key: ContractField }
+  | { kind: "no_signatures" }
+  | { kind: "empty" }
+  | { kind: "no_store_signer" }
+  | { kind: "no_customer_signer" };
 
 const fill = (text: string, values: ContractFacts["values"], missing: Set<ContractField>): string =>
   text.replace(FIELD, (whole, key: string) => {
@@ -130,10 +146,11 @@ const fill = (text: string, values: ContractFacts["values"], missing: Set<Contra
 
 /**
  * The contract filled in: optional clauses left out drop away, each field takes its value, the quote's block takes the quote's lines. It
- * is ready to send only with no problem: every field named has a value, a quote block has a quote, and there is a place to sign.
+ * is ready to send only with no problem: every field named has a value, there is something to sign and a place to sign it, and both
+ * sides have a signer. A quote block with no quote linked is left out.
  */
 export function fillContract(
-  input: { title: string; language: string; blocks: readonly ContractBlock[] },
+  input: { title: string; language: string; blocks: readonly ContractBlock[]; parties: ContractSnapshot["parties"]; signers: readonly SnapshotSigner[] },
   facts: ContractFacts,
 ): { ok: true; snapshot: ContractSnapshot } | { ok: false; problems: FillProblem[]; snapshot: ContractSnapshot } {
   const missing = new Set<ContractField>();
@@ -149,8 +166,8 @@ export function fillContract(
         if (block.included || !block.optional) blocks.push({ type: "clause", id: block.id, title: fill(block.title, facts.values, missing), text: fill(block.text, facts.values, missing) });
         break;
       case "quote_lines":
+        // With no quote linked the table is left out: the contract is its own document, the quote only a list it may show.
         if (facts.quote) blocks.push({ type: "quote_lines", lines: facts.quote.lines, total: facts.quote.total });
-        else if (!problems.some((p) => p.kind === "no_quote")) problems.push({ kind: "no_quote" });
         break;
       case "signatures":
         blocks.push({ type: "signatures" });
@@ -160,7 +177,16 @@ export function fillContract(
   for (const key of missing) problems.push({ kind: "missing_field", key });
   if (!blocks.some((b) => b.type !== "signatures")) problems.push({ kind: "empty" });
   if (!blocks.some((b) => b.type === "signatures")) problems.push({ kind: "no_signatures" });
-  const snapshot: ContractSnapshot = { version: 1, title: input.title, language: input.language, blocks };
+  if (!input.signers.some((g) => g.role === "store")) problems.push({ kind: "no_store_signer" });
+  if (!input.signers.some((g) => g.role === "customer")) problems.push({ kind: "no_customer_signer" });
+  const snapshot: ContractSnapshot = {
+    version: 1,
+    title: input.title,
+    language: input.language,
+    parties: input.parties,
+    blocks,
+    signers: input.signers.map((g) => ({ role: g.role, name: g.name })),
+  };
   return problems.length ? { ok: false, problems, snapshot } : { ok: true, snapshot };
 }
 

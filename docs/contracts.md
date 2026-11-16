@@ -85,7 +85,7 @@ The store's signer signs inside the admin (already signed in with two-step), wit
 - **Webhooks** (D354) `contract.sent|signed|declined`; the Admin API (D355) reads contracts.
 - **Retention**: a signed contract is kept 3 years 6 months after the agreement ends (Bokføringsloven § 13(2)); erasure keeps it
   (legal obligation) and removes the person from everything else; the export lists contracts under purpose `sales`.
-- **Permissions**: `contracts:read`, `contracts:write` (draft, send), `contracts:sign` (sign for the store: the deal's owner or a named member, section 8).
+- **Permissions** (as built): a deal's: reading with `customers:read`, drafting, sending and cancelling with `customers:write`. The store's signer is a member of the store, held by the database (the deal's owner, else the one who made the draft, else a member Lisa names); no new permission key, so roles need no change.
 - **Usage and limits** counts contracts sent per month; the feature sits under `sales` (D464), offered as Deals is.
 - **The platform**: Kaizena Flow's own store has Deals (D466), so it gets contracts in the same change (its own sales
   agreements); `docs/platform-parity.md` needs no new row.
@@ -98,7 +98,16 @@ SHA-256, the events append-only, sending moves the deal to the contract stage, t
 `src/db/contracts.test.ts`, the blocks and fields (`src/lib/contract-fields.ts`), and the registers: the person's export lists their
 contracts (`marketing`, with their deals), erasure deletes the contracts sent to the person or naming their address as a signer (nothing
 is signed before step 3, which keeps a signed one under bookkeeping law instead), a merge moves them (`commerce.customer_merge`), the
-whole-store file holds the templates and a store copy takes none. The sent PDF's rendering is the next commit of step 1.
+whole-store file holds the templates and a store copy takes none.
+
+*Step 1, the server and the PDF (16 November 2026):* `src/server/contracts.ts` makes Homer's first template in the store's language
+(`src/lib/contract-templates.ts`, Norwegian bokmål and English), a draft on a deal from it (the deal's owner as the store's signer, its
+person as the customer's), changes a draft's words and signers, sends it (`fillContract()` with the facts from the deal, its person and
+company, the store's business details and the first linked quote, its amounts written by `formatMoney()`; a field with no value stops it and
+is named), draws the PDF from the snapshot (`ContractDocumentView`, `contractHtml()`, the invoices' closed Chromium page), keeps it once in
+`documents` under `{store}/contracts/` and freezes snapshot, file and SHA-256 in one statement; a new version and a cancel. A quote block
+with no quote linked is left out rather than stopping the send. Erasure removes the person's contract files after its transaction.
+`src/server/contracts.int.test.ts`. Nothing in the admin calls it yet (step 2), and sending emails nobody until the signing page (step 3).
 
 
 1. Tables, rules and their tests; `contract-fields.ts`; snapshot and the sent PDF.
@@ -114,4 +123,4 @@ whole-store file holds the templates and a store copy takes none. The sent PDF's
 - **A contract is always its own document**: a quote is never signed as the contract. A template may still show the linked
   quote's lines as a block (fields only), but the thing signed is the contract.
 - **The store signs by the deal's owner or a named signer**: the contract's store signer is the deal's owner by default; Lisa
-  may name another member allowed to sign (`contracts:sign`). With no owner on the deal, a named signer is required to send.
+  may name another member of the store. With no active owner on the deal, the one who makes the draft is its store signer.

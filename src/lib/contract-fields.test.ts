@@ -11,6 +11,10 @@ const blocks: ContractBlock[] = [
   { type: "signatures" },
 ];
 
+const parties = { store: { name: "Butikken AS", orgNumber: "999 888 777", address: null }, customer: { name: "Kunde AS", orgNumber: null, address: null } };
+const signers = [{ role: "store" as const, name: "Selger" }, { role: "customer" as const, name: "Kari Nordmann" }];
+const base = { title: "Avtale", language: "nb", parties, signers };
+
 const facts: ContractFacts = {
   values: { "company.name": "Kunde AS", "store.name": "Butikken", "customer.name": "Kari Nordmann", "contract.date": "16.11.2026" },
   quote: { lines: [{ name: "Oppsett", quantity: 1, unitPrice: "10 000,00 kr", total: "10 000,00 kr" }], total: "12 500,00 kr" },
@@ -41,7 +45,7 @@ describe("a contract's blocks", () => {
 
 describe("filling a contract in", () => {
   it("fills every field, drops a clause left out, and takes the quote's lines", () => {
-    const result = fillContract({ title: "Avtale", language: "nb", blocks }, facts);
+    const result = fillContract({ ...base, blocks }, facts);
     expect(result.ok).toBe(true);
     expect(result.snapshot.blocks).toEqual([
       { type: "heading", text: "Avtale med Kunde AS" },
@@ -54,22 +58,30 @@ describe("filling a contract in", () => {
 
   it("keeps a required clause even when marked left out", () => {
     const required: ContractBlock[] = [{ type: "clause", id: "law", title: "Lov", text: "Norsk rett.", optional: false, included: false }, { type: "signatures" }];
-    expect(fillContract({ title: "A", language: "nb", blocks: required }, facts).snapshot.blocks[0]).toEqual({ type: "clause", id: "law", title: "Lov", text: "Norsk rett." });
+    expect(fillContract({ ...base, blocks: required }, facts).snapshot.blocks[0]).toEqual({ type: "clause", id: "law", title: "Lov", text: "Norsk rett." });
   });
 
   it("says which fields have no value, and never sends a blank or a brace as one", () => {
-    const result = fillContract({ title: "A", language: "nb", blocks }, { values: { ...facts.values, "company.name": "  " }, quote: facts.quote });
+    const result = fillContract({ ...base, blocks }, { values: { ...facts.values, "company.name": "  " }, quote: facts.quote });
     expect(result).toMatchObject({ ok: false, problems: [{ kind: "missing_field", key: "company.name" }] });
   });
 
-  it("needs a quote for a quote block, something to sign and a place to sign it", () => {
-    expect(fillContract({ title: "A", language: "nb", blocks }, { ...facts, quote: null })).toMatchObject({ ok: false, problems: [{ kind: "no_quote" }] });
-    expect(fillContract({ title: "A", language: "nb", blocks: [blocks[1]] }, facts)).toMatchObject({ ok: false, problems: [{ kind: "no_signatures" }] });
-    expect(fillContract({ title: "A", language: "nb", blocks: [{ type: "signatures" }] }, facts)).toMatchObject({ ok: false, problems: [{ kind: "empty" }] });
+  it("leaves the quote's table out with no quote linked, and needs something to sign and a place to sign it", () => {
+    const noQuote = fillContract({ ...base, blocks }, { ...facts, quote: null });
+    expect(noQuote.ok).toBe(true);
+    expect(noQuote.snapshot.blocks.some((b) => b.type === "quote_lines")).toBe(false);
+    expect(fillContract({ ...base, blocks: [blocks[1]] }, facts)).toMatchObject({ ok: false, problems: [{ kind: "no_signatures" }] });
+    expect(fillContract({ ...base, blocks: [{ type: "signatures" }] }, facts)).toMatchObject({ ok: false, problems: [{ kind: "empty" }] });
+  });
+
+  it("needs the store's signer and the customer's, and keeps who signs in order", () => {
+    expect(fillContract({ ...base, signers: [signers[1]], blocks }, facts)).toMatchObject({ ok: false, problems: [{ kind: "no_store_signer" }] });
+    expect(fillContract({ ...base, signers: [signers[0]], blocks }, facts)).toMatchObject({ ok: false, problems: [{ kind: "no_customer_signer" }] });
+    expect(fillContract({ ...base, blocks }, facts).snapshot).toMatchObject({ parties, signers });
   });
 
   it("leaves a field's value as text: markup stays the words it is", () => {
-    const result = fillContract({ title: "A", language: "nb", blocks: [blocks[1], blocks[5]] }, { values: { ...facts.values, "customer.name": "<script>x</script>" }, quote: null });
+    const result = fillContract({ ...base, blocks: [blocks[1], blocks[5]] }, { values: { ...facts.values, "customer.name": "<script>x</script>" }, quote: null });
     expect(result.snapshot.blocks[0]).toEqual({ type: "paragraph", text: "Mellom Butikken og <script>x</script>, 16.11.2026." });
   });
 });
