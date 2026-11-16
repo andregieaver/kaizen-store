@@ -12,13 +12,27 @@ type Row = Record<string, unknown>;
 
 vi.mock("server-only", () => ({}));
 vi.mock("next/cache", () => ({ cacheLife: () => {}, cacheTag: () => {}, updateTag: () => {}, refresh: () => {} }));
-// Storage is Supabase's: here, removing a file always works.
+// Storage is Supabase's: here, removing a file always works, and an upload is kept under the paths it would have (bloat review
+// step 0.33: the 800 px copy beside the 480 px one, when given).
 const removed: string[][] = [];
 vi.mock("./media", async (original) => ({
   ...(await original<typeof import("./media")>()),
   removeStoredFiles: async (_bucket: string, paths: string[]) => {
     removed.push(paths);
     return true;
+  },
+  uploadProductImage: async (folder: string, image: File, thumbnail: File, medium?: File | null) => {
+    const name = `${folder}/${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`;
+    const extension = (file: File) => file.type.split("/")[1];
+    const paths = { image: `${name}.${extension(image)}`, thumbnail: `${name}-480.${extension(thumbnail)}`, medium: medium ? `${name}-800.${extension(medium)}` : null };
+    const url = (path: string) => `https://files.example.com/storage/v1/object/public/product-media/${path}`;
+    return {
+      ok: true,
+      url: url(paths.image),
+      thumbnailUrl: url(paths.thumbnail),
+      mediumUrl: paths.medium ? url(paths.medium) : null,
+      stored: { bucket: "product-media", path: paths.image, thumbnailPath: paths.thumbnail, mediumPath: paths.medium },
+    };
   },
 }));
 process.env.SETTINGS_ENCRYPTION_KEY ??= randomBytes(32).toString("base64");
@@ -314,5 +328,59 @@ describe("the media library (D88)", () => {
       where m.store_id = ${storeId}::uuid and m.file_name like '%-875d-%'
     `);
     expect(vectors).toEqual({ described: 1, bare: 0 });
+  });
+
+  const webp = (name: string) => new File([new Uint8Array([1, 2, 3])], name, { type: "image/webp" });
+  let threeFiles: { id: string; url: string };
+
+  it("keeps a picture's 800 px copy with it and deletes its three files; a picture without one keeps two (bloat review 0.33)", async () => {
+    const stored = await library.storePicture({ storeId, accountId }, webp("tre.webp"), webp("tre-480.webp"), {
+      fileName: `tre-${run}.webp`,
+      medium: webp("tre-800.webp"),
+    });
+    expect(stored).toMatchObject({ ok: true });
+    const id = String((stored as { id?: string }).id);
+    const [row] = await db().execute<Row>(sql`select url, medium_url, medium_path from commerce.media where id = ${id}::uuid`);
+    expect(String(row.medium_url)).toMatch(/-800\.webp$/);
+    expect(String(row.medium_path)).toMatch(new RegExp(`^${storeId}/.*-800\\.webp$`));
+    threeFiles = { id, url: String(row.url) };
+
+    const plain = await library.storePicture({ storeId, accountId }, webp("to.webp"), webp("to-480.webp"), { fileName: `to-${run}.webp` });
+    const plainId = String((plain as { id?: string }).id);
+    const [two] = await db().execute<Row>(sql`select medium_url, medium_path from commerce.media where id = ${plainId}::uuid`);
+    expect(two).toEqual({ medium_url: null, medium_path: null });
+    removed.length = 0;
+    expect(await library.deleteMedia(owner(), accountId, plainId)).toEqual({ ok: true });
+    expect(removed.flat()).toHaveLength(2);
+  });
+
+  it("copies a picture's 800 px copy into a duplicated store's own folder (bloat review 0.33)", async () => {
+    const [request] = await db().execute<Row>(sql`
+      insert into commerce.access_requests (email, name, store_name) values (${`copy-${storeSlug}@example.com`}, 'Test', 'Test') returning id
+    `);
+    const [other] = await db().execute<Row>(sql`select commerce.approve_access_request(${String(request.id)}::uuid, ${`copy-${storeSlug}`}, 'Test', null) as id`);
+    const otherId = String(other.id);
+    const file = (await library.libraryFilesByUrl(storeId, [threeFiles.url])).get(threeFiles.url);
+    expect(file?.mediumPath).toMatch(/-800\.webp$/);
+    const calls: [string, string, string][] = [];
+    const copyFile = (bucket: string, from: string, to: string) => {
+      calls.push([bucket, from, to]);
+      return Promise.resolve(`https://example.test/${to}`);
+    };
+    const copy = await library.copyToLibrary({ storeId: otherId, accountId }, file!, copyFile);
+    expect(copy).not.toBeNull();
+    expect(calls).toHaveLength(3);
+    expect(calls[2][1]).toBe(file!.mediumPath);
+    expect(calls[2][2]).toMatch(new RegExp(`^${otherId}/.*-800\\.webp$`));
+    const [row] = await db().execute<Row>(sql`select medium_url, medium_path from commerce.media where url = ${copy!.url}`);
+    expect(String(row.medium_path)).toMatch(/-800\.webp$/);
+    expect(String(row.medium_url)).toBe(`https://example.test/${String(row.medium_path)}`);
+
+    // Deleting the original picture removes its three files, the 800 px copy among them.
+    removed.length = 0;
+    expect(await library.deleteMedia(owner(), accountId, threeFiles.id)).toEqual({ ok: true });
+    expect(removed).toHaveLength(1);
+    expect(removed[0]).toHaveLength(3);
+    expect(removed[0][2]).toMatch(/-800\.webp$/);
   });
 });

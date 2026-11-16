@@ -44,9 +44,9 @@ async function markFile(storage: Storage, bucket: string, path: string, source: 
 export async function markAiPictures(deps: { storage?: Storage; limit?: number } = {}): Promise<{ marked: number; found: number; failed: number }> {
   const storage = deps.storage ?? STORAGE;
   const rows = await typedRows(
-    z.object({ id: col.uuid, bucket: col.text, path: col.text, thumbnail_path: col.textOrNull, made_by: col.text }),
+    z.object({ id: col.uuid, bucket: col.text, path: col.text, thumbnail_path: col.textOrNull, medium_path: col.textOrNull, made_by: col.text }),
     sql`
-      select id, bucket, path, thumbnail_path, made_by from commerce.media
+      select id, bucket, path, thumbnail_path, medium_path, made_by from commerce.media
       where made_by in ('ai_made', 'ai_edited') and ai_marked_at is null and kind = 'image' and content_type = 'image/webp'
       order by created_at, id
       limit ${deps.limit ?? MARKS_PER_RUN}
@@ -56,7 +56,7 @@ export async function markAiPictures(deps: { storage?: Storage; limit?: number }
   for (const row of rows) {
     const source: AiSource = row.made_by === "ai_edited" ? "edited" : "made";
     try {
-      const files = [row.path, ...(row.thumbnail_path ? [row.thumbnail_path] : [])];
+      const files = [row.path, ...(row.thumbnail_path ? [row.thumbnail_path] : []), ...(row.medium_path ? [row.medium_path] : [])];
       const outcomes = [];
       for (const path of files) outcomes.push(await markFile(storage, row.bucket, path, source));
       if (outcomes.some((outcome) => outcome === null)) {
