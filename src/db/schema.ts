@@ -19018,6 +19018,8 @@ export const dealStages = commerce.table(
     probability: integer("probability"),
     /** The stage a deal moves to when its linked quote is sent; at most one a pipeline. */
     quoteStage: boolean("quote_stage").notNull().default(false),
+    /** The stage a deal moves to when its contract is sent (D695); at most one a pipeline. */
+    contractStage: boolean("contract_stage").notNull().default(false),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
   },
@@ -19026,6 +19028,7 @@ export const dealStages = commerce.table(
     unique("deal_stages_pipeline_key").on(t.storeId, t.pipelineId, t.id),
     foreignKey({ name: "deal_stages_pipeline_fk", columns: [t.storeId, t.pipelineId], foreignColumns: [dealPipelines.storeId, dealPipelines.id] }).onDelete("cascade"),
     uniqueIndex("deal_stages_quote_key").on(t.storeId, t.pipelineId).where(sql`${t.quoteStage}`),
+    uniqueIndex("deal_stages_contract_key").on(t.storeId, t.pipelineId).where(sql`${t.contractStage}`),
     index("deal_stages_order_idx").on(t.storeId, t.pipelineId, t.position),
     check("deal_stages_name", sql`${t.name} = btrim(${t.name}) and char_length(${t.name}) between 1 and 60`),
     check("deal_stages_probability", sql`${t.probability} is null or ${t.probability} between 0 and 100`),
@@ -19054,7 +19057,7 @@ export const deals = commerce.table(
     currency: char("currency", { length: 3 }).notNull(),
     expectedCloseOn: date("expected_close_on", { mode: "string" }),
     closedAt: timestamp("closed_at", { withTimezone: true }),
-    /** `person`, `order`, `work_invoice` or `platform` (Kaizena Flow's own records, in its own store, D467): who or what closed it. */
+    /** `person`, `order`, `work_invoice`, `platform` (Kaizena Flow's own records, in its own store, D467) or `contract` (signed, D695): who or what closed it. */
     closedVia: text("closed_via"),
     closeReason: text("close_reason"),
     stageEnteredAt: timestamp("stage_entered_at", { withTimezone: true }).notNull().defaultNow(),
@@ -19079,7 +19082,7 @@ export const deals = commerce.table(
     check("deals_title", sql`${t.title} = btrim(${t.title}) and char_length(${t.title}) between 1 and 200`),
     check("deals_status", sql`${t.status} in ('open', 'won', 'lost')`),
     check("deals_closed", sql`(${t.status} = 'open') = (${t.closedAt} is null) and (${t.closedAt} is null) = (${t.closedVia} is null)`),
-    check("deals_closed_via", sql`${t.closedVia} is null or ${t.closedVia} in ('person', 'order', 'work_invoice', 'platform')`),
+    check("deals_closed_via", sql`${t.closedVia} is null or ${t.closedVia} in ('person', 'order', 'work_invoice', 'platform', 'contract')`),
     check("deals_reason", sql`${t.closeReason} is null or (${t.status} <> 'open' and char_length(${t.closeReason}) between 1 and 200)`),
     check("deals_estimate", sql`${t.estimateMinor} is null or ${t.estimateMinor} between 0 and 1000000000000`),
     check("deals_currency", sql`${t.currency} ~ '^[A-Z]{3}$'`),
@@ -19139,6 +19142,208 @@ export const dealMoves = commerce.table(
     index("deal_moves_deal_idx").on(t.storeId, t.dealId, t.at),
     index("deal_moves_moved_by_idx").on(t.movedBy),
     check("deal_moves_status", sql`${t.status} in ('open', 'won', 'lost')`),
+  ],
+);
+
+// ---------------------------------------------------------------------------------------------------------------------
+// Contracts for deals, signed on our own page (D695, `docs/contracts.md`)
+// ---------------------------------------------------------------------------------------------------------------------
+
+/**
+ * A store's contract templates: blocks of text, fields and signature boxes (`src/lib/contract-fields.ts` says what a block may be).
+ * Archived, never deleted once a contract used it; `version` rises by a trigger when the blocks change, and each contract keeps the one it
+ * was made from.
+ */
+export const contractTemplates = commerce.table(
+  "contract_templates",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    storeId: storeId().references(() => stores.id),
+    name: text("name").notNull(),
+    /** The language the template is written in (a store language, `nb`, `en`, …). */
+    language: text("language").notNull(),
+    blocks: jsonb("blocks").notNull().default(sql`'[]'::jsonb`),
+    version: integer("version").notNull().default(1),
+    /** `email`: an email code and the typed name (level 1). Level 2 (national ID) adds a value when it is built. */
+    signingLevel: text("signing_level").notNull().default("email"),
+    /** How many days a sent contract may be signed. */
+    expiresDays: integer("expires_days").notNull().default(30),
+    /** Days between reminders to a signer who has not signed, or none. */
+    reminderDays: integer("reminder_days"),
+    archivedAt: timestamp("archived_at", { withTimezone: true }),
+    createdBy: uuid("created_by").references(() => accounts.id, { onDelete: "set null" }),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [
+    unique("contract_templates_store_id_key").on(t.storeId, t.id),
+    uniqueIndex("contract_templates_name_key").on(t.storeId, sql`lower(${t.name})`).where(sql`${t.archivedAt} is null`),
+    index("contract_templates_created_by_idx").on(t.createdBy),
+    check("contract_templates_name", sql`${t.name} = btrim(${t.name}) and char_length(${t.name}) between 1 and 80`),
+    check("contract_templates_language", sql`${t.language} ~ '^[a-z]{2}(-[A-Z]{2})?$'`),
+    check("contract_templates_blocks", sql`jsonb_typeof(${t.blocks}) = 'array'`),
+    check("contract_templates_level", sql`${t.signingLevel} in ('email')`),
+    check("contract_templates_expires", sql`${t.expiresDays} between 1 and 365`),
+    check("contract_templates_reminder", sql`${t.reminderDays} is null or ${t.reminderDays} between 1 and 60`),
+  ],
+);
+
+/**
+ * A contract on a deal. A draft holds its own copy of the template's blocks to change; sending freezes it: the blocks filled in
+ * (`snapshot`), then its PDF and that file's SHA-256, once. After that only its status moves on (signed when every signer has, declined
+ * when one declines, expired, cancelled) and the signed PDF is set once; a change is a new contract that `replaces_id` this one.
+ */
+export const contracts = commerce.table(
+  "contracts",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    storeId: storeId().references(() => stores.id),
+    dealId: uuid("deal_id").notNull(),
+    templateId: uuid("template_id"),
+    templateVersion: integer("template_version"),
+    /** Who the contract is with, from the deal when it is made; erasure and deletion set them null. */
+    customerId: uuid("customer_id"),
+    companyId: uuid("company_id"),
+    title: text("title").notNull(),
+    language: text("language").notNull(),
+    /** `draft`, `sent`, `signed`, `declined`, `expired` or `cancelled`. */
+    status: text("status").notNull().default("draft"),
+    /** The draft's blocks, as the template's, changed by staff while it is a draft. */
+    blocks: jsonb("blocks").notNull().default(sql`'[]'::jsonb`),
+    /** What was sent: the blocks with every field filled in, frozen. */
+    snapshot: jsonb("snapshot"),
+    pdfPath: text("pdf_path"),
+    pdfSha256: text("pdf_sha256"),
+    signedPdfPath: text("signed_pdf_path"),
+    signedPdfSha256: text("signed_pdf_sha256"),
+    signingLevel: text("signing_level").notNull().default("email"),
+    reminderDays: integer("reminder_days"),
+    sentAt: timestamp("sent_at", { withTimezone: true }),
+    sentBy: uuid("sent_by").references(() => accounts.id, { onDelete: "set null" }),
+    expiresAt: timestamp("expires_at", { withTimezone: true }),
+    completedAt: timestamp("completed_at", { withTimezone: true }),
+    closedAt: timestamp("closed_at", { withTimezone: true }),
+    replacesId: uuid("replaces_id"),
+    createdBy: uuid("created_by").references(() => accounts.id, { onDelete: "set null" }),
+    updatedBy: uuid("updated_by"),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [
+    unique("contracts_store_id_key").on(t.storeId, t.id),
+    foreignKey({ name: "contracts_deal_fk", columns: [t.storeId, t.dealId], foreignColumns: [deals.storeId, deals.id] }).onDelete("cascade"),
+    foreignKey({ name: "contracts_template_fk", columns: [t.storeId, t.templateId], foreignColumns: [contractTemplates.storeId, contractTemplates.id] }),
+    customerRef("contracts_customer_fk", { storeId: t.storeId, customerId: t.customerId }),
+    foreignKey({ name: "contracts_company_fk", columns: [t.storeId, t.companyId], foreignColumns: [customerCompanies.storeId, customerCompanies.id] }),
+    foreignKey({ name: "contracts_replaces_fk", columns: [t.storeId, t.replacesId], foreignColumns: [t.storeId, t.id] }),
+    uniqueIndex("contracts_replaces_key").on(t.storeId, t.replacesId).where(sql`${t.replacesId} is not null`),
+    index("contracts_deal_idx").on(t.storeId, t.dealId, t.createdAt),
+    index("contracts_customer_idx").on(t.storeId, t.customerId).where(sql`${t.customerId} is not null`),
+    index("contracts_company_idx").on(t.storeId, t.companyId).where(sql`${t.companyId} is not null`),
+    index("contracts_template_idx").on(t.storeId, t.templateId).where(sql`${t.templateId} is not null`),
+    index("contracts_open_idx").on(t.status, t.expiresAt).where(sql`${t.status} = 'sent'`),
+    index("contracts_sent_by_idx").on(t.sentBy),
+    index("contracts_created_by_idx").on(t.createdBy),
+    check("contracts_title", sql`${t.title} = btrim(${t.title}) and char_length(${t.title}) between 1 and 200`),
+    check("contracts_language", sql`${t.language} ~ '^[a-z]{2}(-[A-Z]{2})?$'`),
+    check("contracts_status", sql`${t.status} in ('draft', 'sent', 'signed', 'declined', 'expired', 'cancelled')`),
+    check("contracts_blocks", sql`jsonb_typeof(${t.blocks}) = 'array'`),
+    check("contracts_level", sql`${t.signingLevel} in ('email')`),
+    check("contracts_reminder", sql`${t.reminderDays} is null or ${t.reminderDays} between 1 and 60`),
+    check(
+      "contracts_sent",
+      sql`(${t.status} = 'draft') = (${t.sentAt} is null) and (${t.sentAt} is null) = (${t.snapshot} is null) and (${t.sentAt} is null) = (${t.expiresAt} is null)`,
+    ),
+    check("contracts_signed", sql`(${t.status} = 'signed') = (${t.completedAt} is not null)`),
+    check("contracts_closed", sql`(${t.status} in ('declined', 'expired', 'cancelled')) = (${t.closedAt} is not null)`),
+    check("contracts_pdf", sql`(${t.pdfPath} is null) = (${t.pdfSha256} is null) and (${t.pdfPath} is null or ${t.sentAt} is not null)`),
+    check("contracts_signed_pdf", sql`(${t.signedPdfPath} is null) = (${t.signedPdfSha256} is null) and (${t.signedPdfPath} is null or ${t.status} = 'signed')`),
+    check("contracts_sha", sql`(${t.pdfSha256} is null or ${t.pdfSha256} ~ '^[0-9a-f]{64}$') and (${t.signedPdfSha256} is null or ${t.signedPdfSha256} ~ '^[0-9a-f]{64}$')`),
+    check("contracts_not_itself", sql`${t.replacesId} is null or ${t.replacesId} <> ${t.id}`),
+  ],
+);
+
+/**
+ * Who signs a contract, in order: the store's signer (the deal's owner or a named member who may sign) and the customer's. Each has their
+ * own link (`token`) and signs once, against the SHA-256 of the PDF they were shown; signing and declining are kept with their evidence.
+ */
+export const contractSigners = commerce.table(
+  "contract_signers",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    storeId: storeId().references(() => stores.id),
+    contractId: uuid("contract_id").notNull(),
+    /** `store` (a member of the store), `customer` or `other` (a second signer on the customer's side). */
+    role: text("role").notNull(),
+    position: integer("position").notNull(),
+    name: text("name").notNull(),
+    email: text("email").notNull(),
+    /** The store's signer's account; null for the customer's. */
+    accountId: uuid("account_id").references(() => accounts.id, { onDelete: "set null" }),
+    token: text("token").notNull().default(sql`commerce.new_document_token('sig_')`),
+    viewedAt: timestamp("viewed_at", { withTimezone: true }),
+    signedAt: timestamp("signed_at", { withTimezone: true }),
+    signedName: text("signed_name"),
+    /** The SHA-256 of the PDF the signer was shown; equal to the contract's. */
+    documentSha256: text("document_sha256"),
+    /** How the signer proved who they were: `{ method: 'email_code', checkedAt }` at level 1. */
+    evidence: jsonb("evidence"),
+    ip: text("ip"),
+    userAgent: text("user_agent"),
+    declinedAt: timestamp("declined_at", { withTimezone: true }),
+    declineReason: text("decline_reason"),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    foreignKey({ name: "contract_signers_contract_fk", columns: [t.storeId, t.contractId], foreignColumns: [contracts.storeId, contracts.id] }).onDelete("cascade"),
+    uniqueIndex("contract_signers_token_key").on(t.token),
+    uniqueIndex("contract_signers_position_key").on(t.storeId, t.contractId, t.position),
+    uniqueIndex("contract_signers_store_key").on(t.storeId, t.contractId).where(sql`${t.role} = 'store'`),
+    index("contract_signers_account_idx").on(t.accountId),
+    check("contract_signers_role", sql`${t.role} in ('store', 'customer', 'other')`),
+    check("contract_signers_position", sql`${t.position} between 0 and 9`),
+    check("contract_signers_name", sql`${t.name} = btrim(${t.name}) and char_length(${t.name}) between 1 and 200`),
+    check("contract_signers_email", sql`${t.email} = lower(btrim(${t.email})) and ${t.email} ~ '^[^@[:space:]]+@[^@[:space:]]+$' and char_length(${t.email}) <= 254`),
+    check("contract_signers_token", sql`${t.token} ~ '^sig_[A-Za-z0-9_-]{43}$'`),
+    check("contract_signers_once", sql`${t.signedAt} is null or ${t.declinedAt} is null`),
+    check(
+      "contract_signers_signed",
+      sql`(${t.signedAt} is null) = (${t.signedName} is null) and (${t.signedAt} is null) = (${t.documentSha256} is null) and (${t.signedAt} is null) = (${t.evidence} is null)`,
+    ),
+    check("contract_signers_signed_name", sql`${t.signedName} is null or char_length(btrim(${t.signedName})) between 2 and 200`),
+    check("contract_signers_sha", sql`${t.documentSha256} is null or ${t.documentSha256} ~ '^[0-9a-f]{64}$'`),
+    check("contract_signers_reason", sql`${t.declineReason} is null or (${t.declinedAt} is not null and char_length(${t.declineReason}) between 1 and 500)`),
+    check("contract_signers_agent", sql`(${t.ip} is null or char_length(${t.ip}) <= 64) and (${t.userAgent} is null or char_length(${t.userAgent}) <= 500)`),
+  ],
+);
+
+/** What happened to a contract, for its audit page: written once, never changed (deleted only with the contract). */
+export const contractEvents = commerce.table(
+  "contract_events",
+  {
+    id: bigint("id", { mode: "number" }).primaryKey().generatedAlwaysAsIdentity(),
+    storeId: storeId().references(() => stores.id),
+    contractId: uuid("contract_id").notNull(),
+    signerId: uuid("signer_id").references(() => contractSigners.id, { onDelete: "cascade" }),
+    kind: text("kind").notNull(),
+    /** The SHA-256 of the contract's PDF at that moment, where there is one. */
+    documentSha256: text("document_sha256"),
+    ip: text("ip"),
+    userAgent: text("user_agent"),
+    byAccount: uuid("by_account").references(() => accounts.id, { onDelete: "set null" }),
+    at: timestamp("at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    foreignKey({ name: "contract_events_contract_fk", columns: [t.storeId, t.contractId], foreignColumns: [contracts.storeId, contracts.id] }).onDelete("cascade"),
+    index("contract_events_contract_idx").on(t.storeId, t.contractId, t.at),
+    index("contract_events_signer_idx").on(t.signerId),
+    index("contract_events_by_idx").on(t.byAccount),
+    check(
+      "contract_events_kind",
+      sql`${t.kind} in ('sent', 'viewed', 'code_sent', 'code_checked', 'signed', 'declined', 'reminded', 'completed', 'expired', 'cancelled')`,
+    ),
+    check("contract_events_sha", sql`${t.documentSha256} is null or ${t.documentSha256} ~ '^[0-9a-f]{64}$'`),
+    check("contract_events_agent", sql`(${t.ip} is null or char_length(${t.ip}) <= 64) and (${t.userAgent} is null or char_length(${t.userAgent}) <= 500)`),
   ],
 );
 

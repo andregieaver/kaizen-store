@@ -150,6 +150,12 @@ export const PERSONAL_DATA_REASONS_NB: Readonly<Record<string, string>> = {
     "De ansattes notater om en person (D366), knyttet til adressen: eksporteres med markedsføringsopplysningene (ordene og når) og slettes når personens opplysninger slettes.",
   deals:
     "Ansattes salgsmuligheter med en person (D464): hva de kan kjøpe, steg og verdi, og hvorfor den ble tapt; eksporteres med personens notater og slettes når personen slettes (en bedrifts salgsmulighet beholder bedriften og mister personen).",
+  contracts:
+    "Avtaler sendt til en person for signering (D695): det de sa, fylt ut med personens navn og opplysninger; eksporteres med personens salgsmuligheter og slettes når personen slettes (at en signert avtale beholdes etter bokføringsreglene, kommer med signeringen, D695 steg 3).",
+  contract_signers:
+    "Hvem som ble bedt om å signere en avtale (D695), og hvordan de signerte eller hvorfor de avslo, knyttet til personen gjennom avtalen: eksporteres og slettes med den.",
+  contract_events:
+    "En avtales logg (D695): når den ble sendt, åpnet, signert eller avslått, fra hvilken adresse og nettleser, knyttet gjennom avtalen: eksporteres og slettes med den.",
   activities:
     "De ansattes samtaler, møter og oppgaver om en person (D468): hva og når, og det som ble skrevet om dem; eksporteres med personens notater og slettes når personen slettes (en aktivitet om en bedrift eller en avtale beholder den og mister personen).",
   customer_tags: "De ansattes stikkord på en person (D296), knyttet til adressen: eksporteres med markedsføringsopplysningene og slettes når personens opplysninger slettes.",

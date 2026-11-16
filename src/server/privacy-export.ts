@@ -1073,6 +1073,40 @@ async function loadCustomerDeals(s: PrivacySubject): Promise<NonNullable<ExportI
   }));
 }
 
+/** Contracts sent to the person, or naming one of their addresses as a signer (D695): what was sent and each signer's steps. */
+async function loadCustomerContracts(s: PrivacySubject): Promise<NonNullable<ExportInput["customerContracts"]>> {
+  const addresses = textList(s.addresses);
+  const contracts = await typedRows(
+    z.object({ id: col.uuid, title: col.text, status: col.text, sent_at: col.timestampOrNull, completed_at: col.timestampOrNull, snapshot: z.json() }),
+    sql`
+      select c.id, c.title, c.status, c.sent_at, c.completed_at, c.snapshot from commerce.contracts c
+      where c.store_id = ${s.storeId}::uuid
+        and (c.customer_id = ${s.customerId}::uuid
+          or exists (select 1 from commerce.contract_signers g where g.store_id = c.store_id and g.contract_id = c.id and g.email = any(${addresses})))
+      order by c.created_at, c.id
+    `,
+  );
+  if (contracts.length === 0) return [];
+  const signers = await typedRows(
+    z.object({
+      contract_id: col.uuid, role: col.text, name: col.text, email: col.text, viewed_at: col.timestampOrNull, signed_at: col.timestampOrNull,
+      signed_name: col.textOrNull, declined_at: col.timestampOrNull, decline_reason: col.textOrNull,
+    }),
+    sql`
+      select contract_id, role, name, email, viewed_at, signed_at, signed_name, declined_at, decline_reason from commerce.contract_signers
+      where store_id = ${s.storeId}::uuid and contract_id = any(${uuidList(contracts.map((c) => c.id))}) and role <> 'store'
+      order by position
+    `,
+  );
+  return contracts.map((c) => ({
+    title: c.title, status: c.status, sentAt: c.sent_at, completedAt: c.completed_at, document: c.snapshot,
+    signers: signers.filter((g) => g.contract_id === c.id).map((g) => ({
+      role: g.role, name: g.name, email: g.email, viewedAt: g.viewed_at, signedAt: g.signed_at, signedName: g.signed_name,
+      declinedAt: g.declined_at, declineReason: g.decline_reason,
+    })),
+  }));
+}
+
 /** Staff's calls, meetings and tasks about the person (D468), by their account: what, when and what was written; never who did it. */
 async function loadCustomerActivities(s: PrivacySubject): Promise<NonNullable<ExportInput["customerActivities"]>> {
   if (!s.customerId) return [];
@@ -1152,7 +1186,7 @@ export async function gatherExport(s: PrivacySubject, language: string, now: Dat
     loadForms(s),
     loadCompany(s),
   ]);
-  const [consents, customFields, support, marketing, customerTags, customerNotes, customerDeals, customerActivities, broadcasts, automations, stockRequests, reviews, savedAddresses, signupCodes, comments, smsNumbers, productViews] = await Promise.all([
+  const [consents, customFields, support, marketing, customerTags, customerNotes, customerDeals, customerContracts, customerActivities, broadcasts, automations, stockRequests, reviews, savedAddresses, signupCodes, comments, smsNumbers, productViews] = await Promise.all([
     loadConsents(s, orders),
     loadCustomFields(s, orders, store.mainLocale),
     loadSupport(s),
@@ -1160,6 +1194,7 @@ export async function gatherExport(s: PrivacySubject, language: string, now: Dat
     loadCustomerTags(s),
     loadCustomerNotes(s),
     loadCustomerDeals(s),
+    loadCustomerContracts(s),
     loadCustomerActivities(s),
     loadBroadcasts(s),
     loadAutomations(s),
@@ -1206,6 +1241,7 @@ export async function gatherExport(s: PrivacySubject, language: string, now: Dat
     customerTags,
     customerNotes,
     customerDeals,
+    customerContracts,
     customerActivities,
     signupCodes,
     broadcasts,

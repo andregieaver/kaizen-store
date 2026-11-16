@@ -824,6 +824,15 @@ async function eraseRows(tx: Tx, s: PrivacySubject, store: PrivacyStore): Promis
     await tx.execute(sql`delete from commerce.activities where store_id = ${sid}::uuid and customer_id = ${cid}::uuid and company_id is null and deal_id is null`);
     await tx.execute(sql`update commerce.activities set customer_id = null, updated_at = now() where store_id = ${sid}::uuid and customer_id = ${cid}::uuid`);
   }
+  // Contracts sent to the person or naming one of their addresses as a signer (D695), with their signers and events: none is signed before
+  // signing is built (D695 step 3), which keeps a signed one under bookkeeping law instead.
+  await tx.execute(sql`select set_config('commerce.contract_erasure', 'on', true)`);
+  await tx.execute(sql`
+    delete from commerce.contracts c where c.store_id = ${sid}::uuid
+      and (c.customer_id = ${cid}::uuid
+        or exists (select 1 from commerce.contract_signers g where g.store_id = c.store_id and g.contract_id = c.id and g.email = any(${addresses})))
+  `);
+  await tx.execute(sql`select set_config('commerce.contract_erasure', '', true)`);
   await tx.execute(sql`delete from commerce.customer_codes where store_id = ${sid}::uuid and lower(email) = any(${addresses})`);
   await tx.execute(sql`delete from commerce.lead_decisions where store_id = ${sid}::uuid and email = any(${addresses})`);
   await tx.execute(sql`delete from commerce.filed_emails where store_id = ${sid}::uuid and (addresses && ${addresses}::text[] or customer_ids @> array[${cid}::uuid])`);

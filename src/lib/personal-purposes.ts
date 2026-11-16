@@ -69,7 +69,7 @@ export const PURPOSES = {
     review: true,
   },
   sales: {
-    what: "Following a sale the store is working towards with a person or their company: the deal, its stage and value, and why it was lost.",
+    what: "Following a sale the store is working towards with a person or their company: the deal, its stage and value, why it was lost, and the contract sent for signing.",
     basis: "f",
     why: "The store's interest in following up a sale the person or their company is discussing with it; where they asked for a quote, steps they asked for before a contract (Art. 6(1)(b)) also apply.",
     controller: "store",
@@ -245,6 +245,9 @@ export const PURPOSE_OF: Readonly<Record<string, PurposeKey>> = {
   signup_incentives: "marketing",
   customer_notes: "support",
   deals: "sales",
+  contracts: "sales",
+  contract_signers: "sales",
+  contract_events: "sales",
   activities: "sales",
   lead_decisions: "sales",
   filed_emails: "sales",

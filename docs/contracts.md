@@ -20,7 +20,7 @@ contract, the audit trail of each signature.
 
 | Need | Reused from |
 |---|---|
-| A contract on a deal | `DEAL_LINK_KINDS` (`src/lib/deals.ts`) gains `contract` |
+| A contract on a deal | `contracts.deal_id` (as built: a contract carries its deal, not a `deal_links` row, since it has no value of its own for `dealValue()`) |
 | The deal moving without a person | `deal_quote_sent()` / `deal_win()` and `deal_moves.via` (D464) |
 | Fixed once sent | the invoice snapshot (`src/lib/invoice-snapshot.ts`) |
 | The PDF, kept once with its SHA-256 | `src/server/invoice-pdf.ts`: `documentHtml()` → Chromium → private `documents` bucket |
@@ -91,6 +91,15 @@ The store's signer signs inside the admin (already signed in with two-step), wit
   agreements); `docs/platform-parity.md` needs no new row.
 
 ## 7. Steps
+
+*Step 1, as built (16 November 2026):* the four tables (`src/db/schema.ts`), the rules
+(`supabase/migrations/20261116191654_contracts_rules.sql`: a sent contract frozen, signers once and in order against the sent PDF's
+SHA-256, the events append-only, sending moves the deal to the contract stage, the last signature wins it with `closed_via` `contract`),
+`src/db/contracts.test.ts`, the blocks and fields (`src/lib/contract-fields.ts`), and the registers: the person's export lists their
+contracts (`marketing`, with their deals), erasure deletes the contracts sent to the person or naming their address as a signer (nothing
+is signed before step 3, which keeps a signed one under bookkeeping law instead), a merge moves them (`commerce.customer_merge`), the
+whole-store file holds the templates and a store copy takes none. The sent PDF's rendering is the next commit of step 1.
+
 
 1. Tables, rules and their tests; `contract-fields.ts`; snapshot and the sent PDF.
 2. Templates: the editor (Homer's one template made on first visit in the store's language; Lisa's blocks), *New contract* on
