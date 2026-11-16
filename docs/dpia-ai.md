@@ -104,7 +104,7 @@ hand-over; email answers marked as the AI's, `aiLabel`/`aiNote` in `src/lib/supp
 (plain text, no addresses, no claims); links are buttons made by code; actions run only on the customer's own Confirm
 (`src/server/support-actions.ts`), refunds, cancellations and exceptions go to a person (in challenge mode a signed-in customer's own address change before anything is sent is carried out by code, D640, and a cancellation goes to the refund queue); turns are counted before any model call
 (`takeTurn()`); a person can be asked for at any time (`handoff_to_human`). The store privacy starter tells shoppers about the
-assistant and the provider (`privacy.automated.chat` in `src/lib/legal-starters/en.ts`) and, while the desk works AI first, that a message in the chat or by email may be answered and a confirmed request carried out by the AI on its own before a person reads it (`privacy.automated.answers`, D656); Kaizena Flow's own notice says it of its desk (section 10). Tests: `src/lib/chat.test.ts`,
+assistant and the provider (`privacy.automated.chat` in `src/lib/legal-starters/en.ts`) and, while the desk works AI first, that a message in the chat or by email may be answered and a confirmed request carried out by the AI on its own before a person reads it (`privacy.automated.answers`, D658); Kaizena Flow's own notice says it of its desk (section 10). Tests: `src/lib/chat.test.ts`,
 `src/server/chat.int.test.ts`, `src/server/support-tools.int.test.ts`, `support-actions.int.test.ts`, `support-inbound.int.test.ts`,
 `e2e/chat.spec.ts`, `e2e/support.spec.ts`.
 
