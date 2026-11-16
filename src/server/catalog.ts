@@ -49,9 +49,10 @@ export type ProductSummary = {
   title: string;
   /**
    * `url` is the picture a card draws (the library's small copy when there is one); `large` the picture itself beside it and `width`
-   * its own width where the library knows it, so a card offers both by width (D336).
+   * its own width where the library knows it, so a card offers both by width (D336); `medium` its 800 px copy between them, when the
+   * library has one (bloat review step 0.33).
    */
-  image: { url: string; alt: string; large?: string; width?: number } | null;
+  image: { url: string; alt: string; large?: string; medium?: string; width?: number } | null;
   price: PriceView;
   /** True when variants differ in price, so the price shown is a minimum. */
   priceVaries: boolean;
@@ -121,9 +122,9 @@ export type ProductDetail = {
   /** Its published Digital Product Passport's id (D554), or null. */
   passportId?: string | null;
   withdrawalExclusion: string;
-  /** In the owner's order; `thumbnailUrl` is the 480 px copy, or the picture itself. */
+  /** In the owner's order; `thumbnailUrl` is the 480 px copy, or the picture itself; `medium` its 800 px copy, when the library has one (bloat review step 0.33). */
   /** The gallery in the owner's order (D325): every item's picture, and a video's or 3D model's own file or address. */
-  images: { url: string; thumbnailUrl: string; alt: string; kind: MediaItemKind; source: VideoSource | null; mediaUrl: string | null }[];
+  images: { url: string; thumbnailUrl: string; medium?: string; alt: string; kind: MediaItemKind; source: VideoSource | null; mediaUrl: string | null }[];
   manufacturer: EconomicOperator | null;
   responsiblePerson: EconomicOperator | null;
   variants: ProductVariant[];
@@ -170,6 +171,8 @@ const SUMMARY_ROW = z.looseObject({
   max_amount: col.minor,
   currency: col.currency,
   prior_30d: col.minorOrNull,
+  // The picture's 800 px copy (bloat review step 0.33), read from the library by the picture's address.
+  image_medium: col.textOrNull,
 });
 
 /**
@@ -211,6 +214,7 @@ const MEDIA_ROW = z.object({
   kind: col.text,
   source: col.textOrNull,
   media_url: col.textOrNull,
+  medium: col.textOrNull,
   alt: col.text,
 });
 
@@ -300,6 +304,8 @@ export async function listProducts(storeId: string, market: Market): Promise<Pro
       -- The picture beside its small copy (D336), with its own width where the library knows it, for a card's srcset.
       case when m.thumbnail_url is not null and m.thumbnail_url <> m.url then m.url end as image_large,
       (select md.width from commerce.media md where md.url = m.url) as image_width,
+      -- Its 800 px copy (bloat review step 0.33), from the same library row, offered between the two when there is one.
+      (select md.medium_url from commerce.media md where md.url = m.url) as image_medium,
       pr.min_amount,
       pr.max_amount,
       pr.currency,
@@ -426,6 +432,8 @@ export async function getProduct(storeId: string, market: Market, handle: string
       MEDIA_ROW,
       sql`
       select url, thumbnail_url, kind, source, media_url,
+        -- A picture's 800 px copy (bloat review step 0.33), read from the library by its address, as a card's width is.
+        (select md.medium_url from commerce.media md where md.url = product_media.url) as medium,
         coalesce(nullif(alt ->> ${locale}, ''), commerce.media_alt(url, ${locale}), '') as alt
       from commerce.product_media
       where product_id = ${product.id}
@@ -492,6 +500,7 @@ export async function getProduct(storeId: string, market: Market, handle: string
     images: media.map((m) => ({
       url: str(m.url),
       thumbnailUrl: str(m.thumbnail_url ?? m.url),
+      ...(m.medium && m.thumbnail_url && m.thumbnail_url !== m.url ? { medium: m.medium } : {}),
       alt: str(m.alt),
       kind: m.kind === "video" || m.kind === "model" ? m.kind : "image",
       source: m.source === "upload" || m.source === "youtube" || m.source === "vimeo" ? m.source : null,
@@ -618,6 +627,7 @@ function summaryImage(row: Row): ProductSummary["image"] {
   if (row.image_large) {
     image.large = str(row.image_large);
     if (row.image_width !== null && row.image_width !== undefined) image.width = Number(row.image_width);
+    if (row.image_medium) image.medium = str(row.image_medium);
   }
   return image;
 }
@@ -677,6 +687,8 @@ export async function listGridProducts(
       -- The picture beside its small copy (D336), with its own width where the library knows it, for a card's srcset.
       case when m.thumbnail_url is not null and m.thumbnail_url <> m.url then m.url end as image_large,
       (select md.width from commerce.media md where md.url = m.url) as image_width,
+      -- Its 800 px copy (bloat review step 0.33), from the same library row, offered between the two when there is one.
+      (select md.medium_url from commerce.media md where md.url = m.url) as image_medium,
       pr.min_amount,
       pr.max_amount,
       pr.currency,

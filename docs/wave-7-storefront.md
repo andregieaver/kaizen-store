@@ -170,7 +170,9 @@ A1 availability (model, view, editor, CSV, cart, copies, tools); A2 rules (model
   **B as built (2026-10-27).** Pictures: `SizedPicture` draws a product card, a content grid's tile, a picture component and the product
   gallery's main picture with both files by width (`pictureSources()`) and `sizes` from `gridSizes()` (columns per screen size, on the
   store's sizes) or `fixedSizes()` (a picture at its own size); product summaries carry the large file and its width from the library, and
-  page loaders give picture components their small copy (`withSmallCopies()`, never saved). The report has no lab scores (decision 1 is
+  page loaders give picture components their small copy (`withSmallCopies()`, never saved). Since bloat review step 0.33 a picture
+  has a middle copy of 800 px, offered in the same `srcset` by `pictureSources()`, and a grid's tile claims the screen less the
+  page's sides (`GRID_GUTTER`, 32 px) and its gaps, shared by its columns (`gridSizes()`), not a plain share of the screen. The report has no lab scores (decision 1 is
   open): it says so under *What this report cannot measure*. The beacon is `SpeedBeacon`, its own component beside the visit beacon (the
   visit beacon sends before the page is used; speed is known only when it is hidden), loading `web-vitals` after the page and sending once
   when the page is hidden (`visibilitychange`, never `pagehide`: leaving a page fires `pagehide` first, before `web-vitals` has the main
