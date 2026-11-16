@@ -39,6 +39,9 @@ const HARFBUZZ_FILES = ["./node_modules/.pnpm/harfbuzzjs@*/node_modules/harfbuzz
  */
 const ON_VERCEL = Boolean(process.env.VERCEL);
 
+/** The build skips its own type check on Vercel (memory, D378) and in CI's browser jobs, which set SKIP_BUILD_TYPECHECK: CI's `static` job and the quick gate run `pnpm typecheck` on the same project on every push (bloat review step 0.38). A local `pnpm build` checks as ever. */
+const SKIP_TYPECHECK = ON_VERCEL || process.env.SKIP_BUILD_TYPECHECK === "1";
+
 const nextConfig: NextConfig = {
   cacheComponents: true,
   // A recorded choice, not an oversight: unset, Next treats it as false and warns on every build and start. The next major release turns it on
@@ -47,9 +50,8 @@ const nextConfig: NextConfig = {
   poweredByHeader: false,
   // Pictures are never resized on the server (D336, src/lib/picture-sizes.ts): every next/image is served as stored and /_next/image answers 404 (bloat review step 0.32).
   images: { unoptimized: true },
-  // On Vercel (`ON_VERCEL`) the type check is left to CI, whose `static` job runs
-  // `pnpm typecheck` on every push and whose builds still check; everywhere else `next build` checks as ever.
-  typescript: { ignoreBuildErrors: ON_VERCEL },
+  // The type check is CI's (`SKIP_TYPECHECK` above); everywhere else `next build` checks as ever.
+  typescript: { ignoreBuildErrors: SKIP_TYPECHECK },
   // Read from node_modules at run time, not bundled: `subset-font` finds HarfBuzz's WebAssembly by its path (`HARFBUZZ_FILES`).
   serverExternalPackages: ["subset-font", "fontverter"],
   // Chromium (the cookie scan, D58; the page replicator, D150) is read from disk, not

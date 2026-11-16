@@ -106,7 +106,9 @@ jobs:
           node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+      # It reads only the repository, so one shard is enough.
       - name: Migrations match the schema
+        if: matrix.shard == 1
         run: pnpm db:check
       - name: Create the database with the demo catalogue
         run: node scripts/db-setup.mjs --seed
@@ -139,6 +141,8 @@ jobs:
       DATABASE_URL: postgres://postgres:postgres@postgres:5432/postgres
       # The runner's clock zone, which the tests have always run in (the image was built with another as a build argument).
       TZ: UTC
+      # The build skips its own type check: `static` and the quick gate check the same project (src/lib/ci-once.scan.test.ts).
+      SKIP_BUILD_TYPECHECK: "1"
     steps:
       - uses: actions/checkout@v7
       - uses: pnpm/action-setup@v6
@@ -198,6 +202,8 @@ jobs:
       NEXT_PUBLIC_THEMES_HOST: themes.localhost:3000
       # The docs on their own host (D442), likewise a name under the store domain that must never be taken for a store's.
       NEXT_PUBLIC_DOCS_HOST: docs.localhost:3000
+      # The build skips its own type check: `static` and the quick gate check the same project (src/lib/ci-once.scan.test.ts).
+      SKIP_BUILD_TYPECHECK: "1"
     steps:
       - uses: actions/checkout@v7
       - uses: pnpm/action-setup@v6
@@ -241,6 +247,8 @@ jobs:
       NEXT_PUBLIC_SUPABASE_URL: http://127.0.0.1:3912
       NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: e2e-publishable-key
       E2E_SIGNED_IN: "1"
+      # The build skips its own type check: `static` and the quick gate check the same project (src/lib/ci-once.scan.test.ts).
+      SKIP_BUILD_TYPECHECK: "1"
     steps:
       - uses: actions/checkout@v7
       - uses: pnpm/action-setup@v6
