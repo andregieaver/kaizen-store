@@ -52,6 +52,12 @@ export type LegalFacts = {
   deliveriesOn: boolean;
   /** Cookieless visit counting is on. */
   visitCounting: boolean;
+  /**
+   * Heatmaps and recordings of visits are on (D657). Present only when true, so a store without them has exactly the facts it had and the
+   * legal AI's upkeep (which hashes the facts) rewrites nothing.
+   */
+  heatmaps?: true;
+  sessionRecordings?: true;
   /** The names of the tracking tools the store has set up (they load only with consent). */
   trackingTools: string[];
   chatAgent: boolean;
@@ -91,6 +97,8 @@ export type LegalFactsInput = {
     country: string | null;
     audience: LegalAudience;
     visitCounting: boolean;
+    heatmaps?: boolean;
+    recordings?: boolean;
     modules: readonly string[];
     tracking: Partial<Record<keyof typeof TRACKING_TOOL_NAMES, string>>;
   };
@@ -174,6 +182,8 @@ export function assembleLegalFacts(input: LegalFactsInput): LegalFacts {
     noShowFee: store.modules.includes("bookings") && (input.noShowFee ?? false),
     deliveriesOn: store.modules.includes("deliveries"),
     visitCounting: store.visitCounting,
+    ...(store.heatmaps ? { heatmaps: true as const } : {}),
+    ...(store.recordings ? { sessionRecordings: true as const } : {}),
     trackingTools: (Object.keys(TRACKING_TOOL_NAMES) as (keyof typeof TRACKING_TOOL_NAMES)[]).filter((k) => Boolean(store.tracking[k])).map((k) => TRACKING_TOOL_NAMES[k]),
     chatAgent: input.chatOn,
     aiTone: input.supportAi?.tone ?? false,

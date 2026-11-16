@@ -261,7 +261,7 @@ describe("how often it opens by itself", () => {
     const visitor = "3f2b8c1e-7a4d-4b9e-9c2a-1d5e6f7a8b9c";
     const storeId = "8f2b8c1e-7a4d-4b9e-9c2a-1d5e6f7a8b9c";
     const cookie = (choices: { preferences: boolean }, id: string | null = storeId) =>
-      `theme=dark; ${consentCookieName(id)}=${encodeConsent({ visitor, version: "preferences", choices: { preferences: choices.preferences, statistics: false, marketing: false } })}`;
+      `theme=dark; ${consentCookieName(id)}=${encodeConsent({ visitor, version: "preferences", choices: { preferences: choices.preferences, statistics: false, marketing: false, recordings: false } })}`;
     expect(mayRemember(cookie({ preferences: true }), storeId)).toBe(true);
     expect(mayRemember(cookie({ preferences: false }), storeId)).toBe(false);
     // Another site's choice, or none, or a damaged one, allows nothing.

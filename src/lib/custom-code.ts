@@ -1,4 +1,4 @@
-import { OPTIONAL_CATEGORIES, type ConsentCategory, type ConsentChoices, type OptionalCategory } from "./cookie-consent";
+import { OPTIONAL_CATEGORIES, type ConsentChoices, type OptionalCategory } from "./cookie-consent";
 import { storeDomain } from "./paths";
 
 /**
@@ -12,7 +12,13 @@ import { storeDomain } from "./paths";
 
 export const CODE_PLACES = ["head", "bodyStart", "bodyEnd"] as const;
 export type CodePlace = (typeof CODE_PLACES)[number];
-export type CodeSnippet = { code: string; category: ConsentCategory };
+/**
+ * The categories an owner's code, or an owner's note on a scanned item, may fall under: never `recordings` (D657), which only Kaizena Flow's
+ * own recorder uses, so no owner code waits on that consent and no note brings the question into a store that does not record.
+ */
+export const CODE_CATEGORIES = ["necessary", "preferences", "statistics", "marketing"] as const;
+export type CodeCategory = (typeof CODE_CATEGORIES)[number];
+export type CodeSnippet = { code: string; category: CodeCategory };
 export type CustomCode = Partial<Record<CodePlace, CodeSnippet>>;
 
 export const CODE_PLACE_LABELS: Record<CodePlace, { title: string; hint: string }> = {
@@ -31,7 +37,7 @@ export function liveCustomCode(code: CustomCode): CustomCode {
 
 /** The optional categories the code needs consent for. */
 export function codeCategories(code: CustomCode): OptionalCategory[] {
-  const used = new Set(CODE_PLACES.map((place) => code[place]?.category));
+  const used = new Set<string | undefined>(CODE_PLACES.map((place) => code[place]?.category));
   return OPTIONAL_CATEGORIES.filter((category) => used.has(category));
 }
 

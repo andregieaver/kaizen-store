@@ -141,6 +141,47 @@ export async function setVisitCounting({ account, store, role }: Membership, ena
 }
 
 /**
+ * Switches heatmaps on or off (D657, `docs/heatmaps-and-recordings.md`): click, scroll and attention totals from visitors who allowed
+ * statistics. Owner only. Switching them on makes every visitor be asked again about statistics, whose text then names heatmaps, so the
+ * cookie facts are refreshed with the store.
+ */
+export async function setHeatmaps({ account, store, role }: Membership, enabled: boolean): Promise<AnalyticsResult<{ enabled: boolean }>> {
+  if (!can({ role }, "owner")) return refuse(OWNER_ONLY);
+  await db().execute(sql`update commerce.stores set heatmaps = ${enabled} where id = ${store.id}::uuid`);
+  await audit(account.id, store.id, "analytics.heatmaps", { enabled });
+  refreshTag(storeTag(store.slug));
+  refreshTag(cookiesTag(store.id));
+  return { ok: true, enabled };
+}
+
+export const RECORDING_SHARES = [10, 25, 50, 100] as const;
+
+export type RecordingsInput = { enabled: boolean; share: number; mask: "balanced" | "strict"; confirmed: boolean };
+
+/**
+ * Switches recordings of visits on or off, with the share of tabs recorded and how much is masked (D657). Owner only. Switching them on
+ * needs the owner's three confirmations (not aimed at children, nothing sensitive sold, the privacy policy says visits are recorded) and,
+ * until the platform opens recordings to every store, is open to Kaizena Flow's own store only.
+ */
+export async function setRecordings({ account, store, role }: Membership, input: RecordingsInput): Promise<AnalyticsResult<{ enabled: boolean }>> {
+  if (!can({ role }, "owner")) return refuse(OWNER_ONLY);
+  if (!(RECORDING_SHARES as readonly number[]).includes(input.share)) return refuse("Choose how many visits to record.");
+  if (input.mask !== "balanced" && input.mask !== "strict") return refuse("Choose what recordings hide.");
+  if (input.enabled && !input.confirmed) return refuse("Confirm the three points before recordings start.");
+  // The platform-wide hold (`platform_settings.recordings_open`) arrives with the recordings themselves; until then only the house store.
+  if (input.enabled && !store.house) return refuse("Recordings are not available yet.");
+  await db().execute(sql`
+    update commerce.stores set recordings = ${input.enabled}, recording_share = ${input.share}, recording_mask = ${input.mask},
+      recordings_confirmed_at = case when ${input.enabled} then coalesce(recordings_confirmed_at, now()) else recordings_confirmed_at end
+    where id = ${store.id}::uuid
+  `);
+  await audit(account.id, store.id, "analytics.recordings", { enabled: input.enabled, share: input.share, mask: input.mask });
+  refreshTag(storeTag(store.slug));
+  refreshTag(cookiesTag(store.id));
+  return { ok: true, enabled: input.enabled };
+}
+
+/**
  * Gives earlier sales the cost the variant has now, for the order lines that sold without one: costs entered later apply
  * to the past, once, and a line that already has a cost is never changed. Copied orders (D129) are history and skipped,
  * and so is a variant with no cost. Owner only; returns how many lines were filled in.

@@ -1,6 +1,6 @@
 {
-  "id": "eb40cbec-be27-4c39-9425-03e4574babbb",
-  "prevId": "0791095f-70d2-47df-8c2f-7f06e9144ed4",
+  "id": "c736dd8e-f3cb-4c59-bf5e-1a84fdcfa9f8",
+  "prevId": "eb40cbec-be27-4c39-9425-03e4574babbb",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -79748,6 +79748,40 @@
           "notNull": true,
           "default": false
         },
+        "heatmaps": {
+          "name": "heatmaps",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "recordings": {
+          "name": "recordings",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "recording_share": {
+          "name": "recording_share",
+          "type": "smallint",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 50
+        },
+        "recording_mask": {
+          "name": "recording_mask",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'balanced'"
+        },
+        "recordings_confirmed_at": {
+          "name": "recordings_confirmed_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
         "private_mode": {
           "name": "private_mode",
           "type": "boolean",
@@ -80145,6 +80179,14 @@
         "stores_audience": {
           "name": "stores_audience",
           "value": "\"commerce\".\"stores\".\"audience\" in ('consumers', 'businesses', 'both')"
+        },
+        "stores_recording_share": {
+          "name": "stores_recording_share",
+          "value": "\"commerce\".\"stores\".\"recording_share\" in (10, 25, 50, 100)"
+        },
+        "stores_recording_mask": {
+          "name": "stores_recording_mask",
+          "value": "\"commerce\".\"stores\".\"recording_mask\" in ('balanced', 'strict')"
         },
         "stores_terms_at_checkout": {
           "name": "stores_terms_at_checkout",

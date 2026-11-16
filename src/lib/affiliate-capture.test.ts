@@ -6,7 +6,7 @@ import { consentCookieName, CONSENT_CHANGED_EVENT, encodeConsent } from "./cooki
 
 const STORE = "0f8fad5b-d9cb-469f-a165-70867728950e";
 const consent = (marketing: boolean) =>
-  `${consentCookieName(STORE)}=${encodeConsent({ visitor: "11111111-1111-4111-8111-111111111111", version: "marketing", choices: { preferences: false, statistics: false, marketing } })}`;
+  `${consentCookieName(STORE)}=${encodeConsent({ visitor: "11111111-1111-4111-8111-111111111111", version: "marketing", choices: { preferences: false, statistics: false, marketing, recordings: false } })}`;
 
 /** A browser in a box: the address, a cookie jar that records every write, and the listeners the capture adds. */
 function browser(over: Partial<CaptureEnv> = {}) {

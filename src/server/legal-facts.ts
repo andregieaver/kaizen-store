@@ -78,6 +78,8 @@ export async function legalFacts(store: Store): Promise<LegalFacts> {
       country: store.details.country,
       audience: store.audience,
       visitCounting: store.visitCounting,
+      heatmaps: store.heatmaps,
+      recordings: store.recordings,
       modules,
       tracking: store.tracking,
     },

@@ -1,7 +1,6 @@
 import { z } from "zod";
 
-import { CONSENT_CATEGORIES } from "./cookie-consent";
-import { CODE_MAX_LENGTH, CODE_PLACES, type CustomCode } from "./custom-code";
+import { CODE_CATEGORIES, CODE_MAX_LENGTH, CODE_PLACES, type CustomCode } from "./custom-code";
 
 /**
  * The schemas of `custom-code.ts`, apart from it so the browser's parts that use its plain helpers do not load zod (D211,
@@ -13,7 +12,7 @@ const snippet = z.object({
     .string()
     .max(CODE_MAX_LENGTH, `Each piece of code takes at most ${CODE_MAX_LENGTH.toLocaleString("en")} characters.`)
     .transform((code) => code.trim()),
-  category: z.enum(CONSENT_CATEGORIES, "Choose a cookie category for the code."),
+  category: z.enum(CODE_CATEGORIES, "Choose a cookie category for the code."),
 });
 
 /** What the owner saves; places left empty are dropped. */

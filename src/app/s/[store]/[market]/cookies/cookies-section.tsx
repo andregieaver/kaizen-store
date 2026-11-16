@@ -11,5 +11,14 @@ export async function CookiesSection({ store, market }: { store: Store; market: 
     colorMode: store.theme.settings.visitorSwitch,
     privateStore: store.privateMode,
   });
-  return <CookiePolicy lang={market.lang} cookies={cookies} categories={categories} visitCounting={store.visitCounting} />;
+  return (
+    <CookiePolicy
+      lang={market.lang}
+      cookies={cookies}
+      categories={categories}
+      visitCounting={store.visitCounting}
+      heatmaps={store.heatmaps}
+      recordings={store.recordings}
+    />
+  );
 }

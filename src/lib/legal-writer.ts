@@ -326,6 +326,9 @@ export function writerSettings(facts: LegalFacts): WriterSettings {
     vatRegistered: facts.vat.registered !== false,
     chatAssistant: facts.chatAgent,
     cookielessVisitCounting: facts.visitCounting,
+    // Only when on (D657), so the settings of a store without them are unchanged.
+    ...(facts.heatmaps ? { heatmaps: true } : {}),
+    ...(facts.sessionRecordings ? { sessionRecordings: true } : {}),
   };
 }
 

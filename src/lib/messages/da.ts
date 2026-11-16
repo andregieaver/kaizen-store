@@ -806,7 +806,13 @@ export const da: Messages = {
     preferences: { name: "Præferencer", text: "Husker valg, du træffer, som sprog og visning." },
     statistics: { name: "Statistik", text: "Tæller besøg og viser, hvordan webstedet bruges, så vi kan gøre det bedre." },
     marketing: { name: "Markedsføring", text: "Viser og måler annoncer, også på andre websteder." },
+    recordings: { name: "Optagelser af dit besøg", text: "Optager butikkens sider, som du så dem, klik, tryk, rulning og markørbevægelser, hvilken testversion du så og omtrent hvornår, så butikken kan se, hvad der er svært at bruge. Ikke i kurven, kassen, kontoen eller ordresiderne; aldrig det, du skriver. Gemmes i 30 dage." },
   },
+  // D657, docs/heatmaps-and-recordings.md: hand-written, for legal review before recordings open to stores.
+  consentStatisticsHeat: "Tæller besøg og viser, hvordan webstedet bruges, også summer af, hvor besøgende klikker, hvor langt de ruller, og hvor længe dele af en side er på skærmen (heatmaps), også pr. testversion, så vi kan gøre det bedre.",
+  consentRecordingNotice: "Denne butik kan optage dine besøg på dens sider (hvad siden viser, klik, tryk, rulning og markørbevægelser) for at finde det, der er svært at bruge. Det, du skriver, optages aldrig.",
+  cookieHeatmaps: "Heatmaps: så længe du tillader statistik, sender din browser, hvilke dele af en side du klikker på, hvor langt du ruller, og hvor længe dele af siden er på skærmen, og hvilken testversion du så. Kun summer pr. side og dag gemmes, uden et nummer, der identificerer dig.",
+  cookieRecordings: "Optagelser: så længe du tillader optagelser, optager butikken, hvad der sker på dens sider i denne fane: siden, som den blev vist, klik, tryk, rulning og markørbevægelser, skærmstørrelsen og testversionen, du så. Alt, hvad du skriver, chatten, kurven, kassen og din konto er udeladt. Et tilfældigt nummer for denne fane holder optagelsen sammen; det knyttes aldrig til, hvem du er. Butikken er ansvarlig for optagelserne; Kaizena Flow gemmer dem for butikken, i Irland, i 30 dage. Du kan når som helst trække dit samtykke tilbage under cookieindstillingerne og slette de optagelser, denne browser lavede, nedenfor.",
   cookiePageIntro:
     "Cookies er små tekstfiler, der gemmes i din browser. Her kan du se, hvilke dette websted bruger, hvem der sætter dem, hvad de bruges til, og hvor længe de varer.",
   onlyNecessary: "Webstedet bruger kun cookies, der er nødvendige for, at det virker. Sådanne kræver ikke samtykke.",

@@ -794,6 +794,19 @@ export const stores = commerce.table(
      */
     visitCounting: boolean("visit_counting").notNull().default(false),
     /**
+     * Heatmaps (D657, `docs/heatmaps-and-recordings.md`): click, scroll and attention totals and dead and rage clicks from visitors who
+     * allowed statistics. Off until the owner switches it on (`setHeatmaps()`); never copied with a store.
+     */
+    heatmaps: boolean("heatmaps").notNull().default(false),
+    /** Recordings of visits (D657): only from visitors who allowed recordings, and only while the platform has opened them. Owner only. */
+    recordings: boolean("recordings").notNull().default(false),
+    /** The share of tabs recorded while recordings are on, in percent: 10, 25, 50 or 100. */
+    recordingShare: smallint("recording_share").notNull().default(50),
+    /** `balanced` masks what visitors type and text people wrote; `strict` masks all text. */
+    recordingMask: text("recording_mask").notNull().default("balanced"),
+    /** When the owner confirmed the store is not aimed at children, sells nothing sensitive, and its privacy policy says visits are recorded. */
+    recordingsConfirmedAt: timestamp("recordings_confirmed_at", { withTimezone: true }),
+    /**
      * Private mode (D339, `src/server/private-mode.ts`, its only writer): visitors without the unlock pass see the landing page (the page
      * role `private`). On for a new store until it opens (decision 5); a store template or demo store is never private, whatever this says.
      */
@@ -867,6 +880,8 @@ export const stores = commerce.table(
   },
   (t) => [
     check("stores_audience", sql`${t.audience} in ('consumers', 'businesses', 'both')`),
+    check("stores_recording_share", sql`${t.recordingShare} in (10, 25, 50, 100)`),
+    check("stores_recording_mask", sql`${t.recordingMask} in ('balanced', 'strict')`),
     check("stores_terms_at_checkout", sql`${t.termsAtCheckout} in ('link', 'checkbox', 'off')`),
     check("stores_customer_accounts", sql`${t.customerAccounts} in ('optional', 'required', 'off')`),
     check("stores_checkout_phone", sql`${t.checkoutPhone} in ('off', 'optional', 'required')`),

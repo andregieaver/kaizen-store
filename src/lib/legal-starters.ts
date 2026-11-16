@@ -175,7 +175,7 @@ function shapeOf(role: StarterRole, f: LegalFacts, h: Helpers): Shape[] {
           topic: "purposes_basis",
           blocks: [
             p("privacy.purposes.1"),
-            ul(item("privacy.purpose.orders"), item("privacy.purpose.accounting"), item("privacy.purpose.service"), item("privacy.purpose.security"), item("privacy.purpose.marketing"), f.visitCounting && item("privacy.purpose.visits")),
+            ul(item("privacy.purpose.orders"), item("privacy.purpose.accounting"), item("privacy.purpose.service"), item("privacy.purpose.security"), item("privacy.purpose.marketing"), f.visitCounting && item("privacy.purpose.visits"), f.heatmaps && item("privacy.purpose.heatmaps"), f.sessionRecordings && item("privacy.purpose.recordings")),
           ],
         },
         {

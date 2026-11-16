@@ -49,6 +49,13 @@ describe("cookie consent (D58)", () => {
     expect(log[0]).toMatchObject({ visitor, version: "statistics", choices });
   });
 
+  it("keeps a choice that allows recordings; one without the key (an older page) is kept above (D657)", async () => {
+    const other = crypto.randomUUID();
+    expect(await recordConsent({ storeId, visitor: other, version: "statistics+recordings", choices: { preferences: false, statistics: true, marketing: false, recordings: true } })).toBe(true);
+    const newer = (await listConsents(storeId)).find((c) => c.visitor === other);
+    expect(newer?.choices).toMatchObject({ recordings: true });
+  });
+
   it("saves a site's tools, which decide what visitors are asked and what the cookie page lists", async () => {
     expect(await saveTracking(admin, storeId, { ga4: "g-abc123", metaPixel: "not a pixel" })).toEqual({
       ok: false,

@@ -15,7 +15,14 @@ export const consentRecord = z.object({
   storeId: z.uuid().nullable(),
   visitor: z.uuid(),
   version: z.string().regex(/^[a-z+]{0,60}$/),
-  choices: z.object(Object.fromEntries(OPTIONAL_CATEGORIES.map((c) => [c, z.boolean()])) as Record<(typeof OPTIONAL_CATEGORIES)[number], z.ZodBoolean>),
+  // `recordings` (D657) defaults to false, so a choice sent by a page from before it existed is still kept as proof.
+  choices: z.object({
+    ...(Object.fromEntries(OPTIONAL_CATEGORIES.filter((c) => c !== "recordings").map((c) => [c, z.boolean()])) as Record<
+      Exclude<(typeof OPTIONAL_CATEGORIES)[number], "recordings">,
+      z.ZodBoolean
+    >),
+    recordings: z.boolean().default(false),
+  }),
 });
 
 /**

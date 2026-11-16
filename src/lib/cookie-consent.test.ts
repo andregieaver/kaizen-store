@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { consentIsCurrent, consentVersion, decodeConsent, encodeConsent, toolCategories } from "./cookie-consent";
+import { consentIsCurrent, consentVersion, decodeConsent, encodeConsent, toolCategories, versionHas } from "./cookie-consent";
 import { declaredCookies, knownCookie } from "./known-cookies";
 import { parseTracking, trackingSchema } from "./cookie-consent-schema";
 
@@ -27,7 +27,7 @@ describe("cookie consent (D58)", () => {
   });
 
   it("keeps a choice in a cookie the browser can read, and asks again when the categories change", () => {
-    const choices = { preferences: false, statistics: true, marketing: false };
+    const choices = { preferences: false, statistics: true, marketing: false, recordings: false };
     const value = encodeConsent({ visitor, version: "statistics", choices });
     expect(value).toBe(`1.${visitor}.statistics.010`);
     const stored = decodeConsent(value);
@@ -71,5 +71,43 @@ describe("cookie consent (D58)", () => {
     // A visitor's light or dark only in stores that let them choose (D99).
     expect(declaredCookies("store", {}, { colorMode: true }).map((c) => c.name)).toContain("color_mode_…");
     expect(knownCookie("color_mode_3f2b8c1e-7a4d-4b9e-9c2a-1d5e6f7a8b9c")?.category).toBe("necessary");
+  });
+});
+
+describe("recordings and heatmaps in the consent (D657)", () => {
+  const none = { preferences: false, statistics: false, marketing: false, recordings: false };
+
+  it("keeps three bits for a site that does not ask about recordings, and four for one that does", () => {
+    expect(encodeConsent({ visitor, version: "statistics+marketing", choices: { ...none, statistics: true, recordings: true } })).toBe(
+      `1.${visitor}.statistics+marketing.010`,
+    );
+    const four = encodeConsent({ visitor, version: "statistics+recordings", choices: { ...none, statistics: true, recordings: true } });
+    expect(four).toBe(`1.${visitor}.statistics+recordings.0101`);
+    expect(decodeConsent(four)?.choices).toEqual({ ...none, statistics: true, recordings: true });
+    // A cookie written before recordings existed reads as not allowing them.
+    expect(decodeConsent(`1.${visitor}.statistics.010`)?.choices.recordings).toBe(false);
+    expect(decodeConsent(`1.${visitor}.statistics.01011`)).toBeNull();
+  });
+
+  it("names heatmaps in the version only while they run, so visitors are asked again", () => {
+    expect(consentVersion(["statistics"])).toBe("statistics");
+    expect(consentVersion(["statistics"], ["heat"])).toBe("statistics+heat");
+    expect(consentVersion(["recordings", "statistics", "marketing", "preferences"], ["heat"])).toBe("preferences+statistics+marketing+recordings+heat");
+    expect(versionHas("statistics+heat", "heat")).toBe(true);
+    expect(versionHas("statistics", "heat")).toBe(false);
+    expect(versionHas("statistics+marketing", "recordings")).toBe(false);
+    const longest = consentVersion(["preferences", "statistics", "marketing", "recordings"], ["heat"]);
+    expect(decodeConsent(`1.${visitor}.${longest}.11111`)).toBeNull();
+    expect(decodeConsent(`1.${visitor}.${longest}.1111`)?.version).toBe(longest);
+  });
+
+  it("declares the recorder's storage only in a store that records, and knows its items in a scan", () => {
+    expect(declaredCookies("store", {}).map((c) => c.name)).not.toContain("kaizen_replay_…");
+    const recording = declaredCookies("store", {}, { recordings: true });
+    expect(recording.map((c) => c.name)).toEqual(expect.arrayContaining(["kaizen_replay_…", "kaizen_replay_ids_…"]));
+    expect(knownCookie(`kaizen_replay_${visitor}`)).toMatchObject({ category: "recordings", storage: "session" });
+    expect(knownCookie(`kaizen_replay_ids_${visitor}`)).toMatchObject({ category: "recordings", storage: "local" });
+    // The recommendations' tab memory keeps its own name and category.
+    expect(knownCookie("kaizen_rec")?.category).toBe("necessary");
   });
 });

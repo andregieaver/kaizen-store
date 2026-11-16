@@ -160,6 +160,9 @@ export const EN: StarterText = {
     "privacy.purpose.security": "to keep the store secure and prevent fraud and misuse (our legitimate interest)",
     "privacy.purpose.marketing": "to send you marketing by email, only if you have agreed to it (consent)",
     "privacy.purpose.visits": "to count visits to the store without cookies, to see how it is used; we keep no IP address and no user agent (our legitimate interest)",
+    // D657: hand-written, for legal review.
+    "privacy.purpose.heatmaps": "to see, as totals per page and day, where visitors who allow statistics click, how far they scroll and how long parts of a page are on screen (heatmaps; your consent)",
+    "privacy.purpose.recordings": "to record visits of visitors who allow recordings, under a random number for one browser tab and without what they type, to find what is hard to use; kept 30 days (your consent)",
     "h.privacy.recipients": "Who receives your data",
     "privacy.recipients.1": "We share personal data only with those who need it:",
     "privacy.recipient.platform": "the Kaizena Flow platform, which runs the store and processes data on our behalf",

@@ -41,6 +41,8 @@ const input = (over: Partial<LegalFactsInput> = {}): LegalFactsInput => ({
     country: "NO",
     audience: "both",
     visitCounting: true,
+    heatmaps: true,
+    recordings: true,
     modules: ["bookings", "deliveries"],
     tracking: { ga4: "G-ABCDEFGH", metaPixel: "1234567" },
   },
@@ -575,5 +577,16 @@ describe("what needs a person to read it", () => {
     const catalogue = readFileSync(join(process.cwd(), "src/lib/ui-catalog.ts"), "utf8");
     expect(catalogue).not.toContain("legal-starters");
     expect(readFileSync(join(process.cwd(), "src/lib/i18n.ts"), "utf8")).not.toContain("legal-starters");
+  });
+});
+
+describe("heatmaps and recordings in the legal facts (D657)", () => {
+  it("adds the facts only when on, so a store without them keeps the facts (and the legal AI's hash) it had", () => {
+    const off = assembleLegalFacts(input({ store: { ...input().store, heatmaps: false, recordings: false } }));
+    expect("heatmaps" in off).toBe(false);
+    expect("sessionRecordings" in off).toBe(false);
+    const { heatmaps: _h, recordings: _r, ...before } = input().store;
+    expect(off).toEqual(assembleLegalFacts(input({ store: before })));
+    expect(FULL).toMatchObject({ heatmaps: true, sessionRecordings: true });
   });
 });

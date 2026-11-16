@@ -1,7 +1,8 @@
 import type { Browser, BrowserContext, Page } from "playwright-core";
 import { z } from "zod";
 
-import { CONSENT_CATEGORIES, type ConsentCategory } from "./cookie-consent";
+import type { ConsentCategory } from "./cookie-consent";
+import { CODE_CATEGORIES } from "./custom-code";
 import { knownCookie, type KnownCookie } from "./known-cookies";
 
 /**
@@ -195,7 +196,7 @@ export const cookieNoteInput = z.object({
   kind: z.enum(SCANNED_KINDS),
   name: z.string().trim().min(1).max(200),
   domain: z.string().trim().min(1).max(253),
-  category: z.enum(CONSENT_CATEGORIES, { message: "Choose what the item is for." }),
+  category: z.enum(CODE_CATEGORIES, { message: "Choose what the item is for." }),
   provider: z.string().trim().min(1, "Say who sets it, such as the service's name.").max(100, "Keep who sets it under 100 characters."),
   purpose: z.string().trim().min(1, "Say what it is for, as visitors will read it.").max(500, "Keep the purpose under 500 characters."),
 });
@@ -222,7 +223,9 @@ export function reviewFindings(items: ScannedItem[], notes: CookieNote[]): Revie
   return items
     .map((item): ReviewedItem => {
       const note = byKey.get(itemKey(item)) ?? null;
-      const known = note || item.kind !== "cookie" ? null : knownCookie(item.name);
+      // A storage item is known only by an entry that says it is one of that kind (D657); other entries name cookies.
+      const found = note ? null : knownCookie(item.name);
+      const known = found && (found.storage ? `${found.storage}Storage` === item.kind : item.kind === "cookie") ? found : null;
       const category = note?.category ?? known?.category ?? null;
       const problem =
         category && category !== "necessary" && item.beforeConsent ? "early" : category === null ? "undescribed" : null;

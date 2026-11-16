@@ -29,13 +29,20 @@ describe("a store's own code (D61)", () => {
     expect(codeCategories(code)).toEqual(["statistics", "marketing"]);
     expect(codeCategories({ head: code.head })).toEqual([]);
     expect(allowedCode(code, null)).toEqual(["head"]);
-    expect(allowedCode(code, { preferences: false, statistics: true, marketing: false })).toEqual(["head", "bodyStart"]);
-    expect(allowedCode(code, { preferences: true, statistics: true, marketing: true })).toEqual(["head", "bodyStart", "bodyEnd"]);
+    expect(allowedCode(code, { preferences: false, statistics: true, marketing: false, recordings: false })).toEqual(["head", "bodyStart"]);
+    expect(allowedCode(code, { preferences: true, statistics: true, marketing: true, recordings: false })).toEqual(["head", "bodyStart", "bodyEnd"]);
   });
 
   it("is only added once stores have their own hosts (P7)", () => {
     expect(liveCustomCode(code)).toEqual({});
     vi.stubEnv("NEXT_PUBLIC_STORE_DOMAIN", "kaizenstores.com");
     expect(liveCustomCode(code)).toBe(code);
+  });
+});
+
+describe("an owner's code and the recordings category (D657)", () => {
+  it("refuses code put under recordings, which only Kaizena Flow's recorder uses", () => {
+    expect(customCodeInput.safeParse({ head: { code: "<script></script>", category: "statistics" } }).success).toBe(true);
+    expect(customCodeInput.safeParse({ head: { code: "<script></script>", category: "recordings" } }).success).toBe(false);
   });
 });
