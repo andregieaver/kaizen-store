@@ -127,7 +127,7 @@ export async function detectEvents(deps: EventDeps = {}): Promise<number> {
     on conflict (store_id, kind, ref) do nothing
     returning id
   `);
-  // A running test's first answer (D668), kept once per test, within the days a stopped test is still an event.
+  // A running test's first answer (D670), kept once per test, within the days a stopped test is still an event.
   const answered = await db().execute(sql`
     with reacting as (${REACTING})
     insert into commerce.autopilot_events (store_id, kind, ref, facts)

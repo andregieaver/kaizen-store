@@ -22,7 +22,7 @@ export const EVENT_KINDS = [
   "stockout_risk",
   // Support (B3, D640): the order's own signed-in customer asked to change its address or cancel it, before it was sent.
   "staff_request",
-  // A/B tests (D148 phase 14b, D668): a running test has an answer for the first time; the owners were told (D662).
+  // A/B tests (D148 phase 14b, D670): a running test has an answer for the first time; the owners were told (D662).
   "test_answered",
 ] as const;
 export type EventKind = (typeof EVENT_KINDS)[number];
@@ -198,7 +198,7 @@ export const EVENT_LINES: Readonly<Record<EventKind, string>> = {
 
 export type SupportEventFacts = { conversation: string; waitedMinutes: number; handoffReason: string | null };
 export type TestEventFacts = { experiment: string; name: string; stopReason: "guardrail" | "planned_end"; stoppedAt: string };
-/** A running test's first answer (D668): the test and when the store marked it answered. */
+/** A running test's first answer (D670): the test and when the store marked it answered. */
 export type AnsweredEventFacts = { experiment: string; name: string; answeredAt: string };
 export type AlertEventFacts = { alert: string; severity: string; text: string; evidence: string[] };
 /** An order event's order (C5): its number for the model, its id for the checks. */

@@ -41,7 +41,7 @@ describe("each event's tools", () => {
     }
     expect(EVENT_TOOLS.support_waiting).toContain("add_support_note");
     expect(EVENT_TOOLS.test_ended).toContain("apply_winner");
-    // A test with an answer (D668): the same tools as one that ended, the decision still the owner's where they keep it.
+    // A test with an answer (D670): the same tools as one that ended, the decision still the owner's where they keep it.
     expect(EVENT_TOOLS.test_answered).toEqual(EVENT_TOOLS.test_ended);
     expect(EVENT_TOOLS.alert).toContain("make_autopilot_plan");
     // A held order and a dispute are a person's: the turn reads and leaves a note, and changes nothing else.
@@ -120,7 +120,7 @@ describe("the staff_request event (B3, D640)", () => {
   });
 });
 
-describe("a test that has an answer (D668)", () => {
+describe("a test that has an answer (D670)", () => {
   it("is one event per test, says the test still runs, and repeats the verdict rule of a test that ended", () => {
     expect(eventRef(answered, "2026-11-16")).toBe("x2");
     const message = eventMessage(answered);

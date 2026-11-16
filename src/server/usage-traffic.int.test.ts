@@ -64,6 +64,10 @@ describe("the drain route", () => {
     expect(await count("server_errors", store.id)).toBe(1);
     await post(JSON.stringify([line("d", "kaizenaflow.com", `/s/${store.slug}/no`)]));
     expect(await count("requests", store.id)).toBe(3);
+    // The store's hour too (F4, D669), for the autopilot's watch.
+    const [hour] = await db().execute<Row>(sql`select hour, requests, server_errors from commerce.store_traffic_hourly where store_id = ${store.id}::uuid`);
+    expect(new Date(String(hour.hour)).toISOString()).toBe("2026-10-23T10:00:00.000Z");
+    expect([Number(hour.requests), Number(hour.server_errors)]).toEqual([3, 1]);
   });
 
   it("is off without a secret", async () => {

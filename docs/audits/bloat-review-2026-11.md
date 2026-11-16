@@ -116,7 +116,7 @@ commit as the fix.
 | 0.40 | Wrap the long lines of the rules and every living doc, and keep history out of searches | DC-4, DC-7, DC-13, GAP-rules-2 | S | cheap | 0.1, 0.43 | Open | |
 | 0.41 | Make the rules say what is so, and claim a decision's number on main before citing it | DC-5, DC-8, DC-6, DC-12, GAP-rules-s3, DC-9 | M | review | 0.43, 0.40, 0.1 | Open | |
 | 0.42 | Compare by job the two pairs of engines nobody compared | GAP-surface-2 | S | strong | 0.1 | Open | |
-| 0.43 | Hold CLAUDE.md's core from the first day, and open a home for this plan's own sentences | GAP-rules-s1 | S | cheap |  | Open | |
+| 0.43 | Hold CLAUDE.md's core from the first day, and open a home for this plan's own sentences | GAP-rules-s1 | S | cheap |  | Done | 16 Nov: Done (D668). Baseline 13,252 bytes outside the index (the owner's word: 12,555 in the brief, four sentences added since); the one index line over 200 characters shortened. |
 | 0.44 | Give pictures in page content the 800 px copy | GAP-code-s4 | M | review | 0.33 | Open | |
 | 0.45 | Cap the dispatcher at four jobs at a time | GAP-database-s3 | S | cheap |  | In progress | 16 Nov: local commit, not pushed. |
 | 0.46 | Make the themes, the content packs and the seed write today's page shape | GAP-page-model-s5 | S | cheap |  | Open | |
@@ -301,6 +301,7 @@ Change log:
 - 16 Nov 2026: step 0.33 Done (c67823c3, D665): every new picture keeps an 800 px copy, stored, copied, compressed, marked and deleted with it; product tiles and the gallery offer it, and a grid tile's `sizes` says its real width.
 - 16 Nov 2026: step 0.34 Done (8a5e02cb, D666): shop and site files use the site's colour names, and the admin's colour roles follow the site's colours outside the admin, so the button on /status and /report is filled.
 - 16 Nov 2026: step 0.35 Done (e0faba3d, D667): Tailwind reads the code under src only, not tests, interface texts, the schema folder or SQL.
+- 16 Nov 2026: step 0.43 Done (D668): CLAUDE.md's bytes outside its Storefront and Admin index are held at 13,252 and only fall, an index line is at most 200 characters, and docs/rules/budgets.md is the home for sentences about budgets and checks.
 - 15 Nov 2026: step 0.20 made locally, not yet pushed or Done: a store's address by its id is one cached helper, `storeSlugOf()` under `storeIdTag(id)`, marked stale when a sandbox is kept; 23 hand-written reads in 17 files replaced (3 lines hold the statement, 27 before); a theme's neighbours read the cached cards; the hosts list is parsed once per instance.
 
 ## 1. The headline

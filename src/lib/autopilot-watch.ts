@@ -4,8 +4,8 @@
  * in the weeks before. A clear fall undoes the change. Clear means enough visitors on both sides and a fall far outside chance (a one-sided
  * binomial test), never a dip a quiet afternoon explains. Since D663 a clear rise in visitors who met an error page (`visits.error_at`, marked
  * by the store's error page) undoes it too: errors can rise from none, so their expected rate is smoothed and the rise needs a few errored
- * visitors besides. Server errors per hour wait for the log drain (`docs/capacity.md`). Pure: the kinds, the thresholds and the verdict; the
- * server reads the figures and undoes.
+ * visitors besides; and since D669 a clear rise in the share of the store's requests answered with a server error (5xx, from Vercel's log
+ * drain by the hour, `store_traffic_hourly`). Pure: the kinds, the thresholds and the verdict; the server reads the figures and undoes.
  */
 
 /** The changes that can be undone, and how (`src/server/autopilot-watch.ts`). */
@@ -28,15 +28,22 @@ export const FALL_Z = 3;
 export const ERROR_RISE_TIMES = 3;
 export const ERROR_RISE_Z = 3;
 export const MIN_ERRORS_AFTER = 5;
+/** Server errors (5xx) since the change needed at least for a rise in their share of requests to count (D669). */
+export const MIN_SERVER_ERRORS_AFTER = 10;
 
-/** `errors`: visitors who met an error page (D663); left out, none. */
-export type Counts = { visitors: number; carts: number; orders: number; errors?: number };
+/**
+ * `errors`: visitors who met an error page (D663); `requests` and `serverErrors`: the store's requests and 5xx answers from Vercel's log
+ * drain (D669). Left out, none.
+ */
+export type Counts = { visitors: number; carts: number; orders: number; errors?: number; requests?: number; serverErrors?: number };
 
-export type Signal = "conversion" | "addToCart" | "errors";
+export type Signal = "conversion" | "addToCart" | "errors" | "serverErrors";
+
+type Readings = { conversion: Reading | null; addToCart: Reading | null; errors?: Reading | null; serverErrors?: Reading | null };
 
 export type Verdict =
-  | { kind: "fine"; conversion: Reading | null; addToCart: Reading | null; errors?: Reading | null }
-  | { kind: "fall"; signal: Signal; conversion: Reading | null; addToCart: Reading | null; errors?: Reading | null }
+  | ({ kind: "fine" } & Readings)
+  | ({ kind: "fall"; signal: Signal } & Readings)
   | { kind: "too_little"; visitorsAfter: number; visitorsBefore: number };
 
 /** One rate since the change against the rate expected, with how many standard errors it lies below (negative: below). */
@@ -65,7 +72,8 @@ export function errorReading(errors: number, visitors: number, baseErrors: numbe
   return { observed, expected, z: se > 0 ? (observed - expected) / se : 0 };
 }
 
-const clearRise = (r: Reading | null, errors: number): boolean => r !== null && errors >= MIN_ERRORS_AFTER && r.observed >= r.expected * ERROR_RISE_TIMES && r.z >= ERROR_RISE_Z;
+const clearRise = (r: Reading | null, errors: number, least = MIN_ERRORS_AFTER): boolean =>
+  r !== null && errors >= least && r.observed >= r.expected * ERROR_RISE_TIMES && r.z >= ERROR_RISE_Z;
 
 /**
  * The verdict on a change: too little traffic to say; a clear fall of conversion or add-to-cart (conversion first: it is the money), or a clear
@@ -76,10 +84,14 @@ export function watchVerdict(after: Counts, before: Counts): Verdict {
   const conversion = reading(after.orders, after.visitors, before.orders, before.visitors);
   const addToCart = reading(after.carts, after.visitors, before.carts, before.visitors);
   const errors = after.errors === undefined ? null : errorReading(after.errors, after.visitors, before.errors ?? 0, before.visitors);
-  const readings = { conversion, addToCart, ...(errors && { errors }) };
+  // Server errors per request (D669), only where the drain counted the store's requests on both sides.
+  const serverErrors =
+    after.requests && before.requests ? errorReading(after.serverErrors ?? 0, after.requests, before.serverErrors ?? 0, before.requests) : null;
+  const readings = { conversion, addToCart, ...(errors && { errors }), ...(serverErrors && { serverErrors }) };
   if (clearFall(conversion)) return { kind: "fall", signal: "conversion", ...readings };
   if (clearFall(addToCart)) return { kind: "fall", signal: "addToCart", ...readings };
   if (clearRise(errors, after.errors ?? 0)) return { kind: "fall", signal: "errors", ...readings };
+  if (clearRise(serverErrors, after.serverErrors ?? 0, MIN_SERVER_ERRORS_AFTER)) return { kind: "fall", signal: "serverErrors", ...readings };
   return { kind: "fine", ...readings };
 }
 
@@ -94,7 +106,15 @@ export function verdictWords(v: Verdict): string {
   const pct = (n: number) => `${(Math.round(n * 1000) / 10).toLocaleString("en-GB")} %`;
   const line = (label: string, r: Reading | null) => (r ? `${label} ${pct(r.observed)} against ${pct(r.expected)} expected` : null);
   if (v.kind === "too_little") return `Too few visitors to judge (${v.visitorsAfter} since, ${v.visitorsBefore} in the same hours of the weeks before).`;
-  const parts = [line("conversion", v.conversion), line("add-to-cart", v.addToCart), v.errors ? line("visitors meeting an error", v.errors) : null].filter(Boolean).join("; ");
+  const parts = [
+    line("conversion", v.conversion),
+    line("add-to-cart", v.addToCart),
+    v.errors ? line("visitors meeting an error", v.errors) : null,
+    v.serverErrors ? line("server errors per request", v.serverErrors) : null,
+  ]
+    .filter(Boolean)
+    .join("; ");
   if (v.kind === "fall" && v.signal === "errors") return `A clear rise in visitors meeting an error: ${parts}.`;
+  if (v.kind === "fall" && v.signal === "serverErrors") return `A clear rise in server errors: ${parts}.`;
   return v.kind === "fall" ? `A clear fall in ${v.signal === "conversion" ? "conversion" : "add-to-cart"}: ${parts}.` : `No clear fall: ${parts || "nothing to compare"}.`;
 }

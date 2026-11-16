@@ -54,7 +54,7 @@ test an **editor** with *Customise* folded (like the product, D595 step 5).
    2b. **The original and B side by side (no migration).** A preview route outside the admin's frame (`/admin/frame/{store}/…`, signed in,
    the same access checks), drawn in two scaled frames on the draft page and under *What is different* on a started test.
 3. **News and a memory (phase 14, D662, built 16 November 2026).** See `ab-testing.md`, "What phase 14 built".
-   3b. **The AI side of news and memory.** Part 1 built (D668): the autopilot's `test_answered` event. Part 2: a gated
+   3b. **The AI side of news and memory.** Part 1 built (D670): the autopilot's `test_answered` event. Part 2: a gated
    `record_learning` tool, pushed on its own without a migration so it deploys after the quick gate, then one eval run on Platform → AI and
    its recording. The owner webhook event moved to step 4: it needs an `experiment` subject in the platform's event model (Admin API, apps,
    the docs portal).

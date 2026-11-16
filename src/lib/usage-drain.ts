@@ -100,3 +100,41 @@ export function trafficTotals(
   }));
   return { totals, unknownHosts };
 }
+
+export type TrafficHour = { storeId: string; hour: string; requests: number; serverErrors: number; estimated: boolean };
+
+/**
+ * Totals per store and UTC hour (`docs/100-day-challenge.md` F4, D669), for the autopilot's watch to blame one change: the same counting as
+ * `trafficTotals()` (a request once, a status of 500 or more a server error, scaled by the sampling rate), stores only (Kaizena Flow's own
+ * traffic and unknown hosts are left out). `hour` is the hour's start as an ISO string.
+ */
+export function trafficHours(
+  entries: readonly DrainEntry[],
+  storeOf: (host: string, path: string) => StoreKey | undefined,
+  sampleRate = 1,
+): TrafficHour[] {
+  const rate = sampleRate > 0 && sampleRate <= 1 ? sampleRate : 1;
+  const seen = new Set<string>();
+  const sums = new Map<string, { storeId: string; hour: string; requests: number; serverErrors: number }>();
+  for (const entry of entries) {
+    if (seen.has(entry.request)) continue;
+    seen.add(entry.request);
+    const storeId = storeOf(entry.host, entry.path);
+    if (!storeId) continue;
+    const at = new Date(entry.at);
+    at.setUTCMinutes(0, 0, 0);
+    const hour = at.toISOString();
+    const key = `${storeId}|${hour}`;
+    const sum = sums.get(key) ?? { storeId, hour, requests: 0, serverErrors: 0 };
+    sum.requests += 1;
+    if (entry.status >= 500) sum.serverErrors += 1;
+    sums.set(key, sum);
+  }
+  return [...sums.values()].map((sum) => ({
+    storeId: sum.storeId,
+    hour: sum.hour,
+    requests: Math.round(sum.requests / rate),
+    serverErrors: Math.round(sum.serverErrors / rate),
+    estimated: rate < 1,
+  }));
+}

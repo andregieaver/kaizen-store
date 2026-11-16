@@ -11018,6 +11018,30 @@ export const storeUsageDaily = commerce.table(
 );
 
 /**
+ * A store's requests and server errors per UTC hour (`docs/100-day-challenge.md` F4, D669), from Vercel's log drain beside the daily totals
+ * (`addTrafficHours()`), for the autopilot's watch to blame one change on a rise in server errors. Counts only, nothing of a visitor; kept
+ * 35 days (`pruneUsageDaily()`).
+ */
+export const storeTrafficHourly = commerce.table(
+  "store_traffic_hourly",
+  {
+    storeId: uuid("store_id")
+      .notNull()
+      .references(() => stores.id, { onDelete: "cascade" }),
+    hour: timestamp("hour", { withTimezone: true }).notNull(),
+    requests: integer("requests").notNull().default(0),
+    serverErrors: integer("server_errors").notNull().default(0),
+    /** Scaled up from a sample (a drain sampling rate below 1). */
+    estimated: boolean("estimated").notNull().default(false),
+  },
+  (t) => [
+    primaryKey({ columns: [t.storeId, t.hour] }),
+    index("store_traffic_hourly_hour_idx").on(t.hour),
+    check("store_traffic_hourly_counts", sql`${t.requests} >= 0 and ${t.serverErrors} >= 0 and ${t.serverErrors} <= ${t.requests}`),
+  ],
+);
+
+/**
  * A plan's limits (D314, `docs/capacity.md` 4): one row per plan and `LIMITS` key; `plan_id` null is the platform default. A row whose
  * value is null means unlimited; no row means the next source decides (`effectiveLimit()`). Edited on the platform's Plans page.
  */
