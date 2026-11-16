@@ -36,7 +36,7 @@ export function KlarnaMessage({ amountMinor, ...setup }: KlarnaSetup & { amountM
     };
   }, [Element]);
   return (
-    <div ref={box} data-klarna-message className="min-h-0 w-full max-w-sm">
+    <div ref={box} data-klarna-message data-kz-private="" className="min-h-0 w-full max-w-sm">
       {Element && <Element {...setup} amountMinor={amountMinor} />}
     </div>
   );

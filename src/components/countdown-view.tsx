@@ -39,7 +39,7 @@ export function CountdownView({ endsAt, title, boxes, preview = false }: { endsA
   const locale = document.documentElement.lang || "en";
   const end = endsAt ? new Intl.DateTimeFormat(locale, { dateStyle: "long", timeStyle: "short" }).format(new Date(endsAt)) : "";
   return (
-    <div className="flex flex-col gap-3" data-countdown="">
+    <div className="flex flex-col gap-3" data-countdown="" data-kz-ambient="">
       {title && (
         <p className="font-medium">
           {title}

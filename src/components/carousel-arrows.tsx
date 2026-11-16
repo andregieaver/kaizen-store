@@ -24,7 +24,7 @@ export function CarouselArrows({
   onNext?: () => void;
 }) {
   return (
-    <div className="ml-auto flex gap-2">
+    <div className="ml-auto flex gap-2" data-kz-no-rage="">
       <button type="button" onClick={onPrev} disabled={!canPrev} aria-label={previous} className={ARROW}>
         <svg {...ICON}>
           <path d="m15 18-6-6 6-6" />

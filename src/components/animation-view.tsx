@@ -233,7 +233,7 @@ export function AnimationPlayer({
   return (
     <>
       {/* The page's own script may have marked it as seen before React arrives: that attribute is its, not a mismatch. */}
-      <span ref={frameRef} data-kz-animation={stage} className={place.className} style={place.style} suppressHydrationWarning>
+      <span ref={frameRef} data-kz-animation={stage} data-kz-ambient="" className={place.className} style={place.style} suppressHydrationWarning>
         {!covered && <canvas ref={canvas} aria-hidden width={pictureWidth} height={pictureHeight} className={`${fill} motion-reduce:hidden`} />}
         {/* eslint-disable-next-line @next/next/no-img-element -- the site's own picture, the exact frame the canvas ends on, shown as it is */}
         <img ref={picture} src={still} alt={alt} width={width} height={height} decoding="async" className={`${logo ? fill : "block h-auto max-w-full"} ${stage === "rest" ? "" : hidden}`} />

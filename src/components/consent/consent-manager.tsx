@@ -375,6 +375,7 @@ export function ConsentManager({ storeId, tracking, code = {}, categories, extra
       {banner && !choosing && (
         <section
           aria-labelledby={titleId}
+          data-kz-private=""
           className="fixed inset-x-4 bottom-[calc(5rem+env(safe-area-inset-bottom))] z-[60] flex flex-col gap-3 rounded-lg border border-border bg-background p-5 text-sm shadow-xl md:right-auto md:bottom-4 md:left-4 md:max-w-md print:hidden"
         >
           <h2 id={titleId} className="text-base font-semibold">
@@ -404,6 +405,7 @@ export function ConsentManager({ storeId, tracking, code = {}, categories, extra
       <dialog
         ref={dialog}
         aria-labelledby={`${titleId}-choices`}
+        data-kz-private=""
         onCancel={(event) => {
           event.preventDefault();
           setChoosing(false);

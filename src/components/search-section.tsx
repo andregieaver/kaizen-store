@@ -113,7 +113,7 @@ async function Search({ place, results }: { place: GridPlace; results: boolean }
   const remember = query ? (await getRecommendSettings(store.id)).enabled : false;
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex flex-col gap-6" data-kz-private="">
       {remember && <RecommendTracker query={typed} />}
       {query && toolCategories(store.tracking).length > 0 && <TrackOnView event={{ kind: "search", words: typed }} />}
       <SearchBox store={store.slug} market={market.slug} base={base} defaultValue={typed} autoFocus={!query} labels={labels} />

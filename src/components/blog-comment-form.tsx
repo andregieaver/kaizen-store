@@ -87,7 +87,7 @@ export function BlogCommentForm({ store, market, article, lang }: { store: strin
 
   if (state.kind === "done") {
     return (
-      <p ref={done} tabIndex={-1} role="status" className="rounded-md bg-surface p-4 outline-none">
+      <p ref={done} tabIndex={-1} role="status" data-kz-private="" className="rounded-md bg-surface p-4 outline-none">
         {state.shown ? m.shown : m.waiting}
       </p>
     );
@@ -99,7 +99,7 @@ export function BlogCommentForm({ store, market, article, lang }: { store: strin
   };
   const sending = state.kind === "sending";
   return (
-    <form noValidate onSubmit={submit} className="flex flex-col gap-4" aria-labelledby={`${id}-heading`}>
+    <form noValidate onSubmit={submit} data-kz-private="" className="flex flex-col gap-4" aria-labelledby={`${id}-heading`}>
       <h3 id={`${id}-heading`} className="text-lg font-heading">
         {m.write}
       </h3>

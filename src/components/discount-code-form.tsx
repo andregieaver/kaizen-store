@@ -30,7 +30,7 @@ export function DiscountCodeForm({
     { tried: null },
   );
   return (
-    <div className="flex flex-col gap-2">
+    <div className="flex flex-col gap-2" data-kz-private="">
       {codes.length > 0 && (
         <ul className="flex flex-col gap-1">
           {codes.map(({ code, problem }) => (

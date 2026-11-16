@@ -2,6 +2,7 @@
 
 import { useEffect } from "react";
 
+import { showVersion } from "@/lib/ab-shown";
 import { dataCookieName, decodeAssignments, OUTSIDE } from "@/lib/experiments";
 
 const read = (name: string): string | undefined => {
@@ -52,17 +53,22 @@ export function AbMarker({
       window.location.reload();
       return;
     }
+    // Heatmaps tag what they measure on this page with the version shown (D656); the server checks it against the cookie again.
+    const unshow = showVersion(experiment, variant);
     if (!reported.has(experiment)) {
       reported.add(experiment);
       post("/api/ab/exposure", { store, market, experiment, variant });
     }
-    if (!goalBlock) return;
+    if (!goalBlock) return unshow;
     const onClick = (event: MouseEvent) => {
       const target = event.target instanceof Element ? event.target.closest("[data-block-id]") : null;
       if (target?.getAttribute("data-block-id") === goalBlock) post("/api/ab/event", { store, experiment, block: goalBlock });
     };
     document.addEventListener("click", onClick, true);
-    return () => document.removeEventListener("click", onClick, true);
+    return () => {
+      unshow();
+      document.removeEventListener("click", onClick, true);
+    };
   }, [storeId, store, market, experiment, variant, goalBlock]);
   return null;
 }

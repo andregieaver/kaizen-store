@@ -182,7 +182,7 @@ function QuoteForm({
 
   if (state.kind === "done") {
     return (
-      <div ref={root}>
+      <div ref={root} data-kz-private="">
         <p ref={done} tabIndex={-1} role="status" className="rounded-md bg-surface p-4 outline-none">
           {texts.sent || labels.sent}
         </p>
@@ -199,7 +199,7 @@ function QuoteForm({
   };
   const sending = state.kind === "sending";
   return (
-    <div ref={root} className="flex flex-col gap-4">
+    <div ref={root} data-kz-private="" className="flex flex-col gap-4">
       <p className="text-sm text-muted">{texts.intro || (source.kind === "cart" ? labels.cartIntro : labels.intro)}</p>
       <form noValidate onSubmit={submit} className="flex flex-col gap-4">
         {/* People never see this field; robots fill it in. */}

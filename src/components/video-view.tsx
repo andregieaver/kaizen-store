@@ -77,6 +77,7 @@ export function UploadedVideo({
   return (
     <video
       ref={ref}
+      data-kz-ambient=""
       src={src}
       poster={videoPoster(play, poster)}
       controls={play.controls}
@@ -118,6 +119,7 @@ export function EmbeddedVideo({
     return (
       <iframe
         src={player}
+        data-kz-ambient=""
         title={title || name}
         allow="autoplay; encrypted-media; picture-in-picture; fullscreen"
         allowFullScreen
@@ -130,6 +132,7 @@ export function EmbeddedVideo({
   return (
     <button
       type="button"
+      data-kz-ambient=""
       onClick={() => setPlaying(true)}
       aria-label={`${title || m.playVideo} (${m.playsFrom(name)})`}
       className="group relative flex h-full w-full items-center justify-center overflow-hidden rounded-lg bg-neutral-900 text-white focus-visible:outline-2 focus-visible:outline-offset-2"

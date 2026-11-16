@@ -23,7 +23,7 @@ const draw = (props: Partial<Parameters<typeof AnimationPlayer>[0]> = {}) =>
 describe("an animation before its script runs", () => {
   it("keeps its place by its picture, which gives way to a narrower one wherever it stands, the canvas lying over it", () => {
     const html = draw();
-    expect(html).toMatch(/<span data-kz-animation="wait" class="relative inline-block max-w-full align-top[^"]*">/);
+    expect(html).toMatch(/<span data-kz-animation="wait" data-kz-ambient="" class="relative inline-block max-w-full align-top[^"]*">/);
     // The picture is in the page's flow at its own size and shape: a fixed width would hold a centred column open on a phone.
     expect(html).toMatch(/<img [^>]*width="800" height="450"[^>]*class="block h-auto max-w-full /);
     expect(html).toMatch(/<canvas [^>]*class="absolute inset-0 h-full w-full /);
@@ -47,7 +47,7 @@ describe("an animation before its script runs", () => {
 
   it("as a logo is as tall as asked and as wide as its shape, and says before the page is drawn whether this tab has played it", () => {
     const html = draw({ fit: "height", width: 222, height: 40, once: "logo:shop" });
-    expect(html).toMatch(/<span data-kz-animation="wait" class="relative block shrink-0 " style="height:40px;aspect-ratio:222 \/ 40">/);
+    expect(html).toMatch(/<span data-kz-animation="wait" data-kz-ambient="" class="relative block shrink-0 " style="height:40px;aspect-ratio:222 \/ 40">/);
     // Right after it, so the script finds it as the element before itself.
     expect(html).toMatch(/<\/span><script>\(function\(\)\{try\{if\(sessionStorage\.getItem\("kz-animation:logo:shop"\)==="1"\)/);
     expect(html).toContain('setAttribute("data-kz-seen","")');
