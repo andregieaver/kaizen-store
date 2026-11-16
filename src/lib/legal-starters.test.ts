@@ -276,7 +276,7 @@ describe("what a starter holds", () => {
     expect(assembleLegalFacts(input())).toMatchObject({ aiTone: false, aiSummaries: false });
   });
 
-  it("says customer service is answered by an AI on its own only while the desk works AI first (F7, D656)", () => {
+  it("says customer service is answered by an AI on its own only while the desk works AI first (F7, D658)", () => {
     const privacy = (facts: LegalFacts, lang: "en" | "nb" | "sv" | "da" = "en") => JSON.stringify(legalStarterSections("privacy", lang, facts));
     expect(privacy(FULL)).not.toContain("an AI may answer on its own");
     const answers = { ...FULL, aiAnswers: true };
