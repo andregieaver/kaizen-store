@@ -122,6 +122,11 @@ export const supportEn = {
     },
   },
   inbox: {
+    alertsOffStrip: "Alerts are off: a shopper who asks for a person makes no sound.",
+    turnOn: "Turn on",
+    quietTitle: "All quiet",
+    quietText: "Shoppers write from the chat in the corner of the site. The assistant answers first; when someone asks for a person, they show here.",
+    seeChat: "See the chat as a shopper",
     title: "Inbox",
     // Round 4 (D612): who waits, in a sentence, and one menu for being reachable.
     leadWaiting: { one: "{n} person is waiting for you", many: "{n} people are waiting for you" },

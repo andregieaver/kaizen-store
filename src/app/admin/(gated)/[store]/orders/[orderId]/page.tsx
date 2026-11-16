@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { DotChip, StepPath, Thumb, type PathStep } from "@/components/admin/home/home-parts";
 import { FoldOnHash, MoreMenu } from "@/components/admin/orders/order-folds";
+import { FoldRow } from "@/components/admin/fold-row";
 import { linePictures } from "@/server/home";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -118,6 +119,9 @@ export const metadata: Metadata = { title: "Order" };
 
 const card = "rounded-lg border border-line bg-card p-5";
 
+/** Why an order cannot be changed that the page already shows (sent, copied, unpaid, a return): no card is drawn only to say so (round 21). */
+const SELF_EVIDENT_BLOCKS = new Set(["sent", "copied", "not_paid", "return", "unsent_closed"]);
+
 /**
  * Everything about one order and everything staff do with it (D27): what
  * was bought and paid, sending with tracking, refunds and restocking,
@@ -230,6 +234,8 @@ export default async function OrderPage({ params }: PageProps<"/admin/[store]/or
   const sendable = paid || held?.mode === "when_sent";
   // A weekly delivery (D102) waits for payment until it is sent: sending charges its card.
   const toCharge = weekly !== null && order.status === "pending_payment";
+  // Cancel is offered only before anything is sent; after, the row is only Refund (round 21).
+  const cancellable = (order.status === "paid" && sentParcels === 0) || toCharge;
   const cancelledAfterPayment = order.status === "cancelled" && order.paidMinor > 0;
   // Where each line's units were taken from, and where a restock goes by default (wave 3, D172): read from the order's own stock movements.
   const physicalLines = order.lines.filter((l) => l.variantId && l.delivery === "physical");
@@ -717,14 +723,22 @@ export default async function OrderPage({ params }: PageProps<"/admin/[store]/or
               )}
             </dl>
             {order.paidOutside && (
-              <p className="mt-3 rounded-md border border-line bg-sunken p-3 text-sm">
-                {fillWords(w.paidOutside, { method: words.manualMethods[order.paidOutside.method].toLowerCase(), when: when(order.paidOutside.recordedAt) })}
-              </p>
+              // Round 21 (D681): how it was paid in one line under the total; why Kaizena Flow took no money behind Why?.
+              <details className="group mt-3 text-sm">
+                <summary className="flex cursor-pointer list-none items-baseline justify-between gap-3 text-ink-2 [&::-webkit-details-marker]:hidden">
+                  <span>{fillWords(w.paidOutsideShort, { method: words.manualMethods[order.paidOutside.method].toLowerCase() })}</span>
+                  <span className="shrink-0 font-medium text-ink underline underline-offset-2">{w.why}</span>
+                </summary>
+                <p className="mt-2 rounded-md bg-sunken p-3">
+                  {fillWords(w.paidOutside, { method: words.manualMethods[order.paidOutside.method].toLowerCase(), when: when(order.paidOutside.recordedAt) })}
+                </p>
+              </details>
             )}
           </section>
           </details>
 
-          {editability && (
+          {/* A card that only says the items cannot change goes (round 21): the Refund row says it instead. */}
+          {editability && !(editability.block && SELF_EVIDENT_BLOCKS.has(editability.block) && order.edits.length === 0) && (
             <OrderEditCard
               editHref={`/admin/${store.slug}/orders/${order.id}/edit`}
               words={adminText(lang, "drafts")}
@@ -802,11 +816,14 @@ export default async function OrderPage({ params }: PageProps<"/admin/[store]/or
             </section>
           )}
 
+          {/* Round 21 (D681): what is not the next step, as one card of rows that open in place (as the return page, round 18). */}
+          <section aria-label={w.rowsLabel} className="rounded-lg border border-line bg-card px-5">
+            <ul className="divide-y divide-line">
           {(((paid || cancelledAfterPayment) && (order.refundableMinor > 0 || restockable.length > 0)) || (order.status === "paid" && sentParcels === 0) || toCharge) && (
-            <FoldOnHash id="refund-cancel" summary={w.refundOrCancel} hint={w.refundOrCancelHint}>
+            <FoldOnHash id="refund-cancel" action={w.openRow} summary={cancellable ? w.refundOrCancel : w.refundRow} hint={cancellable ? w.refundOrCancelHint : editability?.block === "sent" ? w.refundSentHint : w.refundHint}>
           {(paid || cancelledAfterPayment) && (order.refundableMinor > 0 || restockable.length > 0) && (
-            <section aria-labelledby="refund" className={card}>
-              <h2 id="refund" className="mb-1 text-title text-ink">{w.refund}</h2>
+            <section aria-labelledby="refund" className="flex flex-col">
+              <h2 id="refund" className="mb-1 text-body-strong text-ink">{w.refund}</h2>
               <p className="mb-3 text-sm text-muted">
                 {fillWords(w.paidSoFar, { amount: money(order.paidMinor) })}
                 {order.refundedMinor > 0 && fillWords(w.refundedSoFar, { amount: money(order.refundedMinor) })}.{" "}
@@ -846,8 +863,8 @@ export default async function OrderPage({ params }: PageProps<"/admin/[store]/or
           )}
 
           {((order.status === "paid" && sentParcels === 0) || toCharge) && (
-            <section aria-labelledby="cancel" className={card}>
-              <h2 id="cancel" className="mb-1 text-title text-ink">{w.cancelTitle}</h2>
+            <section aria-labelledby="cancel" className="flex flex-col border-t border-line pt-5">
+              <h2 id="cancel" className="mb-1 text-body-strong text-ink">{w.cancelTitle}</h2>
               {order.subscriptionId && (
                 <p className="mb-2 text-sm text-muted">{w.cancelSubscription}</p>
               )}
@@ -857,25 +874,9 @@ export default async function OrderPage({ params }: PageProps<"/admin/[store]/or
             </FoldOnHash>
           )}
 
-          <DocumentsCard
-            words={adminText(lang, "invoices")}
-            reasons={adminText(lang, "screens").invoiceReasons}
-            einvoice={await einvoiceLines(
-              store.id,
-              [...(documents.invoice ? [{ type: "invoice" as const, id: documents.invoice.id }] : []), ...documents.creditNotes.map((n) => ({ type: "credit_note" as const, id: n.id }))],
-              lang,
-            )}
-            base={`/admin/${store.slug}`}
-            documents={documents}
-            canWrite={memberCan(member, "orders:write")}
-            sendAgain={(type, id) => sendDocumentAgainAction.bind(null, store.slug, type, id)}
-            locale={locale}
-          />
-
           {returns && !order.copied && (
-            <details className={card}>
-              <summary className="cursor-pointer text-body text-ink">{w.returnsFold}</summary>
-              <div className="mt-3">
+            <FoldRow title={w.returnsFold} sub={w.returnsSub} action={w.openRow}>
+              <div>
             <OrderReturnsCard
               words={adminText(lang, "returns")}
               base={`/admin/${store.slug}`}
@@ -891,15 +892,12 @@ export default async function OrderPage({ params }: PageProps<"/admin/[store]/or
               }}
             />
               </div>
-            </details>
+            </FoldRow>
           )}
 
-          {/* Notes and history folded (round 6, D620). */}
-          <details className={card}>
-            <summary className="cursor-pointer text-body text-ink">
-              {w.notesAndHistory} <span className="text-caption text-muted">{countWords(history.length, w.eventCount)}</span>
-            </summary>
-            <section aria-labelledby="history" className="mt-4">
+          {/* Notes and history folded (round 6, D620); a row since round 21. */}
+          <FoldRow title={w.notesAndHistory} sub={countWords(history.length, w.eventCount)} action={w.openRow}>
+            <section aria-labelledby="history">
             <h2 id="history" className="mb-3 text-title text-ink">{w.history}</h2>
             {order.status !== "pending_payment" && (
               <div className="mb-4">
@@ -915,7 +913,25 @@ export default async function OrderPage({ params }: PageProps<"/admin/[store]/or
               ))}
             </ol>
             </section>
-          </details>
+          </FoldRow>
+
+            </ul>
+          </section>
+
+          <DocumentsCard
+            words={adminText(lang, "invoices")}
+            reasons={adminText(lang, "screens").invoiceReasons}
+            einvoice={await einvoiceLines(
+              store.id,
+              [...(documents.invoice ? [{ type: "invoice" as const, id: documents.invoice.id }] : []), ...documents.creditNotes.map((n) => ({ type: "credit_note" as const, id: n.id }))],
+              lang,
+            )}
+            base={`/admin/${store.slug}`}
+            documents={documents}
+            canWrite={memberCan(member, "orders:write")}
+            sendAgain={(type, id) => sendDocumentAgainAction.bind(null, store.slug, type, id)}
+            locale={locale}
+          />
 
           {/* What the shopper was shown about the terms when they ordered (wave 1, 1e): the record, and each text as it was. */}
           <Suspense fallback={null}>
@@ -1024,6 +1040,8 @@ export default async function OrderPage({ params }: PageProps<"/admin/[store]/or
               </details>
             )}
           </section>
+          {/* Paid outside with nothing else to tell: the line under the total says it (round 21). */}
+          {!(order.paidOutside && paymentFacts.disputes.length === 0 && paymentFacts.payments.every((p) => p.provider !== "stripe")) && (
           <PaymentCard
             payments={paymentFacts.payments}
             disputes={paymentFacts.disputes}
@@ -1032,6 +1050,7 @@ export default async function OrderPage({ params }: PageProps<"/admin/[store]/or
             evidenceHref={(disputeId) => `/admin/${store.slug}/orders/${order.id}/dispute/${disputeId}`}
             words={words.payment}
           />
+          )}
           {profit && (
             <ProfitCard
               profit={profit}
