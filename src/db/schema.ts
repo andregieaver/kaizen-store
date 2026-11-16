@@ -13691,6 +13691,68 @@ export const productViews = commerce.table(
   ],
 );
 
+/**
+ * Heatmaps' daily totals per page (D656, `docs/heatmaps-and-recordings.md` 6.2), written only by `recordHeat()` (`src/server/page-heat.ts`)
+ * from summaries of visitors who allowed statistics: page views, the reach histogram (21 buckets of 5 %), folds, attention per band (20),
+ * clicks and dead and rage clicks. `tag` '' holds every visitor; `{experiment}:{version}` that version's visitors as well. No visitor is
+ * kept; rows go after 13 months (`HEAT_KEEP_DAYS`). Never copied with a store.
+ */
+export const pageHeatDays = commerce.table(
+  "page_heat_days",
+  {
+    storeId: storeId().references(() => stores.id, { onDelete: "cascade" }),
+    day: date("day", { mode: "string" }).notNull(),
+    page: text("page").notNull(),
+    device: text("device").notNull(),
+    tag: text("tag").notNull().default(""),
+    views: integer("views").notNull().default(0),
+    reach: integer("reach").array().notNull(),
+    foldSum: bigint("fold_sum", { mode: "number" }).notNull().default(0),
+    attentionMs: bigint("attention_ms", { mode: "number" }).array().notNull(),
+    attHeightSum: bigint("att_height_sum", { mode: "number" }).notNull().default(0),
+    clicks: integer("clicks").notNull().default(0),
+    deadClicks: integer("dead_clicks").notNull().default(0),
+    rageClicks: integer("rage_clicks").notNull().default(0),
+    deadViews: integer("dead_views").notNull().default(0),
+    rageViews: integer("rage_views").notNull().default(0),
+    frustratedViews: integer("frustrated_views").notNull().default(0),
+  },
+  (t) => [
+    primaryKey({ columns: [t.storeId, t.day, t.page, t.device, t.tag] }),
+    check("page_heat_days_page", sql`char_length(${t.page}) between 1 and 300`),
+    check("page_heat_days_device", sql`${t.device} in ('mobile', 'tablet', 'desktop')`),
+    check("page_heat_days_tag", sql`${t.tag} = '' or ${t.tag} ~ '^[0-9a-f-]{36}:[a-d]$'`),
+    check("page_heat_days_arrays", sql`cardinality(${t.reach}) = 21 and cardinality(${t.attentionMs}) = 20`),
+    check("page_heat_days_counts", sql`${t.views} >= 0 and ${t.clicks} >= 0 and ${t.deadClicks} >= 0 and ${t.rageClicks} >= 0`),
+  ],
+);
+
+/** Clicks per part of a page and cell of its box, per day (D656, 6.2): written with `page_heat_days`, kept 90 days (`CELL_KEEP_DAYS`). */
+export const clickCells = commerce.table(
+  "click_cells",
+  {
+    storeId: storeId().references(() => stores.id, { onDelete: "cascade" }),
+    day: date("day", { mode: "string" }).notNull(),
+    page: text("page").notNull(),
+    device: text("device").notNull(),
+    tag: text("tag").notNull().default(""),
+    anchor: text("anchor").notNull(),
+    cx: smallint("cx").notNull(),
+    cy: smallint("cy").notNull(),
+    clicks: integer("clicks").notNull().default(0),
+    dead: integer("dead").notNull().default(0),
+    rage: integer("rage").notNull().default(0),
+  },
+  (t) => [
+    primaryKey({ columns: [t.storeId, t.day, t.page, t.device, t.tag, t.anchor, t.cx, t.cy] }),
+    check("click_cells_page", sql`char_length(${t.page}) between 1 and 300`),
+    check("click_cells_device", sql`${t.device} in ('mobile', 'tablet', 'desktop')`),
+    check("click_cells_tag", sql`${t.tag} = '' or ${t.tag} ~ '^[0-9a-f-]{36}:[a-d]$'`),
+    check("click_cells_anchor", sql`char_length(${t.anchor}) between 1 and 60`),
+    check("click_cells_cell", sql`${t.cx} between 0 and 9 and ${t.cy} between 0 and 9`),
+  ],
+);
+
 // ---------------------------------------------------------------------------
 // Legal pages, terms at checkout and accessibility (wave 1, 1e: docs/wave-1-trust.md)
 // ---------------------------------------------------------------------------

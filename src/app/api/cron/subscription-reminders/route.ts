@@ -1,3 +1,4 @@
+import { pruneHeat } from "@/server/page-heat";
 import { pruneAdSignals } from "@/server/ad-conversions";
 import { prunePlatformAdSignals } from "@/server/platform-ad-conversions";
 import { revalidateTag } from "next/cache";
@@ -98,6 +99,8 @@ async function run(request: Request) {
     recommendations: await tracked("daily.recommendations", 86400, () => pruneRecommendEvents()),
     docsCounts: await tracked("daily.docs-counts", 86400, () => pruneDocsCounts()),
     replications: await tracked("daily.replications", 86400, () => pruneReplications()),
+    // Heatmaps' totals after 13 months, their click cells after 90 days (D656).
+    heat: await tracked("daily.heat", 86400, () => pruneHeat()),
   };
   // Production's own statistics, one reading a day, kept 90 days (bloat review step 0.2). Its own job, so a failed reading shows on the platform home and the rest of the route goes on.
   const productionReading = await tracked("daily.production-reading", 86400, async () => ({ ...(await recordProductionReading()), pruned: await pruneProductionReadings() }));
