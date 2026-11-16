@@ -368,7 +368,7 @@ function meridianSections(words: MeridianWords, picture: PackPictureOf): { secti
           eyebrow(words.services.eyebrow),
           heading(words.services.heading, 2),
           text([words.services.lead], "meridian-lead", LEAD),
-          productGrid(6, { columns: { mobile: 1, tablet: 2, desktop: 3 }, gap: 32 }),
+          productGrid(6, { columns: 3, at: { md: { columns: 2 }, sm: { columns: 1 } }, gap: 32 }),
           { id: uuid(), type: "button", label: words.services.more, href: "/products", variant: "outline", shape: "square", align: "center", className: "meridian-more" },
         ],
       },

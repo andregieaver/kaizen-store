@@ -119,7 +119,7 @@ commit as the fix.
 | 0.43 | Hold CLAUDE.md's core from the first day, and open a home for this plan's own sentences | GAP-rules-s1 | S | cheap |  | Done | 16 Nov: Done (D668). Baseline 13,252 bytes outside the index (the owner's word: 12,555 in the brief, four sentences added since); the one index line over 200 characters shortened. |
 | 0.44 | Give pictures in page content the 800 px copy | GAP-code-s4 | M | review | 0.33 | Open | |
 | 0.45 | Cap the dispatcher at four jobs at a time | GAP-database-s3 | S | cheap |  | Done | 16 Nov: Done (ecc6f773; D674). Live at 59a188d3: the 12:00 round ran 80 jobs in 3.7 s (about 1.3 s before), longest 2.4 s, no error. The query for connection timeouts runs on 17 Nov. |
-| 0.46 | Make the themes, the content packs and the seed write today's page shape | GAP-page-model-s5 | S | cheap |  | Open | |
+| 0.46 | Make the themes, the content packs and the seed write today's page shape | GAP-page-model-s5 | S | cheap |  | In progress | 16 Nov: written and tested locally, not pushed; the production checks wait for the reviewer. |
 
 **Phase 1: Budgets, so it stays removed**
 

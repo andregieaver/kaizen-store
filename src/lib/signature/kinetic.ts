@@ -308,7 +308,7 @@ function kineticSections(words: KineticWords, picture: PackPictureOf): ThemeSect
         blocks: [
           eyebrow(words.kit.eyebrow),
           heading(words.kit.heading, 2),
-          productGrid(8, { columns: { mobile: 2, tablet: 3, desktop: 4 }, gap: 24 }),
+          productGrid(8, { columns: 4, at: { md: { columns: 3 }, sm: { columns: 2 } }, gap: 24 }),
           { id: uuid(), type: "button", label: words.kit.more, href: "/products", variant: "outline", shape: "square", align: "center", className: "kinetic-more" },
         ],
       },
