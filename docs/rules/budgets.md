@@ -12,6 +12,13 @@ Inside the two sections a new rule adds one line, at most 200 characters, that e
 (src/lib/rules-index.test.ts pairs them).
 When the figure falls, lower the baseline in the same change: the test says so.
 
+## Decisions and the rules' names (step 0.41)
+
+src/lib/decisions.scan.test.ts fails when a decision number stands twice, when a row stands outside the one Settled table, or when
+a stub row from `node scripts/claim-decision.mjs` is left without its text for over 14 days.
+The name check in src/lib/docs-budget.scan.test.ts fails when CLAUDE.md or a file under docs/rules cites a function or component
+that no code defines.
+
 ## Sentences from the plan
 
 Steps of the bloat review write their sentence under a heading of their own below this line.

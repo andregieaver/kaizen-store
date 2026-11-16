@@ -835,7 +835,7 @@ CLAUDE.md keeps one line per rule pointing here; each rule is under that line as
   the renderer. Only texts are per language (`isTranslatable()`). Fields are
   private until the owner makes them public: the site reads only public ones
   through `shownFieldsFor()` (cached under `fieldsTag`, read inside the
-  product page's own cached read), drawn by `CustomFieldsView` in the product
+  product page's own cached read), drawn by `CustomFieldView` in the product
   layouts' `fields`/`field` parts and the page builder's `customField` block;
   any change to a group or to values calls `updateTag(fieldsTag())`. Never
   render a field's value as HTML.
@@ -1085,7 +1085,7 @@ CLAUDE.md keeps one line per rule pointing here; each rule is under that line as
   shortest and longest). Their rules are pure in `src/lib/booking-ranges.ts`
   (`rangeSpan()`: a stay ends on check-out N days later, a rental on its last
   day), the server side is `src/server/ranges.ts` (`rangeDates()`,
-  `freeUnitsFor()`, `holdRange()`); the cart line's quantity is the nights
+  `freeUnits()`, `holdRange()`); the cart line's quantity is the nights
   or days and `starts_at` the check-in, so prices and VAT need nothing new.
   A rental's variant is rented by `day`, `half_day` or `hour`
   (`product_variants.rental_period`, D69): `periodSpan()`/`periodProblem()`

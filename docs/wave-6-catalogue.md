@@ -936,7 +936,7 @@ the readers then leave out). There are no standalone entries of an owner's own t
   which every writer refreshes. The field loop stays a repeater's: a type's entries are listed by the grid, which draws the same slots.
 - **Pages.** A type with `has_pages` serves `/{type}/{entry}` through the nested-page route (`[slug]/[...sub]`): a page at that address
   wins; else a published entry of a type with pages is drawn by its type's layout, else the standard entry view (its picture, title and
-  every public field through `CustomFieldsView`). A layout is a page of the new type `entry_layout` (the `pages_type` check widened),
+  every public field through `CustomFieldView`). A layout is a page of the new type `entry_layout` (the `pages_type` check widened),
   designed in the page builder from *Design the entry page* on the type, its heading, rich text, image and button blocks bound to the
   type's public fields (`bindPage()` with the entry's fields as one group, D119), made from a starting layout. The page's title is its
   search title, else its title field's; its description the search description, else the summary; `hreflang` per language as a page's; it
