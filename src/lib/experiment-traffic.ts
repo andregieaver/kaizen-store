@@ -3,7 +3,7 @@ import { estimateRuntime, type RuntimeEstimate } from "./experiment-results";
 import { MIN_DAYS, type Goal } from "./experiments";
 
 /**
- * How long a test would take at the store's own traffic (D148 phase 13, D657, `docs/ab-testing-usability.md` step 2): the facts are counted
+ * How long a test would take at the store's own traffic (D148 phase 13, D658, `docs/ab-testing-usability.md` step 2): the facts are counted
  * by the server (`experimentTraffic()`), from the visits of the last 30 days (D152), the share of cookie choices that accepted statistics,
  * and the store's own funnel; the arithmetic is `estimateRuntime()`'s, the one the results use. Pure, so the new-test form works it out in
  * the browser as choices change, and the AI manager's `suggest_experiments` the same way. Nothing is guessed: a figure the store did not

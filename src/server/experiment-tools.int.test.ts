@@ -146,7 +146,7 @@ describe("the AI manager's A/B test tools (D148)", () => {
     expect(suggest.room_for_more).toBe(5);
     expect(suggest.who_takes_part).toMatch(/Too few cookie choices/);
     expect(typeof suggest.how_long).toBe("string");
-    // Too few cookie choices to know who takes part (D657): no traffic per candidate, and it says to ask rather than guess.
+    // Too few cookie choices to know who takes part (D658): no traffic per candidate, and it says to ask rather than guess.
     expect(suggest.how_long).toMatch(/no traffic figures to work from/);
     expect(about!.traffic).toBeUndefined();
     // With visitors and a rate it works out how long, in code.
@@ -243,7 +243,7 @@ describe("the AI manager's A/B test tools (D148)", () => {
     expect(explained.what_next[0]).toMatch(/Keep it running/);
     expect(explained.never).toMatch(/Do not call a winner/);
     expect(explained.how_it_is_counted).toMatch(/accepted statistics cookies/);
-    // The facts the test's page draws (D656): its stage, how far from an answer, what B changed, and no figure while it is too early.
+    // The facts the test's page draws (D657): its stage, how far from an answer, what B changed, and no figure while it is too early.
     expect(explained).toMatchObject({
       stage: "Still learning: no answer yet",
       progress: { days: "0 of at least 14", visitors_in_the_smallest_version: "0 of at least 200", reached: false },

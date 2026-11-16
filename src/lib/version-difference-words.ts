@@ -4,7 +4,7 @@ import type { PageDifference } from "./version-compare";
 
 /**
  * One difference between two versions of a page in words (D358), from `compareVersions()`: the versions dialogs, an A/B test's page
- * ("What is different", D656) and the AI manager's `explain_results` say them the same way. Pure: the words are the caller's language.
+ * ("What is different", D657) and the AI manager's `explain_results` say them the same way. Pure: the words are the caller's language.
  */
 export function differenceLine(d: PageDifference, words: Pick<BuilderMessages, "differences" | "blockNames">): string {
   const w = words.differences;

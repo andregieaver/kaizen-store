@@ -35,7 +35,7 @@ export default async function NewExperimentPage({ params, searchParams }: PagePr
       return { ...p, buttons: buttonsOf(content), forms: formsOf(content) };
     }),
   );
-  // The shop's own traffic and each target's last test (D657): how soon each goal answers, and what was tried before.
+  // The shop's own traffic and each target's last test (D658): how soon each goal answers, and what was tried before.
   const [traffic, tests] = await Promise.all([experimentTraffic(store, pages), listExperiments(store.id)]);
   const history: Record<string, TargetHistory> = {};
   for (const t of [...tests].filter((x) => x.status !== "draft").sort((a, b) => (b.startedAt ?? b.createdAt).localeCompare(a.startedAt ?? a.createdAt))) {
