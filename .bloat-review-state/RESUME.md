@@ -208,3 +208,10 @@ challenged by a skeptic, planned by a planner. Its last lines hold the arguments
 - Step 0.30 pushed as 24073585 (ed4eebf5, 10c66d24, 24073585; migration 20261116033159_live_drill_kinds). CI wait task bpqped1fy; re-run once if only flaky.
 - Step 0.33 executor (Opus a1afa870d064d6145) started: 800 px copy of every picture, 4 commits, migration in commit 1.
 - 0.30 run 1365 red only on agent-eval-replay (other session's 03910744, D653, changed the manager prompt; it deployed via quick gate). 0.30's migration waits for a green run. Check-in in 60 min.
+
+## 16 Nov 10:55 UTC
+- 0.30, 0.33, 0.34, 0.35 Done (D664–D667, pushed d1a07e4d). Migrations applied by CI run 1388; live at 3819f6bc.
+- 0.36 executor (Opus, a54d72571c2d23b9d) in /home/user/kaizen-store.
+- 0.45 then 0.43 executor (Sonnet, ae664823bae6a3bce) in worktree /home/user/kz-b (branch bloat-b).
+- Write-ups from /home/user/kz-fix (detached). Next: 0.38 (needs build, after 0.36), 0.37 after 0.36, 0.39 after 0.38, 0.42 strong, 0.40, 0.41, 0.44 (after 0.33), 0.46.
+- Owner checks: 0.30 invoices drill run in production; 0.33 upload a >1600px picture and see medium_url.
