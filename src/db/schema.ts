@@ -92,7 +92,7 @@ import { STAFF_ALERT_EVENTS } from "../lib/staff-alerts";
 import { CONSENT_EVENT_KINDS, SUBSCRIBE_SOURCES, SUBSCRIBER_STATUSES, UNSUBSCRIBE_SOURCES } from "../lib/marketing-consent";
 import { PAYMENT_TERMS } from "../lib/payment-terms";
 import { BROADCAST_AUDIENCES, BROADCAST_STATUSES, RECIPIENT_STATUSES } from "../lib/broadcast-status";
-import { AUTOMATION_KINDS, LIFECYCLE_KINDS, SEND_OUTCOMES, STOCK_REQUEST_STATUSES } from "../lib/automation-kinds";
+import { LIFECYCLE_KINDS, SEND_OUTCOMES, STOCK_REQUEST_STATUSES } from "../lib/automation-kinds";
 import {
   HIDE_REASONS,
   PUBLISH_MODES,
