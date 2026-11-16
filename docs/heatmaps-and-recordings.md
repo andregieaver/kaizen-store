@@ -1771,7 +1771,8 @@ selected (the DOM layer passes it only when the selection is not collapsed), sin
 them, since most need a store to render. `custom-fields-view.tsx` is not marked: it shows the owner's specification tables, not a form.
 The search section's mark is on its outer element (the results are a fragment), and the Google reviews' mask on its root (the names are
 drawn by `TestimonialCards`). `e2e/heatmaps.spec.ts` covers a view's summary with a dead click on its part, and no request without consent
-that named heatmaps, under GPC or on the cart; the drawer, withdrawal and soft navigation under a test follow with step 5.
+that named heatmaps, under GPC, on the cart, or after a withdrawal (step 5); the drawer and soft navigation under a test are not covered by
+e2e yet (the drawer's continuity is the module-level view, the tags' rule is `addTags()` checking the path).
 
 **Also:** `e2e/performance.spec.ts` still passes unchanged, because the collector is not a `script[src]` in the HTML. And
 `pay-routes.graph.test.ts` passes.
@@ -1796,6 +1797,9 @@ that named heatmaps, under GPC or on the cart; the drawer, withdrawal and soft n
 
 **Done when:** an owner can switch heatmaps on and off, and the store's banner asks about Statistics again. **Send the owner a
 screenshot** of the settings section.
+
+*As built (16 Nov 2026):* the action runs through `storeAction()` with the `owner` key. The words are a server-only area (`SERVER_AREAS`), read by the server-drawn view, so they are not handed to
+the browser. The view test is `src/components/admin/analytics/signals-section.test.ts`.
 
 ### Step 6: Pictures under heatmaps
 

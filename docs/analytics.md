@@ -598,7 +598,7 @@ profitable, each a link to its order.
 
 Click, scroll and attention heatmaps, dead and rage clicks, and recordings of visits, built in steps from
 [`heatmaps-and-recordings.md`](heatmaps-and-recordings.md), whose section 3 holds every definition. Built so far (step 1): the switches
-(`stores.heatmaps`, `stores.recordings`, owner only, both off) and the consent they need; step 2, the pure detectors; step 3, the tables and `/api/signals/heat`; step 4, the storefront's collector (`SiteSignals`, loaded once the browser is idle and only for a store with heatmaps on, so no store sends anything until its owner switches them on in step 5).
+(`stores.heatmaps`, `stores.recordings`, owner only, both off) and the consent they need; step 2, the pure detectors; step 3, the tables and `/api/signals/heat`; step 4, the storefront's collector (`SiteSignals`, loaded once the browser is idle and only for a store with heatmaps on, so no store sends anything until its owner switches them on); step 5, that switch, under Heatmaps on Analytics → Settings.
 
 The figures, as built in code (constants in `src/lib/page-heat.ts` and `src/lib/click-signals.ts`, tested against the plan):
 
