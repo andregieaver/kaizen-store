@@ -202,3 +202,5 @@ challenged by a skeptic, planned by a planner. Its last lines hold the arguments
 - Step 0.28 DONE: run 1359 all green, migrations at 01:47 UTC; prod checked; write-up 41130b87 (D654). Later reading: media_embeddings updates/day < 100, product hash ~24 calls/day.
 - Next: 0.29 (needs 0.28's text_changed_at: done).
 - Step 0.29 pushed as ebaeb7c0 (migration 20261116015416_content_screened_tries). Reviewed: the one-time wave of 89 screened products costs no AI calls (unchanged hash). Watching CI.
+- Step 0.29 DONE: run 1363, migration 02:40 UTC; prod: 20 listings stamped with 0 AI calls by 02:55; advisors INFO only (checked). Write-up 6eeacca2 (D655).
+- Next: 0.30 (invoice job; migration in 3rd commit only), then 0.33 (strong, needs 0.32: done), 0.34, 0.35, 0.36 (strong) ...
