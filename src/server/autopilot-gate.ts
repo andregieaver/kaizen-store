@@ -13,6 +13,7 @@ import { OwnerToolError } from "./owner-tool-error";
 import { marginAfterOffer, marginAfterPrices, priceChangePercent } from "./product-tools";
 import { exchangeRefundOf } from "./exchange-tools";
 import type { Store } from "./stores";
+import { replacementAutopilotProblem } from "./replacement-tools";
 import { purchaseAutopilotProblem } from "./supply-tools";
 
 /** A purchase order against the purchasing budget (C3): one that cannot be made at all asks too, with the reason in words. */
@@ -46,6 +47,10 @@ export async function autopilotDecision(
   // A confirmed exchange in challenge mode (B3, D675): processed by itself only when it gives nothing back to the customer.
   if (settings.challenge && p.store && tool === "process_exchange") {
     return autonomyDecision(settings, tool, gate, { exchangeRefundMinor: await exchangeRefundOf(p.store, String(args.return ?? "")) });
+  }
+  // A lost parcel's replacement in challenge mode (B3, D679): sent by itself only within the cap on its goods' value.
+  if (settings.challenge && p.store && tool === "send_replacement") {
+    return autonomyDecision(settings, tool, gate, { replacementProblem: await replacementAutopilotProblem(p.store, String(args.order ?? ""), settings.challenge.replacementMax) });
   }
   // The margin floor (D5) is read only where the owner, or the challenge, set one: it costs a read of the catalogue.
   const floor = settings.budgets.marginFloorPercent !== null;

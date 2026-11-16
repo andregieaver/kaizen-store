@@ -1,5 +1,5 @@
 {
- "version": "1.29",
+ "version": "1.30",
  "surface": [
   "admin DELETE /categories/{id}",
   "admin DELETE /categories/{id} -> data",
@@ -2589,6 +2589,9 @@
   "mcp send_draft_order",
   "mcp send_draft_order <- draft (required)",
   "mcp send_draft_order <- store (required)",
+  "mcp send_replacement",
+  "mcp send_replacement <- order (required)",
+  "mcp send_replacement <- store (required)",
   "mcp send_text_message",
   "mcp send_text_message <- message (required)",
   "mcp send_text_message <- store (required)",

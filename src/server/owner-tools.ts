@@ -91,6 +91,7 @@ import { reportCatalogueTool, runReportTool, saveReportTool } from "./report-too
 import { issueWorkInvoiceTool, listWorkAssignmentsTool, listWorkClientsTool, logTimeTool, preflightIssueWorkInvoice, workOverviewTool } from "./work-tools";
 import { changeOrderTool, preflightChangeOrder, previewOrderChangeTool } from "./order-change-tools";
 import { preflightProcessExchange, preflightProposeExchange, previewExchangeTool, processExchangeTool, proposeExchangeTool } from "./exchange-tools";
+import { preflightSendReplacement, sendReplacementTool } from "./replacement-tools";
 import { billingOverviewTool, changePlanTool, endPlanTool, preflightChangePlan, preflightEndPlan } from "./billing-tools";
 import { changeStaffRoleTool, inviteStaffTool, listStaffTool, preflightChangeStaffRole, preflightInviteStaff, preflightRemoveStaff, removeStaffTool } from "./staff-tools";
 import {
@@ -518,6 +519,9 @@ async function getOrderTool({ store }: OwnerToolContext, { order }: OwnerToolInp
           },
         }
       : {}),
+    // B3, D679: a lost or returned parcel's goods sent again at 0, and on the lost order the replacement sent for it.
+    ...(view.replaces ? { replacement_for: { order: view.replaces.number, means: "This order sends the goods of that order's lost or returned parcel again, at 0: no payment, no invoice." } } : {}),
+    ...(view.replacedBy ? { sent_again_as: view.replacedBy.number } : {}),
     ...(view.gift?.isGift ? { gift: true } : {}),
     lines: view.lines.map((l) => ({
       title: l.title,
@@ -2276,6 +2280,7 @@ export async function preflightOwnerTool(ctx: OwnerToolContext, name: string, ra
     change_order: preflightChangeOrder,
     propose_exchange: preflightProposeExchange,
     process_exchange: preflightProcessExchange,
+    send_replacement: preflightSendReplacement,
     // A Work draft that is not ready to issue (PSI AGT-01).
     issue_work_invoice: preflightIssueWorkInvoice,
     // An ad budget change Meta would refuse, or that changes nothing, is refused now (D585).
@@ -2544,6 +2549,7 @@ const handlersOf = (): Record<OwnerToolName, Handler> => (handlers ??= {
   preview_exchange: previewExchangeTool,
   propose_exchange: proposeExchangeTool,
   process_exchange: processExchangeTool,
+  send_replacement: sendReplacementTool,
   list_staff: listStaffTool,
   invite_staff: inviteStaffTool,
   change_staff_role: changeStaffRoleTool,

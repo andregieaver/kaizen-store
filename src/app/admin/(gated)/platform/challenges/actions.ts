@@ -34,6 +34,7 @@ const BUDGETS = [
   "marginFloorPercent",
   "purchasePerOrder",
   "purchaseMonthly",
+  "replacementMax",
   "adMoney",
 ] as const;
 

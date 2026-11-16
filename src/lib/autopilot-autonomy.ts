@@ -155,6 +155,8 @@ export const NEVER_AUTOMATIC: ReadonlySet<string> = new Set([
   "cancel_order",
   "change_order",
   "process_exchange",
+  // Goods sent again for nothing (B3, D679): outside the challenge a person always says yes.
+  "send_replacement",
   "adjust_customer_credits",
   // A customer's group decides the prices and terms they get (AGT-01): a person always says yes.
   "set_customer_group",
@@ -288,6 +290,8 @@ export type AutonomyFacts = {
   exchangeRefundMinor?: number | null;
   /** A purchase order against the purchasing budget (`purchaseBudgetProblem()`): why it must ask, or null when it may. */
   purchaseProblem?: string | null;
+  /** A lost parcel's replacement against the challenge's cap (`replacementCapProblem()`, B3, D679): why it must ask, or null when it may. */
+  replacementProblem?: string | null;
 };
 
 /**
@@ -317,6 +321,12 @@ export function autonomyDecision(settings: AutonomySettings, tool: string, gate:
     if (facts.exchangeRefundMinor === undefined || facts.exchangeRefundMinor === null) return { run: false, why: "The exchange's refund could not be read." };
     if (facts.exchangeRefundMinor > 0) return { run: false, why: "The exchange gives money back to the customer, which waits for you." };
     return { run: true, tell: levelOf(settings, "messages") === "tell", area: "messages" };
+  }
+  // In challenge mode a lost or returned parcel's goods are sent again by themselves within the cap on their value (B3, D679); outside it, never.
+  if (challenge && tool === "send_replacement") {
+    if (facts.replacementProblem === undefined) return { run: false, why: "The replacement's value could not be read." };
+    if (facts.replacementProblem !== null) return { run: false, why: facts.replacementProblem };
+    return { run: true, tell: levelOf(settings, "money") === "tell", area: "money" };
   }
   if (NEVER_AUTOMATIC.has(tool) || NEVER_CATEGORIES.has(gate)) return { run: false, why: "This always waits for your yes." };
   const area = TOOL_AREAS[tool];

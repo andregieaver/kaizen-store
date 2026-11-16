@@ -62,6 +62,7 @@ export const OPEN_WORLD: ReadonlySet<string> = new Set([
   "refund_order",
   "change_order",
   "process_exchange",
+  "send_replacement",
   "change_plan",
   "end_plan",
   "issue_gift_card",
