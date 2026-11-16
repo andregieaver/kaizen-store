@@ -16,7 +16,7 @@ export function PeriodMore({ chips, label, more, children }: { chips: ReactNode;
           type="button"
           aria-expanded={open}
           onClick={() => setOpen((shown) => !shown)}
-          className={`inline-flex h-9 shrink-0 items-center rounded-panel border px-3 text-sm whitespace-nowrap sm:hidden ${open ? "border-brand bg-sunken font-medium" : "border-line"}`}
+          className={`inline-flex h-9 shrink-0 items-center rounded-panel border px-2.5 text-sm whitespace-nowrap sm:hidden ${open ? "border-brand bg-sunken font-medium" : "border-line"}`}
         >
           {label}
         </button>

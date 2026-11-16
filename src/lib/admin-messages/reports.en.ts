@@ -357,7 +357,11 @@ export const reportsEn = {
     offCardText: "Turn on visit counting to see the way to a purchase, devices, landing pages and the conversion rate. No cookies, no consent banner; it counts from the day you switch it on.",
     offCardMore: "Until then, the funnel, devices and landing pages wait for it. ",
     fromOrders: "From your orders",
-    fromOrdersRows: { paid: "Paid orders", countries: "Countries that buy", when: "When customers buy", search: "What shoppers search for", refunds: "Refunds and returns" },
+    phoneOpen: "Open",
+    phoneClose: "Close",
+    paidSub: { one: "{n} paid order", many: "{n} paid orders" },
+    searchesSub: { one: "{n} search", many: "{n} searches" },
+    fromOrdersRows: { countries: "Countries that buy", when: "When customers buy", search: "What shoppers search for", refunds: "Refunds and returns" },
     help: {
       visits: "A visit is one visitor on one day. Coming back the same day is not counted twice, and visitors who opted out are not counted.",
       conversion: "Conversion rate: paid orders divided by visits. 2 % means 2 of every 100 visits ended in a purchase.",

@@ -65,11 +65,27 @@ export default async function AnalyticsTrafficPage({ params, searchParams }: Pag
           ctx={ctx}
           path="/analytics/traffic"
           title={w.pages.traffic.title}
-          description={w.pages.traffic.description}
+          description={<span className="max-sm:hidden">{w.pages.traffic.description}</span>}
         />
-        <TrafficView base={ctx.base} currency={currency} locale={locale} timeZone={store.timeZone} traffic={traffic} geo={geo} search={search} time={time} words={w.traffic} say={say} turnOn={turnOn} />
-        <RefundsView currency={currency} locale={locale} report={refunds} marketNames={Object.fromEntries(store.allMarkets.map((m) => [m.code, m.name]))} words={finance} say={say} />
-        <ReturnsView currency={currency} locale={locale} report={returns} queueHref={`${ctx.base}/returns?overdue=1`} words={finance} say={say} reasonLabels={adminText(ctx.lang, "returns").labels.reason} />
+        <TrafficView
+          base={ctx.base}
+          currency={currency}
+          locale={locale}
+          timeZone={store.timeZone}
+          traffic={traffic}
+          geo={geo}
+          search={search}
+          time={time}
+          words={w.traffic}
+          say={say}
+          turnOn={turnOn}
+          after={
+            <>
+              <RefundsView currency={currency} locale={locale} report={refunds} marketNames={Object.fromEntries(store.allMarkets.map((m) => [m.code, m.name]))} words={finance} say={say} />
+              <ReturnsView currency={currency} locale={locale} report={returns} queueHref={`${ctx.base}/returns?overdue=1`} words={finance} say={say} reasonLabels={adminText(ctx.lang, "returns").labels.reason} />
+            </>
+          }
+        />
       </div>
     </ExportScope>
     </AdminTextScope>

@@ -56,6 +56,7 @@ Everything below applies below 640 px. From 640 px each page is as before, so th
   - Product cards
   - Checkout look
 - **The preview** is a row of its own below the settings.
+- **The bar with Save** does not stick to the top of a phone's screen. It stays above the rows.
 - **The rest of the page, as rows:**
   - Other themes (*0 installed*): the theme library
   - Theme updates, when there are any
@@ -71,15 +72,14 @@ Everything below applies below 640 px. From 640 px each page is as before, so th
   - For an owner, the button switches counting on in place (`setVisitCountingAction`). Anyone else gets a link to the settings.
   - The funnel, devices and landing pages are left out until counting is on. They no longer each say that there is nothing to show.
   - This applies at every width.
-- **On a phone, From your orders** is one card of rows that jump to their sections:
-  - Paid orders (counted)
+- **On a phone, From your orders** is one card of rows. Each row opens its section in place:
   - Countries that buy (the first country)
-  - When customers buy
-  - What shoppers search for
+  - What shoppers search for (counted)
+  - When customers buy (the paid orders counted)
   - Refunds and returns
-  The box of questions this page answers waits for wider screens.
+  The page's long line and the box of questions this page answers wait for wider screens.
 - **Choosing the period on a phone** (`PeriodPicker`, so every analytics page):
-  - Today, the 7 and 30 days and This month sit on one line, with *Other dates* at its end.
+  - Today, *7 days*, *30 days* and This month sit on one line, with *Other dates* at its end.
   - Other dates opens Yesterday, Previous month and This year, the two date fields and Compare with.
   - A period chosen from those stays on the line.
 
@@ -90,7 +90,7 @@ Everything below applies below 640 px. From 640 px each page is as before, so th
 - **Design:** Layout, Screen sizes, Product cards and the checkout have a row each, where the boards drew one *Spacing, motion and the
   rest*.
 - **Design:** Theme updates, Add a theme, Share and the cart are rows too.
-- **Traffic:** From your orders has a fifth row, What shoppers search for. On a phone the sections stay below the card, as before.
+- **Traffic:** From your orders has What shoppers search for in place of Paid orders. The paid orders are counted on When customers buy.
 
 ## Platform
 
@@ -104,6 +104,6 @@ Everything below applies below 640 px. From 640 px each page is as before, so th
 ## Tests
 
 - `traffic-view.test.ts` now expects the single card. When counting is off there is no funnel, device or landing text, and the paid
-  orders are counted in From your orders.
-- `period-picker.test.ts` is unchanged: there are still three labels, and one current period.
+  orders are counted on the When row.
+- `period-picker.test.ts` still finds three labels and one current period. The current chip may now carry its short name for a phone.
 - `books.spec.ts` and the theme specs run at desktop width, where every region is as before.

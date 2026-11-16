@@ -22,6 +22,7 @@ import { countWords, fillWords } from "@/lib/admin-fill";
 import { reportsEn, type ReportsMessages } from "@/lib/admin-messages/reports.en";
 import { asWritten, type Say } from "@/lib/analytics-notes";
 import { submitClass } from "@/lib/submit-class";
+import { PhoneRow, PhoneRows } from "@/components/admin/phone-row";
 
 /** The words of this view (D312 A9), English unless given. */
 export type TrafficWords = ReportsMessages["traffic"];
@@ -59,6 +60,8 @@ export type TrafficViewProps = {
   say?: Say;
   /** Round 26 (D699): the button that switches visit counting on (an owner's form), for the one card shown while it is off; a link to the settings without it. */
   turnOn?: ReactNode;
+  /** What the page shows after the view (refunds and returns): on a phone the last of the order rows. */
+  after?: ReactNode;
 };
 
 // ---------------------------------------------------------------------------
@@ -259,37 +262,6 @@ function CountingOffCard({ base, w, turnOn }: { base: string; w: TrafficWords; t
         </Link>
       )}
     </section>
-  );
-}
-
-/** Round 26 (D699): on a phone, what the page shows from orders as one card of rows that jump to their section. */
-function FromOrders({ base, geo, traffic, time, w }: { base: string; geo: GeoReport; traffic: TrafficReport; time: TimeReport; w: TrafficWords }) {
-  const top = countryRows(geo, traffic, w).find((r) => (r.orders ?? 0) > 0)?.name;
-  const r = w.fromOrdersRows;
-  const rows: { href: string; label: string; value?: string }[] = [
-    { href: `${base}/orders`, label: r.paid, value: formatCount(time.totals.orders) },
-    { href: "#geography", label: r.countries, value: top },
-    { href: "#when", label: r.when },
-    { href: "#search", label: r.search },
-    { href: "#refunds", label: r.refunds },
-  ];
-  return (
-    <nav aria-label={w.fromOrders} className="flex flex-col gap-2 sm:hidden">
-      <h2 className="px-0.5 text-sm text-muted">{w.fromOrders}</h2>
-      <ul className={`px-4 ${CARD_CLASS}`}>
-        {rows.map((row) => (
-          <li key={row.href} className="border-b border-line last:border-b-0">
-            <a href={row.href} className="flex min-h-12 items-center justify-between gap-3 text-body text-ink">
-              <span>{row.label}</span>
-              <span className="text-sm text-muted">
-                {row.value ? `${row.value} ` : ""}
-                <span aria-hidden>›</span>
-              </span>
-            </a>
-          </li>
-        ))}
-      </ul>
-    </nav>
   );
 }
 
@@ -810,11 +782,13 @@ export function TrafficView(props: TrafficViewProps) {
   const unknown = traffic.byDevice.find((r) => r.key === "unknown");
   // Round 26 (D699): counting off is one card, and what needs visits waits for it; counting on (or on with nothing yet) is as before.
   const off = !traffic.counting;
+  const r = w.fromOrdersRows;
+  const row = { change: w.phoneOpen, done: w.phoneClose } as const;
+  const top = countryRows(geo, traffic, w).find((c) => (c.orders ?? 0) > 0)?.name;
 
   return (
     <>
       {off ? <CountingOffCard base={base} w={w} turnOn={props.turnOn} /> : null}
-      <FromOrders base={base} geo={geo} traffic={traffic} time={time} w={w} />
       <nav aria-label={w.questionsLabel} className="max-w-3xl rounded-panel bg-sunken px-4 py-3 text-sm max-sm:hidden">
         <p className="font-medium">{w.questionsTitle}</p>
         <ol aria-label={w.questionsList} className="mt-1 list-decimal space-y-0.5 pl-5">
@@ -840,10 +814,29 @@ export function TrafficView(props: TrafficViewProps) {
       {unknown && unknown.orders > 0 ? (
         <p className="-mt-4 max-w-prose text-xs text-muted">{countWords(unknown.orders, w.unknownOrders, { n: formatCount(unknown.orders), amount: money(unknown.revenueMinor) })}</p>
       ) : null}
-      <GeographySection base={base} geo={geo} traffic={traffic} money={money} w={w} />
-      {off ? null : <LandingSection base={base} traffic={traffic} money={money} w={w} />}
-      <SearchSection base={base} search={search} timeZone={timeZone} money={money} w={w} />
-      <WhenSection time={time} timeZone={timeZone} money={money} w={w} />
+      {/* Round 26 (D699): on a phone what comes from orders is one card of rows, each opening its section. */}
+      <h2 className="-mb-4 px-0.5 text-sm text-muted sm:hidden">{w.fromOrders}</h2>
+      <PhoneRows>
+      <PhoneRow id="orders-geography" title={r.countries} sub={top} {...row}>
+        <GeographySection base={base} geo={geo} traffic={traffic} money={money} w={w} />
+      </PhoneRow>
+      {off ? null : (
+        <PhoneRow id="orders-landing" title={w.landingTitle} {...row}>
+          <LandingSection base={base} traffic={traffic} money={money} w={w} />
+        </PhoneRow>
+      )}
+      <PhoneRow id="orders-search" title={r.search} sub={countWords(search.totals.searches, w.searchesSub, { n: formatCount(search.totals.searches) })} {...row}>
+        <SearchSection base={base} search={search} timeZone={timeZone} money={money} w={w} />
+      </PhoneRow>
+      <PhoneRow id="orders-when" title={r.when} sub={countWords(time.totals.orders, w.paidSub, { n: formatCount(time.totals.orders) })} {...row}>
+        <WhenSection time={time} timeZone={timeZone} money={money} w={w} />
+      </PhoneRow>
+      {props.after ? (
+        <PhoneRow id="orders-refunds" title={r.refunds} {...row}>
+          <div className="flex flex-col gap-8">{props.after}</div>
+        </PhoneRow>
+      ) : null}
+      </PhoneRows>
     </>
   );
 }

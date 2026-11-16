@@ -50,6 +50,7 @@ export const analyticsNb: AnalyticsMessages = {
     compareWith: "Sammenlign med",
     update: "Oppdater",
     otherDates: "Andre datoer",
+    short: { "7d": "7 dager", "30d": "30 dager" },
   },
   delta: {
     up: "Opp",

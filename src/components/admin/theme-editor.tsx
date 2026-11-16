@@ -633,7 +633,7 @@ export function ThemeEditor({
 
       <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,24rem)]">
         <div className="flex flex-col gap-6">
-          <div className="sticky top-0 z-10 flex flex-wrap items-center gap-2 rounded-lg border border-border bg-background p-3 shadow-sm">
+          <div className="sticky top-0 z-10 flex flex-wrap items-center gap-2 rounded-lg border border-border bg-background p-3 shadow-sm max-sm:static">
             <p className="mr-auto text-sm" aria-live="polite">
               {editingBefore}
               <strong>{sourceName}</strong>

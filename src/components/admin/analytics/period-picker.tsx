@@ -35,6 +35,8 @@ const buttonClass = "h-9 rounded-lg border border-line px-3 text-sm font-medium"
 
 /** The presets a phone shows under Other dates rather than on the line (round 26, D699). */
 const PHONE_LATER: ReadonlySet<AnalyticsPreset> = new Set(["yesterday", "last_month", "year"]);
+/** The presets with a shorter name on a phone ("30 days"), so the line holds Other dates too. */
+const SHORT: ReadonlySet<AnalyticsPreset> = new Set(["7d", "30d"]);
 
 function Hidden({ values }: { values: Readonly<Record<string, string>> }) {
   return (
@@ -83,9 +85,16 @@ export function PeriodPicker({ basePath, preset, from, to, compare, preserve = {
               key={p.id}
               href={periodHref(basePath, { period: { preset: p.id, from, to }, compare: { mode: compare } }, explicitPeriod ? { ...preserve, period: p.id } : preserve)}
               aria-current={active ? "true" : undefined}
-              className={`inline-flex h-9 shrink-0 items-center rounded-panel border px-3 text-sm whitespace-nowrap ${active ? "border-brand bg-sunken font-medium" : "border-line"} ${PHONE_LATER.has(p.id) && !active ? "max-sm:hidden" : ""}`}
+              className={`inline-flex h-9 shrink-0 items-center rounded-panel border px-3 text-sm whitespace-nowrap max-sm:px-2.5 ${active ? "border-brand bg-sunken font-medium" : "border-line"} ${PHONE_LATER.has(p.id) && !active ? "max-sm:hidden" : ""}`}
             >
-              {words.period.presets[p.id]}
+              {SHORT.has(p.id) ? (
+                <>
+                  <span className="sm:hidden">{w.short[p.id as "7d" | "30d"]}</span>
+                  <span className="max-sm:hidden">{words.period.presets[p.id]}</span>
+                </>
+              ) : (
+                words.period.presets[p.id]
+              )}
             </Link>
           );
         })}

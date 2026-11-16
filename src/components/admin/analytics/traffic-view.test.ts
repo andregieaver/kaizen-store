@@ -475,8 +475,9 @@ describe("TrafficView, visit counting off but orders and searches exist", () => 
   });
 
   it("lists what comes from orders, with the paid orders counted (round 26, D699)", () => {
-    expect(out).toContain('aria-label="From your orders"');
-    expect(out).toMatch(/Paid orders<\/span><span[^>]*>90 /);
+    expect(out).toContain(">From your orders</h2>");
+    expect(out).toContain("90 paid orders");
+    expect(out).toContain('id="orders-geography"');
   });
 
   it("shows visits per country as a dash with the reason", () => {

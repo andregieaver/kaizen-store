@@ -69,6 +69,7 @@ export const analyticsEn = {
     compareWith: "Compare with",
     update: "Update",
     otherDates: "Other dates",
+    short: { "7d": "7 days", "30d": "30 days" },
   },
   delta: {
     up: "Up",

@@ -15,7 +15,7 @@ describe("PeriodPicker", () => {
     for (const label of ["Today", "Yesterday", "Last 7 days", "Last 30 days", "This month", "Previous month", "This year"]) expect(out).toContain(label);
     expect(out).not.toContain(">Custom range<");
     expect(out.match(/aria-current="true"/g)).toHaveLength(1);
-    expect(out).toMatch(/aria-current="true"[^>]*>Last 30 days</);
+    expect(out).toMatch(/aria-current="true"[^>]*>(<span[^>]*>30 days<\/span><span[^>]*>)?Last 30 days</);
   });
 
   it("makes each preset an address that keeps the comparison and the page's other parameters", () => {
