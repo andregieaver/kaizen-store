@@ -10,11 +10,13 @@ import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
 import { adminText } from "@/lib/admin-text";
 import { formatPercent } from "@/lib/analytics-core";
 import { formatAmount } from "@/lib/analytics-format";
+import { mayFreeze } from "@/lib/challenge-baseline";
 import { RATIO_KEYS, type RatioKey } from "@/lib/challenge-scoreboard";
+import { utcDay } from "@/lib/autopilot-challenge";
 import { requirePlatformReader } from "@/server/auth";
 import { scoreboardOf } from "@/server/challenge-scoreboard";
 
-import { removeOriginalAction, saveOriginalAction } from "../actions";
+import { freezeBaselineAction, removeOriginalAction, saveOriginalAction } from "../actions";
 
 export const metadata: Metadata = { title: "Scoreboard" };
 
@@ -115,6 +117,31 @@ export default async function ChallengeScoreboardPage({ params }: PageProps<"/ad
                 <li key={n}>{n}</li>
               ))}
             </ul>
+          )}
+        </div>
+      </Card>
+
+      <Card title={w.baseline.title}>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <p className="max-w-3xl text-body text-ink-2">
+            {s.challenge.baseline
+              ? fillWords(w.baseline.frozen, {
+                  when: new Date(s.challenge.baseline.frozenAt).toLocaleString(locale, { dateStyle: "medium", timeStyle: "short", timeZone: "UTC" }),
+                  fee: `${formatPercent(s.challenge.baseline.costs.paymentFeeBps / 10_000, 2)} + ${formatAmount(s.challenge.baseline.costs.paymentFeeFixedMinor, s.challenge.baseline.currency, locale)}`,
+                  shipping: formatAmount(s.challenge.baseline.costs.shippingCostMinor, s.challenge.baseline.currency, locale),
+                  handling: formatAmount(s.challenge.baseline.costs.handlingCostMinor, s.challenge.baseline.currency, locale),
+                  ad: s.challenge.baseline.adMoney === null ? w.baseline.none : money(s.agreedAdMinor),
+                  withCost: s.challenge.baseline.variantsWithCost.toLocaleString(locale),
+                  withoutCost: s.challenge.baseline.variantsWithoutCost.toLocaleString(locale),
+                })
+              : mayFreeze(s.challenge.dayOne, utcDay(new Date()))
+                ? w.baseline.notFrozen
+                : w.baseline.closed}
+          </p>
+          {canWrite && mayFreeze(s.challenge.dayOne, utcDay(new Date())) && (
+            <ActionForm action={freezeBaselineAction.bind(null, storeId)} successMessage={w.baseline.frozenNow}>
+              <SubmitButton variant={s.challenge.baseline ? "secondary" : "primary"}>{s.challenge.baseline ? w.baseline.freezeAgain : w.baseline.freeze}</SubmitButton>
+            </ActionForm>
           )}
         </div>
       </Card>

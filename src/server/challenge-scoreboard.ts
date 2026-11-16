@@ -1,10 +1,13 @@
 import "server-only";
 
+import { createHash } from "node:crypto";
+
 import { sql } from "drizzle-orm";
 import { z } from "zod";
 
 import { customPeriod } from "@/lib/analytics-period";
 import { daysBetween, utcDay, type Challenge } from "@/lib/autopilot-challenge";
+import { changedCosts, costFingerprintText, mayFreeze, type Baseline } from "@/lib/challenge-baseline";
 import { scoredPeriod } from "@/lib/challenge-console";
 import { originalPeriodSchema, type OriginalPeriod } from "@/lib/challenge-original";
 import { board, originalSide, type Board, type Side } from "@/lib/challenge-scoreboard";
@@ -21,7 +24,7 @@ import { challengeFor, saveChallenge } from "./autopilot-settings";
 import { getStoreBilling } from "./billing";
 import { OwnerToolError } from "./owner-tool-error";
 import { getStore, storeSlugOf, type Store } from "./stores";
-import { col, typedRow } from "./typed-rows";
+import { col, typedRow, typedRows } from "./typed-rows";
 
 /**
  * The challenge's scoreboard (`docs/100-day-challenge.md` 3.3, E7): the clone over the same days as each period of the original's signed P&L
@@ -70,9 +73,18 @@ async function planCostMinor(store: Store, days: number): Promise<number | null>
   return toMainOne(store, price.currency, Math.round(perDay * days));
 }
 
-/** The clone over the spans, with the AI and the plan as its costs. */
-async function cloneSide(store: Store, spans: { from: string; to: string }[], notes: string[]): Promise<CloneSide> {
-  const settings = await getAnalyticsSettings(store.id);
+/** Every variant of the store with its cost price (archived products' too: an order may still hold them), for the baseline's fingerprint. */
+async function variantCosts(storeId: string): Promise<{ id: string; costMinor: number | null }[]> {
+  const rows = await typedRows(z.object({ id: col.uuid, cost_minor: col.minorOrNull }), sql`select id, cost_minor from commerce.product_variants where store_id = ${storeId}::uuid`);
+  return rows.map((r) => ({ id: r.id, costMinor: r.cost_minor }));
+}
+
+const fingerprintOf = (variants: readonly { id: string; costMinor: number | null }[]) => createHash("sha256").update(costFingerprintText(variants)).digest("hex");
+
+/** The clone over the spans, with the AI and the plan as its costs; with the baseline's frozen cost estimates once it is frozen (E7). */
+async function cloneSide(store: Store, spans: { from: string; to: string }[], notes: string[], baseline: Baseline | null): Promise<CloneSide> {
+  const live = await getAnalyticsSettings(store.id);
+  const settings = baseline ? { ...live, ...baseline.costs } : live;
   let net = 0;
   let contribution: number | null = 0;
   let marketing = 0;
@@ -115,7 +127,9 @@ export async function scoreboardOf(storeId: string, now: Date = new Date()): Pro
   if (!challenge || !store) return null;
   const currency = mainCurrency(store);
   const scored = scoredPeriod(challenge, utcDay(now));
-  const agreedAdMinor = challenge.adMoney === null ? null : Math.round(challenge.adMoney * 10 ** minorUnitDigits(currency));
+  // The ad money as the baseline froze it, once it is frozen.
+  const adMoney = challenge.baseline ? challenge.baseline.adMoney : challenge.adMoney;
+  const agreedAdMinor = adMoney === null ? null : Math.round(adMoney * 10 ** minorUnitDigits(currency));
   const base = { challenge, storeName: store.name, slug: store.slug, currency, agreedAdMinor, notes: [] as string[] };
   if (!scored) return { ...base, spans: [], clone: null, original: null, board: null, notes: ["The scoreboard counts from Day 1."] };
   // The clone is counted over exactly the days each signed period covers, within Day 1 to Day 100 and today; while none is signed, over all of them.
@@ -127,7 +141,18 @@ export async function scoreboardOf(storeId: string, now: Date = new Date()): Pro
     .filter((s) => s.from <= s.to)
     .sort((a, b) => a.from.localeCompare(b.from));
   const notes = base.notes;
-  const clone = spans.length > 0 ? await cloneSide(store, spans, notes) : null;
+  const baseline = challenge.baseline;
+  if (!baseline) notes.push("The baseline is not frozen: freeze it before Day 1, so what the score rests on cannot change during the run.");
+  else {
+    const live = await getAnalyticsSettings(store.id);
+    const changed = changedCosts(baseline, { ...live, handlingCostMinor: live.handlingCostMinor ?? 0 });
+    if (changed.length > 0) notes.push(`Since the baseline was frozen the store changed ${changed.join(", ")}: the scoreboard counts with the frozen ones.`);
+    if (challenge.adMoney !== baseline.adMoney) notes.push("The agreed ad money was changed after the baseline was frozen: the scoreboard counts with the frozen amount.");
+    if (fingerprintOf(await variantCosts(store.id)) !== baseline.costFingerprint) {
+      notes.push("Cost prices of the clone's goods were changed after the baseline was frozen: the referee checks them against the agreed supplier prices.");
+    }
+  }
+  const clone = spans.length > 0 ? await cloneSide(store, spans, notes, baseline) : null;
   const added = originalSide(challenge.original);
   let original: Side | null = null;
   if (added === null) notes.push("No period of the original's signed P&L is entered yet.");
@@ -162,4 +187,40 @@ export async function removeOriginalPeriod(a: { account: Account }, storeId: str
   if (!challenge) throw new OwnerToolError("This store has no challenge.");
   await saveChallenge(a, storeId, { ...challenge, original: challenge.original.filter((p) => p.from !== from) });
   await audit(a.account.id, storeId, "ai.challenge_original_removed", { from }, { area: "platform" });
+}
+
+/**
+ * Freezes the baseline (`docs/100-day-challenge.md` E7, D648): the clone's cost estimates, the agreed ad money and a fingerprint of its goods'
+ * cost prices, kept with the challenge. A platform admin's, only before Day 1 (frozen again replaces it), and only once the store has saved
+ * its cost estimates, so the score never rests on estimates nobody entered. Audited with what was frozen.
+ */
+export async function freezeBaseline(a: { account: Account }, storeId: string, now: Date = new Date()): Promise<Baseline> {
+  if (!a.account.platformAdmin) throw new OwnerToolError("Only a platform admin freezes the baseline.");
+  const challenge = await challengeFor(storeId);
+  if (!challenge) throw new OwnerToolError("This store has no challenge.");
+  if (!mayFreeze(challenge.dayOne, utcDay(now))) throw new OwnerToolError("The baseline is frozen before Day 1; the challenge has begun.");
+  const slug = await storeSlugOf(storeId);
+  const store = slug ? await getStore(slug) : null;
+  if (!store) throw new OwnerToolError("This store has no challenge.");
+  const settings = await getAnalyticsSettings(storeId);
+  if (!settings.saved) throw new OwnerToolError("The store has no cost estimates saved yet: enter them under Analytics, Settings first.");
+  const variants = await variantCosts(storeId);
+  const baseline: Baseline = {
+    frozenAt: now.toISOString(),
+    frozenBy: a.account.id,
+    currency: mainCurrency(store),
+    costs: {
+      paymentFeeBps: settings.paymentFeeBps,
+      paymentFeeFixedMinor: settings.paymentFeeFixedMinor,
+      shippingCostMinor: settings.shippingCostMinor,
+      handlingCostMinor: settings.handlingCostMinor ?? 0,
+    },
+    adMoney: challenge.adMoney,
+    variantsWithCost: variants.filter((v) => v.costMinor !== null).length,
+    variantsWithoutCost: variants.filter((v) => v.costMinor === null).length,
+    costFingerprint: fingerprintOf(variants),
+  };
+  await saveChallenge(a, storeId, { ...challenge, baseline });
+  await audit(a.account.id, storeId, "ai.challenge_baseline_frozen", { ...baseline.costs, adMoney: baseline.adMoney, variantsWithCost: baseline.variantsWithCost }, { area: "platform" });
+  return baseline;
 }

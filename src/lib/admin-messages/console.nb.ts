@@ -290,6 +290,16 @@ export const consoleNb: ConsoleMessages = {
     },
     board: {
       title: "Resultattavle: {store}",
+      baseline: {
+        title: "Utgangspunkt",
+        notFrozen: "Ikke låst ennå. Lås det før dag 1: klonens kostnadsanslag, de avtalte annonsepengene og kostprisene på varene låses da for poengene.",
+        frozen: "Låst {when}: betalingsgebyr {fee}, frakt {shipping} og håndtering {handling} per ordre, annonsepenger {ad}, {withCost} varianter med kostpris ({withoutCost} uten).",
+        closed: "Utfordringen har begynt: utgangspunktet kan ikke lenger låses.",
+        freeze: "Lås utgangspunktet",
+        freezeAgain: "Lås det på nytt",
+        frozenNow: "Utgangspunktet er låst.",
+        none: "ingen",
+      },
       description: "Klonen mot originalen etter én definisjon: klonen slik plattformen teller den, originalen slik regnskapsføreren signerte den. En butikk vinner ved å ligge foran på to av de tre forholdstallene.",
       back: "Alle utfordringer",
       clone: "Klonen",

@@ -9,7 +9,7 @@ import { adminText } from "@/lib/admin-text";
 import { parsePrice } from "@/lib/product-input";
 import { endChallenge, saveChallenge } from "@/server/autopilot-settings";
 import { pinChallenge } from "@/server/challenge-pin";
-import { removeOriginalPeriod, saveOriginalPeriod } from "@/server/challenge-scoreboard";
+import { freezeBaseline, removeOriginalPeriod, saveOriginalPeriod } from "@/server/challenge-scoreboard";
 import { storeIdBySlug } from "@/server/challenge-console";
 import { OwnerToolError } from "@/server/owner-tool-error";
 import { platformAction } from "@/server/store-action";
@@ -117,5 +117,21 @@ export async function removeOriginalAction(storeId: string, from: string): Promi
     await removeOriginalPeriod({ account }, storeId, from);
     revalidatePath(`${PATH}/${storeId}`);
     return { status: "ok", messages: [w.removed] };
+  });
+}
+
+/** Freezes the challenge's baseline before Day 1 (E7, D648): the clone's cost estimates, the agreed ad money and its goods' cost prices. */
+export async function freezeBaselineAction(storeId: string): Promise<FormState> {
+  return platformAction(write("challenge.baseline_freeze"), async (account, lang) => {
+    const w = adminText(lang, "console").challenges.board;
+    if (!z.uuid().safeParse(storeId).success) return answer(adminText(lang, "console").challenges.unknownStore);
+    try {
+      await freezeBaseline({ account }, storeId);
+    } catch (error) {
+      if (error instanceof OwnerToolError) return answer(error.message);
+      throw error;
+    }
+    revalidatePath(`${PATH}/${storeId}`);
+    return { status: "ok", messages: [w.baseline.frozenNow] };
   });
 }

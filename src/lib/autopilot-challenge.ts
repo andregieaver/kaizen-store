@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import type { AutonomyArea, AutonomyLevel, AutonomySettings } from "./autopilot-autonomy";
+import { baselineSchema } from "./challenge-baseline";
 import { originalPeriodSchema } from "./challenge-original";
 import { pinnedSchema, versionLogEntry, versionsSchema } from "./challenge-pin";
 
@@ -56,6 +57,8 @@ export const challengeSchema = z
     /** What the watch last saw it run on, and every change since the pin, logged as a platform fix. */
     seen: versionsSchema.nullable().default(null),
     versionLog: z.array(versionLogEntry).max(200).default([]),
+    /** What the score rests on, frozen before Day 1 (E7, `src/lib/challenge-baseline.ts`); null until it is. */
+    baseline: baselineSchema.nullable().default(null),
   })
   .superRefine((c, ctx) => {
     if (c.startsOn > c.dayOne) ctx.addIssue({ code: "custom", path: ["startsOn"], message: "Challenge mode starts on or before Day 1." });
