@@ -363,7 +363,7 @@ function segment(key: string, label: string, sessions: number | null, m: Money |
 }
 
 /** What the funnel counts, over the covered days: visits, then those that viewed a product, made a cart, reached checkout, bought. */
-async function funnelCounts(store: Store, range: Range): Promise<FunnelCounts> {
+export async function funnelCounts(store: Store, range: Range): Promise<FunnelCounts> {
   // `cc` is driven from the carts that have a visit in the range (a fraction of the visits), not from every visit of the range. The
   // visits that reached checkout are those that say so plus those whose cart became an order (`ordered_only`, the two never overlap).
   const [row] = await setBased<Row>(sql`

@@ -157,8 +157,12 @@ async function asSaved(storeId: string, content: PageContent | null): Promise<Pa
   return cleaned.ok ? cleaned.content : content;
 }
 
-/** The rows of a page's content that a visitor sees, to tell whether a version still equals the original. */
-const sameRows = (a: unknown, b: unknown) => JSON.stringify((a as { rows?: unknown })?.rows ?? null) === JSON.stringify((b as { rows?: unknown })?.rows ?? null);
+/**
+ * The rows of a page's content that a visitor sees, to tell whether a version still equals the original. Both are read as pages are drawn
+ * (`parsePageContent()`): saving a copy writes an older setting in today's shape (a grid's columns per screen, D656), so the stored JSON of
+ * an untouched copy can differ from the original's while nothing a visitor sees does.
+ */
+const sameRows = (a: unknown, b: unknown) => JSON.stringify(parsePageContent(a)?.rows ?? null) === JSON.stringify(parsePageContent(b)?.rows ?? null);
 
 async function variantsOf(storeId: string, experimentId: string, originalPublished: unknown, part: { id: string; kind: PartKind } | null): Promise<VariantInfo[]> {
   const rows = await db().execute<Row>(sql`
@@ -179,7 +183,7 @@ async function variantsOf(storeId: string, experimentId: string, originalPublish
 }
 
 /**
- * What each version changes against the original (D650, "What is different" on the test's page and `explain_results`), from
+ * What each version changes against the original (D655, "What is different" on the test's page and `explain_results`), from
  * `compareVersions()`: the original as published (cleaned as a saved version is, so a copy shows no difference), each version as published,
  * or its draft while it has never been. Keyed by the version's letter; the original has none.
  */
@@ -644,7 +648,7 @@ export async function applyVariant(account: Account, storeId: string, id: string
         where id = ${test.page.id}::uuid and store_id = ${storeId}::uuid and type = ${test.page.type}
       `);
     } else {
-      // The page keeps its own address and title: a version's title ("… (B)") names it in the admin, never on the site (D650).
+      // The page keeps its own address and title: a version's title ("… (B)") names it in the admin, never on the site (D655).
       const next = JSON.stringify({ ...content, slug: test.page.slug, title: test.page.title });
       await tx.execute(sql`
         update commerce.pages set draft = ${next}::jsonb, published = ${next}::jsonb, published_at = now(), updated_at = now(), updated_by = ${account.id}::uuid

@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 
-import { DraftPanel, TestActions } from "@/components/admin/experiment-controls";
+import { DraftActions, DraftPanel, TestActions } from "@/components/admin/experiment-controls";
 import { ExperimentResultsView } from "@/components/admin/experiment-results-view";
 import { AdminTextScope } from "@/components/admin/admin-text";
 import { StepPath, type PathStep } from "@/components/admin/home/home-parts";
@@ -9,12 +9,13 @@ import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
 import { fillWords } from "@/lib/admin-fill";
 import { adminText, adminTexts } from "@/lib/admin-text";
 import { experimentCard, type CardState, type ExperimentCard } from "@/lib/experiment-card";
-import { experimentProblemText, partLabelText, targetLabelText, variantNameText } from "@/lib/experiment-words";
+import { experimentProblems, experimentProblemText, partLabelText, targetLabelText, variantNameText } from "@/lib/experiment-words";
 import type { Signal } from "@/lib/admin-schemes";
 import type { ExperimentsMessages } from "@/lib/admin-messages/experiments.en";
 import { differenceLine } from "@/lib/version-difference-words";
 import { requirePermission } from "@/server/permissions";
-import { getExperiment, versionDifferences, type ExperimentInfo } from "@/server/experiment-admin";
+import { getExperiment, startProblemsOf, versionDifferences, type ExperimentInfo } from "@/server/experiment-admin";
+import { experimentTraffic } from "@/server/experiment-traffic";
 import { experimentResults } from "@/server/experiment-results";
 import { Chip, PageHeader } from "@/components/admin/ui";
 
@@ -62,7 +63,7 @@ function pathOf(test: ExperimentInfo, card: ExperimentCard, w: ExperimentsMessag
   ];
 }
 
-/** One A/B test (D148, a record since D650): set up while it is a draft; once started, its stage, path, answer and the one next step. */
+/** One A/B test (D148, a record since D655): set up while it is a draft; once started, its stage, path, answer and the one next step. */
 export default async function ExperimentPage({ params }: PageProps<"/admin/[store]/experiments/[id]">) {
   const { store: slug, id } = await params;
   const { store, account } = await requirePermission(slug, "marketing:read");
@@ -106,18 +107,42 @@ export default async function ExperimentPage({ params }: PageProps<"/admin/[stor
           : null;
 
   if (test.status === "draft") {
+    // A draft as a record (D656): what stands in the way of a start, what each version changes, and how long it takes at the shop's traffic.
+    const [left, changes, traffic] = await Promise.all([
+      startProblemsOf(store.id, test.id),
+      versionDifferences(store.id, test),
+      experimentTraffic(store, [{ id: test.page.id, slug: test.page.slug, title: test.page.title, kind: test.page.kind, role: test.page.role }]),
+    ]);
+    // The checklist says a version is unchanged and the page unpublished itself; the rest of what the start checks found is listed under it.
+    const shownByChecklist = (p: string) => /still the same as the original|^Publish the page before testing it|^Choose the (button|form)/.test(p);
+    const problems = experimentProblems(left.filter((p) => !shownByChecklist(p)), w);
+    const changeWords = Object.fromEntries(Object.entries(changes).map(([key, list]) => [key, list.map((d) => differenceLine(d, builder))]));
+    const allChanged = test.variants.every((v) => v.key === "a" || v.changed);
+    const steps: PathStep[] = [
+      { label: w.card.path.made, caption: date(test.createdAt), state: "done" },
+      { label: w.draftCard.pathChange, state: allChanged ? "done" : "current" },
+      { label: w.draftCard.pathStart, state: allChanged ? "current" : "todo" },
+      { label: w.card.path.learning, state: "todo" },
+      { label: w.card.path.answer, state: "todo" },
+    ];
     return (
       <AdminTextScope texts={adminTexts(lang, ["experiments"])}>
         <div className="flex flex-col gap-6">
-          <div className="flex flex-col gap-1">
-            <PageHeader
-              back={{ href: base, label: w.page.back }}
-              title={<>{test.name}</>}
-              meta={[w.status.draft, target, part && fillWords(w.page.testing, { part }), goal.label]}
-            />
-            {test.hypothesis && <p className="max-w-3xl text-sm">&ldquo;{test.hypothesis}&rdquo;</p>}
-          </div>
-          <DraftPanel store={store.slug} test={shown} markets={markets} />
+          <PageHeader
+            back={{ href: base, label: w.page.back }}
+            eyebrow={w.card.eyebrow}
+            status={
+              <Chip signal="neutral" dot>
+                {w.card.states.draft}
+              </Chip>
+            }
+            title={<>{test.name}</>}
+            meta={[target, part && fillWords(w.page.testing, { part }), goal.label]}
+            description={test.hypothesis ? <>&ldquo;{test.hypothesis}&rdquo;</> : undefined}
+            actions={<DraftActions store={store.slug} test={shown} ready={left.length === 0} />}
+          />
+          <StepPath label={w.card.path.label} steps={steps} />
+          <DraftPanel store={store.slug} test={shown} markets={markets} differences={changeWords} problems={problems} ready={left.length === 0} traffic={traffic} />
         </div>
       </AdminTextScope>
     );

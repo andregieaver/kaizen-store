@@ -2,7 +2,7 @@
 
 A review of the A/B tests (D148, [`ab-testing.md`](ab-testing.md)) for people who have never run one, and for the AI that helps
 them. The page with the findings, screenshots of the screens as they were and mockups: https://claude.ai/artifact/Ep8Vp5BbKEs7QMpECrZqfs.
-Step 1 is built (phase 12 of D148, D652); steps 2 to 4 are the plan.
+Steps 1 and 2 are built (phases 12 and 13 of D148, D655 and D656); step 2b and steps 3 and 4 are the plan.
 
 The engine is sound and stays as it is: rules fixed before results, no verdict before the minimum, the split check, the guardrail,
 the words written in code (`verdictOf()`), approval for start, stop and apply. What the person saw was the problem: three tables, an
@@ -11,7 +11,7 @@ know? What should I do?**
 
 ## In the redesign's terms
 
-The plan was written before the admin redesign (rounds 1 to 15, D595 to D647). Its seven principles are the same three questions said for
+The plan was written before the admin redesign (rounds 1 to 17, D595 to D652). Its seven principles are the same three questions said for
 every page, so the plan keeps its steps and is drawn with the redesign's patterns and parts:
 
 | Principle (round 1) | The A/B tests |
@@ -36,24 +36,23 @@ test an **editor** with *Customise* folded (like the product, D595 step 5).
 | 2 | No progress bar and no date, only a sentence. | Fixed in step 1 |
 | 3 | The one chart had no axes and swung hard in the first days. | Fixed in step 1 |
 | 4 | Uncertainty was a number, never a shape. | Fixed in step 1 |
-| 5 | The versions were never shown. | Step 1: what is different in words; step 2: side by side |
-| 6 | The estimate asked the owner to type visitors a day and a rate; visits (D152), cookie choices and the funnel exist. | Step 2 |
-| 7 | Eight decisions before anything is visible, and the draft page asked them again. | Step 2 |
+| 5 | The versions were never shown. | Steps 1 and 2: what is different in words; step 2b: side by side |
+| 6 | The estimate asked the owner to type visitors a day and a rate; visits (D152), cookie choices and the funnel exist. | Fixed in step 2 |
+| 7 | Eight decisions before anything is visible, and the draft page asked them again. | Fixed in step 2 |
 | 8 | Nobody hears when there is an answer. | Step 3 |
 | 9 | A decided test leaves nothing behind. | Step 3 |
 | 10 | The AI saw fewer facts than the screen. | Fixed in step 1 (`explain_results`) |
 | 11 | Found while building: applying a whole-page winner renamed the live page "… (B)". | Fixed in step 1 |
+| 12 | Found while building: an untouched copy of the template's front page counted as changed, so it could be started. | Fixed in step 2 |
 
 ## Steps
 
-1. **Read at a glance (phase 12, D652, built 16 November 2026).** See `ab-testing.md`, "What phase 12 built".
-2. **No numbers to guess, and a calmer start (phase 13, no migration).** `trafficFor(target)`: consenting visitors a day for a page
-   (landing visits by path; the store's total for the header and footer) and the goal's baseline from the 30-day funnel. The new test as an
-   editor on one screen: *What do you want more of?* as three cards, each saying how soon it answers at this shop's traffic (a recommended
-   goal for small shops), *Where?* with visitors a day beside each page and its last test, the estimate filled in as a bar to a date, and
-   name, idea, share, devices, countries and the shortest run under *Customise*. The draft page: the original and B side by side (`DualFrame`,
-   D412) with *What is different*, a ticked checklist, *Start the test* green only once B differs, *Schedule* and *Delete* under *More*.
-   `suggest_experiments` returns traffic and an estimate per candidate. The visits read is on a hot table: check it against `visits`' indexes.
+1. **Read at a glance (phase 12, D655, built 16 November 2026).** See `ab-testing.md`, "What phase 12 built".
+2. **No numbers to guess, and a calmer start (phase 13, D656, built 16 November 2026).** See `ab-testing.md`, "What phase 13 built". Small
+   shops meet the honest answer often (a 20 % change takes months at 70 visitors a day), so the form names the smallest change that could
+   be found within six weeks and offers it in one press.
+   2b. **The original and B side by side (no migration).** A preview route outside the admin's frame (`/admin/frame/{store}/…`, signed in,
+   the same access checks), drawn in two scaled frames on the draft page and under *What is different* on a started test.
 3. **News and a memory (phase 14, one migration).** `experiments.answered_at` and `experiments.learning` (nullable). A `verdict_reached`
    event raised once by `runExperimentJobs()`: an AI manager notice (D350), an email to the owners, an autopilot event (D309) and an owner
    webhook event (D354). *If everyone saw it* computed from the range and the counted traffic. Learnings written on deciding (280

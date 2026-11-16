@@ -27,7 +27,7 @@ import type { ExperimentInfo } from "@/server/experiment-admin";
 import { experimentCard } from "@/lib/experiment-card";
 import { verdictOf } from "@/lib/experiment-results";
 
-import { DraftPanel, TestActions } from "./experiment-controls";
+import { DraftActions, DraftPanel, TestActions } from "./experiment-controls";
 import { ExperimentResultsView } from "./experiment-results-view";
 import { ExperimentForm } from "./experiment-form";
 
@@ -68,23 +68,52 @@ const test = (over: Partial<ExperimentInfo> = {}): ExperimentInfo => ({
 
 const part = { kind: "block" as const, id: "heading-1", label: "Heading “Welcome” in row 1" };
 
-describe("making a test of a part", () => {
+describe("making a test on one screen (D656)", () => {
   const create = async () => ({ ok: true as const, id: "x" });
-  const pages = [{ id: "22222222-2222-4222-8222-222222222222", slug: "om-oss", title: "Om oss", kind: "page" as const, buttons: [{ id: "b1", label: "Buy now" }] }];
+  const pages = [
+    { id: "22222222-2222-4222-8222-222222222222", slug: "om-oss", title: "Om oss", kind: "page" as const, buttons: [{ id: "b1", label: "Buy now" }] },
+    { id: "44444444-4444-4444-8444-444444444444", slug: "forside", title: "Forside", kind: "role" as const, role: "front", buttons: [] },
+  ];
+  const traffic = {
+    counting: true,
+    days: 30,
+    consentShare: 0.6,
+    baselines: { orders: 0.02, cart: 0.09, checkout: 0.04 },
+    targets: { [pages[0].id]: { visitsPerDay: 250, basis: "landing" as const }, [pages[1].id]: { visitsPerDay: 0.5, basis: "landing" as const } },
+  };
 
   it("names the part, offers no other page, and fills in a name from it", () => {
-    const out = html(createElement(ExperimentForm, { pages, markets: [], create, base: "/admin/demo/experiments", part: { ...part, buttons: [] } }));
-    expect(out).toContain("1. What you are testing");
+    const out = html(createElement(ExperimentForm, { pages: [pages[0]], markets: [], create, base: "/admin/demo/experiments", part: { ...part, buttons: [] } }));
+    expect(out).toContain("What you are testing");
     expect(out).toContain("Heading “Welcome” in row 1");
     expect(out).toContain("about this part only");
     expect(out).toContain('placeholder="Test of Heading “Welcome” in row 1"');
-    expect(out).not.toContain("What to test");
+    expect(out).not.toContain("Where?");
   });
 
-  it("asks which page when no part was chosen", () => {
+  it("says how soon each goal answers at the shop's traffic, recommends one, and draws the time to an answer", () => {
+    const out = html(createElement(ExperimentForm, { pages, markets: [], create, base: "/admin/demo/experiments", traffic, history: { [pages[0].id]: { status: "applied" as const, winner: "Version B" } } }));
+    expect(out).toContain("What do you want more of?");
+    expect(out).toMatch(/About \d+ weeks?( at your traffic|: long for your traffic| for a change of \d+ % or more)/);
+    expect(out).toContain("Recommended");
+    expect(out).toContain("You pick the button on the page");
+    expect(out).toContain("Where?");
+    expect(out).toContain("≈ 150 a day");
+    expect(out).toContain("fewer than 1 a day");
+    expect(out).toContain("Version B won");
+    expect(out).toContain("Never tested");
+    expect(out).toContain("data-estimate-days");
+    expect(out).toContain("14 days: the shortest run");
+    expect(out).toContain("Customise");
+    expect(out).toContain("Make version B");
+  });
+
+  it("says why there is no estimate, and asks for nothing before the main button", () => {
     const out = html(createElement(ExperimentForm, { pages, markets: [], create, base: "/admin/demo/experiments" }));
-    expect(out).toContain("1. What do you want to test?");
-    expect(out).toContain("What to test");
+    expect(out).toContain("not counting visits for this shop");
+    expect(out).not.toContain("data-estimate-days");
+    // Name, idea, share and devices wait under Customise; the main button needs none of them.
+    expect(out.indexOf("Customise")).toBeLessThan(out.indexOf("Share of visitors in the test"));
   });
 });
 
@@ -98,17 +127,48 @@ describe("a draft of a part test", () => {
     expect(out).toContain("Changes more than Heading “Welcome” in row 1: put everything else back as it was.");
   });
 
-  it("offers to start now or at a time, and says why a scheduled start did not happen", () => {
+  it("says why a scheduled start did not happen, and keeps the settings under Customise", () => {
     const out = html(createElement(DraftPanel, { store: "demo", test: test({ scheduleProblem: "The scheduled start did not happen. Publish the page." }), markets: [] }));
-    expect(out).toContain("Start the test now");
-    expect(out).toContain("Or start it at");
-    expect(out).toContain("Schedule the start");
     expect(out).toContain("The scheduled start did not happen. Publish the page.");
+    expect(out).toContain("Ready to start?");
+    expect(out).toContain("Customise");
     expect(out).toContain("How long will it take?");
   });
 });
 
-describe("a started test's header (D650)", () => {
+describe("a draft as a record (D656)", () => {
+  it("makes changing an unchanged version the next step, and keeps scheduling and deleting under More", () => {
+    const unchanged = test({ variants: [test().variants[0], { ...test().variants[1], changed: false }] });
+    const out = html(createElement(DraftActions, { store: "demo", test: unchanged, ready: false }));
+    expect(out).toContain("Change Version B");
+    expect(out).toContain("href=\"/admin/demo/experiments/variants/33333333-3333-4333-8333-333333333333\"");
+    expect(out).not.toContain("Start the test");
+    expect(out).not.toContain("Schedule the start");
+    expect(out).toContain("Delete the draft");
+  });
+
+  it("offers the start as the one main button once it is ready, with scheduling under More", () => {
+    const out = html(createElement(DraftActions, { store: "demo", test: test(), ready: true }));
+    expect(out).toContain("Start the test");
+    expect(out).toContain("Schedule the start");
+    expect(out.match(/\bbg-brand(?![-\w])/g)?.length ?? 0).toBe(1);
+  });
+
+  it("ticks what is ready, says what is not, and lists what each version changes", () => {
+    const unchanged = test({ variants: [test().variants[0], { ...test().variants[1], changed: false }] });
+    const out = html(createElement(DraftPanel, { store: "demo", test: unchanged, markets: [], problems: ["Version B is still the same as the original: change it first, or the test has nothing to find.", "Five tests are running already."] }));
+    expect(out).toContain("Version B is still the same as the original: change it first");
+    expect(out).toContain("The page is published");
+    expect(out).toContain("Five tests are running already.");
+    expect(out).not.toContain("Everything is ready");
+    const ready = html(createElement(DraftPanel, { store: "demo", test: test(), markets: [], differences: { b: ["Heading: “Om oss” became “Kort fortalt”"] } }));
+    expect(ready).toContain("Version B differs from the original");
+    expect(ready).toContain("Everything is ready");
+    expect(ready).toContain("Heading: “Om oss” became “Kort fortalt”");
+  });
+});
+
+describe("a started test's header (D655)", () => {
   it("offers a scheduled test's start as the one main button, and taking it back under More", () => {
     const out = html(createElement(TestActions, { store: "demo", test: test({ status: "scheduled", scheduledStart: "2026-10-20T08:00:00.000Z" }), next: "start", best: null }));
     expect(out).toContain("Start now");
@@ -135,7 +195,7 @@ describe("a started test's header (D650)", () => {
   });
 });
 
-describe("what a started test found (D650)", () => {
+describe("what a started test found (D655)", () => {
   const rate = (key: string, visitors: number, conversions: number) => ({ key, name: key, visitors, conversions, money: null });
   const results = (figures: ReturnType<typeof rate>[], days: number) => {
     const verdict = verdictOf({ goal: "cart", figures, splitP: 0.6, days, minVisitors: 0, minDays: 14, currency: "NOK", locale: "nb-NO" });

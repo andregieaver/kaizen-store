@@ -134,7 +134,7 @@ describe("the AI manager's A/B test tools (D148)", () => {
   it("starts with nothing running, and offers what can be tested with each block's words and id", async () => {
     expect(await ownerTools.runOwnerTool(ctx(), "list_experiments", {})).toMatchObject({ tests: [], running: 0, most_at_once: 5 });
     const suggest = (await ownerTools.runOwnerTool(ctx(), "suggest_experiments", {})) as {
-      can_be_tested: { target: string; kind: string; blocks: { id: string; kind: string; text: string }[] }[];
+      can_be_tested: { target: string; kind: string; blocks: { id: string; kind: string; text: string }[]; traffic?: unknown }[];
       room_for_more: number;
       who_takes_part: string;
       how_long: unknown;
@@ -146,6 +146,9 @@ describe("the AI manager's A/B test tools (D148)", () => {
     expect(suggest.room_for_more).toBe(5);
     expect(suggest.who_takes_part).toMatch(/Too few cookie choices/);
     expect(typeof suggest.how_long).toBe("string");
+    // Too few cookie choices to know who takes part (D656): no traffic per candidate, and it says to ask rather than guess.
+    expect(suggest.how_long).toMatch(/no traffic figures to work from/);
+    expect(about!.traffic).toBeUndefined();
     // With visitors and a rate it works out how long, in code.
     const timed = (await ownerTools.runOwnerTool(ctx(), "suggest_experiments", { visitors_per_day: 400, current_rate_percent: 3 })) as { how_long: { about_days: number; sentence: string } };
     expect(timed.how_long.about_days).toBeGreaterThanOrEqual(14);
@@ -240,7 +243,7 @@ describe("the AI manager's A/B test tools (D148)", () => {
     expect(explained.what_next[0]).toMatch(/Keep it running/);
     expect(explained.never).toMatch(/Do not call a winner/);
     expect(explained.how_it_is_counted).toMatch(/accepted statistics cookies/);
-    // The facts the test's page draws (D650): its stage, how far from an answer, what B changed, and no figure while it is too early.
+    // The facts the test's page draws (D655): its stage, how far from an answer, what B changed, and no figure while it is too early.
     expect(explained).toMatchObject({
       stage: "Still learning: no answer yet",
       progress: { days: "0 of at least 14", visitors_in_the_smallest_version: "0 of at least 200", reached: false },

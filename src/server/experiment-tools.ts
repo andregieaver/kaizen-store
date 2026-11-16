@@ -9,7 +9,8 @@ import { builderEn } from "@/lib/admin-messages/builder.en";
 import { experimentCard, type CardState } from "@/lib/experiment-card";
 import { compareToOriginal, estimateRuntime, normalQuantile } from "@/lib/experiment-results";
 import { differenceLine } from "@/lib/version-difference-words";
-import { GOAL_WORDS, MAX_RUNNING_PER_STORE, STATUS_WORDS, type Goal } from "@/lib/experiments";
+import { GOAL_WORDS, MAX_RUN_DAYS, MAX_RUNNING_PER_STORE, STATUS_WORDS, type Goal } from "@/lib/experiments";
+import { COUNTED_GOALS, eligiblePerDay, goalEstimate } from "@/lib/experiment-traffic";
 import { findClaims } from "@/lib/claims";
 import { localInstant } from "@/lib/follow-ups";
 import { formatMoney } from "@/lib/money";
@@ -36,6 +37,7 @@ import {
   type ExperimentInfo,
 } from "./experiment-admin";
 import { experimentResults } from "./experiment-results";
+import { experimentTraffic } from "./experiment-traffic";
 import { OwnerToolError } from "./owner-tool-error";
 import { salesFunnel } from "./owner-insights";
 import { savePage } from "./pages";
@@ -189,7 +191,7 @@ export async function explainResultsTool(ctx: Ctx, { experiment }: OwnerToolInpu
         : undefined,
     };
   });
-  // The card the test's page draws (D650): its stage, how far from an answer and when, each version's likely range, what each changed.
+  // The card the test's page draws (D655): its stage, how far from an answer and when, each version's likely range, what each changed.
   const card = experimentCard({ status: test.status, goal: test.goal, minDays: test.minDays, minVisitors: test.minVisitors, results: r, now: new Date() });
   const changes = await versionDifferences(store.id, test);
   const signed = (share: number) => `${share >= 0 ? "+" : "−"}${Math.abs(Math.round(share * 100))} %`;
@@ -251,6 +253,19 @@ export async function suggestExperimentsTool({ store }: Ctx, input: OwnerToolInp
     `),
   ]);
   const running = tests.filter((t) => t.status === "running" || t.status === "scheduled");
+  // The shop's own traffic (D656): each candidate's visitors who could take part, and how long each counted goal would take there.
+  const traffic = await experimentTraffic(store, targets);
+  const speeds = (targetId: string) => {
+    const perDay = eligiblePerDay(traffic, targetId);
+    if (perDay === null) return undefined;
+    const days = Object.fromEntries(
+      COUNTED_GOALS.map((goal) => {
+        const e = goalEstimate({ facts: traffic, targetId, goal, trafficShare: 1, versions: 2 });
+        return [goal, e ? (e.days > MAX_RUN_DAYS ? "longer than a test may run" : `about ${e.days} days`) : "no figure to work from"];
+      }),
+    );
+    return { visitors_a_day_who_could_take_part: Math.round(perDay * 10) / 10, days_to_see_a_20_percent_change: days };
+  };
   const consent = consents[0];
   const sample = Number(consent?.total ?? 0) >= 20 ? Number(consent.yes) / Number(consent.total) : null;
   const candidates = await Promise.all(
@@ -264,6 +279,7 @@ export async function suggestExperimentsTool({ store }: Ctx, input: OwnerToolInp
         // A working page (the cart, the checkout, …): one block or part around the shop's own component, never the page as a whole.
         working_page: t.kind === "role" && t.partOnly ? `${t.role}: test one block at a time (a heading, a text, a button around the shop's own component), never the whole page` : undefined,
         place: t.kind === "role" && !t.partOnly ? `the store's ${t.role === "front" ? "front page" : "All products page"}: a test of the whole page or of one part of it` : undefined,
+        traffic: speeds(t.id),
         rows: content?.rows.length ?? 0,
         buttons: buttonsOf(content).map((b) => b.label),
         forms: formsOf(content).map((f) => f.label),
@@ -283,7 +299,11 @@ export async function suggestExperimentsTool({ store }: Ctx, input: OwnerToolInp
     who_takes_part: sample === null ? "Too few cookie choices recorded to say how many visitors accept statistics cookies." : `About ${Math.round(sample * 100)} % of the visitors who made a cookie choice in the last 90 days accepted statistics cookies: only they are in a test.`,
     paid_orders_last_30_days: Number(orders?.n ?? 0),
     from_cart_to_paid_order: { carts_with_products: funnel.carts_with_products, paid: funnel.orders_paid, share: funnel.from_filled_cart_to_paid },
-    how_long: estimate ? { about_days: estimate.days, sentence: estimate.sentence } : "Ask the owner roughly how many visitors a day see the page and what share of them do the thing now (visitors_per_day, current_rate_percent): Kaizena Flow does not count page views, so do not guess. A small store needs a bolder change or a goal with more activity (adding to the cart, or a click).",
+    how_long: estimate
+      ? { about_days: estimate.days, sentence: estimate.sentence, from: "the owner's own figures" }
+      : traffic.counting && traffic.consentShare !== null
+        ? "Each candidate's traffic says how long a test of it takes for each goal, worked out by the store from the last 30 days' visits that began on it, the share who accept statistics cookies and the shop's own rates. Repeat those figures; never work one out yourself. A click or a form has no rate today: ask the owner (visitors_per_day, current_rate_percent). A small store needs a bolder change or a goal with more activity."
+        : "The store has no traffic figures to work from (it does not count visits, or too few cookie choices are recorded). Ask the owner roughly how many visitors a day see the page and what share of them do the thing now (visitors_per_day, current_rate_percent); do not guess. A small store needs a bolder change or a goal with more activity (adding to the cart, or a click).",
     rules: [
       "One thing at a time, so the owner knows what made the difference.",
       "Prices, discounts, shipping and legal pages are never tested.",
