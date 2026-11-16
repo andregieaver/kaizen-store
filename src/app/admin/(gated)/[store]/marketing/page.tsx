@@ -3,12 +3,13 @@ import { connection } from "next/server";
 import { Mail, ShoppingCart, Tag } from "lucide-react";
 
 import { NavIcon } from "@/components/admin/nav-icons";
-import { AdminLink, CARD_CLASS, PageHeader } from "@/components/admin/ui";
+import { AdminLink, CARD_CLASS, Chip, PageHeader } from "@/components/admin/ui";
 import { countWords, fillWords } from "@/lib/admin-fill";
 import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
 import { navWord } from "@/lib/admin-nav-words";
 import { adminText } from "@/lib/admin-text";
 import { LIFECYCLE_KINDS } from "@/lib/automations";
+import { STATE_SIGNAL } from "@/lib/experiment-list";
 import { canOpenPath } from "@/lib/permissions";
 import { featureOn } from "@/lib/store-features";
 import { STORE_SECTIONS, storeSections } from "@/lib/store-nav";
@@ -17,6 +18,7 @@ import { automationStats, getAutomations } from "@/server/automations";
 import { listCampaigns } from "@/server/campaigns";
 import { getCartReminderSettings } from "@/server/cart-reminders";
 import { customerCounts } from "@/server/customer-admin";
+import { listedTests } from "@/server/experiment-list";
 import { bestSellerByCount } from "@/server/marketing-home";
 import { subscriberCounts } from "@/server/marketing-subscribers";
 import { requirePermission } from "@/server/permissions";
@@ -39,7 +41,8 @@ export default async function MarketingPage({ params }: PageProps<"/admin/[store
   const base = `/admin/${store.slug}`;
   const shop = featureOn(store, "shop");
   const currency = store.markets[0]?.currency ?? "EUR";
-  const [automations, stats, cart, campaigns, subscribers, buyers, best] = await Promise.all([
+  const ex = adminText(lang, "experiments");
+  const [automations, stats, cart, campaigns, subscribers, buyers, best, tests] = await Promise.all([
     getAutomations(store),
     automationStats(store.id),
     shop ? getCartReminderSettings(store.id) : Promise.resolve(null),
@@ -47,6 +50,7 @@ export default async function MarketingPage({ params }: PageProps<"/admin/[store
     subscriberCounts(store.id),
     customerCounts(store.id, currency),
     shop ? bestSellerByCount(store.id) : Promise.resolve(null),
+    listedTests(store, { words: ex, numberLocale: ADMIN_LANG_FACTS[lang].locale }),
   ]);
   const n = (v: number) => v.toLocaleString(ADMIN_LANG_FACTS[lang].locale);
 
@@ -62,6 +66,10 @@ export default async function MarketingPage({ params }: PageProps<"/admin/[store
     ...(cart?.enabled ? [{ key: "cart", title: w.cart.title, sub: w.cartRow, href: `${base}/cart-reminders`, did: countWords(cart.steps.filter((s) => s.active).length, w.steps) }] : []),
     ...campaigns.filter((c) => c.active).map((c) => ({ key: c.id, title: c.name, sub: w.campaignRow, href: `${base}/campaigns/${c.id}`, did: countWords(c.orders, w.orders) })),
   ];
+  // The A/B tests that run (phase 15): each with its stage, so one with an answer is seen here too. They bring no one back, so the lead leaves them out.
+  const testing = tests
+    .filter((t) => t.status === "running")
+    .map((t) => ({ key: t.id, title: t.name, sub: w.testRow, href: `${base}/experiments/${t.id}`, did: countWords(t.exposed, w.testVisitors, { n: n(t.exposed) }), state: t.card.state }));
   const lead =
     (running.length === 0 ? w.leadNothing : countWords(running.length, w.leadRunning)) +
     (buyers.people === 0 ? w.leadNoBuyers : countWords(buyers.fresh, w.leadBuyers) + (buyers.back > 0 ? countWords(buyers.back, w.leadBack) : w.leadNoneBack));
@@ -114,7 +122,7 @@ export default async function MarketingPage({ params }: PageProps<"/admin/[store
         <h2 id="running" className="text-title text-ink">
           {w.running}
         </h2>
-        {running.length === 0 ? (
+        {running.length + testing.length === 0 ? (
           <p className={`px-5 py-4 text-body text-muted ${CARD_CLASS}`}>{w.nothingRunning}</p>
         ) : (
           <div className={`overflow-hidden ${CARD_CLASS}`}>
@@ -124,17 +132,25 @@ export default async function MarketingPage({ params }: PageProps<"/admin/[store
               <span>{w.did}</span>
             </div>
             <ul aria-label={w.running}>
-              {running.map((row) => (
+              {[...running.map((row) => ({ ...row, state: null })), ...testing].map((row) => (
                 <li key={row.key} className="border-b border-line last:border-b-0">
                   <AdminLink href={row.href} className="grid gap-1 px-5 py-3.5 text-ink hover:bg-sunken sm:grid-cols-[minmax(0,2fr)_minmax(0,1fr)_minmax(0,1fr)] sm:items-center sm:gap-4">
                     <span className="flex flex-col gap-0.5">
                       <span className="text-body">{row.title}</span>
                       <span className="text-caption text-muted">{row.sub}</span>
                     </span>
-                    <span className="inline-flex items-center gap-1.5 text-caption text-positive-text">
-                      <span aria-hidden className="size-1.5 rounded-pill bg-insight-solid" />
-                      {w.on}
-                    </span>
+                    {row.state ? (
+                      <span>
+                        <Chip signal={STATE_SIGNAL[row.state]} dot>
+                          {ex.card.states[row.state]}
+                        </Chip>
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center gap-1.5 text-caption text-positive-text">
+                        <span aria-hidden className="size-1.5 rounded-pill bg-insight-solid" />
+                        {w.on}
+                      </span>
+                    )}
                     <span className="text-body text-ink-2">{row.did}</span>
                   </AdminLink>
                 </li>

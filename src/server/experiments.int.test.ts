@@ -36,6 +36,7 @@ const engine = await import("./experiments");
 const emails = await import("./experiment-emails");
 const stores = await import("./stores");
 const pages = await import("./pages");
+const listing = await import("./experiment-list");
 
 const run = Date.now().toString(36);
 let storeId: string;
@@ -425,6 +426,23 @@ describe("ending a test (D148)", () => {
     expect(await admin.saveLearning(account, storeId, draft.id, "Too soon")).toMatchObject({ ok: false });
     await admin.deleteDraft(account, storeId, draft.id);
   }, 60_000);
+
+  it("groups the list by what each test asks of the owner, and leaves a page already in a test out of the ideas (phase 15)", async () => {
+    const running = await runningTest("cart");
+    const front = (await admin.testablePages(storeId)).find((p) => p.role === "front")!;
+    const draft = await admin.createExperiment(account, storeId, { name: "Front draft", pageId: front.id, goal: "cart" });
+    if (!draft.ok) throw new Error(draft.problems.join(" "));
+    const { experimentsEn } = await import("@/lib/admin-messages/experiments.en");
+    const { tests, ideas } = await listing.experimentList(store, { words: experimentsEn, numberLocale: "en-GB" });
+    // Just started, with nobody counted yet: still learning.
+    expect(tests.find((t) => t.id === running)).toMatchObject({ group: "learning", card: { state: "learning" } });
+    expect(tests.find((t) => t.id === draft.id)).toMatchObject({ group: "planned", card: { state: "draft" } });
+    const ideaPages = ideas.map((i) => i.targetId);
+    expect(ideaPages).not.toContain(front.id);
+    expect(ideaPages).not.toContain(aboutId);
+    expect(ideas.length).toBeLessThanOrEqual(3);
+    expect((await admin.deleteDraft(account, storeId, draft.id)).ok).toBe(true);
+  });
 
   it("says which running test holds a page, as the original or as a version, until it stops", async () => {
     const id = await runningTest();

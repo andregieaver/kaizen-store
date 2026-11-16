@@ -27,6 +27,8 @@ export const marketingEn = {
     automation: "Email after each moment",
     cartRow: "When a cart is left",
     campaignRow: "Campaign, no code",
+    testRow: "A/B test",
+    testVisitors: { one: "{n} visitor so far", many: "{n} visitors so far" },
     on: "On",
     sent: { one: "{n} email sent", many: "{n} emails sent" },
     steps: { one: "{n} email", many: "{n} emails" },

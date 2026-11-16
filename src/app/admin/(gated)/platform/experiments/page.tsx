@@ -2,7 +2,8 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { connection } from "next/server";
 
-import { GOAL_WORDS, STATUS_SIGNAL, STATUS_WORDS } from "@/lib/experiments";
+import { STATE_SIGNAL } from "@/lib/experiment-list";
+import { GOAL_WORDS } from "@/lib/experiments";
 import { daysBetween } from "@/lib/platform-experiments";
 import { requirePlatformReader } from "@/server/auth";
 import { platformExperiments } from "@/server/platform-experiments";
@@ -10,7 +11,7 @@ import { platformUnitTests } from "@/server/platform-unit-tests";
 import { countWords, fillWords } from "@/lib/admin-fill";
 import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
 import { adminText } from "@/lib/admin-text";
-import { Card, CARD_CLASS, Chip, List, ListRow, PageHeader, RowFact, RowLead } from "@/components/admin/ui";
+import { Card, CARD_CLASS, Chip, List, ListRow, MiniBar, PageHeader, RowFact, RowLead } from "@/components/admin/ui";
 
 export const metadata: Metadata = { title: "A/B tests" };
 
@@ -93,13 +94,24 @@ export default async function PlatformExperimentsPage({ searchParams }: PageProp
                   }
                 />
                 <RowFact className="hidden sm:block">
-                  {t.startedAt ? fillWords(w.days, { n: daysBetween(t.startedAt, t.stoppedAt ?? now) }) : t.scheduledStart ? fillWords(w.starts, { date: date.format(t.scheduledStart) }) : w.notStarted}
+                  {t.card.state === "learning" && t.status === "running" ? (
+                    <span className="flex items-center gap-2" aria-label={ex.list.progress}>
+                      <MiniBar share={t.card.progress.share} signal="warning" />
+                      {fillWords(ex.list.dayOf, { days: t.card.progress.days, min: t.card.progress.minDays })}
+                    </span>
+                  ) : t.startedAt ? (
+                    fillWords(w.days, { n: daysBetween(t.startedAt, t.stoppedAt ?? now) })
+                  ) : t.scheduledStart ? (
+                    fillWords(w.starts, { date: date.format(t.scheduledStart) })
+                  ) : (
+                    w.notStarted
+                  )}
                 </RowFact>
                 <RowFact className="hidden sm:block" sub={t.split ? t.split.map((s) => `${s.key.toUpperCase()} ${s.visitors.toLocaleString(locale)}`).join(" · ") : undefined}>
                   {countWords(t.exposed, w.visitors, { n: t.exposed.toLocaleString(locale) })}
                 </RowFact>
-                <Chip signal={STATUS_SIGNAL[t.status]} dot>
-                  {ex.status[t.status] ?? STATUS_WORDS[t.status]}
+                <Chip signal={STATE_SIGNAL[t.card.state]} dot>
+                  {ex.card.states[t.card.state]}
                   {t.status === "applied" && t.appliedVariant ? `: ${t.appliedVariant.toUpperCase()}` : ""}
                   {t.stopReason === "guardrail" && t.status === "stopped" && w.guardrail}
                 </Chip>

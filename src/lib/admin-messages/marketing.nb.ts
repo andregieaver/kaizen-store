@@ -21,6 +21,8 @@ export const marketingNb: MarketingMessages = {
     automation: "E-post etter hvert øyeblikk",
     cartRow: "Når en handlekurv blir liggende",
     campaignRow: "Kampanje, uten kode",
+    testRow: "A/B-test",
+    testVisitors: { one: "{n} besøkende så langt", many: "{n} besøkende så langt" },
     on: "På",
     sent: { one: "{n} e-post sendt", many: "{n} e-poster sendt" },
     steps: { one: "{n} e-post", many: "{n} e-poster" },
