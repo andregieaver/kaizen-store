@@ -450,6 +450,7 @@ export const MARKET_ROUTES: readonly string[] = [
   "order",
   "p",
   "products",
+  "request",
   "returns",
   "search",
   "subscription",

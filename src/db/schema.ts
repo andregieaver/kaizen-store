@@ -8913,7 +8913,7 @@ export const pages = commerce.table(
     // A store's own routes inside each of its markets (D53).
     check(
       "pages_store_slug_not_reserved",
-      sql`${t.storeId} is null or ${t.type} <> 'page' or split_part(${t.slug}, '/', 1) not in ('account', 'blog', 'cart', 'category', 'checkout', 'cookies', 'deliveries', 'download', 'order', 'p', 'products', 'returns', 'search', 'subscription', 'tag', 'unsubscribe', 'wishlist', 'withdraw')`,
+      sql`${t.storeId} is null or ${t.type} <> 'page' or split_part(${t.slug}, '/', 1) not in ('account', 'blog', 'cart', 'category', 'checkout', 'cookies', 'deliveries', 'download', 'order', 'p', 'products', 'request', 'returns', 'search', 'subscription', 'tag', 'unsubscribe', 'wishlist', 'withdraw')`,
     ),
     // The blog's own routes (D57): /blog/category/…, /blog/tag/… and pages of the list.
     check("pages_article_slug_not_reserved", sql`${t.type} <> 'article' or ${t.slug} not in ('category', 'page', 'tag')`),
@@ -15677,10 +15677,22 @@ export const supportActions = commerce.table(
     decidedBy: uuid("decided_by").references(() => accounts.id, { onDelete: "set null" }),
     decidedAt: timestamp("decided_at", { withTimezone: true }),
     expiresAt: timestamp("expires_at", { withTimezone: true }),
+    /**
+     * A staff request asked by email (B3, D685): a one-time link to confirm it is emailed to the order's own address (sha-256 hex of its token, and
+     * when it went); the customer pressing Confirm there sets `customer_confirmed_at`, after which code may carry it out as a signed-in chat's.
+     */
+    confirmTokenHash: text("confirm_token_hash"),
+    confirmSentAt: timestamp("confirm_sent_at", { withTimezone: true }),
+    customerConfirmedAt: timestamp("customer_confirmed_at", { withTimezone: true }),
     createdAt: createdAt(),
   },
   (t) => [
     index("support_actions_conversation_idx").on(t.conversationId),
+    uniqueIndex("support_actions_confirm_token_key").on(t.confirmTokenHash),
+    check(
+      "support_actions_confirm",
+      sql`(${t.confirmTokenHash} is null) = (${t.confirmSentAt} is null) and (${t.customerConfirmedAt} is null or (${t.confirmSentAt} is not null and ${t.confirmer} = 'staff'))`,
+    ),
     index("support_actions_open_idx")
       .on(t.storeId, t.confirmer)
       .where(sql`${t.status} = 'proposed'`),

@@ -79,6 +79,8 @@ export const PRIVATE_ROUTES: readonly string[] = [
   "sign-in",
   "ab",
   "cookies",
+  // A request's confirmation link holds its secret token (D685).
+  "request",
 ];
 
 const decoded = (value: string): string | null => {

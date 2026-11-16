@@ -572,6 +572,7 @@ export const EMAIL_KINDS: Record<string, EmailClass> = {
   "privacy.refused": "shopper",
   "support.reply": "shopper",
   "support.request_done": "shopper",
+  "support.request_confirm": "shopper",
   // Pickup and local delivery (D237)
   "order.ready_for_pickup": "shopper",
   "order.out_for_delivery": "shopper",

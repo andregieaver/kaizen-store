@@ -2434,6 +2434,7 @@ export const RESERVED_STORE_PAGE_SLUGS: readonly string[] = [
   "order",
   "p",
   "products",
+  "request",
   "returns",
   "search",
   "subscription",
