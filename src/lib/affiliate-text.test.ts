@@ -24,7 +24,6 @@ describe("the storefront's referral texts", () => {
     for (const lang of LANGS) {
       const a = t(lang).affiliate;
       expect(a.signInForDiscount("P1"), lang).toContain("P1");
-      expect(a.cartApplied("P1"), lang).toContain("P1");
       expect(a.friendGets("P1"), lang).toContain("P1");
       expect(a.friendGetsUpTo("P1", "M2"), lang).toContain("P1");
       expect(a.friendGetsUpTo("P1", "M2"), lang).toContain("M2");

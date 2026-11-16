@@ -63,7 +63,6 @@ export const contentEn = {
     deleteAsk: "Delete {title}? It is taken off the site, and this cannot be undone.",
     unsaved: "Unsaved changes",
     leave: "Leave without saving",
-    publishFirstSave: "Save the draft first, then publish it.",
     noPage: "Entries of this type have no page of their own: they are shown where a content grid lists them.",
   },
   type: {

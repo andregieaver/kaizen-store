@@ -150,8 +150,6 @@ export const productNb: ProductMessages = {
     needModel: "Velg modellens GLB-fil.",
     notVideoLink: "Det er ikke adressen til en video på YouTube eller Vimeo.",
     noStill: "Det gikk ikke å ta et bilde fra videoen: velg et.",
-    tooManyVideos: "Et produkt har høyst {n} videoer.",
-    tooManyModels: "Et produkt har høyst {n} 3D-modeller.",
     modelType: "Bruk en GLB-fil: eksporter modellen fra 3D-programmet som GLB (en glTF er flere filer).",
     modelTooLarge: "Modellen er for stor. Bruk en under {mb} MB.",
     uploadFailed: "{name} kunne ikke lastes opp. Prøv igjen.",

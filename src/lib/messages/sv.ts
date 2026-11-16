@@ -105,7 +105,6 @@ export const sv: Messages = {
   /** The hosted invoice page (docs/work.md 4.7), in the invoice's own language. */
   workInvoice: {
     pageTitle: (number: string) => `Faktura ${number}`,
-    creditPageTitle: (number: string) => `Kreditfaktura ${number}`,
     print: "Skriv ut eller spara som PDF",
     openNote: (amount: string, due: string) => `Belopp att betala: ${amount}, förfaller ${due}.`,
     paidNote: "Fakturan är betald. Tack.",
@@ -218,7 +217,6 @@ export const sv: Messages = {
     choose: "Använd den här leveransen",
     choosing: "Uppdaterar beställningen …",
     standard: "Vanlig frakt",
-    deliveryLine: (label: string) => `Leverans: ${label}`,
     pickupAt: (place: string) => `Hämtas hos ${place}`,
     windowLine: (when: string) => `Levereras ${when}`,
   },
@@ -283,7 +281,6 @@ export const sv: Messages = {
     discountRow: "Välkomstrabatt",
     cardLine: "Dela din länk och tjäna bonuskredit",
     signInForDiscount: (percent: string) => `Logga in för att få ${percent} % rabatt på varorna i din första beställning`,
-    cartApplied: (percent: string) => `Välkomstrabatt: ${percent} % rabatt på varorna i din första beställning.`,
     intro: "Dela din länk. När en vän beställer för första gången får vännen en välkomstrabatt och du tjänar bonuskredit.",
     linkLabel: "Din länk",
     copy: "Kopiera länken",
@@ -311,7 +308,6 @@ export const sv: Messages = {
     blocked: "Din länk är avstängd och ger ingenting just nu. Kontakta butiken om du tror att det är ett misstag.",
     creditsLink: "Se din bonuskredit",
     notAvailable: "Butiken har inget tipsprogram just nu.",
-    signInToRefer: "Logga in för att få din egen länk att dela.",
   },
   /** Kreatörer (D386): ansökan och kreatörens egen sida under Mitt konto. Handskrivet, för juridisk granskning (HAND_WRITTEN_ONLY). */
   creator: {
@@ -337,7 +333,6 @@ export const sv: Messages = {
     rules: "En beställning räknas när den är betald. Om den återbetalas eller avbryts dras det den gav tillbaka. Dina egna beställningar ger ingenting.",
     statsHeading: "Vad din kod har lett till",
     visits: "Besök via din länk de senaste 30 dagarna",
-    ordersLabel: "Beställningar",
     ordersWaiting: "Väntar på betalning",
     ordersEarned: "Intjänat",
     ordersReversed: "Återtaget",
@@ -389,7 +384,6 @@ export const sv: Messages = {
     approvedState: "Godkänd: betala, så skickas den",
     payNow: "Betala nu",
     placedWaiting: (number: string) => `Order ${number} är lagd och väntar på företagets godkännande. Du får ett mejl när den är avgjord.`,
-    decidedAlready: "Den ordern är redan avgjord.",
     subscriptionCurrency: (currency: string) => `Det här är en prenumeration, och prenumerationer är i ${currency}.`,
     showPricesIn: (currency: string) => `Visa priser i ${currency}`,
     title: "Mitt företag",
@@ -557,7 +551,6 @@ export const sv: Messages = {
     readyAt: (place: string) => `Redo att hämtas hos ${place}`,
     deliveredOn: (date: string) => `Levererat ${date}`,
     noNews: (carrier: string) => `${carrier} har inga nyheter om det här paketet ännu.`,
-    followAt: (carrier: string) => `Följ paketet hos ${carrier}`,
     events: "Nytt från transportören",
   },
   /** The packing slip of a parcel or of what is left to send (D174). `moreFollows` is hand-written only; needs human legal review before real use. */
@@ -784,11 +777,9 @@ export const sv: Messages = {
   googleReviews: "Recensioner på Google",
   seeOnGoogle: "Se alla på Google",
   viewProduct: "Visa produkten",
-  nothingHere: "Inget här ännu.",
   blog: "Blogg",
   byAuthor: (name: string) => `Av ${name}`,
   noArticles: "Inga artiklar ännu.",
-  allArticles: "Alla artiklar",
   cookies: "Kakor",
   /** The footer's link to Kaizena Flow's form for notices of illegal content (DSA art. 16, D411). */
   reportContent: "Anmäl olagligt innehåll",
@@ -1109,7 +1100,6 @@ export const sv: Messages = {
   swapTo: "Variant",
   saveChanges: "Spara ändringarna",
   changesSaved: "Sparat. Ändringen gäller från nästa förnyelse.",
-  subscriptionOrders: "Beställningar i prenumerationen",
   cartReminderNotice: "Slutför du inte köpet kan vi skicka en påminnelse om varukorgen via e-post.",
   cartReminderOptOut: "Skicka inga påminnelser",
   cartReminderOptedOut: "Du får inga påminnelser om varukorgen.",
@@ -1346,7 +1336,6 @@ export const sv: Messages = {
     chooseNewPassword: "Välj nytt lösenord",
     forgotPassword: "Glömt lösenordet?",
     resetIntro: "Vi skickar en kod till din e-post. Med den väljer du ett nytt lösenord.",
-    resetFor: (email: string) => `Vi skickar en kod till ${email}. Med den väljer du ett nytt lösenord.`,
     saveAndSignIn: "Spara och logga in",
     invalidEmail: "Ange en giltig e-postadress.",
     checkoutAccount: "Skapa konto med e-postadressen ovan",
@@ -1393,7 +1382,6 @@ export const sv: Messages = {
     setPassword: "Spara lösenord",
     removePassword: "Ta bort lösenordet",
     passwordRule: "Minst 12 tecken. Några ord som inte hör ihop är både starkt och lätt att minnas.",
-    passwordShort: "Använd minst 12 tecken.",
     /** Profile picture (D97). */
     pictureTitle: "Profilbild",
     pictureChoose: "Välj en bild",
@@ -1650,8 +1638,6 @@ export const sv: Messages = {
     taken: "Datumen är inte lediga. Välj andra.",
     tooShort: (min: number, stay: boolean) => `Minst ${min} ${stay ? (min === 1 ? "natt" : "nätter") : min === 1 ? "dag" : "dagar"}.`,
     tooLong: (max: number, stay: boolean) => `Högst ${max} ${stay ? (max === 1 ? "natt" : "nätter") : max === 1 ? "dag" : "dagar"}.`,
-    tooSoon: "Det är för kort tid kvar. Välj senare datum.",
-    tooFar: "Så långt fram tas inga bokningar emot ännu.",
     free: "ledig",
     full: "upptagen",
     past: "passerat",
@@ -1694,7 +1680,6 @@ export const sv: Messages = {
     sentTo: (to: string, day: string) => `Mejlas till ${to} ${day}`,
     toYou: "Mejlas till dig när du har betalat",
     withdrawal: "Du kan ångra köpet av ett presentkort inom 14 dagar, så länge inget av det har använts.",
-    notDiscounted: "Rabatter och bonuspoäng dras inte av från presentkort.",
   },
   // Presentkortets mejl (D300 F2). legal: needs review.
   giftCardEmail: {

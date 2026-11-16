@@ -32,7 +32,6 @@ export const daReturns: ReturnsMessages = {
   contactStore: (store: string) => `Kommer du ikke videre? Kontakt ${store}.`,
   limited: "Der er kommet for mange forespørgsler lige nu. Vent lidt og prøv igen, eller skriv til butikken.",
   nothing: "Der er intet på denne ordre, du kan fortryde nu.",
-  chooseLines: "Vælg mindst én vare, du vil fortryde.",
   quantityProblem: "Tjek antallene: du kan ikke fortryde flere, end der er tilbage af en vare.",
   errorsHeading: "Tjek disse felter",
   fieldErrors: {
@@ -77,7 +76,6 @@ export const daReturns: ReturnsMessages = {
     button: "Send returforespørgsel",
     sent: (number: string) => `Din returforespørgsel ${number} er sendt. Butikken svarer på e-mail.`,
     track: "Følg forespørgslen",
-    pickLines: "Vælg de varer, du vil returnere.",
   },
   windowStatutory: (day: string) => `Du kan fortryde til og med ${day}.`,
   windowBefore: "Varerne er ikke sendt endnu. Du kan fortryde nu.",

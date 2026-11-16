@@ -129,7 +129,6 @@ export const blogEn = {
     plainText: "A comment is shown as plain text: links and markup in it are not followed.",
   },
   editor: {
-    blogHeading: "Blog",
     blog: "In the blog",
     author: "Author",
     authorNone: "No author record: the name below",

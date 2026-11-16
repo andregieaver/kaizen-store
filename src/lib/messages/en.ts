@@ -110,7 +110,6 @@ export const en = {
   /** The hosted invoice page (docs/work.md 4.7), in the invoice's own language. */
   workInvoice: {
     pageTitle: (number: string) => `Invoice ${number}`,
-    creditPageTitle: (number: string) => `Credit note ${number}`,
     print: "Print or save as PDF",
     openNote: (amount: string, due: string) => `Amount due: ${amount}, due ${due}.`,
     paidNote: "This invoice has been paid. Thank you.",
@@ -223,7 +222,6 @@ export const en = {
     choose: "Use this delivery",
     choosing: "Updating your order …",
     standard: "Standard shipping",
-    deliveryLine: (label: string) => `Delivery: ${label}`,
     pickupAt: (place: string) => `Pick up at ${place}`,
     windowLine: (when: string) => `Delivered ${when}`,
   },
@@ -291,7 +289,6 @@ export const en = {
     discountRow: "Welcome discount",
     cardLine: "Share your link and earn bonus credits",
     signInForDiscount: (percent: string) => `Sign in to get ${percent}% off the goods in your first order`,
-    cartApplied: (percent: string) => `Welcome discount: ${percent}% off the goods in your first order.`,
     intro: "Share your link. When a friend orders for the first time, they get a welcome discount and you earn bonus credits.",
     linkLabel: "Your link",
     copy: "Copy link",
@@ -319,7 +316,6 @@ export const en = {
     blocked: "Your link is switched off, so it earns nothing now. Contact the store if you think this is a mistake.",
     creditsLink: "See your bonus credits",
     notAvailable: "The store does not have a referral program right now.",
-    signInToRefer: "Sign in to get your own link to share.",
   },
   /** Creators (D386): applying and the creator's own page in My account. Hand-written, for legal review (HAND_WRITTEN_ONLY). */
   creator: {
@@ -345,7 +341,6 @@ export const en = {
     rules: "An order counts once it is paid. If it is refunded or cancelled, what it earned is taken back. Your own orders earn nothing.",
     statsHeading: "What your code has done",
     visits: "Visits to your link in the last 30 days",
-    ordersLabel: "Orders",
     ordersWaiting: "Waiting for payment",
     ordersEarned: "Earned",
     ordersReversed: "Taken back",
@@ -399,7 +394,6 @@ export const en = {
     approvedState: "Approved: pay for it and it is sent",
     payNow: "Pay now",
     placedWaiting: (number: string) => `Order ${number} is placed and waits for your company's approval. You get an email when it is decided.`,
-    decidedAlready: "That order was already decided.",
     subscriptionCurrency: (currency: string) => `This is a subscription, and subscriptions are in ${currency}.`,
     showPricesIn: (currency: string) => `Show prices in ${currency}`,
     title: "My company",
@@ -579,7 +573,6 @@ export const en = {
     readyAt: (place: string) => `Ready to collect at ${place}`,
     deliveredOn: (date: string) => `Delivered ${date}`,
     noNews: (carrier: string) => `${carrier} has no news about this parcel yet.`,
-    followAt: (carrier: string) => `Follow the parcel at ${carrier}`,
     events: "News from the carrier",
   },
   /** The packing slip of a parcel or of what is left to send (D174). `moreFollows` is hand-written only; needs human legal review before real use. */
@@ -816,11 +809,9 @@ export const en = {
   googleReviews: "Reviews on Google",
   seeOnGoogle: "See all on Google",
   viewProduct: "View product",
-  nothingHere: "Nothing here yet.",
   blog: "Blog",
   byAuthor: (name: string) => `By ${name}`,
   noArticles: "No articles yet.",
-  allArticles: "All articles",
   cookies: "Cookies",
   /** The footer's link to Kaizena Flow's form for notices of illegal content (DSA art. 16, D411). */
   reportContent: "Report illegal content",
@@ -1144,7 +1135,6 @@ export const en = {
   swapTo: "Variant",
   saveChanges: "Save the changes",
   changesSaved: "Saved. The change applies from the next renewal.",
-  subscriptionOrders: "Orders in this subscription",
   cartReminderNotice: "If you do not finish your purchase, we may email you a reminder about your cart.",
   cartReminderOptOut: "Do not send me reminders",
   cartReminderOptedOut: "You will get no reminders about your cart.",
@@ -1321,7 +1311,6 @@ export const en = {
     chooseNewPassword: "Choose a new password",
     forgotPassword: "Forgot your password?",
     resetIntro: "We send a code to your email. With it you choose a new password.",
-    resetFor: (email: string) => `We send a code to ${email}. With it you choose a new password.`,
     saveAndSignIn: "Save and sign in",
     invalidEmail: "Enter a valid email address.",
     checkoutAccount: "Create an account with the email above",
@@ -1368,7 +1357,6 @@ export const en = {
     setPassword: "Save password",
     removePassword: "Remove the password",
     passwordRule: "At least 12 characters. A few unrelated words are strong and easy to remember.",
-    passwordShort: "Use at least 12 characters.",
     /** Profile picture (D97). */
     pictureTitle: "Profile picture",
     pictureChoose: "Choose a picture",
@@ -1626,8 +1614,6 @@ export const en = {
     taken: "Those dates are not free. Choose others.",
     tooShort: (min: number, stay: boolean) => `At least ${min} ${stay ? (min === 1 ? "night" : "nights") : min === 1 ? "day" : "days"}.`,
     tooLong: (max: number, stay: boolean) => `At most ${max} ${stay ? (max === 1 ? "night" : "nights") : max === 1 ? "day" : "days"}.`,
-    tooSoon: "That is too soon. Choose later dates.",
-    tooFar: "Bookings are not taken that far ahead yet.",
     free: "free",
     full: "taken",
     past: "past",
@@ -1670,7 +1656,6 @@ export const en = {
     sentTo: (to: string, day: string) => `Emailed to ${to} on ${day}`,
     toYou: "Emailed to you once you have paid",
     withdrawal: "You may withdraw from a gift card within 14 days, as long as none of it has been used.",
-    notDiscounted: "Discounts and bonus credits are not taken off gift cards.",
   },
   // The gift card's email (D300 F2). legal: needs review.
   giftCardEmail: {

@@ -30,7 +30,6 @@ export const enReturns = {
   contactStore: (store: string) => `Still stuck? Contact ${store}.`,
   limited: "There have been too many requests just now. Wait a little and try again, or write to the store.",
   nothing: "There is nothing on this order that you can withdraw from now.",
-  chooseLines: "Choose at least one item to withdraw from.",
   quantityProblem: "Check the numbers: you cannot withdraw from more than is left of an item.",
   errorsHeading: "Check these fields",
   fieldErrors: {
@@ -75,7 +74,6 @@ export const enReturns = {
     button: "Send return request",
     sent: (number: string) => `Your return request ${number} is sent. The store answers by email.`,
     track: "Follow your request",
-    pickLines: "Choose the items you want to return.",
   },
   windowStatutory: (day: string) => `You can withdraw until ${day}.`,
   windowBefore: "The goods have not been sent yet. You can withdraw now.",

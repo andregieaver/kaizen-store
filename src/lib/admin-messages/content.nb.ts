@@ -59,7 +59,6 @@ export const contentNb: ContentMessages = {
     deleteAsk: "Slette {title}? Den tas av nettstedet, og det kan ikke angres.",
     unsaved: "Ulagrede endringer",
     leave: "Gå uten å lagre",
-    publishFirstSave: "Lagre utkastet først, og publiser det så.",
     noPage: "Oppføringer av denne typen har ingen egen side: de vises der et innholdsrutenett lister dem.",
   },
   type: {

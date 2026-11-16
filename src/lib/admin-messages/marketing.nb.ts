@@ -77,7 +77,6 @@ export const marketingNb: MarketingMessages = {
     wantYourEmails: "Vil ha e-postene dine",
     moneyUnknown: "{n} kunne ikke vurderes etter beløp: bestillingene deres er i en valuta uten kurs.",
     whoIsIn: "Hvem som er med",
-    firstBy: "De første {n} etter siste bestilling.",
     nobody: "Ingen passer med disse reglene i dag.",
     wantsYourEmails: "Vil ha e-postene dine",
     peopleList: "Personer",

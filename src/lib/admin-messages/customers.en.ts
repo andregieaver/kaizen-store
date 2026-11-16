@@ -684,10 +684,8 @@ export const customersEn = {
     companyFull: "The company is full.",
     /** The forms' own checks (`tierInput`, `companyInput`), by the English the schema writes. */
     schema: {
-      wholePercent: "Whole percent, please.",
       groupName: "Give the group a name.",
       companyName: "Give the company a name.",
-      oneAccount: "At least one account.",
     },
   },
 };

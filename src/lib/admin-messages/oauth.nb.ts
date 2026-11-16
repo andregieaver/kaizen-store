@@ -135,7 +135,6 @@ export const oauthNb: OauthMessages = {
     none: "Ingen AI-assistent eller app når denne butikken.",
     by: "Koblet til av {person}",
     cut: "Kutt",
-    cutDone: "Kuttet fra denne butikken.",
     gone: "Den når ikke lenger denne butikken.",
     cutTitle: "Kuttet fra denne butikken",
     cutDescription: "Apper en eier har kuttet for noen. Å koble til på nytt gir ikke tilgang til denne butikken før du slipper den inn igjen.",

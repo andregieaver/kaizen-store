@@ -218,7 +218,6 @@ export const assistantNb: AssistantMessages = {
       pause: "Sett på pause",
       stop: "Stopp",
       started: "Planen kjører.",
-      pausedNow: "Planen er satt på pause.",
       stopped: "Planen er stoppet.",
       stopConfirm: "Stoppe denne planen for godt? Det den allerede har gjort, blir stående.",
       status: { draft: "Utkast", running: "Kjører", paused: "På pause", done: "Ferdig", stopped: "Stoppet" },

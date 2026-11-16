@@ -668,10 +668,8 @@ export const customersNb: CustomersMessages = {
     otherCompany: "Den kontoen hører allerede til en annen bedrift.",
     companyFull: "Bedriften er full.",
     schema: {
-      wholePercent: "Skriv en hel prosent.",
       groupName: "Gi gruppen et navn.",
       companyName: "Gi bedriften et navn.",
-      oneAccount: "Minst én konto.",
     },
   },
 };

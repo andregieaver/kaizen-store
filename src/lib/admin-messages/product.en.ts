@@ -153,8 +153,6 @@ export const productEn = {
     needModel: "Choose the model's GLB file.",
     notVideoLink: "That is not a YouTube or Vimeo video's address.",
     noStill: "No picture could be taken from the video: choose one.",
-    tooManyVideos: "A product has at most {n} videos.",
-    tooManyModels: "A product has at most {n} 3D models.",
     modelType: "Use a GLB file: export the model from your 3D program as GLB (a glTF is several files).",
     modelTooLarge: "That model is too large. Use one under {mb} MB.",
     uploadFailed: "{name} could not be uploaded. Try again.",

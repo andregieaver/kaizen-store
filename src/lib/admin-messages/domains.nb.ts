@@ -150,7 +150,6 @@ export const domainsNb: DomainsMessages = {
     consent: "Jeg ber Kaizena Flow registrere domenet så snart det er betalt, og jeg forstår at jeg mister angreretten når registreringen er fullført.",
     paidOutside: "Fakturaen er laget. Du finner den under Kjøp og fornyelser.",
     closed: "Kaizena Flow selger ikke domener alene ennå.",
-    priceChanged: "Se på prisen igjen.",
   },
   assistant: {
     title: "Spør om domenene dine",
