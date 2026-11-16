@@ -79,6 +79,11 @@ export async function saveInvoiceSettings(membership: Membership, form: InvoiceS
   if ((before.footerNote ?? null) !== v.footerNote) changed.push("footerNote");
   if (before.emailWithConfirmation !== v.emailWithConfirmation) changed.push("emailWithConfirmation");
   if (changed.length > 0 || !before.saved) await audit(account.id, store.id, "invoice.settings_updated", { fields: changed, enabled: v.enabled });
+  // Invoices that waited while invoicing was off are issued by the save itself, as in saveStoreDetails(); never throws. Imported here so this module does not load the invoice job.
+  if (v.enabled) {
+    const { issueWaitingInvoices } = await import("./invoice-issue");
+    await issueWaitingInvoices(store.id, 20);
+  }
   return { ok: true, settings: await getInvoiceSettings(store.id) };
 }
 

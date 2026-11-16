@@ -13,6 +13,8 @@ const fx = await import("./invoice-test-fixture");
 const inv = await import("./invoices");
 const issue = await import("./invoice-issue");
 const settings = await import("./invoice-settings");
+const { saveStoreDetails } = await import("./setup");
+const { storeDetailsInput } = await import("@/lib/store-details");
 const { sendOrderConfirmation } = await import("./shopper-emails");
 
 type Row = Record<string, unknown>;
@@ -201,6 +203,20 @@ describe("an order that cannot be invoiced yet waits, and is issued when the cau
     expect(invoice).toMatchObject({ totalMinor: order.total, documentNumber: "F-1", issuedOn: today(), supplyDate: today() });
     expect(await inv.waitingInvoices(wait.storeId)).toEqual([]);
     expect(await issue.storesWithDocumentWork()).not.toContain(wait.storeId);
+  });
+
+  it("saving the business details issues the invoice that waited for them", async () => {
+    const own = await fx.makeStore("iss-save", { sellerDetails: false });
+    const order = await fx.paidOrder(own, [["DEMO-MUG-WHITE", 1]]);
+    expect(await fx.invoiceOf(own.storeId, order.orderId)).toBeNull();
+    const member = await fx.ownerOf(own);
+    const saved = await saveStoreDetails(
+      member,
+      storeDetailsInput.parse({ name: member.store.name, legalName: "Save AS", organisationNumber: "923456789", contactEmail: "save@example.com", postalAddress: "Gata 1, 0150 Oslo", country: "NO" }),
+    );
+    expect(saved.ok).toBe(true);
+    // No call of issueWaitingInvoices() or invoiceJobs() here: the save itself issued it.
+    expect(await fx.invoiceOf(own.storeId, order.orderId)).not.toBeNull();
   });
 
   it("waits for a tax profile, and for one that does not say 'not registered' while VAT was charged", async () => {
