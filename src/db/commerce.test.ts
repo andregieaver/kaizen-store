@@ -1199,6 +1199,39 @@ describe("document numbers", () => {
   });
 });
 
+describe("product words' change marker (bloat review step 0.28)", () => {
+  it("a translation's text_changed_at moves only when its title, description or safety text changes", async () => {
+    const { productId } = await createProduct();
+    const read = async () =>
+      (await one<{ at: string }>("select text_changed_at::text as at from commerce.product_translations where product_id = $1", [productId])).at;
+    const productMark = async () => (await one<{ mark: string }>("select xmin::text as mark from commerce.products where id = $1", [productId])).mark;
+    const deliveries = async () => (await one<{ n: number }>("select count(*)::int as n from commerce.integration_deliveries")).n;
+    const first = await read();
+    const mark = await productMark();
+    const before = await deliveries();
+
+    // Other words do not move it.
+    await db.query("update commerce.product_translations set seo_title = 'x' where product_id = $1", [productId]);
+    expect(await read()).toBe(first);
+    // Nor can a writer move it by hand: the trigger keeps the old value when the words are the same.
+    await db.query("update commerce.product_translations set seo_title = 'y', text_changed_at = now() - interval '1 hour' where product_id = $1", [productId]);
+    expect(await read()).toBe(first);
+    // A change of the title, the description or the safety text does.
+    await db.query("update commerce.product_translations set title = title || ' 2' where product_id = $1", [productId]);
+    const second = await read();
+    expect(new Date(second).getTime()).toBeGreaterThan(new Date(first).getTime());
+    await db.query("update commerce.product_translations set description = 'New words' where product_id = $1", [productId]);
+    const third = await read();
+    expect(new Date(third).getTime()).toBeGreaterThan(new Date(second).getTime());
+    await db.query("update commerce.product_translations set safety_information = 'Keep dry' where product_id = $1", [productId]);
+    expect(new Date(await read()).getTime()).toBeGreaterThan(new Date(third).getTime());
+
+    // It sits on the translation: the product row is untouched (no publishing check, no product.updated event queued).
+    expect(await productMark()).toBe(mark);
+    expect(await deliveries()).toBe(before);
+  });
+});
+
 describe("webhook events", () => {
   it("stores each provider event once per store", async () => {
     const insert = (storeId: string) =>

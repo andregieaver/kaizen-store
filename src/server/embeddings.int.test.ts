@@ -1,6 +1,8 @@
 import { randomBytes } from "node:crypto";
+import { readFileSync } from "node:fs";
 
 import { sql } from "drizzle-orm";
+import pg from "pg";
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { closeDb, db } from "@/db/client";
@@ -236,5 +238,29 @@ describe("search by meaning (S2, D74)", () => {
         { query: "uten ai", count: 1, closest: null },
       ]),
     );
+  });
+
+  // A source check, because the one test that builds the product tools' context (product-tools.int.test.ts) has a store with no
+  // embedding model and no fetch stub, so no vector could appear there. Weak on purpose: the reviewer reads the two call sites.
+  it("every saver outside the editor embeds its store at once (bloat review 0.28)", () => {
+    for (const file of ["src/server/product-tools.ts", "src/server/content-packs.ts"]) {
+      expect(readFileSync(file, "utf8"), file).toContain("refreshStoreEmbeddings(");
+    }
+  });
+
+  it("the platform-wide scan runs in the first five minutes of the hour only (bloat review 0.28)", async () => {
+    const spy = vi.spyOn(pg.Client.prototype, "query");
+    try {
+      expect(await embeddings.refreshEmbeddings({ now: new Date("2026-11-12T10:07:00Z") })).toEqual({ embedded: 0, failed: 0 });
+      expect(spy.mock.calls).toHaveLength(0);
+      const result = await embeddings.refreshEmbeddings({ now: new Date("2026-11-12T10:03:00Z") });
+      expect(result.failed).toBe(0);
+      expect(spy.mock.calls.length).toBeGreaterThan(0);
+      spy.mockClear();
+      await embeddings.refreshEmbeddings({ full: true });
+      expect(spy.mock.calls.length).toBeGreaterThan(0);
+    } finally {
+      spy.mockRestore();
+    }
   });
 });

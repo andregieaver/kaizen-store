@@ -2759,6 +2759,11 @@ export const productTranslations = commerce.table(
     seoDescription: text("seo_description").notNull().default(""),
     /** A short text of its own for lists and content grids; empty uses the start of the description. */
     excerpt: text("excerpt").notNull().default(""),
+    /**
+     * When the title, description or safety text last changed (bloat review step 0.28), set by the trigger
+     * product_translations_text_changed: the listings' check reads only words newer than its last reading (step 0.29).
+     */
+    textChangedAt: timestamp("text_changed_at", { withTimezone: true }).notNull().defaultNow(),
     /** The keyword search document (S1): title and description, stemmed in the translation's language. */
     search: tsvector("search").generatedAlwaysAs(
       (): ReturnType<typeof sql> => sql`commerce.product_search_doc(locale, title, description)`,
