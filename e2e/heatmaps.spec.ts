@@ -111,3 +111,23 @@ test("sends nothing under Global Privacy Control, or on the cart", async ({ brow
   expect(onCart).toEqual([]);
   await shopper.close();
 });
+
+test("a visitor who withdraws statistics sends nothing more, not even the view's summary", async ({ page }) => {
+  await allow(page, "statistics+heat", "010");
+  const heat: string[] = [];
+  page.on("request", (r) => {
+    if (r.url().includes("/api/signals/")) heat.push(r.url());
+  });
+  await open(page);
+  // What the banner does on a withdrawal: the cookie without statistics, then the event, before it reloads.
+  await page.evaluate((name) => {
+    document.cookie = `${name}=1.11111111-1111-4111-8111-111111111111.statistics+heat.000; Path=/`;
+    window.dispatchEvent(new Event("kaizen:consent-changed"));
+  }, `consent_${storeId}`);
+  await page.evaluate(() => {
+    Object.defineProperty(document, "visibilityState", { get: () => "hidden", configurable: true });
+    document.dispatchEvent(new Event("visibilitychange"));
+  });
+  await page.waitForTimeout(500);
+  expect(heat).toEqual([]);
+});

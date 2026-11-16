@@ -18,10 +18,13 @@ import {
   saveAnalyticsSettings,
   savePeriodTarget,
   saveTarget,
+  setHeatmaps,
   setVisitCounting,
 } from "@/server/analytics-settings";
+import { adminText } from "@/lib/admin-text";
 import { actionAdminLang } from "@/server/admin-request-lang";
 import { checkOwnerRole } from "@/server/permissions";
+import { storeAction } from "@/server/store-action";
 
 /**
  * The analytics settings' server actions (D152), bound to the store's slug as their first argument. Every one checks the member
@@ -116,6 +119,19 @@ export async function setVisitCountingAction(storeSlug: string, _state: FormStat
       result.enabled ? w.visits.nowOn : w.visits.nowOff,
     ],
   };
+}
+
+/** Switches heatmaps on or off (D656): the store's banner then asks visitors about statistics again. */
+export async function setHeatmapsAction(storeSlug: string, _state: FormState, form: FormData): Promise<FormState> {
+  return storeAction({ store: storeSlug, key: "owner", action: "analytics.heatmaps", answer: (message) => failed([message]) }, async (member, lang) => {
+    const h = adminText(lang, "heatmaps");
+    const choice = form.get("enabled");
+    if (choice !== "on" && choice !== "off") return failed([h.choose]);
+    const result = await setHeatmaps(member, choice === "on");
+    if (!result.ok) return failed(result.problems);
+    refresh();
+    return { status: "ok", messages: [result.enabled ? h.nowOn : h.nowOff] };
+  });
 }
 
 /**
