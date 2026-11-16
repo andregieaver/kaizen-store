@@ -619,7 +619,8 @@ Click, scroll and attention heatmaps, dead and rage clicks, and recordings of vi
 tables and `/api/signals/heat`; step 4, the storefront's collector (`SiteSignals`, loaded once the browser is idle and only for a
 store with heatmaps on, so no store sends anything until its owner switches them on); step 5, that switch, under Heatmaps on
 Analytics → Settings; step 6, the pictures the heatmaps are drawn over (`src/server/map-shots.ts`); step 7, the screens under
-Analytics → Heatmaps (the hub, and a page's map in three views).
+Analytics → Heatmaps (the hub, and a page's map in three views); step 8, recordings on the server (no store records yet: the
+platform's hold is closed); step 9, the recorder in the storefront.
 
 The figures, as built in code (constants in `src/lib/page-heat.ts` and `src/lib/click-signals.ts`, tested against the plan):
 

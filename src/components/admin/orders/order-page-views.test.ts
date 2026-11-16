@@ -115,10 +115,12 @@ describe("the refund form for money taken outside Kaizena Flow", () => {
       h(RefundForm, { storeSlug: "shop", orderId: "o", refundable: "1249,00", refundableLabel: "1 249,00 kr", lines: [], hasEmail: true, canRefund: true, outside: { allowed: true } }),
     );
     const text = check(html);
-    expect(text).toContain("This was paid outside Kaizena Flow: pay the customer back yourself, then record it here.");
+    // Round 21 (D681): the page's sentence says who pays back; the form chooses Everything first and names the amount on its button.
     expect(text).toContain("Kaizena Flow cannot see whether you paid the customer back");
     expect(text).toContain("Amount you paid back");
-    expect(text).toContain("Record the refund");
+    expect(html).toMatch(/name="howMuch" checked=""/);
+    expect(html).toContain('<input type="hidden" name="amount" value="1249,00"/>');
+    expect(text).toContain("Record a 1 249,00 kr refund");
     expect(text).not.toContain("not taken through Kaizena Flow's Stripe");
     const cancel = check(renderToString(h(CancelForm, { storeSlug: "shop", orderId: "o", amountLabel: "1 249,00 kr", hasEmail: true, outside: true })));
     expect(cancel).toContain("Records a refund of 1 249,00 kr (you pay the customer back yourself, Kaizena Flow sends no money)");

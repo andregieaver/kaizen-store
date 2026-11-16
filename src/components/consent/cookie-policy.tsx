@@ -2,6 +2,7 @@ import { CONSENT_CATEGORIES, type ConsentCategory, type OptionalCategory } from 
 import { t } from "@/lib/i18n";
 
 import { CookieSettingsButton } from "./consent-manager";
+import { DeleteRecordings } from "./delete-recordings";
 
 /** A cookie as a site's cookie page lists it (D58). */
 export type ListedCookie = {
@@ -28,6 +29,7 @@ export function CookiePolicy({
   visitCounting = false,
   heatmaps = false,
   recordings = false,
+  store,
 }: {
   lang: string;
   cookies: ListedCookie[];
@@ -38,6 +40,8 @@ export function CookiePolicy({
   /** The store's heatmaps and recordings are on (D656): the page says what each collects, and statistics names heatmaps. */
   heatmaps?: boolean;
   recordings?: boolean;
+  /** The store, for the button that deletes this browser's recordings (shown while it records). */
+  store?: { id: string; slug: string };
 }) {
   const m = t(lang);
   const shown = CONSENT_CATEGORIES.filter(
@@ -61,6 +65,7 @@ export function CookiePolicy({
         {visitCounting && <p className="max-w-2xl">{m.visitCounting}</p>}
         {heatmaps && <p className="max-w-2xl">{m.cookieHeatmaps}</p>}
         {recordings && <p className="max-w-2xl">{m.cookieRecordings}</p>}
+        {recordings && store ? <DeleteRecordings store={store} lang={lang} /> : null}
       </div>
       {shown.map((category) => {
         const list = cookies.filter((cookie) => cookie.category === category);

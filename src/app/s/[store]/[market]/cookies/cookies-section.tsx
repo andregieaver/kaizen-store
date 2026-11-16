@@ -19,6 +19,7 @@ export async function CookiesSection({ store, market }: { store: Store; market: 
       visitCounting={store.visitCounting}
       heatmaps={store.heatmaps}
       recordings={store.recordings}
+      store={{ id: store.id, slug: store.slug }}
     />
   );
 }

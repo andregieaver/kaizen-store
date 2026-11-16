@@ -2044,6 +2044,12 @@ export const OWNER_TOOLS = [
     "send",
   ),
   tool(
+    "send_replacement",
+    "Sends the goods of an order's parcel again for nothing when its tracking says the parcel is lost or on its way back (B3): a new order at 0 of the same goods to the same address, with no invoice and no VAT, at most once per order. The stock is drawn; the goods' cost counts as a cost. Needs the owner's approval.",
+    z.object({ order: orderRef }),
+    "spend",
+  ),
+  tool(
     "process_exchange",
     "Processes an exchange the customer confirmed: makes the new order and moves the money (the credit pays, any rest is refunded, or the customer is emailed a link to pay the difference). Needs the owner's approval.",
     z.object({ return: returnRef }),
@@ -2320,6 +2326,8 @@ export function approvalSummary(name: string, input: Record<string, unknown>): s
       return "Start the plan as you saw it.";
     case "resume_autopilot_plan":
       return "Resume the plan.";
+    case "send_replacement":
+      return `Send the goods of order ${text("order")}'s lost or returned parcel again, as a new order at 0.`;
     case "process_exchange":
       return `Process the confirmed exchange for return ${text("return")}: make the new order and move the money.`;
     case "invite_staff":

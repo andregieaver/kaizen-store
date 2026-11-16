@@ -192,6 +192,8 @@ export function orderListWhere(storeId: string, input: OrderListParams, context:
   else if (params.source === "draft") conditions.push(sql`o.source = 'draft'`);
   // An exchange's new order (D239): made by staff from a return, paid by its credit.
   else if (params.source === "exchange") conditions.push(sql`o.source = 'exchange'`);
+  // A lost or returned parcel's goods sent again (B3, D679), at 0.
+  else if (params.source === "replacement") conditions.push(sql`o.source = 'replacement'`);
   else if (params.source === "copied") conditions.push(sql`o.copied_from is not null`);
 
   if (params.gift) conditions.push(sql`o.is_gift`);

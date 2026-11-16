@@ -2008,6 +2008,14 @@ consent, so `personal-purposes.test.ts` now names two consent purposes, marketin
 **Done when:** the e2e passes locally before the push, and in CI after it. Owners still cannot switch recordings on: the switch is
 step 11, and the platform hold is closed.
 
+*As built (16 Nov 2026):* rrweb is 2.2.0, the newest release out two weeks on 16 November (2.2.1 and 2.2.2 are newer); `@rrweb/record`
+asks for `^2.2.0` of its siblings, so `pnpm-workspace.yaml` holds `rrweb`, `@rrweb/types`, `@rrweb/utils` and the rest to 2.2.0. Masked
+text becomes three dots whatever its length (`maskTextFn`), so a run of stars never tells a length. `noteClicks()` adds `kz-click` events and
+the segment's counts from the click watch, which now runs for heatmaps or recordings. `e2e/recordings.spec.ts` covers no consent, staff,
+a first segment (seq 0, a full snapshot, relative times), typing masked (an input event recorded, no typed text, no run of stars), a search
+page never recorded, no query in a Meta address, one id per tab, and a withdrawal (one forget with the tab's id, no segment after). The
+account page round trip and the cart drawer's pause are not in the e2e yet.
+
 ### Step 10: Sealing recordings, and the DPIA draft
 
 **Files:**

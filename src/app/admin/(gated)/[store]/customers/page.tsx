@@ -66,7 +66,6 @@ export default async function CustomersPage({ params, searchParams }: PageProps<
     }
     return new Date(iso).toLocaleDateString(locale, { day: "numeric", month: "long", timeZone: store.timeZone });
   };
-  const money = (minor: number) => moneyByCurrency({ [currency]: minor }, locale);
   const hrefWith = (change: Record<string, string | null>) => {
     const next = new URLSearchParams();
     const values: Record<string, string | null> = { q: q || null, tag, show, sort: sort === "recent" ? null : sort, ...change };
@@ -134,7 +133,7 @@ export default async function CustomersPage({ params, searchParams }: PageProps<
           {counts.averageSpentMinor !== null && (
             <div className={`flex min-w-0 flex-col gap-1 px-3 py-2.5 sm:gap-1.5 sm:px-5 sm:py-4 ${CARD_CLASS}`}>
               <span className="truncate text-[11px] text-muted sm:text-caption">{words.figures.average}</span>
-              <span className="truncate text-[17px] tracking-tight tabular-nums sm:text-[26px]">{money(counts.averageSpentMinor)}</span>
+              <span className="truncate text-[17px] tracking-tight tabular-nums sm:text-[26px]">{moneyByCurrency({ [currency]: counts.averageSpentMinor }, locale, { whole: true })}</span>
             </div>
           )}
         </section>

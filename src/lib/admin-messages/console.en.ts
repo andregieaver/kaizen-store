@@ -277,6 +277,7 @@ export const consoleEn = {
       marginFloorPercent: "Lowest margin it may leave a product, %",
       purchasePerOrder: "Stock it may buy in one purchase order (store currency)",
       purchaseMonthly: "Stock it may buy a month (store currency)",
+      replacementMax: "Most a lost parcel's replacement may be worth (store currency)",
       adMoney: "Ad money agreed for each store over the 100 days (store currency)",
     },
     openBoard: "Open the scoreboard",

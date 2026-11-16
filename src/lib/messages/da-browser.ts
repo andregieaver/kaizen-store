@@ -2,6 +2,8 @@
 import type { BrowserMessages } from "./en-browser";
 
 export const daBrowser: BrowserMessages = {
+/** The Cookies page's button that deletes this browser's recordings of visits on the shop (D656). */
+recordings: { delete: "Slet mine optagelser", deleted: "Optagelserne, som denne browser lavede i denne butik, er slettet." },
 pageError: {
   title: "Denne side kunne ikke vises",
   body: "Noget gik galt hos os. Prøv igen om lidt.",

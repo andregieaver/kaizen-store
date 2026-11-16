@@ -64,3 +64,95 @@ export function appendPages(pages: readonly string[], more: readonly string[]): 
   for (const page of more) if (out[out.length - 1] !== page) out.push(page);
   return out.slice(0, REC_MAX_PAGES);
 }
+
+// ---------------------------------------------------------------------------
+// The tab's session and the recorder's options (step 9, section 7.4)
+// ---------------------------------------------------------------------------
+
+/** A tab's recording ends after this long without input. */
+export const REC_IDLE_MS = 1_800_000;
+/** Nothing is uploaded before a session has lasted this long and had one interaction. */
+export const REC_MIN_MS = 5_000;
+/** A tail sent as the page goes away, at most (a beacon's keepalive budget is 64 KiB for the whole page). */
+export const REC_TAIL_MAX_BYTES = 60_000;
+/** Events waiting in memory past this many mean a runaway page: the recording stops. */
+export const REC_MAX_BUFFER = 20_000;
+/** Without a full snapshot waiting, a segment is sent this often. */
+export const REC_FLUSH_MS = 30_000;
+/** Ids kept for deleting live this long, and at most this many. */
+export const REC_ID_DAYS = 31;
+export const REC_MAX_IDS = 50;
+
+export const sessionKey = (storeId: string) => `kaizen_replay_${storeId}`;
+export const idsKey = (storeId: string) => `kaizen_replay_ids_${storeId}`;
+
+/** What `sessionStorage` keeps for a tab: its recording's id, the next seq, whether it is sampled, its times, pages and if it qualified. */
+export type RecSession = { v: 1; id: string; seq: number; sampled: boolean; started: number; lastInput: number; pages: number; qualified: boolean };
+
+/** Reads a stored session, or null for anything that is not one. */
+export function readSession(text: string | null): RecSession | null {
+  if (!text) return null;
+  try {
+    const s = JSON.parse(text) as Partial<RecSession>;
+    if (s.v !== 1 || typeof s.id !== "string" || !/^[0-9a-f-]{36}$/.test(s.id)) return null;
+    if (![s.seq, s.started, s.lastInput, s.pages].every((n) => typeof n === "number" && Number.isFinite(n))) return null;
+    return { v: 1, id: s.id, seq: s.seq!, sampled: s.sampled === true, started: s.started!, lastInput: s.lastInput!, pages: s.pages!, qualified: s.qualified === true };
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * The tab's session now: the stored one while it lasts, or a new one (a new id, sampled once by the store's share) when there is none,
+ * it has had no input for `REC_IDLE_MS`, or it began over `REC_MAX_MS` ago. `random` is in [0, 1).
+ */
+export function sessionFor(stored: RecSession | null, now: number, share: number, newId: () => string, random: number): RecSession {
+  if (stored && now - stored.lastInput < REC_IDLE_MS && now - stored.started < REC_MAX_MS) return stored;
+  return { v: 1, id: newId(), seq: 0, sampled: random * 100 < share, started: now, lastInput: now, pages: 0, qualified: false };
+}
+
+/** The ids kept for deleting, with one more (until 31 days after its start), the expired ones dropped and at most 50 kept. */
+export function addId(text: string | null, id: string, started: number, now: number): { id: string; until: number }[] {
+  let list: { id: string; until: number }[] = [];
+  try {
+    const parsed = JSON.parse(text ?? "[]") as unknown;
+    if (Array.isArray(parsed)) list = parsed.filter((e): e is { id: string; until: number } => typeof e?.id === "string" && typeof e?.until === "number");
+  } catch {
+    list = [];
+  }
+  const kept = list.filter((e) => e.until > now && e.id !== id);
+  return [...kept, { id, until: started + REC_ID_DAYS * 86_400_000 }].slice(-REC_MAX_IDS);
+}
+
+/** The ids a browser holds for deleting, from the stored list (expired ones too: deleting them costs nothing). */
+export function idsOf(text: string | null): string[] {
+  try {
+    const parsed = JSON.parse(text ?? "[]") as unknown;
+    return Array.isArray(parsed) ? parsed.map((e) => (e as { id?: unknown })?.id).filter((id): id is string => typeof id === "string" && /^[0-9a-f-]{36}$/.test(id)) : [];
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * rrweb's options for a store's mask (`balanced` masks the text marked `data-kz-mask`, `strict` all text): every field is masked to
+ * nothing (not even the length typed), private parts are blocked, masked text is three dots whatever its length, and nothing heavy or
+ * cross-origin is recorded.
+ */
+export function recorderOptions(mask: "balanced" | "strict", isTouch: boolean) {
+  return {
+    maskAllInputs: true,
+    maskInputOptions: { password: true },
+    maskInputFn: () => "",
+    maskTextSelector: mask === "strict" ? "*" : "[data-kz-mask]",
+    maskTextFn: (text: string) => (text.trim() === "" ? text : "•••"),
+    blockSelector: "[data-kz-private]",
+    slimDOMOptions: "all" as const,
+    inlineStylesheet: true,
+    inlineImages: false,
+    collectFonts: false,
+    recordCanvas: false,
+    recordCrossOriginIframes: false,
+    sampling: { mousemove: isTouch ? 150 : 50, scroll: 150, media: 800, input: "last" as const },
+  };
+}

@@ -85,42 +85,56 @@ export function RefundForm({
   unitsToSend?: number;
 }) {
   const [state, action, pending] = useActionState(refundOrderAction.bind(null, storeSlug, orderId), initial);
-  const [amount, setAmount] = useState("");
+  // Round 21 (D681): Everything or Part of it; everything is the usual answer, so it is chosen first and the amount is what is left.
+  const [whole, setWhole] = useState(true);
+  const [part, setPart] = useState("");
+  const amount = whole ? refundable : part;
   const w = useAdminText("order").forms;
+  const mayMove = canRefund && !(outside && !outside.allowed);
+  const named = whole ? refundableLabel : `${currency} ${part.trim()}`.trim();
   return (
     <form
       action={action}
       onSubmit={(event) => {
         // Money that leaves is confirmed, naming how much (audit D454 H3/H5); recording a refund made outside asks nothing.
         if (outside || !amount.trim()) return;
-        if (!window.confirm(fillWords(w.confirmRefund, { amount: `${currency} ${amount.trim()}`.trim() }))) event.preventDefault();
+        if (!window.confirm(fillWords(w.confirmRefund, { amount: named }))) event.preventDefault();
       }}
-      className="flex flex-col gap-3"
+      className="flex flex-col gap-4"
     >
-      {outside && (
+      {outside && !outside.allowed && (
         <p role="note" className="rounded-md border border-line bg-sunken p-3 text-sm">
-          {outside.allowed
-            ? w.paidOutsideNote
-            : w.paidOutsideOwner}
+          {w.paidOutsideOwner}
         </p>
       )}
-      {canRefund && !(outside && !outside.allowed) ? (
-        <div className="flex flex-wrap items-end gap-3">
-          <label className={label}>
-            {outside ? w.amountPaidBack : w.amountToRefund}
-            <input
-              name="amount"
-              inputMode="decimal"
-              value={amount}
-              onChange={(e) => setAmount(e.target.value)}
-              placeholder="0,00"
-              className={`${input} w-36`}
-            />
-          </label>
-          <button type="button" onClick={() => setAmount(refundable)} className="min-h-10 text-sm underline">
-            {fillWords(w.everythingLeft, { amount: refundableLabel })}
-          </button>
-        </div>
+      {mayMove ? (
+        <fieldset className="flex flex-col gap-2">
+          <legend className="sr-only">{outside ? w.amountPaidBack : w.amountToRefund}</legend>
+          <div className="grid grid-cols-2 gap-2">
+            <label className={`flex cursor-pointer flex-col gap-0.5 rounded-md p-3 text-sm ${whole ? "border-2 border-ink" : "border border-edge"}`}>
+              <span className="flex items-center gap-2 font-medium">
+                <input type="radio" name="howMuch" checked={whole} onChange={() => setWhole(true)} className="size-4" />
+                {w.everything}
+              </span>
+              <span className="text-xs text-ink-2">{refundableLabel}</span>
+            </label>
+            <label className={`flex cursor-pointer flex-col gap-0.5 rounded-md p-3 text-sm ${whole ? "border border-edge" : "border-2 border-ink"}`}>
+              <span className="flex items-center gap-2 font-medium">
+                <input type="radio" name="howMuch" checked={!whole} onChange={() => setWhole(false)} className="size-4" />
+                {w.partOfIt}
+              </span>
+              <span className="text-xs text-ink-2">{w.typeAmount}</span>
+            </label>
+          </div>
+          {whole ? (
+            <input type="hidden" name="amount" value={refundable} />
+          ) : (
+            <label className={label}>
+              {outside ? w.amountPaidBack : w.amountToRefund}
+              <input name="amount" inputMode="decimal" value={part} onChange={(e) => setPart(e.target.value)} placeholder="0,00" autoFocus className={`${input} w-36`} />
+            </label>
+          )}
+        </fieldset>
       ) : outside ? null : (
         <p className="text-sm text-muted">{w.refundInStripe}</p>
       )}
@@ -140,12 +154,6 @@ export function RefundForm({
           </label>
         </fieldset>
       )}
-      <label className={label}>
-        <span>
-          {w.reason} <span className="font-normal text-muted">{w.forRecords}</span>
-        </span>
-        <input name="reason" maxLength={500} className={input} />
-      </label>
       {lines.length > 0 && (
         <fieldset className="flex flex-col gap-2">
           <legend className="mb-1 text-sm font-medium">{w.putBack}</legend>
@@ -169,16 +177,7 @@ export function RefundForm({
                       ))}
                     </select>
                   )}
-                  <input
-                    id={`restock-${line.id}`}
-                    type="number"
-                    name={`restock:${line.id}`}
-                    min={0}
-                    max={line.left}
-                    defaultValue={0}
-                    aria-label={fillWords(w.unitsToPutBack, { title: line.title })}
-                    className="min-h-10 w-20 shrink-0 rounded-md border border-line bg-card px-3 text-sm"
-                  />
+                  <Stepper id={`restock-${line.id}`} name={`restock:${line.id}`} max={line.left} label={fillWords(w.unitsToPutBack, { title: line.title })} fewer={w.oneFewer} more={w.oneMore} />
                 </span>
               </div>
               {line.putBack && <p className="text-xs text-muted">{line.putBack}</p>}
@@ -195,14 +194,61 @@ export function RefundForm({
           )}
         </fieldset>
       )}
-      {hasEmail && canRefund && !(outside && !outside.allowed) && (notifyOff ? <NotifySwitchedOff href={notifyOff}>{w.emailRefund}</NotifySwitchedOff> : <Notify>{w.emailRefund}</Notify>)}
-      <div className="flex flex-wrap items-center gap-3">
-        <button type="submit" disabled={pending || Boolean(outside && !outside.allowed)} className="min-h-10 rounded-pill bg-inverse px-4 text-sm font-medium text-inverse-ink disabled:opacity-50">
-          {pending ? (outside ? w.recording : w.refunding) : outside ? w.recordRefund : amount.trim() ? fillWords(w.refundAmount, { amount: `${currency} ${amount.trim()}`.trim() }) : w.refund}
+      {/* The reason is for the store's own records: folded until wanted (round 21). */}
+      <details className="text-sm">
+        <summary className="cursor-pointer font-medium text-ink underline underline-offset-2">
+          {w.addReason} <span className="font-normal text-muted no-underline">{w.forRecords}</span>
+        </summary>
+        <label className={`${label} mt-2`}>
+          {w.reason}
+          <input name="reason" maxLength={500} className={input} />
+        </label>
+      </details>
+      {hasEmail && mayMove && (notifyOff ? <NotifySwitchedOff href={notifyOff}>{w.emailRefund}</NotifySwitchedOff> : <Notify>{w.emailRefund}</Notify>)}
+      <div className="flex flex-col gap-2">
+        <button type="submit" disabled={pending || Boolean(outside && !outside.allowed)} className="min-h-12 w-full rounded-pill bg-inverse px-4 text-sm font-medium text-inverse-ink disabled:opacity-50 sm:w-auto sm:min-w-56 sm:self-start">
+          {pending
+            ? outside
+              ? w.recording
+              : w.refunding
+            : !mayMove || !amount.trim()
+              ? outside
+                ? w.recordRefund
+                : w.refund
+              : fillWords(outside ? w.recordAmount : w.refundAmount, { amount: named })}
         </button>
+        {outside && outside.allowed && <p className="text-xs text-muted">{w.creditNoteSelf}</p>}
         <Result state={state} />
       </div>
     </form>
+  );
+}
+
+/** A number with − and + beside it, big enough for a thumb (round 21); the field stays typeable and is what the form sends. */
+function Stepper({ id, name, max, label: aria, fewer, more }: { id: string; name: string; max: number; label: string; fewer: string; more: string }) {
+  const [n, setN] = useState(0);
+  const set = (value: number) => setN(Math.max(0, Math.min(max, Number.isFinite(value) ? Math.trunc(value) : 0)));
+  const button = "flex size-10 items-center justify-center text-lg text-ink disabled:opacity-30";
+  return (
+    <span className="flex h-10 shrink-0 items-center rounded-pill border border-edge bg-card">
+      <button type="button" aria-label={`${fewer}: ${aria}`} disabled={n <= 0} onClick={() => set(n - 1)} className={button}>
+        −
+      </button>
+      <input
+        id={id}
+        type="number"
+        name={name}
+        min={0}
+        max={max}
+        value={n}
+        onChange={(e) => set(Number(e.target.value))}
+        aria-label={aria}
+        className="w-10 bg-transparent text-center text-sm [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none"
+      />
+      <button type="button" aria-label={`${more}: ${aria}`} disabled={n >= max} onClick={() => set(n + 1)} className={button}>
+        +
+      </button>
+    </span>
   );
 }
 

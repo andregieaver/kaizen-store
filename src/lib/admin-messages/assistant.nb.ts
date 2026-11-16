@@ -394,6 +394,7 @@ export const assistantNb: AssistantMessages = {
     preview_exchange: "Regner ut byttet",
     propose_exchange: "Forbereder byttet",
     process_exchange: "Forbereder gjennomføringen av byttet",
+    send_replacement: "Forbereder å sende varene på nytt",
     list_staff: "Ser på teamet",
     invite_staff: "Forbereder invitasjonen",
     change_staff_role: "Forbereder rolleendringen",

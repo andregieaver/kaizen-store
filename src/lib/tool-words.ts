@@ -12,6 +12,7 @@ export const TOOL_WORDS: Record<string, string> = {
   preview_exchange: "Working out the exchange",
   propose_exchange: "Preparing the exchange",
   process_exchange: "Preparing to process the exchange",
+  send_replacement: "Preparing to send the goods again",
   list_staff: "Looking at the team",
   invite_staff: "Preparing the invitation",
   change_staff_role: "Preparing the role change",

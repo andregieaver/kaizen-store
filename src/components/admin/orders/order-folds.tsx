@@ -7,7 +7,20 @@ import { useEffect, useRef, type ReactNode } from "react";
  * A fold that opens itself when the address points at it or at something inside it (round 1, D595): the order's *Refund or cancel* is kept
  * out of the way, and the header's menu links to it (`#refund-cancel`, `#refund`, `#cancel`).
  */
-export function FoldOnHash({ id, summary, hint, children }: { id: string; summary: string; hint?: string; children: ReactNode }) {
+export function FoldOnHash({
+  id,
+  summary,
+  hint,
+  action,
+  children,
+}: {
+  id: string;
+  summary: string;
+  hint?: string;
+  /** Drawn as a row of a card of rows (round 21), with this word to open it, as `FoldRow`; without it, a card of its own. */
+  action?: string;
+  children: ReactNode;
+}) {
   const ref = useRef<HTMLDetailsElement>(null);
   useEffect(() => {
     const open = () => {
@@ -24,6 +37,25 @@ export function FoldOnHash({ id, summary, hint, children }: { id: string; summar
     window.addEventListener("hashchange", open);
     return () => window.removeEventListener("hashchange", open);
   }, []);
+  if (action) {
+    return (
+      <li>
+        <details ref={ref} id={id} data-advanced className="group">
+          <summary className="flex min-h-14 cursor-pointer list-none items-center justify-between gap-3 py-3 [&::-webkit-details-marker]:hidden">
+            <span className="flex min-w-0 flex-col">
+              <span className="text-body text-ink">{summary}</span>
+              {hint && <span className="text-caption text-ink-2">{hint}</span>}
+            </span>
+            <span className="shrink-0 text-sm font-medium text-ink underline underline-offset-2">
+              {action}
+              <span className="sr-only"> {summary}</span>
+            </span>
+          </summary>
+          <div className="flex flex-col gap-6 pb-5">{children}</div>
+        </details>
+      </li>
+    );
+  }
   return (
     <details ref={ref} id={id} data-advanced className="group flex flex-col gap-4">
       <summary className="flex cursor-pointer list-none items-start gap-3 rounded-card bg-card p-5 marker:hidden [&::-webkit-details-marker]:hidden">

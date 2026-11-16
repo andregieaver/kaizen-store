@@ -125,7 +125,7 @@ export default async function CustomerPage({ params, searchParams }: PageProps<"
       : [[], []];
   const date = (iso: string) => new Date(iso).toLocaleDateString(locale, { dateStyle: "medium", timeZone: "Europe/Oslo" });
   const base = `/admin/${store.slug}`;
-  const spent = moneyByCurrency(customer.spentMinor, locale);
+  const spent = moneyByCurrency(customer.spentMinor, locale, { whole: true });
 
   const address = customer.address;
   // Round 3 (D603): their first name in the page's words, the order still waiting to be sent, pictures of what they bought, new this month.

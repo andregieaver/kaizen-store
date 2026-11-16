@@ -69,6 +69,7 @@ export const FORBIDDEN_ON_PAY_ROUTES: readonly string[] = [
   "components/signals/site-signals",
   "components/signals/heat-collector",
   "components/signals/click-watch",
+  "components/signals/session-recorder",
 ];
 
 /** The file name, relative to `src/`, without its extension, as `FORBIDDEN_ON_PAY_ROUTES` names it. */

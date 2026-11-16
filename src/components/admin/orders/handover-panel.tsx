@@ -177,9 +177,11 @@ export function LocalDeliveryPanel({
     <div className="flex flex-col gap-4 text-sm">
       <div>
         <p className="text-body-strong text-ink">{delivery ? fillWords(w.localNamed, { name: delivery.name }) : w.local}</p>
-        {delivery?.postalCode && <p className="text-ink-2">{fillWords(w.pricedFor, { code: delivery.postalCode })}</p>}
+        {/* Round 21: the facts a driver needs in one line. */}
+        {(delivery?.postalCode || phone) && (
+          <p className="text-ink-2">{[delivery?.postalCode ? fillWords(w.pricedFor, { code: delivery.postalCode }) : null, phone ? fillWords(w.phone, { phone }) : null].filter(Boolean).join(" · ")}</p>
+        )}
         {delivery?.info && <p className="text-muted">{delivery.info}</p>}
-        {phone && <p className="text-ink-2">{fillWords(w.phone, { phone })}</p>}
       </div>
       {note && (
         <div>
@@ -209,19 +211,29 @@ export function LocalDeliveryPanel({
             </ActionForm>
           )}
           {!state.deliveredOn && (
-            <ActionForm action={delivered} className="flex flex-col gap-2 border-t border-line pt-4">
-              <label className="flex flex-col gap-1">
-                {w.deliveredOnLabel}
-                <input type="date" name="on" defaultValue={today} max={today} className="min-h-10 max-w-48 rounded-md border border-line bg-card px-3" />
-              </label>
-              <p className="text-muted">
-                {state.unitsToSend > 0 ? w.oneGo : ""}
-                {w.startsWithdraw}
-              </p>
-              <div>
-                <SubmitButton variant="secondary">{w.markDelivered}</SubmitButton>
-              </div>
-            </ActionForm>
+            // Round 21 (D681): delivered is nearly always today, so it is one press; another day is a fold, as on the pickup panel (round 18).
+            <div className={`flex flex-col gap-3 ${state.unitsToSend > 0 ? "border-t border-line pt-4" : ""}`}>
+              <ActionForm action={delivered} className="flex flex-col gap-2">
+                <input type="hidden" name="on" value={today} />
+                <SubmitButton className={`${submitClass(takenOutAt ? "primary" : "secondary")} min-h-12 w-full font-medium sm:w-auto sm:min-w-56`}>
+                  {w.deliveredToday}
+                </SubmitButton>
+                {state.unitsToSend > 0 && <p className="text-muted">{w.oneGo}</p>}
+              </ActionForm>
+              <details>
+                <summary className="cursor-pointer font-medium text-ink underline underline-offset-2">{w.anotherDay}</summary>
+                <ActionForm action={delivered} className="mt-3 flex flex-col gap-2">
+                  <label className="flex flex-col gap-1">
+                    {w.deliveredOnLabel}
+                    <input type="date" name="on" defaultValue={today} max={today} className="min-h-10 max-w-48 rounded-md border border-line bg-card px-3" />
+                  </label>
+                  <p className="text-muted">{w.startsWithdraw}</p>
+                  <div>
+                    <SubmitButton variant="secondary">{w.markDelivered}</SubmitButton>
+                  </div>
+                </ActionForm>
+              </details>
+            </div>
           )}
         </div>
       )}
