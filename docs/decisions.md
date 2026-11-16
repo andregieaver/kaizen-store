@@ -693,6 +693,7 @@ this file wins.
 | D691 | **Browse abandonment: emails about products a signed-in subscriber looked at (100-day D4)** (claimed 2026-11-16, text follows) | 2026-11-16 | |
 | D692 | **Admin redesign round 24: return rules, order settings and checkout rules on a phone (`docs/audits/admin-redesign-round-24.md`; 16 November 2026, `src/components/admin/returns/settings-form.tsx`, `src/components/admin/returns/exchange-settings-form.tsx`, `src/components/admin/orders/settings-form.tsx`, `src/components/admin/checkout-asks-card.tsx`, `src/components/admin/checkout-rules.tsx`).** The return rules and the order settings are cards of rows (`FoldRow`) that say what is chosen and open in place, with one wide Save under them; the return page's lead says the store's rules in a line and the law's paragraph opens with How long. On a phone the checkout's preview is a row with See it; the examples for rules and questions open with Add. Store-only: Kaizena Flow sells plans, with no parcels, returns or checkout of goods. | 2026-11-16 | |
 | D693 | **Admin redesign round 25: a rental product, categories and tags, and price lists on a phone** (claimed 2026-11-16, text follows) | 2026-11-16 | |
+| D694 | **D1 step 1: Meta campaign results and paused copies for the AI (100-day D1)** (claimed 2026-11-16, text follows) | 2026-11-16 | |
 
 ### Selling from Norway to Sweden and Denmark
 
